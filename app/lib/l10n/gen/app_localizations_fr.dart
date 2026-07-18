@@ -1,0 +1,1666 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for French (`fr`).
+class AppLocalizationsFr extends AppLocalizations {
+  AppLocalizationsFr([String locale = 'fr']) : super(locale);
+
+  @override
+  String get settingsTitle => 'Paramètres';
+
+  @override
+  String get commonCancel => 'Annuler';
+
+  @override
+  String get commonClose => 'Fermer';
+
+  @override
+  String get commonCopy => 'Copier';
+
+  @override
+  String get commonCopied => 'Copié';
+
+  @override
+  String get commonRefresh => 'Actualiser';
+
+  @override
+  String get commonCheck => 'Vérifier';
+
+  @override
+  String get commonOk => 'OK';
+
+  @override
+  String get commonDone => 'Terminé';
+
+  @override
+  String get commonPathCopied => 'Chemin copié';
+
+  @override
+  String get languageTitle => 'Langue de l\'interface';
+
+  @override
+  String get languageSubtitle => 'Choisissez la langue de l\'application';
+
+  @override
+  String get languageSystem => 'Par défaut du système';
+
+  @override
+  String get sectionAppearance => 'Apparence et comportement';
+
+  @override
+  String get sectionCapture => 'Capture du trafic';
+
+  @override
+  String get sectionReliability => 'Fiabilité de la connexion';
+
+  @override
+  String get sectionPing => 'Ping';
+
+  @override
+  String get sectionIdentity => 'Identité du panneau';
+
+  @override
+  String get sectionNetwork => 'Réseau';
+
+  @override
+  String get sectionAbout => 'À propos';
+
+  @override
+  String get sectionSupport => 'Assistance';
+
+  @override
+  String get appearanceTheme => 'Thème';
+
+  @override
+  String get themeSystem => 'Système';
+
+  @override
+  String get themeLight => 'Clair';
+
+  @override
+  String get themeDark => 'Sombre';
+
+  @override
+  String get closeToTrayTitle =>
+      'Réduire dans la zone de notification à la fermeture';
+
+  @override
+  String get closeToTraySubtitle =>
+      'Le bouton de fermeture masque la fenêtre dans la zone de notification ; désactivez pour fermer l\'application à la place';
+
+  @override
+  String get autoUpdateSubTitle => 'Mise à jour automatique de l\'abonnement';
+
+  @override
+  String get autoUpdateSubText =>
+      'Actualiser périodiquement la liste des serveurs';
+
+  @override
+  String get captureSystemProxy => 'Proxy système';
+
+  @override
+  String get captureSystemProxySub =>
+      'Fonctionne immédiatement. Aucun droit administrateur.';
+
+  @override
+  String get captureTun => 'TUN (tunnel complet)';
+
+  @override
+  String get captureTunBadgeUac => 'nécessite l\'UAC';
+
+  @override
+  String get captureTunSub =>
+      'Tout le trafic, y compris l\'UDP et les applications qui ignorent le proxy. Nécessite des droits administrateur.';
+
+  @override
+  String get tunProvider => 'Fournisseur TUN';
+
+  @override
+  String get tunRoutingTitle => 'TUN et routage';
+
+  @override
+  String tunRoutingSub(String stack, int mtu, String dns) {
+    return 'Pile $stack · MTU $mtu · DNS $dns';
+  }
+
+  @override
+  String get splitTunnelTitle => 'Tunneling fractionné';
+
+  @override
+  String splitRulesCount(int n, int apps, int sites) {
+    return '$n règles ($apps applications, $sites sites)';
+  }
+
+  @override
+  String get captureTunHint =>
+      'Les paramètres TUN, DNS et de tunneling fractionné apparaissent lorsque le mode TUN est sélectionné — en mode proxy système, ils n\'ont aucun effet.';
+
+  @override
+  String get dnsShortVpn => 'via VPN';
+
+  @override
+  String get dnsShortSystem => 'système';
+
+  @override
+  String get dnsShortCustom => 'personnalisé';
+
+  @override
+  String get tunUacTitle => 'TUN nécessite des droits administrateur';
+
+  @override
+  String get tunUacBody =>
+      'Vous pouvez le configurer une seule fois : l\'application créera une tâche du Planificateur de tâches Windows avec les privilèges les plus élevés, après quoi le tunnel démarrera SANS invite UAC.\n\nUne invite administrateur apparaîtra maintenant. L\'application elle-même continue de fonctionner sans droits élevés.';
+
+  @override
+  String get tunUacLater => 'Plus tard (demander à chaque fois)';
+
+  @override
+  String get tunUacSetup => 'Configurer';
+
+  @override
+  String get tunUacDone => 'Terminé : TUN démarrera sans invite UAC';
+
+  @override
+  String get tunUacFail =>
+      'Impossible de créer la tâche — l\'UAC sera demandé à la connexion';
+
+  @override
+  String get autoReconnectTitle => 'Reconnexion automatique';
+
+  @override
+  String get autoReconnectSub =>
+      'Rétablir la connexion en cas de coupure ou de changement de réseau';
+
+  @override
+  String get killSwitchTitle => 'Kill switch';
+
+  @override
+  String get killSwitchSubTun =>
+      'Empêcher le trafic de contourner le VPN pendant la reconnexion';
+
+  @override
+  String get killSwitchSubProxy =>
+      'En mode « Proxy système », il protège uniquement les applications compatibles proxy. Complètement — uniquement en TUN';
+
+  @override
+  String get killSwitchSubOff =>
+      'Nécessite l\'activation de la reconnexion automatique';
+
+  @override
+  String get networkRecoverTitle => 'Récupérer le réseau';
+
+  @override
+  String get networkRecoverSub =>
+      'Si Internet a disparu après le VPN. Nécessite des droits administrateur';
+
+  @override
+  String get networkRecoverConfirmTitle => 'Récupérer le réseau ?';
+
+  @override
+  String get networkRecoverConfirmBody =>
+      'Réinitialisation de winsock, de la pile IP, du DNS et du proxy système. Des droits administrateur (UAC) sont requis. La réinitialisation de winsock/IP prend effet après un redémarrage.';
+
+  @override
+  String get networkRecoverConfirmOk => 'Récupérer';
+
+  @override
+  String get interferenceTitle => 'Vérifier les interférences (autres VPN)';
+
+  @override
+  String get interferenceDialogTitle => 'Interférences réseau';
+
+  @override
+  String get interferenceNoneFound =>
+      'Aucun autre VPN ni interférence détecté.';
+
+  @override
+  String get interferenceIgnore => 'Ignorer';
+
+  @override
+  String get identityUserAgent => 'User-Agent';
+
+  @override
+  String identityUaAutoNote(String version) {
+    return 'Mis à jour automatiquement avec la version de l\'application. Sont également envoyés : X-HWID, X-Device-OS, X-Ver-OS, X-App-Version ($version).';
+  }
+
+  @override
+  String get urlSchemesTitle => 'Schémas d\'URL';
+
+  @override
+  String get urlSchemesSub =>
+      'Importer et contrôler le VPN via des liens (connexion / bascule / mise à jour)';
+
+  @override
+  String get panelOwnerTitle => 'Pour le propriétaire du panneau';
+
+  @override
+  String get panelOwnerBody =>
+      'Les utilisateurs ordinaires n\'en ont pas besoin — vous pouvez l\'ignorer.\n\nPour que l\'application reçoive votre abonnement au bon format JSON (XRAY_JSON), ajoutez ce bloc aux Response Rules de votre panneau Remnawave — il correspond à notre User-Agent :';
+
+  @override
+  String get panelOwnerCopy => 'Copier le bloc';
+
+  @override
+  String get aboutVersion => 'Version de SilentGate';
+
+  @override
+  String get aboutXrayCore => 'Cœur Xray';
+
+  @override
+  String get aboutHwid => 'HWID de l\'appareil';
+
+  @override
+  String get aboutThirdPartyTitle => 'Composants tiers et licences';
+
+  @override
+  String get aboutThirdPartySub =>
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — exécutés en tant que processus séparés';
+
+  @override
+  String get logsTitle => 'Journaux';
+
+  @override
+  String get logsSub =>
+      'Application et TUN (sing-box) : import d\'abonnement, ping, erreurs';
+
+  @override
+  String get thirdPartyTitle => 'Composants tiers';
+
+  @override
+  String get thirdPartyBody =>
+      'SilentGate est distribué avec des exécutables tiers. Ils s\'exécutent en tant que processus SÉPARÉS et ne sont pas intégrés à l\'application.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  Tunnel TUN et cœur proxy pour Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — licence Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — données de routage, CC-BY-SA-4.0\n\nLes textes complets des licences se trouvent dans le dossier « licenses » à côté de l\'application.';
+
+  @override
+  String get supportSectionNote =>
+      'Appuyez sur « Contacter l\'assistance » — une fenêtre s\'ouvre où vous générez vous-même un fichier journal (versions, système d\'exploitation, paramètres, app.log + fin de singbox.log ; aucun mot de passe ni jeton d\'abonnement, URL masquée). Ensuite, un bouton pour l\'envoyer à l\'assistance Telegram apparaît.';
+
+  @override
+  String get supportButtonTitle => 'Contacter l\'assistance';
+
+  @override
+  String get supportButtonSub =>
+      'Générer un journal et ouvrir le chat d\'assistance';
+
+  @override
+  String get supportDialogTitle => 'Assistance';
+
+  @override
+  String get supportDialogTitleDone => 'Le journal est prêt — où l\'envoyer';
+
+  @override
+  String get supportWhatWillHappen => 'Ce qui va se passer :';
+
+  @override
+  String get supportBullet1 =>
+      '• Un fichier rassemblera les versions, le système d\'exploitation, les paramètres et les journaux (app.log + fin de singbox.log). Il ne contient aucun mot de passe ni jeton d\'abonnement, l\'URL d\'abonnement est masquée.';
+
+  @override
+  String get supportBullet2 =>
+      '• Après l\'appui, D\'ABORD le dossier contenant le fichier s\'ouvre, puis le fichier lui-même. Décrivez le problème en haut, enregistrez-le — et un bouton pour l\'envoyer à l\'assistance apparaît.';
+
+  @override
+  String supportError(String error) {
+    return 'Échec de la création du rapport : $error';
+  }
+
+  @override
+  String get supportDoneText =>
+      'Le rapport est créé et ouvert (dossier, puis fichier). Décrivez le problème en haut, enregistrez le fichier et envoyez-le à l\'assistance — l\'application aidera à ouvrir Telegram.';
+
+  @override
+  String get supportWhoTo => 'Où envoyer :';
+
+  @override
+  String get supportContact => 'Contacter l\'assistance';
+
+  @override
+  String supportContactNamed(String name) {
+    return 'Contacter l\'assistance ($name)';
+  }
+
+  @override
+  String get supportDevServiceName => 'Développeur du client';
+
+  @override
+  String get supportShowOnPc => 'Afficher sur le PC';
+
+  @override
+  String get supportCopyPath => 'Copier le chemin';
+
+  @override
+  String get supportGenerating => 'Création…';
+
+  @override
+  String get supportGenerateButton => 'Générer un journal d\'assistance';
+
+  @override
+  String get pingTwoPhaseTitle => 'Vérifier le fonctionnement (via le tunnel)';
+
+  @override
+  String get pingTwoPhaseSubOn =>
+      'Après le TCP — une requête via le serveur : filtre les serveurs non fonctionnels (Reality, etc.)';
+
+  @override
+  String get pingTwoPhaseSubOff =>
+      'Seule la méthode unique sélectionnée (ci-dessous) est utilisée';
+
+  @override
+  String get pingMethodCheck => 'Méthode de vérification :';
+
+  @override
+  String get pingMethodPing => 'Méthode de ping :';
+
+  @override
+  String get speedTestProbe => 'Sonde de test de vitesse :';
+
+  @override
+  String get speedTestFull => '20 Mo (plus précis)';
+
+  @override
+  String get speedTestLight => '5 Mo (économique)';
+
+  @override
+  String get testUrlLabel => 'URL de test (via proxy)';
+
+  @override
+  String get appUpdateServerUnavailable =>
+      'Serveur de mise à jour indisponible';
+
+  @override
+  String appUpdateAvailable(String version) {
+    return 'Version $version disponible';
+  }
+
+  @override
+  String get appUpdateLatest => 'Vous disposez de la dernière version';
+
+  @override
+  String get appUpdateDownload => 'Télécharger';
+
+  @override
+  String get appUpdateCheckTitle => 'Vérifier les mises à jour au démarrage';
+
+  @override
+  String get appUpdateManual => 'Téléchargement et installation — manuels';
+
+  @override
+  String get appUpdateEndpointLabel => 'Point de terminaison de version';
+
+  @override
+  String get urlSchemeSilentgateTitle => 'Liens silentgate://';
+
+  @override
+  String get urlSchemeSilentgateSub =>
+      'Importer et contrôler le VPN via des liens. Activé par défaut';
+
+  @override
+  String get urlSchemeDisableTitle => 'Désactiver les liens silentgate:// ?';
+
+  @override
+  String get urlSchemeDisableBody =>
+      'L\'import via lien et les schémas de contrôle (connexion / déconnexion / bascule / mise à jour) cesseront de fonctionner. Laissez activé en cas de doute.';
+
+  @override
+  String get urlSchemeDisableOk => 'Désactiver';
+
+  @override
+  String get urlSchemeServerTitle => 'Ouvrir les liens de serveur';
+
+  @override
+  String get urlSchemeServerSub =>
+      'Intercepter vless:// et d\'autres liens depuis d\'autres clients';
+
+  @override
+  String get urlSchemeServerConfirmTitle =>
+      'Intercepter les liens de serveur ?';
+
+  @override
+  String urlSchemeServerConfirmBody(String schemes) {
+    return '$schemes\n\nCes liens sont généralement associés à un autre client VPN (Happ, v2rayTun). SilentGate les prendra en charge.';
+  }
+
+  @override
+  String get urlSchemeServerConfirmOk => 'Intercepter';
+
+  @override
+  String get urlSchemeAutoConnect => 'Se connecter après l\'import';
+
+  @override
+  String get autoTitle => 'Configuration automatique';
+
+  @override
+  String get autoClearResults => 'Effacer les résultats';
+
+  @override
+  String autoFoundWorking(Object count) {
+    return 'Fonctionnels trouvés : $count';
+  }
+
+  @override
+  String get autoPinnedTop => ' — épinglés en haut de la liste';
+
+  @override
+  String get autoSearchContinues => ' (la recherche continue…)';
+
+  @override
+  String get autoCheckServices => 'Vérifier les services';
+
+  @override
+  String get autoPinFoundOnTop =>
+      'Épingler les serveurs trouvés en haut de la liste';
+
+  @override
+  String get autoTryFragment => 'Essayer le contournement (fragment)';
+
+  @override
+  String get autoNoSubscriptionPasteKey =>
+      'Aucun abonnement. Collez une clé unique — nous trouverons des paramètres fonctionnels :';
+
+  @override
+  String get autoTuneByKey => 'Configurer par clé';
+
+  @override
+  String autoTesting(Object index, Object total) {
+    return 'Test $index/$total : ';
+  }
+
+  @override
+  String autoVariant(Object label) {
+    return 'Variante : $label';
+  }
+
+  @override
+  String autoServicesPassed(Object ok, Object total) {
+    return '$ok services sur $total';
+  }
+
+  @override
+  String get autoConnect => 'Se connecter';
+
+  @override
+  String get autoStopSearch => 'Arrêter la recherche';
+
+  @override
+  String get autoDoneRefreshPing =>
+      'Terminé — actualiser le ping des serveurs trouvés';
+
+  @override
+  String autoFoundPinnedRefreshing(Object count) {
+    return '$count trouvés, épinglés en haut. Actualisation du ping…';
+  }
+
+  @override
+  String autoServersForTuning(Object selected, Object total) {
+    return 'Serveurs à configurer ($selected/$total)';
+  }
+
+  @override
+  String get autoSelectAll => 'Tous';
+
+  @override
+  String get autoDeselectAll => 'Effacer';
+
+  @override
+  String get autoTuneSelected => 'Configurer la sélection';
+
+  @override
+  String autoTuned(Object label) {
+    return 'Configuré : $label';
+  }
+
+  @override
+  String get infoDialogTitle => 'Info';
+
+  @override
+  String get infoCopied => 'Explication copiée';
+
+  @override
+  String get commonGotIt => 'Compris';
+
+  @override
+  String get enumSplitAll => 'Tout — via VPN';
+
+  @override
+  String get enumSplitOnly => 'Seulement la sélection — via VPN';
+
+  @override
+  String get enumSplitExcept => 'La sélection — hors VPN';
+
+  @override
+  String get enumActionTunnel => 'Tunnel';
+
+  @override
+  String get enumActionDirect => 'Direct';
+
+  @override
+  String get enumActionBlock => 'Bloquer';
+
+  @override
+  String homeUpdateAvailable(Object version) {
+    return 'Version $version disponible';
+  }
+
+  @override
+  String get homeDownload => 'Télécharger';
+
+  @override
+  String homeSubscriptionUpdated(Object summary) {
+    return 'Abonnement mis à jour : $summary';
+  }
+
+  @override
+  String get homeReconnect => 'Reconnecter';
+
+  @override
+  String homePingProgress(Object done, Object total) {
+    return 'Ping des serveurs : $done sur $total';
+  }
+
+  @override
+  String get homeAutoConfigStarting =>
+      'Démarrage de la configuration automatique…';
+
+  @override
+  String homeAutoConfigProgress(Object current, Object name, Object total) {
+    return 'Configuration automatique : $current sur $total — $name';
+  }
+
+  @override
+  String get homeImport => 'Importer';
+
+  @override
+  String get homeSettings => 'Paramètres';
+
+  @override
+  String get homeAutoBest => 'Auto (meilleur serveur)';
+
+  @override
+  String get homeAutoConfig => 'Configuration automatique';
+
+  @override
+  String homeServersCount(Object count) {
+    return 'Serveurs ($count)';
+  }
+
+  @override
+  String homeFoundCount(Object found, Object total) {
+    return '$found trouvés sur $total';
+  }
+
+  @override
+  String get homePingServers => 'Ping des serveurs';
+
+  @override
+  String get homePingFound => 'Ping des trouvés';
+
+  @override
+  String get homeNothingFound => 'Aucun résultat';
+
+  @override
+  String get homeOnboardingTitle => 'Commencez par importer un abonnement';
+
+  @override
+  String get homeOnboardingSubtitle =>
+      'Collez un lien Remnawave ou une clé unique';
+
+  @override
+  String get homeImportSubscription => 'Importer un abonnement';
+
+  @override
+  String homeSessionTraffic(Object down, Object up) {
+    return 'Cette session : ↓ $down   ↑ $up';
+  }
+
+  @override
+  String get subBarGbUnit => 'Go';
+
+  @override
+  String subBarUsage(Object total, Object used) {
+    return '$used sur $total';
+  }
+
+  @override
+  String get subBarSubscription => 'Abonnement';
+
+  @override
+  String get subBarRefreshing => 'Actualisation…';
+
+  @override
+  String get subBarRefreshSubscription => 'Actualiser l\'abonnement';
+
+  @override
+  String get subBarSupport => 'Assistance';
+
+  @override
+  String get subBarRefresh => 'Actualiser';
+
+  @override
+  String get subBarAddSubscription => 'Ajouter un abonnement';
+
+  @override
+  String get subBarCopyLink => 'Copier le lien';
+
+  @override
+  String get subBarDeleteSubscription => 'Supprimer l\'abonnement';
+
+  @override
+  String get subBarLinkCopied => 'Lien copié';
+
+  @override
+  String get subBarDeleteConfirmTitle => 'Supprimer l\'abonnement ?';
+
+  @override
+  String get subBarDeleteConfirmBody =>
+      'Les serveurs de cet abonnement seront retirés de la liste.';
+
+  @override
+  String subBarDeletePinned(Object count) {
+    return 'Supprimer aussi les épinglés ($count) avec leurs modifications';
+  }
+
+  @override
+  String get subBarDeletePinnedHint =>
+      'Sinon, ils restent dans la liste et survivent à la suppression';
+
+  @override
+  String get subBarCancel => 'Annuler';
+
+  @override
+  String get subBarDelete => 'Supprimer';
+
+  @override
+  String get subBarSubscriptionDeleted => 'Abonnement supprimé';
+
+  @override
+  String subBarSubscriptionUpdated(Object summary) {
+    return 'Abonnement mis à jour : $summary';
+  }
+
+  @override
+  String get subBarMore => 'Détails';
+
+  @override
+  String subBarAdded(Object count) {
+    return 'Ajoutés ($count)';
+  }
+
+  @override
+  String subBarRemoved(Object count) {
+    return 'Retirés ($count)';
+  }
+
+  @override
+  String subBarAutoUpdate(Object hours) {
+    return '· mise à jour auto ${hours}h';
+  }
+
+  @override
+  String subBarValidPerpetual(Object auto) {
+    return 'Valide : illimité  $auto';
+  }
+
+  @override
+  String get subBarExpired => 'Abonnement expiré :';
+
+  @override
+  String get subBarValidUntil => 'Valide jusqu\'au :';
+
+  @override
+  String get infoCaptureMode =>
+      'Comment le trafic est intercepté. « Proxy système » définit un proxy local dans le système (aucun droit administrateur ; capture les navigateurs et la plupart des applications). « TUN » est un adaptateur réseau virtuel qui capture TOUT le trafic (y compris l\'UDP et les applications qui ignorent le proxy), mais nécessite des droits administrateur.';
+
+  @override
+  String get infoSystemProxy =>
+      'Un proxy HTTP local dans les paramètres du système (registre WinINET). Aucun droit administrateur. N\'intercepte pas l\'UDP ni les applications qui ignorent le proxy système.';
+
+  @override
+  String get infoTunMode =>
+      'Un tunnel complet via l\'adaptateur virtuel wintun + sing-box. Capture tout le trafic, y compris l\'UDP. Demande des droits administrateur (UAC) lors de l\'activation.';
+
+  @override
+  String get infoTunProvider =>
+      'Le pilote de l\'adaptateur réseau virtuel. Sous Windows, wintun est utilisé (fourni avec le cœur). Aucun autre pilote n\'est requis.';
+
+  @override
+  String get infoTunStack =>
+      'La pile réseau TUN (sing-box).\n\n« auto » — SÉLECTION AUTOMATIQUE : si le tunnel ne parvient pas à s\'établir, l\'application parcourt elle-même system → gvisor → mixed, puis abaisse le MTU (1400, 1280). La combinaison qui a fonctionné est mémorisée et essayée en premier la fois suivante. La progression de la sélection est affichée dans le statut et dans le journal.\n\nUn choix explicite désactive la sélection automatique : system — la pile du système, la plus rapide, mais plus capricieuse avec les antivirus ; gvisor — espace utilisateur, plus lente, compatibilité maximale ; mixed — TCP via system, UDP via gvisor.';
+
+  @override
+  String get infoTunMtu =>
+      'La taille maximale des paquets dans l\'adaptateur TUN. La valeur par défaut est 1500 ; abaissez-la (1400, 1280) si vous subissez des déconnexions — une valeur trop petite réduit la vitesse.\n\nAvec la pile « auto », ce n\'est que la valeur de départ : si le tunnel ne parvient pas à s\'établir, l\'application essaiera elle-même des MTU plus petits.';
+
+  @override
+  String get infoTunStrictRoute =>
+      'Routage strict dans sing-box. Sous Windows, il corrige deux problèmes typiques : les fuites DNS (par défaut, le système envoie les requêtes à tous les adaptateurs à la fois) et les erreurs « réseau inaccessible ». Désactivez-le uniquement s\'il perturbe VirtualBox/Hyper-V.';
+
+  @override
+  String get infoTunIpv6 =>
+      'Router l\'IPv6 dans le tunnel. Si vous le désactivez alors que votre FAI a activé l\'IPv6, une partie du trafic passera EN DEHORS du VPN (révélant votre véritable adresse) ou se bloquera. Désactivez-le uniquement si vous avez des problèmes de réseau IPv6.';
+
+  @override
+  String get infoTunEndpointIndependentNat =>
+      'Mode NAT pour l\'UDP. Nécessaire pour les jeux, les chats vocaux et WebRTC — sans lui, les connexions peuvent ne pas s\'établir. Désactivez-le uniquement pour économiser de la mémoire.';
+
+  @override
+  String get infoTunBypassLan =>
+      'Le réseau local (adresses privées 192.168.*, 10.*, routeur, imprimantes, NAS) contourne le VPN. Vous voulez généralement l\'activer, sinon vous perdez l\'accès aux appareils du réseau.';
+
+  @override
+  String get infoTunExcludeCidrs =>
+      'Sous-réseaux supplémentaires qui contournent toujours le VPN (format CIDR, par ex. 10.8.0.0/24). Utile pour les réseaux d\'entreprise et les autres VPN.';
+
+  @override
+  String get infoTunPrivilege =>
+      'TUN nécessite des droits administrateur. Une seule fois, nous créons une tâche dans le Planificateur de tâches Windows avec les privilèges les plus élevés — après quoi le tunnel démarre SANS invite UAC à chaque connexion. La tâche vous appartient et est supprimée avec le bouton ci-dessous ou lors de la désinstallation du programme.';
+
+  @override
+  String get infoAppUpdate =>
+      'Une fois par démarrage, l\'application demande à votre serveur s\'il existe une version plus récente et affiche une notification avec un bouton « Télécharger ».\n\nL\'application ne télécharge et n\'exécute RIEN d\'elle-même : l\'installateur n\'est pas signé par un certificat, et l\'exécution automatique d\'un exe téléchargé se heurte à SmartScreen et ressemble, pour les antivirus, à un comportement de logiciel malveillant. Vous installez la mise à jour vous-même.\n\nSi le serveur est indisponible, l\'application reste simplement silencieuse et écrit une entrée dans le journal. Le format de réponse et la configuration du serveur sont décrits dans docs/APP_UPDATE.md.';
+
+  @override
+  String get infoSpeedTest =>
+      'La quantité de données téléchargées lors de la mesure de la vitesse (clic droit sur un serveur → « Infos serveur » → « Mesurer la vitesse »).\n\n20 Mo — le mode principal : sur les liaisons rapides (100+ Mbit/s), une sonde courte n\'a pas le temps de monter en régime et sous-estime le résultat.\n5 Mo — le mode économique : nettement moins coûteux en trafic, pratique pour parcourir de nombreux serveurs.\n\nLa mesure s\'exécute UNIQUEMENT manuellement et consomme le trafic de votre abonnement. La vitesse est mesurée deux fois : directement et via le serveur sélectionné, afin que vous puissiez voir exactement combien est perdu sur le VPN.';
+
+  @override
+  String get infoAutoReconnect =>
+      'Si le cœur a planté, si le serveur a coupé ou si le réseau a changé (Wi-Fi ↔ câble, sortie de veille, nouvelle IP), l\'application rétablit la connexion d\'elle-même. Les pauses entre les tentatives augmentent : 0,8 s → 3 s → 8 s → 20 s, jusqu\'à 8 tentatives, après quoi une erreur est affichée. Se déconnecter avec le bouton annule toujours la récupération.\n\nUn changement de réseau est détecté par les adresses réelles des autres adaptateurs : votre propre tunnel et les adresses de service (link-local) ne sont pas comptés, un changement n\'est accepté que s\'il s\'est maintenu pendant deux sondages consécutifs, et le signal est ignoré pendant les 15 premières secondes après la connexion. Sans ces protections, l\'établissement du tunnel serait lui-même considéré comme un « changement de réseau » et provoquerait une reconnexion sans fin.';
+
+  @override
+  String get infoKillSwitch =>
+      'Ne pas laisser le trafic sortir en contournant le VPN pendant le rétablissement de la connexion. La capture n\'est PAS relâchée entre les tentatives : en mode TUN, l\'adaptateur reste actif, en mode « Proxy système », le proxy reste configuré — les applications obtiennent une erreur de connexion au lieu d\'un accès non chiffré à Internet.\n\nHonnêtement, à propos des limites : en mode « Proxy système », cela ne protège que les programmes qui respectent le proxy système (navigateurs et la plupart des applications). Les programmes qui ignorent le proxy, et l\'UDP, passeront directement — l\'étanchéité complète n\'est assurée que par le mode TUN. Nécessite l\'activation de la reconnexion automatique.';
+
+  @override
+  String get infoUserAgent =>
+      'Comment l\'application s\'identifie auprès du panneau (l\'en-tête User-Agent). Elle envoie toujours « SilentGate/version (Windows) ».\n\nD\'après ce nom, le panneau Remnawave choisit le FORMAT de l\'abonnement. XRAY_JSON est nécessaire — il fournit des configurations de serveur prêtes à l\'emploi ; à partir d\'une liste de liens en base64, certains paramètres ne sont restaurés qu\'approximativement, et la sélection automatique (burstObservatory) fonctionne moins bien.\n\nConfiguré dans le panneau : Templates → Response Rules → une règle avec la condition user-agent CONTAINS SilentGate et le type de réponse XRAY_JSON (placez-la au-dessus de la règle Fallback Base64).\n\nLe champ de remplacement n\'est nécessaire qu\'en tant que solution de contournement temporaire — si le panneau ne connaît pas encore l\'application, vous pouvez vous identifier comme un client qu\'il connaît.';
+
+  @override
+  String get infoDnsMode =>
+      'Qui résout les domaines en mode TUN. « Via VPN » (recommandé) — les requêtes passent dans le tunnel via TCP, et votre FAI ne voit pas quels sites vous ouvrez. « Système » — comme dans Windows : une fuite DNS est possible, et si le serveur ne transmet pas l\'UDP, Internet peut tomber complètement. « Personnalisé » — le serveur que vous indiquez, via le tunnel.';
+
+  @override
+  String get infoDnsCustomServer =>
+      'L\'adresse du serveur DNS pour le mode « Personnalisé » (par exemple 9.9.9.9 ou 8.8.8.8). Les requêtes vers celui-ci passent dans le tunnel via TCP.';
+
+  @override
+  String get infoDnsHijack =>
+      'Intercepter les requêtes DNS (port UDP 53) à l\'intérieur du tunnel. Sans cela, les requêtes échappent aux règles : une fuite est possible, et les règles de domaine du tunneling fractionné fonctionnent avec moins de précision.';
+
+  @override
+  String get infoDnsStrategy =>
+      'Quelles adresses demander : prefer_ipv4 (recommandé) — IPv4 d\'abord, ipv4_only — IPv4 uniquement (corrige les problèmes d\'IPv6 défectueux), prefer_ipv6/ipv6_only — pour les réseaux IPv6.';
+
+  @override
+  String get infoSingboxLogLevel =>
+      'Le niveau de détail du journal de sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — mode normal. info/debug — si le tunnel ne fonctionne pas : le journal montrera la cause exacte. debug augmente notablement la taille du fichier.';
+
+  @override
+  String get infoSplitMode =>
+      'La base — vers où va tout ce qui n\'a pas d\'action définie manuellement, et quelle action est attribuée aux nouvelles entrées. « Tout — via VPN » : par défaut, tout le trafic dans le tunnel. « Seulement la sélection — via VPN » : par défaut en direct, dans le tunnel uniquement ceux marqués « Tunnel ». « La sélection — hors VPN » : l\'inverse, tout dans le tunnel, et ceux marqués « Direct » passent directement.';
+
+  @override
+  String get infoSplitApps =>
+      'Cliquez sur une application — une fenêtre s\'ouvre où vous choisissez l\'action (Tunnel — via VPN, Direct — hors VPN, Bloquer — pas de réseau) et la méthode de correspondance : par nom d\'exe (fiable) ou par chemin complet. Vous pouvez choisir parmi les applications en cours d\'exécution ou indiquer un .exe.';
+
+  @override
+  String get infoSplitDomains =>
+      'Domaines (suffixes). Par exemple, youtube.com couvre aussi www.youtube.com. Fonctionne d\'après le nom issu de la connexion TLS (SNI).';
+
+  @override
+  String get infoVerifyViaProxy =>
+      'Nous vérifions d\'abord le fonctionnement via le proxy (le serveur renvoie effectivement 204), et ce n\'est que si le serveur a répondu que nous mesurons séparément la latence avec la méthode choisie (TCP/ICMP).';
+
+  @override
+  String get infoProxyGet =>
+      'Une requête GET via le tunnel vers l\'URL de test. Vérifie que le serveur transmet réellement le trafic et renvoie 204. Le test de fonctionnement le plus honnête ; un peu plus lent.';
+
+  @override
+  String get infoProxyHead =>
+      'Comme GET, mais uniquement les en-têtes — plus rapide et moins de trafic. Certains serveurs/CDN peuvent ne pas prendre en charge HEAD.';
+
+  @override
+  String get infoTcp =>
+      'Le temps de la poignée de main TCP vers l\'adresse du serveur. Un indicateur de latence rapide et précis, mais qui ne prouve pas que le tunnel fonctionne : un serveur Reality répondra en TCP même si le proxy est bloqué. Recommandé pour la latence.';
+
+  @override
+  String get infoIcmp =>
+      'Ping système. Souvent inutile pour Reality/CDN : l\'ICMP peut être bloqué, ou il mesure le nœud CDN le plus proche. Réservez-le au diagnostic réseau.';
+
+  @override
+  String get infoTestUrl =>
+      'L\'URL pour vérifier le fonctionnement via le proxy. Par défaut https://www.gstatic.com/generate_204 — elle renvoie une réponse 204 vide, ce qui est pratique et rapide.';
+
+  @override
+  String get infoAutoConfig =>
+      'Parcourt les serveurs et les variantes de contournement (fragment, fingerprint) et dresse une liste de ceux où les services sélectionnés fonctionnent. Il ne s\'arrête pas au premier — vous choisissez parmi ceux trouvés. La vérification s\'effectue via le proxy ; le VPN n\'est pas activé pendant ce temps.';
+
+  @override
+  String get infoAutoConfigServices =>
+      'Quels services doivent fonctionner pour qu\'un serveur soit considéré comme convenable. La vérification résiste aux pages de substitution du FAI (la signature de la réponse est vérifiée, pas seulement un « 200 OK »).';
+
+  @override
+  String get infoAutoPinFound =>
+      'Les combinaisons fonctionnelles trouvées (serveur + variante de contournement) sont immédiatement épinglées en haut de la liste commune des serveurs, afin que vous puissiez les utiliser sans revenir ici. Désactivez-le si vous ne voulez pas que la configuration automatique modifie l\'ordre de votre liste — les résultats resteront visibles sur cet écran.';
+
+  @override
+  String get infoTryFragment =>
+      'Essayez la variante avec fragmentation du ClientHello TLS (contournement DPI) si le serveur « brut » ne fonctionne pas. Un peu plus long, mais trouve une combinaison fonctionnelle sur les serveurs bridés.';
+
+  @override
+  String get infoAutoStrategy =>
+      '« Premier fonctionnel » — parcourir tout et se connecter à n\'importe lequel trouvé (vous choisissez). « Meilleur dans le budget » — rechercher dans une limite de temps et choisir le plus rapide.';
+
+  @override
+  String get infoScheme =>
+      'Enregistre le protocole silentgate:// dans le système (pour l\'utilisateur actuel, sans droits administrateur). Ensuite, cliquer sur un lien silentgate://import?url=… (import) ou silentgate://connect / toggle (contrôle) dans un navigateur ouvre l\'application et exécute l\'action. Activé par défaut.';
+
+  @override
+  String get infoAutoConnectAfterImport =>
+      'Se connecter au premier serveur immédiatement après un import réussi d\'abonnement via lien.';
+
+  @override
+  String get infoNetworkRecover =>
+      'Réinitialise les paramètres réseau si Internet a disparu après un plantage/arrêt du PC avec le VPN activé : winsock, la pile IP, le cache DNS, le proxy système. Nécessite des droits administrateur ; la réinitialisation de winsock et de la pile IP prend effet après un REDÉMARRAGE.';
+
+  @override
+  String get infoInterference =>
+      'Une vérification des autres VPN et des interférences réseau (adaptateurs TUN étrangers, processus VPN, zapret/GoodbyeDPI) qui peuvent entrer en conflit avec SilentGate. Vous pouvez les fermer ou les ignorer.';
+
+  @override
+  String get pingInfoProxyGet =>
+      'Une requête GET via le tunnel vers l\'URL de test. Vérifie que le serveur transmet réellement le trafic et renvoie 204. Le test de fonctionnement le plus honnête ; un peu plus lent en raison du téléchargement complet de la réponse. Recommandé pour une vérification de fonctionnement.';
+
+  @override
+  String get pingInfoProxyHead =>
+      'Comme GET, mais ne demande que les en-têtes — moins de trafic et plus rapide. Vérifie le fonctionnement du tunnel ; certains serveurs/CDN peuvent ne pas prendre en charge HEAD.';
+
+  @override
+  String get pingInfoTcp =>
+      'Mesure le temps de la poignée de main TCP vers l\'adresse du serveur. Un indicateur rapide et précis de la latence du point de terminaison, mais qui ne prouve pas que le tunnel fonctionne : un serveur Reality répondra en TCP même si le proxy est bloqué. Recommandé pour la latence.';
+
+  @override
+  String get pingInfoIcmp =>
+      'Ping système (echo request). Souvent inutile pour Reality/CDN : l\'ICMP peut être bloqué, ou il mesure le nœud CDN le plus proche plutôt que le serveur. Réservez-le au diagnostic réseau.';
+
+  @override
+  String get pingInfoTwoPhase =>
+      'Après la vérification TCP, les serveurs qui ont répondu sont en outre vérifiés par une requête via le tunnel (GET/HEAD vers l\'URL de test). Cela élimine les serveurs qui gardent le port ouvert mais ne relaient pas le trafic. La latence est toujours indiquée par le TCP.';
+
+  @override
+  String get pingInfoTunStage =>
+      'Un tunnel complet (TUN) est l\'étape suivante. Actuellement, le mode « Proxy système » est utilisé. En mode TUN, tout le trafic (y compris l\'UDP et les applications qui ignorent le proxy) passera par l\'adaptateur virtuel wintun + tun2socks. Nécessite des droits administrateur.';
+
+  @override
+  String get pingInfoTunStack =>
+      'La pile réseau TUN (sing-box). auto — laisser au cœur le soin de décider (actuellement mixed). system — la pile du système : vitesse maximale, mais plus capricieuse avec les droits/antivirus. gvisor — une pile en espace utilisateur : plus lente, mais la plus compatible. mixed — TCP via system, UDP via gvisor (un compromis). Si TUN ne se connecte pas ou coupe les connexions — essayez gvisor.';
+
+  @override
+  String get pingInfoAutoConfig =>
+      'Lorsqu\'elle est activée, l\'application parcourt elle-même les serveurs et les variantes de contournement (fragment, fingerprint) et se connecte au premier où les services sélectionnés fonctionnent (vérification via le proxy, sans activer le VPN pendant la recherche).';
+
+  @override
+  String get logsTabApp => 'Application';
+
+  @override
+  String get logsTabTun => 'TUN (sing-box)';
+
+  @override
+  String get logsRefresh => 'Actualiser';
+
+  @override
+  String get logsCopy => 'Copier';
+
+  @override
+  String get logsClearApp => 'Effacer le journal de l\'application';
+
+  @override
+  String get logsCopied => 'Journal copié';
+
+  @override
+  String get logsLoading => 'Chargement…';
+
+  @override
+  String get logsEmpty => 'Vide pour l\'instant.';
+
+  @override
+  String get logsTunEmpty =>
+      'Vide — TUN n\'a pas encore été démarré sur ce système.';
+
+  @override
+  String get importScrDone => 'Importé';
+
+  @override
+  String get importScrWelcome => 'Bienvenue sur SilentGate';
+
+  @override
+  String get importScrTitle => 'Importer un abonnement';
+
+  @override
+  String get importScrSubscriptionFallback => 'Abonnement';
+
+  @override
+  String get importScrHint =>
+      'Collez un lien d\'abonnement (Remnawave), un lien profond silentgate://, ou un seul lien vless:// / vmess:// / trojan:// / ss:// / hysteria2://';
+
+  @override
+  String get importScrLoading => 'Chargement…';
+
+  @override
+  String get importScrPasteImport => 'Importer depuis le presse-papiers';
+
+  @override
+  String get importScrImportField => 'Importer depuis le champ';
+
+  @override
+  String get serversTitle => 'Serveurs';
+
+  @override
+  String serversFound(Object found, Object total) {
+    return 'Serveurs — $found trouvés sur $total';
+  }
+
+  @override
+  String get serversRefresh => 'Actualiser l\'abonnement';
+
+  @override
+  String get serversPinging => 'Ping en cours…';
+
+  @override
+  String get serversPingAll => 'Ping de tous';
+
+  @override
+  String get serversPingFound => 'Ping des trouvés';
+
+  @override
+  String get serversEmpty =>
+      'La liste des serveurs est vide. Importez un abonnement.';
+
+  @override
+  String get serversNothingFound => 'Aucun résultat';
+
+  @override
+  String get toastCopied => 'Copié';
+
+  @override
+  String get toastHide => 'Masquer';
+
+  @override
+  String get srvInfoTitle => 'Informations sur le serveur';
+
+  @override
+  String srvInfoProbeFailed(Object error) {
+    return 'Échec du démarrage de la connexion de test : $error';
+  }
+
+  @override
+  String get srvInfoServerAddressFailed =>
+      'Impossible de déterminer l\'adresse du serveur';
+
+  @override
+  String get srvInfoSectionExit => 'Où vous sortez';
+
+  @override
+  String get srvInfoExitHint =>
+      'Déterminé à partir de l\'adresse du serveur — aucun tunnel n\'est démarré pour cela.';
+
+  @override
+  String get srvInfoAddressLocation => 'Adresse et emplacement du serveur';
+
+  @override
+  String get srvInfoCheckAgain => 'Vérifier à nouveau';
+
+  @override
+  String get srvInfoSectionSpeed => 'Vitesse';
+
+  @override
+  String srvInfoSpeedHint(Object size) {
+    return 'La sonde télécharge $size et utilise le trafic de votre abonnement. La taille peut être modifiée dans les paramètres.';
+  }
+
+  @override
+  String get srvInfoViaServer => 'Via le serveur';
+
+  @override
+  String get srvInfoWithoutVpn => 'Sans VPN';
+
+  @override
+  String get srvInfoMeasuring => 'Mesure en cours…';
+
+  @override
+  String get srvInfoMeasureSpeed => 'Mesurer la vitesse';
+
+  @override
+  String get srvInfoSectionParams => 'Paramètres de connexion';
+
+  @override
+  String get srvInfoParamAddress => 'Adresse';
+
+  @override
+  String get srvInfoParamProtocol => 'Protocole';
+
+  @override
+  String get srvInfoParamTransport => 'Transport';
+
+  @override
+  String get srvInfoParamTlsFingerprint => 'Empreinte TLS';
+
+  @override
+  String get srvInfoParamType => 'Type';
+
+  @override
+  String get srvInfoPanelAutoProfile =>
+      'Profil de sélection automatique du panneau';
+
+  @override
+  String get srvInfoCouldNotDetermine => 'impossible à déterminer';
+
+  @override
+  String get srvInfoCopy => 'Copier';
+
+  @override
+  String get editorJsonTitle => 'Config JSON';
+
+  @override
+  String get editorCopy => 'Copier';
+
+  @override
+  String get editorClose => 'Fermer';
+
+  @override
+  String get editorTitle => 'Modifier le serveur';
+
+  @override
+  String get editorFieldName => 'Nom';
+
+  @override
+  String get editorFieldAddress => 'Adresse';
+
+  @override
+  String get editorFieldPort => 'Port';
+
+  @override
+  String get editorFieldUuidPassword => 'UUID / mot de passe';
+
+  @override
+  String get editorFieldObfs => 'Obfuscation (généralement salamander)';
+
+  @override
+  String get editorFieldObfsPassword => 'Mot de passe d\'obfuscation';
+
+  @override
+  String get editorFieldPortHopping => 'Saut de port (par ex. 20000-21000)';
+
+  @override
+  String get editorAllowSelfSigned => 'Autoriser le certificat auto-signé';
+
+  @override
+  String get editorAllowSelfSignedSub =>
+      'Nécessaire uniquement si le serveur est configuré ainsi';
+
+  @override
+  String get editorTransport => 'Transport';
+
+  @override
+  String get editorSecurity => 'Sécurité';
+
+  @override
+  String get editorNone => '(aucun)';
+
+  @override
+  String get editorCancel => 'Annuler';
+
+  @override
+  String get editorSave => 'Enregistrer';
+
+  @override
+  String jsonProfileServers(Object burst, Object count) {
+    return '$count serveurs$burst';
+  }
+
+  @override
+  String get jsonCompositionUnknown => 'composition inconnue';
+
+  @override
+  String get jsonYourSavedOverride => 'Votre JSON enregistré (remplacement)';
+
+  @override
+  String jsonPanelProfileApplied(Object summary) {
+    return 'Profil de sélection automatique du panneau : $summary — appliqué intégralement';
+  }
+
+  @override
+  String get jsonPanelConfig => 'Config du panneau (XRAY_JSON)';
+
+  @override
+  String get jsonBuiltFromShareLink =>
+      'Construit à partir du lien de partage — le panneau n\'a pas envoyé de JSON. Mettez à jour l\'abonnement ; si cela ne suffit pas, vérifiez la règle Response Rules dans le panneau.';
+
+  @override
+  String get jsonInvalidJson => 'JSON invalide';
+
+  @override
+  String get jsonSaved => 'Enregistré';
+
+  @override
+  String get jsonTitle => 'Config JSON';
+
+  @override
+  String get jsonFieldEditor => 'Éditeur de champs';
+
+  @override
+  String get jsonCopy => 'Copier';
+
+  @override
+  String get jsonClose => 'Fermer';
+
+  @override
+  String get jsonSave => 'Enregistrer';
+
+  @override
+  String get srvTileEdit => 'Modifier';
+
+  @override
+  String get srvTileNotice => 'Avis';
+
+  @override
+  String get srvTileRefresh => 'Actualiser';
+
+  @override
+  String get srvTileSubscriptionUpdated => 'Abonnement mis à jour';
+
+  @override
+  String get srvTileCopy => 'Copier';
+
+  @override
+  String get srvTileInfo => 'Informations sur le serveur';
+
+  @override
+  String get srvTilePing => 'Ping';
+
+  @override
+  String get srvTileUnpin => 'Détacher';
+
+  @override
+  String get srvTilePin => 'Épingler';
+
+  @override
+  String get srvTileJsonConfig => 'Config JSON';
+
+  @override
+  String get srvTileSmart => 'Réglage intelligent des paramètres';
+
+  @override
+  String get srvTileDelete => 'Supprimer';
+
+  @override
+  String get srvTileServerDeleted => 'Serveur supprimé';
+
+  @override
+  String get srvTileSaved => 'Enregistré';
+
+  @override
+  String get pingNa => 'n/d';
+
+  @override
+  String get pingNaTooltip =>
+      'Aucune réponse TCP — serveur indisponible (mort)';
+
+  @override
+  String get pingTimeout => 'délai dépassé';
+
+  @override
+  String get pingTimeoutTooltip =>
+      'La sonde TCP ne s\'est pas terminée dans le délai imparti — serveur indisponible';
+
+  @override
+  String pingMs(Object ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get pingNoProxy => 'pas de proxy';
+
+  @override
+  String get pingNoProxyTooltip =>
+      'Répond en TCP (latence affichée), mais la vérification du tunnel (GET/HEAD) a échoué — le trafic ne passe pas';
+
+  @override
+  String get pingOk => 'ok';
+
+  @override
+  String get pingOkTooltip =>
+      'Latence TCP vers le serveur. Le serveur fonctionne : il a répondu en TCP et a passé la vérification du tunnel (GET/HEAD)';
+
+  @override
+  String get searchHint => 'Rechercher par nom, pays, adresse…';
+
+  @override
+  String get searchReset => 'Effacer';
+
+  @override
+  String get splitTitle => 'Tunneling fractionné';
+
+  @override
+  String get splitTunOnlyBanner =>
+      'Fonctionne uniquement en mode TUN. En mode « Proxy système », les applications décident elles-mêmes d\'utiliser ou non le proxy — on ne peut pas les y forcer.';
+
+  @override
+  String get splitEnableTun => 'Activer TUN';
+
+  @override
+  String get splitModeHeader => 'Mode';
+
+  @override
+  String get splitAppsHeader => 'Applications';
+
+  @override
+  String get splitAppsHint =>
+      'Appuyez sur une application pour définir son action (Tunnel / Direct / Bloquer) et sa méthode de correspondance. La case à gauche active/désactive la règle.';
+
+  @override
+  String get splitByName => 'Par nom';
+
+  @override
+  String get splitByPath => 'Par chemin';
+
+  @override
+  String get splitRuleDisabled => 'Désactivée — la règle n\'est pas appliquée';
+
+  @override
+  String get splitRemove => 'Retirer';
+
+  @override
+  String get splitFromRunning => 'Depuis les applications en cours';
+
+  @override
+  String get splitPickExe => 'Choisir un .exe';
+
+  @override
+  String get splitSitesHeader => 'Sites (domaines)';
+
+  @override
+  String get splitSitesHint =>
+      'Appuyez sur un site pour choisir une action (Tunnel / Direct / Bloquer). Un domaine couvre aussi ses sous-domaines ; les sous-domaines sont regroupés en arborescence. Vous pouvez indiquer un port.';
+
+  @override
+  String splitOnlyPort(Object port) {
+    return 'port $port uniquement';
+  }
+
+  @override
+  String get splitProgramsFileType => 'Programmes';
+
+  @override
+  String get splitRunningApps => 'Applications en cours d\'exécution';
+
+  @override
+  String get splitSearchByName => 'Rechercher par nom';
+
+  @override
+  String get splitNothingFound => 'Aucun résultat';
+
+  @override
+  String get splitClose => 'Fermer';
+
+  @override
+  String get splitPortRange => 'Port 1–65535';
+
+  @override
+  String get splitAction => 'Action';
+
+  @override
+  String get splitPortOptional => 'Port (facultatif)';
+
+  @override
+  String get splitAnyPort => 'tous';
+
+  @override
+  String get splitPortHelper =>
+      'Vide = n\'importe quel port. Sinon, la règle s\'applique uniquement à ce port';
+
+  @override
+  String get splitMatching => 'Correspondance';
+
+  @override
+  String get splitByNameSubtitle =>
+      'Nom de l\'exe, quel que soit l\'emplacement (fiable)';
+
+  @override
+  String get splitByPathSubtitle =>
+      'Chemin complet de l\'exe (correspondance exacte)';
+
+  @override
+  String get splitDone => 'Terminé';
+
+  @override
+  String get splitEnterDomain => 'Saisissez un domaine';
+
+  @override
+  String get splitAddSite => 'Ajouter un site';
+
+  @override
+  String get splitPort => 'Port';
+
+  @override
+  String get splitAdd => 'Ajouter';
+
+  @override
+  String get routeBlock => 'Bloquer';
+
+  @override
+  String get routeBlocked => 'Bloqué';
+
+  @override
+  String get routeYourPc => 'Votre PC';
+
+  @override
+  String get routeTunnel => 'Tunnel';
+
+  @override
+  String get routeViaVpn => 'Via VPN';
+
+  @override
+  String get routeVpn => 'VPN';
+
+  @override
+  String get routeInternet => 'Internet';
+
+  @override
+  String get routeRest => 'Tout le reste';
+
+  @override
+  String get routeDirectly => 'Directement';
+
+  @override
+  String get routeDirectPlusRest => 'Direct + reste';
+
+  @override
+  String get routeDirect => 'Direct';
+
+  @override
+  String get routeEmptyList => 'la liste est vide';
+
+  @override
+  String get trayShow => 'Afficher';
+
+  @override
+  String get trayToggle => 'Connecter / Déconnecter';
+
+  @override
+  String get trayQuit => 'Quitter';
+
+  @override
+  String get trayMinimizeTitle => 'Réduire dans la zone de notification';
+
+  @override
+  String get trayMinimizeBody =>
+      'L\'application continuera de fonctionner dans la zone de notification.';
+
+  @override
+  String get trayDontAsk => 'Ne plus demander';
+
+  @override
+  String get trayMinimizeOk => 'Réduire';
+
+  @override
+  String get trayVpnTitle => 'VPN connecté';
+
+  @override
+  String get trayVpnBody => 'Déconnecter le VPN et quitter l\'application ?';
+
+  @override
+  String get trayStay => 'Rester';
+
+  @override
+  String get trayQuitVpn => 'Déconnecter et quitter';
+
+  @override
+  String get tunTaskDone => 'Terminé : TUN démarrera sans invite UAC';
+
+  @override
+  String get tunTaskFailed =>
+      'Échec de la création de la tâche (UAC refusé ou bloqué par une stratégie)';
+
+  @override
+  String get tunLogTitle => 'Journal TUN (sing-box)';
+
+  @override
+  String get tunLogEmpty =>
+      'Le journal est vide — le tunnel n\'a pas encore démarré.';
+
+  @override
+  String get tunCopy => 'Copier';
+
+  @override
+  String get tunClose => 'Fermer';
+
+  @override
+  String get tunTitle => 'TUN et routage';
+
+  @override
+  String get tunSectionPrivilege => 'Droits administrateur';
+
+  @override
+  String get tunChecking => 'Vérification…';
+
+  @override
+  String get tunNoUacConfigured => 'Le démarrage sans UAC est configuré';
+
+  @override
+  String get tunUacEachConnect => 'L\'UAC sera demandé à chaque connexion';
+
+  @override
+  String get tunTaskSubtitle =>
+      'Une tâche du Planificateur de tâches Windows avec les privilèges les plus élevés (créée une seule fois).';
+
+  @override
+  String get tunRecreateTask => 'Recréer la tâche';
+
+  @override
+  String get tunSetupOneUac => 'Configurer (un seul UAC)';
+
+  @override
+  String get tunRemoveTask => 'Supprimer la tâche';
+
+  @override
+  String get tunSectionAdapter => 'Adaptateur';
+
+  @override
+  String get tunStack => 'Pile TUN';
+
+  @override
+  String get tunSectionRouting => 'Routage';
+
+  @override
+  String get tunStrictRoute => 'Routage strict (strict_route)';
+
+  @override
+  String get tunIpv6 => 'IPv6 dans le tunnel';
+
+  @override
+  String get tunEndpointNat =>
+      'NAT indépendant du point de terminaison (UDP, jeux)';
+
+  @override
+  String get tunLanBypass => 'Le réseau local contourne le VPN';
+
+  @override
+  String get tunDnsServer => 'Serveur DNS';
+
+  @override
+  String get tunDnsHijack => 'Intercepter le DNS (port 53)';
+
+  @override
+  String get tunResolveStrategy => 'Stratégie de résolution';
+
+  @override
+  String get tunSectionDiagnostics => 'Diagnostic';
+
+  @override
+  String get tunSingboxLogLevel => 'Niveau de journal de sing-box';
+
+  @override
+  String get tunShowLog => 'Afficher le journal TUN';
+
+  @override
+  String get tunDnsVpn => 'Via VPN (recommandé)';
+
+  @override
+  String get tunDnsSystem => 'Système';
+
+  @override
+  String get tunDnsCustom => 'Serveur personnalisé';
+
+  @override
+  String get tunDnsVpnHint =>
+      'Les requêtes passent dans le tunnel via TCP — aucune fuite';
+
+  @override
+  String get tunDnsSystemHint => 'Comme Windows : fuite DNS possible';
+
+  @override
+  String get tunDnsCustomHint => 'Le serveur indiqué, également via le tunnel';
+
+  @override
+  String get tunExcludeSubnets => 'Sous-réseaux contournant le VPN';
+
+  @override
+  String get tunAdd => 'Ajouter';
+
+  @override
+  String get urlGroupImport => 'Importer';
+
+  @override
+  String get urlGroupControl => 'Contrôle';
+
+  @override
+  String get urlHintSubUrl => 'URL d\'abonnement';
+
+  @override
+  String get urlHintServerLink => 'lien de serveur';
+
+  @override
+  String get urlDescImportSub => 'Importer un abonnement';
+
+  @override
+  String get urlDescImportServer =>
+      'Ajouter un seul serveur (vless / trojan / ss / hysteria2 …)';
+
+  @override
+  String get urlDescConnect => 'Connecter le VPN';
+
+  @override
+  String get urlDescDisconnect => 'Déconnecter le VPN';
+
+  @override
+  String get urlDescToggle => 'Basculer le VPN';
+
+  @override
+  String get urlDescUpdate => 'Actualiser l\'abonnement actif';
+
+  @override
+  String get urlSupportedImport =>
+      'À l\'import, l\'application comprend : une URL d\'abonnement (http/https), et des serveurs uniques vless:// / vmess:// / trojan:// / ss:// / hysteria2:// (hy2://).';
+
+  @override
+  String get reportTitle => 'SilentGate — rapport d\'assistance';
+
+  @override
+  String get reportDescribeHere =>
+      '>>> DÉCRIVEZ LE PROBLÈME ICI (remplissez et enregistrez le fichier) : <<<';
+
+  @override
+  String get reportWhatDid => 'Ce que vous avez fait :';
+
+  @override
+  String get reportWhatExpected => 'Ce que vous attendiez :';
+
+  @override
+  String get reportWhatHappened => 'Ce qui s\'est passé :';
+
+  @override
+  String get reportWhenStarted => 'Quand cela a commencé :';
+
+  @override
+  String get reportTechNoticeLine1 =>
+      'Ci-dessous, des informations techniques. Vérifiez-les avant l\'envoi ;';
+
+  @override
+  String get reportTechNoticeLine2 =>
+      'il n\'y a ici ni mot de passe ni jeton d\'abonnement, l\'URL d\'abonnement est masquée.';
+
+  @override
+  String get noRealIpTitle => 'Ne jamais utiliser ma vraie IP';
+
+  @override
+  String get noRealIpSub =>
+      'Même avec le VPN actif, tout le trafic « direct » passe par le VPN (sites RU compris). Le réseau local reste direct.';
+
+  @override
+  String get flagAuto => 'AUTO';
+
+  @override
+  String get autoUpdateIntervalLabel => 'Intervalle de mise à jour, h';
+
+  @override
+  String get autoUpdatePreferSub => 'Utiliser l\'intervalle de l\'abonnement';
+
+  @override
+  String get pingLegendInfo =>
+      'Couleur du badge de ping : vert/jaune/orange — le serveur fonctionne (TCP + vérification via le tunnel). Gris — répond en TCP mais ne relaie pas le trafic (port Reality typique). Rouge « n/a » — aucune réponse, exclu. Le ping est toujours mesuré DIRECTEMENT (hors VPN).';
+
+  @override
+  String get panelTunnelMarker => 'Tunnel divisé propre';
+
+  @override
+  String panelInfoServers(Object n) {
+    return 'Serveurs dans le profil : $n (le meilleur est choisi)';
+  }
+
+  @override
+  String get panelInfoDirect =>
+      'Une partie du trafic (ex. sites locaux) passe en direct, hors VPN';
+
+  @override
+  String get panelInfoBlock =>
+      'Une partie du trafic est bloquée (pubs/torrents)';
+
+  @override
+  String get serviceChecksTitle => 'Vérifier les services';
+
+  @override
+  String get serviceChecksInfo =>
+      'Touchez un service pour vérifier s\'il s\'ouvre via la connexion VPN active. La vérification est manuelle — rien n\'est vérifié automatiquement. Pour les services d\'IA, le blocage selon le pays de sortie est aussi détecté.';
+
+  @override
+  String get serviceStatusOk => 'Fonctionne';
+
+  @override
+  String get serviceStatusGeo => 'S\'ouvre, mais bloqué dans le pays de sortie';
+
+  @override
+  String get serviceStatusFail => 'Ne s\'ouvre pas';
+
+  @override
+  String get serviceStatusChecking => 'Vérification…';
+
+  @override
+  String get serviceStatusTap => 'Touchez pour vérifier';
+
+  @override
+  String serviceLatencyMs(Object ms) {
+    return '$ms ms';
+  }
+
+  @override
+  String get homeTunAutotuneProgress => 'Réglage des paramètres TUN…';
+
+  @override
+  String get homeTunAutotuneDone => 'Paramètres TUN réglés';
+
+  @override
+  String get homeTunAutotuneFailed => 'Impossible de régler les paramètres TUN';
+}

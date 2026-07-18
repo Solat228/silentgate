@@ -1,0 +1,202 @@
+import 'dart:io';
+
+import '../../../core/platform/app_log.dart';
+import '../../../core/platform/app_paths.dart';
+import '../../../core/platform/interference_scanner.dart';
+import '../../../core/settings/split_tunnel.dart';
+import '../../../core/singbox/singbox_config_builder.dart';
+import '../../../core/singbox/tun_autotune.dart';
+import '../../../data/tun_tuning_store.dart';
+import '../elevation.dart';
+import 'tun_helper.dart';
+import 'tun_router.dart';
+import 'tun_scheduled_task.dart';
+
+/// Windows-реализация TUN-роутера на sing-box: пишет конфиг и поднимает элевейтнутый
+/// хелпер, который запускает sing-box (wintun + маршрутизация) и заворачивает
+/// прокси-трафик в локальный SOCKS Xray. Остановка — через stop-файл.
+///
+/// Права: сначала пробуем задачу Планировщика (без UAC), иначе — прямой UAC-запуск.
+/// После старта ОБЯЗАТЕЛЬНО проверяем, что туннель реально поднялся: раньше сбой
+/// sing-box был невидим и приложение показывало «Подключено» без туннеля.
+class SingboxRouterWindows implements TunRouter {
+  bool _started = false;
+  String _stopPath = '';
+
+  @override
+  Future<void> start(SplitTunnelConfig split,
+      {required int xraySocksPort,
+      required TunOptions options,
+      void Function(String message)? onProgress,
+      bool Function()? abort}) async {
+    // «Авто» — реальный подбор: перебираем стек и MTU, пока туннель не поднимется.
+    // Явно выбранный стек уважаем и ничего не перебираем.
+    if (!options.autotune) {
+      await _startOnce(split, xraySocksPort, options);
+      return;
+    }
+
+    final store = TunTuningStore();
+    final combos = TunAutotune.combos(
+      preferred: await store.load(),
+      baseMtu: options.mtu,
+    );
+
+    TunStartException? last;
+    for (var i = 0; i < combos.length; i++) {
+      // Пользователь отключился, пока шёл перебор — прекращаем, НЕ поднимаем ещё
+      // одну комбинацию (иначе туннель встанет уже после «Отключить»).
+      if (abort?.call() ?? false) {
+        AppLog.i('TUN автоподбор прерван (отключение пользователем)');
+        return;
+      }
+      final c = combos[i];
+      final attempt = options.copyWith(stack: c.stack, mtu: c.mtu);
+      onProgress?.call('Подбираю параметры TUN: ${c.label} '
+          '(${i + 1} из ${combos.length})');
+      AppLog.i('TUN автоподбор: пробую ${c.label}');
+      try {
+        await _startOnce(split, xraySocksPort, attempt);
+        // Успели подняться, но пользователь уже отключился — снимаем сразу.
+        if (abort?.call() ?? false) {
+          AppLog.i('TUN поднялся после отмены — снимаю');
+          await stop();
+          return;
+        }
+        AppLog.i('TUN автоподбор: заработало на ${c.label}');
+        await store.save(c); // в следующий раз пробуем это первым
+        return;
+      } on TunStartException catch (e) {
+        last = e;
+        AppLog.w('TUN автоподбор: ${c.label} не подошло');
+      }
+    }
+    throw TunStartException(
+      'Туннель не поднялся ни на одной из ${combos.length} комбинаций '
+      'стека и MTU.\n${last?.message ?? ""}',
+      details: last?.details ?? '',
+    );
+  }
+
+  /// Одна попытка запуска с конкретными параметрами.
+  Future<void> _startOnce(
+      SplitTunnelConfig split, int xraySocksPort, TunOptions options) async {
+    final dir = await AppPaths.supportDir();
+    final cfgPath = TunHelper.configPathFor(dir);
+    await File(cfgPath).writeAsString(
+      SingboxConfigBuilder(xraySocksPort: xraySocksPort, options: options)
+          .buildJson(split),
+    );
+
+    _stopPath = TunHelper.stopFilePathFor(dir);
+    TunHelper.clearStopAt(_stopPath);
+    await _truncateLog(dir);
+
+    final viaTask = await TunScheduledTask.exists() && await TunScheduledTask.run();
+    if (!viaTask) {
+      // Fallback: разовый UAC-запуск хелпера.
+      final ok = Elevation.runElevated(
+        Platform.resolvedExecutable,
+        '--tun "$cfgPath" "$_stopPath"',
+      );
+      if (!ok) {
+        throw TunStartException(
+          'Не удалось получить права администратора для TUN (UAC отклонён).\n'
+          'Чтобы больше не спрашивало — настройте запуск без UAC в разделе «TUN и маршрутизация».',
+        );
+      }
+    }
+    _started = true;
+
+    await _waitUp();
+  }
+
+  /// Ждём появления TUN-адаптера. Не появился — отдаём реальную причину из лога.
+  Future<void> _waitUp() async {
+    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    while (DateTime.now().isBefore(deadline)) {
+      if (await _adapterUp()) return;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    final log = await TunHelper.tailLog();
+    _started = false;
+    TunHelper.requestStopAt(_stopPath); // не оставляем полуживой процесс
+
+    final conflict = await _conflictingTunnels();
+    final hint = conflict.isNotEmpty
+        ? 'Обнаружен другой активный VPN-туннель: ${conflict.join(', ')}.\n'
+            'Два TUN-адаптера одновременно борются за маршрут по умолчанию — '
+            'отключите другой VPN и попробуйте снова.\n\n'
+        : '';
+    throw TunStartException(
+      'TUN-адаптер не поднялся за 12 секунд — sing-box не запустился.',
+      details: hint +
+          (log.isEmpty
+              ? 'Лог sing-box пуст. Проверьте, что рядом с xray.exe лежат '
+                  'sing-box.exe и wintun.dll.'
+              : log),
+    );
+  }
+
+  /// Чужие активные TUN-адаптеры (другой VPN-клиент) — частая причина, по которой
+  /// наш туннель не поднимается или сеть умирает.
+  Future<List<String>> _conflictingTunnels() async {
+    try {
+      final found = await InterferenceScanner.scan();
+      return found
+          .where((i) => i.kind == 'adapter')
+          .map((i) => '${i.name} (${i.detail})')
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Появился ли наш TUN-адаптер.
+  ///
+  /// Берём ПОЛНЫЙ список интерфейсов и ищем своё имя подстрокой: фильтр `name=…`
+  /// на локализованной Windows при отсутствии адаптера печатает ошибку с кодом 0,
+  /// то есть давал бы ложный успех. Имя адаптера ASCII — локаль не мешает.
+  Future<bool> _adapterUp() async {
+    try {
+      final r = await Process.run('netsh', ['interface', 'show', 'interface']);
+      if ('${r.stdout}'.toLowerCase().contains('silentgate-tun')) return true;
+    } catch (_) {
+      // netsh недоступен (SRP, урезанный PATH) — ищем НАШ адрес туннеля.
+      //
+      // Раньше здесь проверялось «жив ли процесс sing-box.exe», но с v0.9.0 это
+      // имя носят ещё прокси-ядро (hysteria2) и пинг-харнесс: признак срабатывал
+      // бы на них, и приложение показывало бы «Подключено» без всякого туннеля,
+      // пока трафик идёт напрямую. Адрес 172.19.0.1 принадлежит только нам.
+      try {
+        final ifaces = await NetworkInterface.list(
+            includeLoopback: false, type: InternetAddressType.any);
+        for (final i in ifaces) {
+          for (final a in i.addresses) {
+            if (a.address.startsWith('172.19.0.') ||
+                a.address.toLowerCase().startsWith('fdfe:dcba:9876:')) {
+              return true;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return false;
+  }
+
+  Future<void> _truncateLog(Directory dir) async {
+    try {
+      final f = File(TunHelper.logPathFor(dir));
+      if (await f.exists()) await f.writeAsString('');
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> stop() async {
+    if (!_started) return;
+    TunHelper.requestStopAt(_stopPath.isNotEmpty
+        ? _stopPath
+        : TunHelper.stopFilePathFor(await AppPaths.supportDir()));
+    _started = false;
+  }
+}

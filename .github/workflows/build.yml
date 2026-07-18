@@ -1,0 +1,86 @@
+name: Build & Release (Windows)
+
+# Сборка релиза по пушу тега vX.Y.Z:
+#   1) ставим Flutter, качаем ядра (в репо их нет),
+#   2) собираем Windows release,
+#   3) компилируем установщик Inno Setup (версия берётся из exe),
+#   4) публикуем setup.exe и портативный zip в GitHub Release.
+# Ручной запуск (workflow_dispatch) собирает без публикации.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write   # для создания релиза
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Fetch cores (Xray / sing-box / wintun)
+        shell: pwsh
+        run: |
+          ./tools/fetch-xray.ps1
+          ./tools/fetch-singbox.ps1
+          ./tools/fetch-wintun.ps1
+
+      - name: Analyze & test
+        working-directory: app
+        run: |
+          flutter --version
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: Build Windows release
+        working-directory: app
+        run: flutter build windows --release
+
+      - name: Stage engine binaries next to exe
+        shell: pwsh
+        run: |
+          $rel = "app/build/windows/x64/runner/Release"
+          Copy-Item engine/windows/bin/xray.exe     $rel -Force
+          Copy-Item engine/windows/bin/sing-box.exe $rel -Force
+          Copy-Item engine/windows/bin/wintun.dll   $rel -Force
+          Copy-Item engine/windows/bin/geoip.dat    $rel -Force
+          Copy-Item engine/windows/bin/geosite.dat  $rel -Force
+
+      - name: Compile installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer/silentgate.iss
+
+      - name: Package portable zip
+        shell: pwsh
+        run: |
+          Compress-Archive -Path app/build/windows/x64/runner/Release/* `
+            -DestinationPath SilentGate-portable-win64.zip -Force
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: silentgate-windows
+          path: |
+            installer/Output/*.exe
+            SilentGate-portable-win64.zip
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            installer/Output/*.exe
+            SilentGate-portable-win64.zip
+          generate_release_notes: true

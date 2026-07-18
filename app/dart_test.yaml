@@ -1,0 +1,6 @@
+# Диагностические тесты (тег diag) требуют сети и ИЗОЛИРОВАННОГО APPDATA,
+# поэтому в обычном прогоне пропускаются. Запуск вручную:
+#   $env:APPDATA="<temp>\isolated"; flutter test test/diag_pin_cycle_test.dart
+tags:
+  diag:
+    skip: "диагностика: запускать вручную с изолированным APPDATA (см. шапку файла)"

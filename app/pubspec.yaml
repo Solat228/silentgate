@@ -1,0 +1,38 @@
+name: silentgate
+description: "SilentGate VPN client"
+publish_to: 'none'
+version: 0.13.1+36
+
+environment:
+  sdk: ^3.4.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # Локализация интерфейса (i18n): официальный gen_l10n на ARB-файлах.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  cupertino_icons: ^1.0.8
+  http: ^1.2.2
+  provider: ^6.1.2
+  path_provider: ^2.1.4
+  package_info_plus: ^8.0.2
+  win32: ^5.5.0
+  ffi: ^2.1.0
+  file_selector: ^1.0.3
+  country_flags: ^3.1.0
+  window_manager: ^0.4.2
+  tray_manager: ^0.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  # Кодоген локализаций (см. l10n.yaml): создаёт AppLocalizations из lib/l10n/*.arb.
+  generate: true
+  assets:
+    - assets/tray_icon.ico

@@ -1,0 +1,65 @@
+# ── Xray / движок: бинарники не коммитим ─────────────────────────────
+engine/**/bin/*
+!engine/**/bin/.gitkeep
+!engine/**/bin/README.md
+*.exe
+*.dll
+geoip.dat
+geosite.dat
+
+# ── Flutter / Dart ───────────────────────────────────────────────────
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/build/
+app/.pub-cache/
+app/.pub/
+app/pubspec.lock
+**/generated_plugin_registrant.*
+**/flutter_export_environment.sh
+
+# Flutter platform build artefacts
+app/android/.gradle/
+app/android/app/debug/
+app/android/app/profile/
+app/android/app/release/
+app/android/local.properties
+app/android/key.properties
+app/android/**/GeneratedPluginRegistrant.*
+app/ios/Flutter/flutter_export_environment.sh
+app/ios/Flutter/Generated.xcconfig
+app/ios/Pods/
+app/ios/.symlinks/
+app/macos/Flutter/GeneratedPluginRegistrant.swift
+app/macos/Flutter/ephemeral/
+app/macos/Pods/
+app/linux/flutter/ephemeral/
+app/windows/flutter/ephemeral/
+
+# ── Секреты / локальная конфигурация ─────────────────────────────────
+*.env
+.env.*
+secrets.json
+**/*.keystore
+**/*.jks
+**/*.p12
+**/*.mobileprovision
+
+# ── IDE / ОС ─────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ── Внутренние dev-заметки (НЕ публикуем) ────────────────────────────
+# Инструкции для Claude Code и внутренняя методика теста — локальные,
+# в открытый репозиторий не идут.
+CLAUDE.md
+docs/VM_LIVE_TEST_PLAN.md
+docs/superpowers/
+.claude/
+
+# ── Прочее ───────────────────────────────────────────────────────────
+*.log

@@ -1,0 +1,153 @@
+# SilentGate
+
+Кроссплатформенный VPN-клиент для экосистемы **SilentGate** (панель Remnawave + Telegram-бот + сайт).
+Один UI-код на **Flutter/Dart**, движок — **Xray-core** (VLESS/Reality) плюс **sing-box**
+отдельным процессом для TUN и **Hysteria2**. Авторизация — через Telegram-бота.
+
+> Статус: **v0.13.1, в разработке** (цель — 1.0.0). Первый таргет — **Windows**. Все режимы
+> прогнаны **живым тестом** в изолированной Hyper-V VM на реальных подписках (методика —
+> [docs/VM_LIVE_TEST_PLAN.md](docs/VM_LIVE_TEST_PLAN.md)).
+>
+> **Безопасность и маршрутизация (v0.12.0):** устранена **утечка реального IP** на «Авто»/панельных
+> профилях — их внутренний `direct` (RU-routing) переписывается через VPN в режиме «Всё через VPN» и
+> при новой галочке «Не выходить под реальным IP» рядом с kill switch; блок сайта теперь важнее
+> «Туннель»-приложения (порядок правил); трафик панельных профилей снова считается (агрегация всех
+> прокси-outbound + StatsService).
+>
+> **Проверка сервисов и автонастройка (v0.13.0):** у кнопки Connect — чипы **YouTube/ChatGPT/Telegram**
+> с живой проверкой по активному соединению (только ручной тап; для ИИ — детект гео-блокировки страны
+> выхода; цвет + задержка). Автонастройка расширена (+Claude/Gemini/X/Instagram/Google, бренд-иконки,
+> «выбрать/снять все», дефолт YouTube/ChatGPT/Telegram). Плюс интервал автообновления с приоритетом,
+> видимая «!»-легенда у пинга, пометка панельных серверов со сводкой их маршрутизации, тост о переборе
+> стека/MTU TUN, фавиконки сайтов с одним `.ico`.
+>
+> **База:** мультиязычность (`flutter_localizations`/ARB, **10 языков** ru/en/es/fr/de/pt/tr/ar/fa/zh,
+> вкл. RTL; спека — [docs/I18N.md](docs/I18N.md)); опциональная подпись кода
+> ([docs/CODE_SIGNING.md](docs/CODE_SIGNING.md)); **раздельное туннелирование** по модели v2raytun
+> (у приложения: Туннель/Прямо/Блок; у сайтов — порт и дерево поддоменов); **TUN** на sing-box без UAC
+> (задача Планировщика) с автоподбором стека/MTU; **Hysteria2** вторым прокси-ядром (обфускация,
+> порт-хоппинг, автовыбор `urltest`); **автовыбор лучшего сервера** (Xray balancer + burstObservatory),
+> в т.ч. панельные XRAY_JSON-профили целиком; несколько подписок с переключением; пинг TCP→GET/HEAD;
+> экран информации о сервере (IP/гео/скорость); проверка обновлений приложения; трей, темы, kill switch,
+> автопереподключение, восстановление сети; отчёт для поддержки без секретов; установщик Inno Setup.
+> Полная история версий — в [CHANGELOG.md](CHANGELOG.md). Дальше: живое тестирование, затем macOS/Linux
+> и мобильные.
+>
+> Журнал изменений — [CHANGELOG.md](CHANGELOG.md). Инструкции для Claude Code — [CLAUDE.md](CLAUDE.md).
+> Как это работает (язык, сборка, TUN) — [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md).
+
+---
+
+## Зачем свой клиент
+
+Сейчас пользователи подключаются через сторонние клиенты (Happ, v2RayTun, Streisand) по deep-link'ам,
+которые уже генерирует сайт (`happ://add/…`, `v2raytun://import/…`). Свой клиент даёт:
+
+- **Контроль над UX и брендом** (у сторонних клиентов — своя реклама, свои «рекомендованные VPN»).
+- **Бесшовную авторизацию через Telegram** без ручного копирования ссылок подписки.
+- **Единую точку** для будущей коммерции (личный кабинет, продление, оплата) прямо в приложении.
+- **Защиту от увода подписок** (зашифрованные ссылки по образцу Happ crypto-links).
+
+Подробное обоснование и результаты исследования Happ / v2RayTun / v2rayNG / NekoBox / Hiddify — в
+[docs/STACK_DECISION.md](docs/STACK_DECISION.md) и [docs/research/RESEARCH_SUMMARY.md](docs/research/RESEARCH_SUMMARY.md).
+
+---
+
+## Стек (кратко)
+
+| Слой | Технология | Почему |
+|---|---|---|
+| UI (все платформы) | **Flutter / Dart** | Один код на Windows/Android/iOS/macOS/Linux. Путь v2RayTun (Win) и Hiddify (всё). |
+| Движок | **Xray-core** (Go) | Референс VLESS/XTLS-Vision/Reality, доминирует в RU-экосистеме. Лицензия **MPL-2.0** — совместима с GPL-3.0, поставляется отдельным бинарником. |
+| Привязка ядра — Desktop | `xray.exe` **отдельным процессом** | UI просто запускает и управляет процессом. Обновление ядра = замена бинарника. |
+| Привязка ядра — Android | самосборный **gomobile AAR** из `libXray` (MIT) | in-process в `VpnService`. |
+| Привязка ядра — iOS | **libXray.xcframework** в нативном Swift `NEPacketTunnelProvider` | Dart не может работать в extension. |
+| Захват трафика — Windows MVP | системный прокси (реестр WinINET) | Без TUN-драйвера и прав администратора. TUN — позже. |
+| Бэкенд/авторизация/оплата | **Python** (существующие боты) + Remnawave API | Ваш основной язык; логика остаётся на сервере. |
+
+Полностью: [docs/STACK_DECISION.md](docs/STACK_DECISION.md).
+
+---
+
+## Структура репозитория
+
+```
+SilentGateApp/
+├── README.md                     ← этот файл
+├── docs/
+│   ├── STACK_DECISION.md          ← выбор языков/ядра/лицензий (обоснование)
+│   ├── ARCHITECTURE.md            ← общая архитектура (UI ↔ движок, потоки данных)
+│   ├── ROADMAP.md                 ← сквозной поэтапный план: MVP → коммерция
+│   ├── REMNAWAVE_INTEGRATION.md   ← API панели, формат подписки, Telegram-авторизация
+│   ├── research/RESEARCH_SUMMARY.md ← выжимка исследования конкурентов
+│   └── platforms/                 ← ОТДЕЛЬНЫЙ план и фичи под каждую платформу
+│       ├── WINDOWS.md   (активная разработка)
+│       ├── ANDROID.md
+│       ├── IOS.md
+│       ├── MACOS.md
+│       └── LINUX.md
+├── app/                           ← Flutter-приложение (общий код + нативные раннеры)
+│   ├── lib/
+│   │   ├── core/                  ← бизнес-логика (общая), без платформы:
+│   │   │   ├── parser/  models/  subscription/     (парсинг подписки/ссылок)
+│   │   │   ├── xray/                                (генератор конфига, фабрика outbound, harness, вариации)
+│   │   │   ├── settings/                            (AppSettings)
+│   │   │   └── probe/                               (пинг, проброс-харнесс, автонастройка, живая проверка сервисов)
+│   │   ├── engine/                ← абстракция движка + реализации по платформам
+│   │   │   ├── vpn_engine.dart  engine_factory.dart  probe_factory.dart
+│   │   │   └── windows/                  (xray.exe, системный прокси, ICMP, probe/harness)
+│   │   ├── data/                  ← хранилище состояния и настроек
+│   │   ├── state/                 ← AppState, SettingsController, ProbeController, AutoConfigController, ServiceCheckController
+│   │   └── ui/                    ← экраны (home, import, servers, settings, auto_config) и виджеты
+│   ├── windows/  android/  ios/  macos/  linux/   ← нативные раннеры (генерирует Flutter)
+│   └── pubspec.yaml
+├── engine/                        ← бинарники/ассеты ядра по платформам
+│   └── windows/bin/               ← сюда кладётся xray.exe (см. tools/fetch-xray.ps1)
+└── tools/                         ← вспомогательные скрипты (загрузка ядра, bootstrap)
+```
+
+**Как разделены платформы:** UI и бизнес-логика — общие (Dart), а всё платформо-специфичное живёт
+в `lib/engine/<platform>/` (Dart через conditional imports) и в нативных папках `app/<platform>/`
+(Kotlin для Android, Swift для iOS). Планы и список фич каждой версии — в `docs/platforms/<PLATFORM>.md`.
+
+---
+
+## Быстрый старт (Windows, для разработки)
+
+> Требуется один раз установить Flutter SDK и загрузить ядро Xray.
+
+```powershell
+# 1. Установить Flutter SDK (если ещё нет) — см. tools/bootstrap-windows.ps1
+#    Клонирует flutter/flutter в C:\Users\<you>\flutter и добавляет в PATH.
+
+# 2. Загрузить ядро xray.exe в engine/windows/bin/
+powershell -ExecutionPolicy Bypass -File tools/fetch-xray.ps1
+
+# 3. Запустить приложение на Windows
+cd app
+flutter pub get
+flutter run -d windows
+```
+
+Подробности разработки Windows-версии — в [docs/platforms/WINDOWS.md](docs/platforms/WINDOWS.md).
+
+---
+
+## Лицензия
+
+Клиентское приложение SilentGate распространяется под **[GNU GPL-3.0](LICENSE)**. Форки и
+производные обязаны оставаться открытыми под той же лицензией. Бэкенд и панель `silentgate.lol` —
+отдельный коммерческий сервис (в этот репозиторий не входят).
+
+### Лицензии зависимостей
+
+- **Xray-core — MPL-2.0**: совместим с GPL-3.0 (копилефт на уровне файлов); поставляется **отдельным
+  бинарником**, не линкуется.
+- **sing-box — GPL-3.0**: поставляется **отдельным процессом/бинарником**; исходники — у апстрима
+  (`SagerNet/sing-box`).
+- **libXray — MIT**, **hev-socks5-tunnel — MIT**, **wintun — специальная разрешительная**: без копилефта.
+- **v2rayNG / NekoBox — GPL-3.0**: только как архитектурный референс, код не копировался.
+
+Ядра (`xray.exe`, `sing-box.exe`, geo-файлы, `wintun.dll`) в репозиторий **не коммитятся** — они
+скачиваются скриптами `tools/fetch-*.ps1` при сборке. Полный разбор — `THIRD-PARTY.md` и
+[docs/STACK_DECISION.md#лицензии](docs/STACK_DECISION.md).
