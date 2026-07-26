@@ -1,7 +1,7 @@
 /// Идентификация приложения в сети. Держать версию синхронно с `pubspec.yaml`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '0.13.2';
+  static const version = '1.0.0';
 
   /// User-Agent запроса подписки: всегда «Имя/версия (платформа)».
   /// Панель (Remnawave) по нему выбирает формат ответа — правило в разделе

@@ -58,6 +58,7 @@ Thumbs.db
 # в открытый репозиторий не идут.
 CLAUDE.md
 docs/VM_LIVE_TEST_PLAN.md
+docs/VM_ACCESS.md
 docs/superpowers/
 .claude/
 
