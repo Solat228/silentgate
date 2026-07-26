@@ -1641,4 +1641,11 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get homeTunAutotuneFailed => 'تنظیم پارامترهای TUN ممکن نشد';
+
+  @override
+  String get hy2NoteTitle => 'سرورهای Hysteria2';
+
+  @override
+  String get hy2NoteBody =>
+      'سرورهای Hysteria2 فقط در قالب XRAY_JSON می‌آیند — SilentGate دقیقاً همان را درخواست می‌کند و sing-box آن‌ها را خودکار بالا می‌آورد. اگر Hysteria2 در فهرست دیده نشد: (برای مالک پنل Remnawave) اینباند‌های hysteria را فعال و به اشتراک اختصاص دهید. توجه: Remnawave پیش از 2.8.0 فقط در XRAY_JSON خدمت Hysteria2 را می‌دهد — در base64/CLASH/SINGBOX نیست، بنابراین قانون Response Rules → XRAY_JSON بالا الزامی است.';
 }

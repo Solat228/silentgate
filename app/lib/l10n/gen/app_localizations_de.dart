@@ -1658,4 +1658,11 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get homeTunAutotuneFailed =>
       'TUN-Parameter konnten nicht abgestimmt werden';
+
+  @override
+  String get hy2NoteTitle => 'Hysteria2-Server';
+
+  @override
+  String get hy2NoteBody =>
+      'Hysteria2-Server kommen nur im Format XRAY_JSON — SilentGate fordert genau dieses an, und sing-box startet sie automatisch. Falls Hysteria2 nicht in der Liste erscheint: (für den Remnawave-Panel-Betreiber) aktivieren Sie die Hysteria-Inbounds und weisen Sie sie dem Abo zu. Hinweis: Remnawave vor 2.8.0 liefert Hysteria2 NUR in XRAY_JSON — in base64/CLASH/SINGBOX fehlt es, daher ist die obige Regel Response Rules → XRAY_JSON erforderlich.';
 }

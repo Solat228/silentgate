@@ -1607,4 +1607,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeTunAutotuneFailed => '无法调整 TUN 参数';
+
+  @override
+  String get hy2NoteTitle => 'Hysteria2 服务器';
+
+  @override
+  String get hy2NoteBody =>
+      'Hysteria2 服务器仅以 XRAY_JSON 格式返回——SilentGate 正是请求该格式，sing-box 会自动启动它们。若列表中未出现 Hysteria2：（面板 Remnawave 所有者）请启用 hysteria 入站并将其分配给订阅。注意：2.8.0 之前的 Remnawave 仅在 XRAY_JSON 中提供 Hysteria2——base64/CLASH/SINGBOX 中没有，因此上面的 Response Rules → XRAY_JSON 规则是必需的。';
 }

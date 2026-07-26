@@ -141,6 +141,7 @@ class _UrlSchemesScreenState extends State<UrlSchemesScreen> {
           // Сноска для владельца панели — в самом низу экрана URL-схем.
           const Divider(),
           const _PanelResponseRuleNote(),
+          const _Hysteria2Note(),
           const SizedBox(height: 16),
         ],
       ),
@@ -246,6 +247,49 @@ class _PanelResponseRuleNote extends StatelessWidget {
                 },
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Сноска про Hysteria2 — для пользователя И для владельца панели. Hysteria2
+/// приходит ТОЛЬКО в формате XRAY_JSON (Remnawave <2.8.0 выкидывает его из
+/// base64/CLASH/SINGBOX); именно поэтому важно правило Response Rules → XRAY_JSON.
+class _Hysteria2Note extends StatelessWidget {
+  const _Hysteria2Note();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.bolt_outlined, size: 18, color: scheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(l.hy2NoteTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+              ),
+            ]),
+            const SizedBox(height: 6),
+            Text(l.hy2NoteBody,
+                style: Theme.of(context).textTheme.bodySmall),
           ],
         ),
       ),

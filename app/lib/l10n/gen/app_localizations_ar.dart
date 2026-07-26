@@ -1633,4 +1633,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeTunAutotuneFailed => 'تعذّر ضبط معلمات TUN';
+
+  @override
+  String get hy2NoteTitle => 'خوادم Hysteria2';
+
+  @override
+  String get hy2NoteBody =>
+      'تصل خوادم Hysteria2 بصيغة XRAY_JSON فقط — يطلب SilentGate هذه الصيغة تحديدًا، و sing-box يشغّلها تلقائيًا. إذا لم يظهر Hysteria2 في القائمة: (لمالك لوحة Remnawave) فعّل مداخل hysteria وعيّنها للاشتراك. ملاحظة: قبل 2.8.0 يقدّم Remnawave خدمة Hysteria2 في XRAY_JSON فقط — وهي غير موجودة في base64/CLASH/SINGBOX، لذا قاعدة Response Rules → XRAY_JSON أعلاه إلزامية.';
 }

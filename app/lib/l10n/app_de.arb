@@ -486,5 +486,7 @@
   "serviceLatencyMs": "{ms} ms",
   "homeTunAutotuneProgress": "TUN-Parameter werden abgestimmt…",
   "homeTunAutotuneDone": "TUN-Parameter abgestimmt",
-  "homeTunAutotuneFailed": "TUN-Parameter konnten nicht abgestimmt werden"
+  "homeTunAutotuneFailed": "TUN-Parameter konnten nicht abgestimmt werden",
+  "hy2NoteTitle": "Hysteria2-Server",
+  "hy2NoteBody": "Hysteria2-Server kommen nur im Format XRAY_JSON — SilentGate fordert genau dieses an, und sing-box startet sie automatisch. Falls Hysteria2 nicht in der Liste erscheint: (für den Remnawave-Panel-Betreiber) aktivieren Sie die Hysteria-Inbounds und weisen Sie sie dem Abo zu. Hinweis: Remnawave vor 2.8.0 liefert Hysteria2 NUR in XRAY_JSON — in base64/CLASH/SINGBOX fehlt es, daher ist die obige Regel Response Rules → XRAY_JSON erforderlich."
 }

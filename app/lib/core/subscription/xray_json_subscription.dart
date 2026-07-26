@@ -99,6 +99,17 @@ class XrayJsonSubscription {
     final stream =
         (out['streamSettings'] as Map?)?.cast<String, dynamic>() ?? const {};
 
+    // Hysteria2: Remnawave отдаёт его в XRAY_JSON как protocol "hysteria" (version 2),
+    // адрес/порт — прямо в settings, а не в vnext/servers. Без этой ветки узел
+    // проваливал проверку address.isEmpty ниже и МОЛЧА выбрасывался (у панели их 7).
+    // Ядро для него — sing-box (Xray hysteria не умеет), поэтому собираем из полей,
+    // а не сохраняем Xray-outbound как есть.
+    if (protocol == 'hysteria2' ||
+        (protocol == 'hysteria' && (settings['version'] == 2 ||
+            ((stream['hysteriaSettings'] as Map?)?['version'] == 2)))) {
+      return _fromHysteria(settings, stream, remark);
+    }
+
     String address = '';
     int port = 0;
     String id = '';
@@ -221,6 +232,61 @@ class XrayJsonSubscription {
     );
     // Ключ — восстановленная share-ссылка: стабильна между запусками и совместима
     // с пинами/override, сохранёнными до перехода на JSON-формат.
+    return base.copyWith(rawLink: base.buildShareLink());
+  }
+
+  /// Hysteria2-узел из Xray-outbound панели (protocol "hysteria", version 2).
+  /// Поля лежат в `settings` (address/port) и `streamSettings.hysteriaSettings`
+  /// (auth/obfs) + `tlsSettings` (sni/alpn). Ядро — sing-box (`VpnServer.core`).
+  static VpnServer? _fromHysteria(
+    Map<String, dynamic> settings,
+    Map<String, dynamic> stream,
+    String remark,
+  ) {
+    final address = '${settings['address'] ?? ''}';
+    final port = (settings['port'] as num?)?.toInt() ?? 0;
+    if (address.isEmpty || port == 0) return null;
+
+    final hy = (stream['hysteriaSettings'] as Map?)?.cast<String, dynamic>() ??
+        const {};
+    final tls = (stream['tlsSettings'] as Map?)?.cast<String, dynamic>() ?? const {};
+
+    // Пароль/токен: hysteriaSettings.auth (у Remnawave), иначе settings.auth/password.
+    final auth = _str(hy['auth']) ??
+        _str(hy['auth_str']) ??
+        _str(settings['auth']) ??
+        _str(settings['password']) ??
+        '';
+
+    final alpnRaw = tls['alpn'];
+    final alpn = alpnRaw is List && alpnRaw.isNotEmpty
+        ? alpnRaw.join(',')
+        : _str(alpnRaw);
+
+    final insecure = tls['allowInsecure'] == true ||
+        settings['insecure'] == true ||
+        hy['insecure'] == true;
+
+    final base = VpnServer(
+      protocol: 'hysteria2',
+      remark: remark,
+      address: address,
+      port: port,
+      id: auth,
+      network: 'quic',
+      security: 'tls',
+      sni: _str(tls['serverName']) ?? _str(hy['server_name']),
+      alpn: alpn,
+      fingerprint: _str(tls['fingerprint']),
+      obfs: _str((hy['obfs'] as Map?)?['type']) ?? _str(hy['obfs']),
+      obfsPassword:
+          _str((hy['obfs'] as Map?)?['password']) ?? _str(hy['obfsPassword']),
+      allowInsecure: insecure,
+      hopPorts: _str(hy['hopPorts']) ?? _str(hy['ports']),
+      rawLink: '',
+    );
+    // Стабильный ключ — восстановленная hysteria2://-ссылка (переживает перезапуск,
+    // совместима с пинами/override).
     return base.copyWith(rawLink: base.buildShareLink());
   }
 

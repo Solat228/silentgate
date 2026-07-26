@@ -3035,6 +3035,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось подобрать параметры TUN'**
   String get homeTunAutotuneFailed;
+
+  /// No description provided for @hy2NoteTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверы Hysteria2'**
+  String get hy2NoteTitle;
+
+  /// No description provided for @hy2NoteBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Hysteria2-серверы приходят только в формате XRAY_JSON — SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON — в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно.'**
+  String get hy2NoteBody;
 }
 
 class _AppLocalizationsDelegate

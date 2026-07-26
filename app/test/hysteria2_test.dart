@@ -4,6 +4,7 @@ import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/singbox/singbox_harness_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
 import 'package:silentgate/core/singbox/singbox_proxy_config_builder.dart';
+import 'package:silentgate/core/subscription/xray_json_subscription.dart';
 import 'package:silentgate/core/xray/harness_config_builder.dart';
 
 const _hy2 = 'hysteria2://p%40ss@hy.example.com:8443'
@@ -178,5 +179,57 @@ void main() {
     // Харнесс не должен ничего захватывать глобально.
     expect(map.containsKey('experimental'), isFalse);
     expect((map['route'] as Map)['final'], 'direct');
+  });
+
+  group('XRAY_JSON: hysteria2 от панели (Remnawave отдаёт как protocol "hysteria")', () {
+    // Реальная структура из silentgate.lol: protocol "hysteria", version 2,
+    // адрес/порт в settings, auth — в streamSettings.hysteriaSettings.
+    const panelHy = '''{
+      "remarks":"🇵🇱🚀Польша 1.6 Hysteria2🎮",
+      "outbounds":[
+        {"tag":"proxy","protocol":"hysteria",
+         "settings":{"address":"pol.silentgate.lol","port":443,"version":2},
+         "streamSettings":{"network":"hysteria",
+           "hysteriaSettings":{"version":2,"auth":"71bcca74-329d-491e-955c-40e1f37d081d"},
+           "security":"tls",
+           "tlsSettings":{"serverName":"pol.silentgate.lol","fingerprint":"chrome","alpn":["h3"]}}},
+        {"tag":"direct","protocol":"freedom"},
+        {"tag":"block","protocol":"blackhole"}
+      ]
+    }''';
+
+    test('узел больше НЕ выбрасывается — парсится как hysteria2', () {
+      final servers = XrayJsonSubscription.parse('[$panelHy]');
+      expect(servers.length, 1, reason: 'hysteria2-узел терялся до фикса');
+      final s = servers.first;
+      expect(s.protocol, 'hysteria2');
+      expect(s.address, 'pol.silentgate.lol');
+      expect(s.port, 443);
+      expect(s.id, '71bcca74-329d-491e-955c-40e1f37d081d'); // auth
+      expect(s.sni, 'pol.silentgate.lol');
+      expect(s.alpn, 'h3');
+      expect(s.core, ProxyCore.singbox); // поднимается sing-box, не Xray
+    });
+
+    test('sing-box собирает рабочий outbound из такого узла', () {
+      final s = XrayJsonSubscription.parse('[$panelHy]').first;
+      final ob = SingboxOutboundFactory.build(s, tag: 'proxy');
+      expect(ob['type'], 'hysteria2');
+      expect(ob['server'], 'pol.silentgate.lol');
+      expect(ob['server_port'], 443);
+      expect(ob['password'], '71bcca74-329d-491e-955c-40e1f37d081d');
+    });
+
+    test('обычный vless-узел по-прежнему разбирается (не сломали)', () {
+      const vless = '''{"remarks":"NL","outbounds":[
+        {"tag":"proxy","protocol":"vless","settings":{"vnext":[
+          {"address":"1.2.3.4","port":443,"users":[{"id":"uuid-1","flow":"xtls-rprx-vision"}]}]},
+         "streamSettings":{"network":"tcp","security":"reality",
+           "realitySettings":{"serverName":"a.com","publicKey":"pk","shortId":"ab"}}}]}''';
+      final s = XrayJsonSubscription.parse('[$vless]').first;
+      expect(s.protocol, 'vless');
+      expect(s.address, '1.2.3.4');
+      expect(s.core, ProxyCore.xray);
+    });
   });
 }
