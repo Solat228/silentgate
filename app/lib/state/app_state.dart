@@ -17,7 +17,7 @@ import '../core/platform/app_paths.dart';
 import '../core/platform/network_watcher.dart';
 import '../core/platform/hwid_windows.dart';
 import '../core/platform/incoming_links.dart';
-import '../core/platform/url_scheme_windows.dart';
+import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';
 import '../core/subscription/subscription_logo.dart';
 import '../core/subscription/subscription_service.dart';
@@ -286,7 +286,7 @@ class AppState extends ChangeNotifier {
     final settings = await SettingsStorage().load();
 
     // Управляющие схемы: connect / disconnect / toggle / update.
-    final action = UrlSchemeWindows.controlAction(url);
+    final action = AppUrlScheme.controlAction(url);
     if (action != null) {
       switch (action) {
         case 'connect':
@@ -310,7 +310,7 @@ class AppState extends ChangeNotifier {
 
     // Импорт: разворачиваем silentgate://import?url=… / ?config=… во внутреннее
     // значение (URL подписки или ссылка сервера), остальное — как есть.
-    final payload = UrlSchemeWindows.importPayload(url) ?? url;
+    final payload = AppUrlScheme.importPayload(url) ?? url;
     await importSource(payload);
     if (_error == null &&
         hasServers &&

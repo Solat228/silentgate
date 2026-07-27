@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import 'atomic_file.dart';
 
 /// Простое JSON-хранилище результатов (пинг, автонастройка) в каталоге поддержки приложения.
 class ResultsStore {
@@ -31,7 +32,7 @@ class ResultsStore {
   Future<void> save(Object data) async {
     try {
       final f = await _file();
-      await f.writeAsString(jsonEncode(data));
+      await AtomicFile.writeString(f, jsonEncode(data));
     } catch (_) {}
   }
 }

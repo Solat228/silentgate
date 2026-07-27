@@ -7,11 +7,13 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
+import 'core/platform/app_paths.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
 import 'core/platform/single_instance.dart';
 import 'core/platform/tray_window.dart';
 import 'core/platform/url_scheme_windows.dart';
+import 'core/url_scheme.dart';
 import 'engine/windows/tun/tun_helper.dart';
 import 'engine/windows/xray_paths.dart';
 import 'state/app_state.dart';
@@ -48,10 +50,15 @@ Future<void> main(List<String> args) async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Корень данных — до любых хранилищ и логов. На Windows путь вычислился бы и
+  // синхронно, но на Android он известен только асинхронно, поэтому единая
+  // точка инициализации для обеих платформ.
+  await AppPaths.init();
+
   // Принимаем и silentgate://, и одиночные ссылки серверов (vless/vmess/trojan/ss),
   // если пользователь включил их перехват (#10.2).
   final incomingUrl = args.firstWhere(
-    UrlSchemeWindows.isSupportedLink,
+    AppUrlScheme.isSupportedLink,
     orElse: () => '',
   );
 

@@ -1,14 +1,18 @@
 import 'dart:io';
 
+import '../url_scheme.dart';
+
 /// Регистрация/снятие протоколов в реестре Windows (HKCU — без прав администратора).
 /// Клик по ссылке в браузере запускает приложение с URL в качестве аргумента.
+///
+/// Разбор ссылок сюда НЕ входит — он платформо-независим и живёт в
+/// [AppUrlScheme] (`core/url_scheme.dart`), потому что на Android те же ссылки
+/// приходят интентом, а не аргументом запуска.
 class UrlSchemeWindows {
-  static const scheme = 'silentgate';
+  static const scheme = AppUrlScheme.scheme;
 
-  /// Схемы одиночных серверов. Регистрируются ОТДЕЛЬНО и по умолчанию выключены:
-  /// эти ссылки обычно уже привязаны к другому клиенту (Happ, v2rayTun), и молча
-  /// забирать их у пользователя нельзя.
-  static const serverSchemes = ['vless', 'vmess', 'trojan', 'ss', 'hysteria2', 'hy2'];
+  /// Схемы одиночных серверов — см. [AppUrlScheme.serverSchemes].
+  static const serverSchemes = AppUrlScheme.serverSchemes;
 
   /// URL-схемы приложения, сгруппированные для экрана «URL-схемы»
   /// (по образцу Happ/v2raytun). Копируются пользователем; управляющие —
@@ -39,38 +43,6 @@ class UrlSchemeWindows {
 
   /// Считаем перехват включённым, если зарегистрирована хотя бы vless://.
   static Future<bool> areServerSchemesRegistered() => _isRegistered('vless');
-
-  /// Управляющее действие из `silentgate://connect|disconnect|toggle|update`
-  /// (или null, если это не оно).
-  static String? controlAction(String url) {
-    final u = url.trim();
-    if (!u.toLowerCase().startsWith('$scheme://')) return null;
-    final uri = Uri.tryParse(u);
-    if (uri == null) return null;
-    final action = (uri.host.isNotEmpty
-            ? uri.host
-            : (uri.pathSegments.isNotEmpty ? uri.pathSegments.first : ''))
-        .toLowerCase();
-    const actions = {'connect', 'disconnect', 'toggle', 'update'};
-    return actions.contains(action) ? action : null;
-  }
-
-  /// Полезная нагрузка `silentgate://import?url=…` / `?config=…` — внутренний
-  /// URL подписки или ссылка сервера. null — не наш import-URL.
-  static String? importPayload(String url) {
-    final u = url.trim();
-    if (!u.toLowerCase().startsWith('$scheme://')) return null;
-    final uri = Uri.tryParse(u);
-    if (uri == null) return null;
-    return uri.queryParameters['config'] ?? uri.queryParameters['url'];
-  }
-
-  /// Понимает ли приложение такую ссылку (для фильтра аргументов запуска).
-  static bool isSupportedLink(String arg) {
-    final a = arg.trim().toLowerCase();
-    if (a.startsWith('$scheme://')) return true;
-    return serverSchemes.any((s) => a.startsWith('$s://'));
-  }
 
   static Future<void> _registerScheme(String s, String title) async {
     if (!Platform.isWindows) return;

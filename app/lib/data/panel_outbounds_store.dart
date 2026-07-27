@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import 'atomic_file.dart';
 
 /// Что панель прислала для конкретного сервера (формат XRAY_JSON).
 class PanelConfig {
@@ -66,7 +67,7 @@ class PanelOutboundsStore {
   Future<void> save(Map<String, PanelConfig> configs) async {
     try {
       final f = await _file();
-      await f.writeAsString(
+      await AtomicFile.writeString(f,
           jsonEncode({for (final e in configs.entries) e.key: e.value.toJson()}));
     } catch (_) {}
   }

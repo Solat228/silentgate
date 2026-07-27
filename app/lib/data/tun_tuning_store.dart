@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../core/platform/app_paths.dart';
 import '../core/singbox/tun_autotune.dart';
+import 'atomic_file.dart';
 
 /// Запоминает комбинацию параметров TUN, на которой туннель реально поднялся.
 ///
@@ -31,7 +32,7 @@ class TunTuningStore {
   Future<void> save(TunCombo combo) async {
     try {
       final f = await _file();
-      await f.writeAsString(jsonEncode(combo.toJson()));
+      await AtomicFile.writeString(f, jsonEncode(combo.toJson()));
     } catch (_) {}
   }
 }

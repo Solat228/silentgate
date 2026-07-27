@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import 'atomic_file.dart';
 
 /// Хранилище закреплённых/правленых серверов (список share-ссылок). Переживает удаление подписки.
 class PinnedStore {
@@ -26,7 +27,7 @@ class PinnedStore {
   Future<void> save(List<String> links) async {
     try {
       final f = await _file();
-      await f.writeAsString(jsonEncode(links));
+      await AtomicFile.writeString(f, jsonEncode(links));
     } catch (_) {}
   }
 }

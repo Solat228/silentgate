@@ -4,6 +4,7 @@ import 'dart:io';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
 import '../core/settings/app_settings.dart';
+import 'atomic_file.dart';
 
 /// Персистенс настроек в отдельном JSON-файле (не смешиваем с состоянием сети/серверов).
 class SettingsStorage {
@@ -75,7 +76,7 @@ class SettingsStorage {
   Future<void> save(AppSettings settings) async {
     try {
       final file = await _file();
-      await file.writeAsString(jsonEncode(settings.toJson()));
+      await AtomicFile.writeString(file, jsonEncode(settings.toJson()));
     } catch (_) {
       // Потеря настроек не критична.
     }

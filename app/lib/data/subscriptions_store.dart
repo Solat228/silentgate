@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../core/models/subscription_profile.dart';
 import '../core/platform/app_paths.dart';
+import 'atomic_file.dart';
 
 /// Что лежит на диске: список подписок и какая из них активна.
 class SubscriptionsSnapshot {
@@ -45,7 +46,7 @@ class SubscriptionsStore {
   Future<void> save(SubscriptionsSnapshot snapshot) async {
     try {
       final f = await _file();
-      await f.writeAsString(jsonEncode({
+      await AtomicFile.writeString(f, jsonEncode({
         'activeId': snapshot.activeId,
         'items': snapshot.items.map((p) => p.toJson()).toList(),
       }));

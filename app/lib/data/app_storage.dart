@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import 'atomic_file.dart';
 
 /// Простое JSON-хранилище состояния приложения в каталоге поддержки приложения.
 ///
@@ -30,7 +31,7 @@ class AppStorage {
   Future<void> save(Map<String, dynamic> data) async {
     try {
       final file = await _file();
-      await file.writeAsString(jsonEncode(data));
+      await AtomicFile.writeString(file, jsonEncode(data));
     } catch (_) {
       // Потеря настроек не критична для работы туннеля.
     }
