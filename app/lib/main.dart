@@ -25,6 +25,82 @@ import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
 
 Future<void> main(List<String> args) async {
+  // Служебные режимы запуска — Windows-специфика: там exe умеет работать
+  // элевейтнутым хелпером и режимом очистки при удалении. На Android ни
+  // аргументов запуска, ни этих ролей нет (туннель поднимает VpnService,
+  // данные при удалении стирает система), поэтому весь блок под гейтом.
+  if (Platform.isWindows && await _runWindowsCliMode(args)) return;
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Корень данных — до любых хранилищ и логов. На Windows путь вычислился бы и
+  // синхронно, но на Android он известен только асинхронно, поэтому единая
+  // точка инициализации для обеих платформ.
+  await AppPaths.init();
+
+  // Платформенные сервисы интерфейса (иконки приложений, каталог приложений,
+  // версии ядер, лог туннеля, права, отчёт поддержки). UI знает только
+  // контракты из core/platform/platform_services.dart и не импортирует
+  // engine/windows/* напрямую.
+  registerPlatformServices(buildWindowsPlatformServices());
+
+  // Принимаем и silentgate://, и одиночные ссылки серверов (vless/vmess/trojan/ss),
+  // если пользователь включил их перехват (#10.2).
+  //
+  // На Windows ссылка приходит аргументом запуска (её передаёт реестр), на
+  // Android — интентом; разбор общий (AppUrlScheme), различается только источник.
+  final incomingUrl = args.firstWhere(
+    AppUrlScheme.isSupportedLink,
+    orElse: () => '',
+  );
+
+  if (Platform.isWindows) {
+    // Single-instance: если приложение уже запущено — переслать ему ссылку и выйти.
+    // На Android это даёт сама система (launchMode=singleTask + onNewIntent).
+    final server = await SingleInstance.tryBecomePrimary();
+    if (server == null) {
+      if (incomingUrl.isNotEmpty) await SingleInstance.forward(incomingUrl);
+      exit(0);
+    }
+    SingleInstance.listen(server, IncomingLinks.add);
+    // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
+    // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
+    final ourBin = XrayPaths.locate()?.assetDir;
+    if (ourBin != null) unawaited(CoreCleanup.sweepOrphans(ourBin));
+    // Изолированная копия не перехватывает silentgate:// у установленной версии.
+    // На Android схемы объявляются в манифесте, регистрировать нечего.
+    if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
+    // Окно и трей — десктопные понятия; на Android их роль играет
+    // foreground-сервис с постоянной нотификацией.
+    await TrayWindow.instance.init();
+  }
+
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) =>
+              AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
+        ),
+        ChangeNotifierProvider(create: (_) => SettingsController()..init()),
+        ChangeNotifierProvider(create: (_) => ProbeController()..init()),
+        ChangeNotifierProvider(create: (_) => AutoConfigController()..init()),
+        ChangeNotifierProvider(create: (_) => ServiceCheckController()),
+      ],
+      child: const SilentGateApp(),
+    ),
+  );
+}
+
+/// Служебные режимы запуска Windows-сборки. Возвращает `true`, если процесс
+/// отработал служебную роль и приложение поднимать не нужно.
+///
+/// Все три роли существуют только на Windows: там один и тот же exe работает и
+/// интерфейсом, и элевейтнутым TUN-хелпером, и режимом очистки для
+/// деинсталлятора. На Android аргументов запуска нет вовсе: туннель поднимает
+/// `VpnService` внутри процесса приложения, а данные при удалении стирает
+/// система.
+Future<bool> _runWindowsCliMode(List<String> args) async {
   // Элевейтнутый TUN-хелпер: запускает sing-box и держит туннель до stop-файла.
   // --tun-task [config] [stop] — запуск из задачи Планировщика (без UAC).
   // Пути передаём ЯВНО (см. TunScheduledTask), фолбэк — %APPDATA% задачи.
@@ -50,54 +126,5 @@ Future<void> main(List<String> args) async {
     exit(0);
   }
 
-  WidgetsFlutterBinding.ensureInitialized();
-
-  // Корень данных — до любых хранилищ и логов. На Windows путь вычислился бы и
-  // синхронно, но на Android он известен только асинхронно, поэтому единая
-  // точка инициализации для обеих платформ.
-  await AppPaths.init();
-
-  // Платформенные сервисы интерфейса (иконки приложений, каталог приложений,
-  // версии ядер, лог туннеля, права, отчёт поддержки). UI знает только
-  // контракты из core/platform/platform_services.dart и не импортирует
-  // engine/windows/* напрямую.
-  registerPlatformServices(buildWindowsPlatformServices());
-
-  // Принимаем и silentgate://, и одиночные ссылки серверов (vless/vmess/trojan/ss),
-  // если пользователь включил их перехват (#10.2).
-  final incomingUrl = args.firstWhere(
-    AppUrlScheme.isSupportedLink,
-    orElse: () => '',
-  );
-
-  // Single-instance: если приложение уже запущено — переслать ему ссылку и выйти.
-  final server = await SingleInstance.tryBecomePrimary();
-  if (server == null) {
-    if (incomingUrl.isNotEmpty) await SingleInstance.forward(incomingUrl);
-    exit(0);
-  }
-  SingleInstance.listen(server, IncomingLinks.add);
-  // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
-  // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
-  final ourBin = XrayPaths.locate()?.assetDir;
-  if (ourBin != null) unawaited(CoreCleanup.sweepOrphans(ourBin));
-  // Изолированная копия не перехватывает silentgate:// у установленной версии.
-  if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
-  await TrayWindow.instance.init();
-
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) =>
-              AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
-        ),
-        ChangeNotifierProvider(create: (_) => SettingsController()..init()),
-        ChangeNotifierProvider(create: (_) => ProbeController()..init()),
-        ChangeNotifierProvider(create: (_) => AutoConfigController()..init()),
-        ChangeNotifierProvider(create: (_) => ServiceCheckController()),
-      ],
-      child: const SilentGateApp(),
-    ),
-  );
+  return false;
 }
