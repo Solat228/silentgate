@@ -5,13 +5,17 @@ import 'windows/windows_engine.dart';
 
 /// Создаёт реализацию движка под текущую платформу.
 ///
-/// Пока реализован только Windows. Android/iOS/macOS/Linux добавятся на своих этапах
-/// (см. docs/ROADMAP.md) — здесь появятся соответствующие ветки.
+/// Диспетчеризация рантайм-ная, а не через условные импорты: те различают
+/// доступность библиотек (`dart.library.io`), а не операционную систему,
+/// поэтому развести Windows и Android на этапе компиляции ими нельзя.
+///
+/// Android-ветка появится в фазе 3 (`android/android_engine.dart`) — до тех пор
+/// там сознательно падаем с внятным текстом, а не отдаём заглушку: молчаливая
+/// заглушка выглядела бы как «подключение просто не работает».
 VpnEngine createVpnEngine() {
-  if (Platform.isWindows) {
-    return WindowsEngine();
-  }
+  if (Platform.isWindows) return WindowsEngine();
   throw UnsupportedError(
-    'В MVP реализована только Windows-версия. Текущая ОС: ${Platform.operatingSystem}',
+    'Движок для ${Platform.operatingSystem} ещё не реализован. '
+    'Android — этап M7, см. docs/platforms/ANDROID.md.',
   );
 }

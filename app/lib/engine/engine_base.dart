@@ -1,0 +1,408 @@
+import 'dart:async';
+import 'dart:io';
+import 'dart:math';
+
+import '../core/models/traffic_stats.dart';
+import '../core/models/vpn_server.dart';
+import '../core/models/vpn_status.dart';
+import '../core/platform/app_log.dart';
+import '../core/settings/split_tunnel.dart';
+import '../core/singbox/singbox_proxy_config_builder.dart';
+import '../core/xray/override_normalizer.dart';
+import '../core/xray/panel_direct_reroute.dart';
+import '../core/xray/xray_config_builder.dart';
+import 'vpn_engine.dart';
+
+/// Снимок «чем подключались»: готовый конфиг, настройки, серверы и ядро.
+///
+/// Хранится именно СОБРАННЫЙ json: повторная попытка не должна пересобирать
+/// конфиг (иначе теряются профиль панели и правка пользователя). Переход на
+/// запасной сервер — наоборот, собирает конфиг заново через `configFor`.
+class EngineSession {
+  final String configJson;
+  final ConnectionOptions options;
+  final List<VpnServer> servers;
+  final ProxyCore core;
+  const EngineSession(this.configJson, this.options, this.servers, this.core);
+}
+
+/// Платформо-независимая часть движка: жизненный цикл сессии, автовосстановление,
+/// счётчик поколений, выбор конфига и ядра, потоки статуса и статистики.
+///
+/// Здесь нет ни одного обращения к ОС — всё, что зависит от платформы (подъём
+/// ядра, захват трафика, статистика, уборка), объявлено абстрактным и живёт в
+/// наследниках: `engine/windows/windows_engine.dart` и, начиная с фазы 3,
+/// `engine/android/android_engine.dart`.
+///
+/// Вынесено сюда ~60 % прежнего `WindowsEngine` — вместе с граблями, которые
+/// стоили живых тестов: гварды поколений, снятие `wasAborted` ДО очистки,
+/// удержание захвата при kill switch, grace-период на смену сети.
+abstract class VpnEngineBase implements VpnEngine {
+  VpnEngineBase({XrayPorts ports = const XrayPorts()}) : ports = ports {
+    configBuilder = XrayConfigBuilder(ports: ports);
+  }
+
+  /// Порты локальных inbound'ов. Общие для ОБОИХ ядер: верхние слои (захват
+  /// трафика, проверка занятости, сервис-чипы) не должны знать, кто внизу.
+  final XrayPorts ports;
+  late final XrayConfigBuilder configBuilder;
+
+  final _statusController = StreamController<VpnStatus>.broadcast();
+  final _statsController = StreamController<TrafficStats>.broadcast();
+
+  VpnStatus _status = const VpnStatus.disconnected();
+
+  // ── Автовосстановление ─────────────────────────────────────────────────────
+  /// Задержки между попытками. Первая короткая: чаще всего достаточно перезапустить
+  /// ядро, а при включённом kill switch трафик всё это время заблокирован — тянуть нельзя.
+  static const backoff = [
+    Duration(milliseconds: 800),
+    Duration(seconds: 3),
+    Duration(seconds: 8),
+    Duration(seconds: 20),
+  ];
+  static const maxAttempts = 8;
+
+  /// Столько после успешного подключения не реагируем на «смену сети»: подъём TUN
+  /// сам перестраивает маршруты (страховка поверх паузы в NetworkWatcher).
+  static const networkGrace = Duration(seconds: 15);
+
+  EngineSession? _session; // чем подключались — чтобы повторить
+  bool _userStopped = false; // отключение по кнопке: не восстанавливаем
+
+  /// Номер текущего запуска. Отключение/очистка его увеличивают, и запущенный
+  /// ранее `startSession` по возвращении из долгого await видит, что он устарел,
+  /// и убирает за собой. Без этого туннель, поднятый уже ПОСЛЕ нажатия
+  /// «Отключить» (автоподбор стека идёт до двух минут), оставался жить навсегда.
+  int _generation = 0;
+  int _attempt = 0;
+  Timer? _retryTimer;
+  DateTime? _connectedAt;
+
+  /// Запасные серверы для режима «Авто (лучший сервер)» — см. [fallbackServers].
+  List<VpnServer> _fallbacks = [];
+
+  /// Пароль Clash API текущей sing-box-сессии: новый на каждое подключение,
+  /// только в памяти. Без него статистику и управление прокси мог бы дёргать
+  /// любой процесс и любая открытая веб-страница (sing-box отдаёт CORS `*`).
+  String singboxApiSecret = '';
+
+  // ── Контракт для наследников ───────────────────────────────────────────────
+
+  /// Поднять текущую сессию: ядро + захват трафика. Реализация обязана
+  /// сверяться с [isStale] после каждого долгого await и гасить поднятое,
+  /// если поколение сменилось.
+  Future<void> startSession();
+
+  /// Погасить ядро. При [keepCapture] == true захват трафика НЕ снимается:
+  /// это kill switch между попытками — приложения получают ошибку соединения
+  /// вместо утечки мимо VPN.
+  Future<void> teardownCore({bool keepCapture = false});
+
+  /// Полная остановка: ядро, захват, таймеры. Поколение инкрементирует [cleanup].
+  Future<void> platformCleanup();
+
+  // ── Состояние и потоки ─────────────────────────────────────────────────────
+
+  @override
+  Stream<VpnStatus> get statusStream => _statusController.stream;
+
+  @override
+  Stream<TrafficStats> get statsStream => _statsController.stream;
+
+  @override
+  VpnStatus get status => _status;
+
+  @override
+  int get httpProxyPort => ports.http;
+
+  @override
+  set fallbackServers(List<VpnServer> servers) => _fallbacks = [...servers];
+
+  /// Текущая сессия (нужна наследникам для подъёма).
+  EngineSession? get session => _session;
+
+  /// Пользователь нажал «Отключить» — восстанавливать не нужно.
+  bool get userStopped => _userStopped;
+
+  void setStatus(VpnConnectionState state,
+      {String? message, VpnPhase phase = VpnPhase.normal}) {
+    _status = VpnStatus(state, message: message, phase: phase);
+    if (!_statusController.isClosed) _statusController.add(_status);
+  }
+
+  void emitStats(TrafficStats stats) {
+    if (!_statsController.isClosed) _statsController.add(stats);
+  }
+
+  /// Отметить успешное подключение (запускает отсчёт grace-периода смены сети).
+  void markConnected() {
+    _connectedAt = DateTime.now();
+    _attempt = 0;
+  }
+
+  // ── Поколения ──────────────────────────────────────────────────────────────
+
+  /// Начать новое поколение и получить его номер.
+  int newGeneration() => ++_generation;
+
+  /// Устарел ли запуск с номером [gen] (пользователь отключился или пошёл ретрай).
+  bool isStale(int gen) => gen != _generation;
+
+  // ── Конфиг ─────────────────────────────────────────────────────────────────
+
+  /// Конфиг sing-box-прокси строится на ТЕХ ЖЕ портах, что и Xray: остальной
+  /// код (захват трафика, проверка занятости) не должен знать, кто внизу.
+  String buildSingboxJson(List<VpnServer> servers) {
+    singboxApiSecret = _newApiSecret();
+    return SingboxProxyConfigBuilder(
+      ports: SingboxProxyPorts(
+          socks: ports.socks, http: ports.http, api: ports.api),
+      apiSecret: singboxApiSecret,
+    ).buildJson(servers);
+  }
+
+  static String _newApiSecret() {
+    final rnd = Random.secure();
+    return List.generate(32, (_) => rnd.nextInt(16).toRadixString(16)).join();
+  }
+
+  /// Конфиг и ядро для одного сервера — **единственный** источник истины.
+  ///
+  /// Приоритет источников:
+  ///  1) правка пользователя (JSON-редактор);
+  ///  2) полный профиль от панели («Авто …»: balancer + burstObservatory + десятки
+  ///     серверов) — применяется ЦЕЛИКОМ, иначе теряется весь автовыбор;
+  ///  3) сборка из полей / авторитетного outbound соответствующим ядром.
+  /// Порты inbound'ов подгоняются под захват (системный прокси → http, TUN → socks),
+  /// недостающие дописываются: у профилей панели есть только socks-inbound.
+  ///
+  /// Используется и при переходе на запасной сервер: раньше там конфиг собирался
+  /// заново из полей, и профиль панели терял свой balancer, а JSON-правка — смысл.
+  ({String json, ProxyCore core}) configFor(
+      VpnServer server, ConnectionOptions options) {
+    final full = (server.rawJsonOverride ?? '').isNotEmpty
+        ? server.rawJsonOverride!
+        : (server.rawPanelConfig ?? '');
+
+    if (full.isNotEmpty) {
+      // JSON панели/редактора — это ВСЕГДА конфиг Xray. Подсунуть его hysteria2-
+      // серверу нельзя: Xray такого протокола не знает и просто не стартует.
+      if (server.core == ProxyCore.singbox) {
+        AppLog.w('У ${server.displayName} есть Xray-JSON, но это hysteria2 — '
+            'правка игнорируется, поднимаю sing-box');
+      } else {
+        var json = full;
+        // Утечка реального IP: панельный профиль сам рулит часть трафика direct
+        // (RU-routing). Если пользователь хочет «Всё через VPN» ИЛИ включил «не
+        // выходить под реальным IP» — переписываем внутренний direct → через VPN.
+        final s = options.settings;
+        if (s.splitTunnel.mode == SplitMode.all || s.noRealIp) {
+          json = rerouteDirectThroughVpn(json);
+        }
+        final norm = normalizeOverridePorts(json,
+            socksPort: ports.socks, httpPort: ports.http);
+        // #5 — у панельного профиля обычно нет StatsService, поэтому трафик
+        // показывался как 0. Дописываем api/stats, если их нет.
+        final withStats = ensureXrayStats(norm.json, apiPort: ports.api);
+        return (json: withStats, core: ProxyCore.xray);
+      }
+    }
+    if (server.core == ProxyCore.singbox) {
+      // hysteria2 — Xray такого не умеет, поднимаем sing-box.
+      return (json: buildSingboxJson([server]), core: ProxyCore.singbox);
+    }
+    return (
+      json: configBuilder.buildJson(server, variant: options.variant),
+      core: ProxyCore.xray,
+    );
+  }
+
+  // ── Подключение ────────────────────────────────────────────────────────────
+
+  @override
+  Future<void> connect(VpnServer server,
+      {ConnectionOptions options = const ConnectionOptions()}) async {
+    final cfg = configFor(server, options);
+    await connectWith(cfg.json, options, [server], core: cfg.core);
+  }
+
+  @override
+  Future<void> connectBalancer(List<VpnServer> servers,
+      {ConnectionOptions options = const ConnectionOptions()}) async {
+    if (servers.isEmpty) return;
+    // Одно ядро на сессию: смешать hysteria2 и VLESS в одном балансировщике
+    // нельзя. Xray-серверы идут в его balancer, иначе — urltest в sing-box.
+    final xrayOnes =
+        servers.where((s) => s.core == ProxyCore.xray).toList(growable: false);
+    if (xrayOnes.isNotEmpty) {
+      await connectWith(
+          configBuilder.buildBalancerJson(xrayOnes), options, xrayOnes);
+      return;
+    }
+    await connectWith(buildSingboxJson(servers), options, servers,
+        core: ProxyCore.singbox);
+  }
+
+  Future<void> connectWith(String configJson, ConnectionOptions options,
+      List<VpnServer> servers,
+      {ProxyCore core = ProxyCore.xray}) async {
+    if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      return;
+    }
+    // Запоминаем сессию — по ней восстанавливаемся при обрыве и смене сети.
+    _session = EngineSession(configJson, options, servers, core);
+    _userStopped = false;
+    _attempt = 0;
+    await startSession();
+  }
+
+  /// IP-адреса серверов — чтобы увести их мимо туннеля. Резолвим ДО его подъёма
+  /// (обычным DNS): без этого исключения трафик самого ядра к серверу вернулся бы
+  /// в туннель — петля, и сеть умирает целиком.
+  Future<List<String>> resolveServerIps(List<VpnServer> servers) async {
+    final ips = <String>{};
+    for (final s in servers) {
+      final host = s.address.trim();
+      if (host.isEmpty) continue;
+      final parsed = InternetAddress.tryParse(host);
+      if (parsed != null) {
+        ips.add(parsed.address);
+        continue;
+      }
+      try {
+        final found = await InternetAddress.lookup(host)
+            .timeout(const Duration(seconds: 5));
+        ips.addAll(found.map((a) => a.address));
+      } catch (_) {
+        // Не отвалились: остаются правило по процессам/пакетам и приватные адреса.
+      }
+    }
+    return ips.toList();
+  }
+
+  // ── Автовосстановление ─────────────────────────────────────────────────────
+
+  /// Запланировать повторную попытку, если включено автопереподключение и
+  /// пользователь не отключался сам. Возвращает true, если попытка запланирована.
+  Future<bool> scheduleRetry(String reason) async {
+    final session = _session;
+    if (session == null || _userStopped) return false;
+    if (!session.options.settings.autoReconnect) return false;
+    if (_attempt >= maxAttempts) {
+      AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
+      return false;
+    }
+
+    // Попытки на текущем сервере исчерпаны — пробуем следующий (только в режиме
+    // «Авто (лучший сервер)»: там пользователь и просил «выбери рабочий»).
+    if (_attempt >= maxAttempts - 1 && _fallbacks.isNotEmpty) {
+      final next = _fallbacks.removeAt(0);
+      AppLog.w('Переключаюсь на запасной сервер: ${next.displayName}');
+      await teardownCore(keepCapture: session.options.settings.killSwitch);
+      _attempt = 0;
+      // Через тот же configFor: у запасного сервера может быть свой профиль
+      // панели или JSON-правка, и собирать его «из полей» — значит их потерять.
+      final cfg = configFor(next, session.options);
+      _session = EngineSession(cfg.json, session.options, [next], cfg.core);
+      setStatus(VpnConnectionState.connecting,
+          message: 'Пробую другой сервер: ${next.displayName}…');
+      _retryTimer?.cancel();
+      _retryTimer = Timer(const Duration(seconds: 1), () async {
+        if (!_userStopped) await startSession();
+      });
+      return true;
+    }
+
+    _attempt++;
+    final delay = backoff[_attempt.clamp(1, backoff.length) - 1];
+    AppLog.w('Автопереподключение: $reason → попытка $_attempt через '
+        '${delay.inSeconds} с');
+
+    // Kill switch: НЕ снимаем захват трафика между попытками — иначе на время
+    // паузы трафик пошёл бы напрямую, мимо VPN.
+    await teardownCore(keepCapture: session.options.settings.killSwitch);
+
+    setStatus(VpnConnectionState.connecting,
+        message: 'Переподключение через ${delay.inSeconds} с '
+            '(попытка $_attempt из $maxAttempts)…');
+
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () async {
+      if (_userStopped) return;
+      await startSession();
+    });
+    return true;
+  }
+
+  /// Внешний сигнал: сетевое окружение изменилось (Wi-Fi ↔ кабель, сон, новый IP).
+  /// Туннель поверх старого адаптера уже мёртв, даже если процессы живы.
+  @override
+  Future<void> onNetworkChanged() async {
+    if (_session == null || _userStopped) return;
+    if (!_status.isConnected) return;
+    if (!_session!.options.settings.autoReconnect) return;
+    // Страховка от цикла: сразу после подключения «смена сети» — это почти всегда
+    // наш же туннель, а не реальное изменение.
+    final since = _connectedAt;
+    if (since != null && DateTime.now().difference(since) < networkGrace) {
+      AppLog.i('Смена сети проигнорирована: прошло меньше '
+          '${networkGrace.inSeconds} с после подключения');
+      return;
+    }
+    AppLog.w('Смена сети — восстанавливаю подключение');
+    _attempt = 0;
+    await scheduleRetry('сменилось сетевое окружение');
+  }
+
+  /// Ядро умерло само — пробуем восстановиться, иначе показываем ошибку.
+  Future<void> onCoreDied(int code) async {
+    // Имя ядра важно: по нему пользователь понимает, куда смотреть —
+    // в xray_config.json или в singbox_proxy.json.
+    final name = _session?.core == ProxyCore.singbox ? 'sing-box' : 'Xray';
+    AppLog.e('Ядро $name остановилось (код $code)');
+    if (await scheduleRetry('ядро $name остановилось (код $code)')) return;
+    await cleanup();
+    setStatus(VpnConnectionState.error,
+        message: 'Ядро $name остановилось (код $code)');
+  }
+
+  @override
+  Future<void> disconnect() async {
+    // Явное отключение всегда отменяет автовосстановление, даже если оно уже идёт.
+    _userStopped = true;
+    _generation++; // всё, что поднимется после этого момента, будет погашено
+    _session = null;
+    _attempt = 0;
+    _fallbacks = [];
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    if (_status.state == VpnConnectionState.disconnected) {
+      // Kill switch мог оставить захват при неудачном восстановлении — снимаем.
+      await cleanup();
+      return;
+    }
+    setStatus(VpnConnectionState.disconnecting);
+    await cleanup();
+    setStatus(VpnConnectionState.disconnected);
+    emitStats(TrafficStats.zero);
+  }
+
+  /// Полная остановка. Поколение увеличивается ЗДЕСЬ — поэтому всё, что зависит
+  /// от «была ли отмена», обязано проверяться ДО вызова (см. `wasAborted`
+  /// в наследниках).
+  Future<void> cleanup() async {
+    _generation++;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _connectedAt = null;
+    await platformCleanup();
+  }
+
+  @override
+  Future<void> dispose() async {
+    await cleanup();
+    await _statusController.close();
+    await _statsController.close();
+  }
+}
