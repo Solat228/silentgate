@@ -11,6 +11,7 @@ import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/server_search.dart';
+import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'widgets/info_tooltip.dart';
@@ -176,9 +177,8 @@ class _HomeScreenState extends State<HomeScreen> {
           id: 'autoconfig',
           message: p == null
               ? l.homeAutoConfigStarting
-              : l.homeAutoConfigProgress(
-                      p.index + 1, total, p.candidateName) +
-                  (p.variantLabel.isEmpty ? '' : ' · ${p.variantLabel}'),
+              : '${l.homeAutoConfigProgress(p.index + 1, total, p.candidateName)}'
+                  ' · ${outboundVariantLabel(l, p.variant)}',
           value: total > 0 ? (p!.index + 1) / total : null,
         );
       } else if (auto.finishedAt != null &&
@@ -298,7 +298,8 @@ class _ConnectPane extends StatelessWidget {
                 _ConnectButton(
                     status: status, onTap: () => state.toggleConnection(settings)),
                 const SizedBox(height: 16),
-                Text(status.label, style: Theme.of(context).textTheme.titleMedium),
+                Text(vpnStatusLabel(l, status.state),
+                    style: Theme.of(context).textTheme.titleMedium),
                 // #6 — живая проверка сервисов у кнопки: только при активном VPN,
                 // запускается вручную (тап по сервису), идёт через это соединение.
                 if (status.isConnected) ...[

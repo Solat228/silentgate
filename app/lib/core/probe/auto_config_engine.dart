@@ -145,13 +145,17 @@ class AutoConfigProgress {
   final int index;
   final int total;
   final String candidateName;
-  final String variantLabel;
+
+  /// Вариация как ДАННЫЕ, а не готовая строка: подпись зависит от языка,
+  /// а контроллер строит прогресс без `BuildContext`. UI рендерит её через
+  /// `outboundVariantLabel` (`core/i18n/enum_labels.dart`).
+  final OutboundVariant variant;
   final Map<ProbeService, ProbeState> services;
   AutoConfigProgress({
     required this.index,
     required this.total,
     required this.candidateName,
-    required this.variantLabel,
+    required this.variant,
     required this.services,
   });
 }

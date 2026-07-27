@@ -97,7 +97,7 @@ class AutoConfigController extends ChangeNotifier {
             index: i,
             total: total,
             candidateName: server.displayName,
-            variantLabel: variant.label,
+            variant: variant,
             services: {
               for (final s in settings.autoConfigServices) s: ProbeState.pending,
             },

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/vpn_server.dart';
 import '../../core/util/country_flag.dart';
+import '../../core/i18n/enum_labels.dart';
 import '../../core/i18n/text_direction.dart';
 import '../../core/xray/panel_routing_summary.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -82,7 +83,7 @@ class ServerTile extends StatelessWidget {
         subtitle: Text(
             panelInfo != null
                 ? l.panelTunnelMarker
-                : server.configTags.join(' / '),
+                : configTagLabels(l, server.configTags).join(' / '),
             style: Theme.of(context).textTheme.bodySmall,
             textDirection: panelInfo != null ? null : TextDirection.ltr),
         trailing: Row(

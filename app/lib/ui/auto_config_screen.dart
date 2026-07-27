@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../core/probe/auto_config_engine.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/country_flag.dart';
+import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/app_state.dart';
 import '../state/auto_config_controller.dart';
@@ -232,7 +233,7 @@ class _ProgressView extends StatelessWidget {
                 overflow: TextOverflow.ellipsis),
           ),
         ]),
-        Text(l.autoVariant(progress.variantLabel),
+        Text(l.autoVariant(outboundVariantLabel(l, progress.variant)),
             style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 8),
         Wrap(
@@ -290,7 +291,7 @@ class _FoundCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(
-                  '${result.variant.label} · ${l.autoServicesPassed(okCount, d.passed.length)}',
+                  '${outboundVariantLabel(l, result.variant)} · ${l.autoServicesPassed(okCount, d.passed.length)}',
                   style: Theme.of(context).textTheme.bodySmall,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -441,8 +442,8 @@ class _BatchTuneState extends State<_BatchTune> {
               ],
             ]),
             subtitle: Text(found != null
-                ? l.autoTuned(found.variant.label)
-                : s.configTags.join(' / ')),
+                ? l.autoTuned(outboundVariantLabel(l, found.variant))
+                : configTagLabels(l, s.configTags).join(' / ')),
           );
         }),
       ],

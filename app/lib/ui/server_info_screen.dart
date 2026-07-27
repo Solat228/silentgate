@@ -8,6 +8,8 @@ import '../core/net/ip_info.dart';
 import '../core/net/speed_test.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/util/country_flag.dart';
+import '../core/i18n/enum_labels.dart';
+import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/app_state.dart';
 import '../engine/probe_factory.dart';
@@ -125,7 +127,13 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           ]),
           const SizedBox(height: 4),
           Wrap(spacing: 6, children: [
-            for (final t in s.configTags) Chip(label: Text(t, textDirection: TextDirection.ltr), visualDensity: VisualDensity.compact),
+            // Переводимые теги («АВТОВЫБОР»/«ПАНЕЛЬ»/«ПОРТ-ХОППИНГ») в ar/fa
+            // пишутся справа налево, поэтому направление — по содержимому,
+            // а не форсированный LTR (технические VLESS/TCP/REALITY он и так даёт).
+            for (final t in configTagLabels(l, s.configTags))
+              Chip(
+                  label: Text(t, textDirection: autoTextDirection(t)),
+                  visualDensity: VisualDensity.compact),
           ]),
 
           if (_error != null) ...[

@@ -3047,6 +3047,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Hysteria2-серверы приходят только в формате XRAY_JSON — SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON — в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно.'**
   String get hy2NoteBody;
+
+  /// No description provided for @enumStatusDisconnected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключено'**
+  String get enumStatusDisconnected;
+
+  /// No description provided for @enumStatusConnecting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключение…'**
+  String get enumStatusConnecting;
+
+  /// No description provided for @enumStatusConnected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключено'**
+  String get enumStatusConnected;
+
+  /// No description provided for @enumStatusDisconnecting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключение…'**
+  String get enumStatusDisconnecting;
+
+  /// No description provided for @enumStatusError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка'**
+  String get enumStatusError;
+
+  /// No description provided for @enumVariantPlain.
+  ///
+  /// In ru, this message translates to:
+  /// **'обычный'**
+  String get enumVariantPlain;
+
+  /// No description provided for @tagAutoSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'АВТОВЫБОР'**
+  String get tagAutoSelect;
+
+  /// No description provided for @tagPanel.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПАНЕЛЬ'**
+  String get tagPanel;
+
+  /// No description provided for @tagPortHopping.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПОРТ-ХОППИНГ'**
+  String get tagPortHopping;
 }
 
 class _AppLocalizationsDelegate

@@ -276,7 +276,7 @@ class _IdentitySection extends StatelessWidget {
     // UA собирается из имени и версии приложения и НЕ редактируется: раньше здесь
     // было поле переопределения, и сохранённое в нём значение «замораживало» версию
     // (у пользователя UA застрял на 0.8.0 после обновлений).
-    const effective = SubscriptionService.defaultUserAgent;
+    final effective = SubscriptionService.defaultUserAgent;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -288,12 +288,11 @@ class _IdentitySection extends StatelessWidget {
           dense: true,
           leading: const Icon(Icons.badge_outlined),
           title: Text(l.identityUserAgent),
-          subtitle: const SelectableText(effective, textDirection: TextDirection.ltr),
+          subtitle: SelectableText(effective, textDirection: TextDirection.ltr),
           trailing: IconButton(
             tooltip: l.commonCopy,
             icon: const Icon(Icons.copy, size: 18),
-            onPressed: () =>
-                Clipboard.setData(const ClipboardData(text: effective)),
+            onPressed: () => Clipboard.setData(ClipboardData(text: effective)),
           ),
         ),
         Padding(

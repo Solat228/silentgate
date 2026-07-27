@@ -1648,4 +1648,31 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get hy2NoteBody =>
       'سرورهای Hysteria2 فقط در قالب XRAY_JSON می‌آیند — SilentGate دقیقاً همان را درخواست می‌کند و sing-box آن‌ها را خودکار بالا می‌آورد. اگر Hysteria2 در فهرست دیده نشد: (برای مالک پنل Remnawave) اینباند‌های hysteria را فعال و به اشتراک اختصاص دهید. توجه: Remnawave پیش از 2.8.0 فقط در XRAY_JSON خدمت Hysteria2 را می‌دهد — در base64/CLASH/SINGBOX نیست، بنابراین قانون Response Rules → XRAY_JSON بالا الزامی است.';
+
+  @override
+  String get enumStatusDisconnected => 'قطع شده';
+
+  @override
+  String get enumStatusConnecting => 'در حال اتصال…';
+
+  @override
+  String get enumStatusConnected => 'متصل';
+
+  @override
+  String get enumStatusDisconnecting => 'در حال قطع اتصال…';
+
+  @override
+  String get enumStatusError => 'خطا';
+
+  @override
+  String get enumVariantPlain => 'عادی';
+
+  @override
+  String get tagAutoSelect => 'خودکار';
+
+  @override
+  String get tagPanel => 'پنل';
+
+  @override
+  String get tagPortHopping => 'پرش پورت';
 }

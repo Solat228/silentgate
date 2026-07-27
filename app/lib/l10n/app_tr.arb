@@ -488,5 +488,14 @@
   "homeTunAutotuneDone": "TUN parametreleri ayarlandı",
   "homeTunAutotuneFailed": "TUN parametreleri ayarlanamadı",
   "hy2NoteTitle": "Hysteria2 sunucuları",
-  "hy2NoteBody": "Hysteria2 sunucuları yalnızca XRAY_JSON biçiminde gelir — SilentGate tam da bunu ister ve sing-box onları otomatik olarak çalıştırır. Hysteria2 listede görünmüyorsa: (Remnawave panel sahibi için) hysteria inbound'larını etkinleştirin ve aboneliğe atayın. Not: 2.8.0 öncesi Remnawave, Hysteria2'yi YALNIZCA XRAY_JSON'da verir — base64/CLASH/SINGBOX'ta yoktur, bu yüzden yukarıdaki Response Rules → XRAY_JSON kuralı zorunludur."
+  "hy2NoteBody": "Hysteria2 sunucuları yalnızca XRAY_JSON biçiminde gelir — SilentGate tam da bunu ister ve sing-box onları otomatik olarak çalıştırır. Hysteria2 listede görünmüyorsa: (Remnawave panel sahibi için) hysteria inbound'larını etkinleştirin ve aboneliğe atayın. Not: 2.8.0 öncesi Remnawave, Hysteria2'yi YALNIZCA XRAY_JSON'da verir — base64/CLASH/SINGBOX'ta yoktur, bu yüzden yukarıdaki Response Rules → XRAY_JSON kuralı zorunludur.",
+  "enumStatusDisconnected": "Bağlantı kesildi",
+  "enumStatusConnecting": "Bağlanıyor…",
+  "enumStatusConnected": "Bağlandı",
+  "enumStatusDisconnecting": "Bağlantı kesiliyor…",
+  "enumStatusError": "Hata",
+  "enumVariantPlain": "standart",
+  "tagAutoSelect": "OTOMATİK",
+  "tagPanel": "PANEL",
+  "tagPortHopping": "PORT ATLAMA"
 }

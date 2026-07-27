@@ -1614,4 +1614,31 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get hy2NoteBody =>
       'Hysteria2 服务器仅以 XRAY_JSON 格式返回——SilentGate 正是请求该格式，sing-box 会自动启动它们。若列表中未出现 Hysteria2：（面板 Remnawave 所有者）请启用 hysteria 入站并将其分配给订阅。注意：2.8.0 之前的 Remnawave 仅在 XRAY_JSON 中提供 Hysteria2——base64/CLASH/SINGBOX 中没有，因此上面的 Response Rules → XRAY_JSON 规则是必需的。';
+
+  @override
+  String get enumStatusDisconnected => '已断开';
+
+  @override
+  String get enumStatusConnecting => '连接中…';
+
+  @override
+  String get enumStatusConnected => '已连接';
+
+  @override
+  String get enumStatusDisconnecting => '断开中…';
+
+  @override
+  String get enumStatusError => '错误';
+
+  @override
+  String get enumVariantPlain => '默认';
+
+  @override
+  String get tagAutoSelect => '自动';
+
+  @override
+  String get tagPanel => '面板';
+
+  @override
+  String get tagPortHopping => '端口跳跃';
 }

@@ -1,7 +1,20 @@
 /// Каким ядром поднимается сервер. Xray не умеет hysteria2 (QUIC-протокол),
 /// поэтому такие серверы обслуживает sing-box — он уже есть в комплекте ради TUN.
-/// GPL позволяет только запуск отдельным процессом (см. CLAUDE.md), так и делаем.
+/// На Windows sing-box запускается отдельным процессом (сложившаяся архитектура);
+/// линковка лицензией не запрещена — приложение под GPL-3.0 (см. CLAUDE.md §3).
 enum ProxyCore { xray, singbox }
+
+/// Маркеры переводимых тегов [VpnServer.configTags]. Технические теги
+/// (VLESS/TCP/REALITY…) во всех языках одинаковы и в переводе не нуждаются,
+/// а эти UI прогоняет через `configTagLabels` (`core/i18n/enum_labels.dart`).
+///
+/// Значения — русский фолбэк: он же используется в логах и отчёте поддержки,
+/// которые принципиально не переводятся.
+abstract final class VpnServerTags {
+  static const autoSelect = 'АВТОВЫБОР';
+  static const panel = 'ПАНЕЛЬ';
+  static const portHopping = 'ПОРТ-ХОППИНГ';
+}
 
 /// Разобранный сервер из share-ссылки
 /// (vless:// / vmess:// / trojan:// / ss:// / hysteria2://).
@@ -141,10 +154,16 @@ class VpnServer {
   }
 
   /// Теги параметров из конфига для подписи под именем (как в Happ: VLESS / GRPC / REALITY).
+  ///
+  /// Технические теги (VLESS/TCP/REALITY…) одинаковы во всех языках; переводимые
+  /// возвращаются маркерами из [VpnServerTags] — UI прогоняет список через
+  /// `configTagLabels` (`core/i18n/enum_labels.dart`).
   List<String> get configTags {
     // Профиль «Авто …» — готовый автовыбор панели: показываем это вместо
     // параметров одного из десятков серверов внутри.
-    if (isPanelProfile) return const ['АВТОВЫБОР', 'ПАНЕЛЬ'];
+    if (isPanelProfile) {
+      return const [VpnServerTags.autoSelect, VpnServerTags.panel];
+    }
     final tags = <String>[protocol.toUpperCase(), network.toUpperCase()];
     if (security == 'reality') {
       tags.add('REALITY');
@@ -153,7 +172,7 @@ class VpnServer {
     }
     if (flow != null && flow!.contains('vision')) tags.add('VISION');
     if ((obfs ?? '').isNotEmpty) tags.add('OBFS');
-    if ((hopPorts ?? '').isNotEmpty) tags.add('ПОРТ-ХОППИНГ');
+    if ((hopPorts ?? '').isNotEmpty) tags.add(VpnServerTags.portHopping);
     return tags;
   }
 

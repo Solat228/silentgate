@@ -558,5 +558,14 @@
   "homeTunAutotuneDone": "Параметры TUN подобраны",
   "homeTunAutotuneFailed": "Не удалось подобрать параметры TUN",
   "hy2NoteTitle": "Серверы Hysteria2",
-  "hy2NoteBody": "Hysteria2-серверы приходят только в формате XRAY_JSON — SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON — в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно."
+  "hy2NoteBody": "Hysteria2-серверы приходят только в формате XRAY_JSON — SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON — в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно.",
+  "enumStatusDisconnected": "Отключено",
+  "enumStatusConnecting": "Подключение…",
+  "enumStatusConnected": "Подключено",
+  "enumStatusDisconnecting": "Отключение…",
+  "enumStatusError": "Ошибка",
+  "enumVariantPlain": "обычный",
+  "tagAutoSelect": "АВТОВЫБОР",
+  "tagPanel": "ПАНЕЛЬ",
+  "tagPortHopping": "ПОРТ-ХОППИНГ"
 }

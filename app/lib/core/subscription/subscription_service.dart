@@ -21,16 +21,17 @@ class SubscriptionService {
   final http.Client _client;
   SubscriptionService({http.Client? client}) : _client = client ?? http.Client();
 
-  /// Всегда представляемся своим именем и версией — «SilentGate/x.y.z (Windows)».
+  /// Всегда представляемся своим именем и версией — «SilentGate/x.y.z (платформа)».
   /// Панель по этому имени выбирает формат ответа (правило Response Rules → XRAY_JSON).
-  static const String defaultUserAgent = AppInfo.userAgent;
+  /// Не `const`: суффикс платформы вычисляется в рантайме (`AppInfo.platformTag`).
+  static String get defaultUserAgent => AppInfo.userAgent;
 
   Future<SubscriptionResult> fetch(
     String url, {
     Map<String, String> deviceHeaders = const {},
   }) async {
     // Всегда своё имя и версия: панель по нему выбирает формат (XRAY_JSON).
-    const ua = defaultUserAgent;
+    final ua = defaultUserAgent;
     final resp = await _client.get(
       Uri.parse(url),
       headers: {

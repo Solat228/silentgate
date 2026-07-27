@@ -1669,4 +1669,31 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get hy2NoteBody =>
       'Os servidores Hysteria2 chegam apenas no formato XRAY_JSON — o SilentGate solicita exatamente esse, e o sing-box os inicia automaticamente. Se o Hysteria2 não aparecer na lista: (para o dono do painel Remnawave) ative os inbounds de hysteria e atribua-os à assinatura. Observação: o Remnawave antes de 2.8.0 entrega Hysteria2 SÓ em XRAY_JSON — não está em base64/CLASH/SINGBOX, por isso a regra Response Rules → XRAY_JSON acima é obrigatória.';
+
+  @override
+  String get enumStatusDisconnected => 'Desconectado';
+
+  @override
+  String get enumStatusConnecting => 'Conectando…';
+
+  @override
+  String get enumStatusConnected => 'Conectado';
+
+  @override
+  String get enumStatusDisconnecting => 'Desconectando…';
+
+  @override
+  String get enumStatusError => 'Erro';
+
+  @override
+  String get enumVariantPlain => 'padrão';
+
+  @override
+  String get tagAutoSelect => 'AUTO';
+
+  @override
+  String get tagPanel => 'PAINEL';
+
+  @override
+  String get tagPortHopping => 'SALTO DE PORTAS';
 }

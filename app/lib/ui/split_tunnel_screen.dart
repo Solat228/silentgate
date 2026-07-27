@@ -64,7 +64,7 @@ class SplitTunnelScreen extends StatelessWidget {
                         groupValue: st.mode,
                         onChanged: (v) => controller.update((s) => s.copyWith(
                             splitTunnel: s.splitTunnel.copyWith(mode: v))),
-                        title: Text(m.label),
+                        title: Text(splitModeLabel(l, m)),
                       )),
                   // #14.2 — наглядно, как пойдёт трафик при текущем режиме.
                   RouteDiagram(split: st),
@@ -508,7 +508,7 @@ class _RuleDialogState extends State<_RuleDialog> {
                 setState(() => _action = v);
                 widget.onAction(v);
               },
-              title: Text(a.label),
+              title: Text(appActionLabel(l, a)),
               secondary: _actionIcon(context, a),
             ),
           if (widget.onPort != null) ...[
