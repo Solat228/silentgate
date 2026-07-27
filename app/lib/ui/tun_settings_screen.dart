@@ -4,8 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
-import '../engine/windows/tun/tun_helper.dart';
-import '../engine/windows/tun/tun_scheduled_task.dart';
+import '../core/platform/platform_services.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
 import 'widgets/info_tooltip.dart';
@@ -29,13 +28,13 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
   }
 
   Future<void> _refreshTask() async {
-    final ok = await TunScheduledTask.exists();
+    final ok = await platform.privileges.isConfigured();
     if (mounted) setState(() => _taskInstalled = ok);
   }
 
   Future<void> _installTask() async {
     setState(() => _busy = true);
-    final ok = await TunScheduledTask.install();
+    final ok = await platform.privileges.configure();
     if (!mounted) return;
     setState(() => _busy = false);
     await _refreshTask();
@@ -48,14 +47,14 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
 
   Future<void> _removeTask() async {
     setState(() => _busy = true);
-    await TunScheduledTask.uninstall();
+    await platform.privileges.remove();
     if (!mounted) return;
     setState(() => _busy = false);
     await _refreshTask();
   }
 
   Future<void> _showLog() async {
-    final log = await TunHelper.tailLog(lines: 200);
+    final log = await platform.tunLog.tail(lines: 200);
     if (!mounted) return;
     final l = AppLocalizations.of(context);
     await showDialog<void>(

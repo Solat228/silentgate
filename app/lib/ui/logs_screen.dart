@@ -3,7 +3,7 @@ import 'widgets/app_toast.dart';
 import 'package:flutter/services.dart';
 
 import '../core/platform/app_log.dart';
-import '../engine/windows/tun/tun_helper.dart';
+import '../core/platform/platform_services.dart';
 import '../l10n/gen/app_localizations.dart';
 
 /// Логи приложения и ядра — чтобы диагностировать без запуска из консоли.
@@ -44,7 +44,7 @@ class _LogsScreenState extends State<LogsScreen>
 
   Future<void> _reload() async {
     final app = await AppLog.dump();
-    final tun = await TunHelper.tailLog(lines: 400);
+    final tun = await platform.tunLog.tail(lines: 400);
     if (!mounted) return;
     setState(() {
       _app = app;

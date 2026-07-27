@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
-import '../engine/windows/process_list_windows.dart';
+import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/route_diagram.dart';
@@ -119,11 +119,15 @@ class SplitTunnelScreen extends StatelessWidget {
                         label: Text(l.splitFromRunning),
                         onPressed: () => _pickRunning(context, controller),
                       ),
-                      TextButton.icon(
-                        icon: const Icon(Icons.folder_open),
-                        label: Text(l.splitPickExe),
-                        onPressed: () => _pickExe(context, controller),
-                      ),
+                      // Выбор файла вручную осмыслен там, где правило адресует
+                      // исполняемый файл (Windows). На Android правило — это
+                      // packageName, и весь список даёт сама система.
+                      if (platform.appCatalog.supportsManualPick)
+                        TextButton.icon(
+                          icon: const Icon(Icons.folder_open),
+                          label: Text(l.splitPickExe),
+                          onPressed: () => _pickExe(context, controller),
+                        ),
                     ],
                   ),
                   const Divider(),
@@ -322,10 +326,10 @@ class SplitTunnelScreen extends StatelessWidget {
   }
 
   Future<void> _pickRunning(BuildContext context, SettingsController c) async {
-    final all = ProcessListWindows.enumerate();
+    final all = await platform.appCatalog.list();
     final added = c.settings.splitTunnel;
     // #6.3 — исключаем уже добавленные
-    final procs = all.where((p) => !added.containsApp(p.path)).toList();
+    final procs = all.where((p) => !added.containsApp(p.key)).toList();
     if (!context.mounted) return;
     final selected = await showDialog<String>(
       context: context,
@@ -337,7 +341,7 @@ class SplitTunnelScreen extends StatelessWidget {
 
 /// Диалог выбора из запущенных с поиском (#6.1).
 class _RunningPickerDialog extends StatefulWidget {
-  final List<RunningProcess> procs;
+  final List<CatalogApp> procs;
   const _RunningPickerDialog({required this.procs});
   @override
   State<_RunningPickerDialog> createState() => _RunningPickerDialogState();
@@ -352,7 +356,7 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
     final filtered = _q.isEmpty
         ? widget.procs
         : widget.procs
-            .where((p) => p.name.toLowerCase().contains(_q.toLowerCase()))
+            .where((p) => p.label.toLowerCase().contains(_q.toLowerCase()))
             .toList();
     return AlertDialog(
       title: Text(l.splitRunningApps),
@@ -381,11 +385,11 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
                         final p = filtered[i];
                         return ListTile(
                           dense: true,
-                          leading: AppIcon(path: p.path), // #1 — реальная иконка
-                          title: Text(p.name),
-                          subtitle: Text(p.path,
+                          leading: AppIcon(path: p.key), // #1 — реальная иконка
+                          title: Text(p.label),
+                          subtitle: Text(p.key,
                               maxLines: 1, overflow: TextOverflow.ellipsis),
-                          onTap: () => Navigator.of(context).pop(p.path),
+                          onTap: () => Navigator.of(context).pop(p.key),
                         );
                       },
                     ),

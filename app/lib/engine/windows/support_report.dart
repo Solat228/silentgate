@@ -4,33 +4,14 @@ import '../../core/app_info.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/device_id.dart';
+import '../../core/platform/support_context.dart';
 import '../../core/settings/app_settings.dart';
 import 'singbox_process.dart';
 import 'tun/tun_helper.dart';
 import 'xray_paths.dart';
 import 'xray_version.dart';
 
-/// Данные о подключении для отчёта — заполняет UI (у него есть [AppState]).
-/// Держим их отдельно, чтобы генератор не тянул зависимость на state.
-class SupportContext {
-  final String statusLine; // «Подключено» / «Отключено» и т.п.
-  final String? subscriptionUrl; // будет замаскирован
-  final int serverCount;
-  final String activeServer; // имя выбранного сервера (без секретов)
-  final String activeCore; // Xray / sing-box
-  /// Локализованная «шапка» отчёта (заголовок + место под описание проблемы +
-  /// поля + примечание). Собирается в UI из `AppLocalizations` — только эта часть
-  /// переводится; техническая информация ниже остаётся как есть.
-  final String header;
-  const SupportContext({
-    required this.statusLine,
-    required this.subscriptionUrl,
-    required this.serverCount,
-    required this.activeServer,
-    required this.activeCore,
-    required this.header,
-  });
-}
+export '../../core/platform/support_context.dart';
 
 /// Сборка отчёта для техподдержки в один текстовый файл.
 ///

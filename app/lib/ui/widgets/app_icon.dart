@@ -2,12 +2,14 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import '../../engine/windows/app_icon_windows.dart';
+import '../../core/platform/platform_services.dart';
 
-/// Иконка приложения по пути к exe (#1): реальная из ресурсов файла,
-/// заглушка Icons.apps — пока грузится или если извлечь не удалось.
-/// Загрузка — в фоновом isolate (не блокирует UI даже на недоступных путях).
+/// Иконка приложения по ключу правила (#1): на Windows это путь к exe и иконка
+/// берётся из его ресурсов, на Android — `packageName` и `PackageManager`.
+/// Заглушка Icons.apps — пока грузится или если извлечь не удалось.
+/// Загрузка платформенная и фоновая (не блокирует UI даже на недоступных путях).
 class AppIcon extends StatefulWidget {
+  /// Ключ приложения: путь к exe (Windows) либо packageName (Android).
   final String path;
   final double size;
   const AppIcon({super.key, required this.path, this.size = 28});
@@ -35,12 +37,15 @@ class _AppIconState extends State<AppIcon> {
   }
 
   void _load() {
-    if (AppIconWindows.isCached(widget.path)) {
-      _png = AppIconWindows.cached(widget.path);
+    if (!hasPlatformServices) return;
+    final icons = platform.appIcons;
+    if (icons.isCached(widget.path)) {
+      _png = icons.cached(widget.path);
       return;
     }
     final requested = widget.path;
-    AppIconWindows.load(requested).then((png) {
+    icons.load(requested).then((png) {
+      // Гвард: при быстрой смене ключа не подставляем чужую иконку.
       if (mounted && widget.path == requested && png != null) {
         setState(() => _png = png);
       }

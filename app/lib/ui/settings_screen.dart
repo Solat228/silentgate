@@ -16,9 +16,7 @@ import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_service.dart';
-import '../engine/windows/support_report.dart';
-import '../engine/windows/tun/tun_scheduled_task.dart';
-import '../engine/windows/xray_version.dart';
+import '../core/platform/platform_services.dart';
 import '../state/app_state.dart';
 import '../state/settings_controller.dart';
 import 'logs_screen.dart';
@@ -323,7 +321,7 @@ class _AboutSection extends StatelessWidget {
 
   Future<({String app, String xray, String hwid})> _load() async {
     final info = await PackageInfo.fromPlatform();
-    final xray = await XrayVersion.get();
+    final xray = await platform.coreVersions.xray();
     final hwid = await Hwid.get();
     return (app: info.version, xray: xray, hwid: hwid);
   }
@@ -467,9 +465,9 @@ class _SupportDialogState extends State<_SupportDialog> {
       _error = null;
     });
     try {
-      final path = await SupportReport.generate(settings: settings, ctx: ctx);
+      final path = await platform.support.generate(settings: settings, ctx: ctx);
       // Строгий порядок: сперва открыть папку, затем сам txt-файл (см. reveal).
-      await SupportReport.reveal(path);
+      await platform.support.reveal(path);
       if (!mounted) return;
       setState(() {
         _path = path;
@@ -549,7 +547,7 @@ class _SupportDialogState extends State<_SupportDialog> {
         if (done)
           TextButton.icon(
             icon: const Icon(Icons.folder_open, size: 18),
-            onPressed: () => SupportReport.reveal(_path!),
+            onPressed: () => platform.support.reveal(_path!),
             label: Text(l.supportShowOnPc),
           ),
         if (done)
@@ -766,7 +764,7 @@ class _AppearanceSection extends StatelessWidget {
 Future<void> _enableTun(BuildContext context, SettingsController controller) async {
   final l = AppLocalizations.of(context);
   controller.update((s) => s.copyWith(captureMode: CaptureMode.tun));
-  if (await TunScheduledTask.exists()) return;
+  if (await platform.privileges.isConfigured()) return;
   if (!context.mounted) return;
 
   final setup = await showDialog<bool>(
@@ -788,7 +786,7 @@ Future<void> _enableTun(BuildContext context, SettingsController controller) asy
   );
   if (setup != true) return;
 
-  final ok = await TunScheduledTask.install();
+  final ok = await platform.privileges.configure();
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(ok ? l.tunUacDone : l.tunUacFail),
