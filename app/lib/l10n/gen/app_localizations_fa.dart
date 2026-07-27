@@ -1675,4 +1675,48 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get tagPortHopping => 'پرش پورت';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count سرور',
+      one: '$count سرور',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => 'بدون تغییر';
+
+  @override
+  String get errInvalidJson => 'JSON نامعتبر';
+
+  @override
+  String get errPickServerFirst => 'ابتدا یک سرور انتخاب کنید';
+
+  @override
+  String get errImportSubscriptionFirst => 'ابتدا یک اشتراک وارد کنید';
+
+  @override
+  String get speedSizeFull => '۲۰ مگابایت';
+
+  @override
+  String get speedSizeLight => '۵ مگابایت';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value مگابایت/ثانیه';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value کیلوبایت/ثانیه';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return 'پورت $port از قبل توسط $by اشغال شده است.';
+  }
 }

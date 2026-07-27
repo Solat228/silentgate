@@ -1641,4 +1641,47 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tagPortHopping => '端口跳跃';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个服务器',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => '无变化';
+
+  @override
+  String get errInvalidJson => 'JSON 无效';
+
+  @override
+  String get errPickServerFirst => '请先选择服务器';
+
+  @override
+  String get errImportSubscriptionFirst => '请先导入订阅';
+
+  @override
+  String get speedSizeFull => '20 MB';
+
+  @override
+  String get speedSizeLight => '5 MB';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value MB/秒';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value KB/秒';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return '端口 $port 已被 $by 占用。';
+  }
 }

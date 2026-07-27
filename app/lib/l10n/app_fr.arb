@@ -497,5 +497,15 @@
   "enumVariantPlain": "standard",
   "tagAutoSelect": "AUTO",
   "tagPanel": "PANNEAU",
-  "tagPortHopping": "SAUT DE PORTS"
+  "tagPortHopping": "SAUT DE PORTS",
+  "syncServersCount": "{count, plural, one{{count} serveur} other{{count} serveurs}}",
+  "syncNoChanges": "aucun changement",
+  "errInvalidJson": "JSON non valide",
+  "errPickServerFirst": "Sélectionnez d’abord un serveur",
+  "errImportSubscriptionFirst": "Importez d’abord un abonnement",
+  "speedSizeFull": "20 Mo",
+  "speedSizeLight": "5 Mo",
+  "speedMbPerSec": "{value} Mo/s",
+  "speedKbPerSec": "{value} Ko/s",
+  "portBusyTitle": "Le port {port} est déjà utilisé par {by}."
 }

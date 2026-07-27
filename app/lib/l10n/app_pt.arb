@@ -497,5 +497,15 @@
   "enumVariantPlain": "padrão",
   "tagAutoSelect": "AUTO",
   "tagPanel": "PAINEL",
-  "tagPortHopping": "SALTO DE PORTAS"
+  "tagPortHopping": "SALTO DE PORTAS",
+  "syncServersCount": "{count, plural, one{{count} servidor} other{{count} servidores}}",
+  "syncNoChanges": "sem alterações",
+  "errInvalidJson": "JSON inválido",
+  "errPickServerFirst": "Selecione um servidor primeiro",
+  "errImportSubscriptionFirst": "Importe uma assinatura primeiro",
+  "speedSizeFull": "20 MB",
+  "speedSizeLight": "5 MB",
+  "speedMbPerSec": "{value} MB/s",
+  "speedKbPerSec": "{value} KB/s",
+  "portBusyTitle": "A porta {port} já está ocupada por {by}."
 }

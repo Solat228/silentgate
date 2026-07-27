@@ -1678,4 +1678,50 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tagPortHopping => 'ПОРТ-ХОППИНГ';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count сервера',
+      many: '$count серверов',
+      few: '$count сервера',
+      one: '$count сервер',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => 'без изменений';
+
+  @override
+  String get errInvalidJson => 'Некорректный JSON';
+
+  @override
+  String get errPickServerFirst => 'Сначала выберите сервер';
+
+  @override
+  String get errImportSubscriptionFirst => 'Сначала импортируйте подписку';
+
+  @override
+  String get speedSizeFull => '20 МБ';
+
+  @override
+  String get speedSizeLight => '5 МБ';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value МБ/с';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value КБ/с';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return 'Порт $port уже занят $by.';
+  }
 }

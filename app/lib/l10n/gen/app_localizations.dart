@@ -3101,6 +3101,66 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'ПОРТ-ХОППИНГ'**
   String get tagPortHopping;
+
+  /// No description provided for @syncServersCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} сервер} few{{count} сервера} many{{count} серверов} other{{count} сервера}}'**
+  String syncServersCount(int count);
+
+  /// No description provided for @syncNoChanges.
+  ///
+  /// In ru, this message translates to:
+  /// **'без изменений'**
+  String get syncNoChanges;
+
+  /// No description provided for @errInvalidJson.
+  ///
+  /// In ru, this message translates to:
+  /// **'Некорректный JSON'**
+  String get errInvalidJson;
+
+  /// No description provided for @errPickServerFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала выберите сервер'**
+  String get errPickServerFirst;
+
+  /// No description provided for @errImportSubscriptionFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала импортируйте подписку'**
+  String get errImportSubscriptionFirst;
+
+  /// No description provided for @speedSizeFull.
+  ///
+  /// In ru, this message translates to:
+  /// **'20 МБ'**
+  String get speedSizeFull;
+
+  /// No description provided for @speedSizeLight.
+  ///
+  /// In ru, this message translates to:
+  /// **'5 МБ'**
+  String get speedSizeLight;
+
+  /// No description provided for @speedMbPerSec.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} МБ/с'**
+  String speedMbPerSec(String value);
+
+  /// No description provided for @speedKbPerSec.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} КБ/с'**
+  String speedKbPerSec(String value);
+
+  /// No description provided for @portBusyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} уже занят {by}.'**
+  String portBusyTitle(int port, String by);
 }
 
 class _AppLocalizationsDelegate

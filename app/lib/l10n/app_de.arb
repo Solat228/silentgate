@@ -497,5 +497,15 @@
   "enumVariantPlain": "Standard",
   "tagAutoSelect": "AUTO",
   "tagPanel": "PANEL",
-  "tagPortHopping": "PORT-HOPPING"
+  "tagPortHopping": "PORT-HOPPING",
+  "syncServersCount": "{count, plural, one{{count} Server} other{{count} Server}}",
+  "syncNoChanges": "keine Änderungen",
+  "errInvalidJson": "Ungültiges JSON",
+  "errPickServerFirst": "Wählen Sie zuerst einen Server",
+  "errImportSubscriptionFirst": "Importieren Sie zuerst ein Abonnement",
+  "speedSizeFull": "20 MB",
+  "speedSizeLight": "5 MB",
+  "speedMbPerSec": "{value} MB/s",
+  "speedKbPerSec": "{value} KB/s",
+  "portBusyTitle": "Port {port} wird bereits von {by} belegt."
 }

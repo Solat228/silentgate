@@ -567,5 +567,46 @@
   "enumVariantPlain": "обычный",
   "tagAutoSelect": "АВТОВЫБОР",
   "tagPanel": "ПАНЕЛЬ",
-  "tagPortHopping": "ПОРТ-ХОППИНГ"
+  "tagPortHopping": "ПОРТ-ХОППИНГ",
+  "syncServersCount": "{count, plural, one{{count} сервер} few{{count} сервера} many{{count} серверов} other{{count} сервера}}",
+  "syncNoChanges": "без изменений",
+  "errInvalidJson": "Некорректный JSON",
+  "errPickServerFirst": "Сначала выберите сервер",
+  "errImportSubscriptionFirst": "Сначала импортируйте подписку",
+  "speedSizeFull": "20 МБ",
+  "speedSizeLight": "5 МБ",
+  "speedMbPerSec": "{value} МБ/с",
+  "speedKbPerSec": "{value} КБ/с",
+  "portBusyTitle": "Порт {port} уже занят {by}.",
+  "@syncServersCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@speedMbPerSec": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "@speedKbPerSec": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  },
+  "@portBusyTitle": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "by": {
+        "type": "String"
+      }
+    }
+  }
 }

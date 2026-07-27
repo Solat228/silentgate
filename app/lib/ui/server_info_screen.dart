@@ -169,7 +169,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           const SizedBox(height: 16),
           _section(context, l.srvInfoSectionSpeed),
           Text(
-            l.srvInfoSpeedHint(size.label),
+            l.srvInfoSpeedHint(speedSizeLabel(l, size)),
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
@@ -261,12 +261,13 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
 
   Widget _speedRow(BuildContext context, String title, SpeedResult? r,
       {bool primary = false}) {
+    final l = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(children: [
         Expanded(child: Text(title)),
         Text(
-          r == null ? '—' : (r.ok ? r.label : (r.error ?? '—')),
+          r == null ? '—' : (r.ok ? speedResultLabel(l, r) : (r.error ?? '—')),
           textDirection: TextDirection.ltr,
           style: TextStyle(
             fontWeight: primary ? FontWeight.w700 : FontWeight.w400,

@@ -13,6 +13,7 @@ import '../import_screen.dart';
 import '../settings_screen.dart';
 import 'flag_cell.dart';
 import 'subscription_avatar.dart';
+import '../../core/i18n/enum_labels.dart';
 
 /// Карточка подписки сверху: название, трафик (использовано/всего), срок, поддержка.
 /// Меню (кнопка ⋮ и ПКМ): обновить, копировать URL, поддержка, удалить.
@@ -285,7 +286,7 @@ class _SyncSummaryState extends State<_SyncSummary> {
             size: 18, color: color),
         const SizedBox(width: 8),
         Expanded(
-          child: Text(l.subBarSubscriptionUpdated(r.summary),
+          child: Text(l.subBarSubscriptionUpdated(syncSummary(l, r)),
               style: TextStyle(fontSize: 14, color: color)),
         ),
         if (r.hasChanges)

@@ -497,5 +497,15 @@
   "enumVariantPlain": "عادی",
   "tagAutoSelect": "خودکار",
   "tagPanel": "پنل",
-  "tagPortHopping": "پرش پورت"
+  "tagPortHopping": "پرش پورت",
+  "syncServersCount": "{count, plural, one{{count} سرور} other{{count} سرور}}",
+  "syncNoChanges": "بدون تغییر",
+  "errInvalidJson": "JSON نامعتبر",
+  "errPickServerFirst": "ابتدا یک سرور انتخاب کنید",
+  "errImportSubscriptionFirst": "ابتدا یک اشتراک وارد کنید",
+  "speedSizeFull": "۲۰ مگابایت",
+  "speedSizeLight": "۵ مگابایت",
+  "speedMbPerSec": "{value} مگابایت/ثانیه",
+  "speedKbPerSec": "{value} کیلوبایت/ثانیه",
+  "portBusyTitle": "پورت {port} از قبل توسط {by} اشغال شده است."
 }

@@ -1667,4 +1667,52 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tagPortHopping => 'تبديل المنافذ';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count خادم',
+      many: '$count خادمًا',
+      few: '$count خوادم',
+      two: 'خادمان',
+      one: 'خادم واحد',
+      zero: '$count خادم',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => 'بدون تغييرات';
+
+  @override
+  String get errInvalidJson => 'JSON غير صالح';
+
+  @override
+  String get errPickServerFirst => 'اختر خادمًا أولاً';
+
+  @override
+  String get errImportSubscriptionFirst => 'استورد اشتراكًا أولاً';
+
+  @override
+  String get speedSizeFull => '20 ميغابايت';
+
+  @override
+  String get speedSizeLight => '5 ميغابايت';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value ميغابايت/ث';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value كيلوبايت/ث';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return 'المنفذ $port مستخدم بالفعل بواسطة $by.';
+  }
 }

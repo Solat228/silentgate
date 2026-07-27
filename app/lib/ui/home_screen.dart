@@ -87,7 +87,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       final l = AppLocalizations.of(context);
 
-      final err = state.error;
+      // Распознанные ошибки переводятся по коду; динамические (текст
+      // исключения от сети или ядра) показываются как есть.
+      final code = state.errorCode;
+      final err = code != null ? appErrorText(l, code) : state.error;
       if (err != null && err != _shownError) {
         _shownError = err;
         AppToast.show(context, err, kind: ToastKind.error);
@@ -102,7 +105,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // Состав изменений раскрывается по клику — с флагами стран.
         AppToast.show(
           context,
-          l.homeSubscriptionUpdated(sync.summary),
+          l.homeSubscriptionUpdated(syncSummary(l, sync)),
           kind: sync.hasChanges ? ToastKind.success : ToastKind.info,
           details: [
             for (final name in sync.added)

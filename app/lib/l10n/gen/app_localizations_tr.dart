@@ -1682,4 +1682,48 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tagPortHopping => 'PORT ATLAMA';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count sunucu',
+      one: '$count sunucu',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => 'değişiklik yok';
+
+  @override
+  String get errInvalidJson => 'Geçersiz JSON';
+
+  @override
+  String get errPickServerFirst => 'Önce bir sunucu seçin';
+
+  @override
+  String get errImportSubscriptionFirst => 'Önce bir abonelik içe aktarın';
+
+  @override
+  String get speedSizeFull => '20 MB';
+
+  @override
+  String get speedSizeLight => '5 MB';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value MB/sn';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value KB/sn';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return '$port numaralı bağlantı noktası zaten $by tarafından kullanılıyor.';
+  }
 }

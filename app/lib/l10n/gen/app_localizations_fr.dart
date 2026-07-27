@@ -1697,4 +1697,48 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tagPortHopping => 'SAUT DE PORTS';
+
+  @override
+  String syncServersCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count serveurs',
+      one: '$count serveur',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncNoChanges => 'aucun changement';
+
+  @override
+  String get errInvalidJson => 'JSON non valide';
+
+  @override
+  String get errPickServerFirst => 'Sélectionnez d’abord un serveur';
+
+  @override
+  String get errImportSubscriptionFirst => 'Importez d’abord un abonnement';
+
+  @override
+  String get speedSizeFull => '20 Mo';
+
+  @override
+  String get speedSizeLight => '5 Mo';
+
+  @override
+  String speedMbPerSec(String value) {
+    return '$value Mo/s';
+  }
+
+  @override
+  String speedKbPerSec(String value) {
+    return '$value Ko/s';
+  }
+
+  @override
+  String portBusyTitle(int port, String by) {
+    return 'Le port $port est déjà utilisé par $by.';
+  }
 }

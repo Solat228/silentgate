@@ -497,5 +497,15 @@
   "enumVariantPlain": "عادي",
   "tagAutoSelect": "تلقائي",
   "tagPanel": "اللوحة",
-  "tagPortHopping": "تبديل المنافذ"
+  "tagPortHopping": "تبديل المنافذ",
+  "syncServersCount": "{count, plural, zero{{count} خادم} one{خادم واحد} two{خادمان} few{{count} خوادم} many{{count} خادمًا} other{{count} خادم}}",
+  "syncNoChanges": "بدون تغييرات",
+  "errInvalidJson": "JSON غير صالح",
+  "errPickServerFirst": "اختر خادمًا أولاً",
+  "errImportSubscriptionFirst": "استورد اشتراكًا أولاً",
+  "speedSizeFull": "20 ميغابايت",
+  "speedSizeLight": "5 ميغابايت",
+  "speedMbPerSec": "{value} ميغابايت/ث",
+  "speedKbPerSec": "{value} كيلوبايت/ث",
+  "portBusyTitle": "المنفذ {port} مستخدم بالفعل بواسطة {by}."
 }

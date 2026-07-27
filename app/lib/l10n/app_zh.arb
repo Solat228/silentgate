@@ -497,5 +497,15 @@
   "enumVariantPlain": "默认",
   "tagAutoSelect": "自动",
   "tagPanel": "面板",
-  "tagPortHopping": "端口跳跃"
+  "tagPortHopping": "端口跳跃",
+  "syncServersCount": "{count, plural, other{{count} 个服务器}}",
+  "syncNoChanges": "无变化",
+  "errInvalidJson": "JSON 无效",
+  "errPickServerFirst": "请先选择服务器",
+  "errImportSubscriptionFirst": "请先导入订阅",
+  "speedSizeFull": "20 MB",
+  "speedSizeLight": "5 MB",
+  "speedMbPerSec": "{value} MB/秒",
+  "speedKbPerSec": "{value} KB/秒",
+  "portBusyTitle": "端口 {port} 已被 {by} 占用。"
 }

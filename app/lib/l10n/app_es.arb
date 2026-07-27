@@ -558,5 +558,15 @@
   "enumVariantPlain": "estándar",
   "tagAutoSelect": "AUTO",
   "tagPanel": "PANEL",
-  "tagPortHopping": "SALTO DE PUERTOS"
+  "tagPortHopping": "SALTO DE PUERTOS",
+  "syncServersCount": "{count, plural, one{{count} servidor} other{{count} servidores}}",
+  "syncNoChanges": "sin cambios",
+  "errInvalidJson": "JSON no válido",
+  "errPickServerFirst": "Primero seleccione un servidor",
+  "errImportSubscriptionFirst": "Primero importe una suscripción",
+  "speedSizeFull": "20 MB",
+  "speedSizeLight": "5 MB",
+  "speedMbPerSec": "{value} MB/s",
+  "speedKbPerSec": "{value} KB/s",
+  "portBusyTitle": "El puerto {port} ya está ocupado por {by}."
 }

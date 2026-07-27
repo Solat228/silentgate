@@ -497,5 +497,15 @@
   "enumVariantPlain": "standart",
   "tagAutoSelect": "OTOMATİK",
   "tagPanel": "PANEL",
-  "tagPortHopping": "PORT ATLAMA"
+  "tagPortHopping": "PORT ATLAMA",
+  "syncServersCount": "{count, plural, one{{count} sunucu} other{{count} sunucu}}",
+  "syncNoChanges": "değişiklik yok",
+  "errInvalidJson": "Geçersiz JSON",
+  "errPickServerFirst": "Önce bir sunucu seçin",
+  "errImportSubscriptionFirst": "Önce bir abonelik içe aktarın",
+  "speedSizeFull": "20 MB",
+  "speedSizeLight": "5 MB",
+  "speedMbPerSec": "{value} MB/sn",
+  "speedKbPerSec": "{value} KB/sn",
+  "portBusyTitle": "{port} numaralı bağlantı noktası zaten {by} tarafından kullanılıyor."
 }

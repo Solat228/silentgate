@@ -25,6 +25,11 @@ class SubscriptionSyncResult {
   bool get hasChanges => added.isNotEmpty || removed.isNotEmpty;
 
   /// Короткая сводка для баннера: «7 серверов · +2 · −1» либо «без изменений».
+  ///
+  /// Локализованную версию строит UI — `syncSummary` в
+  /// `core/i18n/enum_labels.dart`: плюрализация зависит от языка, а модель
+  /// не имеет доступа к `AppLocalizations`. Здесь остаётся русский фолбэк
+  /// для логов и отчёта поддержки, которые принципиально не переводятся.
   String get summary {
     final parts = <String>['$total ${_plural(total)}'];
     if (added.isNotEmpty) parts.add('+${added.length}');

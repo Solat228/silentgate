@@ -33,6 +33,7 @@ import '../data/subscriptions_store.dart';
 import '../data/settings_storage.dart';
 import '../engine/engine_factory.dart';
 import '../engine/vpn_engine.dart';
+import 'app_error.dart';
 
 /// Центральное состояние приложения. UI подписывается через Provider.
 class AppState extends ChangeNotifier {
@@ -146,6 +147,13 @@ class AppState extends ChangeNotifier {
   int _sessionUp = 0, _sessionDown = 0, _lastUp = 0, _lastDown = 0;
   bool _loading = false;
   String? _error;
+
+  /// Код ошибки для тех случаев, которые приложение распознаёт само.
+  ///
+  /// Динамические ошибки (текст исключения от сети/ядра) остаются строкой в
+  /// [_error] и не переводятся; известные состояния несут код, а текст к нему
+  /// подбирает UI — у состояния нет `AppLocalizations`.
+  AppErrorCode? _errorCode;
   String? _logoPath; // #2 — кэшированная аватарка подписки
 
   /// #1/#1.1 — итог последнего обновления подписки (что добавилось/удалилось).
@@ -190,6 +198,9 @@ class AppState extends ChangeNotifier {
   int get sessionDownlinkBytes => _sessionDown;
   bool get loading => _loading;
   String? get error => _error;
+
+  /// Код распознанной ошибки (null — ошибки нет либо она динамическая).
+  AppErrorCode? get errorCode => _errorCode;
   bool get hasServers => _servers.isNotEmpty;
 
   // ── Инициализация из хранилища ─────────────────────────────────────────────
@@ -733,6 +744,7 @@ class AppState extends ChangeNotifier {
           '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
     } catch (e) {
       _error = e.toString();
+      _errorCode = null;
     } finally {
       _loading = false;
       notifyListeners();
@@ -798,8 +810,7 @@ class AppState extends ChangeNotifier {
     try {
       jsonDecode(json);
     } catch (_) {
-      _error = 'Некорректный JSON';
-      notifyListeners();
+      _fail(AppErrorCode.invalidJson);
       return;
     }
     final key = 'json://${json.hashCode.toUnsigned(32)}';
@@ -1018,8 +1029,7 @@ class AppState extends ChangeNotifier {
     } else {
       final server = selectedServer;
       if (server == null) {
-        _error = 'Сначала выберите сервер';
-        notifyListeners();
+        _fail(AppErrorCode.pickServerFirst);
         return;
       }
       final ov = _overrides[server.key];
@@ -1061,8 +1071,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (_servers.isEmpty) {
-      _error = 'Сначала импортируйте подписку';
-      notifyListeners();
+      _fail(AppErrorCode.importSubscriptionFirst);
       return;
     }
     // Режим «Авто (лучший сервер)»: если текущий не поднимется после всех попыток,
@@ -1074,8 +1083,17 @@ class AppState extends ChangeNotifier {
     );
   }
 
+  /// Распознанная ошибка: код для UI + русский фолбэк в [_error] (он уходит
+  /// в лог и отчёт поддержки, которые не переводятся).
+  void _fail(AppErrorCode code) {
+    _errorCode = code;
+    _error = code.fallback;
+    notifyListeners();
+  }
+
   void clearError() {
     _error = null;
+    _errorCode = null;
     notifyListeners();
   }
 

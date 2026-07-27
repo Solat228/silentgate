@@ -47,16 +47,39 @@ class PortCheck {
     }
   }
 
-  /// Проверить нужные порты и вернуть готовое сообщение об ошибке, либо null.
-  static Future<String?> describeConflict(Iterable<int> ports) async {
+  /// Найти первый занятый порт, либо null, если все свободны.
+  ///
+  /// Возвращает ДАННЫЕ, а не только текст: [PortConflict.holder] на Android
+  /// всегда null (там нет ни `netstat`, ни `tasklist`, а `/proc` закрыт с
+  /// API 26), и интерфейс сможет подобрать подходящую формулировку.
+  static Future<PortConflict?> findConflict(Iterable<int> ports) async {
     for (final port in ports) {
       if (await isFree(port)) continue;
-      final who = await holderName(port);
-      final by = who == null ? 'другой программой' : 'программой $who';
-      return 'Порт $port уже занят $by.\n\n'
-          'Обычно это другой VPN-клиент (Happ, v2rayTun, NekoBox) — он слушает те же '
-          'локальные порты. Закройте его полностью (в том числе из трея) и попробуйте снова.';
+      return PortConflict(port: port, holder: await holderName(port));
     }
     return null;
+  }
+
+  /// Готовое сообщение об ошибке, либо null. Русский фолбэк — он уходит в лог
+  /// и отчёт поддержки, которые не переводятся.
+  static Future<String?> describeConflict(Iterable<int> ports) async =>
+      (await findConflict(ports))?.fallbackMessage;
+}
+
+/// Занятый локальный порт и (если удалось определить) программа-виновник.
+class PortConflict {
+  final int port;
+
+  /// Имя программы, занявшей порт. null — определить не удалось: так всегда
+  /// бывает на Android и иногда на Windows (элевейтнутый процесс).
+  final String? holder;
+
+  const PortConflict({required this.port, this.holder});
+
+  String get fallbackMessage {
+    final by = holder == null ? 'другой программой' : 'программой $holder';
+    return 'Порт $port уже занят $by.\n\n'
+        'Обычно это другой VPN-клиент (Happ, v2rayTun, NekoBox) — он слушает те же '
+        'локальные порты. Закройте его полностью (в том числе из трея) и попробуйте снова.';
   }
 }
