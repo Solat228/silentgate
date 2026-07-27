@@ -15,7 +15,7 @@ import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
 import '../core/platform/network_watcher.dart';
-import '../core/platform/hwid_windows.dart';
+import '../core/platform/device_id.dart';
 import '../core/platform/incoming_links.dart';
 import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';

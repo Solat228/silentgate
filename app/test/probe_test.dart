@@ -8,7 +8,7 @@ import 'package:http/testing.dart';
 import 'package:silentgate/core/models/subscription_info.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
-import 'package:silentgate/core/platform/hwid_windows.dart';
+import 'package:silentgate/core/platform/device_id.dart';
 import 'package:silentgate/core/platform/network_watcher.dart';
 import 'package:silentgate/engine/windows/app_icon_windows.dart';
 import 'package:silentgate/core/probe/auto_config_engine.dart';

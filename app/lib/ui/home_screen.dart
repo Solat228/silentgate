@@ -6,7 +6,7 @@ import '../core/models/vpn_status.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
-import '../core/platform/url_opener.dart';
+import '../core/platform/app_launcher.dart';
 import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/country_flag.dart';

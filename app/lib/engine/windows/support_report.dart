@@ -3,7 +3,7 @@ import 'dart:io';
 import '../../core/app_info.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
-import '../../core/platform/hwid_windows.dart';
+import '../../core/platform/device_id.dart';
 import '../../core/settings/app_settings.dart';
 import 'singbox_process.dart';
 import 'tun/tun_helper.dart';
