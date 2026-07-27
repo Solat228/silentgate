@@ -507,5 +507,6 @@
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
-  "portBusyTitle": "A porta {port} já está ocupada por {by}."
+  "portBusyTitle": "A porta {port} já está ocupada por {by}.",
+  "srvTileMenu": "Ações do servidor"
 }

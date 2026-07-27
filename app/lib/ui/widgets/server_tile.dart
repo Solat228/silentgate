@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -58,8 +60,15 @@ class ServerTile extends StatelessWidget {
         ? analyzePanelRouting(server.rawPanelConfig ?? '')
         : null;
 
+    // Правой кнопки на тач-экране нет, а меню — единственный вход к пяти из
+    // семи действий (инфо, пинг, пин, JSON, удаление). Поэтому там долгое
+    // нажатие и видимая кнопка ⫶ вместо шеврона.
+    final touch = _isTouchLayout(context);
+
     return GestureDetector(
       onSecondaryTapDown: (d) => _menu(context, d.globalPosition),
+      onLongPressStart:
+          touch ? (d) => _menu(context, d.globalPosition) : null,
       child: ListTile(
         dense: true,
         visualDensity: const VisualDensity(vertical: -2),
@@ -90,11 +99,28 @@ class ServerTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             PingChip(result: probe.resultFor(server)),
-            IconButton(
-              tooltip: l.srvTileEdit,
-              icon: const Icon(Icons.chevron_right),
-              onPressed: () => _edit(context),
-            ),
+            // На десктопе шеврон ведёт в редактор, а меню — по правой кнопке.
+            // На тач-экране правой кнопки нет, поэтому здесь ⫶: без неё
+            // большинство действий над сервером были бы недостижимы.
+            touch
+                ? Builder(
+                    builder: (btnContext) => IconButton(
+                      tooltip: l.srvTileMenu,
+                      icon: const Icon(Icons.more_vert),
+                      onPressed: () {
+                        final box = btnContext.findRenderObject() as RenderBox?;
+                        final pos = box == null
+                            ? Offset.zero
+                            : box.localToGlobal(box.size.center(Offset.zero));
+                        _menu(context, pos);
+                      },
+                    ),
+                  )
+                : IconButton(
+                    tooltip: l.srvTileEdit,
+                    icon: const Icon(Icons.chevron_right),
+                    onPressed: () => _edit(context),
+                  ),
           ],
         ),
         onTap: onTap,
@@ -237,3 +263,11 @@ class ServerTile extends StatelessWidget {
     if (result == 'edit' && context.mounted) await _edit(context);
   }
 }
+
+/// Тач-раскладка: правой кнопки мыши нет, значит контекст-меню обязано иметь
+/// видимую точку входа.
+///
+/// Мобильные платформы определяем прямо: правая кнопка там недоступна в
+/// принципе. Подключённая к телефону мышь роли не играет — рассчитывать на неё
+/// в основном сценарии нельзя, а лишняя кнопка ⫶ ничего не ломает.
+bool _isTouchLayout(BuildContext context) => Platform.isAndroid || Platform.isIOS;

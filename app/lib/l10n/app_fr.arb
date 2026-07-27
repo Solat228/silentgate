@@ -507,5 +507,6 @@
   "speedSizeLight": "5 Mo",
   "speedMbPerSec": "{value} Mo/s",
   "speedKbPerSec": "{value} Ko/s",
-  "portBusyTitle": "Le port {port} est déjà utilisé par {by}."
+  "portBusyTitle": "Le port {port} est déjà utilisé par {by}.",
+  "srvTileMenu": "Actions du serveur"
 }

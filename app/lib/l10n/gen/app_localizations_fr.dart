@@ -1741,4 +1741,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return 'Le port $port est déjà utilisé par $by.';
   }
+
+  @override
+  String get srvTileMenu => 'Actions du serveur';
 }

@@ -1739,4 +1739,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return 'El puerto $port ya está ocupado por $by.';
   }
+
+  @override
+  String get srvTileMenu => 'Acciones del servidor';
 }

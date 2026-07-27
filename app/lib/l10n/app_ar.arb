@@ -507,5 +507,6 @@
   "speedSizeLight": "5 ميغابايت",
   "speedMbPerSec": "{value} ميغابايت/ث",
   "speedKbPerSec": "{value} كيلوبايت/ث",
-  "portBusyTitle": "المنفذ {port} مستخدم بالفعل بواسطة {by}."
+  "portBusyTitle": "المنفذ {port} مستخدم بالفعل بواسطة {by}.",
+  "srvTileMenu": "إجراءات الخادم"
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -90,8 +92,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _PingSection(settings: s, controller: controller),
           const Divider(),
           _IdentitySection(settings: s, controller: controller),
-          const Divider(),
-          const _NetworkSection(),
+          // «Восстановление сети» и «проверка помех» — про netsh, чужие
+          // TUN-адаптеры и системный прокси Windows. На Android ни одного из
+          // этих понятий нет: туннель рвётся системой сам, а перечислять чужие
+          // процессы приложение не может.
+          if (!Platform.isAndroid) ...[
+            const Divider(),
+            const _NetworkSection(),
+          ],
           const Divider(),
           // «URL-схемы» переехали в раздел «Представление панели» (как приложение
           // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
@@ -706,12 +714,16 @@ class _AppearanceSection extends StatelessWidget {
                 controller.update((st) => st.copyWith(themeMode: s.first)),
           ),
         ),
-        SwitchListTile(
-          value: settings.closeToTray,
-          onChanged: (v) => controller.update((s) => s.copyWith(closeToTray: v)),
-          title: Text(l.closeToTrayTitle),
-          subtitle: Text(l.closeToTraySubtitle),
-        ),
+        // Трея на Android нет: приложение сворачивается системой, а VPN
+        // продолжает жить в foreground-сервисе с постоянной нотификацией —
+        // она и играет роль значка в трее.
+        if (!Platform.isAndroid)
+          SwitchListTile(
+            value: settings.closeToTray,
+            onChanged: (v) => controller.update((s) => s.copyWith(closeToTray: v)),
+            title: Text(l.closeToTrayTitle),
+            subtitle: Text(l.closeToTraySubtitle),
+          ),
         SwitchListTile(
           value: settings.autoUpdateEnabled,
           onChanged: (v) =>
@@ -806,33 +818,42 @@ class _CaptureSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionHeader(context, l.sectionCapture),
-        RadioListTile<CaptureMode>(
-          value: CaptureMode.systemProxy,
-          groupValue: settings.captureMode,
-          onChanged: (v) => controller.update((s) => s.copyWith(captureMode: v)),
-          title: Text(l.captureSystemProxy),
-          subtitle: Text(l.captureSystemProxySub),
-        ),
-        RadioListTile<CaptureMode>(
-          value: CaptureMode.tun,
-          groupValue: settings.captureMode,
-          onChanged: (v) => _enableTun(context, controller),
-          title: Row(children: [
-            Text(l.captureTun),
-            const SizedBox(width: 8),
-            _badge(context, l.captureTunBadgeUac),
-            InfoTooltip(l.pingInfoTunStage),
-          ]),
-          subtitle: Text(l.captureTunSub),
-        ),
+        // Выбора режима на Android нет: глобального системного прокси там не
+        // существует, весь трафик идёт через VpnService. Показывать
+        // переключатель с единственным вариантом незачем.
+        if (!Platform.isAndroid) ...[
+          RadioListTile<CaptureMode>(
+            value: CaptureMode.systemProxy,
+            groupValue: settings.captureMode,
+            onChanged: (v) => controller.update((s) => s.copyWith(captureMode: v)),
+            title: Text(l.captureSystemProxy),
+            subtitle: Text(l.captureSystemProxySub),
+          ),
+          RadioListTile<CaptureMode>(
+            value: CaptureMode.tun,
+            groupValue: settings.captureMode,
+            onChanged: (v) => _enableTun(context, controller),
+            title: Row(children: [
+              Text(l.captureTun),
+              const SizedBox(width: 8),
+              _badge(context, l.captureTunBadgeUac),
+              InfoTooltip(l.pingInfoTunStage),
+            ]),
+            subtitle: Text(l.captureTunSub),
+          ),
+        ],
         // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
         // в режиме системного прокси эти настройки ни на что не влияют.
-        if (settings.captureMode == CaptureMode.tun) ...[
-          ListTile(
-            dense: true,
-            title: Text(l.tunProvider),
-            trailing: const Text('wintun', textDirection: TextDirection.ltr),
-          ),
+        // На Android туннель — единственный режим, поэтому показываем всегда.
+        if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
+          // Драйвер туннеля — понятие Windows (wintun). На Android туннель даёт
+          // сама система через VpnService, выбирать нечего.
+          if (!Platform.isAndroid)
+            ListTile(
+              dense: true,
+              title: Text(l.tunProvider),
+              trailing: const Text('wintun', textDirection: TextDirection.ltr),
+            ),
           // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
           ListTile(
             dense: true,

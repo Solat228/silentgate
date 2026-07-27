@@ -1684,4 +1684,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return '端口 $port 已被 $by 占用。';
   }
+
+  @override
+  String get srvTileMenu => '服务器操作';
 }

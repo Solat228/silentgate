@@ -163,12 +163,16 @@ class _ProgressStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Отступ снизу отсчитывается от безопасной зоны: на телефоне с жестовой
+    // навигацией нижние 20-30 px занимает системная полоска, и карточка
+    // оказалась бы под ней.
+    final safeBottom = MediaQuery.maybeViewPaddingOf(context)?.bottom ?? 0;
     return Positioned(
       left: 16,
       // Выше центрального тоста (он сидит на bottom: 24 и при длинном тексте
       // растягивается на 560 px): на минимальной ширине окна они иначе
       // перекрывались, и сводка закрывала полоску прогресса.
-      bottom: 96,
+      bottom: 96 + safeBottom,
       child: ValueListenableBuilder<List<_ProgressData>>(
         valueListenable: _ProgressToasts._items,
         builder: (_, items, __) => Column(
@@ -392,10 +396,11 @@ class _MessageStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final safeBottom = MediaQuery.maybeViewPaddingOf(context)?.bottom ?? 0;
     return Positioned(
       left: 0,
       right: 0,
-      bottom: 24,
+      bottom: 24 + safeBottom,
       child: ValueListenableBuilder<List<_MsgData>>(
         valueListenable: _MessageToasts._items,
         builder: (_, items, __) => Column(

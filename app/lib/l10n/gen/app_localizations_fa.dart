@@ -1719,4 +1719,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return 'پورت $port از قبل توسط $by اشغال شده است.';
   }
+
+  @override
+  String get srvTileMenu => 'عملیات سرور';
 }

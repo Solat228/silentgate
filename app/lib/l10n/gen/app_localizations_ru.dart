@@ -1724,4 +1724,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return 'Порт $port уже занят $by.';
   }
+
+  @override
+  String get srvTileMenu => 'Действия с сервером';
 }

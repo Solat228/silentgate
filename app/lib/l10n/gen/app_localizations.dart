@@ -3161,6 +3161,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Порт {port} уже занят {by}.'**
   String portBusyTitle(int port, String by);
+
+  /// No description provided for @srvTileMenu.
+  ///
+  /// In ru, this message translates to:
+  /// **'Действия с сервером'**
+  String get srvTileMenu;
 }
 
 class _AppLocalizationsDelegate

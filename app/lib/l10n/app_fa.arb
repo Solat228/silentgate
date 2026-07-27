@@ -507,5 +507,6 @@
   "speedSizeLight": "۵ مگابایت",
   "speedMbPerSec": "{value} مگابایت/ثانیه",
   "speedKbPerSec": "{value} کیلوبایت/ثانیه",
-  "portBusyTitle": "پورت {port} از قبل توسط {by} اشغال شده است."
+  "portBusyTitle": "پورت {port} از قبل توسط {by} اشغال شده است.",
+  "srvTileMenu": "عملیات سرور"
 }

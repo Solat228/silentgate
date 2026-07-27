@@ -568,5 +568,6 @@
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
-  "portBusyTitle": "Port {port} is already in use by {by}."
+  "portBusyTitle": "Port {port} is already in use by {by}.",
+  "srvTileMenu": "Server actions"
 }

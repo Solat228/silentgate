@@ -28,6 +28,8 @@ import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/subscription_bar.dart';
+import 'widgets/ping_chip.dart';
+import 'servers_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -261,24 +263,61 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       // Ход пинга/автонастройки показывается ТОЛЬКО карточкой слева снизу
       // (AppToast.progress). Верхней плашки больше нет: она двигала интерфейс.
-      body: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: _ConnectPane(status: status, settings: settings),
-          ),
-          const VerticalDivider(width: 1),
-          SizedBox(width: 380, child: _ServerPane(onOpen: (w) => _open(context, w))),
-        ],
+      //
+      // Компоновка выбирается по ШИРИНЕ, а не по платформе: узкое окно на
+      // Windows получает ту же одноколоночную раскладку, что и телефон, и это
+      // правильно — две панели по 380 px там просто не помещаются.
+      body: LayoutBuilder(
+        builder: (context, c) {
+          if (c.maxWidth < _twoPaneMinWidth) {
+            return _ConnectPane(
+              status: status,
+              settings: settings,
+              onOpen: (w) => _open(context, w),
+              compact: true,
+            );
+          }
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _ConnectPane(
+                  status: status,
+                  settings: settings,
+                  onOpen: (w) => _open(context, w),
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              SizedBox(
+                  width: 380, child: _ServerPane(onOpen: (w) => _open(context, w))),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
+/// Ниже этой ширины список серверов уезжает на отдельный экран: панель в 380 px
+/// плюс осмысленная колонка подключения рядом уже не помещаются.
+const double _twoPaneMinWidth = 760;
+
 class _ConnectPane extends StatelessWidget {
   final VpnStatus status;
   final AppSettings settings;
-  const _ConnectPane({required this.status, required this.settings});
+  final void Function(Widget screen) onOpen;
+
+  /// Узкий экран: список серверов уехал на отдельный маршрут, поэтому здесь
+  /// появляется строка выбранного сервера, а содержимое становится
+  /// прокручиваемым — гарантии минимального размера окна на телефоне нет.
+  final bool compact;
+
+  const _ConnectPane({
+    required this.status,
+    required this.settings,
+    required this.onOpen,
+    this.compact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -289,15 +328,21 @@ class _ConnectPane extends StatelessWidget {
         // Карточка подписки показывается целиком: место под неё даёт увеличенная
         // минимальная высота окна и компактная кнопка Connect (скролл тут мешал).
         const SubscriptionBar(),
+        if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
-          // #5 — без прокрутки: минимальный размер окна (960×720) гарантирует, что
-          // «Авто (лучший)» и «Автонастройка» видны всегда.
           child: Padding(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
+            // На широком окне раскладка держится распорками и не прокручивается
+            // (минимальный размер окна это гарантирует). На узком гарантии нет:
+            // при крупном системном шрифте, в ландшафте или в разделённом
+            // экране жёсткая колонка даёт overflow, поэтому там — прокрутка.
+            child: _MaybeScroll(
+              enabled: compact,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+                children: [
+                  if (!compact) const Spacer(),
                 _ConnectButton(
                     status: status, onTap: () => state.toggleConnection(settings)),
                 const SizedBox(height: 16),
@@ -340,19 +385,97 @@ class _ConnectPane extends StatelessWidget {
                   onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const AutoConfigScreen())),
                 ),
-                const Spacer(),
-                // Всегда на месте: при отключённом VPN — нули (иначе блок появлялся
-                // рывком и двигал кнопки, а цифры не помещались).
-                _TrafficRow(
-                  stats: status.isConnected ? state.stats : TrafficStats.zero,
-                  sessionUp: state.sessionUplinkBytes,
-                  sessionDown: state.sessionDownlinkBytes,
-                ),
-              ],
+                  if (!compact) const Spacer() else const SizedBox(height: 24),
+                  // Всегда на месте: при отключённом VPN — нули (иначе блок появлялся
+                  // рывком и двигал кнопки, а цифры не помещались).
+                  _TrafficRow(
+                    stats: status.isConnected ? state.stats : TrafficStats.zero,
+                    sessionUp: state.sessionUplinkBytes,
+                    sessionDown: state.sessionDownlinkBytes,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Оборачивает содержимое в прокрутку только когда это нужно.
+///
+/// На широком окне колонка держится `Spacer`-ами и обязана занимать всю высоту;
+/// обернув её в скролл безусловно, мы сломали бы эту раскладку.
+class _MaybeScroll extends StatelessWidget {
+  final bool enabled;
+  final Widget child;
+  const _MaybeScroll({required this.enabled, required this.child});
+
+  @override
+  Widget build(BuildContext context) => enabled
+      ? SingleChildScrollView(child: child)
+      : child;
+}
+
+/// Строка выбранного сервера — вход в список на узком экране.
+///
+/// На широком окне список всегда виден справа, здесь его нет, и без этой
+/// строки сменить сервер было бы негде.
+class _SelectedServerBar extends StatelessWidget {
+  final void Function(Widget screen) onOpen;
+  const _SelectedServerBar({required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final state = context.watch<AppState>();
+    final server = state.selectedServer;
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      child: Material(
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => onOpen(const ServersScreen()),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Row(children: [
+              if (server != null)
+                FlagCell(server.remark, auto: server.isPanelProfile, width: 28, height: 20)
+              else
+                const Icon(Icons.dns_outlined, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      server == null
+                          ? l.homeServersCount(state.servers.length)
+                          : FlagUtil.strip(server.displayName),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      // Имя сервера — технический текст: в ar/fa не зеркалим.
+                      textDirection: TextDirection.ltr,
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                    Text(l.homeServersCount(state.servers.length),
+                        style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              if (server != null)
+                PingChip(result: context.watch<ProbeController>().resultFor(server)),
+              const Icon(Icons.chevron_right),
+            ]),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -1726,4 +1726,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return '$port numaralı bağlantı noktası zaten $by tarafından kullanılıyor.';
   }
+
+  @override
+  String get srvTileMenu => 'Sunucu işlemleri';
 }

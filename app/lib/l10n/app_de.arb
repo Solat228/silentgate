@@ -507,5 +507,6 @@
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
-  "portBusyTitle": "Port {port} wird bereits von {by} belegt."
+  "portBusyTitle": "Port {port} wird bereits von {by} belegt.",
+  "srvTileMenu": "Server-Aktionen"
 }

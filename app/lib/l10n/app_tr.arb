@@ -507,5 +507,6 @@
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/sn",
   "speedKbPerSec": "{value} KB/sn",
-  "portBusyTitle": "{port} numaralı bağlantı noktası zaten {by} tarafından kullanılıyor."
+  "portBusyTitle": "{port} numaralı bağlantı noktası zaten {by} tarafından kullanılıyor.",
+  "srvTileMenu": "Sunucu işlemleri"
 }

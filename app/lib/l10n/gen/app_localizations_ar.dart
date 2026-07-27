@@ -1715,4 +1715,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String portBusyTitle(int port, String by) {
     return 'المنفذ $port مستخدم بالفعل بواسطة $by.';
   }
+
+  @override
+  String get srvTileMenu => 'إجراءات الخادم';
 }
