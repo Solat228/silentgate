@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} Mo/s",
   "speedKbPerSec": "{value} Ko/s",
   "portBusyTitle": "Le port {port} est déjà utilisé par {by}.",
-  "srvTileMenu": "Actions du serveur"
+  "srvTileMenu": "Actions du serveur",
+  "supportCopyReport": "Copier le rapport",
+  "supportReportCopied": "Rapport copié — collez-le dans le chat du support"
 }

@@ -1727,4 +1727,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Действия с сервером';
+
+  @override
+  String get supportCopyReport => 'Скопировать отчёт';
+
+  @override
+  String get supportReportCopied =>
+      'Отчёт скопирован — вставьте его в чат поддержки';
 }

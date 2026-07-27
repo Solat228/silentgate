@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
   "portBusyTitle": "A porta {port} já está ocupada por {by}.",
-  "srvTileMenu": "Ações do servidor"
+  "srvTileMenu": "Ações do servidor",
+  "supportCopyReport": "Copiar relatório",
+  "supportReportCopied": "Relatório copiado — cole-o no chat de suporte"
 }

@@ -1687,4 +1687,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get srvTileMenu => '服务器操作';
+
+  @override
+  String get supportCopyReport => '复制报告';
+
+  @override
+  String get supportReportCopied => '报告已复制 — 请粘贴到支持聊天中';
 }

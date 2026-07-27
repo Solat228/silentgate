@@ -61,17 +61,17 @@ android {
 }
 
 dependencies {
-    // Ядро собирается из исходников через gomobile и НЕ коммитится — как
-    // xray.exe/sing-box.exe на Windows. Рецепт: tools/build-android-cores.md.
+    // ОДИН AAR с ОБОИМИ ядрами. Раздельные libbox.aar и libxray.aar собрать
+    // можно, но подключить вместе нельзя: каждый gomobile-AAR несёт свою копию
+    // Go-рантайма, и сборка падает на «Duplicate class go.Seq». Общий модуль
+    // (tools/build-android-cores.md) снимает конфликт и заодно экономит: 18 МБ
+    // против 25 МБ по отдельности.
     //
-    // libbox = sing-box (GPL-3.0): TUN, маршрутизация, DNS и сами протоколы
-    // (VLESS/Reality, Trojan, Shadowsocks, Hysteria2).
-    //
-    // ⚠️ libxray.aar собран, но НЕ подключён: два gomobile-AAR несут по своей
-    // копии Go-рантайма (go.Seq) и валят сборку конфликтом классов. Пока это
-    // не решено объединением обоих ядер в один модуль, панельные профили
-    // «Авто» (готовые Xray-конфиги) на Android недоступны.
-    implementation(files("libs/libbox.aar"))
+    //   libbox  — sing-box (GPL-3.0): TUN, маршрутизация, DNS, hysteria2;
+    //   libXray — Xray-core (MPL-2.0) через обёртку libXray (MIT): панельные
+    //             профили «Авто» с balancers/burstObservatory, которые
+    //             sing-box переварить не может.
+    implementation(files("libs/cores.aar"))
 }
 
 kotlin {

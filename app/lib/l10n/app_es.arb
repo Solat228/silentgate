@@ -569,5 +569,7 @@
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
   "portBusyTitle": "El puerto {port} ya está ocupado por {by}.",
-  "srvTileMenu": "Acciones del servidor"
+  "srvTileMenu": "Acciones del servidor",
+  "supportCopyReport": "Copiar informe",
+  "supportReportCopied": "Informe copiado: péguelo en el chat de soporte"
 }

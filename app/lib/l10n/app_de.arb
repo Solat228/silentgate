@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} MB/s",
   "speedKbPerSec": "{value} KB/s",
   "portBusyTitle": "Port {port} wird bereits von {by} belegt.",
-  "srvTileMenu": "Server-Aktionen"
+  "srvTileMenu": "Server-Aktionen",
+  "supportCopyReport": "Bericht kopieren",
+  "supportReportCopied": "Bericht kopiert — fügen Sie ihn im Support-Chat ein"
 }

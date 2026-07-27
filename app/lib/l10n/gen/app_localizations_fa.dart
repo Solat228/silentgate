@@ -1722,4 +1722,11 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'عملیات سرور';
+
+  @override
+  String get supportCopyReport => 'کپی گزارش';
+
+  @override
+  String get supportReportCopied =>
+      'گزارش کپی شد — آن را در گفتگوی پشتیبانی بچسبانید';
 }

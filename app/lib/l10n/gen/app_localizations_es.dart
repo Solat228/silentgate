@@ -1742,4 +1742,11 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Acciones del servidor';
+
+  @override
+  String get supportCopyReport => 'Copiar informe';
+
+  @override
+  String get supportReportCopied =>
+      'Informe copiado: péguelo en el chat de soporte';
 }

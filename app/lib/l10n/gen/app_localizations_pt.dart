@@ -1743,4 +1743,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Ações do servidor';
+
+  @override
+  String get supportCopyReport => 'Copiar relatório';
+
+  @override
+  String get supportReportCopied =>
+      'Relatório copiado — cole-o no chat de suporte';
 }

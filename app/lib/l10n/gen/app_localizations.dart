@@ -3167,6 +3167,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Действия с сервером'**
   String get srvTileMenu;
+
+  /// No description provided for @supportCopyReport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать отчёт'**
+  String get supportCopyReport;
+
+  /// No description provided for @supportReportCopied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт скопирован — вставьте его в чат поддержки'**
+  String get supportReportCopied;
 }
 
 class _AppLocalizationsDelegate

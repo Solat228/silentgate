@@ -1740,4 +1740,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Server-Aktionen';
+
+  @override
+  String get supportCopyReport => 'Bericht kopieren';
+
+  @override
+  String get supportReportCopied =>
+      'Bericht kopiert — fügen Sie ihn im Support-Chat ein';
 }

@@ -6,6 +6,7 @@ import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/platform_services.dart';
 import '../../core/settings/app_settings.dart';
+import 'support_report_android.dart';
 
 /// Платформенные сервисы Android — **каркас фазы 3**.
 ///
@@ -29,7 +30,7 @@ PlatformServices buildAndroidPlatformServices() => PlatformServices(
       coreVersions: const _AndroidCoreVersions(),
       tunLog: const _AndroidTunLog(),
       privileges: const _AndroidPrivileges(),
-      support: const _AndroidSupport(),
+      support: const AndroidSupportReporter(),
     );
 
 class _AndroidAppCatalog implements AppCatalog {
@@ -107,18 +108,3 @@ class _AndroidPrivileges implements PrivilegeSetup {
   Future<bool> remove() async => false;
 }
 
-class _AndroidSupport implements SupportReporter {
-  const _AndroidSupport();
-
-  // Фаза 6: генератор общий с Windows, отдача — через ACTION_SEND.
-  @override
-  Future<String> generate({
-    required AppSettings settings,
-    required SupportContext ctx,
-  }) async =>
-      throw UnsupportedError(
-          'Отчёт поддержки на Android появится вместе с нативным слоем');
-
-  @override
-  Future<void> reveal(String path) async {}
-}

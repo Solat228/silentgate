@@ -15,22 +15,25 @@ import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.system.OsConstants
-import io.nekohasekai.libbox.CommandServer
-import io.nekohasekai.libbox.CommandServerHandler
-import io.nekohasekai.libbox.ConnectionOwner
-import io.nekohasekai.libbox.InterfaceUpdateListener
-import io.nekohasekai.libbox.Libbox
-import io.nekohasekai.libbox.LocalDNSTransport
-import io.nekohasekai.libbox.NetworkInterface as LibboxNetworkInterface
-import io.nekohasekai.libbox.NetworkInterfaceIterator
-import io.nekohasekai.libbox.OverrideOptions
-import io.nekohasekai.libbox.PlatformInterface
-import io.nekohasekai.libbox.RoutePrefix
-import io.nekohasekai.libbox.SetupOptions
-import io.nekohasekai.libbox.StringIterator
-import io.nekohasekai.libbox.SystemProxyStatus
-import io.nekohasekai.libbox.TunOptions
-import io.nekohasekai.libbox.WIFIState
+import lol.silentgate.cores.libbox.CommandServer
+import lol.silentgate.cores.libbox.CommandServerHandler
+import lol.silentgate.cores.libbox.ConnectionOwner
+import lol.silentgate.cores.libbox.InterfaceUpdateListener
+import lol.silentgate.cores.libbox.Libbox
+import lol.silentgate.cores.libbox.LocalDNSTransport
+import lol.silentgate.cores.libbox.NetworkInterface as LibboxNetworkInterface
+import lol.silentgate.cores.libbox.NetworkInterfaceIterator
+import lol.silentgate.cores.libbox.OverrideOptions
+import lol.silentgate.cores.libbox.PlatformInterface
+import lol.silentgate.cores.libbox.RoutePrefix
+import lol.silentgate.cores.libbox.SetupOptions
+import lol.silentgate.cores.libbox.StringIterator
+import lol.silentgate.cores.libbox.SystemProxyStatus
+import lol.silentgate.cores.libbox.TunOptions
+import lol.silentgate.cores.libbox.WIFIState
+import lol.silentgate.cores.libXray.DialerController
+import lol.silentgate.cores.libXray.LibXray
+import org.json.JSONObject
 import lol.silentgate.MainActivity
 import lol.silentgate.R
 import java.net.Inet6Address
@@ -63,6 +66,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         const val ACTION_STOP = "lol.silentgate.action.STOP"
         const val EXTRA_CONFIG = "config"
 
+        /// Конфиг Xray для панельных профилей «Авто».
+        ///
+        /// Когда он задан, поднимаются ОБА ядра: Xray держит сам профиль
+        /// (balancers/burstObservatory — sing-box такое не разбирает) и слушает
+        /// локальный SOCKS, а sing-box делает туннель и заворачивает трафик
+        /// туда. Ровно как на Windows.
+        const val EXTRA_XRAY_CONFIG = "xray_config"
+
         private const val CHANNEL_ID = "silentgate_vpn"
         private const val NOTIFICATION_ID = 1
 
@@ -86,6 +97,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
+    private var xrayRunning = false
     private var tunFd: ParcelFileDescriptor? = null
     private var interfaceListener: InterfaceUpdateListener? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -108,13 +120,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                startTunnel(config)
+                startTunnel(config, intent.getStringExtra(EXTRA_XRAY_CONFIG))
             }
         }
         return START_STICKY
     }
 
-    private fun startTunnel(configJson: String) {
+    private fun startTunnel(configJson: String, xrayConfigJson: String?) {
         try {
             // Нотификация ДО подъёма ядра: foreground-сервис обязан её показать
             // сразу, иначе система убьёт его за нарушение контракта.
@@ -134,6 +146,11 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // соединений не поднимается.
                 fixAndroidStack = true
             })
+
+            // Панельный профиль «Авто» — это готовый конфиг Xray. Поднимаем
+            // его ПЕРЕД туннелем: sing-box сразу начнёт слать трафик в SOCKS,
+            // и если Xray там ещё не слушает, первые соединения отвалятся.
+            if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
 
             val server = CommandServer(this, this)
             server.start()
@@ -174,6 +191,38 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
+    /// Запускает Xray на локальном SOCKS. Единственный вход в libXray —
+    /// `invoke(json)`, ответ приходит JSON-ом с полем success.
+    private fun startXray(configJson: String) {
+        // protect() для сокетов ядра: без него трафик Xray к VPN-серверу
+        // вернётся в собственный туннель — петля и мёртвая сеть.
+        LibXray.registerDialerController(object : DialerController {
+            override fun protectFd(fd: Long): Boolean = protect(fd.toInt())
+        })
+        val request = JSONObject()
+            .put("apiVersion", 1)
+            .put("method", "runXrayFromJson")
+            .put("payload", JSONObject().put("configJson", configJson))
+            .toString()
+        val answer = JSONObject(LibXray.invoke(request))
+        if (!answer.optBoolean("success", false)) {
+            throw IllegalStateException(
+                "Xray не запустился: ${answer.optString("error", "без причины")}")
+        }
+        xrayRunning = true
+    }
+
+    private fun stopXray() {
+        if (!xrayRunning) return
+        xrayRunning = false
+        runCatching {
+            LibXray.invoke(JSONObject()
+                .put("apiVersion", 1)
+                .put("method", "stopXray")
+                .toString())
+        }
+    }
+
     /// Хвост лога ядра — в него попадают и паники Go, перехваченные
     /// redirectStderr.
     private fun tailOfCoreLog(): String? {
@@ -195,6 +244,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         } catch (_: Throwable) {
         }
         commandServer = null
+        stopXray()
 
         networkCallback?.let {
             try {
@@ -429,7 +479,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     override fun readWIFIState(): WIFIState = WIFIState("", "")
     override fun systemCertificates(): StringIterator = StringArray(emptyList())
     override fun localDNSTransport(): LocalDNSTransport? = null
-    override fun sendNotification(notification: io.nekohasekai.libbox.Notification) {}
+    override fun sendNotification(notification: lol.silentgate.cores.libbox.Notification) {}
 
     // ── CommandServerHandler ──────────────────────────────────────────────────
 
@@ -500,7 +550,7 @@ private fun InterfaceAddress.cidr(): String {
     return "$addr/$networkPrefixLength"
 }
 
-private inline fun io.nekohasekai.libbox.RoutePrefixIterator.forEach(action: (RoutePrefix) -> Unit) {
+private inline fun lol.silentgate.cores.libbox.RoutePrefixIterator.forEach(action: (RoutePrefix) -> Unit) {
     while (hasNext()) action(next())
 }
 

@@ -555,10 +555,22 @@ class _SupportDialogState extends State<_SupportDialog> {
       ),
       actions: [
         if (done)
+          // На Windows отчёт «показывается» — открывается папка с выделенным
+          // файлом. На Android показывать нечего: приватный каталог приложения
+          // недоступен файловым менеджерам, поэтому текст отчёта копируется в
+          // буфер обмена и сразу вставляется в чат поддержки.
           TextButton.icon(
-            icon: const Icon(Icons.folder_open, size: 18),
-            onPressed: () => platform.support.reveal(_path!),
-            label: Text(l.supportShowOnPc),
+            icon: Icon(
+                Platform.isAndroid ? Icons.copy_all : Icons.folder_open,
+                size: 18),
+            onPressed: () async {
+              await platform.support.reveal(_path!);
+              if (Platform.isAndroid && context.mounted) {
+                AppToast.copied(context, message: l.supportReportCopied);
+              }
+            },
+            label: Text(
+                Platform.isAndroid ? l.supportCopyReport : l.supportShowOnPc),
           ),
         if (done)
           TextButton.icon(

@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} MB/秒",
   "speedKbPerSec": "{value} KB/秒",
   "portBusyTitle": "端口 {port} 已被 {by} 占用。",
-  "srvTileMenu": "服务器操作"
+  "srvTileMenu": "服务器操作",
+  "supportCopyReport": "复制报告",
+  "supportReportCopied": "报告已复制 — 请粘贴到支持聊天中"
 }

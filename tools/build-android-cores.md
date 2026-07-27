@@ -71,10 +71,59 @@ gomobile bind \
 reference to net.zoneCache`: пакет лезет во внутренности `net` через
 `//go:linkname`, а современный Go это блокирует.
 
+## Оба ядра — ОДНИМ AAR (обязательно)
+
+Раздельные `libbox.aar` и `libxray.aar` собираются, но **подключить их вместе
+нельзя**: каждый gomobile-AAR несёт свою копию Go-рантайма, и сборка падает на
+`Duplicate class go.Seq found in modules libbox.aar and libxray.aar`. Решение —
+один Go-модуль, тянущий оба пакета, и одна команда `gomobile bind`.
+
+```bash
+mkdir cores && cd cores
+cat > go.mod <<'EOF'
+module silentgate/cores
+go 1.26
+EOF
+cat > cores.go <<'EOF'
+package cores
+
+import (
+	_ "github.com/sagernet/sing-box/experimental/libbox"
+	_ "github.com/xtls/libxray"
+)
+EOF
+# Форк SagerNet генерирует код, импортирующий СВОЙ bind-пакет; без явной
+# зависимости gobind падает с «no Go package in github.com/sagernet/gomobile/bind».
+cat > bind_dep.go <<'EOF'
+//go:build tools
+package cores
+import _ "github.com/sagernet/gomobile/bind"
+EOF
+go mod edit -require=github.com/sagernet/sing-box@v1.13.14
+go mod edit -require=github.com/sagernet/gomobile@v0.1.12
+go mod edit -require=github.com/xtls/libxray@v0.0.0
+go mod edit -replace=github.com/xtls/libxray=<путь к клону libXray>
+go mod edit -replace=github.com/sagernet/sing-box=<путь к клону sing-box>
+go mod tidy      # тянет и tailscale-зависимости; сеть должна быть терпеливой
+
+export PATH=$GOPATH/bin:$GOROOT/bin:$PATH      # форк SagerNet
+gomobile bind   -target=android/arm64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
+```
+
+Результат — `cores.aar` ~18 МБ (против 13+12 по отдельности: рантайм общий).
+Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate.cores.libXray`,
+нативная библиотека одна — `libcores.so`.
+
+Проверка, что склейка удалась:
+
+```bash
+unzip -p cores.aar classes.jar > /tmp/c.jar && unzip -l /tmp/c.jar | grep -c "go/Seq.class"   # ровно 1
+```
+
 ## Куда класть
 
-`engine/android/*.aar` (репозиторный слот, gitignored) и
-`app/android/app/libs/` (откуда их берёт Gradle).
+`engine/android/cores.aar` (репозиторный слот, gitignored) и
+`app/android/app/libs/cores.aar` (откуда его берёт Gradle).
 
 ## Выясненное API (версии 1.13.14 / libXray HEAD)
 

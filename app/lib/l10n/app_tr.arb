@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} MB/sn",
   "speedKbPerSec": "{value} KB/sn",
   "portBusyTitle": "{port} numaralı bağlantı noktası zaten {by} tarafından kullanılıyor.",
-  "srvTileMenu": "Sunucu işlemleri"
+  "srvTileMenu": "Sunucu işlemleri",
+  "supportCopyReport": "Raporu kopyala",
+  "supportReportCopied": "Rapor kopyalandı — destek sohbetine yapıştırın"
 }

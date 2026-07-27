@@ -1723,4 +1723,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Server actions';
+
+  @override
+  String get supportCopyReport => 'Copy report';
+
+  @override
+  String get supportReportCopied =>
+      'Report copied — paste it into the support chat';
 }

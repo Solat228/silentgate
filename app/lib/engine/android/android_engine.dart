@@ -20,16 +20,17 @@ import '../engine_base.dart';
 /// `PlatformInterface.openTun`, сервис строит `VpnService.Builder` и
 /// возвращает fd. Подробности — `tools/build-android-cores.md`.
 ///
-/// ## Чем отличается от Windows
+/// ## Как выбирается ядро
 ///
-/// На Windows ядер два: sing-box держит туннель и заворачивает трафик в
-/// локальный SOCKS, где его принимает отдельный процесс Xray. На Android так
-/// нельзя — оба ядра там gomobile-библиотеки, а две такие библиотеки в одном
-/// приложении конфликтуют общим Go-рантаймом (`go.Seq`). Поэтому ядро одно:
-/// sing-box держит и туннель, и сам прокси-outbound, промежуточного SOCKS нет.
+/// Ровно как на Windows — через `configFor` в базе: полный конфиг (правка
+/// пользователя или панельный профиль «Авто» с `balancers`/`burstObservatory`)
+/// поднимает Xray, а туннель заворачивает трафик в его локальный SOCKS.
+/// Обычный сервер sing-box обслуживает сам, и тогда промежуточный SOCKS не
+/// нужен: outbound встраивается прямо в конфиг туннеля.
 ///
-/// Плата за это — панельные профили «Авто» (готовые Xray-конфиги с
-/// `balancers`/`burstObservatory`) на Android пока не работают.
+/// Оба ядра живут в ОДНОМ AAR: раздельные gomobile-библиотеки конфликтуют
+/// общим Go-рантаймом (`go.Seq`), и собрать их вместе иначе нельзя
+/// (`tools/build-android-cores.md`).
 class AndroidEngine extends VpnEngineBase {
   AndroidEngine({super.ports}) {
     _events.receiveBroadcastStream().listen(_onNativeEvent);
@@ -53,38 +54,38 @@ class AndroidEngine extends VpnEngineBase {
     setStatus(VpnConnectionState.connecting);
 
     try {
-      final unsupported =
-          session.servers.where((s) => !SingboxOutboundFactory.supports(s));
-      if (unsupported.isNotEmpty) {
-        // Панельные профили «Авто» — это готовые Xray-конфиги с балансировщиком;
-        // sing-box их не разберёт. Честно говорим об этом, а не подключаемся
-        // «куда-нибудь».
-        await cleanup();
-        setStatus(
-          VpnConnectionState.error,
-          message: 'Профили «Авто» от панели на Android пока не поддерживаются: '
-              'они собраны для Xray. Выберите обычный сервер.',
-        );
-        return;
-      }
+      // Ядро выбирается ровно так же, как на Windows (configFor в базе):
+      // полный конфиг (правка пользователя или панельный профиль «Авто») —
+      // всегда Xray; обычный сервер sing-box поднимает сам.
+      final cfg = configFor(session.servers.first, session.options);
+      final viaXray = cfg.core == ProxyCore.xray &&
+          !SingboxOutboundFactory.supports(session.servers.first);
 
-      // На Android ядро одно: sing-box держит и туннель, и сам прокси-outbound.
-      // Промежуточный SOCKS не нужен — это единственное отличие от Windows,
-      // и вызвано оно тем, что две gomobile-библиотеки в одном приложении
-      // конфликтуют общим Go-рантаймом.
+      final serverIps = await resolveServerIps(session.servers);
+      if (aborted()) return;
+
+      // Когда сервер поднимает Xray, туннель заворачивает трафик в его
+      // локальный SOCKS — как на Windows. Когда справляется sing-box, лишний
+      // переход не нужен, и outbound встраивается прямо в конфиг туннеля.
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
         options: TunOptions.fromSettings(
           session.options.settings,
-          serverIps: await resolveServerIps(session.servers),
+          serverIps: serverIps,
+          android: true,
         ),
-        proxyOutbound: SingboxOutboundFactory.build(session.servers.first),
+        proxyOutbound: viaXray
+            ? null
+            : SingboxOutboundFactory.build(session.servers.first),
       ).buildJson(session.options.split);
 
       if (aborted()) return;
 
       _starting = true;
-      await _channel.invokeMethod<void>('start', {'config': tunJson});
+      await _channel.invokeMethod<void>('start', {
+        'config': tunJson,
+        if (viaXray) 'xray_config': cfg.json,
+      });
       _starting = false;
 
       // Пользователь мог отключиться, пока шло согласие на VPN.

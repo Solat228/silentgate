@@ -1718,4 +1718,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'إجراءات الخادم';
+
+  @override
+  String get supportCopyReport => 'نسخ التقرير';
+
+  @override
+  String get supportReportCopied => 'تم نسخ التقرير — الصقه في محادثة الدعم';
 }

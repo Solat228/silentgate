@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} ميغابايت/ث",
   "speedKbPerSec": "{value} كيلوبايت/ث",
   "portBusyTitle": "المنفذ {port} مستخدم بالفعل بواسطة {by}.",
-  "srvTileMenu": "إجراءات الخادم"
+  "srvTileMenu": "إجراءات الخادم",
+  "supportCopyReport": "نسخ التقرير",
+  "supportReportCopied": "تم نسخ التقرير — الصقه في محادثة الدعم"
 }

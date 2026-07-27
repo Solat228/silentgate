@@ -508,5 +508,7 @@
   "speedMbPerSec": "{value} مگابایت/ثانیه",
   "speedKbPerSec": "{value} کیلوبایت/ثانیه",
   "portBusyTitle": "پورت {port} از قبل توسط {by} اشغال شده است.",
-  "srvTileMenu": "عملیات سرور"
+  "srvTileMenu": "عملیات سرور",
+  "supportCopyReport": "کپی گزارش",
+  "supportReportCopied": "گزارش کپی شد — آن را در گفتگوی پشتیبانی بچسبانید"
 }

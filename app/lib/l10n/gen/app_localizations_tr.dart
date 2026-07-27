@@ -1729,4 +1729,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get srvTileMenu => 'Sunucu işlemleri';
+
+  @override
+  String get supportCopyReport => 'Raporu kopyala';
+
+  @override
+  String get supportReportCopied =>
+      'Rapor kopyalandı — destek sohbetine yapıştırın';
 }
