@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'android/android_engine.dart';
 import 'vpn_engine.dart';
 import 'windows/windows_engine.dart';
 
@@ -9,13 +10,14 @@ import 'windows/windows_engine.dart';
 /// доступность библиотек (`dart.library.io`), а не операционную систему,
 /// поэтому развести Windows и Android на этапе компиляции ими нельзя.
 ///
-/// Android-ветка появится в фазе 3 (`android/android_engine.dart`) — до тех пор
-/// там сознательно падаем с внятным текстом, а не отдаём заглушку: молчаливая
-/// заглушка выглядела бы как «подключение просто не работает».
+/// Android-движок пока каркасный: общая половина работает, датапуть (ядра +
+/// `VpnService`) — задачи фаз 2–3. Подключение там честно сообщает, что не
+/// реализовано, вместо молчаливого «Подключено» без туннеля.
 VpnEngine createVpnEngine() {
   if (Platform.isWindows) return WindowsEngine();
+  if (Platform.isAndroid) return AndroidEngine();
   throw UnsupportedError(
     'Движок для ${Platform.operatingSystem} ещё не реализован. '
-    'Android — этап M7, см. docs/platforms/ANDROID.md.',
+    'Порядок платформ — docs/ROADMAP.md.',
   );
 }

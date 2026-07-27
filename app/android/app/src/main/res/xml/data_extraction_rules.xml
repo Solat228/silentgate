@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Данные приложения НЕ уезжают ни в облачный бэкап, ни на новое устройство.
+
+  Причина: subscriptions.json содержит ссылку подписки — фактически пароль от
+  VPN. По умолчанию на Android бэкап ВКЛЮЧЁН, и одного android:allowBackup
+  на targetSdk 31+ недостаточно: перенос между устройствами управляется
+  отдельной секцией (задача 73а плана docs/platforms/ANDROID.md).
+
+  Осознанная плата: настройки не переносятся при смене устройства. Явный
+  экспорт/импорт файла — в плане будущих апдейтов (A10).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

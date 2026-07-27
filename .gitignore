@@ -21,6 +21,7 @@ app/pubspec.lock
 
 # Flutter platform build artefacts
 app/android/.gradle/
+app/android/build/
 app/android/app/debug/
 app/android/app/profile/
 app/android/app/release/
@@ -64,3 +65,12 @@ docs/superpowers/
 
 # ── Прочее ───────────────────────────────────────────────────────────
 *.log
+
+# Android
+app/android/local.properties
+app/android/key.properties
+app/android/.gradle/
+app/android/build/
+app/android/hs_err_pid*.log
+app/android/*.iml
+release-android/
