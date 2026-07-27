@@ -74,3 +74,5 @@ app/android/build/
 app/android/hs_err_pid*.log
 app/android/*.iml
 release-android/
+engine/android/*.aar
+app/android/app/libs/

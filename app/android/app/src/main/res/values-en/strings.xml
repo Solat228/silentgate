@@ -3,4 +3,11 @@
     <!-- Имя в лаунчере. Бренд не переводится, но файл нужен для каждой локали,
          иначе на некоторых устройствах подпись откатывается к дефолту. -->
     <string name="app_name">SilentGate</string>
+    <!-- Строки нативного слоя: нотификация сервиса живёт в Kotlin и до ARB
+         не дотягивается, поэтому переводится здесь. -->
+    <string name="vpn_channel_name">VPN connection</string>
+    <string name="vpn_connecting">Connecting…</string>
+    <string name="vpn_connected">Connected</string>
+    <string name="vpn_disconnect">Disconnect</string>
+    <string name="vpn_revoked">The connection was stopped by the system</string>
 </resources>

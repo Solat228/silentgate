@@ -2,18 +2,41 @@ import '../models/vpn_server.dart';
 
 /// Строит outbound sing-box из [VpnServer].
 ///
-/// Нужен ровно для протоколов, которых нет в Xray — сейчас это **hysteria2**
-/// (QUIC + собственный congestion control). Xray его не поддерживает и не
-/// планирует, поэтому такие серверы поднимает sing-box, который уже лежит рядом
-/// ради TUN. Лицензия sing-box (GPL) допускает только запуск отдельным
-/// процессом — так он и запускается, без линковки (см. CLAUDE.md).
+/// **hysteria2** здесь обязателен: Xray этого протокола не умеет (QUIC +
+/// собственный congestion control), поэтому такие серверы всегда поднимает
+/// sing-box.
+///
+/// **vless/trojan/shadowsocks** sing-box тоже умеет, и это нужно на Android:
+/// там оба ядра — gomobile-библиотеки, а две такие библиотеки в одном
+/// приложении конфликтуют общим Go-рантаймом (`go.Seq`). Поэтому мобильная
+/// сборка обходится одним ядром, и обычные серверы идут через него же.
+/// На Windows ничего не меняется: там по-прежнему Xray, а sing-box отвечает за
+/// TUN и hysteria2.
+///
+/// ⚠️ Чего sing-box заменить НЕ может — панельные профили «Авто»: это готовые
+/// Xray-конфиги с `balancers`/`burstObservatory`, и разобрать их он не в
+/// состоянии.
 class SingboxOutboundFactory {
   /// Умеем ли мы построить outbound для этого сервера.
-  static bool supports(VpnServer s) => s.protocol == 'hysteria2';
+  static bool supports(VpnServer s) => const {
+        'hysteria2',
+        'vless',
+        'trojan',
+        'shadowsocks',
+      }.contains(s.protocol);
 
   static Map<String, dynamic> build(VpnServer s, {String tag = 'proxy'}) {
-    if (s.protocol != 'hysteria2') {
-      throw ArgumentError('sing-box-outbound не умеет протокол ${s.protocol}');
+    switch (s.protocol) {
+      case 'vless':
+        return _vless(s, tag);
+      case 'trojan':
+        return _trojan(s, tag);
+      case 'shadowsocks':
+        return _shadowsocks(s, tag);
+      case 'hysteria2':
+        break;
+      default:
+        throw ArgumentError('sing-box-outbound не умеет протокол ${s.protocol}');
     }
 
     final ports = _serverPorts(s.hopPorts);
@@ -37,6 +60,116 @@ class SingboxOutboundFactory {
       },
     };
     return out;
+  }
+
+  // ── VLESS / Trojan / Shadowsocks ────────────────────────────────────────────
+
+  static Map<String, dynamic> _vless(VpnServer s, String tag) => {
+        'type': 'vless',
+        'tag': tag,
+        'server': s.address,
+        'server_port': s.port,
+        'uuid': s.id,
+        if ((s.flow ?? '').isNotEmpty) 'flow': s.flow,
+        if ((s.encryption ?? '').isNotEmpty && s.encryption != 'none')
+          'packet_encoding': s.encryption,
+        ..._tlsBlock(s),
+        ..._transportBlock(s),
+      };
+
+  static Map<String, dynamic> _trojan(VpnServer s, String tag) => {
+        'type': 'trojan',
+        'tag': tag,
+        'server': s.address,
+        'server_port': s.port,
+        'password': s.id,
+        ..._tlsBlock(s),
+        ..._transportBlock(s),
+      };
+
+  static Map<String, dynamic> _shadowsocks(VpnServer s, String tag) => {
+        'type': 'shadowsocks',
+        'tag': tag,
+        'server': s.address,
+        'server_port': s.port,
+        'method': (s.encryption ?? '').isEmpty ? 'aes-128-gcm' : s.encryption,
+        'password': s.id,
+      };
+
+  /// TLS-блок: обычный TLS, Reality и подмена отпечатка через uTLS.
+  ///
+  /// Пустые строки НЕ пишем: Go отвергает `alpn: [""]` («invalid NextProtos»),
+  /// и ровно на этом уже спотыкались в редакторе сервера.
+  static Map<String, dynamic> _tlsBlock(VpnServer s) {
+    final security = (s.security ?? '').toLowerCase();
+    if (security != 'tls' && security != 'reality') return const {};
+
+    final alpn = (s.alpn ?? '')
+        .split(',')
+        .map((a) => a.trim())
+        .where((a) => a.isNotEmpty)
+        .toList();
+
+    return {
+      'tls': {
+        'enabled': true,
+        if ((s.sni ?? '').isNotEmpty) 'server_name': s.sni,
+        if (s.allowInsecure) 'insecure': true,
+        if (alpn.isNotEmpty) 'alpn': alpn,
+        if ((s.fingerprint ?? '').isNotEmpty)
+          'utls': {'enabled': true, 'fingerprint': s.fingerprint},
+        if (security == 'reality')
+          'reality': {
+            'enabled': true,
+            if ((s.publicKey ?? '').isNotEmpty) 'public_key': s.publicKey,
+            if ((s.shortId ?? '').isNotEmpty) 'short_id': s.shortId,
+          },
+      },
+    };
+  }
+
+  /// Транспорт. `tcp` — это отсутствие секции: у sing-box нет такого типа,
+  /// и явное указание валит конфиг целиком.
+  static Map<String, dynamic> _transportBlock(VpnServer s) {
+    final path = (s.path ?? '');
+    final host = (s.host ?? '');
+    switch (s.network) {
+      case 'ws':
+        return {
+          'transport': {
+            'type': 'ws',
+            if (path.isNotEmpty) 'path': path,
+            if (host.isNotEmpty) 'headers': {'Host': host},
+          },
+        };
+      case 'grpc':
+        return {
+          'transport': {
+            'type': 'grpc',
+            // В share-ссылке имя grpc-сервиса приезжает в поле path.
+            if (path.isNotEmpty) 'service_name': path.replaceFirst('/', ''),
+          },
+        };
+      case 'http':
+      case 'h2':
+        return {
+          'transport': {
+            'type': 'http',
+            if (path.isNotEmpty) 'path': path,
+            if (host.isNotEmpty) 'host': [host],
+          },
+        };
+      case 'httpupgrade':
+        return {
+          'transport': {
+            'type': 'httpupgrade',
+            if (path.isNotEmpty) 'path': path,
+            if (host.isNotEmpty) 'host': host,
+          },
+        };
+      default:
+        return const {};
+    }
   }
 
   /// Блок обфускации — или null, если её нет.

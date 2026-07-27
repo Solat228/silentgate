@@ -105,9 +105,19 @@ class SingboxConfigBuilder {
   final int xraySocksPort;
   final TunOptions options;
 
+  /// Готовый прокси-outbound вместо перехода в локальный SOCKS.
+  ///
+  /// Windows: `null` — туннель заворачивает трафик в SOCKS, где его принимает
+  /// отдельный процесс Xray (или sing-box для hysteria2).
+  /// Android: сюда кладётся outbound сервера, и ядро одно — оно держит и
+  /// туннель, и само соединение. Причина в том, что две gomobile-библиотеки
+  /// в одном приложении конфликтуют общим Go-рантаймом.
+  final Map<String, dynamic>? proxyOutbound;
+
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.options = const TunOptions(),
+    this.proxyOutbound,
   });
 
   String buildJson(SplitTunnelConfig split) =>
@@ -171,13 +181,17 @@ class SingboxConfigBuilder {
         },
       ],
       'outbounds': [
-        {
-          'type': 'socks',
-          'tag': 'proxy',
-          'server': '127.0.0.1',
-          'server_port': xraySocksPort,
-          'version': '5',
-        },
+        // Тег 'proxy' обязан сохраниться: на него ссылаются ВСЕ правила
+        // маршрутизации ниже, включая noRealIp и реврайт direct→VPN.
+        proxyOutbound != null
+            ? {...proxyOutbound!, 'tag': 'proxy'}
+            : {
+                'type': 'socks',
+                'tag': 'proxy',
+                'server': '127.0.0.1',
+                'server_port': xraySocksPort,
+                'version': '5',
+              },
         {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
