@@ -230,7 +230,7 @@ class SplitTunnelScreen extends StatelessWidget {
   }
 
   /// Упорядочивает сайты для показа деревом: группируем по «корневому» домену
-  /// (`nalog.ru`), внутри группы корень идёт первым, поддомены — под ним с
+  /// (`example.com`), внутри группы корень идёт первым, поддомены — под ним с
   /// отступом (глубина = число «лишних» уровней относительно корня).
   static List<({SiteRule site, int depth})> _sortedSites(List<SiteRule> sites) {
     final ordered = [...sites];
@@ -591,7 +591,7 @@ class _AddSiteFieldState extends State<_AddSiteField> {
 
   void _add() {
     final l = AppLocalizations.of(context);
-    // https://www.NALOG.ru:8443/lk → домен nalog.ru, порт 8443.
+    // https://www.EXAMPLE.com:8443/lk → домен example.com, порт 8443.
     final domain = normalizeDomain(_controller.text);
     if (domain.isEmpty) {
       setState(() => _error = l.splitEnterDomain);

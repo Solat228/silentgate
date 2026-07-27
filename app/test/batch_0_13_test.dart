@@ -57,12 +57,12 @@ void main() {
 
   group('SiteFaviconService.rootDomain (#3.4)', () {
     test('простой домен возвращается как есть', () {
-      expect(SiteFaviconService.rootDomain('nalog.ru'), 'nalog.ru');
+      expect(SiteFaviconService.rootDomain('example.com'), 'example.com');
       expect(SiteFaviconService.rootDomain('steam.com'), 'steam.com');
     });
 
     test('поддомен сводится к корню', () {
-      expect(SiteFaviconService.rootDomain('www.nalog.ru'), 'nalog.ru');
+      expect(SiteFaviconService.rootDomain('www.example.com'), 'example.com');
       expect(SiteFaviconService.rootDomain('a.b.example.com'), 'example.com');
     });
 

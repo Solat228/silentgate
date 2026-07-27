@@ -607,25 +607,25 @@ void main() {
     });
 
     test('normalizeDomain убирает схему/путь/www/порт', () {
-      expect(normalizeDomain('https://www.NALOG.ru/lk?x=1'), 'nalog.ru');
+      expect(normalizeDomain('https://www.EXAMPLE.com/lk?x=1'), 'example.com');
       expect(normalizeDomain('  HTTP://Steam.com/ '), 'steam.com');
-      expect(normalizeDomain('lknpd.nalog.ru'), 'lknpd.nalog.ru');
+      expect(normalizeDomain('sub.example.com'), 'sub.example.com');
       // Порт теперь живёт отдельным полем — из домена он убирается.
       expect(normalizeDomain('example.com:8443/path'), 'example.com');
     });
 
     test('extractPort достаёт порт из строки, валидирует диапазон', () {
       expect(extractPort('example.com:8443/path'), 8443);
-      expect(extractPort('https://nalog.ru:443'), 443);
-      expect(extractPort('nalog.ru'), isNull); // порта нет
-      expect(extractPort('nalog.ru:0'), isNull); // вне диапазона
-      expect(extractPort('nalog.ru:70000'), isNull); // вне диапазона
-      expect(extractPort('nalog.ru:abc'), isNull); // не число
+      expect(extractPort('https://example.com:443'), 443);
+      expect(extractPort('example.com'), isNull); // порта нет
+      expect(extractPort('example.com:0'), isNull); // вне диапазона
+      expect(extractPort('example.com:70000'), isNull); // вне диапазона
+      expect(extractPort('example.com:abc'), isNull); // не число
     });
 
     test('baseDomain определяет корень для дерева поддоменов', () {
-      expect(baseDomain('lknpd.nalog.ru'), 'nalog.ru');
-      expect(baseDomain('nalog.ru'), 'nalog.ru');
+      expect(baseDomain('sub.example.com'), 'example.com');
+      expect(baseDomain('example.com'), 'example.com');
       expect(baseDomain('a.b.c.example.com'), 'example.com');
       // Двухуровневый публичный суффикс: корень — три метки.
       expect(baseDomain('www.bbc.co.uk'), 'bbc.co.uk');
@@ -743,7 +743,7 @@ void main() {
       ).buildMap(const SplitTunnelConfig(
         mode: SplitMode.exceptSelected,
         apps: [AppRule(r'C:\a.exe', byName: true, action: AppAction.direct)],
-        sites: [SiteRule('nalog.ru', action: AppAction.direct)],
+        sites: [SiteRule('example.com', action: AppAction.direct)],
       ));
       final r = rules(cfg);
       // Правило приложения «Прямо» теперь → proxy.
@@ -755,7 +755,7 @@ void main() {
       // Сайт «Прямо» → proxy.
       expect(
           r.any((x) =>
-              (x['domain_suffix'] as List?)?.contains('nalog.ru') == true &&
+              (x['domain_suffix'] as List?)?.contains('example.com') == true &&
               x['outbound'] == 'proxy'),
           isTrue);
       // Инфраструктурный direct (IP сервера) остаётся direct.

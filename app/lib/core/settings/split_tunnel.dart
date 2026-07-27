@@ -92,7 +92,7 @@ class AppRule {
 
 /// Нормализует домен, введённый пользователем: убирает схему (`https://`),
 /// путь/параметры, `www.`, ПОРТ (он живёт отдельным полем) и приводит к нижнему
-/// регистру. `https://www.NALOG.ru:8443/lk?x=1` → `nalog.ru`.
+/// регистру. `https://www.EXAMPLE.com:8443/lk?x=1` → `example.com`.
 String normalizeDomain(String input) {
   var d = input.trim().toLowerCase();
   d = d.replaceFirst(RegExp(r'^[a-z][a-z0-9+.\-]*://'), ''); // схема
@@ -102,7 +102,7 @@ String normalizeDomain(String input) {
   return d;
 }
 
-/// Достаёт порт из строки вида `nalog.ru:8443` (или полного URL). null — если
+/// Достаёт порт из строки вида `example.com:8443` (или полного URL). null — если
 /// порт не указан или не в диапазоне 1..65535.
 int? extractPort(String input) {
   var d = input.trim().toLowerCase();
@@ -125,7 +125,7 @@ const _twoLevelSuffixes = <String>{
 };
 
 /// «Корневой» регистрируемый домен для группировки поддоменов в дерево.
-/// `lknpd.nalog.ru` → `nalog.ru`; `www.bbc.co.uk` → `bbc.co.uk`.
+/// `sub.example.com` → `example.com`; `www.bbc.co.uk` → `bbc.co.uk`.
 String baseDomain(String domain) {
   final parts = domain.split('.').where((p) => p.isNotEmpty).toList();
   if (parts.length <= 2) return domain;
@@ -144,7 +144,7 @@ class SiteRule {
 
   const SiteRule(this.domain, {this.port, this.action = AppAction.direct});
 
-  /// Отображаемая метка: домен и, если задан, порт (`nalog.ru:8443`).
+  /// Отображаемая метка: домен и, если задан, порт (`example.com:8443`).
   String get label => port == null ? domain : '$domain:$port';
 
   SiteRule copyWith({AppAction? action, int? port, bool clearPort = false}) =>

@@ -1,47 +1,607 @@
-# Android — план и фичи (этап M7)
+# Android — план порта SilentGate (этап M7)
 
-Тот же Flutter-UI, что и на Windows. Отличие — движок: ядро крутится **in-process** внутри
-`VpnService` через самосборный gomobile-AAR.
+> Документ переписан 27.07.2026 под **фактический код версии 1.0.0**. Прежняя редакция была
+> написана до v0.8–0.13 и не знала про два ядра, панельные профили, kill switch, noRealIp,
+> мульти-подписки и сервис-чипы — исполнение того плана дало бы клиент без паритета фич.
+> Обоснование архитектурных решений — [ANDROID_DESIGN.md](ANDROID_DESIGN.md).
 
----
-
-## Стек
-
-- UI: общий Flutter-код (`app/lib`), плюс нативный слой на **Kotlin** в `app/android`.
-- Ядро: **Xray-core** через самосборную обёртку **libXray (MIT)** → `libxray.aar` (`gomobile bind`).
-  (Не AndroidLibXrayLite — там LGPL и обязательства релинковки.)
-- TUN: fd от `VpnService.establish()` → native tun-inbound Xray (`xray.tun.fd`) **или** `hev-socks5-tunnel` (MIT, JNI).
-- Мост Dart ↔ Kotlin: `MethodChannel` (connect/disconnect) + `EventChannel` (статус/трафик).
-
-Референс архитектуры (код НЕ копировать — GPL): v2rayNG, NekoBox.
+**Цель этапа:** Android-клиент с **паритетом 1-в-1** по функциям и визуальному языку с
+Windows-версией 1.0.0, при мобильной (адаптированной) вёрстке. Общий Dart-код — один и тот же,
+без второй копии логики.
 
 ---
 
-## Задачи
+## 0. Точка отсчёта: что уже есть
 
-- [ ] Установить Android SDK/NDK; `flutter create --platforms=android .` в `app/`.
-- [ ] Сборочный конвейер обёртки: `tools/build-libxray-android` (gomobile, Go + NDK) → `app/android/app/libs/libxray.aar`.
-- [ ] `SilentGateVpnService : VpnService` (Kotlin), процесс `:vpn`:
-  - `Builder`: `addAddress`, `addRoute 0.0.0.0/0`, `setMtu`, `addDnsServer`, `addDisallowedApplication(self)`.
-  - `establish()` → TUN fd → передать в ядро.
-  - foreground-нотификация со статусом и трафиком.
-- [ ] `MethodChannel`-мост: `connect(configJson)`, `disconnect()`, `queryStats()`.
-- [ ] `EngineFactory`: ветка Android → `AndroidEngine` (Dart-обёртка над каналом).
-- [ ] Реализовать `VpnEngine` для Android (`app/lib/engine/android/`).
-- [ ] Экран per-app split-tunnel (список установленных приложений).
-- [ ] Запрос разрешения VPN (`VpnService.prepare`) и обработка отказа.
+| | Windows 1.0.0 |
+|---|---|
+| Dart-файлов в `app/lib` | 136 |
+| Строк ключей локализации | 489 × 10 языков (база — ru) |
+| Автотестов | 181 объявление в `app/test` → **≈213 кейсов** при прогоне (`l10n_test` разворачивается по локалям), плюс 3 `diag`-теста по тегу |
+| Ядра | Xray-core (MPL) + sing-box (GPL, отдельным процессом, ради TUN и hysteria2) |
+| Захват трафика | системный прокси WinINET (дефолт) **или** TUN (sing-box + wintun) |
+| Размер поставки | ~130 МБ (ядра 66 МБ + geo 29 МБ + Flutter) |
+
+**Оценка переносимости** (по результатам сплошного картирования кодовой базы):
+
+Замер по строкам `app/lib` без сгенерированного `l10n/gen` (база — 18 612 строк):
+
+| Категория | Доля кода | Что это |
+|---|---|---|
+| **Portable** — едет как есть | ~55 % | `core/models`, `core/settings`, `core/parser`, `core/xray/*`, `core/net`, `core/util`, `core/update`, `core/probe/*`, `core/subscription/*`, `core/i18n/*`, `data/*`, `state/*`, `ui/widgets/*` (кроме `app_icon.dart` — у него Windows-импорт) |
+| **Adapt** — правки в 1–2 местах | ~14 % | `AppPaths`, `AppInfo`, `DeviceHeaders`, `NetworkWatcher`, `PortCheck`, `AppLog`, `singbox_config_builder` (правила процессов → пакетов) |
+| **Replace** — новая реализация под тем же интерфейсом | ~12 % | движок, подъём TUN, харнесс проб, иконки приложений, url-схемы, отчёт поддержки |
+| **Rework** — логика та же, вёрстка новая | ~15 % | 11 из 12 экранов `ui/*.dart`, которым Фаза 6 пишет мобильный вариант в `ui/mobile/` |
+| **Drop** — не нужно на Android | ~3 % | трей/окно, системный прокси, элевация/UAC, задача Планировщика, single-instance, `--cleanup`, `NetworkRecovery`, сканер помех, автоподбор стека TUN |
+
+Отдельно про `core/singbox/singbox_config_builder.dart` (351 строка — сердце TUN-режима): при
+выбранной архитектуре (§1.1) он переиспользуется на **~85 %**. Без изменений едут вся DNS-секция
+(`dns-proxy` по TCP через прокси + `dns-local` + `final: dns-proxy` — фикс утечки 0.11.1), весь
+выстраданный **порядок правил** (`sniff` → `hijack-dns` → IP серверов → БЛОК → `bypassLan` →
+`excludeCidrs` → домены → приложения → `final`, включая фиксы #3 и #3.5), санитайзеры
+(`_validExcludeCidrs`, `_dnsHost`, `_asCidr`), доменные правила с портами и логика `noRealIp`.
+Меняются: `process_name`/`process_path_regex` → `package_name`; исчезает второй эшелон анти-петли
+(его заменяет `protect(fd)`); tun-inbound строится из `TunOptions` через `VpnService.Builder`
+вместо `interface_name`/`auto_route`/`strict_route`/`stack`.
+
+Главный вывод: **порт — это не переписывание, а вычленение платформенного слоя плюс новая вёрстка.**
+~83 % кода платформо-независимы по логике, но платформо-независимость ≠ переносимость интерфейса:
+работа состоит из трёх слагаемых — (1) разорвать прямые импорты `engine/windows/*` из общего кода,
+(2) написать вторую реализацию для четырёх абстракций, (3) построить дерево `ui/mobile/` примерно
+для четверти кодовой базы (Фаза 6).
 
 ---
 
-## Дистрибуция
+## 1. Решения, которые нужно принять ДО первой строки кода
 
-- APK через Telegram-бота, сайт, GitHub Releases (без цензуры магазина).
-- Позже: **RuStore** (для РФ) и Google Play (Play жёстче к VPN, но возможно).
-- Подпись: собственный keystore (`app/android/key.properties`, не коммитить).
+### 1.0 Лицензия: вопрос закрыт — проект под GPL-3.0
 
-## Особенности
+Ранее в репозитории виделось противоречие («коммерческий закрытый код» в `CLAUDE.md` и
+`STACK_DECISION.md` против «код открыт под GPL-3.0» в релизе 1.0.0). **Оно мнимое.** Проверено:
 
-- Ядро в отдельном процессе `:vpn` — краш ядра не роняет UI.
-- Автозапуск VPN при старте системы (опция) — `BOOT_COMPLETED` + `VpnService`.
-- Always-on VPN совместимость (системная настройка Android).
-- Батарея/Doze: foreground-сервис + корректная обработка сна.
+- в корне лежит настоящий файл `LICENSE` с полным текстом **GNU GPL-3.0** (добавлен 26.07.2026,
+  в один день с релизом 1.0.0);
+- `README.md` §Лицензия: «Клиентское приложение SilentGate распространяется под GNU GPL-3.0.
+  Форки и производные обязаны оставаться открытыми»;
+- `CHANGELOG.md` 1.0.0 говорит то же.
+
+Устарели именно `CLAUDE.md` и `STACK_DECISION.md` — они написаны до смены лицензии
+(оба поправлены 27.07.2026).
+
+**Что это даёт Android-порту — снимается главное ограничение.** Линковать sing-box (`libbox`)
+теперь законно, а значит доступен вариант, который раньше пришлось бы отвергнуть:
+
+| | Было (в рамке «закрытый код») | Стало (GPL-3.0) |
+|---|---|---|
+| sing-box | только отдельным процессом | **можно линковать**, включая `libbox` на мобильных |
+| TUN-датапуть | `hev-socks5-tunnel` (MIT) + своя JNI-обвязка | `libbox` — штатный приём fd от `VpnService` |
+| Блокировка приложений | недостижима, нужна деградация фичи | **работает** (`package_name` + `action: reject`) |
+| DNS-политика, `noRealIp`, `excludeCidrs` | пришлось бы переизобретать в Xray | переносятся вместе с генератором конфига |
+| Доля переиспользования `singbox_config_builder.dart` | ~0 % | **~85 %** |
+
+**Обязанности взамен** (см. §6.1): производные под GPL-3.0; исходники ровно того тега, из которого
+собран APK, доступны из того же места без платы (§6d); тексты лицензий и атрибуция в поставке.
+Требование §6 «Installation Information» (анти-тивоизация) к приложению **не применяется** — оно
+касается передачи потребительских *устройств*, а не публикации APK.
+
+### 1.1 Датапуть TUN на Android
+
+**Решение: `libbox` (sing-box) принимает fd и делает TUN — точно как sing-box делает TUN на Windows.**
+
+```
+VpnService.Builder → establish() → tun fd
+        │  (fd отдаётся ядру не «сверху вниз», а через колбэк OpenTun — см. ниже)
+        ▼
+libbox / sing-box 1.13.x  ── TUN + маршрутизация + DNS + per-app правила
+        │
+        └──SOCKS5──▶ 127.0.0.1:10808
+                          │
+             ┌────────────┴────────────┐
+             ▼                         ▼
+    Xray (libXray, in-process)   sing-box-outbound
+    VLESS/Reality/trojan/ss,     hysteria2
+    панельные профили «Авто»
+```
+
+**Контракт fd — инверсия управления.** Не приложение передаёт fd в ядро, а ядро вызывает колбэк
+`PlatformInterface.OpenTun(options) (int32, error)`, а приложение по `TunOptions` (адреса, MTU,
+маршруты, `GetIncludePackage()`/`GetExcludePackage()`, DNS) строит `VpnService.Builder`, зовёт
+`establish()` и возвращает fd. Защита от петли — `AutoDetectInterfaceControl(fd)` → `protect(fd)`.
+Так устроен официальный клиент sing-box (SFA), и это единственный поддерживаемый путь.
+
+**Почему это лучше варианта с `hev-socks5-tunnel`** (он рассматривался, пока проект считался
+закрытым): sing-box в поставке присутствует в любом случае — он нужен для hysteria2, поэтому
+лицензионных обязательств вариант с `hev` не экономит **вообще**. Зато отнимает три подсистемы,
+за которые уже заплачено adversarial-ревью и живым тестом: блокировку приложений, всю DNS-секцию
+(`dns-proxy` по TCP через прокси, анти-утечка из 0.11.1) и `noRealIp`. Это был бы регресс
+безопасности ради чистоты, которой в GPL-режиме больше не требуется.
+
+**Xray обязателен и остаётся.** Панельные профили «Авто» — это полные Xray-конфиги с `balancers`
+и `burstObservatory` (до 79 outbound); sing-box их переварить не может. Поэтому Xray живёт под
+SOCKS 10808 ровно как на Windows, и порты 10808/10809/10085, `PortCheck`, `httpProxyPort` для
+сервис-чипов, статистика и выбор ядра по `VpnServer.core` работают без изменений.
+
+**Версии:** пиновать **sing-box 1.13.x** (на 27.07.2026 стабильная — v1.13.14 от 25.06.2026);
+1.14.x пока beta — не брать. Xray-core — пиновать отдельно (сейчас v26.7.11).
+
+**Почему не Xray-native TUN.** У Xray-core действительно есть tun-inbound с приёмом fd через
+`xray.tun.fd`/`XRAY_TUN_FD` (пакет `proxy/tun`, PR #5464, релиз v26.1.23 от 23.01.2026) — то есть
+утверждение из старых доков верное. Но: README ядра сам предупреждает, что фича «для сетевых
+профессионалов» и при неверной настройке даёт «infinite network loop»; поддерживается только
+ICMP Echo; per-app-матчинга на Android из коробки нет (`process`-правила — только Windows/Linux,
+на Android нужен свой `RegisterAndroidProcessFinder()`); фиче полгода, активные фиксы шли всю
+весну 2026. И главное — она выбросила бы ~85 % уже написанного и оттестированного генератора
+конфига. Оставляем в плане апдейтов (A7) как «минус один компонент» на потом.
+
+### 1.2 «Блок» для приложений — работает, но с порогом по версии Android
+
+`VpnService.Builder` умеет только `addAllowedApplication`/`addDisallowedApplication` — «в туннель»
+и «мимо туннеля», действия «блокировать» там нет. **Но оно есть у sing-box**, и с выбором `libbox`
+(§1.1) становится доступным: правило `{"package_name": ["com.foo"], "action": "reject"}` —
+приложение попадает в туннель, а ядро режет его соединения. `AppAction.block` переносится 1-в-1.
+
+**Два разных механизма, путать нельзя:**
+
+| | `include_package`/`exclude_package` (TUN inbound) | `package_name` (route rule) |
+|---|---|---|
+| Уровень | ОС — `addAllowed/DisallowedApplication` | ядро — матчинг соединения |
+| Умеет | «в туннель» / «мимо туннеля» | route на любой outbound **или `reject`** |
+| Блокировать? | ❌ | ✅ |
+| Требует | ничего | `PlatformInterface`, Android 10+ |
+
+**Решение: использовать оба слоя.** `exclude_package` для действия «Прямо» (надёжно, уровень ОС,
+работает на всех версиях) + `package_name`+`reject` для «Блок».
+⚠️ С единственным исключением: **при `noRealIp == true` `exclude_package` для «Прямо» не
+формируется** — иначе настройка молча перестаёт работать (см. п.46 и камень §6.2 #11б).
+
+**Ограничение — Android 10+ (API 29).** `package_name` матчится через `metadata.ProcessInfo`,
+который на Android заполняется только колбэком `PlatformInterface.FindConnectionOwner()` →
+`ConnectivityManager.getConnectionOwnerUid()`, доступным с API 29. На API 24–28 блокировка
+приложений недоступна.
+
+**Что делать на API < 29:** явная пометка в UI («блокировка приложений требует Android 10 и выше»)
+и правило не применяется. **Категорически нельзя** молча трактовать `block` как `direct` — это
+превратило бы блокировку в разрешение, то есть дыру, а не деградацию фичи.
+
+**Известные щели матчинга** (учесть в тестах, не «чинить»): приложения с общим UID матчатся
+неточно (sing-box issue #3741, в 1.13 API уже отдаёт список имён пакетов); сокеты с
+`SO_BINDTODEVICE` дают `ProcessInfo == nil` и не матчатся ни одним `package_name` (issue #4009).
+
+**Блокировка сайтов** работает везде и без оговорок — это правило по домену в конфиге ядра.
+
+### 1.3 geo-файлы (geoip.dat 18.85 МБ + geosite.dat 10.01 МБ)
+
+Панель Remnawave присылает правила с `geosite:`/`geoip:`, и **ссылка на категорию, которой нет в
+`.dat` клиента, не даёт ядру стартовать вообще**. При этом 29 МБ в APK — это половина бюджета
+размера.
+
+**Решение:** скачивание при первом запуске (как v2rayNG) + **обязательный** урезанный запасной
+набор в `assets` (только категории из проверенной таблицы `docs/RU_ROUTING_SOURCES.md`), чтобы
+первый запуск без сети не превращался в кирпич. Проверка целостности по SHA-256, обновление —
+кнопкой в настройках и фоновой задачей.
+
+### 1.4 Канал дистрибуции (влияет на код)
+
+| Канал | Следствия для кода |
+|---|---|
+| **APK (бот/сайт/GitHub)** — основной | механизм проверки обновлений тот же (уведомление + открытие страницы), но **эндпоинт и содержимое `url` обязаны быть платформенными**: нынешний адрес отдаёт версию Windows-сборки и ссылку на `.exe`. Позже можно разрешить установку через `FileProvider`. GPL §6d: рядом с APK — исходники **того же тега** |
+| **RuStore** — второй шаг | проверка обновлений остаётся, но ведёт в магазин. Правил по VPN и лицензиям в требованиях RuStore не нашлось — риск регуляторный (РФ-специфика), не лицензионный |
+| **F-Droid** — естественный дом GPL-приложения | сборка из исходников, лицензия подходит идеально |
+| **Google Play** — опционально | самообновление сторонним APK **запрещено политикой** → гейтить флейвором; обязательна **декларация `VpnService`** в Play Console + описание использования VPN в листинге + шифрование всего трафика до эндпоинта |
+
+**GPL-3.0 в Google Play — не препятствие.** Классический конфликт (VLC, 2011) был с Apple App
+Store: там DRM и Usage Rules ограничивают число устройств. APK в Play не обёрнут DRM, а §6
+Installation Information к приложениям не применяется (§1.0). Прямые прецеденты нашего класса:
+**Hiddify** (`app.hiddify.com`, GPLv3, Flutter + sing-box + VLESS/Reality/Hysteria2 — буквально наш
+стек) и официальный клиент **sing-box** (`io.nekohasekai.sfa`, GPL-3.0) — оба в Play.
+
+**Решение:** флейвор сборки (`sideload` / `store`) с флагом `AppUpdate` уже на Фазе 1 — вкрутить
+позже дороже.
+
+---
+
+## 2. Структура форка
+
+**Решение: один репозиторий, одна ветка разработки `android`, один Flutter-пакет.**
+
+Отдельный репозиторий/копия папки отвергнуты: 85 % кода общего, а требование «паритет 1-в-1»
+означает, что любое расхождение копий — это регресс по определению. Windows-версия продолжает
+жить в `main`, Android-работа идёт в ветке `android` и вливается обратно.
+
+```
+SilentGateApp/
+├── app/                                  ← ОДИН Flutter-пакет на обе платформы
+│   ├── android/                          ← НОВОЕ: Kotlin-слой (flutter create --platforms=android)
+│   │   └── app/src/main/kotlin/lol/silentgate/
+│   │       ├── MainActivity.kt           ← deep links (onNewIntent), MethodChannel-роутер
+│   │       ├── vpn/SilentGateVpnService.kt   ← VpnService + libbox.PlatformInterface + нотификация
+│   │       ├── vpn/TunBuilder.kt         ← OpenTun: TunOptions → Builder → establish() → fd
+│   │       ├── core/CoreBridge.kt        ← старт/стоп libbox и libXray, проброс ошибок и логов
+│   │       └── platform/{Packages,DeviceId,Schemes,Network}.kt
+│   ├── windows/                          ← без изменений
+│   └── lib/
+│       ├── core/          ← 100 % общий (не трогаем, кроме вынесения хардкодов в l10n)
+│       ├── data/          ← общий (меняется только базовый путь через AppPaths)
+│       ├── state/         ← общий (2 Windows-импорта на вынос)
+│       ├── engine/
+│       │   ├── vpn_engine.dart           ← контракт без изменений
+│       │   ├── engine_base.dart          ← НОВОЕ: ~60 % нынешнего WindowsEngine (общая логика)
+│       │   ├── engine_factory.dart       ← conditional import вместо прямого
+│       │   ├── windows/                  ← без изменений
+│       │   └── android/                  ← НОВОЕ: AndroidEngine, TunRouterAndroid, харнесс
+│       ├── platform/                     ← НОВОЕ: интерфейсы + условные импорты
+│       │   ├── device_id.dart            ← HWID/заголовки устройства
+│       │   ├── app_launcher.dart         ← открытие ссылок/Telegram
+│       │   ├── scheme_registrar.dart     ← url-схемы
+│       │   ├── app_catalog.dart          ← список приложений + иконки
+│       │   └── support_reporter.dart     ← отчёт поддержки + «поделиться»
+│       └── ui/
+│           ├── widgets/                  ← общие (уже есть, переносятся почти целиком)
+│           ├── desktop/                  ← нынешние экраны переезжают сюда
+│           └── mobile/                   ← НОВОЕ: мобильная вёрстка тех же данных
+├── engine/
+│   ├── windows/bin/                      ← без изменений
+│   └── android/                          ← НОВОЕ: libxray.aar, libbox.aar, geo-assets
+├── tools/
+│   ├── build-libxray-android.ps1         ← НОВОЕ: Go + NDK + gomobile bind (libXray, пин версии)
+│   ├── build-libbox-android.ps1          ← НОВОЕ: gomobile bind sing-box 1.13.x → libbox.aar
+│   └── bootstrap-android.ps1             ← НОВОЕ: SDK/NDK/JDK/Go
+└── docs/platforms/ANDROID.md             ← этот файл
+```
+
+**Один экран — одна вёрстка, но одни данные.** `ui/mobile/*` не дублирует логику: экраны берут те
+же `AppState`/контроллеры и те же виджеты из `ui/widgets/`. Разница только в компоновке
+(две панели рядом → навигация) и в жестах (ПКМ → долгое нажатие).
+
+---
+
+## 3. Соответствие подсистем: Windows → Android
+
+| Подсистема Windows | Android |
+|---|---|
+| Системный прокси (WinINET, реестр) | **нет** — единственный режим захвата `VpnService` |
+| TUN: sing-box + wintun + элевация + задача Планировщика | тот же sing-box, но через `libbox`: fd от `VpnService.establish()`; разрешение — системный диалог `prepare()`, без элевации |
+| Автоподбор стека TUN (system/gvisor/mixed) | **нет стеков** — стек фиксирован; `TunAutotune` и фаза `VpnPhase.tunAutotune` не переносятся |
+| `process_name → direct` (анти-петля, 2-й эшелон) | `protect(fd)` через `AutoDetectInterfaceControl` + `addDisallowedApplication(<свой пакет>)`; 1-й эшелон (IP серверов) остаётся |
+| Split-tunnel «Блок» приложения (`action: reject`) | то же правило, но по `package_name`; требует Android 10+ (§1.2) |
+| Kill switch = держать прокси/маршрут между попытками | не закрывать `establish`-fd между попытками + подсказка про системный Always-on |
+| Трей + «умное закрытие» + окно 1040×820 | foreground-сервис + постоянная нотификация с кнопками; окна нет |
+| Single-instance по сокету 47654 | `launchMode=singleTask` + `onNewIntent` |
+| Регистрация `silentgate://` в реестре HKCU | `intent-filter` в манифесте; перехват `vless://` — `activity-alias` + `setComponentEnabledSetting` |
+| HWID = MachineGuid из реестра | `Settings.Secure.ANDROID_ID` |
+| Иконки exe (ExtractIconEx) + список процессов | `PackageManager.getApplicationIcon` + `getInstalledApplications` |
+| Split-tunnel по путям exe (`byName`/`byPath`) | по `packageName` (миграция формата правил) |
+| `NetworkWatcher` (опрос `NetworkInterface.list`) | `ConnectivityManager.registerDefaultNetworkCallback` |
+| `InterferenceScanner` (чужие DPI/адаптеры) + kill | детект «активен другой VPN», без kill; плюс новый путь `onRevoke` |
+| `--cleanup` для деинсталлятора, `NetworkRecovery` | не нужны (система чистит сама) |
+| Inno Setup + Authenticode | APK/AAB + keystore |
+| Отчёт поддержки: `explorer /select` + открыть txt | тот же генератор + `ACTION_SEND` (share sheet) |
+| Проверка портов с именем процесса-виновника | та же bind-проверка, но **без** имени (нет `netstat`/`tasklist`) |
+
+---
+
+## 4. План работ
+
+Порядок важен: каждая фаза опирается на предыдущую. Отметки — по мере выполнения.
+
+### Фаза 0 — решения и окружение (блокирует всё)
+
+1. [x] ~~Зафиксировать лицензионный статус проекта~~ — закрыт: GPL-3.0 (§1.0), `CLAUDE.md` и `STACK_DECISION.md` поправлены 27.07.2026.
+2. [ ] Утвердить датапуть TUN (§1.1 — `libbox`) и записать решение в `docs/ARCHITECTURE.md`.
+3. [ ] Утвердить порог Android 10+ для блокировки приложений (§1.2) и текст пометки в UI для API < 29.
+4. [ ] Утвердить схему поставки geo-файлов (§1.3) и канал дистрибуции (§1.4).
+4а. [ ] 🔴 **Выбрать модель исполнения Dart на Android** — решение констрейнит Фазы 1 и 3, без него план противоречит сам себе. Суть: п.11 переносит мозг подключения (backoff, `_scheduleRetry`, fallback-серверы, `onNetworkChanged`) в Dart-класс `engine_base.dart`, а п.31 объявляет «движок живёт в сервисе». Если Dart-изолят живёт только в Activity, то при свайпе UI умирают автопереподключение (включено по умолчанию) и реакция на смену сети, а системный Always-on и `BOOT_COMPLETED` физически не смогут поднять VPN — конфиг передать некому. Варианты:
+   - **(а) один кэшированный `FlutterEngine`**, создаваемый в `Application`/сервисе и переиспользуемый Activity — один изолят, переживает свайп, пока жив foreground-сервис. Наименьшее расхождение с планом.
+   - **(б) headless-entrypoint** (`@pragma('vm:entry-point')`) в процессе сервиса — тогда п.17 обязан описать **второй** bootstrap, а п.18 — межизолятную синхронизацию записи сторов, иначе два изолята затрут файлы друг друга.
+   - **(в) порт `_scheduleRetry`/backoff/`onNetworkChanged` в Kotlin**, Dart оставить сборщиком конфига — максимальный паритет по надёжности, но дублирование выстраданной логики на втором языке.
+4б. [ ] Гейт Always-on: сервис обязан уметь подняться **без UI** (прочитать активный профиль → собрать конфиг → подключиться) — это условие поддержки системного Always-on и `BOOT_COMPLETED`. Пока не сделано, честно объявить режим неподдерживаемым: `<meta-data android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON" android:value="false"/>` и **синхронно** снять подсказки про Always-on из п.38 и п.63. ⚠️ Opt-out убирает и «Block connections without VPN» (lockdown доступен только при always-on), на который п.38 опирается как на усиление kill switch — это одно решение, а не два.
+5. [ ] `tools/bootstrap-android.ps1`: Android SDK (compileSdk/targetSdk 35), NDK r27+, JDK 17, Go 1.22+, `gomobile`; `flutter config --enable-android`.
+6. [ ] Проверить на **боевой панели**, что Response Rule `user-agent CONTAINS SilentGate` матчит `SilentGate/1.0.0 (Android)`. Без XRAY_JSON Android-клиент молча теряет профили «Авто» и hysteria2-узлы.
+7. [ ] Актуализировать доки под текущий код (`ROADMAP` M0–M5 — сделано 27.07.2026, `ARCHITECTURE` §3/§4, `REMNAWAVE_INTEGRATION` §2–3), чтобы порт не воспроизвёл устаревший контракт.
+8. [ ] `flutter create --platforms=android --org lol.silentgate .` в `app/` — **`--org` обязателен**, иначе `applicationId` станет `com.example.silentgate` и сменить его после первой публикации будет невозможно (Play не позволяет менять applicationId). Убедиться, что сборка идёт **строго через junction** `C:\dev\silentgate` (в Java `!` — разделитель jar-URL, Gradle ломается вернее MSBuild).
+
+### Фаза 1 — платформенный слой в общем коде (без единой строки Kotlin)
+
+Задача фазы: `flutter build apk` собирается и приложение стартует с заглушкой движка.
+
+9. [ ] `AppPaths`: асинхронная инициализация корня один раз на старте (`getApplicationSupportDirectory`) + кэш, синхронный геттер сохранить — иначе каскадная правка всех 8 сторов.
+10. [ ] `engine_factory.dart` → conditional import (`engine_stub` / `windows` / `android`), чтобы `dart:ffi`+win32-код не попадал в Android-граф.
+11. [ ] Вынести из `WindowsEngine` в `engine_base.dart` платформо-независимые ~60 %: `_Session`, `_generation`/`aborted()`, backoff **[800 мс, 3 с, 8 с, 20 с] × 8 попыток** (в коде именно так, «2/5/10/30» в старых доках — устарело), `_scheduleRetry` с fallback-серверами, `onNetworkChanged` с grace 15 с, `_configFor` (приоритет `rawJsonOverride` → `rawPanelConfig` → сборка; `rerouteDirectThroughVpn`; `normalizeOverridePorts`; `ensureXrayStats`), выбор `ProxyCore`, генерация секрета Clash API, расчёт скоростей.
+12. [ ] `platform/device_id.dart`: интерфейс + Windows-реализация (перенос `hwid_windows.dart`) + Android (`ANDROID_ID`, `Build.*`). `headerSafe` вынести в общий код — **обязателен** (не-ASCII в `Build.MODEL` уронит HTTP-заголовок так же, как кириллица на локализованной Windows).
+13. [ ] Вынести чистые парсеры из `url_scheme_windows.dart` (`controlAction`, `importPayload`, `isSupportedLink`) в `core/` — они платформо-независимы, а сейчас лежат рядом с `reg.exe`.
+14. [ ] `platform/scheme_registrar.dart`, `platform/app_launcher.dart`, `platform/app_catalog.dart`, `platform/support_reporter.dart` — интерфейсы + Windows-реализации из нынешних файлов.
+15. [ ] Разорвать прямые импорты `engine/windows/*` из UI (`settings_screen`, `tun_settings_screen`, `split_tunnel_screen`, `logs_screen`) — это самая объёмная механическая работа: пока они есть, Android-сборка не компилируется.
+16. [ ] `AppInfo`: платформенный суффикс UA (`(Windows)`/`(Android)`); добавить тест-паритет версии с `pubspec.yaml` (сейчас синхронизируется руками, а на Android появится третье место — `versionName`).
+17. [ ] `main.dart`: развести bootstrap по платформам. Android-ветка без `--tun-task`/`--tun`/`--cleanup`, без `SingleInstance`/`CoreCleanup`/`TrayWindow`/`register()`. Состав провайдеров сохранить 1-в-1.
+18. [ ] Добавить atomic-write (temp + rename) во все сторы: процесс Android убивается системой чаще, а битый `silentgate_settings.json` = молчаливый сброс настроек (в т.ч. выключенный kill switch).
+19. [ ] Вынести русские хардкоды в l10n — список шире, чем кажется, и без него критерий готовности №6 («все 10 языков корректны») недостижим:
+    - **модели:** `VpnStatus.label`, `SubscriptionSyncResult.summary` (русская плюрализация зашита в модель), `configTags` («АВТОВЫБОР»/«ПАНЕЛЬ»), тексты исключений подписки, `OutboundVariant.label` («обычный»), `SpeedTestSize.label`/`SpeedResult.label` («20 МБ»/«МБ/с»);
+    - **общий код, который увидит пользователь:** `PortCheck.describeConflict` (лежит в `core/`, по п.42 остаётся на Android с переписанным текстом — ключ заводить одновременно), три литерала `AppState._error` («Некорректный JSON», «Сначала выберите сервер», «Сначала импортируйте подписку») — `state/` объявлен общим, а показываются они тостом и на экране импорта;
+    - **починить вызовы, где перевод УЖЕ есть, но UI его не зовёт:** `split_tunnel_screen.dart:67` → `splitModeLabel(l, m)` и `:511` → `appActionLabel(l, a)`. Ключи `enumSplit*`/`enumAction*` есть во всех 10 ARB, хелперы уже импортированы в этом же файле и применяются строкой ниже — то есть главный для Android экран прямо сейчас показывает русские подписи во всех языках.
+    - Тексты новых Android-ошибок (отказ `prepare()`, сбой подъёма ядра) заводить сразу ключами ARB, а не литералами.
+
+### Фаза 2 — ядра и нативный слой
+
+20. [ ] `tools/build-libxray-android`: своя gomobile-обёртка над `libXray` (MIT) → `libxray.aar`. `AndroidLibXrayLite` (LGPL) под GPL-3.0 тоже допустим, но своя обёртка — это ~3 Go-файла и меньше зависимостей. Версию Xray **пиновать** (в отличие от Windows-скрипта, тянущего `LATEST`).
+21. [ ] `tools/build-libbox-android`: gomobile-сборка `libbox` из **sing-box 1.13.x** (пин; 1.14 — beta, не брать) → `libbox.aar`. Это и TUN, и hysteria2 — отдельный ELF-процесс sing-box **не нужен**.
+22. [ ] Проверить 16 КБ page size (требование Play с 01.11.2025 для targetSdk 35): NDK r27+, `zipalign -P 16`, проверка выравнивания ELF, свежий Go-рантайм в gomobile — для **обоих** AAR.
+23. [ ] geo-файлы: загрузчик в `filesDir` с политикой, а не «просто скачать»:
+    (а) по умолчанию — **только по неметрируемой сети**; по мобильной — лишь с явного согласия и с указанием объёма (~29 МБ); прогресс, докачка/ретрай, атомарная замена файлов только после сверки SHA-256;
+    (б) состояние «работаем на урезанном наборе, полные базы не скачаны» обязано быть видно в UI **и** в отчёте поддержки, а сбой подъёма ядра из-за неизвестной категории — приходить текстом причины;
+    (в) состав урезанного набора зафиксировать = проверенная таблица `RU_ROUTING_SOURCES.md` + обязательный `geoip:private`; добавить сборочную проверку — фикстура-конфиг, ссылающаяся на каждую категорию из списка, прогоняется через `xray run -test` с `XRAY_LOCATION_ASSET` на assets-набор;
+    (г) `XRAY_LOCATION_ASSET` на реальный путь; кнопка «Обновить гео-базы» в настройках.
+24. [ ] Жизненный цикл ядер: у Xray (libXray) и sing-box (libbox) он теперь **внутрипроцессный** — вместо `Process.start`/tail/`kill` нужны запуск-остановка через API AAR и проброс ошибок ядра в текст исключения (смысл сохранить: причина падения обязана долетать до пользователя, а не «ядро завершилось»).
+25. [ ] Логи ядер: `libbox` пишет свой лог — направить в файл в `filesDir` с ротацией (как `singbox.log` на Windows) и показывать хвост при сбое подъёма.
+26. [ ] Уборка при аварии: Android может убить процесс **без колбэков**. In-process ядра гибнут вместе с ним (это проще Windows), но осиротевший `VpnService` возможен — проверять и гасить при старте.
+27. [ ] Статистика: `SingboxStats` (Clash API + Bearer-secret) едет как есть; `XrayStats` — заменить exec `api statsquery` на вызов через API libXray. `sumStatsQuery` не трогать (покрыт тестами).
+28. [ ] Секрет Clash API (32 hex на сессию) — перенести в общий движковый код. На Android актуальнее, чем на Windows: loopback общий для всех приложений.
+29. [ ] Атрибуция по «no-name»-условию sing-box: нигде не называть продукт или компонент «sing-box» в имени приложения, иконке и листинге магазина; указать как используемый компонент в «О программе» и `THIRD-PARTY.md` со ссылкой на исходники точного тега.
+
+### Фаза 3 — `AndroidEngine` и `VpnService`
+
+30. [ ] 🔴 `SilentGateVpnService : VpnService`, реализующий `libbox.PlatformInterface` — foreground-сервис с `android:foregroundServiceType="systemExempted"`. **Значения `vpn` в Android не существует** (перечень фиксированный, 14 типов) — с ним манифест не соберётся, а на Android 14+ сервис не стартует, то есть подключение не заработает вовсе. Разрешения: `FOREGROUND_SERVICE` + `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` + `POST_NOTIFICATIONS` (API 33+). Постоянная нотификация со статусом/трафиком и кнопками «Отключить»/«Открыть».
+    ⚠️ **Порядок вызовов критичен:** у `systemExempted` есть рантайм-предусловие — приложение уже должно быть настроено как VPN, иначе система бросает `ForegroundServiceTypeNotAllowedException`. Значит согласие `VpnService.prepare()` (п.33) обязано быть получено **до** `startForeground()`; «сервис поднялся раньше согласия» — отдельный путь ошибки и отдельный пункт приёмки.
+    Запасной вариант — `specialUse` + `<property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="vpn"/>`; он дороже: обоснование ревьюится вручную в Play Console, тогда как `systemExempted` декларации не требует.
+30а. [ ] Отказ от `POST_NOTIFICATIONS` — отдельный код-путь, симметричный отказу от `prepare()`: сервис стартует и работает (разрешение для FGS не обязательно), но нотификации нет, а с ней теряются статус, трафик и кнопка «Отключить». Обязательно: (а) не блокировать подключение; (б) баннер в приложении «уведомления выключены — управление только из приложения» со ссылкой в системные настройки канала; (в) явно указать внешний путь отключения — системный VPN-экран (он придёт в `onRevoke`). Если проба на устройствах покажет, что без внешнего управления неудобно, поднять Quick Settings Tile (§5 A2) из «будущих» в паритетные.
+30б. [ ] **Локализация нативного слоя.** Имя и описание канала уведомлений, заголовок/статус/трафик, кнопки, текст `onRevoke` и ошибок подъёма (позже — метка Tile и ярлыков) обязаны следовать `AppSettings.languageCode`, а не локали системы (при пустом коде — локаль системы). Весь l10n живёт в Dart-ARB, а эти строки строятся в Kotlin — без явного механизма они выпадут из десятиязычности и провалят критерий готовности №6. Механизм: нужные ключи зеркалятся из ARB в `res/values-<lang>` генератором (проверку свежести — в CI рядом с проверкой кодогена l10n), сервис резолвит их через локализованный `Context`; выбранный `languageCode` прокидывается в нативный слой и **персистится** — по п.31 Dart-изолят может быть мёртв в момент обновления нотификации.
+31. [ ] **Движок живёт в сервисе, а не в Activity.** Главное архитектурное отличие от Windows: процесс UI может умереть при живом VPN, поэтому статус/статистика восстанавливаются при повторном подключении UI.
+32. [ ] `MethodChannel`/`EventChannel`: `prepare`, `start(configJson)`, `stop`, `status`, `stats`, `revoked`, `died`.
+33. [ ] `VpnService.prepare()` → системный диалог согласия (аналог одного UAC). Отказ — **новый путь ошибки**, которого нет на Windows: нужен свой статус и текст.
+34. [ ] **`OpenTun(options)`** — сердце интеграции. Каждый вызов `addAllowedApplication`/`addDisallowedApplication` обязан быть обёрнут в try/catch `PackageManager.NameNotFoundException` (канонический шаблон официального гайда Android VPN): отсутствующий пакет пропускается и логируется, построение туннеля **не** прерывается. Иначе после деинсталляции приложения, на которое было правило, VPN просто перестанет подключаться. Отдельный пункт приёмки: удалить приложение с правилом → подключение проходит. По `TunOptions` от ядра построить `Builder` (`addAddress` из `GetInet4Address`/`GetInet6Address`, `setMtu`, маршруты — на Android 13+ через `IpPrefix`, `GetInet4RouteExcludeAddress` для исключений, `addDnsServer`, `GetIncludePackage`/`GetExcludePackage` → `addAllowed`/`addDisallowedApplication`), вызвать `establish()` и вернуть fd. Списки include и exclude **нельзя смешивать** — наличие хотя бы одного `allowed` уводит всё остальное мимо VPN.
+35. [ ] `AutoDetectInterfaceControl(fd)` → `protect(fd)` — анти-петля для сокетов ядра. Плюс `addDisallowedApplication(<свой пакет>)`, чтобы пинг и загрузка подписки шли напрямую (см. п.51).
+36. [ ] `FindConnectionOwner(...)` → `ConnectivityManager.getConnectionOwnerUid()` — **без него не работают `package_name`-правила** (то есть блокировка приложений). Требует API 29+; на более старых возвращать «не найдено» и гейтить фичу в UI.
+37. [ ] `onRevoke()` — **новый обязательный код-путь** (другой VPN или пользователь выключил в шторке): погасить ядра, снять состояние, уведомить UI. На Windows аналога нет вовсе.
+38. [ ] Kill switch: **не закрывать** fd между попытками переподключения (туннель без ядра = трафик фейлится, а не течёт мимо VPN). Рядом — ссылка на системный Always-on + «Block connections without VPN».
+39. [ ] Сохранить генерационные гварды дословно: `wasAborted` снимается **до** `_cleanup` (тот делает `++_generation`), «недоподнятый» туннель помечается занятым **до** `establish`, повторный `connect` при `connecting` молча игнорируется.
+40. [ ] `fallbackServers`/`connectBalancer` — поведение 1-в-1, включая осознанное «в смешанном списке hysteria2 молча выбрасывается, если есть хоть один Xray-сервер».
+41. [ ] `NetworkWatcher` → `ConnectivityManager` через `EventChannel`, **сохранив интерфейс** (`changes`/`start`/`stop`/`suspend`/`resume`) и все три предохранителя: дебаунс, `suspend` на время `connecting`/`disconnecting`, grace 15 с. Колбэки Android стреляют и на подъём **собственного** VPN — без этого вернётся вечный цикл переподключений, который на Windows чинили трижды. (У `libbox` есть свой `StartDefaultInterfaceMonitor` — решить, кто источник истины, и не задвоить реконнект.)
+42. [ ] `PortCheck`: bind-проверка 10808/10809/10085 остаётся (loopback на Android общий — Happ/v2rayNG реально могут занять порт), имя процесса-виновника — деградирует до сообщения без имени.
+
+### Фаза 4 — маршрутизация, split-tunnel, DNS
+
+Ключевое отличие от первоначальной оценки: генератор `singbox_config_builder.dart` **переиспользуется
+на ~85 %** — DNS-секция, порядок правил, санитайзеры и `noRealIp` едут без изменений (§0).
+
+43. [ ] Модель правил: `AppRule.path` → `packageName`; `byName`/`byPath` теряют смысл. Миграция `fromJson` в существующем стиле (формат файла общий с Windows — старые записи не должны ронять парсер). Правило для отсутствующего в системе пакета показывать приглушённым с подписью «приложение удалено» и **не** удалять автоматически — механика уже есть (`AppRule.enabled` + `Opacity 0.45`), нужен лишь второй источник «приглушённости».
+44. [ ] 🔴 Пикер приложений: `PackageManager.getInstalledApplications` + иконки (`getApplicationIcon` → PNG). Dart-обвязку `AppIcon` (кэш, дедуп, isolate, фолбэк `Icons.apps`) переиспользовать с ключом по `packageName`. **Обязательно:** при targetSdk 30+ результат фильтруется package visibility, и без объявления в манифесте пикер окажется практически **пустым** — нужен `<queries><intent><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent></queries>`. `QUERY_ALL_PACKAGES` — только если понадобятся приложения без launcher-активити, и тогда для флейвора `store` нужна форма-декларация (в списке разрешённых Play кейсов VPN нет; прецеденты `io.nekohasekai.sfa` и Hiddify его объявляют — путь проходимый, но с ревью).
+45. [ ] `_addActionRule`: `process_name`/`process_path_regex` → `package_name`; `_reEscape` больше не нужен. **Порядок правил не трогать** — блок → домены → приложения → база (фиксы #3 и #3.5 оплачены живым тестом).
+46. [ ] 🔴 Два слоя split-tunnel: «Прямо» → `exclude_package` (уровень ОС, работает везде) + «Блок» → `package_name` c `action: reject` (Android 10+). Не подменять одно другим. **Ключевая тонкость, ломающая безопасность при слепом переносе:** `exclude_package` для «Прямо» применяется **только при выключенном `noRealIp`**. При включённом — список исключений содержит лишь инфраструктуру (свой пакет, п.35), а приложения «Прямо» остаются **в** туннеле: их подхватывает уже существующее правило генератора `package_name → proxy` (`directOut = noRealIp ? 'proxy' : 'direct'`, `singbox_config_builder.dart:282`), а где `package_name` не матчится (API < 29) — `final: 'proxy'`. Иначе `noRealIp` для таких приложений превращается в no-op: пакет исключён на уровне ОС, ядро его не видит, трафик идёт под реальным IP — тогда как на Windows он идёт через VPN (инвариант закреплён тестом `probe_test.dart:739`). Обратное тоже важно: в режиме `onlySelected` при `noRealIp` Windows оставляет `final: 'direct'`, поэтому `include_package` трогать нельзя — «Прямо»-приложения добавляются в `allowed` наравне с «Туннель».
+47. [ ] Убрать из tun-inbound то, чего на Android нет: `interface_name`, `auto_route`, `strict_route`, `stack`; добавить `include_package`/`exclude_package`. Второй эшелон анти-петли (`process_name` ядер) удалить — его заменяет `protect(fd)`; правило по IP серверов (первый эшелон) **оставить**.
+48. [ ] `bypassLan`/`tunExcludeCidrs`: `route_exclude_address` в конфиге ядра + `GetInet4RouteExcludeAddress` в `Builder`; до API 33 у `Builder` нет `excludeRoute` — нужен расчёт «дополнения маршрутов». Валидацию переиспользовать из `_validExcludeCidrs`.
+49. [ ] DNS: вся секция `_buildDns` переносится как есть (`dns-proxy` по TCP через прокси, `dns-local` для direct, `final: dns-proxy` — фикс утечки 0.11.1). Плюс `addDnsServer` в `Builder`, иначе приложения пойдут в системный резолвер мимо туннеля.
+50. [ ] Автоподбор: перебор стеков **удалить вместе с `TunAutotune`** (на Android стек фиксирован), MTU задаётся в `Builder.setMtu`. Решить: оставлять ли перебор MTU 1500/1400/1280 вообще — если да, критерий успеха должен быть пробой связности, а не ожиданием адаптера.
+51. [ ] `tun_tuning.json`: поле `stack` с Windows на Android — мусор, игнорировать при чтении.
+52. [ ] Смена правил split-tunnel = пересоздание туннеля (как и на Windows) — `pendingRestart` и текст «переподключитесь» работают без правок.
+
+### Фаза 5 — пробы, автонастройка, сервис-чипы
+
+53. [ ] **Решить проблему «пробы мимо туннеля» до остального**: при активном `VpnService` TCP-пинг и сокеты харнесс-ядер пойдут в туннель (петля/ложные цифры). Решается `addDisallowedApplication(<свой пакет>)` (п.35) и/или `protect()` на сокеты харнесса. На Windows это обеспечено иначе (сырые сокеты + правило в TUN-конфиге), и **в коде подсистемы проб это нигде не видно** — легко забыть.
+54. [ ] `AndroidProbeHarness` под существующим интерфейсом `ProbeHarness`: харнесс-инстансы ядер поднимаются in-process (libXray/libbox) на портах 21000+/21500+. Сохранить контракты: `proxyPortFor` возвращает `-1`, если второе ядро не поднялось; сбой sing-box-части **не** роняет пинг Xray-серверов; ошибка ядра приходит с текстом причины.
+55. [ ] `MixedProbeHarness` перенести как есть, в `probe_factory` добавить ветку Android.
+56. [ ] ICMP: либо реализация через `/system/bin/ping` (`-c 1 -W <сек>`, парсер `time=NN.N ms`), либо метод скрывается в настройках Android (raw-сокеты без root недоступны). Решить продуктово.
+57. [ ] Сервис-чипы: гарантировать http-inbound на `127.0.0.1:10809` в конфиге **основного** ядра и вернуть порт из `VpnEngine.httpProxyPort` — тогда вся подсистема (включая epoch-гварды) едет без правок.
+58. [ ] `ProbeController.variantFor` сейчас привязывается в `build` десктопного `HomeScreen` — перенести привязку в общую инициализацию, иначе мобильный экран потеряет вариации при пинге и fragment-серверы покажут «n/a».
+59. [ ] Длинные операции (пинг всех, автонастройка — до минут) выполнять при живом foreground-сервисе, иначе Doze/фоновые лимиты оборвут прогон.
+59а. [ ] **Автообновление подписки — часть паритета, а не будущий апдейт.** Фича включена по умолчанию на Windows; наивный перенос даёт «работает, пока открыт экран». Три шага по возрастанию цены:
+    (а) **обновление по времени вместо отсчёта от старта процесса** — персистить `lastRefreshAt` и звать `refreshSubscription()` при запуске и возврате в foreground, если прошло ≥ интервала. Самое дешёвое и даёт бо́льшую часть паритета без единой строки Kotlin;
+    (б) `WorkManager` (периодический, ≥15 мин, ограничение `NetworkType.CONNECTED`) для фонового цикла;
+    (в) 10-минутный опрос version-эндпоинта — только при живом foreground-сервисе; в фоне реже (у него цена в батарее и трафике).
+
+### Фаза 6 — мобильный UI
+
+60. [ ] Каркас: `Row(ConnectPane + 380 px ServerPane)` → одноэкранный Connect + отдельный маршрут списка серверов. `ServersScreen` — **непроверенная заготовка**, а не готовое решение: класс существует, но нигде не открывается и ни разу не рендерился. Перед тем как делать его мобильным маршрутом, довести до паритета с `_ServerPane`: счётчик серверов в заголовке, «!»-легенда пинга рядом с кнопкой пинга (прямое требование камня #48), осмысленное пустое состояние с действием. Отдельно решить, где на мобильном живёт пустое состояние: первичный случай на Windows закрывает целый `ImportScreen(initialSetup: true)`, а карточка `_Onboarding` покрывает лишь «подписка есть, серверов ноль» — её место скорее на Connect-экране, чем во вторичном маршруте.
+60а. [ ] **Мобильные пути ввода подписки** (сейчас в плане только десктопный «вставить из буфера»): (1) сканер QR с камеры — равноправная кнопка рядом с «Импорт из буфера», runtime-разрешение `CAMERA` с объяснением; (2) распознавание QR из картинки в галерее — пользователь чаще сохраняет скриншот, чем держит второй экран; (3) после распознавания — тот же `importSource(text)`, никакой второй логики разбора. Мотив: страница подписки Remnawave штатно показывает «Get Link (Show QR)», то есть провайдер выдаёт QR, а клиент его не читает; у v2rayNG и Hiddify QR-скан — основной путь ввода.
+60б. [ ] **Первый запуск как единый сценарий:** (1) короткий экран «что делает приложение»; (2) объяснение перед запросом уведомлений и путь при отказе (п.30а); (3) загрузка geo-баз с политикой из §1.3; (4) запрос VPN-согласия в момент первого Connect, а не на старте (сохранить UX Windows-версии, где UAC просят только при подъёме TUN); (5) подсказка про OEM-«убийцы» фона (MIUI/Samsung/Huawei) и запрос исключения из оптимизации батареи — **по факту наблюдаемых обрывов**, не превентивно (`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` в Play разрешён узкому классу приложений, и VPN в него не входит — для флейвора `store` вести пользователя в системные настройки вручную, а не через запрос).
+61. [ ] Контекст-меню на тач. У `SubscriptionBar` видимая кнопка ⋮ уже есть — там достаточно добавить `onLongPress`. У `ServerTile` её **нет**, а видимый шеврон ведёт в редактор, не в меню: 5 из 7 пунктов (инфо, пинг сервера, пин, JSON-override, удаление) не имеют другой точки входа во всём приложении. Поэтому в мобильной вёрстке у плитки сервера появляется **видимая** ⋮ в `trailing`, а `onLongPress` — лишь ускоритель. Ограничения: (а) `server_tile.dart` — общий виджет, ⋮ гейтить по фактору формы, десктопный `trailing` не менять (правки Windows-версии вне объёма); (б) на мобильном пересмотреть смысл шеврона (в Android он читается как «перейти внутрь») — либо перенести «Редактор» в меню, либо переозначить иконку; (в) менять `showMenu` на bottom sheet не обязательно — Flutter сам прижимает меню в границы экрана и скроллит длинное; это стилевой выбор, а не исправление.
+61а. [ ] **Устойчивость вёрстки к системным настройкам экрана.** Панель Connect намеренно свёрстана без прокрутки с опорой на гарантию минимального размера окна — на Android эта гарантия недействительна: два `Spacer` схлопнутся, а круглая кнопка 148×148, карточка подписки и блок трафика — нет, получим `RenderFlex overflow`. Сделать содержимое прокручиваемым (или заменить фиксированные размеры относительными) и проверить при масштабе шрифта 1.3 и 2.0, в ландшафте и в split-screen. Отдельно: поднять до 48 dp тап-цели иконочных кнопок с `visualDensity: compact` (`InfoTooltip`, кнопки карточки подписки, меню плитки, крестик тоста) — сейчас они дают 40×40 dp.
+62. [ ] Тосты и прогресс-карточки перенести дословно, завернув отступы (`bottom: 24` / `bottom: 96`) в `SafeArea`/`viewPadding`. Сохранить инварианты: `ValueKey` на **внешнем** `Padding`, новые сообщения в начало списка, обновление прогресса по id, одноразовый countdown, остановка таймера при раскрытых деталях.
+63. [ ] Настройки: разбить «простыню» на подэкраны; убрать секции без смысла (системный прокси, трей, восстановление сети, задача Планировщика, стек TUN); добавить «Разрешение VPN». Ссылку на Always-on показывать **только если** решён гейт 4б — иначе мы рекомендуем режим, который сами объявили неподдерживаемым.
+64. [ ] Диалоги с фиксированной шириной (`ServerEditorDialog` 480–560, `ServerJsonDialog` 600×480) → полноэкранные/адаптивные.
+65. [ ] Прогнать чек-лист гейтов видимости — это и есть паритет: `killSwitch` ↔ `autoReconnect` ↔ `noRealIp`, `dnsHijack` при `dnsMode != system`, поле интервала при `autoUpdateEnabled`, скрытие split-списков при `mode == all`. Добавить новый гейт: блокировка приложений видна/активна только на Android 10+.
+66. [ ] Прогнать все ~29 мест форс-`TextDirection.ltr` и `autoTextDirection` — при перевёрстке их легко потерять, и имена серверов начнут зеркалиться в ar/fa.
+67. [ ] Не портировать мёртвый код: `_SyncSummary` (в `subscription_bar.dart`) и `ErrorBanner` — оба нигде не используются.
+68. [ ] Эвристика кнопки «Обновить» у notice-серверов сейчас русскоязычная (`нажмите`/`обнов`/🔄) — расширить или показывать всегда.
+
+### Фаза 7 — сборка, подпись, поставка
+
+69. [ ] Gradle: `minSdk 24`, `compileSdk`/`targetSdk 35`, `versionName`/`versionCode` из `pubspec`, `signingConfigs.release` из `key.properties` (**в `.gitignore`**).
+70. [ ] Релизный keystore + бэкап в надёжном месте: **потеря keystore = невозможность обновления** у всех sideload-пользователей.
+71. [ ] `--split-per-abi` / AAB: два Go-AAR (Xray + sing-box) на каждый ABI — universal-APK уйдёт далеко за 100 МБ. Решить **до** первого публичного APK — потом миграция болезненна.
+72. [ ] Скрипт сборки: отсутствие AAR или geo-файлов — **фатальная ошибка**, а не молчаливый пропуск (на Windows `build-exe.bat` копирует ядра по `if exist` молча, и «рабочая» сборка падает только в рантайме).
+73. [ ] Лицензии и комплаенс GPL: тексты MPL-2.0 (Xray, с сохранением Exhibit A), GPL-3.0 (sing-box, с точным тегом), MIT (libXray) → `assets/licenses` + экран «О программе»; обновить `THIRD-PARTY.md`; **выложить Corresponding Source того же тега рядом с APK** (GPL §6d) вместе со сборочными скриптами.
+73а. [ ] **Харденинг манифеста — до первого публичного APK.** `android:allowBackup="false"` + `android:dataExtractionRules` с отключёнными `<cloud-backup>` и `<device-transfer>` (на targetSdk 31+ один `allowBackup` не останавливает перенос между устройствами), для API < 31 — `android:fullBackupContent`. Причина: по умолчанию бэкап **включён**, а `subscriptions.json` содержит ссылку подписки — фактически пароль от VPN. Альтернатива, если бэкап настроек хочется сохранить: файлы с секретами исключить правилами извлечения либо держать в `getNoBackupFilesDir()`.
+73б. [ ] **Брендинг сборки** (иначе публичный APK уедет с дефолтной иконкой Flutter): adaptive icon `mipmap-anydpi-v26/ic_launcher.xml` (foreground/background + `monochrome` для тем Android 13, проверка на круглых/квадратных/squircle-масках); **отдельная монохромная иконка нотификации** для сервиса (Android рисует small icon по альфа-маске — цветной PNG даст белый квадрат); `android:label` через `res/values/strings.xml` + `values-<lang>` на 10 языков (ARB launcher-label не покрывает); splash по Android 12 SplashScreen API (при targetSdk 35 применяется всегда), проверка на светлой и тёмной теме. Мастер-ассет (SVG/PNG ≥512) завести в репозитории — сейчас есть только два `.ico`, пригодных источников нет.
+73в. [ ] `AppUpdate.defaultEndpoint` — платформенная/флейворная константа (например `/api/app-version-android`), `url` ведёт на **страницу загрузки**, а не на прямой файл (чтобы не завязываться на ABI). Пока Android-эндпоинт не поднят — `appUpdateCheck` у Android-сборки выключен по умолчанию. Срочность: `appUpdateUrl` **персистится**, поэтому APK, отданный тестировщикам со старым дефолтом, заморозит Windows-URL в их настройках, и правка константы до них уже не дойдёт — нужна миграция (перезапись значения, равного прежнему дефолту).
+74. [ ] `intent-filter` для `silentgate://` + `activity-alias` (`android:enabled=false`) для `vless://`/`vmess://`/`trojan://`/`ss://`/`hysteria2://`/`hy2://`, переключаемый через `setComponentEnabledSetting` — иначе тумблер «перехватывать ссылки» в UI станет фикцией. Плюс `intent-filter` на **входящий** `ACTION_SEND` / `text/plain` — «Поделиться» ссылкой из Telegram прямо в SilentGate (сейчас `ACTION_SEND` в плане фигурирует только как исходящий share отчёта поддержки). Приходящий текст гнать через уже существующие чистые парсеры (`controlAction`/`importPayload`/`isSupportedLink`) в тот же `importSource`.
+75. [ ] Для Play-флейвора: декларация `VpnService` в Play Console, декларация типа foreground-сервиса, описание использования VPN в листинге, ссылка на политику конфиденциальности, отключённое самообновление.
+
+### Фаза 8 — тесты и живой прогон
+
+76. [ ] Host-тесты (≈213) продолжают гоняться как есть; добавить Android-фикстуры split-правил **параллельно** Windows-овским (Windows-поведение должно остаться под защитой).
+77. [ ] Новые тесты: расчёт «дополнения маршрутов» для исключений; миграция `AppRule` в `packageName`; `package_name`-правила в генераторе (включая порядок блок → домены → приложения); паритет `idFor(url)`/`buildShareLink` между платформами; **при `noRealIp == true` генератор не кладёт ни одного пользовательского пакета в `exclude_package`** (зеркало `probe_test.dart:739`).
+78. [ ] `emit_singbox.dart` → вариант с package-правилами (нынешние фикстуры — пути `C:\...exe`).
+79. [ ] Android-редакция `TEST_PLAN`: вместо Hyper-V — эмулятор/устройство, вместо url-схем из PowerShell — `adb shell am start` с intent, матрица окружений другая (версии Android **включая 9 и ниже** ради гейта блокировки приложений, OEM-убийцы фона, Always-on, Wi-Fi↔LTE, Doze).
+80. [ ] Живой прогон **только на тестовом устройстве/эмуляторе** (правило «не включать VPN на боевой машине» действует и здесь); боевые подписки не логировать в артефакты.
+81. [ ] Обязательный живой чек-лист:
+    - утечка DNS; **утечка реального IP при `noRealIp`** — отдельно проверить приложение и сайт с действием «Прямо» в режимах `all`, `exceptSelected` и `onlySelected` (внешний IP изнутри такого приложения обязан быть VPN-овским);
+    - kill switch при обрыве; `onRevoke`; смена Wi-Fi↔LTE; Doze/сон; перезапуск UI при живом VPN;
+    - старт foreground-сервиса **до** и **после** выдачи VPN-согласия — нет `ForegroundServiceTypeNotAllowedException`;
+    - удаление приложения, на которое есть правило split-tunnel, → подключение по-прежнему проходит;
+    - отказ от уведомлений → подключение работает, управление доступно;
+    - hysteria2 (на Windows живьём так и не проверен).
+
+---
+
+## 5. План будущих апдейтов Android-ветки
+
+После достижения паритета. Порядок — по убыванию ценности, не по сложности.
+
+**A. Дотянуть паритет и Android-специфику**
+
+1. Блокировка приложений на Android 9 и ниже (API < 29): либо `UseProcFS`-путь sing-box, либо остаётся ограничением навсегда — оценить долю таких устройств по факту.
+2. Quick Settings Tile — подключение из шторки.
+3. Виджет на рабочий стол (статус + переключатель).
+4. Автозапуск: `BOOT_COMPLETED` + корректная работа с системным Always-on VPN.
+5. Ярлыки приложения (`shortcuts.xml`): «Подключить», «Авто», «Сменить сервер».
+6. ~~Фоновое автообновление подписки~~ — перенесено в паритет, задача 59а Фазы 5 (иначе включённая по умолчанию фича молча деградирует).
+7. Xray-native TUN (`xray.tun.fd`, есть с v26.1.23) вместо связки «sing-box TUN → SOCKS → Xray» — минус один компонент. **Не раньше, чем фича созреет**: README ядра предупреждает про «infinite network loop», per-app на Android требует своего `RegisterAndroidProcessFinder()`, и переход выбросил бы ~85 % готового генератора конфига.
+8. Экономия батареи: `GOMEMLIMIT`, GC libXray, отключаемая статистика, пауза опроса при выключенном экране.
+9. Материал You / динамические цвета (Android 12+).
+10. Резервное копирование настроек: явный экспорт/импорт файла. (Отключение системного бэкапа — уже в паритете, задача 73а.)
+
+**B. Общие для обеих платформ (делать сразу кроссплатформенно)**
+
+11. Шифрование секретов на диске (Android Keystore / DPAPI) — на Android приоритет выше из-за бэкапов.
+12. Обход DPI: `byedpi` (MIT, userspace SOCKS5) как sidecar через `dialerProxy`; на Android — единственный компонент, который придётся класть ELF-бинарником в `jniLibs` и запускать из `nativeLibraryDir` (W^X).
+13. Перебор ядер в автонастройке (пробовать сервер и на Xray, и на sing-box).
+14. Полный редактор правил маршрутизации (протокол/порт/сеть → прямо/туннель/блок).
+15. Группировка серверов по странам (сворачиваемые секции).
+16. M6: авторизация через Telegram, личный кабинет, crypto-links — весь флоу чистый Dart, делать сразу для обеих платформ.
+17. Локализация оставшихся русских хардкодов в моделях и логах-подсказках.
+18. Живой тест реального hysteria2-сервера (не проверен ни на одной платформе).
+
+**C. Дистрибуция и инфраструктура**
+
+19. Канал APK: свой эндпоинт версии, страница загрузки, подпись/контрольные суммы.
+19а. **Юридическое — предусловие публикации в любом магазине.** Политика конфиденциальности и ToS: (а) публичная страница, открывающаяся без авторизации; (б) ссылка **внутри приложения** — раздел «О программе» + ключи в l10n на 10 языков; (в) поле Privacy policy в Play Console / RuStore. Google Play требует ссылку **и** в консоли, **и** в приложении — независимо от объёма собираемых данных; форма Data safety это требование не заменяет. Для RuStore отсутствие политики — типовая причина отказа. Содержательно покрыть фактически отправляемое (`X-HWID`, `X-Device-OS`, `X-Device-Model`, `X-App-Version`, URL подписки) и явно заявить об отсутствии логирования трафика. Для sideload-канала — та же страница рядом с APK: это вопрос доверия к VPN, а не формальность.
+20. RuStore-публикация.
+21. Google Play: отдельный флейвор без самообновления, политика VPN-приложений, Data Safety.
+22. In-app установка обновления через `FileProvider` (только sideload-флейвор).
+23. Поднять `silentgate.lol`-эндпоинты (сейчас не отвечают — не работают ни проверка обновлений, ни пуш подписки, ни логотип).
+24. Крашлитика без трафика пользователей (self-hosted).
+25. CI: сборка APK на теге, прогон тестов, проверка свежести кодогена l10n.
+
+**D. Дальше по платформам**
+
+26. iOS (M8) — переиспользует всё, что сделано для Android: тот же `MethodChannel`-паттерн, та же дисциплина «вся логика в `core/`», те же приёмы экономии памяти Go-ядра. ⚠️ Отдельно решить лицензионный вопрос: GPL-3.0 конфликтует с условиями Apple App Store (случай VLC) — либо двойное лицензирование, либо распространение вне App Store.
+27. macOS/Linux (M9) — переиспользуют desktop-код.
+
+---
+
+## 6. Подводные камни
+
+Сгруппированы по природе. Для каждого — чем грозит и что делать.
+
+### 6.1 Лицензионные
+
+| # | Камень | Что делать |
+|---|---|---|
+| 1 | **«no-name»-условие sing-box.** Формулировка в README апстрима: «no derivative work may use the name or imply association». Это GPL-3.0 §7(e) — оговорка о торговой марке, линковке она **не мешает**, но нарушить её легко в листинге магазина. | Нигде не называть продукт или компонент «sing-box», не намекать на аффилиацию. Атрибуция как используемого компонента — можно и нужно. |
+| 2 | **GPL §6d — исходники обязаны быть доступны из того же места, что и APK, того же тега, без платы.** Включая сборочные скрипты (gradle, gomobile-обвязка) — они часть Corresponding Source. | Тег + релиз на GitHub рядом с APK. Ключи подписи раскрывать не требуется. |
+| 3 | **MPL-2.0 у Xray совместима с GPL-3.0 только потому, что Exhibit B не активирован** (проверено в `LICENSE` ядра). Если апстрим когда-нибудь его добавит — совместимость исчезнет. | Проверять при бампе версии ядра. MPL-файлы остаются под MPL, комбинированная работа — под GPL-3.0. |
+| 4 | **Apple App Store и GPL — реальный конфликт** (случай VLC, 2011: DRM + Usage Rules против §6/§7). К Google Play не относится, но всплывёт на этапе iOS (M8). | Учесть заранее при планировании iOS: либо смена лицензии на двойную, либо отказ от App Store. |
+| 5 | ~~Противоречие «закрытый код» vs «GPL-3.0»~~ — снято: проект под GPL-3.0 (§1.0), устаревшие доки поправлены. | — |
+
+### 6.2 Архитектурные (Android ≠ Windows по существу)
+
+| # | Камень | Что делать |
+|---|---|---|
+| 6 | **Процесс UI может умереть при живом VPN.** На Windows движок живёт в процессе UI — на Android так нельзя. | Движок в foreground-сервисе; UI переподключается к нему и восстанавливает статус/статистику. |
+| 7 | **`onRevoke` — код-путь, которого нет на Windows.** Другой VPN или пользователь в шторке отбирают туннель молча. | Обязательный обработчик: гасим ядра, снимаем состояние, уведомляем UI. |
+| 8 | **Пробы пойдут в собственный туннель.** TCP-пинг и харнесс-ядра при активном VPN дадут петлю и ложные цифры. Механизм, который спасает на Windows (правило `process_name → direct`), в коде подсистемы проб не виден. | `addDisallowedApplication(<свой пакет>)` — проверять как отдельный пункт приёмки. |
+| 9 | **`addAllowedApplication` и `addDisallowedApplication` не смешиваются.** Один `allowed` уводит всё остальное мимо VPN. Ядро отдаёт оба списка через `GetIncludePackage`/`GetExcludePackage` — приложение обязано выбрать один. | Спроектировать маппинг трёх режимов заранее (п. 34, 46). |
+| 10 | **Нет `excludeRoute` до API 33.** `bypassLan`/`excludeCidrs` требуют ручного «дополнения маршрутов». | Классическое место ошибок — покрыть тестом (п. 77). |
+| 11 | **Блокировка приложений требует API 29+** и работает только через `FindConnectionOwner`. Плюс известные щели: общий UID у нескольких приложений (issue #3741), `SO_BINDTODEVICE` даёт `ProcessInfo == nil` и не матчится ничем (issue #4009). | Гейт по версии + честная пометка в UI. Не подменять `block` на `direct` (§1.2). |
+| 11а | **Порядок правил частично уезжает в два слоя.** На Windows всё решает один конфиг; на Android `include/exclude_package` отрабатывает на уровне ОС **до** того, как ядро увидит домены. | Держать иерархию (блок → домены → приложения) в правилах ядра, как сейчас; на уровень ОС выносить только «Прямо», и то с оговоркой ниже. |
+| 11б | 🔴 **Per-app-исключение на уровне ОС непреодолимо для ядра.** Пакет, ушедший в `addDisallowedApplication`, для ядра не существует — значит `noRealIp` (который обязан увести пользовательский `direct` через VPN) для него молча не сработает, и приложение выйдет под реальным IP. Это ровно тот класс утечки, который закрывали в 0.12.0/0.13.0. | При `noRealIp == true` не формировать пользовательские исключения на уровне ОС вообще (п.46). Покрыть тестом и отдельным пунктом живого прогона. |
+| 12 | **Doze и фоновые лимиты убивают таймеры.** `SubscriptionUpdater` (интервал + опрос версии каждые 10 мин) на Android «работает, пока открыт экран». | Задача 59а. ⚠️ Вариант «таймеры внутри живого foreground-сервиса» **не бесплатен**: он требует Dart-исполнения вне Activity, то есть зависит от решения 4а — не выбирать его по умолчанию. |
+| 13 | **Android убивает процесс без колбэков.** In-process ядра гибнут вместе с ним (проще, чем на Windows), но осиротевший `VpnService` возможен. | Проверять и гасить при старте сервиса. |
+| 14 | ~~W^X: `exec` из `filesDir`~~ — не актуально при выбранной архитектуре: оба ядра линкуются как AAR, отдельных ELF-бинарников нет. Помнить, если когда-нибудь появится sidecar (byedpi). | Любой будущий бинарник — только `lib*.so` в `jniLibs`, запуск из `nativeLibraryDir`. |
+| 14а | **Две реализации мониторинга сети сразу.** У `libbox` есть свой `StartDefaultInterfaceMonitor`, и у нас — `NetworkWatcher`. Оба могут инициировать реакцию на смену сети. | Явно выбрать источник истины; иначе реконнект задвоится (тот же класс граблей, что цикл на Windows). |
+
+### 6.3 Ловушки, на которые уже наступали на Windows (воспроизводимы 1-в-1)
+
+| # | Камень | Что делать |
+|---|---|---|
+| 15 | **Цикл переподключений**: подъём собственного VPN выглядит как смена сети. На Windows чинили трижды. | Сохранить все три предохранителя `NetworkWatcher` (дебаунс, `suspend`/`resume`, grace 15 с) + фильтр `NOT_VPN` в колбэке. |
+| 16 | **`wasAborted` снимать до `_cleanup`** (тот делает `++_generation`), иначе отмена пользователя показывается как «Ошибка». | Перенести гварды дословно. |
+| 17 | **«Ядро запущено» ≠ «ядро живо»** — упавшее на старте ядро выглядело рабочим и давало «все серверы недоступны». | Пауза + проверка `isRunning` с флагом `_exited`; хвост лога в текст ошибки. |
+| 18 | **Порядок в `init()` священен**: `panel_outbounds.json` и `server_overrides.json` грузятся **до** списка серверов, иначе все профили «Авто» (`panel://`) молча выпадают. | Покрыть тестом порядка инициализации. |
+| 19 | **Ключ всего состояния — `rawLink`.** Любое расхождение генерации ссылки (порядок query-параметров, скобки IPv6, которые `Uri.host` снимает) молча отвязывает пины, override, пинги и панельные конфиги. | `buildShareLink` не «улучшать»; тест побайтового паритета между платформами. |
+| 20 | **`final` DNS всегда `dns-proxy`** — фикс утечки DNS 0.11.1. При переносе DNS в другой слой её легко вернуть. | Явный тест: DNS затуннелированных приложений не резолвится системным резолвером даже в режиме `onlySelected`. |
+| 21 | **Утечка реального IP через панельный `direct`** (фиксы 0.12.0/0.13.0: реврайт `direct→VPN`, разбиение смешанных `ip:[geoip:ru,geoip:private]`, catch-all). | `rerouteDirectThroughVpn` в общем коде — не потерять при выносе `_configFor` в базовый класс. |
+| 22 | **Секрет Clash API обязателен.** Без него метаданные всех соединений sing-box читает любой локальный процесс и любая веб-страница (CORS `*`). На Android loopback общий — риск выше. | Генерация на сессию, только в памяти. |
+| 23 | **Битый файл настроек = молчаливый сброс.** BOM-защита и `.bad`-карантин есть только у настроек; `subscriptions.json` при порче молча обнуляет все подписки. | Распространить `.bad`-подход на остальные сторы + atomic-write. |
+| 24 | **`toggleConnection` обязан очищать `fallbackServers`.** Забыть = движок молча подменит выбранный пользователем сервер запасным. | Перенести дословно. |
+| 25 | **Выбор сервера и вариация не сбрасываются при автообновлении подписки.** Регресс незаметен и раздражает: перекидывает на первый сервер посреди сессии. | Сохранить поведение. |
+
+### 6.4 Данные и совместимость
+
+| # | Камень | Что делать |
+|---|---|---|
+| 26 | **`json://`-ключи построены на `String.hashCode`** — Dart не гарантирует стабильность между версиями SDK и платформами. При переносе данных Windows→Android импортированные JSON-конфиги осиротеют. | Либо пересчитывать ключи при импорте бэкапа, либо принять потерю осознанно. |
+| 27 | **`panel://`-ключ строится по имени профиля** — переименование «Авто (YouTube)» на панели = новый ключ = потеря пина и пинга. | Осознанный компромисс, не «чинить»; задокументировать. |
+| 28 | **`selectedIndex` восстанавливается по индексу, а не по ключу** — при изменившемся составе выбор может уехать на другой сервер. | Существующее поведение; решить осознанно, а не молча. |
+| 29 | **`logoPath` — абсолютный Windows-путь** в JSON. | Код уже устойчив (`existsSync`), логотипы просто перекачиваются. |
+| 30 | **`AppRule.path` хранит пути exe** — на Android нужен `packageName`. | Раздельные платформенные поля или миграция; старые Windows-конфиги не ломать. |
+| 31 | **`ANDROID_ID` ≠ `MachineGuid`**: меняется при factory reset, разный при разной подписи APK и в work-profile. Device-limit Remnawave посчитает это новым устройством. | Задокументировать; учесть в лимитах панели. |
+| 32 | **`headerSafe` — не «windows-фикс».** `Build.MODEL` бывает с не-ASCII и уронит HTTP-заголовок тем же `FormatException`, что кириллица в версии Windows. | Применять ко всем заголовкам устройства. |
+
+### 6.5 Панель Remnawave
+
+| # | Камень | Что делать |
+|---|---|---|
+| 33 | **UA-гейт регистрозависим и требует формата «Имя/версия».** Если Android пошлёт что-то иное — панель молча отдаст base64: пропадут профили «Авто», точные `streamSettings` и hysteria2. | Проверить на боевой панели **до** разработки (п. 6); в логе есть предупреждение «панель прислала НЕ XRAY_JSON». |
+| 34 | **Hysteria2 существует только в XRAY_JSON.** Remnawave <2.8.0 выбрасывает hy2 из base64, CLASH и SINGBOX-форматов. Любое изменение Response Rules отберёт hy2 у всех клиентов сразу. | До апгрейда панели правила не трогать. |
+| 35 | **Категория `geosite:`, которой нет в `.dat` клиента, не даёт ядру стартовать** — у всех пользователей сразу. С Android появляется второй, более медленный цикл обновления клиентов. | Сначала `.dat` в оба клиента, потом шаблон панели; переходный вариант — явные `domain:`-правила. |
+| 36 | **Браузерный UA — только для страницы подписки и `/assets/`-конфига** (логотип). Применить его к подписке = получить HTML вместо XRAY_JSON. | Не трогать разделение; помнить, что без cookie `session` бэкенд рвёт сокет (снаружи «502»). |
+| 37 | Перебор путей иконок (`favicon.ico` и т.п.) обречён: `isGenericPath()` рвёт сокет для любого «картиночного» пути. | Не возвращать эту стратегию. |
+
+### 6.6 Сборка и поставка
+
+| # | Камень | Что делать |
+|---|---|---|
+| 38 | **`!` в пути проекта для Gradle фатальнее, чем для MSBuild** (в Java `!` — разделитель jar-URL). | Все Android-команды строго из junction `C:\dev\silentgate`. |
+| 39 | **Бюджет размера.** Ядро ~30 МБ × 3 ABI + geo 29 МБ → universal-APK за 100 МБ. Windows-пользователь терпит 130 МБ, Android — нет. | `--split-per-abi`/AAB + вынос geo **до** первого публичного APK. |
+| 40 | **Версия живёт в трёх местах**: `pubspec.yaml`, `core/app_info.dart` (руками!), `versionName`. Забытый `app_info` ломает UA и `X-App-Version`. | Тест-паритет версии (п. 16). |
+| 41 | **`fetch-xray.ps1` тянет `LATEST` без пина** — поставка невоспроизводима. | Для Android пиновать версию Xray с первого дня. |
+| 42 | **Потеря keystore = конец обновлений** для всех sideload-пользователей. | Бэкап keystore отдельно от репозитория; для Play — Play App Signing. |
+| 43 | **16 КБ page size** — требование Play с 01.11.2025 для targetSdk 35. | NDK r27+, проверка выравнивания ELF. |
+| 44 | **Тумблер перехвата `vless://` нельзя реализовать «как на Windows»** — `intent-filter` статичен. Без `activity-alias` настройка в UI станет фикцией. | `activity-alias` + `setComponentEnabledSetting`. |
+| 45 | **Package visibility (Android 11+) бьёт по двум независимым местам.** (а) Проверка «установлен ли Telegram» без `<queries>` всегда вернёт false. (б) `getInstalledApplications()` для пикера split-tunnel вернёт почти пустой список. Объявление для (а) **не покрывает** (б). | (а) `<package android:name="org.telegram.messenger"/>`; (б) `<queries><intent>` MAIN/LAUNCHER (п.44). Проверять оба на targetSdk 35, а не на эмуляторе со старым API. |
+| 45а | **`foregroundServiceType` — фиксированный enum, значения `vpn` в нём нет.** Неизвестное значение не собирается, а с targetSdk 34+ сервис без корректного типа не стартует вовсе — то есть подключение не заработает на Android 14+. | `systemExempted` (+ `FOREGROUND_SERVICE_SYSTEM_EXEMPTED`), запасной вариант — `specialUse` с property-обоснованием. См. п.30. |
+| 46 | Изоляция тестовых копий через env-переменные (`APPDATA`, `SILENTGATE_*`) на Android не существует; методика живого теста через PowerShell Direct непереносима. | Флейворы с разным `applicationId`, `adb am start` вместо url-схем, инъекция пути вместо подмены env. |
+
+### 6.7 UI и UX
+
+| # | Камень | Что делать |
+|---|---|---|
+| 47 | **ПКМ — единственный вход в контекст-меню** серверов. У карточки подписки видимая ⋮ уже есть, у плитки сервера — **нет**, а шеврон ведёт в редактор: 5 из 7 пунктов меню не имеют другой точки входа во всём приложении. | Плитке сервера — **видимая** ⋮ в мобильной вёрстке, `onLongPress` как ускоритель (п. 61). |
+| 48 | **Hover-тултипы на тач не работают**, а часть информации доступна только через них. | Дублировать критичное «!»-подсказками (паттерн уже применён у легенды пинга). |
+| 49 | **`ValueKey` обязан стоять на внешнем `Padding`** в обеих стопках тостов — иначе вернётся баг 0.10.2 (вставка сообщения перезапускает таймеры соседей). | Перенести дословно. |
+| 50 | **`finishedAt`-гейты прогресс-карточек** — не оптимизация, а защита от бесконечного повторного показа итога на каждой перерисовке. | Сохранить вместе со сбросом гварда при `running`. |
+| 51 | **`ServerSearch.matchIndices` возвращает исходные индексы.** Замена на фильтрованный список без маппинга уведёт выбор на соседний сервер. | Не «упрощать». |
+| 52 | **`ServiceChecksRow`: `bind`/`reset` только через `addPostFrameCallback`** — синхронный вызов даёт `notifyListeners` во время `build` родителя (краш). `reset` в `dispose` обязателен, иначе переподключение к тому же серверу покажет устаревшие чипы. | Перенести все три гварда. |
+| 53 | **Две разные политики направления текста**: технический текст форсится в LTR, провайдерский определяется по содержимому. При перевёрстке легко снять `textDirection` и сломать ar/fa. | Прогнать все ~29 мест (п. 66). |
+| 53а | **Экран Connect свёрстан без прокрутки** с опорой на минимальный размер окна десктопа. На телефоне при крупном системном шрифте, в ландшафте или split-screen это `RenderFlex overflow`. | Прокрутка + относительные размеры + проверка при масштабе шрифта 2.0 (п. 61а). |
+| 54 | **`AppToast` молча не показывается без `Overlay`** — вызовы из фонового сервиса потеряются без ошибки. | Учитывать при уведомлениях от сервиса (для них — системная нотификация). |
+| 55 | **`existsSync` прямо в `build`** (`SubscriptionAvatar`, `SiteFavicon`) — на мобильном I/O в кадре заметнее. | Кэшировать факт наличия файла. |
+| 56 | **«Снять все» сервисы автонастройки не переживает перезапуск** (пустой набор трактуется как «нет данных» → дефолт). | Осознанный компромисс формата; не «чинить» молча. |
+| 57 | **`AppLog` ротируется только на старте.** Долгоживущий foreground-сервис будет писать сутками. | Добавить ротацию в рантайме. |
+
+---
+
+## 7. Критерии готовности этапа
+
+Android-версия считается готовой к бете, когда:
+
+1. Импорт реальной подписки Remnawave даёт **тот же** состав серверов, что Windows-клиент,
+   включая профили «Авто» и hysteria2-узлы (то есть панель отдала XRAY_JSON).
+2. Подключение работает во всех режимах: обычный сервер, панельный профиль «Авто», hysteria2,
+   импортированный JSON-конфиг.
+3. Split-tunnel (приложения/сайты), DNS без утечек, kill switch, `noRealIp` — подтверждены живым
+   тестом на устройстве (проверка внешнего IP и DNS изнутри).
+4. Переживает: смену Wi-Fi↔LTE, Doze, свайп Activity при живом VPN, `onRevoke`, перезапуск UI,
+   отказ от уведомлений, удаление приложения с активным split-правилом.
+5. Пинг, автонастройка и сервис-чипы дают осмысленные цифры **при активном VPN** (не через туннель).
+6. Локализованный UI и RTL корректны на устройстве — включая **строки нативного слоя**
+   (нотификация сервиса) и подписи split-tunnel; `flutter analyze` и `flutter test` зелёные.
+   Известный остаток нелокализованного (`AppLog`, техчасть отчёта поддержки) — осознанный.
+7. Вёрстка выдерживает системный масштаб шрифта 2.0, ландшафт и split-screen без overflow.
+8. APK подписан, размер в бюджете, лицензии и Corresponding Source опубликованы, бэкап данных
+   отключён (секреты не уезжают в облако), иконка и название — свои, а не дефолтные.
+9. Windows-версия после всех рефакторингов **не деградировала**: тесты зелёные, живой прогон
+   ключевых сценариев повторён.
+
+Пункт 9 — не формальность: большая часть работы Фазы 1 идёт в общем коде, и цена ошибки там —
+регресс на уже работающей платформе.
