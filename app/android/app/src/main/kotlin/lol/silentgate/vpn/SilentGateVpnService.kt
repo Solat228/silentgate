@@ -23,6 +23,7 @@ import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.LocalDNSTransport
 import io.nekohasekai.libbox.NetworkInterface as LibboxNetworkInterface
 import io.nekohasekai.libbox.NetworkInterfaceIterator
+import io.nekohasekai.libbox.OverrideOptions
 import io.nekohasekai.libbox.PlatformInterface
 import io.nekohasekai.libbox.RoutePrefix
 import io.nekohasekai.libbox.SetupOptions
@@ -136,7 +137,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
             val server = CommandServer(this, this)
             server.start()
-            server.startOrReloadService(configJson, null)
+            // ⚠️ Вторым аргументом НЕЛЬЗЯ передавать null: Go-сторона
+            // разыменовывает указатель сразу (`options.AutoRedirect` в
+            // CommandServer.StartOrReloadService), и nil даёт панику Go —
+            // то есть SIGSEGV и смерть процесса, а не Java-исключение.
+            // Именно так выглядел «VPN вылетает без следа в логах».
+            //
+            // Сами списки пакетов оставляем пустыми: единственный источник
+            // правды — конфиг (include_package/exclude_package в TUN-инбаунде),
+            // и дублировать их здесь значило бы иметь два несогласованных места.
+            server.startOrReloadService(configJson, OverrideOptions())
             commandServer = server
 
             running = true

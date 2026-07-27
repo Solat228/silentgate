@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import '../engine/probe_factory.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -965,22 +967,29 @@ class _PingSection extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Text(l.pingMethodPing),
           ),
+          // ICMP требует сырых сокетов (нет без root), GET/HEAD — проброс-харнесс
+          // (второй экземпляр ядра рядом с живым туннелем не поднять). Показывать
+          // методы, которые заведомо не отработают, нечестно.
           _choice<PingMethod>(
             context,
             current: settings.pingPrimary,
-            options: const {
+            options: {
               PingMethod.tcp: 'TCP',
-              PingMethod.icmp: 'ICMP',
-              PingMethod.proxyGet: 'GET',
-              PingMethod.proxyHead: 'HEAD',
+              if (icmpSupported) PingMethod.icmp: 'ICMP',
+              if (proxyProbeSupported) ...{
+                PingMethod.proxyGet: 'GET',
+                PingMethod.proxyHead: 'HEAD',
+              },
             },
             onChanged: (m) => controller.update((s) => s.copyWith(pingPrimary: m)),
           ),
           _methodLegend({
             'TCP': l.pingInfoTcp,
-            'ICMP': l.pingInfoIcmp,
-            'GET': l.pingInfoProxyGet,
-            'HEAD': l.pingInfoProxyHead,
+            if (icmpSupported) 'ICMP': l.pingInfoIcmp,
+            if (proxyProbeSupported) ...{
+              'GET': l.pingInfoProxyGet,
+              'HEAD': l.pingInfoProxyHead,
+            },
           }),
         ],
         // #11 — объём пробы теста скорости (ПКМ по серверу → «Информация о сервере»).

@@ -216,7 +216,23 @@ class ProbeController extends ChangeNotifier {
         if (twoPhase) ...survivors,
         ...proxyPlain,
       ];
-      if (verify.isNotEmpty && !cancel.isCancelled) {
+      // Платформа без харнесса (Android): проверить «реально ли проксирует»
+      // нечем — второй экземпляр ядра рядом с живым туннелем не поднять.
+      // Оставляем результат одной фазы вместо падения всего пинга: раньше
+      // здесь вылетал UnsupportedError и обнулял проверку всех серверов.
+      if (verify.isNotEmpty && !proxyProbeSupported) {
+        AppLog.i('Проба через прокси пропущена: харнесс недоступен на '
+            'этой платформе, результат — по TCP');
+        for (final s in noTcp) {
+          // Профили «Авто» и полные конфиги без пробы подтвердить нечем:
+          // TCP до одного узла из десятков ничего не значит.
+          _results[s.key] = PingResult(
+            outcome: PingOutcome.untested,
+            latencyMethod: settings.pingPrimary,
+          );
+        }
+        notifyListeners();
+      } else if (verify.isNotEmpty && !cancel.isCancelled) {
         // Полный конфиг (правка/профиль «Авто …») — своим харнессом: у него свои
         // теги и балансировщик, в общий мешать нельзя (#8.2).
         final shared = <VpnServer>[];
