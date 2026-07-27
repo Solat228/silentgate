@@ -1,6 +1,9 @@
 import 'dart:typed_data';
 
+import 'dart:io';
+
 import '../../core/platform/app_log.dart';
+import '../../core/platform/app_paths.dart';
 import '../../core/platform/platform_services.dart';
 import '../../core/settings/app_settings.dart';
 
@@ -66,14 +69,21 @@ class _AndroidCoreVersions implements CoreVersionInfo {
 class _AndroidTunLog implements TunLogReader {
   const _AndroidTunLog();
 
-  /// Лог приложения на Android общий (`AppLog` уже пишет в files-dir).
-  /// Отдельный лог ядра появится вместе с ядрами (задача 25).
+  /// Лог ядра: сюда `VpnService` перенаправляет вывод sing-box и — что важнее —
+  /// паники Go (`Libbox.redirectStderr`). Без него причина падения туннеля не
+  /// видна нигде.
+  ///
+  /// Если ядро ещё ни разу не запускалось, файла нет — тогда отдаём лог
+  /// приложения, чтобы экран не выглядел сломанным.
   @override
   Future<String> tail({int lines = 200}) async {
-    final all = await AppLog.dump();
-    final rows = all.split('\n');
+    final dir = await AppPaths.supportDir();
+    final f = File('${dir.path}${Platform.pathSeparator}singbox.log');
+    final text = await f.exists() ? await f.readAsString() : '';
+    final source = text.trim().isEmpty ? await AppLog.dump() : text;
+    final rows = source.split('\n');
     return rows.length <= lines
-        ? all
+        ? source
         : rows.sublist(rows.length - lines).join('\n');
   }
 }

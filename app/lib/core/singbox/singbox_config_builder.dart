@@ -34,6 +34,22 @@ class TunOptions {
   /// ядра, приватная сеть) остаётся direct — иначе туннель не поднимется.
   final bool noRealIp;
 
+  /// Туннель создаёт платформа (Android `VpnService`), а не ядро.
+  ///
+  /// Меняет три вещи, каждая из которых иначе валит подключение:
+  ///  * из TUN-инбаунда уходят `interface_name`, `auto_route`, `strict_route`
+  ///    и `stack` — интерфейсом владеет система, ядро эти поля для
+  ///    платформенного туннеля не принимает;
+  ///  * появляются `include_package`/`exclude_package` — способ развести
+  ///    приложения на Android (аналога process_name там нет);
+  ///  * правила по именам процессов Windows не пишутся вовсе: `xray.exe` на
+  ///    Android не совпадёт ни с чем.
+  final bool platformTun;
+
+  /// Пакет самого приложения — обязан идти мимо туннеля, иначе загрузка
+  /// подписки и пинг уходят в собственный VPN (петля и ложные цифры).
+  final String selfPackage;
+
   const TunOptions({
     this.stack,
     this.mtu = 1500,
@@ -50,10 +66,17 @@ class TunOptions {
     this.serverIps = const [],
     this.autotune = false,
     this.noRealIp = false,
+    this.platformTun = false,
+    this.selfPackage = 'lol.silentgate',
   });
 
-  factory TunOptions.fromSettings(AppSettings s, {List<String> serverIps = const []}) {
+  factory TunOptions.fromSettings(
+    AppSettings s, {
+    List<String> serverIps = const [],
+    bool android = false,
+  }) {
     return TunOptions(
+      platformTun: android,
       stack: s.tunStack.singboxValue,
       mtu: s.tunMtu,
       strictRoute: s.tunStrictRoute,
@@ -137,10 +160,13 @@ class SingboxConfigBuilder {
       // 1-й эшелон: сам VPN-сервер.
       if (o.serverIps.isNotEmpty)
         _route({'ip_cidr': [for (final ip in o.serverIps) _asCidr(ip)]}, 'direct'),
-      // 2-й эшелон: процессы ядра.
-      _route({
-        'process_name': ['xray.exe', 'sing-box.exe', 'silentgate.exe'],
-      }, 'direct'),
+      // 2-й эшелон: процессы ядра. На Android имён процессов нет — там свой
+      // пакет уже исключён из туннеля на уровне ОС (exclude_package), а
+      // process_name со значением 'xray.exe' не совпал бы ни с чем.
+      if (!o.platformTun)
+        _route({
+          'process_name': ['xray.exe', 'sing-box.exe', 'silentgate.exe'],
+        }, 'direct'),
     ];
 
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
@@ -166,18 +192,31 @@ class SingboxConfigBuilder {
         {
           'type': 'tun',
           'tag': 'tun-in',
-          'interface_name': 'silentgate-tun',
+          // Имя интерфейса, автомаршруты, strict_route и выбор стека имеют смысл
+          // только когда туннель создаёт САМО ядро. На Android его создаёт
+          // VpnService, и эти поля ядро для платформенного туннеля не принимает.
+          if (!o.platformTun) ...{
+            'interface_name': 'silentgate-tun',
+            'auto_route': true,
+            'strict_route': o.strictRoute,
+            if (o.stack != null) 'stack': o.stack,
+          },
           'address': [
             '172.19.0.1/30',
             if (o.ipv6) 'fdfe:dcba:9876::1/126',
           ],
           'mtu': o.mtu,
-          'auto_route': true,
-          'strict_route': o.strictRoute,
-          if (o.stack != null) 'stack': o.stack,
           'endpoint_independent_nat': o.endpointIndependentNat,
           if (_validExcludeCidrs.isNotEmpty)
             'route_exclude_address': _validExcludeCidrs,
+          // Разведение приложений на Android идёт пакетами, а не процессами.
+          // Свой пакет исключается ВСЕГДА: иначе загрузка подписки и пинг
+          // уйдут в собственный туннель — петля и ложные цифры.
+          if (o.platformTun) ...{
+            'exclude_package': _excludePackages(split, o),
+            if (_includePackages(split, o).isNotEmpty)
+              'include_package': _includePackages(split, o),
+          },
         },
       ],
       'outbounds': [
@@ -361,4 +400,41 @@ class SingboxConfigBuilder {
   /// метасимволы — экранирование пробела и пр. RE2 считает ошибкой.
   static String _reEscape(String s) =>
       s.replaceAllMapped(RegExp(r'[.*+?^${}()|\[\]\\]'), (m) => '\\${m[0]}');
+
+  /// Пакеты, идущие МИМО туннеля (действие «Прямо»).
+  ///
+  /// ⚠️ При `noRealIp` пользовательские «Прямо»-приложения сюда НЕ попадают:
+  /// исключённый на уровне ОС пакет ядро не увидит, и его трафик пойдёт под
+  /// реальным IP — ровно та утечка, которую чинили на Windows (0.12.0).
+  /// Там они остаются в туннеле, а правило `package_name → proxy` уводит их
+  /// через VPN.
+  List<String> _excludePackages(SplitTunnelConfig split, TunOptions o) {
+    final out = <String>{o.selfPackage};
+    if (o.noRealIp) return out.toList();
+    if (split.mode == SplitMode.onlySelected) return out.toList();
+    for (final a in split.apps) {
+      if (!a.enabled || a.action != AppAction.direct) continue;
+      if (a.path.trim().isEmpty) continue;
+      out.add(a.path.trim());
+    }
+    return out.toList();
+  }
+
+  /// Пакеты, которые единственные идут В туннель (режим «только выбранные»).
+  ///
+  /// Списки include и exclude в `VpnService.Builder` несовместимы: наличие
+  /// хотя бы одного include уводит всё остальное мимо VPN. Поэтому здесь
+  /// либо один, либо другой.
+  List<String> _includePackages(SplitTunnelConfig split, TunOptions o) {
+    if (split.mode != SplitMode.onlySelected) return const [];
+    final out = <String>{};
+    for (final a in split.apps) {
+      if (!a.enabled) continue;
+      if (a.action == AppAction.block) continue;
+      final pkg = a.path.trim();
+      if (pkg.isNotEmpty) out.add(pkg);
+    }
+    return out.toList();
+  }
+
 }

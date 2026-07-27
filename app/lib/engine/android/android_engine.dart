@@ -122,7 +122,7 @@ class AndroidEngine extends VpnEngineBase {
   void _onNativeEvent(dynamic event) {
     if (event is! Map) return;
     final running = event['running'] == true;
-    final error = event['error'] as String?;
+    final error = (event['error'] as String?)?.trim();
 
     if (running || _starting) return;
     if (!status.isConnected && status.state != VpnConnectionState.connecting) {
@@ -132,7 +132,22 @@ class AndroidEngine extends VpnEngineBase {
     // Сюда попадает и onRevoke (другой VPN перехватил туннель) — пути,
     // которого на Windows нет вовсе.
     AppLog.e('VPN-сервис остановился: ${error ?? 'без причины'}');
-    unawaited(onCoreDied(0));
+
+    // Текст из нативного слоя ОБЯЗАН доехать до пользователя. Без этого
+    // подключение просто «вылетало» молча, и причину нельзя было назвать
+    // даже по логам приложения.
+    unawaited(_reportStop(error));
+  }
+
+  Future<void> _reportStop(String? error) async {
+    if (error == null || error.isEmpty) {
+      await onCoreDied(0);
+      return;
+    }
+    // Причина известна — показываем её вместо безымянного «ядро остановилось».
+    // Повторять попытку смысла нет: конфиг тот же, результат будет тот же.
+    await cleanup();
+    setStatus(VpnConnectionState.error, message: error);
   }
 
   @override

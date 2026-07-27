@@ -84,6 +84,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     private var commandServer: CommandServer? = null
+    private var coreLog: java.io.File? = null
     private var tunFd: ParcelFileDescriptor? = null
     private var interfaceListener: InterfaceUpdateListener? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -118,6 +119,12 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // сразу, иначе система убьёт его за нарушение контракта.
             startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.vpn_connecting)))
 
+            // Весь вывод ядра и, главное, паники Go уходят в файл: без этого
+            // причина падения не видна нигде — ни в логах приложения, ни на
+            // экране. Файл читает экран «Логи».
+            coreLog = filesDir.resolve("singbox.log")
+            runCatching { Libbox.redirectStderr(coreLog!!.absolutePath) }
+
             Libbox.setup(SetupOptions().apply {
                 basePath = filesDir.absolutePath
                 workingPath = filesDir.resolve("sing-box").also { it.mkdirs() }.absolutePath
@@ -137,12 +144,35 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             notifyState()
             updateNotification(getString(R.string.vpn_connected))
         } catch (e: Throwable) {
-            lastError = e.message ?: e.toString()
+            // Имя класса обязательно: у UnsatisfiedLinkError (не загрузилась
+            // libbox.so) и у ошибок конфига message бывает пустым, и без типа
+            // сообщение выглядело бы как «ядро не запустилось» без причины.
+            val cause = generateSequence(e) { it.cause }.last()
+            lastError = buildString {
+                append(e::class.java.simpleName)
+                e.message?.takeIf { it.isNotBlank() }?.let { append(": ").append(it) }
+                if (cause !== e) {
+                    append(" <- ").append(cause::class.java.simpleName)
+                    cause.message?.takeIf { it.isNotBlank() }?.let { append(": ").append(it) }
+                }
+                tailOfCoreLog()?.let { append("\n\n").append(it) }
+            }
             running = false
             notifyState()
             stopTunnel()
             stopSelf()
         }
+    }
+
+    /// Хвост лога ядра — в него попадают и паники Go, перехваченные
+    /// redirectStderr.
+    private fun tailOfCoreLog(): String? {
+        val f = coreLog ?: return null
+        return runCatching {
+            val lines = f.readLines()
+            if (lines.isEmpty()) null
+            else lines.takeLast(12).joinToString("\n")
+        }.getOrNull()
     }
 
     private fun stopTunnel() {
@@ -315,7 +345,11 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     override fun getInterfaces(): NetworkInterfaceIterator {
         val active = connectivity.activeNetwork
         val activeCaps = active?.let { connectivity.getNetworkCapabilities(it) }
-        val list = JavaNetworkInterface.getNetworkInterfaces().toList().map { iface ->
+        // На Android 11+ перечисление интерфейсов ограничено и может вернуть
+        // null; необработанный NPE здесь уходит через JNI в Go и роняет процесс.
+        val ifaces = runCatching { JavaNetworkInterface.getNetworkInterfaces() }
+            .getOrNull() ?: return InterfaceArray(emptyList())
+        val list = ifaces.toList().map { iface ->
             LibboxNetworkInterface().apply {
                 name = iface.name
                 index = iface.index
@@ -380,7 +414,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     override fun underNetworkExtension(): Boolean = false
     override fun includeAllNetworks(): Boolean = false
     override fun clearDNSCache() {}
-    override fun readWIFIState(): WIFIState? = null
+    // Пустое состояние вместо null: значение уходит в Go через JNI, и null там
+    // разыменовывается без проверки.
+    override fun readWIFIState(): WIFIState = WIFIState("", "")
     override fun systemCertificates(): StringIterator = StringArray(emptyList())
     override fun localDNSTransport(): LocalDNSTransport? = null
     override fun sendNotification(notification: io.nekohasekai.libbox.Notification) {}
