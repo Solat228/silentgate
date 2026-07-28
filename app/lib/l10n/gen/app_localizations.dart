@@ -928,7 +928,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Тестируется {index}/{total}: '**
-  String autoTesting(Object index, Object total);
+  String autoTesting(int index, int total);
 
   /// No description provided for @autoVariant.
   ///
@@ -940,7 +940,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'сервисов {ok} из {total}'**
-  String autoServicesPassed(Object ok, Object total);
+  String autoServicesPassed(int ok, int total);
 
   /// No description provided for @autoConnect.
   ///
@@ -970,7 +970,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Серверы для подбора ({selected}/{total})'**
-  String autoServersForTuning(Object selected, Object total);
+  String autoServersForTuning(int selected, int total);
 
   /// No description provided for @autoSelectAll.
   ///
@@ -1078,7 +1078,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Пинг серверов: {done} из {total}'**
-  String homePingProgress(Object done, Object total);
+  String homePingProgress(int done, int total);
 
   /// No description provided for @homeAutoConfigStarting.
   ///
@@ -1090,7 +1090,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Автонастройка: {current} из {total} — {name}'**
-  String homeAutoConfigProgress(Object current, Object name, Object total);
+  String homeAutoConfigProgress(int current, int total, String name);
 
   /// No description provided for @homeImport.
   ///
@@ -1126,7 +1126,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Найдено {found} из {total}'**
-  String homeFoundCount(Object found, Object total);
+  String homeFoundCount(int found, int total);
 
   /// No description provided for @homePingServers.
   ///
@@ -1168,7 +1168,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'За сессию: ↓ {down}   ↑ {up}'**
-  String homeSessionTraffic(Object down, Object up);
+  String homeSessionTraffic(String down, String up);
 
   /// No description provided for @subBarGbUnit.
   ///
@@ -1180,7 +1180,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'{used} из {total}'**
-  String subBarUsage(Object total, Object used);
+  String subBarUsage(String used, String total);
 
   /// No description provided for @subBarSubscription.
   ///
@@ -1726,7 +1726,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'Серверы — найдено {found} из {total}'**
-  String serversFound(Object found, Object total);
+  String serversFound(int found, int total);
 
   /// No description provided for @serversRefresh.
   ///
@@ -2020,7 +2020,7 @@ abstract class AppLocalizations {
   ///
   /// In ru, this message translates to:
   /// **'{count} серверов{burst}'**
-  String jsonProfileServers(Object burst, Object count);
+  String jsonProfileServers(int count, String burst);
 
   /// No description provided for @jsonCompositionUnknown.
   ///
@@ -3179,6 +3179,96 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Отчёт скопирован — вставьте его в чат поддержки'**
   String get supportReportCopied;
+
+  /// No description provided for @subBarUsedOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Израсходовано {used}'**
+  String subBarUsedOnly(String used);
+
+  /// No description provided for @subBarUnlimitedTraffic.
+  ///
+  /// In ru, this message translates to:
+  /// **'трафик без ограничений'**
+  String get subBarUnlimitedTraffic;
+
+  /// No description provided for @supportDescribeLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опишите проблему'**
+  String get supportDescribeLabel;
+
+  /// No description provided for @supportDescribeHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что делали, что ожидали, что произошло и когда началось'**
+  String get supportDescribeHint;
+
+  /// No description provided for @supportDescribeRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Опишите проблему — без описания отчёт бесполезен'**
+  String get supportDescribeRequired;
+
+  /// No description provided for @supportNoScreenshots.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скриншоты сюда не вставляйте — присылайте их отдельным сообщением в чат Telegram.'**
+  String get supportNoScreenshots;
+
+  /// No description provided for @supportDescriptionSection.
+  ///
+  /// In ru, this message translates to:
+  /// **'ОПИСАНИЕ ОТ ПОЛЬЗОВАТЕЛЯ'**
+  String get supportDescriptionSection;
+
+  /// No description provided for @splitAllowRealIp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешить реальный IP'**
+  String get splitAllowRealIp;
+
+  /// No description provided for @splitAllowRealIpOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правило идёт мимо VPN — сайт увидит ваш настоящий адрес'**
+  String get splitAllowRealIpOn;
+
+  /// No description provided for @splitAllowRealIpOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правило возвращено под защиту — пойдёт через VPN'**
+  String get splitAllowRealIpOff;
+
+  /// No description provided for @splitRealIpExposed.
+  ///
+  /// In ru, this message translates to:
+  /// **'реальный IP'**
+  String get splitRealIpExposed;
+
+  /// No description provided for @splitRealIpProtected.
+  ///
+  /// In ru, this message translates to:
+  /// **'через VPN'**
+  String get splitRealIpProtected;
+
+  /// No description provided for @vpnActiveBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'VPN активен'**
+  String get vpnActiveBadge;
+
+  /// No description provided for @splitCopyDomain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать адрес'**
+  String get splitCopyDomain;
+
+  /// No description provided for @splitCopyPath.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать путь'**
+  String get splitCopyPath;
 }
 
 class _AppLocalizationsDelegate

@@ -571,5 +571,20 @@
   "portBusyTitle": "Port {port} is already in use by {by}.",
   "srvTileMenu": "Server actions",
   "supportCopyReport": "Copy report",
-  "supportReportCopied": "Report copied — paste it into the support chat"
+  "supportReportCopied": "Report copied — paste it into the support chat",
+  "subBarUsedOnly": "Used {used}",
+  "subBarUnlimitedTraffic": "unlimited traffic",
+  "supportDescribeLabel": "Describe the problem",
+  "supportDescribeHint": "What you did, what you expected, what happened and when it started",
+  "supportDescribeRequired": "Describe the problem — a report without it is useless",
+  "supportNoScreenshots": "Do not paste screenshots here — send them as a separate message in the Telegram chat.",
+  "supportDescriptionSection": "USER DESCRIPTION",
+  "splitAllowRealIp": "Allow real IP",
+  "splitAllowRealIpOn": "This rule bypasses the VPN — the site will see your real address",
+  "splitAllowRealIpOff": "This rule is protected — it goes through the VPN",
+  "splitRealIpExposed": "real IP",
+  "splitRealIpProtected": "via VPN",
+  "vpnActiveBadge": "VPN is active",
+  "splitCopyDomain": "Copy address",
+  "splitCopyPath": "Copy path"
 }

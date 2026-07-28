@@ -441,7 +441,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoTuneByKey => '按密钥配置';
 
   @override
-  String autoTesting(Object index, Object total) {
+  String autoTesting(int index, int total) {
     return '正在测试 $index/$total：';
   }
 
@@ -451,7 +451,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String autoServicesPassed(Object ok, Object total) {
+  String autoServicesPassed(int ok, int total) {
     return '$total 个服务中通过 $ok 个';
   }
 
@@ -470,7 +470,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String autoServersForTuning(Object selected, Object total) {
+  String autoServersForTuning(int selected, int total) {
     return '待配置的服务器（$selected/$total）';
   }
 
@@ -532,7 +532,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeReconnect => '重新连接';
 
   @override
-  String homePingProgress(Object done, Object total) {
+  String homePingProgress(int done, int total) {
     return '正在测试服务器延迟：$total 中的 $done';
   }
 
@@ -540,7 +540,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeAutoConfigStarting => '自动配置正在启动…';
 
   @override
-  String homeAutoConfigProgress(Object current, Object name, Object total) {
+  String homeAutoConfigProgress(int current, int total, String name) {
     return '自动配置：$total 中的 $current — $name';
   }
 
@@ -562,7 +562,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String homeFoundCount(Object found, Object total) {
+  String homeFoundCount(int found, int total) {
     return '已找到 $total 中的 $found';
   }
 
@@ -585,7 +585,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeImportSubscription => '导入订阅';
 
   @override
-  String homeSessionTraffic(Object down, Object up) {
+  String homeSessionTraffic(String down, String up) {
     return '本次会话：↓ $down   ↑ $up';
   }
 
@@ -593,7 +593,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subBarGbUnit => 'GB';
 
   @override
-  String subBarUsage(Object total, Object used) {
+  String subBarUsage(String used, String total) {
     return '$total 中的 $used';
   }
 
@@ -927,7 +927,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get serversTitle => '服务器';
 
   @override
-  String serversFound(Object found, Object total) {
+  String serversFound(int found, int total) {
     return '服务器——已找到 $total 中的 $found';
   }
 
@@ -1080,7 +1080,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get editorSave => '保存';
 
   @override
-  String jsonProfileServers(Object burst, Object count) {
+  String jsonProfileServers(int count, String burst) {
     return '$count 个服务器$burst';
   }
 
@@ -1693,4 +1693,51 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get supportReportCopied => '报告已复制 — 请粘贴到支持聊天中';
+
+  @override
+  String subBarUsedOnly(String used) {
+    return '已用 $used';
+  }
+
+  @override
+  String get subBarUnlimitedTraffic => '流量不限';
+
+  @override
+  String get supportDescribeLabel => '描述问题';
+
+  @override
+  String get supportDescribeHint => '您做了什么、期望什么、发生了什么以及何时开始';
+
+  @override
+  String get supportDescribeRequired => '请描述问题 — 没有描述的报告没有用';
+
+  @override
+  String get supportNoScreenshots => '请勿在此粘贴截图 — 请在 Telegram 聊天中单独发送。';
+
+  @override
+  String get supportDescriptionSection => '用户描述';
+
+  @override
+  String get splitAllowRealIp => '允许真实 IP';
+
+  @override
+  String get splitAllowRealIpOn => '此规则绕过 VPN — 网站将看到你的真实地址';
+
+  @override
+  String get splitAllowRealIpOff => '此规则受保护 — 将通过 VPN';
+
+  @override
+  String get splitRealIpExposed => '真实 IP';
+
+  @override
+  String get splitRealIpProtected => '经由 VPN';
+
+  @override
+  String get vpnActiveBadge => 'VPN 已启用';
+
+  @override
+  String get splitCopyDomain => '复制地址';
+
+  @override
+  String get splitCopyPath => '复制路径';
 }

@@ -611,5 +611,130 @@
   },
   "srvTileMenu": "Действия с сервером",
   "supportCopyReport": "Скопировать отчёт",
-  "supportReportCopied": "Отчёт скопирован — вставьте его в чат поддержки"
+  "supportReportCopied": "Отчёт скопирован — вставьте его в чат поддержки",
+  "subBarUsedOnly": "Израсходовано {used}",
+  "subBarUnlimitedTraffic": "трафик без ограничений",
+  "@subBarUsedOnly": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      }
+    }
+  },
+  "supportDescribeLabel": "Опишите проблему",
+  "supportDescribeHint": "Что делали, что ожидали, что произошло и когда началось",
+  "supportDescribeRequired": "Опишите проблему — без описания отчёт бесполезен",
+  "supportNoScreenshots": "Скриншоты сюда не вставляйте — присылайте их отдельным сообщением в чат Telegram.",
+  "supportDescriptionSection": "ОПИСАНИЕ ОТ ПОЛЬЗОВАТЕЛЯ",
+  "@subBarUsage": {
+    "placeholders": {
+      "used": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "@homeAutoConfigProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "@jsonProfileServers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "burst": {
+        "type": "String"
+      }
+    }
+  },
+  "@autoTesting": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@autoServicesPassed": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@autoServersForTuning": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@homePingProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@homeFoundCount": {
+    "placeholders": {
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@homeSessionTraffic": {
+    "placeholders": {
+      "down": {
+        "type": "String"
+      },
+      "up": {
+        "type": "String"
+      }
+    }
+  },
+  "@serversFound": {
+    "placeholders": {
+      "found": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "splitAllowRealIp": "Разрешить реальный IP",
+  "splitAllowRealIpOn": "Правило идёт мимо VPN — сайт увидит ваш настоящий адрес",
+  "splitAllowRealIpOff": "Правило возвращено под защиту — пойдёт через VPN",
+  "splitRealIpExposed": "реальный IP",
+  "splitRealIpProtected": "через VPN",
+  "vpnActiveBadge": "VPN активен",
+  "splitCopyDomain": "Скопировать адрес",
+  "splitCopyPath": "Скопировать путь"
 }

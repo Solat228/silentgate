@@ -510,5 +510,20 @@
   "portBusyTitle": "Le port {port} est déjà utilisé par {by}.",
   "srvTileMenu": "Actions du serveur",
   "supportCopyReport": "Copier le rapport",
-  "supportReportCopied": "Rapport copié — collez-le dans le chat du support"
+  "supportReportCopied": "Rapport copié — collez-le dans le chat du support",
+  "subBarUsedOnly": "Utilisé {used}",
+  "subBarUnlimitedTraffic": "trafic illimité",
+  "supportDescribeLabel": "Décrivez le problème",
+  "supportDescribeHint": "Ce que vous faisiez, ce que vous attendiez, ce qui s’est passé et quand cela a commencé",
+  "supportDescribeRequired": "Décrivez le problème — sans description le rapport est inutile",
+  "supportNoScreenshots": "Ne collez pas de captures ici — envoyez-les dans un message séparé sur le chat Telegram.",
+  "supportDescriptionSection": "DESCRIPTION DE L’UTILISATEUR",
+  "splitAllowRealIp": "Autoriser l’IP réelle",
+  "splitAllowRealIpOn": "Cette règle contourne le VPN — le site verra votre adresse réelle",
+  "splitAllowRealIpOff": "Cette règle est protégée — elle passe par le VPN",
+  "splitRealIpExposed": "IP réelle",
+  "splitRealIpProtected": "via VPN",
+  "vpnActiveBadge": "VPN actif",
+  "splitCopyDomain": "Copier l’adresse",
+  "splitCopyPath": "Copier le chemin"
 }

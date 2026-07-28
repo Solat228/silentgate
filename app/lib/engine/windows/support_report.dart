@@ -5,6 +5,7 @@ import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/device_id.dart';
 import '../../core/platform/support_context.dart';
+import '../../core/settings/split_tunnel.dart';
 import '../../core/settings/app_settings.dart';
 import 'singbox_process.dart';
 import 'tun/tun_helper.dart';
@@ -64,8 +65,17 @@ class SupportReport {
         'strictRoute ${settings.tunStrictRoute}, IPv6 ${settings.tunIpv6}');
     b.writeln('DNS: режим ${settings.dnsMode.name}, hijack ${settings.dnsHijack}, '
         'стратегия ${settings.dnsStrategy.name}');
+    // noRealIp обязателен в отчёте: он переписывает маршруты правил «Прямо», и
+    // без него жалобы вида «сайт всё равно идёт через VPN» неотличимы от
+    // поломки маршрутизации.
     b.writeln('Автопереподключение: ${settings.autoReconnect}, '
-        'kill switch ${settings.killSwitch}');
+        'kill switch ${settings.killSwitch}, '
+        'без реального IP ${settings.noRealIp}');
+    final st = settings.splitTunnel;
+    b.writeln('Раздельное туннелирование: режим ${st.mode.name}, '
+        'приложений ${st.apps.length}, сайтов ${st.sites.length}'
+        '${settings.noRealIp ? ', с реальным IP разрешено '
+            '${st.apps.where((a) => a.action == AppAction.direct && a.allowRealIp).length + st.sites.where((s) => s.action == AppAction.direct && s.allowRealIp).length}' : ''}');
     b.writeln('Пинг: основной ${settings.pingPrimary.name}, '
         'запасной ${settings.pingFallback.name}, '
         'двухфазный ${settings.pingTwoPhase}, таймаут ${settings.pingTimeoutMs} мс');

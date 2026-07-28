@@ -455,7 +455,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoTuneByKey => 'Tune by key';
 
   @override
-  String autoTesting(Object index, Object total) {
+  String autoTesting(int index, int total) {
     return 'Testing $index/$total: ';
   }
 
@@ -465,7 +465,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String autoServicesPassed(Object ok, Object total) {
+  String autoServicesPassed(int ok, int total) {
     return '$ok of $total services';
   }
 
@@ -484,7 +484,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String autoServersForTuning(Object selected, Object total) {
+  String autoServersForTuning(int selected, int total) {
     return 'Servers to tune ($selected/$total)';
   }
 
@@ -546,7 +546,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeReconnect => 'Reconnect';
 
   @override
-  String homePingProgress(Object done, Object total) {
+  String homePingProgress(int done, int total) {
     return 'Pinging servers: $done of $total';
   }
 
@@ -554,7 +554,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeAutoConfigStarting => 'Auto-configuration starting…';
 
   @override
-  String homeAutoConfigProgress(Object current, Object name, Object total) {
+  String homeAutoConfigProgress(int current, int total, String name) {
     return 'Auto-configuration: $current of $total — $name';
   }
 
@@ -576,7 +576,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String homeFoundCount(Object found, Object total) {
+  String homeFoundCount(int found, int total) {
     return 'Found $found of $total';
   }
 
@@ -599,7 +599,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeImportSubscription => 'Import subscription';
 
   @override
-  String homeSessionTraffic(Object down, Object up) {
+  String homeSessionTraffic(String down, String up) {
     return 'This session: ↓ $down   ↑ $up';
   }
 
@@ -607,7 +607,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subBarGbUnit => 'GB';
 
   @override
-  String subBarUsage(Object total, Object used) {
+  String subBarUsage(String used, String total) {
     return '$used of $total';
   }
 
@@ -946,7 +946,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get serversTitle => 'Servers';
 
   @override
-  String serversFound(Object found, Object total) {
+  String serversFound(int found, int total) {
     return 'Servers — found $found of $total';
   }
 
@@ -1101,7 +1101,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorSave => 'Save';
 
   @override
-  String jsonProfileServers(Object burst, Object count) {
+  String jsonProfileServers(int count, String burst) {
     return '$count servers$burst';
   }
 
@@ -1730,4 +1730,56 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get supportReportCopied =>
       'Report copied — paste it into the support chat';
+
+  @override
+  String subBarUsedOnly(String used) {
+    return 'Used $used';
+  }
+
+  @override
+  String get subBarUnlimitedTraffic => 'unlimited traffic';
+
+  @override
+  String get supportDescribeLabel => 'Describe the problem';
+
+  @override
+  String get supportDescribeHint =>
+      'What you did, what you expected, what happened and when it started';
+
+  @override
+  String get supportDescribeRequired =>
+      'Describe the problem — a report without it is useless';
+
+  @override
+  String get supportNoScreenshots =>
+      'Do not paste screenshots here — send them as a separate message in the Telegram chat.';
+
+  @override
+  String get supportDescriptionSection => 'USER DESCRIPTION';
+
+  @override
+  String get splitAllowRealIp => 'Allow real IP';
+
+  @override
+  String get splitAllowRealIpOn =>
+      'This rule bypasses the VPN — the site will see your real address';
+
+  @override
+  String get splitAllowRealIpOff =>
+      'This rule is protected — it goes through the VPN';
+
+  @override
+  String get splitRealIpExposed => 'real IP';
+
+  @override
+  String get splitRealIpProtected => 'via VPN';
+
+  @override
+  String get vpnActiveBadge => 'VPN is active';
+
+  @override
+  String get splitCopyDomain => 'Copy address';
+
+  @override
+  String get splitCopyPath => 'Copy path';
 }

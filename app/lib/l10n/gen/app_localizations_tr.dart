@@ -459,7 +459,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get autoTuneByKey => 'Anahtara göre ayarla';
 
   @override
-  String autoTesting(Object index, Object total) {
+  String autoTesting(int index, int total) {
     return 'Test ediliyor $index/$total: ';
   }
 
@@ -469,7 +469,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String autoServicesPassed(Object ok, Object total) {
+  String autoServicesPassed(int ok, int total) {
     return '$total hizmetten $ok tanesi';
   }
 
@@ -488,7 +488,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String autoServersForTuning(Object selected, Object total) {
+  String autoServersForTuning(int selected, int total) {
     return 'Ayarlanacak sunucular ($selected/$total)';
   }
 
@@ -550,7 +550,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeReconnect => 'Yeniden bağlan';
 
   @override
-  String homePingProgress(Object done, Object total) {
+  String homePingProgress(int done, int total) {
     return 'Sunucular pingleniyor: $total sunucudan $done tanesi';
   }
 
@@ -558,7 +558,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeAutoConfigStarting => 'Otomatik yapılandırma başlıyor…';
 
   @override
-  String homeAutoConfigProgress(Object current, Object name, Object total) {
+  String homeAutoConfigProgress(int current, int total, String name) {
     return 'Otomatik yapılandırma: $total sunucudan $current tanesi — $name';
   }
 
@@ -580,7 +580,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String homeFoundCount(Object found, Object total) {
+  String homeFoundCount(int found, int total) {
     return '$total sunucudan $found tanesi bulundu';
   }
 
@@ -604,7 +604,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeImportSubscription => 'Aboneliği içe aktar';
 
   @override
-  String homeSessionTraffic(Object down, Object up) {
+  String homeSessionTraffic(String down, String up) {
     return 'Bu oturum: ↓ $down   ↑ $up';
   }
 
@@ -612,8 +612,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subBarGbUnit => 'GB';
 
   @override
-  String subBarUsage(Object total, Object used) {
-    return '$total / $used';
+  String subBarUsage(String used, String total) {
+    return '$used / $total';
   }
 
   @override
@@ -950,7 +950,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get serversTitle => 'Sunucular';
 
   @override
-  String serversFound(Object found, Object total) {
+  String serversFound(int found, int total) {
     return 'Sunucular — $total sunucudan $found tanesi bulundu';
   }
 
@@ -1106,7 +1106,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get editorSave => 'Kaydet';
 
   @override
-  String jsonProfileServers(Object burst, Object count) {
+  String jsonProfileServers(int count, String burst) {
     return '$count sunucu$burst';
   }
 
@@ -1736,4 +1736,55 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get supportReportCopied =>
       'Rapor kopyalandı — destek sohbetine yapıştırın';
+
+  @override
+  String subBarUsedOnly(String used) {
+    return 'Kullanılan $used';
+  }
+
+  @override
+  String get subBarUnlimitedTraffic => 'sınırsız trafik';
+
+  @override
+  String get supportDescribeLabel => 'Sorunu açıklayın';
+
+  @override
+  String get supportDescribeHint =>
+      'Ne yaptınız, ne bekliyordunuz, ne oldu ve ne zaman başladı';
+
+  @override
+  String get supportDescribeRequired =>
+      'Sorunu açıklayın — açıklama olmadan rapor işe yaramaz';
+
+  @override
+  String get supportNoScreenshots =>
+      'Ekran görüntülerini buraya yapıştırmayın — Telegram sohbetinde ayrı mesaj olarak gönderin.';
+
+  @override
+  String get supportDescriptionSection => 'KULLANICI AÇIKLAMASI';
+
+  @override
+  String get splitAllowRealIp => 'Gerçek IP’ye izin ver';
+
+  @override
+  String get splitAllowRealIpOn =>
+      'Bu kural VPN’i atlar — site gerçek adresinizi görür';
+
+  @override
+  String get splitAllowRealIpOff => 'Bu kural korumada — VPN üzerinden gider';
+
+  @override
+  String get splitRealIpExposed => 'gerçek IP';
+
+  @override
+  String get splitRealIpProtected => 'VPN üzerinden';
+
+  @override
+  String get vpnActiveBadge => 'VPN etkin';
+
+  @override
+  String get splitCopyDomain => 'Adresi kopyala';
+
+  @override
+  String get splitCopyPath => 'Yolu kopyala';
 }

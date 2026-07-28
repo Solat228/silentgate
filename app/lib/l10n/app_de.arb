@@ -510,5 +510,20 @@
   "portBusyTitle": "Port {port} wird bereits von {by} belegt.",
   "srvTileMenu": "Server-Aktionen",
   "supportCopyReport": "Bericht kopieren",
-  "supportReportCopied": "Bericht kopiert — fügen Sie ihn im Support-Chat ein"
+  "supportReportCopied": "Bericht kopiert — fügen Sie ihn im Support-Chat ein",
+  "subBarUsedOnly": "Verbraucht {used}",
+  "subBarUnlimitedTraffic": "unbegrenzter Traffic",
+  "supportDescribeLabel": "Beschreiben Sie das Problem",
+  "supportDescribeHint": "Was Sie taten, was Sie erwarteten, was passierte und wann es begann",
+  "supportDescribeRequired": "Beschreiben Sie das Problem — ohne Beschreibung ist der Bericht nutzlos",
+  "supportNoScreenshots": "Fügen Sie hier keine Screenshots ein — senden Sie sie separat im Telegram-Chat.",
+  "supportDescriptionSection": "BESCHREIBUNG DES NUTZERS",
+  "splitAllowRealIp": "Echte IP zulassen",
+  "splitAllowRealIpOn": "Diese Regel umgeht das VPN — die Website sieht Ihre echte Adresse",
+  "splitAllowRealIpOff": "Diese Regel ist geschützt — sie läuft über das VPN",
+  "splitRealIpExposed": "echte IP",
+  "splitRealIpProtected": "über VPN",
+  "vpnActiveBadge": "VPN aktiv",
+  "splitCopyDomain": "Adresse kopieren",
+  "splitCopyPath": "Pfad kopieren"
 }

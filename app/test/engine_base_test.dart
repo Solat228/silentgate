@@ -177,14 +177,37 @@ void main() {
       expect(e.keepCaptureLog, [false]);
     });
 
+    // Один обрыв приходит НЕСКОЛЬКИМИ событиями: при hysteria2 в TUN-режиме
+    // одновременно умирают процесс туннеля и процесс прокси-ядра, у каждого
+    // свой onCoreDied. Раньше каждое событие жгло отдельную попытку — все 8
+    // отрабатывали в одну миллисекунду, backoff не выдерживался, и первый же
+    // случайный сбой навсегда исчерпывал лимит.
+    test('повторные события одного обрыва не жгут попытки', () async {
+      final e = _FakeEngine()..succeedOnStart = false;
+      await e.connectWith('{}',
+          ConnectionOptions(settings: _settings()), [_server('a')]);
+      final afterConnect = e.startCalls;
+
+      for (var i = 0; i < 5; i++) {
+        expect(await e.scheduleRetry('обрыв'), isTrue);
+      }
+      // Пока запланированная попытка не отработала, новых не появляется.
+      expect(e.startCalls, afterConnect,
+          reason: 'запланирована ровно одна попытка, а не пять');
+      // И израсходована ровно одна попытка из лимита.
+      expect(e.attemptsUsed, 1);
+    });
+
     test('попытки исчерпываются на maxAttempts', () async {
-      final e = _FakeEngine();
+      final e = _FakeEngine()..succeedOnStart = false;
       await e.connectWith('{}',
           ConnectionOptions(settings: _settings()), [_server('a')]);
 
       var scheduled = 0;
       for (var i = 0; i < VpnEngineBase.maxAttempts + 3; i++) {
         if (await e.scheduleRetry('обрыв')) scheduled++;
+        // Ждём отработки таймера: без этого все вызовы схлопнутся в один обрыв.
+        e.dropPendingRetry();
       }
 
       expect(scheduled, VpnEngineBase.maxAttempts);
@@ -317,9 +340,12 @@ void main() {
           ConnectionOptions(settings: _settings()), [_server('a')]);
       e.fallbackServers = [_server('b', panelConfig: panel)];
 
-      // Доводим до последней попытки, после которой берётся запасной.
+      // Доводим до последней попытки, после которой берётся запасной. Между
+      // обрывами снимаем ожидающую попытку: подряд идущие вызовы считаются
+      // ОДНИМ обрывом и попыток не расходуют.
       for (var i = 0; i < VpnEngineBase.maxAttempts - 1; i++) {
         await e.scheduleRetry('обрыв');
+        e.dropPendingRetry();
       }
       await e.scheduleRetry('обрыв');
 

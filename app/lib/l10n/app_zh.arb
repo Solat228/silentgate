@@ -510,5 +510,20 @@
   "portBusyTitle": "端口 {port} 已被 {by} 占用。",
   "srvTileMenu": "服务器操作",
   "supportCopyReport": "复制报告",
-  "supportReportCopied": "报告已复制 — 请粘贴到支持聊天中"
+  "supportReportCopied": "报告已复制 — 请粘贴到支持聊天中",
+  "subBarUsedOnly": "已用 {used}",
+  "subBarUnlimitedTraffic": "流量不限",
+  "supportDescribeLabel": "描述问题",
+  "supportDescribeHint": "您做了什么、期望什么、发生了什么以及何时开始",
+  "supportDescribeRequired": "请描述问题 — 没有描述的报告没有用",
+  "supportNoScreenshots": "请勿在此粘贴截图 — 请在 Telegram 聊天中单独发送。",
+  "supportDescriptionSection": "用户描述",
+  "splitAllowRealIp": "允许真实 IP",
+  "splitAllowRealIpOn": "此规则绕过 VPN — 网站将看到你的真实地址",
+  "splitAllowRealIpOff": "此规则受保护 — 将通过 VPN",
+  "splitRealIpExposed": "真实 IP",
+  "splitRealIpProtected": "经由 VPN",
+  "vpnActiveBadge": "VPN 已启用",
+  "splitCopyDomain": "复制地址",
+  "splitCopyPath": "复制路径"
 }

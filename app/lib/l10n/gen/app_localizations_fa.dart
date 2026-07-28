@@ -455,7 +455,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get autoTuneByKey => 'تنظیم بر اساس کلید';
 
   @override
-  String autoTesting(Object index, Object total) {
+  String autoTesting(int index, int total) {
     return 'در حال آزمایش $index/$total: ';
   }
 
@@ -465,7 +465,7 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String autoServicesPassed(Object ok, Object total) {
+  String autoServicesPassed(int ok, int total) {
     return '$ok از $total سرویس';
   }
 
@@ -484,7 +484,7 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String autoServersForTuning(Object selected, Object total) {
+  String autoServersForTuning(int selected, int total) {
     return 'سرورهای قابل تنظیم ($selected/$total)';
   }
 
@@ -546,7 +546,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeReconnect => 'اتصال مجدد';
 
   @override
-  String homePingProgress(Object done, Object total) {
+  String homePingProgress(int done, int total) {
     return 'پینگ سرورها: $done از $total';
   }
 
@@ -554,7 +554,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeAutoConfigStarting => 'پیکربندی خودکار در حال آغاز…';
 
   @override
-  String homeAutoConfigProgress(Object current, Object name, Object total) {
+  String homeAutoConfigProgress(int current, int total, String name) {
     return 'پیکربندی خودکار: $current از $total — $name';
   }
 
@@ -576,7 +576,7 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String homeFoundCount(Object found, Object total) {
+  String homeFoundCount(int found, int total) {
     return '$found از $total یافت شد';
   }
 
@@ -600,7 +600,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeImportSubscription => 'درون‌ریزی اشتراک';
 
   @override
-  String homeSessionTraffic(Object down, Object up) {
+  String homeSessionTraffic(String down, String up) {
     return 'این نشست: ↓ $down   ↑ $up';
   }
 
@@ -608,7 +608,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subBarGbUnit => 'گیگابایت';
 
   @override
-  String subBarUsage(Object total, Object used) {
+  String subBarUsage(String used, String total) {
     return '$used از $total';
   }
 
@@ -946,7 +946,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get serversTitle => 'سرورها';
 
   @override
-  String serversFound(Object found, Object total) {
+  String serversFound(int found, int total) {
     return 'سرورها — $found از $total یافت شد';
   }
 
@@ -1101,7 +1101,7 @@ class AppLocalizationsFa extends AppLocalizations {
   String get editorSave => 'ذخیره';
 
   @override
-  String jsonProfileServers(Object burst, Object count) {
+  String jsonProfileServers(int count, String burst) {
     return '$count سرور$burst';
   }
 
@@ -1729,4 +1729,56 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get supportReportCopied =>
       'گزارش کپی شد — آن را در گفتگوی پشتیبانی بچسبانید';
+
+  @override
+  String subBarUsedOnly(String used) {
+    return 'مصرف‌شده $used';
+  }
+
+  @override
+  String get subBarUnlimitedTraffic => 'ترافیک نامحدود';
+
+  @override
+  String get supportDescribeLabel => 'مشکل را شرح دهید';
+
+  @override
+  String get supportDescribeHint =>
+      'چه کردید، چه انتظاری داشتید، چه شد و از کی شروع شد';
+
+  @override
+  String get supportDescribeRequired =>
+      'مشکل را شرح دهید — گزارش بدون شرح بی‌فایده است';
+
+  @override
+  String get supportNoScreenshots =>
+      'تصاویر صفحه را اینجا نچسبانید — آن‌ها را در پیامی جداگانه در گفتگوی تلگرام بفرستید.';
+
+  @override
+  String get supportDescriptionSection => 'شرح کاربر';
+
+  @override
+  String get splitAllowRealIp => 'اجازهٔ IP واقعی';
+
+  @override
+  String get splitAllowRealIpOn =>
+      'این قاعده از VPN عبور نمی‌کند — سایت نشانی واقعی شما را می‌بیند';
+
+  @override
+  String get splitAllowRealIpOff =>
+      'این قاعده محافظت‌شده است — از VPN عبور می‌کند';
+
+  @override
+  String get splitRealIpExposed => 'IP واقعی';
+
+  @override
+  String get splitRealIpProtected => 'از طریق VPN';
+
+  @override
+  String get vpnActiveBadge => 'VPN فعال است';
+
+  @override
+  String get splitCopyDomain => 'کپی نشانی';
+
+  @override
+  String get splitCopyPath => 'کپی مسیر';
 }

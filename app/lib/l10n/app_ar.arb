@@ -510,5 +510,20 @@
   "portBusyTitle": "المنفذ {port} مستخدم بالفعل بواسطة {by}.",
   "srvTileMenu": "إجراءات الخادم",
   "supportCopyReport": "نسخ التقرير",
-  "supportReportCopied": "تم نسخ التقرير — الصقه في محادثة الدعم"
+  "supportReportCopied": "تم نسخ التقرير — الصقه في محادثة الدعم",
+  "subBarUsedOnly": "المستخدم {used}",
+  "subBarUnlimitedTraffic": "حركة بيانات غير محدودة",
+  "supportDescribeLabel": "صِف المشكلة",
+  "supportDescribeHint": "ما الذي فعلته، وما توقعته، وما حدث، ومتى بدأ",
+  "supportDescribeRequired": "صِف المشكلة — التقرير بدون وصف عديم الفائدة",
+  "supportNoScreenshots": "لا تلصق لقطات الشاشة هنا — أرسلها في رسالة منفصلة في محادثة تيليجرام.",
+  "supportDescriptionSection": "وصف المستخدم",
+  "splitAllowRealIp": "السماح بعنوان IP الحقيقي",
+  "splitAllowRealIpOn": "تتجاوز هذه القاعدة الشبكة الافتراضية — سيرى الموقع عنوانك الحقيقي",
+  "splitAllowRealIpOff": "هذه القاعدة محمية — تمر عبر الشبكة الافتراضية",
+  "splitRealIpExposed": "IP حقيقي",
+  "splitRealIpProtected": "عبر VPN",
+  "vpnActiveBadge": "الشبكة الافتراضية نشطة",
+  "splitCopyDomain": "نسخ العنوان",
+  "splitCopyPath": "نسخ المسار"
 }

@@ -6,6 +6,7 @@ import 'core/settings/app_settings.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/settings_controller.dart';
 import 'ui/home_screen.dart';
+import 'ui/widgets/vpn_active_badge.dart';
 
 class SilentGateApp extends StatelessWidget {
   const SilentGateApp({super.key});
@@ -47,6 +48,12 @@ class SilentGateApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0F1420),
       ),
       themeMode: _mode(settings.themeMode),
+      // Индикатор «VPN активен» живёт над всем деревом: так он работает на любом
+      // экране, включая те, что появятся позже, и его не нужно вставлять в
+      // каждый Scaffold по отдельности.
+      navigatorObservers: [NavDepthObserver()],
+      builder: (context, child) =>
+          VpnActiveBadge(child: child ?? const SizedBox.shrink()),
       home: const HomeScreen(),
     );
   }

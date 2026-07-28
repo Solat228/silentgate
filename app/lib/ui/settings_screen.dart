@@ -29,6 +29,7 @@ import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
 import 'widgets/info_tooltip.dart';
+import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
 
 /// Глобальный ключ раздела «Поддержка» — чтобы «перекинуть» сюда по кнопке
@@ -130,8 +131,12 @@ class _ReliabilitySection extends StatelessWidget {
           onChanged: (v) => controller.update((s) => s.copyWith(
                 autoReconnect: v,
                 // Kill switch без автопереподключения оставил бы трафик
-                // заблокированным навсегда — гасим вместе.
+                // заблокированным навсегда — гасим вместе. Вместе с ним гасим и
+                // зависимый noRealIp: иначе он оставался включённым, продолжал
+                // действовать и при этом ИСЧЕЗАЛ из настроек — снять его было
+                // нечем.
                 killSwitch: v ? s.killSwitch : false,
+                noRealIp: v ? s.noRealIp : false,
               )),
           title: Row(children: [
             Expanded(child: Text(l.autoReconnectTitle)),
@@ -143,7 +148,8 @@ class _ReliabilitySection extends StatelessWidget {
           value: settings.killSwitch,
           // Без автопереподключения восстанавливать нечего — переключатель неактивен.
           onChanged: settings.autoReconnect
-              ? (v) => controller.update((s) => s.copyWith(killSwitch: v))
+              ? (v) => controller.update((s) =>
+                  s.copyWith(killSwitch: v, noRealIp: v ? s.noRealIp : false))
               : null,
           title: Row(children: [
             Expanded(child: Text(l.killSwitchTitle)),
@@ -437,8 +443,29 @@ class _SupportDialogState extends State<_SupportDialog> {
   String? _path; // путь к готовому отчёту (null, пока не сгенерирован)
   String? _error;
 
+  /// Описание проблемы словами пользователя.
+  ///
+  /// На Windows его вписывают прямо в открывшийся txt — там файл виден в
+  /// Проводнике. На Android открывать нечего: отчёт уезжает в буфер обмена
+  /// целиком, поэтому описание собираем ДО генерации, иначе в поддержку
+  /// приходит один голый лог без единого слова о проблеме.
+  final _description = TextEditingController();
+  bool _descriptionMissing = false;
+
+  @override
+  void dispose() {
+    _description.dispose();
+    super.dispose();
+  }
+
   Future<void> _generate() async {
     final l = AppLocalizations.of(context);
+    // Пустое описание пропускаем только там, где его можно вписать в сам файл.
+    final described = _description.text.trim().isNotEmpty;
+    if (!described && _descriptionRequired) {
+      setState(() => _descriptionMissing = true);
+      return;
+    }
     final state = context.read<AppState>();
     final settings = context.read<SettingsController>().settings;
     final server = state.selectedServer;
@@ -448,12 +475,19 @@ class _SupportDialogState extends State<_SupportDialog> {
           ..writeln('  ${l.reportTitle}')
           ..writeln('==================================================')
           ..writeln()
-          ..writeln(l.reportDescribeHere)
+          // Описание, введённое в приложении, идёт первым — читающему
+          // обращение не нужно искать его среди сотен строк лога. Если поля не
+          // было (десктоп), остаётся прежняя болванка для заполнения в файле.
+          ..writeln(described ? '[${l.supportDescriptionSection}]' : l.reportDescribeHere)
           ..writeln()
-          ..writeln('  ${l.reportWhatDid}')
-          ..writeln('  ${l.reportWhatExpected}')
-          ..writeln('  ${l.reportWhatHappened}')
-          ..writeln('  ${l.reportWhenStarted}')
+          ..writeln(described
+              ? _description.text.trim()
+              : '  ${l.reportWhatDid}\n'
+                  '  ${l.reportWhatExpected}\n'
+                  '  ${l.reportWhatHappened}\n'
+                  '  ${l.reportWhenStarted}')
+          ..writeln()
+          ..writeln(l.supportNoScreenshots)
           ..writeln()
           ..writeln('--------------------------------------------------')
           ..writeln(l.reportTechNoticeLine1)
@@ -492,6 +526,10 @@ class _SupportDialogState extends State<_SupportDialog> {
     }
   }
 
+  /// Поле описания обязательно там, где готовый отчёт нельзя дописать руками:
+  /// он копируется в буфер целиком и уходит в чат как есть.
+  bool get _descriptionRequired => Platform.isAndroid;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -516,6 +554,42 @@ class _SupportDialogState extends State<_SupportDialog> {
               Text(l.supportBullet1),
               const SizedBox(height: 4),
               Text(l.supportBullet2),
+              // Поле описания — там, где готовый отчёт нельзя дописать руками
+              // (Android: он копируется в буфер целиком и уходит как есть).
+              // Без него в поддержку приезжает голый лог без слова о проблеме.
+              if (_descriptionRequired) ...[
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _description,
+                  minLines: 3,
+                  maxLines: 6,
+                  textCapitalization: TextCapitalization.sentences,
+                  onChanged: (_) {
+                    if (_descriptionMissing) {
+                      setState(() => _descriptionMissing = false);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: l.supportDescribeLabel,
+                    hintText: l.supportDescribeHint,
+                    errorText:
+                        _descriptionMissing ? l.supportDescribeRequired : null,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Скриншоты в текстовый отчёт не вставить — говорим об этом
+                // сразу, а не после того, как пользователь попробует.
+                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Icon(Icons.info_outline,
+                      size: 16, color: Theme.of(context).colorScheme.primary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(l.supportNoScreenshots,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                ]),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: 10),
                 Text(l.supportError(_error!),
@@ -671,7 +745,9 @@ Widget _sectionHeader(BuildContext context, String title, {Widget? trailing}) {
     padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
     child: Row(
       children: [
-        Text(title,
+        // Заголовок не лежит в кликабельной строке, поэтому его безопасно
+        // делать выделяемым: тапы у соседних настроек не пострадают.
+        SelText(title,
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   color: Theme.of(context).colorScheme.primary,
                   fontWeight: FontWeight.bold,

@@ -736,28 +736,37 @@ void main() {
           reason: 'блок должен идти РАНЬШЕ туннель-приложения');
     });
 
-    test('noRealIp: пользовательский «Прямо» уходит через VPN (proxy), не direct',
+    // Раньше noRealIp переписывал КАЖДОЕ «Прямо» в proxy, и управлять сайтами
+    // по отдельности было нельзя: пользователь помечал example.org «Прямо», а сайт
+    // всё равно уходил в туннель. Теперь явное правило сильнее глобальной
+    // настройки, а вернуть конкретное правило под защиту можно галочкой.
+    test('noRealIp: явное «Прямо» остаётся direct, снятая галочка — через VPN',
         () {
       final cfg = SingboxConfigBuilder(
         options: const TunOptions(noRealIp: true, serverIps: ['1.2.3.4']),
       ).buildMap(const SplitTunnelConfig(
         mode: SplitMode.exceptSelected,
-        apps: [AppRule(r'C:\a.exe', byName: true, action: AppAction.direct)],
-        sites: [SiteRule('example.com', action: AppAction.direct)],
+        apps: [
+          AppRule(r'C:\a.exe', byName: true, action: AppAction.direct),
+          AppRule(r'C:\b.exe',
+              byName: true, action: AppAction.direct, allowRealIp: false),
+        ],
+        sites: [
+          SiteRule('example.com', action: AppAction.direct),
+          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+        ],
       ));
       final r = rules(cfg);
-      // Правило приложения «Прямо» теперь → proxy.
-      expect(
-          r.any((x) =>
-              (x['process_name'] as List?)?.contains('a.exe') == true &&
-              x['outbound'] == 'proxy'),
-          isTrue);
-      // Сайт «Прямо» → proxy.
-      expect(
-          r.any((x) =>
-              (x['domain_suffix'] as List?)?.contains('example.com') == true &&
-              x['outbound'] == 'proxy'),
-          isTrue);
+      bool routed(String key, String value, String outbound) => r.any((x) =>
+          (x[key] as List?)?.contains(value) == true &&
+          x['outbound'] == outbound);
+
+      // Явные правила пользователя действительно идут мимо VPN.
+      expect(routed('process_name', 'a.exe', 'direct'), isTrue);
+      expect(routed('domain_suffix', 'example.com', 'direct'), isTrue);
+      // Снятая галочка «разрешить реальный IP» возвращает правило под защиту.
+      expect(routed('process_name', 'b.exe', 'proxy'), isTrue);
+      expect(routed('domain_suffix', 'bank.ru', 'proxy'), isTrue);
       // Инфраструктурный direct (IP сервера) остаётся direct.
       expect(
           r.any((x) =>
@@ -765,6 +774,54 @@ void main() {
                   true &&
               x['outbound'] == 'direct'),
           isTrue);
+    });
+
+    test('noRealIp выключен: галочка ничего не меняет', () {
+      final cfg = SingboxConfigBuilder(
+        options: const TunOptions(serverIps: ['1.2.3.4']),
+      ).buildMap(const SplitTunnelConfig(
+        mode: SplitMode.exceptSelected,
+        sites: [
+          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+        ],
+      ));
+      expect(
+          rules(cfg).any((x) =>
+              (x['domain_suffix'] as List?)?.contains('bank.ru') == true &&
+              x['outbound'] == 'direct'),
+          isTrue,
+          reason: 'без noRealIp «Прямо» всегда прямое');
+    });
+
+    // DNS должен повторять маршруты: иначе домен, идущий мимо VPN, всё равно
+    // резолвится резолвером выходного узла — и запрос утекает в туннель, а CDN
+    // отдаёт адрес в стране VPN.
+    test('DNS зеркалит правила сайтов', () {
+      final cfg = SingboxConfigBuilder(
+        options: const TunOptions(noRealIp: true),
+      ).buildMap(const SplitTunnelConfig(
+        mode: SplitMode.exceptSelected,
+        sites: [
+          SiteRule('example.com', action: AppAction.direct),
+          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+          SiteRule('netflix.com', action: AppAction.tunnel),
+          SiteRule('ads.example', action: AppAction.block),
+        ],
+      ));
+      final dns = (cfg['dns'] as Map)['rules'] as List;
+      Map<String, dynamic>? ruleFor(String domain) {
+        for (final x in dns.cast<Map<String, dynamic>>()) {
+          if ((x['domain_suffix'] as List?)?.contains(domain) == true) return x;
+        }
+        return null;
+      }
+
+      expect(ruleFor('example.com')?['server'], 'dns-local');
+      expect(ruleFor('bank.ru')?['server'], 'dns-proxy');
+      expect(ruleFor('netflix.com')?['server'], 'dns-proxy');
+      expect(ruleFor('ads.example')?['action'], 'reject');
+      // Блок обязан стоять выше остальных: заблокированный домен не резолвится.
+      expect(dns.indexOf(ruleFor('ads.example')), 0);
     });
 
     test('миграция: старые apps/domains без action, действие из режима', () {

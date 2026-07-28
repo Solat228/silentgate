@@ -80,7 +80,11 @@ class SubscriptionBar extends StatelessWidget {
                 ),
                 _MenuButton(offset: (pos) => _menu(context, pos)),
               ]),
-              if (info.totalBytes != null) ...[
+              // Шкала рисуется ТОЛЬКО когда есть реальный лимит. При безлимите
+              // доля неизвестна, а LinearProgressIndicator с value == null
+              // крутит бесконечную полосу — она выглядит как вечно идущее
+              // обновление подписки. Показываем просто израсходованное.
+              if (info.usedBytes != null && !info.unlimitedTraffic) ...[
                 const SizedBox(height: 8),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
@@ -90,6 +94,12 @@ class SubscriptionBar extends StatelessWidget {
                 Text(
                     l.subBarUsage(_gb(info.usedBytes, l.subBarGbUnit),
                         _gb(info.totalBytes, l.subBarGbUnit)),
+                    style: Theme.of(context).textTheme.bodySmall),
+              ] else if (info.usedBytes != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                    '${l.subBarUsedOnly(_gb(info.usedBytes, l.subBarGbUnit))}'
+                    ' · ${l.subBarUnlimitedTraffic}',
                     style: Theme.of(context).textTheme.bodySmall),
               ],
               const SizedBox(height: 4),

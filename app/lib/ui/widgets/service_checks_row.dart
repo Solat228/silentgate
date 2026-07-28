@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -9,8 +11,9 @@ import 'info_tooltip.dart';
 import 'site_favicon.dart';
 
 /// Ряд «живой» проверки сервисов рядом с кнопкой Connect (#6). Показывается
-/// только при активном VPN. Проверка запускается ТОЛЬКО по тапу пользователя
-/// (без авто-проверок) и идёт через уже поднятое соединение.
+/// только при активном VPN и идёт через уже поднятое соединение. Один раз при
+/// подъёме туннеля сервисы проверяются автоматически, дальше — только по тапу
+/// пользователя.
 class ServiceChecksRow extends StatefulWidget {
   /// http-порт активного ядра, через который проверяем.
   final int httpPort;
@@ -40,9 +43,7 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
   void initState() {
     super.initState();
     // Привязываем результаты к текущему соединению после кадра (без setState в build).
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<ServiceCheckController>().bind(widget.epoch);
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bindAndAutoCheck());
   }
 
   @override
@@ -53,10 +54,18 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
       // (_ConnectPane слушает AppState). bind() зовёт notifyListeners корневого
       // контроллера — синхронный вызов здесь = markNeedsBuild во время build.
       // Откладываем на пост-кадр (как в initState).
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.read<ServiceCheckController>().bind(widget.epoch);
-      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _bindAndAutoCheck());
     }
+  }
+
+  /// Ряд появляется только на живом соединении, поэтому его привязка — и есть
+  /// момент «туннель поднялся»: здесь же запускаем единственный автопрогон.
+  /// Повторные вызовы (перестроение виджета) контроллер отсекает сам.
+  void _bindAndAutoCheck() {
+    if (!mounted) return;
+    final ctrl = context.read<ServiceCheckController>();
+    ctrl.bind(widget.epoch);
+    unawaited(ctrl.autoCheckAll(widget.httpPort, ServiceChecksRow.services));
   }
 
   @override

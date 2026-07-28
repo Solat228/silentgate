@@ -510,5 +510,20 @@
   "portBusyTitle": "A porta {port} já está ocupada por {by}.",
   "srvTileMenu": "Ações do servidor",
   "supportCopyReport": "Copiar relatório",
-  "supportReportCopied": "Relatório copiado — cole-o no chat de suporte"
+  "supportReportCopied": "Relatório copiado — cole-o no chat de suporte",
+  "subBarUsedOnly": "Usado {used}",
+  "subBarUnlimitedTraffic": "tráfego ilimitado",
+  "supportDescribeLabel": "Descreva o problema",
+  "supportDescribeHint": "O que fez, o que esperava, o que aconteceu e quando começou",
+  "supportDescribeRequired": "Descreva o problema — sem descrição o relatório é inútil",
+  "supportNoScreenshots": "Não cole capturas de tela aqui — envie-as em mensagem separada no chat do Telegram.",
+  "supportDescriptionSection": "DESCRIÇÃO DO USUÁRIO",
+  "splitAllowRealIp": "Permitir IP real",
+  "splitAllowRealIpOn": "Esta regra ignora a VPN — o site verá o seu endereço real",
+  "splitAllowRealIpOff": "Esta regra está protegida — passa pela VPN",
+  "splitRealIpExposed": "IP real",
+  "splitRealIpProtected": "via VPN",
+  "vpnActiveBadge": "VPN ativa",
+  "splitCopyDomain": "Copiar endereço",
+  "splitCopyPath": "Copiar caminho"
 }

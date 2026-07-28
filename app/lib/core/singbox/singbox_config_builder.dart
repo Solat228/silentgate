@@ -240,14 +240,14 @@ class SingboxConfigBuilder {
       },
     };
 
-    final dns = _buildDns(finalOutbound);
+    final dns = _buildDns(finalOutbound, split);
     if (dns != null) cfg['dns'] = dns;
     return cfg;
   }
 
   /// DNS-секция. Без неё запросы идут от svchost.exe в `final` и режут интернет,
   /// когда UDP до сервера не проксируется (частый случай VLESS+Vision).
-  Map<String, dynamic>? _buildDns(String finalOutbound) {
+  Map<String, dynamic>? _buildDns(String finalOutbound, SplitTunnelConfig split) {
     final o = options;
     if (o.dnsMode == DnsMode.system) return null;
 
@@ -264,9 +264,21 @@ class SingboxConfigBuilder {
       {'tag': 'dns-local', 'address': 'local', 'detour': 'direct'},
     ];
 
-    // Что уходит мимо VPN (direct-outbound) — резолвим локально; ВСЁ остальное,
-    // включая явно затуннелированные приложения/сайты, — через прокси (dns-proxy).
+    // Доменные правила ЗЕРКАЛЯТСЯ из маршрутов. Без них весь DNS уходил в
+    // dns-proxy (`final`), и сайт, помеченный «Прямо», резолвился резолвером
+    // выходного узла: CDN отдавал адрес в стране VPN, а сам запрос всё равно
+    // раскрывался провайдеру туннеля. Правило `outbound: direct` ниже в
+    // TUN-режиме не срабатывает никогда (назначение из TUN — всегда IP, имя
+    // берётся только из сниффинга), поэтому одного его недостаточно.
     final rules = <Map<String, dynamic>>[
+      // Блок — выше остальных: заблокированный домен не должен даже резолвиться.
+      ..._dnsSiteRules(split, AppAction.block, null),
+      ..._dnsSiteRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
+      ..._dnsSiteRules(split, AppAction.tunnel, 'dns-proxy'),
+      if (o.noRealIp)
+        // Возвращённые под защиту — резолвим через туннель, иначе прямой
+        // резолв выдал бы реальную геолокацию ещё до соединения.
+        ..._dnsSiteRules(split, AppAction.direct, 'dns-proxy', allowRealIp: false),
       {
         'outbound': ['direct'],
         'server': 'dns-local',
@@ -285,6 +297,26 @@ class SingboxConfigBuilder {
       'strategy': o.dnsStrategy.singboxValue,
       'independent_cache': true,
     };
+  }
+
+  /// DNS-правила для сайтов с действием [action]: домены резолвит [server]
+  /// (null → `action: reject`, домен не резолвится вовсе). Порт в DNS-правилах
+  /// не участвует — резолв идёт до выбора порта.
+  List<Map<String, dynamic>> _dnsSiteRules(
+      SplitTunnelConfig split, AppAction action, String? server,
+      {bool? allowRealIp}) {
+    var matched = split.sites.where((s) => s.action == action);
+    if (allowRealIp != null && options.noRealIp) {
+      matched = matched.where((s) => s.allowRealIp == allowRealIp);
+    }
+    final domains = matched.map((s) => s.domain).toSet().toList();
+    if (domains.isEmpty) return const [];
+    return [
+      {
+        'domain_suffix': domains,
+        if (server == null) 'action': 'reject' else 'server': server,
+      },
+    ];
   }
 
   /// Валидные CIDR из настроек (битые отбрасываем — иначе sing-box рвёт весь конфиг).
@@ -332,19 +364,31 @@ class SingboxConfigBuilder {
   }
 
   void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
-    final directOut = options.noRealIp ? 'proxy' : 'direct';
-    _addSiteRule(rules, split, AppAction.direct, directOut);
+    // «Прямо» при включённом noRealIp расходится надвое: правила с поднятой
+    // галочкой «разрешить реальный IP» идут действительно напрямую (пользователь
+    // задал их явно), остальные возвращаются под защиту — через VPN.
+    _addSiteRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
     _addSiteRule(rules, split, AppAction.tunnel, 'proxy');
-    _addActionRule(rules, split, AppAction.direct, directOut);
+    _addActionRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
     _addActionRule(rules, split, AppAction.tunnel, 'proxy');
+    if (options.noRealIp) {
+      _addSiteRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
+      _addActionRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
+    }
   }
 
   /// Домены с действием [action]. Сайты без порта — одним правилом; сайты с
   /// портом — отдельным правилом на каждый порт (domain_suffix + port вместе
   /// = совпадение по домену И порту). [outbound] == null → reject.
+  ///
+  /// [allowRealIp] отбирает подмножество правил «Прямо» при включённом
+  /// `noRealIp`; при выключенном отбор не нужен — прямое правило и так прямое.
   void _addSiteRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
-      AppAction action, String? outbound) {
-    final matched = split.sites.where((s) => s.action == action);
+      AppAction action, String? outbound, {bool? allowRealIp}) {
+    var matched = split.sites.where((s) => s.action == action);
+    if (allowRealIp != null && options.noRealIp) {
+      matched = matched.where((s) => s.allowRealIp == allowRealIp);
+    }
     final noPort = matched.where((s) => s.port == null).map((s) => s.domain).toList();
     if (noPort.isNotEmpty) {
       rules.add(_action({'domain_suffix': noPort}, outbound));
@@ -362,9 +406,12 @@ class SingboxConfigBuilder {
   /// Одно правило для всех приложений с действием [action]. [outbound] == null →
   /// reject (блок). Приложения «по имени» и «по пути» — разными матчерами.
   void _addActionRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
-      AppAction action, String? outbound) {
+      AppAction action, String? outbound, {bool? allowRealIp}) {
     // Выключенные правила не применяются (галочка снята).
-    final apps = split.apps.where((a) => a.enabled && a.action == action);
+    var apps = split.apps.where((a) => a.enabled && a.action == action);
+    if (allowRealIp != null && options.noRealIp) {
+      apps = apps.where((a) => a.allowRealIp == allowRealIp);
+    }
     final byName = apps.where((a) => a.byName).map((a) => a.name).toList();
     final byPath = apps.where((a) => !a.byName).map((a) => a.path).toList();
     if (byName.isNotEmpty) {

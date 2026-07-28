@@ -8,6 +8,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import lol.silentgate.platform.PlatformChannels
 import lol.silentgate.vpn.SilentGateVpnService
 
 /**
@@ -29,8 +30,9 @@ class MainActivity : FlutterActivity() {
 
     private var events: EventChannel.EventSink? = null
 
-    /** Конфиг, ждущий согласия пользователя на VPN. */
+    /** Конфиги, ждущие согласия пользователя на VPN. */
     private var pendingConfig: String? = null
+    private var pendingXrayConfig: String? = null
     private var pendingResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -47,7 +49,11 @@ class MainActivity : FlutterActivity() {
                         if (config.isNullOrBlank()) {
                             result.error("empty_config", "Пустой конфиг", null)
                         } else {
-                            startWithConsent(config, result)
+                            // Второй конфиг есть только у панельных профилей
+                            // «Авто»: их поднимает Xray, а туннель заворачивает
+                            // трафик в его локальный SOCKS.
+                            startWithConsent(
+                                config, call.argument<String>("xray_config"), result)
                         }
                     }
 
@@ -63,6 +69,23 @@ class MainActivity : FlutterActivity() {
 
                     else -> result.notImplemented()
                 }
+            }
+
+        // Сведения об устройстве: без этого обработчика Dart уходил в
+        // запасные значения, и в отчёте поддержки стояли «unknown».
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+                PlatformChannels.DEVICE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                PlatformChannels.handleDevice(applicationContext, call.method, result)
+            }
+
+        // Открытие ссылок (Telegram-поддержка, страница обновления). Без него
+        // кнопки перехода в поддержку просто ничего не делали.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+                PlatformChannels.LAUNCHER_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                PlatformChannels.handleLauncher(
+                    this, call.method, call.argument<String>("url"), result)
             }
 
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
@@ -96,22 +119,28 @@ class MainActivity : FlutterActivity() {
      * старте приложения — так же, как на Windows UAC просят только при
      * подъёме туннеля.
      */
-    private fun startWithConsent(config: String, result: MethodChannel.Result) {
+    private fun startWithConsent(
+        config: String,
+        xrayConfig: String?,
+        result: MethodChannel.Result,
+    ) {
         val consent = VpnService.prepare(this)
         if (consent != null) {
             pendingConfig = config
+            pendingXrayConfig = xrayConfig
             pendingResult = result
             startActivityForResult(consent, REQ_PREPARE)
             return
         }
-        launchService(config)
+        launchService(config, xrayConfig)
         result.success(null)
     }
 
-    private fun launchService(config: String) {
+    private fun launchService(config: String, xrayConfig: String?) {
         val intent = Intent(this, SilentGateVpnService::class.java)
             .setAction(SilentGateVpnService.ACTION_START)
             .putExtra(SilentGateVpnService.EXTRA_CONFIG, config)
+            .putExtra(SilentGateVpnService.EXTRA_XRAY_CONFIG, xrayConfig)
         if (Build.VERSION.SDK_INT >= 26) {
             startForegroundService(intent)
         } else {
@@ -126,12 +155,14 @@ class MainActivity : FlutterActivity() {
         if (requestCode != REQ_PREPARE) return
 
         val config = pendingConfig
+        val xrayConfig = pendingXrayConfig
         val result = pendingResult
         pendingConfig = null
+        pendingXrayConfig = null
         pendingResult = null
 
         if (resultCode == Activity.RESULT_OK && config != null) {
-            launchService(config)
+            launchService(config, xrayConfig)
             result?.success(null)
         } else {
             // Отказ от согласия — отдельный путь ошибки, которого нет на Windows.

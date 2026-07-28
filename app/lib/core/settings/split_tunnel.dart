@@ -61,20 +61,37 @@ class AppRule {
   /// в конфиге (как временно снятая галочка — не удаляя правило).
   final bool enabled;
 
+  /// Явное правило «Прямо» сильнее глобального «Не выходить под реальным IP».
+  /// Смысл — только у [AppAction.direct] и только при включённом `noRealIp`:
+  /// снятая галочка возвращает это правило под защиту (пойдёт через VPN).
+  /// См. [SiteRule.allowRealIp].
+  final bool allowRealIp;
+
   const AppRule(this.path,
-      {this.byName = false, this.action = AppAction.direct, this.enabled = true});
+      {this.byName = false,
+      this.action = AppAction.direct,
+      this.enabled = true,
+      this.allowRealIp = true});
 
   String get name => path.split(r'\').last;
 
-  AppRule copyWith({bool? byName, AppAction? action, bool? enabled}) => AppRule(
+  AppRule copyWith(
+          {bool? byName, AppAction? action, bool? enabled, bool? allowRealIp}) =>
+      AppRule(
         path,
         byName: byName ?? this.byName,
         action: action ?? this.action,
         enabled: enabled ?? this.enabled,
+        allowRealIp: allowRealIp ?? this.allowRealIp,
       );
 
-  Map<String, dynamic> toJson() =>
-      {'path': path, 'byName': byName, 'action': action.name, 'enabled': enabled};
+  Map<String, dynamic> toJson() => {
+        'path': path,
+        'byName': byName,
+        'action': action.name,
+        'enabled': enabled,
+        'allowRealIp': allowRealIp,
+      };
 
   factory AppRule.fromJson(Object? j, {AppAction fallback = AppAction.direct}) {
     if (j is String) return AppRule(j, action: fallback); // самый старый формат
@@ -84,6 +101,10 @@ class AppRule {
         byName: j['byName'] as bool? ?? false,
         action: _actionFrom(j['action'], fallback),
         enabled: j['enabled'] as bool? ?? true,
+        // Старые правила заводились ДО появления галочки, когда noRealIp молча
+        // перекрывал их. Поднимаем им флаг: пользователь ставил «Прямо» именно
+        // ради прямого выхода.
+        allowRealIp: j['allowRealIp'] as bool? ?? true,
       );
     }
     return const AppRule('');
@@ -142,18 +163,38 @@ class SiteRule {
   final int? port; // null = любой порт
   final AppAction action;
 
-  const SiteRule(this.domain, {this.port, this.action = AppAction.direct});
+  /// Явное правило «Прямо» сильнее глобального «Не выходить под реальным IP».
+  ///
+  /// Раньше `noRealIp` молча переписывал КАЖДОЕ «Прямо» в «через VPN»: сайт,
+  /// помеченный пользователем как прямой, всё равно уходил в туннель, а
+  /// интерфейс продолжал показывать чип «Прямо» — управлять сайтами по
+  /// отдельности было невозможно. Теперь явное правило выигрывает, а снятая
+  /// галочка возвращает конкретный сайт под защиту (пойдёт через VPN).
+  /// Смысл — только у [AppAction.direct] и только при включённом `noRealIp`.
+  final bool allowRealIp;
+
+  const SiteRule(this.domain,
+      {this.port, this.action = AppAction.direct, this.allowRealIp = true});
 
   /// Отображаемая метка: домен и, если задан, порт (`example.com:8443`).
   String get label => port == null ? domain : '$domain:$port';
 
-  SiteRule copyWith({AppAction? action, int? port, bool clearPort = false}) =>
+  SiteRule copyWith(
+          {AppAction? action,
+          int? port,
+          bool clearPort = false,
+          bool? allowRealIp}) =>
       SiteRule(domain,
           port: clearPort ? null : (port ?? this.port),
-          action: action ?? this.action);
+          action: action ?? this.action,
+          allowRealIp: allowRealIp ?? this.allowRealIp);
 
-  Map<String, dynamic> toJson() =>
-      {'domain': domain, if (port != null) 'port': port, 'action': action.name};
+  Map<String, dynamic> toJson() => {
+        'domain': domain,
+        if (port != null) 'port': port,
+        'action': action.name,
+        'allowRealIp': allowRealIp,
+      };
 
   factory SiteRule.fromJson(Object? j, {AppAction fallback = AppAction.direct}) {
     if (j is String) return SiteRule(j, action: fallback); // старый формат (список строк)
@@ -161,7 +202,10 @@ class SiteRule {
       final p = j['port'];
       return SiteRule(j['domain'] as String? ?? '',
           port: p is int ? p : (p is String ? int.tryParse(p) : null),
-          action: _actionFrom(j['action'], fallback));
+          action: _actionFrom(j['action'], fallback),
+          // Правила, заведённые до появления галочки, чинятся сами: «Прямо»
+          // снова означает «прямо».
+          allowRealIp: j['allowRealIp'] as bool? ?? true);
     }
     return const SiteRule('');
   }

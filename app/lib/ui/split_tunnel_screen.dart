@@ -1,5 +1,6 @@
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
@@ -10,6 +11,8 @@ import 'widgets/app_icon.dart';
 import 'widgets/route_diagram.dart';
 import 'widgets/site_favicon.dart';
 import 'widgets/info_tooltip.dart';
+import 'widgets/sel_text.dart';
+import 'widgets/app_toast.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 
@@ -41,7 +44,7 @@ class SplitTunnelScreen extends StatelessWidget {
                 const Icon(Icons.info_outline, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: Text(l.splitTunOnlyBanner),
+                  child: SelText(l.splitTunOnlyBanner),
                 ),
                 TextButton(
                   onPressed: () => controller
@@ -75,7 +78,7 @@ class SplitTunnelScreen extends StatelessWidget {
                   _header(context, l.splitAppsHeader, l.infoSplitApps),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Text(
+                    child: SelText(
                       l.splitAppsHint,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -92,13 +95,15 @@ class SplitTunnelScreen extends StatelessWidget {
                             ),
                             AppIcon(path: rule.path), // #1 — реальная иконка exe
                           ]),
-                          title: Text(rule.name),
-                          subtitle: Text(
+                          title: Text(rule.name, textDirection: TextDirection.ltr),
+                          subtitle: _ruleSubtitle(
+                            context,
                             rule.enabled
                                 ? '${rule.byName ? l.splitByName : l.splitByPath} · ${rule.path}'
                                 : l.splitRuleDisabled,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            action: rule.action,
+                            allowRealIp: rule.allowRealIp,
+                            noRealIp: rule.enabled && controller.settings.noRealIp,
                           ),
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             _ActionChip(action: rule.action),
@@ -134,7 +139,7 @@ class SplitTunnelScreen extends StatelessWidget {
                   _header(context, l.splitSitesHeader, l.infoSplitDomains),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                    child: Text(
+                    child: SelText(
                       l.splitSitesHint,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
@@ -158,7 +163,7 @@ class SplitTunnelScreen extends StatelessWidget {
   Widget _header(BuildContext context, String title, String info) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
         child: Row(children: [
-          Text(title,
+          SelText(title,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     color: Theme.of(context).colorScheme.primary,
                     fontWeight: FontWeight.bold,
@@ -191,12 +196,16 @@ class SplitTunnelScreen extends StatelessWidget {
   }
 
   void _updateApp(SettingsController c, AppRule rule,
-      {AppAction? action, bool? byName, bool? enabled}) {
+      {AppAction? action, bool? byName, bool? enabled, bool? allowRealIp}) {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
             apps: s.splitTunnel.apps
                 .map((a) => a.path == rule.path
-                    ? a.copyWith(action: action, byName: byName, enabled: enabled)
+                    ? a.copyWith(
+                        action: action,
+                        byName: byName,
+                        enabled: enabled,
+                        allowRealIp: allowRealIp)
                     : a)
                 .toList())));
   }
@@ -227,9 +236,19 @@ class SplitTunnelScreen extends StatelessWidget {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
             sites: s.splitTunnel.sites
+                // copyWith, а не новый SiteRule: пересборка теряла бы галочку
+                // «разрешить реальный IP» при каждой правке порта.
                 .map((x) => _sameSite(x, site)
-                    ? SiteRule(x.domain, port: port, action: x.action)
+                    ? x.copyWith(port: port, clearPort: port == null)
                     : x)
+                .toList())));
+  }
+
+  void _setSiteAllowRealIp(SettingsController c, SiteRule site, bool value) {
+    c.update((s) => s.copyWith(
+        splitTunnel: s.splitTunnel.copyWith(
+            sites: s.splitTunnel.sites
+                .map((x) => _sameSite(x, site) ? x.copyWith(allowRealIp: value) : x)
                 .toList())));
   }
 
@@ -268,8 +287,13 @@ class SplitTunnelScreen extends StatelessWidget {
               size: 18, color: Theme.of(context).disabledColor),
         SiteFavicon(domain: site.domain),
       ]),
-      title: Text(site.label),
-      subtitle: site.port != null ? Text(l.splitOnlyPort(site.port!)) : null,
+      title: Text(site.label, textDirection: TextDirection.ltr),
+      subtitle: _ruleSubtitle(
+          context,
+          site.port != null ? l.splitOnlyPort(site.port!) : null,
+          action: site.action,
+          allowRealIp: site.allowRealIp,
+          noRealIp: controller.settings.noRealIp),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         _ActionChip(action: site.action),
         IconButton(
@@ -282,6 +306,38 @@ class SplitTunnelScreen extends StatelessWidget {
     );
   }
 
+  /// Подпись правила. При включённом «Не выходить под реальным IP» правило
+  /// «Прямо» обязано честно сообщать, куда оно на самом деле пойдёт: раньше чип
+  /// показывал «Прямо», а трафик молча уходил в туннель.
+  Widget? _ruleSubtitle(BuildContext context, String? base,
+      {required AppAction action,
+      required bool allowRealIp,
+      required bool noRealIp}) {
+    final l = AppLocalizations.of(context);
+    // Длинный путь к exe обязан обрезаться, а не ломать вёрстку строки.
+    Widget baseText() =>
+        Text(base!, maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (!noRealIp || action != AppAction.direct) {
+      return base == null ? null : baseText();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final warn = allowRealIp;
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      if (base != null) ...[Flexible(child: baseText()), const SizedBox(width: 8)],
+      Icon(warn ? Icons.warning_amber_rounded : Icons.shield_outlined,
+          size: 14, color: warn ? Colors.orange : scheme.primary),
+      const SizedBox(width: 4),
+      Flexible(
+        child: Text(
+          warn ? l.splitRealIpExposed : l.splitRealIpProtected,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: warn ? Colors.orange : scheme.primary),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ]);
+  }
+
   /// Диалог настройки приложения: действие + способ сопоставления.
   Future<void> _appDialog(
       BuildContext context, SettingsController c, AppRule rule) async {
@@ -289,10 +345,13 @@ class SplitTunnelScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => _RuleDialog(
         title: rule.name,
+        copySource: rule.path,
         action: rule.action,
         byName: rule.byName,
+        allowRealIp: c.settings.noRealIp ? rule.allowRealIp : null,
         onAction: (a) => _updateApp(c, rule, action: a),
         onByName: (b) => _updateApp(c, rule, byName: b),
+        onAllowRealIp: (v) => _updateApp(c, rule, allowRealIp: v),
       ),
     );
   }
@@ -307,12 +366,15 @@ class SplitTunnelScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => _RuleDialog(
         title: site.domain,
+        copySource: site.label,
         action: site.action,
         initialPort: site.port,
+        allowRealIp: c.settings.noRealIp ? site.allowRealIp : null,
         onAction: (a) => _updateSite(c, current, a),
+        onAllowRealIp: (v) => _setSiteAllowRealIp(c, current, v),
         onPort: (p) {
           _setSitePort(c, current, p);
-          current = SiteRule(current.domain, port: p, action: current.action);
+          current = current.copyWith(port: p, clearPort: p == null);
         },
       ),
     );
@@ -441,20 +503,35 @@ class _ActionChip extends StatelessWidget {
 /// способ сопоставления. Изменения применяются сразу через колбэки.
 class _RuleDialog extends StatefulWidget {
   final String title;
+
+  /// Что кладём в буфер: у приложения — полный путь, а не короткое имя из
+  /// заголовка; у сайта — адрес с портом.
+  final String? copySource;
+  String get copyText => copySource ?? title;
+
   final AppAction action;
   final bool? byName; // null = запись без сопоставления (сайт)
   final ValueChanged<AppAction> onAction;
   final ValueChanged<bool>? onByName;
   final int? initialPort; // задан для сайтов (может быть null = любой порт)
   final ValueChanged<int?>? onPort; // задан для сайтов
+
+  /// Галочка «разрешить реальный IP». null = не показывать (настройка
+  /// «Не выходить под реальным IP» выключена — тогда «Прямо» и так прямое).
+  final bool? allowRealIp;
+  final ValueChanged<bool>? onAllowRealIp;
+
   const _RuleDialog({
     required this.title,
     required this.action,
+    this.copySource,
     required this.onAction,
     this.byName,
     this.onByName,
     this.initialPort,
     this.onPort,
+    this.allowRealIp,
+    this.onAllowRealIp,
   });
 
   @override
@@ -464,6 +541,7 @@ class _RuleDialog extends StatefulWidget {
 class _RuleDialogState extends State<_RuleDialog> {
   late AppAction _action = widget.action;
   late bool _byName = widget.byName ?? true;
+  late bool _allowRealIp = widget.allowRealIp ?? true;
   late final TextEditingController _port =
       TextEditingController(text: widget.initialPort?.toString() ?? '');
   String? _portError;
@@ -495,7 +573,23 @@ class _RuleDialogState extends State<_RuleDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return AlertDialog(
-      title: Text(widget.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      // Заголовок — сам адрес сайта (или имя exe): делаем его выделяемым и
+      // даём кнопку копирования. Раньше адрес нельзя было ни выделить, ни
+      // скопировать: нажатие по строке лишь открывало этот диалог.
+      title: Row(children: [
+        Expanded(
+          child: SelText.technical(widget.title,
+              maxLines: 1, style: Theme.of(context).textTheme.titleLarge),
+        ),
+        IconButton(
+          tooltip: widget.onPort != null ? l.splitCopyDomain : l.splitCopyPath,
+          icon: const Icon(Icons.copy, size: 18),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: widget.copyText));
+            if (context.mounted) AppToast.copied(context);
+          },
+        ),
+      ]),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -515,6 +609,25 @@ class _RuleDialogState extends State<_RuleDialog> {
               title: Text(appActionLabel(l, a)),
               secondary: _actionIcon(context, a),
             ),
+          // Видно только у «Прямо» и только когда включено «Не выходить под
+          // реальным IP»: в остальных случаях выбора нет — прямое правило и так
+          // идёт мимо VPN.
+          if (widget.allowRealIp != null && _action == AppAction.direct) ...[
+            const Divider(),
+            SwitchListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: _allowRealIp,
+              onChanged: (v) {
+                setState(() => _allowRealIp = v);
+                widget.onAllowRealIp?.call(v);
+              },
+              title: Text(l.splitAllowRealIp),
+              subtitle: Text(_allowRealIp
+                  ? l.splitAllowRealIpOn
+                  : l.splitAllowRealIpOff),
+            ),
+          ],
           if (widget.onPort != null) ...[
             const Divider(),
             Text(l.splitPortOptional),

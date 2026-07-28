@@ -89,4 +89,38 @@ void main() {
       }
     }
   });
+
+  // Порядок параметров сгенерированного метода задаётся порядком объявления в
+  // `@ключ.placeholders`, а БЕЗ метаданных gen_l10n сортирует их ПО АЛФАВИТУ.
+  // Вызовы пишутся в порядке появления в строке, поэтому расхождение молча
+  // меняет значения местами: так «6.1 ГБ из 1100 ГБ» превращалось в
+  // «1100 ГБ из 6.1 ГБ». Компилятор такое не ловит — типы совпадают.
+  test('порядок плейсхолдеров объявлен и совпадает с порядком в строке', () {
+    final re = RegExp(r'\{(\w+)\}');
+    final map = jsonDecode(File(base).readAsStringSync())
+        as Map<String, dynamic>;
+
+    for (final e in map.entries) {
+      if (e.key.startsWith('@') || e.value is! String) continue;
+      final inString = <String>[
+        for (final m in re.allMatches(e.value as String)) m.group(1)!,
+      ].toSet().toList();
+      if (inString.length < 2) continue;
+
+      final meta = map['@${e.key}'] as Map<String, dynamic>?;
+      final declared =
+          (meta?['placeholders'] as Map<String, dynamic>?)?.keys.toList();
+      expect(declared, isNotNull,
+          reason: 'У ключа "${e.key}" ${inString.length} плейсхолдеров, но нет '
+              '@${e.key}.placeholders — порядок параметров станет алфавитным');
+      expect(declared, inString,
+          reason: 'Порядок плейсхолдеров "${e.key}" объявлен как $declared, '
+              'а в строке идёт $inString — аргументы вызова поменяются местами');
+    }
+  });
+
+  // ⚠️ Проверять, что перевод сохраняет ПОРЯДОК плейсхолдеров, НЕЛЬЗЯ: именованные
+  // плейсхолдеры на то и именованные, чтобы язык ставил их по своей грамматике
+  // («{total} hizmetten {ok} tanesi» = «из {total} сервисов {ok}»). Значения
+  // ломает не перевод, а порядок ОБЪЯВЛЕНИЯ выше — он общий для всех локалей.
 }

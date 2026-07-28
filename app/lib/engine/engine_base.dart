@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
+
 import '../core/models/traffic_stats.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
@@ -289,6 +291,17 @@ abstract class VpnEngineBase implements VpnEngine {
     final session = _session;
     if (session == null || _userStopped) return false;
     if (!session.options.settings.autoReconnect) return false;
+
+    // ОДНА попытка на один обрыв. Обрыв приходит несколькими событиями подряд:
+    // при hysteria2 в TUN-режиме одновременно умирают процесс туннеля и процесс
+    // прокси-ядра, у каждого свой onCoreDied, плюс сверху может прилететь смена
+    // сети. Без этого стража каждое событие жгло бы отдельную попытку — в логе
+    // все 8 попыток («через 0 с», «через 3 с», «через 8 с»…) отрабатывали в одну
+    // миллисекунду, backoff не выдерживался вовсе, и первый же случайный сбой
+    // навсегда исчерпывал лимит. Пока запланированная попытка не отработала,
+    // новые события считаем тем же самым обрывом.
+    if (_retryTimer?.isActive ?? false) return true;
+
     if (_attempt >= maxAttempts) {
       AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
       return false;
@@ -333,6 +346,18 @@ abstract class VpnEngineBase implements VpnEngine {
       await startSession();
     });
     return true;
+  }
+
+  /// Сколько попыток восстановления израсходовано на текущем сервере.
+  @visibleForTesting
+  int get attemptsUsed => _attempt;
+
+  /// Снять ожидающую попытку, не выполняя её, — чтобы в тестах не ждать backoff
+  /// по-настоящему (первая пауза 800 мс, дальше до 20 с).
+  @visibleForTesting
+  void dropPendingRetry() {
+    _retryTimer?.cancel();
+    _retryTimer = null;
   }
 
   /// Внешний сигнал: сетевое окружение изменилось (Wi-Fi ↔ кабель, сон, новый IP).

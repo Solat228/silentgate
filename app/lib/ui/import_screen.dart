@@ -36,7 +36,14 @@ class _ImportScreenState extends State<ImportScreen> {
     if (state.error == null && state.hasServers) {
       final l = AppLocalizations.of(context);
       AppToast.show(context, l.importScrDone, kind: ToastKind.success);
-      Navigator.of(context).pop();
+      // При первом запуске этот экран НЕ проталкивался в навигатор — он
+      // возвращается прямо из build главного экрана. Безусловный pop() снимал
+      // бы корневой маршрут, и приложение уходило в чёрный экран до
+      // перезапуска. Закрывать нужно только то, что действительно открыли;
+      // в первичном сценарии главный экран перестроится сам, как только
+      // появятся серверы.
+      final nav = Navigator.of(context);
+      if (nav.canPop()) nav.pop();
     }
   }
 

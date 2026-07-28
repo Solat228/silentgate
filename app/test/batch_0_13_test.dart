@@ -8,6 +8,7 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/net/site_favicon.dart';
 import 'package:silentgate/core/probe/service_check.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/xray/panel_routing_summary.dart';
 import 'package:silentgate/engine/windows/xray_stats.dart';
 import 'package:silentgate/state/service_check_controller.dart';
@@ -230,6 +231,85 @@ void main() {
       await c.check(ProbeService.youtube, 1);
       c.reset();
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
+    });
+
+    // Автопроверка при подъёме туннеля: ровно один прогон на соединение.
+    test('autoCheckAll проверяет все сервисы разом', () async {
+      final c = ServiceCheckController();
+      c.bind('srv1');
+      await c.autoCheckAll(1, const [ProbeService.youtube, ProbeService.telegram]);
+      expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
+      expect(c.resultFor(ProbeService.telegram).isTerminal, isTrue);
+    });
+
+    test('autoCheckAll не повторяется для того же соединения', () async {
+      final c = ServiceCheckController();
+      c.bind('srv1');
+      await c.autoCheckAll(1, const [ProbeService.youtube]);
+      // Ручной сброс результата: если бы автопрогон повторился при следующем
+      // перестроении интерфейса, сервис снова стал бы проверяться.
+      c.bind('srv1');
+      var notified = 0;
+      c.addListener(() => notified++);
+      await c.autoCheckAll(1, const [ProbeService.youtube]);
+      expect(notified, 0, reason: 'второй автопрогон для того же соединения запрещён');
+    });
+
+    test('autoCheckAll повторяется на новом соединении', () async {
+      final c = ServiceCheckController();
+      c.bind('srv1');
+      await c.autoCheckAll(1, const [ProbeService.youtube]);
+      c.bind('srv2'); // переподключились/сменили сервер
+      expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
+      await c.autoCheckAll(1, const [ProbeService.youtube]);
+      expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
+    });
+
+    test('autoCheckAll без привязки не запускается', () async {
+      final c = ServiceCheckController();
+      await c.autoCheckAll(1, const [ProbeService.youtube]);
+      expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
+    });
+  });
+
+  group('Галочка «разрешить реальный IP» в правиле', () {
+    test('переживает сохранение', () {
+      final st = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        apps: const [
+          AppRule(r'C:\a.exe', action: AppAction.direct, allowRealIp: false),
+        ],
+        sites: const [
+          SiteRule('example.org', action: AppAction.direct),
+          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+        ],
+      );
+      final back = SplitTunnelConfig.fromJson(st.toJson());
+      expect(back.apps.single.allowRealIp, isFalse);
+      expect(back.sites.first.allowRealIp, isTrue);
+      expect(back.sites.last.allowRealIp, isFalse);
+    });
+
+    // Правила, заведённые до появления галочки, обязаны начать работать как
+    // «Прямо»: раньше noRealIp молча уводил их в туннель.
+    test('старые правила без поля получают разрешение', () {
+      final st = SplitTunnelConfig.fromJson({
+        'mode': 'onlySelected',
+        'apps': [
+          {'path': r'C:\a.exe', 'action': 'direct'}
+        ],
+        'sites': [
+          {'domain': 'example.org', 'action': 'direct'}
+        ],
+      });
+      expect(st.apps.single.allowRealIp, isTrue);
+      expect(st.sites.single.allowRealIp, isTrue);
+    });
+
+    test('правка порта не сбрасывает галочку', () {
+      const site = SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false);
+      expect(site.copyWith(port: 8443).allowRealIp, isFalse);
+      expect(site.copyWith(clearPort: true).port, isNull);
     });
   });
 

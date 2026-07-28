@@ -510,5 +510,20 @@
   "portBusyTitle": "پورت {port} از قبل توسط {by} اشغال شده است.",
   "srvTileMenu": "عملیات سرور",
   "supportCopyReport": "کپی گزارش",
-  "supportReportCopied": "گزارش کپی شد — آن را در گفتگوی پشتیبانی بچسبانید"
+  "supportReportCopied": "گزارش کپی شد — آن را در گفتگوی پشتیبانی بچسبانید",
+  "subBarUsedOnly": "مصرف‌شده {used}",
+  "subBarUnlimitedTraffic": "ترافیک نامحدود",
+  "supportDescribeLabel": "مشکل را شرح دهید",
+  "supportDescribeHint": "چه کردید، چه انتظاری داشتید، چه شد و از کی شروع شد",
+  "supportDescribeRequired": "مشکل را شرح دهید — گزارش بدون شرح بی‌فایده است",
+  "supportNoScreenshots": "تصاویر صفحه را اینجا نچسبانید — آن‌ها را در پیامی جداگانه در گفتگوی تلگرام بفرستید.",
+  "supportDescriptionSection": "شرح کاربر",
+  "splitAllowRealIp": "اجازهٔ IP واقعی",
+  "splitAllowRealIpOn": "این قاعده از VPN عبور نمی‌کند — سایت نشانی واقعی شما را می‌بیند",
+  "splitAllowRealIpOff": "این قاعده محافظت‌شده است — از VPN عبور می‌کند",
+  "splitRealIpExposed": "IP واقعی",
+  "splitRealIpProtected": "از طریق VPN",
+  "vpnActiveBadge": "VPN فعال است",
+  "splitCopyDomain": "کپی نشانی",
+  "splitCopyPath": "کپی مسیر"
 }

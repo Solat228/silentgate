@@ -43,6 +43,15 @@ class SubscriptionInfo {
     return (uploadBytes ?? 0) + (downloadBytes ?? 0);
   }
 
+  /// Трафик без лимита.
+  ///
+  /// Remnawave кодирует безлимит нулём — так же, как `expire=0` означает
+  /// «бессрочно». Отличать это состояние обязательно: иначе интерфейс рисует
+  /// шкалу «израсходовано X из 0» и — поскольку доля неизвестна — крутит
+  /// БЕСКОНЕЧНУЮ полосу прогресса, которая выглядит как вечно идущее
+  /// обновление подписки.
+  bool get unlimitedTraffic => totalBytes == null || totalBytes! <= 0;
+
   /// Доля использованного трафика 0..1 (null если total неизвестен/безлимит).
   double? get usedFraction {
     final u = usedBytes, t = totalBytes;

@@ -453,7 +453,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get autoTuneByKey => 'التهيئة بالمفتاح';
 
   @override
-  String autoTesting(Object index, Object total) {
+  String autoTesting(int index, int total) {
     return 'جارٍ الاختبار $index/$total: ';
   }
 
@@ -463,7 +463,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String autoServicesPassed(Object ok, Object total) {
+  String autoServicesPassed(int ok, int total) {
     return '$ok من $total خدمات';
   }
 
@@ -482,7 +482,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String autoServersForTuning(Object selected, Object total) {
+  String autoServersForTuning(int selected, int total) {
     return 'خوادم للتهيئة ($selected/$total)';
   }
 
@@ -544,7 +544,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeReconnect => 'إعادة الاتصال';
 
   @override
-  String homePingProgress(Object done, Object total) {
+  String homePingProgress(int done, int total) {
     return 'جارٍ Ping الخوادم: $done من $total';
   }
 
@@ -552,7 +552,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeAutoConfigStarting => 'بدء التهيئة التلقائية…';
 
   @override
-  String homeAutoConfigProgress(Object current, Object name, Object total) {
+  String homeAutoConfigProgress(int current, int total, String name) {
     return 'التهيئة التلقائية: $current من $total — $name';
   }
 
@@ -574,7 +574,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String homeFoundCount(Object found, Object total) {
+  String homeFoundCount(int found, int total) {
     return 'عُثر على $found من $total';
   }
 
@@ -597,7 +597,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeImportSubscription => 'استيراد اشتراك';
 
   @override
-  String homeSessionTraffic(Object down, Object up) {
+  String homeSessionTraffic(String down, String up) {
     return 'هذه الجلسة: ↓ $down   ↑ $up';
   }
 
@@ -605,7 +605,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subBarGbUnit => 'GB';
 
   @override
-  String subBarUsage(Object total, Object used) {
+  String subBarUsage(String used, String total) {
     return '$used من $total';
   }
 
@@ -941,7 +941,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get serversTitle => 'الخوادم';
 
   @override
-  String serversFound(Object found, Object total) {
+  String serversFound(int found, int total) {
     return 'الخوادم — عُثر على $found من $total';
   }
 
@@ -1095,7 +1095,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get editorSave => 'حفظ';
 
   @override
-  String jsonProfileServers(Object burst, Object count) {
+  String jsonProfileServers(int count, String burst) {
     return '$count خوادم$burst';
   }
 
@@ -1724,4 +1724,56 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get supportReportCopied => 'تم نسخ التقرير — الصقه في محادثة الدعم';
+
+  @override
+  String subBarUsedOnly(String used) {
+    return 'المستخدم $used';
+  }
+
+  @override
+  String get subBarUnlimitedTraffic => 'حركة بيانات غير محدودة';
+
+  @override
+  String get supportDescribeLabel => 'صِف المشكلة';
+
+  @override
+  String get supportDescribeHint =>
+      'ما الذي فعلته، وما توقعته، وما حدث، ومتى بدأ';
+
+  @override
+  String get supportDescribeRequired =>
+      'صِف المشكلة — التقرير بدون وصف عديم الفائدة';
+
+  @override
+  String get supportNoScreenshots =>
+      'لا تلصق لقطات الشاشة هنا — أرسلها في رسالة منفصلة في محادثة تيليجرام.';
+
+  @override
+  String get supportDescriptionSection => 'وصف المستخدم';
+
+  @override
+  String get splitAllowRealIp => 'السماح بعنوان IP الحقيقي';
+
+  @override
+  String get splitAllowRealIpOn =>
+      'تتجاوز هذه القاعدة الشبكة الافتراضية — سيرى الموقع عنوانك الحقيقي';
+
+  @override
+  String get splitAllowRealIpOff =>
+      'هذه القاعدة محمية — تمر عبر الشبكة الافتراضية';
+
+  @override
+  String get splitRealIpExposed => 'IP حقيقي';
+
+  @override
+  String get splitRealIpProtected => 'عبر VPN';
+
+  @override
+  String get vpnActiveBadge => 'الشبكة الافتراضية نشطة';
+
+  @override
+  String get splitCopyDomain => 'نسخ العنوان';
+
+  @override
+  String get splitCopyPath => 'نسخ المسار';
 }
