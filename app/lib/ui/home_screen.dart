@@ -30,6 +30,7 @@ import 'widgets/service_checks_row.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
 import 'servers_screen.dart';
+import '../engine/probe_factory.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -378,13 +379,23 @@ class _ConnectPane extends StatelessWidget {
                     onPressed: () => state
                         .connectAuto(context.read<SettingsController>().settings),
                   ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.auto_fix_high),
-                  label: Text(l.homeAutoConfig),
-                  onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AutoConfigScreen())),
-                ),
+                // Автонастройка целиком стоит на проброс-харнессе: она поднимает
+                // рядом второй экземпляр ядра и гоняет через него пробы. На
+                // Android этого нельзя — VpnService в приложении один, и
+                // `createProbeHarness()` честно бросает UnsupportedError.
+                // Кнопка при этом была на месте, и нажатие показывало сырое
+                // «Ошибка: Unsupported operation…». Лучше не показывать вовсе,
+                // чем обещать несуществующее.
+                if (proxyProbeSupported) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.auto_fix_high),
+                    label: Text(l.homeAutoConfig),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => const AutoConfigScreen())),
+                  ),
+                ],
                   if (!compact) const Spacer() else const SizedBox(height: 24),
                   // Всегда на месте: при отключённом VPN — нули (иначе блок появлялся
                   // рывком и двигал кнопки, а цифры не помещались).
