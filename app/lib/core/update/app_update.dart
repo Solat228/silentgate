@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../app_info.dart';
 import '../platform/app_log.dart';
+import 'app_update_defaults.dart';
 
 /// Что сказал сервер обновлений.
 class AppRelease {
@@ -24,7 +25,9 @@ class AppRelease {
 class AppUpdate {
   /// Формат ответа — см. `docs/APP_UPDATE.md`:
   /// `{"version":"0.9.0","url":"https://…/SilentGateSetup.exe","notes":"…"}`
-  static const defaultEndpoint = 'https://silentgate.lol/api/app-version';
+  /// Значение живёт в `app_update_defaults.dart` (файл без импортов): оттуда
+  /// его берёт `AppSettings`, не притаскивая в консольные тулы `package:flutter`.
+  static const defaultEndpoint = kDefaultAppUpdateEndpoint;
 
   static Future<AppRelease?> check({
     String endpoint = defaultEndpoint,

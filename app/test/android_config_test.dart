@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
-import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
 

@@ -540,9 +540,23 @@ void main() {
           isTrue);
     });
 
-    test('all: «Прямо»-приложение → direct, final proxy', () {
+    // ⚠️ Тест ПЕРЕПИСАН. Раньше он закреплял обратное: в режиме «всё через VPN»
+    // правило «Прямо» попадало в конфиг и прорезало дыру в туннеле. Интерфейс
+    // при этом прячет списки со словами «исключений нет» — то есть тест
+    // фиксировал расхождение конфига с обещанием интерфейса, а не требование.
+    // Проверка ФОРМЫ правил переехала ниже, на exceptSelected.
+    test('all: правило «Прямо» НЕ применяется, база — proxy', () {
       final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
         mode: SplitMode.all,
+        apps: [AppRule(r'C:\a.exe', action: AppAction.direct)],
+      ));
+      expect(rt(cfg)['final'], 'proxy');
+      expect(rules(cfg).any((r) => r['process_path_regex'] != null), isFalse);
+    });
+
+    test('exceptSelected: «Прямо»-приложение → direct, база proxy', () {
+      final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
+        mode: SplitMode.exceptSelected,
         apps: [AppRule(r'C:\a.exe', action: AppAction.direct)],
       ));
       expect(rt(cfg)['final'], 'proxy');
@@ -554,7 +568,7 @@ void main() {
 
     test('«Блок»-приложение → action: reject (без outbound)', () {
       final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
-        mode: SplitMode.all,
+        mode: SplitMode.exceptSelected,
         apps: [
           AppRule(r'C:\ads.exe', byName: true, action: AppAction.block),
           AppRule(r'C:\vpn.exe', byName: true, action: AppAction.tunnel),
@@ -581,7 +595,7 @@ void main() {
 
     test('сайт «Блок» → domain_suffix + action reject', () {
       final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
-        mode: SplitMode.all,
+        mode: SplitMode.exceptSelected,
         sites: [SiteRule('ads.com', action: AppAction.block)],
       ));
       final r = rules(cfg).firstWhere(
@@ -591,7 +605,7 @@ void main() {
 
     test('выключенное правило приложения не применяется в конфиге', () {
       final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
-        mode: SplitMode.all,
+        mode: SplitMode.exceptSelected,
         apps: [
           AppRule(r'C:\on.exe', byName: true, action: AppAction.direct),
           AppRule(r'C:\off.exe',
@@ -634,7 +648,7 @@ void main() {
 
     test('сайт с портом → правило domain_suffix + port', () {
       final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
-        mode: SplitMode.all,
+        mode: SplitMode.exceptSelected,
         sites: [
           SiteRule('example.com', port: 8443, action: AppAction.direct),
           SiteRule('plain.com', action: AppAction.direct),

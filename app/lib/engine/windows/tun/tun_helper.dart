@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../core/platform/app_paths.dart';
+import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
 
 /// Элевейтнутый TUN-хелпер: запускает sing-box как дочерний процесс и следит за
@@ -42,34 +43,14 @@ class TunHelper {
   /// приложение или роняло его по нехватке памяти.
   static const _tailBytes = 512 * 1024;
 
-  static Future<String> tailLog({int lines = 40}) async {
-    RandomAccessFile? raf;
-    try {
-      final f = File(logPathFor(await AppPaths.supportDir()));
-      if (!await f.exists()) return '';
-      final size = await f.length();
-      raf = await f.open();
-      final from = size > _tailBytes ? size - _tailBytes : 0;
-      await raf.setPosition(from);
-      final bytes = await raf.read(size - from);
-      // Хвост мог начаться с середины UTF-8-последовательности.
-      var text = utf8.decode(bytes, allowMalformed: true);
-      if (from > 0) {
-        final nl = text.indexOf('\n');
-        if (nl >= 0) text = text.substring(nl + 1);
-      }
-      final all = const LineSplitter().convert(text);
-      return all.length <= lines
-          ? all.join('\n')
-          : all.sublist(all.length - lines).join('\n');
-    } catch (_) {
-      return '';
-    } finally {
-      try {
-        await raf?.close();
-      } catch (_) {}
-    }
-  }
+  /// Чтение делегировано [RotatingLog.tail] — тот же алгоритм нужен и
+  /// прокси-ядру (`singbox_proxy.log`), а две копии этой логики неминуемо
+  /// разъехались бы.
+  static Future<String> tailLog({int lines = 40}) async => RotatingLog.tail(
+        logPathFor(await AppPaths.supportDir()),
+        lines: lines,
+        tailBytes: _tailBytes,
+      );
 
   /// Режим задачи Планировщика. Пути к конфигу/stop берём из ЯВНЫХ аргументов,
   /// если задача их передала (см. TunScheduledTask.install), иначе — из `%APPDATA%`.

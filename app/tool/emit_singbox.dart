@@ -1,5 +1,5 @@
 // Печатает sing-box TUN-конфиг для валидации ядром:
-//   dart run tool/emit_singbox.dart [all|only] [system|gvisor|mixed]
+//   dart run tool/emit_singbox.dart [all|only|except] [system|gvisor|mixed]
 //                                   [dns-system|dns-vpn|dns-custom] [no-ipv6] [no-strict]
 //   sing-box check -c sb.json
 // В набор приложений включены все три действия (Прямо/Туннель/Блок) для проверки.
@@ -10,8 +10,13 @@ import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 
 void main(List<String> args) {
-  final mode =
-      args.contains('only') ? SplitMode.onlySelected : SplitMode.all;
+  // `except` раньше молча падал в `all` — и конфиг третьего режима выглядел как
+  // конфиг первого, из-за чего его невозможно было проверить ядром.
+  final mode = args.contains('only')
+      ? SplitMode.onlySelected
+      : args.contains('except')
+          ? SplitMode.exceptSelected
+          : SplitMode.all;
   final stack = ['system', 'gvisor', 'mixed']
       .where(args.contains)
       .cast<String?>()

@@ -1,5 +1,8 @@
 import '../net/speed_test.dart';
-import '../update/app_update.dart';
+// Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
+// path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
+// переставал работать. Нужна отсюда только константа адреса обновлений.
+import '../update/app_update_defaults.dart';
 import 'split_tunnel.dart';
 
 /// Режим захвата трафика.
@@ -295,7 +298,7 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
-    this.appUpdateUrl = AppUpdate.defaultEndpoint,
+    this.appUpdateUrl = kDefaultAppUpdateEndpoint,
   });
 
   static const AppSettings defaults = AppSettings();

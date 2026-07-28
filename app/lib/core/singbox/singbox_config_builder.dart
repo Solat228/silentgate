@@ -311,6 +311,10 @@ class SingboxConfigBuilder {
   List<Map<String, dynamic>> _dnsSiteRules(
       SplitTunnelConfig split, AppAction action, String? server,
       {bool? allowRealIp}) {
+    // Зеркало обязано повторять маршруты: в режиме «Всё через VPN» правил в
+    // маршрутах нет, значит и в DNS их быть не должно (иначе домен «Прямо»
+    // резолвился бы локально при затуннелированном трафике).
+    if (!_userRulesActive(split)) return const [];
     var matched = split.sites.where((s) => s.action == action && s.port == null);
     if (allowRealIp != null && options.noRealIp) {
       matched = matched.where((s) => s.allowRealIp == allowRealIp);
@@ -367,11 +371,24 @@ class SingboxConfigBuilder {
   /// bypassLan/excludeCidr (#3). Блок — через action: reject (в 1.11 outbound
   /// «block» устарел). Порядок: приложения, затем сайты.
   void _addBlockRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+    if (!_userRulesActive(split)) return;
     _addActionRule(rules, split, AppAction.block, null);
     _addSiteRule(rules, split, AppAction.block, null);
   }
 
+  /// В режиме «Всё через VPN» пользовательские правила НЕ применяются.
+  ///
+  /// Интерфейс в этом режиме прячет списки приложений и сайтов и обещает, что
+  /// весь трафик идёт в туннель. Правила при этом сохраняются (переключение
+  /// режима их не теряет), но в конфиг попадать не должны: иначе сохранённое
+  /// «Прямо» продолжало бы прорезать дыру в туннеле — трафик и DNS уходили бы
+  /// мимо VPN, а пользователь об этом не узнал бы, потому что правил не видно.
+  /// Особенно остро после 1.0.1, где «Прямо» снова означает именно «прямо».
+  bool _userRulesActive(SplitTunnelConfig split) =>
+      split.mode != SplitMode.all;
+
   void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+    if (!_userRulesActive(split)) return;
     // «Прямо» при включённом noRealIp расходится надвое: правила с поднятой
     // галочкой «разрешить реальный IP» идут действительно напрямую (пользователь
     // задал их явно), остальные возвращаются под защиту — через VPN.

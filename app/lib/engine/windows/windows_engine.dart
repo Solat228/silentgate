@@ -9,7 +9,6 @@ import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/singbox/singbox_config_builder.dart';
-import '../../core/xray/xray_config_builder.dart';
 import '../engine_base.dart';
 import 'singbox_process.dart';
 import 'singbox_stats.dart';
@@ -112,7 +111,14 @@ class WindowsEngine extends VpnEngineBase {
       Future<int>? exited;
       if (singboxCore) {
         final process = SingboxProcess();
-        await process.start(executable: singboxExe!, configPath: configPath);
+        // Пишем вывод в файл: у прокси-ядра (hysteria2) диагностики не было
+        // вообще — «конфиг валиден, процесс жив, трафика нет» не оставляло
+        // ни байта, по которому можно понять причину.
+        await process.start(
+          executable: singboxExe!,
+          configPath: configPath,
+          logPath: SingboxProcess.logPathFor(await AppPaths.supportDir()),
+        );
         _singbox = process;
         tailOf = () => process.tail;
         alive = () => process.isRunning;

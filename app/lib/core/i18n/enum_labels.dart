@@ -3,7 +3,6 @@ import '../models/subscription_sync.dart';
 import '../models/vpn_server.dart';
 import '../models/vpn_status.dart';
 import '../net/speed_test.dart';
-import '../settings/app_settings.dart';
 import '../settings/split_tunnel.dart';
 import '../xray/outbound_variant.dart';
 import '../../state/app_error.dart';

@@ -5,7 +5,6 @@ import 'dart:io';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/platform_services.dart';
-import '../../core/settings/app_settings.dart';
 import 'support_report_android.dart';
 
 /// Платформенные сервисы Android — **каркас фазы 3**.

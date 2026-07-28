@@ -43,11 +43,22 @@ void main() {
         bool hasDomain(Map<String, dynamic> r, String d) =>
             (r['domain_suffix'] as List?)?.contains(d) == true;
 
-        // Инвариант, ради которого всё затевалось: явное правило сайта решает
-        // судьбу трафика ВНУТРИ приложения, помеченного «Туннель».
         final siteIdx = idx((r) => hasDomain(r, 'example.org'));
         final appIdx = idx((r) =>
             (r['process_name'] as List?)?.contains('chrome.exe') == true);
+
+        if (mode == SplitMode.all) {
+          // «Всё через VPN» = исключений нет (ровно это обещает интерфейс,
+          // пряча списки). Значит и в конфиге пользовательских правил быть
+          // не должно — иначе сохранённое «Прямо» молча прорезало бы туннель.
+          expect(siteIdx, -1, reason: 'в режиме «всё через VPN» правил сайтов нет');
+          expect(appIdx, -1,
+              reason: 'в режиме «всё через VPN» правил приложений нет');
+          return;
+        }
+
+        // Инвариант, ради которого всё затевалось: явное правило сайта решает
+        // судьбу трафика ВНУТРИ приложения, помеченного «Туннель».
         expect(siteIdx, greaterThanOrEqualTo(0));
         expect(appIdx, greaterThan(siteIdx),
             reason: 'правило сайта обязано стоять выше правила приложения');

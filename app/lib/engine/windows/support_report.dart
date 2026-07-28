@@ -90,11 +90,25 @@ class SupportReport {
     b.writeln('==================================================');
     b.writeln(await _safe(AppLog.dump));
     b.writeln();
+    // Два ядра — два лога. Раньше сюда попадал только TUN-лог, и подпись
+    // «TUN/hysteria2 не поднимались» была неверной: прокси-ядро hysteria2 в
+    // этот файл не пишет вовсе, поэтому его отказ по отчёту не диагностировался.
+    final dirForLogs = await AppPaths.supportDir();
     b.writeln('==================================================');
-    b.writeln('[singbox.log — последние строки]');
+    b.writeln('[singbox.log — TUN-ядро, последние строки]'
+        '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sb = await _safe(() => TunHelper.tailLog(lines: 200));
-    b.writeln(sb.isEmpty ? '(пусто — TUN/hysteria2 в этой сессии не поднимались)' : sb);
+    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : sb);
+    b.writeln();
+    b.writeln('==================================================');
+    b.writeln('[singbox_proxy.log — прокси-ядро (hysteria2), последние строки]'
+        '${await _mtime(SingboxProcess.logPathFor(dirForLogs))}');
+    b.writeln('==================================================');
+    final sbp = await _safe(() => SingboxProcess.tailLog(lines: 200));
+    b.writeln(sbp.isEmpty
+        ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
+        : sbp);
     b.writeln();
 
     b.writeln('=== конец отчёта ===');
@@ -167,6 +181,21 @@ class SupportReport {
       return await f();
     } catch (e) {
       return 'н/д ($e)';
+    }
+  }
+
+  /// Время последней записи в лог — в скобках к заголовку секции.
+  ///
+  /// Без него отчёт врёт: `singbox.log` при старте TUN только УСЕКАЕТСЯ, а не
+  /// удаляется, поэтому лог прошлой сессии выглядит как текущий, и разбор
+  /// уходит не в ту сторону.
+  static Future<String> _mtime(String path) async {
+    try {
+      final f = File(path);
+      if (!await f.exists()) return '';
+      return ' (изменён ${(await f.lastModified()).toIso8601String()})';
+    } catch (_) {
+      return '';
     }
   }
 }

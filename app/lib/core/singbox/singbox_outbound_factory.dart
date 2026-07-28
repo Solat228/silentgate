@@ -1,3 +1,5 @@
+import 'dart:io' show InternetAddress;
+
 import '../models/vpn_server.dart';
 
 /// Строит outbound sing-box из [VpnServer].
@@ -25,14 +27,26 @@ class SingboxOutboundFactory {
         'shadowsocks',
       }.contains(s.protocol);
 
-  static Map<String, dynamic> build(VpnServer s, {String tag = 'proxy'}) {
+  /// [resolvedIp] — адрес сервера, отрезолвленный ЗАРАНЕЕ (до подъёма TUN).
+  ///
+  /// Зачем: с доменным именем ядру приходится резолвить его самому уже в рантайме.
+  /// В TUN-режиме этот запрос уходит в системный резолвер, перехватывается
+  /// правилом `hijack-dns` (оно стоит выше защиты от петли, потому что запрос
+  /// шлёт `svchost.exe`, а не наш процесс) и по `dns.final` возвращается
+  /// В ЭТО ЖЕ прокси-ядро, которое как раз и ждёт ответа. Замкнутый круг:
+  /// процесс жив, конфиг валиден, трафика нет.
+  ///
+  /// С подставленным IP резолвить нечего — петля невозможна по построению.
+  /// Имя при этом НЕ теряется: оно остаётся в `server_name` (SNI) и в `Host`.
+  static Map<String, dynamic> build(VpnServer s,
+      {String tag = 'proxy', String? resolvedIp}) {
     switch (s.protocol) {
       case 'vless':
-        return _vless(s, tag);
+        return _vless(s, tag, resolvedIp);
       case 'trojan':
-        return _trojan(s, tag);
+        return _trojan(s, tag, resolvedIp);
       case 'shadowsocks':
-        return _shadowsocks(s, tag);
+        return _shadowsocks(s, tag, resolvedIp);
       case 'hysteria2':
         break;
       default:
@@ -44,8 +58,9 @@ class SingboxOutboundFactory {
     final out = <String, dynamic>{
       'type': 'hysteria2',
       'tag': tag,
-      'server': s.address,
+      'server': _host(s, resolvedIp),
       // Порт-хоппинг: sing-box требует ЛИБО server_port, ЛИБО server_ports.
+      // Подстановка IP его не касается — хоппинг меняет порт, не хост.
       if (ports == null) 'server_port': s.port else 'server_ports': ports,
       if (ports != null) 'hop_interval': '30s',
       if (s.id.isNotEmpty) 'password': s.id,
@@ -53,7 +68,7 @@ class SingboxOutboundFactory {
       // У hysteria2 транспорт — QUIC, TLS есть всегда и отключить его нельзя.
       'tls': {
         'enabled': true,
-        if ((s.sni ?? '').isNotEmpty) 'server_name': s.sni,
+        if (_tlsName(s, resolvedIp) != null) 'server_name': _tlsName(s, resolvedIp),
         if (s.allowInsecure) 'insecure': true,
         if ((s.alpn ?? '').isNotEmpty)
           'alpn': s.alpn!.split(',').map((a) => a.trim()).where((a) => a.isNotEmpty).toList(),
@@ -62,35 +77,69 @@ class SingboxOutboundFactory {
     return out;
   }
 
+  /// Адрес для поля `server`: подставленный IP, иначе исходный адрес.
+  static String _host(VpnServer s, String? resolvedIp) =>
+      (resolvedIp != null && resolvedIp.isNotEmpty) ? resolvedIp : s.address;
+
+  /// Имя сервера, если исходный адрес — доменное имя (а не IP-литерал).
+  static String? _domainOf(VpnServer s) {
+    final a = s.address.trim();
+    if (a.isEmpty) return null;
+    // IPv6 в конфиге может приехать в скобках.
+    final bare = a.startsWith('[') && a.endsWith(']')
+        ? a.substring(1, a.length - 1)
+        : a;
+    return InternetAddress.tryParse(bare) == null ? a : null;
+  }
+
+  /// Имя для TLS/SNI.
+  ///
+  /// ⚠️ Когда в `server` подставлен IP, `server_name` ОБЯЗАН остаться доменом:
+  /// иначе сертификат не пройдёт проверку, а sing-box вовсе отвергнет конфиг
+  /// («missing server_name or insecure=true») — и вместо починки пользователь
+  /// получит «Ядро завершилось при запуске».
+  static String? _tlsName(VpnServer s, String? resolvedIp) {
+    final sni = (s.sni ?? '').trim();
+    if (sni.isNotEmpty) return sni;
+    if (resolvedIp != null && resolvedIp.isNotEmpty) return _domainOf(s);
+    return null;
+  }
+
   // ── VLESS / Trojan / Shadowsocks ────────────────────────────────────────────
 
-  static Map<String, dynamic> _vless(VpnServer s, String tag) => {
+  static Map<String, dynamic> _vless(
+          VpnServer s, String tag, String? resolvedIp) =>
+      {
         'type': 'vless',
         'tag': tag,
-        'server': s.address,
+        'server': _host(s, resolvedIp),
         'server_port': s.port,
         'uuid': s.id,
         if ((s.flow ?? '').isNotEmpty) 'flow': s.flow,
         if ((s.encryption ?? '').isNotEmpty && s.encryption != 'none')
           'packet_encoding': s.encryption,
-        ..._tlsBlock(s),
-        ..._transportBlock(s),
+        ..._tlsBlock(s, resolvedIp),
+        ..._transportBlock(s, resolvedIp),
       };
 
-  static Map<String, dynamic> _trojan(VpnServer s, String tag) => {
+  static Map<String, dynamic> _trojan(
+          VpnServer s, String tag, String? resolvedIp) =>
+      {
         'type': 'trojan',
         'tag': tag,
-        'server': s.address,
+        'server': _host(s, resolvedIp),
         'server_port': s.port,
         'password': s.id,
-        ..._tlsBlock(s),
-        ..._transportBlock(s),
+        ..._tlsBlock(s, resolvedIp),
+        ..._transportBlock(s, resolvedIp),
       };
 
-  static Map<String, dynamic> _shadowsocks(VpnServer s, String tag) => {
+  static Map<String, dynamic> _shadowsocks(
+          VpnServer s, String tag, String? resolvedIp) =>
+      {
         'type': 'shadowsocks',
         'tag': tag,
-        'server': s.address,
+        'server': _host(s, resolvedIp),
         'server_port': s.port,
         'method': (s.encryption ?? '').isEmpty ? 'aes-128-gcm' : s.encryption,
         'password': s.id,
@@ -100,8 +149,8 @@ class SingboxOutboundFactory {
   ///
   /// Пустые строки НЕ пишем: Go отвергает `alpn: [""]` («invalid NextProtos»),
   /// и ровно на этом уже спотыкались в редакторе сервера.
-  static Map<String, dynamic> _tlsBlock(VpnServer s) {
-    final security = (s.security ?? '').toLowerCase();
+  static Map<String, dynamic> _tlsBlock(VpnServer s, String? resolvedIp) {
+    final security = s.security.toLowerCase();
     if (security != 'tls' && security != 'reality') return const {};
 
     final alpn = (s.alpn ?? '')
@@ -113,7 +162,7 @@ class SingboxOutboundFactory {
     return {
       'tls': {
         'enabled': true,
-        if ((s.sni ?? '').isNotEmpty) 'server_name': s.sni,
+        if (_tlsName(s, resolvedIp) != null) 'server_name': _tlsName(s, resolvedIp),
         if (s.allowInsecure) 'insecure': true,
         if (alpn.isNotEmpty) 'alpn': alpn,
         if ((s.fingerprint ?? '').isNotEmpty)
@@ -130,9 +179,14 @@ class SingboxOutboundFactory {
 
   /// Транспорт. `tcp` — это отсутствие секции: у sing-box нет такого типа,
   /// и явное указание валит конфиг целиком.
-  static Map<String, dynamic> _transportBlock(VpnServer s) {
+  static Map<String, dynamic> _transportBlock(VpnServer s, String? resolvedIp) {
     final path = (s.path ?? '');
-    final host = (s.host ?? '');
+    // ⚠️ При подставленном IP заголовок Host обязан остаться доменом: без него
+    // CDN/Nginx на той стороне не найдёт нужный виртуальный хост и вернёт 404
+    // вместо апгрейда соединения.
+    final host = (s.host ?? '').isNotEmpty
+        ? s.host!
+        : (resolvedIp != null ? (_domainOf(s) ?? '') : '');
     switch (s.network) {
       case 'ws':
         return {

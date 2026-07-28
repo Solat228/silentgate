@@ -164,7 +164,10 @@ void main() {
       final cfg = const SingboxConfigBuilder(
         options: TunOptions(bypassLan: true, excludeCidrs: ['104.16.0.0/13']),
       ).buildMap(const SplitTunnelConfig(
-        mode: SplitMode.all,
+        // Не `all`: там пользовательских правил в конфиге нет по определению
+        // («исключений нет»), и проверять порядок было бы не на чем. База у
+        // exceptSelected та же — proxy.
+        mode: SplitMode.exceptSelected,
         sites: [SiteRule('trackers.example', action: AppAction.block)],
       ));
       final rs = rules(cfg);
