@@ -302,4 +302,40 @@ void main() {
       );
     });
   });
+
+  // ⚠️ «Авто (лучший сервер)» на Android подключался к ПЕРВОМУ серверу списка:
+  // движок брал `servers.first` и выбрасывал конфиг, собранный базой (там
+  // балансировщик Xray либо `urltest` sing-box по ВСЕМ узлам).
+  group('Автовыбор: группа outbound-ов встраивается целиком', () {
+    Map<String, dynamic> withGroup(List<Map<String, dynamic>> group) =>
+        SingboxConfigBuilder(
+          options: const TunOptions(platformTun: true, serverIps: ['203.0.113.5']),
+          proxyOutboundGroup: group,
+        ).buildMap(const SplitTunnelConfig());
+
+    test('узлы и urltest попадают в конфиг, тег proxy сохраняется', () {
+      final cfg = withGroup([
+        {'type': 'hysteria2', 'tag': 'node-0', 'server': '198.51.100.1', 'server_port': 443},
+        {'type': 'hysteria2', 'tag': 'node-1', 'server': '198.51.100.2', 'server_port': 443},
+        {'type': 'urltest', 'tag': 'proxy', 'outbounds': ['node-0', 'node-1']},
+      ]);
+      final outs = (cfg['outbounds'] as List).cast<Map<String, dynamic>>();
+      final tags = outs.map((o) => o['tag']).toList();
+      expect(tags, containsAll(['node-0', 'node-1', 'proxy', 'direct']));
+      expect(outs.firstWhere((o) => o['tag'] == 'proxy')['type'], 'urltest');
+      // Один-единственный direct: два одноимённых outbound'а ядро отвергает.
+      expect(tags.where((t) => t == 'direct').length, 1);
+      expect((cfg['route'] as Map)['final'], 'proxy');
+    });
+
+    test('без группы поведение прежнее — переход в локальный SOCKS', () {
+      final cfg = SingboxConfigBuilder(
+        options: const TunOptions(platformTun: true),
+      ).buildMap(const SplitTunnelConfig());
+      final proxy = (cfg['outbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((o) => o['tag'] == 'proxy');
+      expect(proxy['type'], 'socks');
+    });
+  });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -91,10 +92,23 @@ class AndroidEngine extends VpnEngineBase {
       final serverIps = hosts.values.expand((e) => e).toSet().toList();
       final resolvedIps = VpnEngineBase.pickOneIpPerHost(hosts);
 
-      final cfg = configFor(session.servers.first, session.options,
-          resolvedIps: resolvedIps);
+      // ⚠️ Сессия из НЕСКОЛЬКИХ серверов — это «Авто (лучший сервер)»: база
+      // уже собрала конфиг с балансировщиком (Xray `balancers` +
+      // `burstObservatory`) либо с `urltest` (sing-box) по ВСЕМ серверам и
+      // положила его в `session.configJson`. Пересобирать его из
+      // `servers.first`, как делалось здесь, значило подключаться к ПЕРВОМУ
+      // серверу списка и выдавать это за автовыбор: ни балансировщика, ни
+      // замеров, ни переключения на быстрый узел. Windows этот конфиг берёт
+      // (`windows_engine.dart:56`), Android — молча выбрасывал.
+      final multi = session.servers.length > 1;
+      final cfg = multi
+          ? (json: session.configJson, core: session.core)
+          : configFor(session.servers.first, session.options,
+              resolvedIps: resolvedIps);
+      // Балансировщик Xray умеет только Xray: при нескольких серверах ядро
+      // определяется сессией, а не протоколом первого сервера.
       final viaXray = cfg.core == ProxyCore.xray &&
-          !SingboxOutboundFactory.supports(session.servers.first);
+          (multi || !SingboxOutboundFactory.supports(session.servers.first));
 
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Когда справляется sing-box, лишний
@@ -112,7 +126,13 @@ class AndroidEngine extends VpnEngineBase {
           logOutput: '${(await AppPaths.supportDir()).path}'
               '${Platform.pathSeparator}singbox.log',
         ),
-        proxyOutbound: viaXray
+        // При нескольких серверах на sing-box собранный базой конфиг уже
+        // содержит `urltest` по всем узлам — встраивать outbound одного
+        // сервера нельзя, это снова свело бы автовыбор к первому.
+        proxyOutboundGroup: (!viaXray && multi)
+            ? _outboundsOf(session.configJson)
+            : null,
+        proxyOutbound: (viaXray || multi)
             ? null
             : SingboxOutboundFactory.build(
                 session.servers.first,
@@ -210,6 +230,29 @@ class AndroidEngine extends VpnEngineBase {
       await _channel.invokeMethod<void>('stop');
     } catch (e) {
       AppLog.w('Не удалось остановить VPN-сервис: $e');
+    }
+  }
+
+  /// Прокси-outbound'ы из конфига, собранного базой (без служебного `direct`).
+  ///
+  /// Для «Авто» база строит полноценный конфиг прокси-ядра: узлы + группа
+  /// `urltest` с тегом `proxy`. Туннелю нужны именно они — свой `direct` он
+  /// добавляет сам, а два одноимённых outbound'а ядро отвергает.
+  static List<Map<String, dynamic>>? _outboundsOf(String configJson) {
+    try {
+      final map = jsonDecode(configJson);
+      if (map is! Map) return null;
+      final outs = map['outbounds'];
+      if (outs is! List) return null;
+      final list = outs
+          .whereType<Map>()
+          .map((e) => e.cast<String, dynamic>())
+          .where((e) => e['tag'] != 'direct')
+          .toList();
+      return list.isEmpty ? null : list;
+    } catch (e) {
+      AppLog.w('Не удалось разобрать конфиг автовыбора: $e');
+      return null;
     }
   }
 }

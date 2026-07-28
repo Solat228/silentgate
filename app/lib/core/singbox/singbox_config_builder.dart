@@ -177,10 +177,21 @@ class SingboxConfigBuilder {
   /// в одном приложении конфликтуют общим Go-рантаймом.
   final Map<String, dynamic>? proxyOutbound;
 
+  /// Готовая ГРУППА outbound'ов — для «Авто (лучший сервер)» на Android.
+  ///
+  /// Автовыбор — это не один узел, а набор плюс `urltest`, который меряет их
+  /// и переключается на быстрый. Тег `proxy` внутри группы уже проставлен
+  /// базой (`buildSingboxJson`), поэтому список кладётся как есть.
+  ///
+  /// ⚠️ Без этого на Android автовыбор сводился к ПЕРВОМУ серверу списка:
+  /// движок брал `servers.first` и выбрасывал собранный базой конфиг.
+  final List<Map<String, dynamic>>? proxyOutboundGroup;
+
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.options = const TunOptions(),
     this.proxyOutbound,
+    this.proxyOutboundGroup,
   });
 
   String buildJson(SplitTunnelConfig split) =>
@@ -290,15 +301,22 @@ class SingboxConfigBuilder {
       'outbounds': [
         // Тег 'proxy' обязан сохраниться: на него ссылаются ВСЕ правила
         // маршрутизации ниже, включая noRealIp и реврайт direct→VPN.
-        proxyOutbound != null
-            ? {...proxyOutbound!, 'tag': 'proxy'}
-            : {
-                'type': 'socks',
-                'tag': 'proxy',
-                'server': '127.0.0.1',
-                'server_port': xraySocksPort,
-                'version': '5',
-              },
+        //
+        // Три случая: группа узлов (автовыбор `urltest` — там тег `proxy`
+        // уже есть внутри), один готовый outbound, либо переход в локальный
+        // SOCKS соседнего Xray.
+        if (proxyOutboundGroup != null)
+          ...proxyOutboundGroup!
+        else if (proxyOutbound != null)
+          {...proxyOutbound!, 'tag': 'proxy'}
+        else
+          {
+            'type': 'socks',
+            'tag': 'proxy',
+            'server': '127.0.0.1',
+            'server_port': xraySocksPort,
+            'version': '5',
+          },
         {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
