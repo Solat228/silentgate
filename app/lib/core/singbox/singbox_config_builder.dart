@@ -135,6 +135,34 @@ class TunOptions {
     );
   }
 
+  /// Те же опции, но туннель никуда не ведёт (kill switch).
+  ///
+  /// Именно копия ЖИВЫХ опций, а не свежие дефолты: интерфейс обязан совпасть
+  /// поле в поле, иначе система пересоздаст его и на этот миг выпустит трафик
+  /// мимо VPN.
+  TunOptions asBlackhole() => TunOptions(
+        stack: stack,
+        mtu: mtu,
+        strictRoute: strictRoute,
+        ipv6: ipv6,
+        endpointIndependentNat: endpointIndependentNat,
+        bypassLan: bypassLan,
+        excludeCidrs: excludeCidrs,
+        dnsMode: dnsMode,
+        dnsServer: dnsServer,
+        dnsHijack: dnsHijack,
+        dnsStrategy: dnsStrategy,
+        logLevel: logLevel,
+        serverIps: serverIps,
+        autotune: autotune,
+        noRealIp: noRealIp,
+        platformTun: platformTun,
+        selfPackage: selfPackage,
+        directDnsUpstream: directDnsUpstream,
+        logOutput: logOutput,
+        blackhole: true,
+      );
+
   /// Копия с другими стеком/MTU — для перебора в автоподборе.
   ///
   /// ⚠️ Любое новое поле обязано попасть сюда. Автоподбор стека/MTU — это
@@ -214,6 +242,7 @@ class SingboxConfigBuilder {
 
   Map<String, dynamic> buildMap(SplitTunnelConfig split) {
     final o = options;
+    if (o.blackhole) return _blackholeMap(split);
 
     final rules = <Map<String, dynamic>>[
       {'action': 'sniff'},
@@ -260,13 +289,9 @@ class SingboxConfigBuilder {
     // База: куда идёт всё, чему не задано действие вручную.
     //  all / exceptSelected → через VPN (proxy); onlySelected → напрямую.
     //
-    // Kill switch (blackhole): база — reject. Пользовательские правила при этом
-    // НЕ применяются вовсе: правило «Прямо» выпустило бы трафик наружу, а это
-    // ровно то, что kill switch запрещает.
-    final finalOutbound = o.blackhole
-        ? 'block'
-        : (split.mode == SplitMode.onlySelected ? 'direct' : 'proxy');
-    if (!o.blackhole) _addAppRules(rules, split);
+    final finalOutbound =
+        split.mode == SplitMode.onlySelected ? 'direct' : 'proxy';
+    _addAppRules(rules, split);
 
     final cfg = <String, dynamic>{
       'log': {
@@ -275,48 +300,7 @@ class SingboxConfigBuilder {
         if ((o.logOutput ?? '').isNotEmpty) 'output': o.logOutput,
       },
       'inbounds': [
-        {
-          'type': 'tun',
-          'tag': 'tun-in',
-          // Имя интерфейса, автомаршруты, strict_route и выбор стека имеют смысл
-          // только когда туннель создаёт САМО ядро. На Android его создаёт
-          // VpnService, и эти поля ядро для платформенного туннеля не принимает.
-          if (!o.platformTun) ...{
-            'interface_name': 'silentgate-tun',
-            'auto_route': true,
-            'strict_route': o.strictRoute,
-            if (o.stack != null) 'stack': o.stack,
-          },
-          // ⚠️ Стек указываем и на Android — он про ОБРАБОТКУ пакетов из
-          // дескриптора, а не про то, кто создал интерфейс.
-          //
-          // По умолчанию ядро берёт стек, который на Android пытается привязать
-          // форвардер к интерфейсу (`SO_BINDTODEVICE`), а это требует прав,
-          // которых у приложения нет. В логе: «bind forwarder to interface:
-          // operation not permitted», и TCP-соединения не форвардятся вовсе,
-          // хотя DNS (UDP) при этом работает. gVisor обрабатывает всё в
-          // пользовательском пространстве, привязка ему не нужна.
-          if (o.platformTun) 'stack': o.stack ?? 'gvisor',
-          'address': [
-            '172.19.0.1/30',
-            if (o.ipv6) 'fdfe:dcba:9876::1/126',
-          ],
-          'mtu': o.mtu,
-          'endpoint_independent_nat': o.endpointIndependentNat,
-          if (_validExcludeCidrs.isNotEmpty)
-            'route_exclude_address': _validExcludeCidrs,
-          // Разведение приложений на Android идёт пакетами, а не процессами.
-          //
-          // ⚠️ include_package и exclude_package ВЗАИМОИСКЛЮЧАЮЩИЕ. Раньше при
-          // «только выбранные» отдавались ОБА: exclude всегда содержал хотя бы
-          // свой пакет. `VpnService.Builder` такого не принимает —
-          // addDisallowedApplication после addAllowedApplication бросает
-          // UnsupportedOperationException, и туннель не поднимался вовсе.
-          // Когда список include непуст, exclude не нужен по построению: в
-          // туннель идут ТОЛЬКО перечисленные, всё прочее (включая нас) и так
-          // мимо.
-          if (o.platformTun) ..._packageLists(split, o),
-        },
+        _tunInbound(split),
         // Локальный http-прокси на Android. Ядро здесь ОДНО и держит только
         // TUN, поэтому порта 10809 в системе не было вовсе — а на него ходят
         // сервис-чипы у кнопки Connect (`ProxyProbe`). Итог: сразу после
@@ -326,7 +310,7 @@ class SingboxConfigBuilder {
         // Слушаем только петлю: наружу порт не выставляется. Трафик пробы
         // уходит тем же путём, что и весь остальной, — значит чип показывает
         // ФАКТИЧЕСКОЕ состояние канала, а не отдельную проверку.
-        if (o.platformTun && !o.blackhole)
+        if (o.platformTun)
           {
             'type': 'mixed',
             'tag': 'probe-in',
@@ -341,12 +325,7 @@ class SingboxConfigBuilder {
         // Три случая: группа узлов (автовыбор `urltest` — там тег `proxy`
         // уже есть внутри), один готовый outbound, либо переход в локальный
         // SOCKS соседнего Xray.
-        // Kill switch: выхода наружу нет вовсе — только block, на него и
-        // указывает `final`. Оставлять здесь рабочий proxy нельзя: ядро
-        // подняло бы соединение к серверу, которого мы как раз лишились.
-        if (o.blackhole)
-          {'type': 'block', 'tag': 'block'}
-        else if (proxyOutboundGroup != null)
+        if (proxyOutboundGroup != null)
           ...proxyOutboundGroup!
         else if (proxyOutbound != null)
           {...proxyOutbound!, 'tag': 'proxy'}
@@ -358,7 +337,7 @@ class SingboxConfigBuilder {
             'server_port': xraySocksPort,
             'version': '5',
           },
-        if (!o.blackhole) {'type': 'direct', 'tag': 'direct'},
+        {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
         'auto_detect_interface': true,
@@ -703,4 +682,98 @@ class SingboxConfigBuilder {
     return out.toList();
   }
 
+
+  /// TUN-инбаунд. ОДИН на живой конфиг и на заглушку kill switch: если они
+  /// разойдутся хоть одним полем (MTU, адреса, списки пакетов), `VpnService`
+  /// пересоздаст интерфейс — и на этот миг трафик пойдёт мимо VPN.
+  Map<String, dynamic> _tunInbound(SplitTunnelConfig split) {
+    final o = options;
+    return
+      {
+        'type': 'tun',
+        'tag': 'tun-in',
+        // Имя интерфейса, автомаршруты, strict_route и выбор стека имеют смысл
+        // только когда туннель создаёт САМО ядро. На Android его создаёт
+        // VpnService, и эти поля ядро для платформенного туннеля не принимает.
+        if (!o.platformTun) ...{
+          'interface_name': 'silentgate-tun',
+          'auto_route': true,
+          'strict_route': o.strictRoute,
+          if (o.stack != null) 'stack': o.stack,
+        },
+        // ⚠️ Стек указываем и на Android — он про ОБРАБОТКУ пакетов из
+        // дескриптора, а не про то, кто создал интерфейс.
+        //
+        // По умолчанию ядро берёт стек, который на Android пытается привязать
+        // форвардер к интерфейсу (`SO_BINDTODEVICE`), а это требует прав,
+        // которых у приложения нет. В логе: «bind forwarder to interface:
+        // operation not permitted», и TCP-соединения не форвардятся вовсе,
+        // хотя DNS (UDP) при этом работает. gVisor обрабатывает всё в
+        // пользовательском пространстве, привязка ему не нужна.
+        if (o.platformTun) 'stack': o.stack ?? 'gvisor',
+        'address': [
+          '172.19.0.1/30',
+          if (o.ipv6) 'fdfe:dcba:9876::1/126',
+        ],
+        'mtu': o.mtu,
+        'endpoint_independent_nat': o.endpointIndependentNat,
+        if (_validExcludeCidrs.isNotEmpty)
+          'route_exclude_address': _validExcludeCidrs,
+        // Разведение приложений на Android идёт пакетами, а не процессами.
+        //
+        // ⚠️ include_package и exclude_package ВЗАИМОИСКЛЮЧАЮЩИЕ. Раньше при
+        // «только выбранные» отдавались ОБА: exclude всегда содержал хотя бы
+        // свой пакет. `VpnService.Builder` такого не принимает —
+        // addDisallowedApplication после addAllowedApplication бросает
+        // UnsupportedOperationException, и туннель не поднимался вовсе.
+        // Когда список include непуст, exclude не нужен по построению: в
+        // туннель идут ТОЛЬКО перечисленные, всё прочее (включая нас) и так
+        // мимо.
+        if (o.platformTun) ..._packageLists(split, o),
+      };
+  }
+
+  /// Туннель-заглушка для kill switch: интерфейс ТОТ ЖЕ, наружу не выходит ничего.
+  ///
+  /// ⚠️ Три ошибки, на которых первая версия этой заглушки не работала бы вовсе
+  /// (найдено ревью, `sing-box check` их НЕ ловит — он возвращает 0 и на
+  /// висячем теге outbound):
+  ///
+  ///  1. ВИСЯЧИЕ ССЫЛКИ. Оставлять обычные правила и секцию DNS нельзя: они
+  ///     ссылаются на `proxy` и `direct`, которых в заглушке нет. Ядро
+  ///     отвергает такой конфиг целиком — то есть туннель СНИМАЕТСЯ, и трафик
+  ///     идёт напрямую всё время попыток. Ровно наоборот тому, зачем это
+  ///     делалось. Поэтому здесь ни одного правила, кроме catch-all reject.
+  ///  2. ТИП `block` УДАЛЁН. Outbound `{'type':'block'}` объявлен устаревшим в
+  ///     1.11 и убран в 1.13, а на Android у нас libbox 1.13.14. Блокируем
+  ///     маршрутным `action: reject` — он поддерживается.
+  ///  3. ИНТЕРФЕЙС ПЕРЕСОЗДАВАЛСЯ. Заглушка строилась из ДЕФОЛТНЫХ опций, а
+  ///     живой конфиг — из пользовательских: другой MTU, другой набор
+  ///     `include_package`/`exclude_package`. Разные списки = `VpnService`
+  ///     строит НОВЫЙ интерфейс, и на этот миг трафик идёт мимо VPN — то самое
+  ///     окно утечки, ради закрытия которого заглушка и нужна. Теперь inbound
+  ///     собирается из тех же опций и того же split.
+  Map<String, dynamic> _blackholeMap(SplitTunnelConfig split) => {
+        'log': {
+          'level': options.logLevel,
+          'timestamp': true,
+          if ((options.logOutput ?? '').isNotEmpty) 'output': options.logOutput,
+        },
+        'inbounds': [_tunInbound(split)],
+        // Ровно один outbound, и на него никто не ссылается: `final` до него не
+        // доходит — всё съедает reject выше.
+        'outbounds': [
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+        'route': {
+          'auto_detect_interface': true,
+          // Ничего, кроме отказа. Ни DNS, ни LAN, ни правил пользователя:
+          // правило «Прямо» выпустило бы трафик наружу — это и запрещает
+          // kill switch.
+          'rules': [
+            {'action': 'reject'},
+          ],
+          'final': 'direct',
+        },
+      };
 }

@@ -47,6 +47,12 @@ class AndroidEngine extends VpnEngineBase {
   /// подтверждение «сервис запущен» за неожиданное падение.
   bool _starting = false;
 
+  /// Опции и правила ЖИВОГО конфига — чтобы заглушка kill switch совпала с ним
+  /// поле в поле. Разойдутся хоть в одном (MTU, списки пакетов) — `VpnService`
+  /// пересоздаст интерфейс, и на этот миг трафик пойдёт мимо VPN.
+  TunOptions? _liveOptions;
+  SplitTunnelConfig _liveSplit = const SplitTunnelConfig();
+
   /// Подхватить туннель, поднятый ПРОШЛЫМ запуском интерфейса.
   ///
   /// ⚠️ На Android интерфейс и туннель живут врозь: `VpnService` переживает
@@ -125,10 +131,7 @@ class AndroidEngine extends VpnEngineBase {
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Когда справляется sing-box, лишний
       // переход не нужен, и outbound встраивается прямо в конфиг туннеля.
-      final tunJson = SingboxConfigBuilder(
-        xraySocksPort: ports.socks,
-        httpProxyPort: ports.http,
-        options: TunOptions.fromSettings(
+      final liveOptions = TunOptions.fromSettings(
           session.options.settings,
           serverIps: serverIps,
           android: true,
@@ -142,7 +145,14 @@ class AndroidEngine extends VpnEngineBase {
           // диагностируется вообще.
           logOutput: '${(await AppPaths.supportDir()).path}'
               '${Platform.pathSeparator}singbox.log',
-        ),
+      );
+      _liveOptions = liveOptions;
+      _liveSplit = session.options.split;
+
+      final tunJson = SingboxConfigBuilder(
+        xraySocksPort: ports.socks,
+        httpProxyPort: ports.http,
+        options: liveOptions,
         // При нескольких серверах на sing-box собранный базой конфиг уже
         // содержит `urltest` по всем узлам — встраивать outbound одного
         // сервера нельзя, это снова свело бы автовыбор к первому.
@@ -262,9 +272,17 @@ class AndroidEngine extends VpnEngineBase {
   /// Собирается тем же билдером, чтобы совпадали адреса, MTU и списки пакетов —
   /// иначе система пересоздала бы интерфейс, и на этот миг трафик пошёл бы
   /// мимо VPN, то есть ровно то, что kill switch и предотвращает.
-  String _blackholeJson() => SingboxConfigBuilder(
-        options: const TunOptions(platformTun: true, blackhole: true),
-      ).buildJson(const SplitTunnelConfig());
+  String _blackholeJson() {
+    // Из ТЕХ ЖЕ опций, что и живой конфиг: иначе не совпадут MTU и пакетные
+    // списки, система пересоздаст интерфейс, и в этот миг трафик уйдёт мимо
+    // VPN — ровно то окно, которое kill switch и закрывает.
+    final base = _liveOptions ?? const TunOptions(platformTun: true);
+    return SingboxConfigBuilder(
+      xraySocksPort: ports.socks,
+      httpProxyPort: ports.http,
+      options: base.asBlackhole(),
+    ).buildJson(_liveSplit);
+  }
 
   @override
   Future<void> platformCleanup() async => _stopService();

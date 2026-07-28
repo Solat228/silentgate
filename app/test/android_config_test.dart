@@ -343,43 +343,67 @@ void main() {
   // никуда не ведёт. Раньше сервис гасился целиком, и на всё время попыток
   // (backoff до 20 с, до 8 попыток — это минуты) трафик шёл НАПРЯМУЮ, хотя
   // настройка была включена и печаталась в отчёте.
-  group('Kill switch: туннель-заглушка не выпускает ничего', () {
-    Map<String, dynamic> blackhole() => SingboxConfigBuilder(
-          options: const TunOptions(platformTun: true, blackhole: true),
-        ).buildMap(const SplitTunnelConfig(
-          mode: SplitMode.exceptSelected,
-          apps: [AppRule('com.example.direct', action: AppAction.direct)],
-          sites: [SiteRule('direct.example', action: AppAction.direct)],
-        ));
+  group('Kill switch: заглушка совпадает с живым туннелем и ничего не выпускает', () {
+    // Живые опции пользователя — НЕ дефолты. Прежние тесты сравнивали заглушку
+    // с дефолтными опциями и потому не видели главного расхождения.
+    const live = TunOptions(
+      platformTun: true,
+      mtu: 1280,
+      ipv6: false,
+      serverIps: ['203.0.113.5'],
+      logOutput: '/data/x/singbox.log',
+    );
+    const split = SplitTunnelConfig(
+      mode: SplitMode.onlySelected,
+      apps: [AppRule('com.example.tunnel', action: AppAction.tunnel)],
+    );
 
-    test('вся база уходит в block, выходов наружу нет', () {
-      final cfg = blackhole();
-      expect((cfg['route'] as Map)['final'], 'block');
-      final outs = (cfg['outbounds'] as List).cast<Map<String, dynamic>>();
-      expect(outs.map((o) => o['type']), everyElement('block'),
-          reason: 'рабочий proxy поднял бы соединение к серверу, '
-              'которого мы как раз лишились');
-      expect(outs.any((o) => o['tag'] == 'direct'), isFalse,
-          reason: 'direct — это выход мимо VPN, то есть утечка');
+    Map<String, dynamic> build(TunOptions o) =>
+        SingboxConfigBuilder(options: o).buildMap(split);
+
+    test('TUN-инбаунд совпадает ПОЛЕ В ПОЛЕ с живым', () {
+      // Разойдутся MTU или пакетные списки — VpnService пересоздаст интерфейс,
+      // и на этот миг трафик уйдёт мимо VPN: ровно то окно, которое kill
+      // switch и закрывает.
+      final liveIn = (build(live)['inbounds'] as List).first as Map;
+      final blackIn = (build(live.asBlackhole())['inbounds'] as List).first as Map;
+      expect(blackIn, liveIn);
     });
 
-    test('пользовательские правила НЕ применяются', () {
-      final rules = ((blackhole()['route'] as Map)['rules'] as List)
+    test('нет висячих ссылок на несуществующие outbound-ы', () {
+      // sing-box check этого НЕ ловит (возвращает 0 и на висячем теге), а
+      // ядро в рантайме отвергает конфиг целиком — туннель снимается, и
+      // трафик идёт напрямую всё время попыток.
+      final cfg = build(live.asBlackhole());
+      final tags = (cfg['outbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((o) => '${o['tag']}')
+          .toSet();
+      for (final r in (cfg['route'] as Map)['rules'] as List) {
+        final out = (r as Map)['outbound'];
+        if (out != null) expect(tags, contains('$out'));
+      }
+      final dns = cfg['dns'] as Map?;
+      for (final srv in (dns?['servers'] as List? ?? const [])) {
+        final d = (srv as Map)['detour'];
+        if (d != null) expect(tags, contains('$d'));
+      }
+    });
+
+    test('устаревшего outbound type: block нет — он удалён в 1.13', () {
+      final outs = (build(live.asBlackhole())['outbounds'] as List)
           .cast<Map<String, dynamic>>();
-      expect(rules.any((r) => r.containsKey('package_name')), isFalse);
-      expect(rules.any((r) => r.containsKey('domain_suffix')), isFalse,
-          reason: 'правило «Прямо» выпустило бы трафик — это и запрещает '
-              'kill switch');
+      expect(outs.any((o) => o['type'] == 'block'), isFalse);
     });
 
-    test('интерфейс не пересоздаётся: адреса и MTU те же', () {
-      final black = (blackhole()['inbounds'] as List).first as Map;
-      final normal = SingboxConfigBuilder(
-        options: const TunOptions(platformTun: true),
-      ).buildMap(const SplitTunnelConfig())['inbounds'] as List;
-      final n = normal.first as Map;
-      expect(black['address'], n['address']);
-      expect(black['mtu'], n['mtu']);
+    test('всё уходит в reject, правила пользователя не применяются', () {
+      final cfg = build(live.asBlackhole());
+      final rules = ((cfg['route'] as Map)['rules'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(rules, hasLength(1));
+      expect(rules.single['action'], 'reject');
+      expect(rules.any((r) => r.containsKey('package_name')), isFalse,
+          reason: 'правило «Прямо» выпустило бы трафик наружу');
     });
   });
 
