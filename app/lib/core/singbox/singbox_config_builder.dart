@@ -246,13 +246,16 @@ class SingboxConfigBuilder {
           if (_validExcludeCidrs.isNotEmpty)
             'route_exclude_address': _validExcludeCidrs,
           // Разведение приложений на Android идёт пакетами, а не процессами.
-          // Свой пакет исключается ВСЕГДА: иначе загрузка подписки и пинг
-          // уйдут в собственный туннель — петля и ложные цифры.
-          if (o.platformTun) ...{
-            'exclude_package': _excludePackages(split, o),
-            if (_includePackages(split, o).isNotEmpty)
-              'include_package': _includePackages(split, o),
-          },
+          //
+          // ⚠️ include_package и exclude_package ВЗАИМОИСКЛЮЧАЮЩИЕ. Раньше при
+          // «только выбранные» отдавались ОБА: exclude всегда содержал хотя бы
+          // свой пакет. `VpnService.Builder` такого не принимает —
+          // addDisallowedApplication после addAllowedApplication бросает
+          // UnsupportedOperationException, и туннель не поднимался вовсе.
+          // Когда список include непуст, exclude не нужен по построению: в
+          // туннель идут ТОЛЬКО перечисленные, всё прочее (включая нас) и так
+          // мимо.
+          if (o.platformTun) ..._packageLists(split, o),
         },
       ],
       'outbounds': [
@@ -494,6 +497,24 @@ class SingboxConfigBuilder {
     if (allowRealIp != null && options.noRealIp) {
       apps = apps.where((a) => a.allowRealIp == allowRealIp);
     }
+    // ⚠️ Android ищет приложение по ИМЕНИ ПАКЕТА: полей process_name и
+    // process_path на нём нет вовсе (ядро получает от VpnService только uid и
+    // отдаёт его как package_name). Раньше ветки по платформе не было, поэтому
+    // в конфиг уезжали 'chrome.exe' и regex по путям Windows — они не совпадали
+    // НИ С ЧЕМ. Правила приложений на Android не работали в принципе, а «Блок»
+    // при этом молча пропускал трафик, хотя интерфейс показывал блокировку.
+    if (options.platformTun) {
+      final pkgs = apps
+          .map((a) => a.path.trim())
+          .where((p) => p.isNotEmpty)
+          .toSet()
+          .toList();
+      if (pkgs.isNotEmpty) {
+        rules.add(_action({'package_name': pkgs}, outbound));
+      }
+      return;
+    }
+
     final byName = apps.where((a) => a.byName).map((a) => a.name).toList();
     final byPath = apps.where((a) => !a.byName).map((a) => a.path).toList();
     if (byName.isNotEmpty) {
@@ -554,6 +575,19 @@ class SingboxConfigBuilder {
   /// Списки include и exclude в `VpnService.Builder` несовместимы: наличие
   /// хотя бы одного include уводит всё остальное мимо VPN. Поэтому здесь
   /// либо один, либо другой.
+  /// Пакетные списки для `VpnService.Builder` — ровно ОДИН из двух.
+  ///
+  /// Непустой include побеждает: в туннель идут только перечисленные, всё
+  /// остальное (включая наш собственный пакет) остаётся снаружи само собой.
+  /// Пустой include в режиме «только выбранные» означал бы «в туннель не идёт
+  /// никто», а `VpnService` без allowed-списка тянет туда ВСЁ, — поэтому там
+  /// возвращаемся к exclude, чтобы хотя бы себя из туннеля вынуть.
+  Map<String, dynamic> _packageLists(SplitTunnelConfig split, TunOptions o) {
+    final include = _includePackages(split, o);
+    if (include.isNotEmpty) return {'include_package': include};
+    return {'exclude_package': _excludePackages(split, o)};
+  }
+
   List<String> _includePackages(SplitTunnelConfig split, TunOptions o) {
     if (split.mode != SplitMode.onlySelected) return const [];
     final out = <String>{};

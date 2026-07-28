@@ -135,7 +135,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // Весь вывод ядра и, главное, паники Go уходят в файл: без этого
             // причина падения не видна нигде — ни в логах приложения, ни на
             // экране. Файл читает экран «Логи».
-            coreLog = filesDir.resolve("singbox.log")
+            // ⚠️ Каталог "SilentGate" обязателен. Dart-сторона (экран «Логи» и
+            // отчёт поддержки) читает getApplicationSupportDirectory()/SilentGate,
+            // а писали мы уровнем выше — в filesDir. Из-за этого лог ядра не
+            // видели НИ экран логов, НИ отчёт: причина падения существовала на
+            // диске, но до пользователя не доходила никогда.
+            coreLog = filesDir.resolve("SilentGate")
+                .also { it.mkdirs() }
+                .resolve("singbox.log")
             runCatching { Libbox.redirectStderr(coreLog!!.absolutePath) }
 
             Libbox.setup(SetupOptions().apply {
@@ -337,6 +344,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // уводит всё остальное мимо VPN.
         var perAppApplied = false
         options.includePackage.forEach { pkg ->
+            // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
+            // приложения в собственный туннель (петля и ложные цифры проб).
+            if (pkg == packageName) return@forEach
             try {
                 builder.addAllowedApplication(pkg)
                 perAppApplied = true
@@ -344,18 +354,23 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             }
         }
         if (!perAppApplied) {
-            options.excludePackage.forEach { pkg ->
+            // Себя исключаем ТОЛЬКО в этой ветке. Раньше вызов стоял ниже и
+            // выполнялся всегда — а addDisallowedApplication после
+            // addAllowedApplication бросает UnsupportedOperationException,
+            // который здесь не ловился: исключение уходило наверх, openTun
+            // не доходил до establish(), и в режиме «только выбранные»
+            // туннель не поднимался вообще.
+            //
+            // При allowed-списке исключать себя и не нужно: в туннель идут
+            // ТОЛЬКО перечисленные приложения, все прочие и так снаружи.
+            val excludes = LinkedHashSet(options.excludePackage).apply { add(packageName) }
+            excludes.forEach { pkg ->
                 try {
                     builder.addDisallowedApplication(pkg)
                 } catch (_: PackageManager.NameNotFoundException) {
+                } catch (_: UnsupportedOperationException) {
                 }
             }
-        }
-        // Себя из туннеля исключаем всегда: иначе пинг, загрузка подписки и
-        // сокеты ядра пойдут в собственный туннель — петля и ложные цифры.
-        try {
-            builder.addDisallowedApplication(packageName)
-        } catch (_: PackageManager.NameNotFoundException) {
         }
 
         if (Build.VERSION.SDK_INT >= 29) builder.setMetered(false)

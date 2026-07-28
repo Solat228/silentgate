@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../core/app_info.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
+import '../../core/platform/rotating_log.dart';
 import '../../core/platform/device_id.dart';
 import '../../core/platform/platform_services.dart';
 import '../../core/platform/support_context.dart';
@@ -120,15 +121,19 @@ class AndroidSupportReporter implements SupportReporter {
     await Clipboard.setData(ClipboardData(text: text));
   }
 
-  /// Хвост лога ядра: туда `VpnService` направляет вывод sing-box и паники Go.
+  /// Хвост лога ядра — читается С КОНЦА файла. Туда `VpnService` направляет
+  /// вывод sing-box и, что важнее, паники Go.
+  ///
+  /// ⚠️ Раньше здесь был `readAsLines()`, то есть весь файл в память. На
+  /// Windows ровно это подвешивало приложение при нажатии «Написать в
+  /// поддержку»: лог ядра дорастал до сотен мегабайт. На Android ротации нет
+  /// вовсе, так что риск тот же.
   static Future<String> _coreLog() async {
     final dir = await AppPaths.supportDir();
-    final f = File('${dir.path}${Platform.pathSeparator}singbox.log');
-    if (!await f.exists()) return '';
-    final lines = await f.readAsLines();
-    return lines.length <= 200
-        ? lines.join('\n')
-        : lines.sublist(lines.length - 200).join('\n');
+    return RotatingLog.tail(
+      '${dir.path}${Platform.pathSeparator}singbox.log',
+      lines: 200,
+    );
   }
 
   /// Ни один шаг сбора не должен ронять весь отчёт — он и нужен как раз тогда,

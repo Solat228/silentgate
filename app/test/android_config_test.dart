@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
 
@@ -149,6 +150,98 @@ void main() {
       // Фикс утечки DNS 0.11.1: final ВСЕГДА dns-proxy.
       final map = _androidConfig(_fixtures['vless']!);
       expect(((map['dns'] as Map)['final']), 'dns-proxy');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Правила приложений на Android были МЁРТВЫМИ: генератор писал process_name и
+  // process_path_regex, которых на Android не существует (ядро получает от
+  // VpnService только uid и отдаёт его как package_name). Совпадений не было
+  // никогда, поэтому «Блок» молча пропускал трафик, а интерфейс показывал
+  // блокировку.
+  group('Конфиг Android: правила приложений — по ПАКЕТАМ', () {
+    AppSettings withApps(SplitMode mode, List<AppRule> apps) => AppSettings(
+          splitTunnel: SplitTunnelConfig(mode: mode, apps: apps),
+        );
+
+    List<Map<String, dynamic>> rulesOf(AppSettings s) =>
+        (((_androidConfig(_fixtures['vless']!, settings: s)['route']
+                as Map)['rules']) as List)
+            .cast<Map<String, dynamic>>();
+
+    test('«Блок» пишется package_name + reject и реально совпадает', () {
+      final r = rulesOf(withApps(SplitMode.exceptSelected, const [
+        AppRule('com.example.ads', action: AppAction.block),
+      ]));
+      final reject = r.firstWhere((x) => x['action'] == 'reject');
+      expect((reject['package_name'] as List), contains('com.example.ads'));
+    });
+
+    test('правил в синтаксисе Windows нет ни одного', () {
+      final r = rulesOf(withApps(SplitMode.exceptSelected, const [
+        AppRule('com.example.direct', action: AppAction.direct),
+        AppRule('com.example.tunnel', action: AppAction.tunnel),
+        AppRule('com.example.ads', action: AppAction.block),
+      ]));
+      expect(r.any((x) => x.containsKey('process_name')), isFalse);
+      expect(r.any((x) => x.containsKey('process_path_regex')), isFalse);
+      expect(r.where((x) => x.containsKey('package_name')), hasLength(3));
+    });
+
+    test('«Прямо» и «Туннель» разводятся по разным outbound', () {
+      final r = rulesOf(withApps(SplitMode.exceptSelected, const [
+        AppRule('com.example.direct', action: AppAction.direct),
+        AppRule('com.example.tunnel', action: AppAction.tunnel),
+      ]));
+      bool routed(String pkg, String out) => r.any((x) =>
+          (x['package_name'] as List?)?.contains(pkg) == true &&
+          x['outbound'] == out);
+      expect(routed('com.example.direct', 'direct'), isTrue);
+      expect(routed('com.example.tunnel', 'proxy'), isTrue);
+    });
+  });
+
+  // include_package и exclude_package взаимоисключающие: раньше отдавались оба
+  // (exclude всегда содержал хотя бы свой пакет), и VpnService.Builder бросал
+  // UnsupportedOperationException — туннель не поднимался вовсе.
+  group('Конфиг Android: пакетные списки не конфликтуют', () {
+    Map<String, dynamic> tunIn(AppSettings s) =>
+        (((_androidConfig(_fixtures['vless']!, settings: s)['inbounds']) as List)
+            .first as Map)
+            .cast<String, dynamic>();
+
+    test('«только выбранные» → есть include, exclude отсутствует', () {
+      final i = tunIn(const AppSettings(
+        splitTunnel: SplitTunnelConfig(
+          mode: SplitMode.onlySelected,
+          apps: [AppRule('com.example.tunnel', action: AppAction.tunnel)],
+        ),
+      ));
+      expect((i['include_package'] as List), contains('com.example.tunnel'));
+      expect(i.containsKey('exclude_package'), isFalse,
+          reason: 'два списка разом — отказ VpnService.Builder');
+    });
+
+    test('прочие режимы → есть exclude, include отсутствует', () {
+      final i = tunIn(const AppSettings(
+        splitTunnel: SplitTunnelConfig(
+          mode: SplitMode.exceptSelected,
+          apps: [AppRule('com.example.direct', action: AppAction.direct)],
+        ),
+      ));
+      expect(i.containsKey('include_package'), isFalse);
+      expect((i['exclude_package'] as List), isNotEmpty);
+    });
+
+    test('«только выбранные» без выбранных → откат к exclude со своим пакетом',
+        () {
+      // Пустой allowed-список означал бы «в туннель не идёт никто», а
+      // VpnService без него тянет туда ВСЁ — включая нас самих.
+      final i = tunIn(const AppSettings(
+        splitTunnel: SplitTunnelConfig(mode: SplitMode.onlySelected),
+      ));
+      expect(i.containsKey('include_package'), isFalse);
+      expect((i['exclude_package'] as List), contains('lol.silentgate'));
     });
   });
 }

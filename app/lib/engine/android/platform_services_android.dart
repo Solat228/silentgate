@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
+import '../../core/platform/rotating_log.dart';
 import '../../core/platform/platform_services.dart';
 import 'support_report_android.dart';
 
@@ -78,12 +79,19 @@ class _AndroidTunLog implements TunLogReader {
   @override
   Future<String> tail({int lines = 200}) async {
     final dir = await AppPaths.supportDir();
-    final f = File('${dir.path}${Platform.pathSeparator}singbox.log');
-    final text = await f.exists() ? await f.readAsString() : '';
-    final source = text.trim().isEmpty ? await AppLog.dump() : text;
-    final rows = source.split('\n');
+    // Читаем хвост с конца файла: лог ядра ничем не ограничен, а прежний
+    // readAsString() затягивал его целиком в память (та же беда, что подвешивала
+    // Windows-версию на кнопке поддержки).
+    final text = await RotatingLog.tail(
+      '${dir.path}${Platform.pathSeparator}singbox.log',
+      lines: lines,
+    );
+    if (text.trim().isNotEmpty) return text;
+    // Ядро ещё не поднималось — показываем хотя бы лог приложения.
+    final fallback = await AppLog.dump();
+    final rows = fallback.split('\n');
     return rows.length <= lines
-        ? source
+        ? fallback
         : rows.sublist(rows.length - lines).join('\n');
   }
 }
