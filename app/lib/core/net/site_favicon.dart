@@ -43,12 +43,12 @@ class SiteFaviconService {
       if (await file.exists() && await file.length() > 0) return file.path;
 
       // 1) Иконка, объявленная на самой странице сайта (apple-touch-icon/icon):
-      //    работает там, где типовые пути пустые (example.com и т.п.).
+      //    работает там, где типовые пути пустые.
       final fromHtml = await _iconFromHtml(domain);
       // sub.domain → корневой домен (favicon чаще лежит на корне).
       final root = rootDomain(domain);
       // 2) Типовые пути напрямую. 3) Сервисы-агрегаторы фавиконок (отдают PNG
-      //    даже там, где у сайта только .ico — напр. example.com, steam.com).
+      //    даже там, где у сайта только .ico — напр. steam.com).
       final sources = <String>[
         if (fromHtml != null) fromHtml,
         'https://$domain/apple-touch-icon.png',
@@ -56,7 +56,7 @@ class SiteFaviconService {
         'https://$domain/favicon.png',
         if (root != domain) 'https://$root/apple-touch-icon.png',
         // Агрегатор — отдаёт настоящий PNG даже для сайтов с одним лишь .ico
-        // (example.com, steam.com), где прямые пути и Google s2 пустуют.
+        // (напр. steam.com), где прямые пути и Google s2 пустуют.
         'https://favicone.com/$domain?s=64',
         'https://www.google.com/s2/favicons?sz=64&domain=$domain',
         // По корню — только если он отличается (иначе дубль того же запроса).

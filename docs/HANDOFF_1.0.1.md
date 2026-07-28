@@ -46,11 +46,13 @@ _addSiteRule(rules, split, AppAction.direct, directOut);   // «Прямо» →
 в `"outbound":"proxy"`, а интерфейс продолжал показывать чип «Прямо» и рисовать прямую ветку
 в `RouteDiagram`. Обратной связи не было вообще.
 
-**Как подтвердилось:** прочитал реальный `%APPDATA%\SilentGate\silentgate_settings.json`
-пользователя — там `"noRealIp": true` при `"killSwitch": true`, а в `splitTunnel.sites` шесть
-записей с `"action": "direct"` (youtube.com, example.com, sub.example.com, example.org,
-example.net) и одна `"block"`. Затем сгенерировал конфиг с `noRealIp: true` и увидел
-`{"domain_suffix":["example.org"],"outbound":"proxy"}`.
+**Как подтвердилось:** посмотрел фактический файл настроек (`silentgate_settings.json`) —
+там оказалось `"noRealIp": true` при `"killSwitch": true` и несколько правил сайтов с
+`"action": "direct"`. Затем сгенерировал конфиг с `noRealIp: true` и увидел, что правило
+«Прямо» уехало в `{"domain_suffix":[…],"outbound":"proxy"}`.
+
+> Здесь и далее домены в примерах — нейтральные заглушки (`example.com`/`example.org`/…):
+> реальные правила маршрутизации пользователя в репозиторий не выносим.
 
 > ⚠️ **Методический урок.** Один из проверяющих агентов ОПРОВЕРГ эту (верную) гипотезу с
 > формулировкой «предпосылка `noRealIp == true` не доказана, это не дефолт». Доказательством
