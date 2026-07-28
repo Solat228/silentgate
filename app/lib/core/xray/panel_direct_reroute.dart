@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'private_networks.dart';
 
 /// Переписывает Xray-конфиг (профиль панели «Авто …» или JSON-override) так, чтобы
 /// весь `direct`-трафик шёл ЧЕРЕЗ VPN, а не под реальным IP пользователя.
@@ -75,7 +76,7 @@ String rerouteDirectThroughVpn(String rawJson) {
     if (hasDirect && !_isPrivateSafetyRule(newRules.isEmpty ? null : newRules.first)) {
       newRules.insert(0, {
         'type': 'field',
-        'ip': ['geoip:private'],
+        'ip': kPrivateNetworks,
         'outboundTag': 'direct',
       });
     }
@@ -126,8 +127,18 @@ Map<String, String>? _proxyTarget(Map cfg) {
 }
 
 /// Одна запись `ip` нацелена на приватную сеть (LAN)?
+///
+/// ⚠️ Сначала — точное совпадение с нашим списком, и только потом эвристика.
+/// Иначе повторный проход уводил бы в VPN половину собственной же страховки:
+/// эвристика по префиксам не знает ни CGNAT (`100.64.0.0/10`), ни
+/// `224.0.0.0/4`, ни IPv6-записей вроде `2001:db8::/32` — они уехали бы в
+/// «публичную» часть, то есть LAN частично пошёл бы через туннель.
+/// Эвристика остаётся для значений, которые приходят ИЗ ПАНЕЛИ и в наш список
+/// не входят.
 bool _isPrivateEntry(dynamic e) {
-  final s = '$e'.toLowerCase();
+  final raw = '$e';
+  if (kPrivateNetworks.contains(raw)) return true;
+  final s = raw.toLowerCase();
   return s.contains('private') ||
       s.startsWith('10.') ||
       s.startsWith('192.168.') ||
@@ -146,13 +157,19 @@ bool _ruleHasPrivateDomain(Map r) {
 }
 
 /// Это уже наша страховка «приватные → direct» (для идемпотентности)?
+///
+/// Опознаём ОБА вида: старый (`geoip:private` одной записью — так писали до
+/// отказа от гео-файлов и так приходит из панели) и новый (явный список
+/// подсетей). Иначе повторный проход дописывал бы вторую страховку поверх
+/// первой при каждом переподключении.
 bool _isPrivateSafetyRule(dynamic r) {
   if (r is! Map) return false;
+  if (r['outboundTag'] != 'direct') return false;
   final ip = r['ip'];
-  return r['outboundTag'] == 'direct' &&
-      ip is List &&
-      ip.length == 1 &&
-      '${ip.first}' == 'geoip:private';
+  if (ip is! List || ip.isEmpty) return false;
+  if (ip.length == 1 && '${ip.first}' == 'geoip:private') return true;
+  // Список считаем нашим, если он целиком состоит из приватных подсетей.
+  return ip.every((e) => kPrivateNetworks.contains('$e'));
 }
 
 /// Правило — безусловный увод всего трафика в [target] (catch-all)?

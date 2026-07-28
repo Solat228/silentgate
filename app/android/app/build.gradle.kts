@@ -36,7 +36,24 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
     }
+
+    // ⚠️ СПИСОК ABI ЗАДАЁТСЯ НЕ ЗДЕСЬ, А ФЛАГОМ СБОРКИ:
+    //
+    //   flutter build apk --release --split-per-abi \
+    //           --target-platform android-arm64,android-x64
+    //
+    // Ядро (`libs/cores.aar`) собрано только под arm64-v8a и x86_64 — см.
+    // tools/build-android-cores.md. Без этого флага выпускается ещё и
+    // armeabi-v7a: APK на 18 МБ, в котором libcores.so ОТСУТСТВУЕТ. Он
+    // устанавливается, открывается и выглядит рабочим, а туннель не
+    // поднимается никогда.
+    //
+    // Ни `defaultConfig.ndk.abiFilters`, ни блок `splits { abi { … } }` здесь
+    // не работают: Flutter конфигурирует splits сам и перекрывает наш блок, а
+    // при одновременном использовании Gradle падает — «Conflicting
+    // configuration … cannot be present when splits abi filters are set».
 
     signingConfigs {
         if (keystorePropertiesFile.exists()) {

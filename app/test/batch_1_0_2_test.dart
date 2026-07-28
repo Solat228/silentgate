@@ -9,6 +9,8 @@ import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
 import 'package:silentgate/core/singbox/singbox_proxy_config_builder.dart';
+import 'package:silentgate/core/xray/private_networks.dart';
+import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/core/update/app_update.dart';
 import 'package:silentgate/core/update/app_update_defaults.dart';
 import 'package:silentgate/engine/engine_base.dart';
@@ -527,6 +529,47 @@ void main() {
           await File('lib/core/update/app_update_defaults.dart').readAsString();
       expect(RegExp(r'^\s*import ', multiLine: true).hasMatch(src), isFalse,
           reason: 'любой импорт здесь снова сломает консольные тулы');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Ссылка `geoip:private` заставляла Xray грузить geoip.dat (18,9 МБ), иначе
+  // ядро не стартовало вовсе. А ссылались мы РОВНО на неё одну — то есть 19 МБ
+  // поставки существовали ради фиксированного списка подсетей. Со списком
+  // гео-файлы нужны только панельным профилям «Авто».
+  group('Приватные подсети списком вместо geoip:private', () {
+    test('в конфиге Xray не осталось ссылок на geo-категории', () {
+      final json = XrayConfigBuilder().buildJson(const VpnServer(
+        protocol: 'vless',
+        remark: 'узел',
+        address: 'example.com',
+        port: 443,
+        id: '11111111-2222-3333-4444-555555555555',
+        security: 'tls',
+        rawLink: 'vless://fixture',
+      ));
+      expect(json.contains('geoip:'), isFalse);
+      expect(json.contains('geosite:'), isFalse);
+      expect(json.contains('10.0.0.0/8'), isTrue);
+    });
+
+    test('список покрывает то, ради чего он и нужен', () {
+      // RFC 1918 целиком, CGNAT, loopback, link-local — иначе трафик к роутеру
+      // и к соседям по сети уйдёт в туннель.
+      for (final net in ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16',
+                         '100.64.0.0/10', '127.0.0.0/8', '169.254.0.0/16']) {
+        expect(kPrivateNetworks, contains(net));
+      }
+      for (final net in ['fc00::/7', 'fe80::/10', '::1/128']) {
+        expect(kPrivateNetworks, contains(net));
+      }
+    });
+
+    test('нет масок, которые отвергает маршрутизатор Xray', () {
+      // ::ffff:0:0/96 и 64:ff9b::/96 ядро разбирает как IPv4 и падает на
+      // «invalid network mask for router: 96» — проверено xray run -test.
+      expect(kPrivateNetworks.any((n) => n.startsWith('::ffff:')), isFalse);
+      expect(kPrivateNetworks.any((n) => n.startsWith('64:ff9b:')), isFalse);
     });
   });
 }

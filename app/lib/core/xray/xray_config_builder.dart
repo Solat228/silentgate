@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/vpn_server.dart';
 import 'outbound_variant.dart';
 import 'xray_outbound_factory.dart';
+import 'private_networks.dart';
 
 /// Порты локальных inbound'ов Xray. Системный прокси Windows указывает на [http].
 class XrayPorts {
@@ -72,7 +73,7 @@ class XrayConfigBuilder {
           },
           {
             'type': 'field',
-            'ip': ['geoip:private'],
+            'ip': kPrivateNetworks,
             'outboundTag': 'direct',
           },
         ],
@@ -165,7 +166,7 @@ class XrayConfigBuilder {
           },
           {
             'type': 'field',
-            'ip': ['geoip:private'],
+            'ip': kPrivateNetworks,
             'outboundTag': 'direct',
           },
           {

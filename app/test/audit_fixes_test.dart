@@ -67,9 +67,11 @@ void main() {
       expect(last['outboundTag'], 'srv1');
       expect(last['ip'], isNull);
       expect(last['domain'], isNull);
-      // И сверху — страховка LAN → direct.
+      // И сверху — страховка LAN → direct. Проверяем СМЫСЛ, а не написание:
+      // с отказом от гео-файлов `geoip:private` заменён явным списком подсетей.
       expect(rs.first['outboundTag'], 'direct');
-      expect((rs.first['ip'] as List).contains('geoip:private'), isTrue);
+      expect((rs.first['ip'] as List), contains('192.168.0.0/16'));
+      expect((rs.first['ip'] as List), contains('10.0.0.0/8'));
     });
 
     test('домен-правило direct уводится в VPN, приватный домен — остаётся', () {
@@ -109,10 +111,10 @@ void main() {
           r2
               .where((r) =>
                   r['outboundTag'] == 'direct' &&
-                  (r['ip'] as List?)?.length == 1 &&
-                  (r['ip'] as List?)?.first == 'geoip:private')
+                  (r['ip'] as List?)?.contains('192.168.0.0/16') == true)
               .length,
-          1);
+          1,
+          reason: 'страховка LAN должна остаться ровно одна');
       expect(r2.where((r) => r['balancerTag'] == 'bal' && r['ip'] == null && r['domain'] == null).length, 1);
     });
   });
