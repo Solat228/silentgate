@@ -198,6 +198,27 @@ void main() {
       expect(e.attemptsUsed, 1);
     });
 
+    // `WindowsEngine` держал СВОЁ поле `_attempt`, которое никто не увеличивал,
+    // поэтому «Переподключение (попытка N)…» и «Соединение восстановлено
+    // (попытка N)» всегда показывали ноль. Счётчик теперь один — в базе.
+    test('attempt виден наследнику и растёт вместе со счётчиком базы', () async {
+      final e = _FakeEngine()..succeedOnStart = false;
+      await e.connectWith('{}',
+          ConnectionOptions(settings: _settings()), [_server('a')]);
+      expect(e.attempt, 0, reason: 'обычное подключение — не попытка');
+
+      expect(await e.scheduleRetry('обрыв'), isTrue);
+      expect(e.attempt, 1);
+      expect(e.attempt, e.attemptsUsed, reason: 'счётчик обязан быть один');
+
+      e.dropPendingRetry();
+      expect(await e.scheduleRetry('обрыв'), isTrue);
+      expect(e.attempt, 2);
+
+      e.markConnected();
+      expect(e.attempt, 0, reason: 'успех обнуляет отсчёт');
+    });
+
     test('попытки исчерпываются на maxAttempts', () async {
       final e = _FakeEngine()..succeedOnStart = false;
       await e.connectWith('{}',

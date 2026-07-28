@@ -17,7 +17,13 @@ class SingboxStats {
   final String secret;
   const SingboxStats({this.apiPort = 10085, this.secret = ''});
 
-  Future<XrayTrafficSnapshot> query() async {
+  /// `null` — опрос НЕ УДАЛСЯ (таймаут, не-200, мусор в ответе).
+  ///
+  /// ⚠️ Раньше здесь возвращался ноль, и движок принимал его за настоящий
+  /// отсчёт: счётчик «падал» до нуля, а на следующем удачном опросе разница
+  /// давала фальшивый всплеск скорости. Плюс `AppState` трактует падение
+  /// счётчика как перезапуск ядра — и удваивал трафик «за сессию».
+  Future<XrayTrafficSnapshot?> query() async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(milliseconds: 800);
     try {
@@ -27,16 +33,16 @@ class SingboxStats {
         req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $secret');
       }
       final resp = await req.close().timeout(const Duration(seconds: 2));
-      if (resp.statusCode != 200) return XrayTrafficSnapshot.zero;
+      if (resp.statusCode != 200) return null;
       final body = await resp.transform(utf8.decoder).join();
       final j = jsonDecode(body);
-      if (j is! Map) return XrayTrafficSnapshot.zero;
+      if (j is! Map) return null;
       return XrayTrafficSnapshot(
         _int(j['uploadTotal']),
         _int(j['downloadTotal']),
       );
     } catch (_) {
-      return XrayTrafficSnapshot.zero;
+      return null;
     } finally {
       client.close(force: true);
     }

@@ -16,17 +16,23 @@ class XrayStats {
   final int apiPort;
   const XrayStats({required this.executable, this.apiPort = 10085});
 
-  Future<XrayTrafficSnapshot> query() async {
+  /// `null` — опрос НЕ УДАЛСЯ (ядро не ответило, ненулевой код возврата).
+  ///
+  /// ⚠️ Ноль здесь означал бы «трафика нет», и движок принимал бы это за
+  /// настоящий отсчёт: счётчик падал до нуля, следующая удачная выборка давала
+  /// фальшивый всплеск скорости, а `AppState` считал падение перезапуском ядра
+  /// и удваивал трафик «за сессию». Пропуск такта таких последствий не имеет.
+  Future<XrayTrafficSnapshot?> query() async {
     try {
       final result = await Process.run(
         executable,
         ['api', 'statsquery', '--server=127.0.0.1:$apiPort'],
       ).timeout(const Duration(seconds: 2));
-      if (result.exitCode != 0) return XrayTrafficSnapshot.zero;
+      if (result.exitCode != 0) return null;
 
       return sumStatsQuery(result.stdout as String);
     } catch (_) {
-      return XrayTrafficSnapshot.zero;
+      return null;
     }
   }
 

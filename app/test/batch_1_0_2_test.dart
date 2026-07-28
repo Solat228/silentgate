@@ -12,6 +12,8 @@ import 'package:silentgate/core/singbox/singbox_proxy_config_builder.dart';
 import 'package:silentgate/core/update/app_update.dart';
 import 'package:silentgate/core/update/app_update_defaults.dart';
 import 'package:silentgate/engine/engine_base.dart';
+import 'package:silentgate/engine/windows/singbox_stats.dart';
+import 'package:silentgate/engine/windows/xray_stats.dart';
 
 void main() {
   List<Map<String, dynamic>> rules(Map<String, dynamic> cfg) =>
@@ -313,6 +315,68 @@ void main() {
       });
       expect(picked['a.example.com'], '198.51.100.10');
       expect(picked['b.example.com'], '2001:db8::2');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Неудачный опрос возвращал НОЛЬ, и движок принимал его за настоящий отсчёт:
+  // счётчик «падал», следующая удачная выборка давала фальшивый всплеск
+  // скорости, а AppState трактовал падение как перезапуск ядра и удваивал
+  // трафик «за сессию». Теперь неудача — это null, и такт пропускается.
+  group('Сбой опроса счётчиков — null, а не ноль', () {
+    test('Clash API недоступен → null', () async {
+      // Порт заведомо закрыт: соединение будет отвергнуто сразу.
+      final free = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final port = free.port;
+      await free.close();
+
+      final stats = SingboxStats(apiPort: port, secret: 'x');
+      expect(await stats.query(), isNull);
+    });
+
+    test('Clash API ответил не-JSON → null', () async {
+      final srv = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      srv.listen((r) {
+        r.response
+          ..statusCode = 200
+          ..write('не json');
+        r.response.close();
+      });
+      addTearDown(() => srv.close(force: true));
+
+      expect(await SingboxStats(apiPort: srv.port).query(), isNull);
+    });
+
+    test('Clash API вернул 500 → null', () async {
+      final srv = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      srv.listen((r) {
+        r.response.statusCode = 500;
+        r.response.close();
+      });
+      addTearDown(() => srv.close(force: true));
+
+      expect(await SingboxStats(apiPort: srv.port).query(), isNull);
+    });
+
+    test('исправный ответ по-прежнему разбирается', () async {
+      final srv = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      srv.listen((r) {
+        r.response
+          ..statusCode = 200
+          ..write('{"uploadTotal": 111, "downloadTotal": 222}');
+        r.response.close();
+      });
+      addTearDown(() => srv.close(force: true));
+
+      final snap = await SingboxStats(apiPort: srv.port).query();
+      expect(snap, isNotNull);
+      expect(snap!.uplink, 111);
+      expect(snap.downlink, 222);
+    });
+
+    test('Xray: ядра нет → null, а не нули', () async {
+      final stats = const XrayStats(executable: 'xray-которого-нет.exe');
+      expect(await stats.query(), isNull);
     });
   });
 

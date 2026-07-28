@@ -37,7 +37,8 @@ class WindowsEngine extends VpnEngineBase {
   bool _tunActive = false;
   bool _proxySet = false; // чистим системный прокси только если ставили его сами
 
-  int _attempt = 0; // номер попытки для текста статуса
+  /// Идёт ли сейчас опрос счётчиков (Timer.periodic async-колбэки не сериализует).
+  bool _polling = false;
 
   XrayTrafficSnapshot _lastSnapshot = XrayTrafficSnapshot.zero;
   DateTime _lastSampleTime = DateTime.now();
@@ -63,8 +64,16 @@ class WindowsEngine extends VpnEngineBase {
     final gen = newGeneration();
     bool aborted() => isStale(gen);
 
-    setStatus(VpnConnectionState.connecting,
-        message: _attempt > 0 ? 'Переподключение (попытка $_attempt)…' : null);
+    // message: null затирал бы уже выставленное базой «Пробую другой сервер: …»
+    // — она ставит его прямо перед этим вызовом, и подпись жила меньше секунды.
+    setStatus(
+      VpnConnectionState.connecting,
+      message: attempt > 0
+          ? 'Переподключение (попытка $attempt)…'
+          : (status.state == VpnConnectionState.connecting
+              ? status.message
+              : null),
+    );
 
     final singboxCore = session.core == ProxyCore.singbox;
     final location = XrayPaths.locate();
@@ -212,8 +221,8 @@ class WindowsEngine extends VpnEngineBase {
       _startStatsPolling(
           singboxCore ? null : location!.executable, singbox: singboxCore);
 
-      if (_attempt > 0) AppLog.i('Соединение восстановлено (попытка $_attempt)');
-      _attempt = 0; // следующий обрыв начнёт отсчёт заново
+      // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
+      if (attempt > 0) AppLog.i('Соединение восстановлено (попытка $attempt)');
       markConnected(); // сбрасывает счётчик попыток и запускает grace смены сети
       setStatus(VpnConnectionState.connected);
     } on TunStartException catch (e) {
@@ -274,7 +283,7 @@ class WindowsEngine extends VpnEngineBase {
   /// этого метода, поэтому проверки «была ли отмена» делаются раньше.
   @override
   Future<void> platformCleanup() async {
-    _attempt = 0;
+    _polling = false;
     _statsTimer?.cancel();
     _statsTimer = null;
     await _exitWatch?.cancel();
@@ -308,8 +317,18 @@ class WindowsEngine extends VpnEngineBase {
         : XrayStats(executable: executable!, apiPort: ports.api);
     final singboxStats = singbox ? SingboxStats(apiPort: ports.api, secret: singboxApiSecret) : null;
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      // Timer.periodic не сериализует async-колбэки: опрос Xray идёт через
+      // Process.run и на нагруженной машине легко перекрывает секунду, а два
+      // такта разом дают неверную разницу по времени.
+      if (_polling) return;
+      _polling = true;
+      try {
       final snap =
           await (singboxStats?.query() ?? xrayStats!.query());
+      // Опрос не удался — такт ПРОПУСКАЕМ целиком. Раньше сюда приезжал ноль,
+      // и он затирал базу: скорость на следующем удачном опросе взлетала до
+      // «всего трафика за секунду», а счётчик сессии удваивался.
+      if (snap == null) return;
       final now = DateTime.now();
       final dt = now.difference(_lastSampleTime).inMilliseconds / 1000.0;
       final upSpeed = dt > 0 ? ((snap.uplink - _lastSnapshot.uplink) / dt).round() : 0;
@@ -324,6 +343,9 @@ class WindowsEngine extends VpnEngineBase {
         uplinkSpeed: upSpeed < 0 ? 0 : upSpeed,
         downlinkSpeed: downSpeed < 0 ? 0 : downSpeed,
       ));
+      } finally {
+        _polling = false;
+      }
     });
   }
 
