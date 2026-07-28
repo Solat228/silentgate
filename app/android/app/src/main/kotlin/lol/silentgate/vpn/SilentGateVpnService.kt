@@ -306,30 +306,42 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         options.inet4Address.forEach { builder.addAddress(it.address(), it.prefix()) }
         options.inet6Address.forEach { builder.addAddress(it.address(), it.prefix()) }
 
-        if (options.autoRoute) {
-            options.inet4RouteAddress.let { routes ->
-                if (routes.hasNext()) {
-                    routes.forEach { builder.addRoute(it.address(), it.prefix()) }
-                } else {
-                    builder.addRoute("0.0.0.0", 0)
-                }
+        // ⚠️ Маршруты ставим ВСЕГДА, не глядя на options.autoRoute.
+        //
+        // `auto_route` в конфиге означает «ядро само правит таблицу маршрутов
+        // ОС» — это про Windows/Linux. На Android таблицей владеет система, и
+        // мы намеренно не пишем это поле (ядро 1.13 отвергает его для
+        // платформенного туннеля). Значит здесь оно ВСЕГДА false — и вся
+        // установка маршрутов молча пропускалась.
+        //
+        // Что это давало вживую: tun0 поднимался, система показывала VPN
+        // CONNECTED, свой uid корректно исключался, — но в таблице оставались
+        // только собственные подсети туннеля (172.19.0.0/30 и fdfe:…/126).
+        // Дефолтного маршрута не было, поэтому В ТУННЕЛЬ НЕ ШЛО НИЧЕГО:
+        // запросы уходили напрямую, мимо VPN, а пользователь видел «Подключено».
+        // Поймано живым запуском в эмуляторе (`dumpsys connectivity`).
+        options.inet4RouteAddress.let { routes ->
+            if (routes.hasNext()) {
+                routes.forEach { builder.addRoute(it.address(), it.prefix()) }
+            } else {
+                builder.addRoute("0.0.0.0", 0)
             }
-            options.inet6RouteAddress.let { routes ->
-                if (routes.hasNext()) {
-                    routes.forEach { builder.addRoute(it.address(), it.prefix()) }
-                } else if (options.inet6Address.hasNext()) {
-                    builder.addRoute("::", 0)
-                }
+        }
+        options.inet6RouteAddress.let { routes ->
+            if (routes.hasNext()) {
+                routes.forEach { builder.addRoute(it.address(), it.prefix()) }
+            } else if (options.inet6Address.hasNext()) {
+                builder.addRoute("::", 0)
             }
-            // Исключения из маршрутов доступны только с API 33; ниже ядро само
-            // раскладывает их в набор покрывающих префиксов.
-            if (Build.VERSION.SDK_INT >= 33) {
-                options.inet4RouteExcludeAddress.forEach {
-                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
-                }
-                options.inet6RouteExcludeAddress.forEach {
-                    builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
-                }
+        }
+        // Исключения из маршрутов доступны только с API 33; ниже ядро само
+        // раскладывает их в набор покрывающих префиксов.
+        if (Build.VERSION.SDK_INT >= 33) {
+            options.inet4RouteExcludeAddress.forEach {
+                builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
+            }
+            options.inet6RouteExcludeAddress.forEach {
+                builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
             }
         }
 
@@ -363,7 +375,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             //
             // При allowed-списке исключать себя и не нужно: в туннель идут
             // ТОЛЬКО перечисленные приложения, все прочие и так снаружи.
-            val excludes = LinkedHashSet(options.excludePackage).apply { add(packageName) }
+            // excludePackage — итератор libbox, не коллекция: сначала собираем.
+            val excludes = LinkedHashSet<String>()
+            options.excludePackage.forEach { excludes.add(it) }
+            excludes.add(packageName)
             excludes.forEach { pkg ->
                 try {
                     builder.addDisallowedApplication(pkg)
@@ -560,8 +575,23 @@ private class InterfaceArray(private val items: List<LibboxNetworkInterface>) : 
     override fun next() = items[i++]
 }
 
+/// Адрес интерфейса в виде CIDR — БЕЗ зоны IPv6.
+///
+/// ⚠️ Здесь ядро падало, и вместе с ним всё приложение. `hostAddress` у
+/// link-local IPv6 возвращает адрес с зоной (`fe80::ac1d:acff:fe78:b834%dummy0`),
+/// а Go разбирает такую строку через `netip.MustParsePrefix`, который на зонах
+/// делает panic:
+///
+///   panic: netip.ParsePrefix("fe80::…%dummy0/64"):
+///          IPv6 zones cannot be present in a prefix
+///
+/// Паника из горутины libbox не ловится ничем на стороне Kotlin — процесс
+/// убивается по SIGABRT. Симптом снаружи: нажал «Подключиться», tun0 на
+/// мгновение создаётся и тут же исчезает, приложение пропадает с экрана.
+/// Link-local IPv6 есть практически на каждом интерфейсе, поэтому VPN не
+/// поднимался НИКОГДА. Подтверждено живым запуском в эмуляторе.
 private fun InterfaceAddress.cidr(): String {
-    val addr = address.hostAddress ?: ""
+    val addr = (address.hostAddress ?: "").substringBefore('%')
     return "$addr/$networkPrefixLength"
 }
 
