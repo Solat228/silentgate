@@ -355,15 +355,28 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // include и exclude НЕЛЬЗЯ смешивать: наличие хотя бы одного allowed
         // уводит всё остальное мимо VPN.
         var perAppApplied = false
+        var includeWanted = false
         options.includePackage.forEach { pkg ->
             // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
             // приложения в собственный туннель (петля и ложные цифры проб).
             if (pkg == packageName) return@forEach
+            includeWanted = true
             try {
                 builder.addAllowedApplication(pkg)
                 perAppApplied = true
             } catch (_: PackageManager.NameNotFoundException) {
             }
+        }
+        // ⚠️ Список был задан, но НИ ОДИН пакет не установлен (удалили после
+        // создания правила, либо он из другого профиля пользователя).
+        // Молча уйти в ветку exclude нельзя: политика перевернётся с «в туннель
+        // идут только выбранные» на «в туннель идёт ВСЁ, кроме нас» — причём с
+        // DNS всей системы через VPN. Это прямо противоположно тому, что просил
+        // пользователь, и заметить подмену нечем.
+        if (includeWanted && !perAppApplied) {
+            throw IllegalStateException(
+                "Выбранные приложения не установлены — режим «только выбранные» применить не к чему"
+            )
         }
         if (!perAppApplied) {
             // Себя исключаем ТОЛЬКО в этой ветке. Раньше вызов стоял ниже и
@@ -444,7 +457,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 name = iface.name
                 index = iface.index
                 mtu = runCatching { iface.mtu }.getOrDefault(1500)
-                addresses = StringArray(iface.interfaceAddresses.map { it.cidr() })
+                // mapNotNull, а не map: непригодная запись отбрасывается, иначе
+                // netip.MustParsePrefix на той стороне убьёт процесс.
+                addresses = StringArray(iface.interfaceAddresses.mapNotNull { it.cidr() })
                 // ⚠️ Здесь стоял `flags = 0`, и это ломало ВЕСЬ исходящий трафик.
                 //
                 // Поле читает Go как `net.Flags`, где нулевое значение означает
@@ -456,16 +471,25 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // ничего — даже DNS. Поймано живым запуском в эмуляторе, статикой
                 // не видно: ошибка появляется только когда ядро реально дозванивается.
                 //
-                // Значения битов — из net.Flags: up=1, broadcast=2, loopback=4,
-                // pointToPoint=8, multicast=16, running=32.
+                // ⚠️ Биты — СЫРЫЕ линуксовые IFF_*, а НЕ значения Go net.Flags.
+                // libbox прогоняет это поле через linkFlags() (копию
+                // net.linkFlags), которая сама переводит IFF_* в net.Flags.
+                // Отдавать ей уже переведённые значения — значит соврать:
+                // совпадает только бит up (0x1), а дальше 4 читается как
+                // IFF_DEBUG вместо loopback, 8 — как IFF_LOOPBACK вместо
+                // point-to-point (то есть ppp0/rmnet мобильного интернета
+                // объявляются петлёй), 16 — как IFF_POINTOPOINT вместо
+                // multicast (wlan0 выдаётся за point-to-point).
+                // Живой тест этого не поймал: он шёл по wlan0, где случайно
+                // совпал единственный бит, который и требовался.
                 flags = runCatching {
                     var f = 0
-                    if (iface.isUp) f = f or 1 or 32
-                    if (iface.isLoopback) f = f or 4
-                    if (iface.isPointToPoint) f = f or 8
-                    if (iface.supportsMulticast()) f = f or 16
+                    if (iface.isUp) f = f or OsConstants.IFF_UP or OsConstants.IFF_RUNNING
+                    if (iface.isLoopback) f = f or OsConstants.IFF_LOOPBACK
+                    if (iface.isPointToPoint) f = f or OsConstants.IFF_POINTOPOINT
+                    if (iface.supportsMulticast()) f = f or OsConstants.IFF_MULTICAST
                     f
-                }.getOrDefault(1 or 32)
+                }.getOrDefault(OsConstants.IFF_UP or OsConstants.IFF_RUNNING)
                 type = when {
                     activeCaps == null -> Libbox.InterfaceTypeOther
                     activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
@@ -610,9 +634,19 @@ private class InterfaceArray(private val items: List<LibboxNetworkInterface>) : 
 /// мгновение создаётся и тут же исчезает, приложение пропадает с экрана.
 /// Link-local IPv6 есть практически на каждом интерфейсе, поэтому VPN не
 /// поднимался НИКОГДА. Подтверждено живым запуском в эмуляторе.
-private fun InterfaceAddress.cidr(): String {
-    val addr = (address.hostAddress ?: "").substringBefore('%')
-    return "$addr/$networkPrefixLength"
+/// `null` — запись непригодна и должна быть ОТБРОШЕНА, а не отдана ядру.
+///
+/// Go разбирает каждый элемент через `netip.MustParsePrefix`, а `Must*` не
+/// возвращает ошибку — он паникует, и паника из горутины libbox убивает
+/// процесс целиком. Поэтому валидируем здесь, а не надеемся на ту сторону:
+/// `hostAddress` бывает `null` (тогда получалась строка «/64»), а
+/// `networkPrefixLength` на некоторых интерфейсах приходит 0 или −1.
+private fun InterfaceAddress.cidr(): String? {
+    val addr = (address.hostAddress ?: return null).substringBefore('%')
+    if (addr.isEmpty()) return null
+    val prefix = networkPrefixLength.toInt()
+    if (prefix < 0 || prefix > 128) return null
+    return "$addr/$prefix"
 }
 
 private inline fun lol.silentgate.cores.libbox.RoutePrefixIterator.forEach(action: (RoutePrefix) -> Unit) {

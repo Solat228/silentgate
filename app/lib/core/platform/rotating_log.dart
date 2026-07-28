@@ -26,7 +26,23 @@ class RotatingLog {
   IOSink? _sink;
   int _written = 0;
 
-  bool get isOpen => _sink != null;
+  /// Закрыт окончательно. Ставится ДО первого await в [close], иначе идущая
+  /// ротация переоткрывала файл уже после закрытия и дескриптор жил до конца
+  /// процесса.
+  bool _closed = false;
+
+  /// Хвост очереди записи.
+  ///
+  /// ⚠️ Записи ОБЯЗАНЫ идти строго по одной. `onLine` вызывается для каждой
+  /// строки чанка синхронно подряд (`LineSplitter` отдаёт их пачкой), а
+  /// [write] после `await _restart()` отпускает цикл событий. Без очереди
+  /// каждая строка пачки запускала СВОЮ ротацию: файл усекался повторно,
+  /// стирая только что записанное, порядок строк переворачивался, а прежние
+  /// `IOSink` терялись не закрытыми. На практике это значило, что FATAL-строка,
+  /// ради которой лог и заводили, пропадала именно в момент аварии.
+  Future<void> _queue = Future<void>.value();
+
+  bool get isOpen => _sink != null && !_closed;
 
   /// Открывает файл на дозапись. Существующий лог, уже переросший порог,
   /// усекается сразу — иначе первая же сессия начиналась бы с мусора прошлой.
@@ -54,17 +70,24 @@ class RotatingLog {
 
   /// Пишет строку (перевод строки добавляется сам). Когда файл перерастает
   /// порог — начинается заново прямо на лету, без перезапуска приложения.
-  Future<void> write(String line) async {
-    final sink = _sink;
-    if (sink == null) return;
+  Future<void> write(String line) {
+    if (_closed) return Future<void>.value();
+    // Ставим в очередь, а не пишем сразу: см. комментарий к [_queue].
+    _queue = _queue.then((_) => _writeOne(line)).catchError((_) {});
+    return _queue;
+  }
+
+  Future<void> _writeOne(String line) async {
+    if (_closed || _sink == null) return;
     try {
-      if (_written >= maxBytes) {
-        await _restart();
-        _sink?.writeln(line);
-      } else {
-        sink.writeln(line);
-      }
-      _written += line.length + 1;
+      if (_written >= maxBytes) await _restart();
+      final sink = _sink;
+      if (sink == null) return;
+      sink.writeln(line);
+      // Считаем БАЙТЫ, а не символы: поле называется maxBytes и сравнивается с
+      // размером файла. На кириллице (а наши собственные строки русские) счёт
+      // по символам занижал объём вдвое, по эмодзи — вчетверо.
+      _written += utf8.encode(line).length + 1;
     } catch (_) {}
   }
 
@@ -74,6 +97,7 @@ class RotatingLog {
       await _sink?.close();
     } catch (_) {}
     _sink = null;
+    if (_closed) return;
     try {
       final f = File(path);
       await f.writeAsString('');
@@ -85,6 +109,11 @@ class RotatingLog {
   }
 
   Future<void> close() async {
+    // Флаг ДО await: иначе запись, уже стоящая в очереди, переоткроет файл.
+    _closed = true;
+    try {
+      await _queue;
+    } catch (_) {}
     final sink = _sink;
     _sink = null;
     try {

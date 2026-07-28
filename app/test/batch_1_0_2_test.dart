@@ -186,6 +186,63 @@ void main() {
       expect(() => tail.length, returnsNormally);
     });
 
+    // ⚠️ Именно так лог и пишется: LineSplitter отдаёт строки чанка синхронно
+    // подряд, а onLine зовёт write() без await. Раньше каждая строка пачки
+    // запускала СВОЮ ротацию — файл усекался повторно, стирая только что
+    // записанное, порядок переворачивался, а прежние IOSink терялись
+    // незакрытыми. Терялась ровно та FATAL-строка, ради которой лог заводили.
+    test('пачка записей без await: строки не теряются и не переставляются',
+        () async {
+      final log = RotatingLog(p('burst.log'), maxBytes: 100);
+      await log.open();
+      final futures = <Future<void>>[];
+      for (var i = 0; i < 30; i++) {
+        futures.add(log.write('LINE$i'));
+      }
+      await Future.wait(futures);
+      await log.close();
+
+      final lines = (await File(p('burst.log')).readAsString())
+          .split('\n')
+          .where((l) => l.startsWith('LINE'))
+          .toList();
+      expect(lines, isNotEmpty);
+      // Порядок сохранён: номера строго возрастают.
+      final nums = lines.map((l) => int.parse(l.substring(4))).toList();
+      expect(nums, orderedEquals(List.of(nums)..sort()));
+      // И последняя запись пачки на месте — она и есть самая ценная.
+      expect(lines.last, 'LINE29');
+    });
+
+    test('close() во время ротации не переоткрывает файл', () async {
+      final log = RotatingLog(p('closerace.log'), maxBytes: 50);
+      await log.open();
+      for (var i = 0; i < 20; i++) {
+        log.write('x' * 30); // не ждём — ротация в полёте
+      }
+      await log.close();
+      expect(log.isOpen, isFalse);
+
+      final sizeAfter = await File(p('closerace.log')).length();
+      await log.write('ПОСЛЕ CLOSE');
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(await File(p('closerace.log')).length(), sizeAfter,
+          reason: 'после close() в файл не должно попадать ничего');
+    });
+
+    test('порог считается в БАЙТАХ: кириллица не проходит мимо лимита',
+        () async {
+      final log = RotatingLog(p('cyr.log'), maxBytes: 400);
+      await log.open();
+      for (var i = 0; i < 40; i++) {
+        await log.write('строка с кириллицей номер $i');
+      }
+      await log.close();
+      // 40 строк по ~50 байт = ~2000 Б. При счёте по символам порог сработал
+      // бы вдвое позже и файл вырос бы соответственно.
+      expect(await File(p('cyr.log')).length(), lessThan(900));
+    });
+
     test('несуществующий файл — пустая строка, а не исключение', () async {
       expect(await RotatingLog.tail(p('нет.log')), '');
     });

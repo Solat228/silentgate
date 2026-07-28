@@ -115,10 +115,14 @@ class SingboxProcess {
   Future<void> stop() async {
     final proc = _process;
     _process = null;
-    final log = _log;
-    _log = null;
+    // ⚠️ `_log` НЕ обнуляем здесь. Обработчики `onLine` и `exitCode` читают
+    // именно ПОЛЕ, поэтому раннее обнуление выбрасывало всё, что ядро выдало
+    // при убийстве, — вместе со строкой «завершился, код N». То есть ровно ту
+    // диагностику, ради которой лог и заводили.
     if (proc == null) {
-      await log?.close();
+      final orphan = _log;
+      _log = null;
+      await orphan?.close();
       return;
     }
     CoreCleanup.unregister(proc);
@@ -130,9 +134,14 @@ class SingboxProcess {
         return -1;
       },
     );
-    // Закрываем ПОСЛЕ смерти процесса: иначе последние строки (в них и причина)
-    // остались бы в буфере и в файл не попали.
+    // Дожидаемся ДОСТАВКИ вывода: `exitCode` завершается раньше, чем stdout
+    // и stderr дочитаны до конца, — последние строки иначе теряются.
+    await outputDone.timeout(const Duration(seconds: 2), onTimeout: () {});
+    final log = _log;
+    _log = null;
     await log?.close();
+    _tail.clear();
+    _drains.clear();
   }
 
   void dispose() {}

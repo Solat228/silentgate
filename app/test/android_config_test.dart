@@ -251,5 +251,55 @@ void main() {
       expect(i.containsKey('include_package'), isFalse);
       expect((i['exclude_package'] as List), contains('lol.silentgate'));
     });
+
+    // ⚠️ Утечка, которую нашло ревью и не поймал живой тест. Правила из
+    // МАРШРУТОВ в режиме «Всё через VPN» вырезаются, а из пакетных списков
+    // вырезались не везде: сохранённое «Прямо»-приложение продолжало уезжать
+    // в exclude_package, и VpnService выводил его из туннеля НА УРОВНЕ ОС —
+    // трафик шёл под реальным IP. Увидеть было нечем: правил в конфиге нет,
+    // списки в интерфейсе скрыты, схема маршрута рисует простую цепочку.
+    test('«Всё через VPN»: в exclude_package НЕТ приложений пользователя', () {
+      final i = tunIn(const AppSettings(
+        splitTunnel: SplitTunnelConfig(
+          mode: SplitMode.all,
+          apps: [
+            AppRule('com.example.direct', action: AppAction.direct),
+            AppRule('com.example.block', action: AppAction.block),
+          ],
+          sites: [SiteRule('direct.example', action: AppAction.direct)],
+        ),
+      ));
+      expect((i['exclude_package'] as List), ['lol.silentgate'],
+          reason: 'мимо туннеля идём только мы сами, иначе это дыра под '
+              'реальным IP, невидимая пользователю');
+    });
+
+    // «Блок» обязан попасть В туннель: ядро убивает его reject-правилом.
+    // Вне туннеля ядро трафика не видит, правило не совпадает, блок молчит.
+    test('«только выбранные»: заблокированный пакет ВХОДИТ в туннель', () {
+      final s = const AppSettings(
+        splitTunnel: SplitTunnelConfig(
+          mode: SplitMode.onlySelected,
+          apps: [
+            AppRule('com.example.tunnel', action: AppAction.tunnel),
+            AppRule('com.example.ads', action: AppAction.block),
+          ],
+        ),
+      );
+      final i = tunIn(s);
+      expect((i['include_package'] as List), contains('com.example.ads'),
+          reason: 'иначе reject-правилу не с чем совпадать');
+
+      // И само reject-правило на месте.
+      final rules = ((_androidConfig(_fixtures['vless']!, settings: s)['route']
+              as Map)['rules'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(
+        rules.any((r) =>
+            r['action'] == 'reject' &&
+            (r['package_name'] as List?)?.contains('com.example.ads') == true),
+        isTrue,
+      );
+    });
   });
 }

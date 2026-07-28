@@ -589,6 +589,15 @@ class SingboxConfigBuilder {
   /// через VPN.
   List<String> _excludePackages(SplitTunnelConfig split, TunOptions o) {
     final out = <String>{o.selfPackage};
+    // ⚠️ Режим «Всё через VPN» обязан быть здесь ТОЖЕ.
+    //
+    // Это была настоящая дыра: правила из маршрутов мы вырезали
+    // (`_userRulesActive`), а из пакетных списков — нет. Сохранённое
+    // «Прямо»-приложение продолжало уезжать в `exclude_package`, и
+    // `VpnService` выводил его из туннеля НА УРОВНЕ ОС — трафик шёл под
+    // реальным IP. Заметить было нельзя ничем: правил в конфиге нет, списки
+    // в интерфейсе скрыты, схема маршрута рисует простую цепочку.
+    if (!_userRulesActive(split)) return out.toList();
     if (o.noRealIp) return out.toList();
     if (split.mode == SplitMode.onlySelected) return out.toList();
     for (final a in split.apps) {
@@ -622,7 +631,13 @@ class SingboxConfigBuilder {
     final out = <String>{};
     for (final a in split.apps) {
       if (!a.enabled) continue;
-      if (a.action == AppAction.block) continue;
+      // ⚠️ «Блок» обязан попасть в туннель. Раньше он тут пропускался — и
+      // заблокированное приложение оказывалось ВНЕ туннеля: ядро его трафика
+      // не видело, правило `package_name → reject` совпасть не могло, и блок
+      // молча разрешал соединение. Ровно тот дефект, который чинили для
+      // остальных режимов, только в «только выбранных».
+      // Внутри туннеля его убивает reject-правило — оно стоит выше всего
+      // пользовательского.
       final pkg = a.path.trim();
       if (pkg.isNotEmpty) out.add(pkg);
     }
