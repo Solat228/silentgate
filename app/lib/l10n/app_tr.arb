@@ -366,6 +366,8 @@
   "splitRuleDisabled": "Devre dışı — kural uygulanmıyor",
   "splitRemove": "Kaldır",
   "splitFromRunning": "Çalışanlardan",
+  "splitPickInstalled": "Uygulama seç",
+  "splitInstalledApps": "Yüklü uygulamalar",
   "splitPickExe": ".exe seç",
   "splitSitesHeader": "Siteler (alan adları)",
   "splitSitesHint": "Bir eylem (Tünel / Doğrudan / Engelle) seçmek için bir siteye dokunun. Bir alan adı alt alan adlarını da kapsar; alt alan adları bir ağaçta gruplanır. Bir bağlantı noktası belirtebilirsiniz.",

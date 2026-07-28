@@ -1260,6 +1260,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitFromRunning => 'From running';
 
   @override
+  String get splitPickInstalled => 'Choose app';
+
+  @override
+  String get splitInstalledApps => 'Installed applications';
+
+  @override
   String get splitPickExe => 'Choose .exe';
 
   @override

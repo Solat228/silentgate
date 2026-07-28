@@ -415,8 +415,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
 
-    /** С Android 10 `/proc` закрыт — матчинг по процессам только через систему. */
-    override fun useProcFS(): Boolean = false
+    /// До Android 10 `/proc/net` читается, с Android 10 — закрыт.
+    ///
+    /// ⚠️ Здесь стояло безусловное `false`, и на Android 7-9 правила приложений
+    /// не работали ВООБЩЕ: `getConnectionOwnerUid` появился только в API 29, то
+    /// есть `findConnectionOwner` ниже на этих версиях бросает исключение, а
+    /// запасного пути через `/proc` мы не разрешали. Владельца соединения
+    /// определить было нечем — «Блок» молча пропускал трафик, «Прямо» и
+    /// «Туннель» не различались. Это четверть поддерживаемого диапазона версий
+    /// (minSdk 24).
+    override fun useProcFS(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
 
     /**
      * Владелец соединения по uid. Без этого НЕ работают `package_name`-правила,

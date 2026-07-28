@@ -1262,6 +1262,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get splitFromRunning => 'Из запущенных';
 
   @override
+  String get splitPickInstalled => 'Выбрать приложение';
+
+  @override
+  String get splitInstalledApps => 'Установленные приложения';
+
+  @override
   String get splitPickExe => 'Выбрать .exe';
 
   @override

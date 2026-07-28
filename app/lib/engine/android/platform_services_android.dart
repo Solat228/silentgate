@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/rotating_log.dart';
@@ -33,12 +35,37 @@ PlatformServices buildAndroidPlatformServices() => PlatformServices(
       support: const AndroidSupportReporter(),
     );
 
+/// Канал каталога приложений (нативная часть — `PlatformChannels.APPS_CHANNEL`).
+const _appsChannel = MethodChannel('lol.silentgate/apps');
+
 class _AndroidAppCatalog implements AppCatalog {
   const _AndroidAppCatalog();
 
-  // Задача 44: PackageManager.getInstalledApplications через MethodChannel.
+  /// Установленные приложения с доступом в интернет.
+  ///
+  /// ⚠️ Пока этого не было, раздельное туннелирование на Android было
+  /// недоступно ЦЕЛИКОМ: правило задаётся именем пакета, а взять его
+  /// пользователю неоткуда — «выбрать файл», как на Windows, здесь невозможно.
+  /// Фильтрация и сортировка сделаны на нативной стороне: там это один проход
+  /// по уже загруженным данным, а не вторая сортировка тысячи строк в Dart.
   @override
-  Future<List<CatalogApp>> list() async => const [];
+  Future<List<CatalogApp>> list() async {
+    try {
+      final raw = await _appsChannel.invokeListMethod<Object?>('list');
+      if (raw == null) return const [];
+      return raw.whereType<Map>().map((m) {
+        final pkg = '${m['package'] ?? ''}';
+        return CatalogApp(
+          // На Android ключ правила — имя пакета (на Windows это путь к exe).
+          key: pkg,
+          label: '${m['name'] ?? pkg}',
+        );
+      }).where((a) => a.key.isNotEmpty).toList();
+    } catch (e) {
+      AppLog.w('Каталог приложений недоступен: $e');
+      return const [];
+    }
+  }
 
   /// На Android выбирать «файл приложения» негде — правила задаются пакетом.
   @override
@@ -48,15 +75,29 @@ class _AndroidAppCatalog implements AppCatalog {
 class _AndroidAppIcons implements AppIconLoader {
   const _AndroidAppIcons();
 
-  // Задача 44: PackageManager.getApplicationIcon → PNG, кэш по packageName.
-  @override
-  Uint8List? cached(String key) => null;
+  /// Кэш живёт в статике: экран правил перестраивается на каждый кадр списка,
+  /// и без него канал дёргался бы по разу на строку при каждой прокрутке.
+  static final Map<String, Uint8List?> _cache = {};
 
   @override
-  bool isCached(String key) => false;
+  Uint8List? cached(String key) => _cache[key];
 
   @override
-  Future<Uint8List?> load(String key) async => null;
+  bool isCached(String key) => _cache.containsKey(key);
+
+  @override
+  Future<Uint8List?> load(String key) async {
+    if (_cache.containsKey(key)) return _cache[key];
+    try {
+      final png = await _appsChannel
+          .invokeMethod<Uint8List>('icon', {'package': key});
+      // Пишем в кэш И отрицательный ответ: иначе приложение без иконки
+      // заставляло бы канал работать вхолостую на каждой перерисовке.
+      return _cache[key] = png;
+    } catch (_) {
+      return _cache[key] = null;
+    }
+  }
 }
 
 class _AndroidCoreVersions implements CoreVersionInfo {

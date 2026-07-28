@@ -366,6 +366,8 @@
   "splitRuleDisabled": "已禁用——规则不生效",
   "splitRemove": "移除",
   "splitFromRunning": "从运行中选取",
+  "splitPickInstalled": "选择应用",
+  "splitInstalledApps": "已安装的应用",
   "splitPickExe": "选择 .exe",
   "splitSitesHeader": "站点（域名）",
   "splitSitesHint": "点击某个站点以选择动作（隧道 / 直连 / 阻止）。域名同时涵盖其子域名；子域名以树形分组。可指定端口。",

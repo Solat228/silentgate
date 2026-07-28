@@ -1271,6 +1271,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitFromRunning => 'Aus laufenden';
 
   @override
+  String get splitPickInstalled => 'App auswählen';
+
+  @override
+  String get splitInstalledApps => 'Installierte Apps';
+
+  @override
   String get splitPickExe => '.exe wählen';
 
   @override

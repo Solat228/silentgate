@@ -1260,6 +1260,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get splitFromRunning => 'از میان در حال اجرا';
 
   @override
+  String get splitPickInstalled => 'انتخاب برنامه';
+
+  @override
+  String get splitInstalledApps => 'برنامه‌های نصب‌شده';
+
+  @override
   String get splitPickExe => 'انتخاب .exe';
 
   @override

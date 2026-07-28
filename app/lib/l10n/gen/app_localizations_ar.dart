@@ -1254,6 +1254,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splitFromRunning => 'من العاملة';
 
   @override
+  String get splitPickInstalled => 'اختر تطبيقًا';
+
+  @override
+  String get splitInstalledApps => 'التطبيقات المثبتة';
+
+  @override
   String get splitPickExe => 'اختيار ‎.exe';
 
   @override

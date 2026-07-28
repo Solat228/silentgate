@@ -366,6 +366,8 @@
   "splitRuleDisabled": "Deaktiviert — Regel wird nicht angewendet",
   "splitRemove": "Entfernen",
   "splitFromRunning": "Aus laufenden",
+  "splitPickInstalled": "App auswählen",
+  "splitInstalledApps": "Installierte Apps",
   "splitPickExe": ".exe wählen",
   "splitSitesHeader": "Websites (Domains)",
   "splitSitesHint": "Tippen Sie auf eine Website, um eine Aktion zu wählen (Tunnel / Direkt / Blockieren). Eine Domain deckt auch ihre Subdomains ab; Subdomains werden in einem Baum gruppiert. Sie können einen Port angeben.",

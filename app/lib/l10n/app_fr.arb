@@ -366,6 +366,8 @@
   "splitRuleDisabled": "Désactivée — la règle n'est pas appliquée",
   "splitRemove": "Retirer",
   "splitFromRunning": "Depuis les applications en cours",
+  "splitPickInstalled": "Choisir une application",
+  "splitInstalledApps": "Applications installées",
   "splitPickExe": "Choisir un .exe",
   "splitSitesHeader": "Sites (domaines)",
   "splitSitesHint": "Appuyez sur un site pour choisir une action (Tunnel / Direct / Bloquer). Un domaine couvre aussi ses sous-domaines ; les sous-domaines sont regroupés en arborescence. Vous pouvez indiquer un port.",

@@ -427,6 +427,8 @@
   "splitRuleDisabled": "Disabled — rule is not applied",
   "splitRemove": "Remove",
   "splitFromRunning": "From running",
+  "splitPickInstalled": "Choose app",
+  "splitInstalledApps": "Installed applications",
   "splitPickExe": "Choose .exe",
   "splitSitesHeader": "Sites (domains)",
   "splitSitesHint": "Tap a site to choose an action (Tunnel / Direct / Block). A domain also covers its subdomains; subdomains are grouped into a tree. You can specify a port.",

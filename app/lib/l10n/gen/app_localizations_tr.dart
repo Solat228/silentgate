@@ -1265,6 +1265,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get splitFromRunning => 'Çalışanlardan';
 
   @override
+  String get splitPickInstalled => 'Uygulama seç';
+
+  @override
+  String get splitInstalledApps => 'Yüklü uygulamalar';
+
+  @override
   String get splitPickExe => '.exe seç';
 
   @override

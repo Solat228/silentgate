@@ -2310,6 +2310,18 @@ abstract class AppLocalizations {
   /// **'Из запущенных'**
   String get splitFromRunning;
 
+  /// No description provided for @splitPickInstalled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать приложение'**
+  String get splitPickInstalled;
+
+  /// No description provided for @splitInstalledApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установленные приложения'**
+  String get splitInstalledApps;
+
   /// No description provided for @splitPickExe.
   ///
   /// In ru, this message translates to:

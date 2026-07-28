@@ -366,6 +366,8 @@
   "splitRuleDisabled": "Desativada — a regra não é aplicada",
   "splitRemove": "Remover",
   "splitFromRunning": "Dos em execução",
+  "splitPickInstalled": "Escolher aplicativo",
+  "splitInstalledApps": "Aplicativos instalados",
   "splitPickExe": "Escolher .exe",
   "splitSitesHeader": "Sites (domínios)",
   "splitSitesHint": "Toque em um site para escolher uma ação (Túnel / Direto / Bloquear). Um domínio também cobre seus subdomínios; os subdomínios são agrupados em uma árvore. Você pode especificar uma porta.",

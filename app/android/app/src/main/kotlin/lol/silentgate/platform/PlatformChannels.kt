@@ -3,10 +3,17 @@ package lol.silentgate.platform
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
 
 /**
  * Нативная сторона каналов, которые объявлены в Dart
@@ -21,6 +28,89 @@ object PlatformChannels {
 
     const val DEVICE_CHANNEL = "lol.silentgate/device"
     const val LAUNCHER_CHANNEL = "lol.silentgate/launcher"
+    const val APPS_CHANNEL = "lol.silentgate/apps"
+
+    /**
+     * Список приложений, между которыми можно делить трафик.
+     *
+     * Без него раздельное туннелирование на Android недоступно ЦЕЛИКОМ: правило
+     * задаётся именем пакета, а взять его пользователю неоткуда — «выбрать файл»
+     * на Android невозможно, в отличие от Windows.
+     *
+     * Отдаём только то, что имеет смысл разделять:
+     *  - у приложения есть доступ в интернет (иначе правило бессмысленно);
+     *  - оно запускаемое (есть LAUNCHER-активность) ЛИБО не системное. Системные
+     *    без экрана — это сервисы вроде `com.android.providers.*`, они забивают
+     *    список сотней строк, среди которых пользователю нечего выбирать.
+     *
+     * ⚠️ Требует `<queries>` в манифесте: с Android 11 без него
+     * `getInstalledApplications` вернёт почти пустой список — приложение видит
+     * только себя.
+     */
+    fun handleApps(context: Context, method: String, arg: String?, result: MethodChannel.Result) {
+        when (method) {
+            "list" -> result.success(runCatching { listApps(context) }.getOrDefault(emptyList()))
+            "icon" -> {
+                val pkg = arg?.trim().orEmpty()
+                if (pkg.isEmpty()) result.success(null)
+                else result.success(runCatching { iconPng(context, pkg) }.getOrNull())
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    private fun listApps(context: Context): List<Map<String, Any?>> {
+        val pm = context.packageManager
+        val launchable = runCatching {
+            val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+            pm.queryIntentActivities(intent, 0).mapNotNull { it.activityInfo?.packageName }.toSet()
+        }.getOrDefault(emptySet())
+
+        return pm.getInstalledApplications(0)
+            .asSequence()
+            .filter { info ->
+                // Интернет-доступ: без него правило ничего не значит.
+                pm.checkPermission(android.Manifest.permission.INTERNET, info.packageName) ==
+                    PackageManager.PERMISSION_GRANTED
+            }
+            .filter { info ->
+                val system = (info.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+                !system || launchable.contains(info.packageName)
+            }
+            .map { info ->
+                mapOf(
+                    "package" to info.packageName,
+                    "name" to runCatching { pm.getApplicationLabel(info).toString() }
+                        .getOrDefault(info.packageName),
+                    "system" to ((info.flags and ApplicationInfo.FLAG_SYSTEM) != 0),
+                )
+            }
+            // Сортируем здесь: на стороне Dart это была бы вторая сортировка
+            // тысячи строк на каждом открытии экрана.
+            .sortedBy { (it["name"] as String).lowercase() }
+            .toList()
+    }
+
+    /** Иконка приложения в PNG. `null` — пакета нет или иконку не отрисовать. */
+    private fun iconPng(context: Context, pkg: String): ByteArray? {
+        val pm = context.packageManager
+        val drawable: Drawable = runCatching { pm.getApplicationIcon(pkg) }.getOrNull() ?: return null
+        // 96 px хватает для списка на любой плотности и не раздувает канал:
+        // адаптивные иконки рисуются в векторе и могут отдать 512×512.
+        val size = 96
+        val bmp = if (drawable is BitmapDrawable && drawable.bitmap != null) {
+            Bitmap.createScaledBitmap(drawable.bitmap, size, size, true)
+        } else {
+            Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also { out ->
+                val canvas = Canvas(out)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+            }
+        }
+        val stream = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        return stream.toByteArray()
+    }
 
     fun handleDevice(context: Context, method: String, result: MethodChannel.Result) {
         when (method) {

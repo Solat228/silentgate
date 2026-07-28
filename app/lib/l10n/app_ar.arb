@@ -366,6 +366,8 @@
   "splitRuleDisabled": "معطّل — القاعدة غير مُطبَّقة",
   "splitRemove": "إزالة",
   "splitFromRunning": "من العاملة",
+  "splitPickInstalled": "اختر تطبيقًا",
+  "splitInstalledApps": "التطبيقات المثبتة",
   "splitPickExe": "اختيار ‎.exe",
   "splitSitesHeader": "المواقع (النطاقات)",
   "splitSitesHint": "انقر على موقع لاختيار إجراء (نفق / مباشر / حظر). يغطي النطاق أيضاً نطاقاته الفرعية؛ وتُجمَّع النطاقات الفرعية في شجرة. يمكنك تحديد منفذ.",

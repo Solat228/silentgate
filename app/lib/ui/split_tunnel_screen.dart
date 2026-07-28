@@ -121,7 +121,14 @@ class SplitTunnelScreen extends StatelessWidget {
                     children: [
                       TextButton.icon(
                         icon: const Icon(Icons.list),
-                        label: Text(l.splitFromRunning),
+                        // Формулировка зависит от платформы: на Windows каталог
+                        // строится из ЗАПУЩЕННЫХ процессов, на Android система
+                        // отдаёт список УСТАНОВЛЕННЫХ приложений. Назвать их
+                        // «запущенными» значило бы обмануть — пользователь стал
+                        // бы искать в списке то, что сейчас открыто.
+                        label: Text(platform.appCatalog.supportsManualPick
+                            ? l.splitFromRunning
+                            : l.splitPickInstalled),
                         onPressed: () => _pickRunning(context, controller),
                       ),
                       // Выбор файла вручную осмыслен там, где правило адресует
@@ -421,7 +428,10 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
             .where((p) => p.label.toLowerCase().contains(_q.toLowerCase()))
             .toList();
     return AlertDialog(
-      title: Text(l.splitRunningApps),
+      // См. кнопку открытия: на Android это установленные приложения.
+      title: Text(platform.appCatalog.supportsManualPick
+          ? l.splitRunningApps
+          : l.splitInstalledApps),
       content: SizedBox(
         width: 440,
         height: 480,

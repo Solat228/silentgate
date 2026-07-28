@@ -1235,6 +1235,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitFromRunning => '从运行中选取';
 
   @override
+  String get splitPickInstalled => '选择应用';
+
+  @override
+  String get splitInstalledApps => '已安装的应用';
+
+  @override
   String get splitPickExe => '选择 .exe';
 
   @override

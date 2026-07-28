@@ -88,6 +88,26 @@ class MainActivity : FlutterActivity() {
                     this, call.method, call.argument<String>("url"), result)
             }
 
+        // Каталог установленных приложений и их иконки. Без него раздельное
+        // туннелирование на Android недоступно целиком: правило задаётся именем
+        // пакета, а взять его пользователю было неоткуда — «выбрать файл», как
+        // на Windows, здесь невозможно.
+        //
+        // Список строится тяжело (тысяча пакетов + чтение меток), поэтому
+        // выполняем НЕ в главном потоке: иначе экран правил открывался бы с
+        // заметной задержкой, а на слабом устройстве ловил ANR.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+                PlatformChannels.APPS_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val arg = call.argument<String>("package")
+                Thread {
+                    PlatformChannels.handleApps(
+                        applicationContext, call.method, arg,
+                        MainThreadResult(this, result),
+                    )
+                }.start()
+            }
+
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
@@ -169,4 +189,23 @@ class MainActivity : FlutterActivity() {
             result?.error("consent_denied", "Пользователь не разрешил VPN", null)
         }
     }
+}
+
+/**
+ * Обёртка, возвращающая ответ канала в главный поток.
+ *
+ * `MethodChannel.Result` обязан вызываться на главном потоке, а тяжёлые вызовы
+ * (перечисление пакетов, отрисовка иконок) мы уводим в фоновый — иначе экран
+ * правил открывается с задержкой, а на слабом устройстве это ANR.
+ */
+private class MainThreadResult(
+    private val activity: Activity,
+    private val inner: MethodChannel.Result,
+) : MethodChannel.Result {
+    override fun success(value: Any?) = activity.runOnUiThread { inner.success(value) }
+
+    override fun error(code: String, message: String?, details: Any?) =
+        activity.runOnUiThread { inner.error(code, message, details) }
+
+    override fun notImplemented() = activity.runOnUiThread { inner.notImplemented() }
 }
