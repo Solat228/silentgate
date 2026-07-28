@@ -174,6 +174,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get killSwitchTitle => 'مفتاح الإيقاف (Kill switch)';
 
   @override
+  String get alwaysOnTitle => 'حماية على مستوى النظام';
+
+  @override
+  String get alwaysOnSub =>
+      'VPN دائم التشغيل مع «حظر الاتصالات بدون VPN» — يعمل حتى عند إغلاق التطبيق';
+
+  @override
   String get killSwitchSubTun =>
       'لا تسمح لحركة المرور بتجاوز VPN أثناء إعادة الاتصال';
 

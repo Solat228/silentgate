@@ -175,6 +175,13 @@ class AppLocalizationsFa extends AppLocalizations {
   String get killSwitchTitle => 'کیل‌سوییچ';
 
   @override
+  String get alwaysOnTitle => 'محافظت در سطح سیستم';
+
+  @override
+  String get alwaysOnSub =>
+      'VPN همیشه‌روشن و «مسدودکردن اتصال بدون VPN» — حتی با برنامهٔ بسته کار می‌کند';
+
+  @override
   String get killSwitchSubTun =>
       'نگذار ترافیک هنگام اتصال مجدد از کنار VPN عبور کند';
 

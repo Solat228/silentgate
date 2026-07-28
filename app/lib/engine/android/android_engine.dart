@@ -8,6 +8,7 @@ import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
+import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../engine_base.dart';
@@ -219,12 +220,39 @@ class AndroidEngine extends VpnEngineBase {
 
   @override
   Future<void> teardownCore({bool keepCapture = false}) async {
-    // keepCapture (kill switch) на Android означало бы «держать fd открытым
-    // без ядра». libbox владеет дескриптором сам, поэтому раздельной остановки
-    // тут нет: сервис гасится целиком. Роль kill switch отдана системному
-    // Always-on + «блокировать соединения без VPN».
+    // Kill switch: между попытками переподключения туннель ОСТАЁТСЯ поднятым,
+    // но никуда не ведёт — трафик фейлится, а не утекает мимо VPN.
+    //
+    // Раньше здесь сервис гасился целиком, и на время всех попыток (backoff до
+    // 20 с, до 8 попыток — это минуты) весь трафик шёл напрямую. Настройка при
+    // этом была включена и печаталась в отчёте: пользователь считал себя
+    // защищённым, а защиты не было вовсе.
+    //
+    // libbox владеет дескриптором сам, поэтому «погасить ядро, оставив fd» тут
+    // невозможно. Вместо этого перезагружаем ядро конфигом-заглушкой: тот же
+    // туннель, те же маршруты, но весь трафик уходит в reject.
+    if (keepCapture) {
+      try {
+        await _channel.invokeMethod<void>('start', {'config': _blackholeJson()});
+        AppLog.i('Kill switch: туннель удержан, трафик блокируется');
+        return;
+      } catch (e) {
+        // Не смогли удержать — честнее погасить, чем оставить неизвестное
+        // состояние: иначе туннель мог бы жить со СТАРЫМ конфигом.
+        AppLog.w('Kill switch: не удалось удержать туннель ($e), гашу');
+      }
+    }
     await _stopService();
   }
+
+  /// Туннель, который никуда не ведёт: маршруты на месте, весь трафик в reject.
+  ///
+  /// Собирается тем же билдером, чтобы совпадали адреса, MTU и списки пакетов —
+  /// иначе система пересоздала бы интерфейс, и на этот миг трафик пошёл бы
+  /// мимо VPN, то есть ровно то, что kill switch и предотвращает.
+  String _blackholeJson() => SingboxConfigBuilder(
+        options: const TunOptions(platformTun: true, blackhole: true),
+      ).buildJson(const SplitTunnelConfig());
 
   @override
   Future<void> platformCleanup() async => _stopService();

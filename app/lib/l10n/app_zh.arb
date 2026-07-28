@@ -52,6 +52,8 @@
   "autoReconnectTitle": "自动重连",
   "autoReconnectSub": "掉线和网络切换时恢复连接",
   "killSwitchTitle": "断网保护（Kill switch）",
+  "alwaysOnTitle": "系统级防泄漏",
+  "alwaysOnSub": "始终开启的 VPN 与「阻止不使用 VPN 的连接」——应用关闭时依然生效",
   "killSwitchSubTun": "重连期间不让流量绕过 VPN",
   "killSwitchSubProxy": "在“系统代理”模式下仅保护支持代理的应用。完全保护——只有 TUN",
   "killSwitchSubOff": "需要先启用自动重连",

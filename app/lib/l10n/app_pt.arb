@@ -52,6 +52,8 @@
   "autoReconnectTitle": "Reconexão automática",
   "autoReconnectSub": "Restaurar a conexão em caso de queda e mudança de rede",
   "killSwitchTitle": "Kill switch",
+  "alwaysOnTitle": "Proteção do sistema",
+  "alwaysOnSub": "VPN sempre ativa e «bloquear conexões sem VPN» — funciona mesmo com o app fechado",
   "killSwitchSubTun": "Não deixar o tráfego contornar a VPN durante a reconexão",
   "killSwitchSubProxy": "No modo “Proxy do sistema” protege apenas os aplicativos compatíveis com proxy. Totalmente — somente TUN",
   "killSwitchSubOff": "Requer que a reconexão automática esteja ativada",

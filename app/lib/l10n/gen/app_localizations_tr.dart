@@ -175,6 +175,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get killSwitchTitle => 'Kill switch';
 
   @override
+  String get alwaysOnTitle => 'Sistem düzeyinde koruma';
+
+  @override
+  String get alwaysOnSub =>
+      'Her zaman açık VPN ve «VPN olmadan bağlantıları engelle» — uygulama kapalıyken de çalışır';
+
+  @override
   String get killSwitchSubTun =>
       'Yeniden bağlanırken trafiğin VPN\'i atlamasına izin verme';
 

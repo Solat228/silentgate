@@ -338,4 +338,48 @@ void main() {
       expect(proxy['type'], 'socks');
     });
   });
+
+  // Kill switch между попытками переподключения: туннель остаётся поднятым, но
+  // никуда не ведёт. Раньше сервис гасился целиком, и на всё время попыток
+  // (backoff до 20 с, до 8 попыток — это минуты) трафик шёл НАПРЯМУЮ, хотя
+  // настройка была включена и печаталась в отчёте.
+  group('Kill switch: туннель-заглушка не выпускает ничего', () {
+    Map<String, dynamic> blackhole() => SingboxConfigBuilder(
+          options: const TunOptions(platformTun: true, blackhole: true),
+        ).buildMap(const SplitTunnelConfig(
+          mode: SplitMode.exceptSelected,
+          apps: [AppRule('com.example.direct', action: AppAction.direct)],
+          sites: [SiteRule('direct.example', action: AppAction.direct)],
+        ));
+
+    test('вся база уходит в block, выходов наружу нет', () {
+      final cfg = blackhole();
+      expect((cfg['route'] as Map)['final'], 'block');
+      final outs = (cfg['outbounds'] as List).cast<Map<String, dynamic>>();
+      expect(outs.map((o) => o['type']), everyElement('block'),
+          reason: 'рабочий proxy поднял бы соединение к серверу, '
+              'которого мы как раз лишились');
+      expect(outs.any((o) => o['tag'] == 'direct'), isFalse,
+          reason: 'direct — это выход мимо VPN, то есть утечка');
+    });
+
+    test('пользовательские правила НЕ применяются', () {
+      final rules = ((blackhole()['route'] as Map)['rules'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(rules.any((r) => r.containsKey('package_name')), isFalse);
+      expect(rules.any((r) => r.containsKey('domain_suffix')), isFalse,
+          reason: 'правило «Прямо» выпустило бы трафик — это и запрещает '
+              'kill switch');
+    });
+
+    test('интерфейс не пересоздаётся: адреса и MTU те же', () {
+      final black = (blackhole()['inbounds'] as List).first as Map;
+      final normal = SingboxConfigBuilder(
+        options: const TunOptions(platformTun: true),
+      ).buildMap(const SplitTunnelConfig())['inbounds'] as List;
+      final n = normal.first as Map;
+      expect(black['address'], n['address']);
+      expect(black['mtu'], n['mtu']);
+    });
+  });
 }

@@ -171,6 +171,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get killSwitchTitle => '断网保护（Kill switch）';
 
   @override
+  String get alwaysOnTitle => '系统级防泄漏';
+
+  @override
+  String get alwaysOnSub => '始终开启的 VPN 与「阻止不使用 VPN 的连接」——应用关闭时依然生效';
+
+  @override
   String get killSwitchSubTun => '重连期间不让流量绕过 VPN';
 
   @override

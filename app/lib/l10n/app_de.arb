@@ -52,6 +52,8 @@
   "autoReconnectTitle": "Automatisch neu verbinden",
   "autoReconnectSub": "Verbindung bei Abbruch und Netzwerkwechsel wiederherstellen",
   "killSwitchTitle": "Kill-Switch",
+  "alwaysOnTitle": "Systemweiter Leckschutz",
+  "alwaysOnSub": "Always-on-VPN mit „Verbindungen ohne VPN blockieren“ — wirkt auch bei geschlossener App",
   "killSwitchSubTun": "Lässt keinen Verkehr am VPN vorbei, während neu verbunden wird",
   "killSwitchSubProxy": "Im Modus „Systemproxy“ schützt er nur proxyfähige Apps. Vollständig — nur TUN",
   "killSwitchSubOff": "Erfordert aktiviertes automatisches Neuverbinden",

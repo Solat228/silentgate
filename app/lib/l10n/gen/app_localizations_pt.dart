@@ -178,6 +178,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get killSwitchTitle => 'Kill switch';
 
   @override
+  String get alwaysOnTitle => 'Proteção do sistema';
+
+  @override
+  String get alwaysOnSub =>
+      'VPN sempre ativa e «bloquear conexões sem VPN» — funciona mesmo com o app fechado';
+
+  @override
   String get killSwitchSubTun =>
       'Não deixar o tráfego contornar a VPN durante a reconexão';
 

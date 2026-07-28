@@ -61,6 +61,14 @@ class TunOptions {
   /// `SingboxProcess`.
   final String? logOutput;
 
+  /// Туннель-заглушка для kill switch: маршруты на месте, весь трафик в reject.
+  ///
+  /// Нужен между попытками переподключения. Погасить ядро, оставив дескриптор,
+  /// на Android нельзя — им владеет libbox, — поэтому «удержание захвата»
+  /// делается перезагрузкой ядра вот таким конфигом: интерфейс не пересоздаётся
+  /// (адреса, MTU и списки пакетов те же), а выхода наружу нет.
+  final bool blackhole;
+
   /// Резолвер для доменов «Прямо» — ЯВНЫМ адресом (обычно DNS физического
   /// адаптера, снятый до подъёма туннеля).
   ///
@@ -94,6 +102,7 @@ class TunOptions {
     this.selfPackage = 'lol.silentgate',
     this.directDnsUpstream,
     this.logOutput,
+    this.blackhole = false,
   });
 
   factory TunOptions.fromSettings(
@@ -153,6 +162,7 @@ class TunOptions {
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
         logOutput: logOutput,
+        blackhole: blackhole,
       );
 }
 
@@ -244,9 +254,14 @@ class SingboxConfigBuilder {
 
     // База: куда идёт всё, чему не задано действие вручную.
     //  all / exceptSelected → через VPN (proxy); onlySelected → напрямую.
-    final finalOutbound =
-        split.mode == SplitMode.onlySelected ? 'direct' : 'proxy';
-    _addAppRules(rules, split);
+    //
+    // Kill switch (blackhole): база — reject. Пользовательские правила при этом
+    // НЕ применяются вовсе: правило «Прямо» выпустило бы трафик наружу, а это
+    // ровно то, что kill switch запрещает.
+    final finalOutbound = o.blackhole
+        ? 'block'
+        : (split.mode == SplitMode.onlySelected ? 'direct' : 'proxy');
+    if (!o.blackhole) _addAppRules(rules, split);
 
     final cfg = <String, dynamic>{
       'log': {
@@ -305,7 +320,12 @@ class SingboxConfigBuilder {
         // Три случая: группа узлов (автовыбор `urltest` — там тег `proxy`
         // уже есть внутри), один готовый outbound, либо переход в локальный
         // SOCKS соседнего Xray.
-        if (proxyOutboundGroup != null)
+        // Kill switch: выхода наружу нет вовсе — только block, на него и
+        // указывает `final`. Оставлять здесь рабочий proxy нельзя: ядро
+        // подняло бы соединение к серверу, которого мы как раз лишились.
+        if (o.blackhole)
+          {'type': 'block', 'tag': 'block'}
+        else if (proxyOutboundGroup != null)
           ...proxyOutboundGroup!
         else if (proxyOutbound != null)
           {...proxyOutbound!, 'tag': 'proxy'}
@@ -317,7 +337,7 @@ class SingboxConfigBuilder {
             'server_port': xraySocksPort,
             'version': '5',
           },
-        {'type': 'direct', 'tag': 'direct'},
+        if (!o.blackhole) {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
         'auto_detect_interface': true,

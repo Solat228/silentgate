@@ -176,6 +176,13 @@ class AppLocalizationsRu extends AppLocalizations {
   String get killSwitchTitle => 'Kill switch';
 
   @override
+  String get alwaysOnTitle => 'Системная защита от утечек';
+
+  @override
+  String get alwaysOnSub =>
+      'Always-on VPN и «блокировать соединения без VPN» — держит блокировку даже когда приложение закрыто';
+
+  @override
   String get killSwitchSubTun =>
       'Не выпускать трафик мимо VPN, пока идёт восстановление';
 

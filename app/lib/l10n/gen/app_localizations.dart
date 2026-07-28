@@ -426,6 +426,18 @@ abstract class AppLocalizations {
   /// **'Kill switch'**
   String get killSwitchTitle;
 
+  /// No description provided for @alwaysOnTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системная защита от утечек'**
+  String get alwaysOnTitle;
+
+  /// No description provided for @alwaysOnSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Always-on VPN и «блокировать соединения без VPN» — держит блокировку даже когда приложение закрыто'**
+  String get alwaysOnSub;
+
   /// No description provided for @killSwitchSubTun.
   ///
   /// In ru, this message translates to:

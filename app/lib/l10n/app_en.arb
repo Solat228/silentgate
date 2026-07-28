@@ -78,6 +78,8 @@
   "autoReconnectTitle": "Auto-reconnect",
   "autoReconnectSub": "Restore the connection on drop and network change",
   "killSwitchTitle": "Kill switch",
+  "alwaysOnTitle": "System-wide leak protection",
+  "alwaysOnSub": "Always-on VPN with “block connections without VPN” — keeps blocking even when the app is closed",
   "killSwitchSubTun": "Do not let traffic bypass the VPN while reconnecting",
   "killSwitchSubProxy": "In “System proxy” mode it protects only proxy-aware apps. Fully — only TUN",
   "killSwitchSubOff": "Requires auto-reconnect to be enabled",

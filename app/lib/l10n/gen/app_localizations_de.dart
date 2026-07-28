@@ -176,6 +176,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get killSwitchTitle => 'Kill-Switch';
 
   @override
+  String get alwaysOnTitle => 'Systemweiter Leckschutz';
+
+  @override
+  String get alwaysOnSub =>
+      'Always-on-VPN mit „Verbindungen ohne VPN blockieren“ — wirkt auch bei geschlossener App';
+
+  @override
   String get killSwitchSubTun =>
       'Lässt keinen Verkehr am VPN vorbei, während neu verbunden wird';
 

@@ -163,6 +163,19 @@ class _ReliabilitySection extends StatelessWidget {
                 : l.killSwitchSubOff,
           ),
         ),
+        // Системный Always-on — надёжнее любого нашего kill switch: он держит
+        // блокировку и когда приложение убито, и во время обновления, и до
+        // первого запуска после перезагрузки. Наш собственный закрывает только
+        // окно между попытками переподключения, поэтому они дополняют друг
+        // друга, а не заменяют.
+        if (Platform.isAndroid)
+          ListTile(
+            leading: const Icon(Icons.verified_user_outlined),
+            title: Text(l.alwaysOnTitle),
+            subtitle: Text(l.alwaysOnSub),
+            trailing: const Icon(Icons.open_in_new, size: 18),
+            onTap: () => _openVpnSettings(context),
+          ),
         // «Не выходить под реальным IP» — только при включённом kill switch.
         if (settings.killSwitch)
           SwitchListTile(
@@ -795,6 +808,23 @@ void _showLicenseText(BuildContext context, String title, String asset) {
       ],
     ),
   );
+}
+
+
+/// Открыть системный раздел VPN — там включается Always-on и «блокировать
+/// соединения без VPN». Прямого экрана «Always-on для приложения X» в Android
+/// нет, поэтому ведём в общий раздел.
+Future<void> _openVpnSettings(BuildContext context) async {
+  final l = AppLocalizations.of(context);
+  var ok = false;
+  try {
+    ok = await const MethodChannel('lol.silentgate/device')
+            .invokeMethod<bool>('openVpnSettings') ??
+        false;
+  } catch (_) {}
+  if (!ok && context.mounted) {
+    AppToast.show(context, l.alwaysOnSub, kind: ToastKind.info);
+  }
 }
 
 Widget _sectionHeader(BuildContext context, String title, {Widget? trailing}) {

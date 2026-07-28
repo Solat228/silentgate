@@ -127,6 +127,18 @@ object PlatformChannels {
             //
             // Берём сеть БЕЗ признака VPN, иначе получим адрес самого туннеля.
             "directDns" -> result.success(directDns(context))
+            // Системный Always-on VPN + «блокировать соединения без VPN».
+            //
+            // Это надёжнее любого нашего kill switch: система держит блокировку
+            // даже когда приложение убито, обновляется или ещё не запустилось
+            // после перезагрузки. Наш собственный kill switch закрывает окно
+            // между попытками переподключения, системный — всё остальное.
+            //
+            // Прямого экрана «Always-on для приложения X» в Android нет:
+            // открываем общий раздел VPN, дальше пользователь выбирает нас.
+            "openVpnSettings" -> result.success(
+                startAction(context, Settings.ACTION_VPN_SETTINGS)
+            )
             else -> handleDeviceRest(context, method, result)
         }
     }
@@ -220,4 +232,13 @@ object PlatformChannels {
         context.startActivity(viewIntent(url))
         true
     }.getOrDefault(false)
+
+    /** Открыть системный экран настроек по action. `false` — экрана нет. */
+    private fun startAction(context: Context, action: String): Boolean =
+        runCatching {
+            context.startActivity(
+                Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        }.getOrDefault(false)
 }

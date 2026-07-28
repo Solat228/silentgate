@@ -52,6 +52,8 @@
   "autoReconnectTitle": "Otomatik yeniden bağlan",
   "autoReconnectSub": "Bağlantı koptuğunda ve ağ değiştiğinde bağlantıyı geri getir",
   "killSwitchTitle": "Kill switch",
+  "alwaysOnTitle": "Sistem düzeyinde koruma",
+  "alwaysOnSub": "Her zaman açık VPN ve «VPN olmadan bağlantıları engelle» — uygulama kapalıyken de çalışır",
   "killSwitchSubTun": "Yeniden bağlanırken trafiğin VPN'i atlamasına izin verme",
   "killSwitchSubProxy": "«Sistem proxy'si» modunda yalnızca proxy'yi tanıyan uygulamaları korur. Tam koruma — yalnızca TUN",
   "killSwitchSubOff": "Otomatik yeniden bağlanmanın etkin olması gerekir",

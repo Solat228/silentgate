@@ -175,6 +175,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get killSwitchTitle => 'Kill switch';
 
   @override
+  String get alwaysOnTitle => 'System-wide leak protection';
+
+  @override
+  String get alwaysOnSub =>
+      'Always-on VPN with “block connections without VPN” — keeps blocking even when the app is closed';
+
+  @override
   String get killSwitchSubTun =>
       'Do not let traffic bypass the VPN while reconnecting';
 
