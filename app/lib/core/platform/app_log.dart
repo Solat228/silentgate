@@ -58,7 +58,18 @@ class AppLog {
   static Future<String> filePath() async =>
       '${(await AppPaths.supportDir()).path}${Platform.pathSeparator}app.log';
 
+  /// Прогон тестов не должен писать в БОЕВОЙ `%APPDATA%\SilentGate\app.log`.
+  ///
+  /// Иначе `flutter test` подмешивает в лог пользователя строки тестовых
+  /// движков — и они неотличимы от продакшена. На этом уже обожглись: строки
+  /// «Автопереподключение: обрыв → попытка N» с фиктивным сервером `b` были
+  /// приняты за реальный сбой у пользователя и легли в основу неверного
+  /// диагноза. Flutter выставляет FLUTTER_TEST в окружении тестов.
+  static final bool _underTest =
+      Platform.environment.containsKey('FLUTTER_TEST');
+
   static void _write(LogEntry entry) async {
+    if (_underTest) return;
     try {
       if (!_initTried) {
         _initTried = true;

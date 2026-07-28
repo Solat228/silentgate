@@ -34,14 +34,40 @@ class TunHelper {
       '${supportDir.path}${Platform.pathSeparator}singbox.log';
 
   /// Хвост лога sing-box — для показа реальной причины сбоя.
+  /// Хвост лога sing-box.
+  ///
+  /// ⚠️ Файл читается С КОНЦА, а не целиком: при уровне лога `debug` он растёт
+  /// на сотни мегабайт за сессию (наблюдалось 758 МБ), и `readAsString()`
+  /// затягивал всё это в память — нажатие «Написать в поддержку» подвешивало
+  /// приложение или роняло его по нехватке памяти.
+  static const _tailBytes = 512 * 1024;
+
   static Future<String> tailLog({int lines = 40}) async {
+    RandomAccessFile? raf;
     try {
       final f = File(logPathFor(await AppPaths.supportDir()));
       if (!await f.exists()) return '';
-      final all = const LineSplitter().convert(await f.readAsString());
-      return all.length <= lines ? all.join('\n') : all.sublist(all.length - lines).join('\n');
+      final size = await f.length();
+      raf = await f.open();
+      final from = size > _tailBytes ? size - _tailBytes : 0;
+      await raf.setPosition(from);
+      final bytes = await raf.read(size - from);
+      // Хвост мог начаться с середины UTF-8-последовательности.
+      var text = utf8.decode(bytes, allowMalformed: true);
+      if (from > 0) {
+        final nl = text.indexOf('\n');
+        if (nl >= 0) text = text.substring(nl + 1);
+      }
+      final all = const LineSplitter().convert(text);
+      return all.length <= lines
+          ? all.join('\n')
+          : all.sublist(all.length - lines).join('\n');
     } catch (_) {
       return '';
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
     }
   }
 
@@ -135,6 +161,19 @@ class TunHelper {
     _delete(_defaultStopFile());
   }
 
+  /// Обрезать разросшийся лог, не останавливая запись.
+  static Future<void> _rotateLog(IOSink log) async {
+    try {
+      await log.flush();
+      final f = File(logPathFor(await AppPaths.supportDir()));
+      await f.writeAsString(
+          '--- лог обрезан по достижении ${_maxLogBytes ~/ 1024} КБ ---\n');
+    } catch (_) {
+    } finally {
+      _rotating = false;
+    }
+  }
+
   static Future<IOSink?> _openLog() async {
     try {
       final f = File(logPathFor(await AppPaths.supportDir()));
@@ -148,10 +187,27 @@ class TunHelper {
     }
   }
 
+  /// Сколько байт уже записано в текущий файл лога.
+  ///
+  /// ⚠️ Ротация «при открытии» одна не спасает: сессия TUN живёт часами, а на
+  /// уровне `debug` sing-box пишет каждое соединение и каждый DNS-запрос — файл
+  /// наблюдался размером 758 МБ, и отчёт поддержки, читавший его целиком,
+  /// подвешивал приложение. Считаем объём на лету и обрезаем файл, не
+  /// дожидаясь следующего запуска.
+  static int _logBytes = 0;
+  static bool _rotating = false;
+
   static void _write(IOSink? log, String text, {bool raw = false}) {
     if (log == null) return;
     try {
-      log.write(raw ? text : '[${DateTime.now().toIso8601String()}] $text\n');
+      final line = raw ? text : '[${DateTime.now().toIso8601String()}] $text\n';
+      _logBytes += line.length;
+      if (_logBytes > _maxLogBytes && !_rotating) {
+        _rotating = true;
+        _logBytes = 0;
+        unawaited(_rotateLog(log));
+      }
+      log.write(line);
     } catch (_) {}
   }
 
