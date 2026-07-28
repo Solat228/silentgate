@@ -390,7 +390,11 @@ class _AboutSection extends StatelessWidget {
                 ListTile(
                   leading: const Icon(Icons.workspaces_outline),
                   title: Text(l.aboutThirdPartyTitle),
-                  subtitle: Text(l.aboutThirdPartySub),
+                  // На Android ядра ВСТРОЕНЫ в APK — прежний текст про
+                  // «отдельные процессы» там просто неверен.
+                  subtitle: Text(Platform.isAndroid
+                      ? l.aboutThirdPartySubEmbedded
+                      : l.aboutThirdPartySub),
                   trailing: const Icon(Icons.chevron_right, size: 18),
                   onTap: () => _showThirdParty(context),
                 ),
@@ -709,8 +713,13 @@ class _SupportSection extends StatelessWidget {
   }
 }
 
-/// Список стороннего кода в поставке. Тексты лицензий кладутся рядом с
-/// приложением в папку `licenses` (см. build-exe.bat и THIRD-PARTY.md).
+/// Список стороннего кода в поставке.
+///
+/// ⚠️ Тексты лицензий ЕДУТ В САМОМ ПРИЛОЖЕНИИ (`assets/licenses/`), а не
+/// «лежат рядом в папке licenses»: у APK такой папки нет. На Android ядра
+/// встроены внутрь (`libcores.so`), и sing-box под GPL-3.0 — передавать текст
+/// лицензии вместе с бинарником обязательно. Поэтому диалог показывает не
+/// только перечисление, но и сами тексты.
 void _showThirdParty(BuildContext context) {
   final l = AppLocalizations.of(context);
   showDialog<void>(
@@ -725,11 +734,59 @@ void _showThirdParty(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             children: [
               SelectableText(
-                l.thirdPartyBody,
+                Platform.isAndroid ? l.thirdPartyBodyEmbedded : l.thirdPartyBody,
                 style: const TextStyle(fontSize: 13),
               ),
+              const SizedBox(height: 12),
+              for (final e in const {
+                'NOTICE': 'assets/licenses/NOTICE.txt',
+                'GPL-3.0': 'assets/licenses/GPL-3.0.txt',
+                'MPL-2.0': 'assets/licenses/MPL-2.0.txt',
+              }.entries)
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.description_outlined, size: 18),
+                    label: Text(e.key),
+                    onPressed: () => _showLicenseText(context, e.key, e.value),
+                  ),
+                ),
             ],
           ),
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx), child: Text(l.commonClose)),
+      ],
+    ),
+  );
+}
+
+/// Полный текст лицензии из ассетов. Читается по требованию: GPL-3.0 — 34 КБ,
+/// держать это в памяти постоянно незачем.
+void _showLicenseText(BuildContext context, String title, String asset) {
+  final l = AppLocalizations.of(context);
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(title),
+      content: SizedBox(
+        width: 520,
+        height: 420,
+        child: FutureBuilder<String>(
+          future: rootBundle.loadString(asset),
+          builder: (_, snap) {
+            if (snap.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            return SingleChildScrollView(
+              child: SelectableText(
+                snap.data ?? '',
+                style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+              ),
+            );
+          },
         ),
       ),
       actions: [

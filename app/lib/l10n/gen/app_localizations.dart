@@ -570,6 +570,18 @@ abstract class AppLocalizations {
   /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — запускаются отдельными процессами'**
   String get aboutThirdPartySub;
 
+  /// No description provided for @aboutThirdPartySubEmbedded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) — встроены в приложение'**
+  String get aboutThirdPartySubEmbedded;
+
+  /// No description provided for @thirdPartyBodyEmbedded.
+  ///
+  /// In ru, this message translates to:
+  /// **'На Android ядра ВСТРОЕНЫ в приложение (нативная библиотека внутри APK).\n\n• sing-box — GPL-3.0. Библиотека слинкована с приложением, поэтому производные обязаны оставаться под GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nИсходный код клиента: https://github.com/Solat228/silentgate\nПолные тексты лицензий — кнопками ниже.'**
+  String get thirdPartyBodyEmbedded;
+
   /// No description provided for @logsTitle.
   ///
   /// In ru, this message translates to:

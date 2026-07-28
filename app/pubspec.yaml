@@ -36,3 +36,8 @@ flutter:
   generate: true
   assets:
     - assets/tray_icon.ico
+    # ⚠️ Обязательное раскрытие, а не украшение. На Android ядра встроены В
+    # приложение (libcores.so внутри APK), а sing-box — GPL-3.0: текст лицензии
+    # обязан ехать вместе с бинарником. На Windows это закрывалось папкой
+    # `licenses` рядом с exe, у APK такой папки нет — значит только ассеты.
+    - assets/licenses/

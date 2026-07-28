@@ -256,6 +256,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — run as separate processes';
 
   @override
+  String get aboutThirdPartySubEmbedded =>
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) — built into the app';
+
+  @override
+  String get thirdPartyBodyEmbedded =>
+      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box — GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts — buttons below.';
+
+  @override
   String get logsTitle => 'Logs';
 
   @override
