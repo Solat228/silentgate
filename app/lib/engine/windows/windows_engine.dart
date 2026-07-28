@@ -187,6 +187,9 @@ class WindowsEngine extends VpnEngineBase {
           options: TunOptions.fromSettings(
             options.settings,
             serverIps: await resolveServerIps(servers),
+            // Снимаем ДО подъёма туннеля: после него системный резолвер уже
+            // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.
+            directDnsUpstream: await _systemDnsServer(),
           ),
           // Автоподбор стека/MTU может занять время — показываем, что происходит
           // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
@@ -351,6 +354,48 @@ class WindowsEngine extends VpnEngineBase {
 
   /// Конфиги ядер лежат рядом, но в разных файлах: TUN-инстанс sing-box пишет
   /// свой (`singbox_config.json`), поэтому прокси-конфиг — `singbox_proxy.json`.
+  /// DNS-сервер физического адаптера — резолвер для доменов «Прямо».
+  ///
+  /// Нужен явным адресом: транспорт `local` в sing-box на Windows означает
+  /// системный резолвер, а тот под поднятым TUN закольцовывается сам на себя,
+  /// и домен «Прямо» не резолвится вовсе (подтверждено живым тестом).
+  ///
+  /// Берём ПЕРВЫЙ адрес не-туннельного адаптера. Свой туннель узнаём по
+  /// собственным адресам (172.19.0.x / fdfe:dcba:9876::), а не по имени: имя
+  /// адаптера на Windows приходит не то — на этом уже обжигались в 0.8.3.
+  /// Не нашли — `null`, поведение остаётся прежним.
+  Future<String?> _systemDnsServer() async {
+    try {
+      final r = await Process.run('powershell', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        r'(Get-DnsClientServerAddress -AddressFamily IPv4 |'
+            r' Where-Object { $_.ServerAddresses.Count -gt 0 } |'
+            r' Select-Object -ExpandProperty ServerAddresses) -join ","',
+      ]).timeout(const Duration(seconds: 5));
+      final list = (r.stdout as String)
+          .split(',')
+          .map((e) => e.trim())
+          .where((e) => e.isNotEmpty)
+          .where((e) => InternetAddress.tryParse(e) != null)
+          // Отбрасываем адреса самого туннеля и заглушки.
+          .where((e) => !e.startsWith('172.19.0.'))
+          .where((e) => e != '0.0.0.0' && e != '127.0.0.1')
+          .toList();
+      if (list.isEmpty) {
+        AppLog.w('DNS физического адаптера не найден — домены «Прямо» '
+            'будут резолвиться системным резолвером');
+        return null;
+      }
+      AppLog.i('Резолвер для «Прямо»: ${list.first}');
+      return list.first;
+    } catch (e) {
+      AppLog.w('Не удалось определить DNS адаптера: $e');
+      return null;
+    }
+  }
+
   Future<String> _writeConfigJson(String json, {bool singbox = false}) async {
     final dir = await AppPaths.supportDir();
     final name = singbox ? 'singbox_proxy.json' : 'xray_config.json';

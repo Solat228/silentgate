@@ -50,6 +50,19 @@ class TunOptions {
   /// подписки и пинг уходят в собственный VPN (петля и ложные цифры).
   final String selfPackage;
 
+  /// Резолвер для доменов «Прямо» — ЯВНЫМ адресом (обычно DNS физического
+  /// адаптера, снятый до подъёма туннеля).
+  ///
+  /// ⚠️ Почему нельзя оставлять `address: "local"`. На Windows это
+  /// `getaddrinfo` → служба DNS-клиента → пакет уходит в TUN → попадает под
+  /// `hijack-dns` → снова приходит в `dns-local`. Домен «Прямо» не резолвится
+  /// вовсе: в логе `lookup <домен>: i/o timeout`, затем `name error`.
+  /// Подтверждено живым тестом: сайт «Туннель» открывался, «Блок» блокировался,
+  /// а «Прямо» — не открывался НИКАК. `detour: direct` тут не помогает:
+  /// транспорт `local` вообще не дозванивается через outbound.
+  /// Пусто → прежнее поведение (`local`).
+  final String? directDnsUpstream;
+
   const TunOptions({
     this.stack,
     this.mtu = 1500,
@@ -68,15 +81,18 @@ class TunOptions {
     this.noRealIp = false,
     this.platformTun = false,
     this.selfPackage = 'lol.silentgate',
+    this.directDnsUpstream,
   });
 
   factory TunOptions.fromSettings(
     AppSettings s, {
     List<String> serverIps = const [],
     bool android = false,
+    String? directDnsUpstream,
   }) {
     return TunOptions(
       platformTun: android,
+      directDnsUpstream: directDnsUpstream,
       stack: s.tunStack.singboxValue,
       mtu: s.tunMtu,
       strictRoute: s.tunStrictRoute,
@@ -97,6 +113,12 @@ class TunOptions {
   }
 
   /// Копия с другими стеком/MTU — для перебора в автоподборе.
+  ///
+  /// ⚠️ Любое новое поле обязано попасть сюда. Автоподбор стека/MTU — это
+  /// ДЕФОЛТ (`tunStack: auto`), и он пересоздаёт опции на каждой комбинации:
+  /// забытое поле молча исчезает именно у большинства пользователей.
+  /// Так уже терялись `platformTun` и `selfPackage` — на Android это ломало
+  /// весь платформенный туннель при первом же переборе.
   TunOptions copyWith({String? stack, int? mtu}) => TunOptions(
         stack: stack ?? this.stack,
         mtu: mtu ?? this.mtu,
@@ -113,6 +135,9 @@ class TunOptions {
         serverIps: serverIps,
         autotune: autotune,
         noRealIp: noRealIp,
+        platformTun: platformTun,
+        selfPackage: selfPackage,
+        directDnsUpstream: directDnsUpstream,
       );
 }
 
@@ -151,12 +176,19 @@ class SingboxConfigBuilder {
 
     final rules = <Map<String, dynamic>>[
       {'action': 'sniff'},
-      if (o.dnsHijack && o.dnsMode != DnsMode.system)
-        // Перехват UDP:53 — без него DNS уходит в final и «интернет пропадает»,
-        // если UDP до сервера не проксируется.
-        {'protocol': 'dns', 'action': 'hijack-dns'},
-      // Loop-protection (выше даже блокировки): сам VPN-сервер и процессы ядра
-      // ВСЕГДА мимо туннеля — их нельзя ни блокировать, ни заворачивать.
+      // ⚠️ ПОРЯДОК: loop-protection стоит ВЫШЕ перехвата DNS.
+      //
+      // Раньше `hijack-dns` был первым, и под него попадал в том числе DNS
+      // НАШИХ ЖЕ ядер. Отсюда два подтверждённых живым тестом отказа:
+      //  * прокси-ядро (hysteria2) не могло отрезолвить адрес своего сервера —
+      //    запрос уходил в туннель и возвращался в это же ядро (взаимный
+      //    дедлок: `lookup <сервер>: i/o timeout` в одном логе и
+      //    `dns: exchange failed … EOF` в другом, секунда в секунду);
+      //  * домен, помеченный «Прямо», не резолвился вовсе — `dns-local`
+      //    закольцовывался на системный резолвер через тот же перехват.
+      // Ценой этого DNS самих ядер идёт мимо туннеля — но именно это и значит
+      // «прямо», а системный DNS остальных приложений перехватывается как был.
+      //
       // 1-й эшелон: сам VPN-сервер.
       if (o.serverIps.isNotEmpty)
         _route({'ip_cidr': [for (final ip in o.serverIps) _asCidr(ip)]}, 'direct'),
@@ -167,6 +199,10 @@ class SingboxConfigBuilder {
         _route({
           'process_name': ['xray.exe', 'sing-box.exe', 'silentgate.exe'],
         }, 'direct'),
+      if (o.dnsHijack && o.dnsMode != DnsMode.system)
+        // Перехват UDP:53 — без него DNS уходит в final и «интернет пропадает»,
+        // если UDP до сервера не проксируется.
+        {'protocol': 'dns', 'action': 'hijack-dns'},
     ];
 
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
@@ -261,7 +297,16 @@ class SingboxConfigBuilder {
         'strategy': o.dnsStrategy.singboxValue,
         'detour': 'proxy',
       },
-      {'tag': 'dns-local', 'address': 'local', 'detour': 'direct'},
+      // Явный апстрим вместо `local`: см. TunOptions.directDnsUpstream —
+      // системный резолвер под TUN закольцовывается на самого себя, и домены
+      // «Прямо» не резолвятся вовсе.
+      {
+        'tag': 'dns-local',
+        'address': (o.directDnsUpstream ?? '').isNotEmpty
+            ? 'udp://${o.directDnsUpstream}'
+            : 'local',
+        'detour': 'direct',
+      },
     ];
 
     // Доменные правила ЗЕРКАЛЯТСЯ из маршрутов. Без них весь DNS уходил в

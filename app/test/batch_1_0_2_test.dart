@@ -319,6 +319,81 @@ void main() {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
+  // Живой тест в VM: сайт «Туннель» открывался, «Блок» блокировался, а «Прямо»
+  // не открывался ВООБЩЕ — `lookup ipinfo.io: i/o timeout` → `name error`.
+  // Причина: dns-local = address:'local' = системный резолвер Windows, чей
+  // запрос уходит в TUN и попадает под hijack-dns, возвращаясь к dns-local.
+  group('DNS для «Прямо» не закольцовывается на себя', () {
+    Map<String, dynamic> cfg({String? upstream, bool hijack = true}) =>
+        SingboxConfigBuilder(
+          options: TunOptions(
+            serverIps: const ['203.0.113.9'],
+            directDnsUpstream: upstream,
+            dnsHijack: hijack,
+          ),
+        ).buildMap(const SplitTunnelConfig(
+          mode: SplitMode.exceptSelected,
+          sites: [SiteRule('direct.example', action: AppAction.direct)],
+        ));
+
+    List<Map<String, dynamic>> servers(Map<String, dynamic> c) =>
+        ((c['dns'] as Map)['servers'] as List).cast<Map<String, dynamic>>();
+
+    test('явный апстрим попадает в dns-local', () {
+      final local =
+          servers(cfg(upstream: '192.0.2.53')).firstWhere((s) => s['tag'] == 'dns-local');
+      expect(local['address'], 'udp://192.0.2.53');
+      expect(local['detour'], 'direct');
+    });
+
+    test('без апстрима поведение прежнее', () {
+      final local = servers(cfg()).firstWhere((s) => s['tag'] == 'dns-local');
+      expect(local['address'], 'local');
+    });
+
+    test('loop-protection стоит ВЫШЕ перехвата DNS', () {
+      final r = rules(cfg(upstream: '192.0.2.53'));
+      final hijack = r.indexWhere((x) => x['action'] == 'hijack-dns');
+      final byIp = r.indexWhere((x) => x.containsKey('ip_cidr'));
+      final byProc = r.indexWhere((x) => x.containsKey('process_name'));
+
+      expect(hijack, greaterThanOrEqualTo(0));
+      expect(byIp, greaterThanOrEqualTo(0));
+      expect(byProc, greaterThanOrEqualTo(0));
+      expect(byIp, lessThan(hijack),
+          reason: 'иначе DNS прокси-ядра уходит в туннель и ядро ждёт само себя');
+      expect(byProc, lessThan(hijack),
+          reason: 'иначе резолвер для «Прямо» снова попадает под перехват');
+    });
+
+    test('при выключенном перехвате правил hijack-dns нет вовсе', () {
+      expect(rules(cfg(hijack: false)).any((x) => x['action'] == 'hijack-dns'),
+          isFalse);
+    });
+
+    // Автоподбор стека/MTU — ДЕФОЛТ, и он пересоздаёт опции на каждой
+    // комбинации. Поле, забытое в copyWith, молча исчезает у большинства.
+    test('copyWith не теряет ни одного поля', () {
+      const orig = TunOptions(
+        serverIps: ['203.0.113.9'],
+        directDnsUpstream: '192.0.2.53',
+        platformTun: true,
+        selfPackage: 'lol.silentgate.test',
+        noRealIp: true,
+      );
+      final copy = orig.copyWith(stack: orig.stack, mtu: orig.mtu);
+      expect(copy.directDnsUpstream, orig.directDnsUpstream);
+      expect(copy.platformTun, orig.platformTun);
+      expect(copy.selfPackage, orig.selfPackage);
+      expect(copy.noRealIp, orig.noRealIp);
+      // Самый надёжный страж: конфиг из копии совпадает с конфигом оригинала.
+      const split = SplitTunnelConfig(mode: SplitMode.exceptSelected);
+      expect(SingboxConfigBuilder(options: copy).buildJson(split),
+          SingboxConfigBuilder(options: orig).buildJson(split));
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
   // Неудачный опрос возвращал НОЛЬ, и движок принимал его за настоящий отсчёт:
   // счётчик «падал», следующая удачная выборка давала фальшивый всплеск
   // скорости, а AppState трактовал падение как перезапуск ядра и удваивал
