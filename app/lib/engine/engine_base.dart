@@ -473,6 +473,13 @@ abstract class VpnEngineBase implements VpnEngine {
   /// Внешний сигнал: сетевое окружение изменилось (Wi-Fi ↔ кабель, сон, новый IP).
   /// Туннель поверх старого адаптера уже мёртв, даже если процессы живы.
   @override
+  /// Умолчание: подхватывать нечего — туннель и интерфейс живут в одном
+  /// процессе. Переопределяет только Android, где `VpnService` переживает
+  /// смерть Activity (см. `VpnEngine.adoptRunningTunnel`).
+  @override
+  Future<void> adoptRunningTunnel() async {}
+
+  @override
   Future<void> onNetworkChanged() async {
     if (_session == null || _userStopped) return;
     if (!_status.isConnected) return;

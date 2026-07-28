@@ -17,6 +17,9 @@ import 'package:silentgate/state/app_state.dart';
 class _FakeEngine implements VpnEngine {
   @override
   Stream<VpnStatus> get statusStream => const Stream.empty();
+
+  @override
+  Future<void> adoptRunningTunnel() async {}
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
   @override

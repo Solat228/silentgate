@@ -144,8 +144,14 @@ class ProbeController extends ChangeNotifier {
     final head = twoPhase
         ? _verifyHead(settings)
         : (proxySingle ? method == PingMethod.proxyHead : false);
-    final icmp = icmpSingle ? createIcmpPinger() : null;
+    // ⚠️ ВНУТРИ try. Раньше строка стояла выше него, и на платформе без ICMP
+    // (Android — сырые сокеты без root недоступны) `createIcmpPinger()`
+    // бросал ДО входа в try: `finally` не отрабатывал, `_running` оставался
+    // `true` навсегда, и пинг больше не запускался до перезапуска приложения.
+    // В интерфейсе метод скрыт, но значение персистится и приезжает из чужого
+    // файла настроек — на Android этого достаточно, чтобы получить дефект.
     try {
+      final icmp = icmpSingle ? createIcmpPinger() : null;
       AppLog.i('Пинг: ${servers.length} серверов — '
           '${twoPhase ? "TCP + проверка ${head ? "HEAD" : "GET"}" : "метод ${method.name}"}');
 

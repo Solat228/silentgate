@@ -45,6 +45,30 @@ class AndroidEngine extends VpnEngineBase {
   /// подтверждение «сервис запущен» за неожиданное падение.
   bool _starting = false;
 
+  /// Подхватить туннель, поднятый ПРОШЛЫМ запуском интерфейса.
+  ///
+  /// ⚠️ На Android интерфейс и туннель живут врозь: `VpnService` переживает
+  /// смерть Activity, а состояние движка — нет. Без этой проверки приложение
+  /// после возврата показывало «Отключено» при РАБОТАЮЩЕМ VPN, и нажатие
+  /// Connect поднимало ВТОРОЙ сеанс поверх живого. Нативная сторона умела
+  /// отвечать на `isRunning` с самого начала — её просто никто не спрашивал.
+  ///
+  /// Сессии здесь нет (конфиг остался в умершем изоляте), поэтому честно
+  /// показываем «подключено», но без данных о сервере: пользователь видит
+  /// правду и может переподключиться сам.
+  @override
+  Future<void> adoptRunningTunnel() async {
+    try {
+      final running = await _channel.invokeMethod<bool>('isRunning') ?? false;
+      if (!running || status.isConnected) return;
+      AppLog.i('Подхвачен туннель, поднятый прошлым запуском интерфейса');
+      markConnected();
+      setStatus(VpnConnectionState.connected);
+    } catch (e) {
+      AppLog.w('Не удалось спросить состояние туннеля: $e');
+    }
+  }
+
   @override
   Future<void> startSession() async {
     final session = this.session;
