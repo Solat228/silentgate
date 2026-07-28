@@ -246,7 +246,11 @@ abstract class VpnEngineBase implements VpnEngine {
   /// заново из полей, и профиль панели терял свой balancer, а JSON-правка — смысл.
   /// [resolvedIps] — карта «хост сервера → адрес», полученная ДО подъёма TUN.
   /// Пустая карта = прежнее поведение бит-в-бит (в конфиг едет доменное имя).
-  ({String json, ProxyCore core}) configFor(
+  /// [full] — конфиг взят ЦЕЛИКОМ (панельный профиль «Авто» или правка
+  /// пользователя), а не собран из полей сервера. Наследникам это важно знать:
+  /// такой конфиг обязан примениться как есть, иначе теряются балансировщик,
+  /// `burstObservatory`, панельный RU-routing и сама правка.
+  ({String json, ProxyCore core, bool full}) configFor(
       VpnServer server, ConnectionOptions options,
       {Map<String, String> resolvedIps = const {}}) {
     final full = (server.rawJsonOverride ?? '').isNotEmpty
@@ -273,19 +277,21 @@ abstract class VpnEngineBase implements VpnEngine {
         // #5 — у панельного профиля обычно нет StatsService, поэтому трафик
         // показывался как 0. Дописываем api/stats, если их нет.
         final withStats = ensureXrayStats(norm.json, apiPort: ports.api);
-        return (json: withStats, core: ProxyCore.xray);
+        return (json: withStats, core: ProxyCore.xray, full: true);
       }
     }
     if (server.core == ProxyCore.singbox) {
       // hysteria2 — Xray такого не умеет, поднимаем sing-box.
       return (
         json: buildSingboxJson([server], resolvedIps: resolvedIps),
-        core: ProxyCore.singbox
+        core: ProxyCore.singbox,
+        full: false,
       );
     }
     return (
       json: configBuilder.buildJson(server, variant: options.variant),
       core: ProxyCore.xray,
+      full: false,
     );
   }
 

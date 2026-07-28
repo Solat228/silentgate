@@ -176,6 +176,10 @@ class TunOptions {
 ///   3. приватные адреса → direct.
 class SingboxConfigBuilder {
   final int xraySocksPort;
+
+  /// Порт локального http-прокси. На Android туннель поднимает его сам —
+  /// иначе сервис-чипы у Connect ходить некуда (см. inbound `probe-in`).
+  final int httpProxyPort;
   final TunOptions options;
 
   /// Готовый прокси-outbound вместо перехода в локальный SOCKS.
@@ -199,6 +203,7 @@ class SingboxConfigBuilder {
 
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
+    this.httpProxyPort = 10809,
     this.options = const TunOptions(),
     this.proxyOutbound,
     this.proxyOutboundGroup,
@@ -312,6 +317,22 @@ class SingboxConfigBuilder {
           // мимо.
           if (o.platformTun) ..._packageLists(split, o),
         },
+        // Локальный http-прокси на Android. Ядро здесь ОДНО и держит только
+        // TUN, поэтому порта 10809 в системе не было вовсе — а на него ходят
+        // сервис-чипы у кнопки Connect (`ProxyProbe`). Итог: сразу после
+        // успешного подключения пользователь видел три красных чипа при
+        // полностью рабочем VPN.
+        //
+        // Слушаем только петлю: наружу порт не выставляется. Трафик пробы
+        // уходит тем же путём, что и весь остальной, — значит чип показывает
+        // ФАКТИЧЕСКОЕ состояние канала, а не отдельную проверку.
+        if (o.platformTun && !o.blackhole)
+          {
+            'type': 'mixed',
+            'tag': 'probe-in',
+            'listen': '127.0.0.1',
+            'listen_port': httpProxyPort,
+          },
       ],
       'outbounds': [
         // Тег 'proxy' обязан сохраниться: на него ссылаются ВСЕ правила

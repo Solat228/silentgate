@@ -382,4 +382,31 @@ void main() {
       expect(black['mtu'], n['mtu']);
     });
   });
+
+  // ⚠️ Панельный профиль «Авто …» и правка из JSON-редактора МОЛЧА терялись:
+  // признаком «поднимать Xray» был протокол первого сервера, а не факт полного
+  // конфига. У панельного профиля protocol берётся с первого прокси-outbound-а
+  // и обычно равен vless, который sing-box умеет, — значит собранный базой
+  // конфиг выбрасывался, а в туннель встраивался ОДИН узел профиля.
+  group('Признак «полный конфиг» отличается от «протокол умеет sing-box»', () {
+    test('inbound для сервис-чипов есть — иначе они всегда красные', () {
+      final tun = (_androidConfig(_fixtures['vless']!)['inbounds'] as List)
+          .cast<Map<String, dynamic>>();
+      final probe = tun.firstWhere((i) => i['tag'] == 'probe-in');
+      expect(probe['type'], 'mixed');
+      expect(probe['listen'], '127.0.0.1',
+          reason: 'наружу порт выставлять нельзя');
+      expect(probe['listen_port'], 10809);
+    });
+
+    test('в туннеле-заглушке проб-инбаунда нет', () {
+      // Kill switch: слушать порт, из которого всё равно ничего не выйдет,
+      // незачем — и это лишняя поверхность.
+      final tun = (SingboxConfigBuilder(
+        options: const TunOptions(platformTun: true, blackhole: true),
+      ).buildMap(const SplitTunnelConfig())['inbounds'] as List)
+          .cast<Map<String, dynamic>>();
+      expect(tun.any((i) => i['tag'] == 'probe-in'), isFalse);
+    });
+  });
 }

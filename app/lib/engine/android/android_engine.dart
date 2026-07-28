@@ -103,19 +103,31 @@ class AndroidEngine extends VpnEngineBase {
       // (`windows_engine.dart:56`), Android — молча выбрасывал.
       final multi = session.servers.length > 1;
       final cfg = multi
-          ? (json: session.configJson, core: session.core)
+          ? (json: session.configJson, core: session.core, full: true)
           : configFor(session.servers.first, session.options,
               resolvedIps: resolvedIps);
-      // Балансировщик Xray умеет только Xray: при нескольких серверах ядро
-      // определяется сессией, а не протоколом первого сервера.
+      // ⚠️ Признак «поднимать Xray» — ФАКТ полного конфига, а не протокол
+      // первого сервера.
+      //
+      // Прежнее условие (`multi || !supports(first)`) отбрасывало панельный
+      // профиль «Авто …» и правку из JSON-редактора для ЛЮБОГО сервера, чей
+      // протокол умеет sing-box, — то есть практически для всех серверов
+      // Remnawave: у панельного профиля `protocol` берётся с первого
+      // прокси-outbound'а и обычно равен vless, а `supports('vless')` == true.
+      // Собранный базой конфиг молча выбрасывался, вместо него в туннель
+      // встраивался outbound ОДНОГО (первого) узла профиля. Подключение при
+      // этом успешно, трафик идёт через VPN — поэтому дефект и не бросался в
+      // глаза: молча пропадали балансировщик, `burstObservatory`, панельный
+      // RU-routing и сама правка пользователя.
       final viaXray = cfg.core == ProxyCore.xray &&
-          (multi || !SingboxOutboundFactory.supports(session.servers.first));
+          (cfg.full || !SingboxOutboundFactory.supports(session.servers.first));
 
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Когда справляется sing-box, лишний
       // переход не нужен, и outbound встраивается прямо в конфиг туннеля.
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
+        httpProxyPort: ports.http,
         options: TunOptions.fromSettings(
           session.options.settings,
           serverIps: serverIps,
@@ -134,10 +146,10 @@ class AndroidEngine extends VpnEngineBase {
         // При нескольких серверах на sing-box собранный базой конфиг уже
         // содержит `urltest` по всем узлам — встраивать outbound одного
         // сервера нельзя, это снова свело бы автовыбор к первому.
-        proxyOutboundGroup: (!viaXray && multi)
-            ? _outboundsOf(session.configJson)
+        proxyOutboundGroup: (!viaXray && cfg.full)
+            ? _outboundsOf(cfg.json)
             : null,
-        proxyOutbound: (viaXray || multi)
+        proxyOutbound: (viaXray || cfg.full)
             ? null
             : SingboxOutboundFactory.build(
                 session.servers.first,
