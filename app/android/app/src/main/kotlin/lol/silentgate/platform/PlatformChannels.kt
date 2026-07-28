@@ -5,6 +5,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -113,6 +115,48 @@ object PlatformChannels {
     }
 
     fun handleDevice(context: Context, method: String, result: MethodChannel.Result) {
+        when (method) {
+            // DNS ФИЗИЧЕСКОЙ сети — для доменов с правилом «Прямо».
+            //
+            // ⚠️ Без него ядро оставляет резолвер `local`, и такие домены не
+            // резолвятся ВООБЩЕ: проверено живым запуском — сайт «Туннель»
+            // открывался, «Блок» блокировался, а «Прямо» отвечал
+            // «No address associated with hostname». Ровно тот же дефект, что
+            // чинили на Windows: `local` уходит в системный резолвер, чей
+            // трафик возвращается в туннель.
+            //
+            // Берём сеть БЕЗ признака VPN, иначе получим адрес самого туннеля.
+            "directDns" -> result.success(directDns(context))
+            else -> handleDeviceRest(context, method, result)
+        }
+    }
+
+    private fun directDns(context: Context): String? = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.allNetworks
+            .asSequence()
+            .mapNotNull { net ->
+                val caps = cm.getNetworkCapabilities(net) ?: return@mapNotNull null
+                if (caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) return@mapNotNull null
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
+                    return@mapNotNull null
+                }
+                cm.getLinkProperties(net)?.dnsServers
+            }
+            .flatten()
+            // IPv4 предпочтительнее: адрес уходит в `udp://<addr>`, а
+            // link-local IPv6 там потребовал бы зону интерфейса.
+            .sortedBy { if (it is java.net.Inet4Address) 0 else 1 }
+            .firstOrNull { it.hostAddress?.isNotEmpty() == true }
+            ?.hostAddress
+            ?.substringBefore('%')
+    }.getOrNull()
+
+    private fun handleDeviceRest(
+        context: Context,
+        method: String,
+        result: MethodChannel.Result,
+    ) {
         when (method) {
             // ANDROID_ID: стабилен для пары «устройство + подпись приложения»,
             // но меняется при сбросе к заводским настройкам — для device-limit

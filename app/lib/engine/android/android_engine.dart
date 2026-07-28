@@ -119,6 +119,10 @@ class AndroidEngine extends VpnEngineBase {
           session.options.settings,
           serverIps: serverIps,
           android: true,
+          // Резолвер для «Прямо». Пусто → прежнее поведение (`local`), то
+          // есть домен не отрезолвится: лучше знать об этом из лога, чем
+          // молча получить «сайт не открывается».
+          directDnsUpstream: await _directDns(),
           // Ядро пишет свой лог САМО: перехватить его вывод здесь нечем —
           // это библиотека в нашем процессе, а redirectStderr ловит только
           // паники Go. Без этого «туннель поднят, трафика нет» не
@@ -252,6 +256,24 @@ class AndroidEngine extends VpnEngineBase {
       return list.isEmpty ? null : list;
     } catch (e) {
       AppLog.w('Не удалось разобрать конфиг автовыбора: $e');
+      return null;
+    }
+  }
+
+  /// DNS физической сети — для доменов с правилом «Прямо».
+  ///
+  /// ⚠️ Без него ядро оставляет транспорт `local`, и такие домены не
+  /// резолвятся ВООБЩЕ. Проверено живым запуском в эмуляторе: сайт «Туннель»
+  /// открывался, «Блок» блокировался, а «Прямо» отвечал «No address
+  /// associated with hostname». Тот же дефект чинили на Windows.
+  static Future<String?> _directDns() async {
+    try {
+      final dns = await const MethodChannel('lol.silentgate/device')
+          .invokeMethod<String>('directDns');
+      final v = (dns ?? '').trim();
+      return v.isEmpty ? null : v;
+    } catch (e) {
+      AppLog.w('DNS физической сети недоступен: $e');
       return null;
     }
   }
