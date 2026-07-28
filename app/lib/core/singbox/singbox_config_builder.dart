@@ -50,6 +50,17 @@ class TunOptions {
   /// подписки и пинг уходят в собственный VPN (петля и ложные цифры).
   final String selfPackage;
 
+  /// Файл, куда ядро пишет СВОЙ лог (`log.output`).
+  ///
+  /// ⚠️ Нужен на Android. Там ядро — библиотека в нашем же процессе, стандартный
+  /// вывод перехватить нечем: `Libbox.redirectStderr` ловит ТОЛЬКО паники Go, а
+  /// структурный лог sing-box туда не попадает. Живой запуск это подтвердил:
+  /// при уровне `debug` файл оставался нулевого размера, и причину «туннель
+  /// поднят, но трафика нет» посмотреть было негде.
+  /// На Windows не нужен: там ядро — отдельный процесс, и его stdout читает
+  /// `SingboxProcess`.
+  final String? logOutput;
+
   /// Резолвер для доменов «Прямо» — ЯВНЫМ адресом (обычно DNS физического
   /// адаптера, снятый до подъёма туннеля).
   ///
@@ -82,6 +93,7 @@ class TunOptions {
     this.platformTun = false,
     this.selfPackage = 'lol.silentgate',
     this.directDnsUpstream,
+    this.logOutput,
   });
 
   factory TunOptions.fromSettings(
@@ -89,10 +101,12 @@ class TunOptions {
     List<String> serverIps = const [],
     bool android = false,
     String? directDnsUpstream,
+    String? logOutput,
   }) {
     return TunOptions(
       platformTun: android,
       directDnsUpstream: directDnsUpstream,
+      logOutput: logOutput,
       stack: s.tunStack.singboxValue,
       mtu: s.tunMtu,
       strictRoute: s.tunStrictRoute,
@@ -138,6 +152,7 @@ class TunOptions {
         platformTun: platformTun,
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
+        logOutput: logOutput,
       );
 }
 
@@ -223,7 +238,11 @@ class SingboxConfigBuilder {
     _addAppRules(rules, split);
 
     final cfg = <String, dynamic>{
-      'log': {'level': o.logLevel, 'timestamp': true},
+      'log': {
+        'level': o.logLevel,
+        'timestamp': true,
+        if ((o.logOutput ?? '').isNotEmpty) 'output': o.logOutput,
+      },
       'inbounds': [
         {
           'type': 'tun',
@@ -237,6 +256,16 @@ class SingboxConfigBuilder {
             'strict_route': o.strictRoute,
             if (o.stack != null) 'stack': o.stack,
           },
+          // ⚠️ Стек указываем и на Android — он про ОБРАБОТКУ пакетов из
+          // дескриптора, а не про то, кто создал интерфейс.
+          //
+          // По умолчанию ядро берёт стек, который на Android пытается привязать
+          // форвардер к интерфейсу (`SO_BINDTODEVICE`), а это требует прав,
+          // которых у приложения нет. В логе: «bind forwarder to interface:
+          // operation not permitted», и TCP-соединения не форвардятся вовсе,
+          // хотя DNS (UDP) при этом работает. gVisor обрабатывает всё в
+          // пользовательском пространстве, привязка ему не нужна.
+          if (o.platformTun) 'stack': o.stack ?? 'gvisor',
           'address': [
             '172.19.0.1/30',
             if (o.ipv6) 'fdfe:dcba:9876::1/126',

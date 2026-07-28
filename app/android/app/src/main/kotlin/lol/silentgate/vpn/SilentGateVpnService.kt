@@ -445,7 +445,27 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 index = iface.index
                 mtu = runCatching { iface.mtu }.getOrDefault(1500)
                 addresses = StringArray(iface.interfaceAddresses.map { it.cidr() })
-                flags = 0
+                // ⚠️ Здесь стоял `flags = 0`, и это ломало ВЕСЬ исходящий трафик.
+                //
+                // Поле читает Go как `net.Flags`, где нулевое значение означает
+                // «интерфейс административно выключен». sing-box отбирает
+                // интерфейсы по флагу up, не находил ни одного и отвечал на
+                // каждое соединение:
+                //   dial TCP connection: no available network interface
+                // Снаружи: туннель поднят, маршруты верные, а наружу не уходит
+                // ничего — даже DNS. Поймано живым запуском в эмуляторе, статикой
+                // не видно: ошибка появляется только когда ядро реально дозванивается.
+                //
+                // Значения битов — из net.Flags: up=1, broadcast=2, loopback=4,
+                // pointToPoint=8, multicast=16, running=32.
+                flags = runCatching {
+                    var f = 0
+                    if (iface.isUp) f = f or 1 or 32
+                    if (iface.isLoopback) f = f or 4
+                    if (iface.isPointToPoint) f = f or 8
+                    if (iface.supportsMulticast()) f = f or 16
+                    f
+                }.getOrDefault(1 or 32)
                 type = when {
                     activeCaps == null -> Libbox.InterfaceTypeOther
                     activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI

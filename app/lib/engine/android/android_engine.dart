@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/app_paths.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../engine_base.dart';
@@ -79,6 +81,12 @@ class AndroidEngine extends VpnEngineBase {
           session.options.settings,
           serverIps: serverIps,
           android: true,
+          // Ядро пишет свой лог САМО: перехватить его вывод здесь нечем —
+          // это библиотека в нашем процессе, а redirectStderr ловит только
+          // паники Go. Без этого «туннель поднят, трафика нет» не
+          // диагностируется вообще.
+          logOutput: '${(await AppPaths.supportDir()).path}'
+              '${Platform.pathSeparator}singbox.log',
         ),
         proxyOutbound: viaXray
             ? null
