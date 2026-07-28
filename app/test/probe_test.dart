@@ -824,6 +824,32 @@ void main() {
       expect(dns.indexOf(ruleFor('ads.example')), 0);
     });
 
+    // Правило с портом в DNS-зеркало попадать НЕ должно: резолв идёт до выбора
+    // порта, и «блок example.com:8443» убил бы резолв ВСЕГО домена.
+    test('DNS-зеркало игнорирует правила с портом', () {
+      final cfg = SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
+        mode: SplitMode.exceptSelected,
+        sites: [
+          SiteRule('example.com', port: 8443, action: AppAction.block),
+          SiteRule('shop.ru', port: 443, action: AppAction.direct),
+        ],
+      ));
+      final dns = (cfg['dns'] as Map)['rules'] as List;
+      for (final r in dns.cast<Map<String, dynamic>>()) {
+        final d = r['domain_suffix'] as List?;
+        expect(d?.contains('example.com'), isNot(isTrue),
+            reason: 'блок одного порта не должен убивать резолв всего домена');
+        expect(d?.contains('shop.ru'), isNot(isTrue));
+      }
+      // При этом МАРШРУТ по порту остаётся точным.
+      expect(
+          rules(cfg).any((x) =>
+              (x['domain_suffix'] as List?)?.contains('example.com') == true &&
+              (x['port'] as List?)?.contains(8443) == true),
+          isTrue);
+    });
+
+
     test('миграция: старые apps/domains без action, действие из режима', () {
       final cfg = SplitTunnelConfig.fromJson({
         'mode': 'exceptSelected',

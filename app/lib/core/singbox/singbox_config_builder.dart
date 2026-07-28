@@ -300,16 +300,24 @@ class SingboxConfigBuilder {
   }
 
   /// DNS-правила для сайтов с действием [action]: домены резолвит [server]
-  /// (null → `action: reject`, домен не резолвится вовсе). Порт в DNS-правилах
-  /// не участвует — резолв идёт до выбора порта.
+  /// (null → `action: reject`, домен не резолвится вовсе).
+  ///
+  /// ⚠️ Правила С ПОРТОМ в зеркало НЕ попадают. Резолв идёт ДО выбора порта, а
+  /// `domain_suffix` в DNS-правиле про порт ничего не знает — правило вида
+  /// «блокировать example.com:8443» убило бы резолв ВСЕГО домена, хотя маршрут
+  /// блокирует только один порт (то же и для «Прямо»: резолв всего домена
+  /// уехал бы к локальному резолверу). Маршрутизация таких правил по-прежнему
+  /// точная, страдает только зеркалирование — и это верный размен.
   List<Map<String, dynamic>> _dnsSiteRules(
       SplitTunnelConfig split, AppAction action, String? server,
       {bool? allowRealIp}) {
-    var matched = split.sites.where((s) => s.action == action);
+    var matched = split.sites.where((s) => s.action == action && s.port == null);
     if (allowRealIp != null && options.noRealIp) {
       matched = matched.where((s) => s.allowRealIp == allowRealIp);
     }
-    final domains = matched.map((s) => s.domain).toSet().toList();
+    // Пустой домен свалил бы весь конфиг: ядро отвергает его целиком.
+    final domains =
+        matched.map((s) => s.domain.trim()).where((d) => d.isNotEmpty).toSet().toList();
     if (domains.isEmpty) return const [];
     return [
       {
@@ -367,14 +375,26 @@ class SingboxConfigBuilder {
     // «Прямо» при включённом noRealIp расходится надвое: правила с поднятой
     // галочкой «разрешить реальный IP» идут действительно напрямую (пользователь
     // задал их явно), остальные возвращаются под защиту — через VPN.
+    //
+    // ⚠️ ИНВАРИАНТ: ВСЕ доменные правила стоят выше ВСЕХ правил приложений
+    // (#3.5) — правило сайта конкретнее, чем «всё приложение целиком», а
+    // sing-box берёт ПЕРВОЕ совпадение. Разделение «Прямо» надвое обязано его
+    // сохранять: если дописать «возвращённые под защиту» в хвост, такой сайт
+    // проиграет любому приложению с действием «Прямо» и уйдёт под реальным IP —
+    // ровно то, от чего пользователь защищался, снимая галочку.
+    // Внутри каждой группы порядок безразличен: наборы правил не пересекаются
+    // (фильтр по allowRealIp разводит их по разным подмножествам).
     _addSiteRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
-    _addSiteRule(rules, split, AppAction.tunnel, 'proxy');
-    _addActionRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
-    _addActionRule(rules, split, AppAction.tunnel, 'proxy');
     if (options.noRealIp) {
       _addSiteRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
+    }
+    _addSiteRule(rules, split, AppAction.tunnel, 'proxy');
+
+    _addActionRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
+    if (options.noRealIp) {
       _addActionRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
     }
+    _addActionRule(rules, split, AppAction.tunnel, 'proxy');
   }
 
   /// Домены с действием [action]. Сайты без порта — одним правилом; сайты с

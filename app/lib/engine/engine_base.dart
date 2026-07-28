@@ -300,7 +300,23 @@ abstract class VpnEngineBase implements VpnEngine {
     // миллисекунду, backoff не выдерживался вовсе, и первый же случайный сбой
     // навсегда исчерпывал лимит. Пока запланированная попытка не отработала,
     // новые события считаем тем же самым обрывом.
-    if (_retryTimer?.isActive ?? false) return true;
+    //
+    // ⚠️ Флаг, а не только проверка таймера: ниже стоит `await teardownCore`, и
+    // на этом await управление уходит в цикл событий. Одной проверки таймера
+    // мало — второе событие успевало проскочить до того, как таймер вообще
+    // создан. Флаг ставится СИНХРОННО, до первого await.
+    if (_retryPending || (_retryTimer?.isActive ?? false)) return true;
+    _retryPending = true;
+    try {
+      return await _scheduleRetryLocked(reason, session);
+    } finally {
+      _retryPending = false;
+    }
+  }
+
+  bool _retryPending = false;
+
+  Future<bool> _scheduleRetryLocked(String reason, EngineSession session) async {
 
     if (_attempt >= maxAttempts) {
       AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
@@ -313,6 +329,7 @@ abstract class VpnEngineBase implements VpnEngine {
       final next = _fallbacks.removeAt(0);
       AppLog.w('Переключаюсь на запасной сервер: ${next.displayName}');
       await teardownCore(keepCapture: session.options.settings.killSwitch);
+      if (_userStopped) return false; // отключились, пока гасили ядро
       _attempt = 0;
       // Через тот же configFor: у запасного сервера может быть свой профиль
       // панели или JSON-правка, и собирать его «из полей» — значит их потерять.
@@ -321,9 +338,7 @@ abstract class VpnEngineBase implements VpnEngine {
       setStatus(VpnConnectionState.connecting,
           message: 'Пробую другой сервер: ${next.displayName}…');
       _retryTimer?.cancel();
-      _retryTimer = Timer(const Duration(seconds: 1), () async {
-        if (!_userStopped) await startSession();
-      });
+      _retryTimer = Timer(const Duration(seconds: 1), () => _runAttempt());
       return true;
     }
 
@@ -336,16 +351,39 @@ abstract class VpnEngineBase implements VpnEngine {
     // паузы трафик пошёл бы напрямую, мимо VPN.
     await teardownCore(keepCapture: session.options.settings.killSwitch);
 
+    // teardownCore идёт долго (остановка процесса до 3 с + снятие TUN), и за это
+    // время пользователь успевает нажать «Отключить». Без этой проверки мы
+    // возвращали статус в «Подключение…» и ставили таймер уже ПОСЛЕ отключения:
+    // пользователь навсегда оставался в «Подключение…», а повторный connectWith
+    // отсекался гвардом «уже подключаемся».
+    if (_userStopped) return false;
+
     setStatus(VpnConnectionState.connecting,
         message: 'Переподключение через ${delay.inSeconds} с '
             '(попытка $_attempt из $maxAttempts)…');
 
     _retryTimer?.cancel();
-    _retryTimer = Timer(delay, () async {
-      if (_userStopped) return;
-      await startSession();
-    });
+    _retryTimer = Timer(delay, () => _runAttempt());
     return true;
+  }
+
+  /// Выполнить запланированную попытку.
+  ///
+  /// ⚠️ Исключение внутри колбэка таймера ловить НЕКОМУ: запланированная попытка
+  /// была единственной, и любой сбой подъёма (занятый порт, отказ ядра, отвал
+  /// прав) навсегда оставлял движок в «Подключение…» без единого сообщения.
+  /// Перехватываем и планируем следующую попытку — лимит и backoff при этом
+  /// продолжают работать, а при их исчерпании пользователь увидит ошибку.
+  Future<void> _runAttempt() async {
+    if (_userStopped) return;
+    try {
+      await startSession();
+    } catch (e) {
+      AppLog.e('Попытка восстановления не удалась: $e');
+      if (!await scheduleRetry('ошибка восстановления')) {
+        setStatus(VpnConnectionState.error, message: '$e');
+      }
+    }
   }
 
   /// Сколько попыток восстановления израсходовано на текущем сервере.

@@ -213,6 +213,19 @@ void main() {
       expect(scheduled, VpnEngineBase.maxAttempts);
     });
 
+    // «Отключить» во время долгого teardownCore не должно воскрешать статус:
+    // раньше scheduleRetry дописывал connecting и ставил таймер уже ПОСЛЕ
+    // отключения — пользователь навсегда оставался в «Подключение…», а повторный
+    // connectWith отсекался гвардом «уже подключаемся».
+    test('отключение во время гашения ядра отменяет попытку', () async {
+      final e = _FakeEngine()..succeedOnStart = false;
+      await e.connectWith('{}',
+          ConnectionOptions(settings: _settings()), [_server('a')]);
+      await e.disconnect();
+      expect(await e.scheduleRetry('обрыв'), isFalse,
+          reason: 'после «Отключить» попытки не планируются');
+    });
+
     test('backoff — 800мс/3с/8с/20с, дальше держится на 20с', () {
       // Значения важны: первая пауза короткая, потому что при kill switch
       // трафик всё это время заблокирован.

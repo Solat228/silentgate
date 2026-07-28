@@ -39,6 +39,17 @@ class ServiceChecksRow extends StatefulWidget {
 }
 
 class _ServiceChecksRowState extends State<ServiceChecksRow> {
+  /// Контроллер запоминаем заранее: в [dispose] обращаться к `context.read`
+  /// уже НЕЛЬЗЯ — дерево разбирается, и поиск провайдера кидает исключение
+  /// (падало на каждое «Отключить», а сброс результатов не отрабатывал).
+  ServiceCheckController? _ctrl;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ctrl = context.read<ServiceCheckController>();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -63,7 +74,7 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
   /// Повторные вызовы (перестроение виджета) контроллер отсекает сам.
   void _bindAndAutoCheck() {
     if (!mounted) return;
-    final ctrl = context.read<ServiceCheckController>();
+    final ctrl = _ctrl ?? context.read<ServiceCheckController>();
     ctrl.bind(widget.epoch);
     unawaited(ctrl.autoCheckAll(widget.httpPort, ServiceChecksRow.services));
   }
@@ -74,8 +85,10 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
     // (иначе переподключение к ТОМУ ЖЕ серверу или второй сеанс «Авто» показал бы
     // прежние чипы: epoch совпал бы). Контроллер корневой — живёт всё время; reset
     // откладываем на пост-кадр, чтобы не дёргать notifyListeners во время teardown.
-    final ctrl = context.read<ServiceCheckController>();
-    WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.reset());
+    final ctrl = _ctrl;
+    if (ctrl != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => ctrl.reset());
+    }
     super.dispose();
   }
 

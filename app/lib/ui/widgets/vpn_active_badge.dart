@@ -12,29 +12,50 @@ import '../../state/app_state.dart';
 class NavDepthObserver extends NavigatorObserver {
   static final depth = ValueNotifier<int>(0);
 
-  void _set(int d) {
-    // Уведомление во время построения кадра роняет дерево: навигация приходит
-    // как раз в момент build родителя.
-    WidgetsBinding.instance.addPostFrameCallback((_) => depth.value = d);
-  }
+  /// ⚠️ ЕДИНСТВЕННЫЙ экземпляр. `MaterialApp` пересобирается на каждую смену
+  /// темы/языка/настроек, и `navigatorObservers: [NavDepthObserver()]` создавал
+  /// бы нового наблюдателя с нулевым счётчиком: прежний успел бы досчитать
+  /// pop'ы, которых новый не видел, и глубина уходила в минус — плашка
+  /// пропадала навсегда либо появлялась на главном экране.
+  static final instance = NavDepthObserver._();
+  NavDepthObserver._();
 
   int _current = 0;
 
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      _set(++_current);
+  /// Считаем только полноэкранные маршруты. Диалоги, всплывающие меню и
+  /// нижние листы — тоже маршруты, но экран под ними не меняется: без этого
+  /// фильтра плашка вылезала поверх обычного диалога на главном экране.
+  bool _counts(Route<dynamic>? route) => route is PageRoute;
+
+  void _set(int d) {
+    _current = d < 0 ? 0 : d;
+    // Уведомление во время построения кадра роняет дерево: навигация приходит
+    // как раз в момент build родителя.
+    WidgetsBinding.instance
+        .addPostFrameCallback((_) => depth.value = _current);
+  }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      _set(--_current);
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_counts(route)) _set(_current + 1);
+  }
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
-      _set(--_current);
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_counts(route)) _set(_current - 1);
+  }
 
   @override
-  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
-      _set(_current);
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    if (_counts(route)) _set(_current - 1);
+  }
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    // Замена не меняет глубину, если обе стороны — полноэкранные маршруты.
+    final delta = (_counts(newRoute) ? 1 : 0) - (_counts(oldRoute) ? 1 : 0);
+    if (delta != 0) _set(_current + delta);
+  }
 }
 
 /// Ненавязчивая плашка «VPN активен» поверх любого вложенного экрана.

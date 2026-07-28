@@ -51,7 +51,9 @@ class SilentGateApp extends StatelessWidget {
       // Индикатор «VPN активен» живёт над всем деревом: так он работает на любом
       // экране, включая те, что появятся позже, и его не нужно вставлять в
       // каждый Scaffold по отдельности.
-      navigatorObservers: [NavDepthObserver()],
+      // Именно общий экземпляр: MaterialApp пересобирается на смену темы и
+      // языка, а новый наблюдатель начал бы счёт с нуля и потерял глубину.
+      navigatorObservers: [NavDepthObserver.instance],
       builder: (context, child) =>
           VpnActiveBadge(child: child ?? const SizedBox.shrink()),
       home: const HomeScreen(),
