@@ -57,12 +57,18 @@ class AndroidEngine extends VpnEngineBase {
       // Ядро выбирается ровно так же, как на Windows (configFor в базе):
       // полный конфиг (правка пользователя или панельный профиль «Авто») —
       // всегда Xray; обычный сервер sing-box поднимает сам.
-      final cfg = configFor(session.servers.first, session.options);
+      // Резолв — ДО сборки конфига: адрес нужен и правилу «мимо туннеля»
+      // (ip_cidr), и самому outbound'у. С доменным именем ядро пошло бы за
+      // адресом уже из-под поднятого туннеля.
+      final hosts = await resolveServerHosts(session.servers);
+      if (aborted()) return;
+      final serverIps = hosts.values.expand((e) => e).toSet().toList();
+      final resolvedIps = VpnEngineBase.pickOneIpPerHost(hosts);
+
+      final cfg = configFor(session.servers.first, session.options,
+          resolvedIps: resolvedIps);
       final viaXray = cfg.core == ProxyCore.xray &&
           !SingboxOutboundFactory.supports(session.servers.first);
-
-      final serverIps = await resolveServerIps(session.servers);
-      if (aborted()) return;
 
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Когда справляется sing-box, лишний
@@ -76,7 +82,11 @@ class AndroidEngine extends VpnEngineBase {
         ),
         proxyOutbound: viaXray
             ? null
-            : SingboxOutboundFactory.build(session.servers.first),
+            : SingboxOutboundFactory.build(
+                session.servers.first,
+                resolvedIp:
+                    resolvedIps[session.servers.first.address.trim()],
+              ),
       ).buildJson(session.options.split);
 
       if (aborted()) return;

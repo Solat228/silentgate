@@ -155,13 +155,76 @@ abstract class VpnEngineBase implements VpnEngine {
 
   /// Конфиг sing-box-прокси строится на ТЕХ ЖЕ портах, что и Xray: остальной
   /// код (захват трафика, проверка занятости) не должен знать, кто внизу.
-  String buildSingboxJson(List<VpnServer> servers) {
+  String buildSingboxJson(List<VpnServer> servers,
+      {Map<String, String> resolvedIps = const {}}) {
     singboxApiSecret = _newApiSecret();
     return SingboxProxyConfigBuilder(
       ports: SingboxProxyPorts(
           socks: ports.socks, http: ports.http, api: ports.api),
       apiSecret: singboxApiSecret,
-    ).buildJson(servers);
+    ).buildJson(servers, resolvedIps: resolvedIps);
+  }
+
+  /// Последний УСПЕШНЫЙ резолв: хост → адреса.
+  ///
+  /// Нужен, потому что резолв может не удаться ровно тогда, когда он важнее
+  /// всего — при переподключении с уже поднятым туннелем. Пустой результат
+  /// вернул бы в конфиг доменное имя, то есть ровно ту ситуацию, от которой
+  /// подстановка IP и защищает.
+  final Map<String, List<String>> _resolveCache = {};
+
+  /// Резолв адресов серверов: хост → список адресов.
+  ///
+  /// Отдельно от [resolveServerIps], потому что нужны ДВА разных результата:
+  /// плоский список всех адресов (для правила `ip_cidr` «мимо туннеля») и
+  /// соответствие «домен → адрес» (для подстановки в outbound).
+  Future<Map<String, List<String>>> resolveServerHosts(
+      List<VpnServer> servers) async {
+    final out = <String, List<String>>{};
+    for (final s in servers) {
+      final host = s.address.trim();
+      if (host.isEmpty || out.containsKey(host)) continue;
+      final parsed = InternetAddress.tryParse(host);
+      if (parsed != null) {
+        out[host] = [parsed.address];
+        continue;
+      }
+      try {
+        final found = await InternetAddress.lookup(host)
+            .timeout(const Duration(seconds: 5));
+        final ips = found.map((a) => a.address).toList();
+        if (ips.isNotEmpty) {
+          out[host] = ips;
+          _resolveCache[host] = ips;
+        }
+      } catch (e) {
+        // Молчать здесь было нельзя: провал резолва стоит защиты от петли, а в
+        // логе не оставалось ни строчки — причину «интернет пропал» искали
+        // вслепую.
+        final cached = _resolveCache[host];
+        if (cached != null) {
+          out[host] = cached;
+          AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес');
+        } else {
+          AppLog.w('Не удалось отрезолвить $host: $e');
+        }
+      }
+    }
+    return out;
+  }
+
+  /// Один адрес на хост — для подстановки в поле `server` outbound'а.
+  ///
+  /// Выбор детерминирован: сначала IPv4 (стратегия по умолчанию `prefer_ipv4`),
+  /// иначе первый доступный. Случайный выбор здесь дал бы неповторимые баги.
+  static Map<String, String> pickOneIpPerHost(Map<String, List<String>> hosts) {
+    final out = <String, String>{};
+    hosts.forEach((host, ips) {
+      if (ips.isEmpty) return;
+      final v4 = ips.firstWhere((ip) => !ip.contains(':'), orElse: () => '');
+      out[host] = v4.isNotEmpty ? v4 : ips.first;
+    });
+    return out;
   }
 
   static String _newApiSecret() {
@@ -181,8 +244,11 @@ abstract class VpnEngineBase implements VpnEngine {
   ///
   /// Используется и при переходе на запасной сервер: раньше там конфиг собирался
   /// заново из полей, и профиль панели терял свой balancer, а JSON-правка — смысл.
+  /// [resolvedIps] — карта «хост сервера → адрес», полученная ДО подъёма TUN.
+  /// Пустая карта = прежнее поведение бит-в-бит (в конфиг едет доменное имя).
   ({String json, ProxyCore core}) configFor(
-      VpnServer server, ConnectionOptions options) {
+      VpnServer server, ConnectionOptions options,
+      {Map<String, String> resolvedIps = const {}}) {
     final full = (server.rawJsonOverride ?? '').isNotEmpty
         ? server.rawJsonOverride!
         : (server.rawPanelConfig ?? '');
@@ -212,7 +278,10 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     if (server.core == ProxyCore.singbox) {
       // hysteria2 — Xray такого не умеет, поднимаем sing-box.
-      return (json: buildSingboxJson([server]), core: ProxyCore.singbox);
+      return (
+        json: buildSingboxJson([server], resolvedIps: resolvedIps),
+        core: ProxyCore.singbox
+      );
     }
     return (
       json: configBuilder.buildJson(server, variant: options.variant),
@@ -225,7 +294,12 @@ abstract class VpnEngineBase implements VpnEngine {
   @override
   Future<void> connect(VpnServer server,
       {ConnectionOptions options = const ConnectionOptions()}) async {
-    final cfg = configFor(server, options);
+    // Резолвим ДО сборки конфига: с доменом в outbound'е ядро полезло бы за
+    // адресом уже из-под поднятого туннеля — и упёрлось бы в собственный
+    // перехват DNS (см. SingboxOutboundFactory.build).
+    final resolved =
+        pickOneIpPerHost(await resolveServerHosts([server]));
+    final cfg = configFor(server, options, resolvedIps: resolved);
     await connectWith(cfg.json, options, [server], core: cfg.core);
   }
 
@@ -242,7 +316,9 @@ abstract class VpnEngineBase implements VpnEngine {
           configBuilder.buildBalancerJson(xrayOnes), options, xrayOnes);
       return;
     }
-    await connectWith(buildSingboxJson(servers), options, servers,
+    final resolved = pickOneIpPerHost(await resolveServerHosts(servers));
+    await connectWith(
+        buildSingboxJson(servers, resolvedIps: resolved), options, servers,
         core: ProxyCore.singbox);
   }
 
@@ -262,25 +338,11 @@ abstract class VpnEngineBase implements VpnEngine {
   /// IP-адреса серверов — чтобы увести их мимо туннеля. Резолвим ДО его подъёма
   /// (обычным DNS): без этого исключения трафик самого ядра к серверу вернулся бы
   /// в туннель — петля, и сеть умирает целиком.
+  /// Плоская проекция [resolveServerHosts]: сам резолв, кэш последнего успеха и
+  /// запись в лог при провале живут там, чтобы не расходились две реализации.
   Future<List<String>> resolveServerIps(List<VpnServer> servers) async {
-    final ips = <String>{};
-    for (final s in servers) {
-      final host = s.address.trim();
-      if (host.isEmpty) continue;
-      final parsed = InternetAddress.tryParse(host);
-      if (parsed != null) {
-        ips.add(parsed.address);
-        continue;
-      }
-      try {
-        final found = await InternetAddress.lookup(host)
-            .timeout(const Duration(seconds: 5));
-        ips.addAll(found.map((a) => a.address));
-      } catch (_) {
-        // Не отвалились: остаются правило по процессам/пакетам и приватные адреса.
-      }
-    }
-    return ips.toList();
+    final hosts = await resolveServerHosts(servers);
+    return hosts.values.expand((e) => e).toSet().toList();
   }
 
   // ── Автовосстановление ─────────────────────────────────────────────────────
@@ -333,7 +395,10 @@ abstract class VpnEngineBase implements VpnEngine {
       _attempt = 0;
       // Через тот же configFor: у запасного сервера может быть свой профиль
       // панели или JSON-правка, и собирать его «из полей» — значит их потерять.
-      final cfg = configFor(next, session.options);
+      // Резолв обязателен и здесь: запасной сервер поднимается, когда туннель
+      // уже стоял, то есть в самой опасной для рантайм-резолва обстановке.
+      final cfg = configFor(next, session.options,
+          resolvedIps: pickOneIpPerHost(await resolveServerHosts([next])));
       _session = EngineSession(cfg.json, session.options, [next], cfg.core);
       setStatus(VpnConnectionState.connecting,
           message: 'Пробую другой сервер: ${next.displayName}…');

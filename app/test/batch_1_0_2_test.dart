@@ -1,12 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/platform/rotating_log.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
+import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
+import 'package:silentgate/core/singbox/singbox_proxy_config_builder.dart';
 import 'package:silentgate/core/update/app_update.dart';
 import 'package:silentgate/core/update/app_update_defaults.dart';
+import 'package:silentgate/engine/engine_base.dart';
 
 void main() {
   List<Map<String, dynamic>> rules(Map<String, dynamic> cfg) =>
@@ -188,6 +193,126 @@ void main() {
       final log = RotatingLog(p('e.log'));
       await log.write('в никуда');
       expect(await File(p('e.log')).exists(), isFalse);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Прокси-ядру с доменным именем приходится резолвить его в рантайме. В
+  // TUN-режиме этот запрос уходит от svchost.exe, попадает под hijack-dns (оно
+  // выше защиты от петли) и по dns.final возвращается в ЭТО ЖЕ ядро, которое
+  // ответа и ждёт. С подставленным IP резолвить нечего — петля невозможна.
+  group('Подстановка отрезолвленного IP в sing-box-outbound', () {
+    VpnServer hy2({String? sni, String address = 'node.example.com'}) =>
+        VpnServer(
+          remark: 'узел',
+          rawLink: 'hysteria2://pass@$address:443',
+          protocol: 'hysteria2',
+          address: address,
+          port: 443,
+          id: 'pass',
+          sni: sni,
+          alpn: 'h3',
+          network: 'quic',
+          security: 'tls',
+        );
+
+    test('server становится IP, а SNI остаётся доменом', () {
+      final out = SingboxOutboundFactory.build(hy2(), resolvedIp: '198.51.100.7');
+      expect(out['server'], '198.51.100.7');
+      expect((out['tls'] as Map)['server_name'], 'node.example.com',
+          reason: 'без домена в server_name сертификат не проверится, '
+              'а ядро отвергнет конфиг целиком');
+    });
+
+    test('явный SNI сильнее подстановки', () {
+      final out = SingboxOutboundFactory.build(hy2(sni: 'sni.example.net'),
+          resolvedIp: '198.51.100.7');
+      expect((out['tls'] as Map)['server_name'], 'sni.example.net');
+    });
+
+    test('без resolvedIp конфиг прежний бит-в-бит', () {
+      expect(SingboxOutboundFactory.build(hy2()),
+          SingboxOutboundFactory.build(hy2(), resolvedIp: null));
+      expect(SingboxOutboundFactory.build(hy2())['server'], 'node.example.com');
+    });
+
+    test('адрес уже IP: server_name из него НЕ делаем', () {
+      final out = SingboxOutboundFactory.build(hy2(address: '198.51.100.7'),
+          resolvedIp: '198.51.100.7');
+      expect(out['server'], '198.51.100.7');
+      expect((out['tls'] as Map).containsKey('server_name'), isFalse,
+          reason: 'IP в SNI — гарантированный отказ проверки сертификата');
+    });
+
+    test('порт-хоппинг переживает подстановку', () {
+      final s = VpnServer(
+        remark: 'хоппинг',
+        rawLink: 'hysteria2://pass@hop.example.com:443?mport=1000-2000',
+        protocol: 'hysteria2',
+        address: 'hop.example.com',
+        port: 443,
+        id: 'pass',
+        security: 'tls',
+        hopPorts: '1000-2000',
+      );
+      final out = SingboxOutboundFactory.build(s, resolvedIp: '198.51.100.8');
+      expect(out['server'], '198.51.100.8');
+      expect(out['server_ports'], isNotNull);
+      expect(out.containsKey('server_port'), isFalse,
+          reason: 'sing-box требует ЛИБО server_port, ЛИБО server_ports');
+    });
+
+    test('ws-транспорт: Host остаётся доменом', () {
+      final s = VpnServer(
+        remark: 'ws-узел',
+        rawLink: 'vless://uuid@cdn.example.com:443?type=ws',
+        protocol: 'vless',
+        address: 'cdn.example.com',
+        port: 443,
+        id: 'uuid',
+        network: 'ws',
+        security: 'tls',
+        path: '/ws',
+      );
+      final out = SingboxOutboundFactory.build(s, resolvedIp: '198.51.100.9');
+      expect(out['server'], '198.51.100.9');
+      final headers = ((out['transport'] as Map)['headers'] as Map?);
+      expect(headers?['Host'], 'cdn.example.com',
+          reason: 'без Host CDN вернёт 404 вместо апгрейда соединения');
+    });
+
+    // Дамп для проверки НАСТОЯЩИМ ядром:
+    //   engine/windows/bin/sing-box.exe check -c build/split-configs/hy2_*.json
+    // Ровно здесь проходит граница «починили» / «сломали»: при IP в `server` и
+    // пустом server_name ядро отвергает конфиг целиком, и пользователь увидел
+    // бы «Ядро завершилось при запуске» вместо работающего hysteria2.
+    test('конфиг прокси-ядра с подставленным IP выгружается для sing-box check',
+        () {
+      final dir = Directory('build/split-configs')..createSync(recursive: true);
+      for (final entry in {
+        'hy2_resolved': {'node.example.com': '198.51.100.7'},
+        'hy2_plain': <String, String>{},
+      }.entries) {
+        final json = const SingboxProxyConfigBuilder(apiSecret: 'testsecret')
+            .buildJson([hy2()], resolvedIps: entry.value);
+        File('${dir.path}/${entry.key}.json').writeAsStringSync(json);
+        expect(json, contains('hysteria2'));
+      }
+      final resolved = jsonDecode(
+              File('${dir.path}/hy2_resolved.json').readAsStringSync())
+          as Map<String, dynamic>;
+      final out = (resolved['outbounds'] as List).first as Map<String, dynamic>;
+      expect(out['server'], '198.51.100.7');
+      expect((out['tls'] as Map)['server_name'], 'node.example.com');
+    });
+
+    test('выбор адреса детерминирован: IPv4 предпочтительнее', () {
+      final picked = VpnEngineBase.pickOneIpPerHost({
+        'a.example.com': ['2001:db8::1', '198.51.100.10'],
+        'b.example.com': ['2001:db8::2'],
+      });
+      expect(picked['a.example.com'], '198.51.100.10');
+      expect(picked['b.example.com'], '2001:db8::2');
     });
   });
 

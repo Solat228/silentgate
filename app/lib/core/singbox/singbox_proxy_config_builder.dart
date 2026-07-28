@@ -41,10 +41,15 @@ class SingboxProxyConfigBuilder {
     this.apiSecret = '',
   });
 
-  String buildJson(List<VpnServer> servers) =>
-      const JsonEncoder.withIndent('  ').convert(buildMap(servers));
+  String buildJson(List<VpnServer> servers,
+          {Map<String, String> resolvedIps = const {}}) =>
+      const JsonEncoder.withIndent('  ')
+          .convert(buildMap(servers, resolvedIps: resolvedIps));
 
-  Map<String, dynamic> buildMap(List<VpnServer> servers) {
+  /// [resolvedIps] — «хост сервера → адрес», отрезолвленный ЗАРАНЕЕ. Пустая
+  /// карта означает прежнее поведение: в конфиг едет доменное имя.
+  Map<String, dynamic> buildMap(List<VpnServer> servers,
+      {Map<String, String> resolvedIps = const {}}) {
     if (servers.isEmpty) {
       throw ArgumentError('Нужен хотя бы один сервер');
     }
@@ -54,7 +59,11 @@ class SingboxProxyConfigBuilder {
     for (var i = 0; i < servers.length; i++) {
       // При единственном сервере он сразу и есть «proxy» — без лишней группы.
       final tag = servers.length == 1 ? 'proxy' : 'node-$i';
-      outbounds.add(SingboxOutboundFactory.build(servers[i], tag: tag));
+      outbounds.add(SingboxOutboundFactory.build(
+        servers[i],
+        tag: tag,
+        resolvedIp: resolvedIps[servers[i].address.trim()],
+      ));
       tags.add(tag);
     }
 
