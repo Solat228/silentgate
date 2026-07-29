@@ -232,7 +232,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = context.watch<SettingsController>().settings;
     // #6 — пинг применяет сохранённую вариацию сервера (fragment/fingerprint),
     // иначе серверы, работающие только с обходом, показывают «n/a».
-    context.read<ProbeController>().variantFor = state.variantFor;
+    final probe = context.read<ProbeController>();
+    probe.variantFor = state.variantFor;
+    // Там, где отдельный харнесс не поднять (Android — VpnService один),
+    // проверить hysteria2 и профили «Авто» можно только по ЖИВОМУ каналу:
+    // у них нет осмысленного TCP-адреса, а без второй фазы они оставались
+    // непроверенными навсегда. Честно это работает ровно для подключённого
+    // сервера — его и отдаём.
+    probe.liveProxyPort =
+        () => state.status.isConnected ? state.httpProxyPort : 0;
+    probe.activeServerKey = () => state.selectedServer?.key;
     // #2.2 — всё временное показываем ПОВЕРХ интерфейса: раньше эти сообщения
     // жили в компоновке и сдвигали большую кнопку Connect.
     _showTransientMessages(context, state, settings);

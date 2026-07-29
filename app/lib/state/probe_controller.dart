@@ -27,8 +27,20 @@ class ProbeController extends ChangeNotifier {
   bool _running = false;
   CancelToken? _cancel;
 
+  /// Порт ЖИВОГО соединения и ключ сервера, который сейчас поднят.
+  ///
+  /// Нужны там, где отдельный харнесс поднять нельзя (Android: VpnService в
+  /// приложении один). Через живой туннель честно проверяется РОВНО ОДИН
+  /// сервер — тот, что сейчас подключён; для остальных такая проба измеряла бы
+  /// чужой канал и давала одинаковые цифры всему списку, что хуже честного
+  /// «не проверен».
+  int Function()? liveProxyPort;
+  String? Function()? activeServerKey;
+
   ProbeController({
     ProbeHarness Function()? harnessFactory,
+    this.liveProxyPort,
+    this.activeServerKey,
   }) : _harnessFactory = harnessFactory ?? createProbeHarness;
 
   bool get running => _running;
@@ -227,16 +239,34 @@ class ProbeController extends ChangeNotifier {
       // Оставляем результат одной фазы вместо падения всего пинга: раньше
       // здесь вылетал UnsupportedError и обнулял проверку всех серверов.
       if (verify.isNotEmpty && !proxyProbeSupported) {
-        AppLog.i('Проба через прокси пропущена: харнесс недоступен на '
-            'этой платформе, результат — по TCP');
-        for (final s in noTcp) {
-          // Профили «Авто» и полные конфиги без пробы подтвердить нечем:
-          // TCP до одного узла из десятков ничего не значит.
-          _results[s.key] = PingResult(
-            outcome: PingOutcome.untested,
-            latencyMethod: settings.pingPrimary,
-          );
+        // Харнесса нет (Android). Но у ПОДКЛЮЧЁННОГО сервера канал уже поднят —
+        // через него проба честная и осмысленная. Именно так работают
+        // сервис-чипы под кнопкой Connect.
+        //
+        // ⚠️ Только для активного сервера. Через живой туннель идёт трафик
+        // ТЕКУЩЕГО узла, поэтому для остальных такая проба показала бы чужой
+        // канал — одинаковые цифры всему списку. Ложные данные хуже, чем
+        // честное «не проверен».
+        final livePort = liveProxyPort?.call() ?? 0;
+        final activeKey = activeServerKey?.call();
+        var probed = 0;
+        for (final s in verify) {
+          if (cancel.isCancelled) break;
+          if (livePort > 0 && activeKey != null && s.key == activeKey) {
+            await _applyVerify(s, livePort, settings,
+                head: head, forceProxy: true);
+            probed++;
+          } else if (noTcp.contains(s)) {
+            // Профили «Авто» и hysteria2 без пробы подтвердить нечем: TCP до
+            // одного узла из десятков ничего не значит, а у QUIC его и нет.
+            _results[s.key] = PingResult(
+              outcome: PingOutcome.untested,
+              latencyMethod: settings.pingPrimary,
+            );
+          }
         }
+        AppLog.i('Проба через прокси: харнесс недоступен, проверен по живому '
+            'соединению $probed из ${verify.length}');
         notifyListeners();
       } else if (verify.isNotEmpty && !cancel.isCancelled) {
         // Полный конфиг (правка/профиль «Авто …») — своим харнессом: у него свои

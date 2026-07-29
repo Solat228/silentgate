@@ -14,6 +14,7 @@ import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/core/update/app_update.dart';
 import 'package:silentgate/core/update/app_update_defaults.dart';
 import 'package:silentgate/engine/engine_base.dart';
+import 'package:silentgate/state/probe_controller.dart';
 import 'package:silentgate/engine/windows/singbox_stats.dart';
 import 'package:silentgate/engine/windows/xray_stats.dart';
 
@@ -593,6 +594,43 @@ void main() {
       // «invalid network mask for router: 96» — проверено xray run -test.
       expect(kPrivateNetworks.any((n) => n.startsWith('::ffff:')), isFalse);
       expect(kPrivateNetworks.any((n) => n.startsWith('64:ff9b:')), isFalse);
+    });
+  });
+
+  // ⚠️ На Android hysteria2 и профили «Авто» не пингуются ВООБЩЕ: TCP-адреса у
+  // них нет (QUIC / балансировщик), а вторая фаза требует харнесса, который там
+  // не поднять. Через живой туннель проверять можно — но ЧЕСТНО только текущий
+  // сервер: остальным такая проба показала бы чужой канал.
+  group('Пинг по живому каналу там, где харнесса нет', () {
+    VpnServer srv(String tag) => VpnServer(
+          protocol: 'hysteria2',
+          remark: tag,
+          address: '$tag.example',
+          port: 443,
+          id: 'pass',
+          security: 'tls',
+          rawLink: 'hysteria2://pass@$tag.example:443',
+        );
+
+    test('хуки отдают порт и ключ активного сервера', () {
+      final active = srv('a');
+      final c = ProbeController(
+        harnessFactory: () => throw StateError('харнесс не должен подниматься'),
+        liveProxyPort: () => 10809,
+        activeServerKey: () => active.key,
+      );
+      expect(c.liveProxyPort!(), 10809);
+      expect(c.activeServerKey!(), active.key);
+    });
+
+    test('без подключения порт нулевой — проверять нечем', () {
+      final c = ProbeController(
+        harnessFactory: () => throw StateError('харнесс не должен подниматься'),
+        liveProxyPort: () => 0,
+        activeServerKey: () => null,
+      );
+      expect(c.liveProxyPort!(), 0);
+      expect(c.activeServerKey!(), isNull);
     });
   });
 }
