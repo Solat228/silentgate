@@ -186,6 +186,7 @@ class WindowsEngine extends VpnEngineBase {
           xraySocksPort: ports.socks,
           options: TunOptions.fromSettings(
             options.settings,
+            blockPagePort: await startBlockPage(options),
             serverIps: await resolveServerIps(servers),
             // Снимаем ДО подъёма туннеля: после него системный резолвер уже
             // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.

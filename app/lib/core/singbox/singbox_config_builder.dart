@@ -126,8 +126,10 @@ class TunOptions {
     bool android = false,
     String? directDnsUpstream,
     String? logOutput,
+    int blockPagePort = 0,
   }) {
     return TunOptions(
+      blockPagePort: blockPagePort,
       platformTun: android,
       directDnsUpstream: directDnsUpstream,
       logOutput: logOutput,

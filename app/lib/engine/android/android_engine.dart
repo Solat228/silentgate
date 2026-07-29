@@ -143,6 +143,7 @@ class AndroidEngine extends VpnEngineBase {
           session.options.settings,
           serverIps: serverIps,
           android: true,
+          blockPagePort: await startBlockPage(session.options),
           // Резолвер для «Прямо». Пусто → прежнее поведение (`local`), то
           // есть домен не отрезолвится: лучше знать об этом из лога, чем
           // молча получить «сайт не открывается».

@@ -598,5 +598,29 @@
   "serverInfoVerifyInBrowser": "Verificar en el navegador",
   "tunDnsForAll": "DNS de todas las apps por la VPN",
   "infoDnsForAll": "Solo en el modo «Solo seleccionadas». ⚠️ Se aplica tras reconectar.",
-  "homeSettingsNeedReconnect": "Ajuste cambiado: reconéctate para aplicar"
+  "homeSettingsNeedReconnect": "Ajuste cambiado: reconéctate para aplicar",
+  "blockPageWindowTitle": "Bloqueado — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "Sitio bloqueado",
+  "blockPageBody": "{host} está bloqueado por una regla de túnel dividido en {app}.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "Puedes cambiar la regla: Ajustes → Túnel dividido → Sitios.",
+  "blockPageNote": "Esta página proviene de la propia aplicación, no es un error de red. El sitio no se abre porque tú mismo lo añadiste a la lista de bloqueo.",
+  "settingsBlockPage": "Página de aviso de bloqueo",
+  "settingsBlockPageSub": "En lugar de un error de conexión se abre una página que explica qué regla cerró el sitio. Solo funciona con http: una página https no se puede sustituir sin instalar nuestro propio certificado raíz en el sistema, y ese certificado permitiría leer todo tu tráfico cifrado."
 }

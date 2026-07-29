@@ -537,5 +537,29 @@
   "serverInfoVerifyInBrowser": "بررسی در مرورگر",
   "tunDnsForAll": "DNS همه برنامه‌ها از طریق VPN",
   "infoDnsForAll": "فقط در حالت «فقط انتخاب‌شده‌ها». ⚠️ پس از اتصال مجدد اعمال می‌شود.",
-  "homeSettingsNeedReconnect": "تنظیم تغییر کرد — برای اعمال دوباره وصل شوید"
+  "homeSettingsNeedReconnect": "تنظیم تغییر کرد — برای اعمال دوباره وصل شوید",
+  "blockPageWindowTitle": "مسدود شده — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "سایت مسدود است",
+  "blockPageBody": "نشانی {host} با قانون تونل تفکیکی در {app} مسدود شده است.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "می‌توانید قانون را تغییر دهید: تنظیمات ← تونل تفکیکی ← سایت‌ها.",
+  "blockPageNote": "این صفحه از خود برنامه است و خطای شبکه نیست. سایت باز نمی‌شود چون خودتان آن را به فهرست مسدودسازی افزوده‌اید.",
+  "settingsBlockPage": "صفحهٔ اطلاع‌رسانی مسدودسازی",
+  "settingsBlockPageSub": "به‌جای خطای اتصال، صفحه‌ای توضیح می‌دهد کدام قانون سایت را بسته است. فقط برای http کار می‌کند: صفحهٔ https را بدون نصب گواهی ریشهٔ خودمان در سیستم نمی‌توان جایگزین کرد، و آن گواهی امکان خواندن تمام ترافیک رمزگذاری‌شدهٔ شما را می‌دهد."
 }

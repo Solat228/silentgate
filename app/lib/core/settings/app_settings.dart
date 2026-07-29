@@ -191,6 +191,12 @@ class AppSettings {
   /// близкий адрес вместо адреса в стране выхода), но их домены и домены
   /// отмеченных приложений становятся видны провайдеру.
   final bool tunnelDnsForAll;
+
+  /// Показывать страницу «сайт заблокирован» вместо ошибки соединения.
+  ///
+  /// Работает только для plain http (см. [BlockPageServer]); у https заглушку
+  /// подменить нечем без своего корневого сертификата, и мы его не ставим.
+  final bool blockPageEnabled;
   final DnsStrategy dnsStrategy;
 
   /// Уровень лога sing-box (`%APPDATA%\SilentGate\singbox.log`).
@@ -302,6 +308,7 @@ class AppSettings {
     this.dnsCustomServer = '1.1.1.1',
     this.dnsHijack = true,
     this.tunnelDnsForAll = true,
+    this.blockPageEnabled = true,
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.singboxLogLevel = SingboxLogLevel.warn,
     this.autoReconnect = true,
@@ -359,6 +366,7 @@ class AppSettings {
     String? dnsCustomServer,
     bool? dnsHijack,
     bool? tunnelDnsForAll,
+    bool? blockPageEnabled,
     DnsStrategy? dnsStrategy,
     SingboxLogLevel? singboxLogLevel,
     bool? autoReconnect,
@@ -406,6 +414,7 @@ class AppSettings {
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
       dnsHijack: dnsHijack ?? this.dnsHijack,
       tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
+      blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
       singboxLogLevel: singboxLogLevel ?? this.singboxLogLevel,
       autoReconnect: autoReconnect ?? this.autoReconnect,
@@ -455,6 +464,7 @@ class AppSettings {
         'dnsCustomServer': dnsCustomServer,
         'dnsHijack': dnsHijack,
         'tunnelDnsForAll': tunnelDnsForAll,
+        'blockPageEnabled': blockPageEnabled,
         'dnsStrategy': dnsStrategy.name,
         'singboxLogLevel': singboxLogLevel.name,
         'autoReconnect': autoReconnect,
@@ -523,6 +533,14 @@ class AppSettings {
       autoReconnect: j['autoReconnect'] as bool? ?? defaults.autoReconnect,
       killSwitch: j['killSwitch'] as bool? ?? defaults.killSwitch,
       noRealIp: j['noRealIp'] as bool? ?? defaults.noRealIp,
+        // ⚠️ Оба поля обязаны ЧИТАТЬСЯ, а не только писаться: без строки здесь
+        // настройка молча возвращается к умолчанию при каждом запуске, а в
+        // файле при этом лежит выбор пользователя — расхождение, которое
+        // невозможно заметить со стороны интерфейса.
+        tunnelDnsForAll:
+            j['tunnelDnsForAll'] as bool? ?? defaults.tunnelDnsForAll,
+        blockPageEnabled:
+            j['blockPageEnabled'] as bool? ?? defaults.blockPageEnabled,
       // Миграция со старых ключей: смысл фаз изменился (сначала быстрый метод,
       // прокси — только если он молчит), поэтому переносим значения по смыслу.
       speedTestSize:
@@ -585,6 +603,7 @@ class AppSettings {
       dnsCustomServer != other.dnsCustomServer ||
       dnsHijack != other.dnsHijack ||
       tunnelDnsForAll != other.tunnelDnsForAll ||
+      blockPageEnabled != other.blockPageEnabled ||
       dnsStrategy != other.dnsStrategy ||
       singboxLogLevel != other.singboxLogLevel ||
       noRealIp != other.noRealIp ||

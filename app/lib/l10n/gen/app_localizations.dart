@@ -3341,6 +3341,48 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Настройка изменена — переподключитесь, чтобы применить'**
   String get homeSettingsNeedReconnect;
+
+  /// No description provided for @blockPageWindowTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заблокировано — {app}'**
+  String blockPageWindowTitle(String app);
+
+  /// No description provided for @blockPageHeading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт заблокирован'**
+  String get blockPageHeading;
+
+  /// No description provided for @blockPageBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес {host} заблокирован правилом раздельного туннелирования в {app}.'**
+  String blockPageBody(String host, String app);
+
+  /// No description provided for @blockPageHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правило можно изменить: Настройки → Раздельное туннелирование → Сайты.'**
+  String get blockPageHint;
+
+  /// No description provided for @blockPageNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это страница самого приложения, а не ошибка сети. Сайт не открывается потому, что вы сами добавили его в список блокировки.'**
+  String get blockPageNote;
+
+  /// No description provided for @settingsBlockPage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Страница-заглушка при блокировке'**
+  String get settingsBlockPage;
+
+  /// No description provided for @settingsBlockPageSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вместо ошибки соединения открывается страница с объяснением, каким правилом закрыт сайт. Работает только для http: у https подменить страницу нельзя без установки своего корневого сертификата в систему, а он позволил бы читать весь ваш защищённый трафик.'**
+  String get settingsBlockPageSub;
 }
 
 class _AppLocalizationsDelegate

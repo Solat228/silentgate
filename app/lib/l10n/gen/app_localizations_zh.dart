@@ -1778,4 +1778,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeSettingsNeedReconnect => '设置已更改 — 重新连接后生效';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return '已拦截 — $app';
+  }
+
+  @override
+  String get blockPageHeading => '网站已被拦截';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host 被 $app 中的分应用代理规则拦截。';
+  }
+
+  @override
+  String get blockPageHint => '你可以修改规则：设置 → 分应用代理 → 网站。';
+
+  @override
+  String get blockPageNote => '此页面来自应用本身，并非网络错误。网站打不开是因为你自己把它加入了拦截列表。';
+
+  @override
+  String get settingsBlockPage => '拦截提示页';
+
+  @override
+  String get settingsBlockPageSub =>
+      '不再显示连接错误，而是打开一个页面说明是哪条规则拦截了该网站。仅对 http 有效：若不在系统中安装我们自己的根证书，就无法替换 https 页面，而该证书会使你全部的加密流量都可被读取。';
 }

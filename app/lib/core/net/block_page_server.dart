@@ -20,6 +20,27 @@ import 'dart:io';
 /// Проверено запуском. Зато `override_address`/`override_port` НА ПРАВИЛЕ
 /// маршрутизации принимаются и 1.11, и 1.13 (у outbound те же поля объявлены
 /// устаревшими и удалены в 1.13 — их брать нельзя).
+/// Тексты страницы. Приходят снаружи уже переведёнными: сервер живёт в движке,
+/// где нет `BuildContext`, а страницу читает пользователь — на своём языке.
+class BlockPageTexts {
+  const BlockPageTexts({
+    required this.windowTitle,
+    required this.heading,
+    required this.body,
+    required this.hint,
+    required this.note,
+  });
+
+  final String windowTitle;
+  final String heading;
+
+  /// Текст с подставленным адресом: имя хоста известно только в момент запроса.
+  final String Function(String host) body;
+
+  final String hint;
+  final String note;
+}
+
 class BlockPageServer {
   BlockPageServer._(this._server, this.port);
 
@@ -34,17 +55,16 @@ class BlockPageServer {
 
   /// Поднять на свободном порту петли. `null` — не удалось; вызывающий обязан
   /// продолжить без заглушки, а не падать: блокировка важнее объяснения.
-  static Future<BlockPageServer?> start({
-    required String appName,
-    required String settingsHint,
-  }) async {
-    if (_current != null) return _current;
+  static Future<BlockPageServer?> start({required BlockPageTexts texts}) async {
+    // Порт запекается в конфиг ядра при подключении, поэтому прошлый сервер
+    // гасим: иначе правило указывало бы на порт, который уже никто не слушает.
+    await stopCurrent();
     try {
       // Только петля: наружу порт не выставляется никогда.
       final srv = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
       final self = BlockPageServer._(srv, srv.port);
       srv.listen(
-        (req) => self._handle(req, appName, settingsHint),
+        (req) => self._handle(req, texts),
         onError: (_) {},
         cancelOnError: false,
       );
@@ -54,35 +74,57 @@ class BlockPageServer {
     }
   }
 
+  static Future<void> stopCurrent() async => _current?.stop();
+
   Future<void> stop() async {
-    _current = null;
+    if (identical(_current, this)) _current = null;
     try {
       await _server.close(force: true);
     } catch (_) {}
   }
 
-  void _handle(HttpRequest req, String appName, String hint) {
+  void _handle(HttpRequest req, BlockPageTexts t) {
     try {
-      final host = req.headers.host ?? req.uri.host;
+      // Заголовок Host — это тот адрес, который набрал пользователь; сокет
+      // ведёт на петлю и имени домена не знает.
+      final host = _hostOnly(req.headers.host ?? req.uri.host);
       req.response
         ..statusCode = HttpStatus.forbidden
         // Никакого кеша: разблокировав сайт, пользователь должен увидеть его
         // сразу, а не сохранённую заглушку.
         ..headers.set(HttpHeaders.cacheControlHeader, 'no-store')
         ..headers.contentType = ContentType.html
-        ..write(_html(appName, host, hint));
+        ..write(_html(t, host));
       req.response.close();
     } catch (_) {}
   }
 
+  /// Отрезать порт: `example.org:80` в тексте страницы выглядит мусором.
+  static String _hostOnly(String value) {
+    final i = value.lastIndexOf(':');
+    if (i <= 0 || value.contains(']')) return value;
+    return int.tryParse(value.substring(i + 1)) == null
+        ? value
+        : value.substring(0, i);
+  }
+
+  /// Экранирование: имя хоста приходит из заголовка запроса, то есть снаружи.
+  /// Без него страница-заглушка сама стала бы дырой — вставкой чужой разметки
+  /// в наш же ответ.
+  static String _esc(String v) => v
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+
   /// Страница намеренно самодостаточна: без внешних шрифтов, картинок и
   /// скриптов — она показывается ровно тогда, когда сеть до этого домена
   /// заблокирована, и любая внешняя ссылка тоже не загрузится.
-  static String _html(String appName, String host, String hint) => '''
+  static String _html(BlockPageTexts t, String host) => '''
 <!doctype html>
-<html lang="ru"><head><meta charset="utf-8">
+<html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Заблокировано — $appName</title>
+<title>${_esc(t.windowTitle)}</title>
 <style>
  :root{color-scheme:light dark}
  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -94,17 +136,15 @@ class BlockPageServer {
  .card{max-width:34rem;margin:1.5rem;padding:1.75rem 2rem;background:#fff;
        border:1px solid #e3e6e8;border-radius:14px}
  h1{margin:0 0 .35rem;font-size:1.3rem}
- .host{font-weight:600;word-break:break-all}
+ .host{font-size:1.02rem;overflow-wrap:anywhere}
  p{margin:.7rem 0}
  .muted{color:#6b7075;font-size:.92rem}
  code{background:#eef0f2;padding:.15rem .4rem;border-radius:5px;font-size:.9rem}
 </style></head><body><div class="card">
-<h1>Сайт заблокирован</h1>
-<p>Адрес <span class="host">$host</span> заблокирован правилом раздельного
-   туннелирования в <strong>$appName</strong>.</p>
-<p class="muted">$hint</p>
-<p class="muted">Это страница самого приложения, а не ошибка сети. Сайт не
-   открывается потому, что вы сами добавили его в список блокировки.</p>
+<h1>${_esc(t.heading)}</h1>
+<p class="host">${_esc(t.body(host))}</p>
+<p class="muted">${_esc(t.hint)}</p>
+<p class="muted">${_esc(t.note)}</p>
 </div></body></html>
 ''';
 }

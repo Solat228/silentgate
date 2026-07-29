@@ -4,7 +4,10 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/app_info.dart';
+import '../core/i18n/localizations_loader.dart';
 import '../core/models/traffic_stats.dart';
+import '../core/net/block_page_server.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/app_log.dart';
@@ -351,6 +354,39 @@ abstract class VpnEngineBase implements VpnEngine {
     return hosts.values.expand((e) => e).toSet().toList();
   }
 
+  // ── Страница «сайт заблокирован» ───────────────────────────────────────────
+
+  /// Поднять локальную страницу-заглушку и вернуть её порт (0 — не нужна).
+  ///
+  /// Общая для обеих платформ: правило маршрутизации, которое уводит сюда
+  /// http-соединения, строит один и тот же [SingboxConfigBuilder], поэтому и
+  /// условия включения должны быть одни. Расхождение здесь означало бы, что на
+  /// одной платформе домен резолвится «в никуда».
+  Future<int> startBlockPage(ConnectionOptions options) async {
+    await BlockPageServer.stopCurrent();
+    final s = options.settings;
+    if (!s.blockPageEnabled) return 0;
+    // В режиме «всё через VPN» пользовательские правила не применяются вовсе —
+    // блокировать нечего, и поднимать сервер незачем.
+    if (s.splitTunnel.mode == SplitMode.all) return 0;
+    final hasBlocked =
+        s.splitTunnel.sites.any((x) => x.action == AppAction.block);
+    if (!hasBlocked) return 0;
+
+    final l = await localizationsFor(s.languageCode);
+    final srv = await BlockPageServer.start(
+      texts: BlockPageTexts(
+        windowTitle: l.blockPageWindowTitle(AppInfo.name),
+        heading: l.blockPageHeading,
+        hint: l.blockPageHint,
+        note: l.blockPageNote,
+        body: (host) => l.blockPageBody(host, AppInfo.name),
+      ),
+    );
+    // Не поднялась — продолжаем без неё: блокировка важнее объяснения.
+    return srv?.port ?? 0;
+  }
+
   // ── Автовосстановление ─────────────────────────────────────────────────────
 
   /// Запланировать повторную попытку, если включено автопереподключение и
@@ -544,6 +580,9 @@ abstract class VpnEngineBase implements VpnEngine {
     _retryTimer?.cancel();
     _retryTimer = null;
     _connectedAt = null;
+    // Слушать порт после отключения незачем, а на Android висящий сокет ещё и
+    // держит процесс живым.
+    await BlockPageServer.stopCurrent();
     await platformCleanup();
   }
 

@@ -157,6 +157,22 @@ class SplitTunnelScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: _AddSiteField(controller: controller),
                   ),
+                  // Стоит здесь, а не в общих настройках: заглушка касается
+                  // только правил «Блок», а их заводят именно на этом экране.
+                  // Показываем, лишь когда блокировка реально есть, — иначе это
+                  // настройка ни для чего.
+                  if (st.sites.any((x) => x.action == AppAction.block)) ...[
+                    const Divider(),
+                    SwitchListTile(
+                      secondary: const Icon(Icons.report_outlined),
+                      value: controller.settings.blockPageEnabled,
+                      onChanged: (v) => controller
+                          .update((s) => s.copyWith(blockPageEnabled: v)),
+                      title: Text(l.settingsBlockPage),
+                      subtitle: SelText(l.settingsBlockPageSub,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  ],
                   ], // конец блока «списки при не-all режиме»
                 ],
               ),

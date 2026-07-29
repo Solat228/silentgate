@@ -537,5 +537,29 @@
   "serverInfoVerifyInBrowser": "Vérifier dans le navigateur",
   "tunDnsForAll": "DNS de toutes les apps via le VPN",
   "infoDnsForAll": "Uniquement en mode « Seulement sélectionnées ». ⚠️ Appliqué après reconnexion.",
-  "homeSettingsNeedReconnect": "Paramètre modifié — reconnectez-vous pour appliquer"
+  "homeSettingsNeedReconnect": "Paramètre modifié — reconnectez-vous pour appliquer",
+  "blockPageWindowTitle": "Bloqué — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "Site bloqué",
+  "blockPageBody": "{host} est bloqué par une règle de tunnel partagé dans {app}.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "Vous pouvez modifier la règle : Paramètres → Tunnel partagé → Sites.",
+  "blockPageNote": "Cette page provient de l'application elle-même, ce n'est pas une erreur réseau. Le site ne s'ouvre pas parce que vous l'avez ajouté à la liste de blocage.",
+  "settingsBlockPage": "Page d’information de blocage",
+  "settingsBlockPageSub": "Au lieu d'une erreur de connexion, une page explique quelle règle a fermé le site. Fonctionne uniquement en http : une page https ne peut pas être remplacée sans installer notre propre certificat racine dans le système, et ce certificat permettrait de lire tout votre trafic chiffré."
 }

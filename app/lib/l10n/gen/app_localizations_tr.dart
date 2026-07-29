@@ -1829,4 +1829,32 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Ayar değişti — uygulamak için yeniden bağlanın';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Engellendi — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Site engellendi';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host adresi $app uygulamasındaki bölünmüş tünel kuralıyla engellendi.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'Kuralı değiştirebilirsiniz: Ayarlar → Bölünmüş tünel → Siteler.';
+
+  @override
+  String get blockPageNote =>
+      'Bu sayfa uygulamanın kendisinden gelir, bir ağ hatası değildir. Site açılmıyor çünkü onu engelleme listesine siz eklediniz.';
+
+  @override
+  String get settingsBlockPage => 'Engelleme bilgi sayfası';
+
+  @override
+  String get settingsBlockPageSub =>
+      'Bağlantı hatası yerine, siteyi hangi kuralın kapattığını açıklayan bir sayfa açılır. Yalnızca http için çalışır: https sayfası, sisteme kendi kök sertifikamızı kurmadan değiştirilemez ve bu sertifika şifreli trafiğinizin tamamının okunmasına izin verirdi.';
 }

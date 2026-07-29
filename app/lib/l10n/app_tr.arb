@@ -537,5 +537,29 @@
   "serverInfoVerifyInBrowser": "Tarayıcıda doğrula",
   "tunDnsForAll": "Tüm uygulamaların DNS’i VPN üzerinden",
   "infoDnsForAll": "Yalnızca “Sadece seçilenler” modunda. ⚠️ Yeniden bağlandıktan sonra geçerli olur.",
-  "homeSettingsNeedReconnect": "Ayar değişti — uygulamak için yeniden bağlanın"
+  "homeSettingsNeedReconnect": "Ayar değişti — uygulamak için yeniden bağlanın",
+  "blockPageWindowTitle": "Engellendi — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "Site engellendi",
+  "blockPageBody": "{host} adresi {app} uygulamasındaki bölünmüş tünel kuralıyla engellendi.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "Kuralı değiştirebilirsiniz: Ayarlar → Bölünmüş tünel → Siteler.",
+  "blockPageNote": "Bu sayfa uygulamanın kendisinden gelir, bir ağ hatası değildir. Site açılmıyor çünkü onu engelleme listesine siz eklediniz.",
+  "settingsBlockPage": "Engelleme bilgi sayfası",
+  "settingsBlockPageSub": "Bağlantı hatası yerine, siteyi hangi kuralın kapattığını açıklayan bir sayfa açılır. Yalnızca http için çalışır: https sayfası, sisteme kendi kök sertifikamızı kurmadan değiştirilemez ve bu sertifika şifreli trafiğinizin tamamının okunmasına izin verirdi."
 }

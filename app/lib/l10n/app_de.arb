@@ -537,5 +537,29 @@
   "serverInfoVerifyInBrowser": "Im Browser prüfen",
   "tunDnsForAll": "DNS aller Apps über VPN",
   "infoDnsForAll": "Nur im Modus „Nur ausgewählte“. ⚠️ Wird erst nach dem Neuverbinden übernommen.",
-  "homeSettingsNeedReconnect": "Einstellung geändert – zum Übernehmen neu verbinden"
+  "homeSettingsNeedReconnect": "Einstellung geändert – zum Übernehmen neu verbinden",
+  "blockPageWindowTitle": "Blockiert — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "Website blockiert",
+  "blockPageBody": "{host} wird durch eine Split-Tunneling-Regel in {app} blockiert.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "Sie können die Regel ändern: Einstellungen → Split-Tunneling → Websites.",
+  "blockPageNote": "Diese Seite stammt von der App selbst und ist kein Netzwerkfehler. Die Website öffnet sich nicht, weil Sie sie selbst zur Sperrliste hinzugefügt haben.",
+  "settingsBlockPage": "Hinweisseite bei Blockierung",
+  "settingsBlockPageSub": "Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen."
 }

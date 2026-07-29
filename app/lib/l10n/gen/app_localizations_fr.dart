@@ -1845,4 +1845,32 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Paramètre modifié — reconnectez-vous pour appliquer';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Bloqué — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Site bloqué';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host est bloqué par une règle de tunnel partagé dans $app.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'Vous pouvez modifier la règle : Paramètres → Tunnel partagé → Sites.';
+
+  @override
+  String get blockPageNote =>
+      'Cette page provient de l\'application elle-même, ce n\'est pas une erreur réseau. Le site ne s\'ouvre pas parce que vous l\'avez ajouté à la liste de blocage.';
+
+  @override
+  String get settingsBlockPage => 'Page d’information de blocage';
+
+  @override
+  String get settingsBlockPageSub =>
+      'Au lieu d\'une erreur de connexion, une page explique quelle règle a fermé le site. Fonctionne uniquement en http : une page https ne peut pas être remplacée sans installer notre propre certificat racine dans le système, et ce certificat permettrait de lire tout votre trafic chiffré.';
 }

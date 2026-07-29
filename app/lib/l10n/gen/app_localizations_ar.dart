@@ -1817,4 +1817,32 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeSettingsNeedReconnect => 'تغيّر الإعداد — أعد الاتصال للتطبيق';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'محظور — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'الموقع محظور';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return 'العنوان $host محظور بقاعدة النفق المقسّم في $app.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'يمكنك تغيير القاعدة: الإعدادات ← النفق المقسّم ← المواقع.';
+
+  @override
+  String get blockPageNote =>
+      'هذه الصفحة من التطبيق نفسه وليست خطأ في الشبكة. الموقع لا يفتح لأنك أضفته بنفسك إلى قائمة الحظر.';
+
+  @override
+  String get settingsBlockPage => 'صفحة إشعار الحظر';
+
+  @override
+  String get settingsBlockPageSub =>
+      'بدلاً من خطأ الاتصال، تُفتح صفحة تشرح أي قاعدة أغلقت الموقع. تعمل مع http فقط: لا يمكن استبدال صفحة https دون تثبيت شهادة جذر خاصة بنا في النظام، وهذه الشهادة ستتيح قراءة كل حركة مرورك المشفّرة.';
 }

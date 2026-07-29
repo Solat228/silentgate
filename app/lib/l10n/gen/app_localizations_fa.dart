@@ -1823,4 +1823,32 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'تنظیم تغییر کرد — برای اعمال دوباره وصل شوید';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'مسدود شده — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'سایت مسدود است';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return 'نشانی $host با قانون تونل تفکیکی در $app مسدود شده است.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'می‌توانید قانون را تغییر دهید: تنظیمات ← تونل تفکیکی ← سایت‌ها.';
+
+  @override
+  String get blockPageNote =>
+      'این صفحه از خود برنامه است و خطای شبکه نیست. سایت باز نمی‌شود چون خودتان آن را به فهرست مسدودسازی افزوده‌اید.';
+
+  @override
+  String get settingsBlockPage => 'صفحهٔ اطلاع‌رسانی مسدودسازی';
+
+  @override
+  String get settingsBlockPageSub =>
+      'به‌جای خطای اتصال، صفحه‌ای توضیح می‌دهد کدام قانون سایت را بسته است. فقط برای http کار می‌کند: صفحهٔ https را بدون نصب گواهی ریشهٔ خودمان در سیستم نمی‌توان جایگزین کرد، و آن گواهی امکان خواندن تمام ترافیک رمزگذاری‌شدهٔ شما را می‌دهد.';
 }

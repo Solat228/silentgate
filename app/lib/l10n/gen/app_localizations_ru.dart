@@ -1828,4 +1828,32 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Настройка изменена — переподключитесь, чтобы применить';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Заблокировано — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Сайт заблокирован';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return 'Адрес $host заблокирован правилом раздельного туннелирования в $app.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'Правило можно изменить: Настройки → Раздельное туннелирование → Сайты.';
+
+  @override
+  String get blockPageNote =>
+      'Это страница самого приложения, а не ошибка сети. Сайт не открывается потому, что вы сами добавили его в список блокировки.';
+
+  @override
+  String get settingsBlockPage => 'Страница-заглушка при блокировке';
+
+  @override
+  String get settingsBlockPageSub =>
+      'Вместо ошибки соединения открывается страница с объяснением, каким правилом закрыт сайт. Работает только для http: у https подменить страницу нельзя без установки своего корневого сертификата в систему, а он позволил бы читать весь ваш защищённый трафик.';
 }

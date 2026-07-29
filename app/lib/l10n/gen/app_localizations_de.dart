@@ -1841,4 +1841,32 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Einstellung geändert – zum Übernehmen neu verbinden';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Blockiert — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Website blockiert';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host wird durch eine Split-Tunneling-Regel in $app blockiert.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'Sie können die Regel ändern: Einstellungen → Split-Tunneling → Websites.';
+
+  @override
+  String get blockPageNote =>
+      'Diese Seite stammt von der App selbst und ist kein Netzwerkfehler. Die Website öffnet sich nicht, weil Sie sie selbst zur Sperrliste hinzugefügt haben.';
+
+  @override
+  String get settingsBlockPage => 'Hinweisseite bei Blockierung';
+
+  @override
+  String get settingsBlockPageSub =>
+      'Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen.';
 }

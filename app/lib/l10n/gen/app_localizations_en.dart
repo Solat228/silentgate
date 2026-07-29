@@ -1824,4 +1824,32 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Setting changed — reconnect to apply';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Blocked — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Site blocked';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host is blocked by a split tunnelling rule in $app.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'You can change the rule: Settings → Split tunnelling → Sites.';
+
+  @override
+  String get blockPageNote =>
+      'This page comes from the app itself, not from a network error. The site does not open because you added it to the block list.';
+
+  @override
+  String get settingsBlockPage => 'Block notice page';
+
+  @override
+  String get settingsBlockPageSub =>
+      'Instead of a connection error, a page explains which rule closed the site. Works for http only: an https page cannot be replaced without installing our own root certificate into the system, and that certificate would let anyone read all of your encrypted traffic.';
 }

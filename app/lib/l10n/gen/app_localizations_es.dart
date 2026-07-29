@@ -1843,4 +1843,32 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get homeSettingsNeedReconnect =>
       'Ajuste cambiado: reconéctate para aplicar';
+
+  @override
+  String blockPageWindowTitle(String app) {
+    return 'Bloqueado — $app';
+  }
+
+  @override
+  String get blockPageHeading => 'Sitio bloqueado';
+
+  @override
+  String blockPageBody(String host, String app) {
+    return '$host está bloqueado por una regla de túnel dividido en $app.';
+  }
+
+  @override
+  String get blockPageHint =>
+      'Puedes cambiar la regla: Ajustes → Túnel dividido → Sitios.';
+
+  @override
+  String get blockPageNote =>
+      'Esta página proviene de la propia aplicación, no es un error de red. El sitio no se abre porque tú mismo lo añadiste a la lista de bloqueo.';
+
+  @override
+  String get settingsBlockPage => 'Página de aviso de bloqueo';
+
+  @override
+  String get settingsBlockPageSub =>
+      'En lugar de un error de conexión se abre una página que explica qué regla cerró el sitio. Solo funciona con http: una página https no se puede sustituir sin instalar nuestro propio certificado raíz en el sistema, y ese certificado permitiría leer todo tu tráfico cifrado.';
 }

@@ -537,5 +537,29 @@
   "serverInfoVerifyInBrowser": "تحقق في المتصفح",
   "tunDnsForAll": "DNS لكل التطبيقات عبر VPN",
   "infoDnsForAll": "يعمل فقط في وضع «المحددة فقط». ⚠️ يُطبَّق بعد إعادة الاتصال.",
-  "homeSettingsNeedReconnect": "تغيّر الإعداد — أعد الاتصال للتطبيق"
+  "homeSettingsNeedReconnect": "تغيّر الإعداد — أعد الاتصال للتطبيق",
+  "blockPageWindowTitle": "محظور — {app}",
+  "@blockPageWindowTitle": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHeading": "الموقع محظور",
+  "blockPageBody": "العنوان {host} محظور بقاعدة النفق المقسّم في {app}.",
+  "@blockPageBody": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "blockPageHint": "يمكنك تغيير القاعدة: الإعدادات ← النفق المقسّم ← المواقع.",
+  "blockPageNote": "هذه الصفحة من التطبيق نفسه وليست خطأ في الشبكة. الموقع لا يفتح لأنك أضفته بنفسك إلى قائمة الحظر.",
+  "settingsBlockPage": "صفحة إشعار الحظر",
+  "settingsBlockPageSub": "بدلاً من خطأ الاتصال، تُفتح صفحة تشرح أي قاعدة أغلقت الموقع. تعمل مع http فقط: لا يمكن استبدال صفحة https دون تثبيت شهادة جذر خاصة بنا في النظام، وهذه الشهادة ستتيح قراءة كل حركة مرورك المشفّرة."
 }
