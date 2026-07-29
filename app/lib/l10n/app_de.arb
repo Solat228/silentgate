@@ -561,5 +561,38 @@
   "blockPageHint": "Sie können die Regel ändern: Einstellungen → Split-Tunneling → Websites.",
   "blockPageNote": "Diese Seite stammt von der App selbst und ist kein Netzwerkfehler. Die Website öffnet sich nicht, weil Sie sie selbst zur Sperrliste hinzugefügt haben.",
   "settingsBlockPage": "Hinweisseite bei Blockierung",
-  "settingsBlockPageSub": "Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen."
+  "settingsBlockPageSub": "Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen.",
+  "trayCloseFully": "Vollständig schließen",
+  "errorVpnConflictApp": "{app} scheint zu stören: Dort läuft ein eigener VPN-Tunnel. Zwei gleichzeitige Tunnel streiten sich um die Standardroute.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "{app} schließen",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "{app} geschlossen",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "{app} konnte nicht geschlossen werden – bitte manuell schließen",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

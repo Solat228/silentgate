@@ -1851,4 +1851,27 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'به‌جای خطای اتصال، صفحه‌ای توضیح می‌دهد کدام قانون سایت را بسته است. فقط برای http کار می‌کند: صفحهٔ https را بدون نصب گواهی ریشهٔ خودمان در سیستم نمی‌توان جایگزین کرد، و آن گواهی امکان خواندن تمام ترافیک رمزگذاری‌شدهٔ شما را می‌دهد.';
+
+  @override
+  String get trayCloseFully => 'بستن کامل';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return 'به نظر می‌رسد $app مزاحم است: تونل VPN خودش برپاست. دو تونل هم‌زمان بر سر مسیر پیش‌فرض رقابت می‌کنند.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'بستن $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app بسته شد';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'بستن $app ممکن نشد — دستی ببندید';
+  }
 }

@@ -561,5 +561,38 @@
   "blockPageHint": "你可以修改规则：设置 → 分应用代理 → 网站。",
   "blockPageNote": "此页面来自应用本身，并非网络错误。网站打不开是因为你自己把它加入了拦截列表。",
   "settingsBlockPage": "拦截提示页",
-  "settingsBlockPageSub": "不再显示连接错误，而是打开一个页面说明是哪条规则拦截了该网站。仅对 http 有效：若不在系统中安装我们自己的根证书，就无法替换 https 页面，而该证书会使你全部的加密流量都可被读取。"
+  "settingsBlockPageSub": "不再显示连接错误，而是打开一个页面说明是哪条规则拦截了该网站。仅对 http 有效：若不在系统中安装我们自己的根证书，就无法替换 https 页面，而该证书会使你全部的加密流量都可被读取。",
+  "trayCloseFully": "完全退出",
+  "errorVpnConflictApp": "看起来是 {app} 在干扰：它自己的 VPN 隧道正在运行。两条隧道会同时争抢默认路由。",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "关闭 {app}",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "已关闭 {app}",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "无法关闭 {app} — 请手动关闭",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

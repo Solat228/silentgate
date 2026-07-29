@@ -1872,4 +1872,27 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Em vez de um erro de conexão, uma página explica qual regra fechou o site. Funciona apenas com http: uma página https não pode ser substituída sem instalar nosso próprio certificado raiz no sistema, e esse certificado permitiria ler todo o seu tráfego criptografado.';
+
+  @override
+  String get trayCloseFully => 'Fechar completamente';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return 'Parece que $app está atrapalhando: ele tem o próprio túnel VPN ativo. Dois túneis ao mesmo tempo disputam a rota padrão.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'Fechar $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app fechado';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'Não foi possível fechar $app — feche manualmente';
+  }
 }

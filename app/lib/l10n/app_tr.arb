@@ -561,5 +561,38 @@
   "blockPageHint": "Kuralı değiştirebilirsiniz: Ayarlar → Bölünmüş tünel → Siteler.",
   "blockPageNote": "Bu sayfa uygulamanın kendisinden gelir, bir ağ hatası değildir. Site açılmıyor çünkü onu engelleme listesine siz eklediniz.",
   "settingsBlockPage": "Engelleme bilgi sayfası",
-  "settingsBlockPageSub": "Bağlantı hatası yerine, siteyi hangi kuralın kapattığını açıklayan bir sayfa açılır. Yalnızca http için çalışır: https sayfası, sisteme kendi kök sertifikamızı kurmadan değiştirilemez ve bu sertifika şifreli trafiğinizin tamamının okunmasına izin verirdi."
+  "settingsBlockPageSub": "Bağlantı hatası yerine, siteyi hangi kuralın kapattığını açıklayan bir sayfa açılır. Yalnızca http için çalışır: https sayfası, sisteme kendi kök sertifikamızı kurmadan değiştirilemez ve bu sertifika şifreli trafiğinizin tamamının okunmasına izin verirdi.",
+  "trayCloseFully": "Tamamen kapat",
+  "errorVpnConflictApp": "{app} engel oluyor gibi görünüyor: kendi VPN tüneli açık. Aynı anda iki tünel varsayılan rota için çekişir.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "{app} uygulamasını kapat",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "{app} kapatıldı",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "{app} kapatılamadı — elle kapatın",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

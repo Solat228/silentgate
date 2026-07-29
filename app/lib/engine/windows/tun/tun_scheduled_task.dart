@@ -39,7 +39,10 @@ class TunScheduledTask {
     final args =
         '/Create /TN $taskName /TR "\\"$exe\\" --tun-task \\"$cfg\\" \\"$stop\\"" '
         '/SC ONCE /ST 00:00 /RL HIGHEST /F';
-    if (!Elevation.runElevated('schtasks.exe', args)) return false;
+    // ⚠️ Только асинхронно. Эту задачу заводят из настройки «запуск без UAC»,
+    // то есть ровно тогда, когда пользователь уже устал от зависаний, — и
+    // замерзший здесь интерфейс убил бы сам обходной путь.
+    if (!await Elevation.runElevatedAsync('schtasks.exe', args)) return false;
 
     final deadline = DateTime.now().add(const Duration(seconds: 10));
     while (DateTime.now().isBefore(deadline)) {
@@ -91,6 +94,6 @@ class TunScheduledTask {
       if (r.exitCode == 0) return true;
     } catch (_) {}
     // Своя задача обычно удаляется и без прав; если нет — просим их.
-    return Elevation.runElevated('schtasks.exe', '/Delete /TN $taskName /F');
+    return Elevation.runElevatedAsync('schtasks.exe', '/Delete /TN $taskName /F');
   }
 }

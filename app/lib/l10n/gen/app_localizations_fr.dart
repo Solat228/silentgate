@@ -1873,4 +1873,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Au lieu d\'une erreur de connexion, une page explique quelle règle a fermé le site. Fonctionne uniquement en http : une page https ne peut pas être remplacée sans installer notre propre certificat racine dans le système, et ce certificat permettrait de lire tout votre trafic chiffré.';
+
+  @override
+  String get trayCloseFully => 'Fermer complètement';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return '$app semble gêner : son propre tunnel VPN est actif. Deux tunnels simultanés se disputent la route par défaut.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'Fermer $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app fermé';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'Impossible de fermer $app — fermez-le manuellement';
+  }
 }

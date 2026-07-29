@@ -561,5 +561,38 @@
   "blockPageHint": "Você pode alterar a regra: Configurações → Túnel dividido → Sites.",
   "blockPageNote": "Esta página vem do próprio aplicativo, não é um erro de rede. O site não abre porque você mesmo o adicionou à lista de bloqueio.",
   "settingsBlockPage": "Página de aviso de bloqueio",
-  "settingsBlockPageSub": "Em vez de um erro de conexão, uma página explica qual regra fechou o site. Funciona apenas com http: uma página https não pode ser substituída sem instalar nosso próprio certificado raiz no sistema, e esse certificado permitiria ler todo o seu tráfego criptografado."
+  "settingsBlockPageSub": "Em vez de um erro de conexão, uma página explica qual regra fechou o site. Funciona apenas com http: uma página https não pode ser substituída sem instalar nosso próprio certificado raiz no sistema, e esse certificado permitiria ler todo o seu tráfego criptografado.",
+  "trayCloseFully": "Fechar completamente",
+  "errorVpnConflictApp": "Parece que {app} está atrapalhando: ele tem o próprio túnel VPN ativo. Dois túneis ao mesmo tempo disputam a rota padrão.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "Fechar {app}",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "{app} fechado",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "Não foi possível fechar {app} — feche manualmente",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

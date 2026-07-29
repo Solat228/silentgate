@@ -29,6 +29,8 @@ class NetworkRecovery {
       'pause',
     ];
     await bat.writeAsString('${lines.join('\r\n')}\r\n');
-    return Elevation.runElevated('cmd.exe', '/c "${bat.path}"', show: true);
+    // Асинхронно: синхронный вызов через FFI умеет не возвращаться вовсе
+    // (см. Elevation) и заморозил бы интерфейс на всё время работы батника.
+    return Elevation.runElevatedAsync('cmd.exe', '/c "${bat.path}"', show: true);
   }
 }

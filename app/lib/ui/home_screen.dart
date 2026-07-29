@@ -85,6 +85,40 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _shownRestart;
 
   /// Временные сообщения — тостами поверх интерфейса (#2.2).
+  /// Показать ошибку и, если мешает чужой VPN, дать кнопку закрыть ЕГО.
+  ///
+  /// Раньше сообщение называло адаптер («wintun»), а что с этим делать —
+  /// пользователь догадывался сам. Ищем именно программу; не опознали —
+  /// показываем обычную ошибку, потому что предложить закрыть НЕ ТО приложение
+  /// хуже, чем не предложить ничего.
+  Future<void> _showError(BuildContext context, String err) async {
+    final l = AppLocalizations.of(context);
+    final conflict = await InterferenceScanner.activeForeignTunnel();
+    if (!mounted) return;
+    if (conflict == null) {
+      AppToast.show(context, err, kind: ToastKind.error);
+      return;
+    }
+    final app = conflict.appName!;
+    AppToast.show(
+      context,
+      '$err\n\n${l.errorVpnConflictApp(app)}',
+      kind: ToastKind.error,
+      // Дольше обычного: пользователю нужно успеть прочитать и нажать.
+      duration: const Duration(seconds: 20),
+      actionLabel: l.errorCloseApp(app),
+      onAction: () async {
+        final ok = await InterferenceScanner.kill(conflict.pid!);
+        if (!context.mounted) return;
+        AppToast.show(
+          context,
+          ok ? l.toastAppClosed(app) : l.toastAppCloseFailed(app),
+          kind: ok ? ToastKind.success : ToastKind.error,
+        );
+      },
+    );
+  }
+
   void _showTransientMessages(
       BuildContext context, AppState state, AppSettings settings) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -97,8 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final err = code != null ? appErrorText(l, code) : state.error;
       if (err != null && err != _shownError) {
         _shownError = err;
-        AppToast.show(context, err, kind: ToastKind.error);
         state.clearError();
+        _showError(context, err);
         return;
       }
       if (err == null) _shownError = null;

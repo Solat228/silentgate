@@ -1856,4 +1856,27 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Вместо ошибки соединения открывается страница с объяснением, каким правилом закрыт сайт. Работает только для http: у https подменить страницу нельзя без установки своего корневого сертификата в систему, а он позволил бы читать весь ваш защищённый трафик.';
+
+  @override
+  String get trayCloseFully => 'Закрыть полностью';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return 'Похоже, мешает $app: у него поднят собственный VPN-туннель. Два туннеля одновременно борются за маршрут по умолчанию.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'Закрыть $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app закрыт';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'Не удалось закрыть $app — закройте вручную';
+  }
 }

@@ -1869,4 +1869,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen.';
+
+  @override
+  String get trayCloseFully => 'Vollständig schließen';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return '$app scheint zu stören: Dort läuft ein eigener VPN-Tunnel. Zwei gleichzeitige Tunnel streiten sich um die Standardroute.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return '$app schließen';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app geschlossen';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return '$app konnte nicht geschlossen werden – bitte manuell schließen';
+  }
 }

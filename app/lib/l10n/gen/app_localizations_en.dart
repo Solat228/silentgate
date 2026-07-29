@@ -1852,4 +1852,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Instead of a connection error, a page explains which rule closed the site. Works for http only: an https page cannot be replaced without installing our own root certificate into the system, and that certificate would let anyone read all of your encrypted traffic.';
+
+  @override
+  String get trayCloseFully => 'Close completely';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return '$app appears to be in the way: it has its own VPN tunnel up. Two tunnels at once fight over the default route.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'Close $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app closed';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'Could not close $app — close it manually';
+  }
 }

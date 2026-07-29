@@ -561,5 +561,38 @@
   "blockPageHint": "يمكنك تغيير القاعدة: الإعدادات ← النفق المقسّم ← المواقع.",
   "blockPageNote": "هذه الصفحة من التطبيق نفسه وليست خطأ في الشبكة. الموقع لا يفتح لأنك أضفته بنفسك إلى قائمة الحظر.",
   "settingsBlockPage": "صفحة إشعار الحظر",
-  "settingsBlockPageSub": "بدلاً من خطأ الاتصال، تُفتح صفحة تشرح أي قاعدة أغلقت الموقع. تعمل مع http فقط: لا يمكن استبدال صفحة https دون تثبيت شهادة جذر خاصة بنا في النظام، وهذه الشهادة ستتيح قراءة كل حركة مرورك المشفّرة."
+  "settingsBlockPageSub": "بدلاً من خطأ الاتصال، تُفتح صفحة تشرح أي قاعدة أغلقت الموقع. تعمل مع http فقط: لا يمكن استبدال صفحة https دون تثبيت شهادة جذر خاصة بنا في النظام، وهذه الشهادة ستتيح قراءة كل حركة مرورك المشفّرة.",
+  "trayCloseFully": "إغلاق كامل",
+  "errorVpnConflictApp": "يبدو أن {app} يعترض الطريق: لديه نفق VPN خاص به قيد التشغيل. نفقان في وقت واحد يتنازعان على المسار الافتراضي.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "إغلاق {app}",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "تم إغلاق {app}",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "تعذّر إغلاق {app} — أغلقه يدويًا",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

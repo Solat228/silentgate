@@ -111,7 +111,22 @@ class TrayWindow with WindowListener, TrayListener {
       if (!settings.dontAskOnClose) {
         final res = await _askMinimize(ctx);
         if (res == null) return; // отмена — окно остаётся
-        if (res) controller.update((s) => s.copyWith(dontAskOnClose: true));
+        if (res.quit) {
+          // «Не спрашивать» вместе с «Закрыть полностью» значит не «больше не
+          // сворачивать молча», а «крестик должен закрывать»: иначе галочка
+          // приводила бы ровно к тому поведению, от которого пользователь
+          // только что отказался.
+          if (res.dontAsk) {
+            controller.update((s) => s.copyWith(closeToTray: false));
+          }
+          if (vpnActive && await _askCloseWithVpn(ctx) != 'quit') return;
+          await state.disconnect();
+          await _destroy();
+          return;
+        }
+        if (res.dontAsk) {
+          controller.update((s) => s.copyWith(dontAskOnClose: true));
+        }
       }
       await windowManager.hide();
     } else {
@@ -162,10 +177,10 @@ class TrayWindow with WindowListener, TrayListener {
   }
 
   // ── Диалоги ──────────────────────────────────────────────────────────────────
-  Future<bool?> _askMinimize(BuildContext ctx) {
+  Future<({bool quit, bool dontAsk})?> _askMinimize(BuildContext ctx) {
     final l = AppLocalizations.of(ctx);
     bool dontAsk = false;
-    return showDialog<bool>(
+    return showDialog<({bool quit, bool dontAsk})>(
       context: ctx,
       builder: (dctx) => StatefulBuilder(
         builder: (dctx, setState) => AlertDialog(
@@ -187,8 +202,15 @@ class TrayWindow with WindowListener, TrayListener {
             TextButton(
                 onPressed: () => Navigator.pop(dctx), // отмена → null
                 child: Text(l.commonCancel)),
+            // Выход из приложения прямо отсюда: раньше единственным способом
+            // закрыть его было лезть в настройки и менять поведение крестика.
+            TextButton(
+                onPressed: () =>
+                    Navigator.pop(dctx, (quit: true, dontAsk: dontAsk)),
+                child: Text(l.trayCloseFully)),
             FilledButton(
-                onPressed: () => Navigator.pop(dctx, dontAsk),
+                onPressed: () =>
+                    Navigator.pop(dctx, (quit: false, dontAsk: dontAsk)),
                 child: Text(l.trayMinimizeOk)),
           ],
         ),

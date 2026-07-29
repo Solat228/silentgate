@@ -265,17 +265,26 @@ Future<void> scanInterferenceDialog(BuildContext context) async {
                           leading: Icon(i.kind == 'adapter'
                               ? Icons.settings_ethernet
                               : Icons.warning_amber),
-                          title: Text(i.name, textDirection: TextDirection.ltr),
-                          subtitle: Text(i.detail,
+                          // Первой строкой — ПРОГРАММА, если опознана: имя
+                          // адаптера («happ-tun») пользователю ничего не
+                          // говорит, а закрывать он будет именно программу.
+                          title: Text(i.appName ?? i.name,
+                              textDirection: TextDirection.ltr),
+                          subtitle: Text(
+                              i.appName == null
+                                  ? i.detail
+                                  : [i.name, i.appPath ?? '']
+                                      .where((e) => e.isNotEmpty)
+                                      .join(' · '),
                               textDirection: TextDirection.ltr,
                               maxLines: 1, overflow: TextOverflow.ellipsis),
-                          trailing: i.pid != null
+                          trailing: i.closable
                               ? TextButton(
                                   onPressed: () async {
                                     await InterferenceScanner.kill(i.pid!);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   },
-                                  child: Text(l.commonClose),
+                                  child: Text(l.errorCloseApp(i.appName!)),
                                 )
                               : null,
                         ))

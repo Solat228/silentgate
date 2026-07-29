@@ -622,5 +622,38 @@
   "blockPageHint": "You can change the rule: Settings → Split tunnelling → Sites.",
   "blockPageNote": "This page comes from the app itself, not from a network error. The site does not open because you added it to the block list.",
   "settingsBlockPage": "Block notice page",
-  "settingsBlockPageSub": "Instead of a connection error, a page explains which rule closed the site. Works for http only: an https page cannot be replaced without installing our own root certificate into the system, and that certificate would let anyone read all of your encrypted traffic."
+  "settingsBlockPageSub": "Instead of a connection error, a page explains which rule closed the site. Works for http only: an https page cannot be replaced without installing our own root certificate into the system, and that certificate would let anyone read all of your encrypted traffic.",
+  "trayCloseFully": "Close completely",
+  "errorVpnConflictApp": "{app} appears to be in the way: it has its own VPN tunnel up. Two tunnels at once fight over the default route.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "Close {app}",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "{app} closed",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "Could not close {app} — close it manually",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

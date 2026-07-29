@@ -1857,4 +1857,27 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'Bağlantı hatası yerine, siteyi hangi kuralın kapattığını açıklayan bir sayfa açılır. Yalnızca http için çalışır: https sayfası, sisteme kendi kök sertifikamızı kurmadan değiştirilemez ve bu sertifika şifreli trafiğinizin tamamının okunmasına izin verirdi.';
+
+  @override
+  String get trayCloseFully => 'Tamamen kapat';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return '$app engel oluyor gibi görünüyor: kendi VPN tüneli açık. Aynı anda iki tünel varsayılan rota için çekişir.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return '$app uygulamasını kapat';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '$app kapatıldı';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return '$app kapatılamadı — elle kapatın';
+  }
 }

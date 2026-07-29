@@ -1845,4 +1845,27 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       'بدلاً من خطأ الاتصال، تُفتح صفحة تشرح أي قاعدة أغلقت الموقع. تعمل مع http فقط: لا يمكن استبدال صفحة https دون تثبيت شهادة جذر خاصة بنا في النظام، وهذه الشهادة ستتيح قراءة كل حركة مرورك المشفّرة.';
+
+  @override
+  String get trayCloseFully => 'إغلاق كامل';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return 'يبدو أن $app يعترض الطريق: لديه نفق VPN خاص به قيد التشغيل. نفقان في وقت واحد يتنازعان على المسار الافتراضي.';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return 'إغلاق $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return 'تم إغلاق $app';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return 'تعذّر إغلاق $app — أغلقه يدويًا';
+  }
 }

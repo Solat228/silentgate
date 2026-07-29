@@ -561,5 +561,38 @@
   "blockPageHint": "Vous pouvez modifier la règle : Paramètres → Tunnel partagé → Sites.",
   "blockPageNote": "Cette page provient de l'application elle-même, ce n'est pas une erreur réseau. Le site ne s'ouvre pas parce que vous l'avez ajouté à la liste de blocage.",
   "settingsBlockPage": "Page d’information de blocage",
-  "settingsBlockPageSub": "Au lieu d'une erreur de connexion, une page explique quelle règle a fermé le site. Fonctionne uniquement en http : une page https ne peut pas être remplacée sans installer notre propre certificat racine dans le système, et ce certificat permettrait de lire tout votre trafic chiffré."
+  "settingsBlockPageSub": "Au lieu d'une erreur de connexion, une page explique quelle règle a fermé le site. Fonctionne uniquement en http : une page https ne peut pas être remplacée sans installer notre propre certificat racine dans le système, et ce certificat permettrait de lire tout votre trafic chiffré.",
+  "trayCloseFully": "Fermer complètement",
+  "errorVpnConflictApp": "{app} semble gêner : son propre tunnel VPN est actif. Deux tunnels simultanés se disputent la route par défaut.",
+  "@errorVpnConflictApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "errorCloseApp": "Fermer {app}",
+  "@errorCloseApp": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppClosed": "{app} fermé",
+  "@toastAppClosed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "toastAppCloseFailed": "Impossible de fermer {app} — fermez-le manuellement",
+  "@toastAppCloseFailed": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  }
 }

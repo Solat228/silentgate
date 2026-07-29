@@ -3383,6 +3383,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Вместо ошибки соединения открывается страница с объяснением, каким правилом закрыт сайт. Работает только для http: у https подменить страницу нельзя без установки своего корневого сертификата в систему, а он позволил бы читать весь ваш защищённый трафик.'**
   String get settingsBlockPageSub;
+
+  /// No description provided for @trayCloseFully.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть полностью'**
+  String get trayCloseFully;
+
+  /// No description provided for @errorVpnConflictApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Похоже, мешает {app}: у него поднят собственный VPN-туннель. Два туннеля одновременно борются за маршрут по умолчанию.'**
+  String errorVpnConflictApp(String app);
+
+  /// No description provided for @errorCloseApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть {app}'**
+  String errorCloseApp(String app);
+
+  /// No description provided for @toastAppClosed.
+  ///
+  /// In ru, this message translates to:
+  /// **'{app} закрыт'**
+  String toastAppClosed(String app);
+
+  /// No description provided for @toastAppCloseFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось закрыть {app} — закройте вручную'**
+  String toastAppCloseFailed(String app);
 }
 
 class _AppLocalizationsDelegate

@@ -1804,4 +1804,27 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsBlockPageSub =>
       '不再显示连接错误，而是打开一个页面说明是哪条规则拦截了该网站。仅对 http 有效：若不在系统中安装我们自己的根证书，就无法替换 https 页面，而该证书会使你全部的加密流量都可被读取。';
+
+  @override
+  String get trayCloseFully => '完全退出';
+
+  @override
+  String errorVpnConflictApp(String app) {
+    return '看起来是 $app 在干扰：它自己的 VPN 隧道正在运行。两条隧道会同时争抢默认路由。';
+  }
+
+  @override
+  String errorCloseApp(String app) {
+    return '关闭 $app';
+  }
+
+  @override
+  String toastAppClosed(String app) {
+    return '已关闭 $app';
+  }
+
+  @override
+  String toastAppCloseFailed(String app) {
+    return '无法关闭 $app — 请手动关闭';
+  }
 }
