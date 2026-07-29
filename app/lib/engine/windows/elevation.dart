@@ -76,7 +76,15 @@ class Elevation {
     // такому таймауту — не отказ пользователя, а наша нетерпеливость.
     Duration timeout = const Duration(minutes: 2),
   }) async {
-    if (isElevated) {
+    // Способ можно переопределить переменной окружения SILENTGATE_ELEVATION:
+    //   direct    — только прямой запуск (когда права уже есть);
+    //   powershell — только посредник;
+    //   shellexec — только прежний путь через FFI.
+    // Нужно и для проверки веток на стенде, и как обходной путь пользователю,
+    // если у него один из способов заблокирован политикой.
+    final mode = Platform.environment['SILENTGATE_ELEVATION'] ?? '';
+
+    if (isElevated && mode != 'powershell' && mode != 'shellexec') {
       // Права уже есть — запрашивать нечего.
       try {
         await Process.start(exePath, _splitArgs(params),
@@ -90,6 +98,25 @@ class Elevation {
     }
 
     AppLog.i('Запрашиваю права администратора: $exePath $params');
+
+    // Сначала — посредник вне нашего процесса. Именно внутри Flutter-процесса
+    // вызов и зависает: в логе владельца после «пробую system, MTU 1500» не
+    // появлялось НИ ОДНОЙ строки по 25, 96, 199 и однажды 1128 секунд, при 25
+    // успешных подъёмах за ту же историю — то есть дефект плавающий, а не
+    // постоянный. Тот же вызов из отдельного процесса отрабатывает за 29 мс.
+    // Окно UAC пользователь видит ровно то же самое: его показывает система, а
+    // не посредник.
+    if (mode != 'shellexec') {
+      final viaPs = await _viaPowerShell(exePath, params, show, timeout);
+      if (viaPs != null) {
+        AppLog.i('Права администратора: ${viaPs ? "получены" : "ОТКАЗ"}');
+        return viaPs;
+      }
+      // null = посредник недоступен (политика, урезанный PATH). Идём прежним
+      // путём: он ненадёжен, но лучше, чем ничего.
+      AppLog.w('Посредник элевации недоступен — пробую напрямую');
+    }
+
     try {
       final ok = await Isolate.run(() => runElevated(exePath, params, show: show))
           .timeout(timeout);
@@ -104,6 +131,57 @@ class Elevation {
       return false;
     }
   }
+
+  /// Возвышение чужими руками: `Start-Process -Verb RunAs` в отдельном процессе.
+  ///
+  /// Возвращает true (запуск состоялся), false (пользователь отказал) или
+  /// **null** — посредник недоступен, решение принимать нечем.
+  ///
+  /// Почему не наш процесс: см. [runElevatedAsync]. Здесь важно, что ожидание
+  /// прерываемо — зависший посредник можно убить, в отличие от зависшего FFI.
+  static Future<bool?> _viaPowerShell(
+      String exePath, String params, bool show, Duration timeout) async {
+    Process proc;
+    try {
+      proc = await Process.start('powershell.exe', [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        psCommand(exePath, params, show: show),
+      ]);
+    } catch (_) {
+      return null; // powershell не запустился — это не отказ пользователя
+    }
+    try {
+      final code = await proc.exitCode.timeout(timeout);
+      // 2 — сам посредник не смог даже попытаться; отказом это считать нельзя.
+      if (code == 2) return null;
+      return code == 0;
+    } on TimeoutException {
+      AppLog.e('Посредник элевации не ответил за ${timeout.inSeconds} с');
+      proc.kill(ProcessSignal.sigkill);
+      return false;
+    }
+  }
+
+  /// Команда для посредника. Вынесена отдельно ради тестов на экранирование:
+  /// в путях бывают пробелы и апострофы, а неверная кавычка молча превратится
+  /// в «конфиг не найден» уже внутри хелпера.
+  static String psCommand(String exePath, String params, {bool show = false}) {
+    final args = _splitArgs(params).map(_psQuote).join(',');
+    final style = show ? 'Normal' : 'Hidden';
+    final start = StringBuffer('Start-Process -FilePath ${_psQuote(exePath)}');
+    if (args.isNotEmpty) start.write(' -ArgumentList $args');
+    start.write(' -Verb RunAs -WindowStyle $style -ErrorAction Stop');
+    // Отказ пользователя и невозможность запустить посредника — РАЗНЫЕ исходы:
+    // первый окончателен, второй означает «попробуй иначе».
+    return 'try { $start; exit 0 } '
+        'catch [System.ComponentModel.Win32Exception] { exit 1 } '
+        'catch { exit 2 }';
+  }
+
+  /// Апостроф внутри одинарных кавычек PowerShell удваивается.
+  static String _psQuote(String v) => "'${v.replaceAll("'", "''")}'";
 
   /// Разбор строки параметров в список аргументов.
   ///
