@@ -67,6 +67,12 @@ class TunOptions {
   /// сертификата невозможно. Для 443 остаётся обычный `reject`.
   final int blockPagePort;
 
+  /// Отказывать в QUIC (UDP:443), возвращая браузеры на TLS поверх TCP.
+  final bool blockQuic;
+
+  /// Отказывать в DNS поверх HTTPS/TLS/QUIC, возвращая резолв под наш перехват.
+  final bool blockEncryptedDns;
+
   /// Весь ли DNS вести через туннель.
   ///
   /// Имеет смысл только в режиме «только отмеченные»: там база трафика —
@@ -118,6 +124,8 @@ class TunOptions {
     this.blackhole = false,
     this.tunnelDnsForAll = true,
     this.blockPagePort = 0,
+    this.blockQuic = false,
+    this.blockEncryptedDns = false,
   });
 
   factory TunOptions.fromSettings(
@@ -130,6 +138,8 @@ class TunOptions {
   }) {
     return TunOptions(
       blockPagePort: blockPagePort,
+      blockQuic: s.blockQuic,
+      blockEncryptedDns: s.blockEncryptedDns,
       platformTun: android,
       directDnsUpstream: directDnsUpstream,
       logOutput: logOutput,
@@ -211,8 +221,58 @@ class TunOptions {
         blackhole: blackhole,
         tunnelDnsForAll: tunnelDnsForAll,
         blockPagePort: blockPagePort,
+        blockQuic: blockQuic,
+        blockEncryptedDns: blockEncryptedDns,
       );
 }
+
+/// Имена известных публичных DoH-резолверов.
+///
+/// Список заведомо неполон и полным быть не может — свой DoH поднимается за
+/// вечер. Он закрывает НАСТРОЙКИ ПО УМОЛЧАНИЮ браузеров и системы, то есть тот
+/// случай, когда пользователь про DoH даже не знает. Против сознательного
+/// обхода это не защита, и обещать её нельзя.
+const _dohHosts = <String>[
+  'dns.google',
+  'dns.google.com',
+  'cloudflare-dns.com',
+  'mozilla.cloudflare-dns.com',
+  'one.one.one.one',
+  'chrome.cloudflare-dns.com',
+  'dns.quad9.net',
+  'dns9.quad9.net',
+  'dns.nextdns.io',
+  'doh.opendns.com',
+  'dns.adguard.com',
+  'dns.adguard-dns.com',
+  'doh.cleanbrowsing.org',
+  'dns.sb',
+  'doh.dns.sb',
+  'dns.alidns.com',
+  'doh.pub',
+  'dot.pub',
+  'dns.yandex.ru',
+  'common.dot.dns.yandex.net',
+];
+
+/// Адреса тех же резолверов: браузер умеет ходить к ним по голому IP.
+const _dohIps = <String>[
+  '8.8.8.8/32',
+  '8.8.4.4/32',
+  '1.1.1.1/32',
+  '1.0.0.1/32',
+  '9.9.9.9/32',
+  '149.112.112.112/32',
+  '94.140.14.14/32',
+  '94.140.15.15/32',
+  '208.67.222.222/32',
+  '208.67.220.220/32',
+  '77.88.8.8/32',
+  '77.88.8.1/32',
+  '2001:4860:4860::8888/128',
+  '2606:4700:4700::1111/128',
+  '2620:fe::fe/128',
+];
 
 /// Строит конфиг sing-box для TUN-режима: sing-box держит TUN (wintun) и маршрутизацию
 /// (по приложениям через process_*, по доменам через domain_suffix), а прокси-трафик
@@ -300,6 +360,32 @@ class SingboxConfigBuilder {
         // если UDP до сервера не проксируется.
         {'protocol': 'dns', 'action': 'hijack-dns'},
     ];
+
+    // ── Закрытие обходных путей ────────────────────────────────────────────
+    //
+    // Оба правила стоят НИЖЕ защиты от петли (IP сервера и свои процессы уже
+    // ушли в direct выше) и ВЫШЕ пользовательских. Порядок здесь не вкусовой: у
+    // hysteria2 транспорт — QUIC на UDP:443, и запрет выше строки с IP сервера
+    // убил бы собственное подключение целиком.
+    if (o.blockQuic) {
+      // Доменные правила («Прямо», «Туннель», «Блок») применяются к ИМЕНИ, а имя
+      // берётся из сниффинга. Браузер, ушедший на HTTP/3, имени не оставляет —
+      // правило по домену молча не срабатывает, и пользователь видит, что
+      // настройка «не работает». Отказ по UDP:443 возвращает браузер на TLS
+      // поверх TCP, где имя видно; сайты от этого не ломаются — HTTP/3 для них
+      // не обязателен, это оптимизация.
+      rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
+    }
+    if (o.blockEncryptedDns) {
+      // DNS поверх HTTPS/TLS/QUIC уходит мимо перехвата UDP:53. Тогда DNS-зеркало
+      // split-правил не работает вовсе: домен «Прямо» резолвится через туннель,
+      // домен «Блок» на DNS не режется.
+      rules.add({'network': 'tcp', 'port': [853], 'action': 'reject'}); // DoT
+      rules.add({'network': 'udp', 'port': [853], 'action': 'reject'}); // DoQ
+      rules.add({'domain_suffix': _dohHosts, 'port': [443], 'action': 'reject'});
+      // Браузер может пойти к резолверу по голому IP, минуя имя.
+      rules.add({'ip_cidr': _dohIps, 'port': [443], 'action': 'reject'});
+    }
 
     // Проба обязана идти ЧЕРЕЗ VPN. Без этого правила в режиме «только
     // выбранные» база — `direct` (наш пакет в include-список не попадает), и

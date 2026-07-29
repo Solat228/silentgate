@@ -1896,4 +1896,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String toastAppCloseFailed(String app) {
     return 'Impossible de fermer $app — fermez-le manuellement';
   }
+
+  @override
+  String get tunBlockQuic => 'Bloquer QUIC (HTTP/3)';
+
+  @override
+  String get infoBlockQuic =>
+      'Les règles de sites portent sur le NOM, et l\'application ne voit ce nom qu\'en TLS ordinaire. Un navigateur passé en HTTP/3 ne montre pas de nom : la règle de domaine ne fait alors rien, silencieusement. Le blocage ramène le navigateur vers une connexion normale où le nom est visible. Les sites continuent de fonctionner : HTTP/3 est facultatif, même si la vidéo peut charger un peu plus lentement.';
+
+  @override
+  String get tunBlockEncryptedDns => 'Bloquer le DNS chiffré (DoH/DoT)';
+
+  @override
+  String get infoBlockEncryptedDns =>
+      'Les navigateurs et Windows peuvent résoudre les adresses via HTTPS, contournant notre interception. Les règles « Direct » et « Bloquer » ne fonctionnent alors plus au niveau DNS. ⚠️ Si un fournisseur de DNS chiffré est imposé dans le navigateur, celui-ci ne reviendra pas au DNS classique : il cessera simplement d\'ouvrir les sites. La liste des fournisseurs connus est par nature incomplète.';
 }

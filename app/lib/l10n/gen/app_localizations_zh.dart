@@ -1827,4 +1827,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String toastAppCloseFailed(String app) {
     return '无法关闭 $app — 请手动关闭';
   }
+
+  @override
+  String get tunBlockQuic => '阻止 QUIC（HTTP/3）';
+
+  @override
+  String get infoBlockQuic =>
+      '网站规则按域名匹配，而应用只能在普通 TLS 中看到域名。改用 HTTP/3 的浏览器不暴露域名，域名规则就会悄无声息地失效。阻止后浏览器回退到普通连接，域名重新可见。网站仍可正常访问：HTTP/3 对它们并非必需，只是视频加载可能略慢。';
+
+  @override
+  String get tunBlockEncryptedDns => '阻止加密 DNS（DoH/DoT）';
+
+  @override
+  String get infoBlockEncryptedDns =>
+      '浏览器和 Windows 可以通过 HTTPS 解析地址，从而绕过我们的拦截，此时「直连」和「拦截」规则在 DNS 层面完全失效。⚠️ 如果浏览器中固定指定了加密 DNS 提供商，它不会回退到普通 DNS，而是直接打不开网站。已知提供商名单天然不完整。';
 }

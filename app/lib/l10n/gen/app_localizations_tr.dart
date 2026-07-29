@@ -1880,4 +1880,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String toastAppCloseFailed(String app) {
     return '$app kapatılamadı — elle kapatın';
   }
+
+  @override
+  String get tunBlockQuic => 'QUIC (HTTP/3) engelle';
+
+  @override
+  String get infoBlockQuic =>
+      'Site kuralları ADA göre eşleşir ve uygulama adı yalnızca sıradan TLS içinde görür. HTTP/3’e geçen tarayıcı ad göstermez; alan adı kuralı sessizce hiçbir şey yapmaz. Engelleme, tarayıcıyı adın görüldüğü normal bağlantıya döndürür. Siteler çalışmayı sürdürür: HTTP/3 onlar için zorunlu değildir, yalnızca video biraz daha yavaş yüklenebilir.';
+
+  @override
+  String get tunBlockEncryptedDns => 'Şifreli DNS’i (DoH/DoT) engelle';
+
+  @override
+  String get infoBlockEncryptedDns =>
+      'Tarayıcılar ve Windows adresleri HTTPS üzerinden çözerek yakalamamızı atlayabilir. O zaman «Doğrudan» ve «Engelle» kuralları DNS düzeyinde hiç çalışmaz. ⚠️ Tarayıcıda sabit bir şifreli DNS sağlayıcısı seçiliyse normal DNS’e dönmez, siteleri açmayı bırakır. Bilinen sağlayıcı listesi doğası gereği eksiktir.';
 }

@@ -1868,4 +1868,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String toastAppCloseFailed(String app) {
     return 'تعذّر إغلاق $app — أغلقه يدويًا';
   }
+
+  @override
+  String get tunBlockQuic => 'حظر QUIC (HTTP/3)';
+
+  @override
+  String get infoBlockQuic =>
+      'قواعد المواقع تعتمد على الاسم، والتطبيق لا يرى الاسم إلا في TLS العادي. المتصفح الذي ينتقل إلى HTTP/3 لا يُظهر الاسم، فلا تعمل قاعدة النطاق بصمت. الحظر يعيد المتصفح إلى اتصال عادي يظهر فيه الاسم. المواقع تبقى تعمل: HTTP/3 اختياري لها، وإن كان الفيديو قد يُحمَّل أبطأ قليلاً.';
+
+  @override
+  String get tunBlockEncryptedDns => 'حظر DNS المشفّر (DoH/DoT)';
+
+  @override
+  String get infoBlockEncryptedDns =>
+      'تستطيع المتصفحات وويندوز تحويل العناوين عبر HTTPS متجاوزةً اعتراضنا، فلا تعمل قواعد «مباشر» و«حظر» على مستوى DNS إطلاقًا. ⚠️ إذا كان المتصفح مضبوطًا على مزوّد DNS مشفّر ثابت، فلن يعود إلى DNS العادي بل سيتوقف عن فتح المواقع. قائمة المزوّدين المعروفين ناقصة بطبيعتها.';
 }

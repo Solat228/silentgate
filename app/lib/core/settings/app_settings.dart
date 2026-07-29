@@ -192,6 +192,23 @@ class AppSettings {
   /// отмеченных приложений становятся видны провайдеру.
   final bool tunnelDnsForAll;
 
+  /// Отказывать в QUIC (UDP:443).
+  ///
+  /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
+  /// Браузер, ушедший на HTTP/3, имени не оставляет — и правило по домену молча
+  /// не срабатывает. Отказ возвращает браузер на TLS поверх TCP, где имя видно.
+  /// По умолчанию ВЫКЛЮЧЕНО: у кого правил по доменам нет, тому это только
+  /// отнимет скорость видео.
+  final bool blockQuic;
+
+  /// Отказывать в DNS поверх HTTPS/TLS/QUIC.
+  ///
+  /// Такой DNS уходит мимо перехвата UDP:53, и DNS-зеркало правил не работает:
+  /// домен «Прямо» резолвится через туннель, домен «Блок» на DNS не режется.
+  /// По умолчанию ВЫКЛЮЧЕНО: если браузеру жёстко задан DoH-провайдер, он не
+  /// откатится на обычный DNS, а просто перестанет резолвить.
+  final bool blockEncryptedDns;
+
   /// Показывать страницу «сайт заблокирован» вместо ошибки соединения.
   ///
   /// Работает только для plain http (см. [BlockPageServer]); у https заглушку
@@ -309,6 +326,8 @@ class AppSettings {
     this.dnsHijack = true,
     this.tunnelDnsForAll = true,
     this.blockPageEnabled = true,
+    this.blockQuic = false,
+    this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.singboxLogLevel = SingboxLogLevel.warn,
     this.autoReconnect = true,
@@ -367,6 +386,8 @@ class AppSettings {
     bool? dnsHijack,
     bool? tunnelDnsForAll,
     bool? blockPageEnabled,
+    bool? blockQuic,
+    bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
     SingboxLogLevel? singboxLogLevel,
     bool? autoReconnect,
@@ -415,6 +436,8 @@ class AppSettings {
       dnsHijack: dnsHijack ?? this.dnsHijack,
       tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
       blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
+      blockQuic: blockQuic ?? this.blockQuic,
+      blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
       singboxLogLevel: singboxLogLevel ?? this.singboxLogLevel,
       autoReconnect: autoReconnect ?? this.autoReconnect,
@@ -465,6 +488,8 @@ class AppSettings {
         'dnsHijack': dnsHijack,
         'tunnelDnsForAll': tunnelDnsForAll,
         'blockPageEnabled': blockPageEnabled,
+        'blockQuic': blockQuic,
+        'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
         'singboxLogLevel': singboxLogLevel.name,
         'autoReconnect': autoReconnect,
@@ -541,6 +566,9 @@ class AppSettings {
             j['tunnelDnsForAll'] as bool? ?? defaults.tunnelDnsForAll,
         blockPageEnabled:
             j['blockPageEnabled'] as bool? ?? defaults.blockPageEnabled,
+        blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
+        blockEncryptedDns:
+            j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,
       // Миграция со старых ключей: смысл фаз изменился (сначала быстрый метод,
       // прокси — только если он молчит), поэтому переносим значения по смыслу.
       speedTestSize:
@@ -604,6 +632,8 @@ class AppSettings {
       dnsHijack != other.dnsHijack ||
       tunnelDnsForAll != other.tunnelDnsForAll ||
       blockPageEnabled != other.blockPageEnabled ||
+      blockQuic != other.blockQuic ||
+      blockEncryptedDns != other.blockEncryptedDns ||
       dnsStrategy != other.dnsStrategy ||
       singboxLogLevel != other.singboxLogLevel ||
       noRealIp != other.noRealIp ||

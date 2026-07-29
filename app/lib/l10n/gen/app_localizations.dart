@@ -3413,6 +3413,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось закрыть {app} — закройте вручную'**
   String toastAppCloseFailed(String app);
+
+  /// No description provided for @tunBlockQuic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запрещать QUIC (HTTP/3)'**
+  String get tunBlockQuic;
+
+  /// No description provided for @infoBlockQuic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила по сайтам применяются к ИМЕНИ, а имя приложение видит только в обычном TLS. Браузер, ушедший на HTTP/3, имени не показывает — и правило по домену молча не срабатывает. Запрет возвращает браузер на обычное соединение, где имя видно. Сайты от этого не ломаются: HTTP/3 для них не обязателен, но видео может грузиться чуть медленнее. Включайте, если правила по сайтам не действуют.'**
+  String get infoBlockQuic;
+
+  /// No description provided for @tunBlockEncryptedDns.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запрещать шифрованный DNS (DoH/DoT)'**
+  String get tunBlockEncryptedDns;
+
+  /// No description provided for @infoBlockEncryptedDns.
+  ///
+  /// In ru, this message translates to:
+  /// **'Браузеры и Windows умеют спрашивать адреса сайтов по HTTPS в обход нашего перехвата. Тогда правила «Прямо» и «Блок» на уровне DNS не работают вовсе. Запрет возвращает запросы под наш контроль. ⚠️ Если в браузере жёстко выбран поставщик шифрованного DNS, он не откатится на обычный, а просто перестанет открывать сайты — тогда выключите настройку или уберите поставщика в браузере. Список известных поставщиков неполон по своей природе: свой можно поднять за вечер.'**
+  String get infoBlockEncryptedDns;
 }
 
 class _AppLocalizationsDelegate

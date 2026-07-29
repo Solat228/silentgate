@@ -1892,4 +1892,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String toastAppCloseFailed(String app) {
     return '$app konnte nicht geschlossen werden – bitte manuell schließen';
   }
+
+  @override
+  String get tunBlockQuic => 'QUIC (HTTP/3) blockieren';
+
+  @override
+  String get infoBlockQuic =>
+      'Website-Regeln greifen über den NAMEN, und den sieht die App nur bei gewöhnlichem TLS. Ein Browser, der auf HTTP/3 wechselt, zeigt keinen Namen – die Domain-Regel bleibt stillschweigend wirkungslos. Die Blockade holt den Browser zurück auf eine normale Verbindung, in der der Name sichtbar ist. Websites funktionieren weiterhin: HTTP/3 ist für sie optional, Videos laden eventuell etwas langsamer.';
+
+  @override
+  String get tunBlockEncryptedDns => 'Verschlüsseltes DNS (DoH/DoT) blockieren';
+
+  @override
+  String get infoBlockEncryptedDns =>
+      'Browser und Windows können Adressen über HTTPS auflösen und unsere Erfassung umgehen. Dann wirken die Regeln „Direkt“ und „Blockieren“ auf DNS-Ebene gar nicht. ⚠️ Ist im Browser ein fester Anbieter für verschlüsseltes DNS eingetragen, fällt er nicht auf normales DNS zurück, sondern öffnet einfach keine Seiten mehr. Die Liste bekannter Anbieter ist naturgemäß unvollständig.';
 }

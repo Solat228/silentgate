@@ -232,6 +232,19 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
                 title: l.tunDnsForAll,
                 info: l.infoDnsForAll,
                 apply: (st, v) => st.copyWith(tunnelDnsForAll: v)),
+          // Обходные пути, из-за которых правила по сайтам «молча не работают».
+          // Оба выключены по умолчанию: они меняют поведение сети, и включать их
+          // вслепую нельзя — цена описана в подсказках.
+          _switch(context, controller,
+              value: s.blockQuic,
+              title: l.tunBlockQuic,
+              info: l.infoBlockQuic,
+              apply: (st, v) => st.copyWith(blockQuic: v)),
+          _switch(context, controller,
+              value: s.blockEncryptedDns,
+              title: l.tunBlockEncryptedDns,
+              info: l.infoBlockEncryptedDns,
+              apply: (st, v) => st.copyWith(blockEncryptedDns: v)),
           ListTile(
             title: Row(children: [
               Text(l.tunResolveStrategy),
