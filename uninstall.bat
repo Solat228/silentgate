@@ -1,9 +1,9 @@
 @echo off
-rem ==== ╨г╨┤╨░╨╗╨╡╨╜╨╕╨╡ ╨┤╨░╨╜╨╜╤Л╤Е ╨╕ ╤Б╨╗╨╡╨┤╨╛╨▓ SilentGate ====
-rem ╨Ъ╨╗╨░╨┤╤С╤В╤Б╤П ╤А╤П╨┤╨╛╨╝ ╤Б silentgate.exe. ╨б╨╜╨╕╨╝╨░╨╡╤В ╤Б╨╕╤Б╤В╨╡╨╝╨╜╤Л╨╣ ╨┐╤А╨╛╨║╤Б╨╕, ╤Г╨▒╨╕╨▓╨░╨╡╤В ╤П╨┤╤А╨╛/sing-box,
-rem ╤Г╨┤╨░╨╗╤П╨╡╤В ╨┤╨░╨╜╨╜╤Л╨╡ (%APPDATA%\SilentGate) ╨╕ URL-╤Б╤Е╨╡╨╝╤Г silentgate://.
-echo ╨Ю╤З╨╕╤Б╤В╨║╨░ SilentGate...
+rem ==== Удаление данных и следов SilentGate ====
+rem Кладётся рядом с silentgate.exe. Снимает системный прокси, убивает ядро/sing-box,
+rem удаляет данные (%APPDATA%\SilentGate) и URL-схему silentgate://.
+echo Очистка SilentGate...
 "%~dp0silentgate.exe" --cleanup
 echo.
-echo ╨У╨╛╤В╨╛╨▓╨╛. ╨в╨╡╨┐╨╡╤А╤М ╨╝╨╛╨╢╨╜╨╛ ╤Г╨┤╨░╨╗╨╕╤В╤М ╨┐╨░╨┐╨║╤Г ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╤П.
+echo Готово. Теперь можно удалить папку приложения.
 pause

@@ -1,7 +1,7 @@
 @echo off
-rem ==== –°–±–æ—Ä–∫–∞ SilentGate (Windows, release) –≤ –æ–±—Ö–æ–¥ "!" –≤ –ø—É—Ç–∏ —á–µ—Ä–µ–∑ junction ====
-rem –î–≤–æ–π–Ω–æ–π –∫–ª–∏–∫ –ø–æ —ç—Ç–æ–º—É —Ñ–∞–π–ª—É: —Å–æ–∑–¥–∞—Å—Ç junction (–µ—Å–ª–∏ –Ω–µ—Ç), —Å–æ–±–µ—Ä—ë—Ç exe,
-rem –ø–æ–ª–æ–∂–∏—Ç —è–¥—Ä–æ —Ä—è–¥–æ–º –∏ –æ—Ç–∫—Ä–æ–µ—Ç –ø–∞–ø–∫—É —Å –≥–æ—Ç–æ–≤—ã–º silentgate.exe.
+rem ==== ë°Æ‡™† SilentGate (Windows, release) ¢ Æ°ÂÆ§ "!" ¢ Ø„‚® Á•‡•ß junction ====
+rem Ñ¢Æ©≠Æ© ™´®™ ØÆ Ì‚Æ¨„ ‰†©´„: ·Æß§†·‚ junction (•·´® ≠•‚), ·Æ°•‡Ò‚ exe,
+rem ØÆ´Æ¶®‚ Ô§‡Æ ‡Ô§Æ¨ ® Æ‚™‡Æ•‚ Ø†Ø™„ · £Æ‚Æ¢Î¨ silentgate.exe.
 setlocal
 set "JUNCTION=C:\dev\silentgate"
 set "PROJECT=I:\!Backup\!Projects\!VPN\SilentGateApp"
@@ -13,11 +13,11 @@ if not exist "%JUNCTION%\" (
 )
 
 cd /d "%JUNCTION%\app"
-echo –°–±–æ—Ä–∫–∞ release...
+echo ë°Æ‡™† release...
 call "%FLUTTER%" build windows --release
 if errorlevel 1 (
   echo.
-  echo === –°–ë–û–†–ö–ê –ù–ï –£–î–ê–õ–ê–°–¨ ===
+  echo === ëÅéêäÄ çÖ ìÑÄãÄëú ===
   pause
   exit /b 1
 )
@@ -31,39 +31,39 @@ if exist "%BIN%\geosite.dat"  copy /Y "%BIN%\geosite.dat"  "%REL%\" >nul
 if exist "%BIN%\wintun.dll"   copy /Y "%BIN%\wintun.dll"   "%REL%\" >nul
 if exist "%PROJECT%\uninstall.bat" copy /Y "%PROJECT%\uninstall.bat" "%REL%\" >nul
 
-rem ==== –õ–∏—Ü–µ–Ω–∑–∏–∏ —Å—Ç–æ—Ä–æ–Ω–Ω–∏—Ö –∫–æ–º–ø–æ–Ω–µ–Ω—Ç–æ–≤ ====
-rem –û–±—è–∑–∞—Ç–µ–ª—å–Ω—ã –ø—Ä–∏ —Ä–∞—Å–ø—Ä–æ—Å—Ç—Ä–∞–Ω–µ–Ω–∏–∏: sing-box ‚Äî GPL-3.0 (¬ß4/¬ß6 —Ç—Ä–µ–±—É—é—Ç –ø–µ—Ä–µ–¥–∞–≤–∞—Ç—å
-rem —Ç–µ–∫—Å—Ç –ª–∏—Ü–µ–Ω–∑–∏–∏ –∏ –æ–±–µ—Å–ø–µ—á–∏–≤–∞—Ç—å –¥–æ—Å—Ç—É–ø –∫ –∏—Å—Ö–æ–¥–Ω–∏–∫–∞–º), Xray-core ‚Äî MPL-2.0 (¬ß3.2
-rem —Ç—Ä–µ–±—É–µ—Ç –ø—Ä–∏–∫–ª–∞–¥—ã–≤–∞—Ç—å —Ç–µ–∫—Å—Ç –∫ Executable Form), Wintun ‚Äî —Å–≤–æ—è –ª–∏—Ü–µ–Ω–∑–∏—è.
+rem ==== ã®Ê•≠ß®® ·‚Æ‡Æ≠≠®Â ™Æ¨ØÆ≠•≠‚Æ¢ ====
+rem é°Ôß†‚•´Ï≠Î Ø‡® ‡†·Ø‡Æ·‚‡†≠•≠®®: sing-box - GPL-3.0 (Ø.4/Ø.6 ‚‡•°„Ó‚ Ø•‡•§†¢†‚Ï
+rem ‚•™·‚ ´®Ê•≠ß®® ® Æ°•·Ø•Á®¢†‚Ï §Æ·‚„Ø ™ ®·ÂÆ§≠®™†¨), Xray-core - MPL-2.0 (Ø.3.2
+rem ‚‡•°„•‚ Ø‡®™´†§Î¢†‚Ï ‚•™·‚ ™ Executable Form), Wintun - ·¢ÆÔ ´®Ê•≠ß®Ô.
 if not exist "%REL%\licenses\" mkdir "%REL%\licenses"
 if exist "%BIN%\LICENSE"             copy /Y "%BIN%\LICENSE"             "%REL%\licenses\LICENSE-xray.txt" >nul
 if exist "%BIN%\LICENSE-wintun.txt"  copy /Y "%BIN%\LICENSE-wintun.txt"  "%REL%\licenses\LICENSE-wintun.txt" >nul
 if exist "%BIN%\LICENSE-singbox.txt" copy /Y "%BIN%\LICENSE-singbox.txt" "%REL%\licenses\LICENSE-singbox.txt" >nul
 if exist "%BIN%\LICENSE-GPL-3.0.txt" copy /Y "%BIN%\LICENSE-GPL-3.0.txt" "%REL%\licenses\LICENSE-GPL-3.0.txt" >nul
 if exist "%PROJECT%\THIRD-PARTY.md"  copy /Y "%PROJECT%\THIRD-PARTY.md"  "%REL%\licenses\" >nul
-if not exist "%BIN%\LICENSE-singbox.txt" echo [!] –ù–µ—Ç LICENSE-singbox.txt ‚Äî –∑–∞–ø—É—Å—Ç–∏—Ç–µ tools\fetch-singbox.ps1
+if not exist "%BIN%\LICENSE-singbox.txt" echo [!] ç•‚ LICENSE-singbox.txt - ß†Ø„·‚®‚• tools\fetch-singbox.ps1
 
-rem ==== –ü–æ–¥–ø–∏—Å—å –∫–æ–¥–∞ (–æ–ø—Ü–∏–æ–Ω–∞–ª—å–Ω–æ) ====
-rem –ü–æ–¥–ø–∏—Å—å —É–±–∏—Ä–∞–µ—Ç –ø—Ä–µ–¥—É–ø—Ä–µ–∂–¥–µ–Ω–∏–µ SmartScreen –∏ —Å–Ω–∏–∂–∞–µ—Ç –ª–æ–∂–Ω—ã–µ —Å—Ä–∞–±–∞—Ç—ã–≤–∞–Ω–∏—è
-rem –∞–Ω—Ç–∏–≤–∏—Ä—É—Å–æ–≤. –®–∞–≥ –í–´–ü–û–õ–ù–Ø–ï–¢–°–Ø –¢–û–õ–¨–ö–û –µ—Å–ª–∏ –∑–∞–¥–∞–Ω —Å–µ—Ä—Ç–∏—Ñ–∏–∫–∞—Ç ‚Äî –∏–Ω–∞—á–µ –ø—Ä–æ–ø—É—Å–∫–∞–µ—Ç—Å—è.
-rem   set "SIGN_PFX=C:\path\cert.pfx" ^& set "SIGN_PASS=–ø–∞—Ä–æ–ª—å"   –ò–õ–ò
-rem   set "SIGN_THUMBPRINT=–æ—Ç–ø–µ—á–∞—Ç–æ–∫-—Å–µ—Ä—Ç–∏—Ñ–∏–∫–∞—Ç–∞-–∏–∑-—Ö—Ä–∞–Ω–∏–ª–∏—â–∞"
-rem –ù—É–∂–µ–Ω signtool (Windows SDK). –ü–æ–¥—Ä–æ–±–Ω–µ–µ ‚Äî docs/CODE_SIGNING.md.
+rem ==== èÆ§Ø®·Ï ™Æ§† (ÆØÊ®Æ≠†´Ï≠Æ) ====
+rem èÆ§Ø®·Ï „°®‡†•‚ Ø‡•§„Ø‡•¶§•≠®• SmartScreen ® ·≠®¶†•‚ ´Æ¶≠Î• ·‡†°†‚Î¢†≠®Ô
+rem †≠‚®¢®‡„·Æ¢. ò†£ ÇõèéãçüÖíëü íéãúäé •·´® ß†§†≠ ·•‡‚®‰®™†‚ - ®≠†Á• Ø‡ÆØ„·™†•‚·Ô.
+rem   set "SIGN_PFX=C:\path\cert.pfx" ^& set "SIGN_PASS=Ø†‡Æ´Ï"   àãà
+rem   set "SIGN_THUMBPRINT=Æ‚Ø•Á†‚Æ™-·•‡‚®‰®™†‚†-®ß-Â‡†≠®´®È†"
+rem ç„¶•≠ signtool (Windows SDK). èÆ§‡Æ°≠•• - docs/CODE_SIGNING.md.
 where signtool >nul 2>&1
 if errorlevel 1 (
-  echo [i] signtool –Ω–µ –Ω–∞–π–¥–µ–Ω ‚Äî –ø–æ–¥–ø–∏—Å—å –ø—Ä–æ–ø—É—â–µ–Ω–∞ ^(—É—Å—Ç–∞–Ω–æ–≤–∏—Ç–µ Windows SDK^).
+  echo [i] signtool ≠• ≠†©§•≠ - ØÆ§Ø®·Ï Ø‡ÆØ„È•≠† ^(„·‚†≠Æ¢®‚• Windows SDK^).
 ) else if defined SIGN_PFX (
-  echo –ü–æ–¥–ø–∏—Å—å silentgate.exe ^(PFX^)...
+  echo èÆ§Ø®·Ï silentgate.exe ^(PFX^)...
   signtool sign /fd SHA256 /f "%SIGN_PFX%" /p "%SIGN_PASS%" /tr http://timestamp.digicert.com /td SHA256 "%REL%\silentgate.exe"
 ) else if defined SIGN_THUMBPRINT (
-  echo –ü–æ–¥–ø–∏—Å—å silentgate.exe ^(—Ö—Ä–∞–Ω–∏–ª–∏—â–µ^)...
+  echo èÆ§Ø®·Ï silentgate.exe ^(Â‡†≠®´®È•^)...
   signtool sign /fd SHA256 /sha1 "%SIGN_THUMBPRINT%" /tr http://timestamp.digicert.com /td SHA256 "%REL%\silentgate.exe"
 ) else (
-  echo [i] –°–µ—Ä—Ç–∏—Ñ–∏–∫–∞—Ç –Ω–µ –∑–∞–¥–∞–Ω ^(SIGN_PFX / SIGN_THUMBPRINT^) ‚Äî –ø–æ–¥–ø–∏—Å—å –ø—Ä–æ–ø—É—â–µ–Ω–∞.
+  echo [i] ë•‡‚®‰®™†‚ ≠• ß†§†≠ ^(SIGN_PFX / SIGN_THUMBPRINT^) - ØÆ§Ø®·Ï Ø‡ÆØ„È•≠†.
 )
 
 echo.
-echo === –ì–û–¢–û–í–û ===
-echo –ü—Ä–∏–ª–æ–∂–µ–Ω–∏–µ: %REL%\silentgate.exe
+echo === ÉéíéÇé ===
+echo è‡®´Æ¶•≠®•: %REL%\silentgate.exe
 start "" "%REL%"
 endlocal

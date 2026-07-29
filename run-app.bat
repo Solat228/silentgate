@@ -1,11 +1,11 @@
 @echo off
-rem ==== –ó–∞–ø—É—Å–∫ —É–∂–µ —Å–æ–±—Ä–∞–Ω–Ω–æ–≥–æ SilentGate ====
+rem ==== á†Ø„·™ „¶• ·Æ°‡†≠≠Æ£Æ SilentGate ====
 setlocal
 set "REL=C:\dev\silentgate\app\build\windows\x64\runner\Release"
 if exist "%REL%\silentgate.exe" (
   start "" "%REL%\silentgate.exe"
 ) else (
-  echo –ü—Ä–∏–ª–æ–∂–µ–Ω–∏–µ –µ—â—ë –Ω–µ —Å–æ–±—Ä–∞–Ω–æ. –ó–∞–ø—É—Å—Ç–∏—Ç–µ build-exe.bat
+  echo è‡®´Æ¶•≠®• •ÈÒ ≠• ·Æ°‡†≠Æ. á†Ø„·‚®‚• build-exe.bat
   pause
 )
 endlocal
