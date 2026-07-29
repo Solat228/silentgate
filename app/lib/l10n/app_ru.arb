@@ -834,5 +834,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Обнаружен другой VPN",
+  "conflictDialogBody": "Похоже, работает {app} — у него поднят собственный туннель. Два туннеля одновременно борются за маршрут по умолчанию, и подключение может не подняться или подняться без доступа в сеть.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Закрыть и подключиться",
+  "conflictConnectAnyway": "Всё равно подключиться"
 }

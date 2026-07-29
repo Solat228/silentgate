@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Anderes VPN erkannt",
+  "conflictDialogBody": "Offenbar läuft {app} mit einem eigenen Tunnel. Zwei gleichzeitige Tunnel streiten sich um die Standardroute – die Verbindung kann scheitern oder ohne Netzzugang zustande kommen.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Schließen und verbinden",
+  "conflictConnectAnyway": "Trotzdem verbinden"
 }

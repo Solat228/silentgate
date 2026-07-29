@@ -1913,4 +1913,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return '$percent % вашего канала';
   }
+
+  @override
+  String get conflictDialogTitle => 'Обнаружен другой VPN';
+
+  @override
+  String conflictDialogBody(String app) {
+    return 'Похоже, работает $app — у него поднят собственный туннель. Два туннеля одновременно борются за маршрут по умолчанию, и подключение может не подняться или подняться без доступа в сеть.';
+  }
+
+  @override
+  String get conflictCloseAndConnect => 'Закрыть и подключиться';
+
+  @override
+  String get conflictConnectAnyway => 'Всё равно подключиться';
 }

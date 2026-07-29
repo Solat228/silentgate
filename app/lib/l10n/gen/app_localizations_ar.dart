@@ -1902,4 +1902,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return '$percent٪ من قناتك';
   }
+
+  @override
+  String get conflictDialogTitle => 'تم اكتشاف VPN آخر';
+
+  @override
+  String conflictDialogBody(String app) {
+    return 'يبدو أن $app يعمل بنفق خاص به. نفقان في وقت واحد يتنازعان على المسار الافتراضي، وقد يفشل الاتصال أو يعمل دون وصول إلى الشبكة.';
+  }
+
+  @override
+  String get conflictCloseAndConnect => 'إغلاقه والاتصال';
+
+  @override
+  String get conflictConnectAnyway => 'الاتصال على أي حال';
 }

@@ -1908,4 +1908,18 @@ class AppLocalizationsFa extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return '$percent٪ پهنای باند شما';
   }
+
+  @override
+  String get conflictDialogTitle => 'VPN دیگری شناسایی شد';
+
+  @override
+  String conflictDialogBody(String app) {
+    return 'به نظر می‌رسد $app با تونل خودش در حال اجراست. دو تونل هم‌زمان بر سر مسیر پیش‌فرض رقابت می‌کنند و ممکن است اتصال برقرار نشود یا بدون دسترسی به شبکه بالا بیاید.';
+  }
+
+  @override
+  String get conflictCloseAndConnect => 'بستن و اتصال';
+
+  @override
+  String get conflictConnectAnyway => 'به‌هرحال متصل شو';
 }

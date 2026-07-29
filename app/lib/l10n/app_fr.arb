@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Autre VPN détecté",
+  "conflictDialogBody": "{app} semble fonctionner avec son propre tunnel actif. Deux tunnels simultanés se disputent la route par défaut : la connexion peut échouer ou s'établir sans accès au réseau.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Fermer et connecter",
+  "conflictConnectAnyway": "Se connecter quand même"
 }

@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "تم اكتشاف VPN آخر",
+  "conflictDialogBody": "يبدو أن {app} يعمل بنفق خاص به. نفقان في وقت واحد يتنازعان على المسار الافتراضي، وقد يفشل الاتصال أو يعمل دون وصول إلى الشبكة.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "إغلاقه والاتصال",
+  "conflictConnectAnyway": "الاتصال على أي حال"
 }

@@ -1914,4 +1914,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return 'hattınızın %$percent kadarı';
   }
+
+  @override
+  String get conflictDialogTitle => 'Başka bir VPN bulundu';
+
+  @override
+  String conflictDialogBody(String app) {
+    return 'Görünüşe göre $app kendi tüneliyle çalışıyor. Aynı anda iki tünel varsayılan rota için çekişir; bağlantı kurulamayabilir ya da ağ erişimi olmadan kurulabilir.';
+  }
+
+  @override
+  String get conflictCloseAndConnect => 'Kapat ve bağlan';
+
+  @override
+  String get conflictConnectAnyway => 'Yine de bağlan';
 }

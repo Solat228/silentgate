@@ -181,6 +181,23 @@ class InterferenceScanner {
     return null;
   }
 
+  /// Дождаться, пока чужой туннель реально пропадёт.
+  ///
+  /// Убить процесс мало: система снимает адаптер и его маршруты с задержкой, и
+  /// подключение, начатое в этот промежуток, упирается в ровно ту же чужую
+  /// таблицу маршрутизации. Возвращает false, если за отведённое время адаптер
+  /// так и не исчез, — тогда честнее сказать «закрыл, но подожди», чем молча
+  /// подключаться в заведомо плохой момент.
+  static Future<bool> waitTunnelGone(
+      {Duration timeout = const Duration(seconds: 6)}) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if ((await _foreignTunnelAdapters()).isEmpty) return true;
+      await Future<void>.delayed(const Duration(milliseconds: 400));
+    }
+    return false;
+  }
+
   /// Известные VPN-клиенты — запасное опознание, когда точное не удалось.
   ///
   /// Список именно как ЗАПАСНОЙ путь: точный ответ даёт [ProcessListWindows.hasModule],

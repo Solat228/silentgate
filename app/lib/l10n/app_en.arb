@@ -684,5 +684,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Another VPN detected",
+  "conflictDialogBody": "{app} appears to be running with its own tunnel up. Two tunnels at once fight over the default route, so the connection may fail or come up without network access.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Close and connect",
+  "conflictConnectAnyway": "Connect anyway"
 }

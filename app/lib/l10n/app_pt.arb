@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Outro VPN detectado",
+  "conflictDialogBody": "Parece que {app} está em execução com o próprio túnel ativo. Dois túneis ao mesmo tempo disputam a rota padrão, então a conexão pode falhar ou subir sem acesso à rede.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Fechar e conectar",
+  "conflictConnectAnyway": "Conectar mesmo assim"
 }

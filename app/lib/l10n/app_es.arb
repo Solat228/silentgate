@@ -684,5 +684,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Se detectó otro VPN",
+  "conflictDialogBody": "Parece que {app} está en marcha con su propio túnel activo. Dos túneles a la vez compiten por la ruta predeterminada, así que la conexión puede fallar o quedarse sin acceso a la red.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Cerrar y conectar",
+  "conflictConnectAnyway": "Conectar de todos modos"
 }

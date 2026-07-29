@@ -1930,4 +1930,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return '$percent % de votre connexion';
   }
+
+  @override
+  String get conflictDialogTitle => 'Autre VPN détecté';
+
+  @override
+  String conflictDialogBody(String app) {
+    return '$app semble fonctionner avec son propre tunnel actif. Deux tunnels simultanés se disputent la route par défaut : la connexion peut échouer ou s\'établir sans accès au réseau.';
+  }
+
+  @override
+  String get conflictCloseAndConnect => 'Fermer et connecter';
+
+  @override
+  String get conflictConnectAnyway => 'Se connecter quand même';
 }

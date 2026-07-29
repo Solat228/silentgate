@@ -3467,6 +3467,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{percent} % вашего канала'**
   String autoSpeedShare(int percent);
+
+  /// No description provided for @conflictDialogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обнаружен другой VPN'**
+  String get conflictDialogTitle;
+
+  /// No description provided for @conflictDialogBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Похоже, работает {app} — у него поднят собственный туннель. Два туннеля одновременно борются за маршрут по умолчанию, и подключение может не подняться или подняться без доступа в сеть.'**
+  String conflictDialogBody(String app);
+
+  /// No description provided for @conflictCloseAndConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыть и подключиться'**
+  String get conflictCloseAndConnect;
+
+  /// No description provided for @conflictConnectAnyway.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всё равно подключиться'**
+  String get conflictConnectAnyway;
 }
 
 class _AppLocalizationsDelegate

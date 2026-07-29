@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "Başka bir VPN bulundu",
+  "conflictDialogBody": "Görünüşe göre {app} kendi tüneliyle çalışıyor. Aynı anda iki tünel varsayılan rota için çekişir; bağlantı kurulamayabilir ya da ağ erişimi olmadan kurulabilir.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "Kapat ve bağlan",
+  "conflictConnectAnyway": "Yine de bağlan"
 }

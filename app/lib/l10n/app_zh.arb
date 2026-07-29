@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "检测到其他 VPN",
+  "conflictDialogBody": "看起来 {app} 正在运行，并已建立自己的隧道。两条隧道会同时争抢默认路由，连接可能失败，或者连上却无法访问网络。",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "关闭它并连接",
+  "conflictConnectAnyway": "仍然连接"
 }

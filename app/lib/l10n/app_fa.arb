@@ -623,5 +623,16 @@
         "type": "int"
       }
     }
-  }
+  },
+  "conflictDialogTitle": "VPN دیگری شناسایی شد",
+  "conflictDialogBody": "به نظر می‌رسد {app} با تونل خودش در حال اجراست. دو تونل هم‌زمان بر سر مسیر پیش‌فرض رقابت می‌کنند و ممکن است اتصال برقرار نشود یا بدون دسترسی به شبکه بالا بیاید.",
+  "@conflictDialogBody": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "conflictCloseAndConnect": "بستن و اتصال",
+  "conflictConnectAnyway": "به‌هرحال متصل شو"
 }

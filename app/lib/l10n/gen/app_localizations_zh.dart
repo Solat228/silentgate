@@ -1861,4 +1861,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String autoSpeedShare(int percent) {
     return '你带宽的 $percent%';
   }
+
+  @override
+  String get conflictDialogTitle => '检测到其他 VPN';
+
+  @override
+  String conflictDialogBody(String app) {
+    return '看起来 $app 正在运行，并已建立自己的隧道。两条隧道会同时争抢默认路由，连接可能失败，或者连上却无法访问网络。';
+  }
+
+  @override
+  String get conflictCloseAndConnect => '关闭它并连接';
+
+  @override
+  String get conflictConnectAnyway => '仍然连接';
 }
