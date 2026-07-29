@@ -233,6 +233,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final settings = context.watch<SettingsController>().settings;
     // #6 — пинг применяет сохранённую вариацию сервера (fragment/fingerprint),
     // иначе серверы, работающие только с обходом, показывают «n/a».
+    // Правка настройки, запекаемой в конфиг ядра, должна честно сказать, что
+    // применится только после переподключения. Без этого правка правил при
+    // живом соединении проходила молча, и пользователь был уверен, что она
+    // работает. Ставим здесь: тут доступны оба контроллера.
+    context.read<SettingsController>().onRequiresReconnect =
+        (_, __) => state.notePendingRestart(l.homeSettingsNeedReconnect);
+
     final probe = context.read<ProbeController>();
     probe.variantFor = state.variantFor;
     // Там, где отдельный харнесс не поднять (Android — VpnService один),

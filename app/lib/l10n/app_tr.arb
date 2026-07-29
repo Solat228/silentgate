@@ -534,5 +534,8 @@
   "splitCopyDomain": "Adresi kopyala",
   "splitCopyPath": "Yolu kopyala",
   "homeServerInfo": "Sunucu bilgisi",
-  "serverInfoVerifyInBrowser": "Tarayıcıda doğrula"
+  "serverInfoVerifyInBrowser": "Tarayıcıda doğrula",
+  "tunDnsForAll": "Tüm uygulamaların DNS’i VPN üzerinden",
+  "infoDnsForAll": "Yalnızca “Sadece seçilenler” modunda. ⚠️ Yeniden bağlandıktan sonra geçerli olur.",
+  "homeSettingsNeedReconnect": "Ayar değişti — uygulamak için yeniden bağlanın"
 }

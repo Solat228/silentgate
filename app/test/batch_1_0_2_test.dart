@@ -655,4 +655,43 @@ void main() {
       expect(src.contains("protocol == 'hysteria2'"), isTrue);
     });
   });
+
+  // Правка настроек при живом соединении применяется только после
+  // переподключения: конфиг собирается один раз, в момент подъёма. У владельца
+  // из-за этого удалённое правило продолжало действовать, а он думал, что
+  // правило не работает.
+  group('Настройки, требующие переподключения', () {
+    test('правка правил раздельного туннелирования — требует', () {
+      const a = AppSettings();
+      final b = a.copyWith(
+        splitTunnel: const SplitTunnelConfig(
+          sites: [SiteRule('example.com', action: AppAction.block)],
+        ),
+      );
+      expect(a.requiresReconnect(b), isTrue);
+    });
+
+    test('DNS всех приложений через VPN — требует', () {
+      const a = AppSettings();
+      expect(a.requiresReconnect(a.copyWith(tunnelDnsForAll: false)), isTrue);
+    });
+
+    for (final e in <String, AppSettings Function(AppSettings)>{
+      'режим захвата': (s) => s.copyWith(captureMode: CaptureMode.tun),
+      'MTU': (s) => s.copyWith(tunMtu: 1400),
+      'перехват DNS': (s) => s.copyWith(dnsHijack: false),
+      'не выходить под реальным IP': (s) => s.copyWith(noRealIp: true),
+    }.entries) {
+      test('${e.key} — требует', () {
+        const a = AppSettings();
+        expect(a.requiresReconnect(e.value(a)), isTrue);
+      });
+    }
+
+    test('настройки интерфейса переподключения НЕ требуют', () {
+      const a = AppSettings();
+      // Тема и язык на конфиг ядра не влияют — дёргать пользователя незачем.
+      expect(a.requiresReconnect(a.copyWith(languageCode: 'en')), isFalse);
+    });
+  });
 }

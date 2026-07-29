@@ -595,5 +595,8 @@
   "splitCopyDomain": "Copiar dirección",
   "splitCopyPath": "Copiar ruta",
   "homeServerInfo": "Info del servidor",
-  "serverInfoVerifyInBrowser": "Verificar en el navegador"
+  "serverInfoVerifyInBrowser": "Verificar en el navegador",
+  "tunDnsForAll": "DNS de todas las apps por la VPN",
+  "infoDnsForAll": "Solo en el modo «Solo seleccionadas». ⚠️ Se aplica tras reconectar.",
+  "homeSettingsNeedReconnect": "Ajuste cambiado: reconéctate para aplicar"
 }

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import '../net/speed_test.dart';
 // Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
 // path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
@@ -180,6 +182,15 @@ class AppSettings {
 
   /// Перехватывать UDP:53 (без утечек и точные доменные правила).
   final bool dnsHijack;
+
+  /// Вести через туннель DNS ВСЕХ приложений (умолчание) или только тех, что
+  /// идут через VPN.
+  ///
+  /// Работает лишь в режиме «только отмеченные»: в остальных весь трафик и так
+  /// в туннеле. Выключение ускоряет неотмеченные приложения (CDN отдаёт
+  /// близкий адрес вместо адреса в стране выхода), но их домены и домены
+  /// отмеченных приложений становятся видны провайдеру.
+  final bool tunnelDnsForAll;
   final DnsStrategy dnsStrategy;
 
   /// Уровень лога sing-box (`%APPDATA%\SilentGate\singbox.log`).
@@ -290,6 +301,7 @@ class AppSettings {
     this.dnsMode = DnsMode.vpn,
     this.dnsCustomServer = '1.1.1.1',
     this.dnsHijack = true,
+    this.tunnelDnsForAll = true,
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.singboxLogLevel = SingboxLogLevel.warn,
     this.autoReconnect = true,
@@ -346,6 +358,7 @@ class AppSettings {
     DnsMode? dnsMode,
     String? dnsCustomServer,
     bool? dnsHijack,
+    bool? tunnelDnsForAll,
     DnsStrategy? dnsStrategy,
     SingboxLogLevel? singboxLogLevel,
     bool? autoReconnect,
@@ -392,6 +405,7 @@ class AppSettings {
       dnsMode: dnsMode ?? this.dnsMode,
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
       dnsHijack: dnsHijack ?? this.dnsHijack,
+      tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
       singboxLogLevel: singboxLogLevel ?? this.singboxLogLevel,
       autoReconnect: autoReconnect ?? this.autoReconnect,
@@ -440,6 +454,7 @@ class AppSettings {
         'dnsMode': dnsMode.name,
         'dnsCustomServer': dnsCustomServer,
         'dnsHijack': dnsHijack,
+        'tunnelDnsForAll': tunnelDnsForAll,
         'dnsStrategy': dnsStrategy.name,
         'singboxLogLevel': singboxLogLevel.name,
         'autoReconnect': autoReconnect,
@@ -546,4 +561,34 @@ class AppSettings {
       appUpdateUrl: _sanitizeUpdateUrl(j['appUpdateUrl'] as String?),
     );
   }
+
+  /// Отличается ли [other] полем, которое ЗАПЕКАЕТСЯ в конфиг ядра.
+  ///
+  /// ⚠️ Конфиг собирается ОДИН раз — в момент подъёма туннеля, и дальше ядро
+  /// работает по нему, что бы пользователь ни менял. Правка правил при живом
+  /// соединении не применяется молча: у владельца из-за этого удалённый сайт
+  /// продолжал ходить напрямую, а он думал, что правило не работает.
+  ///
+  /// Список полей — ровно то, что читает `SingboxConfigBuilder`/`TunOptions`.
+  /// Добавляя новую настройку, влияющую на конфиг, впиши её СЮДА, иначе
+  /// пользователь снова получит «поменял, а эффекта нет».
+  bool requiresReconnect(AppSettings other) =>
+      captureMode != other.captureMode ||
+      tunStack != other.tunStack ||
+      tunMtu != other.tunMtu ||
+      tunStrictRoute != other.tunStrictRoute ||
+      tunIpv6 != other.tunIpv6 ||
+      tunEndpointIndependentNat != other.tunEndpointIndependentNat ||
+      tunBypassLan != other.tunBypassLan ||
+      tunExcludeCidrs.join(',') != other.tunExcludeCidrs.join(',') ||
+      dnsMode != other.dnsMode ||
+      dnsCustomServer != other.dnsCustomServer ||
+      dnsHijack != other.dnsHijack ||
+      tunnelDnsForAll != other.tunnelDnsForAll ||
+      dnsStrategy != other.dnsStrategy ||
+      singboxLogLevel != other.singboxLogLevel ||
+      noRealIp != other.noRealIp ||
+      // Правила раздельного туннелирования — самая частая правка «на живую».
+      jsonEncode(splitTunnel.toJson()) !=
+          jsonEncode(other.splitTunnel.toJson());
 }

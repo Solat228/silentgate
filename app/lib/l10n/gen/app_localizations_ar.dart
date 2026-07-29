@@ -1807,4 +1807,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => 'تحقق في المتصفح';
+
+  @override
+  String get tunDnsForAll => 'DNS لكل التطبيقات عبر VPN';
+
+  @override
+  String get infoDnsForAll =>
+      'يعمل فقط في وضع «المحددة فقط». ⚠️ يُطبَّق بعد إعادة الاتصال.';
+
+  @override
+  String get homeSettingsNeedReconnect => 'تغيّر الإعداد — أعد الاتصال للتطبيق';
 }

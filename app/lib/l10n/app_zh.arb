@@ -534,5 +534,8 @@
   "splitCopyDomain": "复制地址",
   "splitCopyPath": "复制路径",
   "homeServerInfo": "服务器信息",
-  "serverInfoVerifyInBrowser": "在浏览器中核对"
+  "serverInfoVerifyInBrowser": "在浏览器中核对",
+  "tunDnsForAll": "所有应用的 DNS 走 VPN",
+  "infoDnsForAll": "仅在“仅选定应用”模式下生效。⚠️ 重新连接后才会应用。",
+  "homeSettingsNeedReconnect": "设置已更改 — 重新连接后生效"
 }

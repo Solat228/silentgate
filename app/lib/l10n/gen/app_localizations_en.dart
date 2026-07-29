@@ -1813,4 +1813,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => 'Verify in browser';
+
+  @override
+  String get tunDnsForAll => 'Route all apps’ DNS through VPN';
+
+  @override
+  String get infoDnsForAll =>
+      'Only affects “Selected only” mode. On: no DNS query reaches your ISP, but unselected apps resolve through the tunnel and get CDN addresses in the exit country — they connect directly to a distant server and feel slower. Off: unselected apps get nearby CDNs, but your ISP sees where every app goes, including protected ones. ⚠️ Applies after reconnecting.';
+
+  @override
+  String get homeSettingsNeedReconnect =>
+      'Setting changed — reconnect to apply';
 }

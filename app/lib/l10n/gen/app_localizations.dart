@@ -3323,6 +3323,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Проверить в браузере'**
   String get serverInfoVerifyInBrowser;
+
+  /// No description provided for @tunDnsForAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'DNS всех приложений через VPN'**
+  String get tunDnsForAll;
+
+  /// No description provided for @infoDnsForAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Работает только в режиме «Только отмеченные». Включено: ни один DNS-запрос не уходит провайдеру, но домены НЕотмеченных приложений резолвятся через туннель — CDN отдаёт адрес в стране выхода, и такие приложения идут напрямую, но на дальний сервер (заметно медленнее). Выключено: неотмеченные приложения получают близкий CDN и работают быстро, зато провайдер видит, куда ходят все приложения, включая защищаемые. ⚠️ Изменение применяется только после переподключения.'**
+  String get infoDnsForAll;
+
+  /// No description provided for @homeSettingsNeedReconnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройка изменена — переподключитесь, чтобы применить'**
+  String get homeSettingsNeedReconnect;
 }
 
 class _AppLocalizationsDelegate

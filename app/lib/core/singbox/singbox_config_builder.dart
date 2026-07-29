@@ -61,6 +61,13 @@ class TunOptions {
   /// `SingboxProcess`.
   final String? logOutput;
 
+  /// Весь ли DNS вести через туннель.
+  ///
+  /// Имеет смысл только в режиме «только отмеченные»: там база трафика —
+  /// `direct`, и вопрос «а куда девать DNS остальных приложений» становится
+  /// содержательным. См. развёрнутое объяснение у `dns.final`.
+  final bool tunnelDnsForAll;
+
   /// Туннель-заглушка для kill switch: маршруты на месте, весь трафик в reject.
   ///
   /// Нужен между попытками переподключения. Погасить ядро, оставив дескриптор,
@@ -103,6 +110,7 @@ class TunOptions {
     this.directDnsUpstream,
     this.logOutput,
     this.blackhole = false,
+    this.tunnelDnsForAll = true,
   });
 
   factory TunOptions.fromSettings(
@@ -132,6 +140,7 @@ class TunOptions {
       // «Авто» = подбирать стек/MTU перебором; явный выбор пользователя уважаем.
       autotune: s.tunStack == TunStack.auto,
       noRealIp: s.noRealIp,
+      tunnelDnsForAll: s.tunnelDnsForAll,
     );
   }
 
@@ -191,6 +200,7 @@ class TunOptions {
         directDnsUpstream: directDnsUpstream,
         logOutput: logOutput,
         blackhole: blackhole,
+        tunnelDnsForAll: tunnelDnsForAll,
       );
 }
 
@@ -427,7 +437,21 @@ class SingboxConfigBuilder {
       // был dns-local, и DNS затуннелированных приложений резолвился локальным
       // (ISP) резолвером — утечка + отравление censorship. direct-домены всё так
       // же уходят в dns-local по правилу выше.
-      'final': 'dns-proxy',
+      // ⚠️ РАЗМЕН, у которого нет универсально верной стороны — поэтому это
+      // настройка, а не наш выбор за пользователя.
+      //
+      // `dns-proxy` (умолчание): DNS не течёт провайдеру и не отравляется
+      // цензурой. Цена — в режиме «только отмеченные» домены НЕотмеченных
+      // приложений тоже резолвятся через туннель, CDN отдаёт адрес в стране
+      // выхода, и такое приложение идёт напрямую, но на дальний сервер: у
+      // владельца это выглядело как «Discord почему-то через VPN».
+      //
+      // `dns-local`: неотмеченные приложения получают близкий CDN и работают
+      // быстро, но DNS отмеченных уходит к провайдеру — то есть видно, КУДА
+      // ходит защищаемое приложение, и запрос можно подменить.
+      'final': (split.mode == SplitMode.onlySelected && !o.tunnelDnsForAll)
+          ? 'dns-local'
+          : 'dns-proxy',
       'strategy': o.dnsStrategy.singboxValue,
       'independent_cache': true,
     };

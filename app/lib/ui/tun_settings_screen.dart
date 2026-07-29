@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
+import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
@@ -222,6 +223,15 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
                 title: l.tunDnsHijack,
                 info: l.infoDnsHijack,
                 apply: (st, v) => st.copyWith(dnsHijack: v)),
+          // Виден только там, где имеет смысл: в остальных режимах весь трафик
+          // и так в туннеле, и вопроса «куда девать DNS остальных» не стоит.
+          if (s.dnsMode != DnsMode.system &&
+              s.splitTunnel.mode == SplitMode.onlySelected)
+            _switch(context, controller,
+                value: s.tunnelDnsForAll,
+                title: l.tunDnsForAll,
+                info: l.infoDnsForAll,
+                apply: (st, v) => st.copyWith(tunnelDnsForAll: v)),
           ListTile(
             title: Row(children: [
               Text(l.tunResolveStrategy),

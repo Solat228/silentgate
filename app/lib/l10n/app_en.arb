@@ -595,5 +595,8 @@
   "splitCopyDomain": "Copy address",
   "splitCopyPath": "Copy path",
   "homeServerInfo": "Server info",
-  "serverInfoVerifyInBrowser": "Verify in browser"
+  "serverInfoVerifyInBrowser": "Verify in browser",
+  "tunDnsForAll": "Route all apps’ DNS through VPN",
+  "infoDnsForAll": "Only affects “Selected only” mode. On: no DNS query reaches your ISP, but unselected apps resolve through the tunnel and get CDN addresses in the exit country — they connect directly to a distant server and feel slower. Off: unselected apps get nearby CDNs, but your ISP sees where every app goes, including protected ones. ⚠️ Applies after reconnecting.",
+  "homeSettingsNeedReconnect": "Setting changed — reconnect to apply"
 }

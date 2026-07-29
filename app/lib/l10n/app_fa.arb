@@ -534,5 +534,8 @@
   "splitCopyDomain": "کپی نشانی",
   "splitCopyPath": "کپی مسیر",
   "homeServerInfo": "اطلاعات سرور",
-  "serverInfoVerifyInBrowser": "بررسی در مرورگر"
+  "serverInfoVerifyInBrowser": "بررسی در مرورگر",
+  "tunDnsForAll": "DNS همه برنامه‌ها از طریق VPN",
+  "infoDnsForAll": "فقط در حالت «فقط انتخاب‌شده‌ها». ⚠️ پس از اتصال مجدد اعمال می‌شود.",
+  "homeSettingsNeedReconnect": "تنظیم تغییر کرد — برای اعمال دوباره وصل شوید"
 }

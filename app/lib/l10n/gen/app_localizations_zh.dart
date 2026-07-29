@@ -1769,4 +1769,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => '在浏览器中核对';
+
+  @override
+  String get tunDnsForAll => '所有应用的 DNS 走 VPN';
+
+  @override
+  String get infoDnsForAll => '仅在“仅选定应用”模式下生效。⚠️ 重新连接后才会应用。';
+
+  @override
+  String get homeSettingsNeedReconnect => '设置已更改 — 重新连接后生效';
 }

@@ -534,5 +534,8 @@
   "splitCopyDomain": "Adresse kopieren",
   "splitCopyPath": "Pfad kopieren",
   "homeServerInfo": "Server-Info",
-  "serverInfoVerifyInBrowser": "Im Browser prüfen"
+  "serverInfoVerifyInBrowser": "Im Browser prüfen",
+  "tunDnsForAll": "DNS aller Apps über VPN",
+  "infoDnsForAll": "Nur im Modus „Nur ausgewählte“. ⚠️ Wird erst nach dem Neuverbinden übernommen.",
+  "homeSettingsNeedReconnect": "Einstellung geändert – zum Übernehmen neu verbinden"
 }

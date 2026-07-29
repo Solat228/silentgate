@@ -1818,4 +1818,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => 'Tarayıcıda doğrula';
+
+  @override
+  String get tunDnsForAll => 'Tüm uygulamaların DNS’i VPN üzerinden';
+
+  @override
+  String get infoDnsForAll =>
+      'Yalnızca “Sadece seçilenler” modunda. ⚠️ Yeniden bağlandıktan sonra geçerli olur.';
+
+  @override
+  String get homeSettingsNeedReconnect =>
+      'Ayar değişti — uygulamak için yeniden bağlanın';
 }

@@ -15,6 +15,14 @@ class SettingsController extends ChangeNotifier {
 
   AppSettings get settings => _settings;
 
+  /// Зовётся, когда изменилось поле, запекаемое в конфиг ядра. Подписчик
+  /// (AppState через UI) показывает «переподключитесь, чтобы применить».
+  ///
+  /// Без этого правка правил при живом соединении проходила МОЛЧА: конфиг
+  /// собирается один раз при подъёме, и пользователь был уверен, что правило
+  /// работает, хотя ядро о нём не знало.
+  void Function(AppSettings before, AppSettings after)? onRequiresReconnect;
+
   Future<void> init() async {
     _settings = _normalize(await _storage.load());
     notifyListeners();
@@ -22,7 +30,11 @@ class SettingsController extends ChangeNotifier {
 
   /// Изменить настройки: mutate -> persist -> notify.
   Future<void> update(AppSettings Function(AppSettings current) mutate) async {
+    final before = _settings;
     _settings = _normalize(mutate(_settings));
+    if (before.requiresReconnect(_settings)) {
+      onRequiresReconnect?.call(before, _settings);
+    }
     notifyListeners();
     await _storage.save(_settings);
   }

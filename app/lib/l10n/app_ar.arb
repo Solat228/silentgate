@@ -534,5 +534,8 @@
   "splitCopyDomain": "نسخ العنوان",
   "splitCopyPath": "نسخ المسار",
   "homeServerInfo": "معلومات الخادم",
-  "serverInfoVerifyInBrowser": "تحقق في المتصفح"
+  "serverInfoVerifyInBrowser": "تحقق في المتصفح",
+  "tunDnsForAll": "DNS لكل التطبيقات عبر VPN",
+  "infoDnsForAll": "يعمل فقط في وضع «المحددة فقط». ⚠️ يُطبَّق بعد إعادة الاتصال.",
+  "homeSettingsNeedReconnect": "تغيّر الإعداد — أعد الاتصال للتطبيق"
 }

@@ -1812,4 +1812,15 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => 'بررسی در مرورگر';
+
+  @override
+  String get tunDnsForAll => 'DNS همه برنامه‌ها از طریق VPN';
+
+  @override
+  String get infoDnsForAll =>
+      'فقط در حالت «فقط انتخاب‌شده‌ها». ⚠️ پس از اتصال مجدد اعمال می‌شود.';
+
+  @override
+  String get homeSettingsNeedReconnect =>
+      'تنظیم تغییر کرد — برای اعمال دوباره وصل شوید';
 }

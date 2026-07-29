@@ -1834,4 +1834,15 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get serverInfoVerifyInBrowser => 'Vérifier dans le navigateur';
+
+  @override
+  String get tunDnsForAll => 'DNS de toutes les apps via le VPN';
+
+  @override
+  String get infoDnsForAll =>
+      'Uniquement en mode « Seulement sélectionnées ». ⚠️ Appliqué après reconnexion.';
+
+  @override
+  String get homeSettingsNeedReconnect =>
+      'Paramètre modifié — reconnectez-vous pour appliquer';
 }
