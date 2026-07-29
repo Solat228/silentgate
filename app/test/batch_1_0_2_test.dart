@@ -694,4 +694,31 @@ void main() {
       expect(a.requiresReconnect(a.copyWith(languageCode: 'en')), isFalse);
     });
   });
+
+  // Отчёт поддержки отдавал ПУСТОЙ раздел [app.log] при живом файле в 239 КБ:
+  // строгий readAsString() падал на одном байте 0x82 в середине. Диагноз по
+  // такому отчёту поставить нельзя, а выглядит он как «логов нет».
+  group('Чтение логов переживает битые байты', () {
+    test('хвост читается, даже если в файле не-UTF8', () async {
+      final tmp = await Directory.systemTemp.createTemp('sg_badlog_');
+      addTearDown(() async {
+        try { await tmp.delete(recursive: true); } catch (_) {}
+      });
+      final f = File('${tmp.path}${Platform.pathSeparator}bad.log');
+      // Ровно тот случай: валидные строки, посреди — байт из другой кодировки.
+      const lf = 10; // перевод строки байтом — без escape-последовательностей
+      await f.writeAsBytes([
+        ...utf8.encode('строка один'),
+        lf,
+        0x82, // байт из другой кодировки — на нём падал строгий разбор
+        lf,
+        ...utf8.encode('строка два'),
+        lf,
+      ]);
+
+      final tail = await RotatingLog.tail(f.path, lines: 10);
+      expect(tail, contains('строка два'),
+          reason: 'битый байт не должен обнулять весь лог');
+    });
+  });
 }

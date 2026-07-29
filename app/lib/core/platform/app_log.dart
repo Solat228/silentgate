@@ -1,4 +1,5 @@
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
 
 import 'app_paths.dart';
@@ -84,11 +85,21 @@ class AppLog {
   }
 
   /// Весь текст лога (память + файл) для показа и копирования.
+  ///
+  /// ⚠️ Читаем БАЙТАМИ с `allowMalformed`, а не `readAsString()`. Строгое
+  /// чтение падает на первом же неверном байте, а он там появляется: в лог
+  /// попадают строки сторонних процессов и системные сообщения в кодировке
+  /// консоли. У владельца из-за ОДНОГО байта `0x82` в середине 239-килобайтного
+  /// файла отчёт поддержки отдавал ПУСТОЙ раздел `[app.log]` — и диагноз по
+  /// нему поставить было нельзя, хотя лог исправно писался. Молчаливая пустота
+  /// хуже мусора: она выглядит как «логов нет», а не как «прочитать не смог».
   static Future<String> dump() async {
     try {
       await _sink?.flush();
       final f = File(await filePath());
-      if (await f.exists()) return await f.readAsString();
+      if (await f.exists()) {
+        return utf8.decode(await f.readAsBytes(), allowMalformed: true);
+      }
     } catch (_) {}
     return _memory.map((e) => e.line).join('\n');
   }
