@@ -1888,4 +1888,24 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'مرورگرها و ویندوز می‌توانند نشانی‌ها را از راه HTTPS بگیرند و از سد ما بگذرند؛ آنگاه قواعد «مستقیم» و «مسدود» در سطح DNS اصلاً کار نمی‌کنند. ⚠️ اگر در مرورگر ارائه‌دهندهٔ ثابتی برای DNS رمزگذاری‌شده تعیین شده باشد، به DNS معمولی بازنمی‌گردد و فقط سایت‌ها را باز نمی‌کند. فهرست ارائه‌دهندگان شناخته‌شده ذاتاً ناقص است.';
+
+  @override
+  String get autoUseSpeed => 'در نظر گرفتن سرعت';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'پس از غربال بر پایهٔ سرویس‌ها و تأخیر، سه نامزد برتر با دانلود سنجیده می‌شوند و سریع‌ترینِ واقعی نخست می‌آید. سرعت با پهنای باند خودِ شما سنجیده می‌شود: سروری که تقریباً همهٔ آن را می‌دهد دیگر با مگابیت داوری نمی‌شود و تأخیر تعیین‌کننده است. ⚠️ از ترافیک اشتراک مصرف می‌کند: ۵ مگابایت برای پهنای باند شما و ۵ مگابایت برای هر نامزد، حدود ۲۰ مگابایت در هر اجرا.';
+
+  @override
+  String get autoSpeedOwn => 'سنجش سرعت خودتان…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'سنجش سرعت: $server ($index از $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent٪ پهنای باند شما';
+  }
 }

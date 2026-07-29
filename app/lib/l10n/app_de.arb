@@ -598,5 +598,30 @@
   "tunBlockQuic": "QUIC (HTTP/3) blockieren",
   "infoBlockQuic": "Website-Regeln greifen über den NAMEN, und den sieht die App nur bei gewöhnlichem TLS. Ein Browser, der auf HTTP/3 wechselt, zeigt keinen Namen – die Domain-Regel bleibt stillschweigend wirkungslos. Die Blockade holt den Browser zurück auf eine normale Verbindung, in der der Name sichtbar ist. Websites funktionieren weiterhin: HTTP/3 ist für sie optional, Videos laden eventuell etwas langsamer.",
   "tunBlockEncryptedDns": "Verschlüsseltes DNS (DoH/DoT) blockieren",
-  "infoBlockEncryptedDns": "Browser und Windows können Adressen über HTTPS auflösen und unsere Erfassung umgehen. Dann wirken die Regeln „Direkt“ und „Blockieren“ auf DNS-Ebene gar nicht. ⚠️ Ist im Browser ein fester Anbieter für verschlüsseltes DNS eingetragen, fällt er nicht auf normales DNS zurück, sondern öffnet einfach keine Seiten mehr. Die Liste bekannter Anbieter ist naturgemäß unvollständig."
+  "infoBlockEncryptedDns": "Browser und Windows können Adressen über HTTPS auflösen und unsere Erfassung umgehen. Dann wirken die Regeln „Direkt“ und „Blockieren“ auf DNS-Ebene gar nicht. ⚠️ Ist im Browser ein fester Anbieter für verschlüsseltes DNS eingetragen, fällt er nicht auf normales DNS zurück, sondern öffnet einfach keine Seiten mehr. Die Liste bekannter Anbieter ist naturgemäß unvollständig.",
+  "autoUseSpeed": "Geschwindigkeit berücksichtigen",
+  "infoAutoUseSpeed": "Nach der Auswahl über Dienste und Latenz werden die drei besten Kandidaten per Download geprüft, und der tatsächlich schnellere kommt zuerst. Die Geschwindigkeit wird mit IHRER Leitung verglichen: Ein Server, der fast alles davon liefert, wird nicht mehr nach Megabit bewertet – dann entscheidet die Latenz. ⚠️ Verbraucht Abo-Datenvolumen: 5 MB für Ihre Leitung plus 5 MB je Kandidat, rund 20 MB pro Durchlauf.",
+  "autoSpeedOwn": "Messe Ihre eigene Geschwindigkeit…",
+  "autoSpeedServer": "Messe Geschwindigkeit: {server} ({index} von {total})",
+  "@autoSpeedServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "autoSpeedShare": "{percent} % Ihrer Leitung",
+  "@autoSpeedShare": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

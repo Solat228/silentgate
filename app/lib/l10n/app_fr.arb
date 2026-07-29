@@ -598,5 +598,30 @@
   "tunBlockQuic": "Bloquer QUIC (HTTP/3)",
   "infoBlockQuic": "Les règles de sites portent sur le NOM, et l'application ne voit ce nom qu'en TLS ordinaire. Un navigateur passé en HTTP/3 ne montre pas de nom : la règle de domaine ne fait alors rien, silencieusement. Le blocage ramène le navigateur vers une connexion normale où le nom est visible. Les sites continuent de fonctionner : HTTP/3 est facultatif, même si la vidéo peut charger un peu plus lentement.",
   "tunBlockEncryptedDns": "Bloquer le DNS chiffré (DoH/DoT)",
-  "infoBlockEncryptedDns": "Les navigateurs et Windows peuvent résoudre les adresses via HTTPS, contournant notre interception. Les règles « Direct » et « Bloquer » ne fonctionnent alors plus au niveau DNS. ⚠️ Si un fournisseur de DNS chiffré est imposé dans le navigateur, celui-ci ne reviendra pas au DNS classique : il cessera simplement d'ouvrir les sites. La liste des fournisseurs connus est par nature incomplète."
+  "infoBlockEncryptedDns": "Les navigateurs et Windows peuvent résoudre les adresses via HTTPS, contournant notre interception. Les règles « Direct » et « Bloquer » ne fonctionnent alors plus au niveau DNS. ⚠️ Si un fournisseur de DNS chiffré est imposé dans le navigateur, celui-ci ne reviendra pas au DNS classique : il cessera simplement d'ouvrir les sites. La liste des fournisseurs connus est par nature incomplète.",
+  "autoUseSpeed": "Tenir compte du débit",
+  "infoAutoUseSpeed": "Après le tri par services et latence, les trois meilleurs candidats sont testés par téléchargement et le plus rapide passe en tête. Le débit est comparé à VOTRE connexion : un serveur qui en restitue déjà presque tout n'est plus jugé aux mégabits, c'est la latence qui décide. ⚠️ Consomme du trafic d'abonnement : 5 Mo pour votre connexion plus 5 Mo par candidat, environ 20 Mo par passage.",
+  "autoSpeedOwn": "Mesure de votre propre débit…",
+  "autoSpeedServer": "Mesure du débit : {server} ({index} sur {total})",
+  "@autoSpeedServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "autoSpeedShare": "{percent} % de votre connexion",
+  "@autoSpeedShare": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

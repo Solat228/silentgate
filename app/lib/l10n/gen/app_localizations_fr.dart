@@ -1910,4 +1910,24 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'Les navigateurs et Windows peuvent résoudre les adresses via HTTPS, contournant notre interception. Les règles « Direct » et « Bloquer » ne fonctionnent alors plus au niveau DNS. ⚠️ Si un fournisseur de DNS chiffré est imposé dans le navigateur, celui-ci ne reviendra pas au DNS classique : il cessera simplement d\'ouvrir les sites. La liste des fournisseurs connus est par nature incomplète.';
+
+  @override
+  String get autoUseSpeed => 'Tenir compte du débit';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'Après le tri par services et latence, les trois meilleurs candidats sont testés par téléchargement et le plus rapide passe en tête. Le débit est comparé à VOTRE connexion : un serveur qui en restitue déjà presque tout n\'est plus jugé aux mégabits, c\'est la latence qui décide. ⚠️ Consomme du trafic d\'abonnement : 5 Mo pour votre connexion plus 5 Mo par candidat, environ 20 Mo par passage.';
+
+  @override
+  String get autoSpeedOwn => 'Mesure de votre propre débit…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'Mesure du débit : $server ($index sur $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent % de votre connexion';
+  }
 }

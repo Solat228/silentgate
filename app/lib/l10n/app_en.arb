@@ -659,5 +659,30 @@
   "tunBlockQuic": "Block QUIC (HTTP/3)",
   "infoBlockQuic": "Site rules match the NAME, and the app only sees the name in ordinary TLS. A browser that switched to HTTP/3 shows no name, so the domain rule silently does nothing. Blocking sends the browser back to a normal connection where the name is visible. Sites keep working: HTTP/3 is optional for them, though video may load a little slower. Turn this on if your site rules have no effect.",
   "tunBlockEncryptedDns": "Block encrypted DNS (DoH/DoT)",
-  "infoBlockEncryptedDns": "Browsers and Windows can look up addresses over HTTPS, bypassing our interception. Then \"Direct\" and \"Block\" rules do not work at the DNS level at all. Blocking brings lookups back under our control. ⚠️ If your browser has a fixed encrypted-DNS provider, it will not fall back to plain DNS — it will simply stop opening sites; turn this off or remove the provider in the browser. The list of known providers is inherently incomplete: anyone can run their own."
+  "infoBlockEncryptedDns": "Browsers and Windows can look up addresses over HTTPS, bypassing our interception. Then \"Direct\" and \"Block\" rules do not work at the DNS level at all. Blocking brings lookups back under our control. ⚠️ If your browser has a fixed encrypted-DNS provider, it will not fall back to plain DNS — it will simply stop opening sites; turn this off or remove the provider in the browser. The list of known providers is inherently incomplete: anyone can run their own.",
+  "autoUseSpeed": "Take speed into account",
+  "infoAutoUseSpeed": "After filtering by services and latency, the three best candidates are checked by download and the genuinely faster one goes first. Speed is compared with YOUR channel: a server that already delivers almost all of it is no longer judged by megabits — latency decides, because speed beyond your channel never reaches you. ⚠️ Uses subscription traffic: 5 MB for your channel plus 5 MB per candidate, about 20 MB per run.",
+  "autoSpeedOwn": "Measuring your own speed…",
+  "autoSpeedServer": "Measuring speed: {server} ({index} of {total})",
+  "@autoSpeedServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "autoSpeedShare": "{percent}% of your channel",
+  "@autoSpeedShare": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

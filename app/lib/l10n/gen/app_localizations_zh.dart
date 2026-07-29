@@ -1841,4 +1841,24 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       '浏览器和 Windows 可以通过 HTTPS 解析地址，从而绕过我们的拦截，此时「直连」和「拦截」规则在 DNS 层面完全失效。⚠️ 如果浏览器中固定指定了加密 DNS 提供商，它不会回退到普通 DNS，而是直接打不开网站。已知提供商名单天然不完整。';
+
+  @override
+  String get autoUseSpeed => '将速度纳入考量';
+
+  @override
+  String get infoAutoUseSpeed =>
+      '在按服务和延迟筛选之后，对最优的三个候选做下载实测，真正更快的排在最前。速度与你自己的带宽相比：已经能跑满你带宽的服务器不再比拼兆比特，改由延迟决定——超出带宽的速度你本来也用不上。⚠️ 会消耗订阅流量：测你自己的带宽 5 MB，每个候选再 5 MB，一轮约 20 MB。';
+
+  @override
+  String get autoSpeedOwn => '正在测量你自己的带宽…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return '测速：$server（第 $index / 共 $total）';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '你带宽的 $percent%';
+  }
 }

@@ -598,5 +598,30 @@
   "tunBlockQuic": "Bloquear QUIC (HTTP/3)",
   "infoBlockQuic": "As regras de sites usam o NOME, e o aplicativo só vê o nome no TLS comum. Um navegador que passa para HTTP/3 não mostra o nome, então a regra de domínio simplesmente não age. O bloqueio devolve o navegador a uma conexão normal, onde o nome fica visível. Os sites continuam funcionando: HTTP/3 é opcional, embora o vídeo possa carregar um pouco mais devagar.",
   "tunBlockEncryptedDns": "Bloquear DNS criptografado (DoH/DoT)",
-  "infoBlockEncryptedDns": "Navegadores e Windows podem resolver endereços por HTTPS, contornando nossa interceptação. Assim, as regras «Direto» e «Bloquear» não funcionam no nível de DNS. ⚠️ Se o navegador tiver um provedor de DNS criptografado fixo, ele não voltará ao DNS comum: apenas deixará de abrir sites. A lista de provedores conhecidos é incompleta por natureza."
+  "infoBlockEncryptedDns": "Navegadores e Windows podem resolver endereços por HTTPS, contornando nossa interceptação. Assim, as regras «Direto» e «Bloquear» não funcionam no nível de DNS. ⚠️ Se o navegador tiver um provedor de DNS criptografado fixo, ele não voltará ao DNS comum: apenas deixará de abrir sites. A lista de provedores conhecidos é incompleta por natureza.",
+  "autoUseSpeed": "Considerar a velocidade",
+  "infoAutoUseSpeed": "Após a triagem por serviços e latência, os três melhores candidatos são testados por download e o realmente mais rápido fica em primeiro. A velocidade é comparada com o SEU canal: um servidor que já entrega quase tudo deixa de ser julgado por megabits e a latência decide. ⚠️ Consome tráfego da assinatura: 5 MB para o seu canal mais 5 MB por candidato, cerca de 20 MB por execução.",
+  "autoSpeedOwn": "Medindo a sua própria velocidade…",
+  "autoSpeedServer": "Medindo velocidade: {server} ({index} de {total})",
+  "@autoSpeedServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      },
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "autoSpeedShare": "{percent}% do seu canal",
+  "@autoSpeedShare": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

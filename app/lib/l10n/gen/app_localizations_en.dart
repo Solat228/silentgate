@@ -1889,4 +1889,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'Browsers and Windows can look up addresses over HTTPS, bypassing our interception. Then \"Direct\" and \"Block\" rules do not work at the DNS level at all. Blocking brings lookups back under our control. ⚠️ If your browser has a fixed encrypted-DNS provider, it will not fall back to plain DNS — it will simply stop opening sites; turn this off or remove the provider in the browser. The list of known providers is inherently incomplete: anyone can run their own.';
+
+  @override
+  String get autoUseSpeed => 'Take speed into account';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'After filtering by services and latency, the three best candidates are checked by download and the genuinely faster one goes first. Speed is compared with YOUR channel: a server that already delivers almost all of it is no longer judged by megabits — latency decides, because speed beyond your channel never reaches you. ⚠️ Uses subscription traffic: 5 MB for your channel plus 5 MB per candidate, about 20 MB per run.';
+
+  @override
+  String get autoSpeedOwn => 'Measuring your own speed…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'Measuring speed: $server ($index of $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent% of your channel';
+  }
 }

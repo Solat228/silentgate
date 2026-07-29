@@ -3437,6 +3437,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Браузеры и Windows умеют спрашивать адреса сайтов по HTTPS в обход нашего перехвата. Тогда правила «Прямо» и «Блок» на уровне DNS не работают вовсе. Запрет возвращает запросы под наш контроль. ⚠️ Если в браузере жёстко выбран поставщик шифрованного DNS, он не откатится на обычный, а просто перестанет открывать сайты — тогда выключите настройку или уберите поставщика в браузере. Список известных поставщиков неполон по своей природе: свой можно поднять за вечер.'**
   String get infoBlockEncryptedDns;
+
+  /// No description provided for @autoUseSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учитывать скорость'**
+  String get autoUseSpeed;
+
+  /// No description provided for @infoAutoUseSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'После отбора по сервисам и задержке трёх лучших кандидатов проверяем скачиванием и ставим первым того, кто реально быстрее. Скорость сравнивается с ВАШИМ каналом: сервер, отдающий почти весь ваш канал, дальше не оценивается по мегабитам — там решает задержка, потому что лишняя скорость сверх канала вам всё равно не достанется. ⚠️ Расходует трафик подписки: 5 МБ на ваш канал и по 5 МБ на каждого из трёх кандидатов, около 20 МБ за прогон.'**
+  String get infoAutoUseSpeed;
+
+  /// No description provided for @autoSpeedOwn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замеряю скорость своего канала…'**
+  String get autoSpeedOwn;
+
+  /// No description provided for @autoSpeedServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замеряю скорость: {server} ({index} из {total})'**
+  String autoSpeedServer(String server, int index, int total);
+
+  /// No description provided for @autoSpeedShare.
+  ///
+  /// In ru, this message translates to:
+  /// **'{percent} % вашего канала'**
+  String autoSpeedShare(int percent);
 }
 
 class _AppLocalizationsDelegate

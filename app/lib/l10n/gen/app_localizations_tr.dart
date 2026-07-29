@@ -1894,4 +1894,24 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'Tarayıcılar ve Windows adresleri HTTPS üzerinden çözerek yakalamamızı atlayabilir. O zaman «Doğrudan» ve «Engelle» kuralları DNS düzeyinde hiç çalışmaz. ⚠️ Tarayıcıda sabit bir şifreli DNS sağlayıcısı seçiliyse normal DNS’e dönmez, siteleri açmayı bırakır. Bilinen sağlayıcı listesi doğası gereği eksiktir.';
+
+  @override
+  String get autoUseSpeed => 'Hızı hesaba kat';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'Servisler ve gecikmeye göre elemeden sonra en iyi üç aday indirmeyle sınanır ve gerçekten hızlı olan başa geçer. Hız SİZİN hattınızla karşılaştırılır: hattınızın neredeyse tamamını veren sunucu artık megabitle değil gecikmeyle değerlendirilir. ⚠️ Abonelik trafiği harcar: hattınız için 5 MB, her aday için 5 MB, tur başına yaklaşık 20 MB.';
+
+  @override
+  String get autoSpeedOwn => 'Kendi hızınız ölçülüyor…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'Hız ölçülüyor: $server ($index/$total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return 'hattınızın %$percent kadarı';
+  }
 }

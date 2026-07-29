@@ -149,6 +149,16 @@ class _ConfigControls extends StatelessWidget {
         ),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
+          value: s.speedInAutoSelect,
+          onChanged: (v) =>
+              controller.update((st) => st.copyWith(speedInAutoSelect: v)),
+          title: Row(children: [
+            Expanded(child: Text(l.autoUseSpeed)),
+            InfoTooltip(l.infoAutoUseSpeed),
+          ]),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
           value: s.tryFragment,
           onChanged: (v) => controller.update((st) => st.copyWith(tryFragment: v)),
           title: Row(children: [

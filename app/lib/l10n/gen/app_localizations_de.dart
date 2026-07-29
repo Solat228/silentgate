@@ -1906,4 +1906,24 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'Browser und Windows können Adressen über HTTPS auflösen und unsere Erfassung umgehen. Dann wirken die Regeln „Direkt“ und „Blockieren“ auf DNS-Ebene gar nicht. ⚠️ Ist im Browser ein fester Anbieter für verschlüsseltes DNS eingetragen, fällt er nicht auf normales DNS zurück, sondern öffnet einfach keine Seiten mehr. Die Liste bekannter Anbieter ist naturgemäß unvollständig.';
+
+  @override
+  String get autoUseSpeed => 'Geschwindigkeit berücksichtigen';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'Nach der Auswahl über Dienste und Latenz werden die drei besten Kandidaten per Download geprüft, und der tatsächlich schnellere kommt zuerst. Die Geschwindigkeit wird mit IHRER Leitung verglichen: Ein Server, der fast alles davon liefert, wird nicht mehr nach Megabit bewertet – dann entscheidet die Latenz. ⚠️ Verbraucht Abo-Datenvolumen: 5 MB für Ihre Leitung plus 5 MB je Kandidat, rund 20 MB pro Durchlauf.';
+
+  @override
+  String get autoSpeedOwn => 'Messe Ihre eigene Geschwindigkeit…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'Messe Geschwindigkeit: $server ($index von $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent % Ihrer Leitung';
+  }
 }

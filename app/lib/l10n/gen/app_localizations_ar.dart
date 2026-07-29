@@ -1882,4 +1882,24 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'تستطيع المتصفحات وويندوز تحويل العناوين عبر HTTPS متجاوزةً اعتراضنا، فلا تعمل قواعد «مباشر» و«حظر» على مستوى DNS إطلاقًا. ⚠️ إذا كان المتصفح مضبوطًا على مزوّد DNS مشفّر ثابت، فلن يعود إلى DNS العادي بل سيتوقف عن فتح المواقع. قائمة المزوّدين المعروفين ناقصة بطبيعتها.';
+
+  @override
+  String get autoUseSpeed => 'مراعاة السرعة';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'بعد الفرز حسب الخدمات وزمن الاستجابة، تُختبر أفضل ثلاثة مرشحين بالتنزيل ويتصدّر الأسرع فعليًا. تُقارن السرعة بقناتك أنت: الخادم الذي يمنحك معظمها لا يُقيَّم بعدها بالميغابت، بل يحسم زمن الاستجابة. ⚠️ يستهلك من حصة الاشتراك: 5 ميغابايت لقناتك و5 لكل مرشح، نحو 20 ميغابايت للجولة.';
+
+  @override
+  String get autoSpeedOwn => 'أقيس سرعة قناتك…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'قياس السرعة: $server ($index من $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent٪ من قناتك';
+  }
 }

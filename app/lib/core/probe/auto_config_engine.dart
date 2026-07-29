@@ -1,4 +1,6 @@
 import '../models/vpn_server.dart';
+import '../net/speed_test.dart';
+import 'speed_score.dart';
 import '../parser/share_link_parser.dart';
 import '../platform/app_log.dart';
 import '../settings/app_settings.dart';
@@ -184,13 +186,34 @@ class AutoConfigResult {
   /// Не путать с [CandidateResult.avgLatencyMs] — там среднее RTT proxy-проб (GET).
   final PingResult? ping;
 
+  /// Скорость скачивания через этот сервер, Мбит/с. null — не замеряли.
+  final double? mbps;
+
+  /// Какую долю СВОЕГО канала даёт сервер, в процентах. Без этого числа голая
+  /// скорость ни о чём не говорит: 60 Мбит/с — это прекрасно на канале 60 и
+  /// скверно на канале 300.
+  final int? sharePercent;
+
   AutoConfigResult({
     required this.server,
     required this.variant,
     required this.detail,
     this.measuredAt,
     this.ping,
+    this.mbps,
+    this.sharePercent,
   });
+
+  AutoConfigResult withSpeed({double? mbps, int? sharePercent}) =>
+      AutoConfigResult(
+        server: server,
+        variant: variant,
+        detail: detail,
+        measuredAt: measuredAt,
+        ping: ping,
+        mbps: mbps,
+        sharePercent: sharePercent,
+      );
 
   Map<String, dynamic> toJson() => {
         'server': server.rawLink,
@@ -277,6 +300,7 @@ class AutoConfigEngine {
         onCandidate,
     void Function(ProbeService service, bool ok)? onService,
     void Function(AutoConfigResult found)? onFound,
+    void Function(String message)? onSpeed,
   }) async {
     final variants = variantsOverride ?? _buildVariants(settings);
     final candidates = <_Candidate>[
@@ -406,7 +430,92 @@ class AutoConfigEngine {
       return (a.detail.avgLatencyMs ?? (1 << 30))
           .compareTo(b.detail.avgLatencyMs ?? (1 << 30));
     });
+
+    if (settings.speedInAutoSelect && found.isNotEmpty) {
+      return _rankBySpeed(found, cancel, onSpeed: onSpeed);
+    }
     return found;
+  }
+
+  /// Сколько кандидатов реально замеряем.
+  ///
+  /// Замер стоит трафика ПОДПИСКИ, и это не абстракция: 5 МБ на сервер, плюс
+  /// 5 МБ на собственный канал. Мерить сотню серверов означало бы полгигабайта
+  /// и минуты ожидания ради выбора, который на 90 % уже сделан отбором по
+  /// сервисам и задержке. Трёх лучших достаточно, чтобы развести «быстрый, но
+  /// далёкий» и «близкий, но узкий» — а именно этот выбор и не даётся пингу.
+  static const _speedTopN = 3;
+
+  /// Пересортировать лучших с учётом скорости.
+  ///
+  /// Своя скорость меряется ОДИН раз и мимо VPN — иначе не с чем сравнивать:
+  /// «60 Мбит/с» это отлично на канале 60 и скверно на канале 300.
+  Future<List<AutoConfigResult>> _rankBySpeed(
+    List<AutoConfigResult> found,
+    CancelToken cancel, {
+    void Function(String message)? onSpeed,
+  }) async {
+    // Размер задан владельцем: всегда 5 МБ, независимо от настройки замера
+    // скорости на экране сервера. Там пользователь выбирает точность для
+    // ОДНОГО сервера, здесь мы гоняем несколько подряд и платим трафиком.
+    const size = SpeedTestSize.light;
+    onSpeed?.call('Замеряю скорость своего канала…');
+    final own = await SpeedTest.download(size: size);
+    final ownMbps = own.ok ? own.bitsPerSecond / 1000000 : null;
+    AppLog.i('Автонастройка: свой канал '
+        '${ownMbps == null ? "замерить не удалось" : "${ownMbps.toStringAsFixed(1)} Мбит/с"}');
+
+    final top = found.take(_speedTopN).toList();
+    final measured = <AutoConfigResult>[];
+    for (var i = 0; i < top.length; i++) {
+      cancel.throwIfCancelled();
+      final r = top[i];
+      onSpeed?.call('Замеряю скорость: ${r.server.displayName} '
+          '(${i + 1} из ${top.length})');
+      double? mbps;
+      try {
+        final handle = await _harnessFactory()
+            .start([HarnessEntry(key: 'sp', server: r.server, variant: r.variant)]);
+        try {
+          final port = handle.proxyPortFor(0);
+          if (port > 0) {
+            final res = await SpeedTest.download(size: size, proxyPort: port);
+            if (res.ok) mbps = res.bitsPerSecond / 1000000;
+          }
+        } finally {
+          await handle.stop();
+        }
+      } on CancelledException {
+        rethrow;
+      } catch (e) {
+        AppLog.w('Автонастройка: скорость ${r.server.displayName} не замерена — $e');
+      }
+      measured.add(r.withSpeed(
+        mbps: mbps,
+        sharePercent:
+            SpeedScore.sharePercent(serverMbps: mbps, ownMbps: ownMbps),
+      ));
+    }
+
+    // Опорная величина, когда свой канал замерить не вышло: лучший из серверов.
+    final best = measured
+        .map((e) => e.mbps ?? 0)
+        .fold<double>(0, (a, b) => b > a ? b : a);
+    measured.sort((a, b) => SpeedScore.of(
+          serverMbps: b.mbps,
+          ownMbps: ownMbps,
+          latencyMs: b.detail.avgLatencyMs,
+          bestServerMbps: best,
+        ).compareTo(SpeedScore.of(
+          serverMbps: a.mbps,
+          ownMbps: ownMbps,
+          latencyMs: a.detail.avgLatencyMs,
+          bestServerMbps: best,
+        )));
+
+    // Остальные идут следом в прежнем порядке: их не мерили, и делать вид, что
+    // мы про них что-то знаем, нельзя.
+    return [...measured, ...found.skip(_speedTopN)];
   }
 
   /// Порядок: сначала «обычный», затем fragment, затем варианты fingerprint.

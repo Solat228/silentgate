@@ -192,6 +192,13 @@ class AppSettings {
   /// отмеченных приложений становятся видны провайдеру.
   final bool tunnelDnsForAll;
 
+  /// Учитывать скорость при автоподборе лучшего сервера.
+  ///
+  /// Замер стоит трафика ПОДПИСКИ: 5 МБ на свой канал плюс по 5 МБ на каждого
+  /// из трёх лучших кандидатов, итого около 20 МБ за прогон. Поэтому выключено
+  /// по умолчанию — за трафик платит пользователь, и решать ему.
+  final bool speedInAutoSelect;
+
   /// Отказывать в QUIC (UDP:443).
   ///
   /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
@@ -326,6 +333,7 @@ class AppSettings {
     this.dnsHijack = true,
     this.tunnelDnsForAll = true,
     this.blockPageEnabled = true,
+    this.speedInAutoSelect = false,
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -386,6 +394,7 @@ class AppSettings {
     bool? dnsHijack,
     bool? tunnelDnsForAll,
     bool? blockPageEnabled,
+    bool? speedInAutoSelect,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -436,6 +445,7 @@ class AppSettings {
       dnsHijack: dnsHijack ?? this.dnsHijack,
       tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
       blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
+      speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -488,6 +498,7 @@ class AppSettings {
         'dnsHijack': dnsHijack,
         'tunnelDnsForAll': tunnelDnsForAll,
         'blockPageEnabled': blockPageEnabled,
+        'speedInAutoSelect': speedInAutoSelect,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -566,6 +577,8 @@ class AppSettings {
             j['tunnelDnsForAll'] as bool? ?? defaults.tunnelDnsForAll,
         blockPageEnabled:
             j['blockPageEnabled'] as bool? ?? defaults.blockPageEnabled,
+        speedInAutoSelect:
+            j['speedInAutoSelect'] as bool? ?? defaults.speedInAutoSelect,
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,

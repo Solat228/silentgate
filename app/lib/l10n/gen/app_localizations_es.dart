@@ -1908,4 +1908,24 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get infoBlockEncryptedDns =>
       'Los navegadores y Windows pueden resolver direcciones por HTTPS, evitando nuestra intercepción. Entonces las reglas «Directo» y «Bloquear» no funcionan a nivel de DNS. ⚠️ Si el navegador tiene un proveedor de DNS cifrado fijo, no volverá al DNS normal: simplemente dejará de abrir sitios. La lista de proveedores conocidos es incompleta por naturaleza.';
+
+  @override
+  String get autoUseSpeed => 'Tener en cuenta la velocidad';
+
+  @override
+  String get infoAutoUseSpeed =>
+      'Tras filtrar por servicios y latencia, los tres mejores candidatos se comprueban descargando y el realmente más rápido queda primero. La velocidad se compara con TU canal: un servidor que ya entrega casi todo deja de juzgarse por megabits y decide la latencia. ⚠️ Consume tráfico de la suscripción: 5 MB para tu canal más 5 MB por candidato, unos 20 MB por pasada.';
+
+  @override
+  String get autoSpeedOwn => 'Midiendo tu propia velocidad…';
+
+  @override
+  String autoSpeedServer(String server, int index, int total) {
+    return 'Midiendo velocidad: $server ($index de $total)';
+  }
+
+  @override
+  String autoSpeedShare(int percent) {
+    return '$percent % de tu canal';
+  }
 }

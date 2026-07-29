@@ -22,6 +22,10 @@ class AutoConfigController extends ChangeNotifier {
   final List<AutoConfigResult> _found = [];
   bool _running = false;
   String? _error;
+
+  /// Что сейчас меряется по скорости. null — замера нет.
+  String? _speedStatus;
+  String? get speedStatus => _speedStatus;
   CancelToken? _cancel;
 
   /// Хук #1: закрепить найденный сервер сразу (реальный пин с рабочей вариацией).
@@ -87,7 +91,7 @@ class AutoConfigController extends ChangeNotifier {
 
     final cancel = _cancel = CancelToken();
     try {
-      await _engine.run(
+      final ranked = await _engine.run(
         servers: servers,
         settings: settings,
         cancel: cancel,
@@ -111,6 +115,12 @@ class AutoConfigController extends ChangeNotifier {
             notifyListeners();
           }
         },
+        // Замер скорости идёт ПОСЛЕ отбора и занимает десятки секунд. Без этой
+        // строки пользователь видел бы застывший экран и решил, что подбор завис.
+        onSpeed: (message) {
+          _speedStatus = message;
+          notifyListeners();
+        },
         onFound: (result) {
           _found.add(result);
           onPinFound?.call(result.server, result.variant); // #1 — сразу в пины
@@ -121,6 +131,16 @@ class AutoConfigController extends ChangeNotifier {
           notifyListeners();
         },
       );
+      _speedStatus = null;
+      // Порядок берём У ДВИЖКА: он единственный знает, чем в итоге отсортировано
+      // — числом пройденных сервисов и задержкой либо, если включён учёт
+      // скорости, оценкой с замером. Раньше возвращённый список молча
+      // выбрасывался, и результат замера скорости не влиял ни на что.
+      if (ranked.isNotEmpty) {
+        _found
+          ..clear()
+          ..addAll(ranked);
+      }
       if (_found.isEmpty) _error = 'Рабочих серверов не найдено';
     } on CancelledException {
       // частичные результаты остаются в _found
@@ -148,12 +168,9 @@ class AutoConfigController extends ChangeNotifier {
   }
 
   Future<void> _persist() async {
-    _found.sort((a, b) {
-      final c = b.detail.passedCount.compareTo(a.detail.passedCount);
-      if (c != 0) return c;
-      return (a.detail.avgLatencyMs ?? (1 << 30))
-          .compareTo(b.detail.avgLatencyMs ?? (1 << 30));
-    });
+    // ⚠️ НЕ пересортировывать. Порядок задаёт движок, и при включённом учёте
+    // скорости он другой: первым стоит тот, кто реально быстрее, а не тот, у
+    // кого меньше пинг. Сортировка здесь этот результат стирала.
     await ResultsStore.autoConfig.save(_found.map((r) => r.toJson()).toList());
   }
 }
