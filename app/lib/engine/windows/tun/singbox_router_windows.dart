@@ -66,6 +66,13 @@ class SingboxRouterWindows implements TunRouter {
         AppLog.i('TUN автоподбор: заработало на ${c.label}');
         await store.save(c); // в следующий раз пробуем это первым
         return;
+      } on TunElevationDenied {
+        // Прав нет — перебирать стеки бессмысленно: без администратора не
+        // поднимется ни одна комбинация. Раньше цикл шёл дальше и запрашивал
+        // права ЗАНОВО на каждой из девяти: пользователь получал девять окон
+        // UAC подряд, а при зависшем запросе — три минуты «Подключение…» без
+        // единого признака жизни.
+        rethrow;
       } on TunStartException catch (e) {
         last = e;
         AppLog.w('TUN автоподбор: ${c.label} не подошло');
@@ -94,15 +101,14 @@ class SingboxRouterWindows implements TunRouter {
 
     final viaTask = await TunScheduledTask.exists() && await TunScheduledTask.run();
     if (!viaTask) {
-      // Fallback: разовый UAC-запуск хелпера.
-      // С таймаутом: синхронный ShellExecuteEx замораживал всё приложение,
-      // и автоподбор не переходил к следующей комбинации (поймано в VM).
+      // Fallback: разовый UAC-запуск хелпера. Если приложение уже возвышено,
+      // окна UAC не будет вовсе — хелпер стартует напрямую (см. Elevation).
       final ok = await Elevation.runElevatedAsync(
         Platform.resolvedExecutable,
         '--tun "$cfgPath" "$_stopPath"',
       );
       if (!ok) {
-        throw TunStartException(
+        throw TunElevationDenied(
           'Не удалось получить права администратора для TUN (UAC отклонён).\n'
           'Чтобы больше не спрашивало — настройте запуск без UAC в разделе «TUN и маршрутизация».',
         );

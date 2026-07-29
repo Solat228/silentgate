@@ -28,3 +28,13 @@ class TunStartException implements Exception {
   @override
   String toString() => details.isEmpty ? message : '$message\n\n$details';
 }
+
+/// Прав администратора получить не удалось.
+///
+/// Отдельный тип, а не просто текст в [TunStartException]: автоподбор стека и
+/// MTU обязан на нём ОСТАНОВИТЬСЯ. Без прав не поднимется ни одна комбинация, а
+/// продолжение перебора означает новый запрос прав на каждой — девять окон UAC
+/// подряд у пользователя (а при зависшем запросе — минуты немого «Подключение…»).
+class TunElevationDenied extends TunStartException {
+  TunElevationDenied(super.message, {super.details});
+}
