@@ -40,6 +40,14 @@ class AndroidEngine extends VpnEngineBase {
     _events.receiveBroadcastStream().listen(_onNativeEvent);
   }
 
+  /// Порт инбаунда для проб. НЕ 10809: там при панельном профиле садится Xray,
+  /// и совпадение порта не давало ядру стартовать вовсе.
+  static const probeInboundPort = 10811;
+
+  /// Сервис-чипы и проба активного сервера ходят в наш собственный инбаунд.
+  @override
+  int get httpProxyPort => probeInboundPort;
+
   static const _channel = MethodChannel('lol.silentgate/vpn');
   static const _events = EventChannel('lol.silentgate/vpn_events');
 
@@ -151,7 +159,7 @@ class AndroidEngine extends VpnEngineBase {
 
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
-        httpProxyPort: ports.http,
+        probePort: probeInboundPort,
         options: liveOptions,
         // При нескольких серверах на sing-box собранный базой конфиг уже
         // содержит `urltest` по всем узлам — встраивать outbound одного
@@ -279,7 +287,8 @@ class AndroidEngine extends VpnEngineBase {
     final base = _liveOptions ?? const TunOptions(platformTun: true);
     return SingboxConfigBuilder(
       xraySocksPort: ports.socks,
-      httpProxyPort: ports.http,
+      // В заглушке проб нет: слушать порт, из которого всё равно ничего не
+      // выйдет, незачем — и это лишняя поверхность.
       options: base.asBlackhole(),
     ).buildJson(_liveSplit);
   }

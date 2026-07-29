@@ -205,9 +205,15 @@ class TunOptions {
 class SingboxConfigBuilder {
   final int xraySocksPort;
 
-  /// Порт локального http-прокси. На Android туннель поднимает его сам —
-  /// иначе сервис-чипы у Connect ходить некуда (см. inbound `probe-in`).
-  final int httpProxyPort;
+  /// Порт инбаунда `probe-in` — того, через который ходят сервис-чипы и проба
+  /// активного сервера.
+  ///
+  /// ⚠️ ОТДЕЛЬНЫЙ от 10809. Когда поднимается панельный профиль «Авто», рядом
+  /// стартует Xray, и его конфиг нормализуется так, что http-inbound встаёт
+  /// РОВНО на 10809. Xray стартует первым и занимает порт; после этого
+  /// `probe-in` не может забиндиться, а это фатально — ядро не запускается
+  /// вовсе, и панельные профили не поднимаются НИКОГДА. 0 — не создавать.
+  final int probePort;
   final TunOptions options;
 
   /// Готовый прокси-outbound вместо перехода в локальный SOCKS.
@@ -231,7 +237,7 @@ class SingboxConfigBuilder {
 
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
-    this.httpProxyPort = 10809,
+    this.probePort = 0,
     this.options = const TunOptions(),
     this.proxyOutbound,
     this.proxyOutboundGroup,
@@ -275,6 +281,19 @@ class SingboxConfigBuilder {
         {'protocol': 'dns', 'action': 'hijack-dns'},
     ];
 
+    // Проба обязана идти ЧЕРЕЗ VPN. Без этого правила в режиме «только
+    // выбранные» база — `direct` (наш пакет в include-список не попадает), и
+    // сервис-чипы показывали бы зелёное по ПРЯМОМУ соединению при живом
+    // туннеле. Ставим выше пользовательских правил: чужое «Прямо» не должно
+    // перехватывать измерение.
+    if (o.platformTun && probePort > 0) {
+      rules.add({
+        'inbound': ['probe-in'],
+        'action': 'route',
+        'outbound': 'proxy',
+      });
+    }
+
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
     // побеждать удобные direct-исключения (иначе заблокированный домен, чей IP
     // попал в приватный диапазон или в excludeCidr, молча уходил бы напрямую).
@@ -310,12 +329,12 @@ class SingboxConfigBuilder {
         // Слушаем только петлю: наружу порт не выставляется. Трафик пробы
         // уходит тем же путём, что и весь остальной, — значит чип показывает
         // ФАКТИЧЕСКОЕ состояние канала, а не отдельную проверку.
-        if (o.platformTun)
+        if (o.platformTun && probePort > 0)
           {
             'type': 'mixed',
             'tag': 'probe-in',
             'listen': '127.0.0.1',
-            'listen_port': httpProxyPort,
+            'listen_port': probePort,
           },
       ],
       'outbounds': [

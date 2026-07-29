@@ -75,6 +75,7 @@ Map<String, dynamic> _androidConfig(
   AppSettings settings = const AppSettings(),
 }) =>
     SingboxConfigBuilder(
+      probePort: 10811,
       options: TunOptions.fromSettings(settings,
           serverIps: const ['93.184.216.34'], android: true),
       proxyOutbound: SingboxOutboundFactory.build(server),
@@ -420,7 +421,9 @@ void main() {
       expect(probe['type'], 'mixed');
       expect(probe['listen'], '127.0.0.1',
           reason: 'наружу порт выставлять нельзя');
-      expect(probe['listen_port'], 10809);
+      expect(probe['listen_port'], 10811,
+          reason: 'НЕ 10809: там при панельном профиле садится Xray, '
+              'и совпадение порта не давало ядру стартовать вовсе');
     });
 
     test('в туннеле-заглушке проб-инбаунда нет', () {
