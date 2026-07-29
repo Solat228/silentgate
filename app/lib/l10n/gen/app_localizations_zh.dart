@@ -1579,6 +1579,9 @@ class AppLocalizationsZh extends AppLocalizations {
       'Ping 徽章颜色：绿/黄/橙 — 服务器可用（TCP + 通过隧道验证）。灰色 — TCP 有响应但不代理流量（典型 Reality 端口）。红色“n/a” — 无响应，已排除。Ping 始终直接测量（在 VPN 之外）。';
 
   @override
+  String get pingUntestedHint => '尚未测试。在移动端，Hysteria2 和“自动”配置仅在已连接时测量。';
+
+  @override
   String get panelTunnelMarker => '自带分流规则';
 
   @override

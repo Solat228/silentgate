@@ -478,6 +478,7 @@
   "autoUpdateIntervalLabel": "Intervalo de atualização, h",
   "autoUpdatePreferSub": "Usar o intervalo da assinatura",
   "pingLegendInfo": "Cor da etiqueta de ping: verde/amarelo/laranja — o servidor funciona (TCP + verificação pelo túnel). Cinza — responde por TCP mas não encaminha o tráfego (porta Reality típica). Vermelho «n/a» — sem resposta, excluído. O ping é sempre medido DIRETAMENTE (fora da VPN).",
+  "pingUntestedHint": "Ainda não testado. No celular, Hysteria2 e perfis “Auto” são medidos apenas com a conexão ativa.",
   "panelTunnelMarker": "Tem seu próprio túnel dividido",
   "panelInfoServers": "Servidores no perfil: {n} (o melhor é escolhido)",
   "panelInfoDirect": "Parte do tráfego (ex. sites locais) vai direto, fora da VPN",

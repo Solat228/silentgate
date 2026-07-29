@@ -24,7 +24,12 @@ class PingChip extends StatelessWidget {
     final l = AppLocalizations.of(context);
     switch (result.outcome) {
       case PingOutcome.untested:
-        return const SizedBox.shrink();
+        // ⚠️ Раньше здесь была пустота, и пользователь не мог отличить «ещё не
+        // проверяли» от «проверили и всё плохо». Особенно больно на Android,
+        // где hysteria2 не измеряется до подключения: сервер выглядел так же,
+        // как непроверенный, и казался сломанным.
+        return _pill('—', Theme.of(context).disabledColor,
+            tooltip: l.pingUntestedHint);
       case PingOutcome.testing:
         return const SizedBox(
             width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));

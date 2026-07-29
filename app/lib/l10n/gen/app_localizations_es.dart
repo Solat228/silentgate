@@ -1631,6 +1631,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Color de la etiqueta de ping: verde/amarillo/naranja — el servidor funciona (TCP + comprobación por el túnel). Gris — responde por TCP pero no reenvía el tráfico (puerto Reality típico). Rojo «n/a» — sin respuesta, excluido. El ping siempre se mide DIRECTAMENTE (fuera de la VPN).';
 
   @override
+  String get pingUntestedHint =>
+      'Aún no probado. En móvil, Hysteria2 y los perfiles «Auto» se miden solo con la conexión activa.';
+
+  @override
   String get panelTunnelMarker => 'Tiene su propio túnel dividido';
 
   @override

@@ -1634,6 +1634,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Couleur du badge de ping : vert/jaune/orange — le serveur fonctionne (TCP + vérification via le tunnel). Gris — répond en TCP mais ne relaie pas le trafic (port Reality typique). Rouge « n/a » — aucune réponse, exclu. Le ping est toujours mesuré DIRECTEMENT (hors VPN).';
 
   @override
+  String get pingUntestedHint =>
+      'Pas encore testé. Sur mobile, Hysteria2 et les profils « Auto » ne sont mesurés que connecté.';
+
+  @override
   String get panelTunnelMarker => 'Tunnel divisé propre';
 
   @override

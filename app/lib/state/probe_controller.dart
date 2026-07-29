@@ -202,13 +202,21 @@ class ProbeController extends ChangeNotifier {
             }
             final r = await TcpPing.measure(s.address, s.port, timeout: timeout);
             if (r.outcome == PingOutcome.ok) {
-              // Достижим — показываем сразу как рабочий (оптимистично): иначе на
-              // время фазы 2 все ответившие висели бы серыми. Проверка GET/HEAD
-              // ниже понизит до «не проксирует» только реально не прошедшие.
+              // Достижим — показываем сразу как рабочий (оптимистично): иначе
+              // на время фазы 2 все ответившие висели бы серыми. Проверка
+              // GET/HEAD ниже понизит до «не проксирует» только реально не
+              // прошедшие.
+              //
+              // ⚠️ Оптимизм ОПРАВДАН ТОЛЬКО ТЕМ, что фаза 2 будет. Если её не
+              // будет (платформа без харнесса и двухфазность выключена),
+              // зелёный означал бы «порт открыт», а не «проксирует» — а на
+              // типичном Reality-порту открыт вообще любой. Тогда честнее
+              // серый: отвечает, но не подтверждён.
+              final willVerify = twoPhase && proxyProbeSupported;
               _results[s.key] = PingResult(
                 outcome: PingOutcome.ok,
                 latencyMs: r.latencyMs,
-                working: true,
+                working: willVerify,
                 latencyMethod: PingMethod.tcp,
                 measuredAt: DateTime.now(),
               );

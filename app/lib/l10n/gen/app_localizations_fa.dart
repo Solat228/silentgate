@@ -1613,6 +1613,10 @@ class AppLocalizationsFa extends AppLocalizations {
       'رنگ نشان پینگ: سبز/زرد/نارنجی — سرور کار می‌کند (TCP + بررسی از تونل). خاکستری — به TCP پاسخ می‌دهد اما ترافیک را پروکسی نمی‌کند (پورت معمول Reality). قرمز «n/a» — بدون پاسخ، حذف‌شده. پینگ همیشه به‌طور مستقیم (خارج از VPN) اندازه‌گیری می‌شود.';
 
   @override
+  String get pingUntestedHint =>
+      'هنوز آزمایش نشده. در موبایل، Hysteria2 و نمایه‌های «خودکار» فقط هنگام اتصال سنجیده می‌شوند.';
+
+  @override
   String get panelTunnelMarker => 'تونل تقسیم‌شده مخصوص خود';
 
   @override

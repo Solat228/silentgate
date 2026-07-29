@@ -1628,6 +1628,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Farbe des Ping-Badges: grün/gelb/orange — Server funktioniert (TCP + Prüfung durch den Tunnel). Grau — antwortet über TCP, leitet aber keinen Verkehr weiter (typischer Reality-Port). Rot „n/a“ — keine Antwort, ausgeschlossen. Ping wird immer DIREKT gemessen (außerhalb des VPN).';
 
   @override
+  String get pingUntestedHint =>
+      'Noch nicht geprüft. Auf Mobilgeräten werden Hysteria2 und „Auto“-Profile nur bei aktiver Verbindung gemessen.';
+
+  @override
   String get panelTunnelMarker => 'Eigenes Split-Tunneling';
 
   @override

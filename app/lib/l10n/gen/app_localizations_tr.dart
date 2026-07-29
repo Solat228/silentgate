@@ -1620,6 +1620,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Ping etiketi rengi: yeşil/sarı/turuncu — sunucu çalışıyor (TCP + tünelden kontrol). Gri — TCP\'ye yanıt veriyor ama trafiği proxylemiyor (tipik Reality portu). Kırmızı «n/a» — yanıt yok, hariç. Ping her zaman DOĞRUDAN ölçülür (VPN dışında).';
 
   @override
+  String get pingUntestedHint =>
+      'Henüz test edilmedi. Mobilde Hysteria2 ve “Oto” profilleri yalnızca bağlıyken ölçülür.';
+
+  @override
   String get panelTunnelMarker => 'Kendi bölünmüş tüneli var';
 
   @override

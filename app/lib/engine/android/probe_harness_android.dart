@@ -25,9 +25,18 @@ class ProbeHarnessAndroid implements ProbeHarness {
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     final dir = await AppPaths.supportDir();
-    final files = <String>[];
+    final files = <String?>[];
     // По файлу на кандидата: `ping` принимает ПУТЬ к конфигу, а не JSON.
     for (var i = 0; i < entries.length; i++) {
+      // ⚠️ libXray — это Xray, а он не умеет hysteria2 (QUIC + свой congestion
+      // control). Собрать для него конфиг нельзя, и попытка замера пометила бы
+      // рабочий сервер мёртвым. Такие кандидаты просто не меряются: их
+      // состояние честно остаётся «не проверен», а по живому каналу
+      // проверяется активный (см. ProbeController).
+      if (entries[i].server.protocol == 'hysteria2') {
+        files.add(null);
+        continue;
+      }
       // По одному кандидату на конфиг: `ping` меряет ОДИН outbound, а общий
       // харнесс Windows держит их пачкой на разных портах.
       final json = HarnessConfigBuilder(ports: const HarnessPorts())
@@ -43,7 +52,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
 class _AndroidHandle implements HarnessHandle {
   _AndroidHandle(this._files);
 
-  final List<String> _files;
+  final List<String?> _files;
 
   /// Порта нет: замер делает нативная сторона целиком, наружу отдаётся сразу
   /// задержка. 0 означает «через порт не ходить» — вызывающий обязан это
@@ -55,9 +64,11 @@ class _AndroidHandle implements HarnessHandle {
   @override
   Future<int?> delayMs(int index, {int timeoutSec = 5}) async {
     if (index < 0 || index >= _files.length) return null;
+    final path = _files[index];
+    if (path == null) return null; // hysteria2 — Xray его не поднимет
     try {
       final v = await ProbeHarnessAndroid._channel.invokeMethod<int>('ping', {
-        'configPath': _files[index],
+        'configPath': path,
         'timeout': timeoutSec,
       });
       return (v == null || v <= 0) ? null : v;
@@ -72,6 +83,7 @@ class _AndroidHandle implements HarnessHandle {
     // Экземпляр ядра гасит сама нативная сторона (defer в libXray); нам
     // остаётся убрать временные конфиги, иначе они копятся в каталоге данных.
     for (final p in _files) {
+      if (p == null) continue;
       try {
         await File(p).delete();
       } catch (_) {}

@@ -478,6 +478,7 @@
   "autoUpdateIntervalLabel": "更新间隔（小时）",
   "autoUpdatePreferSub": "使用订阅中的间隔",
   "pingLegendInfo": "Ping 徽章颜色：绿/黄/橙 — 服务器可用（TCP + 通过隧道验证）。灰色 — TCP 有响应但不代理流量（典型 Reality 端口）。红色“n/a” — 无响应，已排除。Ping 始终直接测量（在 VPN 之外）。",
+  "pingUntestedHint": "尚未测试。在移动端，Hysteria2 和“自动”配置仅在已连接时测量。",
   "panelTunnelMarker": "自带分流规则",
   "panelInfoServers": "配置中的服务器：{n}（自动选择最优）",
   "panelInfoDirect": "部分流量（如本地网站）直连，绕过 VPN",

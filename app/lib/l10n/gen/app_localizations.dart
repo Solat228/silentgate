@@ -2982,6 +2982,12 @@ abstract class AppLocalizations {
   /// **'Цвет плашки пинга: зелёный/жёлтый/оранжевый — сервер рабочий (TCP + проверка через туннель). Серый — отвечает по TCP, но трафик не проксирует (типичный Reality-порт). Красный «n/a» — не ответил, из проверки исключён. Пинг всегда меряется НАПРЯМУЮ (вне VPN).'**
   String get pingLegendInfo;
 
+  /// No description provided for @pingUntestedHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ещё не проверен. Hysteria2 и профили «Авто» на мобильном измеряются только при поднятом соединении.'**
+  String get pingUntestedHint;
+
   /// No description provided for @panelTunnelMarker.
   ///
   /// In ru, this message translates to:

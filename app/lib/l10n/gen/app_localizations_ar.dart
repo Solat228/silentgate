@@ -1605,6 +1605,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'لون شارة ping: أخضر/أصفر/برتقالي — الخادم يعمل (TCP + فحص عبر النفق). رمادي — يستجيب عبر TCP لكنه لا يمرر حركة المرور (منفذ Reality نموذجي). أحمر «n/a» — لا استجابة، مُستبعَد. يُقاس ping دائمًا مباشرةً (خارج VPN).';
 
   @override
+  String get pingUntestedHint =>
+      'لم يُختبر بعد. على الهاتف، يُقاس Hysteria2 وملفات «تلقائي» أثناء الاتصال فقط.';
+
+  @override
   String get panelTunnelMarker => 'له نفق مقسّم خاص به';
 
   @override

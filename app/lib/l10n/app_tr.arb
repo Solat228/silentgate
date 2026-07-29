@@ -478,6 +478,7 @@
   "autoUpdateIntervalLabel": "Güncelleme aralığı, sa",
   "autoUpdatePreferSub": "Aralığı abonelikten al",
   "pingLegendInfo": "Ping etiketi rengi: yeşil/sarı/turuncu — sunucu çalışıyor (TCP + tünelden kontrol). Gri — TCP'ye yanıt veriyor ama trafiği proxylemiyor (tipik Reality portu). Kırmızı «n/a» — yanıt yok, hariç. Ping her zaman DOĞRUDAN ölçülür (VPN dışında).",
+  "pingUntestedHint": "Henüz test edilmedi. Mobilde Hysteria2 ve “Oto” profilleri yalnızca bağlıyken ölçülür.",
   "panelTunnelMarker": "Kendi bölünmüş tüneli var",
   "panelInfoServers": "Profildeki sunucular: {n} (en iyisi seçilir)",
   "panelInfoDirect": "Bazı trafik (ör. yerel siteler) doğrudan, VPN dışından gider",

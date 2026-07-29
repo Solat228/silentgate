@@ -633,4 +633,26 @@ void main() {
       expect(c.activeServerKey!(), isNull);
     });
   });
+
+  // Пункт 5 ревью: интерфейс не должен обещать больше, чем проверено.
+  group('Честность пинга', () {
+    test('«не проверен» имеет подпись во всех локалях', () async {
+      // Раньше чип просто не рисовался, и «ещё не мерили» выглядело так же,
+      // как «померили и всё плохо».
+      for (final code in const ['ru', 'en', 'es', 'de', 'fr', 'pt', 'tr',
+        'ar', 'fa', 'zh']) {
+        final src = await File('lib/l10n/app_$code.arb').readAsString();
+        expect(src.contains('pingUntestedHint'), isTrue,
+            reason: 'локаль $code без подписи «не проверен»');
+      }
+    });
+
+    test('hysteria2 не уезжает в Xray-харнесс', () async {
+      // libXray — это Xray, hysteria2 он не поднимет; попытка замера пометила
+      // бы рабочий сервер мёртвым.
+      final src = await File('lib/engine/android/probe_harness_android.dart')
+          .readAsString();
+      expect(src.contains("protocol == 'hysteria2'"), isTrue);
+    });
+  });
 }

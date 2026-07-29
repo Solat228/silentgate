@@ -539,6 +539,7 @@
   "autoUpdateIntervalLabel": "Update interval, h",
   "autoUpdatePreferSub": "Use the interval from the subscription",
   "pingLegendInfo": "Ping badge color: green/yellow/orange — server works (TCP + a check through the tunnel). Grey — responds over TCP but does not proxy traffic (a typical Reality port). Red “n/a” — no response, excluded. Ping is always measured DIRECTLY (outside the VPN).",
+  "pingUntestedHint": "Not tested yet. On mobile, Hysteria2 and “Auto” profiles are measured only while connected.",
   "panelTunnelMarker": "Has its own split tunneling",
   "panelInfoServers": "Servers in the profile: {n} (the best is chosen)",
   "panelInfoDirect": "Some traffic (e.g. local sites) goes directly, outside the VPN",
