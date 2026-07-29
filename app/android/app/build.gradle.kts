@@ -68,11 +68,29 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keystorePropertiesFile.exists()) {
-                signingConfigs.getByName("release")
-            } else {
-                signingConfigs.getByName("debug")
+            // ⚠️ РЕЛИЗ БЕЗ КЛЮЧА — ЭТО ОШИБКА СБОРКИ, А НЕ «СОБЕРЁМ ОТЛАДОЧНЫМ».
+            //
+            // Раньше здесь стоял молчаливый откат на debug-ключ. На чистой
+            // машине (файл в .gitignore) `flutter build apk --release` выпускал
+            // нормально выглядящий APK с ОБЩЕИЗВЕСТНОЙ подписью. Последствия
+            // необратимы: такой APK нельзя обновить настоящим релизом — только
+            // снос с потерей всех данных пользователя, — а «обновление» для
+            // него может собрать кто угодно.
+            //
+            // Сборка теперь падает с внятным текстом. Это осознанная смена
+            // поведения: команды, которые раньше «проходили», начнут ругаться —
+            // и это лучше, чем узнать о подмене подписи после раздачи.
+            // Отладочные сборки (`flutter run`, `--debug`) не затронуты.
+            if (!keystorePropertiesFile.exists()) {
+                throw GradleException(
+                    "Нет android/key.properties — релизный APK подписывать нечем.\n" +
+                    "Создайте файл с storeFile/storePassword/keyAlias/keyPassword " +
+                    "(пути через прямые слэши) или собирайте --debug.\n" +
+                    "Подпись ОТЛАДОЧНЫМ ключом запрещена: такой APK невозможно " +
+                    "обновить настоящим релизом."
+                )
             }
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

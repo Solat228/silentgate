@@ -1257,7 +1257,7 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
       _checking = true;
       _status = null;
     });
-    final release = await AppUpdate.check(endpoint: settings.appUpdateUrl);
+    final release = await AppUpdate.check(endpoint: settings.effectiveAppUpdateUrl);
     if (!mounted) return;
     setState(() {
       _checking = false;

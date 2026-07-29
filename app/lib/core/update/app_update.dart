@@ -27,16 +27,21 @@ class AppUpdate {
   /// `{"version":"0.9.0","url":"https://…/SilentGateSetup.exe","notes":"…"}`
   /// Значение живёт в `app_update_defaults.dart` (файл без импортов): оттуда
   /// его берёт `AppSettings`, не притаскивая в консольные тулы `package:flutter`.
-  static const defaultEndpoint = kDefaultAppUpdateEndpoint;
+  static String get defaultEndpoint => kDefaultAppUpdateEndpoint;
 
   static Future<AppRelease?> check({
-    String endpoint = defaultEndpoint,
+    String? endpoint,
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    if (endpoint.trim().isEmpty) return null;
+    // Пусто → платформенный адрес по умолчанию (Android и Windows разные:
+    // общий эндпоинт отдавал ссылку на .exe, который на телефон не поставить).
+    final url = (endpoint ?? '').trim().isEmpty
+        ? kDefaultAppUpdateEndpoint
+        : endpoint!.trim();
+    if (url.isEmpty) return null;
     final client = HttpClient()..connectionTimeout = timeout;
     try {
-      final req = await client.getUrl(Uri.parse(endpoint)).timeout(timeout);
+      final req = await client.getUrl(Uri.parse(url)).timeout(timeout);
       req.headers.set(HttpHeaders.userAgentHeader, AppInfo.userAgent);
       final resp = await req.close().timeout(timeout);
       if (resp.statusCode != 200) {

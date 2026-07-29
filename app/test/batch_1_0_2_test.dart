@@ -518,17 +518,40 @@ void main() {
   // Импорт app_update тянул app_log → app_paths → path_provider → flutter →
   // dart:ui, и `dart run tool/emit_*.dart` не запускался вовсе: валидировать
   // конфиги настоящим ядром было нечем.
-  group('Адрес обновлений живёт в файле без импортов', () {
-    test('AppSettings берёт то же значение, что и AppUpdate', () {
-      expect(const AppSettings().appUpdateUrl, kDefaultAppUpdateEndpoint);
+  group('Адрес обновлений: свой на каждую платформу', () {
+    test('пусто в настройках = платформенный адрес по умолчанию', () {
+      // ⚠️ Умолчание — ПУСТАЯ строка, а не константа. Раньше сюда при первом
+      // сохранении писался жёсткий адрес, и значение ЗАМОРАЖИВАЛОСЬ: смена
+      // адреса в новой версии не доходила до уже установленных копий.
+      expect(const AppSettings().appUpdateUrl, '');
+      expect(const AppSettings().effectiveAppUpdateUrl, kDefaultAppUpdateEndpoint);
       expect(AppUpdate.defaultEndpoint, kDefaultAppUpdateEndpoint);
     });
 
-    test('файл констант не обзавёлся импортами', () async {
+    test('правка пользователя сильнее платформенного умолчания', () {
+      const s = AppSettings(appUpdateUrl: 'https://example.com/v');
+      expect(s.effectiveAppUpdateUrl, 'https://example.com/v');
+    });
+
+    test('прежний жёсткий адрес забывается при загрузке', () async {
+      // Иначе Android продолжал бы спрашивать Windows-эндпоинт и предлагать
+      // скачать .exe, который на телефон не поставить.
+      final j = const AppSettings().toJson()
+        ..['appUpdateUrl'] = 'https://silentgate.lol/api/app-version';
+      expect(AppSettings.fromJson(j).appUpdateUrl, '');
+    });
+
+    test('файл адресов не тянет ничего, кроме dart:io', () async {
       final src =
           await File('lib/core/update/app_update_defaults.dart').readAsString();
-      expect(RegExp(r'^\s*import ', multiLine: true).hasMatch(src), isFalse,
-          reason: 'любой импорт здесь снова сломает консольные тулы');
+      final imports = RegExp(r'^\s*import\s+.*$', multiLine: true)
+          .allMatches(src)
+          .map((m) => m.group(0)!.trim())
+          .toList();
+      // `dart:io` безопасен; любой пакетный импорт снова притащит dart:ui и
+      // сломает консольные генераторы конфигов.
+      expect(imports.where((i) => i.contains('package:')), isEmpty,
+          reason: 'пакетный импорт здесь ломает `dart run tool/emit_*`');
     });
   });
 

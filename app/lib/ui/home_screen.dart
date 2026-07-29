@@ -61,7 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkAppUpdate() async {
     final settings = context.read<SettingsController>().settings;
     if (!settings.appUpdateCheck) return;
-    final release = await AppUpdate.check(endpoint: settings.appUpdateUrl);
+    final release = await AppUpdate.check(endpoint: settings.effectiveAppUpdateUrl);
     if (release == null || !release.isNewer || !mounted) return;
     AppLog.i('Доступна версия ${release.version} (у вас ${AppInfo.version})');
     final l = AppLocalizations.of(context);

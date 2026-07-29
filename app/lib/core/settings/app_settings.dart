@@ -47,6 +47,17 @@ extension DnsStrategySingbox on DnsStrategy {
 /// Уровень лога sing-box (для диагностики TUN).
 enum SingboxLogLevel { warn, info, debug }
 
+/// Прежние жёстко записанные адреса обновлений: их надо забыть, чтобы
+/// заработал платформенный выбор (Android больше не ведёт на .exe).
+const _legacyUpdateEndpoints = <String>{
+  'https://silentgate.lol/api/app-version',
+};
+
+String _sanitizeUpdateUrl(String? raw) {
+  final v = (raw ?? '').trim();
+  return _legacyUpdateEndpoints.contains(v) ? '' : v;
+}
+
 /// Способы пинга (как в Happ → Настройки → Пинг).
 enum PingMethod { proxyGet, proxyHead, tcp, icmp }
 
@@ -249,7 +260,21 @@ class AppSettings {
   final bool appUpdateCheck;
 
   /// Эндпоинт проверки версии приложения (см. docs/APP_UPDATE.md).
+  /// Адрес проверки обновлений. ПУСТО = «по умолчанию для этой платформы».
+  ///
+  /// ⚠️ Раньше сюда при первом сохранении записывалась константа, и значение
+  /// ЗАМОРАЖИВАЛОСЬ: смена адреса в новой версии не доходила до уже
+  /// установленных копий — они продолжали спрашивать старый эндпоинт. Пустая
+  /// строка означает «спроси платформу», поэтому адрес обновляется вместе с
+  /// приложением. Непустое значение — осознанная правка пользователя, её
+  /// уважаем.
   final String appUpdateUrl;
+
+  /// Фактический адрес: пользовательский, иначе платформенный по умолчанию.
+  String get effectiveAppUpdateUrl {
+    final v = appUpdateUrl.trim();
+    return v.isEmpty ? kDefaultAppUpdateEndpoint : v;
+  }
 
   const AppSettings({
     this.captureMode = CaptureMode.systemProxy,
@@ -298,7 +323,7 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
-    this.appUpdateUrl = kDefaultAppUpdateEndpoint,
+    this.appUpdateUrl = '',
   });
 
   static const AppSettings defaults = AppSettings();
@@ -515,7 +540,10 @@ class AppSettings {
       autoUpdateIntervalHours: (j['autoUpdateIntervalHours'] as num?)?.toInt() ?? 12,
       autoUpdatePreferSubscription: j['autoUpdatePreferSubscription'] as bool? ?? false,
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,
-      appUpdateUrl: j['appUpdateUrl'] as String? ?? defaults.appUpdateUrl,
+      // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
+      // Android приложение предлагало скачать .exe. Такое значение считаем
+      // отсутствующим — платформа подставит свой.
+      appUpdateUrl: _sanitizeUpdateUrl(j['appUpdateUrl'] as String?),
     );
   }
 }
