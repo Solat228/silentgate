@@ -95,7 +95,9 @@ class SingboxRouterWindows implements TunRouter {
     final viaTask = await TunScheduledTask.exists() && await TunScheduledTask.run();
     if (!viaTask) {
       // Fallback: разовый UAC-запуск хелпера.
-      final ok = Elevation.runElevated(
+      // С таймаутом: синхронный ShellExecuteEx замораживал всё приложение,
+      // и автоподбор не переходил к следующей комбинации (поймано в VM).
+      final ok = await Elevation.runElevatedAsync(
         Platform.resolvedExecutable,
         '--tun "$cfgPath" "$_stopPath"',
       );
