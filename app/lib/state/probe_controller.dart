@@ -356,6 +356,20 @@ class ProbeController extends ChangeNotifier {
       final rawPort = handle.proxyPortFor(0);
       final port = rawPort <= 0 ? null : rawPort;
       if (cancel.isCancelled) return;
+      // Платформа может померить сама и порта не дать (Android: LibXray.ping
+      // возвращает миллисекунды). Тогда ходить через прокси нечем и незачем.
+      final ready = port == null ? await handle.delayMs(0) : null;
+      if (cancel.isCancelled) return;
+      if (port == null && ready != null) {
+        _results[server.key] = PingResult(
+          outcome: PingOutcome.ok,
+          latencyMs: ready,
+          working: true,
+          latencyMethod: settings.pingPrimary,
+        );
+        notifyListeners();
+        return;
+      }
       await _applyVerify(server, port, settings,
           head: head, forceProxy: forceProxy);
     } finally {

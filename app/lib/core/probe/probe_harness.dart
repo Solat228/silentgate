@@ -19,5 +19,10 @@ abstract class HarnessHandle {
   int proxyPortFor(int index);
 
   /// Остановить харнесс (убить процесс движка).
+  /// Готовая задержка кандидата, если платформа меряет её САМА и порта не
+  /// даёт (Android: `LibXray.ping` возвращает миллисекунды, а не поднимает
+  /// прокси). `null` — мерить через [proxyPortFor], как на Windows.
+  Future<int?> delayMs(int index) async => null;
+
   Future<void> stop();
 }

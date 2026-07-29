@@ -388,13 +388,12 @@ class _ConnectPane extends StatelessWidget {
                     onPressed: () => state
                         .connectAuto(context.read<SettingsController>().settings),
                   ),
-                // Автонастройка целиком стоит на проброс-харнессе: она поднимает
-                // рядом второй экземпляр ядра и гоняет через него пробы. На
-                // Android этого нельзя — VpnService в приложении один, и
-                // `createProbeHarness()` честно бросает UnsupportedError.
-                // Кнопка при этом была на месте, и нажатие показывало сырое
-                // «Ошибка: Unsupported operation…». Лучше не показывать вовсе,
-                // чем обещать несуществующее.
+                // Автонастройка стоит на проброс-харнессе. На Android он
+                // ПОЯВИЛСЯ (`LibXray.ping` поднимает свой экземпляр ядра, не
+                // трогая туннель), поэтому кнопка снова на месте. Гейт оставлен:
+                // на платформе без харнесса нажатие показывало бы сырое
+                // «Unsupported operation», а обещать несуществующее хуже, чем
+                // не показывать.
                 if (proxyProbeSupported) ...[
                   const SizedBox(height: 8),
                   OutlinedButton.icon(

@@ -77,6 +77,10 @@ class _SingboxHarnessHandle implements HarnessHandle {
   @override
   int proxyPortFor(int index) => _builder.portFor(index);
 
+  /// Windows меряет через прокси-порт — готовой задержки нет.
+  @override
+  Future<int?> delayMs(int index) async => null;
+
   @override
   Future<void> stop() async {
     await _process.stop();

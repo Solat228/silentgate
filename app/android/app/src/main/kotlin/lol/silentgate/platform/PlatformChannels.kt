@@ -15,6 +15,9 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
+import lol.silentgate.cores.libXray.LibXray
+import lol.silentgate.cores.libXray.LibXrayInvokeRequest
+import lol.silentgate.cores.libXray.PingRequest
 import java.io.ByteArrayOutputStream
 
 /**
@@ -31,6 +34,70 @@ object PlatformChannels {
     const val DEVICE_CHANNEL = "lol.silentgate/device"
     const val LAUNCHER_CHANNEL = "lol.silentgate/launcher"
     const val APPS_CHANNEL = "lol.silentgate/apps"
+    const val PROBE_CHANNEL = "lol.silentgate/probe"
+
+    /**
+     * Пинг сервера ОТДЕЛЬНЫМ экземпляром Xray.
+     *
+     * ⚠️ Это не противоречит «VpnService в приложении один»: `LibXray.ping`
+     * поднимает СВОЙ `core.New` и гасит его в defer, не трогая глобальный
+     * инстанс, занятый живым туннелем. Именно поэтому на Android возможен
+     * настоящий харнесс, а не только проба по уже поднятому каналу.
+     *
+     * Без этого hysteria2 и панельные профили «Авто» не пингуются вовсе: TCP у
+     * них нет (QUIC / балансировщик по десяткам узлов), а вторая фаза проверки
+     * требовала харнесса, которого на Android «не было».
+     *
+     * Возвращает задержку в мс либо null. Коды libXray: 10000 — ошибка,
+     * 11000 — таймаут; наружу отдаём null, чтобы не выдавать их за секунды.
+     */
+    fun handleProbe(
+        method: String,
+        configPath: String?,
+        timeoutSec: Int,
+        url: String?,
+        proxy: String?,
+        result: MethodChannel.Result,
+    ) {
+        when (method) {
+            "ping" -> {
+                val path = configPath?.trim().orEmpty()
+                if (path.isEmpty()) { result.success(null); return }
+                val delay = runCatching {
+                    val req = PingRequest().apply {
+                        this.configPath = path
+                        this.timeout = timeoutSec.toLong()
+                        this.url = url?.trim().orEmpty().ifEmpty {
+                            "https://www.gstatic.com/generate_204"
+                        }
+                        this.proxy = proxy?.trim().orEmpty().ifEmpty { "socks5://127.0.0.1:0" }
+                    }
+                    val raw = LibXray.invoke(jsonOf(req))
+                    parseDelay(raw)
+                }.getOrNull()
+                result.success(delay)
+            }
+            else -> result.notImplemented()
+        }
+    }
+
+    /** Задержка из ответа libXray; служебные коды 10000/11000 → null. */
+    private fun parseDelay(raw: String?): Long? {
+        val body = raw ?: return null
+        val m = Regex("""\"delay\"\s*:\s*(-?\d+)""").find(body) ?: return null
+        val v = m.groupValues[1].toLongOrNull() ?: return null
+        // 10000 — ошибка, 11000 — таймаут: наружу их отдавать нельзя, иначе
+        // «недоступен» покажется как честные 10 секунд.
+        return if (v <= 0 || v >= 10000) null else v
+    }
+
+    /** Запрос в формате `LibXray.invoke`. */
+    private fun jsonOf(req: PingRequest): String {
+        val path = req.configPath.replace("\\", "/")
+        val payload = """{"configPath":"$path","timeout":${req.timeout},""" +
+            """"url":"${req.url}","proxy":"${req.proxy}"}"""
+        return """{"apiVersion":1,"method":"ping","payload":$payload}"""
+    }
 
     /**
      * Список приложений, между которыми можно делить трафик.

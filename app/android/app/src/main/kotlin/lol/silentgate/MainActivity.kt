@@ -108,6 +108,25 @@ class MainActivity : FlutterActivity() {
                 }.start()
             }
 
+        // Пинг сервера отдельным экземпляром Xray. Работает и при поднятом
+        // туннеле: LibXray.ping создаёт СВОЙ core.New и гасит его в defer, не
+        // трогая глобальный инстанс. Уводим в фоновый поток — замер идёт
+        // секундами и заморозил бы интерфейс.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
+                PlatformChannels.PROBE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val cfg = call.argument<String>("configPath")
+                val timeout = call.argument<Int>("timeout") ?: 5
+                val url = call.argument<String>("url")
+                val proxy = call.argument<String>("proxy")
+                Thread {
+                    PlatformChannels.handleProbe(
+                        call.method, cfg, timeout, url, proxy,
+                        MainThreadResult(this, result),
+                    )
+                }.start()
+            }
+
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
