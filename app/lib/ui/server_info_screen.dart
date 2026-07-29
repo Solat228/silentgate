@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../core/models/vpn_server.dart';
 import '../core/net/ip_info.dart';
+import '../core/platform/app_launcher.dart';
 import '../core/net/speed_test.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/util/country_flag.dart';
@@ -111,7 +112,20 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
     final ping = context.watch<ProbeController>().resultFor(s);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.srvInfoTitle)),
+      appBar: AppBar(
+        title: Text(l.srvInfoTitle),
+        actions: [
+          // Тот же сервис, по которому мы определяли IP и страну. Пользователь
+          // должен иметь возможность открыть его руками и сверить: иначе
+          // цифрам «мой IP и страна» приходится верить приложению на слово, а
+          // именно доверие к ним и есть смысл этого экрана.
+          IconButton(
+            icon: const Icon(Icons.open_in_new),
+            tooltip: l.serverInfoVerifyInBrowser,
+            onPressed: () => UrlOpener.open(IpInfoService.checkPageUrl),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

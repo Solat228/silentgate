@@ -532,5 +532,7 @@
   "splitRealIpProtected": "VPN üzerinden",
   "vpnActiveBadge": "VPN etkin",
   "splitCopyDomain": "Adresi kopyala",
-  "splitCopyPath": "Yolu kopyala"
+  "splitCopyPath": "Yolu kopyala",
+  "homeServerInfo": "Sunucu bilgisi",
+  "serverInfoVerifyInBrowser": "Tarayıcıda doğrula"
 }

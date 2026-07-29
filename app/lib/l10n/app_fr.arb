@@ -532,5 +532,7 @@
   "splitRealIpProtected": "via VPN",
   "vpnActiveBadge": "VPN actif",
   "splitCopyDomain": "Copier l’adresse",
-  "splitCopyPath": "Copier le chemin"
+  "splitCopyPath": "Copier le chemin",
+  "homeServerInfo": "Infos du serveur",
+  "serverInfoVerifyInBrowser": "Vérifier dans le navigateur"
 }

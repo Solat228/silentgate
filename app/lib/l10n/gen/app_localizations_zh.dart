@@ -1763,4 +1763,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitCopyPath => '复制路径';
+
+  @override
+  String get homeServerInfo => '服务器信息';
+
+  @override
+  String get serverInfoVerifyInBrowser => '在浏览器中核对';
 }

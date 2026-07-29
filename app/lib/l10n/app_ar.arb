@@ -532,5 +532,7 @@
   "splitRealIpProtected": "عبر VPN",
   "vpnActiveBadge": "الشبكة الافتراضية نشطة",
   "splitCopyDomain": "نسخ العنوان",
-  "splitCopyPath": "نسخ المسار"
+  "splitCopyPath": "نسخ المسار",
+  "homeServerInfo": "معلومات الخادم",
+  "serverInfoVerifyInBrowser": "تحقق في المتصفح"
 }

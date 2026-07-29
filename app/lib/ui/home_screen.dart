@@ -29,6 +29,7 @@ import 'widgets/server_tile.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
+import 'server_info_screen.dart';
 import 'servers_screen.dart';
 import '../engine/probe_factory.dart';
 
@@ -385,6 +386,21 @@ class _ConnectPane extends StatelessWidget {
                 const SizedBox(height: 16),
                 Text(vpnStatusLabel(l, status.state),
                     style: Theme.of(context).textTheme.titleMedium),
+                // «Информация о сервере» прямо у кнопки: раньше экран
+                // открывался только из контекстного меню в списке серверов,
+                // где его никто не находил.
+                if (state.selectedServer != null) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    icon: const Icon(Icons.info_outline, size: 18),
+                    label: Text(l.homeServerInfo),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              ServerInfoScreen(server: state.selectedServer!),
+                        )),
+                  ),
+                ],
                 if (status.state == VpnConnectionState.error &&
                     status.message != null)
                   Padding(

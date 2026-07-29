@@ -1806,4 +1806,10 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'کپی مسیر';
+
+  @override
+  String get homeServerInfo => 'اطلاعات سرور';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'بررسی در مرورگر';
 }

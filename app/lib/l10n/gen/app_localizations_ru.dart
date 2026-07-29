@@ -1811,4 +1811,10 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'Скопировать путь';
+
+  @override
+  String get homeServerInfo => 'Информация о сервере';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'Проверить в браузере';
 }

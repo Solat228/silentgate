@@ -743,5 +743,7 @@
   "splitRealIpProtected": "через VPN",
   "vpnActiveBadge": "VPN активен",
   "splitCopyDomain": "Скопировать адрес",
-  "splitCopyPath": "Скопировать путь"
+  "splitCopyPath": "Скопировать путь",
+  "homeServerInfo": "Информация о сервере",
+  "serverInfoVerifyInBrowser": "Проверить в браузере"
 }

@@ -1807,4 +1807,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'Copy path';
+
+  @override
+  String get homeServerInfo => 'Server info';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'Verify in browser';
 }

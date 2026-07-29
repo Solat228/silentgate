@@ -532,5 +532,7 @@
   "splitRealIpProtected": "از طریق VPN",
   "vpnActiveBadge": "VPN فعال است",
   "splitCopyDomain": "کپی نشانی",
-  "splitCopyPath": "کپی مسیر"
+  "splitCopyPath": "کپی مسیر",
+  "homeServerInfo": "اطلاعات سرور",
+  "serverInfoVerifyInBrowser": "بررسی در مرورگر"
 }

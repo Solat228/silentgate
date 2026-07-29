@@ -1824,4 +1824,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'Pfad kopieren';
+
+  @override
+  String get homeServerInfo => 'Server-Info';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'Im Browser prüfen';
 }

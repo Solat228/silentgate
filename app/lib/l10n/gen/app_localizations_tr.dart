@@ -1812,4 +1812,10 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'Yolu kopyala';
+
+  @override
+  String get homeServerInfo => 'Sunucu bilgisi';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'Tarayıcıda doğrula';
 }

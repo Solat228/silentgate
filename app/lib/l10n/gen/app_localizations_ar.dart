@@ -1801,4 +1801,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitCopyPath => 'نسخ المسار';
+
+  @override
+  String get homeServerInfo => 'معلومات الخادم';
+
+  @override
+  String get serverInfoVerifyInBrowser => 'تحقق في المتصفح';
 }

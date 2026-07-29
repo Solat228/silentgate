@@ -48,6 +48,13 @@ class IpInfo {
 /// (харнесс сервера), чтобы показать, каким адресом вы выходите в сеть.
 class IpInfoService {
   /// HTTPS и без ключа. Второй — запасной, если первый недоступен.
+  /// Те же адреса, но для ЧЕЛОВЕКА: пользователь должен иметь возможность
+  /// открыть их в браузере и перепроверить наш результат руками. Без этого
+  /// приходится верить приложению на слово — а именно доверие к цифрам «мой
+  /// IP и страна» и есть смысл всей проверки.
+  static const checkPageUrl = 'https://ipwho.is/';
+  static const checkPageFallbackUrl = 'https://ipinfo.io/json';
+
   static const _primary = 'https://ipwho.is/';
   static const _fallback = 'https://ipinfo.io/json';
 

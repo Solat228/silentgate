@@ -532,5 +532,7 @@
   "splitRealIpProtected": "经由 VPN",
   "vpnActiveBadge": "VPN 已启用",
   "splitCopyDomain": "复制地址",
-  "splitCopyPath": "复制路径"
+  "splitCopyPath": "复制路径",
+  "homeServerInfo": "服务器信息",
+  "serverInfoVerifyInBrowser": "在浏览器中核对"
 }

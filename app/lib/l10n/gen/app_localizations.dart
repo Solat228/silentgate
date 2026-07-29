@@ -3311,6 +3311,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Скопировать путь'**
   String get splitCopyPath;
+
+  /// No description provided for @homeServerInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Информация о сервере'**
+  String get homeServerInfo;
+
+  /// No description provided for @serverInfoVerifyInBrowser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить в браузере'**
+  String get serverInfoVerifyInBrowser;
 }
 
 class _AppLocalizationsDelegate
