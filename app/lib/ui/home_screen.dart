@@ -353,20 +353,38 @@ class _ConnectPane extends StatelessWidget {
                 mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
                 children: [
                   if (!compact) const Spacer(),
-                _ConnectButton(
-                    status: status, onTap: () => state.toggleConnection(settings)),
+                // Проверка сервисов — КОЛОНКАМИ ПО БОКАМ кнопки, а не строкой
+                // снизу: так «до» и «после» видно рядом, и ряд не уезжает под
+                // край экрана на телефоне. Показывается ВСЕГДА, в том числе до
+                // подключения, — иначе сравнивать было бы не с чем.
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Flexible(
+                      child: ServiceChecksColumn(
+                        services: ServiceChecksRow.leftColumn,
+                        httpPort: status.isConnected ? state.httpProxyPort : 0,
+                        epoch: state.selectedServer?.key ?? 'auto',
+                        alignEnd: true,
+                      ),
+                    ),
+                    _ConnectButton(
+                        status: status,
+                        onTap: () => state.toggleConnection(settings)),
+                    Flexible(
+                      child: ServiceChecksColumn(
+                        services: ServiceChecksRow.rightColumn,
+                        httpPort: status.isConnected ? state.httpProxyPort : 0,
+                        epoch: state.selectedServer?.key ?? 'auto',
+                        alignEnd: false,
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Text(vpnStatusLabel(l, status.state),
                     style: Theme.of(context).textTheme.titleMedium),
-                // #6 — живая проверка сервисов у кнопки: только при активном VPN,
-                // запускается вручную (тап по сервису), идёт через это соединение.
-                if (status.isConnected) ...[
-                  const SizedBox(height: 12),
-                  ServiceChecksRow(
-                    httpPort: state.httpProxyPort,
-                    epoch: state.selectedServer?.key ?? 'auto',
-                  ),
-                ],
                 if (status.state == VpnConnectionState.error &&
                     status.message != null)
                   Padding(

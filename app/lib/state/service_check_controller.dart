@@ -9,6 +9,17 @@ import '../core/settings/app_settings.dart';
 /// соединению ([bind]) и сбрасываются при его смене.
 class ServiceCheckController extends ChangeNotifier {
   final Map<ProbeService, ServiceCheckOutcome> _results = {};
+
+  /// Результаты, снятые БЕЗ VPN — чтобы было с чем сравнивать.
+  ///
+  /// Держатся отдельно и переживают подключение: смысл в том, чтобы
+  /// пользователь видел «до» и «после» рядом. Сбрасываются только вручную.
+  final Map<ProbeService, ServiceCheckOutcome> _baseline = {};
+
+  ServiceCheckOutcome baselineFor(ProbeService s) =>
+      _baseline[s] ?? ServiceCheckOutcome.idle;
+
+  bool get hasBaseline => _baseline.isNotEmpty;
   String _epoch = '';
 
   /// Соединение, для которого автопроверка уже отработала. Держим отдельно от
@@ -55,17 +66,29 @@ class ServiceCheckController extends ChangeNotifier {
     await Future.wait([for (final s in services) check(s, httpPort)]);
   }
 
-  /// Проверить один сервис через активный http-прокси уже поднятого VPN.
+  /// Проверить один сервис.
+  ///
+  /// [httpPort] == 0 — проба идёт НАПРЯМУЮ, мимо VPN: это замер «до», нужный
+  /// для сравнения. Результат кладётся в отдельную полку и не смешивается с
+  /// замером через туннель, иначе сравнивать было бы не с чем.
   Future<void> check(ProbeService s, int httpPort) async {
-    if (resultFor(s).state == ServiceCheckState.checking) return;
+    final baseline = httpPort <= 0;
+    final store = baseline ? _baseline : _results;
+    if (store[s]?.state == ServiceCheckState.checking) return;
     final epoch = _epoch; // к какому соединению относится эта проверка
-    _results[s] = ServiceCheckOutcome.checking;
+    store[s] = ServiceCheckOutcome.checking;
     notifyListeners();
     final out = await ServiceChecker.check(httpPort, s);
     // Проба идёт до ~16 с. Если за это время сменили сервер/переподключились
     // ([bind]/[reset]), результат относится к СТАРОМУ выходу — не пишем его.
-    if (_epoch != epoch) return;
-    _results[s] = out;
+    // Замера «до» это не касается: он к соединению не привязан.
+    if (!baseline && _epoch != epoch) return;
+    store[s] = out;
     notifyListeners();
+  }
+
+  /// Снять замер «до подключения» — по всем сервисам сразу, напрямую.
+  Future<void> checkBaseline(List<ProbeService> services) async {
+    await Future.wait([for (final s in services) check(s, 0)]);
   }
 }

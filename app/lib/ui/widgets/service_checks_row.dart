@@ -27,12 +27,24 @@ class ServiceChecksRow extends StatefulWidget {
     required this.epoch,
   });
 
-  /// Сервисы у кнопки: компактный дефолтный набор (YouTube/ChatGPT/Telegram).
+  /// Сервисы у кнопки — по три в колонке слева и справа.
+  ///
+  /// Шесть, а не три: набор должен покрывать разные классы блокировок —
+  /// видео, ИИ, мессенджер, соцсеть и «эталон доступности» (Google отвечает
+  /// почти всегда, поэтому его отказ означает, что дело не в конкретном
+  /// сервисе, а в канале).
   static const services = <ProbeService>[
     ProbeService.youtube,
     ProbeService.chatgpt,
     ProbeService.telegram,
+    ProbeService.instagram,
+    ProbeService.discord,
+    ProbeService.google,
   ];
+
+  /// Левая и правая колонки — по три сервиса.
+  static List<ProbeService> get leftColumn => services.sublist(0, 3);
+  static List<ProbeService> get rightColumn => services.sublist(3);
 
   @override
   State<ServiceChecksRow> createState() => _ServiceChecksRowState();
@@ -76,7 +88,12 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
     if (!mounted) return;
     final ctrl = _ctrl ?? context.read<ServiceCheckController>();
     ctrl.bind(widget.epoch);
-    unawaited(ctrl.autoCheckAll(widget.httpPort, ServiceChecksRow.services));
+    // ⚠️ Автопрогон — ТОЛЬКО по живому соединению. Без него проба ушла бы
+    // напрямую и показала доступность канала пользователя, выдав её за
+    // результат VPN. Замер «до» снимается отдельной кнопкой.
+    if (widget.httpPort > 0) {
+      unawaited(ctrl.autoCheckAll(widget.httpPort, ServiceChecksRow.services));
+    }
   }
 
   @override
@@ -200,5 +217,128 @@ class _ServiceChip extends StatelessWidget {
           l.serviceStatusFail,
         );
     }
+  }
+}
+
+/// Колонка проверок сбоку от кнопки Connect.
+///
+/// Показывается ВСЕГДА — и до подключения, и после: смысл в сравнении. У
+/// каждого сервиса два состояния рядом: слева замер «до» (напрямую, мимо VPN),
+/// справа — через туннель. Так видно, что именно изменил VPN, а не просто
+/// «сейчас зелёное».
+///
+/// ⚠️ Автопрогон запускается ТОЛЬКО при живом соединении ([httpPort] > 0).
+/// До подключения проба ушла бы напрямую и показала доступность канала
+/// пользователя, выдав её за результат VPN.
+class ServiceChecksColumn extends StatelessWidget {
+  const ServiceChecksColumn({
+    super.key,
+    required this.services,
+    required this.httpPort,
+    required this.epoch,
+    required this.alignEnd,
+  });
+
+  final List<ProbeService> services;
+  final int httpPort;
+  final String epoch;
+
+  /// Колонка слева прижимается к кнопке справа, и наоборот.
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    final ctrl = context.watch<ServiceCheckController>();
+    final live = httpPort > 0;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment:
+          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        for (final s in services)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
+            child: _ServicePair(
+              service: s,
+              before: ctrl.baselineFor(s),
+              after: ctrl.resultFor(s),
+              live: live,
+              alignEnd: alignEnd,
+              // Тап меряет то, что сейчас доступно: с VPN — через туннель,
+              // без него — напрямую (это и есть замер «до»).
+              onTap: () => ctrl.check(s, httpPort),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Пара «до / после» для одного сервиса.
+class _ServicePair extends StatelessWidget {
+  const _ServicePair({
+    required this.service,
+    required this.before,
+    required this.after,
+    required this.live,
+    required this.alignEnd,
+    required this.onTap,
+  });
+
+  final ProbeService service;
+  final ServiceCheckOutcome before;
+  final ServiceCheckOutcome after;
+  final bool live;
+  final bool alignEnd;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final items = <Widget>[
+      SiteFavicon(domain: service.domain, size: 18),
+      const SizedBox(width: 6),
+      // Замер «до» показываем только когда он есть: пустой кружок рядом с
+      // каждым сервисом читался бы как «проверено и плохо».
+      if (before.state != ServiceCheckState.idle) ...[
+        _dot(context, before, dim: true),
+        const SizedBox(width: 3),
+        Text('→', style: Theme.of(context).textTheme.labelSmall),
+        const SizedBox(width: 3),
+      ],
+      _dot(context, live ? after : before, dim: false),
+    ];
+    return Tooltip(
+      message: '${service.label} · ${l.serviceChecksInfo}',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: alignEnd ? items.reversed.toList() : items,
+        ),
+      ),
+    );
+  }
+
+  Widget _dot(BuildContext context, ServiceCheckOutcome o, {required bool dim}) {
+    if (o.state == ServiceCheckState.checking) {
+      return const SizedBox(
+          width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2));
+    }
+    final color = switch (o.state) {
+      ServiceCheckState.ok => Colors.green,
+      ServiceCheckState.geoBlocked => Colors.orange,
+      ServiceCheckState.fail => const Color(0xFFCC7777),
+      _ => Theme.of(context).disabledColor,
+    };
+    return Container(
+      width: 12,
+      height: 12,
+      decoration: BoxDecoration(
+        color: dim ? color.withValues(alpha: 0.45) : color,
+        shape: BoxShape.circle,
+      ),
+    );
   }
 }

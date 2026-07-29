@@ -26,7 +26,12 @@ class ProxyProbe {
     int maxBodyBytes = 64 * 1024,
   }) async {
     final client = HttpClient();
-    client.findProxy = (_) => 'PROXY 127.0.0.1:$proxyPort';
+    // 0 — идти НАПРЯМУЮ, мимо туннеля. Нужно для замера «до подключения»:
+    // без него сравнивать «до/после» было бы не с чем, а прописать прокси на
+    // несуществующий порт значило бы получить отказ вместо честного замера.
+    if (proxyPort > 0) {
+      client.findProxy = (_) => 'PROXY 127.0.0.1:$proxyPort';
+    }
     client.connectionTimeout = timeout;
     // Сертификат НЕ игнорируем: валидный TLS отсекает заглушки/MITM провайдера.
 
