@@ -721,4 +721,42 @@ void main() {
           reason: 'битый байт не должен обнулять весь лог');
     });
   });
+
+  // Заглушка вместо «соединение сброшено»: пользователь должен понимать, что
+  // сайт закрыт ЕГО ЖЕ правилом, а не сломался интернет.
+  group('Страница-заглушка при блокировке', () {
+    const blocked = SplitTunnelConfig(
+      mode: SplitMode.exceptSelected,
+      sites: [SiteRule('ads.example', action: AppAction.block)],
+    );
+
+    Map<String, dynamic> build({int port = 0}) => SingboxConfigBuilder(
+          options: TunOptions(blockPagePort: port, serverIps: const ['203.0.113.1']),
+        ).buildMap(blocked);
+
+    test('http уводится на локальную страницу, https отвергается', () {
+      final r = rules(build(port: 18080));
+      final page = r.firstWhere((x) =>
+          x['override_port'] == 18080 &&
+          (x['domain_suffix'] as List?)?.contains('ads.example') == true);
+      expect(page['port'], [80], reason: 'подменять https нечем — только 80');
+      expect(page['override_address'], '127.0.0.1');
+      // Обычный блок остаётся: 443 и всё прочее по-прежнему режется.
+      expect(r.any((x) => x['action'] == 'reject'), isTrue);
+      // Заглушка ВЫШЕ блока, иначе reject сработает первым.
+      expect(r.indexOf(page), lessThan(r.indexWhere((x) => x['action'] == 'reject')));
+    });
+
+    test('домен резолвится, когда заглушка включена', () {
+      // Иначе браузер споткнётся на DNS и показывать будет нечего.
+      final d = dnsRules(build(port: 18080));
+      expect(d.any((x) => x['action'] == 'reject'), isFalse);
+    });
+
+    test('без заглушки поведение прежнее: домен не резолвится', () {
+      final d = dnsRules(build());
+      expect(d.any((x) => x['action'] == 'reject'), isTrue);
+      expect(rules(build()).any((x) => x.containsKey('override_port')), isFalse);
+    });
+  });
 }

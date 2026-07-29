@@ -61,6 +61,12 @@ class TunOptions {
   /// `SingboxProcess`.
   final String? logOutput;
 
+  /// Порт локальной страницы «сайт заблокирован». 0 — заглушки нет.
+  ///
+  /// ⚠️ Работает только для plain HTTP: подменить https без своего корневого
+  /// сертификата невозможно. Для 443 остаётся обычный `reject`.
+  final int blockPagePort;
+
   /// Весь ли DNS вести через туннель.
   ///
   /// Имеет смысл только в режиме «только отмеченные»: там база трафика —
@@ -111,6 +117,7 @@ class TunOptions {
     this.logOutput,
     this.blackhole = false,
     this.tunnelDnsForAll = true,
+    this.blockPagePort = 0,
   });
 
   factory TunOptions.fromSettings(
@@ -201,6 +208,7 @@ class TunOptions {
         logOutput: logOutput,
         blackhole: blackhole,
         tunnelDnsForAll: tunnelDnsForAll,
+        blockPagePort: blockPagePort,
       );
 }
 
@@ -307,6 +315,35 @@ class SingboxConfigBuilder {
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
     // побеждать удобные direct-исключения (иначе заблокированный домен, чей IP
     // попал в приватный диапазон или в excludeCidr, молча уходил бы напрямую).
+    // Заглушка вместо «соединение сброшено»: http-порт заблокированного
+    // домена уводим на локальную страницу с объяснением. Ставим ВЫШЕ обычного
+    // блока — иначе reject сработает первым и объяснять будет нечему.
+    //
+    // ⚠️ Только 80. Для 443 подмены нет и быть не может без своего корневого
+    // сертификата, поэтому https-запрос к тому же домену честно отвергается
+    // правилом ниже. Обещать пользователю заглушку на https нельзя.
+    if (_userRulesActive(split) && o.blockPagePort > 0) {
+      final blocked = split.sites
+          .where((x) => x.action == AppAction.block)
+          .map((x) => x.domain.trim())
+          .where((d) => d.isNotEmpty)
+          .toSet()
+          .toList();
+      if (blocked.isNotEmpty) {
+        rules.add({
+          'domain_suffix': blocked,
+          'port': [80],
+          'action': 'route',
+          'outbound': 'direct',
+          // ⚠️ override ИМЕННО НА ПРАВИЛЕ. Те же поля у direct-outbound
+          // объявлены устаревшими в 1.11 и удалены в 1.13 — на Android с
+          // libbox 1.13 конфиг был бы отвергнут целиком.
+          'override_address': '127.0.0.1',
+          'override_port': o.blockPagePort,
+        });
+      }
+    }
+
     _addBlockRules(rules, split);
     if (o.bypassLan) rules.add(_route({'ip_is_private': true}, 'direct'));
     // Только ВАЛИДНЫЕ CIDR: один битый префикс (напр. «10.0.0.0/33») заставляет
@@ -416,7 +453,13 @@ class SingboxConfigBuilder {
     // берётся только из сниффинга), поэтому одного его недостаточно.
     final rules = <Map<String, dynamic>>[
       // Блок — выше остальных: заблокированный домен не должен даже резолвиться.
-      ..._dnsSiteRules(split, AppAction.block, null),
+      //
+      // ⚠️ ИСКЛЮЧЕНИЕ: когда включена страница-заглушка, домен обязан
+      // отрезолвиться, иначе браузер споткнётся ещё на DNS и до правила
+      // маршрутизации дело не дойдёт — показывать будет нечего. Блокировку это
+      // не ослабляет: http уводится на локальную страницу, https отвергается
+      // маршрутным правилом.
+      if (o.blockPagePort <= 0) ..._dnsSiteRules(split, AppAction.block, null),
       ..._dnsSiteRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
       ..._dnsSiteRules(split, AppAction.tunnel, 'dns-proxy'),
       if (o.noRealIp)
