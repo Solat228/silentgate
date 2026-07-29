@@ -11,6 +11,7 @@ import '../models/vpn_status.dart';
 import 'core_cleanup.dart';
 import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
+import '../../ui/widgets/connect_guard.dart';
 
 /// Трей + умное закрытие: крестик сворачивает в трей (по умолчанию) или закрывает
 /// (по настройке), с диалогами про активный VPN и «не спрашивать больше».
@@ -164,7 +165,22 @@ class TrayWindow with WindowListener, TrayListener {
         break;
       case 'toggle':
         if (ctx != null) {
-          ctx.read<AppState>().toggleConnection(ctx.read<SettingsController>().settings);
+          // Через ту же проверку, что и кнопка на главном экране: включение из
+          // трея — такое же включение, и мешающий чужой туннель мешает ему
+          // ровно так же. Окно приложения при этом может быть скрыто, поэтому
+          // сначала показываем его — иначе диалог остался бы незамеченным.
+          final state = ctx.read<AppState>();
+          final settings = ctx.read<SettingsController>().settings;
+          final busy = state.status.isConnected ||
+              state.status.state == VpnConnectionState.connecting;
+          if (!busy) {
+            await windowManager.show();
+            await windowManager.focus();
+          }
+          if (ctx.mounted) {
+            await connectWithConflictCheck(
+                ctx, state, () => state.toggleConnection(settings));
+          }
         }
         break;
       case 'quit':
