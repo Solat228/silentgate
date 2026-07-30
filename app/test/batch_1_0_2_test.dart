@@ -743,8 +743,13 @@ void main() {
       expect(page['override_address'], '127.0.0.1');
       // Обычный блок остаётся: 443 и всё прочее по-прежнему режется.
       expect(r.any((x) => x['action'] == 'reject'), isTrue);
-      // Заглушка ВЫШЕ блока, иначе reject сработает первым.
-      expect(r.indexOf(page), lessThan(r.indexWhere((x) => x['action'] == 'reject')));
+      // Заглушка ВЫШЕ блока ДОМЕНА, иначе reject сработает первым.
+      // Сравниваем именно с доменным блоком: выше него теперь стоит запрет
+      // QUIC (UDP:443), который к порту 80 отношения не имеет.
+      final domainBlock = r.indexWhere(
+          (x) => x['action'] == 'reject' && x.containsKey('domain_suffix'));
+      expect(domainBlock, greaterThanOrEqualTo(0));
+      expect(r.indexOf(page), lessThan(domainBlock));
     });
 
     test('домен резолвится, когда заглушка включена', () {

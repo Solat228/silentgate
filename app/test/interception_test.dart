@@ -23,9 +23,27 @@ void main() {
         ),
       ).buildMap(split);
 
-  test('по умолчанию ничего не режется', () {
+  // Раньше здесь проверялось, что по умолчанию не режется НИЧЕГО. Это утверждение
+  // отменено осознанно: правило по сайту без запрета QUIC молча не работает, и
+  // трафик утекал напрямую (см. `leak_audit_test.dart`). Набор `split` выше как
+  // раз содержит правило по сайту, поэтому UDP:443 теперь режется сам.
+  test('без явных настроек режется только QUIC — ради доменных правил', () {
     final r = rules(build());
-    expect(r.any((x) => x['action'] == 'reject'), isFalse);
+    final rejects = r.where((x) => x['action'] == 'reject').toList();
+    expect(rejects, hasLength(1));
+    expect(rejects.single['network'], 'udp');
+    expect((rejects.single['port'] as List).contains(443), isTrue);
+  });
+
+  test('без правил по сайтам не режется ничего', () {
+    final cfg = SingboxConfigBuilder(
+      options: const TunOptions(serverIps: ['203.0.113.7']),
+    ).buildMap(const SplitTunnelConfig(
+      mode: SplitMode.exceptSelected,
+      apps: [AppRule('chrome.exe', byName: true, action: AppAction.tunnel)],
+    ));
+    expect(rules(cfg).any((x) => x['action'] == 'reject'), isFalse,
+        reason: 'приложения матчатся по процессу — QUIC им безразличен');
   });
 
   test('QUIC: отказ по UDP:443', () {
