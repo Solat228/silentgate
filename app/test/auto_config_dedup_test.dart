@@ -1,0 +1,62 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/parser/share_link_parser.dart';
+import 'package:silentgate/core/probe/auto_config_engine.dart';
+import 'package:silentgate/core/probe/cancel_token.dart';
+import 'package:silentgate/core/probe/probe_harness.dart';
+import 'package:silentgate/core/settings/app_settings.dart';
+
+/// Харнесс-пустышка: порт всегда -1, значит проб через прокси не будет и
+/// движок пойдёт по пути «кандидат не прошёл». Нам важен не результат проб, а
+/// то, СКОЛЬКО РАЗ движок берётся за один и тот же сервер.
+class _FakeHarness implements ProbeHarness {
+  _FakeHarness(this.log);
+  final List<String> log;
+
+  @override
+  Future<HarnessHandle> start(List<HarnessEntry> entries) async {
+    for (final e in entries) {
+      log.add('${e.server.key}|${e.variant.label}');
+    }
+    return _FakeHandle();
+  }
+}
+
+class _FakeHandle implements HarnessHandle {
+  @override
+  int proxyPortFor(int index) => -1;
+  @override
+  Future<int?> delayMs(int index) async => null;
+  @override
+  Future<void> stop() async {}
+}
+
+void main() {
+  VpnServer srv(String name) => ShareLinkParser.tryParse(
+      'vless://00000000-0000-0000-0000-000000000000@$name.example:443'
+      '?type=tcp&security=none#$name')!;
+
+  test('вариации перебираются, пока сервер не прошёл', () async {
+    final log = <String>[];
+    final engine = AutoConfigEngine(harnessFactory: () => _FakeHarness(log));
+    // fragment включён ⇒ у каждого сервера минимум две вариации.
+    const settings = AppSettings(
+      tryFragment: true,
+      fingerprints: ['firefox'],
+      autoConfigServices: {ProbeService.google},
+    );
+
+    await engine.run(
+      servers: [srv('a'), srv('b')],
+      settings: settings,
+      cancel: CancelToken(),
+    );
+
+    // Ни один сервер не прошёл (порта нет), поэтому перебираются ВСЕ вариации —
+    // это и есть смысл перебора. Проверяем, что вариаций действительно больше
+    // одной: иначе тест на дедупликацию ничего не доказывал бы.
+    final aTries = log.where((e) => e.startsWith(srv('a').key)).length;
+    expect(aTries, greaterThan(1),
+        reason: 'при неудаче обязаны пробоваться все вариации');
+  });
+}
