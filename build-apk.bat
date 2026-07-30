@@ -82,7 +82,7 @@ if errorlevel 1 (
 )
 
 set "SRC=%WORK%\app\build\app\outputs\flutter-apk"
-set "DST=%PROJECT%\release-android"
+set "DST=%PROJECT%\app\build\app\outputs\flutter-apk"
 if not exist "%DST%\" mkdir "%DST%"
 
 rem armeabi-v7a НЕ копируем: под эту архитектуру ядра в AAR нет, и такой APK

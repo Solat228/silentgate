@@ -76,3 +76,7 @@ app/android/*.iml
 release-android/
 engine/android/*.aar
 app/android/app/libs/
+
+# Артефакты сборки и ключ подписи — в репозиторий не едут.
+release-windows-test/
+signing/
