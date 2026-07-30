@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -8,10 +9,10 @@ import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 /// ВРЕМЕННЫЙ эмиттер конфигов для статической проверки ядрами. Удалить.
 void main() {
   final out = Directory('build/leakcheck')..createSync(recursive: true);
+  const enc = JsonEncoder.withIndent('  ');
 
   void emit(String name, Map<String, dynamic> cfg) {
-    File('${out.path}/$name.json')
-        .writeAsStringSync(const JsonEncoderIndent().convert(cfg));
+    File('${out.path}/$name.json').writeAsStringSync(enc.convert(cfg));
   }
 
   const sites = [
@@ -24,7 +25,6 @@ void main() {
   ];
 
   test('emit', () {
-    // 1. Обычный: IPv6 выключен + QUIC-блок + DoH-блок.
     emit(
         'no_ipv6_quic_doh',
         SingboxConfigBuilder(
@@ -38,7 +38,6 @@ void main() {
         ).buildMap(const SplitTunnelConfig(
             mode: SplitMode.onlySelected, apps: apps, sites: sites)));
 
-    // 2. IPv6-резолвер «Прямо» (что будет, если у адаптера только IPv6 DNS).
     emit(
         'ipv6_dns_upstream',
         SingboxConfigBuilder(
@@ -49,7 +48,6 @@ void main() {
         ).buildMap(const SplitTunnelConfig(
             mode: SplitMode.onlySelected, apps: apps, sites: sites)));
 
-    // 3. Android-вариант (платформенный TUN, всё в одном ядре).
     emit(
         'android_platform',
         SingboxConfigBuilder(
@@ -65,6 +63,7 @@ void main() {
             serverIps: ['203.0.113.10'],
             ipv6: false,
             blockQuic: true,
+            blockEncryptedDns: true,
             directDnsUpstream: '192.168.1.1',
           ),
         ).buildMap(const SplitTunnelConfig(
@@ -72,16 +71,13 @@ void main() {
             apps: [AppRule('com.android.chrome', action: AppAction.tunnel)],
             sites: sites)));
 
-    // 4. Заглушка kill switch.
     emit(
         'blackhole',
         SingboxConfigBuilder(
-          options: const TunOptions(serverIps: ['203.0.113.10'])
-              .asBlackhole(),
+          options: const TunOptions(serverIps: ['203.0.113.10']).asBlackhole(),
         ).buildMap(const SplitTunnelConfig(
             mode: SplitMode.onlySelected, apps: apps, sites: sites)));
 
-    // 5. Дефолт из настроек «как у пользователя».
     emit(
         'defaults',
         SingboxConfigBuilder(
@@ -90,26 +86,23 @@ void main() {
               directDnsUpstream: '192.168.1.1'),
         ).buildMap(const SplitTunnelConfig(
             mode: SplitMode.onlySelected, apps: apps, sites: sites)));
+
+    // Что теряет asBlackhole() по сравнению с живыми опциями.
+    const live = TunOptions(
+      serverIps: ['203.0.113.10'],
+      ipv6: false,
+      blockQuic: true,
+      blockEncryptedDns: true,
+      blockPagePort: 18080,
+      tunnelDnsForAll: false,
+      mtu: 1400,
+      platformTun: true,
+    );
+    final bh = live.asBlackhole();
+    // ignore: avoid_print
+    print('asBlackhole: blockPagePort=${bh.blockPagePort} '
+        'blockQuic=${bh.blockQuic} blockEncryptedDns=${bh.blockEncryptedDns} '
+        'tunnelDnsForAll=${bh.tunnelDnsForAll}');
     expect(true, isTrue);
   });
 }
-
-class JsonEncoderIndent {
-  const JsonEncoderIndent();
-  String convert(Object? o) =>
-      const JsonEncoderImpl().convert(o);
-}
-
-class JsonEncoderImpl {
-  const JsonEncoderImpl();
-  String convert(Object? o) => _enc.convert(o);
-  static const _enc = JsonEncoderX();
-}
-
-class JsonEncoderX {
-  const JsonEncoderX();
-  String convert(Object? o) => jsonEncodeIndent(o);
-}
-
-String jsonEncodeIndent(Object? o) =>
-    const JsonEncoderReal().convert(o);

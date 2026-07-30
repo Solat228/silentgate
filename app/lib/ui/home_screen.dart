@@ -465,11 +465,18 @@ class _ConnectPane extends StatelessWidget {
                             status: status,
                             onTap: () => connectWithConflictCheck(context, state,
                                 () => state.toggleConnection(settings))),
+                        // ⚠️ Отрицательный отступ не годится: родительская
+                        // строка обрезает всё, что вылезло за её высоту, и
+                        // плашка была видна лишь краем. Кладём её ПОВЕРХ
+                        // верхнего края кнопки — владелец просил именно
+                        // «поверх, как уведомление», не сдвигая элементы.
                         if (status.isConnected)
                           Positioned(
-                            top: -26,
+                            top: 2,
                             child: _ActiveServerLabel(
-                                name: state.selectedServer?.displayName),
+                              name: state.selectedServer?.displayName ??
+                                  l.homeAutoBest,
+                            ),
                           ),
                       ],
                     ),
