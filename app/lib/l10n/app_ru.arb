@@ -850,5 +850,13 @@
   "serviceChecksLegendAfter": "Слева — без VPN, справа — через VPN",
   "serviceChecksBefore": "Без VPN",
   "serviceChecksAfter": "Через VPN",
-  "serviceChecksNoBaseline": "Без VPN не проверялось"
+  "serviceChecksNoBaseline": "Без VPN не проверялось",
+  "autoSpeedValue": "{value} Мбит/с",
+  "@autoSpeedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

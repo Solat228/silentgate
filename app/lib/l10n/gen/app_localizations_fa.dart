@@ -1937,4 +1937,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serviceChecksNoBaseline => 'بدون VPN بررسی نشد';
+
+  @override
+  String autoSpeedValue(String value) {
+    return '$value مگابیت بر ثانیه';
+  }
 }

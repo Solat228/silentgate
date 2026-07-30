@@ -3521,6 +3521,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Без VPN не проверялось'**
   String get serviceChecksNoBaseline;
+
+  /// No description provided for @autoSpeedValue.
+  ///
+  /// In ru, this message translates to:
+  /// **'{value} Мбит/с'**
+  String autoSpeedValue(String value);
 }
 
 class _AppLocalizationsDelegate

@@ -639,5 +639,13 @@
   "serviceChecksLegendAfter": "چپ — بدون VPN، راست — از راه VPN",
   "serviceChecksBefore": "بدون VPN",
   "serviceChecksAfter": "از راه VPN",
-  "serviceChecksNoBaseline": "بدون VPN بررسی نشد"
+  "serviceChecksNoBaseline": "بدون VPN بررسی نشد",
+  "autoSpeedValue": "{value} مگابیت بر ثانیه",
+  "@autoSpeedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

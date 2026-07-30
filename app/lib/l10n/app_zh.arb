@@ -639,5 +639,13 @@
   "serviceChecksLegendAfter": "左侧为未开 VPN，右侧为经由 VPN",
   "serviceChecksBefore": "未开 VPN",
   "serviceChecksAfter": "经由 VPN",
-  "serviceChecksNoBaseline": "未在无 VPN 时检测"
+  "serviceChecksNoBaseline": "未在无 VPN 时检测",
+  "autoSpeedValue": "{value} Mbps",
+  "@autoSpeedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

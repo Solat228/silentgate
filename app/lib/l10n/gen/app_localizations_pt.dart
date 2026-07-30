@@ -1959,4 +1959,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get serviceChecksNoBaseline => 'Não verificado sem VPN';
+
+  @override
+  String autoSpeedValue(String value) {
+    return '$value Mbit/s';
+  }
 }

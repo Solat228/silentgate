@@ -1944,4 +1944,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksNoBaseline => 'VPN yokken ölçülmedi';
+
+  @override
+  String autoSpeedValue(String value) {
+    return '$value Mbit/sn';
+  }
 }

@@ -272,6 +272,56 @@ class _ProgressView extends StatelessWidget {
   }
 }
 
+/// Плашка со скоростью — рядом с пингом.
+///
+/// Показывает и абсолютную величину, и долю СВОЕГО канала: «60 Мбит/с» само по
+/// себе ничего не значит — это отлично на канале 60 и скверно на канале 300.
+/// Долю считаем от замера собственного канала, снятого в том же прогоне.
+class _SpeedChip extends StatelessWidget {
+  const _SpeedChip({required this.mbps, this.sharePercent});
+
+  final double mbps;
+  final int? sharePercent;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    // Цвет — по доле канала, а не по абсолютной скорости: узкое место важнее
+    // мегабит. Доли нет (свой канал не замерился) — нейтральный вид.
+    final share = sharePercent;
+    final color = share == null
+        ? scheme.outline
+        : share >= 80
+            ? Colors.green
+            : share >= 40
+                ? Colors.orange
+                : const Color(0xFFCC7777);
+    return Tooltip(
+      message: share == null
+          ? l.autoSpeedValue(mbps.toStringAsFixed(1))
+          : '${l.autoSpeedValue(mbps.toStringAsFixed(1))} · '
+              '${l.autoSpeedShare(share)}',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.5)),
+        ),
+        child: Text(
+          l.autoSpeedValue(mbps.toStringAsFixed(mbps >= 100 ? 0 : 1)),
+          textDirection: TextDirection.ltr,
+          style: Theme.of(context)
+              .textTheme
+              .labelSmall
+              ?.copyWith(color: color, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
 class _FoundCard extends StatelessWidget {
   final AutoConfigResult result;
   const _FoundCard({required this.result});
@@ -310,6 +360,14 @@ class _FoundCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          // Замеренная скорость — рядом с пингом, иначе включённая галочка
+          // «Учитывать скорость» тратит трафик подписки, меняет порядок списка,
+          // а показать результат замера негде: пользователь видит только новый
+          // порядок и не понимает, откуда он взялся.
+          if (result.mbps != null) ...[
+            _SpeedChip(mbps: result.mbps!, sharePercent: result.sharePercent),
+            const SizedBox(width: 4),
+          ],
           PingChip(result: context.watch<ProbeController>().resultFor(result.server)),
           const SizedBox(width: 4),
           IconButton(

@@ -1931,4 +1931,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksNoBaseline => 'لم يُفحص دون VPN';
+
+  @override
+  String autoSpeedValue(String value) {
+    return '$value ميغابت/ث';
+  }
 }

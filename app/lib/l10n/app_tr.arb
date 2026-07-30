@@ -639,5 +639,13 @@
   "serviceChecksLegendAfter": "Solda — VPN yokken, sağda — VPN üzerinden",
   "serviceChecksBefore": "VPN yokken",
   "serviceChecksAfter": "VPN üzerinden",
-  "serviceChecksNoBaseline": "VPN yokken ölçülmedi"
+  "serviceChecksNoBaseline": "VPN yokken ölçülmedi",
+  "autoSpeedValue": "{value} Mbit/sn",
+  "@autoSpeedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }

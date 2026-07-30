@@ -1890,4 +1890,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksNoBaseline => '未在无 VPN 时检测';
+
+  @override
+  String autoSpeedValue(String value) {
+    return '$value Mbps';
+  }
 }

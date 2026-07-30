@@ -224,6 +224,12 @@ class AutoConfigResult {
         'avgLatencyMs': detail.avgLatencyMs,
         'measuredAt': measuredAt?.toIso8601String(),
         if (ping != null) 'ping': ping!.toJson(),
+        // ⚠️ Замер скорости стоит трафика ПОДПИСКИ (5 МБ на сервер). Не сохранив
+        // его, мы теряли бы результат при первом же перезапуске, и пользователь
+        // платил бы за него заново. Это тот самый класс багов «поле пишется, но
+        // не читается», который компилятор не ловит.
+        if (mbps != null) 'mbps': mbps,
+        if (sharePercent != null) 'sharePercent': sharePercent,
       };
 
   static AutoConfigResult? fromJson(Map<String, dynamic> j) {
@@ -244,6 +250,8 @@ class AutoConfigResult {
       avgLatencyMs: (j['avgLatencyMs'] as num?)?.toInt(),
     );
     return AutoConfigResult(
+      mbps: (j['mbps'] as num?)?.toDouble(),
+      sharePercent: (j['sharePercent'] as num?)?.toInt(),
       server: server,
       variant: variant,
       detail: detail,
@@ -319,6 +327,20 @@ class AutoConfigEngine {
 
     final found = <AutoConfigResult>[];
 
+    // Серверы, для которых рабочая вариация уже найдена.
+    //
+    // ⚠️ Без этого один сервер попадал в результаты СТОЛЬКО РАЗ, сколько у него
+    // прошло вариаций (обычная + fragment + отпечатки — до четырёх). Владелец
+    // видел это как «сервер отображается по несколько раз». Со включённым
+    // замером скорости беда удваивалась: тремя «лучшими» кандидатами могли
+    // оказаться три вариации ОДНОГО сервера, и 15 МБ трафика уходили на замер
+    // одного и того же канала вместо сравнения разных серверов.
+    //
+    // Смысл вариаций — найти ту, что работает; когда она нашлась, остальные не
+    // добавляют ничего, кроме времени перебора. Кандидаты идут сгруппированными
+    // по серверу, поэтому пропуск оставшихся — заодно и заметное ускорение.
+    final solved = <String>{};
+
     for (var i = 0; i < candidates.length; i++) {
       cancel.throwIfCancelled();
       // «Мягкий» бюджет только для стратегии bestWithinBudget; иначе сканируем всё.
@@ -328,6 +350,7 @@ class AutoConfigEngine {
       }
 
       final c = candidates[i];
+      if (solved.contains(c.server.key)) continue;
       onCandidate?.call(i, candidates.length, c.server, c.variant);
 
       // Харнесс может не подняться (нет sing-box.exe, битый узел, занятый порт).
@@ -420,6 +443,7 @@ class AutoConfigEngine {
           ping: ping,
         );
         found.add(result);
+        solved.add(c.server.key);
         onFound?.call(result);
       }
     }

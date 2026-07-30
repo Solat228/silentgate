@@ -700,5 +700,13 @@
   "serviceChecksLegendAfter": "Left — without VPN, right — through VPN",
   "serviceChecksBefore": "Without VPN",
   "serviceChecksAfter": "Through VPN",
-  "serviceChecksNoBaseline": "Not checked without VPN"
+  "serviceChecksNoBaseline": "Not checked without VPN",
+  "autoSpeedValue": "{value} Mbps",
+  "@autoSpeedValue": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      }
+    }
+  }
 }
