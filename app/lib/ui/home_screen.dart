@@ -814,8 +814,13 @@ class _ActiveServerLabel extends StatelessWidget {
           border: Border.all(color: scheme.outlineVariant),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          FlagCell(n, width: 20, height: 14),
-          const SizedBox(width: 6),
+          // Флаг — только если в имени действительно есть страна. У панельного
+          // профиля имя начинается с 🌐, и запасной значок вставал рядом с ним
+          // вторым «глобусом»: два одинаковых кружка вместо одного.
+          if (FlagUtil.isoFromName(n) != null) ...[
+            FlagCell(n, width: 20, height: 14),
+            const SizedBox(width: 6),
+          ],
           Flexible(
             child: Text(
               FlagUtil.strip(n),

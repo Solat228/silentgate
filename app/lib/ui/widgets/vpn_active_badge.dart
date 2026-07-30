@@ -150,7 +150,9 @@ class _Badge extends StatelessWidget {
                     // применён в списке серверов: флаг вынимается в картинку,
                     // а из подписи вырезается (`FlagUtil.strip`), иначе он
                     // задвоился бы.
-                    if (server != null && server.isNotEmpty) ...[
+                    if (server != null &&
+                        server.isNotEmpty &&
+                        FlagUtil.isoFromName(server) != null) ...[
                       FlagCell(server, width: 24, height: 17),
                       const SizedBox(width: 8),
                     ],
