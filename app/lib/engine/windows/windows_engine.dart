@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'adapter_dns_windows.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/port_check.dart';
@@ -367,22 +368,15 @@ class WindowsEngine extends VpnEngineBase {
   /// Не нашли — `null`, поведение остаётся прежним.
   Future<String?> _systemDnsServer() async {
     try {
-      final r = await Process.run('powershell', [
-        '-NoProfile',
-        '-NonInteractive',
-        '-Command',
-        r'(Get-DnsClientServerAddress -AddressFamily IPv4 |'
-            r' Where-Object { $_.ServerAddresses.Count -gt 0 } |'
-            r' Select-Object -ExpandProperty ServerAddresses) -join ","',
-      ]).timeout(const Duration(seconds: 5));
-      final list = (r.stdout as String)
-          .split(',')
-          .map((e) => e.trim())
-          .where((e) => e.isNotEmpty)
-          .where((e) => InternetAddress.tryParse(e) != null)
-          // Отбрасываем адреса самого туннеля и заглушки.
+      // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
+      // же семейства CIM, что и изгнанный отсюда `Get-NetAdapter`: на машине
+      // владельца он упирался в пятисекундный таймаут, и домены «Прямо»
+      // переставали резолвиться молча. Живой тест в VM это подтвердил.
+      final list = AdapterDnsWindows.servers()
+          // Адреса самого туннеля и заглушки резолвером быть не могут.
           .where((e) => !e.startsWith('172.19.0.'))
-          .where((e) => e != '0.0.0.0' && e != '127.0.0.1')
+          .where((e) => !e.startsWith('fdfe:dcba:9876'))
+          .where((e) => e != '0.0.0.0' && e != '127.0.0.1' && e != '::1')
           .toList();
       if (list.isEmpty) {
         AppLog.w('DNS физического адаптера не найден — домены «Прямо» '
