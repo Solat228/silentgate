@@ -70,6 +70,13 @@ class _AndroidHandle implements HarnessHandle {
       final v = await ProbeHarnessAndroid._channel.invokeMethod<int>('ping', {
         'configPath': path,
         'timeout': timeoutSec,
+        // ⚠️ Адрес инбаунда ОБЯЗАТЕЛЕН. Харнесс поднимает HTTP-прокси на
+        // `HarnessPorts.base`, а нативная сторона без этого поля берёт
+        // `socks5://127.0.0.1:0` — и порт несуществующий, и протокол не тот.
+        // Замер молча возвращал пустоту, а весь список серверов помечался
+        // «отвечает по TCP, но не проксирует» — включая сервер, через который
+        // пользователь в этот момент работал.
+        'proxy': 'http://127.0.0.1:${const HarnessPorts().base}',
       });
       return (v == null || v <= 0) ? null : v;
     } catch (e) {
