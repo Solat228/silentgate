@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "Afficher la page de blocage",
-  "splitBlockPageNeedsVpn": "La page de blocage ne fonctionne que si le VPN est actif"
+  "splitBlockPageNeedsVpn": "La page de blocage ne fonctionne que si le VPN est actif",
+  "srvInfoNeedsConnection": "Sur cette plateforme, la mesure via le serveur nécessite que le VPN soit actif"
 }

@@ -1972,4 +1972,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'La page de blocage ne fonctionne que si le VPN est actif';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'Sur cette plateforme, la mesure via le serveur nécessite que le VPN soit actif';
 }

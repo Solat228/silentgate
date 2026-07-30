@@ -1956,4 +1956,8 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'Engelleme sayfası yalnızca VPN açıkken çalışır';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir';
 }

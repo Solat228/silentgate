@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "نمایش صفحهٔ مسدودسازی",
-  "splitBlockPageNeedsVpn": "صفحهٔ مسدودسازی فقط با VPN روشن کار می‌کند"
+  "splitBlockPageNeedsVpn": "صفحهٔ مسدودسازی فقط با VPN روشن کار می‌کند",
+  "srvInfoNeedsConnection": "اندازه‌گیری از راه سرور در این پلتفرم فقط با VPN روشن ممکن است"
 }

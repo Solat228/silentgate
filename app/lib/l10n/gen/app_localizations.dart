@@ -3539,6 +3539,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Страница блокировки работает только при включённом VPN'**
   String get splitBlockPageNeedsVpn;
+
+  /// No description provided for @srvInfoNeedsConnection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер через сервер на этой платформе возможен только при включённом VPN'**
+  String get srvInfoNeedsConnection;
 }
 
 class _AppLocalizationsDelegate

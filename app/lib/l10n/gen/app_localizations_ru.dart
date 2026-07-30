@@ -1955,4 +1955,8 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'Страница блокировки работает только при включённом VPN';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'Замер через сервер на этой платформе возможен только при включённом VPN';
 }

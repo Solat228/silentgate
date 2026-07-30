@@ -59,7 +59,29 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       handle = await createProbeHarness().start([
         HarnessEntry(key: widget.server.key, server: widget.server, variant: variant),
       ]);
-      return await action(handle.proxyPortFor(0));
+      var port = handle.proxyPortFor(0);
+
+      // ⚠️ Платформа может мерить САМА и порта не давать: на Android харнесс
+      // возвращает готовую задержку, а `proxyPortFor` там ВСЕГДА 0. Ходить
+      // «через прокси на порту 0» нельзя — запрос молча уходил напрямую и
+      // падал, а на экране висела ошибка проверки.
+      //
+      // Зато при живом туннеле канал уже есть, и он честнее любого временного:
+      // это ровно тот сервер, которым пользователь сейчас пользуется. Если
+      // туннель не поднят — измерять нечем, и об этом надо сказать прямо, а не
+      // показывать ноль.
+      if (port <= 0) {
+        final state = context.read<AppState>();
+        final live = state.status.isConnected ? state.httpProxyPort : 0;
+        if (live <= 0) {
+          if (mounted) {
+            setState(() => _error = l.srvInfoNeedsConnection);
+          }
+          return null;
+        }
+        port = live;
+      }
+      return await action(port);
     } catch (e) {
       if (mounted) setState(() => _error = l.srvInfoProbeFailed('$e'));
       return null;
@@ -294,11 +316,28 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
     );
   }
 
+  /// Строка «подпись — значение».
+  ///
+  /// ⚠️ Подпись раньше занимала фиксированные 140 px. На телефоне шириной 360
+  /// значению оставалось около двухсот, и длинные строки (адрес, провайдер,
+  /// результат замера) наезжали друг на друга — владелец описал это как
+  /// «текст плывёт». Теперь на узком экране подпись встаёт НАД значением, а на
+  /// широком остаётся сбоку: и там и там читается, а вёрстка не ломается.
   Widget _kv(BuildContext context, String k, String v) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          SizedBox(width: 140, child: Text(k, style: Theme.of(context).textTheme.bodySmall)),
-          Expanded(child: SelectableText(v, textDirection: TextDirection.ltr)),
-        ]),
+        child: LayoutBuilder(builder: (context, box) {
+          final label = Text(k, style: Theme.of(context).textTheme.bodySmall);
+          final value = SelectableText(v, textDirection: TextDirection.ltr);
+          if (box.maxWidth < 420) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [label, value],
+            );
+          }
+          return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            SizedBox(width: 140, child: label),
+            Expanded(child: value),
+          ]);
+        }),
       );
 }

@@ -710,5 +710,6 @@
     }
   },
   "splitShowBlockPage": "Show the block page",
-  "splitBlockPageNeedsVpn": "The block page only works while the VPN is on"
+  "splitBlockPageNeedsVpn": "The block page only works while the VPN is on",
+  "srvInfoNeedsConnection": "Measuring through the server on this platform requires the VPN to be on"
 }

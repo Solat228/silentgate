@@ -1943,4 +1943,8 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'القياس عبر الخادم على هذه المنصة يتطلب تشغيل VPN';
 }

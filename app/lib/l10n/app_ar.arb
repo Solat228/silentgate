@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "عرض صفحة الحظر",
-  "splitBlockPageNeedsVpn": "صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا"
+  "splitBlockPageNeedsVpn": "صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا",
+  "srvInfoNeedsConnection": "القياس عبر الخادم على هذه المنصة يتطلب تشغيل VPN"
 }

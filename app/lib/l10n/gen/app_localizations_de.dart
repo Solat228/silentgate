@@ -1967,4 +1967,8 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'Die Sperrseite funktioniert nur bei aktivem VPN';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'Auf dieser Plattform ist die Messung über den Server nur bei aktivem VPN möglich';
 }

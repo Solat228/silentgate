@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "Mostrar a página de bloqueio",
-  "splitBlockPageNeedsVpn": "A página de bloqueio só funciona com a VPN ativa"
+  "splitBlockPageNeedsVpn": "A página de bloqueio só funciona com a VPN ativa",
+  "srvInfoNeedsConnection": "Nesta plataforma, a medição pelo servidor exige a VPN ligada"
 }

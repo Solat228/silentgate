@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "Engelleme sayfasını göster",
-  "splitBlockPageNeedsVpn": "Engelleme sayfası yalnızca VPN açıkken çalışır"
+  "splitBlockPageNeedsVpn": "Engelleme sayfası yalnızca VPN açıkken çalışır",
+  "srvInfoNeedsConnection": "Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir"
 }

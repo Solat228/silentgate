@@ -649,5 +649,6 @@
     }
   },
   "splitShowBlockPage": "显示拦截页面",
-  "splitBlockPageNeedsVpn": "拦截页面仅在 VPN 开启时可用"
+  "splitBlockPageNeedsVpn": "拦截页面仅在 VPN 开启时可用",
+  "srvInfoNeedsConnection": "在此平台上，经由服务器的测速需要先开启 VPN"
 }

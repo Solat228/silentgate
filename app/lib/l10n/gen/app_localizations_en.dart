@@ -1952,4 +1952,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'The block page only works while the VPN is on';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'Measuring through the server on this platform requires the VPN to be on';
 }

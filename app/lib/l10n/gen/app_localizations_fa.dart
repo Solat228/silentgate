@@ -1949,4 +1949,8 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitBlockPageNeedsVpn =>
       'صفحهٔ مسدودسازی فقط با VPN روشن کار می‌کند';
+
+  @override
+  String get srvInfoNeedsConnection =>
+      'اندازه‌گیری از راه سرور در این پلتفرم فقط با VPN روشن ممکن است';
 }

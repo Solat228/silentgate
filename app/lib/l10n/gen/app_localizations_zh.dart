@@ -1901,4 +1901,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitBlockPageNeedsVpn => '拦截页面仅在 VPN 开启时可用';
+
+  @override
+  String get srvInfoNeedsConnection => '在此平台上，经由服务器的测速需要先开启 VPN';
 }
