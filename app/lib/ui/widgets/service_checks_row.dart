@@ -296,35 +296,55 @@ class _ServicePair extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final items = <Widget>[
-      SiteFavicon(domain: service.domain, size: 18),
-      const SizedBox(width: 6),
+      SiteFavicon(domain: service.domain, size: 26),
+      const SizedBox(width: 8),
       // Замер «до» показываем только когда он есть: пустой кружок рядом с
       // каждым сервисом читался бы как «проверено и плохо».
       if (before.state != ServiceCheckState.idle) ...[
         _dot(context, before, dim: true),
-        const SizedBox(width: 3),
-        Text('→', style: Theme.of(context).textTheme.labelSmall),
-        const SizedBox(width: 3),
+        const SizedBox(width: 4),
+        Text('→', style: Theme.of(context).textTheme.labelMedium),
+        const SizedBox(width: 4),
       ],
       _dot(context, live ? after : before, dim: false),
     ];
+    // Подпись «до» и «после» словами: два кружка сами по себе не объясняют,
+    // который из них какой, а порядок в правой колонке ещё и зеркалится.
+    final tip = StringBuffer('${service.label}\n')
+      ..write(before.state == ServiceCheckState.idle
+          ? l.serviceChecksNoBaseline
+          : '${l.serviceChecksBefore}: ${_word(l, before)}');
+    if (live) {
+      tip.write('\n${l.serviceChecksAfter}: ${_word(l, after)}');
+    }
     return Tooltip(
-      message: '${service.label} · ${l.serviceChecksInfo}',
+      message: tip.toString(),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: alignEnd ? items.reversed.toList() : items,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: alignEnd ? items.reversed.toList() : items,
+          ),
         ),
       ),
     );
   }
 
+  String _word(AppLocalizations l, ServiceCheckOutcome o) => switch (o.state) {
+        ServiceCheckState.ok => l.serviceStatusOk,
+        ServiceCheckState.geoBlocked => l.serviceStatusGeo,
+        ServiceCheckState.fail => l.serviceStatusFail,
+        ServiceCheckState.checking => l.serviceStatusChecking,
+        ServiceCheckState.idle => l.serviceStatusTap,
+      };
+
   Widget _dot(BuildContext context, ServiceCheckOutcome o, {required bool dim}) {
     if (o.state == ServiceCheckState.checking) {
       return const SizedBox(
-          width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2));
+          width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
     }
     final color = switch (o.state) {
       ServiceCheckState.ok => Colors.green,
@@ -333,8 +353,8 @@ class _ServicePair extends StatelessWidget {
       _ => Theme.of(context).disabledColor,
     };
     return Container(
-      width: 12,
-      height: 12,
+      width: 16,
+      height: 16,
       decoration: BoxDecoration(
         color: dim ? color.withValues(alpha: 0.45) : color,
         shape: BoxShape.circle,

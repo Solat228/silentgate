@@ -484,7 +484,7 @@
   "panelInfoDirect": "Bazı trafik (ör. yerel siteler) doğrudan, VPN dışından gider",
   "panelInfoBlock": "Bazı trafik engellenir (reklamlar/torrentler)",
   "serviceChecksTitle": "Servisleri denetle",
-  "serviceChecksInfo": "Bir servisin etkin VPN bağlantısı üzerinden açılıp açılmadığını denetlemek için ona dokunun. Denetim elle yapılır — hiçbir şey otomatik denetlenmez. Yapay zekâ servisleri için çıkış ülkesindeki bölge engeli de saptanır.",
+  "serviceChecksInfo": "Altı popüler servis kendiliğinden sınanır: önce uygulama açılırken VPN kapalıyken, sonra bağlantı kurulur kurulmaz yeniden. İki nokta «önce → sonra» gösterir; böylece VPN’in neyi değiştirdiği görünür. Dokunmak yeniden sınar. Yeşil: açılıyor, turuncu: ülke engeli, kırmızı: erişilemiyor.",
   "serviceStatusOk": "Çalışıyor",
   "serviceStatusGeo": "Açılıyor ama çıkış ülkesinde engelli",
   "serviceStatusFail": "Açılmıyor",
@@ -634,5 +634,10 @@
     }
   },
   "conflictCloseAndConnect": "Kapat ve bağlan",
-  "conflictConnectAnyway": "Yine de bağlan"
+  "conflictConnectAnyway": "Yine de bağlan",
+  "serviceChecksLegendBefore": "Erişilebilirlik VPN olmadan ölçüldü",
+  "serviceChecksLegendAfter": "Solda — VPN yokken, sağda — VPN üzerinden",
+  "serviceChecksBefore": "VPN yokken",
+  "serviceChecksAfter": "VPN üzerinden",
+  "serviceChecksNoBaseline": "VPN yokken ölçülmedi"
 }

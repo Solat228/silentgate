@@ -1636,7 +1636,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'روی یک سرویس بزنید تا بررسی شود که آیا از طریق اتصال فعال VPN باز می‌شود. بررسی دستی است — چیزی خودکار بررسی نمی‌شود. برای سرویس‌های هوش مصنوعی مسدودیت بر اساس کشور خروجی نیز تشخیص داده می‌شود.';
+      'شش سرویس پرکاربرد خودکار بررسی می‌شوند: نخست هنگام اجرای برنامه و خاموش بودن VPN، سپس بلافاصله پس از اتصال. دو نقطه «پیش ← پس» را نشان می‌دهند تا ببینید VPN واقعاً چه چیزی را تغییر داده است. برای بررسی دوباره ضربه بزنید. سبز: باز می‌شود، نارنجی: مسدودی کشوری، قرمز: در دسترس نیست.';
 
   @override
   String get serviceStatusOk => 'کار می‌کند';
@@ -1922,4 +1922,19 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'به‌هرحال متصل شو';
+
+  @override
+  String get serviceChecksLegendBefore => 'بدون VPN بررسی شد';
+
+  @override
+  String get serviceChecksLegendAfter => 'چپ — بدون VPN، راست — از راه VPN';
+
+  @override
+  String get serviceChecksBefore => 'بدون VPN';
+
+  @override
+  String get serviceChecksAfter => 'از راه VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'بدون VPN بررسی نشد';
 }

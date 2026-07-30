@@ -545,7 +545,7 @@
   "panelInfoDirect": "Parte del tráfico (p. ej. sitios locales) va directo, fuera de la VPN",
   "panelInfoBlock": "Parte del tráfico se bloquea (anuncios/torrents)",
   "serviceChecksTitle": "Comprobar servicios",
-  "serviceChecksInfo": "Toca un servicio para comprobar si se abre a través de la conexión VPN activa. La comprobación es manual: nada se comprueba automáticamente. Para servicios de IA también se detecta el bloqueo por país de salida.",
+  "serviceChecksInfo": "Seis servicios populares se comprueban solos: primero al iniciar la aplicación con la VPN apagada, y otra vez justo después de conectar. Los dos puntos muestran «antes → después», para ver qué cambió realmente la VPN. Toca para volver a comprobar. Verde: abre; naranja: bloqueo por región; rojo: inaccesible.",
   "serviceStatusOk": "Funciona",
   "serviceStatusGeo": "Se abre, pero bloqueado en el país de salida",
   "serviceStatusFail": "No se abre",
@@ -695,5 +695,10 @@
     }
   },
   "conflictCloseAndConnect": "Cerrar y conectar",
-  "conflictConnectAnyway": "Conectar de todos modos"
+  "conflictConnectAnyway": "Conectar de todos modos",
+  "serviceChecksLegendBefore": "Disponibilidad comprobada sin VPN",
+  "serviceChecksLegendAfter": "Izquierda — sin VPN, derecha — con VPN",
+  "serviceChecksBefore": "Sin VPN",
+  "serviceChecksAfter": "Con VPN",
+  "serviceChecksNoBaseline": "No comprobado sin VPN"
 }

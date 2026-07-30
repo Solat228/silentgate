@@ -545,7 +545,7 @@
   "panelInfoDirect": "Some traffic (e.g. local sites) goes directly, outside the VPN",
   "panelInfoBlock": "Some traffic is blocked (ads/torrents)",
   "serviceChecksTitle": "Service check",
-  "serviceChecksInfo": "Tap a service to check whether it opens through the active VPN connection. The check is manual — nothing is checked automatically. For AI services, a region block at the exit country is also detected.",
+  "serviceChecksInfo": "Six popular services are checked automatically: first at app start while the VPN is off, then again right after connecting. The two dots show \"before → after\", so you can see what the VPN actually changed. Tap to re-check. Green — opens, orange — blocked by region, red — unreachable.",
   "serviceStatusOk": "Works",
   "serviceStatusGeo": "Opens, but blocked in the exit country",
   "serviceStatusFail": "Does not open",
@@ -695,5 +695,10 @@
     }
   },
   "conflictCloseAndConnect": "Close and connect",
-  "conflictConnectAnyway": "Connect anyway"
+  "conflictConnectAnyway": "Connect anyway",
+  "serviceChecksLegendBefore": "Service availability checked without VPN",
+  "serviceChecksLegendAfter": "Left — without VPN, right — through VPN",
+  "serviceChecksBefore": "Without VPN",
+  "serviceChecksAfter": "Through VPN",
+  "serviceChecksNoBaseline": "Not checked without VPN"
 }

@@ -1600,7 +1600,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      '点按某个服务，检测它能否通过当前 VPN 连接打开。检测为手动操作——不会自动检测。对于 AI 服务，还会检测出口国家/地区的封锁。';
+      '六个常用服务会自动检测：第一次在应用启动、VPN 尚未开启时，第二次在连接成功后立即进行。两个圆点表示“之前 → 之后”，让你看清究竟是不是 VPN 起了作用。点按可重新检测。绿色表示可访问，橙色表示地区限制，红色表示不可达。';
 
   @override
   String get serviceStatusOk => '可用';
@@ -1875,4 +1875,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => '仍然连接';
+
+  @override
+  String get serviceChecksLegendBefore => '已在未开 VPN 时检测';
+
+  @override
+  String get serviceChecksLegendAfter => '左侧为未开 VPN，右侧为经由 VPN';
+
+  @override
+  String get serviceChecksBefore => '未开 VPN';
+
+  @override
+  String get serviceChecksAfter => '经由 VPN';
+
+  @override
+  String get serviceChecksNoBaseline => '未在无 VPN 时检测';
 }

@@ -3021,7 +3021,7 @@ abstract class AppLocalizations {
   /// No description provided for @serviceChecksInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Нажмите на сервис, чтобы проверить, открывается ли он через активное VPN-соединение. Проверка ручная — автоматически ничего не проверяется. Для ИИ-сервисов дополнительно определяется блокировка по стране выхода.'**
+  /// **'Шесть популярных сервисов проверяются сами: первый раз — при запуске приложения, пока VPN выключен, второй — сразу после подключения. Два кружка рядом показывают «было → стало», чтобы видеть, что изменил именно VPN. Нажатие проверяет сервис заново. Зелёный — открывается, оранжевый — блокировка по стране, красный — недоступен.'**
   String get serviceChecksInfo;
 
   /// No description provided for @serviceStatusOk.
@@ -3491,6 +3491,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Всё равно подключиться'**
   String get conflictConnectAnyway;
+
+  /// No description provided for @serviceChecksLegendBefore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступность сервисов проверена без VPN'**
+  String get serviceChecksLegendBefore;
+
+  /// No description provided for @serviceChecksLegendAfter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слева — без VPN, справа — через VPN'**
+  String get serviceChecksLegendAfter;
+
+  /// No description provided for @serviceChecksBefore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без VPN'**
+  String get serviceChecksBefore;
+
+  /// No description provided for @serviceChecksAfter.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через VPN'**
+  String get serviceChecksAfter;
+
+  /// No description provided for @serviceChecksNoBaseline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без VPN не проверялось'**
+  String get serviceChecksNoBaseline;
 }
 
 class _AppLocalizationsDelegate

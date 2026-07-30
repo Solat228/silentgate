@@ -1639,7 +1639,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Нажмите на сервис, чтобы проверить, открывается ли он через активное VPN-соединение. Проверка ручная — автоматически ничего не проверяется. Для ИИ-сервисов дополнительно определяется блокировка по стране выхода.';
+      'Шесть популярных сервисов проверяются сами: первый раз — при запуске приложения, пока VPN выключен, второй — сразу после подключения. Два кружка рядом показывают «было → стало», чтобы видеть, что изменил именно VPN. Нажатие проверяет сервис заново. Зелёный — открывается, оранжевый — блокировка по стране, красный — недоступен.';
 
   @override
   String get serviceStatusOk => 'Работает';
@@ -1927,4 +1927,20 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Всё равно подключиться';
+
+  @override
+  String get serviceChecksLegendBefore =>
+      'Доступность сервисов проверена без VPN';
+
+  @override
+  String get serviceChecksLegendAfter => 'Слева — без VPN, справа — через VPN';
+
+  @override
+  String get serviceChecksBefore => 'Без VPN';
+
+  @override
+  String get serviceChecksAfter => 'Через VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'Без VPN не проверялось';
 }

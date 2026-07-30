@@ -1643,7 +1643,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Bir servisin etkin VPN bağlantısı üzerinden açılıp açılmadığını denetlemek için ona dokunun. Denetim elle yapılır — hiçbir şey otomatik denetlenmez. Yapay zekâ servisleri için çıkış ülkesindeki bölge engeli de saptanır.';
+      'Altı popüler servis kendiliğinden sınanır: önce uygulama açılırken VPN kapalıyken, sonra bağlantı kurulur kurulmaz yeniden. İki nokta «önce → sonra» gösterir; böylece VPN’in neyi değiştirdiği görünür. Dokunmak yeniden sınar. Yeşil: açılıyor, turuncu: ülke engeli, kırmızı: erişilemiyor.';
 
   @override
   String get serviceStatusOk => 'Çalışıyor';
@@ -1928,4 +1928,20 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Yine de bağlan';
+
+  @override
+  String get serviceChecksLegendBefore => 'Erişilebilirlik VPN olmadan ölçüldü';
+
+  @override
+  String get serviceChecksLegendAfter =>
+      'Solda — VPN yokken, sağda — VPN üzerinden';
+
+  @override
+  String get serviceChecksBefore => 'VPN yokken';
+
+  @override
+  String get serviceChecksAfter => 'VPN üzerinden';
+
+  @override
+  String get serviceChecksNoBaseline => 'VPN yokken ölçülmedi';
 }

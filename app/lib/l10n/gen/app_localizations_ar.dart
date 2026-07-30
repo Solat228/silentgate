@@ -1628,7 +1628,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'اضغط على خدمة للتحقق مما إذا كانت تُفتح عبر اتصال VPN النشط. الفحص يدوي — لا شيء يُفحص تلقائيًا. لخدمات الذكاء الاصطناعي يُكتشف أيضًا الحظر حسب بلد الخروج.';
+      'تُفحص ست خدمات شائعة تلقائيًا: أولًا عند تشغيل التطبيق وVPN مُطفأ، ثم مرة أخرى فور الاتصال. النقطتان تُظهران «قبل ← بعد» لترى ما غيّره VPN فعلًا. اضغط لإعادة الفحص. أخضر: يفتح، برتقالي: حجب حسب الدولة، أحمر: غير متاح.';
 
   @override
   String get serviceStatusOk => 'تعمل';
@@ -1916,4 +1916,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'الاتصال على أي حال';
+
+  @override
+  String get serviceChecksLegendBefore => 'جرى الفحص من دون VPN';
+
+  @override
+  String get serviceChecksLegendAfter => 'يسارًا — دون VPN، يمينًا — عبر VPN';
+
+  @override
+  String get serviceChecksBefore => 'دون VPN';
+
+  @override
+  String get serviceChecksAfter => 'عبر VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'لم يُفحص دون VPN';
 }

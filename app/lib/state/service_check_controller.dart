@@ -91,4 +91,26 @@ class ServiceCheckController extends ChangeNotifier {
   Future<void> checkBaseline(List<ProbeService> services) async {
     await Future.wait([for (final s in services) check(s, 0)]);
   }
+
+  bool _baselineRan = false;
+
+  /// Автоматический замер «до» — один раз за запуск приложения.
+  ///
+  /// Смысл всей пары «до → после» в сравнении, а сравнивать было не с чем:
+  /// замер «до» снимался только вручную, и пользователь видел одинокий кружок
+  /// «через VPN», по которому нельзя понять, VPN ли починил сервис или тот и
+  /// так работал.
+  ///
+  /// ⚠️ Вызывать ТОЛЬКО при выключенном VPN. Если туннель уже поднят (например,
+  /// приложение подхватило живое соединение при старте), проба уйдёт ЧЕРЕЗ него
+  /// и запишется в графу «без VPN» — сравнение станет ложью, причём
+  /// правдоподобной.
+  ///
+  /// Один раз за запуск, а не за экран: возврат с настроек не должен гонять
+  /// шесть проб заново.
+  Future<void> autoBaseline(List<ProbeService> services) async {
+    if (_baselineRan) return;
+    _baselineRan = true;
+    await checkBaseline(services);
+  }
 }

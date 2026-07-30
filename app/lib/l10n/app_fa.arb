@@ -484,7 +484,7 @@
   "panelInfoDirect": "بخشی از ترافیک (مثلاً سایت‌های محلی) مستقیم و خارج از VPN می‌رود",
   "panelInfoBlock": "بخشی از ترافیک مسدود می‌شود (تبلیغات/تورنت)",
   "serviceChecksTitle": "بررسی سرویس‌ها",
-  "serviceChecksInfo": "روی یک سرویس بزنید تا بررسی شود که آیا از طریق اتصال فعال VPN باز می‌شود. بررسی دستی است — چیزی خودکار بررسی نمی‌شود. برای سرویس‌های هوش مصنوعی مسدودیت بر اساس کشور خروجی نیز تشخیص داده می‌شود.",
+  "serviceChecksInfo": "شش سرویس پرکاربرد خودکار بررسی می‌شوند: نخست هنگام اجرای برنامه و خاموش بودن VPN، سپس بلافاصله پس از اتصال. دو نقطه «پیش ← پس» را نشان می‌دهند تا ببینید VPN واقعاً چه چیزی را تغییر داده است. برای بررسی دوباره ضربه بزنید. سبز: باز می‌شود، نارنجی: مسدودی کشوری، قرمز: در دسترس نیست.",
   "serviceStatusOk": "کار می‌کند",
   "serviceStatusGeo": "باز می‌شود اما در کشور خروجی مسدود است",
   "serviceStatusFail": "باز نمی‌شود",
@@ -634,5 +634,10 @@
     }
   },
   "conflictCloseAndConnect": "بستن و اتصال",
-  "conflictConnectAnyway": "به‌هرحال متصل شو"
+  "conflictConnectAnyway": "به‌هرحال متصل شو",
+  "serviceChecksLegendBefore": "بدون VPN بررسی شد",
+  "serviceChecksLegendAfter": "چپ — بدون VPN، راست — از راه VPN",
+  "serviceChecksBefore": "بدون VPN",
+  "serviceChecksAfter": "از راه VPN",
+  "serviceChecksNoBaseline": "بدون VPN بررسی نشد"
 }

@@ -1658,7 +1658,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Touchez un service pour vérifier s\'il s\'ouvre via la connexion VPN active. La vérification est manuelle — rien n\'est vérifié automatiquement. Pour les services d\'IA, le blocage selon le pays de sortie est aussi détecté.';
+      'Six services populaires sont vérifiés automatiquement : d\'abord au démarrage de l\'application, VPN éteint, puis de nouveau juste après la connexion. Les deux points montrent « avant → après », pour voir ce que le VPN a réellement changé. Touchez pour revérifier. Vert : accessible ; orange : blocage régional ; rouge : injoignable.';
 
   @override
   String get serviceStatusOk => 'Fonctionne';
@@ -1944,4 +1944,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Se connecter quand même';
+
+  @override
+  String get serviceChecksLegendBefore => 'Disponibilité vérifiée sans VPN';
+
+  @override
+  String get serviceChecksLegendAfter =>
+      'À gauche — sans VPN, à droite — via le VPN';
+
+  @override
+  String get serviceChecksBefore => 'Sans VPN';
+
+  @override
+  String get serviceChecksAfter => 'Via le VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'Non vérifié sans VPN';
 }

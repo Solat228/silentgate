@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -18,6 +20,7 @@ import 'widgets/info_tooltip.dart';
 import '../state/app_state.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
+import '../state/service_check_controller.dart';
 import '../state/settings_controller.dart';
 import 'auto_config_screen.dart';
 import 'import_screen.dart';
@@ -47,6 +50,22 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Замер «до» — на старте приложения, пока VPN выключен. Это половина
+      // сравнения у кнопки: без него видно только «сейчас работает», но не
+      // видно, VPN ли это сделал. Второй замер снимется сам при подъёме
+      // туннеля (`ServiceChecksColumn`), и рядом встанут два кружка.
+      //
+      // ⚠️ Только при выключенном VPN: на живом туннеле проба ушла бы через
+      // него и записалась в графу «без VPN» — сравнение стало бы ложью.
+      // Приложение умеет подхватывать уже поднятое соединение, так что
+      // «на старте» и «без VPN» — не одно и то же.
+      final state = context.read<AppState>();
+      if (!state.status.isConnected) {
+        unawaited(context
+            .read<ServiceCheckController>()
+            .autoBaseline(ServiceChecksRow.services));
+      }
+
       final found = await InterferenceScanner.scan();
       if (found.isNotEmpty && mounted) {
         await scanInterferenceDialog(context);
@@ -424,6 +443,23 @@ class _ConnectPane extends StatelessWidget {
                         alignEnd: false,
                       ),
                     ),
+                  ],
+                ),
+                // Без подписи два кружка у каждого значка — ребус. Говорим
+                // прямо, что слева замер без VPN, справа — через VPN, и что
+                // оба снимаются сами.
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      status.isConnected
+                          ? l.serviceChecksLegendAfter
+                          : l.serviceChecksLegendBefore,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).hintColor),
+                    ),
+                    InfoTooltip(l.serviceChecksInfo),
                   ],
                 ),
                 const SizedBox(height: 16),

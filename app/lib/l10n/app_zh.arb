@@ -484,7 +484,7 @@
   "panelInfoDirect": "部分流量（如本地网站）直连，绕过 VPN",
   "panelInfoBlock": "部分流量被阻止（广告/种子）",
   "serviceChecksTitle": "服务检测",
-  "serviceChecksInfo": "点按某个服务，检测它能否通过当前 VPN 连接打开。检测为手动操作——不会自动检测。对于 AI 服务，还会检测出口国家/地区的封锁。",
+  "serviceChecksInfo": "六个常用服务会自动检测：第一次在应用启动、VPN 尚未开启时，第二次在连接成功后立即进行。两个圆点表示“之前 → 之后”，让你看清究竟是不是 VPN 起了作用。点按可重新检测。绿色表示可访问，橙色表示地区限制，红色表示不可达。",
   "serviceStatusOk": "可用",
   "serviceStatusGeo": "能打开，但在出口国家/地区被封锁",
   "serviceStatusFail": "无法打开",
@@ -634,5 +634,10 @@
     }
   },
   "conflictCloseAndConnect": "关闭它并连接",
-  "conflictConnectAnyway": "仍然连接"
+  "conflictConnectAnyway": "仍然连接",
+  "serviceChecksLegendBefore": "已在未开 VPN 时检测",
+  "serviceChecksLegendAfter": "左侧为未开 VPN，右侧为经由 VPN",
+  "serviceChecksBefore": "未开 VPN",
+  "serviceChecksAfter": "经由 VPN",
+  "serviceChecksNoBaseline": "未在无 VPN 时检测"
 }

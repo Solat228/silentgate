@@ -484,7 +484,7 @@
   "panelInfoDirect": "Ein Teil des Verkehrs (z. B. lokale Seiten) geht direkt, außerhalb des VPN",
   "panelInfoBlock": "Ein Teil des Verkehrs wird blockiert (Werbung/Torrents)",
   "serviceChecksTitle": "Dienste prüfen",
-  "serviceChecksInfo": "Tippen Sie auf einen Dienst, um zu prüfen, ob er über die aktive VPN-Verbindung geöffnet wird. Die Prüfung ist manuell — nichts wird automatisch geprüft. Bei KI-Diensten wird zusätzlich eine Regionssperre im Ausgangsland erkannt.",
+  "serviceChecksInfo": "Sechs beliebte Dienste werden automatisch geprüft: zuerst beim Start der App bei ausgeschaltetem VPN, dann noch einmal direkt nach dem Verbinden. Die zwei Punkte zeigen „vorher → nachher“, damit sichtbar wird, was das VPN tatsächlich geändert hat. Tippen prüft erneut. Grün: erreichbar, Orange: Ländersperre, Rot: nicht erreichbar.",
   "serviceStatusOk": "Funktioniert",
   "serviceStatusGeo": "Öffnet, aber im Ausgangsland gesperrt",
   "serviceStatusFail": "Öffnet nicht",
@@ -634,5 +634,10 @@
     }
   },
   "conflictCloseAndConnect": "Schließen und verbinden",
-  "conflictConnectAnyway": "Trotzdem verbinden"
+  "conflictConnectAnyway": "Trotzdem verbinden",
+  "serviceChecksLegendBefore": "Verfügbarkeit ohne VPN geprüft",
+  "serviceChecksLegendAfter": "Links — ohne VPN, rechts — über VPN",
+  "serviceChecksBefore": "Ohne VPN",
+  "serviceChecksAfter": "Über VPN",
+  "serviceChecksNoBaseline": "Ohne VPN nicht geprüft"
 }

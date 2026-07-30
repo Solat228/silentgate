@@ -1637,7 +1637,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Tap a service to check whether it opens through the active VPN connection. The check is manual — nothing is checked automatically. For AI services, a region block at the exit country is also detected.';
+      'Six popular services are checked automatically: first at app start while the VPN is off, then again right after connecting. The two dots show \"before → after\", so you can see what the VPN actually changed. Tap to re-check. Green — opens, orange — blocked by region, red — unreachable.';
 
   @override
   String get serviceStatusOk => 'Works';
@@ -1923,4 +1923,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Connect anyway';
+
+  @override
+  String get serviceChecksLegendBefore =>
+      'Service availability checked without VPN';
+
+  @override
+  String get serviceChecksLegendAfter =>
+      'Left — without VPN, right — through VPN';
+
+  @override
+  String get serviceChecksBefore => 'Without VPN';
+
+  @override
+  String get serviceChecksAfter => 'Through VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'Not checked without VPN';
 }

@@ -1652,7 +1652,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Tippen Sie auf einen Dienst, um zu prüfen, ob er über die aktive VPN-Verbindung geöffnet wird. Die Prüfung ist manuell — nichts wird automatisch geprüft. Bei KI-Diensten wird zusätzlich eine Regionssperre im Ausgangsland erkannt.';
+      'Sechs beliebte Dienste werden automatisch geprüft: zuerst beim Start der App bei ausgeschaltetem VPN, dann noch einmal direkt nach dem Verbinden. Die zwei Punkte zeigen „vorher → nachher“, damit sichtbar wird, was das VPN tatsächlich geändert hat. Tippen prüft erneut. Grün: erreichbar, Orange: Ländersperre, Rot: nicht erreichbar.';
 
   @override
   String get serviceStatusOk => 'Funktioniert';
@@ -1940,4 +1940,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Trotzdem verbinden';
+
+  @override
+  String get serviceChecksLegendBefore => 'Verfügbarkeit ohne VPN geprüft';
+
+  @override
+  String get serviceChecksLegendAfter => 'Links — ohne VPN, rechts — über VPN';
+
+  @override
+  String get serviceChecksBefore => 'Ohne VPN';
+
+  @override
+  String get serviceChecksAfter => 'Über VPN';
+
+  @override
+  String get serviceChecksNoBaseline => 'Ohne VPN nicht geprüft';
 }
