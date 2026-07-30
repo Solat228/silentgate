@@ -118,4 +118,61 @@ void main() {
     final r = await Process.run(exe.path, ['check', '-c', f.path]);
     expect(r.exitCode, 0, reason: '${r.stdout}${r.stderr}');
   });
+
+  _ipv6Guards();
+}
+
+/// Выключенный IPv6 в туннеле раньше означал «IPv6 уходит мимо VPN».
+void _ipv6Guards() {
+  List<Map<String, dynamic>> rules(Map<String, dynamic> cfg) =>
+      ((cfg['route'] as Map)['rules'] as List).cast<Map<String, dynamic>>();
+
+  Map<String, dynamic> build({required bool ipv6}) => SingboxConfigBuilder(
+        options: TunOptions(ipv6: ipv6, serverIps: const ['203.0.113.7']),
+      ).buildMap(const SplitTunnelConfig(mode: SplitMode.all));
+
+  group('IPv6 без туннеля не утекает', () {
+    test('выключенный IPv6 отвергается, а не пропускается мимо', () {
+      final r = rules(build(ipv6: false));
+      expect(
+          r.any((x) => x['ip_version'] == 6 && x['action'] == 'reject'), isTrue,
+          reason: 'иначе IPv6-трафик идёт через физический адаптер под реальным IP');
+    });
+
+    test('включённый IPv6 идёт в туннель как прежде', () {
+      final r = rules(build(ipv6: true));
+      expect(r.any((x) => x['ip_version'] == 6), isFalse);
+    });
+
+    test('оба ядра принимают конфиг с отказом IPv6', () async {
+      // Поле `ip_version` появилось не во всех версиях одинаково, а конфиг
+      // отвергается ЦЕЛИКОМ — на этом уже обжигались с DNS-действием
+      // `predefined`. Проверяем обеими: 1.11.15 (Windows) и 1.13.14 (Android).
+      final dir = Directory('build/emit')..createSync(recursive: true);
+      final f = File('${dir.path}/no-ipv6.json')
+        ..writeAsStringSync(SingboxConfigBuilder(
+          options: const TunOptions(ipv6: false, serverIps: ['203.0.113.7']),
+        ).buildJson(const SplitTunnelConfig(mode: SplitMode.all)));
+
+      for (final exe in [
+        File('../engine/windows/bin/sing-box.exe'),
+        File(r'C:\dev\android\out\sing-box-1.13.14.exe'),
+      ]) {
+        if (!exe.existsSync()) continue;
+        final r = await Process.run(exe.path, ['check', '-c', f.path]);
+        expect(r.exitCode, 0,
+            reason: '${exe.path} отверг конфиг: ${r.stdout}${r.stderr}');
+      }
+    });
+
+    test('отказ стоит НИЖЕ адреса сервера', () {
+      // Сервер может быть доступен по IPv6 — наверху правило убило бы связь.
+      final r = rules(build(ipv6: false));
+      final v6 = r.indexWhere((x) => x['ip_version'] == 6);
+      final server = r.indexWhere((x) =>
+          (x['ip_cidr'] as List?)?.any((c) => '$c'.startsWith('203.0.113.7')) ==
+          true);
+      expect(server, lessThan(v6));
+    });
+  });
 }
