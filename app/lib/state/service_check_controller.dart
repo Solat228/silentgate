@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/probe/proxy_probe.dart';
 import '../core/probe/service_check.dart';
 import '../core/settings/app_settings.dart';
 
@@ -61,9 +62,55 @@ class ServiceCheckController extends ChangeNotifier {
   Future<void> autoCheckAll(int httpPort, List<ProbeService> services) async {
     if (_epoch.isEmpty || _autoRanEpoch == _epoch) return;
     _autoRanEpoch = _epoch;
+
+    // ⚠️ Дождаться, пока канал ЗАРАБОТАЕТ, а не пока поднимется туннель.
+    //
+    // «Подключено» выставляется, как только встал туннель, но за ним ещё
+    // стартует прокси-ядро, и первые секунды прокси-порт принимает соединения,
+    // никуда их не доставляя. Автопрогон, запущенный в этот момент, красил ВСЕ
+    // шесть сервисов в красный — и больше не повторялся, потому что эпоха уже
+    // отмечена пройденной. Снаружи это выглядело как «через VPN не работает
+    // ничего», хотя через полминуты работало всё.
+    if (!await _waitProxyUsable(httpPort)) return;
+
     // Параллельно: пробы независимы, а последовательный прогон растянулся бы
     // на десятки секунд (у каждой — таймаут до ~16 с).
     await Future.wait([for (final s in services) check(s, httpPort)]);
+  }
+
+  /// Ждать, пока через прокси реально проходит запрос.
+  ///
+  /// Проверяем сквозным запросом, а не открытием сокета: порт слушает СРАЗУ,
+  /// поэтому «подключился к порту» ничего не доказывает. Берём самый дешёвый
+  /// ответ — пустой 204.
+  /// Сколько раз и с какой паузой ждать готовности канала.
+  ///
+  /// Вынесено в поля, чтобы тесты не ждали полминуты вхолостую: на закрытом
+  /// порту ждать нечего, а в бою этот запас — единственное, что отличает
+  /// «через VPN ничего не работает» от «ядро ещё не встало».
+  @visibleForTesting
+  static int readinessAttempts = 6;
+  @visibleForTesting
+  static Duration readinessDelay = const Duration(seconds: 2);
+
+  Future<bool> _waitProxyUsable(int httpPort) async {
+    if (httpPort <= 0) return false;
+    final epoch = _epoch;
+    for (var attempt = 0; attempt < readinessAttempts; attempt++) {
+      // Пользователь мог отключиться или сменить сервер, пока мы ждём.
+      if (_epoch != epoch) return false;
+      final r = await ProxyProbe.check(
+        httpPort,
+        'http://www.gstatic.com/generate_204',
+        head: true,
+        timeout: const Duration(seconds: 4),
+      );
+      if (r.ok) return true;
+      await Future<void>.delayed(readinessDelay);
+    }
+    // Канал так и не заработал. Пробы всё равно запускаем: пусть пользователь
+    // увидит честный отказ, а не пустые кружки без объяснения.
+    return _epoch == epoch;
   }
 
   /// Проверить один сервис.

@@ -66,6 +66,7 @@ Future<void> main(List<String> args) async {
       exit(0);
     }
     SingleInstance.listen(server, IncomingLinks.add);
+
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
     final ourBin = XrayPaths.locate()?.assetDir;
@@ -77,6 +78,11 @@ Future<void> main(List<String> args) async {
     // foreground-сервис с постоянной нотификацией.
     await TrayWindow.instance.init();
   }
+
+  // Android приносит ссылки интентом в Activity, а не через единственный
+  // экземпляр. Подписка обязана стоять ДО runApp: ссылка холодного старта уже
+  // лежит на нативной стороне и ждёт, когда её заберут.
+  unawaited(IncomingLinks.bindPlatform());
 
   runApp(
     MultiProvider(

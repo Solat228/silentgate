@@ -193,6 +193,14 @@ void main() {
   });
 
   group('ServiceCheckController (#6)', () {
+    // На закрытом порту ждать готовности канала нечего — иначе каждый тест
+    // простаивал бы штатные полминуты запаса, которые в бою отличают
+    // «через VPN ничего не работает» от «прокси-ядро ещё не встало».
+    setUp(() {
+      ServiceCheckController.readinessAttempts = 1;
+      ServiceCheckController.readinessDelay = Duration.zero;
+    });
+
     test('по умолчанию все сервисы idle, никто не проверяется', () {
       final c = ServiceCheckController();
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);

@@ -139,6 +139,27 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  /// Второй автозамер — по живому туннелю, сразу после подключения.
+  ///
+  /// ⚠️ Живёт здесь, а не в колонке проверок. Колонок ДВЕ (слева и справа от
+  /// кнопки), у каждой своя половина сервисов, и запуск изнутри означал бы, что
+  /// первая колонка займёт «эпоху», а вторая молча пропустит свои три сервиса —
+  /// ровно это и происходило: правые кружки оставались серыми. Экран один,
+  /// значит и прогон один, сразу по всем шести.
+  void _autoCheckServices(BuildContext context, AppState state) {
+    final ctrl = context.read<ServiceCheckController>();
+    final port = state.status.isConnected ? state.httpProxyPort : 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (port <= 0) {
+        ctrl.reset(); // отключились — прежние результаты уже не про это соединение
+        return;
+      }
+      ctrl.bind(state.selectedServer?.key ?? 'auto');
+      unawaited(ctrl.autoCheckAll(port, ServiceChecksRow.services));
+    });
+  }
+
   void _showTransientMessages(
       BuildContext context, AppState state, AppSettings settings) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -307,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // #2.2 — всё временное показываем ПОВЕРХ интерфейса: раньше эти сообщения
     // жили в компоновке и сдвигали большую кнопку Connect.
     _showTransientMessages(context, state, settings);
+    _autoCheckServices(context, state);
     _showProgressToasts(context);
 
     // #1.2 — первый запуск: пока нет ни подписки, ни серверов, показываем экран

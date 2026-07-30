@@ -24,11 +24,25 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val METHOD_CHANNEL = "lol.silentgate/vpn"
+        private const val LINKS_CHANNEL = "lol.silentgate/links"
         private const val EVENT_CHANNEL = "lol.silentgate/vpn_events"
         private const val REQ_PREPARE = 1001
     }
 
     private var events: EventChannel.EventSink? = null
+
+    /** Канал входящих ссылок silentgate:// / vless:// и прочих схем. */
+    private var links: MethodChannel? = null
+
+    /**
+     * Ссылка, пришедшая до того, как Dart-сторона успела подписаться.
+     *
+     * Холодный старт по ссылке — самый частый случай (человек нажал ссылку в
+     * Telegram, приложение ещё не запущено), и именно в нём канал появляется
+     * ПОЗЖЕ интента. Без этой очереди первая ссылка терялась бы, а
+     * пользователь видел бы пустой экран импорта.
+     */
+    private var pendingLink: String? = null
 
     /** Конфиги, ждущие согласия пользователя на VPN. */
     private var pendingConfig: String? = null
@@ -37,6 +51,22 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        links = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LINKS_CHANNEL)
+            .also { ch ->
+                ch.setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        // Dart подписался и забирает ссылку холодного старта.
+                        "consumeInitial" -> {
+                            result.success(pendingLink)
+                            pendingLink = null
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            }
+        // Ссылка, с которой приложение запустили.
+        intent?.dataString?.let { pendingLink = it }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -208,7 +238,21 @@ class MainActivity : FlutterActivity() {
             result?.error("consent_denied", "Пользователь не разрешил VPN", null)
         }
     }
+    /**
+     * Приложение уже живо, пришла новая ссылка.
+     *
+     * ⚠️ `setIntent` обязателен: без него `getIntent()` продолжает отдавать
+     * интент запуска, и следующая проверка возьмёт устаревшую ссылку.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        val url = intent.dataString ?: return
+        // Канал есть — отдаём сразу; нет (движок ещё поднимается) — придержим.
+        if (links == null) pendingLink = url else links?.invokeMethod("link", url)
+    }
 }
+
 
 /**
  * Обёртка, возвращающая ответ канала в главный поток.

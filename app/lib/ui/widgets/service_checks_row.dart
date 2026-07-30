@@ -92,6 +92,8 @@ class _ServiceChecksRowState extends State<ServiceChecksRow> {
     // напрямую и показала доступность канала пользователя, выдав её за
     // результат VPN. Замер «до» снимается отдельной кнопкой.
     if (widget.httpPort > 0) {
+      // Прогон по живому туннелю запускает ЭКРАН (home_screen), а не ряд:
+      // колонок две, и каждая знает лишь свою половину сервисов.
       unawaited(ctrl.autoCheckAll(widget.httpPort, ServiceChecksRow.services));
     }
   }
@@ -295,18 +297,31 @@ class _ServicePair extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // ⚠️ Кружки собраны в ОТДЕЛЬНУЮ строку, и переворачивается только пара
+    // «значок + кружки». Если перевернуть всё подряд, в левой колонке
+    // поменяются местами «до» и «после»: стрелка станет показывать в обратную
+    // сторону, а подпись «слева — без VPN, справа — через VPN» превратится в
+    // ложь ровно для половины сервисов.
+    final dots = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Пара «до → после» рисуется ТОЛЬКО когда есть что с чем сравнивать, то
+        // есть при живом VPN. Иначе один и тот же замер показывался дважды со
+        // стрелкой между ними — читалось как «проверено до и после», хотя
+        // подключения ещё не было.
+        if (live && before.state != ServiceCheckState.idle) ...[
+          _dot(context, before, dim: true),
+          const SizedBox(width: 4),
+          Text('→', style: Theme.of(context).textTheme.labelMedium),
+          const SizedBox(width: 4),
+        ],
+        _dot(context, live ? after : before, dim: false),
+      ],
+    );
     final items = <Widget>[
       SiteFavicon(domain: service.domain, size: 26),
       const SizedBox(width: 8),
-      // Замер «до» показываем только когда он есть: пустой кружок рядом с
-      // каждым сервисом читался бы как «проверено и плохо».
-      if (before.state != ServiceCheckState.idle) ...[
-        _dot(context, before, dim: true),
-        const SizedBox(width: 4),
-        Text('→', style: Theme.of(context).textTheme.labelMedium),
-        const SizedBox(width: 4),
-      ],
-      _dot(context, live ? after : before, dim: false),
+      dots,
     ];
     // Подпись «до» и «после» словами: два кружка сами по себе не объясняют,
     // который из них какой, а порядок в правой колонке ещё и зеркалится.

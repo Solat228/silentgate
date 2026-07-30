@@ -29,6 +29,11 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
+            <!-- Ссылки разбираем САМИ (MainActivity -> канал links).
+                 С включённым автороутингом Flutter принимает
+                 silentgate://import?url=... за имя маршрута, уходит в
+                 onUnknownRoute и падает, а импорт не происходит. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false"/>
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues
