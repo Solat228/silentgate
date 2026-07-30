@@ -342,6 +342,31 @@ class ProbeController extends ChangeNotifier {
           // -1 = кандидата обслуживало второе ядро, а оно не поднялось.
           final raw = handle?.proxyPortFor(idx);
           final port = (raw == null || raw <= 0) ? null : raw;
+
+          // ⚠️ Платформа может померить САМА и порта не дать: на Android
+          // `LibXray.ping` поднимает свой экземпляр ядра и возвращает сразу
+          // миллисекунды, поэтому `proxyPortFor` там ВСЕГДА 0.
+          //
+          // Без этой ветки каждый сервер уходил в `_applyVerify` с port == null
+          // и помечался «отвечает по TCP, но не проксирует» — то есть ВЕСЬ
+          // список красился в нерабочий, включая заведомо живые серверы,
+          // которыми пользователь в этот момент пользовался. В `_verifyOne`
+          // (полные конфиги, профили «Авто») то же самое было учтено, а здесь —
+          // на пути, по которому идут ОБЫЧНЫЕ серверы, то есть почти все, — нет.
+          if (port == null) {
+            final ready = await handle?.delayMs(idx);
+            if (cancel.isCancelled) return;
+            if (ready != null) {
+              _results[server.key] = PingResult(
+                outcome: PingOutcome.ok,
+                latencyMs: ready,
+                working: true,
+                latencyMethod: settings.pingPrimary,
+              );
+              notifyListeners();
+              return;
+            }
+          }
           await _applyVerify(server, port, settings,
               head: head, forceProxy: forceProxy);
         }));

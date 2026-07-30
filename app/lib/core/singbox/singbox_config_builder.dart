@@ -67,6 +67,18 @@ class TunOptions {
   /// сертификата невозможно. Для 443 остаётся обычный `reject`.
   final int blockPagePort;
 
+  /// Порт Clash API — счётчики трафика туннеля. 0 — не поднимать.
+  ///
+  /// ⚠️ Нужен на Android: там ядро — библиотека в нашем процессе, и другого
+  /// способа узнать, сколько прошло через туннель, нет. Без него счётчик под
+  /// кнопкой стоял на нуле, что бы ни происходило.
+  ///
+  /// ⚠️ `secret` ОБЯЗАТЕЛЕН. Без него sing-box пускает кого угодно и отдаёт
+  /// метаданные соединений с CORS `*`: на телефоне этот порт видит любое
+  /// приложение, а в браузере — любая открытая страница.
+  final int clashApiPort;
+  final String clashApiSecret;
+
   /// Отказывать в QUIC (UDP:443), возвращая браузеры на TLS поверх TCP.
   final bool blockQuic;
 
@@ -124,6 +136,8 @@ class TunOptions {
     this.blackhole = false,
     this.tunnelDnsForAll = true,
     this.blockPagePort = 0,
+    this.clashApiPort = 0,
+    this.clashApiSecret = '',
     this.blockQuic = false,
     this.blockEncryptedDns = false,
   });
@@ -135,9 +149,13 @@ class TunOptions {
     String? directDnsUpstream,
     String? logOutput,
     int blockPagePort = 0,
+    int clashApiPort = 0,
+    String clashApiSecret = '',
   }) {
     return TunOptions(
       blockPagePort: blockPagePort,
+      clashApiPort: clashApiPort,
+      clashApiSecret: clashApiSecret,
       blockQuic: s.blockQuic,
       blockEncryptedDns: s.blockEncryptedDns,
       platformTun: android,
@@ -188,6 +206,8 @@ class TunOptions {
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
         logOutput: logOutput,
+        clashApiPort: clashApiPort,
+        clashApiSecret: clashApiSecret,
         blackhole: true,
       );
 
@@ -221,6 +241,8 @@ class TunOptions {
         blackhole: blackhole,
         tunnelDnsForAll: tunnelDnsForAll,
         blockPagePort: blockPagePort,
+        clashApiPort: clashApiPort,
+        clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
         blockEncryptedDns: blockEncryptedDns,
       );
@@ -468,6 +490,19 @@ class SingboxConfigBuilder {
         'timestamp': true,
         if ((o.logOutput ?? '').isNotEmpty) 'output': o.logOutput,
       },
+      // Счётчики трафика туннеля. У sing-box нет `statsquery`, зато есть Clash
+      // API — тот же источник, из которого читает Windows-сборка.
+      //
+      // ⚠️ Без `secret` ядро пускает кого угодно и отдаёт метаданные соединений
+      // с CORS `*`. На телефоне этот порт виден любому приложению, поэтому
+      // пароль на сессию обязателен, а не желателен.
+      if (o.clashApiPort > 0)
+        'experimental': {
+          'clash_api': {
+            'external_controller': '127.0.0.1:${o.clashApiPort}',
+            if (o.clashApiSecret.isNotEmpty) 'secret': o.clashApiSecret,
+          },
+        },
       'inbounds': [
         _tunInbound(split),
         // Локальный http-прокси на Android. Ядро здесь ОДНО и держит только

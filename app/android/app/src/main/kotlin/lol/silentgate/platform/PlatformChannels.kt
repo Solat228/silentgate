@@ -194,6 +194,12 @@ object PlatformChannels {
             //
             // Берём сеть БЕЗ признака VPN, иначе получим адрес самого туннеля.
             "directDns" -> result.success(directDns(context))
+            // Иконка САМОГО приложения — в рантайме, а не файлом в assets.
+            //
+            // Владелец предупредил, что бренд может смениться; зашитая картинка
+            // пережила бы ребрендинг и осталась старой. Здесь берём ту, что
+            // реально установлена в системе.
+            "appIcon" -> result.success(appIconPng(context))
             // Системный Always-on VPN + «блокировать соединения без VPN».
             //
             // Это надёжнее любого нашего kill switch: система держит блокировку
@@ -208,6 +214,27 @@ object PlatformChannels {
             )
             else -> handleDeviceRest(context, method, result)
         }
+    }
+
+    /// Иконка приложения в PNG.
+    ///
+    /// `getApplicationIcon` возвращает Drawable — у адаптивных иконок это не
+    /// BitmapDrawable, поэтому рисуем на холст сами, иначе на всех современных
+    /// сборках вернулся бы null.
+    private fun appIconPng(context: Context): ByteArray? = try {
+        val d = context.packageManager.getApplicationIcon(context.packageName)
+        val size = if (d.intrinsicWidth > 0) minOf(d.intrinsicWidth, 192) else 128
+        val bmp = android.graphics.Bitmap.createBitmap(
+            size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bmp)
+        d.setBounds(0, 0, size, size)
+        d.draw(canvas)
+        val out = java.io.ByteArrayOutputStream()
+        bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, out)
+        bmp.recycle()
+        out.toByteArray()
+    } catch (e: Throwable) {
+        null
     }
 
     private fun directDns(context: Context): String? = runCatching {

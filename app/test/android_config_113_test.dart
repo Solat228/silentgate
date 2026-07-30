@@ -28,6 +28,8 @@ void main() {
         probePort: 10811,
         options: const TunOptions(
           platformTun: true,
+          clashApiPort: 19090,
+          clashApiSecret: 'test-secret',
           blockPagePort: 18080,
           blockQuic: true,
           blockEncryptedDns: true,

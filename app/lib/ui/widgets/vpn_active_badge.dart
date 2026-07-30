@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../core/util/country_flag.dart';
 import '../../state/app_state.dart';
+import '../../core/models/traffic_stats.dart';
 import 'flag_cell.dart';
+import 'self_app_icon.dart';
 
 /// Считает глубину стека навигации, чтобы индикатор VPN показывался только
 /// ПОВЕРХ вложенных экранов (настройки, логи, раздельное туннелирование…).
@@ -104,6 +106,10 @@ class _Badge extends StatelessWidget {
       if (!s.status.isConnected) return null;
       return s.selectedServer?.displayName;
     });
+    // Трафик берём целиком: плашка и так перестраивается раз в секунду, а
+    // раздельные select по четырём полям дали бы четыре перестроения вместо
+    // одного.
+    final stats = context.select<AppState, TrafficStats>((s) => s.stats);
 
     final show = visible && connected;
     final l = AppLocalizations.of(context);
@@ -133,15 +139,20 @@ class _Badge extends StatelessWidget {
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    // Иконка приложения — в рантайме, не из assets: бренд ещё
+                    // может смениться, и зашитая картинка пережила бы это
+                    // молча.
+                    const SelfAppIcon(size: 22),
+                    const SizedBox(width: 8),
                     Container(
-                      width: 11,
-                      height: 11,
+                      width: 9,
+                      height: 9,
                       decoration: const BoxDecoration(
                         color: Color(0xFF4ADE80),
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     // Флаг страны — картинкой, а не эмодзи в тексте.
                     //
                     // ⚠️ Имя сервера от панели начинается с флага-эмодзи
@@ -156,18 +167,46 @@ class _Badge extends StatelessWidget {
                       FlagCell(server, width: 24, height: 17),
                       const SizedBox(width: 8),
                     ],
+                    // Три строки друг под другом: сервер, текущая скорость,
+                    // всего за сессию. В одну строку это не помещалось —
+                    // на узком телефоне имя сервера съедалось многоточием
+                    // ровно там, где оно и нужно.
                     Flexible(
-                      child: Text(
-                        server == null || server.isEmpty
-                            ? l.vpnActiveBadge
-                            : '${l.vpnActiveBadge} · ${FlagUtil.strip(server)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textDirection: TextDirection.ltr,
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(color: scheme.onInverseSurface),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            server == null || server.isEmpty
+                                ? l.vpnActiveBadge
+                                : FlagUtil.strip(server),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.ltr,
+                            style: Theme.of(context)
+                                .textTheme
+                                .titleSmall
+                                ?.copyWith(color: scheme.onInverseSurface),
+                          ),
+                          Text(
+                            '↓ ${TrafficStats.formatSpeed(stats.downlinkSpeed)}'
+                            '   ↑ ${TrafficStats.formatSpeed(stats.uplinkSpeed)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.ltr,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: scheme.onInverseSurface),
+                          ),
+                          Text(
+                            '↓ ${TrafficStats.formatBytes(stats.downlinkBytes)}'
+                            '   ↑ ${TrafficStats.formatBytes(stats.uplinkBytes)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textDirection: TextDirection.ltr,
+                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: scheme.onInverseSurface.withValues(alpha: 0.7)),
+                          ),
+                        ],
                       ),
                     ),
                   ]),

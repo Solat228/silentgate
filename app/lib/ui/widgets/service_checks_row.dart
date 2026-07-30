@@ -339,9 +339,23 @@ class _ServicePair extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: alignEnd ? items.reversed.toList() : items,
+          // ⚠️ Строка ужимается, а не обрезается.
+          //
+          // На узком телефоне правая колонка не влезала и уезжала за край:
+          // кружок «через VPN» оказывался за экраном, то есть пропадала ровно
+          // та половина сравнения, ради которой всё и сделано. Ширина здесь
+          // фиксированная по содержимому (значок + два кружка + стрелка), и
+          // растянуть её нечем — поэтому масштабируем целиком: на большом
+          // экране размер прежний, на маленьком всё то же, только мельче.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: alignEnd
+                ? AlignmentDirectional.centerEnd
+                : AlignmentDirectional.centerStart,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: alignEnd ? items.reversed.toList() : items,
+            ),
           ),
         ),
       ),

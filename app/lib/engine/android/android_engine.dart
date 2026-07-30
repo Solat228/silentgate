@@ -1,3 +1,7 @@
+import '../windows/xray_stats.dart';
+import '../windows/singbox_stats.dart';
+import '../../core/models/traffic_stats.dart';
+import 'dart:math';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -40,6 +44,65 @@ class AndroidEngine extends VpnEngineBase {
     _events.receiveBroadcastStream().listen(_onNativeEvent);
   }
 
+  /// Порт и пароль Clash API — счётчиков трафика туннеля.
+  ///
+  /// ⚠️ Пароль генерируется на КАЖДУЮ сессию. На телефоне локальный порт видит
+  /// любое установленное приложение, а sing-box без `secret` отдаёт метаданные
+  /// соединений всем подряд и с CORS `*` — то есть и любой открытой странице.
+  static const _apiPort = 10085;
+  final String _apiSecret = _randomSecret();
+
+  static String _randomSecret() {
+    final rnd = Random.secure();
+    return List.generate(32, (_) => rnd.nextInt(16).toRadixString(16)).join();
+  }
+
+  Timer? _statsTimer;
+  XrayTrafficSnapshot _lastSnap = const XrayTrafficSnapshot(0, 0);
+  DateTime _lastSnapAt = DateTime.now();
+  bool _statsBusy = false;
+
+  /// Опрос счётчиков раз в секунду.
+  ///
+  /// ⚠️ Такт, в котором опрос не удался, ПРОПУСКАЕТСЯ целиком. Приехавший ноль
+  /// затёр бы базу, и на следующем удачном опросе скорость взлетела бы до
+  /// «весь трафик за одну секунду», а счётчик сессии удвоился. Ровно на этом
+  /// уже обжигались в Windows-движке.
+  void _startStatsPolling() {
+    _statsTimer?.cancel();
+    _lastSnap = const XrayTrafficSnapshot(0, 0);
+    _lastSnapAt = DateTime.now();
+    final stats = SingboxStats(apiPort: _apiPort, secret: _apiSecret);
+    _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      if (_statsBusy) return;
+      _statsBusy = true;
+      try {
+        final snap = await stats.query();
+        if (snap == null) return;
+        final now = DateTime.now();
+        final dt = now.difference(_lastSnapAt).inMilliseconds / 1000.0;
+        final up = dt > 0 ? ((snap.uplink - _lastSnap.uplink) / dt).round() : 0;
+        final down =
+            dt > 0 ? ((snap.downlink - _lastSnap.downlink) / dt).round() : 0;
+        _lastSnap = snap;
+        _lastSnapAt = now;
+        emitStats(TrafficStats(
+          uplinkBytes: snap.uplink,
+          downlinkBytes: snap.downlink,
+          uplinkSpeed: up < 0 ? 0 : up,
+          downlinkSpeed: down < 0 ? 0 : down,
+        ));
+      } finally {
+        _statsBusy = false;
+      }
+    });
+  }
+
+  void _stopStatsPolling() {
+    _statsTimer?.cancel();
+    _statsTimer = null;
+  }
+
   /// Порт инбаунда для проб. НЕ 10809: там при панельном профиле садится Xray,
   /// и совпадение порта не давало ядру стартовать вовсе.
   static const probeInboundPort = 10811;
@@ -80,6 +143,7 @@ class AndroidEngine extends VpnEngineBase {
       AppLog.i('Подхвачен туннель, поднятый прошлым запуском интерфейса');
       markConnected();
       setStatus(VpnConnectionState.connected);
+      _startStatsPolling();
     } catch (e) {
       AppLog.w('Не удалось спросить состояние туннеля: $e');
     }
@@ -154,6 +218,11 @@ class AndroidEngine extends VpnEngineBase {
           // диагностируется вообще.
           logOutput: '${(await AppPaths.supportDir()).path}'
               '${Platform.pathSeparator}singbox.log',
+          // Счётчики трафика туннеля: без них цифра под кнопкой стояла на нуле,
+          // что бы ни происходило. Пароль — на сессию: этот порт виден любому
+          // приложению на телефоне.
+          clashApiPort: _apiPort,
+          clashApiSecret: _apiSecret,
       );
       _liveOptions = liveOptions;
       _liveSplit = session.options.split;
@@ -194,6 +263,7 @@ class AndroidEngine extends VpnEngineBase {
 
       markConnected();
       setStatus(VpnConnectionState.connected);
+      _startStatsPolling();
     } on PlatformException catch (e) {
       _starting = false;
       // Отказ в согласии — не ошибка подключения, а решение пользователя:
@@ -251,6 +321,10 @@ class AndroidEngine extends VpnEngineBase {
 
   @override
   Future<void> teardownCore({bool keepCapture = false}) async {
+    // Ядро уходит — счётчики уходят вместе с ним. Иначе таймер продолжал бы
+    // раз в секунду стучаться в мёртвый порт, а на экране висели бы цифры
+    // прошлой сессии, выдавая себя за текущие.
+    _stopStatsPolling();
     // Kill switch: между попытками переподключения туннель ОСТАЁТСЯ поднятым,
     // но никуда не ведёт — трафик фейлится, а не утекает мимо VPN.
     //
