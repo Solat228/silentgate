@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "显示拦截页面",
+  "splitBlockPageNeedsVpn": "拦截页面仅在 VPN 开启时可用"
 }

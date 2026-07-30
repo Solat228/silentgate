@@ -1895,4 +1895,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value Mbps';
   }
+
+  @override
+  String get splitShowBlockPage => '显示拦截页面';
+
+  @override
+  String get splitBlockPageNeedsVpn => '拦截页面仅在 VPN 开启时可用';
 }

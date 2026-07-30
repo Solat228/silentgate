@@ -299,7 +299,20 @@ void main() {
         options: TunOptions(ipv6: false, strictRoute: false, endpointIndependentNat: false),
       ).buildMap(split);
       final tunOff = tunOf(off);
-      expect((tunOff['address'] as List), ['172.19.0.1/30']);
+      // ⚠️ Адрес IPv6 у туннеля теперь есть ВСЕГДА. Раньше при выключенном IPv6
+      // его не было — а значит не было и маршрута ::/0 в туннель, и такой
+      // трафик уходил мимо VPN под реальным адресом. Выключенная настройка
+      // означает не «не захватывать», а «захватить и отказать» (правило
+      // ip_version: 6 → reject ниже).
+      expect((tunOff['address'] as List),
+          ['172.19.0.1/30', 'fdfe:dcba:9876::1/126']);
+      expect(
+        (off['route']['rules'] as List)
+            .cast<Map<String, dynamic>>()
+            .any((r) => r['ip_version'] == 6 && r['action'] == 'reject'),
+        isTrue,
+        reason: 'захват без отказа означал бы, что IPv6 просто ходит в туннель',
+      );
       expect(tunOff['strict_route'], isFalse);
       expect(tunOff['endpoint_independent_nat'], isFalse);
       expect(tunOff.containsKey('route_exclude_address'), isFalse);

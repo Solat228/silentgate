@@ -1960,4 +1960,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value Mbit/s';
   }
+
+  @override
+  String get splitShowBlockPage => 'Sperrseite anzeigen';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'Die Sperrseite funktioniert nur bei aktivem VPN';
 }

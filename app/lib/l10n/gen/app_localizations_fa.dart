@@ -1942,4 +1942,11 @@ class AppLocalizationsFa extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value مگابیت بر ثانیه';
   }
+
+  @override
+  String get splitShowBlockPage => 'نمایش صفحهٔ مسدودسازی';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'صفحهٔ مسدودسازی فقط با VPN روشن کار می‌کند';
 }

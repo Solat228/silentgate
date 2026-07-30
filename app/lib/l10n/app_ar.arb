@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "عرض صفحة الحظر",
+  "splitBlockPageNeedsVpn": "صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا"
 }

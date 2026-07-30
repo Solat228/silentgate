@@ -1948,4 +1948,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value Мбит/с';
   }
+
+  @override
+  String get splitShowBlockPage => 'Показать страницу блокировки';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'Страница блокировки работает только при включённом VPN';
 }

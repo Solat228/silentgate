@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Sperrseite anzeigen",
+  "splitBlockPageNeedsVpn": "Die Sperrseite funktioniert nur bei aktivem VPN"
 }

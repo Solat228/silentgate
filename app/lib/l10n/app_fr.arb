@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Afficher la page de blocage",
+  "splitBlockPageNeedsVpn": "La page de blocage ne fonctionne que si le VPN est actif"
 }

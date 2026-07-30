@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "نمایش صفحهٔ مسدودسازی",
+  "splitBlockPageNeedsVpn": "صفحهٔ مسدودسازی فقط با VPN روشن کار می‌کند"
 }

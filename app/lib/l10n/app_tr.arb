@@ -647,5 +647,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Engelleme sayfasını göster",
+  "splitBlockPageNeedsVpn": "Engelleme sayfası yalnızca VPN açıkken çalışır"
 }

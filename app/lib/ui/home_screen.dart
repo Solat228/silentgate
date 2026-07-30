@@ -453,10 +453,26 @@ class _ConnectPane extends StatelessWidget {
                         alignEnd: true,
                       ),
                     ),
-                    _ConnectButton(
-                        status: status,
-                        onTap: () => connectWithConflictCheck(context, state,
-                            () => state.toggleConnection(settings))),
+                    // Имя активного сервера — ПОВЕРХ кнопки, а не отдельной
+                    // строкой: просьба владельца не менять расположение
+                    // элементов. Stack не занимает места в потоке, поэтому
+                    // кнопка и колонки проверок остаются там же, где были.
+                    Stack(
+                      alignment: Alignment.topCenter,
+                      clipBehavior: Clip.none,
+                      children: [
+                        _ConnectButton(
+                            status: status,
+                            onTap: () => connectWithConflictCheck(context, state,
+                                () => state.toggleConnection(settings))),
+                        if (status.isConnected)
+                          Positioned(
+                            top: -26,
+                            child: _ActiveServerLabel(
+                                name: state.selectedServer?.displayName),
+                          ),
+                      ],
+                    ),
                     Flexible(
                       child: ServiceChecksColumn(
                         services: ServiceChecksRow.rightColumn,
@@ -648,6 +664,36 @@ class _ServerPane extends StatefulWidget {
 class _ServerPaneState extends State<_ServerPane> {
   String _query = '';
 
+  /// Прокрутка к активному серверу при подключении.
+  ///
+  /// В списке из сотни строк выбранный сервер почти всегда за пределами экрана,
+  /// и после нажатия «Подключить» непонятно, что именно поднялось. Листаем к
+  /// нему сами — но ТОЛЬКО в момент подключения, иначе список дёргался бы под
+  /// рукой у пользователя, который его листает.
+  final _listCtrl = ScrollController();
+  bool _wasConnected = false;
+
+  /// Высота строки сервера. Считаем оценкой, а не измерением: у списка нет
+  /// фиксированного extent, а `ensureVisible` требует, чтобы элемент был уже
+  /// построен, — для сотого сервера это не так.
+  static const _rowExtent = 73.0;
+
+  @override
+  void dispose() {
+    _listCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSelected(List<int> shown, int selected) {
+    final pos = shown.indexOf(selected);
+    if (pos < 0 || !_listCtrl.hasClients) return;
+    final target = (pos * _rowExtent)
+        .clamp(0.0, _listCtrl.position.maxScrollExtent)
+        .toDouble();
+    _listCtrl.animateTo(target,
+        duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -657,6 +703,16 @@ class _ServerPaneState extends State<_ServerPane> {
     final servers = state.servers;
     // Индексы исходного списка: выбор сервера идёт по индексу в AppState.servers.
     final shown = ServerSearch.matchIndices(servers, _query);
+
+    // Момент подключения — единственный, когда листать уместно.
+    final connected = state.status.isConnected;
+    if (connected && !_wasConnected) {
+      final sel = state.selectedIndex;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scrollToSelected(shown, sel);
+      });
+    }
+    _wasConnected = connected;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -707,6 +763,7 @@ class _ServerPaneState extends State<_ServerPane> {
             child: shown.isEmpty
                 ? Center(child: Text(l.homeNothingFound))
                 : ListView.separated(
+                    controller: _listCtrl,
                     itemCount: shown.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
@@ -721,6 +778,51 @@ class _ServerPaneState extends State<_ServerPane> {
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Подпись «какой сервер сейчас включён» — плашкой над кнопкой.
+///
+/// Показывается только при живом подключении: до него имя ничего не значит, а
+/// место занимало бы. Флаг рисуется картинкой и вырезается из текста — иначе
+/// на Windows он выглядел бы чёрным прямоугольником и дублировался.
+class _ActiveServerLabel extends StatelessWidget {
+  const _ActiveServerLabel({required this.name});
+
+  final String? name;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = name;
+    if (n == null || n.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    return IgnorePointer(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          FlagCell(n, width: 20, height: 14),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              FlagUtil.strip(n),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelMedium
+                  ?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ]),
+      ),
     );
   }
 }

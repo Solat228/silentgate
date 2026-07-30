@@ -1949,4 +1949,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value Mbit/sn';
   }
+
+  @override
+  String get splitShowBlockPage => 'Engelleme sayfasını göster';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'Engelleme sayfası yalnızca VPN açıkken çalışır';
 }

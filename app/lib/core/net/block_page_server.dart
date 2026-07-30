@@ -83,11 +83,29 @@ class BlockPageServer {
     } catch (_) {}
   }
 
+  /// Прямая ссылка на заглушку для домена — в обход браузерного повышения.
+  ///
+  /// ⚠️ Зачем нужна. Перехватывается только plain HTTP, а браузеры давно
+  /// повышают `http://` до `https://` сами (HSTS, HTTPS-First). Пользователь
+  /// набирает адрес заблокированного сайта, браузер молча уходит на 443, там
+  /// его встречает `reject` — и вместо объяснения человек видит обычную ошибку
+  /// соединения. На петлю это повышение не распространяется: у `127.0.0.1`
+  /// нет и не может быть HSTS-политики.
+  static String? urlFor(String domain) {
+    final port = _current?.port ?? 0;
+    if (port <= 0) return null;
+    return 'http://127.0.0.1:$port/?host=${Uri.encodeComponent(domain)}';
+  }
+
   void _handle(HttpRequest req, BlockPageTexts t) {
     try {
       // Заголовок Host — это тот адрес, который набрал пользователь; сокет
-      // ведёт на петлю и имени домена не знает.
-      final host = _hostOnly(req.headers.host ?? req.uri.host);
+      // ведёт на петлю и имени домена не знает. При заходе ПО ПРЯМОЙ ССЫЛКЕ
+      // (кнопка в правилах) домен приходит параметром: иначе на странице стояло
+      // бы «127.0.0.1» и объяснение теряло бы смысл.
+      final host = _hostOnly(req.uri.queryParameters['host'] ??
+          req.headers.host ??
+          req.uri.host);
       req.response
         ..statusCode = HttpStatus.forbidden
         // Никакого кеша: разблокировав сайт, пользователь должен увидеть его

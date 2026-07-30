@@ -673,7 +673,9 @@ void main() {
 
     test('DNS всех приложений через VPN — требует', () {
       const a = AppSettings();
-      expect(a.requiresReconnect(a.copyWith(tunnelDnsForAll: false)), isTrue);
+      // Умолчание теперь «выключено» (DNS прямого трафика резолвится локально —
+      // это втрое быстрее, замерено), поэтому переключаем в true.
+      expect(a.requiresReconnect(a.copyWith(tunnelDnsForAll: true)), isTrue);
     });
 
     for (final e in <String, AppSettings Function(AppSettings)>{

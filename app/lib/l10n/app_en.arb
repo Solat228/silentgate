@@ -708,5 +708,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Show the block page",
+  "splitBlockPageNeedsVpn": "The block page only works while the VPN is on"
 }

@@ -3527,6 +3527,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{value} Мбит/с'**
   String autoSpeedValue(String value);
+
+  /// No description provided for @splitShowBlockPage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать страницу блокировки'**
+  String get splitShowBlockPage;
+
+  /// No description provided for @splitBlockPageNeedsVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Страница блокировки работает только при включённом VPN'**
+  String get splitBlockPageNeedsVpn;
 }
 
 class _AppLocalizationsDelegate

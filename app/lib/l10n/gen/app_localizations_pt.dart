@@ -1964,4 +1964,11 @@ class AppLocalizationsPt extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value Mbit/s';
   }
+
+  @override
+  String get splitShowBlockPage => 'Mostrar a página de bloqueio';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'A página de bloqueio só funciona com a VPN ativa';
 }

@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
+import '../core/platform/app_launcher.dart';
+import '../core/net/block_page_server.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
@@ -319,6 +321,29 @@ class SplitTunnelScreen extends StatelessWidget {
           noRealIp: controller.settings.noRealIp),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         _ActionChip(action: site.action),
+        // Показать заглушку вручную.
+        //
+        // ⚠️ Иначе увидеть её почти невозможно: перехватывается только plain
+        // HTTP, а браузеры повышают http до https сами (HSTS, HTTPS-First).
+        // Пользователь набирает адрес — браузер молча уходит на 443, где его
+        // ждёт reject, и вместо объяснения человек видит обычную ошибку
+        // соединения. Ссылка на петлю таким повышением не затрагивается.
+        if (site.action == AppAction.block &&
+            controller.settings.blockPageEnabled)
+          IconButton(
+            tooltip: l.splitShowBlockPage,
+            icon: const Icon(Icons.open_in_new),
+            onPressed: () {
+              final url = BlockPageServer.urlFor(site.domain);
+              if (url == null) {
+                // Сервер заглушки живёт только при поднятом туннеле.
+                AppToast.show(context, l.splitBlockPageNeedsVpn,
+                    kind: ToastKind.info);
+                return;
+              }
+              UrlOpener.open(url);
+            },
+          ),
         IconButton(
           tooltip: l.splitRemove,
           icon: const Icon(Icons.delete_outline),

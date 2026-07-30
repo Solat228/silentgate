@@ -1936,4 +1936,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String autoSpeedValue(String value) {
     return '$value ميغابت/ث';
   }
+
+  @override
+  String get splitShowBlockPage => 'عرض صفحة الحظر';
+
+  @override
+  String get splitBlockPageNeedsVpn =>
+      'صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا';
 }

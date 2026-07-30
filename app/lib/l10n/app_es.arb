@@ -708,5 +708,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Mostrar la página de bloqueo",
+  "splitBlockPageNeedsVpn": "La página de bloqueo solo funciona con la VPN activa"
 }

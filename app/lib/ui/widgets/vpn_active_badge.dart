@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import '../../core/util/country_flag.dart';
 import '../../state/app_state.dart';
+import 'flag_cell.dart';
 
 /// Считает глубину стека навигации, чтобы индикатор VPN показывался только
 /// ПОВЕРХ вложенных экранов (настройки, логи, раздельное туннелирование…).
@@ -122,34 +124,47 @@ class _Badge extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 360),
+                  constraints: const BoxConstraints(maxWidth: 460),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     // Слегка прозрачный фон: под плашкой остаётся видно контент.
-                    color: scheme.inverseSurface.withValues(alpha: 0.88),
+                    color: scheme.inverseSurface.withValues(alpha: 0.9),
                     borderRadius: BorderRadius.circular(999),
                   ),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     Container(
-                      width: 8,
-                      height: 8,
+                      width: 11,
+                      height: 11,
                       decoration: const BoxDecoration(
                         color: Color(0xFF4ADE80),
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
+                    // Флаг страны — картинкой, а не эмодзи в тексте.
+                    //
+                    // ⚠️ Имя сервера от панели начинается с флага-эмодзи
+                    // («🇺🇸🚀USA 1.5»), а Windows их рисует чёрно-белым
+                    // прямоугольником или вовсе квадратом. Тот же приём уже
+                    // применён в списке серверов: флаг вынимается в картинку,
+                    // а из подписи вырезается (`FlagUtil.strip`), иначе он
+                    // задвоился бы.
+                    if (server != null && server.isNotEmpty) ...[
+                      FlagCell(server, width: 24, height: 17),
+                      const SizedBox(width: 8),
+                    ],
                     Flexible(
                       child: Text(
                         server == null || server.isEmpty
                             ? l.vpnActiveBadge
-                            : '${l.vpnActiveBadge} · $server',
+                            : '${l.vpnActiveBadge} · ${FlagUtil.strip(server)}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        textDirection: TextDirection.ltr,
                         style: Theme.of(context)
                             .textTheme
-                            .labelMedium
+                            .titleSmall
                             ?.copyWith(color: scheme.onInverseSurface),
                       ),
                     ),

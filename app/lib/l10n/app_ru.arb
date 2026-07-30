@@ -858,5 +858,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitShowBlockPage": "Показать страницу блокировки",
+  "splitBlockPageNeedsVpn": "Страница блокировки работает только при включённом VPN"
 }
