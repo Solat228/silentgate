@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
@@ -212,6 +213,7 @@ class AndroidEngine extends VpnEngineBase {
           // есть домен не отрезолвится: лучше знать об этом из лога, чем
           // молча получить «сайт не открывается».
           directDnsUpstream: await _directDns(),
+          ipv6Available: await _ipv6Reality(),
           // Ядро пишет свой лог САМО: перехватить его вывод здесь нечем —
           // это библиотека в нашем процессе, а redirectStderr ловит только
           // паники Go. Без этого «туннель поднят, трафика нет» не
@@ -408,6 +410,20 @@ class AndroidEngine extends VpnEngineBase {
   /// резолвятся ВООБЩЕ. Проверено живым запуском в эмуляторе: сайт «Туннель»
   /// открывался, «Блок» блокировался, а «Прямо» отвечал «No address
   /// associated with hostname». Тот же дефект чинили на Windows.
+  /// Реальность IPv6: есть ли он наружу.
+  ///
+  /// Логируем РЕШЕНИЕ, а не только факт: молчаливое урезание возможностей —
+  /// худший вид поведения. Пользователь включил IPv6 в настройках, а получил
+  /// туннель без него — он должен видеть, почему.
+  static Future<bool> _ipv6Reality() async {
+    final has = await Ipv6Support.hasGlobalIpv6();
+    if (!has) {
+      AppLog.i('IPv6 наружу не найден — в туннеле он выключен, иначе '
+          'двустековые сайты упирались бы в «unreachable network»');
+    }
+    return has;
+  }
+
   static Future<String?> _directDns() async {
     try {
       final dns = await const MethodChannel('lol.silentgate/device')

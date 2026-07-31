@@ -151,6 +151,7 @@ class TunOptions {
     int blockPagePort = 0,
     int clashApiPort = 0,
     String clashApiSecret = '',
+    bool ipv6Available = true,
   }) {
     return TunOptions(
       blockPagePort: blockPagePort,
@@ -164,7 +165,15 @@ class TunOptions {
       stack: s.tunStack.singboxValue,
       mtu: s.tunMtu,
       strictRoute: s.tunStrictRoute,
-      ipv6: s.tunIpv6,
+      // ⚠️ IPv6 в туннеле включается, только если он есть НАРУЖУ.
+      //
+      // Иначе туннель объявляет себя IPv6-способным, приложения получают AAAA и
+      // идут по IPv6, а ядро упирается в «unreachable network» на каждом
+      // двустековом сайте. Снаружи это выглядит как «всё зависает, хотя блока
+      // нет»: страницы открываются через секунды или не открываются вовсе.
+      // Проверено живьём в VM без IPv6 — настоящий браузер получал
+      // ERR_CONNECTION_RESET, а с выключенным IPv6 грузил страницу.
+      ipv6: s.tunIpv6 && ipv6Available,
       endpointIndependentNat: s.tunEndpointIndependentNat,
       bypassLan: s.tunBypassLan,
       excludeCidrs: s.tunExcludeCidrs,

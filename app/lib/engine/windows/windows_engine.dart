@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'adapter_dns_windows.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
@@ -192,6 +193,7 @@ class WindowsEngine extends VpnEngineBase {
             // Снимаем ДО подъёма туннеля: после него системный резолвер уже
             // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.
             directDnsUpstream: await _systemDnsServer(),
+            ipv6Available: await _ipv6Reality(),
           ),
           // Автоподбор стека/MTU может занять время — показываем, что происходит
           // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
@@ -366,6 +368,20 @@ class WindowsEngine extends VpnEngineBase {
   /// собственным адресам (172.19.0.x / fdfe:dcba:9876::), а не по имени: имя
   /// адаптера на Windows приходит не то — на этом уже обжигались в 0.8.3.
   /// Не нашли — `null`, поведение остаётся прежним.
+  /// Реальность IPv6: есть ли он наружу.
+  ///
+  /// Логируем РЕШЕНИЕ, а не только факт: молчаливое урезание возможностей —
+  /// худший вид поведения. Пользователь включил IPv6 в настройках, а получил
+  /// туннель без него: он должен видеть, почему.
+  Future<bool> _ipv6Reality() async {
+    final has = await Ipv6Support.hasGlobalIpv6();
+    if (!has) {
+      AppLog.i('IPv6 наружу не найден — в туннеле он выключен, иначе '
+          'двустековые сайты упирались бы в «unreachable network»');
+    }
+    return has;
+  }
+
   Future<String?> _systemDnsServer() async {
     try {
       // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
