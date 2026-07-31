@@ -384,6 +384,46 @@ class WindowsEngine extends VpnEngineBase {
     return has;
   }
 
+  /// Отвечает ли DNS-сервер. Проверяем ДО подъёма туннеля — потом поздно.
+  ///
+  /// Обычный запрос A-записи по UDP: если за отведённое время ответа нет,
+  /// резолвер считаем непригодным. Секунды хватает — это адрес из локальной
+  /// сети или адрес провайдера, дальше идти не нужно.
+  static Future<bool> _dnsReachable(String ip) async {
+    RawDatagramSocket? sock;
+    try {
+      final addr = InternetAddress.tryParse(ip);
+      if (addr == null) return false;
+      sock = await RawDatagramSocket.bind(
+          addr.type == InternetAddressType.IPv6
+              ? InternetAddress.anyIPv6
+              : InternetAddress.anyIPv4,
+          0);
+      // Минимальный запрос: A-запись для example.com.
+      final query = <int>[
+        0x12, 0x34, // id
+        0x01, 0x00, // стандартный запрос, рекурсия
+        0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        7, ...'example'.codeUnits, 3, ...'com'.codeUnits, 0,
+        0x00, 0x01, 0x00, 0x01,
+      ];
+      sock.send(query, addr, 53);
+      final got = Completer<bool>();
+      sock.listen((e) {
+        if (e == RawSocketEvent.read && !got.isCompleted) {
+          final d = sock?.receive();
+          if (d != null && d.data.length > 2) got.complete(true);
+        }
+      });
+      return await got.future
+          .timeout(const Duration(seconds: 2), onTimeout: () => false);
+    } catch (_) {
+      return false;
+    } finally {
+      sock?.close();
+    }
+  }
+
   Future<String?> _systemDnsServer() async {
     try {
       // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
@@ -396,13 +436,29 @@ class WindowsEngine extends VpnEngineBase {
           .where((e) => !e.startsWith('fdfe:dcba:9876'))
           .where((e) => e != '0.0.0.0' && e != '127.0.0.1' && e != '::1')
           .toList();
+
+      // ⚠️ Мало НАЙТИ адрес — надо убедиться, что он отвечает.
+      //
+      // Система охотно отдаёт DNS виртуальных адаптеров (Hyper-V, WSL, Docker).
+      // В тестовой VM первым шёл 172.19.128.1 с адаптера Hyper-V: адрес есть,
+      // порт 53 закрыт наглухо. Взяв его, мы получали резолвер, который не
+      // отвечает никогда, и КАЖДЫЙ домен с правилом «Прямо» переставал
+      // открываться — притом что настройка выглядела рабочей.
+      for (final ip in list) {
+        if (await _dnsReachable(ip)) {
+          AppLog.i('Резолвер для «Прямо»: $ip');
+          return ip;
+        }
+        AppLog.w('DNS $ip не отвечает — пробую следующий');
+      }
       if (list.isEmpty) {
         AppLog.w('DNS физического адаптера не найден — домены «Прямо» '
             'будут резолвиться системным резолвером');
         return null;
       }
-      AppLog.i('Резолвер для «Прямо»: ${list.first}');
-      return list.first;
+      AppLog.w('Ни один DNS адаптера не ответил — «Прямо» пойдёт системным '
+          'резолвером, и домены могут не открыться');
+      return null;
     } catch (e) {
       AppLog.w('Не удалось определить DNS адаптера: $e');
       return null;
