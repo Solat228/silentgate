@@ -2000,4 +2000,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'Tant qu\'il existe au moins une règle de site, l\'application désactive HTTP/3 (QUIC) pour tout le trafic. Sinon le navigateur passe en HTTP/3, ne laisse pas le nom du site et la règle échoue silencieusement. Les sites continuent de fonctionner : ils reviennent au TLS classique, un peu plus lentement.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '« Ne jamais utiliser mon IP réelle » est actif : les règles « Direct » sans la case cochée passent par le VPN';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'Concerne les règles « Direct » : sans la case « autoriser l’IP réelle », elles passent par le VPN';
+
+  @override
+  String get splitAppOverrideSites => 'Prioritaire sur les règles de sites';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'Tout le trafic de l’application suit cette règle, même si un site indique le contraire';
+
+  @override
+  String get settingsMyRulesOverridePanel =>
+      'Mes règles priment sur celles du panneau';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'Le panneau fournit son propre routage, en général « les sites locaux évitent le VPN ». Il s’applique après vos règles : un site marqué « Tunnel » peut donc sortir en direct avec votre IP réelle. Activé : tunnel veut dire tunnel. Coût : les sites locaux font un détour et ralentissent.';
 }

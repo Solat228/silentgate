@@ -1983,4 +1983,26 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      'Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN';
+
+  @override
+  String get splitAppOverrideSites => 'Важнее правил по сайтам';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'Весь трафик приложения идёт как указано, даже если для сайта задано другое';
+
+  @override
+  String get settingsMyRulesOverridePanel => 'Мои правила важнее правил панели';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'Панель отдаёт своё разделение — обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» — значит туннель. Цена: российские сайты пойдут кругом и медленнее.';
 }

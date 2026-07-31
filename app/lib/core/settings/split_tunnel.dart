@@ -67,22 +67,38 @@ class AppRule {
   /// См. [SiteRule.allowRealIp].
   final bool allowRealIp;
 
+  /// Это приложение важнее правил по сайтам.
+  ///
+  /// По умолчанию правило сайта конкретнее и потому сильнее: «весь Telegram в
+  /// туннель» + «nalog.ru напрямую» = налоговая из Telegram идёт напрямую.
+  /// Обычно так и надо. Но бывает наоборот: приложение целиком обязано ходить
+  /// одним путём, и исключения по сайтам ему только вредят — например,
+  /// мессенджер, который должен работать ТОЛЬКО через VPN, что бы ни было в
+  /// списке сайтов. Галочка поднимает правило этого приложения ВЫШЕ доменных.
+  final bool overrideSites;
+
   const AppRule(this.path,
       {this.byName = false,
       this.action = AppAction.direct,
       this.enabled = true,
-      this.allowRealIp = true});
+      this.allowRealIp = true,
+      this.overrideSites = false});
 
   String get name => path.split(r'\').last;
 
   AppRule copyWith(
-          {bool? byName, AppAction? action, bool? enabled, bool? allowRealIp}) =>
+          {bool? byName,
+          AppAction? action,
+          bool? enabled,
+          bool? allowRealIp,
+          bool? overrideSites}) =>
       AppRule(
         path,
         byName: byName ?? this.byName,
         action: action ?? this.action,
         enabled: enabled ?? this.enabled,
         allowRealIp: allowRealIp ?? this.allowRealIp,
+        overrideSites: overrideSites ?? this.overrideSites,
       );
 
   Map<String, dynamic> toJson() => {
@@ -91,6 +107,7 @@ class AppRule {
         'action': action.name,
         'enabled': enabled,
         'allowRealIp': allowRealIp,
+        'overrideSites': overrideSites,
       };
 
   factory AppRule.fromJson(Object? j, {AppAction fallback = AppAction.direct}) {
@@ -105,6 +122,9 @@ class AppRule {
         // перекрывал их. Поднимаем им флаг: пользователь ставил «Прямо» именно
         // ради прямого выхода.
         allowRealIp: j['allowRealIp'] as bool? ?? true,
+        // Умолчание false — прежний порядок: правило сайта конкретнее и
+        // потому сильнее. Старые правила своего смысла не меняют.
+        overrideSites: j['overrideSites'] as bool? ?? false,
       );
     }
     return const AppRule('');

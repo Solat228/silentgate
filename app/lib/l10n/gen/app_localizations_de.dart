@@ -1995,4 +1995,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'Solange mindestens eine Site-Regel existiert, deaktiviert die App HTTP/3 (QUIC) für den gesamten Verkehr. Sonst wechselt der Browser zu HTTP/3, hinterlässt keinen Site-Namen und die Regel greift stillschweigend nicht. Seiten funktionieren weiter: Sie fallen auf normales TLS zurück, nur etwas langsamer.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '„Nie mit echter IP“ ist aktiv: „Direkt“-Regeln ohne Häkchen laufen über das VPN';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'Betrifft „Direkt“-Regeln: ohne Häkchen „echte IP erlauben“ laufen sie über das VPN';
+
+  @override
+  String get splitAppOverrideSites => 'Hat Vorrang vor Site-Regeln';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'Der gesamte App-Verkehr folgt dieser Regel, auch wenn eine Site-Regel anderes sagt';
+
+  @override
+  String get settingsMyRulesOverridePanel =>
+      'Meine Regeln haben Vorrang vor Panel-Regeln';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.';
 }

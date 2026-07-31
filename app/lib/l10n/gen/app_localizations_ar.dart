@@ -1971,4 +1971,26 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'ما دامت هناك قاعدة موقع واحدة على الأقل، يعطّل التطبيق HTTP/3 (QUIC) لكل حركة المرور. وإلا ينتقل المتصفح إلى HTTP/3 ولا يترك اسم الموقع، فتفشل القاعدة بصمت. المواقع تظل تعمل: تعود إلى TLS العادي، أبطأ قليلًا فقط.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '«لا تستخدم عنواني الحقيقي» مُفعَّل: قواعد «مباشر» بلا علامة تمر عبر VPN';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'يؤثر على قواعد «مباشر»: بدون خيار «السماح بالعنوان الحقيقي» ستمر عبر VPN';
+
+  @override
+  String get splitAppOverrideSites => 'أولوية على قواعد المواقع';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'كل حركة التطبيق تتبع هذه القاعدة حتى لو قال موقع غير ذلك';
+
+  @override
+  String get settingsMyRulesOverridePanel => 'قواعدي أهم من قواعد اللوحة';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'ترسل اللوحة توجيهها الخاص، عادةً «المواقع المحلية خارج VPN». يُطبَّق بعد قواعدك، لذا قد يخرج موقع وسمته «نفق» مباشرةً بعنوانك الحقيقي. مُفعَّل: النفق يعني النفق. الثمن: المواقع المحلية تسلك طريقًا أطول وتبطؤ.';
 }

@@ -1999,4 +1999,27 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'Enquanto houver ao menos uma regra de site, o aplicativo desativa HTTP/3 (QUIC) para todo o tráfego. Caso contrário, o navegador passa a HTTP/3, não deixa o nome do site e a regra falha em silêncio. Os sites continuam funcionando: voltam ao TLS comum, apenas um pouco mais lentos.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '«Nunca usar meu IP real» está ligado: regras «Direto» sem a caixa marcada vão pela VPN';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'Afeta as regras «Direto»: sem a caixa «permitir IP real» elas vão pela VPN';
+
+  @override
+  String get splitAppOverrideSites => 'Tem prioridade sobre regras de sites';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'Todo o tráfego do aplicativo segue esta regra mesmo se um site disser o contrário';
+
+  @override
+  String get settingsMyRulesOverridePanel =>
+      'Minhas regras têm prioridade sobre as do painel';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'O painel traz o próprio roteamento, normalmente «sites locais fora da VPN». Ele se aplica depois das suas regras, então um site marcado «Túnel» pode sair direto com seu IP real. Ligado: túnel significa túnel. Custo: sites locais dão a volta e ficam mais lentos.';
 }

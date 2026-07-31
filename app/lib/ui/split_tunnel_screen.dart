@@ -63,6 +63,30 @@ class SplitTunnelScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // ⚠️ Пока «Не выходить под реальным IP» включено, часть
+                  // правил «Прямо» работает не так, как написано в строке.
+                  // Молчать об этом нельзя: человек видит «Прямо» и считает,
+                  // что трафик идёт прямо.
+                  if (controller.settings.noRealIp)
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .tertiaryContainer
+                            .withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(children: [
+                        const Icon(Icons.shield_outlined, size: 18),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: SelText(l.splitNoRealIpBanner,
+                              style: Theme.of(context).textTheme.bodySmall),
+                        ),
+                      ]),
+                    ),
                   _header(context, l.splitModeHeader, l.infoSplitMode),
                   ...SplitMode.values.map((m) => RadioListTile<SplitMode>(
                         value: m,
@@ -270,7 +294,11 @@ class SplitTunnelScreen extends StatelessWidget {
   }
 
   void _updateApp(SettingsController c, AppRule rule,
-      {AppAction? action, bool? byName, bool? enabled, bool? allowRealIp}) {
+      {AppAction? action,
+      bool? byName,
+      bool? enabled,
+      bool? allowRealIp,
+      bool? overrideSites}) {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
             apps: s.splitTunnel.apps
@@ -279,7 +307,8 @@ class SplitTunnelScreen extends StatelessWidget {
                         action: action,
                         byName: byName,
                         enabled: enabled,
-                        allowRealIp: allowRealIp)
+                        allowRealIp: allowRealIp,
+                        overrideSites: overrideSites)
                     : a)
                 .toList())));
   }
@@ -446,9 +475,12 @@ class SplitTunnelScreen extends StatelessWidget {
         action: rule.action,
         byName: rule.byName,
         allowRealIp: c.settings.noRealIp ? rule.allowRealIp : null,
+        // Только у приложений: у сайта переопределять нечего.
+        overrideSites: rule.overrideSites,
         onAction: (a) => _updateApp(c, rule, action: a),
         onByName: (b) => _updateApp(c, rule, byName: b),
         onAllowRealIp: (v) => _updateApp(c, rule, allowRealIp: v),
+        onOverrideSites: (v) => _updateApp(c, rule, overrideSites: v),
       ),
     );
   }
@@ -658,6 +690,10 @@ class _RuleDialog extends StatefulWidget {
   final bool? allowRealIp;
   final ValueChanged<bool>? onAllowRealIp;
 
+  /// Приложение важнее правил по сайтам. null — запись без этой опции (сайт).
+  final bool? overrideSites;
+  final ValueChanged<bool>? onOverrideSites;
+
   const _RuleDialog({
     required this.title,
     required this.action,
@@ -669,6 +705,8 @@ class _RuleDialog extends StatefulWidget {
     this.onPort,
     this.allowRealIp,
     this.onAllowRealIp,
+    this.overrideSites,
+    this.onOverrideSites,
   });
 
   @override
@@ -679,6 +717,8 @@ class _RuleDialogState extends State<_RuleDialog> {
   late AppAction _action = widget.action;
   late bool _byName = widget.byName ?? true;
   late bool _allowRealIp = widget.allowRealIp ?? true;
+
+  late bool _overrideSites = widget.overrideSites ?? false;
   late final TextEditingController _port =
       TextEditingController(text: widget.initialPort?.toString() ?? '');
   String? _portError;
@@ -763,6 +803,23 @@ class _RuleDialogState extends State<_RuleDialog> {
               subtitle: Text(_allowRealIp
                   ? l.splitAllowRealIpOn
                   : l.splitAllowRealIpOff),
+            ),
+          ],
+          // Переопределение приоритета: по умолчанию правило сайта конкретнее и
+          // потому сильнее. Здесь это можно перевернуть для конкретного
+          // приложения — когда оно обязано ходить одним путём целиком.
+          if (widget.overrideSites != null) ...[
+            const Divider(),
+            SwitchListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: _overrideSites,
+              onChanged: (v) {
+                setState(() => _overrideSites = v);
+                widget.onOverrideSites?.call(v);
+              },
+              title: Text(l.splitAppOverrideSites),
+              subtitle: Text(l.splitAppOverrideSitesSub),
             ),
           ],
           if (widget.onPort != null) ...[

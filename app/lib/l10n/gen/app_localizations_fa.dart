@@ -1976,4 +1976,27 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'تا زمانی که دست‌کم یک قانون سایت وجود دارد، برنامه HTTP/3 (QUIC) را برای همهٔ ترافیک خاموش می‌کند. وگرنه مرورگر به HTTP/3 می‌رود، نام سایت را نمی‌گذارد و قانون بی‌صدا کار نمی‌کند. سایت‌ها خراب نمی‌شوند: به TLS معمولی برمی‌گردند، فقط اندکی کندتر.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '«هرگز با IP واقعی من» روشن است: قوانین «مستقیم» بدون تیک از راه VPN می‌روند';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      'بر قوانین «مستقیم» اثر دارد: بدون تیک «اجازهٔ IP واقعی» از راه VPN می‌روند';
+
+  @override
+  String get splitAppOverrideSites => 'بر قوانین سایت اولویت دارد';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'همهٔ ترافیک برنامه از این قانون پیروی می‌کند، حتی اگر قانون سایتی خلافش بگوید';
+
+  @override
+  String get settingsMyRulesOverridePanel =>
+      'قوانین من مهم‌تر از قوانین پنل است';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'پنل مسیریابی خودش را می‌فرستد، معمولاً «سایت‌های محلی بیرون از VPN». پس از قوانین شما اعمال می‌شود، پس سایتی که «تونل» زده‌اید ممکن است مستقیم و با IP واقعی بیرون برود. روشن: تونل یعنی تونل. بها: سایت‌های محلی راه دورتر می‌روند و کندتر می‌شوند.';
 }

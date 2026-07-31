@@ -298,7 +298,13 @@ abstract class VpnEngineBase implements VpnEngine {
         // (RU-routing). Если пользователь хочет «Всё через VPN» ИЛИ включил «не
         // выходить под реальным IP» — переписываем внутренний direct → через VPN.
         final s = options.settings;
-        if (s.splitTunnel.mode == SplitMode.all || s.noRealIp) {
+        // Третий случай — настройка «мои правила важнее правил панели». Без неё
+        // сайт, помеченный «Туннель», панель может выпустить напрямую под
+        // реальным IP, и понять это по интерфейсу нельзя: чип показывает
+        // «Туннель», а трафик идёт мимо.
+        if (s.splitTunnel.mode == SplitMode.all ||
+            s.noRealIp ||
+            s.myRulesOverridePanel) {
           json = rerouteDirectThroughVpn(json);
         }
         final norm = normalizeOverridePorts(json,

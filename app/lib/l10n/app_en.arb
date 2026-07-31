@@ -724,5 +724,11 @@
       }
     }
   },
-  "splitQuicNote": "While at least one site rule exists, the app disables HTTP/3 (QUIC) for all traffic. Otherwise the browser switches to HTTP/3, leaves no site name, and the rule silently fails — traffic bypasses it. Sites keep working: they fall back to regular TLS, just slightly slower."
+  "splitQuicNote": "While at least one site rule exists, the app disables HTTP/3 (QUIC) for all traffic. Otherwise the browser switches to HTTP/3, leaves no site name, and the rule silently fails — traffic bypasses it. Sites keep working: they fall back to regular TLS, just slightly slower.",
+  "splitNoRealIpBanner": "“Never use my real IP” is on: “Direct” rules without the real-IP checkbox go through the VPN",
+  "settingsNoRealIpAffects": "Affects “Direct” rules: without the “allow real IP” checkbox they go through the VPN",
+  "splitAppOverrideSites": "Takes priority over site rules",
+  "splitAppOverrideSitesSub": "All app traffic follows this rule even if a site rule says otherwise",
+  "settingsMyRulesOverridePanel": "My rules take priority over panel rules",
+  "settingsMyRulesOverridePanelSub": "The panel ships its own routing — usually “local sites bypass the VPN”. It applies after your rules, so a site you marked “Tunnel” may still exit directly under your real IP. On: tunnel means tunnel. Cost: local sites take the long way and get slower."
 }

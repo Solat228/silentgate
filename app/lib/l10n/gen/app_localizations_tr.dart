@@ -1984,4 +1984,27 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitQuicNote =>
       'En az bir site kuralı varken uygulama tüm trafik için HTTP/3 (QUIC) kapatır. Aksi hâlde tarayıcı HTTP/3’e geçer, site adını bırakmaz ve kural sessizce çalışmaz. Siteler bozulmaz: sıradan TLS’e döner, yalnızca biraz yavaşlar.';
+
+  @override
+  String get splitNoRealIpBanner =>
+      '«Gerçek IP’mi asla kullanma» açık: kutusu işaretsiz «Doğrudan» kuralları VPN üzerinden gider';
+
+  @override
+  String get settingsNoRealIpAffects =>
+      '«Doğrudan» kurallarını etkiler: «gerçek IP’ye izin ver» kutusu işaretsizse VPN üzerinden giderler';
+
+  @override
+  String get splitAppOverrideSites => 'Site kurallarından önceliklidir';
+
+  @override
+  String get splitAppOverrideSitesSub =>
+      'Bir site kuralı aksini söylese bile uygulamanın tüm trafiği bu kurala uyar';
+
+  @override
+  String get settingsMyRulesOverridePanel =>
+      'Kurallarım panel kurallarından öncelikli';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      'Panel kendi yönlendirmesini gönderir, genelde «yerel siteler VPN’siz». Bu, sizin kurallarınızdan sonra uygulanır; «Tünel» işaretli bir site yine de gerçek IP’nizle doğrudan çıkabilir. Açık: tünel tüneldir. Bedeli: yerel siteler dolaşır ve yavaşlar.';
 }

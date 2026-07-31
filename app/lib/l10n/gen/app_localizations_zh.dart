@@ -1927,4 +1927,23 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get splitQuicNote =>
       '只要存在至少一条网站规则，应用就会为所有流量关闭 HTTP/3（QUIC）。否则浏览器会改用 HTTP/3，不留下网站名称，规则便会悄无声息地失效。网站仍可访问：会回退到普通 TLS，只是稍慢一些。';
+
+  @override
+  String get splitNoRealIpBanner => '“绝不使用真实 IP”已开启：未勾选的“直连”规则将走 VPN';
+
+  @override
+  String get settingsNoRealIpAffects => '影响“直连”规则：未勾选“允许真实 IP”时它们会走 VPN';
+
+  @override
+  String get splitAppOverrideSites => '优先于网站规则';
+
+  @override
+  String get splitAppOverrideSitesSub => '该应用的全部流量都按此规则走，即使某个网站规则另有规定';
+
+  @override
+  String get settingsMyRulesOverridePanel => '我的规则优先于面板规则';
+
+  @override
+  String get settingsMyRulesOverridePanelSub =>
+      '面板会下发自己的分流，通常是“本地站点绕过 VPN”。它在你的规则之后生效，因此被你标为“隧道”的网站仍可能以真实 IP 直连出去。开启后：写了隧道就是隧道。代价：本地站点绕远，速度变慢。';
 }

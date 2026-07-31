@@ -3581,6 +3581,42 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.'**
   String get splitQuicNote;
+
+  /// No description provided for @splitNoRealIpBanner.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN'**
+  String get splitNoRealIpBanner;
+
+  /// No description provided for @settingsNoRealIpAffects.
+  ///
+  /// In ru, this message translates to:
+  /// **'Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN'**
+  String get settingsNoRealIpAffects;
+
+  /// No description provided for @splitAppOverrideSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Важнее правил по сайтам'**
+  String get splitAppOverrideSites;
+
+  /// No description provided for @splitAppOverrideSitesSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Весь трафик приложения идёт как указано, даже если для сайта задано другое'**
+  String get splitAppOverrideSitesSub;
+
+  /// No description provided for @settingsMyRulesOverridePanel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мои правила важнее правил панели'**
+  String get settingsMyRulesOverridePanel;
+
+  /// No description provided for @settingsMyRulesOverridePanelSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Панель отдаёт своё разделение — обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» — значит туннель. Цена: российские сайты пойдут кругом и медленнее.'**
+  String get settingsMyRulesOverridePanelSub;
 }
 
 class _AppLocalizationsDelegate

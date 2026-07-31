@@ -663,5 +663,11 @@
       }
     }
   },
-  "splitQuicNote": "Tant qu'il existe au moins une règle de site, l'application désactive HTTP/3 (QUIC) pour tout le trafic. Sinon le navigateur passe en HTTP/3, ne laisse pas le nom du site et la règle échoue silencieusement. Les sites continuent de fonctionner : ils reviennent au TLS classique, un peu plus lentement."
+  "splitQuicNote": "Tant qu'il existe au moins une règle de site, l'application désactive HTTP/3 (QUIC) pour tout le trafic. Sinon le navigateur passe en HTTP/3, ne laisse pas le nom du site et la règle échoue silencieusement. Les sites continuent de fonctionner : ils reviennent au TLS classique, un peu plus lentement.",
+  "splitNoRealIpBanner": "« Ne jamais utiliser mon IP réelle » est actif : les règles « Direct » sans la case cochée passent par le VPN",
+  "settingsNoRealIpAffects": "Concerne les règles « Direct » : sans la case « autoriser l’IP réelle », elles passent par le VPN",
+  "splitAppOverrideSites": "Prioritaire sur les règles de sites",
+  "splitAppOverrideSitesSub": "Tout le trafic de l’application suit cette règle, même si un site indique le contraire",
+  "settingsMyRulesOverridePanel": "Mes règles priment sur celles du panneau",
+  "settingsMyRulesOverridePanelSub": "Le panneau fournit son propre routage, en général « les sites locaux évitent le VPN ». Il s’applique après vos règles : un site marqué « Tunnel » peut donc sortir en direct avec votre IP réelle. Activé : tunnel veut dire tunnel. Coût : les sites locaux font un détour et ralentissent."
 }

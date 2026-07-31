@@ -212,6 +212,19 @@ class AppSettings {
   /// по умолчанию — за трафик платит пользователь, и решать ему.
   final bool speedInAutoSelect;
 
+  /// Мои правила важнее правил панели.
+  ///
+  /// Панель отдаёт в конфиге СВОЁ разделение — обычно «российские сайты мимо
+  /// VPN». Оно применяется ВНУТРИ Xray, уже после нашего решения, поэтому сайт,
+  /// который пользователь пометил «Туннель», панель может выпустить наружу
+  /// напрямую — под реальным IP, молча.
+  ///
+  /// Включено — переписываем панельный `direct` на выход через VPN: написано
+  /// «туннель», значит туннель. Цена: российские сайты, которые панель ускоряла
+  /// прямым выходом, пойдут кругом. Выключено — быстрее, но своё правило может
+  /// не сработать.
+  final bool myRulesOverridePanel;
+
   /// Отказывать в QUIC (UDP:443).
   ///
   /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
@@ -347,6 +360,7 @@ class AppSettings {
     this.tunnelDnsForAll = false,
     this.blockPageEnabled = true,
     this.speedInAutoSelect = false,
+    this.myRulesOverridePanel = true,
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -408,6 +422,7 @@ class AppSettings {
     bool? tunnelDnsForAll,
     bool? blockPageEnabled,
     bool? speedInAutoSelect,
+    bool? myRulesOverridePanel,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -459,6 +474,7 @@ class AppSettings {
       tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
       blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
       speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
+      myRulesOverridePanel: myRulesOverridePanel ?? this.myRulesOverridePanel,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -512,6 +528,7 @@ class AppSettings {
         'tunnelDnsForAll': tunnelDnsForAll,
         'blockPageEnabled': blockPageEnabled,
         'speedInAutoSelect': speedInAutoSelect,
+        'myRulesOverridePanel': myRulesOverridePanel,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -592,6 +609,8 @@ class AppSettings {
             j['blockPageEnabled'] as bool? ?? defaults.blockPageEnabled,
         speedInAutoSelect:
             j['speedInAutoSelect'] as bool? ?? defaults.speedInAutoSelect,
+        myRulesOverridePanel: j['myRulesOverridePanel'] as bool? ??
+            defaults.myRulesOverridePanel,
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,

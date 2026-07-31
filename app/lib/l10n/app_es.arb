@@ -724,5 +724,11 @@
       }
     }
   },
-  "splitQuicNote": "Mientras exista al menos una regla de sitio, la aplicación desactiva HTTP/3 (QUIC) para todo el tráfico. Si no, el navegador usa HTTP/3, no deja el nombre del sitio y la regla falla en silencio. Los sitios siguen funcionando: pasan a TLS normal, solo algo más lentos."
+  "splitQuicNote": "Mientras exista al menos una regla de sitio, la aplicación desactiva HTTP/3 (QUIC) para todo el tráfico. Si no, el navegador usa HTTP/3, no deja el nombre del sitio y la regla falla en silencio. Los sitios siguen funcionando: pasan a TLS normal, solo algo más lentos.",
+  "splitNoRealIpBanner": "«Nunca usar mi IP real» está activo: las reglas «Directo» sin la casilla van por la VPN",
+  "settingsNoRealIpAffects": "Afecta a las reglas «Directo»: sin la casilla «permitir IP real» irán por la VPN",
+  "splitAppOverrideSites": "Prioridad sobre las reglas de sitios",
+  "splitAppOverrideSitesSub": "Todo el tráfico de la aplicación sigue esta regla aunque un sitio diga otra cosa",
+  "settingsMyRulesOverridePanel": "Mis reglas tienen prioridad sobre las del panel",
+  "settingsMyRulesOverridePanelSub": "El panel trae su propio enrutamiento, normalmente «los sitios locales evitan la VPN». Se aplica después de tus reglas, así que un sitio marcado «Túnel» puede salir directo con tu IP real. Activado: túnel significa túnel. Coste: los sitios locales darán un rodeo y serán más lentos."
 }

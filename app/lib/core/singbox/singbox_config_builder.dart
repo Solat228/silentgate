@@ -835,6 +835,19 @@ class SingboxConfigBuilder {
     // ровно то, от чего пользователь защищался, снимая галочку.
     // Внутри каждой группы порядок безразличен: наборы правил не пересекаются
     // (фильтр по allowRealIp разводит их по разным подмножествам).
+    // Приложения с поднятой галочкой «важнее правил сайтов» идут ПЕРВЫМИ —
+    // выше доменных. Умолчание обратное (сайт конкретнее), но бывает нужно
+    // ровно наоборот: мессенджер обязан ходить только через VPN, что бы ни
+    // стояло в списке сайтов.
+    _addActionRule(rules, split, AppAction.direct, 'direct',
+        allowRealIp: true, overrideSites: true);
+    if (options.noRealIp) {
+      _addActionRule(rules, split, AppAction.direct, 'proxy',
+          allowRealIp: false, overrideSites: true);
+    }
+    _addActionRule(rules, split, AppAction.tunnel, 'proxy',
+        overrideSites: true);
+
     _addSiteRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
     if (options.noRealIp) {
       _addSiteRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
@@ -877,12 +890,17 @@ class SingboxConfigBuilder {
   /// Одно правило для всех приложений с действием [action]. [outbound] == null →
   /// reject (блок). Приложения «по имени» и «по пути» — разными матчерами.
   void _addActionRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
-      AppAction action, String? outbound, {bool? allowRealIp}) {
+      AppAction action, String? outbound,
+      {bool? allowRealIp, bool overrideSites = false}) {
     // Выключенные правила не применяются (галочка снята).
     var apps = split.apps.where((a) => a.enabled && a.action == action);
     if (allowRealIp != null && options.noRealIp) {
       apps = apps.where((a) => a.allowRealIp == allowRealIp);
     }
+    // Приложения делятся на две группы: «важнее сайтов» выписываются ВЫШЕ
+    // доменных правил, остальные — ниже. Каждое приложение попадает ровно в
+    // одну группу, поэтому дублей не возникает.
+    apps = apps.where((a) => a.overrideSites == overrideSites);
     // ⚠️ Android ищет приложение по ИМЕНИ ПАКЕТА: полей process_name и
     // process_path на нём нет вовсе (ядро получает от VpnService только uid и
     // отдаёт его как package_name). Раньше ветки по платформе не было, поэтому
