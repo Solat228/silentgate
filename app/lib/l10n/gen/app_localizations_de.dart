@@ -1983,4 +1983,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Mit einem BESTIMMTEN Server verbinden. Der Name ist der aus der Liste, den das Abo liefert, z. B. „Polen 1.5“. Flaggen-Emoji und Groß-/Kleinschreibung sind egal. Ohne exakte Übereinstimmung greift die Suche: Land, Adresse oder Protokoll. Gilt auch für toggle.';
+
+  @override
+  String get splitSelectAllFound => 'Alle gefundenen auswählen';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Hinzufügen ($count)';
+  }
 }

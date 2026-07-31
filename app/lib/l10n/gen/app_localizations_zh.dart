@@ -1915,4 +1915,12 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       '连接到指定服务器。名称即列表中显示、由订阅下发的名称，例如“波兰 1.5”。可省略旗帜表情与大小写。没有精确匹配时会转为搜索：按国家、地址或协议。toggle 同样适用。';
+
+  @override
+  String get splitSelectAllFound => '全选搜索结果';
+
+  @override
+  String splitAddSelected(int count) {
+    return '添加（$count）';
+  }
 }

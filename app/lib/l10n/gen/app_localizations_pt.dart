@@ -1987,4 +1987,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Conectar a um servidor ESPECÍFICO. O nome é o que aparece na lista e vem da assinatura, por ex. «Polônia 1.5». Emoji de bandeira e maiúsculas podem ser omitidos. Sem correspondência exata, entra a busca: por país, endereço ou protocolo. Vale também para toggle.';
+
+  @override
+  String get splitSelectAllFound => 'Marcar tudo encontrado';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Adicionar ($count)';
+  }
 }

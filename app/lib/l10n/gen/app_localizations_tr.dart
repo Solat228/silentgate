@@ -1972,4 +1972,12 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'BELİRLİ bir sunucuya bağlan. Ad, listede görünen ve aboneliğin gönderdiği addır, örn. «Polonya 1.5». Bayrak emojisi ve büyük/küçük harf önemsiz. Tam eşleşme yoksa arama devreye girer: ülke, adres veya protokol. toggle ile de çalışır.';
+
+  @override
+  String get splitSelectAllFound => 'Bulunanların tümünü seç';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Ekle ($count)';
+  }
 }

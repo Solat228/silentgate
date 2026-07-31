@@ -714,5 +714,14 @@
   "srvInfoNeedsConnection": "En esta plataforma la medición a través del servidor requiere la VPN activa",
   "serviceYoutubeThrottleNote": "⚠️ Esta comprobación no detecta la ralentización de YouTube: el proveedor responde con normalidad pero limita la velocidad del vídeo. Verde significa «servicio accesible», no «el vídeo se reproduce».",
   "urlSchemeConnectServer": "silentgate://connect?server=<nombre del servidor>",
-  "urlDescConnectServer": "Conectar a un servidor CONCRETO. El nombre es el que se ve en la lista y envía la suscripción, p. ej. «Polonia 1.5». Los emoji de bandera y las mayúsculas se pueden omitir. Si no hay coincidencia exacta, se busca por país, dirección o protocolo. También funciona con toggle."
+  "urlDescConnectServer": "Conectar a un servidor CONCRETO. El nombre es el que se ve en la lista y envía la suscripción, p. ej. «Polonia 1.5». Los emoji de bandera y las mayúsculas se pueden omitir. Si no hay coincidencia exacta, se busca por país, dirección o protocolo. También funciona con toggle.",
+  "splitSelectAllFound": "Marcar todo lo encontrado",
+  "splitAddSelected": "Añadir ({count})",
+  "@splitAddSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

@@ -1988,4 +1988,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Se connecter à un serveur PRÉCIS. Le nom est celui affiché dans la liste et envoyé par l’abonnement, par ex. « Pologne 1.5 ». Les emoji drapeau et la casse sont facultatifs. Sans correspondance exacte, la recherche prend le relais : pays, adresse ou protocole. Fonctionne aussi avec toggle.';
+
+  @override
+  String get splitSelectAllFound => 'Tout sélectionner';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Ajouter ($count)';
+  }
 }

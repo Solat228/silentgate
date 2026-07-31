@@ -1986,4 +1986,12 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Conectar a un servidor CONCRETO. El nombre es el que se ve en la lista y envía la suscripción, p. ej. «Polonia 1.5». Los emoji de bandera y las mayúsculas se pueden omitir. Si no hay coincidencia exacta, se busca por país, dirección o protocolo. También funciona con toggle.';
+
+  @override
+  String get splitSelectAllFound => 'Marcar todo lo encontrado';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Añadir ($count)';
+  }
 }

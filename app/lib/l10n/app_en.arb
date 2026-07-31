@@ -714,5 +714,14 @@
   "srvInfoNeedsConnection": "Measuring through the server on this platform requires the VPN to be on",
   "serviceYoutubeThrottleNote": "⚠️ This check cannot see YouTube throttling: the provider answers normally but limits video bandwidth. Green here means “service reachable”, not “video plays”.",
   "urlSchemeConnectServer": "silentgate://connect?server=<server name>",
-  "urlDescConnectServer": "Connect to a SPECIFIC server. The name is the one shown in the list and sent by the subscription, e.g. “Poland 1.5”. Flag emoji and case may be omitted. With no exact match, search kicks in: by country, address or protocol. Works with toggle too."
+  "urlDescConnectServer": "Connect to a SPECIFIC server. The name is the one shown in the list and sent by the subscription, e.g. “Poland 1.5”. Flag emoji and case may be omitted. With no exact match, search kicks in: by country, address or protocol. Works with toggle too.",
+  "splitSelectAllFound": "Select all found",
+  "splitAddSelected": "Add ({count})",
+  "@splitAddSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

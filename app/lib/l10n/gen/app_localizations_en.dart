@@ -1968,4 +1968,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Connect to a SPECIFIC server. The name is the one shown in the list and sent by the subscription, e.g. “Poland 1.5”. Flag emoji and case may be omitted. With no exact match, search kicks in: by country, address or protocol. Works with toggle too.';
+
+  @override
+  String get splitSelectAllFound => 'Select all found';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Add ($count)';
+  }
 }

@@ -197,6 +197,26 @@ class SplitTunnelScreen extends StatelessWidget {
         ]),
       );
 
+  /// Добавить СРАЗУ НЕСКОЛЬКО приложений одним изменением настроек.
+  ///
+  /// ⚠️ Не циклом по [_addApp]: каждый вызов пишет настройки на диск и дёргает
+  /// перерисовку, а при выборе десятка приложений это десяток сохранений
+  /// подряд. Плюс промежуточные состояния успевают уехать в конфиг.
+  void _addApps(SettingsController c, List<String> paths) {
+    if (paths.isEmpty) return;
+    c.update((s) {
+      final apps = [...s.splitTunnel.apps];
+      final have = {for (final a in apps) a.path.toLowerCase()};
+      for (final path in paths) {
+        if (have.contains(path.toLowerCase())) continue;
+        have.add(path.toLowerCase());
+        apps.add(AppRule(path,
+            byName: true, action: s.splitTunnel.defaultAction));
+      }
+      return s.copyWith(splitTunnel: s.splitTunnel.copyWith(apps: apps));
+    });
+  }
+
   void _addApp(SettingsController c, String path) {
     c.update((s) {
       if (s.splitTunnel.containsApp(path)) return s;
@@ -441,11 +461,16 @@ class SplitTunnelScreen extends StatelessWidget {
     // #6.3 — исключаем уже добавленные
     final procs = all.where((p) => !added.containsApp(p.key)).toList();
     if (!context.mounted) return;
-    final selected = await showDialog<String>(
+    // ⚠️ Диалог отдаёт СПИСОК. Раньше он возвращал одну строку и закрывался на
+    // первом же тапе: пользователь отмечал несколько приложений, а добавлялось
+    // одно. Из-за этого в правилах владельца не оказалось браузера — и в режиме
+    // «только отмеченные» весь веб уходил мимо VPN, что выглядело как «ничего
+    // не работает».
+    final selected = await showDialog<List<String>>(
       context: context,
       builder: (_) => _RunningPickerDialog(procs: procs),
     );
-    if (selected != null) _addApp(c, selected);
+    if (selected != null) _addApps(c, selected);
   }
 }
 
@@ -459,6 +484,10 @@ class _RunningPickerDialog extends StatefulWidget {
 
 class _RunningPickerDialogState extends State<_RunningPickerDialog> {
   String _q = '';
+
+  /// Отмеченные приложения. Раньше диалог закрывался на первом тапе и отдавал
+  /// ровно одно — отсюда и жалоба «правила не работают при мультивыделении».
+  final Set<String> _picked = {};
 
   @override
   Widget build(BuildContext context) {
@@ -496,13 +525,19 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
                       itemCount: filtered.length,
                       itemBuilder: (_, i) {
                         final p = filtered[i];
-                        return ListTile(
+                        final on = _picked.contains(p.key);
+                        return CheckboxListTile(
                           dense: true,
-                          leading: AppIcon(path: p.key), // #1 — реальная иконка
+                          value: on,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          // Иконка рядом с галочкой: без неё в длинном списке
+                          // одинаковых имён не разобраться, что именно отмечено.
+                          secondary: AppIcon(path: p.key),
                           title: Text(p.label),
                           subtitle: Text(p.key,
                               maxLines: 1, overflow: TextOverflow.ellipsis),
-                          onTap: () => Navigator.of(context).pop(p.key),
+                          onChanged: (v) => setState(() =>
+                              v == true ? _picked.add(p.key) : _picked.remove(p.key)),
                         );
                       },
                     ),
@@ -511,9 +546,31 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
         ),
       ),
       actions: [
+        // «Отметить всё найденное» — по отфильтрованному списку, а не по всему:
+        // иначе поиск теряет смысл, а случайное нажатие добавляет сотню правил.
+        if (filtered.isNotEmpty)
+          TextButton(
+            onPressed: () => setState(() {
+              final keys = filtered.map((p) => p.key);
+              if (keys.every(_picked.contains)) {
+                _picked.removeAll(keys);
+              } else {
+                _picked.addAll(keys);
+              }
+            }),
+            child: Text(l.splitSelectAllFound),
+          ),
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: Text(l.splitClose)),
+        // Счётчик прямо на кнопке: видно, сколько уйдёт в правила, и заметно,
+        // если отметилось не то.
+        FilledButton(
+          onPressed: _picked.isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_picked.toList()),
+          child: Text(l.splitAddSelected(_picked.length)),
+        ),
       ],
     );
   }

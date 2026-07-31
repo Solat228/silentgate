@@ -1964,4 +1964,12 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'اتصال به سرور مشخص. نام همان است که در فهرست دیده می‌شود و اشتراک می‌فرستد، مثلاً «لهستان ۱.۵». ایموجی پرچم و بزرگی حروف مهم نیست. اگر تطابق دقیق نبود جست‌وجو انجام می‌شود: بر پایهٔ کشور، نشانی یا پروتکل. با toggle هم کار می‌کند.';
+
+  @override
+  String get splitSelectAllFound => 'انتخاب همهٔ یافته‌ها';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'افزودن ($count)';
+  }
 }

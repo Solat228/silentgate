@@ -1971,4 +1971,12 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get urlDescConnectServer =>
       'Подключиться к КОНКРЕТНОМУ серверу. Имя — то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет — сработает поиск: по стране, адресу или протоколу. Работает и с toggle.';
+
+  @override
+  String get splitSelectAllFound => 'Отметить всё найденное';
+
+  @override
+  String splitAddSelected(int count) {
+    return 'Добавить ($count)';
+  }
 }

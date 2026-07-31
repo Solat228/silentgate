@@ -3563,6 +3563,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Подключиться к КОНКРЕТНОМУ серверу. Имя — то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет — сработает поиск: по стране, адресу или протоколу. Работает и с toggle.'**
   String get urlDescConnectServer;
+
+  /// No description provided for @splitSelectAllFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отметить всё найденное'**
+  String get splitSelectAllFound;
+
+  /// No description provided for @splitAddSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить ({count})'**
+  String splitAddSelected(int count);
 }
 
 class _AppLocalizationsDelegate
