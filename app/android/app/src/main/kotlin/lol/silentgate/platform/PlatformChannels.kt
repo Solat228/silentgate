@@ -73,7 +73,17 @@ object PlatformChannels {
                         this.proxy = proxy?.trim().orEmpty().ifEmpty { "socks5://127.0.0.1:0" }
                     }
                     val raw = LibXray.invoke(jsonOf(req))
-                    parseDelay(raw)
+                    // ⚠️ Ответ ядра ОБЯЗАН попадать в лог. Раньше он молча
+                    // проглатывался, и «все серверы мёртвые» выглядело как
+                    // необъяснимое поведение: наружу отдавался null, а почему —
+                    // узнать было негде.
+                    val parsed = parseDelay(raw)
+                    if (parsed == null) {
+                        android.util.Log.w("SilentGateProbe", "ping: $raw")
+                    }
+                    parsed
+                }.onFailure {
+                    android.util.Log.w("SilentGateProbe", "ping упал: $it")
                 }.getOrNull()
                 result.success(delay)
             }
