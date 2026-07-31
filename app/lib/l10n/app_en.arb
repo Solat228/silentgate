@@ -723,5 +723,6 @@
         "type": "int"
       }
     }
-  }
+  },
+  "splitQuicNote": "While at least one site rule exists, the app disables HTTP/3 (QUIC) for all traffic. Otherwise the browser switches to HTTP/3, leaves no site name, and the rule silently fails — traffic bypasses it. Sites keep working: they fall back to regular TLS, just slightly slower."
 }

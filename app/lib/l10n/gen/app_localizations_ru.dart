@@ -1979,4 +1979,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String splitAddSelected(int count) {
     return 'Добавить ($count)';
   }
+
+  @override
+  String get splitQuicNote =>
+      'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.';
 }

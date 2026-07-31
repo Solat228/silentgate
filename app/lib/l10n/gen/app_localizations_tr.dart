@@ -1980,4 +1980,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String splitAddSelected(int count) {
     return 'Ekle ($count)';
   }
+
+  @override
+  String get splitQuicNote =>
+      'En az bir site kuralı varken uygulama tüm trafik için HTTP/3 (QUIC) kapatır. Aksi hâlde tarayıcı HTTP/3’e geçer, site adını bırakmaz ve kural sessizce çalışmaz. Siteler bozulmaz: sıradan TLS’e döner, yalnızca biraz yavaşlar.';
 }

@@ -1994,4 +1994,8 @@ class AppLocalizationsEs extends AppLocalizations {
   String splitAddSelected(int count) {
     return 'Añadir ($count)';
   }
+
+  @override
+  String get splitQuicNote =>
+      'Mientras exista al menos una regla de sitio, la aplicación desactiva HTTP/3 (QUIC) para todo el tráfico. Si no, el navegador usa HTTP/3, no deja el nombre del sitio y la regla falla en silencio. Los sitios siguen funcionando: pasan a TLS normal, solo algo más lentos.';
 }

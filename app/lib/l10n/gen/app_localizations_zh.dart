@@ -1923,4 +1923,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String splitAddSelected(int count) {
     return '添加（$count）';
   }
+
+  @override
+  String get splitQuicNote =>
+      '只要存在至少一条网站规则，应用就会为所有流量关闭 HTTP/3（QUIC）。否则浏览器会改用 HTTP/3，不留下网站名称，规则便会悄无声息地失效。网站仍可访问：会回退到普通 TLS，只是稍慢一些。';
 }

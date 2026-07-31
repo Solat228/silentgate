@@ -1967,4 +1967,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String splitAddSelected(int count) {
     return 'إضافة ($count)';
   }
+
+  @override
+  String get splitQuicNote =>
+      'ما دامت هناك قاعدة موقع واحدة على الأقل، يعطّل التطبيق HTTP/3 (QUIC) لكل حركة المرور. وإلا ينتقل المتصفح إلى HTTP/3 ولا يترك اسم الموقع، فتفشل القاعدة بصمت. المواقع تظل تعمل: تعود إلى TLS العادي، أبطأ قليلًا فقط.';
 }

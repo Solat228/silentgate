@@ -3575,6 +3575,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Добавить ({count})'**
   String splitAddSelected(int count);
+
+  /// No description provided for @splitQuicNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.'**
+  String get splitQuicNote;
 }
 
 class _AppLocalizationsDelegate

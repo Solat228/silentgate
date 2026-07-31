@@ -159,6 +159,35 @@ class SplitTunnelScreen extends StatelessWidget {
                     padding: const EdgeInsets.all(16),
                     child: _AddSiteField(controller: controller),
                   ),
+                  // ⚠️ Побочный эффект правил по сайтам, о котором нельзя
+                  // молчать: приложение глушит HTTP/3 для ВСЕГО трафика, а не
+                  // только для перечисленных доменов. Иначе правило по сайту
+                  // молча не срабатывает — браузер на HTTP/3 имени не
+                  // оставляет. Пользователь имеет право знать, почему у него
+                  // пропал HTTP/3, хотя он такого не просил.
+                  if (st.sites.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline,
+                              size: 16,
+                              color: Theme.of(context).hintColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: SelText(
+                              l.splitQuicNote,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: Theme.of(context).hintColor),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   // Стоит здесь, а не в общих настройках: заглушка касается
                   // только правил «Блок», а их заводят именно на этом экране.
                   // Показываем, лишь когда блокировка реально есть, — иначе это

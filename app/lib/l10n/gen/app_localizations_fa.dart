@@ -1972,4 +1972,8 @@ class AppLocalizationsFa extends AppLocalizations {
   String splitAddSelected(int count) {
     return 'افزودن ($count)';
   }
+
+  @override
+  String get splitQuicNote =>
+      'تا زمانی که دست‌کم یک قانون سایت وجود دارد، برنامه HTTP/3 (QUIC) را برای همهٔ ترافیک خاموش می‌کند. وگرنه مرورگر به HTTP/3 می‌رود، نام سایت را نمی‌گذارد و قانون بی‌صدا کار نمی‌کند. سایت‌ها خراب نمی‌شوند: به TLS معمولی برمی‌گردند، فقط اندکی کندتر.';
 }
