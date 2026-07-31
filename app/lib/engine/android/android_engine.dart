@@ -207,6 +207,8 @@ class AndroidEngine extends VpnEngineBase {
       final liveOptions = TunOptions.fromSettings(
           session.options.settings,
           serverIps: serverIps,
+          // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
+          serverDomains: knownServerDomains,
           android: true,
           blockPagePort: await startBlockPage(session.options),
           // Резолвер для «Прямо». Пусто → прежнее поведение (`local`), то

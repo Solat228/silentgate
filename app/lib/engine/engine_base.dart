@@ -124,6 +124,32 @@ abstract class VpnEngineBase implements VpnEngine {
   @override
   set fallbackServers(List<VpnServer> servers) => _fallbacks = [...servers];
 
+  /// Имена ВСЕЙ нашей инфраструктуры: серверы подписки и её собственный хост.
+  ///
+  /// ⚠️ Нужен именно ПОЛНЫЙ список, а не выбранный сервер. Резолв идёт через
+  /// туннель, и пока туннель поднимается, любое обращение к имени другого
+  /// сервера (пинг списка, автообновление подписки, панельный профиль с
+  /// десятками узлов) уходит в круг: адрес спрашивается у сервера, к которому
+  /// ещё нет соединения. В логе владельца это было десятками строк
+  /// «dns: exchange failed for …silentgate.lol», а снаружи — «ничего не
+  /// работает».
+  List<String> _knownDomains = const [];
+
+  set knownServerDomains(List<String> domains) {
+    // Только имена: адреса и так уводятся мимо туннеля отдельным правилом,
+    // а `domain_suffix` с IP ядро молча не сматчит.
+    final out = <String>{};
+    for (final d in domains) {
+      final host = d.trim().toLowerCase();
+      if (host.isEmpty) continue;
+      if (InternetAddress.tryParse(host) != null) continue;
+      out.add(host);
+    }
+    _knownDomains = out.toList();
+  }
+
+  List<String> get knownServerDomains => _knownDomains;
+
   /// Текущая сессия (нужна наследникам для подъёма).
   EngineSession? get session => _session;
 

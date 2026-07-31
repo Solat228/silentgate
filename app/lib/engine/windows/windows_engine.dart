@@ -190,6 +190,8 @@ class WindowsEngine extends VpnEngineBase {
             options.settings,
             blockPagePort: await startBlockPage(options),
             serverIps: await resolveServerIps(servers),
+            // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
+            serverDomains: knownServerDomains,
             // Снимаем ДО подъёма туннеля: после него системный резолвер уже
             // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.
             directDnsUpstream: await _systemDnsServer(),

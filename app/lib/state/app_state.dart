@@ -328,6 +328,26 @@ class AppState extends ChangeNotifier {
   /// панелей встречаются «Германия» и «Германия 2», и подстрочный поиск выбрал
   /// бы первый попавшийся. Не нашли точного — падаем на обычный поиск, тот же,
   /// что в строке поиска списка: по имени, стране, адресу, протоколу.
+  /// Отдать движку имена ВСЕЙ инфраструктуры: серверы подписки и её хост.
+  ///
+  /// Без этого списка резолв имён других серверов уходит в туннель, который сам
+  /// их и ждёт, — и подключение зависает целиком. Обновляем на каждой
+  /// пересборке списка: состав серверов меняется при каждом обновлении подписки.
+  void _publishServerDomains() {
+    final domains = <String>{};
+    for (final s in _servers) {
+      final a = s.address.trim();
+      if (a.isNotEmpty) domains.add(a);
+    }
+    // Хост подписки: её автообновление тоже не должно ходить через туннель,
+    // иначе обновиться нельзя ровно тогда, когда серверы перестали работать.
+    for (final p in _profiles) {
+      final h = Uri.tryParse(p.url)?.host ?? '';
+      if (h.isNotEmpty) domains.add(h);
+    }
+    _engine.knownServerDomains = domains.toList();
+  }
+
   bool _selectServerByName(String name) {
     String norm(String v) =>
         FlagUtil.strip(v).toLowerCase().replaceAll('ё', 'е').trim();
@@ -450,6 +470,10 @@ class AppState extends ChangeNotifier {
       }
       return srv;
     }).toList();
+
+    // ⚠️ ДО любых ранних выходов ниже: движку нужен полный список имён, иначе
+    // резолв чужих серверов уйдёт в туннель и подключение зациклится.
+    _publishServerDomains();
 
     if (prevKey != null) {
       final idx = _servers.indexWhere((s) => s.key == prevKey);

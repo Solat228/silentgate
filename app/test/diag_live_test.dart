@@ -46,6 +46,9 @@ class _FakeEngine implements VpnEngine {
   Future<void> onNetworkChanged() async {}
   @override
   set fallbackServers(List<VpnServer> servers) {}
+
+  @override
+  set knownServerDomains(List<String> domains) {}
   @override
   Future<void> dispose() async {}
 }

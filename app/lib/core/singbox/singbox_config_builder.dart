@@ -25,6 +25,25 @@ class TunOptions {
   /// Xray к серверу вернётся в Xray — петля и мгновенная смерть сети.
   final List<String> serverIps;
 
+  /// ДОМЕННЫЕ ИМЕНА нашей инфраструктуры: серверы подписки и хост самой подписки.
+  /// Резолвятся ТОЛЬКО напрямую, мимо туннеля.
+  ///
+  /// ⚠️ Это вторая половина защиты от петли, и без неё первая бесполезна.
+  /// Мимо туннеля уводятся АДРЕСА — но чтобы узнать адрес, надо сперва
+  /// отрезолвить имя, а резолв по умолчанию идёт через туннель
+  /// (`dns.final: dns-proxy`), то есть через сервер, к которому мы ещё не
+  /// подключились. Замкнутый круг.
+  ///
+  /// В логе владельца это выглядело так, десятками строк подряд:
+  ///   dns: exchange failed for ws-nl.silentgate.lol. IN A:
+  ///        read tcp 127.0.0.1:58160->127.0.0.1:10808: forcibly closed
+  /// Снаружи — «ничего не работает»: туннель поднят, а трафика нет.
+  ///
+  /// Правила «процессы ядра → direct» здесь НЕ ХВАТАЕТ: на Windows имена
+  /// резолвит служба DNS-клиента внутри svchost.exe, а не наш процесс, поэтому
+  /// совпадения по имени процесса не происходит вовсе.
+  final List<String> serverDomains;
+
   /// Пользователь выбрал стек «авто» — подбирать стек и MTU перебором,
   /// пока туннель не поднимется (см. [TunAutotune]).
   final bool autotune;
@@ -127,6 +146,7 @@ class TunOptions {
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.logLevel = 'warn',
     this.serverIps = const [],
+    this.serverDomains = const [],
     this.autotune = false,
     this.noRealIp = false,
     this.platformTun = false,
@@ -145,6 +165,7 @@ class TunOptions {
   factory TunOptions.fromSettings(
     AppSettings s, {
     List<String> serverIps = const [],
+    List<String> serverDomains = const [],
     bool android = false,
     String? directDnsUpstream,
     String? logOutput,
@@ -183,6 +204,7 @@ class TunOptions {
       dnsStrategy: s.dnsStrategy,
       logLevel: s.singboxLogLevel.name,
       serverIps: serverIps,
+      serverDomains: serverDomains,
       // «Авто» = подбирать стек/MTU перебором; явный выбор пользователя уважаем.
       autotune: s.tunStack == TunStack.auto,
       noRealIp: s.noRealIp,
@@ -209,6 +231,7 @@ class TunOptions {
         dnsStrategy: dnsStrategy,
         logLevel: logLevel,
         serverIps: serverIps,
+        serverDomains: serverDomains,
         autotune: autotune,
         noRealIp: noRealIp,
         platformTun: platformTun,
@@ -241,6 +264,7 @@ class TunOptions {
         dnsStrategy: dnsStrategy,
         logLevel: logLevel,
         serverIps: serverIps,
+        serverDomains: serverDomains,
         autotune: autotune,
         noRealIp: noRealIp,
         platformTun: platformTun,
@@ -625,6 +649,16 @@ class SingboxConfigBuilder {
     // TUN-режиме не срабатывает никогда (назначение из TUN — всегда IP, имя
     // берётся только из сниффинга), поэтому одного его недостаточно.
     final rules = <Map<String, dynamic>>[
+      // ⚠️ ПЕРВЫМ И БЕЗУСЛОВНО: имена нашей же инфраструктуры резолвим только
+      // напрямую. Иначе выходит замкнутый круг — чтобы дойти до сервера, нужен
+      // его адрес, а адрес спрашивается через туннель, который к этому серверу
+      // ещё не построен. Правило стоит выше пользовательских намеренно: домен
+      // сервера, случайно попавший под правило «Туннель», убил бы подключение.
+      if (o.serverDomains.isNotEmpty)
+        {
+          'domain_suffix': o.serverDomains,
+          'server': 'dns-local',
+        },
       // Блок — выше остальных: заблокированный домен не должен даже резолвиться.
       //
       // ⚠️ ИСКЛЮЧЕНИЕ: когда включена страница-заглушка, домен обязан
