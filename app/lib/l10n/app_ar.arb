@@ -650,5 +650,6 @@
   },
   "splitShowBlockPage": "عرض صفحة الحظر",
   "splitBlockPageNeedsVpn": "صفحة الحظر تعمل فقط عندما يكون VPN مُفعّلًا",
-  "srvInfoNeedsConnection": "القياس عبر الخادم على هذه المنصة يتطلب تشغيل VPN"
+  "srvInfoNeedsConnection": "القياس عبر الخادم على هذه المنصة يتطلب تشغيل VPN",
+  "serviceYoutubeThrottleNote": "⚠️ لا يكشف هذا الفحص إبطاء YouTube: المزوّد يستجيب بشكل طبيعي لكنه يحدّ من سرعة الفيديو. الأخضر يعني «الخدمة متاحة» لا «الفيديو يعمل»."
 }

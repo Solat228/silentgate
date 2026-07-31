@@ -1960,4 +1960,8 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ Bu sınama YouTube kısıtlamasını göremez: sağlayıcı normal yanıt verir ama video hızını düşürür. Yeşil «servise erişilebiliyor» demektir, «video oynuyor» değil.';
 }

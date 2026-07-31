@@ -1953,4 +1953,8 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'اندازه‌گیری از راه سرور در این پلتفرم فقط با VPN روشن ممکن است';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ این بررسی کندسازی YouTube را نمی‌بیند: سرویس‌دهنده عادی پاسخ می‌دهد اما پهنای باند ویدیو را محدود می‌کند. سبز یعنی «سرویس در دسترس است»، نه «ویدیو پخش می‌شود».';
 }

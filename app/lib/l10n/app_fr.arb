@@ -650,5 +650,6 @@
   },
   "splitShowBlockPage": "Afficher la page de blocage",
   "splitBlockPageNeedsVpn": "La page de blocage ne fonctionne que si le VPN est actif",
-  "srvInfoNeedsConnection": "Sur cette plateforme, la mesure via le serveur nécessite que le VPN soit actif"
+  "srvInfoNeedsConnection": "Sur cette plateforme, la mesure via le serveur nécessite que le VPN soit actif",
+  "serviceYoutubeThrottleNote": "⚠️ Ce test ne voit pas le bridage de YouTube : le fournisseur répond normalement mais limite le débit vidéo. Vert signifie « service joignable », pas « la vidéo se lit »."
 }

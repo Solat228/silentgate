@@ -332,6 +332,12 @@ class _ServicePair extends StatelessWidget {
     if (live) {
       tip.write('\n${l.serviceChecksAfter}: ${_word(l, after)}');
     }
+    // У YouTube отдельная оговорка: провайдер его чаще не блокирует, а
+    // замедляет, и лёгкая проба этого не видит. Молчать нельзя — зелёный чип
+    // рядом с не грузящимся видео выглядит как враньё.
+    if (service == ProbeService.youtube) {
+      tip.write('\n\n${l.serviceYoutubeThrottleNote}');
+    }
     return Tooltip(
       message: tip.toString(),
       child: InkWell(

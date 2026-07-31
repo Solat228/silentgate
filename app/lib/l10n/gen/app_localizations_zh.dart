@@ -1904,4 +1904,8 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get srvInfoNeedsConnection => '在此平台上，经由服务器的测速需要先开启 VPN';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ 此检测看不出 YouTube 被限速：运营商正常应答，却把视频带宽压低。绿色表示“服务可达”，不代表“视频能播”。';
 }

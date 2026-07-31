@@ -3545,6 +3545,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Замер через сервер на этой платформе возможен только при включённом VPN'**
   String get srvInfoNeedsConnection;
+
+  /// No description provided for @serviceYoutubeThrottleNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'⚠️ Замедление YouTube эта проверка не видит: провайдер отвечает нормально, но режет скорость видео. Зелёный здесь означает «сервис доступен», а не «видео проигрывается».'**
+  String get serviceYoutubeThrottleNote;
 }
 
 class _AppLocalizationsDelegate

@@ -1959,4 +1959,8 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Замер через сервер на этой платформе возможен только при включённом VPN';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ Замедление YouTube эта проверка не видит: провайдер отвечает нормально, но режет скорость видео. Зелёный здесь означает «сервис доступен», а не «видео проигрывается».';
 }

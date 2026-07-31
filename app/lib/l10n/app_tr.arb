@@ -650,5 +650,6 @@
   },
   "splitShowBlockPage": "Engelleme sayfasını göster",
   "splitBlockPageNeedsVpn": "Engelleme sayfası yalnızca VPN açıkken çalışır",
-  "srvInfoNeedsConnection": "Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir"
+  "srvInfoNeedsConnection": "Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir",
+  "serviceYoutubeThrottleNote": "⚠️ Bu sınama YouTube kısıtlamasını göremez: sağlayıcı normal yanıt verir ama video hızını düşürür. Yeşil «servise erişilebiliyor» demektir, «video oynuyor» değil."
 }

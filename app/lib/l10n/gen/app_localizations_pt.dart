@@ -1975,4 +1975,8 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Nesta plataforma, a medição pelo servidor exige a VPN ligada';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ Esta verificação não detecta a limitação do YouTube: o provedor responde normalmente, mas reduz a velocidade do vídeo. Verde significa «serviço acessível», não «o vídeo reproduz».';
 }

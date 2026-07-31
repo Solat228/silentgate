@@ -1976,4 +1976,8 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Sur cette plateforme, la mesure via le serveur nécessite que le VPN soit actif';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ Ce test ne voit pas le bridage de YouTube : le fournisseur répond normalement mais limite le débit vidéo. Vert signifie « service joignable », pas « la vidéo se lit ».';
 }

@@ -711,5 +711,6 @@
   },
   "splitShowBlockPage": "Show the block page",
   "splitBlockPageNeedsVpn": "The block page only works while the VPN is on",
-  "srvInfoNeedsConnection": "Measuring through the server on this platform requires the VPN to be on"
+  "srvInfoNeedsConnection": "Measuring through the server on this platform requires the VPN to be on",
+  "serviceYoutubeThrottleNote": "⚠️ This check cannot see YouTube throttling: the provider answers normally but limits video bandwidth. Green here means “service reachable”, not “video plays”."
 }

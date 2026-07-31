@@ -650,5 +650,6 @@
   },
   "splitShowBlockPage": "Sperrseite anzeigen",
   "splitBlockPageNeedsVpn": "Die Sperrseite funktioniert nur bei aktivem VPN",
-  "srvInfoNeedsConnection": "Auf dieser Plattform ist die Messung über den Server nur bei aktivem VPN möglich"
+  "srvInfoNeedsConnection": "Auf dieser Plattform ist die Messung über den Server nur bei aktivem VPN möglich",
+  "serviceYoutubeThrottleNote": "⚠️ Diese Prüfung erkennt keine YouTube-Drosselung: Der Anbieter antwortet normal, begrenzt aber die Videobandbreite. Grün bedeutet „Dienst erreichbar“, nicht „Video läuft“."
 }

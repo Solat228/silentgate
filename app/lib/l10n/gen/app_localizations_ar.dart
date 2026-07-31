@@ -1947,4 +1947,8 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'القياس عبر الخادم على هذه المنصة يتطلب تشغيل VPN';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ لا يكشف هذا الفحص إبطاء YouTube: المزوّد يستجيب بشكل طبيعي لكنه يحدّ من سرعة الفيديو. الأخضر يعني «الخدمة متاحة» لا «الفيديو يعمل».';
 }

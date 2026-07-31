@@ -1956,4 +1956,8 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Measuring through the server on this platform requires the VPN to be on';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ This check cannot see YouTube throttling: the provider answers normally but limits video bandwidth. Green here means “service reachable”, not “video plays”.';
 }

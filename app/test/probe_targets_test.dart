@@ -16,9 +16,9 @@ void main() {
   test('404 от видео-CDN считается живым ответом', () {
     final ep = AutoConfigCatalog.endpointFor(ProbeService.youtube)!;
     // /videoplayback без параметров — 404, и это ответ ПО СУЩЕСТВУ.
-    expect(ep.validator!(404, ''), isTrue);
+    expect(ep.validator(404, ''), isTrue);
     // Заглушка провайдера — 200 с большой HTML-страницей.
-    expect(ep.validator!(200, 'x' * 5000), isFalse);
+    expect(ep.validator(200, 'x' * 5000), isFalse);
   });
 
   test('Telegram проверяется дозвоном до дата-центра', () {

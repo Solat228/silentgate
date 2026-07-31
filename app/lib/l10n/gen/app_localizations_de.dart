@@ -1971,4 +1971,8 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get srvInfoNeedsConnection =>
       'Auf dieser Plattform ist die Messung über den Server nur bei aktivem VPN möglich';
+
+  @override
+  String get serviceYoutubeThrottleNote =>
+      '⚠️ Diese Prüfung erkennt keine YouTube-Drosselung: Der Anbieter antwortet normal, begrenzt aber die Videobandbreite. Grün bedeutet „Dienst erreichbar“, nicht „Video läuft“.';
 }

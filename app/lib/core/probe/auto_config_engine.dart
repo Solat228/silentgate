@@ -44,6 +44,15 @@ class AutoConfigCatalog {
     // 404 на /videoplayback без параметров — НОРМАЛЬНЫЙ ответ живого CDN:
     // запрос дошёл и был разобран. Значимо, что хост отвечает по существу, а не
     // код ответа.
+    //
+    // ⚠️ ЧЕГО ЭТА ПРОВЕРКА НЕ ВИДИТ — и это предел метода, а не недоделка.
+    // В России YouTube чаще не блокируют, а ЗАМЕДЛЯЮТ: CDN отвечает нормально,
+    // но полосу режут до непригодной для видео. Отличить это лёгкой пробой
+    // нельзя — у всех доступных путей googlevideo тела ответов 26–220 байт
+    // (замерено живьём), мерить скорость не на чем. Настоящий адрес видео
+    // требует расшифровки подписи ссылки: механизм уровня yt-dlp, который
+    // ломается каждые пару месяцев. Решением владельца такой ценой точность не
+    // покупаем — вместо этого подсказка у чипа говорит об этом прямо.
     ProbeService.youtube: ProbeEndpoint(
       ProbeService.youtube,
       'https://redirector.googlevideo.com/videoplayback',
@@ -147,8 +156,6 @@ class AutoConfigCatalog {
       code == 200 && body.contains('fl=') && body.contains('loc=');
   static bool _discordGateway(int code, String body) =>
       code == 200 && body.contains('wss://');
-  static bool _telegramWeb(int code, String body) =>
-      code == 200 && body.toLowerCase().contains('telegram');
   static bool _hasGemini(int code, String body) =>
       code == 200 && body.toLowerCase().contains('gemini');
   static bool _robots(int code, String body) =>
