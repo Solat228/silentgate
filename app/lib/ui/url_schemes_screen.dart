@@ -158,6 +158,9 @@ Map<String, Map<String, String>> _schemeGroups(AppLocalizations l) => {
       },
       l.urlGroupControl: {
         'silentgate://connect': l.urlDescConnect,
+        // Выбор конкретного сервера — единственный способ переключить его
+        // снаружи, поэтому строка стоит сразу за обычным connect.
+        l.urlSchemeConnectServer: l.urlDescConnectServer,
         'silentgate://disconnect': l.urlDescDisconnect,
         'silentgate://toggle': l.urlDescToggle,
         'silentgate://update': l.urlDescUpdate,

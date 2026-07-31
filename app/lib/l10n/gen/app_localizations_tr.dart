@@ -1964,4 +1964,12 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ Bu sınama YouTube kısıtlamasını göremez: sağlayıcı normal yanıt verir ama video hızını düşürür. Yeşil «servise erişilebiliyor» demektir, «video oynuyor» değil.';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<sunucu adı>';
+
+  @override
+  String get urlDescConnectServer =>
+      'BELİRLİ bir sunucuya bağlan. Ad, listede görünen ve aboneliğin gönderdiği addır, örn. «Polonya 1.5». Bayrak emojisi ve büyük/küçük harf önemsiz. Tam eşleşme yoksa arama devreye girer: ülke, adres veya protokol. toggle ile de çalışır.';
 }

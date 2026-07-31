@@ -1980,4 +1980,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ Ce test ne voit pas le bridage de YouTube : le fournisseur répond normalement mais limite le débit vidéo. Vert signifie « service joignable », pas « la vidéo se lit ».';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<nom du serveur>';
+
+  @override
+  String get urlDescConnectServer =>
+      'Se connecter à un serveur PRÉCIS. Le nom est celui affiché dans la liste et envoyé par l’abonnement, par ex. « Pologne 1.5 ». Les emoji drapeau et la casse sont facultatifs. Sans correspondance exacte, la recherche prend le relais : pays, adresse ou protocole. Fonctionne aussi avec toggle.';
 }

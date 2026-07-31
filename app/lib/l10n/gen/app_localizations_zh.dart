@@ -1908,4 +1908,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ 此检测看不出 YouTube 被限速：运营商正常应答，却把视频带宽压低。绿色表示“服务可达”，不代表“视频能播”。';
+
+  @override
+  String get urlSchemeConnectServer => 'silentgate://connect?server=<服务器名称>';
+
+  @override
+  String get urlDescConnectServer =>
+      '连接到指定服务器。名称即列表中显示、由订阅下发的名称，例如“波兰 1.5”。可省略旗帜表情与大小写。没有精确匹配时会转为搜索：按国家、地址或协议。toggle 同样适用。';
 }

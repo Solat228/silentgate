@@ -651,5 +651,7 @@
   "splitShowBlockPage": "Sperrseite anzeigen",
   "splitBlockPageNeedsVpn": "Die Sperrseite funktioniert nur bei aktivem VPN",
   "srvInfoNeedsConnection": "Auf dieser Plattform ist die Messung über den Server nur bei aktivem VPN möglich",
-  "serviceYoutubeThrottleNote": "⚠️ Diese Prüfung erkennt keine YouTube-Drosselung: Der Anbieter antwortet normal, begrenzt aber die Videobandbreite. Grün bedeutet „Dienst erreichbar“, nicht „Video läuft“."
+  "serviceYoutubeThrottleNote": "⚠️ Diese Prüfung erkennt keine YouTube-Drosselung: Der Anbieter antwortet normal, begrenzt aber die Videobandbreite. Grün bedeutet „Dienst erreichbar“, nicht „Video läuft“.",
+  "urlSchemeConnectServer": "silentgate://connect?server=<Servername>",
+  "urlDescConnectServer": "Mit einem BESTIMMTEN Server verbinden. Der Name ist der aus der Liste, den das Abo liefert, z. B. „Polen 1.5“. Flaggen-Emoji und Groß-/Kleinschreibung sind egal. Ohne exakte Übereinstimmung greift die Suche: Land, Adresse oder Protokoll. Gilt auch für toggle."
 }

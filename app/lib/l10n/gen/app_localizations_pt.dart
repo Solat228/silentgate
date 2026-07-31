@@ -1979,4 +1979,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ Esta verificação não detecta a limitação do YouTube: o provedor responde normalmente, mas reduz a velocidade do vídeo. Verde significa «serviço acessível», não «o vídeo reproduz».';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<nome do servidor>';
+
+  @override
+  String get urlDescConnectServer =>
+      'Conectar a um servidor ESPECÍFICO. O nome é o que aparece na lista e vem da assinatura, por ex. «Polônia 1.5». Emoji de bandeira e maiúsculas podem ser omitidos. Sem correspondência exata, entra a busca: por país, endereço ou protocolo. Vale também para toggle.';
 }

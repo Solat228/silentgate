@@ -1951,4 +1951,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ لا يكشف هذا الفحص إبطاء YouTube: المزوّد يستجيب بشكل طبيعي لكنه يحدّ من سرعة الفيديو. الأخضر يعني «الخدمة متاحة» لا «الفيديو يعمل».';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<اسم الخادم>';
+
+  @override
+  String get urlDescConnectServer =>
+      'الاتصال بخادم محدَّد. الاسم هو الظاهر في القائمة والذي يرسله الاشتراك، مثل «بولندا 1.5». يمكن حذف رموز العلم وحالة الأحرف. إن لم يوجد تطابق تام يعمل البحث: حسب البلد أو العنوان أو البروتوكول. يعمل مع toggle أيضًا.';
 }

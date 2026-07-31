@@ -396,6 +396,23 @@ abstract class VpnEngineBase implements VpnEngine {
     if (session == null || _userStopped) return false;
     if (!session.options.settings.autoReconnect) return false;
 
+    // ⚠️ Повтор лечит ОБРЫВ, но не отсутствующий файл.
+    //
+    // Случай из жизни: файл ядра пропал из папки программы, и каждое нажатие
+    // «Подключить» падало с «Не удается найти указанный файл». Приложение
+    // послушно перезапускалось 31 раз подряд в течение суток, показывая
+    // «Переподключение…», а настоящую причину видел только тот, кто открывал
+    // лог. Пользователь всё это время считал, что «просто не работает».
+    //
+    // Такие отказы неустранимы повтором по своей природе: пока файла нет, ничего
+    // не изменится. Останавливаемся сразу и говорим, ЧЕГО не хватает.
+    if (_isUnrecoverable(reason)) {
+      AppLog.e('Автопереподключение отменено: $reason. Повтор тут не поможет — '
+          'не хватает файла программы, переустановите приложение.');
+      _userStopped = true;
+      return false;
+    }
+
     // ОДНА попытка на один обрыв. Обрыв приходит несколькими событиями подряд:
     // при hysteria2 в TUN-режиме одновременно умирают процесс туннеля и процесс
     // прокси-ядра, у каждого свой onCoreDied, плюс сверху может прилететь смена
@@ -416,6 +433,27 @@ abstract class VpnEngineBase implements VpnEngine {
     } finally {
       _retryPending = false;
     }
+  }
+
+  /// Обёртка для тестов: правило важное, а метод приватный.
+  @visibleForTesting
+  static bool isUnrecoverableForTest(String reason) => _isUnrecoverable(reason);
+
+  /// Отказ, который повтором не лечится.
+  ///
+  /// Сейчас это единственный класс: не найден исполняемый файл ядра. Текст
+  /// приходит от системы и локализован, поэтому смотрим и на русский вариант, и
+  /// на английский, и на код ошибки Windows (2 — ERROR_FILE_NOT_FOUND,
+  /// 3 — ERROR_PATH_NOT_FOUND).
+  static bool _isUnrecoverable(String reason) {
+    final r = reason.toLowerCase();
+    return r.contains('не удается найти указанный файл') ||
+        r.contains('не удаётся найти указанный файл') ||
+        r.contains('cannot find the file') ||
+        r.contains('the system cannot find the path') ||
+        r.contains('no such file or directory') ||
+        r.contains('errno = 2') ||
+        r.contains('errno = 3');
   }
 
   bool _retryPending = false;

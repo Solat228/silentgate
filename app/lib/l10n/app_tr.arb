@@ -651,5 +651,7 @@
   "splitShowBlockPage": "Engelleme sayfasını göster",
   "splitBlockPageNeedsVpn": "Engelleme sayfası yalnızca VPN açıkken çalışır",
   "srvInfoNeedsConnection": "Bu platformda sunucu üzerinden ölçüm yalnızca VPN açıkken yapılabilir",
-  "serviceYoutubeThrottleNote": "⚠️ Bu sınama YouTube kısıtlamasını göremez: sağlayıcı normal yanıt verir ama video hızını düşürür. Yeşil «servise erişilebiliyor» demektir, «video oynuyor» değil."
+  "serviceYoutubeThrottleNote": "⚠️ Bu sınama YouTube kısıtlamasını göremez: sağlayıcı normal yanıt verir ama video hızını düşürür. Yeşil «servise erişilebiliyor» demektir, «video oynuyor» değil.",
+  "urlSchemeConnectServer": "silentgate://connect?server=<sunucu adı>",
+  "urlDescConnectServer": "BELİRLİ bir sunucuya bağlan. Ad, listede görünen ve aboneliğin gönderdiği addır, örn. «Polonya 1.5». Bayrak emojisi ve büyük/küçük harf önemsiz. Tam eşleşme yoksa arama devreye girer: ülke, adres veya protokol. toggle ile de çalışır."
 }

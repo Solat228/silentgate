@@ -1975,4 +1975,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ Diese Prüfung erkennt keine YouTube-Drosselung: Der Anbieter antwortet normal, begrenzt aber die Videobandbreite. Grün bedeutet „Dienst erreichbar“, nicht „Video läuft“.';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<Servername>';
+
+  @override
+  String get urlDescConnectServer =>
+      'Mit einem BESTIMMTEN Server verbinden. Der Name ist der aus der Liste, den das Abo liefert, z. B. „Polen 1.5“. Flaggen-Emoji und Groß-/Kleinschreibung sind egal. Ohne exakte Übereinstimmung greift die Suche: Land, Adresse oder Protokoll. Gilt auch für toggle.';
 }

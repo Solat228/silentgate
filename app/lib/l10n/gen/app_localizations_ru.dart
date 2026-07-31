@@ -1963,4 +1963,12 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ Замедление YouTube эта проверка не видит: провайдер отвечает нормально, но режет скорость видео. Зелёный здесь означает «сервис доступен», а не «видео проигрывается».';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<имя сервера>';
+
+  @override
+  String get urlDescConnectServer =>
+      'Подключиться к КОНКРЕТНОМУ серверу. Имя — то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет — сработает поиск: по стране, адресу или протоколу. Работает и с toggle.';
 }

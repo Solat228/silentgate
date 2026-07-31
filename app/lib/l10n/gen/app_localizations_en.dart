@@ -1960,4 +1960,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get serviceYoutubeThrottleNote =>
       '⚠️ This check cannot see YouTube throttling: the provider answers normally but limits video bandwidth. Green here means “service reachable”, not “video plays”.';
+
+  @override
+  String get urlSchemeConnectServer =>
+      'silentgate://connect?server=<server name>';
+
+  @override
+  String get urlDescConnectServer =>
+      'Connect to a SPECIFIC server. The name is the one shown in the list and sent by the subscription, e.g. “Poland 1.5”. Flag emoji and case may be omitted. With no exact match, search kicks in: by country, address or protocol. Works with toggle too.';
 }

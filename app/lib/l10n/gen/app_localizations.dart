@@ -3551,6 +3551,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'⚠️ Замедление YouTube эта проверка не видит: провайдер отвечает нормально, но режет скорость видео. Зелёный здесь означает «сервис доступен», а не «видео проигрывается».'**
   String get serviceYoutubeThrottleNote;
+
+  /// No description provided for @urlSchemeConnectServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'silentgate://connect?server=<имя сервера>'**
+  String get urlSchemeConnectServer;
+
+  /// No description provided for @urlDescConnectServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключиться к КОНКРЕТНОМУ серверу. Имя — то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет — сработает поиск: по стране, адресу или протоколу. Работает и с toggle.'**
+  String get urlDescConnectServer;
 }
 
 class _AppLocalizationsDelegate
