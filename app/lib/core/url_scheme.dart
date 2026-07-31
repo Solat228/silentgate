@@ -39,6 +39,21 @@ abstract final class AppUrlScheme {
     return controlActions.contains(action) ? action : null;
   }
 
+  /// Имя сервера из `silentgate://connect?server=Польша%201.5`.
+  ///
+  /// Имя — то же, что показывает подписка и что видно в списке. Пусто/нет
+  /// параметра → null, тогда действие работает как раньше (текущий выбор).
+  ///
+  /// Принимаем и `server`, и `name`: снаружи схему пишут люди, и обе формы
+  /// одинаково очевидны — отказывать в одной из них незачем.
+  static String? serverName(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null) return null;
+    final v = (uri.queryParameters['server'] ?? uri.queryParameters['name'] ?? '')
+        .trim();
+    return v.isEmpty ? null : v;
+  }
+
   /// Полезная нагрузка `silentgate://import?url=…` / `?config=…` — внутренний
   /// URL подписки или ссылка сервера. null — не наш import-URL.
   ///

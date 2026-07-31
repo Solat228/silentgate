@@ -34,10 +34,20 @@ class GeoEndpoint {
 /// заглушка провайдера (обычно 200 + HTML) их не пройдёт, а TLS отсекает подмену.
 class AutoConfigCatalog {
   static const _all = <ProbeService, ProbeEndpoint>{
+    // ⚠️ Проверяем ВИДЕО-CDN, а не сайт.
+    //
+    // Владелец: «страница ютуба открывается, но видео не грузятся». Так и есть:
+    // в России режут не www.youtube.com, а googlevideo.com — CDN, с которого
+    // идёт само видео. Проверка сайта показывала зелёный там, где смотреть
+    // нельзя, то есть врала ровно в том случае, ради которого её включают.
+    //
+    // 404 на /videoplayback без параметров — НОРМАЛЬНЫЙ ответ живого CDN:
+    // запрос дошёл и был разобран. Значимо, что хост отвечает по существу, а не
+    // код ответа.
     ProbeService.youtube: ProbeEndpoint(
       ProbeService.youtube,
-      'https://www.youtube.com/generate_204',
-      _is204,
+      'https://redirector.googlevideo.com/videoplayback',
+      _googlevideoAlive,
     ),
     ProbeService.chatgpt: ProbeEndpoint(
       ProbeService.chatgpt,
@@ -49,10 +59,21 @@ class AutoConfigCatalog {
       'https://discord.com/api/v9/gateway',
       _discordGateway,
     ),
+    // ⚠️ Telegram проверяется ДОЗВОНОМ ДО ДАТА-ЦЕНТРА, а не веб-версией.
+    //
+    // Владелец: «в телеграм не открывается десктопное приложение и на телефоне
+    // тоже». Приложение говорит с дата-центрами по MTProto, и блокируют именно
+    // их адреса; web.telegram.org при этом продолжает открываться, потому что
+    // это обычный сайт на другом хостинге. Проверка веб-версии показывала
+    // зелёный ровно тогда, когда мессенджер не работал.
+    //
+    // Адрес — DC2 (Амстердам), самый нагруженный и стабильный. Проверка идёт
+    // методом CONNECT: по HTTP этот адрес не отвечает вовсе, и обычный запрос
+    // провалился бы на сертификате при живом канале.
     ProbeService.telegram: ProbeEndpoint(
       ProbeService.telegram,
-      'https://web.telegram.org/',
-      _telegramWeb,
+      'tcp://149.154.167.51:443',
+      _alwaysOk,
     ),
     ProbeService.claude: ProbeEndpoint(
       ProbeService.claude,
@@ -109,6 +130,17 @@ class AutoConfigCatalog {
 
   /// Гео-проба сервиса (или null, если сервис не гео-ограничен).
   static GeoEndpoint? geoEndpointFor(ProbeService s) => _geo[s];
+
+  /// Живой ли видео-CDN YouTube.
+  ///
+  /// Без параметров `/videoplayback` отвечает 404 — это ответ ПО СУЩЕСТВУ:
+  /// запрос дошёл, сервер его разобрал. Заглушка провайдера обычно отдаёт 200 с
+  /// HTML, поэтому 200 с телом тут как раз подозрителен.
+  static bool _googlevideoAlive(int code, String body) =>
+      code == 404 || code == 200 && body.length < 512;
+
+  /// Для проб, где сам факт установленного соединения и есть ответ (CONNECT).
+  static bool _alwaysOk(int code, String body) => true;
 
   static bool _is204(int code, String body) => code == 204;
   static bool _cfTrace(int code, String body) =>

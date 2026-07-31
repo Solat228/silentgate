@@ -42,17 +42,33 @@ class ServiceCheckOutcome {
 /// доступность (открывается ли), затем — для ИИ — гео-ограничение по стране
 /// выхода. Гео-проба неинформативна ⇒ считаем доступным (безопасный дефолт).
 class ServiceChecker {
+  /// Разобрать `tcp://host:port` и дозвониться туда через прокси.
+  static Future<ProbeOutcome> _tcpProbe(int httpPort, String url) async {
+    final rest = url.substring('tcp://'.length);
+    final i = rest.lastIndexOf(':');
+    if (i <= 0) return const ProbeOutcome(ok: false);
+    final host = rest.substring(0, i);
+    final port = int.tryParse(rest.substring(i + 1)) ?? 0;
+    if (port <= 0) return const ProbeOutcome(ok: false);
+    return ProxyProbe.tcpConnect(httpPort, host, port);
+  }
+
   static Future<ServiceCheckOutcome> check(int httpPort, ProbeService s) async {
     final ep = AutoConfigCatalog.endpointFor(s);
     if (ep == null) return const ServiceCheckOutcome(ServiceCheckState.fail);
 
-    final r = await ProxyProbe.check(
-      httpPort,
-      ep.url,
-      head: ep.head,
-      validator: ep.validator,
-      timeout: const Duration(seconds: 8),
-    );
+    // Адрес вида `tcp://host:port` — проверяем дозвоном, а не запросом.
+    // Так проверяется Telegram: его дата-центры говорят по MTProto, и обычный
+    // HTTP-запрос провалился бы на сертификате при полностью живом канале.
+    final r = ep.url.startsWith('tcp://')
+        ? await _tcpProbe(httpPort, ep.url)
+        : await ProxyProbe.check(
+            httpPort,
+            ep.url,
+            head: ep.head,
+            validator: ep.validator,
+            timeout: const Duration(seconds: 8),
+          );
     if (!r.ok) {
       return ServiceCheckOutcome(ServiceCheckState.fail, latencyMs: r.rttMs);
     }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -903,9 +904,79 @@ class _ConnectButton extends StatelessWidget {
         child: Center(
           child: busy
               ? const CircularProgressIndicator()
-              : Icon(Icons.power_settings_new,
-                  size: 68, color: connected ? scheme.onPrimary : scheme.onSurface),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.power_settings_new,
+                        // Значок ужимается, когда под ним появляется время:
+                        // иначе пара «значок + таймер» не влезает в круг и
+                        // обрезается по краям.
+                        size: connected ? 56 : 68,
+                        color: connected ? scheme.onPrimary : scheme.onSurface),
+                    if (connected) const _UptimeLabel(),
+                  ],
+                ),
         ),
+      ),
+    );
+  }
+}
+
+/// Сколько длится подключение — прямо в кнопке.
+///
+/// Отдельный виджет с собственным таймером: перерисовывать раз в секунду весь
+/// экран расточительно. Точка отсчёта живёт в [AppState], а не здесь: кнопка
+/// пересоздаётся на каждом обновлении статуса, и время начиналось бы заново.
+class _UptimeLabel extends StatefulWidget {
+  const _UptimeLabel();
+
+  @override
+  State<_UptimeLabel> createState() => _UptimeLabelState();
+}
+
+class _UptimeLabelState extends State<_UptimeLabel> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  /// «7:12» до часа, дальше «1:07:12» — как в плеере: ведущий ноль у минут не
+  /// нужен, а у секунд обязателен, иначе цифры прыгают при переходе через 10.
+  static String format(Duration d) {
+    final total = d.inSeconds;
+    final hh = total ~/ 3600;
+    final mm = (total ~/ 60) % 60;
+    final ss = total % 60;
+    String two(int v) => v.toString().padLeft(2, '0');
+    return hh > 0 ? '$hh:${two(mm)}:${two(ss)}' : '$mm:${two(ss)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final d = context.select<AppState, Duration?>((s) => s.connectedFor);
+    if (d == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        format(d),
+        textDirection: TextDirection.ltr,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimary,
+              // Моноширинные цифры: иначе строка дёргается на каждой секунде,
+              // потому что «1» уже остальных.
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
       ),
     );
   }

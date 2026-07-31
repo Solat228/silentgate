@@ -9,6 +9,8 @@ import '../core/models/subscription_info.dart';
 import '../core/models/subscription_profile.dart';
 import '../core/models/subscription_sync.dart';
 import '../core/models/traffic_stats.dart';
+import '../core/util/server_search.dart';
+import '../core/util/country_flag.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/parser/share_link_parser.dart';
@@ -54,6 +56,16 @@ class AppState extends ChangeNotifier {
       final was = _status.state;
       _status = s;
       _trackAutotune(s);
+      // Отсчёт времени подключения. Ставим только на ПЕРЕХОДЕ в «подключено»:
+      // статус приходит и при обновлении трафика, и сброс на каждом таком
+      // событии обнулял бы таймер раз в секунду.
+      if (s.isConnected) {
+        _connectedAt ??= DateTime.now();
+      } else if (s.state != VpnConnectionState.connecting) {
+        // Переподключение (connecting) отсчёт НЕ сбрасывает: для пользователя
+        // это то же самое соединение, которое просто восстанавливается.
+        _connectedAt = null;
+      }
       // Наблюдатель за сетью работает только при живом подключении и молчит, пока мы
       // сами что-то делаем: подъём туннеля перестраивает маршруты, и без паузы это
       // считалось бы «сменой сети» (именно так возникал цикл переподключений).
@@ -181,6 +193,19 @@ class AppState extends ChangeNotifier {
   VpnStatus get status => _status;
   TrafficStats get stats => _stats;
 
+  /// Момент, когда туннель поднялся. null — не подключены.
+  ///
+  /// Хранится здесь, а не в виджете: интерфейс пересоздаётся при переходах между
+  /// экранами, и таймер, живущий в нём, обнулялся бы на каждом возврате.
+  DateTime? _connectedAt;
+
+  /// Сколько длится текущее подключение. null — не подключены.
+  Duration? get connectedFor {
+    final at = _connectedAt;
+    if (at == null || !_status.isConnected) return null;
+    return DateTime.now().difference(at);
+  }
+
   /// Локальный http-прокси порт активного ядра (для живой проверки сервисов).
   int get httpProxyPort => _engine.httpProxyPort;
 
@@ -297,6 +322,31 @@ class AppState extends ChangeNotifier {
     // (см. importSource/_refreshLogo). Здесь показываем то, что уже в кэше.
   }
 
+  /// Выбрать сервер по имени из подписки. false — не нашли.
+  ///
+  /// Сначала ищем ТОЧНОЕ совпадение имени (без флаг-эмодзи и регистра): у
+  /// панелей встречаются «Германия» и «Германия 2», и подстрочный поиск выбрал
+  /// бы первый попавшийся. Не нашли точного — падаем на обычный поиск, тот же,
+  /// что в строке поиска списка: по имени, стране, адресу, протоколу.
+  bool _selectServerByName(String name) {
+    String norm(String v) =>
+        FlagUtil.strip(v).toLowerCase().replaceAll('ё', 'е').trim();
+    final want = norm(name);
+
+    var idx = _servers.indexWhere((s) => norm(s.remark) == want);
+    if (idx < 0) {
+      final hits = ServerSearch.matchIndices(_servers, name);
+      if (hits.isEmpty) return false;
+      idx = hits.first;
+    }
+    if (idx == _selectedIndex) return true;
+    _selectedIndex = idx;
+    AppLog.i('Сервер выбран по имени из ссылки: ${_servers[idx].displayName}');
+    unawaited(_persist());
+    notifyListeners();
+    return true;
+  }
+
   /// Обработать входящую ссылку silentgate:// — импорт ИЛИ управление VPN.
   Future<void> handleIncomingUrl(String url) async {
     final settings = await SettingsStorage().load();
@@ -304,6 +354,21 @@ class AppState extends ChangeNotifier {
     // Управляющие схемы: connect / disconnect / toggle / update.
     final action = AppUrlScheme.controlAction(url);
     if (action != null) {
+      // Выбор сервера ПО ИМЕНИ, которое присылает подписка:
+      // `silentgate://connect?server=Польша 1.5`.
+      //
+      // Это единственный способ переключать сервер снаружи. Прямая правка файла
+      // состояния не годится: при загрузке выбор ремапится по ключу сервера, и
+      // записанный индекс либо бьёт в чужой сервер, либо теряется вовсе —
+      // проверено на 16 прогонах, все ушли через один и тот же узел.
+      final wanted = AppUrlScheme.serverName(url);
+      if (wanted != null && (action == 'connect' || action == 'toggle')) {
+        if (!_selectServerByName(wanted)) {
+          _error = 'Сервер «$wanted» не найден';
+          notifyListeners();
+          return;
+        }
+      }
       switch (action) {
         case 'connect':
           if (!_status.isConnected &&
