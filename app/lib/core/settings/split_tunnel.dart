@@ -81,7 +81,7 @@ class AppRule {
       {this.byName = false,
       this.action = AppAction.direct,
       this.enabled = true,
-      this.allowRealIp = true,
+      this.allowRealIp = false,
       this.overrideSites = false});
 
   String get name => path.split(r'\').last;
@@ -121,7 +121,10 @@ class AppRule {
         // Старые правила заводились ДО появления галочки, когда noRealIp молча
         // перекрывал их. Поднимаем им флаг: пользователь ставил «Прямо» именно
         // ради прямого выхода.
-        allowRealIp: j['allowRealIp'] as bool? ?? true,
+          // ⚠️ Умолчание FALSE — защита выигрывает. «Не выходить под реальным
+          // IP» стоит выше всех правил и не перебивается: правило «Прямо»
+          // уходит напрямую, ТОЛЬКО если пользователь явно это разрешил.
+        allowRealIp: j['allowRealIp'] as bool? ?? false,
         // Умолчание false — прежний порядок: правило сайта конкретнее и
         // потому сильнее. Старые правила своего смысла не меняют.
         overrideSites: j['overrideSites'] as bool? ?? false,
@@ -194,7 +197,7 @@ class SiteRule {
   final bool allowRealIp;
 
   const SiteRule(this.domain,
-      {this.port, this.action = AppAction.direct, this.allowRealIp = true});
+      {this.port, this.action = AppAction.direct, this.allowRealIp = false});
 
   /// Отображаемая метка: домен и, если задан, порт (`example.com:8443`).
   String get label => port == null ? domain : '$domain:$port';
@@ -225,7 +228,7 @@ class SiteRule {
           action: _actionFrom(j['action'], fallback),
           // Правила, заведённые до появления галочки, чинятся сами: «Прямо»
           // снова означает «прямо».
-          allowRealIp: j['allowRealIp'] as bool? ?? true);
+          allowRealIp: j['allowRealIp'] as bool? ?? false);
     }
     return const SiteRule('');
   }

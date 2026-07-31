@@ -10,17 +10,19 @@ import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 /// `engine/windows/bin/sing-box.exe check -c <файл>`. Туннель НЕ поднимается.
 void main() {
   const sites = [
-    SiteRule('example.org', action: AppAction.direct),
-    SiteRule('example.com', action: AppAction.direct),
-    SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+    // Явное разрешение реального IP — иначе защита, стоящая выше всех правил,
+    // уведёт эти домены через VPN. Так и задумано: она не перебивается.
+    SiteRule('example.org', action: AppAction.direct, allowRealIp: true),
+    SiteRule('example.com', action: AppAction.direct, allowRealIp: true),
+    SiteRule('bank.ru', action: AppAction.direct),
     SiteRule('example.net', action: AppAction.tunnel),
     SiteRule('ads.example', action: AppAction.block),
-    SiteRule('example.com', port: 8443, action: AppAction.direct),
+    SiteRule('example.com', port: 8443, action: AppAction.direct, allowRealIp: true),
   ];
   const apps = [
     AppRule(r'C:\Program Files\Google\Chrome\Application\chrome.exe',
         byName: true, action: AppAction.tunnel),
-    AppRule(r'C:\Telegram\Telegram.exe', action: AppAction.direct),
+    AppRule(r'C:\Telegram\Telegram.exe', action: AppAction.direct, allowRealIp: true),
   ];
 
   final outDir = Directory('build/split-configs')..createSync(recursive: true);

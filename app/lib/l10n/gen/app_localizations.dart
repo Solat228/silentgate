@@ -3267,19 +3267,19 @@ abstract class AppLocalizations {
   /// No description provided for @splitAllowRealIp.
   ///
   /// In ru, this message translates to:
-  /// **'Разрешить реальный IP'**
+  /// **'Разрешить этому правилу реальный IP'**
   String get splitAllowRealIp;
 
   /// No description provided for @splitAllowRealIpOn.
   ///
   /// In ru, this message translates to:
-  /// **'Правило идёт мимо VPN — сайт увидит ваш настоящий адрес'**
+  /// **'Поднята: это исключение, трафик выйдет под вашим реальным адресом'**
   String get splitAllowRealIpOn;
 
   /// No description provided for @splitAllowRealIpOff.
   ///
   /// In ru, this message translates to:
-  /// **'Правило возвращено под защиту — пойдёт через VPN'**
+  /// **'Снята: правило идёт через VPN — защита выше всех правил'**
   String get splitAllowRealIpOff;
 
   /// No description provided for @splitRealIpExposed.

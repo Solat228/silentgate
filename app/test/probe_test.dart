@@ -781,13 +781,15 @@ void main() {
       ).buildMap(const SplitTunnelConfig(
         mode: SplitMode.exceptSelected,
         apps: [
-          AppRule(r'C:\a.exe', byName: true, action: AppAction.direct),
-          AppRule(r'C:\b.exe',
-              byName: true, action: AppAction.direct, allowRealIp: false),
+          // Явное разрешение — единственный способ выйти напрямую при
+          // включённой защите: она стоит выше всех правил и не перебивается.
+          AppRule(r'C:\a.exe',
+              byName: true, action: AppAction.direct, allowRealIp: true),
+          AppRule(r'C:\b.exe', byName: true, action: AppAction.direct),
         ],
         sites: [
-          SiteRule('example.com', action: AppAction.direct),
-          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+          SiteRule('example.com', action: AppAction.direct, allowRealIp: true),
+          SiteRule('bank.ru', action: AppAction.direct),
         ],
       ));
       final r = rules(cfg);
@@ -836,8 +838,10 @@ void main() {
       ).buildMap(const SplitTunnelConfig(
         mode: SplitMode.exceptSelected,
         sites: [
-          SiteRule('example.com', action: AppAction.direct),
-          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+          // Явное разрешение: только оно даёт прямой резолв при включённой
+          // защите — она стоит выше всех правил и не перебивается.
+          SiteRule('example.com', action: AppAction.direct, allowRealIp: true),
+          SiteRule('bank.ru', action: AppAction.direct),
           SiteRule('netflix.com', action: AppAction.tunnel),
           SiteRule('ads.example', action: AppAction.block),
         ],

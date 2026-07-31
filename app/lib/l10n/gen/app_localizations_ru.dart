@@ -1787,15 +1787,15 @@ class AppLocalizationsRu extends AppLocalizations {
   String get supportDescriptionSection => 'ОПИСАНИЕ ОТ ПОЛЬЗОВАТЕЛЯ';
 
   @override
-  String get splitAllowRealIp => 'Разрешить реальный IP';
+  String get splitAllowRealIp => 'Разрешить этому правилу реальный IP';
 
   @override
   String get splitAllowRealIpOn =>
-      'Правило идёт мимо VPN — сайт увидит ваш настоящий адрес';
+      'Поднята: это исключение, трафик выйдет под вашим реальным адресом';
 
   @override
   String get splitAllowRealIpOff =>
-      'Правило возвращено под защиту — пойдёт через VPN';
+      'Снята: правило идёт через VPN — защита выше всех правил';
 
   @override
   String get splitRealIpExposed => 'реальный IP';

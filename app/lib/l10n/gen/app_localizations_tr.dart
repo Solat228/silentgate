@@ -1789,14 +1789,15 @@ class AppLocalizationsTr extends AppLocalizations {
   String get supportDescriptionSection => 'KULLANICI AÇIKLAMASI';
 
   @override
-  String get splitAllowRealIp => 'Gerçek IP’ye izin ver';
+  String get splitAllowRealIp => 'Bu kural için gerçek IP’ye izin ver';
 
   @override
   String get splitAllowRealIpOn =>
-      'Bu kural VPN’i atlar — site gerçek adresinizi görür';
+      'Açık: bu bir istisnadır, trafik gerçek adresinizle çıkar';
 
   @override
-  String get splitAllowRealIpOff => 'Bu kural korumada — VPN üzerinden gider';
+  String get splitAllowRealIpOff =>
+      'Kapalı: kural VPN üzerinden gider — koruma tüm kuralların üstündedir';
 
   @override
   String get splitRealIpExposed => 'gerçek IP';

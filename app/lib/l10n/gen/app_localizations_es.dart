@@ -1802,15 +1802,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get supportDescriptionSection => 'DESCRIPCIÓN DEL USUARIO';
 
   @override
-  String get splitAllowRealIp => 'Permitir IP real';
+  String get splitAllowRealIp => 'Permitir IP real para esta regla';
 
   @override
   String get splitAllowRealIpOn =>
-      'Esta regla omite la VPN: el sitio verá tu dirección real';
+      'Activada: es una excepción, el tráfico saldrá con tu dirección real';
 
   @override
   String get splitAllowRealIpOff =>
-      'Esta regla está protegida: pasa por la VPN';
+      'Desactivada: la regla va por la VPN — la protección está por encima de todas';
 
   @override
   String get splitRealIpExposed => 'IP real';

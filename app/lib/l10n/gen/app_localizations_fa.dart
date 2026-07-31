@@ -1782,15 +1782,15 @@ class AppLocalizationsFa extends AppLocalizations {
   String get supportDescriptionSection => 'شرح کاربر';
 
   @override
-  String get splitAllowRealIp => 'اجازهٔ IP واقعی';
+  String get splitAllowRealIp => 'اجازهٔ IP واقعی برای این قانون';
 
   @override
   String get splitAllowRealIpOn =>
-      'این قاعده از VPN عبور نمی‌کند — سایت نشانی واقعی شما را می‌بیند';
+      'روشن: این استثناست و ترافیک با نشانی واقعی شما بیرون می‌رود';
 
   @override
   String get splitAllowRealIpOff =>
-      'این قاعده محافظت‌شده است — از VPN عبور می‌کند';
+      'خاموش: قانون از راه VPN می‌رود — حفاظت بالاتر از همهٔ قوانین است';
 
   @override
   String get splitRealIpExposed => 'IP واقعی';

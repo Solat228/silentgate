@@ -736,9 +736,9 @@
       }
     }
   },
-  "splitAllowRealIp": "Разрешить реальный IP",
-  "splitAllowRealIpOn": "Правило идёт мимо VPN — сайт увидит ваш настоящий адрес",
-  "splitAllowRealIpOff": "Правило возвращено под защиту — пойдёт через VPN",
+  "splitAllowRealIp": "Разрешить этому правилу реальный IP",
+  "splitAllowRealIpOn": "Поднята: это исключение, трафик выйдет под вашим реальным адресом",
+  "splitAllowRealIpOff": "Снята: правило идёт через VPN — защита выше всех правил",
   "splitRealIpExposed": "реальный IP",
   "splitRealIpProtected": "через VPN",
   "vpnActiveBadge": "VPN активен",

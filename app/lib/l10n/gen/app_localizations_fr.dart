@@ -1804,15 +1804,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get supportDescriptionSection => 'DESCRIPTION DE L’UTILISATEUR';
 
   @override
-  String get splitAllowRealIp => 'Autoriser l’IP réelle';
+  String get splitAllowRealIp => 'Autoriser l’IP réelle pour cette règle';
 
   @override
   String get splitAllowRealIpOn =>
-      'Cette règle contourne le VPN — le site verra votre adresse réelle';
+      'Cochée : c’est une exception, le trafic sortira avec votre adresse réelle';
 
   @override
   String get splitAllowRealIpOff =>
-      'Cette règle est protégée — elle passe par le VPN';
+      'Décochée : la règle passe par le VPN — la protection prime sur tout';
 
   @override
   String get splitRealIpExposed => 'IP réelle';

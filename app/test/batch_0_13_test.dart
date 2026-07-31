@@ -288,8 +288,10 @@ void main() {
           AppRule(r'C:\a.exe', action: AppAction.direct, allowRealIp: false),
         ],
         sites: const [
-          SiteRule('example.org', action: AppAction.direct),
-          SiteRule('bank.ru', action: AppAction.direct, allowRealIp: false),
+          // Явное разрешение — единственный способ выйти напрямую при
+          // включённой защите: она стоит выше всех правил и не перебивается.
+          SiteRule('example.org', action: AppAction.direct, allowRealIp: true),
+          SiteRule('bank.ru', action: AppAction.direct),
         ],
       );
       final back = SplitTunnelConfig.fromJson(st.toJson());
@@ -300,7 +302,11 @@ void main() {
 
     // Правила, заведённые до появления галочки, обязаны начать работать как
     // «Прямо»: раньше noRealIp молча уводил их в туннель.
-    test('старые правила без поля получают разрешение', () {
+    // ⚠️ Политика ИЗМЕНЕНА решением владельца: «Не выходить под реальным IP»
+    // стоит выше всех правил и не перебивается. Значит правило без явного
+    // разрешения ЗАЩИЩАЕТСЯ, а не выпускается напрямую. Прежнее ожидание
+    // («старые правила получают разрешение») отменено осознанно.
+    test('правила без поля защищаются, а не выпускаются напрямую', () {
       final st = SplitTunnelConfig.fromJson({
         'mode': 'onlySelected',
         'apps': [
@@ -310,8 +316,8 @@ void main() {
           {'domain': 'example.org', 'action': 'direct'}
         ],
       });
-      expect(st.apps.single.allowRealIp, isTrue);
-      expect(st.sites.single.allowRealIp, isTrue);
+      expect(st.apps.single.allowRealIp, isFalse);
+      expect(st.sites.single.allowRealIp, isFalse);
     });
 
     test('правка порта не сбрасывает галочку', () {

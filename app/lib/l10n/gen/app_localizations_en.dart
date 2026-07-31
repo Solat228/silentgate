@@ -1783,15 +1783,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get supportDescriptionSection => 'USER DESCRIPTION';
 
   @override
-  String get splitAllowRealIp => 'Allow real IP';
+  String get splitAllowRealIp => 'Allow real IP for this rule';
 
   @override
   String get splitAllowRealIpOn =>
-      'This rule bypasses the VPN — the site will see your real address';
+      'On: this is an exception, traffic leaves under your real address';
 
   @override
   String get splitAllowRealIpOff =>
-      'This rule is protected — it goes through the VPN';
+      'Off: the rule goes through the VPN — protection outranks all rules';
 
   @override
   String get splitRealIpExposed => 'real IP';

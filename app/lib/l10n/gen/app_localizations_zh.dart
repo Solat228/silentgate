@@ -1741,13 +1741,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get supportDescriptionSection => '用户描述';
 
   @override
-  String get splitAllowRealIp => '允许真实 IP';
+  String get splitAllowRealIp => '允许此规则使用真实 IP';
 
   @override
-  String get splitAllowRealIpOn => '此规则绕过 VPN — 网站将看到你的真实地址';
+  String get splitAllowRealIpOn => '已勾选：这是例外，流量将以你的真实地址外发';
 
   @override
-  String get splitAllowRealIpOff => '此规则受保护 — 将通过 VPN';
+  String get splitAllowRealIpOff => '未勾选：该规则走 VPN —— 保护优先于所有规则';
 
   @override
   String get splitRealIpExposed => '真实 IP';

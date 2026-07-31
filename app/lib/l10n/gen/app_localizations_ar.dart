@@ -1777,15 +1777,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get supportDescriptionSection => 'وصف المستخدم';
 
   @override
-  String get splitAllowRealIp => 'السماح بعنوان IP الحقيقي';
+  String get splitAllowRealIp => 'السماح بالعنوان الحقيقي لهذه القاعدة';
 
   @override
   String get splitAllowRealIpOn =>
-      'تتجاوز هذه القاعدة الشبكة الافتراضية — سيرى الموقع عنوانك الحقيقي';
+      'مُفعَّل: هذا استثناء، وستخرج الحركة بعنوانك الحقيقي';
 
   @override
   String get splitAllowRealIpOff =>
-      'هذه القاعدة محمية — تمر عبر الشبكة الافتراضية';
+      'مُطفأ: تمر القاعدة عبر VPN — الحماية فوق كل القواعد';
 
   @override
   String get splitRealIpExposed => 'IP حقيقي';
