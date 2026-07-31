@@ -260,7 +260,7 @@ void main() {
       expect((rules[serverIdx]['ip_cidr'] as List), contains('2001:db8::1/128'));
     });
 
-    test('DNS: режим vpn даёт резолвер через прокси + hijack; system — без секции', () {
+    test('DNS: во ВСЕХ режимах есть секция и перехват; отличается только апстрим', () {
       final vpn = const SingboxConfigBuilder(
         options: TunOptions(dnsMode: DnsMode.vpn),
       ).buildMap(split);
@@ -272,11 +272,18 @@ void main() {
       expect(dns['final'], 'dns-proxy');
       expect(rulesOf(vpn).any((r) => r['action'] == 'hijack-dns'), isTrue);
 
+      // ⚠️ Прежнее ожидание («system — без секции и без перехвата») ОТМЕНЕНО:
+      // именно оно и описывало поломку. Туннель в любом режиме объявляет себя
+      // DNS-сервером адаптера, и без перехвата запросы уходили на 172.19.0.2,
+      // где никто не слушает, — не резолвилось ничего. Подробности и проверка
+      // порядка правил — в dns_system_mode_test.dart.
       final sys = const SingboxConfigBuilder(
         options: TunOptions(dnsMode: DnsMode.system),
       ).buildMap(split);
-      expect(sys.containsKey('dns'), isFalse);
-      expect(rulesOf(sys).any((r) => r['action'] == 'hijack-dns'), isFalse);
+      expect(sys.containsKey('dns'), isTrue);
+      expect(rulesOf(sys).any((r) => r['action'] == 'hijack-dns'), isTrue);
+      // «Системный» = резолв апстримом системы, а не через туннель.
+      expect((sys['dns'] as Map)['final'], 'dns-local');
 
       final custom = const SingboxConfigBuilder(
         options: TunOptions(dnsMode: DnsMode.custom, dnsServer: '9.9.9.9'),
