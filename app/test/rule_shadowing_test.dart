@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
+import 'package:silentgate/core/xray/xray_config_builder.dart';
+import 'package:silentgate/engine/android/android_engine.dart';
 
 /// Стражи против ЧЕТЫРЁХ багов, найденных ревью маршрутизации 01.08.2026.
 ///
@@ -230,6 +232,35 @@ void main() {
       expect(stub, hasLength(1));
       expect(domain(stub.single, 'ads.example'), isTrue);
       expect(stub.single['port'], [80]);
+    });
+  });
+
+  group('Локальные порты двух ядер', () {
+    // На Windows Xray и sing-box — РАЗНЫЕ процессы, и одинаковый номер порта у
+    // них безобиден. На Android оба ядра живут в ОДНОМ процессе, и
+    // `SilentGateVpnService` поднимает Xray ПЕРВЫМ. Совпадение означало: sing-box
+    // не может забиндить clash_api -> исключение -> `startTunnel` снимает туннель
+    // целиком. «Авто (лучший сервер)» и панельные профили не подключались ВООБЩЕ,
+    // а обычный VLESS работал (там Xray не поднимается) — поэтому на простом
+    // тесте дефект был не виден.
+    //
+    // Сверяем КОНСТАНТЫ, а не строку конфига: смысл в том, чтобы новый локальный
+    // порт нельзя было завести, не сверившись с обоими ядрами.
+    test('не совпадают ни одной парой', () {
+      const xray = XrayPorts();
+      final used = <int, String>{};
+      void claim(int port, String who) {
+        expect(used.containsKey(port), isFalse,
+            reason: 'порт $port уже занят «${used[port]}», а его просит «$who» — '
+                'на Android это ОДИН процесс, и второй бинд валит туннель');
+        used[port] = who;
+      }
+
+      claim(xray.socks, 'Xray socks');
+      claim(xray.http, 'Xray http');
+      claim(xray.api, 'Xray api (dokodemo)');
+      claim(AndroidEngine.probeInboundPort, 'инбаунд проб');
+      claim(AndroidEngine.clashApiPort, 'sing-box clash_api');
     });
   });
 }

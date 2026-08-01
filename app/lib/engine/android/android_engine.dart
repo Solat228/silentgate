@@ -61,7 +61,7 @@ class AndroidEngine extends VpnEngineBase {
   /// ⚠️ Пароль генерируется на КАЖДУЮ сессию. На телефоне локальный порт видит
   /// любое установленное приложение, а sing-box без `secret` отдаёт метаданные
   /// соединений всем подряд и с CORS `*` — то есть и любой открытой странице.
-  static const _apiPort = 10812;
+  static const clashApiPort = 10812;
 
   /// ⚠️ НЕ `final`, и это не мелочь. Пароль обязан пережить смерть изолята.
   ///
@@ -131,7 +131,7 @@ class AndroidEngine extends VpnEngineBase {
     _statsTimer?.cancel();
     _lastSnap = const XrayTrafficSnapshot(0, 0);
     _lastSnapAt = DateTime.now();
-    final stats = SingboxStats(apiPort: _apiPort, secret: _apiSecret);
+    final stats = SingboxStats(apiPort: clashApiPort, secret: _apiSecret);
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_statsBusy) return;
       _statsBusy = true;
@@ -292,7 +292,7 @@ class AndroidEngine extends VpnEngineBase {
           // Счётчики трафика туннеля: без них цифра под кнопкой стояла на нуле,
           // что бы ни происходило. Пароль — на сессию: этот порт виден любому
           // приложению на телефоне.
-          clashApiPort: _apiPort,
+          clashApiPort: clashApiPort,
           clashApiSecret: _apiSecret,
       );
       _liveOptions = liveOptions;
