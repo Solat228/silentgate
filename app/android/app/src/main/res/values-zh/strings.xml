@@ -10,4 +10,5 @@
     <string name="vpn_connected">已连接</string>
     <string name="vpn_disconnect">断开</string>
     <string name="vpn_revoked">连接已被系统停止</string>
+    <string name="vpn_blocked">连接已断开 — 流量已阻止</string>
 </resources>

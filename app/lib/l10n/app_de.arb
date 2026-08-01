@@ -669,5 +669,6 @@
   "splitAppOverrideSites": "Hat Vorrang vor Site-Regeln",
   "splitAppOverrideSitesSub": "Der gesamte App-Verkehr folgt dieser Regel, auch wenn eine Site-Regel anderes sagt",
   "settingsMyRulesOverridePanel": "Meine Regeln haben Vorrang vor Panel-Regeln",
-  "settingsMyRulesOverridePanelSub": "Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer."
+  "settingsMyRulesOverridePanelSub": "Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.",
+  "commonOpen": "Öffnen"
 }

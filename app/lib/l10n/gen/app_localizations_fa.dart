@@ -1999,4 +1999,7 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'پنل مسیریابی خودش را می‌فرستد، معمولاً «سایت‌های محلی بیرون از VPN». پس از قوانین شما اعمال می‌شود، پس سایتی که «تونل» زده‌اید ممکن است مستقیم و با IP واقعی بیرون برود. روشن: تونل یعنی تونل. بها: سایت‌های محلی راه دورتر می‌روند و کندتر می‌شوند.';
+
+  @override
+  String get commonOpen => 'باز کردن';
 }

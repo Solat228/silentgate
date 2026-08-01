@@ -1946,4 +1946,7 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       '面板会下发自己的分流，通常是“本地站点绕过 VPN”。它在你的规则之后生效，因此被你标为“隧道”的网站仍可能以真实 IP 直连出去。开启后：写了隧道就是隧道。代价：本地站点绕远，速度变慢。';
+
+  @override
+  String get commonOpen => '打开';
 }

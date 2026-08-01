@@ -104,6 +104,12 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         var stoppedByUser: Boolean = false
             private set
 
+        /// Живой экземпляр сервиса. Нужен, чтобы Dart мог поменять текст
+        /// уведомления, не пересоздавая туннель (kill switch держит трафик, и
+        /// перезапуск сервиса ради надписи открыл бы окно утечки).
+        @Volatile
+        var instance: SilentGateVpnService? = null
+
         /** Слушатель состояния — им выступает мост к Flutter. */
         @Volatile
         var stateListener: ((running: Boolean, error: String?, byUser: Boolean) -> Unit)? = null
@@ -145,6 +151,19 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             }
         }
         return START_STICKY
+    }
+
+    /**
+     * Сказать пользователю, что kill switch держит трафик.
+     *
+     * ⚠️ Без этого пропавший интернет выглядит поломкой, и самое естественное
+     * действие человека — выключить VPN, то есть ровно то, от чего защита и
+     * оберегала. Уведомление живёт в шторке и видно при закрытом приложении —
+     * именно тогда, когда объяснить некому.
+     */
+    fun showBlocked() {
+        if (!running) return
+        updateNotification(getString(R.string.vpn_blocked))
     }
 
     private fun startTunnel(configJson: String, xrayConfigJson: String?) {
@@ -351,8 +370,17 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         stopForeground(STOP_FOREGROUND_REMOVE)
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        instance = this
+    }
+
     override fun onDestroy() {
         stopTunnel()
+        // Снимаем ссылку ТОЛЬКО если она наша: при быстром пересоздании сервиса
+        // новый экземпляр успевает записаться раньше, чем умрёт старый, и
+        // безусловное обнуление стёрло бы живой.
+        if (instance === this) instance = null
         super.onDestroy()
     }
 

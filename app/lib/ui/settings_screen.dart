@@ -148,8 +148,17 @@ class _ReliabilitySection extends StatelessWidget {
           value: settings.killSwitch,
           // Без автопереподключения восстанавливать нечего — переключатель неактивен.
           onChanged: settings.autoReconnect
-              ? (v) => controller.update((s) =>
-                  s.copyWith(killSwitch: v, noRealIp: v ? s.noRealIp : false))
+              ? (v) {
+                  controller.update((s) =>
+                      s.copyWith(killSwitch: v, noRealIp: v ? s.noRealIp : false));
+                  // ⚠️ Системный always-on НАДЁЖНЕЕ нашего kill switch и об этом
+                  // надо сказать в момент, когда человек о защите и думает.
+                  // Наш работает, только пока живо приложение; системный держит
+                  // блокировку и когда оно убито, и при обновлении, и до первого
+                  // запуска после перезагрузки. Предлагаем один раз, при
+                  // включении, и не навязываем — просто открываем нужный экран.
+                  if (v && Platform.isAndroid) _offerAlwaysOn(context);
+                }
               : null,
           title: Row(children: [
             Expanded(child: Text(l.killSwitchTitle)),
@@ -1280,6 +1289,8 @@ class _AppUpdateTile extends StatefulWidget {
 
   @override
   State<_AppUpdateTile> createState() => _AppUpdateTileState();
+
+
 }
 
 class _AppUpdateTileState extends State<_AppUpdateTile> {
@@ -1356,4 +1367,29 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
       ),
     ]);
   }
+}
+
+/// Разовое предложение включить системный always-on VPN (Android).
+///
+/// Показывается при включении kill switch: именно тогда человек думает о том,
+/// чтобы трафик не утёк, и именно тогда уместно сказать, что у системы есть
+/// более сильный механизм. Отказ ничего не ломает — наш kill switch работает.
+Future<void> _offerAlwaysOn(BuildContext context) async {
+  final l = AppLocalizations.of(context);
+  final go = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.alwaysOnTitle),
+      content: Text(l.alwaysOnSub),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.commonCancel)),
+        FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.commonOpen)),
+      ],
+    ),
+  );
+  if (go == true && context.mounted) await _openVpnSettings(context);
 }

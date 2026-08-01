@@ -2021,4 +2021,7 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'El panel trae su propio enrutamiento, normalmente «los sitios locales evitan la VPN». Se aplica después de tus reglas, así que un sitio marcado «Túnel» puede salir directo con tu IP real. Activado: túnel significa túnel. Coste: los sitios locales darán un rodeo y serán más lentos.';
+
+  @override
+  String get commonOpen => 'Abrir';
 }

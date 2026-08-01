@@ -3617,6 +3617,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Панель отдаёт своё разделение — обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» — значит туннель. Цена: российские сайты пойдут кругом и медленнее.'**
   String get settingsMyRulesOverridePanelSub;
+
+  /// No description provided for @commonOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть'**
+  String get commonOpen;
 }
 
 class _AppLocalizationsDelegate

@@ -730,5 +730,6 @@
   "splitAppOverrideSites": "Takes priority over site rules",
   "splitAppOverrideSitesSub": "All app traffic follows this rule even if a site rule says otherwise",
   "settingsMyRulesOverridePanel": "My rules take priority over panel rules",
-  "settingsMyRulesOverridePanelSub": "The panel ships its own routing — usually “local sites bypass the VPN”. It applies after your rules, so a site you marked “Tunnel” may still exit directly under your real IP. On: tunnel means tunnel. Cost: local sites take the long way and get slower."
+  "settingsMyRulesOverridePanelSub": "The panel ships its own routing — usually “local sites bypass the VPN”. It applies after your rules, so a site you marked “Tunnel” may still exit directly under your real IP. On: tunnel means tunnel. Cost: local sites take the long way and get slower.",
+  "commonOpen": "Open"
 }

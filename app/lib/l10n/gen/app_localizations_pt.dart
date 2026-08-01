@@ -2022,4 +2022,7 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'O painel traz o próprio roteamento, normalmente «sites locais fora da VPN». Ele se aplica depois das suas regras, então um site marcado «Túnel» pode sair direto com seu IP real. Ligado: túnel significa túnel. Custo: sites locais dão a volta e ficam mais lentos.';
+
+  @override
+  String get commonOpen => 'Abrir';
 }

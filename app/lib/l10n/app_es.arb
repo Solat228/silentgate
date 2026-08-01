@@ -730,5 +730,6 @@
   "splitAppOverrideSites": "Prioridad sobre las reglas de sitios",
   "splitAppOverrideSitesSub": "Todo el tráfico de la aplicación sigue esta regla aunque un sitio diga otra cosa",
   "settingsMyRulesOverridePanel": "Mis reglas tienen prioridad sobre las del panel",
-  "settingsMyRulesOverridePanelSub": "El panel trae su propio enrutamiento, normalmente «los sitios locales evitan la VPN». Se aplica después de tus reglas, así que un sitio marcado «Túnel» puede salir directo con tu IP real. Activado: túnel significa túnel. Coste: los sitios locales darán un rodeo y serán más lentos."
+  "settingsMyRulesOverridePanelSub": "El panel trae su propio enrutamiento, normalmente «los sitios locales evitan la VPN». Se aplica después de tus reglas, así que un sitio marcado «Túnel» puede salir directo con tu IP real. Activado: túnel significa túnel. Coste: los sitios locales darán un rodeo y serán más lentos.",
+  "commonOpen": "Abrir"
 }

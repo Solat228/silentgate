@@ -2018,4 +2018,7 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.';
+
+  @override
+  String get commonOpen => 'Öffnen';
 }

@@ -2023,4 +2023,7 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'Le panneau fournit son propre routage, en général « les sites locaux évitent le VPN ». Il s’applique après vos règles : un site marqué « Tunnel » peut donc sortir en direct avec votre IP réelle. Activé : tunnel veut dire tunnel. Coût : les sites locaux font un détour et ralentissent.';
+
+  @override
+  String get commonOpen => 'Ouvrir';
 }

@@ -2005,4 +2005,7 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'Панель отдаёт своё разделение — обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» — значит туннель. Цена: российские сайты пойдут кругом и медленнее.';
+
+  @override
+  String get commonOpen => 'Открыть';
 }

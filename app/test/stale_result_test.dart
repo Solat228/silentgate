@@ -73,6 +73,64 @@ void main() {
           isFalse);
     });
   });
+
+  group('Kill switch держит трафик до вмешательства', () {
+    // Было: попыток ровно 8 (~112 c), дальше scheduleRetry возвращал false,
+    // вызывающий шёл в cleanup(), а тот снимает захват — и трафик шёл открыто
+    // под реальным IP без ограничения по времени. Обещание «не выпущу трафик
+    // мимо VPN» действовало две минуты. Решение владельца: держать до
+    // вмешательства человека.
+    Future<_FakeEngine> armed({required bool killSwitch}) async {
+      final e = _FakeEngine();
+      await e.connectWith(
+        '{}',
+        ConnectionOptions(
+            settings: AppSettings(autoReconnect: true, killSwitch: killSwitch)),
+        [_server('a')],
+      );
+      return e;
+    }
+
+    test('с kill switch попытки не заканчиваются', () async {
+      final e = await armed(killSwitch: true);
+      // Заведомо больше прежнего предела в 8.
+      for (var i = 0; i < VpnEngineBase.maxAttempts + 5; i++) {
+        expect(await e.scheduleRetry('обрыв $i'), isTrue,
+            reason: 'на попытке $i защита сдалась бы и открыла трафик');
+        e.settleRetry();
+      }
+    });
+
+    test('без kill switch предел прежний', () async {
+      final e = await armed(killSwitch: false);
+      var ok = 0;
+      for (var i = 0; i < VpnEngineBase.maxAttempts + 3; i++) {
+        if (!await e.scheduleRetry('обрыв $i')) break;
+        ok++;
+        e.settleRetry();
+      }
+      expect(ok, lessThanOrEqualTo(VpnEngineBase.maxAttempts),
+          reason: 'вечные попытки без блокировки трафика смысла не имеют');
+    });
+
+    test('статус сообщает, что трафик заблокирован', () async {
+      final e = await armed(killSwitch: true);
+      await e.scheduleRetry('обрыв');
+      expect(e.status.blocking, isTrue,
+          reason: 'по этому признаку работают уведомление и подсказка трея');
+      expect(e.status.message, contains('заблокирован'));
+    });
+
+    test('восстановление снимает признак блокировки', () async {
+      final e = await armed(killSwitch: true);
+      await e.scheduleRetry('обрыв');
+      expect(e.status.blocking, isTrue);
+      e.markConnected();
+      e.setStatus(VpnConnectionState.connected);
+      expect(e.status.blocking, isFalse);
+    });
+  });
+
 }
 
 VpnServer _server(String tag) => VpnServer(
@@ -105,4 +163,8 @@ class _FakeEngine extends VpnEngineBase {
 
   @override
   Future<void> platformCleanup() async {}
+
+  /// Отменить отложенную попытку: в тесте нас интересует РЕШЕНИЕ «повторять или
+  /// сдаться», а не сам повтор — таймер иначе держал бы тест открытым.
+  void settleRetry() => cancelRetryTimer();
 }

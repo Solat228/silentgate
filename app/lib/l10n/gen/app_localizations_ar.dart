@@ -1993,4 +1993,7 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'ترسل اللوحة توجيهها الخاص، عادةً «المواقع المحلية خارج VPN». يُطبَّق بعد قواعدك، لذا قد يخرج موقع وسمته «نفق» مباشرةً بعنوانك الحقيقي. مُفعَّل: النفق يعني النفق. الثمن: المواقع المحلية تسلك طريقًا أطول وتبطؤ.';
+
+  @override
+  String get commonOpen => 'فتح';
 }

@@ -127,6 +127,14 @@ class MainActivity : FlutterActivity() {
 
                     "isRunning" -> result.success(SilentGateVpnService.running)
 
+                    // Kill switch держит трафик: сказать об этом в шторке.
+                    // Приложение при этом обычно закрыто — другого способа
+                    // объяснить пропавший интернет у нас нет.
+                    "showBlocked" -> {
+                        SilentGateVpnService.instance?.showBlocked()
+                        result.success(null)
+                    }
+
                     else -> result.notImplemented()
                 }
             }

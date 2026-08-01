@@ -10,4 +10,5 @@
     <string name="vpn_connected">Подключено</string>
     <string name="vpn_disconnect">Отключить</string>
     <string name="vpn_revoked">Подключение остановлено системой</string>
+    <string name="vpn_blocked">Соединение потеряно — трафик заблокирован</string>
 </resources>

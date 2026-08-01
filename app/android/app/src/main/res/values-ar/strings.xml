@@ -10,4 +10,5 @@
     <string name="vpn_connected">متصل</string>
     <string name="vpn_disconnect">قطع الاتصال</string>
     <string name="vpn_revoked">أوقف النظام الاتصال</string>
+    <string name="vpn_blocked">انقطع الاتصال — حركة البيانات محظورة</string>
 </resources>

@@ -2003,4 +2003,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'The panel ships its own routing — usually “local sites bypass the VPN”. It applies after your rules, so a site you marked “Tunnel” may still exit directly under your real IP. On: tunnel means tunnel. Cost: local sites take the long way and get slower.';
+
+  @override
+  String get commonOpen => 'Open';
 }

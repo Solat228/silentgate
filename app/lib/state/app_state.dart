@@ -15,6 +15,7 @@ import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/tray_window.dart';
 import '../core/platform/app_paths.dart';
 import '../core/platform/network_watcher.dart';
 import '../core/platform/device_id.dart';
@@ -54,8 +55,19 @@ class AppState extends ChangeNotifier {
         _initialUrl = initialUrl {
     _statusSub = _engine.statusStream.listen((s) {
       final was = _status.state;
+      final wasBlocking = _status.blocking;
       _status = s;
       _trackAutotune(s);
+      // ⚠️ Kill switch держит трафик — сказать об этом ТАМ, ГДЕ ВИДНО.
+      //
+      // Окно чаще всего свёрнуто в трей: человек видит только пропавший
+      // интернет и решает, что сломалось приложение. Самое естественное
+      // действие после этого — выключить VPN, то есть ровно то, от чего защита
+      // и оберегала. Подсказка трея видна при свёрнутом окне, а карточка в
+      // интерфейсе — когда его развернут.
+      if (s.blocking != wasBlocking) {
+        unawaited(_reflectBlocking(s.blocking));
+      }
       // Отсчёт времени подключения. Ставим только на ПЕРЕХОДЕ в «подключено»:
       // статус приходит и при обновлении трафика, и сброс на каждом таком
       // событии обнулял бы таймер раз в секунду.
@@ -1280,4 +1292,20 @@ class AppState extends ChangeNotifier {
     _subscription.close();
     super.dispose();
   }
+
+  /// Показать/снять признак «kill switch держит трафик» вне окна приложения.
+  ///
+  /// На Windows это подсказка трея: полноценное системное уведомление
+  /// потребовало бы новой зависимости, а подсказка есть уже сейчас и видна при
+  /// свёрнутом окне. На Android то же самое делает уведомление сервиса — оно
+  /// живёт в шторке и работает при закрытом приложении (см. `showBlocked`).
+  Future<void> _reflectBlocking(bool blocking) async {
+    if (!Platform.isWindows) return;
+    try {
+      await TrayWindow.setBlocked(blocking);
+    } catch (_) {
+      // Трей может быть недоступен (запуск без окна) — не повод падать.
+    }
+  }
+
 }

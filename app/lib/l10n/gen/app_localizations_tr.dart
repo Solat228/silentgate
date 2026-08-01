@@ -2008,4 +2008,7 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get settingsMyRulesOverridePanelSub =>
       'Panel kendi yönlendirmesini gönderir, genelde «yerel siteler VPN’siz». Bu, sizin kurallarınızdan sonra uygulanır; «Tünel» işaretli bir site yine de gerçek IP’nizle doğrudan çıkabilir. Açık: tünel tüneldir. Bedeli: yerel siteler dolaşır ve yavaşlar.';
+
+  @override
+  String get commonOpen => 'Aç';
 }

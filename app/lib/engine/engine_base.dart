@@ -81,6 +81,14 @@ abstract class VpnEngineBase implements VpnEngine {
   /// «Отключить» (автоподбор стека идёт до двух минут), оставался жить навсегда.
   int _generation = 0;
   int _attempt = 0;
+
+  /// С какого момента kill switch держит трафик. `null` — не держит.
+  ///
+  /// Нужен ради ОДНОЙ строки в отчёте поддержки: «держал 6 ч 12 мин». Разбирать
+  /// жалобы «интернет пропал сам по себе» иначе нечем — в логе видны попытки
+  /// переподключения, но не видно, что всё это время трафик был заблокирован
+  /// намеренно, и сколько это длилось.
+  DateTime? _blockingSince;
   Timer? _retryTimer;
   DateTime? _connectedAt;
 
@@ -157,8 +165,8 @@ abstract class VpnEngineBase implements VpnEngine {
   bool get userStopped => _userStopped;
 
   void setStatus(VpnConnectionState state,
-      {String? message, VpnPhase phase = VpnPhase.normal}) {
-    _status = VpnStatus(state, message: message, phase: phase);
+      {String? message, VpnPhase phase = VpnPhase.normal, bool blocking = false}) {
+    _status = VpnStatus(state, message: message, phase: phase, blocking: blocking);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -166,10 +174,31 @@ abstract class VpnEngineBase implements VpnEngine {
     if (!_statsController.isClosed) _statsController.add(stats);
   }
 
+  /// Отменить отложенную попытку переподключения.
+  ///
+  /// Нужен тестам: они проверяют РЕШЕНИЕ «повторять или сдаться», а живой таймер
+  /// держал бы прогон открытым. В рабочем коде отмена идёт через cleanup.
+  @visibleForTesting
+  void cancelRetryTimer() => _retryTimer?.cancel();
+
   /// Отметить успешное подключение (запускает отсчёт grace-периода смены сети).
   void markConnected() {
     _connectedAt = DateTime.now();
     _attempt = 0;
+    final since = _blockingSince;
+    if (since != null) {
+      final held = DateTime.now().difference(since);
+      AppLog.i('Kill switch: трафик разблокирован, держал '
+          '${_humanDuration(held)} — соединение восстановлено');
+      _blockingSince = null;
+    }
+  }
+
+  /// «6 ч 12 мин» / «45 с» — для строки в отчёте поддержки.
+  static String _humanDuration(Duration d) {
+    if (d.inHours > 0) return '${d.inHours} ч ${d.inMinutes % 60} мин';
+    if (d.inMinutes > 0) return '${d.inMinutes} мин ${d.inSeconds % 60} с';
+    return '${d.inSeconds} с';
   }
 
   // ── Поколения ──────────────────────────────────────────────────────────────
@@ -544,7 +573,30 @@ abstract class VpnEngineBase implements VpnEngine {
 
   Future<bool> _scheduleRetryLocked(String reason, EngineSession session) async {
 
-    if (_attempt >= maxAttempts) {
+    // ⚠️ ПРИ ВКЛЮЧЁННОМ KILL SWITCH ПОПЫТКИ НЕ ЗАКАНЧИВАЮТСЯ.
+    //
+    // Раньше их было восемь на любой случай: 0,8 + 3 + 8 + 20×5 ≈ 112 секунд.
+    // Дальше `scheduleRetry` возвращал false, вызывающий шёл в `cleanup()`, а тот
+    // снимает TUN и системный прокси — и с этой секунды трафик идёт открыто под
+    // реальным IP, без ограничения по времени. То есть обещание «не выпущу
+    // трафик мимо VPN» действовало ровно две минуты, а сценарий, ради которого
+    // kill switch и включают («поставил закачку и ушёл»), им не покрывался
+    // вовсе: сервер лёг ночью, две минуты приложение держало оборону, потом
+    // сдалось и открыло канал до утра.
+    //
+    // Решение владельца: держать блокировку до вмешательства человека. Вечные
+    // попытки здесь не опасны — опасно как раз их прекращение: пока они идут,
+    // захват трафика не снимается, и утечки нет. Пауза при этом упирается в
+    // потолок `backoff` (20 с), то есть это три попытки в минуту, а не спам.
+    // Вернувшийся через час сервер подхватится сам.
+    final endless = session.options.settings.killSwitch;
+    if (endless && _blockingSince == null) {
+      _blockingSince = DateTime.now();
+      AppLog.w('Kill switch: ТРАФИК ЗАБЛОКИРОВАН до восстановления связи '
+          '(причина обрыва: $reason). Попытки не прекращаются — решение '
+          'владельца: держать блокировку до вмешательства пользователя.');
+    }
+    if (!endless && _attempt >= maxAttempts) {
       AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
       return false;
     }
@@ -587,9 +639,16 @@ abstract class VpnEngineBase implements VpnEngine {
     // отсекался гвардом «уже подключаемся».
     if (_userStopped) return false;
 
+    // При вечных попытках «из 8» было бы враньём, а главное — надо СКАЗАТЬ, что
+    // трафик сейчас заблокирован: без этого человек видит пропавший интернет и
+    // не понимает, что это работает защита, а не поломка.
     setStatus(VpnConnectionState.connecting,
-        message: 'Переподключение через ${delay.inSeconds} с '
-            '(попытка $_attempt из $maxAttempts)…');
+        message: endless
+            ? 'Соединение потеряно, трафик заблокирован. '
+                'Переподключение через ${delay.inSeconds} с (попытка $_attempt)…'
+            : 'Переподключение через ${delay.inSeconds} с '
+                '(попытка $_attempt из $maxAttempts)…',
+        blocking: endless);
 
     _retryTimer?.cancel();
     _retryTimer = Timer(delay, () => _runAttempt());

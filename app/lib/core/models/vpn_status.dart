@@ -22,12 +22,23 @@ class VpnStatus {
   final String? message;
   final VpnPhase phase;
 
-  const VpnStatus(this.state, {this.message, this.phase = VpnPhase.normal});
+  /// ⚠️ KILL SWITCH СЕЙЧАС ДЕРЖИТ ТРАФИК: соединения падают, а не текут мимо VPN.
+  ///
+  /// Отдельный признак, а не разбор текста сообщения: по нему уведомление на
+  /// Android и всплывающее окно на Windows объясняют человеку, что пропавший
+  /// интернет — это работающая защита, а не поломка. Без такого объяснения
+  /// самое естественное действие пользователя — выключить VPN, то есть ровно
+  /// то, от чего защита и оберегала.
+  final bool blocking;
+
+  const VpnStatus(this.state,
+      {this.message, this.phase = VpnPhase.normal, this.blocking = false});
 
   const VpnStatus.disconnected()
       : state = VpnConnectionState.disconnected,
         message = null,
-        phase = VpnPhase.normal;
+        phase = VpnPhase.normal,
+        blocking = false;
 
   bool get isConnected => state == VpnConnectionState.connected;
   bool get isBusy =>

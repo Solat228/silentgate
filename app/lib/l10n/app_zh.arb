@@ -669,5 +669,6 @@
   "splitAppOverrideSites": "优先于网站规则",
   "splitAppOverrideSitesSub": "该应用的全部流量都按此规则走，即使某个网站规则另有规定",
   "settingsMyRulesOverridePanel": "我的规则优先于面板规则",
-  "settingsMyRulesOverridePanelSub": "面板会下发自己的分流，通常是“本地站点绕过 VPN”。它在你的规则之后生效，因此被你标为“隧道”的网站仍可能以真实 IP 直连出去。开启后：写了隧道就是隧道。代价：本地站点绕远，速度变慢。"
+  "settingsMyRulesOverridePanelSub": "面板会下发自己的分流，通常是“本地站点绕过 VPN”。它在你的规则之后生效，因此被你标为“隧道”的网站仍可能以真实 IP 直连出去。开启后：写了隧道就是隧道。代价：本地站点绕远，速度变慢。",
+  "commonOpen": "打开"
 }

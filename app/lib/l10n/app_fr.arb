@@ -669,5 +669,6 @@
   "splitAppOverrideSites": "Prioritaire sur les règles de sites",
   "splitAppOverrideSitesSub": "Tout le trafic de l’application suit cette règle, même si un site indique le contraire",
   "settingsMyRulesOverridePanel": "Mes règles priment sur celles du panneau",
-  "settingsMyRulesOverridePanelSub": "Le panneau fournit son propre routage, en général « les sites locaux évitent le VPN ». Il s’applique après vos règles : un site marqué « Tunnel » peut donc sortir en direct avec votre IP réelle. Activé : tunnel veut dire tunnel. Coût : les sites locaux font un détour et ralentissent."
+  "settingsMyRulesOverridePanelSub": "Le panneau fournit son propre routage, en général « les sites locaux évitent le VPN ». Il s’applique après vos règles : un site marqué « Tunnel » peut donc sortir en direct avec votre IP réelle. Activé : tunnel veut dire tunnel. Coût : les sites locaux font un détour et ralentissent.",
+  "commonOpen": "Ouvrir"
 }
