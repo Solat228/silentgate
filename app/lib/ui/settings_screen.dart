@@ -185,6 +185,23 @@ class _ReliabilitySection extends StatelessWidget {
             title: Text(l.noRealIpTitle),
             subtitle: Text(l.noRealIpSub),
           ),
+        // ⚠️ ЭТОГО ПЕРЕКЛЮЧАТЕЛЯ ЗДЕСЬ НЕ БЫЛО, И ЭТО МЕНЯЛО МАРШРУТЫ ВСЕМ.
+        //
+        // Поле `myRulesOverridePanel` завели вместе с переведёнными на десять
+        // языков подписями, движок его читает — а контрол забыли. Умолчание
+        // `true`, изменить нечем, значит условие реврайта панельных правил
+        // (`engine_base`: mode == all || noRealIp || myRulesOverridePanel) было
+        // истинным ВСЕГДА: у каждого пользователя панельного профиля российские
+        // сайты уходили кругом через зарубежный сервер, и объяснения этому в
+        // настройках не находилось. Заодно два первых слагаемых условия были
+        // мертвы — любой их разбор вводил бы в заблуждение.
+        SwitchListTile(
+          value: settings.myRulesOverridePanel,
+          onChanged: (v) =>
+              controller.update((s) => s.copyWith(myRulesOverridePanel: v)),
+          title: Text(l.settingsMyRulesOverridePanel),
+          subtitle: Text(l.settingsMyRulesOverridePanelSub),
+        ),
       ],
     );
   }

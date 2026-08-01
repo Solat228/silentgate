@@ -353,7 +353,7 @@ class _SchemeRow extends StatelessWidget {
           ),
         ),
         IconButton(
-          tooltip: 'Копировать',
+          tooltip: AppLocalizations.of(context).commonCopy,
           icon: const Icon(Icons.copy, size: 18),
           onPressed: () {
             Clipboard.setData(ClipboardData(text: uri));

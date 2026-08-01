@@ -263,4 +263,63 @@ void main() {
       claim(AndroidEngine.clashApiPort, 'sing-box clash_api');
     });
   });
+
+  group('Android: правила сайтов живут и в режиме «только отмеченные»', () {
+    // Было: include_package строился ТОЛЬКО из split.apps, а он означает «в
+    // туннель идут лишь эти пакеты». Значит правило по сайту для неотмеченного
+    // приложения применить некому — ядро его трафика не видит. Зеркало той же
+    // утечки, что чинили для exclude_package.
+    const split = SplitTunnelConfig(mode: SplitMode.onlySelected, apps: [
+      AppRule('com.messenger', action: AppAction.tunnel),
+    ], sites: [
+      SiteRule('youtube.com', action: AppAction.tunnel),
+    ]);
+
+    test('include_package не отсекает неотмеченные приложения', () {
+      final cfg = build(split, platformTun: true);
+      final tun = (cfg['inbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((i) => i['type'] == 'tun');
+      expect(tun['include_package'], isNull,
+          reason: 'с include в туннель не зайдёт браузер, и правило сайта мертво');
+      // Смысл режима сохраняется маршрутизацией, а не списком пакетов.
+      expect((cfg['route'] as Map)['final'], 'direct');
+      final rules = routeRules(cfg);
+      final site = indexWhereRule(rules, (r) => domain(r, 'youtube.com'));
+      final app = indexWhereRule(
+          rules, (r) => (r['package_name'] as List?)?.contains('com.messenger') == true);
+      expect(site, isNonNegative);
+      expect(app, isNonNegative);
+      expect(site, lessThan(app), reason: 'сайты обязаны стоять выше приложений');
+    });
+
+    test('без правил «Туннель»/«Блок» по сайтам список пакетов остаётся', () {
+      final cfg = build(
+        const SplitTunnelConfig(mode: SplitMode.onlySelected, apps: [
+          AppRule('com.messenger', action: AppAction.tunnel),
+        ]),
+        platformTun: true,
+      );
+      final tun = (cfg['inbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((i) => i['type'] == 'tun');
+      expect(tun['include_package'], contains('com.messenger'),
+          reason: 'отсекать на уровне ОС дешевле — отказываемся только ради сайтов');
+    });
+
+    test('блокировка сайта тоже поднимает отсечку', () {
+      final cfg = build(
+        const SplitTunnelConfig(mode: SplitMode.onlySelected, apps: [
+          AppRule('com.messenger', action: AppAction.tunnel),
+        ], sites: [
+          SiteRule('ads.example', action: AppAction.block),
+        ]),
+        platformTun: true,
+      );
+      final tun = (cfg['inbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .firstWhere((i) => i['type'] == 'tun');
+      expect(tun['include_package'], isNull);
+    });
+  });
 }
