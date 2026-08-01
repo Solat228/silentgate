@@ -20,6 +20,11 @@ class _FakeEngine implements VpnEngine {
 
   @override
   Future<void> adoptRunningTunnel() async {}
+
+  /// Диагностический движок сессий не ведёт — восстанавливать нечего.
+  @override
+  Future<void> armAdoptedSession(
+      List<VpnServer> servers, ConnectionOptions options) async {}
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
   @override

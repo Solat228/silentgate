@@ -65,6 +65,13 @@ abstract class VpnEngine {
   /// РАБОТАЮЩЕМ VPN, а Connect поднимал второй сеанс поверх живого.
   Future<void> adoptRunningTunnel() async {}
 
+  /// Вернуть сессию подхваченному туннелю: без неё автопереподключение и kill
+  /// switch молча выключены (подробности — в `VpnEngineBase.armAdoptedSession`).
+  /// Зовётся интерфейсом сразу после [adoptRunningTunnel], потому что данные для
+  /// сессии — выбранный сервер и настройки — есть именно у него.
+  Future<void> armAdoptedSession(
+      List<VpnServer> servers, ConnectionOptions options) async {}
+
   /// Запасные серверы для режима «Авто (лучший сервер)»: если текущий не поднялся
   /// после всех попыток, движок берёт следующий отсюда. В ручном режиме — пусто:
   /// выбор пользователя не подменяем.

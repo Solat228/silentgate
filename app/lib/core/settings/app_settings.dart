@@ -682,6 +682,11 @@ class AppSettings {
       dnsStrategy != other.dnsStrategy ||
       singboxLogLevel != other.singboxLogLevel ||
       noRealIp != other.noRealIp ||
+      // Запекается в конфиг (`rerouteDirectThroughVpn` в engine_base): без этой
+      // строки пользователь включал «Мои правила важнее правил панели» при живом
+      // соединении, конфиг оставался прежним, и предложения переподключиться —
+      // единственного признака, что настройка ещё не в силе, — не приходило.
+      myRulesOverridePanel != other.myRulesOverridePanel ||
       // Правила раздельного туннелирования — самая частая правка «на живую».
       jsonEncode(splitTunnel.toJson()) !=
           jsonEncode(other.splitTunnel.toJson());

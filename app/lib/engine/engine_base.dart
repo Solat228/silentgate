@@ -338,29 +338,81 @@ abstract class VpnEngineBase implements VpnEngine {
     // Резолвим ДО сборки конфига: с доменом в outbound'е ядро полезло бы за
     // адресом уже из-под поднятого туннеля — и упёрлось бы в собственный
     // перехват DNS (см. SingboxOutboundFactory.build).
-    final resolved =
-        pickOneIpPerHost(await resolveServerHosts([server]));
-    final cfg = configFor(server, options, resolvedIps: resolved);
-    await connectWith(cfg.json, options, [server], core: cfg.core);
+    final s = await sessionFor(server, options);
+    await connectWith(s.configJson, options, s.servers, core: s.core);
   }
 
   @override
   Future<void> connectBalancer(List<VpnServer> servers,
       {ConnectionOptions options = const ConnectionOptions()}) async {
-    if (servers.isEmpty) return;
+    final s = await balancerSessionFor(servers, options);
+    if (s == null) return;
+    await connectWith(s.configJson, options, s.servers, core: s.core);
+  }
+
+  /// Сессия одиночного сервера — БЕЗ подъёма туннеля.
+  ///
+  /// Вынесено из [connect], чтобы ту же сессию можно было собрать для уже
+  /// РАБОТАЮЩЕГО туннеля (см. [armAdoptedSession]). Дублировать сборку нельзя:
+  /// разойдясь, копии дадут разное поведение при обрыве и при обычном
+  /// подключении, и заметить это будет нечем.
+  Future<EngineSession> sessionFor(
+      VpnServer server, ConnectionOptions options) async {
+    final resolved = pickOneIpPerHost(await resolveServerHosts([server]));
+    final cfg = configFor(server, options, resolvedIps: resolved);
+    return EngineSession(cfg.json, options, [server], cfg.core);
+  }
+
+  /// Сессия автовыбора — БЕЗ подъёма туннеля.
+  Future<EngineSession?> balancerSessionFor(
+      List<VpnServer> servers, ConnectionOptions options) async {
+    if (servers.isEmpty) return null;
     // Одно ядро на сессию: смешать hysteria2 и VLESS в одном балансировщике
     // нельзя. Xray-серверы идут в его balancer, иначе — urltest в sing-box.
     final xrayOnes =
         servers.where((s) => s.core == ProxyCore.xray).toList(growable: false);
     if (xrayOnes.isNotEmpty) {
-      await connectWith(
-          configBuilder.buildBalancerJson(xrayOnes), options, xrayOnes);
-      return;
+      return EngineSession(configBuilder.buildBalancerJson(xrayOnes), options,
+          xrayOnes, ProxyCore.xray);
     }
     final resolved = pickOneIpPerHost(await resolveServerHosts(servers));
-    await connectWith(
-        buildSingboxJson(servers, resolvedIps: resolved), options, servers,
-        core: ProxyCore.singbox);
+    return EngineSession(buildSingboxJson(servers, resolvedIps: resolved),
+        options, servers, ProxyCore.singbox);
+  }
+
+  /// ⚠️ ВЕРНУТЬ СЕССИЮ ТУННЕЛЮ, ПОДХВАЧЕННОМУ ОТ ПРОШЛОГО ЗАПУСКА ИНТЕРФЕЙСА.
+  ///
+  /// На Android `VpnService` переживает смерть Activity вместе с изолятом, и
+  /// [adoptRunningTunnel] показывает «Подключено» для живого туннеля. Но сессии
+  /// у движка при этом НЕТ — конфиг остался в умершем изоляте, — а по ней
+  /// гейтится ВСЁ автовосстановление: [scheduleRetry] выходит первой же
+  /// строкой `session == null`, ещё до проверки `autoReconnect`.
+  ///
+  /// Последствие было тихим и опасным: пользователь свернул приложение, вернулся
+  /// — обе настройки в интерфейсе включены, отчёт поддержки печатает их
+  /// активными, а на первом же обрыве не происходит ни одной попытки повтора и
+  /// ни секунды удержания трафика. Kill switch живёт внутри той же ветки
+  /// (`teardownCore(keepCapture: …)`), поэтому трафик идёт открыто ровно тогда,
+  /// когда пользователь считает себя защищённым.
+  ///
+  /// Данные для сессии есть у интерфейса — тот же сервер и те же настройки, из
+  /// которых туннель и поднимался (выбор персистится). Поэтому не сохраняем
+  /// ничего на диск: интерфейс просто отдаёт их обратно движку.
+  Future<void> armAdoptedSession(
+      List<VpnServer> servers, ConnectionOptions options) async {
+    // Живую сессию не трогаем: она точнее любой реконструкции.
+    if (_session != null || servers.isEmpty || !_status.isConnected) return;
+    try {
+      _session = servers.length == 1
+          ? await sessionFor(servers.first, options)
+          : await balancerSessionFor(servers, options);
+      AppLog.i('Подхваченному туннелю возвращена сессия: '
+          'автопереподключение и kill switch снова в силе');
+    } catch (e) {
+      // Не смогли собрать — честно в лог. Туннель работает, но автозащиты нет.
+      AppLog.w('Не удалось восстановить сессию подхваченного туннеля: $e. '
+          'Автопереподключение и kill switch не сработают до переподключения');
+    }
   }
 
   Future<void> connectWith(String configJson, ConnectionOptions options,

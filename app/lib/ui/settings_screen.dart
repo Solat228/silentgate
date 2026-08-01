@@ -1045,8 +1045,18 @@ class _CaptureSection extends StatelessWidget {
             dense: true,
             leading: const Icon(Icons.settings_ethernet),
             title: Text(l.tunRoutingTitle),
+            // ⚠️ Стек на Android не выбирается: он форсится в gvisor
+            // (SingboxConfigBuilder), а переключатель с экрана TUN убран —
+            // system/mixed там не форвардят TCP без прав, и получалось
+            // «Подключено» с мёртвым интернетом. Показывать здесь «auto» из
+            // настроек значило сообщать пользователю неверный факт о его же
+            // туннеле и посылать искать переключатель, которого нет.
             subtitle: Text(l.tunRoutingSub(
-                settings.tunStack.name, settings.tunMtu, _dnsShort(l, settings.dnsMode))),
+                (Platform.isAndroid || Platform.isIOS)
+                    ? 'gvisor'
+                    : settings.tunStack.name,
+                settings.tunMtu,
+                _dnsShort(l, settings.dnsMode))),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const TunSettingsScreen()),

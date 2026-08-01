@@ -318,8 +318,35 @@ class AppState extends ChangeNotifier {
       await handleIncomingUrl(url);
     }
     await _maybeStartUpdater();
+    // ⚠️ ТОЛЬКО ЗДЕСЬ, В КОНЦЕ: подхват туннеля идёт первой строкой init(), но
+    // сервер и настройки к тому моменту ещё не прочитаны с диска. Без сессии
+    // движка автопереподключение и kill switch молча не работают — см.
+    // VpnEngineBase.armAdoptedSession.
+    await _armAdoptedSession();
     // Логотип на старте НЕ тянем: только при импорте/обновлении подписки
     // (см. importSource/_refreshLogo). Здесь показываем то, что уже в кэше.
+  }
+
+  /// Отдать движку сессию для туннеля, подхваченного от прошлого запуска.
+  /// Собираем ровно из того же, из чего идёт обычное подключение, — иначе
+  /// восстановленная сессия описывала бы не тот туннель, что работает.
+  Future<void> _armAdoptedSession() async {
+    if (!_status.isConnected || _servers.isEmpty) return;
+    final s = await SettingsStorage().load();
+    // «Авто (лучший сервер)» — сессия по всему списку, как в connectAuto.
+    if (_selectedIndex < 0) {
+      _engine.fallbackServers = _fallbackCandidates();
+      await _engine.armAdoptedSession(
+          _servers, ConnectionOptions(settings: s));
+      return;
+    }
+    final server = _servers[_selectedIndex];
+    final ov = _overrides[server.key];
+    final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
+        ? server.copyWith(rawJsonOverride: ov.rawJson)
+        : server;
+    await _engine.armAdoptedSession([srv],
+        ConnectionOptions(variant: ov?.variant ?? _selectedVariant, settings: s));
   }
 
   /// Выбрать сервер по имени из подписки. false — не нашли.
@@ -513,6 +540,24 @@ class AppState extends ChangeNotifier {
       return (lp != null && lp.isNotEmpty && File(lp).existsSync()) ? lp : null;
     }
     return null;
+  }
+
+  /// Обновить профиль НА ДИСКЕ, не трогая экран.
+  ///
+  /// Нужно, когда загрузка подписки вернулась уже после того, как пользователь
+  /// переключился на другую: выбрасывать свежие данные жалко (в следующий раз
+  /// он увидит их без повторного запроса), а показывать — нельзя, он смотрит
+  /// на чужую подписку. Профиль, которого уже нет, НЕ воскрешаем.
+  Future<void> _updateProfileQuietly(
+      String url, SubscriptionInfo info, List<VpnServer> servers) async {
+    final id = SubscriptionProfile.idFor(url);
+    final i = _profiles.indexWhere((p) => p.id == id);
+    if (i < 0) return; // подписку удалили, пока ждали ответ
+    _profiles[i] = _profiles[i].copyWith(
+      info: info,
+      serverLinks: servers.map((s) => s.rawLink).toList(),
+    );
+    await _saveSubscriptions();
   }
 
   /// Запомнить/обновить профиль по итогам загрузки подписки.
@@ -781,6 +826,20 @@ class AppState extends ChangeNotifier {
     if (incomingId != _activeId) {
       _logoPath = _cachedLogoFor(incomingId);
     }
+    // ⚠️ КАКАЯ ПОДПИСКА БЫЛА АКТИВНА, КОГДА МЫ ПОШЛИ В СЕТЬ.
+    //
+    // `SubscriptionService.fetch` идёт без своего таймаута — ждать можно
+    // десятки секунд, и всё это время переключатель подписок остаётся
+    // нажимаемым (блокируется только кнопка «Обновить»). Пользователь уходит
+    // на другую подписку, экран честно показывает её серверы и карточку — а
+    // потом возвращается ответ ПРЕЖНЕЙ и молча подменяет всё: список серверов,
+    // карточку, активную подписку, логотип, сводку изменений. И это ещё
+    // персистится, то есть переживает перезапуск.
+    //
+    // Признак устаревания — смена активной подписки за время ожидания, а НЕ
+    // «пришло не то, что сейчас активно»: импорт ВТОРОЙ подписки обязан
+    // сделать её активной, и запретить это было бы новой поломкой.
+    final startedActive = _activeId;
     _loading = true;
     notifyListeners();
     try {
@@ -789,12 +848,8 @@ class AppState extends ChangeNotifier {
         url,
         deviceHeaders: await _deviceHeaders(),
       );
-      // #1.1 — что изменилось по сравнению с прошлым составом подписки.
-      final before = {for (final s in _subServers) s.key: s.displayName};
-
-      _subServers = result.servers;
-      // Панельные конфиги (XRAY_JSON) — на диск: список серверов хранится ссылками,
-      // без этого конфиг терялся бы при перезапуске.
+      // Панельные конфиги ключуются САМИМ СЕРВЕРОМ и общие для всех подписок —
+      // их сохраняем в любом случае, устарел ответ или нет.
       var withOutbound = 0, withFullConfig = 0;
       for (final s in result.servers) {
         final ob = s.rawOutboundJson;
@@ -805,6 +860,21 @@ class AppState extends ChangeNotifier {
         _panelConfigs[s.key] = PanelConfig(outbound: ob, fullConfig: full);
       }
       await _panelOutboundsStore.save(_panelConfigs);
+
+      if (_activeId != startedActive) {
+        // Пользователь ушёл на другую подписку. Данные не выбрасываем — кладём
+        // в её профиль на диск, чтобы при возврате они уже были свежими.
+        await _updateProfileQuietly(url, result.info, result.servers);
+        AppLog.i('Ответ подписки пришёл после переключения на другую — '
+            'записан в её профиль, экран не трогаем '
+            '(${result.servers.length} серверов)');
+        return;
+      }
+
+      // #1.1 — что изменилось по сравнению с прошлым составом подписки.
+      final before = {for (final s in _subServers) s.key: s.displayName};
+
+      _subServers = result.servers;
       _rebuild(); // сам переназначает выбор по ключу сервера
       _info = result.info;
       _subscriptionUrl = url;
@@ -1031,6 +1101,13 @@ class AppState extends ChangeNotifier {
   Future<void> refreshSubscription() async {
     final url = _subscriptionUrl;
     if (url == null) return;
+    // Второе обновление поверх идущего пишет в те же поля: автообновление по
+    // таймеру легко наложится на нажатую руками кнопку. Кнопка на время работы
+    // гаснет, а таймер о ней не знает — гейт нужен здесь.
+    if (_refreshing) {
+      AppLog.i('Обновление подписки уже идёт — повторный запуск пропущен');
+      return;
+    }
     // #1 — видимый признак работы: кнопка показывает крутилку, по завершении
     // выводится сводка «N серверов · +2 · −1».
     _refreshing = true;
