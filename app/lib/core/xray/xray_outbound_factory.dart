@@ -198,7 +198,14 @@ class XrayOutboundFactory {
     } else if (s.security == 'tls') {
       stream['tlsSettings'] = {
         'serverName': s.sni ?? s.host ?? s.address,
-        'allowInsecure': false,
+        // ⚠️ `allowInsecure` УДАЛЁН из TLS в Xray v26.2.6 (автоотключение с
+        // 01.06.2026). Мы писали его со значением `false`, то есть поведения он
+        // не менял — но продолжать отправлять ядру удалённое поле значит
+        // однажды получить отказ конфига целиком на очередном обновлении ядра,
+        // и искать причину будем не здесь. Замена, если когда-нибудь понадобится
+        // работа с самоподписанным сертификатом, — `pinnedPeerCertSha256`
+        // (`pcs` в ссылке) и `verifyPeerCertByName` (`vcn`), хэш считается
+        // командой `xray tls certChainHash`.
         if (fp != null) 'fingerprint': fp,
         // Пустой alpn нельзя писать в конфиг: [""] Go отвергает целиком
         // («tls: invalid NextProtos value»), и сервер молча перестаёт работать.
