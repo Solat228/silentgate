@@ -47,15 +47,73 @@ class AndroidEngine extends VpnEngineBase {
 
   /// Порт и пароль Clash API — счётчиков трафика туннеля.
   ///
+  /// ⚠️ НЕ [XrayPorts.api] (10085). На Windows там сидит api-инбаунд Xray, но
+  /// это ДРУГОЙ процесс; на Android оба ядра живут в ОДНОМ, и `SilentGateVpnService`
+  /// поднимает Xray ПЕРВЫМ (иначе sing-box успел бы отправить трафик в мёртвый
+  /// SOCKS). Xray занимал 10085 своим dokodemo-door, sing-box просил тот же порт
+  /// под clash_api и падал с «address already in use» — а `startTunnel` на любое
+  /// исключение снимает туннель целиком. То есть «Авто (лучший сервер)»,
+  /// панельные профили «🎬 Авто …» и вообще всё, что идёт через Xray, не
+  /// подключалось ВОВСЕ, а обычный одиночный VLESS работал (там Xray не
+  /// поднимается) — поэтому на простом тесте дефект не показывался.
+  /// Ровно тот же урок уже выучен на 10809 (см. [probeInboundPort]).
+  ///
   /// ⚠️ Пароль генерируется на КАЖДУЮ сессию. На телефоне локальный порт видит
   /// любое установленное приложение, а sing-box без `secret` отдаёт метаданные
   /// соединений всем подряд и с CORS `*` — то есть и любой открытой странице.
-  static const _apiPort = 10085;
-  final String _apiSecret = _randomSecret();
+  static const _apiPort = 10812;
+
+  /// ⚠️ НЕ `final`, и это не мелочь. Пароль обязан пережить смерть изолята.
+  ///
+  /// На Android `VpnService` живёт дольше интерфейса: пользователь смахнул
+  /// приложение — туннель работает, открыл заново — поднимается НОВЫЙ изолят.
+  /// Пока пароль генерировался в конструкторе, после такого возврата
+  /// [adoptRunningTunnel] опрашивал Clash API с паролем, которого туннель
+  /// никогда не видел: ядро отвечало 401, такт опроса пропускался ВСЕГДА, и на
+  /// экране висели «0 Б / 0 Б» и нулевая скорость при идущей закачке. Это
+  /// штатный, а не редкий сценарий Android.
+  ///
+  /// Поэтому пароль сохраняется рядом с данными приложения и перечитывается при
+  /// подхвате. Каталог приложения на Android недоступен другим приложениям —
+  /// защита от них, ради которой пароль и заведён, не слабеет.
+  String _apiSecret = _randomSecret();
 
   static String _randomSecret() {
     final rnd = Random.secure();
     return List.generate(32, (_) => rnd.nextInt(16).toRadixString(16)).join();
+  }
+
+  /// Файл с паролем текущего туннеля.
+  static Future<File> _secretFile() async {
+    final dir = await AppPaths.supportDir();
+    return File('${dir.path}${Platform.pathSeparator}clash_api_secret');
+  }
+
+  /// Новый пароль на новую сессию + запись рядом с данными приложения.
+  Future<void> _rotateApiSecret() async {
+    _apiSecret = _randomSecret();
+    try {
+      await (await _secretFile()).writeAsString(_apiSecret, flush: true);
+    } catch (e) {
+      // Не фатально: подключение важнее счётчиков. Потеряется только трафик
+      // после возврата в приложение — и об этом будет строка в логе.
+      AppLog.w('Не удалось сохранить пароль Clash API: $e');
+    }
+  }
+
+  /// Пароль туннеля, поднятого прошлым запуском интерфейса.
+  Future<bool> _restoreApiSecret() async {
+    try {
+      final f = await _secretFile();
+      if (!await f.exists()) return false;
+      final v = (await f.readAsString()).trim();
+      if (v.isEmpty) return false;
+      _apiSecret = v;
+      return true;
+    } catch (e) {
+      AppLog.w('Не удалось прочитать пароль Clash API: $e');
+      return false;
+    }
   }
 
   Timer? _statsTimer;
@@ -142,6 +200,12 @@ class AndroidEngine extends VpnEngineBase {
       final running = await _channel.invokeMethod<bool>('isRunning') ?? false;
       if (!running || status.isConnected) return;
       AppLog.i('Подхвачен туннель, поднятый прошлым запуском интерфейса');
+      // Пароль Clash API — от ТОГО запуска: свежесгенерированный туннель не
+      // знает, и счётчики навсегда остались бы нулями (401 на каждый такт).
+      if (!await _restoreApiSecret()) {
+        AppLog.w('Пароль Clash API прошлой сессии не найден — '
+            'счётчики трафика будут пустыми до переподключения');
+      }
       markConnected();
       setStatus(VpnConnectionState.connected);
       _startStatsPolling();
@@ -159,6 +223,9 @@ class AndroidEngine extends VpnEngineBase {
     bool aborted() => isStale(gen);
 
     setStatus(VpnConnectionState.connecting);
+    // Пароль — на КАЖДУЮ сессию, и он же кладётся на диск: следующий запуск
+    // интерфейса подхватит этот туннель и должен уметь его опросить.
+    await _rotateApiSecret();
 
     try {
       // Ядро выбирается ровно так же, как на Windows (configFor в базе):

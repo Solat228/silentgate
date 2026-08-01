@@ -491,6 +491,11 @@ class SingboxConfigBuilder {
     if (_userRulesActive(split) && o.blockPagePort > 0) {
       final blocked = split.sites
           .where((x) => x.action == AppAction.block)
+          // ⚠️ Только домены, заблокированные ЦЕЛИКОМ (или прямо на 80-м).
+          // Правило «example.com:8443 = Блок» обычный http не запрещает, а
+          // заглушка вешалась на порт 80 ВСЕГО домена — и пользователь получал
+          // «сайт заблокирован» там, где ничего не блокировал.
+          .where((x) => x.port == null || x.port == 80)
           .map((x) => x.domain.trim())
           .where((d) => d.isNotEmpty)
           .toSet()
@@ -510,6 +515,9 @@ class SingboxConfigBuilder {
       }
     }
 
+    // Выше блока намеренно: конфликт «родитель заблокирован, поддомен в
+    // туннель» разрешается в пользу конкретного правила, как и все остальные.
+    _addSitePriorityRules(rules, split);
     _addBlockRules(rules, split);
     if (o.bypassLan) rules.add(_route({'ip_is_private': true}, 'direct'));
     // Только ВАЛИДНЫЕ CIDR: один битый префикс (напр. «10.0.0.0/33») заставляет
@@ -666,6 +674,10 @@ class SingboxConfigBuilder {
       // маршрутизации дело не дойдёт — показывать будет нечего. Блокировку это
       // не ослабляет: http уводится на локальную страницу, https отвергается
       // маршрутным правилом.
+      // Конфликтующие поддомены — теми же правилами и в том же порядке, что в
+      // маршрутах. Разойдись зеркало с маршрутом хоть здесь — и сайт шёл бы в
+      // туннель, а его имя спрашивалось бы у резолвера провайдера.
+      ..._dnsSitePriorityRules(split),
       if (o.blockPagePort <= 0) ..._dnsSiteRules(split, AppAction.block, null),
       ..._dnsSiteRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
       ..._dnsSiteRules(split, AppAction.tunnel, 'dns-proxy'),
@@ -710,6 +722,35 @@ class SingboxConfigBuilder {
       'strategy': o.dnsStrategy.singboxValue,
       'independent_cache': true,
     };
+  }
+
+  /// DNS-зеркало для конфликтующих поддоменов (см. [_sitesNeedingPriority]).
+  ///
+  /// Правила С ПОРТОМ пропускаются по той же причине, что и в группах: резолв
+  /// идёт ДО выбора порта, и правило «блокировать example.com:8443» убило бы
+  /// резолв всего домена.
+  List<Map<String, dynamic>> _dnsSitePriorityRules(SplitTunnelConfig split) {
+    final out = <Map<String, dynamic>>[];
+    for (final s in _sitesNeedingPriority(split)) {
+      if (s.port != null) continue;
+      final domain = s.domain.trim();
+      if (domain.isEmpty) continue;
+      final outbound = _siteOutbound(s);
+      if (outbound == null) {
+        // Заглушке нужен отрезолвенный домен — иначе показывать нечего.
+        if (options.blockPagePort > 0) continue;
+        out.add({
+          'domain_suffix': [domain],
+          'action': 'reject',
+        });
+        continue;
+      }
+      out.add({
+        'domain_suffix': [domain],
+        'server': outbound == 'proxy' ? 'dns-proxy' : 'dns-local',
+      });
+    }
+    return out;
   }
 
   /// DNS-правила для сайтов с действием [action]: домены резолвит [server]
@@ -783,9 +824,20 @@ class SingboxConfigBuilder {
   /// БЛОК-правила (reject) — отдельно от остальных, чтобы поставить их выше
   /// bypassLan/excludeCidr (#3). Блок — через action: reject (в 1.11 outbound
   /// «block» устарел). Порядок: приложения, затем сайты.
+  ///
+  /// ⚠️ Блок НЕ фильтруется по «важнее правил сайтов». Раньше фильтровался — по
+  /// умолчанию параметра, — и приложение с действием «Блок» и поднятой галочкой
+  /// пропадало из конфига ЦЕЛИКОМ: ни выше сайтов, ни ниже. Трафик уходил в
+  /// базу (в «Только отмеченные» — напрямую, в полный интернет под реальным IP),
+  /// а интерфейс всё это время рисовал красный значок блокировки. На Android
+  /// было хуже: пакет всё равно заводился в туннель ради reject-правила,
+  /// которого не существовало.
+  ///
+  /// Галочка «важнее правил сайтов» для блока и не имеет смысла: блок стоит
+  /// выше всех правил по построению.
   void _addBlockRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
     if (!_userRulesActive(split)) return;
-    _addActionRule(rules, split, AppAction.block, null);
+    _addActionRule(rules, split, AppAction.block, null, overrideSites: null);
     _addSiteRule(rules, split, AppAction.block, null);
   }
 
@@ -820,6 +872,72 @@ class SingboxConfigBuilder {
 
   bool _userRulesActive(SplitTunnelConfig split) =>
       split.mode != SplitMode.all;
+
+  /// Есть ли правила по сайтам, которые обязаны выигрывать у «Прямо»-приложений.
+  /// Правила «Прямо» по сайту терять не жалко — приложение и так идёт прямо.
+  bool _sitesOutrankDirectApps(SplitTunnelConfig split) => split.sites.any(
+      (s) => s.action == AppAction.tunnel || s.action == AppAction.block);
+
+  /// Сайты, которые обязаны стоять ВЫШЕ своих групп действий.
+  ///
+  /// ⚠️ ЭТО ЗАКРЫТИЕ УТЕЧКИ, А НЕ НАВЕДЕНИЕ ПОРЯДКА. Правила сайтов
+  /// группируются по ДЕЙСТВИЮ (блок → «Прямо» → «Туннель»), а `domain_suffix` в
+  /// sing-box — обычное суффиксное совпадение: `example.com` матчит и
+  /// `secure.example.com`. Значит родитель, чья группа выписана раньше,
+  /// поглощает поддомен из более поздней группы, и правило поддомена мертво.
+  /// Пара «example.com = Прямо» + «secure.example.com = Туннель» давала ровно
+  /// это: сайт, помеченный туннелем, выходил под РЕАЛЬНЫМ IP, его имя ещё и
+  /// резолвилось резолвером провайдера (DNS-зеркало повторяло ту же ошибку), а
+  /// чип в интерфейсе показывал «Туннель».
+  ///
+  /// Обратная пара (родитель «Туннель» + поддомен «Прямо») работала верно —
+  /// но лишь потому, что «Прямо» стоит в списке групп раньше. Корректность была
+  /// случайной, и полагаться на неё нельзя.
+  ///
+  /// Экран правил сам рисует сайты деревом «родитель → поддомен», то есть прямо
+  /// приглашает задавать их так.
+  ///
+  /// Поднимаем ТОЛЬКО конфликтующие: если действие у родителя и поддомена
+  /// одинаковое, порядок ничего не меняет, а лишние правила раздувают конфиг.
+  List<SiteRule> _sitesNeedingPriority(SplitTunnelConfig split) {
+    if (!_userRulesActive(split)) return const [];
+    final sites = split.sites;
+    bool shadows(SiteRule parent, SiteRule child) =>
+        parent.action != child.action &&
+        child.domain.length > parent.domain.length &&
+        child.domain.toLowerCase().endsWith('.${parent.domain.toLowerCase()}');
+    final out = sites.where((c) => sites.any((p) => shadows(p, c))).toList();
+    // От конкретного к общему: вложенность бывает глубже двух уровней, и
+    // поднятый родитель не должен перекрыть свой же поднятый поддомен.
+    out.sort((a, b) => b.domain.length.compareTo(a.domain.length));
+    return out;
+  }
+
+  /// Куда идёт один сайт с учётом «не выходить под реальным IP».
+  /// null → reject (блок).
+  String? _siteOutbound(SiteRule s) {
+    switch (s.action) {
+      case AppAction.block:
+        return null;
+      case AppAction.tunnel:
+        return 'proxy';
+      case AppAction.direct:
+        return (options.noRealIp && !s.allowRealIp) ? 'proxy' : 'direct';
+    }
+  }
+
+  /// Конфликтующие поддомены — отдельными правилами выше всех групп.
+  void _addSitePriorityRules(
+      List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+    for (final s in _sitesNeedingPriority(split)) {
+      final domain = s.domain.trim();
+      if (domain.isEmpty) continue;
+      rules.add(_action({
+        'domain_suffix': [domain],
+        if (s.port != null) 'port': [s.port],
+      }, _siteOutbound(s)));
+    }
+  }
 
   void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
     if (!_userRulesActive(split)) return;
@@ -891,7 +1009,7 @@ class SingboxConfigBuilder {
   /// reject (блок). Приложения «по имени» и «по пути» — разными матчерами.
   void _addActionRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
       AppAction action, String? outbound,
-      {bool? allowRealIp, bool overrideSites = false}) {
+      {bool? allowRealIp, bool? overrideSites = false}) {
     // Выключенные правила не применяются (галочка снята).
     var apps = split.apps.where((a) => a.enabled && a.action == action);
     if (allowRealIp != null && options.noRealIp) {
@@ -900,7 +1018,11 @@ class SingboxConfigBuilder {
     // Приложения делятся на две группы: «важнее сайтов» выписываются ВЫШЕ
     // доменных правил, остальные — ниже. Каждое приложение попадает ровно в
     // одну группу, поэтому дублей не возникает.
-    apps = apps.where((a) => a.overrideSites == overrideSites);
+    // `null` = не делить вовсе (блок: он и так выше всех правил, а деление
+    // роняло половину блок-правил в никуда).
+    if (overrideSites != null) {
+      apps = apps.where((a) => a.overrideSites == overrideSites);
+    }
     // ⚠️ Android ищет приложение по ИМЕНИ ПАКЕТА: полей process_name и
     // process_path на нём нет вовсе (ядро получает от VpnService только uid и
     // отдаёт его как package_name). Раньше ветки по платформе не было, поэтому
@@ -975,8 +1097,27 @@ class SingboxConfigBuilder {
     if (!_userRulesActive(split)) return out.toList();
     if (o.noRealIp) return out.toList();
     if (split.mode == SplitMode.onlySelected) return out.toList();
+    // ⚠️ Правила по САЙТАМ проигрывают исключению на уровне ОС, а не по
+    // приоритету — их просто некому применить. Пакет из `exclude_package`
+    // `VpnService` выводит из туннеля целиком: ядро его трафика не видит, и ни
+    // одно доменное правило по нему не срабатывает, хотя в конфиге оно лежит и
+    // выглядит рабочим. Пара «Chrome = Прямо» + «youtube.com = Туннель» давала
+    // ровно это: YouTube из Chrome шёл под реальным IP, а «ads.example = Блок»
+    // спокойно открывался. Та же настройка на Windows отрабатывала ВЕРНО
+    // (доменное правило выше process_name) — то есть платформы расходились при
+    // одинаковых настройках.
+    //
+    // Поэтому при живых правилах «Туннель»/«Блок» по сайтам приложения «Прямо»
+    // остаются ВНУТРИ туннеля, а мимо VPN их уводит правило
+    // `package_name → direct`, стоящее ниже доменных. Цена — трафик такого
+    // приложения проходит через ядро; выигрыш — обещанный приоритет
+    // «сайты выше приложений» соблюдается на обеих платформах.
+    // Приложения с поднятой галочкой «важнее правил сайтов» исключать можно и
+    // при живых сайтах: они и так обязаны выигрывать у доменных правил.
+    final sitesWin = _sitesOutrankDirectApps(split);
     for (final a in split.apps) {
       if (!a.enabled || a.action != AppAction.direct) continue;
+      if (sitesWin && !a.overrideSites) continue;
       if (a.path.trim().isEmpty) continue;
       out.add(a.path.trim());
     }
@@ -1047,7 +1188,16 @@ class SingboxConfigBuilder {
         // operation not permitted», и TCP-соединения не форвардятся вовсе,
         // хотя DNS (UDP) при этом работает. gVisor обрабатывает всё в
         // пользовательском пространстве, привязка ему не нужна.
-        if (o.platformTun) 'stack': o.stack ?? 'gvisor',
+        //
+        // ⚠️ И потому же выбор пользователя тут НЕ уважается: на Android
+        // работает ровно один стек. `system` привязывает форвардер и умирает,
+        // `mixed` гонит по нему TCP — то есть тоже. Пока стояло `o.stack ??
+        // 'gvisor'`, пользователь мог выбрать любой из них на экране TUN,
+        // получить «Подключено» и полностью мёртвый интернет без единой ошибки.
+        // Экран теперь этих вариантов не предлагает, а здесь стоит страховка:
+        // настройка могла приехать из файла, с Windows-машины или из старой
+        // версии.
+        if (o.platformTun) 'stack': 'gvisor',
         // ⚠️ IPv6-адрес туннеля ставится ВСЕГДА, даже когда пользователь
         // выключил IPv6.
         //

@@ -44,6 +44,11 @@ class AutoConfigController extends ChangeNotifier {
   /// Итог последнего прогона и момент завершения — для уведомления слева снизу,
   /// которое висит ещё несколько секунд после конца работы.
   String? _lastSummary;
+
+  /// Подбор не начинался: платформа не умеет пропускать запросы через кандидата.
+  /// Отличать от «прогнали и ничего не нашли» обязательно — это разные новости.
+  bool _unsupported = false;
+  bool get unsupported => _unsupported;
   DateTime? _finishedAt;
   String? get lastSummary => _lastSummary;
   DateTime? get finishedAt => _finishedAt;
@@ -86,6 +91,7 @@ class AutoConfigController extends ChangeNotifier {
     _error = null;
     _progress = null;
     _lastSummary = null;
+    _unsupported = false;
     _found.clear();
     notifyListeners();
 
@@ -144,14 +150,24 @@ class AutoConfigController extends ChangeNotifier {
       if (_found.isEmpty) _error = 'Рабочих серверов не найдено';
     } on CancelledException {
       // частичные результаты остаются в _found
+    } on AutoConfigUnsupported {
+      // Не «ничего не нашли», а «проверить нечем»: подбор смотрит, открывается
+      // ли YouTube/ChatGPT ЧЕРЕЗ сервер, а на этой платформе замер отдаёт одну
+      // задержку и порта не даёт. Раньше это выглядело как «найдено 0» на
+      // рабочей подписке — то есть как поломка серверов.
+      _error = 'Автонастройка недоступна на этой платформе: проверить '
+          'доступность сервисов через сервер нечем. Пользуйтесь пингом.';
+      _unsupported = true;
     } catch (e) {
       _error = 'Ошибка: $e';
     } finally {
       _running = false;
       _progress = null;
-      _lastSummary = _found.isEmpty
-          ? 'Автонастройка: рабочих серверов не найдено'
-          : 'Автонастройка завершена: найдено ${_found.length}';
+      _lastSummary = _unsupported
+          ? 'Автонастройка недоступна на этой платформе'
+          : _found.isEmpty
+              ? 'Автонастройка: рабочих серверов не найдено'
+              : 'Автонастройка завершена: найдено ${_found.length}';
       _finishedAt = DateTime.now();
       await _persist();
       notifyListeners();

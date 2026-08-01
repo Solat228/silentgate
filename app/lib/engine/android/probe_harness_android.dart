@@ -22,6 +22,11 @@ import '../../core/xray/harness_config_builder.dart';
 class ProbeHarnessAndroid implements ProbeHarness {
   static const _channel = MethodChannel('lol.silentgate/probe');
 
+  /// Порта наружу нет: `LibXray.ping` поднимает ядро внутри вызова и гасит его
+  /// сразу. Задержку меряем, произвольные запросы через кандидата — нет.
+  @override
+  bool get supportsProxyRequests => false;
+
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     final dir = await AppPaths.supportDir();

@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
 import 'package:flutter/services.dart';
@@ -94,60 +96,77 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
     final controller = context.watch<SettingsController>();
     final s = controller.settings;
     final l = AppLocalizations.of(context);
+    // ⚠️ Кто владеет туннелем — от этого зависит, какие параметры вообще
+    // применимы. На Android интерфейс создаёт `VpnService`: имя адаптера,
+    // автомаршруты, строгая маршрутизация и выбор стека там не наши, ядро эти
+    // поля для платформенного туннеля не принимает. Показывать их значило бы
+    // предлагать переключатели, которые ничего не делают, — а «Строгая
+    // маршрутизация» вдобавок просила переподключиться ради no-op.
+    final osOwnsTun = Platform.isAndroid || Platform.isIOS;
 
     return Scaffold(
       appBar: AppBar(title: Text(l.tunTitle)),
       body: ListView(
         children: [
-          _header(context, l.tunSectionPrivilege, l.infoTunPrivilege),
-          ListTile(
-            leading: Icon(
-              _taskInstalled == true ? Icons.verified_user : Icons.shield_outlined,
-              color: _taskInstalled == true ? Colors.green : null,
-            ),
-            title: Text(_taskInstalled == null
-                ? l.tunChecking
-                : _taskInstalled!
-                    ? l.tunNoUacConfigured
-                    : l.tunUacEachConnect),
-            subtitle: Text(l.tunTaskSubtitle),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: OverflowBar(spacing: 8, children: [
-              FilledButton.icon(
-                icon: const Icon(Icons.admin_panel_settings),
-                label: Text(_taskInstalled == true
-                    ? l.tunRecreateTask
-                    : l.tunSetupOneUac),
-                onPressed: _busy ? null : _installTask,
+          // Блок прав применим не везде: на Android согласие даёт системный
+          // диалог `VpnService.prepare()`, задачи Планировщика и UAC там нет.
+          if (platform.privileges.isApplicable) ...[
+            _header(context, l.tunSectionPrivilege, l.infoTunPrivilege),
+            ListTile(
+              leading: Icon(
+                _taskInstalled == true ? Icons.verified_user : Icons.shield_outlined,
+                color: _taskInstalled == true ? Colors.green : null,
               ),
-              if (_taskInstalled == true)
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.delete_outline),
-                  label: Text(l.tunRemoveTask),
-                  onPressed: _busy ? null : _removeTask,
+              title: Text(_taskInstalled == null
+                  ? l.tunChecking
+                  : _taskInstalled!
+                      ? l.tunNoUacConfigured
+                      : l.tunUacEachConnect),
+              subtitle: Text(l.tunTaskSubtitle),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: OverflowBar(spacing: 8, children: [
+                FilledButton.icon(
+                  icon: const Icon(Icons.admin_panel_settings),
+                  label: Text(_taskInstalled == true
+                      ? l.tunRecreateTask
+                      : l.tunSetupOneUac),
+                  onPressed: _busy ? null : _installTask,
                 ),
-            ]),
-          ),
-          const Divider(),
+                if (_taskInstalled == true)
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.delete_outline),
+                    label: Text(l.tunRemoveTask),
+                    onPressed: _busy ? null : _removeTask,
+                  ),
+              ]),
+            ),
+            const Divider(),
+          ],
 
           _header(context, l.tunSectionAdapter, l.infoTunStack),
-          ListTile(
-            title: Row(children: [
-              Text(l.tunStack),
-              InfoTooltip(l.infoTunStack),
-            ]),
-            trailing: SegmentedButton<TunStack>(
-              segments: TunStack.values
-                  .map((v) => ButtonSegment(value: v, label: Text(v.name)))
-                  .toList(),
-              selected: {s.tunStack},
-              showSelectedIcon: false,
-              onSelectionChanged: (v) =>
-                  controller.update((st) => st.copyWith(tunStack: v.first)),
+          // ⚠️ На Android рабочий стек ровно один — gvisor. `system` привязывает
+          // форвардер к интерфейсу (`SO_BINDTODEVICE`), прав на это нет, и TCP
+          // не форвардится вовсе; `mixed` гонит TCP через него же. Пользователь
+          // получал «Подключено» и полностью мёртвый интернет без единой ошибки,
+          // а автоподбора стека на Android нет — само бы не починилось.
+          if (!osOwnsTun)
+            ListTile(
+              title: Row(children: [
+                Text(l.tunStack),
+                InfoTooltip(l.infoTunStack),
+              ]),
+              trailing: SegmentedButton<TunStack>(
+                segments: TunStack.values
+                    .map((v) => ButtonSegment(value: v, label: Text(v.name)))
+                    .toList(),
+                selected: {s.tunStack},
+                showSelectedIcon: false,
+                onSelectionChanged: (v) =>
+                    controller.update((st) => st.copyWith(tunStack: v.first)),
+              ),
             ),
-          ),
           ListTile(
             title: Row(children: [
               const Text('MTU'),
@@ -172,11 +191,16 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
           const Divider(),
 
           _header(context, l.tunSectionRouting, l.infoTunStrictRoute),
-          _switch(context, controller,
-              value: s.tunStrictRoute,
-              title: l.tunStrictRoute,
-              info: l.infoTunStrictRoute,
-              apply: (st, v) => st.copyWith(tunStrictRoute: v)),
+          // Строгая маршрутизация — поле TUN-инбаунда, которое пишется только
+          // когда интерфейс создаёт ядро. На Android его нет в конфиге ни в
+          // одном положении тумблера, а настройка при этом числилась среди
+          // требующих переподключения — то есть просила переподключиться зря.
+          if (!osOwnsTun)
+            _switch(context, controller,
+                value: s.tunStrictRoute,
+                title: l.tunStrictRoute,
+                info: l.infoTunStrictRoute,
+                apply: (st, v) => st.copyWith(tunStrictRoute: v)),
           _switch(context, controller,
               value: s.tunIpv6,
               title: l.tunIpv6,

@@ -18,11 +18,17 @@ void main() {
     SiteRule('example.net', action: AppAction.tunnel),
     SiteRule('ads.example', action: AppAction.block),
     SiteRule('example.com', port: 8443, action: AppAction.direct, allowRealIp: true),
+    // Поддомен с ДРУГИМ действием, чем у родителя: такие правила поднимаются
+    // выше своих групп, и форму поднятого правила тоже обязано принять ядро.
+    SiteRule('secure.example.com', action: AppAction.tunnel),
   ];
   const apps = [
     AppRule(r'C:\Program Files\Google\Chrome\Application\chrome.exe',
         byName: true, action: AppAction.tunnel),
     AppRule(r'C:\Telegram\Telegram.exe', action: AppAction.direct, allowRealIp: true),
+    // Блок + «важнее правил сайтов»: раньше это сочетание выпадало из конфига
+    // целиком, теперь обязано в нём быть — в том числе с точки зрения ядра.
+    AppRule('evil.exe', byName: true, action: AppAction.block, overrideSites: true),
   ];
 
   final outDir = Directory('build/split-configs')..createSync(recursive: true);

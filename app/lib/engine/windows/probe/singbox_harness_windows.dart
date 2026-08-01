@@ -11,6 +11,11 @@ import '../singbox_process.dart';
 /// Проброс-харнесс на sing-box — для серверов, которых не умеет Xray (hysteria2).
 /// Как и Xray-харнесс: отдельный процесс, только 127.0.0.1, системный прокси не трогаем.
 class SingboxHarnessWindows implements ProbeHarness {
+  /// Отдельный процесс ядра с http-инбаундом: через порт кандидата можно
+  /// послать любой запрос, поэтому доступность сервисов тут проверяема.
+  @override
+  bool get supportsProxyRequests => true;
+
   final SingboxHarnessConfigBuilder builder;
 
   // Диапазон портов свой, чтобы не пересекаться с Xray-харнессом (21000+).

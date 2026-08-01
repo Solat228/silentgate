@@ -13,6 +13,11 @@ import 'xray_harness_windows.dart';
 /// Одно ядро на всех не годится: Xray не знает hysteria2, а гонять всё через
 /// sing-box нельзя — вариации автонастройки (fragment/fingerprint) есть только у Xray.
 class MixedProbeHarness implements ProbeHarness {
+  /// Отдельный процесс ядра с http-инбаундом: через порт кандидата можно
+  /// послать любой запрос, поэтому доступность сервисов тут проверяема.
+  @override
+  bool get supportsProxyRequests => true;
+
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     final xrayIdx = <int>[];

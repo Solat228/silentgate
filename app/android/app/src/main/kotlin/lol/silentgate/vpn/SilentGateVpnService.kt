@@ -127,6 +127,22 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     private fun startTunnel(configJson: String, xrayConfigJson: String?) {
+        // ⚠️ ПОВТОРНЫЙ start ПОВЕРХ ЖИВОГО СЕРВИСА — это ПЕРЕЗАГРУЗКА, а не
+        // второй запуск. Так приходит заглушка kill switch: Dart шлёт `start` с
+        // blackhole-конфигом, чтобы туннель ОСТАЛСЯ поднятым, а трафик умирал в
+        // reject.
+        //
+        // Раньше здесь безусловно создавался ВТОРОЙ CommandServer поверх
+        // работающего: старый не закрывался (ссылка на него просто затиралась),
+        // его clash_api продолжал держать порт, новый бинд падал с «address
+        // already in use», исключение уходило в catch — а catch снимает туннель
+        // целиком. То есть kill switch делал ровно обратное обещанному: Dart
+        // писал в лог «туннель удержан, трафик блокируется», а трафик в этот
+        // момент шёл открыто, и цепочка попыток обрывалась.
+        if (running && commandServer != null) {
+            reloadTunnel(configJson, xrayConfigJson)
+            return
+        }
         try {
             // Нотификация ДО подъёма ядра: foreground-сервис обязан её показать
             // сразу, иначе система убьёт его за нарушение контракта.
@@ -189,6 +205,41 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     append(" <- ").append(cause::class.java.simpleName)
                     cause.message?.takeIf { it.isNotBlank() }?.let { append(": ").append(it) }
                 }
+                tailOfCoreLog()?.let { append("\n\n").append(it) }
+            }
+            running = false
+            notifyState()
+            stopTunnel()
+            stopSelf()
+        }
+    }
+
+    /// Перезагрузка ядра БЕЗ пересоздания сервиса.
+    ///
+    /// Нотификация, networkCallback и подписка на состояние остаются на месте —
+    /// пересоздавать их незачем. Сам tun-интерфейс система заменяет при
+    /// повторном `establish()` внутри `openTun`, и делает это без разрыва.
+    ///
+    /// Xray переподнимается только если конфиг пришёл: заглушка kill switch
+    /// присылает один sing-box, и держать при ней живое соединение с VPN-сервером
+    /// не нужно.
+    private fun reloadTunnel(configJson: String, xrayConfigJson: String?) {
+        try {
+            stopXray()
+            if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
+            commandServer?.startOrReloadService(configJson, OverrideOptions())
+            running = true
+            lastError = null
+            notifyState()
+        } catch (e: Throwable) {
+            // Неизвестное состояние опаснее честного отказа: туннель мог бы
+            // остаться жить со СТАРЫМ конфигом, а Dart считал бы, что применён
+            // новый.
+            val cause = generateSequence(e) { it.cause }.last()
+            lastError = buildString {
+                append("Перезагрузка ядра: ").append(e::class.java.simpleName)
+                e.message?.takeIf { it.isNotBlank() }?.let { append(": ").append(it) }
+                if (cause !== e) append(" <- ").append(cause::class.java.simpleName)
                 tailOfCoreLog()?.let { append("\n\n").append(it) }
             }
             running = false
@@ -404,7 +455,15 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         if (Build.VERSION.SDK_INT >= 29) builder.setMetered(false)
 
         val pfd = builder.establish() ?: throw IllegalStateException("establish() вернул null")
+        // ⚠️ Прежний дескриптор закрываем ПОСЛЕ establish(), а не до. При
+        // перезагрузке ядра (заглушка kill switch) openTun вызывается повторно;
+        // систему просят заменить интерфейс, и она делает это без разрыва.
+        // Закрыть старый ДО establish() значило бы снять туннель на этот миг —
+        // то есть открыть ровно то окно утечки, которое kill switch закрывает.
+        // Не закрывать вовсе — оставить дескриптор висеть до смерти процесса.
+        val previous = tunFd
         tunFd = pfd
+        if (previous !== pfd) runCatching { previous?.close() }
         return pfd.fd
     }
 

@@ -11,6 +11,11 @@ import '../xray_process.dart';
 /// Windows-реализация проброс-харнесса: отдельный процесс xray.exe с http-inbound'ами.
 /// Не устанавливает системный прокси.
 class XrayHarnessWindows implements ProbeHarness {
+  /// Отдельный процесс ядра с http-инбаундом: через порт кандидата можно
+  /// послать любой запрос, поэтому доступность сервисов тут проверяема.
+  @override
+  bool get supportsProxyRequests => true;
+
   final HarnessConfigBuilder builder;
   // Изолированная копия (SILENTGATE_PORT_OFFSET) занимает свой диапазон портов.
   XrayHarnessWindows({HarnessPorts? ports})

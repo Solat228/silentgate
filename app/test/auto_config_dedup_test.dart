@@ -13,6 +13,11 @@ class _FakeHarness implements ProbeHarness {
   _FakeHarness(this.log);
   final List<String> log;
 
+  /// Порт есть, просто ядро «не поднялось» (-1) — это НЕ то же самое, что
+  /// платформа без поддержки прокси-запросов: там подбор не начинается вовсе.
+  @override
+  bool get supportsProxyRequests => true;
+
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     for (final e in entries) {

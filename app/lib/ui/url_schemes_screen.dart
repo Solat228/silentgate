@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +61,19 @@ class _UrlSchemesScreenState extends State<UrlSchemesScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          // ⚠️ ОБА тумблера — только Windows, и это не косметика.
+          //
+          // Регистрацию схем на Windows ведёт реестр, и `UrlSchemeWindows` на
+          // других платформах возвращает false и не делает ничего. На Android
+          // схемы объявлены в манифесте: `silentgate://` работает всегда, а
+          // тумблер показывал её ВЫКЛЮЧЕННОЙ; выключение проводило пользователя
+          // через грозное предупреждение, гасило тумблер — и ссылки продолжали
+          // работать. Перехват `vless://…` там переключается через
+          // `PackageManager` (alias в манифесте объявлен `enabled=false`), и это
+          // ещё не сделано — тумблер вставал в «вкл», не меняя ничего.
+          //
+          // Сами схемы ниже по экрану остаются: они рабочие и на Android.
+          if (!Platform.isAndroid && !Platform.isIOS) ...[
           // silentgate:// — включена всегда; выключение только с предупреждением.
           SwitchListTile(
             value: _registered ?? true,
@@ -110,6 +125,9 @@ class _UrlSchemesScreenState extends State<UrlSchemesScreen> {
             title: Text(l.urlSchemeServerTitle),
             subtitle: Text(l.urlSchemeServerSub),
           ),
+          ],
+          // Автоподключение после импорта — наша собственная настройка, платформы
+          // не касается.
           SwitchListTile(
             dense: true,
             value: controller.settings.autoConnectAfterImport,

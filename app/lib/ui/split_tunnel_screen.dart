@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -125,7 +127,13 @@ class SplitTunnelScreen extends StatelessWidget {
                           subtitle: _ruleSubtitle(
                             context,
                             rule.enabled
-                                ? '${rule.byName ? l.splitByName : l.splitByPath} · ${rule.path}'
+                                // На Android сопоставления «по имени/по пути»
+                                // нет — там имя пакета, и подпись «По имени ·
+                                // com.android.chrome» только путала.
+                                ? (Platform.isAndroid || Platform.isIOS
+                                    ? rule.path
+                                    : '${rule.byName ? l.splitByName : l.splitByPath}'
+                                        ' · ${rule.path}')
                                 : l.splitRuleDisabled,
                             action: rule.action,
                             allowRealIp: rule.allowRealIp,
@@ -839,7 +847,11 @@ class _RuleDialogState extends State<_RuleDialog> {
               onChanged: (_) => _applyPort(),
             ),
           ],
-          if (widget.byName != null) ...[
+          // Способ сопоставления — понятие Windows: там правило матчится либо по
+          // имени exe, либо по полному пути. На Android ядро получает от
+          // VpnService только uid и знает приложение по ИМЕНИ ПАКЕТА — выбор
+          // ничего не менял, но правил настройки и звал переподключиться зря.
+          if (widget.byName != null && !Platform.isAndroid && !Platform.isIOS) ...[
             const Divider(),
             Text(l.splitMatching),
             RadioListTile<bool>(

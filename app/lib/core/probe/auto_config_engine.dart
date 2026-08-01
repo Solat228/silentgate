@@ -311,6 +311,14 @@ class _Candidate {
 
 /// Перебирает кандидатов (сервер × вариация обхода), проверяя сервисы через проброс-харнесс.
 /// Не включает системный прокси. Возвращает первый прошедший (firstMatch) или лучший за бюджет.
+/// Подбор невозможен на этой платформе: харнесс не умеет пропускать
+/// произвольные запросы через кандидата (см. [ProbeHarness.supportsProxyRequests]).
+class AutoConfigUnsupported implements Exception {
+  const AutoConfigUnsupported();
+  @override
+  String toString() => 'AutoConfigUnsupported';
+}
+
 class AutoConfigEngine {
   final ProbeHarness Function() _harnessFactory;
 
@@ -349,6 +357,19 @@ class AutoConfigEngine {
     void Function(AutoConfigResult found)? onFound,
     void Function(String message)? onSpeed,
   }) async {
+    // ⚠️ Подбор ПРОВЕРЯЕТ ДОСТУПНОСТЬ СЕРВИСОВ через кандидата, а для этого
+    // нужен порт, в который можно послать произвольный запрос. Там, где
+    // платформа меряет сама и порта не даёт (Android: `LibXray.ping`), проверять
+    // нечем — и раньше каждый кандидат молча уходил в `continue` по условию
+    // `port <= 0`. Пользователь видел ход по всем серверам × вариациям и
+    // «найдено 0» на полностью рабочей подписке, а в логе не было ни строчки.
+    // Честный отказ лучше молчаливого нуля: он хотя бы объясним.
+    if (!_harnessFactory().supportsProxyRequests) {
+      AppLog.w('Автонастройка: на этой платформе замер даёт только задержку, '
+          'а подбор проверяет доступность сервисов через сам сервер. '
+          'Проверять нечем — прогон не начат.');
+      throw const AutoConfigUnsupported();
+    }
     final variants = variantsOverride ?? _buildVariants(settings);
     final candidates = <_Candidate>[
       for (final s in servers)
