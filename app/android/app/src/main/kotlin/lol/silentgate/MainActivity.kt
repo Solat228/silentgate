@@ -2,6 +2,8 @@ package lol.silentgate
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.Manifest
 import android.net.VpnService
 import android.os.Build
 import io.flutter.embedding.android.FlutterActivity
@@ -27,6 +29,15 @@ class MainActivity : FlutterActivity() {
         private const val LINKS_CHANNEL = "lol.silentgate/links"
         private const val EVENT_CHANNEL = "lol.silentgate/vpn_events"
         private const val REQ_PREPARE = 1001
+        private const val REQ_NOTIFICATIONS = 1002
+
+        /// Схемы, которые приложение понимает. Держать согласованными с
+        /// intent-фильтрами манифеста и с `ShareLinkParser` на стороне Dart:
+        /// список нужен, чтобы выудить ссылку из ТЕКСТА, присланного через
+        /// «Поделиться», — там вокруг неё обычно есть слова.
+        private val SCHEMES = listOf(
+            "silentgate", "vless", "vmess", "trojan", "ss", "hysteria2", "hy2",
+        )
     }
 
     private var events: EventChannel.EventSink? = null
@@ -65,8 +76,27 @@ class MainActivity : FlutterActivity() {
                     }
                 }
             }
+        ensureNotificationPermission()
+
         // Ссылка, с которой приложение запустили.
-        intent?.dataString?.let { pendingLink = it }
+        //
+        // ⚠️ ТОЛЬКО ПРИ НАСТОЯЩЕМ ЗАПУСКЕ ПО ССЫЛКЕ, НЕ ПРИ ВОЗВРАТЕ ИЗ НЕДАВНИХ.
+        //
+        // Задача, созданная VIEW-интентом, хранит его как baseIntent
+        // (launchMode=singleTask), и система пересоздаёт Activity С ТЕМ ЖЕ
+        // интентом после смерти процесса. Без проверки флага человек, однажды
+        // запустивший приложение ссылкой `silentgate://toggle`, через час
+        // открывал его из недавних — и туннель ВЫКЛЮЧАЛСЯ сам собой. Для
+        // `import?url=` это был ещё и повторный сетевой импорт при каждом
+        // восстановлении задачи.
+        val fromHistory =
+            (intent?.flags ?: 0) and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
+        if (!fromHistory) {
+            linkFrom(intent)?.let { pendingLink = it }
+            // Интент отработан: гасим ссылку в задаче, чтобы следующее
+            // пересоздание Activity не подобрало её снова.
+            intent?.data = null
+        }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, METHOD_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -161,9 +191,18 @@ class MainActivity : FlutterActivity() {
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
                     events = sink
-                    SilentGateVpnService.stateListener = { running, error ->
+                    SilentGateVpnService.stateListener = { running, error, byUser ->
                         runOnUiThread {
-                            events?.success(mapOf("running" to running, "error" to error))
+                            events?.success(
+                                mapOf(
+                                    "running" to running,
+                                    "error" to error,
+                                    // Отличает «нажали Отключить в шторке» от
+                                    // «ядро упало»: без этого Dart уходил в
+                                    // автопереподключение и включал VPN обратно.
+                                    "byUser" to byUser,
+                                )
+                            )
                         }
                     }
                     // Сразу отдаём текущее состояние: интерфейс мог быть
@@ -172,6 +211,7 @@ class MainActivity : FlutterActivity() {
                         mapOf(
                             "running" to SilentGateVpnService.running,
                             "error" to SilentGateVpnService.lastError,
+                            "byUser" to SilentGateVpnService.stoppedByUser,
                         )
                     )
                 }
@@ -247,10 +287,58 @@ class MainActivity : FlutterActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        val url = intent.dataString ?: return
+        val url = linkFrom(intent) ?: return
         // Канал есть — отдаём сразу; нет (движок ещё поднимается) — придержим.
         if (links == null) pendingLink = url else links?.invokeMethod("link", url)
     }
+
+    /**
+     * Ссылка из интента — из адреса ИЛИ из текста «Поделиться».
+     *
+     * ⚠️ Манифест объявляет `ACTION_SEND` + `text/plain`, поэтому SilentGate
+     * появляется в системном меню «Поделиться» — а читался только
+     * `intent.dataString`, которого у `ACTION_SEND` нет: данные лежат в
+     * `EXTRA_TEXT`. Пункт меню открывал приложение и не импортировал ничего.
+     * Ровно тот класс контролов-обманок, который вычищали с экранов в 1.0.3.
+     *
+     * Из присланного текста берём первую строку, похожую на ссылку: делятся
+     * обычно не голым URL, а сообщением вокруг него.
+     */
+    private fun linkFrom(intent: Intent?): String? {
+        intent?.dataString?.let { return it }
+        val text = intent?.getStringExtra(Intent.EXTRA_TEXT) ?: return null
+        return text.split(Regex("\s+")).firstOrNull { candidate ->
+            SCHEMES.any { candidate.startsWith("$it://", ignoreCase = true) }
+        }
+    }
+
+
+    /**
+     * ⚠️ БЕЗ ЭТОГО НА ANDROID 13+ УВЕДОМЛЕНИЯ СЕРВИСА НЕТ ВООБЩЕ.
+     *
+     * `POST_NOTIFICATIONS` объявлено в манифесте, но с API 33 оно выдаётся
+     * только по запросу в рантайме, а запроса не было нигде — ни в Kotlin, ни
+     * в Dart. Сервис при этом стартует и туннель работает, а пользователь
+     * теряет и постоянную индикацию «VPN включён», и кнопку «Отключить» —
+     * единственный способ снять туннель при закрытом окне приложения.
+     *
+     * Живой прогон шёл на Android 11, где ограничения нет, — поэтому дефект и
+     * не всплыл.
+     *
+     * Спрашиваем ОДИН раз при старте и молча: отказ ничего не ломает, туннель
+     * поднимается всё равно, просто без уведомления. Просить повторно и
+     * объяснять — хуже: разрешение не критично для работы.
+     */
+    private fun ensureNotificationPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) return
+        runCatching {
+            requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFICATIONS)
+        }
+    }
+
 }
 
 

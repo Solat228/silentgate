@@ -418,8 +418,27 @@ class ProbeController extends ChangeNotifier {
     final proxyLat = _proxyLatency(s) || forceProxy;
     try {
       if (port == null) {
-        // Харнесс не поднялся: без TCP проверить нечем — «мёртв»; обычный сервер
-        // по TCP достижим, но рабочим не подтверждён.
+        // ⚠️ «НЕ ПРОВЕРЕН» И «МЁРТВ» — РАЗНЫЕ НОВОСТИ, И ПУТАТЬ ИХ НЕЛЬЗЯ.
+        //
+        // Порт `null` значит «замерить нечем», а не «сервер не отвечает».
+        // На Android харнесс не умеет hysteria2 вовсе (`ProbeHarnessAndroid`
+        // кладёт для него null), и заведомо рабочий сервер красился в красное
+        // «n/a» — при том, что и код, и бэклог обещают честное «не проверен».
+        // Красный означает «не подключайся сюда», и человек послушно шёл на
+        // худший узел.
+        //
+        // Отличаем по тому, была ли попытка ВООБЩЕ возможна: `forceProxy` —
+        // это проба по живому каналу, её отказ настоящий.
+        if (proxyLat && !forceProxy) {
+          _results[s.key] = PingResult(
+            outcome: PingOutcome.untested,
+            latencyMethod: settings.pingPrimary,
+            measuredAt: DateTime.now(),
+          );
+          notifyListeners();
+          return;
+        }
+        // Обычный сервер по TCP достижим, но рабочим не подтверждён.
         _results[s.key] = proxyLat
             ? PingResult(outcome: PingOutcome.failed, measuredAt: DateTime.now())
             : PingResult(

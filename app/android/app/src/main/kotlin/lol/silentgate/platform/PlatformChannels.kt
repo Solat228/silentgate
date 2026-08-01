@@ -128,7 +128,17 @@ object PlatformChannels {
      */
     fun handleApps(context: Context, method: String, arg: String?, result: MethodChannel.Result) {
         when (method) {
-            "list" -> result.success(runCatching { listApps(context) }.getOrDefault(emptyList()))
+            // ⚠️ Отказ НЕ выдаём за «приложений нет».
+            //
+            // Раньше здесь стоял getOrDefault(emptyList()): любое исключение
+            // превращалось в пустой список, и экран правил показывал «пусто»
+            // без единого слова о причине. Пользователь видел бы то же самое,
+            // что при честном отсутствии приложений, и чинить было бы нечего.
+            // Та же болезнь, что лечили в автонастройке через AutoConfigUnsupported.
+            "list" -> runCatching { listApps(context) }.fold(
+                onSuccess = { result.success(it) },
+                onFailure = { result.error("apps_unavailable", it.message ?: it::class.java.simpleName, null) },
+            )
             "icon" -> {
                 val pkg = arg?.trim().orEmpty()
                 if (pkg.isEmpty()) result.success(null)

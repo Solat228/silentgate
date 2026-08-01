@@ -86,12 +86,30 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         var lastError: String? = null
             private set
 
+        /**
+         * ⚠️ ТУННЕЛЬ СНЯТ ПО ПРОСЬБЕ ПОЛЬЗОВАТЕЛЯ, А НЕ УПАЛ САМ.
+         *
+         * Без этого признака остановка по кнопке «Отключить» в шторке выглядела
+         * снаружи ровно как смерть ядра: `running=false`, `error=null` — то же
+         * самое, что при внезапном падении. Dart честно шёл в `onCoreDied`, а
+         * оттуда — в автопереподключение, включённое по умолчанию. Итог: самый
+         * привычный способ выключить VPN (шторка, приложение свёрнуто) включал
+         * его обратно через 0,8 с. При выключенном автоповторе вместо этого
+         * показывалась ложная ошибка «Ядро остановилось (код 0)».
+         *
+         * На эмуляторном прогоне дефект не показался: там отключали через
+         * `silentgate://disconnect`, то есть по другому пути.
+         */
+        @Volatile
+        var stoppedByUser: Boolean = false
+            private set
+
         /** Слушатель состояния — им выступает мост к Flutter. */
         @Volatile
-        var stateListener: ((running: Boolean, error: String?) -> Unit)? = null
+        var stateListener: ((running: Boolean, error: String?, byUser: Boolean) -> Unit)? = null
 
         private fun notifyState() {
-            stateListener?.invoke(running, lastError)
+            stateListener?.invoke(running, lastError, stoppedByUser)
         }
     }
 
@@ -108,6 +126,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу, и
+                // признак должен уехать вместе с ним.
+                stoppedByUser = true
                 stopTunnel()
                 stopSelf()
                 return START_NOT_STICKY
@@ -191,6 +212,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
             running = true
             lastError = null
+            // Новая сессия — признак прошлой остановки сбрасываем, иначе
+            // следующее падение ядра выдало бы себя за нажатие пользователя.
+            stoppedByUser = false
             notifyState()
             updateNotification(getString(R.string.vpn_connected))
         } catch (e: Throwable) {
@@ -230,6 +254,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             commandServer?.startOrReloadService(configJson, OverrideOptions())
             running = true
             lastError = null
+            // Новая сессия — признак прошлой остановки сбрасываем, иначе
+            // следующее падение ядра выдало бы себя за нажатие пользователя.
+            stoppedByUser = false
             notifyState()
         } catch (e: Throwable) {
             // Неизвестное состояние опаснее честного отказа: туннель мог бы
