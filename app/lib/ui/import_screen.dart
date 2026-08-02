@@ -66,7 +66,11 @@ class _ImportScreenState extends State<ImportScreen> {
             : l.importScrTitle),
         automaticallyImplyLeading: !widget.initialSetup,
       ),
-      body: Center(
+      // ⚠️ Прокрутка обязательна: это экран ПЕРВОГО ЗАПУСКА с полем URL.
+      // Без неё он переполняется при открытой клавиатуре, а с текстом ошибки
+      // (ограничен 220 dp) — вообще всегда.
+      body: SingleChildScrollView(
+        child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: Padding(
@@ -137,7 +141,7 @@ class _ImportScreenState extends State<ImportScreen> {
             ),
           ),
         ),
-      ),
+      )),
     );
   }
 }

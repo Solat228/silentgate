@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
+
+import 'layout/adaptive.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -571,13 +573,17 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
       title: Text(platform.appCatalog.supportsManualPick
           ? l.splitRunningApps
           : l.splitInstalledApps),
-      content: SizedBox(
+      content: adaptiveDialogBody(
+        context,
         width: 440,
         height: 480,
         child: Column(
           children: [
             TextField(
-              autofocus: true,
+              // ⚠️ НЕ автофокус на телефоне: клавиатура поднимается В МОМЕНТ
+                // открытия и съедает ~280 dp — человек видит список из одной
+                // строки раньше, чем успевает что-то выбрать.
+                autofocus: !context.sg.isCompact,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
                 hintText: l.splitSearchByName,
@@ -758,6 +764,10 @@ class _RuleDialogState extends State<_RuleDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     return AlertDialog(
+      // ⚠️ Внутри поле «Порт»: без прокрутки диалог рвётся при клавиатуре.
+      // У пикера выше scrollable НЕ ставим — там свой ListView в Expanded,
+      // и внешняя прокрутка отняла бы у него высоту.
+      scrollable: true,
       // Заголовок — сам адрес сайта (или имя exe): делаем его выделяемым и
       // даём кнопку копирования. Раньше адрес нельзя было ни выделить, ни
       // скопировать: нажатие по строке лишь открывало этот диалог.

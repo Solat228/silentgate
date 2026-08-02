@@ -3,6 +3,8 @@ import 'dart:io';
 import '../engine/probe_factory.dart';
 
 import 'package:flutter/material.dart';
+
+import 'layout/adaptive.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
@@ -608,6 +610,9 @@ class _SupportDialogState extends State<_SupportDialog> {
     final done = _path != null;
 
     return AlertDialog(
+      // ⚠️ Без этого диалог с полем ввода рвётся при клавиатуре: Dialog
+      // ужимается, а Column внутри — нет. Именно так ломался отчёт поддержки.
+      scrollable: true,
       title: Text(done ? l.supportDialogTitleDone : l.supportDialogTitle),
       content: SizedBox(
         width: 540,

@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'widgets/app_toast.dart';
 
 import 'package:flutter/material.dart';
+
+import 'layout/adaptive.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -136,7 +138,8 @@ class _ServerJsonDialogState extends State<ServerJsonDialog> {
     final l = AppLocalizations.of(context);
     return AlertDialog(
       title: Text(l.jsonTitle),
-      content: SizedBox(
+      content: adaptiveDialogBody(
+        context,
         width: 600,
         height: 480,
         child: Column(
