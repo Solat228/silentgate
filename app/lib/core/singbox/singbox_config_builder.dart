@@ -349,6 +349,26 @@ class SingboxConfigBuilder {
   /// `probe-in` не может забиндиться, а это фатально — ядро не запускается
   /// вовсе, и панельные профили не поднимаются НИКОГДА. 0 — не создавать.
   final int probePort;
+
+  /// ⚠️ ЛОГИН/ПАРОЛЬ НА ПОРТ ПРОБ — ЭТО НЕ ПЕРЕСТРАХОВКА.
+  ///
+  /// Loopback на Android НЕ изолирован между приложениями: к `127.0.0.1:10811`
+  /// подключается любое установленное приложение. А правило `probe-in → proxy`
+  /// стоит ВЫШЕ пользовательских, в том числе выше блок-правил. То есть чужое
+  /// приложение получало наш VPN целиком: выходной IP, квоту подписки и обход
+  /// раздельного туннелирования — включая приложение, которому пользователь
+  /// явно поставил «Блок».
+  ///
+  /// Дыра отраслевая (v2rayNG #5467, Hiddify #2120, FlClash #1934 — везде
+  /// закрыто «not planned»), единственная реализованная починка в природе —
+  /// amnezia-client PR #2453. Оттуда же правило: креды живут ТОЛЬКО в памяти,
+  /// на диск и в логи не попадают.
+  ///
+  /// Пусто — инбаунд без аутентификации (Windows: там в него ходит системный
+  /// прокси, а WinINET креденшелов не несёт).
+  final String probeUser;
+  final String probePassword;
+
   final TunOptions options;
 
   /// Готовый прокси-outbound вместо перехода в локальный SOCKS.
@@ -373,6 +393,8 @@ class SingboxConfigBuilder {
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.probePort = 0,
+    this.probeUser = '',
+    this.probePassword = '',
     this.options = const TunOptions(),
     this.proxyOutbound,
     this.proxyOutboundGroup,
@@ -569,6 +591,12 @@ class SingboxConfigBuilder {
             'tag': 'probe-in',
             'listen': '127.0.0.1',
             'listen_port': probePort,
+            // Без users инбаунд открыт любому приложению устройства — см.
+            // комментарий у probeUser.
+            if (probeUser.isNotEmpty)
+              'users': [
+                {'username': probeUser, 'password': probePassword},
+              ],
           },
       ],
       'outbounds': [

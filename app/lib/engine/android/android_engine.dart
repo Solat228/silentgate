@@ -11,6 +11,7 @@ import 'package:flutter/services.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/probe/proxy_probe.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/settings/split_tunnel.dart';
@@ -226,6 +227,14 @@ class AndroidEngine extends VpnEngineBase {
     // Пароль — на КАЖДУЮ сессию, и он же кладётся на диск: следующий запуск
     // интерфейса подхватит этот туннель и должен уметь его опросить.
     await _rotateApiSecret();
+    // ⚠️ Инбаунд проб закрывается паролем на ту же сессию. На Android loopback
+    // НЕ изолирован: без пароля к 127.0.0.1:10811 подключается любое
+    // установленное приложение и получает наш VPN целиком — выходной IP, квоту
+    // подписки и обход раздельного туннелирования, включая приложения, которым
+    // пользователь поставил «Блок» (правило `probe-in → proxy` стоит выше
+    // пользовательских). Креды только в памяти: на диск и в логи не пишутся.
+    ProxyProbe.user = 'sg';
+    ProxyProbe.password = _randomSecret();
 
     try {
       // Ядро выбирается ровно так же, как на Windows (configFor в базе):
@@ -301,6 +310,8 @@ class AndroidEngine extends VpnEngineBase {
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
         probePort: probeInboundPort,
+        probeUser: ProxyProbe.user,
+        probePassword: ProxyProbe.password,
         options: liveOptions,
         // При нескольких серверах на sing-box собранный базой конфиг уже
         // содержит `urltest` по всем узлам — встраивать outbound одного
