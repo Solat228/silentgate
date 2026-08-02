@@ -85,6 +85,13 @@ abstract class VpnEngine {
   /// без TUN это не нужно.
   set knownServerDomains(List<String> domains) {}
 
+  /// Название активной подписки — для первой строки уведомления.
+  /// Задаётся интерфейсом: движок про подписки ничего не знает.
+  set subscriptionTitle(String title) {}
+
+  /// Раскладка уведомления: с именем подписки (false) или без него (true).
+  set compactNotification(bool compact) {}
+
   /// Освободить ресурсы.
   Future<void> dispose();
 }

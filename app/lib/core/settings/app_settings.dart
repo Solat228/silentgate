@@ -225,6 +225,13 @@ class AppSettings {
   /// не сработать.
   final bool myRulesOverridePanel;
 
+  /// ⚠️ ВРЕМЕННЫЙ ПЕРЕКЛЮЧАТЕЛЬ — так и написано в интерфейсе.
+  ///
+  /// Заведён по просьбе владельца, чтобы сравнить две раскладки уведомления на
+  /// живом телефоне и выбрать одну. Когда выбор сделан — оставить победившую
+  /// раскладку и УБРАТЬ и поле, и переключатель, и строки перевода.
+  final bool compactNotification;
+
   /// Отказывать в QUIC (UDP:443).
   ///
   /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
@@ -361,6 +368,7 @@ class AppSettings {
     this.blockPageEnabled = true,
     this.speedInAutoSelect = false,
     this.myRulesOverridePanel = true,
+    this.compactNotification = false,
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -423,6 +431,7 @@ class AppSettings {
     bool? blockPageEnabled,
     bool? speedInAutoSelect,
     bool? myRulesOverridePanel,
+    bool? compactNotification,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -475,6 +484,7 @@ class AppSettings {
       blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
       speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
       myRulesOverridePanel: myRulesOverridePanel ?? this.myRulesOverridePanel,
+      compactNotification: compactNotification ?? this.compactNotification,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -529,6 +539,7 @@ class AppSettings {
         'blockPageEnabled': blockPageEnabled,
         'speedInAutoSelect': speedInAutoSelect,
         'myRulesOverridePanel': myRulesOverridePanel,
+        'compactNotification': compactNotification,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -611,6 +622,8 @@ class AppSettings {
             j['speedInAutoSelect'] as bool? ?? defaults.speedInAutoSelect,
         myRulesOverridePanel: j['myRulesOverridePanel'] as bool? ??
             defaults.myRulesOverridePanel,
+        compactNotification: j['compactNotification'] as bool? ??
+            defaults.compactNotification,
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,

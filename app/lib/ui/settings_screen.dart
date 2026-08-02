@@ -177,6 +177,22 @@ class _ReliabilitySection extends StatelessWidget {
         // первого запуска после перезагрузки. Наш собственный закрывает только
         // окно между попытками переподключения, поэтому они дополняют друг
         // друга, а не заменяют.
+        // ⚠️ ВРЕМЕННЫЙ ПЕРЕКЛЮЧАТЕЛЬ. Заведён, чтобы сравнить две раскладки
+        // уведомления на живом телефоне и выбрать одну. Когда выбор сделан —
+        // убрать и его, и поле настройки, и эти строки.
+        if (Platform.isAndroid)
+          SwitchListTile(
+            value: settings.compactNotification,
+            onChanged: (v) {
+              controller.update((s) => s.copyWith(compactNotification: v));
+              context.read<AppState>().publishNotificationLayout();
+            },
+            title: const Text('ВРЕМЕННО: короткая шторка'),
+            subtitle: const Text(
+                'Выключено — значок и подписка, ниже сервер, ниже скорость. '
+                'Включено — значок и сервер, ниже скорость. '
+                'Переключатель временный: выберем раскладку и уберём его.'),
+          ),
         if (Platform.isAndroid)
           ListTile(
             leading: const Icon(Icons.verified_user_outlined),

@@ -123,8 +123,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
-    /// Подпись под статусом: сервер и трафик. null — показывать нечего.
-    private var lastDetail: String? = null
+    /// Три строки уведомления. Раскладка задана владельцем:
+    ///   обычная  — [значок + подписка] / сервер / скорость;
+    ///   короткая — [значок + сервер]  / скорость.
+    /// Первая строка уведомления Android — это `subText` рядом со значком,
+    /// поэтому имя подписки (или сервера в короткой раскладке) едет туда.
+    private var noteSub: String? = null
+    private var noteServer: String? = null
+    private var noteSpeed: String? = null
 
     /**
      * ⚠️ ЭКРАН ПОГАС — ЯДРО МОЖНО ПРИТОРМОЗИТЬ, А НЕ ПЕРЕПОДКЛЮЧАТЬ.
@@ -213,13 +219,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * именно тогда, когда объяснить некому.
      */
     /// Обновить подпись в шторке (сервер + трафик). Зовётся из Dart.
-    fun setDetail(detail: String?, status: String?) {
+    fun setDetail(sub: String?, server: String?, speed: String?) {
         if (!running) return
         // Экран выключен — обновлять нечего и некому.
         if (!screenOn) return
-        lastDetail = detail?.takeIf { it.isNotBlank() }
-        updateNotification(status?.takeIf { it.isNotBlank() }
-            ?: strings().getString(R.string.vpn_connected))
+        noteSub = sub?.takeIf { it.isNotBlank() }
+        noteServer = server?.takeIf { it.isNotBlank() }
+        noteSpeed = speed?.takeIf { it.isNotBlank() }
+        updateNotification(strings().getString(R.string.vpn_connected))
     }
 
     fun showBlocked() {
@@ -814,12 +821,26 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         )
         return Notification.Builder(this, CHANNEL_ID)
             // Имя берём из ресурсов, а не литералом: бренд ещё может смениться.
-            .setContentTitle(res.getString(R.string.app_name))
-            .setContentText(text)
-            // Вторая строка — трафик. Раньше в шторке был только статус, и
-            // человек, не открывая приложение, не знал ни сколько скачано, ни
-            // через какой сервер он сидит.
-            .also { b -> lastDetail?.let { b.setSubText(it) } }
+            // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ — не менять «как красивее».
+            //
+            // Обычная:  [значок + имя подписки] / имя сервера / скорость
+            // Короткая: [значок + имя сервера]  / скорость
+            //
+            // В Android верхняя строка уведомления — это `subText` рядом со
+            // значком приложения, а НЕ заголовок. Поэтому подписка (или сервер
+            // в короткой раскладке) ставится через setSubText, иначе она
+            // оказалась бы второй строкой, а не первой.
+            //
+            // Пока трафика нет (только подключились), заголовок падает обратно
+            // на статус — пустая строка выглядела бы как сломанное уведомление.
+            .also { b ->
+                val head = noteSub ?: noteServer
+                if (head != null) b.setSubText(head)
+                val title = if (noteSub != null) noteServer else noteSpeed
+                b.setContentTitle(title ?: res.getString(R.string.app_name))
+                val body = if (noteSub != null) noteSpeed else null
+                b.setContentText(body ?: text)
+            }
             .setSmallIcon(R.drawable.ic_stat_vpn)
             .setContentIntent(open)
             .setOngoing(true)

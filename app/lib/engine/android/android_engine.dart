@@ -176,18 +176,25 @@ class AndroidEngine extends VpnEngineBase {
   String? _lastDetailSent;
   Future<void> _pushNotificationDetail(XrayTrafficSnapshot snap) async {
     if (!_screenOn) return;
-    final name = session?.servers.length == 1
+    final server = session?.servers.length == 1
         ? session!.servers.first.displayName
         : null;
-    final detail = [
-      if (name != null && name.isNotEmpty) name,
-      '↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}',
-    ].join(' · ');
-    if (detail == _lastDetailSent) return; // не дёргать шторку впустую
-    _lastDetailSent = detail;
+    final speed = '↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}';
+    // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ, не выдумывать свою:
+    //   обычная  — [значок + подписка] / сервер / скорость;
+    //   короткая — [значок + сервер] / скорость.
+    // Первая строка уведомления Android — это `subText` рядом со значком,
+    // поэтому имя подписки едет именно туда, а не в заголовок.
+    final sub = compactNotification ? '' : subscriptionTitle;
+    final key = '$sub|$server|$speed';
+    if (key == _lastDetailSent) return; // не дёргать шторку впустую
+    _lastDetailSent = key;
     try {
-      await _channel.invokeMethod<void>(
-          'setNotificationDetail', {'detail': detail, 'status': null});
+      await _channel.invokeMethod<void>('setNotificationDetail', {
+        'sub': sub,
+        'server': server ?? '',
+        'speed': speed,
+      });
     } catch (_) {
       // Уведомление — не критичный путь: туннель важнее.
     }

@@ -144,8 +144,9 @@ class MainActivity : FlutterActivity() {
                     // Подпись в шторке: сервер и трафик.
                     "setNotificationDetail" -> {
                         SilentGateVpnService.instance?.setDetail(
-                            call.argument<String>("detail"),
-                            call.argument<String>("status"),
+                            call.argument<String>("sub"),
+                            call.argument<String>("server"),
+                            call.argument<String>("speed"),
                         )
                         result.success(null)
                     }

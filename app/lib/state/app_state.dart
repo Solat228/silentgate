@@ -372,6 +372,14 @@ class AppState extends ChangeNotifier {
   /// Без этого списка резолв имён других серверов уходит в туннель, который сам
   /// их и ждёт, — и подключение зависает целиком. Обновляем на каждой
   /// пересборке списка: состав серверов меняется при каждом обновлении подписки.
+  /// Отдать движку то, что он сам не знает: название подписки и выбранную
+  /// раскладку шторки. Движок про подписки и настройки интерфейса не в курсе.
+  Future<void> publishNotificationLayout() async {
+    _engine.subscriptionTitle = _info.title ?? '';
+    _engine.compactNotification =
+        (await SettingsStorage().load()).compactNotification;
+  }
+
   void _publishServerDomains() {
     final domains = <String>{};
     for (final s in _servers) {
@@ -513,6 +521,7 @@ class AppState extends ChangeNotifier {
     // ⚠️ ДО любых ранних выходов ниже: движку нужен полный список имён, иначе
     // резолв чужих серверов уйдёт в туннель и подключение зациклится.
     _publishServerDomains();
+    unawaited(publishNotificationLayout());
 
     if (prevKey != null) {
       final idx = _servers.indexWhere((s) => s.key == prevKey);

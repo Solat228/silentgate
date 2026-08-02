@@ -25,6 +25,13 @@ class _FakeEngine implements VpnEngine {
   @override
   Future<void> armAdoptedSession(
       List<VpnServer> servers, ConnectionOptions options) async {}
+
+  /// Диагностический движок в шторку не пишет.
+  @override
+  set subscriptionTitle(String title) {}
+  @override
+  set compactNotification(bool compact) {}
+
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
   @override

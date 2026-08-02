@@ -172,6 +172,18 @@ abstract class VpnEngineBase implements VpnEngine {
 
   List<String> get knownServerDomains => _knownDomains;
 
+  /// Название активной подписки (для шторки). Пусто — строки не будет.
+  String _subscriptionTitle = '';
+  @override
+  set subscriptionTitle(String title) => _subscriptionTitle = title.trim();
+  String get subscriptionTitle => _subscriptionTitle;
+
+  /// Короткая раскладка уведомления — без строки подписки.
+  bool _compactNotification = false;
+  @override
+  set compactNotification(bool compact) => _compactNotification = compact;
+  bool get compactNotification => _compactNotification;
+
   /// Текущая сессия (нужна наследникам для подъёма).
   EngineSession? get session => _session;
 
