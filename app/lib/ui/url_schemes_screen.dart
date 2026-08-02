@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/platform/url_scheme_windows.dart';
+import '../core/app_info.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
 import 'widgets/app_toast.dart';
@@ -192,15 +193,18 @@ Map<String, Map<String, String>> _schemeGroups(AppLocalizations l) => {
 class _PanelResponseRuleNote extends StatelessWidget {
   const _PanelResponseRuleNote();
 
-  static const _rule = '''{
-  "name": "SilentGate",
+  /// ⚠️ Имя подставляется из [AppInfo]: правило сверяет UA, а UA строится из
+  /// того же имени. Захардкодь его здесь — и после смены бренда пользователь
+  /// скопировал бы в панель правило, которое не сматчится ни с чем.
+  static String get _rule => '''{
+  "name": "${AppInfo.name}",
   "enabled": true,
   "operator": "AND",
   "conditions": [
     {
       "headerName": "user-agent",
       "operator": "CONTAINS",
-      "value": "SilentGate",
+      "value": "${AppInfo.name}",
       "caseSensitive": false
     }
   ],
@@ -263,7 +267,7 @@ class _PanelResponseRuleNote extends StatelessWidget {
                 icon: const Icon(Icons.copy, size: 16),
                 label: Text(l.panelOwnerCopy),
                 onPressed: () {
-                  Clipboard.setData(const ClipboardData(text: _rule));
+                  Clipboard.setData(ClipboardData(text: _rule));
                   AppToast.copied(context);
                 },
               ),

@@ -341,7 +341,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('SilentGate'),
+        // Имя из AppInfo, а не литералом: бренд ещё может смениться, и тогда
+        // правки не должны расползаться по интерфейсу.
+        title: const Text(AppInfo.name),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.add, size: 20),
