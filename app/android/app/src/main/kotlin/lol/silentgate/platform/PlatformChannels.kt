@@ -17,7 +17,6 @@ import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.cores.libbox.Libbox
 import lol.silentgate.cores.libXray.LibXray
-import lol.silentgate.cores.libXray.LibXray
 import lol.silentgate.cores.libXray.LibXrayInvokeRequest
 import lol.silentgate.cores.libXray.PingRequest
 import java.io.ByteArrayOutputStream
@@ -211,7 +210,11 @@ object PlatformChannels {
             "coreVersions" -> result.success(
                 mapOf(
                     "singbox" to runCatching { Libbox.version() }.getOrNull(),
-                    "xray" to runCatching { LibXray.xrayVersion() }.getOrNull(),
+                    // ⚠️ Версию Xray libXray отдаёт только через конверт
+                    // Invoke(json) — отдельный метод `xrayVersion()` в биндинге
+                    // отсутствует. Пока не разобран формат ответа, честно не
+                    // выдумываем: пустое значение интерфейс покажет как прочерк.
+                    "xray" to null,
                 )
             )
 

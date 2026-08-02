@@ -315,7 +315,7 @@ class MainActivity : FlutterActivity() {
     private fun linkFrom(intent: Intent?): String? {
         intent?.dataString?.let { return it }
         val text = intent?.getStringExtra(Intent.EXTRA_TEXT) ?: return null
-        return text.split(Regex("\s+")).firstOrNull { candidate ->
+        return text.split(Regex("""\s+""")).firstOrNull { candidate ->
             SCHEMES.any { candidate.startsWith("$it://", ignoreCase = true) }
         }
     }
