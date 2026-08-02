@@ -6,6 +6,7 @@ import '../core/settings/app_settings.dart';
 import '../core/util/country_flag.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../engine/probe_factory.dart';
 import '../state/app_state.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
@@ -44,6 +45,20 @@ class AutoConfigScreen extends StatelessWidget {
       ),
       body: Column(
         children: [
+          // ⚠️ ОТКАЗ ПОКАЗЫВАЕМ СРАЗУ, А НЕ ПО ФАКТУ НАЖАТИЯ.
+          //
+          // На Android харнесс не умеет пропускать запросы через кандидата
+          // (`ProbeHarnessAndroid.supportsProxyRequests == false`), поэтому
+          // подбор не начнётся никогда. Раньше экран честно предлагал крутить
+          // стратегию, бюджет и набор сервисов — и отказывал только когда
+          // человек нажимал «Начать». Настроил, нажал, получил отказ: время
+          // потрачено на решение, которое ничего не значило.
+          if (!autoConfigSupported)
+            MaterialBanner(
+              content: Text(AutoConfigController.unsupportedMessage),
+              leading: const Icon(Icons.info_outline),
+              actions: const [SizedBox.shrink()],
+            ),
           Expanded(
             child: ListView(
               padding: const EdgeInsets.all(20),

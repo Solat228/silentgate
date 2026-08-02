@@ -15,6 +15,8 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
+import lol.silentgate.cores.libbox.Libbox
+import lol.silentgate.cores.libXray.LibXray
 import lol.silentgate.cores.libXray.LibXray
 import lol.silentgate.cores.libXray.LibXrayInvokeRequest
 import lol.silentgate.cores.libXray.PingRequest
@@ -203,6 +205,16 @@ object PlatformChannels {
 
     fun handleDevice(context: Context, method: String, result: MethodChannel.Result) {
         when (method) {
+            // Версии ядер. Раньше здесь стояла заглушка «н/д» с комментарием
+            // «придёт, когда AAR появится в сборке» — AAR давно в сборке, а
+            // заглушка осталась: пользователь видел прочерк вместо версии.
+            "coreVersions" -> result.success(
+                mapOf(
+                    "singbox" to runCatching { Libbox.version() }.getOrNull(),
+                    "xray" to runCatching { LibXray.xrayVersion() }.getOrNull(),
+                )
+            )
+
             // DNS ФИЗИЧЕСКОЙ сети — для доменов с правилом «Прямо».
             //
             // ⚠️ Без него ядро оставляет резолвер `local`, и такие домены не

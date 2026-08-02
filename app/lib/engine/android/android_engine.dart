@@ -132,7 +132,13 @@ class AndroidEngine extends VpnEngineBase {
     _statsTimer?.cancel();
     _lastSnap = const XrayTrafficSnapshot(0, 0);
     _lastSnapAt = DateTime.now();
-    final stats = SingboxStats(apiPort: clashApiPort, secret: _apiSecret);
+    // ⚠️ ТОЛЬКО ПРОКСИРОВАННЫЙ. На Windows опрашивается отдельное прокси-ядро,
+    // а туннель считается своим; на Android ядро ОДНО, и глобальные счётчики
+    // Clash API включают всё, что ушло мимо VPN, — правила «Прямо», bypassLan,
+    // локальный DNS. Пользователь качал 5 ГБ заведомо мимо туннеля и видел их
+    // под кнопкой, рядом с остатком по подписке.
+    final stats = SingboxStats(
+        apiPort: clashApiPort, secret: _apiSecret, onlyProxy: true);
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       if (_statsBusy) return;
       _statsBusy = true;

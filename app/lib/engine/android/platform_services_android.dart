@@ -103,9 +103,28 @@ class _AndroidAppIcons implements AppIconLoader {
 class _AndroidCoreVersions implements CoreVersionInfo {
   const _AndroidCoreVersions();
 
-  // Задача 24: версия придёт из libXray, когда AAR появится в сборке.
+  /// Версия ядра — из самой библиотеки, а не из константы.
+  ///
+  /// Раньше здесь стоял прочерк с комментарием «придёт, когда AAR появится в
+  /// сборке». AAR в сборке давно, а прочерк остался: в «О программе» вместо
+  /// версии висело «н/д», и понять, на каком ядре человек сидит, было нельзя —
+  /// в том числе при разборе его жалобы.
   @override
-  Future<String> xray() async => 'н/д';
+  Future<String> xray() async {
+    try {
+      final v = await const MethodChannel('lol.silentgate/device')
+          .invokeMapMethod<String, dynamic>('coreVersions');
+      final xray = '${v?['xray'] ?? ''}'.trim();
+      final singbox = '${v?['singbox'] ?? ''}'.trim();
+      // Показываем оба: на Android они живут в одном AAR, и знать надо оба.
+      if (xray.isNotEmpty && singbox.isNotEmpty) return '\$xray / sing-box \$singbox';
+      if (xray.isNotEmpty) return xray;
+      if (singbox.isNotEmpty) return 'sing-box \$singbox';
+    } catch (_) {
+      // Канал недоступен — честный прочерк лучше выдумки.
+    }
+    return 'н/д';
+  }
 }
 
 class _AndroidTunLog implements TunLogReader {
