@@ -12,4 +12,5 @@
     <string name="vpn_revoked">Die Verbindung wurde vom System beendet</string>
     <string name="vpn_blocked">Verbindung verloren – Datenverkehr blockiert</string>
     <string name="vpn_tile_off">Getrennt</string>
+    <string name="vpn_open">Öffnen</string>
 </resources>

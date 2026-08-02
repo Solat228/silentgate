@@ -825,6 +825,11 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             .setOngoing(true)
             .addAction(Notification.Action.Builder(
                 null, res.getString(R.string.vpn_disconnect), stop).build())
+            // Вторая кнопка — открыть приложение. Нажатие на само уведомление
+            // делает то же, но кнопка заметнее: на Android 13+ тело
+            // уведомления часто свёрнуто, и виден только ряд кнопок.
+            .addAction(Notification.Action.Builder(
+                null, res.getString(R.string.vpn_open), open).build())
             .build()
     }
 

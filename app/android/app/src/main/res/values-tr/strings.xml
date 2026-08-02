@@ -12,4 +12,5 @@
     <string name="vpn_revoked">Bağlantı sistem tarafından durduruldu</string>
     <string name="vpn_blocked">Bağlantı koptu — trafik engellendi</string>
     <string name="vpn_tile_off">Bağlantı kesildi</string>
+    <string name="vpn_open">Aç</string>
 </resources>

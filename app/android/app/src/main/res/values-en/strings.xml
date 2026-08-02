@@ -12,4 +12,5 @@
     <string name="vpn_revoked">The connection was stopped by the system</string>
     <string name="vpn_blocked">Connection lost — traffic is blocked</string>
     <string name="vpn_tile_off">Disconnected</string>
+    <string name="vpn_open">Open</string>
 </resources>

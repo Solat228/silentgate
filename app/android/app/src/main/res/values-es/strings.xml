@@ -12,4 +12,5 @@
     <string name="vpn_revoked">El sistema detuvo la conexión</string>
     <string name="vpn_blocked">Conexión perdida: el tráfico está bloqueado</string>
     <string name="vpn_tile_off">Desconectado</string>
+    <string name="vpn_open">Abrir</string>
 </resources>

@@ -12,4 +12,5 @@
     <string name="vpn_revoked">سیستم اتصال را متوقف کرد</string>
     <string name="vpn_blocked">اتصال قطع شد — ترافیک مسدود است</string>
     <string name="vpn_tile_off">قطع شد</string>
+    <string name="vpn_open">باز کردن</string>
 </resources>
