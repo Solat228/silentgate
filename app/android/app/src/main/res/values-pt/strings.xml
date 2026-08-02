@@ -11,4 +11,5 @@
     <string name="vpn_disconnect">Desconectar</string>
     <string name="vpn_revoked">O sistema interrompeu a conexão</string>
     <string name="vpn_blocked">Conexão perdida — tráfego bloqueado</string>
+    <string name="vpn_tile_off">Desconectado</string>
 </resources>

@@ -60,10 +60,86 @@ abstract final class AppUrlScheme {
   /// `config` приоритетнее `url`: если пришли оба, применяем готовый конфиг.
   static String? importPayload(String url) {
     final u = url.trim();
+    final foreign = foreignImportPayload(u);
+    if (foreign != null) return foreign;
     if (!u.toLowerCase().startsWith('$scheme://')) return null;
     final uri = Uri.tryParse(u);
     if (uri == null) return null;
+    // Своя схема принимается в ДВУХ формах: `import?url=` (наша историческая) и
+    // `add/<ссылка>` — та, что сложилась в отрасли. Панель подписки строит
+    // кнопки клиентов именно по второй форме, поэтому уметь её надо, чтобы
+    // SilentGate можно было туда добавить.
+    final path = _afterAddRaw(u);
+    if (path != null) return path;
     return uri.queryParameters['config'] ?? uri.queryParameters['url'];
+  }
+
+  /// Ссылка подписки из схемы ЧУЖОГО клиента.
+  ///
+  /// ⚠️ Люди пересылают друг другу `happ://add/…` и `clash://install-config?url=…`,
+  /// и при переходе с другого клиента такая ссылка — самое частое, что человек
+  /// пробует. Стоит нам ноль (разбор строки), а выигрыш заметный: иначе
+  /// SilentGate на неё просто не отзовётся, и человек решит, что импорт сломан.
+  ///
+  /// Формы взяты из документации самих клиентов; там сложились две:
+  /// `<схема>://add/<ссылка>` и `<схема>://install-config?url=<ссылка>`.
+  static String? foreignImportPayload(String url) {
+    final u = url.trim();
+    final uri = Uri.tryParse(u);
+    if (uri == null) return null;
+    const known = {
+      'happ', 'clash', 'clashmi', 'stash', 'flclashx', 'sing-box',
+      'streisand', 'v2raytun', 'hiddify', 'shadowrocket',
+    };
+    if (!known.contains(uri.scheme.toLowerCase())) return null;
+    // ⚠️ `happ://crypt4|crypt5` расшифровывается ключами, вшитыми в САМО
+    // приложение Happ, — механизм для того и сделан, чтобы адрес подписки был
+    // скрыт от пользователя. Мы её не прочитаем никогда, и честнее сказать это
+    // прямо, чем выдать «неверный формат».
+    final head = uri.host.isNotEmpty ? uri.host : _firstSegment(uri);
+    if (head.toLowerCase().startsWith('crypt')) return null;
+    final q = uri.queryParameters['url'];
+    if (q != null && q.trim().isNotEmpty) return q.trim();
+    return _afterAddRaw(u);
+  }
+
+  /// Хвост ссылки после `add/` / `import/` — там лежит сам адрес подписки.
+  ///
+  /// ⚠️ Берётся из СЫРОЙ строки, а не через `Uri.pathSegments`. Вложенный адрес
+  /// сам содержит `://`, и разбор в `Uri` схлопывает двойной слэш: из
+  /// `happ://add/https://example.org/sub` получалось бы
+  /// `https:/example.org/sub` — ссылка, по которой ничего не откроется.
+  static String? _afterAddRaw(String url) {
+    final u = url.trim();
+    final scheme = u.indexOf('://');
+    if (scheme < 0) return null;
+    final rest = u.substring(scheme + 3);
+    for (final marker in const ['add/', 'import-remote-profile/', 'import/']) {
+      if (rest.toLowerCase().startsWith(marker)) {
+        var tail = rest.substring(marker.length);
+        // Часть клиентов кодирует вложенную ссылку целиком.
+        if (!tail.contains('://')) {
+          final decoded = Uri.decodeFull(tail);
+          if (decoded.contains('://')) tail = decoded;
+        }
+        // Имя профиля после решётки к адресу не относится.
+        final hash = tail.indexOf('#');
+        if (hash > 0) tail = tail.substring(0, hash);
+        return tail.trim().isEmpty ? null : tail.trim();
+      }
+    }
+    return null;
+  }
+
+  static String _firstSegment(Uri uri) =>
+      uri.pathSegments.isEmpty ? '' : uri.pathSegments.first;
+
+  /// Ссылка Happ с шифрованием: прочитать её мы не можем в принципе.
+  static bool isHappCryptoLink(String url) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.scheme.toLowerCase() != 'happ') return false;
+    final head = uri.host.isNotEmpty ? uri.host : _firstSegment(uri);
+    return head.toLowerCase().startsWith('crypt');
   }
 
   /// Понимает ли приложение такую ссылку (фильтр аргументов запуска на Windows
