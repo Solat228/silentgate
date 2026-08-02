@@ -235,6 +235,10 @@ class AndroidEngine extends VpnEngineBase {
     // пользовательских). Креды только в памяти: на диск и в логи не пишутся.
     ProxyProbe.user = 'sg';
     ProxyProbe.password = _randomSecret();
+    // Те же соображения — для локальных инбаундов Xray (10808/10809): они
+    // поднимаются при панельных профилях и без пароля так же открыты всем.
+    localInboundUser = 'sg';
+    localInboundPassword = _randomSecret();
 
     try {
       // Ядро выбирается ровно так же, как на Windows (configFor в базе):
@@ -312,6 +316,10 @@ class AndroidEngine extends VpnEngineBase {
         probePort: probeInboundPort,
         probeUser: ProxyProbe.user,
         probePassword: ProxyProbe.password,
+        // Туннель ходит в соседний Xray через его локальный SOCKS — с тем же
+        // паролем, что стоит на инбаунде. Разойдутся — трафик встанет.
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
         options: liveOptions,
         // При нескольких серверах на sing-box собранный базой конфиг уже
         // содержит `urltest` по всем узлам — встраивать outbound одного

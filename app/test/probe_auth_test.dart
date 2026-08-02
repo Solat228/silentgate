@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/probe/proxy_probe.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
+import 'package:silentgate/core/xray/override_normalizer.dart';
 
 /// Страж против отраслевой дыры: локальный инбаунд проб без пароля.
 ///
@@ -70,6 +71,62 @@ void main() {
       ProxyProbe.password = 'secret';
       expect(ProxyProbe.authHeader, isNull,
           reason: 'признак включённой аутентификации — имя пользователя');
+    });
+  });
+
+  group('Локальные инбаунды Xray закрыты тем же паролем', () {
+    // 10808/10809 поднимаются при панельных профилях «Авто». Без пароля они
+    // открыты любому приложению устройства ровно так же, как порт проб.
+    String norm({String user = '', String pass = ''}) =>
+        normalizeOverridePorts('{"outbounds":[{"protocol":"freedom"}]}',
+                socksPort: 10808,
+                httpPort: 10809,
+                socksUser: user,
+                socksPassword: pass)
+            .json;
+
+    test('с кредами у socks появляется auth: password и аккаунт', () {
+      final cfg = jsonDecode(norm(user: 'sg', pass: 'secret')) as Map;
+      final socks = (cfg['inbounds'] as List)
+          .cast<Map>()
+          .firstWhere((i) => i['protocol'] == 'socks');
+      final st = socks['settings'] as Map;
+      expect(st['auth'], 'password');
+      expect((st['accounts'] as List).first, {'user': 'sg', 'pass': 'secret'});
+    });
+
+    test('без кред остаётся noauth — Windows ломать нельзя', () {
+      final cfg = jsonDecode(norm()) as Map;
+      final socks = (cfg['inbounds'] as List)
+          .cast<Map>()
+          .firstWhere((i) => i['protocol'] == 'socks');
+      expect((socks['settings'] as Map)['auth'], 'noauth');
+      expect((socks['settings'] as Map)['accounts'], isNull);
+    });
+
+    test('туннель идёт в Xray С ТЕМ ЖЕ паролем — иначе трафик встанет', () {
+      final cfg = SingboxConfigBuilder(
+        xraySocksPort: 10808,
+        xraySocksUser: 'sg',
+        xraySocksPassword: 'secret',
+        options: const TunOptions(platformTun: true),
+      ).buildMap(const SplitTunnelConfig());
+      final proxy = (cfg['outbounds'] as List)
+          .cast<Map>()
+          .firstWhere((o) => o['tag'] == 'proxy');
+      expect(proxy['username'], 'sg');
+      expect(proxy['password'], 'secret');
+    });
+
+    test('без кред socks-outbound их не пишет', () {
+      final cfg = SingboxConfigBuilder(
+        xraySocksPort: 10808,
+        options: const TunOptions(platformTun: true),
+      ).buildMap(const SplitTunnelConfig());
+      final proxy = (cfg['outbounds'] as List)
+          .cast<Map>()
+          .firstWhere((o) => o['tag'] == 'proxy');
+      expect(proxy.containsKey('username'), isFalse);
     });
   });
 }

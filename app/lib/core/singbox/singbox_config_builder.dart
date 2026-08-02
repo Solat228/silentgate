@@ -340,6 +340,10 @@ const _dohIps = <String>[
 class SingboxConfigBuilder {
   final int xraySocksPort;
 
+  /// Креды локального SOCKS соседнего Xray (Android). Пусто — без пароля.
+  final String xraySocksUser;
+  final String xraySocksPassword;
+
   /// Порт инбаунда `probe-in` — того, через который ходят сервис-чипы и проба
   /// активного сервера.
   ///
@@ -392,6 +396,8 @@ class SingboxConfigBuilder {
 
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
+    this.xraySocksUser = '',
+    this.xraySocksPassword = '',
     this.probePort = 0,
     this.probeUser = '',
     this.probePassword = '',
@@ -617,6 +623,13 @@ class SingboxConfigBuilder {
             'server': '127.0.0.1',
             'server_port': xraySocksPort,
             'version': '5',
+            // Пароль локального инбаунда Xray. Разойдись он с тем, что стоит на
+            // инбаунде, — туннель поднимется, а трафик встанет: ровно та
+            // поломка, которую словил v2rayNG (#5549).
+            if (xraySocksUser.isNotEmpty) ...{
+              'username': xraySocksUser,
+              'password': xraySocksPassword,
+            },
           },
         {'type': 'direct', 'tag': 'direct'},
       ],

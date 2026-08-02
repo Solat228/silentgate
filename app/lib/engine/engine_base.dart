@@ -95,6 +95,18 @@ abstract class VpnEngineBase implements VpnEngine {
   /// Запасные серверы для режима «Авто (лучший сервер)» — см. [fallbackServers].
   List<VpnServer> _fallbacks = [];
 
+  /// Креды ЛОКАЛЬНЫХ инбаундов ядра (socks/http) на текущую сессию.
+  ///
+  /// ⚠️ Непусты ТОЛЬКО на Android. Там loopback не изолирован между
+  /// приложениями: без пароля к 127.0.0.1:10808 подключается любое
+  /// установленное приложение и получает VPN пользователя вместе с обходом его
+  /// же раздельного туннелирования. На Windows пароль ставить нельзя — туда
+  /// смотрит системный прокси, а WinINET креденшелов не несёт.
+  ///
+  /// Живут только в памяти: на диск и в логи не пишутся.
+  String localInboundUser = '';
+  String localInboundPassword = '';
+
   /// Пароль Clash API текущей sing-box-сессии: новый на каждое подключение,
   /// только в памяти. Без него статистику и управление прокси мог бы дёргать
   /// любой процесс и любая открытая веб-страница (sing-box отдаёт CORS `*`).
@@ -337,7 +349,10 @@ abstract class VpnEngineBase implements VpnEngine {
           json = rerouteDirectThroughVpn(json);
         }
         final norm = normalizeOverridePorts(json,
-            socksPort: ports.socks, httpPort: ports.http);
+            socksPort: ports.socks,
+            httpPort: ports.http,
+            socksUser: localInboundUser,
+            socksPassword: localInboundPassword);
         // #5 — у панельного профиля обычно нет StatsService, поэтому трафик
         // показывался как 0. Дописываем api/stats, если их нет.
         final withStats = ensureXrayStats(norm.json, apiPort: ports.api);

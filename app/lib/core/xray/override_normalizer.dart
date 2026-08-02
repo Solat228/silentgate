@@ -109,10 +109,19 @@ String ensureXrayStats(String rawJson, {required int apiPort}) {
 /// inbound **дописывается**, а не считается ошибкой. Теги существующих inbound'ов
 /// не трогаем (на них может ссылаться роутинг); если правила роутинга адресуют
 /// inbound'ы по тегам — новый тег добавляется в те же правила.
+/// [socksUser]/[socksPassword] — пароль на ЛОКАЛЬНЫЕ инбаунды Xray.
+///
+/// ⚠️ Только для Android. Loopback там не изолирован между приложениями, и без
+/// пароля к 127.0.0.1:10808 подключается любое установленное приложение,
+/// получая VPN пользователя вместе с обходом его же раздельного
+/// туннелирования. На Windows пароль ставить НЕЛЬЗЯ: туда смотрит системный
+/// прокси, а WinINET креденшелов не несёт — браузер получил бы 407.
 OverrideNormalized normalizeOverridePorts(
   String rawJson, {
   required int socksPort,
   required int httpPort,
+  String socksUser = '',
+  String socksPassword = '',
 }) {
   try {
     final decoded = jsonDecode(rawJson);
@@ -135,10 +144,25 @@ OverrideNormalized normalizeOverridePorts(
       if (proto == 'socks' && !hasSocks) {
         raw['port'] = socksPort;
         raw['listen'] = '127.0.0.1';
+        if (socksUser.isNotEmpty) {
+          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
+          st['auth'] = 'password';
+          st['accounts'] = [
+            {'user': socksUser, 'pass': socksPassword},
+          ];
+          raw['settings'] = st;
+        }
         hasSocks = true;
       } else if (proto == 'http' && !hasHttp) {
         raw['port'] = httpPort;
         raw['listen'] = '127.0.0.1';
+        if (socksUser.isNotEmpty) {
+          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
+          st['accounts'] = [
+            {'user': socksUser, 'pass': socksPassword},
+          ];
+          raw['settings'] = st;
+        }
         hasHttp = true;
       }
     }
@@ -150,7 +174,15 @@ OverrideNormalized normalizeOverridePorts(
         'protocol': 'socks',
         'listen': '127.0.0.1',
         'port': socksPort,
-        'settings': {'udp': true, 'auth': 'noauth'},
+        'settings': socksUser.isEmpty
+            ? {'udp': true, 'auth': 'noauth'}
+            : {
+                'udp': true,
+                'auth': 'password',
+                'accounts': [
+                  {'user': socksUser, 'pass': socksPassword},
+                ],
+              },
         'sniffing': {
           'enabled': true,
           'destOverride': ['http', 'tls', 'quic'],
@@ -165,7 +197,14 @@ OverrideNormalized normalizeOverridePorts(
         'protocol': 'http',
         'listen': '127.0.0.1',
         'port': httpPort,
-        'settings': {'allowTransparent': false},
+        'settings': socksUser.isEmpty
+            ? {'allowTransparent': false}
+            : {
+                'allowTransparent': false,
+                'accounts': [
+                  {'user': socksUser, 'pass': socksPassword},
+                ],
+              },
         'sniffing': {
           'enabled': true,
           'destOverride': ['http', 'tls', 'quic'],
