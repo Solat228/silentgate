@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
@@ -11,6 +12,7 @@ import '../core/net/block_page_server.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/app_paths.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/singbox/singbox_proxy_config_builder.dart';
 import '../core/xray/override_normalizer.dart';
@@ -243,6 +245,57 @@ abstract class VpnEngineBase implements VpnEngine {
   /// подстановка IP и защищает.
   final Map<String, List<String>> _resolveCache = {};
 
+  /// ⚠️ КЭШ АДРЕСОВ ОБЯЗАН ПЕРЕЖИВАТЬ ПЕРЕЗАПУСК ПРОЦЕССА.
+  ///
+  /// Сценарий, ради которого это делается, — системный always-on VPN с
+  /// галочкой «блокировать соединения без VPN». После перезагрузки система
+  /// поднимает VPN ДО того, как что-либо разрешено в сеть: резолвить имя
+  /// сервера нечем, потому что DNS сам заблокирован политикой. Кэш в памяти к
+  /// этому моменту пуст — процесс новый.
+  ///
+  /// У v2rayNG это issue #1229: `PrepareDomain err: i/o timeout` →
+  /// `maxRetry reached. exiting`, и единственный обход — прописать серверу
+  /// голый IP руками. Мы предлагаем always-on сами при включении kill switch,
+  /// значит обязаны закрыть эту дыру, а не заводить в неё пользователя.
+  ///
+  /// Храним рядом с данными приложения. Секретом адреса сервера не являются:
+  /// они и так лежат в конфиге и в ссылке подписки.
+  bool _resolveCacheLoaded = false;
+
+  Future<File> _resolveCacheFile() async {
+    final dir = await AppPaths.supportDir();
+    return File('${dir.path}${Platform.pathSeparator}resolved_hosts.json');
+  }
+
+  Future<void> _loadResolveCache() async {
+    if (_resolveCacheLoaded) return;
+    _resolveCacheLoaded = true;
+    try {
+      final f = await _resolveCacheFile();
+      if (!await f.exists()) return;
+      final j = jsonDecode(await f.readAsString());
+      if (j is! Map) return;
+      for (final e in j.entries) {
+        final v = e.value;
+        if (v is List && v.isNotEmpty) {
+          _resolveCache[e.key] = v.map((x) => '$x').toList();
+        }
+      }
+      AppLog.i('Кэш адресов серверов загружен: ${_resolveCache.length} имён');
+    } catch (e) {
+      AppLog.w('Кэш адресов не прочитан: $e');
+    }
+  }
+
+  Future<void> _saveResolveCache() async {
+    try {
+      await (await _resolveCacheFile())
+          .writeAsString(jsonEncode(_resolveCache), flush: true);
+    } catch (_) {
+      // Не критично: потеряем только запасной адрес на следующий холодный старт.
+    }
+  }
+
   /// Резолв адресов серверов: хост → список адресов.
   ///
   /// Отдельно от [resolveServerIps], потому что нужны ДВА разных результата:
@@ -250,7 +303,9 @@ abstract class VpnEngineBase implements VpnEngine {
   /// соответствие «домен → адрес» (для подстановки в outbound).
   Future<Map<String, List<String>>> resolveServerHosts(
       List<VpnServer> servers) async {
+    await _loadResolveCache();
     final out = <String, List<String>>{};
+    var changed = false;
     for (final s in servers) {
       final host = s.address.trim();
       if (host.isEmpty || out.containsKey(host)) continue;
@@ -265,6 +320,7 @@ abstract class VpnEngineBase implements VpnEngine {
         final ips = found.map((a) => a.address).toList();
         if (ips.isNotEmpty) {
           out[host] = ips;
+          if (_resolveCache[host]?.join(',') != ips.join(',')) changed = true;
           _resolveCache[host] = ips;
         }
       } catch (e) {
@@ -274,12 +330,17 @@ abstract class VpnEngineBase implements VpnEngine {
         final cached = _resolveCache[host];
         if (cached != null) {
           out[host] = cached;
-          AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес');
+          AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес '
+              '(${cached.join(", ")}) — это и спасает старт при системном '
+              'always-on, когда DNS ещё заблокирован');
         } else {
           AppLog.w('Не удалось отрезолвить $host: $e');
         }
       }
     }
+    // Пишем только когда что-то изменилось: резолв идёт на каждое подключение,
+    // а лишняя запись на диск при каждом — ни к чему.
+    if (changed) unawaited(_saveResolveCache());
     return out;
   }
 

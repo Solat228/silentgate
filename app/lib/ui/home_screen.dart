@@ -528,6 +528,36 @@ class _ConnectPane extends StatelessWidget {
                         )),
                   ),
                 ],
+                // ⚠️ KILL SWITCH ДЕРЖИТ ТРАФИК — СКАЗАТЬ ЭТО ЗАМЕТНО.
+                //
+                // Пропавший интернет без объяснения выглядит поломкой, и самое
+                // естественное действие человека — выключить VPN, то есть ровно
+                // то, от чего защита оберегала. Строки статуса мало: она
+                // мелкая и теряется среди прочего.
+                if (status.blocking)
+                  Container(
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.errorContainer,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(children: [
+                      Icon(Icons.shield_outlined,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.onErrorContainer),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          status.message ?? '',
+                          textDirection: autoTextDirection(status.message),
+                          style: TextStyle(
+                              color:
+                                  Theme.of(context).colorScheme.onErrorContainer),
+                        ),
+                      ),
+                    ]),
+                  ),
                 if (status.state == VpnConnectionState.error &&
                     status.message != null)
                   Padding(
