@@ -17,6 +17,7 @@ import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
+import '../../core/xray/override_normalizer.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../engine_base.dart';
 
@@ -269,6 +270,33 @@ class AndroidEngine extends VpnEngineBase {
     }
   }
 
+  /// Поставить пароль на локальные инбаунды Xray ПЕРЕД отправкой ядру.
+  ///
+  /// ⚠️ ЗАКРЫВАЕТ ДЫРУ ДЛЯ «АВТО» И ПАНЕЛЬНЫХ ПРОФИЛЕЙ. Для одиночного сервера
+  /// конфиг собирается здесь же (`configFor`), и креды туда попадают. А для
+  /// автовыбора конфиг приходит ГОТОВЫМ из сессии — его собрал
+  /// `balancerSessionFor` ещё до того, как креды сгенерированы, и через
+  /// `normalizeOverridePorts` он не проходил. То есть 10808/10809 у самых
+  /// частых сценариев оставались открыты любому приложению устройства, хотя
+  /// у обычного сервера были уже закрыты.
+  ///
+  /// Нормализация идемпотентна: порты те же, аккаунты проставляются поверх.
+  String _guardXrayInbounds(String json) {
+    if (localInboundUser.isEmpty) return json;
+    try {
+      return normalizeOverridePorts(json,
+              socksPort: ports.socks,
+              httpPort: ports.http,
+              socksUser: localInboundUser,
+              socksPassword: localInboundPassword)
+          .json;
+    } catch (e) {
+      // Не смогли — подключение важнее. Но сказать обязаны: порт остался открыт.
+      AppLog.w('Не удалось закрыть паролем локальные инбаунды Xray: $e');
+      return json;
+    }
+  }
+
   @override
   Future<void> startSession() async {
     final session = this.session;
@@ -395,7 +423,7 @@ class AndroidEngine extends VpnEngineBase {
       _starting = true;
       await _channel.invokeMethod<void>('start', {
         'config': tunJson,
-        if (viaXray) 'xray_config': cfg.json,
+        if (viaXray) 'xray_config': _guardXrayInbounds(cfg.json),
       });
       _starting = false;
 

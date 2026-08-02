@@ -129,4 +129,34 @@ void main() {
       expect(proxy.containsKey('username'), isFalse);
     });
   });
+
+  group('Нормализация идемпотентна — конфиг «Авто» тоже закрывается', () {
+    // Для одиночного сервера конфиг собирается на месте и креды туда попадают.
+    // Для автовыбора он приходит ГОТОВЫМ из сессии, собранным ДО генерации
+    // кред, — и раньше 10808/10809 у самого частого сценария оставались
+    // открыты, хотя у обычного сервера были уже закрыты.
+    const raw = '{"outbounds":[{"protocol":"freedom"}]}';
+
+    test('повторная нормализация не плодит инбаунды и ставит пароль', () {
+      final once = normalizeOverridePorts(raw,
+              socksPort: 10808, httpPort: 10809)
+          .json;
+      final twice = normalizeOverridePorts(once,
+              socksPort: 10808,
+              httpPort: 10809,
+              socksUser: 'sg',
+              socksPassword: 'secret')
+          .json;
+      final cfg = jsonDecode(twice) as Map;
+      final inbounds = (cfg['inbounds'] as List).cast<Map>();
+      expect(inbounds.where((i) => i['protocol'] == 'socks'), hasLength(1),
+          reason: 'дубль инбаунда занял бы порт сам у себя');
+      expect(inbounds.where((i) => i['protocol'] == 'http'), hasLength(1));
+      final socks = inbounds.firstWhere((i) => i['protocol'] == 'socks');
+      expect((socks['settings'] as Map)['auth'], 'password',
+          reason: 'конфиг «Авто» обязан закрываться так же, как обычный');
+      final http = inbounds.firstWhere((i) => i['protocol'] == 'http');
+      expect((http['settings'] as Map)['accounts'], isNotNull);
+    });
+  });
 }
