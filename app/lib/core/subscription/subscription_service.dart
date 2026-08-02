@@ -10,7 +10,17 @@ import 'xray_json_subscription.dart';
 class SubscriptionResult {
   final List<VpnServer> servers;
   final SubscriptionInfo info;
-  const SubscriptionResult(this.servers, this.info);
+
+  /// Адрес, по которому подписка РЕАЛЬНО отдалась, если панель увела редиректом.
+  ///
+  /// ⚠️ Стандарт подписок XTLS требует запоминать постоянный редирект: владелец
+  /// панели переезжает на новый домен, старый однажды выключают — и все
+  /// пользователи молча остаются без обновлений. `package:http` следует за
+  /// редиректом сам, поэтому конечный адрес виден только здесь.
+  /// null — редиректа не было.
+  final String? movedTo;
+
+  const SubscriptionResult(this.servers, this.info, {this.movedTo});
 }
 
 /// Загружает и разбирает подписку по URL.
@@ -42,6 +52,26 @@ class SubscriptionService {
     );
 
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
+      // ⚠️ ЛИМИТ УСТРОЙСТВ ВЫГЛЯДИТ КАК ПОЛОМКА, ЕСЛИ ЕГО НЕ НАЗВАТЬ.
+      //
+      // Remnawave при исчерпанном лимите HWID отдаёт 404 и говорит причину
+      // ОТДЕЛЬНЫМИ заголовками. Без их чтения человек видел «Сервер вернул код
+      // 404» и шёл жаловаться на сломанную подписку, хотя чинится это удалением
+      // лишнего устройства в личном кабинете.
+      final hw = resp.headers;
+      if (hw['x-hwid-max-devices-reached']?.toLowerCase() == 'true') {
+        final limit = hw['x-hwid-limit'];
+        throw SubscriptionException(limit != null && limit.isNotEmpty
+            ? 'Достигнут лимит устройств ($limit). Отключите лишнее устройство '
+                'в личном кабинете и повторите.'
+            : 'Достигнут лимит устройств. Отключите лишнее устройство в личном '
+                'кабинете и повторите.');
+      }
+      if (hw['x-hwid-not-supported']?.toLowerCase() == 'true') {
+        throw SubscriptionException(
+            'Панель требует идентификатор устройства, а приложение его не '
+            'прислало. Обновите приложение.');
+      }
       throw SubscriptionException(
         'Сервер вернул код ${resp.statusCode}',
       );
@@ -50,7 +80,15 @@ class SubscriptionService {
     // Формат XRAY_JSON (панель отдаёт его известным клиентам) — предпочтителен:
     // в нём приходят готовые outbound'ы, а не пересобранные из ссылок.
     final body = resp.body;
-    var servers = XrayJsonSubscription.looksLikeJson(body)
+    // ⚠️ ФОРМАТ — ПО `content-type`, А НЕ ПО СОДЕРЖИМОМУ.
+    //
+    // Так требует стандарт подписок XTLS: клиент обязан отдавать приоритет
+    // заголовку. Угадывание по телу работает, пока панель отдаёт ровно то, что
+    // мы ждём, — а она умеет отдавать base64-фолбэк неизвестным клиентам и
+    // менять правила ответа на лету. Заголовок снимает эту зависимость.
+    final declaredJson =
+        (resp.headers['content-type'] ?? '').toLowerCase().contains('json');
+    var servers = (declaredJson || XrayJsonSubscription.looksLikeJson(body))
         ? XrayJsonSubscription.parse(body)
         : const <VpnServer>[];
     if (servers.isEmpty) {
@@ -69,7 +107,13 @@ class SubscriptionService {
       AppLog.w('Панель прислала НЕ XRAY_JSON — конфиги пересобираются из ссылок. '
           'Проверьте правило Response Rules (user-agent CONTAINS SilentGate → XRAY_JSON).');
     }
-    return SubscriptionResult(servers, info);
+    // Куда нас в итоге привели. Сравниваем без учёта регистра схемы и хоста.
+    final finalUrl = resp.request?.url.toString();
+    final moved = (finalUrl != null && finalUrl != url) ? finalUrl : null;
+    if (moved != null) {
+      AppLog.w('Подписка переехала: $url → $moved (адрес обновлён)');
+    }
+    return SubscriptionResult(servers, info, movedTo: moved);
   }
 
   void close() => _client.close();

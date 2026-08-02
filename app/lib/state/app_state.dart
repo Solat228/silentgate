@@ -887,16 +887,19 @@ class AppState extends ChangeNotifier {
       final before = {for (final s in _subServers) s.key: s.displayName};
 
       _subServers = result.servers;
+      // Панель увела редиректом — дальше ходим по новому адресу, иначе после
+      // выключения старого домена обновления молча прекратятся.
+      final effectiveUrl = result.movedTo ?? url;
       _rebuild(); // сам переназначает выбор по ключу сервера
       _info = result.info;
-      _subscriptionUrl = url;
+      _subscriptionUrl = effectiveUrl;
       // Выбор и вариацию НЕ сбрасываем: при автообновлении подписки это молча
       // перекидывало пользователя на первый сервер (и теряло fragment/fingerprint).
       // Сбрасываем только если выбранный сервер из подписки пропал.
       if (_selectedIndex < 0 && _servers.isNotEmpty) _selectedIndex = 0;
       await _persist();
       // Мульти-подписки: запоминаем/обновляем профиль и делаем его активным.
-      await _upsertProfile(url);
+      await _upsertProfile(effectiveUrl);
       await _maybeStartUpdater();
       // Аватарку тянем ЗДЕСЬ (импорт/обновление), не в фоне и не на старте.
       await _refreshLogo(url);
