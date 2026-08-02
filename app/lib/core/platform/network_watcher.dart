@@ -79,7 +79,34 @@ class NetworkWatcher {
     await _controller.close();
   }
 
+  /// Когда таймер тикал в прошлый раз. По разрыву в этом ряду опознаётся сон.
+  DateTime? _lastTickAt;
+
   Future<void> _tick() async {
+    // ⚠️ ВЫХОД ИЗ СНА — ЭТО СМЕНА СЕТИ, ДАЖЕ ЕСЛИ АДРЕСА СОВПАЛИ.
+    //
+    // Пока компьютер спал, наши таймеры стояли, а система успела снять и заново
+    // поднять интерфейсы, перестроить маршруты и переприменить DNS — уже без
+    // нашего туннеля. Отпечаток при этом может совпасть до символа (тот же
+    // Wi-Fi, тот же адрес), и обычная проверка «изменилось ли» промолчит.
+    // У Clash Verge Rev это открытый баг #7593: после resume системный DNS не
+    // переприменяется и запросы утекают провайдеру.
+    //
+    // Опознаём по разрыву в ряду тактов: таймер периодический, и если между
+    // соседними вызовами прошло сильно больше интервала — процесс стоял.
+    final now0 = DateTime.now();
+    final prev = _lastTickAt;
+    _lastTickAt = now0;
+    if (prev != null && now0.difference(prev) > interval * 4) {
+      final gap = now0.difference(prev);
+      AppLog.w('Похоже, устройство выходило из сна (пауза '
+          '${gap.inSeconds} с) — считаем это сменой сети и переприменяем '
+          'маршруты с DNS');
+      _lastSignature = null; // заставит обработать как смену
+      _pendingSignature = null;
+      if (!_controller.isClosed) _controller.add('wake');
+      return;
+    }
     if (_suspended || DateTime.now().isBefore(_quietUntil)) return;
     final now = await signature();
     // Не смогли прочитать список интерфейсов (разовый сбой) — НЕ считаем это

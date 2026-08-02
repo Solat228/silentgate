@@ -14,6 +14,7 @@ import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
+import android.os.PowerManager
 import android.system.OsConstants
 import lol.silentgate.cores.libbox.CommandServer
 import lol.silentgate.cores.libbox.CommandServerHandler
@@ -125,6 +126,50 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Подпись под статусом: сервер и трафик. null — показывать нечего.
     private var lastDetail: String? = null
 
+    /**
+     * ⚠️ ЭКРАН ПОГАС — ЯДРО МОЖНО ПРИТОРМОЗИТЬ, А НЕ ПЕРЕПОДКЛЮЧАТЬ.
+     *
+     * У libbox есть `pause()`/`wake()` ровно для этого: при уходе устройства в
+     * Doze ядро сворачивает фоновую активность, а при пробуждении
+     * восстанавливается САМО — без пересоздания туннеля. Официальный клиент
+     * sing-box делает так же.
+     *
+     * Чего этим избегаем: NekoBox без такой обработки ловит «двадцать секунд
+     * переподключения после разблокировки» (их issue #898, закрыт «not
+     * planned»), а WireGuard в sing-box отваливался через три минуты после
+     * гашения экрана (#3546). То есть без паузы система душит ядро сама, и
+     * выглядит это как обрыв связи.
+     *
+     * Заодно гасим обновление уведомления: такт статистики раз в секунду, а
+     * шторку при выключенном экране всё равно никто не видит.
+     */
+    @Volatile
+    private var screenOn = true
+
+    private val lifecycleReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                Intent.ACTION_SCREEN_OFF -> {
+                    screenOn = false
+                    runCatching { commandServer?.pause() }
+                }
+                Intent.ACTION_SCREEN_ON -> {
+                    screenOn = true
+                    runCatching { commandServer?.wake() }
+                }
+                PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED -> {
+                    val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+                    if (Build.VERSION.SDK_INT >= 23 && pm.isDeviceIdleMode) {
+                        runCatching { commandServer?.pause() }
+                    } else {
+                        runCatching { commandServer?.wake() }
+                    }
+                }
+            }
+        }
+    }
+    private var lifecycleRegistered = false
+
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
     private var xrayRunning = false
@@ -170,6 +215,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Обновить подпись в шторке (сервер + трафик). Зовётся из Dart.
     fun setDetail(detail: String?, status: String?) {
         if (!running) return
+        // Экран выключен — обновлять нечего и некому.
+        if (!screenOn) return
         lastDetail = detail?.takeIf { it.isNotBlank() }
         updateNotification(status?.takeIf { it.isNotBlank() }
             ?: strings().getString(R.string.vpn_connected))
@@ -371,6 +418,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             }
         }
         networkCallback = null
+        if (lifecycleRegistered) {
+            runCatching { unregisterReceiver(lifecycleReceiver) }
+            lifecycleRegistered = false
+        }
         interfaceListener = null
 
         try {
@@ -670,6 +721,17 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             }
         }
         networkCallback = cb
+        if (!lifecycleRegistered) {
+            val f = android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_OFF)
+                addAction(Intent.ACTION_SCREEN_ON)
+                if (Build.VERSION.SDK_INT >= 23) {
+                    addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
+                }
+            }
+            runCatching { registerReceiver(lifecycleReceiver, f) }
+                .onSuccess { lifecycleRegistered = true }
+        }
         connectivity.registerNetworkCallback(request, cb)
     }
 
