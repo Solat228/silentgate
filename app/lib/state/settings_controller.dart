@@ -1,3 +1,5 @@
+import 'package:flutter/services.dart';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -29,11 +31,31 @@ class SettingsController extends ChangeNotifier {
   }
 
   /// Изменить настройки: mutate -> persist -> notify.
+  /// Отдать выбранный язык нативной стороне (она его персистит: сервис
+  /// переживает смерть изолята, и спросить будет уже не у кого).
+  static Future<void> _pushLanguageToNative(String code) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await const MethodChannel('lol.silentgate/vpn')
+          .invokeMethod<void>('setLanguage', {'code': code});
+    } catch (_) {
+      // Канал недоступен — шторка останется на языке системы, не критично.
+    }
+  }
+
   Future<void> update(AppSettings Function(AppSettings current) mutate) async {
     final before = _settings;
     _settings = _normalize(mutate(_settings));
     if (before.requiresReconnect(_settings)) {
       onRequiresReconnect?.call(before, _settings);
+    }
+    // ⚠️ Язык уходит и в нативный слой. Уведомление сервиса — единственное
+    // место, которое видно при закрытом приложении, и `getString()` там берёт
+    // локаль СИСТЕМЫ. Без этой строки человек, выбравший в приложении русский
+    // на англоязычном телефоне, получал бы английскую шторку — то есть
+    // единственный видимый ему текст выпадал бы из десятиязычности.
+    if (before.languageCode != _settings.languageCode) {
+      unawaited(_pushLanguageToNative(_settings.languageCode));
     }
     notifyListeners();
     await _storage.save(_settings);

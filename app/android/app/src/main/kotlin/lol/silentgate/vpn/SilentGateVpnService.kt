@@ -74,6 +74,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         /// туда. Ровно как на Windows.
         const val EXTRA_XRAY_CONFIG = "xray_config"
 
+        private const val PREFS = "silentgate_native"
+        private const val PREF_LANG = "language_code"
+
         private const val CHANNEL_ID = "silentgate_vpn"
         private const val NOTIFICATION_ID = 1
 
@@ -119,6 +122,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
+    /// Подпись под статусом: сервер и трафик. null — показывать нечего.
+    private var lastDetail: String? = null
+
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
     private var xrayRunning = false
@@ -161,9 +167,17 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * оберегала. Уведомление живёт в шторке и видно при закрытом приложении —
      * именно тогда, когда объяснить некому.
      */
+    /// Обновить подпись в шторке (сервер + трафик). Зовётся из Dart.
+    fun setDetail(detail: String?, status: String?) {
+        if (!running) return
+        lastDetail = detail?.takeIf { it.isNotBlank() }
+        updateNotification(status?.takeIf { it.isNotBlank() }
+            ?: strings().getString(R.string.vpn_connected))
+    }
+
     fun showBlocked() {
         if (!running) return
-        updateNotification(getString(R.string.vpn_blocked))
+        updateNotification(strings().getString(R.string.vpn_blocked))
     }
 
     private fun startTunnel(configJson: String, xrayConfigJson: String?) {
@@ -186,7 +200,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         try {
             // Нотификация ДО подъёма ядра: foreground-сервис обязан её показать
             // сразу, иначе система убьёт его за нарушение контракта.
-            startForeground(NOTIFICATION_ID, buildNotification(getString(R.string.vpn_connecting)))
+            startForeground(NOTIFICATION_ID, buildNotification(strings().getString(R.string.vpn_connecting)))
 
             // Весь вывод ядра и, главное, паники Go уходят в файл: без этого
             // причина падения не видна нигде — ни в логах приложения, ни на
@@ -235,7 +249,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // следующее падение ядра выдало бы себя за нажатие пользователя.
             stoppedByUser = false
             notifyState()
-            updateNotification(getString(R.string.vpn_connected))
+            updateNotification(strings().getString(R.string.vpn_connected))
         } catch (e: Throwable) {
             // Имя класса обязательно: у UnsatisfiedLinkError (не загрузилась
             // libbox.so) и у ошибок конфига message бывает пустым, и без типа
@@ -695,11 +709,37 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     // ── Нотификация ───────────────────────────────────────────────────────────
 
+    /**
+     * ⚠️ СТРОКИ ШТОРКИ ОБЯЗАНЫ СЛЕДОВАТЬ ЯЗЫКУ ПРИЛОЖЕНИЯ, А НЕ ЯЗЫКУ СИСТЕМЫ.
+     *
+     * Весь интерфейс переведён на десять языков и выбор языка живёт в настройках
+     * приложения. А `getString()` в сервисе берёт локаль СИСТЕМЫ — значит
+     * человек, поставивший в приложении русский на англоязычном телефоне,
+     * получал бы английское уведомление. Это и есть «выпасть из
+     * десятиязычности»: единственное место, которое видно при закрытом
+     * приложении, говорило бы не на том языке.
+     *
+     * Код языка приходит из Dart и ПЕРСИСТИТСЯ: сервис переживает смерть
+     * изолята, и в момент обновления уведомления спросить Dart может быть уже
+     * не у кого. Пусто — язык системы, как и в самом приложении.
+     */
+    private fun strings(): Context {
+        val code = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(PREF_LANG, "").orEmpty()
+        if (code.isBlank()) return this
+        return runCatching {
+            val cfg = android.content.res.Configuration(resources.configuration)
+            cfg.setLocale(java.util.Locale.forLanguageTag(code))
+            createConfigurationContext(cfg)
+        }.getOrDefault(this)
+    }
+
     private fun buildNotification(text: String): Notification {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val res = strings()
         if (Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, getString(R.string.vpn_channel_name), NotificationManager.IMPORTANCE_LOW)
+                NotificationChannel(CHANNEL_ID, res.getString(R.string.vpn_channel_name), NotificationManager.IMPORTANCE_LOW)
             )
         }
         val open = PendingIntent.getActivity(
@@ -711,12 +751,18 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return Notification.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.app_name))
+            // Имя берём из ресурсов, а не литералом: бренд ещё может смениться.
+            .setContentTitle(res.getString(R.string.app_name))
             .setContentText(text)
+            // Вторая строка — трафик. Раньше в шторке был только статус, и
+            // человек, не открывая приложение, не знал ни сколько скачано, ни
+            // через какой сервер он сидит.
+            .also { b -> lastDetail?.let { b.setSubText(it) } }
             .setSmallIcon(R.drawable.ic_stat_vpn)
             .setContentIntent(open)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(null, getString(R.string.vpn_disconnect), stop).build())
+            .addAction(Notification.Action.Builder(
+                null, res.getString(R.string.vpn_disconnect), stop).build())
             .build()
     }
 

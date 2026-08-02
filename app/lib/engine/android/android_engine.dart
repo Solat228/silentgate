@@ -6,6 +6,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/models/vpn_server.dart';
@@ -152,6 +153,7 @@ class AndroidEngine extends VpnEngineBase {
             dt > 0 ? ((snap.downlink - _lastSnap.downlink) / dt).round() : 0;
         _lastSnap = snap;
         _lastSnapAt = now;
+        _pushNotificationDetail(snap);
         emitStats(TrafficStats(
           uplinkBytes: snap.uplink,
           downlinkBytes: snap.downlink,
@@ -163,6 +165,52 @@ class AndroidEngine extends VpnEngineBase {
       }
     });
   }
+
+  /// Подпись в шторке: сервер и трафик.
+  ///
+  /// ⚠️ Обновляем ТОЛЬКО при включённом экране. Уведомление, которое никто не
+  /// видит, всё равно стоит процессорного времени и батареи — а такт у нас
+  /// раз в секунду. Официальный клиент sing-box отписывается от статистики по
+  /// `ACTION_SCREEN_OFF` ровно по этой причине.
+  String? _lastDetailSent;
+  Future<void> _pushNotificationDetail(XrayTrafficSnapshot snap) async {
+    if (!_screenOn) return;
+    final name = session?.servers.length == 1
+        ? session!.servers.first.displayName
+        : null;
+    final detail = [
+      if (name != null && name.isNotEmpty) name,
+      '↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}',
+    ].join(' · ');
+    if (detail == _lastDetailSent) return; // не дёргать шторку впустую
+    _lastDetailSent = detail;
+    try {
+      await _channel.invokeMethod<void>(
+          'setNotificationDetail', {'detail': detail, 'status': null});
+    } catch (_) {
+      // Уведомление — не критичный путь: туннель важнее.
+    }
+  }
+
+  /// Только для тестов: живой прогон однажды показал в шторке литерал
+  /// `${_human(...)}` вместо числа, и поймать это было нечем.
+  @visibleForTesting
+  static String humanBytesForTest(int bytes) => _human(bytes);
+
+  static String _human(int bytes) {
+    const u = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
+    var v = bytes.toDouble();
+    var i = 0;
+    while (v >= 1024 && i < u.length - 1) {
+      v /= 1024;
+      i++;
+    }
+    return '${v < 10 && i > 0 ? v.toStringAsFixed(1) : v.round()} ${u[i]}';
+  }
+
+  /// Экран включён. Ставится наблюдателем жизненного цикла приложения.
+  bool _screenOn = true;
+  set screenOn(bool v) => _screenOn = v;
 
   void _stopStatsPolling() {
     _statsTimer?.cancel();

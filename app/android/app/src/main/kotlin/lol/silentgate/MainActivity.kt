@@ -130,6 +130,26 @@ class MainActivity : FlutterActivity() {
                     // Kill switch держит трафик: сказать об этом в шторке.
                     // Приложение при этом обычно закрыто — другого способа
                     // объяснить пропавший интернет у нас нет.
+                    // Язык интерфейса — в нативные настройки. Сервис переживает
+                    // смерть изолята, поэтому спросить Dart в момент обновления
+                    // уведомления может быть уже не у кого: персистим.
+                    "setLanguage" -> {
+                        getSharedPreferences("silentgate_native", MODE_PRIVATE)
+                            .edit()
+                            .putString("language_code", call.argument<String>("code") ?: "")
+                            .apply()
+                        result.success(null)
+                    }
+
+                    // Подпись в шторке: сервер и трафик.
+                    "setNotificationDetail" -> {
+                        SilentGateVpnService.instance?.setDetail(
+                            call.argument<String>("detail"),
+                            call.argument<String>("status"),
+                        )
+                        result.success(null)
+                    }
+
                     "showBlocked" -> {
                         SilentGateVpnService.instance?.showBlocked()
                         result.success(null)
