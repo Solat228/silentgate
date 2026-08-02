@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 
 import '../app_info.dart';
@@ -29,7 +31,28 @@ class SubscriptionResult {
 /// и разбирает как тело (base64-список share-ссылок), так и мета-заголовки ответа.
 class SubscriptionService {
   final http.Client _client;
-  SubscriptionService({http.Client? client}) : _client = client ?? http.Client();
+
+  /// ⚠️ КЛИЕНТ С UA НА УРОВНЕ САМОГО HttpClient, А НЕ ЗАГОЛОВКОМ ЗАПРОСА.
+  ///
+  /// Панель Remnawave выбирает ФОРМАТ ответа по User-Agent: своим клиентам она
+  /// отдаёт XRAY_JSON, остальным — base64-ссылки. А `package:http` при редиректе
+  /// (301/308 — штатный способ переезда подписки на новый домен) выполняет
+  /// повторный запрос БЕЗ наших заголовков: панель видела `Dart/3.12 (dart:io)`
+  /// и присылала не тот формат.
+  ///
+  /// Поймано живым прогоном: локальная панель-заглушка с 301 показала в логе
+  /// сначала `SilentGate/1.0.3 (Android)`, а после редиректа — `Dart/3.12`.
+  /// Ровно этот баг чинили у себя FlClash (v0.8.79 «Fix get profile redirect
+  /// client ua issues») — их опыт оказался нашим.
+  ///
+  /// `HttpClient.userAgent` ставится на транспорт и переживает редиректы.
+  static http.Client _defaultClient() {
+    final io = HttpClient()..userAgent = AppInfo.userAgent;
+    return IOClient(io);
+  }
+
+  SubscriptionService({http.Client? client})
+      : _client = client ?? _defaultClient();
 
   /// Всегда представляемся своим именем и версией — «SilentGate/x.y.z (платформа)».
   /// Панель по этому имени выбирает формат ответа (правило Response Rules → XRAY_JSON).
