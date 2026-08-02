@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
+
+import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models/traffic_stats.dart';
@@ -428,7 +430,9 @@ class _ConnectPane extends StatelessWidget {
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            // На телефоне 24 dp с каждой стороны — это 13 % ширины экрана,
+            // которых не хватает содержимому. На десктопе остаётся 24.
+            padding: EdgeInsets.all(context.sg.pagePadding),
             // На широком окне раскладка держится распорками и не прокручивается
             // (минимальный размер окна это гарантирует). На узком гарантии нет:
             // при крупном системном шрифте, в ландшафте или в разделённом
@@ -924,8 +928,12 @@ class _ConnectButton extends StatelessWidget {
       onTap: busy ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        width: 148,
-        height: 148,
+        // ⚠️ Кнопка ужимается ТОЛЬКО когда высоты реально нет: телефон в
+        // ландшафте или открытая клавиатура. По ширине не гейтим — на узком,
+        // но высоком экране большая кнопка правильна, она главная на экране.
+        // Окно Windows не ниже 800 dp, поэтому там всегда 148.
+        width: context.sg.isShort ? 116 : 148,
+        height: context.sg.isShort ? 116 : 148,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: color,
