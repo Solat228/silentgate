@@ -97,6 +97,13 @@ class NetworkWatcher {
     final now0 = DateTime.now();
     final prev = _lastTickAt;
     _lastTickAt = now0;
+    // ⚠️ ПОРЯДОК ВАЖЕН: проверка сна идёт ПОСЛЕ гварда «мы сами сейчас
+    // работаем». Подъём туннеля с автоподбором стека занимает до двух минут, и
+    // на это время вотчер намеренно приглушён; выстрели детект сна раньше
+    // гварда — он оборвал бы собственное подключение на середине, приняв нашу
+    // же паузу за пробуждение. Ровно тот цикл переподключений, который чинили в
+    // 0.8.3, только с другой стороны.
+    if (_suspended || now0.isBefore(_quietUntil)) return;
     if (prev != null && now0.difference(prev) > interval * 4) {
       final gap = now0.difference(prev);
       AppLog.w('Похоже, устройство выходило из сна (пауза '
@@ -107,7 +114,6 @@ class NetworkWatcher {
       if (!_controller.isClosed) _controller.add('wake');
       return;
     }
-    if (_suspended || DateTime.now().isBefore(_quietUntil)) return;
     final now = await signature();
     // Не смогли прочитать список интерфейсов (разовый сбой) — НЕ считаем это
     // сменой сети: иначе пустой отпечаток отличается от прошлого и после дебаунса
