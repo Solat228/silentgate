@@ -125,7 +125,11 @@ class SplitTunnelScreen extends StatelessWidget {
                             ),
                             AppIcon(path: rule.path), // #1 — реальная иконка exe
                           ]),
-                          title: Text(rule.name, textDirection: TextDirection.ltr),
+                          dense: context.sg.isCompact,
+                          title: Text(rule.name,
+                              textDirection: TextDirection.ltr,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                           subtitle: _ruleSubtitle(
                             context,
                             rule.enabled
@@ -141,13 +145,24 @@ class SplitTunnelScreen extends StatelessWidget {
                             allowRealIp: rule.allowRealIp,
                             noRealIp: rule.enabled && controller.settings.noRealIp,
                           ),
+                          // ⚠️ НА ТЕЛЕФОНЕ КНОПКИ УДАЛЕНИЯ ЗДЕСЬ НЕТ, И ЭТО НЕ ПОТЕРЯ.
+                          //
+                          // Считано на 360 dp: слева 104 dp занимают отступ,
+                          // галочка и иконка, справа чип с кнопкой — ещё 120.
+                          // Названию приложения оставалось около 120 dp, то
+                          // есть примерно двенадцать символов. Удаление и так
+                          // доступно в диалоге, который открывается по тапу на
+                          // строку, поэтому на компактном экране кнопка уходит
+                          // и освобождает 48 dp. На десктопе она остаётся: там
+                          // мышь, hover и подсказка работают, а места хватает.
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                             _ActionChip(action: rule.action),
-                            IconButton(
-                              tooltip: l.splitRemove,
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _removeApp(controller, rule),
-                            ),
+                            if (!context.sg.isCompact)
+                              IconButton(
+                                tooltip: l.splitRemove,
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _removeApp(controller, rule),
+                              ),
                           ]),
                           onTap: () => _appDialog(context, controller, rule),
                         ),
@@ -560,9 +575,18 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
   /// ровно одно — отсюда и жалоба «правила не работают при мультивыделении».
   final Set<String> _picked = {};
 
+  /// Имя → сколько приложений его носят (для подписи у тёзок).
+  final Map<String, int> _dupes = {};
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // Сколько приложений носят каждое имя: подпись нужна только тёзкам.
+    if (_dupes.isEmpty) {
+      for (final p in widget.procs) {
+        _dupes[p.label] = (_dupes[p.label] ?? 0) + 1;
+      }
+    }
     final filtered = _q.isEmpty
         ? widget.procs
         : widget.procs
@@ -570,9 +594,28 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
             .toList();
     return AlertDialog(
       // См. кнопку открытия: на Android это установленные приложения.
-      title: Text(platform.appCatalog.supportsManualPick
-          ? l.splitRunningApps
-          : l.splitInstalledApps),
+      title: Row(children: [
+        Expanded(
+          child: Text(platform.appCatalog.supportsManualPick
+              ? l.splitRunningApps
+              : l.splitInstalledApps),
+        ),
+        // На компактном экране третья кнопка живёт здесь — см. комментарий у
+        // `actions`.
+        if (filtered.isNotEmpty && context.sg.isCompact)
+          IconButton(
+            tooltip: l.splitSelectAllFound,
+            icon: const Icon(Icons.done_all),
+            onPressed: () => setState(() {
+              final keys = filtered.map((p) => p.key);
+              if (keys.every(_picked.contains)) {
+                _picked.removeAll(keys);
+              } else {
+                _picked.addAll(keys);
+              }
+            }),
+          ),
+      ]),
       content: adaptiveDialogBody(
         context,
         width: 440,
@@ -601,16 +644,28 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
                       itemBuilder: (_, i) {
                         final p = filtered[i];
                         final on = _picked.contains(p.key);
+                        // ⚠️ Подпись показываем ТОЛЬКО у тёзок. Она и есть та
+                        // вторая строка, из-за которой каждая позиция занимала
+                        // 64 dp вместо 56: на десяти видимых строках это целая
+                        // потерянная позиция. А смысл у неё ровно один —
+                        // различить два приложения с одинаковым названием; в
+                        // остальных случаях на Android там просто имя пакета,
+                        // которое ничего не добавляет.
+                        final ambiguous = (_dupes[p.label] ?? 0) > 1;
                         return CheckboxListTile(
                           dense: true,
                           value: on,
                           controlAffinity: ListTileControlAffinity.leading,
                           // Иконка рядом с галочкой: без неё в длинном списке
                           // одинаковых имён не разобраться, что именно отмечено.
-                          secondary: AppIcon(path: p.key),
-                          title: Text(p.label),
-                          subtitle: Text(p.key,
+                          secondary: AppIcon(
+                              path: p.key, size: context.sg.listIconSize),
+                          title: Text(p.label,
                               maxLines: 1, overflow: TextOverflow.ellipsis),
+                          subtitle: ambiguous
+                              ? Text(p.key,
+                                  maxLines: 1, overflow: TextOverflow.ellipsis)
+                              : null,
                           onChanged: (v) => setState(() =>
                               v == true ? _picked.add(p.key) : _picked.remove(p.key)),
                         );
@@ -620,10 +675,18 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
           ],
         ),
       ),
+      // ⚠️ ТРИ КНОПКИ НА ТЕЛЕФОНЕ НЕ ВЛЕЗАЮТ В СТРОКУ.
+      //
+      // Диалог на экране 360 dp получает 280 dp ширины, а «Отметить всё
+      // найденное» + «Закрыть» + «Добавить (N)» требуют заметно больше.
+      // `OverflowBar` в этом случае раскладывает их СТОЛБИКОМ и съедает ~170 dp
+      // высоты — при 300 dp, уже отданных клавиатуре, списку не оставалось
+      // ничего. Поэтому на компактном экране «Отметить всё найденное»
+      // переезжает из ряда кнопок в шапку диалога, где место есть.
       actions: [
         // «Отметить всё найденное» — по отфильтрованному списку, а не по всему:
         // иначе поиск теряет смысл, а случайное нажатие добавляет сотню правил.
-        if (filtered.isNotEmpty)
+        if (filtered.isNotEmpty && !context.sg.isCompact)
           TextButton(
             onPressed: () => setState(() {
               final keys = filtered.map((p) => p.key);
