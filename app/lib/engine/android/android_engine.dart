@@ -154,7 +154,7 @@ class AndroidEngine extends VpnEngineBase {
             dt > 0 ? ((snap.downlink - _lastSnap.downlink) / dt).round() : 0;
         _lastSnap = snap;
         _lastSnapAt = now;
-        _pushNotificationDetail(snap);
+        _pushNotificationDetail(snap, up < 0 ? 0 : up, down < 0 ? 0 : down);
         emitStats(TrafficStats(
           uplinkBytes: snap.uplink,
           downlinkBytes: snap.downlink,
@@ -174,12 +174,18 @@ class AndroidEngine extends VpnEngineBase {
   /// раз в секунду. Официальный клиент sing-box отписывается от статистики по
   /// `ACTION_SCREEN_OFF` ровно по этой причине.
   String? _lastDetailSent;
-  Future<void> _pushNotificationDetail(XrayTrafficSnapshot snap) async {
+  Future<void> _pushNotificationDetail(
+      XrayTrafficSnapshot snap, int upSpeed, int downSpeed) async {
     if (!_screenOn) return;
     final server = session?.servers.length == 1
         ? session!.servers.first.displayName
         : null;
-    final speed = '↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}';
+    // ⚠️ И СКОРОСТЬ, И НАКОПЛЕННОЕ. Раньше сюда уходил только итог за сессию,
+    // и в шторке не было главного — что происходит ПРЯМО СЕЙЧАС: качается файл
+    // или соединение стоит. Скорость первой, она меняется каждую секунду;
+    // накопленное вторым, оно отвечает на другой вопрос («сколько всего»).
+    final speed = '↓ ${_human(downSpeed)}/с  ↑ ${_human(upSpeed)}/с'
+        '  ·  ↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}';
     // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ, не выдумывать свою:
     //   обычная  — [значок + подписка] / сервер / скорость;
     //   короткая — [значок + сервер] / скорость.
