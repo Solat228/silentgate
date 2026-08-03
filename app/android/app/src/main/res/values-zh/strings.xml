@@ -13,4 +13,6 @@
     <string name="vpn_blocked">连接已断开 — 流量已阻止</string>
     <string name="vpn_tile_off">已断开</string>
     <string name="vpn_open">打开</string>
+    <string name="vpn_traffic_now">当前: ↓ %1$s  ↑ %2$s</string>
+    <string name="vpn_traffic_total">总计: ↓ %1$s  ↑ %2$s</string>
 </resources>

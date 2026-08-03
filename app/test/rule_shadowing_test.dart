@@ -16,8 +16,13 @@ void main() {
   List<Map<String, dynamic>> dnsRules(Map<String, dynamic> cfg) =>
       ((cfg['dns'] as Map)['rules'] as List).cast<Map<String, dynamic>>();
 
+  // ⚠️ Правило запрета QUIC тоже адресуется доменом, но это НЕ маршрут: оно
+  // отвергает UDP:443, чтобы браузер вернулся на TCP и сниффер увидел имя.
+  // Матчер обязан его пропускать, иначе тест про порядок МАРШРУТОВ сравнивал бы
+  // маршрут с запретом и падал на пустом `outbound`.
   bool domain(Map<String, dynamic> r, String d) =>
-      (r['domain_suffix'] as List?)?.contains(d) == true;
+      (r['domain_suffix'] as List?)?.contains(d) == true &&
+      r['network'] != 'udp';
 
   int indexWhereRule(List<Map<String, dynamic>> rules,
           bool Function(Map<String, dynamic>) f) =>

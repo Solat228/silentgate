@@ -146,7 +146,10 @@ class MainActivity : FlutterActivity() {
                         SilentGateVpnService.instance?.setDetail(
                             call.argument<String>("sub"),
                             call.argument<String>("server"),
-                            call.argument<String>("speed"),
+                            call.argument<String>("nowDown"),
+                            call.argument<String>("nowUp"),
+                            call.argument<String>("totalDown"),
+                            call.argument<String>("totalUp"),
                         )
                         result.success(null)
                     }

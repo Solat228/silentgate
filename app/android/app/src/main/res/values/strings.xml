@@ -13,4 +13,6 @@
     <string name="vpn_blocked">Соединение потеряно — трафик заблокирован</string>
     <string name="vpn_tile_off">Отключено</string>
     <string name="vpn_open">Открыть</string>
+    <string name="vpn_traffic_now">Текущ: ↓ %1$s  ↑ %2$s</string>
+    <string name="vpn_traffic_total">Всего: ↓ %1$s  ↑ %2$s</string>
 </resources>

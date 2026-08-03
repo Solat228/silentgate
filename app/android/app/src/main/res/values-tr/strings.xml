@@ -13,4 +13,6 @@
     <string name="vpn_blocked">Bağlantı koptu — trafik engellendi</string>
     <string name="vpn_tile_off">Bağlantı kesildi</string>
     <string name="vpn_open">Aç</string>
+    <string name="vpn_traffic_now">Şimdi: ↓ %1$s  ↑ %2$s</string>
+    <string name="vpn_traffic_total">Toplam: ↓ %1$s  ↑ %2$s</string>
 </resources>

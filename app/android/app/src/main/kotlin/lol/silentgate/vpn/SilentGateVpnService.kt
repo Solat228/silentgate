@@ -130,7 +130,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// поэтому имя подписки (или сервера в короткой раскладке) едет туда.
     private var noteSub: String? = null
     private var noteServer: String? = null
-    private var noteSpeed: String? = null
+    private var noteNow: String? = null
+    private var noteTotal: String? = null
 
     /**
      * ⚠️ ЭКРАН ПОГАС — ЯДРО МОЖНО ПРИТОРМОЗИТЬ, А НЕ ПЕРЕПОДКЛЮЧАТЬ.
@@ -219,14 +220,29 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * именно тогда, когда объяснить некому.
      */
     /// Обновить подпись в шторке (сервер + трафик). Зовётся из Dart.
-    fun setDetail(sub: String?, server: String?, speed: String?) {
+    fun setDetail(
+        sub: String?,
+        server: String?,
+        nowDown: String?,
+        nowUp: String?,
+        totalDown: String?,
+        totalUp: String?,
+    ) {
         if (!running) return
         // Экран выключен — обновлять нечего и некому.
         if (!screenOn) return
         noteSub = sub?.takeIf { it.isNotBlank() }
         noteServer = server?.takeIf { it.isNotBlank() }
-        noteSpeed = speed?.takeIf { it.isNotBlank() }
-        updateNotification(strings().getString(R.string.vpn_connected))
+        // ⚠️ Подписи и стрелки берутся из строковых ресурсов, а не приходят из
+        // Dart: только так они следуют выбранному в приложении языку (сервис
+        // переживает смерть изолята) и лежат в одном месте, если шрифт
+        // устройства снова начнёт рисовать стрелки мусором.
+        val res = strings()
+        noteNow = if (nowDown != null && nowUp != null)
+            res.getString(R.string.vpn_traffic_now, nowDown, nowUp) else null
+        noteTotal = if (totalDown != null && totalUp != null)
+            res.getString(R.string.vpn_traffic_total, totalDown, totalUp) else null
+        updateNotification(res.getString(R.string.vpn_connected))
     }
 
     fun showBlocked() {
@@ -836,10 +852,25 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             .also { b ->
                 val head = noteSub ?: noteServer
                 if (head != null) b.setSubText(head)
-                val title = if (noteSub != null) noteServer else noteSpeed
+                val title = if (noteSub != null) noteServer else noteNow
                 b.setContentTitle(title ?: res.getString(R.string.app_name))
-                val body = if (noteSub != null) noteSpeed else null
-                b.setContentText(body ?: text)
+                // Две строки трафика: «Текущ» и «Всего». В свёрнутом виде
+                // Android показывает одну — поэтому первой идёт текущая
+                // скорость, ради неё в шторку и смотрят. Развёрнутое
+                // уведомление показывает обе.
+                val lines = listOfNotNull(
+                    if (noteSub != null) noteNow else noteTotal,
+                    if (noteSub != null) noteTotal else null,
+                ).filter { it.isNotBlank() }
+                if (lines.isEmpty()) {
+                    b.setContentText(text)
+                } else {
+                    b.setContentText(lines.first())
+                    if (lines.size > 1) {
+                        b.setStyle(Notification.BigTextStyle()
+                            .bigText(lines.joinToString(System.lineSeparator())))
+                    }
+                }
             }
             .setSmallIcon(R.drawable.ic_stat_vpn)
             .setContentIntent(open)

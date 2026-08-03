@@ -184,22 +184,35 @@ class AndroidEngine extends VpnEngineBase {
     // и в шторке не было главного — что происходит ПРЯМО СЕЙЧАС: качается файл
     // или соединение стоит. Скорость первой, она меняется каждую секунду;
     // накопленное вторым, оно отвечает на другой вопрос («сколько всего»).
-    final speed = '↓ ${_human(downSpeed)}/с  ↑ ${_human(upSpeed)}/с'
-        '  ·  ↓ ${_human(snap.downlink)}  ↑ ${_human(snap.uplink)}';
+    // ⚠️ СТРЕЛКИ И ПОДПИСИ — В РЕСУРСАХ ANDROID, не здесь.
+    //
+    // Во-первых, подписи «Текущ»/«Всего» обязаны следовать языку приложения, а
+    // сервис переживает смерть Dart-изолята и берёт язык из нативных настроек.
+    // Во-вторых, на устройстве владельца стрелки из строки Dart отрисовались
+    // мусором ('  и  ij  вместо  ↓  и  ↑): шрифт уведомления подставил
+    // чужие глифы. В строковом ресурсе они лежат ровно один раз, и заменить их
+    // при повторении проблемы можно в одном месте, не трогая код.
+    final nowDown = TrafficStats.formatSpeed(downSpeed);
+    final nowUp = TrafficStats.formatSpeed(upSpeed);
+    final totalDown = _human(snap.downlink);
+    final totalUp = _human(snap.uplink);
     // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ, не выдумывать свою:
     //   обычная  — [значок + подписка] / сервер / скорость;
     //   короткая — [значок + сервер] / скорость.
     // Первая строка уведомления Android — это `subText` рядом со значком,
     // поэтому имя подписки едет именно туда, а не в заголовок.
     final sub = compactNotification ? '' : subscriptionTitle;
-    final key = '$sub|$server|$speed';
+    final key = '$sub|$server|$nowDown|$nowUp|$totalDown|$totalUp';
     if (key == _lastDetailSent) return; // не дёргать шторку впустую
     _lastDetailSent = key;
     try {
       await _channel.invokeMethod<void>('setNotificationDetail', {
         'sub': sub,
         'server': server ?? '',
-        'speed': speed,
+        'nowDown': nowDown,
+        'nowUp': nowUp,
+        'totalDown': totalDown,
+        'totalUp': totalUp,
       });
     } catch (_) {
       // Уведомление — не критичный путь: туннель важнее.
@@ -211,16 +224,16 @@ class AndroidEngine extends VpnEngineBase {
   @visibleForTesting
   static String humanBytesForTest(int bytes) => _human(bytes);
 
-  static String _human(int bytes) {
-    const u = ['Б', 'КБ', 'МБ', 'ГБ', 'ТБ'];
-    var v = bytes.toDouble();
-    var i = 0;
-    while (v >= 1024 && i < u.length - 1) {
-      v /= 1024;
-      i++;
-    }
-    return '${v < 10 && i > 0 ? v.toStringAsFixed(1) : v.round()} ${u[i]}';
-  }
+  /// ⚠️ ЕДИНИЦЫ БЕРУТСЯ ИЗ ОБЩЕГО ФОРМАТТЕРА, а не заводятся здесь свои.
+  ///
+  /// Раньше тут был собственный список ['Б','КБ','МБ'…], и на английском
+  /// интерфейсе шторка показывала «Now: 0 Б/с» — подпись на одном языке, число
+  /// на другом. Видно это только глазами на устройстве, компилятор молчит.
+  /// `TrafficStats.formatBytes` — тот же источник, что у цифр на главном
+  /// экране, поэтому расхождение больше невозможно по построению.
+  static String _human(int bytes) => TrafficStats.formatBytes(bytes);
+
+
 
   /// Экран включён. Ставится наблюдателем жизненного цикла приложения.
   bool _screenOn = true;

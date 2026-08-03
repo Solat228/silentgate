@@ -154,7 +154,11 @@ class TunOptions {
     this.directDnsUpstream,
     this.logOutput,
     this.blackhole = false,
-    this.tunnelDnsForAll = true,
+    // ⚠️ УМОЛЧАНИЕ ОБЯЗАНО СОВПАДАТЬ С `AppSettings.tunnelDnsForAll` (false).
+    // Пока здесь стояло `true`, ручные дампы и тесты показывали безобидный
+    // `dns-proxy`, а пользователь получал `dns-local` — то есть проверяли одно,
+    // а работало другое.
+    this.tunnelDnsForAll = false,
     this.blockPagePort = 0,
     this.clashApiPort = 0,
     this.clashApiSecret = '',
@@ -480,7 +484,25 @@ class SingboxConfigBuilder {
       // настройка «не работает». Отказ по UDP:443 возвращает браузер на TLS
       // поверх TCP, где имя видно; сайты от этого не ломаются — HTTP/3 для них
       // не обязателен, это оптимизация.
-      rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
+      //
+      // ⚠️ Тумблер `blockQuic` — ЯВНОЕ желание пользователя, он глобальный.
+      // Автоматический же запрет (от правил по сайтам) ограничен ИМЕННО теми
+      // доменами, ради которых он включился: глобальный вариант рубил HTTP/3
+      // всей машине, и это выглядело как «интернет пропал», а не как «правило
+      // заработало».
+      if (o.blockQuic) {
+        rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
+      } else {
+        final domains = _quicBlockDomains(split);
+        if (domains.isNotEmpty) {
+          rules.add({
+            'domain_suffix': domains,
+            'network': 'udp',
+            'port': [443],
+            'action': 'reject',
+          });
+        }
+      }
     }
     if (o.blockEncryptedDns) {
       // DNS поверх HTTPS/TLS/QUIC уходит мимо перехвата UDP:53. Тогда DNS-зеркало
@@ -726,6 +748,25 @@ class SingboxConfigBuilder {
         // Возвращённые под защиту — резолвим через туннель, иначе прямой
         // резолв выдал бы реальную геолокацию ещё до соединения.
         ..._dnsSiteRules(split, AppAction.direct, 'dns-proxy', allowRealIp: false),
+      // ⚠️ ЗЕРКАЛО ДЛЯ ПРАВИЛ ПРИЛОЖЕНИЙ. Его не было вовсе — и это ломало
+      // ровно то, ради чего включают VPN.
+      //
+      // Трафик отмеченного приложения уходил в `proxy`, а ИМЯ ему резолвил
+      // провайдер вне туннеля: правил про приложения в секции DNS не
+      // существовало, зеркалились только сайты. Для доменов, ради которых VPN
+      // и нужен, провайдер отдаёт подменённый или пустой ответ, и приложение
+      // честно шло через туннель на мёртвый адрес. Снаружи — «отмеченные
+      // приложения без интернета» при живом туннеле, зелёном чипе «Туннель» и
+      // конфиге, который проходит `sing-box check`.
+      //
+      // Ниже правил по сайтам: сайт конкретнее, чем «всё приложение целиком» —
+      // тот же порядок, что в маршрутах.
+      ..._dnsAppRules(split, AppAction.tunnel, 'dns-proxy'),
+      ..._dnsAppRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
+      if (o.noRealIp)
+        ..._dnsAppRules(split, AppAction.direct, 'dns-proxy', allowRealIp: false),
+      if (o.blockPagePort <= 0)
+        ..._dnsAppRules(split, AppAction.block, null),
       {
         'outbound': ['direct'],
         'server': 'dns-local',
@@ -908,8 +949,31 @@ class SingboxConfigBuilder {
   /// Честная граница: от ECH (зашифрованный ClientHello) это не спасает — там
   /// имя не видно и в TLS поверх TCP. Пока ECH не массовый, но лечится он не
   /// здесь, а маршрутизацией по адресу, полученному из нашего же DNS.
+  /// ⚠️ ЗАПРЕТ QUIC СУЖЕН ДО ДОМЕНОВ, КОТОРЫМ ОН НУЖЕН.
+  ///
+  /// Раньше любое правило по сайту добавляло ГЛОБАЛЬНОЕ
+  /// `{network: udp, port: 443, action: reject}` — без привязки к домену,
+  /// приложению и направлению. В режиме «только отмеченные» база маршрутизации
+  /// — `direct`, то есть через это правило проходит ВЕСЬ трафик машины: у
+  /// Google, YouTube и всего за Cloudflare отваливался HTTP/3. Снаружи это
+  /// «добавил сайт — интернет пропал», и понять причину нельзя: тумблер
+  /// «Запрещать QUIC» в интерфейсе при этом ВЫКЛЮЧЕН.
+  ///
+  /// Смысл запрета — заставить браузер вернуться на TCP, чтобы сниффер увидел
+  /// ИМЯ и правило сматчилось. Значит он нужен только там, где имя решает
+  /// судьбу соединения: «Туннель» и «Блок». Правилу «Прямо» сниффинг не нужен
+  /// вовсе — оно совпадает с базой в большинстве режимов.
   bool _needQuicBlock(SplitTunnelConfig split) =>
-      _userRulesActive(split) && split.sites.isNotEmpty;
+      _userRulesActive(split) &&
+      split.sites.any((s) =>
+          s.action == AppAction.tunnel || s.action == AppAction.block);
+
+  /// Домены, ради которых QUIC и глушится: только они, а не вся машина.
+  List<String> _quicBlockDomains(SplitTunnelConfig split) => split.sites
+      .where((s) => s.action == AppAction.tunnel || s.action == AppAction.block)
+      .map((s) => s.domain)
+      .toSet()
+      .toList();
 
   bool _userRulesActive(SplitTunnelConfig split) =>
       split.mode != SplitMode.all;
@@ -1018,6 +1082,32 @@ class SingboxConfigBuilder {
       _addActionRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
     }
     _addActionRule(rules, split, AppAction.tunnel, 'proxy');
+  }
+
+  /// DNS-правила для ПРИЛОЖЕНИЙ — зеркало `_addActionRule` в маршрутах.
+  ///
+  /// [server] == null → `action: reject` (блок): имя не резолвится вовсе.
+  /// На Android сопоставление по имени пакета, на Windows — по имени процесса,
+  /// ровно как в маршрутах: иначе зеркало разошлось бы с оригиналом, и это
+  /// молча вернуло бы утечку DNS.
+  List<Map<String, dynamic>> _dnsAppRules(
+      SplitTunnelConfig split, AppAction action, String? server,
+      {bool? allowRealIp}) {
+    if (!_userRulesActive(split)) return const [];
+    var apps = split.apps.where((a) => a.enabled && a.action == action);
+    if (allowRealIp != null && options.noRealIp) {
+      apps = apps.where((a) => a.allowRealIp == allowRealIp);
+    }
+    final names = apps.map((a) => a.path.trim()).where((p) => p.isNotEmpty);
+    if (names.isEmpty) return const [];
+    final key = options.platformTun ? 'package_name' : 'process_name';
+    final rule = <String, dynamic>{key: names.toSet().toList()};
+    if (server == null) {
+      rule['action'] = 'reject';
+    } else {
+      rule['server'] = server;
+    }
+    return [rule];
   }
 
   /// Домены с действием [action]. Сайты без порта — одним правилом; сайты с

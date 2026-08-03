@@ -700,18 +700,28 @@ void main() {
       expect(round.containsSite('example.com', port: 9999), isFalse);
     });
 
-    test('onlySelected: DNS final = dns-proxy (нет утечки DNS туннеля)', () {
-      final cfg = const SingboxConfigBuilder().buildMap(const SplitTunnelConfig(
+    test('onlySelected: DNS затуннелированного приложения идёт через туннель', () {
+      // ⚠️ Раньше здесь проверялся `dns.final == dns-proxy`, и тест был зелёным
+      // только потому, что умолчание `tunnelDnsForAll` в билдере расходилось с
+      // настройками приложения (true против false). У пользователя `final`
+      // был `dns-local`, а правил про приложения в DNS не было вовсе — имя
+      // затуннелированному приложению резолвил провайдер.
+      //
+      // Теперь утечку закрывает ЯВНОЕ правило, а не `final`, и проверять надо
+      // именно его: оно верно при любом значении `tunnelDnsForAll`.
+      final cfg = SingboxConfigBuilder(
+        options: const TunOptions(serverIps: ['203.0.113.10']),
+      ).buildMap(const SplitTunnelConfig(
         mode: SplitMode.onlySelected,
-        apps: [AppRule(r'C:\a.exe', action: AppAction.tunnel)],
+        apps: [AppRule('chrome.exe', byName: true, action: AppAction.tunnel)],
       ));
-      final dns = cfg['dns'] as Map;
-      // Раньше здесь был dns-local → DNS затуннелированных приложений резолвился
-      // локальным (ISP) резолвером. Теперь всегда dns-proxy (через туннель).
-      expect(dns['final'], 'dns-proxy');
-      // direct-домены всё так же уходят в локальный резолвер отдельным правилом.
-      final rules = (dns['rules'] as List).cast<Map>();
-      expect(rules.any((r) => r['server'] == 'dns-local'), isTrue);
+      final dns = ((cfg['dns'] as Map)['rules'] as List).cast<Map>();
+      final rule = dns.firstWhere(
+          (r) => (r['process_name'] as List?)?.contains('chrome.exe') == true,
+          orElse: () => <String, dynamic>{});
+      expect(rule['server'], 'dns-proxy',
+          reason: 'иначе имя резолвит провайдер, и приложение идёт через '
+              'туннель на подменённый адрес');
     });
 
     test('битые exclude-CIDR отбрасываются, конфиг остаётся валидным', () {

@@ -13,4 +13,6 @@
     <string name="vpn_blocked">Connection lost — traffic is blocked</string>
     <string name="vpn_tile_off">Disconnected</string>
     <string name="vpn_open">Open</string>
+    <string name="vpn_traffic_now">Now: ↓ %1$s  ↑ %2$s</string>
+    <string name="vpn_traffic_total">Total: ↓ %1$s  ↑ %2$s</string>
 </resources>

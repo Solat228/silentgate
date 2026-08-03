@@ -748,8 +748,13 @@ void main() {
       // Заглушка ВЫШЕ блока ДОМЕНА, иначе reject сработает первым.
       // Сравниваем именно с доменным блоком: выше него теперь стоит запрет
       // QUIC (UDP:443), который к порту 80 отношения не имеет.
-      final domainBlock = r.indexWhere(
-          (x) => x['action'] == 'reject' && x.containsKey('domain_suffix'));
+      // ⚠️ Запрет QUIC теперь тоже адресуется доменом (раньше был глобальным),
+      // поэтому его надо отличать от блока по домену: он про UDP:443 и к
+      // подмене страницы на порту 80 отношения не имеет.
+      final domainBlock = r.indexWhere((x) =>
+          x['action'] == 'reject' &&
+          x.containsKey('domain_suffix') &&
+          x['network'] != 'udp');
       expect(domainBlock, greaterThanOrEqualTo(0));
       expect(r.indexOf(page), lessThan(domainBlock));
     });

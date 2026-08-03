@@ -61,13 +61,25 @@ class SingboxStats {
       final body = await resp.transform(utf8.decoder).join();
       final j = jsonDecode(body);
       if (j is! Map) return null;
-      if (!onlyProxy) {
-        return XrayTrafficSnapshot(
-          _int(j['uploadTotal']),
-          _int(j['downloadTotal']),
-        );
+      final global = XrayTrafficSnapshot(
+        _int(j['uploadTotal']),
+        _int(j['downloadTotal']),
+      );
+      if (!onlyProxy) return global;
+      final proxied = _sumProxied(j['connections']);
+      // ⚠️ ПАДАЕМ ОБРАТНО НА ГЛОБАЛЬНЫЕ СЧЁТЧИКИ, ЕСЛИ РАЗБОР ДАЛ НОЛЬ.
+      //
+      // Сумма по соединениям видит только ЖИВЫЕ соединения. Их может не быть
+      // вовсе в момент опроса (всё уже закрылось), а у некоторых сборок ядра
+      // поле `chains` приходит иначе — и тогда фильтр отбрасывает всё подряд.
+      // Итог одинаковый: пользователь видит нули при работающем VPN, то есть
+      // мы врём ему в самом заметном месте. Лучше показать чуть больше (с
+      // прямым трафиком), чем ноль при идущей закачке.
+      if (proxied.uplink == 0 && proxied.downlink == 0 &&
+          (global.uplink > 0 || global.downlink > 0)) {
+        return global;
       }
-      return _sumProxied(j['connections']);
+      return proxied;
     } catch (_) {
       return null;
     } finally {

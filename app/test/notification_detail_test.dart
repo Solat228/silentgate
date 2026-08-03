@@ -6,12 +6,12 @@ import 'package:silentgate/engine/android/android_engine.dart';
 /// нигде не проверялась — её читал только человек, глядя в шторку.
 void main() {
   test('размер форматируется в число с единицей, а не в шаблон', () {
-    expect(AndroidEngine.humanBytesForTest(0), '0 Б');
-    expect(AndroidEngine.humanBytesForTest(999), '999 Б');
-    expect(AndroidEngine.humanBytesForTest(1024), '1.0 КБ');
-    expect(AndroidEngine.humanBytesForTest(1536), '1.5 КБ');
-    expect(AndroidEngine.humanBytesForTest(5 * 1024 * 1024), '5.0 МБ');
-    expect(AndroidEngine.humanBytesForTest(3 * 1024 * 1024 * 1024), '3.0 ГБ');
+    expect(AndroidEngine.humanBytesForTest(0), '0 B');
+    expect(AndroidEngine.humanBytesForTest(999), '999 B');
+    expect(AndroidEngine.humanBytesForTest(1024), '1.0 KB');
+    expect(AndroidEngine.humanBytesForTest(1536), '1.5 KB');
+    expect(AndroidEngine.humanBytesForTest(5 * 1024 * 1024), '5.0 MB');
+    expect(AndroidEngine.humanBytesForTest(3 * 1024 * 1024 * 1024), '3.0 GB');
   });
 
   test('в результате нет ни доллара, ни фигурных скобок', () {
