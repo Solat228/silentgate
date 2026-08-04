@@ -11,6 +11,19 @@ class TunOptions {
   final int mtu;
   final bool strictRoute;
   final bool ipv6;
+
+  /// ⚠️ Есть ли IPv6 НАРУЖУ. Отличать от [ipv6] обязательно: это разные случаи
+  /// с противоположным правильным поведением.
+  ///
+  ///  * пользователь ВЫКЛЮЧИЛ IPv6, а наружу он есть — адрес объявляем и
+  ///    отказываем ВНУТРИ туннеля. Иначе IPv6-трафик уходит мимо VPN, под
+  ///    реальным адресом: это была настоящая утечка, пойманная живым тестом;
+  ///  * IPv6 наружу НЕТ — адрес не объявляем вовсе. Отказывать нечему и незачем:
+  ///    система честно видит «только IPv4» и даже не пытается. Прежний вариант
+  ///    (объявить адрес и отказать) заставлял КАЖДОЕ соединение сперва пробовать
+  ///    IPv6 и получать отказ — задержка на каждом двустековом сайте, и отказ
+  ///    прилетал в том числе службам Windows.
+  final bool ipv6Upstream;
   final bool endpointIndependentNat;
   final bool bypassLan;
   final List<String> excludeCidrs;
@@ -137,6 +150,7 @@ class TunOptions {
     this.mtu = 1500,
     this.strictRoute = true,
     this.ipv6 = true,
+    this.ipv6Upstream = true,
     this.endpointIndependentNat = true,
     this.bypassLan = true,
     this.excludeCidrs = const [],
@@ -199,6 +213,7 @@ class TunOptions {
       // Проверено живьём в VM без IPv6 — настоящий браузер получал
       // ERR_CONNECTION_RESET, а с выключенным IPv6 грузил страницу.
       ipv6: s.tunIpv6 && ipv6Available,
+      ipv6Upstream: ipv6Available,
       endpointIndependentNat: s.tunEndpointIndependentNat,
       bypassLan: s.tunBypassLan,
       excludeCidrs: s.tunExcludeCidrs,
@@ -475,7 +490,13 @@ class SingboxConfigBuilder {
       // Правило стоит НИЖЕ адреса сервера по той же причине, что и запрет QUIC:
       // сервер может быть доступен по IPv6, и наверху это отрезало бы само
       // подключение.
-      rules.add({'ip_version': 6, 'action': 'reject'});
+      // Отказ нужен ТОЛЬКО когда туннель объявил IPv6-адрес: тогда система
+      // считает IPv6 рабочим и будет пробовать. Если адреса нет, отказывать
+      // нечему — и правило превращалось в отказ службам Windows на ровном
+      // месте (видно в логе владельца: svchost, ipv6.msftconnecttest.com).
+      if (o.ipv6Upstream) {
+        rules.add({'ip_version': 6, 'action': 'reject'});
+      }
     }
     if (o.blockQuic || _needQuicBlock(split)) {
       // Доменные правила («Прямо», «Туннель», «Блок») применяются к ИМЕНИ, а имя
@@ -1362,9 +1383,11 @@ class SingboxConfigBuilder {
         // принципиальная: отказ приходит мгновенно, и клиент сразу переходит на
         // IPv4, тогда как при утечке в сеть без работающего IPv6 он ждал
         // таймаута — сайт «Прямо» просто не открывался. Поймано живым тестом.
-        'address': const [
+        'address': [
           '172.19.0.1/30',
-          'fdfe:dcba:9876::1/126',
+          // Объявляем IPv6-адрес, только если IPv6 существует НАРУЖУ.
+          // Подробности и цена ошибки — у `ipv6Upstream`.
+          if (o.ipv6Upstream) 'fdfe:dcba:9876::1/126',
         ],
         'mtu': o.mtu,
         'endpoint_independent_nat': o.endpointIndependentNat,

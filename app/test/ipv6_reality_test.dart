@@ -39,8 +39,9 @@ void main() {
   });
 
   group('Конфиг туннеля', () {
-    Map<String, dynamic> build({required bool ipv6Available}) {
-      const settings = AppSettings();
+    Map<String, dynamic> build(
+        {required bool ipv6Available, bool tunIpv6 = true}) {
+      final settings = AppSettings(tunIpv6: tunIpv6);
       return SingboxConfigBuilder(
         options: TunOptions.fromSettings(settings,
             serverIps: const ['203.0.113.1'], ipv6Available: ipv6Available),
@@ -57,33 +58,38 @@ void main() {
       expect(ipv6Rejected(build(ipv6Available: true)), isFalse);
     });
 
-    // ⚠️ Тонкость, на которой легко ошибиться: туннель ВСЁ РАВНО объявляет
-    // IPv6-адрес и захватывает такой трафик. Не объявить его — значит выпустить
-    // IPv6 мимо VPN под реальным адресом. Отказ приходит уже ВНУТРИ туннеля, и
-    // именно поэтому он мгновенный: клиент сразу переходит на IPv4, а не ждёт
-    // таймаута «unreachable network» на каждом двустековом сайте.
-    test('IPv6 наружу нет — он захватывается и мгновенно отвергается', () {
+    // ⚠️ ДВА РАЗНЫХ СЛУЧАЯ С ПРОТИВОПОЛОЖНЫМ ПОВЕДЕНИЕМ — не путать.
+    //
+    //  * IPv6 наружу ЕСТЬ, а пользователь его выключил → адрес объявляем и
+    //    отказываем ВНУТРИ туннеля. Не объявить — значит выпустить IPv6 мимо
+    //    VPN под реальным адресом, это была настоящая утечка.
+    //  * IPv6 наружу НЕТ → адрес не объявляем вовсе. Отказывать нечему: система
+    //    честно видит «только IPv4» и не пытается. Прежний вариант заставлял
+    //    каждое соединение сперва пробовать IPv6 и получать отказ, и этот отказ
+    //    прилетал в том числе службам Windows (видно в логе владельца).
+    test('IPv6 наружу нет — адрес НЕ объявляется, отказ не нужен', () {
       final cfg = build(ipv6Available: false);
-      expect(ipv6Rejected(cfg), isTrue);
+      final tun = (cfg['inbounds'] as List)
+          .cast<Map>()
+          .firstWhere((i) => i['type'] == 'tun');
+      final addrs = (tun['address'] as List).cast<String>();
+      expect(addrs.any((a) => a.contains(':')), isFalse,
+          reason: 'объявленный адрес заставляет систему пробовать IPv6 впустую');
+      expect(ipv6Rejected(cfg), isFalse,
+          reason: 'глобальный отказ бил по службам, которым IPv6 и не нужен');
+    });
 
+    test('IPv6 наружу ЕСТЬ, но выключен — адрес объявляем и режем внутри', () {
+      // Здесь отказ обязателен: без него трафик уйдёт мимо VPN.
+      final cfg = build(ipv6Available: true, tunIpv6: false);
       final tun = (cfg['inbounds'] as List)
           .cast<Map>()
           .firstWhere((i) => i['type'] == 'tun');
       final addrs = (tun['address'] as List).cast<String>();
       expect(addrs.any((a) => a.contains(':')), isTrue,
-          reason: 'адрес нужен, чтобы IPv6 не утёк мимо туннеля');
+          reason: 'иначе IPv6 утечёт под реальным адресом — это уже ловили');
+      expect(ipv6Rejected(cfg), isTrue);
     });
 
-    test('отказ IPv6 стоит НИЖЕ правила с адресом сервера', () {
-      // Сервер может быть доступен по IPv6 — отказ выше отрезал бы само
-      // подключение.
-      final r = rules(build(ipv6Available: false));
-      final reject = r.indexWhere(
-          (x) => x['ip_version'] == 6 && x['action'] == 'reject');
-      final server = r.indexWhere((x) =>
-          (x['ip_cidr'] as List?)?.any((c) => '$c'.startsWith('203.0.113.1')) ==
-          true);
-      expect(server, lessThan(reject));
-    });
   });
 }
