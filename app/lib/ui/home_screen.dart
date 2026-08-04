@@ -315,8 +315,11 @@ class _HomeScreenState extends State<HomeScreen> {
     // применится только после переподключения. Без этого правка правил при
     // живом соединении проходила молча, и пользователь был уверен, что она
     // работает. Ставим здесь: тут доступны оба контроллера.
-    context.read<SettingsController>().onRequiresReconnect =
-        (_, __) => state.notePendingRestart(l.homeSettingsNeedReconnect);
+    context.read<SettingsController>().onRequiresReconnect = (before, after) =>
+        state.notePendingRestart(l.homeSettingsNeedReconnect,
+            // На экране — общая фраза, в журнале — имена изменённых настроек:
+            // без них перезапуск туннеля неотличим от обрыва связи.
+            fields: before.reconnectReasons(after));
 
     final probe = context.read<ProbeController>();
     probe.variantFor = state.variantFor;

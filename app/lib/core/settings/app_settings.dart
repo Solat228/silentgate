@@ -677,30 +677,56 @@ class AppSettings {
   /// Добавляя новую настройку, влияющую на конфиг, впиши её СЮДА, иначе
   /// пользователь снова получит «поменял, а эффекта нет».
   bool requiresReconnect(AppSettings other) =>
-      captureMode != other.captureMode ||
-      tunStack != other.tunStack ||
-      tunMtu != other.tunMtu ||
-      tunStrictRoute != other.tunStrictRoute ||
-      tunIpv6 != other.tunIpv6 ||
-      tunEndpointIndependentNat != other.tunEndpointIndependentNat ||
-      tunBypassLan != other.tunBypassLan ||
-      tunExcludeCidrs.join(',') != other.tunExcludeCidrs.join(',') ||
-      dnsMode != other.dnsMode ||
-      dnsCustomServer != other.dnsCustomServer ||
-      dnsHijack != other.dnsHijack ||
-      tunnelDnsForAll != other.tunnelDnsForAll ||
-      blockPageEnabled != other.blockPageEnabled ||
-      blockQuic != other.blockQuic ||
-      blockEncryptedDns != other.blockEncryptedDns ||
-      dnsStrategy != other.dnsStrategy ||
-      singboxLogLevel != other.singboxLogLevel ||
-      noRealIp != other.noRealIp ||
-      // Запекается в конфиг (`rerouteDirectThroughVpn` в engine_base): без этой
-      // строки пользователь включал «Мои правила важнее правил панели» при живом
-      // соединении, конфиг оставался прежним, и предложения переподключиться —
-      // единственного признака, что настройка ещё не в силе, — не приходило.
-      myRulesOverridePanel != other.myRulesOverridePanel ||
-      // Правила раздельного туннелирования — самая частая правка «на живую».
-      jsonEncode(splitTunnel.toJson()) !=
-          jsonEncode(other.splitTunnel.toJson());
+      reconnectReasons(other).isNotEmpty;
+
+  /// Какие именно поля изменились — ИМЕНАМИ, для лога.
+  ///
+  /// ⚠️ Это единственный список; [requiresReconnect] спрашивает его же. Раньше
+  /// перечисление жило в одном месте, а в журнал не попадало вовсе — и в логе
+  /// владельца шесть подряд перезапусков туннеля выглядели как обрывы связи без
+  /// причины. Причина была безобидной (он менял настройки), но узнать это по
+  /// журналу было нельзя: строка «Автопереподключение: <причина>» пишется
+  /// только на пути восстановления, а перезапуск по правке настроек идёт
+  /// мимо него.
+  ///
+  /// Добавляя настройку, влияющую на конфиг ядра, впиши её СЮДА — и она
+  /// одновременно начнёт требовать переподключения и называть себя в логе.
+  List<String> reconnectReasons(AppSettings other) {
+    final out = <String>[];
+    void diff(String name, Object? a, Object? b) {
+      if (a != b) out.add(name);
+    }
+
+    diff('способ захвата', captureMode, other.captureMode);
+    diff('стек TUN', tunStack, other.tunStack);
+    diff('MTU', tunMtu, other.tunMtu);
+    diff('строгая маршрутизация', tunStrictRoute, other.tunStrictRoute);
+    diff('IPv6 в туннеле', tunIpv6, other.tunIpv6);
+    diff('endpoint-independent NAT', tunEndpointIndependentNat,
+        other.tunEndpointIndependentNat);
+    diff('обход LAN', tunBypassLan, other.tunBypassLan);
+    diff('исключённые подсети', tunExcludeCidrs.join(','),
+        other.tunExcludeCidrs.join(','));
+    diff('режим DNS', dnsMode, other.dnsMode);
+    diff('свой DNS-сервер', dnsCustomServer, other.dnsCustomServer);
+    diff('перехват DNS', dnsHijack, other.dnsHijack);
+    diff('весь DNS через туннель', tunnelDnsForAll, other.tunnelDnsForAll);
+    diff('страница-заглушка', blockPageEnabled, other.blockPageEnabled);
+    diff('блокировка QUIC', blockQuic, other.blockQuic);
+    diff('блокировка шифрованного DNS', blockEncryptedDns,
+        other.blockEncryptedDns);
+    diff('стратегия DNS', dnsStrategy, other.dnsStrategy);
+    diff('уровень лога ядра', singboxLogLevel, other.singboxLogLevel);
+    diff('запрет реального IP', noRealIp, other.noRealIp);
+    // Запекается в конфиг (`rerouteDirectThroughVpn` в engine_base): без этой
+    // строки пользователь включал «Мои правила важнее правил панели» при живом
+    // соединении, конфиг оставался прежним, и предложения переподключиться —
+    // единственного признака, что настройка ещё не в силе, — не приходило.
+    diff('приоритет своих правил над панелью', myRulesOverridePanel,
+        other.myRulesOverridePanel);
+    // Правила раздельного туннелирования — самая частая правка «на живую».
+    diff('правила раздельного туннелирования',
+        jsonEncode(splitTunnel.toJson()), jsonEncode(other.splitTunnel.toJson()));
+    return out;
+  }
 }

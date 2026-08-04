@@ -241,6 +241,14 @@ class TunOptions {
         mtu: mtu,
         strictRoute: strictRoute,
         ipv6: ipv6,
+        // ⚠️ БЕЗ ЭТОГО ПОЛЯ ЗАГЛУШКА МЕНЯЛА АДРЕСА ИНТЕРФЕЙСА.
+        //
+        // `ipv6Upstream` решает, объявлять ли адрес `fdfe:dcba:9876::1/126`.
+        // Умолчание — `true`, поэтому потерянное поле означало: живой туннель
+        // без IPv6 объявляет один адрес, а заглушка kill switch — два. Система
+        // видит другой интерфейс и пересоздаёт его, а это ровно тот миг, ради
+        // закрытия которого заглушка и существует.
+        ipv6Upstream: ipv6Upstream,
         endpointIndependentNat: endpointIndependentNat,
         bypassLan: bypassLan,
         excludeCidrs: excludeCidrs,
@@ -248,6 +256,7 @@ class TunOptions {
         dnsServer: dnsServer,
         dnsHijack: dnsHijack,
         dnsStrategy: dnsStrategy,
+        tunnelDnsForAll: tunnelDnsForAll,
         logLevel: logLevel,
         serverIps: serverIps,
         serverDomains: serverDomains,
@@ -257,8 +266,11 @@ class TunOptions {
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
         logOutput: logOutput,
+        blockPagePort: blockPagePort,
         clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
+        blockQuic: blockQuic,
+        blockEncryptedDns: blockEncryptedDns,
         blackhole: true,
       );
 
@@ -274,6 +286,7 @@ class TunOptions {
         mtu: mtu ?? this.mtu,
         strictRoute: strictRoute,
         ipv6: ipv6,
+        ipv6Upstream: ipv6Upstream,
         endpointIndependentNat: endpointIndependentNat,
         bypassLan: bypassLan,
         excludeCidrs: excludeCidrs,
@@ -1108,9 +1121,21 @@ class SingboxConfigBuilder {
   /// DNS-правила для ПРИЛОЖЕНИЙ — зеркало `_addActionRule` в маршрутах.
   ///
   /// [server] == null → `action: reject` (блок): имя не резолвится вовсе.
-  /// На Android сопоставление по имени пакета, на Windows — по имени процесса,
-  /// ровно как в маршрутах: иначе зеркало разошлось бы с оригиналом, и это
-  /// молча вернуло бы утечку DNS.
+  ///
+  /// ⚠️ СОПОСТАВЛЕНИЕ ОБЯЗАНО СОВПАДАТЬ С МАРШРУТАМИ ПОЛЕ В ПОЛЕ.
+  ///
+  /// Здесь стояло `process_name: [a.path]` — то есть в поле, куда ядро ждёт
+  /// ИМЯ ФАЙЛА, уезжал ПОЛНЫЙ ПУТЬ (`C:\Telegram Desktop\Telegram.exe`).
+  /// Такое правило не совпадает ни с чем и никогда: ядро сравнивает его с
+  /// `Telegram.exe`. В конфиге правило при этом видно, `sing-box check` его
+  /// принимает, интерфейс показывает «Туннель» — а DNS отмеченного приложения
+  /// продолжает резолвиться по `final`, то есть ровно та утечка, ради закрытия
+  /// которой зеркало и добавлялось. Найдено сверкой с настоящим конфигом,
+  /// снятым с работающего туннеля.
+  ///
+  /// Поэтому ветвление ровно как в [_addActionRule]: Android — имя пакета,
+  /// Windows — `process_name` для правил «по имени» и `process_path_regex`
+  /// для правил «по пути».
   List<Map<String, dynamic>> _dnsAppRules(
       SplitTunnelConfig split, AppAction action, String? server,
       {bool? allowRealIp}) {
@@ -1119,16 +1144,38 @@ class SingboxConfigBuilder {
     if (allowRealIp != null && options.noRealIp) {
       apps = apps.where((a) => a.allowRealIp == allowRealIp);
     }
-    final names = apps.map((a) => a.path.trim()).where((p) => p.isNotEmpty);
-    if (names.isEmpty) return const [];
-    final key = options.platformTun ? 'package_name' : 'process_name';
-    final rule = <String, dynamic>{key: names.toSet().toList()};
-    if (server == null) {
-      rule['action'] = 'reject';
-    } else {
-      rule['server'] = server;
+
+    Map<String, dynamic> withAction(Map<String, dynamic> match) {
+      if (server == null) return {...match, 'action': 'reject'};
+      return {...match, 'server': server};
     }
-    return [rule];
+
+    if (options.platformTun) {
+      final pkgs =
+          apps.map((a) => a.path.trim()).where((p) => p.isNotEmpty).toSet().toList();
+      return pkgs.isEmpty ? const [] : [withAction({'package_name': pkgs})];
+    }
+
+    final out = <Map<String, dynamic>>[];
+    final byName = apps
+        .where((a) => a.byName)
+        .map((a) => a.name.trim())
+        .where((n) => n.isNotEmpty)
+        .toSet()
+        .toList();
+    final byPath = apps
+        .where((a) => !a.byName)
+        .map((a) => a.path.trim())
+        .where((p) => p.isNotEmpty)
+        .toSet()
+        .toList();
+    if (byName.isNotEmpty) out.add(withAction({'process_name': byName}));
+    if (byPath.isNotEmpty) {
+      out.add(withAction({
+        'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+      }));
+    }
+    return out;
   }
 
   /// Домены с действием [action]. Сайты без порта — одним правилом; сайты с

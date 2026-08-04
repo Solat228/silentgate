@@ -1186,10 +1186,17 @@ class AppState extends ChangeNotifier {
   String? _pendingRestart;
   String? get pendingRestart => _pendingRestart;
 
+  /// Чем именно вызван ожидающий перезапуск — для журнала, а не для экрана.
+  ///
+  /// На экране висит одна общая фраза «переподключитесь, чтобы применить»;
+  /// в журнал нужна конкретика, иначе перезапуск выглядит беспричинным.
+  String _pendingRestartDetail = '';
+
   /// Сообщить, что изменилась настройка, требующая переподключения.
-  void notePendingRestart(String reason) {
+  void notePendingRestart(String reason, {List<String> fields = const []}) {
     if (!_status.isConnected) return;
     _pendingRestart = reason;
+    if (fields.isNotEmpty) _pendingRestartDetail = fields.join(', ');
     notifyListeners();
   }
 
@@ -1201,7 +1208,17 @@ class AppState extends ChangeNotifier {
 
   /// Переподключиться: выключить и снова включить с текущими настройками.
   Future<void> reconnect(AppSettings settings) async {
+    // ⚠️ БЕЗ ЭТОЙ СТРОКИ ПЕРЕЗАПУСК НЕ ОСТАВЛЯЛ В ЖУРНАЛЕ НИЧЕГО.
+    //
+    // В логе владельца шесть перезапусков туннеля подряд шли без единого
+    // слова о причине: «Автопереподключение: <причина>» пишется только на пути
+    // восстановления после обрыва, а перезапуск по правке настроек идёт мимо
+    // него — сразу в connect(). Разобрать такой лог нельзя: обрыв связи и
+    // собственная правка пользователя выглядят одинаково.
+    AppLog.i('Перезапуск туннеля по команде пользователя'
+        '${_pendingRestartDetail.isEmpty ? '' : ' (изменено: $_pendingRestartDetail)'}');
     _pendingRestart = null;
+    _pendingRestartDetail = '';
     notifyListeners();
     await disconnect();
     await toggleConnection(settings);
@@ -1220,8 +1237,10 @@ class AppState extends ChangeNotifier {
   // ── Подключение ─────────────────────────────────────────────────────────────
   Future<void> toggleConnection(AppSettings settings) async {
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      AppLog.i('Отключение по команде пользователя');
       await _engine.disconnect();
     } else {
+      AppLog.i('Подключение по команде пользователя');
       final server = selectedServer;
       if (server == null) {
         _fail(AppErrorCode.pickServerFirst);
