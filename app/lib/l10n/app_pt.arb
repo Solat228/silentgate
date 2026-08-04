@@ -670,5 +670,24 @@
   "splitAppOverrideSitesSub": "Todo o tráfego do aplicativo segue esta regra mesmo se um site disser o contrário",
   "settingsMyRulesOverridePanel": "Minhas regras têm prioridade sobre as do painel",
   "settingsMyRulesOverridePanelSub": "O painel traz o próprio roteamento, normalmente «sites locais fora da VPN». Ele se aplica depois das suas regras, então um site marcado «Túnel» pode sair direto com seu IP real. Ligado: túnel significa túnel. Custo: sites locais dão a volta e ficam mais lentos.",
-  "commonOpen": "Abrir"
+  "commonOpen": "Abrir",
+  "tunRouteOnlySubnets": "No túnel APENAS estas sub-redes",
+  "infoTunRouteOnlyCidrs": "A única forma, no Windows, de tornar parte do tráfego realmente independente do cliente VPN.\n\nNormalmente o túnel assume a rota padrão, e TODO o tráfego da máquina entra nele: a marcação «Direto» é resolvida já dentro do núcleo, que recebe o pacote e o reenvia para fora em seu próprio nome. Esse tráfego vive exatamente enquanto o núcleo viver, e trava junto com ele.\n\nSe a lista não estiver vazia, a rota padrão não é entregue ao túnel: ele assume apenas as sub-redes listadas, e todo o resto o sistema envia pelo adaptador comum — o cliente não chega a ver esse tráfego.\n\nO preço: a divisão é feita por endereço, enquanto as regras de aplicativos e de sites casam por nome. Um site cujo endereço não esteja na lista fica invisível para qualquer regra. Deixe vazio para que o túnel funcione como de costume.",
+  "tunRouteOnlyWarning": "O túnel assume apenas as sub-redes listadas. As regras de aplicativos e de sites valem SOMENTE dentro delas: o que não entra no túnel nunca chega ao núcleo — não dá para bloquear nem redirecionar esse site.",
+  "tunAlsoSystemProxy": "Proxy do sistema junto com o túnel",
+  "infoTunAlsoSystemProxy": "Modo misto: o túnel e o proxy do sistema funcionam ao mesmo tempo.\n\nOs aplicativos que respeitam o proxy do sistema (navegadores, Telegram) seguem o caminho curto direto para a porta local, sem passar pela pilha em espaço de usuário do túnel, e entregam ao núcleo o nome do domínio em vez de um endereço puro — as regras de sites ficam mais precisas para eles e deixam de depender da análise do TLS.\n\nIsso NÃO os torna independentes do cliente: eles continuam passando pelo mesmo processo.",
+  "tunMixedModeWarning": "Uma conexão que chega pelo proxy do sistema não tem processo dono — para o núcleo, é uma conexão local. Por isso as regras de APLICATIVOS não valem para esses programas. As regras de sites funcionam, e até com mais precisão que o normal.",
+  "tunWatchdog": "Vigia de núcleo travado",
+  "infoTunWatchdog": "Por quantos segundos o núcleo do túnel pode ficar sem responder antes de ser considerado travado e o túnel ser derrubado.\n\nSe o núcleo cai, o Windows limpa tudo sozinho — o adaptador, as rotas e as regras de firewall são removidos e a rede volta. Se o núcleo trava, nada é removido: o adaptador permanece e engole todo o tráfego da máquina, inclusive o marcado como «Direto». De fora, isso é «a internet sumiu por completo», e não se resolve sozinho.\n\nO vigia só é armado após a primeira resposta bem-sucedida do núcleo: caso contrário, ele derrubaria a conexão sempre que a porta de serviço não conseguisse subir. 0 — não vigiar. Mínimo de 10 segundos.",
+  "tunWatchdogOff": "Desativado: um travamento do túnel não será detectado",
+  "tunWatchdogSubtitle": "Derrubar o túnel se o núcleo não responder por mais de {seconds} s",
+  "@tunWatchdogSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "tunDnsForAllWarning": "A resolução de nomes da máquina INTEIRA passará pelo túnel. Se o túnel travar, os nomes deixarão de ser resolvidos até para os aplicativos que vão direto e não precisam da VPN — de fora, isso parece uma perda total de internet.",
+  "tunCidrInvalid": "É necessário um endereço com prefixo, por exemplo 10.8.0.0/24"
 }

@@ -670,5 +670,24 @@
   "splitAppOverrideSitesSub": "Der gesamte App-Verkehr folgt dieser Regel, auch wenn eine Site-Regel anderes sagt",
   "settingsMyRulesOverridePanel": "Meine Regeln haben Vorrang vor Panel-Regeln",
   "settingsMyRulesOverridePanelSub": "Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.",
-  "commonOpen": "Öffnen"
+  "commonOpen": "Öffnen",
+  "tunRouteOnlySubnets": "NUR diese Subnetze in den Tunnel",
+  "infoTunRouteOnlyCidrs": "Der einzige Weg unter Windows, einen Teil des Verkehrs wirklich unabhängig vom VPN-Client zu machen.\n\nNormalerweise übernimmt der Tunnel die Standardroute, und der GESAMTE Verkehr des Rechners läuft hinein: Die Markierung „Direkt“ wird erst im Kern ausgewertet, der das Paket annimmt und unter eigenem Namen wieder nach draußen schickt. Solcher Verkehr lebt genau so lange wie der Kern und hängt mit ihm zusammen fest.\n\nIst die Liste nicht leer, bekommt der Tunnel die Standardroute nicht: Er übernimmt nur die aufgeführten Subnetze, alles Übrige schickt das System über den normalen Adapter — der Client sieht diesen Verkehr überhaupt nicht.\n\nDer Preis: Die Aufteilung erfolgt nach Adresse, App- und Website-Regeln greifen dagegen über den Namen. Eine Website, deren Adresse nicht in der Liste steht, sieht der Kern durch keine einzige Regel. Leer lassen, damit der Tunnel wie gewohnt arbeitet.",
+  "tunRouteOnlyWarning": "Der Tunnel übernimmt nur die aufgeführten Subnetze. App- und Website-Regeln gelten NUR innerhalb dieser Subnetze: Was nicht in den Tunnel gelangt, bekommt der Kern nie zu sehen — eine solche Website lässt sich weder blockieren noch umleiten.",
+  "tunAlsoSystemProxy": "Systemproxy zusätzlich zum Tunnel",
+  "infoTunAlsoSystemProxy": "Gemischter Modus: Tunnel und Systemproxy laufen gleichzeitig.\n\nApps, die den Systemproxy respektieren (Browser, Telegram), nehmen den kurzen Weg direkt zum lokalen Port, umgehen den Userspace-Stack des Tunnels und übergeben dem Kern den Domainnamen statt einer nackten Adresse — Website-Regeln greifen für sie genauer und hängen nicht mehr von der TLS-Auswertung ab.\n\nUnabhängig vom Client werden sie dadurch NICHT: Sie laufen weiterhin über denselben Prozess.",
+  "tunMixedModeWarning": "Eine Verbindung, die über den Systemproxy hereinkommt, hat keinen besitzenden Prozess — für den Kern ist sie eine lokale Verbindung. APP-Regeln greifen für solche Programme deshalb nicht. Website-Regeln funktionieren, sogar genauer als sonst.",
+  "tunWatchdog": "Wächter für hängenden Kern",
+  "infoTunWatchdog": "Wie viele Sekunden der Tunnel-Kern schweigen darf, bevor er als hängend gilt und der Tunnel abgebaut wird.\n\nStürzt der Kern ab, räumt Windows selbst auf — Adapter, Routen und Firewall-Regeln verschwinden, das Netzwerk kommt zurück. Hängt der Kern dagegen, wird nichts entfernt: Der Adapter bleibt bestehen und verschluckt den gesamten Verkehr des Rechners, auch den als „Direkt“ markierten. Von außen sieht das aus wie „das Internet ist komplett weg“, und von allein geht es nicht vorbei.\n\nDer Wächter wird erst nach der ersten erfolgreichen Antwort des Kerns scharf: Sonst würde er die Verbindung auch dort beenden, wo sich lediglich der Dienstport nicht öffnen ließ. 0 — nicht überwachen. Mindestens 10 Sekunden.",
+  "tunWatchdogOff": "Aus: Ein hängender Tunnel wird nicht erkannt",
+  "tunWatchdogSubtitle": "Tunnel abbauen, wenn der Kern länger als {seconds} s schweigt",
+  "@tunWatchdogSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "tunDnsForAllWarning": "Die Namensauflösung des GESAMTEN Rechners läuft über den Tunnel. Bleibt der Tunnel stehen, werden Namen auch für Apps nicht mehr aufgelöst, die direkt gehen und gar kein VPN brauchen — von außen wirkt das wie ein kompletter Internetausfall.",
+  "tunCidrInvalid": "Adresse mit Präfix erforderlich, z. B. 10.8.0.0/24"
 }

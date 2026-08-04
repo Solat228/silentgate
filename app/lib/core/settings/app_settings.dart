@@ -176,6 +176,54 @@ class AppSettings {
   /// Дополнительные подсети мимо VPN (CIDR).
   final List<String> tunExcludeCidrs;
 
+  /// «В туннель идут ТОЛЬКО эти подсети» — список CIDR. Пусто = обычный режим.
+  ///
+  /// ⚠️ ЭТО ЕДИНСТВЕННЫЙ СПОСОБ НА WINDOWS СДЕЛАТЬ ТРАФИК НЕЗАВИСИМЫМ ОТ КЛИЕНТА.
+  ///
+  /// Обычно `auto_route` вешает на туннель маршрут `0.0.0.0/0` и метрику 0, то
+  /// есть В ТУННЕЛЬ ЗАХОДИТ ВСЁ. Пометка «Прямо» разбирается уже ВНУТРИ ядра:
+  /// оно принимает пакет своим стеком и открывает наружу новый сокет от своего
+  /// имени. Наружу такой трафик выходит под реальным адресом — но живёт ровно
+  /// столько, сколько живёт процесс ядра, и зависает вместе с ним.
+  ///
+  /// Здесь маршрут по умолчанию туннелю НЕ отдаётся: он забирает только
+  /// перечисленные подсети (`route_address`), остальное система отправляет
+  /// физическим адаптером, и клиент этого трафика не видит вовсе.
+  ///
+  /// ⚠️ ЦЕНА, О КОТОРОЙ ОБЯЗАНО ЗНАТЬ И ПРИЛОЖЕНИЕ, И ПОЛЬЗОВАТЕЛЬ: деление
+  /// идёт ПО АДРЕСУ, а правила по приложениям и сайтам — по имени. Сайт, чей IP
+  /// не попал в список, ядро не увидит НИ ОДНИМ правилом: он туда не заходит.
+  /// Это ровно та же ловушка, что `exclude_package` на Android (см. CLAUDE.md).
+  ///
+  /// Аналога «исключить программу» на Windows у sing-box нет: поля
+  /// `exclude_process_name`/`exclude_process_path` не существуют, а
+  /// `exclude_package`/`exclude_uid`/`include_interface` ядро на Windows
+  /// ПРИНИМАЕТ МОЛЧА (`check` даёт exit 0) и не применяет — проверено запуском
+  /// настоящего sing-box 1.11.15. Не принимать их за рабочий рычаг.
+  final List<String> tunRouteOnlyCidrs;
+
+  /// Прописывать системный прокси ДОПОЛНИТЕЛЬНО к туннелю (гибрид как в Happ).
+  ///
+  /// Прокси-aware приложения (браузеры, Telegram) пойдут коротким путём на
+  /// `127.0.0.1:<http>`, минуя пользовательский стек туннеля.
+  ///
+  /// ⚠️ НЕ ДЕЛАЕТ ИХ НЕЗАВИСИМЫМИ ОТ ЯДРА: они ходят через тот же процесс, и
+  /// при его смерти теряют сеть так же. Единственное, что даёт независимость, —
+  /// [tunRouteOnlyCidrs].
+  final bool alsoSetSystemProxy;
+
+  /// Сколько секунд ядру можно не отвечать, прежде чем считать его зависшим.
+  /// 0 — не следить.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ НУЖНО. При ПАДЕНИИ ядра Windows убирает за ним сама:
+  /// WFP-сессия динамическая, адаптер заведён через `SwDeviceCreate` — фильтры,
+  /// маршруты и адаптер снимаются автоматически, сеть возвращается. А при
+  /// ЗАВИСАНИИ не снимается ничего: адаптер с метрикой 0 и маршрутом
+  /// `0.0.0.0/0` остаётся на месте и глотает весь трафик машины, включая
+  /// помеченный «Прямо». Снаружи это «интернет пропал совсем», и сам по себе он
+  /// не возвращается никогда.
+  final int tunWatchdogSeconds;
+
   // ── TUN: DNS ──────────────────────────────────────────────────────────────
   final DnsMode dnsMode;
   final String dnsCustomServer;
@@ -361,6 +409,9 @@ class AppSettings {
     this.tunEndpointIndependentNat = true,
     this.tunBypassLan = true,
     this.tunExcludeCidrs = const [],
+    this.tunRouteOnlyCidrs = const [],
+    this.alsoSetSystemProxy = false,
+    this.tunWatchdogSeconds = 20,
     this.dnsMode = DnsMode.vpn,
     this.dnsCustomServer = '1.1.1.1',
     this.dnsHijack = true,
@@ -424,6 +475,9 @@ class AppSettings {
     bool? tunEndpointIndependentNat,
     bool? tunBypassLan,
     List<String>? tunExcludeCidrs,
+    List<String>? tunRouteOnlyCidrs,
+    bool? alsoSetSystemProxy,
+    int? tunWatchdogSeconds,
     DnsMode? dnsMode,
     String? dnsCustomServer,
     bool? dnsHijack,
@@ -477,6 +531,9 @@ class AppSettings {
           tunEndpointIndependentNat ?? this.tunEndpointIndependentNat,
       tunBypassLan: tunBypassLan ?? this.tunBypassLan,
       tunExcludeCidrs: tunExcludeCidrs ?? this.tunExcludeCidrs,
+      tunRouteOnlyCidrs: tunRouteOnlyCidrs ?? this.tunRouteOnlyCidrs,
+      alsoSetSystemProxy: alsoSetSystemProxy ?? this.alsoSetSystemProxy,
+      tunWatchdogSeconds: tunWatchdogSeconds ?? this.tunWatchdogSeconds,
       dnsMode: dnsMode ?? this.dnsMode,
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
       dnsHijack: dnsHijack ?? this.dnsHijack,
@@ -532,6 +589,9 @@ class AppSettings {
         'tunEndpointIndependentNat': tunEndpointIndependentNat,
         'tunBypassLan': tunBypassLan,
         'tunExcludeCidrs': tunExcludeCidrs,
+        'tunRouteOnlyCidrs': tunRouteOnlyCidrs,
+        'alsoSetSystemProxy': alsoSetSystemProxy,
+        'tunWatchdogSeconds': tunWatchdogSeconds,
         'dnsMode': dnsMode.name,
         'dnsCustomServer': dnsCustomServer,
         'dnsHijack': dnsHijack,
@@ -601,6 +661,12 @@ class AppSettings {
       tunBypassLan: j['tunBypassLan'] as bool? ?? true,
       tunExcludeCidrs:
           ((j['tunExcludeCidrs'] as List?)?.cast<String>()) ?? const [],
+      tunRouteOnlyCidrs:
+          ((j['tunRouteOnlyCidrs'] as List?)?.cast<String>()) ?? const [],
+      alsoSetSystemProxy:
+          j['alsoSetSystemProxy'] as bool? ?? defaults.alsoSetSystemProxy,
+      tunWatchdogSeconds:
+          (j['tunWatchdogSeconds'] as num?)?.toInt() ?? defaults.tunWatchdogSeconds,
       dnsMode: pick(DnsMode.values, j['dnsMode'], DnsMode.vpn),
       dnsCustomServer: j['dnsCustomServer'] as String? ?? '1.1.1.1',
       dnsHijack: j['dnsHijack'] as bool? ?? true,
@@ -707,6 +773,12 @@ class AppSettings {
     diff('обход LAN', tunBypassLan, other.tunBypassLan);
     diff('исключённые подсети', tunExcludeCidrs.join(','),
         other.tunExcludeCidrs.join(','));
+    diff('в туннель только перечисленные подсети', tunRouteOnlyCidrs.join(','),
+        other.tunRouteOnlyCidrs.join(','));
+    // Захват трафика ставится один раз при подъёме, поэтому включение прокси
+    // поверх туннеля «на живую» не сработало бы молча.
+    diff('системный прокси вместе с туннелем', alsoSetSystemProxy,
+        other.alsoSetSystemProxy);
     diff('режим DNS', dnsMode, other.dnsMode);
     diff('свой DNS-сервер', dnsCustomServer, other.dnsCustomServer);
     diff('перехват DNS', dnsHijack, other.dnsHijack);

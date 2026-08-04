@@ -3623,6 +3623,78 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Открыть'**
   String get commonOpen;
+
+  /// No description provided for @tunRouteOnlySubnets.
+  ///
+  /// In ru, this message translates to:
+  /// **'В туннель ТОЛЬКО эти подсети'**
+  String get tunRouteOnlySubnets;
+
+  /// No description provided for @infoTunRouteOnlyCidrs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Единственный способ на Windows сделать часть трафика по-настоящему независимой от VPN-клиента.\n\nОбычно туннель забирает маршрут по умолчанию, и в него заходит ВЕСЬ трафик машины: пометка «Прямо» разбирается уже внутри ядра, которое принимает пакет и выпускает его наружу от своего имени. Такой трафик живёт ровно столько, сколько живёт ядро, и зависает вместе с ним.\n\nЕсли список не пуст, маршрут по умолчанию туннелю не отдаётся: он забирает только перечисленные подсети, а всё прочее система отправляет обычным адаптером — клиент этого трафика не видит вовсе.\n\nЦена: деление идёт по адресу, а правила по приложениям и сайтам — по имени. Сайт, чей адрес не попал в список, ядро не увидит ни одним правилом. Оставьте пусто, чтобы туннель работал как обычно.'**
+  String get infoTunRouteOnlyCidrs;
+
+  /// No description provided for @tunRouteOnlyWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Туннель забирает только перечисленные подсети. Правила по приложениям и сайтам действуют ТОЛЬКО внутри них: то, что в туннель не зашло, ядру не показали — заблокировать или увести такой сайт нельзя.'**
+  String get tunRouteOnlyWarning;
+
+  /// No description provided for @tunAlsoSystemProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системный прокси вместе с туннелем'**
+  String get tunAlsoSystemProxy;
+
+  /// No description provided for @infoTunAlsoSystemProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Смешанный режим: работает и туннель, и системный прокси одновременно.\n\nПриложения, которые уважают системный прокси (браузеры, Telegram), пойдут коротким путём прямо в локальный порт, минуя пользовательский стек туннеля, и отдадут ядру имя домена вместо голого адреса — правила по сайтам для них станут точнее и перестанут зависеть от разбора TLS.\n\nНезависимыми от клиента они при этом НЕ становятся: ходят через тот же процесс.'**
+  String get infoTunAlsoSystemProxy;
+
+  /// No description provided for @tunMixedModeWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'У соединения, пришедшего через системный прокси, нет процесса-владельца — для ядра это локальное подключение. Поэтому правила ПО ПРИЛОЖЕНИЯМ для таких программ не срабатывают. Правила по сайтам работают, и даже точнее обычного.'**
+  String get tunMixedModeWarning;
+
+  /// No description provided for @tunWatchdog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сторож зависшего ядра'**
+  String get tunWatchdog;
+
+  /// No description provided for @infoTunWatchdog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сколько секунд ядру туннеля можно не отвечать, прежде чем считать его зависшим и снять туннель.\n\nЕсли ядро падает, Windows убирает за ним сама — адаптер, маршруты и правила брандмауэра снимаются, сеть возвращается. Если ядро зависает, не снимается ничего: адаптер остаётся и глотает весь трафик машины, включая помеченный «Прямо». Снаружи это «интернет пропал совсем», и само оно не проходит.\n\nСторож вооружается только после первого успешного ответа ядра: иначе он убивал бы подключение там, где не удалось поднять служебный порт. 0 — не следить. Минимум 10 секунд.'**
+  String get infoTunWatchdog;
+
+  /// No description provided for @tunWatchdogOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключен: зависание туннеля отслеживаться не будет'**
+  String get tunWatchdogOff;
+
+  /// No description provided for @tunWatchdogSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снять туннель, если ядро молчит дольше {seconds} с'**
+  String tunWatchdogSubtitle(int seconds);
+
+  /// No description provided for @tunDnsForAllWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Резолв имён ВСЕЙ машины пойдёт через туннель. Если туннель встанет, имена перестанут определяться даже у приложений, которые идут напрямую и в VPN не нуждаются, — со стороны это выглядит как полная потеря интернета.'**
+  String get tunDnsForAllWarning;
+
+  /// No description provided for @tunCidrInvalid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужен адрес с префиксом, например 10.8.0.0/24'**
+  String get tunCidrInvalid;
 }
 
 class _AppLocalizationsDelegate

@@ -2024,4 +2024,50 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get commonOpen => 'Abrir';
+
+  @override
+  String get tunRouteOnlySubnets => 'Al túnel SOLO estas subredes';
+
+  @override
+  String get infoTunRouteOnlyCidrs =>
+      'La única forma en Windows de hacer que una parte del tráfico sea de verdad independiente del cliente VPN.\n\nNormalmente el túnel se queda con la ruta predeterminada y por él entra TODO el tráfico de la máquina: la marca «Directo» se resuelve ya dentro del núcleo, que recibe el paquete y lo saca a la red en su propio nombre. Ese tráfico vive exactamente lo que vive el núcleo y se cuelga junto con él.\n\nSi la lista no está vacía, la ruta predeterminada no se le entrega al túnel: este se queda solo con las subredes indicadas y todo lo demás lo envía el sistema por el adaptador normal — la aplicación no ve ese tráfico en absoluto.\n\nEl precio: la división se hace por dirección, mientras que las reglas de aplicaciones y sitios coinciden por nombre. Un sitio cuya dirección no esté en la lista no lo verá el núcleo con ninguna regla. Déjalo vacío para que el túnel funcione como siempre.';
+
+  @override
+  String get tunRouteOnlyWarning =>
+      'El túnel se queda solo con las subredes indicadas. Las reglas de aplicaciones y sitios actúan SOLO dentro de ellas: lo que no entra en el túnel nunca llega al núcleo, así que un sitio así no se puede bloquear ni redirigir.';
+
+  @override
+  String get tunAlsoSystemProxy => 'Proxy del sistema junto con el túnel';
+
+  @override
+  String get infoTunAlsoSystemProxy =>
+      'Modo mixto: funcionan a la vez el túnel y el proxy del sistema.\n\nLas aplicaciones que respetan el proxy del sistema (navegadores, Telegram) tomarán el camino corto directamente al puerto local, sin pasar por la pila en espacio de usuario del túnel, y le darán al núcleo el nombre del dominio en lugar de una dirección a secas — las reglas de sitios serán más precisas para ellas y dejarán de depender del análisis del TLS.\n\nEso NO las hace independientes de la aplicación: siguen pasando por el mismo proceso.';
+
+  @override
+  String get tunMixedModeWarning =>
+      'Una conexión que llega por el proxy del sistema no tiene proceso propietario — para el núcleo es una conexión local. Por eso las reglas POR APLICACIÓN no se aplican a esos programas. Las reglas de sitios sí funcionan, e incluso con más precisión de lo habitual.';
+
+  @override
+  String get tunWatchdog => 'Vigilante de núcleo colgado';
+
+  @override
+  String get infoTunWatchdog =>
+      'Cuántos segundos puede el núcleo del túnel quedarse sin responder antes de darlo por colgado y desmontar el túnel.\n\nSi el núcleo se cae, Windows limpia por sí mismo — se retiran el adaptador, las rutas y las reglas del firewall, y la red vuelve. Si el núcleo se cuelga, no se retira nada: el adaptador sigue levantado y se traga todo el tráfico de la máquina, incluido el marcado como «Directo». Desde fuera esto es «internet ha desaparecido del todo», y no se arregla solo.\n\nEl vigilante se arma únicamente tras la primera respuesta correcta del núcleo: de lo contrario cortaría la conexión también cuando lo que falló fue abrir el puerto de servicio. 0 — no vigilar. Mínimo 10 segundos.';
+
+  @override
+  String get tunWatchdogOff =>
+      'Desactivado: no se detectará si el túnel se cuelga';
+
+  @override
+  String tunWatchdogSubtitle(int seconds) {
+    return 'Desmontar el túnel si el núcleo calla más de $seconds s';
+  }
+
+  @override
+  String get tunDnsForAllWarning =>
+      'La resolución de nombres de TODA la máquina pasará por el túnel. Si el túnel se detiene, los nombres dejarán de resolverse incluso para las aplicaciones que van directamente y no necesitan la VPN — desde fuera parece una pérdida total de internet.';
+
+  @override
+  String get tunCidrInvalid =>
+      'Hace falta una dirección con prefijo, p. ej. 10.8.0.0/24';
 }

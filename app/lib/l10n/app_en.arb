@@ -731,5 +731,24 @@
   "splitAppOverrideSitesSub": "All app traffic follows this rule even if a site rule says otherwise",
   "settingsMyRulesOverridePanel": "My rules take priority over panel rules",
   "settingsMyRulesOverridePanelSub": "The panel ships its own routing — usually “local sites bypass the VPN”. It applies after your rules, so a site you marked “Tunnel” may still exit directly under your real IP. On: tunnel means tunnel. Cost: local sites take the long way and get slower.",
-  "commonOpen": "Open"
+  "commonOpen": "Open",
+  "tunRouteOnlySubnets": "Tunnel ONLY these subnets",
+  "infoTunRouteOnlyCidrs": "The only way on Windows to make part of your traffic genuinely independent of the VPN client.\n\nNormally the tunnel takes the default route, so ALL traffic on the machine enters it: a «Direct» rule is applied inside the core, which accepts the packet and re-sends it under its own name. That traffic lives exactly as long as the core does, and hangs together with it.\n\nWhen this list is not empty, the tunnel does not get the default route: it claims only the listed subnets, and the system sends everything else through the normal adapter — the client never sees it.\n\nThe price: the split is by address, while app and site rules match by name. A site whose address is not in the list is invisible to every rule. Leave empty for the usual behaviour.",
+  "tunRouteOnlyWarning": "The tunnel claims only the listed subnets. App and site rules apply ONLY inside them: whatever does not enter the tunnel is never shown to the core, so it cannot be blocked or redirected.",
+  "tunAlsoSystemProxy": "System proxy alongside the tunnel",
+  "infoTunAlsoSystemProxy": "Mixed mode: the tunnel and the system proxy both run at once.\n\nApps that honour the system proxy (browsers, Telegram) take the short path straight to the local port, bypassing the tunnel's user-space stack, and hand the core a domain name instead of a bare address — site rules become more precise and stop depending on TLS sniffing.\n\nThey do NOT become independent of the client: they still go through the same process.",
+  "tunMixedModeWarning": "A connection arriving through the system proxy has no owning process — to the core it is a local connection. APP rules therefore do not match for such programs. Site rules do work, and more precisely than usual.",
+  "tunWatchdog": "Hung-core watchdog",
+  "infoTunWatchdog": "How many seconds the tunnel core may stay silent before it is treated as hung and the tunnel is torn down.\n\nIf the core crashes, Windows cleans up by itself — the adapter, routes and firewall rules are removed and the network comes back. If the core hangs, nothing is removed: the adapter stays and swallows all traffic on the machine, including traffic marked «Direct». From the outside this is «the internet is gone», and it never recovers on its own.\n\nThe watchdog arms itself only after the core's first successful reply: otherwise it would kill the connection wherever the service port failed to open. 0 disables it. Minimum 10 seconds.",
+  "tunWatchdogOff": "Off: a hung tunnel will not be detected",
+  "tunWatchdogSubtitle": "Tear down the tunnel if the core is silent for over {seconds}s",
+  "@tunWatchdogSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "tunDnsForAllWarning": "Name resolution for the WHOLE machine will go through the tunnel. If the tunnel stalls, names stop resolving even for apps that go direct and do not need the VPN — which looks like a total loss of internet.",
+  "tunCidrInvalid": "Needs an address with a prefix, e.g. 10.8.0.0/24"
 }

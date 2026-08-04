@@ -28,6 +28,10 @@ class TunOptions {
   final bool bypassLan;
   final List<String> excludeCidrs;
 
+  /// Режим «в туннель идут ТОЛЬКО эти подсети» (`route_address`).
+  /// Пусто = обычный захват с маршрутом по умолчанию.
+  final List<String> routeOnlyCidrs;
+
   final DnsMode dnsMode;
   final String dnsServer;
   final bool dnsHijack;
@@ -154,6 +158,7 @@ class TunOptions {
     this.endpointIndependentNat = true,
     this.bypassLan = true,
     this.excludeCidrs = const [],
+    this.routeOnlyCidrs = const [],
     this.dnsMode = DnsMode.vpn,
     this.dnsServer = '1.1.1.1',
     this.dnsHijack = true,
@@ -217,6 +222,7 @@ class TunOptions {
       endpointIndependentNat: s.tunEndpointIndependentNat,
       bypassLan: s.tunBypassLan,
       excludeCidrs: s.tunExcludeCidrs,
+      routeOnlyCidrs: s.tunRouteOnlyCidrs,
       dnsMode: s.dnsMode,
       dnsServer: s.dnsMode == DnsMode.custom ? s.dnsCustomServer : '1.1.1.1',
       dnsHijack: s.dnsHijack,
@@ -252,6 +258,7 @@ class TunOptions {
         endpointIndependentNat: endpointIndependentNat,
         bypassLan: bypassLan,
         excludeCidrs: excludeCidrs,
+        routeOnlyCidrs: routeOnlyCidrs,
         dnsMode: dnsMode,
         dnsServer: dnsServer,
         dnsHijack: dnsHijack,
@@ -290,6 +297,7 @@ class TunOptions {
         endpointIndependentNat: endpointIndependentNat,
         bypassLan: bypassLan,
         excludeCidrs: excludeCidrs,
+        routeOnlyCidrs: routeOnlyCidrs,
         dnsMode: dnsMode,
         dnsServer: dnsServer,
         dnsHijack: dnsHijack,
@@ -905,6 +913,16 @@ class SingboxConfigBuilder {
   List<String> get _validExcludeCidrs =>
       options.excludeCidrs.where(_isValidCidr).toList();
 
+  /// Подсети режима «в туннель только эти» — с той же защитой от битой записи.
+  ///
+  /// ⚠️ Отбрасывать молча тут ОПАСНЕЕ, чем в исключениях: если единственная
+  /// подсеть окажется битой, список станет пустым и туннель тихо вернётся к
+  /// «захватываю всё» — то есть настройка перевернётся в противоположность.
+  /// Поэтому UI обязан проверять ввод, а движок — писать в лог, что отбросил
+  /// (см. `SingboxRouterWindows`).
+  List<String> get _validRouteOnlyCidrs =>
+      options.routeOnlyCidrs.where(_isValidCidr).toList();
+
   /// Проверка «ip/префикс»: IPv4 (0..32) или IPv6 (0..128), адрес разбирается.
   static bool _isValidCidr(String cidr) {
     final parts = cidr.trim().split('/');
@@ -1438,6 +1456,20 @@ class SingboxConfigBuilder {
         ],
         'mtu': o.mtu,
         'endpoint_independent_nat': o.endpointIndependentNat,
+        // ⚠️ РЕЖИМ «В ТУННЕЛЬ ТОЛЬКО ЭТИ ПОДСЕТИ» — здесь и больше нигде.
+        //
+        // Обычно `auto_route` вешает на туннель `0.0.0.0/0` с метрикой 0, и в
+        // него заходит ВЕСЬ трафик машины; «Прямо» разбирается уже внутри ядра.
+        // С непустым `route_address` маршрута по умолчанию туннель не получает
+        // вовсе: система сама отправляет всё прочее физическим адаптером, а
+        // ядро этого трафика не видит и не может ему помешать — в том числе
+        // когда зависло.
+        //
+        // ⚠️ Правила по приложениям и сайтам в этом режиме действуют ТОЛЬКО
+        // для адресов из списка: то, что в туннель не зашло, ядру не показали.
+        // Обещать «блок сайта» здесь нельзя, если его адрес вне подсетей.
+        if (_validRouteOnlyCidrs.isNotEmpty)
+          'route_address': _validRouteOnlyCidrs,
         if (_validExcludeCidrs.isNotEmpty)
           'route_exclude_address': _validExcludeCidrs,
         // Разведение приложений на Android идёт пакетами, а не процессами.

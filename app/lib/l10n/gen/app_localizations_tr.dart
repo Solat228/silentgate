@@ -2011,4 +2011,48 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get commonOpen => 'Aç';
+
+  @override
+  String get tunRouteOnlySubnets => 'Tünele YALNIZCA bu alt ağlar';
+
+  @override
+  String get infoTunRouteOnlyCidrs =>
+      'Windows\'ta trafiğinizin bir bölümünü VPN istemcisinden gerçekten bağımsız kılmanın tek yolu.\n\nNormalde tünel varsayılan rotayı üstlenir ve makinenin TÜM trafiği içine girer: «Doğrudan» işareti çekirdeğin içinde ele alınır — paketi çekirdek alır ve dışarıya kendi adına gönderir. Bu trafik tam olarak çekirdek yaşadığı sürece yaşar ve çekirdekle birlikte takılıp kalır.\n\nListe boş değilse varsayılan rota tünele verilmez: tünel yalnızca listelenen alt ağları üstlenir, geri kalan her şeyi sistem sıradan bağdaştırıcı üzerinden gönderir — istemci bu trafiği hiç görmez.\n\nBedeli: bölme adrese göre yapılır, uygulama ve site kuralları ise ada göre eşleşir. Adresi listeye girmeyen bir siteyi çekirdek hiçbir kuralla göremez. Tünelin her zamanki gibi çalışması için boş bırakın.';
+
+  @override
+  String get tunRouteOnlyWarning =>
+      'Tünel yalnızca listelenen alt ağları üstlenir. Uygulama ve site kuralları YALNIZCA bunların içinde geçerlidir: tünele girmeyen trafik çekirdeğe hiç gösterilmez — böyle bir siteyi engellemek ya da başka yöne çevirmek mümkün değildir.';
+
+  @override
+  String get tunAlsoSystemProxy => 'Tünelle birlikte sistem proxy\'si';
+
+  @override
+  String get infoTunAlsoSystemProxy =>
+      'Karma mod: tünel ve sistem proxy\'si aynı anda çalışır.\n\nSistem proxy\'sini dikkate alan uygulamalar (tarayıcılar, Telegram) kısa yoldan doğrudan yerel bağlantı noktasına gider, tünelin kullanıcı alanı yığınını atlar ve çekirdeğe çıplak adres yerine alan adını verir — bu uygulamalar için site kuralları daha kesin çalışır ve TLS çözümlemesine bağlı olmaktan çıkar.\n\nAncak bu, onları istemciden bağımsız YAPMAZ: yine aynı süreç üzerinden geçerler.';
+
+  @override
+  String get tunMixedModeWarning =>
+      'Sistem proxy\'si üzerinden gelen bir bağlantının sahibi süreç yoktur — çekirdek için bu, yerel bir bağlantıdır. Bu yüzden böyle programlarda UYGULAMA kuralları çalışmaz. Site kuralları çalışır, hatta her zamankinden daha kesin.';
+
+  @override
+  String get tunWatchdog => 'Takılan çekirdek bekçisi';
+
+  @override
+  String get infoTunWatchdog =>
+      'Tünel çekirdeğinin, takılmış sayılıp tünelin kaldırılmasına kadar kaç saniye yanıtsız kalabileceği.\n\nÇekirdek çökerse Windows arkasını kendisi toplar — bağdaştırıcı, rotalar ve güvenlik duvarı kuralları kaldırılır, ağ geri gelir. Çekirdek takılırsa hiçbir şey kaldırılmaz: bağdaştırıcı yerinde kalır ve «Doğrudan» işaretliler dâhil makinenin tüm trafiğini yutar. Dışarıdan bu «internet tamamen gitti» gibi görünür ve kendiliğinden düzelmez.\n\nBekçi ancak çekirdekten ilk başarılı yanıt geldikten sonra devreye girer: aksi hâlde hizmet bağlantı noktasının açılamadığı durumlarda bağlantıyı öldürürdü. 0 — izleme yok. En az 10 saniye.';
+
+  @override
+  String get tunWatchdogOff => 'Kapalı: tünelin takılması izlenmeyecek';
+
+  @override
+  String tunWatchdogSubtitle(int seconds) {
+    return 'Çekirdek $seconds sn\'den uzun susarsa tüneli kaldır';
+  }
+
+  @override
+  String get tunDnsForAllWarning =>
+      'TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN\'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur — dışarıdan bu, internetin tamamen kesilmesi gibi görünür.';
+
+  @override
+  String get tunCidrInvalid => 'Ön ekli bir adres gerekir, örn. 10.8.0.0/24';
 }

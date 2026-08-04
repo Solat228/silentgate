@@ -1949,4 +1949,48 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonOpen => '打开';
+
+  @override
+  String get tunRouteOnlySubnets => '仅这些子网走隧道';
+
+  @override
+  String get infoTunRouteOnlyCidrs =>
+      '在 Windows 上，这是让一部分流量真正独立于 VPN 客户端的唯一办法。\n\n通常隧道会接管默认路由，本机的全部流量都会进入隧道：“直连”标记是在核心内部才处理的——核心先收下数据包，再以自己的名义把它发出去。这类流量的寿命完全取决于核心，核心卡死，它也跟着卡死。\n\n只要列表不为空，隧道就拿不到默认路由：它只接管列出的子网，其余流量由系统经普通适配器发出——客户端根本看不到这部分流量。\n\n代价：这里的划分按地址进行，而应用规则和网站规则按名称匹配。若某个网站的地址不在列表中，核心便看不到它，任何规则都对它无效。留空即为隧道的常规工作方式。';
+
+  @override
+  String get tunRouteOnlyWarning =>
+      '隧道只接管列出的子网。应用规则和网站规则仅在这些子网内生效：没有进入隧道的流量不会送到核心面前——这样的网站既无法阻止，也无法改变其去向。';
+
+  @override
+  String get tunAlsoSystemProxy => '系统代理与隧道并用';
+
+  @override
+  String get infoTunAlsoSystemProxy =>
+      '混合模式：隧道和系统代理同时工作。\n\n尊重系统代理的应用（浏览器、Telegram）会走捷径直接连到本地端口，绕过隧道的用户态栈，并把域名而不是裸地址交给核心——对它们而言，网站规则会更准确，也不再依赖对 TLS 的解析。\n\n但它们并不会因此独立于客户端：走的仍是同一个进程。';
+
+  @override
+  String get tunMixedModeWarning =>
+      '经系统代理进来的连接没有归属进程——在核心看来这是一个本地连接。因此对这些程序来说，应用规则不会生效。网站规则照常工作，而且比平时更准确。';
+
+  @override
+  String get tunWatchdog => '核心卡死看门狗';
+
+  @override
+  String get infoTunWatchdog =>
+      '允许隧道核心保持无响应的秒数，超过后即视为卡死并关闭隧道。\n\n如果核心崩溃，Windows 会自行善后——适配器、路由和防火墙规则都会被撤下，网络随之恢复。但如果核心只是卡死，则什么都不会被撤下：适配器仍在，并吞掉本机的全部流量，连标记为“直连”的也不例外。在用户看来这就是“完全断网”，而且不会自行恢复。\n\n看门狗只在核心第一次成功应答之后才启用：否则，凡是服务端口没能启动的场合，它都会直接掐断连接。0 表示不监控。最小 10 秒。';
+
+  @override
+  String get tunWatchdogOff => '已关闭：不会检测隧道卡死';
+
+  @override
+  String tunWatchdogSubtitle(int seconds) {
+    return '若核心无响应超过 $seconds 秒则关闭隧道';
+  }
+
+  @override
+  String get tunDnsForAllWarning =>
+      '本机的全部域名解析都将经过隧道。一旦隧道卡住，即使是直连、根本不需要 VPN 的应用也无法解析域名——在用户看来就是彻底断网。';
+
+  @override
+  String get tunCidrInvalid => '需要带前缀的地址，例如 10.8.0.0/24';
 }

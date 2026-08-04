@@ -2026,4 +2026,51 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get commonOpen => 'Ouvrir';
+
+  @override
+  String get tunRouteOnlySubnets =>
+      'UNIQUEMENT ces sous-réseaux dans le tunnel';
+
+  @override
+  String get infoTunRouteOnlyCidrs =>
+      'Le seul moyen, sous Windows, de rendre une partie du trafic réellement indépendante du client VPN.\n\nNormalement, le tunnel s\'empare de la route par défaut et TOUT le trafic de la machine y entre : la marque « Direct » est traitée à l\'intérieur du cœur, qui reçoit le paquet et le renvoie vers l\'extérieur en son propre nom. Ce trafic ne vit que tant que le cœur vit, et se fige en même temps que lui.\n\nSi la liste n\'est pas vide, la route par défaut n\'est pas donnée au tunnel : il ne prend que les sous-réseaux indiqués, et le système envoie tout le reste par l\'adaptateur habituel — le client ne voit pas du tout ce trafic.\n\nLe prix à payer : le partage se fait par adresse, alors que les règles d\'applications et de sites fonctionnent par nom. Un site dont l\'adresse n\'est pas dans la liste reste invisible pour toutes les règles. Laissez vide pour que le tunnel fonctionne comme d\'habitude.';
+
+  @override
+  String get tunRouteOnlyWarning =>
+      'Le tunnel ne prend que les sous-réseaux indiqués. Les règles d\'applications et de sites n\'agissent QUE dans ces sous-réseaux : ce qui n\'entre pas dans le tunnel n\'est jamais montré au cœur — impossible de bloquer ou de rediriger un tel site.';
+
+  @override
+  String get tunAlsoSystemProxy => 'Proxy système en plus du tunnel';
+
+  @override
+  String get infoTunAlsoSystemProxy =>
+      'Mode mixte : le tunnel et le proxy système fonctionnent en même temps.\n\nLes applications qui respectent le proxy système (navigateurs, Telegram) prennent le chemin court directement vers le port local, sans passer par la pile en espace utilisateur du tunnel, et transmettent au cœur un nom de domaine au lieu d\'une simple adresse — les règles de sites deviennent plus précises pour elles et cessent de dépendre de l\'analyse TLS.\n\nElles ne deviennent PAS pour autant indépendantes du client : elles passent toujours par le même processus.';
+
+  @override
+  String get tunMixedModeWarning =>
+      'Une connexion arrivée par le proxy système n\'a pas de processus propriétaire — pour le cœur, c\'est une connexion locale. Les règles D\'APPLICATIONS ne s\'appliquent donc pas à ces programmes. Les règles de sites, elles, fonctionnent, et même plus précisément que d\'habitude.';
+
+  @override
+  String get tunWatchdog => 'Surveillance du cœur bloqué';
+
+  @override
+  String get infoTunWatchdog =>
+      'Pendant combien de secondes le cœur du tunnel peut rester silencieux avant d\'être considéré comme bloqué et le tunnel coupé.\n\nSi le cœur plante, Windows fait le ménage lui-même — l\'adaptateur, les routes et les règles du pare-feu sont retirés, le réseau revient. Si le cœur se fige, rien n\'est retiré : l\'adaptateur reste en place et avale tout le trafic de la machine, y compris celui marqué « Direct ». Vu de l\'extérieur, c\'est « il n\'y a plus du tout d\'Internet », et cela ne se rétablit jamais tout seul.\n\nLa surveillance ne s\'arme qu\'après la première réponse réussie du cœur : sinon elle couperait la connexion partout où le port de service n\'a pas pu s\'ouvrir. 0 — ne pas surveiller. Minimum 10 secondes.';
+
+  @override
+  String get tunWatchdogOff =>
+      'Désactivée : un tunnel bloqué ne sera pas détecté';
+
+  @override
+  String tunWatchdogSubtitle(int seconds) {
+    return 'Couper le tunnel si le cœur reste silencieux plus de $seconds s';
+  }
+
+  @override
+  String get tunDnsForAllWarning =>
+      'La résolution des noms de TOUTE la machine passera par le tunnel. Si le tunnel se fige, les noms cessent d\'être résolus même pour les applications qui passent en direct et n\'ont pas besoin du VPN — vu de l\'extérieur, cela ressemble à une perte totale d\'Internet.';
+
+  @override
+  String get tunCidrInvalid =>
+      'Il faut une adresse avec un préfixe, par ex. 10.8.0.0/24';
 }

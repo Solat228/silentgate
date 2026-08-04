@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+import 'dart:io' show InternetAddress, InternetAddressType, Platform;
 
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
@@ -11,6 +11,7 @@ import '../core/platform/platform_services.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
 import 'widgets/info_tooltip.dart';
+import 'widgets/sel_text.dart';
 
 /// Экран «TUN и маршрутизация»: права без UAC, стек/MTU, маршрутизация, DNS, диагностика.
 class TunSettingsScreen extends StatefulWidget {
@@ -216,7 +217,59 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               title: l.tunLanBypass,
               info: l.infoTunBypassLan,
               apply: (st, v) => st.copyWith(tunBypassLan: v)),
-          _CidrEditor(controller: controller),
+          _CidrEditor(
+            controller: controller,
+            label: l.tunExcludeSubnets,
+            info: l.infoTunExcludeCidrs,
+            hint: '10.8.0.0/24',
+            read: (st) => st.tunExcludeCidrs,
+            write: (st, v) => st.copyWith(tunExcludeCidrs: v),
+          ),
+          // ⚠️ ЕДИНСТВЕННЫЙ СПОСОБ НА WINDOWS СДЕЛАТЬ ТРАФИК НЕЗАВИСИМЫМ ОТ НАС.
+          // Подробности — в AppSettings.tunRouteOnlyCidrs; здесь важно, что
+          // цена (правила действуют только внутри списка) видна на экране.
+          _CidrEditor(
+            controller: controller,
+            label: l.tunRouteOnlySubnets,
+            info: l.infoTunRouteOnlyCidrs,
+            hint: '104.16.0.0/12',
+            read: (st) => st.tunRouteOnlyCidrs,
+            write: (st, v) => st.copyWith(tunRouteOnlyCidrs: v),
+          ),
+          if (s.tunRouteOnlyCidrs.isNotEmpty) _Caveat(l.tunRouteOnlyWarning),
+          _switch(context, controller,
+              value: s.alsoSetSystemProxy,
+              title: l.tunAlsoSystemProxy,
+              info: l.infoTunAlsoSystemProxy,
+              apply: (st, v) => st.copyWith(alsoSetSystemProxy: v)),
+          if (s.alsoSetSystemProxy) _Caveat(l.tunMixedModeWarning),
+          ListTile(
+            title: Row(children: [
+              Expanded(child: Text(l.tunWatchdog)),
+              InfoTooltip(l.infoTunWatchdog, title: l.tunWatchdog),
+            ]),
+            subtitle: Text(s.tunWatchdogSeconds <= 0
+                ? l.tunWatchdogOff
+                : l.tunWatchdogSubtitle(s.tunWatchdogSeconds)),
+            trailing: SizedBox(
+              width: 84,
+              child: TextFormField(
+                initialValue: '${s.tunWatchdogSeconds}',
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                decoration: const InputDecoration(
+                    border: OutlineInputBorder(), isDense: true),
+                onChanged: (v) {
+                  final n = int.tryParse(v.trim());
+                  if (n == null || n < 0) return;
+                  // Меньше 10 с — ложные срабатывания на медленном старте;
+                  // 0 отдельно разрешён и означает «не следить».
+                  controller.update((st) => st.copyWith(
+                      tunWatchdogSeconds: n == 0 ? 0 : (n < 10 ? 10 : n)));
+                },
+              ),
+            ),
+          ),
           const Divider(),
 
           _header(context, 'DNS', l.infoDnsMode),
@@ -250,12 +303,19 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
           // Виден только там, где имеет смысл: в остальных режимах весь трафик
           // и так в туннеле, и вопроса «куда девать DNS остальных» не стоит.
           if (s.dnsMode != DnsMode.system &&
-              s.splitTunnel.mode == SplitMode.onlySelected)
+              s.splitTunnel.mode == SplitMode.onlySelected) ...[
             _switch(context, controller,
                 value: s.tunnelDnsForAll,
                 title: l.tunDnsForAll,
                 info: l.infoDnsForAll,
                 apply: (st, v) => st.copyWith(tunnelDnsForAll: v)),
+            // ⚠️ Ровно эта галочка положила интернет владельцу. Она завязывает
+            // резолв имён ВСЕЙ машины на живой туннель, а трафик при этом идёт
+            // мимо него — то есть прямые приложения теряют связь из-за узла,
+            // который им не нужен. В логе это выглядело как DNS по 12 и 24
+            // секунды при живой сети. Цена обязана быть на экране.
+            if (s.tunnelDnsForAll) _Caveat(l.tunDnsForAllWarning),
+          ],
           // Обходные пути, из-за которых правила по сайтам «молча не работают».
           // Оба выключены по умолчанию: они меняют поведение сети, и включать их
           // вслепую нельзя — цена описана в подсказках.
@@ -368,16 +428,71 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
   }
 }
 
-/// Список подсетей-исключений (CIDR).
+/// Заметное предупреждение под настройкой, которая меняет поведение сети.
+///
+/// ⚠️ Это не украшение. У нас накопился класс багов «правило видно, лежит в
+/// конфиге и не применяется»; у этих трёх настроек цена такая же по сути —
+/// они молча выключают то, что пользователь считает работающим. Значит цена
+/// обязана быть НА ЭКРАНЕ, а не в подсказке, которую надо догадаться открыть.
+class _Caveat extends StatelessWidget {
+  final String text;
+  const _Caveat(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 12),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: c.tertiaryContainer.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: c.tertiary.withValues(alpha: 0.4)),
+        ),
+        child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Icon(Icons.warning_amber_rounded, size: 18, color: c.tertiary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SelText(text,
+                style: Theme.of(context).textTheme.bodySmall,
+                textDirection: TextDirection.ltr),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Редактор списка подсетей (CIDR).
+///
+/// Один виджет на два разных списка: «мимо туннеля» и «в туннель только эти».
+/// Раньше он был намертво привязан к первому — второй пришлось бы копировать
+/// целиком, а копия неизбежно разъезжается с оригиналом на первой же правке.
 class _CidrEditor extends StatefulWidget {
   final SettingsController controller;
-  const _CidrEditor({required this.controller});
+  final String label;
+  final String info;
+  final String hint;
+  final List<String> Function(AppSettings) read;
+  final AppSettings Function(AppSettings, List<String>) write;
+
+  const _CidrEditor({
+    required this.controller,
+    required this.label,
+    required this.info,
+    required this.hint,
+    required this.read,
+    required this.write,
+  });
+
   @override
   State<_CidrEditor> createState() => _CidrEditorState();
 }
 
 class _CidrEditorState extends State<_CidrEditor> {
   final _input = TextEditingController();
+  String? _error;
 
   @override
   void dispose() {
@@ -385,39 +500,57 @@ class _CidrEditorState extends State<_CidrEditor> {
     super.dispose();
   }
 
-  void _add() {
+  /// Разбор «адрес/префикс». Тот же критерий, что у построителя конфига:
+  /// он битые записи молча отбрасывает, и без проверки здесь пользователь
+  /// видел бы свою подсеть в списке, а в туннеле её бы не было.
+  static bool _valid(String cidr) {
+    final parts = cidr.trim().split('/');
+    if (parts.length != 2) return false;
+    final addr = InternetAddress.tryParse(parts[0]);
+    if (addr == null) return false;
+    final prefix = int.tryParse(parts[1]);
+    if (prefix == null || prefix < 0) return false;
+    return prefix <= (addr.type == InternetAddressType.IPv6 ? 128 : 32);
+  }
+
+  void _add(AppLocalizations l) {
     final v = _input.text.trim();
-    if (v.isEmpty || !v.contains('/')) return;
+    if (v.isEmpty) return;
+    if (!_valid(v)) {
+      setState(() => _error = l.tunCidrInvalid);
+      return;
+    }
     widget.controller.update((st) {
-      if (st.tunExcludeCidrs.contains(v)) return st;
-      return st.copyWith(tunExcludeCidrs: [...st.tunExcludeCidrs, v]);
+      final list = widget.read(st);
+      if (list.contains(v)) return st;
+      return widget.write(st, [...list, v]);
     });
     _input.clear();
+    setState(() => _error = null);
   }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final list = widget.controller.settings.tunExcludeCidrs;
+    final list = widget.read(widget.controller.settings);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(children: [
-            Text(l.tunExcludeSubnets),
-            InfoTooltip(l.infoTunExcludeCidrs),
+            Flexible(child: Text(widget.label)),
+            InfoTooltip(widget.info, title: widget.label),
           ]),
         ),
         ...list.map((c) => ListTile(
               dense: true,
               leading: const Icon(Icons.alt_route, size: 20),
-              title: Text(c),
+              title: SelText(c, textDirection: TextDirection.ltr),
               trailing: IconButton(
                 icon: const Icon(Icons.delete_outline),
-                onPressed: () => widget.controller.update((st) => st.copyWith(
-                    tunExcludeCidrs:
-                        st.tunExcludeCidrs.where((x) => x != c).toList())),
+                onPressed: () => widget.controller.update((st) => widget.write(
+                    st, widget.read(st).where((x) => x != c).toList())),
               ),
             )),
         Padding(
@@ -426,16 +559,17 @@ class _CidrEditorState extends State<_CidrEditor> {
             Expanded(
               child: TextField(
                 controller: _input,
-                decoration: const InputDecoration(
-                  hintText: '10.8.0.0/24',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  hintText: widget.hint,
+                  errorText: _error,
+                  border: const OutlineInputBorder(),
                   isDense: true,
                 ),
-                onSubmitted: (_) => _add(),
+                onSubmitted: (_) => _add(l),
               ),
             ),
             const SizedBox(width: 8),
-            FilledButton(onPressed: _add, child: Text(l.tunAdd)),
+            FilledButton(onPressed: () => _add(l), child: Text(l.tunAdd)),
           ]),
         ),
       ],

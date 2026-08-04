@@ -670,5 +670,24 @@
   "splitAppOverrideSitesSub": "Bir site kuralı aksini söylese bile uygulamanın tüm trafiği bu kurala uyar",
   "settingsMyRulesOverridePanel": "Kurallarım panel kurallarından öncelikli",
   "settingsMyRulesOverridePanelSub": "Panel kendi yönlendirmesini gönderir, genelde «yerel siteler VPN’siz». Bu, sizin kurallarınızdan sonra uygulanır; «Tünel» işaretli bir site yine de gerçek IP’nizle doğrudan çıkabilir. Açık: tünel tüneldir. Bedeli: yerel siteler dolaşır ve yavaşlar.",
-  "commonOpen": "Aç"
+  "commonOpen": "Aç",
+  "tunRouteOnlySubnets": "Tünele YALNIZCA bu alt ağlar",
+  "infoTunRouteOnlyCidrs": "Windows'ta trafiğinizin bir bölümünü VPN istemcisinden gerçekten bağımsız kılmanın tek yolu.\n\nNormalde tünel varsayılan rotayı üstlenir ve makinenin TÜM trafiği içine girer: «Doğrudan» işareti çekirdeğin içinde ele alınır — paketi çekirdek alır ve dışarıya kendi adına gönderir. Bu trafik tam olarak çekirdek yaşadığı sürece yaşar ve çekirdekle birlikte takılıp kalır.\n\nListe boş değilse varsayılan rota tünele verilmez: tünel yalnızca listelenen alt ağları üstlenir, geri kalan her şeyi sistem sıradan bağdaştırıcı üzerinden gönderir — istemci bu trafiği hiç görmez.\n\nBedeli: bölme adrese göre yapılır, uygulama ve site kuralları ise ada göre eşleşir. Adresi listeye girmeyen bir siteyi çekirdek hiçbir kuralla göremez. Tünelin her zamanki gibi çalışması için boş bırakın.",
+  "tunRouteOnlyWarning": "Tünel yalnızca listelenen alt ağları üstlenir. Uygulama ve site kuralları YALNIZCA bunların içinde geçerlidir: tünele girmeyen trafik çekirdeğe hiç gösterilmez — böyle bir siteyi engellemek ya da başka yöne çevirmek mümkün değildir.",
+  "tunAlsoSystemProxy": "Tünelle birlikte sistem proxy'si",
+  "infoTunAlsoSystemProxy": "Karma mod: tünel ve sistem proxy'si aynı anda çalışır.\n\nSistem proxy'sini dikkate alan uygulamalar (tarayıcılar, Telegram) kısa yoldan doğrudan yerel bağlantı noktasına gider, tünelin kullanıcı alanı yığınını atlar ve çekirdeğe çıplak adres yerine alan adını verir — bu uygulamalar için site kuralları daha kesin çalışır ve TLS çözümlemesine bağlı olmaktan çıkar.\n\nAncak bu, onları istemciden bağımsız YAPMAZ: yine aynı süreç üzerinden geçerler.",
+  "tunMixedModeWarning": "Sistem proxy'si üzerinden gelen bir bağlantının sahibi süreç yoktur — çekirdek için bu, yerel bir bağlantıdır. Bu yüzden böyle programlarda UYGULAMA kuralları çalışmaz. Site kuralları çalışır, hatta her zamankinden daha kesin.",
+  "tunWatchdog": "Takılan çekirdek bekçisi",
+  "infoTunWatchdog": "Tünel çekirdeğinin, takılmış sayılıp tünelin kaldırılmasına kadar kaç saniye yanıtsız kalabileceği.\n\nÇekirdek çökerse Windows arkasını kendisi toplar — bağdaştırıcı, rotalar ve güvenlik duvarı kuralları kaldırılır, ağ geri gelir. Çekirdek takılırsa hiçbir şey kaldırılmaz: bağdaştırıcı yerinde kalır ve «Doğrudan» işaretliler dâhil makinenin tüm trafiğini yutar. Dışarıdan bu «internet tamamen gitti» gibi görünür ve kendiliğinden düzelmez.\n\nBekçi ancak çekirdekten ilk başarılı yanıt geldikten sonra devreye girer: aksi hâlde hizmet bağlantı noktasının açılamadığı durumlarda bağlantıyı öldürürdü. 0 — izleme yok. En az 10 saniye.",
+  "tunWatchdogOff": "Kapalı: tünelin takılması izlenmeyecek",
+  "tunWatchdogSubtitle": "Çekirdek {seconds} sn'den uzun susarsa tüneli kaldır",
+  "@tunWatchdogSubtitle": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "tunDnsForAllWarning": "TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur — dışarıdan bu, internetin tamamen kesilmesi gibi görünür.",
+  "tunCidrInvalid": "Ön ekli bir adres gerekir, örn. 10.8.0.0/24"
 }

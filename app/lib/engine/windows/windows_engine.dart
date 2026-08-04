@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'adapter_dns_windows.dart';
+import '../../core/platform/app_env.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
@@ -34,6 +35,13 @@ class WindowsEngine extends VpnEngineBase {
   /// [VpnServer.core]. TUN-инстанс sing-box считается отдельно (`_tunRouter`).
   SingboxProcess? _singbox;
   Timer? _statsTimer;
+
+  /// Сторож зависшего TUN-ядра. См. [AppSettings.tunWatchdogSeconds].
+  Timer? _tunWatchdog;
+
+  /// Когда TUN-ядро в последний раз ответило по своему API. `null` — оно ещё
+  /// НИ РАЗУ не отвечало, и сторож в этом случае молчит: см. [_startTunWatchdog].
+  DateTime? _tunLastAlive;
   StreamSubscription<int>? _exitWatch;
   final TunRouter _tunRouter = SingboxRouterWindows();
   bool _tunActive = false;
@@ -196,6 +204,14 @@ class WindowsEngine extends VpnEngineBase {
             // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.
             directDnsUpstream: await _systemDnsServer(),
             ipv6Available: await _ipv6Reality(),
+            // API туннельного экземпляра — ТОЛЬКО для сторожа зависания.
+            //
+            // ⚠️ Порт новый, поэтому сверен с обоими ядрами: Xray держит
+            // 10808/10809/10085, sing-box-прокси — те же 10808/10809 плюс
+            // 10085 под Clash API, на Android туннель занимает 10812. 10813
+            // свободен. Урок 10085 и 10809 повторять не будем.
+            clashApiPort: _tunApiPort,
+            clashApiSecret: singboxApiSecret,
           ),
           // Автоподбор стека/MTU может занять время — показываем, что происходит
           // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
@@ -212,9 +228,33 @@ class WindowsEngine extends VpnEngineBase {
           await _stopCoreProcesses();
           return;
         }
-      } else {
+        // Сторож вооружается ТОЛЬКО когда туннель уже стоит: во время
+        // автоподбора стека и MTU ядро законно молчит до двух минут.
+        _startTunWatchdog(options.settings, aborted);
+      }
+
+      // ⚠️ СИСТЕМНЫЙ ПРОКСИ СТАВИТСЯ И ВМЕСТО ТУННЕЛЯ, И ВМЕСТЕ С НИМ.
+      //
+      // Вместе — это «смешанный» режим (у Happ он так и подписан, Mixed):
+      // прокси-aware приложения идут коротким путём прямо в http-инбаунд,
+      // минуя пользовательский стек туннеля, и отдают ядру ИМЯ ДОМЕНА, а не
+      // голый IP.
+      //
+      // ⚠️ ЦЕНА, КОТОРУЮ ОБЯЗАН ЗНАТЬ ПОЛЬЗОВАТЕЛЬ: у такого соединения нет
+      // процесса-владельца — для ядра это локальное подключение с петли.
+      // Значит правила ПО ПРИЛОЖЕНИЯМ для прокси-aware программ в смешанном
+      // режиме не срабатывают вовсе (правила по сайтам работают, и даже лучше:
+      // имя приходит без сниффинга). Интерфейс говорит об этом прямо — молча
+      // отдавать неработающие правила мы уже пробовали восемь раз.
+      final wantProxy = options.captureMode != CaptureMode.tun ||
+          options.settings.alsoSetSystemProxy;
+      if (wantProxy) {
         await SystemProxy.set('127.0.0.1:${ports.http}');
         _proxySet = true;
+        if (options.captureMode == CaptureMode.tun) {
+          AppLog.i('Смешанный режим: туннель + системный прокси на '
+              '127.0.0.1:${ports.http}');
+        }
       }
 
       // #4 — пользователь мог нажать «Отключить», пока поднимались ядро и
@@ -270,6 +310,8 @@ class WindowsEngine extends VpnEngineBase {
   Future<void> teardownCore({bool keepCapture = false}) async {
     _statsTimer?.cancel();
     _statsTimer = null;
+    _tunWatchdog?.cancel();
+    _tunWatchdog = null;
     await _exitWatch?.cancel();
     _exitWatch = null;
     await _stopCoreProcesses();
@@ -295,6 +337,8 @@ class WindowsEngine extends VpnEngineBase {
     _polling = false;
     _statsTimer?.cancel();
     _statsTimer = null;
+    _tunWatchdog?.cancel();
+    _tunWatchdog = null;
     await _exitWatch?.cancel();
     _exitWatch = null;
     if (_tunActive) {
@@ -317,6 +361,108 @@ class WindowsEngine extends VpnEngineBase {
     await _singbox?.stop();
     _singbox?.dispose();
     _singbox = null;
+  }
+
+  /// Порт Clash API туннельного sing-box. Только петля, только для сторожа.
+  static int get _tunApiPort => 10813 + AppEnv.portOffset;
+
+  /// Сторож ЗАВИСШЕГО туннельного ядра.
+  ///
+  /// ⚠️ ЗАЧЕМ ОН ВООБЩЕ НУЖЕН — разница между «упало» и «зависло».
+  ///
+  /// Если sing-box ПАДАЕТ, Windows убирает за ним сама: WFP-сессия открыта
+  /// динамической, адаптер заведён через `SwDeviceCreate`, поэтому фильтры,
+  /// маршруты и сам адаптер снимаются вместе с процессом и сеть возвращается.
+  /// Если же процесс ЗАВИС, не снимается ничего: адаптер с метрикой 0 и
+  /// маршрутом `0.0.0.0/0` остаётся на месте и глотает весь трафик машины —
+  /// включая помеченный «Прямо», которому туннель не нужен вовсе. Снаружи это
+  /// «интернет пропал совсем», и само оно не чинится никогда.
+  ///
+  /// ⚠️ СТОРОЖ ВООРУЖАЕТСЯ ТОЛЬКО ПОСЛЕ ПЕРВОГО УСПЕШНОГО ОТВЕТА.
+  ///
+  /// Иначе он превращается в убийцу подключения: не смог подняться API (занят
+  /// порт, старая сборка ядра, что угодно) — и сторож честно решает, что ядро
+  /// зависло, гасит туннель, тот поднимается заново, API снова не отвечает.
+  /// Вечный цикл переподключений, причём ровно у тех, у кого что-то не так с
+  /// окружением. Поэтому `_tunLastAlive == null` означает «сторож ещё не
+  /// вооружён», и в этом состоянии он не делает НИЧЕГО.
+  ///
+  /// Честная граница: это детектор зависшего ПРОЦЕССА, а не всякого затыка.
+  /// HTTP-сервер API живёт в своей горутине, поэтому остановка обработки
+  /// пакетов в стеке при живом API сторожем не ловится.
+  void _startTunWatchdog(AppSettings settings, bool Function() aborted) {
+    _tunWatchdog?.cancel();
+    _tunLastAlive = null;
+    final limit = settings.tunWatchdogSeconds;
+    if (limit <= 0) return; // выключено пользователем
+
+    final startedAt = DateTime.now();
+    _tunWatchdog = Timer.periodic(const Duration(seconds: 5), (t) async {
+      // Поколение сменилось — сессия уже другая, нам тут делать нечего.
+      // Без этой проверки сторож прошлой сессии убивал бы туннель следующей.
+      if (aborted() || !_tunActive) {
+        t.cancel();
+        return;
+      }
+      if (await _tunApiAlive()) {
+        if (_tunLastAlive == null) {
+          AppLog.i('Сторож туннеля вооружён: ядро отвечает по своему API');
+        }
+        _tunLastAlive = DateTime.now();
+        return;
+      }
+      final since = _tunLastAlive;
+      if (since == null) {
+        // Ни одного ответа так и не было. Через минуту сдаёмся и говорим об
+        // этом вслух: молчащий сторож хуже отсутствующего — на него надеются.
+        if (DateTime.now().difference(startedAt).inSeconds > 60) {
+          AppLog.w('Сторож туннеля НЕ вооружён: ядро ни разу не ответило по '
+              'API на порту $_tunApiPort. Зависание отслеживаться не будет.');
+          t.cancel();
+        }
+        return;
+      }
+      final silent = DateTime.now().difference(since).inSeconds;
+      if (silent < limit) return;
+
+      t.cancel();
+      AppLog.e('Туннельное ядро не отвечает $silent с — считаю его зависшим. '
+          'Снимаю туннель, чтобы система вернула сеть.');
+      // Гасим ЖЁСТКО и вместе с захватом: смысл всей затеи в том, чтобы исчез
+      // адаптер, иначе трафик так и останется в чёрной дыре. Kill switch здесь
+      // не спорит — он защищает от утечки, а утекать при зависшем туннеле
+      // нечему: наружу и так ничего не проходит.
+      await teardownCore();
+      if (!await scheduleRetry('туннельное ядро зависло')) {
+        setStatus(VpnConnectionState.error,
+            message: 'Туннельное ядро зависло, туннель снят');
+      }
+    });
+  }
+
+  /// Отвечает ли туннельное ядро по своему API. Короткий таймаут: сторож
+  /// спрашивает раз в 5 с, и висеть на ответе ему нельзя.
+  Future<bool> _tunApiAlive() async {
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(milliseconds: 700);
+    try {
+      final req =
+          await client.getUrl(Uri.parse('http://127.0.0.1:$_tunApiPort/version'));
+      if (singboxApiSecret.isNotEmpty) {
+        req.headers
+            .set(HttpHeaders.authorizationHeader, 'Bearer $singboxApiSecret');
+      }
+      final resp = await req.close().timeout(const Duration(milliseconds: 1500));
+      await resp.drain<void>();
+      // 401 тоже означает «живо»: ядро ответило, просто пароль не понравился.
+      // Считать это зависанием — значит убивать рабочий туннель из-за своей же
+      // ошибки в передаче секрета.
+      return resp.statusCode == 200 || resp.statusCode == 401;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
   }
 
   /// Счётчики трафика: у Xray — `api statsquery`, у sing-box — Clash API.
