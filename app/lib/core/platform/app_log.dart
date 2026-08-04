@@ -12,8 +12,19 @@ class LogEntry {
   final String message;
   const LogEntry(this.at, this.level, this.message);
 
-  String get line =>
-      '${at.toIso8601String()} [${level.name.toUpperCase()}] $message';
+  /// ⚠️ ДАТА ЧЕЛОВЕКОЧИТАЕМАЯ, а не ISO.
+  ///
+  /// Раньше строка начиналась с `2026-08-04T01:23:33.794745` — семь знаков
+  /// микросекунд, которые никто никогда не читал, зато глаз спотыкался о `T`
+  /// посреди даты. Лог читают люди: владелец, когда ищет момент обрыва, и я,
+  /// когда разбираю его жалобу. Формат `04.08.2026 01:23:33` находится взглядом
+  /// сразу.
+  static String _two(int v) => v < 10 ? '0$v' : '$v';
+
+  String get stamp => '${_two(at.day)}.${_two(at.month)}.${at.year} '
+      '${_two(at.hour)}:${_two(at.minute)}:${_two(at.second)}';
+
+  String get line => '$stamp [${level.name.toUpperCase()}] $message';
 }
 
 /// Лог приложения: последние записи в памяти (для экрана «Логи») + дозапись в

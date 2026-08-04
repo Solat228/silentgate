@@ -56,7 +56,24 @@ class _LogsScreenState extends State<LogsScreen>
   /// иначе — сам лог.
   String _display(String? raw, String loading, String empty) {
     if (raw == null) return loading;
-    return raw.trim().isEmpty ? empty : raw;
+    if (raw.trim().isEmpty) return empty;
+    return _newestFirst(raw);
+  }
+
+  /// ⚠️ НОВЫЕ ЗАПИСИ СВЕРХУ. Разворот ТОЛЬКО при показе — файл на диске
+  /// остаётся дописываемым в естественном порядке, иначе каждая новая строка
+  /// требовала бы переписать его целиком.
+  ///
+  /// Смотрят в лог всегда за одним и тем же: что случилось ТОЛЬКО ЧТО. Раньше
+  /// для этого надо было мотать в самый низ — на несколько тысяч строк, каждый
+  /// раз.
+  static String _newestFirst(String raw) {
+    final lines = raw.split('\n');
+    // Хвостовой перевод строки не должен превратиться в пустую строку сверху.
+    while (lines.isNotEmpty && lines.last.trim().isEmpty) {
+      lines.removeLast();
+    }
+    return lines.reversed.join('\n');
   }
 
   @override
