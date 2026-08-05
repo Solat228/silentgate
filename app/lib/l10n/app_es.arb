@@ -750,5 +750,38 @@
     }
   },
   "tunDnsForAllWarning": "La resolución de nombres de TODA la máquina pasará por el túnel. Si el túnel se detiene, los nombres dejarán de resolverse incluso para las aplicaciones que van directamente y no necesitan la VPN — desde fuera parece una pérdida total de internet.",
-  "tunCidrInvalid": "Hace falta una dirección con prefijo, p. ej. 10.8.0.0/24"
+  "tunCidrInvalid": "Hace falta una dirección con prefijo, p. ej. 10.8.0.0/24",
+  "geoTitle": "Bases geo de enrutamiento",
+  "geoMissing": "Sin descargar — las reglas por país y categoría no se aplican",
+  "geoPresent": "{size}, actualizadas: {date}",
+  "@geoPresent": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDownload": "Descargar",
+  "geoUpdate": "Actualizar",
+  "geoDownloading": "Descargando {file}…",
+  "@geoDownloading": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDone": "Bases geo actualizadas",
+  "geoFailed": "No se pudo descargar: {error}",
+  "@geoFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoGeoAssets": "Los archivos geoip.dat y geosite.dat son listas de direcciones por país y de dominios por categoría (por ejemplo «sitios rusos», «servicios públicos», «VK»). En ellas se apoyan las reglas de enrutamiento que define el panel de tu suscripción.\n\nNo vienen incluidos en la aplicación: entre los dos ocupan unos 30 MB y no todo el mundo los necesita — un servidor normal no los usa en absoluto.\n\nMientras falten los archivos, esas reglas se quitan de la configuración y el tráfico que antes salía directo pasa por la VPN. Es seguro, pero más lento, y los sitios locales pueden denegar el acceso desde una dirección extranjera. Tus propias reglas por sitio y por aplicación funcionan de todos modos — no dependen de estos archivos."
 }

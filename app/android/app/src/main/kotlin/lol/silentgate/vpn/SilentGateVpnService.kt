@@ -424,6 +424,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Запускает Xray на локальном SOCKS. Единственный вход в libXray —
     /// `invoke(json)`, ответ приходит JSON-ом с полем success.
     private fun startXray(configJson: String) {
+        // Где ядро ищет гео-базы — задаётся в `SilentGateApplication.onCreate`,
+        // и только там: рантайм Go копирует окружение процесса ОДИН РАЗ, при
+        // загрузке нативной библиотеки. Попытка выставить переменную здесь
+        // выглядела правильнее, компилировалась, ничего не ломала — и не
+        // работала: ядро продолжало искать базы в /system/bin. Проверено на
+        // эмуляторе, не переносить обратно.
+
         // protect() для сокетов ядра: без него трафик Xray к VPN-серверу
         // вернётся в собственный туннель — петля и мёртвая сеть.
         LibXray.registerDialerController(object : DialerController {

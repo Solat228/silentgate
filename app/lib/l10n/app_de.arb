@@ -689,5 +689,38 @@
     }
   },
   "tunDnsForAllWarning": "Die Namensauflösung des GESAMTEN Rechners läuft über den Tunnel. Bleibt der Tunnel stehen, werden Namen auch für Apps nicht mehr aufgelöst, die direkt gehen und gar kein VPN brauchen — von außen wirkt das wie ein kompletter Internetausfall.",
-  "tunCidrInvalid": "Adresse mit Präfix erforderlich, z. B. 10.8.0.0/24"
+  "tunCidrInvalid": "Adresse mit Präfix erforderlich, z. B. 10.8.0.0/24",
+  "geoTitle": "Routing-Geodatenbanken",
+  "geoMissing": "Nicht heruntergeladen — Regeln nach Land und Kategorie greifen nicht",
+  "geoPresent": "{size}, Stand {date}",
+  "@geoPresent": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDownload": "Herunterladen",
+  "geoUpdate": "Aktualisieren",
+  "geoDownloading": "{file} wird heruntergeladen…",
+  "@geoDownloading": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDone": "Geodatenbanken aktualisiert",
+  "geoFailed": "Herunterladen fehlgeschlagen: {error}",
+  "@geoFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoGeoAssets": "Die Dateien geoip.dat und geosite.dat enthalten Adresslisten nach Ländern und Domainlisten nach Kategorien (zum Beispiel „russische Websites“, „Behördenportale“, „VK“). Auf ihnen beruhen die Routing-Regeln, die das Panel Ihres Abonnements vorgibt.\n\nIn der App sind sie nicht enthalten: Zusammen sind sie rund 30 MB groß und werden nicht von jedem gebraucht — ein gewöhnlicher Server kommt ganz ohne sie aus.\n\nSolange die Dateien fehlen, werden solche Regeln aus der Konfiguration entfernt, und der Verkehr, den sie bisher direkt geleitet haben, läuft stattdessen über das VPN. Das ist sicher, aber langsamer, und lokale Websites verweigern den Zugriff möglicherweise, weil die Adresse im Ausland liegt. Ihre eigenen Regeln für einzelne Websites und Anwendungen gelten unabhängig davon — sie hängen nicht von diesen Dateien ab."
 }

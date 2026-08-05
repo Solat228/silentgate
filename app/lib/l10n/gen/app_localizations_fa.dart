@@ -2047,4 +2047,39 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'آدرس همراه با پیشوند لازم است، مثلاً 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'داده‌های جغرافیایی مسیریابی';
+
+  @override
+  String get geoMissing =>
+      'دانلود نشده — قوانین کشور و دسته‌بندی اعمال نمی‌شوند';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size، به‌روزشده در $date';
+  }
+
+  @override
+  String get geoDownload => 'دانلود';
+
+  @override
+  String get geoUpdate => 'به‌روزرسانی';
+
+  @override
+  String geoDownloading(String file) {
+    return 'در حال دانلود $file…';
+  }
+
+  @override
+  String get geoDone => 'داده‌های جغرافیایی به‌روزرسانی شد';
+
+  @override
+  String geoFailed(String error) {
+    return 'دانلود ناموفق بود: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'فایل‌های geoip.dat و geosite.dat فهرست‌هایی از آدرس‌ها بر اساس کشور و دامنه‌ها بر اساس دسته‌بندی هستند (برای مثال «سایت‌های روسی»، «خدمات دولتی»، «VK»). قوانین مسیریابی که پنل اشتراک تعیین می‌کند بر پایه همین فایل‌ها کار می‌کنند.\n\nآن‌ها درون برنامه جای نگرفته‌اند: روی هم حدود ۳۰ MB حجم دارند و همه به آن‌ها نیاز ندارند — یک سرور معمولی اصلاً از آن‌ها استفاده نمی‌کند.\n\nتا زمانی که این فایل‌ها نباشند، چنین قوانینی از پیکربندی حذف می‌شوند و ترافیکی که آن‌ها به‌طور مستقیم می‌فرستادند از VPN عبور می‌کند. این کار امن است اما کندتر، و ممکن است سایت‌های محلی به‌دلیل آدرس خارجی دسترسی را رد کنند. قوانینی که خودتان برای سایت‌ها و برنامه‌های مشخص تعیین کرده‌اید در هر حال کار می‌کنند — به این فایل‌ها وابسته نیستند.';
 }

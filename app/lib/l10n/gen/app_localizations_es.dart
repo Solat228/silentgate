@@ -2070,4 +2070,39 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'Hace falta una dirección con prefijo, p. ej. 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Bases geo de enrutamiento';
+
+  @override
+  String get geoMissing =>
+      'Sin descargar — las reglas por país y categoría no se aplican';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, actualizadas: $date';
+  }
+
+  @override
+  String get geoDownload => 'Descargar';
+
+  @override
+  String get geoUpdate => 'Actualizar';
+
+  @override
+  String geoDownloading(String file) {
+    return 'Descargando $file…';
+  }
+
+  @override
+  String get geoDone => 'Bases geo actualizadas';
+
+  @override
+  String geoFailed(String error) {
+    return 'No se pudo descargar: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'Los archivos geoip.dat y geosite.dat son listas de direcciones por país y de dominios por categoría (por ejemplo «sitios rusos», «servicios públicos», «VK»). En ellas se apoyan las reglas de enrutamiento que define el panel de tu suscripción.\n\nNo vienen incluidos en la aplicación: entre los dos ocupan unos 30 MB y no todo el mundo los necesita — un servidor normal no los usa en absoluto.\n\nMientras falten los archivos, esas reglas se quitan de la configuración y el tráfico que antes salía directo pasa por la VPN. Es seguro, pero más lento, y los sitios locales pueden denegar el acceso desde una dirección extranjera. Tus propias reglas por sitio y por aplicación funcionan de todos modos — no dependen de estos archivos.';
 }

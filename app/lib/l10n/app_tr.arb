@@ -689,5 +689,38 @@
     }
   },
   "tunDnsForAllWarning": "TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur — dışarıdan bu, internetin tamamen kesilmesi gibi görünür.",
-  "tunCidrInvalid": "Ön ekli bir adres gerekir, örn. 10.8.0.0/24"
+  "tunCidrInvalid": "Ön ekli bir adres gerekir, örn. 10.8.0.0/24",
+  "geoTitle": "Yönlendirme geo verileri",
+  "geoMissing": "İndirilmedi — ülke ve kategori kuralları çalışmıyor",
+  "geoPresent": "{size}, son güncelleme {date}",
+  "@geoPresent": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDownload": "İndir",
+  "geoUpdate": "Güncelle",
+  "geoDownloading": "{file} indiriliyor…",
+  "@geoDownloading": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDone": "Geo verileri güncellendi",
+  "geoFailed": "İndirme başarısız: {error}",
+  "@geoFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoGeoAssets": "geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir (örneğin «Rus siteleri», «devlet hizmetleri», «VKontakte»). Abonelik panelinizin tanımladığı yönlendirme kuralları bunlara dayanır.\n\nUygulamaya gömülü değildir: ikisi birlikte yaklaşık 30 MB tutar ve herkese gerekmez — sıradan bir sunucu bunları hiç kullanmaz.\n\nDosyalar yokken bu tür kurallar yapılandırmadan çıkarılır ve daha önce doğrudan gönderdikleri trafik VPN üzerinden gider. Bu güvenlidir ama daha yavaştır; ayrıca yerel siteler yabancı bir adresten gelen erişimi reddedebilir. Sizin belirlediğiniz site ve uygulama kuralları her durumda çalışır — bu dosyalara bağlı değildir."
 }

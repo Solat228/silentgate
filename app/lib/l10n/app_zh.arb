@@ -689,5 +689,38 @@
     }
   },
   "tunDnsForAllWarning": "本机的全部域名解析都将经过隧道。一旦隧道卡住，即使是直连、根本不需要 VPN 的应用也无法解析域名——在用户看来就是彻底断网。",
-  "tunCidrInvalid": "需要带前缀的地址，例如 10.8.0.0/24"
+  "tunCidrInvalid": "需要带前缀的地址，例如 10.8.0.0/24",
+  "geoTitle": "路由地理数据库",
+  "geoMissing": "尚未下载——按国家和类别的规则不会生效",
+  "geoPresent": "{size}，更新于 {date}",
+  "@geoPresent": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDownload": "下载",
+  "geoUpdate": "更新",
+  "geoDownloading": "正在下载 {file}…",
+  "@geoDownloading": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDone": "地理数据库已更新",
+  "geoFailed": "下载失败：{error}",
+  "@geoFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoGeoAssets": "geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单（例如“俄罗斯网站”“政务服务”“VKontakte”）。订阅面板下发的路由规则正是依靠它们工作。\n\n它们没有打包进应用：两个加起来约 30 MB，而且并非人人都需要——普通服务器完全用不到。\n\n文件缺失期间，这类规则会从配置中移除，原本被它们放行直连的流量改走 VPN。这样是安全的，只是更慢，而且本地站点可能因为来自国外的地址而拒绝访问。你自己设定的网站和应用规则照常生效——它们不依赖这些文件。"
 }

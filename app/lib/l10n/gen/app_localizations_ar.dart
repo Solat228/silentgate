@@ -2040,4 +2040,38 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tunCidrInvalid => 'يلزم عنوان مع بادئة، مثل 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'بيانات التوجيه الجغرافية';
+
+  @override
+  String get geoMissing => 'غير مُنزَّلة — قواعد البلدان والفئات لا تعمل';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size، آخر تحديث $date';
+  }
+
+  @override
+  String get geoDownload => 'تنزيل';
+
+  @override
+  String get geoUpdate => 'تحديث';
+
+  @override
+  String geoDownloading(String file) {
+    return 'جارٍ تنزيل $file…';
+  }
+
+  @override
+  String get geoDone => 'تم تحديث بيانات التوجيه الجغرافية';
+
+  @override
+  String geoFailed(String error) {
+    return 'فشل التنزيل: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'ملفّا geoip.dat وgeosite.dat قائمتان: عناوين مُصنَّفة حسب البلد ونطاقات مُصنَّفة حسب الفئة (مثلاً «المواقع الروسية»، «الخدمات الحكومية»، «VK»). وعليهما تعتمد قواعد التوجيه التي تحدّدها لوحة الاشتراك.\n\nوهما غير مُضمَّنين في التطبيق: يبلغ حجمهما معاً نحو 30 MB، ولا يحتاجهما الجميع — فالخادم العادي لا يستخدمهما إطلاقاً.\n\nوما دام الملفّان غير موجودين، تُحذَف هذه القواعد من التكوين، وحركة المرور التي كانت توجّهها مباشرةً تمرّ الآن عبر VPN. هذا آمن لكنه أبطأ، وقد ترفض المواقع المحلية الوصول بسبب العنوان الأجنبي. أمّا قواعدك الخاصة بمواقع وتطبيقات محدَّدة فتعمل في كل الأحوال — فهي لا تعتمد على هذين الملفّين.';
 }

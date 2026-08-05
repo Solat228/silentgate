@@ -689,5 +689,38 @@
     }
   },
   "tunDnsForAllWarning": "A resolução de nomes da máquina INTEIRA passará pelo túnel. Se o túnel travar, os nomes deixarão de ser resolvidos até para os aplicativos que vão direto e não precisam da VPN — de fora, isso parece uma perda total de internet.",
-  "tunCidrInvalid": "É necessário um endereço com prefixo, por exemplo 10.8.0.0/24"
+  "tunCidrInvalid": "É necessário um endereço com prefixo, por exemplo 10.8.0.0/24",
+  "geoTitle": "Bases geo de roteamento",
+  "geoMissing": "Não baixadas — as regras por país e categoria não funcionam",
+  "geoPresent": "{size}, atualizadas em {date}",
+  "@geoPresent": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDownload": "Baixar",
+  "geoUpdate": "Atualizar",
+  "geoDownloading": "Baixando {file}…",
+  "@geoDownloading": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "geoDone": "Bases geo atualizadas",
+  "geoFailed": "Não foi possível baixar: {error}",
+  "@geoFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "infoGeoAssets": "Os arquivos geoip.dat e geosite.dat são listas de endereços por país e de domínios por categoria (por exemplo «sites russos», «serviços públicos», «VK»). As regras de roteamento definidas pelo painel da assinatura dependem deles.\n\nEles não vêm embutidos no aplicativo: juntos pesam cerca de 30 MB e não são necessários para todos — um servidor comum não precisa deles.\n\nEnquanto os arquivos não estiverem baixados, essas regras são removidas da configuração, e o tráfego que elas enviavam direto passa a ir pela VPN. Isso é seguro, mas mais lento, e sites locais podem negar o acesso por causa do endereço estrangeiro. As regras que você mesmo define para sites e aplicativos funcionam de qualquer forma — elas não dependem desses arquivos."
 }

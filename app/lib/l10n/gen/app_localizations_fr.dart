@@ -2073,4 +2073,39 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'Il faut une adresse avec un préfixe, par ex. 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Bases géo de routage';
+
+  @override
+  String get geoMissing =>
+      'Non téléchargées — les règles par pays et catégorie ne s\'appliquent pas';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, mise à jour : $date';
+  }
+
+  @override
+  String get geoDownload => 'Télécharger';
+
+  @override
+  String get geoUpdate => 'Mettre à jour';
+
+  @override
+  String geoDownloading(String file) {
+    return 'Téléchargement de $file…';
+  }
+
+  @override
+  String get geoDone => 'Bases géo mises à jour';
+
+  @override
+  String geoFailed(String error) {
+    return 'Échec du téléchargement : $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'Les fichiers geoip.dat et geosite.dat sont des listes d\'adresses par pays et de domaines par catégorie (par exemple « sites russes », « services publics », « VK »). Les règles de routage définies par le panneau de votre abonnement s\'appuient sur eux.\n\nIls ne sont pas intégrés à l\'application : à eux deux, ils pèsent environ 30 MB, et tout le monde n\'en a pas besoin — un serveur ordinaire ne les utilise pas du tout.\n\nTant que les fichiers sont absents, ces règles sont retirées de la configuration, et le trafic qu\'elles faisaient passer en direct emprunte le VPN. C\'est sûr, mais plus lent, et les sites locaux peuvent refuser l\'accès depuis une adresse étrangère. Vos règles de sites et d\'applications, elles, fonctionnent dans tous les cas — elles ne dépendent pas de ces fichiers.';
 }

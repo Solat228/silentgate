@@ -29,6 +29,7 @@ import 'split_tunnel_screen.dart';
 import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/geo_assets_tile.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
@@ -1118,6 +1119,9 @@ class _CaptureSection extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const SplitTunnelScreen()),
             ),
           ),
+          // Гео-базы нужны только там, где их нет в поставке. На Windows они
+          // приезжают вместе с ядром, и кнопка была бы обманкой.
+          if (Platform.isAndroid) const GeoAssetsTile(),
         ] else
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),

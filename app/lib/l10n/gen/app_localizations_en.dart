@@ -2051,4 +2051,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'Needs an address with a prefix, e.g. 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Routing geo databases';
+
+  @override
+  String get geoMissing =>
+      'Not downloaded — country and category rules do not apply';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, updated $date';
+  }
+
+  @override
+  String get geoDownload => 'Download';
+
+  @override
+  String get geoUpdate => 'Update';
+
+  @override
+  String geoDownloading(String file) {
+    return 'Downloading $file…';
+  }
+
+  @override
+  String get geoDone => 'Geo databases updated';
+
+  @override
+  String geoFailed(String error) {
+    return 'Download failed: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'The geoip.dat and geosite.dat files are lists of addresses by country and domains by category (for example «Russian sites», «government services», «VK»). The routing rules your subscription panel defines rely on them.\n\nThey are not bundled into the app: together they weigh about 30 MB and are not needed by everyone — a plain server does not use them at all.\n\nWhile the files are missing, such rules are stripped from the config and the traffic they used to send directly goes through the VPN instead. That is safe but slower, and local sites may refuse access from a foreign address. Your own per-site and per-app rules work regardless — they do not depend on these files.';
 }

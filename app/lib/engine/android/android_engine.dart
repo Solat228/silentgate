@@ -19,6 +19,8 @@ import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/xray/override_normalizer.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
+import '../../core/geo/geo_assets.dart';
+import '../../core/xray/geodata_fallback.dart';
 import '../engine_base.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
@@ -323,6 +325,29 @@ class AndroidEngine extends VpnEngineBase {
     }
   }
 
+  /// Убрать ссылки на гео-базы, если самих баз на устройстве нет.
+  ///
+  /// ⚠️ БЕЗ ЭТОГО ПАНЕЛЬНЫЕ ПРОФИЛИ НА ANDROID НЕ ПОДНИМАЛИСЬ ВООБЩЕ. Xray
+  /// резолвит `geoip:`/`geosite:` по файлам НА УСТРОЙСТВЕ, а в APK их нет:
+  /// ядро отвергало конфиг целиком и VPN-сервис останавливался. В журнале
+  /// владельца — `illegal ip rule: geoip:private > failed to open geoip.dat`.
+  /// Ссылки есть в 46 его профилях из 250, то есть «Авто» с российской
+  /// маршрутизацией на телефоне не работал.
+  ///
+  /// Когда базы скачаны, конфиг уходит ядру КАК ЕСТЬ — маршрутизация панели
+  /// применяется целиком, как на Windows.
+  Future<String> _guardGeodata(String json) async {
+    if (!needsGeodata(json)) return json;
+    if (await GeoAssets.available()) return json;
+    final r = stripGeodata(json);
+    if (r.report.changed) {
+      AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
+          '${r.report.describe()}. Этот трафик пойдёт через VPN, а не напрямую. '
+          'Скачать базы можно в настройках.');
+    }
+    return r.json;
+  }
+
   @override
   Future<void> startSession() async {
     final session = this.session;
@@ -449,7 +474,7 @@ class AndroidEngine extends VpnEngineBase {
       _starting = true;
       await _channel.invokeMethod<void>('start', {
         'config': tunJson,
-        if (viaXray) 'xray_config': _guardXrayInbounds(cfg.json),
+        if (viaXray) 'xray_config': await _guardGeodata(_guardXrayInbounds(cfg.json)),
       });
       _starting = false;
 

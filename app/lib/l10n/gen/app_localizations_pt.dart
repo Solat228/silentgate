@@ -2071,4 +2071,39 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'É necessário um endereço com prefixo, por exemplo 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Bases geo de roteamento';
+
+  @override
+  String get geoMissing =>
+      'Não baixadas — as regras por país e categoria não funcionam';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, atualizadas em $date';
+  }
+
+  @override
+  String get geoDownload => 'Baixar';
+
+  @override
+  String get geoUpdate => 'Atualizar';
+
+  @override
+  String geoDownloading(String file) {
+    return 'Baixando $file…';
+  }
+
+  @override
+  String get geoDone => 'Bases geo atualizadas';
+
+  @override
+  String geoFailed(String error) {
+    return 'Não foi possível baixar: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'Os arquivos geoip.dat e geosite.dat são listas de endereços por país e de domínios por categoria (por exemplo «sites russos», «serviços públicos», «VK»). As regras de roteamento definidas pelo painel da assinatura dependem deles.\n\nEles não vêm embutidos no aplicativo: juntos pesam cerca de 30 MB e não são necessários para todos — um servidor comum não precisa deles.\n\nEnquanto os arquivos não estiverem baixados, essas regras são removidas da configuração, e o tráfego que elas enviavam direto passa a ir pela VPN. Isso é seguro, mas mais lento, e sites locais podem negar o acesso por causa do endereço estrangeiro. As regras que você mesmo define para sites e aplicativos funcionam de qualquer forma — elas não dependem desses arquivos.';
 }

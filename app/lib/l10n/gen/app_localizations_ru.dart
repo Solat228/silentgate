@@ -2053,4 +2053,39 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get tunCidrInvalid => 'Нужен адрес с префиксом, например 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Гео-базы маршрутизации';
+
+  @override
+  String get geoMissing =>
+      'Не скачаны — правила по странам и категориям не работают';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, обновлены $date';
+  }
+
+  @override
+  String get geoDownload => 'Скачать';
+
+  @override
+  String get geoUpdate => 'Обновить';
+
+  @override
+  String geoDownloading(String file) {
+    return 'Скачиваю $file…';
+  }
+
+  @override
+  String get geoDone => 'Гео-базы обновлены';
+
+  @override
+  String geoFailed(String error) {
+    return 'Не удалось скачать: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям (например «российские сайты», «госуслуги», «ВКонтакте»). По ним работают правила маршрутизации, которые задаёт панель подписки.\n\nВ приложение они не вложены: вдвоём весят около 30 МБ, а нужны не всем — обычному серверу они не требуются вовсе.\n\nПока файлов нет, такие правила из конфига убираются, и трафик, который они уводили напрямую, идёт через VPN. Это безопасно, но медленнее, и российские сайты могут отказывать в доступе из-за иностранного адреса. Правила по конкретным сайтам и приложениям, заданные вами, работают в любом случае — они не зависят от этих файлов.';
 }

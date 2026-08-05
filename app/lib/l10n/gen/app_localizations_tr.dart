@@ -2055,4 +2055,39 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tunCidrInvalid => 'Ön ekli bir adres gerekir, örn. 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Yönlendirme geo verileri';
+
+  @override
+  String get geoMissing =>
+      'İndirilmedi — ülke ve kategori kuralları çalışmıyor';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, son güncelleme $date';
+  }
+
+  @override
+  String get geoDownload => 'İndir';
+
+  @override
+  String get geoUpdate => 'Güncelle';
+
+  @override
+  String geoDownloading(String file) {
+    return '$file indiriliyor…';
+  }
+
+  @override
+  String get geoDone => 'Geo verileri güncellendi';
+
+  @override
+  String geoFailed(String error) {
+    return 'İndirme başarısız: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir (örneğin «Rus siteleri», «devlet hizmetleri», «VKontakte»). Abonelik panelinizin tanımladığı yönlendirme kuralları bunlara dayanır.\n\nUygulamaya gömülü değildir: ikisi birlikte yaklaşık 30 MB tutar ve herkese gerekmez — sıradan bir sunucu bunları hiç kullanmaz.\n\nDosyalar yokken bu tür kurallar yapılandırmadan çıkarılır ve daha önce doğrudan gönderdikleri trafik VPN üzerinden gider. Bu güvenlidir ama daha yavaştır; ayrıca yerel siteler yabancı bir adresten gelen erişimi reddedebilir. Sizin belirlediğiniz site ve uygulama kuralları her durumda çalışır — bu dosyalara bağlı değildir.';
 }

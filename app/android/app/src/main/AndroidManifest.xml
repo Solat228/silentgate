@@ -14,7 +14,7 @@
 
     <application
         android:label="@string/app_name"
-        android:name="${applicationName}"
+        android:name=".SilentGateApplication"
         android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:allowBackup="false"

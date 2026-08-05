@@ -3695,6 +3695,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Нужен адрес с префиксом, например 10.8.0.0/24'**
   String get tunCidrInvalid;
+
+  /// No description provided for @geoTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Гео-базы маршрутизации'**
+  String get geoTitle;
+
+  /// No description provided for @geoMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не скачаны — правила по странам и категориям не работают'**
+  String get geoMissing;
+
+  /// No description provided for @geoPresent.
+  ///
+  /// In ru, this message translates to:
+  /// **'{size}, обновлены {date}'**
+  String geoPresent(String size, String date);
+
+  /// No description provided for @geoDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать'**
+  String get geoDownload;
+
+  /// No description provided for @geoUpdate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить'**
+  String get geoUpdate;
+
+  /// No description provided for @geoDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачиваю {file}…'**
+  String geoDownloading(String file);
+
+  /// No description provided for @geoDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Гео-базы обновлены'**
+  String get geoDone;
+
+  /// No description provided for @geoFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось скачать: {error}'**
+  String geoFailed(String error);
+
+  /// No description provided for @infoGeoAssets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям (например «российские сайты», «госуслуги», «ВКонтакте»). По ним работают правила маршрутизации, которые задаёт панель подписки.\n\nВ приложение они не вложены: вдвоём весят около 30 МБ, а нужны не всем — обычному серверу они не требуются вовсе.\n\nПока файлов нет, такие правила из конфига убираются, и трафик, который они уводили напрямую, идёт через VPN. Это безопасно, но медленнее, и российские сайты могут отказывать в доступе из-за иностранного адреса. Правила по конкретным сайтам и приложениям, заданные вами, работают в любом случае — они не зависят от этих файлов.'**
+  String get infoGeoAssets;
 }
 
 class _AppLocalizationsDelegate

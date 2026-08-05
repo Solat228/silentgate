@@ -2066,4 +2066,39 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get tunCidrInvalid =>
       'Adresse mit Präfix erforderlich, z. B. 10.8.0.0/24';
+
+  @override
+  String get geoTitle => 'Routing-Geodatenbanken';
+
+  @override
+  String get geoMissing =>
+      'Nicht heruntergeladen — Regeln nach Land und Kategorie greifen nicht';
+
+  @override
+  String geoPresent(String size, String date) {
+    return '$size, Stand $date';
+  }
+
+  @override
+  String get geoDownload => 'Herunterladen';
+
+  @override
+  String get geoUpdate => 'Aktualisieren';
+
+  @override
+  String geoDownloading(String file) {
+    return '$file wird heruntergeladen…';
+  }
+
+  @override
+  String get geoDone => 'Geodatenbanken aktualisiert';
+
+  @override
+  String geoFailed(String error) {
+    return 'Herunterladen fehlgeschlagen: $error';
+  }
+
+  @override
+  String get infoGeoAssets =>
+      'Die Dateien geoip.dat und geosite.dat enthalten Adresslisten nach Ländern und Domainlisten nach Kategorien (zum Beispiel „russische Websites“, „Behördenportale“, „VK“). Auf ihnen beruhen die Routing-Regeln, die das Panel Ihres Abonnements vorgibt.\n\nIn der App sind sie nicht enthalten: Zusammen sind sie rund 30 MB groß und werden nicht von jedem gebraucht — ein gewöhnlicher Server kommt ganz ohne sie aus.\n\nSolange die Dateien fehlen, werden solche Regeln aus der Konfiguration entfernt, und der Verkehr, den sie bisher direkt geleitet haben, läuft stattdessen über das VPN. Das ist sicher, aber langsamer, und lokale Websites verweigern den Zugriff möglicherweise, weil die Adresse im Ausland liegt. Ihre eigenen Regeln für einzelne Websites und Anwendungen gelten unabhängig davon — sie hängen nicht von diesen Dateien ab.';
 }
