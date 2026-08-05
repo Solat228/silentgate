@@ -39,10 +39,35 @@ class NetworkWatcher {
   bool _suspended = false;
   DateTime _quietUntil = DateTime.fromMillisecondsSinceEpoch(0);
 
+  /// Опознавать ли выход из сна по разрыву в ряду тактов.
+  ///
+  /// ⚠️ ТОЛЬКО НА НАСТОЛЬНЫХ СИСТЕМАХ, И ЭТО НЕ ПРИДИРКА К ПЛАТФОРМАМ.
+  ///
+  /// Эвристика опирается на посылку «раз таймеры стояли — значит спала машина, и
+  /// система за это время пересоздала интерфейсы уже без нашего туннеля». На
+  /// Windows так и есть. **На Android посылка неверна дважды.**
+  ///
+  ///  1. Таймеры Dart замирают при КАЖДОМ гашении экрана — это штатный app
+  ///     standby, а не пробуждение. Разрыв в 20–80 секунд там норма.
+  ///  2. Туннель при этом никуда не девается: им владеет `VpnService`, который
+  ///     переживает и сон, и смерть интерфейса. Пересоздавать нечего.
+  ///
+  /// Цена ошибки измерена по журналу владельца (Infinix, Android 11, двое
+  /// суток): **201 ложное «выход из сна» и 204 переподключения**. Каждое —
+  /// перезагрузка ядра, и на ней же ловились гонки за собственный порт
+  /// (`listen tcp 127.0.0.1:10811: bind: address already in use`), от которых
+  /// VPN-сервис падал целиком. То есть детектор не просто шумел, а ронял туннель.
+  ///
+  /// Настоящая смена сети на Android ловится как обычно — сравнением отпечатка
+  /// с дебаунсом, поэтому выключение эвристики ничего не теряет.
+  final bool detectWakeFromSleep;
+
   NetworkWatcher({
     this.interval = const Duration(seconds: 5),
     this.grace = const Duration(seconds: 15),
-  });
+    bool? detectWakeFromSleep,
+  }) : detectWakeFromSleep = detectWakeFromSleep ??
+            (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
   /// Событие на подтверждённое изменение; значение — описание «было → стало».
   Stream<String> get changes => _controller.stream;
@@ -104,7 +129,9 @@ class NetworkWatcher {
     // же паузу за пробуждение. Ровно тот цикл переподключений, который чинили в
     // 0.8.3, только с другой стороны.
     if (_suspended || now0.isBefore(_quietUntil)) return;
-    if (prev != null && now0.difference(prev) > interval * 4) {
+    if (detectWakeFromSleep &&
+        prev != null &&
+        now0.difference(prev) > interval * 4) {
       final gap = now0.difference(prev);
       AppLog.w('Похоже, устройство выходило из сна (пауза '
           '${gap.inSeconds} с) — считаем это сменой сети и переприменяем '

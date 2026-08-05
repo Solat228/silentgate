@@ -117,9 +117,15 @@ class _AndroidCoreVersions implements CoreVersionInfo {
       final xray = '${v?['xray'] ?? ''}'.trim();
       final singbox = '${v?['singbox'] ?? ''}'.trim();
       // Показываем оба: на Android они живут в одном AAR, и знать надо оба.
-      if (xray.isNotEmpty && singbox.isNotEmpty) return '\$xray / sing-box \$singbox';
+      //
+      // ⚠️ ДОЛЛАР ЗДЕСЬ НЕ ЭКРАНИРОВАТЬ. Стояло `'\$xray / sing-box \$singbox'`,
+      // и строка печатала саму себя: в «О программе» на телефоне висело
+      // «sing-box $singbox» вместо номера версии. Компилятор такое не ловит —
+      // это валидная строка, — а тест на версию ядра нам взять неоткуда: она
+      // приходит из нативного канала. Поймано глазами на эмуляторе.
+      if (xray.isNotEmpty && singbox.isNotEmpty) return '$xray / sing-box $singbox';
       if (xray.isNotEmpty) return xray;
-      if (singbox.isNotEmpty) return 'sing-box \$singbox';
+      if (singbox.isNotEmpty) return 'sing-box $singbox';
     } catch (_) {
       // Канал недоступен — честный прочерк лучше выдумки.
     }

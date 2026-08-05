@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.system.OsConstants
+import android.util.Log
 import lol.silentgate.cores.libbox.CommandServer
 import lol.silentgate.cores.libbox.CommandServerHandler
 import lol.silentgate.cores.libbox.ConnectionOwner
@@ -61,6 +62,8 @@ import java.net.NetworkInterface as JavaNetworkInterface
  * Подробности и рецепт сборки ядер — `tools/build-android-cores.md`.
  */
 class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandler {
+    private val logTag = "SilentGateVpn"
+
 
     companion object {
         const val ACTION_START = "lol.silentgate.action.START"
@@ -310,7 +313,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // Сами списки пакетов оставляем пустыми: единственный источник
             // правды — конфиг (include_package/exclude_package в TUN-инбаунде),
             // и дублировать их здесь значило бы иметь два несогласованных места.
-            server.startOrReloadService(configJson, OverrideOptions())
+            startOrReloadWithRetry(server, configJson)
             commandServer = server
 
             running = true
@@ -350,11 +353,50 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Xray переподнимается только если конфиг пришёл: заглушка kill switch
     /// присылает один sing-box, и держать при ней живое соединение с VPN-сервером
     /// не нужно.
+    /**
+     * `startOrReloadService` с повтором на «порт занят».
+     *
+     * ⚠️ ЗАЧЕМ. Перезагрузка ядра поднимает НОВЫЕ инбаунды раньше, чем ядро
+     * успевает отпустить сокеты прежнего экземпляра. Чаще всего спотыкается
+     * `probe-in` (10811) — служебный инбаунд для проверки сервисов у кнопки
+     * Connect. В журнале владельца это выглядело так:
+     *
+     *   proxyerror: start inbound/mixed[probe-in]:
+     *   listen tcp 127.0.0.1:10811: bind: address already in use
+     *
+     * и на этом **весь VPN-сервис останавливался** — то есть диагностическое
+     * удобство роняло туннель. Цена ожидания в пару сотен миллисекунд
+     * несопоставима с ценой обрыва связи, поэтому просто ждём и повторяем.
+     *
+     * Повторяем ТОЛЬКО на ошибку связывания порта: всё остальное (битый конфиг,
+     * недоступное ядро) повтором не лечится, и молчаливые попытки там лишь
+     * оттянули бы честный отказ.
+     */
+    private fun startOrReloadWithRetry(server: CommandServer, configJson: String) {
+        var attempt = 0
+        while (true) {
+            try {
+                server.startOrReloadService(configJson, OverrideOptions())
+                if (attempt > 0) {
+                    Log.i(logTag, "Ядро поднялось с попытки ${attempt + 1}: порт был занят прошлым экземпляром")
+                }
+                return
+            } catch (e: Throwable) {
+                val text = generateSequence(e) { it.cause }
+                    .mapNotNull { it.message }.joinToString(" | ")
+                val portBusy = text.contains("address already in use", ignoreCase = true)
+                if (!portBusy || attempt >= 4) throw e
+                attempt++
+                Thread.sleep(250L * attempt)
+            }
+        }
+    }
+
     private fun reloadTunnel(configJson: String, xrayConfigJson: String?) {
         try {
             stopXray()
             if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
-            commandServer?.startOrReloadService(configJson, OverrideOptions())
+            commandServer?.let { startOrReloadWithRetry(it, configJson) }
             running = true
             lastError = null
             // Новая сессия — признак прошлой остановки сбрасываем, иначе
