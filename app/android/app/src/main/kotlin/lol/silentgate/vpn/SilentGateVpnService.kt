@@ -201,6 +201,22 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 return START_NOT_STICKY
             }
             else -> {
+                // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
+                //
+                // Признак «остановлено пользователем» ставится на ACTION_STOP, а
+                // снимался лишь тогда, когда туннель ПОДНЯЛСЯ. При неудачном
+                // старте catch звал notifyState() со старым `true`, и Dart-сторона
+                // (проверка byUser стоит выше вывода ошибки) выбрасывала
+                // настоящий текст, подменяя его на «Туннель снят пользователем из
+                // уведомления». Дефект самоподдерживающийся: любая ошибка в Dart
+                // заканчивается cleanup() → 'stop' → ACTION_STOP, который снова
+                // взводит флаг.
+                //
+                // В журнале владельца это выглядело как череда «Подключение по
+                // команде пользователя» → «Туннель снят пользователем», без единой
+                // ошибки, — то есть диагностика велась по логу, из которого отказы
+                // были стёрты.
+                stoppedByUser = false
                 val config = intent?.getStringExtra(EXTRA_CONFIG)
                 if (config.isNullOrBlank()) {
                     lastError = "Пустой конфиг"
@@ -338,7 +354,15 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 tailOfCoreLog()?.let { append("\n\n").append(it) }
             }
             running = false
-            notifyState()
+            // ⚠️ УБИРАЕМ УВЕДОМЛЕНИЕ ПЕРВЫМ ДЕЙСТВИЕМ. Оно уже опубликовано —
+            // `startForeground` обязан отработать в первые секунды
+            // `onStartCommand`, иначе система убьёт процесс с
+            // ForegroundServiceDidNotStartInTimeException. Значит «не показывать
+            // до успеха» не вариант, и остаётся честно снять его при провале.
+            // Иначе в шторке висит уведомление о работающем VPN, которого нет, и
+            // смахнуть его нельзя: у него setOngoing(true).
+            cancelNotification()
+            runCatching { notifyState() }
             stopTunnel()
             stopSelf()
         }
@@ -503,8 +527,32 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         tunFd = null
 
         running = false
-        notifyState()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        // Уведомление снимаем ПОСЛЕ закрытия commandServer, но ДО notifyState:
+        // раньше — рискуем потерять foreground-статус на середине уборки ядра и
+        // быть убитыми системой; позже — исключение из notifyState отменило бы
+        // снятие вовсе.
+        cancelNotification()
+        runCatching { notifyState() }
+    }
+
+    /**
+     * Убрать уведомление ГАРАНТИРОВАННО.
+     *
+     * ⚠️ Публикуется оно двумя путями — `startForeground` (через системный
+     * менеджер сервисов) и `manager.notify` в [updateNotification], — а
+     * снималось одним: `stopForeground`. Пережившее уведомление пользователь не
+     * может даже смахнуть, потому что у него `setOngoing(true)`. Отсюда жалоба
+     * «даже если произошла ошибка включения, он попадает в шторку».
+     *
+     * Отменять надо оба пути, поэтому здесь и `stopForeground`, и явный
+     * `cancel`.
+     */
+    private fun cancelNotification() {
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+        runCatching {
+            (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
+                .cancel(NOTIFICATION_ID)
+        }
     }
 
     override fun onCreate() {

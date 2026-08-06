@@ -109,16 +109,38 @@ class AndroidSupportReporter implements SupportReporter {
     return file.path;
   }
 
-  /// Копирует ТЕКСТ отчёта в буфер обмена.
+  /// Отдаёт отчёт ФАЙЛОМ через системное «Поделиться».
   ///
-  /// Именно текст, а не файл: буфер обмена Android хранит данные, а приватный
-  /// каталог приложения недоступен другим программам — файл просто некуда
-  /// «показать». Вставить содержимое в чат поддержки при этом можно сразу.
+  /// ⚠️ Раньше сюда копировался ТЕКСТ отчёта целиком, и в чат поддержки он
+  /// уезжал десятками сообщений подряд — владелец описал это как «55 страниц
+  /// телеграмм текста». Путь к файлу показать тоже нечем: каталог приложения
+  /// на Android приватный, и `/data/user/0/…` человеку бесполезен.
+  ///
+  /// Теперь файл уходит одним вложением: `FileProvider` выдаёт временный
+  /// доступ ровно к нему и ровно тому приложению, которое выбрали в системном
+  /// окне отправки.
+  ///
+  /// Буфер обмена остался ЗАПАСНЫМ путём: если провайдер не отдал ссылку
+  /// (несовпадение authority, срезанный путь), человек не должен остаться без
+  /// единственного способа передать отчёт — он и нужен-то, когда всё сломалось.
   @override
   Future<void> reveal(String path) async {
+    final shared = await _shareFile(path);
+    if (shared) return;
+    AppLog.w('Не удалось отдать отчёт файлом — копирую текстом в буфер обмена');
     final text = await _safe(() => File(path).readAsString());
     if (text.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: text));
+  }
+
+  static Future<bool> _shareFile(String path) async {
+    try {
+      final ok = await const MethodChannel('lol.silentgate/launcher')
+          .invokeMethod<bool>('shareFile', {'url': path});
+      return ok == true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Хвост лога ядра — читается С КОНЦА файла. Туда `VpnService` направляет

@@ -119,4 +119,57 @@ void main() {
     expect(r.report.rulesRemoved, 2);
     expect(r.report.describe(), contains('geosite:vk'));
   });
+
+  group('Ссылки живут не только в маршрутах', () {
+    test('geosite в dns.servers[].domains тоже вычищается', () {
+      // Первая версия чистила лишь routing.rules: конфиг выглядел обработанным,
+      // отчёт говорил «ничего не менял», а ядро всё равно отвергало его целиком.
+      final src = jsonEncode({
+        'dns': {
+          'servers': [
+            {'address': '1.1.1.1', 'domains': ['geosite:category-ru', 'example.com']},
+            {'address': '8.8.8.8', 'domains': ['geosite:vk']},
+          ],
+        },
+        'outbounds': [
+          {'protocol': 'freedom', 'tag': 'direct'}
+        ],
+      });
+      final r = stripGeodata(src);
+      final dns = (jsonDecode(r.json) as Map)['dns'] as Map;
+      final servers = dns['servers'] as List;
+      expect((servers.first as Map)['domains'], ['example.com']);
+      expect((servers.last as Map).containsKey('domains'), isFalse,
+          reason: 'пустой список доменов ядру не нужен');
+      expect(r.report.dropped, 2);
+      expect(r.report.residual, isFalse);
+    });
+
+    test('конфиг вообще без routing не обрывает разбор на полпути', () {
+      // Ранний выход по отсутствию routing.rules оставлял секцию dns нетронутой.
+      final r = stripGeodata(jsonEncode({
+        'dns': {
+          'servers': [
+            {'address': '1.1.1.1', 'domains': ['geoip:ru']}
+          ]
+        },
+      }));
+      expect(needsGeodata(r.json), isFalse);
+    });
+
+    test('⚠️ остаток ссылок помечается флагом, а не замалчивается', () {
+      // Страховка, которая не сработала и промолчала, хуже отсутствующей.
+      final report = stripGeodata(jsonEncode({
+        'routing': {
+          'rules': [
+            {'type': 'field', 'ip': ['1.2.3.0/24'], 'outboundTag': 'direct'}
+          ]
+        },
+        // Место, которого чистка не знает: ссылка переживёт обработку.
+        'observatory': {'subjectSelector': ['geosite:vk']},
+      })).report;
+      expect(report.residual, isTrue,
+          reason: 'иначе «страховка есть и не сработала» останется незамеченной');
+    });
+  });
 }

@@ -374,10 +374,20 @@ class AppState extends ChangeNotifier {
   /// пересборке списка: состав серверов меняется при каждом обновлении подписки.
   /// Отдать движку то, что он сам не знает: название подписки и выбранную
   /// раскладку шторки. Движок про подписки и настройки интерфейса не в курсе.
-  Future<void> publishNotificationLayout() async {
+  /// ⚠️ [settings] ОБЯЗАТЕЛЕН, когда настройку только что поменяли.
+  ///
+  /// Раньше метод всегда читал значение С ДИСКА, а вызывался сразу после
+  /// `controller.update(...)`, которую никто не ждал: запись идёт через
+  /// временный файл с переименованием, и к моменту чтения на диске лежало ещё
+  /// СТАРОЕ значение. Движку доставалось прежнее, шторка не менялась — ровно
+  /// жалоба владельца «не работает кнопка смены шторки».
+  ///
+  /// Чтение с диска осталось только для стартового вызова, когда в памяти
+  /// настроек ещё нет.
+  Future<void> publishNotificationLayout({AppSettings? settings}) async {
     _engine.subscriptionTitle = _info.title ?? '';
     _engine.compactNotification =
-        (await SettingsStorage().load()).compactNotification;
+        (settings ?? await SettingsStorage().load()).compactNotification;
   }
 
   void _publishServerDomains() {

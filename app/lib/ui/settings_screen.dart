@@ -185,9 +185,13 @@ class _ReliabilitySection extends StatelessWidget {
         if (Platform.isAndroid)
           SwitchListTile(
             value: settings.compactNotification,
-            onChanged: (v) {
-              controller.update((s) => s.copyWith(compactNotification: v));
-              context.read<AppState>().publishNotificationLayout();
+            onChanged: (v) async {
+              final state = context.read<AppState>();
+              // Ждём запись: без await следующая строка читала бы прежнее
+              // значение, и раскладка не менялась бы вовсе.
+              await controller.update((s) => s.copyWith(compactNotification: v));
+              await state.publishNotificationLayout(
+                  settings: controller.settings);
             },
             title: const Text('ВРЕМЕННО: короткая шторка'),
             subtitle: const Text(

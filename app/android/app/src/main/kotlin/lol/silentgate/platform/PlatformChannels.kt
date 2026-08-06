@@ -346,7 +346,54 @@ object PlatformChannels {
                 val canHandle = intent.resolveActivity(context.packageManager) != null
                 result.success(if (canHandle) startView(context, target) else false)
             }
+            // Отдать ФАЙЛ наружу через системное «Поделиться».
+            //
+            // ⚠️ Почему не «показать путь», как на Windows: каталог приложения
+            // на Android приватный, другим программам он недоступен, и путь
+            // вида /data/user/0/… пользователю бесполезен. Раньше отчёт
+            // копировался в буфер обмена целиком и уезжал в чат поддержки
+            // десятками сообщений подряд.
+            //
+            // FileProvider выдаёт временный доступ ровно к одному файлу и
+            // ровно тому приложению, которое человек выбрал в chooser'е.
+            "shareFile" -> {
+                result.success(shareFile(context, target))
+            }
             else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * Системное «Поделиться» для одного файла.
+     *
+     * Возвращает false, если файла нет или провайдер не смог выдать ссылку, —
+     * Dart-сторона в этом случае падает обратно на буфер обмена, чтобы человек
+     * не остался вообще без способа передать отчёт.
+     */
+    private fun shareFile(context: Context, path: String): Boolean {
+        val file = java.io.File(path)
+        if (!file.exists()) return false
+        return try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, context.packageName + ".fileprovider", file)
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_STREAM, uri)
+                putExtra(Intent.EXTRA_SUBJECT, file.name)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = Intent.createChooser(send, null).apply {
+                // Канал могут дёрнуть, когда Activity не на переднем плане.
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            context.startActivity(chooser)
+            true
+        } catch (_: Throwable) {
+            // Чаще всего сюда приводит несовпадение authority или пути в
+            // file_paths.xml — «Failed to find configured root». Падать из-за
+            // отправки отчёта нельзя: он и нужен-то, когда что-то сломалось.
+            false
         }
     }
 

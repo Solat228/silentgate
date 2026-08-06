@@ -16,11 +16,19 @@ class GeodataFallbackReport {
   /// Имена выброшенных категорий — для честного сообщения пользователю.
   final List<String> categories;
 
+  /// ⚠️ ПОСЛЕ ЧИСТКИ ССЫЛКИ ВСЁ РАВНО ОСТАЛИСЬ.
+  ///
+  /// Значит мы не знаем какого-то места, где они лежат, и ядро отвергнет
+  /// конфиг несмотря на «страховку». Молчать тут нельзя: снаружи это выглядит
+  /// как «запасной путь есть и не сработал», а разбираться будет некому.
+  final bool residual;
+
   const GeodataFallbackReport({
     this.replaced = 0,
     this.dropped = 0,
     this.rulesRemoved = 0,
     this.categories = const [],
+    this.residual = false,
   });
 
   bool get changed => replaced > 0 || dropped > 0 || rulesRemoved > 0;
@@ -88,20 +96,17 @@ GeodataFallbackResult stripGeodata(String json) {
   if (root is! Map<String, dynamic>) {
     return GeodataFallbackResult(json, const GeodataFallbackReport());
   }
-  final routing = root['routing'];
-  if (routing is! Map) {
-    return GeodataFallbackResult(json, const GeodataFallbackReport());
-  }
-  final rules = routing['rules'];
-  if (rules is! List) {
-    return GeodataFallbackResult(json, const GeodataFallbackReport());
-  }
-
   var replaced = 0, dropped = 0, rulesRemoved = 0;
   final categories = <String>{};
   final kept = <dynamic>[];
 
-  for (final rule in rules) {
+  // ⚠️ БЕЗ РАННЕГО ВЫХОДА. Раньше отсутствие `routing.rules` заканчивало работу
+  // сразу — и секция `dns` оставалась нетронутой у конфигов, где ссылки лежат
+  // только там. Разбираем то, что есть, и идём дальше.
+  final routing = root['routing'];
+  final rules = (routing is Map) ? routing['rules'] : null;
+
+  for (final rule in (rules is List ? rules : const [])) {
     if (rule is! Map) {
       kept.add(rule);
       continue;
@@ -160,17 +165,54 @@ GeodataFallbackResult stripGeodata(String json) {
     kept.add(rule);
   }
 
+  if (routing is Map && rules is List) routing['rules'] = kept;
+
+  // ⚠️ ССЫЛКИ ЖИВУТ НЕ ТОЛЬКО В МАРШРУТАХ. У встроенного DNS Xray свои
+  // серверы со списком доменов (`dns.servers[].domains`), и туда тоже пишут
+  // `geosite:`. Первая версия чистила лишь `routing.rules`: конфиг выглядел
+  // обработанным, `changed` оставался false, лог молчал — а ядро всё равно
+  // падало. Тот же почерк, что мы ловим в этом проекте девятый раз.
+  final dns = root['dns'];
+  if (dns is Map) {
+    final servers = dns['servers'];
+    if (servers is List) {
+      for (final srv in servers) {
+        if (srv is! Map) continue;
+        final domains = srv['domains'];
+        if (domains is! List) continue;
+        final out = <dynamic>[];
+        for (final e in domains) {
+          final s = '$e';
+          if (s.startsWith('geosite:') || s.startsWith('geoip:')) {
+            categories.add(s);
+            dropped++;
+          } else {
+            out.add(e);
+          }
+        }
+        if (out.isEmpty) {
+          srv.remove('domains');
+        } else {
+          srv['domains'] = out;
+        }
+      }
+    }
+  }
+
+  final encoded = jsonEncode(root);
   final report = GeodataFallbackReport(
     replaced: replaced,
     dropped: dropped,
     rulesRemoved: rulesRemoved,
     categories: categories.toList()..sort(),
+    // Перепроверяем СВОЙ ЖЕ результат: дешевле одной строки кода, а ловит
+    // ровно тот случай, когда мы чего-то не знаем о формате конфига.
+    residual: needsGeodata(encoded),
   );
-  if (!report.changed) {
+  if (!report.changed && !report.residual) {
     return GeodataFallbackResult(json, report);
   }
-  routing['rules'] = kept;
-  return GeodataFallbackResult(jsonEncode(root), report);
+  return GeodataFallbackResult(encoded, report);
 }
 
 /// Есть ли в конфиге ссылки на гео-базы (быстрая проверка без разбора JSON).

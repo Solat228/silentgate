@@ -181,7 +181,18 @@ abstract class VpnEngineBase implements VpnEngine {
   /// Короткая раскладка уведомления — без строки подписки.
   bool _compactNotification = false;
   @override
-  set compactNotification(bool compact) => _compactNotification = compact;
+  set compactNotification(bool compact) {
+    if (_compactNotification == compact) return;
+    _compactNotification = compact;
+    // Раскладка меняется прямо сейчас, а не на следующем такте счётчиков:
+    // при отключённом VPN тактов нет вовсе, и переключатель выглядел бы
+    // сломанным. Платформам, которым это не нужно, метод ничего не стоит.
+    onNotificationLayoutChanged();
+  }
+
+  /// Раскладку шторки поменяли на лету. Умолчание — ничего не делать.
+  @protected
+  void onNotificationLayoutChanged() {}
   bool get compactNotification => _compactNotification;
 
   /// Текущая сессия (нужна наследникам для подъёма).

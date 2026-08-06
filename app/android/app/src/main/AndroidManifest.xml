@@ -20,6 +20,22 @@
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="false">
+        <!--
+          Отдача отчёта поддержки НАРУЖУ. Приватный каталог приложения другим
+          программам недоступен, поэтому просто «показать путь» на Android не
+          работает — раньше отчёт копировался в буфер обмена и уезжал в чат
+          десятками сообщений подряд.
+        -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths"/>
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
