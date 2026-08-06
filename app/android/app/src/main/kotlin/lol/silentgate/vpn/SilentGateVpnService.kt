@@ -486,12 +486,42 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     /// Хвост лога ядра — в него попадают и паники Go, перехваченные
     /// redirectStderr.
+    /**
+     * Хвост лога ядра для текста ошибки.
+     *
+     * ⚠️ ОГРАНИЧЕНИЙ БЫЛО НЕДОСТАТОЧНО. Раньше читался ВЕСЬ файл
+     * (`readLines()`) и брались последние 12 строк — по числу строк, но не по
+     * их длине. Ядро умеет писать очень длинные строки, а в логе попадаются и
+     * непечатаемые байты: у владельца это дало сплошной блок нечитаемых
+     * символов на тысячи знаков. Он уезжал в отчёт поддержки, заслонял всё
+     * остальное и раздувал отчёт до десятков сообщений в чате.
+     *
+     * Теперь читаем только конец файла, режем по длине и вычищаем управляющие
+     * символы вместе с ANSI-раскраской.
+     */
     private fun tailOfCoreLog(): String? {
         val f = coreLog ?: return null
         return runCatching {
-            val lines = f.readLines()
-            if (lines.isEmpty()) null
-            else lines.takeLast(12).joinToString("\n")
+            val maxBytes = 16 * 1024L
+            val raw = java.io.RandomAccessFile(f, "r").use { raf ->
+                val from = (raf.length() - maxBytes).coerceAtLeast(0L)
+                raf.seek(from)
+                val buf = ByteArray((raf.length() - from).toInt())
+                raf.readFully(buf)
+                Pair(String(buf, Charsets.UTF_8), from > 0)
+            }
+            val ansi = Regex("\\[[0-9;]*[a-zA-Z]")
+            val lines = raw.first.lines()
+                // Первая строка после смещения почти наверняка обрезана посередине.
+                .let { if (raw.second && it.size > 1) it.drop(1) else it }
+                .takeLast(12)
+                .map { line ->
+                    ansi.replace(line, "")
+                        .filter { it == '\t' || it.code >= 0x20 }
+                        .take(400)
+                }
+                .filter { it.isNotBlank() }
+            if (lines.isEmpty()) null else lines.joinToString("\n").take(4000)
         }.getOrNull()
     }
 

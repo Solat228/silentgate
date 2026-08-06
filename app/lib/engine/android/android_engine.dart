@@ -370,8 +370,22 @@ class AndroidEngine extends VpnEngineBase {
   bool _geodataUnusable = false;
 
   Future<String> _guardGeodata(String json) async {
-    if (!needsGeodata(json)) return json;
-    if (!_geodataUnusable && await GeoAssets.available()) return json;
+    // ⚠️ ДИАГНОСТИКА, КОТОРАЯ НЕ ВРЁТ. Печатаем только БУЛЕВЫ признаки: сам
+    // конфиг в журнал класть нельзя (там UUID и адреса узлов, а журнал уезжает
+    // в отчёт поддержки), а путь к каталогу гео-баз бесполезен — он и в
+    // сломанном случае выглядит правильным. Настоящий ответ даёт только
+    // сравнение «что было на входе» и «что ушло ядру».
+    final need = needsGeodata(json);
+    final have = await GeoAssets.available();
+    if (!need) {
+      AppLog.i('Xray-конфиг: ссылок на гео-базы нет');
+      return json;
+    }
+    if (!_geodataUnusable && have) {
+      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы скачаны — '
+          'отдаю как есть');
+      return json;
+    }
     final r = stripGeodata(json);
     if (r.report.residual) {
       // Мы вычистили что могли, а ссылки остались — значит есть место, о
@@ -380,6 +394,9 @@ class AndroidEngine extends VpnEngineBase {
       AppLog.e('В конфиге остались ссылки на гео-базы после чистки — '
           'ядро, скорее всего, откажет. Это дефект: сообщите разработчику.');
     }
+    AppLog.i('Xray-конфиг после чистки: ссылки остались='
+        '${needsGeodata(r.json)} (базы скачаны=$have, '
+        'ядро их не открыло=$_geodataUnusable)');
     if (r.report.changed) {
       AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
           '${r.report.describe()}. Этот трафик пойдёт через VPN, а не напрямую. '
@@ -400,6 +417,8 @@ class AndroidEngine extends VpnEngineBase {
     // шанс. Иначе один отказ ядра выключал бы правила панели до перезапуска
     // приложения, в том числе после того, как пользователь скачал базы заново.
     if (attempt == 0) _geodataUnusable = false;
+    // Новая попытка — снова слушаем события остановки.
+    _handlingStop = false;
 
     setStatus(VpnConnectionState.connecting);
     // Пароль — на КАЖДУЮ сессию, и он же кладётся на диск: следующий запуск
@@ -592,6 +611,11 @@ class AndroidEngine extends VpnEngineBase {
       return;
     }
 
+    // ⚠️ Проверка ДО записи в журнал. На один отказ прилетает несколько
+    // событий, и без этого одна и та же ошибка ложилась в лог по семь раз
+    // подряд — в отчёте владельца это занимало страницы.
+    if (_handlingStop) return;
+
     // Сюда попадает и onRevoke (другой VPN перехватил туннель) — пути,
     // которого на Windows нет вовсе.
     AppLog.e('VPN-сервис остановился: ${error ?? 'без причины'}');
@@ -602,7 +626,26 @@ class AndroidEngine extends VpnEngineBase {
     unawaited(_reportStop(error));
   }
 
+  /// Мы уже разбираем остановку сервиса.
+  ///
+  /// ⚠️ НА ОДИН ОТКАЗ ПРИЛЕТАЕТ НЕСКОЛЬКО СОБЫТИЙ. Нативная сторона шлёт
+  /// состояние из `catch`, потом из `stopTunnel`, потом из `onDestroy` — в
+  /// журнале владельца это семь одинаковых «VPN-сервис остановился» в одну и ту
+  /// же секунду.
+  ///
+  /// Первое событие назначало повтор с вычищенным конфигом, а следующие
+  /// приходили уже с поднятым `_geodataUnusable`, проваливались мимо ветки
+  /// повтора в `cleanup()` — и та ОТМЕНЯЛА только что назначенную попытку
+  /// (она увеличивает поколение). Итог: в логе есть и «Повторяю без правил», и
+  /// «попытка 1 через 0 с», а повтор не случается никогда. Ровно то, что
+  /// владелец видел как «та же ошибка, VPN не включается».
+  bool _handlingStop = false;
+
   Future<void> _reportStop(String? error) async {
+    // Повторные события того же отказа не должны трогать ничего: решение уже
+    // принято по первому.
+    if (_handlingStop) return;
+    _handlingStop = true;
     if (error == null || error.isEmpty) {
       await onCoreDied(0);
       return;
