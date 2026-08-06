@@ -630,7 +630,10 @@ class _SupportDialogState extends State<_SupportDialog> {
               const SizedBox(height: 8),
               Text(l.supportBullet1),
               const SizedBox(height: 4),
-              Text(l.supportBullet2),
+              // На Android отчёт уходит файлом через системное «Поделиться»,
+              // на Windows открывается папка и сам файл. Инструкция, зовущая
+              // искать папку на телефоне, отправляет человека в никуда.
+              Text(Platform.isAndroid ? l.supportBullet2Android : l.supportBullet2),
               // Поле описания — там, где готовый отчёт нельзя дописать руками
               // (Android: он копируется в буфер целиком и уходит как есть).
               // Без него в поддержку приезжает голый лог без слова о проблеме.
@@ -675,7 +678,7 @@ class _SupportDialogState extends State<_SupportDialog> {
                         fontSize: 12)),
               ],
             ] else ...[
-              Text(l.supportDoneText),
+              Text(Platform.isAndroid ? l.supportDoneTextAndroid : l.supportDoneText),
               const SizedBox(height: 8),
               SelectableText(_path!.split(RegExp(r'[\\/]')).last,
                   textDirection: TextDirection.ltr,

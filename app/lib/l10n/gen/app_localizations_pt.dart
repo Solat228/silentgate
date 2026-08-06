@@ -2106,4 +2106,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get infoGeoAssets =>
       'Os arquivos geoip.dat e geosite.dat são listas de endereços por país e de domínios por categoria (por exemplo «sites russos», «serviços públicos», «VK»). As regras de roteamento definidas pelo painel da assinatura dependem deles.\n\nEles não vêm embutidos no aplicativo: juntos pesam cerca de 30 MB e não são necessários para todos — um servidor comum não precisa deles.\n\nEnquanto os arquivos não estiverem baixados, essas regras são removidas da configuração, e o tráfego que elas enviavam direto passa a ir pela VPN. Isso é seguro, mas mais lento, e sites locais podem negar o acesso por causa do endereço estrangeiro. As regras que você mesmo define para sites e aplicativos funcionam de qualquer forma — elas não dependem desses arquivos.';
+
+  @override
+  String get supportBullet2Android =>
+      '• Após tocar, o relatório será reunido em um único arquivo e abrirá a janela do sistema “Compartilhar” — escolha o Telegram e ele será enviado como um único anexo. Descreva o problema no campo acima: sem descrição não há o que analisar.';
+
+  @override
+  String get supportDoneTextAndroid =>
+      'O relatório foi reunido em um único arquivo. Escolha na janela do sistema para onde enviá-lo — no Telegram ele será enviado como anexo, e não como texto.';
 }

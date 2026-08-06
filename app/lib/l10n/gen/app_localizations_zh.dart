@@ -2027,4 +2027,12 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get infoGeoAssets =>
       'geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单（例如“俄罗斯网站”“政务服务”“VKontakte”）。订阅面板下发的路由规则正是依靠它们工作。\n\n它们没有打包进应用：两个加起来约 30 MB，而且并非人人都需要——普通服务器完全用不到。\n\n文件缺失期间，这类规则会从配置中移除，原本被它们放行直连的流量改走 VPN。这样是安全的，只是更慢，而且本地站点可能因为来自国外的地址而拒绝访问。你自己设定的网站和应用规则照常生效——它们不依赖这些文件。';
+
+  @override
+  String get supportBullet2Android =>
+      '• 点击后，报告会汇集为一个文件，并打开系统的“分享”窗口——选择 Telegram，它会作为一个附件发送。请在上方的输入框中描述问题：没有描述就无从分析。';
+
+  @override
+  String get supportDoneTextAndroid =>
+      '报告已汇集为一个文件。请在系统窗口中选择发送目标——发送到 Telegram 时它会作为附件，而不是文本。';
 }

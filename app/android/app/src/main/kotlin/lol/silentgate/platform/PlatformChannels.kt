@@ -380,6 +380,16 @@ object PlatformChannels {
                 type = "text/plain"
                 putExtra(Intent.EXTRA_STREAM, uri)
                 putExtra(Intent.EXTRA_SUBJECT, file.name)
+                // ⚠️ clipData ОБЯЗАТЕЛЕН, а не «на всякий случай».
+                //
+                // Без него доступ к файлу выдаётся только через EXTRA_STREAM, и
+                // окно выбора приложения его не получает: в logcat
+                // «Permission Denial: reading … requires the provider be
+                // exported, or grantUriPermission()», превью файла пустое, а
+                // принимающее приложение может не прочитать вложение вовсе.
+                // Android сам подсказывает это в предупреждении ChooserActivity.
+                clipData = android.content.ClipData.newUri(
+                    context.contentResolver, file.name, uri)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             val chooser = Intent.createChooser(send, null).apply {
