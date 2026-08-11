@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../platform/app_log.dart';
 import 'api_ports.dart';
+import 'api_secrets.dart';
 
 /// Сравнение токена в ПОСТОЯННОЕ время: без раннего выхода на первом
 /// несовпадающем байте и без утечки через сравнение длин.
@@ -211,11 +212,8 @@ class LocalApiServer {
     return _BodyParseResult.ok(v);
   }
 
-  Future<void> _ok(HttpResponse res, Map<String, dynamic> body) async {
-    res.statusCode = HttpStatus.ok;
-    res.write(jsonEncode(body));
-    await res.close();
-  }
+  Future<void> _ok(HttpResponse res, Map<String, dynamic> body) =>
+      _write(res, HttpStatus.ok, body);
 
   Future<void> _result(HttpResponse res, ApiResult r) async {
     if (r.isOk) return _ok(res, {'ok': true});
@@ -223,12 +221,41 @@ class LocalApiServer {
   }
 
   Future<void> _fail(
-      HttpResponse res, int status, String code, String message) async {
-    try {
-      res.statusCode = status;
-      res.write(jsonEncode({
+          HttpResponse res, int status, String code, String message) =>
+      _write(res, status, {
         'error': {'code': code, 'message': message}
-      }));
+      });
+
+  /// Единственное место, где тело ответа реально уходит в сокет — и
+  /// единственное место, где стоит барьер секретов (раунд ревью 1, находка 1).
+  ///
+  /// ⚠️ И `_ok`, и `_fail` идут ЧЕРЕЗ ЭТУ ФУНКЦИЮ, а не проверяют секреты
+  /// каждый по отдельности: обработчик мог не знать, что ключ подписки попал
+  /// в текст ошибки, а завтрашний эндпоинт — вовсе забыть про список. Барьер
+  /// здесь ловит любой из них одинаково, потому что стоит на границе процесса,
+  /// а не внутри бизнес-логики.
+  Future<void> _write(
+      HttpResponse res, int status, Map<String, dynamic> body) async {
+    var outStatus = status;
+    var outBody = jsonEncode(body);
+    try {
+      assertNoSecrets(outBody);
+    } catch (e) {
+      // ⚠️ ВИДНО В ЖУРНАЛЕ, А НЕ ТИХО. Заблокированный секрет — это баг в
+      // обработчике (см. `AppStateApiHandlers`), и если событие не оставит
+      // следа, тот же баг проживёт до следующего раунда ревью незамеченным.
+      AppLog.e('API: заблокирован ответ с запрещённым полем — $e');
+      outStatus = HttpStatus.internalServerError;
+      outBody = jsonEncode({
+        'error': {
+          'code': 'internal',
+          'message': 'Ответ заблокирован: содержит запрещённые данные',
+        }
+      });
+    }
+    try {
+      res.statusCode = outStatus;
+      res.write(outBody);
       await res.close();
     } catch (_) {
       // ⚠️ Клиент мог оборвать соединение, пока мы писали ответ — в том числе

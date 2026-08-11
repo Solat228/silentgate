@@ -1,3 +1,4 @@
+import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
 import '../core/util/country_flag.dart';
@@ -5,31 +6,14 @@ import 'app_state.dart';
 import 'probe_controller.dart';
 import 'settings_controller.dart';
 
-/// Поля, которых в ответах API быть НЕ ДОЛЖНО.
-///
-/// ⚠️ Явный список, а не «по умолчанию не отдаём». Креды локального прокси
-/// лежат в глобальных статиках процесса, а последний сегмент URL подписки у
-/// Remnawave — это секрет: «отдать состояние» без списка означало бы отдать
-/// ключ от туннеля и от подписки одним GET-запросом.
-const apiSecretMarkers = <String>[
-  'apiToken',
-  'localProxyPassword',
-  'localProxyUser',
-  'subscriptionUrl',
-  'rawJsonOverride',
-  'rawPanelConfig',
-];
-
-/// Бросает [StateError], если в сериализованном ответе встретилось запрещённое.
-void assertNoSecrets(String json) {
-  for (final m in apiSecretMarkers) {
-    if (json.contains(m)) {
-      throw StateError('В ответе API запрещённое поле: $m');
-    }
-  }
-}
-
 /// Обработчики API поверх состояния приложения.
+///
+/// ⚠️ Список запрещённых полей (`apiSecretMarkers`/`assertNoSecrets`) живёт в
+/// `core/net/api_secrets.dart`, а не здесь: барьер, который реально не даёт
+/// секрету уйти в сокет, стоит в `LocalApiServer._write` — на границе, откуда
+/// уходит КАЖДЫЙ ответ, а не только те, что прошли через этот класс. Здесь
+/// секрет всё ещё нельзя класть в поля ответа НАМЕРЕННО (это первый, а не
+/// единственный барьер), но проверять это в рантайме — забота транспорта.
 class AppStateApiHandlers implements ApiHandlers {
   AppStateApiHandlers(this.state, this.probe, this.settings);
 
@@ -89,11 +73,45 @@ class AppStateApiHandlers implements ApiHandlers {
         'expiresAt': state.info.expiresAt?.toIso8601String(),
       };
 
+  /// Канал живой (поднят или в процессе подъёма) — то состояние, в котором
+  /// `toggleConnection`/`connectAuto` вместо «подключить» ОТКЛЮЧАЮТ (это
+  /// переключатели одной кнопки на главном экране, которая нажимается только
+  /// при «не подключено»).
+  bool get _live =>
+      state.status.isConnected ||
+      state.status.state == VpnConnectionState.connecting;
+
+  /// Выбрать сервер и подключиться — СМЕНОЙ сервера, если канал уже живой, а
+  /// не отключением.
+  ///
+  /// ⚠️ РАУНД РЕВЬЮ 1, НАХОДКА 3. Раньше здесь стоял голый
+  /// `state.toggleConnection(...)`: на живом соединении он уходил в ветку
+  /// ОТКЛЮЧЕНИЯ (это переключатель), и команда API «подключись к серверу X»
+  /// молча выключала VPN и отвечала `{"ok": true}`. `state.reconnect(...)` —
+  /// тот же путь, что использует подсказка «переподключитесь» в
+  /// `home_screen.dart` (#13): disconnect + connect с сохранением отсчёта
+  /// таймера сессии, а не голое выключение.
+  Future<void> _connectTo(int index) async {
+    state.selectServer(index);
+    if (_live) {
+      await state.reconnect(settings.settings);
+    } else {
+      await state.toggleConnection(settings.settings);
+    }
+  }
+
   @override
   Future<ApiResult> connect(
       {String? serverKey, String? name, bool auto = false}) async {
     if (auto) {
-      await state.connectAuto(settings.settings);
+      // Тот же класс бага, что и у `_connectTo`: `connectAuto` — тоже
+      // переключатель, и на живом канале сам отключает VPN вместо смены
+      // режима на «Авто».
+      if (_live) {
+        await state.reconnectAuto(settings.settings);
+      } else {
+        await state.connectAuto(settings.settings);
+      }
       return const ApiResult.ok();
     }
     // ⚠️ КЛЮЧ, А НЕ ИМЯ. Ключ (share-ссылка) стабилен и переживает
@@ -104,8 +122,7 @@ class AppStateApiHandlers implements ApiHandlers {
       if (i < 0) {
         return const ApiResult.fail('server_not_found', 'Сервер не найден');
       }
-      state.selectServer(i);
-      await state.toggleConnection(settings.settings);
+      await _connectTo(i);
       return const ApiResult.ok();
     }
     if ((name ?? '').isNotEmpty) {
@@ -121,8 +138,7 @@ class AppStateApiHandlers implements ApiHandlers {
         return const ApiResult.fail(
             'ambiguous_name', 'Под это имя подходит несколько серверов');
       }
-      state.selectServer(matches.first);
-      await state.toggleConnection(settings.settings);
+      await _connectTo(matches.first);
       return const ApiResult.ok();
     }
     return const ApiResult.fail(

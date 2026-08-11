@@ -1000,4 +1000,20 @@ class AppSettings {
         jsonEncode(splitTunnel.toJson()), jsonEncode(other.splitTunnel.toJson()));
     return out;
   }
+
+  /// Изменилось ли что-то из настроек локального API (тумблер/токен/список
+  /// серверов с отдельным портом).
+  ///
+  /// ⚠️ НАРОЧНО ОТДЕЛЬНО ОТ [requiresReconnect]. Тот отвечает на вопрос «нужно
+  /// ли поднимать ТУННЕЛЬ заново» и триггерится любым полем его конфига — в
+  /// том числе MTU, DNS, стеком, которые к локальному API не имеют отношения.
+  /// Использовать его же для решения «перезапускать ли API-сокет» значило бы
+  /// гасить и поднимать заново слушатель на каждую не связанную с ним правку,
+  /// обрывая тех, кто через API в этот момент работает (`AppState.
+  /// applyApiSettings`, задача 5, раунд ревью 1). Список полей — РОВНО те три,
+  /// что решают, поднимать ли слушатель и что он отдаёт.
+  bool apiSettingsChanged(AppSettings other) =>
+      apiEnabled != other.apiEnabled ||
+      apiToken != other.apiToken ||
+      apiExitServerKeys.join(',') != other.apiExitServerKeys.join(',');
 }

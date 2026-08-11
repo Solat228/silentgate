@@ -15,6 +15,7 @@ import '../core/util/reorder.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
+import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
 import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_log.dart';
@@ -544,21 +545,52 @@ class AppState extends ChangeNotifier {
 
   LocalApiServer? _api;
 
+  /// Поколение вызовов [applyApiSettings] — тот же приём, что у сессий
+  /// движка (`EngineBase._generation`/`newGeneration`/`isStale`).
+  ///
+  /// ⚠️ РАУНД РЕВЬЮ 1, НАХОДКА 5. Метод не был awaitится с гарантией
+  /// единственности: два вызова подряд (например, две быстрые правки токена)
+  /// могли ОБА дойти до `await _api?.stop()`/`await srv.start()`, и который из
+  /// них последним запишет `_api`, зависело от порядка возврата из await —
+  /// ссылка на уже стартовавший `HttpServer` терялась молча (сокет остаётся
+  /// слушать, а `stop()` его больше никогда не найдёт). Здесь — как в
+  /// движке: вызов, переставший быть последним, не трогает `_api` и гасит за
+  /// собой сервер, если успел его поднять.
+  int _apiGeneration = 0;
+
   /// Поднять или погасить API по настройкам.
   ///
   /// ⚠️ ТОЛЬКО WINDOWS. На Android локальные порты видит любое установленное
   /// приложение, и отдельная история по безопасности там ещё не проработана.
   /// Правило проекта: где нет изоляции, канал не поднимается вовсе.
+  ///
+  /// [port] переопределяется только тестами — прод всегда использует
+  /// `ApiPorts.control`, иначе `LocalApiServer` не поднялся бы на другом.
   Future<void> applyApiSettings(AppSettings s, ProbeController probe,
-      SettingsController settings) async {
+      SettingsController settings,
+      {int port = ApiPorts.control}) async {
+    final gen = ++_apiGeneration;
     await _api?.stop();
+    // Пока мы ждали остановки прошлого сервера, могла прилететь ещё одна
+    // правка настроек и запустить параллельный вызов, который уже успел
+    // стать текущим поколением. Наш вызов устарел — не трогаем `_api`.
+    if (gen != _apiGeneration) return;
     _api = null;
     if (!Platform.isWindows || !s.apiEnabled) return;
     final srv = LocalApiServer(
       token: s.apiToken,
       handlers: AppStateApiHandlers(this, probe, settings),
+      port: port,
     );
-    if (await srv.start()) _api = srv;
+    final started = await srv.start();
+    if (gen != _apiGeneration) {
+      // Устарели уже ПОСЛЕ старта: сервер поднялся, но хозяином становится
+      // более новый вызов. Не гасим за собой чужой сервер — чужой (новый)
+      // вызов ещё до него не дошёл, — только СВОЙ, если он поднялся.
+      if (started) await srv.stop();
+      return;
+    }
+    if (started) _api = srv;
     notifyListeners();
   }
 
@@ -1504,7 +1536,23 @@ class AppState extends ChangeNotifier {
   }
 
   /// Переподключиться: выключить и снова включить с текущими настройками.
-  Future<void> reconnect(AppSettings settings) async {
+  Future<void> reconnect(AppSettings settings) =>
+      _reconnectWith(() => toggleConnection(settings));
+
+  /// Переподключиться в режиме «Авто (лучший сервер)» — тот же путь, что
+  /// [reconnect], но с автовыбором вместо текущего выбранного сервера.
+  ///
+  /// ⚠️ Нужен отдельно, а не сводится к `reconnect`: `connectAuto`, как и
+  /// `toggleConnection`, — ПЕРЕКЛЮЧАТЕЛЬ (см. её же комментарий), и повторный
+  /// вызов на уже живом канале отключил бы VPN вместо смены режима на «Авто».
+  /// Нужен команде локального API `connect(auto: true)`, отправленной, пока
+  /// канал уже поднят (раунд ревью 1, находка 3).
+  Future<void> reconnectAuto(AppSettings settings) =>
+      _reconnectWith(() => connectAuto(settings));
+
+  /// Общее тело [reconnect]/[reconnectAuto]: снять, поднять заново через
+  /// [connectFn], сохранить отсчёт таймера сессии.
+  Future<void> _reconnectWith(Future<void> Function() connectFn) async {
     // ⚠️ БЕЗ ЭТОЙ СТРОКИ ПЕРЕЗАПУСК НЕ ОСТАВЛЯЛ В ЖУРНАЛЕ НИЧЕГО.
     //
     // В логе владельца шесть перезапусков туннеля подряд шли без единого
@@ -1522,11 +1570,11 @@ class AppState extends ChangeNotifier {
     // счётчика тут выглядел бы как разрыв сессии, которого не было.
     final keepSince = _connectedAt;
     await disconnect();
-    await toggleConnection(settings);
+    await connectFn();
     // ⚠️ ВОССТАНАВЛИВАЕМ ТОЛЬКО ТО, ЧТО СЕЙЧАС ИДЁТ. Ожидание внутри
-    // `toggleConnection` длится до двух минут (автоподбор стека и MTU на
-    // Windows). За это время пользователь успевает нажать «Отключить» в трее
-    // или прислать `silentgate://disconnect` — тогда отсчёт уже снят, и слепое
+    // `connectFn` длится до двух минут (автоподбор стека и MTU на Windows).
+    // За это время пользователь успевает нажать «Отключить» в трее или
+    // прислать `silentgate://disconnect` — тогда отсчёт уже снят, и слепое
     // присваивание воскресило бы его: VPN выключен, а часы идут, и следующее
     // включение показывает чужое время. Непустое значение здесь означает, что
     // подключение состоялось и `markUserConnect` поставил свою точку.

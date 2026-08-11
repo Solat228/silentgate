@@ -62,4 +62,44 @@ void main() {
           contains('серверы с отдельным портом'));
     });
   });
+
+  group('apiSettingsChanged — гейт перезапуска локального API '
+      '(раунд ревью 1, находка 4)', () {
+    // ⚠️ НАРОЧНО НЕ requiresReconnect. Тот триггерится ЛЮБЫМ полем конфига
+    // ядра (MTU, DNS, стек, правила...) — использовать его же для решения
+    // «перезапускать ли API-сокет» значило бы гасить и поднимать его заново
+    // на каждую не связанную с API правку, обрывая тех, кто через него в
+    // этот момент работает (`main.dart`, `_ApiSettingsLink.applyIfChanged`).
+    const a = AppSettings();
+
+    test('apiEnabled — считается изменением', () {
+      expect(a.apiSettingsChanged(a.copyWith(apiEnabled: true)), isTrue);
+    });
+
+    test('apiToken — считается изменением', () {
+      expect(a.apiSettingsChanged(a.copyWith(apiToken: 'x')), isTrue);
+    });
+
+    test('apiExitServerKeys — считается изменением', () {
+      expect(
+          a.apiSettingsChanged(a.copyWith(apiExitServerKeys: ['k'])), isTrue);
+    });
+
+    test('одинаковые настройки — не изменение', () {
+      expect(a.apiSettingsChanged(a.copyWith()), isFalse);
+    });
+
+    test('⚠️ НЕ связанные с API поля (MTU, тема, правила) — НЕ изменение '
+        'для API, хотя requiresReconnect на них сработал бы', () {
+      final withMtu = a.copyWith(tunMtu: 1280);
+      expect(a.requiresReconnect(withMtu), isTrue,
+          reason: 'MTU запекается в конфиг ядра — reconnectReasons обязан '
+              'это заметить');
+      expect(a.apiSettingsChanged(withMtu), isFalse,
+          reason: 'но локальный API-сокет к MTU туннеля отношения не имеет');
+
+      final withKillSwitch = a.copyWith(killSwitch: true);
+      expect(a.apiSettingsChanged(withKillSwitch), isFalse);
+    });
+  });
 }

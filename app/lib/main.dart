@@ -9,6 +9,7 @@ import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
+import 'core/settings/app_settings.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
 import 'core/platform/single_instance.dart';
@@ -24,6 +25,20 @@ import 'state/auto_config_controller.dart';
 import 'state/probe_controller.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
+
+/// Снимок токена API для аутентификации управляющих команд через локальный
+/// сокет (`SingleInstance`, порт 47654).
+///
+/// ⚠️ Не читать `AppSettings.apiToken` с диска на каждое сообщение сокета:
+/// `SingleInstance.listen` вызывает колбэк `token()` в обработчике входящего
+/// соединения, и файловый ввод-вывод там задержал бы как раз ту ссылку,
+/// которую нетерпеливо ждёт пользователь (клик по silentgate://import из
+/// браузера). Снимок живёт в памяти и обновляется слушателем на
+/// `SettingsController` (см. его создание в `main()`) — при первой загрузке
+/// настроек и при каждой их правке. До первой загрузки снимок пуст, и это
+/// безопасно: пустой токен отклоняет ВСЕ управляющие команды (см.
+/// `SingleInstance.listen`), а не пропускает их без проверки.
+String _apiTokenSnapshot = '';
 
 Future<void> main(List<String> args) async {
   // Служебные режимы запуска — Windows-специфика: там exe умеет работать
@@ -65,7 +80,12 @@ Future<void> main(List<String> args) async {
       if (incomingUrl.isNotEmpty) await SingleInstance.forward(incomingUrl);
       exit(0);
     }
-    SingleInstance.listen(server, IncomingLinks.add);
+    // Токен читается КАЖДЫЙ РАЗ через снимок в памяти (см. `_apiTokenSnapshot`),
+    // а не захватывается один раз при старте: пользователь может обновить его
+    // в настройках при живом приложении, и старое значение перестало бы
+    // приниматься.
+    SingleInstance.listen(server, IncomingLinks.add,
+        token: () => _apiTokenSnapshot);
 
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
@@ -91,7 +111,19 @@ Future<void> main(List<String> args) async {
           create: (_) =>
               AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
         ),
-        ChangeNotifierProvider(create: (_) => SettingsController()..init()),
+        ChangeNotifierProvider(create: (_) {
+          final controller = SettingsController();
+          // ⚠️ Слушатель вешаем ЗДЕСЬ, а не через отдельную provider-связку
+          // (по образцу _ShadeLayoutLink/_ApiSettingsLink ниже): такие связки
+          // Provider строит ЛЕНИВО — только когда их тип кто-то читает — а
+          // токен нужен обработчику сокета уже сейчас, независимо от того,
+          // читает ли что-то ещё эту связку. SettingsController читается
+          // напрямую (`app.dart`, `context.watch<SettingsController>()`),
+          // поэтому его собственный create гарантированно выполнится.
+          controller.addListener(
+              () => _apiTokenSnapshot = controller.settings.apiToken);
+          return controller..init();
+        }),
         // Кнопка «Свернуть» на самом уведомлении меняет раскладку в обход
         // настроек — здесь выбор возвращается в них. Без этого приложение
         // прислало бы прежнюю раскладку со следующим обновлением счётчиков
@@ -116,9 +148,16 @@ Future<void> main(List<String> args) async {
         // на каждый тик состояния приложения (счётчики раз в секунду) или
         // результат пинга — иначе локальный сокет пересоздавался бы
         // десятки раз в минуту, обрывая как раз тех, кто через него работает.
+        //
+        // ⚠️ РАУНД РЕВЬЮ 1, НАХОДКА 4: этого недостаточно. `update:` зовётся
+        // на КАЖДЫЙ `notifyListeners()` `SettingsController` — тема, язык,
+        // MTU, правила раздельного туннелирования, что угодно. `previous` —
+        // тот же самый экземпляр `_ApiSettingsLink`, что и в прошлый раз (не
+        // новый!), и его `applyIfChanged` сам решает по
+        // `AppSettings.apiSettingsChanged`, стоит ли вообще что-то делать.
         ProxyProvider<SettingsController, _ApiSettingsLink>(
-          update: (context, settings, __) =>
-              _ApiSettingsLink(context, settings),
+          update: (context, settings, previous) =>
+              (previous ?? _ApiSettingsLink())..applyIfChanged(context, settings),
         ),
       ],
       child: const SilentGateApp(),
@@ -179,16 +218,27 @@ class _ShadeLayoutLink {
 
 /// Связка «настройки API → локальный сервер автоматизации».
 ///
-/// Тоже ничего не хранит: пересоздаётся при каждой правке настроек (провайдер
-/// зависит от [SettingsController]) и просто перевызывает
-/// `AppState.applyApiSettings`, который сам решает, поднимать ли слушатель
-/// (только Windows, только с непустым токеном — см. комментарий у метода).
-/// AppState и ProbeController берём БЕЗ подписки (`context.read`), иначе
-/// связка пересоздавалась бы на каждый их чих, а не только на правку настроек.
+/// ⚠️ В ОТЛИЧИЕ ОТ `_ShadeLayoutLink` — ХРАНИТ СОСТОЯНИЕ, И ЭТО НАМЕРЕННО.
+/// `ProxyProvider.update` зовётся на КАЖДУЮ правку любых настроек (тема,
+/// язык, MTU, правила — что угодно), а `AppState.applyApiSettings` гасит и
+/// заново поднимает слушающий сокет безусловно. Без гейта локальный API
+/// перезапускался бы на любую не связанную с ним правку, обрывая тех, кто
+/// через него в этот момент работает (раунд ревью 1, находка 4). Тот же
+/// экземпляр [_ApiSettingsLink] переживает все перестройки провайдера
+/// (`previous` в `main()`), поэтому есть, с чем сравнивать.
 class _ApiSettingsLink {
-  _ApiSettingsLink(BuildContext context, SettingsController settings) {
+  AppSettings? _lastApplied;
+
+  /// AppState и ProbeController берём БЕЗ подписки (`context.read`): нам
+  /// нужна только ссылка, а не реакция на их собственные изменения — иначе
+  /// сокет пересоздавался бы на каждый их чих, а не только на правку настроек.
+  void applyIfChanged(BuildContext context, SettingsController settings) {
+    final s = settings.settings;
+    final prev = _lastApplied;
+    if (prev != null && !prev.apiSettingsChanged(s)) return;
+    _lastApplied = s;
     final state = context.read<AppState>();
     final probe = context.read<ProbeController>();
-    unawaited(state.applyApiSettings(settings.settings, probe, settings));
+    unawaited(state.applyApiSettings(s, probe, settings));
   }
 }

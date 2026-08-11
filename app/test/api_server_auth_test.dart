@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/net/api_server.dart';
+import 'package:silentgate/core/platform/app_log.dart';
 
 /// Аутентификация локального API.
 ///
@@ -26,6 +27,39 @@ class _StubHandlers implements ApiHandlers {
       const ApiResult.ok();
   @override
   Future<ApiResult> disconnect() async => const ApiResult.ok();
+  @override
+  Future<ApiResult> ping() async => const ApiResult.ok();
+}
+
+/// Обработчик, который (по ошибке) кладёт запрещённое поле в ответ —
+/// имитирует будущий баг реального `AppStateApiHandlers`, а не гипотезу.
+///
+/// ⚠️ Раунд ревью 1, находка 1: `assertNoSecrets` вызывался ТОЛЬКО из теста —
+/// `LocalApiServer` писал `jsonEncode(body)` в сокет без единой проверки.
+/// Тесты ниже доказывают, что барьер стоит там, где ответ реально
+/// сериализуется (`LocalApiServer._write`), а не только там, где обработчик
+/// СОБИРАЛСЯ быть аккуратным.
+class _DirtyHandlers implements ApiHandlers {
+  @override
+  Future<Map<String, dynamic>> status() async =>
+      {'state': 'connected', 'apiToken': 'sekrit-do-not-leak'};
+  @override
+  Future<List<Map<String, dynamic>>> servers() async => const [];
+  @override
+  Future<List<Map<String, dynamic>>> exits() async => const [];
+  @override
+  Future<Map<String, dynamic>> traffic() async => const {};
+  @override
+  Future<Map<String, dynamic>> subscription() async =>
+      {'subscriptionUrl': 'https://panel.example/sub/leaked-token'};
+  @override
+  Future<ApiResult> connect({String? serverKey, String? name, bool auto = false}) async =>
+      const ApiResult.ok();
+  @override
+  Future<ApiResult> disconnect() async =>
+      // Секрет в тексте ОШИБКИ — барьер обязан ловить и путь `_fail`, не
+      // только `_ok`, иначе достаточно вернуть его в message, а не в поле.
+      const ApiResult.fail('internal', 'сбой, localProxyPassword=hunter2');
   @override
   Future<ApiResult> ping() async => const ApiResult.ok();
 }
@@ -243,6 +277,73 @@ void main() {
         token: 'good', handlers: _StubHandlers(), port: ApiPortsForTest.port);
     await server.start();
     await expectLater(server.failForTest(_BrokenResponse()), completes);
+  });
+
+  group('⚠️ Барьер секретов на границе транспорта (раунд ревью 1, находка 1)', () {
+    // До фикса `assertNoSecrets` вызывался ТОЛЬКО из `test/api_handlers_test
+    // .dart` — сам `LocalApiServer` ничего не проверял. Здесь — сквозной
+    // тест: реальный HTTP-запрос к реальному серверу с обработчиком, который
+    // (нарочно, как баг) кладёт секрет в ответ.
+    setUp(AppLog.clear);
+
+    test('успешный ответ с запрещённым полем НЕ уходит клиенту', () async {
+      server = LocalApiServer(
+          token: 'good', handlers: _DirtyHandlers(), port: ApiPortsForTest.port);
+      await server.start();
+      final r = await req('/v1/status', token: 'good');
+      final text = await utf8.decoder.bind(r).join();
+
+      expect(text.contains('sekrit-do-not-leak'), isFalse,
+          reason: 'секрет не должен уйти в тело ответа ни в каком виде');
+      expect(text.contains('apiToken'), isFalse);
+      // Барьер сработал → это уже не «200 успех», а отказ.
+      expect(r.statusCode, isNot(200));
+    });
+
+    test('секрет в тексте ошибки (_fail) тоже блокируется', () async {
+      server = LocalApiServer(
+          token: 'good', handlers: _DirtyHandlers(), port: ApiPortsForTest.port);
+      await server.start();
+      final r = await req('/v1/disconnect', token: 'good', method: 'POST');
+      final text = await utf8.decoder.bind(r).join();
+
+      expect(text.contains('hunter2'), isFalse);
+      expect(text.contains('localProxyPassword'), isFalse);
+    });
+
+    test('другое поле того же ответа (subscription) — тоже под барьером',
+        () async {
+      server = LocalApiServer(
+          token: 'good', handlers: _DirtyHandlers(), port: ApiPortsForTest.port);
+      await server.start();
+      final r = await req('/v1/subscription', token: 'good');
+      final text = await utf8.decoder.bind(r).join();
+
+      expect(text.contains('leaked-token'), isFalse);
+      expect(text.contains('subscriptionUrl'), isFalse);
+    });
+
+    test('⚠️ срабатывание видно в журнале — иначе баг тихий', () async {
+      server = LocalApiServer(
+          token: 'good', handlers: _DirtyHandlers(), port: ApiPortsForTest.port);
+      await server.start();
+      await req('/v1/status', token: 'good');
+
+      final logged = AppLog.entries.any((e) =>
+          e.level == LogLevel.error && e.message.contains('apiToken'));
+      expect(logged, isTrue,
+          reason: 'заблокированный секрет обязан оставить след в AppLog');
+    });
+
+    test('чистый ответ (_StubHandlers) барьер не трогает', () async {
+      // Не должно быть ложных срабатываний на нормальных ответах — иначе
+      // барьер превратился бы во вторую версию 500 на КАЖДЫЙ запрос.
+      server = LocalApiServer(
+          token: 'good', handlers: _StubHandlers(), port: ApiPortsForTest.port);
+      await server.start();
+      final r = await req('/v1/status', token: 'good');
+      expect(r.statusCode, 200);
+    });
   });
 }
 
