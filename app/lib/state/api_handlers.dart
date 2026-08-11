@@ -44,18 +44,37 @@ class AppStateApiHandlers implements ApiHandlers {
 
   @override
   Future<List<Map<String, dynamic>>> exits() async {
-    final keys = settings.settings.apiExitServerKeys;
-    return [
-      for (final s in state.servers)
-        if (keys.contains(s.key))
-          {
-            'serverKey': s.key,
-            'name': s.displayName,
-            'country': FlagUtil.isoFromName(s.remark),
-            'port': ApiPorts.forServer(keys, s.key),
-          },
-      {'serverKey': null, 'name': 'Прямо', 'port': ApiPorts.direct},
-    ];
+    final st = settings.settings;
+    // ⚠️ ТОТ ЖЕ ГЕЙТ, ЧТО РЕШАЕТ, СОЗДАВАТЬ ЛИ ИНБАУНДЫ (`ApiPorts.exitsActive`,
+    // её же читают `buildApiExitInbounds`/`buildApiDirectInbound`). Список не
+    // рекламирует порт, которого нет физически: при выключенном API или
+    // пустом токене ни один из этих mixed-инбаундов не поднимется — ни
+    // серверный, ни «Прямо». В штатной работе сюда и не дойти (управляющий
+    // сервер сам не стартует без токена — см. `AppState.applyApiSettings`),
+    // но обработчик обязан быть верным сам по себе, а не полагаться на это.
+    if (!ApiPorts.exitsActive(enabled: st.apiEnabled, token: st.apiToken)) {
+      return const [];
+    }
+    final keys = st.apiExitServerKeys;
+    final out = <Map<String, dynamic>>[];
+    for (final s in state.servers) {
+      if (!keys.contains(s.key)) continue;
+      // Ключ мог оказаться за пределами топ-40 (`ApiPorts.maxServers`) —
+      // тогда порта физически нет, и `port: null` дал бы вызывающему битый
+      // адрес `http://sg:токен@127.0.0.1:None` (см. `tools/silentgate.py`,
+      // `proxies_for`). Запись без порта не отдаём вовсе: молчаливое
+      // исключение честнее заведомо нерабочего адреса.
+      final port = ApiPorts.forServer(keys, s.key);
+      if (port == null) continue;
+      out.add({
+        'serverKey': s.key,
+        'name': s.displayName,
+        'country': FlagUtil.isoFromName(s.remark),
+        'port': port,
+      });
+    }
+    out.add({'serverKey': null, 'name': 'Прямо', 'port': ApiPorts.direct});
+    return out;
   }
 
   @override

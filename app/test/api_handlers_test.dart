@@ -7,6 +7,7 @@ import 'package:silentgate/core/models/engine_notice.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
+import 'package:silentgate/core/net/api_ports.dart';
 import 'package:silentgate/core/net/api_secrets.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
@@ -201,8 +202,14 @@ void main() {
       final env = await _Env.create();
       addTearDown(env.dispose);
       final a = await env.addServer(_serverA);
-      await env.settings
-          .update((s) => s.copyWith(apiExitServerKeys: [a.key]));
+      // ⚠️ Гейт `ApiPorts.exitsActive`: без включённого API и токена ни один
+      // инбаунд (ни серверный, ни «Прямо») физически не создаётся, и exits()
+      // теперь честно отдаёт пустой список — см. группу «exits() и гейт …»
+      // ниже. Здесь гейт открыт явно, чтобы проверить состав.
+      await env.settings.update((s) => s.copyWith(
+          apiEnabled: true,
+          apiToken: 'secret',
+          apiExitServerKeys: [a.key]));
 
       final servers = await env.handlers.servers();
       final exits = await env.handlers.exits();
@@ -212,7 +219,63 @@ void main() {
       expect(servers.single['name'], 'Германия');
       // «Прямо» — всегда последней записью, даже без единого сервера-выхода.
       expect(exits.last['name'], 'Прямо');
+      expect(exits.last['port'], ApiPorts.direct);
       expect(exits.any((e) => e['serverKey'] == a.key), isTrue);
+    });
+
+    group('exits() и гейт «канал реально поднят»', () {
+      test('API выключен — exits() пуст, включая «Прямо»', () async {
+        final env = await _Env.create();
+        addTearDown(env.dispose);
+        final a = await env.addServer(_serverA);
+        // apiEnabled по умолчанию false, apiToken пуст — ни один инбаунд не
+        // создаётся, и список не обязан рекламировать порт, которого нет.
+        await env.settings
+            .update((s) => s.copyWith(apiExitServerKeys: [a.key]));
+
+        expect(await env.handlers.exits(), isEmpty);
+      });
+
+      test('API включён, но токен пуст — тоже пусто', () async {
+        final env = await _Env.create();
+        addTearDown(env.dispose);
+        final a = await env.addServer(_serverA);
+        await env.settings.update((s) =>
+            s.copyWith(apiEnabled: true, apiExitServerKeys: [a.key]));
+
+        expect(await env.handlers.exits(), isEmpty);
+      });
+
+      test('⚠️ сервер за пределами топ-40 не получает запись (port: null не '
+          'отдаётся)', () async {
+        final env = await _Env.create();
+        addTearDown(env.dispose);
+        final a = await env.addServer(_serverA);
+        // 40 «чужих» ключей, сортирующихся ПЕРЕД ключом сервера `a` (UUID
+        // начинается с "00000000" < "11111111" у _serverA) — реальных
+        // серверов под них поднимать не нужно: `exits()` фильтрует состав по
+        // `AppState.servers`, а `ApiPorts.forServer` считает индекс по ПОЛНОМУ
+        // списку ключей настройки. Ключ `a` окажется 41-м — вне диапазона.
+        final padding = [
+          for (var i = 0; i < ApiPorts.maxServers; i++)
+            'vless://00000000-0000-0000-0000-'
+                '${i.toString().padLeft(12, '0')}@x.test:1#pad$i',
+        ];
+        await env.settings.update((s) => s.copyWith(
+            apiEnabled: true,
+            apiToken: 'secret',
+            apiExitServerKeys: [...padding, a.key]));
+
+        final exits = await env.handlers.exits();
+
+        expect(exits.any((e) => e['serverKey'] == a.key), isFalse,
+            reason: 'ключ вне диапазона — порта для него нет физически');
+        expect(exits.any((e) => e['port'] == null), isFalse,
+            reason: 'запись без порта собрала бы у клиента битый URL '
+                'http://sg:токен@127.0.0.1:None');
+        // «Прямо» от порядка серверов не зависит — она обязана остаться.
+        expect(exits.last['name'], 'Прямо');
+      });
     });
   });
 
