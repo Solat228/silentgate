@@ -66,6 +66,8 @@
     }
   },
   "captureTunHint": "TUN, DNS and split-tunneling settings appear when TUN mode is selected — in system-proxy mode they have no effect.",
+  "applyRulesInProxyOnlyTitle": "Apply \"Block\" to server ports",
+  "applyRulesInProxyOnlySub": "In \"Proxy only\" mode split tunneling doesn't work for any program. Turn this on so the \"Block\" rule applies at least on explicitly opened server ports.",
   "dnsShortVpn": "via VPN",
   "dnsShortSystem": "system",
   "dnsShortCustom": "custom",

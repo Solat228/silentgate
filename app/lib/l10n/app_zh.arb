@@ -40,6 +40,8 @@
   "splitTunnelTitle": "分应用代理",
   "splitRulesCount": "{n} 条规则（应用 {apps} 个，站点 {sites} 个）",
   "captureTunHint": "选择 TUN 模式后才会显示 TUN、DNS 和分应用代理设置——在系统代理模式下它们不生效。",
+  "applyRulesInProxyOnlyTitle": "对服务器端口应用「阻止」",
+  "applyRulesInProxyOnlySub": "在「仅代理」模式下，分应用代理对任何程序都不起作用。开启此项后，「阻止」规则至少会在明确开放的服务器端口上生效。",
   "dnsShortVpn": "经由 VPN",
   "dnsShortSystem": "系统",
   "dnsShortCustom": "自定义",

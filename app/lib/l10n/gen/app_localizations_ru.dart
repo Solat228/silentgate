@@ -137,6 +137,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Настройки TUN, DNS и раздельного туннелирования появятся при выборе режима TUN — в режиме системного прокси они не работают.';
 
   @override
+  String get applyRulesInProxyOnlyTitle => 'Применять «Блок» к портам серверов';
+
+  @override
+  String get applyRulesInProxyOnlySub =>
+      'В режиме «Только прокси» раздельное туннелирование не действует ни для одной программы. Включите, чтобы правило «Блок» работало хотя бы на явно открытых портах серверов.';
+
+  @override
   String get dnsShortVpn => 'через VPN';
 
   @override

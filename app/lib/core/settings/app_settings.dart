@@ -274,6 +274,18 @@ class AppSettings {
   /// фиктивное правило ради порта — костыль.
   final List<String> apiExitServerKeys;
 
+  /// Применять ли раздельное туннелирование (только «Блок») к портам API в
+  /// режиме «Только прокси» (задача 3b).
+  ///
+  /// ⚠️ УМОЛЧАНИЕ ВЫКЛЮЧЕНО, И ЭТО НЕ ОСТОРОЖНИЧАНЬЕ. В этом режиме раздельное
+  /// туннелирование не действует ни для одной программы машины — ничего не
+  /// перехватывается, порт получает только тот, кто явно в него обратился.
+  /// Применять правила к одному лишь API-порту по умолчанию значило бы
+  /// включить их там, где они больше нигде не работают, и удивить того, кто
+  /// явно попросил конкретный сервер. Кому нужна защита от собственного
+  /// скрипта — включает галочку сам.
+  final bool applyRulesInProxyOnly;
+
   /// Прописывать системный прокси ДОПОЛНИТЕЛЬНО к туннелю (гибрид как в Happ).
   ///
   /// Прокси-aware приложения (браузеры, Telegram) пойдут коротким путём на
@@ -499,6 +511,7 @@ class AppSettings {
     this.apiEnabled = false,
     this.apiToken = '',
     this.apiExitServerKeys = const [],
+    this.applyRulesInProxyOnly = false,
     this.tunWatchdogSeconds = 20,
     this.dnsMode = DnsMode.vpn,
     this.dnsCustomServer = '1.1.1.1',
@@ -571,6 +584,7 @@ class AppSettings {
     bool? apiEnabled,
     String? apiToken,
     List<String>? apiExitServerKeys,
+    bool? applyRulesInProxyOnly,
     int? tunWatchdogSeconds,
     DnsMode? dnsMode,
     String? dnsCustomServer,
@@ -633,6 +647,8 @@ class AppSettings {
       apiEnabled: apiEnabled ?? this.apiEnabled,
       apiToken: apiToken ?? this.apiToken,
       apiExitServerKeys: apiExitServerKeys ?? this.apiExitServerKeys,
+      applyRulesInProxyOnly:
+          applyRulesInProxyOnly ?? this.applyRulesInProxyOnly,
       tunWatchdogSeconds: tunWatchdogSeconds ?? this.tunWatchdogSeconds,
       dnsMode: dnsMode ?? this.dnsMode,
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
@@ -697,6 +713,7 @@ class AppSettings {
         'apiEnabled': apiEnabled,
         'apiToken': apiToken,
         'apiExitServerKeys': apiExitServerKeys,
+        'applyRulesInProxyOnly': applyRulesInProxyOnly,
         'tunWatchdogSeconds': tunWatchdogSeconds,
         'dnsMode': dnsMode.name,
         'dnsCustomServer': dnsCustomServer,
@@ -820,6 +837,8 @@ class AppSettings {
       apiExitServerKeys:
           (j['apiExitServerKeys'] as List?)?.cast<String>() ??
               defaults.apiExitServerKeys,
+      applyRulesInProxyOnly: j['applyRulesInProxyOnly'] as bool? ??
+          defaults.applyRulesInProxyOnly,
       tunWatchdogSeconds:
           (j['tunWatchdogSeconds'] as num?)?.toInt() ?? defaults.tunWatchdogSeconds,
       dnsMode: pick(DnsMode.values, j['dnsMode'], DnsMode.vpn),
@@ -954,6 +973,10 @@ class AppSettings {
     diff('токен API', apiToken, other.apiToken);
     diff('серверы с отдельным портом', apiExitServerKeys.join(','),
         other.apiExitServerKeys.join(','));
+    // Тоже запекается в конфиг маршрутизатора выходов при подъёме (задача 3b):
+    // решает, добавлять ли туда блок-правила раздельного туннелирования.
+    diff('правила раздельного туннелирования в «Только прокси»',
+        applyRulesInProxyOnly, other.applyRulesInProxyOnly);
     diff('режим DNS', dnsMode, other.dnsMode);
     diff('свой DNS-сервер', dnsCustomServer, other.dnsCustomServer);
     diff('перехват DNS', dnsHijack, other.dnsHijack);

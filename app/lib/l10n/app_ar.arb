@@ -40,6 +40,8 @@
   "splitTunnelTitle": "تقسيم النفق",
   "splitRulesCount": "{n} قاعدة ({apps} تطبيقات، {sites} مواقع)",
   "captureTunHint": "تظهر إعدادات TUN وDNS وتقسيم النفق عند اختيار وضع TUN — أما في وضع بروكسي النظام فلا أثر لها.",
+  "applyRulesInProxyOnlyTitle": "تطبيق «حظر» على منافذ الخوادم",
+  "applyRulesInProxyOnlySub": "في وضع «بروكسي فقط» لا يعمل تقسيم النفق لأي برنامج. فعّل هذا الخيار ليعمل قاعدة «حظر» على الأقل على منافذ الخوادم المفتوحة صراحةً.",
   "dnsShortVpn": "عبر VPN",
   "dnsShortSystem": "النظام",
   "dnsShortCustom": "مخصّص",

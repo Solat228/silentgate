@@ -15,6 +15,7 @@ import '../../core/models/engine_notice.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/exit_outbounds.dart';
+import '../../core/singbox/exit_router_config_builder.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
 import 'singbox_process.dart';
@@ -42,6 +43,13 @@ class WindowsEngine extends VpnEngineBase {
   /// Одновременно с [_process] не работает — какое ядро поднимать, решает
   /// [VpnServer.core]. TUN-инстанс sing-box считается отдельно (`_tunRouter`).
   SingboxProcess? _singbox;
+
+  /// Третье, отдельное ядро: маршрутизатор выходов режима «Только прокси»
+  /// (задача 3b). Крошечный sing-box БЕЗ tun-инбаунда и без прав
+  /// администратора — поднимает порты серверов API там, где TUN-инстанс
+  /// (`_tunRouter`) физически не запускается (он живёт только при
+  /// `captureMode == CaptureMode.tun`).
+  SingboxProcess? _exitRouter;
   Timer? _statsTimer;
 
   /// Сторож зависшего TUN-ядра. См. [AppSettings.tunWatchdogSeconds].
@@ -338,6 +346,16 @@ class WindowsEngine extends VpnEngineBase {
             secret: singboxApiSecret);
       }
 
+      // Маршрутизатор выходов «Только прокси» (задача 3b): второе ядро
+      // (`_tunRouter`) в этом режиме не поднимается вовсе (см. блок выше,
+      // условие `captureMode == CaptureMode.tun`), а значит порты серверов
+      // из ApiPorts физически негде слушать. Здесь — третий, отдельный
+      // sing-box, БЕЗ tun-инбаунда и без прав администратора.
+      if (options.captureMode == CaptureMode.proxyOnly &&
+          _apiExitsActive(options.settings)) {
+        await _startExitRouter(options, aborted);
+      }
+
       // ⚠️ СИСТЕМНЫЙ ПРОКСИ СТАВИТСЯ И ВМЕСТО ТУННЕЛЯ, И ВМЕСТЕ С НИМ.
       //
       // Вместе — это «смешанный» режим (у Happ он так и подписан, Mixed):
@@ -435,6 +453,78 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Маршрутизатор выходов режима «Только прокси» (задача 3b): отдельный
+  /// крошечный sing-box, БЕЗ tun-инбаунда и без прав администратора (тот же
+  /// класс `SingboxProcess`, что для hysteria2-прокси), который даёт каждому
+  /// выбранному серверу свой локальный порт.
+  ///
+  /// ⚠️ СБОЙ ЗДЕСЬ НЕ ВАЛИТ ПОДКЛЮЧЕНИЕ ЦЕЛИКОМ. Основной канал (порт ядра
+  /// сессии) уже поднят и работает — порты API поверх него надстройка, а не
+  /// требование. Но осиротевший процесс всё равно обязан быть погашен: иначе
+  /// следующий подъём упрётся в занятый порт (см. `_stopCoreProcesses`,
+  /// который гасит и его тоже).
+  Future<void> _startExitRouter(
+      ConnectionOptions options, bool Function() aborted) async {
+    final routerExe = SingboxProcess.locate();
+    if (routerExe == null) {
+      AppLog.w('sing-box.exe не найден — порты API для серверов не поднимутся');
+      return;
+    }
+    try {
+      // Резолвим ЗАРАНЕЕ, как и у обычных дополнительных серверов (TUN-ветка
+      // выше): домен, отданный ядру как есть, — не проблема здесь (петли нет,
+      // адаптера, забирающего трафик машины, тоже нет), но собственный
+      // резолвер маршрутизатора может не подняться раньше, чем нужно.
+      final exitHosts =
+          await resolveServerHosts(options.exitServers.values.toList());
+      final exitsBuilt = ExitOutbounds.build(
+        servers: options.exitServers,
+        resolvedIps: VpnEngineBase.pickOneIpPerHost(exitHosts),
+      );
+      for (final e in exitsBuilt.skipped.entries) {
+        AppLog.i('Сервер API-порта не поднят: ${e.value}');
+      }
+      if (exitsBuilt.outbounds.isEmpty) return;
+      if (aborted()) return;
+
+      final builder = ExitRouterConfigBuilder(
+        serverKeys: options.settings.apiExitServerKeys,
+        token: options.settings.apiToken,
+        exitOutbounds: exitsBuilt.outbounds,
+        // Галочка задачи 3b: правила раздельного туннелирования на этих
+        // портах — только если пользователь явно включил её.
+        applyRules: options.settings.applyRulesInProxyOnly,
+        split: options.split,
+      );
+      final configPath = await _writeConfigJson(builder.buildJson(),
+          name: 'exit_router.json');
+
+      final process = SingboxProcess();
+      await process.start(
+        executable: routerExe,
+        configPath: configPath,
+        // Отдельное имя лога: маршрутизатор может жить ОДНОВРЕМЕННО с этим же
+        // классом, поднятым под hysteria2-прокси (`_singbox`) — общий файл
+        // смешал бы два потока диагностики в один.
+        logPath: SingboxProcess.logPathFor(await AppPaths.supportDir(),
+            name: 'singbox_exit_router.log'),
+      );
+      await Future.delayed(const Duration(milliseconds: 300));
+      if (aborted() || !process.isRunning) {
+        await process.stop();
+        if (!aborted()) {
+          AppLog.w('Маршрутизатор выходов API не поднялся:\n${process.tail}');
+        }
+        return;
+      }
+      _exitRouter = process;
+      AppLog.i(
+          'Маршрутизатор выходов API: портов ${exitsBuilt.outbounds.length}');
+    } catch (e) {
+      AppLog.w('Маршрутизатор выходов API не поднялся: $e');
+    }
+  }
+
   /// Погасить ядро (и, если [keepCapture] == false, снять захват трафика).
   ///
   /// При включённом kill switch между попытками восстановления захват НЕ снимается:
@@ -495,7 +585,12 @@ class WindowsEngine extends VpnEngineBase {
     await _stopCoreProcesses();
   }
 
-  /// Гасим оба прокси-ядра: какое из них живо, зависит от протокола сессии.
+  /// Гасим все прокси-ядра: основное (Xray/sing-box, зависит от протокола
+  /// сессии) и маршрутизатор выходов «Только прокси» (задача 3b), если он
+  /// поднимался. Осиротевший процесс держит порты, и следующий подъём
+  /// упёрся бы в конфликт — поэтому гасим его здесь БЕЗУСЛОВНО, тем же
+  /// путём, что и остальные ядра (`teardownCore`/`platformCleanup` зовут
+  /// этот метод и при обычном отключении, и при сбое подъёма).
   Future<void> _stopCoreProcesses() async {
     await _process?.stop();
     _process?.dispose();
@@ -503,6 +598,9 @@ class WindowsEngine extends VpnEngineBase {
     await _singbox?.stop();
     _singbox?.dispose();
     _singbox = null;
+    await _exitRouter?.stop();
+    _exitRouter?.dispose();
+    _exitRouter = null;
   }
 
   /// Порт Clash API туннельного sing-box. Только петля, только для сторожа.
@@ -821,10 +919,13 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
-  Future<String> _writeConfigJson(String json, {bool singbox = false}) async {
+  /// [name] переопределяет имя файла (нужно маршрутизатору выходов задачи 3b —
+  /// он пишет СВОЙ конфиг, а не тот, что уходит основному ядру).
+  Future<String> _writeConfigJson(String json,
+      {bool singbox = false, String? name}) async {
     final dir = await AppPaths.supportDir();
-    final name = singbox ? 'singbox_proxy.json' : 'xray_config.json';
-    final file = File('${dir.path}${Platform.pathSeparator}$name');
+    final fileName = name ?? (singbox ? 'singbox_proxy.json' : 'xray_config.json');
+    final file = File('${dir.path}${Platform.pathSeparator}$fileName');
     await file.writeAsString(json);
     return file.path;
   }

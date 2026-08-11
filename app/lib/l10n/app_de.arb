@@ -40,6 +40,8 @@
   "splitTunnelTitle": "Split-Tunneling",
   "splitRulesCount": "{n} Regeln ({apps} Apps, {sites} Websites)",
   "captureTunHint": "TUN-, DNS- und Split-Tunneling-Einstellungen erscheinen, wenn der TUN-Modus ausgewählt ist — im Systemproxy-Modus haben sie keine Wirkung.",
+  "applyRulesInProxyOnlyTitle": "„Blockieren“ auf Server-Ports anwenden",
+  "applyRulesInProxyOnlySub": "Im Modus „Nur Proxy“ funktioniert Split-Tunneling für kein Programm. Aktivieren Sie dies, damit die Regel „Blockieren“ zumindest auf ausdrücklich geöffneten Server-Ports greift.",
   "dnsShortVpn": "über VPN",
   "dnsShortSystem": "System",
   "dnsShortCustom": "benutzerdefiniert",

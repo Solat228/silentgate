@@ -53,8 +53,13 @@ class SingboxProcess {
   /// Лог прокси-ядра. Имя отличается от `singbox.log` (TUN) намеренно: при
   /// hysteria2 в TUN-режиме оба ядра живут одновременно, и общий файл превратил
   /// бы диагностику в кашу из двух потоков.
-  static String logPathFor(Directory supportDir) =>
-      '${supportDir.path}${Platform.pathSeparator}singbox_proxy.log';
+  ///
+  /// [name] переопределяет имя файла — нужен маршрутизатору выходов режима
+  /// «Только прокси» (задача 3b): он может жить ОДНОВРЕМЕННО с этим же
+  /// классом, поднятым под hysteria2-прокси, и общее имя смешало бы два
+  /// потока лога в один файл.
+  static String logPathFor(Directory supportDir, {String name = 'singbox_proxy.log'}) =>
+      '${supportDir.path}${Platform.pathSeparator}$name';
 
   /// Хвост лога прокси-ядра (для отчёта поддержки и экрана логов).
   static Future<String> tailLog({int lines = 200}) async =>

@@ -138,6 +138,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'As configurações de TUN, DNS e túnel dividido aparecem quando o modo TUN está selecionado — no modo de proxy do sistema elas não têm efeito.';
 
   @override
+  String get applyRulesInProxyOnlyTitle =>
+      'Aplicar «Bloquear» às portas dos servidores';
+
+  @override
+  String get applyRulesInProxyOnlySub =>
+      'No modo «Somente proxy» o túnel dividido não funciona para nenhum programa. Ative para que a regra «Bloquear» funcione pelo menos nas portas de servidor abertas explicitamente.';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override

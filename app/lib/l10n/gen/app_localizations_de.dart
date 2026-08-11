@@ -137,6 +137,14 @@ class AppLocalizationsDe extends AppLocalizations {
       'TUN-, DNS- und Split-Tunneling-Einstellungen erscheinen, wenn der TUN-Modus ausgewählt ist — im Systemproxy-Modus haben sie keine Wirkung.';
 
   @override
+  String get applyRulesInProxyOnlyTitle =>
+      '„Blockieren“ auf Server-Ports anwenden';
+
+  @override
+  String get applyRulesInProxyOnlySub =>
+      'Im Modus „Nur Proxy“ funktioniert Split-Tunneling für kein Programm. Aktivieren Sie dies, damit die Regel „Blockieren“ zumindest auf ausdrücklich geöffneten Server-Ports greift.';
+
+  @override
   String get dnsShortVpn => 'über VPN';
 
   @override

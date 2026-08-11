@@ -62,3 +62,58 @@ class ApiPorts {
 /// `route.final`, то есть мимо выбранного сервера.
 String apiExitInboundTag(String serverKey) =>
     'api-${exitTagFor(serverKey)}';
+
+/// Обратное преобразование тега инбаунда в тег его outbound-а.
+String apiExitOutboundOf(String inboundTag) =>
+    inboundTag.substring('api-'.length);
+
+/// Инбаунды отдельных портов API: по одному `mixed` на сервер из [serverKeys],
+/// у которого есть живой outbound (тег входит в [liveExitTags]).
+///
+/// ⚠️ ОБЩАЯ ЛОГИКА ДВУХ КОНФИГОВ. Ей пользуются и TUN-построитель
+/// (`SingboxConfigBuilder._apiExitInbounds`, задача 3), и маршрутизатор
+/// выходов режима «Только прокси» (`ExitRouterConfigBuilder`, задача 3b) —
+/// им обоим нужен РОВНО один и тот же инбаунд на порт сервера. Две копии
+/// этой логики разъехались бы на первой же правке (урок уже случался в этом
+/// проекте — см. `CLAUDE.md`).
+///
+/// ⚠️ ТОЛЬКО ЖИВЫЕ. Сервер, чей outbound не собрался, порта не получает —
+/// иначе правило сослалось бы на несуществующий тег, `sing-box check`
+/// пропустил бы это молча, и трафик ушёл бы в `route.final`, то есть мимо
+/// выбранного сервера.
+List<Map<String, dynamic>> buildApiExitInbounds({
+  required List<String> serverKeys,
+  required String token,
+  required Set<String> liveExitTags,
+}) {
+  if (token.isEmpty) return const [];
+  final out = <Map<String, dynamic>>[];
+  for (final key in ApiPorts.withinRange(serverKeys)) {
+    if (!liveExitTags.contains(exitTagFor(key))) continue;
+    final port = ApiPorts.forServer(serverKeys, key);
+    if (port == null) continue;
+    out.add({
+      'type': 'mixed',
+      'tag': apiExitInboundTag(key),
+      'listen': '127.0.0.1',
+      'listen_port': port,
+      'users': [
+        {'username': 'sg', 'password': token}
+      ],
+    });
+  }
+  return out;
+}
+
+/// Правила «инбаунд конкретного сервера → его же выход». Общая логика — см.
+/// [buildApiExitInbounds].
+List<Map<String, dynamic>> buildApiExitRules(
+        List<Map<String, dynamic>> apiExitInbounds) =>
+    [
+      for (final i in apiExitInbounds)
+        {
+          'inbound': [i['tag']],
+          'action': 'route',
+          'outbound': apiExitOutboundOf('${i['tag']}'),
+        },
+    ];

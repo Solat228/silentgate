@@ -139,6 +139,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les paramètres TUN, DNS et de tunneling fractionné apparaissent lorsque le mode TUN est sélectionné — en mode proxy système, ils n\'ont aucun effet.';
 
   @override
+  String get applyRulesInProxyOnlyTitle =>
+      'Appliquer « Bloquer » aux ports des serveurs';
+
+  @override
+  String get applyRulesInProxyOnlySub =>
+      'En mode « Proxy seul », le tunneling fractionné ne fonctionne pour aucun programme. Activez cette option pour que la règle « Bloquer » s\'applique au moins aux ports de serveur explicitement ouverts.';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override

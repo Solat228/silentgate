@@ -40,6 +40,8 @@
   "splitTunnelTitle": "Túnel dividido",
   "splitRulesCount": "{n} regras ({apps} aplicativos, {sites} sites)",
   "captureTunHint": "As configurações de TUN, DNS e túnel dividido aparecem quando o modo TUN está selecionado — no modo de proxy do sistema elas não têm efeito.",
+  "applyRulesInProxyOnlyTitle": "Aplicar «Bloquear» às portas dos servidores",
+  "applyRulesInProxyOnlySub": "No modo «Somente proxy» o túnel dividido não funciona para nenhum programa. Ative para que a regra «Bloquear» funcione pelo menos nas portas de servidor abertas explicitamente.",
   "dnsShortVpn": "via VPN",
   "dnsShortSystem": "sistema",
   "dnsShortCustom": "personalizado",

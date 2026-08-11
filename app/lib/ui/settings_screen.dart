@@ -1197,7 +1197,7 @@ class _CaptureSection extends StatelessWidget {
           // Гео-базы нужны только там, где их нет в поставке. На Windows они
           // приезжают вместе с ядром, и кнопка была бы обманкой.
           if (Platform.isAndroid) GeoAssetsTile(key: geoAssetsKey),
-        ] else
+        ] else ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
@@ -1205,6 +1205,19 @@ class _CaptureSection extends StatelessWidget {
               style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
             ),
           ),
+          // Задача 3b: в «Только прокси» раздельное туннелирование не
+          // действует ни для одной программы машины (ничего не
+          // перехватывается), поэтому тумблер виден ТОЛЬКО в этом режиме —
+          // иначе он был бы виден и ничего не делал бы.
+          if (settings.captureMode == CaptureMode.proxyOnly)
+            SwitchListTile(
+              value: settings.applyRulesInProxyOnly,
+              onChanged: (v) => controller
+                  .update((s) => s.copyWith(applyRulesInProxyOnly: v)),
+              title: Text(l.applyRulesInProxyOnlyTitle),
+              subtitle: Text(l.applyRulesInProxyOnlySub),
+            ),
+        ],
       ],
     );
   }

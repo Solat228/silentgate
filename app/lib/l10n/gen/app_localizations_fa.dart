@@ -137,6 +137,13 @@ class AppLocalizationsFa extends AppLocalizations {
       'تنظیمات TUN، DNS و تونل تفکیکی هنگام انتخاب حالت TUN نمایان می‌شوند — در حالت پروکسی سیستمی بی‌اثرند.';
 
   @override
+  String get applyRulesInProxyOnlyTitle => 'اعمال «مسدودسازی» به پورت‌های سرور';
+
+  @override
+  String get applyRulesInProxyOnlySub =>
+      'در حالت «فقط پروکسی» تونل تفکیکی برای هیچ برنامه‌ای کار نمی‌کند. این گزینه را فعال کنید تا قانون «مسدودسازی» دست‌کم روی پورت‌های سروری که صراحتاً باز شده‌اند اعمال شود.';
+
+  @override
   String get dnsShortVpn => 'از طریق VPN';
 
   @override

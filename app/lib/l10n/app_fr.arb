@@ -40,6 +40,8 @@
   "splitTunnelTitle": "Tunneling fractionné",
   "splitRulesCount": "{n} règles ({apps} applications, {sites} sites)",
   "captureTunHint": "Les paramètres TUN, DNS et de tunneling fractionné apparaissent lorsque le mode TUN est sélectionné — en mode proxy système, ils n'ont aucun effet.",
+  "applyRulesInProxyOnlyTitle": "Appliquer « Bloquer » aux ports des serveurs",
+  "applyRulesInProxyOnlySub": "En mode « Proxy seul », le tunneling fractionné ne fonctionne pour aucun programme. Activez cette option pour que la règle « Bloquer » s'applique au moins aux ports de serveur explicitement ouverts.",
   "dnsShortVpn": "via VPN",
   "dnsShortSystem": "système",
   "dnsShortCustom": "personnalisé",

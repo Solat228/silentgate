@@ -4,6 +4,7 @@ import 'dart:io';
 import '../net/api_ports.dart';
 import '../settings/app_settings.dart';
 import '../settings/split_tunnel.dart';
+import 'api_exit_guard.dart';
 import 'exit_tags.dart';
 
 /// Параметры TUN-туннеля (всё, что настраивается пользователем + вычисляемое движком).
@@ -522,40 +523,20 @@ class SingboxConfigBuilder {
   /// иначе правило сослалось бы на несуществующий тег, `sing-box check`
   /// пропустил бы это молча, и трафик скрипта ушёл бы в `route.final`, то есть
   /// мимо выбранного сервера. Источник правды — `_liveExitTags`.
-  List<Map<String, dynamic>> get _apiExitInbounds {
-    if (apiToken.isEmpty) return const [];
-    final out = <Map<String, dynamic>>[];
-    final keys = ApiPorts.withinRange(apiExitServerKeys);
-    for (final key in keys) {
-      if (!_liveExitTags.contains(exitTagFor(key))) continue;
-      final port = ApiPorts.forServer(apiExitServerKeys, key);
-      if (port == null) continue;
-      out.add({
-        'type': 'mixed',
-        'tag': apiExitInboundTag(key),
-        'listen': '127.0.0.1',
-        'listen_port': port,
-        'users': [
-          {'username': 'sg', 'password': apiToken}
-        ],
-      });
-    }
-    return out;
-  }
+  ///
+  /// Сама сборка — в [buildApiExitInbounds] (`core/net/api_ports.dart`): ей же
+  /// пользуется `ExitRouterConfigBuilder` (задача 3b, режим «Только прокси»).
+  /// Разводить копии этой логики по двум файлам нельзя — разъедутся на первой
+  /// же правке.
+  List<Map<String, dynamic>> get _apiExitInbounds => buildApiExitInbounds(
+        serverKeys: apiExitServerKeys,
+        token: apiToken,
+        liveExitTags: _liveExitTags,
+      );
 
-  /// Правила «этот порт — в этот сервер».
-  List<Map<String, dynamic>> get _apiExitRules => [
-        for (final i in _apiExitInbounds)
-          {
-            'inbound': [i['tag']],
-            'action': 'route',
-            'outbound': _outboundForApiInbound('${i['tag']}'),
-          },
-      ];
-
-  /// Обратное преобразование тега инбаунда в тег outbound-а.
-  String _outboundForApiInbound(String inboundTag) =>
-      inboundTag.substring('api-'.length);
+  /// Правила «этот порт — в этот сервер». Сборка — в [buildApiExitRules].
+  List<Map<String, dynamic>> get _apiExitRules =>
+      buildApiExitRules(_apiExitInbounds);
 
   /// «Блок» ПРИМЕНЯЕТСЯ и к трафику, пришедшему в порт конкретного сервера —
   /// иначе служебный вход стал бы способом обойти собственные запреты
@@ -579,9 +560,12 @@ class SingboxConfigBuilder {
     if (!_userRulesActive(split)) return;
     final tags = [for (final i in _apiExitInbounds) '${i['tag']}'];
     if (tags.isEmpty) return;
-    _addSiteRule(rules, split, AppAction.block, null, inbound: tags);
-    _addActionRule(rules, split, AppAction.block, null,
-        overrideSites: null, inbound: tags);
+    // Сборка — в общем [apiExitBlockGuardRules] (задача 3b пользуется тем же).
+    rules.addAll(apiExitBlockGuardRules(
+      split: split,
+      inboundTags: tags,
+      platformTun: options.platformTun,
+    ));
   }
 
   /// Тег сервера-адресата для правила, либо `null` — «основной туннель».
@@ -1506,7 +1490,9 @@ class SingboxConfigBuilder {
       if (byName.isNotEmpty) out.add(withAction({'process_name': byName}, srv));
       if (byPath.isNotEmpty) {
         out.add(withAction({
-          'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+          'process_path_regex': [
+            for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
+          ],
         }, srv));
       }
     }
@@ -1619,7 +1605,9 @@ class SingboxConfigBuilder {
         // Windows) — правило могло молча не срабатывать. process_path_regex
         // с (?i) — надёжно.
         rules.add(_action({
-          'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+          'process_path_regex': [
+            for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
+          ],
           if (inbound != null) 'inbound': inbound,
         }, target));
       }
@@ -1642,11 +1630,6 @@ class SingboxConfigBuilder {
     if (ip.contains('/')) return ip;
     return ip.contains(':') ? '$ip/128' : '$ip/32';
   }
-
-  /// Экранирование пути для RE2 (Go regexp в sing-box): только реальные
-  /// метасимволы — экранирование пробела и пр. RE2 считает ошибкой.
-  static String _reEscape(String s) =>
-      s.replaceAllMapped(RegExp(r'[.*+?^${}()|\[\]\\]'), (m) => '\\${m[0]}');
 
   /// Пакеты, идущие МИМО туннеля (действие «Прямо»).
   ///

@@ -40,6 +40,8 @@
   "splitTunnelTitle": "تونل تفکیکی",
   "splitRulesCount": "{n} قانون ({apps} برنامه، {sites} سایت)",
   "captureTunHint": "تنظیمات TUN، DNS و تونل تفکیکی هنگام انتخاب حالت TUN نمایان می‌شوند — در حالت پروکسی سیستمی بی‌اثرند.",
+  "applyRulesInProxyOnlyTitle": "اعمال «مسدودسازی» به پورت‌های سرور",
+  "applyRulesInProxyOnlySub": "در حالت «فقط پروکسی» تونل تفکیکی برای هیچ برنامه‌ای کار نمی‌کند. این گزینه را فعال کنید تا قانون «مسدودسازی» دست‌کم روی پورت‌های سروری که صراحتاً باز شده‌اند اعمال شود.",
   "dnsShortVpn": "از طریق VPN",
   "dnsShortSystem": "سیستمی",
   "dnsShortCustom": "سفارشی",
