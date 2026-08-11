@@ -146,6 +146,59 @@ class AppLocalizationsPt extends AppLocalizations {
       'No modo «Somente proxy» o túnel dividido não funciona para nenhum programa. Ative para que a regra «Bloquear» funcione pelo menos nas portas de servidor abertas explicitamente.';
 
   @override
+  String get captureProxyOnly => 'Somente proxy';
+
+  @override
+  String get captureProxyOnlySub =>
+      'O núcleo está ativo e as portas locais estão escutando, mas o computador não está no túnel: pela VPN passa só quem apontar explicitamente para o nosso proxy';
+
+  @override
+  String get apiSectionTitle => 'API para automação';
+
+  @override
+  String get apiEnableTitle => 'Ativar API local';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP em 127.0.0.1:$port — controlar o cliente a partir de scripts';
+  }
+
+  @override
+  String get apiTokenTitle => 'Token';
+
+  @override
+  String get apiTokenUnset => 'Não definido — a API não inicia';
+
+  @override
+  String get apiTokenRegenerate => 'Renovar token';
+
+  @override
+  String get apiTokenWarning =>
+      'O token é armazenado em texto simples no arquivo de configurações e vai para os backups. Quem o tiver pode trocar o servidor e ler o estado da assinatura.';
+
+  @override
+  String get apiExitsTitle => 'Servidores com porta dedicada';
+
+  @override
+  String get apiExitsSub =>
+      'Cada um recebe sua própria porta local — uma solicitação a ela passa por esse servidor';
+
+  @override
+  String get apiCopyPythonExample => 'Copiar exemplo para Python';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Controle — porta $control. «Direto» — porta $direct. Servidores — a partir de $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'Aplicar regras de túnel dividido';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'Nesse modo as regras padrão não se aplicam a nenhum programa. Ative se quiser que a lista «Bloquear» também valha para solicitações feitas pelas portas locais.';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override

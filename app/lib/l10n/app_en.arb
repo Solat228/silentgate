@@ -68,6 +68,33 @@
   "captureTunHint": "TUN, DNS and split-tunneling settings appear when TUN mode is selected — in system-proxy mode they have no effect.",
   "applyRulesInProxyOnlyTitle": "Apply \"Block\" to server ports",
   "applyRulesInProxyOnlySub": "In \"Proxy only\" mode split tunneling doesn't work for any program. Turn this on so the \"Block\" rule applies at least on explicitly opened server ports.",
+  "captureProxyOnly": "Proxy only",
+  "captureProxyOnlySub": "The core is running and the local ports are listening, but the computer isn't in the tunnel: only whatever explicitly points at our proxy goes through the VPN",
+  "apiSectionTitle": "API for automation",
+  "apiEnableTitle": "Enable local API",
+  "apiEnableSub": "HTTP on 127.0.0.1:{port} — control the client from scripts",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "Token",
+  "apiTokenUnset": "Not set — the API won't start",
+  "apiTokenRegenerate": "Regenerate token",
+  "apiTokenWarning": "The token is stored in the settings file in plain text and ends up in backups. Whoever has it can switch the server and read the subscription status.",
+  "apiExitsTitle": "Servers with a dedicated port",
+  "apiExitsSub": "Each one gets its own local port — a request to it goes through that server",
+  "apiCopyPythonExample": "Copy Python example",
+  "apiPortsHint": "Control — port {control}. \"Direct\" — port {direct}. Servers — from {first}.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "Apply split-tunneling rules",
+  "apiRulesInProxyOnlySub": "In this mode the default rules don't apply to any program. Turn this on if you want the \"Block\" list to also cover requests made through the local ports.",
   "dnsShortVpn": "via VPN",
   "dnsShortSystem": "system",
   "dnsShortCustom": "custom",

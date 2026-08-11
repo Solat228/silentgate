@@ -143,6 +143,59 @@ class AppLocalizationsEn extends AppLocalizations {
       'In \"Proxy only\" mode split tunneling doesn\'t work for any program. Turn this on so the \"Block\" rule applies at least on explicitly opened server ports.';
 
   @override
+  String get captureProxyOnly => 'Proxy only';
+
+  @override
+  String get captureProxyOnlySub =>
+      'The core is running and the local ports are listening, but the computer isn\'t in the tunnel: only whatever explicitly points at our proxy goes through the VPN';
+
+  @override
+  String get apiSectionTitle => 'API for automation';
+
+  @override
+  String get apiEnableTitle => 'Enable local API';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP on 127.0.0.1:$port — control the client from scripts';
+  }
+
+  @override
+  String get apiTokenTitle => 'Token';
+
+  @override
+  String get apiTokenUnset => 'Not set — the API won\'t start';
+
+  @override
+  String get apiTokenRegenerate => 'Regenerate token';
+
+  @override
+  String get apiTokenWarning =>
+      'The token is stored in the settings file in plain text and ends up in backups. Whoever has it can switch the server and read the subscription status.';
+
+  @override
+  String get apiExitsTitle => 'Servers with a dedicated port';
+
+  @override
+  String get apiExitsSub =>
+      'Each one gets its own local port — a request to it goes through that server';
+
+  @override
+  String get apiCopyPythonExample => 'Copy Python example';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Control — port $control. \"Direct\" — port $direct. Servers — from $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'Apply split-tunneling rules';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'In this mode the default rules don\'t apply to any program. Turn this on if you want the \"Block\" list to also cover requests made through the local ports.';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override

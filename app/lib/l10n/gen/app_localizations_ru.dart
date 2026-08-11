@@ -144,6 +144,60 @@ class AppLocalizationsRu extends AppLocalizations {
       'В режиме «Только прокси» раздельное туннелирование не действует ни для одной программы. Включите, чтобы правило «Блок» работало хотя бы на явно открытых портах серверов.';
 
   @override
+  String get captureProxyOnly => 'Только прокси';
+
+  @override
+  String get captureProxyOnlySub =>
+      'Ядро поднято, локальные порты слушают, но компьютер не в туннеле: через VPN идёт только тот, кто явно указал наш прокси';
+
+  @override
+  String get apiSectionTitle => 'API для автоматизации';
+
+  @override
+  String get apiEnableTitle => 'Включить локальный API';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP на 127.0.0.1:$port — управление клиентом из скриптов';
+  }
+
+  @override
+  String get apiTokenTitle => 'Токен';
+
+  @override
+  String get apiTokenUnset => 'Не задан — API не поднимается';
+
+  @override
+  String get apiTokenRegenerate => 'Обновить токен';
+
+  @override
+  String get apiTokenWarning =>
+      'Токен хранится в файле настроек открытым текстом и попадает в резервные копии. Тот, у кого он есть, может переключать сервер и читать состояние подписки.';
+
+  @override
+  String get apiExitsTitle => 'Серверы с отдельным портом';
+
+  @override
+  String get apiExitsSub =>
+      'Каждому выдаётся свой локальный порт — запрос в него идёт через этот сервер';
+
+  @override
+  String get apiCopyPythonExample => 'Скопировать пример для Python';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Управление — порт $control. «Прямо» — порт $direct. Серверы — с $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly =>
+      'Применять правила раздельного туннелирования';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'В этом режиме правила по умолчанию не действуют ни для одной программы. Включите, если хотите, чтобы список «Блок» распространялся и на запросы через локальные порты.';
+
+  @override
   String get dnsShortVpn => 'через VPN';
 
   @override

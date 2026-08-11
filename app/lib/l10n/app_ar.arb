@@ -42,6 +42,33 @@
   "captureTunHint": "تظهر إعدادات TUN وDNS وتقسيم النفق عند اختيار وضع TUN — أما في وضع بروكسي النظام فلا أثر لها.",
   "applyRulesInProxyOnlyTitle": "تطبيق «حظر» على منافذ الخوادم",
   "applyRulesInProxyOnlySub": "في وضع «بروكسي فقط» لا يعمل تقسيم النفق لأي برنامج. فعّل هذا الخيار ليعمل قاعدة «حظر» على الأقل على منافذ الخوادم المفتوحة صراحةً.",
+  "captureProxyOnly": "بروكسي فقط",
+  "captureProxyOnlySub": "المحرك يعمل والمنافذ المحلية تستمع، لكن الحاسوب ليس داخل النفق: لا يمر عبر الـVPN إلا ما يشير صراحةً إلى بروكسينا",
+  "apiSectionTitle": "واجهة برمجية للأتمتة",
+  "apiEnableTitle": "تفعيل الواجهة البرمجية المحلية",
+  "apiEnableSub": "HTTP على 127.0.0.1:{port} — التحكم بالعميل من نصوص برمجية",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "الرمز المميز",
+  "apiTokenUnset": "غير مضبوط — لن تعمل الواجهة البرمجية",
+  "apiTokenRegenerate": "تجديد الرمز",
+  "apiTokenWarning": "يُخزَّن الرمز في ملف الإعدادات كنص عادي وينتهي به المطاف في النسخ الاحتياطية. من يملكه يمكنه تبديل الخادم وقراءة حالة الاشتراك.",
+  "apiExitsTitle": "خوادم بمنفذ مخصص",
+  "apiExitsSub": "يحصل كل خادم على منفذ محلي خاص به — يمر الطلب الموجَّه إليه عبر هذا الخادم",
+  "apiCopyPythonExample": "نسخ مثال بايثون",
+  "apiPortsHint": "التحكم — المنفذ {control}. «مباشر» — المنفذ {direct}. الخوادم — بدءًا من {first}.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "تطبيق قواعد تقسيم النفق",
+  "apiRulesInProxyOnlySub": "في هذا الوضع لا تُطبَّق القواعد الافتراضية على أي برنامج. فعّل هذا إذا أردت أن تشمل قائمة «حظر» الطلبات المرسلة عبر المنافذ المحلية أيضًا.",
   "dnsShortVpn": "عبر VPN",
   "dnsShortSystem": "النظام",
   "dnsShortCustom": "مخصّص",

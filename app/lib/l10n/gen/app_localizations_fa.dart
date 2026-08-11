@@ -144,6 +144,59 @@ class AppLocalizationsFa extends AppLocalizations {
       'در حالت «فقط پروکسی» تونل تفکیکی برای هیچ برنامه‌ای کار نمی‌کند. این گزینه را فعال کنید تا قانون «مسدودسازی» دست‌کم روی پورت‌های سروری که صراحتاً باز شده‌اند اعمال شود.';
 
   @override
+  String get captureProxyOnly => 'فقط پروکسی';
+
+  @override
+  String get captureProxyOnlySub =>
+      'هسته بالا آمده و پورت‌های محلی گوش می‌دهند، اما رایانه در تونل نیست: فقط چیزی که صراحتاً به پروکسی ما اشاره کند از VPN عبور می‌کند';
+
+  @override
+  String get apiSectionTitle => 'API برای اتوماسیون';
+
+  @override
+  String get apiEnableTitle => 'فعال‌سازی API محلی';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP روی 127.0.0.1:$port — کنترل کلاینت از طریق اسکریپت‌ها';
+  }
+
+  @override
+  String get apiTokenTitle => 'توکن';
+
+  @override
+  String get apiTokenUnset => 'تنظیم نشده — API بالا نمی‌آید';
+
+  @override
+  String get apiTokenRegenerate => 'بازسازی توکن';
+
+  @override
+  String get apiTokenWarning =>
+      'توکن به‌صورت متن ساده در فایل تنظیمات ذخیره می‌شود و در نسخه‌های پشتیبان نیز قرار می‌گیرد. هر کس آن را داشته باشد می‌تواند سرور را عوض کند و وضعیت اشتراک را بخواند.';
+
+  @override
+  String get apiExitsTitle => 'سرورهای دارای پورت اختصاصی';
+
+  @override
+  String get apiExitsSub =>
+      'به هر کدام پورت محلی جداگانه‌ای داده می‌شود — درخواست به آن پورت از همان سرور عبور می‌کند';
+
+  @override
+  String get apiCopyPythonExample => 'کپی نمونه پایتون';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'کنترل — پورت $control. «مستقیم» — پورت $direct. سرورها — از $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'اعمال قوانین تونل تفکیکی';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'در این حالت قوانین پیش‌فرض برای هیچ برنامه‌ای اعمال نمی‌شوند. اگر می‌خواهید فهرست «مسدودسازی» درخواست‌های ارسالی از طریق پورت‌های محلی را هم پوشش دهد، این را فعال کنید.';
+
+  @override
   String get dnsShortVpn => 'از طریق VPN';
 
   @override

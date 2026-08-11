@@ -42,6 +42,33 @@
   "captureTunHint": "As configurações de TUN, DNS e túnel dividido aparecem quando o modo TUN está selecionado — no modo de proxy do sistema elas não têm efeito.",
   "applyRulesInProxyOnlyTitle": "Aplicar «Bloquear» às portas dos servidores",
   "applyRulesInProxyOnlySub": "No modo «Somente proxy» o túnel dividido não funciona para nenhum programa. Ative para que a regra «Bloquear» funcione pelo menos nas portas de servidor abertas explicitamente.",
+  "captureProxyOnly": "Somente proxy",
+  "captureProxyOnlySub": "O núcleo está ativo e as portas locais estão escutando, mas o computador não está no túnel: pela VPN passa só quem apontar explicitamente para o nosso proxy",
+  "apiSectionTitle": "API para automação",
+  "apiEnableTitle": "Ativar API local",
+  "apiEnableSub": "HTTP em 127.0.0.1:{port} — controlar o cliente a partir de scripts",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "Token",
+  "apiTokenUnset": "Não definido — a API não inicia",
+  "apiTokenRegenerate": "Renovar token",
+  "apiTokenWarning": "O token é armazenado em texto simples no arquivo de configurações e vai para os backups. Quem o tiver pode trocar o servidor e ler o estado da assinatura.",
+  "apiExitsTitle": "Servidores com porta dedicada",
+  "apiExitsSub": "Cada um recebe sua própria porta local — uma solicitação a ela passa por esse servidor",
+  "apiCopyPythonExample": "Copiar exemplo para Python",
+  "apiPortsHint": "Controle — porta {control}. «Direto» — porta {direct}. Servidores — a partir de {first}.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "Aplicar regras de túnel dividido",
+  "apiRulesInProxyOnlySub": "Nesse modo as regras padrão não se aplicam a nenhum programa. Ative se quiser que a lista «Bloquear» também valha para solicitações feitas pelas portas locais.",
   "dnsShortVpn": "via VPN",
   "dnsShortSystem": "sistema",
   "dnsShortCustom": "personalizado",

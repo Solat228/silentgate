@@ -141,6 +141,57 @@ class AppLocalizationsZh extends AppLocalizations {
       '在「仅代理」模式下，分应用代理对任何程序都不起作用。开启此项后，「阻止」规则至少会在明确开放的服务器端口上生效。';
 
   @override
+  String get captureProxyOnly => '仅代理';
+
+  @override
+  String get captureProxyOnlySub =>
+      '内核已启动，本地端口在监听，但电脑并未进入隧道：只有明确指向我们代理的流量才会走 VPN';
+
+  @override
+  String get apiSectionTitle => '自动化 API';
+
+  @override
+  String get apiEnableTitle => '启用本地 API';
+
+  @override
+  String apiEnableSub(int port) {
+    return '在 127.0.0.1:$port 上提供 HTTP —— 通过脚本控制客户端';
+  }
+
+  @override
+  String get apiTokenTitle => '令牌';
+
+  @override
+  String get apiTokenUnset => '未设置 —— API 不会启动';
+
+  @override
+  String get apiTokenRegenerate => '重新生成令牌';
+
+  @override
+  String get apiTokenWarning => '令牌以明文保存在设置文件中，并会出现在备份里。拥有该令牌的人可以切换服务器并读取订阅状态。';
+
+  @override
+  String get apiExitsTitle => '拥有独立端口的服务器';
+
+  @override
+  String get apiExitsSub => '每个服务器获得自己的本地端口 —— 发往该端口的请求都经过这台服务器';
+
+  @override
+  String get apiCopyPythonExample => '复制 Python 示例';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return '控制 —— 端口 $control。「直连」—— 端口 $direct。服务器 —— 从 $first 起。';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => '应用分应用代理规则';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      '在此模式下，默认规则对任何程序都不生效。若希望「阻止」名单也覆盖经本地端口发出的请求，请开启此项。';
+
+  @override
   String get dnsShortVpn => '经由 VPN';
 
   @override

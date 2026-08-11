@@ -147,6 +147,60 @@ class AppLocalizationsFr extends AppLocalizations {
       'En mode « Proxy seul », le tunneling fractionné ne fonctionne pour aucun programme. Activez cette option pour que la règle « Bloquer » s\'applique au moins aux ports de serveur explicitement ouverts.';
 
   @override
+  String get captureProxyOnly => 'Proxy seul';
+
+  @override
+  String get captureProxyOnlySub =>
+      'Le cœur est actif et les ports locaux écoutent, mais l\'ordinateur n\'est pas dans le tunnel : seul ce qui pointe explicitement vers notre proxy passe par le VPN';
+
+  @override
+  String get apiSectionTitle => 'API pour l\'automatisation';
+
+  @override
+  String get apiEnableTitle => 'Activer l\'API locale';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP sur 127.0.0.1:$port — contrôler le client depuis des scripts';
+  }
+
+  @override
+  String get apiTokenTitle => 'Jeton';
+
+  @override
+  String get apiTokenUnset => 'Non défini — l\'API ne démarre pas';
+
+  @override
+  String get apiTokenRegenerate => 'Régénérer le jeton';
+
+  @override
+  String get apiTokenWarning =>
+      'Le jeton est stocké en clair dans le fichier de configuration et se retrouve dans les sauvegardes. Quiconque le possède peut changer de serveur et lire l\'état de l\'abonnement.';
+
+  @override
+  String get apiExitsTitle => 'Serveurs avec un port dédié';
+
+  @override
+  String get apiExitsSub =>
+      'Chacun reçoit son propre port local — une requête vers ce port passe par ce serveur';
+
+  @override
+  String get apiCopyPythonExample => 'Copier l\'exemple Python';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Contrôle — port $control. « Direct » — port $direct. Serveurs — à partir de $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly =>
+      'Appliquer les règles de tunneling fractionné';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'Dans ce mode, les règles par défaut ne s\'appliquent à aucun programme. Activez cette option si vous voulez que la liste « Bloquer » couvre aussi les requêtes passées par les ports locaux.';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override

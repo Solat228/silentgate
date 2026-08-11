@@ -68,6 +68,33 @@
   "captureTunHint": "Los ajustes de TUN, DNS y túnel dividido aparecen al seleccionar el modo TUN — en modo proxy del sistema no tienen efecto.",
   "applyRulesInProxyOnlyTitle": "Aplicar «Bloquear» a los puertos de los servidores",
   "applyRulesInProxyOnlySub": "En el modo «Solo proxy» el túnel dividido no funciona para ningún programa. Actívelo para que la regla «Bloquear» funcione al menos en los puertos de servidor abiertos explícitamente.",
+  "captureProxyOnly": "Solo proxy",
+  "captureProxyOnlySub": "El núcleo está activo y los puertos locales escuchan, pero el equipo no está en el túnel: solo pasa por la VPN quien apunte explícitamente a nuestro proxy",
+  "apiSectionTitle": "API para automatización",
+  "apiEnableTitle": "Activar la API local",
+  "apiEnableSub": "HTTP en 127.0.0.1:{port} — controla el cliente desde scripts",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "Token",
+  "apiTokenUnset": "No definido — la API no se inicia",
+  "apiTokenRegenerate": "Renovar token",
+  "apiTokenWarning": "El token se guarda en el archivo de configuración en texto plano y queda incluido en las copias de seguridad. Quien lo tenga puede cambiar el servidor y leer el estado de la suscripción.",
+  "apiExitsTitle": "Servidores con puerto propio",
+  "apiExitsSub": "Cada uno recibe su propio puerto local — una solicitud a ese puerto pasa por ese servidor",
+  "apiCopyPythonExample": "Copiar ejemplo para Python",
+  "apiPortsHint": "Control — puerto {control}. «Directo» — puerto {direct}. Servidores — desde {first}.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "Aplicar las reglas de túnel dividido",
+  "apiRulesInProxyOnlySub": "En este modo las reglas no se aplican a ningún programa por defecto. Actívelo si quiere que la lista «Bloquear» también cubra las solicitudes hechas a través de los puertos locales.",
   "dnsShortVpn": "por VPN",
   "dnsShortSystem": "sistema",
   "dnsShortCustom": "propio",

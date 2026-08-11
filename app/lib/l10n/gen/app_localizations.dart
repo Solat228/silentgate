@@ -366,6 +366,96 @@ abstract class AppLocalizations {
   /// **'В режиме «Только прокси» раздельное туннелирование не действует ни для одной программы. Включите, чтобы правило «Блок» работало хотя бы на явно открытых портах серверов.'**
   String get applyRulesInProxyOnlySub;
 
+  /// No description provided for @captureProxyOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только прокси'**
+  String get captureProxyOnly;
+
+  /// No description provided for @captureProxyOnlySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро поднято, локальные порты слушают, но компьютер не в туннеле: через VPN идёт только тот, кто явно указал наш прокси'**
+  String get captureProxyOnlySub;
+
+  /// No description provided for @apiSectionTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'API для автоматизации'**
+  String get apiSectionTitle;
+
+  /// No description provided for @apiEnableTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить локальный API'**
+  String get apiEnableTitle;
+
+  /// No description provided for @apiEnableSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'HTTP на 127.0.0.1:{port} — управление клиентом из скриптов'**
+  String apiEnableSub(int port);
+
+  /// No description provided for @apiTokenTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Токен'**
+  String get apiTokenTitle;
+
+  /// No description provided for @apiTokenUnset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не задан — API не поднимается'**
+  String get apiTokenUnset;
+
+  /// No description provided for @apiTokenRegenerate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить токен'**
+  String get apiTokenRegenerate;
+
+  /// No description provided for @apiTokenWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Токен хранится в файле настроек открытым текстом и попадает в резервные копии. Тот, у кого он есть, может переключать сервер и читать состояние подписки.'**
+  String get apiTokenWarning;
+
+  /// No description provided for @apiExitsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверы с отдельным портом'**
+  String get apiExitsTitle;
+
+  /// No description provided for @apiExitsSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждому выдаётся свой локальный порт — запрос в него идёт через этот сервер'**
+  String get apiExitsSub;
+
+  /// No description provided for @apiCopyPythonExample.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать пример для Python'**
+  String get apiCopyPythonExample;
+
+  /// No description provided for @apiPortsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Управление — порт {control}. «Прямо» — порт {direct}. Серверы — с {first}.'**
+  String apiPortsHint(int control, int direct, int first);
+
+  /// No description provided for @apiRulesInProxyOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Применять правила раздельного туннелирования'**
+  String get apiRulesInProxyOnly;
+
+  /// No description provided for @apiRulesInProxyOnlySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этом режиме правила по умолчанию не действуют ни для одной программы. Включите, если хотите, чтобы список «Блок» распространялся и на запросы через локальные порты.'**
+  String get apiRulesInProxyOnlySub;
+
   /// No description provided for @dnsShortVpn.
   ///
   /// In ru, this message translates to:

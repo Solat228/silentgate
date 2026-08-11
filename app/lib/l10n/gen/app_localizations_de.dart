@@ -145,6 +145,59 @@ class AppLocalizationsDe extends AppLocalizations {
       'Im Modus „Nur Proxy“ funktioniert Split-Tunneling für kein Programm. Aktivieren Sie dies, damit die Regel „Blockieren“ zumindest auf ausdrücklich geöffneten Server-Ports greift.';
 
   @override
+  String get captureProxyOnly => 'Nur Proxy';
+
+  @override
+  String get captureProxyOnlySub =>
+      'Der Kern läuft, die lokalen Ports lauschen, aber der Computer ist nicht im Tunnel: über das VPN läuft nur, was ausdrücklich auf unseren Proxy zeigt';
+
+  @override
+  String get apiSectionTitle => 'API für Automatisierung';
+
+  @override
+  String get apiEnableTitle => 'Lokale API aktivieren';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP auf 127.0.0.1:$port — den Client per Skript steuern';
+  }
+
+  @override
+  String get apiTokenTitle => 'Token';
+
+  @override
+  String get apiTokenUnset => 'Nicht festgelegt — die API startet nicht';
+
+  @override
+  String get apiTokenRegenerate => 'Token erneuern';
+
+  @override
+  String get apiTokenWarning =>
+      'Der Token wird im Klartext in der Einstellungsdatei gespeichert und landet in Backups. Wer ihn besitzt, kann den Server wechseln und den Abo-Status auslesen.';
+
+  @override
+  String get apiExitsTitle => 'Server mit eigenem Port';
+
+  @override
+  String get apiExitsSub =>
+      'Jeder erhält einen eigenen lokalen Port — eine Anfrage dorthin läuft über diesen Server';
+
+  @override
+  String get apiCopyPythonExample => 'Python-Beispiel kopieren';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Steuerung — Port $control. „Direkt“ — Port $direct. Server — ab $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'Split-Tunneling-Regeln anwenden';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'In diesem Modus gelten die Standardregeln für kein Programm. Aktivieren Sie dies, wenn die Liste „Blockieren“ auch für Anfragen über die lokalen Ports gelten soll.';
+
+  @override
   String get dnsShortVpn => 'über VPN';
 
   @override

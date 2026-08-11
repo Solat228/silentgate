@@ -143,6 +143,59 @@ class AppLocalizationsAr extends AppLocalizations {
       'في وضع «بروكسي فقط» لا يعمل تقسيم النفق لأي برنامج. فعّل هذا الخيار ليعمل قاعدة «حظر» على الأقل على منافذ الخوادم المفتوحة صراحةً.';
 
   @override
+  String get captureProxyOnly => 'بروكسي فقط';
+
+  @override
+  String get captureProxyOnlySub =>
+      'المحرك يعمل والمنافذ المحلية تستمع، لكن الحاسوب ليس داخل النفق: لا يمر عبر الـVPN إلا ما يشير صراحةً إلى بروكسينا';
+
+  @override
+  String get apiSectionTitle => 'واجهة برمجية للأتمتة';
+
+  @override
+  String get apiEnableTitle => 'تفعيل الواجهة البرمجية المحلية';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP على 127.0.0.1:$port — التحكم بالعميل من نصوص برمجية';
+  }
+
+  @override
+  String get apiTokenTitle => 'الرمز المميز';
+
+  @override
+  String get apiTokenUnset => 'غير مضبوط — لن تعمل الواجهة البرمجية';
+
+  @override
+  String get apiTokenRegenerate => 'تجديد الرمز';
+
+  @override
+  String get apiTokenWarning =>
+      'يُخزَّن الرمز في ملف الإعدادات كنص عادي وينتهي به المطاف في النسخ الاحتياطية. من يملكه يمكنه تبديل الخادم وقراءة حالة الاشتراك.';
+
+  @override
+  String get apiExitsTitle => 'خوادم بمنفذ مخصص';
+
+  @override
+  String get apiExitsSub =>
+      'يحصل كل خادم على منفذ محلي خاص به — يمر الطلب الموجَّه إليه عبر هذا الخادم';
+
+  @override
+  String get apiCopyPythonExample => 'نسخ مثال بايثون';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'التحكم — المنفذ $control. «مباشر» — المنفذ $direct. الخوادم — بدءًا من $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'تطبيق قواعد تقسيم النفق';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'في هذا الوضع لا تُطبَّق القواعد الافتراضية على أي برنامج. فعّل هذا إذا أردت أن تشمل قائمة «حظر» الطلبات المرسلة عبر المنافذ المحلية أيضًا.';
+
+  @override
   String get dnsShortVpn => 'عبر VPN';
 
   @override

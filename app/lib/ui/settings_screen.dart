@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../core/app_info.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../core/net/api_ports.dart';
 import '../core/platform/device_id.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
@@ -23,6 +24,7 @@ import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
+import '../engine/engine_base.dart';
 import '../state/app_state.dart';
 import '../state/settings_controller.dart';
 import 'logs_screen.dart';
@@ -126,6 +128,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const Divider(),
             const _NetworkSection(),
           ],
+          // Локальный API для скриптов (Python и т.п.). Работает ТОЛЬКО на
+          // Windows — на Android слушатель не поднимается (см.
+          // `AppState.applyApiSettings`), и видимый раздел, который ничего
+          // не делает, был бы обманом.
+          if (Platform.isWindows) ...[
+            const Divider(),
+            _ApiSection(settings: s, controller: controller),
+          ],
           const Divider(),
           // «URL-схемы» переехали в раздел «Представление панели» (как приложение
           // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
@@ -167,34 +177,39 @@ class _ReliabilitySection extends StatelessWidget {
           ]),
           subtitle: Text(l.autoReconnectSub),
         ),
-        SwitchListTile(
-          value: settings.killSwitch,
-          // Без автопереподключения восстанавливать нечего — переключатель неактивен.
-          onChanged: settings.autoReconnect
-              ? (v) {
-                  controller.update((s) =>
-                      s.copyWith(killSwitch: v, noRealIp: v ? s.noRealIp : false));
-                  // ⚠️ Системный always-on НАДЁЖНЕЕ нашего kill switch и об этом
-                  // надо сказать в момент, когда человек о защите и думает.
-                  // Наш работает, только пока живо приложение; системный держит
-                  // блокировку и когда оно убито, и при обновлении, и до первого
-                  // запуска после перезагрузки. Предлагаем один раз, при
-                  // включении, и не навязываем — просто открываем нужный экран.
-                  if (v && Platform.isAndroid) _offerAlwaysOn(context);
-                }
-              : null,
-          title: Row(children: [
-            Expanded(child: Text(l.killSwitchTitle)),
-            InfoTooltip(l.infoKillSwitch, title: l.killSwitchTitle),
-          ]),
-          subtitle: Text(
-            settings.autoReconnect
-                ? (settings.captureMode == CaptureMode.tun
-                    ? l.killSwitchSubTun
-                    : l.killSwitchSubProxy)
-                : l.killSwitchSubOff,
+        // ⚠️ В режиме «Только прокси» kill switch смысла не имеет
+        // (`AppSettings.killSwitchApplies`): удерживать он может только
+        // трафик МАШИНЫ, а в этом режиме машина и так ходит мимо туннеля.
+        // Тумблер, который виден и ничего не делает, хуже отсутствующего.
+        if (settings.killSwitchApplies)
+          SwitchListTile(
+            value: settings.killSwitch,
+            // Без автопереподключения восстанавливать нечего — переключатель неактивен.
+            onChanged: settings.autoReconnect
+                ? (v) {
+                    controller.update((s) =>
+                        s.copyWith(killSwitch: v, noRealIp: v ? s.noRealIp : false));
+                    // ⚠️ Системный always-on НАДЁЖНЕЕ нашего kill switch и об этом
+                    // надо сказать в момент, когда человек о защите и думает.
+                    // Наш работает, только пока живо приложение; системный держит
+                    // блокировку и когда оно убито, и при обновлении, и до первого
+                    // запуска после перезагрузки. Предлагаем один раз, при
+                    // включении, и не навязываем — просто открываем нужный экран.
+                    if (v && Platform.isAndroid) _offerAlwaysOn(context);
+                  }
+                : null,
+            title: Row(children: [
+              Expanded(child: Text(l.killSwitchTitle)),
+              InfoTooltip(l.infoKillSwitch, title: l.killSwitchTitle),
+            ]),
+            subtitle: Text(
+              settings.autoReconnect
+                  ? (settings.captureMode == CaptureMode.tun
+                      ? l.killSwitchSubTun
+                      : l.killSwitchSubProxy)
+                  : l.killSwitchSubOff,
+            ),
           ),
-        ),
         // Системный Always-on — надёжнее любого нашего kill switch: он держит
         // блокировку и когда приложение убито, и во время обновления, и до
         // первого запуска после перезагрузки. Наш собственный закрывает только
@@ -265,8 +280,9 @@ class _ReliabilitySection extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _editLocalProxyCreds(context, controller, settings),
           ),
-        // «Не выходить под реальным IP» — только при включённом kill switch.
-        if (settings.killSwitch)
+        // «Не выходить под реальным IP» — только при включённом kill switch,
+        // и только там, где kill switch вообще имеет смысл (не «Только прокси»).
+        if (settings.killSwitch && settings.killSwitchApplies)
           SwitchListTile(
             value: settings.noRealIp,
             onChanged: (v) =>
@@ -1149,6 +1165,16 @@ class _CaptureSection extends StatelessWidget {
             ]),
             subtitle: Text(l.captureTunSub),
           ),
+          // Задача 3b/7: режим для локального API — ядро поднято, порты
+          // серверов слушают, но ни системный прокси, ни TUN не ставятся.
+          // Не нужен UAC (в отличие от TUN выше), поэтому смена режима — сразу.
+          RadioListTile<CaptureMode>(
+            value: CaptureMode.proxyOnly,
+            groupValue: settings.captureMode,
+            onChanged: (v) => controller.update((s) => s.copyWith(captureMode: v)),
+            title: Text(l.captureProxyOnly),
+            subtitle: Text(l.captureProxyOnlySub),
+          ),
         ],
         // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
         // в режиме системного прокси эти настройки ни на что не влияют.
@@ -1214,8 +1240,8 @@ class _CaptureSection extends StatelessWidget {
               value: settings.applyRulesInProxyOnly,
               onChanged: (v) => controller
                   .update((s) => s.copyWith(applyRulesInProxyOnly: v)),
-              title: Text(l.applyRulesInProxyOnlyTitle),
-              subtitle: Text(l.applyRulesInProxyOnlySub),
+              title: Text(l.apiRulesInProxyOnly),
+              subtitle: Text(l.apiRulesInProxyOnlySub),
             ),
         ],
       ],
@@ -1241,6 +1267,134 @@ class _CaptureSection extends StatelessWidget {
     final a = st.apps.length, s = st.sites.length;
     final n = a + s;
     return '$modeLabel${n > 0 ? ' · ${l.splitRulesCount(n, a, s)}' : ''}';
+  }
+}
+
+// ── API для автоматизации ────────────────────────────────────────────────────
+/// Локальный HTTP-API (`core/net/api_server.dart`) для внешних скриптов —
+/// например, Python-скрипта, который гоняет трафик через клиент и управляет
+/// им. Раздел показывается ТОЛЬКО на Windows: сам сервер на Android не
+/// поднимается вовсе (см. `AppState.applyApiSettings`), а видимый тумблер,
+/// который ничего не делает, был бы обманом.
+class _ApiSection extends StatelessWidget {
+  final AppSettings settings;
+  final SettingsController controller;
+  const _ApiSection({required this.settings, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    // Список серверов подписки — источник для чекбоксов «выдать порт». Как и
+    // выбор сервера для правила раздельного туннелирования (split_tunnel_screen),
+    // берём его нефильтрованным: тот же список видит пользователь на главном.
+    final servers = context.watch<AppState>().servers;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader(context, l.apiSectionTitle),
+        SwitchListTile(
+          value: settings.apiEnabled,
+          onChanged: (v) => controller.update((s) => s.copyWith(apiEnabled: v)),
+          title: Text(l.apiEnableTitle),
+          subtitle: Text(l.apiEnableSub(ApiPorts.control)),
+        ),
+        if (settings.apiEnabled) ...[
+          // Токен — он же пароль локальных портов API. Пустой токен означает
+          // «канал не поднимается» (см. `LocalApiServer.start`), поэтому даём
+          // сразу и увидеть его, и сгенерировать заново.
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.vpn_key_outlined),
+            title: Row(children: [
+              Expanded(child: Text(l.apiTokenTitle)),
+              InfoTooltip(l.apiTokenWarning, title: l.apiTokenTitle),
+            ]),
+            subtitle: settings.apiToken.isEmpty
+                ? Text(l.apiTokenUnset)
+                : SelectableText(settings.apiToken,
+                    textDirection: TextDirection.ltr,
+                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (settings.apiToken.isNotEmpty)
+                  IconButton(
+                    tooltip: l.commonCopy,
+                    icon: const Icon(Icons.copy, size: 18),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: settings.apiToken));
+                      AppToast.copied(context);
+                    },
+                  ),
+                IconButton(
+                  tooltip: l.apiTokenRegenerate,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  // Тот же генератор, что и у паролей локальных прокси/Clash
+                  // API — общая точка правды, а не свой велосипед.
+                  onPressed: () => controller.update((s) =>
+                      s.copyWith(apiToken: VpnEngineBase.randomSecret())),
+                ),
+              ],
+            ),
+          ),
+          // Серверы с отдельным портом — только если подписка вообще что-то
+          // дала: пустой список чекбоксов под заголовком выглядел бы поломкой.
+          if (servers.isNotEmpty) ...[
+            ListTile(
+              dense: true,
+              title: Text(l.apiExitsTitle),
+              subtitle: Text(l.apiExitsSub),
+            ),
+            for (final srv in servers)
+              CheckboxListTile(
+                dense: true,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: settings.apiExitServerKeys.contains(srv.key),
+                title: Text(srv.displayName,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                onChanged: (v) => controller.update((s) => s.copyWith(
+                    apiExitServerKeys: v == true
+                        ? [...s.apiExitServerKeys, srv.key]
+                        : s.apiExitServerKeys
+                            .where((k) => k != srv.key)
+                            .toList())),
+              ),
+          ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              l.apiPortsHint(
+                  ApiPorts.control, ApiPorts.direct, ApiPorts.firstServer),
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.code),
+            title: Text(l.apiCopyPythonExample),
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: _pythonExample(settings)));
+              AppToast.copied(context);
+            },
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Готовый фрагмент для Python — с уже подставленными портом и токеном,
+  /// чтобы скрипт заработал сразу после вставки, без правки руками.
+  static String _pythonExample(AppSettings s) {
+    final token = s.apiToken.isEmpty ? '<токен>' : s.apiToken;
+    return 'import requests\n'
+        '\n'
+        'BASE = "http://127.0.0.1:${ApiPorts.control}"\n'
+        'HEADERS = {"Authorization": "Bearer $token"}\n'
+        '\n'
+        'status = requests.get(f"{BASE}/v1/status", headers=HEADERS).json()\n'
+        'print(status)\n'
+        '\n'
+        'requests.post(f"{BASE}/v1/connect", headers=HEADERS, json={"auto": True})\n';
   }
 }
 

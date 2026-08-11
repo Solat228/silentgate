@@ -145,6 +145,59 @@ class AppLocalizationsTr extends AppLocalizations {
       '\"Yalnızca proxy\" modunda ayrık tünelleme hiçbir program için çalışmaz. Bunu açarsanız \"Engelle\" kuralı en azından açıkça açılmış sunucu bağlantı noktalarında çalışır.';
 
   @override
+  String get captureProxyOnly => 'Yalnızca proxy';
+
+  @override
+  String get captureProxyOnlySub =>
+      'Çekirdek çalışıyor ve yerel bağlantı noktaları dinliyor, ancak bilgisayar tünelde değil: VPN üzerinden yalnızca proxy\'mizi açıkça belirten trafik gider';
+
+  @override
+  String get apiSectionTitle => 'Otomasyon için API';
+
+  @override
+  String get apiEnableTitle => 'Yerel API\'yi etkinleştir';
+
+  @override
+  String apiEnableSub(int port) {
+    return '127.0.0.1:$port üzerinde HTTP — istemciyi betiklerden yönetin';
+  }
+
+  @override
+  String get apiTokenTitle => 'Belirteç';
+
+  @override
+  String get apiTokenUnset => 'Ayarlanmadı — API başlamaz';
+
+  @override
+  String get apiTokenRegenerate => 'Belirteci yenile';
+
+  @override
+  String get apiTokenWarning =>
+      'Belirteç, ayarlar dosyasında düz metin olarak saklanır ve yedeklere dahil olur. Ona sahip olan kişi sunucuyu değiştirebilir ve abonelik durumunu okuyabilir.';
+
+  @override
+  String get apiExitsTitle => 'Ayrı bağlantı noktalı sunucular';
+
+  @override
+  String get apiExitsSub =>
+      'Her birine kendi yerel bağlantı noktası verilir — o noktaya gelen istek o sunucu üzerinden gider';
+
+  @override
+  String get apiCopyPythonExample => 'Python örneğini kopyala';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Kontrol — bağlantı noktası $control. «Doğrudan» — bağlantı noktası $direct. Sunucular — $first itibarıyla.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'Ayrık tünelleme kurallarını uygula';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'Bu modda varsayılan kurallar hiçbir program için geçerli değildir. \"Engelle\" listesinin yerel bağlantı noktaları üzerinden yapılan istekleri de kapsamasını istiyorsanız bunu açın.';
+
+  @override
   String get dnsShortVpn => 'VPN üzerinden';
 
   @override

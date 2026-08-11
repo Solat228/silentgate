@@ -146,6 +146,59 @@ class AppLocalizationsEs extends AppLocalizations {
       'En el modo «Solo proxy» el túnel dividido no funciona para ningún programa. Actívelo para que la regla «Bloquear» funcione al menos en los puertos de servidor abiertos explícitamente.';
 
   @override
+  String get captureProxyOnly => 'Solo proxy';
+
+  @override
+  String get captureProxyOnlySub =>
+      'El núcleo está activo y los puertos locales escuchan, pero el equipo no está en el túnel: solo pasa por la VPN quien apunte explícitamente a nuestro proxy';
+
+  @override
+  String get apiSectionTitle => 'API para automatización';
+
+  @override
+  String get apiEnableTitle => 'Activar la API local';
+
+  @override
+  String apiEnableSub(int port) {
+    return 'HTTP en 127.0.0.1:$port — controla el cliente desde scripts';
+  }
+
+  @override
+  String get apiTokenTitle => 'Token';
+
+  @override
+  String get apiTokenUnset => 'No definido — la API no se inicia';
+
+  @override
+  String get apiTokenRegenerate => 'Renovar token';
+
+  @override
+  String get apiTokenWarning =>
+      'El token se guarda en el archivo de configuración en texto plano y queda incluido en las copias de seguridad. Quien lo tenga puede cambiar el servidor y leer el estado de la suscripción.';
+
+  @override
+  String get apiExitsTitle => 'Servidores con puerto propio';
+
+  @override
+  String get apiExitsSub =>
+      'Cada uno recibe su propio puerto local — una solicitud a ese puerto pasa por ese servidor';
+
+  @override
+  String get apiCopyPythonExample => 'Copiar ejemplo para Python';
+
+  @override
+  String apiPortsHint(int control, int direct, int first) {
+    return 'Control — puerto $control. «Directo» — puerto $direct. Servidores — desde $first.';
+  }
+
+  @override
+  String get apiRulesInProxyOnly => 'Aplicar las reglas de túnel dividido';
+
+  @override
+  String get apiRulesInProxyOnlySub =>
+      'En este modo las reglas no se aplican a ningún programa por defecto. Actívelo si quiere que la lista «Bloquear» también cubra las solicitudes hechas a través de los puertos locales.';
+
+  @override
   String get dnsShortVpn => 'por VPN';
 
   @override

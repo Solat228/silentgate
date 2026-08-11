@@ -42,6 +42,33 @@
   "captureTunHint": "TUN, DNS ve ayrık tünelleme ayarları yalnızca TUN modu seçildiğinde görünür — sistem proxy modunda etkisizdir.",
   "applyRulesInProxyOnlyTitle": "\"Engelle\" kuralını sunucu bağlantı noktalarına uygula",
   "applyRulesInProxyOnlySub": "\"Yalnızca proxy\" modunda ayrık tünelleme hiçbir program için çalışmaz. Bunu açarsanız \"Engelle\" kuralı en azından açıkça açılmış sunucu bağlantı noktalarında çalışır.",
+  "captureProxyOnly": "Yalnızca proxy",
+  "captureProxyOnlySub": "Çekirdek çalışıyor ve yerel bağlantı noktaları dinliyor, ancak bilgisayar tünelde değil: VPN üzerinden yalnızca proxy'mizi açıkça belirten trafik gider",
+  "apiSectionTitle": "Otomasyon için API",
+  "apiEnableTitle": "Yerel API'yi etkinleştir",
+  "apiEnableSub": "127.0.0.1:{port} üzerinde HTTP — istemciyi betiklerden yönetin",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "Belirteç",
+  "apiTokenUnset": "Ayarlanmadı — API başlamaz",
+  "apiTokenRegenerate": "Belirteci yenile",
+  "apiTokenWarning": "Belirteç, ayarlar dosyasında düz metin olarak saklanır ve yedeklere dahil olur. Ona sahip olan kişi sunucuyu değiştirebilir ve abonelik durumunu okuyabilir.",
+  "apiExitsTitle": "Ayrı bağlantı noktalı sunucular",
+  "apiExitsSub": "Her birine kendi yerel bağlantı noktası verilir — o noktaya gelen istek o sunucu üzerinden gider",
+  "apiCopyPythonExample": "Python örneğini kopyala",
+  "apiPortsHint": "Kontrol — bağlantı noktası {control}. «Doğrudan» — bağlantı noktası {direct}. Sunucular — {first} itibarıyla.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "Ayrık tünelleme kurallarını uygula",
+  "apiRulesInProxyOnlySub": "Bu modda varsayılan kurallar hiçbir program için geçerli değildir. \"Engelle\" listesinin yerel bağlantı noktaları üzerinden yapılan istekleri de kapsamasını istiyorsanız bunu açın.",
   "dnsShortVpn": "VPN üzerinden",
   "dnsShortSystem": "sistem",
   "dnsShortCustom": "özel",

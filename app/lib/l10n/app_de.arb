@@ -42,6 +42,33 @@
   "captureTunHint": "TUN-, DNS- und Split-Tunneling-Einstellungen erscheinen, wenn der TUN-Modus ausgewählt ist — im Systemproxy-Modus haben sie keine Wirkung.",
   "applyRulesInProxyOnlyTitle": "„Blockieren“ auf Server-Ports anwenden",
   "applyRulesInProxyOnlySub": "Im Modus „Nur Proxy“ funktioniert Split-Tunneling für kein Programm. Aktivieren Sie dies, damit die Regel „Blockieren“ zumindest auf ausdrücklich geöffneten Server-Ports greift.",
+  "captureProxyOnly": "Nur Proxy",
+  "captureProxyOnlySub": "Der Kern läuft, die lokalen Ports lauschen, aber der Computer ist nicht im Tunnel: über das VPN läuft nur, was ausdrücklich auf unseren Proxy zeigt",
+  "apiSectionTitle": "API für Automatisierung",
+  "apiEnableTitle": "Lokale API aktivieren",
+  "apiEnableSub": "HTTP auf 127.0.0.1:{port} — den Client per Skript steuern",
+  "@apiEnableSub": {
+    "placeholders": {
+      "port": {"type": "int"}
+    }
+  },
+  "apiTokenTitle": "Token",
+  "apiTokenUnset": "Nicht festgelegt — die API startet nicht",
+  "apiTokenRegenerate": "Token erneuern",
+  "apiTokenWarning": "Der Token wird im Klartext in der Einstellungsdatei gespeichert und landet in Backups. Wer ihn besitzt, kann den Server wechseln und den Abo-Status auslesen.",
+  "apiExitsTitle": "Server mit eigenem Port",
+  "apiExitsSub": "Jeder erhält einen eigenen lokalen Port — eine Anfrage dorthin läuft über diesen Server",
+  "apiCopyPythonExample": "Python-Beispiel kopieren",
+  "apiPortsHint": "Steuerung — Port {control}. „Direkt“ — Port {direct}. Server — ab {first}.",
+  "@apiPortsHint": {
+    "placeholders": {
+      "control": {"type": "int"},
+      "direct": {"type": "int"},
+      "first": {"type": "int"}
+    }
+  },
+  "apiRulesInProxyOnly": "Split-Tunneling-Regeln anwenden",
+  "apiRulesInProxyOnlySub": "In diesem Modus gelten die Standardregeln für kein Programm. Aktivieren Sie dies, wenn die Liste „Blockieren“ auch für Anfragen über die lokalen Ports gelten soll.",
   "dnsShortVpn": "über VPN",
   "dnsShortSystem": "System",
   "dnsShortCustom": "benutzerdefiniert",
