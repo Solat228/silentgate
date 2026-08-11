@@ -15,6 +15,7 @@ import '../core/util/reorder.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
+import '../core/net/api_server.dart';
 import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/desktop_notice.dart';
@@ -40,7 +41,10 @@ import '../data/subscriptions_store.dart';
 import '../data/settings_storage.dart';
 import '../engine/engine_factory.dart';
 import '../engine/vpn_engine.dart';
+import 'api_handlers.dart';
 import 'app_error.dart';
+import 'probe_controller.dart';
+import 'settings_controller.dart';
 
 /// Центральное состояние приложения. UI подписывается через Provider.
 class AppState extends ChangeNotifier {
@@ -536,6 +540,26 @@ class AppState extends ChangeNotifier {
     _engine.subscriptionLogoPath = _logoPath ?? '';
     _engine.compactNotification =
         (settings ?? await SettingsStorage().load()).compactNotification;
+  }
+
+  LocalApiServer? _api;
+
+  /// Поднять или погасить API по настройкам.
+  ///
+  /// ⚠️ ТОЛЬКО WINDOWS. На Android локальные порты видит любое установленное
+  /// приложение, и отдельная история по безопасности там ещё не проработана.
+  /// Правило проекта: где нет изоляции, канал не поднимается вовсе.
+  Future<void> applyApiSettings(AppSettings s, ProbeController probe,
+      SettingsController settings) async {
+    await _api?.stop();
+    _api = null;
+    if (!Platform.isWindows || !s.apiEnabled) return;
+    final srv = LocalApiServer(
+      token: s.apiToken,
+      handlers: AppStateApiHandlers(this, probe, settings),
+    );
+    if (await srv.start()) _api = srv;
+    notifyListeners();
   }
 
   void _publishServerDomains() {

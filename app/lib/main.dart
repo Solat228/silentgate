@@ -107,6 +107,19 @@ Future<void> main(List<String> args) async {
         ChangeNotifierProvider(create: (_) => ProbeController()..init()),
         ChangeNotifierProvider(create: (_) => AutoConfigController()..init()),
         ChangeNotifierProvider(create: (_) => ServiceCheckController()),
+        // Локальный API для автоматизации (см. `AppState.applyApiSettings`,
+        // сам гейт «только Windows» — там же). Поднимается/гасится по
+        // настройкам API — тумблеру, токену, списку выходов.
+        //
+        // ⚠️ Слушаем ТОЛЬКО SettingsController, а не AppState/ProbeController.
+        // Сервер обязан перезапускаться по факту правки настроек API, а не
+        // на каждый тик состояния приложения (счётчики раз в секунду) или
+        // результат пинга — иначе локальный сокет пересоздавался бы
+        // десятки раз в минуту, обрывая как раз тех, кто через него работает.
+        ProxyProvider<SettingsController, _ApiSettingsLink>(
+          update: (context, settings, __) =>
+              _ApiSettingsLink(context, settings),
+        ),
       ],
       child: const SilentGateApp(),
     ),
@@ -161,5 +174,21 @@ class _ShadeLayoutLink {
       if (settings.settings.compactNotification == compact) return;
       settings.update((s) => s.copyWith(compactNotification: compact));
     };
+  }
+}
+
+/// Связка «настройки API → локальный сервер автоматизации».
+///
+/// Тоже ничего не хранит: пересоздаётся при каждой правке настроек (провайдер
+/// зависит от [SettingsController]) и просто перевызывает
+/// `AppState.applyApiSettings`, который сам решает, поднимать ли слушатель
+/// (только Windows, только с непустым токеном — см. комментарий у метода).
+/// AppState и ProbeController берём БЕЗ подписки (`context.read`), иначе
+/// связка пересоздавалась бы на каждый их чих, а не только на правку настроек.
+class _ApiSettingsLink {
+  _ApiSettingsLink(BuildContext context, SettingsController settings) {
+    final state = context.read<AppState>();
+    final probe = context.read<ProbeController>();
+    unawaited(state.applyApiSettings(settings.settings, probe, settings));
   }
 }
