@@ -509,17 +509,31 @@ class WindowsEngine extends VpnEngineBase {
         logPath: SingboxProcess.logPathFor(await AppPaths.supportDir(),
             name: 'singbox_exit_router.log'),
       );
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (aborted() || !process.isRunning) {
-        await process.stop();
-        if (!aborted()) {
-          AppLog.w('Маршрутизатор выходов API не поднялся:\n${process.tail}');
+      // С этой точки процесс ЗАПУЩЕН и обязан быть погашен при ЛЮБОМ выходе
+      // из метода — иначе он осиротеет, будет держать порты серверов, и
+      // следующий подъём упрётся в конфликт. `_attached` = процесс успешно
+      // передан в `_exitRouter`, где его погасит `_stopCoreProcesses`; если
+      // нет — гасим сами в finally (сегодня между start() и присваиванием
+      // ничего не бросает, но инвариант не должен держаться на этом факте).
+      var attached = false;
+      try {
+        await Future.delayed(const Duration(milliseconds: 300));
+        if (aborted() || !process.isRunning) {
+          if (!aborted()) {
+            AppLog.w(
+                'Маршрутизатор выходов API не поднялся:\n${process.tail}');
+          }
+          return;
         }
-        return;
+        _exitRouter = process;
+        attached = true;
+        AppLog.i(
+            'Маршрутизатор выходов API: портов ${exitsBuilt.outbounds.length}');
+      } finally {
+        if (!attached) {
+          await process.stop();
+        }
       }
-      _exitRouter = process;
-      AppLog.i(
-          'Маршрутизатор выходов API: портов ${exitsBuilt.outbounds.length}');
     } catch (e) {
       AppLog.w('Маршрутизатор выходов API не поднялся: $e');
     }
