@@ -162,6 +162,31 @@ void main() {
       expect(rules.any((r) => r['action'] == 'reject'), isFalse);
     });
 
+    test(
+        'включено, но режим «Всё через VPN» — блок-правил всё равно нет '
+        '(userRulesActive)', () {
+      // Тот же гейт, что у TUN-построителя (`_userRulesActive` в
+      // `singbox_config_builder.dart`): в режиме «Всё через VPN»
+      // пользовательских правил нет вовсе, включая блок API-портов. Раньше
+      // ExitRouterConfigBuilder этот гейт не проверял — блок включался бы там,
+      // где такой же блок в TUN-конфиге не действует.
+      final builder = ExitRouterConfigBuilder(
+        serverKeys: const [keyA],
+        token: 'secret',
+        exitOutbounds: [
+          {'tag': exitTagFor(keyA), 'type': 'vless'},
+        ],
+        applyRules: true,
+        split: const SplitTunnelConfig(
+          mode: SplitMode.all,
+          sites: [SiteRule('blocked.example', action: AppAction.block)],
+        ),
+      );
+      final cfg = builder.buildMap();
+      final rules = (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+      expect(rules.any((r) => r['action'] == 'reject'), isFalse);
+    });
+
     test('включено — блок сайта режет трафик порта сервера, ВЫШЕ маршрута', () {
       final builder = ExitRouterConfigBuilder(
         serverKeys: const [keyA],

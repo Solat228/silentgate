@@ -1257,8 +1257,10 @@ class SingboxConfigBuilder {
       .toSet()
       .toList();
 
-  bool _userRulesActive(SplitTunnelConfig split) =>
-      split.mode != SplitMode.all;
+  // Гейт вынесен в `api_exit_guard.dart` (`userRulesActive`) — им же пользуется
+  // ExitRouterConfigBuilder (задача 3b), и предикат обязан быть ОДНИМ на оба
+  // построителя, а не двумя копиями, которые могут разъехаться.
+  bool _userRulesActive(SplitTunnelConfig split) => userRulesActive(split);
 
   /// Есть ли правила по сайтам, которые обязаны выигрывать у «Прямо»-приложений.
   /// Правила «Прямо» по сайту терять не жалко — приложение и так идёт прямо.
