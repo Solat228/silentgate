@@ -1596,6 +1596,11 @@ class AppState extends ChangeNotifier {
             (r.serverKey ?? '').isNotEmpty)
           r.serverKey!,
     };
+    // Серверы, которым пользователь выдал отдельный порт, тоже обязаны получить
+    // outbound — иначе порт не создастся (построитель проверяет живые теги).
+    for (final key in settings.apiExitServerKeys) {
+      if (key.isNotEmpty) wanted.add(key);
+    }
     if (wanted.isEmpty) return const {};
     wanted.remove(selectedServer?.key);
     final byKey = <String, VpnServer>{

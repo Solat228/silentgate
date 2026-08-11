@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../net/api_ports.dart';
 import '../settings/app_settings.dart';
 import '../settings/split_tunnel.dart';
 import 'exit_tags.dart';
@@ -480,6 +481,12 @@ class SingboxConfigBuilder {
   /// выбрал.
   final List<Map<String, dynamic>> exitOutbounds;
 
+  /// Ключи серверов, которым выдаётся отдельный локальный порт (см. `ApiPorts`).
+  final List<String> apiExitServerKeys;
+
+  /// Токен API — он же пароль этих инбаундов. Пусто — инбаунды не создаются.
+  final String apiToken;
+
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.xraySocksUser = '',
@@ -491,6 +498,8 @@ class SingboxConfigBuilder {
     this.proxyOutbound,
     this.proxyOutboundGroup,
     this.exitOutbounds = const [],
+    this.apiExitServerKeys = const [],
+    this.apiToken = '',
   });
 
   // ── Правила, идущие через ОТДЕЛЬНЫЙ сервер ────────────────────────────────
@@ -506,6 +515,47 @@ class SingboxConfigBuilder {
         for (final o in exitOutbounds)
           if (o['tag'] is String) o['tag'] as String,
       };
+
+  /// Инбаунды отдельных портов: по одному на сервер из [apiExitServerKeys].
+  ///
+  /// ⚠️ ТОЛЬКО ЖИВЫЕ. Сервер, чей outbound не собрался, порта не получает —
+  /// иначе правило сослалось бы на несуществующий тег, `sing-box check`
+  /// пропустил бы это молча, и трафик скрипта ушёл бы в `route.final`, то есть
+  /// мимо выбранного сервера. Источник правды — `_liveExitTags`.
+  List<Map<String, dynamic>> get _apiExitInbounds {
+    if (apiToken.isEmpty) return const [];
+    final out = <Map<String, dynamic>>[];
+    final keys = ApiPorts.withinRange(apiExitServerKeys);
+    for (final key in keys) {
+      if (!_liveExitTags.contains(exitTagFor(key))) continue;
+      final port = ApiPorts.forServer(apiExitServerKeys, key);
+      if (port == null) continue;
+      out.add({
+        'type': 'mixed',
+        'tag': apiExitInboundTag(key),
+        'listen': '127.0.0.1',
+        'listen_port': port,
+        'users': [
+          {'username': 'sg', 'password': apiToken}
+        ],
+      });
+    }
+    return out;
+  }
+
+  /// Правила «этот порт — в этот сервер».
+  List<Map<String, dynamic>> get _apiExitRules => [
+        for (final i in _apiExitInbounds)
+          {
+            'inbound': [i['tag']],
+            'action': 'route',
+            'outbound': _outboundForApiInbound('${i['tag']}'),
+          },
+      ];
+
+  /// Обратное преобразование тега инбаунда в тег outbound-а.
+  String _outboundForApiInbound(String inboundTag) =>
+      inboundTag.substring('api-'.length);
 
   /// Тег сервера-адресата для правила, либо `null` — «основной туннель».
   ///
@@ -696,6 +746,10 @@ class SingboxConfigBuilder {
     // туннель» разрешается в пользу конкретного правила, как и все остальные.
     _addSitePriorityRules(rules, split);
     _addBlockRules(rules, split);
+    // API: правила «этот порт — в этот сервер» ВЫШЕ пользовательских (сервер
+    // выбран явно, «Прямо» к нему не применяется), но НИЖЕ блока — иначе
+    // служебный вход стал бы способом обойти собственные запреты пользователя.
+    rules.addAll(_apiExitRules);
     if (o.bypassLan) rules.add(_route({'ip_is_private': true}, 'direct'));
     // Только ВАЛИДНЫЕ CIDR: один битый префикс (напр. «10.0.0.0/33») заставляет
     // sing-box отвергнуть ВЕСЬ конфиг, и туннель молча не поднимается.
@@ -755,6 +809,7 @@ class SingboxConfigBuilder {
                 {'username': probeUser, 'password': probePassword},
               ],
           },
+        ..._apiExitInbounds,
       ],
       'outbounds': [
         // Тег 'proxy' обязан сохраниться: на него ссылаются ВСЕ правила

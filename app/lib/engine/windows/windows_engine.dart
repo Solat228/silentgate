@@ -6,6 +6,7 @@ import '../../core/platform/app_env.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
+import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/models/vpn_server.dart';
@@ -140,7 +141,16 @@ class WindowsEngine extends VpnEngineBase {
     // Креды локальных прокси здесь УЖЕ выданы — базой, до сборки конфига
     // (`prepareLocalProxyAuth`). Повторять вызов нельзя: он выдал бы новый
     // пароль, а конфиг ядра остался бы с прежним.
-    final corePorts = [ports.socks, ports.http, ports.api];
+    // ⚠️ Новые порты проверяются НАРАВНЕ с портами ядра. Иначе занятый порт
+    // сервера дал бы отказ подъёма без единого внятного слова: «Bad state»
+    // вместо имени программы, которая порт держит.
+    final apiPorts = <int>[
+      if (options.settings.apiEnabled) ...[
+        for (final k in ApiPorts.withinRange(options.settings.apiExitServerKeys))
+          ApiPorts.forServer(options.settings.apiExitServerKeys, k)!,
+      ],
+    ];
+    final corePorts = [ports.socks, ports.http, ports.api, ...apiPorts];
     var conflict = await PortCheck.findConflict(corePorts);
     if (conflict != null && conflict.heldByOwnCore) {
       AppLog.i('Порт ${conflict.port} ещё держит наше ядро '
