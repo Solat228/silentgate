@@ -16,6 +16,7 @@ import 'package:silentgate/state/api_handlers.dart';
 import 'package:silentgate/state/app_state.dart';
 import 'package:silentgate/state/probe_controller.dart';
 import 'package:silentgate/state/settings_controller.dart';
+import 'package:silentgate/ui/split_tunnel_screen.dart' show splitRulesEditableIn;
 
 /// Что API НЕ отдаёт наружу.
 ///
@@ -568,6 +569,113 @@ void main() {
       final probe =
           await HttpServer.bind(InternetAddress.loopbackIPv4, testPort);
       await probe.close(force: true);
+    });
+  });
+
+  /// ⚠️ НАХОДКА ФИНАЛЬНОГО РЕВЬЮ (7). Занятый управляющий порт был виден
+  /// ТОЛЬКО в журнале: тумблер оставался включённым и выглядел рабочим, токен
+  /// показан, кнопка «Скопировать пример» на месте — а скрипт получал отказ
+  /// соединения и не мог понять почему. Спека требовала обратного: тумблер
+  /// показывает ошибку с именем процесса-держателя.
+  group('Занятый управляющий порт виден состоянию, а не только журналу', () {
+    const busyPort = 18782;
+
+    test('порт занят — apiPortConflict заполнен номером порта', () async {
+      if (!Platform.isWindows) return;
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+
+      // Держим порт «чужой» программой (в тесте — просто другой сокет).
+      final squatter =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, busyPort);
+      addTearDown(() => squatter.close());
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: true, apiToken: 'tok'),
+          env.probe, env.settings,
+          port: busyPort);
+
+      final conflict = env.state.apiPortConflict;
+      expect(conflict, isNotNull,
+          reason: 'отказ подъёма обязан быть виден интерфейсу');
+      expect(conflict!.port, busyPort);
+      // `holder` — best-effort (netstat + tasklist): на занятом порту этого
+      // же процесса имя обычно определяется, но требовать его нельзя —
+      // интерфейс умеет обе формулировки (`apiPortBusy` / `apiPortBusyUnknown`).
+    });
+
+    test('порт свободен — конфликта нет', () async {
+      if (!Platform.isWindows) return;
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: true, apiToken: 'tok'),
+          env.probe, env.settings,
+          port: busyPort);
+      expect(env.state.apiPortConflict, isNull);
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: false), env.probe, env.settings,
+          port: busyPort);
+    });
+
+    test('⚠️ пустой токен — это НЕ ошибка порта', () async {
+      if (!Platform.isWindows) return;
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      // Держим порт: даже так «канал выключен» обязан остаться «выключен», а
+      // не превратиться в красную плашку про занятый порт. Про пустой токен в
+      // интерфейсе своя строка (`apiTokenUnset`), и пугать человека ошибкой
+      // там, где он просто ещё не нажал «Обновить токен», нельзя.
+      final squatter =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, busyPort);
+      addTearDown(() => squatter.close());
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: true), env.probe, env.settings,
+          port: busyPort);
+      expect(env.state.apiPortConflict, isNull);
+    });
+
+    test('выключение API снимает прежнюю ошибку', () async {
+      if (!Platform.isWindows) return;
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      final squatter =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, busyPort);
+      addTearDown(() => squatter.close());
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: true, apiToken: 'tok'),
+          env.probe, env.settings,
+          port: busyPort);
+      expect(env.state.apiPortConflict, isNotNull);
+
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: false), env.probe, env.settings,
+          port: busyPort);
+      expect(env.state.apiPortConflict, isNull,
+          reason: 'у выключенного тумблера ошибка — мусор на экране');
+    });
+  });
+
+  /// ⚠️ НАХОДКА ФИНАЛЬНОГО РЕВЬЮ (8). Тумблер «Применять правила раздельного
+  /// туннелирования» виден ТОЛЬКО в «Только прокси», а список «Блок», которым
+  /// он оперирует, редактируется на экране раздельного туннелирования — где в
+  /// этом режиме всё было серым под `IgnorePointer`.
+  group('Редактирование правил и способ захвата', () {
+    test('«Только прокси» — экран правил редактируем', () {
+      expect(splitRulesEditableIn(CaptureMode.proxyOnly), isTrue,
+          reason: 'иначе тумблер «Применять правила» ведёт в заблокированный '
+              'экран и завести правило «Блок» негде');
+    });
+
+    test('TUN — редактируем, системный прокси — нет', () {
+      expect(splitRulesEditableIn(CaptureMode.tun), isTrue);
+      // Там правила не действуют вовсе: приложения сами решают, ходить ли
+      // через прокси, и принудить их нечем.
+      expect(splitRulesEditableIn(CaptureMode.systemProxy), isFalse);
     });
   });
 }

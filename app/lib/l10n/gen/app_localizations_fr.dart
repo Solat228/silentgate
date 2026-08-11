@@ -193,6 +193,28 @@ class AppLocalizationsFr extends AppLocalizations {
       'Dans ce mode, les règles par défaut ne s\'appliquent à aucun programme. Activez cette option si vous voulez que la liste « Bloquer » couvre aussi les requêtes passées par les ports locaux.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ La capture est réglée sur « Proxy système » : les ports de sortie ne s\'y ouvrent pas et les connexions vers eux sont refusées. Le port de contrôle $control fonctionne avec toute capture. Si vous avez besoin des ports de sortie, choisissez « TUN (tunnel complet) » ou « Proxy seul ».';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'L\'API n\'a pas démarré';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'Le port $port est occupé par $holder. Fermez ce programme complètement, y compris depuis la zone de notification, puis réactivez l\'interrupteur.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'Le port $port est occupé par un autre programme, impossible de l\'identifier. C\'est le plus souvent un autre client VPN. Fermez-le et réactivez l\'interrupteur.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'La liste « Bloquer » se modifie sur l\'écran de tunneling fractionné';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override
@@ -1315,6 +1337,10 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Fonctionne uniquement en mode TUN. En mode « Proxy système », les applications décident elles-mêmes d\'utiliser ou non le proxy — on ne peut pas les y forcer.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'En mode « Proxy seul », il n\'y a rien à intercepter : les règles ne s\'appliquent à aucun programme de l\'ordinateur. La liste « Bloquer » ne s\'applique qu\'aux ports locaux de l\'API, et seulement si « Appliquer les règles de tunneling fractionné » est activé dans la section « Capture du trafic ». Les autres règles peuvent être préparées ici : elles fonctionneront dès le passage en TUN.';
 
   @override
   String get splitEnableTun => 'Activer TUN';

@@ -190,6 +190,28 @@ class AppLocalizationsFa extends AppLocalizations {
       'در این حالت قوانین پیش‌فرض برای هیچ برنامه‌ای اعمال نمی‌شوند. اگر می‌خواهید فهرست «مسدودسازی» درخواست‌های ارسالی از طریق پورت‌های محلی را هم پوشش دهد، این را فعال کنید.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ حالت گرفتن ترافیک روی «پروکسی سیستمی» است — در این حالت درگاه‌های خروج باز نمی‌شوند و اتصال به آن‌ها رد می‌شود. درگاه کنترل $control با هر حالتی کار می‌کند. اگر به درگاه‌های خروج نیاز دارید «TUN (تونل کامل)» یا «فقط پروکسی» را انتخاب کنید.';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'API بالا نیامد';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'درگاه $port در اختیار $holder است. آن برنامه را کامل ببندید، از جمله از سینی سیستم، و سپس کلید را دوباره روشن کنید.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'درگاه $port در اختیار برنامهٔ دیگری است که شناسایی نشد. معمولاً یک کلاینت VPN دیگر است. آن را ببندید و کلید را دوباره روشن کنید.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'فهرست «مسدود» در صفحهٔ تونل تفکیکی ویرایش می‌شود';
+
+  @override
   String get dnsShortVpn => 'از طریق VPN';
 
   @override
@@ -1298,6 +1320,10 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'فقط در حالت TUN کار می‌کند. در حالت «پروکسی سیستمی» برنامه‌ها خودشان تصمیم می‌گیرند از پروکسی استفاده کنند یا نه — نمی‌توان آن‌ها را مجبور کرد.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'در حالت «فقط پروکسی» چیزی برای رهگیری نیست: قوانین برای هیچ برنامه‌ای در این رایانه اعمال نمی‌شوند. فهرست «مسدود» فقط روی درگاه‌های محلی API اعمال می‌شود، و فقط اگر کلید «اعمال قوانین تونل تفکیکی» در بخش «گرفتن ترافیک» روشن باشد. بقیهٔ قوانین را می‌توان اینجا از پیش آماده کرد: با تغییر به TUN به کار می‌افتند.';
 
   @override
   String get splitEnableTun => 'فعال کردن TUN';

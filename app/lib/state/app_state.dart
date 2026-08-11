@@ -25,6 +25,7 @@ import '../core/platform/app_paths.dart';
 import '../core/platform/network_watcher.dart';
 import '../core/platform/device_id.dart';
 import '../core/platform/incoming_links.dart';
+import '../core/platform/port_check.dart';
 import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
@@ -558,6 +559,24 @@ class AppState extends ChangeNotifier {
   /// собой сервер, если успел его поднять.
   int _apiGeneration = 0;
 
+  PortConflict? _apiPortConflict;
+
+  /// Управляющий порт API занят чужой программой — либо null, если всё в
+  /// порядке (или API просто выключен / токен пуст).
+  ///
+  /// ⚠️ НАХОДКА ФИНАЛЬНОГО РЕВЬЮ (7). Раньше отказ подъёма жил ТОЛЬКО в
+  /// журнале: тумблер в настройках оставался включённым и выглядел рабочим,
+  /// токен показан, кнопка «Скопировать пример» на месте — а скрипт получал
+  /// отказ соединения и не мог понять почему. Спека требовала обратного:
+  /// тумблер показывает ошибку с ИМЕНЕМ процесса-держателя, и `PortCheck` это
+  /// уже умеет.
+  ///
+  /// ⚠️ Пустой токен сюда НЕ попадает: это не поломка, а «канал выключен», и
+  /// про него в интерфейсе есть своя строка (`apiTokenUnset`). Смешивать их
+  /// значило бы пугать человека ошибкой там, где он просто ещё не нажал
+  /// «Обновить токен».
+  PortConflict? get apiPortConflict => _apiPortConflict;
+
   /// Поднять или погасить API по настройкам.
   ///
   /// ⚠️ ТОЛЬКО WINDOWS. На Android локальные порты видит любое установленное
@@ -576,7 +595,15 @@ class AppState extends ChangeNotifier {
     // стать текущим поколением. Наш вызов устарел — не трогаем `_api`.
     if (gen != _apiGeneration) return;
     _api = null;
-    if (!Platform.isWindows || !s.apiEnabled) return;
+    if (!Platform.isWindows || !s.apiEnabled) {
+      // Выключили API — прежняя ошибка больше не про что: показывать её у
+      // выключенного тумблера значило бы держать на экране мусор.
+      if (_apiPortConflict != null) {
+        _apiPortConflict = null;
+        notifyListeners();
+      }
+      return;
+    }
     final srv = LocalApiServer(
       token: s.apiToken,
       handlers: AppStateApiHandlers(this, probe, settings),
@@ -591,6 +618,14 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (started) _api = srv;
+    // Кто держит порт — спрашиваем ТОЛЬКО при отказе и ТОЛЬКО когда токен
+    // задан: `PortCheck.holderName` запускает netstat и tasklist (до 5 с
+    // каждый), а при пустом токене `start()` возвращает false, ещё не
+    // прикоснувшись к сокету — порт там ни при чём.
+    _apiPortConflict = (!started && s.apiToken.isNotEmpty)
+        ? PortConflict(port: port, holder: await PortCheck.holderName(port))
+        : null;
+    if (gen != _apiGeneration) return;
     notifyListeners();
   }
 

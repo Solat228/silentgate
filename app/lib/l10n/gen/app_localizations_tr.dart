@@ -190,6 +190,28 @@ class AppLocalizationsTr extends AppLocalizations {
       'Bu modda varsayılan kurallar hiçbir program için geçerli değildir. \"Engelle\" listesinin yerel bağlantı noktaları üzerinden yapılan istekleri de kapsamasını istiyorsanız bunu açın.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ Yakalama «Sistem proxy\'si» olarak seçili — bu modda çıkış portları açılmaz ve onlara yapılan bağlantılar reddedilir. Kontrol portu $control her yakalama modunda çalışır. Çıkış portları gerekiyorsa «TUN (tam tünel)» ya da «Yalnızca proxy» seçin.';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'API başlatılamadı';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return '$port portunu $holder tutuyor. Bu programı sistem tepsisi dahil tamamen kapatın ve anahtarı yeniden açın.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return '$port portunu, tanımlanamayan başka bir program tutuyor. Genellikle bu başka bir VPN istemcisidir. Onu kapatın ve anahtarı yeniden açın.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      '«Engelle» listesi ayrık tünelleme ekranında düzenlenir';
+
+  @override
   String get dnsShortVpn => 'VPN üzerinden';
 
   @override
@@ -1303,6 +1325,10 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Yalnızca TUN modunda çalışır. «Sistem proxy\'si» modunda uygulamalar proxy\'yi kullanıp kullanmayacaklarına kendileri karar verir — zorlanamazlar.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      '«Yalnızca proxy» modunda yakalanacak bir şey yoktur: kurallar bu bilgisayardaki hiçbir programa uygulanmaz. «Engelle» listesi yalnızca yerel API portlarına ve yalnızca «Trafik yakalama» bölümündeki «Ayrık tünelleme kurallarını uygula» anahtarı açıksa uygulanır. Diğer kuralları burada önceden hazırlayabilirsiniz: TUN\'a geçince çalışmaya başlarlar.';
 
   @override
   String get splitEnableTun => 'TUN\'u etkinleştir';

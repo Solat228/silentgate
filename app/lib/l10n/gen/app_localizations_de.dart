@@ -190,6 +190,28 @@ class AppLocalizationsDe extends AppLocalizations {
       'In diesem Modus gelten die Standardregeln für kein Programm. Aktivieren Sie dies, wenn die Liste „Blockieren“ auch für Anfragen über die lokalen Ports gelten soll.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ Als Erfassung ist „Systemproxy“ gewählt – Ausgangsports werden dabei nicht geöffnet, Verbindungen dorthin werden abgewiesen. Der Steuerport $control funktioniert bei jeder Erfassung. Wenn Sie Ausgangsports brauchen, wählen Sie „TUN (vollständiger Tunnel)“ oder „Nur Proxy“.';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'Die API wurde nicht gestartet';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'Port $port wird von $holder belegt. Schließen Sie das Programm vollständig, auch aus dem Infobereich, und schalten Sie den Schalter erneut ein.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'Port $port wird von einem anderen Programm belegt, das sich nicht ermitteln ließ. Meist ist es ein anderer VPN-Client. Schließen Sie ihn und schalten Sie den Schalter erneut ein.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'Die Liste „Blockieren“ wird im Bildschirm für Split-Tunneling bearbeitet';
+
+  @override
   String get dnsShortVpn => 'über VPN';
 
   @override
@@ -1309,6 +1331,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Funktioniert nur im TUN-Modus. Im Modus „Systemproxy“ entscheiden Apps selbst, ob sie den Proxy verwenden — sie können nicht gezwungen werden.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'Im Modus „Nur Proxy“ gibt es nichts abzufangen: Die Regeln gelten für kein Programm dieses Rechners. Die Liste „Blockieren“ gilt nur für die lokalen API-Ports und nur, wenn im Abschnitt „Verkehrserfassung“ der Schalter „Split-Tunneling-Regeln anwenden“ eingeschaltet ist. Die übrigen Regeln lassen sich hier vorab anlegen: Sie greifen, sobald Sie auf TUN wechseln.';
 
   @override
   String get splitEnableTun => 'TUN aktivieren';

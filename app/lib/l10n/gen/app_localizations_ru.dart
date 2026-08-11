@@ -191,6 +191,28 @@ class AppLocalizationsRu extends AppLocalizations {
       'В этом режиме правила по умолчанию не действуют ни для одной программы. Включите, если хотите, чтобы список «Блок» распространялся и на запросы через локальные порты.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ Выбран захват «Системный прокси» — порты выходов в нём не открываются, и соединение в них будет отвергнуто. Управляющий порт $control работает при любом захвате. Нужны порты выходов — выберите «TUN (полный туннель)» или «Только прокси».';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'API не поднялся';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'Порт $port занят программой $holder. Закройте её полностью, в том числе из трея, и включите тумблер заново.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'Порт $port занят другой программой, определить её не удалось. Чаще всего это другой VPN-клиент. Закройте его и включите тумблер заново.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'Список «Блок» редактируется на экране раздельного туннелирования';
+
+  @override
   String get dnsShortVpn => 'через VPN';
 
   @override
@@ -1301,6 +1323,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Работает только в TUN-режиме. В режиме «Системный прокси» приложения сами решают, использовать ли прокси — управлять ими принудительно нельзя.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'В режиме «Только прокси» перехватывать нечего: правила не действуют ни для одной программы компьютера. Список «Блок» применяется только к локальным портам API — и только если включён тумблер «Применять правила раздельного туннелирования» в разделе «Захват трафика». Остальные правила можно задать здесь заранее: они заработают при переходе на TUN.';
 
   @override
   String get splitEnableTun => 'Включить TUN';

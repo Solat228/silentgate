@@ -191,6 +191,28 @@ class AppLocalizationsEs extends AppLocalizations {
       'En este modo las reglas no se aplican a ningún programa por defecto. Actívelo si quiere que la lista «Bloquear» también cubra las solicitudes hechas a través de los puertos locales.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ La captura está en «Proxy del sistema»: en ese modo los puertos de salida no se abren y las conexiones a ellos se rechazan. El puerto de control $control funciona con cualquier captura. Si necesitas puertos de salida, elige «TUN (túnel completo)» o «Solo proxy».';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'La API no se ha iniciado';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'El puerto $port está ocupado por $holder. Cierra ese programa por completo, incluida la bandeja del sistema, y vuelve a activar el interruptor.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'El puerto $port está ocupado por otro programa que no se ha podido identificar. Casi siempre es otro cliente VPN. Ciérralo y vuelve a activar el interruptor.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'La lista «Bloquear» se edita en la pantalla de túnel dividido';
+
+  @override
   String get dnsShortVpn => 'por VPN';
 
   @override
@@ -1312,6 +1334,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Solo funciona en modo TUN. En el modo «Proxy del sistema», las aplicaciones deciden por sí mismas si usan el proxy; no se les puede forzar.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'En el modo «Solo proxy» no hay nada que interceptar: las reglas no se aplican a ningún programa del equipo. La lista «Bloquear» se aplica solo a los puertos locales de la API, y solo si está activado «Aplicar las reglas de túnel dividido» en la sección «Captura de tráfico». Las demás reglas pueden prepararse aquí: empezarán a funcionar al pasar a TUN.';
 
   @override
   String get splitEnableTun => 'Activar TUN';

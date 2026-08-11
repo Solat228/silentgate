@@ -191,6 +191,28 @@ class AppLocalizationsPt extends AppLocalizations {
       'Nesse modo as regras padrão não se aplicam a nenhum programa. Ative se quiser que a lista «Bloquear» também valha para solicitações feitas pelas portas locais.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ A captura está em «Proxy do sistema»: nesse modo as portas de saída não são abertas e as ligações a elas são recusadas. A porta de controlo $control funciona com qualquer captura. Se precisar das portas de saída, escolha «TUN (túnel completo)» ou «Somente proxy».';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'A API não arrancou';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'A porta $port está ocupada por $holder. Feche esse programa por completo, incluindo a área de notificação, e volte a ligar o interruptor.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'A porta $port está ocupada por outro programa que não foi possível identificar. Normalmente é outro cliente VPN. Feche-o e volte a ligar o interruptor.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'A lista «Bloquear» edita-se no ecrã de túnel dividido';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override
@@ -1312,6 +1334,10 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Funciona apenas no modo TUN. No modo \"Proxy do sistema\", os aplicativos decidem por si mesmos se usam o proxy — não é possível forçá-los.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'No modo «Somente proxy» não há nada a intercetar: as regras não se aplicam a nenhum programa do computador. A lista «Bloquear» aplica-se apenas às portas locais da API e só se estiver ligado «Aplicar regras de túnel dividido» na secção «Captura de tráfego». As restantes regras podem ser preparadas aqui: passam a funcionar quando mudar para TUN.';
 
   @override
   String get splitEnableTun => 'Ativar TUN';

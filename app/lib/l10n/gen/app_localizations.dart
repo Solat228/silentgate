@@ -444,6 +444,36 @@ abstract class AppLocalizations {
   /// **'В этом режиме правила по умолчанию не действуют ни для одной программы. Включите, если хотите, чтобы список «Блок» распространялся и на запросы через локальные порты.'**
   String get apiRulesInProxyOnlySub;
 
+  /// No description provided for @apiCaptureModeWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'⚠️ Выбран захват «Системный прокси» — порты выходов в нём не открываются, и соединение в них будет отвергнуто. Управляющий порт {control} работает при любом захвате. Нужны порты выходов — выберите «TUN (полный туннель)» или «Только прокси».'**
+  String apiCaptureModeWarning(int control);
+
+  /// No description provided for @apiPortBusyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'API не поднялся'**
+  String get apiPortBusyTitle;
+
+  /// No description provided for @apiPortBusy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} занят программой {holder}. Закройте её полностью, в том числе из трея, и включите тумблер заново.'**
+  String apiPortBusy(int port, String holder);
+
+  /// No description provided for @apiPortBusyUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} занят другой программой, определить её не удалось. Чаще всего это другой VPN-клиент. Закройте его и включите тумблер заново.'**
+  String apiPortBusyUnknown(int port);
+
+  /// No description provided for @apiRulesInProxyOnlyEdit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список «Блок» редактируется на экране раздельного туннелирования'**
+  String get apiRulesInProxyOnlyEdit;
+
   /// No description provided for @dnsShortVpn.
   ///
   /// In ru, this message translates to:
@@ -2369,6 +2399,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Работает только в TUN-режиме. В режиме «Системный прокси» приложения сами решают, использовать ли прокси — управлять ими принудительно нельзя.'**
   String get splitTunOnlyBanner;
+
+  /// No description provided for @splitProxyOnlyBanner.
+  ///
+  /// In ru, this message translates to:
+  /// **'В режиме «Только прокси» перехватывать нечего: правила не действуют ни для одной программы компьютера. Список «Блок» применяется только к локальным портам API — и только если включён тумблер «Применять правила раздельного туннелирования» в разделе «Захват трафика». Остальные правила можно задать здесь заранее: они заработают при переходе на TUN.'**
+  String get splitProxyOnlyBanner;
 
   /// No description provided for @splitEnableTun.
   ///

@@ -26,6 +26,20 @@ import 'widgets/app_toast.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 
+/// Можно ли редактировать правила при таком способе захвата.
+///
+/// ⚠️ НЕ ТО ЖЕ САМОЕ, ЧТО «ПРАВИЛА ДЕЙСТВУЮТ ДЛЯ ВСЕЙ МАШИНЫ».
+///
+/// * `tun` — действуют полностью;
+/// * `proxyOnly` — не действуют ни для одной программы машины (перехватывать
+///   нечего), но список «Блок» применяется к локальным портам API при
+///   включённом `AppSettings.applyRulesInProxyOnly`. Значит редактировать его
+///   надо ЗДЕСЬ — а экран был заблокирован, и тумблер в настройках вёл в
+///   никуда (находка финального ревью 8);
+/// * `systemProxy` — не действуют вовсе: приложения сами решают, ходить ли
+///   через прокси, и принудить их нечем.
+bool splitRulesEditableIn(CaptureMode mode) => mode != CaptureMode.systemProxy;
+
 class SplitTunnelScreen extends StatelessWidget {
   const SplitTunnelScreen({super.key});
 
@@ -38,7 +52,11 @@ class SplitTunnelScreen extends StatelessWidget {
     final st = controller.settings.splitTunnel;
     // #2 — при системном прокси раздельное туннелирование не работает
     // (приложения сами решают, ходить ли через прокси): контролы серые.
-    final tunActive = controller.settings.captureMode == CaptureMode.tun;
+    final mode = controller.settings.captureMode;
+    final tunActive = mode == CaptureMode.tun;
+    // ⚠️ В «Только прокси» ЭКРАН РЕДАКТИРУЕМ, ХОТЬ TUN И НЕ ВКЛЮЧЁН —
+    // см. [splitRulesEditableIn], там же почему.
+    final editable = splitRulesEditableIn(mode);
     final l = AppLocalizations.of(context);
 
     return Scaffold(
@@ -57,20 +75,28 @@ class SplitTunnelScreen extends StatelessWidget {
                 const Icon(Icons.info_outline, size: 18),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: SelText(l.splitTunOnlyBanner),
+                  child: SelText(mode == CaptureMode.proxyOnly
+                      ? l.splitProxyOnlyBanner
+                      : l.splitTunOnlyBanner),
                 ),
-                TextButton(
-                  onPressed: () => controller
-                      .update((s) => s.copyWith(captureMode: CaptureMode.tun)),
-                  child: Text(l.splitEnableTun),
-                ),
+                // Кнопка «Включить TUN» — только там, где менять режим и
+                // правда нужно. В «Только прокси» её нет: режим выбран
+                // осознанно (ради портов API), и предлагать выйти из него
+                // ради правил, которые тут и так частично работают, — совет
+                // против намерения пользователя.
+                if (mode != CaptureMode.proxyOnly)
+                  TextButton(
+                    onPressed: () => controller.update(
+                        (s) => s.copyWith(captureMode: CaptureMode.tun)),
+                    child: Text(l.splitEnableTun),
+                  ),
               ]),
             ),
           // #2 — при системном прокси всё серое и неактивное.
           IgnorePointer(
-            ignoring: !tunActive,
+            ignoring: !editable,
             child: Opacity(
-              opacity: tunActive ? 1 : 0.45,
+              opacity: editable ? 1 : 0.45,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -928,11 +954,12 @@ class _ServerBadge extends StatelessWidget {
       final tight = box.maxWidth < 132;
       final flagOnly = tight && iso != null;
       return Tooltip(
-        message: unsupported
-            ? '$name\n\nЭтот сервер нельзя поднять отдельным выходом: '
-                'панельные профили «Авто» и часть протоколов умеет только Xray, '
-                'а выходы разводит sing-box. Трафик правила идёт основным туннелем.'
-            : name,
+        // ⚠️ Строка из ARB (`exitServerUnsupported`), а не литерал: ключ был
+        // заведён во все 10 языков, но здесь стоял захардкоженный русский
+        // текст — на любом другом языке интерфейса объяснение выпадало из
+        // локали. Он же используется в разделе API (`settings_screen`), чтобы
+        // на один вопрос был один ответ.
+        message: unsupported ? l.exitServerUnsupported(name) : name,
         child: Container(
           margin: const EdgeInsetsDirectional.only(end: 6),
           padding: EdgeInsets.symmetric(

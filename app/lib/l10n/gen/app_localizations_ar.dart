@@ -189,6 +189,28 @@ class AppLocalizationsAr extends AppLocalizations {
       'في هذا الوضع لا تُطبَّق القواعد الافتراضية على أي برنامج. فعّل هذا إذا أردت أن تشمل قائمة «حظر» الطلبات المرسلة عبر المنافذ المحلية أيضًا.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ الالتقاط المحدَّد هو «بروكسي النظام» — لا تُفتح منافذ المخارج في هذا الوضع ويُرفض الاتصال بها. منفذ التحكم $control يعمل مع أي وضع التقاط. إذا كنت بحاجة إلى منافذ المخارج فاختر «TUN (نفق كامل)» أو «بروكسي فقط».';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'لم تبدأ واجهة API';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'المنفذ $port يشغله البرنامج $holder. أغلق ذلك البرنامج تمامًا، بما في ذلك من شريط النظام، ثم أعد تفعيل المفتاح.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'المنفذ $port يشغله برنامج آخر تعذّر تحديده. غالبًا ما يكون عميل VPN آخر. أغلقه ثم أعد تفعيل المفتاح.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'تُحرَّر قائمة «حظر» في شاشة تقسيم النفق';
+
+  @override
   String get dnsShortVpn => 'عبر VPN';
 
   @override
@@ -1292,6 +1314,10 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'يعمل في وضع TUN فقط. في وضع «بروكسي النظام»، تقرّر التطبيقات بنفسها ما إذا كانت ستستخدم البروكسي — ولا يمكن إجبارها.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'في وضع «بروكسي فقط» لا يوجد ما يُعترض: القواعد لا تنطبق على أي برنامج في الحاسوب. تنطبق قائمة «حظر» على منافذ API المحلية فقط، وفقط إذا كان مفتاح «تطبيق قواعد تقسيم النفق» مفعّلًا في قسم «التقاط حركة المرور». أما بقية القواعد فيمكن إعدادها هنا مسبقًا: ستعمل عند الانتقال إلى TUN.';
 
   @override
   String get splitEnableTun => 'تفعيل TUN';

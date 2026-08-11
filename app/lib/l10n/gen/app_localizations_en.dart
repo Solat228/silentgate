@@ -189,6 +189,28 @@ class AppLocalizationsEn extends AppLocalizations {
       'In this mode the default rules don\'t apply to any program. Turn this on if you want the \"Block\" list to also cover requests made through the local ports.';
 
   @override
+  String apiCaptureModeWarning(int control) {
+    return '⚠️ Capture is set to \"System proxy\" — exit ports are not opened in this mode and connections to them are refused. The control port $control works with any capture mode. If you need exit ports, choose \"TUN (full tunnel)\" or \"Proxy only\".';
+  }
+
+  @override
+  String get apiPortBusyTitle => 'The API did not start';
+
+  @override
+  String apiPortBusy(int port, String holder) {
+    return 'Port $port is held by $holder. Close that program completely, including from the tray, then switch the toggle on again.';
+  }
+
+  @override
+  String apiPortBusyUnknown(int port) {
+    return 'Port $port is held by another program that could not be identified. Most often it is another VPN client. Close it and switch the toggle on again.';
+  }
+
+  @override
+  String get apiRulesInProxyOnlyEdit =>
+      'The \"Block\" list is edited on the split tunneling screen';
+
+  @override
   String get dnsShortVpn => 'via VPN';
 
   @override
@@ -1298,6 +1320,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitTunOnlyBanner =>
       'Works only in TUN mode. In \"System proxy\" mode, apps decide for themselves whether to use the proxy — they can\'t be forced.';
+
+  @override
+  String get splitProxyOnlyBanner =>
+      'In \"Proxy only\" mode there is nothing to intercept: the rules apply to no program on this computer. The \"Block\" list applies only to the local API ports, and only if \"Apply split-tunneling rules\" is switched on in the \"Traffic capture\" section. The other rules can be prepared here in advance: they start working once you switch to TUN.';
 
   @override
   String get splitEnableTun => 'Enable TUN';

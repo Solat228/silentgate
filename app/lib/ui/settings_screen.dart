@@ -22,6 +22,7 @@ import '../core/update/app_update.dart';
 import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
+import '../core/singbox/singbox_outbound_factory.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
 import '../engine/engine_base.dart';
@@ -1250,7 +1251,8 @@ class _CaptureSection extends StatelessWidget {
           // ⚠️ `Platform.isWindows` буквально, как и у пункта режима выше —
           // тот же довод: это НАШ контрол, а не унаследованный `else`
           // соседней секции.
-          if (Platform.isWindows && settings.captureMode == CaptureMode.proxyOnly)
+          if (Platform.isWindows &&
+              settings.captureMode == CaptureMode.proxyOnly) ...[
             SwitchListTile(
               value: settings.applyRulesInProxyOnly,
               onChanged: (v) => controller
@@ -1258,6 +1260,24 @@ class _CaptureSection extends StatelessWidget {
               title: Text(l.apiRulesInProxyOnly),
               subtitle: Text(l.apiRulesInProxyOnlySub),
             ),
+            // ⚠️ БЕЗ ЭТОЙ СТРОКИ ТУМБЛЕР ВЁЛ В НИКУДА. Он оперирует списком
+            // «Блок», а список редактируется на экране раздельного
+            // туннелирования — который в этом режиме из настроек НЕ ОТКРЫТЬ:
+            // пункт «Раздельное туннелирование» живёт в ветке `captureMode ==
+            // tun` выше. Человек включал галочку и не мог завести ни одного
+            // правила. (Сам экран в этом режиме больше не заблокирован — см.
+            // `split_tunnel_screen.dart`.)
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.alt_route),
+              title: Text(l.splitTunnelTitle),
+              subtitle: Text(l.apiRulesInProxyOnlyEdit),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SplitTunnelScreen()),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -1302,7 +1322,19 @@ class _ApiSection extends StatelessWidget {
     // Список серверов подписки — источник для чекбоксов «выдать порт». Как и
     // выбор сервера для правила раздельного туннелирования (split_tunnel_screen),
     // берём его нефильтрованным: тот же список видит пользователь на главном.
-    final servers = context.watch<AppState>().servers;
+    final state = context.watch<AppState>();
+    final servers = state.servers;
+    final scheme = Theme.of(context).colorScheme;
+    // ⚠️ ПОРТОВ ВЫХОДОВ В ЭТОМ РЕЖИМЕ НЕ СУЩЕСТВУЕТ, А РАЗДЕЛ ИХ ПРЕДЛАГАЛ.
+    // Инбаунды живут в TUN-конфиге либо в маршрутизаторе выходов «Только
+    // прокси»; при системном прокси (умолчание на Windows!) нет ни того, ни
+    // другого. Раздел при этом давал включить API, отметить серверы, а
+    // `/v1/exits` называл номера портов — и все соединения получали отказ.
+    // `docs/API.md` это описывал честно, интерфейс — ни словом.
+    final exitPortsExist = ApiPorts.exitPortsExistIn(settings.captureMode);
+    // Отказ подъёма управляющего порта. Показывается только при заданном
+    // токене: пустой токен — это «канал выключен», и у него своя строка.
+    final conflict = state.apiPortConflict;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1314,6 +1346,45 @@ class _ApiSection extends StatelessWidget {
           subtitle: Text(l.apiEnableSub(ApiPorts.control)),
         ),
         if (settings.apiEnabled) ...[
+          // Порт занят — тумблер включён, а слушателя нет. Раньше это жило
+          // ТОЛЬКО в журнале: раздел выглядел рабочим, токен показан, кнопка
+          // «Скопировать пример» на месте, а скрипт получал отказ соединения
+          // и не мог понять почему.
+          if (conflict != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  Icon(Icons.error_outline,
+                      size: 18, color: scheme.onErrorContainer),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.apiPortBusyTitle,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onErrorContainer)),
+                        const SizedBox(height: 2),
+                        SelText(
+                          conflict.holder == null
+                              ? l.apiPortBusyUnknown(conflict.port)
+                              : l.apiPortBusy(conflict.port, conflict.holder!),
+                          style: TextStyle(
+                              fontSize: 12, color: scheme.onErrorContainer),
+                        ),
+                      ],
+                    ),
+                  ),
+                ]),
+              ),
+            ),
           // Токен — он же пароль локальных портов API. Пустой токен означает
           // «канал не поднимается» (см. `LocalApiServer.start`), поэтому даём
           // сразу и увидеть его, и сгенерировать заново.
@@ -1352,6 +1423,28 @@ class _ApiSection extends StatelessWidget {
               ],
             ),
           ),
+          // Режим захвата, в котором портов выходов физически нет. Плашка
+          // стоит НАД списком серверов: она объясняет, почему галочки ниже
+          // сейчас ни к чему не приведут.
+          if (!exitPortsExist)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: scheme.tertiaryContainer.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.info_outline, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: SelText(l.apiCaptureModeWarning(ApiPorts.control),
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                ]),
+              ),
+            ),
           // Серверы с отдельным портом — только если подписка вообще что-то
           // дала: пустой список чекбоксов под заголовком выглядел бы поломкой.
           if (servers.isNotEmpty) ...[
@@ -1361,12 +1454,21 @@ class _ApiSection extends StatelessWidget {
               subtitle: Text(l.apiExitsSub),
             ),
             for (final srv in servers)
-              CheckboxListTile(
-                dense: true,
-                controlAffinity: ListTileControlAffinity.leading,
-                value: settings.apiExitServerKeys.contains(srv.key),
-                title: Text(srv.displayName,
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
+              // ⚠️ СЕРВЕР, ИЗ КОТОРОГО ВЫХОД НЕ СОБИРАЕТСЯ, ОТМЕЧАЛСЯ БЕЗ
+              // ЕДИНОГО СЛОВА. Панельный профиль «Авто» — готовый конфиг Xray
+              // целиком, а порты выходов разводит sing-box; его же фабрика не
+              // умеет часть протоколов. Такой сервер порта не получит
+              // (`ExitOutbounds.build` его пропускает, `/v1/exits` его теперь
+              // и не публикует).
+              //
+              // ⚠️ ДЕЛАЕМ ТАК ЖЕ, КАК В СОСЕДНЕЙ ПОДСИСТЕМЕ, А НЕ ТРЕТЬИМ
+              // СПОСОБОМ: серый + тултип с той же строкой, что у выбора
+              // сервера для правила (`split_tunnel_screen._ServerBadge`,
+              // ключ `exitServerUnsupported`). Выбор при этом НЕ запрещаем —
+              // решение владельца от 07.08.2026: разрешать, но предупреждать.
+              _ApiExitCheckbox(
+                server: srv,
+                checked: settings.apiExitServerKeys.contains(srv.key),
                 onChanged: (v) => controller.update((s) => s.copyWith(
                     apiExitServerKeys: v == true
                         ? [...s.apiExitServerKeys, srv.key]
@@ -1410,6 +1512,53 @@ class _ApiSection extends StatelessWidget {
         'print(status)\n'
         '\n'
         'requests.post(f"{BASE}/v1/connect", headers=HEADERS, json={"auto": True})\n';
+  }
+}
+
+/// Чекбокс «выдать порт» одному серверу.
+///
+/// Отдельным виджетом — ради тултипа: `CheckboxListTile` не умеет объяснять
+/// сам себя, а объяснение здесь обязательно (см. комментарий у места вызова).
+class _ApiExitCheckbox extends StatelessWidget {
+  final VpnServer server;
+  final bool checked;
+  final ValueChanged<bool?> onChanged;
+
+  const _ApiExitCheckbox({
+    required this.server,
+    required this.checked,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    // Тот же предикат, что решает это физически (`ExitOutbounds.build`) и что
+    // спрашивает `/v1/exits`. Три места — один вопрос и один ответчик.
+    final unsupported = !SingboxOutboundFactory.supports(server);
+    final tile = CheckboxListTile(
+      dense: true,
+      controlAffinity: ListTileControlAffinity.leading,
+      value: checked,
+      title: Text(
+        server.displayName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: unsupported
+            ? TextStyle(color: Theme.of(context).disabledColor)
+            : null,
+      ),
+      secondary: unsupported
+          ? Icon(Icons.help_outline,
+              size: 16, color: Theme.of(context).disabledColor)
+          : null,
+      onChanged: onChanged,
+    );
+    if (!unsupported) return tile;
+    return Tooltip(
+      message: l.exitServerUnsupported(server.displayName),
+      child: tile,
+    );
   }
 }
 
