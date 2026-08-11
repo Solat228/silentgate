@@ -1653,28 +1653,18 @@ class AppState extends ChangeNotifier {
   /// сервер напрямую, и любой другой источник рано или поздно разойдётся с тем,
   /// что видит пользователь.
   ///
-  /// Основной сервер сессии сюда НЕ попадает — он уже в конфиге под тегом
+  /// Основной сервер сессии в правила НЕ попадает — он уже в конфиге под тегом
   /// `proxy`. Иначе к одному узлу держались бы два соединения, а панель
-  /// показывала бы удвоенный «онлайн».
+  /// показывала бы удвоенный «онлайн». Для портов API это НЕ так — см.
+  /// [exitServerKeysFor].
+  ///
+  /// Ключи выбираются чистой функцией [exitServerKeysFor] — на неё есть тест;
+  /// здесь остаётся только разрешение ключей в живые серверы по каталогу.
   Map<String, VpnServer> _exitServers(AppSettings settings) {
     if (_servers.isEmpty) return const {};
-    final wanted = <String>{
-      for (final r in settings.splitTunnel.sites)
-        if (r.action == AppAction.tunnel && (r.serverKey ?? '').isNotEmpty)
-          r.serverKey!,
-      for (final r in settings.splitTunnel.apps)
-        if (r.enabled &&
-            r.action == AppAction.tunnel &&
-            (r.serverKey ?? '').isNotEmpty)
-          r.serverKey!,
-    };
-    // Серверы, которым пользователь выдал отдельный порт, тоже обязаны получить
-    // outbound — иначе порт не создастся (построитель проверяет живые теги).
-    for (final key in settings.apiExitServerKeys) {
-      if (key.isNotEmpty) wanted.add(key);
-    }
+    final wanted =
+        exitServerKeysFor(settings: settings, selectedKey: selectedServer?.key);
     if (wanted.isEmpty) return const {};
-    wanted.remove(selectedServer?.key);
     final byKey = <String, VpnServer>{
       for (final s in _servers)
         if (s.key.isNotEmpty) s.key: s,
@@ -1691,6 +1681,56 @@ class AppState extends ChangeNotifier {
           : srv;
     }
     return out;
+  }
+
+  /// Ключи серверов, которым нужен ОТДЕЛЬНЫЙ outbound (тег `exit-…`).
+  ///
+  /// Два источника, и правила у них РАЗНЫЕ — в этом вся суть функции:
+  ///
+  /// * **правила раздельного туннелирования** — основной сервер исключается.
+  ///   «Этот сайт через сервер X», где X и есть текущий сервер, пойдёт тем же
+  ///   узлом через тег `proxy`; второй outbound был бы вторым соединением к
+  ///   тому же серверу без единой выгоды.
+  /// * **серверы с отдельным портом API** — основной сервер НЕ исключается.
+  ///
+  /// ⚠️ НАХОДКА ФИНАЛЬНОГО РЕВЬЮ (5): раньше исключался и он. Инбаунда для
+  /// него не создавалось (построитель проверяет живые теги), а `GET /v1/exits`
+  /// порт всё равно публиковал — скрипт получал отказ соединения на порт,
+  /// который ему только что назвали. Причём «сломанный» порт переезжал на
+  /// другой сервер, стоило переключить основной.
+  ///
+  /// Довод «не держать два соединения к одному узлу» здесь не работает:
+  /// (а) в режиме «Авто» основной канал — балансировщик по ВСЕМ серверам, и
+  /// порт «через Германию», сведённый на тег `proxy`, уехал бы куда угодно;
+  /// (б) отдельный порт для того и заводят, чтобы гнать через этот сервер
+  /// трафик ОТДЕЛЬНО от остальной машины. Сам по себе лишний outbound стоит
+  /// ноль — VLESS/Trojan/SS постоянной сессии не держат, сокет живёт под
+  /// запрос; платит только тот, кто портом реально пользуется.
+  ///
+  /// Гейт портов — `ApiPorts.exitPortsActive`, ТОТ ЖЕ, что решает, создавать ли
+  /// инбаунды: при выключенном API, пустом токене или системном прокси портов
+  /// не будет, и outbound-ы под них были бы мусором в конфиге.
+  static Set<String> exitServerKeysFor({
+    required AppSettings settings,
+    required String? selectedKey,
+  }) {
+    final wanted = <String>{
+      for (final r in settings.splitTunnel.sites)
+        if (r.action == AppAction.tunnel && (r.serverKey ?? '').isNotEmpty)
+          r.serverKey!,
+      for (final r in settings.splitTunnel.apps)
+        if (r.enabled &&
+            r.action == AppAction.tunnel &&
+            (r.serverKey ?? '').isNotEmpty)
+          r.serverKey!,
+    };
+    wanted.remove(selectedKey);
+    if (ApiPorts.exitPortsActive(settings)) {
+      for (final key in settings.apiExitServerKeys) {
+        if (key.isNotEmpty) wanted.add(key);
+      }
+    }
+    return wanted;
   }
 
   /// Кандидаты на подмену в режиме «Авто»: сначала профили «Авто …» от панели

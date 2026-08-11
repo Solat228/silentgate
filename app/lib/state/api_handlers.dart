@@ -1,6 +1,7 @@
 import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
+import '../core/singbox/singbox_outbound_factory.dart';
 import '../core/util/country_flag.dart';
 import 'app_state.dart';
 import 'probe_controller.dart';
@@ -59,6 +60,15 @@ class AppStateApiHandlers implements ApiHandlers {
     final out = <Map<String, dynamic>>[];
     for (final s in state.servers) {
       if (!keys.contains(s.key)) continue;
+      // ⚠️ СЕРВЕР, ИЗ КОТОРОГО ВЫХОД НЕ СОБИРАЕТСЯ, ПОРТА НЕ ПОЛУЧИТ.
+      // Тот же предикат, что решает это физически (`ExitOutbounds.build` →
+      // `SingboxOutboundFactory.supports`): панельные профили «Авто» — готовые
+      // конфиги Xray целиком, а порты выходов разводит sing-box. Инбаунд для
+      // такого сервера не создаётся (построитель проверяет живые теги), и
+      // публиковать его порт значило бы назвать скрипту адрес, на который
+      // ядро заведомо не сядет. Интерфейс предупреждает об этом ещё на
+      // чекбоксе (`settings_screen._ApiSection`) — здесь просто не врём.
+      if (!SingboxOutboundFactory.supports(s)) continue;
       // Ключ мог оказаться за пределами топ-40 (`ApiPorts.maxServers`) —
       // тогда порта физически нет, и `port: null` дал бы вызывающему битый
       // адрес `http://sg:токен@127.0.0.1:None` (см. `tools/silentgate.py`,

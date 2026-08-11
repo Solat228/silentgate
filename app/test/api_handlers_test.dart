@@ -144,6 +144,14 @@ const _serverA =
 const _serverB =
     'vless://11111111-2222-3333-4444-555555555555@127.0.0.1:20002#США';
 
+/// Сервер на протоколе, которого sing-box в выходах не умеет (см.
+/// `SingboxOutboundFactory.supports`): vmess разбирается парсером и живёт в
+/// списке, но отдельным выходом не поднимается.
+const _serverVmess = 'vmess://eyJ2IjogIjIiLCAicHMiOiAi0K/Qv9C+0L3QuNGPIiwgImFk'
+    'ZCI6ICIxMjcuMC4wLjEiLCAicG9ydCI6ICIyMDAwMyIsICJpZCI6ICIxMTExMTExMS0yMjIy'
+    'LTMzMzMtNDQ0NC01NTU1NTU1NTU1NTUiLCAiYWlkIjogIjAiLCAibmV0IjogInRjcCIsICJ0'
+    'eXBlIjogIm5vbmUiLCAidGxzIjogIiJ9';
+
 void main() {
   group('Чёрный список секретов', () {
     test('чёрный список полей соблюдается', () {
@@ -274,6 +282,37 @@ void main() {
             reason: 'запись без порта собрала бы у клиента битый URL '
                 'http://sg:токен@127.0.0.1:None');
         // «Прямо» от порядка серверов не зависит — она обязана остаться.
+        expect(exits.last['name'], 'Прямо');
+      });
+
+      test('⚠️ сервер, из которого выход НЕ собирается, порта не получает',
+          () async {
+        // Находка финального ревью (6). `ExitOutbounds.build` пропускает
+        // протоколы, которых не умеет `SingboxOutboundFactory` (и панельные
+        // профили «Авто»): инбаунд для такого сервера не создаётся —
+        // построитель проверяет живые теги. Публиковать его порт значило бы
+        // назвать скрипту адрес, на который ядро заведомо не сядет.
+        final env = await _Env.create();
+        addTearDown(env.dispose);
+        final ok = await env.addServer(_serverA);
+        final bad = await env.addServer(_serverVmess);
+        expect(bad.protocol, 'vmess', reason: 'vmess — то, чего sing-box '
+            'в выходах не умеет; если он вдруг научится, тест обязан упасть');
+
+        await env.settings.update((s) => s.copyWith(
+            apiEnabled: true,
+            apiToken: 'secret',
+            apiExitServerKeys: [ok.key, bad.key]));
+
+        final exits = await env.handlers.exits();
+        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
+        expect(exits.any((e) => e['serverKey'] == bad.key), isFalse);
+        // ⚠️ Номера портов от исключения НЕ съезжают: индекс считается по
+        // полному списку ключей настройки, а не по отфильтрованному ответу.
+        // Иначе снятие одной галочки увело бы чужой запрос в другую страну.
+        expect(
+            exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+            ApiPorts.forServer([ok.key, bad.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
     });

@@ -16,6 +16,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/singbox/exit_router_config_builder.dart';
+import '../../core/xray/xray_config_builder.dart' show XrayPorts;
 import '../engine_base.dart';
 import '../vpn_engine.dart';
 import 'singbox_process.dart';
@@ -87,11 +88,43 @@ class WindowsEngine extends VpnEngineBase {
       options.captureMode == CaptureMode.systemProxy ||
       options.settings.alsoSetSystemProxy;
 
-  /// Порты API реально нужны ТОЛЬКО когда тумблер включён И задан токен —
-  /// см. `ApiPorts.exitsActive`, единый источник этого гейта для `PortCheck`
-  /// (ниже в `startSession`) и сборки TUN-конфига (`_tunRouter.start`).
-  bool _apiExitsActive(AppSettings s) =>
-      ApiPorts.exitsActive(enabled: s.apiEnabled, token: s.apiToken);
+  /// Порты API реально нужны ТОЛЬКО когда тумблер включён, задан токен И
+  /// способ захвата вообще создаёт эти инбаунды — см. `ApiPorts.exitPortsActive`,
+  /// единый источник гейта для `PortCheck` (ниже в `startSession`), сборки
+  /// TUN-конфига (`_tunRouter.start`) и маршрутизатора выходов.
+  ///
+  /// ⚠️ РЕЖИМ ЗАХВАТА — ЧАСТЬ ГЕЙТА, А НЕ ПОДРОБНОСТЬ. Без него в режиме
+  /// системного прокси (умолчание!) `PortCheck` проверял порты 10820…10859 и
+  /// 10819, которых конфиг в этом режиме не создаёт: сторонняя программа на
+  /// любом из них давала «Конфликт портов» и полный отказ подключения на
+  /// ровном месте.
+  bool _apiExitsActive(AppSettings s) => ApiPorts.exitPortsActive(s);
+
+  /// Порты, которые обязаны быть свободны ПЕРЕД стартом ядра.
+  ///
+  /// ⚠️ ВЫНЕСЕНО ИЗ [startSession] РАДИ ТЕСТА, А НЕ РАДИ КРАСОТЫ. На
+  /// `startSession` не было ни одного теста — там живой процесс ядра, реальные
+  /// сокеты и права, — и ровно поэтому дефект «проверяем порты, которых в этом
+  /// режиме не будет» дожил до финального ревью. Список портов — чистая
+  /// функция настроек, и в таком виде он проверяем без единого сокета.
+  ///
+  /// [ports] — порты ядра сессии (socks/http/api Xray). Они нужны ВСЕГДА, при
+  /// любом режиме захвата. Порты API добавляются только когда инбаунды под них
+  /// реально будут созданы (см. [_apiExitsActive] / `ApiPorts.exitPortsActive`).
+  static List<int> corePortsFor(AppSettings s, XrayPorts ports) {
+    final active = ApiPorts.exitPortsActive(s);
+    final keys = active ? s.apiExitServerKeys : const <String>[];
+    return [
+      ports.socks,
+      ports.http,
+      ports.api,
+      for (final k in ApiPorts.withinRange(keys)) ApiPorts.forServer(keys, k)!,
+      // Порт «Прямо» поднимается по тому же гейту, что и порты серверов, и НЕ
+      // зависит от их числа — см. `buildApiDirectInbound`/`buildApiExitInbounds`
+      // (`core/net/api_ports.dart`) и `_startExitRouter`.
+      if (active) ApiPorts.direct,
+    ];
+  }
 
   /// Один запуск текущей сессии (первичный или повторный при восстановлении).
   @override
@@ -160,17 +193,13 @@ class WindowsEngine extends VpnEngineBase {
     // вместо имени программы, которая порт держит.
     //
     // Гейт — `_apiExitsActive`, ТОТ ЖЕ, что решает, создавать ли инбаунды: при
-    // пустом токене их не будет ни одного, и проверять порты, которых не
-    // возникнет, — значит рисковать ложным отказом на чужом порту.
-    final apiActive = _apiExitsActive(options.settings);
-    final apiKeys = apiActive ? options.settings.apiExitServerKeys : const <String>[];
-    final apiPorts = <int>[
-      for (final k in ApiPorts.withinRange(apiKeys)) ApiPorts.forServer(apiKeys, k)!,
-      // Порт «Прямо» поднимается по тому же гейту, что и порты серверов —
-      // см. `buildApiDirectInbound`/`buildApiExitInbounds` (`core/net/api_ports.dart`).
-      if (apiActive) ApiPorts.direct,
-    ];
-    final corePorts = [ports.socks, ports.http, ports.api, ...apiPorts];
+    // пустом токене (или в режиме системного прокси) их не будет ни одного, и
+    // проверять порты, которых не возникнет, — значит рисковать ложным отказом
+    // подключения на чужом порту.
+    final apiKeys = _apiExitsActive(options.settings)
+        ? options.settings.apiExitServerKeys
+        : const <String>[];
+    final corePorts = corePortsFor(options.settings, ports);
     var conflict = await PortCheck.findConflict(corePorts);
     if (conflict != null && conflict.heldByOwnCore) {
       AppLog.i('Порт ${conflict.port} ещё держит наше ядро '

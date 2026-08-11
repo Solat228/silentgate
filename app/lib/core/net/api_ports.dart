@@ -1,3 +1,4 @@
+import '../settings/app_settings.dart';
 import '../singbox/exit_tags.dart';
 
 /// Раскладка локальных портов API.
@@ -51,6 +52,35 @@ class ApiPorts {
   /// доступное ДО сборки конфига, когда нужно решить, что проверять портами.
   static bool exitsActive({required bool enabled, required String token}) =>
       enabled && token.isNotEmpty;
+
+  /// Создаются ли инбаунды портов выходов при таком способе захвата.
+  ///
+  /// ⚠️ В РЕЖИМЕ СИСТЕМНОГО ПРОКСИ (умолчание на Windows) ИХ НЕТ ВОВСЕ.
+  /// Инбаунды живут либо в TUN-конфиге (`SingboxConfigBuilder`, ветка
+  /// `captureMode == tun` в `WindowsEngine.startSession`), либо в
+  /// маршрутизаторе выходов режима «Только прокси» (`ExitRouterConfigBuilder`).
+  /// В системном прокси не поднимается ни то, ни другое: WinINET креденшелов
+  /// не передаёт, и явные порты рядом с ним — вторая, не реализованная
+  /// архитектура.
+  ///
+  /// Управляющего порта (`control`) это НЕ касается: он работает при любом
+  /// способе захвата.
+  static bool exitPortsExistIn(CaptureMode mode) =>
+      mode != CaptureMode.systemProxy;
+
+  /// Полный гейт портов выходов: тумблер + токен + способ захвата.
+  ///
+  /// ⚠️ ЕДИНЫЙ ИСТОЧНИК ПРАВДЫ. `PortCheck` перед стартом ядра
+  /// (`WindowsEngine.startSession`) и сборка outbound-ов выходов
+  /// (`AppState._exitServers`) обязаны отвечать на «есть тут порты или нет»
+  /// ОДИНАКОВО и с тем же ответом, что даёт построитель конфига. Расхождение
+  /// стоило нам находки финального ревью: гейт `PortCheck` не смотрел на режим
+  /// захвата, и в системном прокси занятый сторонней программой 10821 давал
+  /// «Конфликт портов» и полный отказ подключения — на порту, который клиент
+  /// в этом режиме никогда бы и не открыл.
+  static bool exitPortsActive(AppSettings s) =>
+      exitsActive(enabled: s.apiEnabled, token: s.apiToken) &&
+      exitPortsExistIn(s.captureMode);
 }
 
 /// Тег inbound-а, ведущего в сервер [serverKey].
