@@ -9,7 +9,6 @@ import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
-import 'core/settings/app_settings.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
 import 'core/platform/single_instance.dart';
@@ -23,6 +22,7 @@ import 'engine/windows/xray_paths.dart';
 import 'state/app_state.dart';
 import 'state/auto_config_controller.dart';
 import 'state/probe_controller.dart';
+import 'state/provider_wiring.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
 
@@ -114,12 +114,16 @@ Future<void> main(List<String> args) async {
         ChangeNotifierProvider(create: (_) {
           final controller = SettingsController();
           // ⚠️ Слушатель вешаем ЗДЕСЬ, а не через отдельную provider-связку
-          // (по образцу _ShadeLayoutLink/_ApiSettingsLink ниже): такие связки
-          // Provider строит ЛЕНИВО — только когда их тип кто-то читает — а
-          // токен нужен обработчику сокета уже сейчас, независимо от того,
-          // читает ли что-то ещё эту связку. SettingsController читается
-          // напрямую (`app.dart`, `context.watch<SettingsController>()`),
-          // поэтому его собственный create гарантированно выполнится.
+          // (по образцу `shadeLayoutLinkProvider`/`apiSettingsLinkProvider`
+          // ниже — `state/provider_wiring.dart`, обе с `lazy: false`): без
+          // этого флага такие связки Provider строит ЛЕНИВО — только когда
+          // их тип кто-то читает — а токен нужен обработчику сокета уже
+          // сейчас, до первой перерисовки дерева виджетов
+          // (`SingleInstance.listen` вызывается в `main()` ДО `runApp`),
+          // независимо от того, читает ли что-то эту связку.
+          // SettingsController читается напрямую (`app.dart`,
+          // `context.watch<SettingsController>()`), поэтому его собственный
+          // create гарантированно выполнится в любом случае.
           controller.addListener(
               () => _apiTokenSnapshot = controller.settings.apiToken);
           return controller..init();
@@ -132,10 +136,12 @@ Future<void> main(List<String> args) async {
         // ⚠️ Связываем ЗДЕСЬ, а не внутри `AppState`: настройки ему не
         // принадлежат, а лезть за чужим контроллером из состояния — прямой
         // путь к двум источникам правды.
-        ProxyProvider2<AppState, SettingsController, _ShadeLayoutLink>(
-          update: (_, state, settings, __) =>
-              _ShadeLayoutLink(state, settings),
-        ),
+        //
+        // Сама связка и обязательный `lazy: false` — в `state/provider_wiring.dart`
+        // (там же — почему; тот же файл переиспользует
+        // `test/provider_wiring_test.dart`, чтобы страж проверял РЕАЛЬНОЕ
+        // дерево, а не свою копию).
+        shadeLayoutLinkProvider(),
         ChangeNotifierProvider(create: (_) => ProbeController()..init()),
         ChangeNotifierProvider(create: (_) => AutoConfigController()..init()),
         ChangeNotifierProvider(create: (_) => ServiceCheckController()),
@@ -149,16 +155,11 @@ Future<void> main(List<String> args) async {
         // результат пинга — иначе локальный сокет пересоздавался бы
         // десятки раз в минуту, обрывая как раз тех, кто через него работает.
         //
-        // ⚠️ РАУНД РЕВЬЮ 1, НАХОДКА 4: этого недостаточно. `update:` зовётся
-        // на КАЖДЫЙ `notifyListeners()` `SettingsController` — тема, язык,
-        // MTU, правила раздельного туннелирования, что угодно. `previous` —
-        // тот же самый экземпляр `_ApiSettingsLink`, что и в прошлый раз (не
-        // новый!), и его `applyIfChanged` сам решает по
-        // `AppSettings.apiSettingsChanged`, стоит ли вообще что-то делать.
-        ProxyProvider<SettingsController, _ApiSettingsLink>(
-          update: (context, settings, previous) =>
-              (previous ?? _ApiSettingsLink())..applyIfChanged(context, settings),
-        ),
+        // Сама связка, гейт по `apiSettingsChanged` и обязательный
+        // `lazy: false` — в `state/provider_wiring.dart`. Требует, чтобы
+        // `ProbeController` был выше в дереве (см. порядок здесь) —
+        // `applyIfChanged` читает его через `context.read`.
+        apiSettingsLinkProvider(),
       ],
       child: const SilentGateApp(),
     ),
@@ -200,45 +201,4 @@ Future<bool> _runWindowsCliMode(List<String> args) async {
   }
 
   return false;
-}
-
-/// Связка «кнопка в шторке → настройка приложения».
-///
-/// Существует ради одного побочного эффекта и ничего не хранит: нажатие
-/// «Свернуть»/«Развернуть» на самом уведомлении обязано попасть в настройки,
-/// иначе приложение вернёт прежнюю раскладку со следующим тактом счётчиков.
-class _ShadeLayoutLink {
-  _ShadeLayoutLink(AppState state, SettingsController settings) {
-    state.onCompactToggledInShade = (compact) {
-      if (settings.settings.compactNotification == compact) return;
-      settings.update((s) => s.copyWith(compactNotification: compact));
-    };
-  }
-}
-
-/// Связка «настройки API → локальный сервер автоматизации».
-///
-/// ⚠️ В ОТЛИЧИЕ ОТ `_ShadeLayoutLink` — ХРАНИТ СОСТОЯНИЕ, И ЭТО НАМЕРЕННО.
-/// `ProxyProvider.update` зовётся на КАЖДУЮ правку любых настроек (тема,
-/// язык, MTU, правила — что угодно), а `AppState.applyApiSettings` гасит и
-/// заново поднимает слушающий сокет безусловно. Без гейта локальный API
-/// перезапускался бы на любую не связанную с ним правку, обрывая тех, кто
-/// через него в этот момент работает (раунд ревью 1, находка 4). Тот же
-/// экземпляр [_ApiSettingsLink] переживает все перестройки провайдера
-/// (`previous` в `main()`), поэтому есть, с чем сравнивать.
-class _ApiSettingsLink {
-  AppSettings? _lastApplied;
-
-  /// AppState и ProbeController берём БЕЗ подписки (`context.read`): нам
-  /// нужна только ссылка, а не реакция на их собственные изменения — иначе
-  /// сокет пересоздавался бы на каждый их чих, а не только на правку настроек.
-  void applyIfChanged(BuildContext context, SettingsController settings) {
-    final s = settings.settings;
-    final prev = _lastApplied;
-    if (prev != null && !prev.apiSettingsChanged(s)) return;
-    _lastApplied = s;
-    final state = context.read<AppState>();
-    final probe = context.read<ProbeController>();
-    unawaited(state.applyApiSettings(s, probe, settings));
-  }
 }
