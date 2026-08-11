@@ -68,6 +68,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     companion object {
         const val ACTION_START = "lol.silentgate.action.START"
         const val ACTION_STOP = "lol.silentgate.action.STOP"
+
+        /** Свернуть/развернуть уведомление прямо из шторки. */
+        const val ACTION_TOGGLE_COMPACT = "lol.silentgate.action.TOGGLE_COMPACT"
+
         const val EXTRA_CONFIG = "config"
 
         /// Конфиг Xray для панельных профилей «Авто».
@@ -121,20 +125,84 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         @Volatile
         var stateListener: ((running: Boolean, error: String?, byUser: Boolean) -> Unit)? = null
 
+        /// Слушатель раскладки уведомления.
+        ///
+        /// ⚠️ ОБЯЗАТЕЛЕН, А НЕ «ПРИЯТНОЕ ДОПОЛНЕНИЕ». Раскладку задаёт Dart и
+        /// присылает её с КАЖДЫМ обновлением счётчиков, то есть раз в секунду.
+        /// Без обратной связи кнопка на уведомлении отработала бы ровно до
+        /// следующего такта, и со стороны это выглядело бы как «кнопка не
+        /// нажимается».
+        @Volatile
+        var layoutListener: ((compact: Boolean) -> Unit)? = null
+
         private fun notifyState() {
             stateListener?.invoke(running, lastError, stoppedByUser)
+            // Плитка в шторке узнаёт о состоянии ТОЛЬКО пока система её слушает,
+            // а слушает она в основном при открытой шторке. Без этой строки
+            // туннель, поднятый или снятый из приложения, оставлял плитку в
+            // прежнем виде до следующего открытия шторки.
+            lol.silentgate.QuickTileService.requestRefresh()
         }
     }
 
-    /// Три строки уведомления. Раскладка задана владельцем:
-    ///   обычная  — [значок + подписка] / сервер / скорость;
-    ///   короткая — [значок + сервер]  / скорость.
-    /// Первая строка уведомления Android — это `subText` рядом со значком,
-    /// поэтому имя подписки (или сервера в короткой раскладке) едет туда.
+    /// Строки уведомления. Раскладка задана владельцем:
+    ///   обычная  — [значок + подписка] / сервер / скорость, с кнопками;
+    ///   короткая — [значок + приложение + подписка] / сервер,
+    ///              без скорости и без кнопок.
+    /// Первая строка уведомления Android — это `subText` рядом со значком, и
+    /// имя приложения система дописывает туда сама, поэтому подписка едет
+    /// именно в subText: в короткой раскладке это и даёт «приложение · подписка».
     private var noteSub: String? = null
     private var noteServer: String? = null
     private var noteNow: String? = null
     private var noteTotal: String? = null
+    private var noteCompact = false
+
+    /// Значок подписки в шторке и путь, из которого он прочитан.
+    ///
+    /// ⚠️ Держим РАСПАКОВАННУЮ картинку и путь рядом: такт статистики идёт раз
+    /// в секунду, и читать файл с диска на каждом обновлении уведомления
+    /// значило бы декодировать JPEG шестьдесят раз в минуту впустую.
+    private var noteLogo: android.graphics.Bitmap? = null
+    private var noteLogoPath: String? = null
+
+    /// Прочитать логотип подписки, если путь изменился.
+    ///
+    /// Картинка уже лежит на диске (её скачал и закэшировал Dart), поэтому сюда
+    /// приходит путь, а не байты: гонять десятки килобайт через канал каждую
+    /// секунду незачем.
+    private fun setLogo(path: String?) {
+        val p = path?.takeIf { it.isNotBlank() }
+        if (p == noteLogoPath) return
+        noteLogoPath = p
+        noteLogo = null
+        if (p == null) return
+        try {
+            // ⚠️ Уменьшаем при чтении. Логотип подписки бывает и 1024×1024, а в
+            // шторке он показывается размером с ноготь: полноразмерный Bitmap
+            // здесь — это мегабайты в памяти сервиса, который обязан жить
+            // сутками.
+            val bounds = android.graphics.BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            android.graphics.BitmapFactory.decodeFile(p, bounds)
+            val want = 128
+            var scale = 1
+            while (bounds.outWidth / (scale * 2) >= want &&
+                   bounds.outHeight / (scale * 2) >= want) {
+                scale *= 2
+            }
+            val opts = android.graphics.BitmapFactory.Options().apply {
+                inSampleSize = scale
+            }
+            noteLogo = android.graphics.BitmapFactory.decodeFile(p, opts)
+        } catch (e: Throwable) {
+            // Битый или недочитанный файл не должен мешать уведомлению: без
+            // значка оно остаётся полностью рабочим.
+            Log.w(logTag, "Логотип подписки не прочитан: $e")
+            noteLogo = null
+        }
+    }
 
     /**
      * ⚠️ ЭКРАН ПОГАС — ЯДРО МОЖНО ПРИТОРМОЗИТЬ, А НЕ ПЕРЕПОДКЛЮЧАТЬ.
@@ -192,6 +260,19 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
+            // ⚠️ РАСКЛАДКУ МЕНЯЕМ, НЕ ТРОГАЯ ТУННЕЛЬ. Это ровно кнопка на самом
+            // уведомлении: на телефоне оно всплывает поверх экрана и закрывает
+            // заголовок — из настроек до тумблера в этот момент не добраться,
+            // потому что уведомление закрывает и настройки тоже.
+            //
+            // Выбор запоминаем там же, где остальные настройки Flutter, чтобы
+            // он совпал с тумблером в приложении и пережил перезапуск.
+            ACTION_TOGGLE_COMPACT -> {
+                noteCompact = !noteCompact
+                updateNotification(strings().getString(R.string.vpn_connected))
+                layoutListener?.invoke(noteCompact)
+                return START_STICKY
+            }
             ACTION_STOP -> {
                 // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу, и
                 // признак должен уехать вместе с ним.
@@ -246,12 +327,20 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         nowUp: String?,
         totalDown: String?,
         totalUp: String?,
+        compact: Boolean,
+        logoPath: String?,
     ) {
         if (!running) return
         // Экран выключен — обновлять нечего и некому.
         if (!screenOn) return
         noteSub = sub?.takeIf { it.isNotBlank() }
         noteServer = server?.takeIf { it.isNotBlank() }
+        // ⚠️ Признак приходит ОТДЕЛЬНЫМ полем, а не выводится из пустой
+        // подписки. Прежняя догадка «нет подписки — значит короткая» ломалась
+        // сама собой: у подписки без имени обычная раскладка молча становилась
+        // короткой, и пользователь терял строку, которую не выключал.
+        noteCompact = compact
+        setLogo(logoPath)
         // ⚠️ Подписи и стрелки берутся из строковых ресурсов, а не приходят из
         // Dart: только так они следуют выбранному в приложении языку (сервис
         // переживает смерть изолята) и лежат в одном месте, если шрифт
@@ -267,6 +356,45 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     fun showBlocked() {
         if (!running) return
         updateNotification(strings().getString(R.string.vpn_blocked))
+    }
+
+    /**
+     * Состояние СИСТЕМНОЙ защиты: «Постоянная VPN» и «Блокировать соединения без VPN».
+     *
+     * ⚠️ ЗАЧЕМ ЭТО СПРАШИВАТЬ, ЕСЛИ У НАС ЕСТЬ СВОЙ KILL SWITCH.
+     *
+     * Наш kill switch перезагружает ядро конфигом-заглушкой: туннель остаётся
+     * поднятым, а трафик умирает в `reject`. Это настоящая блокировка — но она
+     * держится, ПОКА ЖИВ НАШ СЕРВИС. Стоит системе убить процесс (нехватка
+     * памяти, Doze, пользователь смахнул приложение из недавних), и защиты нет
+     * вовсе: туннель снимается вместе с сервисом, трафик идёт открыто.
+     *
+     * Закрывает этот случай только сама Android — «Блокировать соединения без
+     * VPN» в системных настройках. Включить её из приложения НЕЛЬЗЯ (это
+     * намеренное ограничение платформы: иначе любое приложение могло бы
+     * запереть весь трафик устройства). Зато СПРОСИТЬ состояние можно, начиная
+     * с Android 10, — и мы обязаны это делать, чтобы не обещать защиту, которой
+     * нет.
+     *
+     * До Android 10 узнать нельзя вовсе: возвращаем `supported = false`, и
+     * интерфейс честно говорит «проверить не могу», а не рисует зелёную птицу.
+     */
+    fun lockdownState(): Map<String, Any> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return mapOf("supported" to false, "alwaysOn" to false, "lockdown" to false)
+        }
+        return try {
+            mapOf(
+                "supported" to true,
+                "alwaysOn" to isAlwaysOn,
+                "lockdown" to isLockdownEnabled,
+            )
+        } catch (e: Throwable) {
+            // На части прошивок геттеры бросают. Молча соврать «включено» здесь
+            // было бы худшим из вариантов.
+            Log.w(logTag, "Не удалось узнать состояние системной защиты: $e")
+            mapOf("supported" to false, "alwaysOn" to false, "lockdown" to false)
+        }
     }
 
     private fun startTunnel(configJson: String, xrayConfigJson: String?) {
@@ -962,6 +1090,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             this, 1, Intent(this, SilentGateVpnService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
+        // ⚠️ Код запроса ДРУГОЙ (2, не 1). С одинаковым кодом Android вернул бы
+        // тот же PendingIntent, и кнопка сворачивания отключала бы VPN.
+        val toggle = PendingIntent.getService(
+            this, 2,
+            Intent(this, SilentGateVpnService::class.java).setAction(ACTION_TOGGLE_COMPACT),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
         return Notification.Builder(this, CHANNEL_ID)
             // Имя берём из ресурсов, а не литералом: бренд ещё может смениться.
             // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ — не менять «как красивее».
@@ -977,38 +1112,70 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // Пока трафика нет (только подключились), заголовок падает обратно
             // на статус — пустая строка выглядела бы как сломанное уведомление.
             .also { b ->
-                val head = noteSub ?: noteServer
-                if (head != null) b.setSubText(head)
-                val title = if (noteSub != null) noteServer else noteNow
-                b.setContentTitle(title ?: res.getString(R.string.app_name))
-                // Две строки трафика: «Текущ» и «Всего». В свёрнутом виде
-                // Android показывает одну — поэтому первой идёт текущая
-                // скорость, ради неё в шторку и смотрят. Развёрнутое
-                // уведомление показывает обе.
-                val lines = listOfNotNull(
-                    if (noteSub != null) noteNow else noteTotal,
-                    if (noteSub != null) noteTotal else null,
-                ).filter { it.isNotBlank() }
-                if (lines.isEmpty()) {
-                    b.setContentText(text)
+                // Верхняя строка уведомления Android — это `subText` рядом со
+                // значком, причём имя приложения система дописывает туда САМА.
+                // Поэтому подписка едет именно в subText: в короткой раскладке
+                // это и даёт требуемое «приложение · подписка».
+                if (noteSub != null) b.setSubText(noteSub)
+                if (noteCompact) {
+                    // КОРОТКАЯ: [значок + приложение + подписка] / сервер.
+                    // Ни скорости, ни кнопок — так решил владелец: уведомление
+                    // должно отвечать на один вопрос «через что я сейчас», а не
+                    // быть панелью управления.
+                    b.setContentTitle(noteServer ?: res.getString(R.string.app_name))
                 } else {
-                    b.setContentText(lines.first())
-                    if (lines.size > 1) {
-                        b.setStyle(Notification.BigTextStyle()
-                            .bigText(lines.joinToString(System.lineSeparator())))
+                    // ОБЫЧНАЯ: [значок + подписка] / сервер / скорость.
+                    // Пока трафика нет (только подключились), заголовок падает
+                    // обратно на статус — пустая строка выглядела бы как
+                    // сломанное уведомление.
+                    b.setContentTitle(noteServer ?: res.getString(R.string.app_name))
+                    // Две строки трафика: «Текущ» и «Всего». В свёрнутом виде
+                    // Android показывает одну — поэтому первой идёт текущая
+                    // скорость, ради неё в шторку и смотрят.
+                    val lines = listOfNotNull(noteNow, noteTotal)
+                        .filter { it.isNotBlank() }
+                    if (lines.isEmpty()) {
+                        b.setContentText(text)
+                    } else {
+                        b.setContentText(lines.first())
+                        if (lines.size > 1) {
+                            b.setStyle(Notification.BigTextStyle()
+                                .bigText(lines.joinToString(System.lineSeparator())))
+                        }
                     }
                 }
             }
             .setSmallIcon(R.drawable.ic_stat_vpn)
+            // Значок подписки — крупной картинкой справа. Маленький значок
+            // остаётся нашим: он живёт в статус-баре и обязан быть
+            // одноцветным силуэтом.
+            .also { b -> noteLogo?.let { b.setLargeIcon(it) } }
             .setContentIntent(open)
             .setOngoing(true)
-            .addAction(Notification.Action.Builder(
-                null, res.getString(R.string.vpn_disconnect), stop).build())
-            // Вторая кнопка — открыть приложение. Нажатие на само уведомление
-            // делает то же, но кнопка заметнее: на Android 13+ тело
-            // уведомления часто свёрнуто, и виден только ряд кнопок.
-            .addAction(Notification.Action.Builder(
-                null, res.getString(R.string.vpn_open), open).build())
+            // ⚠️ Кнопки — ТОЛЬКО в обычной раскладке. В короткой владелец
+            // просил их убрать: нажатие на само уведомление по-прежнему
+            // открывает приложение, а отключить VPN можно плиткой в шторке.
+            .also { b ->
+                // ⚠️ ЭТА КНОПКА ЕСТЬ В ОБЕИХ РАСКЛАДКАХ, включая короткую, где
+                // остальных кнопок нет. Иначе сворачивание было бы дорогой в
+                // один конец: свернул — и развернуть уже нечем, кнопки-то
+                // убраны. Одна кнопка на переключение туда и обратно.
+                b.addAction(Notification.Action.Builder(
+                    null,
+                    res.getString(
+                        if (noteCompact) R.string.vpn_expand else R.string.vpn_collapse),
+                    toggle).build())
+                if (!noteCompact) {
+                    b.addAction(Notification.Action.Builder(
+                        null, res.getString(R.string.vpn_disconnect), stop).build())
+                    // Вторая кнопка — открыть приложение. Нажатие на само
+                    // уведомление делает то же, но кнопка заметнее: на
+                    // Android 13+ тело уведомления часто свёрнуто, и виден
+                    // только ряд кнопок.
+                    b.addAction(Notification.Action.Builder(
+                        null, res.getString(R.string.vpn_open), open).build())
+                }
+            }
             .build()
     }
 

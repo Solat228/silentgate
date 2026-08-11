@@ -2109,4 +2109,209 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'Der Bericht wurde in einer einzigen Datei gesammelt. Wählen Sie im Systemfenster aus, wohin Sie ihn senden — in Telegram geht er als Anhang, nicht als Text.';
+
+  @override
+  String get exitsHeader => 'Ausgänge';
+
+  @override
+  String get exitsHint =>
+      'Eine „Tunnel“-Regel kann an einen bestimmten Ausgang geleitet werden: eine Seite über Deutschland, eine andere über die USA. Ohne Ausgang nutzt die Regel den Haupttunnel wie bisher.';
+
+  @override
+  String get exitsAdd => 'Ausgang hinzufügen';
+
+  @override
+  String get exitsEmpty => 'Noch keine Ausgänge';
+
+  @override
+  String get exitsName => 'Name';
+
+  @override
+  String get exitsNameHint => 'Deutschland';
+
+  @override
+  String get exitsServers => 'Server';
+
+  @override
+  String get exitsAutoSelect => 'Automatische Auswahl nach Latenz';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'Der Kern hält den Verkehr selbst auf einem funktionierenden Server. Der Preis: Jeder Server wird alle drei Minuten geprüft, was auf dem Telefon den Funk weckt.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'Mindestens zwei Server erforderlich';
+
+  @override
+  String get exitsDelete => 'Ausgang löschen';
+
+  @override
+  String get exitsNoServers =>
+      'Keine Server – importieren Sie zuerst ein Abonnement';
+
+  @override
+  String get exitsSearch => 'Server suchen';
+
+  @override
+  String get exitsPickAtLeastOne => 'Wählen Sie mindestens einen Server';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Panel-Profile „Auto“ und hysteria2 können nicht als eigener Ausgang laufen: Sie werden vom anderen Kern bedient. Solche Server sind in der Liste deaktiviert.';
+
+  @override
+  String get infoExits =>
+      'Ein Ausgang ist das Ziel einer „Tunnel“-Regel.\n\nStandardmäßig besteht ein Ausgang aus EINEM Server und kostet im Hintergrund nichts: Gewöhnliche Protokolle halten keine dauerhafte Verbindung. Eine Gruppe mehrerer Server mit Auto-Auswahl wird nur gebraucht, wenn Absicherung gegen Knotenausfall zählt — sie fügt regelmäßige Messungen hinzu, auf dem Telefon sind das Funk-Weckvorgänge.\n\nEin Ausgang ergibt NUR bei der Aktion „Tunnel“ Sinn. „Direkt über Deutschland“ ist ein Widerspruch: Eine direkte Regel umgeht alle Ausgänge.\n\nEine Seite und ihre Subdomain dürfen in VERSCHIEDENE Ausgänge gehen — die App stellt die konkretere Regel nach oben, sonst würde der Elternteil die Subdomain verschlucken.\n\nWICHTIG: Mit dem Systemproxy unter Windows funktionieren Ausgänge gar nicht — in diesem Modus werden keine Routing-Regeln gebaut. Der Tunnelmodus ist nötig.';
+
+  @override
+  String get ruleServer => 'Über Server';
+
+  @override
+  String get ruleServerCurrent => 'Wie der Hauptserver';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Wie der Hauptserver ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Abgleich über den Dateinamen';
+
+  @override
+  String get routeYourApps => 'Ihre Apps';
+
+  @override
+  String get routeYourSites => 'Ihre Websites';
+
+  @override
+  String get routeAppsAndSites => 'Apps und Websites';
+
+  @override
+  String get notifCompactTitle => 'Kompakte Benachrichtigung';
+
+  @override
+  String get notifCompactSub =>
+      'Aus: Abonnement, Server und Geschwindigkeit, mit Schaltflächen. Ein: in der Kopfzeile App und Abonnement, darunter der Server — ohne Geschwindigkeit und ohne Schaltflächen.';
+
+  @override
+  String get localProxyAuthTitle => 'Passwort für den lokalen Proxy';
+
+  @override
+  String get localProxyAuthInfo =>
+      'Der lokale Port des Kerns (127.0.0.1) ist ein vollwertiger Proxy in Ihr VPN. Ohne Passwort verbindet sich jedes Programm auf demselben Gerät damit und bekommt Ihren Tunnel komplett: die Ausgangs-IP, das Kontingent Ihres Abonnements und die Umgehung Ihrer eigenen Split-Tunneling-Regeln — auch für Apps, die Sie auf „Blockieren“ gesetzt haben. Unter Android ist das besonders wichtig: Dort sieht jede installierte App die lokalen Ports.\n\nSchalten Sie es nur aus, wenn Sie diesen Proxy bewusst mit etwas nutzen, das keine Authentifizierung beherrscht.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Aus: Der lokale Proxy steht jedem Programm auf dem Gerät offen';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'Im Modus „Systemproxy“ wirkungslos: Windows kann dem lokalen Proxy kein Passwort übergeben. Gilt im TUN-Modus.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'Bei jeder Verbindung ein neues Zufallspasswort — wird nirgends gespeichert';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Eigener Benutzername und eigenes Passwort (in der Einstellungsdatei gespeichert)';
+
+  @override
+  String get localProxyCredsTitle => 'Eigener Benutzername und Passwort';
+
+  @override
+  String get localProxyCredsUnset =>
+      'Nicht festgelegt — es wird ein Zufallspasswort verwendet';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Benutzername: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle =>
+      'Benutzername und Passwort des lokalen Proxys';
+
+  @override
+  String get localProxyDialogBody =>
+      'Nur nötig, wenn Sie unseren Proxy (127.0.0.1) selbst in einem anderen Programm eintragen. Lassen Sie die Felder leer — dann ist das Passwort bei jeder Verbindung zufällig: Es wird nirgends gespeichert und landet in keiner Sicherung.';
+
+  @override
+  String get localProxyFieldUser => 'Benutzername';
+
+  @override
+  String get localProxyFieldPassword => 'Passwort';
+
+  @override
+  String get localProxyFieldHint => 'leer — zufällig';
+
+  @override
+  String get lockdownOnTitle => 'Systemweiter Schutz ist aktiv';
+
+  @override
+  String get lockdownOnSub =>
+      'Der Verkehr ist blockiert, selbst wenn die App geschlossen oder vom System beendet wird. Das ist der zuverlässigste Modus.';
+
+  @override
+  String get lockdownHalfTitle => 'Schutz nur zur Hälfte aktiv';
+
+  @override
+  String get lockdownHalfSub =>
+      '„Immer aktives VPN“ ist eingerichtet, aber „Verbindungen ohne VPN blockieren“ ist aus. Solange die App läuft, ist der Verkehr geschützt; beendet das System sie, geht er ungeschützt hinaus.';
+
+  @override
+  String get lockdownOffTitle => 'Systemweiter Schutz ist aus';
+
+  @override
+  String get lockdownOffSub =>
+      'Unser Kill-Switch hält den Verkehr, solange die App läuft. Beendet das System sie, geht der Verkehr am VPN vorbei. Aktivieren Sie „Immer aktives VPN“ und „Verbindungen ohne VPN blockieren“.';
+
+  @override
+  String get lockdownUnknownTitle => 'Systemweiter Schutz: Zustand unbekannt';
+
+  @override
+  String get lockdownUnknownSub =>
+      'Der Zustand lässt sich erst ab Android 10 und nur bei aktivem Tunnel abfragen. Prüfen Sie es von Hand: „Immer aktives VPN“ und „Verbindungen ohne VPN blockieren“.';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Die VPN-Systemeinstellungen ließen sich nicht öffnen. Suchen Sie sie von Hand: Einstellungen → Netzwerk und Internet → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Über blockierte Websites informieren';
+
+  @override
+  String get blockNoticeSub =>
+      'Wenn eine App oder der Browser eine Website aus der Sperrliste anfragt, erscheint unten eine Benachrichtigung mit ihrem Namen. Ein Tippen öffnet diesen Bildschirm.';
+
+  @override
+  String get siteInsecureScheme =>
+      'Die Adresse ist als http:// angegeben — die Verbindung ist unverschlüsselt und der Anbieter sieht sie vollständig. Entfernen Sie „http://“, damit der Browser https verwendet.';
+
+  @override
+  String get exitServerGone =>
+      'Der Server dieser Regel ist aus dem Abonnement verschwunden — der Verkehr läuft über den Haupttunnel';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nDieser Server kann nicht als eigener Ausgang laufen: Panel-Profile „Auto“ und einen Teil der Protokolle beherrscht nur Xray, die Ausgänge verteilt aber sing-box. Der Verkehr dieser Regel läuft über den Haupttunnel.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Regeln';
+
+  @override
+  String get geoVerdictMissingTitle => 'Geodatenbanken nicht heruntergeladen';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'Die Abonnement-Regeln nach Land und Kategorie sind derzeit deaktiviert — dieser Verkehr läuft über das VPN statt direkt.';
+
+  @override
+  String get geoVerdictUnusableTitle =>
+      'Der Kern konnte die Geodatenbanken nicht öffnen';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'Die Dateien sind vorhanden, aber der Kern hat sie nicht gelesen. Ein erneutes Herunterladen hilft.';
 }

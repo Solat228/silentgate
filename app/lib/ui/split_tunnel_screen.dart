@@ -1,3 +1,7 @@
+import '../core/models/vpn_server.dart';
+import '../core/util/country_flag.dart';
+import 'package:country_flags/country_flags.dart';
+import '../state/app_state.dart';
 import 'dart:io' show Platform;
 
 import 'package:file_selector/file_selector.dart';
@@ -8,12 +12,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
-import '../core/platform/app_launcher.dart';
-import '../core/net/block_page_server.dart';
+import '../core/singbox/singbox_outbound_factory.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
 import 'widgets/app_icon.dart';
+import 'widgets/app_label.dart';
 import 'widgets/route_diagram.dart';
 import 'widgets/site_favicon.dart';
 import 'widgets/info_tooltip.dart';
@@ -28,6 +32,9 @@ class SplitTunnelScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<SettingsController>();
+    // Серверы и текущий выбор — из состояния приложения: правило указывает на
+    // сервер напрямую, поэтому список нужен и строкам, и диалогам.
+    final state = context.watch<AppState>();
     final st = controller.settings.splitTunnel;
     // #2 — при системном прокси раздельное туннелирование не работает
     // (приложения сами решают, ходить ли через прокси): контролы серые.
@@ -101,6 +108,10 @@ class SplitTunnelScreen extends StatelessWidget {
                       )),
                   // #14.2 — наглядно, как пойдёт трафик при текущем режиме.
                   RouteDiagram(split: st),
+                  const Divider(),
+                  // ⚠️ ВЫШЕ блока «списки при не-all режиме» намеренно: выходы
+                  // действуют и в режиме «Всё через VPN». Там нет ни «Прямо»,
+                  // ни «Блока», но вопрос «в какой туннель» остаётся.
                   // «Все через VPN» — исключений нет, списки приложений/сайтов не
                   // показываем: и так понятно, что весь трафик идёт через VPN.
                   if (st.mode != SplitMode.all) ...[
@@ -126,10 +137,12 @@ class SplitTunnelScreen extends StatelessWidget {
                             AppIcon(path: rule.path), // #1 — реальная иконка exe
                           ]),
                           dense: context.sg.isCompact,
-                          title: Text(rule.name,
-                              textDirection: TextDirection.ltr,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
+                          // Человеческое имя приложения, а не ключ правила. На
+                          // Windows ключ и есть имя файла, на Android — имя
+                          // пакета, и без этого в строке стояло
+                          // «com.google.android.youtube» при верной иконке.
+                          title: AppLabel(
+                              path: rule.path, fallback: rule.name),
                           subtitle: _ruleSubtitle(
                             context,
                             rule.enabled
@@ -156,6 +169,10 @@ class SplitTunnelScreen extends StatelessWidget {
                           // и освобождает 48 dp. На десктопе она остаётся: там
                           // мышь, hover и подсказка работают, а места хватает.
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                            _ServerBadge(
+                                servers: state.servers,
+                                serverKey: rule.serverKey,
+                                action: rule.action),
                             _ActionChip(action: rule.action),
                             if (!context.sg.isCompact)
                               IconButton(
@@ -202,8 +219,14 @@ class SplitTunnelScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  ..._sortedSites(st.sites).map((e) => _siteTile(
-                        context, controller, e.site, e.depth)),
+                  ..._sortedSites(st.sites).expand((e) => [
+                        // Разделитель между группами: без него соседние сайты
+                        // читаются как один список, и поддомен одного домена
+                        // выглядит принадлежащим предыдущему.
+                        if (e.newGroup)
+                          const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16),
+                        _siteTile(context, controller, e.site, e.depth),
+                      ]),
                   Padding(
                     padding: const EdgeInsets.all(16),
                     child: _AddSiteField(controller: controller),
@@ -237,19 +260,29 @@ class SplitTunnelScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  // Стоит здесь, а не в общих настройках: заглушка касается
+                  // Стоит здесь, а не в общих настройках: уведомление касается
                   // только правил «Блок», а их заводят именно на этом экране.
                   // Показываем, лишь когда блокировка реально есть, — иначе это
                   // настройка ни для чего.
+                  //
+                  // ⚠️ ЗДЕСЬ БЫЛА СТРАНИЦА-ЗАГЛУШКА. Она подменяла ответ по
+                  // http и до пользователя почти никогда не доходила: браузеры
+                  // идут в https сразу, HSTS переписывает адрес ДО отправки
+                  // запроса, и человек видел `ERR_CONNECTION_RESET` вместо
+                  // объяснения. Подменить https без своего корневого
+                  // сертификата нельзя, а ставить такой сертификат — значит
+                  // получить возможность читать весь TLS пользователя. Поэтому
+                  // объяснение переехало туда, где оно работает всегда, —
+                  // в само приложение.
                   if (st.sites.any((x) => x.action == AppAction.block)) ...[
                     const Divider(),
                     SwitchListTile(
-                      secondary: const Icon(Icons.report_outlined),
-                      value: controller.settings.blockPageEnabled,
+                      secondary: const Icon(Icons.notifications_active_outlined),
+                      value: controller.settings.blockNoticeEnabled,
                       onChanged: (v) => controller
-                          .update((s) => s.copyWith(blockPageEnabled: v)),
-                      title: Text(l.settingsBlockPage),
-                      subtitle: SelText(l.settingsBlockPageSub,
+                          .update((s) => s.copyWith(blockNoticeEnabled: v)),
+                      title: Text(l.blockNoticeTitle),
+                      subtitle: SelText(l.blockNoticeSub,
                           style: Theme.of(context).textTheme.bodySmall),
                     ),
                   ],
@@ -372,6 +405,34 @@ class SplitTunnelScreen extends StatelessWidget {
                 .toList())));
   }
 
+  /// Назначить сайту сервер. `null` — основной туннель.
+  void _setSiteServer(SettingsController c, SiteRule site, String? key) {
+    c.update((s) => s.copyWith(
+          splitTunnel: s.splitTunnel.copyWith(
+            sites: [
+              for (final x in s.splitTunnel.sites)
+                (x.domain == site.domain && x.port == site.port)
+                    ? x.copyWith(serverKey: key, clearServer: key == null)
+                    : x
+            ],
+          ),
+        ));
+  }
+
+  /// Назначить приложению сервер. `null` — основной туннель.
+  void _setAppServer(SettingsController c, AppRule rule, String? key) {
+    c.update((s) => s.copyWith(
+          splitTunnel: s.splitTunnel.copyWith(
+            apps: [
+              for (final a in s.splitTunnel.apps)
+                a.path == rule.path
+                    ? a.copyWith(serverKey: key, clearServer: key == null)
+                    : a
+            ],
+          ),
+        ));
+  }
+
   void _setSiteAllowRealIp(SettingsController c, SiteRule site, bool value) {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
@@ -380,30 +441,94 @@ class SplitTunnelScreen extends StatelessWidget {
                 .toList())));
   }
 
-  /// Упорядочивает сайты для показа деревом: группируем по «корневому» домену
-  /// (`example.com`), внутри группы корень идёт первым, поддомены — под ним с
-  /// отступом (глубина = число «лишних» уровней относительно корня).
-  static List<({SiteRule site, int depth})> _sortedSites(List<SiteRule> sites) {
+  /// Упорядочивает сайты для показа деревом.
+  ///
+  /// Группируем по «корневому» домену (`example.com`), внутри группы корень
+  /// идёт первым, поддомены — под ним с отступом. [newGroup] помечает первую
+  /// строку каждой группы: по ней рисуется разделитель, иначе соседние группы
+  /// сливаются в один список.
+  ///
+  /// ⚠️ ГЛУБИНА СЧИТАЕТСЯ ПО РЕАЛЬНО ПРИСУТСТВУЮЩИМ ПРЕДКАМ, А НЕ ПО
+  /// ВЫЧИСЛЕННОМУ КОРНЮ. Раньше отступ брался как «число лишних уровней
+  /// относительно `baseDomain`», и строка получала его даже тогда, когда
+  /// родителя в списке НЕТ. У владельца это выглядело так: `xtls.github.com`
+  /// стоял с отступом сразу под `dnsleaktest.com` — то есть читался как его
+  /// поддомен, хотя не имеет к нему отношения вовсе. Ошибка чисто
+  /// отображательная (маршруты строятся отдельно), но она заставляет искать
+  /// поломку в конфиге, которой там нет.
+  /// Раскладка дерева для теста: логика чистая, а поднимать ради неё виджеты
+  /// значило бы проверять Flutter вместо своего кода.
+  @visibleForTesting
+  static List<({SiteRule site, int depth, bool newGroup})> debugSortedSites(
+          List<SiteRule> sites) =>
+      _sortedSites(sites);
+
+  static List<({SiteRule site, int depth, bool newGroup})> _sortedSites(
+      List<SiteRule> sites) {
+    // ⚠️ СОРТИРУЕМ ПО ПЕРЕВЁРНУТЫМ МЕТКАМ, А НЕ ПО ПАРЕ «КОРЕНЬ + ЧИСЛО ТОЧЕК».
+    //
+    // `a.b.example.com` → `[com, example, b, a]`, дальше обычное лексикографи-
+    // ческое сравнение. Это честный обход дерева сверху вниз: предок по
+    // построению оказывается перед любым своим потомком, а ветви не
+    // перемешиваются.
+    //
+    // Прежний порядок «сначала baseDomain, потом число меток» давал два
+    // разных дефекта, и оба нашлись проверкой:
+    //  1. голый публичный суффикс в списке (`co.uk` рядом с `bbc.co.uk`)
+    //     уезжал ПОД своего потомка: у них разный `baseDomain`, и ключи
+    //     сравнивались как чужие;
+    //  2. внутри группы сортировка по ЧИСЛУ меток — это обход в ширину:
+    //     `x.a.example.com` вставал после `b.example.com`, то есть прилипал
+    //     отступом к чужому соседу. Ровно тот класс ошибки, ради которого
+    //     правка и делалась.
+    // Регистр учитываем ЗДЕСЬ ЖЕ: `depthOf` его нормализует, и компаратор
+    // обязан вести себя так же, иначе `Example.COM` и `sub.example.com`
+    // разъезжаются.
+    List<String> key(SiteRule s) =>
+        s.domain.toLowerCase().split('.').reversed.toList();
     final ordered = [...sites];
     ordered.sort((a, b) {
-      final ba = baseDomain(a.domain), bb = baseDomain(b.domain);
-      if (ba != bb) return ba.compareTo(bb);
-      final la = a.domain.split('.').length, lb = b.domain.split('.').length;
-      if (la != lb) return la.compareTo(lb); // корень (короче) — выше
-      final d = a.domain.compareTo(b.domain);
-      return d != 0 ? d : (a.port ?? 0).compareTo(b.port ?? 0);
+      final ka = key(a), kb = key(b);
+      for (var i = 0; i < ka.length && i < kb.length; i++) {
+        final c = ka[i].compareTo(kb[i]);
+        if (c != 0) return c;
+      }
+      if (ka.length != kb.length) return ka.length.compareTo(kb.length);
+      return (a.port ?? 0).compareTo(b.port ?? 0);
     });
-    return ordered.map((s) {
+
+    final present = ordered.map((s) => s.domain.toLowerCase()).toSet();
+    // Сколько предков этого домена реально есть в списке: столько отступов и
+    // рисуем. `a.b.example.com` при наличии только `example.com` получит 1, а
+    // не 2 — промежуточного уровня в списке нет, и «ступенька» в пустоту
+    // выглядела бы как пропущенная строка.
+    int depthOf(String domain) {
+      final d = domain.toLowerCase();
+      var n = 0;
+      final parts = d.split('.');
+      for (var i = 1; i < parts.length; i++) {
+        if (present.contains(parts.sublist(i).join('.'))) n++;
+      }
+      return n;
+    }
+
+    String? prevBase;
+    final out = <({SiteRule site, int depth, bool newGroup})>[];
+    for (final s in ordered) {
       final base = baseDomain(s.domain);
-      final depth = s.domain == base
-          ? 0
-          : s.domain.split('.').length - base.split('.').length;
-      return (site: s, depth: depth);
-    }).toList();
+      out.add((
+        site: s,
+        depth: depthOf(s.domain),
+        newGroup: prevBase != null && prevBase != base,
+      ));
+      prevBase = base;
+    }
+    return out;
   }
 
   Widget _siteTile(BuildContext context, SettingsController controller,
       SiteRule site, int depth) {
+    final state = context.read<AppState>();
     final l = AppLocalizations.of(context);
     final indent = 16.0 + depth * 22.0;
     return ListTile(
@@ -413,9 +538,32 @@ class SplitTunnelScreen extends StatelessWidget {
         if (depth > 0)
           Icon(Icons.subdirectory_arrow_right,
               size: 18, color: Theme.of(context).disabledColor),
+        // ⚠️ Открытый замок — ровно то же предупреждение, что показывает
+        // браузер. `http://` означает, что провайдер видит соединение целиком:
+        // и адрес страницы, и параметры запроса, и содержимое. Правило от
+        // этого не спасает — оно решает, КУДА идёт трафик, а не шифрует его.
+        // Показываем только когда схему написал сам пользователь: додумывать
+        // за него, чего он не писал, нельзя.
+        if (site.insecureScheme)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 4),
+            child: Tooltip(
+              message: l.siteInsecureScheme,
+              child: Icon(Icons.no_encryption_gmailerrorred_outlined,
+                  size: 18, color: Theme.of(context).colorScheme.error),
+            ),
+          ),
         SiteFavicon(domain: site.domain),
       ]),
-      title: Text(site.label, textDirection: TextDirection.ltr),
+      // ⚠️ У ПОДДОМЕНА ПОКАЗЫВАЕМ ТОЛЬКО ЕГО ЧАСТЬ, а общий хвост приглушаем.
+      // Иначе в столбце стоят три почти одинаковые строки, отличающиеся первым
+      // словом, и разница между `xtls.github.io` и `github.io` теряется — а от
+      // неё зависит, какое правило сработает.
+      title: depth > 0
+          ? _SubdomainLabel(site: site)
+          : Text(site.label,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: _ruleSubtitle(
           context,
           site.port != null ? l.splitOnlyPort(site.port!) : null,
@@ -423,30 +571,13 @@ class SplitTunnelScreen extends StatelessWidget {
           allowRealIp: site.allowRealIp,
           noRealIp: controller.settings.noRealIp),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        _ServerBadge(
+            servers: state.servers,
+            serverKey: site.serverKey,
+            action: site.action),
         _ActionChip(action: site.action),
         // Показать заглушку вручную.
         //
-        // ⚠️ Иначе увидеть её почти невозможно: перехватывается только plain
-        // HTTP, а браузеры повышают http до https сами (HSTS, HTTPS-First).
-        // Пользователь набирает адрес — браузер молча уходит на 443, где его
-        // ждёт reject, и вместо объяснения человек видит обычную ошибку
-        // соединения. Ссылка на петлю таким повышением не затрагивается.
-        if (site.action == AppAction.block &&
-            controller.settings.blockPageEnabled)
-          IconButton(
-            tooltip: l.splitShowBlockPage,
-            icon: const Icon(Icons.open_in_new),
-            onPressed: () {
-              final url = BlockPageServer.urlFor(site.domain);
-              if (url == null) {
-                // Сервер заглушки живёт только при поднятом туннеле.
-                AppToast.show(context, l.splitBlockPageNeedsVpn,
-                    kind: ToastKind.info);
-                return;
-              }
-              UrlOpener.open(url);
-            },
-          ),
         IconButton(
           tooltip: l.splitRemove,
           icon: const Icon(Icons.delete_outline),
@@ -492,10 +623,19 @@ class SplitTunnelScreen extends StatelessWidget {
   /// Диалог настройки приложения: действие + способ сопоставления.
   Future<void> _appDialog(
       BuildContext context, SettingsController c, AppRule rule) async {
+    final state = context.read<AppState>();
     await showDialog<void>(
       context: context,
       builder: (ctx) => _RuleDialog(
-        title: rule.name,
+        servers: state.servers,
+        currentServer: state.selectedServer,
+        serverKey: rule.serverKey,
+        onServer: (key) => _setAppServer(c, rule, key),
+        // Строка списка уже прогрела кэш меток — берём готовую.
+        title: (hasPlatformServices
+                ? platform.appCatalog.cachedLabel(rule.path)
+                : null) ??
+            rule.name,
         copySource: rule.path,
         action: rule.action,
         byName: rule.byName,
@@ -513,6 +653,7 @@ class SplitTunnelScreen extends StatelessWidget {
   /// Диалог настройки сайта: действие + необязательный порт.
   Future<void> _siteDialog(
       BuildContext context, SettingsController c, SiteRule site) async {
+    final state = context.read<AppState>();
     // Порт правится «на месте»: находим актуальную запись после смены порта,
     // чтобы последующие изменения действия попадали в неё же.
     var current = site;
@@ -524,6 +665,13 @@ class SplitTunnelScreen extends StatelessWidget {
         action: site.action,
         initialPort: site.port,
         allowRealIp: c.settings.noRealIp ? site.allowRealIp : null,
+        servers: state.servers,
+        currentServer: state.selectedServer,
+        serverKey: site.serverKey,
+        onServer: (key) {
+          _setSiteServer(c, current, key);
+          current = current.copyWith(serverKey: key, clearServer: key == null);
+        },
         onAction: (a) => _updateSite(c, current, a),
         onAllowRealIp: (v) => _setSiteAllowRealIp(c, current, v),
         onPort: (p) {
@@ -715,6 +863,121 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
 }
 
 /// Метка действия приложения (Туннель / Прямо / Блок) — цвет + иконка + текст.
+/// Сервер, через который идёт правило, — плашкой рядом с чипом действия.
+///
+/// Ничего не рисует, когда сервер не задан или действие не «Туннель»: правило
+/// без явного сервера идёт через основной, и плашка «как у всех» у каждой
+/// строки только съедала бы ширину, которой на телефоне и так впритык.
+///
+/// ⚠️ ШИРИНА РЕШАЕТ, ЧТО ПОКАЗАТЬ. Просьба владельца — «старайся вписать полное
+/// название сервера, или оставляй только флаг». Поэтому здесь не фиксированная
+/// ширина, а [LayoutBuilder]: пока имя влезает — показываем имя целиком, стало
+/// тесно — остаётся один флаг, а если флага у сервера нет, имя обрезается.
+/// Числом это не задать: на телефоне и в широком окне «влезает» разное.
+class _ServerBadge extends StatelessWidget {
+  final List<VpnServer> servers;
+  final String? serverKey;
+  final AppAction action;
+
+  const _ServerBadge(
+      {required this.servers, required this.serverKey, required this.action});
+
+  @override
+  Widget build(BuildContext context) {
+    if (action != AppAction.tunnel || serverKey == null) {
+      return const SizedBox.shrink();
+    }
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+    VpnServer? server;
+    for (final s in servers) {
+      if (s.key == serverKey) {
+        server = s;
+        break;
+      }
+    }
+    // Сервер исчез из подписки, пока правило лежало. Показываем это явно:
+    // трафик пойдёт основным туннелем, а молчащая строка выглядела бы
+    // настроенной — человек искал бы поломку не там.
+    if (server == null) {
+      return Tooltip(
+        message: l.exitServerGone,
+        child: Container(
+          margin: const EdgeInsetsDirectional.only(end: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: scheme.errorContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(Icons.link_off, size: 13, color: scheme.onErrorContainer),
+        ),
+      );
+    }
+    final name = server.displayName;
+    final iso = FlagUtil.isoFromName(name);
+    // ⚠️ СЕРВЕР МОЖЕТ БЫТЬ ВЫБРАН И ПРИ ЭТОМ НЕ РАБОТАТЬ ОТДЕЛЬНЫМ ВЫХОДОМ.
+    //
+    // Панельный профиль «Авто» — это готовый конфиг Xray целиком, а вторым
+    // выходом трафик разводит sing-box: собрать из такого профиля outbound он
+    // не может. Правило остаётся валидным и молча идёт основным туннелем —
+    // ровно тот класс дефектов, за который в этом проекте платили дороже всего:
+    // «настройка видна, выглядит рабочей и ничего не делает».
+    // Владелец решил (07.08.2026) выбор разрешать, но предупреждать.
+    final unsupported = !SingboxOutboundFactory.supports(server);
+    return LayoutBuilder(builder: (context, box) {
+      final tight = box.maxWidth < 132;
+      final flagOnly = tight && iso != null;
+      return Tooltip(
+        message: unsupported
+            ? '$name\n\nЭтот сервер нельзя поднять отдельным выходом: '
+                'панельные профили «Авто» и часть протоколов умеет только Xray, '
+                'а выходы разводит sing-box. Трафик правила идёт основным туннелем.'
+            : name,
+        child: Container(
+          margin: const EdgeInsetsDirectional.only(end: 6),
+          padding: EdgeInsets.symmetric(
+              horizontal: flagOnly ? 5 : 8, vertical: 3),
+          decoration: BoxDecoration(
+            // Непригодный сервер красим предупреждением, а не основным цветом:
+            // одинаковая плашка означала бы «настроено и работает».
+            color: unsupported
+                ? scheme.tertiaryContainer
+                : scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            if (unsupported)
+              Icon(Icons.warning_amber_rounded,
+                  size: 13, color: scheme.onTertiaryContainer)
+            else if (iso != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: CountryFlag.fromCountryCode(iso, width: 16, height: 12),
+              )
+            else
+              Icon(Icons.alt_route, size: 13, color: scheme.onPrimaryContainer),
+            // Тесно и флаг есть — он и опознаёт сервер, текст только мешает.
+            if (!flagOnly) ...[
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: unsupported
+                          ? scheme.onTertiaryContainer
+                          : scheme.onPrimaryContainer),
+                ),
+              ),
+            ],
+          ]),
+        ),
+      );
+    });
+  }
+}
+
 class _ActionChip extends StatelessWidget {
   final AppAction action;
   const _ActionChip({required this.action});
@@ -771,6 +1034,18 @@ class _RuleDialog extends StatefulWidget {
   final bool? overrideSites;
   final ValueChanged<bool>? onOverrideSites;
 
+  /// Серверы подписки и текущий выбор правила.
+  ///
+  /// ⚠️ Показываем ТОЛЬКО при действии «Туннель». «Прямо через Германию» —
+  /// противоречие: прямое правило идёт мимо всех туннелей, и такой выбор был бы
+  /// контролом, который видно и который ничего не делает.
+  final List<VpnServer> servers;
+
+  /// Сервер, выбранный на главном экране: он и стоит по умолчанию.
+  final VpnServer? currentServer;
+  final String? serverKey;
+  final ValueChanged<String?>? onServer;
+
   const _RuleDialog({
     required this.title,
     required this.action,
@@ -784,6 +1059,10 @@ class _RuleDialog extends StatefulWidget {
     this.onAllowRealIp,
     this.overrideSites,
     this.onOverrideSites,
+    this.servers = const [],
+    this.currentServer,
+    this.serverKey,
+    this.onServer,
   });
 
   @override
@@ -796,6 +1075,7 @@ class _RuleDialogState extends State<_RuleDialog> {
   late bool _allowRealIp = widget.allowRealIp ?? true;
 
   late bool _overrideSites = widget.overrideSites ?? false;
+  late String? _serverKey = widget.serverKey;
   late final TextEditingController _port =
       TextEditingController(text: widget.initialPort?.toString() ?? '');
   String? _portError;
@@ -867,6 +1147,57 @@ class _RuleDialogState extends State<_RuleDialog> {
               title: Text(appActionLabel(l, a)),
               secondary: _actionIcon(context, a),
             ),
+          // Сервер — только у «Туннеля»: см. оговорку у поля servers.
+          if (widget.onServer != null &&
+              widget.servers.isNotEmpty &&
+              _action == AppAction.tunnel) ...[
+            const Divider(),
+            Text(l.ruleServer),
+            const SizedBox(height: 6),
+            DropdownButtonFormField<String?>(
+              // ⚠️ Значение сверяем со СПИСКОМ: сервер мог пропасть из
+              // подписки, пока диалог не открывали. Дай мы Dropdown значение,
+              // которого нет в items, Flutter упал бы с утверждением — на
+              // ровном месте.
+              initialValue: widget.servers.any((x) => x.key == _serverKey)
+                  ? _serverKey
+                  : null,
+              isDense: true,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: OutlineInputBorder(),
+              ),
+              items: [
+                // ⚠️ Умолчание — «тот, что включён сейчас», и оно НЕ
+                // фиксируется ключом. Запиши мы сюда текущий сервер, правило
+                // застряло бы на нём навсегда: пользователь сменил бы сервер на
+                // главном экране, а правило продолжало ходить через прежнюю
+                // страну — молча, при том что в строке написано «Туннель».
+                DropdownMenuItem<String?>(
+                  value: null,
+                  child: Text(
+                    widget.currentServer == null
+                        ? l.ruleServerCurrent
+                        : l.ruleServerCurrentNamed(
+                            widget.currentServer!.displayName),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                for (final x in widget.servers)
+                  DropdownMenuItem<String?>(
+                    value: x.key,
+                    child: Text(x.displayName,
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+              ],
+              onChanged: (v) {
+                setState(() => _serverKey = v);
+                widget.onServer?.call(v);
+              },
+            ),
+          ],
           // Видно только у «Прямо» и только когда включено «Не выходить под
           // реальным IP»: в остальных случаях выбора нет — прямое правило и так
           // идёт мимо VPN.
@@ -1010,7 +1341,13 @@ class _AddSiteFieldState extends State<_AddSiteField> {
       return s.copyWith(
           splitTunnel: s.splitTunnel.copyWith(
               sites: [...s.splitTunnel.sites,
-                SiteRule(domain, port: port, action: s.splitTunnel.defaultAction)]));
+                SiteRule(domain,
+                    port: port,
+                    action: s.splitTunnel.defaultAction,
+                    // Схему запоминаем ТОЛЬКО если пользователь написал её сам:
+                    // `normalizeDomain` её срезает, и после этого отличить
+                    // «http://site.com» от «site.com» уже нельзя.
+                    insecureScheme: hasInsecureScheme(_controller.text))]));
     });
     _controller.clear();
     _portController.clear();
@@ -1063,5 +1400,45 @@ class _AddSiteFieldState extends State<_AddSiteField> {
         child: FilledButton(onPressed: _add, child: Text(l.splitAdd)),
       ),
     ]);
+  }
+}
+
+/// Подпись поддомена: своя часть — обычным цветом, общий хвост — приглушённым.
+///
+/// ⚠️ Зачем не просто `Text(domain)`. В дереве подряд стоят `github.io` и
+/// `xtls.github.io`; читаются они почти одинаково, а ведут себя по-разному —
+/// от того, какой из них совпал, зависит и маршрут, и резолвер. Выделяя ту
+/// часть, которой строки ОТЛИЧАЮТСЯ, мы делаем разницу видимой без лишних
+/// пояснений.
+class _SubdomainLabel extends StatelessWidget {
+  final SiteRule site;
+
+  const _SubdomainLabel({required this.site});
+
+  @override
+  Widget build(BuildContext context) {
+    final base = baseDomain(site.domain);
+    final d = site.domain;
+    // Хвост совпал — значит есть своя часть; иначе рисуем как есть.
+    final own = d.toLowerCase().endsWith('.${base.toLowerCase()}')
+        ? d.substring(0, d.length - base.length - 1)
+        : '';
+    final muted = Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.55);
+    final port = site.port == null ? '' : ':${site.port}';
+    if (own.isEmpty) {
+      return Text('$d$port', textDirection: TextDirection.ltr);
+    }
+    return RichText(
+      textDirection: TextDirection.ltr,
+      overflow: TextOverflow.ellipsis,
+      text: TextSpan(
+        style: Theme.of(context).textTheme.bodyMedium,
+        children: [
+          TextSpan(
+              text: own, style: const TextStyle(fontWeight: FontWeight.w600)),
+          TextSpan(text: '.$base$port', style: TextStyle(color: muted)),
+        ],
+      ),
+    );
   }
 }

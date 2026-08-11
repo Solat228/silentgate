@@ -724,5 +724,84 @@
   },
   "infoGeoAssets": "Les fichiers geoip.dat et geosite.dat sont des listes d'adresses par pays et de domaines par catégorie (par exemple « sites russes », « services publics », « VK »). Les règles de routage définies par le panneau de votre abonnement s'appuient sur eux.\n\nIls ne sont pas intégrés à l'application : à eux deux, ils pèsent environ 30 MB, et tout le monde n'en a pas besoin — un serveur ordinaire ne les utilise pas du tout.\n\nTant que les fichiers sont absents, ces règles sont retirées de la configuration, et le trafic qu'elles faisaient passer en direct emprunte le VPN. C'est sûr, mais plus lent, et les sites locaux peuvent refuser l'accès depuis une adresse étrangère. Vos règles de sites et d'applications, elles, fonctionnent dans tous les cas — elles ne dépendent pas de ces fichiers.",
   "supportBullet2Android": "• Après l'appui, le rapport sera rassemblé dans un seul fichier et la fenêtre système « Partager » s'ouvrira — choisissez Telegram et il partira en une seule pièce jointe. Décrivez le problème dans le champ ci-dessus : sans description, il n'y a rien à analyser.",
-  "supportDoneTextAndroid": "Le rapport est rassemblé dans un seul fichier. Choisissez dans la fenêtre système où l'envoyer — sur Telegram il partira en pièce jointe, et non en texte."
+  "supportDoneTextAndroid": "Le rapport est rassemblé dans un seul fichier. Choisissez dans la fenêtre système où l'envoyer — sur Telegram il partira en pièce jointe, et non en texte.",
+  "exitsHeader": "Sorties",
+  "exitsHint": "Une règle « Tunnel » peut être dirigée vers une sortie précise : un site via l’Allemagne, un autre via les États-Unis. Sans sortie, la règle emprunte le tunnel principal, comme avant.",
+  "exitsAdd": "Ajouter une sortie",
+  "exitsEmpty": "Aucune sortie pour l’instant",
+  "exitsName": "Nom",
+  "exitsNameHint": "Allemagne",
+  "exitsServers": "Serveurs",
+  "exitsAutoSelect": "Sélection automatique par latence",
+  "exitsAutoSelectSub": "Le cœur maintient le trafic sur un serveur actif. Le coût : chaque serveur est sondé toutes les trois minutes, ce qui réveille la radio du téléphone.",
+  "exitsAutoSelectNeedsTwo": "Au moins deux serveurs sont nécessaires",
+  "exitsDelete": "Supprimer la sortie",
+  "exitsNoServers": "Aucun serveur — importez d’abord un abonnement",
+  "exitsSearch": "Rechercher un serveur",
+  "exitsPickAtLeastOne": "Sélectionnez au moins un serveur",
+  "exitsUnsupportedNote": "Les profils « Auto » du panneau et hysteria2 ne peuvent pas servir de sortie séparée : ils dépendent de l’autre cœur. Ces serveurs sont désactivés dans la liste.",
+  "infoExits": "Une sortie est la destination d’une règle « Tunnel ».\n\nPar défaut, une sortie est UN seul serveur et ne coûte rien en arrière-plan : les protocoles ordinaires ne maintiennent pas de connexion permanente. Un groupe de plusieurs serveurs avec sélection automatique n’est utile que si la tolérance à la panne d’un nœud importe : elle ajoute des sondages périodiques, et sur téléphone ce sont des réveils radio.\n\nLa sortie n’a de sens qu’avec l’action « Tunnel ». « Direct via l’Allemagne » est une contradiction : une règle directe contourne toutes les sorties.\n\nUn site et son sous-domaine peuvent aller vers des sorties DIFFÉRENTES — l’application place la règle la plus précise au-dessus, sinon le parent absorberait le sous-domaine.\n\nIMPORTANT : avec le proxy système sous Windows, les sorties ne fonctionnent pas — aucune règle de routage n’y est construite. Le mode tunnel est nécessaire.",
+  "ruleServer": "Via le serveur",
+  "ruleServerCurrent": "Comme le principal",
+  "ruleServerCurrentNamed": "Comme le principal ({server})",
+  "@ruleServerCurrentNamed": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "routeMatchByName": "Correspondance par nom de fichier",
+  "routeYourApps": "Vos applications",
+  "routeYourSites": "Vos sites",
+  "routeAppsAndSites": "Applications et sites",
+  "notifCompactTitle": "Notification compacte",
+  "notifCompactSub": "Désactivé — abonnement, serveur et vitesse, avec les boutons. Activé — l'application et l'abonnement dans le titre, le serveur en dessous, sans la vitesse ni les boutons.",
+  "localProxyAuthTitle": "Mot de passe du proxy local",
+  "localProxyAuthInfo": "Le port local du cœur (127.0.0.1) est un vrai proxy vers votre VPN. Sans mot de passe, n'importe quel programme du même appareil s'y connecte et récupère tout votre tunnel : l'IP de sortie, le quota de l'abonnement et le contournement de vos propres règles de tunneling fractionné — y compris les applications que vous avez mises sur « Bloquer ». Sur Android, c'est encore plus important : là-bas, toute application installée voit les ports locaux.\n\nNe le désactivez que si vous utilisez sciemment ce proxy avec un programme qui ne gère pas l'authentification.",
+  "localProxyAuthOff": "Désactivé : le proxy local est ouvert à tout programme de l'appareil",
+  "localProxyAuthSystemProxy": "Sans effet en mode proxy système : Windows ne sait pas transmettre de mot de passe au proxy local. Actif en mode TUN.",
+  "localProxyAuthRandom": "Un nouveau mot de passe aléatoire à chaque connexion — il n'est enregistré nulle part",
+  "localProxyAuthCustom": "Identifiant et mot de passe personnalisés (stockés dans le fichier de paramètres)",
+  "localProxyCredsTitle": "Identifiant et mot de passe personnalisés",
+  "localProxyCredsUnset": "Non définis — un mot de passe aléatoire est utilisé",
+  "localProxyCredsUser": "Identifiant : {user}",
+  "@localProxyCredsUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "localProxyDialogTitle": "Identifiant et mot de passe du proxy local",
+  "localProxyDialogBody": "Nécessaires uniquement si vous indiquez vous-même notre proxy (127.0.0.1) dans un programme tiers. Laissez les champs vides et le mot de passe sera aléatoire à chaque connexion : il n'est enregistré nulle part et ne se retrouve pas dans les sauvegardes.",
+  "localProxyFieldUser": "Identifiant",
+  "localProxyFieldPassword": "Mot de passe",
+  "localProxyFieldHint": "vide — aléatoire",
+  "lockdownOnTitle": "Protection système activée",
+  "lockdownOnSub": "Le trafic est bloqué même si l'application se ferme ou si le système la décharge. C'est le mode le plus fiable.",
+  "lockdownHalfTitle": "Protection à moitié activée",
+  "lockdownHalfSub": "Le VPN permanent est activé, mais « Bloquer les connexions sans VPN » est désactivé. Tant que l'application vit, le trafic est protégé ; si le système la décharge, il passera en clair.",
+  "lockdownOffTitle": "Protection système désactivée",
+  "lockdownOffSub": "Notre kill switch retient le trafic tant que l'application tourne. Si le système la décharge, le trafic passera hors VPN. Activez « VPN permanent » et « Bloquer les connexions sans VPN ».",
+  "lockdownUnknownTitle": "Protection système : état inconnu",
+  "lockdownUnknownSub": "L'état n'est lisible qu'à partir d'Android 10 et seulement quand le tunnel est actif. Vérifiez manuellement : « VPN permanent » et « Bloquer les connexions sans VPN ».",
+  "lockdownOpenFailed": "Impossible d'ouvrir les paramètres VPN du système. Trouvez-les manuellement : Paramètres → Réseau et Internet → VPN.",
+  "blockNoticeTitle": "Signaler les sites bloqués",
+  "blockNoticeSub": "Quand une application ou un navigateur essaie d'atteindre un site de la liste « Bloquer », une notification avec son nom apparaît en bas. Appuyez dessus pour ouvrir cet écran.",
+  "siteInsecureScheme": "L'adresse est saisie en http:// — la connexion n'est pas chiffrée et votre FAI la voit entièrement. Retirez « http:// » pour que le navigateur passe en https.",
+  "exitServerGone": "Le serveur de cette règle a disparu de l'abonnement — le trafic emprunte le tunnel principal",
+  "exitServerUnsupported": "{name}\n\nCe serveur ne peut pas servir de sortie séparée : les profils « Auto » du panneau et une partie des protocoles ne sont gérés que par Xray, alors que les sorties sont réparties par sing-box. Le trafic de la règle emprunte le tunnel principal.",
+  "@exitServerUnsupported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeRulesAction": "Règles",
+  "geoVerdictMissingTitle": "Bases géo non téléchargées",
+  "geoVerdictMissingSub": "Les règles de l'abonnement par pays et par catégorie sont désactivées — ce trafic passe par le VPN et non en direct.",
+  "geoVerdictUnusableTitle": "Le cœur n'a pas ouvert les bases géo",
+  "geoVerdictUnusableSub": "Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement."
 }

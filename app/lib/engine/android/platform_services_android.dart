@@ -53,7 +53,7 @@ class _AndroidAppCatalog implements AppCatalog {
     try {
       final raw = await _appsChannel.invokeListMethod<Object?>('list');
       if (raw == null) return const [];
-      return raw.whereType<Map>().map((m) {
+      final apps = raw.whereType<Map>().map((m) {
         final pkg = '${m['package'] ?? ''}';
         return CatalogApp(
           // На Android ключ правила — имя пакета (на Windows это путь к exe).
@@ -61,6 +61,10 @@ class _AndroidAppCatalog implements AppCatalog {
           label: '${m['name'] ?? pkg}',
         );
       }).where((a) => a.key.isNotEmpty).toList();
+      // Список уже принёс метки — раскладываем их в кэш, чтобы строки правил
+      // не дёргали канал по разу на приложение после закрытия выбора.
+      warmLabels({for (final a in apps) a.key: a.label});
+      return apps;
     } catch (e) {
       AppLog.w('Каталог приложений недоступен: $e');
       return const [];
@@ -70,6 +74,30 @@ class _AndroidAppCatalog implements AppCatalog {
   /// На Android выбирать «файл приложения» негде — правила задаются пакетом.
   @override
   bool get supportsManualPick => false;
+
+  /// Кэш меток. Статика по той же причине, что и у иконок: список правил
+  /// перестраивается на каждый кадр прокрутки.
+  static final Map<String, String?> _labels = {};
+
+  @override
+  String? cachedLabel(String key) => _labels[key];
+
+  @override
+  Future<String?> labelFor(String key) async {
+    if (_labels.containsKey(key)) return _labels[key];
+    try {
+      return _labels[key] =
+          await _appsChannel.invokeMethod<String>('label', {'package': key});
+    } catch (_) {
+      // Отрицательный ответ тоже в кэш: удалённое приложение иначе дёргало бы
+      // канал на каждой перерисовке.
+      return _labels[key] = null;
+    }
+  }
+
+  /// Прогреть кэш меток из уже полученного списка.
+  static void warmLabels(Map<String, String> byPackage) =>
+      _labels.addAll(byPackage);
 }
 
 class _AndroidAppIcons implements AppIconLoader {

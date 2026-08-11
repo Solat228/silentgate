@@ -724,51 +724,52 @@ void main() {
     });
   });
 
-  // Заглушка вместо «соединение сброшено»: пользователь должен понимать, что
-  // сайт закрыт ЕГО ЖЕ правилом, а не сломался интернет.
-  group('Страница-заглушка при блокировке', () {
+  // Уведомление вместо страницы-заглушки: подменять https без своего
+  // корневого сертификата невозможно, а браузеры идут туда сразу (HSTS
+  // переписывает адрес ДО запроса). Механизм, срабатывавший один раз из ста,
+  // заменён тем, что работает на любом протоколе, — сообщением в приложении.
+  group('Уведомление о заблокированных сайтах', () {
     const blocked = SplitTunnelConfig(
       mode: SplitMode.exceptSelected,
       sites: [SiteRule('ads.example', action: AppAction.block)],
     );
 
-    Map<String, dynamic> build({int port = 0}) => SingboxConfigBuilder(
-          options: TunOptions(blockPagePort: port, serverIps: const ['203.0.113.1']),
+    Map<String, dynamic> build({bool notice = false}) => SingboxConfigBuilder(
+          options: TunOptions(
+              blockNotice: notice, serverIps: const ['203.0.113.1']),
         ).buildMap(blocked);
 
-    test('http уводится на локальную страницу, https отвергается', () {
-      final r = rules(build(port: 18080));
-      final page = r.firstWhere((x) =>
-          x['override_port'] == 18080 &&
-          (x['domain_suffix'] as List?)?.contains('ads.example') == true);
-      expect(page['port'], [80], reason: 'подменять https нечем — только 80');
-      expect(page['override_address'], '127.0.0.1');
-      // Обычный блок остаётся: 443 и всё прочее по-прежнему режется.
-      expect(r.any((x) => x['action'] == 'reject'), isTrue);
-      // Заглушка ВЫШЕ блока ДОМЕНА, иначе reject сработает первым.
-      // Сравниваем именно с доменным блоком: выше него теперь стоит запрет
-      // QUIC (UDP:443), который к порту 80 отношения не имеет.
-      // ⚠️ Запрет QUIC теперь тоже адресуется доменом (раньше был глобальным),
-      // поэтому его надо отличать от блока по домену: он про UDP:443 и к
-      // подмене страницы на порту 80 отношения не имеет.
-      final domainBlock = r.indexWhere((x) =>
-          x['action'] == 'reject' &&
-          x.containsKey('domain_suffix') &&
-          x['network'] != 'udp');
-      expect(domainBlock, greaterThanOrEqualTo(0));
-      expect(r.indexOf(page), lessThan(domainBlock));
+    test('трафик отвергается в ЛЮБОМ случае', () {
+      // Уведомление ничего не разрешает: это подпись к блокировке, а не замена.
+      for (final notice in [false, true]) {
+        expect(rules(build(notice: notice)).any((x) => x['action'] == 'reject'),
+            isTrue,
+            reason: 'блокировка обязана работать при notice=$notice');
+      }
     });
 
-    test('домен резолвится, когда заглушка включена', () {
-      // Иначе браузер споткнётся на DNS и показывать будет нечего.
-      final d = dnsRules(build(port: 18080));
+    test('редиректа на локальную страницу больше нет', () {
+      // Механизм убран целиком: override_address/override_port не должны
+      // появляться ни при каких настройках.
+      for (final notice in [false, true]) {
+        final r = rules(build(notice: notice));
+        expect(r.any((x) => x.containsKey('override_port')), isFalse);
+        expect(r.any((x) => x.containsKey('override_address')), isFalse);
+      }
+    });
+
+    test('с уведомлением домен РЕЗОЛВИТСЯ — иначе замечать нечего', () {
+      // Блокируем действием reject на правиле МАРШРУТИЗАЦИИ. Чтобы туда дошло
+      // дело, соединение должно возникнуть, а для этого имя обязано
+      // отрезолвиться. Режем в DNS — браузер спотыкается раньше, ядро
+      // блокировки не видит, и сообщать не о чем.
+      final d = dnsRules(build(notice: true));
       expect(d.any((x) => x['action'] == 'reject'), isFalse);
     });
 
-    test('без заглушки поведение прежнее: домен не резолвится', () {
-      final d = dnsRules(build());
+    test('без уведомления режем и в DNS — так тише и быстрее', () {
+      final d = dnsRules(build(notice: false));
       expect(d.any((x) => x['action'] == 'reject'), isTrue);
-      expect(rules(build()).any((x) => x.containsKey('override_port')), isFalse);
     });
   });
 }

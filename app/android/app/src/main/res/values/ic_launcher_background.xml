@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Фон адаптивного значка: тот же фиолетовый, что и в PNG-версии. -->
+    <color name="ic_launcher_background">#3A1F66</color>
+</resources>

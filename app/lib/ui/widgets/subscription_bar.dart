@@ -13,6 +13,7 @@ import '../import_screen.dart';
 import '../settings_screen.dart';
 import 'flag_cell.dart';
 import 'subscription_avatar.dart';
+import 'subscription_switcher.dart';
 import '../../core/i18n/enum_labels.dart';
 
 /// Карточка подписки сверху: название, трафик (использовано/всего), срок, поддержка.
@@ -51,7 +52,7 @@ class SubscriptionBar extends StatelessWidget {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: state.subscriptions.length > 1
-                        ? _SubscriptionSwitcher(
+                        ? SubscriptionSwitcher(
                             title: info.title ?? l.subBarSubscription)
                         : Text(info.title ?? l.subBarSubscription,
                             // Название подписки — провайдерское: направление по
@@ -445,91 +446,3 @@ class _ExpiryLine extends StatelessWidget {
   }
 }
 
-/// Переключатель активной подписки (появляется, когда их больше одной). Оформлен
-/// заметной «плашкой» с иконкой и счётчиком — раньше был просто текст со стрелкой.
-class _SubscriptionSwitcher extends StatelessWidget {
-  final String title;
-  const _SubscriptionSwitcher({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<AppState>();
-    final scheme = Theme.of(context).colorScheme;
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () async {
-        final box = context.findRenderObject() as RenderBox?;
-        final pos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
-        final picked = await showMenu<String>(
-          context: context,
-          position: RelativeRect.fromLTRB(pos.dx, pos.dy + 40, pos.dx, pos.dy),
-          items: [
-            for (final p in state.subscriptions)
-              PopupMenuItem(
-                value: p.id,
-                child: Row(children: [
-                  // Аватарка подписки — своя у каждой (логотип из кэша либо
-                  // цветной кружок с буквой названия).
-                  SubscriptionAvatar(
-                      path: p.logoPath, label: p.title, size: 24),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text('${p.title}  ·  ${p.serverLinks.length}',
-                        // Доминирует название подписки — направление по нему.
-                        textDirection: autoTextDirection(p.title),
-                        overflow: TextOverflow.ellipsis),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    p.id == state.activeSubscriptionId
-                        ? Icons.check_circle
-                        : Icons.circle_outlined,
-                    size: 16,
-                    color: p.id == state.activeSubscriptionId
-                        ? scheme.primary
-                        : scheme.outlineVariant,
-                  ),
-                ]),
-              ),
-          ],
-        );
-        if (picked != null) await state.switchSubscription(picked);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-        decoration: BoxDecoration(
-          color: scheme.primaryContainer,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(Icons.swap_horiz, size: 16, color: scheme.onPrimaryContainer),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(title,
-                // Название подписки — направление по содержимому.
-                textDirection: autoTextDirection(title),
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis),
-          ),
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.25),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text('${state.subscriptions.length}',
-                style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: scheme.onPrimaryContainer)),
-          ),
-          Icon(Icons.arrow_drop_down, size: 18, color: scheme.onPrimaryContainer),
-        ]),
-      ),
-    );
-  }
-}

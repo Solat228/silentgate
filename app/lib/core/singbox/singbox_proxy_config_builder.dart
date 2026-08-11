@@ -36,9 +36,20 @@ class SingboxProxyConfigBuilder {
   /// Секрет генерируется на каждую сессию в движке и живёт только в памяти.
   final String apiSecret;
 
+  /// Логин и пароль локальных mixed-инбаундов (10808/10809).
+  ///
+  /// ⚠️ Без них при включённом по умолчанию пароле порты прокси-ядра
+  /// оставались открыты любому процессу машины — при том, что настройка обещает
+  /// обратное, а туннелю креды при этом ВЫДАВАЛИСЬ. Пусто — инбаунд без пароля
+  /// (режим системного прокси Windows: WinINET креденшелов не передаёт).
+  final String user;
+  final String password;
+
   const SingboxProxyConfigBuilder({
     this.ports = const SingboxProxyPorts(),
     this.apiSecret = '',
+    this.user = '',
+    this.password = '',
   });
 
   String buildJson(List<VpnServer> servers,
@@ -106,10 +117,14 @@ class SingboxProxyConfigBuilder {
     };
   }
 
-  static Map<String, dynamic> _mixed(String tag, int port) => {
+  Map<String, dynamic> _mixed(String tag, int port) => {
         'type': 'mixed',
         'tag': tag,
         'listen': '127.0.0.1',
         'listen_port': port,
+        if (user.isNotEmpty && password.isNotEmpty)
+          'users': [
+            {'username': user, 'password': password}
+          ],
       };
 }

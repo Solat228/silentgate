@@ -10,11 +10,15 @@ import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
+import '../../core/models/engine_notice.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/singbox/singbox_config_builder.dart';
+import '../../core/singbox/exit_outbounds.dart';
 import '../engine_base.dart';
+import '../vpn_engine.dart';
 import 'singbox_process.dart';
 import 'singbox_stats.dart';
+import '../../core/net/dns_fallback_server.dart';
 import 'system_proxy.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
@@ -29,6 +33,9 @@ import 'xray_stats.dart';
 /// выбор конфига и ядра — живёт в [VpnEngineBase].
 class WindowsEngine extends VpnEngineBase {
   XrayProcess? _process;
+
+  /// Локальный DNS-форвардер с запасным резолвером (см. _startFallbackDns).
+  DnsFallbackServer? _fallbackDns;
 
   /// Второе прокси-ядро: sing-box для протоколов, которых нет в Xray (hysteria2).
   /// Одновременно с [_process] не работает — какое ядро поднимать, решает
@@ -57,6 +64,16 @@ class WindowsEngine extends VpnEngineBase {
     // Восстановление после аварийного выхода прошлого запуска.
     SystemProxy.recoverIfDirty();
   }
+
+  /// ⚠️ СМЕШАННЫЙ РЕЖИМ — ТОЖЕ СИСТЕМНЫЙ ПРОКСИ. При `alsoSetSystemProxy`
+  /// прокси прописывается ДОПОЛНИТЕЛЬНО к туннелю, и в локальный порт снова
+  /// смотрит WinINET, который креденшелов не передаёт. Проверка одного лишь
+  /// `captureMode` пропускала этот случай, и весь прокси-aware трафик получал
+  /// бы 407 при включённом по умолчанию пароле.
+  @override
+  bool systemProxyModeFor(ConnectionOptions options) =>
+      options.captureMode != CaptureMode.tun ||
+      options.settings.alsoSetSystemProxy;
 
   /// Один запуск текущей сессии (первичный или повторный при восстановлении).
   @override
@@ -110,12 +127,30 @@ class WindowsEngine extends VpnEngineBase {
 
     // Порты проверяем ДО запуска: если их занял другой VPN-клиент, ядро просто
     // упадёт, и раньше пользователь видел бесполезное «Ядро завершилось при запуске».
-    final conflict =
-        await PortCheck.describeConflict([ports.socks, ports.http, ports.api]);
+    //
+    // ⚠️ НО СНАЧАЛА ЖДЁМ СВОЁ ЖЕ ЯДРО. Быстрое «Отключить → Подключить» — гонка
+    // с самим собой: прежний xray.exe уже получил kill, а слушающий сокет
+    // Windows освобождает не мгновенно. Раньше мы в этот момент либо падали с
+    // «код 1», либо объявляли собственный остаток чужим VPN-клиентом и
+    // предлагали «закройте Happ» — при том что никакого Happ у пользователя не
+    // запущено. Ожидание короткое и только пока порт реально занят.
+    // Креды локальных прокси здесь УЖЕ выданы — базой, до сборки конфига
+    // (`prepareLocalProxyAuth`). Повторять вызов нельзя: он выдал бы новый
+    // пароль, а конфиг ядра остался бы с прежним.
+    final corePorts = [ports.socks, ports.http, ports.api];
+    var conflict = await PortCheck.findConflict(corePorts);
+    if (conflict != null && conflict.heldByOwnCore) {
+      AppLog.i('Порт ${conflict.port} ещё держит наше ядро '
+          '(${conflict.holder}) — жду освобождения');
+      await PortCheck.waitFree(corePorts);
+      if (aborted()) return;
+      conflict = await PortCheck.findConflict(corePorts);
+    }
     if (conflict != null) {
-      AppLog.e('Конфликт портов: ${conflict.split("\n").first}');
+      final message = conflict.fallbackMessage;
+      AppLog.e('Конфликт портов: ${message.split("\n").first}');
       await cleanup();
-      setStatus(VpnConnectionState.error, message: conflict);
+      setStatus(VpnConnectionState.error, message: message);
       return;
     }
     if (aborted()) return;
@@ -148,6 +183,12 @@ class WindowsEngine extends VpnEngineBase {
           executable: location!.executable,
           configPath: configPath,
           assetDir: location.assetDir,
+          // ⚠️ Вывод Xray В ФАЙЛ — не «на всякий случай». Без него падение
+          // ядра выглядело в журнале как «остановилось (код 1)» и ничего
+          // больше, хотя сам Xray причину печатает внятно («порт занят»,
+          // «конфиг отвергнут»). У sing-box такой файл был давно, у Xray —
+          // нет, и разбор жалобы «весь интернет лёг» упирался в пустоту.
+          logPath: XrayProcess.logPathFor(await AppPaths.supportDir()),
         );
         _process = process;
         tailOf = () => process.tail;
@@ -155,10 +196,11 @@ class WindowsEngine extends VpnEngineBase {
         exited = process.exitCode;
       }
 
-      // Следим за неожиданным падением ядра.
+      // Следим за неожиданным падением ядра. Хвост вывода передаём вместе с
+      // кодом: код сам по себе ничего не объясняет.
       _exitWatch = exited?.asStream().listen((code) {
         if (status.isConnected || status.state == VpnConnectionState.connecting) {
-          onCoreDied(code);
+          onCoreDied(code, tail: tailOf());
         }
       });
 
@@ -191,18 +233,47 @@ class WindowsEngine extends VpnEngineBase {
         // TUN: sing-box поднимает туннель и заворачивает прокси-трафик в SOCKS Xray.
         // start() бросит TunStartException, если туннель реально не поднялся.
         _tunActive = true; // чтобы _cleanup погасил недоподнятый туннель
+        // Серверы, назначенные отдельным правилам. Собираются ТЕМ ЖЕ кодом,
+        // что на Android, — иначе платформы разъедутся на первом же правиле.
+        //
+        // ⚠️ Резолвим ДО подъёма туннеля и вместе с серверами сессии: домен,
+        // отданный ядру как есть, спрашивался бы уже из-под туннеля и замкнулся
+        // сам на себя. На живом тесте это не всплыло только потому, что оба
+        // сервера были заданы адресами, — не считать это проверкой.
+        final exitHosts = await resolveServerHosts([
+          ...servers,
+          ...options.exitServers.values,
+        ]);
+        final exitsBuilt = ExitOutbounds.build(
+          servers: options.exitServers,
+          resolvedIps: VpnEngineBase.pickOneIpPerHost(exitHosts),
+        );
+        for (final e in exitsBuilt.skipped.entries) {
+          AppLog.i('Сервер правила не поднят: ${e.value} — '
+              'эти правила пойдут основным туннелем');
+        }
+        if (exitsBuilt.outbounds.isNotEmpty) {
+          AppLog.i('Мульти-VPN: дополнительных серверов '
+              '${exitsBuilt.outbounds.length}');
+        }
         await _tunRouter.start(
           options.split,
+          exitOutbounds: exitsBuilt.outbounds,
           xraySocksPort: ports.socks,
+          xraySocksUser: localInboundUser,
+          xraySocksPassword: localInboundPassword,
           options: TunOptions.fromSettings(
             options.settings,
-            blockPagePort: await startBlockPage(options),
             serverIps: await resolveServerIps(servers),
             // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
             serverDomains: knownServerDomains,
             // Снимаем ДО подъёма туннеля: после него системный резолвер уже
             // указывает на сам туннель, и «Прямо» резолвилось бы через VPN.
             directDnsUpstream: await _systemDnsServer(),
+            // Запасной резолвер под общий DNS — только когда пользователь
+            // просил вести DNS через туннель. Без этой галочки прямой трафик и
+            // так резолвится локально, и лишнее звено не нужно.
+            fallbackDnsPort: await _startFallbackDns(options.settings),
             ipv6Available: await _ipv6Reality(),
             // API туннельного экземпляра — ТОЛЬКО для сторожа зависания.
             //
@@ -231,6 +302,12 @@ class WindowsEngine extends VpnEngineBase {
         // Сторож вооружается ТОЛЬКО когда туннель уже стоит: во время
         // автоподбора стека и MTU ядро законно молчит до двух минут.
         _startTunWatchdog(options.settings, aborted);
+        // Наблюдение за блокировками — ТОЛЬКО после подъёма туннеля: раньше
+        // Clash API ещё не слушает, и опрос уходил бы в пустоту.
+        startBlockNotice(
+            settings: options.settings,
+            apiPort: _tunApiPort,
+            secret: singboxApiSecret);
       }
 
       // ⚠️ СИСТЕМНЫЙ ПРОКСИ СТАВИТСЯ И ВМЕСТО ТУННЕЛЯ, И ВМЕСТЕ С НИМ.
@@ -271,9 +348,34 @@ class WindowsEngine extends VpnEngineBase {
           singboxCore ? null : location!.executable, singbox: singboxCore);
 
       // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
-      if (attempt > 0) AppLog.i('Соединение восстановлено (попытка $attempt)');
+      if (attempt > 0) {
+        AppLog.i('Соединение восстановлено (попытка $attempt)');
+        // Говорим вслух ТОЛЬКО когда перед этим были неудачи: обычное
+        // подключение по кнопке в сообщении не нуждается.
+        emitNotice(EngineNoticeKind.recovered, 'Соединение восстановлено',
+            detail: 'Потребовалось попыток: $attempt');
+      }
       markConnected(); // сбрасывает счётчик попыток и запускает grace смены сети
       setStatus(VpnConnectionState.connected);
+      // ⚠️ СТРОГО ПОСЛЕ «Подключено», а не рядом с подъёмом туннеля.
+      //
+      // Условие отмены у наблюдения — `aborted() || !status.isConnected`.
+      // Пока вызов стоял выше (рядом со сторожем зависания), статус был ещё
+      // `connecting`, и наблюдение глушило себя на ПЕРВОЙ же пробе. Внешне это
+      // выглядело как «сторож не работает»: в журнале ни строчки, а живой
+      // прогон в VM с отключённым адаптером не дал ничего за три минуты.
+      // На Android вызов изначально стоял после статуса — потому там и
+      // сработало. Расхождение платформ на ровном месте.
+      // ⚠️ В ОБОИХ РЕЖИМАХ ЗАХВАТА, а не только в TUN. Умолчание на Windows —
+      // системный прокси (`AppSettings.captureMode`), и с условием
+      // `== CaptureMode.tun` на свежей установке сквозной проверки не было
+      // ВООБЩЕ: сервер отваливался, ядро исправно отвечало по своему API,
+      // приложение показывало «Подключено», и весь трафик машины уходил в
+      // мёртвый прокси без единой строчки в журнале. Ровно тот инцидент, ради
+      // которого подсистема и написана — только в режиме по умолчанию.
+      // Проба ходит в 127.0.0.1:$httpProxyPort, то есть в тот же порт, что и
+      // системный прокси; кредов в этом режиме не ставится, 407 невозможен.
+      startHealthWatch(aborted);
     } on TunStartException catch (e) {
       // Честная причина из лога sing-box вместо ложного «Подключено».
       AppLog.e('TUN не поднялся: $e');
@@ -312,9 +414,16 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
+    stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
     await _stopCoreProcesses();
+
+    // ⚠️ Форвардер гасим ВМЕСТЕ С ЯДРОМ, даже при keepCapture. Он ходит через
+    // локальный SOCKS ядра, и без ядра его «основной» путь ведёт в никуда: он
+    // ждал бы таймаут на каждом запросе и только замедлял бы переподключение.
+    // Заново поднимется при следующем старте сессии, с новым портом.
+    await _stopFallbackDns();
 
     if (keepCapture) return;
 
@@ -339,6 +448,7 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
+    stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
     if (_tunActive) {
@@ -569,6 +679,74 @@ class WindowsEngine extends VpnEngineBase {
       sock?.close();
     }
   }
+
+  /// Поднять локальный DNS-форвардер с запасным резолвером и вернуть его порт.
+  /// 0 — форвардер не нужен или не поднялся.
+  ///
+  /// ⚠️ Нужен ТОЛЬКО при «DNS всех приложений через туннель». Без этой галочки
+  /// прямой трафик резолвится локально и так, и лишнее звено в пути DNS было бы
+  /// чистым риском без выгоды.
+  ///
+  /// Сбой подъёма НЕ фатален: без форвардера `dns.final` останется прежним
+  /// (`dns-proxy`), то есть вернётся поведение до этой правки. Диагностика не
+  /// имеет права мешать подключению.
+  Future<int> _startFallbackDns(AppSettings s) async {
+    await _stopFallbackDns();
+    if (s.captureMode != CaptureMode.tun || !s.tunnelDnsForAll) return 0;
+    final local = await _systemDnsServer();
+    if (local == null || local.isEmpty) {
+      AppLog.w('Запасной DNS не поднят: локальный резолвер не определён');
+      return 0;
+    }
+    final upstream = _dnsUpstreamFor(s);
+    // ⚠️ ФОРВАРДЕР УМЕЕТ ТОЛЬКО ЛИТЕРАЛЬНЫЙ IPv4. Рукопожатие SOCKS требует
+    // адрес байтами; на домене или IPv6 оно молча возвращает false, и КАЖДЫЙ
+    // запрос уходит в запас — то есть весь DNS к провайдеру, при внешне
+    // исправной работе. Лучше честно не поднимать форвардер: тогда работает
+    // прежнее поведение, и оно хотя бы понятное.
+    final ip = InternetAddress.tryParse(upstream);
+    if (ip == null || ip.type != InternetAddressType.IPv4) {
+      AppLog.w('Запасной DNS не поднят: резолвер «$upstream» не литеральный '
+          'IPv4-адрес. DNS работает как раньше — целиком через туннель.');
+      return 0;
+    }
+    try {
+      final srv = DnsFallbackServer(
+        socksPort: ports.socks,
+        // Те же креды, что у инбаунда: без них рукопожатие SOCKS отвергается,
+        // и форвардер молча уходил бы в запас на КАЖДОМ запросе — то есть
+        // весь DNS к провайдеру при внешне исправной работе.
+        socksUser: localInboundUser,
+        socksPassword: localInboundPassword,
+        tunnelDns: upstream,
+        localDns: local,
+      );
+      await srv.start();
+      _fallbackDns = srv;
+      return srv.port;
+    } catch (e) {
+      AppLog.w('Запасной DNS не поднялся: $e');
+      return 0;
+    }
+  }
+
+  Future<void> _stopFallbackDns() async {
+    final srv = _fallbackDns;
+    _fallbackDns = null;
+    if (srv == null) return;
+    if (srv.queryCount > 0) {
+      AppLog.i('Запасной DNS: запросов ${srv.queryCount}, '
+          'туннель промолчал ${srv.fallbackCount}, '
+          'ушло к провайдеру ${srv.fallbackAnsweredCount}');
+    }
+    await srv.stop();
+  }
+
+  /// Тот же апстрим, что построитель кладёт в `dns-proxy`, и разобранный ТЕМ
+  /// ЖЕ кодом — иначе строки расходятся и форвардер спрашивает не тот адрес.
+  static String _dnsUpstreamFor(AppSettings s) =>
+      SingboxConfigBuilder.dnsHostOf(
+          s.dnsMode == DnsMode.custom ? s.dnsCustomServer : '1.1.1.1');
 
   Future<String?> _systemDnsServer() async {
     try {

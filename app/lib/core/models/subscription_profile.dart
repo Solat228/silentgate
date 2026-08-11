@@ -22,6 +22,15 @@ class SubscriptionProfile {
   /// Share-ссылки серверов этой подписки (порядок как пришёл от панели).
   final List<String> serverLinks;
 
+  /// Когда подписку добавили.
+  ///
+  /// ⚠️ Это НЕ порядок показа. Порядок в меню задаёт сам список профилей —
+  /// его можно переставить руками, и переставленный порядок обязан пережить
+  /// перезапуск. Дата нужна для другого: новая подписка встаёт в КОНЕЦ (то
+  /// есть по дате добавления), и старые файлы без этого поля получают
+  /// осмысленную дату по своему месту в файле, а не «все одновременно».
+  final DateTime? addedAt;
+
   const SubscriptionProfile({
     required this.id,
     required this.url,
@@ -29,6 +38,7 @@ class SubscriptionProfile {
     this.logoPath,
     this.logoUrl,
     this.serverLinks = const [],
+    this.addedAt,
   });
 
   /// Имя для UI: название от панели, иначе — узнаваемый кусок ссылки.
@@ -39,6 +49,21 @@ class SubscriptionProfile {
     if (u == null) return url;
     final last = u.pathSegments.isEmpty ? '' : u.pathSegments.last;
     return last.isEmpty ? u.host : '${u.host}/…$last';
+  }
+
+  /// Имя, которое можно показать НА ОБЩЕМ ЭКРАНЕ.
+  ///
+  /// ⚠️ ОТЛИЧАЕТСЯ ОТ [title] ОДНИМ, НО ВАЖНЫМ. Запасной вариант в [title] —
+  /// `host/…<последний сегмент пути>`, а у Remnawave последний сегмент пути и
+  /// есть СЕКРЕТ подписки. В меню переключателя, которое человек открывает сам,
+  /// это ещё терпимо; на главном экране — уже нет: его шлют в поддержку
+  /// скриншотом. Здесь при отсутствии названия от панели остаётся только хост.
+  String get safeTitle {
+    final t = info.title?.trim() ?? '';
+    if (t.isNotEmpty) return t;
+    final u = Uri.tryParse(url);
+    final host = u?.host ?? '';
+    return host.isEmpty ? '—' : host;
   }
 
   /// Стабильный идентификатор из URL: не зависит от порядка и переживает
@@ -64,6 +89,7 @@ class SubscriptionProfile {
     String? logoUrl,
     bool clearLogo = false, // явно снять логотип (copyWith(logoPath:null) не снимает)
     List<String>? serverLinks,
+    DateTime? addedAt,
   }) =>
       SubscriptionProfile(
         id: id,
@@ -72,6 +98,7 @@ class SubscriptionProfile {
         logoPath: clearLogo ? null : (logoPath ?? this.logoPath),
         logoUrl: clearLogo ? null : (logoUrl ?? this.logoUrl),
         serverLinks: serverLinks ?? this.serverLinks,
+        addedAt: addedAt ?? this.addedAt,
       );
 
   Map<String, dynamic> toJson() => {
@@ -81,6 +108,7 @@ class SubscriptionProfile {
         'logoPath': logoPath,
         'logoUrl': logoUrl,
         'servers': serverLinks,
+        'addedAt': addedAt?.toIso8601String(),
       };
 
   factory SubscriptionProfile.fromJson(Map<String, dynamic> j) {
@@ -94,6 +122,7 @@ class SubscriptionProfile {
       logoPath: j['logoPath'] as String?,
       logoUrl: j['logoUrl'] as String?,
       serverLinks: (j['servers'] as List?)?.cast<String>() ?? const [],
+      addedAt: DateTime.tryParse('${j['addedAt'] ?? ''}'),
     );
   }
 }

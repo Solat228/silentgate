@@ -9,6 +9,17 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # ⚠️ СРАВНЕНИЕ РАЗНЫХ ТИПОВ — ОШИБКА, А НЕ ПОДСКАЗКА.
+    #
+    # Реальный случай: `_sites` в схеме маршрута сменил тип с `int` на
+    # `List<SiteRule>`, три сравнения обновили, четвёртое — нет. `sites == 0`
+    # стало давать `false` ВСЕГДА, и ветка «остальное — напрямую» перестала
+    # рисоваться. Компилятор молчит (сравнивать можно что угодно), а подсказка
+    # уровня info тонет среди семидесяти других и потому бесполезна.
+    unrelated_type_equality_checks: error
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

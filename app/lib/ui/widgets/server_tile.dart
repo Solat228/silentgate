@@ -22,6 +22,7 @@ import '../server_json_dialog.dart';
 import 'flag_cell.dart';
 import 'info_tooltip.dart';
 import 'ping_chip.dart';
+import 'subscription_avatar.dart';
 
 /// Краткая сводка туннелирования панельного профиля для «!»-подсказки (#3.2).
 String _panelSummary(AppLocalizations l, PanelRoutingInfo p) {
@@ -53,6 +54,10 @@ class ServerTile extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final name = FlagUtil.strip(server.remark);
     final pinned = state.isPinned(server);
+    // Подписка, из которой пришёл сервер, если сейчас выбрана другая. Свои
+    // серверы значком не помечаются — иначе он был бы у каждой строки и
+    // перестал бы что-либо значить.
+    final foreign = state.foreignSubscriptionOf(server);
     final scheme = Theme.of(context).colorScheme;
     // #3.2 — у сервера с автовыбором/панельного профиля своя маршрутизация:
     // помечаем и даём «!» с краткой сводкой (разбор внутреннего конфига).
@@ -81,6 +86,19 @@ class ServerTile extends StatelessWidget {
               padding: EdgeInsetsDirectional.only(end: 4),
               child: Icon(Icons.push_pin, size: 13),
             ),
+          // Мини-профиль чужой подписки. Пины общие и переживают переключение,
+          // поэтому в одном списке оказываются серверы из разных подписок —
+          // без значка они выглядят одинаково, и человек не понимает, куда
+          // подключается.
+          if (foreign != null)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 5),
+              child: Tooltip(
+                message: foreign.safeTitle,
+                child: SubscriptionAvatar(
+                    path: foreign.logoPath, label: foreign.safeTitle, size: 15),
+              ),
+            ),
           Flexible(
             child: Text(name.isEmpty ? server.address : name,
                 overflow: TextOverflow.ellipsis,
@@ -89,12 +107,29 @@ class ServerTile extends StatelessWidget {
           if (panelInfo != null)
             InfoTooltip(_panelSummary(l, panelInfo), title: l.panelTunnelMarker),
         ]),
+        // Имя чужой подписки — текстом, а не только подсказкой к значку: на
+        // тач-экране подсказка вызывается долгим нажатием, а оно уже занято
+        // контекстным меню, и имя оказалось бы недостижимо.
         subtitle: Text(
-            panelInfo != null
-                ? l.panelTunnelMarker
-                : configTagLabels(l, server.configTags).join(' / '),
+            [
+              // ⚠️ ИМЕННО `safeTitle`, А НЕ `title`. Запасное имя профиля — это
+              // кусок URL подписки, а последний его сегмент у Remnawave и есть
+              // СЕКРЕТ. В меню переключателя это ещё полбеды, а здесь оно
+              // попало бы на главный экран, который люди шлют в поддержку
+              // скриншотом.
+              if (foreign != null) foreign.safeTitle,
+              panelInfo != null
+                  ? l.panelTunnelMarker
+                  : configTagLabels(l, server.configTags).join(' / '),
+            ].where((s) => s.isNotEmpty).join('  ·  '),
             style: Theme.of(context).textTheme.bodySmall,
-            textDirection: panelInfo != null ? null : TextDirection.ltr),
+            // Одна строка с многоточием: имя подписки панель отдаёт произвольной
+            // длины, и без ограничения строка раздувалась бы на пол-экрана,
+            // ломая ровный список.
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textDirection:
+                (panelInfo != null || foreign != null) ? null : TextDirection.ltr),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [

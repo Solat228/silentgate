@@ -2035,4 +2035,195 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       '报告已汇集为一个文件。请在系统窗口中选择发送目标——发送到 Telegram 时它会作为附件，而不是文本。';
+
+  @override
+  String get exitsHeader => '出口';
+
+  @override
+  String get exitsHint => '“隧道”规则可指向特定出口：一个网站走德国，另一个走美国。未选出口时，规则照旧走主隧道。';
+
+  @override
+  String get exitsAdd => '添加出口';
+
+  @override
+  String get exitsEmpty => '尚无出口';
+
+  @override
+  String get exitsName => '名称';
+
+  @override
+  String get exitsNameHint => '德国';
+
+  @override
+  String get exitsServers => '服务器';
+
+  @override
+  String get exitsAutoSelect => '按延迟自动选择';
+
+  @override
+  String get exitsAutoSelectSub =>
+      '内核会自行把流量保持在可用服务器上。代价是每三分钟探测一次各服务器，在手机上会唤醒射频。';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => '至少需要两台服务器';
+
+  @override
+  String get exitsDelete => '删除出口';
+
+  @override
+  String get exitsNoServers => '没有服务器 — 请先导入订阅';
+
+  @override
+  String get exitsSearch => '搜索服务器';
+
+  @override
+  String get exitsPickAtLeastOne => '请至少选择一台服务器';
+
+  @override
+  String get exitsUnsupportedNote =>
+      '面板的“自动”配置和 hysteria2 无法作为独立出口运行：它们由另一个内核处理。此类服务器在列表中不可选。';
+
+  @override
+  String get infoExits =>
+      '出口是“隧道”规则的目的地。\n\n默认一个出口只含一台服务器，后台开销为零：普通协议不保持长连接。只有在需要防止节点故障时才用多服务器自动选择组，它会带来周期性探测，在手机上就是唤醒射频。\n\n出口只对“隧道”动作有意义。“经德国直连”是自相矛盾的：直连规则绕过所有出口。\n\n站点与其子域可以分配到不同出口——应用会把更具体的规则排在上面，否则父域会吞掉子域。\n\n重要：在 Windows 的系统代理模式下出口完全不起作用——该模式不构建路由规则，需要隧道模式。';
+
+  @override
+  String get ruleServer => '通过服务器';
+
+  @override
+  String get ruleServerCurrent => '与主服务器相同';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return '与主服务器相同（$server）';
+  }
+
+  @override
+  String get routeMatchByName => '按文件名匹配';
+
+  @override
+  String get routeYourApps => '你的应用';
+
+  @override
+  String get routeYourSites => '你的网站';
+
+  @override
+  String get routeAppsAndSites => '应用和网站';
+
+  @override
+  String get notifCompactTitle => '精简通知';
+
+  @override
+  String get notifCompactSub =>
+      '关闭时——显示订阅、服务器和速度，并带操作按钮。开启时——标题里是应用和订阅，下方是服务器，不显示速度，也没有按钮。';
+
+  @override
+  String get localProxyAuthTitle => '本地代理密码';
+
+  @override
+  String get localProxyAuthInfo =>
+      '核心的本地端口（127.0.0.1）就是一个通往你 VPN 的完整代理。没有密码时，本机上任何程序都能连上它，并拿走你的整条隧道：出口 IP、订阅流量额度，还能绕开你自己设的分应用代理规则——包括那些被你标记为“阻止”的应用。在 Android 上这一点尤其重要：本地端口对任何已安装的应用都是可见的。\n\n只有当你确实要用不支持认证的程序连这个代理时，才关掉它。';
+
+  @override
+  String get localProxyAuthOff => '已关闭：本机任何程序都能使用这个本地代理';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      '在系统代理模式下不生效：Windows 无法把密码传给本地代理。仅在 TUN 模式下有效。';
+
+  @override
+  String get localProxyAuthRandom => '每次连接都用新的随机密码——不保存到任何地方';
+
+  @override
+  String get localProxyAuthCustom => '自定义用户名和密码（保存在设置文件中）';
+
+  @override
+  String get localProxyCredsTitle => '自定义用户名和密码';
+
+  @override
+  String get localProxyCredsUnset => '未设置——使用随机密码';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return '用户名：$user';
+  }
+
+  @override
+  String get localProxyDialogTitle => '本地代理的用户名和密码';
+
+  @override
+  String get localProxyDialogBody =>
+      '只有当你要在第三方程序里手动填写我们的代理（127.0.0.1）时才需要。把两个字段留空——密码就会在每次连接时随机生成：不保存到任何地方，也不会进入备份。';
+
+  @override
+  String get localProxyFieldUser => '用户名';
+
+  @override
+  String get localProxyFieldPassword => '密码';
+
+  @override
+  String get localProxyFieldHint => '留空 = 随机';
+
+  @override
+  String get lockdownOnTitle => '系统级防泄漏已开启';
+
+  @override
+  String get lockdownOnSub => '即使应用被关闭或被系统清理，流量也会被阻断。这是最可靠的模式。';
+
+  @override
+  String get lockdownHalfTitle => '防护只开了一半';
+
+  @override
+  String get lockdownHalfSub =>
+      '已指定“始终开启的 VPN”，但“阻止不使用 VPN 的连接”没有打开。应用还活着时流量是受保护的；一旦被系统清理，流量就会明文发出去。';
+
+  @override
+  String get lockdownOffTitle => '系统级防泄漏已关闭';
+
+  @override
+  String get lockdownOffSub =>
+      '只要应用还在运行，我们的断网保护就能拦住流量。一旦被系统清理，流量就会绕过 VPN。请开启“始终开启的 VPN”和“阻止不使用 VPN 的连接”。';
+
+  @override
+  String get lockdownUnknownTitle => '系统级防泄漏：状态未知';
+
+  @override
+  String get lockdownUnknownSub =>
+      '只有 Android 10 及以上、且隧道已建立时才能读到状态。请手动检查：“始终开启的 VPN”和“阻止不使用 VPN 的连接”。';
+
+  @override
+  String get lockdownOpenFailed => '无法打开系统 VPN 设置。请手动找到：设置 → 网络和互联网 → VPN。';
+
+  @override
+  String get blockNoticeTitle => '提示被拦截的网站';
+
+  @override
+  String get blockNoticeSub => '当应用或浏览器访问“阻止”列表中的网站时，底部会出现一条带网站名的提示。点击即可打开本界面。';
+
+  @override
+  String get siteInsecureScheme =>
+      '地址写成了 http://——连接不加密，运营商能看到全部内容。去掉“http://”，浏览器就会走 https。';
+
+  @override
+  String get exitServerGone => '该规则的服务器已从订阅中消失——流量改走主隧道';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\n这台服务器无法作为独立出口运行：面板的“自动”配置和部分协议只有 Xray 支持，而出口由 sing-box 分流。该规则的流量改走主隧道。';
+  }
+
+  @override
+  String get noticeRulesAction => '规则';
+
+  @override
+  String get geoVerdictMissingTitle => '地理数据库尚未下载';
+
+  @override
+  String get geoVerdictMissingSub => '订阅中按国家和类别的规则当前已停用——这部分流量走 VPN，而不是直连。';
+
+  @override
+  String get geoVerdictUnusableTitle => '核心未能打开地理数据库';
+
+  @override
+  String get geoVerdictUnusableSub => '文件都在，但核心没有读取它们。重新下载数据库通常可以解决。';
 }

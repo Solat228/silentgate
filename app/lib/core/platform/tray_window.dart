@@ -8,6 +8,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../app_nav.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../models/vpn_status.dart';
+import 'app_log.dart';
 import 'core_cleanup.dart';
 import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
@@ -42,12 +43,49 @@ class TrayWindow with WindowListener, TrayListener {
     await _setupTray();
   }
 
+  /// Значок трея сейчас показывает «подключено»? `null` — ещё не ставили.
+  ///
+  /// ⚠️ НУЖЕН РОВНО ДЛЯ ТОГО, ЧТОБЫ НЕ ЗВАТЬ `setIcon` ВПУСТУЮ. Поток статуса
+  /// тикает раз в секунду на обновлении счётчиков трафика, а `setIcon` в
+  /// tray_manager создаёт HICON и НЕ освобождает прежний. Смена значка на
+  /// каждом такте — это утечка дескрипторов на всё время работы приложения.
+  bool? _trayConnected;
+
+  /// Путь к значку состояния. Оба файла едут в поставке рядом.
+  String _trayIconPath(bool connected) {
+    final exeDir = File(Platform.resolvedExecutable).parent.path;
+    final name = connected ? 'tray_icon.ico' : 'tray_icon_off.ico';
+    return '$exeDir\\data\\flutter_assets\\assets\\$name';
+  }
+
+  /// Показать в трее состояние VPN: серый знак — выключен, фиолетовый — включён.
+  Future<void> setConnected(bool connected) async {
+    if (_trayConnected == connected) return; // см. _trayConnected
+    _trayConnected = connected;
+    await _applyTrayIcon(connected);
+  }
+
+  Future<void> _applyTrayIcon(bool connected) async {
+    final path = _trayIconPath(connected);
+    // ⚠️ ПРОВЕРЯЕМ ФАЙЛ САМИ. Плагин отвечает успехом, даже когда Windows не
+    // смогла загрузить значок: расширение `.ico` нигде не сверяется с
+    // содержимым, и, например, PNG под именем `.ico` даёт ПУСТОЙ трей — без
+    // ошибки, без исключения и без строчки в журнале. Молчащий трей потом
+    // ищут часами, а причина всё это время лежит в имени файла.
+    if (!File(path).existsSync()) {
+      AppLog.e('Значок трея не найден: $path — трей останется пустым');
+      return;
+    }
+    try {
+      await trayManager.setIcon(path);
+    } catch (e) {
+      AppLog.e('Не удалось поставить значок трея: $e');
+    }
+  }
+
   Future<void> _setupTray() async {
     try {
-      final exeDir = File(Platform.resolvedExecutable).parent.path;
-      final iconPath =
-          '$exeDir\\data\\flutter_assets\\assets\\tray_icon.ico';
-      await trayManager.setIcon(iconPath);
+      await _applyTrayIcon(_trayConnected ?? false);
       await trayManager.setToolTip('SilentGate');
       // Контекст на старте может быть ещё не готов — тогда русский фолбэк; меню
       // пересобирается при смене языка (refreshTrayMenu из переключателя языка).

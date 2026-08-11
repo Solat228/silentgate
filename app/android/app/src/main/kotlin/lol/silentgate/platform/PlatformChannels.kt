@@ -145,6 +145,21 @@ object PlatformChannels {
                 if (pkg.isEmpty()) result.success(null)
                 else result.success(runCatching { iconPng(context, pkg) }.getOrNull())
             }
+            // Человеческое имя по имени пакета — для УЖЕ СОХРАНЁННЫХ правил.
+            //
+            // Правило хранит только пакет (это и есть его ключ для ядра), а
+            // список "list" отдаёт метку лишь тем приложениям, что показаны в
+            // выборе. Поэтому в списке правил вместо «YouTube» стояло
+            // «com.google.android.youtube» — при том, что ИКОНКА подгружалась
+            // верно и пакет был явно опознан.
+            "label" -> {
+                val pkg = arg?.trim().orEmpty()
+                if (pkg.isEmpty()) result.success(null)
+                else result.success(runCatching {
+                    val pm = context.packageManager
+                    pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString()
+                }.getOrNull())
+            }
             else -> result.notImplemented()
         }
     }

@@ -15,4 +15,7 @@
     <string name="vpn_open">باز کردن</string>
     <string name="vpn_traffic_now">اکنون: ↓ %1$s  ↑ %2$s</string>
     <string name="vpn_traffic_total">مجموع: ↓ %1$s  ↑ %2$s</string>
+    <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
+    <string name="vpn_collapse">جمع کردن</string>
+    <string name="vpn_expand">باز کردن</string>
 </resources>

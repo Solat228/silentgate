@@ -724,5 +724,84 @@
   },
   "infoGeoAssets": "geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir (örneğin «Rus siteleri», «devlet hizmetleri», «VKontakte»). Abonelik panelinizin tanımladığı yönlendirme kuralları bunlara dayanır.\n\nUygulamaya gömülü değildir: ikisi birlikte yaklaşık 30 MB tutar ve herkese gerekmez — sıradan bir sunucu bunları hiç kullanmaz.\n\nDosyalar yokken bu tür kurallar yapılandırmadan çıkarılır ve daha önce doğrudan gönderdikleri trafik VPN üzerinden gider. Bu güvenlidir ama daha yavaştır; ayrıca yerel siteler yabancı bir adresten gelen erişimi reddedebilir. Sizin belirlediğiniz site ve uygulama kuralları her durumda çalışır — bu dosyalara bağlı değildir.",
   "supportBullet2Android": "• Dokunduktan sonra rapor tek bir dosyada toplanır ve sistemin «Paylaş» penceresi açılır — Telegram'ı seçin, rapor tek bir ek olarak gider. Sorunu yukarıdaki alana yazın: açıklama olmadan incelenecek bir şey olmaz.",
-  "supportDoneTextAndroid": "Rapor tek bir dosyada toplandı. Sistem penceresinden nereye göndereceğinizi seçin — Telegram'a metin olarak değil, ek olarak gider."
+  "supportDoneTextAndroid": "Rapor tek bir dosyada toplandı. Sistem penceresinden nereye göndereceğinizi seçin — Telegram'a metin olarak değil, ek olarak gider.",
+  "exitsHeader": "Çıkışlar",
+  "exitsHint": "Bir «Tünel» kuralı belirli bir çıkışa yönlendirilebilir: bir site Almanya üzerinden, diğeri ABD üzerinden. Çıkış seçilmezse kural eskisi gibi ana tüneli kullanır.",
+  "exitsAdd": "Çıkış ekle",
+  "exitsEmpty": "Henüz çıkış yok",
+  "exitsName": "Ad",
+  "exitsNameHint": "Almanya",
+  "exitsServers": "Sunucular",
+  "exitsAutoSelect": "Gecikmeye göre otomatik seçim",
+  "exitsAutoSelectSub": "Çekirdek trafiği kendiliğinden çalışan bir sunucuda tutar. Bedeli: her sunucu üç dakikada bir yoklanır ve bu telefonda radyoyu uyandırır.",
+  "exitsAutoSelectNeedsTwo": "En az iki sunucu gerekir",
+  "exitsDelete": "Çıkışı sil",
+  "exitsNoServers": "Sunucu yok — önce bir abonelik içe aktarın",
+  "exitsSearch": "Sunucu ara",
+  "exitsPickAtLeastOne": "En az bir sunucu seçin",
+  "exitsUnsupportedNote": "Panelin «Oto» profilleri ve hysteria2 ayrı bir çıkış olarak çalışmaz: bunları diğer çekirdek yürütür. Bu sunucular listede devre dışıdır.",
+  "infoExits": "Çıkış, «Tünel» kuralının hedefidir.\n\nVarsayılan olarak bir çıkış TEK bir sunucudur ve arka planda hiçbir maliyeti yoktur: sıradan protokoller kalıcı bağlantı tutmaz. Otomatik seçimli çok sunuculu grup yalnızca düğüm arızasına karşı güvence önemliyse gerekir — düzenli ölçümler ekler, telefonda bunlar radyo uyandırmalarıdır.\n\nÇıkış YALNIZCA «Tünel» eyleminde anlamlıdır. «Almanya üzerinden doğrudan» bir çelişkidir: doğrudan kural tüm çıkışları atlar.\n\nBir site ile alt alan adı FARKLI çıkışlara gidebilir — uygulama daha özel kuralı yukarı alır, aksi hâlde üst alan adı alt alanı yutardı.\n\nÖNEMLİ: Windows’ta sistem proxy’siyle çıkışlar hiç çalışmaz — o kipte yönlendirme kuralları oluşturulmaz. Tünel kipi gerekir.",
+  "ruleServer": "Sunucu üzerinden",
+  "ruleServerCurrent": "Ana sunucu ile aynı",
+  "ruleServerCurrentNamed": "Ana sunucu ile aynı ({server})",
+  "@ruleServerCurrentNamed": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "routeMatchByName": "Dosya adına göre eşleştirme",
+  "routeYourApps": "Uygulamalarınız",
+  "routeYourSites": "Siteleriniz",
+  "routeAppsAndSites": "Uygulamalar ve siteler",
+  "notifCompactTitle": "Kısa bildirim",
+  "notifCompactSub": "Kapalı — abonelik, sunucu ve hız, düğmelerle birlikte. Açık — başlıkta uygulama ve abonelik, altında sunucu; hız ve düğme yok.",
+  "localProxyAuthTitle": "Yerel proxy parolası",
+  "localProxyAuthInfo": "Çekirdeğin yerel bağlantı noktası (127.0.0.1) VPN'inize açılan tam bir proxy'dir. Parola olmadan aynı cihazdaki her program ona bağlanır ve tünelinizi olduğu gibi kullanır: çıkış IP'niz, abonelik kotanız ve kendi ayrık tünelleme kurallarınızın atlanması — «Engelle» dediğiniz uygulamalar dâhil. Android'de bu özellikle önemlidir: orada yerel bağlantı noktalarını yüklü her uygulama görür.\n\nYalnızca bu proxy'ye bilerek kimlik doğrulamayı desteklemeyen bir şeyle bağlanıyorsanız kapatın.",
+  "localProxyAuthOff": "Kapalı: yerel proxy cihazdaki her programa açık",
+  "localProxyAuthSystemProxy": "«Sistem proxy'si» modunda geçerli değildir: Windows yerel proxy'ye parola iletemez. TUN modunda çalışır.",
+  "localProxyAuthRandom": "Her bağlantıda yeni rastgele parola — hiçbir yere kaydedilmez",
+  "localProxyAuthCustom": "Kendi kullanıcı adınız ve parolanız (ayar dosyasında saklanır)",
+  "localProxyCredsTitle": "Kendi kullanıcı adınız ve parolanız",
+  "localProxyCredsUnset": "Belirtilmedi — rastgele parola kullanılıyor",
+  "localProxyCredsUser": "Kullanıcı adı: {user}",
+  "@localProxyCredsUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "localProxyDialogTitle": "Yerel proxy kullanıcı adı ve parolası",
+  "localProxyDialogBody": "Yalnızca proxy'mizi (127.0.0.1) başka bir programa kendiniz yazacaksanız gereklidir. Alanları boş bırakırsanız parola her bağlantıda rastgele olur: hiçbir yere kaydedilmez ve yedeklere girmez.",
+  "localProxyFieldUser": "Kullanıcı adı",
+  "localProxyFieldPassword": "Parola",
+  "localProxyFieldHint": "boş — rastgele",
+  "lockdownOnTitle": "Sistem düzeyinde koruma açık",
+  "lockdownOnSub": "Uygulama kapansa da sistem onu bellekten atsa da trafik engellenir. En güvenilir mod budur.",
+  "lockdownHalfTitle": "Koruma yarım açık",
+  "lockdownHalfSub": "«Her zaman açık VPN» seçili, ama «VPN olmadan bağlantıları engelle» kapalı. Uygulama çalıştığı sürece trafik korunur; sistem onu bellekten atarsa trafik açıktan gider.",
+  "lockdownOffTitle": "Sistem düzeyinde koruma kapalı",
+  "lockdownOffSub": "Kill switch'imiz, uygulama çalıştığı sürece trafiği tutar. Sistem uygulamayı bellekten atarsa trafik VPN'i atlar. «Her zaman açık VPN» ve «VPN olmadan bağlantıları engelle» seçeneklerini açın.",
+  "lockdownUnknownTitle": "Sistem düzeyinde koruma: durum bilinmiyor",
+  "lockdownUnknownSub": "Durum yalnızca Android 10'dan itibaren ve tünel açıkken öğrenilebilir. El ile denetleyin: «Her zaman açık VPN» ve «VPN olmadan bağlantıları engelle».",
+  "lockdownOpenFailed": "Sistemin VPN ayarları açılamadı. El ile bulun: Ayarlar → Ağ ve internet → VPN.",
+  "blockNoticeTitle": "Engellenen siteleri bildir",
+  "blockNoticeSub": "Bir uygulama ya da tarayıcı «Engelle» listesindeki bir siteye ulaşmaya çalıştığında, altta site adıyla bir bildirim çıkar. Dokunun — bu ekran açılır.",
+  "siteInsecureScheme": "Adres http:// olarak yazılmış — bağlantı şifrelenmez ve sağlayıcı her şeyi görür. Tarayıcının https kullanması için «http://» kısmını silin.",
+  "exitServerGone": "Bu kuralın sunucusu abonelikten kayboldu — trafik ana tünelden gidiyor",
+  "exitServerUnsupported": "{name}\n\nBu sunucu ayrı bir çıkış olarak çalıştırılamaz: panelin «Oto» profillerini ve bazı protokolleri yalnızca Xray yürütür, çıkışları ise sing-box dağıtır. Kuralın trafiği ana tünelden gider.",
+  "@exitServerUnsupported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeRulesAction": "Kurallar",
+  "geoVerdictMissingTitle": "Geo verileri indirilmedi",
+  "geoVerdictMissingSub": "Aboneliğin ülke ve kategori kuralları şu anda devre dışı — bu trafik doğrudan değil, VPN üzerinden gidiyor.",
+  "geoVerdictUnusableTitle": "Çekirdek geo verilerini açamadı",
+  "geoVerdictUnusableSub": "Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar."
 }

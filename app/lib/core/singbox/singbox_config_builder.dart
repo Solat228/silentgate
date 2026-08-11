@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../settings/app_settings.dart';
 import '../settings/split_tunnel.dart';
+import 'exit_tags.dart';
 
 /// Параметры TUN-туннеля (всё, что настраивается пользователем + вычисляемое движком).
 class TunOptions {
@@ -61,6 +62,36 @@ class TunOptions {
   /// совпадения по имени процесса не происходит вовсе.
   final List<String> serverDomains;
 
+  /// Сообщать ли пользователю о заблокированных сайтах.
+  ///
+  /// ⚠️ ЭТО ВЛИЯЕТ НА DNS, И ВОТ ПОЧЕМУ. Блокируем мы действием `reject` на
+  /// правиле МАРШРУТИЗАЦИИ. Чтобы туда дошло дело, соединение должно сперва
+  /// возникнуть, а для этого имя обязано отрезолвиться. Если заодно резать
+  /// домен и в DNS, браузер спотыкается раньше — ядро блокировки не видит,
+  /// и сообщать нам не о чем.
+  ///
+  /// Поэтому при включённом уведомлении блок-домены РЕЗОЛВЯТСЯ (запрос имени
+  /// уходит), но трафик к ним отвергается. Выключено — режем и в DNS, так
+  /// тише и быстрее. Размен небольшой, но он есть, и молчать о нём нельзя.
+  final bool blockNotice;
+
+  /// Порт нашего локального DNS-форвардера с ЗАПАСНЫМ резолвером. 0 — выключен.
+  ///
+  /// ⚠️ ЗАЧЕМ ОН НУЖЕН И ПОЧЕМУ ЕГО НЕТ В ЯДРЕ. При «DNS всех приложений через
+  /// туннель» имена для ВСЕГО трафика спрашиваются через VPN — включая тот, что
+  /// идёт мимо него. Стоит туннельному резолверу споткнуться, и без имён
+  /// остаётся весь прямой трафик: в журнале ядра сотни `dns: exchange failed …
+  /// EOF`, а для пользователя «интернет пропал при подключённом VPN».
+  /// Встроенного запаса у sing-box 1.11.15 НЕТ — `address_fallback`, `fallback`
+  /// и список в `address` отвергаются с `FATAL decode config` (проверено
+  /// прогоном настоящего ядра).
+  ///
+  /// ⚠️ Форвардер подставляется ТОЛЬКО в `dns.final`, то есть под трафик без
+  /// собственного правила. Явные правила «в туннель» продолжают ходить прямо
+  /// в `dns-proxy`: там запас не нужен, а лишнее звено в защищённом пути —
+  /// лишний способ его сломать.
+  final int fallbackDnsPort;
+
   /// Пользователь выбрал стек «авто» — подбирать стек и MTU перебором,
   /// пока туннель не поднимется (см. [TunAutotune]).
   final bool autotune;
@@ -99,9 +130,6 @@ class TunOptions {
 
   /// Порт локальной страницы «сайт заблокирован». 0 — заглушки нет.
   ///
-  /// ⚠️ Работает только для plain HTTP: подменить https без своего корневого
-  /// сертификата невозможно. Для 443 остаётся обычный `reject`.
-  final int blockPagePort;
 
   /// Порт Clash API — счётчики трафика туннеля. 0 — не поднимать.
   ///
@@ -166,6 +194,8 @@ class TunOptions {
     this.logLevel = 'warn',
     this.serverIps = const [],
     this.serverDomains = const [],
+    this.fallbackDnsPort = 0,
+    this.blockNotice = false,
     this.autotune = false,
     this.noRealIp = false,
     this.platformTun = false,
@@ -178,7 +208,6 @@ class TunOptions {
     // `dns-proxy`, а пользователь получал `dns-local` — то есть проверяли одно,
     // а работало другое.
     this.tunnelDnsForAll = false,
-    this.blockPagePort = 0,
     this.clashApiPort = 0,
     this.clashApiSecret = '',
     this.blockQuic = false,
@@ -189,16 +218,16 @@ class TunOptions {
     AppSettings s, {
     List<String> serverIps = const [],
     List<String> serverDomains = const [],
+    int fallbackDnsPort = 0,
+    bool blockNotice = false,
     bool android = false,
     String? directDnsUpstream,
     String? logOutput,
-    int blockPagePort = 0,
     int clashApiPort = 0,
     String clashApiSecret = '',
     bool ipv6Available = true,
   }) {
     return TunOptions(
-      blockPagePort: blockPagePort,
       clashApiPort: clashApiPort,
       clashApiSecret: clashApiSecret,
       blockQuic: s.blockQuic,
@@ -225,11 +254,13 @@ class TunOptions {
       routeOnlyCidrs: s.tunRouteOnlyCidrs,
       dnsMode: s.dnsMode,
       dnsServer: s.dnsMode == DnsMode.custom ? s.dnsCustomServer : '1.1.1.1',
+      blockNotice: s.blockNoticeEnabled,
       dnsHijack: s.dnsHijack,
       dnsStrategy: s.dnsStrategy,
       logLevel: s.singboxLogLevel.name,
       serverIps: serverIps,
       serverDomains: serverDomains,
+      fallbackDnsPort: fallbackDnsPort,
       // «Авто» = подбирать стек/MTU перебором; явный выбор пользователя уважаем.
       autotune: s.tunStack == TunStack.auto,
       noRealIp: s.noRealIp,
@@ -267,14 +298,15 @@ class TunOptions {
         logLevel: logLevel,
         serverIps: serverIps,
         serverDomains: serverDomains,
+        fallbackDnsPort: fallbackDnsPort,
+        blockNotice: blockNotice,
         autotune: autotune,
         noRealIp: noRealIp,
         platformTun: platformTun,
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
         logOutput: logOutput,
-        blockPagePort: blockPagePort,
-        clashApiPort: clashApiPort,
+          clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
         blockEncryptedDns: blockEncryptedDns,
@@ -305,6 +337,8 @@ class TunOptions {
         logLevel: logLevel,
         serverIps: serverIps,
         serverDomains: serverDomains,
+        fallbackDnsPort: fallbackDnsPort,
+        blockNotice: blockNotice,
         autotune: autotune,
         noRealIp: noRealIp,
         platformTun: platformTun,
@@ -313,7 +347,6 @@ class TunOptions {
         logOutput: logOutput,
         blackhole: blackhole,
         tunnelDnsForAll: tunnelDnsForAll,
-        blockPagePort: blockPagePort,
         clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
@@ -434,6 +467,19 @@ class SingboxConfigBuilder {
   /// движок брал `servers.first` и выбрасывал собранный базой конфиг.
   final List<Map<String, dynamic>>? proxyOutboundGroup;
 
+  /// Готовые outbound-ы дополнительных серверов — С УЖЕ ПРОСТАВЛЕННЫМИ тегами
+  /// (см. [exitTagFor]).
+  ///
+  /// ⚠️ ЭТОТ СПИСОК — ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ О ТОМ, КАКИЕ ВЫХОДЫ ЖИВЫ.
+  /// Правило ссылается на выход по идентификатору, но тег в конфиг попадёт
+  /// ТОЛЬКО если здесь есть outbound с таким тегом (см. [_liveExitIds]).
+  /// Иначе получился бы висячий тег, а `sing-box check` его НЕ ловит: конфиг
+  /// со ссылкой на несуществующий outbound принимается с кодом 0 и без единой
+  /// строчки вывода — проверено настоящим ядром 1.11.15. Трафик такого правила
+  /// молча уехал бы в `route.final`, то есть мимо выхода, который пользователь
+  /// выбрал.
+  final List<Map<String, dynamic>> exitOutbounds;
+
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.xraySocksUser = '',
@@ -444,7 +490,72 @@ class SingboxConfigBuilder {
     this.options = const TunOptions(),
     this.proxyOutbound,
     this.proxyOutboundGroup,
+    this.exitOutbounds = const [],
   });
+
+  // ── Правила, идущие через ОТДЕЛЬНЫЙ сервер ────────────────────────────────
+
+  /// Теги, которые реально есть в конфиге.
+  ///
+  /// ⚠️ ЭТО ЕДИНСТВЕННЫЙ ИСТОЧНИК ПРАВДЫ. Правило ссылается на сервер по ключу,
+  /// но тег попадёт в конфиг ТОЛЬКО если для него собран outbound. Сервер могли
+  /// удалить из подписки, а его протокол может не подниматься вторым туннелем —
+  /// оба случая обязаны привести к ОСНОВНОМУ туннелю, а не к висячему тегу:
+  /// висячий `sing-box check` пропускает молча, и трафик уходит в `route.final`.
+  Set<String> get _liveExitTags => {
+        for (final o in exitOutbounds)
+          if (o['tag'] is String) o['tag'] as String,
+      };
+
+  /// Тег сервера-адресата для правила, либо `null` — «основной туннель».
+  ///
+  /// ⚠️ Смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» —
+  /// противоречие: прямо значит мимо всех туннелей, а «блок через Германию»
+  /// и вовсе ничего не значит. Возвращая здесь `null`, мы не даём появиться
+  /// классу правил, которые видно в интерфейсе и которые ничего не делают.
+  String? _exitTagFor(String? serverKey, AppAction action) {
+    if (action != AppAction.tunnel) return null;
+    if (serverKey == null || serverKey.isEmpty) return null;
+    final tag = exitTagFor(serverKey);
+    return _liveExitTags.contains(tag) ? tag : null;
+  }
+
+  /// Резолвер, соответствующий выходу маршрута. `null` → домен не резолвится.
+  ///
+  /// ⚠️ ЗДЕСЬ БЫЛО СРАВНЕНИЕ С ЛИТЕРАЛОМ (`outbound == 'proxy' ? 'dns-proxy'
+  /// : 'dns-local'`). С появлением тегов `exit-<id>` оно давало `false` для
+  /// КАЖДОГО выхода, и сайт «через Германию» молча уезжал резолвиться
+  /// локальным резолвером — то есть провайдеру, ещё до соединения. Конфиг при
+  /// этом валиден, ядро молчит, в интерфейсе всё правильно. Один из тех
+  /// дефектов, которые не ловит ни компилятор, ни `check`.
+  String? _dnsServerForOutbound(String? outbound) {
+    if (outbound == null) return null;
+    if (outbound == 'direct') return 'dns-local';
+    if (outbound == 'proxy') return 'dns-proxy';
+    // Тег выхода → его же резолвер. Соответствие держится на общем префиксе,
+    // заданном в exit_tags.dart, и проверяется тестом.
+    if (_liveExitTags.contains(outbound)) return 'dns-$outbound';
+    // Неизвестный тег — резолвим через туннель. Локальный резолвер тут был бы
+    // худшим из вариантов: это утечка, а не деградация.
+    return 'dns-proxy';
+  }
+
+  /// Разложить правила по адресату: у правила ядра ровно ОДИН выход, поэтому
+  /// сайты «через Германию» и «через США» обязаны разъехаться по разным
+  /// правилам, даже когда действие у них одинаковое («Туннель»).
+  ///
+  /// Порядок групп детерминирован: без сортировки конфиг «дышал» бы между
+  /// сборками, и сравнение готового конфига в тестах перестало бы работать.
+  static List<MapEntry<String?, List<T>>> _byOutbound<T>(
+      Iterable<T> items, String? Function(T) outboundOf) {
+    final groups = <String?, List<T>>{};
+    for (final it in items) {
+      groups.putIfAbsent(outboundOf(it), () => []).add(it);
+    }
+    final keys = groups.keys.toList()
+      ..sort((a, b) => (a ?? '').compareTo(b ?? ''));
+    return [for (final k in keys) MapEntry(k, groups[k]!)];
+  }
 
   String buildJson(SplitTunnelConfig split) =>
       const JsonEncoder.withIndent('  ').convert(buildMap(split));
@@ -580,32 +691,6 @@ class SingboxConfigBuilder {
     // ⚠️ Только 80. Для 443 подмены нет и быть не может без своего корневого
     // сертификата, поэтому https-запрос к тому же домену честно отвергается
     // правилом ниже. Обещать пользователю заглушку на https нельзя.
-    if (_userRulesActive(split) && o.blockPagePort > 0) {
-      final blocked = split.sites
-          .where((x) => x.action == AppAction.block)
-          // ⚠️ Только домены, заблокированные ЦЕЛИКОМ (или прямо на 80-м).
-          // Правило «example.com:8443 = Блок» обычный http не запрещает, а
-          // заглушка вешалась на порт 80 ВСЕГО домена — и пользователь получал
-          // «сайт заблокирован» там, где ничего не блокировал.
-          .where((x) => x.port == null || x.port == 80)
-          .map((x) => x.domain.trim())
-          .where((d) => d.isNotEmpty)
-          .toSet()
-          .toList();
-      if (blocked.isNotEmpty) {
-        rules.add({
-          'domain_suffix': blocked,
-          'port': [80],
-          'action': 'route',
-          'outbound': 'direct',
-          // ⚠️ override ИМЕННО НА ПРАВИЛЕ. Те же поля у direct-outbound
-          // объявлены устаревшими в 1.11 и удалены в 1.13 — на Android с
-          // libbox 1.13 конфиг был бы отвергнут целиком.
-          'override_address': '127.0.0.1',
-          'override_port': o.blockPagePort,
-        });
-      }
-    }
 
     // Выше блока намеренно: конфликт «родитель заблокирован, поддомен в
     // туннель» разрешается в пользу конкретного правила, как и все остальные.
@@ -624,6 +709,8 @@ class SingboxConfigBuilder {
     final finalOutbound =
         split.mode == SplitMode.onlySelected ? 'direct' : 'proxy';
     _addAppRules(rules, split);
+    // Режим «Всё через VPN»: сюда попадают ТОЛЬКО правила выбора выхода.
+    _addExitOnlyRules(rules, split);
 
     final cfg = <String, dynamic>{
       'log': {
@@ -695,6 +782,9 @@ class SingboxConfigBuilder {
               'password': xraySocksPassword,
             },
           },
+        // Именованные выходы мульти-VPN. Приходят готовыми и с тегами — здесь
+        // только раскладываются рядом с `proxy`.
+        ...exitOutbounds,
         {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
@@ -753,6 +843,37 @@ class SingboxConfigBuilder {
             : 'local',
         'detour': 'direct',
       },
+      // Резолвер с ЗАПАСОМ — наш локальный форвардер (см. TunOptions.fallbackDnsPort).
+      //
+      // `detour: direct` обязателен: иначе запрос к 127.0.0.1 завернулся бы
+      // в туннель, форвардер спросил бы туннель ещё раз, и получилась бы петля
+      // ровно там, где чинили её отсутствие.
+      if (o.fallbackDnsPort > 0)
+        {
+          'tag': 'dns-fallback',
+          'address': 'udp://127.0.0.1:${o.fallbackDnsPort}',
+          'strategy': o.dnsStrategy.singboxValue,
+          'detour': 'direct',
+        },
+      // ⚠️ ПО РЕЗОЛВЕРУ НА КАЖДЫЙ ВЫХОД — ЭТО НЕ УКРАШЕНИЕ.
+      //
+      // Резолв обязан идти ТЕМ ЖЕ выходом, что и трафик. Иначе «сайт через
+      // Германию» спросит имя у резолвера общего туннеля, CDN ответит адресом
+      // ближайшего к ТОМУ выходу фронта, и трафик пойдёт по немецкому маршруту
+      // на американский сервер. У нас такой баг уже был в 1.0.1 — тогда между
+      // «Прямо» и «Туннель».
+      //
+      // `detour` принимает СТРОКУ, а не массив: массив ядро отвергает целиком
+      // (`cannot unmarshal array into Go value of type string`) — проверено
+      // sing-box 1.11.15.
+      for (final tag in _liveExitTags)
+        {
+          'tag': 'dns-$tag',
+          'address': 'tcp://${_dnsHost(o.dnsServer)}',
+          'address_resolver': 'dns-local',
+          'strategy': o.dnsStrategy.singboxValue,
+          'detour': tag,
+        },
     ];
 
     // Доменные правила ЗЕРКАЛЯТСЯ из маршрутов. Без них весь DNS уходил в
@@ -783,7 +904,7 @@ class SingboxConfigBuilder {
       // маршрутах. Разойдись зеркало с маршрутом хоть здесь — и сайт шёл бы в
       // туннель, а его имя спрашивалось бы у резолвера провайдера.
       ..._dnsSitePriorityRules(split),
-      if (o.blockPagePort <= 0) ..._dnsSiteRules(split, AppAction.block, null),
+      if (!o.blockNotice) ..._dnsSiteRules(split, AppAction.block, null),
       ..._dnsSiteRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
       ..._dnsSiteRules(split, AppAction.tunnel, 'dns-proxy'),
       if (o.noRealIp)
@@ -807,8 +928,9 @@ class SingboxConfigBuilder {
       ..._dnsAppRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
       if (o.noRealIp)
         ..._dnsAppRules(split, AppAction.direct, 'dns-proxy', allowRealIp: false),
-      if (o.blockPagePort <= 0)
-        ..._dnsAppRules(split, AppAction.block, null),
+      if (!o.blockNotice) ..._dnsAppRules(split, AppAction.block, null),
+      // Зеркало для правил выбора выхода в режиме «Всё через VPN».
+      ..._dnsExitOnlyRules(split),
       {
         'outbound': ['direct'],
         'server': 'dns-local',
@@ -838,11 +960,22 @@ class SingboxConfigBuilder {
       // В системном режиме весь резолв идёт апстримом самой системы: это и
       // означает «системный DNS». Важно, что он всё равно ТЕРМИНИРУЕТСЯ внутри
       // туннеля — иначе отвечать на запросы к 172.19.0.2 некому.
+      // ⚠️ ЗДЕСЬ ЖИВЁТ ПРИЧИНА ЖАЛОБЫ «ПРЯМОЙ ТРАФИК ОТВАЛИВАЕТСЯ».
+      //
+      // Под `final` попадает всё, чему пользователь правила не задал, — то есть
+      // в режиме «только отмеченные» это ВЕСЬ прямой трафик. Отправляя его
+      // резолв в `dns-proxy`, мы ставим работу прямого трафика в зависимость от
+      // живости VPN, который ему не нужен: туннельный резолвер споткнулся —
+      // имена перестали резолвиться у всего.
+      //
+      // Поэтому при живом форвардере сюда идёт `dns-fallback`: он спрашивает
+      // туннель ПЕРВЫМ (защита сохраняется), а локальный резолвер трогает
+      // только когда туннель не ответил.
       'final': systemMode
           ? 'dns-local'
           : (split.mode == SplitMode.onlySelected && !o.tunnelDnsForAll)
               ? 'dns-local'
-              : 'dns-proxy',
+              : (o.fallbackDnsPort > 0 ? 'dns-fallback' : 'dns-proxy'),
       'strategy': o.dnsStrategy.singboxValue,
       'independent_cache': true,
     };
@@ -861,8 +994,6 @@ class SingboxConfigBuilder {
       if (domain.isEmpty) continue;
       final outbound = _siteOutbound(s);
       if (outbound == null) {
-        // Заглушке нужен отрезолвенный домен — иначе показывать нечего.
-        if (options.blockPagePort > 0) continue;
         out.add({
           'domain_suffix': [domain],
           'action': 'reject',
@@ -871,7 +1002,7 @@ class SingboxConfigBuilder {
       }
       out.add({
         'domain_suffix': [domain],
-        'server': outbound == 'proxy' ? 'dns-proxy' : 'dns-local',
+        'server': _dnsServerForOutbound(outbound),
       });
     }
     return out;
@@ -888,25 +1019,40 @@ class SingboxConfigBuilder {
   /// точная, страдает только зеркалирование — и это верный размен.
   List<Map<String, dynamic>> _dnsSiteRules(
       SplitTunnelConfig split, AppAction action, String? server,
-      {bool? allowRealIp}) {
+      {bool? allowRealIp, bool force = false}) {
     // Зеркало обязано повторять маршруты: в режиме «Всё через VPN» правил в
     // маршрутах нет, значит и в DNS их быть не должно (иначе домен «Прямо»
     // резолвился бы локально при затуннелированном трафике).
-    if (!_userRulesActive(split)) return const [];
+    //
+    // [force] — единственное исключение, и оно ровно про выходы: в том же
+    // режиме маршрут «в какой выход» ВСЁ ЖЕ строится (см. [_addExitOnlyRules]),
+    // а значит и зеркало обязано быть, иначе резолв уедет чужим выходом.
+    if (!force && !_userRulesActive(split)) return const [];
     var matched = split.sites.where((s) => s.action == action && s.port == null);
     if (allowRealIp != null && options.noRealIp) {
       matched = matched.where((s) => s.allowRealIp == allowRealIp);
     }
-    // Пустой домен свалил бы весь конфиг: ядро отвергает его целиком.
-    final domains =
-        matched.map((s) => s.domain.trim()).where((d) => d.isNotEmpty).toSet().toList();
-    if (domains.isEmpty) return const [];
-    return [
-      {
+    // ⚠️ Зеркало обязано разводиться по выходам ТОЧНО ТАК ЖЕ, как маршруты.
+    // Сложи мы домены разных выходов в одно DNS-правило — имя спросилось бы у
+    // резолвера чужого выхода, и CDN отдал бы адрес не той страны. Снаружи это
+    // выглядит как «правило не работает», хотя трафик идёт правильным выходом.
+    final out = <Map<String, dynamic>>[];
+    for (final group in _byOutbound(
+        matched,
+        (s) => _dnsServerForOutbound(_exitTagFor(s.serverKey, action)) ?? server)) {
+      // Пустой домен свалил бы весь конфиг: ядро отвергает его целиком.
+      final domains = group.value
+          .map((s) => s.domain.trim())
+          .where((d) => d.isNotEmpty)
+          .toSet()
+          .toList();
+      if (domains.isEmpty) continue;
+      out.add({
         'domain_suffix': domains,
-        if (server == null) 'action': 'reject' else 'server': server,
-      },
-    ];
+        if (group.key == null) 'action': 'reject' else 'server': group.key,
+      });
+    }
+    return out;
   }
 
   /// Валидные CIDR из настроек (битые отбрасываем — иначе sing-box рвёт весь конфиг).
@@ -936,6 +1082,16 @@ class SingboxConfigBuilder {
   }
 
   /// Хост для DNS-резолвера. Пустой/битый → фолбэк 1.1.1.1; из URL/схемы берём хост.
+  /// Тот же разбор адреса резолвера, что уходит в конфиг ядра — но доступный
+  /// снаружи.
+  ///
+  /// ⚠️ ЗАЧЕМ ПУБЛИЧНЫЙ ДОСТУП. Запасной DNS-форвардер должен спрашивать РОВНО
+  /// тот резолвер, что записан в `dns-proxy`. Пока движки чистили адрес сами,
+  /// строки расходились: построитель принимал `tcp://1.1.1.1`, а форвардеру
+  /// доставалась сырая строка, на которой рукопожатие SOCKS молча падало, — и
+  /// весь DNS уходил провайдеру при внешне исправной работе.
+  static String dnsHostOf(String raw) => _dnsHost(raw);
+
   static String _dnsHost(String raw) {
     var s = raw.trim();
     if (s.isEmpty) return '1.1.1.1';
@@ -1059,8 +1215,18 @@ class SingboxConfigBuilder {
   List<SiteRule> _sitesNeedingPriority(SplitTunnelConfig split) {
     if (!_userRulesActive(split)) return const [];
     final sites = split.sites;
+    // ⚠️ РАЗНЫЙ ВЫХОД — ТАКОЙ ЖЕ КОНФЛИКТ, КАК РАЗНОЕ ДЕЙСТВИЕ.
+    //
+    // Раньше конфликтом считалось только несовпадение действий. С выходами
+    // появился второй вид: «example.com через Германию» и «sub.example.com через США»
+    // имеют ОДНО действие («Туннель»), но разных адресатов. Группы собираются
+    // по адресату, `domain_suffix` суффиксный, и родитель из группы, попавшей
+    // выше, молча поглотил бы поддомен — сайт уехал бы в чужую страну. Ни
+    // компилятор, ни `sing-box check` такого не видят: конфиг валиден.
+    bool conflicts(SiteRule a, SiteRule b) =>
+        a.action != b.action || (a.serverKey ?? '') != (b.serverKey ?? '');
     bool shadows(SiteRule parent, SiteRule child) =>
-        parent.action != child.action &&
+        conflicts(parent, child) &&
         child.domain.length > parent.domain.length &&
         child.domain.toLowerCase().endsWith('.${parent.domain.toLowerCase()}');
     final out = sites.where((c) => sites.any((p) => shadows(p, c))).toList();
@@ -1077,7 +1243,7 @@ class SingboxConfigBuilder {
       case AppAction.block:
         return null;
       case AppAction.tunnel:
-        return 'proxy';
+        return _exitTagFor(s.serverKey, s.action) ?? 'proxy';
       case AppAction.direct:
         return (options.noRealIp && !s.allowRealIp) ? 'proxy' : 'direct';
     }
@@ -1094,6 +1260,56 @@ class SingboxConfigBuilder {
         if (s.port != null) 'port': [s.port],
       }, _siteOutbound(s)));
     }
+  }
+
+  /// Правила выбора ВЫХОДА в режиме «Всё через VPN».
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНЫЙ ПУТЬ, А НЕ СНЯТИЕ ГЕЙТА `_userRulesActive`.
+  ///
+  /// В режиме «Всё через VPN» пользовательские правила намеренно не
+  /// применяются: там нет ни «прямо», ни «блока» — всё идёт в туннель, а
+  /// правила лежат сохранёнными до смены режима. Выход же отвечает не на вопрос
+  /// «идёт ли в туннель» (идёт, как и всё остальное), а на вопрос «в КАКОЙ».
+  /// Поэтому такие правила уместны и здесь — но ТОЛЬКО они. Снять гейт целиком
+  /// значило бы включить в этом режиме блокировки и прямые выходы, которых
+  /// пользователь тут не просил, — молча поменять смысл режима.
+  void _addExitOnlyRules(
+      List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+    final only = _exitRulesOnly(split);
+    if (only == null) return;
+    // Сайты выше приложений — тот же инвариант, что и в основном пути.
+    _addSiteRule(rules, only, AppAction.tunnel, 'proxy');
+    _addActionRule(rules, only, AppAction.tunnel, 'proxy', overrideSites: null);
+  }
+
+  /// DNS-зеркало для [_addExitOnlyRules] — по той же причине и в том же порядке.
+  List<Map<String, dynamic>> _dnsExitOnlyRules(SplitTunnelConfig split) {
+    final only = _exitRulesOnly(split);
+    if (only == null) return const [];
+    return [
+      ..._dnsSiteRules(only, AppAction.tunnel, 'dns-proxy', force: true),
+      ..._dnsAppRules(only, AppAction.tunnel, 'dns-proxy', force: true),
+    ];
+  }
+
+  /// Только правила с ЖИВЫМ выходом — и только когда основной путь выключен.
+  /// `null` = делать нечего.
+  ///
+  /// Отбор обязателен: без него режим «Всё через VPN» получил бы правила и для
+  /// сайтов без выхода. Они указывали бы на `proxy`, то есть ровно туда же,
+  /// куда ведёт `route.final`, — поведение то же, а конфиг у КАЖДОГО
+  /// пользователя стал бы другим. Тихо менять конфиг там, где ничего не
+  /// просили, — способ получить необъяснимый отчёт через полгода.
+  SplitTunnelConfig? _exitRulesOnly(SplitTunnelConfig split) {
+    if (_userRulesActive(split) || _liveExitTags.isEmpty) return null;
+    final sites = split.sites
+        .where((s) => _exitTagFor(s.serverKey, s.action) != null)
+        .toList();
+    final apps = split.apps
+        .where((a) => a.enabled && _exitTagFor(a.serverKey, a.action) != null)
+        .toList();
+    if (sites.isEmpty && apps.isEmpty) return null;
+    return split.copyWith(sites: sites, apps: apps);
   }
 
   void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
@@ -1156,42 +1372,53 @@ class SingboxConfigBuilder {
   /// для правил «по пути».
   List<Map<String, dynamic>> _dnsAppRules(
       SplitTunnelConfig split, AppAction action, String? server,
-      {bool? allowRealIp}) {
-    if (!_userRulesActive(split)) return const [];
+      {bool? allowRealIp, bool force = false}) {
+    // [force] — см. оговорку в [_dnsSiteRules].
+    if (!force && !_userRulesActive(split)) return const [];
     var apps = split.apps.where((a) => a.enabled && a.action == action);
     if (allowRealIp != null && options.noRealIp) {
       apps = apps.where((a) => a.allowRealIp == allowRealIp);
     }
 
-    Map<String, dynamic> withAction(Map<String, dynamic> match) {
-      if (server == null) return {...match, 'action': 'reject'};
-      return {...match, 'server': server};
-    }
-
-    if (options.platformTun) {
-      final pkgs =
-          apps.map((a) => a.path.trim()).where((p) => p.isNotEmpty).toSet().toList();
-      return pkgs.isEmpty ? const [] : [withAction({'package_name': pkgs})];
+    Map<String, dynamic> withAction(Map<String, dynamic> match, String? srv) {
+      if (srv == null) return {...match, 'action': 'reject'};
+      return {...match, 'server': srv};
     }
 
     final out = <Map<String, dynamic>>[];
-    final byName = apps
-        .where((a) => a.byName)
-        .map((a) => a.name.trim())
-        .where((n) => n.isNotEmpty)
-        .toSet()
-        .toList();
-    final byPath = apps
-        .where((a) => !a.byName)
-        .map((a) => a.path.trim())
-        .where((p) => p.isNotEmpty)
-        .toSet()
-        .toList();
-    if (byName.isNotEmpty) out.add(withAction({'process_name': byName}));
-    if (byPath.isNotEmpty) {
-      out.add(withAction({
-        'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
-      }));
+    // Те же группы, что в маршрутах, — см. оговорку в [_dnsSiteRules].
+    for (final group in _byOutbound(
+        apps,
+        (a) => _dnsServerForOutbound(_exitTagFor(a.serverKey, action)) ?? server)) {
+      final srv = group.key;
+      if (options.platformTun) {
+        final pkgs = group.value
+            .map((a) => a.path.trim())
+            .where((p) => p.isNotEmpty)
+            .toSet()
+            .toList();
+        if (pkgs.isNotEmpty) out.add(withAction({'package_name': pkgs}, srv));
+        continue;
+      }
+
+      final byName = group.value
+          .where((a) => a.byName)
+          .map((a) => a.name.trim())
+          .where((n) => n.isNotEmpty)
+          .toSet()
+          .toList();
+      final byPath = group.value
+          .where((a) => !a.byName)
+          .map((a) => a.path.trim())
+          .where((p) => p.isNotEmpty)
+          .toSet()
+          .toList();
+      if (byName.isNotEmpty) out.add(withAction({'process_name': byName}, srv));
+      if (byPath.isNotEmpty) {
+        out.add(withAction({
+          'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+        }, srv));
+      }
     }
     return out;
   }
@@ -1203,23 +1430,34 @@ class SingboxConfigBuilder {
   /// [allowRealIp] отбирает подмножество правил «Прямо» при включённом
   /// `noRealIp`; при выключенном отбор не нужен — прямое правило и так прямое.
   void _addSiteRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
-      AppAction action, String? outbound, {bool? allowRealIp}) {
+      AppAction action, String? outbound,
+      {bool? allowRealIp}) {
     var matched = split.sites.where((s) => s.action == action);
     if (allowRealIp != null && options.noRealIp) {
       matched = matched.where((s) => s.allowRealIp == allowRealIp);
     }
-    final noPort = matched.where((s) => s.port == null).map((s) => s.domain).toList();
-    if (noPort.isNotEmpty) {
-      rules.add(_action({'domain_suffix': noPort}, outbound));
+    // ⚠️ СНАЧАЛА РАЗВОДИМ ПО ВЫХОДАМ, ПОТОМ ПО ПОРТАМ. У правила ядра ровно
+    // один адресат: сложи мы сайты «через Германию» и «через США» в одно
+    // правило — все они уехали бы в тот выход, чей тег туда попал.
+    for (final group
+        in _byOutbound(matched, (s) => _exitTagFor(s.serverKey, action) ?? outbound)) {
+      final target = group.key;
+      final noPort =
+          group.value.where((s) => s.port == null).map((s) => s.domain).toList();
+      if (noPort.isNotEmpty) {
+        rules.add(_action({'domain_suffix': noPort}, target));
+      }
+      // Группируем по порту: один порт — одно правило с его доменами.
+      final byPort = <int, List<String>>{};
+      for (final s in group.value.where((s) => s.port != null)) {
+        byPort.putIfAbsent(s.port!, () => []).add(s.domain);
+      }
+      final ports = byPort.keys.toList()..sort();
+      for (final port in ports) {
+        rules.add(
+            _action({'domain_suffix': byPort[port]!, 'port': [port]}, target));
+      }
     }
-    // Группируем по порту: один порт — одно правило с его доменами.
-    final byPort = <int, List<String>>{};
-    for (final s in matched.where((s) => s.port != null)) {
-      byPort.putIfAbsent(s.port!, () => []).add(s.domain);
-    }
-    byPort.forEach((port, domains) {
-      rules.add(_action({'domain_suffix': domains, 'port': [port]}, outbound));
-    });
   }
 
   /// Одно правило для всех приложений с действием [action]. [outbound] == null →
@@ -1246,29 +1484,36 @@ class SingboxConfigBuilder {
     // в конфиг уезжали 'chrome.exe' и regex по путям Windows — они не совпадали
     // НИ С ЧЕМ. Правила приложений на Android не работали в принципе, а «Блок»
     // при этом молча пропускал трафик, хотя интерфейс показывал блокировку.
-    if (options.platformTun) {
-      final pkgs = apps
-          .map((a) => a.path.trim())
-          .where((p) => p.isNotEmpty)
-          .toSet()
-          .toList();
-      if (pkgs.isNotEmpty) {
-        rules.add(_action({'package_name': pkgs}, outbound));
+    // Как и у сайтов: приложения одного действия, но разных выходов не могут
+    // ехать одним правилом.
+    for (final group
+        in _byOutbound(apps, (a) => _exitTagFor(a.serverKey, action) ?? outbound)) {
+      final target = group.key;
+      if (options.platformTun) {
+        final pkgs = group.value
+            .map((a) => a.path.trim())
+            .where((p) => p.isNotEmpty)
+            .toSet()
+            .toList();
+        if (pkgs.isNotEmpty) {
+          rules.add(_action({'package_name': pkgs}, target));
+        }
+        continue;
       }
-      return;
-    }
 
-    final byName = apps.where((a) => a.byName).map((a) => a.name).toList();
-    final byPath = apps.where((a) => !a.byName).map((a) => a.path).toList();
-    if (byName.isNotEmpty) {
-      rules.add(_action({'process_name': byName}, outbound));
-    }
-    if (byPath.isNotEmpty) {
-      // process_path сравнивается ядром побайтово (регистр, короткие пути Windows) —
-      // правило могло молча не срабатывать. process_path_regex с (?i) — надёжно.
-      rules.add(_action({
-        'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
-      }, outbound));
+      final byName = group.value.where((a) => a.byName).map((a) => a.name).toList();
+      final byPath = group.value.where((a) => !a.byName).map((a) => a.path).toList();
+      if (byName.isNotEmpty) {
+        rules.add(_action({'process_name': byName}, target));
+      }
+      if (byPath.isNotEmpty) {
+        // process_path сравнивается ядром побайтово (регистр, короткие пути
+        // Windows) — правило могло молча не срабатывать. process_path_regex
+        // с (?i) — надёжно.
+        rules.add(_action({
+          'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+        }, target));
+      }
     }
   }
 

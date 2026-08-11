@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../core/platform/app_log.dart';
 import '../core/platform/platform_services.dart';
+import '../core/platform/singbox_log_format.dart';
 import '../l10n/gen/app_localizations.dart';
 
 /// Логи приложения и ядра — чтобы диагностировать без запуска из консоли.
@@ -48,7 +49,9 @@ class _LogsScreenState extends State<LogsScreen>
     if (!mounted) return;
     setState(() {
       _app = app;
-      _tun = tun;
+      // Лог ядра показываем причёсанным: смещение часового пояса в конец
+      // строки, цветовые последовательности прочь. Файл при этом не трогаем.
+      _tun = tidySingboxLog(tun);
     });
   }
 

@@ -2098,4 +2098,207 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'Rapor tek bir dosyada toplandı. Sistem penceresinden nereye göndereceğinizi seçin — Telegram\'a metin olarak değil, ek olarak gider.';
+
+  @override
+  String get exitsHeader => 'Çıkışlar';
+
+  @override
+  String get exitsHint =>
+      'Bir «Tünel» kuralı belirli bir çıkışa yönlendirilebilir: bir site Almanya üzerinden, diğeri ABD üzerinden. Çıkış seçilmezse kural eskisi gibi ana tüneli kullanır.';
+
+  @override
+  String get exitsAdd => 'Çıkış ekle';
+
+  @override
+  String get exitsEmpty => 'Henüz çıkış yok';
+
+  @override
+  String get exitsName => 'Ad';
+
+  @override
+  String get exitsNameHint => 'Almanya';
+
+  @override
+  String get exitsServers => 'Sunucular';
+
+  @override
+  String get exitsAutoSelect => 'Gecikmeye göre otomatik seçim';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'Çekirdek trafiği kendiliğinden çalışan bir sunucuda tutar. Bedeli: her sunucu üç dakikada bir yoklanır ve bu telefonda radyoyu uyandırır.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'En az iki sunucu gerekir';
+
+  @override
+  String get exitsDelete => 'Çıkışı sil';
+
+  @override
+  String get exitsNoServers => 'Sunucu yok — önce bir abonelik içe aktarın';
+
+  @override
+  String get exitsSearch => 'Sunucu ara';
+
+  @override
+  String get exitsPickAtLeastOne => 'En az bir sunucu seçin';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Panelin «Oto» profilleri ve hysteria2 ayrı bir çıkış olarak çalışmaz: bunları diğer çekirdek yürütür. Bu sunucular listede devre dışıdır.';
+
+  @override
+  String get infoExits =>
+      'Çıkış, «Tünel» kuralının hedefidir.\n\nVarsayılan olarak bir çıkış TEK bir sunucudur ve arka planda hiçbir maliyeti yoktur: sıradan protokoller kalıcı bağlantı tutmaz. Otomatik seçimli çok sunuculu grup yalnızca düğüm arızasına karşı güvence önemliyse gerekir — düzenli ölçümler ekler, telefonda bunlar radyo uyandırmalarıdır.\n\nÇıkış YALNIZCA «Tünel» eyleminde anlamlıdır. «Almanya üzerinden doğrudan» bir çelişkidir: doğrudan kural tüm çıkışları atlar.\n\nBir site ile alt alan adı FARKLI çıkışlara gidebilir — uygulama daha özel kuralı yukarı alır, aksi hâlde üst alan adı alt alanı yutardı.\n\nÖNEMLİ: Windows’ta sistem proxy’siyle çıkışlar hiç çalışmaz — o kipte yönlendirme kuralları oluşturulmaz. Tünel kipi gerekir.';
+
+  @override
+  String get ruleServer => 'Sunucu üzerinden';
+
+  @override
+  String get ruleServerCurrent => 'Ana sunucu ile aynı';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Ana sunucu ile aynı ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Dosya adına göre eşleştirme';
+
+  @override
+  String get routeYourApps => 'Uygulamalarınız';
+
+  @override
+  String get routeYourSites => 'Siteleriniz';
+
+  @override
+  String get routeAppsAndSites => 'Uygulamalar ve siteler';
+
+  @override
+  String get notifCompactTitle => 'Kısa bildirim';
+
+  @override
+  String get notifCompactSub =>
+      'Kapalı — abonelik, sunucu ve hız, düğmelerle birlikte. Açık — başlıkta uygulama ve abonelik, altında sunucu; hız ve düğme yok.';
+
+  @override
+  String get localProxyAuthTitle => 'Yerel proxy parolası';
+
+  @override
+  String get localProxyAuthInfo =>
+      'Çekirdeğin yerel bağlantı noktası (127.0.0.1) VPN\'inize açılan tam bir proxy\'dir. Parola olmadan aynı cihazdaki her program ona bağlanır ve tünelinizi olduğu gibi kullanır: çıkış IP\'niz, abonelik kotanız ve kendi ayrık tünelleme kurallarınızın atlanması — «Engelle» dediğiniz uygulamalar dâhil. Android\'de bu özellikle önemlidir: orada yerel bağlantı noktalarını yüklü her uygulama görür.\n\nYalnızca bu proxy\'ye bilerek kimlik doğrulamayı desteklemeyen bir şeyle bağlanıyorsanız kapatın.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Kapalı: yerel proxy cihazdaki her programa açık';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      '«Sistem proxy\'si» modunda geçerli değildir: Windows yerel proxy\'ye parola iletemez. TUN modunda çalışır.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'Her bağlantıda yeni rastgele parola — hiçbir yere kaydedilmez';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Kendi kullanıcı adınız ve parolanız (ayar dosyasında saklanır)';
+
+  @override
+  String get localProxyCredsTitle => 'Kendi kullanıcı adınız ve parolanız';
+
+  @override
+  String get localProxyCredsUnset =>
+      'Belirtilmedi — rastgele parola kullanılıyor';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Kullanıcı adı: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'Yerel proxy kullanıcı adı ve parolası';
+
+  @override
+  String get localProxyDialogBody =>
+      'Yalnızca proxy\'mizi (127.0.0.1) başka bir programa kendiniz yazacaksanız gereklidir. Alanları boş bırakırsanız parola her bağlantıda rastgele olur: hiçbir yere kaydedilmez ve yedeklere girmez.';
+
+  @override
+  String get localProxyFieldUser => 'Kullanıcı adı';
+
+  @override
+  String get localProxyFieldPassword => 'Parola';
+
+  @override
+  String get localProxyFieldHint => 'boş — rastgele';
+
+  @override
+  String get lockdownOnTitle => 'Sistem düzeyinde koruma açık';
+
+  @override
+  String get lockdownOnSub =>
+      'Uygulama kapansa da sistem onu bellekten atsa da trafik engellenir. En güvenilir mod budur.';
+
+  @override
+  String get lockdownHalfTitle => 'Koruma yarım açık';
+
+  @override
+  String get lockdownHalfSub =>
+      '«Her zaman açık VPN» seçili, ama «VPN olmadan bağlantıları engelle» kapalı. Uygulama çalıştığı sürece trafik korunur; sistem onu bellekten atarsa trafik açıktan gider.';
+
+  @override
+  String get lockdownOffTitle => 'Sistem düzeyinde koruma kapalı';
+
+  @override
+  String get lockdownOffSub =>
+      'Kill switch\'imiz, uygulama çalıştığı sürece trafiği tutar. Sistem uygulamayı bellekten atarsa trafik VPN\'i atlar. «Her zaman açık VPN» ve «VPN olmadan bağlantıları engelle» seçeneklerini açın.';
+
+  @override
+  String get lockdownUnknownTitle =>
+      'Sistem düzeyinde koruma: durum bilinmiyor';
+
+  @override
+  String get lockdownUnknownSub =>
+      'Durum yalnızca Android 10\'dan itibaren ve tünel açıkken öğrenilebilir. El ile denetleyin: «Her zaman açık VPN» ve «VPN olmadan bağlantıları engelle».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Sistemin VPN ayarları açılamadı. El ile bulun: Ayarlar → Ağ ve internet → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Engellenen siteleri bildir';
+
+  @override
+  String get blockNoticeSub =>
+      'Bir uygulama ya da tarayıcı «Engelle» listesindeki bir siteye ulaşmaya çalıştığında, altta site adıyla bir bildirim çıkar. Dokunun — bu ekran açılır.';
+
+  @override
+  String get siteInsecureScheme =>
+      'Adres http:// olarak yazılmış — bağlantı şifrelenmez ve sağlayıcı her şeyi görür. Tarayıcının https kullanması için «http://» kısmını silin.';
+
+  @override
+  String get exitServerGone =>
+      'Bu kuralın sunucusu abonelikten kayboldu — trafik ana tünelden gidiyor';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nBu sunucu ayrı bir çıkış olarak çalıştırılamaz: panelin «Oto» profillerini ve bazı protokolleri yalnızca Xray yürütür, çıkışları ise sing-box dağıtır. Kuralın trafiği ana tünelden gider.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Kurallar';
+
+  @override
+  String get geoVerdictMissingTitle => 'Geo verileri indirilmedi';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'Aboneliğin ülke ve kategori kuralları şu anda devre dışı — bu trafik doğrudan değil, VPN üzerinden gidiyor.';
+
+  @override
+  String get geoVerdictUnusableTitle => 'Çekirdek geo verilerini açamadı';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar.';
 }

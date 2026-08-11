@@ -2090,4 +2090,205 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'گزارش در یک فایل جمع شد. در پنجرهٔ سیستمی انتخاب کنید که آن را کجا بفرستید — در تلگرام به‌صورت پیوست ارسال می‌شود، نه متن.';
+
+  @override
+  String get exitsHeader => 'خروجی‌ها';
+
+  @override
+  String get exitsHint =>
+      'یک قاعده «تونل» را می‌توان به خروجی مشخصی هدایت کرد: یک سایت از آلمان و دیگری از آمریکا. بدون خروجی، قاعده مانند گذشته از تونل اصلی عبور می‌کند.';
+
+  @override
+  String get exitsAdd => 'افزودن خروجی';
+
+  @override
+  String get exitsEmpty => 'هنوز خروجی‌ای نیست';
+
+  @override
+  String get exitsName => 'نام';
+
+  @override
+  String get exitsNameHint => 'آلمان';
+
+  @override
+  String get exitsServers => 'سرورها';
+
+  @override
+  String get exitsAutoSelect => 'انتخاب خودکار بر پایه تأخیر';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'هسته خودش ترافیک را روی سرور فعال نگه می‌دارد. هزینه‌اش: هر سرور هر سه دقیقه آزموده می‌شود و این رادیوی گوشی را بیدار می‌کند.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'دست‌کم دو سرور لازم است';
+
+  @override
+  String get exitsDelete => 'حذف خروجی';
+
+  @override
+  String get exitsNoServers => 'سروری نیست — نخست اشتراک را وارد کنید';
+
+  @override
+  String get exitsSearch => 'جست‌وجوی سرور';
+
+  @override
+  String get exitsPickAtLeastOne => 'دست‌کم یک سرور انتخاب کنید';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'پروفایل‌های «خودکار» پنل و hysteria2 به‌عنوان خروجی جداگانه بالا نمی‌آیند: هسته دیگری آن‌ها را اداره می‌کند. چنین سرورهایی در فهرست غیرفعال‌اند.';
+
+  @override
+  String get infoExits =>
+      'خروجی مقصد قاعده «تونل» است.\n\nبه‌طور پیش‌فرض هر خروجی یک سرور است و در پس‌زمینه هیچ هزینه‌ای ندارد: پروتکل‌های معمول اتصال دائمی نگه نمی‌دارند. گروهی از چند سرور با انتخاب خودکار تنها جایی لازم است که پشتیبان در برابر افتادن گره اهمیت دارد — اندازه‌گیری دوره‌ای می‌افزاید و روی گوشی یعنی بیدار شدن رادیو.\n\nخروجی تنها با کنش «تونل» معنا دارد. «مستقیم از آلمان» تناقض است: قاعده مستقیم از همه خروجی‌ها می‌گذرد.\n\nیک سایت و زیردامنه‌اش می‌توانند به خروجی‌های متفاوت بروند — برنامه قاعده مشخص‌تر را بالاتر می‌برد، وگرنه دامنه والد زیردامنه را می‌بلعید.\n\nمهم: با پروکسی سیستمی در ویندوز خروجی‌ها اصلاً کار نمی‌کنند — در آن حالت قاعده مسیریابی ساخته نمی‌شود. حالت تونل لازم است.';
+
+  @override
+  String get ruleServer => 'از طریق سرور';
+
+  @override
+  String get ruleServerCurrent => 'مانند سرور اصلی';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'مانند سرور اصلی ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'تطبیق بر اساس نام فایل';
+
+  @override
+  String get routeYourApps => 'برنامه‌های شما';
+
+  @override
+  String get routeYourSites => 'سایت‌های شما';
+
+  @override
+  String get routeAppsAndSites => 'برنامه‌ها و سایت‌ها';
+
+  @override
+  String get notifCompactTitle => 'اعلان کوتاه';
+
+  @override
+  String get notifCompactSub =>
+      'خاموش: اشتراک، سرور و سرعت، همراه با دکمه‌ها. روشن: در عنوان، برنامه و اشتراک و پایین‌تر سرور — بدون سرعت و بدون دکمه.';
+
+  @override
+  String get localProxyAuthTitle => 'رمز عبور برای پروکسی محلی';
+
+  @override
+  String get localProxyAuthInfo =>
+      'پورت محلی هسته (127.0.0.1) یک پروکسی تمام‌عیار به VPN شماست. بدون رمز عبور، هر برنامه‌ای روی همین دستگاه می‌تواند به آن وصل شود و کل تونل شما را بگیرد: IP خروجی، سهمیهٔ اشتراک و دور زدن قوانین تونل تفکیکی خودتان — حتی برنامه‌هایی که برایشان «مسدود» گذاشته‌اید. روی Android این نکته مهم‌تر است: آنجا پورت‌های محلی را هر برنامهٔ نصب‌شده‌ای می‌بیند.\n\nتنها زمانی خاموشش کنید که آگاهانه با ابزاری به این پروکسی می‌روید که احراز هویت بلد نیست.';
+
+  @override
+  String get localProxyAuthOff =>
+      'خاموش: پروکسی محلی برای هر برنامه‌ای روی دستگاه باز است';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'در حالت «پروکسی سیستمی» اعمال نمی‌شود: Windows نمی‌تواند رمز عبور را به پروکسی محلی بدهد. در حالت TUN کار می‌کند.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'رمز تصادفی تازه در هر اتصال — هیچ‌جا ذخیره نمی‌شود';
+
+  @override
+  String get localProxyAuthCustom =>
+      'نام کاربری و رمز خودتان (در فایل تنظیمات ذخیره می‌شود)';
+
+  @override
+  String get localProxyCredsTitle => 'نام کاربری و رمز خودتان';
+
+  @override
+  String get localProxyCredsUnset => 'تعیین نشده — رمز تصادفی به‌کار می‌رود';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'نام کاربری: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'نام کاربری و رمز پروکسی محلی';
+
+  @override
+  String get localProxyDialogBody =>
+      'فقط وقتی لازم است که خودتان پروکسی ما (127.0.0.1) را در برنامه‌ای دیگر وارد می‌کنید. کادرها را خالی بگذارید تا رمز در هر اتصال تصادفی باشد: هیچ‌جا ذخیره نمی‌شود و به نسخه‌های پشتیبان هم نمی‌رود.';
+
+  @override
+  String get localProxyFieldUser => 'نام کاربری';
+
+  @override
+  String get localProxyFieldPassword => 'رمز عبور';
+
+  @override
+  String get localProxyFieldHint => 'خالی = تصادفی';
+
+  @override
+  String get lockdownOnTitle => 'محافظت در سطح سیستم روشن است';
+
+  @override
+  String get lockdownOnSub =>
+      'ترافیک مسدود می‌ماند، حتی اگر برنامه بسته شود یا سیستم آن را از حافظه بیرون بیندازد. مطمئن‌ترین حالت همین است.';
+
+  @override
+  String get lockdownHalfTitle => 'محافظت نیمه‌کاره است';
+
+  @override
+  String get lockdownHalfSub =>
+      '«VPN همیشه‌روشن» تنظیم شده، اما «مسدودکردن اتصال بدون VPN» خاموش است. تا وقتی برنامه زنده است ترافیک محافظت می‌شود؛ اگر سیستم آن را از حافظه بیرون بیندازد، ترافیک باز و بی‌محافظ بیرون می‌رود.';
+
+  @override
+  String get lockdownOffTitle => 'محافظت در سطح سیستم خاموش است';
+
+  @override
+  String get lockdownOffSub =>
+      'کیل‌سوییچ ما تا وقتی برنامه در حال اجراست ترافیک را نگه می‌دارد. اگر سیستم آن را از حافظه بیرون بیندازد، ترافیک از کنار VPN می‌رود. «VPN همیشه‌روشن» و «مسدودکردن اتصال بدون VPN» را روشن کنید.';
+
+  @override
+  String get lockdownUnknownTitle => 'محافظت در سطح سیستم: وضعیت نامعلوم';
+
+  @override
+  String get lockdownUnknownSub =>
+      'وضعیت را فقط از Android 10 به بعد و تنها با تونل برپا می‌توان خواند. دستی بررسی کنید: «VPN همیشه‌روشن» و «مسدودکردن اتصال بدون VPN».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'باز کردن تنظیمات VPN سیستم ممکن نشد. دستی پیدایشان کنید: تنظیمات ← شبکه و اینترنت ← VPN.';
+
+  @override
+  String get blockNoticeTitle => 'اطلاع دادن دربارهٔ سایت‌های مسدودشده';
+
+  @override
+  String get blockNoticeSub =>
+      'وقتی برنامه یا مرورگر سراغ سایتی از فهرست «مسدود» می‌رود، پایین صفحه اعلانی با نام آن ظاهر می‌شود. رویش بزنید تا همین صفحه باز شود.';
+
+  @override
+  String get siteInsecureScheme =>
+      'نشانی با http:// نوشته شده — اتصال رمزگذاری نمی‌شود و ISP آن را کامل می‌بیند. «http://» را بردارید تا مرورگر از https برود.';
+
+  @override
+  String get exitServerGone =>
+      'سرور این قانون از اشتراک ناپدید شده — ترافیک از تونل اصلی می‌رود';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nاین سرور را نمی‌توان به‌عنوان خروجی جداگانه بالا آورد: پروفایل‌های «خودکار» پنل و بخشی از پروتکل‌ها را تنها Xray اداره می‌کند، اما خروجی‌ها را sing-box تقسیم می‌کند. ترافیک این قانون از تونل اصلی می‌رود.';
+  }
+
+  @override
+  String get noticeRulesAction => 'قوانین';
+
+  @override
+  String get geoVerdictMissingTitle => 'داده‌های جغرافیایی دانلود نشده‌اند';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'قوانین کشوری و دسته‌بندی اشتراک اکنون غیرفعال‌اند — این ترافیک به‌جای مسیر مستقیم از VPN می‌رود.';
+
+  @override
+  String get geoVerdictUnusableTitle => 'هسته داده‌های جغرافیایی را باز نکرد';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'فایل‌ها سر جایشان هستند، اما هسته آن‌ها را نخواند. دانلود دوبارهٔ داده‌ها معمولاً کمک می‌کند.';
 }

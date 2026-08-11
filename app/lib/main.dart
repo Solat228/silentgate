@@ -92,6 +92,18 @@ Future<void> main(List<String> args) async {
               AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
         ),
         ChangeNotifierProvider(create: (_) => SettingsController()..init()),
+        // Кнопка «Свернуть» на самом уведомлении меняет раскладку в обход
+        // настроек — здесь выбор возвращается в них. Без этого приложение
+        // прислало бы прежнюю раскладку со следующим обновлением счётчиков
+        // (раз в секунду), и кнопка выглядела бы неработающей.
+        //
+        // ⚠️ Связываем ЗДЕСЬ, а не внутри `AppState`: настройки ему не
+        // принадлежат, а лезть за чужим контроллером из состояния — прямой
+        // путь к двум источникам правды.
+        ProxyProvider2<AppState, SettingsController, _ShadeLayoutLink>(
+          update: (_, state, settings, __) =>
+              _ShadeLayoutLink(state, settings),
+        ),
         ChangeNotifierProvider(create: (_) => ProbeController()..init()),
         ChangeNotifierProvider(create: (_) => AutoConfigController()..init()),
         ChangeNotifierProvider(create: (_) => ServiceCheckController()),
@@ -136,4 +148,18 @@ Future<bool> _runWindowsCliMode(List<String> args) async {
   }
 
   return false;
+}
+
+/// Связка «кнопка в шторке → настройка приложения».
+///
+/// Существует ради одного побочного эффекта и ничего не хранит: нажатие
+/// «Свернуть»/«Развернуть» на самом уведомлении обязано попасть в настройки,
+/// иначе приложение вернёт прежнюю раскладку со следующим тактом счётчиков.
+class _ShadeLayoutLink {
+  _ShadeLayoutLink(AppState state, SettingsController settings) {
+    state.onCompactToggledInShade = (compact) {
+      if (settings.settings.compactNotification == compact) return;
+      settings.update((s) => s.copyWith(compactNotification: compact));
+    };
+  }
 }

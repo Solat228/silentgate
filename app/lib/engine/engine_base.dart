@@ -5,12 +5,14 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
-import '../core/app_info.dart';
-import '../core/i18n/localizations_loader.dart';
 import '../core/models/traffic_stats.dart';
-import '../core/net/block_page_server.dart';
+import '../core/settings/app_settings.dart';
+import '../core/net/block_notice_watcher.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
+import '../core/models/engine_notice.dart';
+import '../core/probe/tunnel_health.dart';
+import '../core/probe/proxy_probe.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
 import '../core/settings/split_tunnel.dart';
@@ -53,6 +55,16 @@ abstract class VpnEngineBase implements VpnEngine {
   /// трафика, проверка занятости, сервис-чипы) не должны знать, кто внизу.
   final XrayPorts ports;
   late final XrayConfigBuilder configBuilder;
+
+  /// Построитель с ТЕКУЩИМИ кредами локальных inbound'ов.
+  ///
+  /// ⚠️ Именно так, а не «выдать креды построителю один раз»: креды
+  /// меняются на каждой сессии (`prepareLocalProxyAuth`), а `configBuilder`
+  /// создаётся один раз в конструкторе. Замороженные креды разошлись бы с теми,
+  /// с которыми ходят туннель и пробы, и SOCKS-рукопожатие отвергалось бы —
+  /// «Подключено» при нулевом трафике.
+  XrayConfigBuilder get _authedBuilder =>
+      configBuilder.withAuth(localInboundUser, localInboundPassword);
 
   final _statusController = StreamController<VpnStatus>.broadcast();
   final _statsController = StreamController<TrafficStats>.broadcast();
@@ -99,15 +111,315 @@ abstract class VpnEngineBase implements VpnEngine {
 
   /// Креды ЛОКАЛЬНЫХ инбаундов ядра (socks/http) на текущую сессию.
   ///
-  /// ⚠️ Непусты ТОЛЬКО на Android. Там loopback не изолирован между
-  /// приложениями: без пароля к 127.0.0.1:10808 подключается любое
-  /// установленное приложение и получает VPN пользователя вместе с обходом его
-  /// же раздельного туннелирования. На Windows пароль ставить нельзя — туда
-  /// смотрит системный прокси, а WinINET креденшелов не несёт.
+  /// Пусто — инбаунд без аутентификации. Заполняются через
+  /// [applyLocalProxyAuth] в начале каждой сессии.
   ///
-  /// Живут только в памяти: на диск и в логи не пишутся.
+  /// ⚠️ Случайный пароль живёт ТОЛЬКО в памяти: на диск и в логи не пишется.
+  /// Заданный пользователем вручную лежит в файле настроек — это его
+  /// сознательный выбор ради подключения сторонних программ.
   String localInboundUser = '';
   String localInboundPassword = '';
+
+  /// Выдать креды локальных прокси по настройкам. Зовётся ПЕРЕД сборкой
+  /// конфига: и построитель, и запасной DNS-форвардер берут их отсюда.
+  ///
+  /// ⚠️ ГЛАВНОЕ ОГРАНИЧЕНИЕ, КОТОРОЕ ЗДЕСЬ И ЖИВЁТ: в режиме СИСТЕМНОГО ПРОКСИ
+  /// пароль ставить НЕЛЬЗЯ. В локальный порт там смотрит WinINET, а он
+  /// креденшелов не передаёт — каждый запрос получит 407, и интернет ляжет
+  /// целиком. Поэтому настройка молча уступает режиму захвата, а не ломает
+  /// подключение; пользователю об этом говорит подпись в настройках.
+  void applyLocalProxyAuth(AppSettings s, {required bool systemProxyMode}) {
+    if (!s.localProxyAuth || systemProxyMode) {
+      localInboundUser = '';
+      localInboundPassword = '';
+      _publishProbeAuth();
+      return;
+    }
+    final user = s.localProxyUser.trim();
+    final pass = s.localProxyPassword;
+    if (user.isNotEmpty && pass.isNotEmpty) {
+      localInboundUser = user;
+      localInboundPassword = pass;
+    } else {
+      // Умолчание: новый пароль на каждую сессию. Он никуда не сохраняется,
+      // поэтому не переживает перезапуск и не попадает в резервные копии.
+      localInboundUser = user.isEmpty ? 'sg' : user;
+      localInboundPassword = randomSecret();
+    }
+    // ⚠️ ВЫЗОВ ОДИН И В КОНЦЕ, БЕЗ РАННИХ ВЫХОДОВ. Раньше ветка «пользователь
+    // задал свои логин и пароль» выходила через return ДО публикации, и
+    // `ProxyProbe` оставался с пустыми (или прошлыми) кредами: инбаунд закрыт,
+    // проба идёт без пароля, ядро отвечает 407. Наружу это выглядело так, что
+    // на исправном туннеле все сервис-чипы у кнопки Connect краснеют, а
+    // прокси-фаза пинга помечает рабочие серверы как «не проксирует» — и ни
+    // строчки в журнале. Ветка, физически не способная пропустить публикацию,
+    // надёжнее трёх одинаковых вызовов.
+    _publishProbeAuth();
+  }
+
+  /// Ставится ли в этом режиме захвата системный прокси.
+  ///
+  /// Вынесено сюда, чтобы креды выдавались ДО сборки конфига (см.
+  /// [prepareLocalProxyAuth]), а платформенная особенность осталась у платформы:
+  /// ограничение WinINET есть только на Windows.
+  bool systemProxyModeFor(ConnectionOptions options) => false;
+
+  /// Выдать креды локальных прокси ПЕРЕД сборкой конфига.
+  ///
+  /// ⚠️ ПОРЯДОК ЗДЕСЬ — НЕ ФОРМАЛЬНОСТЬ, А ИСПРАВЛЕНИЕ. Конфиг ядра собирается
+  /// в [sessionFor]/[balancerSessionFor], а креды выдавались позже, в
+  /// `startSession` платформы. Итог был такой: первое подключение за запуск
+  /// уходило к ядру ВООБЩЕ БЕЗ пароля (на момент сборки креды пусты), а второе
+  /// в том же запуске получало конфиг с паролем ПРОШЛОЙ сессии, тогда как
+  /// туннель, запасной DNS и пробы шли уже с новым — SOCKS-рукопожатие
+  /// отвергалось, статус «Подключено», а через туннель не проходило ничего.
+  /// Само не чинилось: каждый повтор брал тот же конфиг и генерировал новый
+  /// пароль. На Android тем же путём страдал режим «Авто (лучший сервер)»:
+  /// его конфиг тоже собирает база.
+  void prepareLocalProxyAuth(ConnectionOptions options) {
+    applyLocalProxyAuth(options.settings,
+        systemProxyMode: systemProxyModeFor(options));
+    // ⚠️ СЕКРЕТ CLASH API — НА КАЖДУЮ СЕССИЮ, НЕЗАВИСИМО ОТ ЯДРА. Он
+    // присваивался только внутри `buildSingboxJson`, то есть лишь когда
+    // прокси-ядром работает sing-box (hysteria2). При обычном VLESS/Reality —
+    // а это подавляющее большинство подключений — поле оставалось пустым, и
+    // ТУННЕЛЬНЫЙ sing-box поднимал `clash_api` на 127.0.0.1:10813 БЕЗ
+    // аутентификации. По собственному замечанию в построителе конфига он в
+    // таком виде «пускает всех и шлёт CORS *»: полный список посещённых
+    // доменов, адресов, портов и путей процессов читает любая открытая
+    // веб-страница. На Android этот порт закрыт паролем — платформы
+    // расходились ровно на том, что дороже всего.
+    singboxApiSecret = _newApiSecret();
+  }
+
+  /// Раздать креды тем, кто ходит в локальный прокси мимо движка.
+  ///
+  /// ⚠️ ДЕЛАЕТСЯ ЗДЕСЬ, А НЕ У КАЖДОГО ПОТРЕБИТЕЛЯ. Пока это лежало в
+  /// Android-движке, на Windows `ProxyProbe` оставался без пароля: сервис-чипы
+  /// и прокси-фаза пинга упирались в 407 на панельных профилях — и молча, без
+  /// единой строчки в журнале. Один вызов рядом с выдачей кредов гарантирует,
+  /// что оба конца меняются ВМЕСТЕ.
+  void _publishProbeAuth() {
+    ProxyProbe.user = localInboundUser;
+    ProxyProbe.password = localInboundPassword;
+  }
+
+  // ── Наблюдение за КАНАЛОМ ──────────────────────────────────────────────────
+  TunnelHealth? _health;
+
+  /// Сколько раз подряд сторож канала уже переподключал нас.
+  ///
+  /// ⚠️ ПРЕДОХРАНИТЕЛЬ ОТ ВЕЧНОГО ЦИКЛА. Проба ходит на внешние мишени
+  /// (`generate_204`). Если из страны выхода они недоступны все три — а это
+  /// бывает и от правил панельного профиля, и от блокировок на той стороне, —
+  /// канал будет объявляться мёртвым каждые ~2,5 минуты БЕСКОНЕЧНО, хотя он
+  /// исправен. Переподключение причину не лечит, зато рвёт все живые сессии
+  /// пользователя. При включённом kill switch попытки не кончаются вовсе, и
+  /// цикл стал бы вечным.
+  ///
+  /// Поэтому после [_healthGiveUpAfter] безрезультатных заходов сторож
+  /// умолкает: пишет в журнал и больше не дёргает соединение до следующего
+  /// ручного подключения. Молчаливый сторож хуже отсутствующего — но сторож,
+  /// который сам роняет связь, ещё хуже.
+  /// ⚠️ ⚠️ СЧЁТЧИК НЕЛЬЗЯ ОБНУЛЯТЬ ПО ФАКТУ ПОДКЛЮЧЕНИЯ. Он и обнулялся — в
+  /// `markConnected()`, — из-за чего предохранитель не срабатывал НИКОГДА:
+  /// сторож рвёт связь → повтор поднимает туннель → `markConnected()` ставит
+  /// ноль → следующий заход снова видит 0. Ровно тот вечный цикл, от которого
+  /// счётчик и написан. Обнуляет его только команда пользователя
+  /// ([resetHealthGuard] из `connectWith`) и долгая исправная работа
+  /// ([_healthQuietSpell] ниже).
+  int _healthRestarts = 0;
+  static const _healthGiveUpAfter = 3;
+
+  /// Когда сторож в последний раз переподключал соединение.
+  DateTime? _lastHealthRestartAt;
+
+  /// Сколько канал должен проработать без вмешательства сторожа, чтобы серия
+  /// считалась законченной. Иначе три разрыва за трое суток накопились бы в
+  /// «предохранитель сработал», и сторож замолчал бы на исправной машине.
+  static const _healthQuietSpell = Duration(minutes: 30);
+
+  /// Креды локального прокси для сквозной пробы. Платформы отличаются: на
+  /// Windows это те же креды инбаундов ядра, на Android — отдельный probe-порт
+  /// со своими. Реализация по умолчанию берёт общие.
+  ({String user, String password}) get healthProbeAuth =>
+      (user: localInboundUser, password: localInboundPassword);
+
+  /// Запустить сквозную проверку канала.
+  ///
+  /// ⚠️ ЖИВЁТ В БАЗЕ, А НЕ В ПЛАТФОРМЕ. Первая редакция была только в
+  /// Windows-движке — и на Android проверки не оказалось вовсе: живой прогон на
+  /// эмуляторе с оборванной сетью не дал ни строчки в журнале. Расхождение
+  /// платформ на ровном месте, ровно того сорта, за который в этом проекте уже
+  /// платили (`exclude_package`, порты ядер).
+  ///
+  /// Зачем это нужно вообще: сторож зависания спрашивает у ядра «отвечаешь ли
+  /// ты по своему API» — проверка ПРОЦЕССА. Ядро отвечает и тогда, когда через
+  /// туннель не проходит ни байта. 08.08.2026 у владельца VPN перестал
+  /// работать, а приложение за шесть часов не записало ничего.
+  void startHealthWatch(bool Function() aborted) {
+    stopHealthWatch();
+    final auth = healthProbeAuth;
+    // ⚠️ Креды обязательны: с паролем на локальном прокси проба без них
+    // получает 407 и объявляет ИСПРАВНЫЙ туннель мёртвым — сторож стал бы
+    // источником обрывов, а не защитой от них.
+    final h = TunnelHealth(
+      proxyPort: httpProxyPort,
+      proxyUser: auth.user,
+      proxyPassword: auth.password,
+    );
+    _health = h;
+    // ⚠️ Строка в журнал обязательна. Без неё «сторож не сработал» и «сторож не
+    // запускался» неразличимы — а разница между ними решающая: первое ищут в
+    // пробе, второе в порядке вызовов. Именно на этом потерян целый прогон в VM.
+    AppLog.i('Сторож канала вооружён: проба через 127.0.0.1:$httpProxyPort '
+        'раз в ${h.interval.inSeconds} с, приговор после '
+        '${h.failuresToDeclareDown} промахов подряд');
+    h.start(
+      aborted: () => aborted() || !status.isConnected,
+      onRecovered: (missed) => AppLog.w(
+          'Канал восстановился сам: подряд не прошло проб — $missed. '
+          'Переподключение не потребовалось.'),
+      onDown: () async {
+        if (aborted()) return;
+        // Последняя проверка ПЕРЕД разрывом, без 45-секундной паузы: сеть
+        // могла восстановиться за те секунды, что мы шли сюда, и рвать
+        // соединение впустую незачем.
+        if (await h.probeOnce()) {
+          AppLog.w('Канал ответил на повторной пробе — не переподключаюсь');
+          startHealthWatch(aborted);
+          return;
+        }
+        // ⚠️ ПОВТОРНАЯ ПРОВЕРКА ОТМЕНЫ — ОБЯЗАТЕЛЬНА. Проба выше идёт до трёх
+        // мишеней по 8 секунд, то есть до ~24 секунд ожидания. За это время
+        // пользователь, который сам заметил мёртвый интернет, успевает нажать
+        // «Отключить» и «Подключить» — туннель поднимается за 3-5 секунд. Без
+        // этой строки сторож ПРОШЛОЙ сессии гасил бы ядро уже НОВОЙ и планировал
+        // повтор поверх живого подключения; а если пользователь просто
+        // отключился, честное «Отключено» затиралось бы ложной ошибкой.
+        if (aborted() || !status.isConnected) {
+          AppLog.i('Сторож канала: за время пробы состояние изменилось — '
+              'соединение не трогаю');
+          return;
+        }
+        // Долгая исправная работа заканчивает прошлую серию: три разрыва,
+        // разделённые часами, — это не «переподключение не помогает».
+        final last = _lastHealthRestartAt;
+        if (last != null &&
+            DateTime.now().difference(last) > _healthQuietSpell) {
+          _healthRestarts = 0;
+        }
+        if (_healthRestarts >= _healthGiveUpAfter) {
+          AppLog.e('Сторож канала умолкает: $_healthRestarts переподключения '
+              'подряд не помогли. Похоже, проверочные адреса недоступны из '
+              'этой страны — дальше соединение не трогаю, чтобы не рвать его '
+              'без пользы.');
+          return;
+        }
+        _healthRestarts++;
+        _lastHealthRestartAt = DateTime.now();
+        AppLog.e('Канал не отвечает: ${h.failuresToDeclareDown} проверки подряд '
+            'не прошли через прокси-порт $httpProxyPort. Ядро при этом живо — '
+            'переподключаюсь, иначе «Подключено» осталось бы враньём.');
+        // ⚠️ ЗАМЕТКУ ЗДЕСЬ НЕ ШЛЁМ. `scheduleRetry` ниже отправит свою — с той
+        // же причиной («канал не пропускает трафик»), и на экране всплывали ДВА
+        // сообщения об одном событии. Поймано живым прогоном в VM: на снимке
+        // обе карточки стоят друг под другом. Одно событие — одна заметка.
+        await teardownCore(
+            keepCapture: session?.options.settings.killSwitch ?? false);
+        if (!await scheduleRetry('канал не пропускает трафик')) {
+          setStatus(VpnConnectionState.error,
+              message: 'Туннель подключён, но трафик через него не идёт');
+        }
+      },
+    );
+  }
+
+  void stopHealthWatch() {
+    _health?.stop();
+    _health = null;
+  }
+
+  /// Сбросить предохранитель. Зовётся при подключении ПО КОМАНДЕ пользователя:
+  /// его действие — знак, что прошлые неудачи больше не в счёт.
+  void resetHealthGuard() => _healthRestarts = 0;
+
+  /// Кончаются ли попытки. При kill switch — нет: см. [_scheduleRetryLocked].
+  bool endlessRetries(EngineSession session) =>
+      session.options.settings.killSwitch;
+
+  /// Случайная строка для паролей локальных портов и Clash API.
+  static String randomSecret() {
+    final rnd = Random.secure();
+    return List.generate(32, (_) => rnd.nextInt(16).toRadixString(16)).join();
+  }
+
+  // ── Уведомление о заблокированных сайтах ──────────────────────────────────
+  BlockNoticeWatcher? _blockWatcher;
+  final _blockedHosts = StreamController<String>.broadcast();
+
+  /// Имена правил «Блок», чей трафик заметили в туннеле. Интерфейс показывает
+  /// по ним всплывающее сообщение.
+  Stream<String> get blockedHostEvents => _blockedHosts.stream;
+
+  // ── Заметки для пользователя ──────────────────────────────────────────────
+  final _notices = StreamController<EngineNotice>.broadcast();
+
+  /// События, о которых пользователь должен узнать СРАЗУ.
+  ///
+  /// ⚠️ Отдельно от статуса намеренно. Статус отвечает на вопрос «что сейчас»,
+  /// и обрыв, который восстановился за три секунды, в нём не остаётся: строка
+  /// вернулась в «Подключено», и человек не узнал, что связь рвалась. Именно
+  /// поэтому 08.08.2026 владелец заметил неработающий VPN сам, а приложение
+  /// промолчало.
+  @override
+  Stream<EngineNotice> get notices => _notices.stream;
+
+  /// Отправить заметку. Молча пропускает, если поток уже закрыт: заметка не
+  /// стоит того, чтобы уронить остановку движка.
+  void emitNotice(EngineNoticeKind kind, String text, {String? detail}) {
+    if (_notices.isClosed) return;
+    _notices.add(EngineNotice(kind, text, detail: detail));
+  }
+
+  /// Запустить наблюдение. Зовётся движком после подъёма туннеля: раньше
+  /// Clash API ещё не слушает, и опрос уходил бы в пустоту.
+  void startBlockNotice(
+      {required AppSettings settings, required int apiPort, required String secret}) {
+    stopBlockNotice();
+    if (!settings.blockNoticeEnabled) return;
+    // Смысл есть только там, где правила вообще применяются: в режиме «Всё
+    // через VPN» блокировок нет, сообщать не о чем.
+    if (settings.splitTunnel.mode == SplitMode.all) return;
+    // ⚠️ ТОЛЬКО ПРАВИЛА БЕЗ ПОРТА. Правило «Блок» с портом (`example.com:8443`)
+    // режет ровно этот порт — обычный https на 443 продолжает работать. Сторож
+    // же сверяет только ИМЯ ХОСТА, поэтому на каждый заход в исправно
+    // работающий сайт он показывал бы «Сайт заблокирован вашим правилом».
+    // Такая же беда уже была у страницы-заглушки и чинилась в 1.0.3 — здесь она
+    // вернулась в новом механизме. Про правило с портом сторож молчит: молчание
+    // честнее вранья.
+    final blocked = {
+      for (final x in settings.splitTunnel.sites)
+        if (x.action == AppAction.block && x.port == null)
+          x.domain.trim().toLowerCase(),
+    }..removeWhere((d) => d.isEmpty);
+    if (blocked.isEmpty) return;
+    final w = BlockNoticeWatcher(apiPort: apiPort, secret: secret)
+      ..blocked = blocked;
+    w.events.listen((host) {
+      if (!_blockedHosts.isClosed) _blockedHosts.add(host);
+      emitNotice(EngineNoticeKind.blocked, 'Сайт заблокирован вашим правилом',
+          detail: host);
+    });
+    w.start();
+    _blockWatcher = w;
+  }
+
+  void stopBlockNotice() {
+    final w = _blockWatcher;
+    _blockWatcher = null;
+    unawaited(w?.dispose());
+  }
 
   /// Пароль Clash API текущей sing-box-сессии: новый на каждое подключение,
   /// только в памяти. Без него статистику и управление прокси мог бы дёргать
@@ -142,6 +454,16 @@ abstract class VpnEngineBase implements VpnEngine {
 
   @override
   int get httpProxyPort => ports.http;
+
+  /// Читает ли эта платформа счётчики через `statsquery` Xray.
+  ///
+  /// ⚠️ От этого зависит, открывать ли api-инбаунд Xray вообще. Он висит на
+  /// `127.0.0.1` БЕЗ аутентификации — Xray её для `api` не поддерживает, — и
+  /// на Android его видит любое установленное приложение (loopback там между
+  /// приложениями не изолирован). Windows читает счётчики именно оттуда,
+  /// Android — из Clash API sing-box, который закрыт паролем. Значит на
+  /// Android порт открывался вхолостую, и это чистый минус без плюса.
+  bool get readsXrayStats => true;
 
   @override
   set fallbackServers(List<VpnServer> servers) => _fallbacks = [...servers];
@@ -178,6 +500,12 @@ abstract class VpnEngineBase implements VpnEngine {
   set subscriptionTitle(String title) => _subscriptionTitle = title.trim();
   String get subscriptionTitle => _subscriptionTitle;
 
+  /// Путь к кэшированному логотипу подписки — значок в шторке.
+  String _subscriptionLogoPath = '';
+  @override
+  set subscriptionLogoPath(String path) => _subscriptionLogoPath = path.trim();
+  String get subscriptionLogoPath => _subscriptionLogoPath;
+
   /// Короткая раскладка уведомления — без строки подписки.
   bool _compactNotification = false;
   @override
@@ -193,6 +521,15 @@ abstract class VpnEngineBase implements VpnEngine {
   /// Раскладку шторки поменяли на лету. Умолчание — ничего не делать.
   @protected
   void onNotificationLayoutChanged() {}
+
+  /// Пользователь свернул/развернул уведомление КНОПКОЙ В САМОЙ ШТОРКЕ.
+  ///
+  /// ⚠️ Обратная связь обязательна. Раскладку задаёт приложение и присылает её
+  /// с каждым обновлением счётчиков, то есть раз в секунду. Без сохранения в
+  /// настройки нажатие откатилось бы на следующем такте, и кнопка выглядела бы
+  /// неработающей. Ставит обработчик тот, кто владеет настройками, — движку
+  /// они не принадлежат.
+  void Function(bool compact)? onCompactToggledInShade;
   bool get compactNotification => _compactNotification;
 
   /// Текущая сессия (нужна наследникам для подъёма).
@@ -222,6 +559,18 @@ abstract class VpnEngineBase implements VpnEngine {
   void markConnected() {
     _connectedAt = DateTime.now();
     _attempt = 0;
+    // ⚠️ Снимаем пометки обрыва ЗДЕСЬ, а не в connect(): второй обрыв за одну
+    // сессию иначе прошёл бы молча — пользователь узнал бы только о первом.
+    // Сообщаем о восстановлении лишь тогда, когда об обрыве уже говорили,
+    // иначе обычное подключение по кнопке сопровождалось бы лишней всплывашкой.
+    if (_noticedDrop) {
+      emitNotice(EngineNoticeKind.recovered, 'Соединение восстановлено');
+    }
+    _noticedDrop = false;
+    _noticedFailedAt = null;
+    // ⚠️ ЗДЕСЬ НЕТ И НЕ ДОЛЖНО БЫТЬ `_healthRestarts = 0`. Подключение бывает и
+    // ответом сторожа на его же разрыв — обнуление тут делало предохранитель
+    // недостижимым. Подробности у объявления счётчика.
     final since = _blockingSince;
     if (since != null) {
       final held = DateTime.now().difference(since);
@@ -252,11 +601,18 @@ abstract class VpnEngineBase implements VpnEngine {
   /// код (захват трафика, проверка занятости) не должен знать, кто внизу.
   String buildSingboxJson(List<VpnServer> servers,
       {Map<String, String> resolvedIps = const {}}) {
-    singboxApiSecret = _newApiSecret();
+    // Секрет уже выдан в `prepareLocalProxyAuth` — на сессию, независимо от
+    // ядра. Перевыдавать его здесь нельзя: туннельный экземпляр sing-box
+    // получил бы один секрет, а прокси-экземпляр другой.
     return SingboxProxyConfigBuilder(
       ports: SingboxProxyPorts(
           socks: ports.socks, http: ports.http, api: ports.api),
       apiSecret: singboxApiSecret,
+      // Локальные mixed-инбаунды прокси-ядра (hysteria2) закрываются тем же
+      // паролем, что и инбаунды Xray: без него 10808/10809 открыты любому
+      // процессу машины при включённой по умолчанию настройке.
+      user: localInboundUser,
+      password: localInboundPassword,
     ).buildJson(servers, resolvedIps: resolvedIps);
   }
 
@@ -439,7 +795,18 @@ abstract class VpnEngineBase implements VpnEngine {
             socksPassword: localInboundPassword);
         // #5 — у панельного профиля обычно нет StatsService, поэтому трафик
         // показывался как 0. Дописываем api/stats, если их нет.
-        final withStats = ensureXrayStats(norm.json, apiPort: ports.api);
+        //
+        // ⚠️ ТОЛЬКО ТАМ, ГДЕ ЭТИ СЧЁТЧИКИ КТО-ТО ЧИТАЕТ. api-инбаунд Xray —
+        // это `dokodemo-door` на 127.0.0.1, и аутентификации для него Xray не
+        // предусматривает В ПРИНЦИПЕ. На Android loopback между приложениями не
+        // изолирован, то есть открытый порт видит любое установленное
+        // приложение: детекторы VPN ищут gRPC API Xray отдельной проверкой.
+        // При этом Android счётчики берёт из Clash API sing-box (с паролем) и
+        // к `statsquery` не обращается ВООБЩЕ — единственный вызов `XrayStats`
+        // живёт в `windows_engine`. Значит порт там открывался впустую.
+        final withStats = readsXrayStats
+            ? ensureXrayStats(norm.json, apiPort: ports.api)
+            : norm.json;
         return (json: withStats, core: ProxyCore.xray, full: true);
       }
     }
@@ -452,7 +819,7 @@ abstract class VpnEngineBase implements VpnEngine {
       );
     }
     return (
-      json: configBuilder.buildJson(server, variant: options.variant),
+      json: _authedBuilder.buildJson(server, variant: options.variant),
       core: ProxyCore.xray,
       full: false,
     );
@@ -486,6 +853,7 @@ abstract class VpnEngineBase implements VpnEngine {
   /// подключении, и заметить это будет нечем.
   Future<EngineSession> sessionFor(
       VpnServer server, ConnectionOptions options) async {
+    prepareLocalProxyAuth(options);
     final resolved = pickOneIpPerHost(await resolveServerHosts([server]));
     final cfg = configFor(server, options, resolvedIps: resolved);
     return EngineSession(cfg.json, options, [server], cfg.core);
@@ -495,12 +863,13 @@ abstract class VpnEngineBase implements VpnEngine {
   Future<EngineSession?> balancerSessionFor(
       List<VpnServer> servers, ConnectionOptions options) async {
     if (servers.isEmpty) return null;
+    prepareLocalProxyAuth(options);
     // Одно ядро на сессию: смешать hysteria2 и VLESS в одном балансировщике
     // нельзя. Xray-серверы идут в его balancer, иначе — urltest в sing-box.
     final xrayOnes =
         servers.where((s) => s.core == ProxyCore.xray).toList(growable: false);
     if (xrayOnes.isNotEmpty) {
-      return EngineSession(configBuilder.buildBalancerJson(xrayOnes), options,
+      return EngineSession(_authedBuilder.buildBalancerJson(xrayOnes), options,
           xrayOnes, ProxyCore.xray);
     }
     final resolved = pickOneIpPerHost(await resolveServerHosts(servers));
@@ -553,6 +922,10 @@ abstract class VpnEngineBase implements VpnEngine {
     _session = EngineSession(configJson, options, servers, core);
     _userStopped = false;
     _attempt = 0;
+    // Подключение по команде пользователя обнуляет предохранитель сторожа
+    // канала: его действие — знак, что прошлые безрезультатные попытки больше
+    // не в счёт (сменил сервер, починил сеть, просто попробовал снова).
+    resetHealthGuard();
     await startSession();
   }
 
@@ -568,36 +941,6 @@ abstract class VpnEngineBase implements VpnEngine {
 
   // ── Страница «сайт заблокирован» ───────────────────────────────────────────
 
-  /// Поднять локальную страницу-заглушку и вернуть её порт (0 — не нужна).
-  ///
-  /// Общая для обеих платформ: правило маршрутизации, которое уводит сюда
-  /// http-соединения, строит один и тот же [SingboxConfigBuilder], поэтому и
-  /// условия включения должны быть одни. Расхождение здесь означало бы, что на
-  /// одной платформе домен резолвится «в никуда».
-  Future<int> startBlockPage(ConnectionOptions options) async {
-    await BlockPageServer.stopCurrent();
-    final s = options.settings;
-    if (!s.blockPageEnabled) return 0;
-    // В режиме «всё через VPN» пользовательские правила не применяются вовсе —
-    // блокировать нечего, и поднимать сервер незачем.
-    if (s.splitTunnel.mode == SplitMode.all) return 0;
-    final hasBlocked =
-        s.splitTunnel.sites.any((x) => x.action == AppAction.block);
-    if (!hasBlocked) return 0;
-
-    final l = await localizationsFor(s.languageCode);
-    final srv = await BlockPageServer.start(
-      texts: BlockPageTexts(
-        windowTitle: l.blockPageWindowTitle(AppInfo.name),
-        heading: l.blockPageHeading,
-        hint: l.blockPageHint,
-        note: l.blockPageNote,
-        body: (host) => l.blockPageBody(host, AppInfo.name),
-      ),
-    );
-    // Не поднялась — продолжаем без неё: блокировка важнее объяснения.
-    return srv?.port ?? 0;
-  }
 
   // ── Автовосстановление ─────────────────────────────────────────────────────
 
@@ -670,7 +1013,35 @@ abstract class VpnEngineBase implements VpnEngine {
 
   bool _retryPending = false;
 
+  /// Уже сказали пользователю про ЭТОТ обрыв. Сбрасывается при восстановлении.
+  ///
+  /// ⚠️ Одна заметка на серию, а не на попытку. Попыток бывает восемь подряд, а
+  /// при kill switch они не кончаются вовсе — всплывашка на каждую превратила
+  /// бы уведомления в шум, который отмахивают не читая. Решение владельца от
+  /// 08.08.2026: три события на весь обрыв.
+  bool _noticedDrop = false;
+
+  /// Когда сообщили, что связь восстановить не удаётся. Нужно, чтобы при
+  /// бесконечных попытках (kill switch) напоминать не чаще раза в 15 минут:
+  /// иначе пользователь, ушедший с включённым VPN, не узнает о проблеме ВООБЩЕ,
+  /// потому что ветка «попытки исчерпаны» там недостижима по построению.
+  DateTime? _noticedFailedAt;
+  static const _failedNoticeEvery = Duration(minutes: 15);
+
   Future<bool> _scheduleRetryLocked(String reason, EngineSession session) async {
+    if (!_noticedDrop) {
+      _noticedDrop = true;
+      emitNotice(EngineNoticeKind.reconnecting, 'Связь оборвалась, восстанавливаю',
+          detail: reason);
+    } else if (endlessRetries(session)) {
+      final since = _noticedFailedAt;
+      if (since == null ||
+          DateTime.now().difference(since) >= _failedNoticeEvery) {
+        _noticedFailedAt = DateTime.now();
+        emitNotice(EngineNoticeKind.failed, 'Связь до сих пор не восстановлена',
+            detail: 'Попыток: $_attempt. Причина: $reason');
+      }
+    }
 
     // ⚠️ ПРИ ВКЛЮЧЁННОМ KILL SWITCH ПОПЫТКИ НЕ ЗАКАНЧИВАЮТСЯ.
     //
@@ -697,6 +1068,8 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     if (!endless && _attempt >= maxAttempts) {
       AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
+      emitNotice(EngineNoticeKind.failed, 'Не удалось восстановить связь',
+          detail: 'Попыток: $maxAttempts. Причина обрыва: $reason');
       return false;
     }
 
@@ -724,8 +1097,13 @@ abstract class VpnEngineBase implements VpnEngine {
 
     _attempt++;
     final delay = backoff[_attempt.clamp(1, backoff.length) - 1];
-    AppLog.w('Автопереподключение: $reason → попытка $_attempt через '
-        '${delay.inSeconds} с');
+    // ⚠️ Печатаем миллисекунды у коротких пауз. Первая задержка — 800 мс, и в
+    // журнале она выглядела как «через 0 с»: разбор сбоя начинался с ложного
+    // вывода, будто повтор идёт мгновенно и подряд.
+    final human = delay.inSeconds >= 1
+        ? '${delay.inSeconds} с'
+        : '${delay.inMilliseconds} мс';
+    AppLog.w('Автопереподключение: $reason → попытка $_attempt через $human');
 
     // Kill switch: НЕ снимаем захват трафика между попытками — иначе на время
     // паузы трафик пошёл бы напрямую, мимо VPN.
@@ -820,21 +1198,69 @@ abstract class VpnEngineBase implements VpnEngine {
   }
 
   /// Ядро умерло само — пробуем восстановиться, иначе показываем ошибку.
-  Future<void> onCoreDied(int code) async {
+  ///
+  /// [tail] — последние строки вывода ядра. ⚠️ БЕЗ НИХ ПРИЧИНА НЕВИДИМА.
+  /// Раньше в журнал уходило только «Ядро Xray остановилось (код 1)», и разбор
+  /// упирался в тупик: код 1 у Xray означает и занятый порт, и битый конфиг, и
+  /// отвалившийся сервер. Владелец видел «весь интернет лёг» (kill switch), а
+  /// в журнале не было ни строчки о том, почему. Сам Xray причину печатает —
+  /// мы её просто выбрасывали.
+  Future<void> onCoreDied(int code, {String tail = ''}) async {
     // Имя ядра важно: по нему пользователь понимает, куда смотреть —
     // в xray_config.json или в singbox_proxy.json.
     final name = _session?.core == ProxyCore.singbox ? 'sing-box' : 'Xray';
-    AppLog.e('Ядро $name остановилось (код $code)');
-    if (await scheduleRetry('ядро $name остановилось (код $code)')) return;
+    final reason = _reasonFromTail(tail);
+    AppLog.e('Ядро $name остановилось (код $code)'
+        '${reason.isEmpty ? '' : ': $reason'}');
+    if (tail.trim().isNotEmpty) {
+      AppLog.e('Последние строки вывода $name:\n${tail.trim()}');
+    }
+    final short = 'ядро $name остановилось (код $code)'
+        '${reason.isEmpty ? '' : ': $reason'}';
+    if (await scheduleRetry(short)) return;
     await cleanup();
-    setStatus(VpnConnectionState.error,
-        message: 'Ядро $name остановилось (код $code)');
+    setStatus(VpnConnectionState.error, message: _capitalize(short));
   }
+
+  /// Человеческая причина из вывода ядра — одной строкой, для журнала и статуса.
+  ///
+  /// Полный вывод всё равно пишется рядом; здесь только то, что должно попасть
+  /// в заголовок ошибки, иначе пользователь увидит простыню и не найдёт сути.
+  static String _reasonFromTail(String tail) {
+    if (tail.trim().isEmpty) return '';
+    final low = tail.toLowerCase();
+    // Порт занят — самая частая и самая обидная причина: ядро печатает её
+    // внятно, а мы показывали голый код возврата.
+    if (low.contains('address already in use') ||
+        low.contains('only one usage of each socket address') ||
+        low.contains('bind:')) {
+      final m = RegExp(r'127\.0\.0\.1:(\d+)').firstMatch(tail);
+      final port = m == null ? '' : ' ${m.group(1)}';
+      return 'локальный порт$port уже занят';
+    }
+    if (low.contains('failed to start')) return 'ядро не смогло запуститься';
+    // Иначе — первая непустая строка, обрезанная до читаемой длины.
+    final first = tail
+        .split('\n')
+        .map((l) => l.trim())
+        .firstWhere((l) => l.isNotEmpty, orElse: () => '');
+    return first.length > 160 ? '${first.substring(0, 160)}…' : first;
+  }
+
+  static String _capitalize(String s) =>
+      s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
   @override
   Future<void> disconnect() async {
     // Явное отключение всегда отменяет автовосстановление, даже если оно уже идёт.
     _userStopped = true;
+    // ⚠️ Пометку обрыва снимаем ЗДЕСЬ. Она означает «об обрыве уже сказали, и
+    // при возврате связи надо сказать о восстановлении». Ручное отключение
+    // закрывает ту историю: без этой строки следующее подключение — новое,
+    // по кнопке — здоровалось «Соединение восстановлено», хотя ничего не
+    // рвалось и восстанавливать было нечего.
+    _noticedDrop = false;
+    _noticedFailedAt = null;
     _generation++; // всё, что поднимется после этого момента, будет погашено
     _session = null;
     _attempt = 0;
@@ -856,13 +1282,11 @@ abstract class VpnEngineBase implements VpnEngine {
   /// от «была ли отмена», обязано проверяться ДО вызова (см. `wasAborted`
   /// в наследниках).
   Future<void> cleanup() async {
+    stopBlockNotice();
     _generation++;
     _retryTimer?.cancel();
     _retryTimer = null;
     _connectedAt = null;
-    // Слушать порт после отключения незачем, а на Android висящий сокет ещё и
-    // держит процесс живым.
-    await BlockPageServer.stopCurrent();
     await platformCleanup();
   }
 

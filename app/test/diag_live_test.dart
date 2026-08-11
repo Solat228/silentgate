@@ -16,11 +16,14 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/platform/app_log.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/models/engine_notice.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
 import 'package:silentgate/state/app_state.dart';
 import 'package:silentgate/state/probe_controller.dart';
 
 class _FakeEngine implements VpnEngine {
+  @override
+  set onCompactToggledInShade(void Function(bool compact)? handler) {}
   @override
   Stream<VpnStatus> get statusStream => const Stream.empty();
 
@@ -35,11 +38,20 @@ class _FakeEngine implements VpnEngine {
   /// Диагностический движок в шторку не пишет.
   @override
   set subscriptionTitle(String title) {}
+
+  @override
+  set subscriptionLogoPath(String path) {}
   @override
   set compactNotification(bool compact) {}
 
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
+
+  @override
+  Stream<String> get blockedHostEvents => const Stream.empty();
+
+  @override
+  Stream<EngineNotice> get notices => const Stream.empty();
   @override
   VpnStatus get status => const VpnStatus.disconnected();
   @override

@@ -71,7 +71,16 @@ cd /d "%WORK%\app"
 echo Сборка release APK (arm64 + x86_64)...
 rem --split-per-abi обязателен: ядра приезжают из cores.aar сразу под все ABI,
 rem и без разделения один APK весит под 170 МБ вместо 76.
-call "%FLUTTER%" build apk --release --split-per-abi
+rem --target-platform: без него --split-per-abi собирает ЕЩЁ и armeabi-v7a.
+rem Это 32-битные ARM, телефонов на них давно нет, а лишний APK каждый раз
+rem путает: в папке оказывается три файла вместо двух нужных.
+call "%FLUTTER%" build apk --release --split-per-abi --target-platform android-arm64,android-x64
+
+rem Flutter кладёт рядом с каждым APK файл .sha1 - контрольную сумму, которая
+rem никому не нужна и только засоряет папку: вместо двух файлов там четыре,
+rem и в них легко промахнуться мимо нужного. Убираем сразу после сборки, иначе
+rem они возвращаются на КАЖДОМ прогоне.
+del /q "%WORK%\app\build\app\outputs\flutter-apk\*.sha1" 2>nul
 if errorlevel 1 (
   echo.
   echo === СБОРКА НЕ УДАЛАСЬ ===

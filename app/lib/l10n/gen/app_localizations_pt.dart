@@ -2114,4 +2114,208 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'O relatório foi reunido em um único arquivo. Escolha na janela do sistema para onde enviá-lo — no Telegram ele será enviado como anexo, e não como texto.';
+
+  @override
+  String get exitsHeader => 'Saídas';
+
+  @override
+  String get exitsHint =>
+      'Uma regra «Túnel» pode ser direcionada a uma saída específica: um site pela Alemanha, outro pelos EUA. Sem saída, a regra usa o túnel principal, como antes.';
+
+  @override
+  String get exitsAdd => 'Adicionar saída';
+
+  @override
+  String get exitsEmpty => 'Ainda não há saídas';
+
+  @override
+  String get exitsName => 'Nome';
+
+  @override
+  String get exitsNameHint => 'Alemanha';
+
+  @override
+  String get exitsServers => 'Servidores';
+
+  @override
+  String get exitsAutoSelect => 'Seleção automática por latência';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'O núcleo mantém o tráfego num servidor ativo sozinho. O custo: cada servidor é sondado a cada três minutos, o que acorda o rádio do telemóvel.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo =>
+      'São necessários pelo menos dois servidores';
+
+  @override
+  String get exitsDelete => 'Eliminar saída';
+
+  @override
+  String get exitsNoServers =>
+      'Sem servidores — importe primeiro uma subscrição';
+
+  @override
+  String get exitsSearch => 'Procurar servidor';
+
+  @override
+  String get exitsPickAtLeastOne => 'Selecione pelo menos um servidor';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Os perfis «Auto» do painel e o hysteria2 não funcionam como saída separada: são geridos pelo outro núcleo. Esses servidores ficam desativados na lista.';
+
+  @override
+  String get infoExits =>
+      'Uma saída é o destino de uma regra «Túnel».\n\nPor omissão, uma saída é UM único servidor e não custa nada em segundo plano: os protocolos comuns não mantêm ligação permanente. Um grupo de vários servidores com seleção automática só é necessário quando importa a proteção contra a queda de um nó — acrescenta sondagens periódicas e, no telemóvel, despertares do rádio.\n\nA saída só faz sentido na ação «Túnel». «Direto pela Alemanha» é uma contradição: uma regra direta contorna todas as saídas.\n\nUm site e o seu subdomínio podem ir para saídas DIFERENTES — a aplicação coloca a regra mais específica acima, caso contrário o pai absorveria o subdomínio.\n\nIMPORTANTE: com o proxy do sistema no Windows as saídas não funcionam — nesse modo não se constroem regras de encaminhamento. É preciso o modo túnel.';
+
+  @override
+  String get ruleServer => 'Via servidor';
+
+  @override
+  String get ruleServerCurrent => 'Igual ao principal';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Igual ao principal ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Correspondência pelo nome do ficheiro';
+
+  @override
+  String get routeYourApps => 'Seus aplicativos';
+
+  @override
+  String get routeYourSites => 'Seus sites';
+
+  @override
+  String get routeAppsAndSites => 'Aplicativos e sites';
+
+  @override
+  String get notifCompactTitle => 'Notificação compacta';
+
+  @override
+  String get notifCompactSub =>
+      'Desativada — assinatura, servidor e velocidade, com botões. Ativada — no título o aplicativo e a assinatura, abaixo o servidor, sem velocidade e sem botões.';
+
+  @override
+  String get localProxyAuthTitle => 'Senha do proxy local';
+
+  @override
+  String get localProxyAuthInfo =>
+      'A porta local do núcleo (127.0.0.1) é um proxy completo para a sua VPN. Sem senha, qualquer programa neste mesmo dispositivo se conecta a ela e recebe o seu túnel inteiro: o IP de saída, a cota da assinatura e o contorno das suas próprias regras de túnel dividido — inclusive dos aplicativos que você marcou como «Bloquear». No Android isso é ainda mais importante: lá qualquer aplicativo instalado enxerga as portas locais.\n\nDesative apenas se você usa esse proxy de propósito com algo que não sabe autenticar.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Desativada: o proxy local fica aberto a qualquer programa do dispositivo';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'No modo de proxy do sistema não se aplica: o Windows não sabe passar a senha ao proxy local. Vale no modo TUN.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'Uma nova senha aleatória a cada conexão — não é salva em lugar nenhum';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Seu próprio usuário e senha (guardados no arquivo de configurações)';
+
+  @override
+  String get localProxyCredsTitle => 'Seu usuário e senha';
+
+  @override
+  String get localProxyCredsUnset =>
+      'Não definidos — é usada uma senha aleatória';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Usuário: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'Usuário e senha do proxy local';
+
+  @override
+  String get localProxyDialogBody =>
+      'Só são necessários se você mesmo indicar o nosso proxy (127.0.0.1) em outro programa. Deixe os campos vazios e a senha será aleatória a cada conexão: ela não é salva em lugar nenhum e não entra nos backups.';
+
+  @override
+  String get localProxyFieldUser => 'Usuário';
+
+  @override
+  String get localProxyFieldPassword => 'Senha';
+
+  @override
+  String get localProxyFieldHint => 'vazio — aleatória';
+
+  @override
+  String get lockdownOnTitle => 'Proteção do sistema ativada';
+
+  @override
+  String get lockdownOnSub =>
+      'O tráfego fica bloqueado mesmo que o aplicativo feche ou seja encerrado pelo sistema. É o modo mais confiável.';
+
+  @override
+  String get lockdownHalfTitle => 'Proteção ativada pela metade';
+
+  @override
+  String get lockdownHalfSub =>
+      'A «VPN sempre ativa» está definida, mas «Bloquear conexões sem VPN» está desligado. Enquanto o aplicativo estiver vivo, o tráfego está protegido; se o sistema o encerrar, ele sairá aberto.';
+
+  @override
+  String get lockdownOffTitle => 'Proteção do sistema desativada';
+
+  @override
+  String get lockdownOffSub =>
+      'Nosso kill switch segura o tráfego enquanto o aplicativo estiver rodando. Se o sistema o encerrar, o tráfego sairá fora da VPN. Ative «VPN sempre ativa» e «Bloquear conexões sem VPN».';
+
+  @override
+  String get lockdownUnknownTitle => 'Proteção do sistema: estado desconhecido';
+
+  @override
+  String get lockdownUnknownSub =>
+      'Só dá para saber o estado a partir do Android 10 e apenas com o túnel ativo. Verifique manualmente: «VPN sempre ativa» e «Bloquear conexões sem VPN».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Não foi possível abrir as configurações de VPN do sistema. Encontre-as manualmente: Configurações → Rede e Internet → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Avisar sobre sites bloqueados';
+
+  @override
+  String get blockNoticeSub =>
+      'Quando um aplicativo ou o navegador tenta acessar um site da lista «Bloquear», aparece embaixo uma notificação com o nome dele. Toque nela e esta tela abre.';
+
+  @override
+  String get siteInsecureScheme =>
+      'O endereço está como http:// — a conexão não é criptografada e o provedor a vê por inteiro. Remova o «http://» para que o navegador use https.';
+
+  @override
+  String get exitServerGone =>
+      'O servidor desta regra sumiu da assinatura — o tráfego vai pelo túnel principal';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nEste servidor não pode subir como saída separada: os perfis «Auto» do painel e parte dos protocolos só o Xray entende, e quem distribui as saídas é o sing-box. O tráfego da regra vai pelo túnel principal.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Regras';
+
+  @override
+  String get geoVerdictMissingTitle => 'Bases geo não baixadas';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'As regras da assinatura por país e categoria estão desligadas agora — esse tráfego vai pela VPN, e não direto.';
+
+  @override
+  String get geoVerdictUnusableTitle => 'O núcleo não abriu as bases geo';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'Os arquivos estão no lugar, mas o núcleo não os leu. Baixar as bases de novo costuma resolver.';
 }

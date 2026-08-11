@@ -15,6 +15,7 @@ import '../core/platform/device_id.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
 import '../core/platform/app_launcher.dart';
+import '../core/platform/vpn_lockdown.dart';
 import '../core/net/speed_test.dart';
 import '../core/update/app_update.dart';
 import '../core/models/vpn_server.dart';
@@ -38,10 +39,19 @@ import 'widgets/language_button.dart';
 /// «Поддержка» из любого места (карточка подписки и т.п.) и прокрутить.
 final GlobalKey supportSectionKey = GlobalKey();
 
+/// Якорь строки гео-баз: на неё ведёт плашка с главного экрана.
+final GlobalKey geoAssetsKey = GlobalKey();
+
 class SettingsScreen extends StatefulWidget {
   /// Открыть настройки и сразу прокрутить к разделу «Поддержка».
   final bool scrollToSupport;
-  const SettingsScreen({super.key, this.scrollToSupport = false});
+
+  /// Открыть настройки и подвести к строке гео-баз. Нужно плашке с главного
+  /// экрана: сказать «скачайте в настройках» и бросить искать самому — то же
+  /// самое, что промолчать.
+  final bool scrollToGeo;
+  const SettingsScreen(
+      {super.key, this.scrollToSupport = false, this.scrollToGeo = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -62,6 +72,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
         }
         if (mounted) await _support(context);
+      });
+    }
+    if (widget.scrollToGeo) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final ctx = geoAssetsKey.currentContext;
+        if (ctx != null) {
+          Scrollable.ensureVisible(ctx,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOut,
+              alignment: 0.3);
+        }
       });
     }
   }
@@ -179,9 +200,9 @@ class _ReliabilitySection extends StatelessWidget {
         // первого запуска после перезагрузки. Наш собственный закрывает только
         // окно между попытками переподключения, поэтому они дополняют друг
         // друга, а не заменяют.
-        // ⚠️ ВРЕМЕННЫЙ ПЕРЕКЛЮЧАТЕЛЬ. Заведён, чтобы сравнить две раскладки
-        // уведомления на живом телефоне и выбрать одну. Когда выбор сделан —
-        // убрать и его, и поле настройки, и эти строки.
+        // Раскладка уведомления. Переключатель заводился временным — на время
+        // сравнения двух вариантов на живом телефоне; выбор сделан, и он стал
+        // постоянной настройкой.
         if (Platform.isAndroid)
           SwitchListTile(
             value: settings.compactNotification,
@@ -193,19 +214,56 @@ class _ReliabilitySection extends StatelessWidget {
               await state.publishNotificationLayout(
                   settings: controller.settings);
             },
-            title: const Text('ВРЕМЕННО: короткая шторка'),
-            subtitle: const Text(
-                'Выключено — значок и подписка, ниже сервер, ниже скорость. '
-                'Включено — значок и сервер, ниже скорость. '
-                'Переключатель временный: выберем раскладку и уберём его.'),
+            title: Text(l.notifCompactTitle),
+            subtitle: Text(l.notifCompactSub),
           ),
-        if (Platform.isAndroid)
+        // ⚠️ СИСТЕМНАЯ ЗАЩИТА — НЕ ТО ЖЕ САМОЕ, ЧТО НАШ KILL SWITCH.
+        //
+        // Наш держит трафик, пока жив наш сервис. Система убила процесс —
+        // туннель снялся вместе с ним, и трафик пошёл открыто. Этот случай
+        // закрывает только «Блокировать соединения без VPN» в настройках
+        // Android, а включить её из приложения платформа запрещает.
+        //
+        // Поэтому здесь не просто ссылка, а СОСТОЯНИЕ: пользователь имеет право
+        // видеть, защищён он на самом деле или только думает, что защищён.
+        if (Platform.isAndroid) const _LockdownTile(),
+        // Пароль на локальные прокси ядра. Общий для платформ.
+        //
+        // ⚠️ ПОЧЕМУ ЭТО ВООБЩЕ ВИДНО ПОЛЬЗОВАТЕЛЮ. Умолчание (пароль включён)
+        // верное для всех, и трогать его не нужно. Но локальный прокси —
+        // законный способ пустить в VPN стороннюю программу, и тому, кто так
+        // делает, нужны предсказуемые логин с паролем вместо случайных.
+        // Прятать такую возможность значит вынуждать выключать защиту целиком.
+        SwitchListTile(
+          value: settings.localProxyAuth,
+          onChanged: (v) =>
+              controller.update((s) => s.copyWith(localProxyAuth: v)),
+          title: Row(children: [
+            Expanded(child: Text(l.localProxyAuthTitle)),
+            InfoTooltip(l.localProxyAuthInfo, title: l.localProxyAuthTitle),
+          ]),
+          subtitle: Text(!settings.localProxyAuth
+              ? l.localProxyAuthOff
+              : settings.captureMode == CaptureMode.systemProxy &&
+                      !Platform.isAndroid
+                  // ⚠️ Честно говорим, что настройка сейчас не действует.
+                  // Молчание здесь означало бы «защита включена», хотя её нет.
+                  ? l.localProxyAuthSystemProxy
+                  : (settings.localProxyUser.trim().isEmpty ||
+                          settings.localProxyPassword.isEmpty)
+                      ? l.localProxyAuthRandom
+                      : l.localProxyAuthCustom),
+        ),
+        if (settings.localProxyAuth)
           ListTile(
-            leading: const Icon(Icons.verified_user_outlined),
-            title: Text(l.alwaysOnTitle),
-            subtitle: Text(l.alwaysOnSub),
-            trailing: const Icon(Icons.open_in_new, size: 18),
-            onTap: () => _openVpnSettings(context),
+            leading: const Icon(Icons.key_outlined),
+            title: Text(l.localProxyCredsTitle),
+            subtitle: Text(settings.localProxyUser.trim().isEmpty ||
+                    settings.localProxyPassword.isEmpty
+                ? l.localProxyCredsUnset
+                : l.localProxyCredsUser(settings.localProxyUser)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _editLocalProxyCreds(context, controller, settings),
           ),
         // «Не выходить под реальным IP» — только при включённом kill switch.
         if (settings.killSwitch)
@@ -600,9 +658,19 @@ class _SupportDialogState extends State<_SupportDialog> {
     }
   }
 
-  /// Поле описания обязательно там, где готовый отчёт нельзя дописать руками:
-  /// он копируется в буфер целиком и уходит в чат как есть.
+  /// Поле описания ОБЯЗАТЕЛЬНО там, где готовый отчёт нельзя дописать руками:
+  /// он уходит файлом через «Поделиться» как есть.
   bool get _descriptionRequired => Platform.isAndroid;
+
+  /// А ПОКАЗЫВАЕМ его везде.
+  ///
+  /// ⚠️ На Windows поля не было вовсе: считалось, что человек допишет описание
+  /// прямо в открытом txt. На деле файл открывается уже после генерации, и
+  /// владелец присылал отчёты с нетронутой болванкой «Что делали: / Что
+  /// ожидали:». Спрашивать надо ТАМ, ГДЕ ЧЕЛОВЕК ЕЩЁ В КОНТЕКСТЕ, — то есть в
+  /// диалоге, до генерации. Обязательным на десктопе не делаем: дописать файл
+  /// руками там всё ещё можно, и запрет мешал бы быстрой отправке лога.
+  bool get _descriptionShown => true;
 
   @override
   Widget build(BuildContext context) {
@@ -637,7 +705,7 @@ class _SupportDialogState extends State<_SupportDialog> {
               // Поле описания — там, где готовый отчёт нельзя дописать руками
               // (Android: он копируется в буфер целиком и уходит как есть).
               // Без него в поддержку приезжает голый лог без слова о проблеме.
-              if (_descriptionRequired) ...[
+              if (_descriptionShown) ...[
                 const SizedBox(height: 14),
                 TextField(
                   controller: _description,
@@ -1128,7 +1196,7 @@ class _CaptureSection extends StatelessWidget {
           ),
           // Гео-базы нужны только там, где их нет в поставке. На Windows они
           // приезжают вместе с ядром, и кнопка была бы обманкой.
-          if (Platform.isAndroid) const GeoAssetsTile(),
+          if (Platform.isAndroid) GeoAssetsTile(key: geoAssetsKey),
         ] else
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
@@ -1423,4 +1491,174 @@ Future<void> _offerAlwaysOn(BuildContext context) async {
     ),
   );
   if (go == true && context.mounted) await _openVpnSettings(context);
+}
+
+/// Диалог «свои логин и пароль локального прокси».
+///
+/// ⚠️ Пустые поля — это НЕ ошибка, а осознанный выбор «пусть будет случайный».
+/// Поэтому кнопка сохранения активна всегда, а очистка полей возвращает режим
+/// посессионного пароля. Требовать заполнения значило бы навязывать худший
+/// вариант: заданный вручную пароль ложится на диск и переживает перезапуск.
+Future<void> _editLocalProxyCreds(BuildContext context,
+    SettingsController controller, AppSettings settings) async {
+  final user = TextEditingController(text: settings.localProxyUser);
+  final pass = TextEditingController(text: settings.localProxyPassword);
+  var obscure = true;
+  // Локализация берётся ОДИН раз здесь: внутри builder контекст другой,
+  // а строка нужна и заголовку, и полям.
+  final l = AppLocalizations.of(context);
+  final saved = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setLocal) => AlertDialog(
+        title: Text(l.localProxyDialogTitle),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          SelText(l.localProxyDialogBody),
+          const SizedBox(height: 12),
+          TextField(
+            controller: user,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+                labelText: l.localProxyFieldUser,
+                hintText: l.localProxyFieldHint),
+          ),
+          TextField(
+            controller: pass,
+            obscureText: obscure,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: l.localProxyFieldPassword,
+              hintText: l.localProxyFieldHint,
+              suffixIcon: IconButton(
+                icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+                onPressed: () => setLocal(() => obscure = !obscure),
+              ),
+            ),
+          ),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(AppLocalizations.of(ctx).commonCancel)),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(AppLocalizations.of(ctx).commonDone)),
+        ],
+      ),
+    ),
+  );
+  if (saved != true) return;
+  await controller.update((s) => s.copyWith(
+        localProxyUser: user.text.trim(),
+        localProxyPassword: pass.text,
+      ));
+}
+
+/// Строка «Системная защита»: показывает РЕАЛЬНОЕ состояние, а не ссылку.
+///
+/// ⚠️ ЗАЧЕМ СОСТОЯНИЕ, А НЕ ПРОСТО КНОПКА «ОТКРЫТЬ НАСТРОЙКИ».
+///
+/// Наш kill switch на Android настоящий: ядро перезагружается конфигом-
+/// заглушкой, и трафик умирает в `reject`. Но живёт это ровно столько, сколько
+/// живёт наш сервис. Система убила процесс — туннель снялся вместе с ним, и
+/// трафик пошёл открыто. Закрывает такой случай только сама Android, а включить
+/// её настройку из приложения платформа запрещает намеренно.
+///
+/// Владелец сформулировал проблему точно: «неизвестно, работает или нет, без
+/// настроек в самом телефоне». Значит показывать надо факт, а не намёк.
+class _LockdownTile extends StatefulWidget {
+  const _LockdownTile();
+
+  @override
+  State<_LockdownTile> createState() => _LockdownTileState();
+}
+
+class _LockdownTileState extends State<_LockdownTile> with WidgetsBindingObserver {
+  VpnLockdown _state = VpnLockdown.unknown;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Пользователь уходил в системные настройки и вернулся — перечитываем.
+    // Без этого строка показывала бы старое состояние до перезапуска, и
+    // человек, только что включивший защиту, видел бы «выключена».
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final st = await VpnLockdown.query();
+    if (mounted) setState(() => _state = st);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final st = _state;
+    final l = AppLocalizations.of(context);
+
+    final (IconData icon, Color color, String title, String sub) = switch (st) {
+      // Полная защита: и постоянная VPN, и блокировка без неё.
+      _ when st.fullyProtected => (
+          Icons.verified_user,
+          scheme.primary,
+          l.lockdownOnTitle,
+          l.lockdownOnSub
+        ),
+      // Назначены постоянной VPN, но блокировки нет — половина дела.
+      _ when st.supported && st.alwaysOn => (
+          Icons.gpp_maybe,
+          scheme.tertiary,
+          l.lockdownHalfTitle,
+          l.lockdownHalfSub
+        ),
+      // Знаем точно, что защиты нет.
+      _ when st.supported => (
+          Icons.gpp_bad,
+          scheme.error,
+          l.lockdownOffTitle,
+          l.lockdownOffSub
+        ),
+      // ⚠️ Не знаем — так и говорим. Зелёная птица здесь была бы враньём.
+      _ => (
+          Icons.help_outline,
+          scheme.outline,
+          l.lockdownUnknownTitle,
+          l.lockdownUnknownSub
+        ),
+    };
+
+    return ListTile(
+      leading: Icon(icon, color: color),
+      title: Text(title),
+      subtitle: Text(sub),
+      trailing: const Icon(Icons.open_in_new, size: 18),
+      onTap: () async {
+        final ok = await VpnLockdown.openSettings();
+        if (!context.mounted) return;
+        if (!ok) {
+          // Экрана нет — бывает на прошивках. Молча ничего не делать хуже:
+          // пользователь решит, что сломалась кнопка.
+          AppToast.show(
+            context,
+            AppLocalizations.of(context).lockdownOpenFailed,
+            kind: ToastKind.error,
+          );
+        }
+      },
+    );
+  }
 }

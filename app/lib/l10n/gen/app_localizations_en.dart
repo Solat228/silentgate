@@ -2094,4 +2094,206 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'The report is collected into a single file. Choose where to send it in the system sheet — in Telegram it goes as an attachment, not as text.';
+
+  @override
+  String get exitsHeader => 'Exits';
+
+  @override
+  String get exitsHint =>
+      'A \"Tunnel\" rule can be routed to a specific exit: one site through Germany, another through the USA. Without an exit the rule uses the main tunnel, as before.';
+
+  @override
+  String get exitsAdd => 'Add exit';
+
+  @override
+  String get exitsEmpty => 'No exits yet';
+
+  @override
+  String get exitsName => 'Name';
+
+  @override
+  String get exitsNameHint => 'Germany';
+
+  @override
+  String get exitsServers => 'Servers';
+
+  @override
+  String get exitsAutoSelect => 'Auto-select by latency';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'The core keeps traffic on a working server by itself. The cost: each server is probed every three minutes, which wakes the radio on a phone.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'At least two servers required';
+
+  @override
+  String get exitsDelete => 'Delete exit';
+
+  @override
+  String get exitsNoServers => 'No servers — import a subscription first';
+
+  @override
+  String get exitsSearch => 'Search server';
+
+  @override
+  String get exitsPickAtLeastOne => 'Select at least one server';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Panel \"Auto\" profiles and hysteria2 cannot run as a separate exit: they are handled by the other core. Such servers are disabled in the list.';
+
+  @override
+  String get infoExits =>
+      'An exit is the destination of a \"Tunnel\" rule.\n\nBy default an exit is a SINGLE server and costs nothing in the background: ordinary protocols hold no persistent connection. A group of several servers with auto-select is only needed where insurance against a node failure matters — it adds periodic probes, and on a phone those are radio wake-ups.\n\nAn exit only makes sense for the \"Tunnel\" action. \"Direct via Germany\" is a contradiction: a direct rule bypasses all exits.\n\nA site and its subdomain may go to DIFFERENT exits — the app raises the more specific rule above, otherwise the parent would swallow the subdomain.\n\nIMPORTANT: with the system proxy on Windows exits do not work at all — no routing rules are built in that mode. Tunnel mode is required.';
+
+  @override
+  String get ruleServer => 'Via server';
+
+  @override
+  String get ruleServerCurrent => 'Same as main';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Same as main ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Matched by file name';
+
+  @override
+  String get routeYourApps => 'Your apps';
+
+  @override
+  String get routeYourSites => 'Your sites';
+
+  @override
+  String get routeAppsAndSites => 'Apps and sites';
+
+  @override
+  String get notifCompactTitle => 'Compact notification';
+
+  @override
+  String get notifCompactSub =>
+      'Off — subscription, server and speed, with buttons. On — the app and subscription in the title, server below, no speed and no buttons.';
+
+  @override
+  String get localProxyAuthTitle => 'Password for the local proxy';
+
+  @override
+  String get localProxyAuthInfo =>
+      'The core\'s local port (127.0.0.1) is a full proxy into your VPN. Without a password any program on this device can connect to it and get your whole tunnel: the exit IP, your subscription quota and a way around your own split tunneling rules — including apps you marked “Block”. On Android this matters even more: there any installed app can see local ports.\n\nTurn it off only if you deliberately use this proxy from something that cannot authenticate.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Off: the local proxy is open to any program on the device';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'Not used in system proxy mode: Windows cannot pass a password to a local proxy. Applies in TUN mode.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'A new random password on every connection — stored nowhere';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Your own username and password (kept in the settings file)';
+
+  @override
+  String get localProxyCredsTitle => 'Your own username and password';
+
+  @override
+  String get localProxyCredsUnset => 'Not set — a random password is used';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Username: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'Local proxy username and password';
+
+  @override
+  String get localProxyDialogBody =>
+      'Needed only if you enter our proxy (127.0.0.1) into another program yourself. Leave the fields empty and the password will be random on every connection: it is stored nowhere and never gets into backups.';
+
+  @override
+  String get localProxyFieldUser => 'Username';
+
+  @override
+  String get localProxyFieldPassword => 'Password';
+
+  @override
+  String get localProxyFieldHint => 'empty — random';
+
+  @override
+  String get lockdownOnTitle => 'System-wide protection is on';
+
+  @override
+  String get lockdownOnSub =>
+      'Traffic is blocked even if the app closes or the system kills it. This is the most reliable mode.';
+
+  @override
+  String get lockdownHalfTitle => 'Protection is only half on';
+
+  @override
+  String get lockdownHalfSub =>
+      'Always-on VPN is set, but “Block connections without VPN” is off. While the app is alive traffic is protected; if the system kills it, traffic goes out in the clear.';
+
+  @override
+  String get lockdownOffTitle => 'System-wide protection is off';
+
+  @override
+  String get lockdownOffSub =>
+      'Our kill switch holds traffic while the app is running. If the system kills it, traffic will bypass the VPN. Turn on “Always-on VPN” and “Block connections without VPN”.';
+
+  @override
+  String get lockdownUnknownTitle => 'System-wide protection: state unknown';
+
+  @override
+  String get lockdownUnknownSub =>
+      'The state can be read on Android 10 and up, and only while the tunnel is up. Check manually: “Always-on VPN” and “Block connections without VPN”.';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Could not open the system VPN settings. Find them manually: Settings → Network & internet → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Notify about blocked sites';
+
+  @override
+  String get blockNoticeSub =>
+      'When an app or browser reaches a site from the “Block” list, a notification with its name appears at the bottom. Tap it to open this screen.';
+
+  @override
+  String get siteInsecureScheme =>
+      'The address is set as http:// — the connection is not encrypted and your ISP sees all of it. Remove “http://” so the browser uses https.';
+
+  @override
+  String get exitServerGone =>
+      'The server for this rule is gone from the subscription — its traffic uses the main tunnel';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nThis server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Rules';
+
+  @override
+  String get geoVerdictMissingTitle => 'Geo databases not downloaded';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'Subscription rules by country and category are off right now — this traffic goes through the VPN instead of direct.';
+
+  @override
+  String get geoVerdictUnusableTitle =>
+      'The core could not open the geo databases';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'The files are there, but the core did not read them. Re-downloading the databases usually helps.';
 }

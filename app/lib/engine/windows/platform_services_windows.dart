@@ -34,6 +34,15 @@ class _WindowsAppCatalog implements AppCatalog {
   /// Приложение может быть не запущено — остаётся выбор .exe вручную.
   @override
   bool get supportsManualPick => true;
+
+  /// На Windows метка выводится из самого ключа: правило адресует путь к exe, а
+  /// показывается его имя файла (`AppRule.name`). Отдельный источник имени
+  /// здесь не нужен и только расходился бы с тем, что уходит в `process_name`.
+  @override
+  String? cachedLabel(String key) => null;
+
+  @override
+  Future<String?> labelFor(String key) async => null;
 }
 
 class _WindowsAppIcons implements AppIconLoader {

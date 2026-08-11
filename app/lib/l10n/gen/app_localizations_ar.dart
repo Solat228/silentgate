@@ -2082,4 +2082,206 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'تم جمع التقرير في ملف واحد. اختر من نافذة النظام إلى أين ترسله — في Telegram يُرسَل كمرفق، وليس كنص.';
+
+  @override
+  String get exitsHeader => 'المخارج';
+
+  @override
+  String get exitsHint =>
+      'يمكن توجيه قاعدة «النفق» إلى مخرج محدد: موقع عبر ألمانيا وآخر عبر الولايات المتحدة. بدون مخرج تستخدم القاعدة النفق الرئيسي كما في السابق.';
+
+  @override
+  String get exitsAdd => 'إضافة مخرج';
+
+  @override
+  String get exitsEmpty => 'لا توجد مخارج بعد';
+
+  @override
+  String get exitsName => 'الاسم';
+
+  @override
+  String get exitsNameHint => 'ألمانيا';
+
+  @override
+  String get exitsServers => 'الخوادم';
+
+  @override
+  String get exitsAutoSelect => 'اختيار تلقائي حسب زمن الاستجابة';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'تُبقي النواة حركة البيانات على خادم عامل تلقائيًا. الثمن: يُختبر كل خادم كل ثلاث دقائق، ما يوقظ الراديو في الهاتف.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'يلزم خادمان على الأقل';
+
+  @override
+  String get exitsDelete => 'حذف المخرج';
+
+  @override
+  String get exitsNoServers => 'لا توجد خوادم — استورد اشتراكًا أولًا';
+
+  @override
+  String get exitsSearch => 'البحث عن خادم';
+
+  @override
+  String get exitsPickAtLeastOne => 'اختر خادمًا واحدًا على الأقل';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'ملفات «تلقائي» من اللوحة وhysteria2 لا تعمل كمخرج منفصل: تتولاها النواة الأخرى. هذه الخوادم معطّلة في القائمة.';
+
+  @override
+  String get infoExits =>
+      'المخرج هو وجهة قاعدة «النفق».\n\nافتراضيًا يتكوّن المخرج من خادم واحد ولا يكلّف شيئًا في الخلفية: البروتوكولات المعتادة لا تُبقي اتصالًا دائمًا. مجموعة من عدة خوادم مع الاختيار التلقائي تلزم فقط حين يهمّ التأمين ضد سقوط العقدة، وهي تضيف اختبارات دورية، وفي الهاتف تعني إيقاظ الراديو.\n\nللمخرج معنى فقط مع إجراء «النفق». «مباشر عبر ألمانيا» تناقض: القاعدة المباشرة تتجاوز كل المخارج.\n\nيمكن إرسال موقع ونطاقه الفرعي إلى مخرجين مختلفين — يرفع التطبيق القاعدة الأكثر تحديدًا للأعلى، وإلا ابتلع النطاق الأب النطاق الفرعي.\n\nمهم: مع وكيل النظام في ويندوز لا تعمل المخارج إطلاقًا — لا تُبنى في هذا الوضع قواعد توجيه. يلزم وضع النفق.';
+
+  @override
+  String get ruleServer => 'عبر الخادم';
+
+  @override
+  String get ruleServerCurrent => 'مثل الخادم الرئيسي';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'مثل الخادم الرئيسي ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'المطابقة حسب اسم الملف';
+
+  @override
+  String get routeYourApps => 'تطبيقاتك';
+
+  @override
+  String get routeYourSites => 'مواقعك';
+
+  @override
+  String get routeAppsAndSites => 'التطبيقات والمواقع';
+
+  @override
+  String get notifCompactTitle => 'إشعار مختصر';
+
+  @override
+  String get notifCompactSub =>
+      'مُطفأ: الاشتراك والخادم والسرعة مع الأزرار. مُفعَّل: التطبيق والاشتراك في العنوان، والخادم تحته، بلا سرعة وبلا أزرار.';
+
+  @override
+  String get localProxyAuthTitle => 'كلمة مرور البروكسي المحلي';
+
+  @override
+  String get localProxyAuthInfo =>
+      'المنفذ المحلي للنواة (127.0.0.1) بروكسي كامل إلى VPN الخاص بك. وبدون كلمة مرور يتصل به أي برنامج على الجهاز نفسه فيحصل على نفقك بالكامل: عنوان IP الخارجي، وحصة اشتراكك، وتجاوز قواعد تقسيم النفق التي وضعتها أنت — بما في ذلك التطبيقات التي منحتها «حظر». وهذا مهم بوجه خاص على Android: فالمنافذ المحلية هناك يراها أي تطبيق مثبَّت.\n\nلا تُطفئها إلا إذا كنت تقصد الدخول إلى هذا البروكسي ببرنامج لا يدعم المصادقة.';
+
+  @override
+  String get localProxyAuthOff =>
+      'مُطفأ: البروكسي المحلي مفتوح لأي برنامج على الجهاز';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'لا يُطبَّق في وضع «بروكسي النظام»: لا يستطيع Windows تمرير كلمة المرور إلى البروكسي المحلي. يعمل في وضع TUN.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'كلمة مرور عشوائية جديدة عند كل اتصال — لا تُحفظ في أي مكان';
+
+  @override
+  String get localProxyAuthCustom =>
+      'اسم مستخدم وكلمة مرور خاصان بك (يُحفظان في ملف الإعدادات)';
+
+  @override
+  String get localProxyCredsTitle => 'اسم مستخدم وكلمة مرور خاصان بك';
+
+  @override
+  String get localProxyCredsUnset => 'غير محدَّدين — تُستخدم كلمة مرور عشوائية';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'اسم المستخدم: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'اسم المستخدم وكلمة مرور البروكسي المحلي';
+
+  @override
+  String get localProxyDialogBody =>
+      'لا يلزمان إلا إذا كنت تُدخل بروكسينا (127.0.0.1) بنفسك في برنامج آخر. اترك الحقول فارغة وستكون كلمة المرور عشوائية عند كل اتصال: لا تُحفظ في أي مكان ولا تدخل في النسخ الاحتياطية.';
+
+  @override
+  String get localProxyFieldUser => 'اسم المستخدم';
+
+  @override
+  String get localProxyFieldPassword => 'كلمة المرور';
+
+  @override
+  String get localProxyFieldHint => 'فارغ — عشوائية';
+
+  @override
+  String get lockdownOnTitle => 'حماية النظام مُفعَّلة';
+
+  @override
+  String get lockdownOnSub =>
+      'حركة المرور محظورة حتى لو أُغلق التطبيق أو أزاله النظام من الذاكرة. هذا هو الوضع الأكثر أمانًا.';
+
+  @override
+  String get lockdownHalfTitle => 'الحماية مُفعَّلة نصفيًا';
+
+  @override
+  String get lockdownHalfSub =>
+      '«شبكة VPN دائمة التفعيل» مُعيَّنة، لكن «حظر الاتصالات بدون شبكة VPN» مُطفأ. ما دام التطبيق يعمل فحركة المرور محمية؛ وإذا أزاله النظام من الذاكرة فستمر بلا حماية.';
+
+  @override
+  String get lockdownOffTitle => 'حماية النظام مُطفأة';
+
+  @override
+  String get lockdownOffSub =>
+      'يمسك مفتاح الإيقاف (Kill switch) لدينا حركة المرور ما دام التطبيق يعمل. وإذا أزاله النظام من الذاكرة فستمر الحركة خارج VPN. فعِّل «شبكة VPN دائمة التفعيل» و«حظر الاتصالات بدون شبكة VPN».';
+
+  @override
+  String get lockdownUnknownTitle => 'حماية النظام: الحالة غير معروفة';
+
+  @override
+  String get lockdownUnknownSub =>
+      'لا يمكن معرفة الحالة إلا من Android 10 وأثناء عمل النفق فقط. تحقّق يدويًا: «شبكة VPN دائمة التفعيل» و«حظر الاتصالات بدون شبكة VPN».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'تعذّر فتح إعدادات VPN في النظام. ابحث عنها يدويًا: الإعدادات ← الشبكة والإنترنت ← VPN.';
+
+  @override
+  String get blockNoticeTitle => 'التنبيه إلى المواقع المحظورة';
+
+  @override
+  String get blockNoticeSub =>
+      'عندما يطرق تطبيق أو متصفح موقعًا من قائمة «حظر»، يظهر في الأسفل إشعار باسمه. انقر عليه لتُفتح هذه الشاشة.';
+
+  @override
+  String get siteInsecureScheme =>
+      'العنوان مكتوب بصيغة http:// — الاتصال غير مشفَّر ومزوّد الخدمة يراه بالكامل. احذف «http://» ليذهب المتصفح عبر https.';
+
+  @override
+  String get exitServerGone =>
+      'اختفى خادم هذه القاعدة من الاشتراك — تمر حركة المرور عبر النفق الرئيسي';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nلا يمكن رفع هذا الخادم كمخرج منفصل: ملفات «تلقائي» من اللوحة وبعض البروتوكولات لا يتولاها إلا Xray، بينما يوزّع المخارج sing-box. تمر حركة مرور القاعدة عبر النفق الرئيسي.';
+  }
+
+  @override
+  String get noticeRulesAction => 'القواعد';
+
+  @override
+  String get geoVerdictMissingTitle => 'بيانات التوجيه الجغرافية غير مُنزَّلة';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'قواعد الاشتراك حسب البلدان والفئات معطّلة الآن — تمر هذه الحركة عبر VPN لا مباشرةً.';
+
+  @override
+  String get geoVerdictUnusableTitle =>
+      'النواة لم تفتح بيانات التوجيه الجغرافية';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'الملفات موجودة، لكن النواة لم تقرأها. يساعد عادةً تنزيل البيانات من جديد.';
 }

@@ -4,6 +4,7 @@ import '../../core/app_info.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/device_id.dart';
+import '../../core/platform/singbox_log_format.dart';
 import '../../core/platform/support_context.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../core/settings/app_settings.dart';
@@ -13,6 +14,9 @@ import 'xray_paths.dart';
 import 'xray_version.dart';
 
 export '../../core/platform/support_context.dart';
+// Приведение лога ядра к читаемому виду живёт в core/ — тем же кодом им
+// пользуется экран логов, в том числе на Android.
+export '../../core/platform/singbox_log_format.dart' show tidySingboxLog;
 
 /// Сборка отчёта для техподдержки в один текстовый файл.
 ///
@@ -99,7 +103,7 @@ class SupportReport {
         '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sb = await _safe(() => TunHelper.tailLog(lines: 200));
-    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : sb);
+    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : tidySingboxLog(sb));
     b.writeln();
     b.writeln('==================================================');
     b.writeln('[singbox_proxy.log — прокси-ядро (hysteria2), последние строки]'
@@ -108,7 +112,7 @@ class SupportReport {
     final sbp = await _safe(() => SingboxProcess.tailLog(lines: 200));
     b.writeln(sbp.isEmpty
         ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
-        : sbp);
+        : tidySingboxLog(sbp));
     b.writeln();
 
     b.writeln('=== конец отчёта ===');

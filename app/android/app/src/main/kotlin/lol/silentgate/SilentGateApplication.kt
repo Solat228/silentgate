@@ -32,8 +32,26 @@ import java.io.File
  * логичнее и не работает.
  */
 class SilentGateApplication : Application() {
+
+    companion object {
+        /**
+         * Контекст приложения для тех мест, где своего нет.
+         *
+         * ⚠️ Нужен ровно одному потребителю — обновлению плитки быстрых настроек
+         * из статического [lol.silentgate.vpn.SilentGateVpnService.notifyState].
+         * Там смена состояния объявляется из companion object, а экземпляр
+         * сервиса к тому моменту уже может быть снят, поэтому брать контекст у
+         * него нельзя. Контекст ПРИЛОЖЕНИЯ живёт столько же, сколько процесс, и
+         * утечки активности здесь не бывает.
+         */
+        @Volatile
+        var appContext: android.content.Context? = null
+            private set
+    }
+
     override fun onCreate() {
         super.onCreate()
+        appContext = applicationContext
         runCatching {
             // Тот же каталог, куда кладёт файлы Dart-сторона (`GeoAssets.dir()`).
             // Создаём заранее: пустой каталог ядру не мешает, а его отсутствие

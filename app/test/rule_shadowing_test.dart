@@ -30,14 +30,12 @@ void main() {
 
   Map<String, dynamic> build(SplitTunnelConfig split,
           {bool noRealIp = false,
-          bool platformTun = false,
-          int blockPagePort = 0}) =>
+          bool platformTun = false}) =>
       SingboxConfigBuilder(
         options: TunOptions(
           serverIps: const ['203.0.113.10'],
           noRealIp: noRealIp,
           platformTun: platformTun,
-          blockPagePort: blockPagePort,
         ),
       ).buildMap(split);
 
@@ -214,30 +212,7 @@ void main() {
   });
 
   group('Заглушка не перехватывает чужой порт', () {
-    test('блок только на 8443 не даёт заглушку на 80', () {
-      // Было: список доменов заглушки собирался без учёта порта, и обычный
-      // http://example.com показывал «сайт заблокирован» без всякой блокировки.
-      const split = SplitTunnelConfig(mode: SplitMode.exceptSelected, sites: [
-        SiteRule('example.com', port: 8443, action: AppAction.block),
-      ]);
-      final stub = routeRules(build(split, blockPagePort: 9091))
-          .where((r) => r['override_port'] == 9091)
-          .toList();
-      expect(stub, isEmpty,
-          reason: 'на 80-м порту этот домен пользователь не блокировал');
-    });
 
-    test('блок домена целиком заглушку даёт', () {
-      const split = SplitTunnelConfig(mode: SplitMode.exceptSelected, sites: [
-        SiteRule('ads.example', action: AppAction.block),
-      ]);
-      final stub = routeRules(build(split, blockPagePort: 9091))
-          .where((r) => r['override_port'] == 9091)
-          .toList();
-      expect(stub, hasLength(1));
-      expect(domain(stub.single, 'ads.example'), isTrue);
-      expect(stub.single['port'], [80]);
-    });
   });
 
   group('Локальные порты двух ядер', () {

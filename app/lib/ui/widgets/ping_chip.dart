@@ -24,12 +24,33 @@ class PingChip extends StatelessWidget {
     final l = AppLocalizations.of(context);
     switch (result.outcome) {
       case PingOutcome.untested:
-        // ⚠️ Раньше здесь была пустота, и пользователь не мог отличить «ещё не
+        // ⚠️ Пустоты здесь быть не должно: пользователь не отличит «ещё не
         // проверяли» от «проверили и всё плохо». Особенно больно на Android,
-        // где hysteria2 не измеряется до подключения: сервер выглядел так же,
+        // где hysteria2 не измеряется до подключения — сервер выглядел так же,
         // как непроверенный, и казался сломанным.
-        return _pill('—', Theme.of(context).disabledColor,
-            tooltip: l.pingUntestedHint);
+        //
+        // Но и длинного тире быть не должно тоже: в ряду цифр оно читается как
+        // значение («прочерк» = плохо), хотя означает «данных нет». Пустой
+        // кружок ровно того же размера, что и плашка с числом, не притворяется
+        // результатом и не двигает вёрстку, когда результат появится.
+        return Tooltip(
+          message: l.pingUntestedHint,
+          child: SizedBox(
+            width: 26,
+            height: 26,
+            child: Center(
+              child: Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                      color: Theme.of(context).disabledColor, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        );
       case PingOutcome.testing:
         return const SizedBox(
             width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));

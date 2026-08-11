@@ -150,6 +150,8 @@ class MainActivity : FlutterActivity() {
                             call.argument<String>("nowUp"),
                             call.argument<String>("totalDown"),
                             call.argument<String>("totalUp"),
+                            call.argument<Boolean>("compact") ?: false,
+                            call.argument<String>("logo"),
                         )
                         result.success(null)
                     }
@@ -157,6 +159,32 @@ class MainActivity : FlutterActivity() {
                     "showBlocked" -> {
                         SilentGateVpnService.instance?.showBlocked()
                         result.success(null)
+                    }
+
+                    // Состояние СИСТЕМНОЙ защиты («Блокировать соединения без
+                    // VPN»). Спрашиваем у живого сервиса: геттеры есть только
+                    // у VpnService. Сервиса нет — отвечаем «проверить не могу»,
+                    // а не «выключено»: разница важна, врать нельзя.
+                    "lockdownState" -> {
+                        val st = SilentGateVpnService.instance?.lockdownState()
+                            ?: mapOf("supported" to false,
+                                     "alwaysOn" to false,
+                                     "lockdown" to false)
+                        result.success(st)
+                    }
+
+                    // Открыть системный экран настроек VPN: включить «Постоянную
+                    // VPN» может ТОЛЬКО пользователь, приложению это запрещено.
+                    "openVpnSettings" -> {
+                        try {
+                            startActivity(Intent("android.net.vpn.SETTINGS")
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            result.success(true)
+                        } catch (e: Throwable) {
+                            // На части прошивок экрана нет — честный false,
+                            // чтобы интерфейс не рисовал кнопку в никуда.
+                            result.success(false)
+                        }
                     }
 
                     else -> result.notImplemented()
@@ -237,6 +265,14 @@ class MainActivity : FlutterActivity() {
                             )
                         }
                     }
+                    // Раскладку уведомления пользователь может переключить
+                    // кнопкой в шторке — Dart обязан узнать об этом, иначе
+                    // вернёт прежнюю со следующим обновлением счётчиков.
+                    SilentGateVpnService.layoutListener = { compact ->
+                        runOnUiThread {
+                            events?.success(mapOf("compactNotification" to compact))
+                        }
+                    }
                     // Сразу отдаём текущее состояние: интерфейс мог быть
                     // перезапущен при живом туннеле.
                     sink?.success(
@@ -250,6 +286,7 @@ class MainActivity : FlutterActivity() {
 
                 override fun onCancel(arguments: Any?) {
                     SilentGateVpnService.stateListener = null
+                    SilentGateVpnService.layoutListener = null
                     events = null
                 }
             })

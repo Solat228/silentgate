@@ -23,12 +23,28 @@ class SingboxRouterWindows implements TunRouter {
   bool _started = false;
   String _stopPath = '';
 
+  /// Выходы мульти-VPN текущей сессии.
+  ///
+  /// ⚠️ Держим полями, а не тащим через параметры `_startOnce`: автоподбор
+  /// стека и MTU переcобирает конфиг до девяти раз, и забытый аргумент в одной
+  /// из веток дал бы туннель БЕЗ выходов — при этом рабочий. Такой дефект
+  /// проявился бы только на второй комбинации, то есть у части пользователей.
+  List<Map<String, dynamic>> _exitOutbounds = const [];
+  String _socksUser = '';
+  String _socksPassword = '';
+
   @override
   Future<void> start(SplitTunnelConfig split,
       {required int xraySocksPort,
       required TunOptions options,
       void Function(String message)? onProgress,
-      bool Function()? abort}) async {
+      bool Function()? abort,
+      List<Map<String, dynamic>> exitOutbounds = const [],
+      String xraySocksUser = '',
+      String xraySocksPassword = ''}) async {
+    _exitOutbounds = exitOutbounds;
+    _socksUser = xraySocksUser;
+    _socksPassword = xraySocksPassword;
     // «Авто» — реальный подбор: перебираем стек и MTU, пока туннель не поднимется.
     // Явно выбранный стек уважаем и ничего не перебираем.
     if (!options.autotune) {
@@ -91,8 +107,15 @@ class SingboxRouterWindows implements TunRouter {
     final dir = await AppPaths.supportDir();
     final cfgPath = TunHelper.configPathFor(dir);
     await File(cfgPath).writeAsString(
-      SingboxConfigBuilder(xraySocksPort: xraySocksPort, options: options)
-          .buildJson(split),
+      SingboxConfigBuilder(
+        xraySocksPort: xraySocksPort,
+        // Без этих двух строк туннель уходит в SOCKS Xray без пароля и
+        // получает 407 — «Подключено» при нулевом трафике.
+        xraySocksUser: _socksUser,
+        xraySocksPassword: _socksPassword,
+        options: options,
+        exitOutbounds: _exitOutbounds,
+      ).buildJson(split),
     );
 
     _stopPath = TunHelper.stopFilePathFor(dir);

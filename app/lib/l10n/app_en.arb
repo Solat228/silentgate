@@ -785,5 +785,84 @@
   },
   "infoGeoAssets": "The geoip.dat and geosite.dat files are lists of addresses by country and domains by category (for example «Russian sites», «government services», «VK»). The routing rules your subscription panel defines rely on them.\n\nThey are not bundled into the app: together they weigh about 30 MB and are not needed by everyone — a plain server does not use them at all.\n\nWhile the files are missing, such rules are stripped from the config and the traffic they used to send directly goes through the VPN instead. That is safe but slower, and local sites may refuse access from a foreign address. Your own per-site and per-app rules work regardless — they do not depend on these files.",
   "supportBullet2Android": "• After you tap, the report is collected into a single file and the system «Share» sheet opens — pick Telegram and it goes as one attachment. Describe the problem in the field above: without a description there is nothing to work from.",
-  "supportDoneTextAndroid": "The report is collected into a single file. Choose where to send it in the system sheet — in Telegram it goes as an attachment, not as text."
+  "supportDoneTextAndroid": "The report is collected into a single file. Choose where to send it in the system sheet — in Telegram it goes as an attachment, not as text.",
+  "exitsHeader": "Exits",
+  "exitsHint": "A \"Tunnel\" rule can be routed to a specific exit: one site through Germany, another through the USA. Without an exit the rule uses the main tunnel, as before.",
+  "exitsAdd": "Add exit",
+  "exitsEmpty": "No exits yet",
+  "exitsName": "Name",
+  "exitsNameHint": "Germany",
+  "exitsServers": "Servers",
+  "exitsAutoSelect": "Auto-select by latency",
+  "exitsAutoSelectSub": "The core keeps traffic on a working server by itself. The cost: each server is probed every three minutes, which wakes the radio on a phone.",
+  "exitsAutoSelectNeedsTwo": "At least two servers required",
+  "exitsDelete": "Delete exit",
+  "exitsNoServers": "No servers — import a subscription first",
+  "exitsSearch": "Search server",
+  "exitsPickAtLeastOne": "Select at least one server",
+  "exitsUnsupportedNote": "Panel \"Auto\" profiles and hysteria2 cannot run as a separate exit: they are handled by the other core. Such servers are disabled in the list.",
+  "infoExits": "An exit is the destination of a \"Tunnel\" rule.\n\nBy default an exit is a SINGLE server and costs nothing in the background: ordinary protocols hold no persistent connection. A group of several servers with auto-select is only needed where insurance against a node failure matters — it adds periodic probes, and on a phone those are radio wake-ups.\n\nAn exit only makes sense for the \"Tunnel\" action. \"Direct via Germany\" is a contradiction: a direct rule bypasses all exits.\n\nA site and its subdomain may go to DIFFERENT exits — the app raises the more specific rule above, otherwise the parent would swallow the subdomain.\n\nIMPORTANT: with the system proxy on Windows exits do not work at all — no routing rules are built in that mode. Tunnel mode is required.",
+  "ruleServer": "Via server",
+  "ruleServerCurrent": "Same as main",
+  "ruleServerCurrentNamed": "Same as main ({server})",
+  "@ruleServerCurrentNamed": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "routeMatchByName": "Matched by file name",
+  "routeYourApps": "Your apps",
+  "routeYourSites": "Your sites",
+  "routeAppsAndSites": "Apps and sites",
+  "notifCompactTitle": "Compact notification",
+  "notifCompactSub": "Off — subscription, server and speed, with buttons. On — the app and subscription in the title, server below, no speed and no buttons.",
+  "localProxyAuthTitle": "Password for the local proxy",
+  "localProxyAuthInfo": "The core's local port (127.0.0.1) is a full proxy into your VPN. Without a password any program on this device can connect to it and get your whole tunnel: the exit IP, your subscription quota and a way around your own split tunneling rules — including apps you marked “Block”. On Android this matters even more: there any installed app can see local ports.\n\nTurn it off only if you deliberately use this proxy from something that cannot authenticate.",
+  "localProxyAuthOff": "Off: the local proxy is open to any program on the device",
+  "localProxyAuthSystemProxy": "Not used in system proxy mode: Windows cannot pass a password to a local proxy. Applies in TUN mode.",
+  "localProxyAuthRandom": "A new random password on every connection — stored nowhere",
+  "localProxyAuthCustom": "Your own username and password (kept in the settings file)",
+  "localProxyCredsTitle": "Your own username and password",
+  "localProxyCredsUnset": "Not set — a random password is used",
+  "localProxyCredsUser": "Username: {user}",
+  "@localProxyCredsUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "localProxyDialogTitle": "Local proxy username and password",
+  "localProxyDialogBody": "Needed only if you enter our proxy (127.0.0.1) into another program yourself. Leave the fields empty and the password will be random on every connection: it is stored nowhere and never gets into backups.",
+  "localProxyFieldUser": "Username",
+  "localProxyFieldPassword": "Password",
+  "localProxyFieldHint": "empty — random",
+  "lockdownOnTitle": "System-wide protection is on",
+  "lockdownOnSub": "Traffic is blocked even if the app closes or the system kills it. This is the most reliable mode.",
+  "lockdownHalfTitle": "Protection is only half on",
+  "lockdownHalfSub": "Always-on VPN is set, but “Block connections without VPN” is off. While the app is alive traffic is protected; if the system kills it, traffic goes out in the clear.",
+  "lockdownOffTitle": "System-wide protection is off",
+  "lockdownOffSub": "Our kill switch holds traffic while the app is running. If the system kills it, traffic will bypass the VPN. Turn on “Always-on VPN” and “Block connections without VPN”.",
+  "lockdownUnknownTitle": "System-wide protection: state unknown",
+  "lockdownUnknownSub": "The state can be read on Android 10 and up, and only while the tunnel is up. Check manually: “Always-on VPN” and “Block connections without VPN”.",
+  "lockdownOpenFailed": "Could not open the system VPN settings. Find them manually: Settings → Network & internet → VPN.",
+  "blockNoticeTitle": "Notify about blocked sites",
+  "blockNoticeSub": "When an app or browser reaches a site from the “Block” list, a notification with its name appears at the bottom. Tap it to open this screen.",
+  "siteInsecureScheme": "The address is set as http:// — the connection is not encrypted and your ISP sees all of it. Remove “http://” so the browser uses https.",
+  "exitServerGone": "The server for this rule is gone from the subscription — its traffic uses the main tunnel",
+  "exitServerUnsupported": "{name}\n\nThis server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.",
+  "@exitServerUnsupported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeRulesAction": "Rules",
+  "geoVerdictMissingTitle": "Geo databases not downloaded",
+  "geoVerdictMissingSub": "Subscription rules by country and category are off right now — this traffic goes through the VPN instead of direct.",
+  "geoVerdictUnusableTitle": "The core could not open the geo databases",
+  "geoVerdictUnusableSub": "The files are there, but the core did not read them. Re-downloading the databases usually helps."
 }

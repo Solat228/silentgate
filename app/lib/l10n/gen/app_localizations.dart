@@ -3761,6 +3761,354 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Отчёт собран в один файл. Выберите в системном окне, куда его отправить — в Telegram он уйдёт вложением, а не текстом.'**
   String get supportDoneTextAndroid;
+
+  /// No description provided for @exitsHeader.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выходы'**
+  String get exitsHeader;
+
+  /// No description provided for @exitsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правило «Туннель» можно направить в конкретный выход: один сайт через Германию, другой — через США. Без выхода правило идёт в общий туннель, как раньше.'**
+  String get exitsHint;
+
+  /// No description provided for @exitsAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить выход'**
+  String get exitsAdd;
+
+  /// No description provided for @exitsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выходов пока нет'**
+  String get exitsEmpty;
+
+  /// No description provided for @exitsName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название'**
+  String get exitsName;
+
+  /// No description provided for @exitsNameHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Германия'**
+  String get exitsNameHint;
+
+  /// No description provided for @exitsServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверы'**
+  String get exitsServers;
+
+  /// No description provided for @exitsAutoSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автовыбор по задержке'**
+  String get exitsAutoSelect;
+
+  /// No description provided for @exitsAutoSelectSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро само держит трафик на живом сервере. Цена — проба каждого сервера раз в три минуты; на телефоне это будит радио.'**
+  String get exitsAutoSelectSub;
+
+  /// No description provided for @exitsAutoSelectNeedsTwo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно хотя бы два сервера'**
+  String get exitsAutoSelectNeedsTwo;
+
+  /// No description provided for @exitsDelete.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить выход'**
+  String get exitsDelete;
+
+  /// No description provided for @exitsNoServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет серверов — сначала импортируйте подписку'**
+  String get exitsNoServers;
+
+  /// No description provided for @exitsSearch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск сервера'**
+  String get exitsSearch;
+
+  /// No description provided for @exitsPickAtLeastOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите хотя бы один сервер'**
+  String get exitsPickAtLeastOne;
+
+  /// No description provided for @exitsUnsupportedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Профили «Авто» от панели и hysteria2 отдельным выходом не поднимаются: их держит другое ядро. Такой сервер в списке недоступен.'**
+  String get exitsUnsupportedNote;
+
+  /// No description provided for @infoExits.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выход — это адресат правила «Туннель».\n\nПо умолчанию выход состоит из ОДНОГО сервера, и в фоне он не стоит ничего: обычные протоколы постоянного соединения не держат. Группа из нескольких серверов с автовыбором нужна только там, где важна страховка от падения узла, — она добавляет периодические замеры, а на телефоне это пробуждения радио.\n\nВыход имеет смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» — противоречие: прямое правило идёт мимо всех выходов.\n\nСайт и его поддомен можно отправить в РАЗНЫЕ выходы — приложение само поднимет более конкретное правило выше, иначе родитель поглотил бы поддомен.\n\nВАЖНО: при системном прокси на Windows выходы не работают вовсе — в этом режиме правил маршрутизации не строится. Нужен режим туннеля.'**
+  String get infoExits;
+
+  /// No description provided for @ruleServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через сервер'**
+  String get ruleServer;
+
+  /// No description provided for @ruleServerCurrent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как основной'**
+  String get ruleServerCurrent;
+
+  /// No description provided for @ruleServerCurrentNamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как основной ({server})'**
+  String ruleServerCurrentNamed(String server);
+
+  /// No description provided for @routeMatchByName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сопоставление по имени файла'**
+  String get routeMatchByName;
+
+  /// No description provided for @routeYourApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваши приложения'**
+  String get routeYourApps;
+
+  /// No description provided for @routeYourSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваши сайты'**
+  String get routeYourSites;
+
+  /// No description provided for @routeAppsAndSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложения и сайты'**
+  String get routeAppsAndSites;
+
+  /// No description provided for @notifCompactTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Короткое уведомление'**
+  String get notifCompactTitle;
+
+  /// No description provided for @notifCompactSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключено — подписка, сервер и скорость, с кнопками. Включено — в заголовке приложение и подписка, ниже сервер, без скорости и без кнопок.'**
+  String get notifCompactSub;
+
+  /// No description provided for @localProxyAuthTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль на локальный прокси'**
+  String get localProxyAuthTitle;
+
+  /// No description provided for @localProxyAuthInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальный порт ядра (127.0.0.1) — это полноценный прокси в ваш VPN. Без пароля к нему подключается любая программа на этом же устройстве и получает ваш туннель целиком: выходной IP, квоту подписки и обход ваших же правил раздельного туннелирования — включая приложения, которым вы поставили «Блок». На Android это особенно важно: там локальные порты видит любое установленное приложение.\n\nВыключайте, только если сознательно ходите в этот прокси чем-то, что не умеет аутентификацию.'**
+  String get localProxyAuthInfo;
+
+  /// No description provided for @localProxyAuthOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключен: локальный прокси открыт любой программе на устройстве'**
+  String get localProxyAuthOff;
+
+  /// No description provided for @localProxyAuthSystemProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'В режиме системного прокси не применяется: Windows не умеет передавать пароль локальному прокси. Действует в режиме TUN.'**
+  String get localProxyAuthSystemProxy;
+
+  /// No description provided for @localProxyAuthRandom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый случайный пароль на каждое подключение — нигде не сохраняется'**
+  String get localProxyAuthRandom;
+
+  /// No description provided for @localProxyAuthCustom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свои логин и пароль (хранятся в файле настроек)'**
+  String get localProxyAuthCustom;
+
+  /// No description provided for @localProxyCredsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свои логин и пароль'**
+  String get localProxyCredsTitle;
+
+  /// No description provided for @localProxyCredsUnset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не заданы — используется случайный пароль'**
+  String get localProxyCredsUnset;
+
+  /// No description provided for @localProxyCredsUser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логин: {user}'**
+  String localProxyCredsUser(String user);
+
+  /// No description provided for @localProxyDialogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логин и пароль локального прокси'**
+  String get localProxyDialogTitle;
+
+  /// No description provided for @localProxyDialogBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он нигде не сохраняется и не попадает в резервные копии.'**
+  String get localProxyDialogBody;
+
+  /// No description provided for @localProxyFieldUser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логин'**
+  String get localProxyFieldUser;
+
+  /// No description provided for @localProxyFieldPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль'**
+  String get localProxyFieldPassword;
+
+  /// No description provided for @localProxyFieldHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'пусто — случайный'**
+  String get localProxyFieldHint;
+
+  /// No description provided for @lockdownOnTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системная защита включена'**
+  String get lockdownOnTitle;
+
+  /// No description provided for @lockdownOnSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Трафик заблокирован, даже если приложение закроется или его выгрузит система. Это самый надёжный режим.'**
+  String get lockdownOnSub;
+
+  /// No description provided for @lockdownHalfTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Защита включена наполовину'**
+  String get lockdownHalfTitle;
+
+  /// No description provided for @lockdownHalfSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Постоянная VPN назначена, но «Блокировать соединения без VPN» выключено. Пока приложение живо — трафик защищён; если система его выгрузит, он пойдёт открыто.'**
+  String get lockdownHalfSub;
+
+  /// No description provided for @lockdownOffTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системная защита выключена'**
+  String get lockdownOffTitle;
+
+  /// No description provided for @lockdownOffSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Наш kill switch держит трафик, пока работает приложение. Если система его выгрузит, трафик пойдёт мимо VPN. Включите «Постоянная VPN» и «Блокировать соединения без VPN».'**
+  String get lockdownOffSub;
+
+  /// No description provided for @lockdownUnknownTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системная защита: состояние неизвестно'**
+  String get lockdownUnknownTitle;
+
+  /// No description provided for @lockdownUnknownSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Узнать состояние можно с Android 10 и только при поднятом туннеле. Проверьте вручную: «Постоянная VPN» и «Блокировать соединения без VPN».'**
+  String get lockdownUnknownSub;
+
+  /// No description provided for @lockdownOpenFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось открыть системные настройки VPN. Найдите их вручную: Настройки → Сеть и интернет → VPN.'**
+  String get lockdownOpenFailed;
+
+  /// No description provided for @blockNoticeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сообщать о заблокированных сайтах'**
+  String get blockNoticeTitle;
+
+  /// No description provided for @blockNoticeSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Когда приложение или браузер стучится на сайт из списка «Блок», внизу появится уведомление с его именем. Нажмите — откроется этот экран.'**
+  String get blockNoticeSub;
+
+  /// No description provided for @siteInsecureScheme.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адрес задан как http:// — соединение не шифруется, и провайдер видит его целиком. Уберите «http://», чтобы браузер шёл по https.'**
+  String get siteInsecureScheme;
+
+  /// No description provided for @exitServerGone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер этого правила пропал из подписки — трафик идёт основным туннелем'**
+  String get exitServerGone;
+
+  /// No description provided for @exitServerUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name}\n\nЭтот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.'**
+  String exitServerUnsupported(String name);
+
+  /// No description provided for @noticeRulesAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила'**
+  String get noticeRulesAction;
+
+  /// No description provided for @geoVerdictMissingTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Гео-базы не скачаны'**
+  String get geoVerdictMissingTitle;
+
+  /// No description provided for @geoVerdictMissingSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила подписки по странам и категориям сейчас отключены — этот трафик идёт через VPN, а не напрямую.'**
+  String get geoVerdictMissingSub;
+
+  /// No description provided for @geoVerdictUnusableTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро не открыло гео-базы'**
+  String get geoVerdictUnusableTitle;
+
+  /// No description provided for @geoVerdictUnusableSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.'**
+  String get geoVerdictUnusableSub;
 }
 
 class _AppLocalizationsDelegate

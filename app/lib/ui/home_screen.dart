@@ -21,6 +21,8 @@ import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'widgets/info_tooltip.dart';
 import '../state/app_state.dart';
+import '../core/models/engine_notice.dart';
+import 'split_tunnel_screen.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/service_check_controller.dart';
@@ -226,6 +228,42 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Ход пинга и автонастройки — карточками слева снизу: пока идёт, карточка
   /// висит и показывает прогресс; после завершения ещё 10 секунд показывает итог
   /// с убывающей полоской и уезжает вниз.
+  /// Заметки движка: обрыв, восстановление, отказ, блокировка.
+  ///
+  /// ⚠️ ПОКАЗЫВАЕМ НЕ КАЖДУЮ ПОПЫТКУ. Их бывает до восьми подряд, и всплывашка
+  /// на каждую раздражает сильнее, чем помогает — человек начинает их
+  /// отмахивать не читая, а вместе с ними пропустит и важную. Поэтому событий
+  /// ровно три: связь оборвалась, связь восстановилась, восстановить не
+  /// удалось. Решение владельца от 08.08.2026.
+  ///
+  /// Заметку снимаем СРАЗУ после показа: иначе при каждой перерисовке всплывало
+  /// бы одно и то же сообщение — на этих граблях уже стояли с итогами пинга.
+  void _showEngineNotices(BuildContext context) {
+    final state = context.watch<AppState>();
+    final notice = state.pendingNotice;
+    if (notice == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      state.clearNotice();
+      final detail = (notice.detail ?? '').trim();
+      AppToast.show(
+        context,
+        detail.isEmpty ? notice.text : '${notice.text} · $detail',
+        kind: notice.isProblem ? ToastKind.error : ToastKind.info,
+        duration: Duration(seconds: notice.isProblem ? 10 : 6),
+        // У блокировки — путь к правилу: сообщение без «а где это менять»
+        // заставляет искать настройку самому.
+        actionLabel: notice.kind == EngineNoticeKind.blocked
+            ? 'Правила'
+            : null,
+        onAction: notice.kind == EngineNoticeKind.blocked
+            ? () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const SplitTunnelScreen()))
+            : null,
+      );
+    });
+  }
+
   void _showProgressToasts(BuildContext context) {
     final probe = context.watch<ProbeController>();
     final auto = context.watch<AutoConfigController>();
@@ -336,6 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _showTransientMessages(context, state, settings);
     _autoCheckServices(context, state);
     _showProgressToasts(context);
+    _showEngineNotices(context);
 
     // #1.2 — первый запуск: пока нет ни подписки, ни серверов, показываем экран
     // импорта целиком. Возвращаться некуда, поэтому и кнопки «назад» у него нет.
@@ -430,6 +469,7 @@ class _ConnectPane extends StatelessWidget {
         // Карточка подписки показывается целиком: место под неё даёт увеличенная
         // минимальная высота окна и компактная кнопка Connect (скролл тут мешал).
         const SubscriptionBar(),
+        const _GeoAssetsBanner(),
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
           child: Padding(
@@ -1082,3 +1122,71 @@ class _TrafficRow extends StatelessWidget {
   }
 }
 
+
+/// Плашка «нужны гео-базы» на главном экране.
+///
+/// ⚠️ ПОЧЕМУ НЕ ХВАТИЛО ВСПЛЫВАЮЩЕГО СООБЩЕНИЯ. Вердикт о гео-базах ядро выносит
+/// в момент подъёма туннеля — а на Android это ровно тот момент, когда
+/// приложение чаще всего НЕ на экране: сверху диалог согласия VPN, стартует
+/// сервис. Всплывашка, показанная в эту секунду, до человека не доходит.
+/// Владелец так и сказал: «предложение докачать гео-файлы как будто не
+/// происходит». Поэтому вердикт держится в состоянии и висит здесь, пока он
+/// его не закроет или пока базы не появятся.
+class _GeoAssetsBanner extends StatelessWidget {
+  const _GeoAssetsBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<AppState>();
+    final verdict = state.geoVerdict;
+    if (verdict == null) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    // Два РАЗНЫХ случая: файлов нет — предлагаем скачать; файлы есть, а ядро их
+    // не открыло — предлагать «скачайте» бессмысленно, там нужно перекачать.
+    final missing = verdict == EngineNoticeKind.geoAssetsMissing;
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      color: scheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        child: Row(children: [
+          Icon(Icons.public_off, size: 20, color: scheme.onTertiaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    missing
+                        ? l.geoVerdictMissingTitle
+                        : l.geoVerdictUnusableTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: scheme.onTertiaryContainer)),
+                Text(
+                    missing ? l.geoVerdictMissingSub : l.geoVerdictUnusableSub,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: scheme.onTertiaryContainer)),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const SettingsScreen(scrollToGeo: true))),
+            child: Text(missing ? l.geoDownload : l.geoUpdate),
+          ),
+          IconButton(
+            tooltip: l.commonClose,
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: context.read<AppState>().clearGeoVerdict,
+          ),
+        ]),
+      ),
+    );
+  }
+}

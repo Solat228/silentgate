@@ -9,18 +9,22 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/models/engine_notice.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/probe/proxy_probe.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
+import '../../core/settings/app_settings.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/xray/override_normalizer.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
+import '../../core/singbox/exit_outbounds.dart';
 import '../../core/geo/geo_assets.dart';
 import '../../core/xray/geodata_fallback.dart';
+import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
@@ -46,6 +50,18 @@ import '../engine_base.dart';
 /// общим Go-рантаймом (`go.Seq`), и собрать их вместе иначе нельзя
 /// (`tools/build-android-cores.md`).
 class AndroidEngine extends VpnEngineBase {
+  /// Локальный DNS-форвардер с запасным резолвером (см. _startFallbackDns).
+  DnsFallbackServer? _fallbackDns;
+
+  /// ⚠️ Счётчики здесь берутся из Clash API sing-box (порт 10812, с паролем),
+  /// а `statsquery` Xray не используется НИ РАЗУ — единственный вызов
+  /// `XrayStats` живёт в Windows-движке. Поэтому api-инбаунд Xray на Android не
+  /// поднимаем вовсе: он слушает без аутентификации (Xray её для `api` не
+  /// поддерживает), а loopback на Android виден любому установленному
+  /// приложению — детекторы VPN ищут именно этот порт.
+  @override
+  bool get readsXrayStats => false;
+
   AndroidEngine({super.ports}) {
     _events.receiveBroadcastStream().listen(_onNativeEvent);
   }
@@ -216,13 +232,21 @@ class AndroidEngine extends VpnEngineBase {
     final totalDown = _human(snap.downlink);
     final totalUp = _human(snap.uplink);
     // ⚠️ РАСКЛАДКА ЗАДАНА ВЛАДЕЛЬЦЕМ, не выдумывать свою:
-    //   обычная  — [значок + подписка] / сервер / скорость;
-    //   короткая — [значок + сервер] / скорость.
-    // Первая строка уведомления Android — это `subText` рядом со значком,
-    // поэтому имя подписки едет именно туда, а не в заголовок.
+    //   обычная  — [значок + подписка] / сервер / скорость, с кнопками;
+    //   короткая — [значок + имя приложения + подписка] / сервер,
+    //              без скорости и БЕЗ кнопок.
+    //
+    // Первая строка уведомления Android — это `subText` рядом со значком, и
+    // имя приложения система дописывает туда сама. Поэтому в обеих раскладках
+    // подписка едет в subText: в короткой она и даёт «приложение · подписка».
+    //
+    // ⚠️ Признак раскладки уходит ОТДЕЛЬНЫМ полем. Раньше короткую опознавали
+    // по пустой подписке — и это ломалось само собой, когда у подписки не
+    // оказывалось имени: обычная раскладка молча превращалась в короткую.
     _lastDetail = (snap: snap, up: upSpeed, down: downSpeed);
-    final sub = compactNotification ? '' : subscriptionTitle;
-    final key = '$sub|$server|$nowDown|$nowUp|$totalDown|$totalUp';
+    final sub = subscriptionTitle;
+    final key = '$compactNotification|$sub|$server|$nowDown|$nowUp|$totalDown|$totalUp'
+        '|$subscriptionLogoPath';
     if (key == _lastDetailSent) return; // не дёргать шторку впустую
     _lastDetailSent = key;
     try {
@@ -233,6 +257,8 @@ class AndroidEngine extends VpnEngineBase {
         'nowUp': nowUp,
         'totalDown': totalDown,
         'totalUp': totalUp,
+        'compact': compactNotification,
+        'logo': subscriptionLogoPath,
       });
     } catch (_) {
       // Уведомление — не критичный путь: туннель важнее.
@@ -271,6 +297,13 @@ class AndroidEngine extends VpnEngineBase {
   /// Сервис-чипы и проба активного сервера ходят в наш собственный инбаунд.
   @override
   int get httpProxyPort => probeInboundPort;
+
+  /// ⚠️ Проба ходит через probe-инбаунд, а он закрыт СВОИМИ кредами, не теми,
+  /// что у socks Xray. Возьми мы общие — рукопожатие получило бы 407, три
+  /// промаха подряд, и приложение переподключалось бы на исправном туннеле.
+  @override
+  ({String user, String password}) get healthProbeAuth =>
+      (user: ProxyProbe.user, password: ProxyProbe.password);
 
   static const _channel = MethodChannel('lol.silentgate/vpn');
   static const _events = EventChannel('lol.silentgate/vpn_events');
@@ -398,9 +431,23 @@ class AndroidEngine extends VpnEngineBase {
         '${needsGeodata(r.json)} (базы скачаны=$have, '
         'ядро их не открыло=$_geodataUnusable)');
     if (r.report.changed) {
-      AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
-          '${r.report.describe()}. Этот трафик пойдёт через VPN, а не напрямую. '
-          'Скачать базы можно в настройках.');
+      // ⚠️ ДВА РАЗНЫХ СЛУЧАЯ, И ПУТАТЬ ИХ НЕЛЬЗЯ. Сюда попадают и «файлов нет»,
+      // и «файлы есть, ядро их не открыло». Прежний текст утверждал «не
+      // скачаны» в обоих — то есть врал ровно тому, у кого базы уже лежат на
+      // диске, и советовал ему скачать их ещё раз.
+      if (have) {
+        AppLog.w('Гео-базы на диске есть, но ядро их не открыло — правила по '
+            'ним отброшены: ${r.report.describe()}. Этот трафик пойдёт через '
+            'VPN, а не напрямую. Помогает перекачивание баз в настройках.');
+        emitNotice(EngineNoticeKind.geoAssetsUnusable,
+            'Ядро не открыло гео-базы — правила панели по странам отключены');
+      } else {
+        AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
+            '${r.report.describe()}. Этот трафик пойдёт через VPN, а не '
+            'напрямую. Скачать базы можно в настройках.');
+        emitNotice(EngineNoticeKind.geoAssetsMissing,
+            'Гео-базы не скачаны — правила панели по странам отключены');
+      }
     }
     return r.json;
   }
@@ -434,8 +481,12 @@ class AndroidEngine extends VpnEngineBase {
     ProxyProbe.password = _randomSecret();
     // Те же соображения — для локальных инбаундов Xray (10808/10809): они
     // поднимаются при панельных профилях и без пароля так же открыты всем.
-    localInboundUser = 'sg';
-    localInboundPassword = _randomSecret();
+    // Но выданы они УЖЕ — базой, до сборки конфига (`prepareLocalProxyAuth`).
+    // ⚠️ Повторять вызов здесь нельзя: в режиме «Авто (лучший сервер)» конфиг
+    // приходит готовым из `session.configJson`, и новый пароль разошёлся бы с
+    // тем, что уже запечён в конфиге.
+    // Системного прокси на Android не бывает вовсе, поэтому ограничение
+    // WinINET сюда не приходит: пароль ставится всегда, когда его не отключили.
 
     try {
       // Ядро выбирается ровно так же, как на Windows (configFor в базе):
@@ -444,7 +495,15 @@ class AndroidEngine extends VpnEngineBase {
       // Резолв — ДО сборки конфига: адрес нужен и правилу «мимо туннеля»
       // (ip_cidr), и самому outbound'у. С доменным именем ядро пошло бы за
       // адресом уже из-под поднятого туннеля.
-      final hosts = await resolveServerHosts(session.servers);
+      // ⚠️ ВМЕСТЕ С СЕРВЕРАМИ ВЫХОДОВ. Иначе выход, заданный ДОМЕННЫМ именем,
+      // пошёл бы за адресом уже из-под поднятого туннеля: имя спрашивается
+      // через туннель, который к этому серверу ещё не построен. На живом тесте
+      // это не всплыло только потому, что оба выхода были заданы адресами.
+      // Заодно их адреса попадают в `serverIps` — правило «мимо туннеля».
+      final hosts = await resolveServerHosts([
+        ...session.servers,
+        ...session.options.exitServers.values,
+      ]);
       if (aborted()) return;
       final serverIps = hosts.values.expand((e) => e).toSet().toList();
       final resolvedIps = VpnEngineBase.pickOneIpPerHost(hosts);
@@ -487,11 +546,17 @@ class AndroidEngine extends VpnEngineBase {
           // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
           serverDomains: knownServerDomains,
           android: true,
-          blockPagePort: await startBlockPage(session.options),
           // Резолвер для «Прямо». Пусто → прежнее поведение (`local`), то
           // есть домен не отрезолвится: лучше знать об этом из лога, чем
           // молча получить «сайт не открывается».
           directDnsUpstream: await _directDns(),
+          // Запасной резолвер — тот же, что на Windows. Паритет здесь не
+          // формальность: жалоба «прямой трафик отваливается» одинаково
+          // возможна на обеих платформах, потому что причина общая — резолв
+          // прямого трафика идёт через туннель, а встроенного запаса у ядра
+          // нет (проверено sing-box 1.11.15).
+          fallbackDnsPort: await _startFallbackDns(session.options.settings,
+              viaXray: viaXray),
           ipv6Available: await _ipv6Reality(),
           // Ядро пишет свой лог САМО: перехватить его вывод здесь нечем —
           // это библиотека в нашем процессе, а redirectStderr ловит только
@@ -507,6 +572,22 @@ class AndroidEngine extends VpnEngineBase {
       );
       _liveOptions = liveOptions;
       _liveSplit = session.options.split;
+
+      // Именованные выходы мульти-VPN. Собираются ДО построителя, чтобы его
+      // единственным источником правды о живых выходах остался список готовых
+      // outbound-ов: правило со ссылкой на несобравшийся выход обязано упасть
+      // в общий туннель, а не оставить висячий тег (ядро его принимает молча).
+      final exitsBuilt = ExitOutbounds.build(
+        servers: session.options.exitServers,
+        resolvedIps: resolvedIps,
+      );
+      for (final e in exitsBuilt.skipped.entries) {
+        AppLog.i('Выход «${e.key}» не поднят: ${e.value} — '
+            'его правила пойдут общим туннелем');
+      }
+      if (exitsBuilt.outbounds.isNotEmpty) {
+        AppLog.i('Мульти-VPN: дополнительных серверов ${exitsBuilt.outbounds.length}');
+      }
 
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
@@ -531,6 +612,7 @@ class AndroidEngine extends VpnEngineBase {
                 resolvedIp:
                     resolvedIps[session.servers.first.address.trim()],
               ),
+        exitOutbounds: exitsBuilt.outbounds,
       ).buildJson(session.options.split);
 
       if (aborted()) return;
@@ -548,9 +630,36 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
 
+      // ⚠️ ЖДЁМ, ПОКА ТУННЕЛЬ РЕАЛЬНО ПОДНЯЛСЯ.
+      //
+      // `invokeMethod('start')` возвращается, как только СЕРВИС ПРИНЯЛ команду.
+      // Ядра к этому моменту ещё не запущены, `establish()` не вызван,
+      // туннеля нет. Раньше «Подключено» ставилось прямо здесь — и статус, и
+      // отсчёт времени начинались до того, как хоть один пакет мог пройти.
+      // На Windows такого разрыва нет: там `_tunRouter.start` бросает
+      // исключение, если туннель не встал, то есть ожидание встроено.
+      //
+      // Признак берём тот же, что отдаёт шторка и подхват живого туннеля:
+      // `running` ставится в сервисе ПОСЛЕ `establish()`, а не по приёму
+      // команды.
+      if (!await _waitTunnelUp(aborted)) {
+        if (aborted()) return;
+        throw StateError('Туннель не поднялся за отведённое время');
+      }
+
       markConnected();
       setStatus(VpnConnectionState.connected);
       _startStatsPolling();
+      // Сквозная проверка канала — та же, что на Windows. Паритет здесь
+      // не формальность: без неё Android остаётся с проверкой ПРОЦЕССА и
+      // не замечает мёртвый туннель при живом ядре.
+      startHealthWatch(() => aborted());
+      // Наблюдение за блокировками — после того, как туннель поднят: до этого
+      // Clash API не слушает.
+      startBlockNotice(
+          settings: session.options.settings,
+          apiPort: clashApiPort,
+          secret: _apiSecret);
     } on PlatformException catch (e) {
       _starting = false;
       // Отказ в согласии — не ошибка подключения, а решение пользователя:
@@ -575,8 +684,44 @@ class AndroidEngine extends VpnEngineBase {
   }
 
   /// Событие от сервиса: туннель поднялся, упал или его отобрала система.
+  /// Дождаться, пока сервис доложит о ПОДНЯТОМ туннеле.
+  ///
+  /// Опросом, а не ожиданием события: события `running` приходят и по другим
+  /// поводам (шторка, перезагрузка ядра), и подписываться на них здесь значило
+  /// бы дублировать разбор, который уже есть в [_onNativeEvent]. Опрос стоит
+  /// один вызов канала в 200 мс и живёт считаные секунды.
+  ///
+  /// Потолок щедрый: на холодном старте поднимаются оба ядра, а на медленном
+  /// устройстве это заметно дольше, чем на эмуляторе. Лучше подождать, чем
+  /// объявить отказ там, где туннель встал бы через секунду.
+  Future<bool> _waitTunnelUp(
+    bool Function() aborted, {
+    Duration timeout = const Duration(seconds: 25),
+    Duration step = const Duration(milliseconds: 200),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (true) {
+      if (aborted()) return false;
+      try {
+        if (await _channel.invokeMethod<bool>('isRunning') ?? false) return true;
+      } catch (_) {
+        // Канал мог не ответить на миг — это не отказ туннеля.
+      }
+      if (!DateTime.now().isBefore(deadline)) return false;
+      await Future.delayed(step);
+    }
+  }
+
   void _onNativeEvent(dynamic event) {
     if (event is! Map) return;
+    // ⚠️ Отдельное событие, БЕЗ поля running — и разбирать его надо до всех
+    // проверок состояния ниже: они рассчитаны на события туннеля и это
+    // выбросили бы как «сервис не запущен».
+    final compact = event['compactNotification'];
+    if (compact is bool) {
+      onCompactToggledInShade?.call(compact);
+      return;
+    }
     final running = event['running'] == true;
     final error = (event['error'] as String?)?.trim();
 
@@ -689,6 +834,10 @@ class AndroidEngine extends VpnEngineBase {
     // раз в секунду стучаться в мёртвый порт, а на экране висели бы цифры
     // прошлой сессии, выдавая себя за текущие.
     _stopStatsPolling();
+    // ⚠️ Форвардер гасим ВМЕСТЕ С ЯДРОМ, даже при keepCapture: он ходит через
+    // локальный SOCKS Xray, и без ядра его основной путь ведёт в никуда —
+    // остался бы таймаут на каждом запросе и замедлял бы переподключение.
+    await _stopFallbackDns();
     // Kill switch: между попытками переподключения туннель ОСТАЁТСЯ поднятым,
     // но никуда не ведёт — трафик фейлится, а не утекает мимо VPN.
     //
@@ -793,6 +942,76 @@ class AndroidEngine extends VpnEngineBase {
           'двустековые сайты упирались бы в «unreachable network»');
     }
     return has;
+  }
+
+  /// Поднять локальный DNS-форвардер с запасным резолвером. 0 — не нужен.
+  ///
+  /// ⚠️ ТОЛЬКО КОГДА ТРАФИК ИДЁТ ЧЕРЕЗ XRAY. Форвардер спрашивает туннельный
+  /// резолвер через локальный SOCKS Xray; когда сервер поднимает сам sing-box
+  /// (hysteria2 и прочее, что Xray не умеет), такого SOCKS нет вовсе, и
+  /// форвардер уходил бы в запас на КАЖДОМ запросе — то есть весь DNS шёл бы
+  /// мимо туннеля, причём молча. Лучше не поднимать его совсем: тогда работает
+  /// прежнее поведение, и оно честное.
+  Future<int> _startFallbackDns(AppSettings s, {required bool viaXray}) async {
+    await _stopFallbackDns();
+    if (!s.tunnelDnsForAll) return 0;
+    // ⚠️ ГЕЙТ ПО ФАКТУ ЗАПУСКА XRAY, А НЕ ПО НАЛИЧИЮ ПАРОЛЯ. Раньше здесь
+    // стояло `localInboundUser.isEmpty`, и это два РАЗНЫХ предиката, которые
+    // разошлись в обе стороны сразу:
+    //
+    //  • пароль выдаётся ВСЕГДА (настройка включена по умолчанию), поэтому на
+    //    обычном сервере подписки — где Xray не поднимается вовсе и SOCKS 10808
+    //    некому слушать — форвардер всё-таки поднимался. Каждый запрос стучался
+    //    в мёртвый порт, мгновенно получал отказ и уходил к резолверу
+    //    ПРОВАЙДЕРА. А `dns.final` при поднятом форвардере переключён на него,
+    //    то есть к провайдеру уходили ВСЕ имена устройства — при настройке,
+    //    которая обещает ровно обратное;
+    //  • пользователь, снявший пароль, лишался запасного резолвера молча, даже
+    //    когда Xray работает.
+    if (!viaXray) return 0;
+    final local = await _directDns();
+    if (local == null || local.isEmpty) {
+      AppLog.w('Запасной DNS не поднят: резолвер физической сети неизвестен');
+      return 0;
+    }
+    // Разбираем ТЕМ ЖЕ кодом, что и построитель конфига, и требуем чистый
+    // IPv4 — см. подробности в одноимённом методе Windows-движка.
+    final upstream = SingboxConfigBuilder.dnsHostOf(
+        s.dnsMode == DnsMode.custom ? s.dnsCustomServer : '1.1.1.1');
+    final ip = InternetAddress.tryParse(upstream);
+    if (ip == null || ip.type != InternetAddressType.IPv4) {
+      AppLog.w('Запасной DNS не поднят: резолвер «$upstream» не литеральный '
+          'IPv4-адрес. DNS работает как раньше — целиком через туннель.');
+      return 0;
+    }
+    try {
+      final srv = DnsFallbackServer(
+        socksPort: ports.socks,
+        socksUser: localInboundUser,
+        socksPassword: localInboundPassword,
+        tunnelDns: upstream,
+        localDns: local,
+      );
+      await srv.start();
+      _fallbackDns = srv;
+      return srv.port;
+    } catch (e) {
+      AppLog.w('Запасной DNS не поднялся: $e');
+      return 0;
+    }
+  }
+
+  Future<void> _stopFallbackDns() async {
+    stopHealthWatch();
+    final srv = _fallbackDns;
+    _fallbackDns = null;
+    if (srv == null) return;
+    if (srv.queryCount > 0) {
+      AppLog.i('Запасной DNS: запросов ${srv.queryCount}, '
+          'туннель промолчал ${srv.fallbackCount}, '
+          'ушло к провайдеру ${srv.fallbackAnsweredCount}');
+    }
+    await srv.stop();
   }
 
   static Future<String?> _directDns() async {

@@ -15,4 +15,7 @@
     <string name="vpn_open">فتح</string>
     <string name="vpn_traffic_now">الآن: ↓ %1$s  ↑ %2$s</string>
     <string name="vpn_traffic_total">الإجمالي: ↓ %1$s  ↑ %2$s</string>
+    <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
+    <string name="vpn_collapse">طيّ</string>
+    <string name="vpn_expand">توسيع</string>
 </resources>

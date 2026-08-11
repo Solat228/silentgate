@@ -341,25 +341,30 @@ void main() {
       expect(e.configFor(hy, const ConnectionOptions()).core, ProxyCore.singbox);
     });
 
-    test('секрет Clash API — 32 hex и новый на каждую сборку конфига', () {
-      // Без него метаданные соединений sing-box читает любой локальный процесс.
+    test('секрет Clash API — 32 hex и новый на КАЖДУЮ СЕССИЮ', () {
+      // ⚠️ ВЫДАЁТСЯ НА СЕССИЮ, А НЕ ПРИ СБОРКЕ КОНФИГА sing-box. Пока
+      // присваивание жило внутри `buildSingboxJson`, секрет появлялся только
+      // когда прокси-ядром работает sing-box (hysteria2). При обычном
+      // VLESS/Reality — то есть почти всегда — он оставался пустым, и
+      // ТУННЕЛЬНЫЙ sing-box поднимал Clash API без пароля: список посещённых
+      // доменов и адресов читала любая открытая веб-страница.
       final e = _FakeEngine();
-      final hy = VpnServer(
-        protocol: 'hysteria2',
-        remark: 'hy',
-        address: 'hy.example.com',
-        port: 443,
-        id: 'pass',
-        rawLink: 'hysteria2://pass@hy.example.com:443#hy',
-      );
 
-      e.buildSingboxJson([hy]);
+      e.prepareLocalProxyAuth(const ConnectionOptions());
       final first = e.singboxApiSecret;
-      e.buildSingboxJson([hy]);
+      e.prepareLocalProxyAuth(const ConnectionOptions());
       final second = e.singboxApiSecret;
 
       expect(first, matches(RegExp(r'^[0-9a-f]{32}$')));
       expect(second, isNot(first));
+    });
+
+    test('секрет есть и без hysteria2 — обычный сервер тоже закрывает API', () {
+      final e = _FakeEngine();
+      e.prepareLocalProxyAuth(const ConnectionOptions());
+      // Конфиг sing-box при этом не собирался вовсе — и это главное: раньше
+      // ровно на этом пути секрет и оставался пустым.
+      expect(e.singboxApiSecret, isNotEmpty);
     });
   });
 

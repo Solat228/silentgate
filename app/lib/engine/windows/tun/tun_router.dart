@@ -14,7 +14,18 @@ abstract class TunRouter {
       {required int xraySocksPort,
       required TunOptions options,
       void Function(String message)? onProgress,
-      bool Function()? abort});
+      bool Function()? abort,
+      List<Map<String, dynamic>> exitOutbounds = const [],
+      // ⚠️ КРЕДЫ ЛОКАЛЬНОГО SOCKS ОБЯЗАТЕЛЬНЫ, КОГДА ОН ЗАКРЫТ ПАРОЛЕМ.
+      //
+      // Туннель заворачивает трафик в SOCKS соседнего Xray. С тех пор как
+      // пароль на локальных инбаундах стал умолчанием, конфиг туннеля без
+      // кредов даёт «Подключено» и НОЛЬ трафика: ядро отвечает 407, а
+      // пользователь видит исправный на вид туннель. На Android эти поля
+      // передавались с самого начала — Windows отставал, и расхождение
+      // проявлялось только на панельных профилях.
+      String xraySocksUser = '',
+      String xraySocksPassword = ''});
 
   /// Остановить и снять TUN.
   Future<void> stop();

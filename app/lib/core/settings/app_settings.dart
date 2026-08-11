@@ -202,6 +202,34 @@ class AppSettings {
   /// настоящего sing-box 1.11.15. Не принимать их за рабочий рычаг.
   final List<String> tunRouteOnlyCidrs;
 
+  /// Пароль на ЛОКАЛЬНЫЕ прокси ядра (socks/http на 127.0.0.1). По умолчанию ВКЛ.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ НУЖНО. Локальный порт ядра — это полноценный прокси в
+  /// ваш VPN. Без пароля к нему подключается что угодно на этой же машине и
+  /// получает ваш туннель целиком: выходной IP, квоту подписки и обход вашего
+  /// же раздельного туннелирования, включая приложения, которым вы поставили
+  /// «Блок». На Android это особенно остро — loopback там не изолирован между
+  /// приложениями, и порт видит любое установленное. Дыра отраслевая
+  /// (v2rayNG #5467, Hiddify #2120, FlClash #1934 — везде закрыто «not
+  /// planned»); единственная известная починка в природе — amnezia-client
+  /// PR #2453.
+  ///
+  /// ⚠️ И ЗАЧЕМ ЭТО ВЫКЛЮЧАЕМО. В режиме системного прокси на Windows пароль
+  /// поставить НЕЛЬЗЯ: туда смотрит WinINET, а он креденшелов не передаёт —
+  /// интернет просто ляжет. Движок это учитывает сам, но настройка нужна и
+  /// тем, кто ходит в наш прокси своими программами.
+  final bool localProxyAuth;
+
+  /// Логин и пароль локальных прокси. ПУСТО — генерировать заново на каждую
+  /// сессию и держать только в памяти (рекомендуемый режим).
+  ///
+  /// ⚠️ Заданные вручную значения ЛОЖАТСЯ НА ДИСК в файл настроек. Это
+  /// сознательный размен: свой пароль нужен, чтобы прописать прокси в стороннюю
+  /// программу, но он переживает перезапуск и попадает в резервные копии.
+  /// Случайный посессионный пароль такого следа не оставляет.
+  final String localProxyUser;
+  final String localProxyPassword;
+
   /// Прописывать системный прокси ДОПОЛНИТЕЛЬНО к туннелю (гибрид как в Happ).
   ///
   /// Прокси-aware приложения (браузеры, Telegram) пойдут коротким путём на
@@ -211,6 +239,7 @@ class AppSettings {
   /// при его смерти теряют сеть так же. Единственное, что даёт независимость, —
   /// [tunRouteOnlyCidrs].
   final bool alsoSetSystemProxy;
+
 
   /// Сколько секунд ядру можно не отвечать, прежде чем считать его зависшим.
   /// 0 — не следить.
@@ -297,11 +326,20 @@ class AppSettings {
   /// откатится на обычный DNS, а просто перестанет резолвить.
   final bool blockEncryptedDns;
 
-  /// Показывать страницу «сайт заблокирован» вместо ошибки соединения.
+  /// Показывать всплывающее уведомление, когда сайт заблокирован правилом.
   ///
-  /// Работает только для plain http (см. [BlockPageServer]); у https заглушку
-  /// подменить нечем без своего корневого сертификата, и мы его не ставим.
-  final bool blockPageEnabled;
+  /// ⚠️ ЗАМЕНИЛО СТРАНИЦУ-ЗАГЛУШКУ, и вот почему её больше нет. Заглушка
+  /// работала только для plain http: подменить ответ у `https://` без своего
+  /// корневого сертификата невозможно, а ставить такой сертификат нельзя — он
+  /// даёт читать весь TLS пользователя. На практике до неё вообще не доходило:
+  /// браузеры идут в https сразу (HSTS переписывает адрес ДО отправки запроса),
+  /// и человек видел `ERR_CONNECTION_RESET` вместо объяснения. Механизм,
+  /// который срабатывает в одном случае из ста, хуже отсутствующего: он создаёт
+  /// ожидание, которое не выполняется.
+  ///
+  /// Уведомление работает на любом протоколе и порту, ничего не подменяет и
+  /// говорит главное — что сайт закрыт НАШИМ правилом, а не сломался.
+  final bool blockNoticeEnabled;
   final DnsStrategy dnsStrategy;
 
   /// Уровень лога sing-box (`%APPDATA%\SilentGate\singbox.log`).
@@ -411,12 +449,15 @@ class AppSettings {
     this.tunExcludeCidrs = const [],
     this.tunRouteOnlyCidrs = const [],
     this.alsoSetSystemProxy = false,
+    this.localProxyAuth = true,
+    this.localProxyUser = '',
+    this.localProxyPassword = '',
     this.tunWatchdogSeconds = 20,
     this.dnsMode = DnsMode.vpn,
     this.dnsCustomServer = '1.1.1.1',
     this.dnsHijack = true,
     this.tunnelDnsForAll = false,
-    this.blockPageEnabled = true,
+    this.blockNoticeEnabled = true,
     this.speedInAutoSelect = false,
     this.myRulesOverridePanel = true,
     this.compactNotification = false,
@@ -477,12 +518,15 @@ class AppSettings {
     List<String>? tunExcludeCidrs,
     List<String>? tunRouteOnlyCidrs,
     bool? alsoSetSystemProxy,
+    bool? localProxyAuth,
+    String? localProxyUser,
+    String? localProxyPassword,
     int? tunWatchdogSeconds,
     DnsMode? dnsMode,
     String? dnsCustomServer,
     bool? dnsHijack,
     bool? tunnelDnsForAll,
-    bool? blockPageEnabled,
+    bool? blockNoticeEnabled,
     bool? speedInAutoSelect,
     bool? myRulesOverridePanel,
     bool? compactNotification,
@@ -533,12 +577,15 @@ class AppSettings {
       tunExcludeCidrs: tunExcludeCidrs ?? this.tunExcludeCidrs,
       tunRouteOnlyCidrs: tunRouteOnlyCidrs ?? this.tunRouteOnlyCidrs,
       alsoSetSystemProxy: alsoSetSystemProxy ?? this.alsoSetSystemProxy,
+      localProxyAuth: localProxyAuth ?? this.localProxyAuth,
+      localProxyUser: localProxyUser ?? this.localProxyUser,
+      localProxyPassword: localProxyPassword ?? this.localProxyPassword,
       tunWatchdogSeconds: tunWatchdogSeconds ?? this.tunWatchdogSeconds,
       dnsMode: dnsMode ?? this.dnsMode,
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
       dnsHijack: dnsHijack ?? this.dnsHijack,
       tunnelDnsForAll: tunnelDnsForAll ?? this.tunnelDnsForAll,
-      blockPageEnabled: blockPageEnabled ?? this.blockPageEnabled,
+      blockNoticeEnabled: blockNoticeEnabled ?? this.blockNoticeEnabled,
       speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
       myRulesOverridePanel: myRulesOverridePanel ?? this.myRulesOverridePanel,
       compactNotification: compactNotification ?? this.compactNotification,
@@ -591,12 +638,15 @@ class AppSettings {
         'tunExcludeCidrs': tunExcludeCidrs,
         'tunRouteOnlyCidrs': tunRouteOnlyCidrs,
         'alsoSetSystemProxy': alsoSetSystemProxy,
+        'localProxyAuth': localProxyAuth,
+        'localProxyUser': localProxyUser,
+        'localProxyPassword': localProxyPassword,
         'tunWatchdogSeconds': tunWatchdogSeconds,
         'dnsMode': dnsMode.name,
         'dnsCustomServer': dnsCustomServer,
         'dnsHijack': dnsHijack,
         'tunnelDnsForAll': tunnelDnsForAll,
-        'blockPageEnabled': blockPageEnabled,
+        'blockNoticeEnabled': blockNoticeEnabled,
         'speedInAutoSelect': speedInAutoSelect,
         'myRulesOverridePanel': myRulesOverridePanel,
         'compactNotification': compactNotification,
@@ -634,6 +684,46 @@ class AppSettings {
         'appUpdateUrl': appUpdateUrl,
       };
 
+  /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
+  ///
+  /// В той редакции существовала отдельная сущность «выход» (`exits` в JSON), а
+  /// правило ссылалось на её идентификатор (`exitId`). Владелец решил, что
+  /// лишний уровень не нужен: правило должно указывать на СЕРВЕР напрямую.
+  /// Здесь `exitId` разворачивается в ключ первого сервера того выхода.
+  ///
+  /// ⚠️ Не «почистить старый ключ», а именно перенести значение. Молча
+  /// потерянное правило — это трафик, ушедший не в ту страну, причём без
+  /// единого следа в интерфейсе: строка на месте, адресат исчез.
+  static SplitTunnelConfig _migrateExits(
+      SplitTunnelConfig split, Object? rawExits) {
+    if (rawExits is! List || rawExits.isEmpty) return split;
+    final firstServerOf = <String, String>{};
+    for (final e in rawExits) {
+      if (e is! Map) continue;
+      final id = (e['id'] as String? ?? '').trim();
+      final keys = (e['serverKeys'] as List?) ?? const [];
+      if (id.isEmpty || keys.isEmpty) continue;
+      final first = keys.first?.toString().trim() ?? '';
+      if (first.isNotEmpty) firstServerOf[id] = first;
+    }
+    if (firstServerOf.isEmpty) return split;
+    String? mapped(String? v) => v == null ? null : firstServerOf[v] ?? v;
+    return split.copyWith(
+      sites: [
+        for (final r in split.sites)
+          firstServerOf.containsKey(r.serverKey)
+              ? r.copyWith(serverKey: mapped(r.serverKey))
+              : r,
+      ],
+      apps: [
+        for (final r in split.apps)
+          firstServerOf.containsKey(r.serverKey)
+              ? r.copyWith(serverKey: mapped(r.serverKey))
+              : r,
+      ],
+    );
+  }
+
   factory AppSettings.fromJson(Map<String, dynamic> j) {
     T pick<T>(List<T> values, Object? name, T fallback) {
       for (final v in values) {
@@ -653,7 +743,7 @@ class AppSettings {
       tunStack: pick(TunStack.values, j['tunStack'], TunStack.auto),
       tunMtu: (j['tunMtu'] as num?)?.toInt() ?? 1500,
       splitTunnel: j['splitTunnel'] is Map<String, dynamic>
-          ? SplitTunnelConfig.fromJson(j['splitTunnel'] as Map<String, dynamic>)
+          ? _migrateExits(SplitTunnelConfig.fromJson(j['splitTunnel'] as Map<String, dynamic>), j['exits'])
           : const SplitTunnelConfig(),
       tunStrictRoute: j['tunStrictRoute'] as bool? ?? true,
       tunIpv6: j['tunIpv6'] as bool? ?? true,
@@ -665,6 +755,10 @@ class AppSettings {
           ((j['tunRouteOnlyCidrs'] as List?)?.cast<String>()) ?? const [],
       alsoSetSystemProxy:
           j['alsoSetSystemProxy'] as bool? ?? defaults.alsoSetSystemProxy,
+      // Умолчание ВКЛ: у всех, кто обновится, пароль появится сам.
+      localProxyAuth: j['localProxyAuth'] as bool? ?? defaults.localProxyAuth,
+      localProxyUser: j['localProxyUser'] as String? ?? '',
+      localProxyPassword: j['localProxyPassword'] as String? ?? '',
       tunWatchdogSeconds:
           (j['tunWatchdogSeconds'] as num?)?.toInt() ?? defaults.tunWatchdogSeconds,
       dnsMode: pick(DnsMode.values, j['dnsMode'], DnsMode.vpn),
@@ -682,8 +776,12 @@ class AppSettings {
         // невозможно заметить со стороны интерфейса.
         tunnelDnsForAll:
             j['tunnelDnsForAll'] as bool? ?? defaults.tunnelDnsForAll,
-        blockPageEnabled:
-            j['blockPageEnabled'] as bool? ?? defaults.blockPageEnabled,
+        // Старый ключ читаем как новый: кто выключал заглушку, тот не
+        // хотел и уведомления — смысл настройки («объяснять блокировку»)
+        // сохранился, поменялся только способ.
+        blockNoticeEnabled: j['blockNoticeEnabled'] as bool? ??
+            j['blockPageEnabled'] as bool? ??
+            defaults.blockNoticeEnabled,
         speedInAutoSelect:
             j['speedInAutoSelect'] as bool? ?? defaults.speedInAutoSelect,
         myRulesOverridePanel: j['myRulesOverridePanel'] as bool? ??
@@ -779,11 +877,22 @@ class AppSettings {
     // поверх туннеля «на живую» не сработало бы молча.
     diff('системный прокси вместе с туннелем', alsoSetSystemProxy,
         other.alsoSetSystemProxy);
+    // ⚠️ Пароль локального прокси ЗАПЕКАЕТСЯ В КОНФИГ ядра при подъёме. Без
+    // этих трёх строк тумблер срабатывал молча: человек включал защиту, видел
+    // включённый переключатель и считал порт закрытым, а живое ядро продолжало
+    // слушать 10808/10809 без пароля до ручного переподключения. Зеркальный
+    // случай — вписал свои логин и пароль для сторонней программы, интерфейс
+    // показывает новые, ядро работает со старыми, программа получает 407.
+    diff('пароль на локальный прокси', localProxyAuth, other.localProxyAuth);
+    diff('логин локального прокси', localProxyUser, other.localProxyUser);
+    diff('пароль локального прокси', localProxyPassword,
+        other.localProxyPassword);
     diff('режим DNS', dnsMode, other.dnsMode);
     diff('свой DNS-сервер', dnsCustomServer, other.dnsCustomServer);
     diff('перехват DNS', dnsHijack, other.dnsHijack);
     diff('весь DNS через туннель', tunnelDnsForAll, other.tunnelDnsForAll);
-    diff('страница-заглушка', blockPageEnabled, other.blockPageEnabled);
+    diff('уведомление о блокировке', blockNoticeEnabled,
+        other.blockNoticeEnabled);
     diff('блокировка QUIC', blockQuic, other.blockQuic);
     diff('блокировка шифрованного DNS', blockEncryptedDns,
         other.blockEncryptedDns);

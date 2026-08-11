@@ -2116,4 +2116,209 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'Le rapport est rassemblé dans un seul fichier. Choisissez dans la fenêtre système où l\'envoyer — sur Telegram il partira en pièce jointe, et non en texte.';
+
+  @override
+  String get exitsHeader => 'Sorties';
+
+  @override
+  String get exitsHint =>
+      'Une règle « Tunnel » peut être dirigée vers une sortie précise : un site via l’Allemagne, un autre via les États-Unis. Sans sortie, la règle emprunte le tunnel principal, comme avant.';
+
+  @override
+  String get exitsAdd => 'Ajouter une sortie';
+
+  @override
+  String get exitsEmpty => 'Aucune sortie pour l’instant';
+
+  @override
+  String get exitsName => 'Nom';
+
+  @override
+  String get exitsNameHint => 'Allemagne';
+
+  @override
+  String get exitsServers => 'Serveurs';
+
+  @override
+  String get exitsAutoSelect => 'Sélection automatique par latence';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'Le cœur maintient le trafic sur un serveur actif. Le coût : chaque serveur est sondé toutes les trois minutes, ce qui réveille la radio du téléphone.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo =>
+      'Au moins deux serveurs sont nécessaires';
+
+  @override
+  String get exitsDelete => 'Supprimer la sortie';
+
+  @override
+  String get exitsNoServers => 'Aucun serveur — importez d’abord un abonnement';
+
+  @override
+  String get exitsSearch => 'Rechercher un serveur';
+
+  @override
+  String get exitsPickAtLeastOne => 'Sélectionnez au moins un serveur';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Les profils « Auto » du panneau et hysteria2 ne peuvent pas servir de sortie séparée : ils dépendent de l’autre cœur. Ces serveurs sont désactivés dans la liste.';
+
+  @override
+  String get infoExits =>
+      'Une sortie est la destination d’une règle « Tunnel ».\n\nPar défaut, une sortie est UN seul serveur et ne coûte rien en arrière-plan : les protocoles ordinaires ne maintiennent pas de connexion permanente. Un groupe de plusieurs serveurs avec sélection automatique n’est utile que si la tolérance à la panne d’un nœud importe : elle ajoute des sondages périodiques, et sur téléphone ce sont des réveils radio.\n\nLa sortie n’a de sens qu’avec l’action « Tunnel ». « Direct via l’Allemagne » est une contradiction : une règle directe contourne toutes les sorties.\n\nUn site et son sous-domaine peuvent aller vers des sorties DIFFÉRENTES — l’application place la règle la plus précise au-dessus, sinon le parent absorberait le sous-domaine.\n\nIMPORTANT : avec le proxy système sous Windows, les sorties ne fonctionnent pas — aucune règle de routage n’y est construite. Le mode tunnel est nécessaire.';
+
+  @override
+  String get ruleServer => 'Via le serveur';
+
+  @override
+  String get ruleServerCurrent => 'Comme le principal';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Comme le principal ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Correspondance par nom de fichier';
+
+  @override
+  String get routeYourApps => 'Vos applications';
+
+  @override
+  String get routeYourSites => 'Vos sites';
+
+  @override
+  String get routeAppsAndSites => 'Applications et sites';
+
+  @override
+  String get notifCompactTitle => 'Notification compacte';
+
+  @override
+  String get notifCompactSub =>
+      'Désactivé — abonnement, serveur et vitesse, avec les boutons. Activé — l\'application et l\'abonnement dans le titre, le serveur en dessous, sans la vitesse ni les boutons.';
+
+  @override
+  String get localProxyAuthTitle => 'Mot de passe du proxy local';
+
+  @override
+  String get localProxyAuthInfo =>
+      'Le port local du cœur (127.0.0.1) est un vrai proxy vers votre VPN. Sans mot de passe, n\'importe quel programme du même appareil s\'y connecte et récupère tout votre tunnel : l\'IP de sortie, le quota de l\'abonnement et le contournement de vos propres règles de tunneling fractionné — y compris les applications que vous avez mises sur « Bloquer ». Sur Android, c\'est encore plus important : là-bas, toute application installée voit les ports locaux.\n\nNe le désactivez que si vous utilisez sciemment ce proxy avec un programme qui ne gère pas l\'authentification.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Désactivé : le proxy local est ouvert à tout programme de l\'appareil';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'Sans effet en mode proxy système : Windows ne sait pas transmettre de mot de passe au proxy local. Actif en mode TUN.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'Un nouveau mot de passe aléatoire à chaque connexion — il n\'est enregistré nulle part';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Identifiant et mot de passe personnalisés (stockés dans le fichier de paramètres)';
+
+  @override
+  String get localProxyCredsTitle =>
+      'Identifiant et mot de passe personnalisés';
+
+  @override
+  String get localProxyCredsUnset =>
+      'Non définis — un mot de passe aléatoire est utilisé';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Identifiant : $user';
+  }
+
+  @override
+  String get localProxyDialogTitle =>
+      'Identifiant et mot de passe du proxy local';
+
+  @override
+  String get localProxyDialogBody =>
+      'Nécessaires uniquement si vous indiquez vous-même notre proxy (127.0.0.1) dans un programme tiers. Laissez les champs vides et le mot de passe sera aléatoire à chaque connexion : il n\'est enregistré nulle part et ne se retrouve pas dans les sauvegardes.';
+
+  @override
+  String get localProxyFieldUser => 'Identifiant';
+
+  @override
+  String get localProxyFieldPassword => 'Mot de passe';
+
+  @override
+  String get localProxyFieldHint => 'vide — aléatoire';
+
+  @override
+  String get lockdownOnTitle => 'Protection système activée';
+
+  @override
+  String get lockdownOnSub =>
+      'Le trafic est bloqué même si l\'application se ferme ou si le système la décharge. C\'est le mode le plus fiable.';
+
+  @override
+  String get lockdownHalfTitle => 'Protection à moitié activée';
+
+  @override
+  String get lockdownHalfSub =>
+      'Le VPN permanent est activé, mais « Bloquer les connexions sans VPN » est désactivé. Tant que l\'application vit, le trafic est protégé ; si le système la décharge, il passera en clair.';
+
+  @override
+  String get lockdownOffTitle => 'Protection système désactivée';
+
+  @override
+  String get lockdownOffSub =>
+      'Notre kill switch retient le trafic tant que l\'application tourne. Si le système la décharge, le trafic passera hors VPN. Activez « VPN permanent » et « Bloquer les connexions sans VPN ».';
+
+  @override
+  String get lockdownUnknownTitle => 'Protection système : état inconnu';
+
+  @override
+  String get lockdownUnknownSub =>
+      'L\'état n\'est lisible qu\'à partir d\'Android 10 et seulement quand le tunnel est actif. Vérifiez manuellement : « VPN permanent » et « Bloquer les connexions sans VPN ».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Impossible d\'ouvrir les paramètres VPN du système. Trouvez-les manuellement : Paramètres → Réseau et Internet → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Signaler les sites bloqués';
+
+  @override
+  String get blockNoticeSub =>
+      'Quand une application ou un navigateur essaie d\'atteindre un site de la liste « Bloquer », une notification avec son nom apparaît en bas. Appuyez dessus pour ouvrir cet écran.';
+
+  @override
+  String get siteInsecureScheme =>
+      'L\'adresse est saisie en http:// — la connexion n\'est pas chiffrée et votre FAI la voit entièrement. Retirez « http:// » pour que le navigateur passe en https.';
+
+  @override
+  String get exitServerGone =>
+      'Le serveur de cette règle a disparu de l\'abonnement — le trafic emprunte le tunnel principal';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nCe serveur ne peut pas servir de sortie séparée : les profils « Auto » du panneau et une partie des protocoles ne sont gérés que par Xray, alors que les sorties sont réparties par sing-box. Le trafic de la règle emprunte le tunnel principal.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Règles';
+
+  @override
+  String get geoVerdictMissingTitle => 'Bases géo non téléchargées';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'Les règles de l\'abonnement par pays et par catégorie sont désactivées — ce trafic passe par le VPN et non en direct.';
+
+  @override
+  String get geoVerdictUnusableTitle => 'Le cœur n\'a pas ouvert les bases géo';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement.';
 }

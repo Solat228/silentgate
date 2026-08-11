@@ -2096,4 +2096,206 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get supportDoneTextAndroid =>
       'Отчёт собран в один файл. Выберите в системном окне, куда его отправить — в Telegram он уйдёт вложением, а не текстом.';
+
+  @override
+  String get exitsHeader => 'Выходы';
+
+  @override
+  String get exitsHint =>
+      'Правило «Туннель» можно направить в конкретный выход: один сайт через Германию, другой — через США. Без выхода правило идёт в общий туннель, как раньше.';
+
+  @override
+  String get exitsAdd => 'Добавить выход';
+
+  @override
+  String get exitsEmpty => 'Выходов пока нет';
+
+  @override
+  String get exitsName => 'Название';
+
+  @override
+  String get exitsNameHint => 'Германия';
+
+  @override
+  String get exitsServers => 'Серверы';
+
+  @override
+  String get exitsAutoSelect => 'Автовыбор по задержке';
+
+  @override
+  String get exitsAutoSelectSub =>
+      'Ядро само держит трафик на живом сервере. Цена — проба каждого сервера раз в три минуты; на телефоне это будит радио.';
+
+  @override
+  String get exitsAutoSelectNeedsTwo => 'Нужно хотя бы два сервера';
+
+  @override
+  String get exitsDelete => 'Удалить выход';
+
+  @override
+  String get exitsNoServers => 'Нет серверов — сначала импортируйте подписку';
+
+  @override
+  String get exitsSearch => 'Поиск сервера';
+
+  @override
+  String get exitsPickAtLeastOne => 'Выберите хотя бы один сервер';
+
+  @override
+  String get exitsUnsupportedNote =>
+      'Профили «Авто» от панели и hysteria2 отдельным выходом не поднимаются: их держит другое ядро. Такой сервер в списке недоступен.';
+
+  @override
+  String get infoExits =>
+      'Выход — это адресат правила «Туннель».\n\nПо умолчанию выход состоит из ОДНОГО сервера, и в фоне он не стоит ничего: обычные протоколы постоянного соединения не держат. Группа из нескольких серверов с автовыбором нужна только там, где важна страховка от падения узла, — она добавляет периодические замеры, а на телефоне это пробуждения радио.\n\nВыход имеет смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» — противоречие: прямое правило идёт мимо всех выходов.\n\nСайт и его поддомен можно отправить в РАЗНЫЕ выходы — приложение само поднимет более конкретное правило выше, иначе родитель поглотил бы поддомен.\n\nВАЖНО: при системном прокси на Windows выходы не работают вовсе — в этом режиме правил маршрутизации не строится. Нужен режим туннеля.';
+
+  @override
+  String get ruleServer => 'Через сервер';
+
+  @override
+  String get ruleServerCurrent => 'Как основной';
+
+  @override
+  String ruleServerCurrentNamed(String server) {
+    return 'Как основной ($server)';
+  }
+
+  @override
+  String get routeMatchByName => 'Сопоставление по имени файла';
+
+  @override
+  String get routeYourApps => 'Ваши приложения';
+
+  @override
+  String get routeYourSites => 'Ваши сайты';
+
+  @override
+  String get routeAppsAndSites => 'Приложения и сайты';
+
+  @override
+  String get notifCompactTitle => 'Короткое уведомление';
+
+  @override
+  String get notifCompactSub =>
+      'Выключено — подписка, сервер и скорость, с кнопками. Включено — в заголовке приложение и подписка, ниже сервер, без скорости и без кнопок.';
+
+  @override
+  String get localProxyAuthTitle => 'Пароль на локальный прокси';
+
+  @override
+  String get localProxyAuthInfo =>
+      'Локальный порт ядра (127.0.0.1) — это полноценный прокси в ваш VPN. Без пароля к нему подключается любая программа на этом же устройстве и получает ваш туннель целиком: выходной IP, квоту подписки и обход ваших же правил раздельного туннелирования — включая приложения, которым вы поставили «Блок». На Android это особенно важно: там локальные порты видит любое установленное приложение.\n\nВыключайте, только если сознательно ходите в этот прокси чем-то, что не умеет аутентификацию.';
+
+  @override
+  String get localProxyAuthOff =>
+      'Выключен: локальный прокси открыт любой программе на устройстве';
+
+  @override
+  String get localProxyAuthSystemProxy =>
+      'В режиме системного прокси не применяется: Windows не умеет передавать пароль локальному прокси. Действует в режиме TUN.';
+
+  @override
+  String get localProxyAuthRandom =>
+      'Новый случайный пароль на каждое подключение — нигде не сохраняется';
+
+  @override
+  String get localProxyAuthCustom =>
+      'Свои логин и пароль (хранятся в файле настроек)';
+
+  @override
+  String get localProxyCredsTitle => 'Свои логин и пароль';
+
+  @override
+  String get localProxyCredsUnset =>
+      'Не заданы — используется случайный пароль';
+
+  @override
+  String localProxyCredsUser(String user) {
+    return 'Логин: $user';
+  }
+
+  @override
+  String get localProxyDialogTitle => 'Логин и пароль локального прокси';
+
+  @override
+  String get localProxyDialogBody =>
+      'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он нигде не сохраняется и не попадает в резервные копии.';
+
+  @override
+  String get localProxyFieldUser => 'Логин';
+
+  @override
+  String get localProxyFieldPassword => 'Пароль';
+
+  @override
+  String get localProxyFieldHint => 'пусто — случайный';
+
+  @override
+  String get lockdownOnTitle => 'Системная защита включена';
+
+  @override
+  String get lockdownOnSub =>
+      'Трафик заблокирован, даже если приложение закроется или его выгрузит система. Это самый надёжный режим.';
+
+  @override
+  String get lockdownHalfTitle => 'Защита включена наполовину';
+
+  @override
+  String get lockdownHalfSub =>
+      'Постоянная VPN назначена, но «Блокировать соединения без VPN» выключено. Пока приложение живо — трафик защищён; если система его выгрузит, он пойдёт открыто.';
+
+  @override
+  String get lockdownOffTitle => 'Системная защита выключена';
+
+  @override
+  String get lockdownOffSub =>
+      'Наш kill switch держит трафик, пока работает приложение. Если система его выгрузит, трафик пойдёт мимо VPN. Включите «Постоянная VPN» и «Блокировать соединения без VPN».';
+
+  @override
+  String get lockdownUnknownTitle => 'Системная защита: состояние неизвестно';
+
+  @override
+  String get lockdownUnknownSub =>
+      'Узнать состояние можно с Android 10 и только при поднятом туннеле. Проверьте вручную: «Постоянная VPN» и «Блокировать соединения без VPN».';
+
+  @override
+  String get lockdownOpenFailed =>
+      'Не удалось открыть системные настройки VPN. Найдите их вручную: Настройки → Сеть и интернет → VPN.';
+
+  @override
+  String get blockNoticeTitle => 'Сообщать о заблокированных сайтах';
+
+  @override
+  String get blockNoticeSub =>
+      'Когда приложение или браузер стучится на сайт из списка «Блок», внизу появится уведомление с его именем. Нажмите — откроется этот экран.';
+
+  @override
+  String get siteInsecureScheme =>
+      'Адрес задан как http:// — соединение не шифруется, и провайдер видит его целиком. Уберите «http://», чтобы браузер шёл по https.';
+
+  @override
+  String get exitServerGone =>
+      'Сервер этого правила пропал из подписки — трафик идёт основным туннелем';
+
+  @override
+  String exitServerUnsupported(String name) {
+    return '$name\n\nЭтот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.';
+  }
+
+  @override
+  String get noticeRulesAction => 'Правила';
+
+  @override
+  String get geoVerdictMissingTitle => 'Гео-базы не скачаны';
+
+  @override
+  String get geoVerdictMissingSub =>
+      'Правила подписки по странам и категориям сейчас отключены — этот трафик идёт через VPN, а не напрямую.';
+
+  @override
+  String get geoVerdictUnusableTitle => 'Ядро не открыло гео-базы';
+
+  @override
+  String get geoVerdictUnusableSub =>
+      'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.';
 }

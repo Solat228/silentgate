@@ -121,9 +121,16 @@ class InterferenceScanner {
     return false;
   }
 
+  /// Признаки того, что адаптер — ТУННЕЛЬ. Здесь намеренно нет имён клиентов.
+  ///
+  /// ⚠️ Раньше в списке стояли «happ», «nekobox», «hiddify», «clash». Это
+  /// перечисление вендоров, а не признак: у одного пользователя такой клиент не
+  /// установлен вовсе, у другого стоит пятый, которого в списке нет. Виновника
+  /// мы всё равно определяем по РЕАЛЬНОМУ процессу, держащему адаптер, и его
+  /// имя и показываем. Список должен отвечать на вопрос «это туннель?», а не
+  /// «чей это туннель?».
   static const _tunnelHints = [
-    'tun', 'tap', 'wintun', 'wireguard', 'wg', 'vpn', 'nekobox', 'happ',
-    'hiddify', 'clash', 'outline', 'warp', 'amnezia', 'proxy',
+    'tun', 'tap', 'wintun', 'wireguard', 'wg', 'vpn', 'proxy',
   ];
 
   static bool _looksLikeTunnel(String name) {
@@ -149,12 +156,26 @@ class InterferenceScanner {
     // и в списке помех он выглядел бы как второй адаптер Happ.
     final fallback = adapters.length == 1 ? _ownerByModuleOrName(procs) : null;
 
+    // ⚠️ НИ ОДИН АДАПТЕР НЕ СЧИТАЕТСЯ ЧУЖИМ, ПОКА ЖИВО НАШЕ ЖЕ ЯДРО.
+    //
+    // Жалоба владельца: «выключить VPN и тут же включить — считает себя за
+    // другой VPN и не даёт включиться». Так и было: наш туннель снимается не
+    // мгновенно, адрес 172.19.0.x с адаптера уже пропал, а сам адаптер с именем
+    // вида «…tun» ещё висит — и попадал в список чужих. Проверка по адресу
+    // (`_isOurs`) этот промежуток не закрывает по построению: закрывать его
+    // должен признак «наши ядра ещё не закончили».
+    //
+    // Тише — лучше: пропущенная чужая помеха приводит к внятной ошибке при
+    // подъёме, а ложная запрещает подключение вовсе и не оставляет выхода.
+    if (procs.any(_isOwnCore)) return const [];
+
     return [
       for (final name in adapters)
         () {
-          // Точная привязка: «happ-tun» → happ.exe. Приписать ОДНОГО владельца
-          // всем адаптерам было бы враньём — на машине владельца рядом с
-          // happ-tun живёт ещё и Radmin VPN, к Happ отношения не имеющий.
+          // Точная привязка: имя адаптера содержит имя процесса-владельца
+          // («happ-tun» → happ.exe). Приписать ОДНОГО владельца всем адаптерам
+          // было бы враньём — на машине владельца рядом с таким адаптером живёт
+          // ещё и Radmin VPN, к нему отношения не имеющий.
           final owner = _ownerByAdapterName(procs, name) ?? fallback;
           return Interference('adapter', name, '',
               pid: owner?.pid,
@@ -198,31 +219,31 @@ class InterferenceScanner {
     return false;
   }
 
-  /// Известные VPN-клиенты — запасное опознание, когда точное не удалось.
+  /// Процессы, которые ПОДНИМАЮТ туннель, — запасное опознание.
   ///
-  /// Список именно как ЗАПАСНОЙ путь: точный ответ даёт [ProcessListWindows.hasModule],
-  /// но у невозвышенного приложения чтение модулей чужого (обычно
-  /// администраторского) процесса запрещено системой.
-  static const _vpnProcNames = <String, String>{
-    'happ.exe': 'Happ',
-    'nekobox.exe': 'NekoBox',
-    'nekoray.exe': 'NekoRay',
-    'v2rayn.exe': 'v2rayN',
-    'v2raytun.exe': 'v2RayTun',
-    'hiddify.exe': 'Hiddify',
-    'clash-verge.exe': 'Clash Verge',
-    'clash.exe': 'Clash',
-    'flclash.exe': 'FlClash',
-    'wireguard.exe': 'WireGuard',
-    'openvpn-gui.exe': 'OpenVPN',
-    'openvpn.exe': 'OpenVPN',
-    'amneziavpn.exe': 'AmneziaVPN',
-    'outline.exe': 'Outline',
-    'warp-svc.exe': 'Cloudflare WARP',
-    'cloudflarewarp.exe': 'Cloudflare WARP',
-    'tun2socks.exe': 'tun2socks',
-    'sing-box.exe': 'sing-box',
-    'xray.exe': 'Xray',
+  /// ⚠️ Здесь ЯДРА И СЛУЖБЫ, а не витрины клиентов. Прежний список
+  /// («happ.exe» → «Happ», «nekobox.exe» → «NekoBox», ещё полтора десятка) был
+  /// перечислением вендоров: он врал на любом клиенте, которого в нём нет, и
+  /// заодно приучал показывать имя, которое пользователь у себя не видел.
+  ///
+  /// Точный ответ всё равно даёт [ProcessListWindows.hasModule] — процесс,
+  /// держащий `wintun.dll`. Этот список нужен ровно на случай, когда система не
+  /// дала прочитать модули чужого (возвышенного) процесса. Имя показываем
+  /// НАСТОЯЩЕЕ, как в диспетчере задач: выдуманное «Happ» вместо «happ.exe»
+  /// человеку искать не по чему.
+  static const _tunnelProcNames = <String>{
+    'sing-box.exe',
+    'xray.exe',
+    'v2ray.exe',
+    'clash.exe',
+    'mihomo.exe',
+    'clash-meta.exe',
+    'hysteria.exe',
+    'tun2socks.exe',
+    'wireguard.exe',
+    'wg.exe',
+    'openvpn.exe',
+    'wstunnel.exe',
   };
 
   /// Программа, которой принадлежит чужой TUN-адаптер.
@@ -248,11 +269,11 @@ class InterferenceScanner {
     return null;
   }
 
-  /// Владелец по загруженному модулю, иначе — по списку известных клиентов.
+  /// Владелец по загруженному модулю, иначе — по имени процесса ядра.
   ///
   /// Модуль `wintun.dll` держит именно тот процесс, который поднял адаптер, —
   /// но чтение чужих модулей требует прав, а VPN-клиенты обычно возвышены.
-  /// Поэтому за точным способом идёт список имён.
+  /// Поэтому за точным способом идёт список ЯДЕР (см. [_tunnelProcNames]).
   static RunningProcess? _ownerByModuleOrName(List<RunningProcess> procs) {
     RunningProcess? byModule;
     RunningProcess? byName;
@@ -260,13 +281,22 @@ class InterferenceScanner {
       if (_isSelf(p)) continue;
       byModule ??=
           ProcessListWindows.hasModule(p.pid, const ['wintun.dll']) ? p : null;
-      byName ??= _vpnProcNames.containsKey(p.name.toLowerCase()) ? p : null;
+      byName ??=
+          _tunnelProcNames.contains(p.name.toLowerCase()) ? p : null;
       if (byModule != null) break; // точный ответ дальше искать незачем
     }
     return byModule ?? byName;
   }
 
   /// Наши собственные процессы: сам exe и ядра рядом с ним. Помехой быть не могут.
+  /// НАШЕ ядро, ещё не завершившееся. Не само приложение, а именно ядро:
+  /// пока оно живо, туннель на машине может быть нашим, и объявлять адаптер
+  /// чужим нельзя.
+  static bool _isOwnCore(RunningProcess p) {
+    const cores = {'sing-box.exe', 'xray.exe'};
+    return cores.contains(p.name.toLowerCase()) && _isSelf(p);
+  }
+
   static bool _isSelf(RunningProcess p) {
     final self = Platform.resolvedExecutable.toLowerCase();
     final path = p.path.toLowerCase();
@@ -301,13 +331,17 @@ class InterferenceScanner {
     return _ownerByModuleOrName(procs);
   }
 
-  /// Человеческое имя программы: из списка известных, иначе — имя файла без
-  /// расширения. «Happ» понятнее, чем «happ.exe», но выдумывать нельзя.
+  /// Имя программы для показа — НАСТОЯЩЕЕ, как в диспетчере задач.
+  ///
+  /// ⚠️ Раньше здесь подставлялась «витрина» из списка вендоров: процесс
+  /// `happ.exe` показывался как «Happ». Красивее, но искать по этому имени
+  /// нечего — в диспетчере задач такой строки нет, а если в списке клиента не
+  /// оказалось, показывалось третье имя. Берём имя файла без расширения: оно
+  /// всегда верное и всегда находится.
   static String appLabel(RunningProcess p) =>
-      _vpnProcNames[p.name.toLowerCase()] ??
-      (p.name.toLowerCase().endsWith('.exe')
+      p.name.toLowerCase().endsWith('.exe')
           ? p.name.substring(0, p.name.length - 4)
-          : p.name);
+          : p.name;
 
   /// Закрыть процесс-помеху.
   ///

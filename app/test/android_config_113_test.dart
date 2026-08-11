@@ -30,7 +30,6 @@ void main() {
           platformTun: true,
           clashApiPort: 19090,
           clashApiSecret: 'test-secret',
-          blockPagePort: 18080,
           blockQuic: true,
           blockEncryptedDns: true,
           serverIps: ['203.0.113.5'],

@@ -30,9 +30,72 @@ import lol.silentgate.vpn.SilentGateVpnService
 @RequiresApi(Build.VERSION_CODES.N)
 class QuickTileService : TileService() {
 
+    companion object {
+        /**
+         * Живой экземпляр, пока система слушает плитку (то есть пока открыта
+         * шторка). Вне этого времени `null` — и это нормально.
+         */
+        @Volatile
+        private var listening: QuickTileService? = null
+
+        /**
+         * Перерисовать плитку под текущее состояние туннеля.
+         *
+         * ⚠️ ДВА ПУТИ, И ОДНОГО НЕ ХВАТАЕТ. Плитка живёт не тогда, когда нам
+         * удобно, а пока система её слушает ([onStartListening] при открытии
+         * шторки, [onStopListening] при закрытии):
+         *
+         * * шторка ЗАКРЫТА — экземпляра нет, обновлять нечего и некому; нужен
+         *   `requestListeningState`, чтобы система подняла сервис и спросила
+         *   состояние заново;
+         * * шторка ОТКРЫТА — сервис уже слушает, и `requestListeningState`
+         *   оказывается пустышкой: повторного `onStartListening` не будет.
+         *   Обновить может только сам живой экземпляр.
+         *
+         * Проверено на эмуляторе: с одним лишь `requestListeningState` плитка
+         * после снятия туннеля так и висела «Connected» — при том, что
+         * уведомление уже исчезло, а сервис был снят.
+         *
+         * Зовётся из единственной точки объявления состояния
+         * ([lol.silentgate.vpn.SilentGateVpnService.notifyState]), поэтому новые
+         * пути включения и выключения получают обновление плитки даром.
+         */
+        fun requestRefresh() {
+            listening?.let { live ->
+                // Плитка обновляется только из главного потока: notifyState()
+                // прилетает из потока уборки ядра.
+                runCatching {
+                    android.os.Handler(android.os.Looper.getMainLooper()).post { live.refresh() }
+                }
+                return
+            }
+            val ctx = SilentGateApplication.appContext ?: return
+            runCatching {
+                requestListeningState(
+                    ctx,
+                    android.content.ComponentName(ctx, QuickTileService::class.java),
+                )
+            }
+        }
+    }
+
     override fun onStartListening() {
         super.onStartListening()
+        listening = this
         refresh()
+    }
+
+    override fun onStopListening() {
+        // Ссылку снимаем обязательно: за неё цепляется сервис, а обновлять
+        // плитку, которую система больше не показывает, нельзя — `qsTile` там
+        // уже null, и попытка молча ничего не сделает.
+        if (listening === this) listening = null
+        super.onStopListening()
+    }
+
+    override fun onDestroy() {
+        if (listening === this) listening = null
+        super.onDestroy()
     }
 
     override fun onClick() {
@@ -43,7 +106,10 @@ class QuickTileService : TileService() {
                 Intent(this, SilentGateVpnService::class.java)
                     .setAction(SilentGateVpnService.ACTION_STOP)
             )
-            refresh()
+            // ⚠️ НЕ вызывать здесь refresh(): остановка асинхронная, и в этот миг
+            // `running` ещё true — плитка перерисовалась бы во «включено» поверх
+            // выключаемого туннеля. Настоящее состояние придёт из notifyState()
+            // сервиса через requestRefresh(), когда туннель действительно снят.
             return
         }
         // Включение требует конфига, а он в Dart-состоянии: поднимаем приложение
@@ -71,6 +137,12 @@ class QuickTileService : TileService() {
     private fun refresh() {
         val tile = qsTile ?: return
         val on = SilentGateVpnService.running
+        // ⚠️ Значок у плитки ОДИН на оба состояния и меняться не должен: разницу
+        // рисует сама система — активная плитка получает заливку и цвет акцента,
+        // неактивная остаётся приглушённой. Подменять здесь значок «на выключен»
+        // означало бы драться с оформлением шторки, разным на каждой прошивке.
+        // Это НЕ то же самое, что значок в статус-баре: там значка при
+        // выключенном VPN нет вовсе, потому что нет и уведомления.
         tile.state = if (on) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
         tile.label = getString(R.string.app_name)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

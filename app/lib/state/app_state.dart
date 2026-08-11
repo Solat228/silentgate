@@ -11,10 +11,13 @@ import '../core/models/subscription_sync.dart';
 import '../core/models/traffic_stats.dart';
 import '../core/util/server_search.dart';
 import '../core/util/country_flag.dart';
+import '../core/util/reorder.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
+import '../core/models/engine_notice.dart';
 import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/desktop_notice.dart';
 import '../core/platform/tray_window.dart';
 import '../core/platform/app_paths.dart';
 import '../core/platform/network_watcher.dart';
@@ -22,6 +25,7 @@ import '../core/platform/device_id.dart';
 import '../core/platform/incoming_links.dart';
 import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';
+import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
@@ -68,16 +72,32 @@ class AppState extends ChangeNotifier {
       if (s.blocking != wasBlocking) {
         unawaited(_reflectBlocking(s.blocking));
       }
-      // Отсчёт времени подключения. Ставим только на ПЕРЕХОДЕ в «подключено»:
-      // статус приходит и при обновлении трафика, и сброс на каждом таком
-      // событии обнулял бы таймер раз в секунду.
-      if (s.isConnected) {
-        _connectedAt ??= DateTime.now();
-      } else if (s.state != VpnConnectionState.connecting) {
-        // Переподключение (connecting) отсчёт НЕ сбрасывает: для пользователя
-        // это то же самое соединение, которое просто восстанавливается.
-        _connectedAt = null;
+      // Значок в трее показывает состояние: серый — выключен, фиолетовый —
+      // включён. Трей — единственное место на Windows, где состояние видно
+      // всегда, в том числе при свёрнутом окне.
+      //
+      // ⚠️ Зовём на КАЖДОМ событии, но сам метод молча выходит, если состояние
+      // не изменилось: поток статуса тикает раз в секунду на обновлении
+      // счётчиков, а смена значка в tray_manager течёт дескрипторами.
+      if (Platform.isWindows) {
+        unawaited(TrayWindow.instance.setConnected(s.isConnected));
       }
+      // ⚠️ ОТСЧЁТ ИДЁТ ОТ НАЖАТИЯ ПОЛЬЗОВАТЕЛЯ И ПЕРЕПОДКЛЮЧЕНИЕМ НЕ СБРАСЫВАЕТСЯ.
+      //
+      // Решение владельца (11.08.2026): «таймер считается с 1 нажатия кнопки
+      // юзером (или url коммандой), и отключается так же вручную».
+      //
+      // Здесь была обратная логика, и она мешала: при обрыве статус мигает
+      // connecting → connected, и таймер начинал считать заново. Человек,
+      // отошедший от компьютера, возвращался к цифре «0:12» и не мог понять,
+      // сколько на самом деле держится сессия. Пусть лучше показывает время с
+      // момента, когда ОН включил VPN, — это единственная точка отсчёта, про
+      // которую он знает наверняка.
+      //
+      // Точку ставит [markUserConnect], а снимает [markUserDisconnect] — оба
+      // зовутся с путей пользовательских команд (кнопка и url-схема). Здесь мы
+      // отсчёт не трогаем ВООБЩЕ, иначе он снова поедет за статусом.
+
       // Наблюдатель за сетью работает только при живом подключении и молчит, пока мы
       // сами что-то делаем: подъём туннеля перестраивает маршруты, и без паузы это
       // считалось бы «сменой сети» (именно так возникал цикл переподключений).
@@ -98,6 +118,40 @@ class AppState extends ChangeNotifier {
     _networkSub = _networkWatcher.changes.listen((sig) {
       AppLog.w('Сменилось сетевое окружение');
       _engine.onNetworkChanged();
+    });
+    // Заблокированные сайты: движок замечает их по снимку соединений ядра,
+    // а показать сообщение может только интерфейс — здесь и передаём.
+    _blockedSub = _engine.blockedHostEvents.listen((host) {
+      _lastBlockedHost = host;
+      notifyListeners();
+    });
+    // Заметки движка: обрыв, восстановление, отказ, блокировка. Показать их
+    // может только интерфейс — здесь копим последнюю, а снимает её тот, кто
+    // показал ([clearNotice]).
+    _noticeSub = _engine.notices.listen((n) {
+      _pendingNotice = n;
+      // ⚠️ ГЕО-ВЕРДИКТ ЗАПОМИНАЕТСЯ, А НЕ ТОЛЬКО ВСПЛЫВАЕТ. Момент подключения
+      // на Android — ровно тот момент, когда приложение чаще всего НЕ на
+      // экране: сверху диалог согласия VPN, стартует сервис. Всплывашка,
+      // показанная в эту секунду, до человека не доходит, и жалоба звучит как
+      // «предложение докачать гео-файлы как будто не происходит».
+      if (n.kind == EngineNoticeKind.geoAssetsMissing ||
+          n.kind == EngineNoticeKind.geoAssetsUnusable) {
+        _geoVerdict = n.kind;
+      }
+      // ⚠️ И СИСТЕМНОЕ УВЕДОМЛЕНИЕ ТОЖЕ — иначе на Windows его не увидят.
+      //
+      // Карточка внутри приложения видна только при открытом окне, а оно почти
+      // всегда свёрнуто в трей. 10.08.2026 проверка канала честно отработала и
+      // переподняла туннель, карточка показалась — а владелец её не увидел
+      // вовсе. Показываем только то, что требует внимания: обычные заметки
+      // остаются внутри приложения, чтобы их не начали отмахивать не читая.
+      if (n.isProblem) {
+        final detail = (n.detail ?? '').trim();
+        unawaited(DesktopNotice.show(
+            n.text, detail.isEmpty ? 'SilentGate' : detail));
+      }
+      notifyListeners();
     });
     _statsSub = _engine.statsStream.listen((s) {
       // Итог за сессию приложения: счётчики ядра обнуляются при каждом переподключении,
@@ -134,6 +188,43 @@ class AppState extends ChangeNotifier {
   final String? _initialUrl;
   late final StreamSubscription _statusSub;
   late final StreamSubscription _statsSub;
+  StreamSubscription<String>? _blockedSub;
+  StreamSubscription<EngineNotice>? _noticeSub;
+
+  /// Последний замеченный заблокированный сайт — для всплывающего сообщения.
+  ///
+  /// ⚠️ Именно ПОЛЕ, а не поток наружу: интерфейс перестраивается при переходах
+  /// между экранами, и подписка в виджете теряла бы события. Значение
+  /// сбрасывает тот, кто его показал ([clearBlockedHost]), иначе сообщение
+  /// всплывало бы заново на каждой перерисовке.
+  String? _lastBlockedHost;
+  String? get lastBlockedHost => _lastBlockedHost;
+  void clearBlockedHost() => _lastBlockedHost = null;
+
+  /// Заметка движка, которую ещё никто не показал.
+  ///
+  /// ⚠️ Снимается ТЕМ, КТО ПОКАЗАЛ ([clearNotice]), а не по таймеру. Иначе при
+  /// каждой перерисовке всплывало бы одно и то же сообщение — на этих граблях
+  /// в проекте уже стояли с итогами пинга и автонастройки.
+  EngineNotice? _pendingNotice;
+  EngineNotice? get pendingNotice => _pendingNotice;
+
+  /// Что не так с гео-базами по мнению ЯДРА. `null` — всё в порядке.
+  ///
+  /// Держится отдельно от [pendingNotice]: та снимается сразу после показа, а
+  /// этот вердикт должен висеть на экране, пока человек его не закроет. Ставит
+  /// его только движок (`_guardGeodata`), снимает — успешное скачивание баз
+  /// либо подключение, на котором ядро больше не жаловалось.
+  EngineNoticeKind? _geoVerdict;
+  EngineNoticeKind? get geoVerdict => _geoVerdict;
+
+  /// Забыть вердикт: базы скачаны заново, либо человек закрыл плашку.
+  void clearGeoVerdict() {
+    if (_geoVerdict == null) return;
+    _geoVerdict = null;
+    notifyListeners();
+  }
+  void clearNotice() => _pendingNotice = null;
   late final StreamSubscription _incomingSub;
   late final StreamSubscription _networkSub;
 
@@ -205,17 +296,51 @@ class AppState extends ChangeNotifier {
   VpnStatus get status => _status;
   TrafficStats get stats => _stats;
 
-  /// Момент, когда туннель поднялся. null — не подключены.
+  /// Момент, когда пользователь ВКЛЮЧИЛ VPN. null — выключен.
   ///
   /// Хранится здесь, а не в виджете: интерфейс пересоздаётся при переходах между
   /// экранами, и таймер, живущий в нём, обнулялся бы на каждом возврате.
+  ///
+  /// ⚠️ Это момент НАЖАТИЯ, а не момент подъёма туннеля. Обрывы и
+  /// переподключения его не двигают — см. [markUserConnect].
   DateTime? _connectedAt;
 
-  /// Сколько длится текущее подключение. null — не подключены.
+  /// Сколько прошло с включения VPN. null — выключен.
+  ///
+  /// ⚠️ Не зависит от `isConnected`: во время переподключения таймер обязан
+  /// продолжать идти, иначе он снова начнёт прыгать на каждом обрыве.
   Duration? get connectedFor {
     final at = _connectedAt;
-    if (at == null || !_status.isConnected) return null;
+    if (at == null) return null;
     return DateTime.now().difference(at);
+  }
+
+  /// Пользователь включил VPN — ставим точку отсчёта ЗАНОВО.
+  ///
+  /// Зовётся со всех путей включения по команде человека: кнопка, автовыбор,
+  /// url-схема. Все они входят сюда только когда VPN не поднят, то есть это
+  /// всегда НОВАЯ сессия.
+  ///
+  /// ⚠️ РАНЬШЕ ЗДЕСЬ БЫЛО `??=`, И ЭТО БЫЛА ОШИБКА. Точку отсчёта снимают
+  /// только `markUserDisconnect` с трёх путей Dart, а сессия кончается и мимо
+  /// них: неудачное подключение, «Отключить» из шторки Android и плитки
+  /// быстрых настроек, `onRevoke` при перехвате другим VPN. Точка залипала, и
+  /// следующее включение показывало часы от прошлого раза — «подключился
+  /// утром, выключил из шторки днём, включил вечером» давало сразу 8 часов.
+  /// Снять залипшее значение из интерфейса было нечем.
+  ///
+  /// Переподключение таймер по-прежнему не трогает: оно идёт мимо этого
+  /// метода.
+  void markUserConnect() {
+    _connectedAt = DateTime.now();
+    // Новая попытка — новый разговор про гео-базы: прошлый вердикт мог
+    // относиться к другому серверу, а базы с тех пор могли и скачать.
+    _geoVerdict = null;
+  }
+
+  /// Пользователь выключил VPN — отсчёт снят.
+  void markUserDisconnect() {
+    _connectedAt = null;
   }
 
   /// Локальный http-прокси порт активного ядра (для живой проверки сервисов).
@@ -246,6 +371,15 @@ class AppState extends ChangeNotifier {
     // всего остального, иначе первые кадры покажут «Отключено» при работающем
     // VPN, а Connect поднимет второй сеанс поверх живого.
     await _engine.adoptRunningTunnel();
+    // ⚠️ Подхваченный туннель тоже получает точку отсчёта, иначе таймера не
+    // будет ВООБЩЕ: на Android сервис переживает смерть интерфейса, и после
+    // возврата в приложение нажатия кнопки уже не случится.
+    //
+    // Момент исходного включения нам неизвестен — сервис его не хранит, — так
+    // что отсчёт начинается с подхвата. Это честнее пустого места: цифра
+    // означает «столько прошло с возврата в приложение», а не «столько живёт
+    // туннель». Показывать нечего лучше, чем показывать заведомо неверное.
+    if (_engine.status.isConnected) markUserConnect();
 
     // Разовая чистка СТАРОГО общего логотипа: раньше все подписки писали картинку
     // в один `sub_logo.*`, из-за чего после смены подписки висела чужая/устаревшая.
@@ -278,6 +412,7 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(snapshot.items);
     _activeId = snapshot.activeId;
+    _backfillAddedAt();
 
     final legacyLinks = (data['servers'] as List?)?.cast<String>() ?? const [];
     if (_profiles.isEmpty && (_subscriptionUrl ?? '').isNotEmpty) {
@@ -287,6 +422,7 @@ class AppState extends ChangeNotifier {
         info: _info,
         logoPath: _logoPath,
         serverLinks: legacyLinks,
+        addedAt: DateTime.now(),
       ));
       _activeId = _profiles.first.id;
       await _saveSubscriptions();
@@ -349,7 +485,7 @@ class AppState extends ChangeNotifier {
     if (_selectedIndex < 0) {
       _engine.fallbackServers = _fallbackCandidates();
       await _engine.armAdoptedSession(
-          _servers, ConnectionOptions(settings: s));
+          _servers, ConnectionOptions(settings: s, exitServers: _exitServers(s)));
       return;
     }
     final server = _servers[_selectedIndex];
@@ -358,7 +494,10 @@ class AppState extends ChangeNotifier {
         ? server.copyWith(rawJsonOverride: ov.rawJson)
         : server;
     await _engine.armAdoptedSession([srv],
-        ConnectionOptions(variant: ov?.variant ?? _selectedVariant, settings: s));
+        ConnectionOptions(
+            variant: ov?.variant ?? _selectedVariant,
+            settings: s,
+            exitServers: _exitServers(s)));
   }
 
   /// Выбрать сервер по имени из подписки. false — не нашли.
@@ -384,8 +523,17 @@ class AppState extends ChangeNotifier {
   ///
   /// Чтение с диска осталось только для стартового вызова, когда в памяти
   /// настроек ещё нет.
+  /// Подписать владельца настроек на кнопку сворачивания в шторке.
+  ///
+  /// Вызывается из `main.dart`: сохранить выбор может только тот, у кого есть
+  /// настройки, а движку они не принадлежат.
+  set onCompactToggledInShade(void Function(bool compact)? handler) =>
+      _engine.onCompactToggledInShade = handler;
+
   Future<void> publishNotificationLayout({AppSettings? settings}) async {
     _engine.subscriptionTitle = _info.title ?? '';
+    // Значок подписки в шторке: тот же файл, что показывается в карточке.
+    _engine.subscriptionLogoPath = _logoPath ?? '';
     _engine.compactNotification =
         (settings ?? await SettingsStorage().load()).compactNotification;
   }
@@ -532,6 +680,9 @@ class AppState extends ChangeNotifier {
     // резолв чужих серверов уйдёт в туннель и подключение зациклится.
     _publishServerDomains();
     unawaited(publishNotificationLayout());
+    // Здесь же, а не в конце метода: ниже есть ранний выход, и указатель
+    // «чей это сервер» на самом частом пути (сервер тот же) не обновлялся бы.
+    _rebuildOwnerIndex();
 
     if (prevKey != null) {
       final idx = _servers.indexWhere((s) => s.key == prevKey);
@@ -550,9 +701,64 @@ class AppState extends ChangeNotifier {
   final List<SubscriptionProfile> _profiles = [];
   String? _activeId;
 
-  /// Все импортированные подписки.
+  /// Все импортированные подписки — В ТОМ ПОРЯДКЕ, В КОТОРОМ ИХ ПОКАЗЫВАТЬ.
+  ///
+  /// ⚠️ НИКАКОЙ СОРТИРОВКИ ЗДЕСЬ НЕТ И БЫТЬ НЕ ДОЛЖНО. Порядок — это данные:
+  /// по умолчанию он совпадает с порядком добавления (новая подписка встаёт в
+  /// конец), а дальше его задаёт сам пользователь перетаскиванием. Сортировка
+  /// по названию или по числу серверов переставляла бы список у него под
+  /// руками — в меню из четырёх подписок человек целится мышью по памяти.
   List<SubscriptionProfile> get subscriptions => List.unmodifiable(_profiles);
   String? get activeSubscriptionId => _activeId;
+
+  /// Проставить дату добавления профилям из старых файлов.
+  ///
+  /// Даты там нет вовсе, и без этого все подписки выглядели бы добавленными
+  /// одновременно. Берём порядок в файле (он и есть порядок добавления) и
+  /// раскладываем метки назад по минуте на позицию — так первая в списке
+  /// оказывается самой старой, как и было на самом деле.
+  void _backfillAddedAt() {
+    final now = DateTime.now();
+    var changed = false;
+    for (var i = 0; i < _profiles.length; i++) {
+      if (_profiles[i].addedAt != null) continue;
+      _profiles[i] = _profiles[i].copyWith(
+          addedAt: now.subtract(Duration(minutes: _profiles.length - i)));
+      changed = true;
+    }
+    if (changed) unawaited(_saveSubscriptions());
+  }
+
+  /// Переставить подписку в списке (перетаскивание в меню переключателя).
+  ///
+  /// Индексы — как их отдаёт `ReorderableListView`; поправка на них живёт в
+  /// [reordered], там же и объяснена.
+  Future<void> reorderSubscriptions(int oldIndex, int newIndex) async {
+    final next = reordered(_profiles, oldIndex, newIndex);
+    // Порядок не изменился — не трогаем диск и не дёргаем перерисовку.
+    if (identical(next.length, _profiles.length)) {
+      var same = true;
+      for (var i = 0; i < next.length; i++) {
+        if (next[i].id != _profiles[i].id) {
+          same = false;
+          break;
+        }
+      }
+      if (same) return;
+    }
+    _profiles
+      ..clear()
+      ..addAll(next);
+    // ⚠️ СНАЧАЛА УВЕДОМИТЬ, ПОТОМ ПИСАТЬ НА ДИСК. Запись файла — это await, а
+    // список перерисовывается сразу после броска: пока мы ждали диск, строка
+    // успевала отскочить на старое место и лишь потом прыгнуть на новое.
+    // Хуже косметики: в этом же окне у списка на экране был СТАРЫЙ порядок, а
+    // в памяти уже новый, и второе быстрое перетаскивание отдало бы индексы
+    // старого порядка — переставилась бы не та подписка.
+    _rebuildOwnerIndex();
+    notifyListeners();
+    unawaited(_saveSubscriptions());
+  }
 
   SubscriptionProfile? get _activeProfile {
     if (_profiles.isEmpty) return null;
@@ -560,8 +766,59 @@ class AppState extends ChangeNotifier {
     return i >= 0 ? _profiles[i] : _profiles.first;
   }
 
-  Future<void> _saveSubscriptions() =>
-      _subscriptionsStore.save(SubscriptionsSnapshot(_profiles, _activeId));
+  Future<void> _saveSubscriptions() {
+    _rebuildOwnerIndex();
+    return _subscriptionsStore.save(SubscriptionsSnapshot(_profiles, _activeId));
+  }
+
+  /// Ссылка сервера → id подписки, которой он принадлежит.
+  final Map<String, String> _ownerByLink = {};
+
+  /// Пересобрать указатель «чей это сервер».
+  ///
+  /// ⚠️ АКТИВНАЯ ПОДПИСКА ИМЕЕТ ПРИОРИТЕТ. Один и тот же сервер вполне может
+  /// лежать в двух подписках сразу — тогда он СВОЙ, и подрисовывать ему чужой
+  /// значок нельзя. Поэтому активную раскладываем первой, а остальные —
+  /// только на свободные места.
+  void _rebuildOwnerIndex() {
+    _ownerByLink.clear();
+    final active = _activeProfile;
+    if (active != null) {
+      for (final link in active.serverLinks) {
+        _ownerByLink[link] = active.id;
+      }
+    }
+    for (final p in _profiles) {
+      if (p.id == active?.id) continue;
+      for (final link in p.serverLinks) {
+        _ownerByLink.putIfAbsent(link, () => p.id);
+      }
+    }
+  }
+
+  /// Подписка, из которой пришёл сервер, если она НЕ активная сейчас.
+  ///
+  /// Нужна закреплённым серверам: пины общие и переживают переключение
+  /// подписки, поэтому в списке рядом оказываются серверы из разных подписок —
+  /// внешне неотличимые. Мини-профиль (значок подписки + её имя) возвращает
+  /// строке происхождение. Свой сервер и сервер без известного владельца
+  /// (например, вставленный руками `json://`) дают null — подрисовывать
+  /// нечего.
+  SubscriptionProfile? foreignSubscriptionOf(VpnServer server) {
+    final id = _ownerByLink[server.rawLink];
+    // ⚠️ СВЕРЯЕМСЯ С `_activeProfile`, А НЕ С СЫРЫМ `_activeId`. Индекс выше
+    // строится по `_activeProfile`, а у того есть запасной вариант «первый в
+    // списке» — на случай, когда `activeId` указывает на профиль, которого нет
+    // (загрузчик выбрасывает профили с пустым url; файл могли править руками).
+    // Пока сравнение шло с `_activeId`, эти двое расходились, и тогда значок
+    // «чужая подписка» получал КАЖДЫЙ сервер списка — с именем той самой
+    // подписки, которая сейчас и открыта.
+    if (id == null || id == _activeProfile?.id) return null;
+    for (final p in _profiles) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
 
   /// Кэшированный логотип профиля по id (если файл ещё на месте), иначе null.
   String? _cachedLogoFor(String id) {
@@ -597,9 +854,14 @@ class AppState extends ChangeNotifier {
     // Сохраняем прежний logoUrl профиля — _refreshLogo сравнивает с ним, чтобы
     // не перекачивать неизменившуюся картинку.
     String? keepLogoUrl;
+    // ⚠️ И прежнюю дату добавления: обновление подписки — не повторное
+    // добавление. Иначе профиль каждый раз «молодел» бы, а с ним ехал бы
+    // и порядок по дате.
+    DateTime? keepAddedAt;
     for (final p in _profiles) {
       if (p.id == id) {
         keepLogoUrl = p.logoUrl;
+        keepAddedAt = p.addedAt;
         break;
       }
     }
@@ -610,6 +872,7 @@ class AppState extends ChangeNotifier {
       logoPath: _logoPath,
       logoUrl: keepLogoUrl,
       serverLinks: _subServers.map((s) => s.rawLink).toList(),
+      addedAt: keepAddedAt ?? DateTime.now(),
     );
     final i = _profiles.indexWhere((p) => p.id == id);
     if (i >= 0) {
@@ -1230,8 +1493,20 @@ class AppState extends ChangeNotifier {
     _pendingRestart = null;
     _pendingRestartDetail = '';
     notifyListeners();
+    // ⚠️ Отсчёт таймера ПЕРЕЖИВАЕТ этот перезапуск. Пользователь VPN не
+    // выключал — он поправил настройку, а туннель мы перетряхиваем сами. Сброс
+    // счётчика тут выглядел бы как разрыв сессии, которого не было.
+    final keepSince = _connectedAt;
     await disconnect();
     await toggleConnection(settings);
+    // ⚠️ ВОССТАНАВЛИВАЕМ ТОЛЬКО ТО, ЧТО СЕЙЧАС ИДЁТ. Ожидание внутри
+    // `toggleConnection` длится до двух минут (автоподбор стека и MTU на
+    // Windows). За это время пользователь успевает нажать «Отключить» в трее
+    // или прислать `silentgate://disconnect` — тогда отсчёт уже снят, и слепое
+    // присваивание воскресило бы его: VPN выключен, а часы идут, и следующее
+    // включение показывает чужое время. Непустое значение здесь означает, что
+    // подключение состоялось и `markUserConnect` поставил свою точку.
+    if (keepSince != null && _connectedAt != null) _connectedAt = keepSince;
   }
 
   /// Применить результат автонастройки: закрепить с вариацией и выбрать (без подключения).
@@ -1248,6 +1523,7 @@ class AppState extends ChangeNotifier {
   Future<void> toggleConnection(AppSettings settings) async {
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
       AppLog.i('Отключение по команде пользователя');
+      markUserDisconnect();
       await _engine.disconnect();
     } else {
       AppLog.i('Подключение по команде пользователя');
@@ -1256,6 +1532,12 @@ class AppState extends ChangeNotifier {
         _fail(AppErrorCode.pickServerFirst);
         return;
       }
+      // Точка отсчёта таймера — ЗДЕСЬ, на нажатии, а не на подъёме туннеля:
+      // иначе переподключение снова начнёт обнулять счётчик.
+      // ⚠️ Но СТРОГО ПОСЛЕ проверки сервера: нажатие без выбранного сервера
+      // (свежая установка, удалили все серверы) заводило часы там, где
+      // подключения не будет вовсе, а снять их было нечем.
+      markUserConnect();
       final ov = _overrides[server.key];
       final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
           ? server.copyWith(rawJsonOverride: ov.rawJson)
@@ -1266,6 +1548,7 @@ class AppState extends ChangeNotifier {
         options: ConnectionOptions(
           variant: ov?.variant ?? _selectedVariant,
           settings: settings,
+          exitServers: _exitServers(settings),
         ),
       );
     }
@@ -1274,9 +1557,63 @@ class AppState extends ChangeNotifier {
   /// Явное отключение (для трея/выхода). No-op только при полностью отключённом
   /// состоянии — connecting/disconnecting тоже гасим (иначе выход сиротит процессы).
   Future<void> disconnect() async {
+    markUserDisconnect();
     if (_status.state != VpnConnectionState.disconnected) {
       await _engine.disconnect();
     }
+  }
+
+  /// Серверы именованных выходов: ключ правила → живые серверы.
+  ///
+  /// ⚠️ РАЗРЕШАЕТСЯ ЗДЕСЬ, А НЕ В ДВИЖКЕ. Правило хранит КЛЮЧ сервера
+  /// (share-ссылку), и сопоставить его с живым `VpnServer` можно только по
+  /// полному каталогу — а каталог есть только тут. Хранить в правиле индекс
+  /// было бы короче и неверно: список перестраивается при каждом обновлении
+  /// подписки, и правило уехало бы на соседний сервер. Этой ошибкой мы уже
+  /// платили за пины и оверрайды.
+  ///
+  /// Владелец разрешил брать выходы из РАЗНЫХ подписок одновременно, поэтому
+  /// ищем по всему `_servers` — объединённому списку, — не разбирая, откуда
+  /// сервер пришёл.
+  /// Серверы, на которые ссылаются правила раздельного туннелирования.
+  ///
+  /// ⚠️ Собираем ИЗ ПРАВИЛ, а не из отдельного списка: правило указывает на
+  /// сервер напрямую, и любой другой источник рано или поздно разойдётся с тем,
+  /// что видит пользователь.
+  ///
+  /// Основной сервер сессии сюда НЕ попадает — он уже в конфиге под тегом
+  /// `proxy`. Иначе к одному узлу держались бы два соединения, а панель
+  /// показывала бы удвоенный «онлайн».
+  Map<String, VpnServer> _exitServers(AppSettings settings) {
+    if (_servers.isEmpty) return const {};
+    final wanted = <String>{
+      for (final r in settings.splitTunnel.sites)
+        if (r.action == AppAction.tunnel && (r.serverKey ?? '').isNotEmpty)
+          r.serverKey!,
+      for (final r in settings.splitTunnel.apps)
+        if (r.enabled &&
+            r.action == AppAction.tunnel &&
+            (r.serverKey ?? '').isNotEmpty)
+          r.serverKey!,
+    };
+    if (wanted.isEmpty) return const {};
+    wanted.remove(selectedServer?.key);
+    final byKey = <String, VpnServer>{
+      for (final s in _servers)
+        if (s.key.isNotEmpty) s.key: s,
+    };
+    final out = <String, VpnServer>{};
+    for (final k in wanted) {
+      final srv = byKey[k];
+      if (srv == null) continue;
+      // Правка из JSON-редактора применяется и здесь — иначе сервер вёл бы
+      // себя не так, как тот же сервер, выбранный вручную.
+      final ov = _overrides[srv.key];
+      out[k] = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
+          ? srv.copyWith(rawJsonOverride: ov.rawJson)
+          : srv;
+    }
+    return out;
   }
 
   /// Кандидаты на подмену в режиме «Авто»: сначала профили «Авто …» от панели
@@ -1291,6 +1628,7 @@ class AppState extends ChangeNotifier {
   /// Автовыбор лучшего сервера (balancer + burstObservatory по всем серверам).
   Future<void> connectAuto(AppSettings settings) async {
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      markUserDisconnect();
       await _engine.disconnect();
       return;
     }
@@ -1300,10 +1638,12 @@ class AppState extends ChangeNotifier {
     }
     // Режим «Авто (лучший сервер)»: если текущий не поднимется после всех попыток,
     // движок переключится на следующий из этого списка. Ручной выбор не подменяем.
+    markUserConnect();
     _engine.fallbackServers = _fallbackCandidates();
     await _engine.connectBalancer(
       _servers,
-      options: ConnectionOptions(settings: settings),
+      options: ConnectionOptions(
+          settings: settings, exitServers: _exitServers(settings)),
     );
   }
 
@@ -1327,6 +1667,8 @@ class AppState extends ChangeNotifier {
     _statsSub.cancel();
     _incomingSub.cancel();
     _networkSub.cancel();
+    _blockedSub?.cancel();
+    _noticeSub?.cancel();
     _networkWatcher.dispose();
     _updater.stop();
     _engine.dispose();

@@ -20,7 +20,51 @@ class XrayPorts {
 /// routing/stats/policy/api: счётчики трафика включены.
 class XrayConfigBuilder {
   final XrayPorts ports;
-  const XrayConfigBuilder({this.ports = const XrayPorts()});
+
+  /// Логин и пароль локальных inbound'ов.
+  ///
+  /// ⚠️ ЗАЧЕМ ОНИ ЗДЕСЬ. Раньше построитель умел только `auth: noauth`, и
+  /// по этому пути идут ВСЕ обычные серверы подписки и режим «Авто (лучший
+  /// сервер)» — то есть подавляющее большинство подключений. При включённом по
+  /// умолчанию пароле порты 10808/10809 всё равно оставались открыты любому
+  /// процессу машины: это и есть та самая дыра, от которой настройка защищает
+  /// по её же тексту. Пароль при этом ВЫДАВАЛСЯ и уходил туннелю — sing-box
+  /// предлагал Xray метод username/password, а тот его не знал.
+  ///
+  /// Пусто — inbound без пароля (режим системного прокси: WinINET креденшелов
+  /// не передаёт, и пароль там сломал бы весь интернет).
+  final String user;
+  final String password;
+
+  const XrayConfigBuilder({
+    this.ports = const XrayPorts(),
+    this.user = '',
+    this.password = '',
+  });
+
+  /// Копия построителя с другими кредами (порты те же).
+  XrayConfigBuilder withAuth(String user, String password) =>
+      XrayConfigBuilder(ports: ports, user: user, password: password);
+
+  bool get _hasAuth => user.isNotEmpty && password.isNotEmpty;
+
+  Map<String, dynamic> get _socksSettings => {
+        'udp': true,
+        if (_hasAuth) ...{
+          'auth': 'password',
+          'accounts': [
+            {'user': user, 'pass': password}
+          ],
+        } else
+          'auth': 'noauth',
+      };
+
+  Map<String, dynamic> get _httpSettings => {
+        if (_hasAuth)
+          'accounts': [
+            {'user': user, 'pass': password}
+          ],
+      };
 
   String buildJson(VpnServer server, {OutboundVariant variant = OutboundVariant.none}) =>
       const JsonEncoder.withIndent('  ').convert(buildMap(server, variant: variant));
@@ -37,7 +81,7 @@ class XrayConfigBuilder {
           'listen': '127.0.0.1',
           'port': ports.socks,
           'protocol': 'socks',
-          'settings': {'udp': true, 'auth': 'noauth'},
+          'settings': _socksSettings,
           'sniffing': {
             'enabled': true,
             'destOverride': ['http', 'tls', 'quic'],
@@ -48,7 +92,7 @@ class XrayConfigBuilder {
           'listen': '127.0.0.1',
           'port': ports.http,
           'protocol': 'http',
-          'settings': {},
+          'settings': _httpSettings,
         },
         {
           'tag': 'api',
@@ -124,7 +168,7 @@ class XrayConfigBuilder {
           'listen': '127.0.0.1',
           'port': ports.socks,
           'protocol': 'socks',
-          'settings': {'udp': true, 'auth': 'noauth'},
+          'settings': _socksSettings,
           'sniffing': {
             'enabled': true,
             'destOverride': ['http', 'tls', 'quic'],
@@ -135,7 +179,7 @@ class XrayConfigBuilder {
           'listen': '127.0.0.1',
           'port': ports.http,
           'protocol': 'http',
-          'settings': {},
+          'settings': _httpSettings,
         },
         {
           'tag': 'api',

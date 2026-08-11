@@ -15,4 +15,7 @@
     <string name="vpn_open">Aç</string>
     <string name="vpn_traffic_now">Şimdi: ↓ %1$s  ↑ %2$s</string>
     <string name="vpn_traffic_total">Toplam: ↓ %1$s  ↑ %2$s</string>
+    <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
+    <string name="vpn_collapse">Daralt</string>
+    <string name="vpn_expand">Genişlet</string>
 </resources>

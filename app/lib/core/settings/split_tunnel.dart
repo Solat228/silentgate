@@ -77,13 +77,42 @@ class AppRule {
   /// списке сайтов. Галочка поднимает правило этого приложения ВЫШЕ доменных.
   final bool overrideSites;
 
+  /// ЧЕРЕЗ КАКОЙ СЕРВЕР идёт это приложение. `null` — через тот, что выбран
+  /// на главном экране (обычное поведение и умолчание).
+  ///
+  /// ⚠️ Смысл ТОЛЬКО у [AppAction.tunnel]. «Прямо через Германию» — это
+  /// противоречие: прямо значит мимо всех туннелей. Поэтому поле намеренно не
+  /// участвует в выборе адресата для `direct` и `block` — иначе появился бы
+  /// класс правил, которые видно в интерфейсе и которые ничего не делают.
+  ///
+  /// Хранится КЛЮЧ сервера (`VpnServer.key`, то есть share-ссылка), а не имя и
+  /// не индекс: список серверов перестраивается при каждом обновлении
+  /// подписки, и индекс уехал бы на соседа — ровно та поломка, которую уже
+  /// ловили с пинами и оверрайдами. Сервер, которого больше нет в подписке,
+  /// трактуется как `null` (основной туннель): висячий тег в конфиге опаснее,
+  /// потому что `sing-box check` его НЕ ловит и трафик молча уходит
+  /// в `route.final`.
+  final String? serverKey;
+
   const AppRule(this.path,
       {this.byName = false,
       this.action = AppAction.direct,
       this.enabled = true,
       this.allowRealIp = false,
-      this.overrideSites = false});
+      this.overrideSites = false,
+      this.serverKey});
 
+  /// Имя для СОПОСТАВЛЕНИЯ, а не для показа.
+  ///
+  /// ⚠️ ЭТА СТРОКА УХОДИТ В `process_name` КОНФИГА ЯДРА (см.
+  /// `singbox_config_builder`: правила приложений и их зеркало в DNS). Подставь
+  /// сюда человеческое имя — «Google Chrome» вместо `chrome.exe`, — и все
+  /// правила «по имени» на Windows молча перестанут срабатывать: правило видно
+  /// в интерфейсе, лежит в конфиге, ядро конфиг принимает, а совпадения нет.
+  /// Тот самый почерк, за который в этом проекте уже платили.
+  ///
+  /// Для показа есть `ui/widgets/app_label.dart` — он спрашивает метку у
+  /// системы и к сопоставлению отношения не имеет.
   String get name => path.split(r'\').last;
 
   AppRule copyWith(
@@ -91,7 +120,9 @@ class AppRule {
           AppAction? action,
           bool? enabled,
           bool? allowRealIp,
-          bool? overrideSites}) =>
+          bool? overrideSites,
+          String? serverKey,
+          bool clearServer = false}) =>
       AppRule(
         path,
         byName: byName ?? this.byName,
@@ -99,6 +130,7 @@ class AppRule {
         enabled: enabled ?? this.enabled,
         allowRealIp: allowRealIp ?? this.allowRealIp,
         overrideSites: overrideSites ?? this.overrideSites,
+        serverKey: clearServer ? null : (serverKey ?? this.serverKey),
       );
 
   Map<String, dynamic> toJson() => {
@@ -108,6 +140,7 @@ class AppRule {
         'enabled': enabled,
         'allowRealIp': allowRealIp,
         'overrideSites': overrideSites,
+        if (serverKey != null) 'serverKey': serverKey,
       };
 
   factory AppRule.fromJson(Object? j, {AppAction fallback = AppAction.direct}) {
@@ -128,10 +161,27 @@ class AppRule {
         // Умолчание false — прежний порядок: правило сайта конкретнее и
         // потому сильнее. Старые правила своего смысла не меняют.
         overrideSites: j['overrideSites'] as bool? ?? false,
+        // Ключа нет во всех настройках, записанных до мульти-VPN, и это ровно
+        // то, что нужно: null = основной туннель = прежнее поведение.
+        // `exitId` — промежуточный формат первой редакции мульти-VPN; он
+        // переводится в ключ сервера уровнем выше (AppSettings.fromJson),
+        // здесь принимаем оба, чтобы правила не потерялись.
+        serverKey: _serverKeyFrom(j['serverKey']) ?? _serverKeyFrom(j['exitId']),
       );
     }
     return const AppRule('');
   }
+}
+
+/// Ключ сервера из JSON: пустая строка равнозначна отсутствию.
+///
+/// Разделять «нет ключа» и «ключ с пустой строкой» смысла нет, а вот пустая
+/// строка, доехавшая до построителя, дала бы тег без сервера — валидный для
+/// ядра и ни на что не ссылающийся.
+String? _serverKeyFrom(Object? v) {
+  if (v is! String) return null;
+  final s = v.trim();
+  return s.isEmpty ? null : s;
 }
 
 /// Нормализует домен, введённый пользователем: убирает схему (`https://`),
@@ -196,8 +246,29 @@ class SiteRule {
   /// Смысл — только у [AppAction.direct] и только при включённом `noRealIp`.
   final bool allowRealIp;
 
+  /// Через какой сервер идёт этот сайт. `null` — через основной.
+  /// См. [AppRule.serverKey]: смысл только у [AppAction.tunnel], хранится ключ
+  /// сервера, исчезнувший сервер трактуется как `null`.
+  final String? serverKey;
+
+  /// Пользователь ввёл адрес ЯВНО как `http://`.
+  ///
+  /// ⚠️ Хранится ровно потому, что [normalizeDomain] схему срезает: после
+  /// нормализации `http://site.com` и `site.com` неразличимы, а разница для
+  /// пользователя есть. Мы показываем такому правилу красный открытый замок —
+  /// как это делает браузер: незашифрованное соединение видно провайдеру
+  /// целиком, включая путь и параметры запроса.
+  ///
+  /// Признак ТОЛЬКО отображательный: на маршрутизацию не влияет, потому что
+  /// правило работает по имени и порту, а не по схеме.
+  final bool insecureScheme;
+
   const SiteRule(this.domain,
-      {this.port, this.action = AppAction.direct, this.allowRealIp = false});
+      {this.port,
+      this.action = AppAction.direct,
+      this.allowRealIp = false,
+      this.serverKey,
+      this.insecureScheme = false});
 
   /// Отображаемая метка: домен и, если задан, порт (`example.com:8443`).
   String get label => port == null ? domain : '$domain:$port';
@@ -206,17 +277,24 @@ class SiteRule {
           {AppAction? action,
           int? port,
           bool clearPort = false,
-          bool? allowRealIp}) =>
+          bool? allowRealIp,
+          String? serverKey,
+          bool clearServer = false,
+          bool? insecureScheme}) =>
       SiteRule(domain,
           port: clearPort ? null : (port ?? this.port),
           action: action ?? this.action,
-          allowRealIp: allowRealIp ?? this.allowRealIp);
+          allowRealIp: allowRealIp ?? this.allowRealIp,
+          serverKey: clearServer ? null : (serverKey ?? this.serverKey),
+          insecureScheme: insecureScheme ?? this.insecureScheme);
 
   Map<String, dynamic> toJson() => {
         'domain': domain,
         if (port != null) 'port': port,
         'action': action.name,
         'allowRealIp': allowRealIp,
+        if (serverKey != null) 'serverKey': serverKey,
+        if (insecureScheme) 'insecureScheme': true,
       };
 
   factory SiteRule.fromJson(Object? j, {AppAction fallback = AppAction.direct}) {
@@ -228,7 +306,13 @@ class SiteRule {
           action: _actionFrom(j['action'], fallback),
           // Правила, заведённые до появления галочки, чинятся сами: «Прямо»
           // снова означает «прямо».
-          allowRealIp: j['allowRealIp'] as bool? ?? false);
+          allowRealIp: j['allowRealIp'] as bool? ?? false,
+          serverKey:
+              _serverKeyFrom(j['serverKey']) ?? _serverKeyFrom(j['exitId']),
+          // Ключа нет у всех правил, заведённых раньше: молчание означает
+          // «схему не указывали», и замок им не рисуется. Это верно — мы не
+          // знаем, что человек вводил тогда, и выдумывать за него нельзя.
+          insecureScheme: j['insecureScheme'] as bool? ?? false);
     }
     return const SiteRule('');
   }
@@ -305,3 +389,10 @@ class SplitTunnelConfig {
     );
   }
 }
+
+/// Ввёл ли пользователь адрес ЯВНО как `http://`.
+///
+/// `https://` и адрес без схемы — не считается: во втором случае браузер сам
+/// пойдёт в https, и пугать замком не за что.
+bool hasInsecureScheme(String input) =>
+    RegExp(r'^\s*http://', caseSensitive: false).hasMatch(input);

@@ -785,5 +785,84 @@
   },
   "infoGeoAssets": "Los archivos geoip.dat y geosite.dat son listas de direcciones por país y de dominios por categoría (por ejemplo «sitios rusos», «servicios públicos», «VK»). En ellas se apoyan las reglas de enrutamiento que define el panel de tu suscripción.\n\nNo vienen incluidos en la aplicación: entre los dos ocupan unos 30 MB y no todo el mundo los necesita — un servidor normal no los usa en absoluto.\n\nMientras falten los archivos, esas reglas se quitan de la configuración y el tráfico que antes salía directo pasa por la VPN. Es seguro, pero más lento, y los sitios locales pueden denegar el acceso desde una dirección extranjera. Tus propias reglas por sitio y por aplicación funcionan de todos modos — no dependen de estos archivos.",
   "supportBullet2Android": "• Tras pulsar, el informe se recopilará en un solo archivo y se abrirá la ventana del sistema «Compartir» — elige Telegram y se enviará como un único archivo adjunto. Describe el problema en el campo de arriba: sin descripción no hay nada que analizar.",
-  "supportDoneTextAndroid": "El informe se ha recopilado en un solo archivo. Elige en la ventana del sistema adónde enviarlo — en Telegram se enviará como archivo adjunto, no como texto."
+  "supportDoneTextAndroid": "El informe se ha recopilado en un solo archivo. Elige en la ventana del sistema adónde enviarlo — en Telegram se enviará como archivo adjunto, no como texto.",
+  "exitsHeader": "Salidas",
+  "exitsHint": "Una regla «Túnel» puede dirigirse a una salida concreta: un sitio por Alemania, otro por EE. UU. Sin salida, la regla usa el túnel principal, como antes.",
+  "exitsAdd": "Añadir salida",
+  "exitsEmpty": "Aún no hay salidas",
+  "exitsName": "Nombre",
+  "exitsNameHint": "Alemania",
+  "exitsServers": "Servidores",
+  "exitsAutoSelect": "Selección automática por latencia",
+  "exitsAutoSelectSub": "El núcleo mantiene el tráfico en un servidor activo por sí mismo. El coste: cada servidor se sondea cada tres minutos, lo que despierta la radio del teléfono.",
+  "exitsAutoSelectNeedsTwo": "Se necesitan al menos dos servidores",
+  "exitsDelete": "Eliminar salida",
+  "exitsNoServers": "Sin servidores: importa primero una suscripción",
+  "exitsSearch": "Buscar servidor",
+  "exitsPickAtLeastOne": "Selecciona al menos un servidor",
+  "exitsUnsupportedNote": "Los perfiles «Auto» del panel y hysteria2 no funcionan como salida independiente: los gestiona el otro núcleo. Esos servidores aparecen desactivados en la lista.",
+  "infoExits": "Una salida es el destino de una regla «Túnel».\n\nPor defecto una salida es UN solo servidor y no cuesta nada en segundo plano: los protocolos habituales no mantienen conexión permanente. Un grupo de varios servidores con selección automática solo hace falta cuando importa el respaldo ante la caída de un nodo: añade sondeos periódicos y, en el teléfono, despertares de la radio.\n\nLa salida solo tiene sentido con la acción «Túnel». «Directo por Alemania» es una contradicción: una regla directa evita todas las salidas.\n\nUn sitio y su subdominio pueden ir a salidas DISTINTAS: la aplicación coloca la regla más concreta por encima; de lo contrario el padre absorbería el subdominio.\n\nIMPORTANTE: con el proxy del sistema en Windows las salidas no funcionan: en ese modo no se construyen reglas de enrutamiento. Hace falta el modo túnel.",
+  "ruleServer": "Vía servidor",
+  "ruleServerCurrent": "Igual que el principal",
+  "ruleServerCurrentNamed": "Igual que el principal ({server})",
+  "@ruleServerCurrentNamed": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "routeMatchByName": "Coincidencia por nombre de archivo",
+  "routeYourApps": "Tus aplicaciones",
+  "routeYourSites": "Tus sitios",
+  "routeAppsAndSites": "Aplicaciones y sitios",
+  "notifCompactTitle": "Notificación compacta",
+  "notifCompactSub": "Desactivada: suscripción, servidor y velocidad, con botones. Activada: en el título, la app y la suscripción; debajo, el servidor, sin velocidad ni botones.",
+  "localProxyAuthTitle": "Contraseña del proxy local",
+  "localProxyAuthInfo": "El puerto local del núcleo (127.0.0.1) es un proxy completo hacia tu VPN. Sin contraseña, cualquier programa de este mismo dispositivo se conecta a él y se lleva tu túnel entero: la IP de salida, la cuota de la suscripción y el salto de tus propias reglas de túnel dividido, incluidas las apps a las que pusiste «Bloquear». En Android esto importa aún más: ahí cualquier app instalada ve los puertos locales.\n\nDesactívala solo si entras a este proxy a propósito con algo que no sabe autenticarse.",
+  "localProxyAuthOff": "Desactivada: el proxy local está abierto a cualquier programa del dispositivo",
+  "localProxyAuthSystemProxy": "En modo «Proxy del sistema» no se aplica: Windows no sabe pasarle la contraseña al proxy local. Funciona en modo TUN.",
+  "localProxyAuthRandom": "Una contraseña aleatoria nueva en cada conexión — no se guarda en ningún sitio",
+  "localProxyAuthCustom": "Usuario y contraseña propios (se guardan en el archivo de ajustes)",
+  "localProxyCredsTitle": "Usuario y contraseña propios",
+  "localProxyCredsUnset": "Sin definir — se usa una contraseña aleatoria",
+  "localProxyCredsUser": "Usuario: {user}",
+  "@localProxyCredsUser": {
+    "placeholders": {
+      "user": {
+        "type": "String"
+      }
+    }
+  },
+  "localProxyDialogTitle": "Usuario y contraseña del proxy local",
+  "localProxyDialogBody": "Solo hacen falta si tú mismo indicas nuestro proxy (127.0.0.1) en otro programa. Deja los campos vacíos y la contraseña será aleatoria en cada conexión: no se guarda en ningún sitio ni entra en las copias de seguridad.",
+  "localProxyFieldUser": "Usuario",
+  "localProxyFieldPassword": "Contraseña",
+  "localProxyFieldHint": "vacío — aleatoria",
+  "lockdownOnTitle": "Protección del sistema activada",
+  "lockdownOnSub": "El tráfico queda bloqueado aunque la app se cierre o el sistema la descargue. Es el modo más fiable.",
+  "lockdownHalfTitle": "Protección activada a medias",
+  "lockdownHalfSub": "«VPN siempre activa» está asignada, pero «Bloquear conexiones sin VPN» está desactivado. Mientras la app siga viva, el tráfico está protegido; si el sistema la descarga, saldrá al descubierto.",
+  "lockdownOffTitle": "Protección del sistema desactivada",
+  "lockdownOffSub": "Nuestro kill switch retiene el tráfico mientras la app funcione. Si el sistema la descarga, el tráfico saldrá fuera de la VPN. Activa «VPN siempre activa» y «Bloquear conexiones sin VPN».",
+  "lockdownUnknownTitle": "Protección del sistema: estado desconocido",
+  "lockdownUnknownSub": "El estado solo se puede consultar desde Android 10 y con el túnel levantado. Compruébalo a mano: «VPN siempre activa» y «Bloquear conexiones sin VPN».",
+  "lockdownOpenFailed": "No se pudieron abrir los ajustes de VPN del sistema. Búscalos a mano: Ajustes → Redes e Internet → VPN.",
+  "blockNoticeTitle": "Avisar de los sitios bloqueados",
+  "blockNoticeSub": "Cuando una app o el navegador llame a un sitio de la lista «Bloquear», abajo aparecerá una notificación con su nombre. Púlsala y se abrirá esta pantalla.",
+  "siteInsecureScheme": "La dirección está puesta como http:// — la conexión no se cifra y el proveedor la ve entera. Quita «http://» para que el navegador vaya por https.",
+  "exitServerGone": "El servidor de esta regla ya no está en la suscripción — el tráfico va por el túnel principal",
+  "exitServerUnsupported": "{name}\n\nEste servidor no se puede levantar como salida propia: los perfiles «Auto» del panel y algunos protocolos solo los maneja Xray, y las salidas las reparte sing-box. El tráfico de la regla va por el túnel principal.",
+  "@exitServerUnsupported": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeRulesAction": "Reglas",
+  "geoVerdictMissingTitle": "Bases geo sin descargar",
+  "geoVerdictMissingSub": "Las reglas de la suscripción por país y categoría están ahora desactivadas: ese tráfico va por la VPN, no directo.",
+  "geoVerdictUnusableTitle": "El núcleo no abrió las bases geo",
+  "geoVerdictUnusableSub": "Los archivos están, pero el núcleo no los ha leído. Suele ayudar volver a descargarlas."
 }

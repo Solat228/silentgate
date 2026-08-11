@@ -15,4 +15,7 @@
     <string name="vpn_open">Abrir</string>
     <string name="vpn_traffic_now">Agora: ↓ %1$s  ↑ %2$s</string>
     <string name="vpn_traffic_total">Total: ↓ %1$s  ↑ %2$s</string>
+    <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
+    <string name="vpn_collapse">Recolher</string>
+    <string name="vpn_expand">Expandir</string>
 </resources>

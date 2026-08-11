@@ -13,7 +13,7 @@ import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 ///
 /// Так уже терялись `platformTun` и `selfPackage` (ломался весь туннель на
 /// Android), а следом — `ipv6Upstream`, `tunnelDnsForAll`, `blockQuic`,
-/// `blockEncryptedDns` и `blockPagePort`.
+/// `blockEncryptedDns` и `fallbackDnsPort`.
 ///
 /// Проверка не перечисляет поля: сравнивается ГОТОВЫЙ конфиг. Любое поле,
 /// которое хоть как-то влияет на вывод, обязано пережить копию.
@@ -44,7 +44,7 @@ void main() {
     directDnsUpstream: '192.168.1.1',
     logOutput: 'C:/tmp/singbox.log',
     tunnelDnsForAll: true,
-    blockPagePort: 18080,
+    fallbackDnsPort: 18080,
     clashApiPort: 10812,
     clashApiSecret: 'secret',
     blockQuic: true,
@@ -94,7 +94,7 @@ void main() {
       noRealIp: true,
       directDnsUpstream: '192.168.1.1',
       tunnelDnsForAll: true,
-      blockPagePort: 18080,
+      fallbackDnsPort: 18080,
       blockQuic: true,
       blockEncryptedDns: true,
     );
