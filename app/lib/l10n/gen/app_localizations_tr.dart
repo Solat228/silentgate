@@ -137,14 +137,6 @@ class AppLocalizationsTr extends AppLocalizations {
       'TUN, DNS ve ayrık tünelleme ayarları yalnızca TUN modu seçildiğinde görünür — sistem proxy modunda etkisizdir.';
 
   @override
-  String get applyRulesInProxyOnlyTitle =>
-      '\"Engelle\" kuralını sunucu bağlantı noktalarına uygula';
-
-  @override
-  String get applyRulesInProxyOnlySub =>
-      '\"Yalnızca proxy\" modunda ayrık tünelleme hiçbir program için çalışmaz. Bunu açarsanız \"Engelle\" kuralı en azından açıkça açılmış sunucu bağlantı noktalarında çalışır.';
-
-  @override
   String get captureProxyOnly => 'Yalnızca proxy';
 
   @override

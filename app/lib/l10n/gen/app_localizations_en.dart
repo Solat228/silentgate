@@ -136,13 +136,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'TUN, DNS and split-tunneling settings appear when TUN mode is selected — in system-proxy mode they have no effect.';
 
   @override
-  String get applyRulesInProxyOnlyTitle => 'Apply \"Block\" to server ports';
-
-  @override
-  String get applyRulesInProxyOnlySub =>
-      'In \"Proxy only\" mode split tunneling doesn\'t work for any program. Turn this on so the \"Block\" rule applies at least on explicitly opened server ports.';
-
-  @override
   String get captureProxyOnly => 'Proxy only';
 
   @override

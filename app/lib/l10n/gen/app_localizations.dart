@@ -354,18 +354,6 @@ abstract class AppLocalizations {
   /// **'Настройки TUN, DNS и раздельного туннелирования появятся при выборе режима TUN — в режиме системного прокси они не работают.'**
   String get captureTunHint;
 
-  /// No description provided for @applyRulesInProxyOnlyTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Применять «Блок» к портам серверов'**
-  String get applyRulesInProxyOnlyTitle;
-
-  /// No description provided for @applyRulesInProxyOnlySub.
-  ///
-  /// In ru, this message translates to:
-  /// **'В режиме «Только прокси» раздельное туннелирование не действует ни для одной программы. Включите, чтобы правило «Блок» работало хотя бы на явно открытых портах серверов.'**
-  String get applyRulesInProxyOnlySub;
-
   /// No description provided for @captureProxyOnly.
   ///
   /// In ru, this message translates to:

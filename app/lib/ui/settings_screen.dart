@@ -1165,9 +1165,22 @@ class _CaptureSection extends StatelessWidget {
             ]),
             subtitle: Text(l.captureTunSub),
           ),
-          // Задача 3b/7: режим для локального API — ядро поднято, порты
-          // серверов слушают, но ни системный прокси, ни TUN не ставятся.
-          // Не нужен UAC (в отличие от TUN выше), поэтому смена режима — сразу.
+        ],
+        // Задача 3b/7: режим для локального API — ядро поднято, порты
+        // серверов слушают, но ни системный прокси, ни TUN не ставятся.
+        // Не нужен UAC (в отличие от TUN выше), поэтому смена режима — сразу.
+        //
+        // ⚠️ ГЕЙТ БУКВАЛЬНО `Platform.isWindows`, А НЕ УНАСЛЕДОВАННЫЙ
+        // `!Platform.isAndroid` соседних пунктов выше. Оба сегодня совпадают
+        // (кроме Windows/Android в дереве никого нет), но соседний гейт
+        // кодирует чужое допущение «не Android = Windows» — оно перестанет
+        // быть верным в день, когда появится iOS-движок (заглушки
+        // `Platform.isIOS` уже встречаются рядом, см. `tunRoutingSub` ниже).
+        // Наш контрол работает ТОЛЬКО там, где поднимается локальный API
+        // (`AppState.applyApiSettings`, тоже `Platform.isWindows`), поэтому
+        // берём тот же буквальный гейт, а не молчаливо наследуем чужой.
+        // Секцию «Захват» в остальном не трогаем — это не наша зона.
+        if (Platform.isWindows)
           RadioListTile<CaptureMode>(
             value: CaptureMode.proxyOnly,
             groupValue: settings.captureMode,
@@ -1175,7 +1188,6 @@ class _CaptureSection extends StatelessWidget {
             title: Text(l.captureProxyOnly),
             subtitle: Text(l.captureProxyOnlySub),
           ),
-        ],
         // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
         // в режиме системного прокси эти настройки ни на что не влияют.
         // На Android туннель — единственный режим, поэтому показываем всегда.
@@ -1235,7 +1247,10 @@ class _CaptureSection extends StatelessWidget {
           // действует ни для одной программы машины (ничего не
           // перехватывается), поэтому тумблер виден ТОЛЬКО в этом режиме —
           // иначе он был бы виден и ничего не делал бы.
-          if (settings.captureMode == CaptureMode.proxyOnly)
+          // ⚠️ `Platform.isWindows` буквально, как и у пункта режима выше —
+          // тот же довод: это НАШ контрол, а не унаследованный `else`
+          // соседней секции.
+          if (Platform.isWindows && settings.captureMode == CaptureMode.proxyOnly)
             SwitchListTile(
               value: settings.applyRulesInProxyOnly,
               onChanged: (v) => controller

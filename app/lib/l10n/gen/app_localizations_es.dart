@@ -138,14 +138,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Los ajustes de TUN, DNS y túnel dividido aparecen al seleccionar el modo TUN — en modo proxy del sistema no tienen efecto.';
 
   @override
-  String get applyRulesInProxyOnlyTitle =>
-      'Aplicar «Bloquear» a los puertos de los servidores';
-
-  @override
-  String get applyRulesInProxyOnlySub =>
-      'En el modo «Solo proxy» el túnel dividido no funciona para ningún programa. Actívelo para que la regla «Bloquear» funcione al menos en los puertos de servidor abiertos explícitamente.';
-
-  @override
   String get captureProxyOnly => 'Solo proxy';
 
   @override

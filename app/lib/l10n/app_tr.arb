@@ -40,8 +40,6 @@
   "splitTunnelTitle": "Ayrık tünelleme",
   "splitRulesCount": "{n} kural ({apps} uygulama, {sites} site)",
   "captureTunHint": "TUN, DNS ve ayrık tünelleme ayarları yalnızca TUN modu seçildiğinde görünür — sistem proxy modunda etkisizdir.",
-  "applyRulesInProxyOnlyTitle": "\"Engelle\" kuralını sunucu bağlantı noktalarına uygula",
-  "applyRulesInProxyOnlySub": "\"Yalnızca proxy\" modunda ayrık tünelleme hiçbir program için çalışmaz. Bunu açarsanız \"Engelle\" kuralı en azından açıkça açılmış sunucu bağlantı noktalarında çalışır.",
   "captureProxyOnly": "Yalnızca proxy",
   "captureProxyOnlySub": "Çekirdek çalışıyor ve yerel bağlantı noktaları dinliyor, ancak bilgisayar tünelde değil: VPN üzerinden yalnızca proxy'mizi açıkça belirten trafik gider",
   "apiSectionTitle": "Otomasyon için API",

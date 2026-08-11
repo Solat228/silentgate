@@ -134,13 +134,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '选择 TUN 模式后才会显示 TUN、DNS 和分应用代理设置——在系统代理模式下它们不生效。';
 
   @override
-  String get applyRulesInProxyOnlyTitle => '对服务器端口应用「阻止」';
-
-  @override
-  String get applyRulesInProxyOnlySub =>
-      '在「仅代理」模式下，分应用代理对任何程序都不起作用。开启此项后，「阻止」规则至少会在明确开放的服务器端口上生效。';
-
-  @override
   String get captureProxyOnly => '仅代理';
 
   @override

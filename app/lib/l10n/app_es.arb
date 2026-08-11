@@ -66,8 +66,6 @@
     }
   },
   "captureTunHint": "Los ajustes de TUN, DNS y túnel dividido aparecen al seleccionar el modo TUN — en modo proxy del sistema no tienen efecto.",
-  "applyRulesInProxyOnlyTitle": "Aplicar «Bloquear» a los puertos de los servidores",
-  "applyRulesInProxyOnlySub": "En el modo «Solo proxy» el túnel dividido no funciona para ningún programa. Actívelo para que la regla «Bloquear» funcione al menos en los puertos de servidor abiertos explícitamente.",
   "captureProxyOnly": "Solo proxy",
   "captureProxyOnlySub": "El núcleo está activo y los puertos locales escuchan, pero el equipo no está en el túnel: solo pasa por la VPN quien apunte explícitamente a nuestro proxy",
   "apiSectionTitle": "API para automatización",

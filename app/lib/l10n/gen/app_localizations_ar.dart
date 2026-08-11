@@ -136,13 +136,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'تظهر إعدادات TUN وDNS وتقسيم النفق عند اختيار وضع TUN — أما في وضع بروكسي النظام فلا أثر لها.';
 
   @override
-  String get applyRulesInProxyOnlyTitle => 'تطبيق «حظر» على منافذ الخوادم';
-
-  @override
-  String get applyRulesInProxyOnlySub =>
-      'في وضع «بروكسي فقط» لا يعمل تقسيم النفق لأي برنامج. فعّل هذا الخيار ليعمل قاعدة «حظر» على الأقل على منافذ الخوادم المفتوحة صراحةً.';
-
-  @override
   String get captureProxyOnly => 'بروكسي فقط';
 
   @override
