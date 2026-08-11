@@ -162,11 +162,13 @@ class WindowsEngine extends VpnEngineBase {
     // Гейт — `_apiExitsActive`, ТОТ ЖЕ, что решает, создавать ли инбаунды: при
     // пустом токене их не будет ни одного, и проверять порты, которых не
     // возникнет, — значит рисковать ложным отказом на чужом порту.
-    final apiKeys = _apiExitsActive(options.settings)
-        ? options.settings.apiExitServerKeys
-        : const <String>[];
+    final apiActive = _apiExitsActive(options.settings);
+    final apiKeys = apiActive ? options.settings.apiExitServerKeys : const <String>[];
     final apiPorts = <int>[
       for (final k in ApiPorts.withinRange(apiKeys)) ApiPorts.forServer(apiKeys, k)!,
+      // Порт «Прямо» поднимается по тому же гейту, что и порты серверов —
+      // см. `buildApiDirectInbound`/`buildApiExitInbounds` (`core/net/api_ports.dart`).
+      if (apiActive) ApiPorts.direct,
     ];
     final corePorts = [ports.socks, ports.http, ports.api, ...apiPorts];
     var conflict = await PortCheck.findConflict(corePorts);
@@ -456,7 +458,8 @@ class WindowsEngine extends VpnEngineBase {
   /// Маршрутизатор выходов режима «Только прокси» (задача 3b): отдельный
   /// крошечный sing-box, БЕЗ tun-инбаунда и без прав администратора (тот же
   /// класс `SingboxProcess`, что для hysteria2-прокси), который даёт каждому
-  /// выбранному серверу свой локальный порт.
+  /// выбранному серверу свой локальный порт, плюс порт «Прямо» (задача 3c) —
+  /// мимо VPN, для сравнения «через/без VPN» одним и тем же скриптом.
   ///
   /// ⚠️ СБОЙ ЗДЕСЬ НЕ ВАЛИТ ПОДКЛЮЧЕНИЕ ЦЕЛИКОМ. Основной канал (порт ядра
   /// сессии) уже поднят и работает — порты API поверх него надстройка, а не
@@ -484,7 +487,13 @@ class WindowsEngine extends VpnEngineBase {
       for (final e in exitsBuilt.skipped.entries) {
         AppLog.i('Сервер API-порта не поднят: ${e.value}');
       }
-      if (exitsBuilt.outbounds.isEmpty) return;
+      // ⚠️ БОЛЬШЕ НЕ `if (exitsBuilt.outbounds.isEmpty) return;`. Порт «Прямо»
+      // (`ApiPorts.direct`) не нуждается ни в одном из этих outbound-ов — он
+      // ведёт во встроенный `direct` — а вызывающий уже проверил `_apiExitsActive`,
+      // значит токен непуст и этот порт будет создан ВСЕГДА. Ранний выход по
+      // пустому `exitsBuilt.outbounds` молча гасил бы именно его — единственный
+      // порт, который в режиме «Только прокси» пользователь мог хотеть, даже
+      // не выбрав НИ ОДНОГО сервера под отдельный порт.
       if (aborted()) return;
 
       final builder = ExitRouterConfigBuilder(
@@ -527,8 +536,11 @@ class WindowsEngine extends VpnEngineBase {
         }
         _exitRouter = process;
         attached = true;
-        AppLog.i(
-            'Маршрутизатор выходов API: портов ${exitsBuilt.outbounds.length}');
+        // Порт «Прямо» поднят всегда (вызывающий уже проверил
+        // `_apiExitsActive` — токен непуст), серверные порты — по числу
+        // собравшихся выходов.
+        AppLog.i('Маршрутизатор выходов API: серверных портов '
+            '${exitsBuilt.outbounds.length}, порт «Прямо» поднят');
       } finally {
         if (!attached) {
           await process.stop();
