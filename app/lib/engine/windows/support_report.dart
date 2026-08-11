@@ -114,6 +114,23 @@ class SupportReport {
         ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
         : tidySingboxLog(sbp));
     b.writeln();
+    // Третий лог: маршрутизатор выходов режима «Только прокси» (задача 3b) —
+    // отдельный процесс sing-box со своим файлом (`singbox_exit_router.log`),
+    // который иначе никто не читает: `tailLog()` по умолчанию открывает лог
+    // ОБЫЧНОГО прокси-ядра, а не этот. Без него «поднялся и молчит» у
+    // маршрутизатора не разобрать вовсе.
+    const exitRouterLogName = 'singbox_exit_router.log';
+    b.writeln('==================================================');
+    b.writeln('[singbox_exit_router.log — маршрутизатор выходов '
+        '«Только прокси», последние строки]'
+        '${await _mtime(SingboxProcess.logPathFor(dirForLogs, name: exitRouterLogName))}');
+    b.writeln('==================================================');
+    final sbr = await _safe(
+        () => SingboxProcess.tailLog(lines: 200, name: exitRouterLogName));
+    b.writeln(sbr.isEmpty
+        ? '(пусто — маршрутизатор выходов в этой сессии не поднимался)'
+        : tidySingboxLog(sbr));
+    b.writeln();
 
     b.writeln('=== конец отчёта ===');
 

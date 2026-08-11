@@ -62,8 +62,16 @@ class SingboxProcess {
       '${supportDir.path}${Platform.pathSeparator}$name';
 
   /// Хвост лога прокси-ядра (для отчёта поддержки и экрана логов).
-  static Future<String> tailLog({int lines = 200}) async =>
-      RotatingLog.tail(logPathFor(await AppPaths.supportDir()), lines: lines);
+  ///
+  /// [name] — как у [logPathFor]: по умолчанию читает лог обычного
+  /// прокси-ядра (hysteria2), но им же читается лог маршрутизатора выходов
+  /// режима «Только прокси» (`singbox_exit_router.log`, задача 3b) — иначе
+  /// его сбой был бы недиагностируем: конфиг молча не поднялся, а строчки об
+  /// этом никто не читает.
+  static Future<String> tailLog(
+          {int lines = 200, String name = 'singbox_proxy.log'}) async =>
+      RotatingLog.tail(logPathFor(await AppPaths.supportDir(), name: name),
+          lines: lines);
 
   Future<void> start({
     required String executable,
