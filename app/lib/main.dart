@@ -11,6 +11,7 @@ import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
+import 'core/platform/instance_secret.dart';
 import 'core/platform/single_instance.dart';
 import 'core/platform/tray_window.dart';
 import 'core/platform/url_scheme_windows.dart';
@@ -25,20 +26,6 @@ import 'state/probe_controller.dart';
 import 'state/provider_wiring.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
-
-/// Снимок токена API для аутентификации управляющих команд через локальный
-/// сокет (`SingleInstance`, порт 47654).
-///
-/// ⚠️ Не читать `AppSettings.apiToken` с диска на каждое сообщение сокета:
-/// `SingleInstance.listen` вызывает колбэк `token()` в обработчике входящего
-/// соединения, и файловый ввод-вывод там задержал бы как раз ту ссылку,
-/// которую нетерпеливо ждёт пользователь (клик по silentgate://import из
-/// браузера). Снимок живёт в памяти и обновляется слушателем на
-/// `SettingsController` (см. его создание в `main()`) — при первой загрузке
-/// настроек и при каждой их правке. До первой загрузки снимок пуст, и это
-/// безопасно: пустой токен отклоняет ВСЕ управляющие команды (см.
-/// `SingleInstance.listen`), а не пропускает их без проверки.
-String _apiTokenSnapshot = '';
 
 Future<void> main(List<String> args) async {
   // Служебные режимы запуска — Windows-специфика: там exe умеет работать
@@ -80,12 +67,15 @@ Future<void> main(List<String> args) async {
       if (incomingUrl.isNotEmpty) await SingleInstance.forward(incomingUrl);
       exit(0);
     }
-    // Токен читается КАЖДЫЙ РАЗ через снимок в памяти (см. `_apiTokenSnapshot`),
-    // а не захватывается один раз при старте: пользователь может обновить его
-    // в настройках при живом приложении, и старое значение перестало бы
-    // приниматься.
+    // ⚠️ Секрет ПОСТОЯННЫЙ и не зависит от настроек API: он существует всегда,
+    // и порт закрыт целиком независимо от того, включил ли пользователь API
+    // (см. `InstanceSecret` — там же почему прежняя привязка к `apiToken`
+    // ломала все четыре управляющие схемы и при этом оставляла открытым
+    // импорт). Значение снимается один раз: файл не меняется при жизни
+    // процесса, а файловый ввод-вывод в обработчике входящего соединения
+    // задержал бы как раз ту ссылку, которую нетерпеливо ждёт пользователь.
     SingleInstance.listen(server, IncomingLinks.add,
-        token: () => _apiTokenSnapshot);
+        secret: await InstanceSecret.ensure());
 
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
@@ -111,23 +101,7 @@ Future<void> main(List<String> args) async {
           create: (_) =>
               AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
         ),
-        ChangeNotifierProvider(create: (_) {
-          final controller = SettingsController();
-          // ⚠️ Слушатель вешаем ЗДЕСЬ, а не через отдельную provider-связку
-          // (по образцу `shadeLayoutLinkProvider`/`apiSettingsLinkProvider`
-          // ниже — `state/provider_wiring.dart`, обе с `lazy: false`): без
-          // этого флага такие связки Provider строит ЛЕНИВО — только когда
-          // их тип кто-то читает — а токен нужен обработчику сокета уже
-          // сейчас, до первой перерисовки дерева виджетов
-          // (`SingleInstance.listen` вызывается в `main()` ДО `runApp`),
-          // независимо от того, читает ли что-то эту связку.
-          // SettingsController читается напрямую (`app.dart`,
-          // `context.watch<SettingsController>()`), поэтому его собственный
-          // create гарантированно выполнится в любом случае.
-          controller.addListener(
-              () => _apiTokenSnapshot = controller.settings.apiToken);
-          return controller..init();
-        }),
+        ChangeNotifierProvider(create: (_) => SettingsController()..init()),
         // Кнопка «Свернуть» на самом уведомлении меняет раскладку в обход
         // настроек — здесь выбор возвращается в них. Без этого приложение
         // прислало бы прежнюю раскладку со следующим обновлением счётчиков
