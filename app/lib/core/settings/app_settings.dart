@@ -230,6 +230,32 @@ class AppSettings {
   final String localProxyUser;
   final String localProxyPassword;
 
+  /// Локальный API для автоматизации: HTTP на 127.0.0.1 с токеном.
+  ///
+  /// ⚠️ ВЫКЛ ПО УМОЛЧАНИЮ И ЭТО НЕ ОСТОРОЖНИЧАНЬЕ. Управляющий порт опаснее
+  /// прокси-порта: он умеет переключать сервер и читает состояние подписки.
+  /// Кому он не нужен — у того ничего не слушает, и дыры нет.
+  final bool apiEnabled;
+
+  /// Токен API. Он же пароль портов отдельных серверов.
+  ///
+  /// ⚠️ ПУСТОЙ ТОКЕН ОЗНАЧАЕТ «КАНАЛ НЕ ПОДНИМАЕТСЯ», а не «поднимается без
+  /// проверки». Полумера здесь опаснее отсутствия: порт, про который в
+  /// интерфейсе написано «закрыт», а на деле пускающий кого угодно, хуже
+  /// честно выключенного. То же правило уже закреплено для инбаундов ядра.
+  ///
+  /// ⚠️ Лежит на диске в открытом виде — это осознанный размен ради
+  /// предсказуемого ключа между перезапусками, и он назван пользователю в
+  /// интерфейсе. Тот же размен уже сделан для своих логина и пароля прокси.
+  final String apiToken;
+
+  /// Ключи серверов, которым выдан отдельный локальный порт.
+  ///
+  /// ⚠️ Отдельный список, а НЕ «все серверы подписки»: сотня серверов дала бы
+  /// сотню инбаундов в конфиге ядра. И не «серверы из правил»: заводить
+  /// фиктивное правило ради порта — костыль.
+  final List<String> apiExitServerKeys;
+
   /// Прописывать системный прокси ДОПОЛНИТЕЛЬНО к туннелю (гибрид как в Happ).
   ///
   /// Прокси-aware приложения (браузеры, Telegram) пойдут коротким путём на
@@ -452,6 +478,9 @@ class AppSettings {
     this.localProxyAuth = true,
     this.localProxyUser = '',
     this.localProxyPassword = '',
+    this.apiEnabled = false,
+    this.apiToken = '',
+    this.apiExitServerKeys = const [],
     this.tunWatchdogSeconds = 20,
     this.dnsMode = DnsMode.vpn,
     this.dnsCustomServer = '1.1.1.1',
@@ -521,6 +550,9 @@ class AppSettings {
     bool? localProxyAuth,
     String? localProxyUser,
     String? localProxyPassword,
+    bool? apiEnabled,
+    String? apiToken,
+    List<String>? apiExitServerKeys,
     int? tunWatchdogSeconds,
     DnsMode? dnsMode,
     String? dnsCustomServer,
@@ -580,6 +612,9 @@ class AppSettings {
       localProxyAuth: localProxyAuth ?? this.localProxyAuth,
       localProxyUser: localProxyUser ?? this.localProxyUser,
       localProxyPassword: localProxyPassword ?? this.localProxyPassword,
+      apiEnabled: apiEnabled ?? this.apiEnabled,
+      apiToken: apiToken ?? this.apiToken,
+      apiExitServerKeys: apiExitServerKeys ?? this.apiExitServerKeys,
       tunWatchdogSeconds: tunWatchdogSeconds ?? this.tunWatchdogSeconds,
       dnsMode: dnsMode ?? this.dnsMode,
       dnsCustomServer: dnsCustomServer ?? this.dnsCustomServer,
@@ -641,6 +676,9 @@ class AppSettings {
         'localProxyAuth': localProxyAuth,
         'localProxyUser': localProxyUser,
         'localProxyPassword': localProxyPassword,
+        'apiEnabled': apiEnabled,
+        'apiToken': apiToken,
+        'apiExitServerKeys': apiExitServerKeys,
         'tunWatchdogSeconds': tunWatchdogSeconds,
         'dnsMode': dnsMode.name,
         'dnsCustomServer': dnsCustomServer,
@@ -759,6 +797,11 @@ class AppSettings {
       localProxyAuth: j['localProxyAuth'] as bool? ?? defaults.localProxyAuth,
       localProxyUser: j['localProxyUser'] as String? ?? '',
       localProxyPassword: j['localProxyPassword'] as String? ?? '',
+      apiEnabled: j['apiEnabled'] as bool? ?? defaults.apiEnabled,
+      apiToken: j['apiToken'] as String? ?? defaults.apiToken,
+      apiExitServerKeys:
+          (j['apiExitServerKeys'] as List?)?.cast<String>() ??
+              defaults.apiExitServerKeys,
       tunWatchdogSeconds:
           (j['tunWatchdogSeconds'] as num?)?.toInt() ?? defaults.tunWatchdogSeconds,
       dnsMode: pick(DnsMode.values, j['dnsMode'], DnsMode.vpn),
@@ -887,6 +930,12 @@ class AppSettings {
     diff('логин локального прокси', localProxyUser, other.localProxyUser);
     diff('пароль локального прокси', localProxyPassword,
         other.localProxyPassword);
+    // Все три запекаются в конфиг ядра при подъёме: тумблер решает, поднимать
+    // ли инбаунды серверов, токен становится их паролем, список — их составом.
+    diff('API для автоматизации', apiEnabled, other.apiEnabled);
+    diff('токен API', apiToken, other.apiToken);
+    diff('серверы с отдельным портом', apiExitServerKeys.join(','),
+        other.apiExitServerKeys.join(','));
     diff('режим DNS', dnsMode, other.dnsMode);
     diff('свой DNS-сервер', dnsCustomServer, other.dnsCustomServer);
     diff('перехват DNS', dnsHijack, other.dnsHijack);
