@@ -205,4 +205,118 @@ void main() {
           reason: 'блок обязан сработать РАНЬШЕ маршрута на выход');
     });
   });
+
+  // Задача 3c: порт «Прямо» (`ApiPorts.direct`) — раньше существовал только
+  // константой, ни один построитель не создавал под него инбаунд.
+  group('Порт «Прямо»', () {
+    test('живой токен — инбаунд есть, на верном порту, с теми же кредами',
+        () {
+      final ins = buildApiDirectInbound(token: 'secret');
+      expect(ins, hasLength(1));
+      expect(ins.single['type'], 'mixed');
+      expect(ins.single['listen'], '127.0.0.1');
+      expect(ins.single['listen_port'], ApiPorts.direct);
+      expect(ins.single['users'], [
+        {'username': 'sg', 'password': 'secret'}
+      ]);
+    });
+
+    test('пустой токен — инбаунда нет (тот же гейт, что у портов серверов)',
+        () {
+      expect(buildApiDirectInbound(token: ''), isEmpty);
+    });
+
+    test('правило ведёт именно в direct, а не в производный тег', () {
+      final ins = buildApiDirectInbound(token: 'secret');
+      final rules = buildApiDirectRule(ins);
+      expect(rules, hasLength(1));
+      expect(rules.single['inbound'], [apiDirectInboundTag]);
+      expect(rules.single['outbound'], 'direct');
+      expect(rules.single['action'], 'route');
+    });
+
+    test('пустой инбаунд — правила тоже нет (не висячая ссылка)', () {
+      expect(buildApiDirectRule(const []), isEmpty);
+    });
+
+    group('В конфиге SingboxConfigBuilder (TUN)', () {
+      test('инбаунд есть при живом токене, ведёт в direct', () {
+        const builder = SingboxConfigBuilder(
+          options: TunOptions(),
+          apiToken: 'secret',
+        );
+        final cfg = builder.buildMap(const SplitTunnelConfig());
+        final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+        final mine =
+            ins.firstWhere((i) => i['tag'] == apiDirectInboundTag);
+        expect(mine['listen_port'], ApiPorts.direct);
+        expect(mine['users'], [
+          {'username': 'sg', 'password': 'secret'}
+        ]);
+
+        final rules =
+            (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+        expect(
+            rules.any((r) =>
+                (r['inbound'] as List?)?.contains(apiDirectInboundTag) ==
+                    true &&
+                r['outbound'] == 'direct'),
+            isTrue,
+            reason: 'нет правила api-direct -> direct');
+      });
+
+      test('пустой токен — инбаунда порта «Прямо» нет', () {
+        const builder = SingboxConfigBuilder(
+          options: TunOptions(),
+          apiToken: '',
+        );
+        final cfg = builder.buildMap(const SplitTunnelConfig());
+        final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+        expect(ins.any((i) => i['tag'] == apiDirectInboundTag), isFalse);
+      });
+
+      test('не зависит от apiExitServerKeys/exitOutbounds — работает и без '
+          'единого сервера-выхода', () {
+        const builder = SingboxConfigBuilder(
+          options: TunOptions(),
+          apiToken: 'secret',
+          // Ни apiExitServerKeys, ни exitOutbounds не заданы — порт «Прямо»
+          // ведёт во встроенный direct, а не в один из этих выходов.
+        );
+        final cfg = builder.buildMap(const SplitTunnelConfig());
+        final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+        expect(ins.any((i) => i['tag'] == apiDirectInboundTag), isTrue);
+      });
+
+      test('блок пользователя режет и порт «Прямо», выше маршрута', () {
+        const builder = SingboxConfigBuilder(
+          options: TunOptions(),
+          apiToken: 'secret',
+        );
+        const split = SplitTunnelConfig(
+          mode: SplitMode.onlySelected,
+          sites: [SiteRule('blocked.example', action: AppAction.block)],
+        );
+        final cfg = builder.buildMap(split);
+        final rules =
+            (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+
+        final blockIdx = rules.indexWhere((r) =>
+            r['action'] == 'reject' &&
+            (r['domain_suffix'] as List?)?.contains('blocked.example') ==
+                true &&
+            (r['inbound'] as List?)?.contains(apiDirectInboundTag) == true);
+        final routeIdx = rules.indexWhere((r) =>
+            (r['inbound'] as List?)?.contains(apiDirectInboundTag) == true &&
+            r['outbound'] == 'direct');
+
+        expect(blockIdx, greaterThanOrEqualTo(0),
+            reason: 'блок обязан применяться и к порту «Прямо» — иначе '
+                'служебный вход стал бы способом обойти собственные запреты '
+                'пользователя');
+        expect(blockIdx, lessThan(routeIdx),
+            reason: 'блок обязан сработать РАНЬШЕ маршрута на выход');
+      });
+    });
+  });
 }

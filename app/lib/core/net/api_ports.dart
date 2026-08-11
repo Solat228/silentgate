@@ -117,3 +117,59 @@ List<Map<String, dynamic>> buildApiExitRules(
           'outbound': apiExitOutboundOf('${i['tag']}'),
         },
     ];
+
+/// Тег inbound-а порта «Прямо» (см. [ApiPorts.direct]).
+///
+/// ⚠️ Фиксированный, а не выведенный из ключа сервера — этот порт ни к
+/// какому серверу не привязан, он ведёт в инфраструктурный outbound `direct`,
+/// который есть безусловно в ОБОИХ построителях (`SingboxConfigBuilder`,
+/// `ExitRouterConfigBuilder`).
+const String apiDirectInboundTag = 'api-direct';
+
+/// Инбаунд порта «Прямо»: тот же служебный вход, что и у портов серверов
+/// ([buildApiExitInbounds]), с теми же кредами (`sg`/токен) и тем же гейтом
+/// (пустой токен — канал не поднимается), но ведущий не на конкретный сервер,
+/// а на встроенный outbound `direct` — мимо VPN, реальным IP.
+///
+/// ⚠️ Нужен, чтобы скрипт мог сравнить «через VPN»/«без VPN» одной и той же
+/// строкой кода, не выключая туннель: в режиме TUN «просто не указать прокси»
+/// не работает — вся машина уже в туннеле, и обойти его снаружи процесса
+/// ядра нечем (см. `docs/API.md`).
+///
+/// ⚠️ ОБЩАЯ ЛОГИКА ДВУХ КОНФИГОВ — по той же причине, что и
+/// [buildApiExitInbounds]: `SingboxConfigBuilder` и `ExitRouterConfigBuilder`
+/// обязаны создавать этот инбаунд ОДИНАКОВО, иначе он появится в одном
+/// конфиге и пропадёт в другом при первой же независимой правке.
+List<Map<String, dynamic>> buildApiDirectInbound({required String token}) {
+  if (token.isEmpty) return const [];
+  return [
+    {
+      'type': 'mixed',
+      'tag': apiDirectInboundTag,
+      'listen': '127.0.0.1',
+      'listen_port': ApiPorts.direct,
+      'users': [
+        {'username': 'sg', 'password': token}
+      ],
+    },
+  ];
+}
+
+/// Правило «порт «Прямо» → outbound `direct`». Тег outbound-а — буквальный
+/// `'direct'`, а не производная от тега инбаунда (в отличие от
+/// [buildApiExitRules]/[apiExitOutboundOf]): у этого порта нет «своего»
+/// сервера, только один законный адресат.
+///
+/// [apiDirectInbound] — результат [buildApiDirectInbound]: пустой список,
+/// если токен пуст, тогда и правило не строится — раздельные пустые списки
+/// синхронны по построению, порознь превращаться в «висячее» правило нечему.
+List<Map<String, dynamic>> buildApiDirectRule(
+        List<Map<String, dynamic>> apiDirectInbound) =>
+    [
+      for (final i in apiDirectInbound)
+        {
+          'inbound': [i['tag']],
+          'action': 'route',
+          'outbound': 'direct',
+        },
+    ];

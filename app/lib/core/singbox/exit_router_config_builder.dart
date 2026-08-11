@@ -65,31 +65,43 @@ class ExitRouterConfigBuilder {
           if (o['tag'] is String) o['tag'] as String,
       };
 
-  /// Инбаунды портов — общая логика с TUN-построителем, см.
+  /// Инбаунды портов серверов — общая логика с TUN-построителем, см.
   /// `buildApiExitInbounds` (`core/net/api_ports.dart`).
-  List<Map<String, dynamic>> get _inbounds => buildApiExitInbounds(
+  List<Map<String, dynamic>> get _serverInbounds => buildApiExitInbounds(
         serverKeys: serverKeys,
         token: token,
         liveExitTags: _liveExitTags,
       );
 
+  /// Инбаунд порта «Прямо» — та же общая логика, что у TUN-построителя (см.
+  /// `buildApiDirectInbound`). В отличие от [_serverInbounds] не зависит от
+  /// [serverKeys]/[exitOutbounds]: ведёт во встроенный `direct`-outbound,
+  /// который ниже, в [buildMap], добавляется безусловно.
+  List<Map<String, dynamic>> get _directInbound =>
+      buildApiDirectInbound(token: token);
+
   Map<String, dynamic> buildMap() {
-    final inbounds = _inbounds;
+    final serverInbounds = _serverInbounds;
+    final directInbound = _directInbound;
+    final inbounds = [...serverInbounds, ...directInbound];
     final tags = [for (final i in inbounds) '${i['tag']}'];
 
     final rules = <Map<String, dynamic>>[
-      // Блок — ВЫШЕ маршрута на выход: порт уже явно выбрал сервер, и
-      // собственный запрет пользователя обязан сработать раньше, чем запрос
-      // до него доедет (та же логика, что `_addApiExitBlockGuard` в задаче 3).
-      // ⚠️ Гейт `userRulesActive` — ТОТ ЖЕ, что у TUN-построителя: в режиме
-      // «Всё через VPN» пользовательских правил нет вовсе (они сохранены, но
-      // не входят в конфиг), включая блок. Без этого гейта блок на портах API
-      // включался бы даже там, где такой же блок в TUN-конфиге не действует —
-      // расхождение поведения между двумя конфигами, которого брифом не было.
+      // Блок — ВЫШЕ маршрута на выход: порт уже явно выбрал адресата (сервер
+      // или «Прямо»), и собственный запрет пользователя обязан сработать
+      // раньше, чем запрос до него доедет (та же логика, что
+      // `_addApiExitBlockGuard` в задаче 3). ⚠️ Гейт `userRulesActive` — ТОТ
+      // ЖЕ, что у TUN-построителя: в режиме «Всё через VPN» пользовательских
+      // правил нет вовсе (они сохранены, но не входят в конфиг), включая
+      // блок. Без этого гейта блок на портах API включался бы даже там, где
+      // такой же блок в TUN-конфиге не действует — расхождение поведения
+      // между двумя конфигами, которого брифом не было.
       if (applyRules && userRulesActive(split))
         ...apiExitBlockGuardRules(split: split, inboundTags: tags),
       // Порт X → сервер X, БЕЗ ИСКЛЮЧЕНИЙ, кроме блокировки выше.
-      ...buildApiExitRules(inbounds),
+      ...buildApiExitRules(serverInbounds),
+      // Порт «Прямо» → direct, той же логикой.
+      ...buildApiDirectRule(directInbound),
     ];
 
     return {

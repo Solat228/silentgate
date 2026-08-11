@@ -538,6 +538,17 @@ class SingboxConfigBuilder {
   List<Map<String, dynamic>> get _apiExitRules =>
       buildApiExitRules(_apiExitInbounds);
 
+  /// Инбаунд порта «Прямо» — тот же гейт (пустой токен), но НЕ зависит от
+  /// [apiExitServerKeys]/[exitOutbounds]: ведёт во встроенный `direct`,
+  /// который есть в конфиге безусловно. Сборка — в [buildApiDirectInbound]
+  /// (`core/net/api_ports.dart`), общая с [ExitRouterConfigBuilder].
+  List<Map<String, dynamic>> get _apiDirectInbound =>
+      buildApiDirectInbound(token: apiToken);
+
+  /// Правило «порт «Прямо» → outbound `direct`». Сборка — в [buildApiDirectRule].
+  List<Map<String, dynamic>> get _apiDirectRule =>
+      buildApiDirectRule(_apiDirectInbound);
+
   /// «Блок» ПРИМЕНЯЕТСЯ и к трафику, пришедшему в порт конкретного сервера —
   /// иначе служебный вход стал бы способом обойти собственные запреты
   /// пользователя.
@@ -558,7 +569,13 @@ class SingboxConfigBuilder {
   void _addApiExitBlockGuard(
       List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
     if (!_userRulesActive(split)) return;
-    final tags = [for (final i in _apiExitInbounds) '${i['tag']}'];
+    // Порт «Прямо» — ТОТ ЖЕ служебный вход, что и порты серверов: его тег
+    // идёт в один общий список, и блок режет трафик независимо от того, в
+    // какой из портов API он пришёл.
+    final tags = [
+      for (final i in _apiExitInbounds) '${i['tag']}',
+      for (final i in _apiDirectInbound) '${i['tag']}',
+    ];
     if (tags.isEmpty) return;
     // Сборка — в общем [apiExitBlockGuardRules] (задача 3b пользуется тем же).
     rules.addAll(apiExitBlockGuardRules(
@@ -742,17 +759,20 @@ class SingboxConfigBuilder {
       });
     }
 
-    // API: порт X → сервер X, БЕЗ ИСКЛЮЧЕНИЙ, кроме блокировки пользователя.
+    // API: порт X → сервер X, порт «Прямо» → direct, БЕЗ ИСКЛЮЧЕНИЙ, кроме
+    // блокировки пользователя.
     //
     // ⚠️ ОБЯЗАНЫ стоять ВЫШЕ _addSitePriorityRules/_addBlockRules/_addAppRules:
     // те правила матчат по домену/процессу БЕЗ привязки к inbound, и несут не
     // только «Блок», но и «Туннель через другой сервер»/«Прямо» — запрос,
-    // пришедший в порт сервера X, мог бы молча уехать на другой выход, хотя
-    // вызывающий выбрал X явно, самим фактом обращения к порту. Guard идёт
-    // ПЕРВЫМ (блок обязан сработать раньше маршрута на выход), сам маршрут —
-    // сразу за ним; ниже них сайты/приложения этот inbound уже не увидят.
+    // пришедший в порт сервера X (или в порт «Прямо»), мог бы молча уехать на
+    // другой выход, хотя вызывающий выбрал адресата явно, самим фактом
+    // обращения к порту. Guard идёт ПЕРВЫМ (блок обязан сработать раньше
+    // маршрута на выход), сами маршруты — сразу за ним; ниже них сайты/
+    // приложения эти inbound-ы уже не увидят.
     _addApiExitBlockGuard(rules, split);
     rules.addAll(_apiExitRules);
+    rules.addAll(_apiDirectRule);
 
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
     // побеждать удобные direct-исключения (иначе заблокированный домен, чей IP
@@ -829,6 +849,7 @@ class SingboxConfigBuilder {
               ],
           },
         ..._apiExitInbounds,
+        ..._apiDirectInbound,
       ],
       'outbounds': [
         // Тег 'proxy' обязан сохраниться: на него ссылаются ВСЕ правила

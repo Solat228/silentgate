@@ -101,7 +101,10 @@ void main() {
       );
       final cfg = builder.buildMap();
       final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
-      expect(ins, isEmpty);
+      // ⚠️ Список инбаундов НЕ обязан быть пустым целиком: порт «Прямо»
+      // (задача 3c) не зависит от exitOutbounds и создаётся всё равно, раз
+      // токен непуст. Проверяем именно отсутствие СЕРВЕРНОГО инбаунда.
+      expect(ins.any((i) => i['tag'] == apiExitInboundTag(keyA)), isFalse);
     });
 
     test('route.final == direct', () {
@@ -211,6 +214,76 @@ void main() {
       final routeIdx = rules.indexWhere((r) =>
           (r['inbound'] as List?)?.contains(tag) == true &&
           r['outbound'] == exitTagFor(keyA));
+
+      expect(blockIdx, greaterThanOrEqualTo(0));
+      expect(routeIdx, greaterThanOrEqualTo(0));
+      expect(blockIdx, lessThan(routeIdx),
+          reason: 'блок обязан сработать раньше маршрута на выход');
+    });
+  });
+
+  // Задача 3c: порт «Прямо» — ведёт во встроенный `direct`, не зависит от
+  // exitOutbounds/serverKeys (в отличие от портов серверов).
+  group('Порт «Прямо»', () {
+    test('живой токен — инбаунд есть, даже без единого сервера-выхода', () {
+      const builder = ExitRouterConfigBuilder(
+        serverKeys: [],
+        token: 'secret',
+        exitOutbounds: [],
+      );
+      final cfg = builder.buildMap();
+      final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      final mine = ins.firstWhere((i) => i['tag'] == apiDirectInboundTag);
+      expect(mine['type'], 'mixed');
+      expect(mine['listen'], '127.0.0.1');
+      expect(mine['listen_port'], ApiPorts.direct);
+      expect(mine['users'], [
+        {'username': 'sg', 'password': 'secret'}
+      ]);
+
+      final rules = (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+      expect(
+          rules.any((r) =>
+              (r['inbound'] as List?)?.contains(apiDirectInboundTag) == true &&
+              r['outbound'] == 'direct'),
+          isTrue,
+          reason: 'нет правила api-direct -> direct');
+    });
+
+    test('пустой токен — инбаунда порта «Прямо» нет', () {
+      final builder = ExitRouterConfigBuilder(
+        serverKeys: const [keyA],
+        token: '',
+        exitOutbounds: [
+          {'tag': exitTagFor(keyA), 'type': 'vless'},
+        ],
+      );
+      final cfg = builder.buildMap();
+      final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(ins.any((i) => i['tag'] == apiDirectInboundTag), isFalse);
+    });
+
+    test('включено — блок сайта режет и порт «Прямо», ВЫШЕ маршрута', () {
+      const builder = ExitRouterConfigBuilder(
+        serverKeys: [],
+        token: 'secret',
+        exitOutbounds: [],
+        applyRules: true,
+        split: SplitTunnelConfig(
+          mode: SplitMode.onlySelected,
+          sites: [SiteRule('blocked.example', action: AppAction.block)],
+        ),
+      );
+      final cfg = builder.buildMap();
+      final rules = (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+
+      final blockIdx = rules.indexWhere((r) =>
+          r['action'] == 'reject' &&
+          (r['domain_suffix'] as List?)?.contains('blocked.example') == true &&
+          (r['inbound'] as List?)?.contains(apiDirectInboundTag) == true);
+      final routeIdx = rules.indexWhere((r) =>
+          (r['inbound'] as List?)?.contains(apiDirectInboundTag) == true &&
+          r['outbound'] == 'direct');
 
       expect(blockIdx, greaterThanOrEqualTo(0));
       expect(routeIdx, greaterThanOrEqualTo(0));
