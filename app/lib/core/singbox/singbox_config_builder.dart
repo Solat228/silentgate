@@ -557,6 +557,33 @@ class SingboxConfigBuilder {
   String _outboundForApiInbound(String inboundTag) =>
       inboundTag.substring('api-'.length);
 
+  /// «Блок» ПРИМЕНЯЕТСЯ и к трафику, пришедшему в порт конкретного сервера —
+  /// иначе служебный вход стал бы способом обойти собственные запреты
+  /// пользователя.
+  ///
+  /// ⚠️ ПОЗИЦИЯ ОБЯЗАТЕЛЬНА: этот guard и [_apiExitRules] стоят ВЫШЕ
+  /// `_addSitePriorityRules`/`_addBlockRules`/`_addAppRules`. Те правила
+  /// матчатся по домену/процессу БЕЗ привязки к `inbound` и несут не только
+  /// «Блок», но и «Туннель через другой сервер»/«Прямо» — то есть запрос,
+  /// пришедший в порт сервера X, мог бы молча уехать на другой выход, хотя
+  /// вызывающий выбрал X явно, самим фактом обращения к порту. Инвариант
+  /// «порт X → сервер X» обязан держаться БЕЗ исключений, кроме одного —
+  /// блокировки пользователя, и она обязана сработать РАНЬШЕ маршрута на
+  /// выход, иначе служебный вход обошёл бы собственный запрет пользователя.
+  ///
+  /// Гейт `_userRulesActive` — тот же, что у [_addBlockRules]: в режиме «Всё
+  /// через VPN» пользовательских правил, включая блок, нет вовсе (они лежат
+  /// сохранёнными, но не входят в конфиг), и здесь блокировать было бы нечему.
+  void _addApiExitBlockGuard(
+      List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+    if (!_userRulesActive(split)) return;
+    final tags = [for (final i in _apiExitInbounds) '${i['tag']}'];
+    if (tags.isEmpty) return;
+    _addSiteRule(rules, split, AppAction.block, null, inbound: tags);
+    _addActionRule(rules, split, AppAction.block, null,
+        overrideSites: null, inbound: tags);
+  }
+
   /// Тег сервера-адресата для правила, либо `null` — «основной туннель».
   ///
   /// ⚠️ Смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» —
@@ -731,6 +758,18 @@ class SingboxConfigBuilder {
       });
     }
 
+    // API: порт X → сервер X, БЕЗ ИСКЛЮЧЕНИЙ, кроме блокировки пользователя.
+    //
+    // ⚠️ ОБЯЗАНЫ стоять ВЫШЕ _addSitePriorityRules/_addBlockRules/_addAppRules:
+    // те правила матчат по домену/процессу БЕЗ привязки к inbound, и несут не
+    // только «Блок», но и «Туннель через другой сервер»/«Прямо» — запрос,
+    // пришедший в порт сервера X, мог бы молча уехать на другой выход, хотя
+    // вызывающий выбрал X явно, самим фактом обращения к порту. Guard идёт
+    // ПЕРВЫМ (блок обязан сработать раньше маршрута на выход), сам маршрут —
+    // сразу за ним; ниже них сайты/приложения этот inbound уже не увидят.
+    _addApiExitBlockGuard(rules, split);
+    rules.addAll(_apiExitRules);
+
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
     // побеждать удобные direct-исключения (иначе заблокированный домен, чей IP
     // попал в приватный диапазон или в excludeCidr, молча уходил бы напрямую).
@@ -746,10 +785,6 @@ class SingboxConfigBuilder {
     // туннель» разрешается в пользу конкретного правила, как и все остальные.
     _addSitePriorityRules(rules, split);
     _addBlockRules(rules, split);
-    // API: правила «этот порт — в этот сервер» ВЫШЕ пользовательских (сервер
-    // выбран явно, «Прямо» к нему не применяется), но НИЖЕ блока — иначе
-    // служебный вход стал бы способом обойти собственные запреты пользователя.
-    rules.addAll(_apiExitRules);
     if (o.bypassLan) rules.add(_route({'ip_is_private': true}, 'direct'));
     // Только ВАЛИДНЫЕ CIDR: один битый префикс (напр. «10.0.0.0/33») заставляет
     // sing-box отвергнуть ВЕСЬ конфиг, и туннель молча не поднимается.
@@ -1484,9 +1519,13 @@ class SingboxConfigBuilder {
   ///
   /// [allowRealIp] отбирает подмножество правил «Прямо» при включённом
   /// `noRealIp`; при выключенном отбор не нужен — прямое правило и так прямое.
+  ///
+  /// [inbound] — если задан, каждое сгенерированное правило матчится ТОЛЬКО с
+  /// перечисленных inbound-ов (используется API-портами для scoped-блока, см.
+  /// [_addApiExitBlockGuard]); `null` — без ограничения (как раньше).
   void _addSiteRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
       AppAction action, String? outbound,
-      {bool? allowRealIp}) {
+      {bool? allowRealIp, List<String>? inbound}) {
     var matched = split.sites.where((s) => s.action == action);
     if (allowRealIp != null && options.noRealIp) {
       matched = matched.where((s) => s.allowRealIp == allowRealIp);
@@ -1500,7 +1539,10 @@ class SingboxConfigBuilder {
       final noPort =
           group.value.where((s) => s.port == null).map((s) => s.domain).toList();
       if (noPort.isNotEmpty) {
-        rules.add(_action({'domain_suffix': noPort}, target));
+        rules.add(_action({
+          'domain_suffix': noPort,
+          if (inbound != null) 'inbound': inbound,
+        }, target));
       }
       // Группируем по порту: один порт — одно правило с его доменами.
       final byPort = <int, List<String>>{};
@@ -1509,17 +1551,22 @@ class SingboxConfigBuilder {
       }
       final ports = byPort.keys.toList()..sort();
       for (final port in ports) {
-        rules.add(
-            _action({'domain_suffix': byPort[port]!, 'port': [port]}, target));
+        rules.add(_action({
+          'domain_suffix': byPort[port]!,
+          'port': [port],
+          if (inbound != null) 'inbound': inbound,
+        }, target));
       }
     }
   }
 
   /// Одно правило для всех приложений с действием [action]. [outbound] == null →
   /// reject (блок). Приложения «по имени» и «по пути» — разными матчерами.
+  ///
+  /// [inbound] — см. комментарий у [_addSiteRule].
   void _addActionRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
       AppAction action, String? outbound,
-      {bool? allowRealIp, bool? overrideSites = false}) {
+      {bool? allowRealIp, bool? overrideSites = false, List<String>? inbound}) {
     // Выключенные правила не применяются (галочка снята).
     var apps = split.apps.where((a) => a.enabled && a.action == action);
     if (allowRealIp != null && options.noRealIp) {
@@ -1551,7 +1598,10 @@ class SingboxConfigBuilder {
             .toSet()
             .toList();
         if (pkgs.isNotEmpty) {
-          rules.add(_action({'package_name': pkgs}, target));
+          rules.add(_action({
+            'package_name': pkgs,
+            if (inbound != null) 'inbound': inbound,
+          }, target));
         }
         continue;
       }
@@ -1559,7 +1609,10 @@ class SingboxConfigBuilder {
       final byName = group.value.where((a) => a.byName).map((a) => a.name).toList();
       final byPath = group.value.where((a) => !a.byName).map((a) => a.path).toList();
       if (byName.isNotEmpty) {
-        rules.add(_action({'process_name': byName}, target));
+        rules.add(_action({
+          'process_name': byName,
+          if (inbound != null) 'inbound': inbound,
+        }, target));
       }
       if (byPath.isNotEmpty) {
         // process_path сравнивается ядром побайтово (регистр, короткие пути
@@ -1567,6 +1620,7 @@ class SingboxConfigBuilder {
         // с (?i) — надёжно.
         rules.add(_action({
           'process_path_regex': [for (final p in byPath) '(?i)^${_reEscape(p)}\$'],
+          if (inbound != null) 'inbound': inbound,
         }, target));
       }
     }

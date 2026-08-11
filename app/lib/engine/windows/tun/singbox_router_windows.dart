@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/interference_scanner.dart';
@@ -33,6 +35,12 @@ class SingboxRouterWindows implements TunRouter {
   String _socksUser = '';
   String _socksPassword = '';
 
+  /// Ключи серверов с отдельным портом API и сам токен — те же поля, что и
+  /// остальные параметры сессии (см. комментарий у [_exitOutbounds]): держим
+  /// полями, а не тащим через параметры `_startOnce`, по той же причине.
+  List<String> _apiExitServerKeys = const [];
+  String _apiToken = '';
+
   @override
   Future<void> start(SplitTunnelConfig split,
       {required int xraySocksPort,
@@ -41,10 +49,16 @@ class SingboxRouterWindows implements TunRouter {
       bool Function()? abort,
       List<Map<String, dynamic>> exitOutbounds = const [],
       String xraySocksUser = '',
-      String xraySocksPassword = ''}) async {
-    _exitOutbounds = exitOutbounds;
-    _socksUser = xraySocksUser;
-    _socksPassword = xraySocksPassword;
+      String xraySocksPassword = '',
+      List<String> apiExitServerKeys = const [],
+      String apiToken = ''}) async {
+    _prime(
+      exitOutbounds: exitOutbounds,
+      xraySocksUser: xraySocksUser,
+      xraySocksPassword: xraySocksPassword,
+      apiExitServerKeys: apiExitServerKeys,
+      apiToken: apiToken,
+    );
     // «Авто» — реальный подбор: перебираем стек и MTU, пока туннель не поднимется.
     // Явно выбранный стек уважаем и ничего не перебираем.
     if (!options.autotune) {
@@ -106,17 +120,7 @@ class SingboxRouterWindows implements TunRouter {
       SplitTunnelConfig split, int xraySocksPort, TunOptions options) async {
     final dir = await AppPaths.supportDir();
     final cfgPath = TunHelper.configPathFor(dir);
-    await File(cfgPath).writeAsString(
-      SingboxConfigBuilder(
-        xraySocksPort: xraySocksPort,
-        // Без этих двух строк туннель уходит в SOCKS Xray без пароля и
-        // получает 407 — «Подключено» при нулевом трафике.
-        xraySocksUser: _socksUser,
-        xraySocksPassword: _socksPassword,
-        options: options,
-        exitOutbounds: _exitOutbounds,
-      ).buildJson(split),
-    );
+    await File(cfgPath).writeAsString(configJsonFor(split, xraySocksPort, options));
 
     _stopPath = TunHelper.stopFilePathFor(dir);
     TunHelper.clearStopAt(_stopPath);
@@ -141,6 +145,68 @@ class SingboxRouterWindows implements TunRouter {
 
     await _waitUp();
   }
+
+  /// Конфиг, который реально уйдёт в файл для sing-box.
+  ///
+  /// ⚠️ Вынесен ОТДЕЛЬНО от [_startOnce] (который дальше запрашивает права и
+  /// стартует процесс), чтобы тест мог проверить РЕАЛЬНО СОБИРАЕМЫЙ роутером
+  /// конфиг — а не тот, что собран в тесте вручную мимо этого класса. Именно
+  /// так был пропущен API: `SingboxConfigBuilder` умел `apiExitServerKeys`/
+  /// `apiToken`, но здесь, в единственном месте на Windows, где он реально
+  /// вызывается, их никто не передавал — прямые тесты `SingboxConfigBuilder`
+  /// этого не ловили, потому что собирали конфиг в обход роутера.
+  @visibleForTesting
+  String configJsonFor(
+          SplitTunnelConfig split, int xraySocksPort, TunOptions options) =>
+      SingboxConfigBuilder(
+        xraySocksPort: xraySocksPort,
+        // Без этих двух строк туннель уходит в SOCKS Xray без пароля и
+        // получает 407 — «Подключено» при нулевом трафике.
+        xraySocksUser: _socksUser,
+        xraySocksPassword: _socksPassword,
+        options: options,
+        exitOutbounds: _exitOutbounds,
+        apiExitServerKeys: _apiExitServerKeys,
+        apiToken: _apiToken,
+      ).buildJson(split);
+
+  /// Сохраняет параметры сессии в поля. Общий узел для [start] и
+  /// [primeSessionForTest] — ОДИН код пути, а не два места, которые могут
+  /// разойтись между собой.
+  void _prime({
+    required List<Map<String, dynamic>> exitOutbounds,
+    required String xraySocksUser,
+    required String xraySocksPassword,
+    required List<String> apiExitServerKeys,
+    required String apiToken,
+  }) {
+    _exitOutbounds = exitOutbounds;
+    _socksUser = xraySocksUser;
+    _socksPassword = xraySocksPassword;
+    _apiExitServerKeys = apiExitServerKeys;
+    _apiToken = apiToken;
+  }
+
+  /// Заполняет поля сессии, как это делает [start] — но без запроса прав и
+  /// без запуска хелпера. ТОЛЬКО для тестов: [configJsonFor] обязан отражать
+  /// реальные параметры сессии, которые прошли бы через настоящий [start], а
+  /// не то, что тест соберёт мимо класса. Делегирует в [_prime] — тот же путь,
+  /// которым идёт [start], поэтому расхождение между ними исключено.
+  @visibleForTesting
+  void primeSessionForTest({
+    List<Map<String, dynamic>> exitOutbounds = const [],
+    String xraySocksUser = '',
+    String xraySocksPassword = '',
+    List<String> apiExitServerKeys = const [],
+    String apiToken = '',
+  }) =>
+      _prime(
+        exitOutbounds: exitOutbounds,
+        xraySocksUser: xraySocksUser,
+        xraySocksPassword: xraySocksPassword,
+        apiExitServerKeys: apiExitServerKeys,
+        apiToken: apiToken,
+      );
 
   /// Ждём появления TUN-адаптера. Не появился — отдаём реальную причину из лога.
   Future<void> _waitUp() async {

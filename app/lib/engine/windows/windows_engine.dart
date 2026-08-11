@@ -79,6 +79,12 @@ class WindowsEngine extends VpnEngineBase {
       options.captureMode == CaptureMode.systemProxy ||
       options.settings.alsoSetSystemProxy;
 
+  /// Порты API реально нужны ТОЛЬКО когда тумблер включён И задан токен —
+  /// см. `ApiPorts.exitsActive`, единый источник этого гейта для `PortCheck`
+  /// (ниже в `startSession`) и сборки TUN-конфига (`_tunRouter.start`).
+  bool _apiExitsActive(AppSettings s) =>
+      ApiPorts.exitsActive(enabled: s.apiEnabled, token: s.apiToken);
+
   /// Один запуск текущей сессии (первичный или повторный при восстановлении).
   @override
   Future<void> startSession() async {
@@ -144,11 +150,15 @@ class WindowsEngine extends VpnEngineBase {
     // ⚠️ Новые порты проверяются НАРАВНЕ с портами ядра. Иначе занятый порт
     // сервера дал бы отказ подъёма без единого внятного слова: «Bad state»
     // вместо имени программы, которая порт держит.
+    //
+    // Гейт — `_apiExitsActive`, ТОТ ЖЕ, что решает, создавать ли инбаунды: при
+    // пустом токене их не будет ни одного, и проверять порты, которых не
+    // возникнет, — значит рисковать ложным отказом на чужом порту.
+    final apiKeys = _apiExitsActive(options.settings)
+        ? options.settings.apiExitServerKeys
+        : const <String>[];
     final apiPorts = <int>[
-      if (options.settings.apiEnabled) ...[
-        for (final k in ApiPorts.withinRange(options.settings.apiExitServerKeys))
-          ApiPorts.forServer(options.settings.apiExitServerKeys, k)!,
-      ],
+      for (final k in ApiPorts.withinRange(apiKeys)) ApiPorts.forServer(apiKeys, k)!,
     ];
     final corePorts = [ports.socks, ports.http, ports.api, ...apiPorts];
     var conflict = await PortCheck.findConflict(corePorts);
@@ -275,6 +285,11 @@ class WindowsEngine extends VpnEngineBase {
           xraySocksPort: ports.socks,
           xraySocksUser: localInboundUser,
           xraySocksPassword: localInboundPassword,
+          // ⚠️ Тот же гейт (`_apiExitsActive`/`apiKeys`), что и у `corePorts`
+          // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
+          // проверены — иначе PortCheck и построитель конфига разъедутся.
+          apiExitServerKeys: apiKeys,
+          apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
           options: TunOptions.fromSettings(
             options.settings,
             serverIps: await resolveServerIps(servers),

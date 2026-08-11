@@ -25,7 +25,11 @@ abstract class TunRouter {
       // передавались с самого начала — Windows отставал, и расхождение
       // проявлялось только на панельных профилях.
       String xraySocksUser = '',
-      String xraySocksPassword = ''});
+      String xraySocksPassword = '',
+      // Порты локального API на отдельные серверы (см. `core/net/api_ports.dart`).
+      // Пусто — портов нет (тумблер API выключен или токен не задан).
+      List<String> apiExitServerKeys = const [],
+      String apiToken = ''});
 
   /// Остановить и снять TUN.
   Future<void> stop();
