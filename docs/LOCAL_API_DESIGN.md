@@ -90,20 +90,38 @@
 
 **Раскладка портов:**
 
+⚠️ **ПОПРАВКА К МОДЕЛИ.** Именованной сущности «выход» (`VpnExit`, `AppSettings.exits`) в коде
+НЕТ: она была и мигрирована (`app_settings.dart:689,746` — `_migrateExits`). Сейчас правило
+раздельного туннелирования указывает **ключ сервера** (`AppRule.serverKey` / `SiteRule.serverKey`),
+а тег outbound-а образуется из него — `exitTagFor(serverKey)` = `exit-<fnv32>`
+(`core/singbox/exit_tags.dart`). CLAUDE.md в этом месте описывает прежнюю редакцию.
+Поэтому «порт на выход» = **порт на СЕРВЕР**.
+
 | Порт | Что это |
 |---|---|
 | 10808 / 10809 | Общий вход: трафик идёт по правилам раздельного туннелирования (как сейчас) |
-| 10820 + n | Выход №n из `AppSettings.exits`, по порядку списка |
+| 10820 + n | Сервер №n из `AppSettings.apiExitServerKeys`, порядок — по возрастанию ключа |
 | 10819 | «Прямо» — мимо VPN, реальный IP |
 
-Диапазон `10820…10859` — до 40 выходов. Переполнение списка выходов не создаёт портов сверх
-диапазона и пишет строку в журнал (молча потерять выход нельзя).
+Диапазон `10820…10859` — до 40 серверов. Что сверх — порта не получает, и это пишется в журнал
+(молча потерять сервер нельзя).
 
-**Реализация:** на каждый живой выход — свой inbound с тегом `api-exit-<id>` и правило
-`inboundTag: [api-exit-<id>] → outboundTag: exit-<id>`. Раскладка выходов уже собирается общим
-для платформ `core/singbox/exit_outbounds.dart`; порты добавляются туда же.
+**Откуда берётся список.** Новая настройка `AppSettings.apiExitServerKeys` — ключи серверов,
+которым пользователь явно выдал отдельный порт (выбираются в разделе «API для автоматизации»).
+⚠️ Отдельная настройка, а НЕ «все серверы подписки»: сто серверов дали бы сто инбаундов в
+конфиге ядра. И не «серверы из правил»: заводить фиктивное правило ради порта — костыль.
 
-⚠️ **Источник правды о живых выходах — `exitOutbounds` (`_liveExitIds`)**, а не список настроек.
+**Реализация.** Ключи из `apiExitServerKeys` подмешиваются в `ConnectionOptions.exitServers`
+(`AppState._exitServers`, `app_state.dart:1587`) — там уже `Map<String, VpnServer>`. Дальше всё
+работает само: `ExitOutbounds.build` собирает им outbound-ы с тегами `exitTagFor(key)`, а
+построитель добавляет на каждый inbound `api-exit-<fnv32>` и правило
+`inboundTag: [api-exit-<fnv32>] → outboundTag: exit-<fnv32>`.
+
+**Порядок портов детерминирован:** ключи сортируются так же, как в `ExitOutbounds.build`
+(`keys.toList()..sort()`). Иначе номер порта «дышал» бы между запусками, и скрипт с
+захардкоженным портом уехал бы в другую страну.
+
+⚠️ **Источник правды о живых выходах — `exitOutbounds` (`_liveExitTags`)**, а не список настроек.
 `sing-box check` НЕ проверяет существование тега: конфиг со ссылкой на несуществующий outbound
 принят настоящим ядром с кодом 0 и без вывода, а трафик молча уходит в `route.final`. Порт,
 ведущий в несобравшийся выход, поднимать нельзя — иначе Python будет думать, что идёт через
@@ -175,7 +193,7 @@
 |---|---|---|
 | GET | `/v1/status` | `state` (`disconnected`/`connecting`/`connected`/`error`), `server`, `exit`, `captureMode`, `connectedSince`, `externalIp` |
 | GET | `/v1/servers` | массив: `key`, `name`, `country`, `protocol`, `ping`, `working` |
-| GET | `/v1/exits` | массив: `id`, `name`, `port`, `servers`, `autoSelect` |
+| GET | `/v1/exits` | массив: `serverKey`, `name`, `country`, `port` |
 | GET | `/v1/traffic` | `uplinkBytes`, `downlinkBytes`, `uplinkSpeed`, `downlinkSpeed` |
 | GET | `/v1/subscription` | `title`, `usedBytes`, `totalBytes`, `unlimited`, `expiresAt` |
 | POST | `/v1/connect` | тело `{"server": "<key>"}`, либо `{"name": "<имя>"}`, либо `{"auto": true}` |
