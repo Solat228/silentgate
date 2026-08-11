@@ -7,8 +7,18 @@ import '../net/speed_test.dart';
 import '../update/app_update_defaults.dart';
 import 'split_tunnel.dart';
 
-/// Режим захвата трафика.
-enum CaptureMode { systemProxy, tun }
+/// Как перехватывается трафик.
+///
+/// ⚠️ `proxyOnly` ДОБАВЛЯЕТСЯ В КОНЕЦ. Разбор идёт по имени (`pick(...)`), но
+/// порядок значений всё равно менять нельзя: на него смотрят сравнения и
+/// сортировки, а старые файлы настроек хранят имя.
+///
+/// * `systemProxy` — прописываем прокси в реестр WinINET, программы идут через
+///   него сами;
+/// * `tun` — виртуальный адаптер забирает весь трафик машины;
+/// * `proxyOnly` — ядро поднято, локальные порты слушают, но машина НЕ в
+///   туннеле: через VPN идёт только тот, кто явно целится в порт.
+enum CaptureMode { systemProxy, tun, proxyOnly }
 
 /// Драйвер TUN (на Windows реально доступен только wintun).
 enum TunProvider { wintun }
@@ -155,6 +165,14 @@ extension ProbeServiceLabel on ProbeService {
 class AppSettings {
   // ── Захват трафика ────────────────────────────────────────────────────────
   final CaptureMode captureMode;
+
+  /// Имеет ли kill switch смысл при текущем захвате.
+  ///
+  /// ⚠️ В режиме «только прокси» — нет. Kill switch удерживает трафик МАШИНЫ на
+  /// время переподключения, а машина здесь и так ходит мимо туннеля. Тумблер,
+  /// который виден и ничего не делает, хуже отсутствующего.
+  bool get killSwitchApplies => captureMode != CaptureMode.proxyOnly;
+
   final TunProvider tunProvider;
   final TunStack tunStack;
   final int tunMtu;

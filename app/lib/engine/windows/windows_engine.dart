@@ -67,12 +67,15 @@ class WindowsEngine extends VpnEngineBase {
 
   /// ⚠️ СМЕШАННЫЙ РЕЖИМ — ТОЖЕ СИСТЕМНЫЙ ПРОКСИ. При `alsoSetSystemProxy`
   /// прокси прописывается ДОПОЛНИТЕЛЬНО к туннелю, и в локальный порт снова
-  /// смотрит WinINET, который креденшелов не передаёт. Проверка одного лишь
-  /// `captureMode` пропускала этот случай, и весь прокси-aware трафик получал
-  /// бы 407 при включённом по умолчанию пароле.
+  /// смотрит WinINET, который креденшелов не передаёт.
+  ///
+  /// ⚠️ А `proxyOnly` — НЕ системный прокси, хотя туннеля там тоже нет. В порт
+  /// смотрит не WinINET, а конкретная программа, умеющая передать логин и
+  /// пароль. Верни здесь `true` — и порт откроется без пароля именно в том
+  /// режиме, который заведён ради стороннего кода.
   @override
   bool systemProxyModeFor(ConnectionOptions options) =>
-      options.captureMode != CaptureMode.tun ||
+      options.captureMode == CaptureMode.systemProxy ||
       options.settings.alsoSetSystemProxy;
 
   /// Один запуск текущей сессии (первичный или повторный при восстановлении).
@@ -323,7 +326,11 @@ class WindowsEngine extends VpnEngineBase {
       // режиме не срабатывают вовсе (правила по сайтам работают, и даже лучше:
       // имя приходит без сниффинга). Интерфейс говорит об этом прямо — молча
       // отдавать неработающие правила мы уже пробовали восемь раз.
-      final wantProxy = options.captureMode != CaptureMode.tun ||
+      // ⚠️ `proxyOnly` не ставит НИ системный прокси, НИ туннель. Прежнее
+      // условие `!= CaptureMode.tun` считало бы его системным прокси и прописало
+      // бы адрес в реестр — то есть увело бы туда весь трафик машины, ровно
+      // против смысла режима.
+      final wantProxy = options.captureMode == CaptureMode.systemProxy ||
           options.settings.alsoSetSystemProxy;
       if (wantProxy) {
         await SystemProxy.set('127.0.0.1:${ports.http}');
