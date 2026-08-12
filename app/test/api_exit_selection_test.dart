@@ -139,4 +139,78 @@ void main() {
       expect(keys, const {germany});
     });
   });
+
+  /// ⚠️ РЕГРЕССИЯ ПРЕДЫДУЩЕЙ ВОЛНЫ. Состав ключей выше — верный, а вот эффект
+  /// был неверным: как только активный сервер начал получать outbound ради
+  /// порта, его тег ожил, и правило «сайт через него» ушло ВТОРЫМ соединением
+  /// к тому же узлу (панель показывает удвоенный «онлайн», а канал собран
+  /// sing-box из разобранных полей, а не из панельного outbound'а Xray).
+  /// Прежний тест этого не ловил: он проверял только СОСТАВ.
+  group('⚠️ Два источника разводятся, а не сливаются', () {
+    SplitTunnelConfig withSite(String serverKey) => SplitTunnelConfig(
+          mode: SplitMode.onlySelected,
+          sites: [
+            SiteRule('example.com',
+                action: AppAction.tunnel, serverKey: serverKey),
+          ],
+        );
+
+    test('КОМБИНАЦИЯ: сервер активный + отмечен под порт + указан в правиле',
+        () {
+      final settings = base(CaptureMode.tun).copyWith(
+          splitTunnel: withSite(germany), apiExitServerKeys: const [germany]);
+
+      // Outbound ему нужен — иначе порт из /v1/exits никуда не ведёт.
+      expect(
+          AppState.exitServerKeysFor(
+              settings: settings, selectedKey: germany),
+          const {germany});
+      // Но правилам он не адресат: они обязаны идти тегом `proxy`.
+      expect(
+          AppState.ruleExitServerKeysFor(
+              settings: settings, selectedKey: germany),
+          isEmpty);
+      expect(
+          AppState.apiOnlyExitKeysFor(
+              settings: settings, selectedKey: germany),
+          const {germany},
+          reason: 'ключ попал в выходы ТОЛЬКО ради порта — построитель обязан '
+              'спрятать его тег от правил');
+    });
+
+    test('тот же сервер, но НЕ активный — правилам он адресат', () {
+      // Контроль: без этого предыдущая проверка прошла бы и на коде,
+      // прячущем от правил вообще все серверы с портом.
+      final settings = base(CaptureMode.tun).copyWith(
+          splitTunnel: withSite(usa), apiExitServerKeys: const [usa]);
+      expect(
+          AppState.ruleExitServerKeysFor(settings: settings, selectedKey: germany),
+          const {usa});
+      expect(
+          AppState.apiOnlyExitKeysFor(settings: settings, selectedKey: germany),
+          isEmpty,
+          reason: 'сервер, на который ссылается правило, живёт не только ради '
+              'порта — прятать его тег от правил нельзя');
+    });
+
+    test('порт без единого правила — «только ради порта» по определению', () {
+      final settings =
+          base(CaptureMode.tun).copyWith(apiExitServerKeys: const [germany]);
+      expect(
+          AppState.apiOnlyExitKeysFor(settings: settings, selectedKey: null),
+          const {germany});
+    });
+
+    test('закрытый гейт портов не оставляет «api-only» ключей', () {
+      // Системный прокси: инбаундов нет вовсе, значит и прятать нечего.
+      final settings = base(CaptureMode.systemProxy).copyWith(
+          splitTunnel: withSite(usa), apiExitServerKeys: const [germany, usa]);
+      expect(AppState.apiOnlyExitKeysFor(settings: settings, selectedKey: null),
+          isEmpty);
+      expect(
+          AppState.exitServerKeysFor(settings: settings, selectedKey: null),
+          const {usa},
+          reason: 'правила продолжают работать и там, где портов не бывает');
+    });
+  });
 }

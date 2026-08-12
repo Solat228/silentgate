@@ -82,5 +82,42 @@ void main() {
       expect(proxy['password'], 'pw');
       expect(outbounds.any((o) => o['tag'] == exitTagFor(keyB)), isTrue);
     });
+
+    /// ⚠️ ТОТ ЖЕ УРОК, ЧТО И У `apiExitServerKeys`: поле, которое построитель
+    /// умеет, но роутер не передаёт, не работает НИКОГДА — а прямые тесты
+    /// построителя этого не видят, потому что зовут его мимо роутера.
+    test('apiOnlyExitKeys доходят: правило активного сервера идёт в proxy', () {
+      const keyA = 'vless://a';
+      final router = SingboxRouterWindows();
+      router.primeSessionForTest(
+        exitOutbounds: [
+          {'tag': exitTagFor(keyA), 'type': 'vless'},
+        ],
+        apiExitServerKeys: const [keyA],
+        // Активный сервер: outbound ему собран ради порта, но правилам он не
+        // адресат — иначе к одному узлу пошло бы второе соединение.
+        apiOnlyExitKeys: const [keyA],
+        apiToken: 'secret',
+      );
+      const split = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        sites: [SiteRule('2ip.ru', action: AppAction.tunnel, serverKey: keyA)],
+      );
+      final cfg = jsonDecode(router.configJsonFor(split, 10808, const TunOptions()))
+          as Map<String, dynamic>;
+      final rules = (cfg['route']['rules'] as List).cast<Map<String, dynamic>>();
+
+      final site = rules.firstWhere((r) =>
+          (r['domain_suffix'] as List?)?.contains('2ip.ru') == true &&
+          r['outbound'] != null);
+      expect(site['outbound'], 'proxy');
+      // И при этом порт живой — ради него всё и затевалось.
+      expect(
+          rules.any((r) =>
+              (r['inbound'] as List?)?.contains(apiExitInboundTag(keyA)) ==
+                  true &&
+              r['outbound'] == exitTagFor(keyA)),
+          isTrue);
+    });
   });
 }

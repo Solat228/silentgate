@@ -485,6 +485,23 @@ class SingboxConfigBuilder {
   /// Ключи серверов, которым выдаётся отдельный локальный порт (см. `ApiPorts`).
   final List<String> apiExitServerKeys;
 
+  /// Ключи серверов, чей outbound собран ТОЛЬКО ради порта API. Правилам
+  /// раздельного туннелирования эти теги НЕ видны.
+  ///
+  /// ⚠️ ЭТО НЕ ПРИДИРКА, А РЕГРЕССИЯ, КОТОРУЮ ЗДЕСЬ ЛЕЧАТ. Порт API для
+  /// АКТИВНОГО сервера потребовал собрать ему собственный outbound (без него
+  /// инбаунд не создавался, а `/v1/exits` порт публиковал). Но `exitOutbounds`
+  /// — единственный источник правды о живых тегах, и правило «сайт через
+  /// сервер X», где X и есть активный сервер, внезапно перестало идти тегом
+  /// `proxy` и завело ВТОРОЕ соединение к тому же узлу: панель показывает
+  /// удвоенный «онлайн», а сам канал — реконструкция sing-box из разобранных
+  /// полей, а не панельный outbound Xray, то есть ведёт себя иначе основного.
+  ///
+  /// Поэтому источников два, и разводятся они здесь: тег в конфиге ЕСТЬ (порт
+  /// работает), а для правил его как будто нет — они падают в `proxy`, ровно
+  /// как до появления портов.
+  final List<String> apiOnlyExitKeys;
+
   /// Токен API — он же пароль этих инбаундов. Пусто — инбаунды не создаются.
   final String apiToken;
 
@@ -500,6 +517,7 @@ class SingboxConfigBuilder {
     this.proxyOutboundGroup,
     this.exitOutbounds = const [],
     this.apiExitServerKeys = const [],
+    this.apiOnlyExitKeys = const [],
     this.apiToken = '',
   });
 
@@ -516,6 +534,22 @@ class SingboxConfigBuilder {
         for (final o in exitOutbounds)
           if (o['tag'] is String) o['tag'] as String,
       };
+
+  /// Теги, которыми разрешено пользоваться ПРАВИЛАМ раздельного
+  /// туннелирования: живые минус собранные только ради порта API.
+  ///
+  /// ⚠️ РАЗНИЦА МЕЖДУ ЭТИМ НАБОРОМ И [_liveExitTags] — ЭТО РОВНО АКТИВНЫЙ
+  /// СЕРВЕР. Он получает свой outbound ради порта API, но правило «через него»
+  /// обязано остаться на теге `proxy`: второй канал к тому же узлу даёт панели
+  /// удвоенный «онлайн» и идёт мимо панельного outbound'а Xray. Подробности —
+  /// у поля [apiOnlyExitKeys].
+  ///
+  /// ⚠️ Инбаунды портов (`_apiExitInbounds`) и DNS-резолверы выходов считаются
+  /// по-прежнему от [_liveExitTags]: порт обязан работать, а его резолвер —
+  /// ходить тем же сервером.
+  Set<String> get _ruleExitTags => _liveExitTags.difference({
+        for (final k in apiOnlyExitKeys) exitTagFor(k),
+      });
 
   /// Инбаунды отдельных портов: по одному на сервер из [apiExitServerKeys].
   ///
@@ -595,7 +629,10 @@ class SingboxConfigBuilder {
     if (action != AppAction.tunnel) return null;
     if (serverKey == null || serverKey.isEmpty) return null;
     final tag = exitTagFor(serverKey);
-    return _liveExitTags.contains(tag) ? tag : null;
+    // ⚠️ ИМЕННО [_ruleExitTags], А НЕ [_liveExitTags]: outbound активного
+    // сервера живёт в конфиге ради порта API, но правилам он не адресат —
+    // они идут тем же узлом через `proxy`. См. [apiOnlyExitKeys].
+    return _ruleExitTags.contains(tag) ? tag : null;
   }
 
   /// Резолвер, соответствующий выходу маршрута. `null` → домен не резолвится.
@@ -1398,7 +1435,10 @@ class SingboxConfigBuilder {
   /// пользователя стал бы другим. Тихо менять конфиг там, где ничего не
   /// просили, — способ получить необъяснимый отчёт через полгода.
   SplitTunnelConfig? _exitRulesOnly(SplitTunnelConfig split) {
-    if (_userRulesActive(split) || _liveExitTags.isEmpty) return null;
+    // ⚠️ Спрашиваем [_ruleExitTags], а не [_liveExitTags]: выход, живущий
+    // только ради порта API, правил не порождает (см. [apiOnlyExitKeys]), и
+    // ответ «теги есть» здесь означал бы разбор пустого набора правил.
+    if (_userRulesActive(split) || _ruleExitTags.isEmpty) return null;
     final sites = split.sites
         .where((s) => _exitTagFor(s.serverKey, s.action) != null)
         .toList();

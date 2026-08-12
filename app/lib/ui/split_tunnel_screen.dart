@@ -12,7 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
-import '../core/singbox/singbox_outbound_factory.dart';
+import '../core/singbox/exit_outbounds.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
@@ -949,7 +949,14 @@ class _ServerBadge extends StatelessWidget {
     // ровно тот класс дефектов, за который в этом проекте платили дороже всего:
     // «настройка видна, выглядит рабочей и ничего не делает».
     // Владелец решил (07.08.2026) выбор разрешать, но предупреждать.
-    final unsupported = !SingboxOutboundFactory.supports(server);
+    //
+    // ⚠️ И ДО ЭТОЙ ПРАВКИ КОММЕНТАРИЙ ВРАЛ. Спрашивали
+    // `SingboxOutboundFactory.supports`, а он смотрит ТОЛЬКО на `protocol` —
+    // у панельного профиля тот берётся с первого outbound'а конфига и равен
+    // `vless`, то есть предупреждение про «Авто» не показывалось ни разу с
+    // версии 1.2.0. Теперь вопрос задаётся единственному ответчику
+    // (`canBeExitServer`), общему с `/v1/exits` и `ExitOutbounds.build`.
+    final unsupported = !canBeExitServer(server);
     return LayoutBuilder(builder: (context, box) {
       final tight = box.maxWidth < 132;
       final flagOnly = tight && iso != null;

@@ -613,6 +613,13 @@ class AndroidEngine extends VpnEngineBase {
                     resolvedIps[session.servers.first.address.trim()],
               ),
         exitOutbounds: exitsBuilt.outbounds,
+        // ⚠️ ПАРИТЕТ С WINDOWS, А НЕ ЛИШНЯЯ СТРОКА. Портов API на Android
+        // сегодня нет (`apiExitServerKeys`/`apiToken` сюда не передаются), но
+        // состав выходов считает ОБЩИЙ `AppState.exitServerKeysFor`: включи
+        // владелец API в настройках — активный сервер получил бы здесь живой
+        // тег, и правило «через него» ушло бы вторым соединением к тому же
+        // узлу. Разводим источники на обеих платформах одинаково.
+        apiOnlyExitKeys: session.options.apiOnlyExitKeys.toList(),
       ).buildJson(session.options.split);
 
       if (aborted()) return;

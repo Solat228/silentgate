@@ -27,10 +27,22 @@ class ConnectionOptions {
   /// Основного сервера сессии здесь НЕТ — он живёт под тегом `proxy`.
   final Map<String, VpnServer> exitServers;
 
+  /// Из [exitServers] — те, что попали туда ТОЛЬКО ради отдельного порта API.
+  ///
+  /// ⚠️ БЕЗ ЭТОГО РАЗДЕЛЕНИЯ ПОРТ АКТИВНОГО СЕРВЕРА ПЕРЕХВАТЫВАЕТ ПРАВИЛА.
+  /// Активный сервер получает свой outbound, чтобы его порт из `/v1/exits`
+  /// куда-то вёл. Но список выходов — единственный источник правды о живых
+  /// тегах, и правило «сайт через сервер X», где X и есть активный сервер,
+  /// начинало уходить ВТОРЫМ соединением к тому же узлу (панель показывает
+  /// удвоенный «онлайн»), да ещё и мимо панельного outbound'а Xray. Эти ключи
+  /// доходят до `SingboxConfigBuilder.apiOnlyExitKeys`, и правила их не видят.
+  final Set<String> apiOnlyExitKeys;
+
   const ConnectionOptions({
     this.variant = OutboundVariant.none,
     this.settings = AppSettings.defaults,
     this.exitServers = const {},
+    this.apiOnlyExitKeys = const {},
   });
 
   CaptureMode get captureMode => settings.captureMode;

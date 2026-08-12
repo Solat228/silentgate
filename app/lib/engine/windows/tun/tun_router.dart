@@ -29,6 +29,10 @@ abstract class TunRouter {
       // Порты локального API на отдельные серверы (см. `core/net/api_ports.dart`).
       // Пусто — портов нет (тумблер API выключен или токен не задан).
       List<String> apiExitServerKeys = const [],
+      // Из них — те, кому outbound собран ТОЛЬКО ради порта API: правилам
+      // раздельного туннелирования эти теги не адресаты (см.
+      // `SingboxConfigBuilder.apiOnlyExitKeys`).
+      List<String> apiOnlyExitKeys = const [],
       String apiToken = ''});
 
   /// Остановить и снять TUN.

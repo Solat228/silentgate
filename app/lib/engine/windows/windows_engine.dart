@@ -328,6 +328,11 @@ class WindowsEngine extends VpnEngineBase {
           // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
           // проверены — иначе PortCheck и построитель конфига разъедутся.
           apiExitServerKeys: apiKeys,
+          // ⚠️ Кому outbound собран ТОЛЬКО ради порта. Тег у него в конфиге
+          // есть, но правила раздельного туннелирования его не видят — иначе
+          // правило «через активный сервер» завело бы второе соединение к
+          // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
+          apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
           apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
           options: TunOptions.fromSettings(
             options.settings,

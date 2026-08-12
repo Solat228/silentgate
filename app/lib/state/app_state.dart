@@ -491,7 +491,11 @@ class AppState extends ChangeNotifier {
     if (_selectedIndex < 0) {
       _engine.fallbackServers = _fallbackCandidates();
       await _engine.armAdoptedSession(
-          _servers, ConnectionOptions(settings: s, exitServers: _exitServers(s)));
+          _servers,
+          ConnectionOptions(
+              settings: s,
+              exitServers: _exitServers(s),
+              apiOnlyExitKeys: _apiOnlyExitKeys(s)));
       return;
     }
     final server = _servers[_selectedIndex];
@@ -503,7 +507,8 @@ class AppState extends ChangeNotifier {
         ConnectionOptions(
             variant: ov?.variant ?? _selectedVariant,
             settings: s,
-            exitServers: _exitServers(s)));
+            exitServers: _exitServers(s),
+            apiOnlyExitKeys: _apiOnlyExitKeys(s)));
   }
 
   /// Выбрать сервер по имени из подписки. false — не нашли.
@@ -622,10 +627,17 @@ class AppState extends ChangeNotifier {
     // задан: `PortCheck.holderName` запускает netstat и tasklist (до 5 с
     // каждый), а при пустом токене `start()` возвращает false, ещё не
     // прикоснувшись к сокету — порт там ни при чём.
-    _apiPortConflict = (!started && s.apiToken.isNotEmpty)
+    final conflict = (!started && s.apiToken.isNotEmpty)
         ? PortConflict(port: port, holder: await PortCheck.holderName(port))
         : null;
+    // ⚠️ ПРОВЕРКА ПОКОЛЕНИЯ — ДО ЗАПИСИ, А НЕ ПОСЛЕ. `holderName` живёт до
+    // десяти секунд (netstat + tasklist), и за это время более новый вызов
+    // успевает подняться и погасить ошибку. Порядок «записал, потом проверил»
+    // означал, что устаревший вызов возвращал на экран красную плашку поверх
+    // уже работающего API — снять её было бы нечем до следующей правки
+    // настроек.
     if (gen != _apiGeneration) return;
+    _apiPortConflict = conflict;
     notifyListeners();
   }
 
@@ -1656,6 +1668,7 @@ class AppState extends ChangeNotifier {
           variant: ov?.variant ?? _selectedVariant,
           settings: settings,
           exitServers: _exitServers(settings),
+          apiOnlyExitKeys: _apiOnlyExitKeys(settings),
         ),
       );
     }
@@ -1718,6 +1731,12 @@ class AppState extends ChangeNotifier {
     return out;
   }
 
+  /// Ключи выходов, собранных ТОЛЬКО ради порта API, — для этой же сессии.
+  /// Правилам раздельного туннелирования они не адресаты, см.
+  /// [apiOnlyExitKeysFor].
+  Set<String> _apiOnlyExitKeys(AppSettings settings) => apiOnlyExitKeysFor(
+      settings: settings, selectedKey: selectedServer?.key);
+
   /// Ключи серверов, которым нужен ОТДЕЛЬНЫЙ outbound (тег `exit-…`).
   ///
   /// Два источника, и правила у них РАЗНЫЕ — в этом вся суть функции:
@@ -1745,7 +1764,22 @@ class AppState extends ChangeNotifier {
   /// Гейт портов — `ApiPorts.exitPortsActive`, ТОТ ЖЕ, что решает, создавать ли
   /// инбаунды: при выключенном API, пустом токене или системном прокси портов
   /// не будет, и outbound-ы под них были бы мусором в конфиге.
+  /// ⚠️ ОБЪЕДИНЕНИЕ ДВУХ ИСТОЧНИКОВ — ЭТО ЕЩЁ НЕ ВСЁ. Тег, попавший в конфиг
+  /// ради порта API, правилам НЕ адресат: их разводит [apiOnlyExitKeysFor], и
+  /// без неё активный сервер, указанный в правиле, увёл бы трафик правила во
+  /// второе соединение к тому же узлу.
   static Set<String> exitServerKeysFor({
+    required AppSettings settings,
+    required String? selectedKey,
+  }) =>
+      {
+        ...ruleExitServerKeysFor(settings: settings, selectedKey: selectedKey),
+        ...apiExitServerKeysFor(settings),
+      };
+
+  /// Серверы, на которые ссылаются ПРАВИЛА раздельного туннелирования.
+  /// Активный сервер исключён — см. описание [exitServerKeysFor].
+  static Set<String> ruleExitServerKeysFor({
     required AppSettings settings,
     required String? selectedKey,
   }) {
@@ -1760,13 +1794,35 @@ class AppState extends ChangeNotifier {
           r.serverKey!,
     };
     wanted.remove(selectedKey);
-    if (ApiPorts.exitPortsActive(settings)) {
-      for (final key in settings.apiExitServerKeys) {
-        if (key.isNotEmpty) wanted.add(key);
-      }
-    }
     return wanted;
   }
+
+  /// Серверы, которым выдан отдельный ПОРТ API. Активный сервер входит наравне
+  /// с остальными — см. описание [exitServerKeysFor].
+  static Set<String> apiExitServerKeysFor(AppSettings settings) {
+    if (!ApiPorts.exitPortsActive(settings)) return const {};
+    return {
+      for (final key in settings.apiExitServerKeys)
+        if (key.isNotEmpty) key,
+    };
+  }
+
+  /// Ключи, попавшие в выходы ТОЛЬКО ради порта API.
+  ///
+  /// ⚠️ РЕГРЕССИЯ, КОТОРУЮ ЭТО ЛЕЧИТ. Как только активный сервер перестал
+  /// исключаться ради своего порта, его тег `exit-…` ожил — и правило «сайт
+  /// через сервер X», где X и есть активный сервер, начало уходить ВТОРЫМ
+  /// соединением к тому же узлу: панель показывает удвоенный «онлайн», а сам
+  /// канал собран sing-box из разобранных полей, а не из панельного
+  /// outbound'а Xray, то есть ведёт себя иначе основного. Порт оставляем,
+  /// правила возвращаем на тег `proxy` — см.
+  /// `SingboxConfigBuilder.apiOnlyExitKeys`.
+  static Set<String> apiOnlyExitKeysFor({
+    required AppSettings settings,
+    required String? selectedKey,
+  }) =>
+      apiExitServerKeysFor(settings).difference(
+          ruleExitServerKeysFor(settings: settings, selectedKey: selectedKey));
 
   /// Кандидаты на подмену в режиме «Авто»: сначала профили «Авто …» от панели
   /// (у них свой балансировщик), затем обычные серверы. Порядок — как в списке,
@@ -1795,7 +1851,9 @@ class AppState extends ChangeNotifier {
     await _engine.connectBalancer(
       _servers,
       options: ConnectionOptions(
-          settings: settings, exitServers: _exitServers(settings)),
+          settings: settings,
+          exitServers: _exitServers(settings),
+          apiOnlyExitKeys: _apiOnlyExitKeys(settings)),
     );
   }
 

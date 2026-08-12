@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/net/api_ports.dart';
 import 'package:silentgate/core/singbox/exit_outbounds.dart';
 import 'package:silentgate/core/singbox/exit_tags.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
@@ -36,6 +37,9 @@ void main() {
     List<AppRule> apps = const [],
     List<Map<String, dynamic>>? outbounds,
     TunOptions options = const TunOptions(),
+    List<String> apiExitServerKeys = const [],
+    List<String> apiOnlyExitKeys = const [],
+    String apiToken = '',
   }) {
     final builder = SingboxConfigBuilder(
       options: options,
@@ -44,6 +48,9 @@ void main() {
             outboundFor(keyDe, '203.0.113.10'),
             outboundFor(keyUs, '203.0.113.20'),
           ],
+      apiExitServerKeys: apiExitServerKeys,
+      apiOnlyExitKeys: apiOnlyExitKeys,
+      apiToken: apiToken,
     );
     return builder.buildMap(
       SplitTunnelConfig(mode: mode, sites: sites, apps: apps),
@@ -164,6 +171,117 @@ void main() {
           reason: 'висячий тег опаснее: ядро его принимает, а трафик уходит '
               'в final мимо всякого сервера');
       expect(outboundTags(cfg), isNot(contains(exitTagFor(keyDe))));
+    });
+  });
+
+  /// ⚠️ РЕГРЕССИЯ ВОЛНЫ «ПОРТ ДЛЯ АКТИВНОГО СЕРВЕРА».
+  ///
+  /// Активный сервер стал получать собственный outbound, чтобы его порт из
+  /// `GET /v1/exits` куда-то вёл. Но `exitOutbounds` — единственный источник
+  /// правды о живых тегах, и правило «сайт через сервер X», где X и есть
+  /// активный сервер, перестало идти тегом `proxy`: обычный трафик правила
+  /// уходил ВТОРЫМ соединением к тому же узлу. Панель показывает удвоенный
+  /// «онлайн», причём постоянно, а не «пока скрипт пользуется портом»; вдобавок
+  /// второй канал — реконструкция sing-box из разобранных полей, а не панельный
+  /// outbound Xray, то есть ведёт себя иначе основного.
+  ///
+  /// Проверка идёт на КОМБИНАЦИИ (активный + отмечен под порт + указан в
+  /// правиле) — на составе ключей дефект не виден, там всё верно.
+  group('⚠️ Порт API не перехватывает правила', () {
+    const site = '2ip.ru';
+    // Германия здесь играет активный сервер: его нет среди «серверов правил»,
+    // но он есть среди «серверов портов» — ровно то, что делает AppState.
+    Map<String, dynamic> withPort({List<String> apiOnly = const [keyDe]}) =>
+        build(
+          mode: SplitMode.onlySelected,
+          sites: const [
+            SiteRule(site, action: AppAction.tunnel, serverKey: keyDe),
+          ],
+          apiExitServerKeys: const [keyDe],
+          apiOnlyExitKeys: apiOnly,
+          apiToken: 'secret',
+        );
+
+    test('правило через АКТИВНЫЙ сервер идёт тегом proxy, а не вторым каналом',
+        () {
+      final cfg = withPort();
+      expect(routeOf(cfg, site), 'proxy',
+          reason: 'тег exit-… для активного сервера существует ради порта, но '
+              'адресатом правила он быть не должен — иначе к одному узлу '
+              'держатся два соединения');
+      expect(dnsServerOf(cfg, site), 'dns-proxy',
+          reason: 'резолвер обязан идти ТЕМ ЖЕ путём, что трафик: dns-exit-… '
+              'здесь означал бы разъехавшиеся маршрут и резолв');
+    });
+
+    test('но САМ ПОРТ при этом работает — outbound и инбаунд на месте', () {
+      final cfg = withPort();
+      expect(outboundTags(cfg), contains(exitTagFor(keyDe)),
+          reason: 'без outbound-а порт из /v1/exits вёл бы в никуда — ровно '
+              'то, ради чего волна и делалась');
+      final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(ins.any((i) => i['tag'] == apiExitInboundTag(keyDe)), isTrue);
+      final rules = routeRules(cfg);
+      expect(
+          rules.any((r) =>
+              (r['inbound'] as List?)?.contains(apiExitInboundTag(keyDe)) ==
+                  true &&
+              r['outbound'] == exitTagFor(keyDe)),
+          isTrue,
+          reason: 'трафик, пришедший в порт сервера, обязан уйти именно в него');
+    });
+
+    test('КОНТРОЛЬ: без пометки «только ради порта» правило уходит в exit-…',
+        () {
+      // Тест обязан отличать исправленный код от сломанного: это ровно то
+      // поведение, которое волна и породила.
+      final cfg = withPort(apiOnly: const []);
+      expect(routeOf(cfg, site), exitTagFor(keyDe));
+    });
+
+    test('сервер правила, у которого ТОЖЕ есть порт, адресатом остаётся', () {
+      // США здесь — не активный сервер: он и в правиле, и с портом. Прятать
+      // его тег от правил нельзя, иначе «сайт через США» уехал бы в общий
+      // туннель, то есть в другую страну.
+      final cfg = build(
+        mode: SplitMode.onlySelected,
+        sites: const [
+          SiteRule(site, action: AppAction.tunnel, serverKey: keyUs),
+        ],
+        apiExitServerKeys: const [keyUs],
+        apiOnlyExitKeys: const [],
+        apiToken: 'secret',
+      );
+      expect(routeOf(cfg, site), exitTagFor(keyUs));
+      expect(dnsServerOf(cfg, site), 'dns-${exitTagFor(keyUs)}');
+    });
+
+    test('режим «Всё через VPN»: правило активного сервера не появляется', () {
+      // `_exitRulesOnly` строит правила выбора выхода даже в режиме «Всё через
+      // VPN». Выход, живущий только ради порта, правил порождать не должен —
+      // иначе тот же второй канал вернулся бы с другой стороны.
+      final cfg = build(
+        mode: SplitMode.all,
+        sites: const [
+          SiteRule(site, action: AppAction.tunnel, serverKey: keyDe),
+        ],
+        apiExitServerKeys: const [keyDe],
+        apiOnlyExitKeys: const [keyDe],
+        apiToken: 'secret',
+      );
+      expect(routeOf(cfg, site), isNull,
+          reason: 'правило «через активный сервер» в этом режиме означает '
+              '«через основной туннель», то есть ничего');
+      // Контроль: тот же режим для НЕ активного сервера правило порождает —
+      // значит проверка выше не проходит просто потому, что в режиме `all`
+      // правил нет вовсе.
+      final other = build(
+        mode: SplitMode.all,
+        sites: const [
+          SiteRule(site, action: AppAction.tunnel, serverKey: keyUs),
+        ],
+      );
+      expect(routeOf(other, site), exitTagFor(keyUs));
     });
   });
 
@@ -404,6 +522,72 @@ void main() {
       expect(built.outbounds, isEmpty);
       expect(built.skipped.keys, contains('k'),
           reason: 'причина обязана попадать в журнал, а не теряться молча');
+    });
+
+    /// ⚠️ ТЕСТ ВЫШЕ БРАЛ ПРОФИЛЬ С ПРОТОКОЛОМ `panel` — ТАКИХ НЕ БЫВАЕТ.
+    ///
+    /// У настоящего панельного профиля `protocol` берётся с ПЕРВОГО outbound'а
+    /// конфига и равен `vless`, то есть `SingboxOutboundFactory.supports`
+    /// отвечает `true`. Отсекал профили не предикат, а совпадение: выдуманный
+    /// протокол. Из-за этого выход собирался из ОДНОГО узла профиля — без
+    /// балансировщика и `burstObservatory`, — а интерфейс и `docs/API.md`
+    /// утверждали, что такие серверы показаны серым и порта не получают.
+    test('⚠️ НАСТОЯЩИЙ панельный профиль: протокол vless, а выходом не годится',
+        () {
+      const panel = VpnServer(
+        protocol: 'vless',
+        remark: '🎬 Авто (YouTube)',
+        address: 'node1.example',
+        port: 443,
+        id: '11111111-1111-1111-1111-111111111111',
+        rawLink: 'panel://%D0%90%D0%B2%D1%82%D0%BE',
+        rawPanelConfig: '{"outbounds":[],"routing":{"balancers":[]}}',
+      );
+      expect(panel.isPanelProfile, isTrue);
+      expect(SingboxOutboundFactory.supports(panel), isTrue,
+          reason: 'ровно поэтому одного `supports` и не хватало: протокол у '
+              'профиля обычный');
+      expect(canBeExitServer(panel), isFalse,
+          reason: 'единственный ответчик обязан видеть профиль целиком, а не '
+              'только его протокол');
+
+      final built = ExitOutbounds.build(servers: {'k': panel});
+      expect(built.outbounds, isEmpty,
+          reason: 'иначе выход собрался бы из одного узла профиля, а скрипт '
+              'думал бы, что ходит «через Авто»');
+      expect(built.skipped['k'], contains('Авто'));
+    });
+
+    test('заглушка истёкшей подписки (0.0.0.0:1) выходом тоже не становится',
+        () {
+      const notice = VpnServer(
+        protocol: 'vless',
+        remark: 'Ваша подписка истекла!',
+        address: '0.0.0.0',
+        port: 1,
+        id: '11111111-1111-1111-1111-111111111111',
+        rawLink: 'vless://notice',
+      );
+      expect(notice.isNotice, isTrue);
+      expect(canBeExitServer(notice), isFalse,
+          reason: 'конфиг с таким выходом валиден и ведёт в никуда: ядро '
+              'примет, а соединение отвергнется на сокете');
+      expect(ExitOutbounds.build(servers: {'k': notice}).outbounds, isEmpty);
+    });
+
+    test('обычный сервер годится — контроль, что предикат не запрещает всё',
+        () {
+      const ok = VpnServer(
+        protocol: 'vless',
+        remark: 'Германия',
+        address: 'ger.example',
+        port: 443,
+        id: '11111111-1111-1111-1111-111111111111',
+        rawLink: keyDe,
+      );
+      expect(canBeExitServer(ok), isTrue);
+      expect(exitServerRejection(ok), isNull);
+      expect(ExitOutbounds.build(servers: {keyDe: ok}).outbounds, hasLength(1));
     });
 
     test('правило с таким сервером идёт ОСНОВНЫМ туннелем, а не в никуда', () {

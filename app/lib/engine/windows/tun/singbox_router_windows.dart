@@ -39,6 +39,11 @@ class SingboxRouterWindows implements TunRouter {
   /// остальные параметры сессии (см. комментарий у [_exitOutbounds]): держим
   /// полями, а не тащим через параметры `_startOnce`, по той же причине.
   List<String> _apiExitServerKeys = const [];
+
+  /// Из [_apiExitServerKeys] — те, чей outbound живёт ТОЛЬКО ради порта, и
+  /// правилам раздельного туннелирования не адресат (см.
+  /// `SingboxConfigBuilder.apiOnlyExitKeys`).
+  List<String> _apiOnlyExitKeys = const [];
   String _apiToken = '';
 
   @override
@@ -51,12 +56,14 @@ class SingboxRouterWindows implements TunRouter {
       String xraySocksUser = '',
       String xraySocksPassword = '',
       List<String> apiExitServerKeys = const [],
+      List<String> apiOnlyExitKeys = const [],
       String apiToken = ''}) async {
     _prime(
       exitOutbounds: exitOutbounds,
       xraySocksUser: xraySocksUser,
       xraySocksPassword: xraySocksPassword,
       apiExitServerKeys: apiExitServerKeys,
+      apiOnlyExitKeys: apiOnlyExitKeys,
       apiToken: apiToken,
     );
     // «Авто» — реальный подбор: перебираем стек и MTU, пока туннель не поднимется.
@@ -167,6 +174,7 @@ class SingboxRouterWindows implements TunRouter {
         options: options,
         exitOutbounds: _exitOutbounds,
         apiExitServerKeys: _apiExitServerKeys,
+        apiOnlyExitKeys: _apiOnlyExitKeys,
         apiToken: _apiToken,
       ).buildJson(split);
 
@@ -178,12 +186,14 @@ class SingboxRouterWindows implements TunRouter {
     required String xraySocksUser,
     required String xraySocksPassword,
     required List<String> apiExitServerKeys,
+    required List<String> apiOnlyExitKeys,
     required String apiToken,
   }) {
     _exitOutbounds = exitOutbounds;
     _socksUser = xraySocksUser;
     _socksPassword = xraySocksPassword;
     _apiExitServerKeys = apiExitServerKeys;
+    _apiOnlyExitKeys = apiOnlyExitKeys;
     _apiToken = apiToken;
   }
 
@@ -198,6 +208,7 @@ class SingboxRouterWindows implements TunRouter {
     String xraySocksUser = '',
     String xraySocksPassword = '',
     List<String> apiExitServerKeys = const [],
+    List<String> apiOnlyExitKeys = const [],
     String apiToken = '',
   }) =>
       _prime(
@@ -205,6 +216,7 @@ class SingboxRouterWindows implements TunRouter {
         xraySocksUser: xraySocksUser,
         xraySocksPassword: xraySocksPassword,
         apiExitServerKeys: apiExitServerKeys,
+        apiOnlyExitKeys: apiOnlyExitKeys,
         apiToken: apiToken,
       );
 

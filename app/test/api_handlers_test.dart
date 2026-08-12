@@ -113,9 +113,24 @@ class _Env {
   final SettingsController settings;
   final AppStateApiHandlers handlers;
 
-  static Future<_Env> create() async {
+  /// [panelConfigs] — содержимое `panel_outbounds.json`, положенное на диск ДО
+  /// `init()`.
+  ///
+  /// ⚠️ ЕДИНСТВЕННЫЙ СПОСОБ ПОЛУЧИТЬ ЗДЕСЬ НАСТОЯЩИЙ ПАНЕЛЬНЫЙ ПРОФИЛЬ БЕЗ
+  /// СЕТИ. `rawPanelConfig` приходит из XRAY_JSON-подписки, а в тесте сети нет;
+  /// зато `AppState._rebuild` навешивает конфиг панели на сервер по ключу из
+  /// этого самого стора — тем же кодом, которым профиль переживает перезапуск
+  /// приложения. Подделывать `VpnServer` руками мимо `AppState` значило бы
+  /// проверять не тот путь, по которому профиль доходит до `exits()`.
+  static Future<_Env> create({Map<String, String> panelConfigs = const {}}) async {
     final dir = Directory.systemTemp.createTempSync('sg_api_handlers_');
     AppPaths.overrideRoot(dir);
+    if (panelConfigs.isNotEmpty) {
+      File('${dir.path}${Platform.pathSeparator}panel_outbounds.json')
+          .writeAsStringSync(jsonEncode({
+        for (final e in panelConfigs.entries) e.key: {'config': e.value},
+      }));
+    }
     final engine = _FakeEngine();
     final state = AppState(engine: engine);
     await state.init();
@@ -314,6 +329,46 @@ void main() {
         expect(
             exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
             ApiPorts.forServer([ok.key, bad.key], ok.key));
+        expect(exits.last['name'], 'Прямо');
+      });
+
+      /// ⚠️ ПРЕДЫДУЩИЙ ТЕСТ БРАЛ VMESS — И ПОЭТОМУ ПРОХОДИЛ.
+      ///
+      /// Отсекал сервер не тот предикат, о котором говорит документация:
+      /// `SingboxOutboundFactory.supports` смотрит ТОЛЬКО на `protocol`, а у
+      /// панельного профиля «Авто» тот берётся с первого outbound'а конфига и
+      /// равен `vless`. Значит профиль проходил насквозь: чекбокс в настройках
+      /// не серел, `/v1/exits` публиковал порт, а `ExitOutbounds.build` собирал
+      /// выход из ОДНОГО узла профиля — без балансировщика и `burstObservatory`.
+      /// Скрипт думал, что ходит «через Авто», а ходил через случайный узел.
+      test('⚠️ панельный профиль «Авто» (protocol vless) порта НЕ получает',
+          () async {
+        final env = await _Env.create(panelConfigs: {
+          _serverB: '{"outbounds":[{"protocol":"vless","tag":"proxy"}],'
+              '"routing":{"balancers":[{"tag":"b"}]}}',
+        });
+        addTearDown(env.dispose);
+        final ok = await env.addServer(_serverA);
+        final panel = await env.addServer(_serverB);
+        expect(panel.isPanelProfile, isTrue,
+            reason: 'без живого rawPanelConfig тест проверял бы обычный сервер');
+        expect(panel.protocol, 'vless',
+            reason: 'ровно этим профиль и проходил мимо прежнего предиката');
+
+        await env.settings.update((s) => s.copyWith(
+            apiEnabled: true,
+            apiToken: 'secret',
+            apiExitServerKeys: [ok.key, panel.key]));
+
+        final exits = await env.handlers.exits();
+        expect(exits.any((e) => e['serverKey'] == panel.key), isFalse,
+            reason: 'инбаунда под него не создастся — публиковать порт значило '
+                'бы назвать скрипту адрес, на который ядро не сядет');
+        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
+        // Номер порта уцелевшего сервера считается по ПОЛНОМУ списку ключей —
+        // исключение профиля не должно сдвигать чужие порты.
+        expect(exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+            ApiPorts.forServer([ok.key, panel.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
     });
@@ -701,6 +756,41 @@ void main() {
       expect(env.state.apiPortConflict, isNull,
           reason: 'у выключенного тумблера ошибка — мусор на экране');
     });
+
+    /// ⚠️ ЗАПИСЬ ШЛА ДО ПРОВЕРКИ ПОКОЛЕНИЯ. `PortCheck.holderName` живёт до
+    /// десяти секунд (netstat + tasklist), и за это время более новый вызов
+    /// успевал погасить ошибку — а устаревший возвращал её на экран поверх
+    /// уже работающего (или выключенного) API. Снять такую плашку было бы
+    /// нечем до следующей правки настроек.
+    test('⚠️ устаревший вызов не возвращает уже погашенную ошибку', () async {
+      if (!Platform.isWindows) return;
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      final squatter =
+          await ServerSocket.bind(InternetAddress.loopbackIPv4, busyPort);
+      addTearDown(() => squatter.close());
+
+      // Первый вызов упрётся в занятый порт и уйдёт спрашивать имя держателя.
+      final stale = env.state.applyApiSettings(
+          const AppSettings(apiEnabled: true, apiToken: 'tok'),
+          env.probe, env.settings,
+          port: busyPort);
+      // Пауза — чтобы он успел пройти неудачный bind и войти в holderName:
+      // без неё вызов отвалился бы на РАННЕЙ проверке поколения и проверять
+      // было бы нечего.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // Пользователь выключает API, пока идёт опрос держателя.
+      await env.state.applyApiSettings(
+          const AppSettings(apiEnabled: false), env.probe, env.settings,
+          port: busyPort);
+      expect(env.state.apiPortConflict, isNull);
+
+      await stale;
+      expect(env.state.apiPortConflict, isNull,
+          reason: 'устаревший вызов обязан молча уйти, а не вернуть плашку '
+              'про занятый порт у выключенного тумблера');
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 
   /// ⚠️ НАХОДКА ФИНАЛЬНОГО РЕВЬЮ (8). Тумблер «Применять правила раздельного

@@ -22,7 +22,7 @@ import '../core/update/app_update.dart';
 import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
-import '../core/singbox/singbox_outbound_factory.dart';
+import '../core/singbox/exit_outbounds.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
 import '../engine/engine_base.dart';
@@ -1533,9 +1533,15 @@ class _ApiExitCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    // Тот же предикат, что решает это физически (`ExitOutbounds.build`) и что
-    // спрашивает `/v1/exits`. Три места — один вопрос и один ответчик.
-    final unsupported = !SingboxOutboundFactory.supports(server);
+    // Тот же предикат, что решает это физически (`ExitOutbounds.build`), что
+    // спрашивает `/v1/exits` и что красит плашку выхода в правиле
+    // (`split_tunnel_screen`). Четыре места — один вопрос и один ответчик.
+    //
+    // ⚠️ РАНЬШЕ ЗДЕСЬ СПРАШИВАЛИ `SingboxOutboundFactory.supports`, и
+    // панельный профиль «Авто» его ПРОХОДИЛ (его `protocol` — это протокол
+    // первого outbound'а конфига, обычно `vless`). Чекбокс выглядел обычным,
+    // порт публиковался, а выход собирался из одного узла профиля.
+    final unsupported = !canBeExitServer(server);
     final tile = CheckboxListTile(
       dense: true,
       controlAffinity: ListTileControlAffinity.leading,
