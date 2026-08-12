@@ -14,24 +14,27 @@ if not exist "%JUNCTION%\" (
 
 cd /d "%JUNCTION%\app"
 set "REL=%JUNCTION%\app\build\windows\x64\runner\Release"
-rem ==== exe занят? ====
-rem Если приложение запущено ИЗ ЭТОЙ папки, линковка падает с LNK1104. Раньше в
-rem этот момент сборка уходила в обходную папку на C:, и владелец продолжал
-rem запускать старую версию, не зная об этом. Теперь честно останавливаемся.
-rem Рабочая копия владельца живёт в соседней папке Release ^(2^) - её НЕ трогаем.
-if exist "%REL%\silentgate.exe" (
-  2>nul ^( ^>^>"%REL%\silentgate.exe" call ^) ^|^| (
-    echo.
-    echo === silentgate.exe ЗАНЯТ ===
-    echo Файл: %REL%\silentgate.exe
-    echo Его держит запущенное приложение. Закройте SilentGate и повторите.
-    echo Свою рабочую копию из Release ^(2^) закрывать не нужно.
-    echo.
-    pause
-    exit /b 1
-  )
-)
+rem ==== занят ли exe ====
+rem Если приложение запущено ИЗ ЭТОЙ папки, линковка падает с LNK1104.
+rem Раньше в этот момент сборка молча уходила в обходную папку на C:, и
+rem владелец продолжал запускать старую версию, не зная об этом.
+rem Рабочая копия владельца лежит в соседней папке Release ^(2^) - её
+rem закрывать не нужно, собираем мы только в Release без цифры.
+if not exist "%REL%\silentgate.exe" goto :sg_free
+2>nul (>>"%REL%\silentgate.exe" (call )) || goto :sg_busy
+goto :sg_free
 
+:sg_busy
+echo.
+echo === SILENTGATE.EXE ЗАНЯТ ===
+echo Файл: %REL%\silentgate.exe
+echo Его держит запущенное приложение - линковка упадёт с LNK1104.
+echo Закройте SilentGate, запущенный из этой папки, и повторите сборку.
+echo.
+pause
+exit /b 1
+
+:sg_free
 echo Сборка release...
 call "%FLUTTER%" build windows --release
 if errorlevel 1 (
@@ -83,6 +86,8 @@ if errorlevel 1 (
 
 echo.
 echo === ГОТОВО ===
+for /f "tokens=2 delims=: " %%v in ('findstr /b "version:" "%JUNCTION%\app\pubspec.yaml"') do set "VER=%%v"
+echo Версия:     %VER%
 echo Приложение: %REL%\silentgate.exe
 start "" "%REL%"
 endlocal
