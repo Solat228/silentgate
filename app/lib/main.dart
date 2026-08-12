@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
+import 'core/platform/app_log.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
 import 'core/platform/core_cleanup.dart';
@@ -15,7 +16,10 @@ import 'core/platform/instance_secret.dart';
 import 'core/platform/single_instance.dart';
 import 'core/platform/tray_window.dart';
 import 'core/platform/url_scheme_windows.dart';
+import 'core/models/traffic_stats.dart';
+import 'core/settings/app_settings.dart';
 import 'core/url_scheme.dart';
+import 'data/settings_storage.dart';
 import 'engine/android/platform_services_android.dart';
 import 'engine/windows/platform_services_windows.dart';
 import 'engine/windows/tun/tun_helper.dart';
@@ -94,6 +98,9 @@ Future<void> main(List<String> args) async {
   // лежит на нативной стороне и ждёт, когда её заберут.
   unawaited(IncomingLinks.bindPlatform());
 
+  // Чистка логов и отчётов по сроку хранения — фоном, чтобы не задерживать окно.
+  unawaited(_cleanOldLogs());
+
   runApp(
     MultiProvider(
       providers: [
@@ -138,6 +145,29 @@ Future<void> main(List<String> args) async {
       child: const SilentGateApp(),
     ),
   );
+}
+
+/// Удалить логи и отчёты старше выбранного пользователем срока хранения.
+///
+/// ⚠️ Настройки читаются ОТДЕЛЬНО от `SettingsController`, а не через него:
+/// чистка обязана отработать один раз при запуске и не зависеть от того, дошёл
+/// ли пользователь до экрана, где контроллер впервые понадобится. Файл
+/// настроек маленький, лишнее чтение стоит меньше, чем незакрытая ветка.
+///
+/// Ничего не удаляет при `LogRetention.never` — это ответственность
+/// [LogMaintenance.clean], здесь просто передаётся срок.
+Future<void> _cleanOldLogs() async {
+  try {
+    final settings = await SettingsStorage().load();
+    final r = await LogMaintenance.clean(maxAge: settings.logRetention.maxAge);
+    if (!r.isEmpty) {
+      AppLog.i('Чистка по сроку хранения (${settings.logRetention.name}): '
+          'удалено файлов ${r.files}, освобождено '
+          '${TrafficStats.formatBytes(r.bytes)}');
+    }
+  } catch (_) {
+    // Уборка не имеет права мешать запуску.
+  }
 }
 
 /// Служебные режимы запуска Windows-сборки. Возвращает `true`, если процесс

@@ -62,6 +62,14 @@ class AppToast {
   ///
   /// [id] — ключ операции («ping», «autoconfig»): повторный вызов с тем же id
   /// обновляет ту же карточку, а не плодит новые.
+  ///
+  /// [onTap] — что делать по нажатию на карточку (например, открыть экран этой
+  /// же операции). [tapTooltip] — подсказка к нажатию: текст задаёт вызывающий,
+  /// иначе универсальная карточка знала бы про конкретный экран приложения.
+  ///
+  /// [pinned] — **закреплённая** карточка: держится у самого низа колонки (её
+  /// не подбрасывают вверх появляющиеся и исчезающие соседи) и получает кнопку
+  /// сворачивания в одну строку. Обычные карточки ведут себя как раньше.
   static void progress(
     BuildContext context, {
     required String id,
@@ -70,6 +78,9 @@ class AppToast {
     bool finished = false,
     ToastKind kind = ToastKind.info,
     Duration holdAfterFinish = const Duration(seconds: 10),
+    VoidCallback? onTap,
+    String? tapTooltip,
+    bool pinned = false,
   }) =>
       _ProgressToasts.update(
         context,
@@ -79,10 +90,52 @@ class AppToast {
         finished: finished,
         kind: kind,
         hold: holdAfterFinish,
+        onTap: onTap,
+        tapTooltip: tapTooltip,
+        pinned: pinned,
       );
 
-  /// Снять карточку прогресса немедленно (например, операцию отменили).
+  /// Снять карточку прогресса немедленно. Нужна там, где операция кончилась
+  /// БЕЗ итога: карточка висит с крутящейся полоской и сама не уходит никогда —
+  /// обратный отсчёт заводится только по `finished: true`.
   static void dismissProgress(String id) => _ProgressToasts.remove(id);
+
+  /// Экраны, уже открытые нажатием на карточку.
+  ///
+  /// Карточка живёт в Overlay навигатора и продолжает обновляться, когда сверху
+  /// уже открыт экран: без этого второе нажатие клало бы на стек второй такой
+  /// же экран, и «Назад» пришлось бы жать дважды.
+  static final Set<String> _openedByToast = <String>{};
+
+  /// Открыть экран из карточки — не больше одного экземпляра на [key].
+  ///
+  /// Второй экземпляр не открываем по ДВУМ признакам, и оба нужны:
+  ///  * свой ключ — от повторного нажатия по самой карточке;
+  ///  * «поверх нас уже что-то открыто» ([ModalRoute.isCurrent] у экрана, из
+  ///    которого показана карточка) — тот же экран открывается и с других
+  ///    кнопок (например, из меню сервера), а карточка про них не знает.
+  static Future<void> openOnce(
+    BuildContext context, {
+    required String key,
+    required WidgetBuilder builder,
+  }) async {
+    if (ModalRoute.of(context)?.isCurrent == false) return;
+    if (!_openedByToast.add(key)) return;
+    try {
+      await Navigator.of(context).push(MaterialPageRoute(builder: builder));
+    } finally {
+      _openedByToast.remove(key);
+    }
+  }
+
+  /// Сброс состояния карточек между тестами: реестр статический и переживает
+  /// пересоздание дерева виджетов, поэтому один тест иначе видел бы
+  /// свёрнутость и карточки другого.
+  @visibleForTesting
+  static void resetProgressForTest() {
+    _ProgressToasts.reset();
+    _openedByToast.clear();
+  }
 }
 
 /// Состояние одной карточки прогресса.
@@ -93,6 +146,9 @@ class _ProgressData {
   bool finished;
   ToastKind kind;
   Duration hold;
+  VoidCallback? onTap;
+  String? tapTooltip;
+  bool pinned;
   _ProgressData({
     required this.id,
     required this.message,
@@ -100,6 +156,9 @@ class _ProgressData {
     required this.finished,
     required this.kind,
     required this.hold,
+    required this.onTap,
+    required this.tapTooltip,
+    required this.pinned,
   });
 }
 
@@ -109,6 +168,24 @@ class _ProgressToasts {
   static final ValueNotifier<List<_ProgressData>> _items = ValueNotifier([]);
   static OverlayEntry? _host;
 
+  /// ⚠️ Свёрнутость живёт ЗДЕСЬ, а не в `State` карточки, и переживает даже
+  /// снятие карточки. Причина: раскладку присылает поток счётчиков — карточка
+  /// пересобирается каждый такт, а после прогона её сносят целиком (обратный
+  /// отсчёт → `remove`, при опустевшем списке уходит и сам оверлей). Флаг
+  /// внутри виджета следующий такт вернул бы развёрнутым, а следующий прогон —
+  /// тем более: ровно эта ловушка была в 1.3.0 с кнопкой сворачивания
+  /// уведомления на Android.
+  static final Map<String, bool> _collapsed = <String, bool>{};
+
+  static bool collapsed(String id) => _collapsed[id] ?? false;
+
+  static void setCollapsed(String id, bool value) {
+    _collapsed[id] = value;
+    // Список тот же по содержимому, поэтому подсовываем НОВЫЙ экземпляр:
+    // ValueNotifier сравнивает по идентичности и иначе промолчит.
+    _items.value = [..._items.value];
+  }
+
   static void update(
     BuildContext context, {
     required String id,
@@ -117,6 +194,9 @@ class _ProgressToasts {
     required bool finished,
     required ToastKind kind,
     required Duration hold,
+    VoidCallback? onTap,
+    String? tapTooltip,
+    bool pinned = false,
   }) {
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
@@ -134,6 +214,9 @@ class _ProgressToasts {
       item.finished = finished;
       item.kind = kind;
       item.hold = hold;
+      item.onTap = onTap;
+      item.tapTooltip = tapTooltip;
+      item.pinned = pinned;
       list[i] = item;
     } else {
       list.add(_ProgressData(
@@ -143,18 +226,36 @@ class _ProgressToasts {
         finished: finished,
         kind: kind,
         hold: hold,
+        onTap: onTap,
+        tapTooltip: tapTooltip,
+        pinned: pinned,
       ));
     }
     _items.value = list;
   }
 
   static void remove(String id) {
+    // Нечего снимать — выходим молча. Иначе вызов «на всякий случай» (а
+    // `dismissProgress` зовётся из перерисовки экрана) каждый кадр подсовывал
+    // бы новый список и заставлял пересобирать живые карточки соседей.
+    if (!_items.value.any((e) => e.id == id)) return;
     final list = [..._items.value]..removeWhere((e) => e.id == id);
     _items.value = list;
     if (list.isEmpty) {
       _host?.remove();
       _host = null;
     }
+  }
+
+  static void reset() {
+    // Оверлей прошлого теста мог уехать вместе с деревом виджетов — тогда
+    // снимать уже нечего, и это не ошибка.
+    try {
+      _host?.remove();
+    } catch (_) {}
+    _host = null;
+    _items.value = [];
+    _collapsed.clear();
   }
 }
 
@@ -175,19 +276,31 @@ class _ProgressStack extends StatelessWidget {
       bottom: 96 + safeBottom,
       child: ValueListenableBuilder<List<_ProgressData>>(
         valueListenable: _ProgressToasts._items,
-        builder: (_, items, __) => Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+        builder: (_, items, __) {
+          // Закреплённая карточка — всегда ПОСЛЕДНЯЯ: колонка растёт вверх от
+          // нижнего края, поэтому нижняя стоит на месте, пока рядом появляются
+          // и исчезают обычные (пинг, подбор стека TUN). Ставь её первой — и
+          // «закреплённая» прыгала бы вверх-вниз на каждом соседе.
+          final ordered = <_ProgressData>[
             for (final it in items)
-              // Ключ на внешнем виджете — чтобы отсчёт не сбрасывался при сдвиге.
-              Padding(
-                key: ValueKey(it.id),
-                padding: const EdgeInsets.only(top: 8),
-                child: _ProgressCard(data: it),
-              ),
-          ],
-        ),
+              if (!it.pinned) it,
+            for (final it in items)
+              if (it.pinned) it,
+          ];
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final it in ordered)
+                // Ключ на внешнем виджете — чтобы отсчёт не сбрасывался при сдвиге.
+                Padding(
+                  key: ValueKey(it.id),
+                  padding: const EdgeInsets.only(top: 8),
+                  child: _ProgressCard(data: it),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -260,12 +373,32 @@ class _ProgressCardState extends State<_ProgressCard>
     }
   }
 
+  /// Подсказка только когда есть что сказать: `Tooltip` с пустым текстом
+  /// всё равно всплывает пустой плашкой при наведении.
+  Widget _maybeTooltip(String? message, Widget child) =>
+      (message == null || message.isEmpty)
+          ? child
+          : Tooltip(message: message, child: child);
+
+  /// Свернуть/развернуть. Пишем В РЕЕСТР, а не в `setState`: см. комментарий у
+  /// `_ProgressToasts._collapsed` — флаг в `State` не пережил бы ни такт
+  /// счётчиков, ни снятие карточки после прогона.
+  void _toggleCollapsed() {
+    final id = widget.data.id;
+    _ProgressToasts.setCollapsed(id, !_ProgressToasts.collapsed(id));
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final color = _color(scheme);
     final data = widget.data;
     final countdown = _countdown;
+    // Сворачивается только закреплённая: у обычных карточек кнопка была бы
+    // лишней — они и так уходят сами через несколько секунд.
+    final collapsible = data.pinned;
+    final collapsed = collapsible && _ProgressToasts.collapsed(data.id);
 
     return FadeTransition(
       opacity: _appear,
@@ -275,7 +408,7 @@ class _ProgressCardState extends State<_ProgressCard>
         child: Material(
           color: Colors.transparent,
           child: Container(
-            width: 320,
+            width: collapsed ? 240 : 320,
             decoration: BoxDecoration(
               color: ElevationOverlay.applySurfaceTint(
                   scheme.surfaceContainerHigh, scheme.surfaceTint, 3),
@@ -285,22 +418,48 @@ class _ProgressCardState extends State<_ProgressCard>
             ),
             clipBehavior: Clip.antiAlias,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
-                child: Row(children: [
-                  SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: data.finished
-                        ? Icon(Icons.check_circle_outline, size: 16, color: color)
-                        : CircularProgressIndicator(strokeWidth: 2, color: color),
+              InkWell(
+                // Нажатие на карточку ведёт к своей операции. Подсказку даёт
+                // вызывающий: карточка общая и про конкретные экраны не знает.
+                onTap: data.onTap,
+                child: _maybeTooltip(
+                  data.onTap == null ? null : data.tapTooltip,
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+                    child: Row(children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: data.finished
+                            ? Icon(Icons.check_circle_outline,
+                                size: 16, color: color)
+                            : CircularProgressIndicator(
+                                strokeWidth: 2, color: color),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          data.message,
+                          style: const TextStyle(fontSize: 13),
+                          // Свёрнутая — ровно одна строка; развёрнутая переносит
+                          // текст, как и раньше.
+                          maxLines: collapsed ? 1 : null,
+                          overflow: collapsed ? TextOverflow.ellipsis : null,
+                        ),
+                      ),
+                      if (collapsible)
+                        IconButton(
+                          tooltip: collapsed ? l.toastExpand : l.toastCollapse,
+                          iconSize: 16,
+                          visualDensity: VisualDensity.compact,
+                          icon: Icon(collapsed
+                              ? Icons.unfold_more
+                              : Icons.unfold_less),
+                          onPressed: _toggleCollapsed,
+                        ),
+                    ]),
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(data.message,
-                        style: const TextStyle(fontSize: 13)),
-                  ),
-                ]),
+                ),
               ),
               // Пока идёт — прогресс операции; после завершения — сколько
               // карточка ещё провисит.

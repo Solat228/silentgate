@@ -131,7 +131,14 @@ class SingboxRouterWindows implements TunRouter {
 
     _stopPath = TunHelper.stopFilePathFor(dir);
     TunHelper.clearStopAt(_stopPath);
-    await _truncateLog(dir);
+    // ⚠️ ЛОГ ЗДЕСЬ НЕ ОБРЕЗАЕТСЯ — это делает сам хелпер при старте.
+    //
+    // Раньше здесь стоял `_truncateLog`: обрезка ИЗ ЭТОГО процесса файла,
+    // который открытым на дозапись держит ДРУГОЙ (элевейтнутый хелпер). Его
+    // `IOSink` помнит смещение с момента открытия и после обрезки продолжает
+    // писать по старому адресу — Windows заполняет пропуск нулями. У владельца
+    // так набралось 1 048 209 нулевых байт (69 %) в `singbox.log`. Обрезка
+    // переехала в `TunHelper.run`, где живёт и сам поток.
 
     final viaTask = await TunScheduledTask.exists() && await TunScheduledTask.run();
     if (!viaTask) {
@@ -291,13 +298,6 @@ class SingboxRouterWindows implements TunRouter {
       } catch (_) {}
     }
     return false;
-  }
-
-  Future<void> _truncateLog(Directory dir) async {
-    try {
-      final f = File(TunHelper.logPathFor(dir));
-      if (await f.exists()) await f.writeAsString('');
-    } catch (_) {}
   }
 
   @override

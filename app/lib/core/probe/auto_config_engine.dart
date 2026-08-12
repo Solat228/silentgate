@@ -182,22 +182,49 @@ class AutoConfigCatalog {
 
 enum ProbeState { pending, testing, ok, fail }
 
+/// Чем прогон занят прямо сейчас.
+///
+/// ⚠️ ЗАВЕДЕНО ИЗ-ЗА ДЕФЕКТА: фаза замера скорости о себе НЕ ОТЧИТЫВАЛАСЬ.
+/// `_rankBySpeed` не звал `onCandidate` ни разу, поэтому прогресс замирал на
+/// последнем проверенном кандидате и десятки секунд показывал «тестирую X»,
+/// хотя шёл совсем другой этап. Без явной фазы отличить одно от другого в
+/// интерфейсе нечем: числа `index/total` у обоих этапов свои.
+enum AutoConfigPhase {
+  /// Перебор кандидатов (сервер × вариация) с проверкой сервисов.
+  probing,
+
+  /// Замер скорости лучших (и собственного канала).
+  speed,
+}
+
 class AutoConfigProgress {
   final int index;
   final int total;
   final String candidateName;
+
+  /// Ключ сервера, который проверяется сейчас. Нужен экрану, чтобы подсветить
+  /// текущего кандидата ПРЯМО В СПИСКЕ: сравнивать по имени нельзя — имена в
+  /// подписке повторяются, а ключ уникален.
+  final String candidateKey;
 
   /// Вариация как ДАННЫЕ, а не готовая строка: подпись зависит от языка,
   /// а контроллер строит прогресс без `BuildContext`. UI рендерит её через
   /// `outboundVariantLabel` (`core/i18n/enum_labels.dart`).
   final OutboundVariant variant;
   final Map<ProbeService, ProbeState> services;
+
+  /// Этап прогона. Умолчание — перебор: так старый код, который про фазы не
+  /// знает, продолжает работать как раньше.
+  final AutoConfigPhase phase;
+
   AutoConfigProgress({
     required this.index,
     required this.total,
     required this.candidateName,
     required this.variant,
     required this.services,
+    this.candidateKey = '',
+    this.phase = AutoConfigPhase.probing,
   });
 }
 
@@ -356,6 +383,17 @@ class AutoConfigEngine {
     void Function(ProbeService service, bool ok)? onService,
     void Function(AutoConfigResult found)? onFound,
     void Function(String message)? onSpeed,
+    // ⚠️ Отдельный отчёт фазы скорости, а не переиспользование [onCandidate]:
+    // у этой фазы своя нумерация (три лучших, а не сотня кандидатов) и свой
+    // текст. Без него прогресс замирал на последнем кандидате перебора и
+    // десятки секунд показывал неправду.
+    //
+    // `server == null` — замер СВОЕГО канала: он идёт мимо VPN и ни к какому
+    // серверу не относится, но занимает столько же времени, сколько один
+    // сервер, и молчать о нём значило бы снова показывать застывший экран.
+    void Function(int index, int total, VpnServer? server,
+            OutboundVariant variant)?
+        onSpeedCandidate,
   }) async {
     // ⚠️ Подбор ПРОВЕРЯЕТ ДОСТУПНОСТЬ СЕРВИСОВ через кандидата, а для этого
     // нужен порт, в который можно послать произвольный запрос. Там, где
@@ -445,6 +483,10 @@ class AutoConfigEngine {
             head: ep.head,
             timeout: Duration(milliseconds: settings.pingTimeoutMs),
             validator: ep.validator,
+            // Пароль инбаунда харнесса. Забыть его — значит получить 407 на
+            // КАЖДОМ кандидате и «найдено 0» на полностью рабочей подписке.
+            proxyUser: handle.proxyUser,
+            proxyPassword: handle.proxyPassword,
           );
           passed[ep.service] = r.ok;
           if (r.ok && r.rttMs != null) latencies.add(r.rttMs!);
@@ -516,7 +558,8 @@ class AutoConfigEngine {
     });
 
     if (settings.speedInAutoSelect && found.isNotEmpty) {
-      return _rankBySpeed(found, cancel, onSpeed: onSpeed);
+      return _rankBySpeed(found, cancel,
+          onSpeed: onSpeed, onSpeedCandidate: onSpeedCandidate);
     }
     return found;
   }
@@ -538,12 +581,19 @@ class AutoConfigEngine {
     List<AutoConfigResult> found,
     CancelToken cancel, {
     void Function(String message)? onSpeed,
+    void Function(int index, int total, VpnServer? server,
+            OutboundVariant variant)?
+        onSpeedCandidate,
   }) async {
     // Размер задан владельцем: всегда 5 МБ, независимо от настройки замера
     // скорости на экране сервера. Там пользователь выбирает точность для
     // ОДНОГО сервера, здесь мы гоняем несколько подряд и платим трафиком.
     const size = SpeedTestSize.light;
+    // Шагов у фазы на один больше числа серверов: свой канал меряется первым и
+    // стоит столько же. Считать его «нулевым шагом» — врать полоске прогресса.
+    final steps = found.take(_speedTopN).length + 1;
     onSpeed?.call('Замеряю скорость своего канала…');
+    onSpeedCandidate?.call(0, steps, null, OutboundVariant.none);
     final own = await SpeedTest.download(size: size);
     final ownMbps = own.ok ? own.bitsPerSecond / 1000000 : null;
     AppLog.i('Автонастройка: свой канал '
@@ -556,6 +606,7 @@ class AutoConfigEngine {
       final r = top[i];
       onSpeed?.call('Замеряю скорость: ${r.server.displayName} '
           '(${i + 1} из ${top.length})');
+      onSpeedCandidate?.call(i + 1, steps, r.server, r.variant);
       double? mbps;
       try {
         final handle = await _harnessFactory()

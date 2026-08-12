@@ -59,6 +59,31 @@ extension DnsStrategySingbox on DnsStrategy {
 /// Уровень лога sing-box (для диагностики TUN).
 enum SingboxLogLevel { warn, info, debug }
 
+/// Сколько хранить логи и отчёты для поддержки.
+///
+/// ⚠️ ЗАВЕДЕНО ПО ЖИВЫМ ДАННЫМ ВЛАДЕЛЬЦА: 18 отчётов на 4,3 МБ, ни один
+/// никогда не удалялся, а каждый следующий больше предыдущего (78 КБ в июле →
+/// 525 КБ в августе) — отчёт включает логи целиком. Единственным ограничителем
+/// до сих пор был порог 512 КБ, зашитый в код, и он не касался ни отчётов, ни
+/// логов ядра.
+enum LogRetention { day, twoWeeks, month, never }
+
+extension LogRetentionAge on LogRetention {
+  /// Возраст, старше которого файл удаляется. `null` — не удалять никогда.
+  Duration? get maxAge {
+    switch (this) {
+      case LogRetention.day:
+        return const Duration(days: 1);
+      case LogRetention.twoWeeks:
+        return const Duration(days: 14);
+      case LogRetention.month:
+        return const Duration(days: 30);
+      case LogRetention.never:
+        return null;
+    }
+  }
+}
+
 /// Прежние жёстко записанные адреса обновлений: их надо забыть, чтобы
 /// заработал платформенный выбор (Android больше не ведёт на .exe).
 const _legacyUpdateEndpoints = <String>{
@@ -401,6 +426,13 @@ class AppSettings {
   /// Уровень лога sing-box (`%APPDATA%\SilentGate\singbox.log`).
   final SingboxLogLevel singboxLogLevel;
 
+  /// Срок хранения логов и отчётов поддержки. Проверяется при запуске.
+  ///
+  /// ⚠️ НАМЕРЕННО НЕ В [reconnectReasons]: чистка старых файлов на диске к
+  /// конфигу ядра отношения не имеет, и предлагать из-за неё переподключиться
+  /// значило бы рвать живой туннель на ровном месте.
+  final LogRetention logRetention;
+
   // ── Как приложение представляется панели ──────────────────────────────────
 
   // ── Надёжность соединения ─────────────────────────────────────────────────
@@ -525,6 +557,9 @@ class AppSettings {
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.singboxLogLevel = SingboxLogLevel.warn,
+    // Месяц, а не меньше: короче — рискуем стереть лог раньше, чем человек
+    // дойдёт до жалобы, а разбирать нечего будет уже навсегда.
+    this.logRetention = LogRetention.month,
     this.autoReconnect = true,
     this.killSwitch = false,
     this.noRealIp = false,
@@ -598,6 +633,7 @@ class AppSettings {
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
     SingboxLogLevel? singboxLogLevel,
+    LogRetention? logRetention,
     bool? autoReconnect,
     bool? killSwitch,
     bool? noRealIp,
@@ -662,6 +698,7 @@ class AppSettings {
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
       singboxLogLevel: singboxLogLevel ?? this.singboxLogLevel,
+      logRetention: logRetention ?? this.logRetention,
       autoReconnect: autoReconnect ?? this.autoReconnect,
       killSwitch: killSwitch ?? this.killSwitch,
       noRealIp: noRealIp ?? this.noRealIp,
@@ -727,6 +764,7 @@ class AppSettings {
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
         'singboxLogLevel': singboxLogLevel.name,
+        'logRetention': logRetention.name,
         'autoReconnect': autoReconnect,
         'killSwitch': killSwitch,
         'noRealIp': noRealIp,
@@ -847,6 +885,12 @@ class AppSettings {
       dnsStrategy: pick(DnsStrategy.values, j['dnsStrategy'], DnsStrategy.preferIpv4),
       singboxLogLevel:
           pick(SingboxLogLevel.values, j['singboxLogLevel'], SingboxLogLevel.warn),
+      // ⚠️ Читается ОБЯЗАТЕЛЬНО: страж settings_roundtrip_test перебирает
+      // булевы и числовые поля, а перечисления хранятся строкой и мимо него
+      // проходят. Забытая строка здесь = «выбрал никогда не удалять, а после
+      // перезапуска снова месяц», и заметить это со стороны интерфейса нельзя.
+      logRetention: pick(LogRetention.values, j['logRetention'],
+          defaults.logRetention),
       autoReconnect: j['autoReconnect'] as bool? ?? defaults.autoReconnect,
       killSwitch: j['killSwitch'] as bool? ?? defaults.killSwitch,
       noRealIp: j['noRealIp'] as bool? ?? defaults.noRealIp,

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../../core/app_info.dart';
+import '../../core/models/traffic_stats.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/device_id.dart';
@@ -88,6 +89,31 @@ class SupportReport {
     b.writeln('Уровень лога sing-box: ${settings.singboxLogLevel.name}');
     b.writeln();
 
+    // ── Что логи занимают на диске ────────────────────────────────────────
+    //
+    // ⚠️ Без этого блока отчёт врал о самом себе: он весил 525 КБ, из которых
+    // 93 % `app.log` и 98 % `singbox.log` были НУЛЕВЫМИ БАЙТАМИ, и понять это
+    // по тексту отчёта было нельзя — нули в редакторе не видны. Теперь размер,
+    // число строк и число нулей называются прямо, и возврат порчи виден сразу.
+    b.writeln('[Логи на диске]');
+    b.writeln('Срок хранения: ${settings.logRetention.name}');
+    if (!await AppLog.ownsFile()) {
+      b.writeln('⚠ app.log ведёт ДРУГОЙ экземпляр приложения — '
+          'запущены две копии, обе пишут в один файл');
+    }
+    try {
+      final inv = await LogMaintenance.inventory();
+      for (final f in inv.logs) {
+        b.writeln('${f.name}: ${_kb(f.bytes)}, строк ${f.lines}'
+            '${f.zeros > 0 ? ', ⚠ НУЛЕВЫХ БАЙТ ${f.zeros}' : ''}');
+      }
+      b.writeln('Отчёты поддержки: ${inv.reportCount} шт., '
+          '${_kb(inv.reportBytes)}');
+    } catch (e) {
+      b.writeln('н/д ($e)');
+    }
+    b.writeln();
+
     // ── Логи ──────────────────────────────────────────────────────────────
     b.writeln('==================================================');
     b.writeln('[app.log]');
@@ -169,6 +195,9 @@ class SupportReport {
       await Process.run('cmd', ['/c', 'start', '', path], runInShell: true);
     } catch (_) {}
   }
+
+  /// Размер человеку: техчасть отчёта не переводится, поэтому единицы едины.
+  static String _kb(int bytes) => TrafficStats.formatBytes(bytes);
 
   static Future<String> _singboxVersion() async {
     try {

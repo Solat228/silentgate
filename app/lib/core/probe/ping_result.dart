@@ -2,6 +2,33 @@ import '../settings/app_settings.dart';
 
 enum PingOutcome { untested, testing, ok, failed, timeout }
 
+/// Состояние проверки «сервер реально пропускает трафик» — запроса GET/HEAD
+/// ЧЕРЕЗ сервер (фаза 2 пинга).
+///
+/// ⚠️ Раньше вместо этого был один булев `working`, и он врал в обе стороны.
+/// Пинг ставил его сразу после TCP по признаку «БУДЕТ ли вообще фаза 2», а не
+/// «ПРОШЛА ли она»: всё время проверки (секунды-минуты) каждый TCP-ответивший
+/// сервер горел зелёным — владелец видел зелёную плашку на сервере, через
+/// который не работало НИЧЕГО. Тот же флаг при выключенной двухфазности делал
+/// ВСЕ серверы «нерабочими» с подписью «проверка через туннель не прошла», хотя
+/// её не запускали, и итог прогона всегда был «рабочих 0 из N».
+/// Одно значение на три разных смысла — поэтому состояний теперь четыре.
+enum PingVerification {
+  /// Проверка НЕ проводилась: двухфазность выключена, платформа её не умеет,
+  /// харнесс не поднялся либо прогон отменён. Известна только достижимость.
+  notRun,
+
+  /// Проверка идёт прямо сейчас. Итога ещё нет — зелёным красить нельзя.
+  pending,
+
+  /// Запрос через сервер прошёл — сервер по-настоящему рабочий.
+  passed,
+
+  /// Запрос через сервер НЕ прошёл: порт отвечает, а трафик не идёт
+  /// (типичная картина у Reality-сервера, которому закрыли выход).
+  failed,
+}
+
 /// Результат пинга сервера.
 ///
 /// Модель проверки: сначала **TCP** до адреса сервера (быстро, без ядра); кто не
@@ -10,9 +37,10 @@ enum PingOutcome { untested, testing, ok, failed, timeout }
 /// тех, что просто отвечают на TCP, но трафик не проксируют (типично для Reality).
 ///
 /// **Показываем везде только [latencyMs] — задержку TCP.** Никакой второй цифры
-/// «через прокси»: результат GET/HEAD — это флаг [working] (рабочий/нет), а не
-/// величина. Исключение — hysteria2: у него нет TCP (QUIC/UDP), там [latencyMs]
-/// приходит из пробы через прокси, иначе показать было бы нечего.
+/// «через прокси»: результат GET/HEAD — это [verification] (прошла/не прошла/не
+/// проводилась), а не величина. Исключение — hysteria2: у него нет TCP
+/// (QUIC/UDP), там [latencyMs] приходит из пробы через прокси, иначе показать
+/// было бы нечего.
 class PingResult {
   final PingOutcome outcome;
   final int? latencyMs; // задержка TCP (для hysteria2 — через прокси)
@@ -20,33 +48,53 @@ class PingResult {
   final double? lossPct; // потери (ICMP)
   final bool reachableViaProxy; // прошла ли проба GET/HEAD
 
-  /// Сервер **по-настоящему рабочий**: ответил по TCP И прошёл GET/HEAD.
-  /// Когда двухфазная проверка выключена — рабочим считается любой TCP-ответивший.
-  /// Влияет только на цвет/пометку; показываемая цифра всегда TCP.
-  final bool working;
+  /// Состояние проверки «трафик реально идёт». ⚠️ Это НЕ «достижим»: TCP-ответ
+  /// живёт в [outcome], а сюда пишется только итог пробы через сервер.
+  final PingVerification verification;
 
   final PingMethod? latencyMethod;
   final DateTime? measuredAt;
 
+  /// [working] — совместимость: сохранён как ПРОИЗВОДНЫЙ параметр, потому что
+  /// его пишет автонастройка (`auto_config_engine`), которая подтверждает сервер
+  /// не пробой пинга, а прохождением сервисов. Новый код задаёт [verification]
+  /// напрямую; задавать оба одновременно смысла нет — [verification] сильнее.
   const PingResult({
     this.outcome = PingOutcome.untested,
     this.latencyMs,
     this.proxyRttMs,
     this.lossPct,
     this.reachableViaProxy = false,
-    this.working = true,
+    PingVerification? verification,
+    bool? working,
     this.latencyMethod,
     this.measuredAt,
-  });
+  }) : verification = verification ??
+            (working == null
+                ? PingVerification.notRun
+                : (working
+                    ? PingVerification.passed
+                    : PingVerification.failed));
 
   static const untested = PingResult();
   static const testing = PingResult(outcome: PingOutcome.testing);
 
+  /// Проверка через сервер ПРОШЛА. ⚠️ Читается наружу (локальный API,
+  /// `state/api_handlers.dart`), поэтому геттер остался — но он производный от
+  /// [verification], а не отдельное поле, которое можно поставить авансом.
+  bool get working => verification == PingVerification.passed;
+
   /// Достижим (ответил по TCP либо, для hysteria2, по прокси).
   bool get isOk => outcome == PingOutcome.ok;
 
-  /// Достижим И проверен как рабочий.
+  /// Достижим И подтверждён пробой через сервер.
   bool get isWorking => outcome == PingOutcome.ok && working;
+
+  /// Достижим, но проверки через сервер НЕ было — известна только достижимость.
+  /// Отдельно от [isWorking]: в итоге прогона такие серверы считаются по
+  /// достижимости (иначе при выключенной двухфазности выходило «0 из N»).
+  bool get isReachableUnverified =>
+      outcome == PingOutcome.ok && verification == PingVerification.notRun;
 
   /// Терминальные результаты (имеет смысл сохранять).
   bool get isTerminal =>
@@ -54,12 +102,29 @@ class PingResult {
       outcome == PingOutcome.failed ||
       outcome == PingOutcome.timeout;
 
+  /// Тот же результат с другим состоянием проверки. Нужен там, где измерение
+  /// уже сделано, а проверка не состоялась (отмена прогона, падение харнесса):
+  /// цифру терять нельзя, но и выдавать её за подтверждённую — тоже.
+  PingResult withVerification(PingVerification v) => PingResult(
+        outcome: outcome,
+        latencyMs: latencyMs,
+        proxyRttMs: proxyRttMs,
+        lossPct: lossPct,
+        reachableViaProxy: reachableViaProxy,
+        verification: v,
+        latencyMethod: latencyMethod,
+        measuredAt: measuredAt,
+      );
+
   Map<String, dynamic> toJson() => {
         'outcome': outcome.name,
         'latencyMs': latencyMs,
         'proxyRttMs': proxyRttMs,
         'lossPct': lossPct,
         'reachableViaProxy': reachableViaProxy,
+        'verification': verification.name,
+        // Пишется РЯДОМ с verification намеренно: файл результатов читает и
+        // прежняя версия приложения (откат сборки), а она знает только это поле.
         'working': working,
         'latencyMethod': latencyMethod?.name,
         'measuredAt': measuredAt?.toIso8601String(),
@@ -72,6 +137,19 @@ class PingResult {
       lm = PingMethod.values.firstWhere((m) => m.name == lmName,
           orElse: () => PingMethod.tcp);
     }
+    // ⚠️ КЛАСС БАГОВ «ПОЛЕ ПИШЕТСЯ, НО НЕ ЧИТАЕТСЯ»: в файле, записанном до
+    // 1.4.1, ключа `verification` НЕТ вовсе, есть только `working`. Без вывода
+    // из него все сохранённые результаты после обновления молча превратились бы
+    // в «не проверен», а плашки — в нейтральные. Умолчание при отсутствии обоих
+    // ключей — `passed`: у старого поля `working` умолчание было `true`.
+    final vName = j['verification'];
+    final legacyWorking = j['working'] as bool?;
+    final verification = vName != null
+        ? PingVerification.values.firstWhere((v) => v.name == vName,
+            orElse: () => PingVerification.notRun)
+        : (legacyWorking == false
+            ? PingVerification.failed
+            : PingVerification.passed);
     return PingResult(
       outcome: PingOutcome.values.firstWhere((o) => o.name == j['outcome'],
           orElse: () => PingOutcome.untested),
@@ -79,7 +157,7 @@ class PingResult {
       proxyRttMs: (j['proxyRttMs'] as num?)?.toInt(),
       lossPct: (j['lossPct'] as num?)?.toDouble(),
       reachableViaProxy: j['reachableViaProxy'] as bool? ?? false,
-      working: j['working'] as bool? ?? true,
+      verification: verification,
       latencyMethod: lm,
       measuredAt:
           j['measuredAt'] != null ? DateTime.tryParse('${j['measuredAt']}') : null,

@@ -42,6 +42,34 @@ import 'server_info_screen.dart';
 import 'servers_screen.dart';
 import '../engine/probe_factory.dart';
 
+/// Что сделать с карточкой подбора стека/MTU TUN на этом такте перерисовки.
+enum TunToastStep { progress, summary, dismiss, none }
+
+/// ⚠️ Дефект, который лечит шаг [TunToastStep.dismiss]: отменённый подбор
+/// оставлял карточку висеть НАВСЕГДА. `TunAutotuneTracking.next` на отмене
+/// (disconnected/disconnecting) гасит `running` и НЕ ставит `finishedAt` —
+/// в самом ядре так и написано «гасим прогресс без тоста-итога», но гасить было
+/// некому: главный экран просто не попадал ни в одну из двух веток, а карточка
+/// с крутящейся полоской сама не уходит — обратный отсчёт заводится только
+/// у `finished: true`. Так же вело себя завершение с уже показанным итогом,
+/// поэтому отличаем их по [cardLive]: снимаем только НЕЗАВЕРШЁННУЮ карточку,
+/// иначе итог исчезал бы, не дав себя прочитать.
+///
+/// Вынесено отдельной функцией, чтобы это решение проверялось тестом, а не
+/// поднятием всего главного экрана с движком.
+TunToastStep tunToastStep({
+  required bool running,
+  required DateTime? finishedAt,
+  required DateTime? shownFinishedAt,
+  required bool cardLive,
+}) {
+  if (running) return TunToastStep.progress;
+  if (finishedAt != null && finishedAt != shownFinishedAt) {
+    return TunToastStep.summary;
+  }
+  return cardLive ? TunToastStep.dismiss : TunToastStep.none;
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -225,6 +253,12 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _shownAutoDone;
   DateTime? _shownTunDone;
 
+  /// Карточка подбора TUN сейчас показывает НЕЗАВЕРШЁННЫЙ прогресс. Нужно,
+  /// чтобы отличить «подбор отменили» (карточку снять) от «итог показан и
+  /// досчитывает свои 10 секунд» (карточку не трогать) — снаружи оба выглядят
+  /// как «не бежит и нового `finishedAt` нет».
+  bool _tunCardLive = false;
+
   /// Ход пинга и автонастройки — карточками слева снизу: пока идёт, карточка
   /// висит и показывает прогресс; после завершения ещё 10 секунд показывает итог
   /// с убывающей полоской и уезжает вниз.
@@ -303,6 +337,13 @@ class _HomeScreenState extends State<HomeScreen> {
               : '${l.homeAutoConfigProgress(p.index + 1, total, p.candidateName)}'
                   ' · ${outboundVariantLabel(l, p.variant)}',
           value: total > 0 ? (p!.index + 1) / total : null,
+          // Закреплённая карточка: держится у самого низа, нажатие открывает
+          // саму автонастройку, а свернуть её можно кнопкой. Ход подбора идёт
+          // минутами — до этого посмотреть, что там происходит, можно было
+          // только вспомнив, где лежит кнопка.
+          pinned: true,
+          onTap: () => _openAutoConfig(context),
+          tapTooltip: l.toastOpenAutoConfig,
         );
       } else if (auto.finishedAt != null &&
           auto.finishedAt != _shownAutoDone &&
@@ -312,34 +353,58 @@ class _HomeScreenState extends State<HomeScreen> {
             id: 'autoconfig',
             message: auto.lastSummary!,
             finished: true,
+            pinned: true,
+            onTap: () => _openAutoConfig(context),
+            tapTooltip: l.toastOpenAutoConfig,
             kind: auto.found.isEmpty ? ToastKind.warning : ToastKind.success);
       }
 
       // #8 — перебор стека/MTU TUN: пока идёт — прогресс-тост, по завершении —
       // итог (успех/неудача), а не только строка статуса под кнопкой.
       final state = context.read<AppState>();
-      if (state.tunAutotuning) {
-        _shownTunDone = null;
-        AppToast.progress(
-          context,
-          id: 'tun-autotune',
-          message: state.tunAutotuneMessage ?? l.homeTunAutotuneProgress,
-        );
-      } else if (state.tunAutotuneFinishedAt != null &&
-          state.tunAutotuneFinishedAt != _shownTunDone) {
-        _shownTunDone = state.tunAutotuneFinishedAt;
-        AppToast.progress(context,
+      switch (tunToastStep(
+        running: state.tunAutotuning,
+        finishedAt: state.tunAutotuneFinishedAt,
+        shownFinishedAt: _shownTunDone,
+        cardLive: _tunCardLive,
+      )) {
+        case TunToastStep.progress:
+          _shownTunDone = null;
+          _tunCardLive = true;
+          AppToast.progress(
+            context,
             id: 'tun-autotune',
-            message: state.tunAutotuneSucceeded
-                ? l.homeTunAutotuneDone
-                : l.homeTunAutotuneFailed,
-            finished: true,
-            kind: state.tunAutotuneSucceeded
-                ? ToastKind.success
-                : ToastKind.warning);
+            message: state.tunAutotuneMessage ?? l.homeTunAutotuneProgress,
+          );
+        case TunToastStep.summary:
+          _shownTunDone = state.tunAutotuneFinishedAt;
+          _tunCardLive = false;
+          AppToast.progress(context,
+              id: 'tun-autotune',
+              message: state.tunAutotuneSucceeded
+                  ? l.homeTunAutotuneDone
+                  : l.homeTunAutotuneFailed,
+              finished: true,
+              kind: state.tunAutotuneSucceeded
+                  ? ToastKind.success
+                  : ToastKind.warning);
+        case TunToastStep.dismiss:
+          _tunCardLive = false;
+          AppToast.dismissProgress('tun-autotune');
+        case TunToastStep.none:
+          break;
       }
     });
   }
+
+  /// Открыть автонастройку — ровно один экземпляр экрана. Карточка прогресса
+  /// живёт в Overlay навигатора и обновляется поверх уже открытых экранов,
+  /// поэтому «просто push» на каждое нажатие клал бы на стек копию за копией.
+  void _openAutoConfig(BuildContext context) => unawaited(AppToast.openOnce(
+        context,
+        key: 'autoconfig',
+        builder: (_) => const AutoConfigScreen(),
+      ));
 
   @override
   Widget build(BuildContext context) {
@@ -640,9 +705,14 @@ class _ConnectPane extends StatelessWidget {
                   OutlinedButton.icon(
                     icon: const Icon(Icons.auto_fix_high),
                     label: Text(l.homeAutoConfig),
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (_) => const AutoConfigScreen())),
+                    // Через ту же точку, что и нажатие на карточку прогресса:
+                    // один экземпляр экрана на оба пути (и двойное нажатие по
+                    // самой кнопке второй копии тоже не откроет).
+                    onPressed: () => AppToast.openOnce(
+                      context,
+                      key: 'autoconfig',
+                      builder: (_) => const AutoConfigScreen(),
+                    ),
                   ),
                 ],
                   if (!compact) const Spacer() else const SizedBox(height: 24),

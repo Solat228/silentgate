@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../core/platform/core_cleanup.dart';
+import '../../core/platform/rotating_log.dart';
 
 /// Запуск и остановка ядра xray.exe как дочернего процесса.
 class XrayProcess {
@@ -17,7 +18,12 @@ class XrayProcess {
   /// остановилось (код 1)» — при том что код 1 у Xray означает и занятый порт,
   /// и отвергнутый конфиг, и десяток других вещей. У sing-box такой файл был с
   /// 0.9.0, у Xray его не было, и это стоило целого захода вслепую.
-  IOSink? _logSink;
+  ///
+  /// ⚠️ [RotatingLog], а не голый `IOSink`: файл усекался ТОЛЬКО при запуске,
+  /// поэтому внутри сессии рос без предела — у владельца 15 583 строки на
+  /// 1,5 МБ, и весь этот объём уезжал в отчёт поддержки. Плюс усечение и поток
+  /// теперь в одном месте: разведённые, они и заливают лог нулями.
+  RotatingLog? _log;
 
   /// Путь файла лога рядом с остальными: `%APPDATA%\SilentGate\xray.log`.
   static String logPathFor(Directory supportDir) =>
@@ -51,19 +57,18 @@ class XrayProcess {
     }
     if (logPath != null && logPath.isNotEmpty) {
       try {
-        final f = File(logPath);
         // Файл РЕЖЕТСЯ, а не растёт бесконечно: singbox.log у владельца дорос
         // до 27 МБ и стал бесполезен — отчёт поддержки его уже не вмещает.
-        if (await f.exists() && await f.length() > 2 * 1024 * 1024) {
-          await f.delete();
-        }
-        _logSink = f.openWrite(mode: FileMode.append);
-        _logSink!.writeln(
+        // Порог тот же (2 МБ), но теперь он действует и ВНУТРИ сессии.
+        final log = RotatingLog(logPath, maxBytes: 2 * 1024 * 1024);
+        await log.open();
+        _log = log;
+        await log.write(
             '--- запуск Xray ${DateTime.now().toIso8601String()} (конфиг $configPath)');
       } catch (_) {
         // Не смогли открыть файл — работаем без него: диагностика не должна
         // мешать подключению.
-        _logSink = null;
+        _log = null;
       }
     }
     final proc = await Process.start(
@@ -86,11 +91,9 @@ class XrayProcess {
       _logController.add(line);
       _tail.add(line);
       if (_tail.length > _tailMax) _tail.removeAt(0);
-      try {
-        _logSink?.writeln(line);
-      } catch (_) {
-        // Файл мог быть удалён или занят — молчим, поток ядра важнее.
-      }
+      // Файл мог быть удалён или занят — RotatingLog молчит сам, поток ядра
+      // важнее диагностики.
+      unawaited(_log?.write(line) ?? Future<void>.value());
     }
 
     proc.stdout
@@ -109,10 +112,10 @@ class XrayProcess {
   Future<void> stop() async {
     final proc = _process;
     _process = null;
-    final sink = _logSink;
-    _logSink = null;
+    final log = _log;
+    _log = null;
     if (proc == null) {
-      await _closeSink(sink);
+      await log?.close();
       return;
     }
     CoreCleanup.unregister(proc);
@@ -128,18 +131,8 @@ class XrayProcess {
     // ⚠️ Пишем строку об остановке ПОСЛЕ ожидания: по ней в файле видно, что
     // ядро закрылось штатно, а не пропало вместе с приложением. Разница важна
     // при разборе «выключил и сразу включил».
-    try {
-      sink?.writeln('--- Xray остановлен ${DateTime.now().toIso8601String()}');
-    } catch (_) {}
-    await _closeSink(sink);
-  }
-
-  static Future<void> _closeSink(IOSink? sink) async {
-    if (sink == null) return;
-    try {
-      await sink.flush();
-      await sink.close();
-    } catch (_) {}
+    await log?.write('--- Xray остановлен ${DateTime.now().toIso8601String()}');
+    await log?.close();
   }
 
   void dispose() {

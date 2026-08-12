@@ -30,7 +30,13 @@ class MixedProbeHarness implements ProbeHarness {
     if (singboxIdx.isEmpty) return XrayHarnessWindows().start(entries);
     if (xrayIdx.isEmpty) return SingboxHarnessWindows().start(entries);
 
-    final xray = await XrayHarnessWindows()
+    // ⚠️ ОДИН пароль на оба ядра. Наружу смешанный харнесс выглядит одним, и
+    // хендл отдаёт одну пару кредов на все порты: разные пароли у частей
+    // означали бы, что потребитель обязан знать, какое ядро обслуживает
+    // конкретный индекс, — а он про это по построению не знает.
+    final secret = newHarnessSecret();
+
+    final xray = await XrayHarnessWindows(secret: secret)
         .start([for (final i in xrayIdx) entries[i]]);
 
     // Если sing-box не поднялся (нет бинарника, антивирус его съел, плохой
@@ -38,7 +44,7 @@ class MixedProbeHarness implements ProbeHarness {
     // серверы уже пингуются. Иначе одна битая ссылка обнуляла пинг всех 79.
     HarnessHandle? singbox;
     try {
-      singbox = await SingboxHarnessWindows()
+      singbox = await SingboxHarnessWindows(secret: secret)
           .start([for (final i in singboxIdx) entries[i]]);
     } catch (e) {
       AppLog.e('Пинг hysteria2 пропущен: $e');
@@ -53,17 +59,25 @@ class MixedProbeHarness implements ProbeHarness {
         ports[singboxIdx[k]] = singbox.proxyPortFor(k);
       }
     }
-    return _MixedHandle(ports, [xray, if (singbox != null) singbox]);
+    return _MixedHandle(
+        ports, [xray, if (singbox != null) singbox], secret);
   }
 }
 
 class _MixedHandle implements HarnessHandle {
   final Map<int, int> _ports;
   final List<HarnessHandle> _parts;
-  _MixedHandle(this._ports, this._parts);
+  final String _secret;
+  _MixedHandle(this._ports, this._parts, this._secret);
 
   @override
   int proxyPortFor(int index) => _ports[index] ?? -1;
+
+  @override
+  String get proxyUser => harnessProxyUser;
+
+  @override
+  String get proxyPassword => _secret;
 
   /// Windows меряет через прокси-порт — готовой задержки нет.
   @override

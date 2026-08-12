@@ -55,6 +55,12 @@ class ProbeHarnessAndroid implements ProbeHarness {
 }
 
 class _AndroidHandle implements HarnessHandle {
+  @override
+  String get proxyUser => '';
+
+  @override
+  String get proxyPassword => '';
+
   _AndroidHandle(this._files);
 
   final List<String?> _files;

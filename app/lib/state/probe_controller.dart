@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../core/models/vpn_server.dart';
@@ -8,6 +10,9 @@ import '../core/probe/tcp_ping.dart';
 import '../core/platform/app_log.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/settings/app_settings.dart';
+// HarnessRealism не входит в реэкспорт probe_harness.dart (там только сущности
+// самого харнесса), поэтому берём его из первоисточника.
+import '../core/xray/harness_config_builder.dart' show HarnessRealism;
 import '../core/xray/outbound_variant.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
@@ -20,6 +25,21 @@ import '../engine/probe_factory.dart';
 /// **Показываемая задержка — всегда TCP.** hysteria2 — исключение: TCP у него
 /// нет (QUIC/UDP), поэтому он идёт сразу на верификацию, а число берётся оттуда.
 /// Системный прокси не трогается.
+///
+/// ⚠️ ЧЕРЕЗ ЧТО ИДЁТ ФАЗА 2 — ЗАВИСИТ ОТ СЕРВЕРА:
+///   * **подключённый сервер при живом канале** — через ЖИВОЕ ядро, тем же
+///     путём, что и трафик браузера. Это буквально «включил VPN и открыл сайт»;
+///   * **остальные** — через проброс-харнесс, конфиг которого теперь несёт
+///     боевые правила по сайтам и DNS ([HarnessRealism]).
+/// ⚠️ Честная граница: для НЕАКТИВНЫХ серверов это всё равно проверка через
+/// прокси-порт, а не через TUN-адаптер. Поломку самого TUN такая проба не
+/// увидит — её видно только на активном сервере.
+///
+/// ⚠️ ФАЗА 1 НЕ ОБЪЯВЛЯЕТ СЕРВЕР РАБОЧИМ. TCP-ответ даёт только достижимость
+/// ([PingOutcome.ok]); итог проверки живёт отдельно в [PingResult.verification]
+/// и до фазы 2 стоит в `pending` (проверка идёт) либо `notRun` (её не будет).
+/// Прежний код ставил «рабочий» авансом — на сервере, через который не работало
+/// ничего, плашка горела зелёным всё время фазы 2. Не возвращать аванс.
 class ProbeController extends ChangeNotifier {
   final ProbeHarness Function() _harnessFactory;
 
@@ -29,11 +49,17 @@ class ProbeController extends ChangeNotifier {
 
   /// Порт ЖИВОГО соединения и ключ сервера, который сейчас поднят.
   ///
-  /// Нужны там, где отдельный харнесс поднять нельзя (Android: VpnService в
-  /// приложении один). Через живой туннель честно проверяется РОВНО ОДИН
-  /// сервер — тот, что сейчас подключён; для остальных такая проба измеряла бы
-  /// чужой канал и давала одинаковые цифры всему списку, что хуже честного
-  /// «не проверен».
+  /// ⚠️ ИСПОЛЬЗУЮТСЯ НА ВСЕХ ПЛАТФОРМАХ, а не только там, где нет харнесса.
+  /// Раньше живой канал был запасным вариантом для Android; теперь это ОСНОВНОЙ
+  /// путь проверки подключённого сервера везде — харнесс с голым конфигом
+  /// проходил там, где боевое подключение не работает.
+  ///
+  /// Через живой туннель честно проверяется РОВНО ОДИН сервер — тот, что сейчас
+  /// подключён; для остальных такая проба измеряла бы чужой канал и давала
+  /// одинаковые цифры всему списку, что хуже честного «не проверен».
+  ///
+  /// [liveProxyPort] обязан отдавать 0, пока канал не «Подключено» (так и
+  /// сделано в `home_screen`): «подключается» — не «живой».
   int Function()? liveProxyPort;
   String? Function()? activeServerKey;
 
@@ -187,12 +213,14 @@ class ProbeController extends ChangeNotifier {
             }
             if (icmp != null) {
               final r = await icmp.ping(s.address, timeout: timeout);
-              final ok = r.outcome == PingOutcome.ok;
+              // ⚠️ ICMP-ответ НЕ доказывает, что сервер проксирует (часто это
+              // вообще ближайший узел CDN). Раньше здесь ставилось «рабочий» —
+              // плашка зеленела по эху. Проверки не было — значит `notRun`.
               _results[s.key] = PingResult(
                 outcome: r.outcome,
                 latencyMs: r.latencyMs,
                 lossPct: r.lossPct,
-                working: ok,
+                verification: PingVerification.notRun,
                 latencyMethod: PingMethod.icmp,
                 measuredAt: DateTime.now(),
               );
@@ -202,21 +230,22 @@ class ProbeController extends ChangeNotifier {
             }
             final r = await TcpPing.measure(s.address, s.port, timeout: timeout);
             if (r.outcome == PingOutcome.ok) {
-              // Достижим — показываем сразу как рабочий (оптимистично): иначе
-              // на время фазы 2 все ответившие висели бы серыми. Проверка
-              // GET/HEAD ниже понизит до «не проксирует» только реально не
-              // прошедшие.
+              // ⚠️ ЗДЕСЬ БЫЛ ГЛАВНЫЙ ОБМАН: сервер помечался «рабочим» авансом,
+              // по признаку `twoPhase && proxyProbeSupported` — то есть «фаза 2
+              // БУДЕТ», а не «фаза 2 ПРОШЛА». Плашка зеленела сразу после TCP и
+              // держалась зелёной всю фазу 2 (самую долгую), в том числе на
+              // сервере, через который не работало ничего.
               //
-              // ⚠️ Оптимизм ОПРАВДАН ТОЛЬКО ТЕМ, что фаза 2 будет. Если её не
-              // будет (платформа без харнесса и двухфазность выключена),
-              // зелёный означал бы «порт открыт», а не «проксирует» — а на
-              // типичном Reality-порту открыт вообще любой. Тогда честнее
-              // серый: отвечает, но не подтверждён.
+              // TCP-ответ говорит ровно одно: порт открыт — а на типичном
+              // Reality-порту он открыт всегда. Поэтому итог проверки ставится
+              // отдельно: `pending`, если фаза 2 будет, иначе `notRun`.
               final willVerify = twoPhase && proxyProbeSupported;
               _results[s.key] = PingResult(
                 outcome: PingOutcome.ok,
                 latencyMs: r.latencyMs,
-                working: willVerify,
+                verification: willVerify
+                    ? PingVerification.pending
+                    : PingVerification.notRun,
                 latencyMethod: PingMethod.tcp,
                 measuredAt: DateTime.now(),
               );
@@ -242,39 +271,51 @@ class ProbeController extends ChangeNotifier {
         if (twoPhase) ...survivors,
         ...proxyPlain,
       ];
+      // ── АКТИВНЫЙ СЕРВЕР ПРИ ЖИВОМ КАНАЛЕ — ЧЕРЕЗ ЖИВОЕ ЯДРО, НЕ ЧЕРЕЗ ХАРНЕСС.
+      //
+      // ⚠️ ЭТО И ЕСТЬ «НАСТОЯЩАЯ» ПРОВЕРКА, О КОТОРОЙ ПРОСИЛ ВЛАДЕЛЕЦ: «как
+      // если бы юзер включил VPN, зашёл на сайт, и у него загрузилось или нет».
+      // Харнесс — отдельный процесс ядра с голым конфигом: без правил
+      // пользователя, без его DNS, без блокировок. Он проходил там, где боевое
+      // подключение не работает, — и ровно это объясняло жалобу: плашка пинга
+      // зелёная (достучался харнесс), а сервис-чипы под кнопкой Connect в тот
+      // же момент красные (они всегда ходили через живое ядро). Теперь
+      // подключённый сервер проверяется тем же путём, что и трафик браузера.
+      //
+      // ⚠️ Ровно один сервер — подключённый. Через живой канал идёт трафик
+      // ТЕКУЩЕГО узла: для остальных такая проба измеряла бы чужой канал и
+      // выдала бы одинаковые цифры всему списку.
+      final live = _liveTargetIn(verify);
+      if (live != null && !cancel.isCancelled) {
+        verify.remove(live.server);
+        AppLog.i('Проверка «${live.server.remark}»: через ЖИВОЕ ядро '
+            '(127.0.0.1:${live.port}) — тем же путём, что идёт обычный трафик');
+        await _applyVerify(live.server, live.port, settings,
+            head: head, forceProxy: proxySingle);
+      }
+
       // Платформа без харнесса (Android): проверить «реально ли проксирует»
       // нечем — второй экземпляр ядра рядом с живым туннелем не поднять.
       // Оставляем результат одной фазы вместо падения всего пинга: раньше
       // здесь вылетал UnsupportedError и обнулял проверку всех серверов.
       if (verify.isNotEmpty && !proxyProbeSupported) {
-        // Харнесса нет (Android). Но у ПОДКЛЮЧЁННОГО сервера канал уже поднят —
-        // через него проба честная и осмысленная. Именно так работают
-        // сервис-чипы под кнопкой Connect.
-        //
-        // ⚠️ Только для активного сервера. Через живой туннель идёт трафик
-        // ТЕКУЩЕГО узла, поэтому для остальных такая проба показала бы чужой
-        // канал — одинаковые цифры всему списку. Ложные данные хуже, чем
-        // честное «не проверен».
-        final livePort = liveProxyPort?.call() ?? 0;
-        final activeKey = activeServerKey?.call();
-        var probed = 0;
         for (final s in verify) {
           if (cancel.isCancelled) break;
-          if (livePort > 0 && activeKey != null && s.key == activeKey) {
-            await _applyVerify(s, livePort, settings,
-                head: head, forceProxy: true);
-            probed++;
-          } else if (noTcp.contains(s)) {
+          if (noTcp.contains(s)) {
             // Профили «Авто» и hysteria2 без пробы подтвердить нечем: TCP до
             // одного узла из десятков ничего не значит, а у QUIC его и нет.
             _results[s.key] = PingResult(
               outcome: PingOutcome.untested,
+              verification: PingVerification.notRun,
               latencyMethod: settings.pingPrimary,
             );
           }
         }
-        AppLog.i('Проба через прокси: харнесс недоступен, проверен по живому '
-            'соединению $probed из ${verify.length}');
+        // Строка условная намеренно: журнал, обещающий проверку, которой не
+        // было, дороже отсутствующей строки — по нему потом ищут причину.
+        AppLog.i('Проба через прокси: харнесса нет, не проверено '
+            '${verify.length}'
+            '${live != null ? " (подключённый сервер проверен по живому каналу)" : ""}');
         notifyListeners();
       } else if (verify.isNotEmpty && !cancel.isCancelled) {
         // Полный конфиг (правка/профиль «Авто …») — своим харнессом: у него свои
@@ -295,21 +336,35 @@ class ProbeController extends ChangeNotifier {
         }
       }
 
-      final ok = servers.where((s) => _results[s.key]?.isWorking == true).length;
+      final ok = _goodCount(servers);
+      // ⚠️ Слово подбирается по ФАКТУ проверки, а не по галочке в настройках:
+      // «рабочих» — только когда проба через сервер реально была. Иначе итог
+      // обещал бы проверку, которой не делали.
+      final word = _anyVerified(servers) ? 'рабочих' : 'доступных';
       _lastSummary = cancel.isCancelled
-          ? 'Пинг отменён: рабочих $ok из ${servers.length}'
-          : 'Пинг завершён: рабочих $ok из ${servers.length} '
+          ? 'Пинг отменён: $word $ok из ${servers.length}'
+          : 'Пинг завершён: $word $ok из ${servers.length} '
               '(${sw.elapsed.inSeconds} с)';
-      AppLog.i('Пинг: рабочих $ok из ${servers.length} за '
+      AppLog.i('Пинг: $word $ok из ${servers.length} за '
           '${sw.elapsed.inSeconds} с');
     } catch (e) {
       _lastSummary = 'Пинг прерван ошибкой';
       AppLog.e('Пинг: сбой — $e');
     } finally {
-      // Ни отмена, ни сбой не должны оставить сервер с крутилкой.
+      // ⚠️ НЕПРОВЕРЕННОЕ ОСТАЁТСЯ НЕПРОВЕРЕННЫМ. Раньше здесь всё, что не успело
+      // измериться, переводилось в `failed` — при отмене прогона или падении
+      // харнесса живые серверы красились в красное «n/a» И ТАКИМИ СОХРАНЯЛИСЬ на
+      // диск, а красный человек читает как «не подключайся сюда».
       for (final s in servers) {
-        if (_results[s.key]?.outcome == PingOutcome.testing) {
-          _results[s.key] = const PingResult(outcome: PingOutcome.failed);
+        final r = _results[s.key];
+        if (r == null) continue;
+        if (r.outcome == PingOutcome.testing) {
+          // Замера не было вовсе: `untested` не терминален и на диск не поедет.
+          _results[s.key] = PingResult.untested;
+        } else if (r.verification == PingVerification.pending) {
+          // Замер есть, проверка не завершилась. Оставить `pending` нельзя:
+          // прогон окончен, а плашка вечно показывала бы «проверяю».
+          _results[s.key] = r.withVerification(PingVerification.notRun);
         }
       }
       _running = false;
@@ -319,6 +374,71 @@ class ProbeController extends ChangeNotifier {
     }
   }
 
+  /// Подключённый сейчас сервер из списка [servers] и порт его ЖИВОГО ядра.
+  /// `null` — живого канала нет либо подключён сервер не из этого прогона.
+  ///
+  /// ⚠️ «ЖИВОЙ», А НЕ «ПОДКЛЮЧАЕТСЯ»: [liveProxyPort] отдаёт порт только при
+  /// состоянии «Подключено» и 0 во всех остальных (см. `home_screen`). Пока
+  /// канал поднимается, порт уже слушает, но никуда не доставляет — проба
+  /// через него дала бы ложный провал (на этом уже горели сервис-чипы, см.
+  /// историю 1.0.2). Ноль здесь трактуем как «живого канала нет».
+  ({VpnServer server, int port})? _liveTargetIn(List<VpnServer> servers) {
+    final port = liveProxyPort?.call() ?? 0;
+    final key = activeServerKey?.call();
+    if (port <= 0 || key == null || key.isEmpty) return null;
+    for (final s in servers) {
+      if (s.key == key) return (server: s, port: port);
+    }
+    return null;
+  }
+
+  /// Боевые настройки, влияющие на достижимость мишени, — в конфиг харнесса.
+  ///
+  /// ⚠️ Правила по ПРИЛОЖЕНИЯМ сюда не попадают, и это не забывчивость: у
+  /// соединения, пришедшего в локальный прокси, нет процесса-владельца —
+  /// сопоставлять ядру не с чем (по той же причине правила приложений не
+  /// работают у системного прокси Windows).
+  static HarnessRealism _realismFor(AppSettings s) {
+    // Свой резолвер — единственная DNS-настройка, которая способна СЛОМАТЬ
+    // открытие сайта: режимы «системный» и «через VPN» в харнессе и так
+    // воспроизводятся (имя резолвит сервер на своей стороне).
+    var dns = '';
+    if (s.dnsMode == DnsMode.custom) {
+      final raw = s.dnsCustomServer.trim();
+      // Только адрес: строку вида `https://dns.example/query` Xray не примет, а
+      // конфиг, который ядро отвергло, — это ноль проверенных серверов.
+      if (InternetAddress.tryParse(raw) != null) dns = raw;
+    }
+    // Ограничивающие стратегии переносим, «предпочитать» — нет: предпочтение
+    // ничего не запрещает, а лишняя dns-секция меняла бы конфиг всем подряд.
+    final strategy = switch (s.dnsStrategy) {
+      DnsStrategy.ipv4Only => 'UseIPv4',
+      DnsStrategy.ipv6Only => 'UseIPv6',
+      DnsStrategy.preferIpv4 || DnsStrategy.preferIpv6 => null,
+    };
+    return HarnessRealism.fromRules(s.splitTunnel,
+        dnsServer: dns, queryStrategy: strategy);
+  }
+
+  /// Сколько серверов в прогоне «хорошие».
+  ///
+  /// ⚠️ Считается по [PingResult.verification], а не по авансовому флагу.
+  /// Раньше итог брался из `isWorking`, а он до фазы 2 стоял по признаку «будет
+  /// ли проверка»: при ВЫКЛЮЧЕННОЙ двухфазности каждый прогон заканчивался
+  /// «рабочих 0 из N» на полностью живой подписке. Проверка не проводилась —
+  /// значит судим по достижимости, а не выдумываем провал.
+  int _goodCount(List<VpnServer> servers) => servers.where((s) {
+        final r = _results[s.key];
+        if (r == null) return false;
+        return r.isWorking || r.isReachableUnverified;
+      }).length;
+
+  /// Была ли в этом прогоне хоть одна настоящая проба через сервер.
+  bool _anyVerified(List<VpnServer> servers) => servers.any((s) {
+        final v = _results[s.key]?.verification;
+        return v == PingVerification.passed || v == PingVerification.failed;
+      });
+
   /// Проба группы серверов через прокси на одном общем харнессе.
   Future<void> _verifyShared(
       List<VpnServer> servers, AppSettings settings, CancelToken cancel,
@@ -326,9 +446,14 @@ class ProbeController extends ChangeNotifier {
     if (servers.isEmpty) return;
     HarnessHandle? handle;
     try {
+      final realism = _realismFor(settings);
       final entries = [
         for (final s in servers)
-          HarnessEntry(key: s.key, server: s, variant: _variantOf(s)),
+          HarnessEntry(
+              key: s.key,
+              server: s,
+              variant: _variantOf(s),
+              realism: realism),
       ];
       handle = await _harnessFactory().start(entries);
 
@@ -357,18 +482,27 @@ class ProbeController extends ChangeNotifier {
             final ready = await handle?.delayMs(idx);
             if (cancel.isCancelled) return;
             if (ready != null) {
+              // Замер сделан ЧЕРЕЗ поднятое ядро (LibXray) — это и есть проба,
+              // а не TCP-рукопожатие: состояние `passed` здесь заслуженное.
               _results[server.key] = PingResult(
                 outcome: PingOutcome.ok,
                 latencyMs: ready,
-                working: true,
+                proxyRttMs: ready,
+                reachableViaProxy: true,
+                verification: PingVerification.passed,
                 latencyMethod: settings.pingPrimary,
+                measuredAt: DateTime.now(),
               );
+              _done.add(server.key); // иначе полоска прогресса не доходит до конца
               notifyListeners();
               return;
             }
           }
           await _applyVerify(server, port, settings,
-              head: head, forceProxy: forceProxy);
+              head: head,
+              forceProxy: forceProxy,
+              proxyUser: handle?.proxyUser,
+              proxyPassword: handle?.proxyPassword);
         }));
       }
       await Future.wait(futures);
@@ -384,7 +518,11 @@ class ProbeController extends ChangeNotifier {
     HarnessHandle? handle;
     try {
       handle = await _harnessFactory().start([
-        HarnessEntry(key: server.key, server: server, variant: _variantOf(server)),
+        HarnessEntry(
+            key: server.key,
+            server: server,
+            variant: _variantOf(server),
+            realism: _realismFor(settings)),
       ]);
       final rawPort = handle.proxyPortFor(0);
       final port = rawPort <= 0 ? null : rawPort;
@@ -394,17 +532,26 @@ class ProbeController extends ChangeNotifier {
       final ready = port == null ? await handle.delayMs(0) : null;
       if (cancel.isCancelled) return;
       if (port == null && ready != null) {
+        // Как и в `_verifyShared`: цифру дало ядро, поднятое ради этой пробы, —
+        // проверка состоялась.
         _results[server.key] = PingResult(
           outcome: PingOutcome.ok,
           latencyMs: ready,
-          working: true,
+          proxyRttMs: ready,
+          reachableViaProxy: true,
+          verification: PingVerification.passed,
           latencyMethod: settings.pingPrimary,
+          measuredAt: DateTime.now(),
         );
+        _done.add(server.key);
         notifyListeners();
         return;
       }
       await _applyVerify(server, port, settings,
-          head: head, forceProxy: forceProxy);
+          head: head,
+          forceProxy: forceProxy,
+          proxyUser: handle.proxyUser,
+          proxyPassword: handle.proxyPassword);
     } finally {
       await handle?.stop();
     }
@@ -414,39 +561,42 @@ class ProbeController extends ChangeNotifier {
   /// TCP; для серверов без TCP (hysteria2, полный конфиг) и при одиночном методе
   /// «через прокси» ([forceProxy]) — RTT пробы: другого числа нет.
   Future<void> _applyVerify(VpnServer s, int? port, AppSettings settings,
-      {required bool head, required bool forceProxy}) async {
+      {required bool head,
+      required bool forceProxy,
+      // Креды ИМЕННО ЭТОГО порта. `null` — живое ядро, у него свои сессионные
+      // (ProxyProbe.user/password). У харнесса пароль свой, на прогон, и
+      // подставить сюда сессионный значило бы получить 407 на каждом сервере.
+      String? proxyUser,
+      String? proxyPassword}) async {
     final proxyLat = _proxyLatency(s) || forceProxy;
     try {
       if (port == null) {
         // ⚠️ «НЕ ПРОВЕРЕН» И «МЁРТВ» — РАЗНЫЕ НОВОСТИ, И ПУТАТЬ ИХ НЕЛЬЗЯ.
         //
-        // Порт `null` значит «замерить нечем», а не «сервер не отвечает».
-        // На Android харнесс не умеет hysteria2 вовсе (`ProbeHarnessAndroid`
-        // кладёт для него null), и заведомо рабочий сервер красился в красное
-        // «n/a» — при том, что и код, и бэклог обещают честное «не проверен».
-        // Красный означает «не подключайся сюда», и человек послушно шёл на
-        // худший узел.
+        // Порт `null` значит «замерить нечем» (харнесс не поднялся, ядро
+        // кандидата не стартовало, платформа так не умеет), а не «сервер не
+        // отвечает» и не «сервер не проксирует». На Android харнесс не умеет
+        // hysteria2 вовсе (`ProbeHarnessAndroid` кладёт для него null), и
+        // заведомо рабочий сервер красился в красное «n/a»; обычный сервер при
+        // упавшем харнессе получал «отвечает, но не проксирует» — оба вердикта
+        // выдуманные. Красный человек читает как «не подключайся сюда» и
+        // послушно уходит на худший узел.
         //
-        // Отличаем по тому, была ли попытка ВООБЩЕ возможна: `forceProxy` —
-        // это проба по живому каналу, её отказ настоящий.
-        if (proxyLat && !forceProxy) {
-          _results[s.key] = PingResult(
-            outcome: PingOutcome.untested,
-            latencyMethod: settings.pingPrimary,
-            measuredAt: DateTime.now(),
-          );
-          notifyListeners();
-          return;
-        }
-        // Обычный сервер по TCP достижим, но рабочим не подтверждён.
+        // Пробы НЕ БЫЛО ⇒ `notRun`. Число TCP при этом сохраняем: оно измерено.
         _results[s.key] = proxyLat
-            ? PingResult(outcome: PingOutcome.failed, measuredAt: DateTime.now())
+            ? PingResult(
+                // TCP-цифры у таких серверов нет вовсе — показывать нечего.
+                outcome: PingOutcome.untested,
+                verification: PingVerification.notRun,
+                latencyMethod: settings.pingPrimary,
+                measuredAt: DateTime.now(),
+              )
             : PingResult(
                 outcome: PingOutcome.ok,
                 latencyMs: _results[s.key]?.latencyMs,
-                working: false,
+                verification: PingVerification.notRun,
                 latencyMethod: PingMethod.tcp,
-                measuredAt: DateTime.now(),
+                measuredAt: _results[s.key]?.measuredAt ?? DateTime.now(),
               );
         notifyListeners();
         return;
@@ -457,13 +607,18 @@ class ProbeController extends ChangeNotifier {
         settings.testUrl,
         head: head,
         timeout: Duration(milliseconds: settings.pingTimeoutMs),
+        proxyUser: proxyUser,
+        proxyPassword: proxyPassword,
       );
+      // Проба состоялась — вот теперь вердикт настоящий.
+      final verdict =
+          probe.ok ? PingVerification.passed : PingVerification.failed;
       if (proxyLat) {
         _results[s.key] = PingResult(
           outcome: probe.ok ? PingOutcome.ok : PingOutcome.failed,
           latencyMs: probe.rttMs, // TCP нет — показываем RTT пробы
           proxyRttMs: probe.rttMs,
-          working: probe.ok,
+          verification: verdict,
           reachableViaProxy: probe.ok,
           latencyMethod: head ? PingMethod.proxyHead : PingMethod.proxyGet,
           measuredAt: DateTime.now(),
@@ -473,7 +628,7 @@ class ProbeController extends ChangeNotifier {
           outcome: PingOutcome.ok, // TCP уже подтвердил достижимость
           latencyMs: _results[s.key]?.latencyMs, // показываем TCP
           proxyRttMs: probe.rttMs,
-          working: probe.ok,
+          verification: verdict,
           reachableViaProxy: probe.ok,
           latencyMethod: PingMethod.tcp,
           measuredAt: DateTime.now(),

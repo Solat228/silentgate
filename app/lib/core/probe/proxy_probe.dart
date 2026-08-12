@@ -102,6 +102,16 @@ class ProxyProbe {
     Duration timeout = const Duration(seconds: 5),
     ResponseValidator? validator,
     int maxBodyBytes = 64 * 1024,
+
+    /// Креды ИМЕННО ЭТОГО порта. `null` — взять сессионные [user]/[password].
+    ///
+    /// ⚠️ Понадобились, когда проб стало два вида сразу: активный сервер
+    /// проверяется через ЖИВОЕ ядро (его пароль — в статиках), а остальные —
+    /// через харнесс со СВОИМ паролем на прогон. Общие статики тут молча
+    /// подставили бы чужой пароль, и половина серверов получила бы 407, то есть
+    /// «не работает» на исправном канале.
+    String? proxyUser,
+    String? proxyPassword,
   }) async {
     final client = HttpClient();
     // 0 — идти НАПРЯМУЮ, мимо туннеля. Нужно для замера «до подключения»:
@@ -111,10 +121,20 @@ class ProxyProbe {
       client.findProxy = (_) => 'PROXY 127.0.0.1:$proxyPort';
       // Пароль инбаунда проб — без него ядро ответит 407, и все сервис-чипы
       // покрасятся в красный при живом соединении.
-      if (user.isNotEmpty) {
-        client.addProxyCredentials('127.0.0.1', proxyPort, '',
-            HttpClientBasicCredentials(user, password));
+      final u = proxyUser ?? user;
+      final p = proxyPassword ?? password;
+      if (u.isNotEmpty) {
+        client.addProxyCredentials(
+            '127.0.0.1', proxyPort, '', HttpClientBasicCredentials(u, p));
       }
+    } else {
+      // ⚠️ «Напрямую» ЗАДАЁТСЯ ЯВНО, а не оставляется на умолчание SDK.
+      // Раньше в этой ветке `findProxy` не трогали вовсе, и куда пойдёт запрос,
+      // решал Dart: его умолчание — `HttpClient.findProxyFromEnvironment`-подобное
+      // поведение, зависящее от переменных окружения (`http_proxy`/`all_proxy`).
+      // На машине, где они выставлены, замер «без VPN» тихо уходил бы через
+      // ЧУЖОЙ прокси — и сравнение «до/после» сравнивало бы не то, что обещает.
+      client.findProxy = (_) => 'DIRECT';
     }
     client.connectionTimeout = timeout;
     // Сертификат НЕ игнорируем: валидный TLS отсекает заглушки/MITM провайдера.

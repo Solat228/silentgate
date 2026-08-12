@@ -17,11 +17,17 @@ class XrayHarnessWindows implements ProbeHarness {
   bool get supportsProxyRequests => true;
 
   final HarnessConfigBuilder builder;
-  // Изолированная копия (SILENTGATE_PORT_OFFSET) занимает свой диапазон портов.
-  XrayHarnessWindows({HarnessPorts? ports})
+
+  /// Изолированная копия (SILENTGATE_PORT_OFFSET) занимает свой диапазон портов.
+  ///
+  /// [secret] — пароль инбаундов. Не передан — генерируется свой на этот
+  /// экземпляр, то есть на прогон: харнесс создаётся заново на каждый запуск.
+  /// ⚠️ Пароль обязателен: без него порт 21000+ был бы входом в туннель для
+  /// любого процесса машины на всё время прогона.
+  XrayHarnessWindows({HarnessPorts? ports, String? secret})
       : builder = HarnessConfigBuilder(
           ports: ports ?? HarnessPorts(base: 21000 + AppEnv.portOffset),
-        );
+        ).withAuth(harnessProxyUser, secret ?? newHarnessSecret());
 
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
@@ -68,6 +74,12 @@ class _WindowsHarnessHandle implements HarnessHandle {
 
   @override
   int proxyPortFor(int index) => _builder.portFor(index);
+
+  @override
+  String get proxyUser => _builder.user;
+
+  @override
+  String get proxyPassword => _builder.password;
 
   /// Windows меряет через прокси-порт — готовой задержки нет.
   @override

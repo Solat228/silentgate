@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/singbox/singbox_harness_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_proxy_config_builder.dart';
+import 'package:silentgate/core/xray/harness_config_builder.dart';
 import 'package:silentgate/core/xray/xray_config_builder.dart';
 
 /// Локальные порты ядра закрыты паролем НА ВСЕХ ПУТЯХ.
@@ -19,6 +21,15 @@ import 'package:silentgate/core/xray/xray_config_builder.dart';
 /// подавляющее большинство подключений. Прокси-ядро sing-box (hysteria2) не
 /// умело кредов вовсе. Снаружи всё выглядело исправным: подключение проходит,
 /// тумблер включён, — а порт открыт любому процессу машины.
+///
+/// ⚠️ И ТОТ ЖЕ УРОК ПОВТОРИЛСЯ. В 1.3.0 закрыли ДВА пути сборки конфига из
+/// ЧЕТЫРЁХ, а этот файл проверял ровно те же два. Про ХАРНЕСС — отдельный
+/// экземпляр ядра, который поднимается на время пинга и подбора, — забыли, и
+/// его порт 21000+/21500+ оставался открытым входом в туннель весь прогон.
+/// Нашлось только ревью, спустя две версии.
+///
+/// Поэтому ниже проверяются ВСЕ ЧЕТЫРЕ построителя. Появится пятый — добавить
+/// его сюда, а не надеяться, что «этот путь не такой».
 void main() {
   const vless = VpnServer(
     protocol: 'vless',
@@ -132,6 +143,77 @@ void main() {
       final json = const SingboxProxyConfigBuilder(
               user: 'sg', password: 'secret')
           .buildJson([hy2]);
+      expect(() => jsonDecode(json), returnsNormally);
+    });
+  });
+
+  // ── Харнесс: третий и четвёртый пути сборки конфига ───────────────────────
+  //
+  // Инбаунд харнесса живёт недолго — только пока идёт прогон пинга или подбора.
+  // Но всё это время он ведёт В ТУННЕЛЬ кандидата, а «недолго» на машине с
+  // чужим процессом ничем не лучше «всегда».
+  const entry = HarnessEntry(key: 'k', server: vless);
+  // Второй обычный сервер — чтобы проверить набор инбаундов, а не один.
+  // ⚠️ hysteria2 сюда класть НЕЛЬЗЯ: Xray этого протокола не знает и падает на
+  // сборке outbound'а. Разложение по ядрам делает MixedProbeHarness.
+  const entry2 = HarnessEntry(key: 'k2', server: vless);
+  const hy2Entry = HarnessEntry(key: 'k2', server: hy2);
+
+  group('Харнесс Xray', () {
+    test('с кредами каждый инбаунд требует пароль', () {
+      final cfg = const HarnessConfigBuilder()
+          .withAuth('sg', 'secret')
+          .buildMap([entry, entry2]);
+      final inbounds = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(inbounds, isNotEmpty);
+      for (final i in inbounds) {
+        final accounts = (i['settings'] as Map)['accounts'];
+        expect(accounts, isNotNull,
+            reason: 'открытый инбаунд харнесса = вход в туннель без пароля');
+        expect((accounts as List).first, {'user': 'sg', 'pass': 'secret'});
+      }
+    });
+
+    test('без кредов инбаунд открыт — так было до 1.4.1', () {
+      final cfg = const HarnessConfigBuilder().buildMap([entry]);
+      final i = (cfg['inbounds'] as List).first as Map<String, dynamic>;
+      expect((i['settings'] as Map).containsKey('accounts'), isFalse);
+    });
+
+    test('с кредами сериализуется', () {
+      final json =
+          const HarnessConfigBuilder().withAuth('sg', 'secret').buildJson([entry]);
+      expect(() => jsonDecode(json), returnsNormally);
+    });
+  });
+
+  group('Харнесс sing-box', () {
+    test('с кредами каждый инбаунд требует пароль', () {
+      final cfg = const SingboxHarnessConfigBuilder()
+          .withAuth('sg', 'secret')
+          .buildMap([hy2Entry]);
+      final inbounds = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(inbounds, isNotEmpty);
+      for (final i in inbounds) {
+        // ⚠️ У sing-box поле называется `users`, а не `accounts`, и ключи
+        // внутри другие: построители решают одну задачу, но не взаимозаменяемы.
+        final users = i['users'];
+        expect(users, isNotNull);
+        expect((users as List).first,
+            {'username': 'sg', 'password': 'secret'});
+      }
+    });
+
+    test('без кредов инбаунд открыт — так было до 1.4.1', () {
+      final cfg = const SingboxHarnessConfigBuilder().buildMap([hy2Entry]);
+      final i = (cfg['inbounds'] as List).first as Map<String, dynamic>;
+      expect(i.containsKey('users'), isFalse);
+    });
+
+    test('с кредами сериализуется', () {
+      final json = const SingboxHarnessConfigBuilder()
+          .withAuth('sg', 'secret')
+          .buildJson([hy2Entry]);
       expect(() => jsonDecode(json), returnsNormally);
     });
   });

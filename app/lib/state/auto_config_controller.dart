@@ -59,6 +59,116 @@ class AutoConfigController extends ChangeNotifier {
   String? get lastSummary => _lastSummary;
   DateTime? get finishedAt => _finishedAt;
 
+  // ── Выбор серверов для подбора ─────────────────────────────────────────────
+  //
+  // ⚠️ ЖИВЁТ ЗДЕСЬ, А НЕ В `State` ЭКРАНА, И ЭТО ФИКС ДЕФЕКТА. Галочки лежали в
+  // `_BatchTuneState._sel`; экран автонастройки — обычный маршрут, при уходе с
+  // него `State` умирает. Человек снимал полсотни галочек, отходил посмотреть
+  // список серверов, возвращался — и снова видел отмеченными ВСЕ.
+  final Set<String> _selection = {};
+  bool _selectionInit = false;
+
+  Set<String> get selection => Set.unmodifiable(_selection);
+
+  /// Первое заполнение — все серверы. Зовётся из `build`, поэтому НЕ уведомляет
+  /// слушателей: `notifyListeners()` во время сборки кадра роняет Flutter.
+  void ensureSelection(Iterable<String> keys) {
+    if (_selectionInit) return;
+    _selectionInit = true;
+    _selection.addAll(keys);
+  }
+
+  void setSelected(String key, bool on) {
+    _selectionInit = true;
+    if (on) {
+      _selection.add(key);
+    } else {
+      _selection.remove(key);
+    }
+    notifyListeners();
+  }
+
+  void selectAll(Iterable<String> keys) {
+    _selectionInit = true;
+    _selection
+      ..clear()
+      ..addAll(keys);
+    notifyListeners();
+  }
+
+  void clearSelection() {
+    _selectionInit = true;
+    _selection.clear();
+    notifyListeners();
+  }
+
+  // ── Таймер «прошло / осталось» ─────────────────────────────────────────────
+  DateTime? _startedAt;
+
+  /// Когда пользователь запустил прогон. null — прогона не было.
+  DateTime? get startedAt => _startedAt;
+
+  /// Фаза и её собственная точка отсчёта.
+  ///
+  /// ⚠️ У фаз РАЗНАЯ стоимость шага: перебор кандидата — это подъём харнесса и
+  /// несколько проб, а шаг замера скорости — скачивание 5 МБ. Считать их одной
+  /// средней значило бы показать заведомо неверный остаток ровно в тот момент,
+  /// когда прогон переходит из одной фазы в другую.
+  AutoConfigPhase _phase = AutoConfigPhase.probing;
+  DateTime? _phaseStartedAt;
+  int _phaseDone = 0;
+  int _phaseTotal = 0;
+
+  void _notePhase(AutoConfigPhase phase, int index, int total) {
+    if (phase != _phase || _phaseStartedAt == null) {
+      _phase = phase;
+      _phaseStartedAt = DateTime.now();
+    }
+    // ⚠️ ЗАВЕРШЁННЫХ — `index`, А НЕ `index + 1`. Кандидат с номером `index`
+    // только НАЧАЛСЯ; записав его в пройденные, мы поделили бы время на
+    // завышенное число и занизили оценку. Пока не закончился ни один —
+    // оценки нет вовсе, и это честнее выдуманной.
+    _phaseDone = index;
+    _phaseTotal = total;
+  }
+
+  /// Сколько прогон уже идёт.
+  Duration? elapsed([DateTime? now]) {
+    final start = _startedAt;
+    if (start == null) return null;
+    return (now ?? DateTime.now()).difference(start);
+  }
+
+  /// Оценка остатка ТЕКУЩЕЙ фазы или null, если оценивать пока не по чему.
+  Duration? remainingEstimate([DateTime? now]) {
+    final start = _phaseStartedAt;
+    if (start == null) return null;
+    return estimateRemaining(
+      elapsed: (now ?? DateTime.now()).difference(start),
+      done: _phaseDone,
+      total: _phaseTotal,
+    );
+  }
+
+  /// Остаток по ФАКТИЧЕСКОЙ стоимости пройденного, а не по числу кандидатов.
+  ///
+  /// ⚠️ ПОЧЕМУ НЕ «СКОЛЬКО ОСТАЛОСЬ × КОНСТАНТА». Стоимость кандидата
+  /// отличается в разы: отвечающий сервер добавляет к пробам ещё и замер
+  /// задержки, а у молчащего КАЖДАЯ проба ждёт полный таймаут. Оценка по
+  /// одному лишь числу давала бы то втрое меньше, то втрое больше — то есть
+  /// была бы хуже отсутствия оценки. Здесь средняя берётся из уже прожитого
+  /// времени этой же фазы, поэтому она сама подстраивается под состав списка.
+  static Duration? estimateRemaining({
+    required Duration elapsed,
+    required int done,
+    required int total,
+  }) {
+    if (done <= 0 || elapsed <= Duration.zero) return null;
+    final left = total - done;
+    if (left <= 0) return Duration.zero;
+    return Duration(microseconds: elapsed.inMicroseconds ~/ done * left);
+  }
+
   /// Загрузка сохранённых результатов прошлого прогона.
   Future<void> init() async {
     try {
@@ -98,9 +208,27 @@ class AutoConfigController extends ChangeNotifier {
     _progress = null;
     _lastSummary = null;
     _unsupported = false;
-    _found.clear();
+    _startedAt = DateTime.now();
+    _phase = AutoConfigPhase.probing;
+    _phaseStartedAt = _startedAt;
+    _phaseDone = 0;
+    _phaseTotal = 0;
+    // ⚠️ ЧИСТИМ ТОЛЬКО УЧАСТНИКОВ ЭТОГО ПРОГОНА, А НЕ ВЕСЬ СПИСОК.
+    //
+    // Раньше здесь стоял `_found.clear()`, и это молча уничтожало результаты,
+    // на которых держался весь остальной экран: подбор одного сервера из
+    // контекстного меню (`startForKey`) стирал итоги предыдущего прогона по
+    // всей подписке, а верхняя кнопка «Подобрать для выбранных» — данные
+    // нижней кнопки «Готово». Пользователь не делал ничего, что означало бы
+    // «забудь всё найденное».
+    final runKeys = servers.map((s) => s.key).toSet();
+    _found.removeWhere((r) => runKeys.contains(r.server.key));
     notifyListeners();
 
+    // Найденное ИМЕННО В ЭТОМ прогоне: итог и текст ошибки обязаны говорить
+    // про него, а не про накопленный список (иначе прогон, не нашедший ничего,
+    // отчитывался бы чужими находками).
+    final runFound = <AutoConfigResult>[];
     final cancel = _cancel = CancelToken();
     try {
       final ranked = await _engine.run(
@@ -109,14 +237,32 @@ class AutoConfigController extends ChangeNotifier {
         cancel: cancel,
         variantsOverride: variants,
         onCandidate: (i, total, server, variant) {
+          _notePhase(AutoConfigPhase.probing, i, total);
           _progress = AutoConfigProgress(
             index: i,
             total: total,
             candidateName: server.displayName,
+            candidateKey: server.key,
             variant: variant,
             services: {
               for (final s in settings.autoConfigServices) s: ProbeState.pending,
             },
+          );
+          notifyListeners();
+        },
+        // Фаза замера скорости отчитывается о себе сама. Без этого `_progress`
+        // оставался с последним кандидатом перебора, и экран десятки секунд
+        // уверял, что «тестирует» сервер, который давно проверен.
+        onSpeedCandidate: (i, total, server, variant) {
+          _notePhase(AutoConfigPhase.speed, i, total);
+          _progress = AutoConfigProgress(
+            index: i,
+            total: total,
+            candidateName: server?.displayName ?? '',
+            candidateKey: server?.key ?? '',
+            variant: variant,
+            services: const {},
+            phase: AutoConfigPhase.speed,
           );
           notifyListeners();
         },
@@ -135,6 +281,7 @@ class AutoConfigController extends ChangeNotifier {
         },
         onFound: (result) {
           _found.add(result);
+          runFound.add(result);
           onPinFound?.call(result.server, result.variant); // #1 — сразу в пины
           final ping = result.ping;
           if (ping != null) {
@@ -149,11 +296,15 @@ class AutoConfigController extends ChangeNotifier {
       // скорости, оценкой с замером. Раньше возвращённый список молча
       // выбрасывался, и результат замера скорости не влиял ни на что.
       if (ranked.isNotEmpty) {
-        _found
+        // Итог прогона встаёт СВЕРХУ, ранее найденное по другим серверам —
+        // следом. Порядок внутри `ranked` задаёт движок, и трогать его нельзя.
+        _found.removeWhere((r) => runKeys.contains(r.server.key));
+        _found.insertAll(0, ranked);
+        runFound
           ..clear()
           ..addAll(ranked);
       }
-      if (_found.isEmpty) _error = 'Рабочих серверов не найдено';
+      if (runFound.isEmpty) _error = 'Рабочих серверов не найдено';
     } on CancelledException {
       // частичные результаты остаются в _found
     } on AutoConfigUnsupported {
@@ -168,11 +319,16 @@ class AutoConfigController extends ChangeNotifier {
     } finally {
       _running = false;
       _progress = null;
+      // Оценка остатка живёт ровно столько, сколько идёт прогон: показывать
+      // «осталось 3:20» после его конца — прямое враньё.
+      _phaseStartedAt = null;
+      _phaseDone = 0;
+      _phaseTotal = 0;
       _lastSummary = _unsupported
           ? 'Автонастройка недоступна на этой платформе'
-          : _found.isEmpty
+          : runFound.isEmpty
               ? 'Автонастройка: рабочих серверов не найдено'
-              : 'Автонастройка завершена: найдено ${_found.length}';
+              : 'Автонастройка завершена: найдено ${runFound.length}';
       _finishedAt = DateTime.now();
       await _persist();
       notifyListeners();

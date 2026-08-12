@@ -76,8 +76,19 @@ class TunHelper {
         ? '${loc.assetDir}${Platform.pathSeparator}sing-box.exe'
         : 'sing-box.exe';
 
-    final log = await _openLog();
-    _write(log, '--- запуск sing-box: $singbox run -c $configPath');
+    final log = RotatingLog(logPathFor(await AppPaths.supportDir()),
+        maxBytes: _maxLogBytes);
+    await log.open();
+    // ⚠️ ЛОГ НАЧИНАЕТСЯ ЗАНОВО ИМЕННО ЗДЕСЬ, А НЕ В `SingboxRouterWindows`.
+    //
+    // Раньше файл обрезал роутер (`_truncateLog`, другой процесс и другой файл
+    // кода), пока хелпер держал его открытым на дозапись. `IOSink` помнит
+    // смещение с момента открытия — после чужой обрезки он писал по старому
+    // адресу, и Windows заливала пропуск нулями: у владельца 98 % `singbox.log`
+    // (1 048 209 байт из 1 476 КБ) оказались нулями при 3571 реальной строке.
+    // Обрезка и поток обязаны жить в одном месте.
+    await log.truncate(
+        header: '--- запуск sing-box: $singbox run -c $configPath\n');
 
     _delete(stopFile);
     Process proc;
@@ -88,26 +99,31 @@ class TunHelper {
         workingDirectory: loc?.assetDir,
       );
     } catch (e) {
-      _write(log, 'НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
-      await log?.flush();
-      await log?.close();
+      await log.write('НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
+      await log.close();
       return;
     }
 
-    // Вывод ядра — в лог (иначе диагностировать сбой невозможно).
-    proc.stdout.transform(utf8.decoder).listen((s) => _write(log, s, raw: true));
-    proc.stderr.transform(utf8.decoder).listen((s) => _write(log, s, raw: true));
+    // Вывод ядра — в лог (иначе диагностировать сбой невозможно). Режем на
+    // СТРОКИ, а не пишем чанками: по строкам считается порог усечения, и на
+    // чанках он занижался ровно настолько, насколько ядро болтливо.
+    void pipe(Stream<List<int>> s) => s
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen((line) => unawaited(log.write(line)), onError: (_) {});
+    pipe(proc.stdout);
+    pipe(proc.stderr);
 
     var procExited = false;
     unawaited(proc.exitCode.then((code) {
       procExited = true;
-      _write(log, '--- sing-box завершился, код $code');
+      unawaited(log.write('--- sing-box завершился, код $code'));
     }));
 
     while (true) {
       if (procExited) break;
       if (stopFile.existsSync()) {
-        _write(log, '--- получен stop-файл, останавливаю sing-box');
+        await log.write('--- получен stop-файл, останавливаю sing-box');
         proc.kill();
         break;
       }
@@ -118,8 +134,7 @@ class TunHelper {
       proc.kill(ProcessSignal.sigkill);
     } catch (_) {}
     _delete(stopFile);
-    await log?.flush();
-    await log?.close();
+    await log.close();
   }
 
   /// GUI: запросить остановку TUN — создать stop-файл по явному пути.
@@ -142,55 +157,16 @@ class TunHelper {
     _delete(_defaultStopFile());
   }
 
-  /// Обрезать разросшийся лог, не останавливая запись.
-  static Future<void> _rotateLog(IOSink log) async {
-    try {
-      await log.flush();
-      final f = File(logPathFor(await AppPaths.supportDir()));
-      await f.writeAsString(
-          '--- лог обрезан по достижении ${_maxLogBytes ~/ 1024} КБ ---\n');
-    } catch (_) {
-    } finally {
-      _rotating = false;
-    }
-  }
-
-  static Future<IOSink?> _openLog() async {
-    try {
-      final f = File(logPathFor(await AppPaths.supportDir()));
-      // Простая ротация: пухлый лог начинаем заново.
-      if (await f.exists() && await f.length() > _maxLogBytes) {
-        await f.writeAsString('');
-      }
-      return f.openWrite(mode: FileMode.append);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Сколько байт уже записано в текущий файл лога.
-  ///
-  /// ⚠️ Ротация «при открытии» одна не спасает: сессия TUN живёт часами, а на
-  /// уровне `debug` sing-box пишет каждое соединение и каждый DNS-запрос — файл
-  /// наблюдался размером 758 МБ, и отчёт поддержки, читавший его целиком,
-  /// подвешивал приложение. Считаем объём на лету и обрезаем файл, не
-  /// дожидаясь следующего запуска.
-  static int _logBytes = 0;
-  static bool _rotating = false;
-
-  static void _write(IOSink? log, String text, {bool raw = false}) {
-    if (log == null) return;
-    try {
-      final line = raw ? text : '[${DateTime.now().toIso8601String()}] $text\n';
-      _logBytes += line.length;
-      if (_logBytes > _maxLogBytes && !_rotating) {
-        _rotating = true;
-        _logBytes = 0;
-        unawaited(_rotateLog(log));
-      }
-      log.write(line);
-    } catch (_) {}
-  }
+  // ⚠️ Своей ротации здесь БОЛЬШЕ НЕТ, и возвращать её нельзя.
+  //
+  // Было: `_openLog()` открывал поток, а `_rotateLog()` обрезал файл мимо него
+  // — то есть ровно тот разрыв «открытие в одном месте, обрезка в другом»,
+  // который и заполнял лог нулями. Всё это умеет [RotatingLog]: он усекает файл
+  // и ПЕРЕСОЗДАЁТ поток, а не пишет дальше по старому смещению. Ротация на лету
+  // при этом сохранилась — она нужна: сессия TUN живёт часами, а на уровне
+  // `debug` sing-box пишет каждое соединение и каждый DNS-запрос (файл
+  // наблюдался размером 758 МБ, и отчёт поддержки, читавший его целиком,
+  // подвешивал приложение).
 
   static void _delete(File f) {
     try {

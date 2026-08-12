@@ -18,11 +18,15 @@ class SingboxHarnessWindows implements ProbeHarness {
 
   final SingboxHarnessConfigBuilder builder;
 
-  // Диапазон портов свой, чтобы не пересекаться с Xray-харнессом (21000+).
-  SingboxHarnessWindows({HarnessPorts? ports})
+  /// Диапазон портов свой, чтобы не пересекаться с Xray-харнессом (21000+).
+  ///
+  /// [secret] — пароль инбаундов, см. `XrayHarnessWindows`. В смешанном прогоне
+  /// оба ядра получают ОДИН пароль: наружу харнесс выглядит одним, и хендл
+  /// отдаёт одну пару кредов на все порты.
+  SingboxHarnessWindows({HarnessPorts? ports, String? secret})
       : builder = SingboxHarnessConfigBuilder(
           ports: ports ?? HarnessPorts(base: 21500 + AppEnv.portOffset),
-        );
+        ).withAuth(harnessProxyUser, secret ?? newHarnessSecret());
 
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
@@ -81,6 +85,12 @@ class _SingboxHarnessHandle implements HarnessHandle {
 
   @override
   int proxyPortFor(int index) => _builder.portFor(index);
+
+  @override
+  String get proxyUser => _builder.user;
+
+  @override
+  String get proxyPassword => _builder.password;
 
   /// Windows меряет через прокси-порт — готовой задержки нет.
   @override

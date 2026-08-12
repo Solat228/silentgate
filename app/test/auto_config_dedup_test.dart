@@ -29,6 +29,12 @@ class _FakeHarness implements ProbeHarness {
 
 class _FakeHandle implements HarnessHandle {
   @override
+  String get proxyUser => '';
+
+  @override
+  String get proxyPassword => '';
+
+  @override
   int proxyPortFor(int index) => -1;
   @override
   Future<int?> delayMs(int index) async => null;
