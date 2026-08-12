@@ -59,14 +59,31 @@ class SpeedTest {
   static const _endpoint = 'https://speed.cloudflare.com/__down?bytes=';
 
   /// [proxyPort] — локальный http-прокси харнесса; null = мимо VPN.
+  ///
+  /// ⚠️ [proxyUser]/[proxyPassword] ОБЯЗАТЕЛЬНЫ ВМЕСТЕ С ПОРТОМ. Инбаунды
+  /// харнесса закрыты паролем (1.4.1), и без кредов ядро отвечает
+  /// `407 Proxy Authentication Required` — а `catch` превращает это в обычное
+  /// «замер не удался», без единого слова о причине. Ровно так и случилось,
+  /// когда пароль добавили: пинг креды получил, а замер скорости — нет, и
+  /// «скорость через сервер» молча умерла на обоих экранах.
+  ///
+  /// Это тот же класс, на котором сгорел v2rayNG (#5549): включили
+  /// аутентификацию, забыли прокинуть в ОДНОГО из потребителей. Потребителей у
+  /// порта всегда больше, чем кажется, — искать их поиском по `proxyPortFor`.
   static Future<SpeedResult> download({
     required SpeedTestSize size,
     int? proxyPort,
+    String proxyUser = '',
+    String proxyPassword = '',
     Duration timeout = const Duration(seconds: 30),
   }) async {
     final client = HttpClient()..connectionTimeout = timeout;
     if (proxyPort != null) {
       client.findProxy = (_) => 'PROXY 127.0.0.1:$proxyPort';
+      if (proxyUser.isNotEmpty) {
+        client.addProxyCredentials('127.0.0.1', proxyPort, '',
+            HttpClientBasicCredentials(proxyUser, proxyPassword));
+      }
     }
     final sw = Stopwatch();
     try {

@@ -1,3 +1,4 @@
+import 'service_check.dart';
 import '../models/vpn_server.dart';
 import '../net/speed_test.dart';
 import 'speed_score.dart';
@@ -477,14 +478,18 @@ class AutoConfigEngine {
       try {
         for (final ep in endpoints) {
           cancel.throwIfCancelled();
-          final r = await ProxyProbe.check(
+          // ⚠️ Способ проверки выбирает ОБЩИЙ код (`ServiceChecker.probeEndpoint`),
+          // тот же, что у сервис-чипов. Раньше здесь стоял прямой вызов
+          // `ProxyProbe.check`, и мишень Telegram (`tcp://…`) уходила в
+          // HTTP-клиент как обычный адрес — она падала ВСЕГДА, при любом
+          // сервере, а Telegram входит в набор по умолчанию.
+          //
+          // Креды харнесса обязательны: без них 407 на КАЖДОМ кандидате и
+          // «найдено 0» на полностью исправной подписке.
+          final r = await ServiceChecker.probeEndpoint(
             port,
-            ep.url,
-            head: ep.head,
+            ep,
             timeout: Duration(milliseconds: settings.pingTimeoutMs),
-            validator: ep.validator,
-            // Пароль инбаунда харнесса. Забыть его — значит получить 407 на
-            // КАЖДОМ кандидате и «найдено 0» на полностью рабочей подписке.
             proxyUser: handle.proxyUser,
             proxyPassword: handle.proxyPassword,
           );
@@ -614,7 +619,13 @@ class AutoConfigEngine {
         try {
           final port = handle.proxyPortFor(0);
           if (port > 0) {
-            final res = await SpeedTest.download(size: size, proxyPort: port);
+            // Креды харнесса обязательны: без них 407, и скорость не
+            // измеряется НИ У ОДНОГО кандидата — молча, без слова о причине.
+            final res = await SpeedTest.download(
+                size: size,
+                proxyPort: port,
+                proxyUser: handle.proxyUser,
+                proxyPassword: handle.proxyPassword);
             if (res.ok) mbps = res.bitsPerSecond / 1000000;
           }
         } finally {

@@ -62,8 +62,38 @@ void main() {
         AppRule(v222, byName: true, action: AppAction.block),
       ]);
       expect(collapsed, hasLength(1));
-      expect(collapsed.single.action, AppAction.tunnel,
-          reason: 'остаётся ПЕРВАЯ — явный порядок вместо непредсказуемого');
+      expect(collapsed.single.action, AppAction.block,
+          reason: 'запрет переживает свёртку: молча открыть сеть хуже, '
+              'чем оставить лишний запрет');
+    });
+
+    test('выключенное правило не вытесняет включённое', () {
+      // Это МИГРАЦИЯ чужих настроек: выбор вслепую молча убрал бы работающее
+      // правило в пользу того, что пользователь сам припарковал галочкой.
+      final collapsed = SplitTunnelConfig.dedupeApps(const [
+        AppRule(v222, byName: true, action: AppAction.tunnel, enabled: false),
+        AppRule(v227, byName: true, action: AppAction.tunnel),
+      ]);
+      expect(collapsed.single.enabled, isTrue);
+    });
+
+    test('«Блок» переживает свёртку — ошибка в сторону доступа опаснее', () {
+      // Пользователь ставил запрет намеренно и о его снятии не узнает;
+      // лишний запрет он заметит сразу и вернёт сам.
+      final collapsed = SplitTunnelConfig.dedupeApps(const [
+        AppRule(v222, byName: true, action: AppAction.tunnel),
+        AppRule(v227, byName: true, action: AppAction.block),
+      ]);
+      expect(collapsed.single.action, AppAction.block);
+    });
+
+    test('включённое важнее блока: выключенный блок не побеждает', () {
+      final collapsed = SplitTunnelConfig.dedupeApps(const [
+        AppRule(v222, byName: true, action: AppAction.tunnel),
+        AppRule(v227, byName: true, action: AppAction.block, enabled: false),
+      ]);
+      expect(collapsed.single.action, AppAction.tunnel);
+      expect(collapsed.single.enabled, isTrue);
     });
 
     test('разные программы не схлопываются', () {

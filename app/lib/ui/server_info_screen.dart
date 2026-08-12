@@ -3,6 +3,7 @@ import 'widgets/app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/probe/proxy_probe.dart';
 import '../core/models/vpn_server.dart';
 import '../core/net/ip_info.dart';
 import '../core/platform/app_launcher.dart';
@@ -48,7 +49,13 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   }
 
   /// Поднять харнесс для этого сервера и выполнить [action] с его портом.
-  Future<T?> _withHarness<T>(Future<T> Function(int port) action) async {
+  /// ⚠️ Отдаёт действию НЕ ТОЛЬКО ПОРТ, но и креды к нему. Инбаунды закрыты
+  /// паролем, и порт без пароля бесполезен: ядро ответит 407, а вызывающий
+  /// покажет «замер не удался» без объяснения. И креды тут РАЗНЫЕ: у харнесса
+  /// свой пароль на прогон, у живого ядра — сессионный, поэтому вычисляются они
+  /// там же, где выбирается порт, а не угадываются снаружи.
+  Future<T?> _withHarness<T>(
+      Future<T> Function(int port, String user, String password) action) async {
     final l = AppLocalizations.of(context);
     HarnessHandle? handle;
     try {
@@ -60,6 +67,8 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
         HarnessEntry(key: widget.server.key, server: widget.server, variant: variant),
       ]);
       var port = handle.proxyPortFor(0);
+      var user = handle.proxyUser;
+      var password = handle.proxyPassword;
 
       // ⚠️ Платформа может мерить САМА и порта не давать: на Android харнесс
       // возвращает готовую задержку, а `proxyPortFor` там ВСЕГДА 0. Ходить
@@ -80,8 +89,12 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           return null;
         }
         port = live;
+        // Живое ядро — СВОИ креды, сессионные. Пароль харнесса тут не подойдёт:
+        // это другой процесс с другим инбаундом.
+        user = ProxyProbe.user;
+        password = ProxyProbe.password;
       }
-      return await action(port);
+      return await action(port, user, password);
     } catch (e) {
       if (mounted) setState(() => _error = l.srvInfoProbeFailed('$e'));
       return null;
@@ -117,7 +130,11 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
     });
     final direct = await SpeedTest.download(size: size);
     final viaServer =
-        await _withHarness((port) => SpeedTest.download(size: size, proxyPort: port));
+        await _withHarness((port, user, password) => SpeedTest.download(
+            size: size,
+            proxyPort: port,
+            proxyUser: user,
+            proxyPassword: password));
     if (!mounted) return;
     setState(() {
       _speedDirect = direct;

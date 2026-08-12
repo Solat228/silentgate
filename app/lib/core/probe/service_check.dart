@@ -42,6 +42,40 @@ class ServiceCheckOutcome {
 /// доступность (открывается ли), затем — для ИИ — гео-ограничение по стране
 /// выхода. Гео-проба неинформативна ⇒ считаем доступным (безопасный дефолт).
 class ServiceChecker {
+  /// Проверить ОДНУ мишень через прокси-порт, выбрав способ по адресу.
+  ///
+  /// ⚠️ ЕДИНАЯ ТОЧКА ДЛЯ ВСЕХ, КТО ПРОВЕРЯЕТ СЕРВИСЫ, И ЭТО НЕ ВКУСОВЩИНА.
+  /// Мишень Telegram задана как `tcp://149.154.167.51:443`: его дата-центры
+  /// говорят по MTProto, и обычный HTTP-запрос провалился бы на сертификате
+  /// при полностью живом канале. Сервис-чипы это учитывали, а автонастройка —
+  /// НЕТ: она гнала тот же адрес в `HttpClient`, где `tcp://` не схема вовсе.
+  /// Telegram у неё падал ВСЕГДА, при любом сервере, а он входит в набор по
+  /// умолчанию — то есть «найдено 0» получалось на исправной подписке.
+  ///
+  /// Два разных разбора одного адреса — это всегда расхождение; тот же урок
+  /// уже записан про разрешение и исполнение url-схем. Теперь способ выбирает
+  /// один код, и оба потребителя спрашивают его.
+  static Future<ProbeOutcome> probeEndpoint(
+    int proxyPort,
+    ProbeEndpoint ep, {
+    Duration timeout = const Duration(seconds: 8),
+    String? proxyUser,
+    String? proxyPassword,
+  }) {
+    if (ep.url.startsWith('tcp://')) {
+      return _tcpProbe(proxyPort, ep.url);
+    }
+    return ProxyProbe.check(
+      proxyPort,
+      ep.url,
+      head: ep.head,
+      validator: ep.validator,
+      timeout: timeout,
+      proxyUser: proxyUser,
+      proxyPassword: proxyPassword,
+    );
+  }
+
   /// Разобрать `tcp://host:port` и дозвониться туда через прокси.
   static Future<ProbeOutcome> _tcpProbe(int httpPort, String url) async {
     final rest = url.substring('tcp://'.length);
@@ -57,18 +91,7 @@ class ServiceChecker {
     final ep = AutoConfigCatalog.endpointFor(s);
     if (ep == null) return const ServiceCheckOutcome(ServiceCheckState.fail);
 
-    // Адрес вида `tcp://host:port` — проверяем дозвоном, а не запросом.
-    // Так проверяется Telegram: его дата-центры говорят по MTProto, и обычный
-    // HTTP-запрос провалился бы на сертификате при полностью живом канале.
-    final r = ep.url.startsWith('tcp://')
-        ? await _tcpProbe(httpPort, ep.url)
-        : await ProxyProbe.check(
-            httpPort,
-            ep.url,
-            head: ep.head,
-            validator: ep.validator,
-            timeout: const Duration(seconds: 8),
-          );
+    final r = await probeEndpoint(httpPort, ep);
     if (!r.ok) {
       return ServiceCheckOutcome(ServiceCheckState.fail, latencyMs: r.rttMs);
     }

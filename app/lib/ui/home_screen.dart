@@ -433,7 +433,9 @@ class _HomeScreenState extends State<HomeScreen> {
     // сервера — его и отдаём.
     probe.liveProxyPort =
         () => state.status.isConnected ? state.httpProxyPort : 0;
-    probe.activeServerKey = () => state.selectedServer?.key;
+    // ⚠️ ПОДНЯТЫЙ сервер, а не выбранный в списке: клик по другому серверу
+    // живой туннель не трогает, и вердикт живого канала уехал бы чужому.
+    probe.activeServerKey = () => state.connectedServerKey;
     // #2.2 — всё временное показываем ПОВЕРХ интерфейса: раньше эти сообщения
     // жили в компоновке и сдвигали большую кнопку Connect.
     _showTransientMessages(context, state, settings);

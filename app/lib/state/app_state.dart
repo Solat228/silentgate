@@ -347,7 +347,29 @@ class AppState extends ChangeNotifier {
   /// Пользователь выключил VPN — отсчёт снят.
   void markUserDisconnect() {
     _connectedAt = null;
+    // Сессии больше нет — и «поднятого сервера» тоже. Оставить ключ значило бы
+    // разрешить проверку через живое ядро, которого уже не существует.
+    _connectedServerKey = null;
   }
+
+  /// Ключ сервера, С КОТОРЫМ РЕАЛЬНО ПОДНЯТА СЕССИЯ ЯДРА.
+  ///
+  /// ⚠️ ЭТО НЕ [selectedServer], И ПУТАТЬ ИХ НЕЛЬЗЯ. Выбор в списке меняется
+  /// одним кликом и живой туннель НЕ трогает — появляется лишь плашка
+  /// «переподключитесь». Значит после клика по другому серверу выбран B, а
+  /// трафик по-прежнему идёт через A.
+  ///
+  /// Раньше проверку «через живое ядро» адресовали выбранному серверу: проба
+  /// уходила по каналу A, а зелёный вердикт «прошёл проверку» записывался B —
+  /// серверу, через который не прошло ни байта. Для hysteria2 и панельных
+  /// «Авто» это происходило бы всегда: у них нет TCP-фазы, и живой канал —
+  /// единственный путь проверки.
+  ///
+  /// `null` — сессии нет либо мы не знаем точно, какой сервер поднят (подхват
+  /// чужого живого туннеля). Тогда проверка честно уходит в харнесс.
+  String? get connectedServerKey =>
+      _status.isConnected ? _connectedServerKey : null;
+  String? _connectedServerKey;
 
   /// Локальный http-прокси порт активного ядра (для живой проверки сервисов).
   int get httpProxyPort => _engine.httpProxyPort;
@@ -503,6 +525,7 @@ class AppState extends ChangeNotifier {
     final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
         ? server.copyWith(rawJsonOverride: ov.rawJson)
         : server;
+    _connectedServerKey = srv.key;
     await _engine.armAdoptedSession([srv],
         ConnectionOptions(
             variant: ov?.variant ?? _selectedVariant,
@@ -1662,6 +1685,9 @@ class AppState extends ChangeNotifier {
           ? server.copyWith(rawJsonOverride: ov.rawJson)
           : server;
       _engine.fallbackServers = const []; // ручной выбор не подменяем
+      // Запоминаем, ЧТО ИМЕННО поднимаем: выбор в списке после этого может
+      // уехать на другой сервер, а сессия останется этой.
+      _connectedServerKey = srv.key;
       await _engine.connect(
         srv,
         options: ConnectionOptions(
