@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import '../core/util/key_migration.dart';
 import 'atomic_file.dart';
 
 /// Что панель прислала для конкретного сервера (формат XRAY_JSON).
@@ -58,7 +59,15 @@ class PanelOutboundsStore {
         final cfg = PanelConfig.fromJson(e.value);
         if (!cfg.isEmpty) result['${e.key}'] = cfg;
       }
-      return result;
+      // ⚠️ САМОЕ ВАЖНОЕ ИЗ ХРАНИМОГО ПО КЛЮЧУ. Здесь лежит авторитетный конфиг
+      // от панели — по нему поднимаются профили «Авто» с балансировщиком и все
+      // серверы, пришедшие в формате XRAY_JSON. Отвяжись он от сервера — и
+      // профиль перестаёт быть профилем: приложение соберёт обычный outbound из
+      // полей ссылки, без балансировщика, и пользователь этого не заметит.
+      // Поэтому канонизация ключей обязана доходить и сюда, а не только до
+      // пинов и пингов.
+      return KeyMigration.remapMap<PanelConfig>(result,
+          logLabel: 'конфиги панели');
     } catch (_) {
       return {};
     }

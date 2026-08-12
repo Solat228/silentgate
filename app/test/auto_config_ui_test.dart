@@ -276,8 +276,8 @@ void main() {
 
       // ⚠️ Владелец: «если выйти и зайти заново — не показывает список
       // серверов». Гейт `if (!ctrl.running)` снимал список с экрана целиком.
-      final tileA = find.byKey(const Key('autoSrv-$linkA'));
-      final tileB = find.byKey(const Key('autoSrv-$linkB'));
+      final tileA = find.byKey(Key('autoSrv-${keyOf(linkA)}'));
+      final tileB = find.byKey(Key('autoSrv-${keyOf(linkB)}'));
       expect(tileA, findsOneWidget);
       expect(tileB, findsOneWidget);
 
@@ -286,7 +286,7 @@ void main() {
 
       // Текущий кандидат подсвечен. Первым идёт последняя импортированная
       // ссылка: одиночный импорт кладёт сервер в начало закреплённых.
-      expect(auto.progress?.candidateKey, linkB);
+      expect(auto.progress?.candidateKey, keyOf(linkB));
       expect(tester.widget<CheckboxListTile>(tileB).tileColor, isNotNull,
           reason: 'без подсветки непонятно, где сейчас идёт проверка');
       expect(tester.widget<CheckboxListTile>(tileA).tileColor, isNull);
@@ -304,7 +304,7 @@ void main() {
       await tester.pumpWidget(app());
       await tester.pumpAndSettle();
 
-      final tileA = find.byKey(const Key('autoSrv-$linkA'));
+      final tileA = find.byKey(Key('autoSrv-${keyOf(linkA)}'));
       expect(tester.widget<CheckboxListTile>(tileA).value, isTrue);
       await tester.tap(tileA);
       await tester.pumpAndSettle();
@@ -573,7 +573,15 @@ void main() {
           const AppSettings(autoConfigServices: {ProbeService.google}));
 
       expect(ctrl.found.length, 1);
-      expect(ctrl.found.single.server.key, linkA);
+      expect(ctrl.found.single.server.key, keyOf(linkA));
     });
   });
 }
+
+/// Ключ сервера, каким его видит приложение.
+///
+/// ⚠️ НЕ РАВЕН исходной строке: с 1.4.2 ссылка приводится к каноническому виду,
+/// потому что одни и те же данные приходят в разных написаниях (у gRPC имя
+/// сервиса бывает `serviceName=`, бывает `path=`). Тест, сравнивающий с
+/// исходником, проходил лишь по совпадению.
+String keyOf(String link) => ShareLinkParser.canonicalKey(link);

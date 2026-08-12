@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import '../core/util/key_migration.dart';
 import 'atomic_file.dart';
 
 /// Простое JSON-хранилище результатов (пинг, автонастройка) в каталоге поддержки приложения.
@@ -23,7 +24,18 @@ class ResultsStore {
       if (!await f.exists()) return null;
       final s = await f.readAsString();
       if (s.trim().isEmpty) return null;
-      return jsonDecode(s);
+      final data = jsonDecode(s);
+      // ⚠️ Ключи приводим к каноническому виду ПРИ ЧТЕНИИ: до 1.4.2 сервер мог
+      // храниться в двух написаниях ссылки, и результат пинга осиротевал сразу
+      // после смены формата ответа панели. На данных владельца так потерялось
+      // 273 записи из 374.
+      if (data is Map) {
+        return KeyMigration.remapMap<dynamic>(
+          data.cast<String, dynamic>(),
+          logLabel: fileName,
+        );
+      }
+      return data;
     } catch (_) {
       return null;
     }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
@@ -144,7 +145,12 @@ class _Env {
   /// Добавить сервер БЕЗ СЕТИ и вернуть его.
   Future<VpnServer> addServer(String link) async {
     await state.importSource(link);
-    return state.servers.firstWhere((s) => s.key == link.trim());
+    // ⚠️ Ключ сервера — КАНОНИЧЕСКАЯ ссылка, а не та строка, которую сюда
+    // передали: одни и те же данные приходят в разных написаниях
+    // (см. canonical_key_test.dart). Сравнение с исходником находило
+    // сервер только по счастливой случайности.
+    final key = ShareLinkParser.canonicalKey(link);
+    return state.servers.firstWhere((s) => s.key == key);
   }
 
   void dispose() {

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
@@ -613,11 +614,23 @@ void main() {
 
   group('Модель и миграция', () {
     test('serverKey переживает сохранение и чтение', () {
+      // ⚠️ Ключ ПРИ ЧТЕНИИ приводится к каноническому виду (1.4.2): один и тот
+      // же сервер приходит в разных написаниях ссылки, и правило «этот сайт
+      // через Германию» иначе молча теряло свой выход — сервер по прежнему
+      // ключу не находился, а ненайденный выход трактуется как основной
+      // туннель БЕЗ предупреждения. Сравниваем поэтому с каноническим ключом,
+      // а не с исходной строкой: у настоящего сервера он ровно такой же.
+      final canonDe = ShareLinkParser.canonicalKey(keyDe);
+      final canonUs = ShareLinkParser.canonicalKey(keyUs);
       const s = SiteRule('2ip.ru', action: AppAction.tunnel, serverKey: keyDe);
-      expect(SiteRule.fromJson(s.toJson()).serverKey, keyDe);
+      expect(SiteRule.fromJson(s.toJson()).serverKey, canonDe);
       const a = AppRule('org.telegram.messenger',
           action: AppAction.tunnel, serverKey: keyUs);
-      expect(AppRule.fromJson(a.toJson()).serverKey, keyUs);
+      expect(AppRule.fromJson(a.toJson()).serverKey, canonUs);
+
+      // И главное: канонизация идемпотентна, иначе ключ «плавал» бы при каждом
+      // чтении настроек и выход терялся бы уже без всякой панели.
+      expect(ShareLinkParser.canonicalKey(canonDe), canonDe);
     });
 
     test('пустой serverKey равнозначен отсутствию', () {

@@ -10,7 +10,36 @@ import '../util/b64.dart';
 /// Формат тот же, что парсит v2rayNG и генерирует Remnawave.
 class ShareLinkParser {
   /// Возвращает null, если строка не распознана.
+  ///
+  /// ⚠️ ССЫЛКА ПРИВОДИТСЯ К КАНОНИЧЕСКОМУ ВИДУ, И ЭТО НЕ КОСМЕТИКА. Ссылка —
+  /// это КЛЮЧ сервера (`VpnServer.key`), а по ключу лежат пин, ручная правка и
+  /// результат пинга. Одни и те же данные приходят в разных написаниях: у gRPC
+  /// имя сервиса встречается и как `serviceName=`, и как `path=` — разбор
+  /// понимает оба (см. ниже), а сборка пишет одно. Пока ключом была ИСХОДНАЯ
+  /// строка, один и тот же сервер получал разные ключи в зависимости от
+  /// формата ответа панели (Remnawave выбирает его по `User-Agent`).
+  ///
+  /// Чем это обошлось на живых данных владельца 13.08.2026: из 374 сохранённых
+  /// результатов пинга **273 осиротели**, из них 190 — gRPC. Вместе с ключом
+  /// терялись пин и ручная правка, а баннер обновления подписки каждый раз
+  /// показывал «+1 · −1» на неизменившемся сервере.
+  ///
+  /// Поэтому ключ строится ОДНИМ кодом из разобранных полей, а не берётся из
+  /// входной строки. Протоколы, которые [VpnServer.buildShareLink] не
+  /// пересобирает (vmess, ss), остаются как есть — там `buildShareLink`
+  /// возвращает `rawLink` без изменений.
   static VpnServer? tryParse(String link) {
+    final s = _tryParseRaw(link);
+    if (s == null) return null;
+    final canonical = s.buildShareLink();
+    return canonical == s.rawLink ? s : s.copyWith(rawLink: canonical);
+  }
+
+  /// Разбор без приведения ключа — только для самой канонизации и тестов на
+  /// идемпотентность.
+  static VpnServer? tryParseRaw(String link) => _tryParseRaw(link);
+
+  static VpnServer? _tryParseRaw(String link) {
     final l = link.trim();
     try {
       if (l.startsWith('vless://')) return _parseVless(l);
@@ -25,6 +54,12 @@ class ShareLinkParser {
     }
     return null;
   }
+
+  /// Канонический вид ссылки: та же ссылка, приведённая к одному написанию.
+  ///
+  /// Не разобралась — возвращаем как есть: выбрасывать чужие данные нельзя,
+  /// а незнакомый протокол это ещё не повод считать ключ мусором.
+  static String canonicalKey(String link) => tryParse(link)?.key ?? link.trim();
 
   /// Разбор целого тела подписки (много строк) в список серверов.
   static List<VpnServer> parseSubscriptionBody(String body) {

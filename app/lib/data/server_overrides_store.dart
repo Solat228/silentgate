@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../core/models/server_override.dart';
 import '../core/platform/app_paths.dart';
+import '../core/util/key_migration.dart';
 import 'atomic_file.dart';
 
 /// Хранилище override'ов серверов (ключ = rawLink сервера). Переживает перезапуск.
@@ -26,7 +27,11 @@ class ServerOverridesStore {
           result['$k'] = ServerOverride.fromJson(v.cast<String, dynamic>());
         }
       });
-      return result;
+      // ⚠️ Ручные правки сервера — самое дорогое из хранимого по ключу: их
+      // вводил человек. До 1.4.2 они молча отвязывались от сервера, когда
+      // панель меняла формат ответа и ссылка получала другое написание.
+      return KeyMigration.remapMap<ServerOverride>(result,
+          logLabel: 'правки серверов');
     } catch (_) {
       return {};
     }
