@@ -7,13 +7,16 @@ import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
 
 import '../core/models/traffic_stats.dart';
+import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
+import '../core/net/speed_test.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
+import '../core/probe/ping_result.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/server_search.dart';
 import '../core/i18n/enum_labels.dart';
@@ -68,6 +71,104 @@ TunToastStep tunToastStep({
     return TunToastStep.summary;
   }
   return cardLive ? TunToastStep.dismiss : TunToastStep.none;
+}
+
+/// Что будет сделано при прогоне скорости по списку и во что это обойдётся.
+class SpeedRunPlan {
+  /// Кого реально померим.
+  final List<VpnServer> targets;
+
+  /// Сколько серверов пропущено, потому что скорость у них уже есть (в том
+  /// числе из автонастройки): повторный замер стоил бы трафика ни за что.
+  final int alreadyMeasured;
+
+  /// Сколько байт скачает прогон целиком.
+  final int bytes;
+
+  const SpeedRunPlan({
+    required this.targets,
+    required this.alreadyMeasured,
+    required this.bytes,
+  });
+
+  bool get isEmpty => targets.isEmpty;
+}
+
+/// Сколько серверов пойдёт в замер и сколько это трафика ПОДПИСКИ.
+///
+/// ⚠️ Вынесено отдельной функцией не ради красоты: у владельца 101 сервер, и
+/// прогон по списку — это до двух гигабайт его подписки. Число, которым мы
+/// пугаем человека в диалоге, обязано считаться тем же кодом, что потом
+/// действительно качает, и обязано проверяться тестом.
+SpeedRunPlan speedRunPlan(
+  List<VpnServer> servers,
+  ProbeController probe,
+  SpeedTestSize size,
+) {
+  final targets = probe.speedTargets(servers);
+  final eligible =
+      servers.where((s) => probe.resultFor(s).speedMeasurable).length;
+  return SpeedRunPlan(
+    targets: targets,
+    alreadyMeasured: eligible - targets.length,
+    bytes: targets.length * size.bytes,
+  );
+}
+
+/// Подтверждение прогона по списку с честным объёмом трафика.
+///
+/// ⚠️ БЕЗ НЕГО НЕЛЬЗЯ. Замер качает данные из подписки пользователя, и случайное
+/// нажатие кнопки рядом с «Пинг серверов» стоило бы ему сотен мегабайт, о
+/// которых он не просил.
+Future<bool> confirmSpeedRun(BuildContext context, SpeedRunPlan plan,
+    SpeedTestSize size) async {
+  final l = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.speedConfirmTitle),
+      content: Text([
+        l.speedConfirmBody(
+          plan.targets.length,
+          TrafficStats.formatBytes(size.bytes),
+          TrafficStats.formatBytes(plan.bytes),
+        ),
+        if (plan.alreadyMeasured > 0)
+          l.speedConfirmSkipped(plan.alreadyMeasured),
+      ].join('\n\n')),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.commonCancel)),
+        FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.speedConfirmRun)),
+      ],
+    ),
+  );
+  return ok ?? false;
+}
+
+/// Кнопка «измерить скорость всех» целиком: план → подтверждение → прогон.
+///
+/// Вся последовательность живёт в одной функции намеренно — чтобы тест проверял
+/// ИМЕННО ТОТ путь, по которому идёт нажатие, а не свою копию рядом. Разойдись
+/// они, и подтверждение можно было бы потерять, не уронив ни одного теста.
+Future<void> startSpeedRun(
+  BuildContext context,
+  ProbeController probe,
+  List<VpnServer> servers,
+  AppSettings settings,
+) async {
+  final l = AppLocalizations.of(context);
+  final plan = speedRunPlan(servers, probe, settings.speedTestSize);
+  if (plan.isEmpty) {
+    AppToast.show(context, l.speedNoTargets, kind: ToastKind.warning);
+    return;
+  }
+  if (!await confirmSpeedRun(context, plan, settings.speedTestSize)) return;
+  if (!context.mounted) return;
+  unawaited(probe.measureSpeedAll(plan.targets, settings));
 }
 
 class HomeScreen extends StatefulWidget {
@@ -252,6 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DateTime? _shownPingDone;
   DateTime? _shownAutoDone;
   DateTime? _shownTunDone;
+  DateTime? _shownSpeedDone;
 
   /// Карточка подбора TUN сейчас показывает НЕЗАВЕРШЁННЫЙ прогресс. Нужно,
   /// чтобы отличить «подбор отменили» (карточку снять) от «итог показан и
@@ -305,6 +407,20 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!mounted) return;
       final l = AppLocalizations.of(context);
 
+      // Скорость, которую автонастройка уже замерила (три лучших кандидата),
+      // показываем в строке сервера сразу и повторно не меряем — за неё уже
+      // заплачено трафиком подписки. Метод молчит, когда ничего не изменилось,
+      // иначе получился бы цикл «notify → build → notify».
+      probe.adoptSpeeds({
+        for (final r in auto.found)
+          if (r.mbps != null && r.mbps! > 0)
+            r.server.key: ServerSpeed(
+              mbps: r.mbps!,
+              measuredAt: r.measuredAt,
+              fromAutoConfig: true,
+            ),
+      });
+
       if (probe.running) {
         _shownPingDone = null;
         final total = probe.total;
@@ -321,6 +437,28 @@ class _HomeScreenState extends State<HomeScreen> {
         AppToast.progress(context,
             id: 'ping',
             message: probe.lastSummary!,
+            finished: true,
+            kind: ToastKind.success);
+      }
+
+      // Замер скорости — своя карточка: он идёт десятками секунд на сервер, и
+      // без хода прогона экран выглядит зависшим.
+      if (probe.speedRunning) {
+        _shownSpeedDone = null;
+        final total = probe.speedTotal;
+        AppToast.progress(
+          context,
+          id: 'speed',
+          message: l.speedProgress(probe.speedDone, total),
+          value: total > 0 ? probe.speedDone / total : null,
+        );
+      } else if (probe.speedFinishedAt != null &&
+          probe.speedFinishedAt != _shownSpeedDone &&
+          probe.speedSummary != null) {
+        _shownSpeedDone = probe.speedFinishedAt;
+        AppToast.progress(context,
+            id: 'speed',
+            message: probe.speedSummary!,
             finished: true,
             kind: ToastKind.success);
       }
@@ -901,9 +1039,28 @@ class _ServerPaneState extends State<_ServerPane> {
                     : const Icon(Icons.network_check, size: 18),
                 // Пингуем то, что видно: при активном поиске — только найденное.
                 label: Text(_query.isEmpty ? l.homePingServers : l.homePingFound),
-                onPressed: probe.running || shown.isEmpty
+                onPressed: probe.running || probe.speedRunning || shown.isEmpty
                     ? null
                     : () => probe.pingAll(
+                        [for (final i in shown) servers[i]], settings),
+              ),
+              // Замер скорости — ИКОНКОЙ, а не второй текстовой кнопкой: панель
+              // шириной 380 px, и две подписи рядом с «!» уже не помещаются.
+              IconButton(
+                tooltip: l.speedRunTooltip,
+                visualDensity: VisualDensity.compact,
+                icon: probe.speedRunning
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Icon(Icons.speed, size: 20),
+                onPressed: probe.running || probe.speedRunning || shown.isEmpty
+                    ? null
+                    // Тот же список, что и у пинга: при активном поиске меряем
+                    // только найденное — иначе кнопка тратила бы трафик на то,
+                    // чего человек сейчас не видит.
+                    : () => startSpeedRun(context, probe,
                         [for (final i in shown) servers[i]], settings),
               ),
               // #4 — видимая «!»: понятно, что у пинга есть подсказка (что значат

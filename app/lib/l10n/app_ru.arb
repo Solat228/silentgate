@@ -7,6 +7,7 @@
   "commonCancel": "Отмена",
   "commonClose": "Закрыть",
   "commonCopy": "Копировать",
+  "commonClear": "Очистить",
   "commonCopied": "Скопировано",
   "commonRefresh": "Обновить",
   "commonCheck": "Проверить",
@@ -30,6 +31,21 @@
   "sectionNetwork": "Сеть",
   "sectionAbout": "О программе",
   "sectionSupport": "Поддержка",
+  "settingsSearchHint": "Поиск по настройкам",
+  "@settingsSearchHint": {
+    "description": "Подсказка в поле поиска по экрану настроек"
+  },
+  "settingsSearchEmpty": "Ничего не найдено: «{query}»",
+  "@settingsSearchEmpty": {
+    "description": "Пустой результат поиска по настройкам",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsExpand": "Развернуть",
+  "settingsCollapse": "Свернуть",
   "appearanceTheme": "Тема",
   "themeSystem": "Системная",
   "themeLight": "Светлая",
@@ -340,6 +356,26 @@
   "subBarValidPerpetual": "Действует: бессрочно  {auto}",
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
+  "subSwitcherPingAll": "Пинг серверов всех подписок",
+  "subSwitcherCountTotal": "Серверов в подписке: {total}. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».",
+  "subSwitcherCountWorking": "Серверов в подписке: {total}. Из них прошли проверку канала (запрос через сервер): {working}.",
+  "@subSwitcherCountTotal": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountWorking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "Как перехватывается трафик. «Системный прокси» — прописывает локальный прокси в системе (без прав администратора, ловит браузеры и большинство приложений). «TUN» — виртуальный сетевой адаптер, ловит ВЕСЬ трафик (в т.ч. UDP и приложения, игнорирующие прокси), но требует прав администратора.",
   "infoSystemProxy": "Локальный HTTP-прокси в системных настройках (реестр WinINET). Без прав администратора. Не перехватывает UDP и приложения, игнорирующие системный прокси.",
   "infoTunMode": "Полный туннель через виртуальный адаптер wintun + sing-box. Ловит весь трафик, включая UDP. Запрашивает права администратора (UAC) при включении.",
@@ -1170,5 +1206,50 @@
       }
     }
   },
-  "logsNothingToClean": "Удалять нечего"
+  "logsNothingToClean": "Удалять нечего",
+  "speedTooltip": "Скорость скачивания через этот сервер",
+  "speedFromAutoConfig": "Скорость измерена автонастройкой",
+  "speedBlockedTooltip": "Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)",
+  "srvTileMeasureSpeed": "Измерить скорость",
+  "speedRunTooltip": "Измерить скорость серверов",
+  "speedConfirmTitle": "Замерить скорость?",
+  "speedConfirmBody": "Проверим серверов: {count}. Каждый качает пробу по {size} — около {total} трафика вашей подписки.",
+  "@speedConfirmBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "speedConfirmSkipped": "Пропускаем уже измеренные: {count}.",
+  "@speedConfirmSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "speedConfirmRun": "Измерить",
+  "speedNoTargets": "Мерить нечего: скорость проверяется только у серверов, прошедших проверку канала. Сначала пропингуйте список.",
+  "speedNotVerified": "Сервер не прошёл проверку канала — скорость через него не меряем",
+  "speedProgress": "Скорость: {done} из {total}",
+  "@speedProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "updateOnStartTitle": "Обновлять подписку при запуске",
+  "updateOnStartSub": "Тянуть свежий список серверов каждый раз, а не только по таймеру",
+  "apiSectionSub": "HTTP на 127.0.0.1 — управление клиентом из скриптов"
 }

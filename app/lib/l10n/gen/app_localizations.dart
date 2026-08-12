@@ -138,6 +138,12 @@ abstract class AppLocalizations {
   /// **'Копировать'**
   String get commonCopy;
 
+  /// No description provided for @commonClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get commonClear;
+
   /// No description provided for @commonCopied.
   ///
   /// In ru, this message translates to:
@@ -239,6 +245,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Поддержка'**
   String get sectionSupport;
+
+  /// Подсказка в поле поиска по экрану настроек
+  ///
+  /// In ru, this message translates to:
+  /// **'Поиск по настройкам'**
+  String get settingsSearchHint;
+
+  /// Пустой результат поиска по настройкам
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не найдено: «{query}»'**
+  String settingsSearchEmpty(String query);
+
+  /// No description provided for @settingsExpand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть'**
+  String get settingsExpand;
+
+  /// No description provided for @settingsCollapse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть'**
+  String get settingsCollapse;
 
   /// No description provided for @appearanceTheme.
   ///
@@ -1469,6 +1499,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Действует до:'**
   String get subBarValidUntil;
+
+  /// No description provided for @subSwitcherPingAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг серверов всех подписок'**
+  String get subSwitcherPingAll;
+
+  /// No description provided for @subSwitcherCountTotal.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверов в подписке: {total}. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».'**
+  String subSwitcherCountTotal(int total);
+
+  /// No description provided for @subSwitcherCountWorking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверов в подписке: {total}. Из них прошли проверку канала (запрос через сервер): {working}.'**
+  String subSwitcherCountWorking(int total, int working);
 
   /// No description provided for @infoCaptureMode.
   ///
@@ -4397,6 +4445,96 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Удалять нечего'**
   String get logsNothingToClean;
+
+  /// No description provided for @speedTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость скачивания через этот сервер'**
+  String get speedTooltip;
+
+  /// No description provided for @speedFromAutoConfig.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость измерена автонастройкой'**
+  String get speedFromAutoConfig;
+
+  /// No description provided for @speedBlockedTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)'**
+  String get speedBlockedTooltip;
+
+  /// No description provided for @srvTileMeasureSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Измерить скорость'**
+  String get srvTileMeasureSpeed;
+
+  /// No description provided for @speedRunTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Измерить скорость серверов'**
+  String get speedRunTooltip;
+
+  /// No description provided for @speedConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замерить скорость?'**
+  String get speedConfirmTitle;
+
+  /// No description provided for @speedConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверим серверов: {count}. Каждый качает пробу по {size} — около {total} трафика вашей подписки.'**
+  String speedConfirmBody(int count, String size, String total);
+
+  /// No description provided for @speedConfirmSkipped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропускаем уже измеренные: {count}.'**
+  String speedConfirmSkipped(int count);
+
+  /// No description provided for @speedConfirmRun.
+  ///
+  /// In ru, this message translates to:
+  /// **'Измерить'**
+  String get speedConfirmRun;
+
+  /// No description provided for @speedNoTargets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мерить нечего: скорость проверяется только у серверов, прошедших проверку канала. Сначала пропингуйте список.'**
+  String get speedNoTargets;
+
+  /// No description provided for @speedNotVerified.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер не прошёл проверку канала — скорость через него не меряем'**
+  String get speedNotVerified;
+
+  /// No description provided for @speedProgress.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость: {done} из {total}'**
+  String speedProgress(int done, int total);
+
+  /// No description provided for @updateOnStartTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлять подписку при запуске'**
+  String get updateOnStartTitle;
+
+  /// No description provided for @updateOnStartSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Тянуть свежий список серверов каждый раз, а не только по таймеру'**
+  String get updateOnStartSub;
+
+  /// No description provided for @apiSectionSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'HTTP на 127.0.0.1 — управление клиентом из скриптов'**
+  String get apiSectionSub;
 }
 
 class _AppLocalizationsDelegate

@@ -21,6 +21,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCopy => 'Copy';
 
   @override
+  String get commonClear => 'Clear';
+
+  @override
   String get commonCopied => 'Copied';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sectionSupport => 'Support';
+
+  @override
+  String get settingsSearchHint => 'Search settings';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'Nothing found for “$query”';
+  }
+
+  @override
+  String get settingsExpand => 'Expand';
+
+  @override
+  String get settingsCollapse => 'Collapse';
 
   @override
   String get appearanceTheme => 'Theme';
@@ -786,6 +803,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'Valid until:';
+
+  @override
+  String get subSwitcherPingAll => 'Ping servers of all subscriptions';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'Servers in this subscription: $total. The channel check has not run yet — start «Ping servers of all subscriptions».';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'Servers in this subscription: $total. Passed the channel check (a request through the server): $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2477,4 +2507,60 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'Nothing to delete';
+
+  @override
+  String get speedTooltip => 'Download speed through this server';
+
+  @override
+  String get speedFromAutoConfig => 'Speed measured by auto-tuning';
+
+  @override
+  String get speedBlockedTooltip =>
+      'Speed is not measured: the server failed the channel check (a request through it did not go through)';
+
+  @override
+  String get srvTileMeasureSpeed => 'Measure speed';
+
+  @override
+  String get speedRunTooltip => 'Measure server speed';
+
+  @override
+  String get speedConfirmTitle => 'Measure speed?';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return 'Servers to check: $count. Each downloads a $size sample — about $total of your subscription traffic.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'Already measured, skipping: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'Measure';
+
+  @override
+  String get speedNoTargets =>
+      'Nothing to measure: speed is only checked for servers that passed the channel check. Ping the list first.';
+
+  @override
+  String get speedNotVerified =>
+      'The server failed the channel check — speed through it is not measured';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'Speed: $done of $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'Refresh subscription on launch';
+
+  @override
+  String get updateOnStartSub =>
+      'Fetch a fresh server list every time, not only on the timer';
+
+  @override
+  String get apiSectionSub =>
+      'HTTP on 127.0.0.1 — control the client from scripts';
 }

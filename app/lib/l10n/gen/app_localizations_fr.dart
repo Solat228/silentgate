@@ -21,6 +21,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonCopy => 'Copier';
 
   @override
+  String get commonClear => 'Effacer';
+
+  @override
   String get commonCopied => 'Copié';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get sectionSupport => 'Assistance';
+
+  @override
+  String get settingsSearchHint => 'Rechercher dans les réglages';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'Aucun résultat : « $query »';
+  }
+
+  @override
+  String get settingsExpand => 'Développer';
+
+  @override
+  String get settingsCollapse => 'Réduire';
 
   @override
   String get appearanceTheme => 'Thème';
@@ -799,6 +816,20 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'Valide jusqu\'au :';
+
+  @override
+  String get subSwitcherPingAll =>
+      'Tester les serveurs de tous les abonnements';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'Serveurs dans l\'abonnement : $total. Le canal n\'a pas encore été vérifié — lancez « Tester les serveurs de tous les abonnements ».';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'Serveurs dans l\'abonnement : $total. Parmi eux, ont réussi la vérification du canal (requête via le serveur) : $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2504,4 +2535,61 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'Rien à supprimer';
+
+  @override
+  String get speedTooltip => 'Débit de téléchargement via ce serveur';
+
+  @override
+  String get speedFromAutoConfig =>
+      'Débit mesuré par la configuration automatique';
+
+  @override
+  String get speedBlockedTooltip =>
+      'Débit non mesuré : le serveur n\'a pas réussi la vérification du canal (la requête n\'est pas passée)';
+
+  @override
+  String get srvTileMeasureSpeed => 'Mesurer le débit';
+
+  @override
+  String get speedRunTooltip => 'Mesurer le débit des serveurs';
+
+  @override
+  String get speedConfirmTitle => 'Mesurer le débit ?';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return '$count serveurs seront testés. Chacun télécharge un échantillon de $size — environ $total du trafic de votre abonnement.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'Ceux déjà mesurés sont ignorés : $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'Mesurer';
+
+  @override
+  String get speedNoTargets =>
+      'Rien à mesurer : le débit n\'est vérifié que sur les serveurs ayant réussi la vérification du canal. Testez d\'abord la liste.';
+
+  @override
+  String get speedNotVerified =>
+      'Le serveur n\'a pas réussi la vérification du canal — nous ne mesurons pas le débit';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'Débit : $done sur $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'Actualiser l\'abonnement au démarrage';
+
+  @override
+  String get updateOnStartSub =>
+      'Récupérer une liste de serveurs à jour à chaque fois, pas seulement selon la minuterie';
+
+  @override
+  String get apiSectionSub =>
+      'HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts';
 }

@@ -96,6 +96,25 @@ class PingResult {
   bool get isReachableUnverified =>
       outcome == PingOutcome.ok && verification == PingVerification.notRun;
 
+  /// Есть ли смысл мерить через этот сервер скорость.
+  ///
+  /// ⚠️ Гейт по решению владельца: «сначала выполняется GET-пинг, и если сервер
+  /// его НЕ проходит, то и скорость проверять не нужно». Замер стоит 5–20 МБ
+  /// ТРАФИКА ПОДПИСКИ на сервер — платить их за узел, через который заведомо не
+  /// ходит ни один запрос, значит выбрасывать деньги пользователя. Поэтому
+  /// пропуск даёт только `passed`: `notRun` — это «не проверяли», а не «можно».
+  bool get speedMeasurable =>
+      outcome == PingOutcome.ok && verification == PingVerification.passed;
+
+  /// Заведомо НЕ измерить: сервер не отвечает либо проверка канала провалена.
+  /// Отличается от «просто не мерили» — в строке сервера на этом месте стоит
+  /// прочерк с пояснением, а не пустота (пустоту человек читает как «ещё
+  /// считается» и ждёт).
+  bool get speedBlocked =>
+      outcome == PingOutcome.failed ||
+      outcome == PingOutcome.timeout ||
+      verification == PingVerification.failed;
+
   /// Терминальные результаты (имеет смысл сохранять).
   bool get isTerminal =>
       outcome == PingOutcome.ok ||
@@ -161,6 +180,52 @@ class PingResult {
       latencyMethod: lm,
       measuredAt:
           j['measuredAt'] != null ? DateTime.tryParse('${j['measuredAt']}') : null,
+    );
+  }
+}
+
+/// Замер скорости скачивания через сервер (Мбит/с) — то, что показано в строке
+/// сервера под плашкой пинга.
+///
+/// ⚠️ ЖИВЁТ ОТДЕЛЬНО ОТ [PingResult], И ЭТО НЕ ЛИШНЯЯ СУЩНОСТЬ. Пинг
+/// перезаписывает свой результат ЦЕЛИКОМ на каждом прогоне (`_results[key] =
+/// PingResult(...)` встречается в `probe_controller` десяток раз). Держи мы
+/// скорость полем внутри — замер, оплаченный мегабайтами подписки, исчезал бы
+/// от первого же нажатия «Пинг серверов», причём молча.
+class ServerSpeed {
+  /// Скорость скачивания, Мбит/с. Единица та же, что у `AutoConfigResult.mbps`,
+  /// — иначе перенос замера из автонастройки требовал бы пересчёта, а забытый
+  /// пересчёт даёт цифру, отличающуюся в восемь раз, и никто этого не заметит.
+  final double mbps;
+  final DateTime? measuredAt;
+
+  /// Цифра приехала из автонастройки, а не из ручного замера. Показываем её
+  /// сразу и трафик на повтор не тратим — но в подсказке говорим, откуда она.
+  final bool fromAutoConfig;
+
+  const ServerSpeed({
+    required this.mbps,
+    this.measuredAt,
+    this.fromAutoConfig = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'mbps': mbps,
+        'measuredAt': measuredAt?.toIso8601String(),
+        'fromAutoConfig': fromAutoConfig,
+      };
+
+  static ServerSpeed? fromJson(Map<String, dynamic> j) {
+    final mbps = (j['mbps'] as num?)?.toDouble();
+    // Нулевая или отрицательная скорость — это не замер, а мусор из чужого
+    // файла: показывать «0.0 Мбит/с» как результат хуже, чем не показывать.
+    if (mbps == null || mbps <= 0) return null;
+    return ServerSpeed(
+      mbps: mbps,
+      measuredAt: j['measuredAt'] != null
+          ? DateTime.tryParse('${j['measuredAt']}')
+          : null,
+      fromAutoConfig: j['fromAutoConfig'] == true,
     );
   }
 }

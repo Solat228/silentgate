@@ -21,6 +21,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonCopy => 'نسخ';
 
   @override
+  String get commonClear => 'مسح';
+
+  @override
   String get commonCopied => 'تم النسخ';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get sectionSupport => 'الدعم';
+
+  @override
+  String get settingsSearchHint => 'البحث في الإعدادات';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'لم يُعثر على شيء: «$query»';
+  }
+
+  @override
+  String get settingsExpand => 'توسيع';
+
+  @override
+  String get settingsCollapse => 'طيّ';
 
   @override
   String get appearanceTheme => 'السمة';
@@ -782,6 +799,19 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'صالح حتى:';
+
+  @override
+  String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'الخوادم في الاشتراك: $total. لم يجرِ فحص القناة بعد، فشغّل «اختبار خوادم كل الاشتراكات».';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'الخوادم في الاشتراك: $total، ومنها اجتاز فحص القناة (طلب عبر الخادم): $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2466,4 +2496,60 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'لا شيء للحذف';
+
+  @override
+  String get speedTooltip => 'سرعة التنزيل عبر هذا الخادم';
+
+  @override
+  String get speedFromAutoConfig => 'قاس السرعةَ الضبطُ التلقائي';
+
+  @override
+  String get speedBlockedTooltip =>
+      'لا تُقاس السرعة: الخادم لم يجتز فحص القناة (لم يصل الطلب عبره)';
+
+  @override
+  String get srvTileMeasureSpeed => 'قياس السرعة';
+
+  @override
+  String get speedRunTooltip => 'قياس سرعة الخوادم';
+
+  @override
+  String get speedConfirmTitle => 'أتريد قياس السرعة؟';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return 'سيجري فحص $count خادمًا، وينزّل كلٌّ منها عيّنة بحجم $size، أي نحو $total من بيانات اشتراكك.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'يُتجاوز ما قيس سابقًا: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'قياس';
+
+  @override
+  String get speedNoTargets =>
+      'لا شيء لقياسه: تُقاس السرعة فقط للخوادم التي اجتازت فحص القناة. اختبر القائمة أولًا.';
+
+  @override
+  String get speedNotVerified =>
+      'الخادم لم يجتز فحص القناة، فلا نقيس السرعة عبره';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'السرعة: $done من $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'تحديث الاشتراك عند التشغيل';
+
+  @override
+  String get updateOnStartSub =>
+      'جلب قائمة خوادم جديدة في كل مرة، لا بالمؤقّت وحده';
+
+  @override
+  String get apiSectionSub =>
+      '‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية';
 }

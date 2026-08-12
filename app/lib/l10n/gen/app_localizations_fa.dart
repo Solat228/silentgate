@@ -21,6 +21,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get commonCopy => 'کپی';
 
   @override
+  String get commonClear => 'پاک کردن';
+
+  @override
   String get commonCopied => 'کپی شد';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get sectionSupport => 'پشتیبانی';
+
+  @override
+  String get settingsSearchHint => 'جست‌وجو در تنظیمات';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'چیزی پیدا نشد: «$query»';
+  }
+
+  @override
+  String get settingsExpand => 'باز کردن';
+
+  @override
+  String get settingsCollapse => 'جمع کردن';
 
   @override
   String get appearanceTheme => 'پوسته';
@@ -787,6 +804,19 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'معتبر تا:';
+
+  @override
+  String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'سرورهای این اشتراک: $total. هنوز بررسی کانال انجام نشده — «آزمودن سرورهای همهٔ اشتراک‌ها» را اجرا کنید.';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'سرورهای این اشتراک: $total که از آن‌ها $working سرور بررسی کانال (درخواست از راه سرور) را گذرانده‌اند.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2472,4 +2502,60 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'چیزی برای حذف نیست';
+
+  @override
+  String get speedTooltip => 'سرعت دریافت از راه این سرور';
+
+  @override
+  String get speedFromAutoConfig => 'سرعت را تنظیم خودکار اندازه گرفته است';
+
+  @override
+  String get speedBlockedTooltip =>
+      'سرعت اندازه‌گیری نمی‌شود: سرور بررسی کانال را نگذرانده (درخواست از راه آن نرسید)';
+
+  @override
+  String get srvTileMeasureSpeed => 'اندازه‌گیری سرعت';
+
+  @override
+  String get speedRunTooltip => 'اندازه‌گیری سرعت سرورها';
+
+  @override
+  String get speedConfirmTitle => 'سرعت اندازه گرفته شود؟';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return '$count سرور بررسی می‌شود و هرکدام نمونه‌ای به حجم $size دریافت می‌کند — نزدیک $total از ترافیک اشتراک شما.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'آنچه پیش‌تر اندازه گرفته شده رد می‌شود: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'اندازه‌گیری';
+
+  @override
+  String get speedNoTargets =>
+      'چیزی برای اندازه‌گیری نیست: سرعت تنها برای سرورهایی سنجیده می‌شود که بررسی کانال را گذرانده‌اند. نخست فهرست را بیازمایید.';
+
+  @override
+  String get speedNotVerified =>
+      'سرور بررسی کانال را نگذرانده — سرعت را از راه آن نمی‌سنجیم';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'سرعت: $done از $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'به‌روزرسانی اشتراک هنگام آغاز';
+
+  @override
+  String get updateOnStartSub =>
+      'هر بار فهرست تازهٔ سرورها گرفته شود، نه فقط با زمان‌سنج';
+
+  @override
+  String get apiSectionSub =>
+      '‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت';
 }

@@ -2,11 +2,52 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n/text_direction.dart';
+import '../../core/models/subscription_profile.dart';
+import '../../core/models/vpn_server.dart';
+import '../../core/probe/ping_result.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
 import 'subscription_avatar.dart';
+
+/// Счётчик подписки в меню: «всего · рабочих».
+///
+/// ⚠️ ЧТО ЗДЕСЬ СЧИТАЕТСЯ РАБОЧИМ. Только [PingVerification.passed] — сервер,
+/// через который РЕАЛЬНО прошёл запрос. Достижимость по TCP ([PingOutcome.ok])
+/// рабочим не делает: именно из-за подмены одного другим владелец видел
+/// зелёные плашки на серверах, через которые не работало ничего (см. историю
+/// `PingVerification`).
+///
+/// [working] равен null, пока проверки канала не было НИ У ОДНОГО сервера
+/// подписки, — тогда показываем только общее число. Ноль здесь означал бы
+/// «проверили и ни один не работает», а это разные вещи: до пинга мы просто
+/// ничего не знаем.
+class SubscriptionPingCount {
+  final int total;
+  final int? working;
+  const SubscriptionPingCount(this.total, this.working);
+
+  static SubscriptionPingCount of(
+      List<VpnServer> servers, PingResult Function(VpnServer) resultFor) {
+    var working = 0;
+    var checked = false;
+    for (final s in servers) {
+      switch (resultFor(s).verification) {
+        case PingVerification.passed:
+          working++;
+          checked = true;
+        case PingVerification.failed:
+          // Проверка была и провалилась — число рабочих уже осмысленно.
+          checked = true;
+        case PingVerification.pending:
+        case PingVerification.notRun:
+          break;
+      }
+    }
+    return SubscriptionPingCount(servers.length, checked ? working : null);
+  }
+}
 
 /// Переключатель подписок в карточке сверху: плашка с названием активной и
 /// выпадающий список остальных.
@@ -108,6 +149,20 @@ class _SwitcherBody extends StatefulWidget {
 }
 
 class _SwitcherBodyState extends State<_SwitcherBody> {
+  /// Восстановленные серверы подписок, по id профиля.
+  ///
+  /// ⚠️ КЭШ ЗДЕСЬ ОБЯЗАТЕЛЕН. Серверы неактивных подписок существуют только как
+  /// ссылки, и `serversOfSubscription` разбирает их заново на каждый вызов. А
+  /// это меню перестраивается на КАЖДОЕ уведомление `ProbeController` — во
+  /// время прогона их сотни, и без кэша мы бы разбирали 124 ссылки сотни раз
+  /// подряд ради двух цифр. Кэш живёт ровно столько, сколько открыто меню;
+  /// число рабочих при этом обновляется каждый раз — оно считается по свежим
+  /// результатам пинга, а не берётся из кэша.
+  final Map<String, List<VpnServer>> _serversByProfile = {};
+
+  List<VpnServer> _serversOf(SubscriptionProfile p) => _serversByProfile
+      .putIfAbsent(p.id, () => widget.state.serversOfSubscription(p.id));
+
   @override
   void initState() {
     super.initState();
@@ -134,6 +189,11 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
     final scheme = Theme.of(context).colorScheme;
     final items = widget.state.subscriptions;
     final activeId = widget.state.activeSubscriptionId;
+    // Есть ли вообще что пинговать. Считаем по тому же кэшу, что и счётчики:
+    // спрашивать `allSubscriptionServers()` на каждый build значило бы
+    // разбирать все ссылки заново ради одного «пусто/не пусто».
+    final anyServers = widget.state.servers.isNotEmpty ||
+        items.any((p) => _serversOf(p).isNotEmpty);
 
     return SizedBox(
       // ⚠️ ТОЧНАЯ ШИРИНА, А НЕ `ConstrainedBox(minWidth/maxWidth)`.
@@ -185,10 +245,21 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                           path: p.logoPath, label: p.title, size: 24),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text('${p.title}  ·  ${p.serverLinks.length}',
+                        child: Text(p.title,
                             // Доминирует название подписки — направление по нему.
                             textDirection: autoTextDirection(p.title),
                             overflow: TextOverflow.ellipsis),
+                      ),
+                      const SizedBox(width: 6),
+                      // ⚠️ Считаем ВОССТАНОВЛЕННЫЕ серверы, а не длину
+                      // `p.serverLinks` (так было раньше). Ссылка, которую
+                      // парсер не понимает, в список не попадает и
+                      // пропингована не будет — общее число обязано совпадать
+                      // с тем, что реально уйдёт на прогон.
+                      _CountBadge(
+                        key: ValueKey('subCount_${p.id}'),
+                        count: SubscriptionPingCount.of(
+                            _serversOf(p), widget.probe.resultFor),
                       ),
                       const SizedBox(width: 8),
                       Icon(
@@ -214,7 +285,11 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
             ),
           ),
           const Divider(height: 1),
-          // ── Действия над АКТИВНОЙ подпиской ────────────────────────────
+          // ── Действия ──────────────────────────────────────────────────
+          // Обновление — над АКТИВНОЙ подпиской (её и показывает карточка),
+          // пинг — над ВСЕМИ сразу. Разные области действия у соседних строк:
+          // подписи обязаны это называть, иначе человек прочтёт обе как
+          // «то же самое, но другой кнопкой».
           _ActionRow(
             icon: Icons.refresh,
             label: widget.state.refreshing
@@ -230,21 +305,67 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
           ),
           _ActionRow(
             icon: Icons.network_check,
-            label: l.homePingServers,
+            label: l.subSwitcherPingAll,
             busy: widget.probe.running,
-            // Тот же самый пинг, что и кнопкой на главной: метод берётся из
-            // настроек. Здесь он просто под рукой — и пингует ВЕСЬ список,
-            // а не только видимое (поиск на главной сюда не относится).
-            onTap: widget.probe.running || widget.state.servers.isEmpty
+            // ⚠️ ЗДЕСЬ ПИНГУЮТСЯ ВСЕ ПОДПИСКИ, А НЕ ТЕКУЩАЯ — решение владельца
+            // (13.08.2026): «пункт меню — все подписки». Раньше пункт гонял
+            // `state.servers`, то есть ровно то же, что кнопка на главном
+            // экране; отличить их было нельзя, и второй пункт не имел смысла.
+            // Кнопка на главном осталась прежней — тоже по решению владельца.
+            //
+            // Список собирает `AppState`: серверы неактивных подписок лежат
+            // ссылками, и восстановить их умеет только он.
+            onTap: widget.probe.running || !anyServers
                 ? null
                 : () {
                     Navigator.of(context).pop();
-                    widget.probe
-                        .pingAll(widget.state.servers, widget.settings.settings);
+                    widget.probe.pingAll(widget.state.allSubscriptionServers(),
+                        widget.settings.settings);
                   },
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Цифры у подписки: «всего · рабочих» с пояснением по наведению.
+///
+/// Пояснение — прямая просьба владельца: «сделай возможность навести на цифру
+/// и увидеть пояснение». Без него две цифры подряд читаются как что угодно —
+/// от «из скольких выбрано» до номера подписки.
+class _CountBadge extends StatelessWidget {
+  final SubscriptionPingCount count;
+  const _CountBadge({super.key, required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final working = count.working;
+    return Tooltip(
+      message: working == null
+          ? l.subSwitcherCountTotal(count.total)
+          : l.subSwitcherCountWorking(count.total, working),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Text('${count.total}',
+            // Цифры — всегда слева направо, даже в арабской локали: это
+            // технические числа, а не текст (та же политика, что у адресов).
+            textDirection: TextDirection.ltr,
+            style: TextStyle(fontSize: 12, color: scheme.outline)),
+        if (working != null) ...[
+          Text('  ·  ',
+              style: TextStyle(fontSize: 12, color: scheme.outlineVariant)),
+          Text('$working',
+              textDirection: TextDirection.ltr,
+              style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  // Рабочие выделены цветом состояния, а не просто жирным:
+                  // в строке шириной 280 px две серые цифры сливаются в одну.
+                  color: working > 0 ? Colors.green : scheme.error)),
+        ],
+      ]),
     );
   }
 }

@@ -21,6 +21,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get commonCopy => 'Kopyala';
 
   @override
+  String get commonClear => 'Temizle';
+
+  @override
   String get commonCopied => 'Kopyalandı';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get sectionSupport => 'Destek';
+
+  @override
+  String get settingsSearchHint => 'Ayarlarda ara';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'Hiçbir şey bulunamadı: «$query»';
+  }
+
+  @override
+  String get settingsExpand => 'Genişlet';
+
+  @override
+  String get settingsCollapse => 'Daralt';
 
   @override
   String get appearanceTheme => 'Tema';
@@ -791,6 +808,19 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'Geçerlilik tarihi:';
+
+  @override
+  String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'Abonelikteki sunucu: $total. Kanal henüz denetlenmedi — «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'Abonelikteki sunucu: $total. Bunlardan kanal denetimini (sunucu üzerinden istek) geçen: $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2482,4 +2512,60 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'Silinecek bir şey yok';
+
+  @override
+  String get speedTooltip => 'Bu sunucu üzerinden indirme hızı';
+
+  @override
+  String get speedFromAutoConfig => 'Hız, otomatik ayar tarafından ölçüldü';
+
+  @override
+  String get speedBlockedTooltip =>
+      'Hız ölçülmüyor: sunucu kanal denetimini geçemedi (istek üzerinden geçmedi)';
+
+  @override
+  String get srvTileMeasureSpeed => 'Hızı ölç';
+
+  @override
+  String get speedRunTooltip => 'Sunucuların hızını ölç';
+
+  @override
+  String get speedConfirmTitle => 'Hız ölçülsün mü?';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return '$count sunucu denetlenecek. Her biri $size boyutunda örnek indirir — aboneliğinizin trafiğinden yaklaşık $total.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'Zaten ölçülenler atlanıyor: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'Ölç';
+
+  @override
+  String get speedNoTargets =>
+      'Ölçülecek bir şey yok: hız yalnızca kanal denetimini geçen sunucularda sınanır. Önce listeyi sınayın.';
+
+  @override
+  String get speedNotVerified =>
+      'Sunucu kanal denetimini geçemedi — üzerinden hız ölçmüyoruz';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'Hız: $total sunucudan $done';
+  }
+
+  @override
+  String get updateOnStartTitle => 'Açılışta aboneliği yenile';
+
+  @override
+  String get updateOnStartSub =>
+      'Yalnızca zamanlayıcıyla değil, her seferinde taze sunucu listesi çek';
+
+  @override
+  String get apiSectionSub =>
+      '127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin';
 }

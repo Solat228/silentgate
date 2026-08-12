@@ -21,6 +21,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonCopy => 'Копировать';
 
   @override
+  String get commonClear => 'Очистить';
+
+  @override
   String get commonCopied => 'Скопировано';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get sectionSupport => 'Поддержка';
+
+  @override
+  String get settingsSearchHint => 'Поиск по настройкам';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'Ничего не найдено: «$query»';
+  }
+
+  @override
+  String get settingsExpand => 'Развернуть';
+
+  @override
+  String get settingsCollapse => 'Свернуть';
 
   @override
   String get appearanceTheme => 'Тема';
@@ -789,6 +806,19 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'Действует до:';
+
+  @override
+  String get subSwitcherPingAll => 'Пинг серверов всех подписок';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'Серверов в подписке: $total. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'Серверов в подписке: $total. Из них прошли проверку канала (запрос через сервер): $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2480,4 +2510,60 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'Удалять нечего';
+
+  @override
+  String get speedTooltip => 'Скорость скачивания через этот сервер';
+
+  @override
+  String get speedFromAutoConfig => 'Скорость измерена автонастройкой';
+
+  @override
+  String get speedBlockedTooltip =>
+      'Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)';
+
+  @override
+  String get srvTileMeasureSpeed => 'Измерить скорость';
+
+  @override
+  String get speedRunTooltip => 'Измерить скорость серверов';
+
+  @override
+  String get speedConfirmTitle => 'Замерить скорость?';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return 'Проверим серверов: $count. Каждый качает пробу по $size — около $total трафика вашей подписки.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'Пропускаем уже измеренные: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'Измерить';
+
+  @override
+  String get speedNoTargets =>
+      'Мерить нечего: скорость проверяется только у серверов, прошедших проверку канала. Сначала пропингуйте список.';
+
+  @override
+  String get speedNotVerified =>
+      'Сервер не прошёл проверку канала — скорость через него не меряем';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'Скорость: $done из $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'Обновлять подписку при запуске';
+
+  @override
+  String get updateOnStartSub =>
+      'Тянуть свежий список серверов каждый раз, а не только по таймеру';
+
+  @override
+  String get apiSectionSub =>
+      'HTTP на 127.0.0.1 — управление клиентом из скриптов';
 }

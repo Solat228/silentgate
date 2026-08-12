@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/models/vpn_server.dart';
+import '../../core/probe/ping_result.dart';
 import '../../core/util/country_flag.dart';
 import '../../core/i18n/enum_labels.dart';
 import '../../core/i18n/text_direction.dart';
@@ -77,6 +78,10 @@ class ServerTile extends StatelessWidget {
       child: ListTile(
         dense: true,
         visualDensity: const VisualDensity(vertical: -2),
+        // Кнопка правки/меню уезжает ВПЛОТНУЮ к краю строки — просьба владельца
+        // («можно увести гораздо правее»). Штатные 16 dp справа отодвигали её от
+        // края почти на ширину самой иконки.
+        contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 2),
         selected: selected,
         selectedTileColor: scheme.primary.withValues(alpha: 0.08),
         leading: FlagCell(server.remark, auto: server.isPanelProfile),
@@ -133,14 +138,25 @@ class ServerTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            PingChip(result: probe.resultFor(server)),
+            _PingSpeedColumn(
+              ping: probe.resultFor(server),
+              speed: probe.speedFor(server),
+            ),
             // На десктопе шеврон ведёт в редактор, а меню — по правой кнопке.
             // На тач-экране правой кнопки нет, поэтому здесь ⫶: без неё
             // большинство действий над сервером были бы недостижимы.
+            //
+            // Кнопка ужата (`compact` + нулевой padding): рядом с ней теперь
+            // стоит столбик из двух плашек, и штатные 48 dp иконки съедали
+            // ширину у имени сервера.
             touch
                 ? Builder(
                     builder: (btnContext) => IconButton(
                       tooltip: l.srvTileMenu,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints:
+                          const BoxConstraints(minWidth: 32, minHeight: 32),
                       icon: const Icon(Icons.more_vert),
                       onPressed: () {
                         final box = btnContext.findRenderObject() as RenderBox?;
@@ -153,6 +169,10 @@ class ServerTile extends StatelessWidget {
                   )
                 : IconButton(
                     tooltip: l.srvTileEdit,
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints:
+                        const BoxConstraints(minWidth: 32, minHeight: 32),
                     icon: const Icon(Icons.chevron_right),
                     onPressed: () => _edit(context),
                   ),
@@ -235,6 +255,7 @@ class ServerTile extends StatelessWidget {
       items: [
         item('info', Icons.info_outline, l.srvTileInfo),
         item('ping', Icons.network_check, l.srvTilePing),
+        item('speed', Icons.speed, l.srvTileMeasureSpeed),
         item('pin', pinned ? Icons.push_pin_outlined : Icons.push_pin,
             pinned ? l.srvTileUnpin : l.srvTilePin),
         item('json', Icons.data_object, l.srvTileJsonConfig),
@@ -251,6 +272,19 @@ class ServerTile extends StatelessWidget {
         break;
       case 'ping':
         if (!probe.running) probe.pingOne(server, settings);
+        break;
+      case 'speed':
+        // ⚠️ Гейт по проверке канала — решение владельца: сервер, через который
+        // не прошёл GET, скорость мерить не нужно. Молча ничего не делать здесь
+        // нельзя: человек нажал пункт меню и обязан узнать, почему пусто.
+        if (probe.running || probe.speedRunning) break;
+        if (!probe.resultFor(server).speedMeasurable) {
+          if (context.mounted) {
+            AppToast.show(context, l.speedNotVerified, kind: ToastKind.warning);
+          }
+          break;
+        }
+        probe.measureSpeedOne(server, settings);
         break;
       case 'pin':
         await state.togglePin(server);
@@ -296,6 +330,40 @@ class ServerTile extends StatelessWidget {
     );
     // «Редактор полей» из JSON-диалога → открыть редактор.
     if (result == 'edit' && context.mounted) await _edit(context);
+  }
+}
+
+/// Пинг и скорость — столбиком у края строки (решение владельца).
+///
+/// Раскладка ровно та, что он описал:
+///   • есть скорость — пинг сверху, скорость под ним;
+///   • нет скорости — пинг ОДИН и встаёт по центру строки;
+///   • сервер не прошёл проверку канала — на месте скорости прочерк.
+///
+/// ⚠️ Строка живёт и на телефоне. Ширину столбика НЕ ограничиваем жёстко:
+/// `ConstrainedBox` не режет содержимое, а роняет отладочную сборку по
+/// переполнению, стоит плашке «123.4 Мбит/с» не влезть в потолок. Место для
+/// имени сервера отдаёт `ListTile` (`trailing` берёт свою ширину, остаток —
+/// заголовку), а заголовок у нас `Flexible` с многоточием, поэтому лишний
+/// десяток пикселей здесь ничего не ломает.
+class _PingSpeedColumn extends StatelessWidget {
+  final PingResult ping;
+  final ServerSpeed? speed;
+  const _PingSpeedColumn({required this.ping, required this.speed});
+
+  @override
+  Widget build(BuildContext context) {
+    final chip = PingChip(result: ping);
+    if (!SpeedChip.visible(speed: speed, ping: ping)) return chip;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        chip,
+        const SizedBox(height: 2),
+        SpeedChip(speed: speed, ping: ping),
+      ],
+    );
   }
 }
 

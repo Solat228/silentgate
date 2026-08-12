@@ -113,13 +113,17 @@ class PingChip extends StatelessWidget {
     final at = result.measuredAt;
     if (at == null) return base;
     final l = AppLocalizations.of(context);
-    return '$base\n${l.pingMeasuredAt(_formatMoment(context, at.toLocal()))}';
+    return '$base\n${l.pingMeasuredAt(formatMoment(context, at.toLocal()))}';
   }
 
   /// Время замера в формате локали. Дата дописывается, только если замер не
   /// сегодняшний, — «14:05» без даты читается как «только что», а это как раз
   /// та ошибка, ради которой строку и добавляли.
-  static String _formatMoment(BuildContext context, DateTime t) {
+  ///
+  /// Публичный: тем же форматом подписывается замер скорости ([SpeedChip]) —
+  /// две разные записи одного и того же времени в соседних подсказках выглядят
+  /// как разные величины.
+  static String formatMoment(BuildContext context, DateTime t) {
     final now = DateTime.now();
     final sameDay = t.year == now.year && t.month == now.month && t.day == now.day;
     // MaterialLocalizations может не быть (виджет вне MaterialApp) — тогда
@@ -137,18 +141,74 @@ class PingChip extends StatelessWidget {
     return sameDay ? time : '${ml.formatShortDate(t)} $time';
   }
 
-  Widget _pill(String text, Color color, {String? tooltip}) {
-    final pill = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(text,
-          textDirection: TextDirection.ltr,
-          style:
-              TextStyle(color: color, fontWeight: FontWeight.w600, fontSize: 12)),
-    );
-    return tooltip == null ? pill : Tooltip(message: tooltip, child: pill);
+  Widget _pill(String text, Color color, {String? tooltip}) =>
+      _chipPill(text, color, tooltip: tooltip);
+}
+
+/// Плашка одного значения — общая для пинга и скорости, чтобы столбик из двух
+/// не разъезжался по высоте и радиусам.
+Widget _chipPill(String text, Color color,
+    {String? tooltip, double fontSize = 12}) {
+  final pill = Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.18),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(text,
+        textDirection: TextDirection.ltr,
+        style: TextStyle(
+            color: color, fontWeight: FontWeight.w600, fontSize: fontSize)),
+  );
+  return tooltip == null ? pill : Tooltip(message: tooltip, child: pill);
+}
+
+/// Скорость скачивания через сервер — вторым этажом под плашкой пинга.
+///
+/// Три состояния, и они РАЗНЫЕ:
+///   • замер есть — цифра в Мбит/с;
+///   • замера нет, но сервер не прошёл проверку канала (или мёртв) — ПРОЧЕРК с
+///     пояснением. Решение владельца дословно: «у таких серверов вместо
+///     значений скорости показывай минусы или крестики с пояснением при
+///     наведении». Пустое место здесь читается как «сейчас досчитается», и
+///     человек ждёт того, чего не будет;
+///   • замера нет и мерить можно — виджет НЕ занимает места вовсе, чтобы
+///     плашка пинга встала по центру строки (тоже решение владельца).
+class SpeedChip extends StatelessWidget {
+  final ServerSpeed? speed;
+  final PingResult ping;
+  const SpeedChip({super.key, required this.speed, required this.ping});
+
+  /// Показывает ли виджет хоть что-то. Нужен строке сервера: она решает,
+  /// строить столбик или оставить пинг по центру, и решать это должен тот же
+  /// код, что рисует, — иначе появится «столбик» из одного пинга и пустоты.
+  static bool visible({ServerSpeed? speed, required PingResult ping}) =>
+      speed != null || ping.speedBlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final s = speed;
+    if (s == null) {
+      if (!ping.speedBlocked) return const SizedBox.shrink();
+      return _chipPill('—', Theme.of(context).disabledColor,
+          tooltip: l.speedBlockedTooltip, fontSize: 11);
+    }
+    // Пороги те же по смыслу, что у пинга: зелёный — комфортно смотреть видео,
+    // жёлтый — терпимо, оранжевый — узко. Цифра всё равно видна, цвет лишь
+    // помогает глазу пробежать список.
+    final color = s.mbps >= 30
+        ? Colors.green
+        : s.mbps >= 10
+            ? Colors.amber
+            : Colors.orange;
+    final value = s.mbps >= 100 ? s.mbps.toStringAsFixed(0) : s.mbps.toStringAsFixed(1);
+    final at = s.measuredAt;
+    final tip = [
+      s.fromAutoConfig ? l.speedFromAutoConfig : l.speedTooltip,
+      if (at != null) l.pingMeasuredAt(PingChip.formatMoment(context, at.toLocal())),
+    ].join('\n');
+    return _chipPill(l.autoSpeedValue(value), color,
+        tooltip: tip, fontSize: 11);
   }
 }

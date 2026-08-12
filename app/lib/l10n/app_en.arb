@@ -4,6 +4,7 @@
   "commonCancel": "Cancel",
   "commonClose": "Close",
   "commonCopy": "Copy",
+  "commonClear": "Clear",
   "commonCopied": "Copied",
   "commonRefresh": "Refresh",
   "commonCheck": "Check",
@@ -21,6 +22,21 @@
   "sectionNetwork": "Network",
   "sectionAbout": "About",
   "sectionSupport": "Support",
+  "settingsSearchHint": "Search settings",
+  "@settingsSearchHint": {
+    "description": "Hint of the settings screen search field"
+  },
+  "settingsSearchEmpty": "Nothing found for “{query}”",
+  "@settingsSearchEmpty": {
+    "description": "Empty settings search result",
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsExpand": "Expand",
+  "settingsCollapse": "Collapse",
   "appearanceTheme": "Theme",
   "themeSystem": "System",
   "themeLight": "Light",
@@ -307,6 +323,26 @@
   "subBarValidPerpetual": "Valid: unlimited  {auto}",
   "subBarExpired": "Subscription expired:",
   "subBarValidUntil": "Valid until:",
+  "subSwitcherPingAll": "Ping servers of all subscriptions",
+  "subSwitcherCountTotal": "Servers in this subscription: {total}. The channel check has not run yet — start «Ping servers of all subscriptions».",
+  "subSwitcherCountWorking": "Servers in this subscription: {total}. Passed the channel check (a request through the server): {working}.",
+  "@subSwitcherCountTotal": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountWorking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "How traffic is intercepted. «System proxy» sets a local proxy in the system (no administrator rights; catches browsers and most applications). «TUN» is a virtual network adapter that catches ALL traffic (including UDP and applications that ignore the proxy), but requires administrator rights.",
   "infoSystemProxy": "A local HTTP proxy in the system settings (WinINET registry). No administrator rights. Does not intercept UDP or applications that ignore the system proxy.",
   "infoTunMode": "A full tunnel through the wintun virtual adapter + sing-box. Catches all traffic, including UDP. Requests administrator rights (UAC) when enabled.",
@@ -996,5 +1032,50 @@
       }
     }
   },
-  "logsNothingToClean": "Nothing to delete"
+  "logsNothingToClean": "Nothing to delete",
+  "speedTooltip": "Download speed through this server",
+  "speedFromAutoConfig": "Speed measured by auto-tuning",
+  "speedBlockedTooltip": "Speed is not measured: the server failed the channel check (a request through it did not go through)",
+  "srvTileMeasureSpeed": "Measure speed",
+  "speedRunTooltip": "Measure server speed",
+  "speedConfirmTitle": "Measure speed?",
+  "speedConfirmBody": "Servers to check: {count}. Each downloads a {size} sample — about {total} of your subscription traffic.",
+  "@speedConfirmBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "speedConfirmSkipped": "Already measured, skipping: {count}.",
+  "@speedConfirmSkipped": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "speedConfirmRun": "Measure",
+  "speedNoTargets": "Nothing to measure: speed is only checked for servers that passed the channel check. Ping the list first.",
+  "speedNotVerified": "The server failed the channel check — speed through it is not measured",
+  "speedProgress": "Speed: {done} of {total}",
+  "@speedProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "updateOnStartTitle": "Refresh subscription on launch",
+  "updateOnStartSub": "Fetch a fresh server list every time, not only on the timer",
+  "apiSectionSub": "HTTP on 127.0.0.1 — control the client from scripts"
 }

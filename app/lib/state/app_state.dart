@@ -494,6 +494,7 @@ class AppState extends ChangeNotifier {
       await handleIncomingUrl(url);
     }
     await _maybeStartUpdater();
+    _maybeRefreshOnStart();
     // ⚠️ ТОЛЬКО ЗДЕСЬ, В КОНЦЕ: подхват туннеля идёт первой строкой init(), но
     // сервер и настройки к тому моменту ещё не прочитаны с диска. Без сессии
     // движка автопереподключение и kill switch молча не работают — см.
@@ -778,29 +779,7 @@ class AppState extends ChangeNotifier {
       ..._pinned,
       ..._subServers.where((s) => !pinnedKeys.contains(s.key)),
     ];
-    _servers = base.map((s) {
-      var srv = s;
-      // Конфиг панели (пережил перезапуск в отдельном сторе): для обычных серверов —
-      // авторитетный outbound, для профилей «Авто …» — полный конфиг с балансировщиком.
-      final panel = _panelConfigs[srv.key];
-      if (panel != null) {
-        if ((srv.rawOutboundJson ?? '').isEmpty &&
-            (panel.outbound ?? '').isNotEmpty) {
-          srv = srv.copyWith(rawOutboundJson: panel.outbound);
-        }
-        if ((srv.rawPanelConfig ?? '').isEmpty &&
-            (panel.fullConfig ?? '').isNotEmpty) {
-          srv = srv.copyWith(rawPanelConfig: panel.fullConfig);
-        }
-      }
-      final ov = _overrides[srv.key];
-      if (ov?.rawJson != null &&
-          ov!.rawJson!.isNotEmpty &&
-          (srv.rawJsonOverride == null || srv.rawJsonOverride!.isEmpty)) {
-        srv = srv.copyWith(rawJsonOverride: ov.rawJson);
-      }
-      return srv;
-    }).toList();
+    _servers = base.map(_withStoredExtras).toList();
 
     // ⚠️ ДО любых ранних выходов ниже: движку нужен полный список имён, иначе
     // резолв чужих серверов уйдёт в туннель и подключение зациклится.
@@ -819,6 +798,39 @@ class AppState extends ChangeNotifier {
     if (_selectedIndex >= _servers.length) {
       _selectedIndex = _servers.isNotEmpty ? 0 : -1;
     }
+  }
+
+  /// Навесить на сервер то, что хранится ОТДЕЛЬНО от его ссылки: конфиг панели
+  /// и ручной JSON-override.
+  ///
+  /// ⚠️ Вынесено из [_rebuild] не ради красоты. Тот собирает только АКТИВНУЮ
+  /// подписку, а пинг всех подписок ([allSubscriptionServers]) поднимает
+  /// серверы неактивных — и без этих же двух шагов профиль «Авто …» уехал бы
+  /// в пробу голой ссылкой (у него в ссылке нет ничего, весь конфиг лежит в
+  /// сторе), а сервер с ручной правкой проверялся бы не в том виде, в каком
+  /// он подключается. Две копии этой логики разошлись бы на первой же правке.
+  VpnServer _withStoredExtras(VpnServer s) {
+    var srv = s;
+    // Конфиг панели (пережил перезапуск в отдельном сторе): для обычных серверов —
+    // авторитетный outbound, для профилей «Авто …» — полный конфиг с балансировщиком.
+    final panel = _panelConfigs[srv.key];
+    if (panel != null) {
+      if ((srv.rawOutboundJson ?? '').isEmpty &&
+          (panel.outbound ?? '').isNotEmpty) {
+        srv = srv.copyWith(rawOutboundJson: panel.outbound);
+      }
+      if ((srv.rawPanelConfig ?? '').isEmpty &&
+          (panel.fullConfig ?? '').isNotEmpty) {
+        srv = srv.copyWith(rawPanelConfig: panel.fullConfig);
+      }
+    }
+    final ov = _overrides[srv.key];
+    if (ov?.rawJson != null &&
+        ov!.rawJson!.isNotEmpty &&
+        (srv.rawJsonOverride == null || srv.rawJsonOverride!.isEmpty)) {
+      srv = srv.copyWith(rawJsonOverride: ov.rawJson);
+    }
+    return srv;
   }
 
   /// Удалить подписку (закреплённые серверы остаются).
@@ -1035,6 +1047,63 @@ class AppState extends ChangeNotifier {
       _pendingRestart = 'Подписка переключена — переподключитесь, чтобы применить';
     }
     notifyListeners();
+  }
+
+  // ── Пинг всех подписок и счётчик у каждой (1.4.2, задача 7) ───────────────
+
+  /// Серверы ОДНОЙ подписки — восстановленные из её ссылок ровно так же, как
+  /// это делает [switchSubscription].
+  ///
+  /// ⚠️ БЕЗ ВОССТАНОВЛЕНИЯ ЗДЕСЬ ПИНГОВАТЬ НЕЧЕГО. В профиле лежат ССЫЛКИ, а
+  /// объектов `VpnServer` у неактивной подписки не существует вовсе: их строит
+  /// только переключение на неё. Прежний пункт меню пинговал `servers` —
+  /// список АКТИВНОЙ подписки, — и владелец просил обратного.
+  ///
+  /// ⚠️ И ссылку нельзя выдавать за ключ сервера: с 1.4.2 ключ КАНОНИЧЕСКИЙ
+  /// (`ShareLinkParser.canonicalKey`), а на диске лежит то написание, которое
+  /// прислала панель. Ключ берём у восстановленного объекта, иначе результаты
+  /// пинга искались бы по несуществующему ключу и счётчик всегда показывал бы
+  /// ноль рабочих.
+  ///
+  /// Подписку при этом НЕ переключаем: человек попросил пинг, а не смену
+  /// канала — переключение утащило бы за собой список на главном экране и
+  /// плашку «переподключитесь» при живом туннеле.
+  List<VpnServer> serversOfSubscription(String id) {
+    for (final p in _profiles) {
+      if (p.id != id) continue;
+      return p.serverLinks
+          .map(_serverFromStoredLink)
+          .whereType<VpnServer>()
+          .map(_withStoredExtras)
+          .toList(growable: false);
+    }
+    return const [];
+  }
+
+  /// Серверы ВСЕХ подписок — то, что гоняет пункт «Пинг серверов» в меню
+  /// переключателя (у владельца это 101 + 4 + 4 + 15 серверов).
+  ///
+  /// Первым идёт то, что человек видит на главном экране ([servers] — активная
+  /// подписка плюс закреплённые и ручные `json://`, они тоже в списке и тоже
+  /// должны получить свежий пинг), дальше — остальные подписки. Повторы
+  /// отсекаются ПО КЛЮЧУ: один и тот же сервер вполне живёт в двух подписках
+  /// сразу, и пинговать его дважды значило бы удвоить прогон на ровном месте.
+  List<VpnServer> allSubscriptionServers() {
+    final seen = <String>{};
+    final out = <VpnServer>[];
+    void add(VpnServer s) {
+      if (seen.add(s.key)) out.add(s);
+    }
+
+    for (final s in _servers) {
+      add(s);
+    }
+    for (final p in _profiles) {
+      for (final s in serversOfSubscription(p.id)) {
+        add(s);
+      }
+    }
+    return out;
   }
 
   /// Есть ли закреплённые серверы (спрашиваем при удалении подписки, #5).
@@ -1292,7 +1361,10 @@ class AppState extends ChangeNotifier {
       }
 
       // #1.1 — что изменилось по сравнению с прошлым составом подписки.
-      final before = {for (final s in _subServers) s.key: s.displayName};
+      // Копия, а не сама ссылка на список: ниже идут четыре await, и за это
+      // время состав может измениться из другого места (например, удалением
+      // сервера пользователем).
+      final before = List<VpnServer>.of(_subServers);
 
       _subServers = result.servers;
       // Панель увела редиректом — дальше ходим по новому адресу, иначе после
@@ -1312,23 +1384,25 @@ class AppState extends ChangeNotifier {
       // Аватарку тянем ЗДЕСЬ (импорт/обновление), не в фоне и не на старте.
       await _refreshLogo(url);
 
-      final after = {for (final s in result.servers) s.key: s.displayName};
-      _lastSync = SubscriptionSyncResult(
-        total: result.servers.length,
-        added: [
-          for (final e in after.entries)
-            if (!before.containsKey(e.key)) e.value,
-        ],
-        removed: [
-          for (final e in before.entries)
-            if (!after.containsKey(e.key)) e.value,
-        ],
+      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
+      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
+      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
+      // сервера «Москва 1. GRPC», который никуда не девался.
+      _lastSync = SubscriptionSyncResult.diff(
+        before: before,
+        after: result.servers,
         withPanelConfig: withOutbound,
         panelProfiles: withFullConfig,
-        at: DateTime.now(),
       );
       AppLog.i('Подписка обновлена: ${_lastSync!.summary} '
           '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
+      // Сервер на месте, а ключ другой — расходятся форматы записи ссылки.
+      // Молча это стоило пользователю 273 сохранённых результатов пинга из 374,
+      // и заметили только через полгода. Пишем ИМЕНА полей — без значений:
+      // в ссылке лежат uuid и пароли, а журнал уезжает в отчёт поддержки.
+      for (final line in _lastSync!.keyChangeReport) {
+        AppLog.w(line);
+      }
     } catch (e) {
       _error = e.toString();
       _errorCode = null;
@@ -1521,6 +1595,31 @@ class AppState extends ChangeNotifier {
   }
 
   /// Обновить текущую подписку из сети.
+  /// Обновить подписку на запуске приложения, если пользователь так просил.
+  ///
+  /// ⚠️ БЕЗ `await` И НАМЕРЕННО. Запуск не должен ждать сеть: панель может не
+  /// ответить, а приложению нужно показать интерфейс и подхватить живой
+  /// туннель в любом случае. Отказ обновления — не повод не запуститься, он
+  /// просто уходит в журнал.
+  ///
+  /// ⚠️ Отличается от автообновления по таймеру (`_maybeStartUpdater`): тот
+  /// между запусками ничего не гарантирует, и после суток простоя список
+  /// серверов с остатком трафика показывались прошлые, пока не подойдёт срок.
+  void _maybeRefreshOnStart() {
+    if (_subscriptionUrl == null) return;
+    unawaited(() async {
+      try {
+        // Настройки читаем ЗДЕСЬ, а не снаружи: AppState своей копии не держит
+        // (см. `_maybeStartUpdater` рядом — он делает ровно так же).
+        final s = await SettingsStorage().load();
+        if (!s.updateSubscriptionOnStart) return;
+        await refreshSubscription();
+      } catch (e) {
+        AppLog.w('Обновление подписки на запуске не удалось: $e');
+      }
+    }());
+  }
+
   Future<void> refreshSubscription() async {
     final url = _subscriptionUrl;
     if (url == null) return;

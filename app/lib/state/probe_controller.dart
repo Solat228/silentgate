@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
 import '../core/models/vpn_server.dart';
+import '../core/net/speed_test.dart';
 import '../core/probe/cancel_token.dart';
 import '../core/probe/ping_result.dart';
 import '../core/probe/proxy_probe.dart';
@@ -16,6 +18,16 @@ import '../core/xray/harness_config_builder.dart' show HarnessRealism;
 import '../core/xray/outbound_variant.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
+
+/// Подпись замера скорости. Совпадает с [SpeedTest.download], но объявлена
+/// отдельно, чтобы её можно было подменить в тесте (лишние необязательные
+/// именованные параметры настоящей функции подстановке не мешают).
+typedef SpeedDownload = Future<SpeedResult> Function({
+  required SpeedTestSize size,
+  int? proxyPort,
+  String proxyUser,
+  String proxyPassword,
+});
 
 /// Пинг серверов. Модель проверки — как просил пользователь:
 ///   1. **TCP до всех** серверов (быстро, без ядра). Кто не ответил — «мёртв»,
@@ -46,6 +58,12 @@ class ProbeController extends ChangeNotifier {
   final Map<String, PingResult> _results = {};
   bool _running = false;
   CancelToken? _cancel;
+
+  /// Как скачивать пробу при замере скорости. Поле, а не прямой вызов
+  /// [SpeedTest.download], ровно ради теста: настоящий замер уходит в интернет
+  /// и тратит трафик подписки, а проверять гейт «не прошёл GET — не мерим»
+  /// надо без единого байта наружу.
+  SpeedDownload speedDownload = SpeedTest.download;
 
   /// Порт ЖИВОГО соединения и ключ сервера, который сейчас поднят.
   ///
@@ -102,7 +120,7 @@ class ProbeController extends ChangeNotifier {
   OutboundVariant _variantOf(VpnServer s) =>
       variantFor?.call(s) ?? OutboundVariant.none;
 
-  /// Загрузка сохранённых результатов пинга.
+  /// Загрузка сохранённых результатов пинга и замеров скорости.
   Future<void> init() async {
     try {
       final data = await ResultsStore.ping.load();
@@ -110,6 +128,18 @@ class ProbeController extends ChangeNotifier {
         data.forEach((key, value) {
           if (value is Map) {
             _results['$key'] = PingResult.fromJson(value.cast<String, dynamic>());
+          }
+        });
+        notifyListeners();
+      }
+    } catch (_) {}
+    try {
+      final data = await _speedStore.load();
+      if (data is Map) {
+        data.forEach((key, value) {
+          if (value is Map) {
+            final s = ServerSpeed.fromJson(value.cast<String, dynamic>());
+            if (s != null) _speeds['$key'] = s;
           }
         });
         notifyListeners();
@@ -141,6 +171,157 @@ class ProbeController extends ChangeNotifier {
 
   void cancel() => _cancel?.cancel();
 
+  // ── Скорость сервера ───────────────────────────────────────────────────────
+  //
+  // Отдельная подсистема поверх того же харнесса. Дорогая: одна проба стоит
+  // 5–20 МБ ТРАФИКА ПОДПИСКИ, поэтому запускается только вручную и только по
+  // серверам, прошедшим проверку канала (см. [PingResult.speedMeasurable]).
+
+  /// Файл замеров. Отдельно от `ping_results.json`, потому что и живут они
+  /// отдельно: прогон пинга перезаписывает свой результат целиком.
+  static const _speedStore = ResultsStore('speed_results.json');
+
+  final Map<String, ServerSpeed> _speeds = {};
+  bool _speedRunning = false;
+  CancelToken? _speedCancel;
+  int _speedTotal = 0;
+  int _speedDone = 0;
+  String? _speedSummary;
+  DateTime? _speedFinishedAt;
+
+  /// Замер скорости этого сервера. `null` — не мерили.
+  ServerSpeed? speedFor(VpnServer s) => _speeds[s.key];
+
+  bool get speedRunning => _speedRunning;
+  int get speedTotal => _speedTotal;
+  int get speedDone => _speedDone;
+  String? get speedSummary => _speedSummary;
+  DateTime? get speedFinishedAt => _speedFinishedAt;
+
+  /// Кого имеет смысл гнать в прогон по списку: прошёл проверку канала И ещё не
+  /// измерен. Второе условие — прямое требование владельца «уже замеренное
+  /// повторно не меряется»: за каждый повтор платит трафик подписки. Ручной
+  /// замер одного сервера этим гейтом не ограничен — там человек знает, что
+  /// делает.
+  List<VpnServer> speedTargets(Iterable<VpnServer> servers) => [
+        for (final s in servers)
+          if (resultFor(s).speedMeasurable && _speeds[s.key] == null) s,
+      ];
+
+  /// Скорости, уже посчитанные автонастройкой, — в строку сервера, без повтора.
+  ///
+  /// ⚠️ Молча, без [notifyListeners], когда ничего не изменилось: метод зовётся
+  /// с каждой перерисовки главного экрана, и безусловное уведомление устроило
+  /// бы бесконечный цикл «notify → build → notify».
+  void adoptSpeeds(Map<String, ServerSpeed> byKey) {
+    var changed = false;
+    byKey.forEach((key, speed) {
+      // Ручной замер сильнее: он свежее и сделан по настройке пользователя.
+      // Иначе список из автонастройки затирал бы только что измеренное.
+      final have = _speeds[key];
+      if (have != null && !have.fromAutoConfig) return;
+      if (have != null && have.mbps == speed.mbps) return;
+      _speeds[key] = speed;
+      changed = true;
+    });
+    if (!changed) return;
+    notifyListeners();
+    unawaited(_persistSpeeds());
+  }
+
+  /// Замер одного сервера — пункт контекстного меню строки.
+  Future<void> measureSpeedOne(VpnServer server, AppSettings settings) =>
+      _measureSpeeds([server], settings, force: true);
+
+  /// Прогон по списку. Вызывающий ОБЯЗАН спросить подтверждение и назвать
+  /// объём: 101 сервер × 5–20 МБ — это до двух гигабайт подписки.
+  Future<void> measureSpeedAll(List<VpnServer> servers, AppSettings settings) =>
+      _measureSpeeds(servers, settings, force: false);
+
+  void cancelSpeed() => _speedCancel?.cancel();
+
+  Future<void> _measureSpeeds(List<VpnServer> servers, AppSettings settings,
+      {required bool force}) async {
+    // Один харнесс на процесс: пинг и замер делят те же локальные порты, и
+    // параллельный запуск отобрал бы порт у уже идущего прогона.
+    if (_speedRunning || _running) return;
+    final targets = force
+        ? [for (final s in servers) if (resultFor(s).speedMeasurable) s]
+        : speedTargets(servers);
+    if (targets.isEmpty) return;
+
+    _speedRunning = true;
+    _speedTotal = targets.length;
+    _speedDone = 0;
+    _speedSummary = null;
+    final cancel = _speedCancel = CancelToken();
+    notifyListeners();
+
+    var ok = 0;
+    final sw = Stopwatch()..start();
+    AppLog.i('Скорость: ${targets.length} серверов по '
+        '${settings.speedTestSize.label}');
+    try {
+      for (final s in targets) {
+        if (cancel.isCancelled) break;
+        HarnessHandle? handle;
+        try {
+          handle = await _harnessFactory().start([
+            HarnessEntry(key: s.key, server: s, variant: _variantOf(s)),
+          ]);
+          if (cancel.isCancelled) break;
+          final port = handle.proxyPortFor(0);
+          if (port > 0) {
+            // ⚠️ КРЕДЫ ХАРНЕССА — ОБЯЗАТЕЛЬНО. Инбаунды закрыты паролем
+            // (1.3.0/1.4.1), и без них ядро отвечает 407, а `catch` превращает
+            // это в безликое «замер не удался» на КАЖДОМ сервере. Ровно так
+            // молча умер замер скорости, когда пароль добавили пингу и забыли
+            // про скорость.
+            final res = await speedDownload(
+              size: settings.speedTestSize,
+              proxyPort: port,
+              proxyUser: handle.proxyUser,
+              proxyPassword: handle.proxyPassword,
+            );
+            if (res.ok) {
+              _speeds[s.key] = ServerSpeed(
+                mbps: res.bitsPerSecond / 1000000,
+                measuredAt: DateTime.now(),
+              );
+              ok++;
+            } else {
+              AppLog.w('Скорость «${s.displayName}»: ${res.error}');
+            }
+          } else {
+            AppLog.w('Скорость «${s.displayName}»: харнесс не дал порт');
+          }
+        } catch (e) {
+          AppLog.w('Скорость «${s.displayName}» не замерена — $e');
+        } finally {
+          await handle?.stop();
+        }
+        _speedDone++;
+        notifyListeners();
+      }
+    } finally {
+      _speedRunning = false;
+      _speedFinishedAt = DateTime.now();
+      _speedSummary = cancel.isCancelled
+          ? 'Замер скорости отменён: измерено $ok из ${targets.length}'
+          : 'Скорость измерена: $ok из ${targets.length} '
+              '(${sw.elapsed.inSeconds} с)';
+      AppLog.i(_speedSummary!);
+      await _persistSpeeds();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _persistSpeeds() async {
+    await _speedStore.save({
+      for (final e in _speeds.entries) e.key: e.value.toJson(),
+    });
+  }
+
   static bool _isHy2(VpnServer s) => s.protocol == 'hysteria2';
 
   static bool _hasFullConfig(VpnServer s) =>
@@ -158,7 +339,9 @@ class ProbeController extends ChangeNotifier {
       s.pingFallback == PingMethod.proxyHead;
 
   Future<void> _pingBatch(List<VpnServer> servers, AppSettings settings) async {
-    if (_running || servers.isEmpty) return;
+    // Замер скорости держит харнесс и те же локальные порты — начинать пинг
+    // поверх него значит отобрать порт у идущего прогона.
+    if (_running || _speedRunning || servers.isEmpty) return;
     _running = true;
     _batch = List.unmodifiable(servers);
     _done.clear();

@@ -8,10 +8,10 @@ import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
+import 'api_screen.dart';
 import '../core/app_info.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
-import '../core/net/api_ports.dart';
 import '../core/platform/device_id.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
@@ -22,10 +22,8 @@ import '../core/update/app_update.dart';
 import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
-import '../core/singbox/exit_outbounds.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
-import '../engine/engine_base.dart';
 import '../state/app_state.dart';
 import '../state/settings_controller.dart';
 import 'logs_screen.dart';
@@ -63,6 +61,25 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final _scroll = ScrollController();
 
+  /// Строка поиска по настройкам. Живёт только в памяти: сохранённый запрос
+  /// означал бы, что человек открывает настройки и видит их наполовину
+  /// спрятанными без понятной причины.
+  final _search = TextEditingController();
+  String _query = '';
+
+  /// Развернуть раздел, если он свёрнут.
+  ///
+  /// Нужно переходам «извне»: плашка гео-баз и кнопка поддержки ведут в
+  /// КОНКРЕТНУЮ строку, а свёрнутый раздел её не строит вовсе — переход молча
+  /// приводил бы в никуда.
+  Future<void> _ensureExpanded(String id) async {
+    final controller = context.read<SettingsController>();
+    if (!controller.settings.collapsedSections.contains(id)) return;
+    await controller.update((s) => s.copyWith(
+        collapsedSections:
+            s.collapsedSections.where((e) => e != id).toList()));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +87,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       // Раздел «Поддержка» — внизу: мотаем страницу вниз и сразу показываем
       // всплывающее окно поддержки (как будто пользователь сам нажал кнопку).
       WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await _ensureExpanded(SettingsSectionIds.about);
         if (_scroll.hasClients) {
           await _scroll.animateTo(_scroll.position.maxScrollExtent,
               duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
@@ -78,9 +96,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
     }
     if (widget.scrollToGeo) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Строка гео-баз живёт в разделе «Захват трафика»: свёрнутым он её не
+        // строит, и `ensureVisible` не находил бы ничего.
+        await _ensureExpanded(SettingsSectionIds.capture);
+        if (!mounted) return;
+        await WidgetsBinding.instance.endOfFrame;
         final ctx = geoAssetsKey.currentContext;
-        if (ctx != null) {
+        if (ctx != null && ctx.mounted) {
           Scrollable.ensureVisible(ctx,
               duration: const Duration(milliseconds: 350),
               curve: Curves.easeOut,
@@ -93,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _scroll.dispose();
+    _search.dispose();
     super.dispose();
   }
 
@@ -107,60 +131,417 @@ class _SettingsScreenState extends State<SettingsScreen> {
         title: Text(l.settingsTitle),
         // Переключатель языка — отдельно в шапке (флаг + значок перевода).
         actions: const [LanguageButton()],
+        // Поиск — прямой ответ на жалобу «как искать версию непонятно».
+        // Он в шапке, а не строкой списка: искать начинают до того, как
+        // прокрутят, и поле должно быть видно сразу.
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            child: TextField(
+              controller: _search,
+              onChanged: (v) => setState(() => _query = v),
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search, size: 20),
+                hintText: l.settingsSearchHint,
+                border: const OutlineInputBorder(),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: l.commonClear,
+                        icon: const Icon(Icons.close, size: 18),
+                        onPressed: () {
+                          _search.clear();
+                          setState(() => _query = '');
+                        },
+                      ),
+              ),
+            ),
+          ),
+        ),
       ),
-      body: ListView(
-        controller: _scroll,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+      body: SettingsBody(
+        sections: buildSettingsSections(context, s, controller),
+        query: _query,
+        collapsed: s.collapsedSections.toSet(),
+        onToggleSection: (id) {
+          final next = s.collapsedSections.toList();
+          next.contains(id) ? next.remove(id) : next.add(id);
+          controller.update((st) => st.copyWith(collapsedSections: next));
+        },
+        scrollController: _scroll,
+      ),
+    );
+  }
+}
+
+// ── Каркас экрана настроек ───────────────────────────────────────────────────
+
+/// Идентификаторы разделов. ⚠️ СТАБИЛЬНЫЕ СТРОКИ: они ложатся на диск
+/// (`AppSettings.collapsedSections`), поэтому переименование здесь молча
+/// «развернёт» раздел у всех, кто его свернул.
+abstract final class SettingsSectionIds {
+  static const appearance = 'appearance';
+  static const capture = 'capture';
+  static const reliability = 'reliability';
+  static const ping = 'ping';
+  static const identity = 'identity';
+  static const network = 'network';
+  static const api = 'api';
+  static const about = 'about';
+}
+
+/// Максимальная ширина содержимого настроек.
+///
+/// ⚠️ ЗАЧЕМ ОГРАНИЧЕНИЕ ВООБЩЕ. До него ширины не было вовсе, и на широком
+/// окне Windows подпись тянулась через весь экран, а переключатель уезжал к
+/// правому краю — глазу не за что зацепиться, связь «подпись ↔ тумблер»
+/// теряется. 760 — примерно 90 символов в строке, верхняя граница читаемости.
+const double kSettingsContentMaxWidth = 760;
+
+/// С какой ширины показываем боковое меню разделов.
+///
+/// ⚠️ ВЫШЕ, чем `SgWidth.expanded` (840). Меню съедает 240 dp, и на 840
+/// содержимому осталось бы 600 — уже, чем на телефоне в ландшафте. Порог
+/// подобран так, чтобы содержимое не сужалось ощутимо: 900 − 240 = 660.
+const double kSettingsSidebarMinWidth = 900;
+
+/// Строка настроек, участвующая в поиске.
+///
+/// ⚠️ Виджет строится ЛЕНИВО (`build`), а не передаётся готовым. Причина не в
+/// экономии: строки скрытого поиском или свёрнутого раздела не должны вообще
+/// создаваться — иначе раздел «О программе» на каждый ввод буквы в поиске
+/// заново спрашивал бы версию ядра у диска, а раздел API — состояние портов.
+class SettingsRow {
+  /// Текст, по которому ищем: заголовок плюс подпись, как их видит человек.
+  final String search;
+  final WidgetBuilder build;
+
+  const SettingsRow({required this.search, required this.build});
+}
+
+/// Раздел настроек как ДАННЫЕ — чтобы каркас (ширина, меню, сворачивание,
+/// поиск) не знал ничего о содержимом, а содержимое — о раскладке.
+class SettingsSectionData {
+  final String id;
+  final String title;
+  final IconData icon;
+  final List<SettingsRow> rows;
+
+  /// Раздел рисует заголовок сам.
+  ///
+  /// ⚠️ ВРЕМЕННОЕ ИСКЛЮЧЕНИЕ ДЛЯ `_ApiSection`: он переезжает на отдельный
+  /// экран отдельной задачей, и трогать его содержимое здесь нельзя. Без флага
+  /// заголовок нарисовался бы дважды.
+  final bool ownHeader;
+
+  const SettingsSectionData({
+    required this.id,
+    required this.title,
+    required this.icon,
+    required this.rows,
+    this.ownHeader = false,
+  });
+}
+
+/// Приведение к виду, пригодному для сравнения: регистр и «ё».
+///
+/// ⚠️ «ё» → «е» не украшательство: половина клавиатур её не ставит, и поиск
+/// «надежность» не нашёл бы «Надёжность соединения» — то есть ровно тот раздел,
+/// который человек и искал.
+String _searchNorm(String s) => s.toLowerCase().replaceAll('ё', 'е');
+
+/// Оставить только то, что подходит под запрос.
+///
+/// Раздел, чей ЗАГОЛОВОК подошёл, остаётся целиком: спросили «пинг» — логично
+/// увидеть весь раздел «Пинг», а не одну строку из него.
+List<SettingsSectionData> filterSettingsSections(
+    List<SettingsSectionData> sections, String query) {
+  final q = _searchNorm(query.trim());
+  if (q.isEmpty) return sections;
+  final out = <SettingsSectionData>[];
+  for (final s in sections) {
+    if (_searchNorm(s.title).contains(q)) {
+      out.add(s);
+      continue;
+    }
+    final rows =
+        s.rows.where((r) => _searchNorm(r.search).contains(q)).toList();
+    if (rows.isEmpty) continue;
+    out.add(SettingsSectionData(
+      id: s.id,
+      title: s.title,
+      icon: s.icon,
+      rows: rows,
+      ownHeader: s.ownHeader,
+    ));
+  }
+  return out;
+}
+
+/// Каркас: ограниченная по ширине колонка разделов плюс боковое меню на
+/// широком окне.
+class SettingsBody extends StatefulWidget {
+  const SettingsBody({
+    super.key,
+    required this.sections,
+    required this.collapsed,
+    required this.onToggleSection,
+    this.query = '',
+    this.scrollController,
+  });
+
+  final List<SettingsSectionData> sections;
+
+  /// Идентификаторы свёрнутых разделов.
+  final Set<String> collapsed;
+  final ValueChanged<String> onToggleSection;
+  final String query;
+  final ScrollController? scrollController;
+
+  @override
+  State<SettingsBody> createState() => _SettingsBodyState();
+}
+
+class _SettingsBodyState extends State<SettingsBody> {
+  /// Якоря разделов для бокового меню. Ключи стабильны по идентификатору
+  /// раздела: пересоздавать их на каждый кадр значило бы терять позицию.
+  final _anchors = <String, GlobalKey>{};
+
+  GlobalKey _anchor(String id) => _anchors.putIfAbsent(id, () => GlobalKey());
+
+  Future<void> _jumpTo(SettingsSectionData s) async {
+    // Свёрнутый раздел разворачиваем: иначе меню приводит к пустому месту.
+    if (widget.collapsed.contains(s.id)) widget.onToggleSection(s.id);
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final ctx = _anchor(s.id).currentContext;
+    if (ctx == null || !ctx.mounted) return;
+    await Scrollable.ensureVisible(ctx,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+        alignment: 0.05);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final searching = widget.query.trim().isNotEmpty;
+    final visible = filterSettingsSections(widget.sections, widget.query);
+
+    final content = visible.isEmpty
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Text(l.settingsSearchEmpty(widget.query.trim()),
+                  textAlign: TextAlign.center),
+            ),
+          )
+        : ListView.separated(
+            controller: widget.scrollController,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            itemCount: visible.length,
+            separatorBuilder: (_, __) => const Divider(),
+            itemBuilder: (context, i) {
+              final s = visible[i];
+              // ⚠️ ПРИ ПОИСКЕ СВЁРНУТОСТЬ ИГНОРИРУЕТСЯ. Иначе найденная строка
+              // лежала бы в свёрнутом разделе и человек видел бы пустой
+              // результат при непустом совпадении — худший исход из возможных.
+              final collapsed =
+                  !searching && widget.collapsed.contains(s.id);
+              return Column(
+                key: _anchor(s.id),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (!s.ownHeader)
+                    _SectionHeader(
+                      title: s.title,
+                      collapsed: collapsed,
+                      // Во время поиска сворачивать нечего — заголовок не
+                      // должен обещать действие, которое ни на что не влияет.
+                      onTap: searching
+                          ? null
+                          : () => widget.onToggleSection(s.id),
+                    ),
+                  if (!collapsed)
+                    for (final r in s.rows) r.build(context),
+                ],
+              );
+            },
+          );
+
+    final centered = Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: kSettingsContentMaxWidth),
+        child: content,
+      ),
+    );
+
+    return LayoutBuilder(builder: (context, box) {
+      if (box.maxWidth < kSettingsSidebarMinWidth) return centered;
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _AppearanceSection(settings: s, controller: controller),
-          const Divider(),
-          _CaptureSection(settings: s, controller: controller),
-          const Divider(),
-          _ReliabilitySection(settings: s, controller: controller),
-          const Divider(),
-          _PingSection(settings: s, controller: controller),
-          const Divider(),
-          _IdentitySection(settings: s, controller: controller),
-          // «Восстановление сети» и «проверка помех» — про netsh, чужие
-          // TUN-адаптеры и системный прокси Windows. На Android ни одного из
-          // этих понятий нет: туннель рвётся системой сам, а перечислять чужие
-          // процессы приложение не может.
-          if (!Platform.isAndroid) ...[
-            const Divider(),
-            const _NetworkSection(),
-          ],
-          // Локальный API для скриптов (Python и т.п.). Работает ТОЛЬКО на
-          // Windows — на Android слушатель не поднимается (см.
-          // `AppState.applyApiSettings`), и видимый раздел, который ничего
-          // не делает, был бы обманом.
-          if (Platform.isWindows) ...[
-            const Divider(),
-            _ApiSection(settings: s, controller: controller),
-          ],
-          const Divider(),
-          // «URL-схемы» переехали в раздел «Представление панели» (как приложение
-          // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
-          const _AboutSection(),
+          SizedBox(
+            width: 240,
+            child: ListView(
+              key: const ValueKey('settings-rail'),
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                for (final s in visible)
+                  ListTile(
+                    dense: true,
+                    leading: Icon(s.icon, size: 20),
+                    title: Text(s.title, overflow: TextOverflow.ellipsis),
+                    onTap: () => _jumpTo(s),
+                  ),
+              ],
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: centered),
+        ],
+      );
+    });
+  }
+}
+
+/// Заголовок раздела: он же кнопка «свернуть/развернуть».
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.collapsed,
+    this.onTap,
+  });
+
+  final String title;
+  final bool collapsed;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final head = _sectionHeader(context, title);
+    if (onTap == null) return head;
+    return InkWell(
+      onTap: onTap,
+      child: Row(
+        children: [
+          Expanded(child: head),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Tooltip(
+              message: collapsed ? l.settingsExpand : l.settingsCollapse,
+              child: Icon(
+                  collapsed ? Icons.expand_more : Icons.expand_less,
+                  size: 20),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Надёжность соединения ────────────────────────────────────────────────────
-class _ReliabilitySection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _ReliabilitySection({required this.settings, required this.controller});
+/// Разделы настроек как данные. Порядок — тот же, что был у списка.
+///
+/// ⚠️ Строки собираются здесь, а виджеты строятся лениво (см. [SettingsRow]),
+/// поэтому вызов сам по себе ничего не запускает: ни версии ядра, ни состояние
+/// портов API. На это опирается тест поиска.
+List<SettingsSectionData> buildSettingsSections(
+    BuildContext context, AppSettings s, SettingsController controller) {
+  final l = AppLocalizations.of(context);
+  return [
+    SettingsSectionData(
+      id: SettingsSectionIds.appearance,
+      title: l.sectionAppearance,
+      icon: Icons.palette_outlined,
+      rows: _appearanceRows(l, s, controller),
+    ),
+    SettingsSectionData(
+      id: SettingsSectionIds.capture,
+      title: l.sectionCapture,
+      icon: Icons.alt_route,
+      rows: _captureRows(l, s, controller),
+    ),
+    SettingsSectionData(
+      id: SettingsSectionIds.reliability,
+      title: l.sectionReliability,
+      icon: Icons.shield_outlined,
+      rows: _reliabilityRows(l, s, controller),
+    ),
+    SettingsSectionData(
+      id: SettingsSectionIds.ping,
+      title: l.sectionPing,
+      icon: Icons.network_ping,
+      rows: _pingRows(l, s, controller),
+    ),
+    SettingsSectionData(
+      id: SettingsSectionIds.identity,
+      title: l.sectionIdentity,
+      icon: Icons.badge_outlined,
+      rows: _identityRows(l),
+    ),
+    // «Восстановление сети» и «проверка помех» — про netsh, чужие
+    // TUN-адаптеры и системный прокси Windows. На Android ни одного из
+    // этих понятий нет: туннель рвётся системой сам, а перечислять чужие
+    // процессы приложение не может.
+    if (!Platform.isAndroid)
+      SettingsSectionData(
+        id: SettingsSectionIds.network,
+        title: l.sectionNetwork,
+        icon: Icons.lan_outlined,
+        rows: _networkRows(l),
+      ),
+    // Локальный API для скриптов (Python и т.п.). Работает ТОЛЬКО на
+    // Windows — на Android слушатель не поднимается (см.
+    // `AppState.applyApiSettings`), и видимый раздел, который ничего
+    // не делает, был бы обманом.
+    if (Platform.isWindows)
+      SettingsSectionData(
+        id: SettingsSectionIds.api,
+        title: l.apiSectionTitle,
+        icon: Icons.terminal,
+        ownHeader: true,
+        rows: [
+          SettingsRow(
+            search: '${l.apiSectionTitle} ${l.apiSectionSub}',
+            // ⚠️ Раздел переехал на СВОЙ экран (`ui/api_screen.dart`): он
+            // занимал настройки целиком — тумблер, токен, таблица портов и
+            // список серверов с чекбоксами. Здесь остаётся одна строка со
+            // стрелкой, ровно как у URL-схем.
+            build: (_) => ListTile(
+              leading: const Icon(Icons.terminal),
+              title: Text(l.apiSectionTitle),
+              subtitle: Text(l.apiSectionSub),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ApiScreen()),
+              ),
+            ),
+          ),
+        ],
+      ),
+    // «URL-схемы» переехали в раздел «Представление панели» (как приложение
+    // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
+    SettingsSectionData(
+      id: SettingsSectionIds.about,
+      title: l.sectionAbout,
+      icon: Icons.info_outline,
+      rows: _aboutRows(l),
+    ),
+  ];
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionReliability),
-        SwitchListTile(
+// ── Надёжность соединения ────────────────────────────────────────────────────
+List<SettingsRow> _reliabilityRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.autoReconnectTitle} ${l.autoReconnectSub}',
+      build: (context) => SwitchListTile(
           value: settings.autoReconnect,
           onChanged: (v) => controller.update((s) => s.copyWith(
                 autoReconnect: v,
@@ -178,12 +559,15 @@ class _ReliabilitySection extends StatelessWidget {
           ]),
           subtitle: Text(l.autoReconnectSub),
         ),
-        // ⚠️ В режиме «Только прокси» kill switch смысла не имеет
-        // (`AppSettings.killSwitchApplies`): удерживать он может только
-        // трафик МАШИНЫ, а в этом режиме машина и так ходит мимо туннеля.
-        // Тумблер, который виден и ничего не делает, хуже отсутствующего.
-        if (settings.killSwitchApplies)
-          SwitchListTile(
+    ),
+    // ⚠️ В режиме «Только прокси» kill switch смысла не имеет
+    // (`AppSettings.killSwitchApplies`): удерживать он может только
+    // трафик МАШИНЫ, а в этом режиме машина и так ходит мимо туннеля.
+    // Тумблер, который виден и ничего не делает, хуже отсутствующего.
+    if (settings.killSwitchApplies)
+      SettingsRow(
+        search: '${l.killSwitchTitle} ${l.killSwitchSubTun}',
+        build: (context) => SwitchListTile(
             value: settings.killSwitch,
             // Без автопереподключения восстанавливать нечего — переключатель неактивен.
             onChanged: settings.autoReconnect
@@ -211,16 +595,19 @@ class _ReliabilitySection extends StatelessWidget {
                   : l.killSwitchSubOff,
             ),
           ),
-        // Системный Always-on — надёжнее любого нашего kill switch: он держит
-        // блокировку и когда приложение убито, и во время обновления, и до
-        // первого запуска после перезагрузки. Наш собственный закрывает только
-        // окно между попытками переподключения, поэтому они дополняют друг
-        // друга, а не заменяют.
-        // Раскладка уведомления. Переключатель заводился временным — на время
-        // сравнения двух вариантов на живом телефоне; выбор сделан, и он стал
-        // постоянной настройкой.
-        if (Platform.isAndroid)
-          SwitchListTile(
+      ),
+    // Системный Always-on — надёжнее любого нашего kill switch: он держит
+    // блокировку и когда приложение убито, и во время обновления, и до
+    // первого запуска после перезагрузки. Наш собственный закрывает только
+    // окно между попытками переподключения, поэтому они дополняют друг
+    // друга, а не заменяют.
+    // Раскладка уведомления. Переключатель заводился временным — на время
+    // сравнения двух вариантов на живом телефоне; выбор сделан, и он стал
+    // постоянной настройкой.
+    if (Platform.isAndroid)
+      SettingsRow(
+        search: '${l.notifCompactTitle} ${l.notifCompactSub}',
+        build: (context) => SwitchListTile(
             value: settings.compactNotification,
             onChanged: (v) async {
               final state = context.read<AppState>();
@@ -233,24 +620,31 @@ class _ReliabilitySection extends StatelessWidget {
             title: Text(l.notifCompactTitle),
             subtitle: Text(l.notifCompactSub),
           ),
-        // ⚠️ СИСТЕМНАЯ ЗАЩИТА — НЕ ТО ЖЕ САМОЕ, ЧТО НАШ KILL SWITCH.
-        //
-        // Наш держит трафик, пока жив наш сервис. Система убила процесс —
-        // туннель снялся вместе с ним, и трафик пошёл открыто. Этот случай
-        // закрывает только «Блокировать соединения без VPN» в настройках
-        // Android, а включить её из приложения платформа запрещает.
-        //
-        // Поэтому здесь не просто ссылка, а СОСТОЯНИЕ: пользователь имеет право
-        // видеть, защищён он на самом деле или только думает, что защищён.
-        if (Platform.isAndroid) const _LockdownTile(),
-        // Пароль на локальные прокси ядра. Общий для платформ.
-        //
-        // ⚠️ ПОЧЕМУ ЭТО ВООБЩЕ ВИДНО ПОЛЬЗОВАТЕЛЮ. Умолчание (пароль включён)
-        // верное для всех, и трогать его не нужно. Но локальный прокси —
-        // законный способ пустить в VPN стороннюю программу, и тому, кто так
-        // делает, нужны предсказуемые логин с паролем вместо случайных.
-        // Прятать такую возможность значит вынуждать выключать защиту целиком.
-        SwitchListTile(
+      ),
+    // ⚠️ СИСТЕМНАЯ ЗАЩИТА — НЕ ТО ЖЕ САМОЕ, ЧТО НАШ KILL SWITCH.
+    //
+    // Наш держит трафик, пока жив наш сервис. Система убила процесс —
+    // туннель снялся вместе с ним, и трафик пошёл открыто. Этот случай
+    // закрывает только «Блокировать соединения без VPN» в настройках
+    // Android, а включить её из приложения платформа запрещает.
+    //
+    // Поэтому здесь не просто ссылка, а СОСТОЯНИЕ: пользователь имеет право
+    // видеть, защищён он на самом деле или только думает, что защищён.
+    if (Platform.isAndroid)
+      SettingsRow(
+        search: '${l.lockdownOnTitle} ${l.lockdownOffTitle}',
+        build: (_) => const _LockdownTile(),
+      ),
+    // Пароль на локальные прокси ядра. Общий для платформ.
+    //
+    // ⚠️ ПОЧЕМУ ЭТО ВООБЩЕ ВИДНО ПОЛЬЗОВАТЕЛЮ. Умолчание (пароль включён)
+    // верное для всех, и трогать его не нужно. Но локальный прокси —
+    // законный способ пустить в VPN стороннюю программу, и тому, кто так
+    // делает, нужны предсказуемые логин с паролем вместо случайных.
+    // Прятать такую возможность значит вынуждать выключать защиту целиком.
+    SettingsRow(
+      search: '${l.localProxyAuthTitle} ${l.localProxyAuthRandom}',
+      build: (context) => SwitchListTile(
           value: settings.localProxyAuth,
           onChanged: (v) =>
               controller.update((s) => s.copyWith(localProxyAuth: v)),
@@ -270,8 +664,11 @@ class _ReliabilitySection extends StatelessWidget {
                       ? l.localProxyAuthRandom
                       : l.localProxyAuthCustom),
         ),
-        if (settings.localProxyAuth)
-          ListTile(
+    ),
+    if (settings.localProxyAuth)
+      SettingsRow(
+        search: '${l.localProxyCredsTitle} ${l.localProxyCredsUnset}',
+        build: (context) => ListTile(
             leading: const Icon(Icons.key_outlined),
             title: Text(l.localProxyCredsTitle),
             subtitle: Text(settings.localProxyUser.trim().isEmpty ||
@@ -281,72 +678,75 @@ class _ReliabilitySection extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => _editLocalProxyCreds(context, controller, settings),
           ),
-        // «Не выходить под реальным IP» — только при включённом kill switch,
-        // и только там, где kill switch вообще имеет смысл (не «Только прокси»).
-        if (settings.killSwitch && settings.killSwitchApplies)
-          SwitchListTile(
+      ),
+    // «Не выходить под реальным IP» — только при включённом kill switch,
+    // и только там, где kill switch вообще имеет смысл (не «Только прокси»).
+    if (settings.killSwitch && settings.killSwitchApplies)
+      SettingsRow(
+        search: '${l.noRealIpTitle} ${l.noRealIpSub}',
+        build: (_) => SwitchListTile(
             value: settings.noRealIp,
             onChanged: (v) =>
                 controller.update((s) => s.copyWith(noRealIp: v)),
             title: Text(l.noRealIpTitle),
             subtitle: Text(l.noRealIpSub),
           ),
-        // ⚠️ ЭТОГО ПЕРЕКЛЮЧАТЕЛЯ ЗДЕСЬ НЕ БЫЛО, И ЭТО МЕНЯЛО МАРШРУТЫ ВСЕМ.
-        //
-        // Поле `myRulesOverridePanel` завели вместе с переведёнными на десять
-        // языков подписями, движок его читает — а контрол забыли. Умолчание
-        // `true`, изменить нечем, значит условие реврайта панельных правил
-        // (`engine_base`: mode == all || noRealIp || myRulesOverridePanel) было
-        // истинным ВСЕГДА: у каждого пользователя панельного профиля российские
-        // сайты уходили кругом через зарубежный сервер, и объяснения этому в
-        // настройках не находилось. Заодно два первых слагаемых условия были
-        // мертвы — любой их разбор вводил бы в заблуждение.
-        SwitchListTile(
-          value: settings.myRulesOverridePanel,
-          onChanged: (v) =>
-              controller.update((s) => s.copyWith(myRulesOverridePanel: v)),
-          title: Text(l.settingsMyRulesOverridePanel),
-          subtitle: Text(l.settingsMyRulesOverridePanelSub),
-        ),
-      ],
-    );
-  }
+      ),
+    // ⚠️ ЭТОГО ПЕРЕКЛЮЧАТЕЛЯ ЗДЕСЬ НЕ БЫЛО, И ЭТО МЕНЯЛО МАРШРУТЫ ВСЕМ.
+    //
+    // Поле `myRulesOverridePanel` завели вместе с переведёнными на десять
+    // языков подписями, движок его читает — а контрол забыли. Умолчание
+    // `true`, изменить нечем, значит условие реврайта панельных правил
+    // (`engine_base`: mode == all || noRealIp || myRulesOverridePanel) было
+    // истинным ВСЕГДА: у каждого пользователя панельного профиля российские
+    // сайты уходили кругом через зарубежный сервер, и объяснения этому в
+    // настройках не находилось. Заодно два первых слагаемых условия были
+    // мертвы — любой их разбор вводил бы в заблуждение.
+    SettingsRow(
+      search:
+          '${l.settingsMyRulesOverridePanel} ${l.settingsMyRulesOverridePanelSub}',
+      build: (_) => SwitchListTile(
+        value: settings.myRulesOverridePanel,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(myRulesOverridePanel: v)),
+        title: Text(l.settingsMyRulesOverridePanel),
+        subtitle: Text(l.settingsMyRulesOverridePanelSub),
+      ),
+    ),
+  ];
 }
 
 
 // ── Сеть / помехи ────────────────────────────────────────────────────────────
-class _NetworkSection extends StatelessWidget {
-  const _NetworkSection();
+List<SettingsRow> _networkRows(AppLocalizations l) {
+  return [
+    SettingsRow(
+      search: '${l.networkRecoverTitle} ${l.networkRecoverSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.restart_alt),
+        title: Row(children: [
+          Expanded(child: Text(l.networkRecoverTitle)),
+          InfoTooltip(l.infoNetworkRecover, title: l.networkRecoverTitle),
+        ]),
+        subtitle: Text(l.networkRecoverSub),
+        onTap: () => _recoverNetwork(context),
+      ),
+    ),
+    SettingsRow(
+      search: l.interferenceTitle,
+      build: (context) => ListTile(
+        leading: const Icon(Icons.travel_explore),
+        title: Row(children: [
+          Expanded(child: Text(l.interferenceTitle)),
+          InfoTooltip(l.infoInterference),
+        ]),
+        onTap: () => scanInterferenceDialog(context),
+      ),
+    ),
+  ];
+}
 
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionNetwork),
-        ListTile(
-          leading: const Icon(Icons.restart_alt),
-          title: Row(children: [
-            Expanded(child: Text(l.networkRecoverTitle)),
-            InfoTooltip(l.infoNetworkRecover, title: l.networkRecoverTitle),
-          ]),
-          subtitle: Text(l.networkRecoverSub),
-          onTap: () => _recover(context),
-        ),
-        ListTile(
-          leading: const Icon(Icons.travel_explore),
-          title: Row(children: [
-            Expanded(child: Text(l.interferenceTitle)),
-            InfoTooltip(l.infoInterference),
-          ]),
-          onTap: () => scanInterferenceDialog(context),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _recover(BuildContext context) async {
+Future<void> _recoverNetwork(BuildContext context) async {
     final l = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
@@ -364,7 +764,6 @@ class _NetworkSection extends StatelessWidget {
       ),
     );
     if (ok == true) await NetworkRecovery.run();
-  }
 }
 
 /// Диалог сканирования помех (используется и из настроек, и со старта).
@@ -424,142 +823,197 @@ Future<void> scanInterferenceDialog(BuildContext context) async {
 
 /// Как приложение представляется панели. От User-Agent зависит ФОРМАТ подписки:
 /// известным клиентам Remnawave отдаёт XRAY_JSON с готовыми конфигами.
-class _IdentitySection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _IdentitySection({required this.settings, required this.controller});
+List<SettingsRow> _identityRows(AppLocalizations l) {
+  // UA собирается из имени и версии приложения и НЕ редактируется: раньше здесь
+  // было поле переопределения, и сохранённое в нём значение «замораживало» версию
+  // (у пользователя UA застрял на 0.8.0 после обновлений).
+  final effective = SubscriptionService.defaultUserAgent;
+  return [
+    SettingsRow(
+      search: '${l.identityUserAgent} $effective',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.badge_outlined),
+            title: Row(children: [
+              Expanded(child: Text(l.identityUserAgent)),
+              InfoTooltip(l.infoUserAgent),
+            ]),
+            subtitle:
+                SelectableText(effective, textDirection: TextDirection.ltr),
+            trailing: IconButton(
+              tooltip: l.commonCopy,
+              icon: const Icon(Icons.copy, size: 18),
+              onPressed: () => Clipboard.setData(ClipboardData(text: effective)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: SelectableText(
+              l.identityUaAutoNote(AppInfo.version),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    ),
+    // URL-схемы — тоже про то, как приложение общается со «внешним миром».
+    // Сноска «Для владельца панели» переехала ВНУТРЬ экрана URL-схем (внизу).
+    SettingsRow(
+      search: '${l.urlSchemesTitle} ${l.urlSchemesSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.link),
+        title: Text(l.urlSchemesTitle),
+        subtitle: Text(l.urlSchemesSub),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const UrlSchemesScreen()),
+        ),
+      ),
+    ),
+  ];
+}
+
+/// ⚠️ КАЖДОЕ ЗНАЧЕНИЕ — СВОЯ СТРОКА И СВОЙ ЗАПРОС. Раньше версия приложения,
+/// версия ядра и HWID приезжали ОДНИМ `FutureBuilder`: до его готовности все
+/// три показывали «…», а поиск по слову «версия» не мог оставить одну строку —
+/// строк как таковых не существовало, был один общий блок. Ровно из-за него
+/// владелец и не находил версию.
+List<SettingsRow> _aboutRows(AppLocalizations l) {
+  return [
+    SettingsRow(
+      search: l.aboutVersion,
+      build: (_) => _ValueTile(
+        title: l.aboutVersion,
+        load: () async => 'v${(await PackageInfo.fromPlatform()).version}',
+      ),
+    ),
+    SettingsRow(
+      search: l.aboutXrayCore,
+      build: (_) => _ValueTile(
+        title: l.aboutXrayCore,
+        // ⚠️ `async`, хотя тело — один вызов. `platform` бросает StateError,
+        // если платформенные сервисы не зарегистрированы, и синхронный бросок
+        // прилетел бы прямо в `build` — вместо строки со значением «…» экран
+        // получил бы красный прямоугольник ошибки.
+        load: () async => platform.coreVersions.xray(),
+      ),
+    ),
+    // Обновление приложения: только проверка и открытие ссылки —
+    // ставит пользователь сам (установщик не подписан).
+    SettingsRow(
+      search: '${l.appUpdateCheckTitle} ${l.appUpdateEndpointLabel}',
+      build: (_) => const _AppUpdateTile(),
+    ),
+    SettingsRow(
+      search: l.aboutHwid,
+      build: (_) => const _HwidTile(),
+    ),
+    // Обязательное раскрытие: вместе с приложением поставляются
+    // xray.exe (MPL-2.0), sing-box.exe (GPL-3.0) и wintun.dll —
+    // их лицензии требуют передавать текст и указывать исходники.
+    SettingsRow(
+      search: '${l.aboutThirdPartyTitle} ${l.aboutThirdPartySub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.workspaces_outline),
+        title: Text(l.aboutThirdPartyTitle),
+        // На Android ядра ВСТРОЕНЫ в APK — прежний текст про
+        // «отдельные процессы» там просто неверен.
+        subtitle: Text(Platform.isAndroid
+            ? l.aboutThirdPartySubEmbedded
+            : l.aboutThirdPartySub),
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: () => _showThirdParty(context),
+      ),
+    ),
+    // Логи — рядом с поддержкой: при обращении в поддержку сюда же
+    // заглядывают (формат подписки, пинг, ошибки).
+    SettingsRow(
+      search: '${l.logsTitle} ${l.logsSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.article_outlined),
+        title: Text(l.logsTitle),
+        subtitle: Text(l.logsSub),
+        trailing: const Icon(Icons.chevron_right, size: 18),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const LogsScreen()),
+        ),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.sectionSupport} ${l.supportButtonTitle}',
+      build: (_) => _SupportSection(key: supportSectionKey),
+    ),
+  ];
+}
+
+/// Строка «название — значение», где значение приезжает асинхронно.
+///
+/// ⚠️ Запрос стартует ОДИН РАЗ, в `initState`, а не в `build`. Версию ядра
+/// приходится спрашивать у диска (на Windows — запуском `xray.exe --version`),
+/// и с появлением поиска экран перестраивается на каждую нажатую букву: futures
+/// из `build` означали бы запуск процесса на каждый символ запроса.
+class _ValueTile extends StatefulWidget {
+  const _ValueTile({required this.title, required this.load});
+
+  final String title;
+  final Future<String> Function() load;
+
+  @override
+  State<_ValueTile> createState() => _ValueTileState();
+}
+
+class _ValueTileState extends State<_ValueTile> {
+  late final Future<String> _future = widget.load();
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    // UA собирается из имени и версии приложения и НЕ редактируется: раньше здесь
-    // было поле переопределения, и сохранённое в нём значение «замораживало» версию
-    // (у пользователя UA застрял на 0.8.0 после обновлений).
-    final effective = SubscriptionService.defaultUserAgent;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(children: [
-          Expanded(child: _sectionHeader(context, l.sectionIdentity)),
-          InfoTooltip(l.infoUserAgent),
-        ]),
-        ListTile(
-          dense: true,
-          leading: const Icon(Icons.badge_outlined),
-          title: Text(l.identityUserAgent),
-          subtitle: SelectableText(effective, textDirection: TextDirection.ltr),
-          trailing: IconButton(
-            tooltip: l.commonCopy,
-            icon: const Icon(Icons.copy, size: 18),
-            onPressed: () => Clipboard.setData(ClipboardData(text: effective)),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          child: SelectableText(
-            l.identityUaAutoNote(AppInfo.version),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ),
-        // URL-схемы — тоже про то, как приложение общается со «внешним миром».
-        // Сноска «Для владельца панели» переехала ВНУТРЬ экрана URL-схем (внизу).
-        ListTile(
-          leading: const Icon(Icons.link),
-          title: Text(l.urlSchemesTitle),
-          subtitle: Text(l.urlSchemesSub),
-          trailing: const Icon(Icons.chevron_right),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const UrlSchemesScreen()),
-          ),
-        ),
-      ],
+    return FutureBuilder<String>(
+      future: _future,
+      builder: (context, snap) => ListTile(
+        dense: true,
+        title: Text(widget.title),
+        trailing: Text(snap.data ?? '…', textDirection: TextDirection.ltr),
+      ),
     );
   }
 }
 
-class _AboutSection extends StatelessWidget {
-  const _AboutSection();
+/// Идентификатор устройства: отдельной строкой, потому что его копируют.
+class _HwidTile extends StatefulWidget {
+  const _HwidTile();
 
-  Future<({String app, String xray, String hwid})> _load() async {
-    final info = await PackageInfo.fromPlatform();
-    final xray = await platform.coreVersions.xray();
-    final hwid = await Hwid.get();
-    return (app: info.version, xray: xray, hwid: hwid);
-  }
+  @override
+  State<_HwidTile> createState() => _HwidTileState();
+}
+
+class _HwidTileState extends State<_HwidTile> {
+  late final Future<String> _future = Hwid.get();
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionAbout),
-        FutureBuilder<({String app, String xray, String hwid})>(
-          future: _load(),
-          builder: (context, snap) {
-            final app = snap.data?.app ?? '…';
-            final xray = snap.data?.xray ?? '…';
-            final hwid = snap.data?.hwid ?? '…';
-            return Column(
-              children: [
-                ListTile(
-                  dense: true,
-                  title: Text(l.aboutVersion),
-                  trailing: Text('v$app', textDirection: TextDirection.ltr),
-                ),
-                ListTile(
-                  dense: true,
-                  title: Text(l.aboutXrayCore),
-                  trailing: Text(xray, textDirection: TextDirection.ltr),
-                ),
-                // Обновление приложения: только проверка и открытие ссылки —
-                // ставит пользователь сам (установщик не подписан).
-                const _AppUpdateTile(),
-                ListTile(
-                  title: Text(l.aboutHwid),
-                  subtitle: SelectableText(hwid,
-                      textDirection: TextDirection.ltr,
-                      style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
-                  trailing: IconButton(
-                    tooltip: l.commonCopy,
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: hwid));
-                      AppToast.copied(context);
-                    },
-                  ),
-                ),
-                // Обязательное раскрытие: вместе с приложением поставляются
-                // xray.exe (MPL-2.0), sing-box.exe (GPL-3.0) и wintun.dll —
-                // их лицензии требуют передавать текст и указывать исходники.
-                ListTile(
-                  leading: const Icon(Icons.workspaces_outline),
-                  title: Text(l.aboutThirdPartyTitle),
-                  // На Android ядра ВСТРОЕНЫ в APK — прежний текст про
-                  // «отдельные процессы» там просто неверен.
-                  subtitle: Text(Platform.isAndroid
-                      ? l.aboutThirdPartySubEmbedded
-                      : l.aboutThirdPartySub),
-                  trailing: const Icon(Icons.chevron_right, size: 18),
-                  onTap: () => _showThirdParty(context),
-                ),
-                // Логи — рядом с поддержкой: при обращении в поддержку сюда же
-                // заглядывают (формат подписки, пинг, ошибки).
-                ListTile(
-                  leading: const Icon(Icons.article_outlined),
-                  title: Text(l.logsTitle),
-                  subtitle: Text(l.logsSub),
-                  trailing: const Icon(Icons.chevron_right, size: 18),
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LogsScreen()),
-                  ),
-                ),
-                _SupportSection(key: supportSectionKey),
-              ],
-            );
-          },
-        ),
-      ],
+    return FutureBuilder<String>(
+      future: _future,
+      builder: (context, snap) {
+        final hwid = snap.data ?? '…';
+        return ListTile(
+          title: Text(l.aboutHwid),
+          subtitle: SelectableText(hwid,
+              textDirection: TextDirection.ltr,
+              style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
+          trailing: IconButton(
+            tooltip: l.commonCopy,
+            icon: const Icon(Icons.copy, size: 18),
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: hwid));
+              AppToast.copied(context);
+            },
+          ),
+        );
+      },
     );
   }
 }
@@ -1008,92 +1462,114 @@ Widget _badge(BuildContext context, String text) {
 }
 
 // ── Оформление и поведение ───────────────────────────────────────────────────
-class _AppearanceSection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _AppearanceSection({required this.settings, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionAppearance),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-          child: Text(l.appearanceTheme),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: SegmentedButton<AppThemeMode>(
-            segments: [
-              ButtonSegment(
-                  value: AppThemeMode.system, label: Text(l.themeSystem)),
-              ButtonSegment(value: AppThemeMode.light, label: Text(l.themeLight)),
-              ButtonSegment(value: AppThemeMode.dark, label: Text(l.themeDark)),
-            ],
-            selected: {settings.themeMode},
-            showSelectedIcon: false,
-            onSelectionChanged: (s) =>
-                controller.update((st) => st.copyWith(themeMode: s.first)),
-          ),
-        ),
-        // Трея на Android нет: приложение сворачивается системой, а VPN
-        // продолжает жить в foreground-сервисе с постоянной нотификацией —
-        // она и играет роль значка в трее.
-        if (!Platform.isAndroid)
-          SwitchListTile(
-            value: settings.closeToTray,
-            onChanged: (v) => controller.update((s) => s.copyWith(closeToTray: v)),
-            title: Text(l.closeToTrayTitle),
-            subtitle: Text(l.closeToTraySubtitle),
-          ),
-        SwitchListTile(
-          value: settings.autoUpdateEnabled,
-          onChanged: (v) =>
-              controller.update((s) => s.copyWith(autoUpdateEnabled: v)),
-          title: Text(l.autoUpdateSubTitle),
-          subtitle: Text(l.autoUpdateSubText),
-        ),
-        // #10 — интервал автообновления: поле (наше значение, приоритет выше
-        // подписки) + галочка «брать из подписки».
-        if (settings.autoUpdateEnabled) ...[
+List<SettingsRow> _appearanceRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.appearanceTheme} ${l.themeSystem} ${l.themeLight} '
+          '${l.themeDark}',
+      build: (_) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Row(children: [
-              Expanded(child: Text(l.autoUpdateIntervalLabel)),
-              SizedBox(
-                width: 90,
-                child: TextFormField(
-                  initialValue: '${settings.autoUpdateIntervalHours}',
-                  enabled: !settings.autoUpdatePreferSubscription,
-                  keyboardType: TextInputType.number,
-                  textAlign: TextAlign.center,
-                  decoration: const InputDecoration(
-                      isDense: true, border: OutlineInputBorder()),
-                  onChanged: (v) {
-                    final h = int.tryParse(v.trim());
-                    if (h != null && h > 0) {
-                      controller.update(
-                          (s) => s.copyWith(autoUpdateIntervalHours: h));
-                    }
-                  },
-                ),
-              ),
-            ]),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            child: Text(l.appearanceTheme),
           ),
-          SwitchListTile(
-            dense: true,
-            value: settings.autoUpdatePreferSubscription,
-            onChanged: (v) => controller
-                .update((s) => s.copyWith(autoUpdatePreferSubscription: v)),
-            title: Text(l.autoUpdatePreferSub),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SegmentedButton<AppThemeMode>(
+              segments: [
+                ButtonSegment(
+                    value: AppThemeMode.system, label: Text(l.themeSystem)),
+                ButtonSegment(
+                    value: AppThemeMode.light, label: Text(l.themeLight)),
+                ButtonSegment(
+                    value: AppThemeMode.dark, label: Text(l.themeDark)),
+              ],
+              selected: {settings.themeMode},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) =>
+                  controller.update((st) => st.copyWith(themeMode: s.first)),
+            ),
           ),
         ],
-      ],
-    );
-  }
+      ),
+    ),
+    // Трея на Android нет: приложение сворачивается системой, а VPN
+    // продолжает жить в foreground-сервисе с постоянной нотификацией —
+    // она и играет роль значка в трее.
+    if (!Platform.isAndroid)
+      SettingsRow(
+        search: '${l.closeToTrayTitle} ${l.closeToTraySubtitle}',
+        build: (_) => SwitchListTile(
+          value: settings.closeToTray,
+          onChanged: (v) => controller.update((s) => s.copyWith(closeToTray: v)),
+          title: Text(l.closeToTrayTitle),
+          subtitle: Text(l.closeToTraySubtitle),
+        ),
+      ),
+    SettingsRow(
+      search: '${l.updateOnStartTitle} ${l.updateOnStartSub}',
+      build: (_) => SwitchListTile(
+        value: settings.updateSubscriptionOnStart,
+        onChanged: (v) => controller
+            .update((s) => s.copyWith(updateSubscriptionOnStart: v)),
+        title: Text(l.updateOnStartTitle),
+        subtitle: Text(l.updateOnStartSub),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.autoUpdateSubTitle} ${l.autoUpdateSubText} '
+          '${l.autoUpdateIntervalLabel}',
+      build: (_) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            value: settings.autoUpdateEnabled,
+            onChanged: (v) =>
+                controller.update((s) => s.copyWith(autoUpdateEnabled: v)),
+            title: Text(l.autoUpdateSubTitle),
+            subtitle: Text(l.autoUpdateSubText),
+          ),
+          // #10 — интервал автообновления: поле (наше значение, приоритет выше
+          // подписки) + галочка «брать из подписки».
+          if (settings.autoUpdateEnabled) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(children: [
+                Expanded(child: Text(l.autoUpdateIntervalLabel)),
+                SizedBox(
+                  width: 90,
+                  child: TextFormField(
+                    initialValue: '${settings.autoUpdateIntervalHours}',
+                    enabled: !settings.autoUpdatePreferSubscription,
+                    keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    decoration: const InputDecoration(
+                        isDense: true, border: OutlineInputBorder()),
+                    onChanged: (v) {
+                      final h = int.tryParse(v.trim());
+                      if (h != null && h > 0) {
+                        controller.update(
+                            (s) => s.copyWith(autoUpdateIntervalHours: h));
+                      }
+                    },
+                  ),
+                ),
+              ]),
+            ),
+            SwitchListTile(
+              dense: true,
+              value: settings.autoUpdatePreferSubscription,
+              onChanged: (v) => controller
+                  .update((s) => s.copyWith(autoUpdatePreferSubscription: v)),
+              title: Text(l.autoUpdatePreferSub),
+            ),
+          ],
+        ],
+      ),
+    ),
+  ];
 }
 
 /// Включение TUN: сразу предлагаем настроить запуск без UAC (один раз),
@@ -1131,18 +1607,18 @@ Future<void> _enableTun(BuildContext context, SettingsController controller) asy
 }
 
 // ── Захват трафика ───────────────────────────────────────────────────────────
-class _CaptureSection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _CaptureSection({required this.settings, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionCapture),
+List<SettingsRow> _captureRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    // Выбор режима — ОДНА строка поиска на все варианты: по отдельности они
+    // бессмысленны (переключатель с одним вариантом не переключает).
+    SettingsRow(
+      search: '${l.captureSystemProxy} ${l.captureSystemProxySub} '
+          '${l.captureTun} ${l.captureTunSub} '
+          '${l.captureProxyOnly} ${l.captureProxyOnlySub}',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         // Выбора режима на Android нет: глобального системного прокси там не
         // существует, весь трафик идёт через VpnService. Показывать
         // переключатель с единственным вариантом незачем.
@@ -1189,20 +1665,28 @@ class _CaptureSection extends StatelessWidget {
             title: Text(l.captureProxyOnly),
             subtitle: Text(l.captureProxyOnlySub),
           ),
-        // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
-        // в режиме системного прокси эти настройки ни на что не влияют.
-        // На Android туннель — единственный режим, поэтому показываем всегда.
-        if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
-          // Драйвер туннеля — понятие Windows (wintun). На Android туннель даёт
-          // сама система через VpnService, выбирать нечего.
-          if (!Platform.isAndroid)
-            ListTile(
+        ],
+      ),
+    ),
+    // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
+    // в режиме системного прокси эти настройки ни на что не влияют.
+    // На Android туннель — единственный режим, поэтому показываем всегда.
+    if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
+      // Драйвер туннеля — понятие Windows (wintun). На Android туннель даёт
+      // сама система через VpnService, выбирать нечего.
+      if (!Platform.isAndroid)
+        SettingsRow(
+          search: '${l.tunProvider} wintun',
+          build: (_) => ListTile(
               dense: true,
               title: Text(l.tunProvider),
               trailing: const Text('wintun', textDirection: TextDirection.ltr),
             ),
-          // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
-          ListTile(
+        ),
+      // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
+      SettingsRow(
+        search: '${l.tunRoutingTitle} ${l.dnsShortVpn}',
+        build: (context) => ListTile(
             dense: true,
             leading: const Icon(Icons.settings_ethernet),
             title: Text(l.tunRoutingTitle),
@@ -1223,7 +1707,10 @@ class _CaptureSection extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const TunSettingsScreen()),
             ),
           ),
-          ListTile(
+      ),
+      SettingsRow(
+        search: l.splitTunnelTitle,
+        build: (context) => ListTile(
             dense: true,
             leading: const Icon(Icons.alt_route),
             title: Text(l.splitTunnelTitle),
@@ -1233,41 +1720,54 @@ class _CaptureSection extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const SplitTunnelScreen()),
             ),
           ),
-          // Гео-базы нужны только там, где их нет в поставке. На Windows они
-          // приезжают вместе с ядром, и кнопка была бы обманкой.
-          if (Platform.isAndroid) GeoAssetsTile(key: geoAssetsKey),
-        ] else ...[
-          Padding(
+      ),
+      // Гео-базы нужны только там, где их нет в поставке. На Windows они
+      // приезжают вместе с ядром, и кнопка была бы обманкой.
+      if (Platform.isAndroid)
+        SettingsRow(
+          search: l.geoTitle,
+          build: (_) => GeoAssetsTile(key: geoAssetsKey),
+        ),
+    ] else ...[
+      SettingsRow(
+        search: l.captureTunHint,
+        build: (_) => Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
             child: Text(
               l.captureTunHint,
               style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
             ),
           ),
-          // Задача 3b: в «Только прокси» раздельное туннелирование не
-          // действует ни для одной программы машины (ничего не
-          // перехватывается), поэтому тумблер виден ТОЛЬКО в этом режиме —
-          // иначе он был бы виден и ничего не делал бы.
-          // ⚠️ `Platform.isWindows` буквально, как и у пункта режима выше —
-          // тот же довод: это НАШ контрол, а не унаследованный `else`
-          // соседней секции.
-          if (Platform.isWindows &&
-              settings.captureMode == CaptureMode.proxyOnly) ...[
-            SwitchListTile(
+      ),
+      // Задача 3b: в «Только прокси» раздельное туннелирование не
+      // действует ни для одной программы машины (ничего не
+      // перехватывается), поэтому тумблер виден ТОЛЬКО в этом режиме —
+      // иначе он был бы виден и ничего не делал бы.
+      // ⚠️ `Platform.isWindows` буквально, как и у пункта режима выше —
+      // тот же довод: это НАШ контрол, а не унаследованный `else`
+      // соседней секции.
+      if (Platform.isWindows &&
+          settings.captureMode == CaptureMode.proxyOnly) ...[
+        SettingsRow(
+          search: '${l.apiRulesInProxyOnly} ${l.apiRulesInProxyOnlySub}',
+          build: (_) => SwitchListTile(
               value: settings.applyRulesInProxyOnly,
               onChanged: (v) => controller
                   .update((s) => s.copyWith(applyRulesInProxyOnly: v)),
               title: Text(l.apiRulesInProxyOnly),
               subtitle: Text(l.apiRulesInProxyOnlySub),
             ),
-            // ⚠️ БЕЗ ЭТОЙ СТРОКИ ТУМБЛЕР ВЁЛ В НИКУДА. Он оперирует списком
-            // «Блок», а список редактируется на экране раздельного
-            // туннелирования — который в этом режиме из настроек НЕ ОТКРЫТЬ:
-            // пункт «Раздельное туннелирование» живёт в ветке `captureMode ==
-            // tun` выше. Человек включал галочку и не мог завести ни одного
-            // правила. (Сам экран в этом режиме больше не заблокирован — см.
-            // `split_tunnel_screen.dart`.)
-            ListTile(
+        ),
+        // ⚠️ БЕЗ ЭТОЙ СТРОКИ ТУМБЛЕР ВЁЛ В НИКУДА. Он оперирует списком
+        // «Блок», а список редактируется на экране раздельного
+        // туннелирования — который в этом режиме из настроек НЕ ОТКРЫТЬ:
+        // пункт «Раздельное туннелирование» живёт в ветке `captureMode ==
+        // tun` выше. Человек включал галочку и не мог завести ни одного
+        // правила. (Сам экран в этом режиме больше не заблокирован — см.
+        // `split_tunnel_screen.dart`.)
+        SettingsRow(
+          search: '${l.splitTunnelTitle} ${l.apiRulesInProxyOnlyEdit}',
+          build: (context) => ListTile(
               dense: true,
               leading: const Icon(Icons.alt_route),
               title: Text(l.splitTunnelTitle),
@@ -1277,311 +1777,44 @@ class _CaptureSection extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const SplitTunnelScreen()),
               ),
             ),
-          ],
-        ],
-      ],
-    );
-  }
-
-  static String _dnsShort(AppLocalizations l, DnsMode m) {
-    switch (m) {
-      case DnsMode.vpn:
-        return l.dnsShortVpn;
-      case DnsMode.system:
-        return l.dnsShortSystem;
-      case DnsMode.custom:
-        return l.dnsShortCustom;
-    }
-  }
-
-  String _splitLabel(AppLocalizations l, AppSettings settings) {
-    final st = settings.splitTunnel;
-    final modeLabel = splitModeLabel(l, st.mode);
-    // «Все через VPN» — правила не применяются, счётчики не показываем.
-    if (st.mode == SplitMode.all) return modeLabel;
-    final a = st.apps.length, s = st.sites.length;
-    final n = a + s;
-    return '$modeLabel${n > 0 ? ' · ${l.splitRulesCount(n, a, s)}' : ''}';
-  }
-}
-
-// ── API для автоматизации ────────────────────────────────────────────────────
-/// Локальный HTTP-API (`core/net/api_server.dart`) для внешних скриптов —
-/// например, Python-скрипта, который гоняет трафик через клиент и управляет
-/// им. Раздел показывается ТОЛЬКО на Windows: сам сервер на Android не
-/// поднимается вовсе (см. `AppState.applyApiSettings`), а видимый тумблер,
-/// который ничего не делает, был бы обманом.
-class _ApiSection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _ApiSection({required this.settings, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    // Список серверов подписки — источник для чекбоксов «выдать порт». Как и
-    // выбор сервера для правила раздельного туннелирования (split_tunnel_screen),
-    // берём его нефильтрованным: тот же список видит пользователь на главном.
-    final state = context.watch<AppState>();
-    final servers = state.servers;
-    final scheme = Theme.of(context).colorScheme;
-    // ⚠️ ПОРТОВ ВЫХОДОВ В ЭТОМ РЕЖИМЕ НЕ СУЩЕСТВУЕТ, А РАЗДЕЛ ИХ ПРЕДЛАГАЛ.
-    // Инбаунды живут в TUN-конфиге либо в маршрутизаторе выходов «Только
-    // прокси»; при системном прокси (умолчание на Windows!) нет ни того, ни
-    // другого. Раздел при этом давал включить API, отметить серверы, а
-    // `/v1/exits` называл номера портов — и все соединения получали отказ.
-    // `docs/API.md` это описывал честно, интерфейс — ни словом.
-    final exitPortsExist = ApiPorts.exitPortsExistIn(settings.captureMode);
-    // Отказ подъёма управляющего порта. Показывается только при заданном
-    // токене: пустой токен — это «канал выключен», и у него своя строка.
-    final conflict = state.apiPortConflict;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.apiSectionTitle),
-        SwitchListTile(
-          value: settings.apiEnabled,
-          onChanged: (v) => controller.update((s) => s.copyWith(apiEnabled: v)),
-          title: Text(l.apiEnableTitle),
-          subtitle: Text(l.apiEnableSub(ApiPorts.control)),
         ),
-        if (settings.apiEnabled) ...[
-          // Порт занят — тумблер включён, а слушателя нет. Раньше это жило
-          // ТОЛЬКО в журнале: раздел выглядел рабочим, токен показан, кнопка
-          // «Скопировать пример» на месте, а скрипт получал отказ соединения
-          // и не мог понять почему.
-          if (conflict != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.errorContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(children: [
-                  Icon(Icons.error_outline,
-                      size: 18, color: scheme.onErrorContainer),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.apiPortBusyTitle,
-                            style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onErrorContainer)),
-                        const SizedBox(height: 2),
-                        SelText(
-                          conflict.holder == null
-                              ? l.apiPortBusyUnknown(conflict.port)
-                              : l.apiPortBusy(conflict.port, conflict.holder!),
-                          style: TextStyle(
-                              fontSize: 12, color: scheme.onErrorContainer),
-                        ),
-                      ],
-                    ),
-                  ),
-                ]),
-              ),
-            ),
-          // Токен — он же пароль локальных портов API. Пустой токен означает
-          // «канал не поднимается» (см. `LocalApiServer.start`), поэтому даём
-          // сразу и увидеть его, и сгенерировать заново.
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.vpn_key_outlined),
-            title: Row(children: [
-              Expanded(child: Text(l.apiTokenTitle)),
-              InfoTooltip(l.apiTokenWarning, title: l.apiTokenTitle),
-            ]),
-            subtitle: settings.apiToken.isEmpty
-                ? Text(l.apiTokenUnset)
-                : SelectableText(settings.apiToken,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (settings.apiToken.isNotEmpty)
-                  IconButton(
-                    tooltip: l.commonCopy,
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: settings.apiToken));
-                      AppToast.copied(context);
-                    },
-                  ),
-                IconButton(
-                  tooltip: l.apiTokenRegenerate,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  // Тот же генератор, что и у паролей локальных прокси/Clash
-                  // API — общая точка правды, а не свой велосипед.
-                  onPressed: () => controller.update((s) =>
-                      s.copyWith(apiToken: VpnEngineBase.randomSecret())),
-                ),
-              ],
-            ),
-          ),
-          // Режим захвата, в котором портов выходов физически нет. Плашка
-          // стоит НАД списком серверов: она объясняет, почему галочки ниже
-          // сейчас ни к чему не приведут.
-          if (!exitPortsExist)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.tertiaryContainer.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(children: [
-                  const Icon(Icons.info_outline, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: SelText(l.apiCaptureModeWarning(ApiPorts.control),
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ),
-                ]),
-              ),
-            ),
-          // Серверы с отдельным портом — только если подписка вообще что-то
-          // дала: пустой список чекбоксов под заголовком выглядел бы поломкой.
-          if (servers.isNotEmpty) ...[
-            ListTile(
-              dense: true,
-              title: Text(l.apiExitsTitle),
-              subtitle: Text(l.apiExitsSub),
-            ),
-            for (final srv in servers)
-              // ⚠️ СЕРВЕР, ИЗ КОТОРОГО ВЫХОД НЕ СОБИРАЕТСЯ, ОТМЕЧАЛСЯ БЕЗ
-              // ЕДИНОГО СЛОВА. Панельный профиль «Авто» — готовый конфиг Xray
-              // целиком, а порты выходов разводит sing-box; его же фабрика не
-              // умеет часть протоколов. Такой сервер порта не получит
-              // (`ExitOutbounds.build` его пропускает, `/v1/exits` его теперь
-              // и не публикует).
-              //
-              // ⚠️ ДЕЛАЕМ ТАК ЖЕ, КАК В СОСЕДНЕЙ ПОДСИСТЕМЕ, А НЕ ТРЕТЬИМ
-              // СПОСОБОМ: серый + тултип с той же строкой, что у выбора
-              // сервера для правила (`split_tunnel_screen._ServerBadge`,
-              // ключ `exitServerUnsupported`). Выбор при этом НЕ запрещаем —
-              // решение владельца от 07.08.2026: разрешать, но предупреждать.
-              _ApiExitCheckbox(
-                server: srv,
-                checked: settings.apiExitServerKeys.contains(srv.key),
-                onChanged: (v) => controller.update((s) => s.copyWith(
-                    apiExitServerKeys: v == true
-                        ? [...s.apiExitServerKeys, srv.key]
-                        : s.apiExitServerKeys
-                            .where((k) => k != srv.key)
-                            .toList())),
-              ),
-          ],
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            child: Text(
-              l.apiPortsHint(
-                  ApiPorts.control, ApiPorts.direct, ApiPorts.firstServer),
-              style: const TextStyle(fontSize: 12),
-            ),
-          ),
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.code),
-            title: Text(l.apiCopyPythonExample),
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: _pythonExample(settings)));
-              AppToast.copied(context);
-            },
-          ),
-        ],
       ],
-    );
-  }
+    ],
+  ];
+}
 
-  /// Готовый фрагмент для Python — с уже подставленными портом и токеном,
-  /// чтобы скрипт заработал сразу после вставки, без правки руками.
-  static String _pythonExample(AppSettings s) {
-    final token = s.apiToken.isEmpty ? '<токен>' : s.apiToken;
-    return 'import requests\n'
-        '\n'
-        'BASE = "http://127.0.0.1:${ApiPorts.control}"\n'
-        'HEADERS = {"Authorization": "Bearer $token"}\n'
-        '\n'
-        'status = requests.get(f"{BASE}/v1/status", headers=HEADERS).json()\n'
-        'print(status)\n'
-        '\n'
-        'requests.post(f"{BASE}/v1/connect", headers=HEADERS, json={"auto": True})\n';
+String _dnsShort(AppLocalizations l, DnsMode m) {
+  switch (m) {
+    case DnsMode.vpn:
+      return l.dnsShortVpn;
+    case DnsMode.system:
+      return l.dnsShortSystem;
+    case DnsMode.custom:
+      return l.dnsShortCustom;
   }
 }
 
-/// Чекбокс «выдать порт» одному серверу.
-///
-/// Отдельным виджетом — ради тултипа: `CheckboxListTile` не умеет объяснять
-/// сам себя, а объяснение здесь обязательно (см. комментарий у места вызова).
-class _ApiExitCheckbox extends StatelessWidget {
-  final VpnServer server;
-  final bool checked;
-  final ValueChanged<bool?> onChanged;
-
-  const _ApiExitCheckbox({
-    required this.server,
-    required this.checked,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    // Тот же предикат, что решает это физически (`ExitOutbounds.build`), что
-    // спрашивает `/v1/exits` и что красит плашку выхода в правиле
-    // (`split_tunnel_screen`). Четыре места — один вопрос и один ответчик.
-    //
-    // ⚠️ РАНЬШЕ ЗДЕСЬ СПРАШИВАЛИ `SingboxOutboundFactory.supports`, и
-    // панельный профиль «Авто» его ПРОХОДИЛ (его `protocol` — это протокол
-    // первого outbound'а конфига, обычно `vless`). Чекбокс выглядел обычным,
-    // порт публиковался, а выход собирался из одного узла профиля.
-    final unsupported = !canBeExitServer(server);
-    final tile = CheckboxListTile(
-      dense: true,
-      controlAffinity: ListTileControlAffinity.leading,
-      value: checked,
-      title: Text(
-        server.displayName,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: unsupported
-            ? TextStyle(color: Theme.of(context).disabledColor)
-            : null,
-      ),
-      secondary: unsupported
-          ? Icon(Icons.help_outline,
-              size: 16, color: Theme.of(context).disabledColor)
-          : null,
-      onChanged: onChanged,
-    );
-    if (!unsupported) return tile;
-    return Tooltip(
-      message: l.exitServerUnsupported(server.displayName),
-      child: tile,
-    );
-  }
+String _splitLabel(AppLocalizations l, AppSettings settings) {
+  final st = settings.splitTunnel;
+  final modeLabel = splitModeLabel(l, st.mode);
+  // «Все через VPN» — правила не применяются, счётчики не показываем.
+  if (st.mode == SplitMode.all) return modeLabel;
+  final a = st.apps.length, s = st.sites.length;
+  final n = a + s;
+  return '$modeLabel${n > 0 ? ' · ${l.splitRulesCount(n, a, s)}' : ''}';
 }
 
 // ── Пинг ─────────────────────────────────────────────────────────────────────
 /// Все четыре метода доступны для обеих фаз (#4.1).
-class _PingSection extends StatelessWidget {
-  final AppSettings settings;
-  final SettingsController controller;
-  const _PingSection({required this.settings, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader(context, l.sectionPing),
+List<SettingsRow> _pingRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.pingTwoPhaseTitle} ${l.pingTwoPhaseSubOn} '
+          '${l.pingMethodCheck} ${l.pingMethodPing}',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         SwitchListTile(
           dense: true,
           value: settings.pingTwoPhase,
@@ -1648,37 +1881,50 @@ class _PingSection extends StatelessWidget {
             },
           }),
         ],
-        // #11 — объём пробы теста скорости (ПКМ по серверу → «Информация о сервере»).
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: Row(children: [
-            Text(l.speedTestProbe),
-            InfoTooltip(l.infoSpeedTest),
-          ]),
-        ),
-        _choice<SpeedTestSize>(
-          context,
-          current: settings.speedTestSize,
-          options: {
-            SpeedTestSize.full: l.speedTestFull,
-            SpeedTestSize.light: l.speedTestLight,
-          },
-          onChanged: (v) => controller.update((s) => s.copyWith(speedTestSize: v)),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: TextFormField(
-            initialValue: settings.testUrl,
-            decoration: InputDecoration(
-              labelText: l.testUrlLabel,
-              border: const OutlineInputBorder(),
-            ),
-            onChanged: (v) => controller.update((s) => s.copyWith(testUrl: v)),
+        ],
+      ),
+    ),
+    // #11 — объём пробы теста скорости (ПКМ по серверу → «Информация о сервере»).
+    SettingsRow(
+      search: '${l.speedTestProbe} ${l.speedTestFull} ${l.speedTestLight}',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Row(children: [
+              Text(l.speedTestProbe),
+              InfoTooltip(l.infoSpeedTest),
+            ]),
           ),
+          _choice<SpeedTestSize>(
+            context,
+            current: settings.speedTestSize,
+            options: {
+              SpeedTestSize.full: l.speedTestFull,
+              SpeedTestSize.light: l.speedTestLight,
+            },
+            onChanged: (v) =>
+                controller.update((s) => s.copyWith(speedTestSize: v)),
+          ),
+        ],
+      ),
+    ),
+    SettingsRow(
+      search: '${l.testUrlLabel} ${settings.testUrl}',
+      build: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+        child: TextFormField(
+          initialValue: settings.testUrl,
+          decoration: InputDecoration(
+            labelText: l.testUrlLabel,
+            border: const OutlineInputBorder(),
+          ),
+          onChanged: (v) => controller.update((s) => s.copyWith(testUrl: v)),
         ),
-      ],
-    );
-  }
+      ),
+    ),
+  ];
 }
 
 /// Легенда методов: у каждого имени — своя «! info» рядом (#4/#4.1).

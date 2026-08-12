@@ -21,6 +21,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get commonCopy => 'Copiar';
 
   @override
+  String get commonClear => 'Borrar';
+
+  @override
   String get commonCopied => 'Copiado';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get sectionSupport => 'Soporte';
+
+  @override
+  String get settingsSearchHint => 'Buscar en los ajustes';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return 'No se encontró nada: «$query»';
+  }
+
+  @override
+  String get settingsExpand => 'Expandir';
+
+  @override
+  String get settingsCollapse => 'Contraer';
 
   @override
   String get appearanceTheme => 'Tema';
@@ -796,6 +813,20 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get subBarValidUntil => 'Válida hasta:';
+
+  @override
+  String get subSwitcherPingAll =>
+      'Probar los servidores de todas las suscripciones';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return 'Servidores en la suscripción: $total. Aún no se ha comprobado el canal: ejecuta «Probar los servidores de todas las suscripciones».';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return 'Servidores en la suscripción: $total. De ellos han superado la comprobación del canal (petición a través del servidor): $working.';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2499,4 +2530,61 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get logsNothingToClean => 'No hay nada que borrar';
+
+  @override
+  String get speedTooltip => 'Velocidad de descarga a través de este servidor';
+
+  @override
+  String get speedFromAutoConfig =>
+      'Velocidad medida por la configuración automática';
+
+  @override
+  String get speedBlockedTooltip =>
+      'No se mide la velocidad: el servidor no superó la comprobación del canal (la petición no llegó a través de él)';
+
+  @override
+  String get srvTileMeasureSpeed => 'Medir la velocidad';
+
+  @override
+  String get speedRunTooltip => 'Medir la velocidad de los servidores';
+
+  @override
+  String get speedConfirmTitle => '¿Medir la velocidad?';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return 'Se comprobarán $count servidores. Cada uno descarga una muestra de $size: unos $total del tráfico de tu suscripción.';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return 'Se omiten los ya medidos: $count.';
+  }
+
+  @override
+  String get speedConfirmRun => 'Medir';
+
+  @override
+  String get speedNoTargets =>
+      'No hay nada que medir: la velocidad solo se comprueba en servidores que superaron la comprobación del canal. Prueba primero la lista.';
+
+  @override
+  String get speedNotVerified =>
+      'El servidor no superó la comprobación del canal: no medimos la velocidad a través de él';
+
+  @override
+  String speedProgress(int done, int total) {
+    return 'Velocidad: $done de $total';
+  }
+
+  @override
+  String get updateOnStartTitle => 'Actualizar la suscripción al iniciar';
+
+  @override
+  String get updateOnStartSub =>
+      'Descargar una lista de servidores nueva cada vez, no solo por temporizador';
+
+  @override
+  String get apiSectionSub =>
+      'HTTP en 127.0.0.1: controla el cliente desde tus scripts';
 }

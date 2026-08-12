@@ -491,11 +491,39 @@ class AppSettings {
   // ── Оформление и поведение ─────────────────────────────────────────────────
   final AppThemeMode themeMode;
 
+  /// Свёрнутые разделы экрана настроек — их ИДЕНТИФИКАТОРЫ.
+  ///
+  /// ⚠️ ПУСТОЙ СПИСОК = ВСЁ РАЗВЁРНУТО, и это умолчание задано владельцем
+  /// явно: сворачивание — помощь тому, кто уже знает экран, а не способ
+  /// спрятать настройки от того, кто открыл его впервые.
+  ///
+  /// ⚠️ Хранятся именно идентификаторы (`SettingsSectionIds`), а НЕ заголовки:
+  /// заголовок переводится на десять языков, и на смене языка все свёрнутые
+  /// разделы разворачивались бы сами — состояние молча терялось бы.
+  ///
+  /// ⚠️ НАМЕРЕННО НЕ В [reconnectReasons]: раскладка интерфейса в конфиг ядра
+  /// не попадает, и предлагать из-за неё переподключиться значило бы рвать
+  /// живой туннель из-за нажатия на заголовок.
+  final List<String> collapsedSections;
+
   /// Код языка интерфейса (`ru`/`en`/`es`…). Пустая строка — следовать системе.
   final String languageCode;
   final bool closeToTray; // крестик: сворачивать в трей (true) / закрывать полностью (false)
   final bool dontAskOnClose; // не спрашивать при сворачивании
   final bool autoUpdateEnabled; // автообновление подписки
+
+  /// Тянуть подписку при КАЖДОМ запуске приложения.
+  ///
+  /// ⚠️ Это НЕ то же самое, что [autoUpdateEnabled]: тот работает по таймеру
+  /// (интервал в настройках, по умолчанию 12 часов) и между запусками ничего
+  /// не гарантирует. Запустил приложение через сутки — список серверов и
+  /// остаток трафика показывались прошлогодние, пока не подойдёт срок или
+  /// пользователь не нажмёт «Обновить» руками.
+  ///
+  /// ⚠️ Обновление идёт ФОНОМ и его отказ НЕ роняет запуск: сети может не быть,
+  /// панель может не ответить, а приложение обязано стартовать и подхватить
+  /// живой туннель в любом случае.
+  final bool updateSubscriptionOnStart;
 
   /// Интервал автообновления подписки в ЧАСАХ (наше значение). По приоритету
   /// ВЫШЕ интервала из подписки, если [autoUpdatePreferSubscription] выключен.
@@ -584,10 +612,12 @@ class AppSettings {
     this.acceptMinServices = 0,
     this.autoConnectAfterImport = false,
     this.themeMode = AppThemeMode.system,
+    this.collapsedSections = const [],
     this.languageCode = '',
     this.closeToTray = true,
     this.dontAskOnClose = false,
     this.autoUpdateEnabled = true,
+    this.updateSubscriptionOnStart = true,
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
@@ -654,10 +684,12 @@ class AppSettings {
     int? acceptMinServices,
     bool? autoConnectAfterImport,
     AppThemeMode? themeMode,
+    List<String>? collapsedSections,
     String? languageCode,
     bool? closeToTray,
     bool? dontAskOnClose,
     bool? autoUpdateEnabled,
+    bool? updateSubscriptionOnStart,
     int? autoUpdateIntervalHours,
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
@@ -720,10 +752,13 @@ class AppSettings {
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
       themeMode: themeMode ?? this.themeMode,
+      collapsedSections: collapsedSections ?? this.collapsedSections,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
       dontAskOnClose: dontAskOnClose ?? this.dontAskOnClose,
       autoUpdateEnabled: autoUpdateEnabled ?? this.autoUpdateEnabled,
+      updateSubscriptionOnStart:
+          updateSubscriptionOnStart ?? this.updateSubscriptionOnStart,
       autoUpdateIntervalHours: autoUpdateIntervalHours ?? this.autoUpdateIntervalHours,
       autoUpdatePreferSubscription: autoUpdatePreferSubscription ?? this.autoUpdatePreferSubscription,
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
@@ -785,10 +820,12 @@ class AppSettings {
         'acceptMinServices': acceptMinServices,
         'autoConnectAfterImport': autoConnectAfterImport,
         'themeMode': themeMode.name,
+        'collapsedSections': collapsedSections,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
         'dontAskOnClose': dontAskOnClose,
         'autoUpdateEnabled': autoUpdateEnabled,
+        'updateSubscriptionOnStart': updateSubscriptionOnStart,
         'autoUpdateIntervalHours': autoUpdateIntervalHours,
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
@@ -940,10 +977,22 @@ class AppSettings {
       acceptMinServices: (j['acceptMinServices'] as num?)?.toInt() ?? 0,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
+      // ⚠️ ЧИТАЕТСЯ ОБЯЗАТЕЛЬНО — иначе свёрнутые разделы разворачивались бы
+      // при каждом запуске, хотя выбор пользователя лежит в файле (тот самый
+      // класс «поле пишется, но не читается»; страж settings_roundtrip_test
+      // перебирает только булевы и числовые поля, список мимо него проходит).
+      //
+      // `whereType`, а не `cast`: битый файл настроек не должен ронять экран
+      // настроек при первой же прокрутке — лишний элемент просто игнорируем.
+      collapsedSections: ((j['collapsedSections'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
       languageCode: j['languageCode'] as String? ?? '',
       closeToTray: j['closeToTray'] as bool? ?? true,
       dontAskOnClose: j['dontAskOnClose'] as bool? ?? false,
       autoUpdateEnabled: j['autoUpdateEnabled'] as bool? ?? true,
+      updateSubscriptionOnStart:
+          j['updateSubscriptionOnStart'] as bool? ?? true,
       autoUpdateIntervalHours: (j['autoUpdateIntervalHours'] as num?)?.toInt() ?? 12,
       autoUpdatePreferSubscription: j['autoUpdatePreferSubscription'] as bool? ?? false,
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,

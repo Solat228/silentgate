@@ -21,6 +21,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonCopy => '复制';
 
   @override
+  String get commonClear => '清除';
+
+  @override
   String get commonCopied => '已复制';
 
   @override
@@ -70,6 +73,20 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sectionSupport => '支持';
+
+  @override
+  String get settingsSearchHint => '在设置中搜索';
+
+  @override
+  String settingsSearchEmpty(String query) {
+    return '未找到任何内容：“$query”';
+  }
+
+  @override
+  String get settingsExpand => '展开';
+
+  @override
+  String get settingsCollapse => '收起';
 
   @override
   String get appearanceTheme => '主题';
@@ -767,6 +784,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get subBarValidUntil => '有效期至：';
+
+  @override
+  String get subSwitcherPingAll => '测试全部订阅的服务器';
+
+  @override
+  String subSwitcherCountTotal(int total) {
+    return '订阅中的服务器：$total 个。尚未做过通道检查，请运行“测试全部订阅的服务器”。';
+  }
+
+  @override
+  String subSwitcherCountWorking(int total, int working) {
+    return '订阅中的服务器：$total 个，其中通过通道检查（经服务器发起请求）的有 $working 个。';
+  }
 
   @override
   String get infoCaptureMode =>
@@ -2400,4 +2430,55 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logsNothingToClean => '没有可删除的内容';
+
+  @override
+  String get speedTooltip => '经此服务器的下载速度';
+
+  @override
+  String get speedFromAutoConfig => '速度由自动配置测得';
+
+  @override
+  String get speedBlockedTooltip => '不测速：该服务器未通过通道检查（请求没能经它送达）';
+
+  @override
+  String get srvTileMeasureSpeed => '测速';
+
+  @override
+  String get speedRunTooltip => '测试各服务器速度';
+
+  @override
+  String get speedConfirmTitle => '要测速吗？';
+
+  @override
+  String speedConfirmBody(int count, String size, String total) {
+    return '将检查 $count 个服务器，每个下载 $size 的样本——约占用订阅流量 $total。';
+  }
+
+  @override
+  String speedConfirmSkipped(int count) {
+    return '已测过的将跳过：$count 个。';
+  }
+
+  @override
+  String get speedConfirmRun => '测速';
+
+  @override
+  String get speedNoTargets => '没有可测的：只对通过通道检查的服务器测速。请先测试列表。';
+
+  @override
+  String get speedNotVerified => '该服务器未通过通道检查——不经它测速';
+
+  @override
+  String speedProgress(int done, int total) {
+    return '速度：$total 个中的 $done 个';
+  }
+
+  @override
+  String get updateOnStartTitle => '启动时刷新订阅';
+
+  @override
+  String get updateOnStartSub => '每次都拉取最新服务器列表，而不只按计时器';
+
+  @override
+  String get apiSectionSub => '127.0.0.1 上的 HTTP——从脚本控制客户端';
 }
