@@ -1,6 +1,12 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/net/api_ports.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/settings/split_tunnel.dart';
+import 'package:silentgate/core/singbox/exit_tags.dart';
+import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/engine/windows/windows_engine.dart';
 
@@ -100,6 +106,43 @@ void main() {
       final got = WindowsEngine.corePortsFor(
           withMode(CaptureMode.tun).copyWith(apiEnabled: false), ports);
       expect(got, [ports.socks, ports.http, ports.api]);
+    });
+
+    test('⚠️ активный сервер даёт ВТОРОЙ outbound к тому же узлу — конфиг '
+        'выгружается для проверки настоящим ядром', () {
+      // Находка 5 меняет ВХОД построителя, а не сам построитель: сервер,
+      // выбранный на главном, теперь приходит и как `proxy`, и как выход
+      // `exit-…`. Конфиг с двумя outbound-ами на один узел ядро обязано
+      // принять — проверяется командой
+      // `engine/windows/bin/sing-box.exe check -c build/api-configs/…`.
+      const key = 'vless://11111111-2222-3333-4444-555555555555@127.0.0.1:443#DE';
+      final json = SingboxConfigBuilder(
+        options: const TunOptions(serverIps: ['203.0.113.10']),
+        exitOutbounds: [
+          {
+            'type': 'vless',
+            'tag': exitTagFor(key),
+            'server': '203.0.113.10',
+            'server_port': 443,
+            'uuid': '11111111-2222-3333-4444-555555555555',
+          },
+        ],
+        apiExitServerKeys: const [key],
+        apiToken: 'secret-token',
+      ).buildJson(const SplitTunnelConfig());
+
+      final dir = Directory('build/api-configs')..createSync(recursive: true);
+      File('${dir.path}/sg_api_active_server_exit.json').writeAsStringSync(json);
+
+      final cfg = jsonDecode(json) as Map<String, dynamic>;
+      final tags = [
+        for (final o in cfg['outbounds'] as List) (o as Map)['tag'],
+      ];
+      // Оба: основной канал и отдельный порт того же сервера.
+      expect(tags, containsAll(<String>['proxy', exitTagFor(key)]));
+      final ins = (cfg['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(ins.any((i) => i['tag'] == apiExitInboundTag(key)), isTrue);
+      expect(ins.any((i) => i['tag'] == apiDirectInboundTag), isTrue);
     });
 
     test('сверх сорока серверов лишних портов не появляется', () {

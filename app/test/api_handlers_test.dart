@@ -487,6 +487,49 @@ void main() {
 
       expect(r.isOk, isTrue);
     }, timeout: const Timeout(Duration(seconds: 20)));
+
+    test('⚠️ возвращается СРАЗУ, не дожидаясь прогона (находка 10)', () async {
+      // Раньше здесь стоял `await probe.pingAll(...)`: ответ уходил только
+      // после обеих фаз по всем серверам подписки. На сотне серверов это
+      // минуты, а обёртка `tools/silentgate.py` ходит с `timeout=30` —
+      // гарантированное падение по таймауту на вызове, который документирован
+      // как мгновенный.
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      await env.addServer(_serverA);
+      await env.addServer(_serverB);
+
+      final sw = Stopwatch()..start();
+      final r = await env.handlers.ping();
+      sw.stop();
+
+      expect(r.isOk, isTrue);
+      // Порог с огромным запасом: одна только TCP-фаза на мёртвый адрес живёт
+      // секундами. Смысл проверки — «не ждём прогона», а не микробенчмарк.
+      expect(sw.elapsedMilliseconds, lessThan(1500),
+          reason: 'ответ обязан уходить до завершения прогона');
+      // И прогон при этом РЕАЛЬНО запущен — иначе «мгновенный ответ» получался
+      // бы и от пустышки, ничего не делающей.
+      expect(env.probe.running, isTrue);
+      // Состояние отдаёт признак: без него скрипту неоткуда узнать, когда
+      // забирать результаты из `GET /v1/servers`.
+      expect((await env.handlers.status())['pinging'], isTrue);
+
+      // Не оставляем прогон висеть в фоне после теста.
+      env.probe.cancel();
+    }, timeout: const Timeout(Duration(seconds: 20)));
+
+    test('повторный вызов на идущем прогоне безопасен', () async {
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      await env.addServer(_serverA);
+
+      expect((await env.handlers.ping()).isOk, isTrue);
+      // `ProbeController._pingBatch` выходит сразу при `_running` — второй
+      // прогон не запускается и первому не мешает.
+      expect((await env.handlers.ping()).isOk, isTrue);
+      env.probe.cancel();
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 
   group('AppState.applyApiSettings — гонка поколений (раунд ревью 1, '

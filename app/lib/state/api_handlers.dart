@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
+import '../core/platform/app_log.dart';
 import '../core/net/api_server.dart';
 import '../core/singbox/singbox_outbound_factory.dart';
 import '../core/util/country_flag.dart';
@@ -28,6 +31,11 @@ class AppStateApiHandlers implements ApiHandlers {
         'server': state.selectedServer?.displayName,
         'captureMode': settings.settings.captureMode.name,
         'connectedSeconds': state.connectedFor?.inSeconds,
+        // ⚠️ Единственный способ узнать, что `POST /v1/ping` доработал.
+        // Сам вызов не ждёт прогона (см. [ping]), а результаты забираются из
+        // `GET /v1/servers` — без этого поля скрипту оставалось бы гадать,
+        // сколько подождать перед чтением.
+        'pinging': probe.running,
       };
 
   @override
@@ -182,7 +190,23 @@ class AppStateApiHandlers implements ApiHandlers {
 
   @override
   Future<ApiResult> ping() async {
-    await probe.pingAll(state.servers, settings.settings);
+    // ⚠️ НЕ ЖДЁМ ПРОГОНА. Раньше здесь стоял `await`, и ответ уходил только
+    // после ОБЕИХ фаз пинга по всем серверам подписки: на сотне серверов это
+    // минуты, а обёртка `tools/silentgate.py` ходит с `timeout=30` —
+    // гарантированное падение по таймауту на вызове, который документирован
+    // как мгновенный. Кнопка пинга в интерфейсе тоже ничего не ждёт.
+    //
+    // Повторный вызов на идущем прогоне безопасен: `ProbeController._pingBatch`
+    // выходит сразу (`if (_running …) return`), поэтому второй `POST /v1/ping`
+    // не запускает второй прогон и не мешает первому.
+    //
+    // Готовность спрашивается через `pinging` в `GET /v1/status`, результаты —
+    // через `GET /v1/servers`.
+    unawaited(probe.pingAll(state.servers, settings.settings).catchError((e) {
+      // Ошибку глотать нельзя: без `await` она стала бы необработанной, и
+      // причина провала пинга не попала бы никуда вообще.
+      AppLog.w('Пинг по команде API не завершился: $e');
+    }));
     return const ApiResult.ok();
   }
 }
