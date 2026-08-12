@@ -39,6 +39,17 @@ bool _constantTimeEquals(String a, String b) {
 class SingleInstance {
   static const int _basePort = 47654;
 
+  /// Потолок одного сообщения и время на его доставку.
+  ///
+  /// ⚠️ ОБА ОГРАНИЧЕНИЯ ДЕЙСТВУЮТ ДО ПРОВЕРКИ СЕКРЕТА — в этом весь смысл.
+  /// Разбор идёт по `onDone`, то есть по закрытию соединения отправителем;
+  /// пока он не закрыл, мы копим байты в памяти и ничего о нём не знаем.
+  /// Наше настоящее сообщение — 32 символа секрета плюс ссылка, поэтому 8 КБ
+  /// и несколько секунд — щедрый запас для штатного пути и жёсткий предел
+  /// для всего остального.
+  static const int maxMessageBytes = 8 * 1024;
+  static const Duration readTimeout = Duration(seconds: 5);
+
   /// Изолированная копия (SILENTGATE_PORT_OFFSET) слушает свой порт и не конфликтует
   /// с установленной версией.
   static int get _port => _basePort + AppEnv.portOffset;
@@ -87,13 +98,51 @@ class SingleInstance {
   /// оказывался дырой (`silentgate://connect#x`, `silentgate:///connect`
   /// проходили мимо него). Единое требование ко всем сообщениям убирает этот
   /// класс ошибок целиком: решать по содержимому больше нечего.
+  ///
+  /// [timeout] переопределяется ТОЛЬКО тестами: ждать в тесте настоящие
+  /// [readTimeout] значило бы держать прогон впустую, а непроверенный предел
+  /// — это предел, про который мы знаем только из комментария.
   static void listen(ServerSocket server, void Function(String url) onUrl,
-      {required String secret}) {
+      {required String secret, Duration timeout = readTimeout}) {
     server.listen((socket) {
       final buf = <int>[];
+      // ⚠️ ЗАКРЫЛИ ЛИ МЫ ЭТО СОЕДИНЕНИЕ САМИ. Без флага таймаут и `onDone`
+      // могли бы отработать оба: `destroy()` завершает поток, то есть сам
+      // приводит к `onDone` — и отброшенное по лимиту сообщение всё равно
+      // доехало бы до разбора.
+      var finished = false;
+      Timer? deadline;
+      void finish(String? rejection) {
+        if (finished) return;
+        finished = true;
+        deadline?.cancel();
+        socket.destroy();
+        if (rejection != null) {
+          AppLog.w('Сообщение через локальный сокет отвергнуто: $rejection');
+        }
+      }
+
+      deadline = Timer(timeout, () => finish('истекло время чтения'));
       socket.listen(
-        buf.addAll,
+        (chunk) {
+          if (finished) return;
+          // ⚠️ ПОТОЛОК ОБЯЗАТЕЛЕН, И ОН ДО АУТЕНТИФИКАЦИИ. Секрет проверяется
+          // только по `onDone`, то есть когда отправитель ЗАКРОЕТ своё
+          // соединение, — а закрывать его никто не обязан. Локальный процесс
+          // мог лить в порт сколько угодно, и всё это копилось в памяти
+          // приложения, не предъявив ни одного байта секрета. Наше настоящее
+          // сообщение — секрет плюс ссылка, то есть сотни байт; 8 КБ здесь с
+          // запасом, а всё, что длиннее, — не наш формат по определению.
+          if (buf.length + chunk.length > maxMessageBytes) {
+            finish('длина превысила $maxMessageBytes байт');
+            return;
+          }
+          buf.addAll(chunk);
+        },
         onDone: () {
+          if (finished) return;
+          finished = true;
+          deadline?.cancel();
           final raw = utf8.decode(buf, allowMalformed: true).trim();
           socket.destroy();
           if (raw.isEmpty) return;
@@ -107,7 +156,9 @@ class SingleInstance {
           }
           onUrl(m.url);
         },
-        onError: (_) => socket.destroy(),
+        // Сорванное соединение — не повод для строки в журнале: это
+        // обыденность, а не попытка что-то нам сказать.
+        onError: (_) => finish(null),
       );
     });
   }

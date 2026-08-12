@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -173,6 +174,96 @@ void main() {
       await send(server.port,
           '$secret\nsilentgate://import?url=https://example.org/sub');
       expect(received.last, 'silentgate://import?url=https://example.org/sub');
+    });
+
+    /// ⚠️ ОБА ПРЕДЕЛА ДЕЙСТВУЮТ ДО ПРОВЕРКИ СЕКРЕТА, И В ЭТОМ ВСЁ ДЕЛО.
+    ///
+    /// Разбор идёт по `onDone`, то есть по закрытию соединения ОТПРАВИТЕЛЕМ, а
+    /// закрывать его никто не обязан. Любой локальный процесс мог держать
+    /// соединение открытым и лить в порт сколько угодно: байты копились в
+    /// памяти приложения, не предъявив ни одного символа секрета.
+    group('Пределы приёма', () {
+      test('поток без закрытия отбрасывается по объёму, а не копится', () async {
+        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final received = <String>[];
+        const secret = 'secret-of-this-instance';
+        SingleInstance.listen(server, received.add, secret: secret);
+
+        final socket =
+            await Socket.connect(InternetAddress.loopbackIPv4, server.port);
+        // Приёмник рвёт соединение на превышении — дальнейшая запись падает
+        // (10053 «подключение разорвано»). Это ОЖИДАЕМЫЙ исход, а не сбой
+        // теста: гасим и ошибку записи, и ошибку в потоке сокета.
+        socket.listen((_) {}, onError: (_) {}, cancelOnError: true);
+        unawaited(socket.done.catchError((_) => socket));
+        try {
+          // Верное начало сообщения — чтобы отказ нельзя было объяснить
+          // неверным секретом: обрывает именно ПРЕДЕЛ.
+          socket.add(utf8.encode('$secret\nsilentgate://connect'));
+          final chunk = utf8.encode('A' * 4096);
+          for (var i = 0; i < 8; i++) {
+            socket.add(chunk);
+            await socket.flush();
+          }
+          await socket.close();
+        } catch (_) {
+          // Соединение уже разорвано приёмником — так и должно быть.
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 250));
+        expect(received, isEmpty,
+            reason: 'сообщение длиннее ${SingleInstance.maxMessageBytes} байт '
+                '— не наш формат по определению');
+      });
+
+      test('соединение, которое не закрывают, гаснет по времени', () async {
+        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final received = <String>[];
+        const secret = 'secret-of-this-instance';
+        // Настоящий предел — секунды; в тесте он переопределён, иначе прогон
+        // просто стоял бы (см. `SingleInstance.listen`, параметр `timeout`).
+        SingleInstance.listen(server, received.add,
+            secret: secret, timeout: const Duration(milliseconds: 120));
+
+        final socket =
+            await Socket.connect(InternetAddress.loopbackIPv4, server.port);
+        // ⚠️ ПРОВЕРЯЕМ ИМЕННО ЗАКРЫТИЕ, А НЕ «НИЧЕГО НЕ ПРИНЯЛИ». Прежний код
+        // тоже ничего не принимал — он просто ЖДАЛ вечно, держа сокет и
+        // буфер. Разницу видно только по тому, что приёмник рвёт соединение
+        // сам.
+        final closed = Completer<void>();
+        void markClosed() {
+          if (!closed.isCompleted) closed.complete();
+        }
+
+        socket.listen((_) {},
+            onDone: markClosed, onError: (_) => markClosed(), cancelOnError: true);
+        socket.add(utf8.encode('$secret\nsilentgate://connect'));
+        await socket.flush();
+        // Не закрываем — ровно то, чего прежний код ждал вечно.
+        await expectLater(
+            closed.future.timeout(const Duration(seconds: 2)), completes);
+        expect(received, isEmpty,
+            reason: 'команда, не доехавшая до закрытия сокета, исполнена быть '
+                'не может: секрет проверяется только по полному сообщению');
+        try {
+          await socket.close();
+        } catch (_) {}
+      });
+
+      test('контроль: сообщение в пределах лимита по-прежнему исполняется',
+          () async {
+        // Без этого предыдущие две проверки прошли бы и на коде, который не
+        // принимает ничего.
+        final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+        addTearDown(server.close);
+        final received = <String>[];
+        const secret = 'secret-of-this-instance';
+        SingleInstance.listen(server, received.add, secret: secret);
+        await send(server.port, '$secret\nsilentgate://toggle');
+        expect(received, ['silentgate://toggle']);
+      });
     });
 
     test('пустой секрет отклоняет ВСЁ, а не пропускает без проверки', () async {
