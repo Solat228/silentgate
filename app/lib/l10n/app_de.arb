@@ -47,22 +47,30 @@
   "apiEnableSub": "HTTP auf 127.0.0.1:{port} — den Client per Skript steuern",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Token",
   "apiTokenUnset": "Nicht festgelegt — die API startet nicht",
   "apiTokenRegenerate": "Token erneuern",
-  "apiTokenWarning": "Der Token wird im Klartext in der Einstellungsdatei gespeichert und landet in Backups. Wer ihn besitzt, kann den Server wechseln und den Abo-Status auslesen.",
+  "apiTokenWarning": "Das Token liegt im Klartext in der Einstellungsdatei. Es gelangt weder ins Protokoll noch in den Support-Bericht, aber wer es hat, kann den Server wechseln und den Zustand Ihres Abonnements lesen.",
   "apiExitsTitle": "Server mit eigenem Port",
   "apiExitsSub": "Jeder erhält einen eigenen lokalen Port — eine Anfrage dorthin läuft über diesen Server",
   "apiCopyPythonExample": "Python-Beispiel kopieren",
   "apiPortsHint": "Steuerung — Port {control}. „Direkt“ — Port {direct}. Server — ab {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Split-Tunneling-Regeln anwenden",
@@ -794,7 +802,7 @@
   "localProxyAuthInfo": "Der lokale Port des Kerns (127.0.0.1) ist ein vollwertiger Proxy in Ihr VPN. Ohne Passwort verbindet sich jedes Programm auf demselben Gerät damit und bekommt Ihren Tunnel komplett: die Ausgangs-IP, das Kontingent Ihres Abonnements und die Umgehung Ihrer eigenen Split-Tunneling-Regeln — auch für Apps, die Sie auf „Blockieren“ gesetzt haben. Unter Android ist das besonders wichtig: Dort sieht jede installierte App die lokalen Ports.\n\nSchalten Sie es nur aus, wenn Sie diesen Proxy bewusst mit etwas nutzen, das keine Authentifizierung beherrscht.",
   "localProxyAuthOff": "Aus: Der lokale Proxy steht jedem Programm auf dem Gerät offen",
   "localProxyAuthSystemProxy": "Im Modus „Systemproxy“ wirkungslos: Windows kann dem lokalen Proxy kein Passwort übergeben. Gilt im TUN-Modus.",
-  "localProxyAuthRandom": "Bei jeder Verbindung ein neues Zufallspasswort — wird nirgends gespeichert",
+  "localProxyAuthRandom": "Bei jeder Verbindung ein neues Zufallspasswort – wird nicht in den Einstellungen gespeichert",
   "localProxyAuthCustom": "Eigener Benutzername und eigenes Passwort (in der Einstellungsdatei gespeichert)",
   "localProxyCredsTitle": "Eigener Benutzername und Passwort",
   "localProxyCredsUnset": "Nicht festgelegt — es wird ein Zufallspasswort verwendet",
@@ -807,7 +815,7 @@
     }
   },
   "localProxyDialogTitle": "Benutzername und Passwort des lokalen Proxys",
-  "localProxyDialogBody": "Nur nötig, wenn Sie unseren Proxy (127.0.0.1) selbst in einem anderen Programm eintragen. Lassen Sie die Felder leer — dann ist das Passwort bei jeder Verbindung zufällig: Es wird nirgends gespeichert und landet in keiner Sicherung.",
+  "localProxyDialogBody": "Nur nötig, wenn Sie unseren Proxy (127.0.0.1) selbst in einem anderen Programm eintragen. Lassen Sie die Felder leer, dann ist das Passwort bei jeder Verbindung zufällig: Es wird nicht in den Einstellungen gespeichert und gelangt weder ins Protokoll noch in den Support-Bericht. Ein selbst gesetztes Passwort bleibt im Klartext in der Einstellungsdatei.",
   "localProxyFieldUser": "Benutzername",
   "localProxyFieldPassword": "Passwort",
   "localProxyFieldHint": "leer — zufällig",
@@ -836,5 +844,32 @@
   "geoVerdictMissingTitle": "Geodatenbanken nicht heruntergeladen",
   "geoVerdictMissingSub": "Die Abonnement-Regeln nach Land und Kategorie sind derzeit deaktiviert — dieser Verkehr läuft über das VPN statt direkt.",
   "geoVerdictUnusableTitle": "Der Kern konnte die Geodatenbanken nicht öffnen",
-  "geoVerdictUnusableSub": "Die Dateien sind vorhanden, aber der Kern hat sie nicht gelesen. Ein erneutes Herunterladen hilft."
+  "geoVerdictUnusableSub": "Die Dateien sind vorhanden, aber der Kern hat sie nicht gelesen. Ein erneutes Herunterladen hilft.",
+  "pingPendingTooltip": "TCP-Latenz zum Server. Die Kanalprüfung läuft noch – ob der Server wirklich funktioniert, ist noch nicht bekannt.",
+  "pingUnverifiedTooltip": "TCP-Latenz zum Server. Es wurde keine Prüfung durch den Tunnel durchgeführt – bekannt ist nur die Erreichbarkeit.",
+  "pingMeasuredAt": "Gemessen: {time}",
+  "pingChecking": "wird geprüft",
+  "autoTimer": "Vergangen {elapsed} · noch etwa {remaining}",
+  "autoTimerNoEstimate": "Vergangen {elapsed}",
+  "autoSpeedRanking": "Geschwindigkeit wird gemessen: {name}",
+  "autoWarnNoRealIp": "„Echte IP nie verwenden“ ist aktiv – der gesamte Verkehr läuft über das VPN.",
+  "autoWarnAllVpn": "Der Modus „Alles über VPN“ ist gewählt – Ihre Regeln greifen im Moment nicht.",
+  "autoWarnPanelOverride": "„Meine Regeln haben Vorrang vor den Panel-Regeln“ ist aktiv.",
+  "autoWarnProbesDirect": "Auf die Prüfung selbst hat das keinen Einfluss: Die Tests laufen bei jeder Einstellung am VPN vorbei. Im TUN-Modus laufen sie jedoch über den Kernprozess – hängt der Kern, sind alle Ergebnisse falsch negativ.",
+  "autoWarnTurnOff": "Ausschalten",
+  "toastCollapse": "Einklappen",
+  "toastExpand": "Ausklappen",
+  "toastOpenAutoConfig": "Automatische Einrichtung öffnen",
+  "splitAppAlreadyAdded": "Diese App steht bereits in der Regelliste",
+  "logsFileLine": "{name} – {size}, {lines} Zeilen",
+  "logsReportsLine": "Support-Berichte: {count}, {size}",
+  "logsRetentionTitle": "Protokolle und Berichte aufbewahren",
+  "logsRetentionDay": "1 Tag",
+  "logsRetentionTwoWeeks": "2 Wochen",
+  "logsRetentionMonth": "1 Monat",
+  "logsRetentionNever": "Nie löschen",
+  "logsRetentionInfo": "Protokolle und Support-Berichte werden gelöscht, sobald sie älter als der gewählte Zeitraum sind. Geprüft wird beim Start der App. „Nie“ behält alles auf der Festplatte – dann behalten Sie die Größe selbst im Auge: Ein Bericht enthält die Protokolle vollständig und wächst mit ihnen.",
+  "logsCleanNow": "Alte jetzt löschen",
+  "logsCleaned": "Gelöschte Dateien: {count}, {size} freigegeben",
+  "logsNothingToClean": "Es gibt nichts zu löschen"
 }

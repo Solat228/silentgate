@@ -47,22 +47,30 @@
   "apiEnableSub": "127.0.0.1:{port} üzerinde HTTP — istemciyi betiklerden yönetin",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Belirteç",
   "apiTokenUnset": "Ayarlanmadı — API başlamaz",
   "apiTokenRegenerate": "Belirteci yenile",
-  "apiTokenWarning": "Belirteç, ayarlar dosyasında düz metin olarak saklanır ve yedeklere dahil olur. Ona sahip olan kişi sunucuyu değiştirebilir ve abonelik durumunu okuyabilir.",
+  "apiTokenWarning": "Belirteç, ayar dosyasında düz metin olarak durur. Günlüğe ve destek raporuna girmez, ama elinde olan kişi sunucu değiştirebilir ve abonelik durumunuzu okuyabilir.",
   "apiExitsTitle": "Ayrı bağlantı noktalı sunucular",
   "apiExitsSub": "Her birine kendi yerel bağlantı noktası verilir — o noktaya gelen istek o sunucu üzerinden gider",
   "apiCopyPythonExample": "Python örneğini kopyala",
   "apiPortsHint": "Kontrol — bağlantı noktası {control}. «Doğrudan» — bağlantı noktası {direct}. Sunucular — {first} itibarıyla.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Ayrık tünelleme kurallarını uygula",
@@ -794,7 +802,7 @@
   "localProxyAuthInfo": "Çekirdeğin yerel bağlantı noktası (127.0.0.1) VPN'inize açılan tam bir proxy'dir. Parola olmadan aynı cihazdaki her program ona bağlanır ve tünelinizi olduğu gibi kullanır: çıkış IP'niz, abonelik kotanız ve kendi ayrık tünelleme kurallarınızın atlanması — «Engelle» dediğiniz uygulamalar dâhil. Android'de bu özellikle önemlidir: orada yerel bağlantı noktalarını yüklü her uygulama görür.\n\nYalnızca bu proxy'ye bilerek kimlik doğrulamayı desteklemeyen bir şeyle bağlanıyorsanız kapatın.",
   "localProxyAuthOff": "Kapalı: yerel proxy cihazdaki her programa açık",
   "localProxyAuthSystemProxy": "«Sistem proxy'si» modunda geçerli değildir: Windows yerel proxy'ye parola iletemez. TUN modunda çalışır.",
-  "localProxyAuthRandom": "Her bağlantıda yeni rastgele parola — hiçbir yere kaydedilmez",
+  "localProxyAuthRandom": "Her bağlantıda yeni rastgele parola — ayarlarda saklanmaz",
   "localProxyAuthCustom": "Kendi kullanıcı adınız ve parolanız (ayar dosyasında saklanır)",
   "localProxyCredsTitle": "Kendi kullanıcı adınız ve parolanız",
   "localProxyCredsUnset": "Belirtilmedi — rastgele parola kullanılıyor",
@@ -807,7 +815,7 @@
     }
   },
   "localProxyDialogTitle": "Yerel proxy kullanıcı adı ve parolası",
-  "localProxyDialogBody": "Yalnızca proxy'mizi (127.0.0.1) başka bir programa kendiniz yazacaksanız gereklidir. Alanları boş bırakırsanız parola her bağlantıda rastgele olur: hiçbir yere kaydedilmez ve yedeklere girmez.",
+  "localProxyDialogBody": "Yalnızca proxy'mizi (127.0.0.1) başka bir programa kendiniz yazarsanız gerekir. Alanları boş bırakın, parola her bağlantıda rastgele olsun: ayarlarda saklanmaz, günlüğe ve destek raporuna da girmez. Elle belirlediğiniz parola ise ayar dosyasında düz metin olarak kalır.",
   "localProxyFieldUser": "Kullanıcı adı",
   "localProxyFieldPassword": "Parola",
   "localProxyFieldHint": "boş — rastgele",
@@ -836,5 +844,32 @@
   "geoVerdictMissingTitle": "Geo verileri indirilmedi",
   "geoVerdictMissingSub": "Aboneliğin ülke ve kategori kuralları şu anda devre dışı — bu trafik doğrudan değil, VPN üzerinden gidiyor.",
   "geoVerdictUnusableTitle": "Çekirdek geo verilerini açamadı",
-  "geoVerdictUnusableSub": "Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar."
+  "geoVerdictUnusableSub": "Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar.",
+  "pingPendingTooltip": "Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.",
+  "pingUnverifiedTooltip": "Sunucuya TCP gecikmesi. Tünel üzerinden denetim yapılmadı — yalnızca erişilebilirlik biliniyor.",
+  "pingMeasuredAt": "Ölçüm: {time}",
+  "pingChecking": "denetleniyor",
+  "autoTimer": "Geçen süre {elapsed} · yaklaşık {remaining} kaldı",
+  "autoTimerNoEstimate": "Geçen süre {elapsed}",
+  "autoSpeedRanking": "Hız ölçülüyor: {name}",
+  "autoWarnNoRealIp": "«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.",
+  "autoWarnAllVpn": "«Her şey VPN üzerinden» kipi seçili — kurallarınız şu anda geçerli değil.",
+  "autoWarnPanelOverride": "«Kurallarım panel kurallarından önceliklidir» açık.",
+  "autoWarnProbesDirect": "Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler — çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.",
+  "autoWarnTurnOff": "Kapat",
+  "toastCollapse": "Daralt",
+  "toastExpand": "Genişlet",
+  "toastOpenAutoConfig": "Otomatik ayarı aç",
+  "splitAppAlreadyAdded": "Bu uygulama zaten kural listesinde",
+  "logsFileLine": "{name} — {size}, {lines} satır",
+  "logsReportsLine": "Destek raporları: {count}, {size}",
+  "logsRetentionTitle": "Günlükleri ve raporları sakla",
+  "logsRetentionDay": "1 gün",
+  "logsRetentionTwoWeeks": "2 hafta",
+  "logsRetentionMonth": "1 ay",
+  "logsRetentionNever": "Hiç silme",
+  "logsRetentionInfo": "Günlükler ve destek raporları, seçilen süreden eskidiklerinde silinir. Denetim uygulama açılırken yapılır. «Hiç» seçeneği her şeyi diskte bırakır — o zaman boyutu kendiniz izleyin: rapor günlükleri olduğu gibi içerir ve onlarla birlikte büyür.",
+  "logsCleanNow": "Eskileri şimdi sil",
+  "logsCleaned": "Silinen dosya: {count}, boşaltılan {size}",
+  "logsNothingToClean": "Silinecek bir şey yok"
 }

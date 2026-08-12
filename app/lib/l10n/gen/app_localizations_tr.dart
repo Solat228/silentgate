@@ -165,7 +165,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'Belirteç, ayarlar dosyasında düz metin olarak saklanır ve yedeklere dahil olur. Ona sahip olan kişi sunucuyu değiştirebilir ve abonelik durumunu okuyabilir.';
+      'Belirteç, ayar dosyasında düz metin olarak durur. Günlüğe ve destek raporuna girmez, ama elinde olan kişi sunucu değiştirebilir ve abonelik durumunuzu okuyabilir.';
 
   @override
   String get apiExitsTitle => 'Ayrı bağlantı noktalı sunucular';
@@ -2277,7 +2277,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'Her bağlantıda yeni rastgele parola — hiçbir yere kaydedilmez';
+      'Her bağlantıda yeni rastgele parola — ayarlarda saklanmaz';
 
   @override
   String get localProxyAuthCustom =>
@@ -2300,7 +2300,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'Yalnızca proxy\'mizi (127.0.0.1) başka bir programa kendiniz yazacaksanız gereklidir. Alanları boş bırakırsanız parola her bağlantıda rastgele olur: hiçbir yere kaydedilmez ve yedeklere girmez.';
+      'Yalnızca proxy\'mizi (127.0.0.1) başka bir programa kendiniz yazarsanız gerekir. Alanları boş bırakın, parola her bağlantıda rastgele olsun: ayarlarda saklanmaz, günlüğe ve destek raporuna da girmez. Elle belirlediğiniz parola ise ayar dosyasında düz metin olarak kalır.';
 
   @override
   String get localProxyFieldUser => 'Kullanıcı adı';
@@ -2380,4 +2380,106 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar.';
+
+  @override
+  String get pingPendingTooltip =>
+      'Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'Sunucuya TCP gecikmesi. Tünel üzerinden denetim yapılmadı — yalnızca erişilebilirlik biliniyor.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'Ölçüm: $time';
+  }
+
+  @override
+  String get pingChecking => 'denetleniyor';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'Geçen süre $elapsed · yaklaşık $remaining kaldı';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'Geçen süre $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'Hız ölçülüyor: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      '«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.';
+
+  @override
+  String get autoWarnAllVpn =>
+      '«Her şey VPN üzerinden» kipi seçili — kurallarınız şu anda geçerli değil.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      '«Kurallarım panel kurallarından önceliklidir» açık.';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN\'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler — çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.';
+
+  @override
+  String get autoWarnTurnOff => 'Kapat';
+
+  @override
+  String get toastCollapse => 'Daralt';
+
+  @override
+  String get toastExpand => 'Genişlet';
+
+  @override
+  String get toastOpenAutoConfig => 'Otomatik ayarı aç';
+
+  @override
+  String get splitAppAlreadyAdded => 'Bu uygulama zaten kural listesinde';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size, $lines satır';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'Destek raporları: $count, $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'Günlükleri ve raporları sakla';
+
+  @override
+  String get logsRetentionDay => '1 gün';
+
+  @override
+  String get logsRetentionTwoWeeks => '2 hafta';
+
+  @override
+  String get logsRetentionMonth => '1 ay';
+
+  @override
+  String get logsRetentionNever => 'Hiç silme';
+
+  @override
+  String get logsRetentionInfo =>
+      'Günlükler ve destek raporları, seçilen süreden eskidiklerinde silinir. Denetim uygulama açılırken yapılır. «Hiç» seçeneği her şeyi diskte bırakır — o zaman boyutu kendiniz izleyin: rapor günlükleri olduğu gibi içerir ve onlarla birlikte büyür.';
+
+  @override
+  String get logsCleanNow => 'Eskileri şimdi sil';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'Silinen dosya: $count, boşaltılan $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'Silinecek bir şey yok';
 }

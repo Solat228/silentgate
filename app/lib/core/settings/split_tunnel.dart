@@ -115,6 +115,30 @@ class AppRule {
   /// системы и к сопоставлению отношения не имеет.
   String get name => path.split(r'\').last;
 
+  /// Ключ, по которому запись считается ТОЙ ЖЕ САМОЙ.
+  ///
+  /// ⚠️ ЭТО НЕ `path`, И В ЭТОМ БЫЛ БАГ. Правило «по имени» сопоставляется с
+  /// процессом по имени файла, а искалось и хранилось — по ПОЛНОМУ ПУТИ.
+  /// Программа обновилась, путь сменился
+  /// (`…anthropic.claude-code-2.1.222-win32…` → `…2.1.227-win32…`) — и та же
+  /// самая программа заводилась ЗАНОВО. У владельца так набралось четыре
+  /// строки `claude.exe`, внешне неразличимых, и после каждого обновления
+  /// настройка «ломалась»: срабатывала не та запись, которую он правил.
+  ///
+  /// Правило: **ключ тождественности обязан совпадать с тем, ПО ЧЕМУ идёт
+  /// сопоставление.** Иначе список живёт своей жизнью, а ядро — своей.
+  String get matchKey => byName ? name.toLowerCase() : path.toLowerCase();
+
+  /// Покрывает ли это правило программу по указанному пути.
+  ///
+  /// ⚠️ Спрашивать надо ИМЕННО ЭТО, а не сравнивать пути снаружи: правило «по
+  /// имени» обязано узнавать программу после её обновления, когда путь уже
+  /// другой. Проверено тестом `app_rule_identity_test.dart` — он краснеет,
+  /// если вернуть сравнение путей.
+  bool matches(String candidatePath) => byName
+      ? candidatePath.split(r'\').last.toLowerCase() == name.toLowerCase()
+      : candidatePath.toLowerCase() == path.toLowerCase();
+
   AppRule copyWith(
           {bool? byName,
           AppAction? action,
@@ -338,8 +362,38 @@ class SplitTunnelConfig {
 
   bool get hasSelection => apps.isNotEmpty || sites.isNotEmpty;
 
-  bool containsApp(String path) =>
-      apps.any((a) => a.path.toLowerCase() == path.toLowerCase());
+  /// Есть ли уже правило, покрывающее эту программу.
+  ///
+  /// ⚠️ Спрашивает у САМОГО ПРАВИЛА (`AppRule.matches`), а не сравнивает пути.
+  /// Раньше сравнивались пути — и пикер «Из запущенных» прятал запись по пути,
+  /// тогда как правило ловило процесс по имени. После обновления программы путь
+  /// менялся, пикер снова предлагал уже добавленное, и в списке копились дубли.
+  bool containsApp(String path) => appRuleFor(path) != null;
+
+  /// Правило, покрывающее эту программу, или `null`.
+  AppRule? appRuleFor(String path) {
+    for (final a in apps) {
+      if (a.matches(path)) return a;
+    }
+    return null;
+  }
+
+  /// Свернуть записи, которые ссылаются на одну и ту же программу.
+  ///
+  /// ⚠️ НУЖНО ПРИ ЧТЕНИИ СТАРЫХ НАСТРОЕК: до этой версии дубли накапливались
+  /// сами (см. [AppRule.matchKey]), и у владельца их четыре штуки на одну
+  /// программу. Оставляем ПЕРВУЮ: дубли с разными действиями раньше молча
+  /// перебивали друг друга в конфиге, причём побеждала не первая в списке, а
+  /// та, у кого лексикографически меньше тег выхода, — предсказать было нельзя.
+  /// Явный порядок лучше непредсказуемого.
+  static List<AppRule> dedupeApps(List<AppRule> apps) {
+    final seen = <String>{};
+    final out = <AppRule>[];
+    for (final a in apps) {
+      if (seen.add(a.matchKey)) out.add(a);
+    }
+    return out;
+  }
 
   bool containsSite(String domain, {int? port}) => sites.any((s) =>
       s.domain.toLowerCase() == domain.toLowerCase() && s.port == port);
@@ -378,10 +432,15 @@ class SplitTunnelConfig {
     final rawSites = (j['sites'] as List?) ?? (j['domains'] as List?) ?? const [];
     return SplitTunnelConfig(
       mode: mode,
-      apps: ((j['apps'] as List?) ?? const [])
+      // ⚠️ Свёртка дублей — это МИГРАЦИЯ, а не гигиена. В настройках, записанных
+      // до 1.4.1, на одну программу могло лежать несколько записей (правило «по
+      // имени» опознавалось по полному пути, и каждое обновление программы
+      // заводило новую). Чиним при чтении, иначе пользователь так и остаётся с
+      // четырьмя строками `claude.exe`, из которых работает непредсказуемая.
+      apps: dedupeApps(((j['apps'] as List?) ?? const [])
           .map((e) => AppRule.fromJson(e, fallback: fallback))
           .where((a) => a.path.isNotEmpty)
-          .toList(),
+          .toList()),
       sites: rawSites
           .map((e) => SiteRule.fromJson(e, fallback: fallback))
           .where((s) => s.domain.isNotEmpty)

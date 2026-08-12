@@ -73,22 +73,30 @@
   "apiEnableSub": "HTTP on 127.0.0.1:{port} — control the client from scripts",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Token",
   "apiTokenUnset": "Not set — the API won't start",
   "apiTokenRegenerate": "Regenerate token",
-  "apiTokenWarning": "The token is stored in the settings file in plain text and ends up in backups. Whoever has it can switch the server and read the subscription status.",
+  "apiTokenWarning": "The token sits in the settings file in plain text. It never reaches the log or the support report, but anyone who has it can switch servers and read your subscription state.",
   "apiExitsTitle": "Servers with a dedicated port",
   "apiExitsSub": "Each one gets its own local port — a request to it goes through that server",
   "apiCopyPythonExample": "Copy Python example",
   "apiPortsHint": "Control — port {control}. \"Direct\" — port {direct}. Servers — from {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Apply split-tunneling rules",
@@ -855,7 +863,7 @@
   "localProxyAuthInfo": "The core's local port (127.0.0.1) is a full proxy into your VPN. Without a password any program on this device can connect to it and get your whole tunnel: the exit IP, your subscription quota and a way around your own split tunneling rules — including apps you marked “Block”. On Android this matters even more: there any installed app can see local ports.\n\nTurn it off only if you deliberately use this proxy from something that cannot authenticate.",
   "localProxyAuthOff": "Off: the local proxy is open to any program on the device",
   "localProxyAuthSystemProxy": "Not used in system proxy mode: Windows cannot pass a password to a local proxy. Applies in TUN mode.",
-  "localProxyAuthRandom": "A new random password on every connection — stored nowhere",
+  "localProxyAuthRandom": "A new random password for every connection — not kept in the settings",
   "localProxyAuthCustom": "Your own username and password (kept in the settings file)",
   "localProxyCredsTitle": "Your own username and password",
   "localProxyCredsUnset": "Not set — a random password is used",
@@ -868,7 +876,7 @@
     }
   },
   "localProxyDialogTitle": "Local proxy username and password",
-  "localProxyDialogBody": "Needed only if you enter our proxy (127.0.0.1) into another program yourself. Leave the fields empty and the password will be random on every connection: it is stored nowhere and never gets into backups.",
+  "localProxyDialogBody": "Needed only if you point a third-party program at our proxy (127.0.0.1) yourself. Leave the fields empty and the password will be random for every connection: it is not kept in the settings and never reaches the log or the support report. A password you set by hand stays in the settings file in plain text.",
   "localProxyFieldUser": "Username",
   "localProxyFieldPassword": "Password",
   "localProxyFieldHint": "empty — random",
@@ -897,5 +905,96 @@
   "geoVerdictMissingTitle": "Geo databases not downloaded",
   "geoVerdictMissingSub": "Subscription rules by country and category are off right now — this traffic goes through the VPN instead of direct.",
   "geoVerdictUnusableTitle": "The core could not open the geo databases",
-  "geoVerdictUnusableSub": "The files are there, but the core did not read them. Re-downloading the databases usually helps."
+  "geoVerdictUnusableSub": "The files are there, but the core did not read them. Re-downloading the databases usually helps.",
+  "pingPendingTooltip": "TCP latency to the server. The channel check is still running — whether the server actually works is not known yet.",
+  "pingUnverifiedTooltip": "TCP latency to the server. No check through the tunnel was made — only reachability is known.",
+  "pingMeasuredAt": "Measured: {time}",
+  "@pingMeasuredAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pingChecking": "checking",
+  "autoTimer": "Elapsed {elapsed} · about {remaining} left",
+  "@autoTimer": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      },
+      "remaining": {
+        "type": "String"
+      }
+    }
+  },
+  "autoTimerNoEstimate": "Elapsed {elapsed}",
+  "@autoTimerNoEstimate": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      }
+    }
+  },
+  "autoSpeedRanking": "Measuring speed: {name}",
+  "@autoSpeedRanking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "autoWarnNoRealIp": "“Never use the real IP” is on — all traffic goes through the VPN.",
+  "autoWarnAllVpn": "“Everything through VPN” mode is selected — your rules are not in effect right now.",
+  "autoWarnPanelOverride": "“My rules override the panel's rules” is on.",
+  "autoWarnProbesDirect": "This does not affect the check itself: probes bypass the VPN under any settings. But in TUN mode they still go through the core process — if the core has hung, every result will be a false negative.",
+  "autoWarnTurnOff": "Turn off",
+  "toastCollapse": "Collapse",
+  "toastExpand": "Expand",
+  "toastOpenAutoConfig": "Open auto-tuning",
+  "splitAppAlreadyAdded": "This app is already in the rules list",
+  "logsFileLine": "{name} — {size}, {lines} lines",
+  "@logsFileLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      },
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "logsReportsLine": "Support reports: {count}, {size}",
+  "@logsReportsLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsRetentionTitle": "Keep logs and reports",
+  "logsRetentionDay": "1 day",
+  "logsRetentionTwoWeeks": "2 weeks",
+  "logsRetentionMonth": "1 month",
+  "logsRetentionNever": "Never delete",
+  "logsRetentionInfo": "Logs and support reports are deleted once they are older than the selected period. The check runs when the app starts. “Never” keeps everything on disk — then watch the size yourself: a report embeds the logs in full and grows along with them.",
+  "logsCleanNow": "Delete old ones now",
+  "logsCleaned": "Files deleted: {count}, freed {size}",
+  "@logsCleaned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsNothingToClean": "Nothing to delete"
 }

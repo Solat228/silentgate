@@ -165,7 +165,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'توکن به‌صورت متن ساده در فایل تنظیمات ذخیره می‌شود و در نسخه‌های پشتیبان نیز قرار می‌گیرد. هر کس آن را داشته باشد می‌تواند سرور را عوض کند و وضعیت اشتراک را بخواند.';
+      'توکن به‌صورت متن ساده در پروندهٔ تنظیمات است. به لاگ و گزارش پشتیبانی نمی‌رسد، اما هر کس آن را داشته باشد می‌تواند سرور را عوض کند و وضعیت اشتراک شما را بخواند.';
 
   @override
   String get apiExitsTitle => 'سرورهای دارای پورت اختصاصی';
@@ -2269,7 +2269,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'رمز تصادفی تازه در هر اتصال — هیچ‌جا ذخیره نمی‌شود';
+      'گذرواژهٔ تصادفی تازه در هر اتصال — در تنظیمات ذخیره نمی‌شود';
 
   @override
   String get localProxyAuthCustom =>
@@ -2291,7 +2291,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'فقط وقتی لازم است که خودتان پروکسی ما (127.0.0.1) را در برنامه‌ای دیگر وارد می‌کنید. کادرها را خالی بگذارید تا رمز در هر اتصال تصادفی باشد: هیچ‌جا ذخیره نمی‌شود و به نسخه‌های پشتیبان هم نمی‌رود.';
+      'تنها زمانی لازم است که خودتان پروکسی ما (127.0.0.1) را در برنامه‌ای دیگر بنویسید. کادرها را خالی بگذارید تا گذرواژه در هر اتصال تصادفی باشد: در تنظیمات ذخیره نمی‌شود و به لاگ و گزارش پشتیبانی هم نمی‌رسد. گذرواژه‌ای که دستی می‌گذارید در پروندهٔ تنظیمات به‌صورت متن ساده می‌ماند.';
 
   @override
   String get localProxyFieldUser => 'نام کاربری';
@@ -2370,4 +2370,106 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'فایل‌ها سر جایشان هستند، اما هسته آن‌ها را نخواند. دانلود دوبارهٔ داده‌ها معمولاً کمک می‌کند.';
+
+  @override
+  String get pingPendingTooltip =>
+      'تأخیر TCP تا سرور. بررسی کانال هنوز ادامه دارد و معلوم نیست سرور واقعاً کار می‌کند یا نه.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'تأخیر TCP تا سرور. هیچ بررسی‌ای از راه تونل انجام نشده و تنها در دسترس بودن معلوم است.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'زمان اندازه‌گیری: $time';
+  }
+
+  @override
+  String get pingChecking => 'در حال بررسی';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'گذشته $elapsed · حدود $remaining مانده';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'گذشته $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'اندازه‌گیری سرعت: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      'گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و همهٔ ترافیک از VPN می‌گذرد.';
+
+  @override
+  String get autoWarnAllVpn =>
+      'حالت «همه‌چیز از راه VPN» انتخاب شده و قاعده‌های شما فعلاً اثری ندارند.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      'گزینهٔ «قاعده‌های من بر قاعده‌های پنل مقدم است» روشن است.';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'این بر خود بررسی اثری ندارد: کاوش‌ها با هر تنظیمی از کنار VPN می‌گذرند. اما در حالت TUN از فرایند هسته عبور می‌کنند؛ اگر هسته گیر کرده باشد، همهٔ نتیجه‌ها منفی کاذب خواهند بود.';
+
+  @override
+  String get autoWarnTurnOff => 'خاموش کردن';
+
+  @override
+  String get toastCollapse => 'جمع کردن';
+
+  @override
+  String get toastExpand => 'باز کردن';
+
+  @override
+  String get toastOpenAutoConfig => 'باز کردن تنظیم خودکار';
+
+  @override
+  String get splitAppAlreadyAdded => 'این برنامه از پیش در فهرست قاعده‌ها هست';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size، $lines خط';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'گزارش‌های پشتیبانی: $count، $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'نگه‌داشتن گزارش‌ها و لاگ‌ها';
+
+  @override
+  String get logsRetentionDay => '۱ روز';
+
+  @override
+  String get logsRetentionTwoWeeks => '۲ هفته';
+
+  @override
+  String get logsRetentionMonth => '۱ ماه';
+
+  @override
+  String get logsRetentionNever => 'هرگز حذف نشود';
+
+  @override
+  String get logsRetentionInfo =>
+      'لاگ‌ها و گزارش‌های پشتیبانی وقتی از مدت انتخاب‌شده کهنه‌تر شوند حذف می‌شوند و بررسی هنگام آغاز برنامه انجام می‌گیرد. گزینهٔ «هرگز» همه‌چیز را روی دیسک نگه می‌دارد؛ آنگاه خودتان حجم را بپایید، چون گزارش لاگ‌ها را به‌طور کامل در خود دارد و همراه آن‌ها بزرگ می‌شود.';
+
+  @override
+  String get logsCleanNow => 'حذف موارد قدیمی';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'پرونده‌های حذف‌شده: $count، آزادشده $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'چیزی برای حذف نیست';
 }

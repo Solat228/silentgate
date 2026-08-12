@@ -164,7 +164,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'The token is stored in the settings file in plain text and ends up in backups. Whoever has it can switch the server and read the subscription status.';
+      'The token sits in the settings file in plain text. It never reaches the log or the support report, but anyone who has it can switch servers and read your subscription state.';
 
   @override
   String get apiExitsTitle => 'Servers with a dedicated port';
@@ -2273,7 +2273,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'A new random password on every connection — stored nowhere';
+      'A new random password for every connection — not kept in the settings';
 
   @override
   String get localProxyAuthCustom =>
@@ -2295,7 +2295,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'Needed only if you enter our proxy (127.0.0.1) into another program yourself. Leave the fields empty and the password will be random on every connection: it is stored nowhere and never gets into backups.';
+      'Needed only if you point a third-party program at our proxy (127.0.0.1) yourself. Leave the fields empty and the password will be random for every connection: it is not kept in the settings and never reaches the log or the support report. A password you set by hand stays in the settings file in plain text.';
 
   @override
   String get localProxyFieldUser => 'Username';
@@ -2375,4 +2375,106 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'The files are there, but the core did not read them. Re-downloading the databases usually helps.';
+
+  @override
+  String get pingPendingTooltip =>
+      'TCP latency to the server. The channel check is still running — whether the server actually works is not known yet.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'TCP latency to the server. No check through the tunnel was made — only reachability is known.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'Measured: $time';
+  }
+
+  @override
+  String get pingChecking => 'checking';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'Elapsed $elapsed · about $remaining left';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'Elapsed $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'Measuring speed: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      '“Never use the real IP” is on — all traffic goes through the VPN.';
+
+  @override
+  String get autoWarnAllVpn =>
+      '“Everything through VPN” mode is selected — your rules are not in effect right now.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      '“My rules override the panel\'s rules” is on.';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'This does not affect the check itself: probes bypass the VPN under any settings. But in TUN mode they still go through the core process — if the core has hung, every result will be a false negative.';
+
+  @override
+  String get autoWarnTurnOff => 'Turn off';
+
+  @override
+  String get toastCollapse => 'Collapse';
+
+  @override
+  String get toastExpand => 'Expand';
+
+  @override
+  String get toastOpenAutoConfig => 'Open auto-tuning';
+
+  @override
+  String get splitAppAlreadyAdded => 'This app is already in the rules list';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size, $lines lines';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'Support reports: $count, $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'Keep logs and reports';
+
+  @override
+  String get logsRetentionDay => '1 day';
+
+  @override
+  String get logsRetentionTwoWeeks => '2 weeks';
+
+  @override
+  String get logsRetentionMonth => '1 month';
+
+  @override
+  String get logsRetentionNever => 'Never delete';
+
+  @override
+  String get logsRetentionInfo =>
+      'Logs and support reports are deleted once they are older than the selected period. The check runs when the app starts. “Never” keeps everything on disk — then watch the size yourself: a report embeds the logs in full and grows along with them.';
+
+  @override
+  String get logsCleanNow => 'Delete old ones now';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'Files deleted: $count, freed $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'Nothing to delete';
 }

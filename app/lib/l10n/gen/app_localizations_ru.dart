@@ -165,7 +165,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'Токен хранится в файле настроек открытым текстом и попадает в резервные копии. Тот, у кого он есть, может переключать сервер и читать состояние подписки.';
+      'Токен лежит в файле настроек открытым текстом. В журнал и отчёт для поддержки он не попадает, но тот, у кого он есть, может переключать сервер и читать состояние подписки.';
 
   @override
   String get apiExitsTitle => 'Серверы с отдельным портом';
@@ -2276,7 +2276,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'Новый случайный пароль на каждое подключение — нигде не сохраняется';
+      'Новый случайный пароль на каждое подключение — не хранится в настройках';
 
   @override
   String get localProxyAuthCustom =>
@@ -2299,7 +2299,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он нигде не сохраняется и не попадает в резервные копии.';
+      'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он не хранится в настройках и не попадает ни в журнал, ни в отчёт для поддержки. Заданный вручную остаётся в файле настроек открытым текстом.';
 
   @override
   String get localProxyFieldUser => 'Логин';
@@ -2378,4 +2378,106 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.';
+
+  @override
+  String get pingPendingTooltip =>
+      'Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'Задержка TCP до сервера. Проверка через туннель не проводилась — известна только достижимость.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'Замер: $time';
+  }
+
+  @override
+  String get pingChecking => 'проверяю';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'Прошло $elapsed · осталось примерно $remaining';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'Прошло $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'Замеряю скорость: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      'Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.';
+
+  @override
+  String get autoWarnAllVpn =>
+      'Выбран режим «Все — через VPN» — ваши правила сейчас не действуют.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      'Включено «Мои правила важнее правил панели».';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра — если ядро зависло, все результаты будут ложно-отрицательными.';
+
+  @override
+  String get autoWarnTurnOff => 'Отключить';
+
+  @override
+  String get toastCollapse => 'Свернуть';
+
+  @override
+  String get toastExpand => 'Развернуть';
+
+  @override
+  String get toastOpenAutoConfig => 'Открыть автонастройку';
+
+  @override
+  String get splitAppAlreadyAdded => 'Это приложение уже в списке правил';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size, строк $lines';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'Отчёты для поддержки: $count шт., $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'Хранить логи и отчёты';
+
+  @override
+  String get logsRetentionDay => '1 день';
+
+  @override
+  String get logsRetentionTwoWeeks => '2 недели';
+
+  @override
+  String get logsRetentionMonth => 'Месяц';
+
+  @override
+  String get logsRetentionNever => 'Никогда не удалять';
+
+  @override
+  String get logsRetentionInfo =>
+      'Логи и отчёты для поддержки удаляются, когда становятся старше выбранного срока. Проверка идёт при запуске приложения. «Никогда» оставляет всё на диске — тогда следите за размером сами: отчёт включает в себя логи целиком и растёт вместе с ними.';
+
+  @override
+  String get logsCleanNow => 'Удалить старые сейчас';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'Удалено файлов: $count, освобождено $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'Удалять нечего';
 }

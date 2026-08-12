@@ -82,22 +82,30 @@
   "apiEnableSub": "HTTP на 127.0.0.1:{port} — управление клиентом из скриптов",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Токен",
   "apiTokenUnset": "Не задан — API не поднимается",
   "apiTokenRegenerate": "Обновить токен",
-  "apiTokenWarning": "Токен хранится в файле настроек открытым текстом и попадает в резервные копии. Тот, у кого он есть, может переключать сервер и читать состояние подписки.",
+  "apiTokenWarning": "Токен лежит в файле настроек открытым текстом. В журнал и отчёт для поддержки он не попадает, но тот, у кого он есть, может переключать сервер и читать состояние подписки.",
   "apiExitsTitle": "Серверы с отдельным портом",
   "apiExitsSub": "Каждому выдаётся свой локальный порт — запрос в него идёт через этот сервер",
   "apiCopyPythonExample": "Скопировать пример для Python",
   "apiPortsHint": "Управление — порт {control}. «Прямо» — порт {direct}. Серверы — с {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Применять правила раздельного туннелирования",
@@ -105,21 +113,29 @@
   "apiCaptureModeWarning": "⚠️ Выбран захват «Системный прокси» — порты выходов в нём не открываются, и соединение в них будет отвергнуто. Управляющий порт {control} работает при любом захвате. Нужны порты выходов — выберите «TUN (полный туннель)» или «Только прокси».",
   "@apiCaptureModeWarning": {
     "placeholders": {
-      "control": {"type": "int"}
+      "control": {
+        "type": "int"
+      }
     }
   },
   "apiPortBusyTitle": "API не поднялся",
   "apiPortBusy": "Порт {port} занят программой {holder}. Закройте её полностью, в том числе из трея, и включите тумблер заново.",
   "@apiPortBusy": {
     "placeholders": {
-      "port": {"type": "int"},
-      "holder": {"type": "String"}
+      "port": {
+        "type": "int"
+      },
+      "holder": {
+        "type": "String"
+      }
     }
   },
   "apiPortBusyUnknown": "Порт {port} занят другой программой, определить её не удалось. Чаще всего это другой VPN-клиент. Закройте его и включите тумблер заново.",
   "@apiPortBusyUnknown": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnlyEdit": "Список «Блок» редактируется на экране раздельного туннелирования",
@@ -1021,7 +1037,7 @@
   "localProxyAuthInfo": "Локальный порт ядра (127.0.0.1) — это полноценный прокси в ваш VPN. Без пароля к нему подключается любая программа на этом же устройстве и получает ваш туннель целиком: выходной IP, квоту подписки и обход ваших же правил раздельного туннелирования — включая приложения, которым вы поставили «Блок». На Android это особенно важно: там локальные порты видит любое установленное приложение.\n\nВыключайте, только если сознательно ходите в этот прокси чем-то, что не умеет аутентификацию.",
   "localProxyAuthOff": "Выключен: локальный прокси открыт любой программе на устройстве",
   "localProxyAuthSystemProxy": "В режиме системного прокси не применяется: Windows не умеет передавать пароль локальному прокси. Действует в режиме TUN.",
-  "localProxyAuthRandom": "Новый случайный пароль на каждое подключение — нигде не сохраняется",
+  "localProxyAuthRandom": "Новый случайный пароль на каждое подключение — не хранится в настройках",
   "localProxyAuthCustom": "Свои логин и пароль (хранятся в файле настроек)",
   "localProxyCredsTitle": "Свои логин и пароль",
   "localProxyCredsUnset": "Не заданы — используется случайный пароль",
@@ -1034,7 +1050,7 @@
     }
   },
   "localProxyDialogTitle": "Логин и пароль локального прокси",
-  "localProxyDialogBody": "Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он нигде не сохраняется и не попадает в резервные копии.",
+  "localProxyDialogBody": "Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он не хранится в настройках и не попадает ни в журнал, ни в отчёт для поддержки. Заданный вручную остаётся в файле настроек открытым текстом.",
   "localProxyFieldUser": "Логин",
   "localProxyFieldPassword": "Пароль",
   "localProxyFieldHint": "пусто — случайный",
@@ -1063,5 +1079,96 @@
   "geoVerdictMissingTitle": "Гео-базы не скачаны",
   "geoVerdictMissingSub": "Правила подписки по странам и категориям сейчас отключены — этот трафик идёт через VPN, а не напрямую.",
   "geoVerdictUnusableTitle": "Ядро не открыло гео-базы",
-  "geoVerdictUnusableSub": "Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз."
+  "geoVerdictUnusableSub": "Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.",
+  "pingPendingTooltip": "Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.",
+  "pingUnverifiedTooltip": "Задержка TCP до сервера. Проверка через туннель не проводилась — известна только достижимость.",
+  "pingMeasuredAt": "Замер: {time}",
+  "@pingMeasuredAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "pingChecking": "проверяю",
+  "autoTimer": "Прошло {elapsed} · осталось примерно {remaining}",
+  "@autoTimer": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      },
+      "remaining": {
+        "type": "String"
+      }
+    }
+  },
+  "autoTimerNoEstimate": "Прошло {elapsed}",
+  "@autoTimerNoEstimate": {
+    "placeholders": {
+      "elapsed": {
+        "type": "String"
+      }
+    }
+  },
+  "autoSpeedRanking": "Замеряю скорость: {name}",
+  "@autoSpeedRanking": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "autoWarnNoRealIp": "Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.",
+  "autoWarnAllVpn": "Выбран режим «Все — через VPN» — ваши правила сейчас не действуют.",
+  "autoWarnPanelOverride": "Включено «Мои правила важнее правил панели».",
+  "autoWarnProbesDirect": "На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра — если ядро зависло, все результаты будут ложно-отрицательными.",
+  "autoWarnTurnOff": "Отключить",
+  "toastCollapse": "Свернуть",
+  "toastExpand": "Развернуть",
+  "toastOpenAutoConfig": "Открыть автонастройку",
+  "splitAppAlreadyAdded": "Это приложение уже в списке правил",
+  "logsFileLine": "{name} — {size}, строк {lines}",
+  "@logsFileLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      },
+      "lines": {
+        "type": "int"
+      }
+    }
+  },
+  "logsReportsLine": "Отчёты для поддержки: {count} шт., {size}",
+  "@logsReportsLine": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsRetentionTitle": "Хранить логи и отчёты",
+  "logsRetentionDay": "1 день",
+  "logsRetentionTwoWeeks": "2 недели",
+  "logsRetentionMonth": "Месяц",
+  "logsRetentionNever": "Никогда не удалять",
+  "logsRetentionInfo": "Логи и отчёты для поддержки удаляются, когда становятся старше выбранного срока. Проверка идёт при запуске приложения. «Никогда» оставляет всё на диске — тогда следите за размером сами: отчёт включает в себя логи целиком и растёт вместе с ними.",
+  "logsCleanNow": "Удалить старые сейчас",
+  "logsCleaned": "Удалено файлов: {count}, освобождено {size}",
+  "@logsCleaned": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsNothingToClean": "Удалять нечего"
 }

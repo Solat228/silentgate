@@ -47,22 +47,30 @@
   "apiEnableSub": "HTTP sur 127.0.0.1:{port} — contrôler le client depuis des scripts",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Jeton",
   "apiTokenUnset": "Non défini — l'API ne démarre pas",
   "apiTokenRegenerate": "Régénérer le jeton",
-  "apiTokenWarning": "Le jeton est stocké en clair dans le fichier de configuration et se retrouve dans les sauvegardes. Quiconque le possède peut changer de serveur et lire l'état de l'abonnement.",
+  "apiTokenWarning": "Le jeton se trouve en clair dans le fichier de réglages. Il n'apparaît ni dans le journal ni dans le rapport d'assistance, mais quiconque le possède peut changer de serveur et lire l'état de votre abonnement.",
   "apiExitsTitle": "Serveurs avec un port dédié",
   "apiExitsSub": "Chacun reçoit son propre port local — une requête vers ce port passe par ce serveur",
   "apiCopyPythonExample": "Copier l'exemple Python",
   "apiPortsHint": "Contrôle — port {control}. « Direct » — port {direct}. Serveurs — à partir de {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Appliquer les règles de tunneling fractionné",
@@ -794,7 +802,7 @@
   "localProxyAuthInfo": "Le port local du cœur (127.0.0.1) est un vrai proxy vers votre VPN. Sans mot de passe, n'importe quel programme du même appareil s'y connecte et récupère tout votre tunnel : l'IP de sortie, le quota de l'abonnement et le contournement de vos propres règles de tunneling fractionné — y compris les applications que vous avez mises sur « Bloquer ». Sur Android, c'est encore plus important : là-bas, toute application installée voit les ports locaux.\n\nNe le désactivez que si vous utilisez sciemment ce proxy avec un programme qui ne gère pas l'authentification.",
   "localProxyAuthOff": "Désactivé : le proxy local est ouvert à tout programme de l'appareil",
   "localProxyAuthSystemProxy": "Sans effet en mode proxy système : Windows ne sait pas transmettre de mot de passe au proxy local. Actif en mode TUN.",
-  "localProxyAuthRandom": "Un nouveau mot de passe aléatoire à chaque connexion — il n'est enregistré nulle part",
+  "localProxyAuthRandom": "Nouveau mot de passe aléatoire à chaque connexion — non conservé dans les réglages",
   "localProxyAuthCustom": "Identifiant et mot de passe personnalisés (stockés dans le fichier de paramètres)",
   "localProxyCredsTitle": "Identifiant et mot de passe personnalisés",
   "localProxyCredsUnset": "Non définis — un mot de passe aléatoire est utilisé",
@@ -807,7 +815,7 @@
     }
   },
   "localProxyDialogTitle": "Identifiant et mot de passe du proxy local",
-  "localProxyDialogBody": "Nécessaires uniquement si vous indiquez vous-même notre proxy (127.0.0.1) dans un programme tiers. Laissez les champs vides et le mot de passe sera aléatoire à chaque connexion : il n'est enregistré nulle part et ne se retrouve pas dans les sauvegardes.",
+  "localProxyDialogBody": "Utiles uniquement si vous indiquez vous-même notre proxy (127.0.0.1) dans un autre programme. Laissez les champs vides et le mot de passe sera aléatoire à chaque connexion : il n'est pas conservé dans les réglages et n'apparaît ni dans le journal ni dans le rapport d'assistance. Celui que vous saisissez à la main reste en clair dans le fichier de réglages.",
   "localProxyFieldUser": "Identifiant",
   "localProxyFieldPassword": "Mot de passe",
   "localProxyFieldHint": "vide — aléatoire",
@@ -836,5 +844,32 @@
   "geoVerdictMissingTitle": "Bases géo non téléchargées",
   "geoVerdictMissingSub": "Les règles de l'abonnement par pays et par catégorie sont désactivées — ce trafic passe par le VPN et non en direct.",
   "geoVerdictUnusableTitle": "Le cœur n'a pas ouvert les bases géo",
-  "geoVerdictUnusableSub": "Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement."
+  "geoVerdictUnusableSub": "Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement.",
+  "pingPendingTooltip": "Latence TCP jusqu'au serveur. La vérification du canal est encore en cours : on ne sait pas encore si le serveur fonctionne.",
+  "pingUnverifiedTooltip": "Latence TCP jusqu'au serveur. Aucune vérification via le tunnel n'a été faite : seule l'accessibilité est connue.",
+  "pingMeasuredAt": "Mesuré : {time}",
+  "pingChecking": "vérification",
+  "autoTimer": "Écoulé {elapsed} · il reste environ {remaining}",
+  "autoTimerNoEstimate": "Écoulé {elapsed}",
+  "autoSpeedRanking": "Mesure du débit : {name}",
+  "autoWarnNoRealIp": "« Ne jamais utiliser l'IP réelle » est activé : tout le trafic passe par le VPN.",
+  "autoWarnAllVpn": "Le mode « Tout par le VPN » est sélectionné : vos règles ne s'appliquent pas pour le moment.",
+  "autoWarnPanelOverride": "« Mes règles priment sur celles du panneau » est activé.",
+  "autoWarnProbesDirect": "Cela n'influence pas la vérification elle-même : les sondes contournent le VPN quels que soient les réglages. Mais en mode TUN elles passent par le processus du cœur — si celui-ci est bloqué, tous les résultats seront des faux négatifs.",
+  "autoWarnTurnOff": "Désactiver",
+  "toastCollapse": "Réduire",
+  "toastExpand": "Développer",
+  "toastOpenAutoConfig": "Ouvrir la configuration automatique",
+  "splitAppAlreadyAdded": "Cette application est déjà dans la liste des règles",
+  "logsFileLine": "{name} — {size}, {lines} lignes",
+  "logsReportsLine": "Rapports d'assistance : {count}, {size}",
+  "logsRetentionTitle": "Conserver les journaux et les rapports",
+  "logsRetentionDay": "1 jour",
+  "logsRetentionTwoWeeks": "2 semaines",
+  "logsRetentionMonth": "1 mois",
+  "logsRetentionNever": "Ne jamais supprimer",
+  "logsRetentionInfo": "Les journaux et les rapports d'assistance sont supprimés dès qu'ils dépassent la durée choisie. La vérification a lieu au démarrage de l'application. « Jamais » conserve tout sur le disque : surveillez alors vous-même la taille, car un rapport contient les journaux en entier et grossit avec eux.",
+  "logsCleanNow": "Supprimer les anciens maintenant",
+  "logsCleaned": "Fichiers supprimés : {count}, {size} libérés",
+  "logsNothingToClean": "Rien à supprimer"
 }

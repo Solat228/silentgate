@@ -175,10 +175,17 @@ class SplitTunnelScreen extends StatelessWidget {
                                 // На Android сопоставления «по имени/по пути»
                                 // нет — там имя пакета, и подпись «По имени ·
                                 // com.android.chrome» только путала.
+                                // ⚠️ Показываем ТО, ПО ЧЕМУ РЕАЛЬНО СРАВНИВАЕМ.
+                                // Раньше подпись гласила «По имени · <полный
+                                // путь>» — то есть называла способ, а
+                                // показывала поле, к сопоставлению отношения не
+                                // имеющее. Четыре записи одной программы, все
+                                // с разными путями, выглядели разными
+                                // правилами, хотя правило было одно.
                                 ? (Platform.isAndroid || Platform.isIOS
                                     ? rule.path
                                     : '${rule.byName ? l.splitByName : l.splitByPath}'
-                                        ' · ${rule.path}')
+                                        ' · ${rule.byName ? rule.name : rule.path}')
                                 : l.splitRuleDisabled,
                             action: rule.action,
                             allowRealIp: rule.allowRealIp,
@@ -343,10 +350,11 @@ class SplitTunnelScreen extends StatelessWidget {
     if (paths.isEmpty) return;
     c.update((s) {
       final apps = [...s.splitTunnel.apps];
-      final have = {for (final a in apps) a.path.toLowerCase()};
       for (final path in paths) {
-        if (have.contains(path.toLowerCase())) continue;
-        have.add(path.toLowerCase());
+        // ⚠️ Спрашиваем у правил, покрывают ли они эту программу, а НЕ сравниваем
+        // пути. Правило «по имени» ловит процесс по имени файла, поэтому запись
+        // с прежним путём (до обновления программы) — это та же самая запись.
+        if (apps.any((a) => a.matches(path))) continue;
         apps.add(AppRule(path,
             byName: true, action: s.splitTunnel.defaultAction));
       }
@@ -354,7 +362,9 @@ class SplitTunnelScreen extends StatelessWidget {
     });
   }
 
-  void _addApp(SettingsController c, String path) {
+  /// `false` — правило на эту программу уже есть (вызывающий скажет об этом).
+  bool _addApp(SettingsController c, String path) {
+    if (c.settings.splitTunnel.containsApp(path)) return false;
     c.update((s) {
       if (s.splitTunnel.containsApp(path)) return s;
       // #3 — по умолчанию сопоставляем ПО ИМЕНИ: sing-box сравнивает process_path
@@ -367,13 +377,17 @@ class SplitTunnelScreen extends StatelessWidget {
           splitTunnel: s.splitTunnel
               .copyWith(apps: [...s.splitTunnel.apps, rule]));
     });
+    return true;
   }
 
   void _removeApp(SettingsController c, AppRule rule) {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
             apps: s.splitTunnel.apps
-                .where((a) => a.path != rule.path)
+                // По ключу сопоставления, а не по пути: у правила «по имени»
+                // путь — это лишь путь, по которому его когда-то завели, и он
+                // устаревает при первом же обновлении программы.
+                .where((a) => a.matchKey != rule.matchKey)
                 .toList())));
   }
 
@@ -386,7 +400,9 @@ class SplitTunnelScreen extends StatelessWidget {
     c.update((s) => s.copyWith(
         splitTunnel: s.splitTunnel.copyWith(
             apps: s.splitTunnel.apps
-                .map((a) => a.path == rule.path
+                // `rule` — состояние ДО правки, поэтому его ключ совпадает с
+                // ключом искомого элемента даже когда правка меняет `byName`.
+                .map((a) => a.matchKey == rule.matchKey
                     ? a.copyWith(
                         action: action,
                         byName: byName,
@@ -451,7 +467,10 @@ class SplitTunnelScreen extends StatelessWidget {
           splitTunnel: s.splitTunnel.copyWith(
             apps: [
               for (final a in s.splitTunnel.apps)
-                a.path == rule.path
+                // Тот же ключ сопоставления, что и в _updateApp/_removeApp:
+                // четыре точки сравнения обязаны согласоваться, иначе выбор
+                // сервера уедет не на то правило.
+                a.matchKey == rule.matchKey
                     ? a.copyWith(serverKey: key, clearServer: key == null)
                     : a
             ],
@@ -712,7 +731,13 @@ class SplitTunnelScreen extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final group = XTypeGroup(label: l.splitProgramsFileType, extensions: const ['exe']);
     final file = await openFile(acceptedTypeGroups: [group]);
-    if (file != null) _addApp(c, file.path);
+    if (file == null) return;
+    // Молчаливое «ничего не произошло» читается как поломка: пользователь выбрал
+    // файл, а список не изменился. Говорим, почему.
+    final added = _addApp(c, file.path);
+    if (!added && context.mounted) {
+      AppToast.show(context, l.splitAppAlreadyAdded);
+    }
   }
 
   Future<void> _pickRunning(BuildContext context, SettingsController c) async {

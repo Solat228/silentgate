@@ -166,7 +166,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'O token é armazenado em texto simples no arquivo de configurações e vai para os backups. Quem o tiver pode trocar o servidor e ler o estado da assinatura.';
+      'O token fica no arquivo de configurações em texto puro. Ele não chega ao registro nem ao relatório de suporte, mas quem o tiver pode trocar de servidor e ler o estado da sua assinatura.';
 
   @override
   String get apiExitsTitle => 'Servidores com porta dedicada';
@@ -2295,7 +2295,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'Uma nova senha aleatória a cada conexão — não é salva em lugar nenhum';
+      'Nova senha aleatória a cada conexão — não fica guardada nas configurações';
 
   @override
   String get localProxyAuthCustom =>
@@ -2318,7 +2318,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'Só são necessários se você mesmo indicar o nosso proxy (127.0.0.1) em outro programa. Deixe os campos vazios e a senha será aleatória a cada conexão: ela não é salva em lugar nenhum e não entra nos backups.';
+      'Necessários apenas se você mesmo apontar outro programa para o nosso proxy (127.0.0.1). Deixe os campos vazios e a senha será aleatória a cada conexão: ela não fica guardada nas configurações e não chega ao registro nem ao relatório de suporte. A senha definida à mão permanece no arquivo de configurações em texto puro.';
 
   @override
   String get localProxyFieldUser => 'Usuário';
@@ -2397,4 +2397,107 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'Os arquivos estão no lugar, mas o núcleo não os leu. Baixar as bases de novo costuma resolver.';
+
+  @override
+  String get pingPendingTooltip =>
+      'Latência TCP até o servidor. A verificação do canal ainda está em andamento — ainda não se sabe se o servidor funciona.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'Latência TCP até o servidor. Nenhuma verificação pelo túnel foi feita — só se conhece a acessibilidade.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'Medido: $time';
+  }
+
+  @override
+  String get pingChecking => 'verificando';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'Decorrido $elapsed · faltam cerca de $remaining';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'Decorrido $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'Medindo a velocidade: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      '«Nunca usar o IP real» está ativado — todo o tráfego passa pela VPN.';
+
+  @override
+  String get autoWarnAllVpn =>
+      'O modo «Tudo pela VPN» está selecionado — suas regras não estão em vigor agora.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      '«Minhas regras têm prioridade sobre as do painel» está ativado.';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'Isso não afeta a verificação em si: as sondagens contornam a VPN em qualquer configuração. Mas no modo TUN elas passam pelo processo do núcleo — se o núcleo travou, todos os resultados serão falsos negativos.';
+
+  @override
+  String get autoWarnTurnOff => 'Desativar';
+
+  @override
+  String get toastCollapse => 'Recolher';
+
+  @override
+  String get toastExpand => 'Expandir';
+
+  @override
+  String get toastOpenAutoConfig => 'Abrir a configuração automática';
+
+  @override
+  String get splitAppAlreadyAdded =>
+      'Este aplicativo já está na lista de regras';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size, $lines linhas';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'Relatórios de suporte: $count, $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'Manter registros e relatórios';
+
+  @override
+  String get logsRetentionDay => '1 dia';
+
+  @override
+  String get logsRetentionTwoWeeks => '2 semanas';
+
+  @override
+  String get logsRetentionMonth => '1 mês';
+
+  @override
+  String get logsRetentionNever => 'Nunca excluir';
+
+  @override
+  String get logsRetentionInfo =>
+      'Os registros e os relatórios de suporte são excluídos quando ficam mais antigos que o prazo escolhido. A verificação ocorre ao iniciar o aplicativo. «Nunca» deixa tudo no disco — então acompanhe o tamanho você mesmo: um relatório inclui os registros por completo e cresce junto com eles.';
+
+  @override
+  String get logsCleanNow => 'Excluir os antigos agora';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'Arquivos excluídos: $count, liberados $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'Não há nada para excluir';
 }

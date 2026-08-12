@@ -164,7 +164,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get apiTokenWarning =>
-      'يُخزَّن الرمز في ملف الإعدادات كنص عادي وينتهي به المطاف في النسخ الاحتياطية. من يملكه يمكنه تبديل الخادم وقراءة حالة الاشتراك.';
+      'الرمز موجود في ملف الإعدادات كنص صريح. لا يصل إلى السجل ولا إلى تقرير الدعم، لكن من يحصل عليه يستطيع تبديل الخادم وقراءة حالة اشتراكك.';
 
   @override
   String get apiExitsTitle => 'خوادم بمنفذ مخصص';
@@ -2261,7 +2261,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'كلمة مرور عشوائية جديدة عند كل اتصال — لا تُحفظ في أي مكان';
+      'كلمة مرور عشوائية جديدة عند كل اتصال — لا تُحفظ في الإعدادات';
 
   @override
   String get localProxyAuthCustom =>
@@ -2283,7 +2283,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      'لا يلزمان إلا إذا كنت تُدخل بروكسينا (127.0.0.1) بنفسك في برنامج آخر. اترك الحقول فارغة وستكون كلمة المرور عشوائية عند كل اتصال: لا تُحفظ في أي مكان ولا تدخل في النسخ الاحتياطية.';
+      'لا تلزم إلا إذا أدخلت وكيلنا (127.0.0.1) بنفسك في برنامج آخر. اترك الحقول فارغة لتكون كلمة المرور عشوائية في كل اتصال: فهي لا تُحفظ في الإعدادات ولا تصل إلى السجل ولا إلى تقرير الدعم. أما التي تكتبها بنفسك فتبقى في ملف الإعدادات كنص صريح.';
 
   @override
   String get localProxyFieldUser => 'اسم المستخدم';
@@ -2363,4 +2363,107 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get geoVerdictUnusableSub =>
       'الملفات موجودة، لكن النواة لم تقرأها. يساعد عادةً تنزيل البيانات من جديد.';
+
+  @override
+  String get pingPendingTooltip =>
+      'زمن استجابة TCP إلى الخادم. فحص القناة ما زال جاريًا، ولا يُعرف بعد ما إذا كان الخادم يعمل فعلًا.';
+
+  @override
+  String get pingUnverifiedTooltip =>
+      'زمن استجابة TCP إلى الخادم. لم يجرِ أي فحص عبر النفق، والمعروف هو إمكانية الوصول فقط.';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return 'وقت القياس: $time';
+  }
+
+  @override
+  String get pingChecking => 'جارٍ الفحص';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return 'مضى $elapsed · بقي نحو $remaining';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return 'مضى $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return 'قياس السرعة: $name';
+  }
+
+  @override
+  String get autoWarnNoRealIp =>
+      'خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وكل البيانات تمر عبر VPN.';
+
+  @override
+  String get autoWarnAllVpn =>
+      'الوضع المختار هو «كل شيء عبر VPN»، وقواعدك غير سارية حاليًا.';
+
+  @override
+  String get autoWarnPanelOverride =>
+      'خيار «قواعدي أولى من قواعد اللوحة» مفعَّل.';
+
+  @override
+  String get autoWarnProbesDirect =>
+      'هذا لا يؤثر في الفحص نفسه: الاختبارات تتجاوز VPN مهما كانت الإعدادات. لكنها في وضع TUN تمر عبر عملية النواة، فإذا تعطّلت النواة صارت كل النتائج سلبية كاذبة.';
+
+  @override
+  String get autoWarnTurnOff => 'إيقاف';
+
+  @override
+  String get toastCollapse => 'طيّ';
+
+  @override
+  String get toastExpand => 'توسيع';
+
+  @override
+  String get toastOpenAutoConfig => 'فتح الضبط التلقائي';
+
+  @override
+  String get splitAppAlreadyAdded =>
+      'هذا التطبيق موجود بالفعل في قائمة القواعد';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size، $lines سطر';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return 'تقارير الدعم: $count، $size';
+  }
+
+  @override
+  String get logsRetentionTitle => 'الاحتفاظ بالسجلات والتقارير';
+
+  @override
+  String get logsRetentionDay => 'يوم واحد';
+
+  @override
+  String get logsRetentionTwoWeeks => 'أسبوعان';
+
+  @override
+  String get logsRetentionMonth => 'شهر واحد';
+
+  @override
+  String get logsRetentionNever => 'عدم الحذف أبدًا';
+
+  @override
+  String get logsRetentionInfo =>
+      'تُحذف السجلات وتقارير الدعم متى تجاوزت المدة المختارة، ويجري الفحص عند تشغيل التطبيق. خيار «أبدًا» يُبقي كل شيء على القرص، وعندها راقب الحجم بنفسك: التقرير يتضمن السجلات كاملة وينمو معها.';
+
+  @override
+  String get logsCleanNow => 'احذف القديم الآن';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return 'الملفات المحذوفة: $count، وتم تحرير $size';
+  }
+
+  @override
+  String get logsNothingToClean => 'لا شيء للحذف';
 }

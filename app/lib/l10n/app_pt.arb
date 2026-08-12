@@ -47,22 +47,30 @@
   "apiEnableSub": "HTTP em 127.0.0.1:{port} — controlar o cliente a partir de scripts",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Token",
   "apiTokenUnset": "Não definido — a API não inicia",
   "apiTokenRegenerate": "Renovar token",
-  "apiTokenWarning": "O token é armazenado em texto simples no arquivo de configurações e vai para os backups. Quem o tiver pode trocar o servidor e ler o estado da assinatura.",
+  "apiTokenWarning": "O token fica no arquivo de configurações em texto puro. Ele não chega ao registro nem ao relatório de suporte, mas quem o tiver pode trocar de servidor e ler o estado da sua assinatura.",
   "apiExitsTitle": "Servidores com porta dedicada",
   "apiExitsSub": "Cada um recebe sua própria porta local — uma solicitação a ela passa por esse servidor",
   "apiCopyPythonExample": "Copiar exemplo para Python",
   "apiPortsHint": "Controle — porta {control}. «Direto» — porta {direct}. Servidores — a partir de {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Aplicar regras de túnel dividido",
@@ -794,7 +802,7 @@
   "localProxyAuthInfo": "A porta local do núcleo (127.0.0.1) é um proxy completo para a sua VPN. Sem senha, qualquer programa neste mesmo dispositivo se conecta a ela e recebe o seu túnel inteiro: o IP de saída, a cota da assinatura e o contorno das suas próprias regras de túnel dividido — inclusive dos aplicativos que você marcou como «Bloquear». No Android isso é ainda mais importante: lá qualquer aplicativo instalado enxerga as portas locais.\n\nDesative apenas se você usa esse proxy de propósito com algo que não sabe autenticar.",
   "localProxyAuthOff": "Desativada: o proxy local fica aberto a qualquer programa do dispositivo",
   "localProxyAuthSystemProxy": "No modo de proxy do sistema não se aplica: o Windows não sabe passar a senha ao proxy local. Vale no modo TUN.",
-  "localProxyAuthRandom": "Uma nova senha aleatória a cada conexão — não é salva em lugar nenhum",
+  "localProxyAuthRandom": "Nova senha aleatória a cada conexão — não fica guardada nas configurações",
   "localProxyAuthCustom": "Seu próprio usuário e senha (guardados no arquivo de configurações)",
   "localProxyCredsTitle": "Seu usuário e senha",
   "localProxyCredsUnset": "Não definidos — é usada uma senha aleatória",
@@ -807,7 +815,7 @@
     }
   },
   "localProxyDialogTitle": "Usuário e senha do proxy local",
-  "localProxyDialogBody": "Só são necessários se você mesmo indicar o nosso proxy (127.0.0.1) em outro programa. Deixe os campos vazios e a senha será aleatória a cada conexão: ela não é salva em lugar nenhum e não entra nos backups.",
+  "localProxyDialogBody": "Necessários apenas se você mesmo apontar outro programa para o nosso proxy (127.0.0.1). Deixe os campos vazios e a senha será aleatória a cada conexão: ela não fica guardada nas configurações e não chega ao registro nem ao relatório de suporte. A senha definida à mão permanece no arquivo de configurações em texto puro.",
   "localProxyFieldUser": "Usuário",
   "localProxyFieldPassword": "Senha",
   "localProxyFieldHint": "vazio — aleatória",
@@ -836,5 +844,32 @@
   "geoVerdictMissingTitle": "Bases geo não baixadas",
   "geoVerdictMissingSub": "As regras da assinatura por país e categoria estão desligadas agora — esse tráfego vai pela VPN, e não direto.",
   "geoVerdictUnusableTitle": "O núcleo não abriu as bases geo",
-  "geoVerdictUnusableSub": "Os arquivos estão no lugar, mas o núcleo não os leu. Baixar as bases de novo costuma resolver."
+  "geoVerdictUnusableSub": "Os arquivos estão no lugar, mas o núcleo não os leu. Baixar as bases de novo costuma resolver.",
+  "pingPendingTooltip": "Latência TCP até o servidor. A verificação do canal ainda está em andamento — ainda não se sabe se o servidor funciona.",
+  "pingUnverifiedTooltip": "Latência TCP até o servidor. Nenhuma verificação pelo túnel foi feita — só se conhece a acessibilidade.",
+  "pingMeasuredAt": "Medido: {time}",
+  "pingChecking": "verificando",
+  "autoTimer": "Decorrido {elapsed} · faltam cerca de {remaining}",
+  "autoTimerNoEstimate": "Decorrido {elapsed}",
+  "autoSpeedRanking": "Medindo a velocidade: {name}",
+  "autoWarnNoRealIp": "«Nunca usar o IP real» está ativado — todo o tráfego passa pela VPN.",
+  "autoWarnAllVpn": "O modo «Tudo pela VPN» está selecionado — suas regras não estão em vigor agora.",
+  "autoWarnPanelOverride": "«Minhas regras têm prioridade sobre as do painel» está ativado.",
+  "autoWarnProbesDirect": "Isso não afeta a verificação em si: as sondagens contornam a VPN em qualquer configuração. Mas no modo TUN elas passam pelo processo do núcleo — se o núcleo travou, todos os resultados serão falsos negativos.",
+  "autoWarnTurnOff": "Desativar",
+  "toastCollapse": "Recolher",
+  "toastExpand": "Expandir",
+  "toastOpenAutoConfig": "Abrir a configuração automática",
+  "splitAppAlreadyAdded": "Este aplicativo já está na lista de regras",
+  "logsFileLine": "{name} — {size}, {lines} linhas",
+  "logsReportsLine": "Relatórios de suporte: {count}, {size}",
+  "logsRetentionTitle": "Manter registros e relatórios",
+  "logsRetentionDay": "1 dia",
+  "logsRetentionTwoWeeks": "2 semanas",
+  "logsRetentionMonth": "1 mês",
+  "logsRetentionNever": "Nunca excluir",
+  "logsRetentionInfo": "Os registros e os relatórios de suporte são excluídos quando ficam mais antigos que o prazo escolhido. A verificação ocorre ao iniciar o aplicativo. «Nunca» deixa tudo no disco — então acompanhe o tamanho você mesmo: um relatório inclui os registros por completo e cresce junto com eles.",
+  "logsCleanNow": "Excluir os antigos agora",
+  "logsCleaned": "Arquivos excluídos: {count}, liberados {size}",
+  "logsNothingToClean": "Não há nada para excluir"
 }

@@ -161,7 +161,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get apiTokenRegenerate => '重新生成令牌';
 
   @override
-  String get apiTokenWarning => '令牌以明文保存在设置文件中，并会出现在备份里。拥有该令牌的人可以切换服务器并读取订阅状态。';
+  String get apiTokenWarning =>
+      '令牌以明文保存在设置文件中。它不会出现在日志或支持报告里，但拿到它的人可以切换服务器并读取您的订阅状态。';
 
   @override
   String get apiExitsTitle => '拥有独立端口的服务器';
@@ -2208,7 +2209,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '在系统代理模式下不生效：Windows 无法把密码传给本地代理。仅在 TUN 模式下有效。';
 
   @override
-  String get localProxyAuthRandom => '每次连接都用新的随机密码——不保存到任何地方';
+  String get localProxyAuthRandom => '每次连接都使用新的随机密码——不保存在设置中';
 
   @override
   String get localProxyAuthCustom => '自定义用户名和密码（保存在设置文件中）';
@@ -2229,7 +2230,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localProxyDialogBody =>
-      '只有当你要在第三方程序里手动填写我们的代理（127.0.0.1）时才需要。把两个字段留空——密码就会在每次连接时随机生成：不保存到任何地方，也不会进入备份。';
+      '只有当您自己在第三方程序里填写我们的代理（127.0.0.1）时才需要。留空则每次连接都使用随机密码：它不会保存在设置中，也不会出现在日志或支持报告里。手动设置的密码会以明文留在设置文件中。';
 
   @override
   String get localProxyFieldUser => '用户名';
@@ -2302,4 +2303,101 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get geoVerdictUnusableSub => '文件都在，但核心没有读取它们。重新下载数据库通常可以解决。';
+
+  @override
+  String get pingPendingTooltip => '到服务器的 TCP 延迟。通道检查仍在进行，服务器是否真正可用尚不清楚。';
+
+  @override
+  String get pingUnverifiedTooltip => '到服务器的 TCP 延迟。未经过隧道检查，只知道是否可达。';
+
+  @override
+  String pingMeasuredAt(String time) {
+    return '测量时间：$time';
+  }
+
+  @override
+  String get pingChecking => '检查中';
+
+  @override
+  String autoTimer(String elapsed, String remaining) {
+    return '已用 $elapsed · 约剩 $remaining';
+  }
+
+  @override
+  String autoTimerNoEstimate(String elapsed) {
+    return '已用 $elapsed';
+  }
+
+  @override
+  String autoSpeedRanking(String name) {
+    return '正在测速：$name';
+  }
+
+  @override
+  String get autoWarnNoRealIp => '已开启“不暴露真实 IP”，全部流量都走 VPN。';
+
+  @override
+  String get autoWarnAllVpn => '当前为“全部走 VPN”模式，您的规则暂时不生效。';
+
+  @override
+  String get autoWarnPanelOverride => '已开启“我的规则优先于面板规则”。';
+
+  @override
+  String get autoWarnProbesDirect =>
+      '这不影响检查本身：无论怎样设置，探测都绕过 VPN。但在 TUN 模式下探测会经过内核进程——若内核卡死，所有结果都会是假阴性。';
+
+  @override
+  String get autoWarnTurnOff => '关闭';
+
+  @override
+  String get toastCollapse => '收起';
+
+  @override
+  String get toastExpand => '展开';
+
+  @override
+  String get toastOpenAutoConfig => '打开自动配置';
+
+  @override
+  String get splitAppAlreadyAdded => '该应用已在规则列表中';
+
+  @override
+  String logsFileLine(String name, String size, int lines) {
+    return '$name — $size，$lines 行';
+  }
+
+  @override
+  String logsReportsLine(int count, String size) {
+    return '支持报告：$count 个，$size';
+  }
+
+  @override
+  String get logsRetentionTitle => '保留日志与报告';
+
+  @override
+  String get logsRetentionDay => '1 天';
+
+  @override
+  String get logsRetentionTwoWeeks => '2 周';
+
+  @override
+  String get logsRetentionMonth => '1 个月';
+
+  @override
+  String get logsRetentionNever => '永不删除';
+
+  @override
+  String get logsRetentionInfo =>
+      '日志和支持报告超过所选期限后会被删除，检查在应用启动时进行。选择“永不”会把全部内容留在磁盘上——那就请自己留意占用：报告会完整包含日志，并随之增大。';
+
+  @override
+  String get logsCleanNow => '立即删除旧文件';
+
+  @override
+  String logsCleaned(int count, String size) {
+    return '已删除 $count 个文件，释放 $size';
+  }
+
+  @override
+  String get logsNothingToClean => '没有可删除的内容';
 }

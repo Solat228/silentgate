@@ -13,6 +13,25 @@ if not exist "%JUNCTION%\" (
 )
 
 cd /d "%JUNCTION%\app"
+set "REL=%JUNCTION%\app\build\windows\x64\runner\Release"
+rem ==== exe занят? ====
+rem Если приложение запущено ИЗ ЭТОЙ папки, линковка падает с LNK1104. Раньше в
+rem этот момент сборка уходила в обходную папку на C:, и владелец продолжал
+rem запускать старую версию, не зная об этом. Теперь честно останавливаемся.
+rem Рабочая копия владельца живёт в соседней папке Release ^(2^) - её НЕ трогаем.
+if exist "%REL%\silentgate.exe" (
+  2>nul ^( ^>^>"%REL%\silentgate.exe" call ^) ^|^| (
+    echo.
+    echo === silentgate.exe ЗАНЯТ ===
+    echo Файл: %REL%\silentgate.exe
+    echo Его держит запущенное приложение. Закройте SilentGate и повторите.
+    echo Свою рабочую копию из Release ^(2^) закрывать не нужно.
+    echo.
+    pause
+    exit /b 1
+  )
+)
+
 echo Сборка release...
 call "%FLUTTER%" build windows --release
 if errorlevel 1 (

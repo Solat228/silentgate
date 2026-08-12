@@ -405,7 +405,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiTokenWarning.
   ///
   /// In ru, this message translates to:
-  /// **'Токен хранится в файле настроек открытым текстом и попадает в резервные копии. Тот, у кого он есть, может переключать сервер и читать состояние подписки.'**
+  /// **'Токен лежит в файле настроек открытым текстом. В журнал и отчёт для поддержки он не попадает, но тот, у кого он есть, может переключать сервер и читать состояние подписки.'**
   String get apiTokenWarning;
 
   /// No description provided for @apiExitsTitle.
@@ -4065,7 +4065,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyAuthRandom.
   ///
   /// In ru, this message translates to:
-  /// **'Новый случайный пароль на каждое подключение — нигде не сохраняется'**
+  /// **'Новый случайный пароль на каждое подключение — не хранится в настройках'**
   String get localProxyAuthRandom;
 
   /// No description provided for @localProxyAuthCustom.
@@ -4101,7 +4101,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyDialogBody.
   ///
   /// In ru, this message translates to:
-  /// **'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он нигде не сохраняется и не попадает в резервные копии.'**
+  /// **'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он не хранится в настройках и не попадает ни в журнал, ни в отчёт для поддержки. Заданный вручную остаётся в файле настроек открытым текстом.'**
   String get localProxyDialogBody;
 
   /// No description provided for @localProxyFieldUser.
@@ -4235,6 +4235,168 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.'**
   String get geoVerdictUnusableSub;
+
+  /// No description provided for @pingPendingTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.'**
+  String get pingPendingTooltip;
+
+  /// No description provided for @pingUnverifiedTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Задержка TCP до сервера. Проверка через туннель не проводилась — известна только достижимость.'**
+  String get pingUnverifiedTooltip;
+
+  /// No description provided for @pingMeasuredAt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер: {time}'**
+  String pingMeasuredAt(String time);
+
+  /// No description provided for @pingChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'проверяю'**
+  String get pingChecking;
+
+  /// No description provided for @autoTimer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прошло {elapsed} · осталось примерно {remaining}'**
+  String autoTimer(String elapsed, String remaining);
+
+  /// No description provided for @autoTimerNoEstimate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прошло {elapsed}'**
+  String autoTimerNoEstimate(String elapsed);
+
+  /// No description provided for @autoSpeedRanking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замеряю скорость: {name}'**
+  String autoSpeedRanking(String name);
+
+  /// No description provided for @autoWarnNoRealIp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.'**
+  String get autoWarnNoRealIp;
+
+  /// No description provided for @autoWarnAllVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбран режим «Все — через VPN» — ваши правила сейчас не действуют.'**
+  String get autoWarnAllVpn;
+
+  /// No description provided for @autoWarnPanelOverride.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включено «Мои правила важнее правил панели».'**
+  String get autoWarnPanelOverride;
+
+  /// No description provided for @autoWarnProbesDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра — если ядро зависло, все результаты будут ложно-отрицательными.'**
+  String get autoWarnProbesDirect;
+
+  /// No description provided for @autoWarnTurnOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить'**
+  String get autoWarnTurnOff;
+
+  /// No description provided for @toastCollapse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть'**
+  String get toastCollapse;
+
+  /// No description provided for @toastExpand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть'**
+  String get toastExpand;
+
+  /// No description provided for @toastOpenAutoConfig.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть автонастройку'**
+  String get toastOpenAutoConfig;
+
+  /// No description provided for @splitAppAlreadyAdded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это приложение уже в списке правил'**
+  String get splitAppAlreadyAdded;
+
+  /// No description provided for @logsFileLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name} — {size}, строк {lines}'**
+  String logsFileLine(String name, String size, int lines);
+
+  /// No description provided for @logsReportsLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёты для поддержки: {count} шт., {size}'**
+  String logsReportsLine(int count, String size);
+
+  /// No description provided for @logsRetentionTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Хранить логи и отчёты'**
+  String get logsRetentionTitle;
+
+  /// No description provided for @logsRetentionDay.
+  ///
+  /// In ru, this message translates to:
+  /// **'1 день'**
+  String get logsRetentionDay;
+
+  /// No description provided for @logsRetentionTwoWeeks.
+  ///
+  /// In ru, this message translates to:
+  /// **'2 недели'**
+  String get logsRetentionTwoWeeks;
+
+  /// No description provided for @logsRetentionMonth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Месяц'**
+  String get logsRetentionMonth;
+
+  /// No description provided for @logsRetentionNever.
+  ///
+  /// In ru, this message translates to:
+  /// **'Никогда не удалять'**
+  String get logsRetentionNever;
+
+  /// No description provided for @logsRetentionInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логи и отчёты для поддержки удаляются, когда становятся старше выбранного срока. Проверка идёт при запуске приложения. «Никогда» оставляет всё на диске — тогда следите за размером сами: отчёт включает в себя логи целиком и растёт вместе с ними.'**
+  String get logsRetentionInfo;
+
+  /// No description provided for @logsCleanNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить старые сейчас'**
+  String get logsCleanNow;
+
+  /// No description provided for @logsCleaned.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалено файлов: {count}, освобождено {size}'**
+  String logsCleaned(int count, String size);
+
+  /// No description provided for @logsNothingToClean.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалять нечего'**
+  String get logsNothingToClean;
 }
 
 class _AppLocalizationsDelegate

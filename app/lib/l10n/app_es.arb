@@ -73,22 +73,30 @@
   "apiEnableSub": "HTTP en 127.0.0.1:{port} — controla el cliente desde scripts",
   "@apiEnableSub": {
     "placeholders": {
-      "port": {"type": "int"}
+      "port": {
+        "type": "int"
+      }
     }
   },
   "apiTokenTitle": "Token",
   "apiTokenUnset": "No definido — la API no se inicia",
   "apiTokenRegenerate": "Renovar token",
-  "apiTokenWarning": "El token se guarda en el archivo de configuración en texto plano y queda incluido en las copias de seguridad. Quien lo tenga puede cambiar el servidor y leer el estado de la suscripción.",
+  "apiTokenWarning": "El token está en el archivo de ajustes en texto plano. No llega al registro ni al informe de soporte, pero quien lo tenga puede cambiar de servidor y leer el estado de tu suscripción.",
   "apiExitsTitle": "Servidores con puerto propio",
   "apiExitsSub": "Cada uno recibe su propio puerto local — una solicitud a ese puerto pasa por ese servidor",
   "apiCopyPythonExample": "Copiar ejemplo para Python",
   "apiPortsHint": "Control — puerto {control}. «Directo» — puerto {direct}. Servidores — desde {first}.",
   "@apiPortsHint": {
     "placeholders": {
-      "control": {"type": "int"},
-      "direct": {"type": "int"},
-      "first": {"type": "int"}
+      "control": {
+        "type": "int"
+      },
+      "direct": {
+        "type": "int"
+      },
+      "first": {
+        "type": "int"
+      }
     }
   },
   "apiRulesInProxyOnly": "Aplicar las reglas de túnel dividido",
@@ -855,7 +863,7 @@
   "localProxyAuthInfo": "El puerto local del núcleo (127.0.0.1) es un proxy completo hacia tu VPN. Sin contraseña, cualquier programa de este mismo dispositivo se conecta a él y se lleva tu túnel entero: la IP de salida, la cuota de la suscripción y el salto de tus propias reglas de túnel dividido, incluidas las apps a las que pusiste «Bloquear». En Android esto importa aún más: ahí cualquier app instalada ve los puertos locales.\n\nDesactívala solo si entras a este proxy a propósito con algo que no sabe autenticarse.",
   "localProxyAuthOff": "Desactivada: el proxy local está abierto a cualquier programa del dispositivo",
   "localProxyAuthSystemProxy": "En modo «Proxy del sistema» no se aplica: Windows no sabe pasarle la contraseña al proxy local. Funciona en modo TUN.",
-  "localProxyAuthRandom": "Una contraseña aleatoria nueva en cada conexión — no se guarda en ningún sitio",
+  "localProxyAuthRandom": "Contraseña aleatoria nueva en cada conexión: no se guarda en los ajustes",
   "localProxyAuthCustom": "Usuario y contraseña propios (se guardan en el archivo de ajustes)",
   "localProxyCredsTitle": "Usuario y contraseña propios",
   "localProxyCredsUnset": "Sin definir — se usa una contraseña aleatoria",
@@ -868,7 +876,7 @@
     }
   },
   "localProxyDialogTitle": "Usuario y contraseña del proxy local",
-  "localProxyDialogBody": "Solo hacen falta si tú mismo indicas nuestro proxy (127.0.0.1) en otro programa. Deja los campos vacíos y la contraseña será aleatoria en cada conexión: no se guarda en ningún sitio ni entra en las copias de seguridad.",
+  "localProxyDialogBody": "Solo hacen falta si tú mismo indicas nuestro proxy (127.0.0.1) en otro programa. Deja los campos vacíos y la contraseña será aleatoria en cada conexión: no se guarda en los ajustes ni llega al registro ni al informe de soporte. La que escribas a mano queda en el archivo de ajustes en texto plano.",
   "localProxyFieldUser": "Usuario",
   "localProxyFieldPassword": "Contraseña",
   "localProxyFieldHint": "vacío — aleatoria",
@@ -897,5 +905,32 @@
   "geoVerdictMissingTitle": "Bases geo sin descargar",
   "geoVerdictMissingSub": "Las reglas de la suscripción por país y categoría están ahora desactivadas: ese tráfico va por la VPN, no directo.",
   "geoVerdictUnusableTitle": "El núcleo no abrió las bases geo",
-  "geoVerdictUnusableSub": "Los archivos están, pero el núcleo no los ha leído. Suele ayudar volver a descargarlas."
+  "geoVerdictUnusableSub": "Los archivos están, pero el núcleo no los ha leído. Suele ayudar volver a descargarlas.",
+  "pingPendingTooltip": "Latencia TCP hasta el servidor. La comprobación del canal sigue en curso: todavía no se sabe si el servidor funciona.",
+  "pingUnverifiedTooltip": "Latencia TCP hasta el servidor. No se hizo ninguna comprobación a través del túnel: solo se conoce la accesibilidad.",
+  "pingMeasuredAt": "Medido: {time}",
+  "pingChecking": "comprobando",
+  "autoTimer": "Transcurrido {elapsed} · quedan unos {remaining}",
+  "autoTimerNoEstimate": "Transcurrido {elapsed}",
+  "autoSpeedRanking": "Midiendo la velocidad: {name}",
+  "autoWarnNoRealIp": "«Nunca usar la IP real» está activado: todo el tráfico pasa por la VPN.",
+  "autoWarnAllVpn": "Está seleccionado el modo «Todo por VPN»: tus reglas no se aplican ahora mismo.",
+  "autoWarnPanelOverride": "«Mis reglas tienen prioridad sobre las del panel» está activado.",
+  "autoWarnProbesDirect": "Esto no afecta a la comprobación en sí: las pruebas evitan la VPN con cualquier ajuste. Pero en modo TUN pasan por el proceso del núcleo; si el núcleo se ha colgado, todos los resultados serán falsos negativos.",
+  "autoWarnTurnOff": "Desactivar",
+  "toastCollapse": "Contraer",
+  "toastExpand": "Expandir",
+  "toastOpenAutoConfig": "Abrir la configuración automática",
+  "splitAppAlreadyAdded": "Esta aplicación ya está en la lista de reglas",
+  "logsFileLine": "{name} — {size}, {lines} líneas",
+  "logsReportsLine": "Informes de soporte: {count}, {size}",
+  "logsRetentionTitle": "Conservar registros e informes",
+  "logsRetentionDay": "1 día",
+  "logsRetentionTwoWeeks": "2 semanas",
+  "logsRetentionMonth": "1 mes",
+  "logsRetentionNever": "No borrar nunca",
+  "logsRetentionInfo": "Los registros y los informes de soporte se borran cuando superan el plazo elegido. La comprobación se hace al iniciar la aplicación. «Nunca» lo deja todo en el disco: entonces vigila el tamaño tú mismo, porque un informe incluye los registros enteros y crece con ellos.",
+  "logsCleanNow": "Borrar los antiguos ahora",
+  "logsCleaned": "Archivos borrados: {count}, liberados {size}",
+  "logsNothingToClean": "No hay nada que borrar"
 }
