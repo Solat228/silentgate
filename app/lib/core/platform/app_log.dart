@@ -55,7 +55,7 @@ class AppLog {
   static void e(String message) => _add(LogLevel.error, message);
 
   static void _add(LogLevel level, String message) {
-    final entry = LogEntry(DateTime.now(), level, message);
+    final entry = LogEntry(DateTime.now(), level, scrubSecrets(message));
     _memory.addLast(entry);
     while (_memory.length > _maxMemory) {
       _memory.removeFirst();
@@ -419,4 +419,39 @@ class LogMaintenance {
 
     return LogCleanupResult(files, bytes);
   }
+}
+
+/// Убрать секреты из строки ПЕРЕД записью в журнал.
+///
+/// ⚠️ НАЙДЕНО ЖИВЫМ ТЕСТОМ 13.08.2026, статикой такое не видно. В госте не было
+/// сети, обновление подписки упало, и текст исключения `http`-клиента лёг в
+/// `app.log` ЦЕЛИКОМ — вместе с адресом подписки, а у Remnawave последний
+/// сегмент этого адреса и есть токен доступа ко всей подписке.
+///
+/// Цена ошибки высокая: `app.log` вкладывается в отчёт для поддержки, который
+/// пользователь по нашей же кнопке отправляет в чат. Сам отчёт URL маскирует
+/// (`SupportReport._maskUrl`), а журнал ВНУТРИ него — нет, и маскировка в
+/// шапке создавала ложное ощущение безопасности.
+///
+/// ⚠️ ЧИСТИМ НА ГРАНИЦЕ, А НЕ В МЕСТЕ ВЫЗОВА. Тот же принцип, что у барьера
+/// секретов локального API: обработчик, забывший про новый случай, обошёл бы
+/// проверку молча. Здесь через `_add` проходит КАЖДАЯ строка журнала.
+///
+/// Хост и схему оставляем: без них не разобрать, к какой панели не достучались,
+/// а сам по себе хост секретом не является — он виден и в интерфейсе.
+String scrubSecrets(String message) {
+  var out = message;
+  // Адрес подписки: у Remnawave токен лежит в пути (`/sub/<токен>`).
+  out = out.replaceAllMapped(
+    RegExp(r'(https?://[^\s/?#]+)(/[^\s"<>]*)', caseSensitive: false),
+    (m) => '${m[1]}/****',
+  );
+  // Ссылки на серверы: в них учётные данные (uuid VLESS, пароль trojan/ss,
+  // пароль обфускации hysteria2) — целиком, до первого пробела.
+  out = out.replaceAllMapped(
+    RegExp(r'(vless|vmess|trojan|ss|hysteria2|hy2)://[^\s"<>]+',
+        caseSensitive: false),
+    (m) => '${m[1]}://****',
+  );
+  return out;
 }
