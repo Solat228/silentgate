@@ -804,6 +804,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'قياس زمن الاستجابة غير متاح: يجري الآن اختبار السرعة';
+
+  @override
   String get subSwitcherExpired => 'منتهٍ';
 
   @override
@@ -819,6 +823,16 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'الخوادم في الاشتراك: $total، ومنها اجتاز فحص القناة (طلب عبر الخادم): $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'عدد الخوادم في الاشتراك: $total. الفحص جارٍ الآن — سيظهر عدد الخوادم العاملة عند انتهائه.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'عدد الخوادم في الاشتراك: $total. لم يكتمل الفحص (أُلغي أو انقطع)، لذلك العدد ناقص: اجتاز $working فحص القناة من بين ما أمكن الوصول إليه.';
   }
 
   @override

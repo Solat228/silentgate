@@ -4,6 +4,7 @@
   "commonCancel": "Cancelar",
   "commonClose": "Cerrar",
   "commonCopy": "Copiar",
+  "commonClear": "Borrar",
   "commonCopied": "Copiado",
   "commonRefresh": "Actualizar",
   "commonCheck": "Comprobar",
@@ -21,6 +22,10 @@
   "sectionNetwork": "Red",
   "sectionAbout": "Acerca de",
   "sectionSupport": "Soporte",
+  "settingsSearchHint": "Buscar en los ajustes",
+  "settingsSearchEmpty": "No se encontró nada: «{query}»",
+  "settingsExpand": "Expandir",
+  "settingsCollapse": "Contraer",
   "appearanceTheme": "Tema",
   "themeSystem": "Sistema",
   "themeLight": "Claro",
@@ -307,6 +312,31 @@
   "subBarValidPerpetual": "Válida: sin límite  {auto}",
   "subBarExpired": "Suscripción vencida:",
   "subBarValidUntil": "Válida hasta:",
+  "subSwitcherPingAll": "Probar los servidores de todas las suscripciones",
+  "subSwitcherPingBusySpeed": "Ping no disponible: hay una prueba de velocidad en curso",
+  "subSwitcherExpired": "Caducada",
+  "subSwitcherExpiredOn": "La suscripción caducó el {date}",
+  "subSwitcherCountTotal": "Servidores en la suscripción: {total}. Aún no se ha comprobado el canal: ejecuta «Probar los servidores de todas las suscripciones».",
+  "subSwitcherCountWorking": "Servidores en la suscripción: {total}. De ellos han superado la comprobación del canal (petición a través del servidor): {working}.",
+  "subSwitcherCountChecking": "Servidores en la suscripción: {total}. La comprobación se está ejecutando ahora mismo: el número de los que funcionan aparecerá cuando termine.",
+  "subSwitcherCountPartial": "Servidores en la suscripción: {total}. La ejecución no llegó a terminar (se canceló o se interrumpió), por eso el número está incompleto: {working} superaron la comprobación del canal entre aquellos a los que se logró llegar.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "Cómo se intercepta el tráfico. «Proxy del sistema»: configura un proxy local en el sistema (sin permisos de administrador; captura navegadores y la mayoría de las aplicaciones). «TUN»: adaptador de red virtual que captura TODO el tráfico (incluidos UDP y las aplicaciones que ignoran el proxy), pero requiere permisos de administrador.",
   "infoSystemProxy": "Un proxy HTTP local en la configuración del sistema (registro WinINET). Sin permisos de administrador. No intercepta UDP ni las aplicaciones que ignoran el proxy del sistema.",
   "infoTunMode": "Un túnel completo a través del adaptador virtual wintun + sing-box. Captura todo el tráfico, incluido UDP. Solicita permisos de administrador (UAC) al activarse.",
@@ -933,14 +963,6 @@
   "logsCleanNow": "Borrar los antiguos ahora",
   "logsCleaned": "Archivos borrados: {count}, liberados {size}",
   "logsNothingToClean": "No hay nada que borrar",
-  "commonClear": "Borrar",
-  "settingsSearchHint": "Buscar en los ajustes",
-  "settingsSearchEmpty": "No se encontró nada: «{query}»",
-  "settingsExpand": "Expandir",
-  "settingsCollapse": "Contraer",
-  "subSwitcherPingAll": "Probar los servidores de todas las suscripciones",
-  "subSwitcherCountTotal": "Servidores en la suscripción: {total}. Aún no se ha comprobado el canal: ejecuta «Probar los servidores de todas las suscripciones».",
-  "subSwitcherCountWorking": "Servidores en la suscripción: {total}. De ellos han superado la comprobación del canal (petición a través del servidor): {working}.",
   "speedTooltip": "Velocidad de descarga a través de este servidor",
   "speedFromAutoConfig": "Velocidad medida por la configuración automática",
   "speedBlockedTooltip": "No se mide la velocidad: el servidor no superó la comprobación del canal (la petición no llegó a través de él)",
@@ -955,7 +977,5 @@
   "speedProgress": "Velocidad: {done} de {total}",
   "updateOnStartTitle": "Actualizar la suscripción al iniciar",
   "updateOnStartSub": "Descargar una lista de servidores nueva cada vez, no solo por temporizador",
-  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts",
-  "subSwitcherExpired": "Caducada",
-  "subSwitcherExpiredOn": "La suscripción caducó el {date}"
+  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts"
 }

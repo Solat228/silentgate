@@ -789,6 +789,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override
+  String get subSwitcherPingBusySpeed => '无法测延迟：正在进行测速';
+
+  @override
   String get subSwitcherExpired => '已过期';
 
   @override
@@ -804,6 +807,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return '订阅中的服务器：$total 个，其中通过通道检查（经服务器发起请求）的有 $working 个。';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return '该订阅共有 $total 个服务器。检测正在进行中——可用数量将在检测结束后显示。';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return '该订阅共有 $total 个服务器。本次检测未完成（已取消或中断），因此数字不完整：在已检测到的服务器中，有 $working 个通过了通道检查。';
   }
 
   @override

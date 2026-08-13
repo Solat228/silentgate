@@ -4,6 +4,7 @@
   "commonCancel": "取消",
   "commonClose": "关闭",
   "commonCopy": "复制",
+  "commonClear": "清除",
   "commonCopied": "已复制",
   "commonRefresh": "刷新",
   "commonCheck": "检查",
@@ -21,6 +22,10 @@
   "sectionNetwork": "网络",
   "sectionAbout": "关于",
   "sectionSupport": "支持",
+  "settingsSearchHint": "在设置中搜索",
+  "settingsSearchEmpty": "未找到任何内容：“{query}”",
+  "settingsExpand": "展开",
+  "settingsCollapse": "收起",
   "appearanceTheme": "主题",
   "themeSystem": "跟随系统",
   "themeLight": "浅色",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "有效期：无限期  {auto}",
   "subBarExpired": "订阅已过期：",
   "subBarValidUntil": "有效期至：",
+  "subSwitcherPingAll": "测试全部订阅的服务器",
+  "subSwitcherPingBusySpeed": "无法测延迟：正在进行测速",
+  "subSwitcherExpired": "已过期",
+  "subSwitcherExpiredOn": "订阅已于 {date} 过期",
+  "subSwitcherCountTotal": "订阅中的服务器：{total} 个。尚未做过通道检查，请运行“测试全部订阅的服务器”。",
+  "subSwitcherCountWorking": "订阅中的服务器：{total} 个，其中通过通道检查（经服务器发起请求）的有 {working} 个。",
+  "subSwitcherCountChecking": "该订阅共有 {total} 个服务器。检测正在进行中——可用数量将在检测结束后显示。",
+  "subSwitcherCountPartial": "该订阅共有 {total} 个服务器。本次检测未完成（已取消或中断），因此数字不完整：在已检测到的服务器中，有 {working} 个通过了通道检查。",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "如何拦截流量。“系统代理”会在系统中设置一个本地代理（无需管理员权限；可捕获浏览器和大多数应用）。“TUN”是一个虚拟网络适配器，可捕获全部流量（包括 UDP 和忽略代理的应用），但需要管理员权限。",
   "infoSystemProxy": "系统设置中的本地 HTTP 代理（WinINET 注册表）。无需管理员权限。不拦截 UDP 或忽略系统代理的应用。",
   "infoTunMode": "通过 wintun 虚拟适配器 + sing-box 建立的全局隧道。捕获包括 UDP 在内的全部流量。启用时请求管理员权限（UAC）。",
@@ -872,14 +902,6 @@
   "logsCleanNow": "立即删除旧文件",
   "logsCleaned": "已删除 {count} 个文件，释放 {size}",
   "logsNothingToClean": "没有可删除的内容",
-  "commonClear": "清除",
-  "settingsSearchHint": "在设置中搜索",
-  "settingsSearchEmpty": "未找到任何内容：“{query}”",
-  "settingsExpand": "展开",
-  "settingsCollapse": "收起",
-  "subSwitcherPingAll": "测试全部订阅的服务器",
-  "subSwitcherCountTotal": "订阅中的服务器：{total} 个。尚未做过通道检查，请运行“测试全部订阅的服务器”。",
-  "subSwitcherCountWorking": "订阅中的服务器：{total} 个，其中通过通道检查（经服务器发起请求）的有 {working} 个。",
   "speedTooltip": "经此服务器的下载速度",
   "speedFromAutoConfig": "速度由自动配置测得",
   "speedBlockedTooltip": "不测速：该服务器未通过通道检查（请求没能经它送达）",
@@ -894,7 +916,5 @@
   "speedProgress": "速度：{total} 个中的 {done} 个",
   "updateOnStartTitle": "启动时刷新订阅",
   "updateOnStartSub": "每次都拉取最新服务器列表，而不只按计时器",
-  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端",
-  "subSwitcherExpired": "已过期",
-  "subSwitcherExpiredOn": "订阅已于 {date} 过期"
+  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端"
 }

@@ -4,6 +4,7 @@
   "commonCancel": "İptal",
   "commonClose": "Kapat",
   "commonCopy": "Kopyala",
+  "commonClear": "Temizle",
   "commonCopied": "Kopyalandı",
   "commonRefresh": "Yenile",
   "commonCheck": "Kontrol et",
@@ -21,6 +22,10 @@
   "sectionNetwork": "Ağ",
   "sectionAbout": "Hakkında",
   "sectionSupport": "Destek",
+  "settingsSearchHint": "Ayarlarda ara",
+  "settingsSearchEmpty": "Hiçbir şey bulunamadı: «{query}»",
+  "settingsExpand": "Genişlet",
+  "settingsCollapse": "Daralt",
   "appearanceTheme": "Tema",
   "themeSystem": "Sistem",
   "themeLight": "Açık",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "Geçerli: sınırsız  {auto}",
   "subBarExpired": "Aboneliğin süresi doldu:",
   "subBarValidUntil": "Geçerlilik tarihi:",
+  "subSwitcherPingAll": "Tüm aboneliklerin sunucularını sına",
+  "subSwitcherPingBusySpeed": "Ping kullanılamıyor: hız ölçümü sürüyor",
+  "subSwitcherExpired": "Süresi doldu",
+  "subSwitcherExpiredOn": "Abonelik {date} tarihinde sona erdi",
+  "subSwitcherCountTotal": "Abonelikteki sunucu: {total}. Kanal henüz denetlenmedi — «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.",
+  "subSwitcherCountWorking": "Abonelikteki sunucu: {total}. Bunlardan kanal denetimini (sunucu üzerinden istek) geçen: {working}.",
+  "subSwitcherCountChecking": "Abonelikteki sunucu sayısı: {total}. Denetim şu anda sürüyor — çalışan sunucu sayısı, tarama bittiğinde görünecek.",
+  "subSwitcherCountPartial": "Abonelikteki sunucu sayısı: {total}. Tarama tamamlanmadı (iptal edildi ya da kesildi), bu yüzden sayı eksik: ulaşılabilenler arasından {working} tanesi kanal denetimini geçti.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "Trafiğin nasıl yakalandığı. «Sistem proxy'si» sistemde yerel bir proxy ayarlar (yönetici hakları gerekmez; tarayıcıları ve çoğu uygulamayı yakalar). «TUN», TÜM trafiği yakalayan sanal bir ağ bağdaştırıcısıdır (UDP ve proxy'yi yok sayan uygulamalar dâhil), ancak yönetici hakları gerektirir.",
   "infoSystemProxy": "Sistem ayarlarında (WinINET kaydı) yerel bir HTTP proxy'si. Yönetici hakları gerekmez. UDP'yi veya sistem proxy'sini yok sayan uygulamaları yakalamaz.",
   "infoTunMode": "Wintun sanal bağdaştırıcısı + sing-box üzerinden tam tünel. UDP dâhil tüm trafiği yakalar. Etkinleştirildiğinde yönetici hakları (UAC) ister.",
@@ -872,14 +902,6 @@
   "logsCleanNow": "Eskileri şimdi sil",
   "logsCleaned": "Silinen dosya: {count}, boşaltılan {size}",
   "logsNothingToClean": "Silinecek bir şey yok",
-  "commonClear": "Temizle",
-  "settingsSearchHint": "Ayarlarda ara",
-  "settingsSearchEmpty": "Hiçbir şey bulunamadı: «{query}»",
-  "settingsExpand": "Genişlet",
-  "settingsCollapse": "Daralt",
-  "subSwitcherPingAll": "Tüm aboneliklerin sunucularını sına",
-  "subSwitcherCountTotal": "Abonelikteki sunucu: {total}. Kanal henüz denetlenmedi — «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.",
-  "subSwitcherCountWorking": "Abonelikteki sunucu: {total}. Bunlardan kanal denetimini (sunucu üzerinden istek) geçen: {working}.",
   "speedTooltip": "Bu sunucu üzerinden indirme hızı",
   "speedFromAutoConfig": "Hız, otomatik ayar tarafından ölçüldü",
   "speedBlockedTooltip": "Hız ölçülmüyor: sunucu kanal denetimini geçemedi (istek üzerinden geçmedi)",
@@ -894,7 +916,5 @@
   "speedProgress": "Hız: {total} sunucudan {done}",
   "updateOnStartTitle": "Açılışta aboneliği yenile",
   "updateOnStartSub": "Yalnızca zamanlayıcıyla değil, her seferinde taze sunucu listesi çek",
-  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin",
-  "subSwitcherExpired": "Süresi doldu",
-  "subSwitcherExpiredOn": "Abonelik {date} tarihinde sona erdi"
+  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin"
 }

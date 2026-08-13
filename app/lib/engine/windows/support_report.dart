@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../../core/app_info.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/platform/app_log.dart';
@@ -129,7 +131,7 @@ class SupportReport {
         '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sb = await _safe(() => TunHelper.tailLog(lines: 200));
-    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : tidySingboxLog(sb));
+    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : _core(sb));
     b.writeln();
     b.writeln('==================================================');
     b.writeln('[singbox_proxy.log — прокси-ядро (hysteria2), последние строки]'
@@ -138,7 +140,7 @@ class SupportReport {
     final sbp = await _safe(() => SingboxProcess.tailLog(lines: 200));
     b.writeln(sbp.isEmpty
         ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
-        : tidySingboxLog(sbp));
+        : _core(sbp));
     b.writeln();
     // Третий лог: маршрутизатор выходов режима «Только прокси» (задача 3b) —
     // отдельный процесс sing-box со своим файлом (`singbox_exit_router.log`),
@@ -155,7 +157,7 @@ class SupportReport {
         () => SingboxProcess.tailLog(lines: 200, name: exitRouterLogName));
     b.writeln(sbr.isEmpty
         ? '(пусто — маршрутизатор выходов в этой сессии не поднимался)'
-        : tidySingboxLog(sbr));
+        : _core(sbr));
     b.writeln();
 
     b.writeln('=== конец отчёта ===');
@@ -233,6 +235,24 @@ class SupportReport {
       return 'н/д ($e)';
     }
   }
+
+  /// Лог ядра для отчёта: причесать и ЗАМАСКИРОВАТЬ адреса своих серверов.
+  ///
+  /// ⚠️ БЕЗ МАСКИ ЗДЕСЬ ВСЯ РАБОТА НАД `app.log` БЫЛА БЫ НАПРАСНОЙ. Логи ядер
+  /// пишет не приложение, они не проходят через `AppLog`, а в отчёт попадают
+  /// своим путём — и адресов в них БОЛЬШЕ, чем в нашем журнале: каждая строка
+  /// `dial tcp <адрес>:443` называет боевой узел подписки. Отчёт владелец
+  /// отправляет в чат поддержки, то есть постороннему человеку.
+  ///
+  /// Реестр — общий с `AppLog` (`SensitiveAddresses`), поэтому метка «адрес №N»
+  /// у одного и того же узла совпадает в нашем журнале и в логе ядра: иначе
+  /// сопоставить их стало бы нечем, а ради этого сопоставления отчёт и
+  /// собирают.
+  @visibleForTesting
+  static String maskCoreLog(String raw) =>
+      SensitiveAddresses.mask(tidySingboxLog(raw));
+
+  static String _core(String raw) => maskCoreLog(raw);
 
   /// Время последней записи в лог — в скобках к заголовку секции.
   ///

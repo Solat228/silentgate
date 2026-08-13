@@ -4,6 +4,7 @@
   "commonCancel": "Cancelar",
   "commonClose": "Fechar",
   "commonCopy": "Copiar",
+  "commonClear": "Limpar",
   "commonCopied": "Copiado",
   "commonRefresh": "Atualizar",
   "commonCheck": "Verificar",
@@ -21,6 +22,10 @@
   "sectionNetwork": "Rede",
   "sectionAbout": "Sobre",
   "sectionSupport": "Suporte",
+  "settingsSearchHint": "Pesquisar nas configurações",
+  "settingsSearchEmpty": "Nada encontrado: «{query}»",
+  "settingsExpand": "Expandir",
+  "settingsCollapse": "Recolher",
   "appearanceTheme": "Tema",
   "themeSystem": "Sistema",
   "themeLight": "Claro",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "Válida: ilimitada  {auto}",
   "subBarExpired": "Assinatura expirada:",
   "subBarValidUntil": "Válida até:",
+  "subSwitcherPingAll": "Testar os servidores de todas as assinaturas",
+  "subSwitcherPingBusySpeed": "Ping indisponível: há um teste de velocidade em andamento",
+  "subSwitcherExpired": "Expirada",
+  "subSwitcherExpiredOn": "A assinatura expirou em {date}",
+  "subSwitcherCountTotal": "Servidores na assinatura: {total}. O canal ainda não foi verificado — execute «Testar os servidores de todas as assinaturas».",
+  "subSwitcherCountWorking": "Servidores na assinatura: {total}. Destes, passaram na verificação do canal (requisição pelo servidor): {working}.",
+  "subSwitcherCountChecking": "Servidores na assinatura: {total}. A verificação está em andamento — o número dos que funcionam aparecerá quando ela terminar.",
+  "subSwitcherCountPartial": "Servidores na assinatura: {total}. A execução não foi concluída (cancelada ou interrompida), por isso o número está incompleto: {working} passaram na verificação do canal entre aqueles que foi possível alcançar.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "Como o tráfego é interceptado. «Proxy do sistema» define um proxy local no sistema (sem direitos de administrador; captura navegadores e a maioria dos aplicativos). «TUN» é um adaptador de rede virtual que captura TODO o tráfego (incluindo UDP e aplicativos que ignoram o proxy), mas requer direitos de administrador.",
   "infoSystemProxy": "Um proxy HTTP local nas configurações do sistema (registro WinINET). Sem direitos de administrador. Não intercepta UDP nem aplicativos que ignoram o proxy do sistema.",
   "infoTunMode": "Um túnel completo pelo adaptador virtual wintun + sing-box. Captura todo o tráfego, incluindo UDP. Solicita direitos de administrador (UAC) quando ativado.",
@@ -872,14 +902,6 @@
   "logsCleanNow": "Excluir os antigos agora",
   "logsCleaned": "Arquivos excluídos: {count}, liberados {size}",
   "logsNothingToClean": "Não há nada para excluir",
-  "commonClear": "Limpar",
-  "settingsSearchHint": "Pesquisar nas configurações",
-  "settingsSearchEmpty": "Nada encontrado: «{query}»",
-  "settingsExpand": "Expandir",
-  "settingsCollapse": "Recolher",
-  "subSwitcherPingAll": "Testar os servidores de todas as assinaturas",
-  "subSwitcherCountTotal": "Servidores na assinatura: {total}. O canal ainda não foi verificado — execute «Testar os servidores de todas as assinaturas».",
-  "subSwitcherCountWorking": "Servidores na assinatura: {total}. Destes, passaram na verificação do canal (requisição pelo servidor): {working}.",
   "speedTooltip": "Velocidade de download por este servidor",
   "speedFromAutoConfig": "Velocidade medida pela configuração automática",
   "speedBlockedTooltip": "A velocidade não é medida: o servidor não passou na verificação do canal (a requisição não chegou por ele)",
@@ -894,7 +916,5 @@
   "speedProgress": "Velocidade: {done} de {total}",
   "updateOnStartTitle": "Atualizar a assinatura ao iniciar",
   "updateOnStartSub": "Buscar uma lista de servidores nova sempre, não apenas pelo temporizador",
-  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts",
-  "subSwitcherExpired": "Expirada",
-  "subSwitcherExpiredOn": "A assinatura expirou em {date}"
+  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts"
 }

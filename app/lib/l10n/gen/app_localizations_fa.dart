@@ -809,6 +809,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'پینگ در دسترس نیست: آزمایش سرعت در حال اجراست';
+
+  @override
   String get subSwitcherExpired => 'منقضی';
 
   @override
@@ -824,6 +828,16 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'سرورهای این اشتراک: $total که از آن‌ها $working سرور بررسی کانال (درخواست از راه سرور) را گذرانده‌اند.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'تعداد سرورهای این اشتراک: $total. بررسی هم‌اکنون در حال اجراست — تعداد سرورهای سالم پس از پایان آن نمایش داده می‌شود.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'تعداد سرورهای این اشتراک: $total. بررسی به پایان نرسید (لغو یا قطع شد)، بنابراین عدد ناقص است: از میان سرورهایی که بررسی شدند، $working سرور آزمون کانال را گذراند.';
   }
 
   @override

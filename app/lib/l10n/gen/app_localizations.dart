@@ -1506,6 +1506,12 @@ abstract class AppLocalizations {
   /// **'Пинг серверов всех подписок'**
   String get subSwitcherPingAll;
 
+  /// No description provided for @subSwitcherPingBusySpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг недоступен: идёт замер скорости'**
+  String get subSwitcherPingBusySpeed;
+
   /// No description provided for @subSwitcherExpired.
   ///
   /// In ru, this message translates to:
@@ -1529,6 +1535,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Серверов в подписке: {total}. Из них прошли проверку канала (запрос через сервер): {working}.'**
   String subSwitcherCountWorking(int total, int working);
+
+  /// No description provided for @subSwitcherCountChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверов в подписке: {total}. Проверка идёт прямо сейчас — число рабочих появится, когда прогон закончится.'**
+  String subSwitcherCountChecking(int total);
+
+  /// No description provided for @subSwitcherCountPartial.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверов в подписке: {total}. Прогон не был закончен (отменён или прерван), поэтому число неполное: проверку канала прошли {working} из тех, до кого успели дойти.'**
+  String subSwitcherCountPartial(int total, int working);
 
   /// No description provided for @infoCaptureMode.
   ///

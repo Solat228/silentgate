@@ -813,6 +813,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'Ping kullanılamıyor: hız ölçümü sürüyor';
+
+  @override
   String get subSwitcherExpired => 'Süresi doldu';
 
   @override
@@ -828,6 +832,16 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'Abonelikteki sunucu: $total. Bunlardan kanal denetimini (sunucu üzerinden istek) geçen: $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'Abonelikteki sunucu sayısı: $total. Denetim şu anda sürüyor — çalışan sunucu sayısı, tarama bittiğinde görünecek.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'Abonelikteki sunucu sayısı: $total. Tarama tamamlanmadı (iptal edildi ya da kesildi), bu yüzden sayı eksik: ulaşılabilenler arasından $working tanesi kanal denetimini geçti.';
   }
 
   @override

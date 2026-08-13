@@ -4,6 +4,7 @@
   "commonCancel": "Abbrechen",
   "commonClose": "Schließen",
   "commonCopy": "Kopieren",
+  "commonClear": "Löschen",
   "commonCopied": "Kopiert",
   "commonRefresh": "Aktualisieren",
   "commonCheck": "Prüfen",
@@ -21,6 +22,10 @@
   "sectionNetwork": "Netzwerk",
   "sectionAbout": "Über",
   "sectionSupport": "Support",
+  "settingsSearchHint": "In den Einstellungen suchen",
+  "settingsSearchEmpty": "Nichts gefunden: „{query}“",
+  "settingsExpand": "Ausklappen",
+  "settingsCollapse": "Einklappen",
   "appearanceTheme": "Design",
   "themeSystem": "System",
   "themeLight": "Hell",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "Gültig: unbegrenzt  {auto}",
   "subBarExpired": "Abonnement abgelaufen:",
   "subBarValidUntil": "Gültig bis:",
+  "subSwitcherPingAll": "Server aller Abos testen",
+  "subSwitcherPingBusySpeed": "Ping nicht verfügbar: Es läuft gerade eine Geschwindigkeitsmessung",
+  "subSwitcherExpired": "Abgelaufen",
+  "subSwitcherExpiredOn": "Abo am {date} abgelaufen",
+  "subSwitcherCountTotal": "Server im Abo: {total}. Der Kanal wurde noch nicht geprüft – starten Sie „Server aller Abos testen“.",
+  "subSwitcherCountWorking": "Server im Abo: {total}. Davon haben die Kanalprüfung (Anfrage über den Server) bestanden: {working}.",
+  "subSwitcherCountChecking": "Server im Abonnement: {total}. Die Prüfung läuft gerade — die Anzahl der funktionierenden Server erscheint, sobald sie abgeschlossen ist.",
+  "subSwitcherCountPartial": "Server im Abonnement: {total}. Der Durchlauf wurde nicht beendet (abgebrochen oder unterbrochen), daher ist die Zahl unvollständig: {working} haben die Kanalprüfung bestanden — von denen, die erreicht wurden.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "Wie der Verkehr abgefangen wird. „Systemproxy“ richtet einen lokalen Proxy im System ein (keine Administratorrechte; erfasst Browser und die meisten Anwendungen). „TUN“ ist ein virtueller Netzwerkadapter, der den GESAMTEN Verkehr erfasst (einschließlich UDP und Anwendungen, die den Proxy ignorieren), erfordert aber Administratorrechte.",
   "infoSystemProxy": "Ein lokaler HTTP-Proxy in den Systemeinstellungen (WinINET-Registry). Keine Administratorrechte. Fängt weder UDP noch Anwendungen ab, die den Systemproxy ignorieren.",
   "infoTunMode": "Ein vollständiger Tunnel durch den virtuellen wintun-Adapter + sing-box. Erfasst den gesamten Verkehr, einschließlich UDP. Fordert beim Aktivieren Administratorrechte (UAC) an.",
@@ -872,14 +902,6 @@
   "logsCleanNow": "Alte jetzt löschen",
   "logsCleaned": "Gelöschte Dateien: {count}, {size} freigegeben",
   "logsNothingToClean": "Es gibt nichts zu löschen",
-  "commonClear": "Löschen",
-  "settingsSearchHint": "In den Einstellungen suchen",
-  "settingsSearchEmpty": "Nichts gefunden: „{query}“",
-  "settingsExpand": "Ausklappen",
-  "settingsCollapse": "Einklappen",
-  "subSwitcherPingAll": "Server aller Abos testen",
-  "subSwitcherCountTotal": "Server im Abo: {total}. Der Kanal wurde noch nicht geprüft – starten Sie „Server aller Abos testen“.",
-  "subSwitcherCountWorking": "Server im Abo: {total}. Davon haben die Kanalprüfung (Anfrage über den Server) bestanden: {working}.",
   "speedTooltip": "Downloadgeschwindigkeit über diesen Server",
   "speedFromAutoConfig": "Geschwindigkeit von der automatischen Einrichtung gemessen",
   "speedBlockedTooltip": "Geschwindigkeit wird nicht gemessen: Der Server hat die Kanalprüfung nicht bestanden (die Anfrage kam nicht durch)",
@@ -894,7 +916,5 @@
   "speedProgress": "Geschwindigkeit: {done} von {total}",
   "updateOnStartTitle": "Abo beim Start aktualisieren",
   "updateOnStartSub": "Jedes Mal eine frische Serverliste holen, nicht nur per Timer",
-  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern",
-  "subSwitcherExpired": "Abgelaufen",
-  "subSwitcherExpiredOn": "Abo am {date} abgelaufen"
+  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern"
 }

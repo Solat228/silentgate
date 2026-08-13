@@ -816,6 +816,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subSwitcherPingAll => 'Server aller Abos testen';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'Ping nicht verfügbar: Es läuft gerade eine Geschwindigkeitsmessung';
+
+  @override
   String get subSwitcherExpired => 'Abgelaufen';
 
   @override
@@ -831,6 +835,16 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'Server im Abo: $total. Davon haben die Kanalprüfung (Anfrage über den Server) bestanden: $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'Server im Abonnement: $total. Die Prüfung läuft gerade — die Anzahl der funktionierenden Server erscheint, sobald sie abgeschlossen ist.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'Server im Abonnement: $total. Der Durchlauf wurde nicht beendet (abgebrochen oder unterbrochen), daher ist die Zahl unvollständig: $working haben die Kanalprüfung bestanden — von denen, die erreicht wurden.';
   }
 
   @override

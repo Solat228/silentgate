@@ -4,6 +4,7 @@
   "commonCancel": "لغو",
   "commonClose": "بستن",
   "commonCopy": "کپی",
+  "commonClear": "پاک کردن",
   "commonCopied": "کپی شد",
   "commonRefresh": "بازخوانی",
   "commonCheck": "بررسی",
@@ -21,6 +22,10 @@
   "sectionNetwork": "شبکه",
   "sectionAbout": "درباره",
   "sectionSupport": "پشتیبانی",
+  "settingsSearchHint": "جست‌وجو در تنظیمات",
+  "settingsSearchEmpty": "چیزی پیدا نشد: «{query}»",
+  "settingsExpand": "باز کردن",
+  "settingsCollapse": "جمع کردن",
   "appearanceTheme": "پوسته",
   "themeSystem": "سیستمی",
   "themeLight": "روشن",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "اعتبار: نامحدود  {auto}",
   "subBarExpired": "اشتراک منقضی شد:",
   "subBarValidUntil": "معتبر تا:",
+  "subSwitcherPingAll": "آزمودن سرورهای همهٔ اشتراک‌ها",
+  "subSwitcherPingBusySpeed": "پینگ در دسترس نیست: آزمایش سرعت در حال اجراست",
+  "subSwitcherExpired": "منقضی",
+  "subSwitcherExpiredOn": "اشتراک در {date} منقضی شد",
+  "subSwitcherCountTotal": "سرورهای این اشتراک: {total}. هنوز بررسی کانال انجام نشده — «آزمودن سرورهای همهٔ اشتراک‌ها» را اجرا کنید.",
+  "subSwitcherCountWorking": "سرورهای این اشتراک: {total} که از آن‌ها {working} سرور بررسی کانال (درخواست از راه سرور) را گذرانده‌اند.",
+  "subSwitcherCountChecking": "تعداد سرورهای این اشتراک: {total}. بررسی هم‌اکنون در حال اجراست — تعداد سرورهای سالم پس از پایان آن نمایش داده می‌شود.",
+  "subSwitcherCountPartial": "تعداد سرورهای این اشتراک: {total}. بررسی به پایان نرسید (لغو یا قطع شد)، بنابراین عدد ناقص است: از میان سرورهایی که بررسی شدند، {working} سرور آزمون کانال را گذراند.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "شیوه گرفتن ترافیک. «پروکسی سیستمی» یک پروکسی محلی در سیستم تنظیم می‌کند (بدون دسترسی مدیر؛ مرورگرها و بیشتر برنامه‌ها را می‌گیرد). «TUN» یک آداپتور شبکه مجازی است که تمام ترافیک را می‌گیرد (شامل UDP و برنامه‌هایی که پروکسی را نادیده می‌گیرند)، اما نیازمند دسترسی مدیر است.",
   "infoSystemProxy": "یک پروکسی HTTP محلی در تنظیمات سیستم (رجیستری WinINET). بدون دسترسی مدیر. UDP و برنامه‌هایی که پروکسی سیستمی را نادیده می‌گیرند را نمی‌گیرد.",
   "infoTunMode": "یک تونل کامل از طریق آداپتور مجازی wintun + sing-box. تمام ترافیک، شامل UDP، را می‌گیرد. هنگام فعال‌سازی دسترسی مدیر (UAC) درخواست می‌کند.",
@@ -872,14 +902,6 @@
   "logsCleanNow": "حذف موارد قدیمی",
   "logsCleaned": "پرونده‌های حذف‌شده: {count}، آزادشده {size}",
   "logsNothingToClean": "چیزی برای حذف نیست",
-  "commonClear": "پاک کردن",
-  "settingsSearchHint": "جست‌وجو در تنظیمات",
-  "settingsSearchEmpty": "چیزی پیدا نشد: «{query}»",
-  "settingsExpand": "باز کردن",
-  "settingsCollapse": "جمع کردن",
-  "subSwitcherPingAll": "آزمودن سرورهای همهٔ اشتراک‌ها",
-  "subSwitcherCountTotal": "سرورهای این اشتراک: {total}. هنوز بررسی کانال انجام نشده — «آزمودن سرورهای همهٔ اشتراک‌ها» را اجرا کنید.",
-  "subSwitcherCountWorking": "سرورهای این اشتراک: {total} که از آن‌ها {working} سرور بررسی کانال (درخواست از راه سرور) را گذرانده‌اند.",
   "speedTooltip": "سرعت دریافت از راه این سرور",
   "speedFromAutoConfig": "سرعت را تنظیم خودکار اندازه گرفته است",
   "speedBlockedTooltip": "سرعت اندازه‌گیری نمی‌شود: سرور بررسی کانال را نگذرانده (درخواست از راه آن نرسید)",
@@ -894,7 +916,5 @@
   "speedProgress": "سرعت: {done} از {total}",
   "updateOnStartTitle": "به‌روزرسانی اشتراک هنگام آغاز",
   "updateOnStartSub": "هر بار فهرست تازهٔ سرورها گرفته شود، نه فقط با زمان‌سنج",
-  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت",
-  "subSwitcherExpired": "منقضی",
-  "subSwitcherExpiredOn": "اشتراک در {date} منقضی شد"
+  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت"
 }

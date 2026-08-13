@@ -819,6 +819,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Testar os servidores de todas as assinaturas';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'Ping indisponível: há um teste de velocidade em andamento';
+
+  @override
   String get subSwitcherExpired => 'Expirada';
 
   @override
@@ -834,6 +838,16 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'Servidores na assinatura: $total. Destes, passaram na verificação do canal (requisição pelo servidor): $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'Servidores na assinatura: $total. A verificação está em andamento — o número dos que funcionam aparecerá quando ela terminar.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'Servidores na assinatura: $total. A execução não foi concluída (cancelada ou interrompida), por isso o número está incompleto: $working passaram na verificação do canal entre aqueles que foi possível alcançar.';
   }
 
   @override

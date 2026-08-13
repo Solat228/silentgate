@@ -357,6 +357,7 @@
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
   "subSwitcherPingAll": "Пинг серверов всех подписок",
+  "subSwitcherPingBusySpeed": "Пинг недоступен: идёт замер скорости",
   "subSwitcherExpired": "Истекла",
   "subSwitcherExpiredOn": "Подписка истекла {date}",
   "@subSwitcherExpiredOn": {
@@ -376,6 +377,25 @@
     }
   },
   "@subSwitcherCountWorking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
+  "subSwitcherCountChecking": "Серверов в подписке: {total}. Проверка идёт прямо сейчас — число рабочих появится, когда прогон закончится.",
+  "subSwitcherCountPartial": "Серверов в подписке: {total}. Прогон не был закончен (отменён или прерван), поэтому число неполное: проверку канала прошли {working} из тех, до кого успели дойти.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
     "placeholders": {
       "total": {
         "type": "int"

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -11,6 +13,26 @@ import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
 import 'subscription_avatar.dart';
 
+/// Состояние счётчика подписки — то, НАСКОЛЬКО его числу можно верить.
+///
+/// ⚠️ ТРЁХ СОСТОЯНИЙ, А НЕ ОДНОГО ЧИСЛА. Пока состояние было одно, счётчик врал
+/// дважды и оба раза убедительно: во время прогона он показывал недосчитанный
+/// промежуточный итог (в первые секунды — красный ноль, который читается как
+/// «подписка мертва»), а после отмены — «101 · 4» ровно так же, как после
+/// законченной проверки.
+enum SubscriptionCountState {
+  /// Показываем то, что знаем: числу можно верить как итогу.
+  ready,
+
+  /// Прогон идёт прямо сейчас и взял НЕСКОЛЬКО серверов ЭТОЙ подписки. Число
+  /// рабочих существует, но оно промежуточное — показывать его нельзя.
+  running,
+
+  /// Последний прогон оборвался (отмена или сбой) и до части серверов не
+  /// дошёл: число рабочих неполное.
+  partial,
+}
+
 /// Счётчик подписки в меню: «всего · рабочих».
 ///
 /// ⚠️ ЧТО ЗДЕСЬ СЧИТАЕТСЯ РАБОЧИМ. Только [PingVerification.passed] — сервер,
@@ -22,18 +44,57 @@ import 'subscription_avatar.dart';
 /// [working] равен null, пока проверки канала не было НИ У ОДНОГО сервера
 /// подписки, — тогда показываем только общее число. Ноль здесь означал бы
 /// «проверили и ни один не работает», а это разные вещи: до пинга мы просто
-/// ничего не знаем.
+/// ничего не знаем. По той же причине [working] равен null и в состоянии
+/// [SubscriptionCountState.running].
 class SubscriptionPingCount {
   final int total;
   final int? working;
-  const SubscriptionPingCount(this.total, this.working);
+  final SubscriptionCountState state;
+  const SubscriptionPingCount(this.total, this.working,
+      {this.state = SubscriptionCountState.ready});
 
+  /// [runningKeys] — ключи серверов, которые прогон проверяет прямо сейчас
+  /// (`ProbeController.runningKeys`; пусто, когда прогона нет), [unfinished] —
+  /// ключи серверов, до которых прогон не дошёл (`ProbeController.unfinishedKeys`).
+  ///
+  /// ⚠️ ОБА ПРИЗНАКА СВЕРЯЮТСЯ С СОБСТВЕННЫМИ СЕРВЕРАМИ ПОДПИСКИ, а не берутся
+  /// как есть: пинг с главного экрана гоняет ТОЛЬКО активную подписку, и
+  /// пометить «идёт проверка» у всех четырёх значило бы соврать по-новому.
+  ///
+  /// ⚠️ И «ИДЁТ» — ЭТО ПРО ПОДПИСКУ, А НЕ ПРО ОДНУ ЕЁ СТРОКУ. Признаком служил
+  /// голый флаг `ProbeController.running`, а его поднимает и перепроверка
+  /// одного сервера по тапу на плашке пинга (`pingOne` идёт тем же путём): в
+  /// стосерверной подписке счётчик целиком прятался за многоточие из-за одной
+  /// строки. Порог — БОЛЬШЕ ОДНОГО сервера подписки в прогоне: он отделяет
+  /// массовый прогон от одиночной перепроверки, и только это. Цена: пока
+  /// перепроверяется одна строка, число рабочих на неё устаревает (её прежний
+  /// вердикт уже стёрт). Это меньшее зло, чем спрятать весь счётчик; подписка
+  /// ровно из одного сервера в этот момент числа рабочих не показывает вовсе —
+  /// проверять там больше некого.
+  ///
+  /// ⚠️ ЧЕГО ПОРОГ НЕ ОЗНАЧАЕТ: «прогон взял подписку целиком». Прежняя
+  /// редакция обещала именно это — «массовые прогоны берут либо всю активную
+  /// подписку (кнопка на главном), либо все подписки (пункт меню)» — и была
+  /// неправдой. Кнопка на главном пингует то, что ВИДНО: при активном поиске
+  /// только найденное (`home_screen`, подпись «Пинг найденных»). Два сервера,
+  /// найденных поиском из ста одного, порог проходят — и счётчик всей подписки
+  /// на время их проверки прячется за многоточие. Так и задумано: два стёртых
+  /// вердикта из ста одного уже делают показанное число промежуточным, а
+  /// молчание честнее.
   static SubscriptionPingCount of(
-      List<VpnServer> servers, PingResult Function(VpnServer) resultFor) {
+      List<VpnServer> servers, PingResult Function(VpnServer) resultFor,
+      {Set<String> runningKeys = const {},
+      Set<String> unfinished = const {}}) {
     var working = 0;
     var checked = false;
+    var inFlight = false;
+    var partial = false;
+    var inRun = 0;
     for (final s in servers) {
-      switch (resultFor(s).verification) {
+      final r = resultFor(s);
+      // Замер ещё не сделан вовсе — сервер в очереди текущего прогона.
+      if (r.outcome == PingOutcome.testing) inFlight = true;
+      switch (r.verification) {
         case PingVerification.passed:
           working++;
           checked = true;
@@ -41,11 +102,24 @@ class SubscriptionPingCount {
           // Проверка была и провалилась — число рабочих уже осмысленно.
           checked = true;
         case PingVerification.pending:
+          // Замер есть, проверка канала идёт — итога у сервера ещё нет.
+          inFlight = true;
         case PingVerification.notRun:
           break;
       }
+      if (unfinished.contains(s.key)) partial = true;
+      if (runningKeys.contains(s.key)) inRun++;
     }
-    return SubscriptionPingCount(servers.length, checked ? working : null);
+    if (inRun > 1 && inFlight) {
+      return SubscriptionPingCount(servers.length, null,
+          state: SubscriptionCountState.running);
+    }
+    return SubscriptionPingCount(servers.length, checked ? working : null,
+        // Помечать неполным есть смысл только там, где число ПОКАЗЫВАЕТСЯ:
+        // без единого вердикта счётчик и так честно молчит о рабочих.
+        state: partial && checked
+            ? SubscriptionCountState.partial
+            : SubscriptionCountState.ready);
   }
 }
 
@@ -119,6 +193,15 @@ class SubscriptionSwitcher extends StatelessWidget {
     final state = context.read<AppState>();
     final probe = context.read<ProbeController>();
     final settings = context.read<SettingsController>();
+    // ⚠️ ЧИСТКА ПОМЕТКИ «прогон сюда не дошёл» — ЗДЕСЬ, ПЕРЕД ПОКАЗОМ СЧЁТЧИКА.
+    // Снимает её только прогон, взявший сервер в работу, а сервер, пропавший из
+    // подписки, не возьмёт уже никто: `ping_unfinished.json` рос без предела, и
+    // вернувшийся с тем же ключом узел помечал подписку неполной без причины.
+    // Место выбрано за полнотой списка: `allSubscriptionServers` — это ровно
+    // всё, что приложение знает (активный список плюс серверы остальных
+    // подписок), и собирается он здесь по нажатию, а не в build.
+    unawaited(probe.forgetUnknownServers(
+        [for (final s in state.allSubscriptionServers()) s.key]));
     final box = context.findRenderObject() as RenderBox?;
     final pos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
     await showMenu<void>(
@@ -149,19 +232,33 @@ class _SwitcherBody extends StatefulWidget {
 }
 
 class _SwitcherBodyState extends State<_SwitcherBody> {
-  /// Восстановленные серверы подписок, по id профиля.
+  /// Восстановленные серверы подписок: id профиля → сам профиль и его серверы.
   ///
   /// ⚠️ КЭШ ЗДЕСЬ ОБЯЗАТЕЛЕН. Серверы неактивных подписок существуют только как
   /// ссылки, и `serversOfSubscription` разбирает их заново на каждый вызов. А
   /// это меню перестраивается на КАЖДОЕ уведомление `ProbeController` — во
   /// время прогона их сотни, и без кэша мы бы разбирали 124 ссылки сотни раз
-  /// подряд ради двух цифр. Кэш живёт ровно столько, сколько открыто меню;
-  /// число рабочих при этом обновляется каждый раз — оно считается по свежим
-  /// результатам пинга, а не берётся из кэша.
-  final Map<String, List<VpnServer>> _serversByProfile = {};
+  /// подряд ради двух цифр. Число рабочих при этом обновляется каждый раз — оно
+  /// считается по свежим результатам пинга, а не берётся из кэша.
+  ///
+  /// ⚠️ И КЭШ ОБЯЗАН СБРАСЫВАТЬСЯ. Ключом был один `id`, а `id` подписки не
+  /// меняется никогда: обновление подписки, завершившееся при ОТКРЫТОМ меню,
+  /// счётчик не замечал — прежнее количество серверов висело до закрытия и
+  /// повторного открытия. С обновлением при каждом запуске случай стал частым.
+  /// Сверяем сам ОБЪЕКТ профиля: `AppState` при обновлении кладёт в список
+  /// новый (`_upsertProfile`, `copyWith` в `_syncActiveProfileServers`), а
+  /// перетаскивание переставляет те же самые объекты — его кэш переживает, как
+  /// и раньше.
+  final Map<String, ({SubscriptionProfile profile, List<VpnServer> servers})>
+      _serversByProfile = {};
 
-  List<VpnServer> _serversOf(SubscriptionProfile p) => _serversByProfile
-      .putIfAbsent(p.id, () => widget.state.serversOfSubscription(p.id));
+  List<VpnServer> _serversOf(SubscriptionProfile p) {
+    final hit = _serversByProfile[p.id];
+    if (hit != null && identical(hit.profile, p)) return hit.servers;
+    final servers = widget.state.serversOfSubscription(p.id);
+    _serversByProfile[p.id] = (profile: p, servers: servers);
+    return servers;
+  }
 
   @override
   void initState() {
@@ -197,6 +294,8 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
     // разбирать все ссылки заново ради одного «пусто/не пусто».
     final anyServers = widget.state.servers.isNotEmpty ||
         items.any((p) => _serversOf(p).isNotEmpty);
+    // Идёт замер скорости — пинг физически невозможен (см. строку действия).
+    final speedBusy = widget.probe.speedRunning;
 
     return SizedBox(
       // ⚠️ ТОЧНАЯ ШИРИНА, А НЕ `ConstrainedBox(minWidth/maxWidth)`.
@@ -286,12 +385,26 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                       // ⚠️ Считаем ВОССТАНОВЛЕННЫЕ серверы, а не длину
                       // `p.serverLinks` (так было раньше). Ссылка, которую
                       // парсер не понимает, в список не попадает и
-                      // пропингована не будет — общее число обязано совпадать
-                      // с тем, что реально уйдёт на прогон.
+                      // пропингована не будет.
+                      //
+                      // ⚠️ ЭТО ЧИСЛО ПОДПИСКИ, А НЕ ЕЁ ДОЛЯ В ПРОГОНЕ. Сумма
+                      // счётчиков сходится с объёмом прогона ровно до тех пор,
+                      // пока подписки не пересекаются: `allSubscriptionServers()`
+                      // отсекает повторы ПО КЛЮЧУ, и сервер, лежащий в двух
+                      // подписках, в каждой из них свой, а пингуется один раз —
+                      // на столько сумма и больше (у владельца 101 · 40 и 4 · 2
+                      // в меню против 108 в прогоне). Прежний комментарий обещал
+                      // совпадение, нынешний — расхождение всегда; неверно и то,
+                      // и другое. Обе половины — и совпадение на непересекающихся
+                      // подписках, и расхождение на общем сервере — стережёт
+                      // группа «счётчик подписки и объём прогона» в
+                      // `test/subscription_counter_test.dart`.
                       _CountBadge(
                         key: ValueKey('subCount_${p.id}'),
                         count: SubscriptionPingCount.of(
-                            _serversOf(p), widget.probe.resultFor),
+                            _serversOf(p), widget.probe.resultFor,
+                            runningKeys: widget.probe.runningKeys,
+                            unfinished: widget.probe.unfinishedKeys),
                       ),
                       const SizedBox(width: 8),
                       Icon(
@@ -337,7 +450,13 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
           ),
           _ActionRow(
             icon: Icons.network_check,
-            label: l.subSwitcherPingAll,
+            // ⚠️ ЗАМЕР СКОРОСТИ ЗАПРЕЩАЕТ ПИНГ, И ЭТО НАДО ГОВОРИТЬ ВСЛУХ.
+            // Оба прогона делят один харнесс и одни локальные порты, поэтому
+            // `_pingBatch` при `speedRunning` молча выходит первой же строкой.
+            // Пункт при этом выглядел совершенно живым: нажатие закрывало меню
+            // и не делало ничего — а замер сотни серверов идёт десятки минут,
+            // и всё это время человек жал впустую.
+            label: speedBusy ? l.subSwitcherPingBusySpeed : l.subSwitcherPingAll,
             busy: widget.probe.running,
             // ⚠️ ЗДЕСЬ ПИНГУЮТСЯ ВСЕ ПОДПИСКИ, А НЕ ТЕКУЩАЯ — решение владельца
             // (13.08.2026): «пункт меню — все подписки». Раньше пункт гонял
@@ -347,7 +466,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
             //
             // Список собирает `AppState`: серверы неактивных подписок лежат
             // ссылками, и восстановить их умеет только он.
-            onTap: widget.probe.running || !anyServers
+            onTap: widget.probe.running || speedBusy || !anyServers
                 ? null
                 : () {
                     Navigator.of(context).pop();
@@ -416,19 +535,38 @@ class _CountBadge extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final working = count.working;
-    return Tooltip(
-      message: working == null
+    final partial = count.state == SubscriptionCountState.partial;
+    final message = switch (count.state) {
+      SubscriptionCountState.running => l.subSwitcherCountChecking(count.total),
+      // В этом состоянии число рабочих есть всегда (см. `SubscriptionPingCount.of`).
+      SubscriptionCountState.partial =>
+        l.subSwitcherCountPartial(count.total, working ?? 0),
+      SubscriptionCountState.ready => working == null
           ? l.subSwitcherCountTotal(count.total)
           : l.subSwitcherCountWorking(count.total, working),
+    };
+    final dot = Text('  ·  ',
+        style: TextStyle(fontSize: 12, color: scheme.outlineVariant));
+    return Tooltip(
+      message: message,
       child: Row(mainAxisSize: MainAxisSize.min, children: [
         Text('${count.total}',
             // Цифры — всегда слева направо, даже в арабской локали: это
             // технические числа, а не текст (та же политика, что у адресов).
             textDirection: TextDirection.ltr,
             style: TextStyle(fontSize: 12, color: scheme.outline)),
-        if (working != null) ...[
-          Text('  ·  ',
-              style: TextStyle(fontSize: 12, color: scheme.outlineVariant)),
+        if (count.state == SubscriptionCountState.running) ...[
+          dot,
+          // ⚠️ ЗНАЧОК ВМЕСТО ЦИФРЫ, А НЕ ЦИФРА ПОБЛЕДНЕЕ. Любое число во время
+          // прогона — промежуточный итог, и первые секунды это НОЛЬ: красный
+          // ноль рядом с сотней серверов человек читает как «подписка умерла»
+          // и идёт её перевыпускать. Три точки не обещают ничего.
+          //
+          // И не крутилка: она анимируется бесконечно, а меню — обычный
+          // маршрут поверх экрана, где такой кадр никогда не «успокаивается».
+          Icon(Icons.more_horiz, size: 14, color: scheme.outline),
+        ] else if (working != null) ...[
+          dot,
           Text('$working',
               textDirection: TextDirection.ltr,
               style: TextStyle(
@@ -436,7 +574,17 @@ class _CountBadge extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   // Рабочие выделены цветом состояния, а не просто жирным:
                   // в строке шириной 280 px две серые цифры сливаются в одну.
-                  color: working > 0 ? Colors.green : scheme.error)),
+                  // ⚠️ Кроме неполного итога: цвет — это вердикт, а после
+                  // отмены вердикта нет. Зелёная четвёрка из ста одного
+                  // сервера соврала бы не меньше красного нуля.
+                  color: partial
+                      ? scheme.outline
+                      : (working > 0 ? Colors.green : scheme.error))),
+          if (partial)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 3),
+              child: Icon(Icons.error_outline, size: 13, color: scheme.outline),
+            ),
         ],
       ]),
     );

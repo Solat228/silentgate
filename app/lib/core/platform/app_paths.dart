@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 /// Единый каталог данных приложения — ЕДИНСТВЕННАЯ точка платформозависимости
@@ -19,12 +20,46 @@ class AppPaths {
 
   static Directory? _cached;
 
+  /// ⚠️ ПОД ТЕСТАМИ БОЕВОЙ КАТАЛОГ НЕ ОТДАЁТСЯ НИКОГДА.
+  ///
+  /// Стоит здесь, а не в тестах, по той же причине, что барьер секретов стоит в
+  /// `LocalApiServer._write`, а не в обработчиках: это ЕДИНСТВЕННОЕ место,
+  /// откуда все восемь сторов, логи и кэши узнают путь. Тест, забывший про
+  /// изоляцию, обходит любую договорённость молча.
+  ///
+  /// ⚠️ ЭТО НЕ ПРЕДОСТОРОЖНОСТЬ, А РАЗБОР СЛУЧИВШЕГОСЯ. 14.08.2026 ревью
+  /// доказало опытом: `update_on_start_test` поднимал настоящий `AppState`, а
+  /// `_maybeRefreshOnStart` уходит в `unawaited` — тест успевал закончиться и
+  /// позвать [resetForTests] РАНЬШЕ, чем досчитывала цепочка импорта. Дальше
+  /// она резолвила путь заново, получала `%APPDATA%\SilentGate` и переписывала
+  /// боевой `subscriptions.json`: 37 КБ с четырьмя реальными подписками
+  /// превращались в 501 байт с выдуманной. Данные владельца уцелели только
+  /// потому, что клиент был запущен и через 26 минут переписал файл из памяти.
+  ///
+  /// Тест, которому каталог нужен, объявляет его сам через [overrideRoot];
+  /// тест, которому не нужен, получает исключение с адресом лечения, а не
+  /// тихую запись в чужие данные.
+  static bool get _underTest =>
+      Platform.environment.containsKey('FLUTTER_TEST') &&
+      !_productionRootAllowedInTests;
+
+  /// Единственное законное исключение — тест САМОГО этого класса: проверить
+  /// вычисление боевого пути, не вычислив его, нельзя. Названо длинно нарочно,
+  /// чтобы его не поставили «чтобы тест позеленел»: любому другому тесту нужен
+  /// [overrideRoot], а не это.
+  @visibleForTesting
+  static bool productionRootAllowedInTests = false;
+
+  static bool get _productionRootAllowedInTests => productionRootAllowedInTests;
+
   /// Разово вычисляет корень данных. Вызывать из `main` ДО построения UI и
   /// любых сторов. Идемпотентна; на Windows не обязательна (там путь
   /// вычисляется синхронно), на Android — обязательна.
   static Future<Directory> init() async {
     final known = _cached;
     if (known != null) return known;
+
+    if (_underTest) _refuseProductionRoot('AppPaths.init()');
 
     Directory dir;
     if (Platform.isWindows) {
@@ -60,6 +95,8 @@ class AppPaths {
     final known = _cached;
     if (known != null) return known;
 
+    if (_underTest) _refuseProductionRoot('AppPaths.supportDirSync()');
+
     // Windows умеет вычислить путь синхронно — сохраняем прежнее поведение
     // (и работоспособность до вызова init, например в режиме `--cleanup`).
     if (Platform.isWindows) {
@@ -86,4 +123,18 @@ class AppPaths {
 
   static String _tempBase() =>
       '${Directory.systemTemp.path}${Platform.pathSeparator}$dirName';
+
+  static Never _refuseProductionRoot(String caller) => throw StateError(
+        '$caller под тестами: корень данных не задан.\n'
+        'Тест обратился к каталогу данных, не объявив свой, — а боевой здесь '
+        'отдавать нельзя: именно так тест переписал реальный '
+        'subscriptions.json владельца (14.08.2026).\n'
+        'Лечение в setUp:\n'
+        "  final tmp = Directory.systemTemp.createTempSync('sg_test_');\n"
+        '  AppPaths.overrideRoot(tmp);\n'
+        'и в tearDown — AppPaths.resetForTests() плюс удаление tmp.\n'
+        '⚠️ Если падение прилетело ПОСЛЕ окончания теста, каталог сбросили '
+        'раньше, чем досчитала фоновая цепочка (unawaited): дождитесь её до '
+        'resetForTests, иначе путь резолвится заново уже без подмены.',
+      );
 }

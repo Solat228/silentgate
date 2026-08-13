@@ -12,6 +12,7 @@ import '../core/models/traffic_stats.dart';
 import '../core/util/server_search.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/reorder.dart';
+import '../core/util/key_migration.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
@@ -424,14 +425,22 @@ class AppState extends ChangeNotifier {
     if (data['info'] is Map<String, dynamic>) {
       _info = SubscriptionInfo.fromJson(data['info'] as Map<String, dynamic>);
     }
-    // Конфиги панели грузим ПЕРВЫМИ: профили «Авто …» хранятся как `panel://…`
-    // и восстанавливаются только из них (обычный парсер ссылок их не знает).
-    _overrides
-      ..clear()
-      ..addAll(await _overridesStore.load());
+    // ⚠️ КОНФИГИ ПАНЕЛИ ГРУЗЯТСЯ ПЕРВЫМИ, И ЭТО НЕ ПОРЯДОК «ДЛЯ КРАСОТЫ».
+    //
+    // Профили «Авто …» хранятся как `panel://…` и восстанавливаются только
+    // отсюда (обычный парсер ссылок их не знает). Плюс ровно это чтение заводит
+    // псевдонимы ключей профилей, записанных до 1.4.2
+    // (`PanelOutboundsStore.load` → `registerLegacyPanelKeys`): без них правки
+    // серверов, список серверов подписки и пины переехали бы на новые ключи
+    // вразнобой с самим конфигом. Раньше строки стояли наоборот, а комментарий
+    // тут же обещал обратное — правки читались ПЕРВЫМИ и мигрировали как
+    // придётся.
     _panelConfigs
       ..clear()
       ..addAll(await _panelOutboundsStore.load());
+    _overrides
+      ..clear()
+      ..addAll(await _overridesStore.load());
 
     // Подписки: несколько профилей, активный — один. Старое одно-подписочное
     // состояние мигрируется в профиль №1 при первом запуске новой версии.
@@ -680,6 +689,25 @@ class AppState extends ChangeNotifier {
     _engine.knownServerDomains = domains.toList();
   }
 
+  /// Адреса своих серверов — в барьер журнала.
+  ///
+  /// ⚠️ ЗДЕСЬ, А НЕ В МЕСТАХ ЛОГИРОВАНИЯ. `VpnServer.displayName` при пустом
+  /// имени вырождается в «адрес:порт», и в `AppLog` он уходит из девяти мест
+  /// сразу (отсюда, из `engine_base`, `probe_controller`, `auto_config_engine`,
+  /// `exit_outbounds`…). Чинить их по одному бессмысленно: десятое место
+  /// напишут завтра. Барьер стоит в `scrubSecrets`, а сюда попадает то
+  /// единственное, чего он сам знать не может, — какие именно адреса наши.
+  ///
+  /// ⚠️ ХОСТ ПОДПИСКИ СЮДА НЕ ИДЁТ НАМЕРЕННО (в отличие от
+  /// [_publishServerDomains], где он нужен): по нему разбирают, к какой панели
+  /// не достучались, он виден в интерфейсе и секретом не является — секретом в
+  /// её адресе является только путь, и его режет `scrubSecrets`.
+  void _rememberServerAddresses(Iterable<VpnServer> servers) {
+    for (final s in servers) {
+      SensitiveAddresses.remember(s.address, name: s.remark);
+    }
+  }
+
   bool _selectServerByName(String name) {
     String norm(String v) =>
         FlagUtil.strip(v).toLowerCase().replaceAll('ё', 'е').trim();
@@ -784,6 +812,7 @@ class AppState extends ChangeNotifier {
     // ⚠️ ДО любых ранних выходов ниже: движку нужен полный список имён, иначе
     // резолв чужих серверов уйдёт в туннель и подключение зациклится.
     _publishServerDomains();
+    _rememberServerAddresses(_servers);
     unawaited(publishNotificationLayout());
     // Здесь же, а не в конце метода: ниже есть ранний выход, и указатель
     // «чей это сервер» на самом частом пути (сервер тот же) не обновлялся бы.
@@ -1103,6 +1132,10 @@ class AppState extends ChangeNotifier {
         add(s);
       }
     }
+    // ⚠️ И ЗДЕСЬ ТОЖЕ, А НЕ ТОЛЬКО В [_rebuild]. Пинг всех подписок поднимает
+    // серверы НЕАКТИВНЫХ профилей: в `_servers` их нет, а в журнал они попадают
+    // наравне с остальными («Скорость «…»», «Автонастройка: …»).
+    _rememberServerAddresses(out);
     return out;
   }
 
@@ -1418,7 +1451,18 @@ class AppState extends ChangeNotifier {
   /// сервер собирается из сохранённого полного конфига.
   VpnServer? _serverFromStoredLink(String link) {
     if (link.startsWith('panel://')) {
-      final cfg = _panelConfigs[link]?.fullConfig;
+      // ⚠️ СПРАШИВАЕМ ПСЕВДОНИМ: ЭТОТ СПИСОК КАНОНИЗАЦИЮ НЕ ПРОХОДИТ.
+      // Ссылки серверов лежат в `subscriptions.json`, а он ключи не мигрирует —
+      // после обновления с 1.4.1 там остаётся старое написание ключа профиля
+      // (`panel://<имя>` без отпечатка подписки), тогда как сам конфиг
+      // `PanelOutboundsStore.load()` уже перенёс на новое. Без этой строки
+      // профиль «Авто» просто исчезал бы из списка серверов до ближайшего
+      // обновления подписки. Восстановленный сервер получает НОВЫЙ ключ (его
+      // считает `fromPanelConfig`), поэтому ближайшее сохранение состава чинит
+      // и `subscriptions.json`.
+      final stored = _panelConfigs[link] ??
+          _panelConfigs[KeyMigration.panelAliasOf(link) ?? link];
+      final cfg = stored?.fullConfig;
       if (cfg == null || cfg.isEmpty) return null;
       return XrayJsonSubscription.fromPanelConfig(cfg);
     }
@@ -1613,8 +1657,20 @@ class AppState extends ChangeNotifier {
   static final bool _underTest =
       Platform.environment.containsKey('FLUTTER_TEST');
 
+  /// Снять запрет выше — ТОЛЬКО для теста, который подставил фальшивую панель.
+  ///
+  /// ⚠️ БЕЗ ЭТОГО ВЕСЬ ПУТЬ НЕ ПРОВЕРЯЛСЯ НИЧЕМ. Запрет `_underTest` стоит
+  /// первой строкой, поэтому под тестами не срабатывало вообще ничего: вызов
+  /// `_maybeRefreshOnStart()` можно было удалить из `init()`, и вся сюита
+  /// оставалась зелёной — а настройка включена по умолчанию у всех, кто
+  /// обновится. Тест, снявший запрет, ОБЯЗАН передать `AppState` свой
+  /// `SubscriptionService` (см. `test/update_on_start_test.dart`), иначе он
+  /// уйдёт в сеть — ровно то, ради чего запрет и появился.
+  @visibleForTesting
+  static bool debugAllowRefreshOnStart = false;
+
   void _maybeRefreshOnStart() {
-    if (_underTest) return;
+    if (_underTest && !debugAllowRefreshOnStart) return;
     if (_subscriptionUrl == null) return;
     unawaited(() async {
       try {

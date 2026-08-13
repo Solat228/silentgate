@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/util/key_migration.dart';
+import 'package:silentgate/data/results_store.dart';
 
 /// Перенос сохранённого на канонические ключи.
 ///
@@ -36,6 +37,12 @@ void main() {
       final out = KeyMigration.remapMap<int>({oldKey: 1, newKey: 2});
       expect(out, hasLength(1));
       expect(out[newKey], 1);
+    });
+
+    test('переданный merge решает столкновение сам', () {
+      final out = KeyMigration.remapMap<int>({oldKey: 1, newKey: 2},
+          merge: (a, b) => a + b);
+      expect(out[newKey], 3, reason: 'умолчание «первый» должно быть отменяемым');
     });
 
     test('неразобранный ключ остаётся как есть — чужое не выбрасываем', () {
@@ -75,6 +82,49 @@ void main() {
       final stored = {oldKey: 147};
       expect(stored[newKey], isNull);
       expect(KeyMigration.remapMap<int>(stored)[newKey], 147);
+    });
+  });
+
+  group('Результаты пинга: при сведении побеждает СВЕЖЕЕ', () {
+    Map<String, dynamic> res(int ms, String at) =>
+        {'outcome': 'ok', 'latencyMs': ms, 'measuredAt': at};
+
+    test('⚠️ старая запись лежит в файле ПЕРВОЙ и по умолчанию побеждала', () {
+      // Порядок в файле именно такой: прочитанное с прошлого запуска попадает в
+      // словарь раньше всего, свежие замеры дописываются в конец. Умолчание
+      // «побеждает первый» показывало бы позапрошлую цифру при живом свежем
+      // замере рядом — комментарий обещал обратное, и это была неправда.
+      final stored = {
+        oldKey: res(900, '2025-01-01T00:00:00.000Z'),
+        newKey: res(12, '2026-08-12T00:00:00.000Z'),
+      };
+      expect(KeyMigration.remapMap<dynamic>(stored)[newKey]['latencyMs'], 900,
+          reason: 'таково умолчание — его и отменяет ResultsStore');
+      expect(ResultsStore.migrate(stored)[newKey]['latencyMs'], 12);
+    });
+
+    test('свежее не перебивается старым, даже если пришло раньше', () {
+      final out = ResultsStore.migrate({
+        newKey: res(12, '2026-08-12T00:00:00.000Z'),
+        oldKey: res(900, '2025-01-01T00:00:00.000Z'),
+      });
+      expect(out[newKey]['latencyMs'], 12);
+    });
+
+    test('без дат остаётся существующая запись — гадать не о чем', () {
+      final out = ResultsStore.migrate({
+        oldKey: {'latencyMs': 900},
+        newKey: {'latencyMs': 12},
+      });
+      expect(out[newKey]['latencyMs'], 900);
+    });
+
+    test('запись с датой сильнее записи без даты', () {
+      final out = ResultsStore.migrate({
+        oldKey: {'latencyMs': 900},
+        newKey: res(12, '2026-08-12T00:00:00.000Z'),
+      });
+      expect(out[newKey]['latencyMs'], 12);
     });
   });
 

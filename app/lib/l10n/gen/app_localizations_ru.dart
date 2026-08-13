@@ -811,6 +811,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subSwitcherPingAll => 'Пинг серверов всех подписок';
 
   @override
+  String get subSwitcherPingBusySpeed => 'Пинг недоступен: идёт замер скорости';
+
+  @override
   String get subSwitcherExpired => 'Истекла';
 
   @override
@@ -826,6 +829,16 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'Серверов в подписке: $total. Из них прошли проверку канала (запрос через сервер): $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'Серверов в подписке: $total. Проверка идёт прямо сейчас — число рабочих появится, когда прогон закончится.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'Серверов в подписке: $total. Прогон не был закончен (отменён или прерван), поэтому число неполное: проверку канала прошли $working из тех, до кого успели дойти.';
   }
 
   @override

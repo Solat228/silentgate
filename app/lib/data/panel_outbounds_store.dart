@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
+import '../core/subscription/xray_json_subscription.dart';
 import '../core/util/key_migration.dart';
 import 'atomic_file.dart';
 
@@ -54,10 +55,24 @@ class PanelOutboundsStore {
       if (!await f.exists()) return {};
       final data = jsonDecode(await f.readAsString());
       if (data is! Map) return {};
+      final raw = data.cast<String, dynamic>();
+      // ⚠️ ПСЕВДОНИМЫ ПРОФИЛЕЙ «АВТО …» ЗАВОДЯТСЯ ЗДЕСЬ, И ЭТО ЕДИНСТВЕННОЕ
+      // МЕСТО, ГДЕ ДЛЯ ЭТОГО ВСЁ ЕСТЬ ПОД РУКОЙ.
+      //
+      // С 1.4.2 ключ профиля панели содержит отпечаток подписки
+      // (`panel://<имя>?sub=…`), а до неё состоял из одного имени. Вывести новый
+      // ключ из старого нельзя — отпечатка в нём никогда не было; его знает
+      // только сам конфиг панели, и лежит он ровно в этом файле. Раньше список
+      // псевдонимов наполняло чтение ЧУЖОГО файла из `ResultsStore`, да и то
+      // лишь когда в результатах пинга попадался старый ключ и чтение успевало
+      // раньше `AppState.init()`. Кто пинал профиль — тому везло, остальным
+      // конфиг профиля не переезжал вовсе: пин уходил на новый ключ, конфиг
+      // оставался на старом, и профиль пропадал из списка молча и навсегда.
+      XrayJsonSubscription.registerLegacyPanelKeys(raw);
       final result = <String, PanelConfig>{};
-      for (final e in data.entries) {
+      for (final e in raw.entries) {
         final cfg = PanelConfig.fromJson(e.value);
-        if (!cfg.isEmpty) result['${e.key}'] = cfg;
+        if (!cfg.isEmpty) result[e.key] = cfg;
       }
       // ⚠️ САМОЕ ВАЖНОЕ ИЗ ХРАНИМОГО ПО КЛЮЧУ. Здесь лежит авторитетный конфиг
       // от панели — по нему поднимаются профили «Авто» с балансировщиком и все

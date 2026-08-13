@@ -173,15 +173,93 @@ void main() {
         ),
       );
 
-  /// Открыть меню переключателя.
+  /// Качать кадры, ПОКА не наступит [ready], но не бесконечно.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ВМЕСТО `pump(Duration)`. Раньше тесты ждали фиксированные
+  /// 350 мс и надеялись, что за это время маршрут меню успеет открыться, а
+  /// обработчик — отработать. Под нагрузкой (параллельные прогоны, занятый
+  /// диск) не успевало — файл падал примерно раз в несколько прогонов, и падал
+  /// не там, где сломано, а там, где не дождались.
+  ///
+  /// `pumpAndSettle` тут не годится по другой причине: в меню во время прогона
+  /// крутится индикатор, а он анимируется бесконечно — «дождаться покоя»
+  /// означало бы ждать вечно и упасть по таймауту.
+  ///
+  /// Потолок обязателен: без него тест на сломанном коде висел бы до общего
+  /// таймаута вместо внятного «не дождались».
+  Future<void> pumpUntil(
+    WidgetTester tester,
+    bool Function() ready, {
+    String what = 'ожидаемое состояние',
+    int maxFrames = 200,
+    Duration step = const Duration(milliseconds: 20),
+  }) async {
+    for (var i = 0; i < maxFrames; i++) {
+      if (ready()) return;
+      await tester.pump(step);
+    }
+    expect(ready(), isTrue,
+        reason: 'не дождались: $what '
+            '(кадров $maxFrames по ${step.inMilliseconds} мс)');
+  }
+
+  /// Поднять интерфейс на ЗАВЕДОМО ПРОСТОРНОЙ поверхности.
+  ///
+  /// Умолчание 800×600 меню переключателя уже впритык: `showMenu` своё
+  /// содержимое не сужает, а надписи в нём растут при каждой правке текстов.
+  /// Размер задаётся ТОЛЬКО через `tester.view` — обёртка в `SizedBox`
+  /// поверхность не расширяет, коробку зажимает та же 800×600.
+  Future<void> mount(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1600, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+  }
+
+  /// Виджет найден И его центр лежит НА ЭКРАНЕ, то есть по нему можно нажать.
+  ///
+  /// ⚠️ «ВИДЖЕТ ПОЯВИЛСЯ» — ЕЩЁ НЕ «ПО НЕМУ МОЖНО НАЖАТЬ», И ЭТО НЕ ПРИДИРКА.
+  /// `showMenu` разворачивает меню анимацией
+  /// `Align(alignment: topEnd, widthFactor: 0→1)`: пока фактор мал, содержимое
+  /// прижато к ПРАВОМУ краю сужённой коробки, и его левая часть висит в
+  /// отрицательных координатах. Дождавшись одного лишь появления текста, тест
+  /// бил в Offset(-117, 219) — мимо холста («would not hit test»), и падал так,
+  /// будто сломана логика меню.
+  bool onScreen(WidgetTester tester, Finder f) {
+    final found = f.evaluate();
+    if (found.length != 1) return false;
+    final box = found.single.renderObject;
+    if (box is! RenderBox || !box.hasSize) return false;
+    final center = box.localToGlobal(box.size.center(Offset.zero));
+    final surface =
+        Offset.zero & (tester.view.physicalSize / tester.view.devicePixelRatio);
+    return surface.contains(center);
+  }
+
+  /// Открыть меню переключателя и дождаться, пока оно РАЗВЕРНЁТСЯ.
+  ///
+  /// ⚠️ ДВА УСЛОВИЯ, И ОБА ОБЯЗАТЕЛЬНЫ. Пока маршрут меню анимируется, он
+  /// накрыт `AbsorbPointer`/`IgnorePointer` — нажатие не доходит до пункта,
+  /// даже когда тот уже нарисован и лежит на экране (в отладке это видно по
+  /// пути hit-теста, оканчивающемуся на самом `RenderView`). Признак конца
+  /// анимации — прекращение планирования кадров.
   Future<void> openMenu(WidgetTester tester) async {
     await tester.tap(find.byType(SubscriptionSwitcher));
-    // ⚠️ НЕ pumpAndSettle: во время прогона в меню крутится индикатор, а он
-    // анимируется бесконечно — «дождаться покоя» здесь означает ждать вечно и
-    // упасть по таймауту. Хватает ограниченного числа кадров: маршрут меню
-    // открывается за один-два.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 350));
+    await pumpUntil(
+        tester,
+        () =>
+            !tester.binding.hasScheduledFrame &&
+            onScreen(tester, find.text(l.subSwitcherPingAll)),
+        what: 'развёрнутое меню переключателя подписок');
+  }
+
+  /// Нажать «Пинг серверов» и дождаться, что список РЕАЛЬНО ушёл на прогон.
+  Future<void> tapPingAll(WidgetTester tester) async {
+    await tester.tap(find.text(l.subSwitcherPingAll));
+    await pumpUntil(tester, () => probe.pinged != null,
+        what: 'вызов ProbeController.pingAll');
   }
 
   tearDown(() {
@@ -195,17 +273,14 @@ void main() {
   group('Пункт меню пингует ВСЕ подписки, а не активную', () {
     testWidgets('на прогон уходят серверы обеих подписок', (tester) async {
       await tester.runAsync(boot);
-      await tester.pumpWidget(app());
-      await tester.pumpAndSettle();
+      await mount(tester);
 
       // На главном экране видна только активная подписка — именно её список и
       // уходил на пинг раньше.
       expect(state.servers.length, 2);
 
       await openMenu(tester);
-      await tester.tap(find.text(l.subSwitcherPingAll));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+      await tapPingAll(tester);
 
       expect(probe.pinged, isNotNull, reason: 'пункт меню обязан запустить пинг');
       final keys = probe.pinged!.map((s) => s.key).toSet();
@@ -220,13 +295,10 @@ void main() {
     testWidgets('активная подписка и список на главном не меняются',
         (tester) async {
       await tester.runAsync(boot);
-      await tester.pumpWidget(app());
-      await tester.pumpAndSettle();
+      await mount(tester);
 
       await openMenu(tester);
-      await tester.tap(find.text(l.subSwitcherPingAll));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 350));
+      await tapPingAll(tester);
 
       // Пинг — это не переключение подписки: канал, список и выбор сервера
       // обязаны остаться теми же (иначе при живом туннеле человек получил бы
@@ -323,8 +395,7 @@ void main() {
     testWidgets('до пинга у подписки видно одно число, после — два',
         (tester) async {
       await tester.runAsync(boot);
-      await tester.pumpWidget(app());
-      await tester.pumpAndSettle();
+      await mount(tester);
       await openMenu(tester);
 
       // B — неактивная подписка, три сервера. Число обязано быть даже у неё:
@@ -346,7 +417,16 @@ void main() {
       final b = state.serversOfSubscription(idB);
       probe.setResult(b.first, _res(PingVerification.passed));
       probe.setResult(b[1], _res(PingVerification.failed));
-      await tester.pumpAndSettle();
+      // Ждём САМО ПОЯВЛЕНИЕ второго числа, а не «сколько-то миллисекунд»:
+      // меню перерисовывается по уведомлению ProbeController, и срок этого
+      // ничем не задан.
+      await pumpUntil(
+          tester,
+          () => find
+              .descendant(of: badge(idB), matching: find.text('1'))
+              .evaluate()
+              .isNotEmpty,
+          what: 'счётчик рабочих серверов у подписки B');
 
       expect(find.descendant(of: badge(idB), matching: find.text('3')),
           findsOneWidget);

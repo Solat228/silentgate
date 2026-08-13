@@ -808,6 +808,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override
+  String get subSwitcherPingBusySpeed =>
+      'Ping unavailable: a speed test is running';
+
+  @override
   String get subSwitcherExpired => 'Expired';
 
   @override
@@ -823,6 +827,16 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String subSwitcherCountWorking(int total, int working) {
     return 'Servers in this subscription: $total. Passed the channel check (a request through the server): $working.';
+  }
+
+  @override
+  String subSwitcherCountChecking(int total) {
+    return 'Servers in this subscription: $total. The check is running right now — the number of working ones will appear when it finishes.';
+  }
+
+  @override
+  String subSwitcherCountPartial(int total, int working) {
+    return 'Servers in this subscription: $total. The run was not finished (cancelled or interrupted), so the number is incomplete: $working passed the channel check among those it managed to reach.';
   }
 
   @override

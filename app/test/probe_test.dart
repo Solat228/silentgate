@@ -1066,8 +1066,14 @@ void _panelProfileTests() {
 
     expect(s.isPanelProfile, isTrue, reason: 'профиль с балансировщиком не распознан');
     expect(s.remark, '🎬 Авто (YouTube)');
-    // Ключ стабилен и не зависит от состава серверов внутри профиля.
-    expect(s.key, XrayJsonSubscription.panelKey('🎬 Авто (YouTube)'));
+    // Ключ стабилен и не зависит от состава серверов внутри профиля. С 1.4.2 в
+    // нём есть ещё и отпечаток подписки — иначе одноимённые профили разных
+    // подписок делили бы данные (см. test/panel_profile_key_test.dart).
+    expect(s.key, startsWith(XrayJsonSubscription.panelKey('🎬 Авто (YouTube)')));
+    expect(
+        s.key,
+        XrayJsonSubscription.panelKeyOf(
+            (jsonDecode(autoProfile) as List).first as Map<String, dynamic>));
 
     // Главное: сохранены ВСЕ outbound'ы, балансировщик и burstObservatory.
     final cfg = jsonDecode(s.rawPanelConfig!) as Map;

@@ -4,6 +4,7 @@
   "commonCancel": "إلغاء",
   "commonClose": "إغلاق",
   "commonCopy": "نسخ",
+  "commonClear": "مسح",
   "commonCopied": "تم النسخ",
   "commonRefresh": "تحديث",
   "commonCheck": "فحص",
@@ -21,6 +22,10 @@
   "sectionNetwork": "الشبكة",
   "sectionAbout": "حول",
   "sectionSupport": "الدعم",
+  "settingsSearchHint": "البحث في الإعدادات",
+  "settingsSearchEmpty": "لم يُعثر على شيء: «{query}»",
+  "settingsExpand": "توسيع",
+  "settingsCollapse": "طيّ",
   "appearanceTheme": "السمة",
   "themeSystem": "النظام",
   "themeLight": "فاتح",
@@ -246,6 +251,31 @@
   "subBarValidPerpetual": "صالح: غير محدود  {auto}",
   "subBarExpired": "انتهى الاشتراك:",
   "subBarValidUntil": "صالح حتى:",
+  "subSwitcherPingAll": "اختبار خوادم كل الاشتراكات",
+  "subSwitcherPingBusySpeed": "قياس زمن الاستجابة غير متاح: يجري الآن اختبار السرعة",
+  "subSwitcherExpired": "منتهٍ",
+  "subSwitcherExpiredOn": "انتهى الاشتراك في {date}",
+  "subSwitcherCountTotal": "الخوادم في الاشتراك: {total}. لم يجرِ فحص القناة بعد، فشغّل «اختبار خوادم كل الاشتراكات».",
+  "subSwitcherCountWorking": "الخوادم في الاشتراك: {total}، ومنها اجتاز فحص القناة (طلب عبر الخادم): {working}.",
+  "subSwitcherCountChecking": "عدد الخوادم في الاشتراك: {total}. الفحص جارٍ الآن — سيظهر عدد الخوادم العاملة عند انتهائه.",
+  "subSwitcherCountPartial": "عدد الخوادم في الاشتراك: {total}. لم يكتمل الفحص (أُلغي أو انقطع)، لذلك العدد ناقص: اجتاز {working} فحص القناة من بين ما أمكن الوصول إليه.",
+  "@subSwitcherCountChecking": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "@subSwitcherCountPartial": {
+    "placeholders": {
+      "total": {
+        "type": "int"
+      },
+      "working": {
+        "type": "int"
+      }
+    }
+  },
   "infoCaptureMode": "كيفية اعتراض حركة المرور. «بروكسي النظام» يضبط بروكسي محلياً في النظام (بدون صلاحيات المسؤول؛ يلتقط المتصفحات ومعظم التطبيقات). «TUN» محوّل شبكة افتراضي يلتقط كل حركة المرور (بما في ذلك UDP والتطبيقات التي تتجاهل البروكسي)، لكنه يتطلب صلاحيات المسؤول.",
   "infoSystemProxy": "بروكسي HTTP محلي في إعدادات النظام (سجل WinINET). بدون صلاحيات المسؤول. لا يعترض UDP ولا التطبيقات التي تتجاهل بروكسي النظام.",
   "infoTunMode": "نفق كامل عبر محوّل wintun الافتراضي + sing-box. يلتقط كل حركة المرور، بما في ذلك UDP. يطلب صلاحيات المسؤول (UAC) عند التفعيل.",
@@ -872,14 +902,6 @@
   "logsCleanNow": "احذف القديم الآن",
   "logsCleaned": "الملفات المحذوفة: {count}، وتم تحرير {size}",
   "logsNothingToClean": "لا شيء للحذف",
-  "commonClear": "مسح",
-  "settingsSearchHint": "البحث في الإعدادات",
-  "settingsSearchEmpty": "لم يُعثر على شيء: «{query}»",
-  "settingsExpand": "توسيع",
-  "settingsCollapse": "طيّ",
-  "subSwitcherPingAll": "اختبار خوادم كل الاشتراكات",
-  "subSwitcherCountTotal": "الخوادم في الاشتراك: {total}. لم يجرِ فحص القناة بعد، فشغّل «اختبار خوادم كل الاشتراكات».",
-  "subSwitcherCountWorking": "الخوادم في الاشتراك: {total}، ومنها اجتاز فحص القناة (طلب عبر الخادم): {working}.",
   "speedTooltip": "سرعة التنزيل عبر هذا الخادم",
   "speedFromAutoConfig": "قاس السرعةَ الضبطُ التلقائي",
   "speedBlockedTooltip": "لا تُقاس السرعة: الخادم لم يجتز فحص القناة (لم يصل الطلب عبره)",
@@ -894,7 +916,5 @@
   "speedProgress": "السرعة: {done} من {total}",
   "updateOnStartTitle": "تحديث الاشتراك عند التشغيل",
   "updateOnStartSub": "جلب قائمة خوادم جديدة في كل مرة، لا بالمؤقّت وحده",
-  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية",
-  "subSwitcherExpired": "منتهٍ",
-  "subSwitcherExpiredOn": "انتهى الاشتراك في {date}"
+  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية"
 }
