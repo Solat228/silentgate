@@ -894,5 +894,7 @@
   "speedProgress": "速度：{total} 个中的 {done} 个",
   "updateOnStartTitle": "启动时刷新订阅",
   "updateOnStartSub": "每次都拉取最新服务器列表，而不只按计时器",
-  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端"
+  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端",
+  "subSwitcherExpired": "已过期",
+  "subSwitcherExpiredOn": "订阅已于 {date} 过期"
 }

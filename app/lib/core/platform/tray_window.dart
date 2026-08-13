@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -7,6 +8,8 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../app_nav.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../app_info.dart';
+import '../models/traffic_stats.dart';
 import '../models/vpn_status.dart';
 import 'app_log.dart';
 import 'core_cleanup.dart';
@@ -60,6 +63,11 @@ class TrayWindow with WindowListener, TrayListener {
 
   /// Показать в трее состояние VPN: серый знак — выключен, фиолетовый — включён.
   Future<void> setConnected(bool connected) async {
+    // Подсказку обновляем ВСЕГДА, даже когда значок менять не нужно: она
+    // показывает сервер и скорость, а не состояние.
+    _connected = connected;
+    _syncTooltipTicker();
+    await _pushTooltip();
     if (_trayConnected == connected) return; // см. _trayConnected
     _trayConnected = connected;
     await _applyTrayIcon(connected);
@@ -86,7 +94,7 @@ class TrayWindow with WindowListener, TrayListener {
   Future<void> _setupTray() async {
     try {
       await _applyTrayIcon(_trayConnected ?? false);
-      await trayManager.setToolTip('SilentGate');
+      await _pushTooltip();
       // Контекст на старте может быть ещё не готов — тогда русский фолбэк; меню
       // пересобирается при смене языка (refreshTrayMenu из переключателя языка).
       final ctx = _ctx;
@@ -103,7 +111,22 @@ class TrayWindow with WindowListener, TrayListener {
   /// Пересобрать меню трея (напр. после смены языка интерфейса).
   Future<void> refreshTrayMenu() => _setupTray();
 
-  BuildContext? get _ctx => navigatorKey.currentContext;
+  /// Контекст навигатора — или `null`, если дерева ещё (или уже) нет.
+  ///
+  /// ⚠️ ОБЁРНУТО В try/catch, И ЭТО НЕ ПЕРЕСТРАХОВКА. `GlobalKey.currentContext`
+  /// внутри спрашивает `WidgetsBinding.instance`, а тот БРОСАЕТ исключение,
+  /// пока привязка не инициализирована. Подсказку трея обновляет
+  /// `setConnected`, который зовётся из `AppState` на смену статуса — в том
+  /// числе на раннем старте, когда виджетов ещё нет, и в юнит-тестах без
+  /// биндинга. Поймано падением шести тестов `api_handlers_test`: там AppState
+  /// поднимается без дерева вовсе.
+  BuildContext? get _ctx {
+    try {
+      return navigatorKey.currentContext;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// Гарантированное завершение (#4). `windowManager.destroy()` изнутри `onWindowClose`
   /// на Windows может зависнуть намертво (deadlock в window_manager при preventClose),
@@ -299,9 +322,159 @@ class TrayWindow with WindowListener, TrayListener {
   /// системное уведомление Windows потребовало бы новой зависимости; подсказка
   /// есть уже сейчас и решает главную задачу — объяснить причину.
   static Future<void> setBlocked(bool blocked) async {
-    await trayManager.setToolTip(blocked
-        ? 'SilentGate — соединение потеряно, трафик заблокирован'
-        : 'SilentGate');
+    instance._blocked = blocked;
+    await instance._pushTooltip();
   }
 
+  // ── Подсказка трея: РОВНО ДВЕ СТРОКИ ────────────────────────────────────────
+
+  /// ⚠️ WINDOWS МОЛЧА РЕЖЕТ ПОДСКАЗКУ НА 127 СИМВОЛАХ.
+  ///
+  /// В `NOTIFYICONDATA` поле `szTip` — это `WCHAR[128]`, то есть 127 символов
+  /// плюс завершающий ноль. Всё, что длиннее, обрезается оболочкой без ошибки,
+  /// без исключения и без строчки в журнале: длинное имя сервера просто
+  /// съедало бы вторую строку со скоростью, и никто бы не понял почему.
+  /// Считаем в кодовых блоках UTF-16 — ровно то, что считает Windows, и ровно
+  /// то, что даёт `String.length` в Dart.
+  static const int tooltipLimit = 127;
+
+  /// Текущая скорость для подсказки — и ТОЛЬКО она.
+  ///
+  /// ⚠️ Накопленного за сессию здесь быть не должно (решение владельца): в
+  /// подсказку помещаются две строки, и «сколько всего» видно в самом
+  /// приложении, а «что происходит прямо сейчас» — больше нигде.
+  @visibleForTesting
+  static String speedLine(TrafficStats stats) =>
+      '↓ ${TrafficStats.formatSpeed(stats.downlinkSpeed)}'
+      '   ↑ ${TrafficStats.formatSpeed(stats.uplinkSpeed)}';
+
+  /// Собрать подсказку: первая строка — приложение и сервер, вторая — скорость.
+  ///
+  /// Обрезается ТОЛЬКО первая строка: скорость коротка, известна по длине и
+  /// нужна целиком — потерять половину числа хуже, чем не дочитать имя сервера.
+  @visibleForTesting
+  static String composeTooltip({
+    String? server,
+    String? speed,
+    String? blocked,
+  }) {
+    const name = AppInfo.name;
+    final note = blocked?.trim() ?? '';
+    // Блокировка трафика важнее сервера и скорости: пока kill switch держит
+    // канал, объяснять надо именно это.
+    if (note.isNotEmpty) return _clip('$name — $note', tooltipLimit);
+
+    final srv = server?.trim() ?? '';
+    final first = srv.isEmpty ? name : '$name — $srv';
+    final second = speed?.trim() ?? '';
+    if (second.isEmpty) return _clip(first, tooltipLimit);
+    // -1 — перевод строки. Он тоже занимает место в szTip.
+    final room = tooltipLimit - second.length - 1;
+    if (room <= 0) return _clip(second, tooltipLimit); // теоретический предел
+    return '${_clip(first, room)}\n$second';
+  }
+
+  /// Обрезать до [limit] кодовых блоков UTF-16, не разрушая символы.
+  static String _clip(String text, int limit) {
+    if (limit <= 0) return '';
+    if (text.length <= limit) return text;
+    if (limit == 1) return '…';
+    return '${_trimBroken(text.substring(0, limit - 1))}…';
+  }
+
+  /// Снять с хвоста «половинку» символа, оставшуюся после обрезания.
+  ///
+  /// ⚠️ Эмодзи в UTF-16 занимает ДВА кодовых блока, а флаг страны — ЧЕТЫРЕ
+  /// (две буквы-индикатора). Рез посередине даёт либо недопустимую строку с
+  /// одиноким суррогатом, либо половину флага — в трее это квадрат или чужая
+  /// буква. Имена серверов у панели почти всегда начинаются с флага, так что
+  /// случай не теоретический.
+  static String _trimBroken(String s) {
+    var out = s;
+    if (out.isNotEmpty && _isHighSurrogate(out.codeUnitAt(out.length - 1))) {
+      out = out.substring(0, out.length - 1);
+    }
+    final runes = out.runes.toList();
+    // ⚠️ СЧИТАЕМ ЧЁТНОСТЬ ХВОСТОВОЙ ЦЕПОЧКИ, а не одну букву перед ней.
+    //
+    // Флаги в имени идут подряд («🇩🇪🇳🇱»), и проверка «сосед тоже
+    // индикатор?» на такой цепочке всегда отвечает «да» — половина флага
+    // проходила насквозь. Флаг — ровно ДВЕ буквы, значит нечётная цепочка в
+    // конце и есть разрезанный флаг: лишнюю букву убираем.
+    var run = 0;
+    while (run < runes.length &&
+        _isRegionalIndicator(runes[runes.length - 1 - run])) {
+      run++;
+    }
+    if (run.isOdd) out = String.fromCharCodes(runes.take(runes.length - 1));
+    return out;
+  }
+
+  static bool _isHighSurrogate(int unit) => unit >= 0xD800 && unit <= 0xDBFF;
+  static bool _isRegionalIndicator(int rune) =>
+      rune >= 0x1F1E6 && rune <= 0x1F1FF;
+
+  /// Kill switch держит трафик — подсказка говорит об этом вместо сервера.
+  bool _blocked = false;
+
+  /// Состояние по последнему вызову [setConnected].
+  bool _connected = false;
+
+  /// Последнее, что реально уехало в трей: одинаковый текст в Win32 гонять
+  /// незачем, а такт у подсказки секундный.
+  String? _lastTip;
+
+  /// ⚠️ СВОЙ ТАКТ, ПОТОМУ ЧТО СТАТУС ТИКАЕТ НЕ КАЖДУЮ СЕКУНДУ.
+  ///
+  /// Движок шлёт статус только на СМЕНУ состояния (`setStatus`), а счётчики
+  /// идут отдельным потоком, до трея не доходящим. Без своего такта в
+  /// подсказке навсегда застыла бы скорость той секунды, когда VPN включили.
+  /// Такт живёт только на время соединения и стоит одного чтения состояния.
+  Timer? _tipTicker;
+
+  void _syncTooltipTicker() {
+    _tipTicker?.cancel();
+    _tipTicker = null;
+    if (_connected) {
+      _tipTicker = Timer.periodic(
+          const Duration(seconds: 1), (_) => unawaited(_pushTooltip()));
+    }
+  }
+
+  Future<void> _pushTooltip() async {
+    final tip = _currentTooltip();
+    if (tip == _lastTip) return;
+    _lastTip = tip;
+    try {
+      await trayManager.setToolTip(tip);
+    } catch (_) {
+      // Трея может не быть (запуск без окна) — не повод падать.
+    }
+  }
+
+  String _currentTooltip() {
+    if (_blocked) {
+      return composeTooltip(blocked: _blockedNote());
+    }
+    if (!_connected) return composeTooltip();
+    final ctx = _ctx;
+    if (ctx == null) return composeTooltip();
+    try {
+      final state = ctx.read<AppState>();
+      final l = AppLocalizations.of(ctx);
+      // Имя сервера отдаём как есть: это данные, а не интерфейсный текст.
+      // Автовыбор имени не имеет — берём ту же подпись, что и главный экран.
+      final server = state.selectedServer?.displayName ?? l.homeAutoBest;
+      return composeTooltip(server: server, speed: speedLine(state.stats));
+    } catch (_) {
+      // Состояние ещё не подключено к дереву — подсказка не тот повод падать.
+      return composeTooltip();
+    }
+  }
+
+  /// Текст про удержанный трафик.
+  ///
+  /// Остаётся русским литералом, как и был: своего ключа в ARB у него нет, а
+  /// заводить его ради одной строки значит оставить восемь языков без перевода.
+  String _blockedNote() => 'соединение потеряно, трафик заблокирован';
 }

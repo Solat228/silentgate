@@ -894,5 +894,7 @@
   "speedProgress": "السرعة: {done} من {total}",
   "updateOnStartTitle": "تحديث الاشتراك عند التشغيل",
   "updateOnStartSub": "جلب قائمة خوادم جديدة في كل مرة، لا بالمؤقّت وحده",
-  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية"
+  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية",
+  "subSwitcherExpired": "منتهٍ",
+  "subSwitcherExpiredOn": "انتهى الاشتراك في {date}"
 }

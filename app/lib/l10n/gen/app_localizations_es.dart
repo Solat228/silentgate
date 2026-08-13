@@ -819,6 +819,14 @@ class AppLocalizationsEs extends AppLocalizations {
       'Probar los servidores de todas las suscripciones';
 
   @override
+  String get subSwitcherExpired => 'Caducada';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'La suscripción caducó el $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Servidores en la suscripción: $total. Aún no se ha comprobado el canal: ejecuta «Probar los servidores de todas las suscripciones».';
   }

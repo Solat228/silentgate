@@ -813,6 +813,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override
+  String get subSwitcherExpired => 'Süresi doldu';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'Abonelik $date tarihinde sona erdi';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Abonelikteki sunucu: $total. Kanal henüz denetlenmedi — «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.';
   }

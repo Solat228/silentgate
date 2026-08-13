@@ -894,5 +894,7 @@
   "speedProgress": "Velocidade: {done} de {total}",
   "updateOnStartTitle": "Atualizar a assinatura ao iniciar",
   "updateOnStartSub": "Buscar uma lista de servidores nova sempre, não apenas pelo temporizador",
-  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts"
+  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts",
+  "subSwitcherExpired": "Expirada",
+  "subSwitcherExpiredOn": "A assinatura expirou em {date}"
 }

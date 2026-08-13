@@ -822,6 +822,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Tester les serveurs de tous les abonnements';
 
   @override
+  String get subSwitcherExpired => 'Expiré';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'Abonnement expiré le $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Serveurs dans l\'abonnement : $total. Le canal n\'a pas encore été vérifié — lancez « Tester les serveurs de tous les abonnements ».';
   }

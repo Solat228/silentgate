@@ -894,5 +894,7 @@
   "speedProgress": "Débit : {done} sur {total}",
   "updateOnStartTitle": "Actualiser l'abonnement au démarrage",
   "updateOnStartSub": "Récupérer une liste de serveurs à jour à chaque fois, pas seulement selon la minuterie",
-  "apiSectionSub": "HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts"
+  "apiSectionSub": "HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts",
+  "subSwitcherExpired": "Expiré",
+  "subSwitcherExpiredOn": "Abonnement expiré le {date}"
 }

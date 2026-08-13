@@ -894,5 +894,7 @@
   "speedProgress": "سرعت: {done} از {total}",
   "updateOnStartTitle": "به‌روزرسانی اشتراک هنگام آغاز",
   "updateOnStartSub": "هر بار فهرست تازهٔ سرورها گرفته شود، نه فقط با زمان‌سنج",
-  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت"
+  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت",
+  "subSwitcherExpired": "منقضی",
+  "subSwitcherExpiredOn": "اشتراک در {date} منقضی شد"
 }

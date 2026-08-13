@@ -1506,6 +1506,18 @@ abstract class AppLocalizations {
   /// **'Пинг серверов всех подписок'**
   String get subSwitcherPingAll;
 
+  /// No description provided for @subSwitcherExpired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Истекла'**
+  String get subSwitcherExpired;
+
+  /// No description provided for @subSwitcherExpiredOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписка истекла {date}'**
+  String subSwitcherExpiredOn(String date);
+
   /// No description provided for @subSwitcherCountTotal.
   ///
   /// In ru, this message translates to:

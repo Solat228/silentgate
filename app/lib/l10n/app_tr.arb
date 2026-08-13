@@ -894,5 +894,7 @@
   "speedProgress": "Hız: {total} sunucudan {done}",
   "updateOnStartTitle": "Açılışta aboneliği yenile",
   "updateOnStartSub": "Yalnızca zamanlayıcıyla değil, her seferinde taze sunucu listesi çek",
-  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin"
+  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin",
+  "subSwitcherExpired": "Süresi doldu",
+  "subSwitcherExpiredOn": "Abonelik {date} tarihinde sona erdi"
 }

@@ -789,6 +789,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override
+  String get subSwitcherExpired => '已过期';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return '订阅已于 $date 过期';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return '订阅中的服务器：$total 个。尚未做过通道检查，请运行“测试全部订阅的服务器”。';
   }

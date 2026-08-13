@@ -811,6 +811,14 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subSwitcherPingAll => 'Пинг серверов всех подписок';
 
   @override
+  String get subSwitcherExpired => 'Истекла';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'Подписка истекла $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Серверов в подписке: $total. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».';
   }

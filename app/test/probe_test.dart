@@ -1332,7 +1332,7 @@ void _serverInfoTests() {
     const s = AppSettings(speedTestSize: SpeedTestSize.light);
     expect(AppSettings.fromJson(s.toJson()).speedTestSize, SpeedTestSize.light);
     // Умолчание — точный режим.
-    expect(AppSettings.defaults.speedTestSize, SpeedTestSize.full);
+    expect(AppSettings.defaults.speedTestSize, SpeedTestSize.light);
   });
 
   test('IpInfo: локация собирается из того, что есть', () {

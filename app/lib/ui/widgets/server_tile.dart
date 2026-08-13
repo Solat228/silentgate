@@ -23,6 +23,7 @@ import '../server_json_dialog.dart';
 import 'flag_cell.dart';
 import 'info_tooltip.dart';
 import 'ping_chip.dart';
+import 'selection_outline.dart';
 import 'subscription_avatar.dart';
 
 /// Краткая сводка туннелирования панельного профиля для «!»-подсказки (#3.2).
@@ -71,7 +72,7 @@ class ServerTile extends StatelessWidget {
     // нажатие и видимая кнопка ⫶ вместо шеврона.
     final touch = _isTouchLayout(context);
 
-    return GestureDetector(
+    final tile = GestureDetector(
       onSecondaryTapDown: (d) => _menu(context, d.globalPosition),
       onLongPressStart:
           touch ? (d) => _menu(context, d.globalPosition) : null,
@@ -138,7 +139,7 @@ class ServerTile extends StatelessWidget {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _PingSpeedColumn(
+            PingSpeedColumn(
               ping: probe.resultFor(server),
               speed: probe.speedFor(server),
             ),
@@ -181,6 +182,16 @@ class ServerTile extends StatelessWidget {
         onTap: onTap,
       ),
     );
+
+    // Обводка выбранного сервера — просьба владельца: «сделай такую же обводку
+    // для выбранного сервера», как у раздела настроек. Заливка строки (8 %
+    // primary) выделяет слабо: на светлой теме её почти не видно, и после
+    // перезапуска непонятно, какой сервер запомнился.
+    //
+    // ⚠️ Обёртка НЕ меняет высоту строки: линия рисуется поверх той же коробки
+    // с отступом внутрь. Высота здесь — не косметика, по ней считается
+    // прокрутка к выбранному серверу в home_screen.
+    return SelectionOutline(selected: selected, inset: 2, child: tile);
   }
 
   /// Строка-уведомление панели: сообщение + «Скопировать» и (для «После оплаты
@@ -336,9 +347,18 @@ class ServerTile extends StatelessWidget {
 /// Пинг и скорость — столбиком у края строки (решение владельца).
 ///
 /// Раскладка ровно та, что он описал:
-///   • есть скорость — пинг сверху, скорость под ним;
+///   • есть скорость — пинг ПРИЖАТ К ВЕРХУ, скорость к низу, между ними пусто;
 ///   • нет скорости — пинг ОДИН и встаёт по центру строки;
 ///   • сервер не прошёл проверку канала — на месте скорости прочерк.
+///
+/// ⚠️ ВЫСОТА СТОЛБИКА ЗАДАНА ЧИСЛОМ, И ЭТО ГЛАВНОЕ ЗДЕСЬ. `ListTile`
+/// (dense + `VisualDensity(vertical: -2)`) отводит `trailing` ровно **40 dp** и
+/// строку под него НЕ растягивает. Столбик из двух прежних плашек занимал
+/// 52 dp, вылезал за пределы строки на 11 px и рисовался поверх соседних —
+/// владелец описал это как «из-за скорости всё поплыло». Отладочная сборка при
+/// этом ещё и ругалась `RenderFlex overflowed`. [PingChip.columnHeight] = 38 dp
+/// влезает с запасом, а поскольку оно фиксировано, появление и пропажа замера
+/// скорости строку не двигают вовсе.
 ///
 /// ⚠️ Строка живёт и на телефоне. Ширину столбика НЕ ограничиваем жёстко:
 /// `ConstrainedBox` не режет содержимое, а роняет отладочную сборку по
@@ -346,23 +366,26 @@ class ServerTile extends StatelessWidget {
 /// имени сервера отдаёт `ListTile` (`trailing` берёт свою ширину, остаток —
 /// заголовку), а заголовок у нас `Flexible` с многоточием, поэтому лишний
 /// десяток пикселей здесь ничего не ломает.
-class _PingSpeedColumn extends StatelessWidget {
+class PingSpeedColumn extends StatelessWidget {
   final PingResult ping;
   final ServerSpeed? speed;
-  const _PingSpeedColumn({required this.ping, required this.speed});
+  const PingSpeedColumn({super.key, required this.ping, required this.speed});
 
   @override
   Widget build(BuildContext context) {
     final chip = PingChip(result: ping);
     if (!SpeedChip.visible(speed: speed, ping: ping)) return chip;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        chip,
-        const SizedBox(height: 2),
-        SpeedChip(speed: speed, ping: ping),
-      ],
+    return SizedBox(
+      height: PingChip.columnHeight,
+      child: Column(
+        // Пинг сверху, скорость снизу, просвет — сам собой между ними.
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          chip,
+          SpeedChip(speed: speed, ping: ping),
+        ],
+      ),
     );
   }
 }

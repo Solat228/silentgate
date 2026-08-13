@@ -816,6 +816,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subSwitcherPingAll => 'Server aller Abos testen';
 
   @override
+  String get subSwitcherExpired => 'Abgelaufen';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'Abo am $date abgelaufen';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Server im Abo: $total. Der Kanal wurde noch nicht geprüft – starten Sie „Server aller Abos testen“.';
   }

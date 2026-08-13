@@ -809,6 +809,14 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override
+  String get subSwitcherExpired => 'منقضی';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'اشتراک در $date منقضی شد';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'سرورهای این اشتراک: $total. هنوز بررسی کانال انجام نشده — «آزمودن سرورهای همهٔ اشتراک‌ها» را اجرا کنید.';
   }

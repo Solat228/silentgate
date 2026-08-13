@@ -189,6 +189,9 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
     final scheme = Theme.of(context).colorScheme;
     final items = widget.state.subscriptions;
     final activeId = widget.state.activeSubscriptionId;
+    // Один момент времени на всю отрисовку списка: иначе две подписки с одной и
+    // той же датой могли бы разойтись в вердикте на границе секунды.
+    final now = DateTime.now();
     // Есть ли вообще что пинговать. Считаем по тому же кэшу, что и счётчики:
     // спрашивать `allSubscriptionServers()` на каждый build значило бы
     // разбирать все ссылки заново ради одного «пусто/не пусто».
@@ -227,6 +230,11 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
               itemBuilder: (context, i) {
                 final p = items[i];
                 final active = p.id == activeId;
+                // Истёкшая подписка снаружи ничем не отличается от рабочей:
+                // название то же, серверы в ссылках те же, счётчик тот же —
+                // владелец с четырьмя подписками не мог понять, какая из них
+                // уже не работает, пока не переключится и не получит отказ.
+                final expired = p.isExpiredAt(now);
                 return InkWell(
                   // Ключ обязателен и обязан быть привязан к САМОЙ подписке:
                   // по ключу по позиции перетаскивание меняло бы содержимое
@@ -241,14 +249,38 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                     child: Row(children: [
                       // Аватарка подписки — своя у каждой (логотип из кэша либо
                       // цветной кружок с буквой названия).
-                      SubscriptionAvatar(
-                          path: p.logoPath, label: p.title, size: 24),
+                      //
+                      // ⚠️ Приглушаются ТОЛЬКО картинка и название. Счётчик,
+                      // отметка активной и ручка перетаскивания остаются в
+                      // полную силу: истёкшую подписку всё ещё можно выбрать,
+                      // переставить и обновить — она не «отключённый пункт», а
+                      // помеченный.
+                      Opacity(
+                        opacity: expired ? 0.45 : 1,
+                        child: SubscriptionAvatar(
+                            path: p.logoPath, label: p.title, size: 24),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(
-                        child: Text(p.title,
-                            // Доминирует название подписки — направление по нему.
-                            textDirection: autoTextDirection(p.title),
-                            overflow: TextOverflow.ellipsis),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(p.title,
+                                // Доминирует название подписки — направление по нему.
+                                textDirection: autoTextDirection(p.title),
+                                overflow: TextOverflow.ellipsis,
+                                style: expired
+                                    ? TextStyle(
+                                        color: scheme.onSurface
+                                            .withValues(alpha: 0.55))
+                                    : null),
+                            if (expired)
+                              _ExpiredMark(
+                                  key: ValueKey('subExpired_${p.id}'),
+                                  expiresAt: p.info.expiresAt),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 6),
                       // ⚠️ Считаем ВОССТАНОВЛЕННЫЕ серверы, а не длину
@@ -326,6 +358,47 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
         ],
       ),
     );
+  }
+}
+
+/// Пометка истёкшей подписки под её названием: значок и подпись.
+///
+/// ⚠️ ПОЧЕМУ ЗАМЕТНО, НО НЕ КРИКЛИВО. Красная плашка во всю строку сделала бы
+/// список из четырёх подписок похожим на аварию, хотя истёкшая подписка — это
+/// нормальное состояние (её продлевают). Поэтому: строка приглушена, а цветом
+/// выделены только значок и слово — глазом находится сразу, внимание не
+/// перетягивает.
+///
+/// Дата уходит в подсказку по наведению, а не в строку: меню шириной 280 px, и
+/// «Истекла 12.08.2026» рядом со счётчиком обрезало бы название подписки —
+/// ровно то, по чему её и узнают.
+class _ExpiredMark extends StatelessWidget {
+  final DateTime? expiresAt;
+  const _ExpiredMark({super.key, required this.expiresAt});
+
+  /// Дата в привычном виде ДД.ММ.ГГГГ и в ЛОКАЛЬНОЙ зоне: на диске лежит UTC
+  /// (см. `SubscriptionInfo.toJson`), и показать его как есть значило бы
+  /// сдвинуть дату на сутки у половины часовых поясов.
+  static String _date(DateTime d) {
+    final l = d.toLocal();
+    return '${l.day.toString().padLeft(2, '0')}.'
+        '${l.month.toString().padLeft(2, '0')}.${l.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final exp = expiresAt;
+    final mark = Row(mainAxisSize: MainAxisSize.min, children: [
+      Icon(Icons.event_busy, size: 13, color: scheme.error),
+      const SizedBox(width: 4),
+      Text(l.subSwitcherExpired,
+          style: TextStyle(
+              fontSize: 11, fontWeight: FontWeight.w600, color: scheme.error)),
+    ]);
+    if (exp == null) return mark;
+    return Tooltip(message: l.subSwitcherExpiredOn(_date(exp)), child: mark);
   }
 }
 

@@ -26,6 +26,24 @@ class PingChip extends StatelessWidget {
   /// такой резкий, как чистый Colors.red.
   static const _dimRed = Color(0xFFCC7777);
 
+  /// Высота плашки — ОДНА на пинг и скорость.
+  ///
+  /// ⚠️ Число не косметическое, оно вытекает из вёрстки строки сервера.
+  /// `ListTile` (dense + `VisualDensity(vertical: -2)`) зажимает `trailing` в
+  /// **40 dp** и молча его НЕ растягивает: прежние плашки в 25 dp давали столбик
+  /// в 52 dp, тот вылезал за пределы строки на 11 px и рисовался поверх
+  /// соседних — это и есть «из-за скорости всё поплыло». Столбик обязан влезать
+  /// в 40 dp целиком: 2 × [chipHeight] + [chipGap] = [columnHeight] = 38.
+  static const double chipHeight = 16;
+
+  /// Просвет между пингом и скоростью: пинг прижат к верху, скорость к низу,
+  /// между ними пусто (просьба владельца).
+  static const double chipGap = 6;
+
+  /// Высота столбика «пинг + скорость». Фиксированная — иначе строка «дышит»,
+  /// когда замер скорости появляется или пропадает.
+  static const double columnHeight = chipHeight * 2 + chipGap;
+
 
   @override
   Widget build(BuildContext context) {
@@ -41,15 +59,18 @@ class PingChip extends StatelessWidget {
         // значение («прочерк» = плохо), хотя означает «данных нет». Пустой
         // кружок ровно того же размера, что и плашка с числом, не притворяется
         // результатом и не двигает вёрстку, когда результат появится.
+        //
+        // Высота — ровно [chipHeight]: кружок стоит на месте будущей плашки, и
+        // когда результат появится, столбик не дёрнется.
         return Tooltip(
           message: l.pingUntestedHint,
           child: SizedBox(
-            width: 26,
-            height: 26,
+            width: 22,
+            height: chipHeight,
             child: Center(
               child: Container(
-                width: 10,
-                height: 10,
+                width: 9,
+                height: 9,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
@@ -61,7 +82,16 @@ class PingChip extends StatelessWidget {
         );
       case PingOutcome.testing:
         return const SizedBox(
-            width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
+          width: chipHeight,
+          height: chipHeight,
+          child: Center(
+            child: SizedBox(
+              width: 13,
+              height: 13,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
       case PingOutcome.failed:
         // #12 — мёртв (не ответил по TCP): НЕЯРКИЙ красный (виден на тёмном фоне,
         // но не кричит как чистый красный).
@@ -147,18 +177,35 @@ class PingChip extends StatelessWidget {
 
 /// Плашка одного значения — общая для пинга и скорости, чтобы столбик из двух
 /// не разъезжался по высоте и радиусам.
+///
+/// Компактная по просьбе владельца («обводку пинга поменьше, как и скорости»):
+/// высота задана числом ([PingChip.chipHeight]), отступы и радиус вдвое меньше
+/// прежних, шрифт на пункт мельче. Высота именно ЖЁСТКАЯ, а не «сколько
+/// получится»: столбик из двух плашек обязан влезать в 40 dp, которые
+/// `ListTile` отводит на `trailing`.
+///
+/// ⚠️ [FittedBox] здесь не украшение: при крупном системном шрифте (Android,
+/// «Размер шрифта: максимальный») текст в 11 pt перерастает 16 dp, и вместо
+/// плашки была бы жёлто-чёрная полоса переполнения. Уменьшенный текст читается,
+/// сломанная строка — нет.
 Widget _chipPill(String text, Color color,
-    {String? tooltip, double fontSize = 12}) {
+    {String? tooltip, double fontSize = 11}) {
   final pill = Container(
-    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+    height: PingChip.chipHeight,
+    padding: const EdgeInsets.symmetric(horizontal: 6),
+    alignment: Alignment.center,
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(6),
     ),
-    child: Text(text,
-        textDirection: TextDirection.ltr,
-        style: TextStyle(
-            color: color, fontWeight: FontWeight.w600, fontSize: fontSize)),
+    child: FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(text,
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+          style: TextStyle(
+              color: color, fontWeight: FontWeight.w600, fontSize: fontSize)),
+    ),
   );
   return tooltip == null ? pill : Tooltip(message: tooltip, child: pill);
 }
@@ -192,7 +239,7 @@ class SpeedChip extends StatelessWidget {
     if (s == null) {
       if (!ping.speedBlocked) return const SizedBox.shrink();
       return _chipPill('—', Theme.of(context).disabledColor,
-          tooltip: l.speedBlockedTooltip, fontSize: 11);
+          tooltip: l.speedBlockedTooltip);
     }
     // Пороги те же по смыслу, что у пинга: зелёный — комфортно смотреть видео,
     // жёлтый — терпимо, оранжевый — узко. Цифра всё равно видна, цвет лишь
@@ -208,7 +255,8 @@ class SpeedChip extends StatelessWidget {
       s.fromAutoConfig ? l.speedFromAutoConfig : l.speedTooltip,
       if (at != null) l.pingMeasuredAt(PingChip.formatMoment(context, at.toLocal())),
     ].join('\n');
-    return _chipPill(l.autoSpeedValue(value), color,
-        tooltip: tip, fontSize: 11);
+    // Размер шрифта НЕ задаём: у пинга и скорости он общий (умолчание
+    // `_chipPill`) — плашки читаются как пара, а не как главная и приписка.
+    return _chipPill(l.autoSpeedValue(value), color, tooltip: tip);
   }
 }

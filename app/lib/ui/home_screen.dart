@@ -710,30 +710,17 @@ class _ConnectPane extends StatelessWidget {
                     ),
                     // Имя активного сервера — ПОВЕРХ кнопки, а не отдельной
                     // строкой: просьба владельца не менять расположение
-                    // элементов. Stack не занимает места в потоке, поэтому
-                    // кнопка и колонки проверок остаются там же, где были.
-                    Stack(
-                      alignment: Alignment.topCenter,
-                      clipBehavior: Clip.none,
-                      children: [
-                        _ConnectButton(
-                            status: status,
-                            onTap: () => connectWithConflictCheck(context, state,
-                                () => state.toggleConnection(settings))),
-                        // ⚠️ Отрицательный отступ не годится: родительская
-                        // строка обрезает всё, что вылезло за её высоту, и
-                        // плашка была видна лишь краем. Кладём её ПОВЕРХ
-                        // верхнего края кнопки — владелец просил именно
-                        // «поверх, как уведомление», не сдвигая элементы.
-                        if (status.isConnected)
-                          Positioned(
-                            top: 2,
-                            child: _ActiveServerLabel(
-                              name: state.selectedServer?.displayName ??
-                                  l.homeAutoBest,
-                            ),
-                          ),
-                      ],
+                    // элементов. Накладка не занимает места в потоке, поэтому
+                    // кнопка и колонки проверок остаются там же, где были
+                    // (подробности про её ширину — в ActiveServerOverlay).
+                    ActiveServerOverlay(
+                      name: status.isConnected
+                          ? (state.selectedServer?.displayName ?? l.homeAutoBest)
+                          : null,
+                      child: _ConnectButton(
+                          status: status,
+                          onTap: () => connectWithConflictCheck(context, state,
+                              () => state.toggleConnection(settings))),
                     ),
                     Flexible(
                       child: ServiceChecksColumn(
@@ -950,6 +937,105 @@ class _SelectedServerBar extends StatelessWidget {
   }
 }
 
+/// Высота строки сервера вместе с разделителем.
+///
+/// ⚠️ ЭТО ОЦЕНКА, А НЕ ИЗМЕРЕНИЕ, и другого способа тут нет. `ensureVisible`
+/// целится в виджет по контексту, а у НЕПОСТРОЕННОЙ строки ленивого списка
+/// контекста не существует — метод молча выходит, ничего не сделав. В настройках
+/// эту же задачу решили постройкой всего списка целиком, но серверов бывает
+/// сотня с лишним, и так делать нельзя. Поэтому смещение считается по номеру
+/// строки, а `clamp` по `maxScrollExtent` не даёт промахнуться за конец списка.
+const double kServerRowExtent = 73.0;
+
+/// Повод промотать список серверов к выбранному.
+enum ServerScrollTrigger {
+  none,
+
+  /// Первый показ списка после запуска приложения.
+  ///
+  /// Просьба владельца: «при запуске приложения если не видно мотай до него в
+  /// списке серверов чтобы показать юзеру какой сервер был запомнен». Раньше
+  /// список всегда открывался на первой строке, и запомненный сервер где-нибудь
+  /// на 80-й позиции выглядел как «ничего не выбрано».
+  startup,
+
+  /// Момент подключения: после нажатия «Подключить» видно, что именно поднялось.
+  connected,
+}
+
+/// Нужно ли мотать список на ЭТОМ такте перерисовки.
+///
+/// Вынесено отдельной функцией (как `tunToastStep` выше), чтобы решение
+/// проверялось тестом, а не поднятием всего главного экрана с движком.
+///
+/// [hasServers] — список уже пришёл: серверы читаются с диска асинхронно, и на
+/// первых кадрах прокручивать нечего. [startupDone] — стартовую прокрутку уже
+/// делали, второй раз она бы дёргала список под рукой.
+ServerScrollTrigger serverScrollTrigger({
+  required bool hasServers,
+  required bool connected,
+  required bool wasConnected,
+  required bool startupDone,
+}) {
+  if (!hasServers) return ServerScrollTrigger.none;
+  if (!startupDone) return ServerScrollTrigger.startup;
+  // Только ПЕРЕХОД в «Подключено»: статус тикает раз в секунду на счётчиках
+  // трафика, и без сравнения с прошлым состоянием список ездил бы постоянно.
+  if (connected && !wasConnected) return ServerScrollTrigger.connected;
+  return ServerScrollTrigger.none;
+}
+
+/// Смещение, на которое надо промотать список, чтобы строка [pos] попала на
+/// экран ЦЕЛИКОМ. `null` — строка уже видна, список трогать НЕЛЬЗЯ.
+///
+/// ⚠️ Проверка видимости здесь не украшение: без неё «прокрутка к выбранному»
+/// на первой же строке дёргала бы список, который и так стоит на нужном месте.
+double? serverRowScrollTarget({
+  required int pos,
+  required double rowExtent,
+  required double pixels,
+  required double viewport,
+  required double maxScrollExtent,
+}) {
+  if (pos < 0) return null;
+  final top = pos * rowExtent;
+  if (top >= pixels && top + rowExtent <= pixels + viewport) return null;
+  final target = top.clamp(0.0, maxScrollExtent);
+  // Список уже упёрт в конец (или в начало) — мотать некуда.
+  if ((target - pixels).abs() < 0.5) return null;
+  return target;
+}
+
+/// Промотать [c] к строке [pos], если она не видна. Возвращает `true`, если
+/// прокрутка реально понадобилась.
+///
+/// [onlyIfUntouched] — не вмешиваться, когда пользователь листает список сам
+/// или уже увёл его от начала: стартовая прокрутка не должна выдёргивать список
+/// из-под пальца.
+bool scrollListToRow(
+  ScrollController c, {
+  required int pos,
+  double rowExtent = kServerRowExtent,
+  bool onlyIfUntouched = false,
+  Duration duration = const Duration(milliseconds: 400),
+}) {
+  if (!c.hasClients) return false;
+  final p = c.position;
+  if (onlyIfUntouched && (p.isScrollingNotifier.value || p.pixels > 0)) {
+    return false;
+  }
+  final target = serverRowScrollTarget(
+    pos: pos,
+    rowExtent: rowExtent,
+    pixels: p.pixels,
+    viewport: p.viewportDimension,
+    maxScrollExtent: p.maxScrollExtent,
+  );
+  if (target == null) return false;
+  c.animateTo(target, duration: duration, curve: Curves.easeOut);
+  return true;
+}
+
 class _ServerPane extends StatefulWidget {
   final void Function(Widget screen) onOpen;
   const _ServerPane({required this.onOpen});
@@ -961,19 +1047,15 @@ class _ServerPane extends StatefulWidget {
 class _ServerPaneState extends State<_ServerPane> {
   String _query = '';
 
-  /// Прокрутка к активному серверу при подключении.
+  /// Прокрутка к активному серверу: при запуске приложения и при подключении.
   ///
-  /// В списке из сотни строк выбранный сервер почти всегда за пределами экрана,
-  /// и после нажатия «Подключить» непонятно, что именно поднялось. Листаем к
-  /// нему сами — но ТОЛЬКО в момент подключения, иначе список дёргался бы под
-  /// рукой у пользователя, который его листает.
+  /// В списке из сотни строк выбранный сервер почти всегда за пределами экрана:
+  /// после запуска непонятно, какой сервер запомнился, а после «Подключить» —
+  /// что именно поднялось. Листаем к нему сами — но только в эти два момента,
+  /// иначе список дёргался бы под рукой у пользователя, который его листает.
   final _listCtrl = ScrollController();
   bool _wasConnected = false;
-
-  /// Высота строки сервера. Считаем оценкой, а не измерением: у списка нет
-  /// фиксированного extent, а `ensureVisible` требует, чтобы элемент был уже
-  /// построен, — для сотого сервера это не так.
-  static const _rowExtent = 73.0;
+  bool _startupScrolled = false;
 
   @override
   void dispose() {
@@ -981,14 +1063,32 @@ class _ServerPaneState extends State<_ServerPane> {
     super.dispose();
   }
 
-  void _scrollToSelected(List<int> shown, int selected) {
-    final pos = shown.indexOf(selected);
-    if (pos < 0 || !_listCtrl.hasClients) return;
-    final target = (pos * _rowExtent)
-        .clamp(0.0, _listCtrl.position.maxScrollExtent)
-        .toDouble();
-    _listCtrl.animateTo(target,
-        duration: const Duration(milliseconds: 400), curve: Curves.easeOut);
+  /// Ключ ПЕРВОЙ строки списка — по нему меряется настоящая высота строки.
+  ///
+  /// ⚠️ Именно первой, и ключ никуда не переезжает: GlobalKey на «выбранной»
+  /// строке кочевал бы по списку при каждом выборе, а это верный способ
+  /// получить «Duplicate GlobalKey» на ровном месте. Первая строка построена
+  /// всегда, пока список стоит в начале, — то есть ровно в момент стартовой
+  /// прокрутки, когда точность и нужна.
+  final _firstRowKey = GlobalKey();
+  double? _measuredRowExtent;
+
+  /// Высота строки: измеренная, если получилось, иначе оценка.
+  double _rowExtent() {
+    final box = _firstRowKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box != null && box.hasSize && box.size.height > 0) {
+      // +1 — разделитель между строками (`Divider(height: 1)`).
+      _measuredRowExtent = box.size.height + 1;
+    }
+    return _measuredRowExtent ?? kServerRowExtent;
+  }
+
+  void _scrollToSelected(List<int> shown, int selected,
+      {required bool onlyIfUntouched}) {
+    scrollListToRow(_listCtrl,
+        pos: shown.indexOf(selected),
+        rowExtent: _rowExtent(),
+        onlyIfUntouched: onlyIfUntouched);
   }
 
   @override
@@ -1001,12 +1101,24 @@ class _ServerPaneState extends State<_ServerPane> {
     // Индексы исходного списка: выбор сервера идёт по индексу в AppState.servers.
     final shown = ServerSearch.matchIndices(servers, _query);
 
-    // Момент подключения — единственный, когда листать уместно.
+    // Запуск приложения и момент подключения — два случая, когда листать
+    // уместно. ⚠️ Прокрутку назначаем на ПОСЛЕ кадра: до него у списка нет
+    // ни клиентов у контроллера, ни высоты области просмотра.
     final connected = state.status.isConnected;
-    if (connected && !_wasConnected) {
+    final trigger = serverScrollTrigger(
+      hasServers: servers.isNotEmpty,
+      connected: connected,
+      wasConnected: _wasConnected,
+      startupDone: _startupScrolled,
+    );
+    if (trigger != ServerScrollTrigger.none) {
+      final startup = trigger == ServerScrollTrigger.startup;
+      if (startup) _startupScrolled = true;
       final sel = state.selectedIndex;
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _scrollToSelected(shown, sel);
+        // Стартовая прокрутка уступает пользователю: если он уже листает или
+        // увёл список сам (серверы приходят с диска не мгновенно), не лезем.
+        if (mounted) _scrollToSelected(shown, sel, onlyIfUntouched: startup);
       });
     }
     _wasConnected = connected;
@@ -1084,15 +1196,74 @@ class _ServerPaneState extends State<_ServerPane> {
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
                       final idx = shown[i];
-                      return ServerTile(
+                      final tile = ServerTile(
                         server: servers[idx],
                         selected: idx == state.selectedIndex,
                         onTap: () => state.selectServer(idx),
                       );
+                      // Первая строка — линейка для прокрутки по номеру строки
+                      // (см. `_rowExtent`). Обёртка ничего не рисует и на
+                      // раскладку не влияет.
+                      return i == 0
+                          ? KeyedSubtree(key: _firstRowKey, child: tile)
+                          : tile;
                     },
                   ),
           ),
         ],
+      ],
+    );
+  }
+}
+
+/// Кнопка Connect с плашкой активного сервера поверх её верхнего края.
+///
+/// ⚠️ ПОЧЕМУ ЭТО ОТДЕЛЬНЫЙ ВИДЖЕТ, А НЕ ГОЛЫЙ `Stack` В РАЗМЕТКЕ.
+///
+/// Плашка «поплыла»: `Positioned` с одним лишь `top` НЕ ограничивает ребёнка
+/// по ширине вообще (`RenderStack` отдаёт таким детям бесконечные
+/// ограничения), поэтому плашка растягивалась до своего внутреннего максимума
+/// в 280 px — то есть на 66 px в каждую сторону поверх колонок с проверками
+/// сервисов, а длинное имя доезжало до самого края. Теперь края заданы явно
+/// (`left`/`right` = −[bleed]), ширина плашки предсказуема, а имя, которое в
+/// неё не влезло, обрезается многоточием, а не наезжает на соседей.
+class ActiveServerOverlay extends StatelessWidget {
+  const ActiveServerOverlay({super.key, required this.name, required this.child});
+
+  /// Имя активного сервера. `null`/пусто — плашки нет вовсе.
+  final String? name;
+
+  /// Сама кнопка: её размер и задаёт размер стопки.
+  final Widget child;
+
+  /// Насколько плашке позволено выходить за круг кнопки в КАЖДУЮ сторону.
+  ///
+  /// Ноль превратил бы её в узкую полоску (круг всего 148 px, из них 24 —
+  /// поля, ещё 26 — флаг), а большой свес возвращает ту самую жалобу: плашка
+  /// ложится на верхний ряд проверок сервисов.
+  static const double bleed = 24;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.none,
+      children: [
+        child,
+        if (name != null && name!.isNotEmpty)
+          Positioned(
+            top: 2,
+            left: -bleed,
+            right: -bleed,
+            // Align пропускает ребёнку СВОБОДНЫЕ ограничения: плашка ужимается
+            // по содержимому и лишь упирается в ширину, заданную Positioned.
+            // Без него она растянулась бы на всю ширину — короткое имя ехало бы
+            // в пилюле во всю кнопку.
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ActiveServerLabel(name: name),
+            ),
+          ),
       ],
     );
   }
@@ -1103,10 +1274,15 @@ class _ServerPaneState extends State<_ServerPane> {
 /// Показывается только при живом подключении: до него имя ничего не значит, а
 /// место занимало бы. Флаг рисуется картинкой и вырезается из текста — иначе
 /// на Windows он выглядел бы чёрным прямоугольником и дублировался.
-class _ActiveServerLabel extends StatelessWidget {
-  const _ActiveServerLabel({required this.name});
+class ActiveServerLabel extends StatelessWidget {
+  const ActiveServerLabel({super.key, required this.name});
 
   final String? name;
+
+  /// Потолок ширины на случай, если плашку когда-нибудь положат в свободные
+  /// ограничения: имя сервера бывает в сотню символов, и без потолка пилюля
+  /// уехала бы через весь экран.
+  static const double maxWidth = 200;
 
   @override
   Widget build(BuildContext context) {
@@ -1115,7 +1291,7 @@ class _ActiveServerLabel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return IgnorePointer(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 280),
+        constraints: const BoxConstraints(maxWidth: maxWidth),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerHighest.withValues(alpha: 0.92),

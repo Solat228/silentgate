@@ -808,6 +808,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override
+  String get subSwitcherExpired => 'Expired';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'Subscription expired on $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Servers in this subscription: $total. The channel check has not run yet — start «Ping servers of all subscriptions».';
   }

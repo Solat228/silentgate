@@ -593,7 +593,11 @@ class AppSettings {
     this.autoReconnect = true,
     this.killSwitch = false,
     this.noRealIp = false,
-    this.speedTestSize = SpeedTestSize.full,
+    // ⚠️ 5 МБ ПО УМОЛЧАНИЮ — решение владельца. Замер тратит трафик ЕГО
+    // подписки, а прогон по списку из сотни серверов на 20 МБ съел бы 2 ГБ.
+    // Точность на быстрых каналах при этом занижается — кому нужна точная
+    // цифра, переключит на 20 МБ вручную.
+    this.speedTestSize = SpeedTestSize.light,
     this.pingTwoPhase = true,
     this.pingPrimary = PingMethod.tcp,
     this.pingFallback = PingMethod.proxyGet,

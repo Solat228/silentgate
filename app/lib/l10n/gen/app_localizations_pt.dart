@@ -819,6 +819,14 @@ class AppLocalizationsPt extends AppLocalizations {
       'Testar os servidores de todas as assinaturas';
 
   @override
+  String get subSwitcherExpired => 'Expirada';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'A assinatura expirou em $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'Servidores na assinatura: $total. O canal ainda não foi verificado — execute «Testar os servidores de todas as assinaturas».';
   }

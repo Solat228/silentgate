@@ -324,6 +324,15 @@
   "subBarExpired": "Subscription expired:",
   "subBarValidUntil": "Valid until:",
   "subSwitcherPingAll": "Ping servers of all subscriptions",
+  "subSwitcherExpired": "Expired",
+  "subSwitcherExpiredOn": "Subscription expired on {date}",
+  "@subSwitcherExpiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "subSwitcherCountTotal": "Servers in this subscription: {total}. The channel check has not run yet — start «Ping servers of all subscriptions».",
   "subSwitcherCountWorking": "Servers in this subscription: {total}. Passed the channel check (a request through the server): {working}.",
   "@subSwitcherCountTotal": {

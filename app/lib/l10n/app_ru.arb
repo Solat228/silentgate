@@ -357,6 +357,15 @@
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
   "subSwitcherPingAll": "Пинг серверов всех подписок",
+  "subSwitcherExpired": "Истекла",
+  "subSwitcherExpiredOn": "Подписка истекла {date}",
+  "@subSwitcherExpiredOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "subSwitcherCountTotal": "Серверов в подписке: {total}. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».",
   "subSwitcherCountWorking": "Серверов в подписке: {total}. Из них прошли проверку канала (запрос через сервер): {working}.",
   "@subSwitcherCountTotal": {

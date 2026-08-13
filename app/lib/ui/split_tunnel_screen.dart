@@ -855,12 +855,22 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
                           dense: true,
                           value: on,
                           controlAffinity: ListTileControlAffinity.leading,
-                          // Иконка рядом с галочкой: без неё в длинном списке
-                          // одинаковых имён не разобраться, что именно отмечено.
-                          secondary: AppIcon(
-                              path: p.key, size: context.sg.listIconSize),
-                          title: Text(p.label,
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                          // ⚠️ ИКОНКА В `title`, А НЕ В `secondary`. У
+                          // CheckboxListTile `secondary` — это слот на
+                          // ПРОТИВОПОЛОЖНОЙ от галочки стороне: с галочкой
+                          // слева иконка уезжала к правому краю, отрываясь от
+                          // имени, которому принадлежит. Порядок, который
+                          // просил владелец: галочка, отступ, иконка, имя.
+                          title: Row(children: [
+                            AppIcon(
+                                path: p.key, size: context.sg.listIconSize),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(p.label,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis),
+                            ),
+                          ]),
                           subtitle: ambiguous
                               ? Text(p.key,
                                   maxLines: 1, overflow: TextOverflow.ellipsis)

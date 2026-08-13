@@ -894,5 +894,7 @@
   "speedProgress": "Geschwindigkeit: {done} von {total}",
   "updateOnStartTitle": "Abo beim Start aktualisieren",
   "updateOnStartSub": "Jedes Mal eine frische Serverliste holen, nicht nur per Timer",
-  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern"
+  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern",
+  "subSwitcherExpired": "Abgelaufen",
+  "subSwitcherExpiredOn": "Abo am {date} abgelaufen"
 }

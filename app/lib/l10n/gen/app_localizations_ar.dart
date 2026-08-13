@@ -804,6 +804,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override
+  String get subSwitcherExpired => 'منتهٍ';
+
+  @override
+  String subSwitcherExpiredOn(String date) {
+    return 'انتهى الاشتراك في $date';
+  }
+
+  @override
   String subSwitcherCountTotal(int total) {
     return 'الخوادم في الاشتراك: $total. لم يجرِ فحص القناة بعد، فشغّل «اختبار خوادم كل الاشتراكات».';
   }

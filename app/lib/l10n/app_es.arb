@@ -955,5 +955,7 @@
   "speedProgress": "Velocidad: {done} de {total}",
   "updateOnStartTitle": "Actualizar la suscripción al iniciar",
   "updateOnStartSub": "Descargar una lista de servidores nueva cada vez, no solo por temporizador",
-  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts"
+  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts",
+  "subSwitcherExpired": "Caducada",
+  "subSwitcherExpiredOn": "La suscripción caducó el {date}"
 }
