@@ -312,17 +312,23 @@ class _SettingsBodyState extends State<SettingsBody> {
 
   GlobalKey _anchor(String id) => _anchors.putIfAbsent(id, () => GlobalKey());
 
+  /// Раздел, выбранный в боковом меню. Подсвечивается рамкой.
+  String? _activeId;
+
   Future<void> _jumpTo(SettingsSectionData s) async {
+    setState(() => _activeId = s.id);
     // Свёрнутый раздел разворачиваем: иначе меню приводит к пустому месту.
     if (widget.collapsed.contains(s.id)) widget.onToggleSection(s.id);
+    // Ждём кадр: раздел мог только что развернуться, и его высота ещё не
+    // посчитана — прицел по старой раскладке промахнулся бы.
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;
     final ctx = _anchor(s.id).currentContext;
     if (ctx == null || !ctx.mounted) return;
     await Scrollable.ensureVisible(ctx,
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        alignment: 0.05);
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOutCubic,
+        alignment: 0.0);
   }
 
   @override
@@ -339,37 +345,58 @@ class _SettingsBodyState extends State<SettingsBody> {
                   textAlign: TextAlign.center),
             ),
           )
-        : ListView.separated(
+        // ⚠️ РАЗДЕЛЫ СТРОЯТСЯ ВСЕ СРАЗУ, И ЭТО ОСОЗНАННО. Раньше здесь был
+        // ленивый `ListView.separated`, и переход из бокового меню работал
+        // рвано: `Scrollable.ensureVisible` целится в виджет по `GlobalKey`, а
+        // у неё есть контекст ТОЛЬКО если элемент уже построен. Близкие разделы
+        // ехали ступенями — список достраивался прямо во время анимации, и цель
+        // уползала; дальние не ехали ВОВСЕ — `currentContext` был null, и метод
+        // молча выходил. Владелец описал это как «переключение ступенчатое,
+        // очень странно и неприятно».
+        //
+        // Разделов девять, строки внутри свёрнутых и отфильтрованных всё равно
+        // не создаются (ленивость осталась там, где она что-то экономит), так
+        // что цена — незаметна, а прокрутка становится ровной и попадает
+        // с первого раза.
+        : SingleChildScrollView(
             controller: widget.scrollController,
             padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: visible.length,
-            separatorBuilder: (_, __) => const Divider(),
-            itemBuilder: (context, i) {
-              final s = visible[i];
-              // ⚠️ ПРИ ПОИСКЕ СВЁРНУТОСТЬ ИГНОРИРУЕТСЯ. Иначе найденная строка
-              // лежала бы в свёрнутом разделе и человек видел бы пустой
-              // результат при непустом совпадении — худший исход из возможных.
-              final collapsed =
-                  !searching && widget.collapsed.contains(s.id);
-              return Column(
-                key: _anchor(s.id),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (!s.ownHeader)
-                    _SectionHeader(
-                      title: s.title,
-                      collapsed: collapsed,
-                      // Во время поиска сворачивать нечего — заголовок не
-                      // должен обещать действие, которое ни на что не влияет.
-                      onTap: searching
-                          ? null
-                          : () => widget.onToggleSection(s.id),
-                    ),
-                  if (!collapsed)
-                    for (final r in s.rows) r.build(context),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var i = 0; i < visible.length; i++) ...[
+                  if (i > 0) const Divider(),
+                  Builder(builder: (context) {
+                    final s = visible[i];
+                    // ⚠️ ПРИ ПОИСКЕ СВЁРНУТОСТЬ ИГНОРИРУЕТСЯ. Иначе найденная
+                    // строка лежала бы в свёрнутом разделе и человек видел бы
+                    // пустой результат при непустом совпадении — худший исход
+                    // из возможных.
+                    final collapsed =
+                        !searching && widget.collapsed.contains(s.id);
+                    return Column(
+                      key: _anchor(s.id),
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (!s.ownHeader)
+                          _SectionHeader(
+                            title: s.title,
+                            collapsed: collapsed,
+                            // Во время поиска сворачивать нечего — заголовок не
+                            // должен обещать действие, которое ни на что не
+                            // влияет.
+                            onTap: searching
+                                ? null
+                                : () => widget.onToggleSection(s.id),
+                          ),
+                        if (!collapsed)
+                          for (final r in s.rows) r.build(context),
+                      ],
+                    );
+                  }),
                 ],
-              );
-            },
+              ],
+            ),
           );
 
     final centered = Center(
@@ -391,10 +418,9 @@ class _SettingsBodyState extends State<SettingsBody> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
                 for (final s in visible)
-                  ListTile(
-                    dense: true,
-                    leading: Icon(s.icon, size: 20),
-                    title: Text(s.title, overflow: TextOverflow.ellipsis),
+                  SettingsRailTile(
+                    section: s,
+                    selected: s.id == _activeId,
                     onTap: () => _jumpTo(s),
                   ),
               ],
@@ -2244,4 +2270,156 @@ class _LockdownTileState extends State<_LockdownTile> with WidgetsBindingObserve
       },
     );
   }
+}
+
+/// Строка бокового меню разделов с подсветкой выбранного.
+///
+/// ⚠️ ЧТО ИМЕННО РИСУЕТСЯ И ПОЧЕМУ ТАК. Просьба владельца дословно: «цветная
+/// линия, которая меняет цвет, из левого верхнего угла нужного меню, которая
+/// расходится в обе стороны в правый нижний угол». Поэтому обводка не
+/// появляется целиком и не «заливается» — она ЧЕРТИТСЯ двумя концами из левого
+/// верхнего угла: один идёт по верхней грани и вниз по правой, второй — вниз по
+/// левой и по нижней. Оба проходят ровно половину периметра и встречаются в
+/// правом нижнем углу.
+///
+/// Цвет меняется ВДОЛЬ линии (градиент от `primary` к `tertiary` по диагонали),
+/// а не мигает во времени: мигание отвлекает, а плавный переход по длине как раз
+/// и читается как «линия меняет цвет».
+class SettingsRailTile extends StatefulWidget {
+  const SettingsRailTile({
+    super.key,
+    required this.section,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final SettingsSectionData section;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  State<SettingsRailTile> createState() => _SettingsRailTileState();
+}
+
+class _SettingsRailTileState extends State<SettingsRailTile>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 420),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    // Уже выбранная строка (например, после перестроения при поиске) не должна
+    // перечерчиваться заново — иначе меню «моргает» на каждый ввод буквы.
+    if (widget.selected) _c.value = 1;
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsRailTile old) {
+    super.didUpdateWidget(old);
+    if (widget.selected == old.selected) return;
+    widget.selected ? _c.forward() : _c.reverse();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (context, child) => CustomPaint(
+          painter: _RailSelectionPainter(
+            progress: Curves.easeOutCubic.transform(_c.value),
+            from: scheme.primary,
+            to: scheme.tertiary,
+          ),
+          child: child,
+        ),
+        child: ListTile(
+          dense: true,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          leading: Icon(widget.section.icon, size: 20),
+          title:
+              Text(widget.section.title, overflow: TextOverflow.ellipsis),
+          onTap: widget.onTap,
+        ),
+      ),
+    );
+  }
+}
+
+/// Обводка, растущая двумя концами из левого верхнего угла в правый нижний.
+class _RailSelectionPainter extends CustomPainter {
+  _RailSelectionPainter({
+    required this.progress,
+    required this.from,
+    required this.to,
+  });
+
+  final double progress;
+  final Color from;
+  final Color to;
+
+  static const _radius = 10.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (progress <= 0) return;
+    final rect = Offset.zero & size;
+
+    // ⚠️ Путь строим РУКАМИ, а не через `addRRect`: у готового прямоугольника
+    // начало обхода не гарантировано, а нам нужен ровно левый верхний угол —
+    // именно из него линия должна расходиться.
+    const r = _radius;
+    final path = Path()
+      ..moveTo(rect.left + r, rect.top)
+      ..lineTo(rect.right - r, rect.top)
+      ..arcToPoint(Offset(rect.right, rect.top + r),
+          radius: const Radius.circular(r))
+      ..lineTo(rect.right, rect.bottom - r)
+      ..arcToPoint(Offset(rect.right - r, rect.bottom),
+          radius: const Radius.circular(r))
+      ..lineTo(rect.left + r, rect.bottom)
+      ..arcToPoint(Offset(rect.left, rect.bottom - r),
+          radius: const Radius.circular(r))
+      ..lineTo(rect.left, rect.top + r)
+      ..arcToPoint(Offset(rect.left + r, rect.top),
+          radius: const Radius.circular(r));
+
+    final metric = path.computeMetrics().first;
+    final half = metric.length / 2;
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      // Цвет меняется по диагонали — «из левого верхнего в правый нижний».
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [from, to],
+      ).createShader(rect);
+
+    // Конец «по часовой»: верхняя грань → правая.
+    canvas.drawPath(metric.extractPath(0, half * progress), paint);
+    // Конец «против часовой»: левая грань → нижняя. Берём хвост пути, потому
+    // что путь заканчивается там же, где начался, — в левом верхнем углу.
+    canvas.drawPath(
+        metric.extractPath(metric.length - half * progress, metric.length),
+        paint);
+  }
+
+  @override
+  bool shouldRepaint(_RailSelectionPainter old) =>
+      old.progress != progress || old.from != from || old.to != to;
 }

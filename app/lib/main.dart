@@ -1,3 +1,4 @@
+import 'core/util/key_migration.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -32,6 +33,10 @@ import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
 
 Future<void> main(List<String> args) async {
+  // Отчёт о переносе ключей серверов — в журнал. Ставится здесь, потому что
+  // сам KeyMigration про журнал знать не должен: его читают настройки, а
+  // `app_log` тянет за собой `dart:ui` (см. комментарий у `onReport`).
+  KeyMigration.onReport = AppLog.i;
   // Служебные режимы запуска — Windows-специфика: там exe умеет работать
   // элевейтнутым хелпером и режимом очистки при удалении. На Android ни
   // аргументов запуска, ни этих ролей нет (туннель поднимает VpnService,

@@ -154,4 +154,130 @@ void main() {
           isEmpty);
     });
   });
+
+  group('Переход по боковому меню', () {
+    /// ⚠️ ЖАЛОБА ВЛАДЕЛЬЦА: «если кликать по левому меню, переключение
+    /// происходит ступенчато, очень странно и неприятно». Причина была в
+    /// ленивом списке: `Scrollable.ensureVisible` целится в виджет по
+    /// `GlobalKey`, а контекст есть только у ПОСТРОЕННОГО элемента. Близкие
+    /// разделы ехали ступенями (список достраивался во время анимации, цель
+    /// уползала), дальние не ехали вовсе — контекст был null, и метод молча
+    /// выходил.
+    List<SettingsSectionData> many() => [
+          for (var i = 0; i < 9; i++)
+            section('s$i', 'Раздел $i', [
+              for (var k = 0; k < 6; k++)
+                row('строка $i-$k', 'строка $i-$k'),
+            ]),
+        ];
+
+    testWidgets('ВСЕ разделы построены сразу — цель перехода существует',
+        (tester) async {
+      setWindow(tester, 1400);
+      await tester.pumpWidget(host(SettingsBody(
+        sections: many(),
+        collapsed: const {},
+        onToggleSection: (_) {},
+      )));
+      await tester.pump();
+      // Последний раздел далеко за пределами экрана. В ленивом списке его
+      // виджета не существовало бы вовсе — и переход к нему был невозможен.
+      expect(find.text('строка 8-5', skipOffstage: false), findsOneWidget,
+          reason: 'дальний раздел обязан быть построен, иначе переход молчит');
+    });
+
+    testWidgets('клик по дальнему разделу реально прокручивает', (tester) async {
+      setWindow(tester, 1400);
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      await tester.pumpWidget(host(SettingsBody(
+        sections: many(),
+        collapsed: const {},
+        onToggleSection: (_) {},
+        scrollController: scroll,
+      )));
+      await tester.pump();
+      expect(scroll.offset, 0);
+
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('settings-rail')),
+          matching: find.text('Раздел 8')));
+      await tester.pumpAndSettle();
+
+      expect(scroll.offset, greaterThan(0),
+          reason: 'до правки дальний раздел не прокручивался вообще');
+    });
+
+    testWidgets('выбранная строка помечается, остальные — нет', (tester) async {
+      setWindow(tester, 1400);
+      await tester.pumpWidget(host(SettingsBody(
+        sections: many(),
+        collapsed: const {},
+        onToggleSection: (_) {},
+      )));
+      await tester.pump();
+
+      Iterable<SettingsRailTile> tiles() => tester
+          .widgetList<SettingsRailTile>(find.byType(SettingsRailTile));
+      expect(tiles().where((t) => t.selected), isEmpty,
+          reason: 'до выбора подсвечивать нечего');
+
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('settings-rail')),
+          matching: find.text('Раздел 3')));
+      await tester.pumpAndSettle();
+
+      final selected = tiles().where((t) => t.selected).toList();
+      expect(selected, hasLength(1));
+      expect(selected.single.section.id, 's3');
+    });
+
+    testWidgets('⚠️ ПРОКЛИКАНЫ ВСЕ разделы: каждый доезжает и помечается',
+        (tester) async {
+      // Владелец просил «прокликать всё вручную». Руками я в окно кликать не
+      // могу, поэтому тест делает то же самое и строже: жмёт КАЖДЫЙ пункт по
+      // порядку и проверяет, что список реально уехал именно к этому разделу,
+      // а метка выбора переехала. Прежняя реализация проваливала это на
+      // дальних разделах молча — без ошибки, просто ничего не происходило.
+      setWindow(tester, 1400);
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      final data = many();
+      await tester.pumpWidget(host(SettingsBody(
+        sections: data,
+        collapsed: const {},
+        onToggleSection: (_) {},
+        scrollController: scroll,
+      )));
+      await tester.pump();
+
+      final offsets = <double>[];
+      for (final sec in data) {
+        await tester.tap(find.descendant(
+            of: find.byKey(const ValueKey('settings-rail')),
+            matching: find.text(sec.title)));
+        await tester.pumpAndSettle();
+
+        final selected = tester
+            .widgetList<SettingsRailTile>(find.byType(SettingsRailTile))
+            .where((t) => t.selected)
+            .toList();
+        expect(selected, hasLength(1), reason: 'метка одна: ${sec.title}');
+        expect(selected.single.section.id, sec.id);
+
+        // Заголовок раздела обязан оказаться на экране — это и есть «доехали».
+        expect(find.text(sec.title), findsWidgets);
+        offsets.add(scroll.offset);
+      }
+
+      // Смещения обязаны РАСТИ: каждый следующий раздел ниже предыдущего.
+      // Хвост списка упирается в конец прокрутки — там равенство допустимо.
+      for (var i = 1; i < offsets.length; i++) {
+        expect(offsets[i], greaterThanOrEqualTo(offsets[i - 1]),
+            reason: 'раздел $i уехал ВЫШЕ предыдущего — порядок нарушен');
+      }
+      expect(offsets.last, greaterThan(offsets.first),
+          reason: 'последний раздел обязан быть ниже первого');
+    });
+  });
 }

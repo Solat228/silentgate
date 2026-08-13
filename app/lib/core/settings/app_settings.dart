@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../util/key_migration.dart';
+
 import '../net/speed_test.dart';
 // Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
 // path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
@@ -909,9 +911,18 @@ class AppSettings {
       localProxyPassword: j['localProxyPassword'] as String? ?? '',
       apiEnabled: j['apiEnabled'] as bool? ?? defaults.apiEnabled,
       apiToken: j['apiToken'] as String? ?? defaults.apiToken,
-      apiExitServerKeys:
+      // ⚠️ ШЕСТОЕ ХРАНИЛИЩЕ КЛЮЧЕЙ СЕРВЕРА, и его чуть не забыли. Канонизацию
+      // 1.4.2 провели по пяти (пины, правки, пинги, конфиги панели, serverKey
+      // правил), а список «серверов с отдельным портом» остался со старыми
+      // ключами. Тогда у того, кто настроил порты выходов, галочки в разделе
+      // API показались бы снятыми, `GET /v1/exits` не отдал бы ни одного
+      // сервера, а скрипты получили бы отказ соединения на 10820+ — молча, без
+      // ошибки и без строки в журнале. Своими руками это не чинится: чекбокс
+      // сравнивает с ключом живого сервера, и мёртвую запись из файла не убрать.
+      apiExitServerKeys: KeyMigration.remapList(
           (j['apiExitServerKeys'] as List?)?.cast<String>() ??
               defaults.apiExitServerKeys,
+          logLabel: 'порты выходов'),
       applyRulesInProxyOnly: j['applyRulesInProxyOnly'] as bool? ??
           defaults.applyRulesInProxyOnly,
       tunWatchdogSeconds:

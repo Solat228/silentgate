@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
+import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/util/key_migration.dart';
 
 /// Перенос сохранённого на канонические ключи.
@@ -74,6 +75,29 @@ void main() {
       final stored = {oldKey: 147};
       expect(stored[newKey], isNull);
       expect(KeyMigration.remapMap<int>(stored)[newKey], 147);
+    });
+  });
+
+  group('Шестое хранилище: порты выходов', () {
+    test('⚠️ ключ «сервера с отдельным портом» тоже мигрирует', () {
+      // Канонизацию 1.4.2 провели по пяти хранилищам, а это — шестое, и его
+      // чуть не забыли. Без миграции у того, кто настроил порты выходов,
+      // галочки показались бы снятыми, `GET /v1/exits` не отдал бы ни одного
+      // сервера, а скрипты получили бы отказ соединения — МОЛЧА, без ошибки и
+      // без строки в журнале. Руками это не чинится: чекбокс сравнивает с
+      // ключом живого сервера, и мёртвую запись из файла не убрать.
+      final s = AppSettings.fromJson({'apiExitServerKeys': [oldKey]});
+      expect(s.apiExitServerKeys, [newKey]);
+    });
+
+    test('уже канонический ключ не меняется', () {
+      final s = AppSettings.fromJson({'apiExitServerKeys': [newKey]});
+      expect(s.apiExitServerKeys, [newKey]);
+    });
+
+    test('чужую строку не выбрасываем', () {
+      final s = AppSettings.fromJson({'apiExitServerKeys': ['panel://Авто']});
+      expect(s.apiExitServerKeys, ['panel://Авто']);
     });
   });
 }

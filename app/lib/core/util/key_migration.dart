@@ -1,5 +1,4 @@
 import '../parser/share_link_parser.dart';
-import '../platform/app_log.dart';
 
 /// Перевод сохранённых данных на канонические ключи серверов.
 ///
@@ -61,12 +60,22 @@ class KeyMigration {
     return out;
   }
 
+  /// Куда писать отчёт о переносе.
+  ///
+  /// ⚠️ ХУК, А НЕ ПРЯМОЙ ВЫЗОВ `AppLog`, И ЭТО НЕ УКРАШЕНИЕ. Этот файл читают
+  /// настройки (`AppSettings.fromJson`), а рядом с их импортами стоит явное
+  /// предупреждение: `app_log` тянет `app_paths` → `path_provider` →
+  /// `package:flutter` → `dart:ui`, из-за чего переставали работать
+  /// `dart run tool/emit_*.dart`. Хук ставится один раз при запуске приложения.
+  static void Function(String message)? onReport;
+
   static void _report(String? label, int moved, int before, int after) {
-    if (label == null || moved == 0) return;
+    final log = onReport;
+    if (log == null || label == null || moved == 0) return;
     // Пишем в журнал ТОЛЬКО счётчики: сами ключи — это ссылки с учётными
     // данными, им в логе не место (тот же запрет, что для токена подписки).
     final lost = before - after;
-    AppLog.i('Миграция ключей ($label): приведено $moved из $before'
+    log('Миграция ключей ($label): приведено $moved из $before'
         '${lost > 0 ? ', сведено дублей: $lost' : ''}');
   }
 }

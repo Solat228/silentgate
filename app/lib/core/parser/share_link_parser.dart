@@ -31,6 +31,14 @@ class ShareLinkParser {
   static VpnServer? tryParse(String link) {
     final s = _tryParseRaw(link);
     if (s == null) return null;
+    // ⚠️ КАНОНИЗИРУЕМ ТОЛЬКО ОСМЫСЛЕННО РАЗОБРАННОЕ. Разбор снисходителен: он
+    // проглотит огрызок вроде `vless://a` и отдаст сервер с пустым адресом и
+    // портом 0, а сборка превратит это в `vless://@a:0?type=tcp&…` — то есть
+    // придумает ключ, которого никогда не было. Для настоящего сервера адрес и
+    // порт заполнены всегда, поэтому проверка ничего не стоит; а вот битой или
+    // чужой строке она сохраняет её собственный вид, и данные по ней не
+    // осиротеют. Правило то же, что у `canonicalKey`: чужое не выбрасываем.
+    if (s.address.trim().isEmpty || s.port <= 0) return s;
     final canonical = s.buildShareLink();
     return canonical == s.rawLink ? s : s.copyWith(rawLink: canonical);
   }
