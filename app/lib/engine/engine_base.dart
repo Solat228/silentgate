@@ -657,7 +657,15 @@ abstract class VpnEngineBase implements VpnEngine {
       for (final e in j.entries) {
         final v = e.value;
         if (v is List && v.isNotEmpty) {
-          _resolveCache[e.key] = v.map((x) => '$x').toList();
+          final ips = v.map((x) => '$x').toList();
+          _resolveCache[e.key] = ips;
+          // Кэш переживает перезапуск, а реестр маскировки — нет. Без этого
+          // адрес из кэша попал бы в журнал незамаскированным ровно в том
+          // случае, ради которого кэш и заведён: DNS не работает, резолв
+          // провалился, берём прошлый адрес и пишем об этом в лог.
+          for (final ip in ips) {
+            SensitiveAddresses.remember(ip);
+          }
         }
       }
       AppLog.i('Кэш адресов серверов загружен: ${_resolveCache.length} имён');
@@ -699,6 +707,15 @@ abstract class VpnEngineBase implements VpnEngine {
         final ips = found.map((a) => a.address).toList();
         if (ips.isNotEmpty) {
           out[host] = ips;
+          // ⚠️ ОТРЕЗОЛВЛЕННЫЙ АДРЕС — ТОТ ЖЕ СЕКРЕТ, ЧТО И ДОМЕН. Реестр
+          // маскировки наполняется из подписки, а там лежит ИМЯ узла; в журнал
+          // же уезжает полученный из него IP — и в нашем (строка ниже, при
+          // провале резолва), и в логе ядра («dial tcp <ip>:443»), который
+          // целиком вкладывается в отчёт поддержки. Регистрируем здесь, потому
+          // что это единственное место, где имя и адрес известны разом.
+          for (final ip in ips) {
+            SensitiveAddresses.remember(ip);
+          }
           if (_resolveCache[host]?.join(',') != ips.join(',')) changed = true;
           _resolveCache[host] = ips;
         }

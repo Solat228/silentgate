@@ -567,7 +567,13 @@ class SensitiveAddresses {
     // точку (IPv4, домен), либо двоеточие (IPv6).
     if (!key.contains('.') && !key.contains(':')) return;
     if (_neverMask(key)) return;
+    final before = _labels.length;
     _labels.putIfAbsent(key, () => 'адрес №${_labels.length + 1}');
+    // Регулярка второго прохода собирается из самих адресов, поэтому новый
+    // адрес обязан её сбросить. Забудь это — и последний импортированный
+    // сервер остался бы незамаскированным, а тесты (реестр в них наполняется
+    // до первой маскировки) ничего бы не заметили.
+    if (_labels.length != before) _gluedRe = null;
   }
 
   /// Адреса, которые маскировать НЕЛЬЗЯ: на них держится разбор журнала.
@@ -593,12 +599,48 @@ class SensitiveAddresses {
   /// серверов нет) журнал не платит ничего.
   static String mask(String text) {
     if (_labels.isEmpty || text.isEmpty) return text;
-    return text.replaceAllMapped(_token, (m) {
+    final byToken = text.replaceAllMapped(_token, (m) {
       final token = m[0]!;
       final core = _core(token);
       final label = core.isEmpty ? null : _labelFor(core);
       return label == null ? token : '$label${token.substring(core.length)}';
     });
+    return _maskGlued(byToken);
+  }
+
+  /// Второй проход: известный адрес, СЛИПШИЙСЯ с окружением.
+  ///
+  /// ⚠️ ЗАЧЕМ ОН НУЖЕН, ХОТЯ ПЕРВОГО ПРОХОДА «ДОЛЖНО ХВАТАТЬ». Дефис входит в
+  /// класс символов адреса (без него не разобрать `my-node.example.com`),
+  /// поэтому `NL-185.199.108.153` разбирается как ОДИН кусок — и поиск по
+  /// реестру его не находит, хотя внутри лежит боевой IP. А «страна-адрес» —
+  /// самая частая схема именования узлов у панелей: ровно на ней уже
+  /// споткнулась проверка формы адреса в дифе подписки.
+  ///
+  /// Ищем сами известные адреса, а не форму: реестр мал (у владельца 131
+  /// сервер), а границы заданы так, чтобы не задеть соседей — адрес не
+  /// маскируется, если слева или справа от него продолжается ДРУГОЕ имя
+  /// (`node.example` внутри `x.node.example` — это поддомен, чужое имя).
+  static String _maskGlued(String text) {
+    final re = _gluedRe ??= _buildGluedRe();
+    if (re == null) return text;
+    return text.replaceAllMapped(
+        re, (m) => _labels[m[0]!.toLowerCase()] ?? m[0]!);
+  }
+
+  static RegExp? _gluedRe;
+
+  static RegExp? _buildGluedRe() {
+    if (_labels.isEmpty) return null;
+    // Длинные первыми: иначе `a.example` съело бы часть `sub.a.example.com`.
+    final keys = _labels.keys.toList()
+      ..sort((a, b) => b.length.compareTo(a.length));
+    final body = keys.map(RegExp.escape).join('|');
+    // Слева — не продолжение имени (буква, цифра, подчёркивание или точка).
+    // Справа — не продолжение имени; точка допускается только как знак
+    // препинания, то есть если за ней не идёт буква или цифра.
+    return RegExp('(?<![0-9A-Za-z_.])(?:$body)(?![0-9A-Za-z_-])(?!\\.[0-9A-Za-z])',
+        caseSensitive: false);
   }
 
   static String? _labelFor(String core) {

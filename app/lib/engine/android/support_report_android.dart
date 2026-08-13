@@ -105,7 +105,12 @@ class AndroidSupportReporter implements SupportReporter {
         .join('_');
     final file =
         File('${sup.path}${Platform.pathSeparator}silentgate-report-$stamp.txt');
-    await file.writeAsString(b.toString());
+    // ⚠️ ТО ЖЕ, ЧТО НА WINDOWS, И ПО ТОЙ ЖЕ ПРИЧИНЕ: маска на весь отчёт в
+    // единственном месте, где он становится файлом. Шапка печатает «Выбран:
+    // <сервер>» — у безымянного узла это его боевой адрес, и строка приходит из
+    // интерфейса, мимо очистки журнала. Платформы здесь обязаны совпадать:
+    // отчёт с телефона уезжает в тот же чат.
+    await file.writeAsString(SensitiveAddresses.mask(b.toString()));
     return file.path;
   }
 
