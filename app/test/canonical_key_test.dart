@@ -184,6 +184,48 @@ void main() {
       expect(s.buildShareLink(), s.buildShareLink());
     });
   });
+
+  group('Профиль «Авто …» опознаётся по имени', () {
+    VpnServer profile({required String node, required int port}) => VpnServer(
+          protocol: 'vless',
+          remark: '🎬 Авто (YouTube)',
+          address: node,
+          port: port,
+          id: 'uuid',
+          rawLink: 'panel://auto',
+          rawPanelConfig: '{"outbounds":[],"routing":{"balancers":[]}}',
+        );
+
+    test('⚠️ смена узла внутри балансировщика НЕ делает профиль новым', () {
+      // Адрес и порт профиля берутся у ПЕРВОГО узла внутри, а панель их
+      // перетасовывает. Считай тождество по адресу — и профиль на каждом
+      // обновлении выглядел бы «удалён и добавлен»: ровно та жалоба, ради
+      // которой диф и переписывался.
+      final a = profile(node: 'node-7.example', port: 443);
+      final b = profile(node: 'node-31.example', port: 8443);
+      expect(a.identityKey, b.identityKey);
+    });
+
+    test('разные профили всё же различаются', () {
+      final a = profile(node: 'n.example', port: 443);
+      const b = VpnServer(
+        protocol: 'vless',
+        remark: '🤖 Авто (ChatGPT)',
+        address: 'n.example',
+        port: 443,
+        id: 'uuid',
+        rawLink: 'panel://auto2',
+        rawPanelConfig: '{"outbounds":[]}',
+      );
+      expect(a.identityKey, isNot(b.identityKey));
+    });
+
+    test('обычный сервер по-прежнему опознаётся по адресу', () {
+      final a = ShareLinkParser.tryParse(vlessGrpc(serviceParam: 'path'))!;
+      expect(a.identityKey, contains(host),
+          reason: 'правило про имя касается ТОЛЬКО профилей панели');
+    });
+  });
 }
 
 /// Тождество сервера для дифа: «тот же узел», а не «та же строка».

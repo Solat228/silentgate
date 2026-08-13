@@ -1605,7 +1605,16 @@ class AppState extends ChangeNotifier {
   /// ⚠️ Отличается от автообновления по таймеру (`_maybeStartUpdater`): тот
   /// между запусками ничего не гарантирует, и после суток простоя список
   /// серверов с остатком трафика показывались прошлые, пока не подойдёт срок.
+  /// ⚠️ ПОД ТЕСТАМИ В СЕТЬ НЕ ХОДИМ. Настройка включена по умолчанию, поэтому
+  /// каждый виджет-тест, поднимающий AppState, начинал дёргать реальную
+  /// подписку: прогон становился зависимым от сети и плавающим по времени —
+  /// это и была настоящая причина «флаки-теста» счётчика подписок, который я
+  /// сперва списал на ожидание пинга.
+  static final bool _underTest =
+      Platform.environment.containsKey('FLUTTER_TEST');
+
   void _maybeRefreshOnStart() {
+    if (_underTest) return;
     if (_subscriptionUrl == null) return;
     unawaited(() async {
       try {
@@ -1613,7 +1622,17 @@ class AppState extends ChangeNotifier {
         // (см. `_maybeStartUpdater` рядом — он делает ровно так же).
         final s = await SettingsStorage().load();
         if (!s.updateSubscriptionOnStart) return;
+        // ⚠️ ОШИБКА ЭТОГО ОБНОВЛЕНИЯ НЕ ПОКАЗЫВАЕТСЯ. Пользователь его не
+        // запрашивал: он просто открыл приложение. Без сети (самолёт, вышел из
+        // дома, панель прилегла) он получал бы красный баннер с текстом
+        // сетевого исключения при КАЖДОМ холодном старте — за действие, о
+        // котором не просил. Ручное «Обновить» ошибку показывает как и раньше.
+        final errorBefore = _error;
         await refreshSubscription();
+        if (_error != errorBefore) {
+          _error = errorBefore;
+          notifyListeners();
+        }
       } catch (e) {
         AppLog.w('Обновление подписки на запуске не удалось: $e');
       }
