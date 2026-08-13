@@ -120,6 +120,70 @@ void main() {
       expect(a.identity, isNot(b.identity));
     });
   });
+
+  group('Оба пути создания сервера дают ОДИН ключ', () {
+    // ⚠️ Сервер рождается ДВУМЯ путями: разбором ссылки из текстовой подписки и
+    // сборкой из панельного XRAY_JSON. Если пути расходятся, ключ «дышит»
+    // между сессиями — и данные по нему осиротевают на каждом цикле
+    // «перезапуск → обновление подписки». Проверяем на протоколах, где сборка
+    // пишет поля, которые разбор раньше пропускал.
+    test('trojan поверх gRPC переживает круг разбор→сборка', () {
+      const link = 'trojan://pw@tj.example.com:443?type=grpc&security=tls'
+          '&sni=a.example.org&path=svc&authority=auth.example.org&mode=gun#T';
+      final once = ShareLinkParser.tryParse(link);
+      expect(once, isNotNull);
+      final twice = ShareLinkParser.tryParse(once!.key);
+      expect(twice!.key, once.key,
+          reason: 'разбор trojan пропускал authority/mode — ключ менялся сам');
+      expect(once.authority, 'auth.example.org',
+          reason: 'поле должно не только сохраняться в ключе, но и читаться');
+    });
+
+    test('hysteria2 с отпечатком переживает круг', () {
+      const link = 'hysteria2://pass@hy.example:443?sni=a.example.org&fp=chrome#H';
+      final once = ShareLinkParser.tryParse(link);
+      final twice = ShareLinkParser.tryParse(once!.key);
+      expect(twice!.key, once.key,
+          reason: 'fp разбирался, но не писался — ключ терял его на каждом чтении');
+    });
+  });
+
+  group('Панельный сервер без ссылки', () {
+    test('⚠️ ключ НЕ пустой — иначе все такие серверы делят один', () {
+      // Из панельного XRAY_JSON сервер приходит без ссылки. Раньше
+      // buildShareLink возвращал для vmess/ss пустую строку, и ВСЕ они
+      // получали ключ «»: пинг, пин и правка писались друг поверх друга, а
+      // после перезапуска сервер исчезал вместе с сохранённым.
+      const a = VpnServer(
+          protocol: 'shadowsocks',
+          remark: 'SS 1',
+          address: 'a.example',
+          port: 8388,
+          id: 'pw',
+          rawLink: '');
+      const b = VpnServer(
+          protocol: 'shadowsocks',
+          remark: 'SS 2',
+          address: 'b.example',
+          port: 8388,
+          id: 'pw',
+          rawLink: '');
+      expect(a.buildShareLink(), isNotEmpty);
+      expect(a.buildShareLink(), isNot(b.buildShareLink()),
+          reason: 'разные узлы обязаны различаться ключом');
+    });
+
+    test('ключ стабилен между запусками', () {
+      const s = VpnServer(
+          protocol: 'vmess',
+          remark: 'VM',
+          address: 'v.example',
+          port: 443,
+          id: 'uuid',
+          rawLink: '');
+      expect(s.buildShareLink(), s.buildShareLink());
+    });
+  });
 }
 
 /// Тождество сервера для дифа: «тот же узел», а не «та же строка».

@@ -147,6 +147,17 @@ class ShareLinkParser {
       shortId: _nz(q['sid']),
       alpn: _nz(q['alpn']),
       headerType: _nz(q['headerType']),
+      // ⚠️ ЭТИ ЧЕТЫРЕ ЧИТАЮТСЯ ПОТОМУ, ЧТО СБОРКА ИХ ПИШЕТ. Разбор и сборка
+      // обязаны знать один набор полей: `buildShareLink` кладёт `spx`,
+      // `authority`, `mode` и `extra` для vless И trojan одинаково, а разбор
+      // trojan их пропускал — ссылка после разбора и обратной сборки
+      // получалась ДРУГОЙ, то есть ключ сервера «дышал» между сессиями. Панель
+      // заполняет их по типу транспорта, а не по протоколу, поэтому trojan
+      // поверх gRPC/xhttp/reality получает их наравне с vless.
+      spiderX: _nz(q['spx']),
+      authority: _nz(q['authority']),
+      xhttpMode: _nz(q['mode']),
+      xPadding: _extractPadding(q['extra']),
       rawLink: link,
     );
   }

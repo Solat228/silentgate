@@ -277,6 +277,10 @@ class VpnServer {
       add('obfs', obfs);
       add('obfs-password', obfsPassword);
       add('mport', hopPorts);
+      // Разбор `fp` читает — значит сборка обязана его писать, иначе ссылка
+      // после круга «разобрали → собрали» отличается от исходной, и ключ
+      // сервера меняется сам по себе при каждом чтении с диска.
+      add('fp', fingerprint);
       if (allowInsecure) q['insecure'] = '1';
       final query = q.entries
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
@@ -316,6 +320,22 @@ class VpnServer {
           .join('&');
       final frag = remark.isNotEmpty ? '#${Uri.encodeComponent(remark)}' : '';
       return '$protocol://$id@${_hostPart()}:$port?$query$frag';
+    }
+    // ⚠️ ПРОТОКОЛЫ, КОТОРЫЕ МЫ НЕ ПЕРЕСОБИРАЕМ (vmess, ss), НО КЛЮЧ ИМ НУЖЕН.
+    //
+    // Обычно у них есть исходная ссылка, и она же ключ. Но из панельного
+    // XRAY_JSON сервер приходит БЕЗ ссылки (`rawLink: ''`), и тогда `key`
+    // получался ПУСТОЙ СТРОКОЙ — одной на всех. Все такие серверы делили один
+    // ключ: пинг, пин, ручная правка и конфиг панели писались друг поверх
+    // друга, а после перезапуска сервер исчезал из списка вместе с
+    // сохранённым по нему (`tryParse('')` возвращает null).
+    //
+    // Поэтому собираем опознавательный ключ из того, что есть. Он не
+    // подключаемая ссылка — подключение идёт по `rawOutboundJson` панели, — а
+    // именно идентификатор: стабильный между запусками и разный у разных узлов.
+    if (rawLink.trim().isEmpty) {
+      final frag = remark.isNotEmpty ? '#${Uri.encodeComponent(remark)}' : '';
+      return '$protocol://${_hostPart()}:$port$frag';
     }
     return rawLink;
   }
