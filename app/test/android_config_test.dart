@@ -1,12 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/platform/app_paths.dart';
+import 'package:silentgate/core/platform/ipv6_support.dart';
+import 'package:silentgate/core/probe/tunnel_health.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
+import 'package:silentgate/core/xray/xray_config_builder.dart';
+import 'package:silentgate/engine/android/android_engine.dart';
+import 'package:silentgate/engine/vpn_engine.dart';
 
 /// Конфиг, который Android-движок отдаёт ядру.
 ///
@@ -82,6 +89,9 @@ Map<String, dynamic> _androidConfig(
     ).buildMap(settings.splitTunnel);
 
 void main() {
+  // Мок нативных каналов движка требует биндингов.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   final outDir = Directory('build/android-config');
 
   setUpAll(() => outDir.createSync(recursive: true));
@@ -436,4 +446,593 @@ void main() {
       expect(tun.any((i) => i['tag'] == 'probe-in'), isFalse);
     });
   });
+
+  // ⚠️ ПОРТ 10085 ПОДНИМАЛСЯ НА ANDROID В РЕЖИМЕ «АВТО (ЛУЧШИЙ СЕРВЕР)».
+  //
+  // api-инбаунд Xray — `dokodemo-door` на 127.0.0.1 БЕЗ пароля (Xray его для
+  // `api` не поддерживает в принципе). Счётчики оттуда читает только Windows,
+  // Android берёт их из Clash API sing-box, — то есть на телефоне порт
+  // открывался вхолостую, а видит его там любое установленное приложение
+  // (loopback между приложениями не изолирован, детекторы VPN ищут этот порт
+  // отдельной проверкой).
+  //
+  // Гейт `readsXrayStats` закрывал ОДИН путь из нескольких — `ensureXrayStats`
+  // для панельного профиля. Конфиг автовыбора собирает ДРУГОЙ метод
+  // (`buildBalancerMap`), и он клал инбаунд безусловно. Поэтому проверяются оба
+  // построителя И место отправки: дефект жил не в построителе, а в том, что
+  // мимо гейта шёл целый путь.
+  group('api-инбаунд Xray не уезжает ядру на Android', () {
+    List<Map<String, dynamic>> inboundsOf(String json) =>
+        (((jsonDecode(json) as Map)['inbounds']) as List)
+            .cast<Map<String, dynamic>>();
+
+    List<Map<String, dynamic>> rulesOfXray(String json) =>
+        ((((jsonDecode(json) as Map)['routing'] as Map)['rules']) as List)
+            .cast<Map<String, dynamic>>();
+
+    bool hasApi(String json) => inboundsOf(json)
+        .any((i) => i['tag'] == 'api' || '${i['port']}' == '10085');
+
+    String sent(String xrayJson, {bool readsXrayStats = false}) =>
+        AndroidEngine.startArgs(
+          tunJson: '{}',
+          xrayJson: xrayJson,
+          readsXrayStats: readsXrayStats,
+        )['xray_config'] as String;
+
+    const builder = XrayConfigBuilder();
+    final auto = [_fixtures['vless']!, _fixtures['ws']!];
+
+    test('одиночный сервер (buildMap)', () {
+      final raw = builder.buildJson(_fixtures['vless']!);
+      expect(hasApi(raw), isTrue, reason: 'предпосылка: построитель его кладёт');
+      expect(hasApi(sent(raw)), isFalse);
+    });
+
+    test('«Авто (лучший сервер)» (buildBalancerMap) — тот же результат', () {
+      // Именно этот путь и оставался открытым: гейт стоял на другом.
+      final raw = builder.buildBalancerJson(auto);
+      expect(hasApi(raw), isTrue, reason: 'предпосылка: построитель его кладёт');
+      final out = sent(raw);
+      expect(hasApi(out), isFalse);
+      // Выгружаем, как и остальные конфиги этого файла: почищенный конфиг
+      // обязан оставаться валидным для НАСТОЯЩЕГО ядра, и проверяется это
+      // `xray.exe run -test -c build/android-config/balancer-no-api.json`.
+      File('${outDir.path}/balancer-no-api.json').writeAsStringSync(
+          const JsonEncoder.withIndent('  ').convert(jsonDecode(out)));
+    });
+
+    test('панельный профиль со СВОИМ api-инбаундом чистится тоже', () {
+      // Конфиг приходит от панели целиком, и что в нём лежит, мы не выбираем.
+      final raw = jsonEncode({
+        'inbounds': [
+          {'tag': 'socks', 'protocol': 'socks', 'port': 10808},
+          {'tag': 'api', 'protocol': 'dokodemo-door', 'port': 10085},
+        ],
+        'outbounds': [
+          {'tag': 'proxy', 'protocol': 'vless'},
+        ],
+        'api': {'tag': 'api', 'services': ['StatsService']},
+        'routing': {
+          'rules': [
+            {'type': 'field', 'inboundTag': ['api'], 'outboundTag': 'api'},
+          ],
+        },
+      });
+      final out = sent(raw);
+      expect(hasApi(out), isFalse);
+      expect((jsonDecode(out) as Map).containsKey('api'), isFalse,
+          reason: 'секцию без инбаунда обслуживать некому');
+    });
+
+    test('правило api удаляется целиком, а не пустеет', () {
+      // ⚠️ Правило с пустым `inboundTag` не сужается до нуля, а перестаёт
+      // ограничивать что-либо: в api-хендлер ушёл бы ВЕСЬ трафик.
+      final out = sent(builder.buildBalancerJson(auto));
+      for (final r in rulesOfXray(out)) {
+        expect(r['outboundTag'], isNot('api'));
+        final tags = r['inboundTag'];
+        if (tags is List) {
+          expect(tags, isNotEmpty, reason: 'пустое условие подходит ко всему');
+          expect(tags.contains('api'), isFalse);
+        }
+      }
+    });
+
+    test('остальное не задето: socks/http и балансировщик на месте', () {
+      final out = sent(builder.buildBalancerJson(auto));
+      final tags = inboundsOf(out).map((i) => i['tag']).toList();
+      expect(tags, containsAll(['socks', 'http']));
+      expect(
+          rulesOfXray(out).any((r) => r['balancerTag'] == 'balancer'), isTrue);
+      final outs = ((jsonDecode(out) as Map)['outbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((o) => o['tag']);
+      expect(outs, containsAll(['proxy-0', 'proxy-1', 'direct', 'block']));
+    });
+
+    test('там, где счётчики читают (Windows), конфиг не трогается', () {
+      // Гейт один на добавление и на удаление: если платформа читает
+      // statsquery, инбаунд обязан доехать нетронутым.
+      final raw = builder.buildBalancerJson(auto);
+      expect(sent(raw, readsXrayStats: true), raw);
+    });
+
+    test('сессия без Xray: ключа xray_config нет вовсе', () {
+      expect(AndroidEngine.startArgs(tunJson: '{}').containsKey('xray_config'),
+          isFalse);
+    });
+  });
+
+  // ⚠️ ЗАГЛУШКА KILL SWITCH СОБИРАЛАСЬ ИЗ УМОЛЧАНИЙ, А НЕ ИЗ ЖИВОГО ТУННЕЛЯ.
+  //
+  // Опции живого туннеля лежат в памяти изолята, а туннель на Android изолят
+  // переживает: свернул приложение — VPN работает, открыл заново — изолят
+  // новый и полей нет (`adoptRunningTunnel`). Прежний код подставлял в этом
+  // случае `const TunOptions(platformTun: true)` и пустой `SplitTunnelConfig`.
+  //
+  // Почему этого не поймал соседний страж «поле в поле»: он сравнивает
+  // `build(live)` с `build(live.asBlackhole())` — ДВА конфига из ОДНОГО набора
+  // опций. Он доказывает, что `asBlackhole()` ничего не теряет, и ничего не
+  // говорит о том, какие опции движок туда подаёт. Поэтому здесь проверяется
+  // сам движок, а не построитель.
+  group('Kill switch после подхвата живого туннеля', () {
+    const vpnChannel = MethodChannel('lol.silentgate/vpn');
+    const eventsChannel = MethodChannel('lol.silentgate/vpn_events');
+
+    // Настройки пользователя, при которых умолчания расходятся с живым
+    // туннелем сразу двумя полями: MTU и пакетные списки.
+    const userSettings = AppSettings(
+      tunMtu: 1280,
+      killSwitch: true,
+      splitTunnel: SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        apps: [AppRule('com.example.messenger', action: AppAction.tunnel)],
+      ),
+    );
+
+    const server = VpnServer(
+      protocol: 'vless',
+      remark: 'adopted',
+      // Литеральный адрес: резолв в тесте не должен ходить в сеть.
+      address: '203.0.113.5',
+      port: 443,
+      id: '11111111-2222-3333-4444-555555555555',
+      rawLink: 'vless://11111111-2222-3333-4444-555555555555@203.0.113.5:443',
+    );
+
+    late Directory tmp;
+    final started = <String>[];
+
+    setUp(() {
+      // Свой каталог данных: движок пишет журнал и пароль Clash API, лезть в
+      // боевой %APPDATA% тесту нельзя.
+      tmp = Directory.systemTemp.createTempSync('sg_android_killswitch_');
+      AppPaths.overrideRoot(tmp);
+      started.clear();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(vpnChannel, (call) async {
+        switch (call.method) {
+          case 'isRunning':
+            return true; // туннель поднят прошлым запуском интерфейса
+          case 'start':
+            started.add((call.arguments as Map)['config'] as String);
+            return null;
+          default:
+            return null;
+        }
+      });
+      // Подписка на события идёт из конструктора движка; без заглушки канал
+      // ответил бы исключением и уронил тест на ровном месте.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(eventsChannel, (call) async => null);
+    });
+
+    tearDown(() async {
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        ..setMockMethodCallHandler(vpnChannel, null)
+        ..setMockMethodCallHandler(eventsChannel, null);
+      // Журнал пишется фоновой цепочкой — дать ей закончиться ДО того, как
+      // каталог данных вернётся к боевому.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    Map<String, dynamic> tunInboundOf(String json) =>
+        (((jsonDecode(json) as Map)['inbounds']) as List).first
+            as Map<String, dynamic>;
+
+    test('заглушка совпадает с ЖИВЫМ туннелем, а не с умолчаниями', () async {
+      final engine = AndroidEngine();
+      await engine.adoptRunningTunnel();
+      expect(engine.status.isConnected, isTrue, reason: 'предпосылка теста');
+
+      // Интерфейс возвращает движку сессию: с неё живут автоповтор и kill
+      // switch (см. armAdoptedSession).
+      await engine.armAdoptedSession(
+          [server], const ConnectionOptions(settings: userSettings));
+      await engine.teardownCore(keepCapture: true);
+
+      expect(started, hasLength(1), reason: 'туннель обязан быть удержан');
+
+      // Эталон — TUN-инбаунд, который построил бы ЖИВОЙ конфиг из тех же
+      // настроек. Сравниваем именно его: это ровно то, из чего VpnService
+      // строит интерфейс, и любое расхождение = новый интерфейс.
+      final live = SingboxConfigBuilder(
+        options: TunOptions.fromSettings(userSettings,
+            android: true, ipv6Available: await Ipv6Support.hasGlobalIpv6()),
+      ).buildMap(userSettings.splitTunnel);
+
+      expect(tunInboundOf(started.single), tunInboundOf(jsonEncode(live)));
+      expect(tunInboundOf(started.single)['mtu'], 1280);
+      expect(tunInboundOf(started.single)['include_package'],
+          contains('com.example.messenger'),
+          reason: 'иначе в заглушку зайдёт ВЕСЬ телефон, включая приложения, '
+              'которые пользователь держал вне VPN, и останется без сети');
+    });
+
+    test('нет ни живых опций, ни сессии — туннель не подменяется наугад',
+        () async {
+      // Знать нечего: единственное честное действие — погасить, а не строить
+      // «какой-нибудь» интерфейс поверх чужого.
+      expect(
+        AndroidEngine.blackholeInputs(
+            live: null, liveSplit: null, session: null, ipv6Available: true),
+        isNull,
+      );
+    });
+
+    test('живые опции точнее сессии и берутся первыми', () {
+      const live = TunOptions(platformTun: true, mtu: 1400);
+      const liveSplit = SplitTunnelConfig(mode: SplitMode.exceptSelected);
+      final got = AndroidEngine.blackholeInputs(
+        live: live,
+        liveSplit: liveSplit,
+        session: const ConnectionOptions(settings: userSettings),
+        ipv6Available: true,
+      )!;
+      expect(got.options.mtu, 1400);
+      expect(got.split.mode, SplitMode.exceptSelected);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ⚠️ УСТАРЕВШИЙ ЗАПУСК РУШИЛ РЕСУРС ЖИВОЙ СЕССИИ — КЛАСС, ЗАКРЫТЫЙ БЫЛ ТОЛЬКО
+  // НА WINDOWS.
+  //
+  // Форвардер поднимается ВНУТРИ сборки `TunOptions`, то есть после резолва
+  // серверов (таймаут 5 с на имя) и запроса DNS физической сети через нативный
+  // канал. К этому моменту запуск мог устареть — а подъём начинался со снятия
+  // ТОГО, ЧТО ЛЕЖИТ В ПОЛЕ, то есть форвардера уже НОВОЙ, живой сессии. Её
+  // конфиг уже уехал ядру и в `dns.final` держит именно этот порт: при «весь
+  // DNS через туннель» имена перестают резолвиться у ВСЕХ приложений телефона,
+  // и само это не чинится. Достижимо просто — запуск A стоит в таймауте
+  // резолва, человек жмёт «Отключить» и «Подключить», запуск B обгоняет A.
+  //
+  // Защит здесь три, и у каждой свой тест: гейт устаревшего запуска, поколение-
+  // владелец и снятие ТОЛЬКО СВОЕГО на раннем выходе `startSession`.
+  group('Запасной DNS: устаревший запуск не трогает чужой форвардер', () {
+    const vpnChannel = MethodChannel('lol.silentgate/vpn');
+    const eventsChannel = MethodChannel('lol.silentgate/vpn_events');
+    const deviceChannel = MethodChannel('lol.silentgate/device');
+
+    // «Весь DNS через туннель» — единственная настройка, при которой форвардер
+    // вообще поднимается.
+    const settings = AppSettings(tunnelDnsForAll: true);
+
+    late Directory tmp;
+    late AndroidEngine engine;
+
+    setUp(() {
+      // Свой каталог данных: движок пишет журнал и пароль Clash API.
+      tmp = Directory.systemTemp.createTempSync('sg_android_fallback_dns_');
+      AppPaths.overrideRoot(tmp);
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(vpnChannel, (call) async => null);
+      messenger.setMockMethodCallHandler(eventsChannel, (call) async => null);
+      // Резолвер физической сети: без него форвардер честно не поднимается.
+      messenger.setMockMethodCallHandler(deviceChannel,
+          (call) async => call.method == 'directDns' ? '192.168.1.1' : null);
+      engine = AndroidEngine();
+    });
+
+    tearDown(() async {
+      await engine.dispose();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger
+        ..setMockMethodCallHandler(vpnChannel, null)
+        ..setMockMethodCallHandler(eventsChannel, null)
+        ..setMockMethodCallHandler(deviceChannel, null);
+      // Журнал пишется фоновой цепочкой — дать ей закончиться ДО возврата
+      // каталога данных к боевому.
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('поколение-владелец: снимается только СВОЙ, чужой остаётся жить',
+        () async {
+      expect(
+          await engine.startFallbackDns(settings,
+              viaXray: true, gen: 1, aborted: () => false),
+          isNot(0),
+          reason: 'предпосылка: форвардер запуска 1 поднят');
+      final own = engine.fallbackDns!;
+
+      // Пользователь переподключился: запуск 2 штатно снял прошлый и поднял
+      // свой — так и должно быть, он не устарел.
+      await engine.startFallbackDns(settings,
+          viaXray: true, gen: 2, aborted: () => false);
+      final fresh = engine.fallbackDns!;
+      expect(identical(fresh, own), isFalse,
+          reason: 'предпосылка: в поле уже форвардер ДРУГОГО запуска');
+      expect(own.isRunning, isFalse);
+
+      // И только теперь запуск 1 возвращается из своего долгого await и
+      // сворачивается.
+      await engine.releaseOwnFallbackDns(1);
+      expect(engine.fallbackDns, same(fresh),
+          reason: 'устаревший запуск снял форвардер ЖИВОЙ сессии: её dns.final '
+              'указывает на порт, которого больше нет — и DNS всего телефона '
+              'встаёт до переподключения');
+      expect(fresh.isRunning, isTrue);
+
+      // Своё поколение — снимает.
+      await engine.releaseOwnFallbackDns(2);
+      expect(engine.fallbackDns, isNull);
+      expect(fresh.isRunning, isFalse);
+    });
+
+    test('гейт: устаревший запуск не гасит живого и не поднимает своего',
+        () async {
+      await engine.startFallbackDns(settings,
+          viaXray: true, gen: 1, aborted: () => false);
+      final live = engine.fallbackDns!;
+
+      // Запуск 2 вернулся из резолва и обнаружил, что устарел.
+      expect(
+          await engine.startFallbackDns(settings,
+              viaXray: true, gen: 2, aborted: () => true),
+          0,
+          reason: 'устаревший запуск не имеет права поднимать порт: его конфиг '
+              'никуда не поедет, а гасить поднятое будет некому');
+      expect(engine.fallbackDns, same(live),
+          reason: 'гейт стоит ПОСЛЕ снятия из поля — значит первой же строкой '
+              'убит форвардер живой сессии');
+      expect(live.isRunning, isTrue);
+    });
+  });
+
+  // Третья защита: ранние выходы `startSession` по `aborted()` не зовут
+  // `cleanup()`, поэтому поднятый форвардер обязан сниматься там явно — и
+  // именно СВОЙ. Проверяется на настоящем `startSession`: подмены здесь ровно
+  // две — нативные каналы, которых в тесте нет физически.
+  group('Запасной DNS: ранний выход startSession снимает свой форвардер', () {
+    const vpnChannel = MethodChannel('lol.silentgate/vpn');
+    const eventsChannel = MethodChannel('lol.silentgate/vpn_events');
+    const deviceChannel = MethodChannel('lol.silentgate/device');
+
+    // Полный Xray-JSON: только при нём `viaXray` истинно, а без него форвардер
+    // не поднимается вовсе (его основной путь идёт через локальный SOCKS Xray).
+    const xrayOverride = '{"inbounds":[{"tag":"socks","protocol":"socks",'
+        '"port":10808,"settings":{"auth":"noauth","udp":true}}],'
+        '"outbounds":[{"tag":"proxy","protocol":"freedom"}]}';
+
+    const server = VpnServer(
+      protocol: 'vless',
+      remark: 'override',
+      // Литеральный адрес: резолв в тесте не должен ходить в сеть.
+      address: '203.0.113.5',
+      port: 443,
+      id: '11111111-2222-3333-4444-555555555555',
+      rawLink: 'vless://11111111-2222-3333-4444-555555555555@203.0.113.5:443',
+      rawJsonOverride: xrayOverride,
+    );
+
+    // `myRulesOverridePanel: false` — иначе конфиг панели переписывается
+    // реврайтом direct→VPN, а к этому тесту он отношения не имеет.
+    const settings = AppSettings(
+      tunnelDnsForAll: true,
+      myRulesOverridePanel: false,
+      splitTunnel: SplitTunnelConfig(mode: SplitMode.exceptSelected),
+    );
+
+    late Directory tmp;
+    late AndroidEngine engine;
+    final started = <String>[];
+    var directDnsCalls = 0;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_android_stale_start_');
+      AppPaths.overrideRoot(tmp);
+      started.clear();
+      directDnsCalls = 0;
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(vpnChannel, (call) async {
+        switch (call.method) {
+          case 'isRunning':
+            return true; // туннель поднят прошлым запуском интерфейса
+          case 'start':
+            started.add((call.arguments as Map)['config'] as String);
+            return null;
+          default:
+            return null;
+        }
+      });
+      messenger.setMockMethodCallHandler(eventsChannel, (call) async => null);
+      messenger.setMockMethodCallHandler(deviceChannel, (call) async {
+        if (call.method != 'directDns') return null;
+        directDnsCalls++;
+        // ⚠️ ВТОРОЙ вызов идёт УЖЕ ИЗ `startFallbackDns`: входной гейт он
+        // прошёл, форвардер поднимется через несколько строк. Ровно в это окно
+        // пользователь и успевает нажать «Отключить» → «Подключить», и именно
+        // тут запуск становится устаревшим ПОСЛЕ подъёма порта.
+        if (directDnsCalls == 2) engine.newGeneration();
+        return '192.168.1.1';
+      });
+      engine = AndroidEngine();
+    });
+
+    tearDown(() async {
+      await engine.dispose();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger
+        ..setMockMethodCallHandler(vpnChannel, null)
+        ..setMockMethodCallHandler(eventsChannel, null)
+        ..setMockMethodCallHandler(deviceChannel, null);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('порт не остаётся слушать, когда запуск устарел за время сборки',
+        () async {
+      await engine.adoptRunningTunnel();
+      expect(engine.status.isConnected, isTrue, reason: 'предпосылка');
+      await engine.armAdoptedSession(
+          [server], const ConnectionOptions(settings: settings));
+      expect(engine.session, isNotNull,
+          reason: 'предпосылка: без сессии startSession выходит первой строкой');
+
+      await engine.startSession();
+
+      expect(directDnsCalls, greaterThanOrEqualTo(2),
+          reason: 'предпосылка: подъём форвардера был начат');
+      expect(started, isEmpty,
+          reason: 'предпосылка: запуск устарел ДО отправки конфига сервису');
+      expect(engine.fallbackDns, isNull,
+          reason: 'форвардер устаревшего запуска остался слушать UDP-порт на '
+              'петле — на Android он виден любому приложению, а гасить его '
+              'больше некому');
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // ⚠️ СТРАЖ ФОНОВОЙ ОБВЯЗКИ ЛОВИЛ ТРЕТЬ ТОГО, ЧТО ОБЕЩАЛ. Из `platformCleanup`
+  // можно было удалить и `stopHealthWatch()`, и `await _stopFallbackDns()` —
+  // весь набор тестов оставался зелёным: признак `backgroundWorkActive` смотрел
+  // на таймер счётчиков и поле форвардера, но форвардер в тесте не поднимался
+  // вовсе (`adoptRunningTunnel` его не заводит), а сторож канала в признак не
+  // входил.
+  //
+  // Поэтому ниже у каждой подсистемы свой тест, и в каждом работает РОВНО ОДНА:
+  // тогда снятие любой строки красит именно её тест, а не «какой-нибудь».
+  group('platformCleanup: у каждой подсистемы свой страж', () {
+    const vpnChannel = MethodChannel('lol.silentgate/vpn');
+    const eventsChannel = MethodChannel('lol.silentgate/vpn_events');
+    const deviceChannel = MethodChannel('lol.silentgate/device');
+
+    const settings = AppSettings(tunnelDnsForAll: true);
+
+    late Directory tmp;
+    late _QuietHealthEngine engine;
+    final calls = <String>[];
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_android_cleanup_');
+      AppPaths.overrideRoot(tmp);
+      calls.clear();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger.setMockMethodCallHandler(vpnChannel, (call) async {
+        calls.add(call.method);
+        return call.method == 'isRunning' ? true : null;
+      });
+      messenger.setMockMethodCallHandler(eventsChannel, (call) async => null);
+      messenger.setMockMethodCallHandler(deviceChannel,
+          (call) async => call.method == 'directDns' ? '192.168.1.1' : null);
+      engine = _QuietHealthEngine();
+    });
+
+    tearDown(() async {
+      await engine.dispose();
+      final messenger =
+          TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+      messenger
+        ..setMockMethodCallHandler(vpnChannel, null)
+        ..setMockMethodCallHandler(eventsChannel, null)
+        ..setMockMethodCallHandler(deviceChannel, null);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    // Строка `_stopStatsPolling()`.
+    test('счётчики трафика не тикают в мёртвый порт после отключения',
+        () async {
+      await engine.adoptRunningTunnel();
+      expect(engine.backgroundWorkActive, isTrue,
+          reason: 'предпосылка: подхват запускает опрос счётчиков');
+      await engine.cleanup();
+      expect(engine.backgroundWorkActive, isFalse);
+    });
+
+    // Строка `stopHealthWatch()`. Сторож вооружается здесь напрямую: после
+    // подхвата живого туннеля он не вооружается вовсе (известный остаток
+    // ревью), а через `startSession` в тест приехали бы сразу три подсистемы.
+    test('сторож канала не остаётся ходить пробами после отключения', () async {
+      engine.startHealthWatch(() => false);
+      expect(engine.backgroundWorkActive, isTrue,
+          reason: 'предпосылка: сторож вооружён');
+      await engine.cleanup();
+      expect(engine.backgroundWorkActive, isFalse,
+          reason: 'проба раз в 45 с через мёртвый прокси — и «сторож вооружён» '
+              'в журнале при выключенном VPN');
+    });
+
+    // Строка `await _stopFallbackDns()`.
+    test('запасной DNS-форвардер не остаётся слушать порт после отключения',
+        () async {
+      await engine.startFallbackDns(settings,
+          viaXray: true, gen: 1, aborted: () => false);
+      final srv = engine.fallbackDns;
+      expect(srv, isNotNull, reason: 'предпосылка: форвардер поднят');
+      expect(engine.backgroundWorkActive, isTrue);
+      await engine.cleanup();
+      expect(engine.backgroundWorkActive, isFalse);
+      expect(engine.fallbackDns, isNull);
+      expect(srv!.isRunning, isFalse,
+          reason: 'открытый UDP-порт на петле при выключенном VPN виден на '
+              'Android любому приложению, а запросы пересылает провайдеру');
+    });
+
+    // Строка `await _stopService()`.
+    test('нативному сервису уходит команда остановки', () async {
+      await engine.cleanup();
+      expect(calls, contains('stop'));
+    });
+  });
+}
+
+/// Сторож канала, который никуда не ходит: тесту важно только «вооружён или
+/// снят», а настоящая проба била бы в сеть.
+class _QuietHealth extends TunnelHealth {
+  _QuietHealth() : super(proxyPort: 1, interval: const Duration(hours: 1));
+
+  @override
+  Future<bool> probeOnce() async => true;
+}
+
+/// Настоящий Android-движок с одной подменой — пробой сторожа.
+class _QuietHealthEngine extends AndroidEngine {
+  @override
+  TunnelHealth createHealthProbe({
+    required int proxyPort,
+    required String proxyUser,
+    required String proxyPassword,
+  }) =>
+      _QuietHealth();
 }

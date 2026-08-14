@@ -298,6 +298,35 @@ class AppState extends ChangeNotifier {
   /// Итог последнего обновления подписки (для баннера и экрана логов).
   SubscriptionSyncResult? get lastSync => _lastSync;
 
+  /// Подписки НЕ СОХРАНЯЮТСЯ на диск: `subscriptions.json` не прочитан и не
+  /// отодвинут в сторону, писать поверх него нельзя (`SubscriptionsStore`).
+  ///
+  /// ⚠️ ЭТО ОБЯЗАНО БЫТЬ ВИДНО ЧЕЛОВЕКУ, А НЕ ТОЛЬКО ЖУРНАЛУ. Запрет записи
+  /// снаружи неотличим от исправной работы: подписка добавляется, список
+  /// перерисовывается, всё выглядит сделанным — и пропадает при следующем
+  /// запуске. Флаг снимается сам, как только запись снова проходит (причина
+  /// бывает преходящей: файл на секунду подержал антивирус).
+  ///
+  /// Состояние правдиво на момент последней попытки записи и на момент старта.
+  /// Плашки в интерфейсе на нём пока НЕТ — нужен ключ ARB и правка чужого
+  /// файла, обе вне этой правки (что именно дописать — в отчёте по задаче).
+  bool _subscriptionsReadOnly = false;
+  bool get subscriptionsReadOnly => _subscriptionsReadOnly;
+
+  /// Сверить флаг с хранилищем. Зовётся после чтения и после каждой записи —
+  /// только в эти моменты хранилище и меняет своё мнение.
+  void _syncSubscriptionsReadOnly() {
+    final sealed = _subscriptionsStore.isSealed;
+    if (sealed == _subscriptionsReadOnly) return;
+    _subscriptionsReadOnly = sealed;
+    if (sealed) {
+      AppLog.e('Подписки не сохраняются на диск: файл занят или не прочитан');
+    } else {
+      AppLog.i('Сохранение подписок снова работает');
+    }
+    notifyListeners();
+  }
+
   /// Идёт обновление подписки (крутилка на кнопке).
   bool get refreshing => _refreshing;
   VpnStatus get status => _status;
@@ -449,10 +478,42 @@ class AppState extends ChangeNotifier {
       ..clear()
       ..addAll(snapshot.items);
     _activeId = snapshot.activeId;
+    // Хранилище могло запретить себе запись прямо здесь (файл не прочитан и не
+    // отодвинут). Человек обязан узнать об этом СРАЗУ, а не после того, как
+    // потеряет день работы, — см. [subscriptionsReadOnly].
+    _syncSubscriptionsReadOnly();
     _backfillAddedAt();
 
     final legacyLinks = (data['servers'] as List?)?.cast<String>() ?? const [];
-    if (_profiles.isEmpty && (_subscriptionUrl ?? '').isNotEmpty) {
+    // ⚠️ ПЕРВЫМ СПРАШИВАЕМ, ПРОЧИТАЛСЯ ЛИ ФАЙЛ, А НЕ «ПУСТ ЛИ СПИСОК».
+    //
+    // Так выглядел самый дорогой дефект этого файла. `subscriptions.json`
+    // разбирался в глухой `catch`, отдавал ПУСТОЙ снимок — и вот эта миграция
+    // видела `_profiles.isEmpty` при живом `_subscriptionUrl` (он лежит в
+    // ДРУГОМ файле и порчи первого не заметил), принимала это за переход со
+    // старой одно-подписочной версии, создавала ОДИН профиль и тут же
+    // сохраняла его ПОВЕРХ файла с четырьмя. Хватало обрезанного файла после
+    // убийства процесса или сохранения его блокнотом в «Юникод» (UTF-16 —
+    // байты перестают разбираться как UTF-8). ⚠️ А вот BOM сам по себе НЕ
+    // хватало, вопреки тому, что тут стояло раньше: одиночный `EF BB BF`
+    // снимает декодер внутри `readAsString`, проверено запуском — подробности
+    // в `SubscriptionsStore.parseContent`. В журнале оставалась строка
+    // «Подписка перенесена в новый формат профилей», и восстанавливать четыре
+    // подписки со 131 сервером приходилось руками.
+    //
+    // Теперь нечитаемый файл отодвинут в `*.bad` самим хранилищем, а миграция
+    // на него не срабатывает: «профилей нет» и «профили не прочитались» —
+    // разные утверждения.
+    // Строка пишется ровно тогда, когда миграция БЫ сработала: сам факт
+    // нечитаемого файла хранилище уже прокричало, а здесь важно другое — что
+    // именно не было сделано и почему.
+    if (!snapshot.isReadable && (_subscriptionUrl ?? '').isNotEmpty) {
+      AppLog.e('Миграция подписок пропущена: файл подписок не прочитан — '
+          'перезаписывать его нельзя');
+    }
+    if (snapshot.isReadable &&
+        _profiles.isEmpty &&
+        (_subscriptionUrl ?? '').isNotEmpty) {
       _profiles.add(SubscriptionProfile(
         id: SubscriptionProfile.idFor(_subscriptionUrl!),
         url: _subscriptionUrl!,
@@ -933,9 +994,14 @@ class AppState extends ChangeNotifier {
     return i >= 0 ? _profiles[i] : _profiles.first;
   }
 
-  Future<void> _saveSubscriptions() {
+  Future<void> _saveSubscriptions() async {
     _rebuildOwnerIndex();
-    return _subscriptionsStore.save(SubscriptionsSnapshot(_profiles, _activeId));
+    await _subscriptionsStore.save(SubscriptionsSnapshot(_profiles, _activeId));
+    // ⚠️ ИТОГ ЗАПИСИ НЕ ВЫБРАСЫВАЕМ. `save` возвращает `false`, когда запись
+    // запрещена, — и до этой строки о запрете не узнавал никто, кроме журнала.
+    // Здесь же снимается и обратное: хранилище перепроверяет запрет на каждой
+    // записи, и если помеха ушла — флаг гаснет.
+    _syncSubscriptionsReadOnly();
   }
 
   /// Ссылка сервера → id подписки, которой он принадлежит.
@@ -1182,14 +1248,38 @@ class AppState extends ChangeNotifier {
       _overrides.clear();
       await _overridesStore.save(_overrides);
     }
-    _panelConfigs.clear();
-    await _panelOutboundsStore.save(_panelConfigs);
+    await _keepPanelConfigsFor(_pinned);
     _rebuild();
     _updater.stop();
     await _persist();
     AppLog.i('Подписка удалена'
         '${removePinned ? " вместе с закреплёнными" : ""}');
     notifyListeners();
+  }
+
+  /// Оставить в сторе конфигов панели только то, что принадлежит серверам,
+  /// пережившим удаление подписки; остальное убрать.
+  ///
+  /// ⚠️ ЗДЕСЬ БЫЛА ЧИСТКА «ВСЁ ПОДРЯД», И ОНА ПРОТИВОРЕЧИЛА ДИАЛОГУ УДАЛЕНИЯ.
+  /// Снятая галочка «Удалить и закреплённые» обещает буквально: «Иначе они
+  /// останутся в списке и переживут удаление». Профиль «Авто …» от панели
+  /// восстанавливается ПОСЛЕ ПЕРЕЗАПУСКА только отсюда — ссылка `panel://…` не
+  /// разбирается ничем, весь конфиг лежит в этом сторе
+  /// ([_serverFromStoredLink]). То есть закреплённый профиль оставался в
+  /// списке ровно до перезакрытия приложения и исчезал молча и необратимо, а
+  /// обычные серверы теряли авторитетный outbound панели и пересобирались из
+  /// полей ссылки.
+  ///
+  /// Ключи здесь сравниваются напрямую: и стор ([PanelOutboundsStore.load]),
+  /// и живые серверы уже канонические.
+  Future<void> _keepPanelConfigsFor(Iterable<VpnServer> survivors) async {
+    final keep = survivors.map((s) => s.key).toSet();
+    final before = _panelConfigs.length;
+    _panelConfigs.removeWhere((key, _) => !keep.contains(key));
+    // Ничего не убыло — не трогаем и файл: лишняя перезапись здесь ничего не
+    // даёт, а рисковать самым дорогим из хранимого по ключу незачем.
+    if (_panelConfigs.length == before) return;
+    await _panelOutboundsStore.save(_panelConfigs);
   }
 
   /// Запустить/остановить автообновление в зависимости от настроек и наличия подписки.

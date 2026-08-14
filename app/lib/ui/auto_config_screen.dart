@@ -325,7 +325,7 @@ class _ConfigControls extends StatelessWidget {
             final on = s.autoConfigServices.contains(service);
             return FilterChip(
               // #6.3.1 — бренд-иконка сервиса.
-              avatar: SiteFavicon(domain: service.domain, size: 18),
+              avatar: SiteFavicon(domain: service.domain, size: 18, builtIn: true),
               label: Text(service.label),
               selected: on,
               onSelected: (v) => controller.update((st) {

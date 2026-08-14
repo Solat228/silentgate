@@ -9,7 +9,18 @@ import '../../core/net/site_favicon.dart';
 class SiteFavicon extends StatefulWidget {
   final String domain;
   final double size;
-  const SiteFavicon({super.key, required this.domain, this.size = 24});
+
+  /// Домен ВШИТ В ПРИЛОЖЕНИЕ (сервис-чипы, автонастройка), а не внесён
+  /// пользователем в правила. Умолчание — `false`, то есть строгий режим:
+  /// новый вызов без явного разрешения приватность не ослабит. Почему для
+  /// вшитых можно иначе — в `SiteFaviconService.iconFor`.
+  final bool builtIn;
+  const SiteFavicon({
+    super.key,
+    required this.domain,
+    this.size = 24,
+    this.builtIn = false,
+  });
 
   @override
   State<SiteFavicon> createState() => _SiteFaviconState();
@@ -27,14 +38,15 @@ class _SiteFaviconState extends State<SiteFavicon> {
   @override
   void didUpdateWidget(SiteFavicon old) {
     super.didUpdateWidget(old);
-    if (old.domain != widget.domain) {
+    if (old.domain != widget.domain || old.builtIn != widget.builtIn) {
       _path = null;
       _load();
     }
   }
 
   Future<void> _load() async {
-    final p = await SiteFaviconService.iconFor(widget.domain);
+    final p =
+        await SiteFaviconService.iconFor(widget.domain, builtIn: widget.builtIn);
     if (mounted && p != null) setState(() => _path = p);
   }
 

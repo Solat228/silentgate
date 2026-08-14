@@ -83,3 +83,4 @@ signing/
 
 # Логи playwright-инструмента — воспроизводятся сами при каждом запуске.
 .playwright-mcp/
+tools/__pycache__/

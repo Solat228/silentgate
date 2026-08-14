@@ -27,7 +27,9 @@ class ShareLinkParser {
   /// Поэтому ключ строится ОДНИМ кодом из разобранных полей, а не берётся из
   /// входной строки. Протоколы, которые [VpnServer.buildShareLink] не
   /// пересобирает (vmess, ss), остаются как есть — там `buildShareLink`
-  /// возвращает `rawLink` без изменений.
+  /// возвращает `rawLink` без изменений; а если ссылки не было вовсе (узел
+  /// пришёл из панельного XRAY_JSON), ключом служит идентификатор
+  /// `<протокол>://<хост>:<порт>#<имя>` — его разбирает [_parseNodeId].
   static VpnServer? tryParse(String link) {
     final s = _tryParseRaw(link);
     if (s == null) return null;
@@ -51,17 +53,89 @@ class ShareLinkParser {
     final l = link.trim();
     try {
       if (l.startsWith('vless://')) return _parseVless(l);
-      if (l.startsWith('vmess://')) return _parseVmess(l);
+      // Панельный vmess приходит ИДЕНТИФИКАТОРОМ, а не base64-телом: у него нет
+      // исходной ссылки, и ключ достраивает `VpnServer.buildShareLink`.
+      // Настоящая ссылка идёт первой — идентификатор это запасная форма, а не
+      // равноправная.
+      if (l.startsWith('vmess://')) {
+        try {
+          return _parseVmess(l);
+        } catch (_) {
+          return _parseNodeId(l);
+        }
+      }
       if (l.startsWith('trojan://')) return _parseTrojan(l);
       if (l.startsWith('ss://')) return _parseShadowsocks(l);
       if (l.startsWith('hysteria2://') || l.startsWith('hy2://')) {
         return _parseHysteria2(l);
       }
+      return _parseNodeId(l);
     } catch (_) {
       return null;
     }
-    return null;
   }
+
+  /// Опознавательный идентификатор панельного узла:
+  /// `<протокол>://<хост>:<порт>#<имя>`.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ ЧИТАЕТСЯ. Панель владельца отдаёт XRAY_JSON, поэтому
+  /// серверы рождаются без share-ссылки (`rawLink: ''`), и ключ им достраивает
+  /// запасная ветка [VpnServer.buildShareLink]. Для протоколов, которые сборка
+  /// не пересобирает ([VpnServer.identifierProtocols]), она пишет
+  /// `shadowsocks://1.2.3.4:8388#Имя` и `vmess://5.6.7.8:443#Имя` — а разбор
+  /// таких строк не знал: схемы `shadowsocks://` тут не было вовсе (только
+  /// `ss://`), `vmess://` требует base64-тела и падает. `tryParse` возвращал
+  /// null, `AppState._serverFromStoredLink` — тоже, `whereType<VpnServer>()`
+  /// молча выбрасывал узел, а ближайшее сохранение пинов писало на диск уже
+  /// усечённый список. Пин с ручной правкой при этом оставался навсегда.
+  ///
+  /// ⚠️ ПРИНИМАЕТСЯ РОВНО ТО, ЧТО ПИШЕТ СБОРКА, И РЕШАЕТ ЭТО САМА СБОРКА:
+  /// разобранные поля прогоняются обратно через [VpnServer.buildShareLink] и
+  /// сверяются со строкой байт в байт. Второй, «свой» разбор той же формы был
+  /// бы ровно той дырой, на которой уже ловили `single_instance.dart`:
+  /// разрешение и исполнение обязаны спрашивать один код.
+  ///
+  /// Идентификатор НЕ содержит учётных данных — они приходят вместе с
+  /// authoritative-outbound'ом панели (`rawOutboundJson`, восстанавливается из
+  /// `panel_outbounds.json` по этому же ключу). Это не «почти ссылка», а имя
+  /// узла, и подключение по одному идентификатору не заработает.
+  static VpnServer? _parseNodeId(String link) {
+    final m = _nodeId.firstMatch(link);
+    if (m == null) return null;
+    final protocol = m.group(1)!;
+    if (!VpnServer.identifierProtocols.contains(protocol)) return null;
+    final rawHost = m.group(2)!;
+    final port = int.tryParse(m.group(3)!) ?? 0;
+    if (port <= 0) return null;
+
+    final probe = VpnServer(
+      protocol: protocol,
+      // Скобки IPv6 снимаем: `_hostPart()` вернёт их при обратной сборке.
+      remark: Uri.decodeComponent(m.group(4) ?? ''),
+      address: rawHost.startsWith('[')
+          ? rawHost.substring(1, rawHost.length - 1)
+          : rawHost,
+      port: port,
+      id: '',
+      // Пусто НАМЕРЕННО: только так `buildShareLink` уходит в ту самую
+      // запасную ветку, форму которой мы и сверяем.
+      rawLink: '',
+    );
+    if (probe.buildShareLink() != link) return null;
+    return probe.copyWith(rawLink: link);
+  }
+
+  /// `<протокол>://<хост|[IPv6]>:<порт>[#<имя>]` — и ничего больше.
+  ///
+  /// ⚠️ РАЗБОР ВРУЧНУЮ, А НЕ ЧЕРЕЗ `Uri`, И ЭТО НЕ ПРИДИРКА. `Uri` нормализует
+  /// строку: хост приводится к нижнему регистру. Идентификатор строится из
+  /// адреса КАК ЕГО ПРИСЛАЛА ПАНЕЛЬ, поэтому у узла с заглавной буквой в имени
+  /// хоста обратная сборка не совпала бы со строкой — и сверка отвергла бы
+  /// собственный ключ приложения, вернув ровно ту потерю узла, ради которой всё
+  /// это и написано. Заодно `@`, `/` и `?` исключены самим шаблоном: строка с
+  /// учётными данными, путём или запросом — не идентификатор, а чужая ссылка.
+  static final RegExp _nodeId = RegExp(
+      r'^([a-z][a-z0-9+.\-]*)://(\[[0-9a-fA-F:.]+\]|[^/?#@\[\]:]+):(\d+)(?:#(.*))?$');
 
   /// Канонический вид ссылки: та же ссылка, приведённая к одному написанию.
   ///

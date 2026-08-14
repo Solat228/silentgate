@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
+import 'package:silentgate/core/platform/app_log.dart';
+import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/engine/engine_base.dart';
@@ -409,4 +414,128 @@ void main() {
       expect(e.session!.servers.single.remark, 'a');
     });
   });
+
+  // ── Реестр маскировки адресов ──────────────────────────────────────────────
+  //
+  // ⚠️ ЗАКРЫТАЯ ДВЕРЬ БЕЗ СТРАЖА ОТКРЫВАЕТСЯ ОБРАТНО МОЛЧА. Реестр
+  // [SensitiveAddresses] наполняется из ПОДПИСКИ (`AppState._rebuild`), а там
+  // лежит ИМЯ узла. В журнал же уезжает АДРЕС, полученный из этого имени: своей
+  // строкой «беру прошлый адрес» и каждой строкой `dial tcp <адрес>:443` в логе
+  // ядра, который целиком вкладывается в отчёт поддержки. Две регистрации в
+  // `engine_base` (в момент резолва и при чтении кэша с диска) — единственное,
+  // что связывает имя с адресом, и снять их можно было без единого красного
+  // теста.
+  //
+  // Каждый тест ниже сначала показывает, ЧТО ПИСАЛ БЫ ЖУРНАЛ без регистрации
+  // (та же строка через `scrubSecrets` до вызова — адрес виден целиком), и
+  // только потом проверяет, что после вызова он замаскирован. Поэтому тест не
+  // может позеленеть на пустом месте: «до» — это буквально поведение с
+  // открытой дверью.
+  group('VpnEngineBase: адрес сервера попадает в реестр маскировки', () {
+    // Литерал в скобках — единственный способ получить УСПЕШНЫЙ резолв без
+    // сети: `InternetAddress.tryParse` скобок не понимает (значит код идёт в
+    // ветку `lookup`, ту самую, где стоит регистрация), а системный резолвер
+    // отдаёт литерал обратно, не спрашивая DNS. Диапазон `2001:db8::/32` —
+    // документационный (RFC 3849), реального узла за ним нет.
+    const bracketHost = '[2001:db8::77]';
+    const resolvedIp = '2001:db8::77';
+
+    late Directory tmp;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_engine_resolve_');
+      AppPaths.overrideRoot(tmp);
+      // Реестр — глобальная статика процесса: адреса соседнего теста иначе
+      // маскировали бы строки этого.
+      SensitiveAddresses.forgetAllForTest();
+    });
+
+    tearDown(() async {
+      // ⚠️ СНАЧАЛА даём догореть фоновой записи кэша (`_saveResolveCache`
+      // уходит в `unawaited`), и только ПОТОМ снимаем подмену каталога:
+      // незавершённая цепочка резолвит путь заново и получает настоящий
+      // %APPDATA% — ровно так 14.08.2026 тестом переписали боевой
+      // `subscriptions.json` владельца.
+      for (var i = 0; i < 20; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      // Запись кэша идёт на диск, а не в микрозадачу, поэтому одних тактов
+      // цикла событий ей мало. Если и этого не хватит, ничего страшного не
+      // случится: путь резолвится ДО записи, а `_saveResolveCache` глушит
+      // собственные исключения — но и настоящий каталог данных ей уже не
+      // отдадут (предохранитель `AppPaths`).
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      SensitiveAddresses.forgetAllForTest();
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('⚠️ отрезолвленный адрес маскируется в журнале', () async {
+      expect(InternetAddress.tryParse(bracketHost), isNull,
+          reason: 'предпосылка теста: скобки не разбираются как литерал, '
+              'иначе `resolveServerHosts` вернёт адрес мимо ветки резолва');
+
+      // Так выглядела бы строка лога ядра БЕЗ регистрации — то есть ровно то,
+      // что уезжало в отчёт поддержки до закрытия двери.
+      String coreLine() =>
+          scrubSecrets('dial tcp $bracketHost:443: i/o timeout');
+      expect(coreLine(), contains(resolvedIp),
+          reason: 'до резолва реестр адреса не знает — это и есть дефект');
+
+      final e = _FakeEngine();
+      final hosts = await e.resolveServerHosts([_serverAt(bracketHost)]);
+      expect(hosts[bracketHost], [resolvedIp],
+          reason: 'предпосылка теста: резолв обязан удаться без сети');
+
+      final line = coreLine();
+      expect(line, isNot(contains(resolvedIp)),
+          reason: 'адрес из резолва — тот же секрет, что и имя узла');
+      expect(line, contains('адрес №'),
+          reason: 'место узла обязано остаться видимым, иначе лог не разобрать');
+      expect(line, contains(':443'), reason: 'порт не секрет и нужен для разбора');
+    });
+
+    test('⚠️ адрес из КЭША маскируется — кэш переживает перезапуск, реестр нет',
+        () async {
+      // Сценарий, ради которого кэш и заведён: DNS заблокирован системным
+      // always-on, резолв провалился, берём прошлый адрес — и пишем об этом в
+      // журнал. Реестр к этому моменту знает только ИМЯ узла из подписки.
+      const cachedHost = 'ru7.node.example';
+      const cachedIp = '198.51.100.7';
+      File('${tmp.path}${Platform.pathSeparator}resolved_hosts.json')
+          .writeAsStringSync(jsonEncode({
+        cachedHost: [cachedIp]
+      }));
+
+      // Дословно строка `engine_base.resolveServerHosts` из ветки провала.
+      String fallbackLine() => scrubSecrets(
+          'Не удалось отрезолвить $cachedHost (таймаут), беру прошлый адрес '
+          '($cachedIp) — это и спасает старт при системном always-on');
+      expect(fallbackLine(), contains(cachedIp),
+          reason: 'до чтения кэша реестр адреса не знает — это и есть дефект');
+
+      final e = _FakeEngine();
+      // Кэш поднимается с диска первым делом ЛЮБОГО резолва.
+      await e.resolveServerHosts([_serverAt(bracketHost)]);
+
+      final line = fallbackLine();
+      expect(line, isNot(contains(cachedIp)),
+          reason: 'иначе адрес утёк бы ровно в том случае, ради которого кэш '
+              'и заведён');
+      expect(line, contains('адрес №'));
+    });
+  });
 }
+
+/// Сервер с заданным АДРЕСОМ (в отличие от [_server], который выводит адрес из
+/// имени): тестам резолва важен именно он.
+VpnServer _serverAt(String address) => VpnServer(
+      protocol: 'vless',
+      remark: 'узел',
+      address: address,
+      port: 443,
+      id: '00000000-0000-0000-0000-000000000000',
+      rawLink: 'vless://x@$address:443#узел',
+    );

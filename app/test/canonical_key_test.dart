@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
+import 'package:silentgate/core/subscription/xray_json_subscription.dart';
 
 /// Ключ сервера обязан быть КАНОНИЧЕСКИМ.
 ///
@@ -182,6 +183,249 @@ void main() {
           id: 'uuid',
           rawLink: '');
       expect(s.buildShareLink(), s.buildShareLink());
+    });
+
+    test('⚠️ НАПИСАНИЕ КЛЮЧА ЗАФИКСИРОВАНО — по нему лежат данные на диске', () {
+      // Этот тест краснеет от ЛЮБОЙ смены формы идентификатора — в том числе от
+      // «улучшения» вида «давайте собирать настоящую ss://-ссылку». Собирать
+      // можно, но тогда к правке обязана прилагаться миграция сохранённых
+      // ключей: у владельца на диске уже лежат пин, ручная правка и результат
+      // пинга ровно в этом написании, а вывести из него метод и пароль нельзя —
+      // их в идентификаторе никогда не было.
+      const ss = VpnServer(
+          protocol: 'shadowsocks',
+          remark: 'SS 1',
+          address: 'a.example',
+          port: 8388,
+          id: 'pw',
+          encryption: 'aes-256-gcm',
+          rawLink: '');
+      expect(ss.buildShareLink(), 'shadowsocks://a.example:8388#SS%201');
+      const vm = VpnServer(
+          protocol: 'vmess',
+          remark: 'VM',
+          address: 'v.example',
+          port: 443,
+          id: 'uuid',
+          rawLink: '');
+      expect(vm.buildShareLink(), 'vmess://v.example:443#VM');
+    });
+  });
+
+  group('Круг «панель → ключ → разбор» для КАЖДОГО протокола подписки', () {
+    // ⚠️ ЧТО ЗДЕСЬ ПРОВЕРЯЕТСЯ И ПОЧЕМУ ПРЕЖНЕГО СТРАЖА НЕ ХВАТАЛО.
+    //
+    // Прежняя группа спрашивала у панельного узла ровно два свойства: ключ
+    // непустой и равен сам себе. Обратный путь она не пробовала НИ РАЗУ — а
+    // сломан был именно он. Панель владельца отдаёт XRAY_JSON, значит все
+    // серверы рождаются через `XrayJsonSubscription.fromOutbound` с
+    // `rawLink: ''`, и ключ достраивает запасная ветка `buildShareLink()`. Для
+    // vmess и shadowsocks она выдаёт `vmess://5.6.7.8:443#Имя` и
+    // `shadowsocks://1.2.3.4:8388#Имя`, а разбор таких строк не знал вовсе:
+    // схемы `shadowsocks://` в нём не было (только `ss://`), `vmess://` требует
+    // base64-тела и падает.
+    //
+    // Дальше потеря становилась необратимой: `AppState._serverFromStoredLink`
+    // возвращал null, `whereType<VpnServer>()` молча выбрасывал узел, а
+    // ближайшее сохранение пинов писало на диск уже усечённый список. Пин с
+    // ручной правкой при этом оставался навсегда — снять его было нечем.
+    //
+    // Поэтому круг проверяется для ВСЕХ протоколов, которые панель может
+    // прислать, а не для тех, где он и так замыкался.
+    final panelOutbounds = <String, Map<String, dynamic>>{
+      'vless': {
+        'tag': 'proxy',
+        'protocol': 'vless',
+        'settings': {
+          'vnext': [
+            {
+              'address': 'vl.example',
+              'port': 443,
+              'users': [
+                {'id': uuid, 'encryption': 'none', 'flow': 'xtls-rprx-vision'}
+              ],
+            }
+          ],
+        },
+        'streamSettings': {
+          'network': 'tcp',
+          'security': 'reality',
+          'realitySettings': {
+            'serverName': 'a.example.org',
+            'fingerprint': 'chrome',
+            'publicKey': 'KEY',
+            'shortId': 'ab',
+          },
+        },
+      },
+      'trojan': {
+        'tag': 'proxy',
+        'protocol': 'trojan',
+        'settings': {
+          'servers': [
+            {'address': 'tj.example', 'port': 443, 'password': 'pw'}
+          ],
+        },
+        'streamSettings': {
+          'network': 'grpc',
+          'security': 'tls',
+          'tlsSettings': {'serverName': 'a.example.org', 'fingerprint': 'chrome'},
+          'grpcSettings': {
+            'serviceName': 'svc',
+            'authority': 'auth.example.org',
+          },
+        },
+      },
+      'shadowsocks': {
+        'tag': 'proxy',
+        'protocol': 'shadowsocks',
+        'settings': {
+          'servers': [
+            {
+              'address': 'ss.example',
+              'port': 8388,
+              'method': 'chacha20-ietf-poly1305',
+              'password': 'pw',
+            }
+          ],
+        },
+        'streamSettings': {'network': 'tcp', 'security': 'none'},
+      },
+      'vmess': {
+        'tag': 'proxy',
+        'protocol': 'vmess',
+        'settings': {
+          'vnext': [
+            {
+              'address': 'vm.example',
+              'port': 443,
+              'users': [
+                {'id': uuid, 'alterId': 0, 'security': 'auto'}
+              ],
+            }
+          ],
+        },
+        'streamSettings': {
+          'network': 'ws',
+          'security': 'tls',
+          'tlsSettings': {'serverName': 'a.example.org'},
+          'wsSettings': {
+            'path': '/ws',
+            'headers': {'Host': 'cdn.example.com'},
+          },
+        },
+      },
+      'hysteria2': {
+        'tag': 'proxy',
+        'protocol': 'hysteria',
+        'settings': {'address': 'hy.example', 'port': 443, 'version': 2},
+        'streamSettings': {
+          'security': 'tls',
+          'tlsSettings': {'serverName': 'a.example.org'},
+          'hysteriaSettings': {
+            'auth': 'pw',
+            'obfs': {'type': 'salamander', 'password': 'op'},
+          },
+        },
+      },
+    };
+
+    panelOutbounds.forEach((name, out) {
+      test('$name: ключ читает тот же код, что его пишет', () {
+        final made = XrayJsonSubscription.fromOutbound(out, remark: 'Узел $name');
+        expect(made, isNotNull, reason: 'панель прислала узел — он обязан собраться');
+        final s = made!;
+        expect(s.key, isNotEmpty);
+
+        final back = ShareLinkParser.tryParse(s.key);
+        expect(back, isNotNull,
+            reason: 'ключ, который не читается обратно, = узел исчезает после '
+                'перезапуска (AppState._serverFromStoredLink → null → '
+                'whereType<VpnServer>() выбрасывает молча)');
+        expect(back!.key, s.key, reason: 'круг обязан замкнуться байт в байт');
+        expect(back.protocol, s.protocol);
+        expect(back.address, s.address);
+        expect(back.port, s.port);
+        expect(back.remark, s.remark,
+            reason: 'по имени узел опознаёт человек и диф подписки');
+        expect(back.identityKey, s.identityKey);
+
+        // И ещё круг: повторное чтение ничего не сдвигает.
+        expect(ShareLinkParser.tryParse(back.key)!.key, s.key);
+        expect(ShareLinkParser.canonicalKey(s.key), s.key);
+      });
+    });
+
+    test('узлы одного протокола не сливаются в один ключ', () {
+      final a = XrayJsonSubscription.fromOutbound(
+          panelOutbounds['shadowsocks']!, remark: 'SS 1')!;
+      final b = XrayJsonSubscription.fromOutbound(
+          panelOutbounds['shadowsocks']!, remark: 'SS 2')!;
+      expect(a.key, isNot(b.key),
+          reason: 'иначе пинг, пин и правка снова пишутся друг поверх друга');
+    });
+  });
+
+  group('Старые ключи с диска обязаны продолжать находиться', () {
+    // Лечение, теряющее данные, хуже болезни: в этом написании у владельца уже
+    // лежат пины, ручные правки и результаты пинга.
+    for (final legacy in const <String>[
+      'shadowsocks://a.example:8388#SS%201',
+      'vmess://v.example:443#VM',
+      'shadowsocks://[2001:db8::1]:8388#IPv6',
+      'vmess://v.example:443', // имя пустое — тоже законный идентификатор
+    ]) {
+      test('ключ не переписывается: $legacy', () {
+        expect(ShareLinkParser.canonicalKey(legacy), legacy,
+            reason: 'переписали ключ — осиротили всё, что по нему лежит');
+        final s = ShareLinkParser.tryParse(legacy);
+        expect(s, isNotNull, reason: 'иначе узел не восстановится с диска');
+        expect(s!.key, legacy);
+      });
+    }
+
+    test('чужая строка узлом не притворяется', () {
+      // Идентификатор принимается ровно в том виде, в каком его пишет сборка;
+      // всё остальное обязано остаться неразобранным, иначе `parseSubscriptionBody`
+      // начнёт делать «серверы» из посторонних строк подписки.
+      for (final junk in const <String>[
+        'https://example.com:443',
+        'socks://127.0.0.1:1080',
+        'shadowsocks://a.example', // без порта
+        'shadowsocks://user@a.example:8388', // с учётными данными
+        'shadowsocks://a.example:8388/path',
+        'shadowsocks://a.example:8388?plugin=obfs',
+        'shadowsocks://a.example:0#N', // порт 0 — это не узел
+        // ⚠️ Неканоническое написание имени ловит ТОЛЬКО обратная сборка:
+        // шаблон такую строку пропускает. Прими её — и у одного узла стало бы
+        // два ключа, то есть ровно та болезнь, ради которой этот файл заведён.
+        'shadowsocks://a.example:8388#SS 1',
+        'vmess://', // пустое тело
+      ]) {
+        expect(ShareLinkParser.tryParse(junk), isNull, reason: junk);
+      }
+    });
+
+    test('⚠️ регистр хоста НЕ нормализуется — иначе ключ теряется', () {
+      // Идентификатор строится из адреса, как его прислала панель. Разбери его
+      // через `Uri` — хост уехал бы в нижний регистр, обратная сборка перестала
+      // бы совпадать, и приложение отвергло бы СОБСТВЕННЫЙ ключ.
+      const legacy = 'shadowsocks://SS.Example:8388#N';
+      final s = ShareLinkParser.tryParse(legacy);
+      expect(s, isNotNull);
+      expect(s!.key, legacy);
+      expect(s.address, 'SS.Example');
+    });
+
+    test('настоящая ss://-ссылка по-прежнему разбирается своим кодом', () {
+      // Ветка идентификатора не должна перехватывать нормальные ссылки.
+      const link = 'ss://YWVzLTI1Ni1nY206cHc@a.example:8388#SS';
+      final s = ShareLinkParser.tryParse(link);
+      expect(s, isNotNull);
+      expect(s!.protocol, 'shadowsocks');
+      expect(s.encryption, 'aes-256-gcm');
+      expect(s.id, 'pw');
+      expect(s.key, link, reason: 'у настоящей ссылки ключ — она сама');
     });
   });
 

@@ -3,7 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/platform/app_log.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
+import 'package:silentgate/core/platform/device_id.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/engine/android/support_report_android.dart';
 import 'package:silentgate/engine/windows/support_report.dart';
 
 /// ⚠️ УТЕЧКА ЖИЛА В ШАПКЕ ОТЧЁТА — НА ШЕСТЬДЕСЯТ СТРОК ВЫШЕ ОЧИЩЕННОГО ЖУРНАЛА.
@@ -91,4 +93,64 @@ void main() {
     );
     expect(await File(path).readAsString(), isNot(contains('SECRET-TOKEN')));
   });
+
+  // ── Android ────────────────────────────────────────────────────────────────
+  //
+  // ⚠️ ОТЧЁТ С ТЕЛЕФОНА УЕЗЖАЕТ В ТОТ ЖЕ ЧАТ. Маска на Windows и маска на
+  // Android — это ДВЕ разные строки в двух разных файлах, и снять любую из них
+  // можно было, не уронив ни одного теста: Windows-часть стерегли тесты выше,
+  // Android-часть — ничто. Платформы здесь обязаны совпадать, поэтому проверка
+  // стоит рядом и написана теми же словами.
+  group('Android: отчёт маскируется там же, где становится файлом', () {
+    setUp(() => setDeviceIdProviderForTests(_FakeDeviceId()));
+    tearDown(() => setDeviceIdProviderForTests(null));
+
+    test('⚠️ адрес безымянного сервера не уходит в отчёт из шапки', () async {
+      // Без маски эта же строка ушла бы в файл как есть — «Выбран: <адрес>».
+      const activeServer = '$node:$port';
+      expect(activeServer, contains(node),
+          reason: 'иначе тест проверяет не тот случай');
+
+      final path = await const AndroidSupportReporter().generate(
+        settings: const AppSettings(),
+        ctx: ctx(activeServer: activeServer),
+      );
+      final text = await File(path).readAsString();
+
+      expect(text, isNot(contains(node)),
+          reason: 'ЗДЕСЬ БЫЛА ДЫРА: шапка шла в файл мимо всякой очистки');
+      expect(text, contains('адрес №'),
+          reason: 'место узла обязано остаться видимым, иначе отчёт не '
+              'разобрать');
+      expect(text, contains('Выбран:'), reason: 'строка сама по себе нужна');
+    });
+
+    test('имя сервера, если оно есть, остаётся — по нему и разбирают', () async {
+      final path = await const AndroidSupportReporter().generate(
+        settings: const AppSettings(),
+        ctx: ctx(activeServer: 'Германия 2.5'),
+      );
+      final text = await File(path).readAsString();
+      expect(text, contains('Германия 2.5'));
+      // И соседний барьер на месте: путь подписки — это токен Remnawave.
+      expect(text, isNot(contains('SECRET-TOKEN')));
+    });
+  });
+}
+
+/// Идентификатор устройства на Windows читается из реестра и к предмету теста
+/// отношения не имеет — подменяем, чтобы отчёт собирался одинаково на любой
+/// машине и не ходил в систему.
+class _FakeDeviceId implements DeviceIdProvider {
+  @override
+  Future<String> hwid() async => 'HWID-TEST';
+
+  @override
+  String osName() => 'android';
+
+  @override
+  Future<String> osVersion() async => '14';
+
+  @override
+  Future<String> deviceModel() async => 'Pixel Test';
 }

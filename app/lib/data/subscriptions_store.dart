@@ -2,54 +2,329 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/models/subscription_profile.dart';
+import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
 import 'atomic_file.dart';
+
+/// Чем закончилось чтение `subscriptions.json`.
+///
+/// ⚠️ ТРИ СЛУЧАЯ, А НЕ ОДИН, И ЭТО РАЗБОР СЛУЧИВШЕГОСЯ, А НЕ АККУРАТНОСТЬ.
+/// Раньше все три давали ПУСТОЙ снимок, неотличимый один от другого, и
+/// `AppState.init()` принимал нечитаемый файл за «подписок ещё нет»: включалась
+/// миграция со старой одно-подписочной версии, которая создавала ОДИН профиль и
+/// тут же сохраняла его поверх файла с четырьмя. В журнале при этом оставалась
+/// успокаивающая строка «Подписка перенесена в новый формат профилей».
+enum SubscriptionsLoadOutcome {
+  /// Файла нет: чистая установка либо переход с версии до 0.9.0.
+  missing,
+
+  /// Файл прочитан. Пустой [SubscriptionsSnapshot.items] здесь означает ровно
+  /// то, что написано, — пользователь удалил все подписки.
+  loaded,
+
+  /// Файл ЕСТЬ, но разобрать его не удалось. Список пуст, и это НЕ «подписок
+  /// нет»: за пустотой стоят чьи-то реальные подписки, которые мы не прочли.
+  unreadable,
+}
 
 /// Что лежит на диске: список подписок и какая из них активна.
 class SubscriptionsSnapshot {
   final List<SubscriptionProfile> items;
   final String? activeId;
-  const SubscriptionsSnapshot(this.items, this.activeId);
+
+  /// Чем закончилось чтение. Снимок, собранный в памяти (для сохранения),
+  /// считается прочитанным — [SubscriptionsStore.save] исход не смотрит.
+  final SubscriptionsLoadOutcome outcome;
+
+  const SubscriptionsSnapshot(this.items, this.activeId,
+      {this.outcome = SubscriptionsLoadOutcome.loaded});
 
   bool get isEmpty => items.isEmpty;
+
+  /// Можно ли верить пустоте [items].
+  ///
+  /// ⚠️ Спрашивать обязан КАЖДЫЙ, кто собирается что-то записать на основании
+  /// «подписок нет»: «профилей нет» и «профили не прочитались» — разные
+  /// утверждения, и цена ошибки во втором случае — потеря всех подписок.
+  bool get isReadable => outcome != SubscriptionsLoadOutcome.unreadable;
 }
 
 /// Хранилище подписок (`subscriptions.json`).
 ///
 /// Отдельный файл, а не ключ в общем состоянии: подписок теперь несколько,
 /// и каждая тянет за собой свой список серверов, карточку и логотип.
+///
+/// ⚠️ САМЫЙ ДОРОГОЙ ФАЙЛ ПРИЛОЖЕНИЯ. У владельца это четыре подписки и 131
+/// сервер; восстановление вручную — работа на вечер. Поэтому отказ чтения здесь
+/// громкий (строка в журнале) и НЕРАЗРУШАЮЩИЙ (нечитаемый файл отодвигается в
+/// `*.bad`, а если отодвинуть не вышло — запись запрещается вовсе), тогда как в
+/// менее ценном `SettingsStorage` допустим откат к значениям по умолчанию.
+///
+/// ⚠️ ЗАПРЕТ ЗАПИСИ — СОСТОЯНИЕ, А НЕ ПРИГОВОР: он перепроверяется на каждом
+/// [save] и снимается, как только причина ушла ([_tryLiftSeal]), а пока стоит —
+/// виден снаружи ([isSealed]) и доезжает до интерфейса. Иначе секундная помеха
+/// на старте превращала бы весь день работы в тишину: интерфейс показывает
+/// успех, на диск не уходит ничего, перезапуск стирает всё сделанное.
 class SubscriptionsStore {
   static const _fileName = 'subscriptions.json';
+
+  /// Сколько запасных имён перебираем под нечитаемый файл, прежде чем сдаться.
+  static const _maxPreserved = 10;
+
+  /// Запрет на запись: на диске лежат данные, которые мы не прочли и не смогли
+  /// отодвинуть в сторону. Пишем — теряем их насовсем.
+  ///
+  /// ⚠️ ПЕЧАТЬ СНИМАЕМАЯ, И ЭТО НЕ УКРАШЕНИЕ. Причина запрета бывает
+  /// ПРЕХОДЯЩЕЙ: файл подержал секунду антивирус или индексатор — ровно ту
+  /// секунду, когда приложение стартовало. Печать «на всю сессию» означала бы
+  /// вот что: человек работает весь день, добавляет и удаляет подписки,
+  /// интерфейс показывает успех — а на диск не уходит НИЧЕГО, и после
+  /// перезапуска исчезает вся дневная работа. Это хуже исходной беды, ради
+  /// которой запрет вводили. Поэтому каждое [save] сперва проверяет, не ушла ли
+  /// причина ([_tryLiftSeal]).
+  bool _sealed = false;
+
+  /// Запрещена ли запись (см. [_sealed]).
+  ///
+  /// ⚠️ Отдаётся наружу не только «для порядка»: молчаливый запрет записи
+  /// неотличим от исправной работы, поэтому состояние обязан видеть интерфейс
+  /// (`AppState.subscriptionsReadOnly`), а не только журнал.
+  bool get isSealed => _sealed;
 
   Future<File> _file() async {
     final dir = await AppPaths.supportDir();
     return File('${dir.path}${Platform.pathSeparator}$_fileName');
   }
 
-  Future<SubscriptionsSnapshot> load() async {
+  /// Разбор СОДЕРЖИМОГО файла (чистая функция — тестируется без диска).
+  ///
+  /// `null` = содержимое нечитаемо; что с этим делать, решает вызывающий.
+  ///
+  /// ⚠️ ПРО BOM — ПРОВЕРЕНО ЗАПУСКОМ, А НЕ ВЫВЕДЕНО ИЗ ОБЩИХ СООБРАЖЕНИЙ, и
+  /// прежняя формулировка здесь была неверна. Факты такие:
+  ///
+  ///  * `jsonDecode` на СТРОКЕ, начинающейся с U+FEFF, действительно бросает
+  ///    `FormatException: Unexpected character (at character 1)`;
+  ///  * но декодер UTF-8 (то есть `File.readAsString`) ОДИН ведущий BOM
+  ///    `EF BB BF` снимает сам, и до `jsonDecode` символ не доезжает. Файл,
+  ///    записанный блокнотом или `Set-Content -Encoding utf8`, разбирается и
+  ///    БЕЗ этой строки — на нём она не делает ничего.
+  ///
+  /// Зачем срез остаётся: BOM переживает декодирование, когда он в файле НЕ
+  /// ОДИН. На `EF BB BF EF BB BF …` декодер снимает первый, второй остаётся в
+  /// строке символом U+FEFF и роняет разбор. Так выглядит файл, который
+  /// прочитали сырыми байтами (BOM попал в текст) и записали обратно средством,
+  /// дописывающим свой BOM, — а владелец правит эти файлы руками, это штатная
+  /// методика живого теста в VM. Стоит защита одной строки, поэтому оставлена;
+  /// стражи — `subscriptions_store_test.dart` (двойной BOM на ДИСКЕ, а не в
+  /// строке: одиночный BOM зелёный и без защиты, такой тест ничего не ловит).
+  ///
+  /// Чего срез НЕ лечит (и не должен — это уже не «редактировал не тем
+  /// блокнотом»): BOM, стоящий не первым символом, — например после пробела или
+  /// перевода строки. Такое содержимое объявляется нечитаемым, файл едет в
+  /// `*.bad`. ⚠️ И сам символ здесь НЕ пишется — в исходнике он невидим; в
+  /// тестах он задаётся кодом (`String.fromCharCode(0xFEFF)`).
+  ///
+  /// ⚠️ ПУСТОЕ СОДЕРЖИМОЕ — ЭТО ПОРЧА, А НЕ «ПОДПИСОК НЕТ» (и здесь мы намеренно
+  /// расходимся с `SettingsStorage`, где пустой файл значит «настроек ещё нет»).
+  /// Собственная запись пустым файлом кончиться не может: сохранение идёт через
+  /// [AtomicFile] и всегда даёт хотя бы `{"activeId":null,"items":[]}`. Нулевой
+  /// размер остаётся от обрезки — процесс убили в момент записи, диск кончился,
+  /// файл держал антивирус.
+  static SubscriptionsSnapshot? parseContent(String raw) {
+    var content = raw;
+    if (content.isNotEmpty && content.codeUnitAt(0) == 0xFEFF) {
+      content = content.substring(1);
+    }
+    if (content.trim().isEmpty) return null;
+
+    final Object? data;
     try {
-      final f = await _file();
-      if (!await f.exists()) return const SubscriptionsSnapshot([], null);
-      final data = jsonDecode(await f.readAsString());
-      if (data is! Map) return const SubscriptionsSnapshot([], null);
-      final items = ((data['items'] as List?) ?? const [])
-          .whereType<Map>()
-          .map((m) => SubscriptionProfile.fromJson(m.cast<String, dynamic>()))
-          .where((p) => p.url.isNotEmpty)
-          .toList();
-      return SubscriptionsSnapshot(items, data['activeId'] as String?);
+      data = jsonDecode(content);
     } catch (_) {
-      return const SubscriptionsSnapshot([], null);
+      return null;
+    }
+    if (data is! Map) return null;
+
+    final rawItems = data['items'];
+    // Ключа нет вовсе — считаем пустым списком. Не потому, что такие файлы
+    // кто-то писал ([save] всегда кладёт оба ключа), а потому, что прежний
+    // разбор такой файл ПРИНИМАЛ (`(data['items'] as List?) ?? const []`):
+    // объявить его битым значило бы сломать запуск там, где раньше всё
+    // работало. А вот ключ НЕ ТОГО типа взяться неоткуда, кроме порчи или
+    // правки руками.
+    if (rawItems != null && rawItems is! List) return null;
+
+    final activeId = data['activeId'];
+    if (activeId != null && activeId is! String) return null;
+
+    // ⚠️ ОДНА БИТАЯ ЗАПИСЬ ДЕЛАЕТ НЕЧИТАЕМЫМ ВЕСЬ ФАЙЛ — ЭТО ВЫБОР, А НЕ
+    // НЕДОСМОТР, И ОН СТОИЛ ОТДЕЛЬНОГО ВЗВЕШИВАНИЯ.
+    //
+    // Прежний код (`whereType<Map>()`) битую запись молча пропускал, и из
+    // четырёх подписок поднимались три. Выглядит мягче, а кончается хуже:
+    // «поднялись три» означает, что в памяти их три, и ПЕРВОЕ ЖЕ сохранение
+    // (переключение подписки, обновление, перетаскивание в списке) запишет на
+    // диск ровно три. Четвёртая исчезает окончательно и молча — ни файла, ни
+    // строки в журнале, ни следа в интерфейсе.
+    //
+    // Громкий отказ ничего не теряет: файл целиком уезжает в `*.bad` байт в
+    // байт, в журнале остаётся причина, а подписка восстанавливается из своей
+    // ссылки (серверы всё равно приходят от панели). Плюс к тому: главные виды
+    // порчи — обрезка после убийства процесса и синтаксическая ошибка после
+    // правки руками — «всё или ничего» по своей природе, и мягкий разбор на них
+    // не спас бы ни одной записи.
+    //
+    // Цена решения честная: за одну запись «не той природы» платит весь файл.
+    // Принята потому, что необратимая тихая потеря дороже обратимой громкой.
+    final items = <SubscriptionProfile>[];
+    for (final entry in (rawItems as List? ?? const [])) {
+      if (entry is! Map) return null;
+      final SubscriptionProfile profile;
+      try {
+        profile = SubscriptionProfile.fromJson(entry.cast<String, dynamic>());
+        // ⚠️ ПРИНУДИТЕЛЬНЫЙ ОБХОД СПИСКА ССЫЛОК, А НЕ ЛИШНЕЕ ДЕЙСТВИЕ.
+        // `SubscriptionProfile.fromJson` кладёт в `serverLinks` ЛЕНИВЫЙ
+        // `cast<String>()`: элемент не той природы бросит исключение не здесь,
+        // а при первом обходе — то есть уже в `AppState.init()`, далеко от
+        // всякого `catch`. Ловим здесь и объявляем файл нечитаемым.
+        for (final _ in profile.serverLinks) {}
+      } catch (_) {
+        return null;
+      }
+      // Профиль без адреса бесполезен (его нечем обновить) — такие пропускаем,
+      // как и раньше.
+      if (profile.url.isEmpty) continue;
+      items.add(profile);
+    }
+
+    return SubscriptionsSnapshot(items, activeId as String?);
+  }
+
+  Future<SubscriptionsSnapshot> load() async {
+    final f = await _file();
+    try {
+      // ⚠️ СПРАШИВАЕМ ТИП, А НЕ `exists()`. `File.exists()` отвечает «нет» и
+      // тогда, когда по этому пути лежит КАТАЛОГ, — а «нет файла» включает
+      // миграцию, которая пишет. Разницу поймал тест: подписки терялись бы там,
+      // где на диске вообще ничего не терялось.
+      final type = await FileSystemEntity.type(f.path);
+      if (type == FileSystemEntityType.notFound) {
+        return const SubscriptionsSnapshot([], null,
+            outcome: SubscriptionsLoadOutcome.missing);
+      }
+      if (type != FileSystemEntityType.file) {
+        AppLog.e('По пути $_fileName лежит не файл ($type) — сохранение '
+            'подписок запрещено');
+        _sealed = true;
+        return const SubscriptionsSnapshot([], null,
+            outcome: SubscriptionsLoadOutcome.unreadable);
+      }
+      final parsed = parseContent(await f.readAsString());
+      if (parsed != null) return parsed;
+      AppLog.e('Подписки не прочитаны ($_fileName): файл есть, но разобрать '
+          'его не удалось');
+      await _preserveBroken(f);
+      return const SubscriptionsSnapshot([], null,
+          outcome: SubscriptionsLoadOutcome.unreadable);
+    } catch (e) {
+      // Файл недоступен целиком: держит антивирус, нет прав, каталог занят.
+      // Это тем более не «подписок нет» — данные на месте, читать нечем.
+      AppLog.e('Файл подписок недоступен ($_fileName): $e');
+      _sealed = true;
+      return const SubscriptionsSnapshot([], null,
+          outcome: SubscriptionsLoadOutcome.unreadable);
     }
   }
 
-  Future<void> save(SubscriptionsSnapshot snapshot) async {
+  /// Отодвинуть непрочитанный файл в `*.bad`, чтобы сохранение его не затёрло.
+  /// `true` — отодвинули (писать можно), `false` — не смогли, поставлена печать.
+  ///
+  /// ⚠️ ОТЛИЧИЕ ОТ `SettingsStorage._preserveBroken` НАМЕРЕННОЕ: там оригинал
+  /// УДАЛЯЕТСЯ, если `.bad` уже занят, — настройки восстанавливаются парой
+  /// щелчков. Здесь удалять нельзя ничего, поэтому под второй, третий и
+  /// десятый случай берутся номера (`*.bad.1`…), а если и они кончились или
+  /// переименование не прошло — хранилище запечатывается: лучше не сохранить
+  /// новое, чем стереть старое.
+  Future<bool> _preserveBroken(File file) async {
+    for (var i = 0; i < _maxPreserved; i++) {
+      final path = i == 0 ? '${file.path}.bad' : '${file.path}.bad.$i';
+      try {
+        if (await File(path).exists()) continue;
+        await file.rename(path);
+        _sealed = false;
+        AppLog.w('Непрочитанный файл подписок сохранён как $path');
+        return true;
+      } catch (_) {
+        // Переименование не прошло (файл занят) — повторять с другим именем
+        // бессмысленно, причина не в имени.
+        break;
+      }
+    }
+    // Печать могла стоять и раньше (это повторная попытка из [save]) — тогда
+    // журнал уже всё сказал, и дублировать строку на каждое сохранение незачем.
+    if (!_sealed) {
+      _sealed = true;
+      AppLog.e('Нечитаемый $_fileName не удалось отодвинуть — сохранение '
+          'подписок запрещено, чтобы не затереть непрочитанные данные');
+    }
+    return false;
+  }
+
+  /// Попробовать снять печать: причина запрета могла уйти. `true` — снята.
+  ///
+  /// ⚠️ ПРАВО НА ЗАПИСЬ ДАЁТ НЕ «ФАЙЛ СНОВА ЧИТАЕТСЯ». Проверять это бесполезно:
+  /// содержимого файла у нас в памяти нет в любом случае — на старте он не
+  /// прочёлся, а снимок сессии собран без него, — и запись поверх стёрла бы
+  /// данные ровно так же, стал файл читаемым или нет. Право даёт одно из двух:
+  /// файла на диске больше нет (терять нечего) либо его удалось отодвинуть в
+  /// `*.bad` (данные сохранены). Второе и есть выход из самого частого случая:
+  /// файл секунду держал антивирус, отпустил — и переименование проходит.
+  ///
+  /// ⚠️ И ЗДЕСЬ ЖЕ СДЕЛАН ВЫБОР МЕЖДУ ДВУМЯ ПОТЕРЯМИ, обе настоящие. Файл,
+  /// который не прочёлся, [load] намеренно НЕ трогает: помеха бывает
+  /// преходящей, и следующий запуск поднимет подписки сам — отодвинутый файл
+  /// этого шанса лишает. Но раз дошло до сохранения, значит в сессии есть
+  /// работа человека, и молча выбрасывать её нельзя. Поэтому отодвигаем именно
+  /// на записи, а не на чтении: удалять при этом не приходится ничего.
+  Future<bool> _tryLiftSeal() async {
     try {
       final f = await _file();
-      await AtomicFile.writeString(f, jsonEncode({
+      final type = await FileSystemEntity.type(f.path);
+      if (type == FileSystemEntityType.notFound) {
+        _sealed = false;
+        AppLog.w('Запрет записи подписок снят: $_fileName с диска исчез');
+        return true;
+      }
+      // Каталог по пути файла отодвинуть нечем: `File.rename` его не берёт
+      // (проверено на Windows — `PathNotFoundException`, errno 2). Печать
+      // остаётся, пока каталог на месте.
+      if (type != FileSystemEntityType.file) return false;
+      final moved = await _preserveBroken(f);
+      if (moved) {
+        AppLog.w('Запрет записи подписок снят: непрочитанный файл отодвинут');
+      }
+      return moved;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Сохранить снимок. `false` — не сохранили (запись запрещена или упала).
+  Future<bool> save(SubscriptionsSnapshot snapshot) async {
+    if (_sealed && !await _tryLiftSeal()) {
+      AppLog.e('Сохранение подписок пропущено: на диске лежат непрочитанные '
+          'данные ($_fileName)');
+      return false;
+    }
+    try {
+      final f = await _file();
+      return await AtomicFile.writeString(f, jsonEncode({
         'activeId': snapshot.activeId,
         'items': snapshot.items.map((p) => p.toJson()).toList(),
       }));
-    } catch (_) {}
+    } catch (_) {
+      return false;
+    }
   }
 }

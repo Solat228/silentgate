@@ -20,12 +20,14 @@ import '../../core/settings/app_settings.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/xray/override_normalizer.dart';
+import '../../core/xray/xray_config_builder.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/geo/geo_assets.dart';
 import '../../core/xray/geodata_fallback.dart';
 import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
+import '../vpn_engine.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
 /// `SilentGateVpnService`.
@@ -50,8 +52,32 @@ import '../engine_base.dart';
 /// общим Go-рантаймом (`go.Seq`), и собрать их вместе иначе нельзя
 /// (`tools/build-android-cores.md`).
 class AndroidEngine extends VpnEngineBase {
-  /// Локальный DNS-форвардер с запасным резолвером (см. _startFallbackDns).
+  /// Локальный DNS-форвардер с запасным резолвером (см. [startFallbackDns]).
   DnsFallbackServer? _fallbackDns;
+
+  /// Только для теста: ЧЕЙ форвардер сейчас в поле. Нужен именно экземпляр —
+  /// «устаревший запуск снёс форвардер живой сессии» отличается от исправного
+  /// поведения ровно тем, тот же это объект или уже другой.
+  @visibleForTesting
+  DnsFallbackServer? get fallbackDns => _fallbackDns;
+
+  /// Поколение запуска, которое ВЛАДЕЕТ поднятым форвардером.
+  ///
+  /// ⚠️ ТОТ ЖЕ КЛАСС, ЧТО У ТУННЕЛЯ И ПРОКСИ НА WINDOWS, И НА ANDROID ОН
+  /// ОСТАВАЛСЯ ОТКРЫТЫМ. Форвардер поднимается внутри сборки [TunOptions], то
+  /// есть после нескольких await'ов — резолва серверов (таймаут 5 с на имя) и
+  /// запроса DNS физической сети через нативный канал. К этому моменту запуск
+  /// мог устареть, а [startFallbackDns] первой же строкой гасил ТО, ЧТО ЛЕЖИТ
+  /// В ПОЛЕ: форвардер уже НОВОЙ, живой сессии. Дальше он поднимал свой и
+  /// записывал его в то же поле, после чего уходил по `aborted()` — и свой
+  /// оставлял слушать порт навсегда.
+  ///
+  /// У живой сессии при этом `dns.final` указывает на порт, которого больше
+  /// нет: при «весь DNS через туннель» имена перестают резолвиться у ВСЕХ
+  /// приложений телефона, и само это не чинится. Достижимо просто: запуск A
+  /// стоит в таймауте резолва, человек жмёт «Отключить» и «Подключить», запуск
+  /// B берёт адрес из кэша и обгоняет A.
+  int _fallbackDnsOwnerGen = 0;
 
   /// ⚠️ Счётчики здесь берутся из Clash API sing-box (порт 10812, с паролем),
   /// а `statsquery` Xray не используется НИ РАЗУ — единственный вызов
@@ -290,6 +316,33 @@ class AndroidEngine extends VpnEngineBase {
     _statsTimer = null;
   }
 
+  /// Только для тестов: осталась ли работать фоновая обвязка движка.
+  ///
+  /// Проверить это иначе нечем — таймер и сокет приватны, а снаружи «тикает ли
+  /// что-то раз в секунду» не видно вообще: приложение выглядит отключённым.
+  ///
+  /// ⚠️ ЗДЕСЬ ПЕРЕЧИСЛЕНО ВСЁ, ЧТО ГАСИТ [platformCleanup], И ЭТО ЕГО
+  /// ЕДИНСТВЕННЫЙ СТРАЖ. Пока сторож канала сюда не входил, признак ловил один
+  /// пункт из трёх: ревьюер удалил из `platformCleanup` и `stopHealthWatch()`,
+  /// и `await _stopFallbackDns()` — все тесты остались зелёными. Прежний
+  /// комментарий оправдывал пропуск словами «его поле живёт в базе», хотя
+  /// `VpnEngineBase.healthWatch` заведён ровно для теста и лежит рядом.
+  /// Появится в `platformCleanup` четвёртая подсистема — её место здесь же,
+  /// иначе страж снова начнёт молчать.
+  ///
+  /// `healthWatch` базы помечен `@visibleForTesting`, и анализатор запрещает
+  /// читать его из чужой библиотеки. Гасим предупреждение точечно: потребитель
+  /// здесь — САМ тестовый геттер, то есть ровно тот случай, ради которого
+  /// пометка и ставится. Зеркалить состояние своим полем нельзя: пришлось бы
+  /// повторить у себя гейт `aborted()` из `startHealthWatch`, а два разбора
+  /// одного условия в этом проекте уже приводили к обходу.
+  @visibleForTesting
+  bool get backgroundWorkActive =>
+      _statsTimer != null ||
+      _fallbackDns != null ||
+      // ignore: invalid_use_of_visible_for_testing_member
+      healthWatch != null;
+
   /// Порт инбаунда для проб. НЕ 10809: там при панельном профиле садится Xray,
   /// и совпадение порта не давало ядру стартовать вовсе.
   static const probeInboundPort = 10811;
@@ -315,8 +368,19 @@ class AndroidEngine extends VpnEngineBase {
   /// Опции и правила ЖИВОГО конфига — чтобы заглушка kill switch совпала с ним
   /// поле в поле. Разойдутся хоть в одном (MTU, списки пакетов) — `VpnService`
   /// пересоздаст интерфейс, и на этот миг трафик пойдёт мимо VPN.
+  ///
+  /// ⚠️ `null` ЗНАЧИТ «НЕ ЗНАЮ», И ЭТО НЕ ТО ЖЕ САМОЕ, ЧТО УМОЛЧАНИЯ. Туннель
+  /// на Android переживает смерть изолята: приложение смахнули, открыли заново
+  /// — VPN работает, а поля здесь пусты, потому что этот изолят его не
+  /// поднимал ([adoptRunningTunnel]). Поэтому `_liveSplit` тоже обнуляемый:
+  /// пока он был `const SplitTunnelConfig()`, «правил не знаю» выглядело как
+  /// «у пользователя режим „Всё через VPN“ без правил» — и заглушка kill
+  /// switch собиралась под чужой туннель. Оба поля ставятся и читаются ПАРОЙ.
   TunOptions? _liveOptions;
-  SplitTunnelConfig _liveSplit = const SplitTunnelConfig();
+  SplitTunnelConfig? _liveSplit;
+
+  /// О реконструкции заглушки уже сказали в журнале. См. [_blackholeJson].
+  bool _warnedStubFromSettings = false;
 
   /// Подхватить туннель, поднятый ПРОШЛЫМ запуском интерфейса.
   ///
@@ -555,15 +619,14 @@ class AndroidEngine extends VpnEngineBase {
           // возможна на обеих платформах, потому что причина общая — резолв
           // прямого трафика идёт через туннель, а встроенного запаса у ядра
           // нет (проверено sing-box 1.11.15).
-          fallbackDnsPort: await _startFallbackDns(session.options.settings,
-              viaXray: viaXray),
+          fallbackDnsPort: await startFallbackDns(session.options.settings,
+              viaXray: viaXray, gen: gen, aborted: aborted),
           ipv6Available: await _ipv6Reality(),
           // Ядро пишет свой лог САМО: перехватить его вывод здесь нечем —
           // это библиотека в нашем процессе, а redirectStderr ловит только
           // паники Go. Без этого «туннель поднят, трафика нет» не
           // диагностируется вообще.
-          logOutput: '${(await AppPaths.supportDir()).path}'
-              '${Platform.pathSeparator}singbox.log',
+          logOutput: await _coreLogPath(),
           // Счётчики трафика туннеля: без них цифра под кнопкой стояла на нуле,
           // что бы ни происходило. Пароль — на сессию: этот порт виден любому
           // приложению на телефоне.
@@ -622,18 +685,30 @@ class AndroidEngine extends VpnEngineBase {
         apiOnlyExitKeys: session.options.apiOnlyExitKeys.toList(),
       ).buildJson(session.options.split);
 
-      if (aborted()) return;
+      // Подготовка была долгой — сверяемся с отменой ДО того, как тронем
+      // нативный сервис. И убираем СВОЙ форвардер: он уже поднят (внутри сборки
+      // опций) и слушает порт, а конфиг с этим портом никуда не поедет.
+      if (aborted()) {
+        await releaseOwnFallbackDns(gen);
+        return;
+      }
 
       _starting = true;
-      await _channel.invokeMethod<void>('start', {
-        'config': tunJson,
-        if (viaXray) 'xray_config': await _guardGeodata(_guardXrayInbounds(cfg.json)),
-      });
+      await _channel.invokeMethod<void>(
+          'start',
+          startArgs(
+            tunJson: tunJson,
+            xrayJson: viaXray
+                ? await _guardGeodata(_guardXrayInbounds(cfg.json))
+                : null,
+            readsXrayStats: readsXrayStats,
+          ));
       _starting = false;
 
       // Пользователь мог отключиться, пока шло согласие на VPN.
       if (aborted()) {
         await _channel.invokeMethod<void>('stop');
+        await releaseOwnFallbackDns(gen);
         return;
       }
 
@@ -650,7 +725,10 @@ class AndroidEngine extends VpnEngineBase {
       // `running` ставится в сервисе ПОСЛЕ `establish()`, а не по приёму
       // команды.
       if (!await _waitTunnelUp(aborted)) {
-        if (aborted()) return;
+        if (aborted()) {
+          await releaseOwnFallbackDns(gen);
+          return;
+        }
         throw StateError('Туннель не поднялся за отведённое время');
       }
 
@@ -689,6 +767,35 @@ class AndroidEngine extends VpnEngineBase {
       setStatus(VpnConnectionState.error, message: '$e');
     }
   }
+
+  /// Аргументы нативной команды `start` — ЕДИНСТВЕННАЯ дверь, через которую
+  /// конфиги уходят ядрам.
+  ///
+  /// ⚠️ ПОЧЕМУ ГЕЙТ СТОИТ ЗДЕСЬ, А НЕ В ПОСТРОИТЕЛЕ. api-инбаунд Xray (порт
+  /// 10085, без пароля — Xray его для `api` не умеет) создают ЧЕТЫРЕ разных
+  /// места: построитель одиночного сервера, построитель автовыбора,
+  /// `ensureXrayStats` для панельного профиля и сам панельный конфиг. Гейт на
+  /// одном из них уже стоял — и порт всё равно поднимался в режиме «Авто
+  /// (лучший сервер)», потому что там конфиг собирает другой метод. Здесь
+  /// проходят ВСЕ конфиги без исключения, включая те, которых ещё не написали.
+  ///
+  /// [readsXrayStats] — тот же предикат, по которому база РЕШАЕТ дописывать
+  /// `ensureXrayStats`. Одно решение на добавление и на удаление: разъедься
+  /// они, порт снова открывался бы «где-то ещё».
+  ///
+  /// [xrayJson] == null — Xray в этой сессии не поднимается (обычный сервер
+  /// целиком обслуживает sing-box).
+  @visibleForTesting
+  static Map<String, dynamic> startArgs({
+    required String tunJson,
+    String? xrayJson,
+    bool readsXrayStats = false,
+  }) =>
+      {
+        'config': tunJson,
+        if (xrayJson != null)
+          'xray_config': readsXrayStats ? xrayJson : stripXrayApi(xrayJson),
+      };
 
   /// Событие от сервиса: туннель поднялся, упал или его отобрала система.
   /// Дождаться, пока сервис доложит о ПОДНЯТОМ туннеле.
@@ -841,6 +948,8 @@ class AndroidEngine extends VpnEngineBase {
     // раз в секунду стучаться в мёртвый порт, а на экране висели бы цифры
     // прошлой сессии, выдавая себя за текущие.
     _stopStatsPolling();
+    // Сторож канала гоняет пробы через ядро — без ядра ему нечего проверять.
+    stopHealthWatch();
     // ⚠️ Форвардер гасим ВМЕСТЕ С ЯДРОМ, даже при keepCapture: он ходит через
     // локальный SOCKS Xray, и без ядра его основной путь ведёт в никуда —
     // остался бы таймаут на каждом запросе и замедлял бы переподключение.
@@ -857,8 +966,18 @@ class AndroidEngine extends VpnEngineBase {
     // невозможно. Вместо этого перезагружаем ядро конфигом-заглушкой: тот же
     // туннель, те же маршруты, но весь трафик уходит в reject.
     if (keepCapture) {
+      final stub = await _blackholeJson();
+      if (stub == null) {
+        // Заглушку не из чего собрать: ни живых опций, ни сессии. Собранная
+        // «из чего попало» она не удержала бы туннель, а ПОДМЕНИЛА его чужим
+        // интерфейсом — с другими списками пакетов и другим MTU.
+        AppLog.w('Kill switch: удержать туннель нечем — параметры живого '
+            'туннеля неизвестны. Гашу, чтобы не подменять интерфейс наугад.');
+        await _stopService();
+        return;
+      }
       try {
-        await _channel.invokeMethod<void>('start', {'config': _blackholeJson()});
+        await _channel.invokeMethod<void>('start', startArgs(tunJson: stub));
         AppLog.i('Kill switch: туннель удержан, трафик блокируется');
         // Сказать об этом в шторке. Приложение в этот момент чаще всего закрыто,
         // и другого способа объяснить пропавший интернет у нас нет: без
@@ -884,21 +1003,118 @@ class AndroidEngine extends VpnEngineBase {
   /// Собирается тем же билдером, чтобы совпадали адреса, MTU и списки пакетов —
   /// иначе система пересоздала бы интерфейс, и на этот миг трафик пошёл бы
   /// мимо VPN, то есть ровно то, что kill switch и предотвращает.
-  String _blackholeJson() {
-    // Из ТЕХ ЖЕ опций, что и живой конфиг: иначе не совпадут MTU и пакетные
-    // списки, система пересоздаст интерфейс, и в этот миг трафик уйдёт мимо
-    // VPN — ровно то окно, которое kill switch и закрывает.
-    final base = _liveOptions ?? const TunOptions(platformTun: true);
+  ///
+  /// `null` — собирать не из чего (см. [blackholeInputs]).
+  Future<String?> _blackholeJson() async {
+    final reconstructed = _liveOptions == null || _liveSplit == null;
+    final inputs = blackholeInputs(
+      live: _liveOptions,
+      liveSplit: _liveSplit,
+      session: session?.options,
+      // Признак берётся тем же вызовом, что и при подъёме живого туннеля, и он
+      // кэширован на процесс — то есть при неизменившейся сети даёт тот же
+      // ответ, а значит и тот же набор адресов интерфейса.
+      ipv6Available: await Ipv6Support.hasGlobalIpv6(),
+      logOutput: await _coreLogPath(),
+    );
+    if (inputs == null) return null;
+    // ⚠️ Один раз на движок, а не на попытку. При kill switch попытки не
+    // кончаются вовсе (три в минуту), и строка на каждую превратила бы отчёт
+    // поддержки в простыню из одного и того же предложения.
+    if (reconstructed && !_warnedStubFromSettings) {
+      _warnedStubFromSettings = true;
+      AppLog.w('Kill switch: опций живого туннеля нет (его поднял прошлый '
+          'запуск интерфейса) — собираю заглушку из настроек сессии. Совпадёт '
+          'с живым туннелем, пока настройки не менялись после его подъёма.');
+    }
     return SingboxConfigBuilder(
       xraySocksPort: ports.socks,
       // В заглушке проб нет: слушать порт, из которого всё равно ничего не
       // выйдет, незачем — и это лишняя поверхность.
-      options: base.asBlackhole(),
-    ).buildJson(_liveSplit);
+      options: inputs.options.asBlackhole(),
+    ).buildJson(inputs.split);
   }
 
+  /// Из чего собирается заглушка kill switch.
+  ///
+  /// ⚠️ ЗАГЛУШКА ИЗ УМОЛЧАНИЙ — НЕ УДЕРЖАНИЕ ТУННЕЛЯ, А ПОДМЕНА ЕГО ЧУЖИМ.
+  /// Опции живого туннеля живут в памяти изолята, а туннель на Android
+  /// изолят переживает: после возврата в свёрнутое приложение
+  /// ([adoptRunningTunnel]) их нет. Прежний код в этом случае подставлял
+  /// `const TunOptions(platformTun: true)` и пустой `SplitTunnelConfig`, и
+  /// получалось вот что:
+  ///
+  ///  * у пользователя режим «только выбранные» → живой интерфейс собран с
+  ///    `include_package`, заглушка — с `exclude_package` со своим пакетом.
+  ///    `VpnService` строит ДРУГОЙ интерфейс, и в него заходит ВЕСЬ телефон, а
+  ///    там всё уходит в reject: приложения, которые пользователь СОЗНАТЕЛЬНО
+  ///    держал вне VPN, остаются без сети — и остаются надолго, потому что при
+  ///    kill switch попытки не кончаются;
+  ///  * наоборот, при `route_address` («в туннель только эти подсети») или
+  ///    выключенном IPv6 у заглушки другой набор адресов и маршрутов —
+  ///    интерфейс пересоздаётся, и на этот миг трафик идёт мимо VPN. Это ровно
+  ///    то окно, ради закрытия которого заглушка и существует.
+  ///
+  /// Поэтому: знаем живые опции — берём их (точнее ничего нет). Не знаем, но
+  /// есть сессия — собираем ТЕМ ЖЕ кодом из ТЕХ ЖЕ настроек, из которых
+  /// туннель и поднимался (`TunOptions.fromSettings`); совпадёт, пока
+  /// настройки и наличие IPv6 не изменились с момента подъёма. Нет и сессии —
+  /// возвращаем `null`: пусть вызывающий честно погасит туннель, а не
+  /// подменяет его наугад.
+  @visibleForTesting
+  static ({TunOptions options, SplitTunnelConfig split})? blackholeInputs({
+    required TunOptions? live,
+    required SplitTunnelConfig? liveSplit,
+    required ConnectionOptions? session,
+    required bool ipv6Available,
+    String? logOutput,
+  }) {
+    if (live != null && liveSplit != null) {
+      return (options: live, split: liveSplit);
+    }
+    if (session == null) return null;
+    return (
+      options: TunOptions.fromSettings(
+        session.settings,
+        android: true,
+        ipv6Available: ipv6Available,
+        logOutput: logOutput,
+      ),
+      split: session.split,
+    );
+  }
+
+  /// Файл, куда ядро пишет свой лог. Один путь на живой конфиг и на заглушку:
+  /// разные значения дали бы разный `log.output` у одного и того же туннеля.
+  static Future<String> _coreLogPath() async =>
+      '${(await AppPaths.supportDir()).path}'
+      '${Platform.pathSeparator}singbox.log';
+
+  /// Платформенная часть полной остановки.
+  ///
+  /// ⚠️ ТАЙМЕРЫ ГАСЯТСЯ ЗДЕСЬ, А НЕ ТОЛЬКО В [teardownCore]. `cleanup()` в базе
+  /// зовёт ТОЛЬКО этот метод — не `teardownCore`, — поэтому после обычного
+  /// «Отключить» (и после провала подъёма) продолжали жить: опрос счётчиков
+  /// раз в секунду (сокет в мёртвый порт на каждом такте, то есть пробуждение
+  /// процесса в бесконечность), сторож канала со своей пробой раз в 45 с через
+  /// мёртвый прокси и локальный DNS-форвардер — открытый UDP-порт на loopback,
+  /// который на Android виден любому приложению и который при отсутствии
+  /// туннеля пересылает запросы провайдеру. Windows-движок гасит всё это в
+  /// своём `platformCleanup` с самого начала — расхождение платформ на ровном
+  /// месте.
   @override
-  Future<void> platformCleanup() async => _stopService();
+  Future<void> platformCleanup() async {
+    _stopStatsPolling();
+    stopHealthWatch();
+    await _stopFallbackDns();
+    // Туннеля, который мы знали, больше нет — и «знаю его параметры» обязано
+    // перестать быть правдой вместе с ним. Иначе следующая заглушка kill
+    // switch собралась бы по ПРОШЛОМУ подключению: пользователь успел сменить
+    // сервер и настройки, а мы держали бы интерфейс от предыдущего.
+    _liveOptions = null;
+    _liveSplit = null;
+    await _stopService();
+  }
 
   Future<void> _stopService() async {
     try {
@@ -959,7 +1175,25 @@ class AndroidEngine extends VpnEngineBase {
   /// форвардер уходил бы в запас на КАЖДОМ запросе — то есть весь DNS шёл бы
   /// мимо туннеля, причём молча. Лучше не поднимать его совсем: тогда работает
   /// прежнее поведение, и оно честное.
-  Future<int> _startFallbackDns(AppSettings s, {required bool viaXray}) async {
+  ///
+  /// [gen] — поколение запуска, который его поднимает; [aborted] — тот же
+  /// предикат отмены, которым сверяется весь остальной [startSession]. Свой
+  /// (`isStale(gen)`) означал бы два независимых ответа на один вопрос, а чем
+  /// это кончается, в проекте уже записано отдельным уроком.
+  @visibleForTesting
+  Future<int> startFallbackDns(AppSettings s,
+      {required bool viaXray,
+      required int gen,
+      required bool Function() aborted}) async {
+    // ⚠️ ГЕЙТ ДО ПЕРВОГО ДЕЙСТВИЯ, А НЕ ПОСЛЕ. Ниже стоит `_stopFallbackDns()`,
+    // и он снимает форвардер ИЗ ПОЛЯ — а там уже может стоять форвардер живой
+    // сессии (см. [_fallbackDnsOwnerGen]). Устаревший запуск обязан уйти,
+    // ничего не тронув и ничего не подняв: поднятое им никто бы не погасил.
+    if (aborted()) {
+      AppLog.i('Запасной DNS не поднимаю: запуск устарел, форвардер живой '
+          'сессии не трогаю');
+      return 0;
+    }
     await _stopFallbackDns();
     if (!s.tunnelDnsForAll) return 0;
     // ⚠️ ГЕЙТ ПО ФАКТУ ЗАПУСКА XRAY, А НЕ ПО НАЛИЧИЮ ПАРОЛЯ. Раньше здесь
@@ -1001,6 +1235,7 @@ class AndroidEngine extends VpnEngineBase {
       );
       await srv.start();
       _fallbackDns = srv;
+      _fallbackDnsOwnerGen = gen;
       return srv.port;
     } catch (e) {
       AppLog.w('Запасной DNS не поднялся: $e');
@@ -1008,8 +1243,24 @@ class AndroidEngine extends VpnEngineBase {
     }
   }
 
+  /// Снять форвардер, если его поднял запуск [gen]. Чужой не трогаем — ровно
+  /// как Windows-движок не трогает чужой туннель и чужой системный прокси.
+  ///
+  /// ⚠️ Зовётся на КАЖДОМ раннем выходе [startSession] после сборки опций:
+  /// `cleanup()` там не вызывается, а форвардер уже слушает UDP-порт на петле
+  /// — и конфиг с этим портом никуда не поедет. Без снятия он остался бы
+  /// слушать навсегда.
+  @visibleForTesting
+  Future<void> releaseOwnFallbackDns(int gen) async {
+    if (_fallbackDns == null || _fallbackDnsOwnerGen != gen) return;
+    await _stopFallbackDns();
+  }
+
+  /// ⚠️ Сторож канала здесь БОЛЬШЕ НЕ ГАСИТСЯ. Он жил тут по совпадению — и
+  /// это значило, что остановить сторожа мог только тот, кто заодно трогает
+  /// DNS-форвардер. Оба места, где он должен умирать (`teardownCore` и
+  /// `platformCleanup`), зовут `stopHealthWatch()` сами и явно.
   Future<void> _stopFallbackDns() async {
-    stopHealthWatch();
     final srv = _fallbackDns;
     _fallbackDns = null;
     if (srv == null) return;

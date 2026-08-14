@@ -168,7 +168,7 @@ class _ServiceChip extends StatelessWidget {
     return Tooltip(
       message: tip,
       child: ActionChip(
-        avatar: SiteFavicon(domain: service.domain, size: 18),
+        avatar: SiteFavicon(domain: service.domain, size: 18, builtIn: true),
         // Имя + значок статуса справа (галочка/крест/замок/спиннер).
         label: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(service.label),
@@ -319,7 +319,7 @@ class _ServicePair extends StatelessWidget {
       ],
     );
     final items = <Widget>[
-      SiteFavicon(domain: service.domain, size: 26),
+      SiteFavicon(domain: service.domain, size: 26, builtIn: true),
       const SizedBox(width: 8),
       dots,
     ];

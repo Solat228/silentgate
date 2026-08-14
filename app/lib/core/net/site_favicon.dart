@@ -6,11 +6,23 @@ import '../subscription/subscription_logo.dart';
 
 /// Иконка (favicon) сайта для списка раздельного туннелирования.
 ///
-/// Сначала пробуем взять иконку НАПРЯМУЮ с самого сайта (apple-touch-icon / png),
-/// без посредников. Если не вышло — запасной вариант через сервис Google
-/// (`s2/favicons`, отдаёт PNG для большинства сайтов). Результат кэшируется в
-/// `%APPDATA%\SilentGate\site_icons\<домен>.png`, чтобы не ходить в сеть на
-/// каждую перерисовку. Flutter рисует только PNG, поэтому `.ico` не берём.
+/// ⚠️ **ХОДИМ ТОЛЬКО НА САМ САЙТ.** Домены в этом списке — правила VPN, то
+/// есть прямой ответ на вопрос «что человек хочет скрыть». Прежние запасные
+/// источники (`google.com/s2/favicons?domain=…`, `favicone.com/…`) отдавали имя
+/// сайта третьей стороне вместе с адресом пользователя — посредник собирал
+/// список ровно из тех доменов, ради которых VPN и ставят. Иконка —
+/// украшение, приватность важнее: сайт, который в списке есть, и так узнаёт о
+/// нас при первом же соединении, а посредник не узнавал бы ничего.
+///
+/// Гейт — [allowedIconUrl]; он же прогоняется на КАЖДОМ редиректе (см.
+/// [fetchIconBytes]) и на иконке, объявленной в HTML самого сайта.
+/// ⚠️ Правило одно и без исключений: **ни одного запроса на хост, которого нет
+/// под доменом правила**. Довод «но иконку назвал сам сайт» разобран и
+/// отклонён — почему, написано у [iconSources].
+///
+/// Результат кэшируется в `%APPDATA%\SilentGate\site_icons\<домен>.png`, чтобы
+/// не ходить в сеть на каждую перерисовку. Flutter рисует только PNG, поэтому
+/// `.ico` не берём.
 class SiteFaviconService {
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
@@ -20,51 +32,62 @@ class SiteFaviconService {
   static final Map<String, Future<String?>> _pending = {};
 
   /// Путь к PNG-иконке домена или null. Кэшируется в памяти и на диске.
-  static Future<String?> iconFor(String domain) {
+  /// [builtIn] — домен ВШИТ В ПРИЛОЖЕНИЕ (сервис-чипы, автонастройка), а не
+  /// внесён пользователем в правила.
+  ///
+  /// ⚠️ РАЗНИЦА НЕ КОСМЕТИЧЕСКАЯ, А В ТОМ, ЧТО ИМЕННО УТЕКАЕТ. Строгий гейт
+  /// заводился ради ОДНОГО: список сайтов из правил раздельного туннелирования
+  /// — это перечень того, что человек хочет скрыть, и он у каждого свой.
+  /// Вшитый список одинаков у всех, кто поставил приложение; обращение за
+  /// иконкой `x.com` не сообщает наблюдателю ничего о пользователе, чего бы он
+  /// не узнал из самого факта установки. Поэтому здесь разрешается адрес,
+  /// который сайт объявил в своём HTML, — иначе у `x.com` и `instagram.com`
+  /// (иконка на `abs.twimg.com` и `static.cdninstagram.com`) вместо картинки
+  /// осталась бы буква, и мы заплатили бы видимой ценой за нулевую выгоду.
+  ///
+  /// ⚠️ Для доменов ИЗ ПРАВИЛ ПОЛЬЗОВАТЕЛЯ послабления нет и быть не должно:
+  /// там выбор третьей стороны делает сервер сайта, а проверить его нечем.
+  static Future<String?> iconFor(String domain, {bool builtIn = false}) {
     final d = domain.trim().toLowerCase();
     if (d.isEmpty) return Future.value(null);
-    if (_mem.containsKey(d)) return Future.value(_mem[d]);
-    return _pending.putIfAbsent(d, () => _resolve(d)).then((path) {
-      _mem[d] = path;
-      _pending.remove(d);
+    // Ключ кэша учитывает режим: иначе первый же чип «доверенного» сервиса
+    // положил бы в кэш иконку с чужого хоста, а следующий за ней запрос из
+    // правил пользователя получил бы её же — гейт обошёлся бы сам собой.
+    final key = builtIn ? 'builtin:$d' : d;
+    if (_mem.containsKey(key)) return Future.value(_mem[key]);
+    return _pending
+        .putIfAbsent(key, () => _resolve(d, builtIn: builtIn))
+        .then((path) {
+      _mem[key] = path;
+      _pending.remove(key);
       return path;
     });
   }
 
-  static Future<String?> _resolve(String domain) async {
+  static Future<String?> _resolve(String domain, {bool builtIn = false}) async {
     try {
       final dir = await AppPaths.supportDir();
       final cacheDir =
           Directory('${dir.path}${Platform.pathSeparator}site_icons');
       if (!await cacheDir.exists()) await cacheDir.create(recursive: true);
       final safe = domain.replaceAll(RegExp(r'[^a-z0-9.\-]'), '_');
-      final file =
-          File('${cacheDir.path}${Platform.pathSeparator}$safe.png');
+      // Файл кэша тоже разный: см. про ключ памяти в [iconFor] — иначе кэш на
+      // диске переживёт перезапуск и обойдёт гейт уже навсегда.
+      final file = File('${cacheDir.path}${Platform.pathSeparator}'
+          '${builtIn ? 'svc_' : ''}$safe.png');
       if (await file.exists() && await file.length() > 0) return file.path;
 
-      // 1) Иконка, объявленная на самой странице сайта (apple-touch-icon/icon):
-      //    работает там, где типовые пути пустые.
+      // Иконка, объявленная на самой странице сайта (apple-touch-icon/icon):
+      // работает там, где типовые пути пустые.
       final fromHtml = await _iconFromHtml(domain);
-      // sub.domain → корневой домен (favicon чаще лежит на корне).
-      final root = rootDomain(domain);
-      // 2) Типовые пути напрямую. 3) Сервисы-агрегаторы фавиконок (отдают PNG
-      //    даже там, где у сайта только .ico — напр. steam.com).
-      final sources = <String>[
-        if (fromHtml != null) fromHtml,
-        'https://$domain/apple-touch-icon.png',
-        'https://$domain/apple-touch-icon-precomposed.png',
-        'https://$domain/favicon.png',
-        if (root != domain) 'https://$root/apple-touch-icon.png',
-        // Агрегатор — отдаёт настоящий PNG даже для сайтов с одним лишь .ico
-        // (напр. steam.com), где прямые пути и Google s2 пустуют.
-        'https://favicone.com/$domain?s=64',
-        'https://www.google.com/s2/favicons?sz=64&domain=$domain',
-        // По корню — только если он отличается (иначе дубль того же запроса).
-        if (root != domain)
-          'https://www.google.com/s2/favicons?sz=64&domain=$root',
-      ];
-      for (final url in sources) {
-        final bytes = await _getPng(url);
+      final gate = iconGateFor(domain, allowSiteDeclared: builtIn ? fromHtml : null);
+      for (final url in iconSources(domain, fromHtml: fromHtml)) {
+        final uri = Uri.tryParse(url);
+        if (uri == null) continue;
+        // Гейт передаётся ВНУТРЬ загрузки: там он спрашивается и про этот
+        // адрес, и про каждый редирект. Двух разборов одного правила быть не
+        // должно — расходятся именно они.
+        final bytes = await fetchIconBytes(uri, gate);
         if (bytes != null) {
           await file.writeAsBytes(bytes, flush: true);
           return file.path;
@@ -74,16 +97,111 @@ class SiteFaviconService {
     return null;
   }
 
+  /// Адреса, по которым ищем иконку домена, — в порядке проб.
+  ///
+  /// ⚠️ Список пропущен через [allowedIconUrl] ЦЕЛИКОМ, включая [fromHtml] —
+  /// иконку, которую сайт объявил в своём HTML. Решение спорное, поэтому
+  /// разбор целиком, чтобы его не переоткрывали каждый круг ревью.
+  ///
+  /// Довод «пустить»: адрес назвал сам сайт, а не мы; имя домена там не
+  /// значение параметра, а часть чужой вёрстки; браузер, открывая страницу,
+  /// сходил бы туда же. У крупных сайтов иконка почти всегда на соседнем
+  /// домене той же компании (`x.com` → `abs.twimg.com`), и строгий гейт
+  /// стоит пользователю видимой иконки.
+  ///
+  /// Довод «не пускать» (принят): наблюдатель опознаёт сайт по САМОМУ адресу
+  /// иконки — `static.cdninstagram.com/…` означает `instagram.com` и без
+  /// параметров. А «каждый сайт называет свой CDN» на практике неверно: вся
+  /// сеть сидит на нескольких общих CDN, поэтому один наблюдатель собрал бы
+  /// заметную часть списка — ровно то, за что выкинули `s2/favicons`, только
+  /// адресом вместо параметра. Плюс адрес выбирает СЕРВЕР САЙТА: доверять ему
+  /// выбор третьей стороны — значит отдать решение о нашей приватности
+  /// стороннему коду, а проверить этот выбор нам нечем (белого списка
+  /// «CDN той же компании» не существует).
+  ///
+  /// Цена решения честная: у сайтов, держащих иконку на чужом хосте, вместо
+  /// картинки останется буква-заглушка. Иконка — украшение.
+  /// Публичный ради теста-стража.
+  static List<String> iconSources(String domain, {String? fromHtml}) {
+    final d = domain.trim().toLowerCase();
+    // sub.domain → корневой домен (favicon чаще лежит на корне).
+    final root = rootDomain(d);
+    return <String>[
+      if (fromHtml != null && fromHtml.isNotEmpty) fromHtml,
+      'https://$d/apple-touch-icon.png',
+      'https://$d/apple-touch-icon-precomposed.png',
+      'https://$d/favicon.png',
+      if (root != d) 'https://$root/apple-touch-icon.png',
+      if (root != d) 'https://$root/favicon.png',
+    ].where((u) => allowedIconUrl(u, d)).toList();
+  }
+
+  /// Разрешено ли идти за иконкой по [url], когда в правилах стоит [domain].
+  ///
+  /// Разрешены ровно три вещи:
+  ///  * сам домен правила (`host == domain`);
+  ///  * его ПОДДОМЕНЫ (`static.example.com` при правиле `example.com`) —
+  ///    сравнение по метке `.<домен>`, а не голым суффиксом строки, иначе
+  ///    `evilexample.com` прошло бы за `example.com`;
+  ///  * ТОЧНО его регистрируемый корень (`example.com` при правиле
+  ///    `shop.example.com`) — фавикон чаще лежит на корне, чем на поддомене.
+  ///
+  /// ⚠️ Соседи по корню НЕ разрешены (`sibling.example.com` при правиле
+  /// `shop.example.com` — отказ), и это не придирка: [rootDomain] разбирает
+  /// домен наивно, без списка публичных суффиксов, поэтому «корнем»
+  /// `user.github.io` он считает `github.io`, а `bucket.s3.amazonaws.com` —
+  /// `amazonaws.com`. Пускать всё под таким «корнем» значило бы пускать
+  /// ЧУЖИХ арендаторов того же хостинга, то есть посредника с другим именем.
+  /// Корень разрешён только сам по себе: запрос `https://github.io/favicon.png`
+  /// о конкретном `user.` ничего не сообщает.
+  /// Цена — правило на поддомене не возьмёт иконку с соседнего поддомена;
+  /// на правилах-корнях (обычный случай, `www.` срезается при добавлении)
+  /// ничего не теряется.
+  ///
+  /// Только `https`: саму страницу мы и так тянем по https, и опускаться до
+  /// открытого канала ради украшения незачем — по дороге его подменяют.
+  /// Публичный ради теста-стража; им же гейтится каждый редирект.
+  static bool allowedIconUrl(String url, String domain) {
+    final uri = Uri.tryParse(url.trim());
+    if (uri == null || uri.scheme != 'https') return false;
+    final host = uri.host.toLowerCase();
+    final d = domain.trim().toLowerCase();
+    if (host.isEmpty || d.isEmpty) return false;
+    // Литеральный адрес: «корня» у него нет, поэтому только точное совпадение
+    // (иначе `1.1` от 192.168.1.1 пустило бы куда угодно вида `x.1.1`).
+    if (InternetAddress.tryParse(d) != null) return host == d;
+    return host == d || host.endsWith('.$d') || host == rootDomain(d);
+  }
+
+  /// Тот же [allowedIconUrl], но в виде предиката по [Uri] — им гейтятся
+  /// редиректы и запрос страницы. Публичный ради теста-стража: иначе
+  /// проверять пришлось бы копию правила, а не то, что уходит в сеть.
+  /// [allowSiteDeclared] — РОВНО ОДИН адрес, который сайт назвал в своём HTML,
+  /// пропускаемый вдобавок к обычному правилу. Задаётся только для вшитых
+  /// сервисов (см. [iconFor]) и только точным совпадением: «разрешить хост»
+  /// открыло бы весь чужой CDN, а он общий на пол-интернета.
+  static bool Function(Uri) iconGateFor(String domain,
+          {String? allowSiteDeclared}) =>
+      (uri) =>
+          allowedIconUrl(uri.toString(), domain) ||
+          (allowSiteDeclared != null &&
+              allowSiteDeclared.isNotEmpty &&
+              uri.toString() == allowSiteDeclared &&
+              uri.scheme == 'https');
+
   /// Достаёт URL иконки со страницы сайта (`<link rel="apple-touch-icon">` и т.п.),
   /// разбором HTML — той же логикой, что и логотип подписки.
+  ///
+  /// ⚠️ Редиректы здесь ведутся так же вручную и через тот же гейт: 30x со
+  /// страницы сайта на чужой хост увёл бы нас к посреднику ещё до того, как мы
+  /// дошли до разбора иконок.
   static Future<String?> _iconFromHtml(String domain) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 6)
       ..userAgent = _ua;
     try {
       final uri = Uri.parse('https://$domain/');
-      final req = await client.getUrl(uri);
-      final resp = await req.close().timeout(const Duration(seconds: 8));
+      final resp = await _openGated(client, uri, iconGateFor(domain));
       if (resp.statusCode != 200) return null;
       final ct = resp.headers.contentType?.mimeType ?? '';
       if (!ct.contains('html')) return null;
@@ -101,7 +219,6 @@ class SiteFaviconService {
     }
   }
 
-  /// Скачивает URL, если это PNG. Один повтор на случай флапа сервера.
   /// Корневой домен: `www.sub.example.co.uk` → `example.co.uk`. Простой разбор
   /// с учётом двухуровневых суффиксов (co.uk, com.br и т.п.) — фавикон чаще
   /// лежит на корне, чем на конкретном поддомене. Публичный ради юнит-теста.
@@ -121,29 +238,59 @@ class SiteFaviconService {
     return parts.sublist(parts.length - 2).join('.');
   }
 
-  static Future<List<int>?> _getPng(String url) async {
+  static const _redirectCodes = [301, 302, 303, 307, 308];
+  static const _maxHops = 3;
+
+  /// Открывает [start], **проводя редиректы вручную** и спрашивая [allow] про
+  /// КАЖДЫЙ адрес — и про сам [start], и про каждый переход. Отказ (или
+  /// слишком длинная цепочка) — [_BlockedByGate].
+  ///
+  /// ⚠️ **`followRedirects` у `HttpClient` по умолчанию TRUE** (и
+  /// `maxRedirects = 5`): без явного выключения клиент уходит по 30x САМ, ещё
+  /// до того как код увидит статус, — и любой гейт на редиректах становится
+  /// мёртвым кодом, который выглядит защитой. Именно так этот файл и жил один
+  /// круг ревью. Строка `req.followRedirects = false` ниже — не украшение, без
+  /// неё цикл не исполняется ни разу; стережёт `site_favicon_privacy_test`
+  /// (настоящий сокет, 302 на чужой источник).
+  static Future<HttpClientResponse> _openGated(
+      HttpClient client, Uri start, bool Function(Uri) allow) async {
+    var uri = start;
+    if (!allow(uri)) throw const _BlockedByGate();
+    for (var hop = 0;; hop++) {
+      final req = await client.getUrl(uri);
+      req.followRedirects = false; // ← без этого весь гейт ниже не исполняется
+      final resp = await req.close().timeout(const Duration(seconds: 8));
+      final loc = resp.headers.value(HttpHeaders.locationHeader);
+      if (!_redirectCodes.contains(resp.statusCode) || loc == null) return resp;
+      await _drainQuietly(resp);
+      if (hop >= _maxHops) throw const _BlockedByGate();
+      final next = uri.resolve(loc);
+      if (!allow(next)) throw const _BlockedByGate();
+      uri = next;
+    }
+  }
+
+  /// Дочитывает тело редиректа, чтобы соединение не осталось висеть. Тело у
+  /// 30x пустое, но враждебный сервер может лить бесконечно — отсюда таймаут.
+  static Future<void> _drainQuietly(HttpClientResponse resp) async {
+    try {
+      await resp.drain<void>().timeout(const Duration(seconds: 3));
+    } catch (_) {}
+  }
+
+  /// Скачивает [url], если это PNG. Один повтор на случай флапа сервера.
+  /// [allow] решает про каждый адрес — и про [url], и про каждый редирект
+  /// (в приложении — [iconGateFor]). Публичный ради теста-стража: проверить,
+  /// что клиент не уходит по 30x сам, можно только настоящим сокетом.
+  static Future<List<int>?> fetchIconBytes(
+      Uri url, bool Function(Uri) allow) async {
     for (var attempt = 0; attempt < 2; attempt++) {
       final client = HttpClient()
         ..connectionTimeout = const Duration(seconds: 6)
         ..userAgent = _ua;
       try {
-        var uri = Uri.parse(url);
-        var req = await client.getUrl(uri);
-        var resp = await req.close().timeout(const Duration(seconds: 8));
-        // Google отдаёт 301 на CDN — идём по редиректу вручную.
-        var hops = 0;
-        while ((resp.statusCode == 301 || resp.statusCode == 302) &&
-            resp.headers.value(HttpHeaders.locationHeader) != null &&
-            hops < 3) {
-          uri = uri.resolve(resp.headers.value(HttpHeaders.locationHeader)!);
-          req = await client.getUrl(uri);
-          resp = await req.close().timeout(const Duration(seconds: 8));
-          hops++;
-        }
-        if (resp.statusCode != 200) {
-          client.close(force: true);
-          continue;
-        }
+        final resp = await _openGated(client, url, allow);
+        if (resp.statusCode != 200) continue; // флап — один повтор
         final ct = resp.headers.contentType?.mimeType ?? '';
         // Ограничиваем и объём (фавикон — килобайты; иначе враждебный/битый ответ
         // раздул бы память), и время чтения тела (иначе зависший поток висел бы).
@@ -153,7 +300,6 @@ class SiteFaviconService {
           bytes.addAll(c);
           if (bytes.length >= maxBytes) break;
         }
-        client.close(force: true);
         // Признак PNG — либо Content-Type, либо магические байты.
         final isPng = ct == 'image/png' ||
             (bytes.length > 8 &&
@@ -162,11 +308,22 @@ class SiteFaviconService {
                 bytes[2] == 0x4e &&
                 bytes[3] == 0x47);
         if (isPng && bytes.isNotEmpty) return bytes;
-        return null; // ответ есть, но не PNG — другие источники пробовать смысла нет
+        return null; // ответ есть, но не PNG — повтор даст то же самое
+      } on _BlockedByGate {
+        return null; // увели в сторону: повтор даст тот же адрес
       } catch (_) {
+        // сеть/таймаут — имеет смысл попробовать ещё раз
+      } finally {
         client.close(force: true);
       }
     }
     return null;
   }
+}
+
+/// Адрес, по которому мы не пошли: не прошёл гейт (сам запрос либо редирект)
+/// или цепочка редиректов слишком длинная. Отдельный тип, чтобы отличать его
+/// от сетевого сбоя: на сбое повтор осмыслен, на отказе гейта — нет.
+class _BlockedByGate implements Exception {
+  const _BlockedByGate();
 }
