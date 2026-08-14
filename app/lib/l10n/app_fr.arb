@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "Bases géo mises à jour",
+  "geoWhy": "Les fichiers geoip.dat et geosite.dat sont des listes d'adresses par pays et de domaines par catégorie. Le cœur s'en sert pour interpréter les règles du type geoip:ru et geosite:category-ads que définit le panneau de l'abonnement. Sans ces fichiers, ces règles sont retirées de la configuration.",
+  "geoFileOk": "{size}, mise à jour : {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "fichier absent",
+  "geoFileCorrupt": "fichier endommagé — le cœur ne le lira pas",
+  "geoFolder": "Dossier : {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "Sous Windows, les fichiers sont livrés avec le cœur et sont généralement déjà en place. La mise à jour ici les retélécharge quand les listes ont vieilli.",
+  "geoNoWrite": "Ce dossier n'est pas accessible en écriture — le téléchargement n'y aboutira pas. C'est le cas habituel après une installation dans Program Files : lancez l'application en tant qu'administrateur.",
+  "geoCheck": "Vérifier les mises à jour",
+  "geoCheckAgain": "Vérifier à nouveau",
+  "geoChecking": "Consultation de la dernière version…",
+  "geoLastCheck": "Dernière vérification : {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Les mises à jour n'ont jamais été vérifiées",
+  "geoUpdateAvailable": "Mise à jour disponible : {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "taille non communiquée par le serveur",
+  "geoUpToDate": "Aucune mise à jour nécessaire : les fichiers correspondent à la dernière version publiée.",
+  "geoPlanTitle": "Télécharger les bases géo ?",
+  "geoPlanTitleUpdate": "Mettre à jour les bases géo ?",
+  "geoPlanFiles": "Fichiers : {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Taille : {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Les fichiers passeront par votre connexion. Sur un forfait mobile, cela représente un volume notable.",
+  "geoProgressBytes": "{done} sur {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion Internet et réessayez.",
+  "geoErrorServer": "Le serveur de mises à jour a refusé la requête. C'est généralement temporaire — réessayez plus tard.",
+  "geoErrorWrite": "Impossible d'écrire le fichier : pas de droits sur le dossier ou pas assez d'espace.",
+  "geoErrorCorrupt": "Le fichier téléchargé n'a pas passé la vérification — le téléchargement est corrompu. Réessayez.",
+  "geoErrorOther": "Cela n'a pas fonctionné. Détails ci-dessous.",
   "geoFailed": "Échec du téléchargement : {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "Les règles de l'abonnement par pays et par catégorie sont désactivées — ce trafic passe par le VPN et non en direct.",
   "geoVerdictUnusableTitle": "Le cœur n'a pas ouvert les bases géo",
   "geoVerdictUnusableSub": "Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement.",
+  "geoOfferMissingSub": "Sans elles, les règles de l'abonnement par pays et par catégorie ne fonctionneront pas — ce trafic passera par le VPN et non en direct.",
+  "geoOfferDismiss": "Ne plus proposer",
   "pingPendingTooltip": "Latence TCP jusqu'au serveur. La vérification du canal est encore en cours : on ne sait pas encore si le serveur fonctionne.",
   "pingUnverifiedTooltip": "Latence TCP jusqu'au serveur. Aucune vérification via le tunnel n'a été faite : seule l'accessibilité est connue.",
   "pingMeasuredAt": "Mesuré : {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "Débit : {done} sur {total}",
   "updateOnStartTitle": "Actualiser l'abonnement au démarrage",
   "updateOnStartSub": "Récupérer une liste de serveurs à jour à chaque fois, pas seulement selon la minuterie",
-  "apiSectionSub": "HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts"
+  "apiSectionSub": "HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts",
+  "momentJustNow": "à l'instant",
+  "momentMinutesAgo": "{count, plural, one{il y a {count} minute} other{il y a {count} minutes}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{il y a {count} heure} other{il y a {count} heures}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

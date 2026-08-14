@@ -277,18 +277,38 @@ void main() {
       return null;
     }
 
-    test('исходники lib/ чисты', () {
+    test('исходники lib/ чисты — КРОМЕ одного разрешённого места', () {
+      // ⚠️ ПОСРЕДНИКИ ЖИВУТ РОВНО В ОДНОМ ФАЙЛЕ И РОВНО ПОД ФЛАГОМ `builtIn`.
+      // Полный запрет пробовали — он стоил владельцу шести пропавших иконок
+      // (Discord, Claude, Gemini, X, Instagram, Google): их фавиконы либо на
+      // чужом CDN, либо нашему запросу не отдаются. Но послабление обязано
+      // оставаться ТОЧЕЧНЫМ: появится вызов посредника где-то ещё — и список
+      // сайтов пользователя уедет третьей стороне.
+      const allowed = 'lib/core/net/site_favicon.dart';
       final offenders = <String>[];
       for (final f in Directory('lib').listSync(recursive: true)) {
         if (f is! File || !f.path.endsWith('.dart')) continue;
+        final path = f.path.replaceAll(r'\', '/');
+        if (path.endsWith(allowed)) continue;
         final problem = brokerProblem(f.readAsStringSync());
-        if (problem != null) {
-          offenders.add('${f.path.replaceAll(r'\', '/')} — $problem');
-        }
+        if (problem != null) offenders.add('$path — $problem');
       }
       expect(offenders, isEmpty,
           reason: 'список сайтов пользователя уходит третьей стороне: '
               '$offenders');
+    });
+
+    test('⚠️ и в разрешённом файле — только внутри ветки builtIn', () {
+      // Иначе «разрешили файл» превратилось бы в «разрешили всё в файле», и
+      // посредник вернулся бы на путь правил пользователя незамеченным.
+      final src = stripCommentLines(
+          File('lib/core/net/site_favicon.dart').readAsStringSync());
+      final at = src.indexOf('if (!builtIn)');
+      expect(at, greaterThan(0),
+          reason: 'ветка, отделяющая вшитые сервисы, обязана существовать');
+      final beforeGate = src.substring(0, at);
+      expect(brokerProblem(beforeGate), isNull,
+          reason: 'посредник ДО развилки достался бы и правилам пользователя');
     });
 
     test('страж ловит нарушение — проверено на образцах', () {
@@ -332,50 +352,49 @@ void main() {
 
 /// ⚠️ ГРАНИЦА ПОСЛАБЛЕНИЯ ДЛЯ ВШИТЫХ СЕРВИСОВ.
 ///
-/// Строгий гейт заводился ради ОДНОГО: список сайтов из правил раздельного
-/// туннелирования — это перечень того, что человек хочет скрыть, и он у каждого
-/// свой. Вшитый список сервис-чипов одинаков у всех, кто поставил приложение, и
-/// обращение за иконкой `x.com` не сообщает о пользователе ничего сверх факта
-/// установки. Поэтому там разрешается ОДИН адрес — тот, что сайт назвал в своём
-/// HTML, — иначе у `x.com` и `instagram.com` осталась бы буква вместо картинки.
+/// ⚠️ ВШИТЫЕ СЕРВИСЫ И ПРАВИЛА ПОЛЬЗОВАТЕЛЯ — РАЗНЫЙ ПРЕДМЕТ ЗАЩИТЫ.
 ///
-/// Опасность послабления в том, что оно легко расползается: «разрешить хост»
-/// открыло бы весь общий CDN, а общий кэш вернул бы чужую иконку в правила
-/// пользователя. Здесь проверяется, что не расползлось.
+/// Секретен список сайтов ИЗ ПРАВИЛ раздельного туннелирования: это перечень
+/// того, что человек хочет скрыть, и он у каждого свой. Вшитый список
+/// сервис-чипов одинаков у всех, кто поставил приложение, и обращение за
+/// иконкой `x.com` не говорит о пользователе ничего сверх факта установки.
+///
+/// ⚠️ ЦЕНА ОШИБКИ ИЗМЕРЕНА НА ЖИВОМ ЭКРАНЕ. Когда строгий гейт применили ко
+/// ВСЕМ доменам, у Discord, Claude, Gemini, X, Instagram и Google иконки в
+/// чипах сменились глобусами — их фавиконы либо на чужом CDN, либо нашему
+/// запросу не отдаются. Владелец заметил это первым же взглядом.
+///
+/// Здесь проверяется, что послабление НЕ расползлось на правила пользователя.
 void _builtInGateTests() {
   const site = 'example-site.com';
-  const declared = 'https://cdn.example-net.com/icon.png';
+  const foreign = 'https://cdn.example-net.com/icon.png';
 
-  test('вшитому сервису разрешён ИМЕННО объявленный адрес', () {
-    final gate = SiteFaviconService.iconGateFor(site, allowSiteDeclared: declared);
-    expect(gate(Uri.parse(declared)), isTrue);
-  });
-
-  test('⚠️ и только он: соседний файл на том же чужом хосте — отказ', () {
-    final gate = SiteFaviconService.iconGateFor(site, allowSiteDeclared: declared);
-    expect(gate(Uri.parse('https://cdn.example-net.com/other.png')), isFalse,
-        reason: 'разрешение хоста открыло бы весь общий CDN');
-    expect(gate(Uri.parse('https://cdn.example-net.com/')), isFalse);
-  });
-
-  test('⚠️ послабление НЕ действует для домена из правил пользователя', () {
+  test('⚠️ ГЛАВНОЕ: посредники для правил пользователя закрыты', () {
     final gate = SiteFaviconService.iconGateFor(site);
-    expect(gate(Uri.parse(declared)), isFalse,
+    expect(gate(Uri.parse(foreign)), isFalse,
         reason: 'ЗДЕСЬ И БЫЛА БЫ УТЕЧКА: список правил уехал бы к посреднику');
+    for (final u in SiteFaviconService.iconSources(site)) {
+      expect(Uri.parse(u).host, anyOf(site, 'example-site.com'),
+          reason: 'в источниках правил не должно быть чужих хостов');
+    }
   });
 
-  test('послабление не отменяет требования https', () {
-    const plain = 'http://cdn.example-net.com/icon.png';
-    final gate = SiteFaviconService.iconGateFor(site, allowSiteDeclared: plain);
-    expect(gate(Uri.parse(plain)), isFalse);
+  test('у вшитого сервиса посредники есть — иначе иконки пропадают', () {
+    final src = SiteFaviconService.iconSources(site, builtIn: true);
+    expect(src.any((u) => u.contains('google.com/s2/favicons')), isTrue);
+    expect(src.any((u) => u.contains('favicone.com')), isTrue);
+  });
+
+  test('⚠️ но САМ САЙТ пробуется РАНЬШЕ посредников', () {
+    // Иначе мы ходили бы к третьей стороне даже там, где не нужно.
+    final src = SiteFaviconService.iconSources(site, builtIn: true);
+    final own = src.indexWhere((u) => Uri.parse(u).host == site);
+    final proxy = src.indexWhere((u) => Uri.parse(u).host != site);
+    expect(own, lessThan(proxy));
   });
 
   test('сам сайт разрешён в обоих режимах', () {
-    for (final gate in [
-      SiteFaviconService.iconGateFor(site),
-      SiteFaviconService.iconGateFor(site, allowSiteDeclared: declared),
-    ]) {
-      expect(gate(Uri.parse('https://$site/favicon.png')), isTrue);
-    }
+    expect(SiteFaviconService.iconGateFor(site)(
+        Uri.parse('https://$site/favicon.png')), isTrue);
   });
 }

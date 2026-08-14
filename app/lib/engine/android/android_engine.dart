@@ -466,6 +466,56 @@ class AndroidEngine extends VpnEngineBase {
   /// по факту отказа и на следующем заходе конфиг чистится.
   bool _geodataUnusable = false;
 
+  /// Прописать каталог гео-баз В САМ КОНФИГ (`"env"`), а не в окружение процесса.
+  ///
+  /// ⚠️ ЭТО ЕДИНСТВЕННЫЙ СПОСОБ, КОТОРЫЙ РАБОТАЕТ, И ВОТ ПОЧЕМУ.
+  /// `android.system.Os.setenv` из `SilentGateApplication` правит окружение
+  /// **libc**, а рантайм Go держит СВОЮ копию, снятую при своей инициализации, и
+  /// в libc больше не заглядывает. Поэтому `os.Getenv` внутри ядра нашей
+  /// переменной не видел НИКОГДА — сколько бы рано мы её ни ставили. Ядро шло
+  /// искать базы по умолчанию:
+  ///
+  /// ```
+  /// common/geodata: illegal ip rule: geoip:private
+  ///   > failed to open geoip.dat
+  ///   > stat /system/bin/geoip.dat: no such file or directory
+  /// ```
+  ///
+  /// Владелец получил это на живом телефоне 15.08.2026: базы лежали на месте, а
+  /// VPN не поднимался вовсе. Воспроизведено на эмуляторе `sg-test`.
+  ///
+  /// Блок `env` внутри конфига Xray применяет СВОИМ `os.Setenv` — уже внутри
+  /// Go, — и рантайм его видит. Доказано тестами самого libXray:
+  /// `TestInvokeRunXrayAppliesConfigEnv` (работает) и
+  /// `TestInvokeIgnoresTopLevelEnv` (на верхнем уровне запроса — игнорируется,
+  /// поэтому кладём именно в конфиг, а не рядом с ним).
+  ///
+  /// ⚠️ Kotlin-строку с `Os.setenv` не убираем: она безвредна и остаётся для
+  /// путей, где конфиг собираем не мы (проба libXray строит запрос сама).
+  Future<String> _withAssetEnv(String json) async =>
+      withAssetEnv(json, (await GeoAssets.dir()).path);
+
+  /// Чистая часть — отдельно и публично: каталог берётся с платформы, а вот
+  /// правка конфига обязана быть проверяемой без телефона.
+  @visibleForTesting
+  static String withAssetEnv(String json, String dir) {
+    try {
+      final cfg = jsonDecode(json);
+      if (cfg is! Map) return json;
+      final env = <String, dynamic>{
+        // Уважаем то, что уже пришло от панели: она вправе задать своё.
+        ...?(cfg['env'] as Map?)?.cast<String, dynamic>(),
+      };
+      env.putIfAbsent('XRAY_LOCATION_ASSET', () => dir);
+      cfg['env'] = env;
+      return jsonEncode(cfg);
+    } catch (e) {
+      // Не смогли — не беда: дальше сработает страховка с чисткой гео-правил.
+      AppLog.w('Не удалось прописать каталог гео-баз в конфиг: $e');
+      return json;
+    }
+  }
+
   Future<String> _guardGeodata(String json) async {
     // ⚠️ ДИАГНОСТИКА, КОТОРАЯ НЕ ВРЁТ. Печатаем только БУЛЕВЫ признаки: сам
     // конфиг в журнал класть нельзя (там UUID и адреса узлов, а журнал уезжает
@@ -479,6 +529,7 @@ class AndroidEngine extends VpnEngineBase {
       return json;
     }
     if (!_geodataUnusable && have) {
+      json = await _withAssetEnv(json);
       AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы скачаны — '
           'отдаю как есть');
       return json;
@@ -527,7 +578,16 @@ class AndroidEngine extends VpnEngineBase {
     // Свежее подключение по кнопке (а не автоповтор) — даём гео-базам ещё один
     // шанс. Иначе один отказ ядра выключал бы правила панели до перезапуска
     // приложения, в том числе после того, как пользователь скачал базы заново.
-    if (attempt == 0) _geodataUnusable = false;
+    //
+    // ⚠️ ЗДЕСЬ БЫЛО `attempt == 0`, И ЭТО ОСТАВЛЯЛО ТЕЛЕФОН БЕЗ ИНТЕРНЕТА.
+    // Счётчик попыток обнуляет `markConnected()` — в момент ПОДЪЁМА ТУННЕЛЯ, а
+    // ядро на Android падает уже после него. Круг выходил такой: конфиг со
+    // ссылками на гео-базы → туннель поднялся → счётчик обнулён, kill switch
+    // отпустил трафик → Xray умер на тех же базах → флаг «непригодны» → повтор
+    // → `attempt == 0` → флаг СНЯТ → снова конфиг с базами. Раз в секунду,
+    // бесконечно, с заблокированным трафиком; предел в восемь попыток не
+    // достигался никогда. Спрашиваем факт, а не признак.
+    if (isFreshUserConnect) _geodataUnusable = false;
     // Новая попытка — снова слушаем события остановки.
     _handlingStop = false;
 

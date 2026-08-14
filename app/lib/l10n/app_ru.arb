@@ -1055,6 +1055,90 @@
     }
   },
   "geoDone": "Гео-базы обновлены",
+  "geoWhy": "Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям. По ним ядро разбирает правила вида geoip:ru и geosite:category-ads, которые задаёт панель подписки. Без файлов такие правила из конфига убираются.",
+  "geoFileOk": "{size}, обновлён {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "файла нет",
+  "geoFileCorrupt": "файл повреждён — ядро его не прочитает",
+  "geoFolder": "Папка: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "На Windows файлы приезжают вместе с ядром и обычно уже лежат на месте. Обновление здесь перекачивает их, когда списки устарели.",
+  "geoNoWrite": "В эту папку нельзя писать — скачать сюда не получится. Обычно так бывает при установке в Program Files: запустите приложение от имени администратора.",
+  "geoCheck": "Проверить обновление",
+  "geoCheckAgain": "Проверить ещё раз",
+  "geoChecking": "Спрашиваю выпуск…",
+  "geoLastCheck": "Проверяли: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Обновление ещё ни разу не проверяли",
+  "geoUpdateAvailable": "Есть обновление: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "размер сервер не сообщил",
+  "geoUpToDate": "Обновление не требуется: файлы совпадают с последним выпуском.",
+  "geoPlanTitle": "Скачать гео-базы?",
+  "geoPlanTitleUpdate": "Обновить гео-базы?",
+  "geoPlanFiles": "Файлы: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Размер: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Файлы поедут через ваше подключение. На мобильном тарифе это заметный трафик.",
+  "geoProgressBytes": "{done} из {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Не удалось связаться с сервером обновлений. Проверьте интернет и попробуйте ещё раз.",
+  "geoErrorServer": "Сервер обновлений ответил отказом. Скорее всего, это временно — попробуйте позже.",
+  "geoErrorWrite": "Не удалось записать файл: нет прав на папку или не хватает места.",
+  "geoErrorCorrupt": "Скачанный файл не прошёл проверку — закачка повредилась. Попробуйте ещё раз.",
+  "geoErrorOther": "Не получилось. Подробности ниже.",
   "geoFailed": "Не удалось скачать: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -1145,6 +1229,8 @@
   "geoVerdictMissingSub": "Правила подписки по странам и категориям сейчас отключены — этот трафик идёт через VPN, а не напрямую.",
   "geoVerdictUnusableTitle": "Ядро не открыло гео-базы",
   "geoVerdictUnusableSub": "Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.",
+  "geoOfferMissingSub": "Без них правила подписки по странам и категориям работать не будут — этот трафик пойдёт через VPN, а не напрямую.",
+  "geoOfferDismiss": "Больше не предлагать",
   "pingPendingTooltip": "Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.",
   "pingUnverifiedTooltip": "Задержка TCP до сервера. Проверка через туннель не проводилась — известна только достижимость.",
   "pingMeasuredAt": "Замер: {time}",
@@ -1280,5 +1366,22 @@
   },
   "updateOnStartTitle": "Обновлять подписку при запуске",
   "updateOnStartSub": "Тянуть свежий список серверов каждый раз, а не только по таймеру",
-  "apiSectionSub": "HTTP на 127.0.0.1 — управление клиентом из скриптов"
+  "apiSectionSub": "HTTP на 127.0.0.1 — управление клиентом из скриптов",
+  "momentJustNow": "только что",
+  "momentMinutesAgo": "{count, plural, one{{count} минуту назад} few{{count} минуты назад} many{{count} минут назад} other{{count} минуты назад}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{{count} час назад} few{{count} часа назад} many{{count} часов назад} other{{count} часа назад}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

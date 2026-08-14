@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/probe/ping_result.dart';
 import '../../l10n/gen/app_localizations.dart';
+import 'measured_at.dart';
 
 /// Чип с результатом пинга.
 ///
@@ -139,36 +140,15 @@ class PingChip extends StatelessWidget {
   /// проверка, сделанную минуту назад. Гасить старые результаты владелец
   /// запретил (решение по плану 1.4.1) — поэтому просто показываем время
   /// замера, чтобы человек сам понимал, насколько цифре верить.
+  ///
+  /// ⚠️ Формат — ТОЛЬКО через [measuredAtLine] (`measured_at.dart`), тот же
+  /// вызов у [SpeedChip]. Пока свой формат был здесь, подсказка пинга
+  /// отвечала «во сколько», а подсказка скорости — «когда»; владелец увидел
+  /// это как две разные величины в соседних плашках.
   String _tip(BuildContext context, String base) {
     final at = result.measuredAt;
     if (at == null) return base;
-    final l = AppLocalizations.of(context);
-    return '$base\n${l.pingMeasuredAt(formatMoment(context, at.toLocal()))}';
-  }
-
-  /// Время замера в формате локали. Дата дописывается, только если замер не
-  /// сегодняшний, — «14:05» без даты читается как «только что», а это как раз
-  /// та ошибка, ради которой строку и добавляли.
-  ///
-  /// Публичный: тем же форматом подписывается замер скорости ([SpeedChip]) —
-  /// две разные записи одного и того же времени в соседних подсказках выглядят
-  /// как разные величины.
-  static String formatMoment(BuildContext context, DateTime t) {
-    final now = DateTime.now();
-    final sameDay = t.year == now.year && t.month == now.month && t.day == now.day;
-    // MaterialLocalizations может не быть (виджет вне MaterialApp) — тогда
-    // ручной ISO-подобный формат вместо исключения.
-    final ml = Localizations.of<MaterialLocalizations>(
-        context, MaterialLocalizations);
-    String two(int v) => v.toString().padLeft(2, '0');
-    if (ml == null) {
-      final hm = '${two(t.hour)}:${two(t.minute)}';
-      return sameDay ? hm : '${two(t.day)}.${two(t.month)} $hm';
-    }
-    final use24 = MediaQuery.maybeOf(context)?.alwaysUse24HourFormat ?? true;
-    final time = ml.formatTimeOfDay(TimeOfDay.fromDateTime(t),
-        alwaysUse24HourFormat: use24);
-    return sameDay ? time : '${ml.formatShortDate(t)} $time';
+    return '$base\n${measuredAtLine(context, at)}';
   }
 
   Widget _pill(String text, Color color, {String? tooltip}) =>
@@ -251,9 +231,10 @@ class SpeedChip extends StatelessWidget {
             : Colors.orange;
     final value = s.mbps >= 100 ? s.mbps.toStringAsFixed(0) : s.mbps.toStringAsFixed(1);
     final at = s.measuredAt;
+    // Строка «когда мерили» — тот же вызов, что у пинга: см. `measured_at.dart`.
     final tip = [
       s.fromAutoConfig ? l.speedFromAutoConfig : l.speedTooltip,
-      if (at != null) l.pingMeasuredAt(PingChip.formatMoment(context, at.toLocal())),
+      if (at != null) measuredAtLine(context, at),
     ].join('\n');
     // Размер шрифта НЕ задаём: у пинга и скорости он общий (умолчание
     // `_chipPill`) — плашки читаются как пара, а не как главная и приписка.

@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "Bases geo atualizadas",
+  "geoWhy": "Os arquivos geoip.dat e geosite.dat são listas de endereços por país e de domínios por categoria. Por eles o núcleo interpreta regras como geoip:ru e geosite:category-ads, definidas pelo painel da assinatura. Sem os arquivos, essas regras são removidas da configuração.",
+  "geoFileOk": "{size}, atualizado em {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "arquivo ausente",
+  "geoFileCorrupt": "arquivo danificado — o núcleo não vai lê-lo",
+  "geoFolder": "Pasta: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "No Windows os arquivos vêm junto com o núcleo e normalmente já estão no lugar. A atualização aqui os baixa de novo quando as listas ficam desatualizadas.",
+  "geoNoWrite": "Não é possível gravar nesta pasta — baixar aqui não vai funcionar. Normalmente isso acontece com a instalação em Program Files: execute o aplicativo como administrador.",
+  "geoCheck": "Verificar atualização",
+  "geoCheckAgain": "Verificar novamente",
+  "geoChecking": "Consultando o lançamento…",
+  "geoLastCheck": "Última verificação: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "A atualização ainda não foi verificada nenhuma vez",
+  "geoUpdateAvailable": "Há atualização: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "o servidor não informou o tamanho",
+  "geoUpToDate": "Não é necessário atualizar: os arquivos coincidem com o último lançamento.",
+  "geoPlanTitle": "Baixar as bases geo?",
+  "geoPlanTitleUpdate": "Atualizar as bases geo?",
+  "geoPlanFiles": "Arquivos: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Tamanho: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Os arquivos vão pela sua conexão. Em um plano de dados móveis isso é um tráfego considerável.",
+  "geoProgressBytes": "{done} de {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Não foi possível contatar o servidor de atualização. Verifique a internet e tente novamente.",
+  "geoErrorServer": "O servidor de atualização recusou o pedido. Provavelmente é temporário — tente mais tarde.",
+  "geoErrorWrite": "Não foi possível gravar o arquivo: sem permissão na pasta ou sem espaço suficiente.",
+  "geoErrorCorrupt": "O arquivo baixado não passou na verificação — o download foi danificado. Tente novamente.",
+  "geoErrorOther": "Não deu certo. Os detalhes estão abaixo.",
   "geoFailed": "Não foi possível baixar: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "As regras da assinatura por país e categoria estão desligadas agora — esse tráfego vai pela VPN, e não direto.",
   "geoVerdictUnusableTitle": "O núcleo não abriu as bases geo",
   "geoVerdictUnusableSub": "Os arquivos estão no lugar, mas o núcleo não os leu. Baixar as bases de novo costuma resolver.",
+  "geoOfferMissingSub": "Sem elas, as regras da assinatura por país e categoria não vão funcionar — esse tráfego vai pela VPN, e não direto.",
+  "geoOfferDismiss": "Não oferecer novamente",
   "pingPendingTooltip": "Latência TCP até o servidor. A verificação do canal ainda está em andamento — ainda não se sabe se o servidor funciona.",
   "pingUnverifiedTooltip": "Latência TCP até o servidor. Nenhuma verificação pelo túnel foi feita — só se conhece a acessibilidade.",
   "pingMeasuredAt": "Medido: {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "Velocidade: {done} de {total}",
   "updateOnStartTitle": "Atualizar a assinatura ao iniciar",
   "updateOnStartSub": "Buscar uma lista de servidores nova sempre, não apenas pelo temporizador",
-  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts"
+  "apiSectionSub": "HTTP em 127.0.0.1 — controle o cliente a partir de scripts",
+  "momentJustNow": "agora mesmo",
+  "momentMinutesAgo": "{count, plural, one{há {count} minuto} other{há {count} minutos}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{há {count} hora} other{há {count} horas}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

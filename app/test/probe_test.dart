@@ -77,7 +77,12 @@ void main() {
     expect(outs.any((o) => o['tag'] == 'frag-out-1'), isTrue);
   });
 
-  test('#8.2 harness override: полный JSON → один http-inbound на balancer', () {
+  // ⚠️ ЭТОТ ТЕСТ РАНЬШЕ СТЕРЁГ ДЕФЕКТ. Он требовал `rules[0].balancerTag ==
+  // 'balancer'` и `burstObservatory != null` — то есть буквально «проба идёт
+  // через балансировщик, у которого в харнессе нет и не может быть данных
+  // наблюдателя». Разбор — в [HarnessConfigBuilder.probeExitTag].
+  test('#8.2 harness override: полный JSON → один http-inbound на КОНКРЕТНЫЙ узел',
+      () {
     const burst = '''
 {
   "inbounds": [
@@ -110,17 +115,19 @@ void main() {
     expect(inbounds[0]['protocol'], 'http');
     expect(inbounds[0]['port'], b.portFor(0));
 
-    // Роутинг заменён на единственное правило на исходный balancerTag.
+    // Роутинг заменён на единственное правило на КОНКРЕТНЫЙ узел из selector'а.
     final rules = (map['routing'] as Map)['rules'] as List;
     expect(rules.length, 1);
     expect(rules[0]['inboundTag'], ['in-0']);
-    expect(rules[0]['balancerTag'], 'balancer');
+    expect(rules[0]['outboundTag'], 'proxy-0');
+    expect(rules[0].containsKey('balancerTag'), isFalse,
+        reason: 'балансировщику в харнессе неоткуда взять задержки узлов');
 
-    // Outbounds/balancers/burstObservatory сохранены; api/stats/policy удалены.
+    // Outbounds сохранены; балансировщик, наблюдатель и api/stats/policy — нет.
     final outs = (map['outbounds'] as List).cast<Map>();
     expect(outs.any((o) => o['tag'] == 'proxy-0'), isTrue);
-    expect((map['routing'] as Map)['balancers'], isNotNull);
-    expect(map['burstObservatory'], isNotNull);
+    expect((map['routing'] as Map).containsKey('balancers'), isFalse);
+    expect(map.containsKey('burstObservatory'), isFalse);
     expect(map.containsKey('stats'), isFalse);
     expect(map.containsKey('policy'), isFalse);
   });
@@ -1115,7 +1122,15 @@ void _panelProfileTests() {
     expect(((cfg['routing'] as Map)['balancers'] as List), hasLength(1));
   });
 
-  test('пинг-харнесс профиля идёт через его собственный балансировщик', () {
+  // ⚠️ ЭТОТ ТЕСТ ТОЖЕ СТЕРЁГ ДЕФЕКТ — и назывался «идёт через его собственный
+  // балансировщик». Балансировщик профиля в харнессе выбрать не может: его
+  // стратегия `leastPing` берёт задержки у `burstObservatory`, а тот успевает
+  // обойти узлы за секунды, тогда как харнесс живёт один замер. Xray отдавал
+  // пустой выбор в `fallbackTag` (у панели это `direct`) — то есть проба
+  // мерила ПРЯМОЙ канал пользователя. Подробности —
+  // `HarnessConfigBuilder.probeExitTag`, разбор — `panel_profile_probe_test`.
+  test('пинг-харнесс профиля идёт на конкретный узел, а не на балансировщик',
+      () {
     final s = XrayJsonSubscription.parse(autoProfile).first;
     const b = HarnessConfigBuilder();
     final map = b.buildMap([HarnessEntry(key: s.key, server: s)]);
@@ -1125,9 +1140,13 @@ void _panelProfileTests() {
     expect(inbounds[0]['port'], b.portFor(0));
 
     final rules = (map['routing'] as Map)['rules'] as List;
-    expect(rules.first['balancerTag'], 'yt_auto');
+    expect(rules.first.containsKey('balancerTag'), isFalse);
+    expect(rules.first['outboundTag'], 'proxy');
+    // Узлы профиля остаются на месте — режем только выбор выхода.
     expect((map['outbounds'] as List), hasLength(5));
-    expect(map['burstObservatory'], isNotNull);
+    expect(map.containsKey('burstObservatory'), isFalse,
+        reason: 'наблюдатель шлёт свою пробу через КАЖДЫЙ узел ровно во время '
+            'замера — цифра получалась про эту бурю');
   });
 }
 
@@ -1421,10 +1440,9 @@ void _subscriptionsAndUpdateTests() {
   });
 
   test('настройки обновления приложения round-trip', () {
-    const s = AppSettings(appUpdateCheck: false, appUpdateUrl: 'https://x/y');
+    const s = AppSettings(appUpdateCheck: false);
     final r = AppSettings.fromJson(s.toJson());
     expect(r.appUpdateCheck, isFalse);
-    expect(r.appUpdateUrl, 'https://x/y');
     expect(AppSettings.defaults.appUpdateCheck, isTrue);
   });
 

@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "داده‌های جغرافیایی به‌روزرسانی شد",
+  "geoWhy": "فایل‌های geoip.dat و geosite.dat فهرست آدرس‌ها بر اساس کشور و دامنه‌ها بر اساس دسته‌بندی هستند. هسته با کمک آن‌ها قوانینی مانند geoip:ru و geosite:category-ads را که پنل اشتراک تعیین می‌کند تشخیص می‌دهد. بدون این فایل‌ها چنین قوانینی از پیکربندی حذف می‌شوند.",
+  "geoFileOk": "{size}، به‌روزشده در {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "فایلی وجود ندارد",
+  "geoFileCorrupt": "فایل خراب است — هسته آن را نمی‌خواند",
+  "geoFolder": "پوشه: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "روی Windows این فایل‌ها همراه هسته می‌آیند و معمولاً از پیش سر جایشان هستند. به‌روزرسانی در اینجا وقتی فهرست‌ها کهنه شوند دوباره آن‌ها را دانلود می‌کند.",
+  "geoNoWrite": "در این پوشه نمی‌توان نوشت — دانلود به اینجا انجام نمی‌شود. معمولاً این حالت پس از نصب در Program Files پیش می‌آید: برنامه را با دسترسی مدیر اجرا کنید.",
+  "geoCheck": "بررسی به‌روزرسانی",
+  "geoCheckAgain": "بررسی دوباره",
+  "geoChecking": "در حال پرس‌وجوی آخرین نسخه…",
+  "geoLastCheck": "آخرین بررسی: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "به‌روزرسانی هنوز هرگز بررسی نشده است",
+  "geoUpdateAvailable": "به‌روزرسانی موجود است: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "سرور حجم را اعلام نکرد",
+  "geoUpToDate": "به‌روزرسانی لازم نیست: فایل‌ها با آخرین نسخه یکسان‌اند.",
+  "geoPlanTitle": "داده‌های جغرافیایی دانلود شود؟",
+  "geoPlanTitleUpdate": "داده‌های جغرافیایی به‌روزرسانی شود؟",
+  "geoPlanFiles": "فایل‌ها: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "حجم: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "فایل‌ها از راه اتصال خود شما دانلود می‌شوند. روی طرح اینترنت همراه، این حجم قابل توجهی است.",
+  "geoProgressBytes": "{done} از {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "ارتباط با سرور به‌روزرسانی برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.",
+  "geoErrorServer": "سرور به‌روزرسانی درخواست را رد کرد. به احتمال زیاد موقتی است — بعداً دوباره تلاش کنید.",
+  "geoErrorWrite": "نوشتن فایل ممکن نشد: دسترسی به پوشه وجود ندارد یا فضای کافی نیست.",
+  "geoErrorCorrupt": "فایل دانلودشده در بررسی صحت مردود شد — دانلود خراب شده است. دوباره تلاش کنید.",
+  "geoErrorOther": "انجام نشد. جزئیات در پایین.",
   "geoFailed": "دانلود ناموفق بود: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "قوانین کشوری و دسته‌بندی اشتراک اکنون غیرفعال‌اند — این ترافیک به‌جای مسیر مستقیم از VPN می‌رود.",
   "geoVerdictUnusableTitle": "هسته داده‌های جغرافیایی را باز نکرد",
   "geoVerdictUnusableSub": "فایل‌ها سر جایشان هستند، اما هسته آن‌ها را نخواند. دانلود دوبارهٔ داده‌ها معمولاً کمک می‌کند.",
+  "geoOfferMissingSub": "بدون آن‌ها قوانین کشوری و دسته‌بندی اشتراک کار نمی‌کنند — این ترافیک به‌جای مسیر مستقیم از VPN می‌رود.",
+  "geoOfferDismiss": "دیگر پیشنهاد نشود",
   "pingPendingTooltip": "تأخیر TCP تا سرور. بررسی کانال هنوز ادامه دارد و معلوم نیست سرور واقعاً کار می‌کند یا نه.",
   "pingUnverifiedTooltip": "تأخیر TCP تا سرور. هیچ بررسی‌ای از راه تونل انجام نشده و تنها در دسترس بودن معلوم است.",
   "pingMeasuredAt": "زمان اندازه‌گیری: {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "سرعت: {done} از {total}",
   "updateOnStartTitle": "به‌روزرسانی اشتراک هنگام آغاز",
   "updateOnStartSub": "هر بار فهرست تازهٔ سرورها گرفته شود، نه فقط با زمان‌سنج",
-  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت"
+  "apiSectionSub": "‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت",
+  "momentJustNow": "همین الان",
+  "momentMinutesAgo": "{count, plural, one{{count} دقیقه پیش} other{{count} دقیقه پیش}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{{count} ساعت پیش} other{{count} ساعت پیش}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

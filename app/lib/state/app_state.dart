@@ -5,6 +5,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../core/app_info.dart';
+// Только ради GeoAction: «что сейчас с гео-базами» знает контроллер, и второго
+// мнения об этом в приложении быть не должно.
+import '../core/geo/geo_bases_controller.dart';
 import '../core/models/subscription_info.dart';
 import '../core/models/subscription_profile.dart';
 import '../core/models/subscription_sync.dart';
@@ -34,6 +37,7 @@ import '../core/subscription/subscription_logo.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
 import '../core/subscription/xray_json_subscription.dart';
+import '../core/xray/geodata_fallback.dart' show needsGeodata;
 import '../core/xray/outbound_variant.dart';
 import '../core/models/server_override.dart';
 import '../data/app_storage.dart';
@@ -216,12 +220,18 @@ class AppState extends ChangeNotifier {
   EngineNotice? _pendingNotice;
   EngineNotice? get pendingNotice => _pendingNotice;
 
-  /// Что не так с гео-базами по мнению ЯДРА. `null` — всё в порядке.
+  /// Что не так с гео-базами по мнению ЯДРА. `null` — ядро не жаловалось.
   ///
   /// Держится отдельно от [pendingNotice]: та снимается сразу после показа, а
   /// этот вердикт должен висеть на экране, пока человек его не закроет. Ставит
-  /// его только движок (`_guardGeodata`), снимает — успешное скачивание баз
-  /// либо подключение, на котором ядро больше не жаловалось.
+  /// его только движок (`_guardGeodata`), снимает — [clearGeoVerdict] и новое
+  /// подключение по кнопке ([markUserConnect]).
+  ///
+  /// ⚠️ ЭТО МНЕНИЕ О ПРОШЛОМ ПОДКЛЮЧЕНИИ, А НЕ О ФАЙЛАХ НА ДИСКЕ. Вердикт
+  /// выносится в момент подъёма туннеля, а базы человек мог скачать уже после
+  /// него. Поэтому решение «что предлагать» принимает [geoOfferReason]: про
+  /// файлы он спрашивает `GeoBasesController`, а вердикт берёт только как
+  /// доказательство того, что гео-правила у человека РЕАЛЬНО есть.
   EngineNoticeKind? _geoVerdict;
   EngineNoticeKind? get geoVerdict => _geoVerdict;
 
@@ -230,6 +240,71 @@ class AppState extends ChangeNotifier {
     if (_geoVerdict == null) return;
     _geoVerdict = null;
     notifyListeners();
+  }
+
+  /// Ссылаются ли конфиги, с которыми человек работает, на гео-базы.
+  ///
+  /// ⚠️ ГЕЙТ ПРОТИВ НАДОЕДАНИЯ, А НЕ УКРАШЕНИЕ. Базы весят около 25 МБ, и нужны
+  /// они ровно тем, у кого в конфигах есть `geoip:`/`geosite:` — у Remnawave
+  /// это правила панели по странам и категориям, и в простой подписке их не
+  /// бывает вовсе. Предложить скачивание такому человеку — попросить его
+  /// заплатить трафиком за то, что у него ничего не изменит; плашка на главном
+  /// видна каждый запуск, и такое предложение он будет закрывать всю жизнь.
+  ///
+  /// Считается по тем же конфигам, которые уедут ядру: полный конфиг профиля
+  /// панели и ручная правка JSON. Правила раздельного туннелирования сюда не
+  /// входят намеренно — их исполняет sing-box, а он гео-базы Xray не читает.
+  bool _geoRulesInUse = false;
+  bool get geoRulesInUse => _geoRulesInUse;
+
+  void _recomputeGeoRulesInUse() {
+    var found = false;
+    for (final s in _servers) {
+      final panel = s.rawPanelConfig ?? '';
+      final own = s.rawJsonOverride ?? '';
+      if ((panel.isNotEmpty && needsGeodata(panel)) ||
+          (own.isNotEmpty && needsGeodata(own))) {
+        found = true;
+        break;
+      }
+    }
+    _geoRulesInUse = found;
+  }
+
+  /// Повод, по которому человек сказал «больше не предлагать».
+  ///
+  /// ⚠️ ХРАНИТСЯ ПОВОД, А НЕ ФЛАГ «ЗАКРЫТО», И ПЕРЕЖИВАЕТ ПЕРЕЗАПУСК. Плашка на
+  /// главном показывается при каждом запуске, поэтому «закрыть» обязано
+  /// означать «насовсем», иначе это не отказ, а отсрочка до завтра. А повод
+  /// вместо флага нужен потому, что поводов два и они разные: «файлов нет»
+  /// закрывает тот, кто гео-правилами не пользуется, а «ядро не открыло базы»
+  /// — это отказ УЖЕ СКАЧАННЫХ файлов, то есть поломка у того, кто их себе
+  /// поставил. Один флаг на оба заглушил бы вторую новость навсегда за то, что
+  /// человек когда-то отмахнулся от первой.
+  ///
+  /// Пути назад из интерфейса нет и не нужно: состояние гео-баз всегда видно в
+  /// настройках, и скачать их можно оттуда в любой момент.
+  EngineNoticeKind? _geoOfferDismissed;
+  EngineNoticeKind? get geoOfferDismissedFor => _geoOfferDismissed;
+
+  /// «Больше не предлагать» по конкретному поводу.
+  void dismissGeoOffer(EngineNoticeKind reason) {
+    _geoVerdict = null;
+    _geoOfferDismissed = reason;
+    notifyListeners();
+    unawaited(_persist());
+  }
+
+  /// Разбор сохранённого повода. Чужое значение = «не отказывался».
+  static EngineNoticeKind? _geoDismissedFromJson(Object? raw) {
+    if (raw is! String) return null;
+    for (final k in const [
+      EngineNoticeKind.geoAssetsMissing,
+      EngineNoticeKind.geoAssetsUnusable,
+    ]) {
+      if (k.name == raw) return k;
+    }
+    return null;
   }
   void clearNotice() => _pendingNotice = null;
   late final StreamSubscription _incomingSub;
@@ -454,6 +529,7 @@ class AppState extends ChangeNotifier {
     if (data['info'] is Map<String, dynamic>) {
       _info = SubscriptionInfo.fromJson(data['info'] as Map<String, dynamic>);
     }
+    _geoOfferDismissed = _geoDismissedFromJson(data['geoOfferDismissed']);
     // ⚠️ КОНФИГИ ПАНЕЛИ ГРУЗЯТСЯ ПЕРВЫМИ, И ЭТО НЕ ПОРЯДОК «ДЛЯ КРАСОТЫ».
     //
     // Профили «Авто …» хранятся как `panel://…` и восстанавливаются только
@@ -850,6 +926,9 @@ class AppState extends ChangeNotifier {
       'selectedVariant': _selectedVariant.toJson(),
       'logoPath': _logoPath,
       'info': _info.toJson(), // #5 — карточка подписки полная сразу после запуска
+      // «Больше не предлагать гео-базы»: отказ обязан пережить перезапуск,
+      // иначе плашка возвращается на следующем старте — см. [_geoOfferDismissed].
+      'geoOfferDismissed': _geoOfferDismissed?.name,
     });
   }
 
@@ -878,6 +957,10 @@ class AppState extends ChangeNotifier {
     // Здесь же, а не в конце метода: ниже есть ранний выход, и указатель
     // «чей это сервер» на самом частом пути (сервер тот же) не обновлялся бы.
     _rebuildOwnerIndex();
+    // По той же причине здесь: ранний выход ниже срабатывает как раз на
+    // обновлении подписки (сервер остался тот же), а именно оно и приносит
+    // новые панельные конфиги с правилами по странам.
+    _recomputeGeoRulesInUse();
 
     if (prevKey != null) {
       final idx = _servers.indexWhere((s) => s.key == prevKey);
@@ -2191,4 +2274,49 @@ class AppState extends ChangeNotifier {
     }
   }
 
+}
+
+/// Что предложить человеку насчёт гео-баз прямо сейчас — или ничего.
+///
+/// Возвращает ПОВОД, а не действие: [EngineNoticeKind.geoAssetsMissing] —
+/// предложить скачать, [EngineNoticeKind.geoAssetsUnusable] — предложить
+/// перекачать, `null` — молчать. Тот же повод потом уезжает в
+/// [AppState.dismissGeoOffer], поэтому «что показали» и «от чего отказались» —
+/// заведомо одно и то же значение, а не две похожие ветки.
+///
+/// ⚠️ ПРО ФАЙЛЫ СПРАШИВАЕТСЯ ТОЛЬКО [filesAction] — ответ `GeoBasesController`,
+/// то есть ТОТ ЖЕ источник, по которому рисуется кнопка в настройках. Своей
+/// проверки «а лежат ли базы на диске» здесь нет и быть не должно: разойдясь с
+/// контроллером на один шаг, плашка начнёт предлагать скачать уже скачанное.
+///
+/// ⚠️ И ИМЕННО ПОЭТОМУ ФАЙЛЫ ВАЖНЕЕ ВЕРДИКТА ЯДРА. Вердикт «баз нет» относится
+/// к прошлому подключению; человек мог скачать их сразу после него — из
+/// настроек, куда эта же плашка его и отправила. Тогда предлагать скачивание
+/// снова означало бы спорить с фактом.
+EngineNoticeKind? geoOfferReason({
+  required GeoAction filesAction,
+  required bool rulesInUse,
+  required EngineNoticeKind? verdict,
+  required EngineNoticeKind? dismissed,
+}) {
+  // `download` у контроллера означает ровно одно: рабочих файлов на диске нет
+  // (не скачаны либо испорчены). Все прочие его состояния — «файлы на месте».
+  final filesMissing = filesAction == GeoAction.download;
+  final EngineNoticeKind? reason = filesMissing
+      ? EngineNoticeKind.geoAssetsMissing
+      : (verdict == EngineNoticeKind.geoAssetsUnusable
+          ? EngineNoticeKind.geoAssetsUnusable
+          : null);
+  if (reason == null) return null;
+  if (reason == dismissed) return null;
+  // Файлов нет — но нужны ли они? Скачивание предлагаем либо тому, у кого в
+  // конфигах есть ссылки на гео-базы, либо тому, у кого ядро уже отбросило
+  // правила по ним: жалоба ядра — доказательство надобности сильнее нашего
+  // разбора конфигов.
+  if (reason == EngineNoticeKind.geoAssetsMissing &&
+      !rulesInUse &&
+      verdict == null) {
+    return null;
+  }
+  return reason;
 }

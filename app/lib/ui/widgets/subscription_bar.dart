@@ -9,7 +9,6 @@ import '../../core/models/subscription_sync.dart';
 import '../../core/util/country_flag.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
-import '../import_screen.dart';
 import '../settings_screen.dart';
 import 'flag_cell.dart';
 import 'subscription_avatar.dart';
@@ -164,7 +163,11 @@ class SubscriptionBar extends StatelessWidget {
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
       items: [
         _item('refresh', Icons.refresh, l.subBarRefresh),
-        _item('add', Icons.add_link, l.subBarAddSubscription),
+        // ⚠️ «Добавить подписку» ЗДЕСЬ НЕТ — убрано по просьбе владельца как
+        // лишний пункт. Добавление никуда не делось: кнопка «Импорт» стоит в
+        // шапке главного экрана (`home_screen`, `l.homeImport`) и видна
+        // всегда, а на пустом состоянии экран импорта открывается сам.
+        // Меню карточки — про ЭТУ подписку, и заведение новой в нём чужое.
         _item('copy', Icons.copy, l.subBarCopyLink),
         _item('support', Icons.support_agent, l.subBarSupport),
         _item('delete', Icons.delete_outline, l.subBarDeleteSubscription),
@@ -173,11 +176,6 @@ class SubscriptionBar extends StatelessWidget {
     switch (action) {
       case 'refresh':
         if (state.subscriptionUrl != null) state.refreshSubscription();
-        break;
-      case 'add':
-        if (!context.mounted) return;
-        await Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const ImportScreen()));
         break;
       case 'copy':
         if (state.subscriptionUrl != null) {
@@ -245,7 +243,17 @@ class SubscriptionBar extends StatelessWidget {
   static PopupMenuItem<String> _item(String v, IconData icon, String text) =>
       PopupMenuItem(
         value: v,
-        child: Row(children: [Icon(icon, size: 18), const SizedBox(width: 12), Text(text)]),
+        child: Row(children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 12),
+          // ⚠️ ПОДПИСЬ ГИБКАЯ, А НЕ ЖЁСТКАЯ. Ширина меню упирается в потолок
+          // `showMenu` (280 px), и подпись, которая в него не влезла, раньше
+          // просто вылезала за край: в отладочной сборке — жёлто-чёрная полоса
+          // «RenderFlex overflowed», в релизной — обрезанный текст. Пунктов у
+          // нас десять языков, и длина подписи меняется в разы. `Flexible`
+          // переносит строку вместо переполнения — ничего не теряется.
+          Flexible(child: Text(text)),
+        ]),
       );
 }
 

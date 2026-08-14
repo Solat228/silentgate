@@ -295,15 +295,55 @@ class ProbeController extends ChangeNotifier {
   String? get speedSummary => _speedSummary;
   DateTime? get speedFinishedAt => _speedFinishedAt;
 
-  /// Кого имеет смысл гнать в прогон по списку: прошёл проверку канала И ещё не
-  /// измерен. Второе условие — прямое требование владельца «уже замеренное
-  /// повторно не меряется»: за каждый повтор платит трафик подписки. Ручной
-  /// замер одного сервера этим гейтом не ограничен — там человек знает, что
-  /// делает.
+  /// Кого имеет смысл гнать в прогон по списку: прошёл проверку канала, ещё не
+  /// измерен И есть чем измерить. Второе условие — прямое требование владельца
+  /// «уже замеренное повторно не меряется»: за каждый повтор платит трафик
+  /// подписки. Ручной замер одного сервера гейтом «уже измерено» не ограничен —
+  /// там человек знает, что делает; а вот [canMeasureSpeed] обязателен и там.
   List<VpnServer> speedTargets(Iterable<VpnServer> servers) => [
         for (final s in servers)
-          if (resultFor(s).speedMeasurable && _speeds[s.key] == null) s,
+          if (resultFor(s).speedMeasurable &&
+              _speeds[s.key] == null &&
+              canMeasureSpeed(s))
+            s,
       ];
+
+  /// Есть ли ЧЕМ измерить скорость этого сервера.
+  ///
+  /// ⚠️ ЖАЛОБА ВЛАДЕЛЬЦА 1.4.3: «на телефоне нет измерения скорости». Так и
+  /// было, и молча: замер качает пробу через локальный http-порт, а на Android
+  /// харнесс порта не отдаёт — `LibXray.ping` поднимает ядро ВНУТРИ вызова,
+  /// меряет сам и гасит его; наружу отдаётся только число миллисекунд.
+  /// `proxyPortFor` там всегда 0, и прогон писал в журнал «харнесс не дал
+  /// порт», а человек видел «измерено 0 из 1» без единого слова о причине.
+  ///
+  /// Что при этом ЕСТЬ на Android: живой туннель. У него инбаунд проб на
+  /// 127.0.0.1:10811 (заведён ради сервис-чипов), через него ходит и проверка
+  /// канала подключённого сервера. Скачать через него пробу можно — значит
+  /// скорость ПОДКЛЮЧЁННОГО сервера измерима на обеих платформах, а остальных
+  /// на Android — нет, и интерфейс обязан это знать, а не обещать.
+  ///
+  /// ⚠️ Спрашиваем САМ ХАРНЕСС (`supportsProxyRequests`), а не `Platform.isX`:
+  /// платформенная развилка уже описана в одном месте (`probe_factory`), и
+  /// вторая её копия здесь разъехалась бы с первой на первой же платформе.
+  bool canMeasureSpeed(VpnServer s) =>
+      _harnessCanMeasure || _liveTargetIn([s]) != null;
+
+  /// Кэш ответа харнесса: план прогона спрашивают на каждое нажатие, а создание
+  /// харнесса на Android генерирует пароль через `Random.secure`.
+  bool? _harnessCanMeasureCache;
+
+  bool get _harnessCanMeasure {
+    final known = _harnessCanMeasureCache;
+    if (known != null) return known;
+    try {
+      return _harnessCanMeasureCache = _harnessFactory().supportsProxyRequests;
+    } catch (_) {
+      // Платформа без харнесса вовсе (`createProbeHarness` бросает) —
+      // остаётся живой канал.
+      return _harnessCanMeasureCache = false;
+    }
+  }
 
   /// Скорости, уже посчитанные автонастройкой, — в строку сервера, без повтора.
   ///
@@ -343,9 +383,27 @@ class ProbeController extends ChangeNotifier {
     // параллельный запуск отобрал бы порт у уже идущего прогона.
     if (_speedRunning || _running) return;
     final targets = force
-        ? [for (final s in servers) if (resultFor(s).speedMeasurable) s]
+        ? [
+            for (final s in servers)
+              if (resultFor(s).speedMeasurable && canMeasureSpeed(s)) s,
+          ]
         : speedTargets(servers);
-    if (targets.isEmpty) return;
+    if (targets.isEmpty) {
+      // ⚠️ МОЛЧА ВЫЙТИ НЕЛЬЗЯ, ЕСЛИ ЧЕЛОВЕК НАЖАЛ ПУНКТ МЕНЮ. Прочие причины
+      // пустого списка интерфейс объясняет сам (не прошёл проверку канала —
+      // `speedNotVerified`, нечего мерить — `speedNoTargets`), а вот «мерить
+      // нечем на этой платформе» он до 1.4.4 не знал: прогон уходил в харнесс,
+      // получал порт 0 и заканчивался безликим «измерено 0 из 1».
+      if (force &&
+          servers.any(
+              (s) => resultFor(s).speedMeasurable && !canMeasureSpeed(s))) {
+        _speedSummary = 'Скорость этого сервера здесь не измерить: замер идёт '
+            'через живое подключение. Подключитесь к нему и повторите';
+        _speedFinishedAt = DateTime.now();
+        notifyListeners();
+      }
+      return;
+    }
 
     _speedRunning = true;
     _speedTotal = targets.length;
@@ -361,6 +419,45 @@ class ProbeController extends ChangeNotifier {
     try {
       for (final s in targets) {
         if (cancel.isCancelled) break;
+        // ── ПОДКЛЮЧЁННЫЙ СЕРВЕР МЕРЯЕТСЯ ЧЕРЕЗ ЖИВОЙ КАНАЛ, А НЕ ХАРНЕССОМ.
+        //
+        // ⚠️ ЭТО И ЕСТЬ ЗАМЕР НА ANDROID, КОТОРОГО НЕ БЫЛО (жалоба 1.4.3).
+        // Харнесс там порта наружу не даёт (см. [canMeasureSpeed]), а живой
+        // туннель даёт: инбаунд проб на 127.0.0.1:10811 уже поднят ради
+        // сервис-чипов и проверки канала. Тот же путь используется и на
+        // Windows — не ради единообразия, а потому что он ЧЕСТНЕЕ: качаем
+        // ровно через тот канал, которым человек сейчас пользуется, со всеми
+        // его правилами, а не через временное ядро с голым конфигом.
+        //
+        // ⚠️ Ровно ОДИН сервер — подключённый ([_liveTargetIn] сверяет ключ).
+        // Соседний сервер, измеренный через чужой живой туннель, получил бы
+        // скорость этого туннеля — то есть заведомо чужое число в своей строке.
+        //
+        // Честная граница: правило пользователя «этот домен — Прямо» уведёт
+        // пробу мимо VPN, и цифра будет про прямой канал. Иначе и быть не
+        // может: живой туннель на то и живой, что работает по своим правилам.
+        final live = _liveTargetIn([s]);
+        if (live != null) {
+          try {
+            final res = await speedDownload(
+              size: settings.speedTestSize,
+              proxyPort: live.port,
+              // Креды ЖИВОГО инбаунда — сессионные, не харнессные: это другой
+              // процесс (Windows) / другой экземпляр ядра (Android) со своим
+              // паролем. Подставить сюда пароль харнесса значит получить 407 и
+              // «замер не удался» на исправном канале.
+              proxyUser: ProxyProbe.user,
+              proxyPassword: ProxyProbe.password,
+            );
+            if (_recordSpeed(s, res)) ok++;
+          } catch (e) {
+            AppLog.w('Скорость «${s.displayName}» по живому каналу — $e');
+          }
+          _speedDone++;
+          notifyListeners();
+          continue;
+        }
+
         HarnessHandle? handle;
         try {
           handle = await _harnessFactory().start([
@@ -380,16 +477,10 @@ class ProbeController extends ChangeNotifier {
               proxyUser: handle.proxyUser,
               proxyPassword: handle.proxyPassword,
             );
-            if (res.ok) {
-              _speeds[s.key] = ServerSpeed(
-                mbps: res.bitsPerSecond / 1000000,
-                measuredAt: DateTime.now(),
-              );
-              ok++;
-            } else {
-              AppLog.w('Скорость «${s.displayName}»: ${res.error}');
-            }
+            if (_recordSpeed(s, res)) ok++;
           } else {
+            // Сюда теперь попадает только сбой харнесса: платформа, которая
+            // порта не даёт, до цикла не доходит вовсе ([canMeasureSpeed]).
             AppLog.w('Скорость «${s.displayName}»: харнесс не дал порт');
           }
         } catch (e) {
@@ -411,6 +502,23 @@ class ProbeController extends ChangeNotifier {
       await _persistSpeeds();
       notifyListeners();
     }
+  }
+
+  /// Записать удачный замер. Возвращает, засчитан ли он.
+  ///
+  /// ОДНА запись на оба пути (живой канал и харнесс): разъедься они, и один из
+  /// путей однажды перестал бы сохранять результат — а какой именно, стало бы
+  /// видно только по жалобе «на телефоне скорость не запоминается».
+  bool _recordSpeed(VpnServer s, SpeedResult res) {
+    if (!res.ok) {
+      AppLog.w('Скорость «${s.displayName}»: ${res.error}');
+      return false;
+    }
+    _speeds[s.key] = ServerSpeed(
+      mbps: res.bitsPerSecond / 1000000,
+      measuredAt: DateTime.now(),
+    );
+    return true;
   }
 
   Future<void> _persistSpeeds() async {

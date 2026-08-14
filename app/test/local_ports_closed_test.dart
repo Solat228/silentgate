@@ -271,11 +271,18 @@ void main() {
       final cfg = const HarnessConfigBuilder()
           .withAuth('sg', 'secret')
           .buildMap([panelEntry]);
-      // Доказательство, что ветка та самая: штатная сборка балансировщик и
-      // burstObservatory не сохраняет — она их не знает вовсе.
-      expect(cfg['burstObservatory'], isNotNull,
+      // Доказательство, что ветка та самая: штатная сборка кладёт СВОИ теги
+      // (`out-0`), а ветка полного конфига оставляет теги исходника.
+      //
+      // ⚠️ Раньше маркером служили `burstObservatory` и `balancers` — с 1.4.4
+      // ветка полного конфига их выбрасывает (наблюдатель бьёт по замеру, а
+      // балансировщику в харнессе неоткуда взять задержки; см.
+      // `HarnessConfigBuilder.probeExitTag` и `panel_profile_probe_test`).
+      // Маркер сменился, проверяемое утверждение — нет.
+      final tags = [for (final o in cfg['outbounds'] as List) '${(o as Map)['tag']}'];
+      expect(tags, ['proxy-1', 'direct'],
           reason: 'ушли в штатную ветку — тест проверяет не тот код');
-      expect((cfg['routing'] as Map)['balancers'], isNotNull);
+      expect(tags, isNot(contains('out-0')));
 
       final settings = onlyInbound(cfg)['settings'] as Map;
       expect(settings['accounts'], [
@@ -457,7 +464,10 @@ void main() {
               File('${tmp.path}${Platform.pathSeparator}probe_0.json')
                   .readAsStringSync())
           as Map<String, dynamic>;
-      expect(cfg['burstObservatory'], isNotNull,
+      // Маркер ветки полного конфига — теги исходника вместо наших `out-N`
+      // (см. пояснение выше: `burstObservatory` с 1.4.4 из харнесса убирается).
+      expect([for (final o in cfg['outbounds'] as List) '${(o as Map)['tag']}'],
+          ['proxy'],
           reason: 'кандидат ушёл в штатную ветку — проверяется не тот код');
       final inbound = (cfg['inbounds'] as List).first as Map;
       expect((inbound['settings'] as Map)['accounts'], isNotNull,

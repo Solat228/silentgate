@@ -2214,6 +2214,106 @@ class AppLocalizationsTr extends AppLocalizations {
   String get geoDone => 'Geo verileri güncellendi';
 
   @override
+  String get geoWhy =>
+      'geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir. Çekirdek, abonelik panelinizin tanımladığı geoip:ru ve geosite:category-ads gibi kuralları bunlara göre çözer. Dosyalar olmadan bu tür kurallar yapılandırmadan çıkarılır.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size, son güncelleme $date';
+  }
+
+  @override
+  String get geoFileMissing => 'dosya yok';
+
+  @override
+  String get geoFileCorrupt => 'dosya bozuk — çekirdek onu okuyamaz';
+
+  @override
+  String geoFolder(String path) {
+    return 'Klasör: $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'Windows\'ta dosyalar çekirdekle birlikte gelir ve genellikle zaten yerindedir. Buradaki güncelleme, listeler eskidiğinde onları yeniden indirir.';
+
+  @override
+  String get geoNoWrite =>
+      'Bu klasöre yazılamıyor — buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.';
+
+  @override
+  String get geoCheck => 'Güncellemeyi kontrol et';
+
+  @override
+  String get geoCheckAgain => 'Tekrar kontrol et';
+
+  @override
+  String get geoChecking => 'Sürüm sorgulanıyor…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'Son kontrol: $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'Güncelleme hiç kontrol edilmedi';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'Güncelleme mevcut: $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'sunucu boyutu bildirmedi';
+
+  @override
+  String get geoUpToDate => 'Güncelleme gerekmiyor: dosyalar son sürümle aynı.';
+
+  @override
+  String get geoPlanTitle => 'Geo verileri indirilsin mi?';
+
+  @override
+  String get geoPlanTitleUpdate => 'Geo verileri güncellensin mi?';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'Dosyalar: $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'Boyut: $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'Dosyalar sizin bağlantınız üzerinden inecek. Mobil tarifede bu, göze çarpan bir trafik demektir.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$total içinden $done';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'Güncelleme sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String get geoErrorServer =>
+      'Güncelleme sunucusu isteği geri çevirdi. Büyük olasılıkla geçicidir — daha sonra tekrar deneyin.';
+
+  @override
+  String get geoErrorWrite =>
+      'Dosya yazılamadı: klasör için izin yok ya da yer yetersiz.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'İndirilen dosya doğrulamayı geçemedi — indirme bozulmuş. Tekrar deneyin.';
+
+  @override
+  String get geoErrorOther => 'Olmadı. Ayrıntılar aşağıda.';
+
+  @override
   String geoFailed(String error) {
     return 'İndirme başarısız: $error';
   }
@@ -2434,6 +2534,13 @@ class AppLocalizationsTr extends AppLocalizations {
       'Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar.';
 
   @override
+  String get geoOfferMissingSub =>
+      'Onlar olmadan aboneliğin ülke ve kategori kuralları çalışmaz — bu trafik doğrudan değil, VPN üzerinden gidecek.';
+
+  @override
+  String get geoOfferDismiss => 'Bir daha önerme';
+
+  @override
   String get pingPendingTooltip =>
       'Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.';
 
@@ -2590,4 +2697,29 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get apiSectionSub =>
       '127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin';
+
+  @override
+  String get momentJustNow => 'az önce';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dakika önce',
+      one: '$count dakika önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count saat önce',
+      one: '$count saat önce',
+    );
+    return '$_temp0';
+  }
 }

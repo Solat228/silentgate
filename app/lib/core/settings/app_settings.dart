@@ -6,7 +6,6 @@ import '../net/speed_test.dart';
 // Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
 // path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
 // переставал работать. Нужна отсюда только константа адреса обновлений.
-import '../update/app_update_defaults.dart';
 import 'split_tunnel.dart';
 
 /// Как перехватывается трафик.
@@ -84,17 +83,6 @@ extension LogRetentionAge on LogRetention {
         return null;
     }
   }
-}
-
-/// Прежние жёстко записанные адреса обновлений: их надо забыть, чтобы
-/// заработал платформенный выбор (Android больше не ведёт на .exe).
-const _legacyUpdateEndpoints = <String>{
-  'https://silentgate.lol/api/app-version',
-};
-
-String _sanitizeUpdateUrl(String? raw) {
-  final v = (raw ?? '').trim();
-  return _legacyUpdateEndpoints.contains(v) ? '' : v;
 }
 
 /// Способы пинга (как в Happ → Настройки → Пинг).
@@ -537,22 +525,18 @@ class AppSettings {
   /// Проверять обновления самого приложения при запуске (скачивание — вручную).
   final bool appUpdateCheck;
 
-  /// Эндпоинт проверки версии приложения (см. docs/APP_UPDATE.md).
-  /// Адрес проверки обновлений. ПУСТО = «по умолчанию для этой платформы».
+  /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
-  /// ⚠️ Раньше сюда при первом сохранении записывалась константа, и значение
-  /// ЗАМОРАЖИВАЛОСЬ: смена адреса в новой версии не доходила до уже
-  /// установленных копий — они продолжали спрашивать старый эндпоинт. Пустая
-  /// строка означает «спроси платформу», поэтому адрес обновляется вместе с
-  /// приложением. Непустое значение — осознанная правка пользователя, её
-  /// уважаем.
-  final String appUpdateUrl;
-
-  /// Фактический адрес: пользовательский, иначе платформенный по умолчанию.
-  String get effectiveAppUpdateUrl {
-    final v = appUpdateUrl.trim();
-    return v.isEmpty ? kDefaultAppUpdateEndpoint : v;
-  }
+  /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
+  /// может, а пустым оно вело на панельные адреса, из которых андроидного не
+  /// существует до сих пор — телефон молча не находил ничего вообще. Теперь
+  /// источник один и вшит: релизы GitHub (`core/update/app_update.dart`),
+  /// одинаковые для обеих платформ.
+  ///
+  /// Значение, оставшееся в старых файлах настроек, читается и ВЫБРАСЫВАЕТСЯ
+  /// (`fromJson` ключ `appUpdateUrl` просто не берёт). Возвращать поле не надо:
+  /// если когда-нибудь понадобятся разные версии разным пользователям, это
+  /// вернётся ВТОРЫМ источником, а не строкой в настройках.
 
   const AppSettings({
     this.captureMode = CaptureMode.systemProxy,
@@ -627,7 +611,6 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
-    this.appUpdateUrl = '',
   });
 
   static const AppSettings defaults = AppSettings();
@@ -699,7 +682,6 @@ class AppSettings {
     int? autoUpdateIntervalHours,
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
-    String? appUpdateUrl,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -768,7 +750,6 @@ class AppSettings {
       autoUpdateIntervalHours: autoUpdateIntervalHours ?? this.autoUpdateIntervalHours,
       autoUpdatePreferSubscription: autoUpdatePreferSubscription ?? this.autoUpdatePreferSubscription,
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
-      appUpdateUrl: appUpdateUrl ?? this.appUpdateUrl,
     );
   }
 
@@ -835,7 +816,6 @@ class AppSettings {
         'autoUpdateIntervalHours': autoUpdateIntervalHours,
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
-        'appUpdateUrl': appUpdateUrl,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1014,7 +994,6 @@ class AppSettings {
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.
-      appUpdateUrl: _sanitizeUpdateUrl(j['appUpdateUrl'] as String?),
     );
   }
 

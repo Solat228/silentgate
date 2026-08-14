@@ -519,27 +519,26 @@ void main() {
   // Импорт app_update тянул app_log → app_paths → path_provider → flutter →
   // dart:ui, и `dart run tool/emit_*.dart` не запускался вовсе: валидировать
   // конфиги настоящим ядром было нечем.
-  group('Адрес обновлений: свой на каждую платформу', () {
-    test('пусто в настройках = платформенный адрес по умолчанию', () {
-      // ⚠️ Умолчание — ПУСТАЯ строка, а не константа. Раньше сюда при первом
-      // сохранении писался жёсткий адрес, и значение ЗАМОРАЖИВАЛОСЬ: смена
-      // адреса в новой версии не доходила до уже установленных копий.
-      expect(const AppSettings().appUpdateUrl, '');
-      expect(const AppSettings().effectiveAppUpdateUrl, kDefaultAppUpdateEndpoint);
-      expect(AppUpdate.defaultEndpoint, kDefaultAppUpdateEndpoint);
+  group('Источник обновлений: один на обе платформы', () {
+    // ⚠️ ЗДЕСЬ БЫЛА ГРУППА ПРО «АДРЕС В НАСТРОЙКАХ». Поля больше нет: оно
+    // просило пользователя настроить то, чего он знать не может, а пустым вело
+    // на панельные адреса, из которых андроидного не существует до сих пор —
+    // телефон молча не находил ничего вообще.
+    test('адрес вшит и ведёт на релизы GitHub', () {
+      expect(AppUpdate.endpoint, kGithubReleasesApi);
+      expect(AppUpdate.endpoint, contains('api.github.com'));
+      expect(AppUpdate.releasesPage, kGithubReleasesPage);
     });
 
-    test('правка пользователя сильнее платформенного умолчания', () {
-      const s = AppSettings(appUpdateUrl: 'https://example.com/v');
-      expect(s.effectiveAppUpdateUrl, 'https://example.com/v');
-    });
-
-    test('прежний жёсткий адрес забывается при загрузке', () async {
-      // Иначе Android продолжал бы спрашивать Windows-эндпоинт и предлагать
-      // скачать .exe, который на телефон не поставить.
+    test('⚠️ настройка адреса не воскресает из старого файла', () {
+      // У владельца в silentgate_settings.json ключ ещё лежит. Он обязан
+      // ЧИТАТЬСЯ И ВЫБРАСЫВАТЬСЯ, а не возвращать проверку на мёртвый адрес.
       final j = const AppSettings().toJson()
         ..['appUpdateUrl'] = 'https://silentgate.lol/api/app-version';
-      expect(AppSettings.fromJson(j).appUpdateUrl, '');
+      final r = AppSettings.fromJson(j);
+      expect(r.toJson().containsKey('appUpdateUrl'), isFalse,
+          reason: 'ключ не должен переезжать обратно на диск');
+      expect(r.appUpdateCheck, isTrue, reason: 'остальные настройки целы');
     });
 
     test('файл адресов не тянет ничего, кроме dart:io', () async {

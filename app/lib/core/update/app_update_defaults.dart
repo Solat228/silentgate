@@ -1,6 +1,6 @@
 import 'dart:io' show Platform;
 
-/// Адрес проверки обновлений — РАЗНЫЙ для платформ.
+/// Источник обновлений — GITHUB RELEASES, ОДИН НА ОБЕ ПЛАТФОРМЫ.
 ///
 /// ⚠️ Файл намеренно почти без импортов (только `Platform` из `dart:io`).
 /// `AppSettings` нужна отсюда одна константа, а импорт всего `app_update.dart`
@@ -10,36 +10,35 @@ import 'dart:io' show Platform;
 /// (`dart run tool/emit_*.dart`) падали с «Dart library 'dart:ui' is not
 /// available on this platform». `dart:io` этой проблемы не создаёт.
 ///
-/// ⚠️ Почему адреса разные. Один эндпоинт на все платформы отдавал ссылку на
-/// Windows-установщик (`SilentGateSetup.exe`), и Android предлагал скачать
-/// `.exe` — установить его на телефоне нельзя в принципе. Теперь у платформ
-/// свои пути, и ответ каждого содержит подходящий артефакт.
+/// ⚠️ ПОЧЕМУ ИМЕННО GITHUB, А НЕ ПАНЕЛЬ. Раньше основным источником была панель
+/// (`silentgate.lol/api/app-version` и `…-android`), а GitHub — запасным. На
+/// практике это не работало ни на одной платформе: андроидного эндпоинта на
+/// панели не существует до сих пор, поэтому телефон молча не находил ничего
+/// вовсе, а поле «Эндпоинт версии» в настройках предлагало пользователю
+/// чинить это руками — то есть перекладывало на него задачу, которую он решить
+/// не может. Один источник, одинаковый для платформ и не зависящий от
+/// доступности панели, честнее двух ненастроенных.
 ///
-/// Панель (`silentgate.lol`) — основной источник: она знает про подписки и
-/// может отдавать разные версии разным пользователям. GitHub Releases —
-/// запасной: работает, даже когда панель недоступна, и не требует от неё
-/// раздавать 76-мегабайтные файлы.
-const _panelBase = 'https://silentgate.lol/api';
+/// ⚠️ ЧЕГО ЭТОТ ИСТОЧНИК НЕ УМЕЕТ: он не знает про подписки и отдаёт всем одно
+/// и то же. Разные версии разным пользователям — то, ради чего заводили панель,
+/// — здесь невозможны. Если это когда-нибудь понадобится, панель придётся
+/// вернуть ВТОРЫМ источником, а не заменой.
+const kGithubOwner = 'Solat228';
+const kGithubRepo = 'silentgate';
 
-/// Проверка обновлений на панели. Путь зависит от платформы.
-String get kDefaultAppUpdateEndpoint =>
-    Platform.isAndroid ? '$_panelBase/app-version-android' : '$_panelBase/app-version';
-
-/// Запасной источник — релизы GitHub.
-///
-/// Отдаёт `tag_name` и список файлов; клиент выбирает свой по имени
-/// (`*-arm64-v8a.apk` для Android, `SilentGateSetup.exe` для Windows).
+/// Последний НЕ черновиковый и НЕ предварительный релиз: `/releases/latest`
+/// исключает их сам, отдельно фильтровать не нужно.
 const kGithubReleasesApi =
-    'https://api.github.com/repos/Solat228/silentgate/releases/latest';
+    'https://api.github.com/repos/$kGithubOwner/$kGithubRepo/releases/latest';
 
 /// Страница релизов для человека — её открывает кнопка «Скачать».
 const kGithubReleasesPage =
-    'https://github.com/Solat228/silentgate/releases/latest';
+    'https://github.com/$kGithubOwner/$kGithubRepo/releases/latest';
 
 /// Имя артефакта текущей платформы в релизе GitHub.
 ///
 /// Android-сборки разделены по ABI: на телефон нужен `arm64-v8a`
 /// (`armeabi-v7a` мы не выпускаем — под него не собрано ядро, см.
-/// `android/app/build.gradle.kts`).
+/// `android/app/build.gradle.kts`). На Windows это установщик Inno Setup.
 String get kPlatformAssetHint =>
     Platform.isAndroid ? 'arm64-v8a.apk' : 'Setup.exe';

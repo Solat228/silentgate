@@ -881,6 +881,90 @@
     }
   },
   "geoDone": "Geo databases updated",
+  "geoWhy": "The geoip.dat and geosite.dat files are lists of addresses by country and of domains by category. The core uses them to resolve rules like geoip:ru and geosite:category-ads that your subscription panel defines. Without the files such rules are stripped from the config.",
+  "geoFileOk": "{size}, updated {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "file is missing",
+  "geoFileCorrupt": "file is damaged — the core will not read it",
+  "geoFolder": "Folder: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "On Windows the files ship with the core and are usually already in place. Updating here re-downloads them once the lists get stale.",
+  "geoNoWrite": "This folder is not writable — downloading here will not work. That usually means an install into Program Files: run the app as administrator.",
+  "geoCheck": "Check for updates",
+  "geoCheckAgain": "Check again",
+  "geoChecking": "Asking the release…",
+  "geoLastCheck": "Last checked: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Updates have never been checked",
+  "geoUpdateAvailable": "Update available: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "size not reported by the server",
+  "geoUpToDate": "No update needed: the files match the latest release.",
+  "geoPlanTitle": "Download geo databases?",
+  "geoPlanTitleUpdate": "Update geo databases?",
+  "geoPlanFiles": "Files: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Size: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "The files go over your own connection. On a mobile plan this is noticeable traffic.",
+  "geoProgressBytes": "{done} of {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Could not reach the update server. Check your internet connection and try again.",
+  "geoErrorServer": "The update server refused the request. This is usually temporary — try again later.",
+  "geoErrorWrite": "Could not write the file: no permission for the folder, or not enough space.",
+  "geoErrorCorrupt": "The downloaded file failed verification — the download was damaged. Try again.",
+  "geoErrorOther": "It did not work. Details below.",
   "geoFailed": "Download failed: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -971,6 +1055,8 @@
   "geoVerdictMissingSub": "Subscription rules by country and category are off right now — this traffic goes through the VPN instead of direct.",
   "geoVerdictUnusableTitle": "The core could not open the geo databases",
   "geoVerdictUnusableSub": "The files are there, but the core did not read them. Re-downloading the databases usually helps.",
+  "geoOfferMissingSub": "Without them the subscription's country and category rules will not work — that traffic will go through the VPN instead of direct.",
+  "geoOfferDismiss": "Do not offer again",
   "pingPendingTooltip": "TCP latency to the server. The channel check is still running — whether the server actually works is not known yet.",
   "pingUnverifiedTooltip": "TCP latency to the server. No check through the tunnel was made — only reachability is known.",
   "pingMeasuredAt": "Measured: {time}",
@@ -1106,5 +1192,8 @@
   },
   "updateOnStartTitle": "Refresh subscription on launch",
   "updateOnStartSub": "Fetch a fresh server list every time, not only on the timer",
-  "apiSectionSub": "HTTP on 127.0.0.1 — control the client from scripts"
+  "apiSectionSub": "HTTP on 127.0.0.1 — control the client from scripts",
+  "momentJustNow": "just now",
+  "momentMinutesAgo": "{count, plural, one{{count} minute ago} other{{count} minutes ago}}",
+  "momentHoursAgo": "{count, plural, one{{count} hour ago} other{{count} hours ago}}"
 }

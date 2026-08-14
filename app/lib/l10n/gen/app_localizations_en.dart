@@ -2210,6 +2210,107 @@ class AppLocalizationsEn extends AppLocalizations {
   String get geoDone => 'Geo databases updated';
 
   @override
+  String get geoWhy =>
+      'The geoip.dat and geosite.dat files are lists of addresses by country and of domains by category. The core uses them to resolve rules like geoip:ru and geosite:category-ads that your subscription panel defines. Without the files such rules are stripped from the config.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size, updated $date';
+  }
+
+  @override
+  String get geoFileMissing => 'file is missing';
+
+  @override
+  String get geoFileCorrupt => 'file is damaged — the core will not read it';
+
+  @override
+  String geoFolder(String path) {
+    return 'Folder: $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'On Windows the files ship with the core and are usually already in place. Updating here re-downloads them once the lists get stale.';
+
+  @override
+  String get geoNoWrite =>
+      'This folder is not writable — downloading here will not work. That usually means an install into Program Files: run the app as administrator.';
+
+  @override
+  String get geoCheck => 'Check for updates';
+
+  @override
+  String get geoCheckAgain => 'Check again';
+
+  @override
+  String get geoChecking => 'Asking the release…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'Last checked: $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'Updates have never been checked';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'Update available: $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'size not reported by the server';
+
+  @override
+  String get geoUpToDate =>
+      'No update needed: the files match the latest release.';
+
+  @override
+  String get geoPlanTitle => 'Download geo databases?';
+
+  @override
+  String get geoPlanTitleUpdate => 'Update geo databases?';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'Files: $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'Size: $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'The files go over your own connection. On a mobile plan this is noticeable traffic.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done of $total';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'Could not reach the update server. Check your internet connection and try again.';
+
+  @override
+  String get geoErrorServer =>
+      'The update server refused the request. This is usually temporary — try again later.';
+
+  @override
+  String get geoErrorWrite =>
+      'Could not write the file: no permission for the folder, or not enough space.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'The downloaded file failed verification — the download was damaged. Try again.';
+
+  @override
+  String get geoErrorOther => 'It did not work. Details below.';
+
+  @override
   String geoFailed(String error) {
     return 'Download failed: $error';
   }
@@ -2429,6 +2530,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'The files are there, but the core did not read them. Re-downloading the databases usually helps.';
 
   @override
+  String get geoOfferMissingSub =>
+      'Without them the subscription\'s country and category rules will not work — that traffic will go through the VPN instead of direct.';
+
+  @override
+  String get geoOfferDismiss => 'Do not offer again';
+
+  @override
   String get pingPendingTooltip =>
       'TCP latency to the server. The channel check is still running — whether the server actually works is not known yet.';
 
@@ -2585,4 +2693,29 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get apiSectionSub =>
       'HTTP on 127.0.0.1 — control the client from scripts';
+
+  @override
+  String get momentJustNow => 'just now';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes ago',
+      one: '$count minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours ago',
+      one: '$count hour ago',
+    );
+    return '$_temp0';
+  }
 }

@@ -3942,6 +3942,162 @@ abstract class AppLocalizations {
   /// **'Гео-базы обновлены'**
   String get geoDone;
 
+  /// No description provided for @geoWhy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям. По ним ядро разбирает правила вида geoip:ru и geosite:category-ads, которые задаёт панель подписки. Без файлов такие правила из конфига убираются.'**
+  String get geoWhy;
+
+  /// No description provided for @geoFileOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'{size}, обновлён {date}'**
+  String geoFileOk(String size, String date);
+
+  /// No description provided for @geoFileMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'файла нет'**
+  String get geoFileMissing;
+
+  /// No description provided for @geoFileCorrupt.
+  ///
+  /// In ru, this message translates to:
+  /// **'файл повреждён — ядро его не прочитает'**
+  String get geoFileCorrupt;
+
+  /// No description provided for @geoFolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Папка: {path}'**
+  String geoFolder(String path);
+
+  /// No description provided for @geoBundledWindows.
+  ///
+  /// In ru, this message translates to:
+  /// **'На Windows файлы приезжают вместе с ядром и обычно уже лежат на месте. Обновление здесь перекачивает их, когда списки устарели.'**
+  String get geoBundledWindows;
+
+  /// No description provided for @geoNoWrite.
+  ///
+  /// In ru, this message translates to:
+  /// **'В эту папку нельзя писать — скачать сюда не получится. Обычно так бывает при установке в Program Files: запустите приложение от имени администратора.'**
+  String get geoNoWrite;
+
+  /// No description provided for @geoCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить обновление'**
+  String get geoCheck;
+
+  /// No description provided for @geoCheckAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить ещё раз'**
+  String get geoCheckAgain;
+
+  /// No description provided for @geoChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Спрашиваю выпуск…'**
+  String get geoChecking;
+
+  /// No description provided for @geoLastCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверяли: {when}'**
+  String geoLastCheck(String when);
+
+  /// No description provided for @geoNeverChecked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление ещё ни разу не проверяли'**
+  String get geoNeverChecked;
+
+  /// No description provided for @geoUpdateAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Есть обновление: {files} — {size}'**
+  String geoUpdateAvailable(String files, String size);
+
+  /// No description provided for @geoSizeUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'размер сервер не сообщил'**
+  String get geoSizeUnknown;
+
+  /// No description provided for @geoUpToDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновление не требуется: файлы совпадают с последним выпуском.'**
+  String get geoUpToDate;
+
+  /// No description provided for @geoPlanTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать гео-базы?'**
+  String get geoPlanTitle;
+
+  /// No description provided for @geoPlanTitleUpdate.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить гео-базы?'**
+  String get geoPlanTitleUpdate;
+
+  /// No description provided for @geoPlanFiles.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы: {files}'**
+  String geoPlanFiles(String files);
+
+  /// No description provided for @geoPlanSize.
+  ///
+  /// In ru, this message translates to:
+  /// **'Размер: {size}'**
+  String geoPlanSize(String size);
+
+  /// No description provided for @geoPlanTraffic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файлы поедут через ваше подключение. На мобильном тарифе это заметный трафик.'**
+  String get geoPlanTraffic;
+
+  /// No description provided for @geoProgressBytes.
+  ///
+  /// In ru, this message translates to:
+  /// **'{done} из {total}'**
+  String geoProgressBytes(String done, String total);
+
+  /// No description provided for @geoErrorNetwork.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось связаться с сервером обновлений. Проверьте интернет и попробуйте ещё раз.'**
+  String get geoErrorNetwork;
+
+  /// No description provided for @geoErrorServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер обновлений ответил отказом. Скорее всего, это временно — попробуйте позже.'**
+  String get geoErrorServer;
+
+  /// No description provided for @geoErrorWrite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось записать файл: нет прав на папку или не хватает места.'**
+  String get geoErrorWrite;
+
+  /// No description provided for @geoErrorCorrupt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачанный файл не прошёл проверку — закачка повредилась. Попробуйте ещё раз.'**
+  String get geoErrorCorrupt;
+
+  /// No description provided for @geoErrorOther.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не получилось. Подробности ниже.'**
+  String get geoErrorOther;
+
   /// No description provided for @geoFailed.
   ///
   /// In ru, this message translates to:
@@ -4314,6 +4470,18 @@ abstract class AppLocalizations {
   /// **'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.'**
   String get geoVerdictUnusableSub;
 
+  /// No description provided for @geoOfferMissingSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без них правила подписки по странам и категориям работать не будут — этот трафик пойдёт через VPN, а не напрямую.'**
+  String get geoOfferMissingSub;
+
+  /// No description provided for @geoOfferDismiss.
+  ///
+  /// In ru, this message translates to:
+  /// **'Больше не предлагать'**
+  String get geoOfferDismiss;
+
   /// No description provided for @pingPendingTooltip.
   ///
   /// In ru, this message translates to:
@@ -4565,6 +4733,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'HTTP на 127.0.0.1 — управление клиентом из скриптов'**
   String get apiSectionSub;
+
+  /// No description provided for @momentJustNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'только что'**
+  String get momentJustNow;
+
+  /// No description provided for @momentMinutesAgo.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} минуту назад} few{{count} минуты назад} many{{count} минут назад} other{{count} минуты назад}}'**
+  String momentMinutesAgo(int count);
+
+  /// No description provided for @momentHoursAgo.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} час назад} few{{count} часа назад} many{{count} часов назад} other{{count} часа назад}}'**
+  String momentHoursAgo(int count);
 }
 
 class _AppLocalizationsDelegate

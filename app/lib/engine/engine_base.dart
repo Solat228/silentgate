@@ -82,6 +82,12 @@ abstract class VpnEngineBase implements VpnEngine {
   ];
   static const maxAttempts = 8;
 
+  /// Сколько должен прожить туннель, чтобы считаться настоящей сессией.
+  /// Меньше — «поднялся и умер», см. [scheduleRetry]. Десять секунд: подъём
+  /// ядра и первые пакеты укладываются в единицы секунд, а живая сессия столько
+  /// не длится никогда.
+  static const _flapWindow = Duration(seconds: 10);
+
   /// Столько после успешного подключения не реагируем на «смену сети»: подъём TUN
   /// сам перестраивает маршруты (страховка поверх паузы в NetworkWatcher).
   static const networkGrace = Duration(seconds: 15);
@@ -621,9 +627,36 @@ abstract class VpnEngineBase implements VpnEngine {
   @visibleForTesting
   void cancelRetryTimer() => _retryTimer?.cancel();
 
+  /// Сдвинуть момент подъёма туннеля — иначе «живую сессию» пришлось бы ждать
+  /// в тесте настоящие десять секунд (см. `_flapWindow`).
+  @visibleForTesting
+  void debugSetLastUp(DateTime t) => _lastUpAt = t;
+
+  /// Подключение начато КОМАНДОЙ ПОЛЬЗОВАТЕЛЯ, а не автоповтором.
+  ///
+  /// ⚠️ СПРАШИВАТЬ ОБ ЭТОМ СЧЁТЧИК ПОПЫТОК НЕЛЬЗЯ, и это стоило владельцу
+  /// телефона без интернета. [markConnected] обнуляет `_attempt` в момент
+  /// ПОДЪЁМА ТУННЕЛЯ, а на Android ядро умирает уже ПОСЛЕ него — автоповтор
+  /// приходил в `startSession` с `attempt == 0` и был неотличим от нажатия
+  /// кнопки. Признак вместо факта; факт теперь ставится здесь.
+  bool _freshUserConnect = false;
+
+  @protected
+  bool get isFreshUserConnect => _freshUserConnect;
+
+  /// Момент подъёма прошлого туннеля — чтобы отличить рабочую сессию от
+  /// «поднялся и тут же умер» (см. [scheduleRetry]).
+  DateTime? _lastUpAt;
+
+  /// Счётчик попыток на момент подъёма: если туннель развалился сразу, его
+  /// возвращают, иначе серия отказов считалась бы заново каждый круг.
+  int _attemptBeforeUp = 0;
+
   /// Отметить успешное подключение (запускает отсчёт grace-периода смены сети).
   void markConnected() {
     _connectedAt = DateTime.now();
+    _lastUpAt = DateTime.now();
+    _attemptBeforeUp = _attempt;
     _attempt = 0;
     // ⚠️ Снимаем пометки обрыва ЗДЕСЬ, а не в connect(): второй обрыв за одну
     // сессию иначе прошёл бы молча — пользователь узнал бы только о первом.
@@ -1005,6 +1038,11 @@ abstract class VpnEngineBase implements VpnEngine {
     _session = EngineSession(configJson, options, servers, core);
     _userStopped = false;
     _attempt = 0;
+    // Факт, а не признак: сюда приходят ТОЛЬКО по команде человека (кнопка,
+    // url-схема, локальный API). Автоповтор идёт через `scheduleRetry` и этот
+    // флаг снимает. См. [isFreshUserConnect].
+    _freshUserConnect = true;
+    _lastUpAt = null;
     // Подключение по команде пользователя обнуляет предохранитель сторожа
     // канала: его действие — знак, что прошлые безрезультатные попытки больше
     // не в счёт (сменил сервер, починил сеть, просто попробовал снова).
@@ -1033,6 +1071,28 @@ abstract class VpnEngineBase implements VpnEngine {
     final session = _session;
     if (session == null || _userStopped) return false;
     if (!session.options.settings.autoReconnect) return false;
+
+    // Дальше идёт АВТОПОВТОР, а не команда человека, — чем бы ни кончилась
+    // прошлая попытка. Без этой строки признак «свежее подключение» жил бы до
+    // следующего нажатия и снимал бы платформенные предохранители на каждом
+    // круге (на Android — отказ от гео-баз, см. `AndroidEngine`).
+    _freshUserConnect = false;
+
+    // ⚠️ «ПОДНЯЛСЯ И ТУТ ЖЕ УМЕР» — ЭТО НЕ УСПЕХ, А ПРОДОЛЖЕНИЕ СЕРИИ ОТКАЗОВ.
+    //
+    // У владельца на Android туннель поднимался, `markConnected` обнулял
+    // счётчик, ядро падало через доли секунды — и так раз в секунду БЕЗ КОНЦА:
+    // предел в восемь попыток не достигался никогда, потому что счётчик каждый
+    // круг начинался заново. С включённым kill switch это означает телефон,
+    // у которого интернета нет вообще и который сам не выздоровеет.
+    final up = _lastUpAt;
+    if (up != null && DateTime.now().difference(up) < _flapWindow) {
+      _attempt = _attemptBeforeUp;
+      AppLog.w('Туннель развалился через ${DateTime.now().difference(up).inMilliseconds} мс '
+          'после подъёма — считаю это продолжением серии отказов, а не новой '
+          'сессией (попыток уже $_attempt из $maxAttempts)');
+    }
+    _lastUpAt = null;
 
     // ⚠️ Повтор лечит ОБРЫВ, но не отсутствующий файл.
     //

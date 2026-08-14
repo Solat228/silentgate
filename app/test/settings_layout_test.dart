@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/ui/settings_screen.dart';
+import 'package:silentgate/ui/widgets/selection_outline.dart';
 
 /// Читаемость экрана настроек.
 ///
@@ -278,6 +279,123 @@ void main() {
       }
       expect(offsets.last, greaterThan(offsets.first),
           reason: 'последний раздел обязан быть ниже первого');
+    });
+  });
+
+  group('Рамка вокруг раздела, к которому перешли', () {
+    /// ⚠️ ПРОСЬБА ВЛАДЕЛЬЦА, ПОВТОРЁННАЯ ДВАЖДЫ: после клика в левом меню
+    /// подсвечивался только сам ПУНКТ МЕНЮ, а он слева — глаз оставался там,
+    /// хотя содержимое уехало справа. Он обвёл на скриншоте блок «О программе»
+    /// целиком: обводиться должен раздел, той же рамкой, что у выбранного
+    /// сервера.
+    List<SettingsSectionData> many() => [
+          for (var i = 0; i < 4; i++)
+            section('s$i', 'Раздел $i', [
+              for (var k = 0; k < 3; k++)
+                row('строка $i-$k', 'строка $i-$k'),
+            ]),
+        ];
+
+    /// Рамка ВОКРУГ СОДЕРЖИМОГО раздела, а не вокруг пункта меню: ищем обводку
+    /// среди предков строки этого раздела. Пункт бокового меню строку раздела
+    /// в себе не содержит — перепутать нельзя.
+    Finder outlineAround(String rowText) => find.ancestor(
+          of: find.text(rowText, skipOffstage: false),
+          matching: find.byWidgetPredicate(
+              (w) => w is SelectionOutline && w.selected),
+        );
+
+    Future<void> pumpBody(WidgetTester tester) async {
+      setWindow(tester, 1400);
+      await tester.pumpWidget(host(SettingsBody(
+        sections: many(),
+        collapsed: const {},
+        onToggleSection: (_) {},
+      )));
+      await tester.pump();
+    }
+
+    testWidgets('переход из меню обводит САМ БЛОК раздела', (tester) async {
+      await pumpBody(tester);
+      expect(outlineAround('строка 2-0'), findsNothing,
+          reason: 'до перехода обводить нечего');
+
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('settings-rail')),
+          matching: find.text('Раздел 2')));
+      await tester.pumpAndSettle();
+
+      expect(outlineAround('строка 2-0'), findsOneWidget,
+          reason: 'ЗДЕСЬ БЫЛ ДЕФЕКТ: подсвечивался только пункт меню слева');
+      expect(outlineAround('строка 1-0'), findsNothing,
+          reason: 'соседний раздел не при чём');
+
+      // Догоняем гашение, чтобы таймер не остался висеть на выходе из теста.
+      await tester.pump(kSettingsHighlightHold);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('⚠️ рамка ГАСНЕТ сама — это подсказка, а не состояние',
+        (tester) async {
+      await pumpBody(tester);
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('settings-rail')),
+          matching: find.text('Раздел 1')));
+      await tester.pumpAndSettle();
+      expect(outlineAround('строка 1-0'), findsOneWidget);
+
+      // Чуть меньше срока — рамка ещё горит (иначе «гаснет» означало бы
+      // «мигнула и пропала раньше, чем человек перевёл взгляд»).
+      await tester.pump(kSettingsHighlightHold - const Duration(seconds: 1));
+      expect(outlineAround('строка 1-0'), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(outlineAround('строка 1-0'), findsNothing,
+          reason: 'постоянная рамка перестала бы что-либо значить');
+    });
+
+    testWidgets('⚠️ пометка в боковом меню при этом ОСТАЁТСЯ', (tester) async {
+      // Владелец отдельно велел полосу в меню оставить: она отвечает на вопрос
+      // «где я», а рамка — «куда меня перенесло». Гаси мы одно поле на двоих,
+      // вместе с рамкой пропала бы и пометка.
+      await pumpBody(tester);
+      await tester.tap(find.descendant(
+          of: find.byKey(const ValueKey('settings-rail')),
+          matching: find.text('Раздел 3')));
+      await tester.pumpAndSettle();
+      await tester.pump(kSettingsHighlightHold);
+      await tester.pumpAndSettle();
+
+      final selected = tester
+          .widgetList<SettingsRailTile>(find.byType(SettingsRailTile))
+          .where((t) => t.selected)
+          .toList();
+      expect(selected, hasLength(1));
+      expect(selected.single.section.id, 's3');
+      expect(outlineAround('строка 3-0'), findsNothing);
+    });
+
+    testWidgets('второй переход переносит рамку, а не рисует две',
+        (tester) async {
+      await pumpBody(tester);
+      Future<void> jump(String title) async {
+        await tester.tap(find.descendant(
+            of: find.byKey(const ValueKey('settings-rail')),
+            matching: find.text(title)));
+        await tester.pumpAndSettle();
+      }
+
+      await jump('Раздел 1');
+      await tester.pump(const Duration(seconds: 1));
+      await jump('Раздел 3');
+
+      expect(outlineAround('строка 3-0'), findsOneWidget);
+      expect(outlineAround('строка 1-0'), findsNothing,
+          reason: 'старый отсчёт обязан быть отменён вместе с рамкой');
+
+      await tester.pump(kSettingsHighlightHold);
+      await tester.pumpAndSettle();
     });
   });
 }

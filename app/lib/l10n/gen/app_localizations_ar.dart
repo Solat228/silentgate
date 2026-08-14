@@ -2198,6 +2198,106 @@ class AppLocalizationsAr extends AppLocalizations {
   String get geoDone => 'تم تحديث بيانات التوجيه الجغرافية';
 
   @override
+  String get geoWhy =>
+      'ملفّا geoip.dat وgeosite.dat قائمتان: عناوين مُصنَّفة حسب البلد ونطاقات مُصنَّفة حسب الفئة. وبهما تُفسّر النواة قواعد مثل geoip:ru وgeosite:category-ads التي تحدّدها لوحة الاشتراك. وبدون الملفّين تُحذَف هذه القواعد من التكوين.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size، آخر تحديث $date';
+  }
+
+  @override
+  String get geoFileMissing => 'الملف غير موجود';
+
+  @override
+  String get geoFileCorrupt => 'الملف تالف — لن تقرأه النواة';
+
+  @override
+  String geoFolder(String path) {
+    return 'المجلد: $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'على Windows تأتي الملفات مع النواة وتكون عادةً موجودة في مكانها. والتحديث هنا يعيد تنزيلها عندما تصبح القوائم قديمة.';
+
+  @override
+  String get geoNoWrite =>
+      'لا يمكن الكتابة في هذا المجلد — لن ينجح التنزيل إليه. يحدث هذا عادةً عند التثبيت في Program Files: شغّل التطبيق بصلاحيات المسؤول.';
+
+  @override
+  String get geoCheck => 'التحقق من التحديث';
+
+  @override
+  String get geoCheckAgain => 'التحقق مرة أخرى';
+
+  @override
+  String get geoChecking => 'جارٍ الاستعلام عن الإصدار…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'آخر تحقّق: $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'لم يجرِ التحقق من التحديث ولا مرة';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'يوجد تحديث: $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'الخادم لم يذكر الحجم';
+
+  @override
+  String get geoUpToDate => 'لا حاجة إلى تحديث: الملفات مطابقة لأحدث إصدار.';
+
+  @override
+  String get geoPlanTitle => 'تنزيل بيانات التوجيه الجغرافية؟';
+
+  @override
+  String get geoPlanTitleUpdate => 'تحديث بيانات التوجيه الجغرافية؟';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'الملفات: $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'الحجم: $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'ستمرّ الملفات عبر اتصالك. وعلى باقة الجوال هذه حركة مرور ملحوظة.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done من $total';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'تعذّر الاتصال بخادم التحديث. تحقّق من الإنترنت وحاول مرة أخرى.';
+
+  @override
+  String get geoErrorServer =>
+      'ردّ خادم التحديث بالرفض. الأرجح أن هذا مؤقت — حاول لاحقاً.';
+
+  @override
+  String get geoErrorWrite =>
+      'تعذّرت كتابة الملف: لا توجد صلاحيات على المجلد أو المساحة غير كافية.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'الملف المُنزَّل لم يجتَز الفحص — تلف أثناء التنزيل. حاول مرة أخرى.';
+
+  @override
+  String get geoErrorOther => 'لم ينجح الأمر. التفاصيل أدناه.';
+
+  @override
   String geoFailed(String error) {
     return 'فشل التنزيل: $error';
   }
@@ -2417,6 +2517,13 @@ class AppLocalizationsAr extends AppLocalizations {
       'الملفات موجودة، لكن النواة لم تقرأها. يساعد عادةً تنزيل البيانات من جديد.';
 
   @override
+  String get geoOfferMissingSub =>
+      'بدونها لن تعمل قواعد الاشتراك حسب البلدان والفئات — ستمرّ هذه الحركة عبر VPN لا مباشرةً.';
+
+  @override
+  String get geoOfferDismiss => 'عدم الاقتراح مرة أخرى';
+
+  @override
   String get pingPendingTooltip =>
       'زمن استجابة TCP إلى الخادم. فحص القناة ما زال جاريًا، ولا يُعرف بعد ما إذا كان الخادم يعمل فعلًا.';
 
@@ -2574,4 +2681,37 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get apiSectionSub =>
       '‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية';
+
+  @override
+  String get momentJustNow => 'الآن';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'منذ $count دقيقة',
+      many: 'منذ $count دقيقة',
+      few: 'منذ $count دقائق',
+      two: 'منذ دقيقتين',
+      one: 'منذ دقيقة',
+      zero: 'منذ $count دقيقة',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'منذ $count ساعة',
+      many: 'منذ $count ساعة',
+      few: 'منذ $count ساعات',
+      two: 'منذ ساعتين',
+      one: 'منذ ساعة',
+      zero: 'منذ $count ساعة',
+    );
+    return '$_temp0';
+  }
 }

@@ -2206,6 +2206,107 @@ class AppLocalizationsFa extends AppLocalizations {
   String get geoDone => 'داده‌های جغرافیایی به‌روزرسانی شد';
 
   @override
+  String get geoWhy =>
+      'فایل‌های geoip.dat و geosite.dat فهرست آدرس‌ها بر اساس کشور و دامنه‌ها بر اساس دسته‌بندی هستند. هسته با کمک آن‌ها قوانینی مانند geoip:ru و geosite:category-ads را که پنل اشتراک تعیین می‌کند تشخیص می‌دهد. بدون این فایل‌ها چنین قوانینی از پیکربندی حذف می‌شوند.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size، به‌روزشده در $date';
+  }
+
+  @override
+  String get geoFileMissing => 'فایلی وجود ندارد';
+
+  @override
+  String get geoFileCorrupt => 'فایل خراب است — هسته آن را نمی‌خواند';
+
+  @override
+  String geoFolder(String path) {
+    return 'پوشه: $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'روی Windows این فایل‌ها همراه هسته می‌آیند و معمولاً از پیش سر جایشان هستند. به‌روزرسانی در اینجا وقتی فهرست‌ها کهنه شوند دوباره آن‌ها را دانلود می‌کند.';
+
+  @override
+  String get geoNoWrite =>
+      'در این پوشه نمی‌توان نوشت — دانلود به اینجا انجام نمی‌شود. معمولاً این حالت پس از نصب در Program Files پیش می‌آید: برنامه را با دسترسی مدیر اجرا کنید.';
+
+  @override
+  String get geoCheck => 'بررسی به‌روزرسانی';
+
+  @override
+  String get geoCheckAgain => 'بررسی دوباره';
+
+  @override
+  String get geoChecking => 'در حال پرس‌وجوی آخرین نسخه…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'آخرین بررسی: $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'به‌روزرسانی هنوز هرگز بررسی نشده است';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'به‌روزرسانی موجود است: $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'سرور حجم را اعلام نکرد';
+
+  @override
+  String get geoUpToDate =>
+      'به‌روزرسانی لازم نیست: فایل‌ها با آخرین نسخه یکسان‌اند.';
+
+  @override
+  String get geoPlanTitle => 'داده‌های جغرافیایی دانلود شود؟';
+
+  @override
+  String get geoPlanTitleUpdate => 'داده‌های جغرافیایی به‌روزرسانی شود؟';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'فایل‌ها: $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'حجم: $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'فایل‌ها از راه اتصال خود شما دانلود می‌شوند. روی طرح اینترنت همراه، این حجم قابل توجهی است.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done از $total';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'ارتباط با سرور به‌روزرسانی برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.';
+
+  @override
+  String get geoErrorServer =>
+      'سرور به‌روزرسانی درخواست را رد کرد. به احتمال زیاد موقتی است — بعداً دوباره تلاش کنید.';
+
+  @override
+  String get geoErrorWrite =>
+      'نوشتن فایل ممکن نشد: دسترسی به پوشه وجود ندارد یا فضای کافی نیست.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'فایل دانلودشده در بررسی صحت مردود شد — دانلود خراب شده است. دوباره تلاش کنید.';
+
+  @override
+  String get geoErrorOther => 'انجام نشد. جزئیات در پایین.';
+
+  @override
   String geoFailed(String error) {
     return 'دانلود ناموفق بود: $error';
   }
@@ -2424,6 +2525,13 @@ class AppLocalizationsFa extends AppLocalizations {
       'فایل‌ها سر جایشان هستند، اما هسته آن‌ها را نخواند. دانلود دوبارهٔ داده‌ها معمولاً کمک می‌کند.';
 
   @override
+  String get geoOfferMissingSub =>
+      'بدون آن‌ها قوانین کشوری و دسته‌بندی اشتراک کار نمی‌کنند — این ترافیک به‌جای مسیر مستقیم از VPN می‌رود.';
+
+  @override
+  String get geoOfferDismiss => 'دیگر پیشنهاد نشود';
+
+  @override
   String get pingPendingTooltip =>
       'تأخیر TCP تا سرور. بررسی کانال هنوز ادامه دارد و معلوم نیست سرور واقعاً کار می‌کند یا نه.';
 
@@ -2580,4 +2688,29 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get apiSectionSub =>
       '‏HTTP روی 127.0.0.1 — کنترل برنامه از راه اسکریپت';
+
+  @override
+  String get momentJustNow => 'همین الان';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count دقیقه پیش',
+      one: '$count دقیقه پیش',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count ساعت پیش',
+      one: '$count ساعت پیش',
+    );
+    return '$_temp0';
+  }
 }

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
 
+import '../core/geo/geo_bases_controller.dart';
 import '../core/models/traffic_stats.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
@@ -216,8 +217,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkAppUpdate() async {
     final settings = context.read<SettingsController>().settings;
     if (!settings.appUpdateCheck) return;
-    final release = await AppUpdate.check(endpoint: settings.effectiveAppUpdateUrl);
-    if (release == null || !release.isNewer || !mounted) return;
+    final result = await AppUpdate.check();
+    // ⚠️ АВТОПРОВЕРКА МОЛЧИТ ОБО ВСЁМ, КРОМЕ НАЙДЕННОГО ОБНОВЛЕНИЯ, и это не
+    // то же самое, что прежнее «не отличаем отказ от отсутствия». Отказ теперь
+    // ОТЛИЧИМ (`UpdateCheckState.failed`) — мы просто не дёргаем им человека на
+    // старте: он этой проверки не просил. Ручная кнопка в настройках причину
+    // показывает, потому что там её спросили.
+    final release = result.release;
+    if (!result.isAvailable || release == null || !mounted) return;
     AppLog.i('Доступна версия ${release.version} (у вас ${AppInfo.version})');
     final l = AppLocalizations.of(context);
     final notes = release.notes ?? '';
@@ -674,7 +681,7 @@ class _ConnectPane extends StatelessWidget {
         // Карточка подписки показывается целиком: место под неё даёт увеличенная
         // минимальная высота окна и компактная кнопка Connect (скролл тут мешал).
         const SubscriptionBar(),
-        const _GeoAssetsBanner(),
+        const GeoOfferBanner(),
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
           child: Padding(
@@ -1535,21 +1542,93 @@ class _TrafficRow extends StatelessWidget {
 /// приложение чаще всего НЕ на экране: сверху диалог согласия VPN, стартует
 /// сервис. Всплывашка, показанная в эту секунду, до человека не доходит.
 /// Владелец так и сказал: «предложение докачать гео-файлы как будто не
-/// происходит». Поэтому вердикт держится в состоянии и висит здесь, пока он
-/// его не закроет или пока базы не появятся.
-class _GeoAssetsBanner extends StatelessWidget {
-  const _GeoAssetsBanner();
+/// происходит».
+///
+/// ⚠️ И ПОЧЕМУ НЕ ХВАТИЛО ВЕРДИКТА ЯДРА. Его ставит `_guardGeodata`, а он
+/// существует ТОЛЬКО в андроидном движке и только на пути подключения. То есть
+/// до первого подключения плашки не бывало нигде, а на Windows — никогда
+/// вообще: жалоба владельца «ни на телефоне, ни на ПК не предлагает докачать
+/// геобазы, если их нет». Поэтому повод считается сам, из двух фактов: лежат ли
+/// файлы (спрашиваем `GeoBasesController` — тот же источник, что рисует кнопку
+/// в настройках) и есть ли кому их читать ([AppState.geoRulesInUse]).
+///
+/// ⚠️ ЗДЕСЬ НЕТ РЕШЕНИЯ, ТОЛЬКО ПОКАЗ. Что предлагать — считает
+/// [geoOfferReason]; своей копии этой логики в виджете быть не должно, иначе
+/// плашка и настройки разойдутся в первой же правке.
+class GeoOfferBanner extends StatefulWidget {
+  const GeoOfferBanner({super.key});
+
+  @override
+  State<GeoOfferBanner> createState() => _GeoOfferBannerState();
+}
+
+class _GeoOfferBannerState extends State<GeoOfferBanner> {
+  /// Состояние файлов на диске. Экземпляр свой, но правда — общая: контроллер
+  /// её не хранит, а перечитывает с диска, поэтому «второго мнения» тут не
+  /// заводится. Сети он не касается, пока не позвали `check`/`download`.
+  final GeoBasesController _geo = GeoBasesController();
+
+  /// Диск спрашивали хотя бы раз. Не `bool busy`: [GeoBasesController.refresh]
+  /// зовётся из `build`, и без отметки он звался бы на каждой перерисовке.
+  bool _asked = false;
+
+  @override
+  void dispose() {
+    _geo.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const SettingsScreen(scrollToGeo: true)));
+    // Вернулись из настроек — базы могли появиться. Перечитываем диск сами: у
+    // раздела настроек свой экземпляр контроллера, ждать от него уведомления
+    // нельзя.
+    await _geo.refresh();
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
-    final verdict = state.geoVerdict;
-    if (verdict == null) return const SizedBox.shrink();
+    // ⚠️ ДИСКА НЕ КАСАЕМСЯ, ПОКА НЕ ВЫЯСНЕНО, ЧТО БАЗЫ ЧЕЛОВЕКУ НУЖНЫ. У кого
+    // ссылок `geoip:`/`geosite:` нет ни в одном конфиге, тому эта плашка не
+    // покажется никогда — и лишнего чтения диска на каждом запуске у него тоже
+    // не будет.
+    if (!state.geoRulesInUse && state.geoVerdict == null) {
+      return const SizedBox.shrink();
+    }
+    if (!_asked) {
+      _asked = true;
+      unawaited(_geo.refresh());
+    }
+    return ListenableBuilder(
+      listenable: _geo,
+      builder: (context, _) => _card(context, state),
+    );
+  }
+
+  Widget _card(BuildContext context, AppState state) {
+    final reason = geoOfferReason(
+      filesAction: _geo.action,
+      rulesInUse: state.geoRulesInUse,
+      verdict: state.geoVerdict,
+      dismissed: state.geoOfferDismissedFor,
+    );
+    if (reason == null) return const SizedBox.shrink();
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     // Два РАЗНЫХ случая: файлов нет — предлагаем скачать; файлы есть, а ядро их
     // не открыло — предлагать «скачайте» бессмысленно, там нужно перекачать.
-    final missing = verdict == EngineNoticeKind.geoAssetsMissing;
+    final missing = reason == EngineNoticeKind.geoAssetsMissing;
+    // ⚠️ И ДВЕ РАЗНЫЕ ПОДПИСИ У ОДНОГО ПОВОДА. Ядро уже жаловалось — говорим о
+    // том, что происходит («правила сейчас отключены»); предлагаем заранее —
+    // о том, что будет. Прошедшее время в предложении, сделанном до первого
+    // подключения, читалось бы как рассказ о поломке, которой не было.
+    final sub = missing
+        ? (state.geoVerdict == EngineNoticeKind.geoAssetsMissing
+            ? l.geoVerdictMissingSub
+            : l.geoOfferMissingSub)
+        : l.geoVerdictUnusableSub;
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       color: scheme.tertiaryContainer,
@@ -1570,8 +1649,7 @@ class _GeoAssetsBanner extends StatelessWidget {
                         .textTheme
                         .titleSmall
                         ?.copyWith(color: scheme.onTertiaryContainer)),
-                Text(
-                    missing ? l.geoVerdictMissingSub : l.geoVerdictUnusableSub,
+                Text(sub,
                     style: Theme.of(context)
                         .textTheme
                         .bodySmall
@@ -1580,15 +1658,24 @@ class _GeoAssetsBanner extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const SettingsScreen(scrollToGeo: true))),
+            key: const ValueKey('geoOfferAct'),
+            // Ведём в настройки, а не качаем отсюда. Закачка требует согласия с
+            // размером, полоски хода, разбора ошибки и отдельного случая «нет
+            // прав на запись в каталог ядра» — всё это уже есть в разделе
+            // настроек, и вторая копия того же разошлась бы с первой.
+            onPressed: _openSettings,
             child: Text(missing ? l.geoDownload : l.geoUpdate),
           ),
           IconButton(
-            tooltip: l.commonClose,
+            key: const ValueKey('geoOfferDismiss'),
+            // ⚠️ Не «закрыть», а «больше не предлагать»: плашка показывается
+            // при каждом запуске, и закрытие на один раз было бы отсрочкой до
+            // завтра, а не ответом. Отказ запоминается по ПОВОДУ — см.
+            // [AppState.dismissGeoOffer].
+            tooltip: l.geoOfferDismiss,
             visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.close, size: 18),
-            onPressed: context.read<AppState>().clearGeoVerdict,
+            icon: const Icon(Icons.notifications_off_outlined, size: 18),
+            onPressed: () => state.dismissGeoOffer(reason),
           ),
         ]),
       ),

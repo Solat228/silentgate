@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import '../engine/probe_factory.dart';
@@ -31,11 +32,12 @@ import 'split_tunnel_screen.dart';
 import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
-import 'widgets/geo_assets_tile.dart';
+import 'widgets/geo_bases_section.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
 import 'widgets/selection_outline.dart';
+import 'widgets/subscription_avatar.dart';
 
 /// Глобальный ключ раздела «Поддержка» — чтобы «перекинуть» сюда по кнопке
 /// «Поддержка» из любого места (карточка подписки и т.п.) и прокрутить.
@@ -202,6 +204,21 @@ abstract final class SettingsSectionIds {
 /// теряется. 760 — примерно 90 символов в строке, верхняя граница читаемости.
 const double kSettingsContentMaxWidth = 760;
 
+/// Сколько держится рамка вокруг раздела, к которому только что перешли.
+///
+/// ⚠️ ЭТО ПОДСКАЗКА «ВОТ КУДА ТЫ ПРИЕХАЛ», А НЕ СОСТОЯНИЕ. Постоянная рамка
+/// вокруг блока спорила бы с пометкой в боковом меню (та и означает «ты
+/// здесь») и через минуту работы перестала бы что-либо значить — глаз
+/// перестаёт замечать то, что не меняется. Поэтому она гаснет сама.
+///
+/// Три секунды набраны из наблюдаемых величин, а не «на глаз»: прокрутка к
+/// разделу идёт 280 мс, сама линия чертится 420 мс ([SelectionOutline]), то
+/// есть полностью замкнутой рамка становится примерно через 0,7 с после
+/// нажатия. Остаётся больше двух секунд на то, чтобы её заметить, — и столько
+/// же занимает обратный ход, так что исчезновение читается как движение, а не
+/// как мигание.
+const Duration kSettingsHighlightHold = Duration(seconds: 3);
+
 /// С какой ширины показываем боковое меню разделов.
 ///
 /// ⚠️ ВЫШЕ, чем `SgWidth.expanded` (840). Меню съедает 240 dp, и на 840
@@ -313,23 +330,55 @@ class _SettingsBodyState extends State<SettingsBody> {
 
   GlobalKey _anchor(String id) => _anchors.putIfAbsent(id, () => GlobalKey());
 
-  /// Раздел, выбранный в боковом меню. Подсвечивается рамкой.
+  /// Раздел, выбранный в боковом меню. Помечается в самом меню и держится до
+  /// следующего выбора — это ответ на вопрос «где я сейчас».
   String? _activeId;
 
+  /// Раздел, вокруг КОТОРОГО СЕЙЧАС ГОРИТ РАМКА, — это другое: она отвечает на
+  /// вопрос «куда меня перенесло» и гаснет через [kSettingsHighlightHold].
+  ///
+  /// ⚠️ ПОЧЕМУ ДВА ПОЛЯ, А НЕ ОДНО. Владелец просил обводить сам блок раздела
+  /// («на скриншоте обвёл блок „О программе“ целиком») и отдельно — оставить
+  /// полосу в боковом меню как есть. Гаси мы `_activeId`, вместе с рамкой
+  /// пропала бы и пометка в меню, то есть отметка «ты здесь».
+  String? _highlightId;
+  Timer? _highlightTimer;
+
+  @override
+  void dispose() {
+    // Без отмены таймер доживает до `setState` на снятом виджете (в тестах это
+    // ещё и «A Timer is still pending» на выходе).
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
+
   Future<void> _jumpTo(SettingsSectionData s) async {
-    setState(() => _activeId = s.id);
+    _highlightTimer?.cancel();
+    setState(() {
+      _activeId = s.id;
+      _highlightId = s.id;
+    });
     // Свёрнутый раздел разворачиваем: иначе меню приводит к пустому месту.
     if (widget.collapsed.contains(s.id)) widget.onToggleSection(s.id);
     // Ждём кадр: раздел мог только что развернуться, и его высота ещё не
     // посчитана — прицел по старой раскладке промахнулся бы.
     await WidgetsBinding.instance.endOfFrame;
+    if (mounted) {
+      final ctx = _anchor(s.id).currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: 0.0);
+      }
+    }
+    // ⚠️ Отсчёт заводится ПОСЛЕ прокрутки и на ЛЮБОМ пути — в том числе когда
+    // цели не нашлось. Ранний `return` посреди метода оставил бы рамку гореть
+    // вечно, а это ровно то состояние, которого здесь быть не должно.
     if (!mounted) return;
-    final ctx = _anchor(s.id).currentContext;
-    if (ctx == null || !ctx.mounted) return;
-    await Scrollable.ensureVisible(ctx,
-        duration: const Duration(milliseconds: 280),
-        curve: Curves.easeOutCubic,
-        alignment: 0.0);
+    _highlightTimer = Timer(kSettingsHighlightHold, () {
+      if (mounted) setState(() => _highlightId = null);
+    });
   }
 
   @override
@@ -375,24 +424,39 @@ class _SettingsBodyState extends State<SettingsBody> {
                     // из возможных.
                     final collapsed =
                         !searching && widget.collapsed.contains(s.id);
-                    return Column(
-                      key: _anchor(s.id),
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!s.ownHeader)
-                          _SectionHeader(
-                            title: s.title,
-                            collapsed: collapsed,
-                            // Во время поиска сворачивать нечего — заголовок не
-                            // должен обещать действие, которое ни на что не
-                            // влияет.
-                            onTap: searching
-                                ? null
-                                : () => widget.onToggleSection(s.id),
-                          ),
-                        if (!collapsed)
-                          for (final r in s.rows) r.build(context),
-                      ],
+                    // ⚠️ ОБВОДИТСЯ БЛОК РАЗДЕЛА, А НЕ ПУНКТ МЕНЮ. Просьба
+                    // владельца, повторённая дважды: после перехода из левого
+                    // меню подсвечивался только сам пункт, и глаз оставался
+                    // слева, хотя содержимое уехало справа. Рамка — тот же
+                    // виджет, что у выбранного сервера и у пункта меню
+                    // (`SelectionOutline`): три копии одной анимации разошлись
+                    // бы на первой правке цвета.
+                    //
+                    // Отступ внутрь — чтобы линия не ложилась на `Divider`
+                    // между разделами и не читалась как его утолщение.
+                    return SelectionOutline(
+                      selected: s.id == _highlightId,
+                      radius: 12,
+                      inset: 3,
+                      child: Column(
+                        key: _anchor(s.id),
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!s.ownHeader)
+                            _SectionHeader(
+                              title: s.title,
+                              collapsed: collapsed,
+                              // Во время поиска сворачивать нечего — заголовок
+                              // не должен обещать действие, которое ни на что
+                              // не влияет.
+                              onTap: searching
+                                  ? null
+                                  : () => widget.onToggleSection(s.id),
+                            ),
+                          if (!collapsed)
+                            for (final r in s.rows) r.build(context),
+                        ],
+                      ),
                     );
                   }),
                 ],
@@ -1253,22 +1317,11 @@ class _SupportDialogState extends State<_SupportDialog> {
               Text(l.supportWhoTo,
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
-              Wrap(spacing: 8, runSpacing: 6, children: [
-                if (vpnSupport.isNotEmpty)
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.support_agent, size: 18),
-                    // В скобках — НАЗВАНИЕ СЕРВИСА, а не «владельцу».
-                    label: Text(serviceName.isNotEmpty
-                        ? l.supportContactNamed(serviceName)
-                        : l.supportContact),
-                    onPressed: () => UrlOpener.openTelegram(vpnSupport),
-                  ),
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.developer_mode, size: 18),
-                  label: Text(l.supportContactNamed(l.supportDevServiceName)),
-                  onPressed: () => UrlOpener.openTelegram(_supportChat),
-                ),
-              ]),
+              SupportRecipients(
+                serviceName: serviceName,
+                supportUrl: vpnSupport,
+                logoPath: state.logoPath,
+              ),
             ],
           ],
         ),
@@ -1318,6 +1371,61 @@ class _SupportDialogState extends State<_SupportDialog> {
         ),
       ],
     );
+  }
+}
+
+/// «Кому отправить» — два РАЗНЫХ адресата.
+///
+/// ⚠️ ЗАЧЕМ ЗДЕСЬ АВАТАРКА ПОДПИСКИ. У обеих кнопок стояли безликие значки, и
+/// первая («написать в Silentgate VPN») ничем не отличалась от второй, кроме
+/// слова в скобках. Логотип подписки уже скачан и закэширован — это самый
+/// быстрый способ узнать «свой» сервис, и человек не отправит лог не туда.
+///
+/// ⚠️ И РОВНО У ОДНОЙ КНОПКИ. У разработчика клиента аватарки подписки быть не
+/// должно: это другой адресат, и чужой логотип рядом с ним прямо врал бы.
+/// Стережёт тест.
+///
+/// Вынесено отдельным ПУБЛИЧНЫМ виджетом ради проверяемости: сами кнопки живут
+/// в диалоге, который показывает их только после генерации отчёта (а она пишет
+/// файлы и лезет в платформу), — из теста туда не добраться.
+class SupportRecipients extends StatelessWidget {
+  const SupportRecipients({
+    super.key,
+    required this.serviceName,
+    required this.supportUrl,
+    required this.logoPath,
+  });
+
+  /// Название сервиса из подписки (может быть пустым — тогда общая подпись).
+  final String serviceName;
+
+  /// Ссылка на поддержку сервиса. Пусто — кнопки нет вовсе: отправлять некуда.
+  final String supportUrl;
+
+  /// Путь к кэшированному логотипу подписки; null — [SubscriptionAvatar]
+  /// нарисует букву на градиенте, то есть кнопка всё равно останется своей.
+  final String? logoPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Wrap(spacing: 8, runSpacing: 6, children: [
+      if (supportUrl.isNotEmpty)
+        FilledButton.tonalIcon(
+          icon: SubscriptionAvatar(
+              path: logoPath, label: serviceName, size: 18),
+          // В скобках — НАЗВАНИЕ СЕРВИСА, а не «владельцу».
+          label: Text(serviceName.isNotEmpty
+              ? l.supportContactNamed(serviceName)
+              : l.supportContact),
+          onPressed: () => UrlOpener.openTelegram(supportUrl),
+        ),
+      OutlinedButton.icon(
+        icon: const Icon(Icons.developer_mode, size: 18),
+        label: Text(l.supportContactNamed(l.supportDevServiceName)),
+        onPressed: () => UrlOpener.openTelegram(_supportChat),
+      ),
+    ]);
   }
 }
 
@@ -1695,6 +1803,27 @@ List<SettingsRow> _captureRows(
         ],
       ),
     ),
+    // Гео-базы — ВНЕ ветки TUN и БЕЗ гейта по платформе, и то и другое
+    // намеренно.
+    //
+    // ⚠️ ПО ПЛАТФОРМЕ: раньше строка была под `if (Platform.isAndroid)` с
+    // объяснением «на Windows они приезжают вместе с ядром, и кнопка была бы
+    // обманкой». Файлы действительно приезжают — и устаревают: списки
+    // `v2fly/geoip` обновляются еженедельно, а поставочные лежат с даты
+    // сборки. Кнопка «проверить/обновить» на Windows — не обманка, обманкой
+    // была её невидимость. Каталог берётся тот, из которого читает ядро
+    // (`GeoBases.dir`), на обеих платформах.
+    //
+    // ⚠️ ПО РЕЖИМУ ЗАХВАТА: гео-базы разбирает Xray по конфигу ПАНЕЛИ, а он
+    // одинаков и в системном прокси, и в TUN, и в «Только прокси». Под веткой
+    // TUN строка не строилась вовсе в режиме системного прокси — то есть в
+    // умолчании Windows, — и переход «плашка на главном → настройки»
+    // (`scrollToGeo` → `geoAssetsKey`) молча приводил в никуда: у ключа не
+    // было контекста.
+    SettingsRow(
+      search: '${l.geoTitle} geoip.dat geosite.dat ${l.geoWhy}',
+      build: (_) => GeoBasesSection(key: geoAssetsKey),
+    ),
     // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
     // в режиме системного прокси эти настройки ни на что не влияют.
     // На Android туннель — единственный режим, поэтому показываем всегда.
@@ -1748,13 +1877,6 @@ List<SettingsRow> _captureRows(
             ),
           ),
       ),
-      // Гео-базы нужны только там, где их нет в поставке. На Windows они
-      // приезжают вместе с ядром, и кнопка была бы обманкой.
-      if (Platform.isAndroid)
-        SettingsRow(
-          search: l.geoTitle,
-          build: (_) => GeoAssetsTile(key: geoAssetsKey),
-        ),
     ] else ...[
       SettingsRow(
         search: l.captureTunHint,
@@ -2008,32 +2130,39 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
 
   Future<void> _check() async {
     final l = AppLocalizations.of(context);
-    final settings = context.read<SettingsController>().settings;
     setState(() {
       _checking = true;
       _status = null;
     });
-    final release = await AppUpdate.check(endpoint: settings.effectiveAppUpdateUrl);
+    final result = await AppUpdate.check();
     if (!mounted) return;
+    final release = result.release;
     setState(() {
       _checking = false;
-      if (release == null) {
-        _status = l.appUpdateServerUnavailable;
-      } else if (release.isNewer) {
-        _status = l.appUpdateAvailable(release.version);
-      } else {
-        _status = l.appUpdateLatest;
-      }
+      // ⚠️ ТРИ ИСХОДА, А НЕ ДВА. Раньше отказ проверки был неотличим от «у вас
+      // последняя версия», и человек с отключённой сетью получал успокоительное
+      // «обновлений нет». Здесь причину показываем прямо: кнопку нажали, чтобы
+      // узнать ответ, а «не смогли проверить» — это ответ.
+      _status = switch (result.state) {
+        UpdateCheckState.available => l.appUpdateAvailable(release!.version),
+        UpdateCheckState.upToDate => l.appUpdateLatest,
+        UpdateCheckState.failed =>
+          result.failure ?? l.appUpdateServerUnavailable,
+      };
     });
-    if (release != null && release.isNewer && (release.downloadUrl ?? '').isNotEmpty) {
-      if (!mounted) return;
-      AppToast.show(
-        context,
-        l.appUpdateAvailable(release.version),
-        actionLabel: l.appUpdateDownload,
-        onAction: () => UrlOpener.open(release.downloadUrl!),
-      );
-    }
+    if (!result.isAvailable || release == null) return;
+    // Ссылки под платформу в релизе может не быть (собрали только под одну) —
+    // тогда ведём на страницу релиза, а не прячем кнопку: версию мы узнали.
+    final target = (release.downloadUrl ?? '').isNotEmpty
+        ? release.downloadUrl!
+        : (release.pageUrl ?? AppUpdate.releasesPage);
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      l.appUpdateAvailable(release.version),
+      actionLabel: l.appUpdateDownload,
+      onAction: () => UrlOpener.open(target),
+    );
   }
 
   @override
@@ -2054,25 +2183,18 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
       ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        child: Row(children: [
-          Expanded(
-            child: TextFormField(
-              initialValue: settings.appUpdateUrl,
-              decoration: InputDecoration(
-                labelText: l.appUpdateEndpointLabel,
-                isDense: true,
-                border: const OutlineInputBorder(),
-              ),
-              onChanged: (v) =>
-                  controller.update((s) => s.copyWith(appUpdateUrl: v.trim())),
-            ),
-          ),
-          const SizedBox(width: 8),
-          FilledButton.tonal(
+        // ⚠️ ПОЛЯ «ЭНДПОИНТ ВЕРСИИ» ЗДЕСЬ БОЛЬШЕ НЕТ. Оно просило пользователя
+        // настроить то, чего он знать не может, а пустым вело на панельные
+        // адреса, из которых андроидного не существует до сих пор — телефон
+        // молча не находил ничего вообще. Источник теперь один и вшит: релизы
+        // GitHub, одинаковые для обеих платформ.
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FilledButton.tonal(
             onPressed: _checking ? null : _check,
             child: Text(_checking ? '…' : l.commonCheck),
           ),
-        ]),
+        ),
       ),
     ]);
   }

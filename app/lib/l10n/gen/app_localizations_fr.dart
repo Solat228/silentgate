@@ -2234,6 +2234,107 @@ class AppLocalizationsFr extends AppLocalizations {
   String get geoDone => 'Bases géo mises à jour';
 
   @override
+  String get geoWhy =>
+      'Les fichiers geoip.dat et geosite.dat sont des listes d\'adresses par pays et de domaines par catégorie. Le cœur s\'en sert pour interpréter les règles du type geoip:ru et geosite:category-ads que définit le panneau de l\'abonnement. Sans ces fichiers, ces règles sont retirées de la configuration.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size, mise à jour : $date';
+  }
+
+  @override
+  String get geoFileMissing => 'fichier absent';
+
+  @override
+  String get geoFileCorrupt => 'fichier endommagé — le cœur ne le lira pas';
+
+  @override
+  String geoFolder(String path) {
+    return 'Dossier : $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'Sous Windows, les fichiers sont livrés avec le cœur et sont généralement déjà en place. La mise à jour ici les retélécharge quand les listes ont vieilli.';
+
+  @override
+  String get geoNoWrite =>
+      'Ce dossier n\'est pas accessible en écriture — le téléchargement n\'y aboutira pas. C\'est le cas habituel après une installation dans Program Files : lancez l\'application en tant qu\'administrateur.';
+
+  @override
+  String get geoCheck => 'Vérifier les mises à jour';
+
+  @override
+  String get geoCheckAgain => 'Vérifier à nouveau';
+
+  @override
+  String get geoChecking => 'Consultation de la dernière version…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'Dernière vérification : $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'Les mises à jour n\'ont jamais été vérifiées';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'Mise à jour disponible : $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'taille non communiquée par le serveur';
+
+  @override
+  String get geoUpToDate =>
+      'Aucune mise à jour nécessaire : les fichiers correspondent à la dernière version publiée.';
+
+  @override
+  String get geoPlanTitle => 'Télécharger les bases géo ?';
+
+  @override
+  String get geoPlanTitleUpdate => 'Mettre à jour les bases géo ?';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'Fichiers : $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'Taille : $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'Les fichiers passeront par votre connexion. Sur un forfait mobile, cela représente un volume notable.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done sur $total';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'Impossible de joindre le serveur de mises à jour. Vérifiez votre connexion Internet et réessayez.';
+
+  @override
+  String get geoErrorServer =>
+      'Le serveur de mises à jour a refusé la requête. C\'est généralement temporaire — réessayez plus tard.';
+
+  @override
+  String get geoErrorWrite =>
+      'Impossible d\'écrire le fichier : pas de droits sur le dossier ou pas assez d\'espace.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'Le fichier téléchargé n\'a pas passé la vérification — le téléchargement est corrompu. Réessayez.';
+
+  @override
+  String get geoErrorOther => 'Cela n\'a pas fonctionné. Détails ci-dessous.';
+
+  @override
   String geoFailed(String error) {
     return 'Échec du téléchargement : $error';
   }
@@ -2456,6 +2557,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les fichiers sont là, mais le cœur ne les a pas lus. Retélécharger les bases aide généralement.';
 
   @override
+  String get geoOfferMissingSub =>
+      'Sans elles, les règles de l\'abonnement par pays et par catégorie ne fonctionneront pas — ce trafic passera par le VPN et non en direct.';
+
+  @override
+  String get geoOfferDismiss => 'Ne plus proposer';
+
+  @override
   String get pingPendingTooltip =>
       'Latence TCP jusqu\'au serveur. La vérification du canal est encore en cours : on ne sait pas encore si le serveur fonctionne.';
 
@@ -2614,4 +2722,29 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get apiSectionSub =>
       'HTTP sur 127.0.0.1 — pilotez le client depuis vos scripts';
+
+  @override
+  String get momentJustNow => 'à l\'instant';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'il y a $count minutes',
+      one: 'il y a $count minute',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'il y a $count heures',
+      one: 'il y a $count heure',
+    );
+    return '$_temp0';
+  }
 }

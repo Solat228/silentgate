@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "地理数据库已更新",
+  "geoWhy": "geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单。核心依靠它们解析订阅面板下发的 geoip:ru、geosite:category-ads 这类规则。文件缺失时，这类规则会从配置中移除。",
+  "geoFileOk": "{size}，更新于 {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "文件缺失",
+  "geoFileCorrupt": "文件已损坏——核心无法读取",
+  "geoFolder": "文件夹：{path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "在 Windows 上，这些文件随核心一同发布，通常已经就位。清单过时后，这里的更新会重新下载它们。",
+  "geoNoWrite": "该文件夹不可写入——无法下载到这里。通常是因为安装在了 Program Files：请以管理员身份运行应用。",
+  "geoCheck": "检查更新",
+  "geoCheckAgain": "再检查一次",
+  "geoChecking": "正在查询发布版本…",
+  "geoLastCheck": "上次检查：{when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "还没有检查过更新",
+  "geoUpdateAvailable": "有可用更新：{files}（{size}）",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "服务器未告知",
+  "geoUpToDate": "无需更新：文件与最新发布一致。",
+  "geoPlanTitle": "要下载地理数据库吗？",
+  "geoPlanTitleUpdate": "要更新地理数据库吗？",
+  "geoPlanFiles": "文件：{files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "大小：{size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "文件会通过您当前的网络下载。使用移动数据时，这笔流量并不算小。",
+  "geoProgressBytes": "{done} / {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "无法连接更新服务器。请检查网络后重试。",
+  "geoErrorServer": "更新服务器拒绝了请求。多半是暂时的，请稍后再试。",
+  "geoErrorWrite": "无法写入文件：没有该文件夹的权限，或磁盘空间不足。",
+  "geoErrorCorrupt": "下载的文件未通过校验——传输过程中损坏了。请重试。",
+  "geoErrorOther": "没有成功。详情见下方。",
   "geoFailed": "下载失败：{error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "订阅中按国家和类别的规则当前已停用——这部分流量走 VPN，而不是直连。",
   "geoVerdictUnusableTitle": "核心未能打开地理数据库",
   "geoVerdictUnusableSub": "文件都在，但核心没有读取它们。重新下载数据库通常可以解决。",
+  "geoOfferMissingSub": "缺少它们，订阅中按国家和类别的规则就无法工作——这部分流量会走 VPN，而不是直连。",
+  "geoOfferDismiss": "不再提示",
   "pingPendingTooltip": "到服务器的 TCP 延迟。通道检查仍在进行，服务器是否真正可用尚不清楚。",
   "pingUnverifiedTooltip": "到服务器的 TCP 延迟。未经过隧道检查，只知道是否可达。",
   "pingMeasuredAt": "测量时间：{time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "速度：{total} 个中的 {done} 个",
   "updateOnStartTitle": "启动时刷新订阅",
   "updateOnStartSub": "每次都拉取最新服务器列表，而不只按计时器",
-  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端"
+  "apiSectionSub": "127.0.0.1 上的 HTTP——从脚本控制客户端",
+  "momentJustNow": "刚刚",
+  "momentMinutesAgo": "{count, plural, other{{count} 分钟前}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, other{{count} 小时前}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

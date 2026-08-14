@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "Geo verileri güncellendi",
+  "geoWhy": "geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir. Çekirdek, abonelik panelinizin tanımladığı geoip:ru ve geosite:category-ads gibi kuralları bunlara göre çözer. Dosyalar olmadan bu tür kurallar yapılandırmadan çıkarılır.",
+  "geoFileOk": "{size}, son güncelleme {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "dosya yok",
+  "geoFileCorrupt": "dosya bozuk — çekirdek onu okuyamaz",
+  "geoFolder": "Klasör: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "Windows'ta dosyalar çekirdekle birlikte gelir ve genellikle zaten yerindedir. Buradaki güncelleme, listeler eskidiğinde onları yeniden indirir.",
+  "geoNoWrite": "Bu klasöre yazılamıyor — buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.",
+  "geoCheck": "Güncellemeyi kontrol et",
+  "geoCheckAgain": "Tekrar kontrol et",
+  "geoChecking": "Sürüm sorgulanıyor…",
+  "geoLastCheck": "Son kontrol: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Güncelleme hiç kontrol edilmedi",
+  "geoUpdateAvailable": "Güncelleme mevcut: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "sunucu boyutu bildirmedi",
+  "geoUpToDate": "Güncelleme gerekmiyor: dosyalar son sürümle aynı.",
+  "geoPlanTitle": "Geo verileri indirilsin mi?",
+  "geoPlanTitleUpdate": "Geo verileri güncellensin mi?",
+  "geoPlanFiles": "Dosyalar: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Boyut: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Dosyalar sizin bağlantınız üzerinden inecek. Mobil tarifede bu, göze çarpan bir trafik demektir.",
+  "geoProgressBytes": "{total} içinden {done}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Güncelleme sunucusuna ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.",
+  "geoErrorServer": "Güncelleme sunucusu isteği geri çevirdi. Büyük olasılıkla geçicidir — daha sonra tekrar deneyin.",
+  "geoErrorWrite": "Dosya yazılamadı: klasör için izin yok ya da yer yetersiz.",
+  "geoErrorCorrupt": "İndirilen dosya doğrulamayı geçemedi — indirme bozulmuş. Tekrar deneyin.",
+  "geoErrorOther": "Olmadı. Ayrıntılar aşağıda.",
   "geoFailed": "İndirme başarısız: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "Aboneliğin ülke ve kategori kuralları şu anda devre dışı — bu trafik doğrudan değil, VPN üzerinden gidiyor.",
   "geoVerdictUnusableTitle": "Çekirdek geo verilerini açamadı",
   "geoVerdictUnusableSub": "Dosyalar yerinde ama çekirdek onları okuyamadı. Verileri yeniden indirmek işe yarar.",
+  "geoOfferMissingSub": "Onlar olmadan aboneliğin ülke ve kategori kuralları çalışmaz — bu trafik doğrudan değil, VPN üzerinden gidecek.",
+  "geoOfferDismiss": "Bir daha önerme",
   "pingPendingTooltip": "Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.",
   "pingUnverifiedTooltip": "Sunucuya TCP gecikmesi. Tünel üzerinden denetim yapılmadı — yalnızca erişilebilirlik biliniyor.",
   "pingMeasuredAt": "Ölçüm: {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "Hız: {total} sunucudan {done}",
   "updateOnStartTitle": "Açılışta aboneliği yenile",
   "updateOnStartSub": "Yalnızca zamanlayıcıyla değil, her seferinde taze sunucu listesi çek",
-  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin"
+  "apiSectionSub": "127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin",
+  "momentJustNow": "az önce",
+  "momentMinutesAgo": "{count, plural, one{{count} dakika önce} other{{count} dakika önce}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{{count} saat önce} other{{count} saat önce}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

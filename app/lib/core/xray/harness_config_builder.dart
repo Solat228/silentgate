@@ -318,47 +318,29 @@ class HarnessConfigBuilder {
       final outbounds = cfg['outbounds'];
       if (outbounds is! List || outbounds.isEmpty) return null;
 
-      // Цель роутинга: balancerTag из исходных правил, иначе первый proxy-outbound.
       final routing = cfg['routing'] is Map
           ? Map<String, dynamic>.from(cfg['routing'] as Map)
           : <String, dynamic>{};
-      String? balancerTag;
-      final origRules = routing['rules'];
-      if (origRules is List) {
-        for (final r in origRules) {
-          if (r is Map && r['balancerTag'] != null) {
-            balancerTag = '${r['balancerTag']}';
-            break;
-          }
-        }
-      }
-      String? outTag;
-      if (balancerTag == null) {
-        for (final o in outbounds) {
-          if (o is! Map) continue;
-          final proto = '${o['protocol']}';
-          if (proto == 'freedom' || proto == 'blackhole' || proto == 'dns') {
-            continue;
-          }
-          final tag = '${o['tag'] ?? ''}';
-          if (tag.isNotEmpty) {
-            outTag = tag;
-            break;
-          }
-        }
-        outTag ??= '${(outbounds.first as Map)['tag'] ?? ''}';
-      }
+      final outTag = probeExitTag(routing, outbounds);
+      if (outTag == null) return null;
 
       const inTag = 'in-0';
-      routing['domainStrategy'] = routing['domainStrategy'] ?? 'AsIs';
+      // domainStrategy ФОРСИРУЕТСЯ, а не наследуется из профиля (там почти
+      // всегда `IPIfNonMatch`). Причина та же, что в [buildMap]: IPIfNonMatch
+      // заставляет ядро резолвить имя мишени ЛОКАЛЬНО, и этот резолв попадает
+      // в измеряемую задержку. Единственное правило ниже сверяет `inboundTag`,
+      // домен ему не нужен.
+      routing['domainStrategy'] = 'AsIs';
+      // ⚠️ БАЛАНСИРОВЩИКИ УБИРАЕМ ЦЕЛИКОМ — см. [probeExitTag]. Оставить их
+      // «на всякий случай» нельзя: правил, которые бы на них ссылались, здесь
+      // больше нет, а балансировщик со стратегией `leastPing` и без
+      // наблюдателя — это ссылка на возможность, которой в конфиге не осталось.
+      routing.remove('balancers');
       routing['rules'] = [
         {
           'type': 'field',
           'inboundTag': [inTag],
-          if (balancerTag != null)
-            'balancerTag': balancerTag
-          else
-            'outboundTag': outTag,
+          'outboundTag': outTag,
         },
       ];
 
@@ -376,9 +358,118 @@ class HarnessConfigBuilder {
       cfg.remove('api');
       cfg.remove('stats');
       cfg.remove('policy');
+      // ⚠️ НАБЛЮДАТЕЛЬ ТОЖЕ УБИРАЕТСЯ, И ЭТО ОТДЕЛЬНАЯ ПРИЧИНА, А НЕ СЛЕДСТВИЕ
+      // ПРЕДЫДУЩЕЙ. `burstObservatory` начинает работу вместе с ядром и шлёт
+      // свою пробу (у Remnawave это `https://www.youtube.com/generate_204`)
+      // ЧЕРЕЗ КАЖДЫЙ узел профиля, по `sampling` раз на узел. На профиле из
+      // семи десятков узлов это сотни одновременных TLS-сессий ровно в те
+      // секунды, когда мы меряем задержку, — цифра получается про эту бурю, а
+      // не про канал. Плюс трафик подписки за пробу, которой мы не просили.
+      cfg.remove('observatory');
+      cfg.remove('burstObservatory');
       return cfg;
     } catch (_) {
       return null;
     }
+  }
+
+  /// Тег outbound'а, ЧЕРЕЗ КОТОРЫЙ пойдёт проба. `null` — в конфиге нет ни
+  /// одного outbound'а с тегом (мерить нечем, откат на обычный путь).
+  ///
+  /// ⚠️ ВСЕГДА КОНКРЕТНЫЙ УЗЕЛ, НИКОГДА БАЛАНСИРОВЩИК — вот из-за чего
+  /// панельные профили «Авто …» пинговались плохо или не пинговались вовсе.
+  /// Раньше правило харнесса вело на `balancerTag` исходного профиля, и это
+  /// НЕ РАБОТАЕТ в харнессе по построению:
+  ///
+  ///   * балансировщик Remnawave стоит на стратегии `leastPing`, а она берёт
+  ///     задержки у `burstObservatory` — то есть у наблюдателя, который
+  ///     стартует ВМЕСТЕ С ЯДРОМ и первую пачку задержек получает через
+  ///     секунды (проба идёт до внешнего адреса через каждый из десятков
+  ///     узлов). Харнесс живёт ровно один замер: порт слушает через ~0,2 с,
+  ///     проба уходит с таймаутом 3 с (`pingTimeoutMs`, на Android 5 с
+  ///     нативных). Наблюдений к этому моменту нет;
+  ///   * пустой выбор балансировщика Xray отдаёт в `fallbackTag`, а в
+  ///     профилях панели это `direct`. То есть проба уходила МИМО сервера и
+  ///     мерила прямой канал пользователя — «пинг» был, к серверу отношения
+  ///     не имел. Без `fallbackTag` тот же случай даёт отказ соединения и
+  ///     «n/a» на заведомо живом профиле.
+  ///
+  /// Поэтому выход выбираем САМИ и статически. Правило выбора — «тот узел,
+  /// который пользователь видит в строке»: `XrayJsonSubscription` берёт для
+  /// показа outbound с тегом `proxy` (иначе первый прокси), и цифра пинга
+  /// обязана относиться к тому же адресу, что показан рядом с ней. Среди
+  /// узлов сперва отбираем те, что попадают под `selector` балансировщика
+  /// (Xray сверяет его ПРЕФИКСОМ тега) — иначе на профиле, где балансируется
+  /// только часть узлов, мы измеряли бы узел, который профиль не использует.
+  ///
+  /// ⚠️ ЧЕСТНАЯ ГРАНИЦА: это задержка до ОДНОГО узла профиля, а не до того,
+  /// который балансировщик выберет при подключении. Другого числа в пределах
+  /// одного замера не существует: чтобы получить выбор балансировщика, надо
+  /// дать наблюдателю обойти все узлы, а это и есть тот самый прогон пинга,
+  /// только целиком и по каждому профилю отдельно.
+  static String? probeExitTag(Map<String, dynamic> routing, List outbounds) {
+    final proxies = [
+      for (final o in outbounds)
+        if (o is Map && _isProxyOutbound(o) && '${o['tag'] ?? ''}'.isNotEmpty)
+          o,
+    ];
+    if (proxies.isEmpty) {
+      // Конфиг без прокси-outbound'ов (чужая правка из одних freedom) — берём
+      // первый тег, какой есть: измерять там нечего, но конфиг обязан остаться
+      // валидным, иначе ядро не поднимется и вердикт станет выдуманным.
+      for (final o in outbounds) {
+        final tag = o is Map ? '${o['tag'] ?? ''}' : '';
+        if (tag.isNotEmpty) return tag;
+      }
+      return null;
+    }
+
+    final selectors = _balancerSelectors(routing);
+    final matching = selectors.isEmpty
+        ? proxies
+        : [
+            for (final o in proxies)
+              if (selectors.any((p) => '${o['tag']}'.startsWith(p))) o,
+          ];
+    // Селектор не совпал ни с чем (профиль ссылается на теги, которых нет) —
+    // мерим первый прокси, а не отказываемся: узлы-то в конфиге настоящие.
+    final pool = matching.isEmpty ? proxies : matching;
+    for (final o in pool) {
+      if ('${o['tag']}' == 'proxy') return 'proxy';
+    }
+    return '${pool.first['tag']}';
+  }
+
+  static bool _isProxyOutbound(Map o) {
+    final proto = '${o['protocol']}';
+    return proto != 'freedom' && proto != 'blackhole' && proto != 'dns';
+  }
+
+  /// `selector` балансировщика, на который ссылается первое правило профиля.
+  /// Пусто — балансировщика нет либо он объявлен без селектора.
+  static List<String> _balancerSelectors(Map<String, dynamic> routing) {
+    String? balancerTag;
+    final rules = routing['rules'];
+    if (rules is List) {
+      for (final r in rules) {
+        if (r is Map && r['balancerTag'] != null) {
+          balancerTag = '${r['balancerTag']}';
+          break;
+        }
+      }
+    }
+    if (balancerTag == null) return const [];
+    final balancers = routing['balancers'];
+    if (balancers is! List) return const [];
+    for (final b in balancers) {
+      if (b is! Map || '${b['tag']}' != balancerTag) continue;
+      final sel = b['selector'];
+      if (sel is! List) return const [];
+      return [
+        for (final s in sel)
+          if ('$s'.isNotEmpty) '$s',
+      ];
+    }
+    return const [];
   }
 }

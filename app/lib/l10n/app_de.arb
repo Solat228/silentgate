@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "Geodatenbanken aktualisiert",
+  "geoWhy": "Die Dateien geoip.dat und geosite.dat enthalten Adresslisten nach Ländern und Domainlisten nach Kategorien. Auf ihrer Grundlage wertet der Kern Regeln wie geoip:ru und geosite:category-ads aus, die das Panel Ihres Abonnements vorgibt. Ohne die Dateien werden solche Regeln aus der Konfiguration entfernt.",
+  "geoFileOk": "{size}, Stand {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "Datei fehlt",
+  "geoFileCorrupt": "Datei beschädigt — der Kern kann sie nicht lesen",
+  "geoFolder": "Ordner: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "Unter Windows werden die Dateien mit dem Kern ausgeliefert und liegen meist schon an Ort und Stelle. Die Aktualisierung hier lädt sie neu herunter, wenn die Listen veraltet sind.",
+  "geoNoWrite": "In diesen Ordner kann nicht geschrieben werden — das Herunterladen schlägt hier fehl. Das kommt meist bei einer Installation in Program Files vor: Starten Sie die App als Administrator.",
+  "geoCheck": "Auf Update prüfen",
+  "geoCheckAgain": "Erneut prüfen",
+  "geoChecking": "Release wird abgefragt…",
+  "geoLastCheck": "Zuletzt geprüft: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Noch nie auf ein Update geprüft",
+  "geoUpdateAvailable": "Update verfügbar: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "vom Server nicht angegeben",
+  "geoUpToDate": "Kein Update nötig: Die Dateien entsprechen dem neuesten Release.",
+  "geoPlanTitle": "Geodatenbanken herunterladen?",
+  "geoPlanTitleUpdate": "Geodatenbanken aktualisieren?",
+  "geoPlanFiles": "Dateien: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Größe: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Die Dateien laufen über Ihre eigene Verbindung. In einem Mobilfunktarif ist das spürbarer Datenverkehr.",
+  "geoProgressBytes": "{done} von {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "Der Update-Server war nicht erreichbar. Prüfen Sie Ihre Internetverbindung und versuchen Sie es erneut.",
+  "geoErrorServer": "Der Update-Server hat die Anfrage abgelehnt. Das ist meist vorübergehend — versuchen Sie es später erneut.",
+  "geoErrorWrite": "Die Datei konnte nicht geschrieben werden: keine Rechte für den Ordner oder zu wenig Speicherplatz.",
+  "geoErrorCorrupt": "Die heruntergeladene Datei hat die Prüfung nicht bestanden — der Download ist beschädigt. Versuchen Sie es erneut.",
+  "geoErrorOther": "Es hat nicht geklappt. Details unten.",
   "geoFailed": "Herunterladen fehlgeschlagen: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "Die Abonnement-Regeln nach Land und Kategorie sind derzeit deaktiviert — dieser Verkehr läuft über das VPN statt direkt.",
   "geoVerdictUnusableTitle": "Der Kern konnte die Geodatenbanken nicht öffnen",
   "geoVerdictUnusableSub": "Die Dateien sind vorhanden, aber der Kern hat sie nicht gelesen. Ein erneutes Herunterladen hilft.",
+  "geoOfferMissingSub": "Ohne sie funktionieren die Abonnement-Regeln nach Land und Kategorie nicht — dieser Verkehr läuft dann über das VPN statt direkt.",
+  "geoOfferDismiss": "Nicht mehr anbieten",
   "pingPendingTooltip": "TCP-Latenz zum Server. Die Kanalprüfung läuft noch – ob der Server wirklich funktioniert, ist noch nicht bekannt.",
   "pingUnverifiedTooltip": "TCP-Latenz zum Server. Es wurde keine Prüfung durch den Tunnel durchgeführt – bekannt ist nur die Erreichbarkeit.",
   "pingMeasuredAt": "Gemessen: {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "Geschwindigkeit: {done} von {total}",
   "updateOnStartTitle": "Abo beim Start aktualisieren",
   "updateOnStartSub": "Jedes Mal eine frische Serverliste holen, nicht nur per Timer",
-  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern"
+  "apiSectionSub": "HTTP auf 127.0.0.1 – den Client aus Skripten steuern",
+  "momentJustNow": "gerade eben",
+  "momentMinutesAgo": "{count, plural, one{vor {count} Minute} other{vor {count} Minuten}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{vor {count} Stunde} other{vor {count} Stunden}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

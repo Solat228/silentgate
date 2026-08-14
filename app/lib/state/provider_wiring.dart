@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../core/geo/geo_bases_controller.dart';
 import '../core/settings/app_settings.dart';
 import 'app_state.dart';
 import 'probe_controller.dart';
@@ -93,4 +94,31 @@ ProxyProvider<SettingsController, ApiSettingsLink> apiSettingsLinkProvider() =>
       lazy: false,
       update: (context, settings, previous) =>
           (previous ?? ApiSettingsLink())..applyIfChanged(context, settings),
+    );
+
+/// Состояние гео-баз (`geoip.dat`/`geosite.dat`) для настроек и главного
+/// экрана.
+///
+/// ⚠️ `lazy: false` ЗДЕСЬ — НЕ КОПИРОВАНИЕ СОСЕДНЕГО ПРАВИЛА. У
+/// `ChangeNotifierProvider` ленивость означает, что контроллер появляется на
+/// свет в момент ПЕРВОГО чтения его типа. Сегодня такое чтение ровно одно —
+/// раздел гео-баз в настройках, — и это ровно та связь, на которой в 1.4.0 уже
+/// сгорел локальный API: пока читатель есть, всё работает, а в день, когда
+/// единственного читателя переименуют или уберут, провайдер молча перестаёт
+/// существовать, и ни компилятор, ни `flutter analyze` про это не скажут.
+///
+/// Плюс к тому [GeoBasesController.refresh] — это чтение каталога с диска:
+/// сделанное при запуске, оно даёт настройкам готовое состояние на ПЕРВОМ
+/// кадре, а не «неизвестно» с последующим прыжком строки.
+///
+/// [create] существует ради стража (`test/geo_bases_ui_test.dart`): он собирает
+/// РОВНО ЭТУ функцию, что уходит в `runApp`, и проверяет, что контроллер
+/// создаётся в дереве, где его тип не читает никто. В боевом коде параметр не
+/// передаётся.
+ChangeNotifierProvider<GeoBasesController> geoBasesProvider({
+  GeoBasesController Function()? create,
+}) =>
+    ChangeNotifierProvider<GeoBasesController>(
+      lazy: false,
+      create: (_) => (create?.call() ?? GeoBasesController())..refresh(),
     );

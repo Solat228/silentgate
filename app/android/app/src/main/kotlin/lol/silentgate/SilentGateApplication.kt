@@ -59,6 +59,25 @@ class SilentGateApplication : Application() {
             val geo = File(filesDir, "SilentGate/geo")
             if (!geo.exists()) geo.mkdirs()
             Os.setenv("XRAY_LOCATION_ASSET", geo.absolutePath, true)
+            // ⚠️ ЗАГРУЖАЕМ ЯДРО ПРЯМО ЗДЕСЬ, СРАЗУ ПОСЛЕ setenv. Без этого
+            // порядок не задан ничем: класс `LibXray` подтягивается лениво —
+            // тем, кто первым его коснётся, — и Go-рантайм успевал стартовать
+            // ДО нашей переменной. Тогда `os.Getenv` внутри ядра её не видел, и
+            // оно шло искать базы по умолчанию:
+            //
+            //   common/geodata: illegal ip rule: geoip:private
+            //     > failed to open geoip.dat
+            //     > stat /system/bin/geoip.dat: no such file or directory
+            //
+            // Владелец получил это на живом телефоне 15.08.2026: базы лежали на
+            // месте, а VPN не поднимался вовсе. Обращение к классу заставляет
+            // `System.loadLibrary` отработать в известный момент — после
+            // setenv, — и Go копирует окружение уже с нашей переменной.
+            //
+            // Читаем обратно и пишем в лог: «поставили» и «ядро увидело» — два
+            // разных утверждения, и до этой правки они расходились молча.
+            Class.forName("lol.silentgate.cores.libXray.LibXray")
+            Log.i("SilentGateApp", "Каталог гео-баз: ${Os.getenv("XRAY_LOCATION_ASSET")}")
         }.onFailure {
             Log.w("SilentGateApp", "Не удалось указать каталог гео-баз: ${it.message}")
         }

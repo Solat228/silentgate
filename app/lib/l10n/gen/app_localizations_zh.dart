@@ -2148,6 +2148,101 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoDone => '地理数据库已更新';
 
   @override
+  String get geoWhy =>
+      'geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单。核心依靠它们解析订阅面板下发的 geoip:ru、geosite:category-ads 这类规则。文件缺失时，这类规则会从配置中移除。';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size，更新于 $date';
+  }
+
+  @override
+  String get geoFileMissing => '文件缺失';
+
+  @override
+  String get geoFileCorrupt => '文件已损坏——核心无法读取';
+
+  @override
+  String geoFolder(String path) {
+    return '文件夹：$path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      '在 Windows 上，这些文件随核心一同发布，通常已经就位。清单过时后，这里的更新会重新下载它们。';
+
+  @override
+  String get geoNoWrite =>
+      '该文件夹不可写入——无法下载到这里。通常是因为安装在了 Program Files：请以管理员身份运行应用。';
+
+  @override
+  String get geoCheck => '检查更新';
+
+  @override
+  String get geoCheckAgain => '再检查一次';
+
+  @override
+  String get geoChecking => '正在查询发布版本…';
+
+  @override
+  String geoLastCheck(String when) {
+    return '上次检查：$when';
+  }
+
+  @override
+  String get geoNeverChecked => '还没有检查过更新';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return '有可用更新：$files（$size）';
+  }
+
+  @override
+  String get geoSizeUnknown => '服务器未告知';
+
+  @override
+  String get geoUpToDate => '无需更新：文件与最新发布一致。';
+
+  @override
+  String get geoPlanTitle => '要下载地理数据库吗？';
+
+  @override
+  String get geoPlanTitleUpdate => '要更新地理数据库吗？';
+
+  @override
+  String geoPlanFiles(String files) {
+    return '文件：$files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return '大小：$size';
+  }
+
+  @override
+  String get geoPlanTraffic => '文件会通过您当前的网络下载。使用移动数据时，这笔流量并不算小。';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done / $total';
+  }
+
+  @override
+  String get geoErrorNetwork => '无法连接更新服务器。请检查网络后重试。';
+
+  @override
+  String get geoErrorServer => '更新服务器拒绝了请求。多半是暂时的，请稍后再试。';
+
+  @override
+  String get geoErrorWrite => '无法写入文件：没有该文件夹的权限，或磁盘空间不足。';
+
+  @override
+  String get geoErrorCorrupt => '下载的文件未通过校验——传输过程中损坏了。请重试。';
+
+  @override
+  String get geoErrorOther => '没有成功。详情见下方。';
+
+  @override
   String geoFailed(String error) {
     return '下载失败：$error';
   }
@@ -2356,6 +2451,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoVerdictUnusableSub => '文件都在，但核心没有读取它们。重新下载数据库通常可以解决。';
 
   @override
+  String get geoOfferMissingSub => '缺少它们，订阅中按国家和类别的规则就无法工作——这部分流量会走 VPN，而不是直连。';
+
+  @override
+  String get geoOfferDismiss => '不再提示';
+
+  @override
   String get pingPendingTooltip => '到服务器的 TCP 延迟。通道检查仍在进行，服务器是否真正可用尚不清楚。';
 
   @override
@@ -2502,4 +2603,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get apiSectionSub => '127.0.0.1 上的 HTTP——从脚本控制客户端';
+
+  @override
+  String get momentJustNow => '刚刚';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 分钟前',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 小时前',
+    );
+    return '$_temp0';
+  }
 }

@@ -2212,6 +2212,107 @@ class AppLocalizationsRu extends AppLocalizations {
   String get geoDone => 'Гео-базы обновлены';
 
   @override
+  String get geoWhy =>
+      'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям. По ним ядро разбирает правила вида geoip:ru и geosite:category-ads, которые задаёт панель подписки. Без файлов такие правила из конфига убираются.';
+
+  @override
+  String geoFileOk(String size, String date) {
+    return '$size, обновлён $date';
+  }
+
+  @override
+  String get geoFileMissing => 'файла нет';
+
+  @override
+  String get geoFileCorrupt => 'файл повреждён — ядро его не прочитает';
+
+  @override
+  String geoFolder(String path) {
+    return 'Папка: $path';
+  }
+
+  @override
+  String get geoBundledWindows =>
+      'На Windows файлы приезжают вместе с ядром и обычно уже лежат на месте. Обновление здесь перекачивает их, когда списки устарели.';
+
+  @override
+  String get geoNoWrite =>
+      'В эту папку нельзя писать — скачать сюда не получится. Обычно так бывает при установке в Program Files: запустите приложение от имени администратора.';
+
+  @override
+  String get geoCheck => 'Проверить обновление';
+
+  @override
+  String get geoCheckAgain => 'Проверить ещё раз';
+
+  @override
+  String get geoChecking => 'Спрашиваю выпуск…';
+
+  @override
+  String geoLastCheck(String when) {
+    return 'Проверяли: $when';
+  }
+
+  @override
+  String get geoNeverChecked => 'Обновление ещё ни разу не проверяли';
+
+  @override
+  String geoUpdateAvailable(String files, String size) {
+    return 'Есть обновление: $files — $size';
+  }
+
+  @override
+  String get geoSizeUnknown => 'размер сервер не сообщил';
+
+  @override
+  String get geoUpToDate =>
+      'Обновление не требуется: файлы совпадают с последним выпуском.';
+
+  @override
+  String get geoPlanTitle => 'Скачать гео-базы?';
+
+  @override
+  String get geoPlanTitleUpdate => 'Обновить гео-базы?';
+
+  @override
+  String geoPlanFiles(String files) {
+    return 'Файлы: $files';
+  }
+
+  @override
+  String geoPlanSize(String size) {
+    return 'Размер: $size';
+  }
+
+  @override
+  String get geoPlanTraffic =>
+      'Файлы поедут через ваше подключение. На мобильном тарифе это заметный трафик.';
+
+  @override
+  String geoProgressBytes(String done, String total) {
+    return '$done из $total';
+  }
+
+  @override
+  String get geoErrorNetwork =>
+      'Не удалось связаться с сервером обновлений. Проверьте интернет и попробуйте ещё раз.';
+
+  @override
+  String get geoErrorServer =>
+      'Сервер обновлений ответил отказом. Скорее всего, это временно — попробуйте позже.';
+
+  @override
+  String get geoErrorWrite =>
+      'Не удалось записать файл: нет прав на папку или не хватает места.';
+
+  @override
+  String get geoErrorCorrupt =>
+      'Скачанный файл не прошёл проверку — закачка повредилась. Попробуйте ещё раз.';
+
+  @override
+  String get geoErrorOther => 'Не получилось. Подробности ниже.';
+
+  @override
   String geoFailed(String error) {
     return 'Не удалось скачать: $error';
   }
@@ -2431,6 +2532,13 @@ class AppLocalizationsRu extends AppLocalizations {
       'Файлы на месте, но ядро их не прочитало. Помогает перекачивание баз.';
 
   @override
+  String get geoOfferMissingSub =>
+      'Без них правила подписки по странам и категориям работать не будут — этот трафик пойдёт через VPN, а не напрямую.';
+
+  @override
+  String get geoOfferDismiss => 'Больше не предлагать';
+
+  @override
   String get pingPendingTooltip =>
       'Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.';
 
@@ -2587,4 +2695,33 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get apiSectionSub =>
       'HTTP на 127.0.0.1 — управление клиентом из скриптов';
+
+  @override
+  String get momentJustNow => 'только что';
+
+  @override
+  String momentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count минуты назад',
+      many: '$count минут назад',
+      few: '$count минуты назад',
+      one: '$count минуту назад',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String momentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count часа назад',
+      many: '$count часов назад',
+      few: '$count часа назад',
+      one: '$count час назад',
+    );
+    return '$_temp0';
+  }
 }

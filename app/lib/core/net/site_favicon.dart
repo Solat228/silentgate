@@ -80,8 +80,13 @@ class SiteFaviconService {
       // Иконка, объявленная на самой странице сайта (apple-touch-icon/icon):
       // работает там, где типовые пути пустые.
       final fromHtml = await _iconFromHtml(domain);
-      final gate = iconGateFor(domain, allowSiteDeclared: builtIn ? fromHtml : null);
-      for (final url in iconSources(domain, fromHtml: fromHtml)) {
+      // ⚠️ У ВШИТЫХ СЕРВИСОВ ГЕЙТА НЕТ ВОВСЕ, а не «гейт плюс одно исключение».
+      // Скрывать нечего: список одинаков у всех, кто поставил приложение (см.
+      // [iconSources]). Полугейт же стоил владельцу шести пропавших иконок:
+      // объявленный сайтом адрес пускали, а посредника — нет, и у сервисов,
+      // чей фавикон нашему запросу не отдаётся, не оставалось ничего.
+      final gate = builtIn ? _allowAny : iconGateFor(domain);
+      for (final url in iconSources(domain, fromHtml: fromHtml, builtIn: builtIn)) {
         final uri = Uri.tryParse(url);
         if (uri == null) continue;
         // Гейт передаётся ВНУТРЬ загрузки: там он спрашивается и про этот
@@ -121,19 +126,42 @@ class SiteFaviconService {
   ///
   /// Цена решения честная: у сайтов, держащих иконку на чужом хосте, вместо
   /// картинки останется буква-заглушка. Иконка — украшение.
+  ///
+  /// ⚠️ ВСЁ ВЫШЕ — ПРО ДОМЕНЫ ИЗ ПРАВИЛ ПОЛЬЗОВАТЕЛЯ. Для [builtIn] (сервис-чипы
+  /// и автонастройка) правило другое, и это не поблажка, а разный предмет
+  /// защиты. Тот список ВШИТ В БИНАРЬ и одинаков у всех, кто поставил
+  /// приложение: обращение за иконкой `x.com` не сообщает наблюдателю о
+  /// пользователе ничего, чего бы он не узнал из самого факта установки.
+  /// Секретен перечень САЙТОВ ИЗ ПРАВИЛ — то, что человек хочет скрыть.
+  ///
+  /// ⚠️ ЧЕМ ЗА СТРОГОСТЬ ЗАПЛАТИЛИ, ПОКА ЭТОГО РАЗДЕЛЕНИЯ НЕ БЫЛО: у Discord,
+  /// Claude, Gemini, X, Instagram и Google иконки в чипах пропали и сменились
+  /// глобусами — их фавиконы лежат либо на чужом CDN, либо не отдаются нашему
+  /// запросу вовсе. Владелец заметил это первым же взглядом на экран.
   /// Публичный ради теста-стража.
-  static List<String> iconSources(String domain, {String? fromHtml}) {
+  static List<String> iconSources(String domain,
+      {String? fromHtml, bool builtIn = false}) {
     final d = domain.trim().toLowerCase();
     // sub.domain → корневой домен (favicon чаще лежит на корне).
     final root = rootDomain(d);
-    return <String>[
+    final own = <String>[
       if (fromHtml != null && fromHtml.isNotEmpty) fromHtml,
       'https://$d/apple-touch-icon.png',
       'https://$d/apple-touch-icon-precomposed.png',
       'https://$d/favicon.png',
       if (root != d) 'https://$root/apple-touch-icon.png',
       if (root != d) 'https://$root/favicon.png',
-    ].where((u) => allowedIconUrl(u, d)).toList();
+    ];
+    if (!builtIn) {
+      return own.where((u) => allowedIconUrl(u, d)).toList();
+    }
+    // Для вшитых сервисов посредники разрешены — но ПОСЛЕДНИМИ: сначала всё
+    // равно пробуем сам сайт, чтобы не ходить к третьей стороне без нужды.
+    return [
+      ...own,
+      'https://www.google.com/s2/favicons?sz=64&domain=$d',
+      'https://favicone.com/$d?s=64',
+    ];
   }
 
   /// Разрешено ли идти за иконкой по [url], когда в правилах стоит [domain].
@@ -176,18 +204,16 @@ class SiteFaviconService {
   /// Тот же [allowedIconUrl], но в виде предиката по [Uri] — им гейтятся
   /// редиректы и запрос страницы. Публичный ради теста-стража: иначе
   /// проверять пришлось бы копию правила, а не то, что уходит в сеть.
-  /// [allowSiteDeclared] — РОВНО ОДИН адрес, который сайт назвал в своём HTML,
-  /// пропускаемый вдобавок к обычному правилу. Задаётся только для вшитых
-  /// сервисов (см. [iconFor]) и только точным совпадением: «разрешить хост»
-  /// открыло бы весь чужой CDN, а он общий на пол-интернета.
-  static bool Function(Uri) iconGateFor(String domain,
-          {String? allowSiteDeclared}) =>
-      (uri) =>
-          allowedIconUrl(uri.toString(), domain) ||
-          (allowSiteDeclared != null &&
-              allowSiteDeclared.isNotEmpty &&
-              uri.toString() == allowSiteDeclared &&
-              uri.scheme == 'https');
+  static bool Function(Uri) iconGateFor(String domain) =>
+      (uri) => allowedIconUrl(uri.toString(), domain);
+
+  /// Гейт вшитых сервисов: пускает всё по https.
+  ///
+  /// ⚠️ Это НЕ «отключённая защита», а другой предмет защиты — см. [iconSources].
+  /// Скрывать в этом списке нечего: он одинаков у всех, кто поставил
+  /// приложение. https остаётся обязательным: иконка едет по сети, и открытый
+  /// http дал бы подменить картинку кому угодно по дороге.
+  static bool _allowAny(Uri uri) => uri.scheme == 'https';
 
   /// Достаёт URL иконки со страницы сайта (`<link rel="apple-touch-icon">` и т.п.),
   /// разбором HTML — той же логикой, что и логотип подписки.

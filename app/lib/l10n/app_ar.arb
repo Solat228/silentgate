@@ -785,6 +785,90 @@
     }
   },
   "geoDone": "تم تحديث بيانات التوجيه الجغرافية",
+  "geoWhy": "ملفّا geoip.dat وgeosite.dat قائمتان: عناوين مُصنَّفة حسب البلد ونطاقات مُصنَّفة حسب الفئة. وبهما تُفسّر النواة قواعد مثل geoip:ru وgeosite:category-ads التي تحدّدها لوحة الاشتراك. وبدون الملفّين تُحذَف هذه القواعد من التكوين.",
+  "geoFileOk": "{size}، آخر تحديث {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "الملف غير موجود",
+  "geoFileCorrupt": "الملف تالف — لن تقرأه النواة",
+  "geoFolder": "المجلد: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "على Windows تأتي الملفات مع النواة وتكون عادةً موجودة في مكانها. والتحديث هنا يعيد تنزيلها عندما تصبح القوائم قديمة.",
+  "geoNoWrite": "لا يمكن الكتابة في هذا المجلد — لن ينجح التنزيل إليه. يحدث هذا عادةً عند التثبيت في Program Files: شغّل التطبيق بصلاحيات المسؤول.",
+  "geoCheck": "التحقق من التحديث",
+  "geoCheckAgain": "التحقق مرة أخرى",
+  "geoChecking": "جارٍ الاستعلام عن الإصدار…",
+  "geoLastCheck": "آخر تحقّق: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "لم يجرِ التحقق من التحديث ولا مرة",
+  "geoUpdateAvailable": "يوجد تحديث: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "الخادم لم يذكر الحجم",
+  "geoUpToDate": "لا حاجة إلى تحديث: الملفات مطابقة لأحدث إصدار.",
+  "geoPlanTitle": "تنزيل بيانات التوجيه الجغرافية؟",
+  "geoPlanTitleUpdate": "تحديث بيانات التوجيه الجغرافية؟",
+  "geoPlanFiles": "الملفات: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "الحجم: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "ستمرّ الملفات عبر اتصالك. وعلى باقة الجوال هذه حركة مرور ملحوظة.",
+  "geoProgressBytes": "{done} من {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "تعذّر الاتصال بخادم التحديث. تحقّق من الإنترنت وحاول مرة أخرى.",
+  "geoErrorServer": "ردّ خادم التحديث بالرفض. الأرجح أن هذا مؤقت — حاول لاحقاً.",
+  "geoErrorWrite": "تعذّرت كتابة الملف: لا توجد صلاحيات على المجلد أو المساحة غير كافية.",
+  "geoErrorCorrupt": "الملف المُنزَّل لم يجتَز الفحص — تلف أثناء التنزيل. حاول مرة أخرى.",
+  "geoErrorOther": "لم ينجح الأمر. التفاصيل أدناه.",
   "geoFailed": "فشل التنزيل: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -875,6 +959,8 @@
   "geoVerdictMissingSub": "قواعد الاشتراك حسب البلدان والفئات معطّلة الآن — تمر هذه الحركة عبر VPN لا مباشرةً.",
   "geoVerdictUnusableTitle": "النواة لم تفتح بيانات التوجيه الجغرافية",
   "geoVerdictUnusableSub": "الملفات موجودة، لكن النواة لم تقرأها. يساعد عادةً تنزيل البيانات من جديد.",
+  "geoOfferMissingSub": "بدونها لن تعمل قواعد الاشتراك حسب البلدان والفئات — ستمرّ هذه الحركة عبر VPN لا مباشرةً.",
+  "geoOfferDismiss": "عدم الاقتراح مرة أخرى",
   "pingPendingTooltip": "زمن استجابة TCP إلى الخادم. فحص القناة ما زال جاريًا، ولا يُعرف بعد ما إذا كان الخادم يعمل فعلًا.",
   "pingUnverifiedTooltip": "زمن استجابة TCP إلى الخادم. لم يجرِ أي فحص عبر النفق، والمعروف هو إمكانية الوصول فقط.",
   "pingMeasuredAt": "وقت القياس: {time}",
@@ -916,5 +1002,22 @@
   "speedProgress": "السرعة: {done} من {total}",
   "updateOnStartTitle": "تحديث الاشتراك عند التشغيل",
   "updateOnStartSub": "جلب قائمة خوادم جديدة في كل مرة، لا بالمؤقّت وحده",
-  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية"
+  "apiSectionSub": "‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية",
+  "momentJustNow": "الآن",
+  "momentMinutesAgo": "{count, plural, zero{منذ {count} دقيقة} one{منذ دقيقة} two{منذ دقيقتين} few{منذ {count} دقائق} many{منذ {count} دقيقة} other{منذ {count} دقيقة}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, zero{منذ {count} ساعة} one{منذ ساعة} two{منذ ساعتين} few{منذ {count} ساعات} many{منذ {count} ساعة} other{منذ {count} ساعة}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

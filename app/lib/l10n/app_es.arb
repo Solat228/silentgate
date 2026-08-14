@@ -846,6 +846,90 @@
     }
   },
   "geoDone": "Bases geo actualizadas",
+  "geoWhy": "Los archivos geoip.dat y geosite.dat son listas de direcciones por país y de dominios por categoría. Con ellas el núcleo interpreta reglas del tipo geoip:ru y geosite:category-ads que define el panel de tu suscripción. Sin los archivos, esas reglas se quitan de la configuración.",
+  "geoFileOk": "{size}, actualizado: {date}",
+  "@geoFileOk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoFileMissing": "falta el archivo",
+  "geoFileCorrupt": "archivo dañado — el núcleo no podrá leerlo",
+  "geoFolder": "Carpeta: {path}",
+  "@geoFolder": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "geoBundledWindows": "En Windows los archivos vienen junto con el núcleo y normalmente ya están en su sitio. Actualizar aquí vuelve a descargarlos cuando las listas se quedan desfasadas.",
+  "geoNoWrite": "En esta carpeta no se puede escribir, así que no será posible descargar aquí. Suele ocurrir con una instalación en Program Files: ejecuta la aplicación como administrador.",
+  "geoCheck": "Buscar actualizaciones",
+  "geoCheckAgain": "Buscar de nuevo",
+  "geoChecking": "Consultando la última versión…",
+  "geoLastCheck": "Última comprobación: {when}",
+  "@geoLastCheck": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "geoNeverChecked": "Todavía no se han buscado actualizaciones",
+  "geoUpdateAvailable": "Hay una actualización: {files} — {size}",
+  "@geoUpdateAvailable": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoSizeUnknown": "el servidor no indicó el tamaño",
+  "geoUpToDate": "No hace falta actualizar: los archivos coinciden con la última versión publicada.",
+  "geoPlanTitle": "¿Descargar las bases geo?",
+  "geoPlanTitleUpdate": "¿Actualizar las bases geo?",
+  "geoPlanFiles": "Archivos: {files}",
+  "@geoPlanFiles": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanSize": "Tamaño: {size}",
+  "@geoPlanSize": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "geoPlanTraffic": "Los archivos se descargarán por tu propia conexión. Con una tarifa móvil es un consumo notable.",
+  "geoProgressBytes": "{done} de {total}",
+  "@geoProgressBytes": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "geoErrorNetwork": "No se ha podido contactar con el servidor de actualizaciones. Revisa tu conexión a internet e inténtalo de nuevo.",
+  "geoErrorServer": "El servidor de actualizaciones ha rechazado la petición. Lo más probable es que sea algo temporal — inténtalo más tarde.",
+  "geoErrorWrite": "No se ha podido escribir el archivo: faltan permisos sobre la carpeta o no hay espacio suficiente.",
+  "geoErrorCorrupt": "El archivo descargado no ha pasado la verificación — la descarga se dañó. Inténtalo de nuevo.",
+  "geoErrorOther": "No ha funcionado. Los detalles, abajo.",
   "geoFailed": "No se pudo descargar: {error}",
   "@geoFailed": {
     "placeholders": {
@@ -936,6 +1020,8 @@
   "geoVerdictMissingSub": "Las reglas de la suscripción por país y categoría están ahora desactivadas: ese tráfico va por la VPN, no directo.",
   "geoVerdictUnusableTitle": "El núcleo no abrió las bases geo",
   "geoVerdictUnusableSub": "Los archivos están, pero el núcleo no los ha leído. Suele ayudar volver a descargarlas.",
+  "geoOfferMissingSub": "Sin ellas, las reglas de la suscripción por país y categoría no funcionarán: ese tráfico irá por la VPN en lugar de salir directo.",
+  "geoOfferDismiss": "No volver a ofrecer",
   "pingPendingTooltip": "Latencia TCP hasta el servidor. La comprobación del canal sigue en curso: todavía no se sabe si el servidor funciona.",
   "pingUnverifiedTooltip": "Latencia TCP hasta el servidor. No se hizo ninguna comprobación a través del túnel: solo se conoce la accesibilidad.",
   "pingMeasuredAt": "Medido: {time}",
@@ -977,5 +1063,22 @@
   "speedProgress": "Velocidad: {done} de {total}",
   "updateOnStartTitle": "Actualizar la suscripción al iniciar",
   "updateOnStartSub": "Descargar una lista de servidores nueva cada vez, no solo por temporizador",
-  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts"
+  "apiSectionSub": "HTTP en 127.0.0.1: controla el cliente desde tus scripts",
+  "momentJustNow": "ahora mismo",
+  "momentMinutesAgo": "{count, plural, one{hace {count} minuto} other{hace {count} minutos}}",
+  "@momentMinutesAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "momentHoursAgo": "{count, plural, one{hace {count} hora} other{hace {count} horas}}",
+  "@momentHoursAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
