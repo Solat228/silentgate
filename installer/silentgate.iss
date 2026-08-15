@@ -5,7 +5,15 @@
 #define MyAppName "SilentGate"
 #define MyAppPublisher "SilentGate"
 #define MyAppExe "silentgate.exe"
-#define ReleaseDir "..\app\build\windows\x64\runner\Release"
+; ⚠️ ПУТЬ К СБОРКЕ ЗАДАЁТСЯ СНАРУЖИ: ISCC.exe /DReleaseDir=<путь> installer\silentgate.iss
+; Без `#ifndef` строка ниже переопределяла аргумент командной строки МОЛЧА, и
+; установщик собирался из той папки, которая просто лежала в репозитории. Так и
+; вышло 16.08.2026: на выходе получился `SilentGateSetup-1.4.3.49.exe`, хотя
+; собирали 1.5.1 — версию установщик берёт из exe, поэтому подлог был виден
+; только в имени файла.
+#ifndef ReleaseDir
+  #define ReleaseDir "..\app\build\windows\x64\runner\Release"
+#endif
 
 ; Версия берётся ИЗ СОБРАННОГО exe (Flutter штампует её из pubspec), а не задаётся
 ; здесь руками — иначе установщик молча отстаёт от приложения (так и было: 0.2.0
@@ -16,6 +24,13 @@
 #endif
 #define MyAppVersion GetVersionNumbersString(ReleaseDir + "\" + MyAppExe)
 
+; ⚠️ В ИМЕНИ ФАЙЛА — ТРИ ЧИСЛА, БЕЗ НОМЕРА СБОРКИ.
+; `GetVersionNumbersString` отдаёт четыре (`1.5.1.51`), а сервер обновлений
+; ссылается на `SilentGateSetup-1.5.1.exe` (docs/APP_UPDATE_SERVER.md §3) —
+; четвёртое число там лишнее и даёт 404 по кнопке «Скачать». Внутри установщика
+; версия остаётся полной: по ней Windows отличает сборки.
+#define ShortVersion Copy(MyAppVersion, 1, RPos(".", MyAppVersion) - 1)
+
 [Setup]
 AppId={{B7F3B2A1-5C2E-4E7A-9F1D-51E4C0DE0001}
 AppName={#MyAppName}
@@ -24,7 +39,13 @@ AppPublisher={#MyAppPublisher}
 DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExe}
-OutputBaseFilename=SilentGate-Setup-{#MyAppVersion}
+; ⚠️ ИМЯ СВЕРЕНО С СЕРВЕРОМ ОБНОВЛЕНИЙ, А НЕ ВЫБРАНО НА ВКУС.
+; Эндпоинт `/api/app-version` отдаёт ссылку вида `SilentGateSetup-<версия>.exe`
+; (см. docs/APP_UPDATE_SERVER.md §3). Здесь раньше стоял `SilentGate-Setup-`
+; — с лишним дефисом, — и файл на сервере пришлось бы переименовывать руками
+; при каждом выпуске. Ровно так и рождаются «скачал по кнопке, а там 404».
+; Меняешь имя тут — меняй и в документе, и на сервере.
+OutputBaseFilename=SilentGateSetup-{#ShortVersion}
 OutputDir=Output
 VersionInfoVersion={#MyAppVersion}
 Compression=lzma2

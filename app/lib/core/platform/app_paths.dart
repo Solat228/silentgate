@@ -114,7 +114,57 @@ class AppPaths {
 
   static Future<Directory> supportDir() async => _cached ?? await init();
 
+  /// Имя файла-метки портативной сборки. Лежит рядом с `silentgate.exe`.
+  ///
+  /// ⚠️ ИМЕННО ФАЙЛ-МЕТКА, А НЕ ФЛАГ СБОРКИ. Портативная и обычная версии — один
+  /// и тот же бинарник: так их невозможно перепутать при выпуске, и человек
+  /// может сделать портативную сам, положив файл рядом. Обратное тоже верно:
+  /// удалил метку — приложение вернулось к общему каталогу и увидело прежние
+  /// подписки.
+  static const portableMarker = 'portable.txt';
+
+  /// Каталог данных портативной сборки — рядом с exe.
+  ///
+  /// ⚠️ НЕ `data`, И ЭТО НЕ ПРИДИРКА. `data` — СОБСТВЕННАЯ папка Flutter в
+  /// windows-сборке: там лежат `app.so`, `icudtl.dat` и ресурсы. Первая
+  /// редакция портативного режима писала именно туда — поймано живым запуском.
+  /// Цена ошибки: обновление портативной версии делается распаковкой архива
+  /// ПОВЕРХ, а `data` при этом обязана перезаписаться целиком — вместе с
+  /// подписками, настройками и журналом пользователя.
+  static const portableDirName = 'sg-data';
+
+  /// Портативный корень: `<каталог с exe>\sg-data`, если рядом лежит метка.
+  ///
+  /// ⚠️ ЗАЧЕМ. У «покет»-версии смысл ровно один — не оставлять следов на чужой
+  /// машине. Если данные всё равно уходят в `%APPDATA%`, портативность
+  /// оказывается обещанием, которого нет: подписки, ключи локальных портов и
+  /// журнал останутся на рабочем компьютере после того, как флешку вынули.
+  ///
+  /// ⚠️ ПРОВЕРЯЕМ ВОЗМОЖНОСТЬ ПИСАТЬ, А НЕ ТОЛЬКО НАЛИЧИЕ МЕТКИ. Портативную
+  /// версию носят на флешках и запускают из папок, куда писать нельзя (`Program
+  /// Files`, диск только на чтение). Молча оказаться без данных хуже, чем
+  /// откатиться в `%APPDATA%`: там приложение хотя бы работает.
+  static String? _portableBase() {
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final marker = File('$exeDir${Platform.pathSeparator}$portableMarker');
+      if (!marker.existsSync()) return null;
+      final dir = Directory('$exeDir${Platform.pathSeparator}$portableDirName');
+      if (!dir.existsSync()) dir.createSync(recursive: true);
+      // Пробная запись: право на создание каталога ещё не значит право писать
+      // в него (сетевые диски, наследование запретов).
+      final probe = File('${dir.path}${Platform.pathSeparator}.writable');
+      probe.writeAsStringSync('');
+      probe.deleteSync();
+      return dir.path;
+    } catch (_) {
+      return null;
+    }
+  }
+
   static String _windowsBase() {
+    final portable = _portableBase();
+    if (portable != null) return portable;
     final appData = Platform.environment['APPDATA'];
     return (appData != null && appData.isNotEmpty)
         ? '$appData${Platform.pathSeparator}$dirName'
