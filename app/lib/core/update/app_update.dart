@@ -101,14 +101,50 @@ class AppUpdate {
   /// Страница для кнопки «Скачать», когда артефакта под платформу нет.
   static String get releasesPage => kGithubReleasesPage;
 
+  /// ⚠️ ДВА ИСТОЧНИКА, И ВТОРОЙ ЗАВЕДЁН НЕ ДЛЯ КРАСОТЫ.
+  ///
+  /// GitHub — основной: он не зависит от нашей панели и переживает её простой.
+  /// Но 15.08.2026 выяснилось, что у владельца `api.github.com` **не открывается
+  /// вовсе**: TLS-рукопожатие падает с `CERTIFICATE_VERIFY_FAILED: Hostname
+  /// mismatch`. Воспроизведено в чистой VM, где VPN не поднимался ни разу, при
+  /// живом `github.com` — то есть API перехватывают у провайдера. Для клиента,
+  /// которым пользуются именно там, где интернет фильтруют, «основной источник
+  /// недоступен» — это норма, а не исключение.
+  ///
+  /// Поэтому: спрашиваем GitHub, а при ЛЮБОМ его отказе — свой сайт. Ответ
+  /// сайта проще (`{"version","url","notes"}`), формат описан в
+  /// `docs/APP_UPDATE_SERVER.md`.
+  ///
+  /// ⚠️ ПОРЯДОК ИМЕННО ТАКОЙ. Сайт знает про подписки и может отдавать разное
+  /// разным людям — а обновление приложения должно быть одинаковым для всех.
+  /// GitHub первым делает подмену версии заметной: чтобы обмануть, надо
+  /// подменить оба источника.
   static Future<UpdateCheckResult> check({
     Duration timeout = const Duration(seconds: 10),
     UpdateFetcher? fetcher,
     String? assetHint,
   }) async {
     final hint = assetHint ?? kPlatformAssetHint;
+    final fetch = fetcher ?? _fetch;
+
+    final primary = await _tryGithub(fetch, hint);
+    if (primary.state != UpdateCheckState.failed) return primary;
+
+    final backup = await _tryPanel(fetch, hint);
+    if (backup.state != UpdateCheckState.failed) {
+      AppLog.i('Проверка обновлений: GitHub недоступен, ответил запасной '
+          'источник');
+      return backup;
+    }
+    // Оба молчат — показываем причину ПЕРВОГО: она конкретнее («лимит»,
+    // «репозиторий закрыт»), чем общее «не удалось связаться» у запасного.
+    return primary;
+  }
+
+  static Future<UpdateCheckResult> _tryGithub(
+      UpdateFetcher fetch, String hint) async {
     try {
-      final resp = await (fetcher ?? _fetch)(Uri.parse(endpoint));
+      final resp = await fetch(Uri.parse(endpoint));
       final failure = _failureFor(resp);
       if (failure != null) {
         AppLog.i('Проверка обновлений не удалась: код ${resp.statusCode}');
@@ -128,6 +164,62 @@ class AppUpdate {
       return const UpdateCheckResult.failed(
           'Не удалось связаться с сервером обновлений');
     }
+  }
+
+  static Future<UpdateCheckResult> _tryPanel(
+      UpdateFetcher fetch, String hint) async {
+    try {
+      final resp = await fetch(Uri.parse(kPanelUpdateEndpoint));
+      if (resp.statusCode != 200) {
+        return UpdateCheckResult.failed(
+            'Запасной сервер обновлений ответил кодом ${resp.statusCode}');
+      }
+      final release = parsePanelRelease(resp.body);
+      if (release == null) {
+        return const UpdateCheckResult.failed(
+            'Запасной сервер обновлений ответил непонятным образом');
+      }
+      return release.isNewer
+          ? UpdateCheckResult.available(release)
+          : UpdateCheckResult.upToDate(release);
+    } catch (e) {
+      AppLog.i('Запасная проверка обновлений недоступна: $e');
+      return const UpdateCheckResult.failed(
+          'Не удалось связаться с сервером обновлений');
+    }
+  }
+
+  /// Разбор ответа НАШЕГО сайта. Формат намеренно плоский — его пишет не
+  /// GitHub, а наш бэкенд, и чем меньше в нём мест для ошибки, тем лучше.
+  ///
+  /// ```json
+  /// {"version":"1.5.1","url":"https://…/SilentGateSetup.exe","notes":"…"}
+  /// ```
+  ///
+  /// ⚠️ `url` НЕ обязателен: релиз бывает собран под одну платформу. Тогда
+  /// кнопка ведёт на страницу загрузок — версию мы всё равно узнали.
+  /// ⚠️ И `url` обязан быть `https`: иначе кнопка «Скачать» повела бы человека
+  /// за установщиком по открытому каналу, где его можно подменить.
+  static AppRelease? parsePanelRelease(String body) {
+    final Object? j;
+    try {
+      j = jsonDecode(body);
+    } catch (_) {
+      return null;
+    }
+    if (j is! Map) return null;
+    final version =
+        '${j['version'] ?? ''}'.trim().replaceFirst(RegExp('^[vV]'), '');
+    if (version.isEmpty) return null;
+    final url = '${j['url'] ?? ''}'.trim();
+    final notes = '${j['notes'] ?? ''}'.trim();
+    final page = '${j['page'] ?? ''}'.trim();
+    return AppRelease(
+      version: version,
+      downloadUrl: url.startsWith('https://') ? url : null,
+      notes: notes.isEmpty ? null : notes,
+      pageUrl: page.startsWith('https://') ? page : kPanelDownloadsPage,
+    );
   }
 
   /// Причина отказа по коду ответа — или `null`, если ответ годный.
