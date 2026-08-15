@@ -1,10 +1,12 @@
 import 'dart:ffi';
-import 'dart:io' show zlib;
+import 'dart:io' show Directory, FileSystemEntity, FileSystemEntityType, zlib;
 import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
 import 'package:win32/win32.dart';
+
+import 'process_list_windows.dart';
 
 /// Извлечение иконки exe (#1, split-tunnel): SHGetFileInfo → HICON → 32bpp DIB → PNG.
 /// PNG кодируется вручную (zlib из dart:io + CRC32) — без внешних зависимостей.
@@ -13,6 +15,14 @@ import 'package:win32/win32.dart';
 /// ВАЖНО: извлечение выполняется в фоновом isolate ([load]) — SHGetFileInfo может
 /// блокироваться на недоступных путях (отключённый сетевой диск, вынутая флешка),
 /// и синхронный вызов в build() замораживал бы весь интерфейс.
+///
+/// ⚠️ ПУТЬ ИЗ ПРАВИЛА — НЕ ГАРАНТИЯ ЖИВОГО ФАЙЛА. `AppRule.path` замораживается в
+/// момент добавления и после обновления программы указывает в никуда: у владельца
+/// правило `claude.exe` хранит
+/// `…\anthropic.claude-code-2.1.228-win32-x64\…\claude.exe`, а на диске лежат уже
+/// `2.1.232` и `2.1.233` — иконка пропадала именно поэтому, а не «иногда».
+/// Подменять сам путь НЕЛЬЗЯ (он уходит в `process_name` конфига ядра), поэтому
+/// живой файл ищется отдельно и только ради картинки — см. [locateExeForIcon].
 class AppIconWindows {
   static final Map<String, Uint8List?> _cache = {};
   static final Map<String, Future<Uint8List?>> _pending = {};
@@ -29,6 +39,16 @@ class AppIconWindows {
 
   /// Асинхронная загрузка иконки в фоновом isolate, с кэшем и дедупликацией
   /// одновременных запросов на один и тот же путь.
+  ///
+  /// ⚠️ ДВА ЗАХОДА, И ВТОРОЙ ПЛАТНЫЙ. Сначала пробуем ровно тот путь, что в
+  /// правиле, — это обычный случай и он стоит столько же, сколько раньше.
+  /// Только если иконки нет, ищем живой файл ([locateExeForIcon]) и пробуем
+  /// его. Порядок именно такой, чтобы перечисление процессов не запускалось на
+  /// каждом старте экрана: у большинства правил путь жив, и второй заход не
+  /// нужен вовсе.
+  ///
+  /// Результат (в том числе НЕудача) кладётся в кэш по ИСХОДНОМУ ключу, поэтому
+  /// поиск идёт максимум один раз на правило за сеанс, а не на перерисовку.
   static Future<Uint8List?> load(String exePath) {
     final key = exePath.toLowerCase();
     if (_cache.containsKey(key)) return Future.value(_cache[key]);
@@ -36,6 +56,7 @@ class AppIconWindows {
       Uint8List? png;
       try {
         png = await Isolate.run(() => _extract(exePath));
+        png ??= await _extractRelocated(exePath);
       } catch (_) {
         png = null;
       }
@@ -45,7 +66,49 @@ class AppIconWindows {
     });
   }
 
-  /// Синхронное извлечение (для тестов и предзагрузки вне UI-потока).
+  /// Второй заход: иконка живого файла той же программы.
+  ///
+  /// Возвращает `null`, когда искать нечего или найден тот же самый путь, —
+  /// повторно дёргать ядро тем же аргументом бессмысленно.
+  static Future<Uint8List?> _extractRelocated(String stored) async {
+    final running = await _runningIndex();
+    return Isolate.run(() {
+      final found = locateExeForIcon(stored, WindowsExeSources(running));
+      if (found == null || found.toLowerCase() == stored.toLowerCase()) {
+        return null;
+      }
+      return _extract(found);
+    });
+  }
+
+  /// Имя exe (в нижнем регистре) → путь запущенного процесса.
+  ///
+  /// Считается ОДИН раз за сеанс и в фоновом isolate: перечисление открывает
+  /// дескриптор к каждому процессу машины, и на UI-потоке это заметно.
+  /// ⚠️ Снимок намеренно не обновляется: результат каждой иконки всё равно
+  /// закэширован, и пересчёт ничего бы не изменил без сброса кэша картинок.
+  static Future<Map<String, String>>? _runningIndexFuture;
+
+  /// ⚠️ Отказ перечисления НЕ отравляет память: снимок запоминается навсегда, и
+  /// сохранённая ошибка означала бы, что этот источник мёртв до перезапуска.
+  /// Пустой снимок читается как «процесса с таким именем нет» — поиск спокойно
+  /// идёт к следующему источнику.
+  static Future<Map<String, String>> _runningIndex() =>
+      _runningIndexFuture ??= Isolate.run(_enumerateRunning)
+          .catchError((Object _) => <String, String>{});
+
+  static Map<String, String> _enumerateRunning() {
+    final out = <String, String>{};
+    for (final p in ProcessListWindows.enumerate()) {
+      // Первый победил: тёзки бывают (несколько окон одной программы), и путь
+      // у них один и тот же.
+      out.putIfAbsent(p.name.toLowerCase(), () => p.path);
+    }
+    return out;
+  }
+
+  /// Синхронное извлечение РОВНО ПО ЭТОМУ ПУТИ (для тестов и предзагрузки вне
+  /// UI-потока). Живой файл не ищет — это делает только [load].
   static Uint8List? iconPng(String exePath) =>
       _cache.putIfAbsent(exePath.toLowerCase(), () => _extract(exePath));
 
@@ -250,3 +313,161 @@ typedef _ExtractIconExNative = Uint32 Function(
     Pointer<Utf16>, Int32, Pointer<IntPtr>, Pointer<IntPtr>, Uint32);
 typedef _ExtractIconEx = int Function(
     Pointer<Utf16>, int, Pointer<IntPtr>, Pointer<IntPtr>, int);
+
+/// Откуда узнаём про диск и запущенные программы.
+///
+/// Вынесено интерфейсом ровно ради теста: сам поиск — чистая работа со строками
+/// и парой вопросов к системе, и проверять его, подкладывая настоящие файлы и
+/// процессы, значило бы проверять Windows вместо своего кода.
+abstract interface class ExeSources {
+  /// Есть ли на диске такой файл ИЛИ каталог.
+  bool exists(String path);
+
+  /// Имена элементов каталога (и папок, и файлов), без пути.
+  List<String> entriesOf(String dir);
+
+  /// Путь запущенного процесса с таким именем файла; `null` — не запущен.
+  String? runningPathFor(String exeName);
+}
+
+/// Настоящие источники: файловая система + заранее снятый список процессов.
+class WindowsExeSources implements ExeSources {
+  /// Имя exe в нижнем регистре → путь. Снимок передаётся снаружи, потому что
+  /// перечисление процессов делается один раз, а источников — по одному на
+  /// каждый поиск.
+  final Map<String, String> running;
+
+  const WindowsExeSources(this.running);
+
+  @override
+  bool exists(String path) {
+    try {
+      return FileSystemEntity.typeSync(path) != FileSystemEntityType.notFound;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  List<String> entriesOf(String dir) {
+    try {
+      return Directory(dir)
+          .listSync(followLinks: false)
+          .map((e) => _baseName(e.path))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  @override
+  String? runningPathFor(String exeName) => running[exeName.toLowerCase()];
+}
+
+/// Живой exe той же программы — ТОЛЬКО ДЛЯ ПОКАЗА ИКОНКИ.
+///
+/// ⚠️ РЕЗУЛЬТАТ НЕЛЬЗЯ ЗАПИСЫВАТЬ В `AppRule.path`. Путь правила — это вход
+/// конфига ядра (`process_name` и `process_path`), и подмена найденным путём
+/// изменила бы то, с чем ядро сравнивает процессы: правило «по пути» начало бы
+/// совпадать с другим файлом, а «по имени» — потеряло бы смысл записи, которую
+/// пользователь заводил. Иконка — отдельная сущность, и живёт она в кэше
+/// картинок, а не в настройках.
+///
+/// Порядок источников — от дешёвого к дорогому:
+///  1. сам путь, если файл на месте (обычный случай, стоит один вопрос к ФС);
+///  2. ЗАПУЩЕННЫЙ процесс с тем же именем файла — самый точный ответ: это
+///     буквально та программа, которую правило «по имени» и ловит. Заодно
+///     закрывает случай, когда в правиле лежит голое имя без каталога;
+///  3. соседний каталог/файл, отличающийся ТОЛЬКО цифрами. Обновляемые
+///     программы ставятся в каталог с версией в имени (`…claude-code-2.1.228…`,
+///     `Discord\app-1.0.9046`), и именно у них путь умирает при каждом
+///     обновлении — а программа при этом может быть не запущена.
+///
+/// Реестр `App Paths` намеренно НЕ спрашиваем: там регистрируются программы с
+/// постоянным путём установки, то есть ровно те, у которых путь и не ломается.
+String? locateExeForIcon(String stored, ExeSources src) {
+  final path = stored.trim();
+  if (path.isEmpty) return null;
+  if (src.exists(path)) return path;
+
+  final name = _baseName(path);
+  if (name.isEmpty) return null;
+  final running = src.runningPathFor(name);
+  if (running != null && running.trim().isNotEmpty) return running.trim();
+
+  return _versionSibling(path, src);
+}
+
+final RegExp _sepRe = RegExp(r'[\\/]');
+
+String _baseName(String p) {
+  final i = p.lastIndexOf(_sepRe);
+  return i < 0 ? p : p.substring(i + 1);
+}
+
+/// Тот же путь, но через соседнюю версию каталога (или файла).
+///
+/// Ищем ПЕРВЫЙ сегмент пути, которого нет на диске: выше него всё цело, и
+/// именно он «уехал» при обновлении. Среди соседей берём те, что отличаются от
+/// него только цифрами, и пробуем от самой новой версии к старой — иконка
+/// должна быть от того, чем человек пользуется сейчас.
+String? _versionSibling(String path, ExeSources src) {
+  final parts = path.split(_sepRe);
+  if (parts.length < 2) return null;
+
+  var prefix = parts.first;
+  if (prefix.isEmpty) return null; // UNC (`\\server\share`) — не наш случай
+  var broken = -1;
+  for (var i = 1; i < parts.length; i++) {
+    final next = '$prefix\\${parts[i]}';
+    if (!src.exists(next)) {
+      broken = i;
+      break;
+    }
+    prefix = next;
+  }
+  if (broken < 0) return null;
+
+  final missing = parts[broken];
+  // ⚠️ Без цифр в имени сравнивать нечего — и каталог мы тогда НЕ читаем вовсе.
+  // Иначе каждая иконка с мёртвым путём (например, удалённая программа) гоняла
+  // бы перечисление каталога впустую.
+  if (!RegExp(r'\d').hasMatch(missing)) return null;
+
+  final pattern = _digitsMasked(missing);
+  final tail = parts.sublist(broken + 1);
+  final candidates = <String>[];
+  for (final e in src.entriesOf(prefix)) {
+    if (e.toLowerCase() == missing.toLowerCase()) continue;
+    if (_digitsMasked(e) == pattern) candidates.add(e);
+  }
+  candidates.sort((a, b) => _compareVersions(b, a)); // новые впереди
+
+  for (final c in candidates) {
+    final candidate = [prefix, c, ...tail].join('\\');
+    if (src.exists(candidate)) return candidate;
+  }
+  return null;
+}
+
+/// `claude-code-2.1.228-win32-x64` → `claude-code-#.#.#-win#-x#`.
+/// Регистр гасим здесь же: на Windows он в путях не значим.
+String _digitsMasked(String s) =>
+    s.toLowerCase().replaceAll(RegExp(r'\d+'), '#');
+
+/// Сравнение по числам в имени: `2.1.9` < `2.1.10` (не строкой — строкой «10»
+/// меньше «9», и свежая версия оказалась бы старшей).
+int _compareVersions(String a, String b) {
+  final na = _numbers(a), nb = _numbers(b);
+  for (var i = 0; i < na.length && i < nb.length; i++) {
+    final c = na[i].compareTo(nb[i]);
+    if (c != 0) return c;
+  }
+  if (na.length != nb.length) return na.length.compareTo(nb.length);
+  return a.toLowerCase().compareTo(b.toLowerCase());
+}
+
+List<int> _numbers(String s) => RegExp(r'\d+')
+    .allMatches(s)
+    .map((m) => int.tryParse(m.group(0)!) ?? 0)
+    .toList();

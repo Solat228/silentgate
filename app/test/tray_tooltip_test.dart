@@ -1,21 +1,18 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/app_info.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/platform/tray_window.dart';
-import 'package:silentgate/l10n/gen/app_localizations.dart';
-import 'package:silentgate/ui/home_screen.dart';
 
-/// Две жалобы владельца, ради которых это написано.
+/// Жалоба владельца, ради которой это написано: подсказка трея показывала
+/// четыре строки — сервер, скорость и НАКОПЛЕННЫЙ за сессию трафик. Просьба:
+/// «просто в 2 строчки инфа о сервере и текущая скорость». Плюс невидимая мина
+/// Windows: `szTip` в `NOTIFYICONDATA` — это `WCHAR[128]`, и всё, что длиннее
+/// 127 символов, оболочка отрезает МОЛЧА. Длинное имя сервера съедало бы
+/// строку со скоростью целиком.
 ///
-/// 1. Подсказка трея показывала четыре строки — сервер, скорость и НАКОПЛЕННЫЙ
-///    за сессию трафик. Просьба: «просто в 2 строчки инфа о сервере и текущая
-///    скорость». Плюс невидимая мина Windows: `szTip` в `NOTIFYICONDATA` —
-///    это `WCHAR[128]`, и всё, что длиннее 127 символов, оболочка отрезает
-///    МОЛЧА. Длинное имя сервера съедало бы строку со скоростью целиком.
-/// 2. Плашка с именем активного сервера над кнопкой Connect «поплыла»:
-///    содержимое не помещалось и наезжало на колонки проверок сервисов.
+/// ⚠️ Плашка активного сервера переехала в `test/active_server_banner_test.dart`:
+/// она больше не накладка над кнопкой, а своя строка, и тамошний страж поднимает
+/// НАСТОЯЩИЙ виджет экрана вместо собранной здесь копии раскладки.
 void main() {
   /// Снимок с РАЗНЫМИ скоростью и накопленным: только так тест отличает одно
   /// от другого. Накопленное — 7 ГБ, скорость — мегабайты и килобайты.
@@ -108,99 +105,6 @@ void main() {
     });
   });
 
-  group('Плашка активного сервера не наезжает на соседей', () {
-    Widget host(Widget child) => MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: Center(child: child)),
-        );
-
-    /// ⚠️ Размер задаётся ОКНУ, а не виджету: поверхность теста по умолчанию
-    /// 800×600 зажала бы строку, и плашка «уместилась» бы по чужой причине.
-    void setWindow(WidgetTester tester, double width) {
-      tester.view.devicePixelRatio = 1.0;
-      tester.view.physicalSize = Size(width, 900);
-      addTearDown(tester.view.reset);
-    }
-
-    /// Та же раскладка, что на главном экране: кнопка посередине, по бокам —
-    /// колонки проверок сервисов, которые плашка и закрывала собой.
-    Future<void> pumpRow(WidgetTester tester, String? name) async {
-      await tester.pumpWidget(host(Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Expanded(child: SizedBox(height: 120)),
-          ActiveServerOverlay(
-            name: name,
-            child: const SizedBox(key: Key('btn'), width: 148, height: 148),
-          ),
-          const Expanded(child: SizedBox(height: 120)),
-        ],
-      )));
-      await tester.pump();
-    }
-
-    testWidgets('длинное имя обрезается, а не растягивает плашку', (t) async {
-      setWindow(t, 1040);
-      await pumpRow(
-          t,
-          'Нидерланды Амстердам премиум канал для просмотра видео и работы, '
-          'узел номер двадцать семь');
-      expect(t.takeException(), isNull);
-
-      final btn = t.getRect(find.byKey(const Key('btn')));
-      final label = t.getRect(find.byType(ActiveServerLabel));
-      const bleed = ActiveServerOverlay.bleed;
-      expect(label.left, greaterThanOrEqualTo(btn.left - bleed - 0.5),
-          reason: 'плашка вылезла влево на ${btn.left - label.left} px — '
-              'ровно этим она и наезжала на левую колонку проверок');
-      expect(label.right, lessThanOrEqualTo(btn.right + bleed + 0.5),
-          reason: 'плашка вылезла вправо на ${label.right - btn.right} px');
-      expect(label.width, lessThanOrEqualTo(ActiveServerLabel.maxWidth + 0.5));
-
-      final para = t.renderObject<RenderParagraph>(find.descendant(
-          of: find.byType(ActiveServerLabel), matching: find.byType(Text)));
-      expect(para.didExceedMaxLines, isTrue,
-          reason: 'имя не влезло — значит должно быть обрезано многоточием, '
-              'а не выдавить плашку за её границы');
-    });
-
-    testWidgets('короткое имя не растягивается во всю ширину', (t) async {
-      setWindow(t, 1040);
-      await pumpRow(t, 'DE-1');
-      final label = t.getRect(find.byType(ActiveServerLabel));
-      expect(label.width, lessThan(120),
-          reason: 'плашка обязана ужиматься по содержимому: иначе короткое имя '
-              'болталось бы посреди пилюли во всю кнопку');
-    });
-
-    testWidgets('имя с флагом тоже укладывается', (t) async {
-      setWindow(t, 1040);
-      await pumpRow(t, '🇩🇪 Германия Франкфурт узел 12 премиум');
-      expect(t.takeException(), isNull);
-      final btn = t.getRect(find.byKey(const Key('btn')));
-      final label = t.getRect(find.byType(ActiveServerLabel));
-      expect(label.left,
-          greaterThanOrEqualTo(btn.left - ActiveServerOverlay.bleed - 0.5));
-      expect(label.right,
-          lessThanOrEqualTo(btn.right + ActiveServerOverlay.bleed + 0.5));
-    });
-
-    testWidgets('без имени плашки нет вовсе', (t) async {
-      setWindow(t, 1040);
-      await pumpRow(t, null);
-      expect(find.byType(ActiveServerLabel), findsNothing);
-    });
-
-    testWidgets('на узком экране плашка не выходит за края', (t) async {
-      setWindow(t, 360);
-      await pumpRow(t, 'Нидерланды Амстердам премиум узел двадцать семь');
-      expect(t.takeException(), isNull);
-      final label = t.getRect(find.byType(ActiveServerLabel));
-      expect(label.left, greaterThanOrEqualTo(0));
-      expect(label.right, lessThanOrEqualTo(360));
-    });
-  });
 }
 
 /// Строка содержит суррогат без пары — то есть символ, разрезанный пополам.

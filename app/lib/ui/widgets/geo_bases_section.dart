@@ -32,6 +32,12 @@ enum GeoErrorKind {
   /// Скачали, но это не тот файл: не сошлась сумма, оборвалась закачка.
   corrupt,
 
+  /// Файл целый, но в нём нет категорий, на которые ссылается подписка.
+  /// ⚠️ Это НЕ повреждение: замена отменена намеренно, и прежние файлы на
+  /// месте. Смешать эти два случая значит посоветовать «попробуйте ещё раз»
+  /// там, где повтор даст ровно тот же отказ.
+  categories,
+
   /// Всё остальное — показываем исходный текст, не выдумывая причину.
   other,
 }
@@ -50,6 +56,12 @@ GeoErrorKind geoErrorKind(String raw) {
       s.contains('no space left') ||
       s.contains('filesystemexception')) {
     return GeoErrorKind.write;
+  }
+  // ⚠️ ВЫШЕ ПОВРЕЖДЕНИЯ. Отказ по категориям тоже говорит про «скачанный
+  // файл», и общие слова про повреждение перехватили бы его первыми.
+  if (s.contains('нет категорий') ||
+      s.contains('не удалось прочитать список категорий')) {
+    return GeoErrorKind.categories;
   }
   if (s.contains('контрольная сумма') ||
       s.contains('скачан не тот файл') ||
@@ -77,6 +89,7 @@ String geoErrorText(AppLocalizations l, String raw) =>
       GeoErrorKind.server => l.geoErrorServer,
       GeoErrorKind.write => l.geoErrorWrite,
       GeoErrorKind.corrupt => l.geoErrorCorrupt,
+      GeoErrorKind.categories => l.geoErrorCategories,
       GeoErrorKind.other => l.geoErrorOther,
     };
 
@@ -176,6 +189,15 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
             const SizedBox(height: 12),
             Text(l.geoPlanTraffic,
                 style: Theme.of(ctx).textTheme.bodySmall),
+            // ⚠️ ЧТО БУДЕТ С ПРЕЖНИМИ ФАЙЛАМИ — сказано ДО замены, а не после.
+            // Их молчаливая перезапись 15.08.2026 и стоила владельцу рабочей
+            // маршрутизации: вернуться было некуда, а причину он искал в
+            // серверах.
+            if (plan.isUpdate) ...[
+              const SizedBox(height: 8),
+              Text(l.geoReplaceWarning,
+                  style: Theme.of(ctx).textTheme.bodySmall),
+            ],
           ],
         ),
         actions: [
@@ -205,6 +227,33 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
         if (!mounted) return;
         if (ok) AppToast.show(context, l.geoDone, kind: ToastKind.success);
     }
+  }
+
+  /// Откат к прежним базам — тоже с подтверждением: действие заменяет файлы,
+  /// а не показывает что-то.
+  Future<void> _restore(GeoBasesController c) async {
+    final l = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.geoRestoreTitle),
+        content: Text(l.geoRestoreBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.geoRestore),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final done = await c.restore();
+    if (!mounted) return;
+    if (done) AppToast.show(context, l.geoRestored, kind: ToastKind.success);
   }
 
   @override
@@ -241,6 +290,13 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
           // Зачем эти файлы вообще нужны: человеку неочевидно, что «гео-базы»
           // — это списки, по которым работают правила панели.
           Text(l.geoWhy, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 4),
+          // ⚠️ ОТКУДА ФАЙЛЫ — НАЗВАНО ВСЛУХ. Пока источник был написан только
+          // в коде, туда однажды подставили другой проект, и никто этого не
+          // заметил, пока у владельца не развалилась маршрутизация.
+          Text(l.geoSource,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.disabledColor)),
           const SizedBox(height: 8),
           if (status != null) ...[
             for (final f in status.files) _fileLine(l, theme, f),
@@ -262,16 +318,30 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
           ],
           const SizedBox(height: 8),
           _verdict(l, theme, c, action),
+          if (c.canRestore) ...[
+            const SizedBox(height: 4),
+            _backupLine(l, theme, c),
+          ],
           const SizedBox(height: 8),
           if (c.busy)
             _progress(l, theme, c)
           else
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: FilledButton.tonal(
-                onPressed: blocked ? null : () => _press(c, action),
-                child: Text(geoActionLabel(l, action)),
-              ),
+            // ⚠️ Wrap, а не Row: на узком экране две кнопки в строку не влезают,
+            // а обрезанная кнопка отката — это отсутствующая кнопка отката.
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.tonal(
+                  onPressed: blocked ? null : () => _press(c, action),
+                  child: Text(geoActionLabel(l, action)),
+                ),
+                if (c.canRestore)
+                  OutlinedButton(
+                    onPressed: blocked ? null : () => _restore(c),
+                    child: Text(l.geoRestore),
+                  ),
+              ],
             ),
         ],
       ),
@@ -307,6 +377,32 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
     );
   }
 
+  /// Что именно можно вернуть: состав, объём и от какого числа.
+  ///
+  /// ⚠️ ДАТА ОБЯЗАТЕЛЬНА. «Есть резервная копия» без даты не отвечает на
+  /// единственный вопрос, который человек задаёт перед откатом: вернусь ли я
+  /// к тому, что работало.
+  Widget _backupLine(
+      AppLocalizations l, ThemeData theme, GeoBasesController c) {
+    final b = c.backups;
+    final bytes = b.fold<int>(0, (a, x) => a + x.bytes);
+    DateTime? at;
+    for (final x in b) {
+      final t = x.at;
+      if (t != null && (at == null || t.isAfter(at))) at = t;
+    }
+    return _notice(
+      theme,
+      Icons.history,
+      l.geoBackupLine(
+        b.map((x) => x.base.fileName).join(', '),
+        _size(bytes),
+        at == null ? '—' : _date(at),
+      ),
+      theme.disabledColor,
+    );
+  }
+
   /// Вердикт: что нам известно про обновление и когда мы это узнали.
   Widget _verdict(AppLocalizations l, ThemeData theme, GeoBasesController c,
       GeoAction action) {
@@ -337,6 +433,10 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
     }
     if (c.outcome == GeoOutcome.downloaded) {
       children.add(_notice(theme, Icons.check_circle_outline, l.geoDone,
+          theme.colorScheme.primary));
+    }
+    if (c.outcome == GeoOutcome.restored) {
+      children.add(_notice(theme, Icons.history, l.geoRestored,
           theme.colorScheme.primary));
     }
     if (error != null) {

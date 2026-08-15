@@ -2222,6 +2222,36 @@ class AppLocalizationsAr extends AppLocalizations {
       'على Windows تأتي الملفات مع النواة وتكون عادةً موجودة في مكانها. والتحديث هنا يعيد تنزيلها عندما تصبح القوائم قديمة.';
 
   @override
+  String get geoSource =>
+      'المصدر هو نفسه الذي تأتي منه الملفات ضمن حزمة Xray: Loyalsoldier/v2ray-rules-dat. ويُقارَن ما يُنزَّل بالمجموع الاختباري المنشور مع الإصدار نفسه.';
+
+  @override
+  String get geoReplaceWarning =>
+      'تُحفظ الملفات السابقة: فإذا ساء التوجيه بعد الاستبدال أمكن إرجاعها بضغطة زر واحدة. ولا يُثبَّت التحديث إذا كان الملف الجديد يخلو من فئات يشير إليها اشتراكك.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'تتوفر نسخة احتياطية: $files — $size، بتاريخ $date';
+  }
+
+  @override
+  String get geoRestore => 'استعادة السابقة';
+
+  @override
+  String get geoRestored => 'تمت استعادة بيانات التوجيه الجغرافية السابقة';
+
+  @override
+  String get geoRestoreTitle => 'استعادة بيانات التوجيه الجغرافية السابقة؟';
+
+  @override
+  String get geoRestoreBody =>
+      'ستُستبدَل الملفات الحالية بالنسخة المحفوظة قبل آخر تحديث. ولا حاجة إلى اتصال بالإنترنت. وبعد ذلك لن تعود الملفات المحدَّثة إلا بتنزيلها من جديد.';
+
+  @override
+  String get geoErrorCategories =>
+      'الملف الجديد يخلو من فئات يشير إليها اشتراكك. أُلغي الاستبدال وبقيت الملفات السابقة في مكانها — فلم يتأثر التوجيه. والفئات الناقصة مذكورة في السطر أدناه.';
+
+  @override
   String get geoNoWrite =>
       'لا يمكن الكتابة في هذا المجلد — لن ينجح التنزيل إليه. يحدث هذا عادةً عند التثبيت في Program Files: شغّل التطبيق بصلاحيات المسؤول.';
 

@@ -198,7 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
       if (!state.status.isConnected) {
         unawaited(context
             .read<ServiceCheckController>()
-            .autoBaseline(ServiceChecksRow.services));
+            .autoBaseline(ServiceChecks.services));
       }
 
       final found = await InterferenceScanner.scan();
@@ -289,15 +289,20 @@ class _HomeScreenState extends State<HomeScreen> {
   /// значит и прогон один, сразу по всем шести.
   void _autoCheckServices(BuildContext context, AppState state) {
     final ctrl = context.read<ServiceCheckController>();
-    final port = state.status.isConnected ? state.httpProxyPort : 0;
+    // ⚠️ ПРИЗНАК — ФАКТ ПОДЪЁМА ТУННЕЛЯ, А НЕ ВЫБРАННЫЙ СЕРВЕР.
+    //
+    // Здесь стоял ключ выбранного сервера, и клик по другой строке списка стирал
+    // готовые вердикты и гонял шесть проб заново. Причём через ТОТ ЖЕ канал:
+    // `AppState.selectServer` живой туннель не трогает, он лишь просит
+    // переподключиться. Перепроверять нечего — канал не менялся.
+    final connected = state.status.isConnected;
+    final port = connected ? state.httpProxyPort : 0;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (port <= 0) {
-        ctrl.reset(); // отключились — прежние результаты уже не про это соединение
-        return;
-      }
-      ctrl.bind(state.selectedServer?.key ?? 'auto');
-      unawaited(ctrl.autoCheckAll(port, ServiceChecksRow.services));
+      // Смену состояния канала контроллер вычисляет сам, повторы отсекает молча.
+      ctrl.setTunnelUp(connected);
+      if (!connected) return;
+      unawaited(ctrl.autoCheckAll(port, ServiceChecks.services));
     });
   }
 
@@ -699,45 +704,20 @@ class _ConnectPane extends StatelessWidget {
                 mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
                 children: [
                   if (!compact) const Spacer(),
-                // Проверка сервисов — КОЛОНКАМИ ПО БОКАМ кнопки, а не строкой
-                // снизу: так «до» и «после» видно рядом, и ряд не уезжает под
-                // край экрана на телефоне. Показывается ВСЕГДА, в том числе до
-                // подключения, — иначе сравнивать было бы не с чем.
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Flexible(
-                      child: ServiceChecksColumn(
-                        services: ServiceChecksRow.leftColumn,
-                        httpPort: status.isConnected ? state.httpProxyPort : 0,
-                        epoch: state.selectedServer?.key ?? 'auto',
-                        alignEnd: true,
-                      ),
-                    ),
-                    // Имя активного сервера — ПОВЕРХ кнопки, а не отдельной
-                    // строкой: просьба владельца не менять расположение
-                    // элементов. Накладка не занимает места в потоке, поэтому
-                    // кнопка и колонки проверок остаются там же, где были
-                    // (подробности про её ширину — в ActiveServerOverlay).
-                    ActiveServerOverlay(
-                      name: status.isConnected
-                          ? (state.selectedServer?.displayName ?? l.homeAutoBest)
-                          : null,
-                      child: _ConnectButton(
-                          status: status,
-                          onTap: () => connectWithConflictCheck(context, state,
-                              () => state.toggleConnection(settings))),
-                    ),
-                    Flexible(
-                      child: ServiceChecksColumn(
-                        services: ServiceChecksRow.rightColumn,
-                        httpPort: status.isConnected ? state.httpProxyPort : 0,
-                        epoch: state.selectedServer?.key ?? 'auto',
-                        alignEnd: false,
-                      ),
-                    ),
-                  ],
+                // Плашка активного сервера, кнопка и колонки проверок — одним
+                // виджетом: ровно то, что проверяет страж вёрстки.
+                ConnectCenterpiece(
+                  serverName: activeServerName(
+                    connected: status.isConnected,
+                    connectedKey: state.connectedServerKey,
+                    servers: state.servers,
+                    autoLabel: l.homeAutoBest,
+                  ),
+                  httpPort: status.isConnected ? state.httpProxyPort : 0,
+                  button: _ConnectButton(
+                      status: status,
+                      onTap: () => connectWithConflictCheck(context, state,
+                          () => state.toggleConnection(settings))),
                 ),
                 // Без подписи два кружка у каждого значка — ребус. Говорим
                 // прямо, что слева замер без VPN, справа — через VPN, и что
@@ -1223,80 +1203,167 @@ class _ServerPaneState extends State<_ServerPane> {
   }
 }
 
-/// Кнопка Connect с плашкой активного сервера поверх её верхнего края.
+/// Имя сервера, ЧЕРЕЗ КОТОРЫЙ РЕАЛЬНО ИДЁТ ТРАФИК. `null` — VPN выключен.
 ///
-/// ⚠️ ПОЧЕМУ ЭТО ОТДЕЛЬНЫЙ ВИДЖЕТ, А НЕ ГОЛЫЙ `Stack` В РАЗМЕТКЕ.
+/// ⚠️ Спрашиваем [AppState.connectedServerKey], а не выбранную строку списка.
+/// Клик по другому серверу живой туннель не трогает (появляется лишь плашка
+/// «переподключитесь»), поэтому подпись над кнопкой показывала сервер, через
+/// который не прошло ни байта, — при живом соединении с совсем другим.
 ///
-/// Плашка «поплыла»: `Positioned` с одним лишь `top` НЕ ограничивает ребёнка
-/// по ширине вообще (`RenderStack` отдаёт таким детям бесконечные
-/// ограничения), поэтому плашка растягивалась до своего внутреннего максимума
-/// в 280 px — то есть на 66 px в каждую сторону поверх колонок с проверками
-/// сервисов, а длинное имя доезжало до самого края. Теперь края заданы явно
-/// (`left`/`right` = −[bleed]), ширина плашки предсказуема, а имя, которое в
-/// неё не влезло, обрезается многоточием, а не наезжает на соседей.
-class ActiveServerOverlay extends StatelessWidget {
-  const ActiveServerOverlay({super.key, required this.name, required this.child});
+/// Ключ, которому не нашлось сервера, и пустой ключ дают [autoLabel]: пустой —
+/// это режим «Авто (лучший)», где сессию держит балансировщик, а не отдельный
+/// узел. ⚠️ Сам ключ показывать НЕЛЬЗЯ ни при каких обстоятельствах — это
+/// share-ссылка с логином сервера внутри.
+@visibleForTesting
+String? activeServerName({
+  required bool connected,
+  required String? connectedKey,
+  required List<VpnServer> servers,
+  required String autoLabel,
+}) {
+  if (!connected) return null;
+  for (final s in servers) {
+    if (s.key == connectedKey) return s.displayName;
+  }
+  return autoLabel;
+}
 
-  /// Имя активного сервера. `null`/пусто — плашки нет вовсе.
-  final String? name;
+/// Центр главного экрана: плашка активного сервера, кнопка Connect и колонки
+/// проверок сервисов по бокам.
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ВИДЖЕТ РАДИ СТРАЖА. Плашку правят третьим заходом, и оба
+/// прошлых раза её проверяли на КОПИИ раскладки — руками собранной в тесте
+/// строке с заглушкой вместо колонок. Копия расходится с оригиналом молча:
+/// тест оставался зелёным, а владелец второй раз писал «ты так и не исправил».
+/// Теперь страж поднимает ЭТОТ виджет, то есть ровно то, что видно на экране.
+class ConnectCenterpiece extends StatelessWidget {
+  const ConnectCenterpiece({
+    super.key,
+    required this.serverName,
+    required this.httpPort,
+    required this.button,
+  });
 
-  /// Сама кнопка: её размер и задаёт размер стопки.
-  final Widget child;
+  /// Имя активного сервера (см. [activeServerName]); `null` — плашка пустая.
+  final String? serverName;
 
-  /// Насколько плашке позволено выходить за круг кнопки в КАЖДУЮ сторону.
-  ///
-  /// Ноль превратил бы её в узкую полоску (круг всего 148 px, из них 24 —
-  /// поля, ещё 26 — флаг), а большой свес возвращает ту самую жалобу: плашка
-  /// ложится на верхний ряд проверок сервисов.
-  static const double bleed = 24;
+  /// http-порт живого ядра для проверок; 0 — VPN выключен.
+  final int httpPort;
+
+  /// Кнопка приходит снаружи: ей нужен `AppState`, а стражу вёрстки — нет.
+  final Widget button;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.topCenter,
-      clipBehavior: Clip.none,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        child,
-        if (name != null && name!.isNotEmpty)
-          Positioned(
-            top: 2,
-            left: -bleed,
-            right: -bleed,
-            // Align пропускает ребёнку СВОБОДНЫЕ ограничения: плашка ужимается
-            // по содержимому и лишь упирается в ширину, заданную Positioned.
-            // Без него она растянулась бы на всю ширину — короткое имя ехало бы
-            // в пилюле во всю кнопку.
-            child: Align(
-              alignment: Alignment.topCenter,
-              child: ActiveServerLabel(name: name),
+        // ⚠️ ПЛАШКА — СВОЕЙ СТРОКОЙ, А НЕ НАКЛАДКОЙ ПОВЕРХ КНОПКИ.
+        //
+        // Накладка не занимала места в потоке, и это ровно то, на что владелец
+        // жаловался дважды: она лежала на верхней кромке круга и свисала на
+        // 24 px в каждую сторону — прямо на колонки проверок. Ужимать свес
+        // некуда: круг 148 px, и любая плашка, вписанная в него, режет имя
+        // после трёх букв. Строка выше кнопки не пересекается ни с кругом, ни
+        // с чипами по определению — пересекаться нечему.
+        ActiveServerBanner(name: serverName),
+        // Проверка сервисов — КОЛОНКАМИ ПО БОКАМ кнопки, а не строкой снизу:
+        // так «до» и «после» видно рядом, и ряд не уезжает под край экрана на
+        // телефоне. Показывается ВСЕГДА, в том числе до подключения, — иначе
+        // сравнивать было бы не с чем.
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Flexible(
+              child: ServiceChecksColumn(
+                services: ServiceChecks.leftColumn,
+                httpPort: httpPort,
+                alignEnd: true,
+              ),
             ),
-          ),
+            button,
+            Flexible(
+              child: ServiceChecksColumn(
+                services: ServiceChecks.rightColumn,
+                httpPort: httpPort,
+                alignEnd: false,
+              ),
+            ),
+          ],
+        ),
       ],
+    );
+  }
+}
+
+/// Строка с плашкой активного сервера над кнопкой Connect.
+///
+/// Место под плашку занято ВСЕГДА, даже когда имени нет: иначе кнопка и обе
+/// колонки проверок прыгали бы вверх-вниз на каждом подключении и отключении.
+/// Тот же приём, что у строки трафика ниже, — она тоже висит с нулями.
+class ActiveServerBanner extends StatelessWidget {
+  const ActiveServerBanner({super.key, required this.name});
+
+  /// Имя активного сервера. `null`/пусто — плашка невидима, но место держит.
+  final String? name;
+
+  /// Просвет между плашкой и кнопкой.
+  static const double gap = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final n = name;
+    final shown = n != null && n.isNotEmpty;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: gap),
+      child: Visibility(
+        visible: shown,
+        maintainSize: true,
+        maintainAnimation: true,
+        maintainState: true,
+        // Пробел, а не пустая строка: место резервируется РОВНО той же
+        // вёрсткой, что потом рисует имя, поэтому оно не зависит ни от размера
+        // системного шрифта, ни от будущих правок отступов плашки.
+        child: ActiveServerLabel(name: shown ? n : ' '),
+      ),
     );
   }
 }
 
 /// Подпись «какой сервер сейчас включён» — плашкой над кнопкой.
 ///
-/// Показывается только при живом подключении: до него имя ничего не значит, а
-/// место занимало бы. Флаг рисуется картинкой и вырезается из текста — иначе
-/// на Windows он выглядел бы чёрным прямоугольником и дублировался.
+/// Флаг рисуется картинкой и вырезается из текста — иначе на Windows он
+/// выглядел бы чёрным прямоугольником и дублировался.
 class ActiveServerLabel extends StatelessWidget {
   const ActiveServerLabel({super.key, required this.name});
 
   final String? name;
 
-  /// Потолок ширины на случай, если плашку когда-нибудь положат в свободные
-  /// ограничения: имя сервера бывает в сотню символов, и без потолка пилюля
-  /// уехала бы через весь экран.
-  static const double maxWidth = 200;
+  /// Потолок ширины плашки.
+  ///
+  /// Родитель ужимает её и сильнее (на узком экране — до своей ширины), а этот
+  /// предел держит её осмысленной на широком окне: пилюля во весь экран из-за
+  /// стосимвольного имени выглядит поломкой.
+  static const double maxWidth = 360;
+
+  /// Сколько строк отдаём имени.
+  ///
+  /// Две, а не одна: у владельца имена вида «🇩🇪 🚀Германия 2.7 (edge)», и
+  /// длинные встречаются регулярно. На одной строке хвост уезжал в многоточие
+  /// ровно там, где начинается отличие одного узла от другого (номер, метка
+  /// edge/premium), — то есть обрезалось самое нужное.
+  static const int maxLines = 2;
 
   @override
   Widget build(BuildContext context) {
     final n = name;
     if (n == null || n.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return IgnorePointer(
+    return Tooltip(
+      // Имя целиком: в плашку помещается не всякое, а знать, куда подключён,
+      // нужно точно.
+      message: n,
       child: Container(
         constraints: const BoxConstraints(maxWidth: maxWidth),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -1316,8 +1383,9 @@ class ActiveServerLabel extends StatelessWidget {
           Flexible(
             child: Text(
               FlagUtil.strip(n),
-              maxLines: 1,
+              maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
               textDirection: TextDirection.ltr,
               style: Theme.of(context)
                   .textTheme

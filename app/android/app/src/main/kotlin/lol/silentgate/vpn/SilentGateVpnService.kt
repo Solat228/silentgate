@@ -248,6 +248,46 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
     private var lifecycleRegistered = false
 
+    /**
+     * ⚠️ ПОДЪЁМ ЯДЕР ИДЁТ ЗДЕСЬ, А НЕ НА ГЛАВНОМ ПОТОКЕ, И ЭТО НЕ ОПТИМИЗАЦИЯ.
+     *
+     * `onStartCommand` система вызывает НА ГЛАВНОМ ПОТОКЕ приложения, а внутри
+     * него раньше выполнялось всё: `Libbox.setup`, полный старт Xray
+     * (`LibXray.invoke(runXrayFromJson)`), полный старт sing-box
+     * (`startOrReloadService` → `openTun` → `establish()`) и повторы с
+     * `Thread.sleep` до 2,5 с суммарно.
+     *
+     * Чем это платится ровно в нашем случае. Flutter ждёт vsync через
+     * `Choreographer` ГЛАВНОГО потока Android и через него же получает касания:
+     * пока главный поток занят, интерфейс не перерисовывается и не реагирует —
+     * снаружи это ровно «приложение зависло». Плюс ANR, если в это время
+     * пришло событие ввода.
+     *
+     * И с 1.5.0 эта работа стала заметно дороже: конфиг уходит ядру ВМЕСТЕ со
+     * ссылками на гео-базы (до 1.5.0 они вычищались, потому что ядро их всё
+     * равно не открывало), а значит Xray на старте разбирает `geoip.dat`
+     * (22,5 МБ) и `geosite.dat` (2,2 МБ). На бюджетном телефоне это секунды —
+     * и не единожды: каждая смена сети при включённом kill switch присылает
+     * ДВА `start` подряд (заглушка и живой конфиг).
+     *
+     * Поток ОДИН и намеренно: он сохраняет прежний порядок команд. Разложи мы
+     * их по пулу — заглушка kill switch могла бы приехать после живого конфига
+     * и погасить только что поднятый туннель.
+     */
+    private val work = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+        Thread(r, "silentgate-vpn").apply { isDaemon = true }
+    }
+
+    /**
+     * Взаимное исключение подъёма и уборки.
+     *
+     * Раньше его роль играл сам главный поток: `onStartCommand` и `onDestroy`
+     * приходят на него и не могли пересечься. Теперь подъём идёт на [work], а
+     * `onDestroy`/`onRevoke` по-прежнему на главном — без замка они разошлись
+     * бы посреди `startOrReloadService`.
+     */
+    private val lifecycleLock = Any()
+
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
     private var xrayRunning = false
@@ -274,30 +314,19 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 return START_STICKY
             }
             ACTION_STOP -> {
-                // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу, и
-                // признак должен уехать вместе с ним.
-                stoppedByUser = true
-                stopTunnel()
-                stopSelf()
+                // ⚠️ В ту же очередь, что и подъём: иначе «Отключить» из шторки
+                // могло бы обогнать ещё не доработавший старт и снять туннель,
+                // который через миг поднимется заново.
+                work.execute {
+                    // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу,
+                    // и признак должен уехать вместе с ним.
+                    stoppedByUser = true
+                    stopTunnel()
+                    stopSelf()
+                }
                 return START_NOT_STICKY
             }
             else -> {
-                // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
-                //
-                // Признак «остановлено пользователем» ставится на ACTION_STOP, а
-                // снимался лишь тогда, когда туннель ПОДНЯЛСЯ. При неудачном
-                // старте catch звал notifyState() со старым `true`, и Dart-сторона
-                // (проверка byUser стоит выше вывода ошибки) выбрасывала
-                // настоящий текст, подменяя его на «Туннель снят пользователем из
-                // уведомления». Дефект самоподдерживающийся: любая ошибка в Dart
-                // заканчивается cleanup() → 'stop' → ACTION_STOP, который снова
-                // взводит флаг.
-                //
-                // В журнале владельца это выглядело как череда «Подключение по
-                // команде пользователя» → «Туннель снят пользователем», без единой
-                // ошибки, — то есть диагностика велась по логу, из которого отказы
-                // были стёрты.
-                stoppedByUser = false
                 val config = intent?.getStringExtra(EXTRA_CONFIG)
                 if (config.isNullOrBlank()) {
                     lastError = "Пустой конфиг"
@@ -305,7 +334,48 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     stopSelf()
                     return START_NOT_STICKY
                 }
-                startTunnel(config, intent.getStringExtra(EXTRA_XRAY_CONFIG))
+                // ⚠️ УВЕДОМЛЕНИЕ ПУБЛИКУЕМ СИНХРОННО, НА ГЛАВНОМ ПОТОКЕ.
+                // `startForegroundService` обязывает показать его в первые
+                // секунды, иначе система убьёт процесс
+                // (ForegroundServiceDidNotStartInTimeException). Это дешёвая
+                // операция — в отличие от подъёма ядер ниже.
+                //
+                // Условие повторяет развилку в [startTunnel]: перезагрузка
+                // живого туннеля (заглушка kill switch) уведомление не трогает,
+                // иначе в шторке на миг появлялось бы «Подключение…» вместо
+                // «Трафик заблокирован».
+                if (!running || commandServer == null) {
+                    runCatching {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            buildNotification(strings().getString(R.string.vpn_connecting)),
+                        )
+                    }
+                }
+                val xray = intent.getStringExtra(EXTRA_XRAY_CONFIG)
+                work.execute {
+                    // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
+                    //
+                    // Признак «остановлено пользователем» ставится на ACTION_STOP,
+                    // а снимался лишь тогда, когда туннель ПОДНЯЛСЯ. При неудачном
+                    // старте catch звал notifyState() со старым `true`, и
+                    // Dart-сторона (проверка byUser стоит выше вывода ошибки)
+                    // выбрасывала настоящий текст, подменяя его на «Туннель снят
+                    // пользователем из уведомления». Дефект самоподдерживающийся:
+                    // любая ошибка в Dart заканчивается cleanup() → 'stop' →
+                    // ACTION_STOP, который снова взводит флаг.
+                    //
+                    // В журнале владельца это выглядело как череда «Подключение по
+                    // команде пользователя» → «Туннель снят пользователем», без
+                    // единой ошибки, — то есть диагностика велась по логу, из
+                    // которого отказы были стёрты.
+                    //
+                    // ⚠️ Сброс обязан идти В ТОЙ ЖЕ ОЧЕРЕДИ, что и подъём: оставь
+                    // мы его на главном потоке, он обогнал бы уже поставленную в
+                    // очередь остановку и снял бы её признак.
+                    stoppedByUser = false
+                    startTunnel(config, xray)
+                }
             }
         }
         return START_STICKY
@@ -397,7 +467,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
-    private fun startTunnel(configJson: String, xrayConfigJson: String?) {
+    private fun startTunnel(configJson: String, xrayConfigJson: String?) =
+        synchronized(lifecycleLock) { startTunnelLocked(configJson, xrayConfigJson) }
+
+    private fun startTunnelLocked(configJson: String, xrayConfigJson: String?) {
         // ⚠️ ПОВТОРНЫЙ start ПОВЕРХ ЖИВОГО СЕРВИСА — это ПЕРЕЗАГРУЗКА, а не
         // второй запуск. Так приходит заглушка kill switch: Dart шлёт `start` с
         // blackhole-конфигом, чтобы туннель ОСТАЛСЯ поднятым, а трафик умирал в
@@ -411,13 +484,17 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // писал в лог «туннель удержан, трафик блокируется», а трафик в этот
         // момент шёл открыто, и цепочка попыток обрывалась.
         if (running && commandServer != null) {
-            reloadTunnel(configJson, xrayConfigJson)
+            reloadTunnelLocked(configJson, xrayConfigJson)
             return
         }
         try {
-            // Нотификация ДО подъёма ядра: foreground-сервис обязан её показать
-            // сразу, иначе система убьёт его за нарушение контракта.
-            startForeground(NOTIFICATION_ID, buildNotification(strings().getString(R.string.vpn_connecting)))
+            // ⚠️ `startForeground` ЗДЕСЬ БОЛЬШЕ НЕТ — он переехал в
+            // `onStartCommand`, на главный поток. Контракт foreground-сервиса
+            // требует показать уведомление в первые секунды после
+            // `startForegroundService`, а этот код теперь исполняется в очереди
+            // [work] и может начаться позже. Развилка в `onStartCommand`
+            // повторяет условие выше: перезагрузку живого туннеля уведомление
+            // не трогает.
 
             // Весь вывод ядра и, главное, паники Go уходят в файл: без этого
             // причина падения не видна нигде — ни в логах приложения, ни на
@@ -544,7 +621,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
-    private fun reloadTunnel(configJson: String, xrayConfigJson: String?) {
+    private fun reloadTunnelLocked(configJson: String, xrayConfigJson: String?) {
         try {
             stopXray()
             if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
@@ -653,7 +730,12 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }.getOrNull()
     }
 
-    private fun stopTunnel() {
+    /// ⚠️ Под тем же замком, что и подъём: `onDestroy`/`onRevoke` приходят на
+    /// ГЛАВНЫЙ поток, а подъём с 1.5.1 идёт в очереди [work] — без замка уборка
+    /// разошлась бы с ним посреди `startOrReloadService`.
+    private fun stopTunnel() = synchronized(lifecycleLock) { stopTunnelLocked() }
+
+    private fun stopTunnelLocked() {
         try {
             commandServer?.closeService()
         } catch (_: Throwable) {
@@ -719,7 +801,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     override fun onDestroy() {
+        // ⚠️ ЗДЕСЬ ЖДЁМ ЗАМОК НА ГЛАВНОМ ПОТОКЕ, И ЭТО ОСОЗНАННО. Уборка обязана
+        // случиться до того, как экземпляр перестанет существовать: недоснятый
+        // `CommandServer` держит порты и tun-fd. Хуже от переезда подъёма в
+        // очередь [work] не стало — до него ровно эта работа ВСЕГДА шла на
+        // главном потоке.
         stopTunnel()
+        runCatching { work.shutdown() }
         // Снимаем ссылку ТОЛЬКО если она наша: при быстром пересоздании сервиса
         // новый экземпляр успевает записаться раньше, чем умрёт старый, и
         // безусловное обнуление стёрло бы живой.
@@ -1063,24 +1151,45 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * изолята, и в момент обновления уведомления спросить Dart может быть уже
      * не у кого. Пусто — язык системы, как и в самом приложении.
      */
+    /// ⚠️ КЭШ, А НЕ МИКРООПТИМИЗАЦИЯ. `strings()` зовётся дважды на каждое
+    /// обновление шторки, а обновление идёт РАЗ В СЕКУНДУ, пока идёт трафик и
+    /// включён экран. Каждый несохранённый вызов — чтение SharedPreferences плюс
+    /// `createConfigurationContext`, то есть новый объект `Resources`. На
+    /// бюджетном телефоне это заметная доля главного потока впустую.
+    /// Ключ — код языка: сменился язык, пересоберём.
+    private var stringsCache: Pair<String, Context>? = null
+
     private fun strings(): Context {
         val code = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .getString(PREF_LANG, "").orEmpty()
-        if (code.isBlank()) return this
-        return runCatching {
+        stringsCache?.let { (cached, ctx) -> if (cached == code) return ctx }
+        val ctx = if (code.isBlank()) this else runCatching {
             val cfg = android.content.res.Configuration(resources.configuration)
             cfg.setLocale(java.util.Locale.forLanguageTag(code))
             createConfigurationContext(cfg)
         }.getOrDefault(this)
+        stringsCache = code to ctx
+        return ctx
     }
+
+    /// Язык, под который канал уведомлений уже заведён. `null` — ещё ни разу.
+    ///
+    /// ⚠️ Канал пересоздавался на КАЖДОМ обновлении шторки, то есть раз в
+    /// секунду: лишний вызов в системный сервис через binder ради имени, которое
+    /// меняется только вместе с языком.
+    private var channelLang: String? = null
 
     private fun buildNotification(text: String): Notification {
         val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val res = strings()
         if (Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, res.getString(R.string.vpn_channel_name), NotificationManager.IMPORTANCE_LOW)
-            )
+            val lang = res.resources.configuration.locales.toLanguageTags()
+            if (channelLang != lang) {
+                manager.createNotificationChannel(
+                    NotificationChannel(CHANNEL_ID, res.getString(R.string.vpn_channel_name), NotificationManager.IMPORTANCE_LOW)
+                )
+                channelLang = lang
+            }
         }
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),

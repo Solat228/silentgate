@@ -4,10 +4,23 @@ import '../core/probe/proxy_probe.dart';
 import '../core/probe/service_check.dart';
 import '../core/settings/app_settings.dart';
 
-/// Хранит результаты живой проверки сервисов у кнопки Connect. Сервисы
-/// проверяются ОДИН раз автоматически при подъёме туннеля ([autoCheckAll]),
-/// дальше — только вручную (тап по сервису). Результаты привязаны к текущему
-/// соединению ([bind]) и сбрасываются при его смене.
+/// Хранит результаты живой проверки сервисов у кнопки Connect.
+///
+/// ⚠️ ЭПОХА РЕЗУЛЬТАТОВ — ФАКТ ПОДЪЁМА ТУННЕЛЯ, А НЕ ВЫБРАННЫЙ СЕРВЕР.
+///
+/// Раньше признаком служил ключ выбранного сервера, и клик по другой строке
+/// списка стирал шесть готовых вердиктов и гонял пробы заново. Это было не
+/// просто лишней работой, а ЛОЖЬЮ: `AppState.selectServer` живой туннель не
+/// трогает (он лишь показывает «переподключитесь»), то есть трафик всё это
+/// время шёл через ПРЕЖНИЙ сервер, а проверка выдавалась за проверку нового.
+///
+/// Правило целиком:
+///  * автопрогон — ровно один раз на КАЖДЫЙ подъём туннеля ([autoCheckAll]);
+///  * тап пользователя — всегда и в любом состоянии ([check]);
+///  * туннель упал ⇒ колонка «через VPN» гаснет: результаты через сервер
+///    больше не действуют. Замер «без VPN» переживает это ([_baseline]);
+///  * смена выбранного сервера без переподключения не делает НИЧЕГО —
+///    контроллер о выборе не знает вовсе.
 class ServiceCheckController extends ChangeNotifier {
   final Map<ProbeService, ServiceCheckOutcome> _results = {};
 
@@ -21,12 +34,24 @@ class ServiceCheckController extends ChangeNotifier {
       _baseline[s] ?? ServiceCheckOutcome.idle;
 
   bool get hasBaseline => _baseline.isNotEmpty;
-  String _epoch = '';
 
-  /// Соединение, для которого автопроверка уже отработала. Держим отдельно от
+  /// Поднят ли сейчас туннель — по последнему, что сказал экран ([setTunnelUp]).
+  bool _tunnelUp = false;
+  bool get tunnelUp => _tunnelUp;
+
+  /// Номер текущего подъёма туннеля. Растёт на КАЖДОЙ смене состояния канала
+  /// (поднялся и упал — два разных номера), и только на ней.
+  ///
+  /// Заменил прежний строковый ключ сервера: по нему нельзя было отличить
+  /// «канал переподняли» от «человек ткнул в другую строку списка».
+  int _session = 0;
+  @visibleForTesting
+  int get session => _session;
+
+  /// Подъём, для которого автопроверка уже отработала. Держим отдельно от
   /// [_results]: результат мог не сохраниться (сервис ответил ошибкой), но
   /// повторять автопрогон всё равно нельзя — дальше только ручные проверки.
-  String? _autoRanEpoch;
+  int? _autoRanSession;
 
   ServiceCheckOutcome resultFor(ProbeService s) =>
       _results[s] ?? ServiceCheckOutcome.idle;
@@ -34,34 +59,41 @@ class ServiceCheckController extends ChangeNotifier {
   bool get anyChecking =>
       _results.values.any((o) => o.state == ServiceCheckState.checking);
 
-  /// Привязать к текущему соединению. Иная сигнатура (сменили сервер/переподключились)
-  /// сбрасывает прежние результаты — они относятся к старому выходу.
-  void bind(String epoch) {
-    if (epoch == _epoch) return;
-    _epoch = epoch;
-    if (_results.isNotEmpty) {
-      _results.clear();
-      notifyListeners();
-    }
-  }
-
-  void reset() {
-    _epoch = '';
-    _autoRanEpoch = null;
-    if (_results.isEmpty) return;
+  /// Сообщить состояние канала. ЕДИНСТВЕННЫЙ вход, задающий эпоху результатов.
+  ///
+  /// Зовётся с каждой перерисовки главного экрана, поэтому первое, что делает,
+  /// — отсекает всё, кроме СМЕНЫ состояния: иначе счётчик подъёмов тикал бы на
+  /// каждом такте счётчиков трафика и автопрогон шёл бы по кругу.
+  ///
+  /// ⚠️ Подхват уже живого туннеля при старте интерфейса (Android держит VPN
+  /// без UI) сюда приходит как первое `up: true` — то есть считается подъёмом и
+  /// получает свой автопрогон. Так и задумано: для человека это «включённый
+  /// VPN», а проверять канал, о котором мы ничего не знаем, тем нужнее.
+  void setTunnelUp(bool up) {
+    if (up == _tunnelUp) return;
+    _tunnelUp = up;
+    _session++;
+    // Результаты «через VPN» относились к прошлому каналу: он либо упал (тогда
+    // показывать их как действующие — враньё), либо переподнялся (тогда их надо
+    // снять заново). Замер «без VPN» не трогаем — он ни к какому каналу не
+    // привязан и нужен для сравнения.
     _results.clear();
     notifyListeners();
   }
 
   /// Единственный автоматический прогон всех [services] — на подъёме туннеля.
   ///
-  /// Повторный вызов для того же соединения игнорируется, поэтому перестроение
-  /// интерфейса (смена темы, поворот экрана, возврат с другого экрана) не
-  /// запускает пробы заново: после первого раза сервисы проверяются только
-  /// вручную. Новое соединение = новая [bind]-сигнатура ⇒ прогон повторится.
+  /// Повторный вызов для того же подъёма игнорируется, поэтому перестроение
+  /// интерфейса (смена темы, поворот экрана, возврат с другого экрана, тик
+  /// счётчиков раз в секунду) не запускает пробы заново: после первого раза
+  /// сервисы проверяются только вручную. Новый подъём = новый [_session].
   Future<void> autoCheckAll(int httpPort, List<ProbeService> services) async {
-    if (_epoch.isEmpty || _autoRanEpoch == _epoch) return;
-    _autoRanEpoch = _epoch;
+    // ⚠️ Порт проверяем ДО отметки «этот подъём отработан». Порт активного ядра
+    // появляется не в ту же миллисекунду, что статус «Подключено», и отметка,
+    // поставленная на нуле, съела бы единственный автопрогон подъёма целиком —
+    // молча, навсегда, до переподключения.
+    if (!_tunnelUp || httpPort <= 0 || _autoRanSession == _session) return;
+    _autoRanSession = _session;
 
     // ⚠️ Дождаться, пока канал ЗАРАБОТАЕТ, а не пока поднимется туннель.
     //
@@ -93,12 +125,24 @@ class ServiceCheckController extends ChangeNotifier {
   @visibleForTesting
   static Duration readinessDelay = const Duration(seconds: 2);
 
+  /// Чем проверяется один сервис. Боевое значение задано здесь и в приложении
+  /// не меняется НИКОГДА — подменяется только в тестах.
+  ///
+  /// ⚠️ Развилка нужна не для удобства. Правило «когда прогонять» — про
+  /// состояние канала, а не про сеть; тест, ходящий наружу, проверял бы заодно
+  /// погоду на серверах YouTube и падал бы у того, кто запустил его без
+  /// интернета. Ровно этот класс правил здесь уже ломали дважды, и оба раза
+  /// молча.
+  @visibleForTesting
+  static Future<ServiceCheckOutcome> Function(int httpPort, ProbeService s)
+      prober = ServiceChecker.check;
+
   Future<bool> _waitProxyUsable(int httpPort) async {
     if (httpPort <= 0) return false;
-    final epoch = _epoch;
+    final session = _session;
     for (var attempt = 0; attempt < readinessAttempts; attempt++) {
-      // Пользователь мог отключиться или сменить сервер, пока мы ждём.
-      if (_epoch != epoch) return false;
+      // Пользователь мог отключиться или переподключиться, пока мы ждём.
+      if (_session != session) return false;
       final r = await ProxyProbe.check(
         httpPort,
         'http://www.gstatic.com/generate_204',
@@ -110,7 +154,7 @@ class ServiceCheckController extends ChangeNotifier {
     }
     // Канал так и не заработал. Пробы всё равно запускаем: пусть пользователь
     // увидит честный отказ, а не пустые кружки без объяснения.
-    return _epoch == epoch;
+    return _session == session;
   }
 
   /// Проверить один сервис.
@@ -122,14 +166,14 @@ class ServiceCheckController extends ChangeNotifier {
     final baseline = httpPort <= 0;
     final store = baseline ? _baseline : _results;
     if (store[s]?.state == ServiceCheckState.checking) return;
-    final epoch = _epoch; // к какому соединению относится эта проверка
+    final session = _session; // к какому подъёму относится эта проверка
     store[s] = ServiceCheckOutcome.checking;
     notifyListeners();
-    final out = await ServiceChecker.check(httpPort, s);
-    // Проба идёт до ~16 с. Если за это время сменили сервер/переподключились
-    // ([bind]/[reset]), результат относится к СТАРОМУ выходу — не пишем его.
-    // Замера «до» это не касается: он к соединению не привязан.
-    if (!baseline && _epoch != epoch) return;
+    final out = await prober(httpPort, s);
+    // Проба идёт до ~16 с. Если за это время туннель упал или переподнялся
+    // ([setTunnelUp]), результат относится к СТАРОМУ каналу — не пишем его.
+    // Замера «до» это не касается: он к каналу не привязан.
+    if (!baseline && _session != session) return;
     store[s] = out;
     notifyListeners();
   }

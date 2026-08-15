@@ -209,71 +209,68 @@ void main() {
 
     test('check по закрытому порту → fail (без интернета, локальный refuse)', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       // Порт 1 закрыт → прокси-соединение отклоняется сразу → недоступно.
       await c.check(ProbeService.youtube, 1);
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.fail);
       expect(c.anyChecking, isFalse);
     });
 
-    test('bind другой сигнатурой сбрасывает прежние результаты', () async {
+    // ⚠️ Здесь стоял `bind('srv1')` / `bind('srv2')` — сброс по ключу
+    // ВЫБРАННОГО сервера, то есть тот самый дефект: клик по строке списка
+    // живой туннель не трогает, а вердикты стирал и гнал пробы заново.
+    // Признак теперь один — состояние канала.
+    test('падение канала сбрасывает прежние результаты', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       await c.check(ProbeService.youtube, 1);
       expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
-      c.bind('srv2'); // сменили сервер → результаты старого выхода не годятся
+      c.setTunnelUp(false); // канала нет → его вердикты недействительны
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
     });
 
-    test('bind той же сигнатурой результаты сохраняет', () async {
+    test('повтор того же состояния канала результаты сохраняет', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       await c.check(ProbeService.youtube, 1);
-      c.bind('srv1');
+      c.setTunnelUp(true); // экран перерисовался, канал тот же
       expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
     });
 
-    test('reset очищает и сбрасывает привязку', () async {
-      final c = ServiceCheckController();
-      c.bind('srv1');
-      await c.check(ProbeService.youtube, 1);
-      c.reset();
-      expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
-    });
-
-    // Автопроверка при подъёме туннеля: ровно один прогон на соединение.
+    // Автопроверка при подъёме туннеля: ровно один прогон на подъём.
     test('autoCheckAll проверяет все сервисы разом', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       await c.autoCheckAll(1, const [ProbeService.youtube, ProbeService.telegram]);
       expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
       expect(c.resultFor(ProbeService.telegram).isTerminal, isTrue);
     });
 
-    test('autoCheckAll не повторяется для того же соединения', () async {
+    test('autoCheckAll не повторяется для того же подъёма', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       await c.autoCheckAll(1, const [ProbeService.youtube]);
-      // Ручной сброс результата: если бы автопрогон повторился при следующем
-      // перестроении интерфейса, сервис снова стал бы проверяться.
-      c.bind('srv1');
+      // Перестроение интерфейса: если бы автопрогон повторился, сервис снова
+      // стал бы проверяться.
+      c.setTunnelUp(true);
       var notified = 0;
       c.addListener(() => notified++);
       await c.autoCheckAll(1, const [ProbeService.youtube]);
-      expect(notified, 0, reason: 'второй автопрогон для того же соединения запрещён');
+      expect(notified, 0, reason: 'второй автопрогон для того же подъёма запрещён');
     });
 
-    test('autoCheckAll повторяется на новом соединении', () async {
+    test('autoCheckAll повторяется на новом подъёме', () async {
       final c = ServiceCheckController();
-      c.bind('srv1');
+      c.setTunnelUp(true);
       await c.autoCheckAll(1, const [ProbeService.youtube]);
-      c.bind('srv2'); // переподключились/сменили сервер
+      c.setTunnelUp(false); // отключились…
+      c.setTunnelUp(true); // …и подключились заново
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);
       await c.autoCheckAll(1, const [ProbeService.youtube]);
       expect(c.resultFor(ProbeService.youtube).isTerminal, isTrue);
     });
 
-    test('autoCheckAll без привязки не запускается', () async {
+    test('autoCheckAll при выключенном туннеле не запускается', () async {
       final c = ServiceCheckController();
       await c.autoCheckAll(1, const [ProbeService.youtube]);
       expect(c.resultFor(ProbeService.youtube).state, ServiceCheckState.idle);

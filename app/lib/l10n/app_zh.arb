@@ -808,6 +808,27 @@
     }
   },
   "geoBundledWindows": "在 Windows 上，这些文件随核心一同发布，通常已经就位。清单过时后，这里的更新会重新下载它们。",
+  "geoSource": "来源与 Xray 发行包中那些文件的来源相同：Loyalsoldier/v2ray-rules-dat。下载下来的文件，会用同一发布版本给出的校验和进行核对。",
+  "geoReplaceWarning": "旧文件会保留下来：万一替换后路由变差，一个按钮就能把它们换回来。如果新文件里没有订阅所引用的类别，更新不会被安装。",
+  "geoBackupLine": "已有备份：{files} — {size}，保存于 {date}",
+  "@geoBackupLine": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoRestore": "恢复旧版",
+  "geoRestored": "旧版地理数据库已恢复",
+  "geoRestoreTitle": "要恢复旧版地理数据库吗？",
+  "geoRestoreBody": "当前文件将被上次更新前保存的那份备份替换。此操作不需要联网。此后若还想用更新后的文件，只能重新下载一次。",
+  "geoErrorCategories": "新文件里没有订阅所引用的类别。替换已取消，旧文件原样留在原处——路由没有受到影响。具体缺少哪些类别，见下方一行。",
   "geoNoWrite": "该文件夹不可写入——无法下载到这里。通常是因为安装在了 Program Files：请以管理员身份运行应用。",
   "geoCheck": "检查更新",
   "geoCheckAgain": "再检查一次",

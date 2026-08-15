@@ -28,6 +28,7 @@ import '../../core/xray/geodata_fallback.dart';
 import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
+import 'app_heartbeat.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
 /// `SilentGateVpnService`.
@@ -88,8 +89,21 @@ class AndroidEngine extends VpnEngineBase {
   @override
   bool get readsXrayStats => false;
 
+  /// Отметка «приложение живо» + замер отзывчивости главного потока Android.
+  ///
+  /// ⚠️ ЖИВЁТ СТОЛЬКО ЖЕ, СКОЛЬКО ДВИЖОК, И НЕ ЗАВИСИТ ОТ ПОДКЛЮЧЕНИЯ. Зависание
+  /// у владельца случилось при поднятом туннеле, но с тем же успехом могло бы
+  /// случиться и без него — а движок на Android создаётся ровно один и на всё
+  /// время работы приложения (`engine_factory`).
+  ///
+  /// ⚠️ Гейт по платформе, а не по режиму сборки: `AndroidEngine` создают ещё и
+  /// тесты (на Windows), и таймер там был бы фоновой работой, которую никто не
+  /// просил, — а вместе с ним и вызовы несуществующего канала.
+  final AppHeartbeat heartbeat = AppHeartbeat();
+
   AndroidEngine({super.ports}) {
     _events.receiveBroadcastStream().listen(_onNativeEvent);
+    if (Platform.isAndroid) heartbeat.start();
   }
 
   /// Порт и пароль Clash API — счётчиков трафика туннеля.
@@ -382,6 +396,43 @@ class AndroidEngine extends VpnEngineBase {
   /// О реконструкции заглушки уже сказали в журнале. См. [_blackholeJson].
   bool _warnedStubFromSettings = false;
 
+  /// Сколько ждём ответа НАТИВНОЙ стороны на вопрос, у которого есть запасной
+  /// ответ.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ НУЖНО. Обработчики каналов `lol.silentgate/vpn` и
+  /// `lol.silentgate/device` исполняются на ГЛАВНОМ потоке Android. Пока он
+  /// занят — а до 1.5.1 он был занят подъёмом обоих ядер прямо в
+  /// `onStartCommand` — ответ не придёт вовсе, и `await` без срока висит СТОЛЬКО
+  /// ЖЕ. Дальше по цепочке это уже не «медленно», а «намертво»:
+  ///
+  ///  * `AppState.init()` ПЕРВОЙ строкой ждёт [adoptRunningTunnel]. Не ответил
+  ///    канал — инициализация не двинулась ни на шаг: ни серверов, ни экрана, и
+  ///    в журнале при этом НИ ОДНОЙ строки. Ровно то, что владелец описал как
+  ///    «внезапно зависло приложение», и ровно то, чего не видно в отчёте;
+  ///  * [_waitTunnelUp] обещает потолок в 25 с, но проверяет его МЕЖДУ опросами
+  ///    — а вис происходит внутри опроса. Комментарий про «щедрый потолок» был
+  ///    неправдой ровно в том случае, ради которого потолок и заводили.
+  ///
+  /// ⚠️ Срок ставится ТОЛЬКО там, где у нас есть честный запасной ответ
+  /// («не знаю»). На `start` его нет и быть не может: команда либо дошла до
+  /// сервиса, либо нет, и выдумывать здесь исход — значит решить, что туннеля
+  /// не будет, ровно тогда, когда он поднимается.
+  @visibleForTesting
+  Duration channelTimeout = const Duration(seconds: 5);
+
+  /// Спросить нативную сторону так, чтобы ответ пришёл ЛИБО вовремя, либо
+  /// никогда. `null` — не ответили; вызывающий обязан знать, что делать.
+  Future<T?> _ask<T>(MethodChannel ch, String method, String what) async {
+    try {
+      return await ch.invokeMethod<T>(method).timeout(channelTimeout);
+    } on TimeoutException {
+      AppLog.w('Главный поток Android не ответил на «$what» за '
+          '${channelTimeout.inSeconds} с — считаю ответ неизвестным. Обычно это '
+          'значит, что он занят: интерфейс в этот момент застыл.');
+      return null;
+    }
+  }
+
   /// Подхватить туннель, поднятый ПРОШЛЫМ запуском интерфейса.
   ///
   /// ⚠️ На Android интерфейс и туннель живут врозь: `VpnService` переживает
@@ -396,7 +447,13 @@ class AndroidEngine extends VpnEngineBase {
   @override
   Future<void> adoptRunningTunnel() async {
     try {
-      final running = await _channel.invokeMethod<bool>('isRunning') ?? false;
+      // ⚠️ СО СРОКОМ. Это ПЕРВАЯ строка `AppState.init()`: зависший здесь
+      // `await` останавливает запуск приложения целиком и молча (см.
+      // [channelTimeout]). «Не ответили» трактуем как «туннеля не знаю» —
+      // приложение поднимется и покажет «Отключено», а повторный `start`
+      // нативная сторона разберёт как перезагрузку, а не как второй сеанс.
+      final running = await _ask<bool>(_channel, 'isRunning', 'isRunning') ??
+          false;
       if (!running || status.isConnected) return;
       AppLog.i('Подхвачен туннель, поднятый прошлым запуском интерфейса');
       // Пароль Clash API — от ТОГО запуска: свежесгенерированный туннель не
@@ -877,7 +934,14 @@ class AndroidEngine extends VpnEngineBase {
     while (true) {
       if (aborted()) return false;
       try {
-        if (await _channel.invokeMethod<bool>('isRunning') ?? false) return true;
+        // ⚠️ СРОК НА КАЖДЫЙ ОПРОС, ИНАЧЕ ПОТОЛОК НИЧЕГО НЕ ОГРАНИЧИВАЕТ. Он
+        // проверяется МЕЖДУ опросами, а зависает — ВНУТРИ: главный поток
+        // Android в этот самый момент поднимает ядра. Без срока этот цикл ждал
+        // бы столько же, сколько занят главный поток, и обещание «потолок 25 с»
+        // было бы неправдой ровно в том случае, ради которого оно написано.
+        if (await _ask<bool>(_channel, 'isRunning', 'isRunning') ?? false) {
+          return true;
+        }
       } catch (_) {
         // Канал мог не ответить на миг — это не отказ туннеля.
       }
@@ -1332,10 +1396,16 @@ class AndroidEngine extends VpnEngineBase {
     await srv.stop();
   }
 
-  static Future<String?> _directDns() async {
+  /// ⚠️ ТОЖЕ СО СРОКОМ, И ЭТО ПУТЬ ПОДКЛЮЧЕНИЯ. Зовётся ДВАЖДЫ за подъём
+  /// (опции туннеля и запасной DNS), а обработчик канала `device` исполняется
+  /// на главном потоке Android. Зависший здесь `await` оставляет подключение в
+  /// состоянии «Подключение…» навсегда — с заблокированным kill switch трафиком
+  /// и без единой строки в журнале. Запасной ответ у нас честный и уже
+  /// написанный: `null` значит «резолвер физической сети неизвестен».
+  Future<String?> _directDns() async {
     try {
-      final dns = await const MethodChannel('lol.silentgate/device')
-          .invokeMethod<String>('directDns');
+      final dns = await _ask<String>(
+          const MethodChannel('lol.silentgate/device'), 'directDns', 'directDns');
       final v = (dns ?? '').trim();
       return v.isEmpty ? null : v;
     } catch (e) {

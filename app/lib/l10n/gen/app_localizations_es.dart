@@ -2254,6 +2254,36 @@ class AppLocalizationsEs extends AppLocalizations {
       'En Windows los archivos vienen junto con el núcleo y normalmente ya están en su sitio. Actualizar aquí vuelve a descargarlos cuando las listas se quedan desfasadas.';
 
   @override
+  String get geoSource =>
+      'La fuente es la misma de la que vienen los archivos en la distribución de Xray: Loyalsoldier/v2ray-rules-dat. Lo descargado se comprueba con la suma de verificación publicada junto a esa misma versión.';
+
+  @override
+  String get geoReplaceWarning =>
+      'Los archivos anteriores se conservan: si después de la sustitución el enrutamiento empeora, un solo botón los devuelve. La actualización no se instala si al archivo nuevo le faltan categorías a las que hace referencia tu suscripción.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'Hay copia de seguridad: $files — $size, del $date';
+  }
+
+  @override
+  String get geoRestore => 'Restaurar anteriores';
+
+  @override
+  String get geoRestored => 'Bases geo anteriores restauradas';
+
+  @override
+  String get geoRestoreTitle => '¿Restaurar las bases geo anteriores?';
+
+  @override
+  String get geoRestoreBody =>
+      'Los archivos actuales se sustituirán por la copia guardada antes de la última actualización. No hace falta conexión. Después, para volver a los actualizados habrá que descargarlos otra vez.';
+
+  @override
+  String get geoErrorCategories =>
+      'Al archivo nuevo le faltan categorías a las que hace referencia tu suscripción. La sustitución se ha cancelado y los archivos anteriores siguen en su sitio — el enrutamiento no se ha visto afectado. En la línea de abajo se indica qué categorías faltaban.';
+
+  @override
   String get geoNoWrite =>
       'En esta carpeta no se puede escribir, así que no será posible descargar aquí. Suele ocurrir con una instalación en Program Files: ejecuta la aplicación como administrador.';
 

@@ -7,49 +7,80 @@ import '../../engine/windows/xray_paths.dart';
 import '../platform/app_log.dart';
 import '../platform/app_paths.dart';
 import 'geo_bases_store.dart';
+import 'geo_dat.dart';
+import 'geo_usage.dart';
 import 'sha256.dart';
 
-/// Одна гео-база: имя файла у нас, адрес файла и адрес его контрольной суммы.
+/// Откуда берутся гео-базы. ⚠️ ЭТО ТОТ ЖЕ ИСТОЧНИК, ИЗ КОТОРОГО ОНИ ПРИЕЗЖАЮТ
+/// В ПОСТАВКЕ, И ДРУГОГО ЗДЕСЬ БЫТЬ НЕ МОЖЕТ.
 ///
-/// ⚠️ ПОЧЕМУ НЕ РЕЛИЗЫ `XTLS/Xray-core`, ХОТЯ ЯДРО ИМЕННО ОТТУДА. Проверено по
-/// API 14.08.2026: в релизе `v26.3.27` **86 файлов и среди них нет ни
-/// `geoip.dat`, ни `geosite.dat`** — только архивы под платформы (`Xray-*.zip`)
-/// и их `.dgst`. Гео-базы лежат ВНУТРИ архивов, и чтобы взять два файла,
-/// пришлось бы тянуть весь архив с бинарником ядра ради распаковки на
-/// телефоне. А в архив XTLS кладёт ровно эти же сборки:
-/// `v2fly/geoip` → `geoip.dat` и `v2fly/domain-list-community` → `dlc.dat`
-/// (у нас он ложится под именем `geosite.dat` — так его ищет ядро).
-/// Поэтому источник — сами эти релизы: то же содержимое, 25 МБ вместо 40, и
-/// набор категорий не расходится с Windows-сборкой.
+/// `tools/fetch-xray.ps1` распаковывает в `engine/windows/bin` архив
+/// `Xray-windows-64.zip` из релиза XTLS/Xray-core — вместе с `geoip.dat` и
+/// `geosite.dat`. А сам XTLS кладёт в этот архив не свои файлы: его воркфлоу
+/// `.github/workflows/scheduled-assets-update.yml` берёт их так (проверено по
+/// исходнику воркфлоу 15.08.2026):
+///
+/// ```
+/// curl -L …raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geoip.dat
+/// curl -L …raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release/geosite.dat
+/// ```
+///
+/// ⚠️ ЧТО БЫЛО ДО 1.5.1 И ЧЕМ ЭТО КОНЧИЛОСЬ. Качали из `v2fly/geoip` и
+/// `v2fly/domain-list-community` (`dlc.dat`) — ДРУГОЙ проект с другим составом,
+/// а комментарий рядом утверждал, что это «те же файлы, что XTLS кладёт в свой
+/// релизный архив». Размеры это опровергают: в поставке лежали `geoip.dat`
+/// 18,85 МБ и `geosite.dat` 10,01 МБ, после обновления стало 22,01 МБ и
+/// **2,18 МБ**. Ядро приняло замену без единой жалобы в лог, а маршрутизация
+/// владельца развалилась: правила панели по российским категориям перестали
+/// совпадать, и весь российский трафик поехал через VPN. Искал он причину в
+/// серверах.
+const _loyalsoldier =
+    'https://raw.githubusercontent.com/Loyalsoldier/v2ray-rules-dat/release';
+
+/// Одна гео-база: имя файла, к какому файлу относятся ссылки на категории,
+/// адрес файла и адрес его контрольной суммы.
 enum GeoBase {
   geoip(
     fileName: 'geoip.dat',
-    url: 'https://github.com/v2fly/geoip/releases/latest/download/geoip.dat',
-    sumUrl:
-        'https://github.com/v2fly/geoip/releases/latest/download/geoip.dat.sha256sum',
+    kind: GeoRefKind.ip,
+    url: '$_loyalsoldier/geoip.dat',
+    sumUrl: '$_loyalsoldier/geoip.dat.sha256sum',
   ),
   geosite(
     fileName: 'geosite.dat',
-    url: 'https://github.com/v2fly/domain-list-community/releases/latest/'
-        'download/dlc.dat',
-    sumUrl: 'https://github.com/v2fly/domain-list-community/releases/latest/'
-        'download/dlc.dat.sha256sum',
+    kind: GeoRefKind.site,
+    url: '$_loyalsoldier/geosite.dat',
+    sumUrl: '$_loyalsoldier/geosite.dat.sha256sum',
   );
 
   const GeoBase({
     required this.fileName,
+    required this.kind,
     required this.url,
     required this.sumUrl,
   });
 
   final String fileName;
+
+  /// Какие ссылки конфигов резолвит этот файл: `geoip:` или `geosite:`.
+  final GeoRefKind kind;
+
   final String url;
 
-  /// ⚠️ Сумма считается по СОДЕРЖИМОМУ, а не по имени. У geosite файл в релизе
-  /// зовётся `dlc.dat`, у нас — `geosite.dat`; в `.sha256sum` стоит их имя.
-  /// Сравнивать имена нельзя, сравниваем только хэш — иначе обновление
-  /// «никогда не нужно» либо «нужно всегда».
+  /// ⚠️ ЦЕЛОСТНОСТЬ ПРОВЕРЯЕМ ТЕМ ЖЕ, ЧЕМ ЕЁ ПРОВЕРЯЕТ САМ XTLS: рядом с каждым
+  /// файлом в той же ветке лежит `<имя>.sha256sum` (74 байта), и воркфлоу
+  /// сборки Xray сверяет закачку именно с ним. Сумма считается по СОДЕРЖИМОМУ,
+  /// а имя внутри `.sha256sum` не сравнивается ни с чем.
   final String sumUrl;
+}
+
+/// Резервная копия прежней базы: что можно вернуть и от какого числа.
+class GeoBackup {
+  final GeoBase base;
+  final int bytes;
+  final DateTime? at;
+
+  const GeoBackup({required this.base, required this.bytes, this.at});
 }
 
 /// Состояние одного файла на диске.
@@ -284,6 +315,62 @@ class GeoBases {
   static Future<File> fileOf(GeoBase base) async =>
       File('${(await dir()).path}${Platform.pathSeparator}${base.fileName}');
 
+  /// Расширение резервной копии. Лежит РЯДОМ с базой, в том же каталоге ядра:
+  /// ядро ищет там файлы по точным именам (`geoip.dat`, `geosite.dat`) и на
+  /// `.bak` не смотрит, а держать резерв в другом месте значило бы, что при
+  /// переустановке приложения он потеряется отдельно от того, что защищает.
+  static const backupSuffix = '.bak';
+
+  static Future<File> backupOf(GeoBase base) async =>
+      File('${(await fileOf(base)).path}$backupSuffix');
+
+  /// Что можно вернуть. Пусто — возвращать нечего.
+  static Future<List<GeoBackup>> backups() async {
+    final out = <GeoBackup>[];
+    for (final base in GeoBase.values) {
+      try {
+        final f = await backupOf(base);
+        if (await healthOf(f) != GeoHealth.ok) continue;
+        final st = await f.stat();
+        out.add(GeoBackup(base: base, bytes: st.size, at: st.modified));
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  /// Вернуть прежние базы. `null` — успех, иначе причина.
+  ///
+  /// ⚠️ ЭТО НЕ УДОБСТВО, А ГЛАВНЫЙ ВЫВОД ИЗ 15.08.2026. Обновление тогда
+  /// перезаписало рабочие файлы на месте, и вернуться было НЕКУДА: единственным
+  /// способом получить прежнюю маршрутизацию оставалась переустановка
+  /// приложения. Поломку от гео-баз человек по симптомам не отличит («сайты не
+  /// открываются», «выбрал не тот сервер»), поэтому откат обязан быть в один
+  /// шаг и без сети.
+  static Future<String?> restoreBackups() async {
+    final problem = await writeProblem();
+    if (problem != null) {
+      final d = await dir();
+      return 'нет доступа на запись в ${d.path}: $problem';
+    }
+    var done = 0;
+    for (final base in GeoBase.values) {
+      final backup = await backupOf(base);
+      // Возвращаем только исправное: подсунуть вместо рабочей базы обрывок
+      // хуже, чем не вернуть ничего.
+      if (await healthOf(backup) != GeoHealth.ok) continue;
+      final target = await fileOf(base);
+      try {
+        await _deleteQuiet(target);
+        await backup.rename(target.path);
+        done++;
+        AppLog.i('Гео-база ${base.fileName}: возвращена прежняя версия');
+      } catch (e) {
+        return '${base.fileName}: $e';
+      }
+    }
+    return done == 0 ? 'возвращать нечего: резервной копии нет' : null;
+  }
+
   /// Можно ли вообще писать в каталог ядра. `null` — можно, иначе причина.
   ///
   /// ⚠️ СПРАШИВАЕМ ДО ЗАКАЧКИ, А НЕ ПОСЛЕ. На Windows установщик кладёт
@@ -498,6 +585,10 @@ class GeoBases {
   /// [expectedSums] — суммы из проверки обновлений: скачанный файл сверяется с
   /// ними ДО того, как встанет на место рабочего.
   ///
+  /// [requiredRefs] — категории, которые обязаны быть в новом файле. По
+  /// умолчанию спрашиваются у [GeoUsage] (что реально упоминают наши конфиги);
+  /// пустое множество отключает проверку — проверять нечего.
+  ///
   /// ⚠️ ВРЕМЕННЫЙ ФАЙЛ И ПЕРЕИМЕНОВАНИЕ. Оборванная закачка иначе оставила бы
   /// обрезанный `geoip.dat`, который ядро принимает за настоящий: вместо
   /// честного «баз нет» получилась бы неверная маршрутизация, которую никто не
@@ -505,6 +596,7 @@ class GeoBases {
   static Future<String?> download({
     required List<GeoBase> files,
     Map<GeoBase, String>? expectedSums,
+    Set<GeoRef>? requiredRefs,
     void Function(GeoProgress)? onProgress,
     http.Client? client,
   }) async {
@@ -517,6 +609,7 @@ class GeoBases {
     final own = client == null;
     final c = client ?? http.Client();
     final store = await GeoBasesStore.load();
+    final used = requiredRefs ?? await GeoUsage.fromDataDir();
     try {
       for (var i = 0; i < files.length; i++) {
         final base = files[i];
@@ -546,8 +639,23 @@ class GeoBases {
             await _deleteQuiet(tmp);
             return '${base.fileName}: скачан не тот файл (${health.name})';
           }
-          if (await target.exists()) await target.delete();
-          await tmp.rename(target.path);
+          final lost = await missingCategories(tmp, base, used);
+          if (lost != null) {
+            await _deleteQuiet(tmp);
+            return lost;
+          }
+          await _keepPrevious(target);
+          try {
+            await tmp.rename(target.path);
+          } catch (e) {
+            // Замена не удалась — прежний файл обязан вернуться на место, иначе
+            // мы оставили бы человека вообще без гео-баз.
+            final backup = File('${target.path}$backupSuffix');
+            if (!await target.exists() && await backup.exists()) {
+              await backup.rename(target.path);
+            }
+            rethrow;
+          }
           final st = await target.stat();
           await store.rememberSum(
             base.fileName,
@@ -566,6 +674,65 @@ class GeoBases {
     } finally {
       if (own) c.close();
     }
+  }
+
+  /// ⚠️ ПРОВЕРКА КАТЕГОРИЙ ДО ЗАМЕНЫ. Возвращает `null`, если новый файл
+  /// подходит, иначе — готовую причину отказа.
+  ///
+  /// Именно здесь ловится то, что случилось 15.08.2026: файл скачался целиком,
+  /// сумма сошлась, ядро его примет — а категорий, на которые ссылается панель
+  /// подписки, внутри нет. Ядро об этом молчит (правило просто перестаёт
+  /// совпадать), поэтому спросить обязаны мы, и обязаны ДО того, как рабочий
+  /// файл будет тронут.
+  ///
+  /// ⚠️ «НЕ РАЗОБРАЛСЯ» — ЭТО ТОЖЕ ОТКАЗ. Нечитаемый список категорий значит
+  /// «мы не знаем, что внутри», а менять рабочий файл на неизвестный нельзя.
+  ///
+  /// Проверять нечего, если наши конфиги вообще не ссылаются на этот файл
+  /// (обычный сервер без панельной маршрутизации, первая установка) — тогда
+  /// терять нечего и разбор не нужен.
+  @visibleForTesting
+  static Future<String?> missingCategories(
+      File candidate, GeoBase base, Set<GeoRef> used) async {
+    final need = GeoUsage.namesFor(used, base.kind);
+    if (need.isEmpty) return null;
+    final scan = await GeoDat.scan(candidate);
+    if (!scan.readable) {
+      return '${base.fileName}: не удалось прочитать список категорий '
+          'в скачанном файле — прежний файл оставлен на месте';
+    }
+    final lost = [for (final n in need) if (!scan.has(n)) n]..sort();
+    if (lost.isEmpty) return null;
+    return '${base.fileName}: в новом файле нет категорий, которые использует '
+        'ваша подписка: ${lost.map((n) => '${base.kind == GeoRefKind.ip ? 'geoip' : 'geosite'}:$n').join(', ')}'
+        ' — прежний файл оставлен на месте';
+  }
+
+  /// Убрать прежний рабочий файл в резерв.
+  ///
+  /// ⚠️ ПЕРЕИМЕНОВАНИЕМ, А НЕ КОПИЕЙ: 20 МБ копировать незачем, а на телефоне
+  /// это ещё и лишняя запись во флеш-память.
+  ///
+  /// ⚠️ ХРАНИМ РОВНО ОДНО ПОКОЛЕНИЕ — то, что работало до последней замены.
+  /// Держать больше значит держать на диске десятки мегабайт «на всякий
+  /// случай»; держать меньше — вернуться к 15.08.2026, когда возвращаться было
+  /// некуда. Испорченный файл в резерв НЕ идёт: тогда кнопка отката вернула бы
+  /// обрывок и человек решил бы, что откат не помогает.
+  static Future<void> _keepPrevious(File target) async {
+    final backup = File('${target.path}$backupSuffix');
+    if (await healthOf(target) == GeoHealth.ok) {
+      await _deleteQuiet(backup);
+      try {
+        await target.rename(backup.path);
+        return;
+      } catch (_) {
+        // Резерв не вышел (нет места, файл занят) — обновление из-за этого не
+        // отменяем, но и тихо делать вид, что копия есть, нельзя.
+        AppLog.i('Гео-базы: не удалось сохранить прежний '
+            '${target.uri.pathSegments.last} — отката не будет');
+      }
+    }
+    await _deleteQuiet(target);
   }
 
   /// Скачивание одного файла; возвращает sha256 скачанного.
@@ -616,11 +783,16 @@ class GeoBases {
   }
 
   /// Удалить базы (освободить место / заставить перекачать).
+  ///
+  /// Резервные копии уходят вместе с ними: человек просил освободить место, и
+  /// оставить половину — значит не выполнить просьбу. Возвращать после этого
+  /// нечего и не к чему.
   static Future<void> remove() async {
     final d = await dir();
     for (final base in GeoBase.values) {
-      await _deleteQuiet(
-          File('${d.path}${Platform.pathSeparator}${base.fileName}'));
+      final path = '${d.path}${Platform.pathSeparator}${base.fileName}';
+      await _deleteQuiet(File(path));
+      await _deleteQuiet(File('$path$backupSuffix'));
     }
     await (await GeoBasesStore.load()).forgetSums();
   }

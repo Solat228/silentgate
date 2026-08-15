@@ -808,6 +808,27 @@
     }
   },
   "geoBundledWindows": "Windows'ta dosyalar çekirdekle birlikte gelir ve genellikle zaten yerindedir. Buradaki güncelleme, listeler eskidiğinde onları yeniden indirir.",
+  "geoSource": "Kaynak, dosyaların Xray dağıtımıyla birlikte geldiği kaynağın aynısı: Loyalsoldier/v2ray-rules-dat. İndirilen dosya, aynı sürümle birlikte yayımlanan sağlama toplamıyla doğrulanır.",
+  "geoReplaceWarning": "Önceki dosyalar saklanır: dosyalar değiştirildikten sonra yönlendirme kötüleşirse tek bir düğmeyle geri getirilebilirler. Aboneliğinizin kullandığı kategoriler yeni dosyada yoksa güncelleme uygulanmaz.",
+  "geoBackupLine": "Yedek kopya var: {files} — {size}, {date} tarihli",
+  "@geoBackupLine": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoRestore": "Öncekileri geri yükle",
+  "geoRestored": "Önceki geo verileri geri yüklendi",
+  "geoRestoreTitle": "Önceki geo verileri geri yüklensin mi?",
+  "geoRestoreBody": "Mevcut dosyalar, son güncellemeden önce kaydedilen kopyayla değiştirilecek. İnternet bağlantısı gerekmez. Bundan sonra güncel dosyaları yalnızca yeniden indirerek geri alabilirsiniz.",
+  "geoErrorCategories": "Aboneliğinizin kullandığı kategoriler yeni dosyada yok. Değiştirme iptal edildi, önceki dosyalar yerinde kaldı — yönlendirme etkilenmedi. Tam olarak hangi kategorilerin eksik olduğu aşağıdaki satırda görünüyor.",
   "geoNoWrite": "Bu klasöre yazılamıyor — buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.",
   "geoCheck": "Güncellemeyi kontrol et",
   "geoCheckAgain": "Tekrar kontrol et",

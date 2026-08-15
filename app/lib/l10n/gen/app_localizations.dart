@@ -3978,6 +3978,54 @@ abstract class AppLocalizations {
   /// **'На Windows файлы приезжают вместе с ядром и обычно уже лежат на месте. Обновление здесь перекачивает их, когда списки устарели.'**
   String get geoBundledWindows;
 
+  /// No description provided for @geoSource.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник — тот же, из которого файлы приходят в поставке Xray: Loyalsoldier/v2ray-rules-dat. Скачанное сверяется с контрольной суммой из того же выпуска.'**
+  String get geoSource;
+
+  /// No description provided for @geoReplaceWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние файлы сохраняются: если после замены маршрутизация ухудшится, их можно вернуть одной кнопкой. Обновление не ставится, если в новом файле нет категорий, на которые ссылается ваша подписка.'**
+  String get geoReplaceWarning;
+
+  /// No description provided for @geoBackupLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'Есть резервная копия: {files} — {size}, от {date}'**
+  String geoBackupLine(String files, String size, String date);
+
+  /// No description provided for @geoRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть прежние'**
+  String get geoRestore;
+
+  /// No description provided for @geoRestored.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние гео-базы возвращены'**
+  String get geoRestored;
+
+  /// No description provided for @geoRestoreTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вернуть прежние гео-базы?'**
+  String get geoRestoreTitle;
+
+  /// No description provided for @geoRestoreBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущие файлы будут заменены копией, сохранённой перед последним обновлением. Сеть не нужна. После этого вернуть обновлённые можно будет только повторной закачкой.'**
+  String get geoRestoreBody;
+
+  /// No description provided for @geoErrorCategories.
+  ///
+  /// In ru, this message translates to:
+  /// **'В новом файле нет категорий, на которые ссылается ваша подписка. Замена отменена, прежние файлы остались на месте — маршрутизация не пострадала. Каких именно категорий не хватило, видно в строке ниже.'**
+  String get geoErrorCategories;
+
   /// No description provided for @geoNoWrite.
   ///
   /// In ru, this message translates to:

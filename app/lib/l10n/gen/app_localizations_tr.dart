@@ -2238,6 +2238,36 @@ class AppLocalizationsTr extends AppLocalizations {
       'Windows\'ta dosyalar çekirdekle birlikte gelir ve genellikle zaten yerindedir. Buradaki güncelleme, listeler eskidiğinde onları yeniden indirir.';
 
   @override
+  String get geoSource =>
+      'Kaynak, dosyaların Xray dağıtımıyla birlikte geldiği kaynağın aynısı: Loyalsoldier/v2ray-rules-dat. İndirilen dosya, aynı sürümle birlikte yayımlanan sağlama toplamıyla doğrulanır.';
+
+  @override
+  String get geoReplaceWarning =>
+      'Önceki dosyalar saklanır: dosyalar değiştirildikten sonra yönlendirme kötüleşirse tek bir düğmeyle geri getirilebilirler. Aboneliğinizin kullandığı kategoriler yeni dosyada yoksa güncelleme uygulanmaz.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'Yedek kopya var: $files — $size, $date tarihli';
+  }
+
+  @override
+  String get geoRestore => 'Öncekileri geri yükle';
+
+  @override
+  String get geoRestored => 'Önceki geo verileri geri yüklendi';
+
+  @override
+  String get geoRestoreTitle => 'Önceki geo verileri geri yüklensin mi?';
+
+  @override
+  String get geoRestoreBody =>
+      'Mevcut dosyalar, son güncellemeden önce kaydedilen kopyayla değiştirilecek. İnternet bağlantısı gerekmez. Bundan sonra güncel dosyaları yalnızca yeniden indirerek geri alabilirsiniz.';
+
+  @override
+  String get geoErrorCategories =>
+      'Aboneliğinizin kullandığı kategoriler yeni dosyada yok. Değiştirme iptal edildi, önceki dosyalar yerinde kaldı — yönlendirme etkilenmedi. Tam olarak hangi kategorilerin eksik olduğu aşağıdaki satırda görünüyor.';
+
+  @override
   String get geoNoWrite =>
       'Bu klasöre yazılamıyor — buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.';
 

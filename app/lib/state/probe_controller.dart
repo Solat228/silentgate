@@ -527,6 +527,22 @@ class ProbeController extends ChangeNotifier {
     });
   }
 
+  /// Сколько замеров гонять разом. НЕ голое значение из настроек.
+  ///
+  /// ⚠️ `Pool(0)` — ЭТО ВЕЧНОЕ ОЖИДАНИЕ, ИЗ КОТОРОГО НЕТ ВЫХОДА. Семафор выдаёт
+  /// слот по условию `_active < max`; при нуле оно ложно всегда, ни одна задача
+  /// не стартует, `Future.wait` не завершается никогда — а значит не отрабатывает
+  /// `finally` в [_pingBatch]: `_running` остаётся `true` до конца жизни
+  /// процесса. Дальше не работает ни пинг, ни замер скорости (у него тот же
+  /// гейт), и «Отменить» не помогает: [cancel] только ставит флаг, а флаг
+  /// проверяется ВНУТРИ задачи, которая не начиналась.
+  ///
+  /// Значения в интерфейсе нет — оно приезжает из файла настроек, то есть из
+  /// чужой копии, ручной правки или битого JSON. Одного нуля там достаточно,
+  /// чтобы подсистема замеров «зависла» навсегда без единой строки в журнале.
+  static int _concurrency(AppSettings s) =>
+      s.pingConcurrency < 1 ? 1 : s.pingConcurrency;
+
   static bool _isHy2(VpnServer s) => s.protocol == 'hysteria2';
 
   static bool _hasFullConfig(VpnServer s) =>
@@ -604,7 +620,7 @@ class ProbeController extends ChangeNotifier {
       final survivors = <VpnServer>[]; // ответили по TCP (для двухфазной проверки)
       final proxyPlain = <VpnServer>[]; // обычные, но меряются через прокси (GET/HEAD)
       final noTcp = <VpnServer>[]; // hy2/профили — только через прокси
-      final pool = Pool(settings.pingConcurrency);
+      final pool = Pool(_concurrency(settings));
       await Future.wait([
         for (final s in servers)
           pool.run(() async {
@@ -879,7 +895,7 @@ class ProbeController extends ChangeNotifier {
       ];
       handle = await _harnessFactory().start(entries);
 
-      final pool = Pool(settings.pingConcurrency);
+      final pool = Pool(_concurrency(settings));
       final futures = <Future<void>>[];
       for (var i = 0; i < servers.length; i++) {
         final idx = i;

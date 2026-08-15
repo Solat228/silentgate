@@ -29,9 +29,15 @@ void main() {
       final before = c.baselineFor(ProbeService.google).state;
       expect(before, isNot(ServiceCheckState.idle));
 
-      // Подключились: смена соединения чистит результаты «через VPN»…
-      c.bind('server-1');
-      c.bind('server-2');
+      // Подключились и отключились: канал сменился дважды, результаты «через
+      // VPN» вычищены оба раза…
+      //
+      // ⚠️ Здесь стояло `bind('server-1')` / `bind('server-2')` — сброс по
+      // ключу ВЫБРАННОГО сервера. Ровно на это владелец и жаловался: клик по
+      // строке списка живой туннель не трогает, а вердикты стирал. Такого
+      // входа у контроллера больше нет.
+      c.setTunnelUp(true);
+      c.setTunnelUp(false);
       // …но замер «до» обязан остаться, иначе сравнивать будет не с чем.
       expect(c.baselineFor(ProbeService.google).state, before);
       expect(c.resultFor(ProbeService.google).state, ServiceCheckState.idle);

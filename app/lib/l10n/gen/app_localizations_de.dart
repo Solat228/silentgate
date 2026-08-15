@@ -2250,6 +2250,36 @@ class AppLocalizationsDe extends AppLocalizations {
       'Unter Windows werden die Dateien mit dem Kern ausgeliefert und liegen meist schon an Ort und Stelle. Die Aktualisierung hier lädt sie neu herunter, wenn die Listen veraltet sind.';
 
   @override
+  String get geoSource =>
+      'Die Quelle ist dieselbe, aus der die Dateien auch mit Xray ausgeliefert werden: Loyalsoldier/v2ray-rules-dat. Der Download wird mit der Prüfsumme aus demselben Release abgeglichen.';
+
+  @override
+  String get geoReplaceWarning =>
+      'Die bisherigen Dateien bleiben erhalten: Wird das Routing nach dem Austausch schlechter, holt eine Schaltfläche sie zurück. Ein Update wird nicht eingespielt, wenn in der neuen Datei die Kategorien fehlen, auf die sich Ihr Abonnement bezieht.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'Sicherungskopie vorhanden: $files — $size, Stand $date';
+  }
+
+  @override
+  String get geoRestore => 'Vorherige wiederherstellen';
+
+  @override
+  String get geoRestored => 'Vorherige Geodatenbanken wiederhergestellt';
+
+  @override
+  String get geoRestoreTitle => 'Vorherige Geodatenbanken wiederherstellen?';
+
+  @override
+  String get geoRestoreBody =>
+      'Die aktuellen Dateien werden durch die Kopie ersetzt, die vor dem letzten Update gesichert wurde. Dafür ist keine Internetverbindung nötig. Die aktualisierten Dateien lassen sich danach nur durch erneutes Herunterladen zurückholen.';
+
+  @override
+  String get geoErrorCategories =>
+      'In der neuen Datei fehlen Kategorien, auf die sich Ihr Abonnement bezieht. Der Austausch wurde abgebrochen, die bisherigen Dateien liegen unverändert an Ort und Stelle — am Routing hat sich nichts geändert. Welche Kategorien genau gefehlt haben, steht in der Zeile darunter.';
+
+  @override
   String get geoNoWrite =>
       'In diesen Ordner kann nicht geschrieben werden — das Herunterladen schlägt hier fehl. Das kommt meist bei einer Installation in Program Files vor: Starten Sie die App als Administrator.';
 

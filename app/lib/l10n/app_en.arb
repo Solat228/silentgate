@@ -904,6 +904,27 @@
     }
   },
   "geoBundledWindows": "On Windows the files ship with the core and are usually already in place. Updating here re-downloads them once the lists get stale.",
+  "geoSource": "The source is the same one the files come from in the Xray distribution: Loyalsoldier/v2ray-rules-dat. Whatever is downloaded is verified against the checksum published with it.",
+  "geoReplaceWarning": "The previous files are kept: if routing gets worse after the replacement, one button brings them back. An update is not installed when the new file lacks categories your subscription refers to.",
+  "geoBackupLine": "Backup available: {files} — {size}, from {date}",
+  "@geoBackupLine": {
+    "placeholders": {
+      "files": {
+        "type": "String"
+      },
+      "size": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "geoRestore": "Restore previous",
+  "geoRestored": "Previous geo databases restored",
+  "geoRestoreTitle": "Restore the previous geo databases?",
+  "geoRestoreBody": "The current files will be replaced with the copy saved before the last update. No network needed. After that the updated ones can only be obtained by downloading them again.",
+  "geoErrorCategories": "The new file lacks categories your subscription refers to. The replacement was cancelled and the previous files stayed in place — routing is unaffected. The line below names the categories that were missing.",
   "geoNoWrite": "This folder is not writable — downloading here will not work. That usually means an install into Program Files: run the app as administrator.",
   "geoCheck": "Check for updates",
   "geoCheckAgain": "Check again",

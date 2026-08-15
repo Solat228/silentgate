@@ -43,7 +43,7 @@ class GeoDownloadPlan {
 }
 
 /// Итог последнего действия — для подписи под строкой.
-enum GeoOutcome { none, downloaded, upToDate, declined, failed }
+enum GeoOutcome { none, downloaded, upToDate, declined, failed, restored }
 
 /// Состояние гео-баз для интерфейса: файлы, проверка, закачка.
 ///
@@ -65,6 +65,16 @@ class GeoBasesController extends ChangeNotifier {
 
   GeoBasesStatus? _status;
   GeoBasesStatus? get status => _status;
+
+  List<GeoBackup> _backups = const [];
+
+  /// Прежние версии баз, которые можно вернуть одним нажатием.
+  ///
+  /// ⚠️ Пусто — значит откат ПРЕДЛАГАТЬ НЕЛЬЗЯ. Кнопка «вернуть прежние», за
+  /// которой ничего нет, — обещание, что поломку легко отменить, а на деле
+  /// человек нажмёт её и останется с тем же сломанным списком.
+  List<GeoBackup> get backups => _backups;
+  bool get canRestore => _backups.isNotEmpty;
 
   GeoCheckResult? _lastCheck;
   GeoCheckResult? get lastCheck => _lastCheck;
@@ -125,6 +135,7 @@ class GeoBasesController extends ChangeNotifier {
   /// Перечитать состояние файлов на диске.
   Future<void> refresh() async {
     _status = await GeoBases.status();
+    _backups = await GeoBases.backups();
     _lastCheckAt ??= (await GeoBasesStore.load()).lastCheckAt;
     _notify();
   }
@@ -224,11 +235,39 @@ class GeoBasesController extends ChangeNotifier {
         _lastCheck = null;
       }
       _status = await GeoBases.status();
+      _backups = await GeoBases.backups();
       return err == null;
     } finally {
       _busy = false;
       _checking = false;
       _progress = null;
+      _notify();
+    }
+  }
+
+  /// Вернуть прежние базы. `true` — вернули.
+  ///
+  /// ⚠️ ЭТО ОТДЕЛЬНОЕ ДЕЙСТВИЕ, А НЕ ЧАСТЬ ЗАКАЧКИ. Сломанную маршрутизацию
+  /// человек замечает не в момент обновления, а через час — «сайты не
+  /// открываются». К этому времени единственное, что должно быть под рукой, —
+  /// один шаг назад, работающий без сети.
+  Future<bool> restore() async {
+    if (_busy) return false;
+    _busy = true;
+    _error = null;
+    _outcome = GeoOutcome.none;
+    _notify();
+    try {
+      final err = await GeoBases.restoreBackups();
+      _error = err;
+      _outcome = err == null ? GeoOutcome.restored : GeoOutcome.failed;
+      // Проверка обновлений относилась к тем файлам, которых больше нет.
+      if (err == null) _lastCheck = null;
+      _status = await GeoBases.status();
+      _backups = await GeoBases.backups();
+      return err == null;
+    } finally {
+      _busy = false;
       _notify();
     }
   }
@@ -243,6 +282,7 @@ class GeoBasesController extends ChangeNotifier {
       _lastCheck = null;
       _outcome = GeoOutcome.none;
       _status = await GeoBases.status();
+      _backups = await GeoBases.backups();
     } finally {
       _busy = false;
       _notify();

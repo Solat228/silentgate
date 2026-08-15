@@ -2258,6 +2258,36 @@ class AppLocalizationsFr extends AppLocalizations {
       'Sous Windows, les fichiers sont livrés avec le cœur et sont généralement déjà en place. La mise à jour ici les retélécharge quand les listes ont vieilli.';
 
   @override
+  String get geoSource =>
+      'La source est la même que celle des fichiers livrés avec Xray : Loyalsoldier/v2ray-rules-dat. Ce qui est téléchargé est vérifié avec la somme de contrôle publiée dans la même version.';
+
+  @override
+  String get geoReplaceWarning =>
+      'Les fichiers précédents sont conservés : si le routage se dégrade après le remplacement, un seul bouton les remet en place. La mise à jour n\'est pas installée si le nouveau fichier ne contient pas les catégories auxquelles votre abonnement fait référence.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'Copie de sauvegarde disponible : $files — $size, du $date';
+  }
+
+  @override
+  String get geoRestore => 'Restaurer les précédentes';
+
+  @override
+  String get geoRestored => 'Bases géo précédentes restaurées';
+
+  @override
+  String get geoRestoreTitle => 'Restaurer les bases géo précédentes ?';
+
+  @override
+  String get geoRestoreBody =>
+      'Les fichiers actuels seront remplacés par la copie enregistrée avant la dernière mise à jour. Aucune connexion n\'est nécessaire. Ensuite, les fichiers mis à jour ne pourront être récupérés qu\'en les retéléchargeant.';
+
+  @override
+  String get geoErrorCategories =>
+      'Le nouveau fichier ne contient pas les catégories auxquelles votre abonnement fait référence. Le remplacement a été annulé et les fichiers précédents sont restés en place — le routage n\'a pas été affecté. La ligne ci-dessous indique les catégories manquantes.';
+
+  @override
   String get geoNoWrite =>
       'Ce dossier n\'est pas accessible en écriture — le téléchargement n\'y aboutira pas. C\'est le cas habituel après une installation dans Program Files : lancez l\'application en tant qu\'administrateur.';
 

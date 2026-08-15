@@ -2234,6 +2234,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'On Windows the files ship with the core and are usually already in place. Updating here re-downloads them once the lists get stale.';
 
   @override
+  String get geoSource =>
+      'The source is the same one the files come from in the Xray distribution: Loyalsoldier/v2ray-rules-dat. Whatever is downloaded is verified against the checksum published with it.';
+
+  @override
+  String get geoReplaceWarning =>
+      'The previous files are kept: if routing gets worse after the replacement, one button brings them back. An update is not installed when the new file lacks categories your subscription refers to.';
+
+  @override
+  String geoBackupLine(String files, String size, String date) {
+    return 'Backup available: $files — $size, from $date';
+  }
+
+  @override
+  String get geoRestore => 'Restore previous';
+
+  @override
+  String get geoRestored => 'Previous geo databases restored';
+
+  @override
+  String get geoRestoreTitle => 'Restore the previous geo databases?';
+
+  @override
+  String get geoRestoreBody =>
+      'The current files will be replaced with the copy saved before the last update. No network needed. After that the updated ones can only be obtained by downloading them again.';
+
+  @override
+  String get geoErrorCategories =>
+      'The new file lacks categories your subscription refers to. The replacement was cancelled and the previous files stayed in place — routing is unaffected. The line below names the categories that were missing.';
+
+  @override
   String get geoNoWrite =>
       'This folder is not writable — downloading here will not work. That usually means an install into Program Files: run the app as administrator.';
 
