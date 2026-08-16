@@ -474,6 +474,75 @@ class AppSettings {
   /// Сколько сервисов должно пройти для принятия сервера. 0 = все включённые.
   final int acceptMinServices;
 
+  /// Потолок числа серверов, замеряемых скоростью.
+  static const speedTopNMax = 10;
+
+  /// Сколько лучших серверов мерить скоростью в автовыборе.
+  ///
+  /// ⚠️ ЭТО ТРАФИК ПОДПИСКИ, А НЕ АБСТРАКЦИЯ: по [speedTestSize] на каждый
+  /// сервер плюс столько же на замер СВОЕГО канала — без него не с чем
+  /// сравнивать, «60 Мбит/с» это отлично на канале 60 и скверно на канале 300.
+  /// Поэтому предупреждение показывает ПОСЧИТАННЫЙ объём ([speedTestTrafficMb]):
+  /// «55 МБ» человек понимает, «10 серверов» — нет.
+  final int speedTopN;
+
+  /// Потолок одновременных кандидатов автонастройки.
+  static const autoConfigConcurrencyMax = 5;
+
+  /// Сколько кандидатов автонастройки проверять ОДНОВРЕМЕННО.
+  ///
+  /// Каждый кандидат — это отдельно поднятое ядро со своим локальным портом,
+  /// поэтому цена распараллеливания не только в процессоре: порты обязаны не
+  /// пересекаться (грабли 10085 и 10812 уже были, оба раза второе ядро молча
+  /// не поднималось). **1 = прежнее поведение, строго по очереди** — сюда же
+  /// откатываться, если что-то пойдёт не так.
+  final int autoConfigConcurrency;
+
+  // ── Проверка сервисов при подключении ─────────────────────────────────────
+  /// Проверять ли доступность сервисов автоматически при подъёме туннеля.
+  final bool connectChecksEnabled;
+
+  /// Какие сервисы проверяются при подключении.
+  ///
+  /// ⚠️ ОТДЕЛЬНО ОТ [autoConfigServices] НАМЕРЕННО: у задач разный смысл.
+  /// Автонастройка ИЩЕТ рабочий сервер и ради этого готова перебирать долго;
+  /// чипы на главном отвечают на вопрос «работает ли прямо сейчас». Свести их в
+  /// одну настройку значило бы, что выбор сервисов для поиска сервера
+  /// навязывается повседневным чипам — и наоборот.
+  final Set<ProbeService> connectCheckServices;
+
+  // ── Бесшовность ───────────────────────────────────────────────────────────
+  // ⚠️ ТРИ ОТДЕЛЬНЫХ ПЕРЕКЛЮЧАТЕЛЯ, А НЕ ОДИН ОБЩИЙ — требование владельца:
+  // каждая правка трогает поведение туннеля, и при поломке нужно уметь быстро
+  // сказать, КОТОРАЯ виновата. Общий тумблер этого не даёт.
+  //
+  // ⚠️ И чего эти три пункта НЕ делают: живое соединение не переживёт смену
+  // внешнего IP — удалённая сторона видит другой адрес. Звонок через сервер A
+  // не продолжится через сервер B, и обещать этого нельзя. Здесь речь только о
+  // том, чтобы у машины не мигала сеть.
+
+  /// Не пересоздавать туннель, когда меняется только сервер.
+  ///
+  /// Конфиг TUN запекает адреса серверов в правило «мимо туннеля», поэтому
+  /// смена сервера требовала stop→start всего туннеля. Если внести адреса ВСЕХ
+  /// кандидатов заранее, конфиг перестаёт зависеть от выбранного сервера, и
+  /// хватает перезапуска одного Xray.
+  final bool seamlessServerSwitch;
+
+  /// Не рвать всё при смене сети — сначала проверить, жив ли трафик.
+  ///
+  /// У hysteria2 транспорт QUIC, а он умеет миграцию соединения при смене
+  /// адреса, то есть Wi-Fi→LTE переживает САМ. Перезапуск ядра по событию
+  /// `NetworkWatcher` эту возможность убивал.
+  final bool seamlessNetworkChange;
+
+  /// Держать TUN поднятым между попытками даже при выключенном kill switch.
+  ///
+  /// Мигание маршрута по умолчанию заметно пользователю сильнее, чем сам
+  /// разрыв. ⚠️ Это НЕ kill switch: трафик мимо VPN здесь не блокируется —
+  /// удерживается только адаптер, чтобы таблица маршрутов не дёргалась.
+  final bool seamlessKeepTun;
+
   // ── Импорт по ссылке ────────────────────────────────────────────────────────
   /// Подключаться к первому серверу сразу после импорта подписки по ссылке.
   final bool autoConnectAfterImport;
@@ -600,6 +669,19 @@ class AppSettings {
     this.autoConfigBudgetSec = 60,
     this.autoPinFound = true,
     this.acceptMinServices = 0,
+    // Решение владельца 17.08.2026: мерить десять, а не три. Цена — 55 МБ
+    // подписки за прогон при 5 МБ на замер; предупреждение называет её вслух.
+    this.speedTopN = speedTopNMax,
+    this.autoConfigConcurrency = 3,
+    this.connectChecksEnabled = true,
+    this.connectCheckServices = const {
+      ProbeService.youtube,
+      ProbeService.chatgpt,
+      ProbeService.telegram,
+    },
+    this.seamlessServerSwitch = true,
+    this.seamlessNetworkChange = true,
+    this.seamlessKeepTun = true,
     this.autoConnectAfterImport = false,
     this.themeMode = AppThemeMode.system,
     this.collapsedSections = const [],
@@ -618,6 +700,23 @@ class AppSettings {
   /// Сколько сервисов реально требуется (учитывая 0 = «все включённые»).
   int get requiredServices =>
       acceptMinServices > 0 ? acceptMinServices : autoConfigServices.length;
+
+  /// Сколько серверов реально пойдёт в замер скорости (с учётом потолка).
+  int get effectiveSpeedTopN => speedTopN.clamp(1, speedTopNMax);
+
+  /// Сколько кандидатов реально проверяется разом.
+  int get effectiveAutoConfigConcurrency =>
+      autoConfigConcurrency.clamp(1, autoConfigConcurrencyMax);
+
+  /// Во что обойдётся прогон с замером скорости, в мегабайтах трафика подписки.
+  ///
+  /// ⚠️ Считается ЗДЕСЬ, а не в интерфейсе, потому что число показывается в трёх
+  /// местах (галочка, подсказка, предупреждение перед прогоном), а разъехавшиеся
+  /// цифры в предупреждении о расходе — худший вид неправды: человек перестаёт
+  /// верить всем трём. `+1` — замер собственного канала, он идёт мимо VPN, но
+  /// стоит столько же.
+  int get speedTestTrafficMb =>
+      ((effectiveSpeedTopN + 1) * speedTestSize.bytes) ~/ 1000000;
 
   AppSettings copyWith({
     CaptureMode? captureMode,
@@ -671,6 +770,13 @@ class AppSettings {
     int? autoConfigBudgetSec,
     bool? autoPinFound,
     int? acceptMinServices,
+    int? speedTopN,
+    int? autoConfigConcurrency,
+    bool? connectChecksEnabled,
+    Set<ProbeService>? connectCheckServices,
+    bool? seamlessServerSwitch,
+    bool? seamlessNetworkChange,
+    bool? seamlessKeepTun,
     bool? autoConnectAfterImport,
     AppThemeMode? themeMode,
     List<String>? collapsedSections,
@@ -737,6 +843,15 @@ class AppSettings {
       autoConfigBudgetSec: autoConfigBudgetSec ?? this.autoConfigBudgetSec,
       autoPinFound: autoPinFound ?? this.autoPinFound,
       acceptMinServices: acceptMinServices ?? this.acceptMinServices,
+      speedTopN: speedTopN ?? this.speedTopN,
+      autoConfigConcurrency:
+          autoConfigConcurrency ?? this.autoConfigConcurrency,
+      connectChecksEnabled: connectChecksEnabled ?? this.connectChecksEnabled,
+      connectCheckServices: connectCheckServices ?? this.connectCheckServices,
+      seamlessServerSwitch: seamlessServerSwitch ?? this.seamlessServerSwitch,
+      seamlessNetworkChange:
+          seamlessNetworkChange ?? this.seamlessNetworkChange,
+      seamlessKeepTun: seamlessKeepTun ?? this.seamlessKeepTun,
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
       themeMode: themeMode ?? this.themeMode,
@@ -805,6 +920,14 @@ class AppSettings {
         'autoConfigBudgetSec': autoConfigBudgetSec,
         'autoPinFound': autoPinFound,
         'acceptMinServices': acceptMinServices,
+        'speedTopN': speedTopN,
+        'autoConfigConcurrency': autoConfigConcurrency,
+        'connectChecksEnabled': connectChecksEnabled,
+        'connectCheckServices':
+            connectCheckServices.map((s) => s.name).toList(),
+        'seamlessServerSwitch': seamlessServerSwitch,
+        'seamlessNetworkChange': seamlessNetworkChange,
+        'seamlessKeepTun': seamlessKeepTun,
         'autoConnectAfterImport': autoConnectAfterImport,
         'themeMode': themeMode.name,
         'collapsedSections': collapsedSections,
@@ -870,6 +993,17 @@ class AppSettings {
     final services = servicesJson
         .map((n) => pick(ProbeService.values, n, ProbeService.youtube))
         .toSet();
+
+    // ⚠️ Ключа нет (данные прежних версий) — берём умолчание, а не пустое
+    // множество: пустой набор означал бы «проверять нечего», и чипы молча
+    // исчезли бы у всех, кто обновился. Осознанно пустой выбор выражается
+    // галочкой [connectChecksEnabled], а не пустым списком.
+    final connectJson = (j['connectCheckServices'] as List?);
+    final connectServices = connectJson == null
+        ? defaults.connectCheckServices
+        : connectJson
+            .map((n) => pick(ProbeService.values, n, ProbeService.youtube))
+            .toSet();
 
     return AppSettings(
       captureMode: pick(CaptureMode.values, j['captureMode'], CaptureMode.systemProxy),
@@ -970,6 +1104,19 @@ class AppSettings {
       autoConfigBudgetSec: (j['autoConfigBudgetSec'] as num?)?.toInt() ?? 60,
       autoPinFound: j['autoPinFound'] as bool? ?? defaults.autoPinFound,
       acceptMinServices: (j['acceptMinServices'] as num?)?.toInt() ?? 0,
+      speedTopN:
+          (j['speedTopN'] as num?)?.toInt() ?? defaults.speedTopN,
+      autoConfigConcurrency: (j['autoConfigConcurrency'] as num?)?.toInt() ??
+          defaults.autoConfigConcurrency,
+      connectChecksEnabled: j['connectChecksEnabled'] as bool? ??
+          defaults.connectChecksEnabled,
+      connectCheckServices: connectServices,
+      seamlessServerSwitch: j['seamlessServerSwitch'] as bool? ??
+          defaults.seamlessServerSwitch,
+      seamlessNetworkChange: j['seamlessNetworkChange'] as bool? ??
+          defaults.seamlessNetworkChange,
+      seamlessKeepTun:
+          j['seamlessKeepTun'] as bool? ?? defaults.seamlessKeepTun,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
       // ⚠️ ЧИТАЕТСЯ ОБЯЗАТЕЛЬНО — иначе свёрнутые разделы разворачивались бы

@@ -12,7 +12,9 @@ import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/probe/auto_config_engine.dart';
 import 'package:silentgate/core/probe/cancel_token.dart';
+import 'package:silentgate/core/probe/ping_result.dart';
 import 'package:silentgate/core/probe/probe_harness.dart';
+import 'package:silentgate/core/probe/tcp_ping.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/xray/outbound_variant.dart';
@@ -141,6 +143,21 @@ class _NoPortHandle implements HarnessHandle {
 
 void main() {
   final l = AppLocalizationsRu();
+
+  // ⚠️ Фаза 1 подбора отсеивает серверы, не ответившие по TCP, — а `a.example`
+  // не отвечает и отвечать не может. Без подмены прогон заканчивался бы, не
+  // дойдя до харнесса, и экранные тесты хода проверяли бы пустоту.
+  setUp(() {
+    AutoConfigEngine.tcpProbe = (host, port, timeout) async => const PingResult(
+          outcome: PingOutcome.ok,
+          latencyMs: 42,
+          latencyMethod: PingMethod.tcp,
+        );
+  });
+  tearDown(() {
+    AutoConfigEngine.tcpProbe = (host, port, timeout) =>
+        TcpPing.measure(host, port, timeout: timeout);
+  });
 
   const linkA = 'vless://00000000-0000-0000-0000-000000000000@a.example:443'
       '?type=tcp&security=none#Alpha';
@@ -284,12 +301,15 @@ void main() {
       // Состав менять нельзя: список кандидатов у движка уже построен.
       expect(tester.widget<CheckboxListTile>(tileA).onChanged, isNull);
 
-      // Текущий кандидат подсвечен. Первым идёт последняя импортированная
-      // ссылка: одиночный импорт кладёт сервер в начало закреплённых.
-      expect(auto.progress?.candidateKey, keyOf(linkB));
+      // ⚠️ ПОДСВЕЧИВАЮТСЯ ВСЕ, КТО ПРОВЕРЯЕТСЯ СЕЙЧАС, А НЕ ОДИН «ТЕКУЩИЙ».
+      // Раньше кандидат был ровно один, и тест справедливо ждал в
+      // `progress.candidateKey` последнюю импортированную ссылку (одиночный
+      // импорт кладёт сервер в начало закреплённых). С
+      // `autoConfigConcurrency > 1` их несколько сразу, и «последний начатый»
+      // ничем не главнее остальных — проверяем множество активных.
+      expect(auto.activeKeys, contains(keyOf(linkB)));
       expect(tester.widget<CheckboxListTile>(tileB).tileColor, isNotNull,
           reason: 'без подсветки непонятно, где сейчас идёт проверка');
-      expect(tester.widget<CheckboxListTile>(tileA).tileColor, isNull);
 
       // Снимаем дерево, иначе секундный тикер таймера останется висеть.
       await tester.pumpWidget(const SizedBox());

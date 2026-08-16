@@ -672,6 +672,11 @@ class _ServerPicker extends StatelessWidget {
     final running = ctrl.running;
     // Уже найденные связки — чтобы отметить их прямо в списке перебора.
     final found = ctrl.found;
+    // Подсвечиваем ВСЕХ, кто проверяется прямо сейчас: при
+    // `autoConfigConcurrency > 1` их несколько, и один «текущий» был бы враньём.
+    // Запасной вариант — ключ из прогресса: он есть и когда множество пусто
+    // (например, в самом начале фазы).
+    final activeKeys = ctrl.activeKeys;
     final currentKey = ctrl.progress?.candidateKey;
     final scheme = Theme.of(context).colorScheme;
     final selectedCount = servers.where((s) => sel.contains(s.key)).length;
@@ -701,7 +706,9 @@ class _ServerPicker extends StatelessWidget {
         ...servers.map((s) {
           final name = FlagUtil.strip(s.remark);
           final hit = found.where((r) => r.server.key == s.key).firstOrNull;
-          final current = running && currentKey == s.key;
+          final current = running &&
+              (activeKeys.contains(s.key) ||
+                  (activeKeys.isEmpty && currentKey == s.key));
           return CheckboxListTile(
             key: Key('autoSrv-${s.key}'),
             dense: true,

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import 'service_check.dart';
 import '../models/vpn_server.dart';
 import '../net/speed_test.dart';
@@ -234,13 +236,39 @@ class CandidateResult {
   final OutboundVariant variant;
   final Map<ProbeService, bool> passed;
   final int? avgLatencyMs;
+
+  /// Сервисы, которые ОТКРЫЛИСЬ, но недоступны в стране выхода этого сервера
+  /// (ChatGPT отвечает `unsupported_country`, Claude/Gemini — 451).
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНОЕ ПОЛЕ, А НЕ ПРОСТО `passed = false`. Такой сервер
+  /// исправен: канал живой, всё остальное через него работает. Выкинуть его из
+  /// результатов значило бы потерять годный сервер из-за одной мишени. Поэтому
+  /// он остаётся в списке, но опускается в сортировке — и, главное, человек
+  /// видит ПРИЧИНУ, а не молчаливое понижение.
+  ///
+  /// ⚠️ И почему до 17.08.2026 этого поля не было вовсе: автонастройка звала
+  /// `ServiceChecker.probeEndpoint` напрямую, а гео-проба живёт в
+  /// `ServiceChecker.check` — то есть подбор о гео НЕ ЗНАЛ. Сервер, на котором
+  /// ChatGPT отвечает «недоступно в вашей стране», засчитывался как полностью
+  /// прошедший, и автонастройка честно предлагала его тому, кто искал ChatGPT.
+  final Set<ProbeService> geoBlocked;
+
   CandidateResult({
     required this.server,
     required this.variant,
     required this.passed,
     this.avgLatencyMs,
+    this.geoBlocked = const {},
   });
+
+  /// Сколько мишеней прошло. Геоблок сюда ВХОДИТ: сервер рабочий, и по порогу
+  /// [AppSettings.requiredServices] он проходит — понижается только сортировкой.
   int get passedCount => passed.values.where((v) => v).length;
+
+  /// Сколько мишеней прошло «начисто», без гео-оговорок.
+  int get cleanCount => passed.entries
+      .where((e) => e.value && !geoBlocked.contains(e.key))
+      .length;
 }
 
 class AutoConfigResult {
@@ -289,6 +317,10 @@ class AutoConfigResult {
           for (final e in detail.passed.entries) e.key.name: e.value,
         },
         'avgLatencyMs': detail.avgLatencyMs,
+        // Без сохранения пометка гео терялась бы при перезапуске, и сервер,
+        // однажды опознанный как «жив, но ChatGPT недоступен», снова выглядел
+        // бы безупречным — ровно тот класс «поле пишется, но не читается».
+        'geoBlocked': detail.geoBlocked.map((s) => s.name).toList(),
         'measuredAt': measuredAt?.toIso8601String(),
         if (ping != null) 'ping': ping!.toJson(),
         // ⚠️ Замер скорости стоит трафика ПОДПИСКИ (5 МБ на сервер). Не сохранив
@@ -310,11 +342,17 @@ class AutoConfigResult {
           .firstWhere((e) => e.name == k, orElse: () => ProbeService.youtube);
       passed[s] = v == true;
     });
+    final geo = <ProbeService>{
+      for (final n in (j['geoBlocked'] as List?) ?? const [])
+        ProbeService.values
+            .firstWhere((e) => e.name == n, orElse: () => ProbeService.youtube),
+    };
     final detail = CandidateResult(
       server: server,
       variant: variant,
       passed: passed,
       avgLatencyMs: (j['avgLatencyMs'] as num?)?.toInt(),
+      geoBlocked: geo,
     );
     return AutoConfigResult(
       mbps: (j['mbps'] as num?)?.toDouble(),
@@ -360,6 +398,48 @@ class AutoConfigEngine {
   /// Перебирает ВСЕ кандидаты (не останавливается на первом рабочем), эмитит каждую
   /// найденную рабочую связку через [onFound] и возвращает полный список (отсортированный:
   /// больше пройденных сервисов → меньше задержка).
+  /// Чем меряется TCP в фазе 1.
+  ///
+  /// ⚠️ ПОДМЕНЯЕМО РАДИ ТЕСТОВ, И ЭТО НЕ УДОБСТВО, А НЕОБХОДИМОСТЬ. Фаза 1
+  /// отсеивает серверы, не ответившие по TCP, — а в тестах серверы выдуманные и
+  /// не отвечают в принципе. Без подмены отсев съедал бы ВСЕХ, и ни одна
+  /// следующая фаза не проверялась бы вовсе: тесты перебора вариаций зеленели
+  /// бы, ничего не перебрав. Боевое значение задаётся здесь и в приложении не
+  /// меняется никогда.
+  @visibleForTesting
+  static Future<PingResult> Function(String host, int port, Duration timeout)
+      tcpProbe = (host, port, timeout) =>
+          TcpPing.measure(host, port, timeout: timeout);
+
+  /// Прогнать [items] через [job], держа не более [limit] штук одновременно.
+  ///
+  /// ⚠️ ИМЕННО ПУЛ, А НЕ `Future.wait` ПО ВСЕМУ СПИСКУ. Каждая задача здесь —
+  /// это поднятое ядро со своим локальным портом; запустить их сотней разом
+  /// значило бы сотню процессов, исчерпание портов и замеры задержки, которые
+  /// врут друг из-за друга. Потолок задаётся настройкой, и **1 возвращает
+  /// прежнее поведение — строго по очереди**.
+  ///
+  /// Отмена: `job` бросает `CancelledException`, она поднимается наружу через
+  /// `Future.wait`; оставшиеся работники упрутся в ту же проверку и завершатся.
+  static Future<void> _pooled<T>(
+    List<T> items,
+    int limit,
+    Future<void> Function(T item) job,
+  ) async {
+    if (items.isEmpty) return;
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = next++;
+        if (i >= items.length) return;
+        await job(items[i]);
+      }
+    }
+
+    final workers = limit < 1 ? 1 : (limit > items.length ? items.length : limit);
+    await Future.wait([for (var i = 0; i < workers; i++) worker()]);
+  }
+
   /// Широкий набор вариаций для «умного подбора» по одному ключу: перебор fingerprint × fragment.
   static List<OutboundVariant> deepVariants() {
     const fps = ['chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'randomized'];
@@ -395,6 +475,16 @@ class AutoConfigEngine {
     void Function(int index, int total, VpnServer? server,
             OutboundVariant variant)?
         onSpeedCandidate,
+    // ⚠️ Итог TCP-фазы по КАЖДОМУ серверу, а не только по найденным.
+    // Фаза 1 меряет ровно то же, что обычный пинг, — не отдать эти цифры на
+    // главный экран значило бы заставить человека пинговать второй раз то, за
+    // что он уже заплатил ожиданием.
+    void Function(VpnServer server, PingResult ping)? onPing,
+    // ⚠️ Пара к [onCandidate], и она нужна ровно из-за параллельности.
+    // Пока кандидат был один, «текущий» и «последний начатый» — одно и то же.
+    // При трёх одновременно подсветка одного кандидата стала бы враньём:
+    // проверяются три, а показан тот, кто начался последним.
+    void Function(VpnServer server)? onCandidateDone,
   }) async {
     // ⚠️ Подбор ПРОВЕРЯЕТ ДОСТУПНОСТЬ СЕРВИСОВ через кандидата, а для этого
     // нужен порт, в который можно послать произвольный запрос. Там, где
@@ -410,19 +500,77 @@ class AutoConfigEngine {
       throw const AutoConfigUnsupported();
     }
     final variants = variantsOverride ?? _buildVariants(settings);
-    final candidates = <_Candidate>[
-      for (final s in servers)
-        // Вариации (fragment/fingerprint) — приёмы Xray поверх TLS-рукопожатия.
-        // У hysteria2 транспорт QUIC и своё ядро, перебирать там нечего:
-        // такой сервер проверяем один раз «как есть».
-        if (s.core == ProxyCore.singbox)
-          _Candidate(s, OutboundVariant.none)
-        else
-          for (final v in variants) _Candidate(s, v),
-    ];
     final endpoints = AutoConfigCatalog.endpointsFor(settings.autoConfigServices);
     final deadline =
         DateTime.now().add(Duration(seconds: settings.autoConfigBudgetSec));
+
+    // ── ФАЗА 1: TCP ПО ВСЕМ СЕРВЕРАМ ─────────────────────────────────────────
+    //
+    // ⚠️ РАДИ ЧЕГО ОНА ПОЯВИЛАСЬ. Раньше перебор шёл сразу к делу: на КАЖДОГО
+    // кандидата поднималось отдельное ядро, и только потом выяснялось, что
+    // сервер вообще мёртв. При сотне серверов и четырёх вариациях это сотни
+    // запусков ядра подряд ради того, что дешёвый TCP-коннект отсеивает за
+    // миллисекунды. Порядок теперь тот же, что у обычного пинга: сперва TCP до
+    // всех, потом дорогая проверка — но только по выжившим.
+    final limit = settings.effectiveAutoConfigConcurrency;
+    final aliveServers = <VpnServer>[];
+    final tcpPings = <String, PingResult>{};
+    var tcpDone = 0;
+    await _pooled(servers, settings.pingConcurrency, (s) async {
+      cancel.throwIfCancelled();
+      // ⚠️ У hysteria2 транспорт QUIC — TCP там нет по определению, и «не
+      // ответил» было бы враньём. Такой сервер идёт дальше без отсева.
+      if (s.protocol == 'hysteria2' || s.core == ProxyCore.singbox) {
+        aliveServers.add(s);
+        return;
+      }
+      PingResult ping;
+      try {
+        final tcp = await tcpProbe(s.address, s.port,
+            Duration(milliseconds: settings.pingTimeoutMs));
+        final ok = tcp.outcome == PingOutcome.ok;
+        if (ok) aliveServers.add(s);
+        ping = PingResult(
+          outcome: tcp.outcome,
+          latencyMs: ok ? tcp.latencyMs : null,
+          // ⚠️ `working` здесь НЕ ставится по TCP-ответу: рабочим сервер
+          // считается только после проверки сервисов (фаза 2). Ответивший
+          // порт ещё ничего не проксирует — этот же урок уже записан у
+          // обычного пинга.
+          working: false,
+          latencyMethod: PingMethod.tcp,
+          measuredAt: DateTime.now(),
+        );
+      } catch (_) {
+        ping = PingResult(
+          outcome: PingOutcome.failed,
+          working: false,
+          measuredAt: DateTime.now(),
+        );
+      }
+      tcpDone++;
+      tcpPings[s.key] = ping;
+      onPing?.call(s, ping);
+    });
+    cancel.throwIfCancelled();
+    AppLog.i('Автонастройка: TCP-отсев — из ${servers.length} серверов '
+        'отвечают ${aliveServers.length}, проверено $tcpDone');
+
+    // ── ФАЗЫ 2–3: проверка сервисов у выживших ───────────────────────────────
+    //
+    // Фаза 2 — базовая вариация («как есть») по всем выжившим. Фаза 3 —
+    // остальные вариации, и ТОЛЬКО для тех, кто базовую не прошёл: смысл
+    // вариаций в том, чтобы вытащить сервер, который сам по себе не отвечает
+    // внятно, а на прошедшем они не добавляют ничего, кроме времени перебора.
+    final base = <_Candidate>[
+      for (final s in aliveServers) _Candidate(s, OutboundVariant.none),
+    ];
+    final extra = <_Candidate>[
+      for (final s in aliveServers)
+        if (s.core != ProxyCore.singbox)
+          for (final v in variants)
+            if (v != OutboundVariant.none) _Candidate(s, v),
+    ];
 
     final found = <AutoConfigResult>[];
 
@@ -440,18 +588,10 @@ class AutoConfigEngine {
     // по серверу, поэтому пропуск оставшихся — заодно и заметное ускорение.
     final solved = <String>{};
 
-    for (var i = 0; i < candidates.length; i++) {
-      cancel.throwIfCancelled();
-      // «Мягкий» бюджет только для стратегии bestWithinBudget; иначе сканируем всё.
-      if (settings.strategy == AutoConfigStrategy.bestWithinBudget &&
-          DateTime.now().isAfter(deadline)) {
-        break;
-      }
+    var done = 0;
+    var total = base.length;
 
-      final c = candidates[i];
-      if (solved.contains(c.server.key)) continue;
-      onCandidate?.call(i, candidates.length, c.server, c.variant);
-
+    Future<void> probeBody(_Candidate c) async {
       // Харнесс может не подняться (нет sing-box.exe, битый узел, занятый порт).
       // Раньше это обрывало ВЕСЬ прогон на середине; теперь кандидат просто
       // считается непрошедшим, и перебор идёт дальше.
@@ -462,18 +602,21 @@ class AutoConfigEngine {
       } on CancelledException {
         rethrow;
       } catch (e) {
+        done++;
         AppLog.w('Автонастройка: ${c.server.displayName} '
             '(${c.variant.label}) пропущен — $e');
-        continue;
+        return;
       }
       final port = handle.proxyPortFor(0);
       if (port <= 0) {
         // Второе ядро не поднялось — проверять нечем.
+        done++;
         await handle.stop();
-        continue;
+        return;
       }
 
       final passed = <ProbeService, bool>{};
+      final geoBlocked = <ProbeService>{};
       final latencies = <int>[];
       try {
         for (final ep in endpoints) {
@@ -495,53 +638,74 @@ class AutoConfigEngine {
           );
           passed[ep.service] = r.ok;
           if (r.ok && r.rttMs != null) latencies.add(r.rttMs!);
+
+          // ⚠️ ГЕО-ПРОБА, КОТОРОЙ ЗДЕСЬ НЕ БЫЛО ВОВСЕ (найдено 17.08.2026).
+          // Она жила только в `ServiceChecker.check` — то есть у чипов на
+          // главном экране. Автонастройка о гео не знала, и сервер, на котором
+          // ChatGPT отвечает «недоступно в вашей стране», засчитывался как
+          // полностью прошедший — и предлагался тому, кто искал именно ChatGPT.
+          //
+          // Креды харнесса обязательны и тут: у чипов проба идёт по ЖИВОМУ
+          // ядру, где креды опубликованы статикой `ProxyProbe`, а харнесс —
+          // отдельное ядро со своим паролем.
+          if (r.ok) {
+            final geo = AutoConfigCatalog.geoEndpointFor(ep.service);
+            if (geo != null) {
+              final g = await ProxyProbe.check(
+                port,
+                geo.url,
+                validator: geo.blocked,
+                timeout: Duration(milliseconds: settings.pingTimeoutMs),
+                proxyUser: handle.proxyUser,
+                proxyPassword: handle.proxyPassword,
+              );
+              // validator == geo.blocked: ok==true ⇒ сервис закрыт в регионе.
+              if (g.ok) geoBlocked.add(ep.service);
+            }
+          }
           onService?.call(ep.service, r.ok);
         }
       } finally {
         await handle.stop();
       }
+      done++;
 
       final passedCount = passed.values.where((v) => v).length;
       final avg = latencies.isEmpty
           ? null
           : latencies.reduce((a, b) => a + b) ~/ latencies.length;
       final detail = CandidateResult(
-          server: c.server, variant: c.variant, passed: passed, avgLatencyMs: avg);
+        server: c.server,
+        variant: c.variant,
+        passed: passed,
+        avgLatencyMs: avg,
+        geoBlocked: geoBlocked,
+      );
 
       if (passedCount >= settings.requiredServices) {
-        // Сервер уже подтверждён рабочим (сервисы прошли). Показываем, как везде,
-        // задержку TCP; hysteria2 без TCP — средний RTT проб.
-        PingResult? ping;
-        try {
-          if (c.server.protocol == 'hysteria2') {
-            ping = PingResult(
-              outcome: PingOutcome.ok,
-              latencyMs: avg,
-              proxyRttMs: avg,
-              working: true,
-              reachableViaProxy: true,
-              latencyMethod: PingMethod.proxyGet,
-              measuredAt: DateTime.now(),
-            );
-          } else {
-            final tcp = await TcpPing.measure(
-                c.server.address, c.server.port,
-                timeout: Duration(milliseconds: settings.pingTimeoutMs));
-            final tcpOk = tcp.outcome == PingOutcome.ok;
-            // Показываем TCP или НИЧЕГО. Подставлять сюда прокси-RTT нельзя: на
-            // экране он не отличим от TCP, а цифры разной природы. Сервер и так
-            // помечен рабочим (сервисы прошли) — цвет это покажет и без числа.
-            ping = PingResult(
-              outcome: PingOutcome.ok,
-              latencyMs: tcpOk ? tcp.latencyMs : null,
-              proxyRttMs: avg,
-              working: true,
-              reachableViaProxy: true,
-              latencyMethod: tcpOk ? PingMethod.tcp : PingMethod.proxyGet,
-              measuredAt: DateTime.now(),
-            );
-          }
-        } catch (_) {}
+        // ⚠️ Проверка ПОВТОРНАЯ и обязательная: между `solved.contains` в начале
+        // и этой точкой были await'ы, а кандидатов теперь несколько
+        // одновременно — без неё один сервер снова попадал бы в результаты
+        // столько раз, сколько его вариаций успело пройти.
+        if (solved.contains(c.server.key)) return;
+        solved.add(c.server.key);
+
+        // Задержку показываем ТУ ЖЕ, что намерила фаза 1, — второй раз мерить
+        // нечего. У hysteria2 TCP нет, там остаётся средний RTT проб.
+        final tcp = tcpPings[c.server.key];
+        final ping = PingResult(
+          outcome: PingOutcome.ok,
+          // Показываем TCP или НИЧЕГО. Подставлять сюда прокси-RTT нельзя: на
+          // экране он не отличим от TCP, а цифры разной природы.
+          latencyMs: tcp?.latencyMs ??
+              (c.server.protocol == 'hysteria2' ? avg : null),
+          proxyRttMs: avg,
+          working: true,
+          reachableViaProxy: true,
+          latencyMethod:
+              tcp?.latencyMs != null ? PingMethod.tcp : PingMethod.proxyGet,
+          measuredAt: DateTime.now(),
+        );
         final result = AutoConfigResult(
           server: c.server,
           variant: c.variant,
@@ -550,12 +714,51 @@ class AutoConfigEngine {
           ping: ping,
         );
         found.add(result);
-        solved.add(c.server.key);
         onFound?.call(result);
       }
     }
 
+    Future<void> probe(_Candidate c) async {
+      cancel.throwIfCancelled();
+      // «Мягкий» бюджет только для стратегии bestWithinBudget; иначе сканируем всё.
+      if (settings.strategy == AutoConfigStrategy.bestWithinBudget &&
+          DateTime.now().isAfter(deadline)) {
+        return;
+      }
+      if (solved.contains(c.server.key)) return;
+      onCandidate?.call(done, total, c.server, c.variant);
+      // Отметка о завершении — в `finally`, чтобы срабатывать на ЛЮБОМ выходе
+      // (отказ харнесса, отсутствие порта, отмена). Иначе кандидат навсегда
+      // остался бы подсвеченным как «проверяется».
+      try {
+        await probeBody(c);
+      } finally {
+        onCandidateDone?.call(c.server);
+      }
+    }
+
+    // ФАЗА 2 — «как есть» по всем выжившим.
+    await _pooled(base, limit, probe);
+    cancel.throwIfCancelled();
+
+    // ФАЗА 3 — вариации, только для тех, кто базовую не прошёл.
+    final retry =
+        extra.where((c) => !solved.contains(c.server.key)).toList(growable: false);
+    if (retry.isNotEmpty) {
+      total = base.length + retry.length;
+      AppLog.i('Автонастройка: внятного ответа не дали '
+          '${aliveServers.length - solved.length} серверов — перебираю вариации '
+          '(${retry.length} проверок)');
+      await _pooled(retry, limit, probe);
+    }
+
     found.sort((a, b) {
+      // ⚠️ СНАЧАЛА «ЧИСТЫЕ», ПОТОМ С ГЕОБЛОКОМ. Сервер, где ChatGPT отвечает
+      // «недоступно в вашей стране», формально проходит столько же мишеней,
+      // сколько безупречный, — по одному лишь `passedCount` он мог оказаться
+      // первым в списке и быть предложенным как лучший.
+      final clean = b.detail.cleanCount.compareTo(a.detail.cleanCount);
+      if (clean != 0) return clean;
       final c = b.detail.passedCount.compareTo(a.detail.passedCount);
       if (c != 0) return c;
       return (a.detail.avgLatencyMs ?? (1 << 30))
@@ -564,27 +767,26 @@ class AutoConfigEngine {
 
     if (settings.speedInAutoSelect && found.isNotEmpty) {
       return _rankBySpeed(found, cancel,
-          onSpeed: onSpeed, onSpeedCandidate: onSpeedCandidate);
+          topN: settings.effectiveSpeedTopN,
+          onSpeed: onSpeed,
+          onSpeedCandidate: onSpeedCandidate);
     }
     return found;
   }
-
-  /// Сколько кандидатов реально замеряем.
-  ///
-  /// Замер стоит трафика ПОДПИСКИ, и это не абстракция: 5 МБ на сервер, плюс
-  /// 5 МБ на собственный канал. Мерить сотню серверов означало бы полгигабайта
-  /// и минуты ожидания ради выбора, который на 90 % уже сделан отбором по
-  /// сервисам и задержке. Трёх лучших достаточно, чтобы развести «быстрый, но
-  /// далёкий» и «близкий, но узкий» — а именно этот выбор и не даётся пингу.
-  static const _speedTopN = 3;
 
   /// Пересортировать лучших с учётом скорости.
   ///
   /// Своя скорость меряется ОДИН раз и мимо VPN — иначе не с чем сравнивать:
   /// «60 Мбит/с» это отлично на канале 60 и скверно на канале 300.
+  ///
+  /// ⚠️ [topN] ЗАДАЁТСЯ НАСТРОЙКОЙ, а не константой: замер стоит трафика
+  /// ПОДПИСКИ (по 5 МБ на сервер плюс столько же на свой канал), и решать,
+  /// сколько за него платить, должен владелец подписки. Умолчание — десять
+  /// (решение владельца 17.08.2026), потолок — [AppSettings.speedTopNMax].
   Future<List<AutoConfigResult>> _rankBySpeed(
     List<AutoConfigResult> found,
     CancelToken cancel, {
+    required int topN,
     void Function(String message)? onSpeed,
     void Function(int index, int total, VpnServer? server,
             OutboundVariant variant)?
@@ -596,7 +798,7 @@ class AutoConfigEngine {
     const size = SpeedTestSize.light;
     // Шагов у фазы на один больше числа серверов: свой канал меряется первым и
     // стоит столько же. Считать его «нулевым шагом» — врать полоске прогресса.
-    final steps = found.take(_speedTopN).length + 1;
+    final steps = found.take(topN).length + 1;
     onSpeed?.call('Замеряю скорость своего канала…');
     onSpeedCandidate?.call(0, steps, null, OutboundVariant.none);
     final own = await SpeedTest.download(size: size);
@@ -604,7 +806,7 @@ class AutoConfigEngine {
     AppLog.i('Автонастройка: свой канал '
         '${ownMbps == null ? "замерить не удалось" : "${ownMbps.toStringAsFixed(1)} Мбит/с"}');
 
-    final top = found.take(_speedTopN).toList();
+    final top = found.take(topN).toList();
     final measured = <AutoConfigResult>[];
     for (var i = 0; i < top.length; i++) {
       cancel.throwIfCancelled();
@@ -661,7 +863,7 @@ class AutoConfigEngine {
 
     // Остальные идут следом в прежнем порядке: их не мерили, и делать вид, что
     // мы про них что-то знаем, нельзя.
-    return [...measured, ...found.skip(_speedTopN)];
+    return [...measured, ...found.skip(topN)];
   }
 
   /// Порядок: сначала «обычный», затем fragment, затем варианты fingerprint.

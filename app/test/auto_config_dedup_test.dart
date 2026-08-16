@@ -3,7 +3,9 @@ import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/probe/auto_config_engine.dart';
 import 'package:silentgate/core/probe/cancel_token.dart';
+import 'package:silentgate/core/probe/ping_result.dart';
 import 'package:silentgate/core/probe/probe_harness.dart';
+import 'package:silentgate/core/probe/tcp_ping.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 
 /// Харнесс-пустышка: порт всегда -1, значит проб через прокси не будет и
@@ -43,6 +45,21 @@ class _FakeHandle implements HarnessHandle {
 }
 
 void main() {
+  // ⚠️ Фаза 1 отсеивает серверы, не ответившие по TCP, — а `*.example` не
+  // отвечает и отвечать не может. Без подмены отсев съедал бы ВСЕХ, перебор
+  // вариаций не начинался бы вовсе, и тест зеленел бы, ничего не проверив.
+  setUp(() {
+    AutoConfigEngine.tcpProbe = (host, port, timeout) async => const PingResult(
+          outcome: PingOutcome.ok,
+          latencyMs: 42,
+          latencyMethod: PingMethod.tcp,
+        );
+  });
+  tearDown(() {
+    AutoConfigEngine.tcpProbe = (host, port, timeout) =>
+        TcpPing.measure(host, port, timeout: timeout);
+  });
+
   VpnServer srv(String name) => ShareLinkParser.tryParse(
       'vless://00000000-0000-0000-0000-000000000000@$name.example:443'
       '?type=tcp&security=none#$name')!;

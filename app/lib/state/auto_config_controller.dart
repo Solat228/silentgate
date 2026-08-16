@@ -37,6 +37,15 @@ class AutoConfigController extends ChangeNotifier {
   void Function(VpnServer server, PingResult result)? onPingMeasured;
 
   AutoConfigProgress? get progress => _progress;
+
+  /// Ключи серверов, которые проверяются ПРЯМО СЕЙЧАС.
+  ///
+  /// ⚠️ Множество, а не одно значение, потому что кандидатов теперь несколько
+  /// одновременно ([AppSettings.autoConfigConcurrency]). Подсвечивать одного,
+  /// когда проверяются трое, — это показывать неправду: тот, кто начался
+  /// последним, ничем не «текущее» двух остальных.
+  final Set<String> _active = <String>{};
+  Set<String> get activeKeys => _active;
   List<AutoConfigResult> get found => List.unmodifiable(_found);
   bool get running => _running;
   String? get error => _error;
@@ -206,6 +215,7 @@ class AutoConfigController extends ChangeNotifier {
     _running = true;
     _error = null;
     _progress = null;
+    _active.clear();
     _lastSummary = null;
     _unsupported = false;
     _startedAt = DateTime.now();
@@ -237,6 +247,7 @@ class AutoConfigController extends ChangeNotifier {
         cancel: cancel,
         variantsOverride: variants,
         onCandidate: (i, total, server, variant) {
+          _active.add(server.key);
           _notePhase(AutoConfigPhase.probing, i, total);
           _progress = AutoConfigProgress(
             index: i,
@@ -272,6 +283,16 @@ class AutoConfigController extends ChangeNotifier {
             p.services[service] = ok ? ProbeState.ok : ProbeState.fail;
             notifyListeners();
           }
+        },
+        // ⚠️ Итог TCP-фазы по КАЖДОМУ серверу, включая непрошедшие.
+        // Фаза 1 подбора меряет ровно то же, что обычный пинг, и отдать эти
+        // цифры на главный экран — не украшение: иначе человек, только что
+        // прождавший прогон по сотне серверов, видит там прежние «n/a» и жмёт
+        // пинг заново, оплачивая ожидание второй раз.
+        onPing: (server, ping) => onPingMeasured?.call(server, ping),
+        onCandidateDone: (server) {
+          _active.remove(server.key);
+          notifyListeners();
         },
         // Замер скорости идёт ПОСЛЕ отбора и занимает десятки секунд. Без этой
         // строки пользователь видел бы застывший экран и решил, что подбор завис.
@@ -319,6 +340,8 @@ class AutoConfigController extends ChangeNotifier {
     } finally {
       _running = false;
       _progress = null;
+      // Иначе после прогона список остался бы с подсветкой «проверяется».
+      _active.clear();
       // Оценка остатка живёт ровно столько, сколько идёт прогон: показывать
       // «осталось 3:20» после его конца — прямое враньё.
       _phaseStartedAt = null;
