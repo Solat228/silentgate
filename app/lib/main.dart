@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
+import 'core/platform/app_instance_mutex.dart';
 import 'core/platform/app_log.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
@@ -69,6 +70,14 @@ Future<void> main(List<String> args) async {
   );
 
   if (Platform.isWindows) {
+    // Установщик обновления узнаёт о запущенном приложении по этому мьютексу и
+    // ничем другим: у нас на закрытие окна висит свёртывание в трей, поэтому
+    // штатный Restart Manager видит «приложение закрылось» при живом процессе
+    // (разбор — в AppInstanceMutex). Заводим ДО проверки single-instance
+    // намеренно: установщик спрашивает «занят ли наш exe», а занимает его ЛЮБАЯ
+    // копия — включая ту, что через миг перешлёт ссылку первичной и выйдет.
+    AppInstanceMutex.acquire();
+
     // Single-instance: если приложение уже запущено — переслать ему ссылку и выйти.
     // На Android это даёт сама система (launchMode=singleTask + onNewIntent).
     final server = await SingleInstance.tryBecomePrimary();
