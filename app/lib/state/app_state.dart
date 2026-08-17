@@ -659,6 +659,7 @@ class AppState extends ChangeNotifier {
     // «Авто (лучший сервер)» — сессия по всему списку, как в connectAuto.
     if (_selectedIndex < 0) {
       _engine.fallbackServers = _fallbackCandidates();
+      _engine.bypassCandidates = _servers;
       await _engine.armAdoptedSession(
           _servers,
           ConnectionOptions(
@@ -2031,7 +2032,13 @@ class AppState extends ChangeNotifier {
       final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
           ? server.copyWith(rawJsonOverride: ov.rawJson)
           : server;
+      // ⚠️ Список ВСЕХ серверов подписки отдаём движку ВСЕГДА, в том числе при
+      // ручном выборе. Это не «запасные» (на них никто не переключится) — это
+      // адреса, которые обязаны идти мимо туннеля. Без них правило обхода
+      // содержало бы только выбранный сервер, менялось бы при каждой смене, и
+      // туннель пересоздавался бы там, где мог остаться живым.
       _engine.fallbackServers = const []; // ручной выбор не подменяем
+      _engine.bypassCandidates = _servers;
       // Запоминаем, ЧТО ИМЕННО поднимаем: выбор в списке после этого может
       // уехать на другой сервер, а сессия останется этой.
       _connectedServerKey = srv.key;
@@ -2221,6 +2228,7 @@ class AppState extends ChangeNotifier {
     // движок переключится на следующий из этого списка. Ручной выбор не подменяем.
     markUserConnect();
     _engine.fallbackServers = _fallbackCandidates();
+    _engine.bypassCandidates = _servers;
     await _engine.connectBalancer(
       _servers,
       options: ConnectionOptions(

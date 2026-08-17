@@ -66,6 +66,9 @@ class _FakeEngine implements VpnEngine {
   set fallbackServers(List<VpnServer> servers) {}
 
   @override
+  set bypassCandidates(List<VpnServer> servers) {}
+
+  @override
   set knownServerDomains(List<String> domains) {}
   @override
   Future<void> dispose() async {}

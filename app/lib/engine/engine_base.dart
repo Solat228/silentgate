@@ -572,6 +572,28 @@ abstract class VpnEngineBase implements VpnEngine {
   @override
   set fallbackServers(List<VpnServer> servers) => _fallbacks = [...servers];
 
+  /// Серверы, чьи адреса обязаны идти МИМО туннеля, — независимо от того, к
+  /// кому мы подключаемся сейчас.
+  ///
+  /// ⚠️ ЭТО НЕ [fallbackServers], И ПУТАТЬ ИХ НЕЛЬЗЯ. «Запасные» — это те, на
+  /// кого движок вправе ПЕРЕКЛЮЧИТЬСЯ сам при сбое, и в ручном режиме список
+  /// намеренно пуст: подменять выбор человека нельзя. А здесь речь совсем о
+  /// другом — чьи адреса не должны заходить в туннель, чтобы не получилась
+  /// петля. Переключаться на них никто не собирается.
+  ///
+  /// ⚠️ БЕЗ ЭТОГО РАЗДЕЛЕНИЯ ВЕСЬ ПУНКТ «НЕ ПЕРЕСОЗДАВАТЬ ТУННЕЛЬ» НЕ РАБОТАЛ
+  /// В РУЧНОМ РЕЖИМЕ — то есть в самом частом. Найдено живым прогоном в VM
+  /// 17.08.2026: строки «Туннель не пересоздаю» не было НИ РАЗУ, при каждой
+  /// смене сервера в журнале снова шёл «TUN автоподбор». Механизм был написан,
+  /// тесты его проходили, а в бою он не включался: `tunnelBypassIps` знал
+  /// только выбранный сервер (плюс пустой запас), поэтому список адресов менялся
+  /// вместе с выбором — а значит менялся и конфиг, и сверка честно уходила в
+  /// пересоздание.
+  set bypassCandidates(List<VpnServer> servers) =>
+      _bypassCandidates = [...servers];
+
+  List<VpnServer> _bypassCandidates = [];
+
   /// Имена ВСЕЙ нашей инфраструктуры: серверы подписки и её собственный хост.
   ///
   /// ⚠️ Нужен именно ПОЛНЫЙ список, а не выбранный сервер. Резолв идёт через
@@ -1133,8 +1155,14 @@ abstract class VpnEngineBase implements VpnEngine {
       Map<String, List<String>> resolvedHosts, AppSettings s) async {
     final ips = resolvedHosts.values.expand((e) => e).toSet();
     if (!s.seamlessServerSwitch) return ips.toList();
-    if (_fallbacks.isNotEmpty) {
-      final extra = await resolveServerHosts(_fallbacks);
+    // Кандидаты = запасные (режим «Авто») + ВСЕ известные серверы подписки.
+    // Второе слагаемое и есть то, чего не хватало: без него в ручном режиме
+    // список сводился к одному выбранному серверу и «дышал» при каждой смене.
+    final others = <String, VpnServer>{
+      for (final v in [..._fallbacks, ..._bypassCandidates]) v.key: v,
+    }.values.toList();
+    if (others.isNotEmpty) {
+      final extra = await resolveServerHosts(others);
       ips.addAll(extra.values.expand((e) => e));
     }
     // ⚠️ НАКОПИТЕЛЬ, А НЕ ПЕРЕСЧЁТ С НУЛЯ — ИНАЧЕ ВЕСЬ ПУНКТ НЕ РАБОТАЕТ ТАМ,
