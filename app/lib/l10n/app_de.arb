@@ -1076,5 +1076,7 @@
   "settingsSeamlessKeepTunSub": "Die Standardroute wird während der Wiederherstellung nicht hin- und hergerissen. ⚠️ Das ist KEIN Kill Switch: Verkehr außerhalb des VPN wird nicht blockiert — gehalten wird nur der Adapter selbst.",
   "autoSpeedTrafficTitle": "Der Geschwindigkeitstest verbraucht Datenvolumen",
   "autoSpeedTrafficBody": "Gemessen werden die {servers} besten Server und Ihre eigene Verbindung — etwa {mb} MB Ihres Abo-Datenvolumens.\n\nSie können den Test in den Einstellungen abschalten.",
-  "autoSpeedTrafficGo": "Starten"
+  "autoSpeedTrafficGo": "Starten",
+  "splitDeadPath": "Die Datei unter diesem Pfad existiert nicht mehr — die Regel greift nie",
+  "splitDeadPathFix": "Tippen, um nach Dateinamen abzugleichen"
 }

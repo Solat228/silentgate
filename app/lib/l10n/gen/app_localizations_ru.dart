@@ -2885,4 +2885,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Запустить';
+
+  @override
+  String get splitDeadPath =>
+      'Файла по этому пути больше нет — правило не срабатывает';
+
+  @override
+  String get splitDeadPathFix => 'Нажмите, чтобы сопоставлять по имени файла';
 }

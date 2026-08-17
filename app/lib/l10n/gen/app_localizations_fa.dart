@@ -2873,4 +2873,11 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'شروع';
+
+  @override
+  String get splitDeadPath =>
+      'فایل در این مسیر دیگر وجود ندارد — قاعده هرگز اعمال نمی‌شود';
+
+  @override
+  String get splitDeadPathFix => 'برای تطبیق بر اساس نام فایل ضربه بزنید';
 }

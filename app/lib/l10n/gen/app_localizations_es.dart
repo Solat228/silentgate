@@ -2907,4 +2907,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Iniciar';
+
+  @override
+  String get splitDeadPath =>
+      'El archivo de esta ruta ya no existe: la regla nunca se aplica';
+
+  @override
+  String get splitDeadPathFix =>
+      'Pulse para hacer coincidir por nombre de archivo';
 }

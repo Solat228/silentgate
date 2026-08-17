@@ -2909,4 +2909,12 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Iniciar';
+
+  @override
+  String get splitDeadPath =>
+      'O ficheiro neste caminho já não existe — a regra nunca é aplicada';
+
+  @override
+  String get splitDeadPathFix =>
+      'Toque para corresponder pelo nome do ficheiro';
 }

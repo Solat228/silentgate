@@ -2779,4 +2779,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => '开始';
+
+  @override
+  String get splitDeadPath => '该路径下的文件已不存在——规则永远不会匹配';
+
+  @override
+  String get splitDeadPathFix => '点按改为按文件名匹配';
 }

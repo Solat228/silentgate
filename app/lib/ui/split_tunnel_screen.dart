@@ -17,6 +17,7 @@ import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
 import 'widgets/app_icon.dart';
+import 'widgets/dead_path_badge.dart';
 import 'widgets/app_label.dart';
 import 'widgets/route_diagram.dart';
 import 'widgets/site_favicon.dart';
@@ -202,6 +203,14 @@ class SplitTunnelScreen extends StatelessWidget {
                           // и освобождает 48 dp. На десктопе она остаётся: там
                           // мышь, hover и подсказка работают, а места хватает.
                           trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                            // Правило по пути на исчезнувший файл: молчать о нём
+                            // нельзя — оно выглядит здоровым и не совпадает ни с
+                            // чем (воспроизведено опытом, см. DeadPathBadge).
+                            DeadPathBadge(
+                              rule: rule,
+                              onSwitchToName: () =>
+                                  _updateApp(controller, rule, byName: true),
+                            ),
                             _ServerBadge(
                                 servers: state.servers,
                                 serverKey: rule.serverKey,

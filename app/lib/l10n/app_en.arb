@@ -1252,5 +1252,7 @@
   "settingsSeamlessKeepTunSub": "The default route is not yanked around while recovery is under way. ⚠️ This is NOT a kill switch: traffic outside the VPN is not blocked — only the adapter itself is held.",
   "autoSpeedTrafficTitle": "The speed test will use traffic",
   "autoSpeedTrafficBody": "Speed will be measured for the {servers} best servers and for your own connection — about {mb} MB of your subscription traffic.\n\nYou can turn the test off in settings.",
-  "autoSpeedTrafficGo": "Start"
+  "autoSpeedTrafficGo": "Start",
+  "splitDeadPath": "The file at this path no longer exists — the rule never matches",
+  "splitDeadPathFix": "Tap to match by file name instead"
 }

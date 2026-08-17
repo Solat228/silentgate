@@ -2904,4 +2904,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Starten';
+
+  @override
+  String get splitDeadPath =>
+      'Die Datei unter diesem Pfad existiert nicht mehr — die Regel greift nie';
+
+  @override
+  String get splitDeadPathFix => 'Tippen, um nach Dateinamen abzugleichen';
 }

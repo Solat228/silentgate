@@ -1137,5 +1137,7 @@
   "settingsSeamlessKeepTunSub": "La ruta por defecto no da tirones mientras dura la recuperación. ⚠️ Esto NO es un kill switch: el tráfico fuera de la VPN no se bloquea; solo se mantiene el adaptador.",
   "autoSpeedTrafficTitle": "La prueba de velocidad consumirá tráfico",
   "autoSpeedTrafficBody": "Se medirá la velocidad de los {servers} mejores servidores y la de su propia conexión: unos {mb} MB del tráfico de su suscripción.\n\nPuede desactivar la prueba en los ajustes.",
-  "autoSpeedTrafficGo": "Iniciar"
+  "autoSpeedTrafficGo": "Iniciar",
+  "splitDeadPath": "El archivo de esta ruta ya no existe: la regla nunca se aplica",
+  "splitDeadPathFix": "Pulse para hacer coincidir por nombre de archivo"
 }

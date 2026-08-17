@@ -2875,4 +2875,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'ابدأ';
+
+  @override
+  String get splitDeadPath =>
+      'لم يعد الملف موجودًا في هذا المسار — القاعدة لا تنطبق أبدًا';
+
+  @override
+  String get splitDeadPathFix => 'اضغط للمطابقة حسب اسم الملف';
 }

@@ -5015,6 +5015,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Запустить'**
   String get autoSpeedTrafficGo;
+
+  /// No description provided for @splitDeadPath.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файла по этому пути больше нет — правило не срабатывает'**
+  String get splitDeadPath;
+
+  /// No description provided for @splitDeadPathFix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нажмите, чтобы сопоставлять по имени файла'**
+  String get splitDeadPathFix;
 }
 
 class _AppLocalizationsDelegate

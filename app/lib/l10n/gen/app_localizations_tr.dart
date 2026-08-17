@@ -2883,4 +2883,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Başlat';
+
+  @override
+  String get splitDeadPath =>
+      'Bu yoldaki dosya artık yok — kural hiç eşleşmiyor';
+
+  @override
+  String get splitDeadPathFix => 'Dosya adına göre eşleştirmek için dokunun';
 }

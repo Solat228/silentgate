@@ -1076,5 +1076,7 @@
   "settingsSeamlessKeepTunSub": "La route par défaut n'est pas secouée pendant la reprise. ⚠️ Ce n'est PAS un kill switch : le trafic hors VPN n'est pas bloqué — seul l'adaptateur est maintenu.",
   "autoSpeedTrafficTitle": "Le test de débit consommera des données",
   "autoSpeedTrafficBody": "Le débit sera mesuré pour les {servers} meilleurs serveurs et pour votre propre connexion — environ {mb} Mo du trafic de votre abonnement.\n\nVous pouvez désactiver le test dans les paramètres.",
-  "autoSpeedTrafficGo": "Lancer"
+  "autoSpeedTrafficGo": "Lancer",
+  "splitDeadPath": "Le fichier de ce chemin n'existe plus — la règle ne s'applique jamais",
+  "splitDeadPathFix": "Appuyez pour faire correspondre par nom de fichier"
 }

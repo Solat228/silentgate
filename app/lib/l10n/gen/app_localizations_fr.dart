@@ -2912,4 +2912,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get autoSpeedTrafficGo => 'Lancer';
+
+  @override
+  String get splitDeadPath =>
+      'Le fichier de ce chemin n\'existe plus — la règle ne s\'applique jamais';
+
+  @override
+  String get splitDeadPathFix =>
+      'Appuyez pour faire correspondre par nom de fichier';
 }

@@ -1450,5 +1450,7 @@
       }
     }
   },
-  "autoSpeedTrafficGo": "Запустить"
+  "autoSpeedTrafficGo": "Запустить",
+  "splitDeadPath": "Файла по этому пути больше нет — правило не срабатывает",
+  "splitDeadPathFix": "Нажмите, чтобы сопоставлять по имени файла"
 }

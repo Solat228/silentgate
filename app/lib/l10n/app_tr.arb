@@ -1076,5 +1076,7 @@
   "settingsSeamlessKeepTunSub": "Kurtarma sürerken varsayılan yönlendirme oynatılmaz. ⚠️ Bu bir kill switch DEĞİLDİR: VPN dışındaki trafik engellenmez, yalnızca bağdaştırıcının kendisi ayakta tutulur.",
   "autoSpeedTrafficTitle": "Hız ölçümü veri harcayacak",
   "autoSpeedTrafficBody": "En iyi {servers} sunucunun ve kendi bağlantınızın hızı ölçülecek — aboneliğinizin yaklaşık {mb} MB trafiği.\n\nÖlçümü ayarlardan kapatabilirsiniz.",
-  "autoSpeedTrafficGo": "Başlat"
+  "autoSpeedTrafficGo": "Başlat",
+  "splitDeadPath": "Bu yoldaki dosya artık yok — kural hiç eşleşmiyor",
+  "splitDeadPathFix": "Dosya adına göre eşleştirmek için dokunun"
 }

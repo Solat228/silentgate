@@ -1076,5 +1076,7 @@
   "settingsSeamlessKeepTunSub": "恢复期间不去反复改动默认路由。⚠️ 这不是 kill switch：不会阻断绕过 VPN 的流量，只是保持网卡本身不下线。",
   "autoSpeedTrafficTitle": "测速会消耗流量",
   "autoSpeedTrafficBody": "将测量 {servers} 个最佳服务器以及你自己线路的速度，约消耗订阅流量 {mb} MB。\n\n可在设置中关闭测速。",
-  "autoSpeedTrafficGo": "开始"
+  "autoSpeedTrafficGo": "开始",
+  "splitDeadPath": "该路径下的文件已不存在——规则永远不会匹配",
+  "splitDeadPathFix": "点按改为按文件名匹配"
 }
