@@ -165,8 +165,24 @@ class WindowsEngine extends VpnEngineBase {
   /// [ports] — порты ядра сессии (socks/http/api Xray). Они нужны ВСЕГДА, при
   /// любом режиме захвата. Порты API добавляются только когда инбаунды под них
   /// реально будут созданы (см. [_apiExitsActive] / `ApiPorts.exitPortsActive`).
-  static List<int> corePortsFor(AppSettings s, XrayPorts ports) {
-    final active = ApiPorts.exitPortsActive(s);
+  /// Порты, которые обязаны быть свободны перед подъёмом.
+  ///
+  /// [tunnelStaysUp] — живой туннель этого же приложения остаётся на месте
+  /// (бесшовная смена сервера). ⚠️ ТОГДА ПОРТЫ ВЫХОДОВ ПРОВЕРЯТЬ НЕЛЬЗЯ, И ЭТО
+  /// НЕ ПОСЛАБЛЕНИЕ, А УСЛОВИЕ ЗАДАЧИ. Порт «Прямо» (10819) и порты серверов
+  /// поднимает САМ ТУННЕЛЬНЫЙ sing-box, тот самый, который мы намеренно
+  /// оставляем жить. Сохранили туннель — сохранили и его порты; требовать их
+  /// свободы значит требовать, чтобы туннель умер, то есть отменять всю затею.
+  ///
+  /// Найдено живым прогоном в VM 18.08.2026: туннель ВПЕРВЫЕ сохранился (в
+  /// журнале нет ни строки «TUN автоподбор»), и тут же подключение упало с
+  /// «Порт 10819 ещё занят нашим ядром (sing-box.exe) от прошлой сессии».
+  ///
+  /// ⚠️ Порты прокси-ядра (socks/http/api) проверяются ВСЕГДА: их держит ядро,
+  /// которое как раз гасится и поднимается заново, и вот там конфликт реален.
+  static List<int> corePortsFor(AppSettings s, XrayPorts ports,
+      {bool tunnelStaysUp = false}) {
+    final active = ApiPorts.exitPortsActive(s) && !tunnelStaysUp;
     final keys = active ? s.apiExitServerKeys : const <String>[];
     return [
       ports.socks,
@@ -253,7 +269,10 @@ class WindowsEngine extends VpnEngineBase {
     final apiKeys = _apiExitsActive(options.settings)
         ? options.settings.apiExitServerKeys
         : const <String>[];
-    final corePorts = corePortsFor(options.settings, ports);
+    // Живой туннель остаётся на месте только при включённой бесшовности — тогда
+    // его порты не наши к освобождению. Иначе он будет снят и порты вернутся.
+    final corePorts = corePortsFor(options.settings, ports,
+        tunnelStaysUp: _tunActive && options.settings.seamlessServerSwitch);
     var conflict = await PortCheck.findConflict(corePorts);
     // ⚠️ ЖДЁМ И ТОГДА, КОГДА ВЛАДЕЛЬЦА ОПОЗНАТЬ НЕ УДАЛОСЬ.
     //

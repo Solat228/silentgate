@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/net/api_ports.dart';
+import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
@@ -578,4 +580,47 @@ void main() {
       e.dropPendingRetry();
     });
   });
+  group('Порты переиспользуемого туннеля (BACKLOG #30)', () {
+    // ⚠️ ПОЙМАНО ЖИВЫМ ПРОГОНОМ 18.08.2026, юнит-тесты этого не видели.
+    // Мягкое отключение впервые сохранило туннель (в журнале нет ни строки
+    // «TUN автоподбор») — и тут же подключение упало: «Порт 10819 ещё занят
+    // нашим ядром (sing-box.exe) от прошлой сессии». Порт «Прямо» и порты
+    // выходов поднимает ТОТ ЖЕ туннельный sing-box, который мы намеренно
+    // оставляем жить. Требовать их свободы значит требовать смерти туннеля.
+    const ports = XrayPorts(socks: 10808, http: 10809, api: 10085);
+
+    AppSettings withExits() => AppSettings(
+          captureMode: CaptureMode.tun,
+          apiEnabled: true,
+          apiToken: 'x' * 16,
+          apiExitServerKeys: ['k1'],
+        );
+
+    test('⚠️ ГЛАВНОЕ: туннель остаётся — его порты не проверяем', () {
+      final checked = WindowsEngine.corePortsFor(withExits(), ports,
+          tunnelStaysUp: true);
+      expect(checked, isNot(contains(ApiPorts.direct)),
+          reason: 'ЗДЕСЬ ПАДАЛА СМЕНА СЕРВЕРА: 10819 держит сам туннель, '
+              'который никуда не уходит');
+    });
+
+    test('туннель пересоздаётся — порты обязаны быть свободны', () {
+      final checked = WindowsEngine.corePortsFor(withExits(), ports,
+          tunnelStaysUp: false);
+      expect(checked, contains(ApiPorts.direct),
+          reason: 'иначе новый туннель молча не поднимет порт «Прямо»');
+    });
+
+    test('порты прокси-ядра проверяются ВСЕГДА', () {
+      // Их держит ядро, которое как раз гасится и поднимается заново — вот там
+      // конфликт настоящий, и пропускать его нельзя.
+      for (final stays in [true, false]) {
+        final checked = WindowsEngine.corePortsFor(withExits(), ports,
+            tunnelStaysUp: stays);
+        expect(checked, containsAll([10808, 10809, 10085]),
+            reason: 'tunnelStaysUp=$stays');
+      }
+    });
+  });
+
 }
