@@ -799,10 +799,9 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
-    _liveBypassIps = null;
-    _liveTunApiSecret = null;
       _liveBypassIps = null;
-    _liveTunApiSecret = null;
+      _liveTunApiSecret = null;
+      _liveBypassIps = null;
       _liveTunApiSecret = null;
       await Future.delayed(const Duration(milliseconds: 600));
     }
@@ -927,8 +926,8 @@ class WindowsEngine extends VpnEngineBase {
     // Забудь это, и следующий запуск с тем же конфигом решил бы, что
     // пересоздавать нечего, и оставил бы машину без маршрутов.
     _liveTunConfig = null;
-    _liveBypassIps = null;
-    _liveTunApiSecret = null;
+      _liveBypassIps = null;
+      _liveTunApiSecret = null;
   }
 
   /// Снять системный прокси, если его прописал запуск [gen].
@@ -1090,10 +1089,9 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
-    _liveBypassIps = null;
-    _liveTunApiSecret = null;
       _liveBypassIps = null;
-    _liveTunApiSecret = null;
+      _liveTunApiSecret = null;
+      _liveBypassIps = null;
       _liveTunApiSecret = null;
     }
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
@@ -1136,8 +1134,8 @@ class WindowsEngine extends VpnEngineBase {
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
-    _liveBypassIps = null;
-    _liveTunApiSecret = null;
+      _liveBypassIps = null;
+      _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
       await SystemProxy.clear();

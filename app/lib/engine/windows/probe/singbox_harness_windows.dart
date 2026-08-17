@@ -25,8 +25,21 @@ class SingboxHarnessWindows implements ProbeHarness {
   /// отдаёт одну пару кредов на все порты.
   SingboxHarnessWindows({HarnessPorts? ports, String? secret})
       : builder = SingboxHarnessConfigBuilder(
-          ports: ports ?? HarnessPorts(base: 21500 + AppEnv.portOffset),
+          // ⚠️ Слот на экземпляр — по той же причине, что у Xray-харнесса:
+          // параллельная автонастройка поднимает несколько харнессов разом, и
+          // константная база означала бы драку за один порт. Здесь отказ хотя
+          // бы громкий (sing-box проверяет isRunning и бросает), но кандидат
+          // всё равно молча объявлялся бы непрошедшим.
+          ports: ports ??
+              HarnessPorts(base: 21500 + AppEnv.portOffset + _peekSlot() * 16),
         ).withAuth(harnessProxyUser, secret ?? newHarnessSecret());
+
+  /// Номер экземпляра — разводит порты и имя файла конфига.
+  final int _slot = _nextSlot();
+
+  static int _slotCounter = 0;
+  static int _nextSlot() => _slotCounter = (_slotCounter + 1) % 64;
+  static int _peekSlot() => _slotCounter;
 
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
@@ -37,7 +50,7 @@ class SingboxHarnessWindows implements ProbeHarness {
 
     final dir = await AppPaths.supportDir();
     final file =
-        File('${dir.path}${Platform.pathSeparator}singbox_harness.json');
+        File('${dir.path}${Platform.pathSeparator}singbox_harness_$_slot.json');
     await file.writeAsString(builder.buildJson(entries));
 
     final process = SingboxProcess();

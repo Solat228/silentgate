@@ -24,10 +24,51 @@ class XrayHarnessWindows implements ProbeHarness {
   /// экземпляр, то есть на прогон: харнесс создаётся заново на каждый запуск.
   /// ⚠️ Пароль обязателен: без него порт 21000+ был бы входом в туннель для
   /// любого процесса машины на всё время прогона.
+  /// ⚠️ КАЖДОМУ ЭКЗЕМПЛЯРУ — СВОЙ ДИАПАЗОН ПОРТОВ И СВОЙ ФАЙЛ КОНФИГА.
+  ///
+  /// Найдено ревью 18.08.2026, дефект внесён параллельной автонастройкой
+  /// (`autoConfigConcurrency`, умолчание 3). База была КОНСТАНТОЙ, поэтому три
+  /// одновременных харнесса просили один и тот же порт 21000 и писали один и
+  /// тот же `harness_config.json`. Итог хуже, чем просто отказ: два `xray.exe`
+  /// падали на «address already in use», а `_waitReady(21000)` проходил у всех
+  /// троих — порт-то слушает ВЫЖИВШИЙ. Дальше пробы уходили на чужое ядро: у
+  /// кого пароль не совпал, тот получал 407 и объявлял исправный сервер
+  /// нерабочим; у кого совпал — мерил ЧУЖОЙ сервер и записывал результат
+  /// своему кандидату. Плюс `stop()` любого из троих гасил единственное живое
+  /// ядро посреди чужих проб. То есть список «лучших серверов» собирался из
+  /// перепутанных замеров, и включалось это УМОЛЧАНИЕМ.
+  ///
+  /// ⚠️ Тот же баг уже был оплачен на Android — там его закрывает
+  /// `withPortBase` (`harness_config_builder.dart`), но Windows его не звал
+  /// нигде. Держим сдвиг здесь, чтобы платформы не разъезжались снова.
+  ///
+  /// Шаг 16 — с запасом: у харнесса по два порта на запись (socks+http), а
+  /// записей в одном прогоне бывает несколько.
   XrayHarnessWindows({HarnessPorts? ports, String? secret})
-      : builder = HarnessConfigBuilder(
-          ports: ports ?? HarnessPorts(base: 21000 + AppEnv.portOffset),
+      : _slot = _nextSlot(),
+        builder = HarnessConfigBuilder(
+          ports: ports ??
+              HarnessPorts(base: 21000 + AppEnv.portOffset + _peekSlot() * 16),
         ).withAuth(harnessProxyUser, secret ?? newHarnessSecret());
+
+  /// Номер экземпляра — разводит и порты, и имя файла конфига.
+  final int _slot;
+
+  static int _slotCounter = 0;
+
+  /// Счётчик по кругу: 64 слота с запасом перекрывают потолок
+  /// одновременных кандидатов (`AppSettings.autoConfigConcurrencyMax` = 5),
+  /// а по кругу — чтобы номера портов не уползали вверх бесконечно.
+  static int _nextSlot() => _slotCounter = (_slotCounter + 1) % 64;
+
+  /// Значение, УЖЕ выданное текущему экземпляру.
+  ///
+  /// ⚠️ Инициализаторы полей считаются в порядке объявления: `_slot` стоит
+  /// первым и успевает сдвинуть счётчик, поэтому здесь читаем счётчик КАК ЕСТЬ.
+  /// Прибавить единицу — значит развести порт и имя файла на разные слоты:
+  /// уникальность сохранится, но соответствие «порт ↔ конфиг» сломается, и
+  /// разбираться в этом придётся по чужому логу.
+  static int _peekSlot() => _slotCounter;
 
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
@@ -37,8 +78,10 @@ class XrayHarnessWindows implements ProbeHarness {
     }
 
     final dir = await AppPaths.supportDir();
-    final file =
-        File('${dir.path}${Platform.pathSeparator}harness_config.json');
+    // Имя файла тоже с номером слота: один общий файл переписывался бы гонкой,
+    // и ядро читало бы чужой конфиг.
+    final file = File(
+        '${dir.path}${Platform.pathSeparator}harness_config_$_slot.json');
     await file.writeAsString(builder.buildJson(entries));
 
     final process = XrayProcess();

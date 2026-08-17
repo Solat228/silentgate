@@ -721,4 +721,71 @@ void main() {
     });
   });
 
+  group('Находки ревью 18.08.2026 — не возвращать', () {
+    // Все три дефекта внесены батчем 1.6.x и подтверждены скептиками по коду.
+
+    test('⚠️ системный прокси: пароль на порт НЕ ставится даже при живом захвате',
+        () {
+      // Симптом, если вернуть: WinINET креденшелов не передаёт — 407 на каждый
+      // запрос, интернет ложится целиком. Ранний выход стоял ВЫШЕ проверки
+      // systemProxyMode и проскакивал мимо неё.
+      final e = _FakeEngine()..liveCaptureKeptForTest = true;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      expect(e.localInboundPassword, isNotEmpty);
+
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: true);
+      expect(e.localInboundPassword, isEmpty,
+          reason: 'режим системного прокси обязан снимать пароль ВСЕГДА');
+    });
+
+    test('⚠️ явные креды пользователя доезжают до ядра при живом захвате', () {
+      // Симптом, если вернуть: в настройках новый пароль, порт принимает
+      // старый, сторонняя программа получает 407. Ровно ради этого три поля и
+      // внесены в reconnectReasons.
+      final e = _FakeEngine()..liveCaptureKeptForTest = true;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+
+      const mine = AppSettings(
+          localProxyUser: 'vasya', localProxyPassword: 'sekret123');
+      e.applyLocalProxyAuth(mine, systemProxyMode: false);
+      expect(e.localInboundUser, 'vasya');
+      expect(e.localInboundPassword, 'sekret123');
+    });
+
+    test('⚠️ выключенная галочка пароля открывает порт при живом захвате', () {
+      final e = _FakeEngine()..liveCaptureKeptForTest = true;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      e.applyLocalProxyAuth(const AppSettings(localProxyAuth: false),
+          systemProxyMode: false);
+      expect(e.localInboundPassword, isEmpty);
+    });
+
+    test('⚠️ удержание захвата — только там, где есть что удерживать', () {
+      // Симптом, если вернуть: в режиме системного прокси (умолчание!) запись
+      // WinINET остаётся на мёртвый порт до ~2 минут, браузеры дают
+      // ERR_PROXY_CONNECTION_FAILED, а kill switch выключен и интерфейс о
+      // блокировке молчит.
+      final e = _FakeEngine();
+      expect(
+          e.keepCaptureBetweenAttempts(
+              const AppSettings(captureMode: CaptureMode.systemProxy)),
+          isFalse,
+          reason: 'удерживать нечего: адаптера в этом режиме нет вовсе');
+      expect(
+          e.keepCaptureBetweenAttempts(const AppSettings(
+              captureMode: CaptureMode.tun, alsoSetSystemProxy: true)),
+          isFalse,
+          reason: 'вместе с адаптером удержался бы и мёртвый системный прокси');
+      expect(
+          e.keepCaptureBetweenAttempts(
+              const AppSettings(captureMode: CaptureMode.tun)),
+          isTrue);
+      expect(
+          e.keepCaptureBetweenAttempts(const AppSettings(
+              captureMode: CaptureMode.systemProxy, killSwitch: true)),
+          isTrue,
+          reason: 'kill switch держит захват в любом режиме — это его работа');
+    });
+  });
+
 }
