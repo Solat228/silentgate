@@ -80,6 +80,36 @@ class WindowsEngine extends VpnEngineBase {
   /// перечень полей руками в этом проекте уже терял `ipv6Upstream` и
   /// `platformTun` (см. `test/tun_options_carry_test.dart`).
   String? _liveTunConfig;
+
+  /// Список адресов «мимо туннеля», С КОТОРЫМ ПОДНЯТ живой туннель.
+  ///
+  /// ⚠️ ЗАЧЕМ ХРАНИТЬ ЕГО ОТДЕЛЬНО. Сверка «тот же ли конфиг» точная, побайтная,
+  /// и любое расхождение уводит в пересоздание. А список адресов РАСТЁТ сам по
+  /// себе: имена серверов резолвятся не все и не сразу (живой прогон 18.08.2026:
+  /// в кэше 10 имён из 15), кэш пополняется между подключениями, у имени с
+  /// несколькими A-записями состав ответа «дышит». Из-за этого конфиг отличался
+  /// от того, с которым туннель поднимался, и переиспользование не включалось
+  /// НИ РАЗУ — при том что и мягкое отключение, и порты были уже починены.
+  ///
+  /// Решение: пока туннель жив, строим конфиг с ЕГО списком, а не с заново
+  /// пересобранным. Условие безопасности проверяется явно — см. [_bypassForReuse].
+  List<String>? _liveBypassIps;
+
+  /// Секрет Clash API, С КОТОРЫМ ПОДНЯТ живой туннель.
+  ///
+  /// ⚠️ ЭТО И БЫЛА ГЛАВНАЯ ПРИЧИНА, ПО КОТОРОЙ ТУННЕЛЬ ПЕРЕСОЗДАВАЛСЯ ВСЕГДА.
+  /// `prepareLocalProxyAuth` выдаёт новый секрет на КАЖДОЕ подключение
+  /// (`singboxApiSecret = _newApiSecret()`), а он уезжает в конфиг туннеля.
+  /// Значит побайтная сверка «тот же ли конфиг» не могла совпасть НИ РАЗУ —
+  /// сколько ни чини всё остальное. Три живых прогона подряд показывали
+  /// «TUN автоподбор» после каждой смены сервера именно поэтому.
+  ///
+  /// ⚠️ И ВТОРОЕ СЛЕДСТВИЕ, БОЛЕЕ КОВАРНОЕ. Живой туннель продолжает слушать
+  /// свой API со СТАРЫМ секретом. Переиспользовать туннель, оставив в поле
+  /// новый секрет, значит получить 401 на каждом опросе — то есть сторож
+  /// зависания и уведомления о блокировках молча перестали бы работать, а
+  /// сторож ещё и решил бы, что ядро не отвечает.
+  String? _liveTunApiSecret;
   bool _proxySet = false; // чистим системный прокси только если ставили его сами
 
   /// Поколение запуска, которое ВЛАДЕЕТ поднятым туннелем и прописанным прокси.
@@ -532,6 +562,37 @@ class WindowsEngine extends VpnEngineBase {
   /// работать по СТАРОМУ конфигу — со старым IP сервера в правиле «мимо
   /// туннеля», то есть с риском петли и мёртвой сети), но окно без захвата
   /// сжимается до «снял → поднимаю».
+  /// Адреса «мимо туннеля» для сборки конфига.
+  ///
+  /// Пока живого туннеля нет — обычный расчёт. Если туннель жив и включена
+  /// бесшовность, отдаём список, С КОТОРЫМ ОН ПОДНЯТ, — но только если он
+  /// ПОКРЫВАЕТ адреса серверов текущей сессии.
+  ///
+  /// ⚠️ УСЛОВИЕ ПОКРЫТИЯ — НЕ ФОРМАЛЬНОСТЬ. Правило `ip_cidr → direct` для
+  /// адресов серверов существует, чтобы трафик прокси-ядра к своему серверу не
+  /// заходил обратно в туннель. Отдать живой список, в котором нового сервера
+  /// нет, значило бы завести петлю: ядро пошло бы к серверу через туннель,
+  /// который сам же и обслуживает. Правило по имени процесса — второй эшелон, и
+  /// полагаться на него одного здесь нельзя.
+  ///
+  /// Не покрывает — возвращаем свежий список; конфиг тогда отличается, и
+  /// туннель честно пересоздаётся, как раньше.
+  Future<List<String>> _bypassForReuse(
+      List<VpnServer> servers, AppSettings s) async {
+    final sessionHosts = await resolveServerHosts(servers);
+    final fresh = await tunnelBypassIps(sessionHosts, s);
+    final live = _liveBypassIps;
+    if (!_tunActive || !s.seamlessServerSwitch || live == null) return fresh;
+
+    final needed = sessionHosts.values.expand((e) => e).toSet();
+    if (needed.isNotEmpty && live.toSet().containsAll(needed)) {
+      return live;
+    }
+    AppLog.i('Адреса нового сервера не покрыты правилом живого туннеля — '
+        'туннель придётся пересоздать');
+    return fresh;
+  }
+
   @visibleForTesting
   Future<bool> raiseTun({
     required ConnectionOptions options,
@@ -563,6 +624,13 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.i('Мульти-VPN: дополнительных серверов '
           '${exitsBuilt.outbounds.length}');
     }
+    // ⚠️ ПЕРЕИСПОЛЬЗУЕМ ТУННЕЛЬ — ЗНАЧИТ ЖИВЁМ С ЕГО СЕКРЕТОМ.
+    // Возвращаем поле к значению живого туннеля ДО сборки конфига: иначе и
+    // сверка не совпадёт, и сторож пойдёт стучаться с чужим паролем.
+    final liveSecret = _liveTunApiSecret;
+    if (_tunActive && options.settings.seamlessServerSwitch && liveSecret != null) {
+      singboxApiSecret = liveSecret;
+    }
     final tunOptions = TunOptions.fromSettings(
       options.settings,
       // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
@@ -570,8 +638,7 @@ class WindowsEngine extends VpnEngineBase {
       // выбран, и переход на запасной не требует пересоздавать туннель (см.
       // `VpnEngineBase.tunnelBypassIps` и сверку конфига ниже). Выключенный
       // флаг отдаёт РОВНО прежний список.
-      serverIps: await tunnelBypassIps(
-          await resolveServerHosts(servers), options.settings),
+      serverIps: await _bypassForReuse(servers, options.settings),
       // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
       serverDomains: knownServerDomains,
       // Резолвер для «Прямо». Спрашивается ДО подъёма НОВОГО туннеля: после
@@ -667,6 +734,11 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
+      _liveBypassIps = null;
+    _liveTunApiSecret = null;
+      _liveTunApiSecret = null;
       await Future.delayed(const Duration(milliseconds: 600));
     }
     // TUN: sing-box поднимает туннель и заворачивает прокси-трафик в SOCKS Xray.
@@ -702,6 +774,8 @@ class WindowsEngine extends VpnEngineBase {
     // попытка с тем же конфигом «переиспользовала» бы туннель, которого нет:
     // приложение показало бы «Подключено» без единого маршрута.
     _liveTunConfig = wantConfig;
+    _liveBypassIps = tunOptions.serverIps;
+    _liveTunApiSecret = singboxApiSecret;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
     // отключиться. Туннель, поднятый уже «после отмены», гасим сразу — но
     // ТОЛЬКО свой (за две минуты успевает начаться и новый запуск).
@@ -788,6 +862,8 @@ class WindowsEngine extends VpnEngineBase {
     // Забудь это, и следующий запуск с тем же конфигом решил бы, что
     // пересоздавать нечего, и оставил бы машину без маршрутов.
     _liveTunConfig = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
   }
 
   /// Снять системный прокси, если его прописал запуск [gen].
@@ -949,6 +1025,11 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
+      _liveBypassIps = null;
+    _liveTunApiSecret = null;
+      _liveTunApiSecret = null;
     }
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
@@ -990,6 +1071,8 @@ class WindowsEngine extends VpnEngineBase {
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
       await SystemProxy.clear();
