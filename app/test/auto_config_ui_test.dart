@@ -596,6 +596,55 @@ void main() {
       expect(ctrl.found.single.server.key, keyOf(linkA));
     });
   });
+  group('Замер скорости стоит трафика подписки — и об этом спрашивают', () {
+    // ⚠️ РАДИ ЧЕГО. Галочку замера включают ОДИН раз в настройках, а прогон
+    // запускают потом — днями позже. Платит при этом подписка: по 5 МБ на
+    // каждый из десяти серверов плюс столько же на свой канал, то есть 55 МБ
+    // за нажатие. Узнавать об этом по счётчику остатка — худший способ.
+    testWidgets('⚠️ при включённом замере спрашивают ДО прогона и называют объём',
+        (tester) async {
+      await tester.runAsync(boot);
+      await tester.runAsync(() =>
+          settings.update((c) => c.copyWith(speedInAutoSelect: true)));
+      bigSurface(tester);
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('autoAction')));
+      await tester.pumpAndSettle();
+
+      expect(find.text(l.autoSpeedTrafficTitle), findsOneWidget,
+          reason: 'иначе трафик подписки тратится без спроса');
+      // Число обязано прийти из одного места — settings.speedTestTrafficMb.
+      final mb = settings.settings.speedTestTrafficMb;
+      expect(find.textContaining('$mb'), findsWidgets,
+          reason: 'предупреждение без цифры бесполезно: «замер потратит '
+              'трафик» не говорит, сколько именно');
+      expect(auto.running, isFalse, reason: 'до согласия прогон не начинается');
+
+      // Отказ — прогон не стартует.
+      await tester.tap(find.text(l.commonCancel));
+      await tester.pumpAndSettle();
+      expect(auto.running, isFalse);
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('замер выключен — лишнего вопроса нет', (tester) async {
+      // Спрашивать не о чем: трафик подписки не тратится. Лишний вопрос на
+      // каждом запуске приучает жать «да» не глядя, и тогда он не сработает
+      // тогда, когда действительно нужен.
+      await tester.runAsync(boot);
+      bigSurface(tester);
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('autoAction')));
+      await tester.pump();
+      expect(find.text(l.autoSpeedTrafficTitle), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
 }
 
 /// Ключ сервера, каким его видит приложение.

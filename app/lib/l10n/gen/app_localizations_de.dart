@@ -2769,4 +2769,139 @@ class AppLocalizationsDe extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'Beim Verbinden prüfen';
+
+  @override
+  String get serviceChecksMenuOff => 'Beim Verbinden nicht prüfen';
+
+  @override
+  String get serviceChecksMenuTooltip => 'Welche Dienste prüfen';
+
+  @override
+  String get serviceChecksLegendOff => 'Dienstprüfung ist aus';
+
+  @override
+  String get srvInfoAutoNever =>
+      'Die automatische Einrichtung hat diesen Server noch nicht geprüft – starten Sie sie, um zu sehen, welche Dienste darüber funktionieren.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'Daten des letzten Durchlaufs der automatischen Einrichtung. Hier wird nichts erneut gemessen.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: über diesen Server erreichbar, im Ausgangsland aber nicht verfügbar. Der Server selbst ist in Ordnung – nur diese Dienste funktionieren nicht; dafür brauchen Sie einen Ausgang in einem anderen Land.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'Dienstprüfung';
+
+  @override
+  String get settingsSectionAutotune => 'Automatische Einrichtung';
+
+  @override
+  String get settingsSpeedRankTitle =>
+      'Geschwindigkeit bei der Auto-Auswahl berücksichtigen';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'Kandidaten, welche die Dienstprüfung bestanden haben, werden zusätzlich per Download gemessen — ganz vorn landet der wirklich schnellere. Verbraucht Traffic deines Abos.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'Server in der Geschwindigkeitsmessung';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'Plus eine Messung der eigenen Leitung — ohne sie fehlt der Vergleich: 60 Mbit/s sind auf einer 60er-Leitung ausgezeichnet und auf einer 300er schlecht.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '≈$mb MB Abo-Traffic pro Durchlauf';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle =>
+      'Die Geschwindigkeitsmessung verbraucht Abo-Traffic';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'Jeder Durchlauf der automatischen Einrichtung lädt rund $mb MB über dein Abo: eine Messung je geprüftem Server plus eine Messung der eigenen Leitung. Diese Megabyte gehen von deinem Kontingent ab.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'Trotzdem aktivieren';
+
+  @override
+  String get settingsConcurrencyTitle => 'Gleichzeitige Prüfungen';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1 ist das bisherige Verhalten: Kandidaten werden streng nacheinander geprüft — hierher zurück, wenn die Ergebnisse seltsam werden. Mehr ist schneller, aber jeder Kandidat startet seinen eigenen Kern: Die Maschine wird stärker belastet und die Latenzmessungen beeinflussen sich gegenseitig.';
+
+  @override
+  String get settingsConnectChecksTitle => 'Dienste beim Verbinden prüfen';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'Ein Durchlauf, sobald der Tunnel steht: Die Chips unter der Schaltfläche zeigen sofort, was sich öffnet und was nicht.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'Die Chips bleiben grau, bis du sie selbst antippst.';
+
+  @override
+  String get settingsConnectCheckServices => 'Was beim Verbinden geprüft wird';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'Bewusst ein anderer Satz als bei der automatischen Einrichtung: Diese sucht einen funktionierenden Server und darf dafür lange brauchen, während diese Chips die Frage „geht es gerade jetzt?“ beantworten.';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'Kein Dienst ausgewählt — es gibt nichts zu prüfen.';
+
+  @override
+  String get settingsSectionSeamless => 'Nahtlosigkeit';
+
+  @override
+  String get settingsSeamlessNote =>
+      'Keine dieser Optionen hält offene Verbindungen am Leben: Ein anderer Server bedeutet eine andere externe IP, und die Gegenseite sieht eine andere Adresse — ein Anruf oder ein Download reißt so oder so ab. Es geht nur darum, dass das Netzwerk der Maschine nicht flackert.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'Den Tunnel bei einem Serverwechsel nicht neu aufbauen';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'Nur der Proxy-Kern startet neu: Adapter und Routen bleiben bestehen, das Netzwerk der Maschine flackert nicht. Der Preis: Die Adressen aller Server des Abos werden vorab am Tunnel vorbei eingetragen.';
+
+  @override
+  String get settingsSeamlessNetworkTitle =>
+      'Die Verbindung bei Netzwechsel nicht abreißen';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'WLAN → Mobilfunk: Zuerst prüfen wir, ob der Verkehr noch lebt, und starten den Kern nur neu, wenn er tot ist. QUIC (hysteria2) übersteht einen Adresswechsel von selbst. Der Preis: Ist die Verbindung doch tot, beginnt die Wiederherstellung einige Sekunden später.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'Den Adapter zwischen den Versuchen oben halten';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'Die Standardroute wird während der Wiederherstellung nicht hin- und hergerissen. ⚠️ Das ist KEIN Kill Switch: Verkehr außerhalb des VPN wird nicht blockiert — gehalten wird nur der Adapter selbst.';
+
+  @override
+  String get autoSpeedTrafficTitle =>
+      'Der Geschwindigkeitstest verbraucht Datenvolumen';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'Gemessen werden die $servers besten Server und Ihre eigene Verbindung — etwa $mb MB Ihres Abo-Datenvolumens.\n\nSie können den Test in den Einstellungen abschalten.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'Starten';
 }

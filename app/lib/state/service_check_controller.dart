@@ -88,11 +88,30 @@ class ServiceCheckController extends ChangeNotifier {
   /// счётчиков раз в секунду) не запускает пробы заново: после первого раза
   /// сервисы проверяются только вручную. Новый подъём = новый [_session].
   Future<void> autoCheckAll(int httpPort, List<ProbeService> services) async {
-    // ⚠️ Порт проверяем ДО отметки «этот подъём отработан». Порт активного ядра
-    // появляется не в ту же миллисекунду, что статус «Подключено», и отметка,
-    // поставленная на нуле, съела бы единственный автопрогон подъёма целиком —
-    // молча, навсегда, до переподключения.
-    if (!_tunnelUp || httpPort <= 0 || _autoRanSession == _session) return;
+    // ⚠️ Порт и ПУСТОЙ НАБОР проверяем ДО отметки «этот подъём отработан».
+    //
+    // Порт активного ядра появляется не в ту же миллисекунду, что статус
+    // «Подключено», и отметка, поставленная на нуле, съела бы единственный
+    // автопрогон подъёма целиком — молча, навсегда, до переподключения.
+    //
+    // Пустой набор — то же самое с другой стороны: проверки выключены
+    // настройкой (`ServiceChecks.selected`), делать нечего, и «эпоху» тратить
+    // не на что. Иначе включение проверок при уже поднятом туннеле не
+    // запускало бы ничего до переподключения — хотя человек только что
+    // попросил проверять.
+    //
+    // ⚠️ И `services.isEmpty` обязан стоять ЗДЕСЬ, до `_waitProxyUsable`, а не
+    // полагаться на то, что `Future.wait([])` ниже отработает вхолостую. Пустой
+    // список доходил до ожидания готовности канала и слал до шести проб на
+    // gstatic.com через туннель — при снятой галочке «не проверять при
+    // подключении», то есть ровно тогда, когда человек попросил в сеть не
+    // ходить вовсе.
+    if (!_tunnelUp ||
+        httpPort <= 0 ||
+        services.isEmpty ||
+        _autoRanSession == _session) {
+      return;
+    }
     _autoRanSession = _session;
 
     // ⚠️ Дождаться, пока канал ЗАРАБОТАЕТ, а не пока поднимется туннель.
@@ -137,19 +156,35 @@ class ServiceCheckController extends ChangeNotifier {
   static Future<ServiceCheckOutcome> Function(int httpPort, ProbeService s)
       prober = ServiceChecker.check;
 
+  /// Одна попытка «проходит ли через прокси запрос».
+  ///
+  /// Отдельным полем — чтобы страж «при выключенных проверках в сеть не ходим»
+  /// мог это СОСЧИТАТЬ. Прежде счётчика не было, и пустой набор доходил до
+  /// ожидания готовности канала незамеченным: тесты видели лишь то, что проб
+  /// сервисов не было, а шесть запросов на gstatic.com при снятой галочке — нет.
+  @visibleForTesting
+  static Future<bool> Function(int httpPort) readinessProbe =
+      defaultReadinessProbe;
+
+  /// Боевая реализация [readinessProbe]. Публичная только затем, чтобы тест мог
+  /// вернуть её на место в `tearDown`, — в приложении зовётся лишь через поле.
+  static Future<bool> defaultReadinessProbe(int httpPort) async {
+    final r = await ProxyProbe.check(
+      httpPort,
+      'http://www.gstatic.com/generate_204',
+      head: true,
+      timeout: const Duration(seconds: 4),
+    );
+    return r.ok;
+  }
+
   Future<bool> _waitProxyUsable(int httpPort) async {
     if (httpPort <= 0) return false;
     final session = _session;
     for (var attempt = 0; attempt < readinessAttempts; attempt++) {
       // Пользователь мог отключиться или переподключиться, пока мы ждём.
       if (_session != session) return false;
-      final r = await ProxyProbe.check(
-        httpPort,
-        'http://www.gstatic.com/generate_204',
-        head: true,
-        timeout: const Duration(seconds: 4),
-      );
-      if (r.ok) return true;
+      if (await readinessProbe(httpPort)) return true;
       await Future<void>.delayed(readinessDelay);
     }
     // Канал так и не заработал. Пробы всё равно запускаем: пусть пользователь
@@ -200,6 +235,9 @@ class ServiceCheckController extends ChangeNotifier {
   /// Один раз за запуск, а не за экран: возврат с настроек не должен гонять
   /// шесть проб заново.
   Future<void> autoBaseline(List<ProbeService> services) async {
+    // Пусто — проверки выключены настройкой: не помечаем замер сделанным, иначе
+    // включение проверок в этом же запуске осталось бы без половины сравнения.
+    if (services.isEmpty) return;
     if (_baselineRan) return;
     _baselineRan = true;
     await checkBaseline(services);

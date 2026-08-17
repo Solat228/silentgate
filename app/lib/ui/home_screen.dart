@@ -195,10 +195,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // Приложение умеет подхватывать уже поднятое соединение, так что
       // «на старте» и «без VPN» — не одно и то же.
       final state = context.read<AppState>();
+      // Состав — из настроек: пусто (проверки выключены или не выбрано ни
+      // одного сервиса) означает, что и замера «до» делать не нужно.
+      final checks = ServiceChecks.selected(
+          context.read<SettingsController>().settings);
       if (!state.status.isConnected) {
-        unawaited(context
-            .read<ServiceCheckController>()
-            .autoBaseline(ServiceChecks.services));
+        unawaited(
+            context.read<ServiceCheckController>().autoBaseline(checks));
       }
 
       final found = await InterferenceScanner.scan();
@@ -287,7 +290,12 @@ class _HomeScreenState extends State<HomeScreen> {
   /// первая колонка займёт «эпоху», а вторая молча пропустит свои три сервиса —
   /// ровно это и происходило: правые кружки оставались серыми. Экран один,
   /// значит и прогон один, сразу по всем шести.
-  void _autoCheckServices(BuildContext context, AppState state) {
+  ///
+  /// [services] — состав из настроек (`ServiceChecks.selected`). Пусто =
+  /// проверок при подключении нет вовсе; отметку «подъём отработан» пустой
+  /// набор не тратит (см. `ServiceCheckController.autoCheckAll`).
+  void _autoCheckServices(
+      BuildContext context, AppState state, List<ProbeService> services) {
     final ctrl = context.read<ServiceCheckController>();
     // ⚠️ ПРИЗНАК — ФАКТ ПОДЪЁМА ТУННЕЛЯ, А НЕ ВЫБРАННЫЙ СЕРВЕР.
     //
@@ -302,7 +310,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Смену состояния канала контроллер вычисляет сам, повторы отсекает молча.
       ctrl.setTunnelUp(connected);
       if (!connected) return;
-      unawaited(ctrl.autoCheckAll(port, ServiceChecks.services));
+      unawaited(ctrl.autoCheckAll(port, services));
     });
   }
 
@@ -589,7 +597,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // #2.2 — всё временное показываем ПОВЕРХ интерфейса: раньше эти сообщения
     // жили в компоновке и сдвигали большую кнопку Connect.
     _showTransientMessages(context, state, settings);
-    _autoCheckServices(context, state);
+    _autoCheckServices(context, state, ServiceChecks.selected(settings));
     _showProgressToasts(context);
     _showEngineNotices(context);
 
@@ -681,6 +689,9 @@ class _ConnectPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
+    // Что проверяем при подключении — выбор пользователя (подменю у колонок).
+    // Пусто = проверок нет вовсе, и место на главном они не занимают.
+    final checks = ServiceChecks.selected(settings);
     return Column(
       children: [
         // Карточка подписки показывается целиком: место под неё даёт увеличенная
@@ -714,6 +725,7 @@ class _ConnectPane extends StatelessWidget {
                     autoLabel: l.homeAutoBest,
                   ),
                   httpPort: status.isConnected ? state.httpProxyPort : 0,
+                  services: checks,
                   button: _ConnectButton(
                       status: status,
                       onTap: () => connectWithConflictCheck(context, state,
@@ -726,14 +738,27 @@ class _ConnectPane extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      status.isConnected
-                          ? l.serviceChecksLegendAfter
-                          : l.serviceChecksLegendBefore,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: Theme.of(context).hintColor),
+                    // ⚠️ Строка ужимается: рядом встала кнопка подменю, и на
+                    // узком телефоне подпись без этого уезжала за край.
+                    Flexible(
+                      child: Text(
+                        checks.isEmpty
+                            // Проверки выключены — врать «проверено» нельзя,
+                            // а строку не убираем: она объясняет пустое место
+                            // и стоит рядом с кнопкой, которой их включают.
+                            ? l.serviceChecksLegendOff
+                            : status.isConnected
+                                ? l.serviceChecksLegendAfter
+                                : l.serviceChecksLegendBefore,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).hintColor),
+                      ),
                     ),
                     InfoTooltip(l.serviceChecksInfo),
+                    // Подменю набора — здесь, у самих проверок (требование
+                    // владельца). Видно ВСЕГДА: когда проверки выключены,
+                    // включить их больше неоткуда.
+                    const ServiceChecksMenuButton(),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -1242,6 +1267,7 @@ class ConnectCenterpiece extends StatelessWidget {
     required this.serverName,
     required this.httpPort,
     required this.button,
+    this.services = ServiceChecks.services,
   });
 
   /// Имя активного сервера (см. [activeServerName]); `null` — плашка пустая.
@@ -1250,11 +1276,19 @@ class ConnectCenterpiece extends StatelessWidget {
   /// http-порт живого ядра для проверок; 0 — VPN выключен.
   final int httpPort;
 
+  /// Какие сервисы показывать по бокам кнопки. Пусто — колонок нет вовсе, и
+  /// места они не занимают (проверки выключены в подменю).
+  ///
+  /// Умолчание — прежняя зашитая шестёрка: стражам вёрстки настройки не нужны,
+  /// им нужна раскладка. Экран передаёт сюда `ServiceChecks.selected(settings)`.
+  final List<ProbeService> services;
+
   /// Кнопка приходит снаружи: ей нужен `AppState`, а стражу вёрстки — нет.
   final Widget button;
 
   @override
   Widget build(BuildContext context) {
+    final split = ServiceChecks.columns(services);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1269,27 +1303,33 @@ class ConnectCenterpiece extends StatelessWidget {
         ActiveServerBanner(name: serverName),
         // Проверка сервисов — КОЛОНКАМИ ПО БОКАМ кнопки, а не строкой снизу:
         // так «до» и «после» видно рядом, и ряд не уезжает под край экрана на
-        // телефоне. Показывается ВСЕГДА, в том числе до подключения, — иначе
-        // сравнивать было бы не с чем.
+        // телефоне. Показывается и до подключения — иначе сравнивать было бы
+        // не с чем.
+        //
+        // ⚠️ Пустая колонка не строится ВОВСЕ, а не рисуется пустой: владелец
+        // просил галочку «полного отключения», и выключенные проверки не
+        // должны занимать место у кнопки.
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Flexible(
-              child: ServiceChecksColumn(
-                services: ServiceChecks.leftColumn,
-                httpPort: httpPort,
-                alignEnd: true,
+            if (split.left.isNotEmpty)
+              Flexible(
+                child: ServiceChecksColumn(
+                  services: split.left,
+                  httpPort: httpPort,
+                  alignEnd: true,
+                ),
               ),
-            ),
             button,
-            Flexible(
-              child: ServiceChecksColumn(
-                services: ServiceChecks.rightColumn,
-                httpPort: httpPort,
-                alignEnd: false,
+            if (split.right.isNotEmpty)
+              Flexible(
+                child: ServiceChecksColumn(
+                  services: split.right,
+                  httpPort: httpPort,
+                  alignEnd: false,
+                ),
               ),
-            ),
           ],
         ),
       ],

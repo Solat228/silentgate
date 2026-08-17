@@ -37,6 +37,9 @@ import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
 import 'widgets/selection_outline.dart';
+import 'widgets/service_checks_row.dart';
+import 'widgets/site_favicon.dart';
+import 'widgets/speed_traffic_note.dart';
 import 'widgets/subscription_avatar.dart';
 
 /// Глобальный ключ раздела «Поддержка» — чтобы «перекинуть» сюда по кнопке
@@ -189,7 +192,22 @@ abstract final class SettingsSectionIds {
   static const appearance = 'appearance';
   static const capture = 'capture';
   static const reliability = 'reliability';
+
+  /// Бесшовность — три отдельных переключателя.
+  ///
+  /// ⚠️ СВОЙ РАЗДЕЛ, А НЕ ХВОСТ «НАДЁЖНОСТИ». Требование владельца — уметь
+  /// быстро сказать, КОТОРАЯ из трёх правок сломала туннель; смешанные с
+  /// автопереподключением и kill switch, они читались бы как одна общая
+  /// «надёжность», и на вопрос «что выключить» ответа бы не нашлось.
+  static const seamless = 'seamless';
   static const ping = 'ping';
+
+  /// Проверка сервисов при подключении (чипы под кнопкой Connect).
+  static const checks = 'checks';
+
+  /// Автонастройка: сколько серверов мерить скоростью и сколько кандидатов
+  /// проверять разом.
+  static const autotune = 'autotune';
   static const identity = 'identity';
   static const network = 'network';
   static const api = 'api';
@@ -564,11 +582,37 @@ List<SettingsSectionData> buildSettingsSections(
       rows: _reliabilityRows(l, s, controller),
     ),
     SettingsSectionData(
+      id: SettingsSectionIds.seamless,
+      title: l.settingsSectionSeamless,
+      icon: Icons.swap_horizontal_circle_outlined,
+      rows: _seamlessRows(l, s, controller),
+    ),
+    SettingsSectionData(
       id: SettingsSectionIds.ping,
       title: l.sectionPing,
       icon: Icons.network_ping,
       rows: _pingRows(l, s, controller),
     ),
+    SettingsSectionData(
+      id: SettingsSectionIds.checks,
+      title: l.settingsSectionChecks,
+      icon: Icons.fact_check_outlined,
+      rows: _connectCheckRows(l, s, controller),
+    ),
+    // ⚠️ ГЕЙТ ПО `autoConfigSupported`, А НЕ ПО ПЛАТФОРМЕ «НА ГЛАЗОК».
+    // Автонастройка работает там, где харнесс умеет ПРОПУСКАТЬ запросы через
+    // кандидата (`ProbeHarness.supportsProxyRequests`), то есть сегодня только
+    // на Windows. Показать на Android «сколько серверов мерить скоростью» и
+    // «сколько проверок разом» значило бы дать крутить ручки прогона, который
+    // там не начнётся никогда, — ровно та обманка, за которую с экранов
+    // Android уже убирали права, строгую маршрутизацию и тумблеры URL-схем.
+    if (autoConfigSupported)
+      SettingsSectionData(
+        id: SettingsSectionIds.autotune,
+        title: l.settingsSectionAutotune,
+        icon: Icons.speed,
+        rows: _autotuneRows(l, s, controller),
+      ),
     SettingsSectionData(
       id: SettingsSectionIds.identity,
       title: l.sectionIdentity,
@@ -807,6 +851,364 @@ List<SettingsRow> _reliabilityRows(
   ];
 }
 
+
+// ── Бесшовность ──────────────────────────────────────────────────────────────
+/// Три переключателя, каждый со своей ценой.
+///
+/// ⚠️ ПОДПИСИ НЕ ОБЕЩАЮТ, ЧТО СОЕДИНЕНИЯ ПЕРЕЖИВУТ СМЕНУ СЕРВЕРА. Живое TCP
+/// смену внешнего IP не переживает — это физика, а не недоделка: удалённая
+/// сторона видит другой адрес. Обещание «звонок продолжится» было бы обманом,
+/// который вскрывается на первом же звонке, поэтому вводная строка говорит об
+/// этом прямо, ДО переключателей, а не после.
+List<SettingsRow> _seamlessRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: l.settingsSeamlessNote,
+      build: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(l.settingsSeamlessNote,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+          ],
+        ),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.settingsSeamlessServerTitle} ${l.settingsSeamlessServerSub}',
+      build: (_) => SwitchListTile(
+        key: const Key('seamlessServerSwitch'),
+        value: settings.seamlessServerSwitch,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(seamlessServerSwitch: v)),
+        title: Text(l.settingsSeamlessServerTitle),
+        subtitle: Text(l.settingsSeamlessServerSub),
+      ),
+    ),
+    SettingsRow(
+      search:
+          '${l.settingsSeamlessNetworkTitle} ${l.settingsSeamlessNetworkSub}',
+      build: (_) => SwitchListTile(
+        key: const Key('seamlessNetworkChange'),
+        value: settings.seamlessNetworkChange,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(seamlessNetworkChange: v)),
+        title: Text(l.settingsSeamlessNetworkTitle),
+        subtitle: Text(l.settingsSeamlessNetworkSub),
+      ),
+    ),
+    SettingsRow(
+      search:
+          '${l.settingsSeamlessKeepTunTitle} ${l.settingsSeamlessKeepTunSub}',
+      build: (_) => SwitchListTile(
+        key: const Key('seamlessKeepTun'),
+        value: settings.seamlessKeepTun,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(seamlessKeepTun: v)),
+        title: Text(l.settingsSeamlessKeepTunTitle),
+        // ⚠️ «Это НЕ kill switch» — прямо в подписи. Название «держать
+        // адаптер» само по себе читается как защита от утечки, а защиты тут
+        // нет: трафик мимо VPN не блокируется, удерживается только адаптер.
+        subtitle: Text(l.settingsSeamlessKeepTunSub),
+      ),
+    ),
+  ];
+}
+
+// ── Проверка сервисов при подключении ────────────────────────────────────────
+/// Галочка «проверять» и СВОЙ набор сервисов.
+///
+/// ⚠️ НАБОР ОТДЕЛЬНЫЙ ОТ АВТОНАСТРОЙКИ НАМЕРЕННО (см. `AppSettings
+/// .connectCheckServices`): автонастройка ИЩЕТ рабочий сервер и ради этого
+/// готова перебирать долго, а чипы под кнопкой отвечают на вопрос «работает ли
+/// прямо сейчас». Свести их в одну настройку значило бы, что выбор для поиска
+/// сервера навязывается повседневным чипам, и наоборот.
+List<SettingsRow> _connectCheckRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.settingsConnectChecksTitle} ${l.settingsConnectChecksSubOn}',
+      build: (_) => SwitchListTile(
+        key: const Key('connectChecksEnabled'),
+        value: settings.connectChecksEnabled,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(connectChecksEnabled: v)),
+        title: Row(children: [
+          Expanded(child: Text(l.settingsConnectChecksTitle)),
+          InfoTooltip(l.serviceChecksInfo, title: l.serviceChecksTitle),
+        ]),
+        subtitle: Text(settings.connectChecksEnabled
+            ? l.settingsConnectChecksSubOn
+            : l.settingsConnectChecksSubOff),
+      ),
+    ),
+    // Набор виден только при включённой проверке: выбирать, ЧТО проверять,
+    // когда не проверяется ничего, — работа впустую.
+    if (settings.connectChecksEnabled)
+      SettingsRow(
+        search: '${l.settingsConnectCheckServices} '
+            '${l.settingsConnectCheckServicesSub}',
+        build: (context) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Expanded(
+                  child: Text(l.settingsConnectCheckServices,
+                      style: Theme.of(context).textTheme.titleSmall),
+                ),
+                TextButton(
+                  key: const Key('connectChecksAll'),
+                  onPressed: () => controller.update((st) => st.copyWith(
+                      connectCheckServices: ServiceChecks.catalog.toSet())),
+                  child: Text(l.autoSelectAll),
+                ),
+                TextButton(
+                  key: const Key('connectChecksNone'),
+                  onPressed: () => controller.update(
+                      (st) => st.copyWith(connectCheckServices: const {})),
+                  child: Text(l.autoDeselectAll),
+                ),
+              ]),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(l.settingsConnectCheckServicesSub,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+              // ⚠️ ИСТОЧНИК СПИСКА — `ServiceChecks.catalog`, А НЕ
+              // `ProbeService.values`. Каталог задаёт и порядок чипов под
+              // кнопкой Connect: возьми мы здесь перечисление, настройки
+              // показывали бы свой порядок, а главный экран — свой (человек
+              // ищет «Telegram» на третьем месте, а он на седьмом). И хуже
+              // того — сервис, забытый в каталоге, здесь бы выбирался, а на
+              // главном не появлялся: настройка, которая молча ничего не
+              // делает.
+              Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: ServiceChecks.catalog.map((service) {
+                  final on = settings.connectCheckServices.contains(service);
+                  return FilterChip(
+                    key: Key('connectCheck-${service.name}'),
+                    avatar: SiteFavicon(
+                        domain: service.domain, size: 18, builtIn: true),
+                    label: Text(service.label),
+                    selected: on,
+                    onSelected: (v) => controller.update((st) {
+                      final set = {...st.connectCheckServices};
+                      v ? set.add(service) : set.remove(service);
+                      return st.copyWith(connectCheckServices: set);
+                    }),
+                  );
+                }).toList(),
+              ),
+              // Пустой набор при включённой галочке — законное состояние
+              // (флаг и набор независимы), но молча оно выглядит как поломка:
+              // «проверка включена, а чипов нет». Говорим прямо.
+              if (settings.connectCheckServices.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(l.settingsConnectChecksEmpty,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+            ],
+          ),
+        ),
+      ),
+  ];
+}
+
+// ── Автонастройка ────────────────────────────────────────────────────────────
+List<SettingsRow> _autotuneRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.settingsSpeedRankTitle} ${l.settingsSpeedTopNLabel} '
+          '${l.settingsSpeedTrafficNote(settings.speedTestTrafficMb)}',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            key: const Key('speedInAutoSelect'),
+            value: settings.speedInAutoSelect,
+            // ⚠️ ПРИ ВКЛЮЧЕНИИ — ОБЯЗАТЕЛЬНОЕ ПРЕДУПРЕЖДЕНИЕ С ЧИСЛОМ.
+            // Требование владельца: замер платит трафиком ПОДПИСКИ, и человек
+            // должен увидеть, сколько именно, ДО того как согласится. Молчание
+            // (или подпись мелким шрифтом) здесь означало бы, что мегабайты
+            // спишутся у него незаметно.
+            onChanged: (v) async {
+              if (!v) {
+                await controller
+                    .update((s) => s.copyWith(speedInAutoSelect: false));
+                return;
+              }
+              if (!await _confirmSpeedTraffic(context, settings)) return;
+              await controller
+                  .update((s) => s.copyWith(speedInAutoSelect: true));
+            },
+            title: Text(l.settingsSpeedRankTitle),
+            subtitle: Text(l.settingsSpeedRankSub),
+          ),
+          // Поле «сколько серверов» существует только при включённом замере:
+          // без него оно ни на что не влияет.
+          if (settings.speedInAutoSelect) ...[
+            _StepperRow(
+              keyPrefix: 'speedTopN',
+              label: l.settingsSpeedTopNLabel,
+              // Показываем ЭФФЕКТИВНОЕ значение: с диска может приехать что
+              // угодно (правка файла руками, старая версия), а движок всё
+              // равно зажимает его в 1..speedTopNMax — расхождение цифры на
+              // экране с реальным прогоном хуже, чем «неточно сохранённое».
+              value: settings.effectiveSpeedTopN,
+              min: 1,
+              max: AppSettings.speedTopNMax,
+              onChanged: (v) =>
+                  controller.update((s) => s.copyWith(speedTopN: v)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Text(l.settingsSpeedTopNSub,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              // Число — из `speedTestTrafficMb`, ЕДИНСТВЕННОГО места, где
+              // считается расход: и здесь, и в диалоге подтверждения.
+              child: SpeedTrafficNote(
+                key: const Key('speedTrafficNote'),
+                text: l.settingsSpeedTrafficNote(settings.speedTestTrafficMb),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+    SettingsRow(
+      search: '${l.settingsConcurrencyTitle} ${l.settingsConcurrencySub}',
+      build: (context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _StepperRow(
+            keyPrefix: 'autoConfigConcurrency',
+            label: l.settingsConcurrencyTitle,
+            value: settings.effectiveAutoConfigConcurrency,
+            min: 1,
+            max: AppSettings.autoConfigConcurrencyMax,
+            onChanged: (v) =>
+                controller.update((s) => s.copyWith(autoConfigConcurrency: v)),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            // ⚠️ Подпись обязана называть путь отката (1 = строго по очереди):
+            // распараллеливание поднимает несколько ядер сразу, и если замеры
+            // «поплыли», человеку нужно знать, куда вернуться, а не гадать.
+            child: Text(l.settingsConcurrencySub,
+                style: Theme.of(context).textTheme.bodySmall),
+          ),
+        ],
+      ),
+    ),
+  ];
+}
+
+/// Предупреждение о трафике перед включением замера скорости.
+///
+/// Возвращает `true`, только если человек согласился. Отказ оставляет настройку
+/// выключенной — это и есть смысл предупреждения: у него должна быть кнопка
+/// «нет».
+Future<bool> _confirmSpeedTraffic(
+    BuildContext context, AppSettings settings) async {
+  final l = AppLocalizations.of(context);
+  final mb = settings.speedTestTrafficMb;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.settingsSpeedWarnTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.settingsSpeedWarnBody(mb)),
+          const SizedBox(height: 12),
+          SpeedTrafficNote(text: l.settingsSpeedTrafficNote(mb), dense: true),
+        ],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.commonCancel)),
+        FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.settingsSpeedWarnEnable)),
+      ],
+    ),
+  );
+  return ok == true;
+}
+
+/// Числовое поле «минус — значение — плюс».
+///
+/// ⚠️ НЕ ТЕКСТОВОЕ ПОЛЕ. У обоих наших чисел жёсткий потолок (10 серверов,
+/// 5 проверок), и в поле ввода человек набирает 50, видит своё число на экране
+/// и получает молча зажатое значение при прогоне. Кнопки физически не дают
+/// выйти за границы, а неактивная кнопка сама показывает, что упёрлись.
+class _StepperRow extends StatelessWidget {
+  const _StepperRow({
+    required this.keyPrefix,
+    required this.label,
+    required this.value,
+    required this.min,
+    required this.max,
+    required this.onChanged,
+  });
+
+  final String keyPrefix;
+  final String label;
+  final int value;
+  final int min;
+  final int max;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      dense: true,
+      title: Text(label),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          IconButton(
+            key: Key('$keyPrefix-minus'),
+            icon: const Icon(Icons.remove_circle_outline),
+            onPressed: value > min ? () => onChanged(value - 1) : null,
+          ),
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$value',
+              key: Key('$keyPrefix-value'),
+              textAlign: TextAlign.center,
+              textDirection: TextDirection.ltr,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          IconButton(
+            key: Key('$keyPrefix-plus'),
+            icon: const Icon(Icons.add_circle_outline),
+            onPressed: value < max ? () => onChanged(value + 1) : null,
+          ),
+        ],
+      ),
+    );
+  }
+}
 
 // ── Сеть / помехи ────────────────────────────────────────────────────────────
 List<SettingsRow> _networkRows(AppLocalizations l) {

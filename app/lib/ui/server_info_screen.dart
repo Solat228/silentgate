@@ -19,6 +19,7 @@ import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
 import 'widgets/flag_cell.dart';
 import 'widgets/ping_chip.dart';
+import 'widgets/server_autoconfig_card.dart';
 
 /// Информация о сервере: куда вы выходите через него (IP, страна, провайдер),
 /// какая задержка и какая реальная скорость.
@@ -218,6 +219,13 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
               onPressed: _loadingIp ? null : _loadIps,
             ),
           ),
+
+          // Итог автонастройки стоит ВЫШЕ скорости и параметров намеренно: с
+          // вопросом «работает ли через него ChatGPT/YouTube» сюда и заходят, а
+          // ответ на него уже измерен и лежит на диске. Ниже — только то, что
+          // надо мерить руками.
+          const SizedBox(height: 16),
+          ServerAutoConfigCard(server: s),
 
           const SizedBox(height: 16),
           _section(context, l.srvInfoSectionSpeed),

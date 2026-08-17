@@ -2744,4 +2744,135 @@ class AppLocalizationsAr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'الفحص عند الاتصال';
+
+  @override
+  String get serviceChecksMenuOff => 'عدم الفحص عند الاتصال';
+
+  @override
+  String get serviceChecksMenuTooltip => 'الخدمات التي سيتم فحصها';
+
+  @override
+  String get serviceChecksLegendOff => 'فحص الخدمات معطّل';
+
+  @override
+  String get srvInfoAutoNever =>
+      'لم يفحص الضبط التلقائي هذا الخادم بعد — شغّله لمعرفة الخدمات التي تعمل من خلاله.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'بيانات آخر تشغيل للضبط التلقائي. لا يُجرى هنا أي قياس جديد.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: يمكن الوصول إليه عبر هذا الخادم لكنه غير متاح في بلد الخروج. الخادم نفسه سليم — هذه الخدمات وحدها لا تعمل، وتحتاج إلى خادم في بلد آخر.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'فحص الخدمات';
+
+  @override
+  String get settingsSectionAutotune => 'الضبط التلقائي';
+
+  @override
+  String get settingsSpeedRankTitle => 'مراعاة السرعة عند الاختيار التلقائي';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'المرشحون الذين اجتازوا فحص الخدمات يُقاسون إضافيًا بالتنزيل، فيتصدّر من هو أسرع فعليًا. يستهلك ذلك من حركة اشتراكك.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'عدد الخوادم في قياس السرعة';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'إضافة إلى قياس واحد لخطك أنت — بدونه لا يوجد ما يُقارن به: 60 ميغابت/ث ممتازة على خط 60 وسيئة على خط 300.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '‏≈$mb ميغابايت من حركة الاشتراك لكل جولة';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle => 'قياس السرعة يستهلك من حركة الاشتراك';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'كل جولة من الضبط التلقائي تُنزّل نحو $mb ميغابايت عبر اشتراكك: قياس لكل خادم يُختبر، إضافة إلى قياس واحد لخطك. تُخصم هذه الميغابايتات من حصتك.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'التفعيل على أي حال';
+
+  @override
+  String get settingsConcurrencyTitle => 'عدد الفحوص المتزامنة';
+
+  @override
+  String get settingsConcurrencySub =>
+      'القيمة 1 هي السلوك السابق: تُفحص المرشحات واحدًا تلو الآخر بدقة، وإليها يُعاد الضبط إذا بدت النتائج غريبة. الأكثر أسرع، لكن كل مرشح يشغّل نواته الخاصة: يزداد الحمل على الجهاز وتبدأ قياسات زمن الاستجابة بالتأثير في بعضها.';
+
+  @override
+  String get settingsConnectChecksTitle => 'فحص الخدمات عند الاتصال';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'جولة واحدة عند ارتفاع النفق: تُظهر الشارات أسفل الزر فورًا ما يفتح وما لا يفتح.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'تبقى الشارات رمادية إلى أن تضغط عليها بنفسك.';
+
+  @override
+  String get settingsConnectCheckServices => 'ما الذي يُفحص عند الاتصال';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'المجموعة منفصلة عن الضبط التلقائي عن قصد: ذاك يبحث عن خادم يعمل ومستعد للتجريب طويلًا، أما هذه الشارات فتجيب عن سؤال «هل يعمل الآن؟».';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'لم تُحدَّد أي خدمة — لن يكون هناك ما يُفحص.';
+
+  @override
+  String get settingsSectionSeamless => 'الانسيابية';
+
+  @override
+  String get settingsSeamlessNote =>
+      'لا يحافظ أي من هذه الخيارات على الاتصالات المفتوحة: خادم آخر يعني عنوان IP خارجيًا آخر، والطرف البعيد يرى عنوانًا مختلفًا — فالمكالمة أو التنزيل ينقطع في الحالتين. الأمر يقتصر على ألّا تومض شبكة الجهاز.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'لا تُعِد إنشاء النفق عند تغيير الخادم';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'تُعاد تهيئة نواة الوكيل وحدها: يبقى المحوّل والمسارات في مكانها ولا تومض شبكة الجهاز. الثمن: تُكتب عناوين كل خوادم الاشتراك مسبقًا خارج النفق.';
+
+  @override
+  String get settingsSeamlessNetworkTitle => 'لا تقطع القناة عند تغيّر الشبكة';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'من الواي‌فاي إلى شبكة الجوّال: نتحقّق أولًا إن كانت الحركة ما تزال حيّة، ولا نعيد تشغيل النواة إلا إذا ماتت. وبروتوكول QUIC (‏hysteria2) يجتاز تغيّر العنوان من تلقاء نفسه. الثمن: إن كانت القناة قد ماتت فعلًا، يبدأ التعافي متأخرًا بضع ثوانٍ.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'أبقِ المحوّل قائمًا بين المحاولات';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'لا يُعبث بالمسار الافتراضي أثناء التعافي. ⚠️ هذا ليس مفتاح إيقاف (kill switch): لا تُحجب الحركة خارج الشبكة الافتراضية — يُبقى على المحوّل نفسه فقط.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'سيستهلك اختبار السرعة بيانات';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'ستُقاس سرعة أفضل $servers خوادم وسرعة اتصالك — نحو $mb ميجابايت من بيانات اشتراكك.\n\nيمكنك إيقاف الاختبار من الإعدادات.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'ابدأ';
 }

@@ -2777,4 +2777,139 @@ class AppLocalizationsFr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'Vérifier à la connexion';
+
+  @override
+  String get serviceChecksMenuOff => 'Ne pas vérifier à la connexion';
+
+  @override
+  String get serviceChecksMenuTooltip => 'Quels services vérifier';
+
+  @override
+  String get serviceChecksLegendOff => 'Vérification des services désactivée';
+
+  @override
+  String get srvInfoAutoNever =>
+      'La configuration automatique n\'a pas encore testé ce serveur — lancez-la pour voir quels services fonctionnent à travers lui.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'Données du dernier passage de la configuration automatique. Rien n\'est mesuré à nouveau ici.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services : accessible via ce serveur, mais indisponible dans son pays de sortie. Le serveur lui-même fonctionne — seuls ces services échouent ; il vous faut une sortie dans un autre pays.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'Vérification des services';
+
+  @override
+  String get settingsSectionAutotune => 'Réglage automatique';
+
+  @override
+  String get settingsSpeedRankTitle =>
+      'Tenir compte du débit lors de la sélection automatique';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'Les candidats ayant passé la vérification des services sont en plus mesurés par téléchargement : celui qui est réellement le plus rapide passe en tête. Consomme le trafic de votre abonnement.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'Serveurs mesurés en débit';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'Plus une mesure de votre propre ligne : sans elle, rien à quoi comparer — 60 Mbit/s, c\'est excellent sur une ligne à 60 et médiocre sur une ligne à 300.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '≈$mb Mo de trafic d\'abonnement par passage';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle =>
+      'La mesure du débit consomme le trafic de l\'abonnement';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'Chaque passage du réglage automatique télécharge environ $mb Mo via votre abonnement : une sonde par serveur mesuré plus une sonde de votre propre ligne. Ces mégaoctets sont déduits de votre quota.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'Activer quand même';
+
+  @override
+  String get settingsConcurrencyTitle => 'Vérifications en parallèle';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1 correspond au comportement précédent : les candidats sont vérifiés strictement l\'un après l\'autre, et c\'est la valeur vers laquelle revenir si les résultats deviennent étranges. Davantage, c\'est plus rapide, mais chaque candidat lance son propre noyau : la machine est plus chargée et les mesures de latence commencent à s\'influencer mutuellement.';
+
+  @override
+  String get settingsConnectChecksTitle =>
+      'Vérifier les services à la connexion';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'Un passage au moment où le tunnel monte : les puces sous le bouton montrent tout de suite ce qui s\'ouvre et ce qui ne s\'ouvre pas.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'Les puces restent grises tant que vous ne les touchez pas vous-même.';
+
+  @override
+  String get settingsConnectCheckServices => 'Que vérifier à la connexion';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'Un ensemble volontairement distinct de celui du réglage automatique : ce dernier cherche un serveur qui fonctionne et peut y passer longtemps, tandis que ces puces répondent à la question « est-ce que ça marche maintenant ? ».';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'Aucun service sélectionné — il n\'y aura rien à vérifier.';
+
+  @override
+  String get settingsSectionSeamless => 'Continuité';
+
+  @override
+  String get settingsSeamlessNote =>
+      'Aucune de ces options ne préserve les connexions ouvertes : un autre serveur, c\'est une autre IP externe, et l\'hôte distant voit une adresse différente — un appel ou un téléchargement sera coupé de toute façon. Il s\'agit seulement d\'éviter que le réseau de la machine ne clignote.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'Ne pas recréer le tunnel lors d\'un changement de serveur';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'Seul le noyau proxy redémarre : l\'adaptateur et les routes restent en place, le réseau de la machine ne clignote pas. Le prix : les adresses de tous les serveurs de l\'abonnement sont inscrites à l\'avance hors du tunnel.';
+
+  @override
+  String get settingsSeamlessNetworkTitle =>
+      'Ne pas couper le canal lors d\'un changement de réseau';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'Wi-Fi → mobile : on vérifie d\'abord si le trafic passe encore et on ne redémarre le noyau que s\'il est mort. QUIC (hysteria2) survit seul à un changement d\'adresse. Le prix : si le canal est réellement mort, la reprise commence quelques secondes plus tard.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'Garder l\'adaptateur actif entre les tentatives';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'La route par défaut n\'est pas secouée pendant la reprise. ⚠️ Ce n\'est PAS un kill switch : le trafic hors VPN n\'est pas bloqué — seul l\'adaptateur est maintenu.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'Le test de débit consommera des données';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'Le débit sera mesuré pour les $servers meilleurs serveurs et pour votre propre connexion — environ $mb Mo du trafic de votre abonnement.\n\nVous pouvez désactiver le test dans les paramètres.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'Lancer';
 }

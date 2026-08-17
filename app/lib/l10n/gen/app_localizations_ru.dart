@@ -2754,4 +2754,135 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'Проверять при подключении';
+
+  @override
+  String get serviceChecksMenuOff => 'Не проверять при подключении';
+
+  @override
+  String get serviceChecksMenuTooltip => 'Какие сервисы проверять';
+
+  @override
+  String get serviceChecksLegendOff => 'Проверка сервисов выключена';
+
+  @override
+  String get srvInfoAutoNever =>
+      'Автонастройка этот сервер ещё не проверяла — запустите её, чтобы увидеть, какие сервисы через него работают.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: открывается через этот сервер, но недоступен в стране его выхода. Сервер исправен — не работают именно эти сервисы, для них нужен выход в другой стране.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'Проверка сервисов';
+
+  @override
+  String get settingsSectionAutotune => 'Автонастройка';
+
+  @override
+  String get settingsSpeedRankTitle => 'Учитывать скорость при автовыборе';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'Кандидаты, прошедшие проверку сервисов, дополнительно проверяются скачиванием — первым встаёт тот, кто действительно быстрее. Расходует трафик подписки.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'Серверов в замере скорости';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'Плюс один замер своего канала — без него не с чем сравнивать: 60 Мбит/с это отлично на канале 60 и скверно на канале 300.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '≈$mb МБ трафика подписки за прогон';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle => 'Замер скорости тратит трафик подписки';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'Каждый прогон автонастройки скачает примерно $mb МБ через вашу подписку: по пробе на каждый проверяемый сервер плюс одна проба своего канала. Эти мегабайты спишутся с вашего лимита.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'Всё равно включить';
+
+  @override
+  String get settingsConcurrencyTitle => 'Одновременных проверок';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1 — прежнее поведение: кандидаты проверяются строго по очереди, и сюда же стоит вернуться, если результаты стали странными. Больше — быстрее, но каждый кандидат поднимает своё ядро: машина нагружена сильнее, а замеры задержки начинают влиять друг на друга.';
+
+  @override
+  String get settingsConnectChecksTitle => 'Проверять сервисы при подключении';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'Один прогон при подъёме туннеля: чипы под кнопкой сразу показывают, что открывается, а что нет.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'Чипы останутся серыми, пока вы не нажмёте их сами.';
+
+  @override
+  String get settingsConnectCheckServices => 'Что проверять при подключении';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'Набор намеренно отдельный от автонастройки: та ищет рабочий сервер и готова перебирать долго, а эти чипы отвечают на вопрос «работает ли прямо сейчас».';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'Не выбрано ни одного сервиса — проверять будет нечего.';
+
+  @override
+  String get settingsSectionSeamless => 'Бесшовность';
+
+  @override
+  String get settingsSeamlessNote =>
+      'Открытые соединения ни один из пунктов не сохраняет: у другого сервера другой внешний IP, и удалённая сторона видит другой адрес — звонок или загрузка оборвутся в любом случае. Речь только о том, чтобы у машины не мигала сеть.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'Не пересоздавать туннель при смене сервера';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'Перезапускается только прокси-ядро: адаптер и маршруты остаются на месте, сеть у машины не мигает. Цена: адреса всех серверов подписки заранее прописываются мимо туннеля.';
+
+  @override
+  String get settingsSeamlessNetworkTitle => 'Не рвать канал при смене сети';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'Wi-Fi → мобильный: сначала проверяем, жив ли трафик, и перезапускаем ядро, только если он умер. QUIC (hysteria2) переживает смену адреса сам. Цена: если канал всё-таки умер, восстановление начнётся на несколько секунд позже.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'Держать адаптер поднятым между попытками';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'Маршрут по умолчанию не дёргается, пока идёт восстановление. ⚠️ Это НЕ kill switch: трафик мимо VPN не блокируется — удерживается только сам адаптер.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'Замер скорости потратит трафик';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'Будет измерена скорость $servers лучших серверов и вашего канала — примерно $mb МБ трафика вашей подписки.\n\nЗамер можно отключить в настройках.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'Запустить';
 }

@@ -64,12 +64,18 @@ AppSettings _settings({
   bool autoReconnect = true,
   bool killSwitch = false,
   bool noRealIp = false,
+  // Захват между попытками удерживает не только kill switch, но и «не мигать
+  // сетью» (`seamlessKeepTun`, включён по умолчанию). Тестам про kill switch
+  // нужен ИМЕННО kill switch, поэтому здесь второй держатель по умолчанию снят
+  // — иначе они мерили бы сумму двух настроек и молчали бы, сломайся любая.
+  bool seamlessKeepTun = false,
   SplitMode mode = SplitMode.all,
 }) =>
     AppSettings.defaults.copyWith(
       autoReconnect: autoReconnect,
       killSwitch: killSwitch,
       noRealIp: noRealIp,
+      seamlessKeepTun: seamlessKeepTun,
       splitTunnel: SplitTunnelConfig(mode: mode),
     );
 
@@ -171,10 +177,12 @@ void main() {
           reason: 'иначе на время паузы трафик пойдёт мимо VPN');
     });
 
-    test('без kill switch захват снимается между попытками', () async {
+    test('без kill switch и без «не мигать сетью» захват снимается между '
+        'попытками', () async {
       final e = _FakeEngine();
       await e.connectWith('{}',
-          ConnectionOptions(settings: _settings(killSwitch: false)),
+          ConnectionOptions(
+              settings: _settings(killSwitch: false, seamlessKeepTun: false)),
           [_server('a')]);
 
       await e.scheduleRetry('обрыв');

@@ -2752,4 +2752,135 @@ class AppLocalizationsTr extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'Bağlanınca kontrol et';
+
+  @override
+  String get serviceChecksMenuOff => 'Bağlanınca kontrol etme';
+
+  @override
+  String get serviceChecksMenuTooltip => 'Hangi servisler kontrol edilsin';
+
+  @override
+  String get serviceChecksLegendOff => 'Servis kontrolü kapalı';
+
+  @override
+  String get srvInfoAutoNever =>
+      'Otomatik ayar bu sunucuyu henüz denemedi — hangi servislerin bu sunucu üzerinden çalıştığını görmek için çalıştırın.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'Son otomatik ayar taramasının verileri. Burada yeniden ölçüm yapılmaz.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: bu sunucu üzerinden açılıyor ama çıkış ülkesinde kullanılamıyor. Sunucunun kendisi sağlam — yalnızca bu servisler çalışmaz, onlar için başka ülkede bir çıkış gerekir.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'Servis kontrolü';
+
+  @override
+  String get settingsSectionAutotune => 'Otomatik ayar';
+
+  @override
+  String get settingsSpeedRankTitle => 'Otomatik seçimde hızı da dikkate al';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'Servis kontrolünü geçen adaylar ayrıca indirme ile ölçülür; başa gerçekten daha hızlı olan geçer. Aboneliğinizin trafiğini harcar.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'Hız ölçümüne alınacak sunucu sayısı';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'Artı kendi hattınızın bir ölçümü — onsuz karşılaştıracak bir şey yok: 60 Mbit/sn, 60\'lık hatta mükemmel, 300\'lük hatta kötüdür.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return 'Her turda ≈$mb MB abonelik trafiği';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle => 'Hız ölçümü abonelik trafiği harcar';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'Otomatik ayarın her turu aboneliğiniz üzerinden yaklaşık $mb MB indirir: ölçülen her sunucu için bir yoklama, artı kendi hattınız için bir yoklama. Bu megabaytlar kotanızdan düşer.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'Yine de aç';
+
+  @override
+  String get settingsConcurrencyTitle => 'Aynı anda yapılan kontrol sayısı';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1, eski davranıştır: adaylar kesinlikle sırayla kontrol edilir; sonuçlar tuhaflaşırsa dönülecek değer budur. Daha fazlası daha hızlıdır, ancak her aday kendi çekirdeğini başlatır: makine daha çok yüklenir ve gecikme ölçümleri birbirini etkilemeye başlar.';
+
+  @override
+  String get settingsConnectChecksTitle => 'Bağlanınca servisleri kontrol et';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'Tünel kalkarken tek bir tur: düğmenin altındaki rozetler neyin açıldığını, neyin açılmadığını hemen gösterir.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'Rozetler siz dokunana kadar gri kalır.';
+
+  @override
+  String get settingsConnectCheckServices => 'Bağlanınca ne kontrol edilsin';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'Bilerek otomatik ayardan ayrı bir küme: otomatik ayar çalışan bir sunucu arar ve uzun uğraşmaya hazırdır; bu rozetler ise “şu anda çalışıyor mu?” sorusunu yanıtlar.';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'Hiçbir servis seçilmedi — kontrol edilecek bir şey olmayacak.';
+
+  @override
+  String get settingsSectionSeamless => 'Kesintisizlik';
+
+  @override
+  String get settingsSeamlessNote =>
+      'Bu seçeneklerin hiçbiri açık bağlantıları korumaz: başka sunucu, başka dış IP demektir ve karşı taraf farklı bir adres görür — görüşme ya da indirme her hâlükârda kopar. Mesele yalnızca makinenin ağının kesilip yanmaması.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'Yalnızca sunucu değişince tüneli yeniden kurma';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'Yalnızca proxy çekirdeği yeniden başlar: bağdaştırıcı ve yönlendirmeler yerinde kalır, makinenin ağı kesilip yanmaz. Bedeli: aboneliğin tüm sunucu adresleri önceden tünel dışına yazılır.';
+
+  @override
+  String get settingsSeamlessNetworkTitle => 'Ağ değişince bağlantıyı koparma';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'Wi-Fi → mobil: önce trafiğin hâlâ canlı olup olmadığına bakarız, çekirdeği ancak ölmüşse yeniden başlatırız. QUIC (hysteria2) adres değişimini kendi başına atlatır. Bedeli: bağlantı gerçekten öldüyse kurtarma birkaç saniye geç başlar.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'Denemeler arasında bağdaştırıcıyı ayakta tut';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'Kurtarma sürerken varsayılan yönlendirme oynatılmaz. ⚠️ Bu bir kill switch DEĞİLDİR: VPN dışındaki trafik engellenmez, yalnızca bağdaştırıcının kendisi ayakta tutulur.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'Hız ölçümü veri harcayacak';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'En iyi $servers sunucunun ve kendi bağlantınızın hızı ölçülecek — aboneliğinizin yaklaşık $mb MB trafiği.\n\nÖlçümü ayarlardan kapatabilirsiniz.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'Başlat';
 }

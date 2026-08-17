@@ -877,6 +877,44 @@ class ProbeController extends ChangeNotifier {
         return v == PingVerification.passed || v == PingVerification.failed;
       });
 
+  /// Записать замер, сделанный САМОЙ платформой: порт наружу не отдаётся, и
+  /// цифру возвращает нативная сторона (Android — `LibXray.ping` поднимает ядро
+  /// внутри вызова, ходит через свой инбаунд и отдаёт готовые миллисекунды).
+  /// Запрос через сервер при этом РЕАЛЬНО был, поэтому вердикт — `passed`.
+  ///
+  /// ⚠️ ПОКАЗЫВАЕМОЕ ЧИСЛО — TCP, ЕСЛИ ОНО ЕСТЬ. Раньше здесь безусловно
+  /// стояло `latencyMs: ready`, и у ОБЫЧНОГО сервера задержка фазы 1
+  /// затиралась RTT прокси-запроса, а `latencyMethod` при этом продолжал
+  /// утверждать «TCP» (в поле клали `settings.pingPrimary`, а он по умолчанию
+  /// `tcp`). Симптом: один и тот же сервер одной подписки показывает на
+  /// Windows 45 мс, а на телефоне 380 — обе плашки подписаны одинаково, и по
+  /// этой колонке человек выбирает сервер. Величины разной природы, смешивать
+  /// их в одной колонке нельзя; ровно это правило уже записано в перестроенной
+  /// автонастройке: «Показываем TCP или НИЧЕГО. Подставлять сюда прокси-RTT
+  /// нельзя: на экране он не отличим от TCP» (`core/probe/auto_config_engine.dart`).
+  ///
+  /// Прокси-RTT при этом не теряется — он уходит в [PingResult.proxyRttMs],
+  /// откуда его берёт диагностика.
+  void _recordSelfMeasured(VpnServer s, int ready) {
+    // Цифра фазы 1. У hysteria2 и полных конфигов её нет по построению
+    // ([_proxyLatency] уводит их мимо TCP), и `ready` там — единственное, что
+    // вообще измерено; у остальных TCP уже намерен и он же и показывается.
+    final tcpMs = _results[s.key]?.latencyMs;
+    _results[s.key] = PingResult(
+      outcome: PingOutcome.ok,
+      latencyMs: tcpMs ?? ready,
+      proxyRttMs: ready,
+      reachableViaProxy: true,
+      verification: PingVerification.passed,
+      // Подпись обязана называть то, что реально измерено: замер платформы —
+      // это запрос через прокси, а не TCP-рукопожатие.
+      latencyMethod: tcpMs != null ? PingMethod.tcp : PingMethod.proxyGet,
+      measuredAt: DateTime.now(),
+    );
+    _done.add(s.key); // иначе полоска прогресса не доходит до конца
+    notifyListeners();
+  }
+
   /// Проба группы серверов через прокси на одном общем харнессе.
   Future<void> _verifyShared(
       List<VpnServer> servers, AppSettings settings, CancelToken cancel,
@@ -922,17 +960,9 @@ class ProbeController extends ChangeNotifier {
             if (ready != null) {
               // Замер сделан ЧЕРЕЗ поднятое ядро (LibXray) — это и есть проба,
               // а не TCP-рукопожатие: состояние `passed` здесь заслуженное.
-              _results[server.key] = PingResult(
-                outcome: PingOutcome.ok,
-                latencyMs: ready,
-                proxyRttMs: ready,
-                reachableViaProxy: true,
-                verification: PingVerification.passed,
-                latencyMethod: settings.pingPrimary,
-                measuredAt: DateTime.now(),
-              );
-              _done.add(server.key); // иначе полоска прогресса не доходит до конца
-              notifyListeners();
+              // Какое число показать и как его подписать — решает одна общая
+              // точка на оба пути (см. [_recordSelfMeasured]).
+              _recordSelfMeasured(server, ready);
               return;
             }
           }
@@ -971,18 +1001,10 @@ class ProbeController extends ChangeNotifier {
       if (cancel.isCancelled) return;
       if (port == null && ready != null) {
         // Как и в `_verifyShared`: цифру дало ядро, поднятое ради этой пробы, —
-        // проверка состоялась.
-        _results[server.key] = PingResult(
-          outcome: PingOutcome.ok,
-          latencyMs: ready,
-          proxyRttMs: ready,
-          reachableViaProxy: true,
-          verification: PingVerification.passed,
-          latencyMethod: settings.pingPrimary,
-          measuredAt: DateTime.now(),
-        );
-        _done.add(server.key);
-        notifyListeners();
+        // проверка состоялась. Запись — тем же общим кодом: разъедься эти две
+        // ветки, и одна платформа однажды начала бы подписывать замер иначе,
+        // чем другая, а заметно это стало бы только по жалобе на цифры.
+        _recordSelfMeasured(server, ready);
         return;
       }
       await _applyVerify(server, port, settings,

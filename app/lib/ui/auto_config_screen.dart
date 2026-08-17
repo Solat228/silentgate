@@ -646,11 +646,49 @@ class _BottomAction extends StatelessWidget {
       key: const Key('autoAction'),
       icon: const Icon(Icons.play_arrow),
       label: Text('${l.autoTuneSelected} (${selected.length})'),
-      onPressed: selected.isEmpty
-          ? null
-          : () => ctrl.start(
-              selected, context.read<SettingsController>().settings),
+      onPressed: selected.isEmpty ? null : () => _startWithConsent(context),
     );
+  }
+
+  /// Спросить про расход трафика ПЕРЕД прогоном — и только если он вправду будет.
+  ///
+  /// ⚠️ ЗАЧЕМ СПРАШИВАТЬ, ЕСЛИ ГАЛОЧКА УЖЕ ВКЛЮЧЕНА. Замер скорости включают
+  /// один раз в настройках, а прогон запускают потом — днями позже и не всегда
+  /// тот же человек, который включал. Платит при этом ПОДПИСКА: по
+  /// [SpeedTestSize] на каждый из [AppSettings.speedTopN] серверов плюс столько
+  /// же на собственный канал. При умолчании это 55 МБ за нажатие, и узнавать о
+  /// них постфактум — по счётчику остатка — худший из возможных способов.
+  ///
+  /// ⚠️ Число берётся ТОЛЬКО из [AppSettings.speedTestTrafficMb]: оно считается
+  /// в одном месте нарочно, потому что показывается в трёх (галочка, подсказка,
+  /// это окно). Разъехавшиеся цифры в предупреждении о расходе — худший вид
+  /// неправды: после него человек перестаёт верить всем трём.
+  Future<void> _startWithConsent(BuildContext context) async {
+    final l = AppLocalizations.of(context);
+    final settings = context.read<SettingsController>().settings;
+    if (settings.speedInAutoSelect) {
+      final ok = await showDialog<bool>(
+        context: context,
+        builder: (c) => AlertDialog(
+          title: Text(l.autoSpeedTrafficTitle),
+          // Порядок аргументов задан порядком плейсхолдеров в самой строке
+          // ({servers} раньше {mb}) — так его объявляет ARB и так генерирует
+          // gen_l10n. Страж l10n_test сверяет одно с другим.
+          content: Text(l.autoSpeedTrafficBody(
+              settings.effectiveSpeedTopN, settings.speedTestTrafficMb)),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c, false), child: Text(l.commonCancel)),
+            FilledButton(
+                onPressed: () => Navigator.pop(c, true),
+                child: Text(l.autoSpeedTrafficGo)),
+          ],
+        ),
+      );
+      if (ok != true) return;
+    }
+    if (!context.mounted) return;
+    await ctrl.start(selected, settings);
   }
 }
 

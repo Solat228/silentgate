@@ -2748,4 +2748,137 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'Check on connect';
+
+  @override
+  String get serviceChecksMenuOff => 'Don\'t check on connect';
+
+  @override
+  String get serviceChecksMenuTooltip => 'Which services to check';
+
+  @override
+  String get serviceChecksLegendOff => 'Service checks are off';
+
+  @override
+  String get srvInfoAutoNever =>
+      'Auto-tuning has not checked this server yet — run it to see which services work through it.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'Data from the last auto-tuning run. Nothing is measured again here.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: reachable through this server, but unavailable in its exit country. The server itself is fine — only these services fail; for them you need an exit in another country.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'Service checks';
+
+  @override
+  String get settingsSectionAutotune => 'Auto-tuning';
+
+  @override
+  String get settingsSpeedRankTitle => 'Rank by speed in auto-selection';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'Candidates that passed the service checks are also measured by download, so the genuinely faster one ends up first. Uses your subscription traffic.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'Servers measured for speed';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'Plus one measurement of your own line — without it there is nothing to compare against: 60 Mbit/s is excellent on a 60 Mbit line and poor on a 300 Mbit one.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '≈$mb MB of subscription traffic per run';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle =>
+      'Speed measurement spends subscription traffic';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'Every auto-tuning run downloads about $mb MB through your subscription: one probe per measured server plus one probe of your own line. Those megabytes come out of your quota.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'Enable anyway';
+
+  @override
+  String get settingsConcurrencyTitle => 'Checks in parallel';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1 is the previous behaviour: candidates are checked strictly one after another, and this is where to fall back if the results start looking odd. More is faster, but each candidate starts its own core: the machine is loaded harder and the latency measurements begin to affect one another.';
+
+  @override
+  String get settingsConnectChecksTitle => 'Check services on connect';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'One run when the tunnel comes up: the chips under the button show right away what opens and what does not.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'The chips stay grey until you tap them yourself.';
+
+  @override
+  String get settingsConnectCheckServices => 'What to check on connect';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'Deliberately a separate set from auto-tuning: auto-tuning looks for a working server and is ready to grind for a long time, while these chips answer the question “does it work right now?”.';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'No service is selected — there will be nothing to check.';
+
+  @override
+  String get settingsSectionSeamless => 'Seamlessness';
+
+  @override
+  String get settingsSeamlessNote =>
+      'None of these options keeps open connections alive: another server means another external IP, and the far side sees a different address — a call or a download breaks either way. This is only about the machine\'s network not blinking.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'Do not rebuild the tunnel when only the server changes';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'Only the proxy core restarts: the adapter and the routes stay in place, the machine\'s network does not blink. The price: the addresses of every server in the subscription are written past the tunnel in advance.';
+
+  @override
+  String get settingsSeamlessNetworkTitle =>
+      'Do not tear down the link when the network changes';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'Wi-Fi → mobile: first we check whether traffic is still alive and restart the core only if it is not. QUIC (hysteria2) survives an address change on its own. The price: if the link really did die, recovery starts a few seconds later.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle =>
+      'Keep the adapter up between attempts';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'The default route is not yanked around while recovery is under way. ⚠️ This is NOT a kill switch: traffic outside the VPN is not blocked — only the adapter itself is held.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'The speed test will use traffic';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'Speed will be measured for the $servers best servers and for your own connection — about $mb MB of your subscription traffic.\n\nYou can turn the test off in settings.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'Start';
 }

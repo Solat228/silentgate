@@ -2656,4 +2656,127 @@ class AppLocalizationsZh extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => '连接时检测';
+
+  @override
+  String get serviceChecksMenuOff => '连接时不检测';
+
+  @override
+  String get serviceChecksMenuTooltip => '检测哪些服务';
+
+  @override
+  String get serviceChecksLegendOff => '服务检测已关闭';
+
+  @override
+  String get srvInfoAutoNever => '自动配置尚未检测过该服务器——运行一次即可看到哪些服务能通过它使用。';
+
+  @override
+  String get srvInfoAutoHint => '上次自动配置运行时的数据。此处不会重新测量。';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services：可以通过该服务器访问，但在它的出口国家/地区不可用。服务器本身正常，只是这些服务用不了——需要换到其他国家的出口。';
+  }
+
+  @override
+  String get settingsSectionChecks => '服务检测';
+
+  @override
+  String get settingsSectionAutotune => '自动调优';
+
+  @override
+  String get settingsSpeedRankTitle => '自动选择时参考速度';
+
+  @override
+  String get settingsSpeedRankSub => '通过服务检测的候选服务器还会用下载实测一次，真正更快的排在最前。会消耗订阅流量。';
+
+  @override
+  String get settingsSpeedTopNLabel => '参与测速的服务器数';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      '外加一次本地线路的测量——没有它就无从比较：60 Mbit/s 在 60 兆线路上很好，在 300 兆线路上很差。';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '每轮约消耗 $mb MB 订阅流量';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle => '测速会消耗订阅流量';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return '自动调优每运行一次，会通过你的订阅下载约 $mb MB：每台被测服务器一次探测，再加一次本地线路探测。这些流量从你的配额中扣除。';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => '仍然开启';
+
+  @override
+  String get settingsConcurrencyTitle => '同时进行的检测数';
+
+  @override
+  String get settingsConcurrencySub =>
+      '1 就是原来的行为：候选服务器严格逐个检测，结果一旦变得奇怪就退回这里。数值越大越快，但每个候选都会启动自己的内核：机器负载更高，延迟测量之间也会互相干扰。';
+
+  @override
+  String get settingsConnectChecksTitle => '连接后检测服务';
+
+  @override
+  String get settingsConnectChecksSubOn => '隧道建立时运行一次：按钮下方的标签立刻显示哪些能打开、哪些不能。';
+
+  @override
+  String get settingsConnectChecksSubOff => '在你自己点击之前，这些标签会一直是灰色的。';
+
+  @override
+  String get settingsConnectCheckServices => '连接后检测哪些服务';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      '这组服务刻意与自动调优分开：自动调优是在找一台可用服务器，可以慢慢试；而这些标签回答的是“现在能不能用”。';
+
+  @override
+  String get settingsConnectChecksEmpty => '未选择任何服务——将无可检测。';
+
+  @override
+  String get settingsSectionSeamless => '无缝切换';
+
+  @override
+  String get settingsSeamlessNote =>
+      '以下选项都不能保住已建立的连接：换服务器就是换出口 IP，对端看到的是另一个地址，通话或下载无论如何都会断。这里只是让本机的网络不要闪断。';
+
+  @override
+  String get settingsSeamlessServerTitle => '仅更换服务器时不重建隧道';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      '只重启代理内核：网卡和路由原地不动，本机网络不会闪断。代价是订阅中所有服务器的地址都要提前写成绕过隧道。';
+
+  @override
+  String get settingsSeamlessNetworkTitle => '网络切换时不切断通道';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'Wi-Fi → 移动网络：先看流量是否还通，只有确实断了才重启内核。QUIC（hysteria2）本身就能扛住地址变化。代价是：若通道确实已断，恢复会晚几秒开始。';
+
+  @override
+  String get settingsSeamlessKeepTunTitle => '重试之间保持网卡不下线';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      '恢复期间不去反复改动默认路由。⚠️ 这不是 kill switch：不会阻断绕过 VPN 的流量，只是保持网卡本身不下线。';
+
+  @override
+  String get autoSpeedTrafficTitle => '测速会消耗流量';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return '将测量 $servers 个最佳服务器以及你自己线路的速度，约消耗订阅流量 $mb MB。\n\n可在设置中关闭测速。';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => '开始';
 }

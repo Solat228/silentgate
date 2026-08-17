@@ -4799,6 +4799,222 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{count, plural, one{{count} час назад} few{{count} часа назад} many{{count} часов назад} other{{count} часа назад}}'**
   String momentHoursAgo(int count);
+
+  /// No description provided for @serviceChecksMenuTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять при подключении'**
+  String get serviceChecksMenuTitle;
+
+  /// No description provided for @serviceChecksMenuOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не проверять при подключении'**
+  String get serviceChecksMenuOff;
+
+  /// No description provided for @serviceChecksMenuTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Какие сервисы проверять'**
+  String get serviceChecksMenuTooltip;
+
+  /// No description provided for @serviceChecksLegendOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка сервисов выключена'**
+  String get serviceChecksLegendOff;
+
+  /// No description provided for @srvInfoAutoNever.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка этот сервер ещё не проверяла — запустите её, чтобы увидеть, какие сервисы через него работают.'**
+  String get srvInfoAutoNever;
+
+  /// No description provided for @srvInfoAutoHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.'**
+  String get srvInfoAutoHint;
+
+  /// No description provided for @srvInfoAutoGeoNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'{services}: открывается через этот сервер, но недоступен в стране его выхода. Сервер исправен — не работают именно эти сервисы, для них нужен выход в другой стране.'**
+  String srvInfoAutoGeoNote(Object services);
+
+  /// No description provided for @settingsSectionChecks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка сервисов'**
+  String get settingsSectionChecks;
+
+  /// No description provided for @settingsSectionAutotune.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка'**
+  String get settingsSectionAutotune;
+
+  /// No description provided for @settingsSpeedRankTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учитывать скорость при автовыборе'**
+  String get settingsSpeedRankTitle;
+
+  /// No description provided for @settingsSpeedRankSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кандидаты, прошедшие проверку сервисов, дополнительно проверяются скачиванием — первым встаёт тот, кто действительно быстрее. Расходует трафик подписки.'**
+  String get settingsSpeedRankSub;
+
+  /// No description provided for @settingsSpeedTopNLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Серверов в замере скорости'**
+  String get settingsSpeedTopNLabel;
+
+  /// No description provided for @settingsSpeedTopNSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Плюс один замер своего канала — без него не с чем сравнивать: 60 Мбит/с это отлично на канале 60 и скверно на канале 300.'**
+  String get settingsSpeedTopNSub;
+
+  /// No description provided for @settingsSpeedTrafficNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'≈{mb} МБ трафика подписки за прогон'**
+  String settingsSpeedTrafficNote(Object mb);
+
+  /// No description provided for @settingsSpeedWarnTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер скорости тратит трафик подписки'**
+  String get settingsSpeedWarnTitle;
+
+  /// No description provided for @settingsSpeedWarnBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждый прогон автонастройки скачает примерно {mb} МБ через вашу подписку: по пробе на каждый проверяемый сервер плюс одна проба своего канала. Эти мегабайты спишутся с вашего лимита.'**
+  String settingsSpeedWarnBody(Object mb);
+
+  /// No description provided for @settingsSpeedWarnEnable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всё равно включить'**
+  String get settingsSpeedWarnEnable;
+
+  /// No description provided for @settingsConcurrencyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Одновременных проверок'**
+  String get settingsConcurrencyTitle;
+
+  /// No description provided for @settingsConcurrencySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'1 — прежнее поведение: кандидаты проверяются строго по очереди, и сюда же стоит вернуться, если результаты стали странными. Больше — быстрее, но каждый кандидат поднимает своё ядро: машина нагружена сильнее, а замеры задержки начинают влиять друг на друга.'**
+  String get settingsConcurrencySub;
+
+  /// No description provided for @settingsConnectChecksTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять сервисы при подключении'**
+  String get settingsConnectChecksTitle;
+
+  /// No description provided for @settingsConnectChecksSubOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Один прогон при подъёме туннеля: чипы под кнопкой сразу показывают, что открывается, а что нет.'**
+  String get settingsConnectChecksSubOn;
+
+  /// No description provided for @settingsConnectChecksSubOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чипы останутся серыми, пока вы не нажмёте их сами.'**
+  String get settingsConnectChecksSubOff;
+
+  /// No description provided for @settingsConnectCheckServices.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что проверять при подключении'**
+  String get settingsConnectCheckServices;
+
+  /// No description provided for @settingsConnectCheckServicesSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Набор намеренно отдельный от автонастройки: та ищет рабочий сервер и готова перебирать долго, а эти чипы отвечают на вопрос «работает ли прямо сейчас».'**
+  String get settingsConnectCheckServicesSub;
+
+  /// No description provided for @settingsConnectChecksEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не выбрано ни одного сервиса — проверять будет нечего.'**
+  String get settingsConnectChecksEmpty;
+
+  /// No description provided for @settingsSectionSeamless.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бесшовность'**
+  String get settingsSectionSeamless;
+
+  /// No description provided for @settingsSeamlessNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открытые соединения ни один из пунктов не сохраняет: у другого сервера другой внешний IP, и удалённая сторона видит другой адрес — звонок или загрузка оборвутся в любом случае. Речь только о том, чтобы у машины не мигала сеть.'**
+  String get settingsSeamlessNote;
+
+  /// No description provided for @settingsSeamlessServerTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не пересоздавать туннель при смене сервера'**
+  String get settingsSeamlessServerTitle;
+
+  /// No description provided for @settingsSeamlessServerSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезапускается только прокси-ядро: адаптер и маршруты остаются на месте, сеть у машины не мигает. Цена: адреса всех серверов подписки заранее прописываются мимо туннеля.'**
+  String get settingsSeamlessServerSub;
+
+  /// No description provided for @settingsSeamlessNetworkTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не рвать канал при смене сети'**
+  String get settingsSeamlessNetworkTitle;
+
+  /// No description provided for @settingsSeamlessNetworkSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Wi-Fi → мобильный: сначала проверяем, жив ли трафик, и перезапускаем ядро, только если он умер. QUIC (hysteria2) переживает смену адреса сам. Цена: если канал всё-таки умер, восстановление начнётся на несколько секунд позже.'**
+  String get settingsSeamlessNetworkSub;
+
+  /// No description provided for @settingsSeamlessKeepTunTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Держать адаптер поднятым между попытками'**
+  String get settingsSeamlessKeepTunTitle;
+
+  /// No description provided for @settingsSeamlessKeepTunSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маршрут по умолчанию не дёргается, пока идёт восстановление. ⚠️ Это НЕ kill switch: трафик мимо VPN не блокируется — удерживается только сам адаптер.'**
+  String get settingsSeamlessKeepTunSub;
+
+  /// No description provided for @autoSpeedTrafficTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер скорости потратит трафик'**
+  String get autoSpeedTrafficTitle;
+
+  /// No description provided for @autoSpeedTrafficBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Будет измерена скорость {servers} лучших серверов и вашего канала — примерно {mb} МБ трафика вашей подписки.\n\nЗамер можно отключить в настройках.'**
+  String autoSpeedTrafficBody(int servers, int mb);
+
+  /// No description provided for @autoSpeedTrafficGo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить'**
+  String get autoSpeedTrafficGo;
 }
 
 class _AppLocalizationsDelegate

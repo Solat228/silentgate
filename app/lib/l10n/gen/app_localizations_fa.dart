@@ -2743,4 +2743,134 @@ class AppLocalizationsFa extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get serviceChecksMenuTitle => 'بررسی هنگام اتصال';
+
+  @override
+  String get serviceChecksMenuOff => 'هنگام اتصال بررسی نشود';
+
+  @override
+  String get serviceChecksMenuTooltip => 'چه سرویس‌هایی بررسی شوند';
+
+  @override
+  String get serviceChecksLegendOff => 'بررسی سرویس‌ها خاموش است';
+
+  @override
+  String get srvInfoAutoNever =>
+      'پیکربندی خودکار هنوز این سرور را بررسی نکرده است — آن را اجرا کنید تا ببینید کدام سرویس‌ها از طریق آن کار می‌کنند.';
+
+  @override
+  String get srvInfoAutoHint =>
+      'داده‌های آخرین اجرای پیکربندی خودکار. اینجا چیزی دوباره اندازه‌گیری نمی‌شود.';
+
+  @override
+  String srvInfoAutoGeoNote(Object services) {
+    return '$services: از طریق این سرور باز می‌شود اما در کشور خروجی آن در دسترس نیست. خودِ سرور سالم است — فقط همین سرویس‌ها کار نمی‌کنند و برای آن‌ها به خروجی در کشور دیگری نیاز دارید.';
+  }
+
+  @override
+  String get settingsSectionChecks => 'بررسی سرویس‌ها';
+
+  @override
+  String get settingsSectionAutotune => 'تنظیم خودکار';
+
+  @override
+  String get settingsSpeedRankTitle => 'در نظر گرفتن سرعت هنگام انتخاب خودکار';
+
+  @override
+  String get settingsSpeedRankSub =>
+      'نامزدهایی که بررسی سرویس‌ها را رد کرده‌اند، افزون بر آن با دانلود سنجیده می‌شوند تا سروری که واقعاً سریع‌تر است نخست بایستد. از ترافیک اشتراک شما خرج می‌کند.';
+
+  @override
+  String get settingsSpeedTopNLabel => 'تعداد سرورها در سنجش سرعت';
+
+  @override
+  String get settingsSpeedTopNSub =>
+      'به‌علاوهٔ یک سنجش از خط خودتان؛ بدون آن معیاری برای مقایسه نیست: ۶۰ مگابیت بر ثانیه روی خط ۶۰ عالی و روی خط ۳۰۰ ضعیف است.';
+
+  @override
+  String settingsSpeedTrafficNote(Object mb) {
+    return '‏≈$mb مگابایت از ترافیک اشتراک در هر اجرا';
+  }
+
+  @override
+  String get settingsSpeedWarnTitle => 'سنجش سرعت از ترافیک اشتراک خرج می‌کند';
+
+  @override
+  String settingsSpeedWarnBody(Object mb) {
+    return 'هر اجرای تنظیم خودکار حدود $mb مگابایت از اشتراک شما دانلود می‌کند: یک آزمون برای هر سرور سنجیده‌شده به‌علاوهٔ یک آزمون از خط خودتان. این مگابایت‌ها از سهمیهٔ شما کم می‌شود.';
+  }
+
+  @override
+  String get settingsSpeedWarnEnable => 'با این حال فعال شود';
+
+  @override
+  String get settingsConcurrencyTitle => 'شمار بررسی‌های هم‌زمان';
+
+  @override
+  String get settingsConcurrencySub =>
+      '۱ همان رفتار پیشین است: نامزدها دقیقاً یکی پس از دیگری بررسی می‌شوند و اگر نتیجه‌ها عجیب شد، باید به همین مقدار بازگشت. بیشتر یعنی سریع‌تر، اما هر نامزد هستهٔ خودش را بالا می‌آورد: بار دستگاه بیشتر می‌شود و سنجش‌های تأخیر بر یکدیگر اثر می‌گذارند.';
+
+  @override
+  String get settingsConnectChecksTitle => 'بررسی سرویس‌ها هنگام اتصال';
+
+  @override
+  String get settingsConnectChecksSubOn =>
+      'یک اجرا هنگام بالا آمدن تونل: نشان‌های زیر دکمه بی‌درنگ می‌گویند چه چیزی باز می‌شود و چه چیزی نه.';
+
+  @override
+  String get settingsConnectChecksSubOff =>
+      'نشان‌ها خاکستری می‌مانند تا خودتان روی آن‌ها بزنید.';
+
+  @override
+  String get settingsConnectCheckServices => 'هنگام اتصال چه چیزی بررسی شود';
+
+  @override
+  String get settingsConnectCheckServicesSub =>
+      'این مجموعه عمداً از تنظیم خودکار جداست: آن یکی دنبال سروری می‌گردد که کار کند و حاضر است مدت‌ها جست‌وجو کند، اما این نشان‌ها به پرسش «همین حالا کار می‌کند؟» پاسخ می‌دهند.';
+
+  @override
+  String get settingsConnectChecksEmpty =>
+      'هیچ سرویسی انتخاب نشده است — چیزی برای بررسی نخواهد بود.';
+
+  @override
+  String get settingsSectionSeamless => 'بی‌وقفگی';
+
+  @override
+  String get settingsSeamlessNote =>
+      'هیچ‌کدام از این گزینه‌ها اتصال‌های باز را زنده نگه نمی‌دارد: سرور دیگر یعنی IP بیرونی دیگر و طرف مقابل نشانی دیگری می‌بیند — تماس یا دانلود در هر صورت قطع می‌شود. سخن تنها بر سر آن است که شبکهٔ دستگاه چشمک نزند.';
+
+  @override
+  String get settingsSeamlessServerTitle =>
+      'هنگام تعویض سرور تونل بازسازی نشود';
+
+  @override
+  String get settingsSeamlessServerSub =>
+      'تنها هستهٔ پراکسی از نو راه می‌افتد: آداپتور و مسیرها سر جای خود می‌مانند و شبکهٔ دستگاه چشمک نمی‌زند. بهایش: نشانی همهٔ سرورهای اشتراک از پیش بیرون از تونل نوشته می‌شود.';
+
+  @override
+  String get settingsSeamlessNetworkTitle => 'هنگام تغییر شبکه کانال قطع نشود';
+
+  @override
+  String get settingsSeamlessNetworkSub =>
+      'وای‌فای ← داده تلفنی: نخست بررسی می‌کنیم ترافیک هنوز زنده است یا نه و تنها در صورت مرگ آن هسته را از نو راه می‌اندازیم. QUIC (هیستریا۲) تغییر نشانی را خودش تاب می‌آورد. بهایش: اگر کانال واقعاً مرده باشد، بازیابی چند ثانیه دیرتر آغاز می‌شود.';
+
+  @override
+  String get settingsSeamlessKeepTunTitle => 'آداپتور میان تلاش‌ها برپا بماند';
+
+  @override
+  String get settingsSeamlessKeepTunSub =>
+      'تا زمانی که بازیابی ادامه دارد، مسیر پیش‌فرض دستکاری نمی‌شود. ⚠️ این kill switch نیست: ترافیک بیرون از VPN مسدود نمی‌شود و تنها خودِ آداپتور نگه داشته می‌شود.';
+
+  @override
+  String get autoSpeedTrafficTitle => 'آزمایش سرعت ترافیک مصرف می‌کند';
+
+  @override
+  String autoSpeedTrafficBody(int servers, int mb) {
+    return 'سرعت $servers سرور برتر و سرعت اینترنت خودتان اندازه‌گیری می‌شود — حدود $mb مگابایت از ترافیک اشتراک شما.\n\nمی‌توانید این آزمایش را در تنظیمات خاموش کنید.';
+  }
+
+  @override
+  String get autoSpeedTrafficGo => 'شروع';
 }

@@ -15,6 +15,7 @@ import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/singbox/exit_router_config_builder.dart';
@@ -70,6 +71,15 @@ class WindowsEngine extends VpnEngineBase {
   StreamSubscription<int>? _exitWatch;
   final TunRouter _tunRouter;
   bool _tunActive = false;
+
+  /// Конфиг ПОДНЯТОГО туннеля — чтобы не пересоздавать его, когда новый запуск
+  /// получил бы ровно такой же. `null` — туннеля нет или его конфиг неизвестен.
+  ///
+  /// ⚠️ ИМЕННО СТРОКА КОНФИГА, А НЕ НАБОР ПОЛЕЙ. Поведение туннеля определяет
+  /// конфиг целиком, и сравнение готовых строк не умеет «забыть поле» — а
+  /// перечень полей руками в этом проекте уже терял `ipv6Upstream` и
+  /// `platformTun` (см. `test/tun_options_carry_test.dart`).
+  String? _liveTunConfig;
   bool _proxySet = false; // чистим системный прокси только если ставили его сами
 
   /// Поколение запуска, которое ВЛАДЕЕТ поднятым туннелем и прописанным прокси.
@@ -517,7 +527,13 @@ class WindowsEngine extends VpnEngineBase {
     }
     final tunOptions = TunOptions.fromSettings(
       options.settings,
-      serverIps: await resolveServerIps(servers),
+      // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
+      // запасные серверы — тогда конфиг перестаёт зависеть от того, кто из них
+      // выбран, и переход на запасной не требует пересоздавать туннель (см.
+      // `VpnEngineBase.tunnelBypassIps` и сверку конфига ниже). Выключенный
+      // флаг отдаёт РОВНО прежний список.
+      serverIps: await tunnelBypassIps(
+          await resolveServerHosts(servers), options.settings),
       // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
       serverDomains: knownServerDomains,
       // Резолвер для «Прямо». Спрашивается ДО подъёма НОВОГО туннеля: после
@@ -548,11 +564,71 @@ class WindowsEngine extends VpnEngineBase {
       return false;
     }
 
+    // ⚠️ ЖИВОЙ ТУННЕЛЬ С ТЕМ ЖЕ КОНФИГОМ ПЕРЕСОЗДАВАТЬ НЕ НУЖНО.
+    //
+    // Снять TUN и поднять его заново — значит на секунду убрать маршрут по
+    // умолчанию: рвутся не только соединения через VPN, но и всё, что шло мимо
+    // него. Пользователь замечает это сильнее самого разрыва — у VPN на
+    // роутере такого нет вовсе, там при переподключении не меняются ни адрес,
+    // ни таблица маршрутов.
+    //
+    // Решение принимается по ГОТОВОМУ КОНФИГУ, а не по перечню полей: конфиг —
+    // единственное, что определяет поведение туннеля, и сравнение строк не
+    // умеет «забыть поле». Собирается он тем же `SingboxConfigBuilder` и из тех
+    // же аргументов, что уходят в `_tunRouter.start` ниже.
+    //
+    // ⚠️ ЧЕГО ЭТО НЕ ОБЕЩАЕТ: живое TCP-соединение не переживёт смену внешнего
+    // IP — удалённая сторона видит другой адрес. Речь только о том, чтобы у
+    // машины не мигала сеть.
+    //
+    // ⚠️ Автоподбор стека/MTU конфиг подменяет уже внутри роутера, поэтому
+    // сверяем ИСХОДНЫЕ опции — тем же способом на обеих сторонах сравнения. Раз
+    // они не изменились, живой туннель работает на подобранной комбинации, а
+    // подбирать заново нечего.
+    final wantConfig = _tunConfigPreview(
+      split: options.split,
+      options: tunOptions,
+      exitOutbounds: exitsBuilt.outbounds,
+      apiKeys: apiKeys,
+      apiOnlyKeys: options.apiOnlyExitKeys.toList(),
+      apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+    );
+    if (_tunActive &&
+        options.settings.seamlessServerSwitch &&
+        _liveTunConfig == wantConfig) {
+      // ⚠️ «ФЛАГ ПОДНЯТ» — ЭТО НЕ «ТУННЕЛЬ ЖИВ», И РАЗНИЦА ЗДЕСЬ РЕШАЮЩАЯ.
+      //
+      // При падении элевейтнутого хелпера Windows убирает адаптер сама, а нам
+      // не сообщает: `_tunActive` остаётся true. Прежний код в этом случае
+      // делал stop → start и туннель поднимался заново; переиспользование
+      // вслепую оставило бы машину БЕЗ маршрутов при статусе «Подключено» —
+      // ровно тот класс отказов, ради которого написан сторож зависания.
+      // Спрашиваем то же, что и он: отвечает ли туннельное ядро по своему API.
+      // Не ответило — молча возвращаемся к пересозданию, то есть к прежнему
+      // поведению.
+      if (await (tunAliveForTest?.call() ?? _tunApiAlive())) {
+        // Туннель остаётся тот же, но ведёт его теперь ЭТОТ запуск: иначе
+        // устаревшее поколение сняло бы его, вернувшись из своего ожидания.
+        _tunOwnerGen = gen;
+        AppLog.i('Туннель не пересоздаю: конфиг тот же и ядро отвечает — '
+            'перезапускается только прокси-ядро, маршрут по умолчанию не мигает');
+        _startTunWatchdog(options.settings, aborted);
+        startBlockNotice(
+            settings: options.settings,
+            apiPort: _tunApiPort,
+            secret: singboxApiSecret);
+        return true;
+      }
+      AppLog.w('Туннель с тем же конфигом не отвечает по своему API — '
+          'пересоздаю его, а не выдаю мёртвый за живой');
+    }
+
     // Вот теперь — и только теперь — снимаем старый туннель, вплотную к
     // подъёму нового (см. заголовок метода).
     if (_tunActive) {
       await _tunRouter.stop();
       _tunActive = false;
+      _liveTunConfig = null;
       await Future.delayed(const Duration(milliseconds: 600));
     }
     // TUN: sing-box поднимает туннель и заворачивает прокси-трафик в SOCKS Xray.
@@ -583,6 +659,11 @@ class WindowsEngine extends VpnEngineBase {
       // #5 — прекратить перебор, если пользователь отключился за время подбора.
       abort: aborted,
     );
+    // ⚠️ ЗАПОМИНАЕМ КОНФИГ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ПОДЪЁМА. Поставь мы отметку
+    // раньше (рядом с `_tunActive = true`), и после отказа `start` следующая
+    // попытка с тем же конфигом «переиспользовала» бы туннель, которого нет:
+    // приложение показало бы «Подключено» без единого маршрута.
+    _liveTunConfig = wantConfig;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
     // отключиться. Туннель, поднятый уже «после отмены», гасим сразу — но
     // ТОЛЬКО свой (за две минуты успевает начаться и новый запуск).
@@ -607,6 +688,34 @@ class WindowsEngine extends VpnEngineBase {
   /// снимать чужой).
   @visibleForTesting
   bool get tunActive => _tunActive;
+
+  /// Конфиг, который получит туннель при этих аргументах.
+  ///
+  /// ⚠️ ОДИН ИСТОЧНИК С ТЕМ, ЧТО СОБИРАЕТ РОУТЕР. `SingboxRouterWindows`
+  /// строит файл этим же `SingboxConfigBuilder` и из этих же аргументов —
+  /// других входов у него нет. Поэтому сверка живого туннеля с будущим
+  /// отвечает на настоящий вопрос («изменится ли конфиг»), а не на его
+  /// пересказ. Появится у `TunRouter.start` НОВЫЙ аргумент — он обязан
+  /// появиться и здесь, иначе сверка перестанет замечать его изменение и
+  /// туннель останется жить со старым конфигом.
+  String _tunConfigPreview({
+    required SplitTunnelConfig split,
+    required TunOptions options,
+    required List<Map<String, dynamic>> exitOutbounds,
+    required List<String> apiKeys,
+    required List<String> apiOnlyKeys,
+    required String apiToken,
+  }) =>
+      SingboxConfigBuilder(
+        xraySocksPort: ports.socks,
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
+        options: options,
+        exitOutbounds: exitOutbounds,
+        apiExitServerKeys: apiKeys,
+        apiOnlyExitKeys: apiOnlyKeys,
+        apiToken: apiToken,
+      ).buildJson(split);
 
   /// Свернуть УСТАРЕВШИЙ запуск: погасить то, что подняли МЫ, и не трогать
   /// ничего чужого. Общая уборка ([cleanup]) здесь запрещена — она гасит то,
@@ -637,6 +746,10 @@ class WindowsEngine extends VpnEngineBase {
     stopBlockNotice();
     await _tunRouter.stop();
     _tunActive = false;
+    // Туннеля нет — значит и «конфиг поднятого туннеля» больше не правда.
+    // Забудь это, и следующий запуск с тем же конфигом решил бы, что
+    // пересоздавать нечего, и оставил бы машину без маршрутов.
+    _liveTunConfig = null;
   }
 
   /// Снять системный прокси, если его прописал запуск [gen].
@@ -797,6 +910,7 @@ class WindowsEngine extends VpnEngineBase {
     if (_tunActive) {
       await _tunRouter.stop();
       _tunActive = false;
+      _liveTunConfig = null;
     }
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
@@ -835,6 +949,9 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
     }
+    // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
+    // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
+    _liveTunConfig = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
       await SystemProxy.clear();
@@ -1208,6 +1325,13 @@ class WindowsEngine extends VpnEngineBase {
   List<String> Function()? adapterDnsForTest;
   @visibleForTesting
   Future<bool> Function(String ip)? dnsReachableForTest;
+
+  /// Чем в тесте подменяется вопрос «отвечает ли туннельное ядро по API».
+  ///
+  /// Настоящий ответ приходит по HTTP с 127.0.0.1, а в тесте туннеля нет вовсе
+  /// — без подмены ветка «конфиг тот же, туннель переиспользуем» недостижима.
+  @visibleForTesting
+  Future<bool> Function()? tunAliveForTest;
 
   Future<String?> _systemDnsServer() async {
     try {
