@@ -86,6 +86,12 @@ class _FakeHealth extends TunnelHealth {
 }
 
 class _FakeEngine extends VpnEngineBase {
+  /// Подменяет ответ платформы «туннель сейчас поднят» — своего TUN у фейка нет.
+  bool liveCaptureKeptForTest = false;
+
+  @override
+  bool get liveCaptureKept => liveCaptureKeptForTest;
+
   int startCalls = 0;
   final List<bool> keepCaptureLog = [];
 
@@ -668,6 +674,50 @@ void main() {
         expect(checked, containsAll([10808, 10809, 10085]),
             reason: 'tunnelStaysUp=$stays');
       }
+    });
+  });
+
+  group('Креды живого захвата (последний слой #30)', () {
+    // ⚠️ ЭТО НАШЛОСЬ ТОЛЬКО ТОГДА, КОГДА ДВИЖОК САМ НАЗВАЛ ПОЛЕ.
+    // Четыре гипотезы подряд были мимо; сверка конфигов на стенде выдала
+    // `config.outbounds[0].password`. Пароль локального прокси выдаётся заново
+    // на КАЖДОЕ подключение и уезжает в конфиг ТУННЕЛЯ (тот ходит в прокси-ядро
+    // с этими кредами) — поэтому побайтная сверка не совпадала никогда.
+    //
+    // ⚠️ И почему нельзя чинить это при сборке конфига туннеля: креды выдаются
+    // ДО сборки конфига прокси-ядра. Оставить туннелю старый пароль, а ядро
+    // поднять с новым — 407 на каждом запросе: туннель жив, «Подключено»
+    // горит, трафик не идёт (ровно этот отказ уже был в 1.3.0).
+
+    test('⚠️ ГЛАВНОЕ: живой захват — пароль НЕ перевыдаётся', () {
+      final e = _FakeEngine()..liveCaptureKeptForTest = false;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      final first = e.localInboundPassword;
+      expect(first, isNotEmpty);
+
+      e.liveCaptureKeptForTest = true;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      expect(e.localInboundPassword, first,
+          reason: 'ЗДЕСЬ ЛОМАЛОСЬ ВСЁ: новый пароль менял конфиг туннеля, и '
+              'переиспользование не включалось ни разу');
+    });
+
+    test('захвата нет — пароль выдаётся заново, как раньше', () {
+      final e = _FakeEngine()..liveCaptureKeptForTest = false;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      final first = e.localInboundPassword;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      expect(e.localInboundPassword, isNot(first),
+          reason: 'секрет на сессию — прежнее и правильное поведение');
+    });
+
+    test('выключенная бесшовность пароль тоже перевыдаёт (путь отката)', () {
+      final e = _FakeEngine()..liveCaptureKeptForTest = true;
+      e.applyLocalProxyAuth(_settings(), systemProxyMode: false);
+      final first = e.localInboundPassword;
+      e.applyLocalProxyAuth(_settings(seamlessServerSwitch: false),
+          systemProxyMode: false);
+      expect(e.localInboundPassword, isNot(first));
     });
   });
 

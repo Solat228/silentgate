@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
 
@@ -167,6 +168,11 @@ class WindowsEngine extends VpnEngineBase {
   /// смотрит не WinINET, а конкретная программа, умеющая передать логин и
   /// пароль. Верни здесь `true` — и порт откроется без пароля именно в том
   /// режиме, который заведён ради стороннего кода.
+  /// Туннель этого приложения сейчас поднят — значит при бесшовной смене
+  /// сервера он останется жить, и его креды менять нельзя.
+  @override
+  bool get liveCaptureKept => _tunActive;
+
   @override
   bool systemProxyModeFor(ConnectionOptions options) =>
       options.captureMode == CaptureMode.systemProxy ||
@@ -562,6 +568,56 @@ class WindowsEngine extends VpnEngineBase {
   /// работать по СТАРОМУ конфигу — со старым IP сервера в правиле «мимо
   /// туннеля», то есть с риском петли и мёртвой сети), но окно без захвата
   /// сжимается до «снял → поднимаю».
+  /// Чем ЖЕЛАЕМЫЙ конфиг туннеля отличается от конфига живого — списком путей
+  /// к полям, БЕЗ значений.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО В БОЕВОМ КОДЕ, А НЕ В ОТЛАДКЕ. Переиспользование туннеля не
+  /// включалось четыре прогона подряд, и каждый раз причиной оказывалось
+  /// очередное поле, которое незаметно меняется от подключения к подключению
+  /// (список адресов, секрет Clash API…). Гадать по одному полю дороже, чем
+  /// один раз посмотреть: сверка побайтная, и любое новое поле такого рода
+  /// молча вернёт нас к пересозданию туннеля. Пусть отвечает журнал.
+  ///
+  /// ⚠️ ТОЛЬКО ИМЕНА ПОЛЕЙ, НИКОГДА ЗНАЧЕНИЯ. В конфиге лежат адреса серверов и
+  /// секрет Clash API; путь `route.rules[3].ip_cidr` разбор объясняет, а список
+  /// адресов в журнале — это утечка, за которую в этом проекте уже платили.
+  static List<String> tunConfigDiff(String liveJson, String wantJson) {
+    final out = <String>[];
+    void walk(Object? a, Object? b, String path) {
+      if (out.length >= 12) return; // журнал не резиновый
+      if (a is Map && b is Map) {
+        for (final k in {...a.keys, ...b.keys}) {
+          if (!a.containsKey(k)) {
+            out.add('$path.$k (появилось)');
+          } else if (!b.containsKey(k)) {
+            out.add('$path.$k (исчезло)');
+          } else {
+            walk(a[k], b[k], '$path.$k');
+          }
+        }
+        return;
+      }
+      if (a is List && b is List) {
+        if (a.length != b.length) {
+          out.add('$path (было ${a.length}, стало ${b.length})');
+          return;
+        }
+        for (var i = 0; i < a.length; i++) {
+          walk(a[i], b[i], '$path[$i]');
+        }
+        return;
+      }
+      if (a.toString() != b.toString()) out.add(path);
+    }
+
+    try {
+      walk(jsonDecode(liveJson), jsonDecode(wantJson), 'config');
+    } catch (e) {
+      return ['(конфиг не разобрать: $e)'];
+    }
+    return out;
+  }
+
   /// Адреса «мимо туннеля» для сборки конфига.
   ///
   /// Пока живого туннеля нет — обычный расчёт. Если туннель жив и включена
@@ -698,6 +754,15 @@ class WindowsEngine extends VpnEngineBase {
       apiOnlyKeys: options.apiOnlyExitKeys.toList(),
       apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
     );
+    final live = _liveTunConfig;
+    if (_tunActive &&
+        options.settings.seamlessServerSwitch &&
+        live != null &&
+        live != wantConfig) {
+      final diff = tunConfigDiff(live, wantConfig);
+      AppLog.i('Туннель придётся пересоздать — конфиг отличается: '
+          '${diff.isEmpty ? "(различий не найдено, отличаются пробелы/порядок)" : diff.join(", ")}');
+    }
     if (_tunActive &&
         options.settings.seamlessServerSwitch &&
         _liveTunConfig == wantConfig) {
