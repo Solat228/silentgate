@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">جمع کردن</string>
     <string name="vpn_expand">باز کردن</string>
+    <string name="vpn_always_on_no_session">VPN دائمی: یک بار به‌صورت دستی متصل شوید</string>
 </resources>

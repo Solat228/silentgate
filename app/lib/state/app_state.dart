@@ -1297,8 +1297,26 @@ class AppState extends ChangeNotifier {
   /// они переживают подписку, и без явного вопроса пользователь не понимает,
   /// почему список не опустел.
   Future<void> deleteSubscription({bool removePinned = false}) async {
-    // Удаляем активный профиль; если остались другие — переключаемся на первый.
+    // ⚠️ ЗАПОМИНАЕМ, ЧТО ИМЕННО УДАЛЯЕМ, ДО УДАЛЕНИЯ.
+    //
+    // Пины в этом приложении ОБЩИЕ: они переживают переключение подписки, и в
+    // одном списке спокойно лежат серверы из разных подписок (для того и
+    // заведён значок «чужая подписка», `foreignSubscriptionOf`). А чистка по
+    // галочке делала `_pinned.clear()` — то есть удаление ОДНОЙ подписки
+    // сносило закреплённые серверы ВСЕХ остальных. Пользователь соглашался
+    // убрать «закреплённые серверы этой подписки», а терял чужие, ничем не
+    // связанные с удаляемой. Жалоба владельца 18.08.2026.
+    final removed = _profiles.where((p) => p.id == _activeId).toList();
+    final removedLinks = <String>{
+      for (final p in removed) ...p.serverLinks,
+    };
     _profiles.removeWhere((p) => p.id == _activeId);
+    // ⚠️ ВЫЧИТАЕМ ТО, ЧТО ЕСТЬ И В ОСТАВШИХСЯ. Один и тот же сервер вполне
+    // может лежать в двух подписках сразу — тогда он не осиротел, и снимать
+    // с него закрепление не за что. Тот же принцип, что в индексе владельцев.
+    for (final p in _profiles) {
+      removedLinks.removeAll(p.serverLinks);
+    }
     final next = _profiles.isNotEmpty ? _profiles.first : null;
     _activeId = next?.id;
     await _saveSubscriptions();
@@ -1312,8 +1330,7 @@ class AppState extends ChangeNotifier {
           .whereType<VpnServer>()
           .toList();
       if (removePinned) {
-        _pinned.clear();
-        await _pinnedStore.save(const []);
+        await _dropPinnedFor(removedLinks);
       }
       _rebuild();
       await _persist();
@@ -1327,6 +1344,15 @@ class AppState extends ChangeNotifier {
     _info = SubscriptionInfo.empty;
     _lastSync = null;
     if (removePinned) {
+      // ⚠️ ПОСЛЕДНЯЯ ПОДПИСКА — СЛУЧАЙ ОСОБЫЙ, И АСИММЕТРИЯ ЗДЕСЬ НАМЕРЕННАЯ.
+      //
+      // Жалоба владельца была про МУЛЬТИподписку: удаление одной уносило
+      // закреплённые серверы других. Когда других не осталось, уносить не у
+      // кого — и «убрать закреплённые» значит ровно то, что написано на
+      // галочке: список должен опустеть целиком, вместе с правками и
+      // конфигами панели. Оставлять здесь пины, не принадлежащие ни одной
+      // подписке, значило бы, что человек согласился очистить список, а он
+      // остался непустым и необъяснимым.
       _pinned.clear();
       await _pinnedStore.save(const []);
       _overrides.clear();
@@ -1339,6 +1365,30 @@ class AppState extends ChangeNotifier {
     AppLog.i('Подписка удалена'
         '${removePinned ? " вместе с закреплёнными" : ""}');
     notifyListeners();
+  }
+
+  /// Снять закрепление и правки ТОЛЬКО с перечисленных серверов.
+  ///
+  /// ⚠️ Отдельным методом, потому что оба пути удаления подписки (осталась
+  /// другая / не осталось ни одной) раньше расходились: один чистил пины, другой
+  /// пины И правки. Расхождение здесь означает, что правка сервера переживает
+  /// удаление в одном случае и пропадает в другом — а пользователь этой разницы
+  /// не выбирал.
+  Future<void> _dropPinnedFor(Set<String> links) async {
+    if (links.isEmpty) return;
+    final before = _pinned.length;
+    _pinned.removeWhere((s) => links.contains(s.rawLink));
+    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    // Правки (override) ключуются по ключу сервера, а не по ссылке.
+    final keys = <String>{
+      for (final l in links) ShareLinkParser.tryParse(l)?.key ?? '',
+    }..remove('');
+    if (keys.isNotEmpty) {
+      _overrides.removeWhere((k, _) => keys.contains(k));
+      await _overridesStore.save(_overrides);
+    }
+    AppLog.i('Снято закреплений: ${before - _pinned.length} '
+        '(закреплённые серверы других подписок не тронуты)');
   }
 
   /// Оставить в сторе конфигов панели только то, что принадлежит серверам,

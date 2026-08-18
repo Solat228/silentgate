@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">Collapse</string>
     <string name="vpn_expand">Expand</string>
+    <string name="vpn_always_on_no_session">Always-on VPN: connect once manually first</string>
 </resources>

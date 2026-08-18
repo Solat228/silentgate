@@ -327,10 +327,53 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 return START_NOT_STICKY
             }
             else -> {
-                val config = intent?.getStringExtra(EXTRA_CONFIG)
+                // ⚠️ ПУСТОЙ КОНФИГ — ЭТО НОРМАЛЬНЫЙ СТАРТ ОТ СИСТЕМЫ, А НЕ ОШИБКА.
+                //
+                // При включённой «Постоянной VPN» Android поднимает сервис сам:
+                // после перезагрузки, до разблокировки экрана, и конфига в
+                // интенте нет по определению — система его не знает. Раньше
+                // ветка ниже просто гасила сервис с «Пустой конфиг», то есть
+                // постоянная VPN не работала ВООБЩЕ. А приложение при этом само
+                // предлагает её включить; с галочкой «блокировать без VPN»
+                // телефон оставался без интернета после каждой перезагрузки —
+                // и починить это можно было только руками, из настроек системы.
+                var config = intent?.getStringExtra(EXTRA_CONFIG)
+                var xrayRestored: String? = null
                 if (config.isNullOrBlank()) {
-                    lastError = "Пустой конфиг"
+                    val saved = loadSessionForAlwaysOn()
+                    if (saved != null) {
+                        config = saved.first
+                        xrayRestored = saved.second
+                        Log.i(logTag, "Постоянная VPN: поднимаю сессию из сохранённого конфига")
+                    }
+                }
+                if (config.isNullOrBlank()) {
+                    // Сохранённой сессии нет — значит успешного подключения на
+                    // этом устройстве ещё не было. Восстанавливать нечего.
+                    //
+                    // ⚠️ УВЕДОМЛЕНИЕ ПОКАЗЫВАЕМ ДАЖЕ РАДИ НЕМЕДЛЕННОЙ ОСТАНОВКИ.
+                    // Система запускает нас через `startForegroundService`, и
+                    // контракт требует показать уведомление в первые секунды —
+                    // ИНАЧЕ ANDROID УБИВАЕТ ПРОЦЕСС с
+                    // `RemoteServiceException: Context.startForegroundService()
+                    // did not then call Service.startForeground()`. Поймано
+                    // прогоном на эмуляторе 18.08.2026: ветка отказа звала
+                    // `stopSelf()` напрямую, и вместо понятного сообщения
+                    // пользователь получал падение приложения — при этом ровно
+                    // в том случае, когда постоянная VPN включена, а сессии
+                    // ещё нет, то есть после первой же перезагрузки телефона.
+                    runCatching {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            buildNotification(
+                                strings().getString(R.string.vpn_always_on_no_session)),
+                        )
+                    }
+                    lastError = "Постоянная VPN: нет сохранённой сессии — подключитесь один раз вручную"
                     notifyState()
+                    // Снимаем уведомление вместе с сервисом: висящее «нет
+                    // сессии» после ухода сервиса — мусор в шторке.
+                    stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
                     return START_NOT_STICKY
                 }
@@ -352,7 +395,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                         )
                     }
                 }
-                val xray = intent.getStringExtra(EXTRA_XRAY_CONFIG)
+                val xray = intent?.getStringExtra(EXTRA_XRAY_CONFIG) ?: xrayRestored
                 work.execute {
                     // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
                     //
@@ -467,6 +510,55 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
     }
 
+    // ── Постоянная VPN: сохранённая сессия ────────────────────────────────────
+    //
+    // ⚠️ ЗАЧЕМ ВООБЩЕ ХРАНИТЬ КОНФИГ НА ДИСКЕ. При always-on систему не волнует
+    // наше приложение: она стартует VpnService сама, после перезагрузки и до
+    // разблокировки экрана. Спросить конфиг у Flutter в этот момент нельзя —
+    // изолята нет, а поднимать его ради этого значит тянуть весь UI-движок в
+    // фон на старте телефона. Файл рядом с остальными данными приложения
+    // дешевле и надёжнее.
+    //
+    // ⚠️ ЭТО СЕКРЕТ. Внутри — учётные данные серверов и пароль локального
+    // прокси. Кладём в приватный каталог приложения (`filesDir`), который
+    // песочница Android закрывает от других программ, — туда же, где уже лежат
+    // подписки. Наружу (в кэш, на общий накопитель, в резервную копию) не
+    // выносим.
+    private fun alwaysOnDir() = filesDir.resolve("always_on").also { it.mkdirs() }
+
+    private fun saveSessionForAlwaysOn(configJson: String, xrayConfigJson: String?) {
+        runCatching {
+            val dir = alwaysOnDir()
+            dir.resolve("session.json").writeText(configJson)
+            val xrayFile = dir.resolve("xray.json")
+            // ⚠️ ОТСУТСТВИЕ Xray — ЭТО ТОЖЕ СОСТОЯНИЕ, И ЕГО НАДО ЗАПИСАТЬ.
+            // Обычный VLESS поднимает только sing-box, и файла быть не должно.
+            // Оставить прошлый — значит на следующей загрузке поднять ядро от
+            // ДРУГОГО сервера: сессия сборная, туннель ведёт не туда, куда
+            // показывает интерфейс.
+            if (xrayConfigJson.isNullOrBlank()) {
+                if (xrayFile.exists()) xrayFile.delete()
+            } else {
+                xrayFile.writeText(xrayConfigJson)
+            }
+        }.onFailure { Log.w(logTag, "Не удалось сохранить сессию для постоянной VPN: $it") }
+    }
+
+    /// Конфиг последней УСПЕШНОЙ сессии и конфиг Xray к нему (или null).
+    private fun loadSessionForAlwaysOn(): Pair<String, String?>? = runCatching {
+        val dir = alwaysOnDir()
+        val session = dir.resolve("session.json")
+        if (!session.exists()) return@runCatching null
+        val text = session.readText()
+        if (text.isBlank()) return@runCatching null
+        val xrayFile = dir.resolve("xray.json")
+        val xray = if (xrayFile.exists()) xrayFile.readText().takeIf { it.isNotBlank() } else null
+        Pair(text, xray)
+    }.getOrElse {
+        Log.w(logTag, "Не удалось прочитать сохранённую сессию: $it")
+        null
+    }
+
     private fun startTunnel(configJson: String, xrayConfigJson: String?) =
         synchronized(lifecycleLock) { startTunnelLocked(configJson, xrayConfigJson) }
 
@@ -539,6 +631,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
             running = true
             lastError = null
+            // ⚠️ КОНФИГ СОХРАНЯЕМ ПОСЛЕ УСПЕХА — ради «Постоянной VPN».
+            // Систему интересует не наше приложение: при always-on она стартует
+            // сервис САМА (после перезагрузки, до разблокировки экрана) и НЕ
+            // передаёт конфиг. Без сохранённой копии восстанавливать нечего.
+            // Пишем только то, что реально поднялось: сохранять заведомо битый
+            // конфиг значит обречь каждую загрузку телефона на ту же ошибку.
+            saveSessionForAlwaysOn(configJson, xrayConfigJson)
             // Новая сессия — признак прошлой остановки сбрасываем, иначе
             // следующее падение ядра выдало бы себя за нажатие пользователя.
             stoppedByUser = false

@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">Contraer</string>
     <string name="vpn_expand">Expandir</string>
+    <string name="vpn_always_on_no_session">VPN permanente: conéctate una vez manualmente</string>
 </resources>

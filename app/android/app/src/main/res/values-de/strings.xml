@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">Einklappen</string>
     <string name="vpn_expand">Ausklappen</string>
+    <string name="vpn_always_on_no_session">Dauerhaftes VPN: zuerst einmal manuell verbinden</string>
 </resources>

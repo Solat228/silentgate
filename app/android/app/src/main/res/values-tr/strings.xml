@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">Daralt</string>
     <string name="vpn_expand">Genişlet</string>
+    <string name="vpn_always_on_no_session">Sürekli VPN: önce bir kez elle bağlanın</string>
 </resources>

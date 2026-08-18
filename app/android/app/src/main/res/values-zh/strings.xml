@@ -18,4 +18,5 @@
     <!-- Кнопка на самом уведомлении: свернуть в одну строку и обратно. -->
     <string name="vpn_collapse">收起</string>
     <string name="vpn_expand">展开</string>
+    <string name="vpn_always_on_no_session">始终开启的 VPN：请先手动连接一次</string>
 </resources>
