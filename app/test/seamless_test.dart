@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/platform/app_log.dart';
 import 'package:silentgate/core/net/api_ports.dart';
 import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
@@ -785,6 +786,73 @@ void main() {
               captureMode: CaptureMode.systemProxy, killSwitch: true)),
           isTrue,
           reason: 'kill switch держит захват в любом режиме — это его работа');
+    });
+  });
+
+  group('Журнал не молчит об отключении', () {
+    // ⚠️ Найдено прогоном на эмуляторе 18.08.2026: подключение писалось,
+    // отключение — нет, ни на одной платформе. В отчёте поддержки намеренное
+    // выключение и смерть туннеля выглядели одинаково — журнал просто
+    // обрывался. Ту же беду уже чинили для перезапусков.
+    late Directory logDir;
+
+    setUp(() async {
+      logDir = Directory.systemTemp.createTempSync('sg_log_');
+      await AppLog.useFileForTest(
+          '${logDir.path}${Platform.pathSeparator}app.log');
+    });
+
+    tearDown(() async {
+      await AppLog.resetFileForTest();
+      try {
+        logDir.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    Future<String> logText() async {
+      final f = File('${logDir.path}${Platform.pathSeparator}app.log');
+      return f.existsSync() ? f.readAsStringSync() : '';
+    }
+
+    test('⚠️ отключение живого канала попадает в журнал', () async {
+      final e = _FakeEngine();
+      final s = _settings();
+      await e.connectWith('{}', ConnectionOptions(settings: s), [_a]);
+      e.markConnected();
+      await e.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(await logText(), contains('Отключение по команде пользователя'));
+    });
+
+    test('холостое отключение журнал не засоряет', () async {
+      // Вызов приходит и при закрытии приложения, и из `--cleanup`.
+      final e = _FakeEngine();
+      await e.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      expect(await logText(), isNot(contains('Отключение по команде')));
+    });
+  });
+  group('Смена СПОСОБА ЗАХВАТА не идёт бесшовным путём', () {
+    // ⚠️ Найдено вторым кругом ревью 18.08.2026. Бесшовная ветка выбиралась по
+    // одному флагу `seamlessServerSwitch`, а «Способ захвата» — тоже причина
+    // переподключения. Переход TUN → «Только прокси» оставлял ЖИВОЙ туннель на
+    // всю новую сессию: человек считает, что машина целиком мимо VPN, а весь
+    // её трафик по-прежнему заходит в туннель. Обратный переход оставлял
+    // запись WinINET на локальный порт.
+
+    test('⚠️ ГЛАВНОЕ: живого туннеля нет — удерживать нечего', () {
+      final e = _FakeEngine();
+      expect(e.canKeepCaptureFor(_settings()), isFalse,
+          reason: 'база не знает про захват и обязана отключаться целиком');
+    });
+
+    test('другая платформа отвечает «нет» по умолчанию', () {
+      // Страховка от разъезда платформ: тот, кто не переопределил метод, не
+      // получает бесшовный путь молча.
+      final e = _FakeEngine();
+      for (final m in CaptureMode.values) {
+        expect(e.canKeepCaptureFor(AppSettings(captureMode: m)), isFalse);
+      }
     });
   });
 

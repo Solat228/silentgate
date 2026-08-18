@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
@@ -63,6 +64,9 @@ class _FakeEngine implements VpnEngine {
 
   @override
   Future<void> disconnectKeepingCapture() async {}
+
+  @override
+  bool canKeepCaptureFor(AppSettings next) => false;
   @override
   Future<void> onNetworkChanged() async {}
   @override

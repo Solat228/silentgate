@@ -69,6 +69,9 @@ class _FakeEngine implements VpnEngine {
 
   @override
   Future<void> disconnectKeepingCapture() async {}
+
+  @override
+  bool canKeepCaptureFor(AppSettings next) => false;
   @override
   Future<void> onNetworkChanged() async {}
   @override

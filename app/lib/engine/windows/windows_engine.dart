@@ -173,6 +173,19 @@ class WindowsEngine extends VpnEngineBase {
   @override
   bool get liveCaptureKept => _tunActive;
 
+  /// Удержать захват можно, только если он НЕ МЕНЯЕТСЯ: живой туннель и новая
+  /// сессия — оба чистый TUN.
+  ///
+  /// ⚠️ `_proxySet` проверяется отдельно: в смешанном режиме вместе с адаптером
+  /// удержится и запись WinINET на локальный порт, а новая сессия могла бы
+  /// поднять этот порт уже с другим паролем — 407 на каждый запрос.
+  @override
+  bool canKeepCaptureFor(AppSettings next) =>
+      _tunActive &&
+      !_proxySet &&
+      next.captureMode == CaptureMode.tun &&
+      !next.alsoSetSystemProxy;
+
   @override
   bool systemProxyModeFor(ConnectionOptions options) =>
       options.captureMode == CaptureMode.systemProxy ||

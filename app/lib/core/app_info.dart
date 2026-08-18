@@ -5,7 +5,7 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.6.5';
+  static const version = '1.6.6';
 
   /// Метка платформы в User-Agent. Панель Remnawave сопоставляет только ИМЯ
   /// (правило `user-agent CONTAINS SilentGate`), поэтому суффикс на выбор
