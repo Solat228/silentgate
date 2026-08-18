@@ -8,6 +8,7 @@ import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/probe/tunnel_health.dart';
+import 'package:silentgate/core/net/speed_test.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
@@ -853,6 +854,30 @@ void main() {
       for (final m in CaptureMode.values) {
         expect(e.canKeepCaptureFor(AppSettings(captureMode: m)), isFalse);
       }
+    });
+  });
+
+  group('Предупреждение о трафике не врёт', () {
+    // ⚠️ Найдено ревью 18.08.2026. Окно считало объём по `speedTestSize` —
+    // настройке ТОЧНОСТИ РУЧНОГО замера одного сервера, — а автонастройка
+    // всегда качает лёгкую пробу. При выбранных 20 МБ окно обещало 220 МБ
+    // вместо реальных 55. Предупреждение о расходе, которое врёт вчетверо,
+    // хуже отсутствующего: после него не верят и остальным цифрам.
+
+    test('⚠️ ГЛАВНОЕ: цифра не зависит от «объёма пробы» на экране сервера', () {
+      const light = AppSettings(speedTestSize: SpeedTestSize.light);
+      const full = AppSettings(speedTestSize: SpeedTestSize.full);
+      expect(full.speedTestTrafficMb, light.speedTestTrafficMb,
+          reason: 'автонастройка обе настройки качает одинаково — лёгкой пробой');
+    });
+
+    test('цифра растёт вместе с числом серверов', () {
+      const three = AppSettings(speedTopN: 3);
+      const ten = AppSettings(speedTopN: 10);
+      expect(ten.speedTestTrafficMb, greaterThan(three.speedTestTrafficMb));
+      // +1 — замер собственного канала, он идёт мимо VPN, но стоит столько же.
+      expect(ten.speedTestTrafficMb,
+          (10 + 1) * AppSettings.autoConfigSpeedSize.bytes ~/ 1000000);
     });
   });
 
