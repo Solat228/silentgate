@@ -90,8 +90,12 @@ void main() {
       }
     });
 
-    test('без соединения — просто имя приложения', () {
-      expect(TrayWindow.composeTooltip(), AppInfo.name);
+    test('без соединения — имя приложения и версия', () {
+      // ⚠️ Версия в подсказке появилась намеренно (просьба владельца, 18.08.2026):
+      // у свёрнутого в трей приложения это единственное место, где её видно —
+      // заголовок окна скрыт вместе с окном. Раньше здесь ждали одного имени.
+      expect(TrayWindow.composeTooltip(), TrayWindow.nameWithVersion);
+      expect(TrayWindow.composeTooltip(), startsWith(AppInfo.name));
     });
 
     test('удержанный трафик перебивает сервер и скорость', () {

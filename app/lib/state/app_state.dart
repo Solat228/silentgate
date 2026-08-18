@@ -1165,6 +1165,30 @@ class AppState extends ChangeNotifier {
     await _saveSubscriptions();
   }
 
+  /// Запомнить конфиги панели, приехавшие вместе с подпиской.
+  ///
+  /// ⚠️ ОБЩАЯ ТОЧКА ДЛЯ ОБОИХ ПУТЕЙ ЗАГРУЗКИ — активной подписки
+  /// ([importSource]) и «тихого» обновления соседней ([_refreshQuietly]).
+  /// Конфиги ключуются САМИМ СЕРВЕРОМ и общие для всех подписок, поэтому
+  /// сохраняются в любом случае — устарел ответ или нет, чей он или не чей.
+  /// Без этого шага у неактивной подписки после обновления пропал бы профиль
+  /// «Авто …»: ссылка `panel://…` не разбирается ничем, весь конфиг живёт
+  /// только здесь.
+  Future<({int withOutbound, int withFullConfig})> _absorbPanelConfigs(
+      List<VpnServer> servers) async {
+    var withOutbound = 0, withFullConfig = 0;
+    for (final s in servers) {
+      final ob = s.rawOutboundJson;
+      final full = s.rawPanelConfig;
+      if ((ob ?? '').isEmpty && (full ?? '').isEmpty) continue;
+      if ((ob ?? '').isNotEmpty) withOutbound++;
+      if ((full ?? '').isNotEmpty) withFullConfig++;
+      _panelConfigs[s.key] = PanelConfig(outbound: ob, fullConfig: full);
+    }
+    await _panelOutboundsStore.save(_panelConfigs);
+    return (withOutbound: withOutbound, withFullConfig: withFullConfig);
+  }
+
   /// Запомнить/обновить профиль по итогам загрузки подписки.
   Future<void> _upsertProfile(String url) async {
     final id = SubscriptionProfile.idFor(url);
@@ -1293,10 +1317,67 @@ class AppState extends ChangeNotifier {
   bool get hasPinned => _pinned.isNotEmpty;
   int get pinnedCount => _pinned.length;
 
+  /// Ссылки серверов, которые ОСИРОТЕЮТ при удалении подписки [id]: её
+  /// собственные минус всё, что есть в остающихся.
+  ///
+  /// ⚠️ ОДНА АРИФМЕТИКА НА ВОПРОС И НА ДЕЙСТВИЕ. Диалог спрашивает «убрать и
+  /// закреплённые?», а удаление их убирает — считай они разное, человек
+  /// соглашался бы на одно, а терял другое. Ровно так и было до 18.08.2026:
+  /// вопрос показывал ВСЕ закрепления, включая чужие.
+  /// ⚠️ СРАВНИВАЕМ ПО КЛЮЧАМ СЕРВЕРОВ, А НЕ ПО СЫРЫМ ССЫЛКАМ.
+  ///
+  /// Ссылка в профиле лежит такой, какой пришла от панели, а закреплённый
+  /// сервер — уже канонизованным (`ShareLinkParser.tryParse` приводит порядок
+  /// параметров и регистр). Сверка строк давала ЛОЖНЫЙ НОЛЬ: осиротевшие ссылки
+  /// находились, а в списке закреплённых им ничего не соответствовало — то есть
+  /// удаление подписки не снимало её же закрепления, а диалог показывал «на
+  /// кону 0» и прятал галочку. Ключ — то самое каноническое имя, которым сервер
+  /// опознаётся во всём остальном приложении (пины, правки, пинги).
+  Set<String> _orphanedKeysOf(String? id) {
+    String? keyOf(String link) => ShareLinkParser.tryParse(link)?.key;
+    final keys = <String>{
+      for (final p in _profiles)
+        if (p.id == id)
+          for (final l in p.serverLinks) ...[if (keyOf(l) != null) keyOf(l)!],
+    };
+    for (final p in _profiles) {
+      if (p.id == id) continue;
+      for (final l in p.serverLinks) {
+        final k = keyOf(l);
+        if (k != null) keys.remove(k);
+      }
+    }
+    return keys;
+  }
+
+  /// Сколько закреплённых серверов РЕАЛЬНО потеряет пользователь, если при
+  /// удалении подписки [id] поставит галочку «вместе с закреплёнными».
+  ///
+  /// Ноль означает «галочку показывать не за чем»: удаляемая подписка не
+  /// владеет ни одним закреплённым сервером, и предлагать их убрать —
+  /// повторять ту самую жалобу («предлагает удалить закреплённые серверы
+  /// ДРУГОЙ подписки»), только словами вместо действия.
+  ///
+  /// [id] == null — активная подписка (поведение карточки по умолчанию).
+  int pinnedAtRiskOf(String? id) {
+    final target = id ?? _activeId;
+    // Последняя подписка — случай особый: там чистка ПОЛНАЯ (см.
+    // [deleteSubscription]), и на кону весь список закреплённых.
+    final hasOthers = _profiles.any((p) => p.id != target);
+    if (!hasOthers) return _pinned.length;
+    final keys = _orphanedKeysOf(target);
+    if (keys.isEmpty) return 0;
+    return _pinned.where((s) => keys.contains(s.key)).length;
+  }
+
   /// Удалить подписку. [removePinned] — заодно убрать закреплённые серверы:
   /// они переживают подписку, и без явного вопроса пользователь не понимает,
   /// почему список не опустел.
-  Future<void> deleteSubscription({bool removePinned = false}) async {
+  ///
+  /// [id] — какую именно удалять; null = активную (так зовёт карточка). Явный
+  /// id нужен меню переключателя: там действия относятся к строке, на которой
+  /// нажали, а не к той подписке, которая сейчас открыта.
+  Future<void> deleteSubscription({bool removePinned = false, String? id}) async {
     // ⚠️ ЗАПОМИНАЕМ, ЧТО ИМЕННО УДАЛЯЕМ, ДО УДАЛЕНИЯ.
     //
     // Пины в этом приложении ОБЩИЕ: они переживают переключение подписки, и в
@@ -1306,17 +1387,37 @@ class AppState extends ChangeNotifier {
     // сносило закреплённые серверы ВСЕХ остальных. Пользователь соглашался
     // убрать «закреплённые серверы этой подписки», а терял чужие, ничем не
     // связанные с удаляемой. Жалоба владельца 18.08.2026.
-    final removed = _profiles.where((p) => p.id == _activeId).toList();
-    final removedLinks = <String>{
-      for (final p in removed) ...p.serverLinks,
-    };
-    _profiles.removeWhere((p) => p.id == _activeId);
+    final target = id ?? _activeId;
+    // Строку меню могли нажать по устаревшему списку (подписку успели удалить
+    // из другого места) — тогда удалять нечего, и трогать активную нельзя.
+    if (id != null && !_profiles.any((p) => p.id == id)) return;
+    final removed = _profiles.where((p) => p.id == target).toList();
     // ⚠️ ВЫЧИТАЕМ ТО, ЧТО ЕСТЬ И В ОСТАВШИХСЯ. Один и тот же сервер вполне
     // может лежать в двух подписках сразу — тогда он не осиротел, и снимать
     // с него закрепление не за что. Тот же принцип, что в индексе владельцев.
-    for (final p in _profiles) {
-      removedLinks.removeAll(p.serverLinks);
+    final removedKeys = _orphanedKeysOf(target);
+    _profiles.removeWhere((p) => p.id == target);
+
+    // ── Удалили НЕ ту подписку, что открыта ──────────────────────────────
+    // Экран остаётся на месте целиком: список серверов, карточка, логотип и
+    // выбранный сервер принадлежат активной подписке, а её не трогали. Раньше
+    // этой ветки не было вовсе — удаление всегда било по активной, и пункт
+    // меню на чужой строке снёс бы не то, что показано в строке.
+    if (target != _activeId && _profiles.any((p) => p.id == _activeId)) {
+      await _saveSubscriptions();
+      if (removePinned) {
+        await _dropPinnedFor(removedKeys);
+      }
+      // Пины могли убыть — список на экране пересобираем, но активную
+      // подписку и её серверы оставляем как есть.
+      _rebuild();
+      await _persist();
+      AppLog.i('Удалена подписка «${removed.isEmpty ? target : removed.first.safeTitle}»'
+          ' (активная не менялась)');
+      notifyListeners();
+      return;
     }
+
     final next = _profiles.isNotEmpty ? _profiles.first : null;
     _activeId = next?.id;
     await _saveSubscriptions();
@@ -1330,7 +1431,7 @@ class AppState extends ChangeNotifier {
           .whereType<VpnServer>()
           .toList();
       if (removePinned) {
-        await _dropPinnedFor(removedLinks);
+        await _dropPinnedFor(removedKeys);
       }
       _rebuild();
       await _persist();
@@ -1374,19 +1475,16 @@ class AppState extends ChangeNotifier {
   /// пины И правки. Расхождение здесь означает, что правка сервера переживает
   /// удаление в одном случае и пропадает в другом — а пользователь этой разницы
   /// не выбирал.
-  Future<void> _dropPinnedFor(Set<String> links) async {
-    if (links.isEmpty) return;
+  Future<void> _dropPinnedFor(Set<String> keys) async {
+    if (keys.isEmpty) return;
     final before = _pinned.length;
-    _pinned.removeWhere((s) => links.contains(s.rawLink));
+    // Ключ, а не сырая ссылка: закреплённый сервер хранится канонизованным, и
+    // сверка строк молча не находила ничего (см. `_orphanedKeysOf`).
+    _pinned.removeWhere((s) => keys.contains(s.key));
     await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
-    // Правки (override) ключуются по ключу сервера, а не по ссылке.
-    final keys = <String>{
-      for (final l in links) ShareLinkParser.tryParse(l)?.key ?? '',
-    }..remove('');
-    if (keys.isNotEmpty) {
-      _overrides.removeWhere((k, _) => keys.contains(k));
-      await _overridesStore.save(_overrides);
-    }
+    // Правки (override) ключуются тем же ключом сервера.
+    _overrides.removeWhere((k, _) => keys.contains(k));
+    await _overridesStore.save(_overrides);
     AppLog.i('Снято закреплений: ${before - _pinned.length} '
         '(закреплённые серверы других подписок не тронуты)');
   }
@@ -1594,18 +1692,9 @@ class AppState extends ChangeNotifier {
         url,
         deviceHeaders: await _deviceHeaders(),
       );
-      // Панельные конфиги ключуются САМИМ СЕРВЕРОМ и общие для всех подписок —
-      // их сохраняем в любом случае, устарел ответ или нет.
-      var withOutbound = 0, withFullConfig = 0;
-      for (final s in result.servers) {
-        final ob = s.rawOutboundJson;
-        final full = s.rawPanelConfig;
-        if ((ob ?? '').isEmpty && (full ?? '').isEmpty) continue;
-        if ((ob ?? '').isNotEmpty) withOutbound++;
-        if ((full ?? '').isNotEmpty) withFullConfig++;
-        _panelConfigs[s.key] = PanelConfig(outbound: ob, fullConfig: full);
-      }
-      await _panelOutboundsStore.save(_panelConfigs);
+      final absorbed = await _absorbPanelConfigs(result.servers);
+      final withOutbound = absorbed.withOutbound;
+      final withFullConfig = absorbed.withFullConfig;
 
       if (_activeId != startedActive) {
         // Пользователь ушёл на другую подписку. Данные не выбрасываем — кладём
@@ -1919,15 +2008,51 @@ class AppState extends ChangeNotifier {
     }());
   }
 
-  Future<void> refreshSubscription() async {
+  /// Идёт ли прямо сейчас обновление подписки [id] — активной или соседней.
+  ///
+  /// Отдельный вопрос вместо флага [refreshing]: тот знает только про активную,
+  /// а обновлять из меню переключателя можно любую строку.
+  bool isRefreshingSubscription(String id) =>
+      _quietRefreshing.contains(id) || (_refreshing && id == _activeId);
+
+  /// Подписки, которые обновляются «тихо» (не активные) — по id.
+  final Set<String> _quietRefreshing = {};
+
+  /// Адрес подписки [id], если он у неё есть.
+  ///
+  /// ⚠️ В НЁМ ЛЕЖИТ ТОКЕН ДОСТУПА. Отдаётся ровно для двух дел: копирования по
+  /// просьбе человека и открытия его же страницы в браузере. В подсказки,
+  /// журнал и отчёт поддержки он не попадает — там имя подписки
+  /// ([SubscriptionProfile.safeTitle]).
+  String? subscriptionUrlOf(String id) {
+    for (final p in _profiles) {
+      if (p.id == id) return p.url.isEmpty ? null : p.url;
+    }
+    return null;
+  }
+
+  /// Обновить подписку [id] (null = активную).
+  ///
+  /// Возвращает `true`, если данные приехали. Активная подписка о неудаче
+  /// говорит сама (баннер ошибки), а про соседнюю сказать больше некому —
+  /// её обновление ничего на экране не двигает.
+  Future<bool> refreshSubscription({String? id}) async {
+    if (id != null && id != _activeId) {
+      for (final p in _profiles) {
+        if (p.id == id) return _refreshQuietly(p);
+      }
+      // Подписки уже нет (удалили из другого места) — обновлять нечего, и
+      // подменять её активной нельзя: человек просил не эту.
+      return false;
+    }
     final url = _subscriptionUrl;
-    if (url == null) return;
+    if (url == null) return false;
     // Второе обновление поверх идущего пишет в те же поля: автообновление по
     // таймеру легко наложится на нажатую руками кнопку. Кнопка на время работы
     // гаснет, а таймер о ней не знает — гейт нужен здесь.
     if (_refreshing) {
       AppLog.i('Обновление подписки уже идёт — повторный запуск пропущен');
-      return;
+      return false;
     }
     // #1 — видимый признак работы: кнопка показывает крутилку, по завершении
     // выводится сводка «N серверов · +2 · −1».
@@ -1938,8 +2063,60 @@ class AppState extends ChangeNotifier {
     try {
       await importSource(url);
       if (_error != null) AppLog.e('Обновление подписки: $_error');
+      return _error == null;
     } finally {
       _refreshing = false;
+      notifyListeners();
+    }
+  }
+
+  /// Обновить подписку, которая сейчас НЕ активна, — не трогая экран.
+  ///
+  /// ⚠️ ЧЕРЕЗ [importSource] ЭТОГО СДЕЛАТЬ НЕЛЬЗЯ. Он по построению ДЕЛАЕТ
+  /// загруженную подписку активной (`_upsertProfile` ставит `_activeId`) и
+  /// подменяет собой весь экран: список серверов, карточку, логотип. Человек,
+  /// попросивший обновить соседнюю строку в меню, получил бы смену канала — а
+  /// при живом туннеле ещё и плашку «переподключитесь».
+  ///
+  /// Данные едут туда же, куда их кладёт [importSource], опоздавший к
+  /// переключению подписки: в профиль на диске ([_updateProfileQuietly]).
+  Future<bool> _refreshQuietly(SubscriptionProfile p) async {
+    if (p.url.isEmpty) return false;
+    // Тот же гейт, что у активной: два ответа подряд пишут в один профиль.
+    if (_quietRefreshing.contains(p.id)) {
+      AppLog.i('Обновление подписки «${p.safeTitle}» уже идёт — пропущено');
+      return false;
+    }
+    _quietRefreshing.add(p.id);
+    notifyListeners();
+    // ⚠️ В журнал — ИМЯ, а не адрес: в адресе подписки лежит токен, а журнал
+    // уезжает в отчёт поддержки.
+    AppLog.i('Обновление подписки «${p.safeTitle}» (не активной)…');
+    try {
+      final result =
+          await _subscription.fetch(p.url, deviceHeaders: await _deviceHeaders());
+      final absorbed = await _absorbPanelConfigs(result.servers);
+      // ⚠️ ИЩЕМ ПРОФИЛЬ ПО ЕГО СОБСТВЕННОМУ АДРЕСУ, а не по тому, куда увёл
+      // редирект: id профиля посчитан из первого, и по второму `_updateProfileQuietly`
+      // не нашёл бы ничего и молча выбросил бы ответ. Переезд подписки на новый
+      // адрес закрепляет ближайшее обновление её же в активном виде.
+      await _updateProfileQuietly(p.url, result.info, result.servers);
+      if ((result.movedTo ?? p.url) != p.url) {
+        AppLog.w('Подписка «${p.safeTitle}» отвечает с другого адреса — '
+            'новый адрес запомнится при обновлении её как активной');
+      }
+      AppLog.i('Подписка «${p.safeTitle}» обновлена: ${result.servers.length} '
+          'серверов (конфиг панели: ${absorbed.withOutbound}, '
+          'профилей «Авто»: ${absorbed.withFullConfig})');
+      return true;
+    } catch (e) {
+      // ⚠️ ОШИБКА НЕ ИДЁТ В `_error`. Красный баннер на экране относится к тому,
+      // что человек видит, — к АКТИВНОЙ подписке; отказ соседней объяснял бы
+      // ошибку не про то, что показано.
+      AppLog.w('Не удалось обновить подписку «${p.safeTitle}»: $e');
+      return false;
+    } finally {
+      _quietRefreshing.remove(p.id);
       notifyListeners();
     }
   }

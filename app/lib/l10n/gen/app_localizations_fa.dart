@@ -2880,4 +2880,43 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'برای تطبیق بر اساس نام فایل ضربه بزنید';
+
+  @override
+  String get srvTileCopyKey => 'کپی کلید';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'خارج از VPN: قانون تونل تفکیک‌شده «$rule» این دامنه را مستقیم می‌فرستد — سرویس با نشانی واقعی شما کار می‌کند.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'مسدود: قانون تونل تفکیک‌شده «$rule» این دامنه را ممنوع کرده — سرویس نه با VPN باز می‌شود و نه بدون آن.';
+  }
+
+  @override
+  String get subBarOpenSite => 'وب‌سایت';
+
+  @override
+  String get subBarOpenSiteHint => 'باز کردن صفحهٔ اشتراک در مرورگر';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'در حال به‌روزرسانی «$name»…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '«$name» به‌روزرسانی شد';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'به‌روزرسانی «$name» ناموفق بود';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'اشتراک «$name» حذف شود؟';
+  }
 }

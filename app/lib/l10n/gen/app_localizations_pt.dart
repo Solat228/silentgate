@@ -2917,4 +2917,43 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get splitDeadPathFix =>
       'Toque para corresponder pelo nome do ficheiro';
+
+  @override
+  String get srvTileCopyKey => 'Copiar chave';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Fora da VPN: a regra de túnel dividido “$rule” envia este domínio diretamente — o serviço usará o seu endereço real.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Bloqueado: a regra de túnel dividido “$rule” proíbe este domínio — o serviço não abrirá nem com nem sem VPN.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Site';
+
+  @override
+  String get subBarOpenSiteHint => 'Abrir a página da assinatura no navegador';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'Atualizando \"$name\"…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '\"$name\" atualizada';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'Não foi possível atualizar \"$name\"';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'Excluir a assinatura \"$name\"?';
+  }
 }

@@ -2920,4 +2920,44 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitDeadPathFix =>
       'Appuyez pour faire correspondre par nom de fichier';
+
+  @override
+  String get srvTileCopyKey => 'Copier la clé';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Hors VPN : la règle de tunnel divisé « $rule » envoie ce domaine en direct — le service utilisera votre adresse réelle.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Bloqué : la règle de tunnel divisé « $rule » interdit ce domaine — le service ne s’ouvrira ni avec ni sans VPN.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Site web';
+
+  @override
+  String get subBarOpenSiteHint =>
+      'Ouvrir la page d\'abonnement dans le navigateur';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'Actualisation de « $name »…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '« $name » mis à jour';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'Impossible de mettre à jour « $name »';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'Supprimer l\'abonnement « $name » ?';
+  }
 }

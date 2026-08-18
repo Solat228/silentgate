@@ -2882,4 +2882,43 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'اضغط للمطابقة حسب اسم الملف';
+
+  @override
+  String get srvTileCopyKey => 'نسخ المفتاح';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'خارج الشبكة الافتراضية: قاعدة النفق المُقسَّم «$rule» ترسل هذا النطاق مباشرةً — ستستخدم الخدمة عنوانك الحقيقي.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'محظور: قاعدة النفق المُقسَّم «$rule» تمنع هذا النطاق — لن تُفتح الخدمة سواء عبر الشبكة الافتراضية أو بدونها.';
+  }
+
+  @override
+  String get subBarOpenSite => 'الموقع';
+
+  @override
+  String get subBarOpenSiteHint => 'فتح صفحة الاشتراك في المتصفح';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'جارٍ تحديث «$name»…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return 'تم تحديث «$name»';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'تعذّر تحديث «$name»';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'حذف اشتراك «$name»؟';
+  }
 }

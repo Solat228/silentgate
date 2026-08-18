@@ -210,10 +210,14 @@ void main() {
 
   // ── Состояния ──────────────────────────────────────────────────────────────
 
-  testWidgets('состояния пинга не ломают высоту и не переполняют строку',
+  testWidgets('состояния пинга не ломают высоту и не переполняют столбик',
       (tester) async {
     // Каждое состояние — своя ветка `PingChip.build`; любая из них выше
     // [PingChip.chipHeight] снова распёрла бы столбик.
+    //
+    // ⚠️ Замер скорости здесь ОБЯЗАТЕЛЕН: компактной плашка бывает только в
+    // столбике. Без замера пинг рисуется крупным — это отдельный вид, и стерёг
+    // его отдельный файл (`test/ping_chip_layout_test.dart`).
     final cases = <String, PingResult>{
       'n/a': const PingResult(outcome: PingOutcome.failed),
       'таймаут': const PingResult(outcome: PingOutcome.timeout),
@@ -221,7 +225,7 @@ void main() {
           outcome: PingOutcome.ok, verification: PingVerification.pending),
     };
     for (final entry in cases.entries) {
-      await pumpTile(tester, ping: entry.value);
+      await pumpTile(tester, ping: entry.value, speed: speed);
       expect(find.text(entry.key), findsOneWidget,
           reason: 'состояние «${entry.key}» пропало из плашки');
       expect(tester.getSize(find.byType(PingChip)).height, PingChip.chipHeight);
@@ -231,29 +235,30 @@ void main() {
 
     // «Ещё не проверяли» — кружок, а не текст: он тоже обязан быть ростом с
     // плашку, иначе строка дёргается, когда результат появится.
-    await pumpTile(tester, ping: PingResult.untested);
+    await pumpTile(tester, ping: PingResult.untested, speed: speed);
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(tester.getSize(find.byType(PingChip)).height, PingChip.chipHeight);
 
     // «Проверяю прямо сейчас» — кружок прогресса того же роста.
-    await pumpTile(tester, ping: PingResult.testing);
+    await pumpTile(tester, ping: PingResult.testing, speed: speed);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(tester.getSize(find.byType(PingChip)).height, PingChip.chipHeight);
   });
 
-  testWidgets('прочерк вместо скорости у непрошедшего проверку — в том же строю',
+  testWidgets('у непрошедшего проверку плашки скорости нет вовсе',
       (tester) async {
     await pumpTile(tester,
         ping: const PingResult(outcome: PingOutcome.timeout));
 
-    // Замера нет и не будет: вместо пустоты прочерк (решение владельца).
-    expect(find.text('—'), findsOneWidget);
+    // ⚠️ ЗДЕСЬ ЖДАЛИ ПРОЧЕРК «—» — прежнее решение владельца, ОТМЕНЁННОЕ им
+    // 18.08.2026: «убери значок проверки скорости, если он не проводился».
+    // Прочерков в списке было большинство, и из-за них плашка пинга ужималась
+    // у всех строк подряд. Не возвращать.
+    expect(find.text('—'), findsNothing);
+    expect(find.byType(SpeedChip), findsNothing);
     final tile = tileRect(tester);
-    final pingRect = tester.getRect(find.byType(PingChip));
-    final dashRect = tester.getRect(find.byType(SpeedChip));
-    expect(pingRect.top, lessThan(dashRect.top));
-    expect(dashRect.bottom, lessThanOrEqualTo(tile.bottom));
-    expect(dashRect.height, PingChip.chipHeight);
+    expect(tester.getRect(find.byType(PingChip)).bottom,
+        lessThanOrEqualTo(tile.bottom));
     expect(tester.takeException(), isNull);
   });
 

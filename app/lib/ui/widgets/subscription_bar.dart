@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'app_toast.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n/text_direction.dart';
@@ -9,7 +7,6 @@ import '../../core/models/subscription_sync.dart';
 import '../../core/util/country_flag.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
-import '../settings_screen.dart';
 import 'flag_cell.dart';
 import 'subscription_avatar.dart';
 import 'subscription_switcher.dart';
@@ -128,14 +125,45 @@ class SubscriptionBar extends StatelessWidget {
                 ),
               Align(
                 alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 6)),
-                  icon: const Icon(Icons.support_agent, size: 16),
-                  label: Text(l.subBarSupport),
-                  // Кнопка «Поддержка» ВЕЗДЕ ведёт в настройки → раздел поддержки,
-                  // где объяснено, что будет сделано, и дана ссылка из конфига.
-                  onPressed: () => _openSupport(context),
+                // ⚠️ `Wrap`, А НЕ `Row`. Кнопок стало две, а подписи у нас на
+                // десяти языках и различаются в разы по длине: в узком окне
+                // `Row` дал бы «RenderFlex overflowed» (жёлто-чёрная полоса в
+                // отладке, обрезанная подпись в релизе). `Wrap` переносит
+                // вторую кнопку на следующую строку.
+                child: Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 6)),
+                      icon: const Icon(Icons.support_agent, size: 16),
+                      label: Text(l.subBarSupport),
+                      // Кнопка «Поддержка» ВЕЗДЕ ведёт в настройки → раздел
+                      // поддержки, где объяснено, что будет сделано, и дана
+                      // ссылка из конфига.
+                      onPressed: () => SubscriptionActions.openSupport(context),
+                    ),
+                    // ⚠️ КНОПКИ НЕТ, ЕСЛИ НЕТ ССЫЛКИ. Сервер, добавленный
+                    // руками (share-ссылка или свой JSON), подписки за собой не
+                    // имеет — открывать нечего, а кнопка, ведущая в никуда,
+                    // хуже отсутствующей.
+                    if ((state.subscriptionUrl ?? '').isNotEmpty)
+                      Tooltip(
+                        // ⚠️ В ПОДСКАЗКЕ АДРЕСА НЕТ: в нём токен доступа, а
+                        // карточку отправляют скриншотом в поддержку. Кнопка
+                        // просто открывает ту самую страницу, по которой
+                        // подписка и импортирована.
+                        message: l.subBarOpenSiteHint,
+                        child: TextButton.icon(
+                          style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 6)),
+                          icon: const Icon(Icons.public, size: 16),
+                          label: Text(l.subBarOpenSite),
+                          onPressed: () => SubscriptionActions.run(
+                              context, SubscriptionActions.site),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ],
@@ -148,12 +176,17 @@ class SubscriptionBar extends StatelessWidget {
   static String _date(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
-  /// «Поддержка» ведёт в настройки → раздел поддержки (везде одинаково).
-  void _openSupport(BuildContext context) {
-    Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const SettingsScreen(scrollToSupport: true)));
-  }
-
+  /// Меню карточки (кнопка ⋮ и ПКМ по карточке) — про АКТИВНУЮ подписку.
+  ///
+  /// ⚠️ Пункты и их исполнение общие с ПКМ-меню строки переключателя
+  /// ([SubscriptionActions]): одинаковые на вид действия обязаны и работать
+  /// одинаково. `profile` здесь не передаётся — это и означает «активная».
+  ///
+  /// ⚠️ «Добавить подписку» ЗДЕСЬ НЕТ — убрано по просьбе владельца как лишний
+  /// пункт. Добавление никуда не делось: кнопка «Импорт» стоит в шапке главного
+  /// экрана (`home_screen`, `l.homeImport`) и видна всегда, а на пустом
+  /// состоянии экран импорта открывается сам. Меню карточки — про ЭТУ подписку,
+  /// и заведение новой в нём чужое.
   Future<void> _menu(BuildContext context, Offset pos) async {
     final l = AppLocalizations.of(context);
     final state = context.read<AppState>();
@@ -161,100 +194,12 @@ class SubscriptionBar extends StatelessWidget {
     final action = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: [
-        _item('refresh', Icons.refresh, l.subBarRefresh),
-        // ⚠️ «Добавить подписку» ЗДЕСЬ НЕТ — убрано по просьбе владельца как
-        // лишний пункт. Добавление никуда не делось: кнопка «Импорт» стоит в
-        // шапке главного экрана (`home_screen`, `l.homeImport`) и видна
-        // всегда, а на пустом состоянии экран импорта открывается сам.
-        // Меню карточки — про ЭТУ подписку, и заведение новой в нём чужое.
-        _item('copy', Icons.copy, l.subBarCopyLink),
-        _item('support', Icons.support_agent, l.subBarSupport),
-        _item('delete', Icons.delete_outline, l.subBarDeleteSubscription),
-      ],
+      items: SubscriptionActions.menuItems(l,
+          hasUrl: (state.subscriptionUrl ?? '').isNotEmpty),
     );
-    switch (action) {
-      case 'refresh':
-        if (state.subscriptionUrl != null) state.refreshSubscription();
-        break;
-      case 'copy':
-        if (state.subscriptionUrl != null) {
-          await Clipboard.setData(ClipboardData(text: state.subscriptionUrl!));
-          if (context.mounted) {
-            AppToast.copied(context, message: l.subBarLinkCopied);
-          }
-        }
-        break;
-      case 'support':
-        if (context.mounted) _openSupport(context);
-        break;
-      case 'delete':
-        if (!context.mounted) return;
-        await _confirmDelete(context, state);
-        break;
-    }
+    if (action == null || !context.mounted) return;
+    await SubscriptionActions.run(context, action);
   }
-
-  /// #5 — закреплённые серверы переживают подписку, поэтому спрашиваем про них явно:
-  /// иначе после удаления список не пустеет и это выглядит как баг.
-  Future<void> _confirmDelete(BuildContext context, AppState state) async {
-    final l = AppLocalizations.of(context);
-    var alsoPinned = false;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (dctx) => StatefulBuilder(
-        builder: (dctx, setState) => AlertDialog(
-          title: Text(l.subBarDeleteConfirmTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(l.subBarDeleteConfirmBody),
-              if (state.hasPinned)
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  value: alsoPinned,
-                  onChanged: (v) => setState(() => alsoPinned = v ?? false),
-                  title: Text(l.subBarDeletePinned(state.pinnedCount)),
-                  subtitle: Text(l.subBarDeletePinnedHint),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(dctx, false),
-                child: Text(l.subBarCancel)),
-            FilledButton(
-                onPressed: () => Navigator.pop(dctx, true),
-                child: Text(l.subBarDelete)),
-          ],
-        ),
-      ),
-    );
-    if (ok == true) {
-      await state.deleteSubscription(removePinned: alsoPinned);
-      if (context.mounted) {
-        AppToast.show(context, l.subBarSubscriptionDeleted,
-            kind: ToastKind.success);
-      }
-    }
-  }
-
-  static PopupMenuItem<String> _item(String v, IconData icon, String text) =>
-      PopupMenuItem(
-        value: v,
-        child: Row(children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 12),
-          // ⚠️ ПОДПИСЬ ГИБКАЯ, А НЕ ЖЁСТКАЯ. Ширина меню упирается в потолок
-          // `showMenu` (280 px), и подпись, которая в него не влезла, раньше
-          // просто вылезала за край: в отладочной сборке — жёлто-чёрная полоса
-          // «RenderFlex overflowed», в релизной — обрезанный текст. Пунктов у
-          // нас десять языков, и длина подписи меняется в разы. `Flexible`
-          // переносит строку вместо переполнения — ничего не теряется.
-          Flexible(child: Text(text)),
-        ]),
-      );
 }
 
 class _MenuButton extends StatelessWidget {

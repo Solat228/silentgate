@@ -251,60 +251,19 @@ void main() {
 
   // ── Плашка скорости ───────────────────────────────────────────────────────
 
-  testWidgets('прочерк с пояснением вместо скорости у непрошедшего проверку',
-      (tester) async {
-    await _pumpSpeedChip(
-        tester,
-        speed: null,
-        ping: const PingResult(
-            outcome: PingOutcome.ok,
-            latencyMs: 80,
-            verification: PingVerification.failed));
-    expect(find.text('—'), findsOneWidget,
-        reason: 'решение владельца: минус вместо значения, а не пустота');
-    expect(_tooltip(tester), contains('не прошёл проверку канала'));
-  });
+  // ⚠️ ЗДЕСЬ БЫЛИ ДВА ТЕСТА ПРО ПРОЧЕРК «—» на месте скорости у сервера,
+  // который не прошёл проверку канала, и про `SpeedChip.visible`. Прежнее
+  // решение владельца («вместо значений скорости показывай минусы с
+  // пояснением») он ОТМЕНИЛ 18.08.2026: прочерков в списке оказалось
+  // большинство, и из-за них плашка пинга ужималась в столбик у ВСЕХ строк,
+  // хотя скорость не мерили ни у одной. Теперь плашка скорости существует
+  // только по факту замера — это выражено типом (`SpeedChip.speed` больше не
+  // nullable), а `visible` не нужен вовсе. Страж нового правила и вид строки
+  // без замера — `test/ping_chip_layout_test.dart`.
 
-  testWidgets('замер показан цифрой, а «не мерили» не занимает места',
-      (tester) async {
-    await _pumpSpeedChip(tester,
-        speed: const ServerSpeed(mbps: 24.4),
-        ping: const PingResult(
-            outcome: PingOutcome.ok,
-            latencyMs: 30,
-            verification: PingVerification.passed));
+  testWidgets('замер показан цифрой', (tester) async {
+    await _pumpSpeedChip(tester, speed: const ServerSpeed(mbps: 24.4));
     expect(find.text('24.4 Мбит/с'), findsOneWidget);
-
-    // Мерить можно, но не мерили: плашки нет вовсе — пинг остаётся по центру
-    // строки, как просил владелец.
-    await _pumpSpeedChip(tester,
-        speed: null,
-        ping: const PingResult(
-            outcome: PingOutcome.ok,
-            latencyMs: 30,
-            verification: PingVerification.passed));
-    expect(find.text('—'), findsNothing);
-    expect(find.byType(Tooltip), findsNothing);
-  });
-
-  test('видимость плашки скорости решает тот же код, что её рисует', () {
-    // Строка сервера строит столбик по `SpeedChip.visible`; разойдись оно с
-    // самим виджетом — получили бы «столбик» из пинга и пустоты.
-    expect(
-        SpeedChip.visible(
-            speed: null,
-            ping: const PingResult(
-                outcome: PingOutcome.ok, verification: PingVerification.passed)),
-        isFalse);
-    expect(
-        SpeedChip.visible(speed: null, ping: const PingResult(outcome: PingOutcome.failed)),
-        isTrue);
-    expect(
-        SpeedChip.visible(
-            speed: const ServerSpeed(mbps: 10),
-            ping: const PingResult(
-                outcome: PingOutcome.ok, verification: PingVerification.passed)),
-        isTrue);
   });
 }
 
@@ -398,15 +357,12 @@ Future<void> _pumpRunButton(
 }
 
 Future<void> _pumpSpeedChip(WidgetTester tester,
-    {required ServerSpeed? speed, required PingResult ping}) async {
+    {required ServerSpeed speed}) async {
   await tester.pumpWidget(MaterialApp(
     locale: const Locale('ru'),
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(body: Center(child: SpeedChip(speed: speed, ping: ping))),
+    home: Scaffold(body: Center(child: SpeedChip(speed: speed))),
   ));
   await tester.pump();
 }
-
-String _tooltip(WidgetTester tester) =>
-    tester.widget<Tooltip>(find.byType(Tooltip)).message ?? '';

@@ -1139,5 +1139,14 @@
   "autoSpeedTrafficBody": "Se medirá la velocidad de los {servers} mejores servidores y la de su propia conexión: unos {mb} MB del tráfico de su suscripción.\n\nPuede desactivar la prueba en los ajustes.",
   "autoSpeedTrafficGo": "Iniciar",
   "splitDeadPath": "El archivo de esta ruta ya no existe: la regla nunca se aplica",
-  "splitDeadPathFix": "Pulse para hacer coincidir por nombre de archivo"
+  "splitDeadPathFix": "Pulse para hacer coincidir por nombre de archivo",
+  "srvTileCopyKey": "Copiar clave",
+  "serviceChecksBypassDirect": "Fuera de la VPN: la regla de túnel dividido «{rule}» envía este dominio directamente: el servicio usará tu dirección real.",
+  "serviceChecksBypassBlock": "Bloqueado: la regla de túnel dividido «{rule}» prohíbe este dominio: el servicio no se abrirá ni con VPN ni sin ella.",
+  "subBarOpenSite": "Sitio web",
+  "subBarOpenSiteHint": "Abrir la página de suscripción en el navegador",
+  "subSwitcherRefreshingOne": "Actualizando «{name}»…",
+  "subSwitcherRefreshedOne": "«{name}» actualizada",
+  "subSwitcherRefreshFailedOne": "No se pudo actualizar «{name}»",
+  "subBarDeleteConfirmNamed": "¿Eliminar la suscripción «{name}»?"
 }

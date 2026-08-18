@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, LogicalKeyboardKey;
 
 import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
@@ -170,6 +173,130 @@ Future<void> startSpeedRun(
   if (!await confirmSpeedRun(context, plan, settings.speedTestSize)) return;
   if (!context.mounted) return;
   unawaited(probe.measureSpeedAll(plan.targets, settings));
+}
+
+/// Намерение «скопировать ключ выбранного сервера» (Ctrl+C).
+class CopyServerKeyIntent extends Intent {
+  const CopyServerKeyIntent();
+}
+
+/// Ctrl+C копирует ключ сервера, ВЫБРАННОГО В СПИСКЕ (на macOS — Cmd+C).
+///
+/// ⚠️ ЭТО ПЕРВЫЙ ОБРАБОТЧИК КЛАВИШ В ПРИЛОЖЕНИИ, поэтому здесь подробно про
+/// три вещи, каждая из которых по отдельности превращает клавишу в мину.
+///
+/// (1) ⚠️ ГЛОБАЛЬНЫЙ Ctrl+C ОТБИРАЕТ КОПИРОВАНИЕ У ПОЛЕЙ ВВОДА. Событие
+/// клавиши идёт от сфокусированного узла НАРУЖУ, а наш `Shortcuts` стоит
+/// ближе к полю, чем `DefaultTextEditingShortcuts` приложения — значит
+/// отвечаем мы, и штатное копирование текста до поля бы не доехало. Сломались
+/// бы поиск по серверам, поле ссылки на экране импорта, редактор JSON и
+/// выделенный `SelText`. Лечение — [focusInsideTextInput]: пока фокус внутри
+/// текста, действие ВЫКЛЮЧЕНО, а выключенное действие отдаёт
+/// `KeyEventResult.ignored`, и событие уходит выше, туда где его ждут.
+/// (Оборачивать приложение в `SelectionArea` ради выделения нельзя — она
+/// съедает правый клик и прокрутку, см. `SelText`.)
+///
+/// (2) ⚠️ БЕЗ СОБСТВЕННОГО ФОКУСА КЛАВИША НЕ РАБОТАЕТ ВОВСЕ. Пока в поддереве
+/// никто не сфокусирован, основной фокус держит `FocusScope` МАРШРУТА — а он
+/// наш ПРЕДОК; поиск действия идёт от сфокусированного узла вверх и наш
+/// `Actions` в этом обходе не встречается. Отсюда `Focus(autofocus: true)`
+/// внутри: он же возвращает себе фокус после закрытия диалога (сцена помнит
+/// последнего сфокусированного ребёнка).
+///
+/// (3) ⚠️ Копируем ВЫБРАННЫЙ сервер, а не подключённый: клик по другому
+/// серверу живой туннель не трогает, и человек ждёт того, что у него
+/// подсвечено в списке. Ничего не выбрано — действие выключено, а не «молча
+/// ничего не делает»: тогда Ctrl+C хотя бы достанется тому, кто его ждёт.
+class CopyServerKeyShortcut extends StatefulWidget {
+  final Widget child;
+
+  /// Чем копировать. Подменяется только тестом; в приложении всегда работает
+  /// умолчание — [serverClipboardPayload], та же функция, что и у пункта
+  /// «Скопировать ключ» в меню строки сервера (клавиша и меню обязаны класть
+  /// в буфер одно и то же).
+  final void Function(BuildContext context, VpnServer server)? onCopy;
+
+  const CopyServerKeyShortcut({super.key, required this.child, this.onCopy});
+
+  /// Клавиатура есть только на десктопе — на телефоне вешать нечего.
+  static bool get hasKeyboard =>
+      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+
+  /// Фокус сейчас внутри поля ввода или выделяемого текста?
+  ///
+  /// Признак — `EditableText` среди предков сфокусированного узла: на нём
+  /// стоят и `TextField`, и `SelectableText` (то есть `SelText`), так что
+  /// одна проверка закрывает оба случая.
+  @visibleForTesting
+  static bool focusInsideTextInput([FocusNode? node]) {
+    final ctx = (node ?? primaryFocus)?.context;
+    if (ctx == null) return false;
+    return ctx.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  @override
+  State<CopyServerKeyShortcut> createState() => _CopyServerKeyShortcutState();
+}
+
+class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
+  late final _CopyServerKeyAction _action = _CopyServerKeyAction(this);
+
+  /// Есть что копировать и не мешаем ли мы полю ввода.
+  bool get canCopy =>
+      !CopyServerKeyShortcut.focusInsideTextInput() && _target != null;
+
+  VpnServer? get _target => context.read<AppState>().selectedServer;
+
+  Future<void> copySelected() async {
+    final server = _target;
+    if (server == null) return;
+    final custom = widget.onCopy;
+    if (custom != null) {
+      custom(context, server);
+      return;
+    }
+    // ⚠️ Ни ссылку, ни конфиг не пишем ни в журнал, ни в текст уведомления:
+    // внутри логин сервера. Уведомление — общее «Скопировано», как и у меню.
+    await Clipboard.setData(
+        ClipboardData(text: serverClipboardPayload(server)));
+    if (mounted) AppToast.copied(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!CopyServerKeyShortcut.hasKeyboard) return widget.child;
+    return Shortcuts(
+      shortcuts: <ShortcutActivator, Intent>{
+        // На macOS копирование — Cmd+C; Ctrl+C там означает другое, и вешать
+        // его значило бы спорить с системной привычкой.
+        if (Platform.isMacOS)
+          const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
+              const CopyServerKeyIntent()
+        else
+          const SingleActivator(LogicalKeyboardKey.keyC, control: true):
+              const CopyServerKeyIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{CopyServerKeyIntent: _action},
+        child: Focus(autofocus: true, child: widget.child), // см. (2)
+      ),
+    );
+  }
+}
+
+class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
+  _CopyServerKeyAction(this._host);
+
+  final _CopyServerKeyShortcutState _host;
+
+  /// ⚠️ Именно ОТКЛЮЧЕНИЕ, а не пустой `invoke`: выключенное действие пропускает
+  /// событие выше по дереву фокуса (см. (1) в описании виджета), а вызванное
+  /// и ничего не сделавшее — съедает его.
+  @override
+  bool get isActionEnabled => _host.canCopy;
+
+  @override
+  Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
 }
 
 class HomeScreen extends StatefulWidget {
@@ -607,11 +734,16 @@ class _HomeScreenState extends State<HomeScreen> {
       return const ImportScreen(initialSetup: true);
     }
 
-    return Scaffold(
+    // Ctrl+C копирует ключ выбранного сервера. Обёртка снаружи Scaffold, чтобы
+    // клавиша работала и над списком серверов, и над панелью подключения.
+    return CopyServerKeyShortcut(
+        child: Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         // Имя из AppInfo, а не литералом: бренд ещё может смениться, и тогда
         // правки не должны расползаться по интерфейсу.
+        // ⚠️ Версии здесь НЕТ намеренно (решение владельца): она стоит в
+        // заголовке окна и в подсказке значка в трее — см. `TrayWindow`.
         title: const Text(AppInfo.name),
         actions: [
           TextButton.icon(
@@ -660,7 +792,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-    );
+    ));
   }
 }
 

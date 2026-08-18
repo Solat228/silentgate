@@ -5027,6 +5027,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Нажмите, чтобы сопоставлять по имени файла'**
   String get splitDeadPathFix;
+
+  /// No description provided for @srvTileCopyKey.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать ключ'**
+  String get srvTileCopyKey;
+
+  /// No description provided for @serviceChecksBypassDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мимо VPN: правило «{rule}» в раздельном туннелировании отправляет этот домен напрямую — сервис пойдёт под вашим настоящим адресом.'**
+  String serviceChecksBypassDirect(Object rule);
+
+  /// No description provided for @serviceChecksBypassBlock.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заблокирован: правило «{rule}» в раздельном туннелировании запрещает этот домен — сервис не откроется ни через VPN, ни мимо него.'**
+  String serviceChecksBypassBlock(Object rule);
+
+  /// No description provided for @subBarOpenSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт'**
+  String get subBarOpenSite;
+
+  /// No description provided for @subBarOpenSiteHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть страницу подписки в браузере'**
+  String get subBarOpenSiteHint;
+
+  /// No description provided for @subSwitcherRefreshingOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновляю «{name}»…'**
+  String subSwitcherRefreshingOne(Object name);
+
+  /// No description provided for @subSwitcherRefreshedOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'«{name}» обновлена'**
+  String subSwitcherRefreshedOne(Object name);
+
+  /// No description provided for @subSwitcherRefreshFailedOne.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось обновить «{name}»'**
+  String subSwitcherRefreshFailedOne(Object name);
+
+  /// No description provided for @subBarDeleteConfirmNamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить подписку «{name}»?'**
+  String subBarDeleteConfirmNamed(Object name);
 }
 
 class _AppLocalizationsDelegate

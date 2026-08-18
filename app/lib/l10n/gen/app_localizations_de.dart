@@ -2911,4 +2911,43 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Tippen, um nach Dateinamen abzugleichen';
+
+  @override
+  String get srvTileCopyKey => 'Schlüssel kopieren';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Am VPN vorbei: Die Split-Tunneling-Regel „$rule“ leitet diese Domain direkt — der Dienst nutzt Ihre echte Adresse.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Blockiert: Die Split-Tunneling-Regel „$rule“ verbietet diese Domain — der Dienst öffnet sich weder mit noch ohne VPN.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Website';
+
+  @override
+  String get subBarOpenSiteHint => 'Abonnementseite im Browser öffnen';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return '„$name“ wird aktualisiert…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '„$name“ aktualisiert';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return '„$name“ konnte nicht aktualisiert werden';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'Abonnement „$name“ löschen?';
+  }
 }

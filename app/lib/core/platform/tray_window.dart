@@ -23,6 +23,34 @@ class TrayWindow with WindowListener, TrayListener {
   static final TrayWindow instance = TrayWindow._();
   TrayWindow._();
 
+  /// Имя приложения с версией: заголовок окна и первая строка подсказки трея.
+  ///
+  /// ⚠️ ВЕРСИЯ ЖИВЁТ РОВНО В ЭТИХ ДВУХ МЕСТАХ (решение владельца) — шапка
+  /// внутри приложения остаётся без неё. Смысл: увидеть версию, не открывая
+  /// «О программе», в том числе когда окно свёрнуто в трей и видно только
+  /// значок. Имя и версию берём из [AppInfo], а не литералом: бренд может
+  /// смениться, и тогда правка не должна расползаться по интерфейсу.
+  static String get nameWithVersion => '${AppInfo.name} ${AppInfo.version}';
+
+  /// Параметры окна.
+  ///
+  /// Вынесены из [init] отдельно, чтобы заголовок проверялся тестом: сам
+  /// [init] поднимает плагины и в юнит-тесте не запускается.
+  ///
+  /// ⚠️ ЗАГОЛОВОК СТАВИТСЯ ЗДЕСЬ И БОЛЬШЕ НИГДЕ. `show()`/`hide()` его не
+  /// трогают, поэтому версия переживает сворачивание в трей и возврат из него;
+  /// нативный runner создаёт окно со своим именем, но `waitUntilReadyToShow`
+  /// перезаписывает его один раз при старте. Любой будущий `setTitle` в другом
+  /// месте — это потерянная версия после первого же сворачивания, и стережёт
+  /// это `test/window_title_test.dart`.
+  static WindowOptions get windowOptions => WindowOptions(
+        size: const Size(1040, 820),
+        minimumSize: const Size(980, 800),
+        center: true,
+        title: nameWithVersion,
+        titleBarStyle: TitleBarStyle.normal,
+      );
+
   Future<void> init() async {
     await windowManager.ensureInitialized();
     windowManager.addListener(this);
@@ -31,14 +59,7 @@ class TrayWindow with WindowListener, TrayListener {
     // лишь минимальный размер, а стартовый — нет: первый кадр рисовался в
     // дефолтном размере рантайма, и интерфейс «съезжал», пока окно не подвигать.
     // waitUntilReadyToShow держит окно скрытым до первого корректного кадра.
-    const options = WindowOptions(
-      size: Size(1040, 820),
-      minimumSize: Size(980, 800),
-      center: true,
-      title: 'SilentGate',
-      titleBarStyle: TitleBarStyle.normal,
-    );
-    await windowManager.waitUntilReadyToShow(options, () async {
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.setPreventClose(true); // крестик → onWindowClose
       await windowManager.show();
       await windowManager.focus();
@@ -358,7 +379,9 @@ class TrayWindow with WindowListener, TrayListener {
     String? speed,
     String? blocked,
   }) {
-    const name = AppInfo.name;
+    // Имя С ВЕРСИЕЙ: у свёрнутого в трей приложения подсказка — единственное
+    // место, где версию видно вообще (заголовок окна скрыт вместе с окном).
+    final name = nameWithVersion;
     final note = blocked?.trim() ?? '';
     // Блокировка трафика важнее сервера и скорости: пока kill switch держит
     // канал, объяснять надо именно это.

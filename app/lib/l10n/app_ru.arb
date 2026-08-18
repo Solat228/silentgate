@@ -1452,5 +1452,14 @@
   },
   "autoSpeedTrafficGo": "Запустить",
   "splitDeadPath": "Файла по этому пути больше нет — правило не срабатывает",
-  "splitDeadPathFix": "Нажмите, чтобы сопоставлять по имени файла"
+  "splitDeadPathFix": "Нажмите, чтобы сопоставлять по имени файла",
+  "srvTileCopyKey": "Скопировать ключ",
+  "serviceChecksBypassDirect": "Мимо VPN: правило «{rule}» в раздельном туннелировании отправляет этот домен напрямую — сервис пойдёт под вашим настоящим адресом.",
+  "serviceChecksBypassBlock": "Заблокирован: правило «{rule}» в раздельном туннелировании запрещает этот домен — сервис не откроется ни через VPN, ни мимо него.",
+  "subBarOpenSite": "Сайт",
+  "subBarOpenSiteHint": "Открыть страницу подписки в браузере",
+  "subSwitcherRefreshingOne": "Обновляю «{name}»…",
+  "subSwitcherRefreshedOne": "«{name}» обновлена",
+  "subSwitcherRefreshFailedOne": "Не удалось обновить «{name}»",
+  "subBarDeleteConfirmNamed": "Удалить подписку «{name}»?"
 }

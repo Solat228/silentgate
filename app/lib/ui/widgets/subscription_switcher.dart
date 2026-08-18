@@ -1,17 +1,198 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n/text_direction.dart';
 import '../../core/models/subscription_profile.dart';
 import '../../core/models/vpn_server.dart';
+import '../../core/platform/app_launcher.dart';
 import '../../core/probe/ping_result.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
+import '../settings_screen.dart';
+import 'app_toast.dart';
 import 'subscription_avatar.dart';
+
+/// Действия над ОДНОЙ подпиской: обновить, копировать ссылку, открыть её
+/// страницу, поддержка, удалить.
+///
+/// ⚠️ ОБЩИЙ КОД ДЛЯ ДВУХ МЕНЮ, И ЭТО НЕ УКРАШЕНИЕ. Одни и те же действия
+/// вызываются из карточки (кнопка ⋮ и ПКМ по карточке) и из строки
+/// переключателя (ПКМ/долгое нажатие). Разойдись они — правка сервера или
+/// адресность удаления чинилась бы в одном месте и оставалась сломанной в
+/// другом, а внешне пункты выглядят одинаково.
+///
+/// ⚠️ И ЖИВЁТ ЭТО ЗДЕСЬ, А НЕ В `subscription_bar.dart`, чтобы не заводить
+/// кольцевой импорт: карточка уже импортирует переключатель.
+///
+/// [SubscriptionProfile] `profile == null` означает «активная подписка» — так
+/// зовёт карточка, которая всегда показывает именно её.
+abstract final class SubscriptionActions {
+  static const String refresh = 'refresh';
+  static const String copy = 'copy';
+  static const String site = 'site';
+  static const String support = 'support';
+  static const String delete = 'delete';
+
+  /// Пункты меню. [hasUrl] — есть ли у подписки адрес: без него обновлять,
+  /// копировать и открывать нечего.
+  ///
+  /// ⚠️ ПУНКТ, КОТОРЫЙ НИЧЕГО НЕ ДЕЛАЕТ, ХУЖЕ ОТСУТСТВУЮЩЕГО. Раньше
+  /// «Обновить» и «Копировать ссылку» показывались всегда, а обработчик молча
+  /// выходил при пустом адресе (сервер добавлен ссылкой или своим JSON —
+  /// подписки за ним нет).
+  static List<PopupMenuEntry<String>> menuItems(AppLocalizations l,
+          {required bool hasUrl}) =>
+      [
+        if (hasUrl) item(refresh, Icons.refresh, l.subBarRefresh),
+        if (hasUrl) item(copy, Icons.copy, l.subBarCopyLink),
+        if (hasUrl) item(site, Icons.public, l.subBarOpenSite),
+        item(support, Icons.support_agent, l.subBarSupport),
+        item(delete, Icons.delete_outline, l.subBarDeleteSubscription),
+      ];
+
+  static PopupMenuItem<String> item(String v, IconData icon, String text) =>
+      PopupMenuItem(
+        value: v,
+        child: Row(children: [
+          Icon(icon, size: 18),
+          const SizedBox(width: 12),
+          // ⚠️ ПОДПИСЬ ГИБКАЯ, А НЕ ЖЁСТКАЯ. Ширина меню упирается в потолок
+          // `showMenu` (280 px), и подпись, которая в него не влезла, раньше
+          // просто вылезала за край: в отладочной сборке — жёлто-чёрная полоса
+          // «RenderFlex overflowed», в релизной — обрезанный текст. Языков у
+          // нас десять, и длина подписи меняется в разы. `Flexible` переносит
+          // строку вместо переполнения — ничего не теряется.
+          Flexible(child: Text(text)),
+        ]),
+      );
+
+  /// «Поддержка» ВЕЗДЕ ведёт в настройки → раздел поддержки, где объяснено,
+  /// что будет сделано, и дана ссылка из конфига.
+  static void openSupport(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const SettingsScreen(scrollToSupport: true)));
+  }
+
+  /// Выполнить выбранное действие над [profile] (null = активная подписка).
+  static Future<void> run(BuildContext context, String action,
+      {SubscriptionProfile? profile}) async {
+    final l = AppLocalizations.of(context);
+    final state = context.read<AppState>();
+    final id = profile?.id;
+    // ⚠️ АДРЕС СПРАШИВАЕМ У ТОЙ ПОДПИСКИ, О КОТОРОЙ ИДЁТ РЕЧЬ.
+    // `state.subscriptionUrl` — адрес АКТИВНОЙ, и на чужой строке меню он
+    // скопировал бы и открыл чужую страницу, ничем не выдав подмену.
+    final url = id == null ? state.subscriptionUrl : state.subscriptionUrlOf(id);
+    switch (action) {
+      case refresh:
+        if ((url ?? '').isEmpty) return;
+        // Активная показывает ход в самой карточке (крутилка вместо значка);
+        // соседняя на экране не двигает ничего — о ней говорим сообщениями,
+        // иначе нажатие выглядит холостым.
+        if (id == null || id == state.activeSubscriptionId) {
+          unawaited(state.refreshSubscription());
+          return;
+        }
+        // ⚠️ ИМЯ — `safeTitle`: запасное `title` при отсутствии названия от
+        // панели вырождается в `хост/…<последний сегмент>`, а у Remnawave
+        // последний сегмент и есть токен подписки.
+        final title = profile!.safeTitle;
+        AppToast.show(context, l.subSwitcherRefreshingOne(title));
+        final ok = await state.refreshSubscription(id: id);
+        if (!context.mounted) return;
+        AppToast.show(
+            context,
+            ok
+                ? l.subSwitcherRefreshedOne(title)
+                : l.subSwitcherRefreshFailedOne(title),
+            kind: ok ? ToastKind.success : ToastKind.error);
+        return;
+      case copy:
+        if ((url ?? '').isEmpty) return;
+        await Clipboard.setData(ClipboardData(text: url!));
+        if (context.mounted) {
+          AppToast.copied(context, message: l.subBarLinkCopied);
+        }
+        return;
+      case site:
+        if ((url ?? '').isEmpty) return;
+        // ⚠️ ОТКРЫВАЕТ И МОЛЧИТ. В адресе подписки лежит токен доступа: ни в
+        // подсказке кнопки, ни в сообщении, ни в журнале (он уезжает в отчёт
+        // поддержки) его быть не должно. Ссылка открывается КАК ЕСТЬ — это
+        // собственная страница подписки пользователя.
+        await UrlOpener.open(url!);
+        return;
+      case support:
+        openSupport(context);
+        return;
+      case delete:
+        await confirmDelete(context, profile: profile);
+        return;
+    }
+  }
+
+  /// #5 — закреплённые серверы переживают подписку, поэтому спрашиваем про них
+  /// явно: иначе после удаления список не пустеет и это выглядит как баг.
+  static Future<void> confirmDelete(BuildContext context,
+      {SubscriptionProfile? profile}) async {
+    final l = AppLocalizations.of(context);
+    final state = context.read<AppState>();
+    final id = profile?.id;
+    var alsoPinned = false;
+    // ⚠️ СПРАШИВАЕМ РОВНО ПРО ТО, ЧТО РЕАЛЬНО ПРОПАДЁТ. Здесь стоял общий
+    // счётчик всех закреплённых серверов — и на удалении ОДНОЙ подписки из
+    // четырёх приложение предлагало убрать закрепления, принадлежащие другим
+    // (жалоба владельца 18.08.2026). Само удаление адресное с той же даты,
+    // а вопрос оставался прежним: человек соглашался на одно, а терял другое.
+    final atRisk = state.pinnedAtRiskOf(id);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dctx) => StatefulBuilder(
+        builder: (dctx, setState) => AlertDialog(
+          // Из меню можно удалить ЛЮБУЮ строку, в том числе не ту, что открыта,
+          // — имя в заголовке единственное, что отличает их друг от друга.
+          title: Text(profile == null
+              ? l.subBarDeleteConfirmTitle
+              : l.subBarDeleteConfirmNamed(profile.safeTitle)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.subBarDeleteConfirmBody),
+              if (atRisk > 0)
+                CheckboxListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: alsoPinned,
+                  onChanged: (v) => setState(() => alsoPinned = v ?? false),
+                  title: Text(l.subBarDeletePinned(atRisk)),
+                  subtitle: Text(l.subBarDeletePinnedHint),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(dctx, false),
+                child: Text(l.subBarCancel)),
+            FilledButton(
+                onPressed: () => Navigator.pop(dctx, true),
+                child: Text(l.subBarDelete)),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    await state.deleteSubscription(removePinned: alsoPinned, id: id);
+    if (context.mounted) {
+      AppToast.show(context, l.subBarSubscriptionDeleted,
+          kind: ToastKind.success);
+    }
+  }
+}
 
 /// Состояние счётчика подписки — то, НАСКОЛЬКО его числу можно верить.
 ///
@@ -212,7 +393,21 @@ class SubscriptionSwitcher extends StatelessWidget {
           enabled: false,
           padding: EdgeInsets.zero,
           child: _SwitcherBody(
-              state: state, probe: probe, settings: settings),
+            state: state,
+            probe: probe,
+            settings: settings,
+            // ⚠️ ДЕЙСТВИЕ ВЫПОЛНЯЕТСЯ В КОНТЕКСТЕ КАРТОЧКИ, А НЕ МЕНЮ.
+            // Меню к этому моменту уже закрыто, и его контекст мёртв: диалог
+            // удаления и всплывающие сообщения открывать из него нельзя.
+            // Контекст самого переключателя живёт в карточке и переживает
+            // закрытие меню — сверяемся с `mounted` на случай, если карточка
+            // ушла с экрана (импорт первой подписки, удаление последней).
+            onAction: (action, profile) {
+              if (!context.mounted) return;
+              unawaited(SubscriptionActions.run(context, action,
+                  profile: profile));
+            },
+          ),
         ),
       ],
     );
@@ -224,8 +419,16 @@ class _SwitcherBody extends StatefulWidget {
   final AppState state;
   final ProbeController probe;
   final SettingsController settings;
+
+  /// Что делать с выбранным в ПКМ-меню строки действием. Выполняет его не
+  /// список, а карточка (см. `SubscriptionSwitcher._open`): к моменту вызова
+  /// меню переключателя уже закрыто вместе со своим контекстом.
+  final void Function(String action, SubscriptionProfile profile) onAction;
   const _SwitcherBody(
-      {required this.state, required this.probe, required this.settings});
+      {required this.state,
+      required this.probe,
+      required this.settings,
+      required this.onAction});
 
   @override
   State<_SwitcherBody> createState() => _SwitcherBodyState();
@@ -278,6 +481,33 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
 
   void _onChanged() {
     if (mounted) setState(() {});
+  }
+
+  /// Меню действий над КОНКРЕТНОЙ строкой (ПКМ / долгое нажатие).
+  ///
+  /// ⚠️ ЭТО МЕНЮ ВНУТРИ МЕНЮ. Переключатель сам живёт в маршруте `showMenu`;
+  /// вложенный `showMenu` кладёт поверх него свой маршрут и, закрываясь,
+  /// снимает только себя — родительский список остаётся на месте. Пункты здесь
+  /// обычные (без прокручиваемых списков): `showMenu` оборачивает содержимое в
+  /// `IntrinsicWidth`, и прокручиваемая область внутри бросила бы исключение —
+  /// ровно то, из-за чего у самого переключателя ТУГАЯ ширина.
+  ///
+  /// Выбранное действие исполняет карточка ([_SwitcherBody.onAction]): к тому
+  /// моменту переключатель уже закрыт, а вместе с ним мёртв и его контекст.
+  Future<void> _rowMenu(
+      BuildContext context, SubscriptionProfile p, Offset pos) async {
+    final l = AppLocalizations.of(context);
+    final action = await showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
+      items: SubscriptionActions.menuItems(l, hasUrl: p.url.isNotEmpty),
+    );
+    if (action == null || !context.mounted) return;
+    // Закрываем сам переключатель: дальше действие показывает свои диалоги и
+    // сообщения, а список поверх них — лишний слой, из-под которого не видно
+    // ни вопроса об удалении, ни ответа на него.
+    Navigator.of(context).pop();
+    widget.onAction(action, p);
   }
 
   @override
@@ -334,11 +564,20 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                 // владелец с четырьмя подписками не мог понять, какая из них
                 // уже не работает, пока не переключится и не получит отказ.
                 final expired = p.isExpiredAt(now);
-                return InkWell(
+                return GestureDetector(
                   // Ключ обязателен и обязан быть привязан к САМОЙ подписке:
                   // по ключу по позиции перетаскивание меняло бы содержимое
-                  // строк, а не их порядок.
+                  // строк, а не их порядок. Живёт на САМОМ ВЕРХНЕМ виджете
+                  // строки — `ReorderableListView` смотрит только туда.
                   key: ValueKey(p.id),
+                  // Действия над подпиской — правой кнопкой (ПК) и долгим
+                  // нажатием (телефон). Обычный тап остаётся за выбором
+                  // подписки: он и есть главное назначение строки.
+                  onSecondaryTapDown: (d) =>
+                      _rowMenu(context, p, d.globalPosition),
+                  onLongPressStart: (d) =>
+                      _rowMenu(context, p, d.globalPosition),
+                  child: InkWell(
                   onTap: () {
                     Navigator.of(context).pop();
                     if (!active) widget.state.switchSubscription(p.id);
@@ -424,6 +663,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                         ),
                       ),
                     ]),
+                  ),
                   ),
                 );
               },

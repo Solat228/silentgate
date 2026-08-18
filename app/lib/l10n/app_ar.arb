@@ -1078,5 +1078,14 @@
   "autoSpeedTrafficBody": "ستُقاس سرعة أفضل {servers} خوادم وسرعة اتصالك — نحو {mb} ميجابايت من بيانات اشتراكك.\n\nيمكنك إيقاف الاختبار من الإعدادات.",
   "autoSpeedTrafficGo": "ابدأ",
   "splitDeadPath": "لم يعد الملف موجودًا في هذا المسار — القاعدة لا تنطبق أبدًا",
-  "splitDeadPathFix": "اضغط للمطابقة حسب اسم الملف"
+  "splitDeadPathFix": "اضغط للمطابقة حسب اسم الملف",
+  "srvTileCopyKey": "نسخ المفتاح",
+  "serviceChecksBypassDirect": "خارج الشبكة الافتراضية: قاعدة النفق المُقسَّم «{rule}» ترسل هذا النطاق مباشرةً — ستستخدم الخدمة عنوانك الحقيقي.",
+  "serviceChecksBypassBlock": "محظور: قاعدة النفق المُقسَّم «{rule}» تمنع هذا النطاق — لن تُفتح الخدمة سواء عبر الشبكة الافتراضية أو بدونها.",
+  "subBarOpenSite": "الموقع",
+  "subBarOpenSiteHint": "فتح صفحة الاشتراك في المتصفح",
+  "subSwitcherRefreshingOne": "جارٍ تحديث «{name}»…",
+  "subSwitcherRefreshedOne": "تم تحديث «{name}»",
+  "subSwitcherRefreshFailedOne": "تعذّر تحديث «{name}»",
+  "subBarDeleteConfirmNamed": "حذف اشتراك «{name}»؟"
 }

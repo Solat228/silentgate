@@ -112,6 +112,58 @@ class AutoConfigCatalog {
       'https://www.google.com/generate_204',
       _is204,
     ),
+    // ⚠️ WhatsApp — ДОЗВОН ДО ЧАТ-СЕРВЕРА, а не сайт. Та же причина, что у
+    // Telegram: whatsapp.com — обычный сайт на обычном хостинге, он открывается
+    // и тогда, когда мессенджер молчит, то есть зелёный чип врал бы ровно в том
+    // случае, ради которого проверку и смотрят. Приложение говорит с
+    // `g.whatsapp.net` своим протоколом поверх TCP:443 — этот адрес Meta и
+    // называет в требованиях к сетевым фильтрам. Значимо ровно одно:
+    // установился ли туннель до него (метод CONNECT, `_alwaysOk`).
+    ProbeService.whatsapp: ProbeEndpoint(
+      ProbeService.whatsapp,
+      'tcp://g.whatsapp.net:443',
+      _alwaysOk,
+    ),
+    // Twitch — `robots.txt`, тот же приём, что у X и Instagram: текстовый ответ
+    // с опознаваемой сигнатурой, который заглушка провайдера (200 + HTML) не
+    // подделает. GraphQL-эндпоинт (`gql.twitch.tv`) не годится: он отвечает
+    // только на POST, а проба ходит GET/HEAD.
+    //
+    // ⚠️ Чего эта мишень НЕ видит: само видео идёт с отдельной сети доставки
+    // (`*.ttvnw.net`), и её замедление проверкой сайта не поймать — та же
+    // граница, что у YouTube. Статической мишени под неё нет: адрес плейлиста
+    // выдаётся под токен конкретной трансляции.
+    ProbeService.twitch: ProbeEndpoint(
+      ProbeService.twitch,
+      'https://www.twitch.tv/robots.txt',
+      _robots,
+    ),
+    // Spotify — `apresolve`, тот самый адрес, с которого НАЧИНАЕТ любой клиент
+    // Spotify: он спрашивает список точек доступа (`ap-*.spotify.com:4070`) и
+    // только потом идёт за музыкой. Ответ — JSON с однозначной сигнатурой.
+    // Сайт open.spotify.com в этой роли бесполезен: страница открывается и
+    // тогда, когда до точек доступа не достучаться, а музыка молчит.
+    ProbeService.spotify: ProbeEndpoint(
+      ProbeService.spotify,
+      'https://apresolve.spotify.com/?type=accesspoint',
+      _spotifyAccessPoints,
+    ),
+    // Steam — служебный эндпоинт Web API, работающий БЕЗ ключа: отдаёт время
+    // сервера. Сигнатура в теле, а не «ответил 200»: store.steampowered.com
+    // отвечает HTML, который от заглушки провайдера не отличить.
+    ProbeService.steam: ProbeEndpoint(
+      ProbeService.steam,
+      'https://api.steampowered.com/ISteamWebAPIUtil/GetServerInfo/v1/',
+      _steamServerInfo,
+    ),
+    // GitHub — корень API отдаёт карту ссылок (`current_user_url` и прочие),
+    // это готовая сигнатура и никакой авторизации. Сам github.com проверять
+    // нечем: 200 с HTML-страницей.
+    ProbeService.github: ProbeEndpoint(
+      ProbeService.github,
+      'https://api.github.com/',
+      _githubApiRoot,
+    ),
   };
 
   /// Гео-пробы ИИ-сервисов (недоступность в стране выхода — отдельный сигнал).
@@ -163,6 +215,22 @@ class AutoConfigCatalog {
       code == 200 && body.toLowerCase().contains('gemini');
   static bool _robots(int code, String body) =>
       code == 200 && body.toLowerCase().contains('user-agent');
+
+  /// Список точек доступа Spotify. Признаём обе формы ответа: с параметром
+  /// `type` сервис отдаёт `{"accesspoint":[…]}`, без него — исторический
+  /// `{"ap_list":[…]}`. Проверяем сигнатуру, а не «200 и ладно», иначе
+  /// HTML-заглушка провайдера засчиталась бы как рабочий Spotify.
+  static bool _spotifyAccessPoints(int code, String body) =>
+      code == 200 &&
+      (body.contains('accesspoint') || body.contains('ap_list'));
+
+  /// Ответ служебного эндпоинта Steam: `{"servertime":…,"servertimestring":…}`.
+  static bool _steamServerInfo(int code, String body) =>
+      code == 200 && body.contains('servertime');
+
+  /// Корень API GitHub: карта ссылок, первая из которых `current_user_url`.
+  static bool _githubApiRoot(int code, String body) =>
+      code == 200 && body.contains('current_user_url');
 
   // ── Гео-валидаторы ─────────────────────────────────────────────────────────
   // ГОЛЫЙ 403 гео-блоком НЕ считаем: у OpenAI/Cloudflare это ещё и бот-челлендж/

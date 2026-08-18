@@ -2888,4 +2888,43 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Tap to match by file name instead';
+
+  @override
+  String get srvTileCopyKey => 'Copy key';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Outside the VPN: the split tunneling rule “$rule” sends this domain directly — the service will use your real address.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Blocked: the split tunneling rule “$rule” forbids this domain — the service will not open, with or without the VPN.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Website';
+
+  @override
+  String get subBarOpenSiteHint => 'Open the subscription page in your browser';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'Refreshing \"$name\"…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '\"$name\" updated';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'Could not update \"$name\"';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'Delete the \"$name\" subscription?';
+  }
 }

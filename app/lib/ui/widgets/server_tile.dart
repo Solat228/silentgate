@@ -35,6 +35,36 @@ String _panelSummary(AppLocalizations l, PanelRoutingInfo p) {
   return lines.join('\n');
 }
 
+/// Что класть в буфер обмена для сервера — ОДНА функция на пункт меню
+/// «Скопировать ключ» и на горячую клавишу (Ctrl+C).
+///
+/// ⚠️ В БУФЕРЕ ВСЕГДА ТО, ЧТО ПРИЛОЖЕНИЕ ПРИМЕТ ОБРАТНО (решение владельца).
+/// У большинства серверов ключ — это и есть share-ссылка (`vless://…`), импорт
+/// её разберёт. Но у двух видов серверов ключ СЛУЖЕБНЫЙ и импорту бесполезен:
+///   • профиль автовыбора панели — ключ вида `panel://<имя>?sub=<hex>`, а сам
+///     профиль лежит в [VpnServer.rawPanelConfig] (десятки outbound'ов и
+///     балансировщик; `ShareLinkParser` такой ключ не понимает вовсе);
+///   • сервер, собранный из вставленного JSON, — ключ `json://…`, конфиг в
+///     [VpnServer.rawJsonOverride].
+/// Для них копируем конфиг: его можно вставить в импорт и получить тот же
+/// сервер обратно.
+///
+/// ⚠️ Источник — ОДИН на копирование и на подключение: `effectiveFullConfig`.
+/// Порядок здесь НЕ выписывается: выписанный второй раз, он уже разошёлся с
+/// движком (у hysteria2 тот Xray-правку игнорирует, а копирование её отдавало),
+/// и человек копировал конфиг, которым приложение не подключается.
+///
+/// ⚠️ Результат — СЕКРЕТ: в share-ссылке лежит логин сервера, в конфиге панели
+/// тоже. Не писать его ни в журнал, ни в текст уведомления.
+String serverClipboardPayload(VpnServer server) {
+  // ⚠️ СПРАШИВАЕМ ТО ЖЕ, ЧТО ДВИЖОК, а не повторяем порядок руками. Ровно на
+  // этом два порядка и разошлись: у hysteria2-сервера с Xray-правкой движок её
+  // игнорирует и поднимает sing-box, а копирование отдавало именно её — человек
+  // скопировал бы конфиг, которым приложение не подключается.
+  final full = server.effectiveFullConfig;
+  return full.isNotEmpty ? full : server.key;
+}
+
 /// Единая строка сервера: флаг-ячейка · имя + теги конфига · пинг · шеврон, с контекст-меню (ПКМ).
 class ServerTile extends StatelessWidget {
   final VpnServer server;
@@ -271,6 +301,7 @@ class ServerTile extends StatelessWidget {
         item('pin', pinned ? Icons.push_pin_outlined : Icons.push_pin,
             pinned ? l.srvTileUnpin : l.srvTilePin),
         item('json', Icons.data_object, l.srvTileJsonConfig),
+        item('copyKey', Icons.content_copy, l.srvTileCopyKey),
         item('smart', Icons.auto_fix_high, l.srvTileSmart),
         item('edit', Icons.edit, l.srvTileEdit),
         item('delete', Icons.delete_outline, l.srvTileDelete),
@@ -328,12 +359,28 @@ class ServerTile extends StatelessWidget {
       case 'json':
         if (context.mounted) await _json(context);
         break;
+      case 'copyKey':
+        // ⚠️ Ни ссылку, ни конфиг НЕ пишем ни в журнал, ни в текст уведомления:
+        // внутри логин сервера. Уведомление — общее «Скопировано».
+        //
+        // ⚠️ Запись в буфер НЕ ждём (как и в строке-уведомлении выше): её
+        // ожидание — это асинхронный разрыв, после которого контекст меню уже
+        // может быть мёртв, и уведомление о копировании не показалось бы.
+        Clipboard.setData(ClipboardData(text: serverClipboardPayload(server)));
+        // ⚠️ Копирование — ВСЕГДА, уведомление — при живом контексте. Меню живёт
+        // отдельным маршрутом в оверлее и строку не держит: пока оно открыто,
+        // строку успевают снести (обновление подписки, уход с экрана). Тот же
+        // порядок, что у пункта «Пинг» выше.
+        if (context.mounted) AppToast.copied(context);
+        break;
       case 'smart':
         autoCfg.startForKey(server.rawLink, settings);
         navigator.push(MaterialPageRoute(builder: (_) => const AutoConfigScreen()));
         break;
       case 'edit':
-        await _edit(context);
+        // Проверка та же, что у соседнего «JSON-конфига»: диалогу нужен живой
+        // контекст, а меню переживает свою строку.
+        if (context.mounted) await _edit(context);
         break;
       case 'delete':
         await state.removeServer(server);
@@ -372,18 +419,28 @@ class ServerTile extends StatelessWidget {
 /// Пинг и скорость — столбиком у края строки (решение владельца).
 ///
 /// Раскладка ровно та, что он описал:
-///   • есть скорость — пинг ПРИЖАТ К ВЕРХУ, скорость к низу, между ними пусто;
-///   • нет скорости — пинг ОДИН и встаёт по центру строки;
-///   • сервер не прошёл проверку канала — на месте скорости прочерк.
+///   • ЗАМЕР СКОРОСТИ БЫЛ — пинг мельчает и ПРИЖИМАЕТСЯ К ВЕРХУ, скорость к
+///     низу, между ними пусто;
+///   • замера НЕ БЫЛО — пинг один, КРУПНЫЙ и по центру строки (тот вид, что был
+///     до появления замера скорости).
+///
+/// ⚠️ ПЛАШКИ СКОРОСТИ «ЗАРАНЕЕ» НЕТ НИ В КАКОМ ВИДЕ. Прежде на её месте у
+/// сервера, который не прошёл проверку канала, стоял прочерк — прежнее решение
+/// владельца, ОТМЕНЁННОЕ им 18.08.2026: таких серверов в списке большинство,
+/// и прочерк заставлял ужиматься плашку пинга у ВСЕХ строк, хотя скорость не
+/// мерили ни у одной. Не возвращать (подробности — в комментарии [SpeedChip]).
 ///
 /// ⚠️ ВЫСОТА СТОЛБИКА ЗАДАНА ЧИСЛОМ, И ЭТО ГЛАВНОЕ ЗДЕСЬ. `ListTile`
 /// (dense + `VisualDensity(vertical: -2)`) отводит `trailing` ровно **40 dp** и
 /// строку под него НЕ растягивает. Столбик из двух прежних плашек занимал
 /// 52 dp, вылезал за пределы строки на 11 px и рисовался поверх соседних —
-/// владелец описал это как «из-за скорости всё поплыло». Отладочная сборка при
-/// этом ещё и ругалась `RenderFlex overflowed`. [PingChip.columnHeight] = 38 dp
-/// влезает с запасом, а поскольку оно фиксировано, появление и пропажа замера
-/// скорости строку не двигают вовсе.
+/// владелец описал это как «из-за скорости всё поплыло». [PingChip.columnHeight]
+/// = 38 dp влезает с запасом.
+///
+/// ⚠️ И ТОТ ЖЕ SizedBox — ЕДИНСТВЕННОЕ, ЧТО ДЕРЖИТ ВЫСОТУ СТРОКИ ПОСТОЯННОЙ.
+/// Крупная плашка (25 dp) и столбик (38 dp) — РАЗНОЙ высоты, и без общей
+/// коробки список бы дёргался ровно у тех строк, которым замерили скорость.
+/// Поэтому коробка одна на оба вида, а крупная плашка центрируется внутри неё.
 ///
 /// ⚠️ Строка живёт и на телефоне. Ширину столбика НЕ ограничиваем жёстко:
 /// `ConstrainedBox` не режет содержимое, а роняет отладочную сборку по
@@ -398,19 +455,25 @@ class PingSpeedColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chip = PingChip(result: ping);
-    if (!SpeedChip.visible(speed: speed, ping: ping)) return chip;
+    final measured = speed;
     return SizedBox(
       height: PingChip.columnHeight,
-      child: Column(
-        // Пинг сверху, скорость снизу, просвет — сам собой между ними.
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          chip,
-          SpeedChip(speed: speed, ping: ping),
-        ],
-      ),
+      child: measured == null
+          // Замера не было — крупный пинг по центру той же коробки.
+          ? Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [PingChip(result: ping, large: true)],
+            )
+          : Column(
+              // Пинг сверху, скорость снизу, просвет — сам собой между ними.
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                PingChip(result: ping),
+                SpeedChip(speed: measured),
+              ],
+            ),
     );
   }
 }

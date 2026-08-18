@@ -1254,5 +1254,14 @@
   "autoSpeedTrafficBody": "Speed will be measured for the {servers} best servers and for your own connection — about {mb} MB of your subscription traffic.\n\nYou can turn the test off in settings.",
   "autoSpeedTrafficGo": "Start",
   "splitDeadPath": "The file at this path no longer exists — the rule never matches",
-  "splitDeadPathFix": "Tap to match by file name instead"
+  "splitDeadPathFix": "Tap to match by file name instead",
+  "srvTileCopyKey": "Copy key",
+  "serviceChecksBypassDirect": "Outside the VPN: the split tunneling rule “{rule}” sends this domain directly — the service will use your real address.",
+  "serviceChecksBypassBlock": "Blocked: the split tunneling rule “{rule}” forbids this domain — the service will not open, with or without the VPN.",
+  "subBarOpenSite": "Website",
+  "subBarOpenSiteHint": "Open the subscription page in your browser",
+  "subSwitcherRefreshingOne": "Refreshing \"{name}\"…",
+  "subSwitcherRefreshedOne": "\"{name}\" updated",
+  "subSwitcherRefreshFailedOne": "Could not update \"{name}\"",
+  "subBarDeleteConfirmNamed": "Delete the \"{name}\" subscription?"
 }

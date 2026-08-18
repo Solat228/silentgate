@@ -21,13 +21,28 @@ import 'measured_at.dart';
 /// зелёной всё время проверки. Не возвращать «оптимистичный» цвет.
 class PingChip extends StatelessWidget {
   final PingResult result;
-  const PingChip({super.key, required this.result});
+
+  /// Крупный вид — тот, что был ДО появления замера скорости: плашка читается
+  /// с расстояния и стоит по центру строки.
+  ///
+  /// ⚠️ Это не украшение, а требование владельца (18.08.2026): «если серверы
+  /// только пинговали — пинг большими буквами посередине». Мелкой плашка обязана
+  /// быть ТОЛЬКО тогда, когда под ней стоит вторая, со скоростью: две плашки
+  /// вместе обязаны влезть в 40 dp, которые `ListTile` отводит `trailing`
+  /// (см. [columnHeight]). Раз второй плашки нет — экономить высоту не на чем.
+  ///
+  /// Умолчание — компактный вид: остальные экраны (главный, автонастройка,
+  /// информация о сервере) держат пинг в одну строку с текстом, и там крупная
+  /// плашка распирала бы строку. Крупный вид просит тот, кому он нужен.
+  final bool large;
+
+  const PingChip({super.key, required this.result, this.large = false});
 
   /// Неяркий красный для «мёртвых» серверов (n/a): не сливается с фоном, но не
   /// такой резкий, как чистый Colors.red.
   static const _dimRed = Color(0xFFCC7777);
 
-  /// Высота плашки — ОДНА на пинг и скорость.
+  /// Высота КОМПАКТНОЙ плашки — той, что стоит в столбике вместе со скоростью.
   ///
   /// ⚠️ Число не косметическое, оно вытекает из вёрстки строки сервера.
   /// `ListTile` (dense + `VisualDensity(vertical: -2)`) зажимает `trailing` в
@@ -37,6 +52,11 @@ class PingChip extends StatelessWidget {
   /// в 40 dp целиком: 2 × [chipHeight] + [chipGap] = [columnHeight] = 38.
   static const double chipHeight = 16;
 
+  /// Высота КРУПНОЙ плашки ([large]) — ровно та, что была до появления замера
+  /// скорости. Влезает в [columnHeight] с запасом, поэтому строка не «дышит»,
+  /// когда плашка меняет вид.
+  static const double largeChipHeight = 25;
+
   /// Просвет между пингом и скоростью: пинг прижат к верху, скорость к низу,
   /// между ними пусто (просьба владельца).
   static const double chipGap = 6;
@@ -45,10 +65,10 @@ class PingChip extends StatelessWidget {
   /// когда замер скорости появляется или пропадает.
   static const double columnHeight = chipHeight * 2 + chipGap;
 
-
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final m = large ? _ChipMetrics.large : _ChipMetrics.compact;
     switch (result.outcome) {
       case PingOutcome.untested:
         // ⚠️ Пустоты здесь быть не должно: пользователь не отличит «ещё не
@@ -61,17 +81,17 @@ class PingChip extends StatelessWidget {
         // кружок ровно того же размера, что и плашка с числом, не притворяется
         // результатом и не двигает вёрстку, когда результат появится.
         //
-        // Высота — ровно [chipHeight]: кружок стоит на месте будущей плашки, и
-        // когда результат появится, столбик не дёрнется.
+        // Высота — ровно высота плашки того же вида: кружок стоит на месте
+        // будущей плашки, и когда результат появится, столбик не дёрнется.
         return Tooltip(
           message: l.pingUntestedHint,
           child: SizedBox(
-            width: 22,
-            height: chipHeight,
+            width: m.slotWidth,
+            height: m.height,
             child: Center(
               child: Container(
-                width: 9,
-                height: 9,
+                width: m.dot,
+                height: m.dot,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
@@ -82,23 +102,24 @@ class PingChip extends StatelessWidget {
           ),
         );
       case PingOutcome.testing:
-        return const SizedBox(
-          width: chipHeight,
-          height: chipHeight,
+        return SizedBox(
+          width: m.height,
+          height: m.height,
           child: Center(
             child: SizedBox(
-              width: 13,
-              height: 13,
-              child: CircularProgressIndicator(strokeWidth: 2),
+              width: m.progress,
+              height: m.progress,
+              child: const CircularProgressIndicator(strokeWidth: 2),
             ),
           ),
         );
       case PingOutcome.failed:
         // #12 — мёртв (не ответил по TCP): НЕЯРКИЙ красный (виден на тёмном фоне,
         // но не кричит как чистый красный).
-        return _pill(l.pingNa, _dimRed, tooltip: _tip(context, l.pingNaTooltip));
+        return _pill(l.pingNa, _dimRed, m,
+            tooltip: _tip(context, l.pingNaTooltip));
       case PingOutcome.timeout:
-        return _pill(l.pingTimeout, _dimRed,
+        return _pill(l.pingTimeout, _dimRed, m,
             tooltip: _tip(context, l.pingTimeoutTooltip));
       case PingOutcome.ok:
         final ms = result.latencyMs;
@@ -106,18 +127,19 @@ class PingChip extends StatelessWidget {
           case PingVerification.pending:
             // Проверка ещё идёт: число уже есть (это TCP), вердикта — нет.
             // Цвет нейтральный, иначе плашка обещала бы рабочий сервер авансом.
-            return _pill(ms != null ? l.pingMs(ms) : l.pingChecking, Colors.grey,
+            return _pill(
+                ms != null ? l.pingMs(ms) : l.pingChecking, Colors.grey, m,
                 tooltip: _tip(context, l.pingPendingTooltip));
           case PingVerification.notRun:
             // Проверки не было вовсе (двухфазность выключена, платформа не
             // умеет, прогон отменён). Известна ТОЛЬКО достижимость — красить в
             // зелёный нельзя, но и в красный тоже: сервер ни в чём не виноват.
-            return _pill(ms != null ? l.pingMs(ms) : l.pingOk, Colors.grey,
+            return _pill(ms != null ? l.pingMs(ms) : l.pingOk, Colors.grey, m,
                 tooltip: _tip(context, l.pingUnverifiedTooltip));
           case PingVerification.failed:
             // Отвечает, но не проксирует — цифру показываем, но приглушённо.
-            return _pill(ms != null ? l.pingMs(ms) : l.pingNoProxy,
-                Colors.blueGrey,
+            return _pill(
+                ms != null ? l.pingMs(ms) : l.pingNoProxy, Colors.blueGrey, m,
                 tooltip: _tip(context, l.pingNoProxyTooltip));
           case PingVerification.passed:
             final color = ms == null
@@ -127,7 +149,7 @@ class PingChip extends StatelessWidget {
                     : ms < 300
                         ? Colors.amber
                         : Colors.orange;
-            return _pill(ms != null ? l.pingMs(ms) : l.pingOk, color,
+            return _pill(ms != null ? l.pingMs(ms) : l.pingOk, color, m,
                 tooltip: _tip(context, l.pingOkTooltip));
         }
     }
@@ -151,32 +173,80 @@ class PingChip extends StatelessWidget {
     return '$base\n${measuredAtLine(context, at)}';
   }
 
-  Widget _pill(String text, Color color, {String? tooltip}) =>
-      _chipPill(text, color, tooltip: tooltip);
+  Widget _pill(String text, Color color, _ChipMetrics m, {String? tooltip}) =>
+      _chipPill(text, color, tooltip: tooltip, metrics: m);
+}
+
+/// Размеры плашки. Два набора — крупный и компактный, — потому что вид плашки
+/// зависит от соседа: одна плашка в строке может позволить себе прежний размер,
+/// две обязаны уместиться в 40 dp вдвоём.
+class _ChipMetrics {
+  final double height;
+  final double hPadding;
+  final double radius;
+  final double fontSize;
+
+  /// Размер кружка-заглушки «ещё не проверяли» и ширина места под неё.
+  final double dot;
+  final double slotWidth;
+
+  /// Размер кружка прогресса «проверяю прямо сейчас».
+  final double progress;
+
+  const _ChipMetrics({
+    required this.height,
+    required this.hPadding,
+    required this.radius,
+    required this.fontSize,
+    required this.dot,
+    required this.slotWidth,
+    required this.progress,
+  });
+
+  /// Вид «пинг и скорость столбиком»: всё вдвое мельче прежнего, чтобы две
+  /// плашки и просвет между ними влезли в отведённые `trailing` 40 dp.
+  static const compact = _ChipMetrics(
+    height: PingChip.chipHeight,
+    hPadding: 6,
+    radius: 6,
+    fontSize: 11,
+    dot: 9,
+    slotWidth: 22,
+    progress: 13,
+  );
+
+  /// Вид «пинг один» — ровно тот, что был до появления замера скорости
+  /// (отступы 10/4, радиус 12, шрифт 12). Владелец просил вернуть именно его.
+  static const large = _ChipMetrics(
+    height: PingChip.largeChipHeight,
+    hPadding: 10,
+    radius: 12,
+    fontSize: 12,
+    dot: 10,
+    slotWidth: 26,
+    progress: 16,
+  );
 }
 
 /// Плашка одного значения — общая для пинга и скорости, чтобы столбик из двух
 /// не разъезжался по высоте и радиусам.
 ///
-/// Компактная по просьбе владельца («обводку пинга поменьше, как и скорости»):
-/// высота задана числом ([PingChip.chipHeight]), отступы и радиус вдвое меньше
-/// прежних, шрифт на пункт мельче. Высота именно ЖЁСТКАЯ, а не «сколько
-/// получится»: столбик из двух плашек обязан влезать в 40 dp, которые
-/// `ListTile` отводит на `trailing`.
+/// Высота задана ЖЁСТКО, а не «сколько получится»: столбик из двух плашек
+/// обязан влезать в 40 dp, которые `ListTile` отводит на `trailing`.
 ///
 /// ⚠️ [FittedBox] здесь не украшение: при крупном системном шрифте (Android,
-/// «Размер шрифта: максимальный») текст в 11 pt перерастает 16 dp, и вместо
-/// плашки была бы жёлто-чёрная полоса переполнения. Уменьшенный текст читается,
+/// «Размер шрифта: максимальный») текст перерастает высоту плашки, и вместо неё
+/// была бы жёлто-чёрная полоса переполнения. Уменьшенный текст читается,
 /// сломанная строка — нет.
 Widget _chipPill(String text, Color color,
-    {String? tooltip, double fontSize = 11}) {
+    {String? tooltip, _ChipMetrics metrics = _ChipMetrics.compact}) {
   final pill = Container(
-    height: PingChip.chipHeight,
-    padding: const EdgeInsets.symmetric(horizontal: 6),
+    height: metrics.height,
+    padding: EdgeInsets.symmetric(horizontal: metrics.hPadding),
     alignment: Alignment.center,
     decoration: BoxDecoration(
       color: color.withValues(alpha: 0.18),
-      borderRadius: BorderRadius.circular(6),
+      borderRadius: BorderRadius.circular(metrics.radius),
     ),
     child: FittedBox(
       fit: BoxFit.scaleDown,
@@ -184,7 +254,9 @@ Widget _chipPill(String text, Color color,
           textDirection: TextDirection.ltr,
           maxLines: 1,
           style: TextStyle(
-              color: color, fontWeight: FontWeight.w600, fontSize: fontSize)),
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: metrics.fontSize)),
     ),
   );
   return tooltip == null ? pill : Tooltip(message: tooltip, child: pill);
@@ -192,35 +264,26 @@ Widget _chipPill(String text, Color color,
 
 /// Скорость скачивания через сервер — вторым этажом под плашкой пинга.
 ///
-/// Три состояния, и они РАЗНЫЕ:
-///   • замер есть — цифра в Мбит/с;
-///   • замера нет, но сервер не прошёл проверку канала (или мёртв) — ПРОЧЕРК с
-///     пояснением. Решение владельца дословно: «у таких серверов вместо
-///     значений скорости показывай минусы или крестики с пояснением при
-///     наведении». Пустое место здесь читается как «сейчас досчитается», и
-///     человек ждёт того, чего не будет;
-///   • замера нет и мерить можно — виджет НЕ занимает места вовсе, чтобы
-///     плашка пинга встала по центру строки (тоже решение владельца).
+/// ⚠️ ПЛАШКА СУЩЕСТВУЕТ ТОЛЬКО ТАМ, ГДЕ ЗАМЕР РЕАЛЬНО БЫЛ. Поэтому [speed]
+/// здесь НЕ nullable: «показать заранее» нечем, и компилятор не даст построить
+/// плашку про несуществующий замер.
+///
+/// ⚠️ ПРОЧЕРКА «—» ЗДЕСЬ БОЛЬШЕ НЕТ, И ВОЗВРАЩАТЬ ЕГО НЕ НАДО. Раньше у
+/// сервера, который не прошёл проверку канала (или мёртв), на месте скорости
+/// стоял прочерк с пояснением — это было прежнее решение владельца («вместо
+/// значений скорости показывай минусы с пояснением»). **18.08.2026 он его
+/// ОТМЕНИЛ:** прочерков в списке оказалось большинство, они занимали место и
+/// заставляли плашку пинга ужиматься в столбик у ВСЕХ строк, хотя скорость не
+/// мерили ни у одной. Дословно: «убери значок проверки скорости, если он не
+/// проводился».
 class SpeedChip extends StatelessWidget {
-  final ServerSpeed? speed;
-  final PingResult ping;
-  const SpeedChip({super.key, required this.speed, required this.ping});
-
-  /// Показывает ли виджет хоть что-то. Нужен строке сервера: она решает,
-  /// строить столбик или оставить пинг по центру, и решать это должен тот же
-  /// код, что рисует, — иначе появится «столбик» из одного пинга и пустоты.
-  static bool visible({ServerSpeed? speed, required PingResult ping}) =>
-      speed != null || ping.speedBlocked;
+  final ServerSpeed speed;
+  const SpeedChip({super.key, required this.speed});
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final s = speed;
-    if (s == null) {
-      if (!ping.speedBlocked) return const SizedBox.shrink();
-      return _chipPill('—', Theme.of(context).disabledColor,
-          tooltip: l.speedBlockedTooltip);
-    }
     // Пороги те же по смыслу, что у пинга: зелёный — комфортно смотреть видео,
     // жёлтый — терпимо, оранжевый — узко. Цифра всё равно видна, цвет лишь
     // помогает глазу пробежать список.
@@ -229,7 +292,8 @@ class SpeedChip extends StatelessWidget {
         : s.mbps >= 10
             ? Colors.amber
             : Colors.orange;
-    final value = s.mbps >= 100 ? s.mbps.toStringAsFixed(0) : s.mbps.toStringAsFixed(1);
+    final value =
+        s.mbps >= 100 ? s.mbps.toStringAsFixed(0) : s.mbps.toStringAsFixed(1);
     final at = s.measuredAt;
     // Строка «когда мерили» — тот же вызов, что у пинга: см. `measured_at.dart`.
     final tip = [

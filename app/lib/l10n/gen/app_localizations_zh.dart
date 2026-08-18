@@ -2785,4 +2785,43 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => '点按改为按文件名匹配';
+
+  @override
+  String get srvTileCopyKey => '复制密钥';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return '不走 VPN：分应用代理规则「$rule」让该域名直连——该服务将使用你的真实地址。';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return '已拦截：分应用代理规则「$rule」禁止该域名——无论是否开启 VPN，该服务都无法打开。';
+  }
+
+  @override
+  String get subBarOpenSite => '网站';
+
+  @override
+  String get subBarOpenSiteHint => '在浏览器中打开订阅页面';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return '正在更新「$name」…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '「$name」已更新';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return '无法更新「$name」';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return '删除订阅「$name」？';
+  }
 }

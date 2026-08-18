@@ -132,7 +132,7 @@ void main() {
 
       expect(lastOne, contains('_pinned.clear()'),
           reason: 'ветка последней подписки обязана чистить полностью');
-      expect(withOthers, contains('_dropPinnedFor(removedLinks)'),
+      expect(withOthers, contains('_dropPinnedFor(removedKeys)'),
           reason: 'а ветка «остались другие» — только осиротевшее');
       expect(withOthers, isNot(contains('_pinned.clear()')),
           reason: 'ЗДЕСЬ БЫЛА ПОТЕРЯ ЧУЖИХ ЗАКРЕПЛЁННЫХ СЕРВЕРОВ');

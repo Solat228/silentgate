@@ -1037,17 +1037,23 @@ abstract class VpnEngineBase implements VpnEngine {
   ({String json, ProxyCore core, bool full}) configFor(
       VpnServer server, ConnectionOptions options,
       {Map<String, String> resolvedIps = const {}}) {
-    final full = (server.rawJsonOverride ?? '').isNotEmpty
-        ? server.rawJsonOverride!
-        : (server.rawPanelConfig ?? '');
+    // ⚠️ ПОРЯДОК ИСТОЧНИКОВ СПРАШИВАЕМ У МОДЕЛИ, А НЕ ВЫПИСЫВАЕМ ЗДЕСЬ.
+    // Он же нужен копированию ключа в буфер, и выписанный руками во второй раз
+    // он уже разошёлся: движок для hysteria2 Xray-JSON игнорирует, а копирование
+    // его отдавало. Единственный источник — `VpnServer.effectiveFullConfig`.
+    final full = server.effectiveFullConfig;
+
+    // Предупредить всё равно надо: JSON у такого сервера есть, но применить его
+    // нельзя — Xray протокола hysteria2 не знает и просто не стартует.
+    if (server.core == ProxyCore.singbox &&
+        ((server.rawJsonOverride ?? '').trim().isNotEmpty ||
+            (server.rawPanelConfig ?? '').trim().isNotEmpty)) {
+      AppLog.w('У ${server.displayName} есть Xray-JSON, но это hysteria2 — '
+          'правка игнорируется, поднимаю sing-box');
+    }
 
     if (full.isNotEmpty) {
-      // JSON панели/редактора — это ВСЕГДА конфиг Xray. Подсунуть его hysteria2-
-      // серверу нельзя: Xray такого протокола не знает и просто не стартует.
-      if (server.core == ProxyCore.singbox) {
-        AppLog.w('У ${server.displayName} есть Xray-JSON, но это hysteria2 — '
-            'правка игнорируется, поднимаю sing-box');
-      } else {
+      {
         var json = full;
         // Утечка реального IP: панельный профиль сам рулит часть трафика direct
         // (RU-routing). Если пользователь хочет «Всё через VPN» ИЛИ включил «не

@@ -1078,5 +1078,14 @@
   "autoSpeedTrafficBody": "سرعت {servers} سرور برتر و سرعت اینترنت خودتان اندازه‌گیری می‌شود — حدود {mb} مگابایت از ترافیک اشتراک شما.\n\nمی‌توانید این آزمایش را در تنظیمات خاموش کنید.",
   "autoSpeedTrafficGo": "شروع",
   "splitDeadPath": "فایل در این مسیر دیگر وجود ندارد — قاعده هرگز اعمال نمی‌شود",
-  "splitDeadPathFix": "برای تطبیق بر اساس نام فایل ضربه بزنید"
+  "splitDeadPathFix": "برای تطبیق بر اساس نام فایل ضربه بزنید",
+  "srvTileCopyKey": "کپی کلید",
+  "serviceChecksBypassDirect": "خارج از VPN: قانون تونل تفکیک‌شده «{rule}» این دامنه را مستقیم می‌فرستد — سرویس با نشانی واقعی شما کار می‌کند.",
+  "serviceChecksBypassBlock": "مسدود: قانون تونل تفکیک‌شده «{rule}» این دامنه را ممنوع کرده — سرویس نه با VPN باز می‌شود و نه بدون آن.",
+  "subBarOpenSite": "وب‌سایت",
+  "subBarOpenSiteHint": "باز کردن صفحهٔ اشتراک در مرورگر",
+  "subSwitcherRefreshingOne": "در حال به‌روزرسانی «{name}»…",
+  "subSwitcherRefreshedOne": "«{name}» به‌روزرسانی شد",
+  "subSwitcherRefreshFailedOne": "به‌روزرسانی «{name}» ناموفق بود",
+  "subBarDeleteConfirmNamed": "اشتراک «{name}» حذف شود؟"
 }

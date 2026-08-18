@@ -2915,4 +2915,44 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get splitDeadPathFix =>
       'Pulse para hacer coincidir por nombre de archivo';
+
+  @override
+  String get srvTileCopyKey => 'Copiar clave';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Fuera de la VPN: la regla de túnel dividido «$rule» envía este dominio directamente: el servicio usará tu dirección real.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Bloqueado: la regla de túnel dividido «$rule» prohíbe este dominio: el servicio no se abrirá ni con VPN ni sin ella.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Sitio web';
+
+  @override
+  String get subBarOpenSiteHint =>
+      'Abrir la página de suscripción en el navegador';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'Actualizando «$name»…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '«$name» actualizada';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'No se pudo actualizar «$name»';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return '¿Eliminar la suscripción «$name»?';
+  }
 }

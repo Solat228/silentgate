@@ -2892,4 +2892,43 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Нажмите, чтобы сопоставлять по имени файла';
+
+  @override
+  String get srvTileCopyKey => 'Скопировать ключ';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'Мимо VPN: правило «$rule» в раздельном туннелировании отправляет этот домен напрямую — сервис пойдёт под вашим настоящим адресом.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Заблокирован: правило «$rule» в раздельном туннелировании запрещает этот домен — сервис не откроется ни через VPN, ни мимо него.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Сайт';
+
+  @override
+  String get subBarOpenSiteHint => 'Открыть страницу подписки в браузере';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return 'Обновляю «$name»…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '«$name» обновлена';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return 'Не удалось обновить «$name»';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return 'Удалить подписку «$name»?';
+  }
 }

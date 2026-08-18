@@ -1078,5 +1078,14 @@
   "autoSpeedTrafficBody": "Le débit sera mesuré pour les {servers} meilleurs serveurs et pour votre propre connexion — environ {mb} Mo du trafic de votre abonnement.\n\nVous pouvez désactiver le test dans les paramètres.",
   "autoSpeedTrafficGo": "Lancer",
   "splitDeadPath": "Le fichier de ce chemin n'existe plus — la règle ne s'applique jamais",
-  "splitDeadPathFix": "Appuyez pour faire correspondre par nom de fichier"
+  "splitDeadPathFix": "Appuyez pour faire correspondre par nom de fichier",
+  "srvTileCopyKey": "Copier la clé",
+  "serviceChecksBypassDirect": "Hors VPN : la règle de tunnel divisé « {rule} » envoie ce domaine en direct — le service utilisera votre adresse réelle.",
+  "serviceChecksBypassBlock": "Bloqué : la règle de tunnel divisé « {rule} » interdit ce domaine — le service ne s’ouvrira ni avec ni sans VPN.",
+  "subBarOpenSite": "Site web",
+  "subBarOpenSiteHint": "Ouvrir la page d'abonnement dans le navigateur",
+  "subSwitcherRefreshingOne": "Actualisation de « {name} »…",
+  "subSwitcherRefreshedOne": "« {name} » mis à jour",
+  "subSwitcherRefreshFailedOne": "Impossible de mettre à jour « {name} »",
+  "subBarDeleteConfirmNamed": "Supprimer l'abonnement « {name} » ?"
 }

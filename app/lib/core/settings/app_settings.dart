@@ -102,6 +102,16 @@ enum ProbeService {
   x,
   instagram,
   google,
+  // ── Добавлены по просьбе владельца (14 сервисов = две колонки по семь) ─────
+  // ⚠️ ДОПИСЫВАТЬ ТОЛЬКО В КОНЕЦ. На диск набор пишется ИМЕНАМИ значений
+  // (`connectCheckServices` → `[…].map((s) => s.name)`), поэтому вставка в
+  // середину ничего не сломает, но порядок показа задаёт не это перечисление, а
+  // `ServiceChecks.catalog` — новый сервис, забытый ТАМ, останется невыбираемым.
+  whatsapp,
+  twitch,
+  spotify,
+  steam,
+  github,
 }
 
 /// Тема оформления.
@@ -141,6 +151,16 @@ extension ProbeServiceLabel on ProbeService {
         return 'Instagram';
       case ProbeService.google:
         return 'Google';
+      case ProbeService.whatsapp:
+        return 'WhatsApp';
+      case ProbeService.twitch:
+        return 'Twitch';
+      case ProbeService.spotify:
+        return 'Spotify';
+      case ProbeService.steam:
+        return 'Steam';
+      case ProbeService.github:
+        return 'GitHub';
     }
   }
 
@@ -165,6 +185,19 @@ extension ProbeServiceLabel on ProbeService {
         return 'instagram.com';
       case ProbeService.google:
         return 'google.com';
+      case ProbeService.whatsapp:
+        return 'whatsapp.com';
+      case ProbeService.twitch:
+        return 'twitch.tv';
+      case ProbeService.spotify:
+        return 'spotify.com';
+      // ⚠️ Не `store.steampowered.com`: домен здесь — ещё и то, с чем
+      // сверяются правила раздельного туннелирования (`ServiceChecks
+      // .bypassRuleFor`), а они суффиксные. Корень ловит и магазин, и API.
+      case ProbeService.steam:
+        return 'steampowered.com';
+      case ProbeService.github:
+        return 'github.com';
     }
   }
 

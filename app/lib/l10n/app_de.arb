@@ -1078,5 +1078,14 @@
   "autoSpeedTrafficBody": "Gemessen werden die {servers} besten Server und Ihre eigene Verbindung — etwa {mb} MB Ihres Abo-Datenvolumens.\n\nSie können den Test in den Einstellungen abschalten.",
   "autoSpeedTrafficGo": "Starten",
   "splitDeadPath": "Die Datei unter diesem Pfad existiert nicht mehr — die Regel greift nie",
-  "splitDeadPathFix": "Tippen, um nach Dateinamen abzugleichen"
+  "splitDeadPathFix": "Tippen, um nach Dateinamen abzugleichen",
+  "srvTileCopyKey": "Schlüssel kopieren",
+  "serviceChecksBypassDirect": "Am VPN vorbei: Die Split-Tunneling-Regel „{rule}“ leitet diese Domain direkt — der Dienst nutzt Ihre echte Adresse.",
+  "serviceChecksBypassBlock": "Blockiert: Die Split-Tunneling-Regel „{rule}“ verbietet diese Domain — der Dienst öffnet sich weder mit noch ohne VPN.",
+  "subBarOpenSite": "Website",
+  "subBarOpenSiteHint": "Abonnementseite im Browser öffnen",
+  "subSwitcherRefreshingOne": "„{name}“ wird aktualisiert…",
+  "subSwitcherRefreshedOne": "„{name}“ aktualisiert",
+  "subSwitcherRefreshFailedOne": "„{name}“ konnte nicht aktualisiert werden",
+  "subBarDeleteConfirmNamed": "Abonnement „{name}“ löschen?"
 }

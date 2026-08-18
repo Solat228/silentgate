@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/probe/auto_config_engine.dart';
 import '../../core/probe/service_check.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/settings/split_tunnel.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/service_check_controller.dart';
 import '../../state/settings_controller.dart';
@@ -39,6 +42,15 @@ abstract final class ServiceChecks {
     ProbeService.claude,
     ProbeService.gemini,
     ProbeService.x,
+    // Пятёрка, добавленная по просьбе владельца: мессенджер, стриминг видео,
+    // музыка, игры и разработка — классы блокировок, которых в прежней девятке
+    // не было вовсе. Четырнадцать сервисов раскладываются ровно по семь в
+    // колонку ([columns]), то есть кнопка Connect остаётся посередине.
+    ProbeService.whatsapp,
+    ProbeService.twitch,
+    ProbeService.spotify,
+    ProbeService.steam,
+    ProbeService.github,
   ];
 
   /// Прежний зашитый набор — по три в колонке слева и справа.
@@ -88,6 +100,102 @@ abstract final class ServiceChecks {
     final half = (all.length + 1) ~/ 2;
     return (left: all.sublist(0, half), right: all.sublist(half));
   }
+
+  /// Домены, по которым сервис узнаётся в правилах раздельного туннелирования.
+  ///
+  /// Это НЕ только бренд-домен из [ProbeServiceLabel.domain]. Проба ходит туда,
+  /// где живёт сам сервис, а не на его витрину: у YouTube это сеть доставки
+  /// видео, у WhatsApp — чат-сервер, у Steam — Web API. Человек, уводящий
+  /// сервис мимо VPN, пишет в правило именно такой адрес не реже, чем бренд
+  /// («googlevideo.com → Прямо» — обычный приём против замедления). Возьми мы
+  /// один бренд-домен — пометка молчала бы ровно там, где она нужнее всего,
+  /// а кружок «через VPN» показывал бы замер, который через VPN не шёл.
+  static List<String> domainsOf(ProbeService s) {
+    final out = <String>{};
+    void add(String? host) {
+      if (host == null) return;
+      final d = normalizeDomain(host);
+      // IP-литерал (мишень Telegram — адрес дата-центра) в доменные правила не
+      // попадает по построению, а суффиксное сравнение на нём даёт чепуху:
+      // правило «51» совпало бы с «149.154.167.51».
+      if (d.isEmpty || _isIpv4(d)) return;
+      out.add(d);
+    }
+
+    add(s.domain);
+    add(_hostOf(AutoConfigCatalog.endpointFor(s)?.url));
+    add(_hostOf(AutoConfigCatalog.geoEndpointFor(s)?.url));
+    return out.toList();
+  }
+
+  static String? _hostOf(String? url) {
+    if (url == null || url.isEmpty) return null;
+    // `tcp://host:443` разбирается тем же `Uri`, что и https-адреса.
+    final h = Uri.tryParse(url)?.host;
+    return (h == null || h.isEmpty) ? null : h;
+  }
+
+  // Регулярка собирается ОДИН раз: [bypassRuleFor] зовётся на каждый сервис при
+  // каждой перерисовке главного экрана, а он перерисовывается раз в секунду
+  // (тик счётчиков трафика).
+  static final _ipv4 = RegExp(r'^\d{1,3}(\.\d{1,3}){3}$');
+
+  static bool _isIpv4(String d) => _ipv4.hasMatch(d);
+
+  /// Порт, на который реально идёт проба сервиса (у всех сегодня 443).
+  ///
+  /// Нужен, чтобы правило с ЯВНЫМ портом («example.com:8443 → Прямо») не
+  /// подписывалось под чужой трафик: оно меняет маршрут только своему порту, а
+  /// проверка сервиса идёт мимо него.
+  static int probePortOf(ProbeService s) {
+    final url = AutoConfigCatalog.endpointFor(s)?.url;
+    if (url == null) return 443;
+    final u = Uri.tryParse(url);
+    if (u == null || u.port == 0) return 443;
+    return u.port;
+  }
+
+  /// Правило раздельного туннелирования, из-за которого сервис НЕ пойдёт через
+  /// VPN, либо `null`.
+  ///
+  /// Решение владельца: пометка показывается ТОЛЬКО по ЯВНОМУ правилу «Прямо»
+  /// или «Блок». Умолчания режима не считаются — в «Только отмеченные» мимо
+  /// туннеля идёт вообще всё неотмеченное, и замок на всех четырнадцати чипах
+  /// сразу не сообщал бы ничего. В режиме «Всё через VPN» пользовательские
+  /// правила не применяются вовсе, поэтому там ответ всегда `null`.
+  ///
+  /// ⚠️ ДОМЕННОЕ ПРАВИЛО СУФФИКСНОЕ: `example.com` покрывает и
+  /// `sub.example.com`. Считать иначе — значит врать: правило «google.com →
+  /// Прямо» уводит мимо VPN и `gemini.google.com`. Поэтому побеждает САМОЕ
+  /// КОНКРЕТНОЕ совпадение (длиннейший домен) — ровно как в конфиге ядра, где
+  /// конфликтующий поддомен поднимается выше общего правила
+  /// (`_addSitePriorityRules`). Иначе пара «google.com → Прямо» +
+  /// «gemini.google.com → Туннель» дала бы замок сервису, который на самом
+  /// деле идёт через VPN.
+  static SiteRule? bypassRuleFor(SplitTunnelConfig split, ProbeService s) {
+    if (split.mode == SplitMode.all) return null;
+    final targets = domainsOf(s);
+    if (targets.isEmpty) return null;
+    final port = probePortOf(s);
+    SiteRule? best;
+    var bestLen = -1;
+    for (final r in split.sites) {
+      if (r.port != null && r.port != port) continue;
+      final d = normalizeDomain(r.domain);
+      if (d.isEmpty) continue;
+      if (!targets.any((t) => t == d || t.endsWith('.$d'))) continue;
+      // При равной конкретности сильнее «Блок»: он строится в конфиге выше
+      // прочих, и ошибиться в сторону запрета честнее, чем промолчать о нём.
+      final stronger = d.length > bestLen ||
+          (d.length == bestLen && r.action == AppAction.block);
+      if (stronger) {
+        best = r;
+        bestLen = d.length;
+      }
+    }
+    if (best == null || best.action == AppAction.tunnel) return null;
+    return best;
+  }
 }
 
 /// Колонка проверок сбоку от кнопки Connect.
@@ -119,6 +227,12 @@ class ServiceChecksColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = context.watch<ServiceCheckController>();
     final live = httpPort > 0;
+    // ⚠️ НАСТРОЙКИ ЧИТАЮТСЯ КАК НЕОБЯЗАТЕЛЬНЫЕ. Колонку поднимают стражи
+    // вёрстки (`ConnectCenterpiece`), которым настройки не нужны и которые
+    // провайдер не заводят: строгое чтение уронило бы их
+    // `ProviderNotFoundException`. Нет настроек — нет и пометок, всё остальное
+    // на месте.
+    final split = context.watch<SettingsController?>()?.settings.splitTunnel;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment:
@@ -133,6 +247,8 @@ class ServiceChecksColumn extends StatelessWidget {
               after: ctrl.resultFor(s),
               live: live,
               alignEnd: alignEnd,
+              bypass:
+                  split == null ? null : ServiceChecks.bypassRuleFor(split, s),
               // Тап меряет то, что сейчас доступно: с VPN — через туннель,
               // без него — напрямую (это и есть замер «до»).
               onTap: () => ctrl.check(s, httpPort),
@@ -150,12 +266,59 @@ class ServiceChecksColumn extends StatelessWidget {
 /// глядя на кружки, а не открывая отдельный экран; и когда проверки выключены
 /// целиком, ряда на главном нет, так что включить их обратно можно только
 /// отсюда. Поэтому кнопка показывается ВСЕГДА, независимо от настроек.
-class ServiceChecksMenuButton extends StatelessWidget {
+class ServiceChecksMenuButton extends StatefulWidget {
   const ServiceChecksMenuButton({super.key});
+
+  @override
+  State<ServiceChecksMenuButton> createState() =>
+      _ServiceChecksMenuButtonState();
+}
+
+class _ServiceChecksMenuButtonState extends State<ServiceChecksMenuButton> {
+  /// Набор, для которого замер «до» уже заказан.
+  List<ProbeService>? _lastWanted;
+
+  /// Догнать замер «до» для сервисов, добавленных после запуска.
+  ///
+  /// ⚠️ ЭТО ЛЕЧЕНИЕ ЖАЛОБЫ ВЛАДЕЛЬЦА: «пара точек со стрелкой есть только у
+  /// трёх сервисов по умолчанию, а у добавленных позже — одна точка». Замер
+  /// «до» снимался ровно один раз за запуск и ровно по тому набору, который
+  /// был выбран в ту секунду (`ServiceCheckController.autoBaseline` из
+  /// `home_screen`), а подписки на изменение набора не было вовсе.
+  ///
+  /// ⚠️ ПОЧЕМУ ИМЕННО ЗДЕСЬ, А НЕ В КОЛОНКЕ ПРОВЕРОК. Колонок две, каждая знает
+  /// лишь свою половину сервисов, и при выключенных проверках их нет ни одной —
+  /// то есть включить проверки обратно и не получить замера было бы легче
+  /// всего. Кнопка подменю, наоборот, стоит на главном ВСЕГДА и видит набор
+  /// целиком, откуда бы его ни правили: из этого подменю, из настроек или
+  /// url-командой.
+  ///
+  /// Сам замер идёт мимо VPN и осмыслен только при выключенном туннеле —
+  /// решение «сейчас или потом» принимает контроллер
+  /// (`ServiceCheckController.ensureBaseline`): при живом канале просьба
+  /// запоминается и выполняется, когда VPN выключат.
+  void _topUpBaseline(List<ProbeService> selected) {
+    if (_lastWanted != null && listEquals(_lastWanted, selected)) return;
+    _lastWanted = selected;
+    if (selected.isEmpty) return;
+    // Побочное действие — после кадра: `ensureBaseline` уведомляет слушателей,
+    // а менять состояние во время сборки дерева нельзя.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Контроллер необязателен: кнопку поднимает и страж самого подменю, где
+      // проверок нет вовсе.
+      final ctrl = context.read<ServiceCheckController?>();
+      if (ctrl == null) return;
+      unawaited(ctrl.ensureBaseline(selected));
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    // Настройки читаются как необязательные — см. `ServiceChecksColumn`.
+    final settings = context.watch<SettingsController?>()?.settings;
+    if (settings != null) _topUpBaseline(ServiceChecks.selected(settings));
     return IconButton(
       icon: const Icon(Icons.tune, size: 18),
       tooltip: l.serviceChecksMenuTooltip,
@@ -169,7 +332,10 @@ class ServiceChecksMenuButton extends StatelessWidget {
   Future<void> _open(BuildContext context) async {
     // Контроллер берём ДО показа меню: внутри пункта контекст принадлежит
     // маршруту меню, и после его закрытия обращаться к нему нельзя.
-    final settings = context.read<SettingsController>();
+    // Необязательный — по той же причине, что и в `build`: без настроек в меню
+    // нечего показывать, но и падать незачем.
+    final settings = context.read<SettingsController?>();
+    if (settings == null) return;
     final box = context.findRenderObject() as RenderBox?;
     final pos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
     await showMenu<void>(
@@ -232,6 +398,18 @@ class _ServiceChecksMenuBodyState extends State<_ServiceChecksMenuBody> {
         .update((c) => c.copyWith(connectCheckServices: next)));
   }
 
+  /// «Все» / «Снять» — те же кнопки, что в настройках у этой же настройки.
+  ///
+  /// ⚠️ ИСТОЧНИК «ВСЕХ» — `ServiceChecks.catalog`, А НЕ `ProbeService.values`.
+  /// Сервис, забытый в каталоге, кнопка «Все» иначе записала бы в настройку, а
+  /// показать его было бы негде: в подменю его нет, на главном чипа нет — зато
+  /// проба при подключении шла бы. Невидимая работа и невидимый трафик.
+  void _setAll(bool on) {
+    unawaited(widget.settings.update((c) => c.copyWith(
+        connectCheckServices:
+            on ? ServiceChecks.catalog.toSet() : const <ProbeService>{})));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -249,31 +427,88 @@ class _ServiceChecksMenuBodyState extends State<_ServiceChecksMenuBody> {
       // есть дожил бы до чужого `flutter run`. 280 — штатный потолок ширины
       // меню (`_kMenuMaxWidth`), просить больше бессмысленно.
       width: 280,
-      child: Column(
+      child: ConstrainedBox(
+        // Потолок высоты: без него `Flexible` не от чего отталкивать прокрутку —
+        // колонка в меню получает неограниченную высоту и растёт как раньше.
+        // 420 подобрано так, чтобы меню помещалось и на невысоком окне, и на
+        // телефоне в альбомной ориентации.
+        constraints: const BoxConstraints(maxHeight: 420),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-            child: Text(
-              l.serviceChecksMenuTitle,
-              // Цвет задан явно: пункт меню отключён (см. выше), а отключённый
-              // пункт красит весь свой текст в серый — заголовок выглядел бы
-              // недоступным.
-              style: Theme.of(context)
-                  .textTheme
-                  .labelLarge
-                  ?.copyWith(color: scheme.onSurface),
+            padding: const EdgeInsets.fromLTRB(16, 10, 8, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l.serviceChecksMenuTitle,
+                    // Цвет задан явно: пункт меню отключён (см. выше), а
+                    // отключённый пункт красит весь свой текст в серый —
+                    // заголовок выглядел бы недоступным.
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(color: scheme.onSurface),
+                  ),
+                ),
+                // Четырнадцать сервисов руками отмечать долго — те же две
+                // кнопки, что уже стоят у этой настройки в настройках.
+                TextButton(
+                  key: const Key('connectChecksMenuAll'),
+                  onPressed: on ? () => _setAll(true) : null,
+                  child: Text(l.autoSelectAll),
+                ),
+                TextButton(
+                  key: const Key('connectChecksMenuNone'),
+                  onPressed: on ? () => _setAll(false) : null,
+                  child: Text(l.autoDeselectAll),
+                ),
+              ],
             ),
           ),
+          // ⚠️ СПИСОК ПРОКРУЧИВАЕТСЯ, И ЭТО НЕ УКРАШЕНИЕ.
+          //
+          // Сервисов стало четырнадцать, и простая колонка перестала помещаться
+          // на экран: нижний пункт «не проверять при подключении» уезжал за
+          // границу и переставал нажиматься вовсе. Поймано тестом сразу после
+          // добавления пятёрки — на окне 800×600 пункт оказался на y=772.
+          // На телефоне было бы то же самое, только молча.
+          //
+          // ⚠️ Прокрутка внутри `showMenu` безопасна ИМЕННО ЗДЕСЬ, потому что
+          // ширина выше задана ТУГО (`SizedBox(width: 280)`): короткое замыкание
+          // в `RenderConstrainedBox` не пускает запрос внутренней ширины к
+          // прокручиваемой области. Тот же приём уже работает в переключателе
+          // подписок. Развяжешь ширину — вернётся исключение `IntrinsicWidth`.
+          //
+          // Заголовок с кнопками «Все»/«Снять» и нижняя галочка НАМЕРЕННО
+          // оставлены вне прокрутки: ими пользуются чаще всего, и уводить их
+          // под скролл значило бы менять одну беду на другую.
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
           for (final svc in ServiceChecks.catalog)
             _MenuCheckRow(
               enabled: on,
               value: s.connectCheckServices.contains(svc),
               onChanged: (v) => _toggleService(svc, v),
               label: svc.label,
+              // ⚠️ Невыбранный сервис ЗАТЕМНЯЕТСЯ И ПЕРЕЧЁРКИВАЕТСЯ. Жалоба
+              // владельца: «галочку просто не видно из-за значков приложений» —
+              // четырнадцать ярких бренд-иконок в столбик перетягивают взгляд, и
+              // маленький квадратик рядом с ними теряется. Состояние теперь
+              // видно по самой строке целиком, а не по одному квадратику.
+              struck: !s.connectCheckServices.contains(svc),
               leading: SiteFavicon(domain: svc.domain, size: 20, builtIn: true),
             ),
+                ],
+              ),
+            ),
+          ),
           const Divider(height: 8),
           _MenuCheckRow(
             // Эта галочка доступна ВСЕГДА — ею проверки и возвращают.
@@ -285,6 +520,7 @@ class _ServiceChecksMenuBodyState extends State<_ServiceChecksMenuBody> {
           ),
           const SizedBox(height: 4),
         ],
+        ),
       ),
     );
   }
@@ -298,6 +534,7 @@ class _MenuCheckRow extends StatelessWidget {
     required this.onChanged,
     required this.label,
     this.leading,
+    this.struck = false,
   });
 
   final bool enabled;
@@ -305,6 +542,9 @@ class _MenuCheckRow extends StatelessWidget {
   final void Function(bool value) onChanged;
   final String label;
   final Widget? leading;
+
+  /// Строка «выключена по смыслу»: гасим значок и перечёркиваем подпись.
+  final bool struck;
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +563,9 @@ class _MenuCheckRow extends StatelessWidget {
               onChanged: enabled ? (v) => onChanged(v ?? false) : null,
             ),
             if (leading != null) ...[
-              leading!,
+              // Значок гасится вместе с подписью: он и был причиной жалобы —
+              // яркая иконка выглядела как «включено» независимо от галочки.
+              Opacity(opacity: struck ? 0.35 : 1, child: leading!),
               const SizedBox(width: 8),
             ],
             Expanded(
@@ -331,9 +573,11 @@ class _MenuCheckRow extends StatelessWidget {
                 label,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: enabled
-                      ? scheme.onSurface
-                      : Theme.of(context).disabledColor,
+                  color: !enabled || struck
+                      ? Theme.of(context).disabledColor
+                      : scheme.onSurface,
+                  decoration: struck ? TextDecoration.lineThrough : null,
+                  decorationColor: Theme.of(context).disabledColor,
                 ),
               ),
             ),
@@ -353,6 +597,7 @@ class _ServicePair extends StatelessWidget {
     required this.live,
     required this.alignEnd,
     required this.onTap,
+    this.bypass,
   });
 
   final ProbeService service;
@@ -361,6 +606,10 @@ class _ServicePair extends StatelessWidget {
   final bool live;
   final bool alignEnd;
   final VoidCallback onTap;
+
+  /// Правило раздельного туннелирования, уводящее сервис мимо VPN (или
+  /// запрещающее его). `null` — сервис идёт как весь остальной трафик.
+  final SiteRule? bypass;
 
   @override
   Widget build(BuildContext context) {
@@ -386,8 +635,26 @@ class _ServicePair extends StatelessWidget {
         _dot(context, live ? after : before, dim: false),
       ],
     );
+    final rule = bypass;
     final items = <Widget>[
       SiteFavicon(domain: service.domain, size: 26, builtIn: true),
+      // Значок стоит ВПЛОТНУЮ к бренд-иконке, а не с краю строки: строка
+      // зеркалится в правой колонке (`items.reversed`), и значок, приклеенный
+      // к кружкам, у половины сервисов оказался бы по другую сторону от них.
+      if (rule != null) ...[
+        const SizedBox(width: 2),
+        Icon(
+          // Перечёркнутый замок читается как «этот сервис вне защиты», знак
+          // запрета — как «сюда вообще нельзя». Разные вещи, разные значки.
+          rule.action == AppAction.block
+              ? Icons.block
+              : Icons.lock_open_rounded,
+          size: 14,
+          color: rule.action == AppAction.block
+              ? const Color(0xFFCC7777)
+              : Colors.orange,
+        ),
+      ],
       const SizedBox(width: 8),
       dots,
     ];
@@ -405,6 +672,16 @@ class _ServicePair extends StatelessWidget {
     // рядом с не грузящимся видео выглядит как враньё.
     if (service == ProbeService.youtube) {
       tip.write('\n\n${l.serviceYoutubeThrottleNote}');
+    }
+    // Пометка объясняет ПРИЧИНУ и НАЗЫВАЕТ ПРАВИЛО. Без имени правила человек
+    // видит замок и не знает, где его снять: правил у него десятки, а
+    // совпадение может прийти от родительского домена, которого в списке
+    // сервисов нет вовсе.
+    if (rule != null) {
+      tip.write('\n\n');
+      tip.write(rule.action == AppAction.block
+          ? l.serviceChecksBypassBlock(rule.label)
+          : l.serviceChecksBypassDirect(rule.label));
     }
     return Tooltip(
       message: tip.toString(),
@@ -466,11 +743,3 @@ class _ServicePair extends StatelessWidget {
   }
 }
 
-// TEMP_L10N_SHIM_START — временная заглушка ключей на время параллельной работы
-extension TmpConnectChecksKeys on AppLocalizations {
-  String get serviceChecksMenuTitle => 'Проверять при подключении';
-  String get serviceChecksMenuOff => 'Не проверять при подключении';
-  String get serviceChecksMenuTooltip => 'Какие сервисы проверять';
-  String get serviceChecksLegendOff => 'Проверка сервисов выключена';
-}
-// TEMP_L10N_SHIM_END

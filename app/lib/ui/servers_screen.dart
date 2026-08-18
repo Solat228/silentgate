@@ -6,6 +6,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../state/app_state.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
+import 'home_screen.dart' show CopyServerKeyShortcut;
 import 'widgets/ping_gate.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
@@ -48,7 +49,11 @@ class _ServersScreenState extends State<ServersScreen> {
     final nothingToPing =
         servers.isEmpty ? l.serversEmpty : l.serversNothingFound;
 
-    return Scaffold(
+    // Ctrl+C копирует ключ выбранного сервера. Виджет общий с главным экраном:
+    // копирование по клавише обязано вести себя одинаково на обоих списках, а
+    // две копии обработчика разошлись бы на первой же правке.
+    return CopyServerKeyShortcut(
+        child: Scaffold(
       appBar: AppBar(
         title: Text(_query.isEmpty
             ? l.serversTitle
@@ -114,6 +119,6 @@ class _ServersScreenState extends State<ServersScreen> {
                 ),
               ],
             ),
-    );
+    ));
   }
 }

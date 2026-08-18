@@ -75,12 +75,10 @@ void main() {
                     latencyMs: 42,
                     verification: PingVerification.passed,
                     measuredAt: at)),
-            SpeedChip(
-                speed: ServerSpeed(mbps: 24.4, measuredAt: at),
-                ping: const PingResult(
-                    outcome: PingOutcome.ok,
-                    latencyMs: 42,
-                    verification: PingVerification.passed)),
+            // Пинг плашке скорости больше не нужен: она существует ТОЛЬКО там,
+            // где замер реально был (прочерк «—» у непроверенных серверов
+            // отменён владельцем 18.08.2026).
+            SpeedChip(speed: ServerSpeed(mbps: 24.4, measuredAt: at)),
           ]),
         ),
       ));

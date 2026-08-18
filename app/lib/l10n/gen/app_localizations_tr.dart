@@ -2890,4 +2890,43 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Dosya adına göre eşleştirmek için dokunun';
+
+  @override
+  String get srvTileCopyKey => 'Anahtarı kopyala';
+
+  @override
+  String serviceChecksBypassDirect(Object rule) {
+    return 'VPN dışında: bölünmüş tünel kuralı “$rule” bu alan adını doğrudan gönderiyor — servis gerçek adresinizle çalışacak.';
+  }
+
+  @override
+  String serviceChecksBypassBlock(Object rule) {
+    return 'Engelli: bölünmüş tünel kuralı “$rule” bu alan adını yasaklıyor — servis VPN ile de VPN’siz de açılmaz.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Web sitesi';
+
+  @override
+  String get subBarOpenSiteHint => 'Abonelik sayfasını tarayıcıda aç';
+
+  @override
+  String subSwitcherRefreshingOne(Object name) {
+    return '\"$name\" yenileniyor…';
+  }
+
+  @override
+  String subSwitcherRefreshedOne(Object name) {
+    return '\"$name\" güncellendi';
+  }
+
+  @override
+  String subSwitcherRefreshFailedOne(Object name) {
+    return '\"$name\" güncellenemedi';
+  }
+
+  @override
+  String subBarDeleteConfirmNamed(Object name) {
+    return '\"$name\" aboneliği silinsin mi?';
+  }
 }
