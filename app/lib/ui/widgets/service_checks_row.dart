@@ -11,22 +11,94 @@ import '../../core/settings/split_tunnel.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/service_check_controller.dart';
 import '../../state/settings_controller.dart';
+import '../layout/adaptive.dart';
 import 'site_favicon.dart';
+
+/// Смысловая группа сервисов — один ряд проверок у кнопки Connect.
+///
+/// ⚠️ ГРУППА — ЭТО КЛАСС БЛОКИРОВКИ, А НЕ ПОЛКА ДЛЯ КРАСОТЫ. Четырнадцать
+/// одинаковых кружков в две колонки читаются как один список, и человек не
+/// видит главного: «мессенджеры живы, ИИ мёртв» — это разные диагнозы, а
+/// «Telegram зелёный, ChatGPT красный» вперемешку выглядит как случайность.
+///
+/// Порядок значений — порядок рядов на экране.
+enum ServiceGroup { messengers, ai, media, social, other }
+
+extension ServiceGroupLabel on ServiceGroup {
+  /// Подпись ряда. Переводится (в отличие от названий самих сервисов — те
+  /// бренды и остаются как есть).
+  String label(AppLocalizations l) => switch (this) {
+        ServiceGroup.messengers => l.serviceGroupMessengers,
+        ServiceGroup.ai => l.serviceGroupAi,
+        ServiceGroup.media => l.serviceGroupMedia,
+        ServiceGroup.social => l.serviceGroupSocial,
+        ServiceGroup.other => l.serviceGroupOther,
+      };
+}
 
 /// Набор сервисов «живой» проверки у кнопки Connect (#6).
 ///
 /// ⚠️ Прежний одноимённый ВИДЖЕТ-ряд (`ServiceChecksRow`) удалён: он давно не
-/// стоял ни в одном дереве — проверки рисуются двумя колонками по бокам кнопки
-/// (`ServiceChecksColumn`), — но нёс собственную копию правил автопрогона со
+/// стоял ни в одном дереве, но нёс собственную копию правил автопрогона со
 /// сбросом результатов по ключу выбранного сервера. Мёртвый код, описывающий
 /// поведение, которого нет, хуже отсутствующего: следующий читатель чинил бы
-/// его вместо настоящего пути.
+/// его вместо настоящего пути. Пришедший ему на смену [ServiceChecksRows]
+/// (ряды по смыслу) автопрогон НЕ запускает — по той же причине.
+///
+/// Раскладок две: [ServiceChecksRows] — ряды по смысловым группам, и
+/// [ServiceChecksColumn] — прежние две колонки по бокам кнопки.
 abstract final class ServiceChecks {
-  /// ВЕСЬ каталог, из которого пользователь собирает свой набор (подменю у
-  /// колонок проверок).
+  /// Смысловые группы — ряды проверок у кнопки Connect (сверху вниз).
   ///
-  /// Порядок здесь — порядок показа на экране: сперва прежняя зашитая шестёрка
-  /// (её раскладку владелец уже видит), затем остальные.
+  /// ⚠️ ЛЕЖИТ ВПЛОТНУЮ К [catalog] НАМЕРЕННО. Это два взгляда на один набор:
+  /// каталог задаёт порядок в подменю и в настройках (менять его нельзя без
+  /// нужды — по нему уже написаны стражи, которые тапают по строкам меню),
+  /// группы задают раскладку рядами. Разъехаться им не дают тесты
+  /// `test/service_rows_api_test.dart`: каждый сервис лежит ровно в одной
+  /// группе, а объединение групп совпадает с каталогом ПОСОСТАВНО. Новый
+  /// сервис, забытый здесь, тест валит сразу — молча выпасть из рядов он не
+  /// может.
+  ///
+  /// Литерал `Map` в Dart сохраняет порядок вставки — на нём и держится
+  /// порядок рядов.
+  static const groups = <ServiceGroup, List<ProbeService>>{
+    ServiceGroup.messengers: [
+      ProbeService.telegram,
+      ProbeService.whatsapp,
+      ProbeService.discord,
+    ],
+    ServiceGroup.ai: [
+      ProbeService.chatgpt,
+      ProbeService.claude,
+      ProbeService.gemini,
+    ],
+    ServiceGroup.media: [
+      ProbeService.youtube,
+      ProbeService.twitch,
+      ProbeService.spotify,
+    ],
+    ServiceGroup.social: [
+      ProbeService.instagram,
+      ProbeService.x,
+    ],
+    // «Прочее» — не свалка: Google здесь эталон доступности (отвечает почти
+    // всегда, поэтому его отказ означает беду с каналом, а не с сервисом),
+    // Steam — игры, GitHub — разработка.
+    ServiceGroup.other: [
+      ProbeService.google,
+      ProbeService.steam,
+      ProbeService.github,
+    ],
+  };
+
+  /// ВЕСЬ каталог, из которого пользователь собирает свой набор (подменю у
+  /// проверок и раздел настроек).
+  ///
+  /// Порядок здесь — порядок показа В СПИСКЕ (подменю, настройки), а не в
+  /// рядах: рядами командует [groups]. Порядок сохранён прежним сознательно —
+  /// по нему написаны стражи, которые нажимают на строки подменю, и
+  /// перетасовка увела бы Instagram под нижний край окна 800×600, где нажатие
+  /// промахивается (проверено: тест краснеет ровно так).
   ///
   /// ⚠️ Список ЯВНЫЙ, а не `ProbeService.values`, ровно ради этого порядка — и
   /// поэтому новый сервис, забытый здесь, стал бы невыбираемым: настройка его
@@ -44,8 +116,7 @@ abstract final class ServiceChecks {
     ProbeService.x,
     // Пятёрка, добавленная по просьбе владельца: мессенджер, стриминг видео,
     // музыка, игры и разработка — классы блокировок, которых в прежней девятке
-    // не было вовсе. Четырнадцать сервисов раскладываются ровно по семь в
-    // колонку ([columns]), то есть кнопка Connect остаётся посередине.
+    // не было вовсе.
     ProbeService.whatsapp,
     ProbeService.twitch,
     ProbeService.spotify,
@@ -99,6 +170,29 @@ abstract final class ServiceChecks {
       List<ProbeService> all) {
     final half = (all.length + 1) ~/ 2;
     return (left: all.sublist(0, half), right: all.sublist(half));
+  }
+
+  /// Раскладка набора по смысловым рядам ([groups]).
+  ///
+  /// Пустая группа не возвращается вовсе, а не возвращается пустой: подпись
+  /// «Соцсети» над пустым местом занимала бы высоту у кнопки Connect и врала бы
+  /// — проверок в этой группе человек не выбирал.
+  ///
+  /// Порядок внутри ряда — порядок [groups], а не порядок [selected]: набор
+  /// приходит множеством, и у множества порядка нет вовсе (чипы перескакивали
+  /// бы после каждой правки набора).
+  static List<({ServiceGroup group, List<ProbeService> services})> grouped(
+      List<ProbeService> selected) {
+    final want = selected.toSet();
+    final out = <({ServiceGroup group, List<ProbeService> services})>[];
+    for (final e in groups.entries) {
+      final row = [
+        for (final s in e.value)
+          if (want.contains(s)) s,
+      ];
+      if (row.isNotEmpty) out.add((group: e.key, services: row));
+    }
+    return out;
   }
 
   /// Домены, по которым сервис узнаётся в правилах раздельного туннелирования.
@@ -240,6 +334,13 @@ class ServiceChecksColumn extends StatelessWidget {
       children: [
         for (final s in services)
           Padding(
+            // ⚠️ КЛЮЧ ПО ИМЕНИ СЕРВИСА, А НЕ ПО МЕСТУ В СПИСКЕ. Без ключа
+            // Flutter сопоставляет элементы позиционно, и при смене состава
+            // (галочка в подменю, переключение колонки) вторая строка получала
+            // состояние первой: у пары оживал чужой значок и чужой замер. Ключ
+            // стоит на ВНЕШНЕМ элементе списка — сопоставление идёт по нему, а
+            // не по вложенной паре.
+            key: ValueKey('svc:${s.name}'),
             padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
             child: _ServicePair(
               service: s,
@@ -254,6 +355,125 @@ class ServiceChecksColumn extends StatelessWidget {
               onTap: () => ctrl.check(s, httpPort),
             ),
           ),
+      ],
+    );
+  }
+}
+
+/// Проверки сервисов РЯДАМИ ПО СМЫСЛУ — мессенджеры, ИИ, видео, соцсети,
+/// прочее (решение владельца от 18.08.2026).
+///
+/// ⚠️ ЗАЧЕМ ВМЕСТО ДВУХ КОЛОНОК. Четырнадцать одинаковых кружков в два
+/// столбика по бокам кнопки читаются как один сплошной список: «Telegram
+/// зелёный, ChatGPT красный, Instagram зелёный» вперемешку выглядит
+/// случайностью. Ряд с подписью отвечает на вопрос, который человек на самом
+/// деле задаёт: «мессенджеры живы, а ИИ нет» — это диагноз, а не набор точек.
+///
+/// ⚠️ АВТОПРОГОН ОТСЮДА НЕ ЗАПУСКАЕТСЯ — ровно по той же причине, по которой
+/// его убрали из прежнего одноимённого виджета (см. шапку файла): прогон живёт
+/// в `home_screen` и привязан к подъёму туннеля
+/// (`ServiceCheckController.setTunnelUp`). Своя копия правил тут означала бы
+/// два расходящихся описания одного поведения.
+///
+/// ⚠️ РЯД НЕ ИМЕЕТ ПРАВА РАСПЕРЕТЬ ОКНО: пары лежат в `Wrap`, поэтому на узком
+/// экране они переносятся на вторую строку, а не уезжают за край. Ширину
+/// виджет берёт ту, что дал родитель, и своей не просит.
+class ServiceChecksRows extends StatelessWidget {
+  const ServiceChecksRows({
+    super.key,
+    required this.services,
+    required this.httpPort,
+  });
+
+  /// Состав из настроек (`ServiceChecks.selected`). Пусто — виджета нет вовсе
+  /// и места он не занимает.
+  final List<ProbeService> services;
+
+  /// http-порт живого ядра; 0 — VPN выключен (показывается только замер «до»).
+  final int httpPort;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final ctrl = context.watch<ServiceCheckController>();
+    final live = httpPort > 0;
+    // Настройки читаются как НЕОБЯЗАТЕЛЬНЫЕ — см. `ServiceChecksColumn`:
+    // стражи вёрстки поднимают виджет без провайдера настроек, и строгое
+    // чтение уронило бы их `ProviderNotFoundException`.
+    final split = context.watch<SettingsController?>()?.settings.splitTunnel;
+    final rows = ServiceChecks.grouped(services);
+    if (rows.isEmpty) return const SizedBox.shrink();
+    // На узком экране просвет между рядами меньше: у кнопки Connect и без того
+    // мало места по высоте, а рядов теперь до пяти.
+    final compact = context.sg.isCompact;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final row in rows) ...[
+          _GroupDivider(group: row.group, label: row.group.label(l)),
+          Padding(
+            padding: EdgeInsets.only(top: compact ? 2 : 4),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: compact ? 6 : 12,
+              runSpacing: 2,
+              children: [
+                for (final s in row.services)
+                  _ServicePair(
+                    // Ключ по имени сервиса — см. `ServiceChecksColumn`.
+                    key: ValueKey('svc:${s.name}'),
+                    service: s,
+                    before: ctrl.baselineFor(s),
+                    after: ctrl.resultFor(s),
+                    live: live,
+                    alignEnd: false,
+                    bypass: split == null
+                        ? null
+                        : ServiceChecks.bypassRuleFor(split, s),
+                    onTap: () => ctrl.check(s, httpPort),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: compact ? 4 : 8),
+        ],
+      ],
+    );
+  }
+}
+
+/// Разделитель ряда: подпись группы посреди тонкой линии.
+///
+/// ⚠️ Именно линия, а не один отступ. Владелец просил «явное разграничение»:
+/// проверки стоят вплотную к кнопке Connect, и пустой промежуток между рядами
+/// на глаз неотличим от промежутка между строками внутри ряда.
+class _GroupDivider extends StatelessWidget {
+  const _GroupDivider({required this.group, required this.label});
+
+  final ServiceGroup group;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      // Ключ ставится на строку целиком: по нему страж вёрстки считает ряды.
+      key: ValueKey('serviceGroup:${group.name}'),
+      children: [
+        const Expanded(child: Divider(height: 1, thickness: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+          ),
+        ),
+        const Expanded(child: Divider(height: 1, thickness: 1)),
       ],
     );
   }
@@ -591,6 +811,9 @@ class _MenuCheckRow extends StatelessWidget {
 /// Пара «до / после» для одного сервиса.
 class _ServicePair extends StatelessWidget {
   const _ServicePair({
+    // Ключ по имени сервиса ставят оба места вызова — см. комментарии там:
+    // без него Flutter сопоставляет пары позиционно и путает их состояние.
+    super.key,
     required this.service,
     required this.before,
     required this.after,

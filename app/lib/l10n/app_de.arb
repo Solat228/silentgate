@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "„{name}“ wird aktualisiert…",
   "subSwitcherRefreshedOne": "„{name}“ aktualisiert",
   "subSwitcherRefreshFailedOne": "„{name}“ konnte nicht aktualisiert werden",
-  "subBarDeleteConfirmNamed": "Abonnement „{name}“ löschen?"
+  "subBarDeleteConfirmNamed": "Abonnement „{name}“ löschen?",
+  "exitServerUnsupportedInfo": "Dieser Server kann nicht als eigener Ausgang laufen: Panel-Profile „Auto“ und einen Teil der Protokolle beherrscht nur Xray, die Ausgänge verteilt aber sing-box. Der Verkehr dieser Regel läuft über den Haupttunnel.",
+  "pingBusyServiceChecks": "Ping nicht verfügbar: Dienstprüfung läuft",
+  "serviceChecksChannelNotReady": "Der Tunnel ist noch nicht bereit – die Prüfungen wurden nicht ausgeführt",
+  "serviceChecksRetryCheck": "Prüfung wiederholen",
+  "serviceGroupMessengers": "Messenger",
+  "serviceGroupAi": "KI",
+  "serviceGroupMedia": "Video und Musik",
+  "serviceGroupSocial": "Soziale Netzwerke",
+  "serviceGroupOther": "Sonstiges",
+  "apiTokenHidden": "verborgen – auf „anzeigen“ klicken",
+  "apiTokenShow": "Token anzeigen",
+  "apiTokenHide": "Token verbergen",
+  "apiCheatSheetTitle": "Spickzettel: Adresse, Ports, Endpunkte",
+  "apiCheatSheetBase": "Basisadresse",
+  "apiCheatSheetExitPorts": "Ausgangs-Ports",
+  "apiCheatSheetPortDirect": "{port} – „Direkt“: am VPN vorbei, echte IP",
+  "apiCheatSheetPortServer": "{port} – {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "kein Server ausgewählt – es gibt keine Server-Ports",
+  "apiCheatSheetPortsSystemProxy": "werden nicht geöffnet: Erfassung „Systemproxy“. Nur der Steuerport {control} funktioniert",
+  "apiCheatSheetTokenOff": "Token ist leer – der Kanal startet nicht, kein Port lauscht",
+  "apiCheatSheetPortsWhenConnected": "Ausgangs-Ports lauschen nur bei bestehender Verbindung.",
+  "apiCheatSheetEndpoints": "Endpunkte",
+  "apiEpStatus": "Engine-Status, gewählter Server, Erfassungsmodus, läuft ein Ping",
+  "apiEpServers": "Serverliste mit den letzten Ping-Ergebnissen",
+  "apiEpExits": "Belegung der Ausgangs-Ports samt Eintrag „Direkt“",
+  "apiEpTraffic": "Traffic-Zähler seit dem Start der Anwendung",
+  "apiEpSubscription": "Name, Ablaufdatum und Restvolumen des Abonnements",
+  "apiEpConnect": "Verbinden per Serverschlüssel, Name oder „Auto“; bei aktiver Verbindung wird der Server gewechselt",
+  "apiEpDisconnect": "Trennen; ein erneuter Aufruf ist unbedenklich",
+  "apiEpPing": "Ping-Lauf über alle Server starten; Ergebnisse aus /v1/servers lesen",
+  "apiCopyCurlExample": "curl-Beispiel kopieren"
 }

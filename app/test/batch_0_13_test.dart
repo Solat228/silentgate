@@ -199,6 +199,20 @@ void main() {
     setUp(() {
       ServiceCheckController.readinessAttempts = 1;
       ServiceCheckController.readinessDelay = Duration.zero;
+      // ⚠️ ГОТОВНОСТЬ КАНАЛА ТЕПЕРЬ НАСТОЯЩИЙ ГЕЙТ, А НЕ ФОРМАЛЬНОСТЬ.
+      //
+      // Раньше пробы уходили даже туда, где ожидание готовности не прошло ни
+      // разу, — и человек получал ряд красных кружков вместо честного «канал
+      // ещё не встал». Порт 1 в этих тестах закрыт, то есть ожидание не пройдёт
+      // никогда, а проверяется здесь другое: «один автопрогон на подъём».
+      // Поэтому готовность подменяем, а сами пробы остаются настоящими и
+      // честно падают на закрытом порту.
+      ServiceCheckController.readinessProbe = (_) async => true;
+    });
+
+    tearDown(() {
+      ServiceCheckController.readinessProbe =
+          ServiceCheckController.defaultReadinessProbe;
     });
 
     test('по умолчанию все сервисы idle, никто не проверяется', () {

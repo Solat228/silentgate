@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "\"{name}\" yenileniyor…",
   "subSwitcherRefreshedOne": "\"{name}\" güncellendi",
   "subSwitcherRefreshFailedOne": "\"{name}\" güncellenemedi",
-  "subBarDeleteConfirmNamed": "\"{name}\" aboneliği silinsin mi?"
+  "subBarDeleteConfirmNamed": "\"{name}\" aboneliği silinsin mi?",
+  "exitServerUnsupportedInfo": "Bu sunucu ayrı bir çıkış olarak çalıştırılamaz: panelin «Oto» profillerini ve bazı protokolleri yalnızca Xray yürütür, çıkışları ise sing-box dağıtır. Kuralın trafiği ana tünelden gider.",
+  "pingBusyServiceChecks": "Ping kullanılamıyor: servis kontrolü sürüyor",
+  "serviceChecksChannelNotReady": "Tünel henüz hazır değil — kontroller çalıştırılmadı",
+  "serviceChecksRetryCheck": "Kontrolü yinele",
+  "serviceGroupMessengers": "Mesajlaşma",
+  "serviceGroupAi": "Yapay zekâ",
+  "serviceGroupMedia": "Video ve müzik",
+  "serviceGroupSocial": "Sosyal ağlar",
+  "serviceGroupOther": "Diğer",
+  "apiTokenHidden": "gizli — «göster»e basın",
+  "apiTokenShow": "Belirteci göster",
+  "apiTokenHide": "Belirteci gizle",
+  "apiCheatSheetTitle": "Kısa kılavuz: adres, portlar, uç noktalar",
+  "apiCheatSheetBase": "Temel adres",
+  "apiCheatSheetExitPorts": "Çıkış portları",
+  "apiCheatSheetPortDirect": "{port} — «Doğrudan»: VPN dışı, gerçek IP",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "hiçbir sunucu işaretli değil — sunucu portu olmayacak",
+  "apiCheatSheetPortsSystemProxy": "açılmaz: yakalama «Sistem vekili» seçili. Yalnızca kontrol portu {control} çalışır",
+  "apiCheatSheetTokenOff": "belirteç boş — kanal açılmaz, hiçbir port dinlemez",
+  "apiCheatSheetPortsWhenConnected": "Çıkış portları yalnızca bağlantı açıkken dinler.",
+  "apiCheatSheetEndpoints": "Uç noktalar",
+  "apiEpStatus": "Motor durumu, seçili sunucu, yakalama modu, ping sürüyor mu",
+  "apiEpServers": "Son ping sonuçlarıyla sunucu listesi",
+  "apiEpExits": "Çıkış portlarının dağılımı ve «Doğrudan» kaydı",
+  "apiEpTraffic": "Uygulamanın tüm çalışma süresi için trafik sayaçları",
+  "apiEpSubscription": "Aboneliğin adı, bitiş tarihi ve kalan trafiği",
+  "apiEpConnect": "Sunucu anahtarı, ad veya «Otomatik» ile bağlan; bağlantı açıkken sunucuyu değiştirir",
+  "apiEpDisconnect": "Bağlantıyı kes; çağrıyı tekrarlamak güvenlidir",
+  "apiEpPing": "Tüm sunucular için ping başlat; sonuçları /v1/servers üzerinden oku",
+  "apiCopyCurlExample": "curl örneğini kopyala"
 }

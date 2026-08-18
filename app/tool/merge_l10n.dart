@@ -70,5 +70,32 @@ void main(List<String> args) {
         const JsonEncoder.withIndent('  ').convert(map) + '\n');
     stdout.writeln('$path: +$added ключей (уже были: $dup).');
   }
+  // ⚠️ СЛИТОЕ УБИРАЕМ ЗА СОБОЙ, И ЭТО НЕ АККУРАТНОСТЬ, А ЗАЩИТА.
+  //
+  // Папка с дельтами общая и живёт между заходами. За одну сессию 18.08.2026
+  // ТРИЖДЫ выходило так, что в ней лежали файлы прошлого батча — уже слитые.
+  // Следующее слияние подхватывало их вместе с новыми: в лучшем случае тул
+  // останавливался на дублях ключей, в худшем в переводы возвращались строки,
+  // которые из кода давно убрали. Каждый раз это ловилось руками — то есть
+  // держалось на внимательности, а она кончается.
+  //
+  // Переносим в `_merged/`, а не удаляем: если слияние оказалось ошибочным,
+  // файлы под рукой и их можно вернуть.
+  final archive = Directory('${dir.path}${Platform.pathSeparator}_merged');
+  var moved = 0;
+  for (final f in jsons) {
+    try {
+      if (!archive.existsSync()) archive.createSync(recursive: true);
+      final name = f.uri.pathSegments.last;
+      f.renameSync('${archive.path}${Platform.pathSeparator}$name');
+      moved++;
+    } catch (e) {
+      stderr.writeln('не удалось убрать ${f.path} в архив: $e');
+    }
+  }
+  if (moved > 0) {
+    stdout.writeln('Слитые дельты убраны в ${archive.path} ($moved шт.) — '
+        'следующее слияние их уже не увидит.');
+  }
   stdout.writeln('Готово. Запусти: flutter gen-l10n');
 }

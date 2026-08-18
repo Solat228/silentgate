@@ -2921,4 +2921,114 @@ class AppLocalizationsAr extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'حذف اشتراك «$name»؟';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'لا يمكن رفع هذا الخادم كمخرج منفصل: ملفات «تلقائي» من اللوحة وبعض البروتوكولات لا يتولاها إلا Xray، بينما يوزّع المخارج sing-box. تمر حركة مرور القاعدة عبر النفق الرئيسي.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'التحقق من زمن الاستجابة غير متاح: جارٍ فحص الخدمات';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'النفق ليس جاهزًا بعد — لم يجرِ تشغيل الفحوصات';
+
+  @override
+  String get serviceChecksRetryCheck => 'إعادة الفحص';
+
+  @override
+  String get serviceGroupMessengers => 'المراسلة';
+
+  @override
+  String get serviceGroupAi => 'الذكاء الاصطناعي';
+
+  @override
+  String get serviceGroupMedia => 'الفيديو والموسيقى';
+
+  @override
+  String get serviceGroupSocial => 'الشبكات الاجتماعية';
+
+  @override
+  String get serviceGroupOther => 'أخرى';
+
+  @override
+  String get apiTokenHidden => 'مخفي — اضغط «إظهار»';
+
+  @override
+  String get apiTokenShow => 'إظهار الرمز';
+
+  @override
+  String get apiTokenHide => 'إخفاء الرمز';
+
+  @override
+  String get apiCheatSheetTitle =>
+      'بطاقة مرجعية: العنوان والمنافذ ونقاط النهاية';
+
+  @override
+  String get apiCheatSheetBase => 'العنوان الأساسي';
+
+  @override
+  String get apiCheatSheetExitPorts => 'منافذ المخارج';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — «مباشر»: خارج VPN، عنوان IP الحقيقي';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'لم يتم تحديد أي خادم — لن تكون هناك منافذ للخوادم';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'لا تُفتح: وضع الالتقاط هو «وكيل النظام». يعمل منفذ التحكم $control فقط';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'الرمز فارغ — لا تبدأ القناة ولا يستمع أي منفذ';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'تستمع منافذ المخارج فقط أثناء وجود اتصال قائم.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'نقاط النهاية';
+
+  @override
+  String get apiEpStatus =>
+      'حالة المحرك والخادم المحدد ووضع الالتقاط وما إذا كان الفحص جاريًا';
+
+  @override
+  String get apiEpServers => 'قائمة الخوادم مع آخر نتائج الفحص';
+
+  @override
+  String get apiEpExits => 'توزيع منافذ المخارج مع مدخل «مباشر»';
+
+  @override
+  String get apiEpTraffic => 'عدادات حركة البيانات طوال فترة تشغيل التطبيق';
+
+  @override
+  String get apiEpSubscription =>
+      'اسم الاشتراك وتاريخ انتهائه وحركة البيانات المتبقية';
+
+  @override
+  String get apiEpConnect =>
+      'الاتصال بمفتاح الخادم أو باسمه أو «تلقائي»؛ وعلى قناة نشطة يبدّل الخادم';
+
+  @override
+  String get apiEpDisconnect => 'قطع الاتصال؛ وتكرار الاستدعاء آمن';
+
+  @override
+  String get apiEpPing =>
+      'بدء فحص جميع الخوادم؛ وتُقرأ النتائج من ‎/v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'نسخ مثال curl';
 }

@@ -5081,6 +5081,192 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Удалить подписку «{name}»?'**
   String subBarDeleteConfirmNamed(Object name);
+
+  /// No description provided for @exitServerUnsupportedInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.'**
+  String get exitServerUnsupportedInfo;
+
+  /// No description provided for @pingBusyServiceChecks.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг недоступен: идёт проверка сервисов'**
+  String get pingBusyServiceChecks;
+
+  /// No description provided for @serviceChecksChannelNotReady.
+  ///
+  /// In ru, this message translates to:
+  /// **'Канал ещё не готов — проверка не запускалась'**
+  String get serviceChecksChannelNotReady;
+
+  /// No description provided for @serviceChecksRetryCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторить проверку'**
+  String get serviceChecksRetryCheck;
+
+  /// No description provided for @serviceGroupMessengers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мессенджеры'**
+  String get serviceGroupMessengers;
+
+  /// No description provided for @serviceGroupAi.
+  ///
+  /// In ru, this message translates to:
+  /// **'ИИ'**
+  String get serviceGroupAi;
+
+  /// No description provided for @serviceGroupMedia.
+  ///
+  /// In ru, this message translates to:
+  /// **'Видео и музыка'**
+  String get serviceGroupMedia;
+
+  /// No description provided for @serviceGroupSocial.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соцсети'**
+  String get serviceGroupSocial;
+
+  /// No description provided for @serviceGroupOther.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прочее'**
+  String get serviceGroupOther;
+
+  /// No description provided for @apiTokenHidden.
+  ///
+  /// In ru, this message translates to:
+  /// **'скрыт — нажмите «показать»'**
+  String get apiTokenHidden;
+
+  /// No description provided for @apiTokenShow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать токен'**
+  String get apiTokenShow;
+
+  /// No description provided for @apiTokenHide.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть токен'**
+  String get apiTokenHide;
+
+  /// No description provided for @apiCheatSheetTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Памятка: адрес, порты, эндпоинты'**
+  String get apiCheatSheetTitle;
+
+  /// No description provided for @apiCheatSheetBase.
+  ///
+  /// In ru, this message translates to:
+  /// **'Базовый адрес'**
+  String get apiCheatSheetBase;
+
+  /// No description provided for @apiCheatSheetExitPorts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порты выходов'**
+  String get apiCheatSheetExitPorts;
+
+  /// No description provided for @apiCheatSheetPortDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'{port} — «Прямо»: мимо VPN, реальный IP'**
+  String apiCheatSheetPortDirect(Object port);
+
+  /// No description provided for @apiCheatSheetPortServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'{port} — {name}'**
+  String apiCheatSheetPortServer(int port, String name);
+
+  /// No description provided for @apiCheatSheetNoExitServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'ни один сервер не отмечен — портов серверов не будет'**
+  String get apiCheatSheetNoExitServers;
+
+  /// No description provided for @apiCheatSheetPortsSystemProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'не открываются: выбран захват «Системный прокси». Работает только управляющий порт {control}'**
+  String apiCheatSheetPortsSystemProxy(Object control);
+
+  /// No description provided for @apiCheatSheetTokenOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'токен пуст — канал не поднимается, ни один порт не слушает'**
+  String get apiCheatSheetTokenOff;
+
+  /// No description provided for @apiCheatSheetPortsWhenConnected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порты выходов слушают только при поднятом соединении.'**
+  String get apiCheatSheetPortsWhenConnected;
+
+  /// No description provided for @apiCheatSheetEndpoints.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эндпоинты'**
+  String get apiCheatSheetEndpoints;
+
+  /// No description provided for @apiEpStatus.
+  ///
+  /// In ru, this message translates to:
+  /// **'Состояние движка, выбранный сервер, режим захвата, идёт ли пинг'**
+  String get apiEpStatus;
+
+  /// No description provided for @apiEpServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список серверов с последними результатами пинга'**
+  String get apiEpServers;
+
+  /// No description provided for @apiEpExits.
+  ///
+  /// In ru, this message translates to:
+  /// **'Раскладка портов выходов и запись «Прямо»'**
+  String get apiEpExits;
+
+  /// No description provided for @apiEpTraffic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Счётчики трафика за всё время работы приложения'**
+  String get apiEpTraffic;
+
+  /// No description provided for @apiEpSubscription.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название, срок и остаток трафика подписки'**
+  String get apiEpSubscription;
+
+  /// No description provided for @apiEpConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключиться по ключу сервера, по имени или «Авто»; на живом канале — смена сервера'**
+  String get apiEpConnect;
+
+  /// No description provided for @apiEpDisconnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключиться; повторный вызов безопасен'**
+  String get apiEpDisconnect;
+
+  /// No description provided for @apiEpPing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запустить пинг всех серверов; результаты забирать из /v1/servers'**
+  String get apiEpPing;
+
+  /// No description provided for @apiCopyCurlExample.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать пример curl'**
+  String get apiCopyCurlExample;
 }
 
 class _AppLocalizationsDelegate

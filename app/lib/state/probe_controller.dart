@@ -19,6 +19,7 @@ import '../core/xray/harness_config_builder.dart' show HarnessRealism;
 import '../core/xray/outbound_variant.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
+import 'service_check_controller.dart' show ServiceCheckActivity;
 
 /// Подпись замера скорости. Совпадает с [SpeedTest.download], но объявлена
 /// отдельно, чтобы её можно было подменить в тесте (лишние необязательные
@@ -89,6 +90,22 @@ class ProbeController extends ChangeNotifier {
   }) : _harnessFactory = harnessFactory ?? createProbeHarness;
 
   bool get running => _running;
+
+  /// Занят ли живой прокси-порт проверкой сервисов у кнопки Connect.
+  ///
+  /// ⚠️ ЭТО НЕ КОСМЕТИКА ИНТЕРФЕЙСА, А УСЛОВИЕ ИСПОЛНИТЕЛЯ. Пробы сервисов идут
+  /// через порт ЖИВОГО ядра — тот самый, через который пинг проверяет
+  /// подключённый сервер и на который в режиме по умолчанию смотрит системный
+  /// прокси всей машины на Windows. Пинг, начатый поверх пачки из четырнадцати
+  /// проб, добавляет к ней свои соединения в ту же секунду; жалоба владельца
+  /// «всё сломалось и не пингуется с самого начала после включения VPN»
+  /// родилась ровно из этого наложения.
+  ///
+  /// Отдельным геттером, а не чтением статики по месту, чтобы гейт интерфейса
+  /// (`PingGate.of`) спрашивал ТОТ ЖЕ код, что и `_pingBatch`: два независимых
+  /// ответа на один вопрос в этом проекте уже давали дыру (url-схемы).
+  bool get serviceChecksRunning => ServiceCheckActivity.busy;
+
   PingResult resultFor(VpnServer s) => _results[s.key] ?? PingResult.untested;
 
   // ── Прогресс для уведомления слева снизу ───────────────────────────────────
@@ -562,7 +579,16 @@ class ProbeController extends ChangeNotifier {
   Future<void> _pingBatch(List<VpnServer> servers, AppSettings settings) async {
     // Замер скорости держит харнесс и те же локальные порты — начинать пинг
     // поверх него значит отобрать порт у идущего прогона.
-    if (_running || _speedRunning || servers.isEmpty) return;
+    //
+    // ⚠️ Автопрогон проверки сервисов — третье такое условие, и порядок здесь
+    // ПОВТОРЁН в `PingGate.from`: гейт обязан называть ровно ту причину, по
+    // которой откажет исполнитель.
+    if (_running ||
+        _speedRunning ||
+        serviceChecksRunning ||
+        servers.isEmpty) {
+      return;
+    }
     _running = true;
     _batch = List.unmodifiable(servers);
     _batchKeys = {for (final s in servers) s.key};

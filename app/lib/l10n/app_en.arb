@@ -1263,5 +1263,46 @@
   "subSwitcherRefreshingOne": "Refreshing \"{name}\"…",
   "subSwitcherRefreshedOne": "\"{name}\" updated",
   "subSwitcherRefreshFailedOne": "Could not update \"{name}\"",
-  "subBarDeleteConfirmNamed": "Delete the \"{name}\" subscription?"
+  "subBarDeleteConfirmNamed": "Delete the \"{name}\" subscription?",
+  "exitServerUnsupportedInfo": "This server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.",
+  "pingBusyServiceChecks": "Ping unavailable: service check in progress",
+  "serviceChecksChannelNotReady": "Tunnel is not ready yet — checks did not run",
+  "serviceChecksRetryCheck": "Retry check",
+  "serviceGroupMessengers": "Messengers",
+  "serviceGroupAi": "AI",
+  "serviceGroupMedia": "Video and music",
+  "serviceGroupSocial": "Social",
+  "serviceGroupOther": "Other",
+  "apiTokenHidden": "hidden — press “show”",
+  "apiTokenShow": "Show token",
+  "apiTokenHide": "Hide token",
+  "apiCheatSheetTitle": "Cheat sheet: address, ports, endpoints",
+  "apiCheatSheetBase": "Base address",
+  "apiCheatSheetExitPorts": "Exit ports",
+  "apiCheatSheetPortDirect": "{port} — “Direct”: bypasses the VPN, real IP",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "no server is selected — there will be no server ports",
+  "apiCheatSheetPortsSystemProxy": "not opened: the capture mode is “System proxy”. Only the control port {control} works",
+  "apiCheatSheetTokenOff": "the token is empty — the channel does not start, no port listens",
+  "apiCheatSheetPortsWhenConnected": "Exit ports listen only while the connection is up.",
+  "apiCheatSheetEndpoints": "Endpoints",
+  "apiEpStatus": "Engine state, selected server, capture mode, whether a ping run is in progress",
+  "apiEpServers": "The list of servers with the latest ping results",
+  "apiEpExits": "The exit port layout plus the “Direct” entry",
+  "apiEpTraffic": "Traffic counters for the whole app run, not the current session",
+  "apiEpSubscription": "Subscription title, expiry date and remaining traffic",
+  "apiEpConnect": "Connect by server key, by name or “Auto”; on a live channel it switches the server",
+  "apiEpDisconnect": "Disconnect; calling it again is safe",
+  "apiEpPing": "Start a ping run over all servers; read the results from /v1/servers",
+  "apiCopyCurlExample": "Copy a curl example"
 }

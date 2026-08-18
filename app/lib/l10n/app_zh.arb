@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "正在更新「{name}」…",
   "subSwitcherRefreshedOne": "「{name}」已更新",
   "subSwitcherRefreshFailedOne": "无法更新「{name}」",
-  "subBarDeleteConfirmNamed": "删除订阅「{name}」？"
+  "subBarDeleteConfirmNamed": "删除订阅「{name}」？",
+  "exitServerUnsupportedInfo": "这台服务器无法作为独立出口运行：面板的“自动”配置和部分协议只有 Xray 支持，而出口由 sing-box 分流。该规则的流量改走主隧道。",
+  "pingBusyServiceChecks": "无法测速：正在检查服务",
+  "serviceChecksChannelNotReady": "隧道尚未就绪 — 未执行检查",
+  "serviceChecksRetryCheck": "重新检查",
+  "serviceGroupMessengers": "即时通讯",
+  "serviceGroupAi": "人工智能",
+  "serviceGroupMedia": "视频与音乐",
+  "serviceGroupSocial": "社交网络",
+  "serviceGroupOther": "其他",
+  "apiTokenHidden": "已隐藏 — 点击“显示”",
+  "apiTokenShow": "显示令牌",
+  "apiTokenHide": "隐藏令牌",
+  "apiCheatSheetTitle": "速查表：地址、端口、接口",
+  "apiCheatSheetBase": "基础地址",
+  "apiCheatSheetExitPorts": "出口端口",
+  "apiCheatSheetPortDirect": "{port} — “直连”：绕过 VPN，真实 IP",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "未勾选任何服务器 — 不会有服务器端口",
+  "apiCheatSheetPortsSystemProxy": "不会开启：当前捕获方式为“系统代理”。仅控制端口 {control} 可用",
+  "apiCheatSheetTokenOff": "令牌为空 — 通道不会启动，没有端口在监听",
+  "apiCheatSheetPortsWhenConnected": "只有在连接建立时，出口端口才会监听。",
+  "apiCheatSheetEndpoints": "接口",
+  "apiEpStatus": "内核状态、所选服务器、捕获方式，以及是否正在测速",
+  "apiEpServers": "服务器列表及最近一次的延迟结果",
+  "apiEpExits": "出口端口分配以及“直连”条目",
+  "apiEpTraffic": "应用整个运行期间的流量计数",
+  "apiEpSubscription": "订阅名称、到期时间与剩余流量",
+  "apiEpConnect": "按服务器密钥、名称或“自动”连接；连接已建立时则切换服务器",
+  "apiEpDisconnect": "断开连接；重复调用是安全的",
+  "apiEpPing": "对所有服务器发起测速；结果从 /v1/servers 读取",
+  "apiCopyCurlExample": "复制 curl 示例"
 }

@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
+
 import '../platform/app_paths.dart';
+import '../settings/app_settings.dart';
 import '../subscription/subscription_logo.dart';
 
 /// Иконка (favicon) сайта для списка раздельного туннелирования.
@@ -23,13 +27,82 @@ import '../subscription/subscription_logo.dart';
 /// Результат кэшируется в `%APPDATA%\SilentGate\site_icons\<домен>.png`, чтобы
 /// не ходить в сеть на каждую перерисовку. Flutter рисует только PNG, поэтому
 /// `.ico` не берём.
+///
+/// ⚠️ У ВШИТЫХ СЕРВИСОВ СЕТЬ ВООБЩЕ НЕ НУЖНА: их иконки лежат в поставке
+/// (`assets/services/<сервис>.png`, см. [bundledAsset]) и берутся оттуда. До
+/// этого все 14 бренд-иконок качались при каждом первом показе — до
+/// семнадцати запросов на домен, и любой сбой сети оставлял глобус.
 class SiteFaviconService {
   static const _ua =
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
       '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 
-  static final Map<String, String?> _mem = {};
+  /// Удачные результаты: ключ → путь к PNG. Держим до конца работы приложения.
+  static final Map<String, String> _hits = {};
+
+  /// Неудачные: ключ → когда промахнулись. ⚠️ ОТДЕЛЬНО ОТ УДАЧНЫХ И СО СРОКОМ.
+  /// Раньше промах писался в тот же кэш значением `null` и жил вечно: сайт,
+  /// не ответивший ОДИН раз при старте (или ответивший, пока сеть ещё
+  /// поднималась), оставался серым глобусом до перезапуска приложения — ровно
+  /// то, что видел владелец у части сервисов.
+  static final Map<String, DateTime> _misses = {};
+
+  /// Сколько не повторять неудачную попытку. Не ноль (иначе каждая перерисовка
+  /// списка била бы в сеть) и не вечность (см. [_misses]).
+  /// Изменяемая ради теста-стража: проверить срок, дождавшись десяти минут,
+  /// нельзя.
+  @visibleForTesting
+  static Duration missTtl = const Duration(minutes: 10);
+
   static final Map<String, Future<String?>> _pending = {};
+
+  /// Сколько загрузок иконок идёт в сеть одновременно.
+  ///
+  /// ⚠️ Не «на всякий случай»: у каждого домена до шести адресов-кандидатов
+  /// плюс запрос самой страницы, а список сервисов разросся до 14. Без предела
+  /// открытие экрана давало десятки одновременных TLS-рукопожатий — на мобильной
+  /// сети это и радио будит, и первые иконки задерживает ради последних.
+  static const maxParallel = 3;
+
+  static int _active = 0;
+  static final List<Completer<void>> _waiting = [];
+
+  /// Иконки сервисов, вложенные В ПОСТАВКУ (`assets/services/<сервис>.png`).
+  ///
+  /// ⚠️ Имя файла — ПО ИМЕНИ СЕРВИСА, а не по домену: домен сервис меняет
+  /// (`twitter.com` → `x.com`), и файл, названный доменом, пришлось бы
+  /// переименовывать вместе с ним. Карта строится из самого перечисления,
+  /// поэтому новый сервис нельзя добавить и забыть здесь — забытым окажется
+  /// файл, а его отсутствие ловит `site_favicon_race_test`.
+  static final Map<String, String> _bundled = {
+    for (final s in ProbeService.values)
+      s.domain: 'assets/services/${s.name}.png'
+  };
+
+  /// Путь к вложенной в поставку бренд-иконке домена или null, если такой в
+  /// поставке нет. Синхронно и без единого запроса — это и есть лечение
+  /// «иконки грузятся из сети при каждом старте».
+  /// ⚠️ Спрашивать имеет смысл только для вшитых доменов ([iconFor] c
+  /// `builtIn: true`): пользовательские домены в поставке не лежат.
+  static String? bundledAsset(String domain) {
+    var d = domain.trim().toLowerCase();
+    if (d.startsWith('www.')) d = d.substring(4);
+    return _bundled[d];
+  }
+
+  /// Все вложенные иконки — ради теста-стража (файлы на месте и объявлены в
+  /// `pubspec.yaml`).
+  @visibleForTesting
+  static Map<String, String> get bundledAssets => Map.unmodifiable(_bundled);
+
+  /// Сброс кэшей между тестами: иначе результат одного теста «просачивается» в
+  /// следующий и страж перестаёт что-либо стеречь.
+  @visibleForTesting
+  static void resetCacheForTest() {
+    _hits.clear();
+    _misses.clear();
+    _pending.clear();
+  }
 
   /// Путь к PNG-иконке домена или null. Кэшируется в памяти и на диске.
   /// [builtIn] — домен ВШИТ В ПРИЛОЖЕНИЕ (сервис-чипы, автонастройка), а не
@@ -54,14 +127,70 @@ class SiteFaviconService {
     // положил бы в кэш иконку с чужого хоста, а следующий за ней запрос из
     // правил пользователя получил бы её же — гейт обошёлся бы сам собой.
     final key = builtIn ? 'builtin:$d' : d;
-    if (_mem.containsKey(key)) return Future.value(_mem[key]);
-    return _pending
-        .putIfAbsent(key, () => _resolve(d, builtIn: builtIn))
-        .then((path) {
-      _mem[key] = path;
+
+    final hit = _hits[key];
+    // Файл могли стереть при нас (чистка `%APPDATA%`) — тогда путь в памяти
+    // указывает в пустоту, и виджет показал бы глобус навсегда.
+    if (hit != null) {
+      if (File(hit).existsSync()) return Future.value(hit);
+      _hits.remove(key);
+    }
+
+    final missedAt = _misses[key];
+    if (missedAt != null) {
+      final waited = DateTime.now().difference(missedAt);
+      if (waited < missTtl) return Future.value(null);
+      _misses.remove(key); // срок вышел — пробуем ещё раз
+    }
+
+    // Один поход на домен для всех, кто его просит одновременно: три чипа
+    // одного сервиса не должны давать три загрузки. ⚠️ Общий Future здесь
+    // безопасен ровно потому, что результат применяет ВЫЗЫВАЮЩИЙ, сверяя его
+    // со своим текущим доменом (см. `ui/widgets/site_favicon.dart`).
+    return _pending.putIfAbsent(key, () async {
+      String? path;
+      try {
+        path = await _throttled(() => _resolve(d, builtIn: builtIn));
+      } catch (_) {
+        path = null;
+      }
+      if (path != null) {
+        _hits[key] = path;
+      } else {
+        _misses[key] = DateTime.now();
+      }
       _pending.remove(key);
       return path;
     });
+  }
+
+  /// Пропускает не больше [maxParallel] загрузок одновременно; остальные ждут
+  /// очереди. Публичный ради теста-стража — предел проверяется на счётчике
+  /// одновременных, а не на «кажется, стало меньше запросов».
+  @visibleForTesting
+  static Future<T> throttled<T>(Future<T> Function() body) => _throttled(body);
+
+  static Future<T> _throttled<T>(Future<T> Function() body) async {
+    if (_active >= maxParallel) {
+      final c = Completer<void>();
+      _waiting.add(c);
+      await c.future; // проснулись — слот УЖЕ наш, передан уходящим
+    } else {
+      _active++;
+    }
+    try {
+      return await body();
+    } finally {
+      // ⚠️ Слот передаётся следующему НАПРЯМУЮ, без «уменьшить и снова
+      // увеличить»: между этими двумя шагами успел бы вклиниться новый вызов,
+      // увидеть свободное место — и одновременных стало бы на одну больше
+      // предела.
+      if (_waiting.isNotEmpty) {
+        _waiting.removeAt(0).complete();
+      } else {
+        _active--;
+      }
+    }
   }
 
   static Future<String?> _resolve(String domain, {bool builtIn = false}) async {
@@ -86,7 +215,8 @@ class SiteFaviconService {
       // объявленный сайтом адрес пускали, а посредника — нет, и у сервисов,
       // чей фавикон нашему запросу не отдаётся, не оставалось ничего.
       final gate = builtIn ? _allowAny : iconGateFor(domain);
-      for (final url in iconSources(domain, fromHtml: fromHtml, builtIn: builtIn)) {
+      for (final url
+          in iconSources(domain, fromHtml: fromHtml, builtIn: builtIn)) {
         final uri = Uri.tryParse(url);
         if (uri == null) continue;
         // Гейт передаётся ВНУТРЬ загрузки: там он спрашивается и про этот
@@ -252,7 +382,16 @@ class SiteFaviconService {
     final parts = domain.split('.').where((p) => p.isNotEmpty).toList();
     if (parts.length <= 2) return domain;
     const twoLevel = {
-      'co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'or', 'ne', 'go'
+      'co',
+      'com',
+      'org',
+      'net',
+      'gov',
+      'edu',
+      'ac',
+      'or',
+      'ne',
+      'go'
     };
     // Если предпоследняя метка — типичный «второй уровень» (co.uk, com.br), берём
     // три. Последняя метка при этом — ДВУХбуквенный ccTLD (uk/br/au): условие

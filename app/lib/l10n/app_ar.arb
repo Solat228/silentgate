@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "جارٍ تحديث «{name}»…",
   "subSwitcherRefreshedOne": "تم تحديث «{name}»",
   "subSwitcherRefreshFailedOne": "تعذّر تحديث «{name}»",
-  "subBarDeleteConfirmNamed": "حذف اشتراك «{name}»؟"
+  "subBarDeleteConfirmNamed": "حذف اشتراك «{name}»؟",
+  "exitServerUnsupportedInfo": "لا يمكن رفع هذا الخادم كمخرج منفصل: ملفات «تلقائي» من اللوحة وبعض البروتوكولات لا يتولاها إلا Xray، بينما يوزّع المخارج sing-box. تمر حركة مرور القاعدة عبر النفق الرئيسي.",
+  "pingBusyServiceChecks": "التحقق من زمن الاستجابة غير متاح: جارٍ فحص الخدمات",
+  "serviceChecksChannelNotReady": "النفق ليس جاهزًا بعد — لم يجرِ تشغيل الفحوصات",
+  "serviceChecksRetryCheck": "إعادة الفحص",
+  "serviceGroupMessengers": "المراسلة",
+  "serviceGroupAi": "الذكاء الاصطناعي",
+  "serviceGroupMedia": "الفيديو والموسيقى",
+  "serviceGroupSocial": "الشبكات الاجتماعية",
+  "serviceGroupOther": "أخرى",
+  "apiTokenHidden": "مخفي — اضغط «إظهار»",
+  "apiTokenShow": "إظهار الرمز",
+  "apiTokenHide": "إخفاء الرمز",
+  "apiCheatSheetTitle": "بطاقة مرجعية: العنوان والمنافذ ونقاط النهاية",
+  "apiCheatSheetBase": "العنوان الأساسي",
+  "apiCheatSheetExitPorts": "منافذ المخارج",
+  "apiCheatSheetPortDirect": "{port} — «مباشر»: خارج VPN، عنوان IP الحقيقي",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "لم يتم تحديد أي خادم — لن تكون هناك منافذ للخوادم",
+  "apiCheatSheetPortsSystemProxy": "لا تُفتح: وضع الالتقاط هو «وكيل النظام». يعمل منفذ التحكم {control} فقط",
+  "apiCheatSheetTokenOff": "الرمز فارغ — لا تبدأ القناة ولا يستمع أي منفذ",
+  "apiCheatSheetPortsWhenConnected": "تستمع منافذ المخارج فقط أثناء وجود اتصال قائم.",
+  "apiCheatSheetEndpoints": "نقاط النهاية",
+  "apiEpStatus": "حالة المحرك والخادم المحدد ووضع الالتقاط وما إذا كان الفحص جاريًا",
+  "apiEpServers": "قائمة الخوادم مع آخر نتائج الفحص",
+  "apiEpExits": "توزيع منافذ المخارج مع مدخل «مباشر»",
+  "apiEpTraffic": "عدادات حركة البيانات طوال فترة تشغيل التطبيق",
+  "apiEpSubscription": "اسم الاشتراك وتاريخ انتهائه وحركة البيانات المتبقية",
+  "apiEpConnect": "الاتصال بمفتاح الخادم أو باسمه أو «تلقائي»؛ وعلى قناة نشطة يبدّل الخادم",
+  "apiEpDisconnect": "قطع الاتصال؛ وتكرار الاستدعاء آمن",
+  "apiEpPing": "بدء فحص جميع الخوادم؛ وتُقرأ النتائج من ‎/v1/servers",
+  "apiCopyCurlExample": "نسخ مثال curl"
 }

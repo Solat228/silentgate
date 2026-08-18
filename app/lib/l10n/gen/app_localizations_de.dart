@@ -2950,4 +2950,113 @@ class AppLocalizationsDe extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'Abonnement „$name“ löschen?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Dieser Server kann nicht als eigener Ausgang laufen: Panel-Profile „Auto“ und einen Teil der Protokolle beherrscht nur Xray, die Ausgänge verteilt aber sing-box. Der Verkehr dieser Regel läuft über den Haupttunnel.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping nicht verfügbar: Dienstprüfung läuft';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'Der Tunnel ist noch nicht bereit – die Prüfungen wurden nicht ausgeführt';
+
+  @override
+  String get serviceChecksRetryCheck => 'Prüfung wiederholen';
+
+  @override
+  String get serviceGroupMessengers => 'Messenger';
+
+  @override
+  String get serviceGroupAi => 'KI';
+
+  @override
+  String get serviceGroupMedia => 'Video und Musik';
+
+  @override
+  String get serviceGroupSocial => 'Soziale Netzwerke';
+
+  @override
+  String get serviceGroupOther => 'Sonstiges';
+
+  @override
+  String get apiTokenHidden => 'verborgen – auf „anzeigen“ klicken';
+
+  @override
+  String get apiTokenShow => 'Token anzeigen';
+
+  @override
+  String get apiTokenHide => 'Token verbergen';
+
+  @override
+  String get apiCheatSheetTitle => 'Spickzettel: Adresse, Ports, Endpunkte';
+
+  @override
+  String get apiCheatSheetBase => 'Basisadresse';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Ausgangs-Ports';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port – „Direkt“: am VPN vorbei, echte IP';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port – $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'kein Server ausgewählt – es gibt keine Server-Ports';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'werden nicht geöffnet: Erfassung „Systemproxy“. Nur der Steuerport $control funktioniert';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'Token ist leer – der Kanal startet nicht, kein Port lauscht';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Ausgangs-Ports lauschen nur bei bestehender Verbindung.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Endpunkte';
+
+  @override
+  String get apiEpStatus =>
+      'Engine-Status, gewählter Server, Erfassungsmodus, läuft ein Ping';
+
+  @override
+  String get apiEpServers => 'Serverliste mit den letzten Ping-Ergebnissen';
+
+  @override
+  String get apiEpExits => 'Belegung der Ausgangs-Ports samt Eintrag „Direkt“';
+
+  @override
+  String get apiEpTraffic => 'Traffic-Zähler seit dem Start der Anwendung';
+
+  @override
+  String get apiEpSubscription =>
+      'Name, Ablaufdatum und Restvolumen des Abonnements';
+
+  @override
+  String get apiEpConnect =>
+      'Verbinden per Serverschlüssel, Name oder „Auto“; bei aktiver Verbindung wird der Server gewechselt';
+
+  @override
+  String get apiEpDisconnect => 'Trennen; ein erneuter Aufruf ist unbedenklich';
+
+  @override
+  String get apiEpPing =>
+      'Ping-Lauf über alle Server starten; Ergebnisse aus /v1/servers lesen';
+
+  @override
+  String get apiCopyCurlExample => 'curl-Beispiel kopieren';
 }

@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "Atualizando \"{name}\"…",
   "subSwitcherRefreshedOne": "\"{name}\" atualizada",
   "subSwitcherRefreshFailedOne": "Não foi possível atualizar \"{name}\"",
-  "subBarDeleteConfirmNamed": "Excluir a assinatura \"{name}\"?"
+  "subBarDeleteConfirmNamed": "Excluir a assinatura \"{name}\"?",
+  "exitServerUnsupportedInfo": "Este servidor não pode subir como saída separada: os perfis «Auto» do painel e parte dos protocolos só o Xray entende, e quem distribui as saídas é o sing-box. O tráfego da regra vai pelo túnel principal.",
+  "pingBusyServiceChecks": "Ping indisponível: verificação de serviços em andamento",
+  "serviceChecksChannelNotReady": "O túnel ainda não está pronto — as verificações não foram executadas",
+  "serviceChecksRetryCheck": "Repetir verificação",
+  "serviceGroupMessengers": "Mensageiros",
+  "serviceGroupAi": "IA",
+  "serviceGroupMedia": "Vídeo e música",
+  "serviceGroupSocial": "Redes sociais",
+  "serviceGroupOther": "Outros",
+  "apiTokenHidden": "oculto — toque em «mostrar»",
+  "apiTokenShow": "Mostrar o token",
+  "apiTokenHide": "Ocultar o token",
+  "apiCheatSheetTitle": "Guia rápido: endereço, portas, endpoints",
+  "apiCheatSheetBase": "Endereço base",
+  "apiCheatSheetExitPorts": "Portas de saída",
+  "apiCheatSheetPortDirect": "{port} — «Direto»: fora da VPN, IP real",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "nenhum servidor marcado — não haverá portas de servidor",
+  "apiCheatSheetPortsSystemProxy": "não são abertas: a captura é «Proxy do sistema». Só funciona a porta de controlo {control}",
+  "apiCheatSheetTokenOff": "o token está vazio — o canal não sobe e nenhuma porta escuta",
+  "apiCheatSheetPortsWhenConnected": "As portas de saída só escutam com a ligação ativa.",
+  "apiCheatSheetEndpoints": "Endpoints",
+  "apiEpStatus": "Estado do motor, servidor escolhido, modo de captura e se há ping em curso",
+  "apiEpServers": "Lista de servidores com os últimos resultados de ping",
+  "apiEpExits": "Distribuição das portas de saída e a entrada «Direto»",
+  "apiEpTraffic": "Contadores de tráfego de toda a execução da aplicação",
+  "apiEpSubscription": "Nome, validade e tráfego restante da assinatura",
+  "apiEpConnect": "Ligar por chave do servidor, por nome ou «Auto»; com o canal ativo, troca de servidor",
+  "apiEpDisconnect": "Desligar; repetir a chamada é seguro",
+  "apiEpPing": "Iniciar o ping de todos os servidores; os resultados vêm de /v1/servers",
+  "apiCopyCurlExample": "Copiar um exemplo de curl"
 }

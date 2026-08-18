@@ -2956,4 +2956,116 @@ class AppLocalizationsPt extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'Excluir a assinatura \"$name\"?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Este servidor não pode subir como saída separada: os perfis «Auto» do painel e parte dos protocolos só o Xray entende, e quem distribui as saídas é o sing-box. O tráfego da regra vai pelo túnel principal.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping indisponível: verificação de serviços em andamento';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'O túnel ainda não está pronto — as verificações não foram executadas';
+
+  @override
+  String get serviceChecksRetryCheck => 'Repetir verificação';
+
+  @override
+  String get serviceGroupMessengers => 'Mensageiros';
+
+  @override
+  String get serviceGroupAi => 'IA';
+
+  @override
+  String get serviceGroupMedia => 'Vídeo e música';
+
+  @override
+  String get serviceGroupSocial => 'Redes sociais';
+
+  @override
+  String get serviceGroupOther => 'Outros';
+
+  @override
+  String get apiTokenHidden => 'oculto — toque em «mostrar»';
+
+  @override
+  String get apiTokenShow => 'Mostrar o token';
+
+  @override
+  String get apiTokenHide => 'Ocultar o token';
+
+  @override
+  String get apiCheatSheetTitle => 'Guia rápido: endereço, portas, endpoints';
+
+  @override
+  String get apiCheatSheetBase => 'Endereço base';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Portas de saída';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — «Direto»: fora da VPN, IP real';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'nenhum servidor marcado — não haverá portas de servidor';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'não são abertas: a captura é «Proxy do sistema». Só funciona a porta de controlo $control';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'o token está vazio — o canal não sobe e nenhuma porta escuta';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'As portas de saída só escutam com a ligação ativa.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Endpoints';
+
+  @override
+  String get apiEpStatus =>
+      'Estado do motor, servidor escolhido, modo de captura e se há ping em curso';
+
+  @override
+  String get apiEpServers =>
+      'Lista de servidores com os últimos resultados de ping';
+
+  @override
+  String get apiEpExits =>
+      'Distribuição das portas de saída e a entrada «Direto»';
+
+  @override
+  String get apiEpTraffic =>
+      'Contadores de tráfego de toda a execução da aplicação';
+
+  @override
+  String get apiEpSubscription =>
+      'Nome, validade e tráfego restante da assinatura';
+
+  @override
+  String get apiEpConnect =>
+      'Ligar por chave do servidor, por nome ou «Auto»; com o canal ativo, troca de servidor';
+
+  @override
+  String get apiEpDisconnect => 'Desligar; repetir a chamada é seguro';
+
+  @override
+  String get apiEpPing =>
+      'Iniciar o ping de todos os servidores; os resultados vêm de /v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'Copiar um exemplo de curl';
 }

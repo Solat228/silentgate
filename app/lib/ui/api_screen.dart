@@ -128,41 +128,7 @@ class _ApiBody extends StatelessWidget {
           // Токен — он же пароль локальных портов API. Пустой токен означает
           // «канал не поднимается» (см. `LocalApiServer.start`), поэтому даём
           // сразу и увидеть его, и сгенерировать заново.
-          ListTile(
-            dense: true,
-            leading: const Icon(Icons.vpn_key_outlined),
-            title: Row(children: [
-              Expanded(child: Text(l.apiTokenTitle)),
-              InfoTooltip(l.apiTokenWarning, title: l.apiTokenTitle),
-            ]),
-            subtitle: settings.apiToken.isEmpty
-                ? Text(l.apiTokenUnset)
-                : SelectableText(settings.apiToken,
-                    textDirection: TextDirection.ltr,
-                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (settings.apiToken.isNotEmpty)
-                  IconButton(
-                    tooltip: l.commonCopy,
-                    icon: const Icon(Icons.copy, size: 18),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: settings.apiToken));
-                      AppToast.copied(context);
-                    },
-                  ),
-                IconButton(
-                  tooltip: l.apiTokenRegenerate,
-                  icon: const Icon(Icons.refresh, size: 18),
-                  // Тот же генератор, что и у паролей локальных прокси/Clash
-                  // API — общая точка правды, а не свой велосипед.
-                  onPressed: () => controller.update((s) =>
-                      s.copyWith(apiToken: VpnEngineBase.randomSecret())),
-                ),
-              ],
-            ),
-          ),
+          _ApiTokenTile(settings: settings, controller: controller),
           // Режим захвата, в котором портов выходов физически нет. Плашка
           // стоит НАД списком серверов: она объясняет, почему галочки ниже
           // сейчас ни к чему не приведут.
@@ -225,6 +191,17 @@ class _ApiBody extends StatelessWidget {
               style: const TextStyle(fontSize: 12),
             ),
           ),
+          // Памятка с ЖИВЫМИ значениями — см. `_ApiCheatSheet`.
+          _ApiCheatSheet(settings: settings, servers: servers),
+          ListTile(
+            dense: true,
+            leading: const Icon(Icons.terminal),
+            title: Text(l.apiCopyCurlExample),
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: _curlExample(settings)));
+              AppToast.copied(context);
+            },
+          ),
           ListTile(
             dense: true,
             leading: const Icon(Icons.code),
@@ -237,6 +214,32 @@ class _ApiBody extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  /// Пример на curl — с уже подставленными портом и токеном.
+  ///
+  /// ⚠️ ТОКЕН В БУФЕР — ЭТО НЕ ТО ЖЕ, ЧТО ТОКЕН НА ЭКРАНЕ. На экране он спрятан
+  /// за кнопкой «показать» (плечо через чужой взгляд и скриншот), а копирование
+  /// — осознанное действие самого человека, и пример без токена пришлось бы
+  /// править руками, то есть он не пример.
+  ///
+  /// Кавычки одинарные — как в `docs/API.md`: пример писан под bash/Git Bash. В
+  /// `cmd.exe` их придётся заменить на двойные с экранированием, и врать про
+  /// это незачем.
+  static String _curlExample(AppSettings s) {
+    final token = s.apiToken.isEmpty ? '<токен>' : s.apiToken;
+    const base = 'http://127.0.0.1:${ApiPorts.control}';
+    return '# Состояние движка\n'
+        'curl -s $base/v1/status -H "Authorization: Bearer $token"\n'
+        '\n'
+        '# Какие порты выходов раскладка обещает\n'
+        'curl -s $base/v1/exits -H "Authorization: Bearer $token"\n'
+        '\n'
+        '# Подключиться «Авто» (на живом канале — сменить сервер)\n'
+        'curl -s -X POST $base/v1/connect '
+        '-H "Authorization: Bearer $token" '
+        '-H "Content-Type: application/json" '
+        "-d '{\"auto\": true}'\n";
   }
 
   /// Готовый фрагмент для Python — с уже подставленными портом и токеном,
@@ -252,6 +255,232 @@ class _ApiBody extends StatelessWidget {
         'print(status)\n'
         '\n'
         'requests.post(f"{BASE}/v1/connect", headers=HEADERS, json={"auto": True})\n';
+  }
+}
+
+/// Строка токена: показать/скрыть, скопировать, перевыпустить.
+///
+/// ⚠️ ТОКЕН НЕ ПОКАЗЫВАЕТСЯ САМ ПО СЕБЕ. Раньше он лежал на экране открытым
+/// текстом: экран API открывают, чтобы посмотреть порты и скопировать пример, —
+/// и вместе с ними в кадр попадал пароль ко ВСЕМУ каналу (он же пароль каждого
+/// порта выхода). Скриншот в поддержку, демонстрация экрана, чужой взгляд
+/// через плечо — три обычных способа отдать его даром. Копирование при этом
+/// работает и со скрытым токеном: чтобы вставить его в скрипт, видеть его
+/// глазами не нужно.
+class _ApiTokenTile extends StatefulWidget {
+  final AppSettings settings;
+  final SettingsController controller;
+  const _ApiTokenTile({required this.settings, required this.controller});
+
+  @override
+  State<_ApiTokenTile> createState() => _ApiTokenTileState();
+}
+
+class _ApiTokenTileState extends State<_ApiTokenTile> {
+  /// Показ живёт в состоянии ЭКРАНА, а не в настройках: уход с экрана прячет
+  /// токен обратно. Настройка «показывать всегда» означала бы, что однажды
+  /// нажатая кнопка светит паролем во всех будущих сессиях.
+  bool _shown = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final settings = widget.settings;
+    final empty = settings.apiToken.isEmpty;
+    return ListTile(
+      dense: true,
+      leading: const Icon(Icons.vpn_key_outlined),
+      title: Row(children: [
+        Expanded(child: Text(l.apiTokenTitle)),
+        InfoTooltip(l.apiTokenWarning, title: l.apiTokenTitle),
+      ]),
+      subtitle: empty
+          ? Text(l.apiTokenUnset)
+          : (_shown
+              ? SelectableText(settings.apiToken,
+                  textDirection: TextDirection.ltr,
+                  style:
+                      const TextStyle(fontSize: 12, fontFamily: 'monospace'))
+              // Длина точек НЕ равна длине токена: маска, выдающая длину
+              // секрета, — это подсказка тому, кто его подбирает.
+              : Text('${'•' * 12}  ${l.apiTokenHidden}',
+                  style: const TextStyle(fontSize: 12))),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (!empty)
+            IconButton(
+              key: const Key('apiTokenReveal'),
+              tooltip: _shown ? l.apiTokenHide : l.apiTokenShow,
+              icon: Icon(
+                  _shown ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  size: 18),
+              onPressed: () => setState(() => _shown = !_shown),
+            ),
+          if (!empty)
+            IconButton(
+              tooltip: l.commonCopy,
+              icon: const Icon(Icons.copy, size: 18),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: settings.apiToken));
+                AppToast.copied(context);
+              },
+            ),
+          IconButton(
+            tooltip: l.apiTokenRegenerate,
+            icon: const Icon(Icons.refresh, size: 18),
+            // Тот же генератор, что и у паролей локальных прокси/Clash
+            // API — общая точка правды, а не свой велосипед.
+            onPressed: () {
+              // Новый токен прячем обратно: перевыпуск — не просьба показать.
+              setState(() => _shown = false);
+              widget.controller.update(
+                  (s) => s.copyWith(apiToken: VpnEngineBase.randomSecret()));
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Памятка по API с ЖИВЫМИ значениями: настоящий адрес, настоящие порты
+/// текущего режима захвата и список эндпоинтов.
+///
+/// ⚠️ ПАМЯТКА ОБЯЗАНА ГОВОРИТЬ ПРО РЕЖИМ ЗАХВАТА. В системном прокси (умолчание
+/// на Windows) портов выходов НЕ СУЩЕСТВУЕТ вовсе — ни одного инбаунда не
+/// создаётся. Памятка, перечисляющая номера портов молча, повторила бы уже
+/// оплаченный дефект: в 1.4.0 таблица портов в документации описала порт
+/// «Прямо» раньше, чем его реализовали, и соединение получало отказ, а человек
+/// искал причину у себя.
+///
+/// ⚠️ ЭНДПОИНТЫ БЕРУТСЯ ИЗ КОДА, А НЕ ИЗ ГОЛОВЫ: `core/net/api_server.dart`
+/// (`_route`) — единственное место, где путь превращается в вызов. Строки ниже
+/// сверены с ним и с `state/api_handlers.dart`; выдуманный путь дал бы
+/// `404 not_found` и ту же охоту за несуществующей причиной.
+class _ApiCheatSheet extends StatelessWidget {
+  final AppSettings settings;
+  final List<VpnServer> servers;
+  const _ApiCheatSheet({required this.settings, required this.servers});
+
+  /// Эндпоинты в порядке `LocalApiServer._route`: сперва GET, потом POST.
+  static const _endpoints = <(String, String)>[
+    ('GET', '/v1/status'),
+    ('GET', '/v1/servers'),
+    ('GET', '/v1/exits'),
+    ('GET', '/v1/traffic'),
+    ('GET', '/v1/subscription'),
+    ('POST', '/v1/connect'),
+    ('POST', '/v1/disconnect'),
+    ('POST', '/v1/ping'),
+  ];
+
+  String _describe(AppLocalizations l, String path) => switch (path) {
+        '/v1/status' => l.apiEpStatus,
+        '/v1/servers' => l.apiEpServers,
+        '/v1/exits' => l.apiEpExits,
+        '/v1/traffic' => l.apiEpTraffic,
+        '/v1/subscription' => l.apiEpSubscription,
+        '/v1/connect' => l.apiEpConnect,
+        '/v1/disconnect' => l.apiEpDisconnect,
+        _ => l.apiEpPing,
+      };
+
+  /// Порты выходов, которые РЕАЛЬНО достанутся отмеченным серверам.
+  ///
+  /// ⚠️ Тот же ответчик, что решает это физически: позиция считается по полному
+  /// списку ключей (`ApiPorts.forServer`), а непригодный сервер порта не
+  /// получает вовсе (`canBeExitServer`) — ровно как в `/v1/exits`. Считай мы
+  /// «по порядку галочек», памятка называла бы порт, на котором никто не
+  /// слушает, а соседний сервер получил бы чужой номер.
+  List<({int port, String name})> _serverPorts() {
+    final keys = settings.apiExitServerKeys;
+    final out = <({int port, String name})>[];
+    for (final key in ApiPorts.withinRange(keys)) {
+      final port = ApiPorts.forServer(keys, key);
+      if (port == null) continue;
+      final srv = servers.where((s) => s.key == key).firstOrNull;
+      // Сервер, которого нет в списке (подписка сменилась), пропускаем: имени
+      // у него нет, а пригодность спросить не у кого.
+      if (srv == null || !canBeExitServer(srv)) continue;
+      out.add((port: port, name: srv.displayName));
+    }
+    return out;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    const mono = TextStyle(fontSize: 12, fontFamily: 'monospace');
+    final small = Theme.of(context).textTheme.bodySmall;
+    final tokenEmpty = settings.apiToken.isEmpty;
+    final exitPortsExist = ApiPorts.exitPortsExistIn(settings.captureMode);
+    final ports = _serverPorts();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.apiCheatSheetTitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(l.apiCheatSheetBase, style: small),
+            const SelText('http://127.0.0.1:${ApiPorts.control}',
+                textDirection: TextDirection.ltr, style: mono),
+            const SizedBox(height: 8),
+            Text(l.apiCheatSheetExitPorts, style: small),
+            // Три взаимоисключающих ответа, и ни один нельзя пропустить: режим
+            // без портов, выключенный канал и рабочая раскладка — разные вещи.
+            if (!exitPortsExist)
+              SelText(l.apiCheatSheetPortsSystemProxy(ApiPorts.control),
+                  style: mono)
+            else if (tokenEmpty)
+              SelText(l.apiCheatSheetTokenOff, style: mono)
+            else ...[
+              SelText(l.apiCheatSheetPortDirect(ApiPorts.direct),
+                  textDirection: TextDirection.ltr, style: mono),
+              if (ports.isEmpty)
+                SelText(l.apiCheatSheetNoExitServers, style: mono)
+              else
+                for (final p in ports)
+                  SelText(l.apiCheatSheetPortServer(p.port, p.name),
+                      textDirection: TextDirection.ltr, style: mono),
+              const SizedBox(height: 4),
+              Text(l.apiCheatSheetPortsWhenConnected, style: small),
+            ],
+            const SizedBox(height: 8),
+            Text(l.apiCheatSheetEndpoints, style: small),
+            for (final e in _endpoints)
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Метод и путь — не перевод, а буквальная строка протокола:
+                    // её вставляют в скрипт как есть.
+                    SizedBox(
+                      width: 152,
+                      child: SelText('${e.$1} ${e.$2}',
+                          textDirection: TextDirection.ltr, style: mono),
+                    ),
+                    Expanded(child: Text(_describe(l, e.$2), style: small)),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -282,7 +511,7 @@ class _ApiExitCheckbox extends StatelessWidget {
     // первого outbound'а конфига, обычно `vless`). Чекбокс выглядел обычным,
     // порт публиковался, а выход собирался из одного узла профиля.
     final unsupported = !canBeExitServer(server);
-    final tile = CheckboxListTile(
+    return CheckboxListTile(
       dense: true,
       controlAffinity: ListTileControlAffinity.leading,
       value: checked,
@@ -294,16 +523,19 @@ class _ApiExitCheckbox extends StatelessWidget {
             ? TextStyle(color: Theme.of(context).disabledColor)
             : null,
       ),
+      // ⚠️ АБЗАЦ ПОКАЗЫВАЕТ «!», А НЕ ГОЛАЯ ПОДСКАЗКА НАД СТРОКОЙ.
+      //
+      // Здесь `Tooltip` оборачивал строку ЦЕЛИКОМ и нёс 230 символов: подсказка
+      // не ограничена по ширине и рисуется под целью (`preferBelow` по
+      // умолчанию), поэтому растягивалась на всю ширину и накрывала соседние
+      // строки списка — тот же дефект, что владелец прислал скриншотом по
+      // раздельному туннелированию. И на тач-экране наведения нет вовсе, то
+      // есть объяснение было недостижимо ровно там, где список длиннее.
+      // Лечение — образец проекта: `InfoTooltip` (диалог по нажатию).
       secondary: unsupported
-          ? Icon(Icons.help_outline,
-              size: 16, color: Theme.of(context).disabledColor)
+          ? InfoTooltip(l.exitServerUnsupported(server.displayName))
           : null,
       onChanged: onChanged,
-    );
-    if (!unsupported) return tile;
-    return Tooltip(
-      message: l.exitServerUnsupported(server.displayName),
-      child: tile,
     );
   }
 }

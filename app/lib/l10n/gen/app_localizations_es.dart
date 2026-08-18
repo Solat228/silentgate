@@ -2955,4 +2955,116 @@ class AppLocalizationsEs extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return '¿Eliminar la suscripción «$name»?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Este servidor no se puede levantar como salida propia: los perfiles «Auto» del panel y algunos protocolos solo los maneja Xray, y las salidas las reparte sing-box. El tráfico de la regla va por el túnel principal.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping no disponible: comprobación de servicios en curso';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'El túnel aún no está listo: no se ejecutaron las comprobaciones';
+
+  @override
+  String get serviceChecksRetryCheck => 'Reintentar comprobación';
+
+  @override
+  String get serviceGroupMessengers => 'Mensajería';
+
+  @override
+  String get serviceGroupAi => 'IA';
+
+  @override
+  String get serviceGroupMedia => 'Vídeo y música';
+
+  @override
+  String get serviceGroupSocial => 'Redes sociales';
+
+  @override
+  String get serviceGroupOther => 'Otros';
+
+  @override
+  String get apiTokenHidden => 'oculto: pulse «mostrar»';
+
+  @override
+  String get apiTokenShow => 'Mostrar el token';
+
+  @override
+  String get apiTokenHide => 'Ocultar el token';
+
+  @override
+  String get apiCheatSheetTitle => 'Guía rápida: dirección, puertos, endpoints';
+
+  @override
+  String get apiCheatSheetBase => 'Dirección base';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Puertos de salida';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port: «Directo», fuera de la VPN, IP real';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'no hay ningún servidor marcado: no habrá puertos de servidor';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'no se abren: el modo de captura es «Proxy del sistema». Solo funciona el puerto de control $control';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'el token está vacío: el canal no se levanta y ningún puerto escucha';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Los puertos de salida escuchan solo con la conexión activa.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Endpoints';
+
+  @override
+  String get apiEpStatus =>
+      'Estado del motor, servidor elegido, modo de captura y si hay un ping en curso';
+
+  @override
+  String get apiEpServers =>
+      'Lista de servidores con los últimos resultados de ping';
+
+  @override
+  String get apiEpExits =>
+      'Distribución de los puertos de salida y la entrada «Directo»';
+
+  @override
+  String get apiEpTraffic =>
+      'Contadores de tráfico de toda la ejecución de la aplicación';
+
+  @override
+  String get apiEpSubscription =>
+      'Nombre, caducidad y tráfico restante de la suscripción';
+
+  @override
+  String get apiEpConnect =>
+      'Conectar por clave de servidor, por nombre o «Auto»; con el canal activo cambia de servidor';
+
+  @override
+  String get apiEpDisconnect => 'Desconectar; repetir la llamada es seguro';
+
+  @override
+  String get apiEpPing =>
+      'Iniciar el ping de todos los servidores; los resultados se leen en /v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'Copiar un ejemplo de curl';
 }

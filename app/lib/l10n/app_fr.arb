@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "Actualisation de « {name} »…",
   "subSwitcherRefreshedOne": "« {name} » mis à jour",
   "subSwitcherRefreshFailedOne": "Impossible de mettre à jour « {name} »",
-  "subBarDeleteConfirmNamed": "Supprimer l'abonnement « {name} » ?"
+  "subBarDeleteConfirmNamed": "Supprimer l'abonnement « {name} » ?",
+  "exitServerUnsupportedInfo": "Ce serveur ne peut pas servir de sortie séparée : les profils « Auto » du panneau et une partie des protocoles ne sont gérés que par Xray, alors que les sorties sont réparties par sing-box. Le trafic de la règle emprunte le tunnel principal.",
+  "pingBusyServiceChecks": "Ping indisponible : vérification des services en cours",
+  "serviceChecksChannelNotReady": "Le tunnel n'est pas encore prêt — les vérifications n'ont pas été lancées",
+  "serviceChecksRetryCheck": "Réessayer la vérification",
+  "serviceGroupMessengers": "Messageries",
+  "serviceGroupAi": "IA",
+  "serviceGroupMedia": "Vidéo et musique",
+  "serviceGroupSocial": "Réseaux sociaux",
+  "serviceGroupOther": "Autres",
+  "apiTokenHidden": "masqué — appuyez sur « afficher »",
+  "apiTokenShow": "Afficher le jeton",
+  "apiTokenHide": "Masquer le jeton",
+  "apiCheatSheetTitle": "Aide-mémoire : adresse, ports, endpoints",
+  "apiCheatSheetBase": "Adresse de base",
+  "apiCheatSheetExitPorts": "Ports de sortie",
+  "apiCheatSheetPortDirect": "{port} — « Direct » : hors VPN, IP réelle",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "aucun serveur coché — il n'y aura pas de ports de serveur",
+  "apiCheatSheetPortsSystemProxy": "non ouverts : le mode de capture est « Proxy système ». Seul le port de contrôle {control} fonctionne",
+  "apiCheatSheetTokenOff": "le jeton est vide — le canal ne démarre pas, aucun port n'écoute",
+  "apiCheatSheetPortsWhenConnected": "Les ports de sortie n'écoutent que lorsque la connexion est active.",
+  "apiCheatSheetEndpoints": "Endpoints",
+  "apiEpStatus": "État du moteur, serveur choisi, mode de capture, ping en cours ou non",
+  "apiEpServers": "Liste des serveurs avec les derniers résultats de ping",
+  "apiEpExits": "Répartition des ports de sortie et l'entrée « Direct »",
+  "apiEpTraffic": "Compteurs de trafic depuis le lancement de l'application",
+  "apiEpSubscription": "Nom, échéance et trafic restant de l'abonnement",
+  "apiEpConnect": "Se connecter par clé de serveur, par nom ou « Auto » ; sur un canal actif, change de serveur",
+  "apiEpDisconnect": "Se déconnecter ; un appel répété est sans risque",
+  "apiEpPing": "Lancer le ping de tous les serveurs ; les résultats se lisent dans /v1/servers",
+  "apiCopyCurlExample": "Copier un exemple curl"
 }

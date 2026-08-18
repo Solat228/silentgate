@@ -70,11 +70,34 @@ class ServerTile extends StatelessWidget {
   final VpnServer server;
   final bool selected;
   final VoidCallback onTap;
+
+  /// Контекстное меню (ПКМ / долгое нажатие) и кнопка правки-⫶ у края строки.
+  ///
+  /// ⚠️ УМОЛЧАНИЕ — «КАК БЫЛО», и это условие, а не вкус: главный экран и
+  /// экран серверов строку не меняют, поэтому и трогать их не пришлось.
+  /// Выключается там, где строка означает только ВЫБОР — в пикере сервера для
+  /// правила раздельного туннелирования. Там меню опасно по существу: пункт
+  /// «Удалить сервер» стирает сервер из подписки, когда человек всего лишь
+  /// указывал, через что пустить трафик, а «Информация»/«Автонастройка» делают
+  /// `Navigator.push` поверх открытого диалога — и вернуться в него уже некуда.
+  final bool showActions;
+
+  /// Почему сервер не годится (УЖЕ локализованный текст) — строка гаснет и
+  /// получает «!» с этим пояснением. `null` — сервер обычный.
+  ///
+  /// ⚠️ Текст приходит СНАРУЖИ намеренно: пригодность зависит от того, зачем
+  /// сервер выбирают, а строка этого не знает. Для отдельного выхода на вопрос
+  /// отвечает `canBeExitServer` (`core/singbox/exit_outbounds.dart`) —
+  /// единственный ответчик, общий с построителем конфига и `/v1/exits`.
+  final String? unavailableNote;
+
   const ServerTile({
     super.key,
     required this.server,
     required this.selected,
     required this.onTap,
+    this.showActions = true,
+    this.unavailableNote,
   });
 
   @override
@@ -104,9 +127,11 @@ class ServerTile extends StatelessWidget {
     final touch = _isTouchLayout(context);
 
     final tile = GestureDetector(
-      onSecondaryTapDown: (d) => _menu(context, d.globalPosition),
-      onLongPressStart:
-          touch ? (d) => _menu(context, d.globalPosition) : null,
+      onSecondaryTapDown:
+          showActions ? (d) => _menu(context, d.globalPosition) : null,
+      onLongPressStart: (showActions && touch)
+          ? (d) => _menu(context, d.globalPosition)
+          : null,
       child: ListTile(
         dense: true,
         visualDensity: const VisualDensity(vertical: -2),
@@ -143,6 +168,12 @@ class ServerTile extends StatelessWidget {
           ),
           if (panelInfo != null)
             InfoTooltip(_panelSummary(l, panelInfo), title: l.panelTunnelMarker),
+          // Почему сервер не годится — «!» с диалогом, а не всплывающая
+          // подсказка: текст абзацем, и подсказка накрыла бы соседнюю строку
+          // списка (см. tooltipTheme в app.dart). Плюс на тач-экране hover'а
+          // нет вовсе, а долгое нажатие занято контекстным меню.
+          if (unavailableNote != null)
+            InfoTooltip(unavailableNote!, title: server.displayName),
         ]),
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
         // тач-экране подсказка вызывается долгим нажатием, а оно уже занято
@@ -181,33 +212,38 @@ class ServerTile extends StatelessWidget {
             // Кнопка ужата (`compact` + нулевой padding): рядом с ней теперь
             // стоит столбик из двух плашек, и штатные 48 dp иконки съедали
             // ширину у имени сервера.
-            touch
-                ? Builder(
-                    builder: (btnContext) => IconButton(
-                      tooltip: l.srvTileMenu,
+            //
+            // В пикере (`showActions: false`) кнопки нет вовсе: и правка, и
+            // меню уводят с диалога выбора — см. описание поля.
+            if (showActions)
+              touch
+                  ? Builder(
+                      builder: (btnContext) => IconButton(
+                        tooltip: l.srvTileMenu,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints:
+                            const BoxConstraints(minWidth: 32, minHeight: 32),
+                        icon: const Icon(Icons.more_vert),
+                        onPressed: () {
+                          final box =
+                              btnContext.findRenderObject() as RenderBox?;
+                          final pos = box == null
+                              ? Offset.zero
+                              : box.localToGlobal(box.size.center(Offset.zero));
+                          _menu(context, pos);
+                        },
+                      ),
+                    )
+                  : IconButton(
+                      tooltip: l.srvTileEdit,
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
                       constraints:
                           const BoxConstraints(minWidth: 32, minHeight: 32),
-                      icon: const Icon(Icons.more_vert),
-                      onPressed: () {
-                        final box = btnContext.findRenderObject() as RenderBox?;
-                        final pos = box == null
-                            ? Offset.zero
-                            : box.localToGlobal(box.size.center(Offset.zero));
-                        _menu(context, pos);
-                      },
+                      icon: const Icon(Icons.chevron_right),
+                      onPressed: () => _edit(context),
                     ),
-                  )
-                : IconButton(
-                    tooltip: l.srvTileEdit,
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints(minWidth: 32, minHeight: 32),
-                    icon: const Icon(Icons.chevron_right),
-                    onPressed: () => _edit(context),
-                  ),
           ],
         ),
         onTap: onTap,
@@ -222,7 +258,13 @@ class ServerTile extends StatelessWidget {
     // ⚠️ Обёртка НЕ меняет высоту строки: линия рисуется поверх той же коробки
     // с отступом внутрь. Высота здесь — не косметика, по ней считается
     // прокрутка к выбранному серверу в home_screen.
-    return SelectionOutline(selected: selected, inset: 2, child: tile);
+    final outlined = SelectionOutline(selected: selected, inset: 2, child: tile);
+    if (unavailableNote == null) return outlined;
+    // Непригодный сервер ПРИГЛУШАЕМ, но не выключаем: выбрать его по-прежнему
+    // можно (решение владельца от 07.08.2026 — предупреждать, а не запрещать),
+    // а выглядеть как рабочий он не должен. `Opacity` не перехватывает
+    // нажатия, поэтому и строка, и «!» рядом с именем остаются рабочими.
+    return Opacity(opacity: 0.55, child: outlined);
   }
 
   /// Строка-уведомление панели: сообщение + «Скопировать» и (для «После оплаты

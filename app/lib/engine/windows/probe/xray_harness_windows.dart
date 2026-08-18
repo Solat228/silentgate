@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import '../../../core/platform/app_env.dart';
+import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/probe/probe_harness.dart';
 import '../../../core/xray/harness_config_builder.dart';
@@ -95,18 +96,44 @@ class XrayHarnessWindows implements ProbeHarness {
     return _WindowsHarnessHandle(process, builder);
   }
 
+  /// Сколько ждать, пока ядро харнесса откроет свой первый порт.
+  ///
+  /// ⚠️ БЫЛО ТРИ СЕКУНДЫ, И ЭТОГО НЕ ХВАТАЛО — А СДАВАЛСЯ ОЖИДАТЕЛЬ МОЛЧА.
+  /// Дальше пробы уходили в порт, которого ещё нет, и ВЕСЬ список получал
+  /// «n/a» — неотличимое от честного «сервер не проксирует». На машине с
+  /// антивирусом (каждый запуск нового exe проверяется), на холодном старте
+  /// после установки и просто под нагрузкой — когда рядом идёт пачка проб
+  /// сервисов — xray.exe в три секунды не укладывается.
+  ///
+  /// Пятнадцать секунд ничего не стоят в успешном случае: цикл выходит по
+  /// первому же удавшемуся соединению, обычно на первой сотне миллисекунд.
+  static const _readyTimeout = Duration(seconds: 15);
+
+  /// Дольше этого — уже не «мгновенно»: пишем в журнал, чтобы разбор
+  /// «почему пинг долгий» не начинался с гадания.
+  static const _readySlow = Duration(seconds: 3);
+
   Future<void> _waitReady(int port) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 3));
-    while (DateTime.now().isBefore(deadline)) {
+    final sw = Stopwatch()..start();
+    while (sw.elapsed < _readyTimeout) {
       try {
         final s = await Socket.connect('127.0.0.1', port,
             timeout: const Duration(milliseconds: 300));
         s.destroy();
+        if (sw.elapsed > _readySlow) {
+          AppLog.i('Проброс-харнесс: ядро открыло порт $port за '
+              '${sw.elapsedMilliseconds} мс');
+        }
         return;
       } catch (_) {
         await Future.delayed(const Duration(milliseconds: 120));
       }
     }
+    // Молчать здесь нельзя: снаружи это выглядит как «все серверы мёртвые», и
+    // разбираться человек идёт к серверам, а не к ядру, которое не поднялось.
+    AppLog.w('Проброс-харнесс: порт $port не открылся за '
+        '${_readyTimeout.inSeconds} с — пробы этого прогона уйдут в никуда, '
+        'результаты будут «n/a»');
   }
 }
 

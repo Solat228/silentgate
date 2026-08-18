@@ -1087,5 +1087,46 @@
   "subSwitcherRefreshingOne": "در حال به‌روزرسانی «{name}»…",
   "subSwitcherRefreshedOne": "«{name}» به‌روزرسانی شد",
   "subSwitcherRefreshFailedOne": "به‌روزرسانی «{name}» ناموفق بود",
-  "subBarDeleteConfirmNamed": "اشتراک «{name}» حذف شود؟"
+  "subBarDeleteConfirmNamed": "اشتراک «{name}» حذف شود؟",
+  "exitServerUnsupportedInfo": "این سرور را نمی‌توان به‌عنوان خروجی جداگانه بالا آورد: پروفایل‌های «خودکار» پنل و بخشی از پروتکل‌ها را تنها Xray اداره می‌کند، اما خروجی‌ها را sing-box تقسیم می‌کند. ترافیک این قانون از تونل اصلی می‌رود.",
+  "pingBusyServiceChecks": "پینگ در دسترس نیست: بررسی سرویس‌ها در جریان است",
+  "serviceChecksChannelNotReady": "تونل هنوز آماده نیست — بررسی‌ها اجرا نشدند",
+  "serviceChecksRetryCheck": "تلاش دوباره برای بررسی",
+  "serviceGroupMessengers": "پیام‌رسان‌ها",
+  "serviceGroupAi": "هوش مصنوعی",
+  "serviceGroupMedia": "ویدیو و موسیقی",
+  "serviceGroupSocial": "شبکه‌های اجتماعی",
+  "serviceGroupOther": "سایر",
+  "apiTokenHidden": "پنهان — «نمایش» را بزنید",
+  "apiTokenShow": "نمایش توکن",
+  "apiTokenHide": "پنهان کردن توکن",
+  "apiCheatSheetTitle": "راهنمای کوتاه: نشانی، پورت‌ها، اندپوینت‌ها",
+  "apiCheatSheetBase": "نشانی پایه",
+  "apiCheatSheetExitPorts": "پورت‌های خروج",
+  "apiCheatSheetPortDirect": "{port} — «مستقیم»: بیرون از VPN، IP واقعی",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "هیچ سروری انتخاب نشده — پورت سرور وجود نخواهد داشت",
+  "apiCheatSheetPortsSystemProxy": "باز نمی‌شوند: حالت گرفتن ترافیک «پراکسی سیستمی» است. تنها پورت کنترل {control} کار می‌کند",
+  "apiCheatSheetTokenOff": "توکن خالی است — کانال بالا نمی‌آید و هیچ پورتی گوش نمی‌دهد",
+  "apiCheatSheetPortsWhenConnected": "پورت‌های خروج فقط هنگام برقراری اتصال گوش می‌دهند.",
+  "apiCheatSheetEndpoints": "اندپوینت‌ها",
+  "apiEpStatus": "وضعیت موتور، سرور انتخاب‌شده، حالت گرفتن ترافیک و در جریان بودن پینگ",
+  "apiEpServers": "فهرست سرورها همراه با آخرین نتایج پینگ",
+  "apiEpExits": "چیدمان پورت‌های خروج به‌همراه مدخل «مستقیم»",
+  "apiEpTraffic": "شمارنده‌های ترافیک برای کل مدت اجرای برنامه",
+  "apiEpSubscription": "نام اشتراک، تاریخ انقضا و ترافیک باقی‌مانده",
+  "apiEpConnect": "اتصال با کلید سرور، با نام یا «خودکار»؛ روی کانال فعال سرور را عوض می‌کند",
+  "apiEpDisconnect": "قطع اتصال؛ فراخوانی دوباره بی‌خطر است",
+  "apiEpPing": "شروع پینگ همه سرورها؛ نتیجه‌ها را از ‎/v1/servers بخوانید",
+  "apiCopyCurlExample": "کپی نمونهٔ curl"
 }

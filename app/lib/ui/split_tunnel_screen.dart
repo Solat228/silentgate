@@ -16,8 +16,11 @@ import '../core/singbox/exit_outbounds.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
+import '../core/util/server_search.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/dead_path_badge.dart';
+import 'widgets/server_search_field.dart';
+import 'widgets/server_tile.dart';
 import 'widgets/app_label.dart';
 import 'widgets/route_diagram.dart';
 import 'widgets/site_favicon.dart';
@@ -211,7 +214,7 @@ class SplitTunnelScreen extends StatelessWidget {
                               onSwitchToName: () =>
                                   _updateApp(controller, rule, byName: true),
                             ),
-                            _ServerBadge(
+                            ServerBadge(
                                 servers: state.servers,
                                 serverKey: rule.serverKey,
                                 action: rule.action),
@@ -625,7 +628,7 @@ class SplitTunnelScreen extends StatelessWidget {
           allowRealIp: site.allowRealIp,
           noRealIp: controller.settings.noRealIp),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        _ServerBadge(
+        ServerBadge(
             servers: state.servers,
             serverKey: site.serverKey,
             action: site.action),
@@ -944,13 +947,20 @@ class _RunningPickerDialogState extends State<_RunningPickerDialog> {
 /// ширина, а [LayoutBuilder]: пока имя влезает — показываем имя целиком, стало
 /// тесно — остаётся один флаг, а если флага у сервера нет, имя обрезается.
 /// Числом это не задать: на телефоне и в широком окне «влезает» разное.
-class _ServerBadge extends StatelessWidget {
+///
+/// ⚠️ Класс публичный только ради стража (`test/rule_server_picker_test.dart`):
+/// подсказка налезала на соседнюю строку, и проверять это надо на настоящей
+/// плашке, а не на её копии в тесте.
+class ServerBadge extends StatelessWidget {
   final List<VpnServer> servers;
   final String? serverKey;
   final AppAction action;
 
-  const _ServerBadge(
-      {required this.servers, required this.serverKey, required this.action});
+  const ServerBadge(
+      {super.key,
+      required this.servers,
+      required this.serverKey,
+      required this.action});
 
   @override
   Widget build(BuildContext context) {
@@ -1004,13 +1014,19 @@ class _ServerBadge extends StatelessWidget {
     return LayoutBuilder(builder: (context, box) {
       final tight = box.maxWidth < 132;
       final flagOnly = tight && iso != null;
-      return Tooltip(
-        // ⚠️ Строка из ARB (`exitServerUnsupported`), а не литерал: ключ был
-        // заведён во все 10 языков, но здесь стоял захардкоженный русский
-        // текст — на любом другом языке интерфейса объяснение выпадало из
-        // локали. Он же используется в разделе API (`settings_screen`), чтобы
-        // на один вопрос был один ответ.
-        message: unsupported ? l.exitServerUnsupported(name) : name,
+      final badge = Tooltip(
+        // ⚠️ В ПОДСКАЗКЕ — ТОЛЬКО ИМЯ СЕРВЕРА, АБЗАЦ УЕХАЛ В «!».
+        //
+        // Здесь стоял `exitServerUnsupported(name)` — 230 символов одной
+        // всплывающей подсказкой. Подсказка не ограничена по ширине и рисуется
+        // ПОД плашкой (`preferBelow` по умолчанию `true`), поэтому накрывала
+        // следующее правило списка: владелец прислал скриншот. Длинный текст
+        // теперь показывает `InfoTooltip` диалогом (см. ниже), а ширина
+        // подсказок вдобавок ограничена темой (`buildAppTheme` в `app.dart`).
+        //
+        // Имя оставляем: плашка на узком экране показывает один флаг, и без
+        // подсказки не узнать, через какой сервер идёт правило.
+        message: name,
         child: Container(
           margin: const EdgeInsetsDirectional.only(end: 6),
           padding: EdgeInsets.symmetric(
@@ -1052,7 +1068,252 @@ class _ServerBadge extends StatelessWidget {
           ]),
         ),
       );
+      if (!unsupported) return badge;
+      // «!» рядом с плашкой: абзац о том, почему сервер не поднимется
+      // отдельным выходом, показывается ДИАЛОГОМ. Он же работает на тач-экране,
+      // где наведения нет вовсе, — прежняя подсказка там была недостижима.
+      return Row(mainAxisSize: MainAxisSize.min, children: [
+        badge,
+        InfoTooltip(l.exitServerUnsupportedInfo, title: name),
+      ]);
     });
+  }
+}
+
+/// Итог выбора сервера в пикере.
+///
+/// ⚠️ ОБЁРТКА, А НЕ ГОЛЫЙ `String?`, И ЭТО НЕ ФОРМАЛЬНОСТЬ. `showDialog`
+/// возвращает `null` при ОТМЕНЕ (кнопка «Закрыть», Esc, тап мимо диалога), а
+/// `null` внутри выбора — законное значение «как основной сервер». Без обёртки
+/// закрытие пикера крестиком стирало бы уже выбранный сервер, и правило молча
+/// уезжало бы в общий туннель — ровно тот класс дефектов, который в этом
+/// проекте стоит дороже всего.
+class RuleServerChoice {
+  /// Ключ сервера; `null` — «как основной».
+  final String? key;
+  const RuleServerChoice(this.key);
+}
+
+/// Строка «через какой сервер идёт правило» + вход в пикер.
+///
+/// Текущий выбор показывается ТОЙ ЖЕ строкой [ServerTile], что и на главном
+/// экране: флаг, имя, подписка, теги, пинг и скорость. Данные она берёт из тех
+/// же провайдеров, поэтому разойтись с главным экраном физически не может —
+/// в отличие от прежнего `Text(displayName)`, который показывал только имя.
+class RuleServerField extends StatelessWidget {
+  final List<VpnServer> servers;
+
+  /// Сервер, выбранный на главном экране, — для подписи «Как основной (…)».
+  final VpnServer? currentServer;
+  final String? serverKey;
+  final ValueChanged<String?> onChanged;
+
+  const RuleServerField({
+    super.key,
+    required this.servers,
+    required this.currentServer,
+    required this.serverKey,
+    required this.onChanged,
+  });
+
+  Future<void> _open(BuildContext context) async {
+    final choice = await showDialog<RuleServerChoice>(
+      context: context,
+      builder: (_) => RuleServerPickerDialog(
+        servers: servers,
+        currentServer: currentServer,
+        serverKey: serverKey,
+      ),
+    );
+    // Отмена (`null`) выбор НЕ трогает — см. [RuleServerChoice].
+    if (choice != null) onChanged(choice.key);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    VpnServer? picked;
+    for (final s in servers) {
+      if (s.key == serverKey) {
+        picked = s;
+        break;
+      }
+    }
+    // ⚠️ Сервер мог пропасть из подписки, пока правило лежало. Прежний
+    // `DropdownButtonFormField` в этом случае молча показывал «Как основной» —
+    // то есть врал: правило по-прежнему ссылается на исчезнувший сервер.
+    // Говорим прямо, той же строкой, что и плашка в списке правил.
+    final gone = serverKey != null && picked == null;
+
+    final Widget inner;
+    if (picked != null) {
+      inner = ServerTile(
+        server: picked,
+        selected: false,
+        // Тап по строке открывает пикер: строка здесь — не выбор, а показ
+        // текущего значения.
+        onTap: () => _open(context),
+        // Ни меню, ни правки: диалог правила поверх себя ничего не переживёт.
+        showActions: false,
+        unavailableNote:
+            canBeExitServer(picked) ? null : l.exitServerUnsupportedInfo,
+      );
+    } else {
+      inner = ListTile(
+        dense: true,
+        leading: Icon(gone ? Icons.link_off : Icons.hub_outlined,
+            color: gone ? scheme.error : null),
+        title: Text(
+          gone
+              ? l.exitServerGone
+              // ⚠️ Умолчание — «тот, что включён сейчас», и оно НЕ фиксируется
+              // ключом. Запиши мы сюда текущий сервер, правило застряло бы на
+              // нём навсегда: пользователь сменил бы сервер на главном экране, а
+              // правило продолжало ходить через прежнюю страну — молча, при том
+              // что в строке написано «Туннель».
+              : (currentServer == null
+                  ? l.ruleServerCurrent
+                  : l.ruleServerCurrentNamed(currentServer!.displayName)),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: () => _open(context),
+      );
+    }
+
+    return InkWell(
+      onTap: () => _open(context),
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: scheme.outline),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(children: [
+          Expanded(child: inner),
+          // Стрелка вместо шеврона: поле должно читаться как выпадающий
+          // список, которым оно и было, — иначе неочевидно, что по нему жмут.
+          Padding(
+            padding: const EdgeInsetsDirectional.only(end: 8),
+            child: Icon(Icons.arrow_drop_down, color: scheme.onSurfaceVariant),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// Пикер сервера для правила — по образцу диалога выбора приложений.
+///
+/// ⚠️ ВНУТРИ — НАСТОЯЩИЙ [ServerTile], А НЕ ЕГО УПРОЩЁННАЯ КОПИЯ. Копия
+/// разошлась бы с главным экраном на первой же правке (так уже было с плашкой
+/// пригодности сервера, которая полтора релиза не показывалась), а здесь
+/// строка сама берёт пинг и скорость из `ProbeController`.
+///
+/// ⚠️ Строки-уведомления подписки (`0.0.0.0:1` с текстом вместо имени) в список
+/// не попадают: выход из них собирается синтаксически верным и ведёт в никуда —
+/// так решает `exitServerRejection`, единственный ответчик на вопрос
+/// пригодности. Предлагать заведомо нерабочий выбор нельзя.
+class RuleServerPickerDialog extends StatefulWidget {
+  final List<VpnServer> servers;
+  final VpnServer? currentServer;
+  final String? serverKey;
+
+  const RuleServerPickerDialog({
+    super.key,
+    required this.servers,
+    required this.currentServer,
+    required this.serverKey,
+  });
+
+  @override
+  State<RuleServerPickerDialog> createState() => _RuleServerPickerDialogState();
+}
+
+class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final all = widget.servers.where((s) => !s.isNotice).toList();
+    // Поиск — общий с главным экраном (`ServerSearch`): у владельца в подписке
+    // больше сотни серверов, и без поиска список пришлось бы листать.
+    // ⚠️ Он отдаёт ИСХОДНЫЕ индексы, поэтому берём сервер по ним, а не по
+    // порядку в отфильтрованном списке.
+    final found = ServerSearch.matchIndices(all, _q);
+
+    return AlertDialog(
+      title: Text(l.ruleServer),
+      content: adaptiveDialogBody(
+        context,
+        width: 440,
+        height: 480,
+        child: Column(
+          children: [
+            ServerSearchField(
+              value: _q,
+              onChanged: (v) => setState(() => _q = v),
+            ),
+            const SizedBox(height: 8),
+            // «Как основной» — ОТДЕЛЬНОЙ строкой над списком: у этого выбора
+            // сервера нет, и строкой сервера его не изобразить.
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.hub_outlined),
+              selected: widget.serverKey == null,
+              title: Text(
+                widget.currentServer == null
+                    ? l.ruleServerCurrent
+                    : l.ruleServerCurrentNamed(
+                        widget.currentServer!.displayName),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing:
+                  widget.serverKey == null ? const Icon(Icons.check) : null,
+              onTap: () =>
+                  Navigator.of(context).pop(const RuleServerChoice(null)),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: found.isEmpty
+                  ? Center(child: Text(l.splitNothingFound))
+                  : ListView.builder(
+                      itemCount: found.length,
+                      itemBuilder: (_, i) {
+                        final s = all[found[i]];
+                        return ServerTile(
+                          server: s,
+                          selected: s.key == widget.serverKey,
+                          onTap: () => Navigator.of(context)
+                              .pop(RuleServerChoice(s.key)),
+                          // Меню строки уводит с диалога (информация,
+                          // автонастройка) и умеет удалять сервер — в пикере
+                          // это чужие действия.
+                          showActions: false,
+                          // Пригодность спрашиваем у единственного ответчика,
+                          // общего с построителем конфига и `/v1/exits`:
+                          // разойдись мы с ним — интерфейс пообещал бы то,
+                          // чего конфиг не сделает.
+                          unavailableNote: canBeExitServer(s)
+                              ? null
+                              : l.exitServerUnsupportedInfo,
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.splitClose),
+        ),
+      ],
+    );
   }
 }
 
@@ -1232,44 +1493,16 @@ class _RuleDialogState extends State<_RuleDialog> {
             const Divider(),
             Text(l.ruleServer),
             const SizedBox(height: 6),
-            DropdownButtonFormField<String?>(
-              // ⚠️ Значение сверяем со СПИСКОМ: сервер мог пропасть из
-              // подписки, пока диалог не открывали. Дай мы Dropdown значение,
-              // которого нет в items, Flutter упал бы с утверждением — на
-              // ровном месте.
-              initialValue: widget.servers.any((x) => x.key == _serverKey)
-                  ? _serverKey
-                  : null,
-              isDense: true,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                isDense: true,
-                border: OutlineInputBorder(),
-              ),
-              items: [
-                // ⚠️ Умолчание — «тот, что включён сейчас», и оно НЕ
-                // фиксируется ключом. Запиши мы сюда текущий сервер, правило
-                // застряло бы на нём навсегда: пользователь сменил бы сервер на
-                // главном экране, а правило продолжало ходить через прежнюю
-                // страну — молча, при том что в строке написано «Туннель».
-                DropdownMenuItem<String?>(
-                  value: null,
-                  child: Text(
-                    widget.currentServer == null
-                        ? l.ruleServerCurrent
-                        : l.ruleServerCurrentNamed(
-                            widget.currentServer!.displayName),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                for (final x in widget.servers)
-                  DropdownMenuItem<String?>(
-                    value: x.key,
-                    child: Text(x.displayName,
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-              ],
+            // ⚠️ ЗДЕСЬ БЫЛ ВЫПАДАЮЩИЙ СПИСОК С ГОЛЫМ ИМЕНЕМ СЕРВЕРА: ни флага,
+            // ни пинга, ни скорости, ни пометки «этот сервер отдельным выходом
+            // не поднимается». Человек выбирал вслепую, хотя рядом, на главном
+            // экране, всё это уже показано. Требование владельца (18.08.2026):
+            // «в выборе сервера, через что пойдёт трафик, отображай инфу о
+            // сервере как на главной».
+            RuleServerField(
+              servers: widget.servers,
+              currentServer: widget.currentServer,
+              serverKey: _serverKey,
               onChanged: (v) {
                 setState(() => _serverKey = v);
                 widget.onServer?.call(v);

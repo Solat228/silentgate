@@ -1461,5 +1461,46 @@
   "subSwitcherRefreshingOne": "Обновляю «{name}»…",
   "subSwitcherRefreshedOne": "«{name}» обновлена",
   "subSwitcherRefreshFailedOne": "Не удалось обновить «{name}»",
-  "subBarDeleteConfirmNamed": "Удалить подписку «{name}»?"
+  "subBarDeleteConfirmNamed": "Удалить подписку «{name}»?",
+  "exitServerUnsupportedInfo": "Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.",
+  "pingBusyServiceChecks": "Пинг недоступен: идёт проверка сервисов",
+  "serviceChecksChannelNotReady": "Канал ещё не готов — проверка не запускалась",
+  "serviceChecksRetryCheck": "Повторить проверку",
+  "serviceGroupMessengers": "Мессенджеры",
+  "serviceGroupAi": "ИИ",
+  "serviceGroupMedia": "Видео и музыка",
+  "serviceGroupSocial": "Соцсети",
+  "serviceGroupOther": "Прочее",
+  "apiTokenHidden": "скрыт — нажмите «показать»",
+  "apiTokenShow": "Показать токен",
+  "apiTokenHide": "Скрыть токен",
+  "apiCheatSheetTitle": "Памятка: адрес, порты, эндпоинты",
+  "apiCheatSheetBase": "Базовый адрес",
+  "apiCheatSheetExitPorts": "Порты выходов",
+  "apiCheatSheetPortDirect": "{port} — «Прямо»: мимо VPN, реальный IP",
+  "apiCheatSheetPortServer": "{port} — {name}",
+  "@apiCheatSheetPortServer": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "apiCheatSheetNoExitServers": "ни один сервер не отмечен — портов серверов не будет",
+  "apiCheatSheetPortsSystemProxy": "не открываются: выбран захват «Системный прокси». Работает только управляющий порт {control}",
+  "apiCheatSheetTokenOff": "токен пуст — канал не поднимается, ни один порт не слушает",
+  "apiCheatSheetPortsWhenConnected": "Порты выходов слушают только при поднятом соединении.",
+  "apiCheatSheetEndpoints": "Эндпоинты",
+  "apiEpStatus": "Состояние движка, выбранный сервер, режим захвата, идёт ли пинг",
+  "apiEpServers": "Список серверов с последними результатами пинга",
+  "apiEpExits": "Раскладка портов выходов и запись «Прямо»",
+  "apiEpTraffic": "Счётчики трафика за всё время работы приложения",
+  "apiEpSubscription": "Название, срок и остаток трафика подписки",
+  "apiEpConnect": "Подключиться по ключу сервера, по имени или «Авто»; на живом канале — смена сервера",
+  "apiEpDisconnect": "Отключиться; повторный вызов безопасен",
+  "apiEpPing": "Запустить пинг всех серверов; результаты забирать из /v1/servers",
+  "apiCopyCurlExample": "Скопировать пример curl"
 }

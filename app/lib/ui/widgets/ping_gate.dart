@@ -16,6 +16,16 @@ enum PingBlocker {
   /// поэтому пинг поверх него не запускается.
   measuringSpeed,
 
+  /// Идёт автопрогон проверки сервисов у кнопки Connect.
+  ///
+  /// ⚠️ ЗАНЯТ ОДИН И ТОТ ЖЕ ПОРТ ЖИВОГО ЯДРА. Пробы сервисов идут через него, и
+  /// через него же пинг проверяет подключённый сервер; на Windows в режиме по
+  /// умолчанию туда смотрит ещё и системный прокси всей машины. Владелец
+  /// включил все 14 сервисов и получил «всё сломалось и не пингуется с самого
+  /// начала» — пинг, начатый поверх такой пачки, добавляет к ней свои
+  /// соединения ровно в ту же секунду.
+  servicesChecking,
+
   /// Пинговать нечего: пустой список серверов (или поиск ничего не нашёл).
   noTargets,
 }
@@ -25,7 +35,8 @@ enum PingBlocker {
 ///
 /// ⚠️ ЗАЧЕМ ОБЩИЙ ГЕЙТ, А НЕ `if` ПО ЭКРАНАМ.
 /// `ProbeController._pingBatch` выходит первой же строкой
-/// (`if (_running || _speedRunning || servers.isEmpty) return;`), а условие
+/// (`if (_running || _speedRunning || serviceChecksRunning || servers.isEmpty)
+/// return;`), а условие
 /// «идёт замер скорости» повторяла у себя не каждая точка входа: кнопка на
 /// экране серверов и пункт «Пинг» в контекстном меню строки спрашивали только
 /// `probe.running` и выглядели совершенно живыми — замер сотни серверов идёт
@@ -64,17 +75,28 @@ class PingGate {
       PingGate.from(
         pinging: probe.running,
         measuringSpeed: probe.speedRunning,
+        // ⚠️ Спрашиваем ИСПОЛНИТЕЛЯ, а не проверку сервисов напрямую: ровно то
+        // же поле читает `ProbeController._pingBatch`, отказывая в прогоне.
+        servicesChecking: probe.serviceChecksRunning,
         hasTargets: hasTargets,
       );
 
   /// Тот же гейт из голых признаков — для тестов и мест, где контроллера нет.
+  ///
+  /// [servicesChecking] со значением по умолчанию — не послабление: у голых
+  /// признаков нет источника этого флага, а места, которые его знают, идут
+  /// через [PingGate.of].
   factory PingGate.from({
     required bool pinging,
     required bool measuringSpeed,
     required bool hasTargets,
+    bool servicesChecking = false,
   }) {
     if (pinging) return const PingGate._(PingBlocker.pinging);
     if (measuringSpeed) return const PingGate._(PingBlocker.measuringSpeed);
+    if (servicesChecking) {
+      return const PingGate._(PingBlocker.servicesChecking);
+    }
     if (!hasTargets) return const PingGate._(PingBlocker.noTargets);
     return const PingGate._(null);
   }
@@ -87,14 +109,15 @@ class PingGate {
   /// активном поиске правда звучит как «Ничего не найдено», а не «список пуст».
   /// Не задана — общий текст про пустой список.
   ///
-  /// Своих строк гейт не заводит: все три причины уже есть в переводах, и
-  /// четвёртая формулировка того же самого только развела бы экраны.
+  /// Лишних формулировок гейт не заводит: где строка уже есть в переводах, он
+  /// берёт её, а не сочиняет четвёртый способ сказать то же самое.
   String? reason(AppLocalizations l, {String? noTargets}) {
     final b = blocker;
     if (b == null) return null;
     return switch (b) {
       PingBlocker.pinging => l.serversPinging,
       PingBlocker.measuringSpeed => l.subSwitcherPingBusySpeed,
+      PingBlocker.servicesChecking => l.pingBusyServiceChecks,
       PingBlocker.noTargets => noTargets ?? l.serversEmpty,
     };
   }

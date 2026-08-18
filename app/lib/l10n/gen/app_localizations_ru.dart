@@ -2931,4 +2931,111 @@ class AppLocalizationsRu extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'Удалить подписку «$name»?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.';
+
+  @override
+  String get pingBusyServiceChecks => 'Пинг недоступен: идёт проверка сервисов';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'Канал ещё не готов — проверка не запускалась';
+
+  @override
+  String get serviceChecksRetryCheck => 'Повторить проверку';
+
+  @override
+  String get serviceGroupMessengers => 'Мессенджеры';
+
+  @override
+  String get serviceGroupAi => 'ИИ';
+
+  @override
+  String get serviceGroupMedia => 'Видео и музыка';
+
+  @override
+  String get serviceGroupSocial => 'Соцсети';
+
+  @override
+  String get serviceGroupOther => 'Прочее';
+
+  @override
+  String get apiTokenHidden => 'скрыт — нажмите «показать»';
+
+  @override
+  String get apiTokenShow => 'Показать токен';
+
+  @override
+  String get apiTokenHide => 'Скрыть токен';
+
+  @override
+  String get apiCheatSheetTitle => 'Памятка: адрес, порты, эндпоинты';
+
+  @override
+  String get apiCheatSheetBase => 'Базовый адрес';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Порты выходов';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — «Прямо»: мимо VPN, реальный IP';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'ни один сервер не отмечен — портов серверов не будет';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'не открываются: выбран захват «Системный прокси». Работает только управляющий порт $control';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'токен пуст — канал не поднимается, ни один порт не слушает';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Порты выходов слушают только при поднятом соединении.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Эндпоинты';
+
+  @override
+  String get apiEpStatus =>
+      'Состояние движка, выбранный сервер, режим захвата, идёт ли пинг';
+
+  @override
+  String get apiEpServers => 'Список серверов с последними результатами пинга';
+
+  @override
+  String get apiEpExits => 'Раскладка портов выходов и запись «Прямо»';
+
+  @override
+  String get apiEpTraffic => 'Счётчики трафика за всё время работы приложения';
+
+  @override
+  String get apiEpSubscription => 'Название, срок и остаток трафика подписки';
+
+  @override
+  String get apiEpConnect =>
+      'Подключиться по ключу сервера, по имени или «Авто»; на живом канале — смена сервера';
+
+  @override
+  String get apiEpDisconnect => 'Отключиться; повторный вызов безопасен';
+
+  @override
+  String get apiEpPing =>
+      'Запустить пинг всех серверов; результаты забирать из /v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'Скопировать пример curl';
 }

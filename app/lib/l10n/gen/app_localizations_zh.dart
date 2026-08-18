@@ -2824,4 +2824,104 @@ class AppLocalizationsZh extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return '删除订阅「$name」？';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      '这台服务器无法作为独立出口运行：面板的“自动”配置和部分协议只有 Xray 支持，而出口由 sing-box 分流。该规则的流量改走主隧道。';
+
+  @override
+  String get pingBusyServiceChecks => '无法测速：正在检查服务';
+
+  @override
+  String get serviceChecksChannelNotReady => '隧道尚未就绪 — 未执行检查';
+
+  @override
+  String get serviceChecksRetryCheck => '重新检查';
+
+  @override
+  String get serviceGroupMessengers => '即时通讯';
+
+  @override
+  String get serviceGroupAi => '人工智能';
+
+  @override
+  String get serviceGroupMedia => '视频与音乐';
+
+  @override
+  String get serviceGroupSocial => '社交网络';
+
+  @override
+  String get serviceGroupOther => '其他';
+
+  @override
+  String get apiTokenHidden => '已隐藏 — 点击“显示”';
+
+  @override
+  String get apiTokenShow => '显示令牌';
+
+  @override
+  String get apiTokenHide => '隐藏令牌';
+
+  @override
+  String get apiCheatSheetTitle => '速查表：地址、端口、接口';
+
+  @override
+  String get apiCheatSheetBase => '基础地址';
+
+  @override
+  String get apiCheatSheetExitPorts => '出口端口';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — “直连”：绕过 VPN，真实 IP';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers => '未勾选任何服务器 — 不会有服务器端口';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return '不会开启：当前捕获方式为“系统代理”。仅控制端口 $control 可用';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff => '令牌为空 — 通道不会启动，没有端口在监听';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected => '只有在连接建立时，出口端口才会监听。';
+
+  @override
+  String get apiCheatSheetEndpoints => '接口';
+
+  @override
+  String get apiEpStatus => '内核状态、所选服务器、捕获方式，以及是否正在测速';
+
+  @override
+  String get apiEpServers => '服务器列表及最近一次的延迟结果';
+
+  @override
+  String get apiEpExits => '出口端口分配以及“直连”条目';
+
+  @override
+  String get apiEpTraffic => '应用整个运行期间的流量计数';
+
+  @override
+  String get apiEpSubscription => '订阅名称、到期时间与剩余流量';
+
+  @override
+  String get apiEpConnect => '按服务器密钥、名称或“自动”连接；连接已建立时则切换服务器';
+
+  @override
+  String get apiEpDisconnect => '断开连接；重复调用是安全的';
+
+  @override
+  String get apiEpPing => '对所有服务器发起测速；结果从 /v1/servers 读取';
+
+  @override
+  String get apiCopyCurlExample => '复制 curl 示例';
 }

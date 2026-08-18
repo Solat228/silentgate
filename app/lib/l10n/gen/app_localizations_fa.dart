@@ -2919,4 +2919,112 @@ class AppLocalizationsFa extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'اشتراک «$name» حذف شود؟';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'این سرور را نمی‌توان به‌عنوان خروجی جداگانه بالا آورد: پروفایل‌های «خودکار» پنل و بخشی از پروتکل‌ها را تنها Xray اداره می‌کند، اما خروجی‌ها را sing-box تقسیم می‌کند. ترافیک این قانون از تونل اصلی می‌رود.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'پینگ در دسترس نیست: بررسی سرویس‌ها در جریان است';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'تونل هنوز آماده نیست — بررسی‌ها اجرا نشدند';
+
+  @override
+  String get serviceChecksRetryCheck => 'تلاش دوباره برای بررسی';
+
+  @override
+  String get serviceGroupMessengers => 'پیام‌رسان‌ها';
+
+  @override
+  String get serviceGroupAi => 'هوش مصنوعی';
+
+  @override
+  String get serviceGroupMedia => 'ویدیو و موسیقی';
+
+  @override
+  String get serviceGroupSocial => 'شبکه‌های اجتماعی';
+
+  @override
+  String get serviceGroupOther => 'سایر';
+
+  @override
+  String get apiTokenHidden => 'پنهان — «نمایش» را بزنید';
+
+  @override
+  String get apiTokenShow => 'نمایش توکن';
+
+  @override
+  String get apiTokenHide => 'پنهان کردن توکن';
+
+  @override
+  String get apiCheatSheetTitle => 'راهنمای کوتاه: نشانی، پورت‌ها، اندپوینت‌ها';
+
+  @override
+  String get apiCheatSheetBase => 'نشانی پایه';
+
+  @override
+  String get apiCheatSheetExitPorts => 'پورت‌های خروج';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — «مستقیم»: بیرون از VPN، IP واقعی';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'هیچ سروری انتخاب نشده — پورت سرور وجود نخواهد داشت';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'باز نمی‌شوند: حالت گرفتن ترافیک «پراکسی سیستمی» است. تنها پورت کنترل $control کار می‌کند';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'توکن خالی است — کانال بالا نمی‌آید و هیچ پورتی گوش نمی‌دهد';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'پورت‌های خروج فقط هنگام برقراری اتصال گوش می‌دهند.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'اندپوینت‌ها';
+
+  @override
+  String get apiEpStatus =>
+      'وضعیت موتور، سرور انتخاب‌شده، حالت گرفتن ترافیک و در جریان بودن پینگ';
+
+  @override
+  String get apiEpServers => 'فهرست سرورها همراه با آخرین نتایج پینگ';
+
+  @override
+  String get apiEpExits => 'چیدمان پورت‌های خروج به‌همراه مدخل «مستقیم»';
+
+  @override
+  String get apiEpTraffic => 'شمارنده‌های ترافیک برای کل مدت اجرای برنامه';
+
+  @override
+  String get apiEpSubscription => 'نام اشتراک، تاریخ انقضا و ترافیک باقی‌مانده';
+
+  @override
+  String get apiEpConnect =>
+      'اتصال با کلید سرور، با نام یا «خودکار»؛ روی کانال فعال سرور را عوض می‌کند';
+
+  @override
+  String get apiEpDisconnect => 'قطع اتصال؛ فراخوانی دوباره بی‌خطر است';
+
+  @override
+  String get apiEpPing =>
+      'شروع پینگ همه سرورها؛ نتیجه‌ها را از ‎/v1/servers بخوانید';
+
+  @override
+  String get apiCopyCurlExample => 'کپی نمونهٔ curl';
 }

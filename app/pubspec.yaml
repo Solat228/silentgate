@@ -1,7 +1,7 @@
 name: silentgate
 description: "SilentGate VPN client"
 publish_to: 'none'
-version: 1.8.0+62
+version: 1.9.0+63
 
 environment:
   sdk: ^3.4.0
@@ -37,6 +37,12 @@ flutter:
   generate: true
   assets:
     - assets/tray_icon.ico
+    # Бренд-иконки проверяемых сервисов (ProbeService). ⚠️ Лежат в поставке
+    # намеренно: раньше все 14 качались из сети при первом показе, и любой сбой
+    # оставлял серый глобус — а на трёх сервисах подряд успевала нарисоваться
+    # чужая иконка. Имя файла — по ИМЕНИ СЕРВИСА, не по домену (домен меняется:
+    # twitter.com → x.com). Соответствие стережёт test/site_favicon_race_test.dart.
+    - assets/services/
     # Второй значок трея — состояние «VPN выключен» (серый). Без строки здесь
     # файл в поставку не попадёт, а трей молча останется с прежним значком.
     - assets/tray_icon_off.ico

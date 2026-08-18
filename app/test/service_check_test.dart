@@ -89,10 +89,19 @@ void main() {
     setUp(() {
       probed = {};
       ctrl = ServiceCheckController();
-      // Ноль попыток — ожидание готовности канала не делает НИ ОДНОГО сетевого
-      // запроса и сразу отдаёт «эпоха не менялась». Правило «когда прогонять»
-      // к сети отношения не имеет.
-      ServiceCheckController.readinessAttempts = 0;
+      // ⚠️ ПРОБУ ГОТОВНОСТИ ПОДМЕНЯЕМ, А НЕ ОБНУЛЯЕМ ЧИСЛО ПОПЫТОК.
+      //
+      // Раньше здесь стояло `readinessAttempts = 0`, и это означало «проверку
+      // пропустить, идти дальше». С 1.9.0 смысл другой: непройденная проверка
+      // означает «канал не готов», и пробы в мёртвый канал больше НЕ уходят —
+      // иначе человек видел четырнадцать красных кружков и читал их как «VPN не
+      // работает». Обнулённые попытки стали значить «не готов», и все прогоны
+      // этой группы давали ноль проб.
+      //
+      // Здесь проверяется правило «КОГДА прогонять», к сети оно отношения не
+      // имеет — поэтому готовность объявляем достигнутой, не делая запросов.
+      ServiceCheckController.readinessProbe = (_) async => true;
+      ServiceCheckController.readinessAttempts = 1;
       ServiceCheckController.readinessDelay = Duration.zero;
       ServiceCheckController.prober = (port, s) async {
         probed[s] = (probed[s] ?? 0) + 1;
@@ -103,6 +112,8 @@ void main() {
     });
 
     tearDown(() {
+      ServiceCheckController.readinessProbe =
+          ServiceCheckController.defaultReadinessProbe;
       ServiceCheckController.readinessAttempts = 6;
       ServiceCheckController.readinessDelay = const Duration(seconds: 2);
       ServiceCheckController.prober = ServiceChecker.check;

@@ -2929,4 +2929,115 @@ class AppLocalizationsTr extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return '\"$name\" aboneliği silinsin mi?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Bu sunucu ayrı bir çıkış olarak çalıştırılamaz: panelin «Oto» profillerini ve bazı protokolleri yalnızca Xray yürütür, çıkışları ise sing-box dağıtır. Kuralın trafiği ana tünelden gider.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping kullanılamıyor: servis kontrolü sürüyor';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'Tünel henüz hazır değil — kontroller çalıştırılmadı';
+
+  @override
+  String get serviceChecksRetryCheck => 'Kontrolü yinele';
+
+  @override
+  String get serviceGroupMessengers => 'Mesajlaşma';
+
+  @override
+  String get serviceGroupAi => 'Yapay zekâ';
+
+  @override
+  String get serviceGroupMedia => 'Video ve müzik';
+
+  @override
+  String get serviceGroupSocial => 'Sosyal ağlar';
+
+  @override
+  String get serviceGroupOther => 'Diğer';
+
+  @override
+  String get apiTokenHidden => 'gizli — «göster»e basın';
+
+  @override
+  String get apiTokenShow => 'Belirteci göster';
+
+  @override
+  String get apiTokenHide => 'Belirteci gizle';
+
+  @override
+  String get apiCheatSheetTitle => 'Kısa kılavuz: adres, portlar, uç noktalar';
+
+  @override
+  String get apiCheatSheetBase => 'Temel adres';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Çıkış portları';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — «Doğrudan»: VPN dışı, gerçek IP';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'hiçbir sunucu işaretli değil — sunucu portu olmayacak';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'açılmaz: yakalama «Sistem vekili» seçili. Yalnızca kontrol portu $control çalışır';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'belirteç boş — kanal açılmaz, hiçbir port dinlemez';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Çıkış portları yalnızca bağlantı açıkken dinler.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Uç noktalar';
+
+  @override
+  String get apiEpStatus =>
+      'Motor durumu, seçili sunucu, yakalama modu, ping sürüyor mu';
+
+  @override
+  String get apiEpServers => 'Son ping sonuçlarıyla sunucu listesi';
+
+  @override
+  String get apiEpExits => 'Çıkış portlarının dağılımı ve «Doğrudan» kaydı';
+
+  @override
+  String get apiEpTraffic =>
+      'Uygulamanın tüm çalışma süresi için trafik sayaçları';
+
+  @override
+  String get apiEpSubscription =>
+      'Aboneliğin adı, bitiş tarihi ve kalan trafiği';
+
+  @override
+  String get apiEpConnect =>
+      'Sunucu anahtarı, ad veya «Otomatik» ile bağlan; bağlantı açıkken sunucuyu değiştirir';
+
+  @override
+  String get apiEpDisconnect =>
+      'Bağlantıyı kes; çağrıyı tekrarlamak güvenlidir';
+
+  @override
+  String get apiEpPing =>
+      'Tüm sunucular için ping başlat; sonuçları /v1/servers üzerinden oku';
+
+  @override
+  String get apiCopyCurlExample => 'curl örneğini kopyala';
 }

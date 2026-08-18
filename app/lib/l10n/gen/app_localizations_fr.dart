@@ -2960,4 +2960,117 @@ class AppLocalizationsFr extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'Supprimer l\'abonnement « $name » ?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'Ce serveur ne peut pas servir de sortie séparée : les profils « Auto » du panneau et une partie des protocoles ne sont gérés que par Xray, alors que les sorties sont réparties par sing-box. Le trafic de la règle emprunte le tunnel principal.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping indisponible : vérification des services en cours';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'Le tunnel n\'est pas encore prêt — les vérifications n\'ont pas été lancées';
+
+  @override
+  String get serviceChecksRetryCheck => 'Réessayer la vérification';
+
+  @override
+  String get serviceGroupMessengers => 'Messageries';
+
+  @override
+  String get serviceGroupAi => 'IA';
+
+  @override
+  String get serviceGroupMedia => 'Vidéo et musique';
+
+  @override
+  String get serviceGroupSocial => 'Réseaux sociaux';
+
+  @override
+  String get serviceGroupOther => 'Autres';
+
+  @override
+  String get apiTokenHidden => 'masqué — appuyez sur « afficher »';
+
+  @override
+  String get apiTokenShow => 'Afficher le jeton';
+
+  @override
+  String get apiTokenHide => 'Masquer le jeton';
+
+  @override
+  String get apiCheatSheetTitle => 'Aide-mémoire : adresse, ports, endpoints';
+
+  @override
+  String get apiCheatSheetBase => 'Adresse de base';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Ports de sortie';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — « Direct » : hors VPN, IP réelle';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'aucun serveur coché — il n\'y aura pas de ports de serveur';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'non ouverts : le mode de capture est « Proxy système ». Seul le port de contrôle $control fonctionne';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'le jeton est vide — le canal ne démarre pas, aucun port n\'écoute';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Les ports de sortie n\'écoutent que lorsque la connexion est active.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Endpoints';
+
+  @override
+  String get apiEpStatus =>
+      'État du moteur, serveur choisi, mode de capture, ping en cours ou non';
+
+  @override
+  String get apiEpServers =>
+      'Liste des serveurs avec les derniers résultats de ping';
+
+  @override
+  String get apiEpExits =>
+      'Répartition des ports de sortie et l\'entrée « Direct »';
+
+  @override
+  String get apiEpTraffic =>
+      'Compteurs de trafic depuis le lancement de l\'application';
+
+  @override
+  String get apiEpSubscription =>
+      'Nom, échéance et trafic restant de l\'abonnement';
+
+  @override
+  String get apiEpConnect =>
+      'Se connecter par clé de serveur, par nom ou « Auto » ; sur un canal actif, change de serveur';
+
+  @override
+  String get apiEpDisconnect =>
+      'Se déconnecter ; un appel répété est sans risque';
+
+  @override
+  String get apiEpPing =>
+      'Lancer le ping de tous les serveurs ; les résultats se lisent dans /v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'Copier un exemple curl';
 }

@@ -2927,4 +2927,114 @@ class AppLocalizationsEn extends AppLocalizations {
   String subBarDeleteConfirmNamed(Object name) {
     return 'Delete the \"$name\" subscription?';
   }
+
+  @override
+  String get exitServerUnsupportedInfo =>
+      'This server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.';
+
+  @override
+  String get pingBusyServiceChecks =>
+      'Ping unavailable: service check in progress';
+
+  @override
+  String get serviceChecksChannelNotReady =>
+      'Tunnel is not ready yet — checks did not run';
+
+  @override
+  String get serviceChecksRetryCheck => 'Retry check';
+
+  @override
+  String get serviceGroupMessengers => 'Messengers';
+
+  @override
+  String get serviceGroupAi => 'AI';
+
+  @override
+  String get serviceGroupMedia => 'Video and music';
+
+  @override
+  String get serviceGroupSocial => 'Social';
+
+  @override
+  String get serviceGroupOther => 'Other';
+
+  @override
+  String get apiTokenHidden => 'hidden — press “show”';
+
+  @override
+  String get apiTokenShow => 'Show token';
+
+  @override
+  String get apiTokenHide => 'Hide token';
+
+  @override
+  String get apiCheatSheetTitle => 'Cheat sheet: address, ports, endpoints';
+
+  @override
+  String get apiCheatSheetBase => 'Base address';
+
+  @override
+  String get apiCheatSheetExitPorts => 'Exit ports';
+
+  @override
+  String apiCheatSheetPortDirect(Object port) {
+    return '$port — “Direct”: bypasses the VPN, real IP';
+  }
+
+  @override
+  String apiCheatSheetPortServer(int port, String name) {
+    return '$port — $name';
+  }
+
+  @override
+  String get apiCheatSheetNoExitServers =>
+      'no server is selected — there will be no server ports';
+
+  @override
+  String apiCheatSheetPortsSystemProxy(Object control) {
+    return 'not opened: the capture mode is “System proxy”. Only the control port $control works';
+  }
+
+  @override
+  String get apiCheatSheetTokenOff =>
+      'the token is empty — the channel does not start, no port listens';
+
+  @override
+  String get apiCheatSheetPortsWhenConnected =>
+      'Exit ports listen only while the connection is up.';
+
+  @override
+  String get apiCheatSheetEndpoints => 'Endpoints';
+
+  @override
+  String get apiEpStatus =>
+      'Engine state, selected server, capture mode, whether a ping run is in progress';
+
+  @override
+  String get apiEpServers => 'The list of servers with the latest ping results';
+
+  @override
+  String get apiEpExits => 'The exit port layout plus the “Direct” entry';
+
+  @override
+  String get apiEpTraffic =>
+      'Traffic counters for the whole app run, not the current session';
+
+  @override
+  String get apiEpSubscription =>
+      'Subscription title, expiry date and remaining traffic';
+
+  @override
+  String get apiEpConnect =>
+      'Connect by server key, by name or “Auto”; on a live channel it switches the server';
+
+  @override
+  String get apiEpDisconnect => 'Disconnect; calling it again is safe';
+
+  @override
+  String get apiEpPing =>
+      'Start a ping run over all servers; read the results from /v1/servers';
+
+  @override
+  String get apiCopyCurlExample => 'Copy a curl example';
 }
