@@ -68,9 +68,15 @@ class SingboxProcess {
   /// режима «Только прокси» (`singbox_exit_router.log`, задача 3b) — иначе
   /// его сбой был бы недиагностируем: конфиг молча не поднялся, а строчки об
   /// этом никто не читает.
+  ///
+  /// ⚠️ Читается ЧЕРЕЗ РОТАЦИЮ ([RotatingLog.tailAcrossRotation]): при
+  /// достижении порога прежняя часть уезжает в `*.prev.log`, и обычный `tail`
+  /// показал бы начало новой части вместо строк, которые ядро выдало перед
+  /// смертью, — то есть пустоту ровно в том случае, ради которого лог заведён.
   static Future<String> tailLog(
           {int lines = 200, String name = 'singbox_proxy.log'}) async =>
-      RotatingLog.tail(logPathFor(await AppPaths.supportDir(), name: name),
+      RotatingLog.tailAcrossRotation(
+          logPathFor(await AppPaths.supportDir(), name: name),
           lines: lines);
 
   Future<void> start({
@@ -80,7 +86,12 @@ class SingboxProcess {
   }) async {
     if (_process != null) throw StateError('Ядро уже запущено');
     if (logPath != null) {
-      _log = RotatingLog(logPath);
+      // ⚠️ `keepPrevious` + общий с TUN-ядром потолок. Прокси-ядро свой лог и
+      // раньше не обрезало при старте, но порог в 512 КБ стирал его В НОЛЬ —
+      // а на уровне `debug` это две-три минуты истории. Разбирать по такому
+      // логу обрыв, замеченный человеком минутами позже, нечем: он уже стёрт.
+      _log = RotatingLog(logPath,
+          maxBytes: RotatingLog.coreLogMaxBytes, keepPrevious: true);
       await _log!.open();
       await _log!.write(
           '--- запуск прокси-ядра ${DateTime.now().toIso8601String()} (конфиг $configPath)');

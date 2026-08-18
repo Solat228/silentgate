@@ -3729,7 +3729,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoSpeedValue.
   ///
   /// In ru, this message translates to:
-  /// **'{value} Мбит/с'**
+  /// **'{value} МБ/с'**
   String autoSpeedValue(String value);
 
   /// No description provided for @splitShowBlockPage.
@@ -5267,6 +5267,60 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Скопировать пример curl'**
   String get apiCopyCurlExample;
+
+  /// No description provided for @noRealIpSubRulesOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Переписывает только ваши правила «Прямо»: они уходят в туннель (RU-сайты — тоже). Базу маршрута не меняет, локальная сеть остаётся напрямую.'**
+  String get noRealIpSubRulesOnly;
+
+  /// No description provided for @noRealIpOnlySelectedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'В режиме «Только отмеченные» всё неотмеченное всё равно выходит под вашим реальным IP — эта настройка на него не действует.'**
+  String get noRealIpOnlySelectedNote;
+
+  /// No description provided for @infoNoRealIp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Действует ТОЛЬКО на явные правила «Прямо» (приложения и сайты) и на прямые правила из конфига панели: они уводятся в туннель. Правило, у которого поднята галочка «Разрешить реальный IP», остаётся прямым.\n\nЧего настройка НЕ делает: она не меняет базу маршрута. В режиме «Только отмеченные» базой остаётся прямой выход, поэтому весь неотмеченный трафик идёт под вашим настоящим адресом независимо от неё. Нужна герметичность — режим «Все — через VPN».\n\nЛокальная сеть остаётся напрямую всегда.'**
+  String get infoNoRealIp;
+
+  /// No description provided for @killSwitchSubProxyNoAdmin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это не блокировка: в режиме «Системный прокси» права администратора не берутся, и всё удержание — оставленный прописанным прокси. Программы, которые его игнорируют, и весь UDP уйдут напрямую. Полностью держит только TUN.'**
+  String get killSwitchSubProxyNoAdmin;
+
+  /// No description provided for @killSwitchOfferTun.
+  ///
+  /// In ru, this message translates to:
+  /// **'Полная блокировка на время обрыва есть только в режиме TUN.'**
+  String get killSwitchOfferTun;
+
+  /// No description provided for @splitOnlySelectedWarnTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всё неотмеченное выходит под вашим реальным IP'**
+  String get splitOnlySelectedWarnTitle;
+
+  /// No description provided for @splitOnlySelectedWarnBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'В туннель идёт только то, чему задано действие «Туннель». Остальной трафик — включая программы, о которых вы не знаете, — выходит напрямую, с вашим настоящим адресом. Если скрыто должно быть всё устройство, выберите «Все — через VPN».'**
+  String get splitOnlySelectedWarnBody;
+
+  /// No description provided for @splitOnlySelectedNoRealIp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройка «Не выходить под реальным IP» этого не меняет: она переписывает только правила «Прямо», а не базу маршрута.'**
+  String get splitOnlySelectedNoRealIp;
+
+  /// No description provided for @splitKillSwitchIsPerApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.'**
+  String get splitKillSwitchIsPerApp;
 }
 
 class _AppLocalizationsDelegate

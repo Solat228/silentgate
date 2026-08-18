@@ -2065,7 +2065,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value ميغابت/ث';
+    return '$value م.بايت/ث';
   }
 
   @override
@@ -3031,4 +3031,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => 'نسخ مثال curl';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      'يعيد كتابة قواعد «مباشر» الخاصة بك فقط: تمر عبر النفق (ومواقع RU أيضًا). لا يغيّر المسار الافتراضي، وتبقى الشبكة المحلية مباشرة.';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      'في وضع «المحدَّد فقط»، كل ما لم تحدِّده يخرج بعنوان IP الحقيقي الخاص بك — وهذا الإعداد لا يغيّر ذلك.';
+
+  @override
+  String get infoNoRealIp =>
+      'ينطبق فقط على قواعد «مباشر» الصريحة (التطبيقات والمواقع) وعلى القواعد المباشرة في إعدادات اللوحة: تُنقل هذه إلى النفق. أمّا القاعدة التي فُعِّل فيها خيار «السماح بعنوان IP الحقيقي» فتبقى مباشرة.\n\nما لا يفعله هذا الإعداد: لا يغيّر المسار الافتراضي. في وضع «المحدَّد فقط» يبقى المسار الافتراضي مباشرًا، لذلك تخرج كل حركة المرور غير المحدَّدة بعنوانك الحقيقي بغض النظر عن هذا الإعداد. إن أردت تغطية كل شيء فاستخدم وضع «كل شيء عبر VPN».\n\nتبقى الشبكة المحلية مباشرة دائمًا.';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      'هذا ليس حجبًا حقيقيًا: في وضع «وكيل النظام» لا تُطلب صلاحيات المسؤول، وكل ما يحدث هو إبقاء الوكيل مسجَّلًا. أمّا البرامج التي تتجاهله وكل حركة UDP فتخرج مباشرة. لا يحجب كل شيء إلا وضع TUN.';
+
+  @override
+  String get killSwitchOfferTun =>
+      'الحجب الكامل أثناء انقطاع الاتصال متاح في وضع TUN فقط.';
+
+  @override
+  String get splitOnlySelectedWarnTitle =>
+      'كل ما لم تحدِّده يخرج بعنوان IP الحقيقي الخاص بك';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      'لا يدخل النفق إلا ما عُيِّن له إجراء «النفق». أمّا بقية حركة المرور — بما فيها برامج لا تعلم بوجودها — فتخرج مباشرة بعنوانك الحقيقي. إذا وجب إخفاء الجهاز كله فاختر «كل شيء عبر VPN».';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      'لا يغيّر إعداد «عدم الخروج بعنوان IP الحقيقي» هذا الأمر: فهو يعيد كتابة قواعد «مباشر» فقط، لا المسار الافتراضي.';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      'يحتجز مفتاح الإيقاف حركة المرور حسب البرامج لا حسب النطاقات: أثناء استعادة النواة لا يوجد من يحلّل أسماء المواقع، ولذلك لا تعمل قواعد المواقع في تلك الفترة.';
 }

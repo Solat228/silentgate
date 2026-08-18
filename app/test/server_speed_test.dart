@@ -80,7 +80,7 @@ void main() {
     expect(back.measuredAt, DateTime(2026, 8, 13, 12, 5));
     expect(back.fromAutoConfig, isTrue);
 
-    // Ноль — это не замер, а мусор: «0.0 Мбит/с» в строке читается как результат.
+    // Ноль — это не замер, а мусор: «0.0 МБ/с» в строке читается как результат.
     expect(ServerSpeed.fromJson({'mbps': 0}), isNull);
     expect(ServerSpeed.fromJson(const {}), isNull);
   });
@@ -263,7 +263,7 @@ void main() {
 
   testWidgets('замер показан цифрой', (tester) async {
     await _pumpSpeedChip(tester, speed: const ServerSpeed(mbps: 24.4));
-    expect(find.text('24.4 Мбит/с'), findsOneWidget);
+    expect(find.text('3.0 МБ/с'), findsOneWidget);
   });
 }
 

@@ -2021,7 +2021,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value Mbps';
+    return '$value MB/秒';
   }
 
   @override
@@ -2924,4 +2924,38 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => '复制 curl 示例';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      '仅重写你的「直连」规则：它们改走隧道（RU 站点也是）。不会改变默认路由，局域网仍然直连。';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      '在「仅所选」模式下，未勾选的一切仍以你的真实 IP 出网——此设置对它无效。';
+
+  @override
+  String get infoNoRealIp =>
+      '仅作用于明确的「直连」规则（应用与网站）以及面板配置中的直连规则：它们会被改走隧道。勾选了「允许真实 IP」的规则仍保持直连。\n\n它不做的事：不会改变默认路由。在「仅所选」模式下默认路由仍是直连，因此所有未勾选的流量无论此设置如何，都会以你的真实地址出网。若需覆盖全部流量，请使用「全部走 VPN」。\n\n局域网始终保持直连。';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      '这不是真正的阻断：「系统代理」模式不会获取管理员权限，所谓的拦截只是让代理设置保持写入。忽略代理的程序以及全部 UDP 都会直接出网。只有 TUN 模式才能全部拦住。';
+
+  @override
+  String get killSwitchOfferTun => '只有 TUN 模式才能在断线期间完全阻断流量。';
+
+  @override
+  String get splitOnlySelectedWarnTitle => '未勾选的一切都会以你的真实 IP 出网';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      '只有设置为「隧道」动作的条目才会走隧道。其余流量——包括你并不知道的程序——都会以真实地址直接出网。若需隐藏整台设备，请选择「全部走 VPN」。';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      '「不以真实 IP 出网」设置改变不了这一点：它只重写「直连」规则，而不改变默认路由。';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      '断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。';
 }

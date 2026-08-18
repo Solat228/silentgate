@@ -174,16 +174,41 @@ class AutoConfigCatalog {
       'https://api.openai.com/compliance/cookie_requirements',
       _openAiBlocked,
     ),
+    // ⚠️ CLAUDE ПРОВЕРЯЕТСЯ ЧЕРЕЗ API, А НЕ ЧЕРЕЗ САЙТ — И ЭТО ИЗМЕРЕНО.
+    //
+    // Прежняя проба била в `https://claude.ai/` и искала в теле слова вроде
+    // «not available in your». Она не могла сработать НИКОГДА: сайт отвечает
+    // из-под Cloudflare бот-проверкой — 403 с заголовком `Cf-Mitigated:
+    // challenge` и страницей без единого слова о стране (замерено 19.08.2026,
+    // 5357 байт, ни одного маркера). Владелец видел Claude зелёным там, где он
+    // недоступен, — то есть проверка показывала обратное правде.
+    //
+    // Голый 403 сам по себе гео-блоком считать нельзя (это записано ниже, у
+    // валидаторов, и остаётся верным). Но у API Anthropic ответ машинный и
+    // однозначный: гео-проверка идёт ДО авторизации, поэтому из закрытой страны
+    // приходит `403 {"type":"forbidden","message":"Request not allowed"}` без
+    // всякой бот-проверки, а из открытой — `401`, требующий `x-api-key`.
+    // Различаются не коды вообще, а именно эта пара.
+    //
+    // ⚠️ ЧЕСТНО О ПРЕДЕЛАХ ЗАМЕРА: подтверждена только ЗАКРЫТАЯ сторона (запрос
+    // из РФ). Открытую сторону проверить было нечем — включать VPN на машине
+    // владельца нельзя (правило №1), а без него другой страны не получить.
     ProbeService.claude: GeoEndpoint(
       ProbeService.claude,
-      'https://claude.ai/',
-      _regionBlocked,
+      'https://api.anthropic.com/v1/messages',
+      _anthropicBlocked,
     ),
-    ProbeService.gemini: GeoEndpoint(
-      ProbeService.gemini,
-      'https://gemini.google.com/',
-      _regionBlocked,
-    ),
+    // ⚠️ У GEMINI ГЕО-ПРОБЫ НЕТ, И ЭТО НЕ ЗАБЫВЧИВОСТЬ.
+    //
+    // `gemini.google.com` отдаёт ОДНУ И ТУ ЖЕ страницу всюду: 200 и 805 КБ, ни
+    // слова о стране (замерено 19.08.2026 из РФ, где сервис недоступен). То же
+    // у `/faq`; `bard.google.com` — редирект. Недоступность Google показывает
+    // уже после входа в аккаунт, то есть лёгкой пробой её не увидеть.
+    //
+    // Прежняя запись искала в этой странице текст и не находила его никогда —
+    // получался зелёный чип на недоступном сервисе. Пустая проба честнее
+    // сломанной: теперь чип говорит «открывается», не притворяясь, что
+    // проверил страну (см. `geoGated` и подпись у чипа).
   };
 
   static List<ProbeEndpoint> endpointsFor(Set<ProbeService> services) =>
@@ -239,16 +264,18 @@ class AutoConfigCatalog {
   // Gemini — 451 (юридический гео-блок) либо текст «недоступно в вашем регионе».
   static bool _openAiBlocked(int code, String body) =>
       body.toLowerCase().contains('unsupported_country');
-  static bool _regionBlocked(int code, String body) {
-    if (code == 451) return true;
-    // Типографскую апострофу (U+2019, её ставят Google/Anthropic) сводим к ASCII,
-    // иначе `isn't` из живого ответа не совпал бы с шаблоном.
-    final b = body.toLowerCase().replaceAll('’', "'");
-    return b.contains('not available in your') ||
-        b.contains("isn't available") ||
-        b.contains('unavailable in your') ||
-        b.contains('unsupported_country');
+  /// Гео-отказ API Anthropic: 403 с машинным телом, БЕЗ бот-проверки.
+  ///
+  /// Тело обязательно: `403` прилетает и от Cloudflare при бот-проверке, и это
+  /// совсем другой случай — там про страну ничего не известно. Сигнатура
+  /// `"type": "forbidden"` + `Request not allowed` приходит именно от самого
+  /// API и означает «этот регион не обслуживается».
+  static bool _anthropicBlocked(int code, String body) {
+    if (code != 403) return false;
+    final b = body.toLowerCase();
+    return b.contains('"forbidden"') && b.contains('request not allowed');
   }
+
 }
 
 enum ProbeState { pending, testing, ok, fail }

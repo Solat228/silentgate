@@ -44,6 +44,78 @@ import '../l10n/gen/app_localizations.dart';
 ///   через прокси, и принудить их нечем.
 bool splitRulesEditableIn(CaptureMode mode) => mode != CaptureMode.systemProxy;
 
+/// Оговорки, которые интерфейс ОБЯЗАН произнести вслух при текущих настройках.
+///
+/// ⚠️ ЭТО РАЗБОР ЖАЛОБЫ, А НЕ УКРАШЕНИЕ. 19.08.2026 владелец написал: «kill
+/// switch включён, а меня выбивает под реальным IP». Настройки при этом были
+/// выставлены верно — врал интерфейс:
+///
+///  * в режиме «Только отмеченные» база маршрута — `direct`
+///    (`SingboxConfigBuilder`: `finalOutbound = onlySelected ? 'direct' :
+///    'proxy'`), то есть ВСЁ НЕОТМЕЧЕННОЕ выходит под настоящим адресом. Нигде
+///    об этом не говорилось ни слова;
+///  * галочка «Не выходить под реальным IP» обещала «весь „прямой“ трафик идёт
+///    через VPN», хотя переписывает ТОЛЬКО явные правила «Прямо» и панельный
+///    `direct` — базу она не трогает и в этом режиме не спасает;
+///  * kill switch разбирает трафик по программам: пока ядро восстанавливается,
+///    доменных правил не существует — некому разбирать имена.
+///
+/// Функция ЧИСТАЯ и живёт отдельно от вёрстки специально: проверять надо
+/// условие, а не расположение плашки (`test/split_honesty_test.dart`).
+enum SplitHonesty {
+  /// «Только отмеченные»: неотмеченный трафик идёт под реальным IP.
+  realIpByDefault,
+
+  /// Правила по САЙТАМ kill switch не удерживает — он работает по программам.
+  killSwitchIsPerApp,
+
+  /// Kill switch в режиме системного прокси — не блокировка.
+  killSwitchWeakInSystemProxy,
+}
+
+/// Какие оговорки нужны при этих настройках.
+///
+/// Гейт по способу захвата не формальность:
+///  * `systemProxy` — правила раздельного туннелирования не применяются вовсе
+///    (об этом экран говорит своей плашкой), и база маршрута ни на что не
+///    влияет: через VPN идёт всё, что уважает прокси, независимо от режима;
+///  * `proxyOnly` — машина целиком мимо туннеля, и это сказано отдельно;
+///  * `tun` — единственный случай, где `finalOutbound` действительно решает
+///    судьбу неотмеченного трафика.
+Set<SplitHonesty> splitHonestyWarnings(AppSettings s) {
+  final out = <SplitHonesty>{};
+  final tun = s.captureMode == CaptureMode.tun;
+  final only = s.splitTunnel.mode == SplitMode.onlySelected;
+  if (tun && only) out.add(SplitHonesty.realIpByDefault);
+  // Про сайты говорим там, где сайты есть: пустому списку оговорка не нужна.
+  if (tun && only && s.killSwitch && s.splitTunnel.sites.isNotEmpty) {
+    out.add(SplitHonesty.killSwitchIsPerApp);
+  }
+  // ⚠️ В режиме системного прокси kill switch держит трафик ОДНИМ способом —
+  // оставляет прокси прописанным в реестре. Никаких фильтров и никаких прав
+  // администратора: программа, которая прокси игнорирует, и весь UDP уходят
+  // напрямую. Молчать об этом — обещать герметичность, которой нет.
+  //
+  // ⚠️ УСЛОВИЕ ПОЛНОЕ, А НЕ УРЕЗАННОЕ. Kill switch без автопереподключения
+  // инертен (так задумано с 0.8.2), а в режиме «Только прокси» неприменим
+  // вовсе (`killSwitchApplies`). Предупреждать о слабости того, что и так не
+  // работает, — значит пугать на ровном месте.
+  //
+  // ⚠️ И ЭТО ЕДИНСТВЕННОЕ МЕСТО, ГДЕ УСЛОВИЕ ЖИВЁТ. Раньше экран настроек
+  // разбирал его СВОИМ кодом, и два разбора уже разошлись: здесь было
+  // `killSwitch && systemProxy`, там — плюс `killSwitchApplies` и
+  // `autoReconnect`. Значение при этом вычислялось, покрывалось тремя тестами
+  // и НИКЕМ не читалось: поправь кто-нибудь эту функцию — на экране не
+  // изменилось бы ничего, а тесты остались бы зелёными.
+  if (s.killSwitchApplies &&
+      s.killSwitch &&
+      s.autoReconnect &&
+      s.captureMode == CaptureMode.systemProxy) {
+    out.add(SplitHonesty.killSwitchWeakInSystemProxy);
+  }
+  return out;
+}
+
 class SplitTunnelScreen extends StatelessWidget {
   const SplitTunnelScreen({super.key});
 
@@ -136,6 +208,10 @@ class SplitTunnelScreen extends StatelessWidget {
                             splitTunnel: s.splitTunnel.copyWith(mode: v))),
                         title: Text(splitModeLabel(l, m)),
                       )),
+                  // ⚠️ ПРЯМО ПОД ВЫБОРОМ РЕЖИМА, А НЕ В КОНЦЕ ЭКРАНА: цена
+                  // режима «Только отмеченные» — реальный IP у всего, что не
+                  // отмечено, — обязана стоять там, где режим выбирают.
+                  const SplitHonestyBanner(),
                   // #14.2 — наглядно, как пойдёт трафик при текущем режиме.
                   RouteDiagram(split: st),
                   const Divider(),
@@ -768,6 +844,95 @@ class SplitTunnelScreen extends StatelessWidget {
       builder: (_) => _RunningPickerDialog(procs: procs),
     );
     if (selected != null) _addApps(c, selected);
+  }
+}
+
+/// Плашка честности под выбором режима.
+///
+/// ⚠️ ЗАМЕТНАЯ, А НЕ МЕЛКОЙ ПОДПИСЬЮ — И ЭТО ТРЕБОВАНИЕ, А НЕ ВКУС. Владелец
+/// пользовался режимом «Только отмеченные», был уверен, что kill switch держит
+/// его целиком, и получил свой настоящий адрес наружу. Сказать это шрифтом
+/// подписи значило бы сказать это никому.
+///
+/// Рядом — кнопка «Все — через VPN»: оговорка без выхода из положения читается
+/// как «сам виноват».
+///
+/// Класс ПУБЛИЧНЫЙ намеренно: тест поднимает его отдельно от экрана — целиком
+/// экран тянет за собой каталог программ, иконки и загрузку фавиконов, то есть
+/// проверял бы что угодно, кроме условия показа.
+class SplitHonestyBanner extends StatelessWidget {
+  const SplitHonestyBanner({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final controller = context.watch<SettingsController>();
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final warnings = splitHonestyWarnings(controller.settings);
+    // Про системный прокси говорит экран настроек — там же, где живёт тумблер
+    // kill switch. Здесь показываем только то, что относится к правилам.
+    if (!warnings.contains(SplitHonesty.realIpByDefault)) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      key: const Key('splitHonesty'),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Icon(Icons.warning_amber_rounded, size: 20, color: scheme.error),
+            const SizedBox(width: 10),
+            Expanded(
+              child: SelText(
+                l.splitOnlySelectedWarnTitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(color: scheme.onErrorContainer),
+              ),
+            ),
+          ]),
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: 6, start: 30),
+            child: SelText(l.splitOnlySelectedWarnBody,
+                style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          // Галочка «Не выходить под реальным IP» на базу маршрута не влияет —
+          // а выглядит как «теперь точно ничего не утечёт».
+          if (controller.settings.noRealIp)
+            Padding(
+              key: const Key('splitHonesty-noRealIp'),
+              padding: const EdgeInsetsDirectional.only(top: 6, start: 30),
+              child: SelText(l.splitOnlySelectedNoRealIp,
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          if (warnings.contains(SplitHonesty.killSwitchIsPerApp))
+            Padding(
+              key: const Key('splitHonesty-killSwitch'),
+              padding: const EdgeInsetsDirectional.only(top: 6, start: 30),
+              child: SelText(l.splitKillSwitchIsPerApp,
+                  style: Theme.of(context).textTheme.bodyMedium),
+            ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextButton(
+              key: const Key('splitHonesty-toAll'),
+              onPressed: () => controller.update((s) => s.copyWith(
+                  splitTunnel: s.splitTunnel.copyWith(mode: SplitMode.all))),
+              child: Text(splitModeLabel(l, SplitMode.all)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -10,6 +10,7 @@ import '../../core/settings/app_settings.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/service_check_controller.dart';
+import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
 import '../layout/adaptive.dart';
 import 'site_favicon.dart';
@@ -529,7 +530,20 @@ class _ServiceChecksMenuButtonState extends State<ServiceChecksMenuButton> {
       // проверок нет вовсе.
       final ctrl = context.read<ServiceCheckController?>();
       if (ctrl == null) return;
-      unawaited(ctrl.ensureBaseline(selected));
+      // ⚠️ ВТОРОЙ ПРИЗНАК ЖИВОГО КАНАЛА ОБЯЗАТЕЛЕН, И ВОТ ПОЧЕМУ.
+      //
+      // Замер «до» идёт МИМО VPN и осмыслен только при выключенном туннеле.
+      // Контроллер знает об этом из `_tunnelUp`, но тот выставляется из
+      // колбэка главного экрана — то есть с задержкой в кадр. Нажатие «Все» в
+      // подменю успевает попасть в это окно, и тогда прямые пробы уходят через
+      // уже поднятый туннель, а их результат ложится в графу «без VPN». Колонка
+      // «до» после этого врёт, и заметить это нечем — цифры правдоподобные.
+      //
+      // Параметр существовал с самого начала и был описан в контроллере, но его
+      // не передавал НИ ОДИН боевой вызов: предохранитель был, защиты не было.
+      final connected =
+          context.read<AppState?>()?.status.isConnected ?? false;
+      unawaited(ctrl.ensureBaseline(selected, vpnActive: connected));
     });
   }
 
@@ -861,9 +875,9 @@ class _ServicePair extends StatelessWidget {
     final rule = bypass;
     final items = <Widget>[
       SiteFavicon(domain: service.domain, size: 26, builtIn: true),
-      // Значок стоит ВПЛОТНУЮ к бренд-иконке, а не с краю строки: строка
-      // зеркалится в правой колонке (`items.reversed`), и значок, приклеенный
-      // к кружкам, у половины сервисов оказался бы по другую сторону от них.
+      // Значок стоит ВПЛОТНУЮ к бренд-иконке, а не с краю строки: так он
+      // читается как пометка НА СЕРВИСЕ, а не как ещё один кружок состояния
+      // рядом с парой «до → после».
       if (rule != null) ...[
         const SizedBox(width: 2),
         Icon(
@@ -928,7 +942,19 @@ class _ServicePair extends StatelessWidget {
                 : AlignmentDirectional.centerStart,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: alignEnd ? items.reversed.toList() : items,
+              // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ КОЛОНКАХ, ЗЕРКАЛЕНИЯ БОЛЬШЕ НЕТ.
+              //
+              // Левая колонка раньше разворачивала строку (`items.reversed`),
+              // чтобы кружки смотрели на кнопку. Выходило, что бренд-иконки у
+              // левой половины сервисов стоят справа, у правой — слева, и глазу
+              // не за что зацепиться: чтобы найти нужный сервис, приходилось
+              // читать обе колонки по-разному. Требование владельца 18.08.2026 —
+              // «помести картинки сервисов у левой панели налево».
+              //
+              // Выравнивание БЛОКА (`alignment` выше) при этом осталось
+              // зеркальным: колонки по-прежнему прижаты к кнопке, разъезжается
+              // только внутренний порядок.
+              children: items,
             ),
           ),
         ),

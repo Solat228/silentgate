@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
@@ -17,7 +19,9 @@ import '../xray_paths.dart';
 /// Весь вывод sing-box пишется в `singbox.log`: без него сбой ядра был невидим —
 /// приложение показывало «Подключено» при отсутствующем туннеле.
 class TunHelper {
-  static const _maxLogBytes = 512 * 1024;
+  /// Потолок ОДНОЙ части лога. Общий с прокси-ядром — обоснование числа и
+  /// расхода на диске живёт в одном месте ([RotatingLog.coreLogMaxBytes]).
+  static const _maxLogBytes = RotatingLog.coreLogMaxBytes;
 
   static File _defaultStopFile() =>
       File('${Directory.systemTemp.path}${Platform.pathSeparator}silentgate_tun_stop');
@@ -43,10 +47,17 @@ class TunHelper {
   /// приложение или роняло его по нехватке памяти.
   static const _tailBytes = 512 * 1024;
 
-  /// Чтение делегировано [RotatingLog.tail] — тот же алгоритм нужен и
-  /// прокси-ядру (`singbox_proxy.log`), а две копии этой логики неминуемо
-  /// разъехались бы.
-  static Future<String> tailLog({int lines = 40}) async => RotatingLog.tail(
+  /// Чтение делегировано [RotatingLog.tailAcrossRotation] — тот же алгоритм
+  /// нужен и прокси-ядру (`singbox_proxy.log`), а две копии этой логики
+  /// неминуемо разъехались бы.
+  ///
+  /// ⚠️ ИМЕННО `tailAcrossRotation`, А НЕ `tail`. Лог ротируется как раз тогда,
+  /// когда ядро разговорилось, — то есть в аварии; после ротации в
+  /// `singbox.log` лежит начало новой части, а строки обрыва — в
+  /// `singbox.prev.log`. Читатель, знающий только про первый файл, показал бы
+  /// пустой хвост ровно в том случае, ради которого лог и заведён.
+  static Future<String> tailLog({int lines = 40}) async =>
+      RotatingLog.tailAcrossRotation(
         logPathFor(await AppPaths.supportDir()),
         lines: lines,
         tailBytes: _tailBytes,
@@ -68,6 +79,26 @@ class TunHelper {
     );
   }
 
+  /// Открыть лог НОВОЙ СЕССИИ ЯДРА и отметить её началом строку [header].
+  ///
+  /// ⚠️ ВЫНЕСЕНО ОТДЕЛЬНО РАДИ ТЕСТА, и это не украшательство. Проверить
+  /// [run] целиком нельзя — он запускает элевейтнутый процесс sing-box;
+  /// значит, дефект «каждая сессия стирает журнал предыдущей» жил бы в коде,
+  /// который не проверяет ничто. Тест зовёт ИМЕННО ЭТУ функцию дважды подряд
+  /// (две сессии ядра) и требует, чтобы строки первой уцелели.
+  ///
+  /// `keepPrevious` здесь обязателен: без него ротация по порогу стирает
+  /// историю в ноль, и накопление сессий не даёт ничего — потолок всё равно
+  /// достигается за минуты на уровне `debug`.
+  @visibleForTesting
+  static Future<RotatingLog> openSessionLog(String path, String header) async {
+    final log =
+        RotatingLog(path, maxBytes: _maxLogBytes, keepPrevious: true);
+    await log.open();
+    await log.write(header);
+    return log;
+  }
+
   /// Вызывается из main при `--tun`. Блокируется до остановки.
   static Future<void> run(String configPath, {String stopPath = ''}) async {
     final stopFile = stopPath.isNotEmpty ? File(stopPath) : _defaultStopFile();
@@ -76,19 +107,36 @@ class TunHelper {
         ? '${loc.assetDir}${Platform.pathSeparator}sing-box.exe'
         : 'sing-box.exe';
 
-    final log = RotatingLog(logPathFor(await AppPaths.supportDir()),
-        maxBytes: _maxLogBytes);
-    await log.open();
-    // ⚠️ ЛОГ НАЧИНАЕТСЯ ЗАНОВО ИМЕННО ЗДЕСЬ, А НЕ В `SingboxRouterWindows`.
+    final log = await openSessionLog(
+      logPathFor(await AppPaths.supportDir()),
+      '--- запуск sing-box ${DateTime.now().toIso8601String()}: '
+          '$singbox run -c $configPath',
+    );
+    // ⚠️ ЛОГ ЗДЕСЬ БОЛЬШЕ НЕ ОБРЕЗАЕТСЯ — ЭТО И БЫЛ ДЕФЕКТ, а не аккуратность.
     //
-    // Раньше файл обрезал роутер (`_truncateLog`, другой процесс и другой файл
-    // кода), пока хелпер держал его открытым на дозапись. `IOSink` помнит
-    // смещение с момента открытия — после чужой обрезки он писал по старому
-    // адресу, и Windows заливала пропуск нулями: у владельца 98 % `singbox.log`
-    // (1 048 209 байт из 1 476 КБ) оказались нулями при 3571 реальной строке.
-    // Обрезка и поток обязаны жить в одном месте.
-    await log.truncate(
-        header: '--- запуск sing-box: $singbox run -c $configPath\n');
+    // Раньше стояло `log.truncate(header: …)`: каждая сессия ядра начинала файл
+    // с нуля. А новая сессия — это и есть восстановление после обрыва, то есть
+    // журнал аварии уничтожался тем самым перезапуском, который аварией вызван.
+    // Замерено на машине владельца 19.08.2026: в отчёте поддержки два обрыва
+    // (01:29 и 02:20), отчёт собран в 02:21:56, а в `singbox.log` лежали 55
+    // секунд с 02:44:42 — окна ни одной из аварий не осталось, и утечку по
+    // логам не удалось ни доказать, ни опровергнуть.
+    //
+    // Теперь сессии НАКАПЛИВАЮТСЯ, а место стережёт ротация ([RotatingLog] с
+    // `keepPrevious`): при достижении порога прежняя часть уезжает в
+    // `singbox.prev.log`, а не пропадает.
+    //
+    // ⚠️ Обрезка (когда она нужна — по кнопке «Очистить логи») и поток обязаны
+    // жить в одном месте. Раньше файл обрезал роутер (`_truncateLog`, другой
+    // процесс и другой файл кода), пока хелпер держал его открытым на
+    // дозапись; `IOSink` помнит смещение с момента открытия — после чужой
+    // обрезки он писал по старому адресу, и Windows заливала пропуск нулями:
+    // у владельца 98 % `singbox.log` (1 048 209 байт из 1 476 КБ) оказались
+    // нулями при 3571 реальной строке.
+    //
+    // Отметка времени в заголовке обязательна: по накопленному логу сессии
+    // теперь надо УМЕТЬ РАЗЛИЧАТЬ, а собственной метки у нашей строки не было —
+    // время печатает только само ядро, и то в своём формате.
 
     _delete(stopFile);
     Process proc;

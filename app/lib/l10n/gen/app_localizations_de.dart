@@ -2089,7 +2089,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value Mbit/s';
+    return '$value MB/s';
   }
 
   @override
@@ -3059,4 +3059,40 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => 'curl-Beispiel kopieren';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      'Schreibt nur Ihre „Direkt“-Regeln um: Sie laufen durch den Tunnel (auch RU-Seiten). Die Standardroute bleibt unverändert, das lokale Netz bleibt direkt.';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      'Im Modus „Nur ausgewählte“ geht alles Nicht-Ausgewählte weiterhin mit Ihrer echten IP hinaus – diese Einstellung ändert daran nichts.';
+
+  @override
+  String get infoNoRealIp =>
+      'Gilt NUR für ausdrückliche „Direkt“-Regeln (Programme und Websites) und für direkte Regeln aus der Panel-Konfiguration: Sie werden in den Tunnel geholt. Eine Regel mit gesetztem Haken „Echte IP erlauben“ bleibt direkt.\n\nWas sie NICHT tut: Sie ändert die Standardroute nicht. Im Modus „Nur ausgewählte“ bleibt die Standardroute direkt, deshalb verlässt der gesamte nicht ausgewählte Verkehr das Gerät mit Ihrer echten Adresse – unabhängig von dieser Einstellung. Wenn alles abgedeckt sein muss, nutzen Sie „Alles über VPN“.\n\nDas lokale Netz bleibt immer direkt.';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      'Das ist keine echte Sperre: Im Modus „Systemproxy“ werden keine Administratorrechte genommen, gehalten wird nur dadurch, dass der Proxy eingetragen bleibt. Programme, die ihn ignorieren, und sämtliches UDP gehen direkt hinaus. Vollständig hält nur TUN.';
+
+  @override
+  String get killSwitchOfferTun =>
+      'Eine vollständige Sperre während eines Ausfalls gibt es nur im TUN-Modus.';
+
+  @override
+  String get splitOnlySelectedWarnTitle =>
+      'Alles Nicht-Ausgewählte geht mit Ihrer echten IP hinaus';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      'In den Tunnel geht nur, was die Aktion „Tunnel“ hat. Der übrige Verkehr – auch von Programmen, von denen Sie nichts wissen – geht direkt hinaus, mit Ihrer echten Adresse. Soll das ganze Gerät verborgen sein, wählen Sie „Alles über VPN“.';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      'Die Einstellung „Nicht mit der echten IP hinausgehen“ ändert daran nichts: Sie schreibt nur die „Direkt“-Regeln um, nicht die Standardroute.';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      'Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht.';
 }

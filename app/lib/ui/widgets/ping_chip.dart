@@ -292,8 +292,12 @@ class SpeedChip extends StatelessWidget {
         : s.mbps >= 10
             ? Colors.amber
             : Colors.orange;
-    final value =
-        s.mbps >= 100 ? s.mbps.toStringAsFixed(0) : s.mbps.toStringAsFixed(1);
+    // ⚠️ ПОКАЗЫВАЕМ МЕГАБАЙТЫ, СРАВНИВАЕМ МЕГАБИТЫ. Пороги цвета выше остались
+    // в мегабитах намеренно: их смысл («хватает на видео») привязан к тому, как
+    // скорость меряют, а не к тому, как её пишут. Перевод — один на всё
+    // приложение, `ServerSpeed.megabytesPerSecond`.
+    final mb = s.megabytesPerSecond;
+    final value = mb >= 100 ? mb.toStringAsFixed(0) : mb.toStringAsFixed(1);
     final at = s.measuredAt;
     // Строка «когда мерили» — тот же вызов, что у пинга: см. `measured_at.dart`.
     final tip = [

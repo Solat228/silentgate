@@ -42,21 +42,43 @@ void main() {
       expect(geo.blocked(403, 'Just a moment... attention required'), isFalse);
     });
 
-    test('Claude/Gemini: 451 или текст, но не голый 403', () {
+    test('⚠️ Claude: гео берётся из API, а не с сайта', () {
+      // ЗАМЕР 19.08.2026 ИЗ РФ (сервис недоступен): `https://claude.ai/` отдаёт
+      // 403 с заголовком `Cf-Mitigated: challenge` и страницей на 5357 байт —
+      // это БОТ-ПРОВЕРКА Cloudflare, про страну там нет ни слова. Прежняя проба
+      // била именно туда и не могла сработать никогда: владелец видел Claude
+      // зелёным там, где он не работает.
+      //
+      // У API ответ машинный: гео-проверка идёт ДО авторизации, поэтому из
+      // закрытой страны приходит 403 «forbidden / Request not allowed», а из
+      // открытой — 401 с требованием ключа.
       final geo = AutoConfigCatalog.geoEndpointFor(ProbeService.claude)!;
-      expect(geo.blocked(451, ''), isTrue); // юридический гео-блок
-      expect(geo.blocked(200, 'Claude is not available in your country'), isTrue);
-      expect(geo.blocked(200, "This app isn't available here"), isTrue);
-      expect(geo.blocked(200, 'Welcome to Claude'), isFalse);
-      // Голый 403 (rate-limit/челлендж) на доступном регионе — НЕ гео-блок.
-      expect(geo.blocked(403, 'cloudflare rate limited'), isFalse);
+      expect(geo.url, contains('api.anthropic.com'),
+          reason: 'сайт под Cloudflare для гео-пробы непригоден');
+
+      expect(
+          geo.blocked(403,
+              '{"error":{"type":"forbidden","message":"Request not allowed"}}'),
+          isTrue,
+          reason: 'ровно этот ответ замерен из закрытой страны');
+
+      // 401 — сервис доступен, просто нет ключа. Это НЕ гео-блок.
+      expect(
+          geo.blocked(401,
+              '{"error":{"type":"authentication_error","message":"x-api-key"}}'),
+          isFalse);
+
+      // ⚠️ Голый 403 без машинной сигнатуры — бот-проверка, а не страна.
+      expect(geo.blocked(403, 'Just a moment... cloudflare'), isFalse,
+          reason: 'иначе бот-проверка на доступном регионе выдаст себя за гео');
     });
 
-    test('Gemini: типографская апострофа U+2019 в «isn’t available» ловится', () {
-      // Google/Anthropic ставят фигурную апострофу — раньше ASCII-шаблон её не брал.
-      final geo = AutoConfigCatalog.geoEndpointFor(ProbeService.gemini)!;
-      expect(geo.blocked(200, 'Gemini isn’t available in your country yet'),
-          isTrue);
+    test('⚠️ у Gemini гео-пробы нет — и это честно', () {
+      // Замер 19.08.2026: страница одинакова всюду, 200 и 805 КБ без признака
+      // страны. Пустая проба честнее сломанной — см. `geoGated`.
+      expect(AutoConfigCatalog.geoEndpointFor(ProbeService.gemini), isNull);
+      expect(ProbeService.gemini.geoGated, isFalse,
+          reason: 'иначе чип обещал бы проверку, которой нет');
     });
   });
 

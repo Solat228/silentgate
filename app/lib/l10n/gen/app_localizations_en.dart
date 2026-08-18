@@ -2074,7 +2074,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value Mbps';
+    return '$value MB/s';
   }
 
   @override
@@ -3037,4 +3037,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => 'Copy a curl example';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      'Rewrites only your “Direct” rules: they go through the tunnel (RU sites too). It does not change the default route; the local network stays direct.';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      'In “Only selected” mode everything unselected still leaves under your real IP — this setting does not affect it.';
+
+  @override
+  String get infoNoRealIp =>
+      'Applies ONLY to explicit “Direct” rules (apps and sites) and to direct rules from the panel config: they are moved into the tunnel. A rule with “Allow real IP” checked stays direct.\n\nWhat it does NOT do: it does not change the default route. In “Only selected” mode the default stays direct, so all unselected traffic leaves under your real address regardless of this setting. If everything must be covered, use “All through VPN”.\n\nThe local network always stays direct.';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      'This is not a real block: in “System proxy” mode no administrator rights are taken, and all the holding it does is leaving the proxy configured. Programs that ignore the proxy, and all UDP, go out directly. Only TUN holds everything.';
+
+  @override
+  String get killSwitchOfferTun =>
+      'A full block during an outage exists only in TUN mode.';
+
+  @override
+  String get splitOnlySelectedWarnTitle =>
+      'Everything unselected leaves under your real IP';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      'Only entries with the “Tunnel” action go into the tunnel. All other traffic — including programs you do not know about — leaves directly, with your real address. If the whole device must be hidden, choose “All through VPN”.';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      'The “Never leave under the real IP” setting does not change this: it rewrites only the “Direct” rules, not the default route.';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      'The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.';
 }

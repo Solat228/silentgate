@@ -1464,7 +1464,72 @@ class ConnectCenterpiece extends StatelessWidget {
               ),
           ],
         ),
+        // ⚠️ «КАНАЛ НЕ ГОТОВ» — ОТДЕЛЬНОЕ СОСТОЯНИЕ, А НЕ 14 КРАСНЫХ КРУЖКОВ.
+        //
+        // Раньше при неготовом канале пачка проб уходила в пустоту, и человек
+        // видел ряд красных кружков — то есть читал «VPN не работает», хотя
+        // туннель просто не успел прогреться. Теперь пробы в этом случае не
+        // запускаются вовсе, а причина называется словами и даётся кнопка
+        // повтора. Плашка стоит ЗДЕСЬ, а не в колонке: колонок две, и в колонке
+        // она задвоилась бы.
+        ServiceChecksNotReadyBanner(httpPort: httpPort, services: services),
       ],
+    );
+  }
+}
+
+/// Плашка «канал ещё не готов» под кнопкой Connect.
+///
+/// Показывается, только когда автопрогон проверок НЕ СОСТОЯЛСЯ из-за того, что
+/// сквозной запрос через живое ядро не прошёл. Это не то же самое, что «сервисы
+/// не открываются»: там пробы отработали и дали ответ, а здесь их не было вовсе.
+/// Разница для человека принципиальная — во втором случае помогает подождать и
+/// нажать повтор, в первом менять надо сервер.
+class ServiceChecksNotReadyBanner extends StatelessWidget {
+  const ServiceChecksNotReadyBanner({
+    super.key,
+    required this.httpPort,
+    required this.services,
+  });
+
+  final int httpPort;
+  final List<ProbeService> services;
+
+  @override
+  Widget build(BuildContext context) {
+    // Читаем НЕОБЯЗАТЕЛЬНО: стражи вёрстки поднимают эту часть экрана без
+    // провайдеров, и строгое чтение уронило бы их `ProviderNotFoundException`.
+    final ctrl = context.watch<ServiceCheckController?>();
+    if (ctrl == null || !ctrl.channelNotReady || httpPort <= 0) {
+      return const SizedBox.shrink();
+    }
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.hourglass_empty, size: 14, color: scheme.outline),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              l.serviceChecksChannelNotReady,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.outline),
+            ),
+          ),
+          const SizedBox(width: 4),
+          TextButton(
+            key: const Key('serviceChecksRetry'),
+            onPressed: () =>
+                unawaited(ctrl.retryAutoCheck(httpPort, services)),
+            child: Text(l.serviceChecksRetryCheck),
+          ),
+        ],
+      ),
     );
   }
 }

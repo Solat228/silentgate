@@ -504,6 +504,11 @@ class AutoConfigProgressView extends StatelessWidget {
 /// Показывает и абсолютную величину, и долю СВОЕГО канала: «60 Мбит/с» само по
 /// себе ничего не значит — это отлично на канале 60 и скверно на канале 300.
 /// Долю считаем от замера собственного канала, снятого в том же прогоне.
+/// Мегабиты замера → мегабайты показа. Перевод обязан быть один на приложение
+/// (`ServerSpeed.megabytesPerSecond`); здесь величина приходит голым `double`
+/// из `AutoConfigResult.mbps`, поэтому та же формула названа явно.
+double _mb(double mbps) => mbps / 8;
+
 class _SpeedChip extends StatelessWidget {
   const _SpeedChip({required this.mbps, this.sharePercent});
 
@@ -526,8 +531,8 @@ class _SpeedChip extends StatelessWidget {
                 : const Color(0xFFCC7777);
     return Tooltip(
       message: share == null
-          ? l.autoSpeedValue(mbps.toStringAsFixed(1))
-          : '${l.autoSpeedValue(mbps.toStringAsFixed(1))} · '
+          ? l.autoSpeedValue(_mb(mbps).toStringAsFixed(1))
+          : '${l.autoSpeedValue(_mb(mbps).toStringAsFixed(1))} · '
               '${l.autoSpeedShare(share)}',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -537,7 +542,7 @@ class _SpeedChip extends StatelessWidget {
           border: Border.all(color: color.withValues(alpha: 0.5)),
         ),
         child: Text(
-          l.autoSpeedValue(mbps.toStringAsFixed(mbps >= 100 ? 0 : 1)),
+          l.autoSpeedValue(_mb(mbps).toStringAsFixed(_mb(mbps) >= 100 ? 0 : 1)),
           textDirection: TextDirection.ltr,
           style: Theme.of(context)
               .textTheme

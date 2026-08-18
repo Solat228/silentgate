@@ -174,7 +174,7 @@ void main() {
       await pumpTile(tester, ping: passed, speed: speed);
 
       expect(find.byType(SpeedChip), findsOneWidget);
-      expect(find.text('49.6 Мбит/с'), findsOneWidget);
+      expect(find.text('6.2 МБ/с'), findsOneWidget);
     });
   });
 

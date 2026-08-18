@@ -2096,7 +2096,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value Mbit/s';
+    return '$value Mo/s';
   }
 
   @override
@@ -3073,4 +3073,40 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => 'Copier un exemple curl';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      'Ne réécrit que vos règles « Direct » : elles passent par le tunnel (les sites RU aussi). L’itinéraire par défaut reste inchangé ; le réseau local reste direct.';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      'En mode « Seulement les éléments cochés », tout ce qui n’est pas coché sort toujours avec votre IP réelle — cette option n’y change rien.';
+
+  @override
+  String get infoNoRealIp =>
+      'S’applique UNIQUEMENT aux règles « Direct » explicites (applications et sites) et aux règles directes de la configuration du panneau : elles sont ramenées dans le tunnel. Une règle dont « Autoriser l’IP réelle » est cochée reste directe.\n\nCe qu’elle ne fait PAS : elle ne change pas l’itinéraire par défaut. En mode « Seulement les éléments cochés », l’itinéraire par défaut reste direct : tout le trafic non coché sort donc avec votre adresse réelle, quelle que soit cette option. S’il faut tout couvrir, utilisez « Tout via le VPN ».\n\nLe réseau local reste toujours direct.';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      'Ce n’est pas un vrai blocage : en mode « Proxy système », aucun droit administrateur n’est demandé et tout ce qui est fait consiste à laisser le proxy configuré. Les programmes qui l’ignorent et tout l’UDP sortent directement. Seul le mode TUN retient tout.';
+
+  @override
+  String get killSwitchOfferTun =>
+      'Un blocage complet pendant une coupure n’existe qu’en mode TUN.';
+
+  @override
+  String get splitOnlySelectedWarnTitle =>
+      'Tout ce qui n’est pas coché sort avec votre IP réelle';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      'Seules les entrées avec l’action « Tunnel » passent par le tunnel. Tout le reste du trafic — y compris des programmes dont vous ignorez l’existence — sort directement, avec votre adresse réelle. Si tout l’appareil doit être masqué, choisissez « Tout via le VPN ».';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      'L’option « Ne pas sortir avec l’IP réelle » n’y change rien : elle ne réécrit que les règles « Direct », pas l’itinéraire par défaut.';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      'Le kill switch retient le trafic par programme, pas par domaine : pendant la reprise du noyau, personne n’analyse les noms de sites — les règles de sites ne s’appliquent pas durant ce laps de temps.';
 }

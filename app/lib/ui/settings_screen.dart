@@ -722,14 +722,62 @@ List<SettingsRow> _reliabilityRows(
               Expanded(child: Text(l.killSwitchTitle)),
               InfoTooltip(l.infoKillSwitch, title: l.killSwitchTitle),
             ]),
+            // ⚠️ В РЕЖИМЕ СИСТЕМНОГО ПРОКСИ ЭТО НЕ БЛОКИРОВКА, И ТЕПЕРЬ ТАК И
+            // НАПИСАНО. Настоящая блокировка требует прав администратора
+            // (фильтры), а в этом режиме их не берут вовсе: всё удержание —
+            // это оставленный в реестре прокси. Программа, которая прокси
+            // игнорирует, и весь UDP уходят напрямую. Прежняя подпись
+            // («защищает только приложения, уважающие прокси») говорила о
+            // границе, но не говорила, что герметичности нет в принципе.
             subtitle: Text(
               settings.autoReconnect
                   ? (settings.captureMode == CaptureMode.tun
                       ? l.killSwitchSubTun
-                      : l.killSwitchSubProxy)
+                      : l.killSwitchSubProxyNoAdmin)
                   : l.killSwitchSubOff,
             ),
           ),
+      ),
+    // ⚠️ ЧЕГО KILL SWITCH НЕ УМЕЕТ ВООБЩЕ — ПРАВИЛА ПО САЙТАМ. Он удерживает
+    // ЗАХВАТ, то есть работает по программам; домены разбирает ядро, а на
+    // время восстановления ядра нет. Условие спрашиваем у общей чистой функции
+    // (`splitHonestyWarnings`), чтобы экран настроек и экран правил не
+    // разъехались в том, что считают правдой.
+    if (splitHonestyWarnings(settings).contains(SplitHonesty.killSwitchIsPerApp))
+      SettingsRow(
+        search: '${l.killSwitchTitle} ${l.splitKillSwitchIsPerApp}',
+        build: (context) => Padding(
+          key: const Key('killSwitchIsPerAppNote'),
+          padding: const EdgeInsetsDirectional.fromSTEB(72, 0, 16, 12),
+          child: Text(l.splitKillSwitchIsPerApp,
+              style: Theme.of(context).textTheme.bodySmall),
+        ),
+      ),
+    // Выход из положения рядом с оговоркой: сказать «полностью держит только
+    // TUN» и оставить человека искать переключатель — то же самое, что
+    // промолчать. Кнопка ведёт через `_enableTun`, то есть вместе с разовой
+    // настройкой запуска без UAC.
+    // ⚠️ СПРАШИВАЕМ ОБЩИЙ КОД, А НЕ РАЗБИРАЕМ УСЛОВИЕ ЗАНОВО. Здесь стоял свой
+    // предикат, и он уже разошёлся с тем, что считает `splitHonestyWarnings`.
+    // Два независимых ответа на один вопрос — это всегда расхождение, вопрос
+    // только когда; тот же урок в проекте уже записан про разрешение и
+    // исполнение url-схем.
+    if (splitHonestyWarnings(settings)
+        .contains(SplitHonesty.killSwitchWeakInSystemProxy))
+      SettingsRow(
+        search: '${l.killSwitchTitle} ${l.killSwitchOfferTun}',
+        build: (context) => ListTile(
+          key: const Key('killSwitchOfferTun'),
+          dense: true,
+          leading: Icon(Icons.warning_amber_rounded,
+              color: Theme.of(context).colorScheme.error),
+          title: Text(l.killSwitchOfferTun),
+          trailing: TextButton(
+            key: const Key('killSwitchOfferTunButton'),
+            onPressed: () => _enableTun(context, controller),
+            child: Text(l.splitEnableTun),
+          ),
+        ),
       ),
     // Системный Always-on — надёжнее любого нашего kill switch: он держит
     // блокировку и когда приложение убито, и во время обновления, и до
@@ -816,16 +864,46 @@ List<SettingsRow> _reliabilityRows(
       ),
     // «Не выходить под реальным IP» — только при включённом kill switch,
     // и только там, где kill switch вообще имеет смысл (не «Только прокси»).
+    //
+    // ⚠️ ПОДПИСЬ ОБЕЩАЛА БОЛЬШЕ, ЧЕМ ДЕЛАЕТ КОД, И ЭТО СТОИЛО ВЛАДЕЛЬЦУ
+    // РЕАЛЬНОГО IP НАРУЖУ. Старый текст: «Даже при рабочем VPN весь „прямой“
+    // трафик идёт через VPN». На самом деле `noRealIp` переписывает только
+    // ЯВНЫЕ правила «Прямо» и панельный `direct`; БАЗА маршрута не меняется
+    // (`SingboxConfigBuilder`: `finalOutbound = onlySelected ? 'direct' :
+    // 'proxy'`). В режиме «Только отмеченные» всё неотмеченное выходит под
+    // настоящим адресом при любом положении этой галочки — а человек читал
+    // «весь прямой трафик» и считал себя закрытым.
     if (settings.killSwitch && settings.killSwitchApplies)
       SettingsRow(
-        search: '${l.noRealIpTitle} ${l.noRealIpSub}',
-        build: (_) => SwitchListTile(
-            value: settings.noRealIp,
-            onChanged: (v) =>
-                controller.update((s) => s.copyWith(noRealIp: v)),
-            title: Text(l.noRealIpTitle),
-            subtitle: Text(l.noRealIpSub),
-          ),
+        search: '${l.noRealIpTitle} ${l.noRealIpSubRulesOnly}',
+        build: (context) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SwitchListTile(
+              value: settings.noRealIp,
+              onChanged: (v) =>
+                  controller.update((s) => s.copyWith(noRealIp: v)),
+              title: Row(children: [
+                Expanded(child: Text(l.noRealIpTitle)),
+                InfoTooltip(l.infoNoRealIp, title: l.noRealIpTitle),
+              ]),
+              subtitle: Text(l.noRealIpSubRulesOnly),
+            ),
+            // Оговорка ровно там, где она перестаёт быть теорией: в этом
+            // режиме галочка не закрывает главную дыру, и молчать нельзя.
+            if (settings.splitTunnel.mode == SplitMode.onlySelected &&
+                settings.captureMode == CaptureMode.tun)
+              Padding(
+                key: const Key('noRealIpOnlySelectedNote'),
+                padding: const EdgeInsetsDirectional.fromSTEB(72, 0, 16, 12),
+                child: Text(
+                  l.noRealIpOnlySelectedNote,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+          ],
+        ),
       ),
     // ⚠️ ЭТОГО ПЕРЕКЛЮЧАТЕЛЯ ЗДЕСЬ НЕ БЫЛО, И ЭТО МЕНЯЛО МАРШРУТЫ ВСЕМ.
     //

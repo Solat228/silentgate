@@ -236,7 +236,8 @@ class ServerAutoConfigCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final mbps = r.mbps!;
     final share = r.sharePercent;
-    final value = l.autoSpeedValue(mbps.toStringAsFixed(mbps >= 100 ? 0 : 1));
+    final mb = mbps / 8; // мегабайты — см. ServerSpeed.megabytesPerSecond
+    final value = l.autoSpeedValue(mb.toStringAsFixed(mb >= 100 ? 0 : 1));
     return Row(children: [
       const Icon(Icons.speed, size: 16),
       const SizedBox(width: 6),

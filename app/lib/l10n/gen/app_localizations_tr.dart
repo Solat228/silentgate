@@ -2079,7 +2079,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String autoSpeedValue(String value) {
-    return '$value Mbit/sn';
+    return '$value MB/sn';
   }
 
   @override
@@ -3040,4 +3040,40 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get apiCopyCurlExample => 'curl örneğini kopyala';
+
+  @override
+  String get noRealIpSubRulesOnly =>
+      'Yalnızca «Doğrudan» kurallarınızı yeniden yazar: bunlar tünelden geçer (RU siteleri de). Varsayılan rotayı değiştirmez; yerel ağ doğrudan kalır.';
+
+  @override
+  String get noRealIpOnlySelectedNote =>
+      '«Yalnızca işaretlenenler» modunda, işaretlenmemiş her şey yine gerçek IP’nizle çıkar — bu ayar bunu değiştirmez.';
+
+  @override
+  String get infoNoRealIp =>
+      'YALNIZCA açıkça belirtilmiş «Doğrudan» kurallarına (uygulamalar ve siteler) ve panel yapılandırmasındaki doğrudan kurallara uygulanır: bunlar tünele alınır. «Gerçek IP’ye izin ver» işaretli bir kural doğrudan kalır.\n\nYAPMADIĞI şey: varsayılan rotayı değiştirmez. «Yalnızca işaretlenenler» modunda varsayılan rota doğrudan kalır, bu yüzden işaretlenmemiş tüm trafik bu ayardan bağımsız olarak gerçek adresinizle çıkar. Her şeyin kapsanması gerekiyorsa «Tümü VPN üzerinden» modunu kullanın.\n\nYerel ağ her zaman doğrudan kalır.';
+
+  @override
+  String get killSwitchSubProxyNoAdmin =>
+      'Bu gerçek bir engelleme değil: «Sistem proxy’si» modunda yönetici hakları alınmaz ve tüm tutma, proxy’nin kayıtlı bırakılmasından ibarettir. Proxy’yi yok sayan programlar ve tüm UDP doğrudan çıkar. Her şeyi yalnızca TUN tutar.';
+
+  @override
+  String get killSwitchOfferTun =>
+      'Kopma sırasında tam engelleme yalnızca TUN modunda vardır.';
+
+  @override
+  String get splitOnlySelectedWarnTitle =>
+      'İşaretlenmemiş her şey gerçek IP’nizle çıkar';
+
+  @override
+  String get splitOnlySelectedWarnBody =>
+      'Tünele yalnızca «Tünel» eylemi verilmiş kayıtlar girer. Geri kalan trafik — varlığından haberdar olmadığınız programlar dâhil — gerçek adresinizle doğrudan çıkar. Tüm cihaz gizlenmeliyse «Tümü VPN üzerinden» seçeneğini kullanın.';
+
+  @override
+  String get splitOnlySelectedNoRealIp =>
+      '«Gerçek IP ile çıkma» ayarı bunu değiştirmez: yalnızca «Doğrudan» kurallarını yeniden yazar, varsayılan rotayı değil.';
+
+  @override
+  String get splitKillSwitchIsPerApp =>
+      'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.';
 }

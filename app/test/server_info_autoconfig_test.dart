@@ -232,7 +232,7 @@ void main() {
   });
 
   group('Скорость показывается только когда её мерили', () {
-    testWidgets('замер есть — мегабиты и доля своего канала', (tester) async {
+    testWidgets('замер есть — мегабайты и доля своего канала', (tester) async {
       late AutoConfigController ctrl;
       await tester.runAsync(() async {
         ctrl = await controllerWith([
@@ -248,8 +248,10 @@ void main() {
 
       final text =
           tester.widget<Text>(find.byKey(const Key('srvInfoAutoSpeed'))).data!;
-      expect(text, contains('42.5'));
-      // ⚠️ Доля канала обязательна рядом с мегабитами: 42 Мбит/с — это отлично
+      // 42,5 Мбит/с хранения = 5,3 МБ/с показа: пишем мегабайты, храним
+      // мегабиты (см. ServerSpeed.megabytesPerSecond).
+      expect(text, contains('5.3'));
+      // ⚠️ Доля канала обязательна рядом со скоростью: 5 МБ/с — это отлично
       // на канале 50 и скверно на канале 300.
       expect(text, contains(l.autoSpeedShare(80)));
     });

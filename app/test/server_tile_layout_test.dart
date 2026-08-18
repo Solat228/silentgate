@@ -123,7 +123,7 @@ void main() {
     await pumpTile(tester, ping: passed, speed: speed);
 
     expect(find.text('256 мс'), findsOneWidget);
-    expect(find.text('49.6 Мбит/с'), findsOneWidget);
+    expect(find.text('6.2 МБ/с'), findsOneWidget);
 
     final tile = tileRect(tester);
     final column = tester.getRect(find.byType(PingSpeedColumn));
@@ -203,7 +203,7 @@ void main() {
 
     final pingFont = tester.widget<Text>(find.text('256 мс')).style?.fontSize;
     final speedFont =
-        tester.widget<Text>(find.text('49.6 Мбит/с')).style?.fontSize;
+        tester.widget<Text>(find.text('6.2 МБ/с')).style?.fontSize;
     expect(pingFont, lessThanOrEqualTo(11));
     expect(pingFont, speedFont);
   });

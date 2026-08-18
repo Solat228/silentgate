@@ -13,6 +13,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.VpnService
 import android.os.Build
+import android.os.SystemClock
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.system.OsConstants
@@ -463,11 +464,40 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             res.getString(R.string.vpn_traffic_now, nowDown, nowUp) else null
         noteTotal = if (totalDown != null && totalUp != null)
             res.getString(R.string.vpn_traffic_total, totalDown, totalUp) else null
-        updateNotification(res.getString(R.string.vpn_connected))
+        // ⚠️ СЧЁТЧИК НЕ ЗАТИРАЕТ СООБЩЕНИЕ О БЛОКИРОВКЕ.
+        //
+        // Раньше здесь стояла безусловная строка «Подключено», а счётчик трафика
+        // тикает раз в секунду — поэтому уведомление «сайт заблокирован» жило
+        // меньше секунды и человек его не успевал прочитать. Механизм был, а
+        // сообщения не было: ровно тот случай, когда код работает, а
+        // пользователь этого не видит.
+        updateNotification(noticeTextNow(res))
     }
+
+    /**
+     * Что писать в уведомлении прямо сейчас: свежая пометка о блокировке важнее
+     * дежурного «Подключено».
+     */
+    private fun noticeTextNow(ctx: Context): String =
+        if (SystemClock.elapsedRealtime() < blockedUntil)
+            ctx.getString(R.string.vpn_blocked)
+        else
+            ctx.getString(R.string.vpn_connected)
+
+    /**
+     * До какого момента показывать «сайт заблокирован».
+     *
+     * ⚠️ Именно СРОК, а не флаг: счётчик трафика обновляет уведомление каждую
+     * секунду, и без срока пометку пришлось бы снимать вручную — а снимать её
+     * некому, событие блокировки одноразовое.
+     */
+    private var blockedUntil = 0L
 
     fun showBlocked() {
         if (!running) return
+        // Пять секунд: меньше — не успеть прочитать, больше — пометка переживёт
+        // сам повод и будет висеть над уже открывшимся сайтом.
+        blockedUntil = SystemClock.elapsedRealtime() + 5_000
         updateNotification(strings().getString(R.string.vpn_blocked))
     }
 

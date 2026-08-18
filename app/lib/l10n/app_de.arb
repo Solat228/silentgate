@@ -711,7 +711,7 @@
   "serviceChecksBefore": "Ohne VPN",
   "serviceChecksAfter": "Über VPN",
   "serviceChecksNoBaseline": "Ohne VPN nicht geprüft",
-  "autoSpeedValue": "{value} Mbit/s",
+  "autoSpeedValue": "{value} MB/s",
   "@autoSpeedValue": {
     "placeholders": {
       "value": {
@@ -1128,5 +1128,14 @@
   "apiEpConnect": "Verbinden per Serverschlüssel, Name oder „Auto“; bei aktiver Verbindung wird der Server gewechselt",
   "apiEpDisconnect": "Trennen; ein erneuter Aufruf ist unbedenklich",
   "apiEpPing": "Ping-Lauf über alle Server starten; Ergebnisse aus /v1/servers lesen",
-  "apiCopyCurlExample": "curl-Beispiel kopieren"
+  "apiCopyCurlExample": "curl-Beispiel kopieren",
+  "noRealIpSubRulesOnly": "Schreibt nur Ihre „Direkt“-Regeln um: Sie laufen durch den Tunnel (auch RU-Seiten). Die Standardroute bleibt unverändert, das lokale Netz bleibt direkt.",
+  "noRealIpOnlySelectedNote": "Im Modus „Nur ausgewählte“ geht alles Nicht-Ausgewählte weiterhin mit Ihrer echten IP hinaus – diese Einstellung ändert daran nichts.",
+  "infoNoRealIp": "Gilt NUR für ausdrückliche „Direkt“-Regeln (Programme und Websites) und für direkte Regeln aus der Panel-Konfiguration: Sie werden in den Tunnel geholt. Eine Regel mit gesetztem Haken „Echte IP erlauben“ bleibt direkt.\n\nWas sie NICHT tut: Sie ändert die Standardroute nicht. Im Modus „Nur ausgewählte“ bleibt die Standardroute direkt, deshalb verlässt der gesamte nicht ausgewählte Verkehr das Gerät mit Ihrer echten Adresse – unabhängig von dieser Einstellung. Wenn alles abgedeckt sein muss, nutzen Sie „Alles über VPN“.\n\nDas lokale Netz bleibt immer direkt.",
+  "killSwitchSubProxyNoAdmin": "Das ist keine echte Sperre: Im Modus „Systemproxy“ werden keine Administratorrechte genommen, gehalten wird nur dadurch, dass der Proxy eingetragen bleibt. Programme, die ihn ignorieren, und sämtliches UDP gehen direkt hinaus. Vollständig hält nur TUN.",
+  "killSwitchOfferTun": "Eine vollständige Sperre während eines Ausfalls gibt es nur im TUN-Modus.",
+  "splitOnlySelectedWarnTitle": "Alles Nicht-Ausgewählte geht mit Ihrer echten IP hinaus",
+  "splitOnlySelectedWarnBody": "In den Tunnel geht nur, was die Aktion „Tunnel“ hat. Der übrige Verkehr – auch von Programmen, von denen Sie nichts wissen – geht direkt hinaus, mit Ihrer echten Adresse. Soll das ganze Gerät verborgen sein, wählen Sie „Alles über VPN“.",
+  "splitOnlySelectedNoRealIp": "Die Einstellung „Nicht mit der echten IP hinausgehen“ ändert daran nichts: Sie schreibt nur die „Direkt“-Regeln um, nicht die Standardroute.",
+  "splitKillSwitchIsPerApp": "Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht."
 }

@@ -878,7 +878,18 @@ class AndroidEngine extends VpnEngineBase {
       await cleanup();
       if (wasAborted) return;
       if (e.code == 'consent_denied') {
-        setStatus(VpnConnectionState.error, message: e.message);
+        // ⚠️ ТЕКСТ ГОВОРИТ, ЧТО ДЕЛАТЬ, А НЕ ТОЛЬКО ЧТО СЛУЧИЛОСЬ.
+        //
+        // Прежнее «Пользователь не разрешил VPN» верно и бесполезно: человек и
+        // так знает, что нажал «Отмена», — ему нужно знать, что делать дальше.
+        // Хуже того, отказ бывает не его: систему заставили пересоздать
+        // активность, диалог закрыла оболочка, приложение свернули поверх него
+        // (BACKLOG #28). В этих случаях фраза про «пользователь не разрешил»
+        // прямо вводит в заблуждение.
+        AppLog.w('Android не выдал согласие на VPN — туннель не поднимался');
+        setStatus(VpnConnectionState.error,
+            message: 'Android не разрешил поднять VPN. Нажмите «Подключиться» '
+                'ещё раз и подтвердите запрос системы.');
         return;
       }
       if (await scheduleRetry('не удалось подключиться: ${e.message}')) return;
