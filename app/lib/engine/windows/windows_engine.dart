@@ -27,6 +27,7 @@ import 'singbox_process.dart';
 import 'singbox_stats.dart';
 import '../../core/net/dns_fallback_server.dart';
 import 'system_proxy.dart';
+import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
 import 'xray_paths.dart';
@@ -646,6 +647,43 @@ class WindowsEngine extends VpnEngineBase {
   ///
   /// Не покрывает — возвращаем свежий список; конфиг тогда отличается, и
   /// туннель честно пересоздаётся, как раньше.
+  /// Состав блокировки для помощника TUN.
+  ///
+  /// ⚠️ ПИШЕТ ДВИЖОК, А НЕ РОУТЕР, и это не вкусовщина: только здесь есть
+  /// настройки пользователя целиком. Роутер видит `TunOptions` и правила
+  /// раздельного туннелирования, но не знает, включён ли kill switch вовсе.
+  ///
+  /// ⚠️ ЧТО ЗНАЧИТ «БЛОКИРОВАТЬ ВСЁ». Решение владельца 19.08.2026 (школа
+  /// Mullvad): в режимах «Всё через VPN» и «кроме отмеченных» закрываем всё,
+  /// кроме разрешённого; в режиме «только отмеченные» — ровно те приложения,
+  /// что шли через VPN. Исключение из туннеля остаётся исключением и из
+  /// блокировки: пользователь сам сказал, что VPN им не нужен.
+  Future<void> _writeKillSwitchPlan(
+      AppSettings s, List<String> serverIps) async {
+    try {
+      final dir = await AppPaths.supportDir();
+      final onlySelected = s.splitTunnel.mode == SplitMode.onlySelected;
+      await KillSwitchPlanFile.write(
+        dir,
+        enabled: s.killSwitch,
+        serverIps: serverIps.toSet(),
+        blockAll: !onlySelected,
+        blockedAppPaths: onlySelected
+            ? [
+                for (final r in s.splitTunnel.apps)
+                  if (r.enabled && r.action == AppAction.tunnel && r.path.isNotEmpty)
+                    r.path,
+              ]
+            : const [],
+        allowLan: s.tunBypassLan,
+      );
+    } catch (e) {
+      // Не смогли записать — помощник просто не поднимет блокировку. Молчать
+      // об этом нельзя: человек будет считать себя защищённым.
+      AppLog.w('Не удалось передать помощнику состав блокировки: $e');
+    }
+  }
+
   Future<List<String>> _bypassForReuse(
       List<VpnServer> servers, AppSettings s) async {
     final sessionHosts = await resolveServerHosts(servers);
@@ -822,6 +860,13 @@ class WindowsEngine extends VpnEngineBase {
     // start() бросит TunStartException, если туннель реально не поднялся.
     _tunActive = true; // чтобы уборка погасила недоподнятый туннель
     _tunOwnerGen = gen;
+    // ⚠️ СОСТАВ БЛОКИРОВКИ КЛАДЁМ ДО ЗАПУСКА ПОМОЩНИКА. Он читает файл один
+    // раз, на старте; положив позже, мы получили бы помощника, который про
+    // блокировку не знает. Разбор — `docs/BACKLOG.md` #32.
+    //
+    // Пишем ВСЕГДА, в том числе `enabled: false`: помощник обязан отличать
+    // «блокировать не просили» от «файл потерян от прошлой сессии».
+    await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
     await _tunRouter.start(
       options.split,
       exitOutbounds: exitsBuilt.outbounds,
