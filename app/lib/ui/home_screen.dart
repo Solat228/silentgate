@@ -46,6 +46,7 @@ import 'widgets/service_checks_row.dart';
 import 'widgets/update_notes_dialog.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
+import 'widgets/ping_gate.dart';
 import 'server_info_screen.dart';
 import 'servers_screen.dart';
 import '../engine/probe_factory.dart';
@@ -1293,6 +1294,11 @@ class _ServerPaneState extends State<_ServerPane> {
     }
     _wasConnected = connected;
 
+    // Один гейт на обе точки, где с этого экрана начинается пинг: кнопку в
+    // шапке списка и подсказку к ней. Считается один раз — два вызова
+    // разошлись бы на первой же правке условия.
+    final pingGate = PingGate.of(probe, hasTargets: shown.isNotEmpty);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -1314,17 +1320,34 @@ class _ServerPaneState extends State<_ServerPane> {
                         : l.homeFoundCount(shown.length, servers.length),
                     style: Theme.of(context).textTheme.titleSmall),
               ),
-              TextButton.icon(
-                icon: probe.running
-                    ? const SizedBox(
-                        width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.network_check, size: 18),
-                // Пингуем то, что видно: при активном поиске — только найденное.
-                label: Text(_query.isEmpty ? l.homePingServers : l.homePingFound),
-                onPressed: probe.running || probe.speedRunning || shown.isEmpty
-                    ? null
-                    : () => probe.pingAll(
-                        [for (final i in shown) servers[i]], settings),
+              // ⚠️ ЧЕРЕЗ ОБЩИЙ ГЕЙТ, А НЕ СВОИМ УСЛОВИЕМ. Здесь стояло
+              // `probe.running || probe.speedRunning || shown.isEmpty`, а
+              // исполнитель отказывает ещё и во время автопрогона проверки
+              // сервисов — они делят порт живого ядра. Кнопка при этом
+              // выглядела совершенно живой: нажатие не делало ничего и ничего
+              // не объясняло. Это самая заметная точка входа из четырёх, и
+              // расхождение здесь стоило дороже всего.
+              Tooltip(
+                message: pingGate.label(
+                    l, _query.isEmpty ? l.homePingServers : l.homePingFound,
+                    noTargets: servers.isEmpty
+                        ? l.serversEmpty
+                        : l.serversNothingFound),
+                child: TextButton.icon(
+                  icon: probe.running
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.network_check, size: 18),
+                  // Пингуем то, что видно: при поиске — только найденное.
+                  label:
+                      Text(_query.isEmpty ? l.homePingServers : l.homePingFound),
+                  onPressed: pingGate.allowed
+                      ? () => probe.pingAll(
+                          [for (final i in shown) servers[i]], settings)
+                      : null,
+                ),
               ),
               // Замер скорости — ИКОНКОЙ, а не второй текстовой кнопкой: панель
               // шириной 380 px, и две подписи рядом с «!» уже не помещаются.

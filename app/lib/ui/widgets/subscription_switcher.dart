@@ -15,6 +15,7 @@ import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
 import '../settings_screen.dart';
 import 'app_toast.dart';
+import 'ping_gate.dart';
 import 'subscription_avatar.dart';
 
 /// Действия над ОДНОЙ подпиской: обновить, копировать ссылку, открыть её
@@ -524,8 +525,11 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
     // разбирать все ссылки заново ради одного «пусто/не пусто».
     final anyServers = widget.state.servers.isNotEmpty ||
         items.any((p) => _serversOf(p).isNotEmpty);
-    // Идёт замер скорости — пинг физически невозможен (см. строку действия).
-    final speedBusy = widget.probe.speedRunning;
+    // Гейт пинга — общий с экраном серверов и главным экраном: одно место
+    // решает «можно ли» и оно же называет причину. Отдельный признак «идёт
+    // замер скорости» больше не нужен — он одно из условий внутри гейта, а
+    // держать его снаружи значило бы снова проверять часть условий вручную.
+    final pingGate = PingGate.of(widget.probe, hasTargets: anyServers);
 
     return SizedBox(
       // ⚠️ ТОЧНАЯ ШИРИНА, А НЕ `ConstrainedBox(minWidth/maxWidth)`.
@@ -696,7 +700,11 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
             // Пункт при этом выглядел совершенно живым: нажатие закрывало меню
             // и не делало ничего — а замер сотни серверов идёт десятки минут,
             // и всё это время человек жал впустую.
-            label: speedBusy ? l.subSwitcherPingBusySpeed : l.subSwitcherPingAll,
+            // ⚠️ ПРИЧИНУ СПРАШИВАЕМ У ОБЩЕГО ГЕЙТА, а не считаем свою. Здесь
+            // проверялся только замер скорости, а исполнитель отказывает ещё и
+            // во время автопрогона проверки сервисов — пункт в этот момент
+            // выглядел живым и молча ничего не делал.
+            label: pingGate.label(l, l.subSwitcherPingAll),
             busy: widget.probe.running,
             // ⚠️ ЗДЕСЬ ПИНГУЮТСЯ ВСЕ ПОДПИСКИ, А НЕ ТЕКУЩАЯ — решение владельца
             // (13.08.2026): «пункт меню — все подписки». Раньше пункт гонял
@@ -706,7 +714,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
             //
             // Список собирает `AppState`: серверы неактивных подписок лежат
             // ссылками, и восстановить их умеет только он.
-            onTap: widget.probe.running || speedBusy || !anyServers
+            onTap: !pingGate.allowed
                 ? null
                 : () {
                     Navigator.of(context).pop();

@@ -528,6 +528,51 @@ void main() {
       expect(probe.pingedOne?.key, server.key);
     });
   });
+
+  group('⚠️ Страж: КАЖДАЯ точка входа пинга идёт через гейт', () {
+    // ⚠️ ЗАЧЕМ СТРАЖ ПО ИСХОДНИКУ, ЕСЛИ ЕСТЬ ТЕСТЫ НА САМ ГЕЙТ. Затем, что
+    // гейт можно написать безупречно и не позвать. Ровно так и было: гейт
+    // существовал, был покрыт тестами и закрывал две точки входа из четырёх, а
+    // самая заметная кнопка приложения — «Пинг серверов» на главном — держала
+    // собственное условие без проверки автопрогона сервисов. Нажатие не делало
+    // ничего и ничего не объясняло, а тесты оставались зелёными.
+    //
+    // Страж ищет точки входа САМ, а не сверяется со списком: список пришлось бы
+    // пополнять руками, то есть он снова отстал бы от кода.
+    test('файл, который запускает прогон, обязан спрашивать PingGate', () {
+      final offenders = <String>[];
+      for (final f in Directory('lib/ui')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.dart'))) {
+        final src = f.readAsStringSync();
+        final startsPing =
+            src.contains('.pingAll(') || src.contains('.pingOne(');
+        if (startsPing && !src.contains('PingGate')) {
+          offenders.add(f.path);
+        }
+      }
+      expect(offenders, isEmpty,
+          reason: 'эти экраны начинают пинг мимо гейта и будут молча '
+              'отказывать: ${offenders.join(', ')}');
+    });
+
+    test('все четыре известные точки входа на месте', () {
+      // Обратная проверка к предыдущей: та ловит НОВУЮ точку без гейта, эта —
+      // исчезнувшую. Пропади вызов гейта вместе с кнопкой, первый тест
+      // остался бы зелёным.
+      for (final path in const [
+        'lib/ui/servers_screen.dart',
+        'lib/ui/home_screen.dart',
+        'lib/ui/widgets/server_tile.dart',
+        'lib/ui/widgets/subscription_switcher.dart',
+      ]) {
+        expect(File(path).readAsStringSync(), contains('PingGate.of('),
+            reason: '$path перестал спрашивать гейт');
+      }
+    });
+  });
+
 }
 
 // ── Вспомогательное ─────────────────────────────────────────────────────────
