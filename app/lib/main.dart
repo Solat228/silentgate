@@ -155,6 +155,7 @@ Future<void> main(List<String> args) async {
         // `ProbeController` был выше в дереве (см. порядок здесь) —
         // `applyIfChanged` читает его через `context.read`.
         apiSettingsLinkProvider(),
+        unfinishedPruneLinkProvider(),
         // Гео-базы (`geoip.dat`/`geosite.dat`): состояние файлов, проверка
         // выпуска, закачка по явному согласию. Живёт с запуска приложения, а
         // не с открытия настроек, — почему именно так и почему `lazy: false`

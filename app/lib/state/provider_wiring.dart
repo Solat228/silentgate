@@ -122,3 +122,39 @@ ChangeNotifierProvider<GeoBasesController> geoBasesProvider({
       lazy: false,
       create: (_) => (create?.call() ?? GeoBasesController())..refresh(),
     );
+
+/// Связка «состав серверов поменялся → почистить пометки незаконченного прогона».
+///
+/// ⚠️ РАДИ ЧЕГО ЗАВЕДЕНА. Чистку `ping_unfinished.json` звал переключатель
+/// подписок при открытии меню — а он рисуется ТОЛЬКО при двух и более
+/// подписках (`subscription_bar.dart`). У владельца ОДНОЙ подписки, то есть у
+/// большинства, чистка не срабатывала никогда: файл рос без предела, а узел,
+/// вернувшийся в подписку с прежним ключом, помечал её неполной по прогону,
+/// которого в этой её жизни не было.
+///
+/// ⚠️ ОБЕ СТОРОНЫ СВЯЗЫВАЮТСЯ ЗДЕСЬ, И ПОРЯДОК НЕ ВАЖЕН НАРОЧНО. Состояние
+/// сообщает о смене состава, контроллер проб предоставляет ответ «что вообще
+/// известно» — но пометки читаются с диска своим чередом, и кто успеет первым,
+/// не задано ничем. Поэтому чистка отложенная: пока поставщик списка не
+/// известен, признак «состав менялся» не снимается, и она случится позже.
+/// Ровно на такой гонке в 1.4.3 терялись профили «Авто».
+class UnfinishedPruneLink {
+  UnfinishedPruneLink(AppState state, ProbeController probe) {
+    // ⚠️ Поставщик, а не готовый список: собрать его — это разбор сотни ссылок
+    // и декодирование панельных конфигов. Ради ответа «чистить нечего» такое
+    // делать нельзя, а связка пересобирается на каждое уведомление состояния.
+    probe.knownServerKeys =
+        () => [for (final s in state.allSubscriptionServers()) s.key];
+    state.onServersChanged = probe.markServersChanged;
+    unawaited(probe.pruneUnfinished());
+  }
+}
+
+/// Провайдер [UnfinishedPruneLink] — `lazy: false` обязателен, см. комментарий
+/// вверху файла.
+ProxyProvider2<AppState, ProbeController, UnfinishedPruneLink>
+    unfinishedPruneLinkProvider() =>
+        ProxyProvider2<AppState, ProbeController, UnfinishedPruneLink>(
+          lazy: false,
+          update: (_, state, probe, __) => UnfinishedPruneLink(state, probe),
+        );

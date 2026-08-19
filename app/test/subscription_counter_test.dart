@@ -21,6 +21,7 @@ import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/l10n/gen/app_localizations_ru.dart';
 import 'package:silentgate/state/app_state.dart';
 import 'package:silentgate/state/probe_controller.dart';
+import 'package:silentgate/state/provider_wiring.dart';
 import 'package:silentgate/state/settings_controller.dart';
 import 'package:silentgate/ui/widgets/subscription_switcher.dart';
 
@@ -629,19 +630,28 @@ void main() {
       expect(probe.pinged, isNotNull);
     });
 
-    testWidgets('открытие меню чистит пометку от исчезнувших серверов',
+    testWidgets('⚠️ пометку от исчезнувших серверов чистит СВЯЗКА, а не меню',
         (tester) async {
       // ⚠️ ЗДЕСЬ СТЕРЕЖЁТСЯ САМА СВЯЗКА, А НЕ ЧИСТКА. Сам разбор пометки
       // проверен выше настоящим `ProbeController`; сломаться же легче всего
-      // проводу: пропадёт вызов из `SubscriptionSwitcher._open` — и
-      // `ping_unfinished.json` снова начнёт расти без предела, а вернувшийся
-      // сервер снова пометит подписку неполной. Из памяти это не видно ничем.
+      // проводу — и он уже был сломан: чистку звало открытие меню
+      // переключателя, а переключатель рисуется ТОЛЬКО при двух и более
+      // подписках. У владельца ОДНОЙ подписки, то есть у большинства, чистка
+      // не происходила никогда: `ping_unfinished.json` рос без предела, а
+      // вернувшийся с прежним ключом сервер помечал подписку неполной.
+      //
+      // Поэтому проверяется теперь `UnfinishedPruneLink` напрямую: он не
+      // зависит ни от какого экрана и срабатывает по смене состава серверов.
       await tester.runAsync(boot);
-      await mount(tester);
-      await openMenu(tester);
+      // Пометка есть — иначе чистить нечего, и связка законно промолчит.
+      probe.unfinishedNow = {ShareLinkParser.canonicalKey(_a1), 'ушедший://ключ'};
+      UnfinishedPruneLink(state, probe);
+      await tester.runAsync(() async {
+        await probe.pruneUnfinished();
+      });
 
       expect(probe.forgotten, isNotNull,
-          reason: 'меню обязано звать forgetUnknownServers при открытии');
+          reason: 'связка обязана чистить пометку без всякого меню');
       // Список — ВСЁ, что знает приложение: обе подписки целиком. Передай меньше
       // (скажем, только активную) — и чистка стёрла бы живые пометки.
       expect(probe.forgotten!.toSet(), {

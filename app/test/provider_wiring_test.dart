@@ -143,6 +143,8 @@ void main() {
           // Связка №2 — та же функция, что в main.dart. Требует ProbeController
           // выше в дереве (applyIfChanged читает его через context.read).
           apiSettingsLinkProvider(),
+          // Связка №3 — та же функция, что в main.dart.
+          unfinishedPruneLinkProvider(),
         ],
         child: const SizedBox.shrink(),
       );
@@ -177,6 +179,31 @@ void main() {
               'обязан построиться с lazy:false — иначе update() не '
               'позовётся никогда, и локальный API-сервер (порт 10870) не '
               'поднимется ни при каких настройках');
+    });
+
+    testWidgets(
+        'unfinishedPruneLinkProvider: поставщик списка серверов дошёл до '
+        'контроллера проб, хотя тип UnfinishedPruneLink никто не читает',
+        (tester) async {
+      // ⚠️ РАДИ ЧЕГО ЭТА СВЯЗКА ВООБЩЕ ПОЯВИЛАСЬ. Чистку пометки «прогон сюда
+      // не дошёл» звало открытие меню переключателя подписок — а он рисуется
+      // ТОЛЬКО при двух и более подписках. У владельца ОДНОЙ подписки, то есть
+      // у большинства, `ping_unfinished.json` не чистился никогда: рос без
+      // предела, и вернувшийся с прежним ключом сервер помечал подписку
+      // неполной по прогону, которого в этой её жизни не было.
+      expect(probe.knownServerKeys, isNull,
+          reason: 'до сборки дерева поставщика ещё нет — база для сравнения');
+
+      await tester.pumpWidget(buildTree());
+
+      expect(probe.knownServerKeys, isNotNull,
+          reason: 'ProxyProvider2<AppState, ProbeController, '
+              'UnfinishedPruneLink> обязан построиться с lazy:false — иначе '
+              'update() не позовётся никогда, и пометки не почистит ничто');
+      // И обратная сторона связки: состояние обязано УМЕТЬ сообщить о смене
+      // состава, иначе чистка случится ровно один раз за запуск.
+      expect(state.onServersChanged, isNotNull,
+          reason: 'без этого хука смена состава серверов проходит незамеченной');
     });
 
     testWidgets(

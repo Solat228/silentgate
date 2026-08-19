@@ -375,15 +375,14 @@ class SubscriptionSwitcher extends StatelessWidget {
     final state = context.read<AppState>();
     final probe = context.read<ProbeController>();
     final settings = context.read<SettingsController>();
-    // ⚠️ ЧИСТКА ПОМЕТКИ «прогон сюда не дошёл» — ЗДЕСЬ, ПЕРЕД ПОКАЗОМ СЧЁТЧИКА.
-    // Снимает её только прогон, взявший сервер в работу, а сервер, пропавший из
-    // подписки, не возьмёт уже никто: `ping_unfinished.json` рос без предела, и
-    // вернувшийся с тем же ключом узел помечал подписку неполной без причины.
-    // Место выбрано за полнотой списка: `allSubscriptionServers` — это ровно
-    // всё, что приложение знает (активный список плюс серверы остальных
-    // подписок), и собирается он здесь по нажатию, а не в build.
-    unawaited(probe.forgetUnknownServers(
-        [for (final s in state.allSubscriptionServers()) s.key]));
+    // ⚠️ ЧИСТКИ ПОМЕТКИ «прогон сюда не дошёл» ЗДЕСЬ БОЛЬШЕ НЕТ, И ЭТО ПРАВКА,
+    // А НЕ ПОТЕРЯ. Она стояла в этом методе — а он вызывается только из
+    // переключателя, который рисуется ТОЛЬКО при двух и более подписках
+    // (`subscription_bar.dart`). У владельца одной подписки, то есть у
+    // большинства, чистка не срабатывала никогда: `ping_unfinished.json` рос
+    // без предела, а вернувшийся с прежним ключом узел помечал подписку
+    // неполной без причины. Теперь этим занимается `UnfinishedPruneLink`
+    // (`state/provider_wiring.dart`) — по факту смены состава серверов, у всех.
     final box = context.findRenderObject() as RenderBox?;
     final pos = box?.localToGlobal(Offset.zero) ?? Offset.zero;
     await showMenu<void>(
