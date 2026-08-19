@@ -823,6 +823,7 @@
   "tunDnsForAllWarning": "La resolución de nombres de TODA la máquina pasará por el túnel. Si el túnel se detiene, los nombres dejarán de resolverse incluso para las aplicaciones que van directamente y no necesitan la VPN — desde fuera parece una pérdida total de internet.",
   "tunCidrInvalid": "Hace falta una dirección con prefijo, p. ej. 10.8.0.0/24",
   "geoTitle": "Bases geo de enrutamiento",
+  "geoSubShort": "Listas de países y categorías para las reglas de la suscripción",
   "geoMissing": "Sin descargar — las reglas por país y categoría no se aplican",
   "geoPresent": "{size}, actualizadas: {date}",
   "@geoPresent": {

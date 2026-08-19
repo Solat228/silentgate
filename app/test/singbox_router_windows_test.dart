@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/net/api_ports.dart';
@@ -118,6 +119,57 @@ void main() {
                   true &&
               r['outbound'] == exitTagFor(keyA)),
           isTrue);
+    });
+  });
+
+  // ───────────────────────────────────────────────────────────────────────────
+  group('⚠️ Отмена подключения не ждёт конца подбора параметров', () {
+    /// Просьба владельца 20.08.2026: «сделай возможность отключения VPN до
+    /// того, как он автоматически подключится, чтобы юзер мог не ждать, пока
+    /// подберутся параметры».
+    ///
+    /// ⚠️ ПОЧЕМУ СТРАЖ ПО ИСХОДНИКУ. Настоящую отмену не проверить тестом:
+    /// `start()` запрашивает права администратора и поднимает процесс ядра, а
+    /// ожидание адаптера спрашивает систему. Единственное, что можно
+    /// удержать, — что признак отмены ЧИТАЕТСЯ ВНУТРИ цикла ожидания, а не
+    /// только между комбинациями подбора.
+    late String source;
+
+    setUp(() {
+      source = File('lib/engine/windows/tun/singbox_router_windows.dart')
+          .readAsLinesSync()
+          .where((l) {
+            final t = l.trimLeft();
+            return !t.startsWith('//') && !t.startsWith('///');
+          })
+          .join(String.fromCharCode(10));
+    });
+
+    test('признак отмены доходит до ожидания адаптера', () {
+      expect(source, contains('Future<void> _waitUp({bool Function()? abort})'),
+          reason: 'без параметра ожидание не знает об отмене вовсе');
+      expect(source, contains('_waitUp(abort: abort)'),
+          reason: 'признак обязан передаваться, а не просто быть объявленным');
+    });
+
+    test('⚠️ отмена проверяется В ЦИКЛЕ, а не один раз до него', () {
+      // До 20.08.2026 отмена читалась только между комбинациями подбора, а
+      // самое долгое ожидание — здесь: до 12 секунд на каждую из девяти.
+      // Нажав «Отключить» на первой же, человек ждал конца текущей попытки.
+      final wait = source.substring(source.indexOf('Future<void> _waitUp('));
+      final loopAt = wait.indexOf('while (');
+      final checkAt = wait.indexOf('abort?.call()');
+      expect(loopAt, greaterThan(0));
+      expect(checkAt, greaterThan(loopAt),
+          reason: 'проверка обязана стоять ВНУТРИ цикла: снаружи она сработает '
+              'только через двенадцать секунд');
+    });
+
+    test('оба вызова подъёма передают отмену', () {
+      // Их два: обычный путь и путь автоподбора. Забыть один — значит оставить
+      // половину случаев неотменяемой.
+      expect(RegExp(r'_startOnce\([^)]*abort: abort').allMatches(source).length,
+          2);
     });
   });
 }

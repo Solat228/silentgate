@@ -2211,6 +2211,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get geoTitle => 'Bases géo de routage';
 
   @override
+  String get geoSubShort =>
+      'Listes de pays et de catégories pour les règles de l’abonnement';
+
+  @override
   String get geoMissing =>
       'Non téléchargées — les règles par pays et catégorie ne s\'appliquent pas';
 

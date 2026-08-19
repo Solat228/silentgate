@@ -2187,6 +2187,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get geoTitle => 'Routing geo databases';
 
   @override
+  String get geoSubShort => 'Country and category lists for subscription rules';
+
+  @override
   String get geoMissing =>
       'Not downloaded — country and category rules do not apply';
 

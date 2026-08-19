@@ -2208,6 +2208,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String get geoTitle => 'Bases geo de roteamento';
 
   @override
+  String get geoSubShort =>
+      'Listas de países e categorias para as regras da assinatura';
+
+  @override
   String get geoMissing =>
       'Não baixadas — as regras por país e categoria não funcionam';
 

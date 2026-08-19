@@ -2176,6 +2176,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get geoTitle => 'بيانات التوجيه الجغرافية';
 
   @override
+  String get geoSubShort => 'قوائم البلدان والفئات لقواعد الاشتراك';
+
+  @override
   String get geoMissing => 'غير مُنزَّلة — قواعد البلدان والفئات لا تعمل';
 
   @override

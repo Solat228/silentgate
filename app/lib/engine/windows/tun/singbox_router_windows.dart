@@ -69,7 +69,7 @@ class SingboxRouterWindows implements TunRouter {
     // «Авто» — реальный подбор: перебираем стек и MTU, пока туннель не поднимется.
     // Явно выбранный стек уважаем и ничего не перебираем.
     if (!options.autotune) {
-      await _startOnce(split, xraySocksPort, options);
+      await _startOnce(split, xraySocksPort, options, abort: abort);
       return;
     }
 
@@ -93,7 +93,7 @@ class SingboxRouterWindows implements TunRouter {
           '(${i + 1} из ${combos.length})');
       AppLog.i('TUN автоподбор: пробую ${c.label}');
       try {
-        await _startOnce(split, xraySocksPort, attempt);
+        await _startOnce(split, xraySocksPort, attempt, abort: abort);
         // Успели подняться, но пользователь уже отключился — снимаем сразу.
         if (abort?.call() ?? false) {
           AppLog.i('TUN поднялся после отмены — снимаю');
@@ -123,8 +123,8 @@ class SingboxRouterWindows implements TunRouter {
   }
 
   /// Одна попытка запуска с конкретными параметрами.
-  Future<void> _startOnce(
-      SplitTunnelConfig split, int xraySocksPort, TunOptions options) async {
+  Future<void> _startOnce(SplitTunnelConfig split, int xraySocksPort,
+      TunOptions options, {bool Function()? abort}) async {
     final dir = await AppPaths.supportDir();
     final cfgPath = TunHelper.configPathFor(dir);
     await File(cfgPath).writeAsString(configJsonFor(split, xraySocksPort, options));
@@ -180,7 +180,7 @@ class SingboxRouterWindows implements TunRouter {
     }
     _started = true;
 
-    await _waitUp();
+    await _waitUp(abort: abort);
   }
 
   /// Конфиг, который реально уйдёт в файл для sing-box.
@@ -251,9 +251,26 @@ class SingboxRouterWindows implements TunRouter {
       );
 
   /// Ждём появления TUN-адаптера. Не появился — отдаём реальную причину из лога.
-  Future<void> _waitUp() async {
+  /// ⚠️ [abort] ПРОВЕРЯЕТСЯ ВНУТРИ ЦИКЛА, А НЕ ТОЛЬКО СНАРУЖИ.
+  ///
+  /// Просьба владельца 20.08.2026: «сделай возможность отключения VPN до того,
+  /// как он автоматически подключится, чтобы не ждать, пока подберутся
+  /// параметры». Раньше отмена читалась только МЕЖДУ комбинациями автоподбора,
+  /// а самое долгое ожидание — здесь: до двенадцати секунд на каждую из девяти.
+  /// Нажав «Отключить» на первой же, человек ждал конца текущей попытки, и
+  /// кнопка выглядела не нажатой.
+  ///
+  /// Возвращаемся МОЛЧА, без исключения: снаружи (в цикле подбора и в
+  /// `WindowsEngine`) отмена и так проверяется сразу после вызова, и там же
+  /// поднятое снимается. Бросать здесь ошибку значило бы показать человеку
+  /// «не удалось подключиться» на действие, которое он сам и совершил.
+  Future<void> _waitUp({bool Function()? abort}) async {
     final deadline = DateTime.now().add(const Duration(seconds: 12));
     while (DateTime.now().isBefore(deadline)) {
+      if (abort?.call() ?? false) {
+        AppLog.i('Ожидание TUN-адаптера прервано: отключение пользователем');
+        return;
+      }
       if (await _adapterUp()) return;
       await Future.delayed(const Duration(milliseconds: 500));
     }

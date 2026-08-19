@@ -762,6 +762,7 @@
   "tunDnsForAllWarning": "La résolution des noms de TOUTE la machine passera par le tunnel. Si le tunnel se fige, les noms cessent d'être résolus même pour les applications qui passent en direct et n'ont pas besoin du VPN — vu de l'extérieur, cela ressemble à une perte totale d'Internet.",
   "tunCidrInvalid": "Il faut une adresse avec un préfixe, par ex. 10.8.0.0/24",
   "geoTitle": "Bases géo de routage",
+  "geoSubShort": "Listes de pays et de catégories pour les règles de l’abonnement",
   "geoMissing": "Non téléchargées — les règles par pays et catégorie ne s'appliquent pas",
   "geoPresent": "{size}, mise à jour : {date}",
   "@geoPresent": {

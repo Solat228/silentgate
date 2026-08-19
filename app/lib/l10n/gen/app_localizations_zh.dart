@@ -2126,6 +2126,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoTitle => '路由地理数据库';
 
   @override
+  String get geoSubShort => '用于订阅规则的国家和类别列表';
+
+  @override
   String get geoMissing => '尚未下载——按国家和类别的规则不会生效';
 
   @override

@@ -762,6 +762,7 @@
   "tunDnsForAllWarning": "本机的全部域名解析都将经过隧道。一旦隧道卡住，即使是直连、根本不需要 VPN 的应用也无法解析域名——在用户看来就是彻底断网。",
   "tunCidrInvalid": "需要带前缀的地址，例如 10.8.0.0/24",
   "geoTitle": "路由地理数据库",
+  "geoSubShort": "用于订阅规则的国家和类别列表",
   "geoMissing": "尚未下载——按国家和类别的规则不会生效",
   "geoPresent": "{size}，更新于 {date}",
   "@geoPresent": {

@@ -2202,6 +2202,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get geoTitle => 'Routing-Geodatenbanken';
 
   @override
+  String get geoSubShort =>
+      'Länder- und Kategorielisten für die Abonnementregeln';
+
+  @override
   String get geoMissing =>
       'Nicht heruntergeladen — Regeln nach Land und Kategorie greifen nicht';
 

@@ -2207,6 +2207,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String get geoTitle => 'Bases geo de enrutamiento';
 
   @override
+  String get geoSubShort =>
+      'Listas de países y categorías para las reglas de la suscripción';
+
+  @override
   String get geoMissing =>
       'Sin descargar — las reglas por país y categoría no se aplican';
 

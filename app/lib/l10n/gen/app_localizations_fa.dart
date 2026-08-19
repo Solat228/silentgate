@@ -2183,6 +2183,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get geoTitle => 'داده‌های جغرافیایی مسیریابی';
 
   @override
+  String get geoSubShort => 'فهرست کشورها و دسته‌ها برای قواعد اشتراک';
+
+  @override
   String get geoMissing =>
       'دانلود نشده — قوانین کشور و دسته‌بندی اعمال نمی‌شوند';
 

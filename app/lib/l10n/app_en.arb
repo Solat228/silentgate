@@ -858,6 +858,7 @@
   "tunDnsForAllWarning": "Name resolution for the WHOLE machine will go through the tunnel. If the tunnel stalls, names stop resolving even for apps that go direct and do not need the VPN — which looks like a total loss of internet.",
   "tunCidrInvalid": "Needs an address with a prefix, e.g. 10.8.0.0/24",
   "geoTitle": "Routing geo databases",
+  "geoSubShort": "Country and category lists for subscription rules",
   "geoMissing": "Not downloaded — country and category rules do not apply",
   "geoPresent": "{size}, updated {date}",
   "@geoPresent": {

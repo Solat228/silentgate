@@ -29,6 +29,7 @@ import '../state/app_state.dart';
 import '../state/settings_controller.dart';
 import 'logs_screen.dart';
 import 'split_tunnel_screen.dart';
+import 'geo_bases_screen.dart';
 import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
@@ -2283,6 +2284,26 @@ List<SettingsRow> _captureRows(
         ],
       ),
     ),
+    // ⚠️ ДРАЙВЕР ТУННЕЛЯ — СРАЗУ ПОД ВЫБОРОМ РЕЖИМА (просьба владельца
+    // 20.08.2026: «провайдер TUN выведи на самый верх, рядом с тремя
+    // галочками»). Раньше строка стояла ниже гео-баз, то есть в полуэкране от
+    // переключателя, к которому относится, — и читалась как параметр чего-то
+    // другого.
+    //
+    // Гейт по режиму сохранён: в системном прокси и в «Только прокси» никакого
+    // туннеля нет, и сообщать про его драйвер значило бы говорить о том, чего
+    // сейчас не существует. На Android драйвер даёт сама система (VpnService),
+    // выбирать нечего — строки там нет вовсе.
+    if (!Platform.isAndroid && settings.captureMode == CaptureMode.tun)
+      SettingsRow(
+        search: '${l.tunProvider} wintun',
+        build: (_) => ListTile(
+          dense: true,
+          leading: const Icon(Icons.usb),
+          title: Text(l.tunProvider),
+          trailing: const Text('wintun', textDirection: TextDirection.ltr),
+        ),
+      ),
     // Гео-базы — ВНЕ ветки TUN и БЕЗ гейта по платформе, и то и другое
     // намеренно.
     //
@@ -2302,23 +2323,22 @@ List<SettingsRow> _captureRows(
     // было контекста.
     SettingsRow(
       search: '${l.geoTitle} geoip.dat geosite.dat ${l.geoWhy}',
-      build: (_) => GeoBasesSection(key: geoAssetsKey),
+      build: (context) => ListTile(
+        key: geoAssetsKey,
+        dense: true,
+        leading: const Icon(Icons.public),
+        title: Text(l.geoTitle),
+        subtitle: Text(l.geoSubShort),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const GeoBasesScreen()),
+        ),
+      ),
     ),
     // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
     // в режиме системного прокси эти настройки ни на что не влияют.
     // На Android туннель — единственный режим, поэтому показываем всегда.
     if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
-      // Драйвер туннеля — понятие Windows (wintun). На Android туннель даёт
-      // сама система через VpnService, выбирать нечего.
-      if (!Platform.isAndroid)
-        SettingsRow(
-          search: '${l.tunProvider} wintun',
-          build: (_) => ListTile(
-              dense: true,
-              title: Text(l.tunProvider),
-              trailing: const Text('wintun', textDirection: TextDirection.ltr),
-            ),
-        ),
       // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
       SettingsRow(
         search: '${l.tunRoutingTitle} ${l.dnsShortVpn}',

@@ -762,6 +762,7 @@
   "tunDnsForAllWarning": "Die Namensauflösung des GESAMTEN Rechners läuft über den Tunnel. Bleibt der Tunnel stehen, werden Namen auch für Apps nicht mehr aufgelöst, die direkt gehen und gar kein VPN brauchen — von außen wirkt das wie ein kompletter Internetausfall.",
   "tunCidrInvalid": "Adresse mit Präfix erforderlich, z. B. 10.8.0.0/24",
   "geoTitle": "Routing-Geodatenbanken",
+  "geoSubShort": "Länder- und Kategorielisten für die Abonnementregeln",
   "geoMissing": "Nicht heruntergeladen — Regeln nach Land und Kategorie greifen nicht",
   "geoPresent": "{size}, Stand {date}",
   "@geoPresent": {

@@ -2189,6 +2189,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get geoTitle => 'Гео-базы маршрутизации';
 
   @override
+  String get geoSubShort => 'Списки стран и категорий для правил подписки';
+
+  @override
   String get geoMissing =>
       'Не скачаны — правила по странам и категориям не работают';
 

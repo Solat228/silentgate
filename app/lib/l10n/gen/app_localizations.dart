@@ -3906,6 +3906,12 @@ abstract class AppLocalizations {
   /// **'Гео-базы маршрутизации'**
   String get geoTitle;
 
+  /// No description provided for @geoSubShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Списки стран и категорий для правил подписки'**
+  String get geoSubShort;
+
   /// No description provided for @geoMissing.
   ///
   /// In ru, this message translates to:

@@ -2191,6 +2191,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get geoTitle => 'Yönlendirme geo verileri';
 
   @override
+  String get geoSubShort =>
+      'Abonelik kuralları için ülke ve kategori listeleri';
+
+  @override
   String get geoMissing =>
       'İndirilmedi — ülke ve kategori kuralları çalışmıyor';
 

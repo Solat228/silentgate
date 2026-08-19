@@ -762,6 +762,7 @@
   "tunDnsForAllWarning": "TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur — dışarıdan bu, internetin tamamen kesilmesi gibi görünür.",
   "tunCidrInvalid": "Ön ekli bir adres gerekir, örn. 10.8.0.0/24",
   "geoTitle": "Yönlendirme geo verileri",
+  "geoSubShort": "Abonelik kuralları için ülke ve kategori listeleri",
   "geoMissing": "İndirilmedi — ülke ve kategori kuralları çalışmıyor",
   "geoPresent": "{size}, son güncelleme {date}",
   "@geoPresent": {
