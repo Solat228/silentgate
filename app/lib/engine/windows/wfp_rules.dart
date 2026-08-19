@@ -72,6 +72,23 @@ class KillSwitchPlan {
   /// Есть ли что блокировать вообще.
   bool get isEmpty => !blockAll && blockedAppPaths.isEmpty;
 
+  /// Тот же план, но со списком своих бинарей.
+  ///
+  /// ⚠️ ПОДСТАВЛЯЕТ ПОМОЩНИК, А НЕ ИНТЕРФЕЙС. Он и есть `silentgate.exe`, а
+  /// ядра лежат рядом с ним — передавать это файлом значило бы завести второй
+  /// источник правды о том, что помощник знает точнее всех.
+  KillSwitchPlan withOwnBinaries(List<String> paths) => KillSwitchPlan(
+        allowServerIps: allowServerIps,
+        allowOwnBinaries: allowOwnBinaries,
+        allowLoopback: allowLoopback,
+        allowLan: allowLan,
+        blockedAppPaths: blockedAppPaths,
+        blockAll: blockAll,
+        allowDhcpAndNdp: allowDhcpAndNdp,
+        ownBinaryPaths: paths,
+        tunnelInterfaceLuid: tunnelInterfaceLuid,
+      );
+
   /// Тот же план, но с известным теперь адаптером туннеля.
   KillSwitchPlan withTunnelLuid(int luid) => KillSwitchPlan(
         allowServerIps: allowServerIps,

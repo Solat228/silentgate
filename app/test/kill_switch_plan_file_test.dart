@@ -23,15 +23,19 @@ void main() {
     } catch (_) {}
   });
 
+  const token = r'Global\SilentGateAlive-deadbeef';
+
   Future<void> put({
     bool enabled = true,
     Set<String> ips = const {'203.0.113.10'},
     bool blockAll = true,
     List<String> apps = const [],
     bool allowLan = true,
+    String sessionToken = token,
   }) =>
       KillSwitchPlanFile.write(tmp,
           enabled: enabled,
+          sessionToken: sessionToken,
           serverIps: ips,
           blockAll: blockAll,
           blockedAppPaths: apps,
@@ -99,6 +103,22 @@ void main() {
       expect(p.allowServerIps, {'203.0.113.10'});
       expect(p.blockedAppPaths, isEmpty);
       expect(p.allowLan, isFalse);
+    });
+
+    test('⚠️ план от ЧУЖОЙ сессии не применяется', () async {
+      // Файл переживает отключение, падение и перезагрузку. Стухшие адреса
+      // серверов означают блокировку, из-под которой не переподключиться:
+      // ядро стучится к новому серверу, а разрешён старый.
+      await put(sessionToken: r'Global\SilentGateAlive-старая');
+      expect(KillSwitchPlanFile.read(tmp, expectToken: token), isNull);
+      // Тот же файл со СВОИМ токеном читается.
+      await put();
+      expect(KillSwitchPlanFile.read(tmp, expectToken: token), isNotNull);
+    });
+
+    test('без ожидаемого токена сверки нет (совместимость)', () async {
+      await put(sessionToken: 'что-угодно');
+      expect(KillSwitchPlanFile.read(tmp), isNotNull);
     });
 
     test('clear убирает файл', () async {

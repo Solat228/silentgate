@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
 import 'app_alive_mutex.dart';
+import 'tun_luid.dart';
+import 'kill_switch_plan_file.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
 
@@ -178,12 +180,35 @@ class TunHelper {
     // руками): работаем как раньше, но говорим об этом вслух. ⚠️ Когда сюда
     // придут фильтры WFP, эта ветка обязана стать отказом: поднимать
     // блокировку, которую некому снять, нельзя.
-    final aliveName = await _readAliveName();
+    final aliveName = _readAliveName(configPath);
     final alive = AppAliveMutex.watch(aliveName);
     await log.write(alive != null
         ? '--- слежу за интерфейсом: $aliveName'
         : '--- имени интерфейса нет — работаю без слежения '
             '(kill switch в этом режиме поднимать нельзя)');
+
+    // ⚠️ БАЗОВЫЙ НАБОР ПОДНИМАЕТСЯ ДО ЗАПУСКА ЯДРА.
+    //
+    // Иначе окно «ядро уже работает, адаптер ещё не появился» остаётся дырой:
+    // трафик в эти секунды идёт мимо VPN под настоящим адресом. Правило
+    // «пропускать туннель» в базовый набор не входит — LUID взяться неоткуда,
+    // адаптера ещё нет; оно дописывается в цикле, когда адаптер появится.
+    //
+    // На это время машина закрыта, и это не побочный ущерб, а поведение kill
+    // switch на подключении (школа Mullvad): свои бинари, адреса серверов,
+    // loopback и DHCP разрешены, остальное — нет.
+    final hold = _engageBase(log, alive, configPath);
+    if (hold == null && _wantsKillSwitch(configPath)) {
+      // ⚠️ KILL SWITCH ПРОСИЛИ, А ПОДНЯТЬ НЕ ВЫШЛО — ТУННЕЛЯ НЕ БУДЕТ.
+      // Поднять туннель, который может течь, при интерфейсе, обещающем защиту,
+      // — это ровно та жалоба, из-за которой всё затевалось, воспроизведённая
+      // своими руками.
+      await log.write('НЕ ЗАПУСКАЮ ЯДРО: kill switch включён, но блокировка не '
+          'поднялась. Туннель без неё обещал бы защиту, которой нет.');
+      alive?.dispose();
+      await log.close();
+      return;
+    }
 
     _delete(stopFile);
     Process proc;
@@ -215,22 +240,81 @@ class TunHelper {
       unawaited(log.write('--- sing-box завершился, код $code'));
     }));
 
+    // ⚠️ ОДИН ЦИКЛ И ОДИН ВЫХОД. Ожиданий ВНЕ цикла быть не должно: пока
+    // помощник ждёт что-то отдельно, он не смотрит ни stop-файл, ни признак
+    // жизни интерфейса — а команда «отключить» приходит именно туда. Первая
+    // редакция ждала LUID отдельным циклом до 15 с и этим заново открывала
+    // гонку stop-файла, которую закрывал предыдущий коммит.
+    var luidApplied = hold == null;
+    var coreDeathLogged = false;
+
     while (true) {
-      if (procExited) break;
       if (stopFile.existsSync()) {
         await log.write('--- получен stop-файл, останавливаю sing-box');
         proc.kill();
         break;
       }
-      // ⚠️ Интерфейс умер — уходим следом. Именно здесь, в общем цикле: смерть
-      // приложения ничем не отличается от команды «стоп», и обрабатывать её
-      // отдельной веткой значило бы завести второй путь выхода.
+      // Интерфейс умер — уходим следом. Смерть приложения ничем не отличается
+      // от команды «стоп»: отдельная ветка означала бы второй путь выхода.
       if (alive != null && !alive.appAlive) {
         await log.write('--- интерфейс завершился, останавливаю sing-box');
         proc.kill();
         break;
       }
+
+      // Адаптер появился — дописываем правило «пропускать туннель». До этого
+      // момента стоит БАЗОВЫЙ набор: он закрывает всё, кроме своих бинарей,
+      // серверов, loopback и DHCP. Так и задумано — на подключении машина
+      // закрыта, иначе окно «ядро уже работает, адаптера ещё нет» остаётся
+      // дырой.
+      if (!luidApplied) {
+        final luid = TunLuid.forAlias();
+        if (luid != null) {
+          final plan = _planFor(configPath, luid);
+          final ok = plan != null && hold!.reengage(plan,
+              log: (m) => unawaited(log.write('--- $m')));
+          if (ok) {
+            luidApplied = true;
+          } else {
+            // ⚠️ ОТКАЗ, А НЕ «ОСТАВИМ БАЗОВЫЙ». Базовый набор без правила
+            // туннеля душит ровно тот трафик, ради которого VPN и включали:
+            // человек увидит «Подключено» и мёртвый интернет.
+            await log.write('--- kill switch: не удалось разрешить туннель — '
+                'останавливаю, чтобы не оставить «подключено» без связи');
+            proc.kill();
+            break;
+          }
+        }
+      }
+
+      // ⚠️ СМЕРТЬ ЯДРА НЕ СНИМАЕТ БЛОКИРОВКУ. Здесь стоял `break`, и это была
+      // главная ошибка первой редакции: адаптер исчезает вместе с ядром,
+      // маршрут по умолчанию возвращается на физическую сеть — то есть защита
+      // пропадала ровно в тот момент, ради которого её и ставили. Дословно та
+      // жалоба владельца, из-за которой всё затевалось.
+      //
+      // Держать блокировку без туннеля безопасно: `teardownCore(keepCapture:
+      // true)` намеренно не трогает TUN между попытками восстановления, то
+      // есть живой помощник — штатный участник переподключения, а не сирота.
+      // Ядро не перезапускаем: восстановление — дело движка.
+      if (procExited) {
+        if (hold == null) break;
+        if (!coreDeathLogged) {
+          coreDeathLogged = true;
+          await log.write('--- ядро умерло, блокировка ДЕРЖИТСЯ: жду команду '
+              'или смерть интерфейса');
+        }
+      }
       await Future.delayed(const Duration(milliseconds: 400));
+    }
+    // ⚠️ СНИМАЕМ ЯВНО, хотя динамическая сессия снялась бы и сама при выходе.
+    // Явное снятие — не подстраховка, а разница в СРОКЕ: между `proc.kill()` и
+    // концом процесса помощник живёт секунды, и всё это время блокировка
+    // стояла бы уже без туннеля. Для человека это «интернет не вернулся сразу
+    // после Отключить».
+    if (hold != null) {
+      hold.release();
+      await log.write('--- блокировка снята');
     }
     alive?.dispose();
 
@@ -241,12 +325,80 @@ class TunHelper {
     await log.close();
   }
 
-  /// Имя мьютекса, положенное интерфейсом. Пусто — файла нет.
-  static Future<String> _readAliveName() async {
+  /// Просили ли блокировку вообще (файл плана с `enabled: true`).
+  static bool _wantsKillSwitch(String configPath) =>
+      KillSwitchPlanFile.read(_dataDir(configPath),
+          expectToken: _readAliveName(configPath)) !=
+      null;
+
+  /// План с подставленным LUID; `null` — плана нет или он не наш.
+  static KillSwitchPlan? _planFor(String configPath, int? luid) {
+    final plan = KillSwitchPlanFile.read(_dataDir(configPath),
+        tunnelLuid: luid, expectToken: _readAliveName(configPath));
+    return plan?.withOwnBinaries(_ownBinaries());
+  }
+
+  /// Поднять БАЗОВЫЙ набор — без правила туннеля, до старта ядра.
+  ///
+  /// `null` — не подняли. Причина всегда названа в журнале: молчаливое
+  /// отсутствие защиты хуже её отсутствия, потому что человек считает себя
+  /// защищённым.
+  static KillSwitchHold? _engageBase(
+      RotatingLog log, AppAliveWatch? alive, String configPath) {
     try {
-      final f = File(aliveFilePathFor(await AppPaths.supportDir()));
+      final plan = _planFor(configPath, null);
+      // Блокировать не просили — штатный молчаливый выход.
+      if (plan == null) return null;
+
+      // ⚠️ БЕЗ СВЯЗИ С ИНТЕРФЕЙСОМ БЛОКИРОВКУ ПОДНИМАТЬ НЕЛЬЗЯ. Помощник, не
+      // знающий, жив ли интерфейс, переживёт его падение — и снять блокировку
+      // будет некому. Машина без сети до перезагрузки.
+      if (alive == null) {
+        unawaited(log.write('--- kill switch НЕ поднят: нет связи с '
+            'интерфейсом. Блокировка, которую некому снять, опаснее её '
+            'отсутствия'));
+        return null;
+      }
+      return KillSwitchWfp.engage(plan,
+          log: (m) => unawaited(log.write('--- $m')));
+    } catch (e) {
+      unawaited(log.write('--- kill switch не поднялся: $e'));
+      return null;
+    }
+  }
+
+  /// Свои бинари — те, что обязаны ходить в сеть при поднятой блокировке.
+  ///
+  /// ⚠️ СПРАШИВАЕМ У СЕБЯ, А НЕ У ИНТЕРФЕЙСА. Помощник и есть `silentgate.exe`,
+  /// а ядра лежат рядом с ним; передавать это файлом значило бы завести второй
+  /// источник правды о том, что помощник знает точнее всех.
+  static List<String> _ownBinaries() {
+    final out = <String>[Platform.resolvedExecutable];
+    final loc = XrayPaths.locate();
+    if (loc != null) {
+      for (final n in const ['sing-box.exe', 'xray.exe']) {
+        final f = File('${loc.assetDir}${Platform.pathSeparator}$n');
+        if (f.existsSync()) out.add(f.path);
+      }
+    }
+    return out;
+  }
+
+  /// ⚠️ КАТАЛОГ ДАННЫХ — РЯДОМ С КОНФИГОМ, А НЕ ИЗ `AppPaths.supportDir()`.
+  ///
+  /// Явные пути заведены ровно потому, что на учётке с ОТДЕЛЬНЫМ админом
+  /// `%APPDATA%` помощника — чужой (правка #7). Спросив свой каталог, он не
+  /// нашёл бы ни признака жизни, ни плана блокировки — и оба отказа прошли бы
+  /// молча.
+  static Directory _dataDir(String configPath) =>
+      File(configPath).parent;
+
+  /// Имя мьютекса, положенное интерфейсом. Пусто — файла нет.
+  static String _readAliveName(String configPath) {
+    try {
+      final f = File(aliveFilePathFor(_dataDir(configPath)));
       if (!f.existsSync()) return '';
-      return (await f.readAsString()).trim();
+      return f.readAsStringSync().trim();
     } catch (_) {
       return '';
     }

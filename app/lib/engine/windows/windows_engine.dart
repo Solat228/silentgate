@@ -27,6 +27,7 @@ import 'singbox_process.dart';
 import 'singbox_stats.dart';
 import '../../core/net/dns_fallback_server.dart';
 import 'system_proxy.dart';
+import 'tun/app_alive_mutex.dart';
 import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
@@ -666,6 +667,9 @@ class WindowsEngine extends VpnEngineBase {
       await KillSwitchPlanFile.write(
         dir,
         enabled: s.killSwitch,
+        // Тот же токен, что в `tun_alive`: помощник примет план, только если
+        // он написан этим же запуском приложения.
+        sessionToken: AppAliveMutex.name,
         serverIps: serverIps.toSet(),
         blockAll: !onlySelected,
         blockedAppPaths: onlySelected

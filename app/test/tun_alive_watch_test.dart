@@ -92,4 +92,100 @@ void main() {
           reason: 'стирание допустимо только ПОСЛЕ неудачного ожидания');
     });
   });
+
+  group('⚠️ Порядок подъёма блокировки', () {
+    /// ⚠️ ЭТИ ИНВАРИАНТЫ ПЕРЕПИСАНЫ 20.08.2026 ПОСЛЕ РАЗБОРА СКЕПТИКАМИ.
+    /// Первая редакция поднимала фильтры ПОСЛЕ старта ядра и снимала их по
+    /// смерти ядра — то есть защита пропадала ровно в тот момент, ради
+    /// которого её и ставили. Прежние стражи это одобряли: они проверяли
+    /// порядок, который сам по себе был неверен.
+    String code(String path) => File(path)
+        .readAsLinesSync()
+        .where((l) {
+          final t = l.trimLeft();
+          return !t.startsWith('//') && !t.startsWith('///');
+        })
+        .join(String.fromCharCode(10));
+
+    late String helper;
+    setUp(() => helper = code('lib/engine/windows/tun/tun_helper.dart'));
+
+    test('⚠️ базовый набор поднимается ДО запуска ядра', () {
+      // Иначе окно «ядро уже работает, адаптера ещё нет» остаётся дырой:
+      // трафик в эти секунды идёт мимо VPN под настоящим адресом.
+      final engageAt = helper.indexOf('_engageBase(log, alive, configPath)');
+      final startAt = helper.indexOf('Process.start(');
+      expect(engageAt, greaterThan(0));
+      expect(startAt, greaterThan(engageAt),
+          reason: 'ядро обязано стартовать ПОСЛЕ подъёма блокировки');
+    });
+
+    test('⚠️ kill switch просили, но не подняли — ядро НЕ запускается', () {
+      // Туннель, который может течь, при интерфейсе, обещающем защиту, — это
+      // исходная жалоба владельца, воспроизведённая своими руками.
+      expect(helper, contains('_wantsKillSwitch(configPath)'));
+      expect(helper, contains('НЕ ЗАПУСКАЮ ЯДРО'));
+    });
+
+    test('⚠️ без связи с интерфейсом блокировка НЕ поднимается', () {
+      final body = helper.substring(helper.indexOf('_engageBase('));
+      final guardAt = body.indexOf('alive == null');
+      final engageAt = body.indexOf('KillSwitchWfp.engage(');
+      expect(guardAt, greaterThan(0), reason: 'проверки связи нет вовсе');
+      expect(engageAt, greaterThan(guardAt),
+          reason: 'подъём обязан стоять ПОСЛЕ проверки связи');
+    });
+
+    test('⚠️ СМЕРТЬ ЯДРА НЕ СНИМАЕТ БЛОКИРОВКУ', () {
+      // Главная находка разбора. Адаптер исчезает вместе с ядром, маршрут по
+      // умолчанию возвращается на физическую сеть — и если бы помощник тут
+      // выходил, трафик ушёл бы под реальным адресом. Ровно та жалоба, из-за
+      // которой всё затевалось.
+      final loop = helper.substring(helper.indexOf('while (true) {'));
+      final at = loop.indexOf('if (procExited)');
+      expect(at, greaterThan(0));
+      final branch = loop.substring(at, at + 220);
+      expect(branch, contains('if (hold == null) break'),
+          reason: 'выходить по смерти ядра можно ТОЛЬКО когда блокировки нет');
+      expect(branch, contains('блокировка ДЕРЖИТСЯ'));
+    });
+
+    test('⚠️ правило туннеля дописывается В ЦИКЛЕ, а не отдельным ожиданием', () {
+      // Отдельный цикл ожидания LUID (до 15 с) не смотрел ни stop-файл, ни
+      // признак жизни — и заново открывал гонку, которую закрыл предыдущий
+      // коммит.
+      final loop = helper.substring(helper.indexOf('while (true) {'));
+      expect(loop, contains('TunLuid.forAlias()'),
+          reason: 'LUID обязан спрашиваться внутри общего тика');
+      expect(loop, contains('reengage('));
+      expect(helper.contains('_waitTunLuid'), isFalse,
+          reason: 'отдельного ожидания LUID быть не должно');
+    });
+
+    test('⚠️ не удалось разрешить туннель — останавливаемся', () {
+      // Базовый набор без правила туннеля душит ровно тот трафик, ради
+      // которого VPN включали: человек увидит «Подключено» и мёртвый интернет.
+      final loop = helper.substring(helper.indexOf('while (true) {'));
+      expect(loop, contains('не удалось разрешить туннель'));
+    });
+
+    test('⚠️ блокировка снимается ЯВНО, а не только смертью процесса', () {
+      // Между `proc.kill()` и концом процесса помощник живёт секунды, и всё это
+      // время блокировка стояла бы уже без туннеля.
+      expect(helper, contains('hold.release()'));
+    });
+
+    test('⚠️ каталог данных берётся рядом с конфигом, а не свой', () {
+      // На учётке с отдельным админом %APPDATA% помощника — чужой (правка #7).
+      // Спросив свой каталог, он не нашёл бы ни признака жизни, ни плана.
+      expect(helper, contains('static Directory _dataDir(String configPath)'));
+      final body = helper.substring(helper.indexOf('_engageBase('));
+      expect(body.contains('AppPaths.supportDir()'), isFalse,
+          reason: 'подъём блокировки не имеет права смотреть в свой %APPDATA%');
+    });
+
+    test('план чужой сессии не принимается', () {
+      expect(helper, contains('expectToken: _readAliveName(configPath)'));
+    });
+  });
 }

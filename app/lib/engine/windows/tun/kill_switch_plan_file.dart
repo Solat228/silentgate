@@ -31,6 +31,11 @@ class KillSwitchPlanFile {
   static Future<void> write(
     Directory supportDir, {
     required bool enabled,
+    /// ⚠️ ТОКЕН СЕССИИ — ТО ЖЕ ИМЯ МЬЮТЕКСА, ЧТО В `tun_alive`. Без него
+    /// помощник не отличает план ЭТОЙ сессии от прошлогоднего: файл переживает
+    /// отключение, падение и перезагрузку. Стухшие адреса серверов означают
+    /// блокировку, из-под которой не переподключиться.
+    required String sessionToken,
     required Set<String> serverIps,
     required bool blockAll,
     required List<String> blockedAppPaths,
@@ -38,6 +43,7 @@ class KillSwitchPlanFile {
   }) async {
     final map = <String, dynamic>{
       'enabled': enabled,
+      'sessionToken': sessionToken,
       'serverIps': serverIps.toList()..sort(),
       'blockAll': blockAll,
       'blockedAppPaths': blockedAppPaths,
@@ -52,13 +58,20 @@ class KillSwitchPlanFile {
   /// полупрочитанного файла, — это либо дыра (потеряли приложения из списка),
   /// либо машина без нужного трафика (потеряли адреса серверов). Второго шанса
   /// спросить у помощника нет: приложение к этому моменту уже могло умереть.
-  static KillSwitchPlan? read(Directory supportDir, {int? tunnelLuid}) {
+  static KillSwitchPlan? read(Directory supportDir,
+      {int? tunnelLuid, String expectToken = ''}) {
     try {
       final f = File(pathFor(supportDir));
       if (!f.existsSync()) return null;
       final decoded = jsonDecode(f.readAsStringSync());
       if (decoded is! Map) return null;
       if (decoded['enabled'] != true) return null;
+      // ⚠️ ЧУЖОЙ ИЛИ СТУХШИЙ ПЛАН НЕ ПРИМЕНЯЕМ. Совпадение токена — простейший
+      // способ убедиться, что файл написан ТЕМ ЖЕ запуском приложения, чей
+      // мьютекс мы держим под наблюдением.
+      if (expectToken.isNotEmpty && decoded['sessionToken'] != expectToken) {
+        return null;
+      }
 
       final ips = <String>{
         for (final x in (decoded['serverIps'] as List? ?? const []))
