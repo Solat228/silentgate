@@ -44,17 +44,29 @@ void main() {
   /// Круг кнопки Connect — 148 px, как `_ConnectButton` на нормальной высоте.
   const button = SizedBox(key: Key('btn'), width: 148, height: 148);
 
-  Widget host(Widget child) => MaterialApp(
+  /// Порог двухпанельной раскладки из `home_screen.dart`. Ниже него
+  /// `_ConnectPane` получает `compact: true` и оборачивает колонку в
+  /// `SingleChildScrollView`; выше — держится распорками и НЕ прокручивается.
+  const twoPaneMinWidth = 760.0;
+
+  /// ⚠️ СКРОЛЛ ДОБАВЛЯЕТСЯ РОВНО ТАМ, ГДЕ ЕГО ДОБАВЛЯЕТ ПРИЛОЖЕНИЕ.
+  ///
+  /// Первая редакция этого файла оборачивала в скролл ВСЕ разрешения — и
+  /// потому не поймала бы переполнение на широком окне, где приложение
+  /// прокрутки не имеет вовсе. Тест был зелёным, а на экране содержимое
+  /// обрезалось бы молча: в релизной сборке полосы переполнения не рисуются.
+  /// Это ровно та ошибка, на которой в этом проекте уже обжигались: страж,
+  /// собирающий СВОЮ раскладку вместо настоящей, проверяет не то.
+  Widget host(Widget child, {required double width}) => MaterialApp(
         locale: const Locale('ru'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: ChangeNotifierProvider(
           create: (_) => ServiceCheckController(),
-          // ⚠️ Скролл здесь НАМЕРЕННО: на узком экране `_ConnectPane` оборачивает
-          // колонку в `SingleChildScrollView` (`_MaybeScroll`), и без него тест
-          // краснел бы на нехватке высоты, которой в приложении нет.
           child: Scaffold(
-            body: SingleChildScrollView(child: Center(child: child)),
+            body: width < twoPaneMinWidth
+                ? SingleChildScrollView(child: Center(child: child))
+                : Center(child: child),
           ),
         ),
       );
@@ -66,12 +78,15 @@ void main() {
         t.view.devicePixelRatio = 1.0;
         addTearDown(t.view.reset);
 
-        await t.pumpWidget(host(ConnectCenterpiece(
-          serverName: '🇩🇪 🚀Германия 2.7 (edge)',
-          httpPort: 10809,
-          button: button,
-          services: ServiceChecks.catalog,
-        )));
+        await t.pumpWidget(host(
+          ConnectCenterpiece(
+            serverName: '🇩🇪 🚀Германия 2.7 (edge)',
+            httpPort: 10809,
+            button: button,
+            services: ServiceChecks.catalog,
+          ),
+          width: e.value.width,
+        ));
         await t.pump();
 
         // ⚠️ ГЛАВНОЕ: переполнение Flutter сообщает исключением, и без этой
@@ -103,12 +118,15 @@ void main() {
       t.view.devicePixelRatio = 1.0;
       addTearDown(t.view.reset);
 
-      await t.pumpWidget(host(const ConnectCenterpiece(
-        serverName: null,
-        httpPort: 0,
-        button: button,
-        services: [],
-      )));
+      await t.pumpWidget(host(
+        const ConnectCenterpiece(
+          serverName: null,
+          httpPort: 0,
+          button: button,
+          services: [],
+        ),
+        width: 360,
+      ));
       await t.pump();
 
       expect(t.takeException(), isNull);
@@ -121,12 +139,15 @@ void main() {
       t.view.devicePixelRatio = 1.0;
       addTearDown(t.view.reset);
 
-      await t.pumpWidget(host(const ConnectCenterpiece(
-        serverName: null,
-        httpPort: 0,
-        button: button,
-        services: [ProbeService.telegram],
-      )));
+      await t.pumpWidget(host(
+        const ConnectCenterpiece(
+          serverName: null,
+          httpPort: 0,
+          button: button,
+          services: [ProbeService.telegram],
+        ),
+        width: 360,
+      ));
       await t.pump();
 
       expect(t.takeException(), isNull);
