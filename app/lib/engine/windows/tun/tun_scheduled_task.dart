@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../../../core/platform/app_paths.dart';
 import '../elevation.dart';
 import 'tun_helper.dart';
@@ -22,6 +24,90 @@ class TunScheduledTask {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Путь к exe и аргументы, которые задача ДОЛЖНА запускать сейчас.
+  ///
+  /// ⚠️ ВЫНЕСЕНО ОТДЕЛЬНО, ЧТОБЫ БЫЛО С ЧЕМ СРАВНИВАТЬ. Раньше строка запуска
+  /// существовала только внутри [install] — то есть проверить, ту ли программу
+  /// запускает уже созданная задача, было нечем.
+  static Future<({String exe, String args})> expected() async {
+    final dir = await AppPaths.supportDir();
+    return (
+      exe: Platform.resolvedExecutable,
+      args: '--tun-task "${TunHelper.configPathFor(dir)}" '
+          '"${TunHelper.stopFilePathFor(dir)}"',
+    );
+  }
+
+  /// Запускает ли СУЩЕСТВУЮЩАЯ задача именно то, что нужно сейчас.
+  ///
+  /// ⚠️ РАДИ ЧЕГО ЭТО ЕСТЬ. Задача создаётся один раз и не пересматривается
+  /// никогда: путь настройки первой строкой делает `if (isConfigured()) return`.
+  /// На машине владельца это дало задачу от 20.07.2026, которая до сих пор
+  /// запускает **exe из папки сборки** (`appuild\…\Release`) и с голым
+  /// `--tun-task` без путей конфига и stop-файла. Следствия тихие и разные:
+  /// после обновления интерфейс новый, а туннельное ядро старое; правка с
+  /// явными путями (#7) не применилась вовсе; удалите папку сборки — и TUN
+  /// перестанет подниматься, а выглядеть это будет как «не работает VPN».
+  ///
+  /// Возвращает `false` и когда задачи нет, и когда прочитать её не удалось:
+  /// «не знаю» здесь обязано вести себя как «не подходит», иначе мы снова
+  /// запустим чужой бинарь.
+  static Future<bool> isCurrent() async {
+    try {
+      final r = await Process.run(
+          'schtasks', ['/Query', '/TN', taskName, '/XML'],
+          stdoutEncoding: null);
+      if (r.exitCode != 0) return false;
+      // ⚠️ Вывод в UTF-16LE с BOM: `schtasks /XML` печатает именно так, и
+      // системная кодировка его не берёт — строка приходила мусором, а
+      // сравнение всегда давало «не совпало».
+      final want = await expected();
+      return matches(decodeUtf16(r.stdout as List<int>), want.exe, want.args);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Совпадает ли XML задачи с ожидаемой командой.
+  ///
+  /// ⚠️ ЧИСТАЯ ФУНКЦИЯ НАМЕРЕННО. Сам [isCurrent] запускает `schtasks` и в
+  /// тестах недоступен, а ошибка сравнения здесь тихая и дорогая: «совпало» на
+  /// самом деле означает «запускаем чужой бинарь под правами администратора».
+  @visibleForTesting
+  static bool matches(String xml, String exe, String args) {
+    // Пути сравниваем без учёта регистра: Windows его не различает, а
+    // Планировщик возвращает то, что записали.
+    return tag(xml, 'Command').toLowerCase() == exe.toLowerCase() &&
+        tag(xml, 'Arguments').toLowerCase() == args.toLowerCase();
+  }
+
+  /// Содержимое одного тега XML. Полноценный разбор здесь не нужен: оба поля
+  /// плоские и без вложенности.
+  ///
+  /// ⚠️ `&quot;` разворачивается обратно в кавычку: пути с пробелами Планировщик
+  /// хранит экранированными, и без этого сравнение не совпадало бы НИКОГДА —
+  /// то есть задача всегда считалась бы устаревшей, а запуск без UAC пропал бы
+  /// у всех.
+  @visibleForTesting
+  static String tag(String xml, String name) {
+    final m = RegExp('<$name>(.*?)</$name>', dotAll: true).firstMatch(xml);
+    return (m?.group(1) ?? '').trim().replaceAll('&quot;', '"');
+  }
+
+  /// ⚠️ `schtasks /XML` печатает UTF-16LE с меткой порядка байт. Системная
+  /// кодировка его не берёт: строка приходила мусором, и сравнение не совпало
+  /// бы ни разу.
+  @visibleForTesting
+  static String decodeUtf16(List<int> bytes) {
+    var b = bytes;
+    if (b.length >= 2 && b[0] == 0xFF && b[1] == 0xFE) b = b.sublist(2);
+    final units = <int>[];
+    for (var i = 0; i + 1 < b.length; i += 2) {
+      units.add(b[i] | (b[i + 1] << 8));
+    }
+    return String.fromCharCodes(units);
   }
 
   /// Создать/пересоздать задачу. Показывает UAC ОДИН раз. true — запуск подтверждён.

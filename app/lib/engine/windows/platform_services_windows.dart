@@ -72,8 +72,15 @@ class _WindowsPrivileges implements PrivilegeSetup {
   @override
   bool get isApplicable => true;
 
+  /// ⚠️ «НАСТРОЕНО» ЗНАЧИТ «ЗАДАЧА ЕСТЬ И ЗАПУСКАЕТ ТО, ЧТО НАДО».
+  ///
+  /// Раньше здесь стояло одно `exists()`, а экран настроек первой строкой
+  /// делает `if (isConfigured()) return` — то есть существующая задача не
+  /// пересоздавалась НИКОГДА. На машине владельца из-за этого живёт задача от
+  /// 20.07.2026, запускающая exe из папки сборки и без путей конфига.
   @override
-  Future<bool> isConfigured() => TunScheduledTask.exists();
+  Future<bool> isConfigured() async =>
+      await TunScheduledTask.exists() && await TunScheduledTask.isCurrent();
 
   @override
   Future<bool> configure() => TunScheduledTask.install();
