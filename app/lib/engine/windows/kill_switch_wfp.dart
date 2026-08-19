@@ -1,67 +1,68 @@
-import 'dart:ffi';
-import 'dart:io';
-
-import 'package:ffi/ffi.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
-
 /// НАСТОЯЩИЙ kill switch: фильтры Windows Filtering Platform.
 ///
 /// ⚠️ ЗАЧЕМ ОН, ЕСЛИ KILL SWITCH УЖЕ «ЕСТЬ». Существующий ничего не блокирует:
 /// он лишь не снимает TUN-адаптер, и пакетам некому ответить. Пока приложение
-/// живо, этого хватает. Но стоит ему упасть — Windows снимает адаптер сама,
-/// маршрут по умолчанию возвращается на физическую сеть, и трафик туннельных
-/// приложений уходит под РЕАЛЬНЫМ адресом. Молча, без строки в журнале. Жалоба
-/// владельца 19.08.2026 («kill switch включён, а меня выбивает под реальным
-/// IP») упиралась именно в это.
+/// живо, этого хватает. Но стоит ЯДРУ умереть само — адаптер исчезает вместе с
+/// ним, маршрут по умолчанию возвращается на физическую сеть, и трафик
+/// туннельных приложений уходит под РЕАЛЬНЫМ адресом. Молча, без строки в
+/// журнале. Жалоба владельца 19.08.2026 («kill switch включён, а меня выбивает
+/// под реальным IP») упиралась именно в это.
 ///
 /// ⚠️ СВОЙ ДРАЙВЕР НЕ НУЖЕН — проверено по документации Microsoft и исходникам
 /// WireGuard for Windows (`tunnel/firewall/rules.go`). Драйверы у других
 /// клиентов стоят ради раздельного туннелирования, а не ради блокировки. Права
 /// администратора нужны: `FwpmEngineOpen0` откроется и без них (право
 /// `FWPM_ACTRL_OPEN` выдано Everyone), а вот добавление объектов вернёт отказ.
-/// Поэтому владельцем фильтров задуман ЭЛЕВЕЙТНУТЫЙ ПОМОЩНИК TUN
-/// (`TunHelper.run`, задача Планировщика `/RL HIGHEST`), а не процесс
-/// интерфейса: он элевейтнут и живёт ровно столько, сколько туннель.
 ///
 /// ⚠️ ТРИ УСЛОВИЯ, ОШИБКА В КОТОРЫХ ОСТАВЛЯЕТ ЧЕЛОВЕКА БЕЗ ИНТЕРНЕТА:
-///  1. Сессия ТОЛЬКО динамическая ([_sessionFlagDynamic]). Её объекты снимает
-///     сама Windows при смерти процесса, включая аварийную — через RPC rundown.
-///     Статическая переживёт крах, и снять её будет некому.
+///  1. Сессия ТОЛЬКО динамическая ([WfpConst.sessionFlagDynamic]). Её объекты
+///     снимает сама Windows при смерти процесса, включая аварийную — через RPC
+///     rundown. Статическая переживёт крах, и снять её будет некому.
 ///  2. `FWPM_FILTER_FLAG_PERSISTENT` не использовать НИКОГДА: такой фильтр
 ///     переживает перезагрузку. У Proton для этого есть служба, у нас нет.
+///     ⚠️ Его значение РАВНО значению флага динамической сессии — обе единицы;
+///     см. [WfpConst.filterFlagPersistent].
 ///  3. Слои обязаны включать IPv6. Без него трафик уходит мимо, и защита
 ///     становится украшением.
 ///
-/// ⚠️ СОСТОЯНИЕ: пока здесь ТОЛЬКО РАЗВЕДКА ([probe]) — она ничего не
-/// блокирует. Расстановка правил появится после того, как разведка подтвердит
-/// в VM права и связывание. Порядок обратный обычному нарочно: цена ошибки
-/// здесь — машина без сети, и «написал, потом проверю» тут не работает.
+/// ⚠️ ЛИБО ВЕСЬ ПЛАН, ЛИБО НИЧЕГО. Любая осечка при постановке правил
+/// откатывает транзакцию целиком. Наполовину поднятая блокировка — это ровно то
+/// обещание без исполнения, на которое владелец и жаловался: интерфейс говорит
+/// «защищено», а дыра открыта.
+library;
+
+import 'dart:ffi';
+import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:ffi/ffi.dart';
+
+import 'wfp_layout.dart';
+import 'wfp_rules.dart';
+
+export 'wfp_rules.dart' show KillSwitchPlan;
+
 class KillSwitchWfp {
   /// Что именно разрешаем при поднятой блокировке.
   ///
   /// ⚠️ ЧИСТАЯ ФУНКЦИЯ НАМЕРЕННО: сами вызовы к системе в тестах дёргать
   /// нельзя (фильтры затрагивают сеть всей машины), а состав правил проверить
   /// обязательно — ошибка здесь либо оставляет дыру, либо рубит человеку сеть.
-  @visibleForTesting
   static KillSwitchPlan planFor({
     required Set<String> serverIps,
     required List<String> tunnelAppPaths,
     required bool blockEverything,
+    List<String> ownBinaryPaths = const [],
+    bool allowLan = true,
+    int? tunnelInterfaceLuid,
   }) =>
       KillSwitchPlan(
-        // ⚠️ Адреса серверов — всегда. Иначе туннель не поднимется заново:
-        // ядру некуда будет постучаться, и блокировка станет вечной.
         allowServerIps: {...serverIps},
-        // ⚠️ Свои бинари разрешаем ВСЕГДА, даже блокируя всё. Иначе приложение
-        // не сможет ни проверить канал, ни обновить подписку, ни объяснить
-        // человеку, что происходит: мёртвая сеть и молчащее окно.
         allowOwnBinaries: true,
+        ownBinaryPaths: ownBinaryPaths,
         allowLoopback: true,
-        allowLan: true,
-        allowDhcpAndNdp: true,
-        // Школа Mullvad (решение владельца 19.08.2026): исключения из туннеля
-        // остаются исключениями и из блокировки. Режем либо всё, либо только
-        // те приложения, что шли через VPN.
+        allowLan: allowLan,
+        tunnelInterfaceLuid: tunnelInterfaceLuid,
         blockedAppPaths: blockEverything ? const [] : List.of(tunnelAppPaths),
         blockAll: blockEverything,
       );
@@ -99,14 +100,221 @@ class KillSwitchWfp {
     );
   }
 
+  /// ПОДНЯТЬ БЛОКИРОВКУ. Возвращает держатель: **пока он жив, фильтры стоят**.
+  ///
+  /// ⚠️ ФИЛЬТРЫ ЖИВУТ РОВНО СТОЛЬКО, СКОЛЬКО ОТКРЫТ ДЕСКРИПТОР ДВИЖКА. Это не
+  /// побочный эффект, а несущая конструкция: сессия динамическая, поэтому и
+  /// закрытие дескриптора, и смерть процесса — включая аварийную — снимают всё
+  /// без нашего участия. Ничего «прибирать за собой при выходе» не нужно, и
+  /// полагаться на такую приборку было бы нельзя.
+  ///
+  /// Возвращает `null`, если поднять не удалось; причина — в [KillSwitchProbe]
+  /// внутри результата разведки и в тексте исключения.
+  static KillSwitchHold? engage(KillSwitchPlan plan, {void Function(String)? log}) {
+    void say(String s) => log?.call(s);
+    if (!Platform.isWindows) {
+      say('kill switch: не Windows, блокировка не ставится');
+      return null;
+    }
+    final rules = buildWfpRules(plan);
+    if (rules.isEmpty) {
+      say('kill switch: блокировать нечего — систему не трогаем');
+      return null;
+    }
+
+    final probeResult = probe();
+    if (!probeResult.canFilter) {
+      say('kill switch: $probeResult');
+      return null;
+    }
+
+    final arena = Arena();
+    final blobs = <Pointer<Pointer<Void>>>[];
+    Pointer<Void> engine = nullptr;
+    var committed = false;
+    try {
+      final handle = arena<Pointer<Void>>();
+      final session = _zeroed(arena, WfpSessionOffsets.size);
+      _W(session, WfpSessionOffsets.size)
+        ..u32(WfpSessionOffsets.flags, WfpConst.sessionFlagDynamic)
+        ..ptr(WfpSessionOffsets.displayData,
+            'SilentGate kill switch'.toNativeUtf16(allocator: arena));
+
+      var rc = _engineOpen(
+          nullptr, probeResult.authnService!, nullptr, session, handle);
+      if (rc != 0) {
+        say('kill switch: движок не открылся, код $rc');
+        return null;
+      }
+      engine = handle.value;
+
+      rc = _txnBegin(engine, 0);
+      if (rc != 0) {
+        say('kill switch: транзакция не началась, код $rc');
+        return null;
+      }
+
+      // Свой подслой с наибольшим весом: внутри него решают наши веса, а
+      // снаружи он не спорит с чужими правилами — каждый подслой выносит свой
+      // вердикт, и запрет любого из них перевешивает чужое разрешение.
+      final sub = _zeroed(arena, WfpSubLayerOffsets.size);
+      _W(sub, WfpSubLayerOffsets.size)
+        ..guid(WfpSubLayerOffsets.subLayerKey, _subLayerKey)
+        ..ptr(WfpSubLayerOffsets.displayData,
+            'SilentGate kill switch'.toNativeUtf16(allocator: arena))
+        ..u16(WfpSubLayerOffsets.weight, 0xFFFF);
+      rc = _subLayerAdd(engine, sub, nullptr);
+      if (rc != 0) {
+        say('kill switch: подслой не создан, код $rc');
+        return null;
+      }
+
+      var installed = 0;
+      for (final rule in rules) {
+        for (final layer in rule.layers) {
+          final code = _addFilter(arena, engine, rule, layer, blobs);
+          if (code != 0) {
+            // ⚠️ ЛИБО ВЕСЬ ПЛАН, ЛИБО НИЧЕГО: половина правил — это дыра,
+            // выдающая себя за защиту.
+            say('kill switch: правило «${rule.name}» отвергнуто, код $code — '
+                'откатываю всё');
+            return null;
+          }
+          installed++;
+        }
+      }
+
+      rc = _txnCommit(engine);
+      if (rc != 0) {
+        say('kill switch: транзакция не применилась, код $rc');
+        return null;
+      }
+      committed = true;
+      say('kill switch поднят: правил ${rules.length}, фильтров $installed');
+      final hold = KillSwitchHold._(engine, installed, rules.length);
+      engine = nullptr; // держатель забрал владение
+      return hold;
+    } catch (e) {
+      say('kill switch: исключение при подъёме — $e');
+      return null;
+    } finally {
+      // ⚠️ ОТКАТ ДО ЗАКРЫТИЯ ДВИЖКА. Незакрытая транзакция при закрытии
+      // дескриптора и так пропадёт, но откат явный — чтобы причина сбоя не
+      // зависела от того, что решит сделать RPC-слой.
+      if (!committed && engine != nullptr) {
+        try {
+          _txnAbort(engine);
+        } catch (_) {}
+      }
+      for (final b in blobs) {
+        try {
+          _freeMemory(b);
+        } catch (_) {}
+      }
+      if (engine != nullptr) _engineClose(engine);
+      arena.releaseAll();
+    }
+  }
+
+  /// Поставить один фильтр. Возвращает код возврата WFP (0 — успех).
+  static int _addFilter(
+    Arena arena,
+    Pointer<Void> engine,
+    WfpRule rule,
+    WfpGuid layer,
+    List<Pointer<Pointer<Void>>> blobs,
+  ) {
+    final conds = rule.conditions;
+    final condArray = conds.isEmpty
+        ? nullptr
+        : _zeroed(arena, WfpConditionOffsets.size * conds.length);
+
+    for (var i = 0; i < conds.length; i++) {
+      final c = conds[i];
+      final base = WfpConditionOffsets.size * i;
+      final w = _W(condArray, WfpConditionOffsets.size * conds.length)
+        ..guid(base + WfpConditionOffsets.fieldKey, c.field)
+        ..u32(base + WfpConditionOffsets.matchType, c.matchType);
+      final valueAt = base + WfpConditionOffsets.conditionValue;
+
+      switch (c.kind) {
+        case WfpValueKind.appId:
+          final out = arena<Pointer<Void>>();
+          final rc = _getAppId(c.path.toNativeUtf16(allocator: arena), out);
+          if (rc != 0) return rc;
+          blobs.add(out);
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeByteBlob)
+            ..ptr(valueAt + WfpValueOffsets.value, out.value);
+        case WfpValueKind.v4Net:
+          // ⚠️ АДРЕС И МАСКА — В ХОЗЯЙСКОМ ПОРЯДКЕ БАЙТ, не в сетевом. Это
+          // требование самого WFP; записав сетевой порядок, получишь валидный
+          // фильтр на совершенно другую подсеть.
+          final m = _zeroed(arena, WfpConst.v4AddrAndMaskSize);
+          final addr = (c.bytes[0] << 24) |
+              (c.bytes[1] << 16) |
+              (c.bytes[2] << 8) |
+              c.bytes[3];
+          final mask = c.number == 0
+              ? 0
+              : (0xFFFFFFFF << (32 - c.number)) & 0xFFFFFFFF;
+          _W(m, WfpConst.v4AddrAndMaskSize)
+            ..u32(0, addr & mask)
+            ..u32(4, mask);
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeV4AddrMask)
+            ..ptr(valueAt + WfpValueOffsets.value, m);
+        case WfpValueKind.v6Net:
+          // ⚠️ Структура УПАКОВАНА: 16 байт адреса + 1 байт длины префикса.
+          final m = _zeroed(arena, WfpConst.v6AddrAndMaskSize);
+          _W(m, WfpConst.v6AddrAndMaskSize)
+            ..bytes(0, c.bytes)
+            ..u8(16, c.number);
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeV6AddrMask)
+            ..ptr(valueAt + WfpValueOffsets.value, m);
+        case WfpValueKind.u64:
+          // ⚠️ 64-битное значение лежит ПО УКАЗАТЕЛЮ (`UINT64 *uint64` в
+          // объединении), в отличие от 8/16/32-битных, которые по значению.
+          // Сверено с заголовком SDK `fwptypes.h`.
+          final v = _zeroed(arena, 8);
+          _W(v, 8).u64(0, c.number);
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeUint64)
+            ..ptr(valueAt + WfpValueOffsets.value, v);
+        case WfpValueKind.u32:
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeUint32)
+            ..u32(valueAt + WfpValueOffsets.value, c.number);
+      }
+    }
+
+    final f = _zeroed(arena, WfpFilterOffsets.size);
+    _W(f, WfpFilterOffsets.size)
+      ..ptr(WfpFilterOffsets.displayData,
+          rule.name.toNativeUtf16(allocator: arena))
+      ..guid(WfpFilterOffsets.layerKey, layer)
+      ..guid(WfpFilterOffsets.subLayerKey, _subLayerKey)
+      ..u32(WfpFilterOffsets.weight + WfpValueOffsets.type, WfpConst.typeUint8)
+      ..u64(WfpFilterOffsets.weight + WfpValueOffsets.value, rule.weight)
+      ..u32(WfpFilterOffsets.numFilterConditions, conds.length)
+      ..ptr(WfpFilterOffsets.filterCondition, condArray)
+      ..u32(WfpFilterOffsets.action + WfpActionOffsets.type, rule.action);
+    // ⚠️ Поле flags остаётся НУЛЁМ. Именно здесь жил бы
+    // `FWPM_FILTER_FLAG_PERSISTENT`, переживающий перезагрузку.
+
+    return _filterAdd(engine, f, nullptr, nullptr);
+  }
+
   static KillSwitchProbe _probeWith(_Authn authn) {
     final arena = Arena();
     Pointer<Void> engine = nullptr;
     try {
       final handle = arena<Pointer<Void>>();
-      final session = arena<_FwpmSession0>();
-      // ⚠️ ЕДИНСТВЕННЫЙ допустимый флаг. См. условие 1 в описании класса.
-      session.ref.flags = _sessionFlagDynamic;
+      final session = _zeroed(arena, WfpSessionOffsets.size);
+      // ⚠️ ЕДИНСТВЕННЫЙ допустимый флаг. См. условие 1 в описании библиотеки.
+      _W(session, WfpSessionOffsets.size)
+          .u32(WfpSessionOffsets.flags, WfpConst.sessionFlagDynamic);
 
       var rc = _engineOpen(nullptr, authn.value, nullptr, session, handle);
       if (rc != 0) return KillSwitchProbe(canFilter: false, detail: 'open=$rc');
@@ -117,13 +325,12 @@ class KillSwitchWfp {
 
       // Подслой — самый дешёвый объект, требующий тех же прав, что и фильтр,
       // и НЕ влияющий на трафик сам по себе.
-      final sub = arena<_FwpmSubLayer0>();
-      sub.ref.keyData1 = _subLayerKeyData1;
-      sub.ref.keyData2 = _subLayerKeyData2;
-      sub.ref.keyData3 = _subLayerKeyData3;
-      sub.ref.keyData4 = _subLayerKeyData4;
-      sub.ref.displayName = _wide(arena, 'SilentGate kill switch (проверка)');
-      sub.ref.weight = 0xFFFF;
+      final sub = _zeroed(arena, WfpSubLayerOffsets.size);
+      _W(sub, WfpSubLayerOffsets.size)
+        ..guid(WfpSubLayerOffsets.subLayerKey, _probeSubLayerKey)
+        ..ptr(WfpSubLayerOffsets.displayData,
+            'SilentGate kill switch (проверка)'.toNativeUtf16(allocator: arena))
+        ..u16(WfpSubLayerOffsets.weight, 0xFFFF);
       rc = _subLayerAdd(engine, sub, nullptr);
 
       // ⚠️ ОТКАТ В ЛЮБОМ СЛУЧАЕ: разведка не имеет права оставить после себя
@@ -142,13 +349,14 @@ class KillSwitchWfp {
     }
   }
 
-  static Pointer<Utf16> _wide(Arena arena, String s) =>
-      s.toNativeUtf16(allocator: arena);
+  static Pointer<Uint8> _zeroed(Arena arena, int bytes) {
+    final p = arena<Uint8>(bytes);
+    p.asTypedList(bytes).fillRange(0, bytes, 0);
+    return p;
+  }
 
   // ── Связывание с fwpuclnt.dll ──────────────────────────────────────────────
   static final DynamicLibrary _fwp = DynamicLibrary.open('fwpuclnt.dll');
-
-  static const int _sessionFlagDynamic = 0x00000001;
 
   /// Кандидаты службы авторизации: WinNT, «по умолчанию», без авторизации.
   static const _authnCandidates = <_Authn>[
@@ -157,17 +365,21 @@ class KillSwitchWfp {
     _Authn('RPC_C_AUTHN_NONE', 0),
   ];
 
-  // GUID подслоя разведки. Значение произвольное, но постоянное: так его
-  // видно в `netsh wfp show state`, если он вдруг где-то останется.
-  static const _subLayerKeyData1 = 0x5115AE47;
-  static const _subLayerKeyData2 = 0x7A11;
-  static const _subLayerKeyData3 = 0x4C21;
-  static const _subLayerKeyData4 = 0x9E5D3A0B7C614F82;
+  /// Подслой боевой блокировки. Значение постоянное, чтобы его было видно в
+  /// `netsh wfp show state`, если он вдруг где-то останется.
+  static const _subLayerKey = WfpGuid(0x5115AE47, 0x7A11, 0x4C20,
+      [0x9E, 0x5D, 0x3A, 0x0B, 0x7C, 0x61, 0x4F, 0x81]);
+
+  /// ⚠️ Подслой разведки — ОТДЕЛЬНЫЙ. Общий ключ означал бы, что разведка,
+  /// запущенная при поднятой блокировке, наткнётся на «уже существует» и
+  /// доложит об отсутствии прав.
+  static const _probeSubLayerKey = WfpGuid(0x5115AE47, 0x7A11, 0x4C21,
+      [0x9E, 0x5D, 0x3A, 0x0B, 0x7C, 0x61, 0x4F, 0x82]);
 
   static final _engineOpen = _fwp.lookupFunction<
-      Uint32 Function(Pointer<Utf16>, Uint32, Pointer<Void>,
-          Pointer<_FwpmSession0>, Pointer<Pointer<Void>>),
-      int Function(Pointer<Utf16>, int, Pointer<Void>, Pointer<_FwpmSession0>,
+      Uint32 Function(Pointer<Utf16>, Uint32, Pointer<Void>, Pointer<Uint8>,
+          Pointer<Pointer<Void>>),
+      int Function(Pointer<Utf16>, int, Pointer<Void>, Pointer<Uint8>,
           Pointer<Pointer<Void>>)>('FwpmEngineOpen0');
 
   static final _engineClose = _fwp.lookupFunction<
@@ -182,10 +394,64 @@ class KillSwitchWfp {
       Uint32 Function(Pointer<Void>),
       int Function(Pointer<Void>)>('FwpmTransactionAbort0');
 
+  static final _txnCommit = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Void>),
+      int Function(Pointer<Void>)>('FwpmTransactionCommit0');
+
   static final _subLayerAdd = _fwp.lookupFunction<
-      Uint32 Function(Pointer<Void>, Pointer<_FwpmSubLayer0>, Pointer<Void>),
-      int Function(Pointer<Void>, Pointer<_FwpmSubLayer0>,
+      Uint32 Function(Pointer<Void>, Pointer<Uint8>, Pointer<Void>),
+      int Function(Pointer<Void>, Pointer<Uint8>,
           Pointer<Void>)>('FwpmSubLayerAdd0');
+
+  static final _filterAdd = _fwp.lookupFunction<
+      Uint32 Function(
+          Pointer<Void>, Pointer<Uint8>, Pointer<Void>, Pointer<Uint64>),
+      int Function(Pointer<Void>, Pointer<Uint8>, Pointer<Void>,
+          Pointer<Uint64>)>('FwpmFilterAdd0');
+
+  static final _getAppId = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Utf16>, Pointer<Pointer<Void>>),
+      int Function(Pointer<Utf16>,
+          Pointer<Pointer<Void>>)>('FwpmGetAppIdFromFileName0');
+
+  static final _freeMemory = _fwp.lookupFunction<
+      Void Function(Pointer<Pointer<Void>>),
+      void Function(Pointer<Pointer<Void>>)>('FwpmFreeMemory0');
+}
+
+/// Держатель поднятой блокировки.
+///
+/// ⚠️ ЖИВ ДЕРЖАТЕЛЬ — СТОЯТ ФИЛЬТРЫ. Освободить их можно только двумя
+/// способами: вызвать [release] или дать процессу умереть. Второй способ
+/// работает и при аварийном крахе, и это единственная причина, по которой
+/// блокировку вообще можно доверить пользовательскому процессу.
+class KillSwitchHold {
+  Pointer<Void> _engine;
+  final int filtersInstalled;
+  final int rulesInstalled;
+  var _released = false;
+
+  KillSwitchHold._(this._engine, this.filtersInstalled, this.rulesInstalled);
+
+  bool get isActive => !_released;
+
+  /// Снять блокировку. Повторный вызов безопасен.
+  void release() {
+    if (_released) return;
+    _released = true;
+    final e = _engine;
+    _engine = nullptr;
+    if (e != nullptr) {
+      try {
+        KillSwitchWfp._engineClose(e);
+      } catch (_) {}
+    }
+  }
+
+  @override
+  String toString() =>
+      'kill switch ${_released ? 'снят' : 'держит'}: '
+      'правил $rulesInstalled, фильтров $filtersInstalled';
 }
 
 /// Служба авторизации RPC для открытия движка фильтров.
@@ -200,7 +466,7 @@ class KillSwitchProbe {
   /// Удалось ли добавить объект (транзакция при этом откачена).
   final bool canFilter;
 
-  /// Служба авторизации, на которой получилось. Пригодится боевому коду.
+  /// Служба авторизации, на которой получилось. Нужна боевому подъёму.
   final int? authnService;
 
   /// Человеческое пояснение с кодами возврата — для журнала.
@@ -213,103 +479,38 @@ class KillSwitchProbe {
   });
 
   @override
-  String toString() => canFilter
-      ? 'фильтры доступны: $detail'
-      : 'фильтры недоступны: $detail';
+  String toString() =>
+      canFilter ? 'фильтры доступны: $detail' : 'фильтры недоступны: $detail';
 }
 
-/// Состав блокировки: что разрешено, что закрыто.
-class KillSwitchPlan {
-  final Set<String> allowServerIps;
-  final bool allowOwnBinaries;
-  final bool allowLoopback;
-  final bool allowLan;
-  final bool allowDhcpAndNdp;
-
-  /// Пути приложений, которым закрываем сеть (режим «только отмеченные»).
-  final List<String> blockedAppPaths;
-
-  /// Блокировать всё подряд (режимы «Всё через VPN» и «кроме отмеченных»).
-  final bool blockAll;
-
-  const KillSwitchPlan({
-    required this.allowServerIps,
-    required this.allowOwnBinaries,
-    required this.allowLoopback,
-    required this.allowLan,
-    required this.allowDhcpAndNdp,
-    required this.blockedAppPaths,
-    required this.blockAll,
-  });
-
-  /// Есть ли что блокировать вообще.
-  bool get isEmpty => !blockAll && blockedAppPaths.isEmpty;
-}
-
-/// `FWPM_SESSION0`. Раскладка под x64; заполняем только флаги, остальное нулями.
+/// Запись полей по ПРОВЕРЕННЫМ смещениям.
 ///
-/// ⚠️ Порядок и размеры полей — не украшение: ошибка сдвинет `flags`, сессия
-/// окажется СТАТИЧЕСКОЙ, и её объекты переживут смерть процесса.
-final class _FwpmSession0 extends Struct {
-  @Uint32()
-  external int keyData1;
-  @Uint16()
-  external int keyData2;
-  @Uint16()
-  external int keyData3;
-  @Uint64()
-  external int keyData4;
+/// ⚠️ ПОЧЕМУ НЕ `Struct` ИЗ dart:ffi. У GUID выравнивание 4, а не 8, и внутри
+/// `FWPM_ACTION0` он лежит по смещению, не кратному восьми. Описав его полем
+/// `Uint64` (как напрашивается), Dart выровнял бы структуру по 8 — и раскладка
+/// разъехалась бы с ядром молча. Смещения взяты у компилятора
+/// (`tools/wfp/wfp_layout_probe.c`) и стережутся тестом.
+class _W {
+  final ByteData _bd;
+  _W(Pointer<Uint8> p, int len) : _bd = ByteData.sublistView(p.asTypedList(len));
 
-  external Pointer<Utf16> displayName;
-  external Pointer<Utf16> displayDescription;
+  void u8(int off, int v) => _bd.setUint8(off, v);
+  void u16(int off, int v) => _bd.setUint16(off, v, Endian.little);
+  void u32(int off, int v) => _bd.setUint32(off, v, Endian.little);
+  void u64(int off, int v) => _bd.setUint64(off, v, Endian.little);
+  void ptr(int off, Pointer<NativeType> p) =>
+      _bd.setUint64(off, p.address, Endian.little);
 
-  @Uint32()
-  external int flags;
-  @Uint32()
-  external int txnWaitTimeoutInMSec;
-  @Uint32()
-  external int processId;
-  @Uint32()
-  external int padA; // выравнивание x64, не удалять
+  void bytes(int off, List<int> b) {
+    for (var i = 0; i < b.length; i++) {
+      _bd.setUint8(off + i, b[i]);
+    }
+  }
 
-  external Pointer<Void> sid;
-  external Pointer<Utf16> username;
-
-  @Int32()
-  external int kernelMode;
-  @Int32()
-  external int padB; // выравнивание x64, не удалять
-}
-
-/// `FWPM_SUBLAYER0` — используется только разведкой и откатывается.
-final class _FwpmSubLayer0 extends Struct {
-  @Uint32()
-  external int keyData1;
-  @Uint16()
-  external int keyData2;
-  @Uint16()
-  external int keyData3;
-  @Uint64()
-  external int keyData4;
-
-  external Pointer<Utf16> displayName;
-  external Pointer<Utf16> displayDescription;
-
-  @Uint32()
-  external int flags;
-  @Uint32()
-  external int padA; // выравнивание x64, не удалять
-
-  external Pointer<Void> providerKey;
-
-  @Uint64()
-  external int providerDataSize;
-  external Pointer<Void> providerData;
-
-  @Uint16()
-  external int weight;
-  @Uint16()
-  external int padB; // выравнивание x64, не удалять
-  @Uint32()
-  external int padC; // выравнивание x64, не удалять
+  void guid(int off, WfpGuid g) {
+    _bd.setUint32(off, g.d1, Endian.little);
+    _bd.setUint16(off + 4, g.d2, Endian.little);
+    _bd.setUint16(off + 6, g.d3, Endian.little);
+    bytes(off + 8, g.d4);
+  }
 }
