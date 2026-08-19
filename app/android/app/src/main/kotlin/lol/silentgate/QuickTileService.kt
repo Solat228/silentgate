@@ -105,6 +105,8 @@ class QuickTileService : TileService() {
             startService(
                 Intent(this, SilentGateVpnService::class.java)
                     .setAction(SilentGateVpnService.ACTION_STOP)
+                    // Плитка — такое же нажатие человека, как кнопка в шторке.
+                    .putExtra(SilentGateVpnService.EXTRA_BY_USER, true)
             )
             // ⚠️ НЕ вызывать здесь refresh(): остановка асинхронная, и в этот миг
             // `running` ещё true — плитка перерисовалась бы во «включено» поверх

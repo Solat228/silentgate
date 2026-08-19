@@ -121,6 +121,15 @@ class MainActivity : FlutterActivity() {
                         startService(
                             Intent(this, SilentGateVpnService::class.java)
                                 .setAction(SilentGateVpnService.ACTION_STOP)
+                                // ⚠️ ЯВНО `false`, И ЭТО НЕ ФОРМАЛЬНОСТЬ.
+                                // Этим путём идут ОБЕ остановки: и нажатие
+                                // «Отключить» в приложении, и наше собственное
+                                // гашение ядра при переподключении. Различает
+                                // их Dart-сторона (`_userStopped`), а не сервис,
+                                // — и пометив здесь `true`, мы заставляли бы
+                                // приложение отменять собственное
+                                // восстановление связи.
+                                .putExtra(SilentGateVpnService.EXTRA_BY_USER, false)
                         )
                         result.success(null)
                     }

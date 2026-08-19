@@ -70,6 +70,23 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         const val ACTION_START = "lol.silentgate.action.START"
         const val ACTION_STOP = "lol.silentgate.action.STOP"
 
+        /// ⚠️ КТО ИМЕННО ПРОСИТ ОСТАНОВКУ — ЧЕЛОВЕК ИЛИ МЫ САМИ.
+        ///
+        /// Без этого признака остановка была неразличима, и своё же
+        /// переподключение читалось как нажатие кнопки в шторке: сторож канала
+        /// решал восстановить связь, гасил ядро своей же командой `stop`,
+        /// сервис помечал остановку пользовательской, Dart видел `byUser` и
+        /// ОТМЕНЯЛ запланированное восстановление. Туннель после этого не
+        /// возвращался. Поймано живым прогоном на эмуляторе 19.08.2026:
+        /// «Автопереподключение: попытка 1 через 800 мс» и «Туннель снят
+        /// пользователем из уведомления» стоят в журнале в одну секунду.
+        ///
+        /// ⚠️ Ставить обязаны ВСЕ отправители `ACTION_STOP`, их ровно три:
+        /// кнопка в шторке и плитка быстрых настроек — `true`, канал из Dart —
+        /// `false` (там намерение пользователя знает сама Dart-сторона, у неё
+        /// для этого есть `_userStopped`). Страж — `test/android_stop_reason_test.dart`.
+        const val EXTRA_BY_USER = "by_user"
+
         /** Свернуть/развернуть уведомление прямо из шторки. */
         const val ACTION_TOGGLE_COMPACT = "lol.silentgate.action.TOGGLE_COMPACT"
 
@@ -318,10 +335,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // ⚠️ В ту же очередь, что и подъём: иначе «Отключить» из шторки
                 // могло бы обогнать ещё не доработавший старт и снять туннель,
                 // который через миг поднимется заново.
+                // ⚠️ ПРИЗНАК БЕРЁМ ИЗ ИНТЕНТА, А НЕ СТАВИМ БЕЗУСЛОВНО.
+                // Раньше здесь стояло `stoppedByUser = true` — и любая наша
+                // собственная остановка (переподключение после обрыва, смена
+                // сервера, правка настроек) выдавала себя за нажатие кнопки в
+                // шторке. Dart на такое честно отменял восстановление.
+                val byUser = intent?.getBooleanExtra(EXTRA_BY_USER, false) ?: false
                 work.execute {
                     // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу,
                     // и признак должен уехать вместе с ним.
-                    stoppedByUser = true
+                    stoppedByUser = byUser
                     stopTunnel()
                     stopSelf()
                 }
@@ -1325,7 +1348,15 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         val stop = PendingIntent.getService(
-            this, 1, Intent(this, SilentGateVpnService::class.java).setAction(ACTION_STOP),
+            this, 1,
+            Intent(this, SilentGateVpnService::class.java)
+                .setAction(ACTION_STOP)
+                // Настоящее нажатие человека — единственный случай, когда
+                // автовосстановление отменять НАДО.
+                .putExtra(EXTRA_BY_USER, true),
+            // FLAG_UPDATE_CURRENT здесь обязателен и по второй причине: без него
+            // Android вернул бы ранее созданный PendingIntent со старыми
+            // extras, и признак не доехал бы вовсе.
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         // ⚠️ Код запроса ДРУГОЙ (2, не 1). С одинаковым кодом Android вернул бы
