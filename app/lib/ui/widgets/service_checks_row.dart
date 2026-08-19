@@ -46,8 +46,15 @@ extension ServiceGroupLabel on ServiceGroup {
 /// его вместо настоящего пути. Пришедший ему на смену [ServiceChecksRows]
 /// (ряды по смыслу) автопрогон НЕ запускает — по той же причине.
 ///
-/// Раскладок две: [ServiceChecksRows] — ряды по смысловым группам, и
-/// [ServiceChecksColumn] — прежние две колонки по бокам кнопки.
+/// ⚠️ РАСКЛАДКА ОДНА — [ServiceChecksRows], ряды по смысловым группам. Прежние
+/// две колонки по бокам кнопки (`ServiceChecksColumn`) удалены 19.08.2026, и не
+/// за красоту: при четырнадцати сервисах столбцы по семь строк лезли за край
+/// экрана телефона. Но главное — ряды были написаны и покрыты тестами ещё
+/// тогда, когда набор расширяли, а на месте вызова подмену забыли сделать:
+/// группировка полгода существовала в коде, была зелёной в тестах и не доходила
+/// до человека. Владелец сказал прямо: «в интерфейсе я этого не заметил».
+/// Держать обе раскладки, когда рисуется одна, — тот же мёртвый код, что описан
+/// абзацем выше.
 abstract final class ServiceChecks {
   /// Смысловые группы — ряды проверок у кнопки Connect (сверху вниз).
   ///
@@ -161,16 +168,6 @@ abstract final class ServiceChecks {
       for (final svc in catalog)
         if (s.connectCheckServices.contains(svc)) svc,
     ];
-  }
-
-  /// Раскладка набора по двум колонкам вокруг кнопки Connect.
-  ///
-  /// Нечётное число уходит влево: правая колонка ближе к краю экрана, и на
-  /// телефоне ей теснее (см. `FittedBox` в паре ниже).
-  static ({List<ProbeService> left, List<ProbeService> right}) columns(
-      List<ProbeService> all) {
-    final half = (all.length + 1) ~/ 2;
-    return (left: all.sublist(0, half), right: all.sublist(half));
   }
 
   /// Раскладка набора по смысловым рядам ([groups]).
@@ -293,73 +290,6 @@ abstract final class ServiceChecks {
   }
 }
 
-/// Колонка проверок сбоку от кнопки Connect.
-///
-/// Показывается ВСЕГДА — и до подключения, и после: смысл в сравнении. У
-/// каждого сервиса два состояния рядом: слева замер «до» (напрямую, мимо VPN),
-/// справа — через туннель. Так видно, что именно изменил VPN, а не просто
-/// «сейчас зелёное».
-///
-/// ⚠️ Автопрогон колонка НЕ запускает: он живёт в `home_screen` и привязан к
-/// подъёму туннеля (`ServiceCheckController.setTunnelUp`). Колонок две, и
-/// каждая знает лишь свою половину сервисов — запуск изнутри означал бы, что
-/// первая занимает эпоху, а вторая молча пропускает свои три сервиса.
-class ServiceChecksColumn extends StatelessWidget {
-  const ServiceChecksColumn({
-    super.key,
-    required this.services,
-    required this.httpPort,
-    required this.alignEnd,
-  });
-
-  final List<ProbeService> services;
-  final int httpPort;
-
-  /// Колонка слева прижимается к кнопке справа, и наоборот.
-  final bool alignEnd;
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = context.watch<ServiceCheckController>();
-    final live = httpPort > 0;
-    // ⚠️ НАСТРОЙКИ ЧИТАЮТСЯ КАК НЕОБЯЗАТЕЛЬНЫЕ. Колонку поднимают стражи
-    // вёрстки (`ConnectCenterpiece`), которым настройки не нужны и которые
-    // провайдер не заводят: строгое чтение уронило бы их
-    // `ProviderNotFoundException`. Нет настроек — нет и пометок, всё остальное
-    // на месте.
-    final split = context.watch<SettingsController?>()?.settings.splitTunnel;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment:
-          alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        for (final s in services)
-          Padding(
-            // ⚠️ КЛЮЧ ПО ИМЕНИ СЕРВИСА, А НЕ ПО МЕСТУ В СПИСКЕ. Без ключа
-            // Flutter сопоставляет элементы позиционно, и при смене состава
-            // (галочка в подменю, переключение колонки) вторая строка получала
-            // состояние первой: у пары оживал чужой значок и чужой замер. Ключ
-            // стоит на ВНЕШНЕМ элементе списка — сопоставление идёт по нему, а
-            // не по вложенной паре.
-            key: ValueKey('svc:${s.name}'),
-            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
-            child: _ServicePair(
-              service: s,
-              before: ctrl.baselineFor(s),
-              after: ctrl.resultFor(s),
-              live: live,
-              alignEnd: alignEnd,
-              bypass:
-                  split == null ? null : ServiceChecks.bypassRuleFor(split, s),
-              // Тап меряет то, что сейчас доступно: с VPN — через туннель,
-              // без него — напрямую (это и есть замер «до»).
-              onTap: () => ctrl.check(s, httpPort),
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 /// Проверки сервисов РЯДАМИ ПО СМЫСЛУ — мессенджеры, ИИ, видео, соцсети,
 /// прочее (решение владельца от 18.08.2026).

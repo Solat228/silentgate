@@ -70,30 +70,6 @@ void main() {
     });
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  group('Раскладка по колонкам', () {
-    test('шесть — поровну, как было', () {
-      final c = ServiceChecks.columns(ServiceChecks.services);
-      expect(c.left.length, 3);
-      expect(c.right.length, 3);
-    });
-
-    test('нечётное уходит влево', () {
-      final c = ServiceChecks.columns(const [
-        ProbeService.youtube,
-        ProbeService.chatgpt,
-        ProbeService.telegram,
-      ]);
-      expect(c.left, [ProbeService.youtube, ProbeService.chatgpt]);
-      expect(c.right, [ProbeService.telegram]);
-    });
-
-    test('пусто — пусты обе', () {
-      final c = ServiceChecks.columns(const []);
-      expect(c.left, isEmpty);
-      expect(c.right, isEmpty);
-    });
-  });
 
   // ───────────────────────────────────────────────────────────────────────────
   group('Автопрогон при подключении', () {
@@ -219,29 +195,32 @@ void main() {
       await t.pump();
     }
 
-    testWidgets('проверки выключены — ряд не занимает места вовсе', (t) async {
+    testWidgets('проверки выключены — ряды не занимают места вовсе', (t) async {
       await pump(t, const []);
-      expect(find.byType(ServiceChecksColumn), findsNothing,
-          reason: 'владелец просил «галочку полного отключения», а колонка с '
-              'нулём чипов всё равно ела бы ширину у кнопки');
+      expect(t.getSize(find.byType(ServiceChecksRows)), Size.zero,
+          reason: 'владелец просил «галочку полного отключения», а ряды с '
+              'нулём чипов всё равно ели бы высоту у кнопки');
       // Кнопка при этом на месте и по центру.
       expect(find.byKey(const Key('btn')), findsOneWidget);
     });
 
     testWidgets('состав чипов = состав настройки', (t) async {
       await pump(t, const [ProbeService.claude, ProbeService.x]);
-      final columns = t
-          .widgetList<ServiceChecksColumn>(find.byType(ServiceChecksColumn))
-          .toList();
-      expect(columns.length, 2);
-      expect([...columns[0].services, ...columns[1].services],
-          [ProbeService.claude, ProbeService.x],
+      final rows = t.widget<ServiceChecksRows>(find.byType(ServiceChecksRows));
+      expect(rows.services, [ProbeService.claude, ProbeService.x],
           reason: 'раньше здесь стояла зашитая шестёрка при любых настройках');
     });
 
-    testWidgets('единственный сервис — одна колонка, а не две', (t) async {
-      await pump(t, const [ProbeService.telegram]);
-      expect(find.byType(ServiceChecksColumn), findsOneWidget);
+    testWidgets('⚠️ рисуются ИМЕННО ряды по смыслу, а не колонки', (t) async {
+      // Ряды с подписями групп были написаны и покрыты тестами, но на месте
+      // вызова подмену забыли — главный экран рисовал прежние колонки, и
+      // владелец сказал прямо: «в интерфейсе я этого не заметил». Проверка
+      // самого виджета этого не ловила: он был исправен, его просто не звали.
+      await pump(t, const [ProbeService.telegram, ProbeService.chatgpt]);
+      expect(find.byType(ServiceChecksRows), findsOneWidget);
+      // Подпись группы — то, чего в колонках не было вовсе.
+      expect(find.text('Мессенджеры'), findsOneWidget);
+      expect(find.text('ИИ'), findsOneWidget);
     });
   });
 

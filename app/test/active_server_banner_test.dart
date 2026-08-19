@@ -52,8 +52,11 @@ void main() {
   }
 
   Rect labelRect(WidgetTester t) => t.getRect(find.byType(ActiveServerLabel));
-  Rect columnRect(WidgetTester t, int i) =>
-      t.getRect(find.byType(ServiceChecksColumn).at(i));
+  /// ⚠️ РЯДЫ, А НЕ КОЛОНКИ. Проверки переехали из двух столбцов по бокам
+  /// кнопки в ряды по смысловым группам под ней (19.08.2026): при четырнадцати
+  /// сервисах столбцы лезли за край экрана, а сама группировка, ради которой их
+  /// и заводили, до интерфейса не доходила вовсе.
+  Rect rowsRect(WidgetTester t) => t.getRect(find.byType(ServiceChecksRows));
 
   RenderParagraph paragraph(WidgetTester t) => t.renderObject<RenderParagraph>(
       find.descendant(
@@ -78,10 +81,8 @@ void main() {
               'и показывал на скриншоте');
       expect(label.bottom, lessThanOrEqualTo(btn.top),
           reason: 'плашка обязана стоять НАД кнопкой, а не поверх неё');
-      for (var i = 0; i < 2; i++) {
-        expect(label.overlaps(columnRect(t, i)), isFalse,
-            reason: 'плашка накрыла колонку проверок №${i + 1}');
-      }
+      expect(label.overlaps(rowsRect(t)), isFalse,
+          reason: 'плашка накрыла ряды проверок');
     });
 
     testWidgets('длинное имя: то же самое и на узком окне', (t) async {
@@ -92,9 +93,7 @@ void main() {
       final label = labelRect(t);
       final btn = t.getRect(find.byKey(btnKey));
       expect(label.overlaps(btn), isFalse);
-      for (var i = 0; i < 2; i++) {
-        expect(label.overlaps(columnRect(t, i)), isFalse);
-      }
+      expect(label.overlaps(rowsRect(t)), isFalse);
       expect(label.left, greaterThanOrEqualTo(0));
       expect(label.right, lessThanOrEqualTo(360),
           reason: 'плашка уехала за край экрана');
@@ -143,16 +142,16 @@ void main() {
   });
 
   group('Место под плашку занято всегда', () {
-    testWidgets('кнопка и колонки не прыгают при подключении', (t) async {
+    testWidgets('кнопка и ряды не прыгают при подключении', (t) async {
       await pump(t, name: null, httpPort: 0);
       final btnOff = t.getRect(find.byKey(btnKey));
-      final leftOff = columnRect(t, 0);
+      final rowsOff = rowsRect(t);
 
       await pump(t, name: ownerName);
       expect(t.getRect(find.byKey(btnKey)), btnOff,
           reason: 'плашка появляется при подключении — если она забирает место '
               'только тогда, вся середина экрана дёргается на каждом Connect');
-      expect(columnRect(t, 0), leftOff);
+      expect(rowsRect(t), rowsOff);
     });
 
     testWidgets('без подключения имени не видно', (t) async {
