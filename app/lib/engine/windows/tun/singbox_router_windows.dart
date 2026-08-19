@@ -10,6 +10,7 @@ import '../../../core/singbox/singbox_config_builder.dart';
 import '../../../core/singbox/tun_autotune.dart';
 import '../../../data/tun_tuning_store.dart';
 import '../elevation.dart';
+import 'app_alive_mutex.dart';
 import 'tun_helper.dart';
 import 'tun_router.dart';
 import 'tun_scheduled_task.dart';
@@ -129,8 +130,38 @@ class SingboxRouterWindows implements TunRouter {
     final cfgPath = TunHelper.configPathFor(dir);
     await File(cfgPath).writeAsString(configJsonFor(split, xraySocksPort, options));
 
+    // ⚠️ ПРИЗНАК «ИНТЕРФЕЙС ЖИВ» — ДО ЗАПУСКА ПОМОЩНИКА, А НЕ ПОСЛЕ.
+    //
+    // Помощник читает имя один раз, на старте. Положив файл позже, мы получили
+    // бы помощника без слежения — то есть ровно того, кто переживёт падение
+    // приложения и оставит блокировку стоять.
+    //
+    // Мьютекс берётся один раз на всю жизнь процесса и не отпускается: он и
+    // есть признак жизни. Пустое имя (взять не удалось) записываем тоже —
+    // помощник тогда честно скажет в журнал, что следить ему не за чем.
+    final aliveName = AppAliveMutex.acquire();
+    try {
+      await File(TunHelper.aliveFilePathFor(dir)).writeAsString(aliveName);
+    } catch (e) {
+      AppLog.w('Не удалось передать помощнику признак жизни интерфейса: $e');
+    }
+
     _stopPath = TunHelper.stopFilePathFor(dir);
-    TunHelper.clearStopAt(_stopPath);
+    // ⚠️ НЕ СТИРАЕМ stop-ФАЙЛ, А ЖДЁМ, ПОКА ЕГО ЗАБЕРЁТ ПРОШЛЫЙ ХЕЛПЕР.
+    //
+    // Здесь стоял `clearStopAt`, и он же был причиной гонки: неудачная
+    // комбинация автоподбора ставит stop-файл, а следующая стирала его раньше,
+    // чем хелпер успевал прочитать (он смотрит раз в 400 мс, окно замерено в
+    // 393–515 мс). Промах = живой хелпер, которого больше никто не остановит.
+    // Разбор — `docs/BACKLOG.md` #32.
+    if (!await TunHelper.waitStopConsumed(_stopPath)) {
+      // Никто не забрал за пять секунд: прошлого хелпера, скорее всего, и не
+      // было (права не дали, задача не запустилась). Файл убираем сами — иначе
+      // он убьёт СЛЕДУЮЩИЙ хелпер сразу после старта.
+      AppLog.w('stop-файл TUN никто не забрал за 5 с — убираю сам. '
+          'Если прошлый помощник всё же жив, он останется работать.');
+      TunHelper.clearStopAt(_stopPath);
+    }
     // ⚠️ ЛОГ ЗДЕСЬ НЕ ОБРЕЗАЕТСЯ. И В `TunHelper.run` ТОЖЕ БОЛЬШЕ НЕ ОБРЕЗАЕТСЯ.
     //
     // Раньше здесь стоял `_truncateLog`: обрезка ИЗ ЭТОГО процесса файла,

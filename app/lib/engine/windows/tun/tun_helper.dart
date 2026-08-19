@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
+import 'app_alive_mutex.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
 
@@ -34,6 +35,15 @@ class TunHelper {
   /// Путь конфига sing-box в папке данных пользователя.
   static String configPathFor(Directory supportDir) =>
       '${supportDir.path}${Platform.pathSeparator}singbox_config.json';
+
+  /// Имя мьютекса «интерфейс жив» для этой сессии.
+  ///
+  /// ⚠️ ОТДЕЛЬНЫМ ФАЙЛОМ, А НЕ ПОЛЕМ В КОНФИГЕ. sing-box отвергает конфиг
+  /// ЦЕЛИКОМ из-за одного незнакомого поля — положив имя туда, мы уронили бы
+  /// туннель. И не аргументом задачи Планировщика: она запекает строку запуска
+  /// один раз, а имя рождается на каждую сессию.
+  static String aliveFilePathFor(Directory supportDir) =>
+      '${supportDir.path}${Platform.pathSeparator}tun_alive';
 
   /// Лог sing-box (читается приложением при сбое и по кнопке «Показать лог»).
   static String logPathFor(Directory supportDir) =>
@@ -159,6 +169,22 @@ class TunHelper {
       await log.write('--- разведка kill switch не выполнилась: $e');
     }
 
+    // ⚠️ НАБЛЮДЕНИЕ ЗА ЖИЗНЬЮ ИНТЕРФЕЙСА. Без него помощник переживает
+    // приложение: закройте окно — и он останется работать, а вместе с ним
+    // останется стоять блокировка, снять которую будет некому.
+    //
+    // Имя мьютекса кладёт рядом сам интерфейс перед запуском. Нет файла или
+    // мьютекс не открылся — значит приложения нет (или запустили помощник
+    // руками): работаем как раньше, но говорим об этом вслух. ⚠️ Когда сюда
+    // придут фильтры WFP, эта ветка обязана стать отказом: поднимать
+    // блокировку, которую некому снять, нельзя.
+    final aliveName = await _readAliveName();
+    final alive = AppAliveMutex.watch(aliveName);
+    await log.write(alive != null
+        ? '--- слежу за интерфейсом: $aliveName'
+        : '--- имени интерфейса нет — работаю без слежения '
+            '(kill switch в этом режиме поднимать нельзя)');
+
     _delete(stopFile);
     Process proc;
     try {
@@ -196,14 +222,34 @@ class TunHelper {
         proc.kill();
         break;
       }
+      // ⚠️ Интерфейс умер — уходим следом. Именно здесь, в общем цикле: смерть
+      // приложения ничем не отличается от команды «стоп», и обрабатывать её
+      // отдельной веткой значило бы завести второй путь выхода.
+      if (alive != null && !alive.appAlive) {
+        await log.write('--- интерфейс завершился, останавливаю sing-box');
+        proc.kill();
+        break;
+      }
       await Future.delayed(const Duration(milliseconds: 400));
     }
+    alive?.dispose();
 
     try {
       proc.kill(ProcessSignal.sigkill);
     } catch (_) {}
     _delete(stopFile);
     await log.close();
+  }
+
+  /// Имя мьютекса, положенное интерфейсом. Пусто — файла нет.
+  static Future<String> _readAliveName() async {
+    try {
+      final f = File(aliveFilePathFor(await AppPaths.supportDir()));
+      if (!f.existsSync()) return '';
+      return (await f.readAsString()).trim();
+    } catch (_) {
+      return '';
+    }
   }
 
   /// GUI: запросить остановку TUN — создать stop-файл по явному пути.
@@ -217,7 +263,51 @@ class TunHelper {
     } catch (_) {}
   }
 
+  /// ДОЖДАТЬСЯ, ПОКА ПРОШЛЫЙ ХЕЛПЕР ЗАБЕРЁТ stop-ФАЙЛ.
+  ///
+  /// ⚠️ РАДИ ЧЕГО ЭТО ЕСТЬ — ГОНКА, КОТОРАЯ ПЛОДИТ ОСИРОТЕВШИХ ХЕЛПЕРОВ.
+  /// Неудачная попытка автоподбора ставит stop-файл (`_waitUp`), а следующая
+  /// попытка первым делом его СТИРАЛА — и сигнал пропадал раньше, чем хелпер
+  /// успевал его прочитать: он опрашивает файл раз в 400 мс, а окно между
+  /// постановкой и стиранием замерено в 393–515 мс. Промах означает живого
+  /// хелпера с работающим ядром, которого никто больше не остановит.
+  ///
+  /// Сегодня такого сироту убирает единственная случайность: вместе с ним
+  /// умирает sing-box, и хелпер выходит по `procExited`. Настоящий kill switch
+  /// эту дверь закрывает (он обязан пережить смерть ядра), поэтому гонку надо
+  /// закрыть ДО его включения — иначе каждая неудачная комбинация оставит
+  /// процесс с полной блокировкой WFP, то есть машину без сети.
+  ///
+  /// Ждём исчезновения файла: хелпер удаляет его и на старте, и на выходе, —
+  /// то есть пропажа и есть подтверждение, что сигнал принят. Отдельного
+  /// протокола заводить не пришлось.
+  ///
+  /// `false` — не дождались (хелпера, возможно, и не было: права не дали,
+  /// задача не запустилась). Вызывающий обязан решить сам; молча продолжать
+  /// нельзя — оставленный файл убьёт СЛЕДУЮЩИЙ хелпер сразу после старта.
+  static Future<bool> waitStopConsumed(String stopPath,
+      {Duration timeout = const Duration(seconds: 5)}) async {
+    if (stopPath.isEmpty) return true;
+    final f = File(stopPath);
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      try {
+        if (!f.existsSync()) return true;
+      } catch (_) {
+        return true; // прочитать не смогли — считать «висит» тем более нельзя
+      }
+      // Опрос чаще, чем у хелпера (400 мс): ждём ЕГО реакцию, а не свою.
+      await Future.delayed(const Duration(milliseconds: 150));
+    }
+    return false;
+  }
+
   /// Удалить stop-файл перед новым запуском (оба расположения).
+  ///
+  /// ⚠️ ЗВАТЬ ТОЛЬКО ПОСЛЕ [waitStopConsumed], вернувшего `false`. Это
+  /// последнее средство: файл стирается вслепую, и если прошлый хелпер ещё жив,
+  /// он останется жить дальше. До 20.08.2026 этот вызов стоял первой строкой
+  /// каждой попытки подъёма — и был не последним средством, а обычным путём.
   static void clearStopAt(String stopPath) {
     try {
       final f = File(stopPath);
