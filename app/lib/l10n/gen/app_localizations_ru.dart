@@ -3074,4 +3074,15 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'Что нового в $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'Описание изменений не пришло.';
+
+  @override
+  String get updateNotesNeverShow => 'Больше не показывать';
 }

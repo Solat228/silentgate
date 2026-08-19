@@ -3095,4 +3095,15 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'Neu in $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'Keine Versionshinweise erhalten.';
+
+  @override
+  String get updateNotesNeverShow => 'Nicht mehr anzeigen';
 }

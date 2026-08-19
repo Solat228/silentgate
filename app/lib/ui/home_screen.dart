@@ -43,6 +43,7 @@ import 'widgets/flag_cell.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/service_checks_row.dart';
+import 'widgets/update_notes_dialog.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
 import 'server_info_screen.dart';
@@ -358,15 +359,40 @@ class _HomeScreenState extends State<HomeScreen> {
     AppLog.i('Доступна версия ${release.version} (у вас ${AppInfo.version})');
     final l = AppLocalizations.of(context);
     final notes = release.notes ?? '';
-    AppToast.show(
-      context,
-      l.homeUpdateAvailable(release.version) +
-          (notes.isEmpty ? '' : ' — $notes'),
-      kind: ToastKind.info,
-      actionLabel: (release.downloadUrl ?? '').isEmpty ? null : l.homeDownload,
-      onAction: (release.downloadUrl ?? '').isEmpty
-          ? null
-          : () => UrlOpener.open(release.downloadUrl!),
+    final settingsCtrl = context.read<SettingsController>();
+    final url = release.downloadUrl ?? '';
+
+    // ⚠️ ОПИСАНИЕ РЕЛИЗА — В ОКНО, А НЕ В ТОСТ.
+    //
+    // Раньше здесь стояло `AppToast.show(..., 'Доступна версия X — ' + notes)`,
+    // а `notes` — это тело релиза с GitHub, то есть весь раздел changelog:
+    // тысячи символов сырого markdown. На телефоне владельца (снимок
+    // 19.08.2026) оно заняло весь экран стеной со звёздочками и дефисами, без
+    // кнопки закрытия и без возможности отказаться от показа. Сообщение,
+    // которое нельзя ни прочитать, ни убрать, хуже отсутствующего.
+    //
+    // Человек, попросивший «больше не показывать», гасит ОКНО, а не проверку
+    // обновлений: иначе он тихо остался бы без новых версий, о чём не просил.
+    if (settings.appUpdateNotesHidden) {
+      // Окно скрыто — но сообщить о новой версии всё равно надо, коротко.
+      AppToast.show(
+        context,
+        l.homeUpdateAvailable(release.version),
+        kind: ToastKind.info,
+        actionLabel: url.isEmpty ? null : l.homeDownload,
+        onAction: url.isEmpty ? null : () => UrlOpener.open(url),
+      );
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      builder: (_) => UpdateNotesDialog(
+        version: release.version,
+        notes: notes,
+        onDownload: url.isEmpty ? null : () => UrlOpener.open(url),
+        onNeverShow: () => unawaited(settingsCtrl
+            .update((c) => c.copyWith(appUpdateNotesHidden: true))),
+      ),
     );
   }
 

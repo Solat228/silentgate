@@ -3109,4 +3109,15 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'Le kill switch retient le trafic par programme, pas par domaine : pendant la reprise du noyau, personne n’analyse les noms de sites — les règles de sites ne s’appliquent pas durant ce laps de temps.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'Nouveautés de $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'Aucune note de version reçue.';
+
+  @override
+  String get updateNotesNeverShow => 'Ne plus afficher';
 }

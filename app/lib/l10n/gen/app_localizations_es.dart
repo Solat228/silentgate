@@ -3103,4 +3103,15 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'El kill switch retiene el tráfico por programa, no por dominio: mientras el núcleo se restablece no hay quien analice los nombres de los sitios, así que las reglas de sitios no se aplican durante ese tiempo.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'Novedades en $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'No se recibieron notas de la versión.';
+
+  @override
+  String get updateNotesNeverShow => 'No mostrar de nuevo';
 }

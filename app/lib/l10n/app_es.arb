@@ -1198,5 +1198,8 @@
   "splitOnlySelectedWarnTitle": "Todo lo no seleccionado sale con tu IP real",
   "splitOnlySelectedWarnBody": "Solo entra en el túnel lo que tiene la acción «Túnel». El resto del tráfico —incluidos programas de los que no sabes nada— sale directamente, con tu dirección real. Si hay que ocultar todo el dispositivo, elige «Todo a través de la VPN».",
   "splitOnlySelectedNoRealIp": "La opción «No salir con la IP real» no cambia esto: solo reescribe las reglas «Directo», no la ruta por defecto.",
-  "splitKillSwitchIsPerApp": "El kill switch retiene el tráfico por programa, no por dominio: mientras el núcleo se restablece no hay quien analice los nombres de los sitios, así que las reglas de sitios no se aplican durante ese tiempo."
+  "splitKillSwitchIsPerApp": "El kill switch retiene el tráfico por programa, no por dominio: mientras el núcleo se restablece no hay quien analice los nombres de los sitios, así que las reglas de sitios no se aplican durante ese tiempo.",
+  "updateNotesTitle": "Novedades en {version}",
+  "updateNotesEmpty": "No se recibieron notas de la versión.",
+  "updateNotesNeverShow": "No mostrar de nuevo"
 }

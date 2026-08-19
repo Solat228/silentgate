@@ -1137,5 +1137,8 @@
   "splitOnlySelectedWarnTitle": "Alles Nicht-Ausgewählte geht mit Ihrer echten IP hinaus",
   "splitOnlySelectedWarnBody": "In den Tunnel geht nur, was die Aktion „Tunnel“ hat. Der übrige Verkehr – auch von Programmen, von denen Sie nichts wissen – geht direkt hinaus, mit Ihrer echten Adresse. Soll das ganze Gerät verborgen sein, wählen Sie „Alles über VPN“.",
   "splitOnlySelectedNoRealIp": "Die Einstellung „Nicht mit der echten IP hinausgehen“ ändert daran nichts: Sie schreibt nur die „Direkt“-Regeln um, nicht die Standardroute.",
-  "splitKillSwitchIsPerApp": "Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht."
+  "splitKillSwitchIsPerApp": "Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht.",
+  "updateNotesTitle": "Neu in {version}",
+  "updateNotesEmpty": "Keine Versionshinweise erhalten.",
+  "updateNotesNeverShow": "Nicht mehr anzeigen"
 }

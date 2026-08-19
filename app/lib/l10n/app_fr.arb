@@ -1137,5 +1137,8 @@
   "splitOnlySelectedWarnTitle": "Tout ce qui n’est pas coché sort avec votre IP réelle",
   "splitOnlySelectedWarnBody": "Seules les entrées avec l’action « Tunnel » passent par le tunnel. Tout le reste du trafic — y compris des programmes dont vous ignorez l’existence — sort directement, avec votre adresse réelle. Si tout l’appareil doit être masqué, choisissez « Tout via le VPN ».",
   "splitOnlySelectedNoRealIp": "L’option « Ne pas sortir avec l’IP réelle » n’y change rien : elle ne réécrit que les règles « Direct », pas l’itinéraire par défaut.",
-  "splitKillSwitchIsPerApp": "Le kill switch retient le trafic par programme, pas par domaine : pendant la reprise du noyau, personne n’analyse les noms de sites — les règles de sites ne s’appliquent pas durant ce laps de temps."
+  "splitKillSwitchIsPerApp": "Le kill switch retient le trafic par programme, pas par domaine : pendant la reprise du noyau, personne n’analyse les noms de sites — les règles de sites ne s’appliquent pas durant ce laps de temps.",
+  "updateNotesTitle": "Nouveautés de {version}",
+  "updateNotesEmpty": "Aucune note de version reçue.",
+  "updateNotesNeverShow": "Ne plus afficher"
 }

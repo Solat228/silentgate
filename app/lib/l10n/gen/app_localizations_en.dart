@@ -3073,4 +3073,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'What\'s new in $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'No release notes were provided.';
+
+  @override
+  String get updateNotesNeverShow => 'Don\'t show again';
 }

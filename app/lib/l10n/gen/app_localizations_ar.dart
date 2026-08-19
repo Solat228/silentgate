@@ -3067,4 +3067,15 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'يحتجز مفتاح الإيقاف حركة المرور حسب البرامج لا حسب النطاقات: أثناء استعادة النواة لا يوجد من يحلّل أسماء المواقع، ولذلك لا تعمل قواعد المواقع في تلك الفترة.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'الجديد في $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'لم تصل ملاحظات الإصدار.';
+
+  @override
+  String get updateNotesNeverShow => 'عدم الإظهار مرة أخرى';
 }

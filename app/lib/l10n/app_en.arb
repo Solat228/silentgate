@@ -1313,5 +1313,8 @@
   "splitOnlySelectedWarnTitle": "Everything unselected leaves under your real IP",
   "splitOnlySelectedWarnBody": "Only entries with the “Tunnel” action go into the tunnel. All other traffic — including programs you do not know about — leaves directly, with your real address. If the whole device must be hidden, choose “All through VPN”.",
   "splitOnlySelectedNoRealIp": "The “Never leave under the real IP” setting does not change this: it rewrites only the “Direct” rules, not the default route.",
-  "splitKillSwitchIsPerApp": "The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time."
+  "splitKillSwitchIsPerApp": "The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.",
+  "updateNotesTitle": "What's new in {version}",
+  "updateNotesEmpty": "No release notes were provided.",
+  "updateNotesNeverShow": "Don't show again"
 }

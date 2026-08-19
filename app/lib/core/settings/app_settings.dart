@@ -633,6 +633,14 @@ class AppSettings {
   /// Проверять обновления самого приложения при запуске (скачивание — вручную).
   final bool appUpdateCheck;
 
+  /// Не показывать окно «что нового» при запуске после обновления.
+  ///
+  /// ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО ВЫКЛЮЧИТЬ ПРОВЕРКУ ОБНОВЛЕНИЙ. Человек, нажавший
+  /// «больше не показывать», просит убрать окно — а не остаться без новых
+  /// версий. Свести их в один флаг значило бы тихо отключить обновления тому,
+  /// кто этого не просил.
+  final bool appUpdateNotesHidden;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -732,6 +740,7 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
+    this.appUpdateNotesHidden = false,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -839,6 +848,7 @@ class AppSettings {
     int? autoUpdateIntervalHours,
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
+    bool? appUpdateNotesHidden,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -916,6 +926,8 @@ class AppSettings {
       autoUpdateIntervalHours: autoUpdateIntervalHours ?? this.autoUpdateIntervalHours,
       autoUpdatePreferSubscription: autoUpdatePreferSubscription ?? this.autoUpdatePreferSubscription,
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
+      appUpdateNotesHidden:
+          appUpdateNotesHidden ?? this.appUpdateNotesHidden,
     );
   }
 
@@ -990,6 +1002,7 @@ class AppSettings {
         'autoUpdateIntervalHours': autoUpdateIntervalHours,
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
+        'appUpdateNotesHidden': appUpdateNotesHidden,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1189,6 +1202,8 @@ class AppSettings {
       autoUpdateIntervalHours: (j['autoUpdateIntervalHours'] as num?)?.toInt() ?? 12,
       autoUpdatePreferSubscription: j['autoUpdatePreferSubscription'] as bool? ?? false,
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,
+      appUpdateNotesHidden: j['appUpdateNotesHidden'] as bool? ??
+          defaults.appUpdateNotesHidden,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.

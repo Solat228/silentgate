@@ -3076,4 +3076,15 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return '$version sürümünde yenilikler';
+  }
+
+  @override
+  String get updateNotesEmpty => 'Sürüm notu gelmedi.';
+
+  @override
+  String get updateNotesNeverShow => 'Bir daha gösterme';
 }

@@ -5321,6 +5321,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.'**
   String get splitKillSwitchIsPerApp;
+
+  /// No description provided for @updateNotesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что нового в {version}'**
+  String updateNotesTitle(Object version);
+
+  /// No description provided for @updateNotesEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Описание изменений не пришло.'**
+  String get updateNotesEmpty;
+
+  /// No description provided for @updateNotesNeverShow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Больше не показывать'**
+  String get updateNotesNeverShow;
 }
 
 class _AppLocalizationsDelegate

@@ -3063,4 +3063,15 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       'کلید قطع اضطراری ترافیک را بر اساس برنامه نگه می‌دارد، نه بر اساس دامنه: تا زمانی که هسته در حال بازیابی است کسی نیست که نام سایت‌ها را تحلیل کند — در این مدت قوانین سایت‌ها اعمال نمی‌شوند.';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return 'تازه‌های $version';
+  }
+
+  @override
+  String get updateNotesEmpty => 'یادداشت انتشار دریافت نشد.';
+
+  @override
+  String get updateNotesNeverShow => 'دیگر نشان نده';
 }

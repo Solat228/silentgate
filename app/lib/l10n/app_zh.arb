@@ -1137,5 +1137,8 @@
   "splitOnlySelectedWarnTitle": "未勾选的一切都会以你的真实 IP 出网",
   "splitOnlySelectedWarnBody": "只有设置为「隧道」动作的条目才会走隧道。其余流量——包括你并不知道的程序——都会以真实地址直接出网。若需隐藏整台设备，请选择「全部走 VPN」。",
   "splitOnlySelectedNoRealIp": "「不以真实 IP 出网」设置改变不了这一点：它只重写「直连」规则，而不改变默认路由。",
-  "splitKillSwitchIsPerApp": "断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。"
+  "splitKillSwitchIsPerApp": "断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。",
+  "updateNotesTitle": "{version} 更新内容",
+  "updateNotesEmpty": "未收到更新说明。",
+  "updateNotesNeverShow": "不再显示"
 }

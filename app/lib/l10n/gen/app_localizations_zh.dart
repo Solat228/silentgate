@@ -2958,4 +2958,15 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get splitKillSwitchIsPerApp =>
       '断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。';
+
+  @override
+  String updateNotesTitle(Object version) {
+    return '$version 更新内容';
+  }
+
+  @override
+  String get updateNotesEmpty => '未收到更新说明。';
+
+  @override
+  String get updateNotesNeverShow => '不再显示';
 }

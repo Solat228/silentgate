@@ -1137,5 +1137,8 @@
   "splitOnlySelectedWarnTitle": "İşaretlenmemiş her şey gerçek IP’nizle çıkar",
   "splitOnlySelectedWarnBody": "Tünele yalnızca «Tünel» eylemi verilmiş kayıtlar girer. Geri kalan trafik — varlığından haberdar olmadığınız programlar dâhil — gerçek adresinizle doğrudan çıkar. Tüm cihaz gizlenmeliyse «Tümü VPN üzerinden» seçeneğini kullanın.",
   "splitOnlySelectedNoRealIp": "«Gerçek IP ile çıkma» ayarı bunu değiştirmez: yalnızca «Doğrudan» kurallarını yeniden yazar, varsayılan rotayı değil.",
-  "splitKillSwitchIsPerApp": "Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz."
+  "splitKillSwitchIsPerApp": "Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.",
+  "updateNotesTitle": "{version} sürümünde yenilikler",
+  "updateNotesEmpty": "Sürüm notu gelmedi.",
+  "updateNotesNeverShow": "Bir daha gösterme"
 }
