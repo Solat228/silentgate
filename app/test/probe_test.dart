@@ -109,19 +109,26 @@ void main() {
     const b = HarnessConfigBuilder();
     final map = b.buildMap([HarnessEntry(key: 'ov', server: s)]);
 
-    // Ровно один http-inbound харнесса на порту base.
+    // ⚠️ ИНБАУНДОВ СТОЛЬКО, СКОЛЬКО КАНДИДАТОВ (19.08.2026). Здесь узлов два —
+    // значит два порта подряд от базового. Мерить один узел балансировщика
+    // значит объявлять профиль мёртвым всякий раз, когда мёртв именно он.
     final inbounds = (map['inbounds'] as List).cast<Map>();
-    expect(inbounds.length, 1);
-    expect(inbounds[0]['protocol'], 'http');
-    expect(inbounds[0]['port'], b.portFor(0));
+    expect(inbounds.length, 2);
+    for (var i = 0; i < inbounds.length; i++) {
+      expect(inbounds[i]['protocol'], 'http');
+      expect(inbounds[i]['port'], b.portFor(i));
+    }
 
-    // Роутинг заменён на единственное правило на КОНКРЕТНЫЙ узел из selector'а.
+    // Роутинг заменён на правила на КОНКРЕТНЫЕ узлы из selector'а.
     final rules = (map['routing'] as Map)['rules'] as List;
-    expect(rules.length, 1);
+    expect(rules.length, 2);
     expect(rules[0]['inboundTag'], ['in-0']);
     expect(rules[0]['outboundTag'], 'proxy-0');
-    expect(rules[0].containsKey('balancerTag'), isFalse,
-        reason: 'балансировщику в харнессе неоткуда взять задержки узлов');
+    expect(rules[1]['outboundTag'], 'proxy-1');
+    for (final r in rules) {
+      expect(r.containsKey('balancerTag'), isFalse,
+          reason: 'балансировщику в харнессе неоткуда взять задержки узлов');
+    }
 
     // Outbounds сохранены; балансировщик, наблюдатель и api/stats/policy — нет.
     final outs = (map['outbounds'] as List).cast<Map>();
@@ -1135,12 +1142,19 @@ void _panelProfileTests() {
     const b = HarnessConfigBuilder();
     final map = b.buildMap([HarnessEntry(key: s.key, server: s)]);
 
+    // ⚠️ Инбаунд на каждого кандидата, порты подряд от базового (19.08.2026):
+    // профиль — балансировщик, и один узел за него не отвечает.
     final inbounds = (map['inbounds'] as List).cast<Map>();
-    expect(inbounds, hasLength(1));
-    expect(inbounds[0]['port'], b.portFor(0));
+    expect(inbounds, isNotEmpty);
+    for (var i = 0; i < inbounds.length; i++) {
+      expect(inbounds[i]['port'], b.portFor(i));
+    }
 
     final rules = (map['routing'] as Map)['rules'] as List;
-    expect(rules.first.containsKey('balancerTag'), isFalse);
+    expect(rules, hasLength(inbounds.length));
+    for (final r in rules) {
+      expect(r.containsKey('balancerTag'), isFalse);
+    }
     expect(rules.first['outboundTag'], 'proxy');
     // Узлы профиля остаются на месте — режем только выбор выхода.
     expect((map['outbounds'] as List), hasLength(5));

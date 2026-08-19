@@ -15,7 +15,8 @@ import '../core/settings/app_settings.dart';
 import '../core/util/key_migration.dart';
 // HarnessRealism не входит в реэкспорт probe_harness.dart (там только сущности
 // самого харнесса), поэтому берём его из первоисточника.
-import '../core/xray/harness_config_builder.dart' show HarnessRealism;
+import '../core/xray/harness_config_builder.dart'
+    show HarnessConfigBuilder, HarnessRealism;
 import '../core/xray/outbound_variant.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
@@ -1044,6 +1045,55 @@ class ProbeController extends ChangeNotifier {
     }
   }
 
+  /// ПОРТ ТОГО КАНДИДАТА ПРОФИЛЯ, ЧЕРЕЗ КОТОРЫЙ ПРОБА РЕАЛЬНО ПРОХОДИТ.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО. Профиль «Авто …» — балансировщик над десятками узлов: в
+  /// работе он берёт живой. Харнесс же с 1.4.3 мерил РОВНО ОДИН узел — первый,
+  /// — и если мёртв именно он, профиль показывал «n/a» ВСЕГДА. На данных
+  /// владельца 19.08.2026 это видно прямо в журнале: «Проба через прокси 101
+  /// (общий 83, свой конфиг 18)» → «рабочих 83 из 101». Восемьдесят три — это
+  /// ровно число обычных серверов, то есть ни один из восемнадцати профилей не
+  /// прошёл ни разу. Узел с тегом `proxy` у профиля «Авто (YouTube)» и в его
+  /// собственных результатах пинга числится `failed`.
+  ///
+  /// ⚠️ Пробы идут ПАРАЛЛЕЛЬНО. Последовательный перебор четырёх кандидатов
+  /// растянул бы прогон вчетверо: у владельца профилей два десятка, и на
+  /// таймауте в 3 с это минуты ожидания на ровном месте.
+  ///
+  /// Возвращает порт лучшего ответившего кандидата; если не ответил никто —
+  /// [fallback], чтобы вердикт «не работает» записался обычным путём.
+  Future<int?> _bestOverridePort(VpnServer server, HarnessHandle handle,
+      int? fallback, AppSettings settings) async {
+    final raw = (server.rawJsonOverride ?? '').isNotEmpty
+        ? server.rawJsonOverride!
+        : (server.rawPanelConfig ?? '');
+    if (raw.isEmpty || fallback == null) return fallback;
+    final count = HarnessConfigBuilder.overrideCandidateCount(raw);
+    if (count <= 1) return fallback;
+
+    final ports = [
+      for (var i = 0; i < count; i++)
+        if (handle.proxyPortFor(i) > 0) handle.proxyPortFor(i),
+    ];
+    if (ports.length <= 1) return fallback;
+
+    final timeout = Duration(milliseconds: settings.pingTimeoutMs);
+    final results = await Future.wait([
+      for (final p in ports)
+        ProxyProbe.check(p, settings.testUrl,
+                head: false,
+                timeout: timeout,
+                proxyUser: handle.proxyUser,
+                proxyPassword: handle.proxyPassword)
+            .then((r) => (port: p, ok: r.ok, ms: r.rttMs ?? 1 << 30))
+            .catchError((_) => (port: p, ok: false, ms: 1 << 30)),
+    ]);
+    final ok = [for (final r in results) if (r.ok) r];
+    if (ok.isEmpty) return fallback;
+    ok.sort((a, b) => a.ms.compareTo(b.ms));
+    return ok.first.port;
+  }
+
   /// Проба одного сервера с полным JSON-конфигом на отдельном харнессе (#8.2).
   Future<void> _verifyOne(
       VpnServer server, AppSettings settings, CancelToken cancel,
@@ -1072,7 +1122,8 @@ class ProbeController extends ChangeNotifier {
         _recordSelfMeasured(server, ready);
         return;
       }
-      await _applyVerify(server, port, settings,
+      await _applyVerify(server, await _bestOverridePort(server, handle, port, settings),
+          settings,
           head: head,
           forceProxy: forceProxy,
           proxyUser: handle.proxyUser,

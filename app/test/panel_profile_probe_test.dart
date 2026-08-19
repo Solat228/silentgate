@@ -36,21 +36,34 @@ void main() {
     final map = _harnessFor(_autoProfile);
 
     final rules = (map['routing'] as Map)['rules'] as List;
-    expect(rules.length, 1);
-    expect(rules[0]['inboundTag'], ['in-0']);
 
-    // ⚠️ ГЛАВНОЕ. Раньше здесь стоял `balancerTag: yt_auto`.
-    expect(rules[0].containsKey('balancerTag'), isFalse,
-        reason: 'у балансировщика в харнессе нет данных наблюдателя — '
-            'выбрать он не может и уходит в fallbackTag');
-    expect(rules[0]['outboundTag'], 'proxy',
-        reason: 'мерим тот узел, чей адрес показан в строке сервера');
-
-    // И отдельно: выход не может оказаться служебным. `fallbackTag` профиля —
-    // `direct`, и именно туда уходила проба; такая цифра — про прямой канал
-    // пользователя, а не про сервер.
-    expect(rules[0]['outboundTag'], isNot('direct'));
-    expect(rules[0]['outboundTag'], isNot('block'));
+    // ⚠️ ПРАВИЛ ТЕПЕРЬ НЕСКОЛЬКО — по одному на кандидата (19.08.2026).
+    // Профиль «Авто …» это БАЛАНСИРОВЩИК над десятками узлов, и мерить ровно
+    // один (как делали с 1.4.3) — значит объявлять профиль мёртвым всякий раз,
+    // когда мёртв именно этот узел. На данных владельца так и вышло: «рабочих
+    // 83 из 101» при 83 обычных серверах и 18 профилях, то есть НИ ОДИН
+    // профиль не прошёл ни разу.
+    expect(rules.length, greaterThan(1),
+        reason: 'один кандидат — это ставка на узел, который может быть мёртв');
+    for (var i = 0; i < rules.length; i++) {
+      expect(rules[i]['inboundTag'], ['in-$i'],
+          reason: 'каждому кандидату свой инбаунд: порты идут подряд от базового');
+      // ⚠️ ГЛАВНОЕ, И ЭТО УРОК 1.4.3. Раньше здесь стоял `balancerTag: yt_auto`.
+      expect(rules[i].containsKey('balancerTag'), isFalse,
+          reason: 'у балансировщика в харнессе нет данных наблюдателя — '
+              'выбрать он не может и уходит в fallbackTag');
+      // Выход не может оказаться служебным. `fallbackTag` профиля — `direct`,
+      // и именно туда уходила проба; такая цифра — про прямой канал
+      // пользователя, а не про сервер.
+      expect(rules[i]['outboundTag'], isNot('direct'));
+      expect(rules[i]['outboundTag'], isNot('block'));
+    }
+    // Узел, чей адрес показан в строке сервера, остаётся первым: привычная
+    // цифра должна остаться привычной.
+    expect(rules[0]['outboundTag'], 'proxy');
+    // Кандидаты РАЗНЫЕ — иначе перебор не даёт ничего.
+    final tags = [for (final r in rules) r['outboundTag']];
+    expect(tags.toSet().length, tags.length);
   });
 
   test('балансировщик и наблюдатель в харнесс не попадают', () {
@@ -86,9 +99,16 @@ void main() {
     // серверов, которые есть в каждой подписке.
     final map = _harnessFor(_autoProfile, user: 'sg', password: 'secret42');
     final inbounds = (map['inbounds'] as List).cast<Map>();
-    expect(inbounds.length, 1);
-    final accounts = (inbounds[0]['settings'] as Map)['accounts'] as List;
-    expect(accounts.single, {'user': 'sg', 'pass': 'secret42'});
+    expect(inbounds, isNotEmpty);
+    // ⚠️ ПАРОЛЬ НА КАЖДОМ, А НЕ НА ПЕРВОМ. Инбаундов теперь несколько (по
+    // одному на кандидата профиля), и открытый вход хотя бы в один означает
+    // ровно ту дыру, ради которой пароль и заводили: чужой процесс на той же
+    // машине получает туннель целиком.
+    for (final inb in inbounds) {
+      final accounts = (inb['settings'] as Map)['accounts'] as List;
+      expect(accounts.single, {'user': 'sg', 'pass': 'secret42'},
+          reason: 'инбаунд ${inb['tag']} открыт');
+    }
   });
 
   // ── Выбор узла ─────────────────────────────────────────────────────────────

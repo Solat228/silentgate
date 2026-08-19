@@ -205,7 +205,7 @@ class HarnessConfigBuilder {
           ? s.rawJsonOverride
           : s.rawPanelConfig;
       if (raw != null && raw.isNotEmpty) {
-        final map = _tryOverrideMap(raw, portFor(0));
+        final map = _tryOverrideMap(raw, portFor);
         if (map != null) return map;
       }
     }
@@ -310,7 +310,7 @@ class HarnessConfigBuilder {
   /// ниже собирается ОТДЕЛЬНЫМ от [buildMap] кодом, а ведёт он в туннель того
   /// самого профиля «Авто», который у владельца есть в каждой подписке. Пустой
   /// `settings` здесь означал бы, что закрыли только обычные серверы.
-  Map<String, dynamic>? _tryOverrideMap(String raw, int port) {
+  Map<String, dynamic>? _tryOverrideMap(String raw, int Function(int) portFor) {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
@@ -321,10 +321,8 @@ class HarnessConfigBuilder {
       final routing = cfg['routing'] is Map
           ? Map<String, dynamic>.from(cfg['routing'] as Map)
           : <String, dynamic>{};
-      final outTag = probeExitTag(routing, outbounds);
-      if (outTag == null) return null;
-
-      const inTag = 'in-0';
+      final tags = probeExitTags(routing, outbounds);
+      if (tags.isEmpty) return null;
       // domainStrategy ФОРСИРУЕТСЯ, а не наследуется из профиля (там почти
       // всегда `IPIfNonMatch`). Причина та же, что в [buildMap]: IPIfNonMatch
       // заставляет ядро резолвить имя мишени ЛОКАЛЬНО, и этот резолв попадает
@@ -337,22 +335,24 @@ class HarnessConfigBuilder {
       // наблюдателя — это ссылка на возможность, которой в конфиге не осталось.
       routing.remove('balancers');
       routing['rules'] = [
-        {
-          'type': 'field',
-          'inboundTag': [inTag],
-          'outboundTag': outTag,
-        },
+        for (var i = 0; i < tags.length; i++)
+          {
+            'type': 'field',
+            'inboundTag': ['in-$i'],
+            'outboundTag': tags[i],
+          },
       ];
 
       cfg['log'] = {'loglevel': 'warning'};
       cfg['inbounds'] = [
-        {
-          'tag': inTag,
-          'listen': '127.0.0.1',
-          'port': port,
-          'protocol': 'http',
-          'settings': _httpSettings,
-        },
+        for (var i = 0; i < tags.length; i++)
+          {
+            'tag': 'in-$i',
+            'listen': '127.0.0.1',
+            'port': portFor(i),
+            'protocol': 'http',
+            'settings': _httpSettings,
+          },
       ];
       cfg['routing'] = routing;
       cfg.remove('api');
@@ -407,7 +407,81 @@ class HarnessConfigBuilder {
   /// одного замера не существует: чтобы получить выбор балансировщика, надо
   /// дать наблюдателю обойти все узлы, а это и есть тот самый прогон пинга,
   /// только целиком и по каждому профилю отдельно.
+  /// СКОЛЬКО КАНДИДАТОВ ПРОФИЛЯ ХАРНЕСС ВЫСТАВИТ НАРУЖУ.
+  ///
+  /// Нужно тому, кто ходит через харнесс: порты идут подряд от базового, и без
+  /// этого числа пробующий не знает, сколько их пробовать.
+  static int overrideCandidateCount(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return 0;
+      final outbounds = decoded['outbounds'];
+      if (outbounds is! List || outbounds.isEmpty) return 0;
+      final routing = decoded['routing'] is Map
+          ? Map<String, dynamic>.from(decoded['routing'] as Map)
+          : <String, dynamic>{};
+      return probeExitTags(routing, outbounds).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Сколько узлов профиля пробуем. ⚠️ ЧЕТЫРЕ — КОМПРОМИСС, А НЕ КРУГЛОЕ ЧИСЛО.
+  /// Профиль «Авто» у владельца — балансировщик над сотней узлов; поднимать
+  /// сотню инбаундов ради одной плашки нельзя, а один узел (как было до
+  /// 19.08.2026) врёт, если именно он мёртв.
+  static const overrideProbeCandidates = 4;
+
+  /// Теги узлов, ЧЕРЕЗ КОТОРЫЕ пойдут пробы, в порядке предпочтения.
+  ///
+  /// ⚠️ ЗАЧЕМ ИХ НЕСКОЛЬКО. Профиль «Авто …» — это БАЛАНСИРОВЩИК: в реальной
+  /// работе он берёт живой узел из сотни. Харнесс же с 1.4.3 мерил РОВНО ОДИН
+  /// узел — первый, — и если именно он мёртв, профиль показывал «n/a» всегда.
+  /// Проверено на данных владельца 19.08.2026: у профиля «Авто (YouTube)» узел
+  /// с тегом `proxy` числится `failed` в его же результатах пинга, а профиль в
+  /// каждом прогоне давал ноль рабочих. В журнале это выглядело как «рабочих 0
+  /// из 1» — и так во всех прогонах: 77 из 107 при 24 профилях, 83 из 101 при
+  /// 18 профилях, то есть НИ ОДИН профиль не прошёл ни разу.
+  ///
+  /// ⚠️ Балансировщик в харнесс по-прежнему не попадает (урок 1.4.3): у него
+  /// нет данных наблюдателя, и он уводит пробу в `fallbackTag`, то есть в
+  /// `direct` — цифра получалась про прямой канал пользователя.
+  ///
+  /// ⚠️ Кандидаты берутся С РАЗБЕГОМ по списку, а не подряд. Соседние узлы у
+  /// панелей — обычно одна площадка: упала она, и четыре подряд взятых узла
+  /// мертвы все четыре, а разбег даёт четыре разных места.
+  static List<String> probeExitTags(
+    Map<String, dynamic> routing,
+    List outbounds, {
+    int limit = overrideProbeCandidates,
+  }) {
+    final pool = _probePool(routing, outbounds);
+    if (pool.isEmpty) return const [];
+    final tags = [for (final o in pool) '${o['tag']}'];
+    // Узел с тегом `proxy` — тот, чей адрес показан в строке сервера; он идёт
+    // первым, чтобы привычная цифра осталась привычной.
+    final first = tags.indexOf('proxy');
+    final ordered = <String>[if (first >= 0) tags[first]];
+    if (tags.length <= limit) {
+      for (final t in tags) {
+        if (!ordered.contains(t)) ordered.add(t);
+      }
+      return ordered;
+    }
+    final step = tags.length ~/ limit;
+    for (var i = 0; ordered.length < limit && i < tags.length; i += step) {
+      if (!ordered.contains(tags[i])) ordered.add(tags[i]);
+    }
+    return ordered;
+  }
+
+  /// Один тег — для мест, где кандидат нужен ровно один.
   static String? probeExitTag(Map<String, dynamic> routing, List outbounds) {
+    final tags = probeExitTags(routing, outbounds, limit: 1);
+    return tags.isEmpty ? null : tags.first;
+  }
+
+  static List<Map> _probePool(Map<String, dynamic> routing, List outbounds) {
     final proxies = [
       for (final o in outbounds)
         if (o is Map && _isProxyOutbound(o) && '${o['tag'] ?? ''}'.isNotEmpty)
@@ -418,10 +492,9 @@ class HarnessConfigBuilder {
       // первый тег, какой есть: измерять там нечего, но конфиг обязан остаться
       // валидным, иначе ядро не поднимется и вердикт станет выдуманным.
       for (final o in outbounds) {
-        final tag = o is Map ? '${o['tag'] ?? ''}' : '';
-        if (tag.isNotEmpty) return tag;
+        if (o is Map && '${o['tag'] ?? ''}'.isNotEmpty) return [o];
       }
-      return null;
+      return const [];
     }
 
     final selectors = _balancerSelectors(routing);
@@ -433,11 +506,7 @@ class HarnessConfigBuilder {
           ];
     // Селектор не совпал ни с чем (профиль ссылается на теги, которых нет) —
     // мерим первый прокси, а не отказываемся: узлы-то в конфиге настоящие.
-    final pool = matching.isEmpty ? proxies : matching;
-    for (final o in pool) {
-      if ('${o['tag']}' == 'proxy') return 'proxy';
-    }
-    return '${pool.first['tag']}';
+    return matching.isEmpty ? proxies : matching;
   }
 
   static bool _isProxyOutbound(Map o) {
