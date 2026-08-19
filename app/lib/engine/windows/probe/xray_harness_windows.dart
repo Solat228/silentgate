@@ -8,6 +8,7 @@ import '../../../core/probe/probe_harness.dart';
 import '../../../core/xray/harness_config_builder.dart';
 import '../xray_paths.dart';
 import '../xray_process.dart';
+import 'harness_temp_config.dart';
 
 /// Windows-реализация проброс-харнесса: отдельный процесс xray.exe с http-inbound'ами.
 /// Не устанавливает системный прокси.
@@ -85,15 +86,24 @@ class XrayHarnessWindows implements ProbeHarness {
         '${dir.path}${Platform.pathSeparator}harness_config_$_slot.json');
     await file.writeAsString(builder.buildJson(entries));
 
-    final process = XrayProcess();
-    await process.start(
-      executable: location.executable,
-      configPath: file.path,
-      assetDir: location.assetDir,
-    );
+    // ⚠️ ВСЁ, ЧТО НИЖЕ, — ПОД ОТКАТОМ. В файле лежит пароль локального инбаунда,
+    // и любой сбой между записью и возвратом хендла (ядро не нашлось, порт
+    // занят, ожидание готовности бросило) оставлял бы его в каталоге данных
+    // навсегда: хендла ещё нет, звать его `stop()` некому.
+    try {
+      final process = XrayProcess();
+      await process.start(
+        executable: location.executable,
+        configPath: file.path,
+        assetDir: location.assetDir,
+      );
 
-    await _waitReady(builder.portFor(0));
-    return _WindowsHarnessHandle(process, builder);
+      await _waitReady(builder.portFor(0));
+      return _WindowsHarnessHandle(process, builder, file.path);
+    } catch (_) {
+      await deleteHarnessConfig(file.path);
+      rethrow;
+    }
   }
 
   /// Сколько ждать, пока ядро харнесса откроет свой первый порт.
@@ -140,7 +150,8 @@ class XrayHarnessWindows implements ProbeHarness {
 class _WindowsHarnessHandle implements HarnessHandle {
   final XrayProcess _process;
   final HarnessConfigBuilder _builder;
-  _WindowsHarnessHandle(this._process, this._builder);
+  final String _configPath;
+  _WindowsHarnessHandle(this._process, this._builder, this._configPath);
 
   @override
   int proxyPortFor(int index) => _builder.portFor(index);
@@ -159,5 +170,8 @@ class _WindowsHarnessHandle implements HarnessHandle {
   Future<void> stop() async {
     await _process.stop();
     _process.dispose();
+    // ⚠️ ПОСЛЕ остановки ядра, а не до: пока процесс жив, файл ему ещё может
+    // понадобиться, а удалять открытый файл Windows и не даст.
+    await deleteHarnessConfig(_configPath);
   }
 }
