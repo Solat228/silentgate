@@ -94,3 +94,7 @@ tools/__pycache__/
 /mvrules/
 /mvtree.json
 /rules.go
+/app/pg.html
+# Любые скачанные агентами страницы: они большие и чужие.
+*.saved.html
+
