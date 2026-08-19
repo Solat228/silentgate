@@ -106,6 +106,7 @@ class WfpConst {
   static const int matchFlagsAnySet = 7;
 
   static const int typeUint8 = 1;
+  static const int typeUint16 = 2;
   static const int typeUint32 = 3;
   static const int typeUint64 = 4;
   static const int typeByteBlob = 12;
@@ -181,4 +182,23 @@ class WfpConditions {
       WfpGuid(0x4CD62A49, 0x59C3, 0x4969, [0xB7, 0xF3, 0xBD, 0xA5, 0xD3, 0x28, 0x90, 0xA4]);
   static const flags =
       WfpGuid(0x632CE23B, 0x5167, 0x435C, [0x86, 0xD7, 0xE9, 0x03, 0x68, 0x4A, 0xA8, 0x0C]);
+  static const ipProtocol =
+      WfpGuid(0x3971EF2B, 0x623E, 0x4F9A, [0x8C, 0xB1, 0x6E, 0x79, 0xB8, 0x06, 0xB9, 0xA7]);
+  static const ipRemotePort =
+      WfpGuid(0xC35A604D, 0xD22B, 0x4E1A, [0x91, 0xB4, 0x68, 0xF6, 0x74, 0xEE, 0x67, 0x4B]);
+
+  /// ⚠️ ЭТО ЖЕ ПОЛЕ ПЕРЕНОСИТ ТИП ICMP. Не совпадение и не догадка: замер
+  /// показал, что `FWPM_CONDITION_ICMP_TYPE` и `FWPM_CONDITION_IP_LOCAL_PORT`
+  /// — ОДИН И ТОТ ЖЕ GUID (как и `ICMP_CODE` с `IP_REMOTE_PORT`). Так WFP
+  /// описывает ICMP: тип кладётся в поле локального порта. Поэтому имя у
+  /// константы одно, а смысл — по протоколу в соседнем условии.
+  static const ipLocalPortOrIcmpType =
+      WfpGuid(0x0C1BA1AF, 0x5765, 0x453F, [0xAF, 0x22, 0xA8, 0xF7, 0x91, 0xAC, 0x77, 0x5B]);
+}
+
+/// Номера протоколов, которые нам нужны.
+class IpProto {
+  static const int tcp = 6;
+  static const int udp = 17;
+  static const int icmpV6 = 58;
 }

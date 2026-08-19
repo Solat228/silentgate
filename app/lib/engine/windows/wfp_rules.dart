@@ -5,6 +5,14 @@
 /// владельца, где в это время идёт его работа. Значит «поставить и посмотреть»
 /// нельзя в принципе. Зато список правил — обычные данные: его можно построить,
 /// сравнить и разобрать по косточкам, ни разу не тронув систему.
+///
+/// ⚠️ СЛОЁВ РОВНО ЧЕТЫРЕ, И ЭТО ПРОВЕРЕННОЕ РЕШЕНИЕ, А НЕ НЕДОДЕЛКА.
+/// `ALE_AUTH_LISTEN` не нужен: он про право слушать порт, а не про исходящие
+/// соединения, и блокировка на нём ломает локальные сервисы, ничего не закрывая
+/// снаружи. `OUTBOUND_IPPACKET` не нужен тем более: он ниже ALE, не знает ни
+/// процесса, ни соединения, и правило там режет наши же служебные пакеты.
+/// Ни WireGuard, ни Mullvad не ставят фильтров ни на том, ни на другом —
+/// проверено по их исходникам. Не «улучшать» этот список.
 library;
 
 import 'dart:io';
@@ -30,8 +38,17 @@ class KillSwitchPlan {
   /// открывает — поэтому решает пользователь, а не умолчание в коде.
   final bool allowLan;
 
+  /// DHCP и соседи IPv6. ⚠️ ОТДЕЛЬНО ОТ [allowLan] И ПО УМОЛЧАНИЮ ВКЛЮЧЕНО:
+  /// это не «доступ к локальной сети», а условие того, что у машины вообще
+  /// останется адрес. Аренда DHCP истекает и во время блокировки; запретив
+  /// продление, мы оставили бы человека без сети и ПОСЛЕ снятия защиты.
+  final bool allowDhcpAndNdp;
+
   /// LUID адаптера туннеля. ⚠️ Без него блокировка режет и сам VPN: трафик
   /// приложений уходит В туннель, а туннель — это тоже интерфейс.
+  /// В момент первого подъёма он ещё НЕ ИЗВЕСТЕН — адаптера не существует,
+  /// пока ядро не запустилось. Поэтому здесь `null` — законное значение, а
+  /// правило добавляется вторым заходом, когда туннель поднялся.
   final int? tunnelInterfaceLuid;
 
   /// Пути приложений, которым закрываем сеть (режим «только отмеченные»).
@@ -47,12 +64,26 @@ class KillSwitchPlan {
     required this.allowLan,
     required this.blockedAppPaths,
     required this.blockAll,
+    this.allowDhcpAndNdp = true,
     this.ownBinaryPaths = const [],
     this.tunnelInterfaceLuid,
   });
 
   /// Есть ли что блокировать вообще.
   bool get isEmpty => !blockAll && blockedAppPaths.isEmpty;
+
+  /// Тот же план, но с известным теперь адаптером туннеля.
+  KillSwitchPlan withTunnelLuid(int luid) => KillSwitchPlan(
+        allowServerIps: allowServerIps,
+        allowOwnBinaries: allowOwnBinaries,
+        allowLoopback: allowLoopback,
+        allowLan: allowLan,
+        blockedAppPaths: blockedAppPaths,
+        blockAll: blockAll,
+        allowDhcpAndNdp: allowDhcpAndNdp,
+        ownBinaryPaths: ownBinaryPaths,
+        tunnelInterfaceLuid: luid,
+      );
 }
 
 /// Вид значения условия. Разные виды кладутся в память по-разному, и путать их
@@ -67,11 +98,17 @@ enum WfpValueKind {
   /// IPv6-подсеть → `FWP_V6_ADDR_AND_MASK` (16 байт адреса + длина префикса).
   v6Net,
 
-  /// LUID интерфейса → `FWP_UINT64`.
+  /// LUID интерфейса → `FWP_UINT64` (по указателю!).
   u64,
 
   /// Набор флагов условия → `FWP_UINT32`.
   u32,
+
+  /// Номер порта или тип ICMP → `FWP_UINT16`.
+  u16,
+
+  /// Номер протокола → `FWP_UINT8`.
+  u8,
 }
 
 /// Одно условие фильтра.
@@ -111,6 +148,10 @@ class WfpCondition {
         return 'u64($number)';
       case WfpValueKind.u32:
         return 'u32(0x${number.toRadixString(16)})';
+      case WfpValueKind.u16:
+        return 'u16($number)';
+      case WfpValueKind.u8:
+        return 'u8($number)';
     }
   }
 
@@ -120,11 +161,18 @@ class WfpCondition {
     if (identical(g, WfpConditions.ipRemoteAddress)) return 'remoteAddr';
     if (identical(g, WfpConditions.ipLocalInterface)) return 'localIface';
     if (identical(g, WfpConditions.flags)) return 'flags';
+    if (identical(g, WfpConditions.ipProtocol)) return 'proto';
+    if (identical(g, WfpConditions.ipRemotePort)) return 'rport';
+    if (identical(g, WfpConditions.ipLocalPortOrIcmpType)) return 'lport/icmp';
     return g.toString();
   }
 }
 
 /// Одно правило: действие + вес + слои + условия.
+///
+/// ⚠️ ПОВТОР ОДНОГО ПОЛЯ В УСЛОВИЯХ — ЭТО «ИЛИ», А НЕ ОШИБКА. Так устроен сам
+/// WFP: идущие подряд условия с одинаковым `fieldKey` объединяются по «или»,
+/// разные поля — по «и». На этом держится правило «порт 53 по UDP ИЛИ TCP».
 class WfpRule {
   /// Человеческое имя — попадает в `displayData` и видно в `netsh wfp show state`.
   final String name;
@@ -150,22 +198,46 @@ class WfpRule {
   String toString() {
     final what = isBlock ? 'БЛОК' : 'ПУСК';
     final conds = conditions.map((c) => c.toString()).join(', ');
-    return '$what w$weight [${layers.length} сл.] $name${conds.isEmpty ? '' : ' — $conds'}';
+    return '$what w$weight [${layers.length} сл.] $name'
+        '${conds.isEmpty ? '' : ' — $conds'}';
   }
 }
 
 /// Веса внутри нашего подслоя.
 ///
 /// ⚠️ ПОРЯДОК ЗДЕСЬ — ЭТО И ЕСТЬ ЛОГИКА KILL SWITCH. В одном подслое побеждает
-/// фильтр с бо́льшим весом, поэтому блок стоит на самом дне: любое разрешение
-/// перекрывает его, и ни одно разрешение не может «случайно» оказаться ниже.
+/// фильтр с бо́льшим весом. Лестница снизу вверх:
+///
+/// ```
+///  0  блок всего
+///  4  локальная сеть
+///  5  блок конкретного приложения   ← ВЫШЕ локальной сети, и это важно
+///  6  DHCP и соседи IPv6
+///  8  адреса VPN-серверов
+///  9  блок DNS                      ← ВЫШЕ локальной сети, и это важно
+/// 10  интерфейс туннеля
+/// 11  свои бинари
+/// 12  loopback
+/// ```
+///
+/// ⚠️ ДВА МЕСТА, ГДЕ ПОРЯДОК НЕОЧЕВИДЕН И РЕШАЕТ ВСЁ:
+///  * блок приложения (5) стоит ВЫШЕ разрешения локальной сети (4). Иначе
+///    приложение, которому мы закрыли сеть, продолжало бы ходить к роутеру — а
+///    там и резолвер, и чей-нибудь прокси.
+///  * блок DNS (9) стоит ВЫШЕ разрешения локальной сети (4), но НИЖЕ туннеля
+///    (10) и своих бинарей (11). То есть DNS внутри туннеля жив, наш клиент
+///    резолвит панель, а запрос к роутеру — не проходит.
+///
 /// Диапазон 0…15 задан самим WFP для веса типа `FWP_UINT8`.
 class WfpWeights {
   static const int block = 0;
   static const int lan = 4;
-  static const int ownBinaries = 6;
+  static const int blockApp = 5;
+  static const int dhcpAndNdp = 6;
   static const int serverIps = 8;
+  static const int blockDns = 9;
   static const int tunnelInterface = 10;
+  static const int ownBinaries = 11;
   static const int loopback = 12;
 
   /// Потолок веса типа `FWP_UINT8` — больше ядро не примет.
@@ -175,7 +247,7 @@ class WfpWeights {
 /// Построить список правил по плану.
 ///
 /// ⚠️ ПОРЯДОК В СПИСКЕ ЗНАЧЕНИЯ НЕ ИМЕЕТ — решает ВЕС. Список идёт «сначала
-/// блок, потом разрешения» только ради читаемости журнала и тестов.
+/// запреты, потом разрешения» только ради читаемости журнала и тестов.
 List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
   final rules = <WfpRule>[];
   if (plan.isEmpty) return rules;
@@ -188,6 +260,29 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
       weight: WfpWeights.block,
       layers: WfpLayers.all,
     ));
+
+    // ⚠️ БЛОК DNS — ОТДЕЛЬНЫМ ПРАВИЛОМ, И ВОТ ПОЧЕМУ ОН ВООБЩЕ НУЖЕН.
+    // Разрешение локальной сети выпускает запросы к роутеру, а роутер — это
+    // резолвер провайдера. Пока туннель лежит между попытками, провайдер видел
+    // бы ПОЛНЫЙ список посещаемых доменов, при том что интерфейс обещает
+    // защиту. Общий блок этого не ловит: он легче разрешения локальной сети.
+    //
+    // Ставится ТОЛЬКО при полной блокировке. В режиме «только отмеченные»
+    // неотмеченные приложения обязаны работать как обычно — включая их DNS.
+    rules.add(WfpRule(
+      name: 'SilentGate: блок DNS мимо туннеля',
+      action: WfpConst.actionBlock,
+      weight: WfpWeights.blockDns,
+      // Только исходящие: входящих соединений на 53-й порт у клиента не бывает,
+      // а фильтр на приёме мешал бы своему же резолверу.
+      layers: const [WfpLayers.aleAuthConnectV4, WfpLayers.aleAuthConnectV6],
+      conditions: [
+        _remotePort(53),
+        // Повтор поля «протокол» = «UDP ИЛИ TCP» (правило самого WFP).
+        _proto(IpProto.udp),
+        _proto(IpProto.tcp),
+      ],
+    ));
   } else {
     // Школа Mullvad: исключение из туннеля остаётся исключением и из
     // блокировки. Режем ровно те приложения, что шли через VPN, — остальным
@@ -196,16 +291,9 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
       rules.add(WfpRule(
         name: 'SilentGate: блок ${baseName(path)}',
         action: WfpConst.actionBlock,
-        weight: WfpWeights.block,
+        weight: WfpWeights.blockApp,
         layers: WfpLayers.all,
-        conditions: [
-          WfpCondition(
-            field: WfpConditions.aleAppId,
-            matchType: WfpConst.matchEqual,
-            kind: WfpValueKind.appId,
-            path: path,
-          ),
-        ],
+        conditions: [_appId(path)],
       ));
     }
   }
@@ -229,6 +317,30 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
         ),
       ],
     ));
+  }
+
+  // ⚠️ Свои бинари. Без них клиент не проверит канал, не обновит подписку и не
+  // объяснит человеку, что происходит: мёртвая сеть и молчащее окно. И они же
+  // должны уметь резолвить имя сервера — поэтому стоят ВЫШЕ блока DNS.
+  //
+  // Цена честная, и её надо знать: пока блокировка поднята, эти запросы идут
+  // под реальным адресом — но уходят они на панель, которая и так знает
+  // владельца, и на его же серверы.
+  //
+  // ⚠️ Условия по ВЛАДЕЛЬЦУ процесса (`ALE_USER_ID`) здесь нет — сознательно.
+  // WireGuard его ставит, чтобы чужой процесс, запущенный из того же файла, не
+  // получил разрешение. У нас такого сценария нет: файл наш, и запускает его
+  // тот же пользователь. Появится многопользовательский случай — добавить.
+  if (plan.allowOwnBinaries) {
+    for (final path in plan.ownBinaryPaths) {
+      rules.add(WfpRule(
+        name: 'SilentGate: свой ${baseName(path)}',
+        action: WfpConst.actionPermit,
+        weight: WfpWeights.ownBinaries,
+        layers: WfpLayers.all,
+        conditions: [_appId(path)],
+      ));
+    }
   }
 
   // ⚠️ САМ ТУННЕЛЬ. Трафик приложений уходит В адаптер туннеля, и без этого
@@ -260,32 +372,15 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
     if (rule != null) rules.add(rule);
   }
 
-  // ⚠️ Свои бинари. Без них клиент не проверит канал, не обновит подписку и не
-  // объяснит человеку, что происходит: мёртвая сеть и молчащее окно.
-  // Цена честная, и её надо знать: пока блокировка поднята, эти запросы идут
-  // под реальным адресом — но уходят они на панель, которая и так знает
-  // владельца, и на его же серверы.
-  if (plan.allowOwnBinaries) {
-    for (final path in plan.ownBinaryPaths) {
-      rules.add(WfpRule(
-        name: 'SilentGate: свой ${baseName(path)}',
-        action: WfpConst.actionPermit,
-        weight: WfpWeights.ownBinaries,
-        layers: WfpLayers.all,
-        conditions: [
-          WfpCondition(
-            field: WfpConditions.aleAppId,
-            matchType: WfpConst.matchEqual,
-            kind: WfpValueKind.appId,
-            path: path,
-          ),
-        ],
-      ));
-    }
+  // ⚠️ DHCP и соседи IPv6 — ВСЕГДА и НЕЗАВИСИМО от локальной сети. Аренда
+  // адреса истекает и во время блокировки: запретив продление, мы оставили бы
+  // машину без адреса и ПОСЛЕ снятия защиты. Задаются портами и типами ICMP, а
+  // не адресами: у DHCP-ответа адрес отправителя заранее не известен.
+  if (plan.allowDhcpAndNdp) {
+    rules.addAll(_dhcpAndNdpRules());
   }
 
-  // Локальная сеть, DHCP и NDP. Широковещание и многоадресная рассылка входят
-  // сюда же: DHCP-клиент шлёт на 255.255.255.255, а соседи IPv6 — на ff02::.
+  // Локальная сеть: принтеры, NAS, шлюз.
   if (plan.allowLan) {
     for (final net in lanNets) {
       final rule =
@@ -297,6 +392,78 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
   return rules;
 }
 
+/// Правила DHCP и обнаружения соседей IPv6.
+///
+/// Раскладка снята с WireGuard for Windows (`tunnel/firewall/rules.go`) —
+/// у них она обкатана годами, и выдумывать свою здесь незачем.
+List<WfpRule> _dhcpAndNdpRules() {
+  const w = WfpWeights.dhcpAndNdp;
+  return [
+    WfpRule(
+      name: 'SilentGate: DHCPv4 запрос',
+      action: WfpConst.actionPermit,
+      weight: w,
+      layers: const [WfpLayers.aleAuthConnectV4],
+      conditions: [
+        _proto(IpProto.udp),
+        _localPort(68),
+        _remotePort(67),
+      ],
+    ),
+    WfpRule(
+      name: 'SilentGate: DHCPv4 ответ',
+      action: WfpConst.actionPermit,
+      weight: w,
+      layers: const [WfpLayers.aleAuthRecvAcceptV4],
+      // ⚠️ БЕЗ УСЛОВИЯ ПО АДРЕСУ: сервер отвечает с адреса, которого мы ещё не
+      // знаем (а при первой аренде у нас и своего адреса нет).
+      conditions: [
+        _proto(IpProto.udp),
+        _localPort(68),
+        _remotePort(67),
+      ],
+    ),
+    WfpRule(
+      name: 'SilentGate: DHCPv6 запрос',
+      action: WfpConst.actionPermit,
+      weight: w,
+      layers: const [WfpLayers.aleAuthConnectV6],
+      conditions: [
+        _proto(IpProto.udp),
+        _localPort(546),
+        _remotePort(547),
+      ],
+    ),
+    WfpRule(
+      name: 'SilentGate: DHCPv6 ответ',
+      action: WfpConst.actionPermit,
+      weight: w,
+      layers: const [WfpLayers.aleAuthRecvAcceptV6],
+      conditions: [
+        _proto(IpProto.udp),
+        _localPort(546),
+        _remotePort(547),
+      ],
+    ),
+    // Обнаружение соседей: без него IPv6 в локальном сегменте не работает
+    // вовсе — ни шлюз, ни адрес не находятся.
+    // ⚠️ Тип ICMP лежит в поле ЛОКАЛЬНОГО ПОРТА: это не хитрость, а способ,
+    // которым WFP описывает ICMP (замер показал, что `ICMP_TYPE` и
+    // `IP_LOCAL_PORT` — один и тот же GUID).
+    for (final type in const [133, 134, 135, 136, 137])
+      WfpRule(
+        name: 'SilentGate: соседи IPv6 (ICMPv6 $type)',
+        action: WfpConst.actionPermit,
+        weight: w,
+        layers: WfpLayers.v6,
+        conditions: [
+          _proto(IpProto.icmpV6),
+          _localPort(type),
+        ],
+      ),
+  ];
+}
+
 /// Список локальных сетей одним местом — чтобы его было видно и можно было
 /// обсуждать, а не выискивать по коду.
 const lanNets = <String>[
@@ -305,10 +472,39 @@ const lanNets = <String>[
   '192.168.0.0/16',
   '169.254.0.0/16', // APIPA
   '224.0.0.0/4', // многоадресная рассылка
-  '255.255.255.255/32', // широковещание, в том числе DHCP
-  'fe80::/10', // link-local IPv6, там же NDP
+  '255.255.255.255/32', // широковещание
+  'fe80::/10', // link-local IPv6
   'ff00::/8', // многоадресная рассылка IPv6
 ];
+
+WfpCondition _appId(String path) => WfpCondition(
+      field: WfpConditions.aleAppId,
+      matchType: WfpConst.matchEqual,
+      kind: WfpValueKind.appId,
+      path: path,
+    );
+
+WfpCondition _proto(int p) => WfpCondition(
+      field: WfpConditions.ipProtocol,
+      matchType: WfpConst.matchEqual,
+      kind: WfpValueKind.u8,
+      number: p,
+    );
+
+WfpCondition _remotePort(int p) => WfpCondition(
+      field: WfpConditions.ipRemotePort,
+      matchType: WfpConst.matchEqual,
+      kind: WfpValueKind.u16,
+      number: p,
+    );
+
+/// Локальный порт — он же тип ICMP (см. [WfpConditions.ipLocalPortOrIcmpType]).
+WfpCondition _localPort(int p) => WfpCondition(
+      field: WfpConditions.ipLocalPortOrIcmpType,
+      matchType: WfpConst.matchEqual,
+      kind: WfpValueKind.u16,
+      number: p,
+    );
 
 List<String> _sorted(Set<String> s) => s.toList()..sort();
 

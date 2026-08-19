@@ -169,10 +169,10 @@ class KillSwitchWfp {
         return null;
       }
 
-      var installed = 0;
+      final ids = <int>[];
       for (final rule in rules) {
         for (final layer in rule.layers) {
-          final code = _addFilter(arena, engine, rule, layer, blobs);
+          final code = _addFilter(arena, engine, rule, layer, blobs, ids);
           if (code != 0) {
             // ⚠️ ЛИБО ВЕСЬ ПЛАН, ЛИБО НИЧЕГО: половина правил — это дыра,
             // выдающая себя за защиту.
@@ -180,7 +180,6 @@ class KillSwitchWfp {
                 'откатываю всё');
             return null;
           }
-          installed++;
         }
       }
 
@@ -190,8 +189,8 @@ class KillSwitchWfp {
         return null;
       }
       committed = true;
-      say('kill switch поднят: правил ${rules.length}, фильтров $installed');
-      final hold = KillSwitchHold._(engine, installed, rules.length);
+      say('kill switch поднят: правил ${rules.length}, фильтров ${ids.length}');
+      final hold = KillSwitchHold._(engine, ids, rules.length);
       engine = nullptr; // держатель забрал владение
       return hold;
     } catch (e) {
@@ -223,6 +222,7 @@ class KillSwitchWfp {
     WfpRule rule,
     WfpGuid layer,
     List<Pointer<Pointer<Void>>> blobs,
+    List<int> ids,
   ) {
     final conds = rule.conditions;
     final condArray = conds.isEmpty
@@ -286,6 +286,16 @@ class KillSwitchWfp {
           w
             ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeUint32)
             ..u32(valueAt + WfpValueOffsets.value, c.number);
+        case WfpValueKind.u16:
+          // Порт или тип ICMP. 8/16/32-битные значения лежат ПО ЗНАЧЕНИЮ, в
+          // отличие от 64-битного, — см. объединение в `fwptypes.h`.
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeUint16)
+            ..u16(valueAt + WfpValueOffsets.value, c.number);
+        case WfpValueKind.u8:
+          w
+            ..u32(valueAt + WfpValueOffsets.type, WfpConst.typeUint8)
+            ..u8(valueAt + WfpValueOffsets.value, c.number);
       }
     }
 
@@ -303,7 +313,13 @@ class KillSwitchWfp {
     // ⚠️ Поле flags остаётся НУЛЁМ. Именно здесь жил бы
     // `FWPM_FILTER_FLAG_PERSISTENT`, переживающий перезагрузку.
 
-    return _filterAdd(engine, f, nullptr, nullptr);
+    // ⚠️ НОМЕР ФИЛЬТРА ЗАПОМИНАЕМ ОБЯЗАТЕЛЬНО. Без него набор нельзя заменить
+    // на месте, а заменять придётся: адаптер туннеля появляется ПОЗЖЕ подъёма
+    // блокировки, и разрешение по его LUID дописывается вторым заходом.
+    final idOut = arena<Uint64>();
+    final rc = _filterAdd(engine, f, nullptr, idOut);
+    if (rc == 0) ids.add(idOut.value);
+    return rc;
   }
 
   static KillSwitchProbe _probeWith(_Authn authn) {
@@ -409,6 +425,10 @@ class KillSwitchWfp {
       int Function(Pointer<Void>, Pointer<Uint8>, Pointer<Void>,
           Pointer<Uint64>)>('FwpmFilterAdd0');
 
+  static final _filterDeleteById = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Void>, Uint64),
+      int Function(Pointer<Void>, int)>('FwpmFilterDeleteById0');
+
   static final _getAppId = _fwp.lookupFunction<
       Uint32 Function(Pointer<Utf16>, Pointer<Pointer<Void>>),
       int Function(Pointer<Utf16>,
@@ -427,13 +447,97 @@ class KillSwitchWfp {
 /// блокировку вообще можно доверить пользовательскому процессу.
 class KillSwitchHold {
   Pointer<Void> _engine;
-  final int filtersInstalled;
-  final int rulesInstalled;
+
+  /// Номера поставленных фильтров — нужны, чтобы заменить набор на месте.
+  List<int> _ids;
+  int _rules;
   var _released = false;
 
-  KillSwitchHold._(this._engine, this.filtersInstalled, this.rulesInstalled);
+  KillSwitchHold._(this._engine, this._ids, this._rules);
 
+  int get filtersInstalled => _ids.length;
+  int get rulesInstalled => _rules;
   bool get isActive => !_released;
+
+  /// ЗАМЕНИТЬ НАБОР ПРАВИЛ, НЕ ОПУСКАЯ БЛОКИРОВКУ.
+  ///
+  /// ⚠️ РАДИ ЧЕГО ЭТО ВООБЩЕ ЕСТЬ. Адаптера туннеля в момент первого подъёма
+  /// НЕ СУЩЕСТВУЕТ — его создаёт ядро, которое ещё не запущено, и LUID взять
+  /// неоткуда. Значит правило «пропускать всё, что идёт в туннель» физически
+  /// нельзя поставить сразу: сначала поднимается базовый набор (блок + свои
+  /// бинари + адреса серверов + loopback + DHCP), а когда туннель поднялся —
+  /// набор заменяется на полный. И заменяется он при КАЖДОМ пересоздании
+  /// туннеля: LUID новый каждый раз.
+  ///
+  /// ⚠️ ОДНОЙ ТРАНЗАКЦИЕЙ, А НЕ «СНЯТЬ, ПОТОМ ПОСТАВИТЬ». Два отдельных
+  /// применения дали бы окно, в котором блокировки нет вовсе, — то есть ровно
+  /// утечку, ради предотвращения которой всё и затевалось.
+  bool reengage(KillSwitchPlan plan, {void Function(String)? log}) {
+    void say(String s) => log?.call(s);
+    if (_released || _engine == nullptr) {
+      say('kill switch: замена набора невозможна — блокировка уже снята');
+      return false;
+    }
+    final rules = buildWfpRules(plan);
+    if (rules.isEmpty) {
+      say('kill switch: пустой набор не заменяет собой поднятую блокировку');
+      return false;
+    }
+
+    final arena = Arena();
+    final blobs = <Pointer<Pointer<Void>>>[];
+    var committed = false;
+    try {
+      var rc = KillSwitchWfp._txnBegin(_engine, 0);
+      if (rc != 0) {
+        say('kill switch: транзакция замены не началась, код $rc');
+        return false;
+      }
+      for (final id in _ids) {
+        // Осечка удаления не смертельна: лишний фильтр из прежнего набора
+        // только строже. А вот бросать транзакцию из-за неё — значит остаться
+        // со старым набором и без разрешения для туннеля.
+        KillSwitchWfp._filterDeleteById(_engine, id);
+      }
+      final ids = <int>[];
+      for (final rule in rules) {
+        for (final layer in rule.layers) {
+          final code =
+              KillSwitchWfp._addFilter(arena, _engine, rule, layer, blobs, ids);
+          if (code != 0) {
+            say('kill switch: при замене отвергнуто «${rule.name}», код $code '
+                '— откатываю, остаётся прежний набор');
+            return false;
+          }
+        }
+      }
+      rc = KillSwitchWfp._txnCommit(_engine);
+      if (rc != 0) {
+        say('kill switch: замена не применилась, код $rc');
+        return false;
+      }
+      committed = true;
+      _ids = ids;
+      _rules = rules.length;
+      say('kill switch обновлён: правил ${rules.length}, фильтров ${ids.length}');
+      return true;
+    } catch (e) {
+      say('kill switch: исключение при замене набора — $e');
+      return false;
+    } finally {
+      if (!committed) {
+        try {
+          KillSwitchWfp._txnAbort(_engine);
+        } catch (_) {}
+      }
+      for (final b in blobs) {
+        try {
+          KillSwitchWfp._freeMemory(b);
+        } catch (_) {}
+      }
+      arena.releaseAll();
+    }
+  }
 
   /// Снять блокировку. Повторный вызов безопасен.
   void release() {
@@ -449,9 +553,8 @@ class KillSwitchHold {
   }
 
   @override
-  String toString() =>
-      'kill switch ${_released ? 'снят' : 'держит'}: '
-      'правил $rulesInstalled, фильтров $filtersInstalled';
+  String toString() => 'kill switch ${_released ? 'снят' : 'держит'}: '
+      'правил $_rules, фильтров ${_ids.length}';
 }
 
 /// Служба авторизации RPC для открытия движка фильтров.
