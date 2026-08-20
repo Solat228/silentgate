@@ -152,7 +152,7 @@ void main() {
       // открытой.
       const forms = [
         'ru1.example.net', // домен
-        '***.***.***.***', // IPv4
+        '203.0.113.10', // IPv4
         '2001:db8::1', // IPv6
       ];
       for (final form in forms) {
@@ -174,16 +174,16 @@ void main() {
       SensitiveAddresses.remember('RU1.Example.NET');
       expect(scrubSecrets('не достучались до ru1.example.net.'),
           isNot(contains('example')));
-      expect(scrubSecrets('(***.***.***.***)'), contains('***.***.***.***'),
+      expect(scrubSecrets('(203.0.113.10)'), contains('203.0.113.10'),
           reason: 'чужой адрес не наш — трогать его нечего');
     });
 
     test('IP из НАЗВАНИЯ узла тоже секрет, домен из названия — нет', () {
-      // Панель раздаёт узлы по домену, а зовёт по IP: «DE-1 (***.***.***.***)».
+      // Панель раздаёт узлы по домену, а зовёт по IP: «DE-1 (203.0.113.10)».
       // Поле address такой адрес не содержит вовсе.
-      SensitiveAddresses.remember('de1.panel.net', name: 'DE-1 (***.***.***.***)');
-      expect(scrubSecrets('сервер ***.***.***.*** не отвечает'),
-          isNot(contains('***.***.***.***')));
+      SensitiveAddresses.remember('de1.panel.net', name: 'DE-1 (203.0.113.10)');
+      expect(scrubSecrets('сервер 203.0.113.10 не отвечает'),
+          isNot(contains('203.0.113.10')));
 
       // А доменное имя внутри названия — почти всегда часть самого названия;
       // маскируй мы и его, из журнала пропали бы имена сервисов, по которым

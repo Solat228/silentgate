@@ -331,16 +331,16 @@ void main() {
       // `s.address` здесь молчит (общего текста нет), и до этой правки боевой
       // адрес узла уезжал в `app.log` дословно.
       final r = diff(
-        [parse(link(name: 'DE-1 (***.***.***.***)', host: 'de1.panel.net'))],
+        [parse(link(name: 'DE-1 (203.0.113.10)', host: 'de1.panel.net'))],
         [
           parse(link(
-              name: 'DE-1 (***.***.***.***)',
+              name: 'DE-1 (203.0.113.10)',
               host: 'de1.panel.net',
               fp: 'firefox'))
         ],
       );
       expect(r.keyChanges.single.name, 'сервер №1');
-      expect(r.keyChangeReport.single, isNot(contains('***.***.***.***')));
+      expect(r.keyChangeReport.single, isNot(contains('203.0.113.10')));
     });
 
     test('IPv6 в названии тоже не печатается', () {
@@ -411,7 +411,7 @@ void main() {
       // одним куском, ни на что не похожим. Примеры настоящие, не выдуманные.
       for (final leak in const [
         'NL-185.199.108.153',
-        'DE1-***.***.***.***',
+        'DE1-203.0.113.10',
       ]) {
         expect(SubscriptionSyncResult.looksLikeAddress(leak), isTrue,
             reason: 'адрес «$leak» признан безопасным именем');
@@ -422,7 +422,7 @@ void main() {
         expect(r.keyChanges.single.name, 'сервер №1',
             reason: 'в журнал ушло имя «$leak»');
         expect(r.keyChangeReport.single, isNot(contains('185.199.108.153')));
-        expect(r.keyChangeReport.single, isNot(contains('***.***.***.***')));
+        expect(r.keyChangeReport.single, isNot(contains('203.0.113.10')));
       }
     });
 
@@ -430,8 +430,8 @@ void main() {
       // Точечная проверка самого правила: через `diff` видна только развилка
       // «имя или номер», а класс дефекта живёт именно в разборе формы.
       for (final addr in const [
-        '***.***.***.***',
-        '***.***.***.***:443',
+        '203.0.113.10',
+        '203.0.113.10:443',
         '2a03:4000:8:1::5',
         '[2a03:4000:8:1::5]:443',
         'de1.panel.net',
@@ -442,10 +442,10 @@ void main() {
         // приклеенные вплотную буквы и скобки — всё это законное окружение
         // адреса, и ни одно из них не должно его прятать.
         'NL-185.199.108.153',
-        'DE1-***.***.***.***',
-        'ru_***.***.***.***',
+        'DE1-203.0.113.10',
+        'ru_203.0.113.10',
         'nl185.199.108.153',
-        'DE-1 (***.***.***.***)',
+        'DE-1 (203.0.113.10)',
         'NL-2a03:4000:8:1::5',
         'fe80::1%wlan0',
         'Сборка 1.2.3.4',
@@ -697,10 +697,10 @@ void main() {
       // не встречается — и всё-таки это адрес. `scrubSecrets` голый IP не
       // режет, а `app.log` целиком уезжает в отчёт поддержки.
       await importInto(
-        onDisk: [link(name: 'DE-1 (***.***.***.***)', host: 'de1.panel.net')],
+        onDisk: [link(name: 'DE-1 (203.0.113.10)', host: 'de1.panel.net')],
         fromPanel: [
           parse(link(
-              name: 'DE-1 (***.***.***.***)',
+              name: 'DE-1 (203.0.113.10)',
               host: 'de1.panel.net',
               fp: 'firefox'))
         ],
@@ -708,7 +708,7 @@ void main() {
       final all = AppLog.entries.map((e) => e.message).join('\n');
       expect(all, contains('Ключ сервера сменился'),
           reason: 'предпосылка: диагностика вообще была записана');
-      expect(all, isNot(contains('***.***.***.***')));
+      expect(all, isNot(contains('203.0.113.10')));
       expect(all, isNot(contains('de1.panel.net')));
     });
 
