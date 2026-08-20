@@ -19,4 +19,8 @@
     <string name="vpn_collapse">Contraer</string>
     <string name="vpn_expand">Expandir</string>
     <string name="vpn_always_on_no_session">VPN permanente: conéctate una vez manualmente</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">Alertas de conexión</string>
 </resources>

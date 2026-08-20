@@ -19,4 +19,8 @@
     <string name="vpn_collapse">收起</string>
     <string name="vpn_expand">展开</string>
     <string name="vpn_always_on_no_session">始终开启的 VPN：请先手动连接一次</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">连接提醒</string>
 </resources>

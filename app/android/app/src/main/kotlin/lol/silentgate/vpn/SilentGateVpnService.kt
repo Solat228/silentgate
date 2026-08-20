@@ -100,10 +100,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         /// туда. Ровно как на Windows.
         const val EXTRA_XRAY_CONFIG = "xray_config"
 
-        private const val PREFS = "silentgate_native"
-        private const val PREF_LANG = "language_code"
+        /// ⚠️ Имя хранилища и ключ языка переехали в [NativePrefs] — их читает
+        /// не только сервис. Здесь их больше нет намеренно: копия константы
+        /// рядом с общей быстро начинает жить своей жизнью.
 
         private const val CHANNEL_ID = "silentgate_vpn"
+
+        /// ⚠️ ЗАНЯТО ПОСТОЯННЫМ УВЕДОМЛЕНИЕМ. Разовые сообщения об обрыве
+        /// берут другой номер — см. `AlertNotice.NOTIFICATION_ID`.
         private const val NOTIFICATION_ID = 1
 
         /** Состояние для Dart-стороны; сервис живёт дольше UI. */
@@ -1311,15 +1315,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Ключ — код языка: сменился язык, пересоберём.
     private var stringsCache: Pair<String, Context>? = null
 
+    /// ⚠️ РАЗБОР ЯЗЫКА ЖИВЁТ В [NativePrefs], А НЕ ЗДЕСЬ. Тот же код нужен
+    /// разовому уведомлению об обрыве ([AlertNotice]), которое постится в том
+    /// числе БЕЗ сервиса. Две копии одного разбора разошлись бы молча — и
+    /// уведомления заговорили бы на разных языках.
     private fun strings(): Context {
-        val code = getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .getString(PREF_LANG, "").orEmpty()
+        val code = NativePrefs.languageCode(this)
         stringsCache?.let { (cached, ctx) -> if (cached == code) return ctx }
-        val ctx = if (code.isBlank()) this else runCatching {
-            val cfg = android.content.res.Configuration(resources.configuration)
-            cfg.setLocale(java.util.Locale.forLanguageTag(code))
-            createConfigurationContext(cfg)
-        }.getOrDefault(this)
+        val ctx = NativePrefs.localized(this)
         stringsCache = code to ctx
         return ctx
     }

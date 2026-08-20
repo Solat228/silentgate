@@ -19,4 +19,8 @@
     <string name="vpn_collapse">Свернуть</string>
     <string name="vpn_expand">Развернуть</string>
     <string name="vpn_always_on_no_session">Постоянная VPN: подключитесь один раз вручную</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">Оповещения о связи</string>
 </resources>

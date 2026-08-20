@@ -19,4 +19,8 @@
     <string name="vpn_collapse">Daralt</string>
     <string name="vpn_expand">Genişlet</string>
     <string name="vpn_always_on_no_session">Sürekli VPN: önce bir kez elle bağlanın</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">Bağlantı uyarıları</string>
 </resources>

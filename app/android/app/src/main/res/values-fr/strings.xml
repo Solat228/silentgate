@@ -19,4 +19,8 @@
     <string name="vpn_collapse">Réduire</string>
     <string name="vpn_expand">Développer</string>
     <string name="vpn_always_on_no_session">VPN permanent : connectez-vous une fois manuellement</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">Alertes de connexion</string>
 </resources>

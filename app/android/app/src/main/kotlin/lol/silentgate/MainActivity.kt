@@ -11,6 +11,8 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.platform.PlatformChannels
+import lol.silentgate.vpn.AlertNotice
+import lol.silentgate.vpn.NativePrefs
 import lol.silentgate.vpn.SilentGateVpnService
 
 /**
@@ -143,10 +145,25 @@ class MainActivity : FlutterActivity() {
                     // смерть изолята, поэтому спросить Dart в момент обновления
                     // уведомления может быть уже не у кого: персистим.
                     "setLanguage" -> {
-                        getSharedPreferences("silentgate_native", MODE_PRIVATE)
-                            .edit()
-                            .putString("language_code", call.argument<String>("code") ?: "")
-                            .apply()
+                        NativePrefs.setLanguageCode(
+                            this, call.argument<String>("code") ?: "")
+                        result.success(null)
+                    }
+
+                    // Разовое уведомление об обрыве связи и о провале
+                    // восстановления.
+                    //
+                    // ⚠️ ПОЧЕМУ ЧЕРЕЗ ACTIVITY, А НЕ ЧЕРЕЗ СЕРВИС. «Восстановить
+                    // связь не удалось» приходит ровно тогда, когда сервис уже
+                    // погашен, — попроси мы `SilentGateVpnService.instance`, и
+                    // самое важное сообщение не показывалось бы НИКОГДА.
+                    // `AlertNotice` обходится любым контекстом.
+                    "alert" -> {
+                        AlertNotice.post(
+                            this,
+                            call.argument<String>("title").orEmpty(),
+                            call.argument<String>("body").orEmpty(),
+                        )
                         result.success(null)
                     }
 

@@ -19,4 +19,8 @@
     <string name="vpn_collapse">جمع کردن</string>
     <string name="vpn_expand">باز کردن</string>
     <string name="vpn_always_on_no_session">VPN دائمی: یک بار به‌صورت دستی متصل شوید</string>
+    <!-- Имя ВТОРОГО канала уведомлений: разовые сообщения об обрыве связи.
+         Отдельный от `vpn_channel_name` намеренно — у постоянного
+         IMPORTANCE_LOW, потому что там раз в секунду меняется скорость. -->
+    <string name="alerts_channel_name">هشدارهای اتصال</string>
 </resources>
