@@ -31,13 +31,26 @@
 | `subscription-userinfo` | `upload=…; download=…; total=…; expire=…` (байты, unix) → трафик/срок | M2 |
 | `profile-update-interval` | Часы автообновления | M2 |
 | `announce` / `announce-url` | Объявление провайдера (плашка + ссылка) | M2 |
-| `routing` | base64-JSON правил маршрутизации от панели (приоритет над локальными) | M4 |
+| ~~`routing`~~ | ⚠️ **ТАКОГО ЗАГОЛОВКА НЕТ.** Разбор заголовков (`core/models/subscription_info.dart`) его не знает и никогда не знал. `routing` — это ключ ВНУТРИ тела XRAY_JSON-конфига, а не заголовок ответа | — |
 
 **Заголовки запроса от приложения** (совместимость с device-limit Remnawave) — уже отправляются:
-`User-Agent: SilentGate/…`, `X-Device-OS`, `X-App-Version`; добавить `X-HWID`, `X-Device-Model` на M2.
+`User-Agent: SilentGate/…`, `X-Device-OS`, `X-App-Version`, `X-HWID`.
 
-> Совет по панели: Remnawave отдаёт разный контент по `User-Agent`. Убедитесь, что для UA `SilentGate/*`
-> отдаётся base64-список share-ссылок (как для v2rayNG), а не clash/sing-box JSON.
+> ⚠️ **СОВЕТ ПО ПАНЕЛИ БЫЛ ПРЯМО ПРОТИВОПОЛОЖНЫМ ТОМУ, ЧТО НУЖНО, И ПРОЖИЛ ТАК ДО 21.08.2026.**
+> Здесь стояло: «для UA `SilentGate/*` отдавайте base64-список share-ссылок».
+>
+> Правильно наоборот: **для `SilentGate/*` панель обязана отдавать `XRAY_JSON`.** Это основной
+> формат, и base64-ссылки — только запасной путь, когда из JSON не разобралось ни одного сервера
+> (`core/subscription/subscription_service.dart`).
+>
+> Почему это не вопрос вкуса: в XRAY_JSON приходят ГОТОВЫЕ outbound'ы панели. Пересобирая их из
+> ссылок, мы теряем поля `streamSettings` (так уже теряли `spiderX`) — и `burstObservatory`
+> начинает пинговать нерабочие узлы, то есть автовыбор молча выбирает худшее. Отдельно: панельные
+> профили «Авто» в виде ссылки не представимы вовсе — это конфиг с балансировщиком и десятками
+> outbound'ов.
+>
+> Настройка на боевой панели: Templates → Response Rules, правило `user-agent CONTAINS SilentGate`
+> → `XRAY_JSON`, **выше** правила `Fallback Base64`. Сверка регистрозависимая.
 
 ---
 
