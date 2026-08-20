@@ -663,13 +663,25 @@ class WindowsEngine extends VpnEngineBase {
       AppSettings s, List<String> serverIps) async {
     try {
       final dir = await AppPaths.supportDir();
+      // ⚠️ МЬЮТЕКС БЕРЁМ ЗДЕСЬ, ДО ЗАПИСИ ПЛАНА, А НЕ ПОЗЖЕ В РОУТЕРЕ.
+      //
+      // Поймано живым прогоном в VM 20.08.2026: блокировка не поднималась
+      // ВООБЩЕ и молчала об этом. План уносил `AppAliveMutex.name`, а имя
+      // рождалось позже — в `_startOnce`, — то есть в файл уезжала пустая
+      // строка. Помощник сверял её с непустым именем из `tun_alive`, не
+      // находил совпадения и отвергал план как чужой. Ни одной строки в
+      // журнале: «плана нет» — штатный молчаливый случай.
+      //
+      // Вызов идемпотентен: роутер позовёт `acquire()` ещё раз и получит то же
+      // имя.
+      final sessionToken = AppAliveMutex.acquire();
       final onlySelected = s.splitTunnel.mode == SplitMode.onlySelected;
       await KillSwitchPlanFile.write(
         dir,
         enabled: s.killSwitch,
         // Тот же токен, что в `tun_alive`: помощник примет план, только если
         // он написан этим же запуском приложения.
-        sessionToken: AppAliveMutex.name,
+        sessionToken: sessionToken,
         serverIps: serverIps.toSet(),
         blockAll: !onlySelected,
         blockedAppPaths: onlySelected

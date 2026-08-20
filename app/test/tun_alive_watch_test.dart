@@ -184,6 +184,22 @@ void main() {
           reason: 'подъём блокировки не имеет права смотреть в свой %APPDATA%');
     });
 
+    test('⚠️ токен берётся ДО записи плана, а не после', () {
+      // Поймано живым прогоном в VM 20.08.2026. План уносил имя мьютекса, а
+      // само имя рождалось позже — в роутере, — то есть в файл уезжала пустая
+      // строка. Помощник сверял её с непустым именем из tun_alive и молча
+      // отвергал план как чужой: блокировка не поднималась ВООБЩЕ, и ни одной
+      // строки в журнале («плана нет» — штатный молчаливый случай).
+      final eng = code('lib/engine/windows/windows_engine.dart');
+      final acquireAt = eng.indexOf('AppAliveMutex.acquire()');
+      final writeAt = eng.indexOf('KillSwitchPlanFile.write(');
+      expect(acquireAt, greaterThan(0), reason: 'мьютекс не берётся вовсе');
+      expect(writeAt, greaterThan(acquireAt),
+          reason: 'план обязан писаться ПОСЛЕ того, как имя появилось');
+      expect(eng.contains('sessionToken: AppAliveMutex.name'), isFalse,
+          reason: 'читать имя из статики — снова зависеть от порядка вызовов');
+    });
+
     test('план чужой сессии не принимается', () {
       expect(helper, contains('expectToken: _readAliveName(configPath)'));
     });
