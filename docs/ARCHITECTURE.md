@@ -1,55 +1,98 @@
 # Архитектура SilentGate
 
-Общая для всех платформ. Платформо-специфика вынесена в `docs/platforms/<PLATFORM>.md`.
+> ⚠️ **Документ переписан 21.08.2026 по ФАКТУ кода версии 1.9.3.** Прежняя редакция была написана
+> до первой строчки движка и описывала замысел: разводку платформ условными импортами, реализации
+> `ios/`/`macos/`/`linux/`, авторизацию через Telegram, хранение подписки в `flutter_secure_storage`.
+> Ничего из этого в коде нет и не было. Сверка нашла **тринадцать** утверждений, расходящихся с
+> кодом, — включая датапуть Android, описанный задом наперёд.
+>
+> Почему это важнее, чем кажется: архитектурный документ читают, когда кода ещё не знают, и верят
+> ему раньше, чем исходнику. В этом проекте уже дважды устаревшее ОПИСАНИЕ становилось укрытием
+> для дефекта — никто не искал того, чего по описанию не существует (разбор — `CLAUDE.md`, версии
+> 1.4.2 и 1.4.3). Поэтому здесь: если утверждения нет в коде, оно помечено как замысел.
+
+Общая для всех платформ. Платформо-специфика — в `docs/platforms/<PLATFORM>.md`.
 
 ---
 
 ## 1. Принцип: UI ↔ движок разделены
 
 ```
-┌─────────────────────────────────────────────┐
-│  Flutter-приложение (Dart) — общий код        │
-│                                               │
-│  ┌────────┐   ┌────────┐   ┌───────────────┐  │
-│  │  UI    │──▶│ state  │──▶│  core (логика) │  │
-│  │ экраны │◀──│ (стор) │◀──│  подписки,     │  │
-│  └────────┘   └────────┘   │  Xray-конфиг   │  │
-│                            └───────┬───────┘  │
-│                     engine (интерфейс VpnEngine)│
-└─────────────────────────────┬─────────────────┘
-                              │ platform channel / process
-              ┌───────────────┴───────────────────┐
-              ▼                ▼                   ▼
-   Windows/macOS/Linux     Android              iOS
-   xray.exe (subprocess)   VpnService +         NEPacketTunnelProvider +
-   + системный прокси      libXray AAR          libXray.xcframework
-                           (in-process)         (Swift, in-extension)
+┌──────────────────────────────────────────────────┐
+│  Flutter-приложение (Dart) — общий код            │
+│                                                   │
+│  ┌────────┐   ┌────────┐   ┌───────────────────┐  │
+│  │  UI    │──▶│ state  │──▶│  core (логика)     │  │
+│  │ экраны │◀──│ (стор) │◀──│  подписка, конфиги │  │
+│  └────────┘   └────────┘   └─────────┬─────────┘  │
+│                    engine (интерфейс VpnEngine)    │
+└──────────────────────────┬────────────────────────┘
+                           │
+         ┌─────────────────┴──────────────────┐
+         ▼                                    ▼
+  Windows                              Android
+  xray.exe / sing-box.exe              VpnService (Kotlin)
+  отдельными процессами                 └─ libbox   (sing-box, TUN)
+  + системный прокси / TUN / WFP        └─ libXray  (Xray)
+                                        оба — В НАШЕМ ЖЕ ПРОЦЕССЕ
 ```
 
-**Ключевая идея:** движок (Xray) всегда изолирован от UI. UI знает только абстракцию `VpnEngine`
-(connect/disconnect/статус/статистика). Реализация под платформу подставляется через conditional imports.
+**Ключевая идея верна и соблюдается:** UI знает только абстракцию `VpnEngine` и ничего не знает о
+ядрах. Правило зависимостей — `ui → state → core/data/engine`.
 
-### 1.1. Два прокси-ядра (с v0.9.0)
+⚠️ **Реализаций ровно две: `engine/windows/` и `engine/android/`.** Каталогов `ios/`, `macos/`,
+`linux/` не существует; при любой другой платформе `createVpnEngine()` бросает `UnsupportedError`.
 
-Xray не поддерживает **Hysteria2** (QUIC со своим управлением перегрузкой) и не планирует.
-Такие серверы поднимает **sing-box**, который и так есть в комплекте ради TUN.
+⚠️ **Разводка НЕ через условные импорты, а рантайм-ная** (`engine/engine_factory.dart`). Условные
+импорты различают доступность БИБЛИОТЕК (`dart.library.io`), а не операционную систему, — Windows
+и Android ими на этапе компиляции не развести. Это записано и в самом файле, чтобы решение не
+переизобретали.
+
+### 1.1. Два прокси-ядра (с 0.9.0)
+
+Xray не поддерживает **hysteria2** (QUIC со своим управлением перегрузкой) и не планирует. Такие
+серверы поднимает **sing-box**, который и так есть в комплекте ради TUN.
 
 ```
                        VpnServer.core
               ┌──────────────┴──────────────┐
               ▼                             ▼
       ProxyCore.xray                 ProxyCore.singbox
-      xray.exe run -c                sing-box.exe run -c
       socks 10808 / http 10809       mixed 10808 / mixed 10809   ← ТЕ ЖЕ порты
-      статистика: api statsquery     статистика: Clash API /connections
+      статистика: xray api statsquery (CLI)   статистика: Clash API /connections
 ```
 
 Порты совпадают намеренно: системный прокси, TUN-роутер и проверка занятости портов не должны
-знать, какое ядро внизу. TUN-инстанс sing-box — это **третий**, отдельный процесс (с правами
-администратора), он просто заворачивает трафик в локальный socks и к выбору ядра отношения не имеет.
+знать, какое ядро внизу.
 
-Лицензии: Xray — MPL-2.0 (можно линковать), sing-box — GPL, поэтому **только отдельным
-процессом, без линковки** (см. CLAUDE.md).
+⚠️ **Статистика Xray читается ЧЕРЕЗ CLI (`xray api statsquery`), а не gRPC-клиентом на Dart.**
+Отдельный gRPC-клиент не нужен, и заводить его не надо.
+
+⚠️ **Локальные порты закрыты паролем по умолчанию** (с 1.3.0). Локальный порт ядра — это
+полноценный вход в VPN: без пароля к нему подключается что угодно на той же машине. Исключение
+одно и вынужденное: системному прокси Windows пароль не поставить (WinINET не передаёт
+креденшелы). Стражи — `test/local_ports_closed_test.dart`.
+
+⚠️ **Про лицензии — причина в прежней редакции была неверной.** Там стояло «sing-box GPL, ПОЭТОМУ
+только отдельным процессом». С релиза 1.0.0 клиент сам под GPL-3.0, и линковать GPL-компоненты
+можно (на Android именно так и сделано — `libbox` внутри процесса). На Windows sing-box
+запускается отдельным процессом по **сложившейся архитектуре, а не по лицензии**; менять её без
+причины не нужно.
+
+### 1.2. Захват трафика — три режима (Windows)
+
+| Режим | Как ловится трафик | Права |
+|---|---|---|
+| Системный прокси (умолчание) | реестр WinINET | без прав |
+| TUN | sing-box + wintun, отдельный элевейтнутый помощник | нужны права |
+| Только прокси | ничего системного не трогается, лишь локальные порты | без прав |
+
+Настоящий **kill switch** — фильтры WFP из пользовательского режима
+(`engine/windows/kill_switch_wfp.dart`, `wfp_rules.dart`, `wfp_layout.dart`), динамическая сессия,
+четыре ALE-слоя. Держит их элевейтнутый помощник TUN; связь с интерфейсом — брошенный именованный
+мьютекс (`tun/app_alive_mutex.dart`), потому что иначе снимать блокировку было бы некому.
+
+На Android захват один — `VpnService`; режимов выбора там нет.
 
 ---
 
@@ -57,33 +100,69 @@ Xray не поддерживает **Hysteria2** (QUIC со своим упра�
 
 | Слой | Папка | Ответственность |
 |---|---|---|
-| **core** | `lib/core/` | Чистая логика без платформы: модели серверов, парсер share-ссылок (`vless://`…), генератор Xray-JSON, разбор заголовков подписки. **Полностью переиспользуется на всех платформах.** |
-| **data** | `lib/data/` | Хранилище (подписка, выбранный сервер, настройки), HTTP-клиент к подписке/Remnawave. |
-| **engine** | `lib/engine/` | Интерфейс `VpnEngine` + реализации: `windows/`, `android/`, `ios/`, `macos/`, `linux/`. Выбор через `engine_factory.dart` (conditional import). |
-| **state** | `lib/state/` | Состояние приложения (ChangeNotifier/Provider): текущий статус, список серверов, трафик. |
-| **ui** | `lib/ui/` | Экраны (home, import, servers, settings) и виджеты. |
+| **core** | `lib/core/` | Модели, парсер share-ссылок, построители конфигов Xray и sing-box, разбор подписки, пробы, гео-базы, локальный HTTP-API, i18n |
+| **data** | `lib/data/` | Хранилища на диске (подписки, настройки, пины, правки серверов, панельные outbound'ы), атомарная запись |
+| **engine** | `lib/engine/` | Интерфейс `VpnEngine`, общая база `engine_base.dart` и две реализации: `windows/`, `android/` |
+| **state** | `lib/state/` | `AppState` и контроллеры (ChangeNotifier + Provider) |
+| **ui** | `lib/ui/` | Экраны и виджеты, включая адаптивный слой `ui/layout/adaptive.dart` |
 
-Правило зависимостей: `ui → state → core/data/engine`. `core` не зависит ни от чего платформенного.
+⚠️ **«`core` не зависит ни от чего платформенного» — НЕВЕРНО, и полагаться на это нельзя.**
+В `lib/core/platform/` 28 файлов, и 25 из них используют `dart:io` или `Platform.`: трей и окно
+Windows (`tray_window.dart` тянет ещё и Flutter-виджеты с `provider`), именованный мьютекс через
+`dart:ffi`, реестр, url-схемы, идентификатор устройства. Платформенно чист **весь остальной**
+`core/`, а `core/platform/` — это специально отведённый угол для платформенного кода, а не
+исключение из правила.
+
+⚠️ **Общее между платформами живёт в `engine/engine_base.dart`**, а не в отдельном «десктопном
+движке». Каталога `engine/desktop` нет — план macOS на него опирался и был поправлен.
 
 ---
 
 ## 3. Интерфейс движка `VpnEngine`
 
+Настоящая форма (сокращённо, полностью — `lib/engine/vpn_engine.dart`):
+
 ```dart
 abstract class VpnEngine {
-  Stream<VpnStatus> get status;          // disconnected/connecting/connected/error
-  Stream<TrafficStats> get stats;        // upload/download байты, скорость
-  Future<void> connect(XrayConfig config);
+  Stream<VpnStatus> get statusStream;      // поток
+  VpnStatus get status;                    // и синхронный снимок — это РАЗНЫЕ члены
+  Stream<TrafficStats> get statsStream;
+  Stream<String> get blockedHostEvents;    // сайт отклонён правилом
+  Stream<EngineNotice> get notices;        // канал «движок → интерфейс»
+  int get httpProxyPort;
+
+  Future<void> connect(VpnServer server, {ConnectionOptions options});
+  Future<void> connectBalancer(List<VpnServer> servers, {...});
   Future<void> disconnect();
-  Future<int> ping(VpnServer server);    // latency-тест (позже — через ядро)
+  Future<void> disconnectKeepingCapture();  // kill switch: ядро гасим, захват держим
+  bool canKeepCaptureFor(AppSettings next);
+  Future<void> onNetworkChanged();
+  Future<void> adoptRunningTunnel();        // Android: туннель пережил смерть изолята
+  Future<void> armAdoptedSession(...);
+  Future<void> dispose();
 }
 ```
 
-- **Windows/desktop:** реализация запускает `xray.exe -c config.json`, поднимает локальные inbound'ы
-  (SOCKS 127.0.0.1:10808, HTTP 127.0.0.1:10809), ставит системный прокси, тянет статистику по gRPC StatsService ядра.
-- **Android:** через MethodChannel вызывает Kotlin `VpnService`, который через AAR (libXray) стартует ядро
-  и отдаёт TUN-fd в native tun-inbound Xray.
-- **iOS:** через MethodChannel управляет `NETunnelProviderManager`; ядро крутится в Swift-extension.
+⚠️ Чего в интерфейсе **нет**: метода `ping`. Замеры живут отдельно — `core/probe/` плюс
+проброс-харнесс из `engine/probe_factory.dart`. И `connect` принимает `VpnServer`, а не готовый
+конфиг: конфиг строит сам движок, потому что состав зависит от платформы и настроек.
+
+`VpnConnectionState` — пять состояний, включая `disconnecting`.
+
+### 3.1. Датапуть по платформам
+
+**Windows.** Движок запускает `xray.exe` или `sing-box.exe` отдельными процессами с локальными
+инбаундами (socks 10808 / http 10809), затем ставит системный прокси либо поднимает третий
+процесс sing-box под TUN.
+
+**Android.** ⚠️ **В прежней редакции было написано наоборот, и это стоит выправить в голове:**
+TUN-дескриптор идёт **не в Xray**, а в **libbox (sing-box)**. Kotlin-сервис
+(`SilentGateVpnService`) реализует `libbox.PlatformInterface`, отдаёт fd из `establish()` в
+колбэк `openTun`, а libbox заворачивает трафик в локальный SOCKS, на котором сидит **libXray**.
+Оба ядра — библиотеки в НАШЕМ процессе, отдельных процессов ядер там нет.
+
+Схема та же, что на Windows (sing-box делает туннель, Xray — протокол), поэтому построитель
+конфига переиспользуется почти целиком.
 
 ---
 
@@ -91,56 +170,94 @@ abstract class VpnEngine {
 
 ```
 Remnawave sub URL
-   │  (HTTP GET с заголовками X-HWID, X-Device-OS, User-Agent)
+   │  GET, заголовки запроса: User-Agent (SilentGate/<версия> (<ОС>)), X-HWID, X-Device-OS
    ▼
-Тело = base64( vless://...\n vless://...\n trojan://... )
-   │  + заголовки ответа: profile-title, subscription-userinfo (трафик/срок),
-   │    profile-update-interval, announce, routing
-   ▼
-core/subscription  → List<VpnServer> + SubscriptionInfo
+Тело — ДВА формата, порядок предпочтения именно такой:
+   1) XRAY_JSON — массив готовых Xray-конфигов, по одному на сервер (основной путь)
+   2) base64-ссылки vless://… — ЗАПАСНОЙ, если из JSON не разобралось ни одного сервера
    │
-   ▼  пользователь выбрал сервер
-core/xray/XrayConfigBuilder(server) → Xray JSON (inbounds + outbound + routing + dns)
+   │  заголовки ответа: profile-title, subscription-userinfo, profile-update-interval,
+   │  announce, announce-url, support-url, x-logo-url
+   ▼
+core/subscription → List<VpnServer> + SubscriptionInfo
+   │
+   ▼  пользователь выбрал сервер или профиль «Авто»
+построитель конфига (core/xray/… либо core/singbox/…)
    │
    ▼
-engine.connect(config) → xray.exe / VpnService / NE
-   │
-   ▼
-Системный прокси / TUN → трафик идёт через сервер
+engine.connect(server) → ядра → захват трафика
 ```
 
-Формат подписки и заголовки — стандарт экосистемы (тот же, что парсит v2rayNG и потребляют Happ/v2RayTun).
+⚠️ **Формат выбирает ПАНЕЛЬ по `User-Agent`.** Панель владельца настроена отдавать SilentGate
+XRAY_JSON (Response Rules). Пересобирать outbound'ы из ссылок нельзя без потерь — так уже теряли
+`streamSettings`, и автовыбор пинговал нерабочие узлы.
+
+⚠️ **Заголовка `routing` не существует.** Прежняя редакция обещала «заголовок подписки с
+base64-JSON правил маршрутизации». Разбор заголовков (`SubscriptionInfo.fromHeaders`) такого
+имени не знает; `routing` — это ключ ВНУТРИ тела XRAY_JSON-конфига.
+
 Детали — [REMNAWAVE_INTEGRATION.md](REMNAWAVE_INTEGRATION.md).
 
 ---
 
-## 5. Авторизация через Telegram (общая схема)
+## 5. Подсистемы, выросшие после этого документа
 
-```
-Приложение → «Войти через Telegram» → открывает t.me/SilentGateBot?start=<nonce>
-   Бот (Python): nonce → telegram_user_id → находит/создаёт юзера в Remnawave (API)
-        → отдаёт per-user sub URL + app-токен на бэкенд
-   Приложение получает токен (deep link silentgate://auth?token=… или поллинг)
-        → сохраняет sub URL → готово к подключению
-```
+Их не было в прежней редакции вовсе, а это половина сегодняшнего продукта. Полный список с
+версиями — `docs/ROADMAP.md`, раздел «Подсистемы, выросшие вне вех».
 
-Вся коммерция/entitlement остаётся в боте и панели; приложение в MVP «тупое»: токен → подписка → подключение.
-Это же обходит сложности Apple IAP на старте (покупки — в боте/на сайте, из iOS-сборки на них не ссылаться).
-
----
-
-## 6. Обход блокировок (заложить с самого начала)
-
-- **VLESS + Reality** — основной транспорт (RKN-стойкость ~98–99% по замерам сообщества).
-- **Панель-управляемый `routing`** — заголовок подписки с base64-JSON правил маршрутизации (как у v2RayTun).
-- **Fragment / noise** — DPI-обход через параметры URI (`fragment=`, `noises=`) — заложить в парсер.
-- **Fallback-домены подписки** — замена заблокированного домена подписки (как domain-replacement у Happ/v2RayTun).
+| Подсистема | Где живёт |
+|---|---|
+| Раздельное туннелирование (приложения и сайты) | `core/singbox/singbox_config_builder.dart`, `ui/split_tunnel_screen.dart` |
+| Несколько выходов одновременно | `core/singbox/exit_outbounds.dart`, `exit_tags.dart` |
+| Kill switch на фильтрах WFP | `engine/windows/kill_switch_wfp.dart`, `wfp_rules.dart` |
+| Локальный HTTP-API управления | `core/net/api_server.dart`, `state/api_handlers.dart`, [API.md](API.md) |
+| Сторожа канала, ядра и сети | `core/probe/tunnel_health.dart`, `core/platform/network_watcher.dart` |
+| Уведомления движок → интерфейс → система | `core/models/engine_notice.dart`, `core/platform/desktop_notice.dart`, `vpn/AlertNotice.kt` |
+| Мульти-подписки | `data/subscriptions_store.dart` |
+| Панельные профили «Авто» | `data/panel_outbounds_store.dart`, `core/xray/panel_direct_reroute.dart` |
+| Гео-базы с проверкой контрольной суммы | `core/geo/` |
+| Проверка доступности сервисов | `core/probe/service_check.dart` |
+| Локализация на 10 языков + RTL | `l10n/`, `core/i18n/`, [I18N.md](I18N.md) |
 
 ---
 
-## 7. Хранение секретов
+## 6. Обход блокировок — что есть и чего нет
 
-- Sub URL и app-токен — в защищённом хранилище платформы (`flutter_secure_storage`:
-  Windows DPAPI / Android Keystore / iOS Keychain).
-- Позже — «крипто-ссылки» по образцу Happ: sub URL шифруется ключом, встроенным в приложение,
-  чтобы пользователь не мог извлечь и перепродать подписку.
+- ✅ **VLESS + Reality** — основной транспорт.
+- ✅ **Вариации обхода** (`core/xray/outbound_variant.dart`) — фрагментация и отпечатки
+  накладываются поверх outbound'а панели; их перебирает автонастройка.
+- ❌ **`fragment=` / `noises=` как параметры ссылки — НЕ реализовано и не планировалось так.**
+  ⚠️ Не спутать: `fragment` в парсере ссылок — это часть URI после `#`, то есть ИМЯ сервера.
+  Фрагментация TLS (`tls_fragment`) по-прежнему в бэклоге.
+- ❌ **Замена заблокированного домена подписки** — нет никакого механизма.
+- ⚠️ **Скрыть факт VPN на Android НЕЛЬЗЯ** — вывод отрицательный и не пересматривается
+  (`docs/research/VPN_DETECTION.md`). В интерфейсе «невидимость VPN» не обещать.
+
+---
+
+## 7. Хранение данных
+
+⚠️ **`flutter_secure_storage` НЕ используется — его нет в зависимостях вовсе.** Прежняя редакция
+выдавала за действующий механизм то, чего никогда не было: «Windows DPAPI / Android Keystore /
+iOS Keychain».
+
+Как на самом деле: подписки, настройки и всё остальное лежат обычными JSON-файлами в каталоге
+данных приложения (`core/platform/app_paths.dart`), запись атомарная (`data/atomic_file.dart`).
+На Android каталог закрыт песочницей; на Windows — правами пользователя.
+
+⚠️ **Тесты не имеют права писать в боевой каталог.** Предохранитель стоит в `AppPaths`: под
+`FLUTTER_TEST` боевой путь не отдаётся вовсе. Он появился после того, как автотест переписал
+`subscriptions.json` владельца.
+
+---
+
+## 8. Замысел, который НЕ реализован
+
+Ниже — то, что было в прежней редакции как описание работающего механизма. В коде этого нет ни
+строчки; оставлено как замысел, чтобы не искать реализацию.
+
+- **Авторизация через Telegram** (бот, `nonce`, `telegram_user_id`, deep link `silentgate://auth`).
+  Веха M6, не начата. Сегодня подписка попадает в приложение только ручным импортом ссылки или
+  `silentgate://import?url=…`. Единственный Telegram-код в проекте — превращение ссылки `t.me/…`
+  в `tg://…` для кнопки поддержки.
+- **«Крипто-ссылки»** — шифрование sub URL ключом внутри приложения.
