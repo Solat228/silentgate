@@ -939,6 +939,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'A verbosidade do registro do sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — modo normal. info/debug — se o túnel não funcionar: o registro mostrará a causa exata. debug aumenta consideravelmente o tamanho do arquivo.';
 
   @override
+  String get tunLogLevelDebugCost =>
+      'No nível debug o núcleo escreve centenas de linhas por segundo: o registo abrange minutos, não horas, e cresce em megabytes. É inútil para uma queda anterior — consulte o registo da aplicação.';
+
+  @override
   String get infoSplitMode =>
       'A base — para onde vai tudo que não tem uma ação definida manualmente, e qual ação é atribuída às novas entradas. «Tudo — pela VPN»: por padrão todo o tráfego para o túnel. «Apenas selecionados — pela VPN»: por padrão diretamente, para o túnel apenas os marcados como «Túnel». «Selecionados — fora da VPN»: o oposto, tudo para o túnel, e os marcados como «Direto» vão diretamente.';
 

@@ -908,6 +908,10 @@ class AppLocalizationsZh extends AppLocalizations {
       'sing-box 日志的详细程度（%APPDATA%\\SilentGate\\singbox.log）。warn——常规模式。info/debug——当隧道无法工作时：日志会显示确切原因。debug 会明显增大文件体积。';
 
   @override
+  String get tunLogLevelDebugCost =>
+      '在 debug 级别，内核每秒写入数百行：日志只覆盖几分钟而非数小时，并且会增长数兆字节。对更早发生的断线毫无用处——请查看应用日志。';
+
+  @override
   String get infoSplitMode =>
       '基准——一切未手动设定动作的流量归往何处，以及为新条目分配何种动作。“全部——经由 VPN”：默认所有流量进入隧道。“仅所选——经由 VPN”：默认直连，仅标记为“隧道”的进入隧道。“所选——绕过 VPN”：相反，全部进入隧道，而标记为“直连”的走直连。';
 

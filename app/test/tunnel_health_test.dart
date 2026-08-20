@@ -272,4 +272,60 @@ void main() {
       expect(down, 0);
     });
   });
+
+  group('⚠️ Отличаем мёртвый транспорт от сломанного DNS', () {
+    /// ⚠️ РАДИ ЧЕГО. Мишени задаются ИМЕНАМИ, а резолвит их само ядро туннельным
+    /// DNS. Пока все мишени были именами, «канал не пропускает трафик» и «в
+    /// туннеле сломался DNS» писались в журнал одной строкой — и лечили не то.
+    /// У владельца из-за этого шесть циклов переподключения за ночь с периодом
+    /// ровно в три минуты выглядели одинаково (`docs/BACKLOG.md` #31).
+    test('среди мишеней по умолчанию есть проба БЕЗ имени', () {
+      final w = TunnelHealth(proxyPort: 1);
+      final byIp = w.targets.where((t) {
+        final h = Uri.parse(t).host;
+        return !h.contains(RegExp(r'[a-zA-Z]'));
+      }).toList();
+      expect(byIp, isNotEmpty,
+          reason: 'без мишени по адресу отказ DNS неотличим от смерти канала');
+      expect(byIp.single, contains('1.1.1.1'));
+    });
+
+    test('⚠️ проба резолва спрашивает ТОЛЬКО мишени с именами', () async {
+      // Иначе она отвечала бы «имена работают» на успехе адресной мишени —
+      // то есть врала бы ровно в том случае, ради которого заведена.
+      final calls = <String>[];
+      final p = await fakeProxy(onRequest: () {});
+      addTearDown(() => p.server.close(force: true));
+      final w = TunnelHealth(
+        proxyPort: p.port,
+        targets: const ['http://1.1.1.1/generate_204'],
+      );
+      // Мишеней с именем нет вовсе — значит и проверять нечего.
+      expect(await w.nameResolutionWorks(), isFalse,
+          reason: 'адресная мишень не доказывает, что резолв работает');
+      expect(calls, isEmpty);
+    });
+
+    test('успех запоминает, какая мишень ответила', () async {
+      final p = await fakeProxy();
+      addTearDown(() => p.server.close(force: true));
+      final w = TunnelHealth(
+        proxyPort: p.port,
+        targets: const ['http://1.1.1.1/generate_204'],
+      );
+      expect(await w.probeOnce(), isTrue);
+      expect(w.lastOkTarget, contains('1.1.1.1'));
+    });
+
+    test('полный провал не оставляет ложного следа', () async {
+      final w = TunnelHealth(
+        proxyPort: 1, // никто не слушает
+        targets: const ['http://1.1.1.1/generate_204'],
+        timeout: Duration(milliseconds: 300),
+      );
+      expect(await w.probeOnce(), isFalse);
+      expect(w.lastOkTarget, isEmpty,
+          reason: 'иначе разбор увидел бы мишень, которая на деле не ответила');
+    });
+  });
 }

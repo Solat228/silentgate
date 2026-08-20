@@ -928,6 +928,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The verbosity of the sing-box log (%APPDATA%\\SilentGate\\singbox.log). warn — normal mode. info/debug — if the tunnel does not work: the log will show the exact cause. debug noticeably increases the file size.';
 
   @override
+  String get tunLogLevelDebugCost =>
+      'At debug level the core writes hundreds of lines per second: the log covers minutes, not hours, and grows by megabytes. It is useless for an outage that happened earlier — look at the app log instead.';
+
+  @override
   String get infoSplitMode =>
       'The base — where everything that has no manually set action goes, and which action is assigned to new entries. «All — through VPN»: by default all traffic into the tunnel. «Only selected — through VPN»: by default directly, into the tunnel only those marked «Tunnel». «Selected — around VPN»: the opposite, everything into the tunnel, and those marked «Direct» go directly.';
 

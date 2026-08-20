@@ -1680,6 +1680,12 @@ abstract class AppLocalizations {
   /// **'Подробность лога sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — обычный режим. info/debug — если туннель не работает: в логе будет видна точная причина. debug заметно увеличивает размер файла.'**
   String get infoSingboxLogLevel;
 
+  /// No description provided for @tunLogLevelDebugCost.
+  ///
+  /// In ru, this message translates to:
+  /// **'На уровне debug ядро пишет сотни строк в секунду: журнал покрывает минуты, а не часы, и растёт на мегабайты. Для разбора обрыва, случившегося раньше, он бесполезен — смотрите журнал приложения.'**
+  String get tunLogLevelDebugCost;
+
   /// No description provided for @infoSplitMode.
   ///
   /// In ru, this message translates to:

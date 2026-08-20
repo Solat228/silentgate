@@ -298,6 +298,7 @@
   "infoDnsHijack": "在隧道内拦截 DNS 查询（UDP 53 端口）。否则查询会绕过规则：可能发生泄漏，且分应用代理的域名规则会不够精确。",
   "infoDnsStrategy": "请求哪些地址：prefer_ipv4（推荐）——优先 IPv4，ipv4_only——仅 IPv4（修复 IPv6 异常导致的问题），prefer_ipv6/ipv6_only——用于 IPv6 网络。",
   "infoSingboxLogLevel": "sing-box 日志的详细程度（%APPDATA%\\SilentGate\\singbox.log）。warn——常规模式。info/debug——当隧道无法工作时：日志会显示确切原因。debug 会明显增大文件体积。",
+  "tunLogLevelDebugCost": "在 debug 级别，内核每秒写入数百行：日志只覆盖几分钟而非数小时，并且会增长数兆字节。对更早发生的断线毫无用处——请查看应用日志。",
   "infoSplitMode": "基准——一切未手动设定动作的流量归往何处，以及为新条目分配何种动作。“全部——经由 VPN”：默认所有流量进入隧道。“仅所选——经由 VPN”：默认直连，仅标记为“隧道”的进入隧道。“所选——绕过 VPN”：相反，全部进入隧道，而标记为“直连”的走直连。",
   "infoSplitApps": "点击某个应用——将打开一个窗口，可在其中选择动作（隧道——经由 VPN，直连——绕过 VPN，阻止——无网络）和匹配方式：按 exe 名称（可靠）或按完整路径。可从运行中的应用选取或指定 .exe。",
   "infoSplitDomains": "域名（后缀）。例如 youtube.com 也涵盖 www.youtube.com。依据 TLS 连接中的名称（SNI）工作。",

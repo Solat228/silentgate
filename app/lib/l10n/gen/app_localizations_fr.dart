@@ -942,6 +942,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le niveau de détail du journal de sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — mode normal. info/debug — si le tunnel ne fonctionne pas : le journal montrera la cause exacte. debug augmente notablement la taille du fichier.';
 
   @override
+  String get tunLogLevelDebugCost =>
+      'Au niveau debug, le cœur écrit des centaines de lignes par seconde : le journal couvre des minutes, pas des heures, et grossit de plusieurs mégaoctets. Il est inutile pour une coupure antérieure — consultez le journal de l’application.';
+
+  @override
   String get infoSplitMode =>
       'La base — vers où va tout ce qui n\'a pas d\'action définie manuellement, et quelle action est attribuée aux nouvelles entrées. « Tout — via VPN » : par défaut, tout le trafic dans le tunnel. « Seulement la sélection — via VPN » : par défaut en direct, dans le tunnel uniquement ceux marqués « Tunnel ». « La sélection — hors VPN » : l\'inverse, tout dans le tunnel, et ceux marqués « Direct » passent directement.';
 

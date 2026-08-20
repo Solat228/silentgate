@@ -362,6 +362,27 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
                   controller.update((st) => st.copyWith(singboxLogLevel: v.first)),
             ),
           ),
+          // ⚠️ ЦЕНУ `debug` НАДО НАЗЫВАТЬ, А НЕ УМАЛЧИВАТЬ.
+          //
+          // На сотне серверов и живом трафике ядро пишет 300–370 строк в
+          // секунду и забивает потолок журнала за две-три минуты. То есть обе
+          // части вместе хранят минут пять — и человек, включивший `debug`
+          // РАДИ разбора обрыва, получает журнал, в котором этого обрыва уже
+          // нет. Замерено на машине владельца 20.08.2026: 28 обрывов за шесть
+          // дней, и ни один не попал в журнал ядра.
+          if (s.singboxLogLevel == SingboxLogLevel.debug)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(Icons.warning_amber_rounded,
+                    size: 18, color: Theme.of(context).colorScheme.tertiary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(l.tunLogLevelDebugCost,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+              ]),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             child: OutlinedButton.icon(

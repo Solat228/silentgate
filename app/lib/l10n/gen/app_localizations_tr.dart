@@ -933,6 +933,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'sing-box günlüğünün ayrıntı düzeyi (%APPDATA%\\SilentGate\\singbox.log). warn — normal mod. info/debug — tünel çalışmıyorsa: günlük tam nedeni gösterir. debug dosya boyutunu belirgin şekilde artırır.';
 
   @override
+  String get tunLogLevelDebugCost =>
+      'debug düzeyinde çekirdek saniyede yüzlerce satır yazar: günlük saatleri değil dakikaları kapsar ve megabaytlarca büyür. Daha önce olmuş bir kopma için işe yaramaz — uygulama günlüğüne bakın.';
+
+  @override
   String get infoSplitMode =>
       'Temel — el ile ayarlanmış eylemi olmayan her şeyin nereye gideceği ve yeni girdilere hangi eylemin atanacağı. «Tümü — VPN üzerinden»: varsayılan olarak tüm trafik tünele. «Yalnızca seçilenler — VPN üzerinden»: varsayılan olarak doğrudan, tünele yalnızca «Tünel» olarak işaretlenenler. «Seçilenler — VPN etrafından»: tam tersi, her şey tünele ve «Doğrudan» olarak işaretlenenler doğrudan gider.';
 
