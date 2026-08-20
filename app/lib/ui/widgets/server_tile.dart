@@ -267,18 +267,30 @@ class ServerTile extends StatelessWidget {
     return Opacity(opacity: 0.55, child: outlined);
   }
 
-  /// Строка-уведомление панели: сообщение + «Скопировать» и (для «После оплаты
-  /// нажмите…») кнопка «Обновить», которая перезапрашивает подписку — как раз то,
-  /// что нужно нажать после оплаты, чтобы появились настоящие серверы.
+  /// Строка-уведомление панели: сообщение + «Обновить» и «Скопировать».
+  ///
+  /// ⚠️ КНОПКА «ОБНОВИТЬ» ПОКАЗЫВАЕТСЯ ВСЕГДА — И ЭТО ИСПРАВЛЕНИЕ, А НЕ УПРОЩЕНИЕ.
+  ///
+  /// Здесь стояла эвристика: показывать кнопку, если в тексте панели есть слова
+  /// `нажмите` / `обнов` либо эмодзи 🔄 / 🔗. То есть код **искал русские слова
+  /// в чужом тексте**, а панель пишет на своём языке. Англоязычному провайдеру
+  /// («After payment, please refresh») кнопка не показывалась вовсе — и человек
+  /// оставался один на один с сообщением, объясняющим, что именно ему надо
+  /// нажать. Расширять список слов бессмысленно: языков столько же, сколько
+  /// панелей, и промах всегда будет тихим.
+  ///
+  /// Угадывать тут нечего по существу. Notice-сервер — это подделка
+  /// (`0.0.0.0:1`, [VpnServer.isNotice]), которую панель присылает ВМЕСТО
+  /// настоящих серверов: оплата не прошла, подписка истекла, лимит устройств.
+  /// Во всех этих случаях единственное осмысленное действие — перезапросить
+  /// подписку. Кнопка не «после оплаты», она «когда серверов нет».
+  ///
+  /// Цена ошибки несимметрична: лишняя кнопка стоит одного нажатия впустую,
+  /// пропавшая — тупика, из которого человек уходит в поддержку.
   Widget _noticeTile(BuildContext context, AppState state) {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final text = FlagUtil.strip(server.remark).trim();
-    final low = text.toLowerCase();
-    final actionable = low.contains('нажмите') ||
-        low.contains('обнов') ||
-        server.remark.contains('🔄') ||
-        server.remark.contains('🔗');
     return ListTile(
       dense: true,
       leading: Icon(Icons.campaign_outlined, color: scheme.tertiary),
@@ -288,9 +300,8 @@ class ServerTile extends StatelessWidget {
           textDirection: text.isEmpty ? null : autoTextDirection(text),
           style: TextStyle(color: scheme.onSurface)),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        // «Обновить» — раньше «Скопировать» (после оплаты жмут именно её).
-        if (actionable)
-          FilledButton.tonalIcon(
+        // «Обновить» — раньше «Скопировать»: после оплаты жмут именно её.
+        FilledButton.tonalIcon(
             icon: const Icon(Icons.refresh, size: 18),
             label: Text(l.srvTileRefresh),
             onPressed: () async {
