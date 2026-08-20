@@ -1,6 +1,7 @@
 package lol.silentgate
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.Manifest
@@ -197,6 +198,47 @@ class MainActivity : FlutterActivity() {
                                      "alwaysOn" to false,
                                      "lockdown" to false)
                         result.success(st)
+                    }
+
+                    // Разрешены ли уведомления. ⚠️ ЭТО НЕ ТО ЖЕ САМОЕ, ЧТО
+                    // «выдано POST_NOTIFICATIONS»: человек может отозвать
+                    // уведомления приложению целиком или выключить наш канал в
+                    // системных настройках, и разрешение при этом останется
+                    // выданным. Спрашиваем у системы ФАКТ, а не у себя — намерение.
+                    "notificationsEnabled" -> {
+                        val nm = getSystemService(Context.NOTIFICATION_SERVICE)
+                            as android.app.NotificationManager
+                        result.success(runCatching { nm.areNotificationsEnabled() }
+                            .getOrDefault(true))
+                    }
+
+                    // Открыть системный экран уведомлений ПРИЛОЖЕНИЯ. Включить
+                    // их из кода нельзя — только человек.
+                    "openNotificationSettings" -> {
+                        val ok = runCatching {
+                            startActivity(
+                                Intent(android.provider.Settings
+                                    .ACTION_APP_NOTIFICATION_SETTINGS)
+                                    .putExtra(android.provider.Settings
+                                        .EXTRA_APP_PACKAGE, packageName)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            true
+                        }.getOrElse {
+                            // ⚠️ ЗАПАСНОЙ ЭКРАН, А НЕ ОТКАЗ. На части прошивок
+                            // экрана уведомлений нет, но «О приложении» есть
+                            // всегда, и оттуда до уведомлений два шага. Отправить
+                            // человека никуда — хуже, чем на соседний экран.
+                            runCatching {
+                                startActivity(
+                                    Intent(android.provider.Settings
+                                        .ACTION_APPLICATION_DETAILS_SETTINGS)
+                                        .setData(android.net.Uri
+                                            .fromParts("package", packageName, null))
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                                true
+                            }.getOrDefault(false)
+                        }
+                        result.success(ok)
                     }
 
                     // Открыть системный экран настроек VPN: включить «Постоянную
@@ -453,9 +495,19 @@ class MainActivity : FlutterActivity() {
      * Живой прогон шёл на Android 11, где ограничения нет, — поэтому дефект и
      * не всплыл.
      *
-     * Спрашиваем ОДИН раз при старте и молча: отказ ничего не ломает, туннель
-     * поднимается всё равно, просто без уведомления. Просить повторно и
-     * объяснять — хуже: разрешение не критично для работы.
+     * Спрашиваем ОДИН раз при старте и молча — просить повторно бессмысленно:
+     * Android показывает системный запрос единожды, дальше `requestPermissions`
+     * возвращается, ничего не показав. То есть второй вызов — это «ничего не
+     * сделать и думать, что сделал».
+     *
+     * ⚠️ ЗДЕСЬ СТОЯЛО «разрешение не критично для работы». На момент, когда это
+     * писалось, так и было. 20.08.2026 появилось разовое уведомление об обрыве
+     * связи (`vpn/AlertNotice.kt`) — единственный способ сообщить человеку о
+     * разрыве при закрытом приложении, — и утверждение стало неправдой,
+     * пережив ровно то изменение, за которым не следило. Отказ теперь стоит
+     * дорого, поэтому его больше не проглатывают молча: факт проверяется
+     * (`notificationsEnabled`) и объясняется плашкой на главном экране
+     * (`NotificationsOffBanner`). Здесь по-прежнему тихо — объясняет плашка.
      */
     private fun ensureNotificationPermission() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return

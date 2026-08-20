@@ -1142,5 +1142,9 @@
   "splitKillSwitchIsPerApp": "Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.",
   "updateNotesTitle": "{version} sürümünde yenilikler",
   "updateNotesEmpty": "Sürüm notu gelmedi.",
-  "updateNotesNeverShow": "Bir daha gösterme"
+  "updateNotesNeverShow": "Bir daha gösterme",
+  "notifOffTitle": "Bildirimler kapalı",
+  "notifOffSub": "Bağlantı kopmasını göremezsiniz ve «Bağlantıyı kes» düğmesi kaybolur",
+  "notifOffOpen": "Aç",
+  "notifOffNoScreen": "Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate."
 }

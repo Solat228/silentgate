@@ -1142,5 +1142,9 @@
   "splitKillSwitchIsPerApp": "Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht.",
   "updateNotesTitle": "Neu in {version}",
   "updateNotesEmpty": "Keine Versionshinweise erhalten.",
-  "updateNotesNeverShow": "Nicht mehr anzeigen"
+  "updateNotesNeverShow": "Nicht mehr anzeigen",
+  "notifOffTitle": "Benachrichtigungen sind aus",
+  "notifOffSub": "Sie sehen keinen Verbindungsabbruch, und die Schaltfläche „Trennen“ verschwindet",
+  "notifOffOpen": "Einschalten",
+  "notifOffNoScreen": "Der Benachrichtigungsbildschirm ließ sich nicht öffnen. Schalten Sie sie manuell ein: Android-Einstellungen → Apps → SilentGate."
 }

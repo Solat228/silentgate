@@ -2976,4 +2976,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => '不再显示';
+
+  @override
+  String get notifOffTitle => '通知已关闭';
+
+  @override
+  String get notifOffSub => '您将看不到连接中断，通知栏中的「断开」按钮也会消失';
+
+  @override
+  String get notifOffOpen => '开启';
+
+  @override
+  String get notifOffNoScreen =>
+      '无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。';
 }

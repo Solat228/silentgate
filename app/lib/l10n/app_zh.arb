@@ -1142,5 +1142,9 @@
   "splitKillSwitchIsPerApp": "断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。",
   "updateNotesTitle": "{version} 更新内容",
   "updateNotesEmpty": "未收到更新说明。",
-  "updateNotesNeverShow": "不再显示"
+  "updateNotesNeverShow": "不再显示",
+  "notifOffTitle": "通知已关闭",
+  "notifOffSub": "您将看不到连接中断，通知栏中的「断开」按钮也会消失",
+  "notifOffOpen": "开启",
+  "notifOffNoScreen": "无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。"
 }

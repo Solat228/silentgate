@@ -1318,5 +1318,9 @@
   "splitKillSwitchIsPerApp": "The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.",
   "updateNotesTitle": "What's new in {version}",
   "updateNotesEmpty": "No release notes were provided.",
-  "updateNotesNeverShow": "Don't show again"
+  "updateNotesNeverShow": "Don't show again",
+  "notifOffTitle": "Notifications are off",
+  "notifOffSub": "You will not see a dropped connection, and the “Disconnect” button will be gone",
+  "notifOffOpen": "Turn on",
+  "notifOffNoScreen": "Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate."
 }

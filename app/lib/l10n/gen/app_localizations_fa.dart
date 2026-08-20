@@ -3081,4 +3081,18 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'دیگر نشان نده';
+
+  @override
+  String get notifOffTitle => 'اعلان‌ها خاموش است';
+
+  @override
+  String get notifOffSub =>
+      'قطع شدن اتصال را نمی‌بینید و دکمهٔ «قطع اتصال» ناپدید می‌شود';
+
+  @override
+  String get notifOffOpen => 'روشن کردن';
+
+  @override
+  String get notifOffNoScreen =>
+      'صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate.';
 }

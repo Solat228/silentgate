@@ -3123,4 +3123,18 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'Não mostrar novamente';
+
+  @override
+  String get notifOffTitle => 'As notificações estão desligadas';
+
+  @override
+  String get notifOffSub =>
+      'Não verá uma quebra de ligação e o botão «Desligar» desaparecerá';
+
+  @override
+  String get notifOffOpen => 'Ligar';
+
+  @override
+  String get notifOffNoScreen =>
+      'Não foi possível abrir o ecrã de notificações. Ligue-as manualmente: definições do Android → Aplicações → SilentGate.';
 }

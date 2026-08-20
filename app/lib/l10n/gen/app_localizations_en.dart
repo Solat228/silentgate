@@ -3091,4 +3091,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'Don\'t show again';
+
+  @override
+  String get notifOffTitle => 'Notifications are off';
+
+  @override
+  String get notifOffSub =>
+      'You will not see a dropped connection, and the “Disconnect” button will be gone';
+
+  @override
+  String get notifOffOpen => 'Turn on';
+
+  @override
+  String get notifOffNoScreen =>
+      'Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate.';
 }

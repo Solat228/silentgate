@@ -1203,5 +1203,9 @@
   "splitKillSwitchIsPerApp": "El kill switch retiene el tráfico por programa, no por dominio: mientras el núcleo se restablece no hay quien analice los nombres de los sitios, así que las reglas de sitios no se aplican durante ese tiempo.",
   "updateNotesTitle": "Novedades en {version}",
   "updateNotesEmpty": "No se recibieron notas de la versión.",
-  "updateNotesNeverShow": "No mostrar de nuevo"
+  "updateNotesNeverShow": "No mostrar de nuevo",
+  "notifOffTitle": "Las notificaciones están desactivadas",
+  "notifOffSub": "No verás una caída de la conexión y el botón «Desconectar» desaparecerá",
+  "notifOffOpen": "Activar",
+  "notifOffNoScreen": "No se ha podido abrir la pantalla de notificaciones. Actívalas manualmente: ajustes de Android → Aplicaciones → SilentGate."
 }

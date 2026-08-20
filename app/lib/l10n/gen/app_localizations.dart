@@ -5351,6 +5351,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Больше не показывать'**
   String get updateNotesNeverShow;
+
+  /// No description provided for @notifOffTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Уведомления выключены'**
+  String get notifOffTitle;
+
+  /// No description provided for @notifOffSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не увидите обрыв связи, а кнопка «Отключить» в шторке пропадёт'**
+  String get notifOffSub;
+
+  /// No description provided for @notifOffOpen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить'**
+  String get notifOffOpen;
+
+  /// No description provided for @notifOffNoScreen.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.'**
+  String get notifOffNoScreen;
 }
 
 class _AppLocalizationsDelegate

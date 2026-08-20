@@ -18,6 +18,7 @@ import '../core/platform/interference_scanner.dart';
 import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_launcher.dart';
+import '../core/platform/notification_access.dart';
 import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/probe/ping_result.dart';
@@ -857,6 +858,7 @@ class _ConnectPane extends StatelessWidget {
         // минимальная высота окна и компактная кнопка Connect (скролл тут мешал).
         const SubscriptionBar(),
         const GeoOfferBanner(),
+        const NotificationsOffBanner(),
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
           child: Padding(
@@ -2021,6 +2023,107 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
             visualDensity: VisualDensity.compact,
             icon: const Icon(Icons.notifications_off_outlined, size: 18),
             onPressed: () => state.dismissGeoOffer(reason),
+          ),
+        ]),
+      ),
+    );
+  }
+}
+
+/// ПЛАШКА «УВЕДОМЛЕНИЯ ВЫКЛЮЧЕНЫ» (Android).
+///
+/// ⚠️ ЗАЧЕМ. При отказе теряются две вещи, и обе замечаются не сразу:
+/// постоянное уведомление сервиса с кнопкой «Отключить» (единственный способ
+/// снять туннель при закрытом приложении) и разовое сообщение об обрыве связи.
+/// Второе хуже: человек считает, что за каналом следят, а сообщить ему не
+/// может никто.
+///
+/// ⚠️ ПОЧЕМУ ПЛАШКА, А НЕ ПОВТОРНЫЙ ЗАПРОС РАЗРЕШЕНИЯ. Android показывает
+/// системный запрос ОДИН раз; дальше `requestPermissions` возвращается молча,
+/// ничего не показав. То есть просить второй раз — значит ничего не делать и
+/// думать, что сделал. Включить уведомления может только человек и только
+/// руками, поэтому единственный честный ход — сказать и довести до экрана.
+///
+/// ⚠️ ПРОВЕРЯЕТСЯ ПРИ КАЖДОМ ВОЗВРАТЕ В ПРИЛОЖЕНИЕ, а не один раз на старте:
+/// человек уходит по нашей же кнопке в настройки и возвращается — плашка
+/// обязана исчезнуть сама. Иначе она выглядит как «я включил, а оно не
+/// заметило», и следующий её показ уже не читают.
+class NotificationsOffBanner extends StatefulWidget {
+  const NotificationsOffBanner({super.key});
+
+  @override
+  State<NotificationsOffBanner> createState() => _NotificationsOffBannerState();
+}
+
+class _NotificationsOffBannerState extends State<NotificationsOffBanner>
+    with WidgetsBindingObserver {
+  bool _blocked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_check());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_check());
+  }
+
+  Future<void> _check() async {
+    final b = await NotificationAccess.blocked();
+    if (mounted && b != _blocked) setState(() => _blocked = b);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_blocked) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+      color: scheme.errorContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
+        child: Row(children: [
+          Icon(Icons.notifications_off_outlined,
+              size: 20, color: scheme.onErrorContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.notifOffTitle,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleSmall
+                        ?.copyWith(color: scheme.onErrorContainer)),
+                Text(l.notifOffSub,
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: scheme.onErrorContainer)),
+              ],
+            ),
+          ),
+          TextButton(
+            key: const ValueKey('notifOffAct'),
+            onPressed: () async {
+              final ok = await NotificationAccess.openSettings();
+              // ⚠️ Экрана может не быть на экзотической прошивке. Молча ничего
+              // не делать нельзя: человек нажал и ждёт.
+              if (!ok && context.mounted) {
+                AppToast.show(context, l.notifOffNoScreen, kind: ToastKind.info);
+              }
+            },
+            child: Text(l.notifOffOpen),
           ),
         ]),
       ),

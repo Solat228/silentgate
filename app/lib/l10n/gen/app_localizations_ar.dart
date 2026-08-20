@@ -3085,4 +3085,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'عدم الإظهار مرة أخرى';
+
+  @override
+  String get notifOffTitle => 'الإشعارات مُعطَّلة';
+
+  @override
+  String get notifOffSub => 'لن ترى انقطاع الاتصال، وسيختفي زر «قطع الاتصال»';
+
+  @override
+  String get notifOffOpen => 'تفعيل';
+
+  @override
+  String get notifOffNoScreen =>
+      'تعذّر فتح شاشة الإشعارات. فعّلها يدويًا: إعدادات أندرويد ← التطبيقات ← SilentGate.';
 }

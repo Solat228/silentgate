@@ -3114,4 +3114,18 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'Nicht mehr anzeigen';
+
+  @override
+  String get notifOffTitle => 'Benachrichtigungen sind aus';
+
+  @override
+  String get notifOffSub =>
+      'Sie sehen keinen Verbindungsabbruch, und die Schaltfläche „Trennen“ verschwindet';
+
+  @override
+  String get notifOffOpen => 'Einschalten';
+
+  @override
+  String get notifOffNoScreen =>
+      'Der Benachrichtigungsbildschirm ließ sich nicht öffnen. Schalten Sie sie manuell ein: Android-Einstellungen → Apps → SilentGate.';
 }

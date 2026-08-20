@@ -3095,4 +3095,18 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'Bir daha gösterme';
+
+  @override
+  String get notifOffTitle => 'Bildirimler kapalı';
+
+  @override
+  String get notifOffSub =>
+      'Bağlantı kopmasını göremezsiniz ve «Bağlantıyı kes» düğmesi kaybolur';
+
+  @override
+  String get notifOffOpen => 'Aç';
+
+  @override
+  String get notifOffNoScreen =>
+      'Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate.';
 }

@@ -3092,4 +3092,18 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get updateNotesNeverShow => 'Больше не показывать';
+
+  @override
+  String get notifOffTitle => 'Уведомления выключены';
+
+  @override
+  String get notifOffSub =>
+      'Не увидите обрыв связи, а кнопка «Отключить» в шторке пропадёт';
+
+  @override
+  String get notifOffOpen => 'Включить';
+
+  @override
+  String get notifOffNoScreen =>
+      'Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.';
 }
