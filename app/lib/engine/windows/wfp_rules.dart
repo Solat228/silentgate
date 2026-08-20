@@ -54,6 +54,16 @@ class KillSwitchPlan {
   /// Пути приложений, которым закрываем сеть (режим «только отмеченные»).
   final List<String> blockedAppPaths;
 
+  /// ⚠️ ПУТИ ПРИЛОЖЕНИЙ, КОТОРЫМ СЕТЬ ОСТАВЛЯЕМ ОТКРЫТОЙ ДАЖЕ ПРИ ПОЛНОЙ
+  /// БЛОКИРОВКЕ — режим «кроме отмеченных».
+  ///
+  /// Там отмеченные идут МИМО VPN по воле пользователя, а всё остальное — через
+  /// туннель. Общий блок закрыл бы и отмеченных, то есть отобрал бы ровно ту
+  /// связь, которую человек попросил оставить прямой. Решение владельца
+  /// 19.08.2026 (школа Mullvad) говорит обратное: исключение из туннеля
+  /// остаётся исключением и из блокировки.
+  final List<String> allowedAppPaths;
+
   /// Блокировать всё подряд (режимы «Всё через VPN» и «кроме отмеченных»).
   final bool blockAll;
 
@@ -64,6 +74,7 @@ class KillSwitchPlan {
     required this.allowLan,
     required this.blockedAppPaths,
     required this.blockAll,
+    this.allowedAppPaths = const [],
     this.allowDhcpAndNdp = true,
     this.ownBinaryPaths = const [],
     this.tunnelInterfaceLuid,
@@ -77,11 +88,19 @@ class KillSwitchPlan {
   /// ⚠️ ПОДСТАВЛЯЕТ ПОМОЩНИК, А НЕ ИНТЕРФЕЙС. Он и есть `silentgate.exe`, а
   /// ядра лежат рядом с ним — передавать это файлом значило бы завести второй
   /// источник правды о том, что помощник знает точнее всех.
+  /// ⚠️ КАЖДОЕ НОВОЕ ПОЛЕ ОБЯЗАНО ПОЯВИТЬСЯ И ЗДЕСЬ, И В [withTunnelLuid].
+  /// Компилятор этого не потребует: у полей есть значения по умолчанию, и
+  /// забытое просто молча обнулится. Так и вышло 20.08.2026 с
+  /// [allowedAppPaths] — список ехал в плане, терялся на этом копировании, и
+  /// приложение, выведенное мимо VPN, оставалось заблокированным. Поймал живой
+  /// прогон, не тесты. Страж — `wfp_rules_test.dart`, «копирование ничего не
+  /// теряет»: он сравнивает ГОТОВЫЙ набор правил, а не перечень полей руками.
   KillSwitchPlan withOwnBinaries(List<String> paths) => KillSwitchPlan(
         allowServerIps: allowServerIps,
         allowOwnBinaries: allowOwnBinaries,
         allowLoopback: allowLoopback,
         allowLan: allowLan,
+        allowedAppPaths: allowedAppPaths,
         blockedAppPaths: blockedAppPaths,
         blockAll: blockAll,
         allowDhcpAndNdp: allowDhcpAndNdp,
@@ -97,6 +116,7 @@ class KillSwitchPlan {
         allowLan: allowLan,
         blockedAppPaths: blockedAppPaths,
         blockAll: blockAll,
+        allowedAppPaths: allowedAppPaths,
         allowDhcpAndNdp: allowDhcpAndNdp,
         ownBinaryPaths: ownBinaryPaths,
         tunnelInterfaceLuid: luid,
@@ -257,6 +277,11 @@ class WfpWeights {
   static const int ownBinaries = 11;
   static const int loopback = 12;
 
+  /// ⚠️ ЯВНОЕ ИСКЛЮЧЕНИЕ ПОЛЬЗОВАТЕЛЯ — ВЫШЕ ВСЕГО, ЧТО ЗАКРЫВАЕТ.
+  /// Тяжелее и общего блока, и блока DNS: человек сказал «этому приложению VPN
+  /// не нужен», и отбирать у него связь во время обрыва значит спорить с ним.
+  static const int allowedApps = 13;
+
   /// Потолок веса типа `FWP_UINT8` — больше ядро не примет.
   static const int max = 15;
 }
@@ -316,6 +341,18 @@ List<WfpRule> buildWfpRules(KillSwitchPlan plan) {
   }
 
   // ── ЧТО ОСТАВЛЯЕМ ОТКРЫТЫМ ────────────────────────────────────────────────
+
+  // ⚠️ Явные исключения пользователя («кроме отмеченных»): им сеть оставляем
+  // открытой даже при полной блокировке — они и так шли мимо VPN.
+  for (final path in plan.allowedAppPaths) {
+    rules.add(WfpRule(
+      name: 'SilentGate: мимо VPN ${baseName(path)}',
+      action: WfpConst.actionPermit,
+      weight: WfpWeights.allowedApps,
+      layers: WfpLayers.all,
+      conditions: [_appId(path)],
+    ));
+  }
 
   // ⚠️ Loopback — самым большим весом. Через 127.0.0.1 ходят локальные прокси
   // ядра, управляющий API и пробы; закрыв его, мы задушили бы само приложение.

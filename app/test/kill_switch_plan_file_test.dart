@@ -30,6 +30,7 @@ void main() {
     Set<String> ips = const {'203.0.113.10'},
     bool blockAll = true,
     List<String> apps = const [],
+    List<String> allowed = const [],
     bool allowLan = true,
     String sessionToken = token,
   }) =>
@@ -39,6 +40,7 @@ void main() {
           serverIps: ips,
           blockAll: blockAll,
           blockedAppPaths: apps,
+          allowedAppPaths: allowed,
           allowLan: allowLan);
 
   group('Состав доезжает целиком', () {
@@ -57,6 +59,12 @@ void main() {
       final p = KillSwitchPlanFile.read(tmp)!;
       expect(p.blockedAppPaths, [r'C:\a\one.exe', r'C:\b\two.exe']);
       expect(p.blockAll, isFalse);
+    });
+
+    test('⚠️ явные исключения «кроме отмеченных» доезжают', () async {
+      await put(allowed: [r'C:pp\game.exe']);
+      expect(KillSwitchPlanFile.read(tmp)!.allowedAppPaths,
+          [r'C:pp\game.exe']);
     });
 
     test('LUID подставляется читателем, а не берётся из файла', () async {

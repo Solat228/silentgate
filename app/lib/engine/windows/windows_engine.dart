@@ -691,6 +691,19 @@ class WindowsEngine extends VpnEngineBase {
                     r.path,
               ]
             : const [],
+        // ⚠️ «КРОМЕ ОТМЕЧЕННЫХ»: отмеченные идут МИМО VPN по воле человека, и
+        // общий блок отобрал бы у них ровно ту связь, которую он просил
+        // оставить прямой. Разрешаем их явно — исключение из туннеля остаётся
+        // исключением и из блокировки.
+        allowedAppPaths: s.splitTunnel.mode == SplitMode.exceptSelected
+            ? [
+                for (final r in s.splitTunnel.apps)
+                  if (r.enabled &&
+                      r.action == AppAction.direct &&
+                      r.path.isNotEmpty)
+                    r.path,
+              ]
+            : const [],
         allowLan: s.tunBypassLan,
       );
     } catch (e) {

@@ -39,6 +39,7 @@ class KillSwitchPlanFile {
     required Set<String> serverIps,
     required bool blockAll,
     required List<String> blockedAppPaths,
+    required List<String> allowedAppPaths,
     required bool allowLan,
   }) async {
     final map = <String, dynamic>{
@@ -47,6 +48,7 @@ class KillSwitchPlanFile {
       'serverIps': serverIps.toList()..sort(),
       'blockAll': blockAll,
       'blockedAppPaths': blockedAppPaths,
+      'allowedAppPaths': allowedAppPaths,
       'allowLan': allowLan,
     };
     await File(pathFor(supportDir)).writeAsString(jsonEncode(map));
@@ -81,6 +83,10 @@ class KillSwitchPlanFile {
         for (final x in (decoded['blockedAppPaths'] as List? ?? const []))
           if (x is String && x.isNotEmpty) x,
       ];
+      final allowed = <String>[
+        for (final x in (decoded['allowedAppPaths'] as List? ?? const []))
+          if (x is String && x.isNotEmpty) x,
+      ];
       return KillSwitchPlan(
         allowServerIps: ips,
         allowOwnBinaries: true,
@@ -88,6 +94,7 @@ class KillSwitchPlanFile {
         allowLoopback: true,
         allowLan: decoded['allowLan'] == true,
         blockedAppPaths: apps,
+        allowedAppPaths: allowed,
         blockAll: decoded['blockAll'] == true,
         tunnelInterfaceLuid: tunnelLuid,
       );

@@ -14,6 +14,7 @@ void main() {
     Set<String> serverIps = const {'203.0.113.10'},
     bool blockAll = true,
     List<String> blockedApps = const [],
+    List<String> allowedApps = const [],
     List<String> ownBinaries = const [],
     bool allowOwn = true,
     bool allowLoopback = true,
@@ -29,6 +30,7 @@ void main() {
         allowLan: allowLan,
         allowDhcpAndNdp: allowDhcp,
         blockedAppPaths: blockedApps,
+        allowedAppPaths: allowedApps,
         blockAll: blockAll,
         tunnelInterfaceLuid: luid,
       );
@@ -268,6 +270,80 @@ void main() {
           buildWfpRules(plan(allowLoopback: false))
               .where((r) => r.name.contains('loopback')),
           isEmpty);
+    });
+  });
+
+  group('⚠️ «Кроме отмеченных»: исключение остаётся исключением', () {
+    test('отмеченные мимо VPN разрешены ЯВНО при полной блокировке', () {
+      // Там отмеченные идут мимо туннеля по воле человека, а всё остальное —
+      // через него. Общий блок закрыл бы и отмеченных, то есть отобрал бы ровно
+      // ту связь, которую человек просил оставить прямой.
+      final rules = buildWfpRules(plan(
+        blockAll: true,
+        allowedApps: const [r'C:pp\game.exe'],
+      ));
+      final r = named(rules, 'мимо VPN');
+      expect(r.isBlock, isFalse);
+      expect(r.conditions.single.path, r'C:pp\game.exe');
+      expect(r.layers.length, 4, reason: 'иначе исключение не работает по IPv6');
+    });
+
+    test('⚠️ разрешение ТЯЖЕЛЕЕ и общего блока, и блока DNS', () {
+      // Иначе приложение, выведенное из туннеля, теряло бы сеть при обрыве —
+      // либо работало бы, но без возможности разрешить имя.
+      expect(WfpWeights.allowedApps, greaterThan(WfpWeights.block));
+      expect(WfpWeights.allowedApps, greaterThan(WfpWeights.blockDns));
+      expect(WfpWeights.allowedApps, lessThanOrEqualTo(WfpWeights.max));
+    });
+
+    test('без исключений правил не появляется', () {
+      expect(
+          buildWfpRules(plan(blockAll: true))
+              .where((r) => r.name.contains('мимо VPN')),
+          isEmpty);
+    });
+  });
+
+  group('⚠️ Копирование плана ничего не теряет', () {
+    /// ⚠️ ЭТОТ КЛАСС БАГОВ КОМПИЛЯТОР НЕ ЛОВИТ. У полей плана есть значения по
+    /// умолчанию, поэтому копирующий метод, забывший про новое поле, просто
+    /// молча его обнуляет. 20.08.2026 так потерялся `allowedAppPaths`:
+    /// приложение, выведенное мимо VPN, оставалось заблокированным, хотя в
+    /// плане на диске список был. Поймал живой прогон в VM, а не тесты.
+    ///
+    /// Поэтому сравниваем ГОТОВЫЙ НАБОР ПРАВИЛ, а не перечень полей руками:
+    /// список полей пришлось бы пополнять — то есть однажды забыть снова.
+    KillSwitchPlan full() => plan(
+          serverIps: {'203.0.113.10', '198.51.100.7'},
+          blockAll: false,
+          blockedApps: const [r'C:pp\one.exe'],
+          allowedApps: const [r'C:pp\game.exe'],
+          ownBinaries: const [r'C:\sg\silentgate.exe'],
+          allowLan: true,
+          allowDhcp: true,
+          luid: 77,
+        );
+
+    List<String> namesOf(KillSwitchPlan p) =>
+        buildWfpRules(p).map((r) => '${r.name}|${r.weight}').toList()..sort();
+
+    test('⚠️ withOwnBinaries сохраняет ВСЁ, кроме своих бинарей', () {
+      final base = full();
+      final copy = base.withOwnBinaries(const [r'C:\sg\other.exe']);
+      final a = namesOf(base)..removeWhere((n) => n.startsWith('SilentGate: свой'));
+      final b = namesOf(copy)..removeWhere((n) => n.startsWith('SilentGate: свой'));
+      expect(b, a, reason: 'копирование потеряло часть плана');
+      expect(copy.allowedAppPaths, base.allowedAppPaths,
+          reason: 'именно это поле и потерялось 20.08.2026');
+    });
+
+    test('withTunnelLuid сохраняет ВСЁ, кроме правила туннеля', () {
+      final base = full();
+      final copy = base.withTunnelLuid(999);
+      final a = namesOf(base)..removeWhere((n) => n.contains('интерфейс туннеля'));
+      final b = namesOf(copy)..removeWhere((n) => n.contains('интерфейс туннеля'));
+      expect(b, a);
+      expect(copy.allowedAppPaths, base.allowedAppPaths);
     });
   });
 
