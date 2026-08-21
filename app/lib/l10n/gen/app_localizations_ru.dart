@@ -2901,6 +2901,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get splitDeadPathFix => 'Нажмите, чтобы сопоставлять по имени файла';
 
   @override
+  String get splitVersionedPath =>
+      'В пути есть номер версии — после обновления программы правило перестанет совпадать';
+
+  @override
   String get srvTileCopyKey => 'Скопировать ключ';
 
   @override

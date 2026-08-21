@@ -2897,6 +2897,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitDeadPathFix => 'Tap to match by file name instead';
 
   @override
+  String get splitVersionedPath =>
+      'The path contains a version number — the rule will stop matching after the program updates';
+
+  @override
   String get srvTileCopyKey => 'Copy key';
 
   @override

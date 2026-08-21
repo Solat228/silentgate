@@ -2794,6 +2794,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitDeadPathFix => '点按改为按文件名匹配';
 
   @override
+  String get splitVersionedPath => '路径中含有版本号——程序更新后该规则将不再匹配';
+
+  @override
   String get srvTileCopyKey => '复制密钥';
 
   @override

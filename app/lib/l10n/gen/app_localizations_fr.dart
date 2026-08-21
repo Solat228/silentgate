@@ -2930,6 +2930,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Appuyez pour faire correspondre par nom de fichier';
 
   @override
+  String get splitVersionedPath =>
+      'Le chemin contient un numéro de version — la règle cessera de correspondre après la mise à jour du programme';
+
+  @override
   String get srvTileCopyKey => 'Copier la clé';
 
   @override

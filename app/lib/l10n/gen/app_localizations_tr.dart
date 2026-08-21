@@ -2900,6 +2900,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get splitDeadPathFix => 'Dosya adına göre eşleştirmek için dokunun';
 
   @override
+  String get splitVersionedPath =>
+      'Yolda sürüm numarası var — program güncellendikten sonra kural eşleşmeyi bırakır';
+
+  @override
   String get srvTileCopyKey => 'Anahtarı kopyala';
 
   @override

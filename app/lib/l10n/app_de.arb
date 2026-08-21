@@ -1081,6 +1081,7 @@
   "autoSpeedTrafficGo": "Starten",
   "splitDeadPath": "Die Datei unter diesem Pfad existiert nicht mehr — die Regel greift nie",
   "splitDeadPathFix": "Tippen, um nach Dateinamen abzugleichen",
+  "splitVersionedPath": "Der Pfad enthält eine Versionsnummer — nach dem Update des Programms greift die Regel nicht mehr",
   "srvTileCopyKey": "Schlüssel kopieren",
   "serviceChecksBypassDirect": "Am VPN vorbei: Die Split-Tunneling-Regel „{rule}“ leitet diese Domain direkt — der Dienst nutzt Ihre echte Adresse.",
   "serviceChecksBypassBlock": "Blockiert: Die Split-Tunneling-Regel „{rule}“ verbietet diese Domain — der Dienst öffnet sich weder mit noch ohne VPN.",

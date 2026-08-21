@@ -1257,6 +1257,7 @@
   "autoSpeedTrafficGo": "Start",
   "splitDeadPath": "The file at this path no longer exists — the rule never matches",
   "splitDeadPathFix": "Tap to match by file name instead",
+  "splitVersionedPath": "The path contains a version number — the rule will stop matching after the program updates",
   "srvTileCopyKey": "Copy key",
   "serviceChecksBypassDirect": "Outside the VPN: the split tunneling rule “{rule}” sends this domain directly — the service will use your real address.",
   "serviceChecksBypassBlock": "Blocked: the split tunneling rule “{rule}” forbids this domain — the service will not open, with or without the VPN.",

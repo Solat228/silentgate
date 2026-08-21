@@ -2889,6 +2889,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get splitDeadPathFix => 'برای تطبیق بر اساس نام فایل ضربه بزنید';
 
   @override
+  String get splitVersionedPath =>
+      'مسیر شامل شمارهٔ نسخه است — پس از به‌روزرسانی برنامه، قاعده دیگر مطابقت نمی‌کند';
+
+  @override
   String get srvTileCopyKey => 'کپی کلید';
 
   @override

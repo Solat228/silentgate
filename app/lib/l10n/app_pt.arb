@@ -1081,6 +1081,7 @@
   "autoSpeedTrafficGo": "Iniciar",
   "splitDeadPath": "O ficheiro neste caminho já não existe — a regra nunca é aplicada",
   "splitDeadPathFix": "Toque para corresponder pelo nome do ficheiro",
+  "splitVersionedPath": "O caminho contém um número de versão — a regra deixará de corresponder depois de o programa se atualizar",
   "srvTileCopyKey": "Copiar chave",
   "serviceChecksBypassDirect": "Fora da VPN: a regra de túnel dividido “{rule}” envia este domínio diretamente — o serviço usará o seu endereço real.",
   "serviceChecksBypassBlock": "Bloqueado: a regra de túnel dividido “{rule}” proíbe este domínio — o serviço não abrirá nem com nem sem VPN.",

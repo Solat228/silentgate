@@ -2927,6 +2927,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Toque para corresponder pelo nome do ficheiro';
 
   @override
+  String get splitVersionedPath =>
+      'O caminho contém um número de versão — a regra deixará de corresponder depois de o programa se atualizar';
+
+  @override
   String get srvTileCopyKey => 'Copiar chave';
 
   @override

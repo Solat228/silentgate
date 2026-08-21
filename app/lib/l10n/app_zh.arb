@@ -1081,6 +1081,7 @@
   "autoSpeedTrafficGo": "开始",
   "splitDeadPath": "该路径下的文件已不存在——规则永远不会匹配",
   "splitDeadPathFix": "点按改为按文件名匹配",
+  "splitVersionedPath": "路径中含有版本号——程序更新后该规则将不再匹配",
   "srvTileCopyKey": "复制密钥",
   "serviceChecksBypassDirect": "不走 VPN：分应用代理规则「{rule}」让该域名直连——该服务将使用你的真实地址。",
   "serviceChecksBypassBlock": "已拦截：分应用代理规则「{rule}」禁止该域名——无论是否开启 VPN，该服务都无法打开。",

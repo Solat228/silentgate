@@ -2925,6 +2925,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Pulse para hacer coincidir por nombre de archivo';
 
   @override
+  String get splitVersionedPath =>
+      'La ruta contiene un número de versión: la regla dejará de coincidir cuando el programa se actualice';
+
+  @override
   String get srvTileCopyKey => 'Copiar clave';
 
   @override

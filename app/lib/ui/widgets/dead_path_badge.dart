@@ -47,6 +47,45 @@ class DeadPathBadge extends StatefulWidget {
   static bool appliesOn() =>
       Platform.isWindows || Platform.isLinux || Platform.isMacOS;
 
+  /// ⚠️ ПУТЬ С НОМЕРОМ ВЕРСИИ СЛОМАЕТСЯ ПРИ СЛЕДУЮЩЕМ ОБНОВЛЕНИИ.
+  ///
+  /// Прежняя пометка ждала, пока файл ИСЧЕЗНЕТ. Для программ, которые ставят
+  /// каждую версию в свой каталог, это опоздание ровно на один цикл: пока
+  /// стоит `…claude-code-2.1.238-win32-x64\…`, правило совпадает и выглядит
+  /// исправным, а наутро программа обновилась — и оно молча перестало
+  /// работать. Владелец 21.08.2026: «мне абсолютно похуй, с какой папки будет
+  /// этот файл, ВСЕ файлы с этим именем должны быть найдены».
+  ///
+  /// Признак намеренно узкий — сегмент КАТАЛОГА, содержащий номер вида
+  /// `<цифры>.<цифры>`:
+  ///  * ловит `anthropic.claude-code-2.1.238-win32-x64`, `app-1.2.3`,
+  ///    `Python3.10` — то есть ровно раскладку «версия в имени папки»;
+  ///  * не трогает `Microsoft VS Code`, `Telegram Desktop`,
+  ///    `Program Files (x86)` — эти программы обновляются на месте, и
+  ///    предупреждение там было бы ложной тревогой.
+  ///
+  /// ⚠️ ИМЯ ФАЙЛА НЕ СМОТРИМ. `claude.exe` не меняется — меняется папка; а
+  /// проверять имя значило бы ругаться на `python3.10.exe`, у которого путь
+  /// как раз устойчив.
+  ///
+  /// ⚠️ РАЗДЕЛИТЕЛЬ — И ОБРАТНЫЙ СЛЭШ ТОЖЕ. Первая редакция этого разбора
+  /// делила путь по `[\/]`, где `\/` — это экранированная косая черта, то есть
+  /// обратный слэш в класс НЕ ПОПАДАЛ. На Windows путь не делился вовсе,
+  /// сегментов выходило меньше двух, и функция всегда возвращала «нет» —
+  /// проверка, которая никогда не срабатывает.
+  static bool pathLooksVersioned(String path) {
+    final p = path.trim();
+    if (p.isEmpty) return false;
+    final parts = p.split(RegExp(r'[\\/]'));
+    if (parts.length < 2) return false;
+    final dirs = parts.sublist(0, parts.length - 1);
+    final version = RegExp(r'\d+\.\d+');
+    for (final d in dirs) {
+      if (version.hasMatch(d)) return true;
+    }
+    return false;
+  }
+
   @override
   State<DeadPathBadge> createState() => _DeadPathBadgeState();
 }
@@ -54,11 +93,26 @@ class DeadPathBadge extends StatefulWidget {
 class _DeadPathBadgeState extends State<DeadPathBadge> {
   bool _missing = false;
 
+  /// Путь ещё жив, но в нём номер версии — сломается при обновлении.
+  bool _fragile = false;
+
   @override
   void initState() {
     super.initState();
     // В initState `setState` не зовём — состояние ещё не смонтировано.
     _missing = _isMissing(widget.rule);
+    _fragile = _isFragile(widget.rule);
+  }
+
+  /// ⚠️ ТОЛЬКО КОГДА ФАЙЛ НА МЕСТЕ. Исчезнувший путь — уже не предупреждение о
+  /// будущем, а поломка сейчас, и говорить о ней надо строже: пометки не
+  /// складываются, старшая вытесняет младшую.
+  static bool _isFragile(AppRule r) {
+    if (r.byName || !DeadPathBadge.appliesOn() || r.path.trim().isEmpty) {
+      return false;
+    }
+    if (_isMissing(r)) return false;
+    return DeadPathBadge.pathLooksVersioned(r.path);
   }
 
   /// Чистая проверка без побочных эффектов — её же зовёт [_check].
@@ -97,18 +151,32 @@ class _DeadPathBadgeState extends State<DeadPathBadge> {
   /// одно обращение к диску на строку при её появлении, а не на каждый кадр.
   void _check() {
     final gone = _isMissing(widget.rule);
-    if (gone != _missing) setState(() => _missing = gone);
+    final fragile = _isFragile(widget.rule);
+    if (gone != _missing || fragile != _fragile) {
+      setState(() {
+        _missing = gone;
+        _fragile = fragile;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_missing) return const SizedBox.shrink();
+    if (!_missing && !_fragile) return const SizedBox.shrink();
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
+    // ⚠️ Порядок важен: сломанное сейчас старше того, что сломается завтра.
+    // Две пометки на одной строке спорили бы за место и за внимание.
+    final broken = _missing;
     return IconButton(
-      key: const Key('deadPathFix'),
-      icon: Icon(Icons.report_problem_outlined, color: scheme.error),
-      tooltip: '${l.splitDeadPath}\n${l.splitDeadPathFix}',
+      key: Key(broken ? 'deadPathFix' : 'fragilePathFix'),
+      icon: Icon(
+        broken ? Icons.report_problem_outlined : Icons.update_disabled,
+        color: broken ? scheme.error : scheme.tertiary,
+      ),
+      tooltip: broken
+          ? '${l.splitDeadPath}\n${l.splitDeadPathFix}'
+          : '${l.splitVersionedPath}\n${l.splitDeadPathFix}',
       onPressed: widget.onSwitchToName,
     );
   }

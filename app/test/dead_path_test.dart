@@ -20,6 +20,7 @@ import 'package:silentgate/ui/widgets/dead_path_badge.dart';
 /// `match[6] process_name=myapp.exe => route(direct)` при НАМЕРЕННО оставленном
 /// мёртвом пути в записи.
 void main() {
+  _versionedPathGuards();
   late Directory tmp;
 
   setUp(() => tmp = Directory.systemTemp.createTempSync('sg_deadpath_'));
@@ -108,5 +109,67 @@ void main() {
     await tester.pumpWidget(host(AppRule(alive.path, byName: false)));
     await tester.pumpAndSettle();
     expect(badge, findsNothing);
+  });
+}
+
+/// ⚠️ ВТОРАЯ ПОЛОВИНА ЗАДАЧИ: ПРЕДУПРЕДИТЬ ДО ПОЛОМКИ, А НЕ ПОСЛЕ.
+///
+/// Пометка выше ждала, пока файл ИСЧЕЗНЕТ. Для программ, которые ставят каждую
+/// версию в свой каталог, это опоздание ровно на один цикл: пока стоит
+/// `…claude-code-2.1.238-win32-x64\…`, правило совпадает и выглядит исправным,
+/// а наутро программа обновилась — и оно молча перестало работать.
+///
+/// Владелец 21.08.2026: «мне абсолютно похуй, с какой папки будет этот файл,
+/// ВСЕ файлы с этим именем должны быть найдены». Проверено живьём в VM: одно и
+/// то же имя в двух РАЗНЫХ папках правило `process_name` ловит одинаково, а
+/// файл с другим именем в той же папке — не ловит. То есть движок исправен, и
+/// чинить надо ровно распознавание хрупкого пути.
+void _versionedPathGuards() {
+  group('⚠️ Путь с номером версии распознаётся', () {
+    test('каталог расширения VS Code — хрупкий', () {
+      expect(
+          DeadPathBadge.pathLooksVersioned(
+              r'C:\Users\U\.vscode\extensions\anthropic.claude-code-2.1.238-win32-x64\resources\native-binary\claude.exe'),
+          isTrue);
+    });
+
+    test('Squirrel-раскладка app-1.2.3 — хрупкая', () {
+      expect(
+          DeadPathBadge.pathLooksVersioned(r'C:\Users\U\AppData\Local\X\app-1.2.3\x.exe'),
+          isTrue);
+    });
+
+    test('⚠️ обратный слэш действительно делит путь', () {
+      // Первая редакция делила по `[\/]`, где `\/` — экранированная косая
+      // черта: обратный слэш в класс НЕ попадал, путь Windows не делился, и
+      // функция всегда отвечала «нет». Проверка, которая никогда не срабатывает,
+      // хуже отсутствующей — она создаёт видимость защиты.
+      expect(DeadPathBadge.pathLooksVersioned(r'C:\app-1.2.3\x.exe'), isTrue);
+      expect(DeadPathBadge.pathLooksVersioned('/opt/app-1.2.3/x'), isTrue);
+    });
+
+    test('программы, обновляющиеся на месте, — НЕ хрупкие', () {
+      // Ложная тревога здесь дороже пропуска: предупреждение, которое горит у
+      // всех подряд, перестают замечать за день.
+      for (final p in [
+        r'C:\Users\U\AppData\Local\Programs\Microsoft VS Code\Code.exe',
+        r'C:\Telegram Desktop\Telegram.exe',
+        r'C:\Program Files (x86)\Foo\foo.exe',
+        r'C:\Windows\System32\curl.exe',
+      ]) {
+        expect(DeadPathBadge.pathLooksVersioned(p), isFalse, reason: p);
+      }
+    });
+
+    test('⚠️ номер версии в ИМЕНИ ФАЙЛА не считается', () {
+      // У `python3.10.exe` путь как раз устойчив — меняется имя, а не папка.
+      expect(DeadPathBadge.pathLooksVersioned(r'C:\Python\python3.10.exe'),
+          isFalse);
+    });
+
+    test('пустое и без каталога — не хрупкое', () {
+      expect(DeadPathBadge.pathLooksVersioned(''), isFalse);
+      expect(DeadPathBadge.pathLooksVersioned('claude.exe'), isFalse);
+    });
   });
 }

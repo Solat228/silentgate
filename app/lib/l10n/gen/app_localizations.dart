@@ -5040,6 +5040,12 @@ abstract class AppLocalizations {
   /// **'Нажмите, чтобы сопоставлять по имени файла'**
   String get splitDeadPathFix;
 
+  /// No description provided for @splitVersionedPath.
+  ///
+  /// In ru, this message translates to:
+  /// **'В пути есть номер версии — после обновления программы правило перестанет совпадать'**
+  String get splitVersionedPath;
+
   /// No description provided for @srvTileCopyKey.
   ///
   /// In ru, this message translates to:

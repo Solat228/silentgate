@@ -2891,6 +2891,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splitDeadPathFix => 'اضغط للمطابقة حسب اسم الملف';
 
   @override
+  String get splitVersionedPath =>
+      'المسار يحتوي على رقم إصدار — ستتوقف القاعدة عن المطابقة بعد تحديث البرنامج';
+
+  @override
   String get srvTileCopyKey => 'نسخ المفتاح';
 
   @override

@@ -1081,6 +1081,7 @@
   "autoSpeedTrafficGo": "Başlat",
   "splitDeadPath": "Bu yoldaki dosya artık yok — kural hiç eşleşmiyor",
   "splitDeadPathFix": "Dosya adına göre eşleştirmek için dokunun",
+  "splitVersionedPath": "Yolda sürüm numarası var — program güncellendikten sonra kural eşleşmeyi bırakır",
   "srvTileCopyKey": "Anahtarı kopyala",
   "serviceChecksBypassDirect": "VPN dışında: bölünmüş tünel kuralı “{rule}” bu alan adını doğrudan gönderiyor — servis gerçek adresinizle çalışacak.",
   "serviceChecksBypassBlock": "Engelli: bölünmüş tünel kuralı “{rule}” bu alan adını yasaklıyor — servis VPN ile de VPN’siz de açılmaz.",

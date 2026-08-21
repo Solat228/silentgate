@@ -2921,6 +2921,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitDeadPathFix => 'Tippen, um nach Dateinamen abzugleichen';
 
   @override
+  String get splitVersionedPath =>
+      'Der Pfad enthält eine Versionsnummer — nach dem Update des Programms greift die Regel nicht mehr';
+
+  @override
   String get srvTileCopyKey => 'Schlüssel kopieren';
 
   @override

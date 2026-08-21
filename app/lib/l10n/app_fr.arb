@@ -1081,6 +1081,7 @@
   "autoSpeedTrafficGo": "Lancer",
   "splitDeadPath": "Le fichier de ce chemin n'existe plus — la règle ne s'applique jamais",
   "splitDeadPathFix": "Appuyez pour faire correspondre par nom de fichier",
+  "splitVersionedPath": "Le chemin contient un numéro de version — la règle cessera de correspondre après la mise à jour du programme",
   "srvTileCopyKey": "Copier la clé",
   "serviceChecksBypassDirect": "Hors VPN : la règle de tunnel divisé « {rule} » envoie ce domaine en direct — le service utilisera votre adresse réelle.",
   "serviceChecksBypassBlock": "Bloqué : la règle de tunnel divisé « {rule} » interdit ce domaine — le service ne s’ouvrira ni avec ni sans VPN.",
