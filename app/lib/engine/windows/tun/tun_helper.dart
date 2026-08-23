@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
+import '../wfp_rules.dart' show baseName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
 import 'kill_switch_plan_file.dart';
@@ -198,7 +199,7 @@ class TunHelper {
     // switch на подключении (школа Mullvad): свои бинари, адреса серверов,
     // loopback и DHCP разрешены, остальное — нет.
     final hold = _engageBase(log, alive, configPath);
-    if (hold == null && _wantsKillSwitch(configPath)) {
+    if (hold == null && _mustHaveKillSwitch(configPath)) {
       // ⚠️ KILL SWITCH ПРОСИЛИ, А ПОДНЯТЬ НЕ ВЫШЛО — ТУННЕЛЯ НЕ БУДЕТ.
       // Поднять туннель, который может течь, при интерфейсе, обещающем защиту,
       // — это ровно та жалоба, из-за которой всё затевалось, воспроизведённая
@@ -331,6 +332,36 @@ class TunHelper {
           expectToken: _readAliveName(configPath)) !=
       null;
 
+  /// ⚠️ ОБЯЗАНА ЛИ БЛОКИРОВКА ПОДНЯТЬСЯ, ЧТОБЫ ПУСКАТЬ ЯДРО.
+  ///
+  /// «Просили блокировку» и «без блокировки нельзя» — РАЗНЫЕ утверждения, и
+  /// разошлись они дорого. Отказ стартовать выглядит правильным при любой
+  /// неудаче, но у неудачи есть безобидный случай: **блокировать нечего**.
+  ///
+  /// В режиме «только отмеченные» блокировка перечисляет программы поимённо
+  /// (`blockedAppPaths`), а `blockAll` там выключен. Не отмечено ни одной
+  /// программы — или все отмеченные пропали с диска после обновления — и план
+  /// становится пустым. `engage` на пустом плане честно отвечает «блокировать
+  /// нечего, систему не трогаем» и возвращает `null`; прежний гейт видел
+  /// только `null` и запрещал ядру стартовать. То есть **kill switch без
+  /// единой отмеченной программы делал подключение невозможным** — при том,
+  /// что защищать в этой настройке нечего по построению.
+  ///
+  /// Здесь пустой план приравнивается к «блокировки не требуется»: туннель
+  /// поднимается как обычно. Настоящая неудача (нет прав, отказ WFP, нет связи
+  /// с интерфейсом) по-прежнему запрещает старт.
+  static bool _mustHaveKillSwitch(String configPath) {
+    final plan = KillSwitchPlanFile.read(_dataDir(configPath),
+        expectToken: _readAliveName(configPath));
+    if (plan == null) return false;
+    final cleaned = plan
+        .withOwnBinaries(_ownBinaries())
+        .withoutMissingApps(
+            (p) => File(p).existsSync() || Directory(p).existsSync())
+        .plan;
+    return !cleaned.isEmpty;
+  }
+
   /// План с подставленным LUID; `null` — плана нет или он не наш.
   static KillSwitchPlan? _planFor(String configPath, int? luid) {
     final plan = KillSwitchPlanFile.read(_dataDir(configPath),
@@ -359,7 +390,28 @@ class TunHelper {
             'отсутствия'));
         return null;
       }
-      return KillSwitchWfp.engage(plan,
+      // ⚠️ ПРОГРАММЫ, КОТОРЫХ НА ДИСКЕ НЕТ, ВЫБРАСЫВАЕМ ДО ПОДЪЁМА.
+      //
+      // WFP не умеет выдать идентификатор для несуществующего файла — он
+      // отвечает `ERROR_PATH_NOT_FOUND`, а подъём идёт одной транзакцией
+      // «либо всё, либо ничего», и одна устаревшая строка в списке валила
+      // ВЕСЬ kill switch. Дальше срабатывал запрет стартовать ядру без
+      // блокировки — и подключиться становилось нельзя вообще. Ровно это и
+      // случилось у владельца 23.08.2026 с `claude.exe`, путь которого сменился
+      // при обновлении программы.
+      //
+      // Пропуск здесь ничего не открывает: из несуществующего пути процесс не
+      // запускается, и правило не совпало бы ни с чем. Общий принцип «либо весь
+      // план, либо ничего» для остальных правил остаётся в силе.
+      final cleaned = plan.withoutMissingApps(
+          (p) => File(p).existsSync() || Directory(p).existsSync());
+      for (final p in cleaned.skipped) {
+        unawaited(log.write('--- kill switch: правило на «${baseName(p)}» '
+            'пропущено — файла нет на диске ($p). Обычно это значит, что '
+            'программа обновилась и сменила папку; поправьте правило в '
+            'раздельном туннелировании или сопоставляйте её по имени файла'));
+      }
+      return KillSwitchWfp.engage(cleaned.plan,
           log: (m) => unawaited(log.write('--- $m')));
     } catch (e) {
       unawaited(log.write('--- kill switch не поднялся: $e'));

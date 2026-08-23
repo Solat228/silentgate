@@ -121,6 +121,78 @@ class KillSwitchPlan {
         ownBinaryPaths: ownBinaryPaths,
         tunnelInterfaceLuid: luid,
       );
+
+  /// ⚠️ ВЫБРОСИТЬ ПРАВИЛА НА ПРОГРАММЫ, КОТОРЫХ НА ДИСКЕ БОЛЬШЕ НЕТ.
+  ///
+  /// ## Чем это обошлось, прежде чем появилось
+  ///
+  /// 23.08.2026 у владельца VPN перестал подключаться совсем: пинг шёл, а
+  /// кнопка «Подключиться» оставляла «Подключение…» навсегда. В журнале на
+  /// каждой из девяти комбинаций автоподбора TUN стояла одна и та же пара
+  /// строк:
+  ///
+  /// ```
+  /// kill switch: правило «SilentGate: блок claude.exe» отвергнуто, код 3 — откатываю всё
+  /// НЕ ЗАПУСКАЮ ЯДРО: kill switch включён, но блокировка не поднялась.
+  /// ```
+  ///
+  /// Код 3 — `ERROR_PATH_NOT_FOUND`. `FwpmGetAppIdFromFileName0` не умеет
+  /// выдать идентификатор для файла, которого нет: правило в раздельном
+  /// туннелировании указывало на `…claude-code-2.1.238-win32-x64\…`, а
+  /// программа с тех пор обновилась и каталог сменился. Дальше сходились три
+  /// верных по отдельности решения: подъём фильтров — одной транзакцией «либо
+  /// всё, либо ничего»; kill switch, который не поднялся, запрещает стартовать
+  /// ядру; и правило «по пути», которое устаревает молча. Каждое из них
+  /// правильно, а вместе они превратили устаревшую строку в списке в
+  /// невозможность подключиться вообще.
+  ///
+  /// ## Почему пропустить — это НЕ дыра в защите
+  ///
+  /// Правило запрещает сеть конкретному файлу. Файла нет — запрещать нечего:
+  /// ни один процесс не может быть запущен из несуществующего пути, поэтому
+  /// такое правило не совпало бы ни с чем и в рабочем наборе. Отбрасывая его,
+  /// мы не теряем ни одного перекрытия — в отличие от общего принципа «либо
+  /// весь план, либо ничего», который остаётся в силе для всего остального.
+  ///
+  /// [exists] передаётся снаружи, чтобы функция осталась чистой и проверяемой
+  /// без обращения к диску.
+  ///
+  /// Возвращает план без пропавших путей и СПИСОК ПРОПУЩЕННОГО — вызывающий
+  /// обязан о нём сказать. Молчаливое отбрасывание вернуло бы ровно ту
+  /// болезнь, из-за которой всё и случилось: правило есть в интерфейсе, но не
+  /// делает ничего.
+  ({KillSwitchPlan plan, List<String> skipped}) withoutMissingApps(
+      bool Function(String path) exists) {
+    final skipped = <String>[];
+    List<String> keep(List<String> paths) => [
+          for (final p in paths)
+            if (exists(p)) p else _drop(skipped, p),
+        ].whereType<String>().toList();
+    final blocked = keep(blockedAppPaths);
+    final allowed = keep(allowedAppPaths);
+    if (skipped.isEmpty) return (plan: this, skipped: const []);
+    return (
+      plan: KillSwitchPlan(
+        allowServerIps: allowServerIps,
+        allowOwnBinaries: allowOwnBinaries,
+        allowLoopback: allowLoopback,
+        allowLan: allowLan,
+        blockedAppPaths: blocked,
+        blockAll: blockAll,
+        allowedAppPaths: allowed,
+        allowDhcpAndNdp: allowDhcpAndNdp,
+        ownBinaryPaths: ownBinaryPaths,
+        tunnelInterfaceLuid: tunnelInterfaceLuid,
+      ),
+      skipped: skipped,
+    );
+  }
+
+  /// Записать выброшенный путь и вернуть `null`, чтобы он выпал из списка.
+  static String? _drop(List<String> into, String path) {
+    into.add(path);
+    return null;
+  }
 }
 
 /// Вид значения условия. Разные виды кладутся в память по-разному, и путать их
