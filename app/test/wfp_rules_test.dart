@@ -15,6 +15,8 @@ void main() {
     bool blockAll = true,
     List<String> blockedApps = const [],
     List<String> allowedApps = const [],
+    List<String> blockedNames = const [],
+    List<String> allowedNames = const [],
     List<String> ownBinaries = const [],
     bool allowOwn = true,
     bool allowLoopback = true,
@@ -31,6 +33,8 @@ void main() {
         allowDhcpAndNdp: allowDhcp,
         blockedAppPaths: blockedApps,
         allowedAppPaths: allowedApps,
+        blockedAppNames: blockedNames,
+        allowedAppNames: allowedNames,
         blockAll: blockAll,
         tunnelInterfaceLuid: luid,
       );
@@ -201,7 +205,8 @@ void main() {
     });
 
     test('⚠️ сервер по IPv6 уходит на слои V6, а не V4', () {
-      final s = named(buildWfpRules(plan(serverIps: {'2001:db8::1'})), 'сервер');
+      final s =
+          named(buildWfpRules(plan(serverIps: {'2001:db8::1'})), 'сервер');
       expect(s.conditions.single.kind, WfpValueKind.v6Net);
       expect(s.conditions.single.number, 128);
       expect(s.layers, WfpLayers.v6,
@@ -285,7 +290,8 @@ void main() {
       final r = named(rules, 'мимо VPN');
       expect(r.isBlock, isFalse);
       expect(r.conditions.single.path, r'C:pp\game.exe');
-      expect(r.layers.length, 4, reason: 'иначе исключение не работает по IPv6');
+      expect(r.layers.length, 4,
+          reason: 'иначе исключение не работает по IPv6');
     });
 
     test('⚠️ разрешение ТЯЖЕЛЕЕ и общего блока, и блока DNS', () {
@@ -318,6 +324,8 @@ void main() {
           blockAll: false,
           blockedApps: const [r'C:pp\one.exe'],
           allowedApps: const [r'C:pp\game.exe'],
+          blockedNames: const ['blocked.exe'],
+          allowedNames: const ['allowed.exe'],
           ownBinaries: const [r'C:\sg\silentgate.exe'],
           allowLan: true,
           allowDhcp: true,
@@ -330,20 +338,28 @@ void main() {
     test('⚠️ withOwnBinaries сохраняет ВСЁ, кроме своих бинарей', () {
       final base = full();
       final copy = base.withOwnBinaries(const [r'C:\sg\other.exe']);
-      final a = namesOf(base)..removeWhere((n) => n.startsWith('SilentGate: свой'));
-      final b = namesOf(copy)..removeWhere((n) => n.startsWith('SilentGate: свой'));
+      final a = namesOf(base)
+        ..removeWhere((n) => n.startsWith('SilentGate: свой'));
+      final b = namesOf(copy)
+        ..removeWhere((n) => n.startsWith('SilentGate: свой'));
       expect(b, a, reason: 'копирование потеряло часть плана');
       expect(copy.allowedAppPaths, base.allowedAppPaths,
           reason: 'именно это поле и потерялось 20.08.2026');
+      expect(copy.blockedAppNames, base.blockedAppNames);
+      expect(copy.allowedAppNames, base.allowedAppNames);
     });
 
     test('withTunnelLuid сохраняет ВСЁ, кроме правила туннеля', () {
       final base = full();
       final copy = base.withTunnelLuid(999);
-      final a = namesOf(base)..removeWhere((n) => n.contains('интерфейс туннеля'));
-      final b = namesOf(copy)..removeWhere((n) => n.contains('интерфейс туннеля'));
+      final a = namesOf(base)
+        ..removeWhere((n) => n.contains('интерфейс туннеля'));
+      final b = namesOf(copy)
+        ..removeWhere((n) => n.contains('интерфейс туннеля'));
       expect(b, a);
       expect(copy.allowedAppPaths, base.allowedAppPaths);
+      expect(copy.blockedAppNames, base.blockedAppNames);
+      expect(copy.allowedAppNames, base.allowedAppNames);
     });
   });
 

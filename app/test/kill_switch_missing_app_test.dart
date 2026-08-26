@@ -30,6 +30,8 @@ void main() {
   KillSwitchPlan planWith({
     List<String> blocked = const [],
     List<String> allowed = const [],
+    List<String> blockedNames = const [],
+    List<String> allowedNames = const [],
   }) =>
       KillSwitchPlan(
         allowServerIps: const {'198.51.100.10'},
@@ -39,6 +41,8 @@ void main() {
         allowLan: true,
         blockedAppPaths: blocked,
         allowedAppPaths: allowed,
+        blockedAppNames: blockedNames,
+        allowedAppNames: allowedNames,
         blockAll: false,
       );
 
@@ -48,7 +52,8 @@ void main() {
 
   group('⚠️ Пропавшая программа выбрасывается, а не валит план', () {
     test('путь, которого нет, уходит из списка блокировки', () {
-      const gone = r'C:\Users\u\.vscode\extensions\claude-code-2.1.238\claude.exe';
+      const gone =
+          r'C:\Users\u\.vscode\extensions\claude-code-2.1.238\claude.exe';
       const alive = r'C:\Telegram Desktop\Telegram.exe';
       final r = planWith(blocked: const [gone, alive])
           .withoutMissingApps(existsExcept({gone}));
@@ -85,9 +90,37 @@ void main() {
   });
 
   group('⚠️ Защита от этого не слабеет', () {
+    test('без устаревших путей сохраняются оба селектора имён', () {
+      final p = planWith(
+        blocked: const [r'C:\ok\blocked.exe'],
+        allowed: const [r'C:\ok\allowed.exe'],
+        blockedNames: const ['blocked.exe'],
+        allowedNames: const ['allowed.exe'],
+      );
+      final r = p.withoutMissingApps((_) => true);
+
+      expect(identical(r.plan, p), isTrue);
+      expect(r.plan.blockedAppNames, p.blockedAppNames);
+      expect(r.plan.allowedAppNames, p.allowedAppNames);
+    });
+
+    test('при чистке путей сохраняются оба селектора имён', () {
+      const gone = r'C:\gone\blocked.exe';
+      final r = planWith(
+        blocked: const [gone, r'C:\ok\blocked.exe'],
+        allowed: const [r'C:\ok\allowed.exe'],
+        blockedNames: const ['blocked.exe'],
+        allowedNames: const ['allowed.exe'],
+      ).withoutMissingApps(existsExcept({gone}));
+
+      expect(r.plan.blockedAppNames, ['blocked.exe']);
+      expect(r.plan.allowedAppNames, ['allowed.exe']);
+    });
+
     test('остальные правила плана целы', () {
       const gone = r'C:\gone\app.exe';
-      final r = planWith(blocked: const [gone]).withoutMissingApps(existsExcept({gone}));
+      final r = planWith(blocked: const [gone])
+          .withoutMissingApps(existsExcept({gone}));
       expect(r.plan.blockAll, isFalse);
       expect(r.plan.allowServerIps, {'198.51.100.10'});
       expect(r.plan.allowLoopback, isTrue);
@@ -114,8 +147,8 @@ void main() {
           .toSet()
           .difference(cleaned.map((r) => r.name).toSet());
       expect(lost, {'SilentGate: блок app.exe'});
-      expect(cleaned.map((r) => r.name),
-          contains('SilentGate: блок Telegram.exe'),
+      expect(
+          cleaned.map((r) => r.name), contains('SilentGate: блок Telegram.exe'),
           reason: 'живое правило обязано уцелеть');
     });
 
@@ -131,8 +164,8 @@ void main() {
       // Различать обязан вызывающий: пустой план — «не требуется», а не «не
       // смогли». Страж на самом гейте — ниже, в разделе про помощника.
       const gone = r'C:\gone\app.exe';
-      final r =
-          planWith(blocked: const [gone]).withoutMissingApps(existsExcept({gone}));
+      final r = planWith(blocked: const [gone])
+          .withoutMissingApps(existsExcept({gone}));
       expect(r.plan.isEmpty, isTrue,
           reason: 'план без блокировок обязан честно называть себя пустым');
       expect(buildWfpRules(r.plan), isEmpty);
@@ -140,13 +173,10 @@ void main() {
   });
 
   group('⚠️ Стражи по исходнику: помощник это зовёт и не молчит', () {
-    String code(String path) => File(path)
-        .readAsLinesSync()
-        .where((l) {
+    String code(String path) => File(path).readAsLinesSync().where((l) {
           final t = l.trimLeft();
           return !t.startsWith('//') && !t.startsWith('///');
-        })
-        .join(String.fromCharCode(10));
+        }).join(String.fromCharCode(10));
 
     late String helper;
     setUp(() => helper = code('lib/engine/windows/tun/tun_helper.dart'));

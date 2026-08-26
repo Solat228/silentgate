@@ -18,6 +18,7 @@ library;
 import 'dart:io';
 
 import 'wfp_layout.dart';
+import 'process_list_windows.dart';
 
 /// Что именно перекрываем и что оставляем открытым.
 class KillSwitchPlan {
@@ -54,6 +55,12 @@ class KillSwitchPlan {
   /// Пути приложений, которым закрываем сеть (режим «только отмеченные»).
   final List<String> blockedAppPaths;
 
+  /// Имена выбранных по basename приложений для режима «только отмеченные».
+  ///
+  /// WFP не принимает имя: перед подъёмом защиты оно материализуется в полные
+  /// пути живых процессов через [withMaterializedAppPaths].
+  final List<String> blockedAppNames;
+
   /// ⚠️ ПУТИ ПРИЛОЖЕНИЙ, КОТОРЫМ СЕТЬ ОСТАВЛЯЕМ ОТКРЫТОЙ ДАЖЕ ПРИ ПОЛНОЙ
   /// БЛОКИРОВКЕ — режим «кроме отмеченных».
   ///
@@ -63,6 +70,12 @@ class KillSwitchPlan {
   /// 19.08.2026 (школа Mullvad) говорит обратное: исключение из туннеля
   /// остаётся исключением и из блокировки.
   final List<String> allowedAppPaths;
+
+  /// Имена выбранных по basename приложений для режима «кроме отмеченных».
+  ///
+  /// WFP получает только полные пути, поэтому эти селекторы сами по себе не
+  /// образуют ни одного фильтра до [withMaterializedAppPaths].
+  final List<String> allowedAppNames;
 
   /// Блокировать всё подряд (режимы «Всё через VPN» и «кроме отмеченных»).
   final bool blockAll;
@@ -75,6 +88,8 @@ class KillSwitchPlan {
     required this.blockedAppPaths,
     required this.blockAll,
     this.allowedAppPaths = const [],
+    this.blockedAppNames = const [],
+    this.allowedAppNames = const [],
     this.allowDhcpAndNdp = true,
     this.ownBinaryPaths = const [],
     this.tunnelInterfaceLuid,
@@ -82,6 +97,57 @@ class KillSwitchPlan {
 
   /// Есть ли что блокировать вообще.
   bool get isEmpty => !blockAll && blockedAppPaths.isEmpty;
+
+  /// Материализовать селекторы имён в appId-пути живых процессов.
+  ///
+  /// WFP принимает только идентификатор, полученный из полного пути, поэтому
+  /// само имя никогда не превращается в правило. Список [processes] уже
+  /// получен существующим [ProcessListWindows] API и является единственным
+  /// источником путей для селекторов.
+  KillSwitchPlan withMaterializedAppPaths(Iterable<RunningProcess> processes) {
+    final blockedNames =
+        blockedAppNames.map((name) => baseName(name).toLowerCase()).toSet();
+    final allowedNames =
+        allowedAppNames.map((name) => baseName(name).toLowerCase()).toSet();
+    final processList = processes.toList();
+
+    List<String> materialize(
+        List<String> explicitPaths, Set<String> selectedNames) {
+      final result = <String>[];
+      final seen = <String>{};
+
+      void add(String path) {
+        if (seen.add(path.toLowerCase())) result.add(path);
+      }
+
+      // Явные пути всегда первыми: порядок нужен для предсказуемого лога и
+      // сохраняет прежний материал плана до добавления живых совпадений.
+      for (final path in explicitPaths) {
+        add(path);
+      }
+      for (final process in processList) {
+        if (selectedNames.contains(baseName(process.name).toLowerCase())) {
+          add(process.path);
+        }
+      }
+      return result;
+    }
+
+    return KillSwitchPlan(
+      allowServerIps: allowServerIps,
+      allowOwnBinaries: allowOwnBinaries,
+      allowLoopback: allowLoopback,
+      allowLan: allowLan,
+      allowedAppPaths: materialize(allowedAppPaths, allowedNames),
+      blockedAppPaths: materialize(blockedAppPaths, blockedNames),
+      blockedAppNames: blockedAppNames,
+      allowedAppNames: allowedAppNames,
+      blockAll: blockAll,
+      allowDhcpAndNdp: allowDhcpAndNdp,
+      ownBinaryPaths: ownBinaryPaths,
+      tunnelInterfaceLuid: tunnelInterfaceLuid,
+    );
+  }
 
   /// Тот же план, но со списком своих бинарей.
   ///
@@ -102,6 +168,8 @@ class KillSwitchPlan {
         allowLan: allowLan,
         allowedAppPaths: allowedAppPaths,
         blockedAppPaths: blockedAppPaths,
+        blockedAppNames: blockedAppNames,
+        allowedAppNames: allowedAppNames,
         blockAll: blockAll,
         allowDhcpAndNdp: allowDhcpAndNdp,
         ownBinaryPaths: paths,
@@ -115,6 +183,8 @@ class KillSwitchPlan {
         allowLoopback: allowLoopback,
         allowLan: allowLan,
         blockedAppPaths: blockedAppPaths,
+        blockedAppNames: blockedAppNames,
+        allowedAppNames: allowedAppNames,
         blockAll: blockAll,
         allowedAppPaths: allowedAppPaths,
         allowDhcpAndNdp: allowDhcpAndNdp,
@@ -178,6 +248,8 @@ class KillSwitchPlan {
         allowLoopback: allowLoopback,
         allowLan: allowLan,
         blockedAppPaths: blocked,
+        blockedAppNames: blockedAppNames,
+        allowedAppNames: allowedAppNames,
         blockAll: blockAll,
         allowedAppPaths: allowed,
         allowDhcpAndNdp: allowDhcpAndNdp,
