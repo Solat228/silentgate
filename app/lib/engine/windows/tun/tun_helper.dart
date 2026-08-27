@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
+import '../process_list_windows.dart';
 import '../wfp_rules.dart' show baseName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
@@ -198,7 +199,8 @@ class TunHelper {
     // На это время машина закрыта, и это не побочный ущерб, а поведение kill
     // switch на подключении (школа Mullvad): свои бинари, адреса серверов,
     // loopback и DHCP разрешены, остальное — нет.
-    final hold = _engageBase(log, alive, configPath);
+    final base = _engageBase(log, alive, configPath);
+    KillSwitchHold? hold = base.hold;
     if (hold == null && _mustHaveKillSwitch(configPath)) {
       // ⚠️ KILL SWITCH ПРОСИЛИ, А ПОДНЯТЬ НЕ ВЫШЛО — ТУННЕЛЯ НЕ БУДЕТ.
       // Поднять туннель, который может течь, при интерфейсе, обещающем защиту,
@@ -248,6 +250,25 @@ class TunHelper {
     // гонку stop-файла, которую закрывал предыдущий коммит.
     var luidApplied = hold == null;
     var coreDeathLogged = false;
+    int? tunnelLuid;
+
+    // ⚠️ ЗА ИМЕНАМИ СЛЕДИМ, ТОЛЬКО ЕСЛИ ИХ ВЫБРАЛИ. Перечисление процессов не
+    // бесплатно, а состав плана за сеанс не меняется: файл пишется до запуска
+    // помощника. Значит спросить один раз достаточно, и сеансы с правилами по
+    // полному пути не платят за наблюдение ничего.
+    final watched = _watchedNames(configPath);
+
+    // ⚠️ ПУТИ НАКАПЛИВАЮТСЯ, А НЕ ПЕРЕСЧИТЫВАЮТСЯ ЗАНОВО. Путь, однажды
+    // попавший под выбранное имя, остаётся в наборе до конца сеанса: программу
+    // закрыли и открыли снова — фильтр всё это время стоял, окна без защиты не
+    // возникло. Пути, исчезнувшие с диска, выбрасывает обычная очистка.
+    final matched = <String, RunningProcess>{};
+
+    // Последний УСПЕШНО применённый состав правил на программы и последняя
+    // названная причина отказа: без неё одна и та же неудача писалась бы в
+    // журнал дважды в секунду.
+    var applied = _appSnapshot(base.applied);
+    String? lastUpdateFailure;
 
     while (true) {
       if (stopFile.existsSync()) {
@@ -263,19 +284,41 @@ class TunHelper {
         break;
       }
 
+      if (watched.isNotEmpty) {
+        try {
+          for (final p in ProcessListWindows.enumerate()) {
+            if (watched.contains(baseName(p.name).toLowerCase())) {
+              matched[p.path.toLowerCase()] = p;
+            }
+          }
+        } catch (_) {
+          // Перечисление не удалось — работаем с уже накопленным. Пустая
+          // выборка не имеет права уронить помощника: он держит блокировку.
+        }
+      }
+
+      // LUID спрашиваем, только пока он нужен: чтобы дописать правило туннеля в
+      // поднятый набор или отдать его набору, который ещё может появиться из-за
+      // выбранной по имени программы.
+      if (!luidApplied || (hold == null && watched.isNotEmpty)) {
+        tunnelLuid ??= TunLuid.forAlias();
+      }
+
       // Адаптер появился — дописываем правило «пропускать туннель». До этого
       // момента стоит БАЗОВЫЙ набор: он закрывает всё, кроме своих бинарей,
       // серверов, loopback и DHCP. Так и задумано — на подключении машина
       // закрыта, иначе окно «ядро уже работает, адаптера ещё нет» остаётся
       // дырой.
-      if (!luidApplied) {
-        final luid = TunLuid.forAlias();
-        if (luid != null) {
-          final plan = _planFor(configPath, luid);
-          final ok = plan != null && hold!.reengage(plan,
-              log: (m) => unawaited(log.write('--- $m')));
+      if (!luidApplied && hold != null) {
+        if (tunnelLuid != null) {
+          final plan = _freshPlan(configPath, tunnelLuid, matched.values);
+          final cleaned = plan == null ? null : _cleanMissing(plan).plan;
+          final ok = cleaned != null &&
+              hold.reengage(cleaned,
+                  log: (m) => unawaited(log.write('--- $m')));
           if (ok) {
             luidApplied = true;
+            applied = _appSnapshot(cleaned);
           } else {
             // ⚠️ ОТКАЗ, А НЕ «ОСТАВИМ БАЗОВЫЙ». Базовый набор без правила
             // туннеля душит ровно тот трафик, ради которого VPN и включали:
@@ -284,6 +327,60 @@ class TunHelper {
                 'останавливаю, чтобы не оставить «подключено» без связи');
             proc.kill();
             break;
+          }
+        }
+      } else if (watched.isNotEmpty) {
+        // ⚠️ ВЫБРАННОЕ ИМЯ — ЭТО ПОДПИСКА, А НЕ ФИЛЬТР. WFP знает только полный
+        // путь, поэтому имя приходится пересматривать: запустили вторую копию
+        // из другой папки — появился новый путь, и набор надо заменить.
+        final fresh = _freshPlan(configPath, tunnelLuid, matched.values);
+        final cleaned = fresh == null ? null : _cleanMissing(fresh).plan;
+        final wanted = _appSnapshot(cleaned);
+        // Состав тот же — WFP не трогаем вовсе: замена набора это транзакция, а
+        // не бесплатное сравнение.
+        if (cleaned != null && !_sameApps(wanted, applied)) {
+          final msgs = <String>[];
+          var ok = false;
+          if (hold != null) {
+            // ⚠️ ОДНОЙ ТРАНЗАКЦИЕЙ И БЕЗ ПРЕДВАРИТЕЛЬНОГО СНЯТИЯ: «снять, потом
+            // поставить» оставило бы окно вообще без блокировки — ровно ту
+            // утечку, ради предотвращения которой всё и затевалось.
+            ok = hold.reengage(cleaned, log: msgs.add);
+            if (ok) applied = wanted;
+          } else {
+            // ⚠️ ЕДИНСТВЕННЫЙ СЛУЧАЙ, КОГДА ДЕРЖАТЕЛЬ РОЖДАЕТСЯ ПОСЛЕ СТАРТА
+            // ЯДРА: план «только отмеченные» был пуст, потому что выбранную
+            // программу ещё не запустили. Пустой план законно не мешал
+            // подключиться — а теперь блокировать наконец стало что.
+            final raised = _engageLate(alive, cleaned, msgs.add);
+            ok = raised != null;
+            if (ok) {
+              hold = raised;
+              applied = wanted;
+              luidApplied = tunnelLuid != null;
+            }
+          }
+          if (ok) {
+            lastUpdateFailure = null;
+            for (final m in msgs) {
+              await log.write('--- $m');
+            }
+            await log.write('--- kill switch: состав обновлён под выбранные '
+                'имена, правил на программы — ${wanted.length}');
+          } else {
+            // ⚠️ СТАРЫЙ НАБОР ОСТАЁТСЯ РАБОТАТЬ. Замена идёт одной транзакцией:
+            // не вышло — действует прежний набор, а не дыра. Повторим на
+            // следующем проходе, но одну и ту же причину пишем в журнал один
+            // раз: тик 400 мс иначе выдаст сотни одинаковых строк в секунду.
+            final reason = msgs.join(' | ');
+            if (reason != lastUpdateFailure) {
+              lastUpdateFailure = reason;
+              for (final m in msgs) {
+                await log.write('--- $m');
+              }
+              await log.write('--- kill switch: обновить состав не удалось, '
+                  'прежняя защита ДЕРЖИТСЯ — повторю на следующем проходе');
+            }
           }
         }
       }
@@ -326,12 +423,6 @@ class TunHelper {
     await log.close();
   }
 
-  /// Просили ли блокировку вообще (файл плана с `enabled: true`).
-  static bool _wantsKillSwitch(String configPath) =>
-      KillSwitchPlanFile.read(_dataDir(configPath),
-          expectToken: _readAliveName(configPath)) !=
-      null;
-
   /// ⚠️ ОБЯЗАНА ЛИ БЛОКИРОВКА ПОДНЯТЬСЯ, ЧТОБЫ ПУСКАТЬ ЯДРО.
   ///
   /// «Просили блокировку» и «без блокировки нельзя» — РАЗНЫЕ утверждения, и
@@ -350,36 +441,98 @@ class TunHelper {
   /// Здесь пустой план приравнивается к «блокировки не требуется»: туннель
   /// поднимается как обычно. Настоящая неудача (нет прав, отказ WFP, нет связи
   /// с интерфейсом) по-прежнему запрещает старт.
+  ///
+  /// ⚠️ СПРАШИВАЕМ ПОСЛЕ МАТЕРИАЛИЗАЦИИ ИМЁН, А НЕ ДО. Правило по имени файла
+  /// само по себе не блокирует ничего: пока выбранная программа не запущена,
+  /// блокировать нечего, и это законный пустой план — иначе подключение стало
+  /// бы невозможным ровно до первого запуска отмеченной программы.
   static bool _mustHaveKillSwitch(String configPath) {
-    final plan = KillSwitchPlanFile.read(_dataDir(configPath),
-        expectToken: _readAliveName(configPath));
+    final plan = _freshPlan(configPath, null, _runningProcesses());
     if (plan == null) return false;
-    final cleaned = plan
-        .withOwnBinaries(_ownBinaries())
-        .withoutMissingApps(
-            (p) => File(p).existsSync() || Directory(p).existsSync())
-        .plan;
-    return !cleaned.isEmpty;
+    return !_cleanMissing(plan).plan.isEmpty;
   }
 
-  /// План с подставленным LUID; `null` — плана нет или он не наш.
-  static KillSwitchPlan? _planFor(String configPath, int? luid) {
+  /// ⚠️ ЕДИНЫЙ ПУТЬ: ПРОЧИТАТЬ ФАЙЛ, МАТЕРИАЛИЗОВАТЬ ИМЕНА, ДОБАВИТЬ СВОИ.
+  ///
+  /// Правило по ИМЕНИ файла фильтром стать не может: WFP принимает только
+  /// идентификатор, полученный из существующего полного пути. Значит имя обязано
+  /// превратиться в пути живых процессов — и ровно в одном месте, иначе базовый
+  /// подъём и любая последующая замена набора разойдутся в том, что защищено.
+  ///
+  /// `null` — плана нет, он битый или не наш.
+  static KillSwitchPlan? _freshPlan(
+          String configPath, int? luid, Iterable<RunningProcess> processes) =>
+      KillSwitchPlanFile.read(_dataDir(configPath),
+              tunnelLuid: luid, expectToken: _readAliveName(configPath))
+          ?.withMaterializedAppPaths(processes)
+          .withOwnBinaries(_ownBinaries());
+
+  /// Имена, за которыми следим весь сеанс: в нижнем регистре и без пути.
+  static Set<String> _watchedNames(String configPath) {
     final plan = KillSwitchPlanFile.read(_dataDir(configPath),
-        tunnelLuid: luid, expectToken: _readAliveName(configPath));
-    return plan?.withOwnBinaries(_ownBinaries());
+        expectToken: _readAliveName(configPath));
+    if (plan == null) return const {};
+    return {
+      for (final n in [...plan.blockedAppNames, ...plan.allowedAppNames])
+        baseName(n).toLowerCase(),
+    };
   }
+
+  /// Живые процессы для материализации имён.
+  ///
+  /// ⚠️ Осечка перечисления не имеет права уронить подъём защиты: пустой список
+  /// честно означает «совпадений нет», а исключение оставило бы фильтры
+  /// поднятыми без того, кто их снимет.
+  static List<RunningProcess> _runningProcesses() {
+    try {
+      return ProcessListWindows.enumerate();
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// ⚠️ ВЫБРОСИТЬ ПРАВИЛА НА ПРОГРАММЫ, КОТОРЫХ НА ДИСКЕ НЕТ — обоснование в
+  /// [_engageBase]. Чистка нужна не только на подъёме: та же устаревшая строка
+  /// валит и ЗАМЕНУ набора, а неудавшаяся замена оставляет туннель без
+  /// собственного правила. Селекторы имён при этом не трогаются — файла у имени
+  /// нет по определению.
+  static ({KillSwitchPlan plan, List<String> skipped}) _cleanMissing(
+          KillSwitchPlan plan) =>
+      plan.withoutMissingApps(
+          (p) => File(p).existsSync() || Directory(p).existsSync());
+
+  /// Состав правил на программы — чтобы понять, изменилось ли что-нибудь.
+  ///
+  /// ⚠️ Метка `b:`/`a:` обязательна: путь, переехавший из запрещённых в
+  /// разрешённые, — это изменение, а не совпадение множеств.
+  static Set<String> _appSnapshot(KillSwitchPlan? plan) {
+    if (plan == null) return const {};
+    return {
+      for (final p in plan.blockedAppPaths) 'b:${p.toLowerCase()}',
+      for (final p in plan.allowedAppPaths) 'a:${p.toLowerCase()}',
+    };
+  }
+
+  /// Тот же состав — порядок и регистр значения не имеют.
+  static bool _sameApps(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
 
   /// Поднять БАЗОВЫЙ набор — без правила туннеля, до старта ядра.
   ///
-  /// `null` — не подняли. Причина всегда названа в журнале: молчаливое
+  /// `hold == null` — не подняли. Причина всегда названа в журнале: молчаливое
   /// отсутствие защиты хуже её отсутствия, потому что человек считает себя
   /// защищённым.
-  static KillSwitchHold? _engageBase(
+  ///
+  /// ⚠️ ВОЗВРАЩАЕТ И ПРИМЕНЁННЫЙ ПЛАН. Наблюдение за выбранными именами обязано
+  /// знать, что именно СЕЙЧАС стоит в фильтрах: сравнивать свежий состав с
+  /// повторным чтением файла нельзя — процессы за это время меняются, и
+  /// помощник заменял бы набор по кругу.
+  static ({KillSwitchHold? hold, KillSwitchPlan? applied}) _engageBase(
       RotatingLog log, AppAliveWatch? alive, String configPath) {
     try {
-      final plan = _planFor(configPath, null);
+      final plan = _freshPlan(configPath, null, _runningProcesses());
       // Блокировать не просили — штатный молчаливый выход.
-      if (plan == null) return null;
+      if (plan == null) return (hold: null, applied: null);
 
       // ⚠️ БЕЗ СВЯЗИ С ИНТЕРФЕЙСОМ БЛОКИРОВКУ ПОДНИМАТЬ НЕЛЬЗЯ. Помощник, не
       // знающий, жив ли интерфейс, переживёт его падение — и снять блокировку
@@ -388,7 +541,7 @@ class TunHelper {
         unawaited(log.write('--- kill switch НЕ поднят: нет связи с '
             'интерфейсом. Блокировка, которую некому снять, опаснее её '
             'отсутствия'));
-        return null;
+        return (hold: null, applied: null);
       }
       // ⚠️ ПРОГРАММЫ, КОТОРЫХ НА ДИСКЕ НЕТ, ВЫБРАСЫВАЕМ ДО ПОДЪЁМА.
       //
@@ -403,18 +556,35 @@ class TunHelper {
       // Пропуск здесь ничего не открывает: из несуществующего пути процесс не
       // запускается, и правило не совпало бы ни с чем. Общий принцип «либо весь
       // план, либо ничего» для остальных правил остаётся в силе.
-      final cleaned = plan.withoutMissingApps(
-          (p) => File(p).existsSync() || Directory(p).existsSync());
+      final cleaned = _cleanMissing(plan);
       for (final p in cleaned.skipped) {
         unawaited(log.write('--- kill switch: правило на «${baseName(p)}» '
             'пропущено — файла нет на диске ($p). Обычно это значит, что '
             'программа обновилась и сменила папку; поправьте правило в '
             'раздельном туннелировании или сопоставляйте её по имени файла'));
       }
-      return KillSwitchWfp.engage(cleaned.plan,
+      final hold = KillSwitchWfp.engage(cleaned.plan,
           log: (m) => unawaited(log.write('--- $m')));
+      return (hold: hold, applied: hold == null ? null : cleaned.plan);
     } catch (e) {
       unawaited(log.write('--- kill switch не поднялся: $e'));
+      return (hold: null, applied: null);
+    }
+  }
+
+  /// Поднять набор ПОСЛЕ старта ядра — когда выбранная по имени программа
+  /// наконец запустилась и блокировать стало что.
+  ///
+  /// ⚠️ ТРЕБОВАНИЯ ТЕ ЖЕ, ЧТО У БАЗОВОГО ПОДЪЁМА. Без связи с интерфейсом
+  /// блокировку поднимать нельзя ни на старте, ни через час после него: снять
+  /// её будет некому, и машина останется без сети до перезагрузки.
+  static KillSwitchHold? _engageLate(
+      AppAliveWatch? alive, KillSwitchPlan plan, void Function(String) say) {
+    if (alive == null || plan.isEmpty) return null;
+    try {
+      return KillSwitchWfp.engage(plan, log: say);
+    } catch (e) {
+      say('kill switch: набор не поднялся: $e');
       return null;
     }
   }

@@ -214,4 +214,138 @@ void main() {
       expect(helper, contains('expectToken: _readAliveName(configPath)'));
     });
   });
+
+  group('⚠️ Наблюдение за выбранными именами', () {
+    /// ⚠️ ПОЧЕМУ ЭТО СТЕРЕЖЁТСЯ ПО ИСХОДНИКУ, А НЕ ПРОГОНОМ.
+    ///
+    /// Правило «по имени файла» фильтром WFP стать не может: слой ALE принимает
+    /// только идентификатор существующего полного пути. Значит имя — это
+    /// ПОДПИСКА, и весь смысл в том, что помощник делает в своём цикле. Поднять
+    /// настоящие фильтры в тесте нельзя: они действуют на сеть всей машины, а
+    /// тесты идут на машине владельца во время его работы. Проверяем ровно то,
+    /// что проверяется без системы, — форму цикла; остальное живой прогон в VM.
+    String code(String path) => File(path)
+        .readAsLinesSync()
+        .where((l) {
+          final t = l.trimLeft();
+          return !t.startsWith('//') && !t.startsWith('///');
+        })
+        .join(String.fromCharCode(10));
+
+    late String helper;
+    setUp(() => helper = code('lib/engine/windows/tun/tun_helper.dart'));
+
+    /// Тело цикла — от `while (true)` до явного снятия блокировки, которое
+    /// стоит уже ПОСЛЕ него. Без верхней границы в «цикл» попадал бы весь
+    /// хвост метода, и проверки «внутри цикла такого нет» ничего не значили бы.
+    String loopBody() {
+      final start = helper.indexOf('while (true) {');
+      final end = helper.indexOf('hold.release()');
+      expect(start, greaterThan(0), reason: 'общий цикл пропал');
+      expect(end, greaterThan(start), reason: 'снятие обязано быть после цикла');
+      return helper.substring(start, end);
+    }
+
+    test('⚠️ процессы перечисляются В ЦИКЛЕ, а не один раз на старте', () {
+      // Вторую копию той же программы запускают уже после подключения —
+      // однократное перечисление на старте не увидит её никогда.
+      expect(loopBody(), contains('ProcessListWindows.enumerate()'));
+    });
+
+    test('⚠️ план перечитывается и материализуется на каждом проходе', () {
+      expect(loopBody(), contains('_freshPlan('),
+          reason: 'без свежего плана состав путей застынет на старте');
+      final fresh =
+          helper.substring(helper.indexOf('static KillSwitchPlan? _freshPlan('));
+      expect(fresh, contains('withMaterializedAppPaths('),
+          reason: 'имя обязано превращаться в пути живых процессов');
+      expect(fresh, contains('withOwnBinaries('),
+          reason: 'свои бинари обязаны оставаться разрешёнными и после замены');
+    });
+
+    test('⚠️ неизменившийся состав не трогает WFP вовсе', () {
+      // Замена набора — транзакция, а тик идёт 2,5 раза в секунду. Без
+      // сравнения помощник перекладывал бы фильтры всю сессию подряд.
+      final body = loopBody();
+      final compareAt = body.indexOf('!_sameApps(wanted, applied)');
+      final applyAt = body.indexOf('ok = hold.reengage(');
+      expect(compareAt, greaterThan(0), reason: 'сравнения составов нет вовсе');
+      expect(applyAt, greaterThan(compareAt),
+          reason: 'замена обязана стоять ПОСЛЕ проверки «изменилось ли»');
+    });
+
+    test('⚠️ новый путь применяется ЗАМЕНОЙ, без снятия старого набора', () {
+      // «Снять, потом поставить» оставило бы окно вообще без блокировки —
+      // ровно ту утечку, ради предотвращения которой всё и затевалось.
+      final body = loopBody();
+      expect(body, contains('hold.reengage('));
+      expect(body.contains('release()'), isFalse,
+          reason: 'внутри цикла набор не снимают, его ЗАМЕНЯЮТ одной сделкой');
+    });
+
+    test('⚠️ снимок применённого состава обновляется только после успеха', () {
+      // Иначе первая же неудача навсегда убедила бы помощника, что новый
+      // состав уже стоит, и он перестал бы пробовать.
+      final body = loopBody();
+      final at = body.indexOf('ok = hold.reengage(');
+      expect(at, greaterThan(0));
+      expect(body.substring(at, at + 120), contains('if (ok) applied = wanted;'));
+    });
+
+    test('⚠️ неудачная замена НЕ рвёт цикл и НЕ убивает ядро', () {
+      // Прежний набор остаётся рабочим: отказ — повод повторить на следующем
+      // проходе, а не повод остаться без защиты или без туннеля.
+      final body = loopBody();
+      final from = body.indexOf('final reason = msgs.join');
+      final to = body.indexOf('if (procExited)');
+      expect(from, greaterThan(0), reason: 'причина отказа нигде не называется');
+      expect(to, greaterThan(from));
+      final branch = body.substring(from, to);
+      expect(branch, contains('ДЕРЖИТСЯ'),
+          reason: 'журнал обязан сказать, что старая защита осталась');
+      expect(branch.contains('break'), isFalse,
+          reason: 'отказ замены не имеет права выгонять помощника из цикла');
+      expect(branch.contains('proc.kill()'), isFalse,
+          reason: 'отказ замены не имеет права убивать ядро');
+      expect(branch, contains('lastUpdateFailure'),
+          reason: 'одна и та же причина не должна писаться 2,5 раза в секунду');
+    });
+
+    test('⚠️ путь, однажды совпавший с именем, из набора не исчезает', () {
+      // Программу закрыли и открыли снова — фильтр обязан стоять всё это время,
+      // иначе каждый перезапуск открывает окно без защиты. Исчезнувшие с диска
+      // пути выбрасывает обычная очистка, отдельного снятия фильтров нет.
+      final body = loopBody();
+      expect(body, contains('matched[p.path.toLowerCase()] = p'));
+      expect(body.contains('matched.clear()'), isFalse);
+      expect(body.contains('matched.remove('), isFalse);
+    });
+
+    test('⚠️ держатель рождается после старта ядра только через общий подъём',
+        () {
+      // Единственный законный случай — план «только отмеченные» был пуст,
+      // потому что выбранную программу ещё не запустили. Проверка связи с
+      // интерфейсом при этом обязана остаться: блокировка, которую некому
+      // снять, опаснее её отсутствия.
+      final body = loopBody();
+      expect(body, contains('_engageLate('));
+      expect(body.contains('KillSwitchWfp.engage('), isFalse,
+          reason: 'подъём обязан идти через общую проверку связи, а не мимо');
+      final raiser = helper
+          .substring(helper.indexOf('static KillSwitchHold? _engageLate('));
+      expect(raiser, contains('alive == null'),
+          reason: 'без связи с интерфейсом нельзя поднимать и через час');
+    });
+
+    test('⚠️ за именами следят, только если их выбрали', () {
+      // Перечисление процессов не бесплатно, а состав плана за сеанс не
+      // меняется: сессии с правилами по полному пути не платят за наблюдение.
+      final body = loopBody();
+      final gateAt = body.indexOf('watched.isNotEmpty');
+      final enumAt = body.indexOf('ProcessListWindows.enumerate()');
+      expect(gateAt, greaterThan(0), reason: 'наблюдение включено безусловно');
+      expect(enumAt, greaterThan(gateAt),
+          reason: 'перечисление обязано стоять ПОД проверкой выбранных имён');
+    });
+  });
 }

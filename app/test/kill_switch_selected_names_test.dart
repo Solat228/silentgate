@@ -98,5 +98,19 @@ void main() {
       expect(materialized.blockedAppPaths, isEmpty);
       expect(materialized.isEmpty, isTrue);
     });
+
+    test('материализация следует за списком процессов', () {
+      // Правило по имени — это подписка, состав путей обязан меняться вслед за живыми процессами.
+      final plan = planWith(blockedNames: const ['claude.exe']);
+      final first = plan.withMaterializedAppPaths([
+        const RunningProcess(1, 'claude.exe', r'C:\one\claude.exe'),
+      ]);
+      final second = plan.withMaterializedAppPaths([
+        const RunningProcess(1, 'claude.exe', r'C:\one\claude.exe'),
+        const RunningProcess(2, 'claude.exe', r'D:\two\claude.exe'),
+      ]);
+      expect(first.blockedAppPaths, isNot(contains(r'D:\two\claude.exe')));
+      expect(second.blockedAppPaths, contains(r'D:\two\claude.exe'));
+    });
   });
 }

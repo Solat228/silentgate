@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:silentgate/engine/windows/wfp_layout.dart';
 import 'package:silentgate/engine/windows/wfp_rules.dart';
 
 /// УСТАРЕВШЕЕ ПРАВИЛО НА ПРОГРАММУ НЕ ДОЛЖНО ЛОМАТЬ ПОДКЛЮЧЕНИЕ ЦЕЛИКОМ.
@@ -220,10 +219,16 @@ void main() {
       final at = helper.indexOf('static bool _mustHaveKillSwitch(');
       expect(at, greaterThan(0), reason: 'предиката нет вовсе');
       final body = helper.substring(at, at + 700);
-      expect(body, contains('withoutMissingApps('),
-          reason: 'иначе пропавшие пути снова сделают план «непустым»');
-      expect(body, contains('!cleaned.isEmpty'),
-          reason: 'решение обязано опираться на пустоту ОЧИЩЕННОГО плана');
+      expect(body, contains('_freshPlan('),
+          reason: 'спрашивать надо ПОСЛЕ материализации имён: правило по имени '
+              'без запущенной программы блокирует ровно ничего');
+      expect(body, contains('!_cleanMissing(plan).plan.isEmpty'),
+          reason: 'решение обязано опираться на пустоту ОЧИЩЕННОГО плана, '
+              'иначе пропавшие пути снова сделают его «непустым»');
+      // Очистка обязана остаться настоящей, а не стать пустой обёрткой.
+      final cleaner = helper.substring(helper.indexOf('}) _cleanMissing('));
+      expect(cleaner.substring(0, 300), contains('withoutMissingApps('),
+          reason: 'пропавшие с диска пути обязан выбрасывать именно этот вызов');
     });
   });
 }
