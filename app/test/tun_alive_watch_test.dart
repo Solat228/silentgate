@@ -249,7 +249,36 @@ void main() {
     test('⚠️ процессы перечисляются В ЦИКЛЕ, а не один раз на старте', () {
       // Вторую копию той же программы запускают уже после подключения —
       // однократное перечисление на старте не увидит её никогда.
-      expect(loopBody(), contains('ProcessListWindows.enumerate()'));
+      expect(loopBody(), contains('ProcessListWindows.matching('));
+    });
+
+    test('⚠️ список процессов пересматривается РЕЖЕ общего тика', () {
+      // Тик в 400 мс принадлежит stop-файлу и признаку жизни интерфейса. Спрашивать
+      // процессы и перечитывать файл плана 2,5 раза в секунду всю сессию — это
+      // постоянный фон на ровном месте, а не разовый расход.
+      final body = loopBody();
+      expect(body, contains('_watchEveryTicks'),
+          reason: 'наблюдение снова идёт каждый тик');
+      final m = RegExp(r'_watchEveryTicks = (\d+)').firstMatch(helper);
+      expect(m, isNotNull, reason: 'константы прореживания нет вовсе');
+      expect(int.parse(m!.group(1)!), greaterThan(1),
+          reason: 'прореживание обязано быть настоящим, а не единицей');
+      expect(body, contains('} else if (watchNow) {'),
+          reason: 'ветка наблюдения обязана идти по прореженному признаку — '
+              'иначе файл плана снова читается на каждом тике');
+    });
+
+    test('⚠️ спрашиваются ТОЛЬКО выбранные имена, а не все процессы подряд', () {
+      // Полное перечисление открывает дескриптор у каждого процесса. Снимок отдаёт
+      // имя без дескрипторов, и открывать их приходится лишь для совпавших.
+      expect(loopBody().contains('ProcessListWindows.enumerate()'), isFalse,
+          reason: 'постоянное наблюдение обязано идти дешёвым снимком');
+      final api = File('lib/engine/windows/process_list_windows.dart')
+          .readAsStringSync();
+      expect(api, contains('CreateToolhelp32Snapshot'),
+          reason: 'снимок — единственный способ узнать имя без дескриптора');
+      expect(api, contains('static List<RunningProcess> enumerate()'),
+          reason: 'прежний API выбора программ трогать было нельзя');
     });
 
     test('⚠️ план перечитывается и материализуется на каждом проходе', () {
@@ -342,10 +371,10 @@ void main() {
       // меняется: сессии с правилами по полному пути не платят за наблюдение.
       final body = loopBody();
       final gateAt = body.indexOf('watched.isNotEmpty');
-      final enumAt = body.indexOf('ProcessListWindows.enumerate()');
+      final enumAt = body.indexOf('ProcessListWindows.matching(');
       expect(gateAt, greaterThan(0), reason: 'наблюдение включено безусловно');
       expect(enumAt, greaterThan(gateAt),
-          reason: 'перечисление обязано стоять ПОД проверкой выбранных имён');
+          reason: 'снимок обязан стоять ПОД проверкой выбранных имён');
     });
   });
 }

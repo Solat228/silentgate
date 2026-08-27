@@ -29,6 +29,16 @@ class TunHelper {
   /// расхода на диске живёт в одном месте ([RotatingLog.coreLogMaxBytes]).
   static const _maxLogBytes = RotatingLog.coreLogMaxBytes;
 
+  /// Через сколько тиков общего цикла пересматривать процессы под выбранными именами.
+  ///
+  /// ⚠️ НЕ КАЖДЫЙ ТИК, И ЭТО РЕШЕНИЕ ВЛАДЕЛЬЦА 27.08.2026. Цикл крутится 400 мс —
+  /// это срок реакции на stop-файл и на смерть интерфейса, и трогать его нельзя.
+  /// А список процессов столько раз в секунду не нужен: наблюдение живёт всю сессию,
+  /// и его цена — постоянный фон, а не разовый расход. Плата за 2 с — задержка
+  /// появления фильтра для ТОЛЬКО ЧТО запущенной программы; она названа вслух и
+  /// принята. Здесь же за одно откладывается и перечитывание файла плана.
+  static const _watchEveryTicks = 5; // 5 × 400 мс = 2 с
+
   static File _defaultStopFile() =>
       File('${Directory.systemTemp.path}${Platform.pathSeparator}silentgate_tun_stop');
 
@@ -268,6 +278,7 @@ class TunHelper {
     // названная причина отказа: без неё одна и та же неудача писалась бы в
     // журнал дважды в секунду.
     var applied = _appSnapshot(base.applied);
+    var watchTick = 0;
     String? lastUpdateFailure;
 
     while (true) {
@@ -284,16 +295,20 @@ class TunHelper {
         break;
       }
 
-      if (watched.isNotEmpty) {
+      // ⚠️ НАБЛЮДЕНИЕ ИДЁТ РЕЖЕ ЦИКЛА. Тик в 400 мс принадлежит stop-файлу и
+      // признаку жизни интерфейса; список процессов и файл плана пересматриваются
+      // раз в [_watchEveryTicks] тиков — см. обоснование у константы.
+      final watchNow =
+          watched.isNotEmpty && ++watchTick >= _watchEveryTicks;
+      if (watchNow) {
+        watchTick = 0;
         try {
-          for (final p in ProcessListWindows.enumerate()) {
-            if (watched.contains(baseName(p.name).toLowerCase())) {
-              matched[p.path.toLowerCase()] = p;
-            }
+          for (final p in ProcessListWindows.matching(watched)) {
+            matched[p.path.toLowerCase()] = p;
           }
         } catch (_) {
-          // Перечисление не удалось — работаем с уже накопленным. Пустая
-          // выборка не имеет права уронить помощника: он держит блокировку.
+          // Снимок не удался — работаем с уже накопленным. Пустая выборка не
+          // имеет права уронить помощника: он держит блокировку.
         }
       }
 
@@ -329,7 +344,7 @@ class TunHelper {
             break;
           }
         }
-      } else if (watched.isNotEmpty) {
+      } else if (watchNow) {
         // ⚠️ ВЫБРАННОЕ ИМЯ — ЭТО ПОДПИСКА, А НЕ ФИЛЬТР. WFP знает только полный
         // путь, поэтому имя приходится пересматривать: запустили вторую копию
         // из другой папки — появился новый путь, и набор надо заменить.
