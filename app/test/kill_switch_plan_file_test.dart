@@ -33,6 +33,8 @@ void main() {
     List<String> allowed = const [],
     bool allowLan = true,
     String sessionToken = token,
+    List<String> blockedNames = const [],
+    List<String> allowedNames = const [],
   }) =>
       KillSwitchPlanFile.write(tmp,
           enabled: enabled,
@@ -41,7 +43,9 @@ void main() {
           blockAll: blockAll,
           blockedAppPaths: apps,
           allowedAppPaths: allowed,
-          allowLan: allowLan);
+          allowLan: allowLan,
+          blockedAppNames: blockedNames,
+          allowedAppNames: allowedNames);
 
   group('Состав доезжает целиком', () {
     test('адреса серверов и режим блокировки', () async {
@@ -82,6 +86,18 @@ void main() {
       await put();
       expect(KillSwitchPlanFile.read(tmp)!.ownBinaryPaths, isEmpty);
       expect(KillSwitchPlanFile.read(tmp)!.allowOwnBinaries, isTrue);
+    });
+
+    test('селекторы по имени приложений доезжают round-trip', () async {
+      // Регистр должен сохраняться как есть
+      await put(
+        blockAll: true,
+        blockedNames: const ['unused.exe'],
+        allowedNames: const ['browser.exe', 'BROWSER.EXE'],
+      );
+      final p = KillSwitchPlanFile.read(tmp)!;
+      expect(p.blockedAppNames, ['unused.exe']);
+      expect(p.allowedAppNames, ['browser.exe', 'BROWSER.EXE']);
     });
   });
 
@@ -134,6 +150,33 @@ void main() {
       KillSwitchPlanFile.clear(tmp);
       expect(KillSwitchPlanFile.read(tmp), isNull);
       KillSwitchPlanFile.clear(tmp); // повтор безопасен
+    });
+
+    test('старый JSON без новых ключей читается с пустыми селекторами имён',
+        () async {
+      // Обратная совместимость: план без blockedAppNames/allowedAppNames
+      // получает пустые списки селекторов.
+      File(KillSwitchPlanFile.pathFor(tmp)).writeAsStringSync(
+          '{"enabled":true,"sessionToken":"${token.replaceAll(r'\', r'\\')}",'
+          '"serverIps":["203.0.113.10"],"blockAll":true,'
+          '"blockedAppPaths":["C:\\\\app.exe"],"allowedAppPaths":[],'
+          '"allowLan":false}');
+      final p = KillSwitchPlanFile.read(tmp, expectToken: token)!;
+      expect(p.blockedAppNames, isEmpty);
+      expect(p.allowedAppNames, isEmpty);
+      expect(p.blockedAppPaths, ['C:\\app.exe']);
+    });
+
+    test('числа, null и пустые строки в селекторах имён отсеиваются', () async {
+      File(KillSwitchPlanFile.pathFor(tmp)).writeAsStringSync(
+          '{"enabled":true,"serverIps":["203.0.113.10"],'
+          '"blockAll":true,"blockedAppPaths":[],"blockedAppNames":[42,null,"",'
+          '"valid.exe"],"allowedAppNames":["good.exe",5,"",null,"ANOTHER.EXE"],'
+          '"allowLan":false}');
+      final p = KillSwitchPlanFile.read(tmp)!;
+      expect(p.blockedAppNames, ['valid.exe']);
+      expect(p.allowedAppNames, ['good.exe', 'ANOTHER.EXE']);
+      expect(p.blockAll, isTrue);
     });
   });
 }
