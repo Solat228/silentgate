@@ -27,6 +27,7 @@ import 'singbox_process.dart';
 import 'singbox_stats.dart';
 import '../../core/net/dns_fallback_server.dart';
 import 'system_proxy.dart';
+import 'kill_switch_app_selectors.dart';
 import 'tun/app_alive_mutex.dart';
 import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
@@ -676,6 +677,10 @@ class WindowsEngine extends VpnEngineBase {
       // имя.
       final sessionToken = AppAliveMutex.acquire();
       final onlySelected = s.splitTunnel.mode == SplitMode.onlySelected;
+      // ⚠️ Имя и путь — разные списки (см. `KillSwitchAppSelectors`): правило
+      // «по имени» обязано уйти в `*AppNames`, иначе на Windows оно молча не
+      // сработает после обновления программы (сменится путь).
+      final selectors = KillSwitchAppSelectors.fromSplitTunnel(s.splitTunnel);
       await KillSwitchPlanFile.write(
         dir,
         enabled: s.killSwitch,
@@ -684,26 +689,14 @@ class WindowsEngine extends VpnEngineBase {
         sessionToken: sessionToken,
         serverIps: serverIps.toSet(),
         blockAll: !onlySelected,
-        blockedAppPaths: onlySelected
-            ? [
-                for (final r in s.splitTunnel.apps)
-                  if (r.enabled && r.action == AppAction.tunnel && r.path.isNotEmpty)
-                    r.path,
-              ]
-            : const [],
+        blockedAppPaths: selectors.blockedAppPaths,
+        blockedAppNames: selectors.blockedAppNames,
         // ⚠️ «КРОМЕ ОТМЕЧЕННЫХ»: отмеченные идут МИМО VPN по воле человека, и
         // общий блок отобрал бы у них ровно ту связь, которую он просил
         // оставить прямой. Разрешаем их явно — исключение из туннеля остаётся
         // исключением и из блокировки.
-        allowedAppPaths: s.splitTunnel.mode == SplitMode.exceptSelected
-            ? [
-                for (final r in s.splitTunnel.apps)
-                  if (r.enabled &&
-                      r.action == AppAction.direct &&
-                      r.path.isNotEmpty)
-                    r.path,
-              ]
-            : const [],
+        allowedAppPaths: selectors.allowedAppPaths,
+        allowedAppNames: selectors.allowedAppNames,
         allowLan: s.tunBypassLan,
       );
     } catch (e) {
