@@ -335,6 +335,10 @@ class AppState extends ChangeNotifier {
   List<VpnServer> _servers = []; // объединённый список (закреплённые + подписка)
   List<VpnServer> _subServers = []; // из подписки
   final List<VpnServer> _pinned = []; // закреплённые/правленые (переживают подписку)
+  // Ссылка закреплённого сервера → id подписки, из которой он реально был
+  // закреплён (см. `_sourceSubscriptionIdFor`). Отсутствие ключа = источник
+  // неизвестен: старый формат хранилища либо сервер добавлен вручную.
+  final Map<String, String> _pinnedSourceByLink = {};
   int _selectedIndex = -1;
   OutboundVariant _selectedVariant = OutboundVariant.none;
   SubscriptionInfo _info = SubscriptionInfo.empty;
@@ -625,10 +629,17 @@ class AppState extends ChangeNotifier {
     final rawLinks = active?.serverLinks ?? legacyLinks;
     _subServers =
         rawLinks.map(_serverFromStoredLink).whereType<VpnServer>().toList();
-    final pinnedLinks = await _pinnedStore.load();
-    _pinned
-      ..clear()
-      ..addAll(pinnedLinks.map(_serverFromPinned).whereType<VpnServer>());
+    final pinnedEntries = await _pinnedStore.load();
+    _pinned.clear();
+    _pinnedSourceByLink.clear();
+    for (final entry in pinnedEntries) {
+      final server = _serverFromPinned(entry.link);
+      if (server == null) continue;
+      _pinned.add(server);
+      if (entry.sourceSubscriptionId.isNotEmpty) {
+        _pinnedSourceByLink[server.rawLink] = entry.sourceSubscriptionId;
+      }
+    }
     _rebuild();
     _selectedIndex = (data['selectedIndex'] as int?) ?? (_servers.isNotEmpty ? 0 : -1);
     if (_selectedIndex >= _servers.length) {
@@ -1145,7 +1156,20 @@ class AppState extends ChangeNotifier {
   /// (например, вставленный руками `json://`) дают null — подрисовывать
   /// нечего.
   SubscriptionProfile? foreignSubscriptionOf(VpnServer server) {
-    final id = _ownerByLink[server.rawLink];
+    // ⚠️ СНАЧАЛА — ЯВНО СОХРАНЁННЫЙ ИСТОЧНИК ПИНА, И ТОЛЬКО ПОТОМ ЭВРИСТИКА.
+    //
+    // `_ownerByLink` пересчитывается КАЖДЫЙ РАЗ и отдаёт приоритет активной
+    // подписке при совпадении ссылок (см. `_rebuildOwnerIndex`) — это верно
+    // для обычного списка активной подписки, но ломает закреплённые серверы:
+    // сервер закрепили из подписки A, пользователь переключился на B, а та же
+    // ссылка вдруг нашлась и в B — эвристика тут же объявляет сервер «своим»,
+    // хотя закреплён он был из A. Явно сохранённый источник (см.
+    // `_sourceSubscriptionIdFor`) — это факт на момент закрепления, эвристика
+    // же годится только как запасной вариант для старых пинов без источника
+    // (см. `PinnedEntry.sourceSubscriptionId`) и для обычных серверов подписки,
+    // которые в пине вообще не участвуют.
+    final stored = _pinnedSourceByLink[server.rawLink];
+    final id = (stored != null && stored.isNotEmpty) ? stored : _ownerByLink[server.rawLink];
     // ⚠️ СВЕРЯЕМСЯ С `_activeProfile`, А НЕ С СЫРЫМ `_activeId`. Индекс выше
     // строится по `_activeProfile`, а у того есть запасной вариант «первый в
     // списке» — на случай, когда `activeId` указывает на профиль, которого нет
@@ -1159,6 +1183,23 @@ class AppState extends ChangeNotifier {
     }
     return null;
   }
+
+  /// Чья ссылка на момент ЗАКРЕПЛЕНИЯ сервера — пусто, если сервер ни в одной
+  /// подписке не лежит (одиночный импорт, `json://` конфиг).
+  ///
+  /// ⚠️ ИМЕННО `_ownerByLink`, А НЕ `_activeProfile?.id`. Обычно закрепляют
+  /// сервер из списка активной подписки, и для такого случая разницы нет. Но
+  /// если ссылка лежит ТОЛЬКО в неактивной подписке (запись уже закреплена под
+  /// чужим значком, её редактируют — `saveEditedServer`), источником должна
+  /// остаться именно та, неактивная, подписка, а не подставленная активная.
+  String _sourceSubscriptionIdFor(VpnServer server) =>
+      _ownerByLink[server.rawLink] ?? '';
+
+  /// Сохранить `_pinned` на диск вместе с источником каждой записи.
+  Future<void> _savePinned() => _pinnedStore.save(_pinned
+      .map((s) => PinnedEntry(s.rawLink,
+          sourceSubscriptionId: _pinnedSourceByLink[s.rawLink] ?? ''))
+      .toList());
 
   /// Кэшированный логотип профиля по id (если файл ещё на месте), иначе null.
   String? _cachedLogoFor(String id) {
@@ -1478,6 +1519,7 @@ class AppState extends ChangeNotifier {
       // подписке, значило бы, что человек согласился очистить список, а он
       // остался непустым и необъяснимым.
       _pinned.clear();
+      _pinnedSourceByLink.clear();
       await _pinnedStore.save(const []);
       _overrides.clear();
       await _overridesStore.save(_overrides);
@@ -1504,7 +1546,8 @@ class AppState extends ChangeNotifier {
     // Ключ, а не сырая ссылка: закреплённый сервер хранится канонизованным, и
     // сверка строк молча не находила ничего (см. `_orphanedKeysOf`).
     _pinned.removeWhere((s) => keys.contains(s.key));
-    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    _pinnedSourceByLink.removeWhere((link, _) => keys.contains(link));
+    await _savePinned();
     // Правки (override) ключуются тем же ключом сервера.
     _overrides.removeWhere((k, _) => keys.contains(k));
     await _overridesStore.save(_overrides);
@@ -1559,10 +1602,15 @@ class AppState extends ChangeNotifier {
   Future<void> togglePin(VpnServer server) async {
     if (isPinned(server)) {
       _pinned.removeWhere((s) => s.key == server.key);
+      _pinnedSourceByLink.remove(server.rawLink);
     } else {
+      // ⚠️ ИСТОЧНИК — ДО ВСТАВКИ. `_ownerByLink` смотрит на подписки такими,
+      // какие они СЕЙЧАС; это и есть момент закрепления, который дальше
+      // хранится как факт (см. `foreignSubscriptionOf`).
+      _pinnedSourceByLink[server.rawLink] = _sourceSubscriptionIdFor(server);
       _pinned.insert(0, server); // #3 — закреплённый встаёт наверх списка
     }
-    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    await _savePinned();
     _rebuild();
     await _persist(); // selectedIndex мог смениться вместе с порядком
     notifyListeners();
@@ -1571,7 +1619,8 @@ class AppState extends ChangeNotifier {
   Future<void> removeServer(VpnServer server) async {
     _subServers.removeWhere((s) => s.key == server.key);
     _pinned.removeWhere((s) => s.key == server.key);
-    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    _pinnedSourceByLink.remove(server.rawLink);
+    await _savePinned();
     // Список серверов на диске живёт в профиле подписки: без этого удалённый
     // сервер возвращался после каждого перезапуска.
     await _syncActiveProfileServers();
@@ -1592,9 +1641,17 @@ class AppState extends ChangeNotifier {
 
   /// Сохранить правку сервера (из редактора). Правленый сервер закрепляется, чтобы пережить подписку.
   Future<void> saveEditedServer(VpnServer original, VpnServer edited) async {
+    // Источник переносим со старого ключа на новый: правка меняет поля
+    // (а с ними иногда и саму ссылку), но НЕ то, откуда сервер в принципе взят.
+    // Если правится ещё не закреплённый сервер, источника в карте нет —
+    // считаем его так же, как при обычном закреплении.
+    final source =
+        _pinnedSourceByLink[original.rawLink] ?? _sourceSubscriptionIdFor(original);
     _pinned.removeWhere((s) => s.key == original.key);
+    _pinnedSourceByLink.remove(original.rawLink);
     _pinned.add(edited);
-    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    _pinnedSourceByLink[edited.rawLink] = source;
+    await _savePinned();
     _rebuild();
     final idx = _servers.indexWhere((s) => s.key == edited.key);
     if (idx >= 0) _selectedIndex = idx;
@@ -1642,9 +1699,14 @@ class AppState extends ChangeNotifier {
   Future<void> pinWithVariant(VpnServer server, OutboundVariant variant) async {
     final idx = _pinned.indexWhere((s) => s.key == server.key);
     if (idx != 0) {
+      // Источник фиксируем, только если сервер ещё не был закреплён —
+      // перестановка уже закреплённого наверх не меняет, откуда он взят.
+      if (idx < 0) {
+        _pinnedSourceByLink[server.rawLink] = _sourceSubscriptionIdFor(server);
+      }
       if (idx > 0) _pinned.removeAt(idx);
       _pinned.insert(0, server);
-      await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+      await _savePinned();
     }
     await setVariant(server, variant);
     _rebuild();
@@ -1674,8 +1736,9 @@ class AppState extends ChangeNotifier {
     final single = ShareLinkParser.tryParse(trimmed);
     if (single != null) {
       _pinned.removeWhere((s) => s.key == single.key);
+      _pinnedSourceByLink[single.rawLink] = _sourceSubscriptionIdFor(single);
       _pinned.insert(0, single);
-      await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+      await _savePinned();
       _rebuild();
       final idx = _servers.indexWhere((s) => s.key == single.key);
       _selectedIndex = idx >= 0 ? idx : 0;
@@ -1857,8 +1920,10 @@ class AppState extends ChangeNotifier {
     final key = 'json://${json.hashCode.toUnsigned(32)}';
     final server = _customServerFromJson(key, json);
     _pinned.removeWhere((s) => s.key == key);
+    // Источник не пишем: `json://` — вручную вставленный конфиг, ни в одной
+    // подписке он не лежит, и отсутствие ключа в карте значит ровно это.
     _pinned.add(server);
-    await _pinnedStore.save(_pinned.map((s) => s.rawLink).toList());
+    await _savePinned();
     _overrides[key] = ServerOverride(rawJson: json);
     await _overridesStore.save(_overrides);
     _rebuild();
