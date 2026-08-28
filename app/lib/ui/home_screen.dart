@@ -887,8 +887,15 @@ class _ConnectPane extends StatelessWidget {
                   ),
                   httpPort: status.isConnected ? state.httpProxyPort : 0,
                   services: checks,
-                  button: _ConnectButton(
+                  layout: settings.serviceChecksLayout,
+                  // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
+                  // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
+                  // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
+                  // размер, от которого считается их коэффициент, должен
+                  // совпадать с тем, что здесь реально нарисовано.
+                  button: ConnectButton(
                       status: status,
+                      diameter: context.sg.isShort ? 116 : 148,
                       onTap: () => connectWithConflictCheck(context, state,
                           () => state.toggleConnection(settings))),
                 ),
@@ -1451,6 +1458,7 @@ class ConnectCenterpiece extends StatelessWidget {
     required this.httpPort,
     required this.button,
     this.services = ServiceChecks.services,
+    this.layout = ServiceChecksLayout.rows,
   });
 
   /// Имя активного сервера (см. [activeServerName]); `null` — плашка пустая.
@@ -1459,8 +1467,8 @@ class ConnectCenterpiece extends StatelessWidget {
   /// http-порт живого ядра для проверок; 0 — VPN выключен.
   final int httpPort;
 
-  /// Какие сервисы показывать по бокам кнопки. Пусто — колонок нет вовсе, и
-  /// места они не занимают (проверки выключены в подменю).
+  /// Какие сервисы показывать у кнопки. Пусто — проверок нет вовсе, и места
+  /// они не занимают (проверки выключены в подменю).
   ///
   /// Умолчание — прежняя зашитая шестёрка: стражам вёрстки настройки не нужны,
   /// им нужна раскладка. Экран передаёт сюда `ServiceChecks.selected(settings)`.
@@ -1468,6 +1476,17 @@ class ConnectCenterpiece extends StatelessWidget {
 
   /// Кнопка приходит снаружи: ей нужен `AppState`, а стражу вёрстки — нет.
   final Widget button;
+
+  /// Раскладка проверок относительно кнопки (решение владельца 27.08.2026).
+  ///
+  /// ⚠️ УМОЛЧАНИЕ — `rows`, А НЕ `adaptive` (настройка по умолчанию для
+  /// пользователя, см. [ServiceChecksLayout]). Действующий страж вёрстки
+  /// (`connect_centerpiece_layout_test.dart`) поднимает виджет БЕЗ этого
+  /// параметра и ждёт ряды на всех одиннадцати разрешениях, включая широкое
+  /// окно Windows 880×680 — при умолчании `adaptive` там включились бы колонки,
+  /// и страж, написанный ДО этой настройки, покраснел бы не по своей вине.
+  /// Настоящий экран передаёт сюда `settings.serviceChecksLayout` явно.
+  final ServiceChecksLayout layout;
 
   @override
   Widget build(BuildContext context) {
@@ -1478,43 +1497,60 @@ class ConnectCenterpiece extends StatelessWidget {
         //
         // Накладка не занимала места в потоке, и это ровно то, на что владелец
         // жаловался дважды: она лежала на верхней кромке круга и свисала на
-        // 24 px в каждую сторону — прямо на колонки проверок. Ужимать свес
-        // некуда: круг 148 px, и любая плашка, вписанная в него, режет имя
-        // после трёх букв. Строка выше кнопки не пересекается ни с кругом, ни
-        // с чипами по определению — пересекаться нечему.
+        // 24 px в каждую сторону — прямо на проверки. Ужимать свес некуда: круг
+        // 148 px, и любая плашка, вписанная в него, режет имя после трёх букв.
+        // Строка выше кнопки не пересекается ни с кругом, ни с чипами по
+        // определению — пересекаться нечему.
         ActiveServerBanner(name: serverName),
-        button,
-        // ⚠️ ПРОВЕРКИ — РЯДАМИ ПО СМЫСЛУ, А НЕ ДВУМЯ КОЛОНКАМИ ПО БОКАМ.
-        //
-        // Ряды с подписями групп (мессенджеры, ИИ, медиа, соцсети, прочее) были
-        // написаны вместе с расширением набора до четырнадцати сервисов и даже
-        // покрыты тестами — но на месте вызова подмену забыли сделать, и
-        // главный экран до сих пор рисовал прежние колонки. То есть группировка
-        // существовала в коде, была зелёной в тестах и не доходила до человека:
-        // владелец так и написал — «в интерфейсе я этого не заметил».
-        //
-        // Ровно тот же класс, что связки провайдеров без `lazy: false` (1.4.0) и
-        // гейт пинга на двух точках входа из четырёх (1.9.3): код есть, тесты
-        // зелёные, вызова нет.
-        //
-        // Колонки по бокам кнопки при четырнадцати сервисах и не годились:
-        // круг занимает 148 px, и на телефоне столбцы по семь строк лезли за
-        // край. `Wrap` внутри ряда переносит чипы сам, а «до → после» видно
-        // по-прежнему рядом — пара рисуется одним виджетом.
-        //
-        // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым: владелец
-        // просил галочку «полного отключения», и выключенные проверки не должны
-        // занимать место у кнопки.
-        ServiceChecksRows(services: services, httpPort: httpPort),
-        // ⚠️ «КАНАЛ НЕ ГОТОВ» — ОТДЕЛЬНОЕ СОСТОЯНИЕ, А НЕ 14 КРАСНЫХ КРУЖКОВ.
-        //
-        // Раньше при неготовом канале пачка проб уходила в пустоту, и человек
-        // видел ряд красных кружков — то есть читал «VPN не работает», хотя
-        // туннель просто не успел прогреться. Теперь пробы в этом случае не
-        // запускаются вовсе, а причина называется словами и даётся кнопка
-        // повтора. Плашка стоит ЗДЕСЬ, а не в колонке: колонок две, и в колонке
-        // она задвоилась бы.
-        ServiceChecksNotReadyBanner(httpPort: httpPort, services: services),
+        // ⚠️ РАСКЛАДКА ВЫБИРАЕТСЯ ЗДЕСЬ, ПО ШИРИНЕ РОДИТЕЛЯ — И ЭТО ЕДИНСТВЕННОЕ
+        // МЕСТО, ГДЕ ЭТОТ ВЫБОР ДЕЛАЕТСЯ. Прошлый регресс (см. шапку файла) был
+        // ровно в том, что раскладка существовала в коде, но вызов её не
+        // подставлял — здесь `LayoutBuilder` смотрит на РЕАЛЬНЫЕ ограничения
+        // этого места на экране, а не на копию.
+        LayoutBuilder(builder: (context, c) {
+          final effective = layout == ServiceChecksLayout.adaptive
+              ? (c.maxWidth >= _twoPaneMinWidth
+                  ? ServiceChecksLayout.sides
+                  : ServiceChecksLayout.rows)
+              : layout;
+          switch (effective) {
+            case ServiceChecksLayout.hidden:
+              // ⚠️ Проверок нет ВООБЩЕ — ни рядов, ни плашки «канал не готов»:
+              // ей нечего было бы объяснять, раз человек сам их выключил.
+              return button;
+            case ServiceChecksLayout.rows:
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  button,
+                  // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
+                  // владелец просил галочку «полного отключения», и
+                  // выключенные проверки не должны занимать место у кнопки.
+                  ServiceChecksRows(services: services, httpPort: httpPort),
+                  ServiceChecksNotReadyBanner(
+                      httpPort: httpPort, services: services),
+                ],
+              );
+            case ServiceChecksLayout.sides:
+            case ServiceChecksLayout.grid:
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ServiceChecksSides(
+                    services: services,
+                    httpPort: httpPort,
+                    button: button,
+                    dense: effective == ServiceChecksLayout.grid,
+                  ),
+                  ServiceChecksNotReadyBanner(
+                      httpPort: httpPort, services: services),
+                ],
+              );
+            case ServiceChecksLayout.adaptive:
+              // Недостижимо: adaptive разрешён в sides/rows выше.
+              return button;
+          }
+        }),
       ],
     );
   }
@@ -1714,10 +1750,33 @@ class _Onboarding extends StatelessWidget {
   }
 }
 
-class _ConnectButton extends StatelessWidget {
+/// Публичная, а не `_ConnectButton` — 27.08.2026 понадобилась настоящая (не
+/// скопированная) кнопка в страже `test/connect_button_content_test.dart`:
+/// он проверяет, что значок и таймер вписаны в круг на всех пяти раскладках
+/// `ServiceChecksLayout`. Приватный класс тест увидеть не может (приватность
+/// в Dart — по файлу), а рисовать копию кнопки в тесте — ровно та ошибка, на
+/// которой этот файл уже обжигался (см. шапку `ConnectCenterpiece`). Само имя
+/// вызывающего кода при этом не поменялось ни строкой.
+class ConnectButton extends StatelessWidget {
   final VpnStatus status;
   final VoidCallback onTap;
-  const _ConnectButton({required this.status, required this.onTap});
+
+  /// Диаметр круга. `null` — прежнее поведение: 148, а на коротком экране
+  /// (`context.sg.isShort`) — 116, СОХРАНЕНО КАК ЗНАЧЕНИЕ ПО УМОЛЧАНИЮ, чтобы
+  /// не задеть места, где диаметр не передают. Раскладка колонок по бокам
+  /// (`ServiceChecksSides`) считает нужный диаметр сама через `LayoutBuilder` и
+  /// подставляет его явно.
+  final double? diameter;
+
+  const ConnectButton({
+    required this.status,
+    required this.onTap,
+    this.diameter,
+  });
+
+  /// Диаметр, на котором посчитаны исходные размеры значка (68/56 px) —
+  /// опорная точка коэффициента масштаба ниже.
+  static const double _baseline = 148;
 
   @override
   Widget build(BuildContext context) {
@@ -1725,17 +1784,23 @@ class _ConnectButton extends StatelessWidget {
     final connected = status.isConnected;
     final busy = status.isBusy;
     final color = connected ? scheme.primary : scheme.surfaceContainerHighest;
+    // ⚠️ Кнопка ужимается ТОЛЬКО когда высоты реально нет (телефон в
+    // ландшафте, открытая клавиатура) — И ТОЛЬКО пока диаметр не передан
+    // явно. Окно Windows не ниже 800 dp, поэтому там всегда 148.
+    final d = diameter ?? (context.sg.isShort ? 116.0 : 148.0);
+    // ⚠️ ВСЁ ВНУТРИ КРУГА СЧИТАЕТСЯ ОТ ЭТОГО КОЭФФИЦИЕНТА, А НЕ ФИКСИРОВАННЫМИ
+    // ПИКСЕЛЯМИ. Раньше значок питания и таймер сессии были одного размера
+    // независимо от диаметра круга — не страшно, пока диаметр было ровно два
+    // значения (148/116, разница небольшая), но колонки по бокам сжимают круг
+    // сильнее, и значок крупнее уменьшенного круга просто вылез бы за край.
+    final scale = d / _baseline;
 
     return GestureDetector(
       onTap: busy ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
-        // ⚠️ Кнопка ужимается ТОЛЬКО когда высоты реально нет: телефон в
-        // ландшафте или открытая клавиатура. По ширине не гейтим — на узком,
-        // но высоком экране большая кнопка правильна, она главная на экране.
-        // Окно Windows не ниже 800 dp, поэтому там всегда 148.
-        width: context.sg.isShort ? 116 : 148,
-        height: context.sg.isShort ? 116 : 148,
+        width: d,
+        height: d,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: color,
@@ -1750,12 +1815,11 @@ class _ConnectButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.power_settings_new,
-                        // Значок ужимается, когда под ним появляется время:
-                        // иначе пара «значок + таймер» не влезает в круг и
-                        // обрезается по краям.
-                        size: connected ? 56 : 68,
+                        // Значок ужимается, когда под ним появляется время, и
+                        // масштабируется вместе со всем кругом.
+                        size: (connected ? 56 : 68) * scale,
                         color: connected ? scheme.onPrimary : scheme.onSurface),
-                    if (connected) const _UptimeLabel(),
+                    if (connected) _UptimeLabel(scale: scale),
                   ],
                 ),
         ),
@@ -1770,7 +1834,11 @@ class _ConnectButton extends StatelessWidget {
 /// экран расточительно. Точка отсчёта живёт в [AppState], а не здесь: кнопка
 /// пересоздаётся на каждом обновлении статуса, и время начиналось бы заново.
 class _UptimeLabel extends StatefulWidget {
-  const _UptimeLabel();
+  /// Множитель от `ConnectButton._baseline` — таймер обязан ужиматься вместе
+  /// с кругом, иначе на сжатой кнопке (колонки по бокам) он не влезал бы.
+  const _UptimeLabel({this.scale = 1.0});
+
+  final double scale;
 
   @override
   State<_UptimeLabel> createState() => _UptimeLabelState();
@@ -1808,6 +1876,7 @@ class _UptimeLabelState extends State<_UptimeLabel> {
   Widget build(BuildContext context) {
     final d = context.select<AppState, Duration?>((s) => s.connectedFor);
     if (d == null) return const SizedBox.shrink();
+    final baseSize = Theme.of(context).textTheme.labelLarge?.fontSize ?? 14;
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Text(
@@ -1815,6 +1884,7 @@ class _UptimeLabelState extends State<_UptimeLabel> {
         textDirection: TextDirection.ltr,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Theme.of(context).colorScheme.onPrimary,
+              fontSize: baseSize * widget.scale,
               // Моноширинные цифры: иначе строка дёргается на каждой секунде,
               // потому что «1» уже остальных.
               fontFeatures: const [FontFeature.tabularFigures()],

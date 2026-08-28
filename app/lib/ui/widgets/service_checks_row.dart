@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
@@ -24,6 +25,12 @@ import 'site_favicon.dart';
 ///
 /// Порядок значений — порядок рядов на экране.
 enum ServiceGroup { messengers, ai, media, social, other }
+
+/// Одна смысловая группа с выбранными сервисами внутри неё — то, что отдаёт
+/// [ServiceChecks.grouped]. Алиас заведён ради читаемости сигнатур новых
+/// раскладок (боковых колонок): без него каждая сигнатура повторяла бы
+/// анонимный тип записи целиком.
+typedef GroupedRow = ({ServiceGroup group, List<ProbeService> services});
 
 extension ServiceGroupLabel on ServiceGroup {
   /// Подпись ряда. Переводится (в отличие от названий самих сервисов — те
@@ -179,10 +186,9 @@ abstract final class ServiceChecks {
   /// Порядок внутри ряда — порядок [groups], а не порядок [selected]: набор
   /// приходит множеством, и у множества порядка нет вовсе (чипы перескакивали
   /// бы после каждой правки набора).
-  static List<({ServiceGroup group, List<ProbeService> services})> grouped(
-      List<ProbeService> selected) {
+  static List<GroupedRow> grouped(List<ProbeService> selected) {
     final want = selected.toSet();
-    final out = <({ServiceGroup group, List<ProbeService> services})>[];
+    final out = <GroupedRow>[];
     for (final e in groups.entries) {
       final row = [
         for (final s in e.value)
@@ -375,6 +381,282 @@ class ServiceChecksRows extends StatelessWidget {
   }
 }
 
+/// Проверки сервисов КОЛОНКАМИ ПО БОКАМ кнопки Connect (решение владельца от
+/// 27.08.2026) — режимы настройки `sides` и `grid`, и широкое окно в `adaptive`.
+///
+/// ⚠️ ПОЧЕМУ ЭТО НЕ ПРОСТО ВОЗВРАЩЕНИЕ УДАЛЁННОГО 19.08.2026 `ServiceChecksColumn`.
+/// Тот виджет резервировал под колонку фиксированную высоту (семь строк) и на
+/// каталоге в 14 сервисов вылезал за нижний край телефона — см. шапку файла и
+/// [ServiceChecksLayout] в `app_settings.dart`. Здесь высота, наоборот, НИКОГДА
+/// не фиксирована: `FittedBox` в конце [build] измеряет настоящий размер
+/// содержимого при реальных ограничениях родителя и уменьшает ВЕСЬ блок (обе
+/// колонки и кнопку — ОДНИМ множителем) ровно настолько, чтобы он влез. Это не
+/// эвристика «подобрали число и надеемся» — `RenderFittedBox` физически не
+/// может отрисовать ребёнка крупнее выделенного места, поэтому переполнение
+/// (`RenderFlex overflowed`) здесь структурно невозможно ни при каком экране.
+///
+/// ⚠️ ГРУБАЯ ОЦЕНКА МАСШТАБА (`_estimateScale`) — ДРУГОЕ ЧИСЛО, И ОНО НЕ ОБЯЗАНО
+/// БЫТЬ ТОЧНЫМ. От него зависит только порог, ниже которого колонки уступают
+/// место привычным рядам под кнопкой, потому что мелкий текст и микроскопические
+/// значки читать нельзя, даже если формально они поместились. Ошибка в этой
+/// оценке — вопрос красоты (колонки чуть мельче или крупнее, чем могли бы), а не
+/// целостности вёрстки: та гарантирована `FittedBox` выше независимо от неё.
+class ServiceChecksSides extends StatelessWidget {
+  const ServiceChecksSides({
+    super.key,
+    required this.services,
+    required this.httpPort,
+    required this.button,
+    this.dense = false,
+  });
+
+  /// Состав из настроек (`ServiceChecks.selected`).
+  final List<ProbeService> services;
+
+  /// http-порт живого ядра; 0 — VPN выключен.
+  final int httpPort;
+
+  /// Кнопка Connect, приходит готовым виджетом — см. `ConnectCenterpiece`.
+  final Widget button;
+
+  /// `true` — режим настройки `grid`: плотная сетка иконок без подписи группы
+  /// (имя группы уходит в `Tooltip`). `false` — режим `sides`: вертикальный
+  /// список с подписями групп, как в [ServiceChecksRows], только колонкой.
+  final bool dense;
+
+  /// Диаметр кнопки на масштабе 1.0 — базовая величина, от которой считается
+  /// коэффициент сжатия. Кнопка приходит готовым виджетом с уже своим
+  /// размером (148 или 116 на коротком экране, см. `_ConnectButton`); мы не
+  /// лезем в него, а просто отводим ему опорную ширину/высоту для измерения —
+  /// `FittedBox` ниже досожмёт фактический размер вместе со всем остальным.
+  static const double _naturalButton = 148.0;
+
+  /// Просвет между колонкой и кнопкой на масштабе 1.0.
+  static const double _gap = 14.0;
+
+  /// Ширина одной колонки на масштабе 1.0. Разная для `sides` (нужно место под
+  /// пару «до → после») и `grid` (только иконка с кружком статуса).
+  static double _columnWidth(bool dense) => dense ? 84.0 : 108.0;
+
+  /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
+  /// правильнее показать привычные ряды под кнопкой, чем ужимать до предела.
+  /// Само сжатие структурно безопасно (см. шапку класса), порог — вопрос
+  /// читаемости, не целостности.
+  static const double _minReadableScale = 0.62;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = ServiceChecks.grouped(services);
+    // Проверки выключены целиком — колонкам нечего показывать, но кнопка
+    // остаётся: место у неё не отбираем.
+    if (rows.isEmpty) return button;
+
+    final split = _splitColumns(rows, dense: dense);
+    final natural = _naturalSize(split, dense: dense);
+
+    return LayoutBuilder(builder: (context, c) {
+      if (_estimateScale(c, natural) < _minReadableScale) {
+        // Места категорически мало — те же ряды, что и на узком телефоне,
+        // вместо нечитаемой мелочи по бокам.
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            button,
+            ServiceChecksRows(services: services, httpPort: httpPort),
+          ],
+        );
+      }
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              width: _columnWidth(dense),
+              child: _SideColumn(
+                rows: split.left,
+                httpPort: httpPort,
+                dense: dense,
+                alignEnd: true,
+              ),
+            ),
+            const SizedBox(width: _gap),
+            SizedBox(
+              width: _naturalButton,
+              height: _naturalButton,
+              child: Center(child: button),
+            ),
+            const SizedBox(width: _gap),
+            SizedBox(
+              width: _columnWidth(dense),
+              child: _SideColumn(
+                rows: split.right,
+                httpPort: httpPort,
+                dense: dense,
+                alignEnd: false,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Насколько пришлось бы сжать блок, чтобы он влез в `c` — ОЦЕНКА для
+  /// решения «показывать колонки или ряды», не фактический рендер (тот считает
+  /// `FittedBox` сам, по-настоящему).
+  double _estimateScale(BoxConstraints c, Size natural) {
+    final wRatio =
+        natural.width <= 0 ? 1.0 : c.maxWidth / natural.width;
+    // Высота часто НЕ ограничена (узкий телефон целиком прокручивается, см.
+    // `_MaybeScroll` в `home_screen.dart`) — там сжимать по высоте не от чего,
+    // и `BoxConstraints.hasBoundedHeight` отличает этот случай от настоящего
+    // тесного окна (минимум Windows), где ограничение есть.
+    final hRatio = !c.hasBoundedHeight || natural.height <= 0
+        ? 1.0
+        : c.maxHeight / natural.height;
+    return math.min(1.0, math.min(wRatio, hRatio));
+  }
+
+  /// Требуемый размер блока (обе колонки + кнопка) на масштабе 1.0.
+  Size _naturalSize(({List<GroupedRow> left, List<GroupedRow> right}) split,
+      {required bool dense}) {
+    double columnHeight(List<GroupedRow> rows) {
+      var h = 0.0;
+      for (final r in rows) {
+        h += dense
+            // Сетка: иконки по две в ряд, без подписи группы.
+            ? (r.services.length / 2).ceil() * 40.0
+            // Список: строка подписи группы + по строке на сервис.
+            : 26.0 + r.services.length * 34.0;
+        h += 6; // просвет после группы
+      }
+      return h;
+    }
+
+    final height = math.max(
+      _naturalButton,
+      math.max(columnHeight(split.left), columnHeight(split.right)),
+    );
+    final width = _columnWidth(dense) * 2 + _naturalButton + _gap * 2;
+    return Size(width, height);
+  }
+
+  /// Раскладывает ГРУППЫ (не отдельные сервисы — группа не разрывается между
+  /// колонками, иначе смысл ряда потерялся бы, см. шапку файла) по двум
+  /// колонкам, примерно поровну по числу строк.
+  ({List<GroupedRow> left, List<GroupedRow> right}) _splitColumns(
+      List<GroupedRow> rows,
+      {required bool dense}) {
+    int linesOf(GroupedRow r) =>
+        dense ? (r.services.length / 2).ceil() : 1 + r.services.length;
+    final total = rows.fold<int>(0, (a, r) => a + linesOf(r));
+    final left = <GroupedRow>[];
+    final right = <GroupedRow>[];
+    var acc = 0;
+    for (final r in rows) {
+      if (acc < total / 2) {
+        left.add(r);
+      } else {
+        right.add(r);
+      }
+      acc += linesOf(r);
+    }
+    return (left: left, right: right);
+  }
+}
+
+/// Одна колонка внутри [ServiceChecksSides]: список групп сверху вниз.
+class _SideColumn extends StatelessWidget {
+  const _SideColumn({
+    required this.rows,
+    required this.httpPort,
+    required this.dense,
+    required this.alignEnd,
+  });
+
+  final List<GroupedRow> rows;
+  final int httpPort;
+  final bool dense;
+
+  /// Левая колонка прижимает пары «до → после» к кнопке (к правому краю своей
+  /// колонки), правая — наоборот. Порядок иконка→точки при этом ОДИНАКОВЫЙ в
+  /// обеих колонках — см. предысторию в [_ServicePair].
+  final bool alignEnd;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    final ctrl = context.watch<ServiceCheckController>();
+    final live = httpPort > 0;
+    // Настройки — необязательно, см. `ServiceChecksRows`.
+    final split = context.watch<SettingsController?>()?.settings.splitTunnel;
+
+    SiteRule? bypassOf(ProbeService s) =>
+        split == null ? null : ServiceChecks.bypassRuleFor(split, s);
+
+    if (dense) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final row in rows)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 6,
+                runSpacing: 6,
+                children: [
+                  for (final s in row.services)
+                    _ServicePair(
+                      key: ValueKey('svc:${s.name}'),
+                      service: s,
+                      before: ctrl.baselineFor(s),
+                      after: ctrl.resultFor(s),
+                      live: live,
+                      alignEnd: false,
+                      dense: true,
+                      groupLabel: row.group.label(l),
+                      bypass: bypassOf(s),
+                      onTap: () => ctrl.check(s, httpPort),
+                    ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final row in rows) ...[
+          _SideGroupLabel(group: row.group, label: row.group.label(l)),
+          const SizedBox(height: 4),
+          for (final s in row.services)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: _ServicePair(
+                key: ValueKey('svc:${s.name}'),
+                service: s,
+                before: ctrl.baselineFor(s),
+                after: ctrl.resultFor(s),
+                live: live,
+                alignEnd: alignEnd,
+                bypass: bypassOf(s),
+                onTap: () => ctrl.check(s, httpPort),
+              ),
+            ),
+          const SizedBox(height: 6),
+        ],
+      ],
+    );
+  }
+}
+
 /// Разделитель ряда: подпись группы посреди тонкой линии.
 ///
 /// ⚠️ Именно линия, а не один отступ. Владелец просил «явное разграничение»:
@@ -405,6 +687,51 @@ class _GroupDivider extends StatelessWidget {
           ),
         ),
         const Expanded(child: Divider(height: 1, thickness: 1)),
+      ],
+    );
+  }
+}
+
+/// Подпись группы для УЗКОЙ колонки ([_SideColumn]) — БЕЗ линий по бокам.
+///
+/// ⚠️ ЭТО НЕ [_GroupDivider], И ВОТ ПОЧЕМУ. Та строка держит подпись между
+/// двумя `Expanded(Divider)`, а `Expanded` требует от родительского `Row`
+/// КОНЕЧНУЮ ширину — здесь она есть (колонка получает точную ширину), но сама
+/// подпись («Мессенджеры», «Медиа») на этой ширине шире, чем остаётся ПОСЛЕ
+/// того, как обеим линиям отдали хотя бы 0 px: `Row` не ужимает несгибаемый
+/// текст, и получается `RenderFlex overflowed` ДО того, как до содержимого
+/// вообще доберётся внешний `FittedBox` — тот умеет сжимать уже готовый
+/// макет, а не чинить макет, упавший при построении. Здесь линия ОДНА, под
+/// подписью, а не по бокам от нeё, и подпись сама умеет ужаться (`FittedBox`)
+/// или обрезаться многоточием, если совсем не влезает.
+class _SideGroupLabel extends StatelessWidget {
+  const _SideGroupLabel({required this.group, required this.label});
+
+  final ServiceGroup group;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      // Ключ — на весь блок подписи, как у `_GroupDivider`: по нему страж
+      // вёрстки находит группу независимо от того, какая раскладка активна.
+      key: ValueKey('serviceGroup:${group.name}'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 0.5,
+                ),
+          ),
+        ),
+        const SizedBox(height: 2),
+        const Divider(height: 1, thickness: 1),
       ],
     );
   }
@@ -765,6 +1092,8 @@ class _ServicePair extends StatelessWidget {
     required this.alignEnd,
     required this.onTap,
     this.bypass,
+    this.dense = false,
+    this.groupLabel,
   });
 
   final ProbeService service;
@@ -778,9 +1107,21 @@ class _ServicePair extends StatelessWidget {
   /// запрещающее его). `null` — сервис идёт как весь остальной трафик.
   final SiteRule? bypass;
 
+  /// `true` — плотная сетка (`ServiceChecksLayout.grid`): один кружок статуса
+  /// поверх иконки вместо пары «до → после», подпись группы уходит целиком в
+  /// `Tooltip` — там её видно долгим нажатием, а строка над колонкой ей больше
+  /// не нужна.
+  final bool dense;
+
+  /// Название группы для подсказки — заполняется только в [dense]. В обычном
+  /// виде группу уже называет строка-разделитель над сервисом, дублировать её
+  /// в каждой подсказке незачем.
+  final String? groupLabel;
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    if (dense) return _buildDense(context, l);
     // ⚠️ Кружки собраны в ОТДЕЛЬНУЮ строку, и переворачивается только пара
     // «значок + кружки». Если перевернуть всё подряд, в левой колонке
     // поменяются местами «до» и «после»: стрелка станет показывать в обратную
@@ -825,33 +1166,8 @@ class _ServicePair extends StatelessWidget {
       const SizedBox(width: 8),
       dots,
     ];
-    // Подпись «до» и «после» словами: два кружка сами по себе не объясняют,
-    // который из них какой, а порядок в правой колонке ещё и зеркалится.
-    final tip = StringBuffer('${service.label}\n')
-      ..write(before.state == ServiceCheckState.idle
-          ? l.serviceChecksNoBaseline
-          : '${l.serviceChecksBefore}: ${_word(l, before)}');
-    if (live) {
-      tip.write('\n${l.serviceChecksAfter}: ${_word(l, after)}');
-    }
-    // У YouTube отдельная оговорка: провайдер его чаще не блокирует, а
-    // замедляет, и лёгкая проба этого не видит. Молчать нельзя — зелёный чип
-    // рядом с не грузящимся видео выглядит как враньё.
-    if (service == ProbeService.youtube) {
-      tip.write('\n\n${l.serviceYoutubeThrottleNote}');
-    }
-    // Пометка объясняет ПРИЧИНУ и НАЗЫВАЕТ ПРАВИЛО. Без имени правила человек
-    // видит замок и не знает, где его снять: правил у него десятки, а
-    // совпадение может прийти от родительского домена, которого в списке
-    // сервисов нет вовсе.
-    if (rule != null) {
-      tip.write('\n\n');
-      tip.write(rule.action == AppAction.block
-          ? l.serviceChecksBypassBlock(rule.label)
-          : l.serviceChecksBypassDirect(rule.label));
-    }
     return Tooltip(
-      message: tip.toString(),
+      message: _tip(l, rule),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -886,6 +1202,106 @@ class _ServicePair extends StatelessWidget {
               // только внутренний порядок.
               children: items,
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Текст подсказки — общий для обычного вида и [dense]: набор фактов один и
+  /// тот же, различается только то, КАК они нарисованы кружками на экране.
+  String _tip(AppLocalizations l, SiteRule? rule) {
+    // В сетке подписи группы над сервисом нет вовсе (см. [dense]) — имя
+    // группы называет только подсказка, иначе оно терялось бы бесследно.
+    final head =
+        groupLabel == null ? service.label : '$groupLabel · ${service.label}';
+    final tip = StringBuffer('$head\n')
+      ..write(before.state == ServiceCheckState.idle
+          ? l.serviceChecksNoBaseline
+          : '${l.serviceChecksBefore}: ${_word(l, before)}');
+    if (live) {
+      tip.write('\n${l.serviceChecksAfter}: ${_word(l, after)}');
+    }
+    // У YouTube отдельная оговорка: провайдер его чаще не блокирует, а
+    // замедляет, и лёгкая проба этого не видит. Молчать нельзя — зелёный чип
+    // рядом с не грузящимся видео выглядит как враньё.
+    if (service == ProbeService.youtube) {
+      tip.write('\n\n${l.serviceYoutubeThrottleNote}');
+    }
+    // Пометка объясняет ПРИЧИНУ и НАЗЫВАЕТ ПРАВИЛО. Без имени правила человек
+    // видит замок и не знает, где его снять: правил у него десятки, а
+    // совпадение может прийти от родительского домена, которого в списке
+    // сервисов нет вовсе.
+    if (rule != null) {
+      tip.write('\n\n');
+      tip.write(rule.action == AppAction.block
+          ? l.serviceChecksBypassBlock(rule.label)
+          : l.serviceChecksBypassDirect(rule.label));
+    }
+    return tip.toString();
+  }
+
+  /// Плотный вид для `ServiceChecksLayout.grid`: один кружок статуса поверх
+  /// иконки вместо пары «до → после» — при 14 сервисах в узкой сетке места на
+  /// целую пару нет, а какое-то состояние показать надо. Показываем «после»
+  /// при живом VPN, иначе «до» — ровно то состояние, что интереснее человеку
+  /// прямо сейчас (см. `_dot` в обычном виде — та же логика).
+  Widget _buildDense(BuildContext context, AppLocalizations l) {
+    final rule = bypass;
+    final outcome = live ? after : before;
+    final checking = outcome.state == ServiceCheckState.checking;
+    final ringColor = checking
+        ? Theme.of(context).disabledColor
+        : switch (outcome.state) {
+            ServiceCheckState.ok => Colors.green,
+            ServiceCheckState.geoBlocked => Colors.orange,
+            ServiceCheckState.fail => const Color(0xFFCC7777),
+            _ => Theme.of(context).disabledColor,
+          };
+    return Tooltip(
+      message: _tip(l, rule),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.center,
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: ringColor, width: 2),
+                ),
+                child: const SizedBox(width: 28, height: 28),
+              ),
+              SiteFavicon(domain: service.domain, size: 20, builtIn: true),
+              if (checking)
+                const SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              // Замок/запрет — тем же значком, что и в обычном виде, только
+              // мельче и в углу: сетка тесная, полноразмерный значок рядом с
+              // 20-пиксельной иконкой перетянул бы на себя весь кружок.
+              if (rule != null)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Icon(
+                    rule.action == AppAction.block
+                        ? Icons.block
+                        : Icons.lock_open_rounded,
+                    size: 12,
+                    color: rule.action == AppAction.block
+                        ? const Color(0xFFCC7777)
+                        : Colors.orange,
+                  ),
+                ),
+            ],
           ),
         ),
       ),
