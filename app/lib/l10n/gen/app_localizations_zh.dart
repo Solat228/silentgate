@@ -101,6 +101,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get themeDark => '深色';
 
   @override
+  String get serviceChecksLayoutTitle => 'Service checks layout';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Adaptive';
+
+  @override
+  String get serviceChecksLayoutRows => 'Rows below the button';
+
+  @override
+  String get serviceChecksLayoutSides => 'Columns beside the button';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Compact grid beside the button';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Hidden';
+
+  @override
+  String get tunnelExcludeScopeTitle => 'Server addresses bypass the tunnel';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'All subscription servers';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Honest ping for the entire list. Server address lookups bypass the tunnel, using your real address.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Active server only';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Only the server you\'re currently connected to bypasses the tunnel. Ping for other servers with VPN enabled will be inaccurate, and seamless server switching will recreate the tunnel.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Do not exclude';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.';
+
+  @override
   String get closeToTrayTitle => '关闭时最小化到托盘';
 
   @override
@@ -2598,6 +2640,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get speedBlockedTooltip => '不测速：该服务器未通过通道检查（请求没能经它送达）';
+
+  @override
+  String get speedStaleServerTooltip => '服务器当前无响应,显示的是之前测得的速度';
+
+  @override
+  String get speedOlderThanPingTooltip => '该速度测量早于最近一次检测';
 
   @override
   String get srvTileMeasureSpeed => '测速';

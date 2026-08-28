@@ -78,6 +78,74 @@ void main() {
     }
   });
 
+  // Перечисления страж выше не проверяет: значение хранится строкой, а не
+  // числом/булевым, и `!v`/`v + 1` его не задевают. `themeMode` уже терял бы
+  // выбор так же тихо, если бы `fromJson` забыл про него — проверяем явно.
+  test('каждое значение ServiceChecksLayout переживает сохранение и загрузку',
+      () {
+    for (final v in ServiceChecksLayout.values) {
+      final json = AppSettings(serviceChecksLayout: v).toJson();
+      final loaded = AppSettings.fromJson(json);
+      expect(loaded.serviceChecksLayout, v,
+          reason: 'раскладка проверок сервисов «$v» не переживает '
+              'сохранение и загрузку');
+    }
+  });
+
+  test('неизвестное значение serviceChecksLayout читается как adaptive', () {
+    const base = AppSettings();
+    final json = Map<String, dynamic>.of(base.toJson())
+      ..['serviceChecksLayout'] = 'какая-то-будущая-раскладка';
+    final loaded = AppSettings.fromJson(json);
+    expect(loaded.serviceChecksLayout, ServiceChecksLayout.adaptive,
+        reason: 'битое значение раскладки не должно ронять весь разбор '
+            'настроек — фолбэк на adaptive');
+  });
+
+  test('отсутствие ключа serviceChecksLayout читается как adaptive', () {
+    const base = AppSettings();
+    final json = Map<String, dynamic>.of(base.toJson())
+      ..remove('serviceChecksLayout');
+    final loaded = AppSettings.fromJson(json);
+    expect(loaded.serviceChecksLayout, ServiceChecksLayout.adaptive,
+        reason: 'старый файл настроек без этого ключа должен получать '
+            'раскладку по умолчанию, а не падать');
+  });
+
+  test('каждое значение TunnelExcludeScope переживает сохранение и загрузку',
+      () {
+    // ⚠️ Цена потери этого выбора не косметическая: `off` возвращает прежнее
+    // поведение (пинг при включённом VPN врёт), а `activeOnly` при бесшовной
+    // смене сервера пересоздаёт туннель. Молчаливый откат к умолчанию человек
+    // заметил бы не сразу и не понял бы причину.
+    for (final v in TunnelExcludeScope.values) {
+      final json = AppSettings(tunnelExcludeScope: v).toJson();
+      final loaded = AppSettings.fromJson(json);
+      expect(loaded.tunnelExcludeScope, v,
+          reason: 'охват вывода адресов «$v» не переживает сохранение');
+    }
+  });
+
+  test('неизвестное значение tunnelExcludeScope читается как allKnown', () {
+    const base = AppSettings();
+    final json = Map<String, dynamic>.of(base.toJson())
+      ..['tunnelExcludeScope'] = 'какой-то-будущий-охват';
+    final loaded = AppSettings.fromJson(json);
+    expect(loaded.tunnelExcludeScope, TunnelExcludeScope.allKnown,
+        reason: 'битое значение не должно ронять разбор настроек целиком — '
+            'файл настроек обнуляется весь, это уже ловили');
+  });
+
+  test('отсутствие ключа tunnelExcludeScope читается как allKnown', () {
+    // Путь обновления: у всех, кто ставит новую версию поверх старой, ключа в
+    // файле нет вовсе.
+    const base = AppSettings();
+    final json = Map<String, dynamic>.of(base.toJson())
+      ..remove('tunnelExcludeScope');
+    final loaded = AppSettings.fromJson(json);
+    expect(loaded.tunnelExcludeScope, TunnelExcludeScope.allKnown);
+  });
+
   test('правила переживают сохранение ВНУТРИ настроек целиком', () {
     // Путь, которым настройки реально ходят на диск: AppSettings → splitTunnel →
     // списки правил. Проверяем сквозь все слои, а не по отдельности.

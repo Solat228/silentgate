@@ -101,6 +101,48 @@ class AppLocalizationsFa extends AppLocalizations {
   String get themeDark => 'تیره';
 
   @override
+  String get serviceChecksLayoutTitle => 'Service checks layout';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Adaptive';
+
+  @override
+  String get serviceChecksLayoutRows => 'Rows below the button';
+
+  @override
+  String get serviceChecksLayoutSides => 'Columns beside the button';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Compact grid beside the button';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Hidden';
+
+  @override
+  String get tunnelExcludeScopeTitle => 'Server addresses bypass the tunnel';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'All subscription servers';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Honest ping for the entire list. Server address lookups bypass the tunnel, using your real address.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Active server only';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Only the server you\'re currently connected to bypasses the tunnel. Ping for other servers with VPN enabled will be inaccurate, and seamless server switching will recreate the tunnel.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Do not exclude';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.';
+
+  @override
   String get closeToTrayTitle => 'کوچک شدن به تری هنگام بستن';
 
   @override
@@ -2679,6 +2721,14 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get speedBlockedTooltip =>
       'سرعت اندازه‌گیری نمی‌شود: سرور بررسی کانال را نگذرانده (درخواست از راه آن نرسید)';
+
+  @override
+  String get speedStaleServerTooltip =>
+      'سرور اکنون پاسخ نمی‌دهد — سرعتِ نمایش‌داده‌شده مربوط به اندازه‌گیری قبلی است';
+
+  @override
+  String get speedOlderThanPingTooltip =>
+      'اندازه‌گیری سرعت قدیمی‌تر از آخرین بررسی است';
 
   @override
   String get srvTileMeasureSpeed => 'اندازه‌گیری سرعت';

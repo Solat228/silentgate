@@ -45,6 +45,28 @@ class TunOptions {
   /// Xray к серверу вернётся в Xray — петля и мгновенная смерть сети.
   final List<String> serverIps;
 
+  /// Адреса серверов, выводимые из туннеля НА УРОВНЕ ОС
+  /// (`route_exclude_address` TUN-инбаунда), а не только route-правилом.
+  ///
+  /// ⚠️ ЗАЧЕМ, ЕСЛИ ЕСТЬ [serverIps]. Правило «serverIps → direct» выбирает
+  /// outbound уже ВНУТРИ ядра — а `auto_route` затягивает в туннель и сокеты
+  /// самого приложения. TCP-рукопожатие фазы 1 пинга завершал ЛОКАЛЬНЫЙ стек
+  /// sing-box за 1–3 мс, до всякого дозвона до узла: активный сервер
+  /// «Германия» показывал 3 мс, чего физически быть не может. Исключение на
+  /// уровне интерфейса — единственный способ, чтобы `Socket.connect`
+  /// дозванивался до настоящего узла.
+  ///
+  /// ⚠️ ЭТО ПОЛЕ — ЧАСТЬ САМОГО ИНТЕРФЕЙСА, А НЕ ПРАВИЛ. Любое его изменение
+  /// меняет конфиг, а `WindowsEngine.raiseTun` при отличии конфига ПЕРЕСОЗДАЁТ
+  /// туннель: маршрут по умолчанию мигает у всей машины, и на этот миг трафик
+  /// идёт мимо VPN. Поэтому сюда кладут только СНИМОК, стабильный на всё время
+  /// жизни интерфейса (см. выбор значения в `WindowsEngine.raiseTun`), а не
+  /// живой накопитель `VpnEngineBase._bypassIps`, который растёт по ходу
+  /// сессии.
+  ///
+  /// Пустой список — путь отката: конфиг обязан быть байт в байт прежним.
+  final List<String> tunnelExcludeServerIps;
+
   /// ДОМЕННЫЕ ИМЕНА нашей инфраструктуры: серверы подписки и хост самой подписки.
   /// Резолвятся ТОЛЬКО напрямую, мимо туннеля.
   ///
@@ -195,6 +217,7 @@ class TunOptions {
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.logLevel = 'warn',
     this.serverIps = const [],
+    this.tunnelExcludeServerIps = const [],
     this.serverDomains = const [],
     this.fallbackDnsPort = 0,
     this.blockNotice = false,
@@ -219,6 +242,7 @@ class TunOptions {
   factory TunOptions.fromSettings(
     AppSettings s, {
     List<String> serverIps = const [],
+    List<String> tunnelExcludeServerIps = const [],
     List<String> serverDomains = const [],
     int fallbackDnsPort = 0,
     bool blockNotice = false,
@@ -261,6 +285,7 @@ class TunOptions {
       dnsStrategy: s.dnsStrategy,
       logLevel: s.singboxLogLevel.name,
       serverIps: serverIps,
+      tunnelExcludeServerIps: tunnelExcludeServerIps,
       serverDomains: serverDomains,
       fallbackDnsPort: fallbackDnsPort,
       // «Авто» = подбирать стек/MTU перебором; явный выбор пользователя уважаем.
@@ -299,6 +324,7 @@ class TunOptions {
         tunnelDnsForAll: tunnelDnsForAll,
         logLevel: logLevel,
         serverIps: serverIps,
+        tunnelExcludeServerIps: tunnelExcludeServerIps,
         serverDomains: serverDomains,
         fallbackDnsPort: fallbackDnsPort,
         blockNotice: blockNotice,
@@ -338,6 +364,7 @@ class TunOptions {
         dnsStrategy: dnsStrategy,
         logLevel: logLevel,
         serverIps: serverIps,
+        tunnelExcludeServerIps: tunnelExcludeServerIps,
         serverDomains: serverDomains,
         fallbackDnsPort: fallbackDnsPort,
         blockNotice: blockNotice,
@@ -1191,6 +1218,31 @@ class SingboxConfigBuilder {
   List<String> get _validExcludeCidrs =>
       options.excludeCidrs.where(_isValidCidr).toList();
 
+  /// Итоговый `route_exclude_address` интерфейса: пользовательские исключения
+  /// плюс адреса серверов, выводимые из туннеля на уровне ОС.
+  ///
+  /// ⚠️ ПУТЬ ОТКАТА. Пока адресов серверов нет, отдаются РОВНО пользовательские
+  /// CIDR — в их исходном порядке, без пересортировки: этот список уже живёт в
+  /// интерфейсах пользователей, и «причесать» его значило бы другой конфиг, то
+  /// есть пересоздание туннеля у всех при первом же обновлении.
+  ///
+  /// ⚠️ С адресами серверов порядок ДЕТЕРМИНИРОВАН: сортировка и схлопывание
+  /// дублей. Это поле — часть самого интерфейса; «дышащий» порядок при том же
+  /// содержимом означал бы другой конфиг, а другой конфиг — пересоздание
+  /// туннеля и моргание маршрута по умолчанию у всей машины на ровном месте.
+  List<String> get _routeExcludeCidrs {
+    final serverIps = options.tunnelExcludeServerIps;
+    if (serverIps.isEmpty) return _validExcludeCidrs;
+    final merged = <String>{
+      ..._validExcludeCidrs,
+      // Приведение к CIDR — тем же способом, что у правила «serverIps →
+      // direct», и с той же защитой от битой записи: одна битая строка в
+      // route_exclude_address валит весь конфиг, то есть туннель не поднимется.
+      ...serverIps.map(_asCidr).where(_isValidCidr),
+    };
+    return merged.toList()..sort();
+  }
+
   /// Подсети режима «в туннель только эти» — с той же защитой от битой записи.
   ///
   /// ⚠️ Отбрасывать молча тут ОПАСНЕЕ, чем в исключениях: если единственная
@@ -1802,6 +1854,9 @@ class SingboxConfigBuilder {
   /// пересоздаст интерфейс — и на этот миг трафик пойдёт мимо VPN.
   Map<String, dynamic> _tunInbound(SplitTunnelConfig split) {
     final o = options;
+    // Исключения интерфейса считаются один раз: и условие, и значение обязаны
+    // смотреть на ОДИН и тот же список.
+    final excludeCidrs = _routeExcludeCidrs;
     return
       {
         'type': 'tun',
@@ -1870,8 +1925,11 @@ class SingboxConfigBuilder {
         // Обещать «блок сайта» здесь нельзя, если его адрес вне подсетей.
         if (_validRouteOnlyCidrs.isNotEmpty)
           'route_address': _validRouteOnlyCidrs,
-        if (_validExcludeCidrs.isNotEmpty)
-          'route_exclude_address': _validExcludeCidrs,
+        // Кроме пользовательских исключений сюда идут и адреса серверов —
+        // подробности и цена ошибки у [TunOptions.tunnelExcludeServerIps]
+        // и [_routeExcludeCidrs].
+        if (excludeCidrs.isNotEmpty)
+          'route_exclude_address': excludeCidrs,
         // Разведение приложений на Android идёт пакетами, а не процессами.
         //
         // ⚠️ include_package и exclude_package ВЗАИМОИСКЛЮЧАЮЩИЕ. Раньше при

@@ -706,9 +706,35 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Значение для [TunOptions.tunnelExcludeServerIps] по выбранному охвату.
+  ///
+  /// ⚠️ ЧИСТАЯ ФУНКЦИЯ ОТ УЖЕ СТАБИЛИЗИРОВАННЫХ ВХОДОВ — в этом вся защита.
+  /// `route_exclude_address` — свойство самого интерфейса: изменись список, и
+  /// `raiseTun` пересоздаст туннель (моргание маршрута по умолчанию + окно
+  /// утечки). Поэтому никакого обращения к живому накопителю `_bypassIps`
+  /// отсюда нет: для [TunnelExcludeScope.allKnown] берётся ТОТ ЖЕ список, что
+  /// уходит в `serverIps` (а его на время жизни туннеля замораживает
+  /// [_bypassForReuse]), для [TunnelExcludeScope.activeOnly] — резолв серверов
+  /// сессии, отсортированный и без дублей: перестановка входов обязана давать
+  /// побайтно тот же конфиг.
+  @visibleForTesting
+  static List<String> tunnelExcludeIpsFor(
+    TunnelExcludeScope scope,
+    List<String> allKnownIps,
+    Map<String, List<String>> sessionHosts,
+  ) {
+    switch (scope) {
+      case TunnelExcludeScope.off:
+        return const [];
+      case TunnelExcludeScope.allKnown:
+        return allKnownIps;
+      case TunnelExcludeScope.activeOnly:
+        return sessionHosts.values.expand((e) => e).toSet().toList()..sort();
+    }
+  }
+
   Future<List<String>> _bypassForReuse(
-      List<VpnServer> servers, AppSettings s) async {
-    final sessionHosts = await resolveServerHosts(servers);
+      Map<String, List<String>> sessionHosts, AppSettings s) async {
     final fresh = await tunnelBypassIps(sessionHosts, s);
     final live = _liveBypassIps;
     if (!_tunActive || !s.seamlessServerSwitch || live == null) return fresh;
@@ -760,6 +786,20 @@ class WindowsEngine extends VpnEngineBase {
     if (_tunActive && options.settings.seamlessServerSwitch && liveSecret != null) {
       singboxApiSecret = liveSecret;
     }
+    // Адреса серверов СЕССИИ — подмножество уже сделанного резолва exitHosts.
+    // Повторный резолв здесь был бы не просто лишним обращением к DNS:
+    // round-robin мог бы отдать ДРУГОЙ набор A-записей, и «серверы сессии»
+    // разошлись бы с адресами, по которым только что собраны outbound'ы.
+    final sessionHosts = <String, List<String>>{
+      for (final v in servers)
+        if (exitHosts.containsKey(v.address.trim()))
+          v.address.trim(): exitHosts[v.address.trim()]!,
+    };
+    // ⚠️ ОДИН список на оба потребителя. При живом туннеле `_bypassForReuse`
+    // возвращает список, С КОТОРЫМ туннель поднят (`_liveBypassIps`), а не
+    // растущий накопитель базы — на этом держится и совпадение route-правила,
+    // и, ниже, стабильность `route_exclude_address` самого интерфейса.
+    final bypassIps = await _bypassForReuse(sessionHosts, options.settings);
     final tunOptions = TunOptions.fromSettings(
       options.settings,
       // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
@@ -767,7 +807,22 @@ class WindowsEngine extends VpnEngineBase {
       // выбран, и переход на запасной не требует пересоздавать туннель (см.
       // `VpnEngineBase.tunnelBypassIps` и сверку конфига ниже). Выключенный
       // флаг отдаёт РОВНО прежний список.
-      serverIps: await _bypassForReuse(servers, options.settings),
+      serverIps: bypassIps,
+      // Вывод адресов серверов из туннеля НА УРОВНЕ ОС — иначе Socket.connect
+      // фазы 1 пинга завершает локальный стек sing-box за 1–3 мс, и активный
+      // сервер показывает время, которого физически быть не может.
+      //
+      // ⚠️ СНИМОК, А НЕ ЖИВОЙ НАКОПИТЕЛЬ. Это поле — часть самого интерфейса:
+      // изменись список — конфиг другой, и живой туннель пересоздаётся (окно
+      // утечки + моргание маршрута у всей машины). Стабильность обеспечена
+      // тем, что охват `allKnown` использует `bypassIps` — тот же список, что
+      // и `serverIps` выше: пока туннель жив, он заморожен `_bypassForReuse`,
+      // и рост накопителя `_bypassIps` в базе конфига не касается. Новые
+      // адреса доезжают до исключений только тогда, когда конфиг и без того
+      // изменился и туннель пересоздаётся.
+      tunnelExcludeServerIps:
+          tunnelExcludeIpsFor(
+              options.settings.tunnelExcludeScope, bypassIps, sessionHosts),
       // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
       serverDomains: knownServerDomains,
       // Резолвер для «Прямо». Спрашивается ДО подъёма НОВОГО туннеля: после

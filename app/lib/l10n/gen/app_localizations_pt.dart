@@ -101,6 +101,49 @@ class AppLocalizationsPt extends AppLocalizations {
   String get themeDark => 'Escuro';
 
   @override
+  String get serviceChecksLayoutTitle => 'Layout das verificações de serviços';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Adaptável';
+
+  @override
+  String get serviceChecksLayoutRows => 'Linhas abaixo do botão';
+
+  @override
+  String get serviceChecksLayoutSides => 'Colunas ao lado do botão';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Grade compacta ao lado do botão';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Oculto';
+
+  @override
+  String get tunnelExcludeScopeTitle =>
+      'Endereços de servidor contornam o túnel';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'Todos os servidores de assinatura';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Ping honesto para toda a lista. As buscas de endereços de servidor contornam o túnel, usando seu endereço real.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Apenas servidor ativo';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Apenas o servidor ao qual você está conectado contorna o túnel. Ping para outros servidores com VPN ativado será impreciso, e a alternância perfeita de servidores recriará o túnel.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Não excluir';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Os endereços do servidor não estão na tabela de roteamento, mas o ping com VPN ativado mostra a latência para a pilha local, não para o servidor.';
+
+  @override
   String get closeToTrayTitle => 'Minimizar para a bandeja ao fechar';
 
   @override
@@ -2711,6 +2754,14 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get speedBlockedTooltip =>
       'A velocidade não é medida: o servidor não passou na verificação do canal (a requisição não chegou por ele)';
+
+  @override
+  String get speedStaleServerTooltip =>
+      'O servidor não está respondendo agora — é exibida uma medição de velocidade anterior';
+
+  @override
+  String get speedOlderThanPingTooltip =>
+      'A medição de velocidade é mais antiga que a última verificação';
 
   @override
   String get srvTileMeasureSpeed => 'Medir a velocidade';

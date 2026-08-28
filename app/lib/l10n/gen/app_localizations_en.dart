@@ -101,6 +101,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get themeDark => 'Dark';
 
   @override
+  String get serviceChecksLayoutTitle => 'Service checks layout';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Adaptive';
+
+  @override
+  String get serviceChecksLayoutRows => 'Rows below the button';
+
+  @override
+  String get serviceChecksLayoutSides => 'Columns beside the button';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Compact grid beside the button';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Hidden';
+
+  @override
+  String get tunnelExcludeScopeTitle => 'Server addresses bypass the tunnel';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'All subscription servers';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Honest ping for the entire list. Server address lookups bypass the tunnel, using your real address.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Active server only';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Only the server you\'re currently connected to bypasses the tunnel. Ping for other servers with VPN enabled will be inaccurate, and seamless server switching will recreate the tunnel.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Do not exclude';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.';
+
+  @override
   String get closeToTrayTitle => 'Minimize to tray on close';
 
   @override
@@ -2684,6 +2726,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get speedBlockedTooltip =>
       'Speed is not measured: the server failed the channel check (a request through it did not go through)';
+
+  @override
+  String get speedStaleServerTooltip =>
+      'Server is not responding right now — shown is a past speed measurement';
+
+  @override
+  String get speedOlderThanPingTooltip =>
+      'The speed measurement is older than the last check';
 
   @override
   String get srvTileMeasureSpeed => 'Measure speed';

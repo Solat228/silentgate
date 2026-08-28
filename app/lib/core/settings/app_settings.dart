@@ -34,6 +34,35 @@ extension TunStackSingbox on TunStack {
   String? get singboxValue => this == TunStack.auto ? null : name;
 }
 
+/// Охват вывода адресов серверов из туннеля НА УРОВНЕ ОС
+/// ([TunOptions.tunnelExcludeServerIps] → `route_exclude_address` интерфейса).
+///
+/// Зачем это вообще: route-правило «serverIps → direct» выбирает outbound уже
+/// ВНУТРИ ядра, а `auto_route` затягивает в туннель и сокеты самого
+/// приложения — TCP-рукопожатие пинга завершал локальный стек sing-box за
+/// 1–3 мс, и активный сервер показывал цифру, которой физически быть не может.
+enum TunnelExcludeScope {
+  /// Всё, что уже лежит в `serverIps` (снимок «мимо туннеля»). ДЕФОЛТ — и
+  /// единственный охват, который не добавляет НОВЫХ поводов пересоздать
+  /// туннель: исключения меняются только вместе с `serverIps`, а их изменение
+  /// и сегодня означает другой конфиг.
+  allKnown,
+
+  /// Только адреса серверов текущей сессии.
+  ///
+  /// ⚠️ ЦЕНА: при включённой бесшовности смена сервера меняет этот список, а
+  /// значит и конфиг интерфейса — туннель пересоздаётся, и переиспользование
+  /// живого TUN (ради которого написан `_bypassForReuse`) не срабатывает.
+  /// Это осознанный размен «меньше адресов вне туннеля» против плавности,
+  /// и потому НЕ дефолт.
+  activeOnly,
+
+  /// Пустой список — прежнее поведение байт в байт. Путь отката: пинг при
+  /// поднятом туннеле снова врёт, зато адреса серверов не видны в таблице
+  /// маршрутов.
+  off,
+}
+
 /// Откуда берётся DNS в TUN-режиме.
 /// system — не трогаем (как раньше; возможен DNS-leak и «интернет пропал», если
 /// UDP до сервера не проксируется), vpn — резолвим через туннель, custom — свой сервер.
@@ -116,6 +145,30 @@ enum ProbeService {
 
 /// Тема оформления.
 enum AppThemeMode { system, light, dark }
+
+/// Раскладка проверок сервисов на главном экране относительно кнопки подключения.
+///
+/// ⚠️ `sides` (колонки по бокам) уже существовала как единственный режим и была
+/// удалена 19.08.2026: при разрастании каталога до 14 сервисов колонки по семь
+/// строк вылезали за нижний край телефона (подробности —
+/// `service_checks_row.dart:44-58,292-312`). Теперь это один из пяти РАВНОПРАВНЫХ
+/// вариантов, а не единственная раскладка, поэтому регресс не повторяется молча.
+enum ServiceChecksLayout {
+  /// По умолчанию: колонки по бокам на широком окне, ряды снизу — на узком.
+  adaptive,
+
+  /// Всегда нынешние ряды под кнопкой (раскладка до этой настройки).
+  rows,
+
+  /// Всегда колонки по бокам, с пропорциональным сжатием при нехватке места.
+  sides,
+
+  /// Колонки по бокам, но плотной сеткой иконок без подписей групп.
+  grid,
+
+  /// Проверок на главном экране нет — только кнопка подключения.
+  hidden,
+}
 
 /// Интервал автообновления подписки (#10). По умолчанию приоритет у значения
 /// приложения ([fieldHours]); галочка «брать из подписки» → интервал панели
@@ -273,6 +326,12 @@ class AppSettings {
   /// ПРИНИМАЕТ МОЛЧА (`check` даёт exit 0) и не применяет — проверено запуском
   /// настоящего sing-box 1.11.15. Не принимать их за рабочий рычаг.
   final List<String> tunRouteOnlyCidrs;
+
+  /// Охват вывода адресов серверов из туннеля на уровне ОС — см.
+  /// [TunnelExcludeScope]. Единственный шов, где выбирается значение для
+  /// `TunOptions.tunnelExcludeServerIps`; собственного экрана у поля нет,
+  /// оно живёт в общих настройках туннеля.
+  final TunnelExcludeScope tunnelExcludeScope;
 
   /// Пароль на ЛОКАЛЬНЫЕ прокси ядра (socks/http на 127.0.0.1). По умолчанию ВКЛ.
   ///
@@ -589,6 +648,9 @@ class AppSettings {
   // ── Оформление и поведение ─────────────────────────────────────────────────
   final AppThemeMode themeMode;
 
+  /// Раскладка проверок сервисов на главном экране (см. [ServiceChecksLayout]).
+  final ServiceChecksLayout serviceChecksLayout;
+
   /// Свёрнутые разделы экрана настроек — их ИДЕНТИФИКАТОРЫ.
   ///
   /// ⚠️ ПУСТОЙ СПИСОК = ВСЁ РАЗВЁРНУТО, и это умолчание задано владельцем
@@ -666,6 +728,7 @@ class AppSettings {
     this.tunBypassLan = true,
     this.tunExcludeCidrs = const [],
     this.tunRouteOnlyCidrs = const [],
+    this.tunnelExcludeScope = TunnelExcludeScope.allKnown,
     this.alsoSetSystemProxy = false,
     this.localProxyAuth = true,
     this.localProxyUser = '',
@@ -731,6 +794,7 @@ class AppSettings {
     this.seamlessKeepTun = true,
     this.autoConnectAfterImport = false,
     this.themeMode = AppThemeMode.system,
+    this.serviceChecksLayout = ServiceChecksLayout.adaptive,
     this.collapsedSections = const [],
     this.languageCode = '',
     this.closeToTray = true,
@@ -790,6 +854,7 @@ class AppSettings {
     bool? tunBypassLan,
     List<String>? tunExcludeCidrs,
     List<String>? tunRouteOnlyCidrs,
+    TunnelExcludeScope? tunnelExcludeScope,
     bool? alsoSetSystemProxy,
     bool? localProxyAuth,
     String? localProxyUser,
@@ -839,6 +904,7 @@ class AppSettings {
     bool? seamlessKeepTun,
     bool? autoConnectAfterImport,
     AppThemeMode? themeMode,
+    ServiceChecksLayout? serviceChecksLayout,
     List<String>? collapsedSections,
     String? languageCode,
     bool? closeToTray,
@@ -863,6 +929,7 @@ class AppSettings {
       tunBypassLan: tunBypassLan ?? this.tunBypassLan,
       tunExcludeCidrs: tunExcludeCidrs ?? this.tunExcludeCidrs,
       tunRouteOnlyCidrs: tunRouteOnlyCidrs ?? this.tunRouteOnlyCidrs,
+      tunnelExcludeScope: tunnelExcludeScope ?? this.tunnelExcludeScope,
       alsoSetSystemProxy: alsoSetSystemProxy ?? this.alsoSetSystemProxy,
       localProxyAuth: localProxyAuth ?? this.localProxyAuth,
       localProxyUser: localProxyUser ?? this.localProxyUser,
@@ -916,6 +983,7 @@ class AppSettings {
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
       themeMode: themeMode ?? this.themeMode,
+      serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
       collapsedSections: collapsedSections ?? this.collapsedSections,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
@@ -943,6 +1011,7 @@ class AppSettings {
         'tunBypassLan': tunBypassLan,
         'tunExcludeCidrs': tunExcludeCidrs,
         'tunRouteOnlyCidrs': tunRouteOnlyCidrs,
+        'tunnelExcludeScope': tunnelExcludeScope.name,
         'alsoSetSystemProxy': alsoSetSystemProxy,
         'localProxyAuth': localProxyAuth,
         'localProxyUser': localProxyUser,
@@ -993,6 +1062,7 @@ class AppSettings {
         'seamlessKeepTun': seamlessKeepTun,
         'autoConnectAfterImport': autoConnectAfterImport,
         'themeMode': themeMode.name,
+        'serviceChecksLayout': serviceChecksLayout.name,
         'collapsedSections': collapsedSections,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
@@ -1085,6 +1155,12 @@ class AppSettings {
           ((j['tunExcludeCidrs'] as List?)?.cast<String>()) ?? const [],
       tunRouteOnlyCidrs:
           ((j['tunRouteOnlyCidrs'] as List?)?.cast<String>()) ?? const [],
+      // Неизвестное значение (будущая версия) и отсутствие ключа (старый файл
+      // настроек) — ОБА читаются как allKnown: битый файл не должен обнулять
+      // остальные настройки, а дефолт обязан совпасть с тем, что было ДО
+      // появления этого поля (движок и без него использовал allKnown).
+      tunnelExcludeScope: pick(TunnelExcludeScope.values,
+          j['tunnelExcludeScope'], TunnelExcludeScope.allKnown),
       alsoSetSystemProxy:
           j['alsoSetSystemProxy'] as bool? ?? defaults.alsoSetSystemProxy,
       // Умолчание ВКЛ: у всех, кто обновится, пароль появится сам.
@@ -1183,6 +1259,10 @@ class AppSettings {
           j['seamlessKeepTun'] as bool? ?? defaults.seamlessKeepTun,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
+      // Неизвестное/битое значение → adaptive: битый файл настроек не должен
+      // ронять весь разбор из-за одной раскладки главного экрана.
+      serviceChecksLayout: pick(ServiceChecksLayout.values,
+          j['serviceChecksLayout'], ServiceChecksLayout.adaptive),
       // ⚠️ ЧИТАЕТСЯ ОБЯЗАТЕЛЬНО — иначе свёрнутые разделы разворачивались бы
       // при каждом запуске, хотя выбор пользователя лежит в файле (тот самый
       // класс «поле пишется, но не читается»; страж settings_roundtrip_test
@@ -1253,6 +1333,11 @@ class AppSettings {
         other.tunExcludeCidrs.join(','));
     diff('в туннель только перечисленные подсети', tunRouteOnlyCidrs.join(','),
         other.tunRouteOnlyCidrs.join(','));
+    // Меняет состав route_exclude_address интерфейса напрямую — тот же
+    // класс причины, что и подсети выше: другой список значит другой
+    // конфиг TUN, значит пересоздание.
+    diff('охват вывода адресов серверов из туннеля', tunnelExcludeScope,
+        other.tunnelExcludeScope);
     // Захват трафика ставится один раз при подъёме, поэтому включение прокси
     // поверх туннеля «на живую» не сработало бы молча.
     diff('системный прокси вместе с туннелем', alsoSetSystemProxy,

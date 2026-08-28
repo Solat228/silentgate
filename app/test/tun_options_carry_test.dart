@@ -36,6 +36,7 @@ void main() {
     dnsStrategy: DnsStrategy.preferIpv6,
     logLevel: 'debug',
     serverIps: ['203.0.113.10'],
+    tunnelExcludeServerIps: ['198.51.100.6'],
     serverDomains: ['node.example'],
     autotune: true,
     noRealIp: true,

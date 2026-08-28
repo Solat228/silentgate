@@ -294,6 +294,84 @@ abstract class AppLocalizations {
   /// **'Тёмная'**
   String get themeDark;
 
+  /// No description provided for @serviceChecksLayoutTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Раскладка проверок сервисов'**
+  String get serviceChecksLayoutTitle;
+
+  /// No description provided for @serviceChecksLayoutAdaptive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адаптивная'**
+  String get serviceChecksLayoutAdaptive;
+
+  /// No description provided for @serviceChecksLayoutRows.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рядами под кнопкой'**
+  String get serviceChecksLayoutRows;
+
+  /// No description provided for @serviceChecksLayoutSides.
+  ///
+  /// In ru, this message translates to:
+  /// **'Колонками по бокам'**
+  String get serviceChecksLayoutSides;
+
+  /// No description provided for @serviceChecksLayoutGrid.
+  ///
+  /// In ru, this message translates to:
+  /// **'Плотной сеткой по бокам'**
+  String get serviceChecksLayoutGrid;
+
+  /// No description provided for @serviceChecksLayoutHidden.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть'**
+  String get serviceChecksLayoutHidden;
+
+  /// No description provided for @tunnelExcludeScopeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адреса серверов мимо туннеля'**
+  String get tunnelExcludeScopeTitle;
+
+  /// No description provided for @tunnelExcludeScopeAllKnown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все серверы подписки'**
+  String get tunnelExcludeScopeAllKnown;
+
+  /// No description provided for @tunnelExcludeScopeAllKnownHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг честный для всего списка. Обращения к адресам серверов идют мимо туннеля, под настоящим адресом.'**
+  String get tunnelExcludeScopeAllKnownHint;
+
+  /// No description provided for @tunnelExcludeScopeActiveOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только текущий сервер'**
+  String get tunnelExcludeScopeActiveOnly;
+
+  /// No description provided for @tunnelExcludeScopeActiveOnlyHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мимо туннеля идёт только узел, к которому уже есть подключение. Пинг остальных серверов при включённом VPN будет неверным, а при бесшовной смене сервера туннель пересоздаётся.'**
+  String get tunnelExcludeScopeActiveOnlyHint;
+
+  /// No description provided for @tunnelExcludeScopeOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не выводить'**
+  String get tunnelExcludeScopeOff;
+
+  /// No description provided for @tunnelExcludeScopeOffHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Адресов серверов в таблице маршрутов нет, но пинг при включённом VPN показывает время до локального стека, а не до сервера.'**
+  String get tunnelExcludeScopeOffHint;
+
   /// No description provided for @closeToTrayTitle.
   ///
   /// In ru, this message translates to:
@@ -4721,6 +4799,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)'**
   String get speedBlockedTooltip;
+
+  /// No description provided for @speedStaleServerTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер сейчас не отвечает — показан замер скорости из прошлого'**
+  String get speedStaleServerTooltip;
+
+  /// No description provided for @speedOlderThanPingTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер скорости старше последней проверки сервера'**
+  String get speedOlderThanPingTooltip;
 
   /// No description provided for @srvTileMeasureSpeed.
   ///

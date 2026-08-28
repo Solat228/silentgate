@@ -101,6 +101,48 @@ class AppLocalizationsRu extends AppLocalizations {
   String get themeDark => 'Тёмная';
 
   @override
+  String get serviceChecksLayoutTitle => 'Раскладка проверок сервисов';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Адаптивная';
+
+  @override
+  String get serviceChecksLayoutRows => 'Рядами под кнопкой';
+
+  @override
+  String get serviceChecksLayoutSides => 'Колонками по бокам';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Плотной сеткой по бокам';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Скрыть';
+
+  @override
+  String get tunnelExcludeScopeTitle => 'Адреса серверов мимо туннеля';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'Все серверы подписки';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Пинг честный для всего списка. Обращения к адресам серверов идют мимо туннеля, под настоящим адресом.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Только текущий сервер';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Мимо туннеля идёт только узел, к которому уже есть подключение. Пинг остальных серверов при включённом VPN будет неверным, а при бесшовной смене сервера туннель пересоздаётся.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Не выводить';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Адресов серверов в таблице маршрутов нет, но пинг при включённом VPN показывает время до локального стека, а не до сервера.';
+
+  @override
   String get closeToTrayTitle => 'Сворачивать в трей при закрытии';
 
   @override
@@ -2686,6 +2728,14 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get speedBlockedTooltip =>
       'Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)';
+
+  @override
+  String get speedStaleServerTooltip =>
+      'Сервер сейчас не отвечает — показан замер скорости из прошлого';
+
+  @override
+  String get speedOlderThanPingTooltip =>
+      'Замер скорости старше последней проверки сервера';
 
   @override
   String get srvTileMeasureSpeed => 'Измерить скорость';

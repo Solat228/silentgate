@@ -811,6 +811,22 @@ class AndroidEngine extends VpnEngineBase {
       final liveOptions = TunOptions.fromSettings(
           session.options.settings,
           serverIps: serverIps,
+          // ⚠️ `tunnelExcludeServerIps` на Android НАМЕРЕННО не заполняется
+          // (пусто = прежний конфиг байт в байт). Здесь это поле стало бы
+          // частью параметров `VpnService.Builder` (исключённые маршруты), а
+          // с живым интерфейсом «поле в поле» обязана совпадать и заглушка
+          // kill switch. Двух механизмов для этого нет:
+          //  * после смерти изолята ([adoptRunningTunnel]) живые опции
+          //    потеряны, и `blackholeInputs` пересобирает их из настроек —
+          //    накопленный список отрезолвленных адресов там не воспроизвести,
+          //    заглушка построила бы ДРУГОЙ интерфейс, и `VpnService`
+          //    пересоздал бы его: ровно то окно утечки, ради закрытия
+          //    которого заглушка существует;
+          //  * нет аналога `_liveBypassIps` (Windows): `serverIps` здесь —
+          //    живой накопитель `tunnelBypassIps`, он растёт между подъёмами,
+          //    и каждый новый адрес пересоздавал бы интерфейс.
+          // Пока оба не решены, Android живёт прежним поведением; route-правило
+          // «serverIps → direct» на месте, речь только об уровне ОС.
           // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
           serverDomains: knownServerDomains,
           android: true,

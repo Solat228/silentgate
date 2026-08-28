@@ -739,6 +739,40 @@ List<SettingsRow> _reliabilityRows(
             ),
           ),
       ),
+    // ⚠️ ТОЛЬКО ДЛЯ TUN. Вывести адрес мимо туннеля можно ровно там, где
+    // туннель есть: в режиме системного прокси маршрутов мы не трогаем, и
+    // настройка была бы видимой пустышкой.
+    if (settings.captureMode == CaptureMode.tun)
+      SettingsRow(
+        search: '${l.tunnelExcludeScopeTitle} '
+            '${l.tunnelExcludeScopeAllKnown} ${l.tunnelExcludeScopeActiveOnly} '
+            '${l.tunnelExcludeScopeOff}',
+        build: (_) => Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+          // Выпадающий список, а не сегменты: у каждого варианта есть описание
+          // ценой в строку, и в сегменты это не помещается.
+          child: DropdownButtonFormField<TunnelExcludeScope>(
+            initialValue: settings.tunnelExcludeScope,
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: l.tunnelExcludeScopeTitle,
+              helperText: _tunnelExcludeScopeHint(l, settings.tunnelExcludeScope),
+              helperMaxLines: 3,
+            ),
+            items: [
+              for (final v in TunnelExcludeScope.values)
+                DropdownMenuItem(
+                  value: v,
+                  child: Text(_tunnelExcludeScopeLabel(l, v)),
+                ),
+            ],
+            onChanged: (v) {
+              if (v == null) return;
+              controller.update((s) => s.copyWith(tunnelExcludeScope: v));
+            },
+          ),
+        ),
+      ),
     // ⚠️ ЧЕГО KILL SWITCH НЕ УМЕЕТ ВООБЩЕ — ПРАВИЛА ПО САЙТАМ. Он удерживает
     // ЗАХВАТ, то есть работает по программам; домены разбирает ядро, а на
     // время восстановления ядра нет. Условие спрашиваем у общей чистой функции
@@ -2111,6 +2145,34 @@ List<SettingsRow> _appearanceRows(
         ],
       ),
     ),
+    SettingsRow(
+      search: '${l.serviceChecksLayoutTitle} '
+          '${l.serviceChecksLayoutAdaptive} ${l.serviceChecksLayoutRows} '
+          '${l.serviceChecksLayoutSides} ${l.serviceChecksLayoutGrid} '
+          '${l.serviceChecksLayoutHidden}',
+      build: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+        // Выпадающий список, а не SegmentedButton: пять вариантов на узком
+        // экране в сегменты не влезают без обрезки подписей.
+        child: DropdownButtonFormField<ServiceChecksLayout>(
+          initialValue: settings.serviceChecksLayout,
+          isExpanded: true,
+          decoration:
+              InputDecoration(labelText: l.serviceChecksLayoutTitle),
+          items: [
+            for (final v in ServiceChecksLayout.values)
+              DropdownMenuItem(
+                value: v,
+                child: Text(_serviceChecksLayoutLabel(l, v)),
+              ),
+          ],
+          onChanged: (v) {
+            if (v == null) return;
+            controller.update((s) => s.copyWith(serviceChecksLayout: v));
+          },
+        ),
+      ),
+    ),
     // Трея на Android нет: приложение сворачивается системой, а VPN
     // продолжает жить в foreground-сервисе с постоянной нотификацией —
     // она и играет роль значка в трее.
@@ -2440,6 +2502,47 @@ String _dnsShort(AppLocalizations l, DnsMode m) {
       return l.dnsShortSystem;
     case DnsMode.custom:
       return l.dnsShortCustom;
+  }
+}
+
+String _serviceChecksLayoutLabel(AppLocalizations l, ServiceChecksLayout v) {
+  switch (v) {
+    case ServiceChecksLayout.adaptive:
+      return l.serviceChecksLayoutAdaptive;
+    case ServiceChecksLayout.rows:
+      return l.serviceChecksLayoutRows;
+    case ServiceChecksLayout.sides:
+      return l.serviceChecksLayoutSides;
+    case ServiceChecksLayout.grid:
+      return l.serviceChecksLayoutGrid;
+    case ServiceChecksLayout.hidden:
+      return l.serviceChecksLayoutHidden;
+  }
+}
+
+String _tunnelExcludeScopeLabel(AppLocalizations l, TunnelExcludeScope v) {
+  switch (v) {
+    case TunnelExcludeScope.allKnown:
+      return l.tunnelExcludeScopeAllKnown;
+    case TunnelExcludeScope.activeOnly:
+      return l.tunnelExcludeScopeActiveOnly;
+    case TunnelExcludeScope.off:
+      return l.tunnelExcludeScopeOff;
+  }
+}
+
+/// ⚠️ ОПИСАНИЕ — НЕ УКРАШЕНИЕ, А УСЛОВИЕ ОСОЗНАННОГО ВЫБОРА. У каждого
+/// варианта своя цена: адреса серверов в таблице маршрутов, неверный пинг
+/// или пересоздание туннеля при смене сервера. Название этого не показывает,
+/// поэтому под списком всегда висит строка про выбранное значение.
+String _tunnelExcludeScopeHint(AppLocalizations l, TunnelExcludeScope v) {
+  switch (v) {
+    case TunnelExcludeScope.allKnown:
+      return l.tunnelExcludeScopeAllKnownHint;
+    case TunnelExcludeScope.activeOnly:
+      return l.tunnelExcludeScopeActiveOnlyHint;
+    case TunnelExcludeScope.off:
+      return l.tunnelExcludeScopeOffHint;
   }
 }
 

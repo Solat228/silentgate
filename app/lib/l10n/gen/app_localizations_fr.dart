@@ -101,6 +101,50 @@ class AppLocalizationsFr extends AppLocalizations {
   String get themeDark => 'Sombre';
 
   @override
+  String get serviceChecksLayoutTitle =>
+      'Disposition des vérifications de services';
+
+  @override
+  String get serviceChecksLayoutAdaptive => 'Adaptative';
+
+  @override
+  String get serviceChecksLayoutRows => 'Lignes sous le bouton';
+
+  @override
+  String get serviceChecksLayoutSides => 'Colonnes à côté du bouton';
+
+  @override
+  String get serviceChecksLayoutGrid => 'Grille compacte à côté du bouton';
+
+  @override
+  String get serviceChecksLayoutHidden => 'Masqué';
+
+  @override
+  String get tunnelExcludeScopeTitle =>
+      'Adresses serveur contournent le tunnel';
+
+  @override
+  String get tunnelExcludeScopeAllKnown => 'Tous les serveurs d\'abonnement';
+
+  @override
+  String get tunnelExcludeScopeAllKnownHint =>
+      'Ping honnête pour toute la liste. Les recherches d\'adresses serveur contournent le tunnel, utilisant votre adresse réelle.';
+
+  @override
+  String get tunnelExcludeScopeActiveOnly => 'Serveur actif uniquement';
+
+  @override
+  String get tunnelExcludeScopeActiveOnlyHint =>
+      'Seul le serveur auquel vous êtes connecté contourne le tunnel. Le ping pour les autres serveurs avec VPN activé sera inexact, et les changements de serveur transparents recréeront le tunnel.';
+
+  @override
+  String get tunnelExcludeScopeOff => 'Ne pas exclure';
+
+  @override
+  String get tunnelExcludeScopeOffHint =>
+      'Les adresses serveur ne sont pas dans la table de routage, mais le ping avec VPN activé affiche la latence vers la pile locale, pas le serveur.';
+
+  @override
   String get closeToTrayTitle =>
       'Réduire dans la zone de notification à la fermeture';
 
@@ -2714,6 +2758,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get speedBlockedTooltip =>
       'Débit non mesuré : le serveur n\'a pas réussi la vérification du canal (la requête n\'est pas passée)';
+
+  @override
+  String get speedStaleServerTooltip =>
+      'Le serveur ne répond pas actuellement — le débit affiché date d\'une mesure antérieure';
+
+  @override
+  String get speedOlderThanPingTooltip =>
+      'La mesure de débit est plus ancienne que la dernière vérification';
 
   @override
   String get srvTileMeasureSpeed => 'Mesurer le débit';
