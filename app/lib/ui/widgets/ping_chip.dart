@@ -278,20 +278,37 @@ Widget _chipPill(String text, Color color,
 /// проводился».
 class SpeedChip extends StatelessWidget {
   final ServerSpeed speed;
-  const SpeedChip({super.key, required this.speed});
+
+  /// Текущий результат пинга ЭТОГО сервера — нужен ТОЛЬКО чтобы решить, красить
+  /// ли плашку по шкале mbps или показать её приглушённой. Необязательный:
+  /// если результата пинга под рукой нет, поведение прежнее — по одной величине
+  /// mbps (так было до дефекта, см. предупреждение ниже).
+  final PingResult? ping;
+
+  const SpeedChip({super.key, required this.speed, this.ping});
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final s = speed;
+    // ⚠️ ДЕФЕКТ 27.08.2026: сервер умер, пинг рядом честно показывал n/a
+    // тёмно-красным, а плашка скорости оставалась ЗЕЛЁНОЙ — цвет считался
+    // только по величине mbps и понятия не имел, жив ли сейчас сервер. Цифру
+    // (замер, оплаченный трафиком подписки) стирать нельзя, а вот красить её
+    // по шкале «хватает на видео» можно только когда сервер сейчас в порядке.
+    // `speedBlocked` — ровно то поле [PingResult], которое уже отличает
+    // «жив» от «мёртв/не проксирует», отдельного признака не заводим.
+    final blocked = ping?.speedBlocked ?? false;
     // Пороги те же по смыслу, что у пинга: зелёный — комфортно смотреть видео,
     // жёлтый — терпимо, оранжевый — узко. Цифра всё равно видна, цвет лишь
     // помогает глазу пробежать список.
-    final color = s.mbps >= 30
-        ? Colors.green
-        : s.mbps >= 10
-            ? Colors.amber
-            : Colors.orange;
+    final color = blocked
+        ? Colors.grey
+        : s.mbps >= 30
+            ? Colors.green
+            : s.mbps >= 10
+                ? Colors.amber
+                : Colors.orange;
     // ⚠️ ПОКАЗЫВАЕМ МЕГАБАЙТЫ, СРАВНИВАЕМ МЕГАБИТЫ. Пороги цвета выше остались
     // в мегабитах намеренно: их смысл («хватает на видео») привязан к тому, как
     // скорость меряют, а не к тому, как её пишут. Перевод — один на всё
@@ -299,10 +316,17 @@ class SpeedChip extends StatelessWidget {
     final mb = s.megabytesPerSecond;
     final value = mb >= 100 ? mb.toStringAsFixed(0) : mb.toStringAsFixed(1);
     final at = s.measuredAt;
+    final pingAt = ping?.measuredAt;
     // Строка «когда мерили» — тот же вызов, что у пинга: см. `measured_at.dart`.
     final tip = [
-      s.fromAutoConfig ? l.speedFromAutoConfig : l.speedTooltip,
+      blocked
+          ? l.speedStaleServerTooltip
+          : (s.fromAutoConfig ? l.speedFromAutoConfig : l.speedTooltip),
       if (at != null) measuredAtLine(context, at),
+      // Замер может быть даже старше последней проверки пинга — стоит сказать
+      // об этом отдельно, а не оставлять человека гадать по одним датам.
+      if (blocked && at != null && pingAt != null && at.isBefore(pingAt))
+        l.speedOlderThanPingTooltip,
     ].join('\n');
     // Размер шрифта НЕ задаём: у пинга и скорости он общий (умолчание
     // `_chipPill`) — плашки читаются как пара, а не как главная и приписка.

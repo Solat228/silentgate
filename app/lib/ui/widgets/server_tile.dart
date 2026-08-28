@@ -141,25 +141,49 @@ class ServerTile extends StatelessWidget {
         contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 2),
         selected: selected,
         selectedTileColor: scheme.primary.withValues(alpha: 0.08),
-        leading: FlagCell(server.remark, auto: server.isPanelProfile),
+        // Значок чужой подписки лежит НА флаге (правый верхний угол), а не
+        // отдельной иконкой в заголовке — просьба владельца: раньше там
+        // сидели два цветных квадрата (заглушка без логотипа) рядом с флагом.
+        // Stack не меняет размер, который FlagCell отдаёт ListTile: значок —
+        // Positioned внутри той же площади, leading не раздувается.
+        leading: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            FlagCell(server.remark, auto: server.isPanelProfile),
+            if (foreign != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Tooltip(
+                  message: foreign.safeTitle,
+                  child: Container(
+                    // Тонкая обводка цветом фона карточки — иначе градиентная
+                    // заглушка без логотипа сливалась бы с флагом под ней.
+                    padding: const EdgeInsets.all(1),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(4),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 1.5,
+                        ),
+                      ],
+                    ),
+                    // ~треть стороны флаг-ячейки (34×24): значок остаётся
+                    // читаемым, но не закрывает сам флаг под ним.
+                    child: SubscriptionAvatar(
+                        path: foreign.logoPath, label: foreign.safeTitle, size: 10),
+                  ),
+                ),
+              ),
+          ],
+        ),
         title: Row(children: [
           if (pinned)
             const Padding(
               padding: EdgeInsetsDirectional.only(end: 4),
               child: Icon(Icons.push_pin, size: 13),
-            ),
-          // Мини-профиль чужой подписки. Пины общие и переживают переключение,
-          // поэтому в одном списке оказываются серверы из разных подписок —
-          // без значка они выглядят одинаково, и человек не понимает, куда
-          // подключается.
-          if (foreign != null)
-            Padding(
-              padding: const EdgeInsetsDirectional.only(end: 5),
-              child: Tooltip(
-                message: foreign.safeTitle,
-                child: SubscriptionAvatar(
-                    path: foreign.logoPath, label: foreign.safeTitle, size: 15),
-              ),
             ),
           Flexible(
             child: Text(name.isEmpty ? server.address : name,
@@ -524,7 +548,10 @@ class PingSpeedColumn extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 PingChip(result: ping),
-                SpeedChip(speed: measured),
+                // Пинг передаём и сюда — иначе плашка красит себя по одной
+                // величине mbps и не знает, что сервер прямо сейчас мёртв
+                // (см. предупреждение в `SpeedChip`).
+                SpeedChip(speed: measured, ping: ping),
               ],
             ),
     );

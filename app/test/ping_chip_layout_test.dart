@@ -178,6 +178,119 @@ void main() {
     });
   });
 
+  // ── Цвет плашки скорости зависит от состояния сервера, а не только от mbps ─
+
+  group('Плашка скорости красится по состоянию сервера (27.08.2026)', () {
+    // ⚠️ ДЕФЕКТ: сервер USA умер, пинг честно показывал n/a тёмно-красным, а
+    // плашка скорости рядом оставалась ЗЕЛЁНОЙ — цвет замера, снятого, пока
+    // сервер ещё работал. Сам замер стирать нельзя (оплачен трафиком
+    // подписки), но раскрашивать его «как будто всё хорошо» нельзя тоже.
+    const fastSpeed = ServerSpeed(mbps: 79.2); // 9.9 МБ/с
+
+    Color pillColor(WidgetTester tester, Finder chip) =>
+        (pillOf(tester, chip).decoration as BoxDecoration).color!;
+
+    testWidgets('живой сервер + быстрая скорость — плашка зелёная',
+        (tester) async {
+      await pumpTile(tester, ping: passed, speed: fastSpeed);
+
+      final color = pillColor(tester, find.byType(SpeedChip));
+      expect(color, Colors.green.withValues(alpha: 0.18));
+    });
+
+    testWidgets(
+        'ГЛАВНОЕ: мёртвый сервер + та же быстрая скорость — плашка НЕ зелёная',
+        (tester) async {
+      await pumpTile(tester, ping: dead, speed: fastSpeed);
+
+      final color = pillColor(tester, find.byType(SpeedChip));
+      expect(color, isNot(Colors.green.withValues(alpha: 0.18)),
+          reason: 'зелёный — цвет ЖИВОГО сервера, а не старого замера');
+      expect(color, Colors.grey.withValues(alpha: 0.18),
+          reason: 'приглушённый вид — сервер сейчас не отвечает');
+      // Число при этом остаётся на месте: замер не стираем.
+      expect(find.text('9.9 МБ/с'), findsOneWidget);
+    });
+
+    testWidgets('отвечает, но не проксирует — тоже приглушённая, не зелёная',
+        (tester) async {
+      await pumpTile(tester, ping: noProxy, speed: fastSpeed);
+
+      final color = pillColor(tester, find.byType(SpeedChip));
+      expect(color, Colors.grey.withValues(alpha: 0.18));
+    });
+
+    testWidgets('нет результата пинга — поведение прежнее, по mbps',
+        (tester) async {
+      // SpeedChip напрямую, без ServerTile: имитирует вызов без ping.
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: SpeedChip(speed: fastSpeed)),
+      ));
+
+      final color = pillColor(tester, find.byType(SpeedChip));
+      expect(color, Colors.green.withValues(alpha: 0.18));
+    });
+
+    testWidgets('подсказка объясняет приглушённый вид и дату старого замера',
+        (tester) async {
+      final at = DateTime.now().subtract(const Duration(days: 2));
+      await pumpTile(tester,
+          ping: dead, speed: ServerSpeed(mbps: 79.2, measuredAt: at));
+
+      final tooltip = tester
+          .widget<Tooltip>(find.descendant(
+              of: find.byType(SpeedChip), matching: find.byType(Tooltip)))
+          .message!;
+      expect(tooltip, contains('не отвечает'),
+          reason: 'человеческое объяснение причины должно быть в подсказке');
+    });
+
+    testWidgets('замер старше последней проверки пинга — подсказка об этом',
+        (tester) async {
+      final now = DateTime.now();
+      final oldSpeed = now.subtract(const Duration(days: 5));
+      probe.setResult(
+          server,
+          PingResult(
+              outcome: PingOutcome.failed, measuredAt: now)); // «свежий» n/a
+      probe.adoptSpeeds(
+          {server.key: ServerSpeed(mbps: 79.2, measuredAt: oldSpeed)});
+
+      tester.view.physicalSize = const Size(1000, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MultiProvider(
+        providers: [
+          ChangeNotifierProvider<AppState>.value(value: state),
+          ChangeNotifierProvider<ProbeController>.value(value: probe),
+          ChangeNotifierProvider<SettingsController>.value(value: settings),
+          ChangeNotifierProvider<AutoConfigController>.value(value: autoCfg),
+        ],
+        child: MaterialApp(
+          locale: const Locale('ru'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: ListView(children: [
+              ServerTile(server: server, selected: false, onTap: () {}),
+            ]),
+          ),
+        ),
+      ));
+      await tester.pump();
+
+      final tooltip = tester
+          .widget<Tooltip>(find.descendant(
+              of: find.byType(SpeedChip), matching: find.byType(Tooltip)))
+          .message!;
+      expect(tooltip, contains('старше'),
+          reason: 'замер старше проверки — об этом нужно сказать отдельно');
+    });
+  });
+
   // ── Размер плашки пинга ────────────────────────────────────────────────────
 
   group('Пинг крупный, пока скорость не мерили', () {
