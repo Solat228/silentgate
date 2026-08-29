@@ -2538,6 +2538,30 @@ abstract class AppLocalizations {
   /// **'Задержка TCP до сервера. Сервер рабочий: ответил по TCP и прошёл проверку через туннель (GET/HEAD)'**
   String get pingOkTooltip;
 
+  /// No description provided for @pingCoreMs.
+  ///
+  /// In ru, this message translates to:
+  /// **'{ms} мс •'**
+  String pingCoreMs(Object ms);
+
+  /// No description provided for @pingCoreTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер выполнен самим ядром VPN через туннель: время полного запроса к тестовому адресу (не TCP до сервера). Сервер рабочий — запрос прошёл.'**
+  String get pingCoreTooltip;
+
+  /// No description provided for @pingCoreFailedTooltip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро VPN не смогло открыть тестовый адрес через этот сервер — трафик по туннелю не идёт'**
+  String get pingCoreFailedTooltip;
+
+  /// No description provided for @pingViaTunnelNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Число скрыто: замер сделан при поднятом VPN, и ответил локальный туннель, а не сервер. Для честного TCP-замера отключите VPN.'**
+  String get pingViaTunnelNote;
+
   /// No description provided for @searchHint.
   ///
   /// In ru, this message translates to:

@@ -56,6 +56,12 @@ class _FakeEngine implements VpnEngine {
   VpnStatus get status => const VpnStatus.disconnected();
   @override
   int get httpProxyPort => 10809;
+  // ⚠️ Двойник объявлен через `implements`, а не наследование: реализации по
+  // умолчанию из `VpnEngine` сюда НЕ приходят, поэтому каждый новый член
+  // интерфейса приходится описывать здесь руками. `null` — «захвата нет»,
+  // то есть поведение обычного движка без поднятого TUN.
+  @override
+  LiveCoreApi? get captureCoreApi => null;
   @override
   Future<void> connect(VpnServer server,
           {ConnectionOptions options = const ConnectionOptions()}) async =>

@@ -1401,6 +1401,23 @@ class AppLocalizationsAr extends AppLocalizations {
       'زمن استجابة TCP إلى الخادم. الخادم يعمل: استجاب عبر TCP واجتاز فحص النفق (GET/HEAD)';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms م.ث •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'قياس نفّذته نواة VPN نفسها عبر النفق: الوقت الكامل للطلب إلى عنوان الاختبار (وليس زمن TCP إلى الخادم). الخادم يعمل — الطلب نجح.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'لم تتمكن نواة VPN من فتح عنوان الاختبار عبر هذا الخادم — لا تمر حركة البيانات عبر النفق';
+
+  @override
+  String get pingViaTunnelNote =>
+      'الرقم مخفي: جرى القياس أثناء تشغيل VPN فأجاب النفق المحلي بدل الخادم. افصل VPN للحصول على قياس TCP صادق.';
+
+  @override
   String get searchHint => 'بحث بالاسم، البلد، العنوان…';
 
   @override

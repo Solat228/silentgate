@@ -1379,6 +1379,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pingOkTooltip => '到服务器的 TCP 延迟。服务器可用：TCP 有响应且通过了隧道检查（GET/HEAD）';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms 毫秒 •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      '由 VPN 内核自身通过隧道测量：到测试地址的完整请求耗时（并非到服务器的 TCP 延迟）。服务器可用——请求已通过。';
+
+  @override
+  String get pingCoreFailedTooltip => 'VPN 内核无法通过该服务器打开测试地址——隧道内没有流量通过';
+
+  @override
+  String get pingViaTunnelNote =>
+      '数字已隐藏：测量在 VPN 开启时进行，应答的是本地隧道而不是服务器。断开 VPN 才能获得真实的 TCP 测量。';
+
+  @override
   String get searchHint => '按名称、国家、地址搜索…';
 
   @override

@@ -49,6 +49,26 @@ class ConnectionOptions {
   SplitTunnelConfig get split => settings.splitTunnel;
 }
 
+/// Clash API ядра, которое СЕЙЧАС захватывает сокеты самого приложения
+/// (поднятый TUN на Windows). Нужен пингу дважды:
+///  * само НАЛИЧИЕ значит «TCP-пинг искажён»: рукопожатие завершает локальный
+///    стек туннеля за 1–3 мс, и цифра фазы 1 — не про сервер;
+///  * через этот API текущий сервер меряется ЧЕСТНО — запрос выполняет само
+///    ядро через свой outbound (`GET /proxies/{tag}/delay`), до сетевого
+///    стека системы, самозахвата нет.
+class LiveCoreApi {
+  final int port;
+  final String secret;
+
+  /// Тег outbound'а текущего подключения (у нас всегда `proxy` — см.
+  /// `SingboxConfigBuilder`). Поле, а не литерал у потребителя: переименование
+  /// тега в конфиге обязано менять и адрес замера, причём в одном месте.
+  final String proxyTag;
+
+  const LiveCoreApi(
+      {required this.port, required this.secret, this.proxyTag = 'proxy'});
+}
+
 /// Абстракция движка VPN. UI работает только с этим интерфейсом,
 /// а конкретная реализация подставляется по платформе (см. engine_factory.dart).
 abstract class VpnEngine {
@@ -89,6 +109,15 @@ abstract class VpnEngine {
   /// через уже поднятое соединение (без отдельного ядра/системного прокси).
   /// Осмыслен только при [status] == connected.
   int get httpProxyPort => 10809;
+
+  /// API ядра, захватившего сокеты приложения. `null` — захвата на уровне
+  /// интерфейса нет, и TCP-пинг честный.
+  ///
+  /// ⚠️ Умолчание `null` ПРАВИЛЬНО и для Android: там собственный пакет
+  /// исключён из VpnService (`exclude_package`, см. `SingboxConfigBuilder`),
+  /// сокеты приложения идут мимо туннеля, и фаза 1 пинга меряет настоящий
+  /// путь до сервера. Переопределяет только Windows с поднятым TUN.
+  LiveCoreApi? get captureCoreApi => null;
 
   /// Подключиться к выбранному серверу с опциями (вариация обхода, режим захвата, split).
   Future<void> connect(VpnServer server,

@@ -56,6 +56,13 @@ abstract class VpnEngineBase implements VpnEngine {
   final XrayPorts ports;
   late final XrayConfigBuilder configBuilder;
 
+  /// Захвата сокетов приложения по умолчанию нет — TCP-пинг честный.
+  /// Windows с поднятым TUN переопределяет ([WindowsEngine.captureCoreApi]);
+  /// Android — нет: там собственный пакет исключён из VpnService
+  /// (`exclude_package`), и сокеты приложения идут мимо туннеля.
+  @override
+  LiveCoreApi? get captureCoreApi => null;
+
   /// Построитель с ТЕКУЩИМИ кредами локальных inbound'ов.
   ///
   /// ⚠️ Именно так, а не «выдать креды построителю один раз»: креды

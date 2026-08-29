@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import '../core/models/vpn_server.dart';
 import '../core/net/speed_test.dart';
 import '../core/probe/cancel_token.dart';
+import '../core/probe/clash_delay.dart';
 import '../core/probe/ping_result.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/probe/tcp_ping.dart';
@@ -84,10 +85,25 @@ class ProbeController extends ChangeNotifier {
   int Function()? liveProxyPort;
   String? Function()? activeServerKey;
 
+  /// Захватывает ли СЕЙЧАС туннель сокеты самого приложения (поднятый TUN на
+  /// Windows). Пока это так, TCP-рукопожатие фазы 1 завершает локальный стек
+  /// sing-box за 1–3 мс — у ВСЕХ серверов, включая мёртвые и внесённые в
+  /// исключения (проверено живыми замерами в VM). Такие цифры помечаются
+  /// [PingResult.latencyThroughTunnel], и интерфейс их прячет.
+  bool Function()? captureActive;
+
+  /// Замер текущего сервера САМИМ ядром (`GET /proxies/{tag}/delay` Clash API)
+  /// — `null`, когда живого ядра с Clash API нет (нет TUN, канал ещё не
+  /// «Подключено»). Запрос выполняет процесс ядра через свой outbound, до
+  /// сетевого стека системы — единственный путь, не искажённый самозахватом.
+  ClashDelayProbe? Function()? liveCoreDelay;
+
   ProbeController({
     ProbeHarness Function()? harnessFactory,
     this.liveProxyPort,
     this.activeServerKey,
+    this.captureActive,
+    this.liveCoreDelay,
   }) : _harnessFactory = harnessFactory ?? createProbeHarness;
 
   bool get running => _running;
@@ -670,6 +686,9 @@ class ProbeController extends ChangeNotifier {
     final head = twoPhase
         ? _verifyHead(settings)
         : (proxySingle ? method == PingMethod.proxyHead : false);
+    // Снимок на весь прогон: если туннель погаснет посреди прогона, часть
+    // цифр всё равно снята при захвате — честнее пометить все одинаково.
+    final captured = captureActive?.call() ?? false;
     // ⚠️ ВНУТРИ try. Раньше строка стояла выше него, и на платформе без ICMP
     // (Android — сырые сокеты без root недоступны) `createIcmpPinger()`
     // бросал ДО входа в try: `finally` не отрабатывал, `_running` оставался
@@ -710,6 +729,9 @@ class ProbeController extends ChangeNotifier {
                 lossPct: r.lossPct,
                 verification: PingVerification.notRun,
                 latencyMethod: PingMethod.icmp,
+                // Эхо при поднятом TUN тоже перехватывает туннель — цифра
+                // такая же местная, как у TCP.
+                latencyThroughTunnel: captured,
                 measuredAt: DateTime.now(),
               );
               _done.add(s.key);
@@ -735,6 +757,9 @@ class ProbeController extends ChangeNotifier {
                     ? PingVerification.pending
                     : PingVerification.notRun,
                 latencyMethod: PingMethod.tcp,
+                // При поднятом TUN рукопожатие завершил локальный стек
+                // туннеля — миллисекунды не про сервер, интерфейс их прячет.
+                latencyThroughTunnel: captured,
                 measuredAt: DateTime.now(),
               );
               survivors.add(s);
@@ -773,13 +798,35 @@ class ProbeController extends ChangeNotifier {
       // ⚠️ Ровно один сервер — подключённый. Через живой канал идёт трафик
       // ТЕКУЩЕГО узла: для остальных такая проба измеряла бы чужой канал и
       // выдала бы одинаковые цифры всему списку.
-      final live = _liveTargetIn(verify);
-      if (live != null && !cancel.isCancelled) {
-        verify.remove(live.server);
-        AppLog.i('Проверка «${live.server.remark}»: через ЖИВОЕ ядро '
-            '(127.0.0.1:${live.port}) — тем же путём, что идёт обычный трафик');
-        await _applyVerify(live.server, live.port, settings,
+      // ── ПРИ ПОДНЯТОМ TUN текущий сервер меряет САМО ЯДРО (Clash API).
+      //
+      // ⚠️ Замер идёт из списка ВСЕГО прогона, а не только из verify: без
+      // двухфазности фаза 2 для него не планировалась вовсе — а именно тогда
+      // на экране оставалась ложная TCP-цифра в 1–3 мс. Честный замер обязан
+      // её заменить независимо от режима проверки.
+      final core = liveCoreDelay?.call();
+      final liveAll = core != null ? _liveTargetIn(servers) : null;
+      // Для журнала ниже: подключённый сервер проверен живьём — любым путём.
+      var liveChecked = false;
+      if (core != null && liveAll != null && !cancel.isCancelled) {
+        verify.removeWhere((s) => s.key == liveAll.server.key);
+        AppLog.i('Замер «${liveAll.server.remark}» самим ядром: '
+            'GET /proxies/${core.tag}/delay через Clash API '
+            '(127.0.0.1:${core.port}) — запрос выполняет процесс ядра, '
+            'мимо захвата TUN');
+        await _applyCoreDelay(liveAll.server, core, liveAll.port, settings,
             head: head, forceProxy: proxySingle);
+        liveChecked = true;
+      } else {
+        final live = _liveTargetIn(verify);
+        if (live != null && !cancel.isCancelled) {
+          verify.remove(live.server);
+          AppLog.i('Проверка «${live.server.remark}»: через ЖИВОЕ ядро '
+              '(127.0.0.1:${live.port}) — тем же путём, что идёт обычный трафик');
+          await _applyVerify(live.server, live.port, settings,
+              head: head, forceProxy: proxySingle);
+          liveChecked = true;
+        }
       }
 
       // Платформа без харнесса (Android): проверить «реально ли проксирует»
@@ -803,7 +850,7 @@ class ProbeController extends ChangeNotifier {
         // было, дороже отсутствующей строки — по нему потом ищут причину.
         AppLog.i('Проба через прокси: харнесса нет, не проверено '
             '${verify.length}'
-            '${live != null ? " (подключённый сервер проверен по живому каналу)" : ""}');
+            '${liveChecked ? " (подключённый сервер проверен по живому каналу)" : ""}');
         notifyListeners();
       } else if (verify.isNotEmpty && !cancel.isCancelled) {
         // Полный конфиг (правка/профиль «Авто …») — своим харнессом: у него свои
@@ -971,6 +1018,9 @@ class ProbeController extends ChangeNotifier {
       latencyMs: tcpMs ?? ready,
       proxyRttMs: ready,
       reachableViaProxy: true,
+      // Пометка «мерили сквозь туннель» относится к TCP-цифре и едет с ней.
+      latencyThroughTunnel:
+          tcpMs != null && (_results[s.key]?.latencyThroughTunnel ?? false),
       verification: PingVerification.passed,
       // Подпись обязана называть то, что реально измерено: замер платформы —
       // это запрос через прокси, а не TCP-рукопожатие.
@@ -1133,6 +1183,60 @@ class ProbeController extends ChangeNotifier {
     }
   }
 
+  /// Замер текущего сервера САМИМ ядром и запись итога.
+  ///
+  /// ⚠️ Показываемая цифра — время запроса к тестовому адресу ЧЕРЕЗ туннель
+  /// (TCP+TLS+HTTP), а не рукопожатие до узла: это другая величина, поэтому
+  /// подпись — [PingMethod.coreUrl], и плашка обязана её показывать отдельно
+  /// от TCP-цифр. Заодно это и есть проверка канала: запрос через сервер
+  /// реально прошёл (или нет) — вердикт настоящий.
+  ///
+  /// Недоступность самого Clash API ([ClashDelayResult.unavailable]) — не
+  /// вердикт серверу: тогда откатываемся на прежний путь через живой
+  /// прокси-порт [livePort] — он тоже идёт через живое ядро и тоже честный.
+  Future<void> _applyCoreDelay(
+      VpnServer s, ClashDelayProbe core, int livePort, AppSettings settings,
+      {required bool head, required bool forceProxy}) async {
+    final r = await core.measure(
+      testUrl: settings.testUrl,
+      timeout: Duration(milliseconds: settings.pingTimeoutMs),
+    );
+    if (r.unavailable) {
+      AppLog.w('Clash API ядра не ответил — проверяю «${s.remark}» через '
+          'живой прокси-порт 127.0.0.1:$livePort');
+      await _applyVerify(s, livePort, settings,
+          head: head, forceProxy: forceProxy);
+      return;
+    }
+    try {
+      if (r.ok) {
+        _results[s.key] = PingResult(
+          outcome: PingOutcome.ok,
+          latencyMs: r.delayMs,
+          proxyRttMs: r.delayMs,
+          reachableViaProxy: true,
+          verification: PingVerification.passed,
+          latencyMethod: PingMethod.coreUrl,
+          measuredAt: DateTime.now(),
+        );
+      } else {
+        // Ядро пробовало и не смогло: через ЭТОТ канал запрос не проходит.
+        // TCP-цифру фазы 1 не оставляем — при поднятом TUN она местная.
+        _results[s.key] = PingResult(
+          outcome: r.outcome == PingOutcome.timeout
+              ? PingOutcome.timeout
+              : PingOutcome.failed,
+          verification: PingVerification.failed,
+          latencyMethod: PingMethod.coreUrl,
+          measuredAt: DateTime.now(),
+        );
+      }
+      notifyListeners();
+    } finally {
+      _done.add(s.key);
+    }
+  }
+
   /// GET/HEAD через прокси-порт и запись итога. Обычно показываемая цифра остаётся
   /// TCP; для серверов без TCP (hysteria2, полный конфиг) и при одиночном методе
   /// «через прокси» ([forceProxy]) — RTT пробы: другого числа нет.
@@ -1172,6 +1276,9 @@ class ProbeController extends ChangeNotifier {
                 latencyMs: _results[s.key]?.latencyMs,
                 verification: PingVerification.notRun,
                 latencyMethod: PingMethod.tcp,
+                // Пометка «мерили сквозь туннель» едет вместе с цифрой.
+                latencyThroughTunnel:
+                    _results[s.key]?.latencyThroughTunnel ?? false,
                 measuredAt: _results[s.key]?.measuredAt ?? DateTime.now(),
               );
         notifyListeners();
@@ -1207,6 +1314,8 @@ class ProbeController extends ChangeNotifier {
           verification: verdict,
           reachableViaProxy: probe.ok,
           latencyMethod: PingMethod.tcp,
+          // Пометка «мерили сквозь туннель» едет вместе с цифрой.
+          latencyThroughTunnel: _results[s.key]?.latencyThroughTunnel ?? false,
           measuredAt: DateTime.now(),
         );
       }

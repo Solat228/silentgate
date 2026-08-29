@@ -53,6 +53,18 @@ class PingResult {
   final PingVerification verification;
 
   final PingMethod? latencyMethod;
+
+  /// TCP-замер сделан ПРИ ПОДНЯТОМ TUN — рукопожатие завершил локальный стек
+  /// туннеля, и [latencyMs] говорит про 127.0.0.1, а не про сервер.
+  ///
+  /// ⚠️ Живой замер в VM: при активном туннеле ВСЕ серверы, включая мёртвые и
+  /// внесённые в `route_exclude_address`, «отвечали» за 1–3 мс. Такую цифру
+  /// нельзя ни показывать как задержку, ни сравнивать между серверами —
+  /// интерфейс обязан её спрятать и объяснить почему. Флаг, а не подмена
+  /// `outcome`: достижимость и верификация фазы 2 (она идёт харнессом мимо
+  /// туннеля) остаются настоящими, врёт только миллисекундная цифра.
+  final bool latencyThroughTunnel;
+
   final DateTime? measuredAt;
 
   /// [working] — совместимость: сохранён как ПРОИЗВОДНЫЙ параметр, потому что
@@ -68,6 +80,7 @@ class PingResult {
     PingVerification? verification,
     bool? working,
     this.latencyMethod,
+    this.latencyThroughTunnel = false,
     this.measuredAt,
   }) : verification = verification ??
             (working == null
@@ -132,6 +145,7 @@ class PingResult {
         reachableViaProxy: reachableViaProxy,
         verification: v,
         latencyMethod: latencyMethod,
+        latencyThroughTunnel: latencyThroughTunnel,
         measuredAt: measuredAt,
       );
 
@@ -146,6 +160,10 @@ class PingResult {
         // прежняя версия приложения (откат сборки), а она знает только это поле.
         'working': working,
         'latencyMethod': latencyMethod?.name,
+        // Пишется всегда, даже false: пометка «цифра — про туннель, не про
+        // сервер» обязана переживать перезапуск вместе с самой цифрой, иначе
+        // после рестарта ложные 1–3 мс показывались бы как честные.
+        'latencyThroughTunnel': latencyThroughTunnel,
         'measuredAt': measuredAt?.toIso8601String(),
       };
 
@@ -178,6 +196,7 @@ class PingResult {
       reachableViaProxy: j['reachableViaProxy'] as bool? ?? false,
       verification: verification,
       latencyMethod: lm,
+      latencyThroughTunnel: j['latencyThroughTunnel'] == true,
       measuredAt:
           j['measuredAt'] != null ? DateTime.tryParse('${j['measuredAt']}') : null,
     );

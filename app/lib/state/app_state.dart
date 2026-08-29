@@ -489,6 +489,11 @@ class AppState extends ChangeNotifier {
   /// Локальный http-прокси порт активного ядра (для живой проверки сервисов).
   int get httpProxyPort => _engine.httpProxyPort;
 
+  /// Clash API ядра, захватившего сокеты приложения (поднятый TUN на Windows);
+  /// `null` — захвата нет и TCP-пинг честный. Прокидывается в `ProbeController`
+  /// через `home_screen` — как и [httpProxyPort].
+  LiveCoreApi? get captureCoreApi => _engine.captureCoreApi;
+
   // #8 — состояние автоподбора TUN для прогресс-тоста (логика — в [TunAutotuneTracking]).
   bool get tunAutotuning => _autotune.running;
   String? get tunAutotuneMessage => _autotune.message;

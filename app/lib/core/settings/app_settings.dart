@@ -115,7 +115,14 @@ extension LogRetentionAge on LogRetention {
 }
 
 /// Способы пинга (как в Happ → Настройки → Пинг).
-enum PingMethod { proxyGet, proxyHead, tcp, icmp }
+///
+/// [coreUrl] в настройках НЕ выбирается (выпадающий список в
+/// `settings_screen` перечисляет методы явно) — это подпись замера,
+/// который ядро выполнило само через Clash API (`/proxies/{tag}/delay`)
+/// при поднятом туннеле. Величина другая: время запроса к тестовому адресу
+/// через туннель, а не рукопожатие до узла — потому и отдельное имя, чтобы
+/// плашка не подписывала её как TCP.
+enum PingMethod { proxyGet, proxyHead, tcp, icmp, coreUrl }
 
 /// Стратегия автонастройки.
 enum AutoConfigStrategy { firstMatch, bestWithinBudget }

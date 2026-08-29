@@ -229,6 +229,85 @@ void main() {
     }
   });
 
+  group('⚠️ Широкое окно: раскладка `sides` не должна повисать островом', () {
+    /// Баг владельца (29.08.2026): на растянутом окне колонки и кнопка
+    /// рисовались НАТУРАЛЬНЫМ (не зависящим от ширины окна) размером и
+    /// центрировались одним куском — вся лишняя ширина уходила в поля СНАРУЖИ
+    /// блока, а не доставалась содержимому. Проверяем именно ЭТО: сколько
+    /// реальной ширины окна занял блок «колонки + кнопка», а не просто
+    /// отсутствие переполнения (оно уже покрыто выше и остаётся зелёным даже
+    /// на баге — крошечный остров посередине тоже не переполняется).
+    ///
+    /// Два широких окна — не совпадение: у порога с потолком добавки к зазору
+    /// (`_gapExtraCap` в `ServiceChecksSides`) доля ширины закономерно падает
+    /// по мере роста окна (в знаменателе становится больше, а числитель
+    /// упирается в потолок). Порог теста подобран так, чтобы держаться ниже
+    /// более тесного из двух случаев (1920×1080) с запасом, а не подогнан под
+    /// каждое окно отдельно.
+    const wideScreens = <Size>[
+      Size(1400, 900),
+      Size(1920, 1080),
+    ];
+
+    /// ⚠️ ПОЧЕМУ ИМЕННО 0.35. До правки блок занимал фиксированные 392 px
+    /// независимо от окна — это 28 % от 1400 и 20 % от 1920. Порог в 35 %
+    /// заведомо выше обоих старых чисел (баг не может случайно пройти тест) и
+    /// одновременно ниже худшего нового случая (1920×1080 даёт ≈37 %, см.
+    /// расчёт в шапке группы) — то есть порог проверяет РОСТ, а не подогнан
+    /// под конкретный пиксель.
+    const minOccupiedFraction = 0.35;
+
+    for (final screen in wideScreens) {
+      testWidgets('${screen.width.toInt()}×${screen.height.toInt()}',
+          (t) async {
+        t.view.physicalSize = screen;
+        t.view.devicePixelRatio = 1.0;
+        addTearDown(t.view.reset);
+
+        final state = AppState(engine: _FakeEngine())..markUserConnect();
+        const diameter = 148.0; // высота окна >= 600 — не "короткий" случай.
+
+        await t.pumpWidget(host(
+          ConnectCenterpiece(
+            serverName: '🇩🇪 🚀Германия 2.7 (edge)',
+            httpPort: 10809,
+            services: ServiceChecks.catalog,
+            layout: ServiceChecksLayout.sides,
+            button: Builder(
+              builder: (context) => ConnectButton(
+                status: const VpnStatus(VpnConnectionState.connected),
+                diameter: diameter,
+                onTap: () {},
+              ),
+            ),
+          ),
+          width: screen.width,
+          state: state,
+        ));
+        await t.pump();
+
+        expect(t.takeException(), isNull,
+            reason: '${screen.width}×${screen.height}: вёрстка переполнилась');
+
+        final rowRect =
+            t.getRect(find.byKey(const ValueKey('serviceChecksSidesRow')));
+        final fraction = rowRect.width / screen.width;
+        expect(fraction, greaterThanOrEqualTo(minOccupiedFraction),
+            reason: '${screen.width}×${screen.height}: блок «колонки + '
+                'кнопка» занял только ${(fraction * 100).toStringAsFixed(1)} % '
+                'ширины окна (${rowRect.width} из ${screen.width}) — похоже на '
+                'прежний маленький остров посреди пустоты');
+
+        // Кнопка при этом остаётся заявленного диаметра, а не раздувается
+        // вместе с блоком — раскладка вокруг неё двигается, а не она сама.
+        final buttonRect = t.getRect(find.byType(ConnectButton));
+        expect(buttonRect.width, closeTo(diameter, 0.5),
+            reason: '${screen.width}×${screen.height}: диаметр кнопки '
+                'изменился (${buttonRect.width} вместо $diameter)');
+      });
+    }
+  });
+
   group('Границы: кнопка БЕЗ подключения — только значок, без таймера', () {
     /// Не весь матрикс 11×5 — сюда крайние случаи из главной группы уже
     /// доказали структурную безопасность формулы (см. шапку файла), здесь

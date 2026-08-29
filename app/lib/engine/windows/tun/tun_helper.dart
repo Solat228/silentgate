@@ -674,12 +674,24 @@ class TunHelper {
   /// `false` — не дождались (хелпера, возможно, и не было: права не дали,
   /// задача не запустилась). Вызывающий обязан решить сам; молча продолжать
   /// нельзя — оставленный файл убьёт СЛЕДУЮЩИЙ хелпер сразу после старта.
+  /// ⚠️ [abort] ПРОВЕРЯЕТСЯ ВНУТРИ ЦИКЛА, А НЕ ТОЛЬКО СНАРУЖИ.
+  ///
+  /// Это ожидание длится до пяти секунд и повторяется на КАЖДОЙ из девяти
+  /// комбинаций автоподбора. Без проверки отмены нажатие «Отключить» во время
+  /// перебора не действовало до сорока пяти секунд: жалоба владельца 28.08.2026
+  /// («при переборе адресов VPN не даёт себя выключить»). Отмена здесь — не
+  /// оптимизация, а право человека прекратить то, что он начал.
   static Future<bool> waitStopConsumed(String stopPath,
-      {Duration timeout = const Duration(seconds: 5)}) async {
+      {Duration timeout = const Duration(seconds: 5),
+      bool Function()? abort}) async {
     if (stopPath.isEmpty) return true;
     final f = File(stopPath);
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
+      // ⚠️ «Отменили» отдаём как `true` — «ждать больше нечего». Ответ `false`
+      // означал бы «никто не забрал файл», и вызывающий стёр бы его сам,
+      // добив прошлого помощника ради попытки, которая уже отменена.
+      if (abort?.call() ?? false) return true;
       try {
         if (!f.existsSync()) return true;
       } catch (_) {

@@ -1412,6 +1412,23 @@ class AppLocalizationsTr extends AppLocalizations {
       'Sunucuya TCP gecikmesi. Sunucu çalışıyor: TCP üzerinden yanıt verdi ve tünel kontrolünü (GET/HEAD) geçti';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms ms •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'VPN çekirdeğinin kendisi tünel üzerinden ölçtü: test adresine yapılan isteğin toplam süresi (sunucuya TCP gecikmesi değil). Sunucu çalışıyor — istek geçti.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'VPN çekirdeği test adresini bu sunucu üzerinden açamadı — tünelden trafik geçmiyor';
+
+  @override
+  String get pingViaTunnelNote =>
+      'Sayı gizlendi: ölçüm VPN açıkken yapıldı ve sunucu yerine yerel tünel yanıt verdi. Dürüst bir TCP ölçümü için VPN\'i kapatın.';
+
+  @override
   String get searchHint => 'Ada, ülkeye, adrese göre ara…';
 
   @override

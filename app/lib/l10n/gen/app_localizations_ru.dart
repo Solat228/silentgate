@@ -1409,6 +1409,23 @@ class AppLocalizationsRu extends AppLocalizations {
       'Задержка TCP до сервера. Сервер рабочий: ответил по TCP и прошёл проверку через туннель (GET/HEAD)';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms мс •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'Замер выполнен самим ядром VPN через туннель: время полного запроса к тестовому адресу (не TCP до сервера). Сервер рабочий — запрос прошёл.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'Ядро VPN не смогло открыть тестовый адрес через этот сервер — трафик по туннелю не идёт';
+
+  @override
+  String get pingViaTunnelNote =>
+      'Число скрыто: замер сделан при поднятом VPN, и ответил локальный туннель, а не сервер. Для честного TCP-замера отключите VPN.';
+
+  @override
   String get searchHint => 'Поиск по названию, стране, адресу…';
 
   @override

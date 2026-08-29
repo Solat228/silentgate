@@ -388,19 +388,30 @@ class ServiceChecksRows extends StatelessWidget {
 /// Тот виджет резервировал под колонку фиксированную высоту (семь строк) и на
 /// каталоге в 14 сервисов вылезал за нижний край телефона — см. шапку файла и
 /// [ServiceChecksLayout] в `app_settings.dart`. Здесь высота, наоборот, НИКОГДА
-/// не фиксирована: `FittedBox` в конце [build] измеряет настоящий размер
-/// содержимого при реальных ограничениях родителя и уменьшает ВЕСЬ блок (обе
-/// колонки и кнопку — ОДНИМ множителем) ровно настолько, чтобы он влез. Это не
-/// эвристика «подобрали число и надеемся» — `RenderFittedBox` физически не
-/// может отрисовать ребёнка крупнее выделенного места, поэтому переполнение
-/// (`RenderFlex overflowed`) здесь структурно невозможно ни при каком экране.
+/// не фиксирована — переполнение (`RenderFlex overflowed`) структурно
+/// невозможно ни при каком экране, см. [build].
+///
+/// ⚠️ БЫЛ БАГ: ОДИН `FittedBox` НА ВЕСЬ БЛОК ТЕРЯЛ ШИРИНУ НА ШИРОКОМ ОКНЕ.
+/// До 29.08.2026 колонки и кнопка лежали в одном `Row` фиксированного размера
+/// (`natural.width` — константа, не зависящая от окна), и этот `Row` целиком
+/// заворачивался в `FittedBox(fit: scaleDown)`. `BoxFit.scaleDown` умеет только
+/// СЖИМАТЬ — если натуральный размер блока и без того меньше окна, множитель
+/// остаётся 1.0, `FittedBox` рисует блок 1:1 и берёт себе ровно его размер, а
+/// не размер, который дал родитель. На растянутом окне это давало крошечный
+/// (392 px) остров с кнопкой и двумя колонками, центрированный посреди
+/// огромного пустого поля, — ровно то, на что пожаловался владелец. Сейчас
+/// [build] отдельно обрабатывает случай «места с избытком по обеим осям»: без
+/// FittedBox вовсе, с зазором у кнопки, растущим вместе с окном (в разумных,
+/// капнутых пределах) — см. [_gapExtraShare], [_gapExtraCap]. Случай нехватки
+/// места остался БЕЗ ИЗМЕНЕНИЙ — прежний проверенный `FittedBox` вокруг всего
+/// блока, тот же уровень надёжности.
 ///
 /// ⚠️ ГРУБАЯ ОЦЕНКА МАСШТАБА (`_estimateScale`) — ДРУГОЕ ЧИСЛО, И ОНО НЕ ОБЯЗАНО
 /// БЫТЬ ТОЧНЫМ. От него зависит только порог, ниже которого колонки уступают
 /// место привычным рядам под кнопкой, потому что мелкий текст и микроскопические
 /// значки читать нельзя, даже если формально они поместились. Ошибка в этой
 /// оценке — вопрос красоты (колонки чуть мельче или крупнее, чем могли бы), а не
-/// целостности вёрстки: та гарантирована `FittedBox` выше независимо от неё.
+/// целостности вёрстки: та гарантирована по-прежнему [build] независимо от неё.
 class ServiceChecksSides extends StatelessWidget {
   const ServiceChecksSides({
     super.key,
@@ -431,8 +442,24 @@ class ServiceChecksSides extends StatelessWidget {
   /// `FittedBox` ниже досожмёт фактический размер вместе со всем остальным.
   static const double _naturalButton = 148.0;
 
-  /// Просвет между колонкой и кнопкой на масштабе 1.0.
+  /// Минимальный просвет между колонкой и кнопкой — то, что остаётся, когда
+  /// добавить нечего (места впритык) или расти некуда (см. [_gapExtraCap]).
   static const double _gap = 14.0;
+
+  /// Доля ЛИШНЕЙ ширины (сверх натурального размера всего блока), уходящая в
+  /// зазор у кнопки, когда места хватает с избытком — на каждую сторону.
+  ///
+  /// ⚠️ НЕ БОЛЬШЕ 0.5. [build] опирается на то, что `2 * доп.зазор` не
+  /// превышает всю лишнюю ширину — иначе блок стал бы шире окна. Само число —
+  /// вопрос вкуса (насколько заметно раздвигаются колонки на широком окне), не
+  /// целостности: целостность держит `min` с [_gapExtraCap] и с половиной
+  /// остатка одновременно.
+  static const double _gapExtraShare = 0.4;
+
+  /// Потолок ДОБАВКИ к [_gap] на сторону. Без потолка на сверхшироком мониторе
+  /// зазор рос бы неограниченно вместе с окном — та же жалоба «огромная
+  /// пустота», только перенесённая из полей у краёв в промежуток у кнопки.
+  static const double _gapExtraCap = 160.0;
 
   /// Ширина одной колонки на масштабе 1.0. Разная для `sides` (нужно место под
   /// пару «до → после») и `grid` (только иконка с кружком статуса).
@@ -455,7 +482,8 @@ class ServiceChecksSides extends StatelessWidget {
     final natural = _naturalSize(split, dense: dense);
 
     return LayoutBuilder(builder: (context, c) {
-      if (_estimateScale(c, natural) < _minReadableScale) {
+      final scale = _estimateScale(c, natural);
+      if (scale < _minReadableScale) {
         // Места категорически мало — те же ряды, что и на узком телефоне,
         // вместо нечитаемой мелочи по бокам.
         return Column(
@@ -466,37 +494,82 @@ class ServiceChecksSides extends StatelessWidget {
           ],
         );
       }
-      return FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Row(
+
+      final left = SizedBox(
+        width: _columnWidth(dense),
+        child: _SideColumn(
+          rows: split.left,
+          httpPort: httpPort,
+          dense: dense,
+          alignEnd: true,
+        ),
+      );
+      final right = SizedBox(
+        width: _columnWidth(dense),
+        child: _SideColumn(
+          rows: split.right,
+          httpPort: httpPort,
+          dense: dense,
+          alignEnd: false,
+        ),
+      );
+      final buttonBox = SizedBox(
+        width: _naturalButton,
+        height: _naturalButton,
+        child: Center(child: button),
+      );
+
+      // `_estimateScale` капает результат единицей — `scale >= 1.0` значит
+      // «>= 1.0 ровно», то есть натуральный размер блока УЖЕ помещается по
+      // обеим осям и сжимать нечего.
+      if (scale >= 1.0) {
+        // ⚠️ ЗДЕСЬ И ЖИЛ БАГ «ОГРОМНЫЕ ПУСТОТЫ» — см. предысторию в шапке
+        // класса. Раньше в этом случае весь блок (колонки + кнопка) рисовался
+        // 1:1 и центрировался ОДНИМ куском, а вся лишняя ширина окна уходила в
+        // поля СНАРУЖИ блока, не доставаясь содержимому вовсе. Здесь вместо
+        // этого часть лишней ширины уходит в зазор у кнопки — колонки и кнопка
+        // остаются на своём читаемом размере (раздувать иконки до нелепого
+        // было бы хуже, чем оставить их как есть), но сам блок ощутимо шире
+        // прежнего острова и гораздо ближе к центру внимания на экране.
+        final leftover = c.maxWidth - natural.width;
+        final extraGap = leftover <= 0
+            ? 0.0
+            : math.min(leftover / 2 * _gapExtraShare, _gapExtraCap);
+        final gap = _gap + extraGap;
+        return Row(
+          // Ключ — только чтобы страж вёрстки мог измерить фактическую
+          // ширину блока напрямую (`_SideColumn` приватен и типом из теста не
+          // достать); на поведение не влияет.
+          key: const ValueKey('serviceChecksSidesRow'),
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            SizedBox(
-              width: _columnWidth(dense),
-              child: _SideColumn(
-                rows: split.left,
-                httpPort: httpPort,
-                dense: dense,
-                alignEnd: true,
-              ),
-            ),
+            left,
+            SizedBox(width: gap),
+            buttonBox,
+            SizedBox(width: gap),
+            right,
+          ],
+        );
+      }
+
+      // Мало места хотя бы по одной оси (но выше порога читаемости) — прежний
+      // проверенный способ: единый `FittedBox` сжимает весь блок (колонки И
+      // кнопку) ОДНИМ множителем. `RenderFittedBox` физически не отрисует
+      // ребёнка крупнее выделенного места, поэтому переполнение здесь
+      // структурно невозможно — этот путь НЕ менялся 29.08.2026 ровно поэтому.
+      return FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          key: const ValueKey('serviceChecksSidesRow'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            left,
             const SizedBox(width: _gap),
-            SizedBox(
-              width: _naturalButton,
-              height: _naturalButton,
-              child: Center(child: button),
-            ),
+            buttonBox,
             const SizedBox(width: _gap),
-            SizedBox(
-              width: _columnWidth(dense),
-              child: _SideColumn(
-                rows: split.right,
-                httpPort: httpPort,
-                dense: dense,
-                alignEnd: false,
-              ),
-            ),
+            right,
           ],
         ),
       );

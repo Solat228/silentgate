@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/probe/ping_result.dart';
+import '../../core/settings/app_settings.dart' show PingMethod;
 import '../../l10n/gen/app_localizations.dart';
 import 'measured_at.dart';
 
@@ -116,13 +117,35 @@ class PingChip extends StatelessWidget {
       case PingOutcome.failed:
         // #12 — мёртв (не ответил по TCP): НЕЯРКИЙ красный (виден на тёмном фоне,
         // но не кричит как чистый красный).
+        //
+        // ⚠️ Провал замера ядром — другая новость: не «порт молчит», а «ядро
+        // не открыло тестовый адрес через этот канал». Подсказка обязана
+        // называть то, что случилось, — иначе человек ищет мёртвый порт там,
+        // где не идёт трафик.
         return _pill(l.pingNa, _dimRed, m,
-            tooltip: _tip(context, l.pingNaTooltip));
+            tooltip: _tip(
+                context,
+                result.latencyMethod == PingMethod.coreUrl
+                    ? l.pingCoreFailedTooltip
+                    : l.pingNaTooltip));
       case PingOutcome.timeout:
         return _pill(l.pingTimeout, _dimRed, m,
-            tooltip: _tip(context, l.pingTimeoutTooltip));
+            tooltip: _tip(
+                context,
+                result.latencyMethod == PingMethod.coreUrl
+                    ? l.pingCoreFailedTooltip
+                    : l.pingTimeoutTooltip));
       case PingOutcome.ok:
-        final ms = result.latencyMs;
+        // Замер сделан САМИМ ядром через туннель — величина другая (время
+        // запроса к тестовому адресу, не TCP до узла), поэтому у числа своя
+        // подпись с пометкой; смешивать её с TCP-цифрами без метки нельзя.
+        final viaCore = result.latencyMethod == PingMethod.coreUrl;
+        // TCP-цифра, снятая при поднятом TUN, — про локальный туннель, а не
+        // про сервер (1–3 мс у всех подряд). Не показываем её вовсе: ложное
+        // число хуже отсутствующего. Причина — в подсказке (см. [_tip]).
+        final ms = result.latencyThroughTunnel && !viaCore
+            ? null
+            : result.latencyMs;
         switch (result.verification) {
           case PingVerification.pending:
             // Проверка ещё идёт: число уже есть (это TCP), вердикта — нет.
@@ -143,14 +166,22 @@ class PingChip extends StatelessWidget {
                 tooltip: _tip(context, l.pingNoProxyTooltip));
           case PingVerification.passed:
             final color = ms == null
-                ? Colors.grey
+                // Число спрятано (замер сквозь туннель), но проверка канала
+                // ПРОШЛА по-настоящему — зелёный честен и без цифры.
+                ? (result.latencyThroughTunnel ? Colors.green : Colors.grey)
                 : ms < 150
                     ? Colors.green
                     : ms < 300
                         ? Colors.amber
                         : Colors.orange;
-            return _pill(ms != null ? l.pingMs(ms) : l.pingOk, color, m,
-                tooltip: _tip(context, l.pingOkTooltip));
+            return _pill(
+                ms != null
+                    ? (viaCore ? l.pingCoreMs(ms) : l.pingMs(ms))
+                    : l.pingOk,
+                color,
+                m,
+                tooltip: _tip(
+                    context, viaCore ? l.pingCoreTooltip : l.pingOkTooltip));
         }
     }
   }
@@ -168,9 +199,17 @@ class PingChip extends StatelessWidget {
   /// отвечала «во сколько», а подсказка скорости — «когда»; владелец увидел
   /// это как две разные величины в соседних плашках.
   String _tip(BuildContext context, String base) {
+    final l = AppLocalizations.of(context);
+    // Причина спрятанного числа: TCP-замер прошёл при поднятом TUN, и
+    // рукопожатие завершил локальный туннель. Без этой строки пустое место
+    // на месте миллисекунд выглядит как поломка пинга.
+    final note = result.latencyThroughTunnel &&
+            result.latencyMethod != PingMethod.coreUrl
+        ? '\n${l.pingViaTunnelNote}'
+        : '';
     final at = result.measuredAt;
-    if (at == null) return base;
-    return '$base\n${measuredAtLine(context, at)}';
+    if (at == null) return '$base$note';
+    return '$base$note\n${measuredAtLine(context, at)}';
   }
 
   Widget _pill(String text, Color color, _ChipMetrics m, {String? tooltip}) =>

@@ -1423,6 +1423,23 @@ class AppLocalizationsPt extends AppLocalizations {
       'Latência TCP até o servidor. O servidor está funcionando: respondeu por TCP e passou na verificação do túnel (GET/HEAD)';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms ms •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'Medido pelo próprio núcleo da VPN através do túnel: tempo total da solicitação ao endereço de teste (não a latência TCP até o servidor). O servidor funciona — a solicitação passou.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'O núcleo da VPN não conseguiu abrir o endereço de teste através deste servidor — o tráfego não passa pelo túnel';
+
+  @override
+  String get pingViaTunnelNote =>
+      'Número oculto: a medição ocorreu com a VPN ativa e quem respondeu foi o túnel local, não o servidor. Desconecte a VPN para uma medição TCP honesta.';
+
+  @override
   String get searchHint => 'Buscar por nome, país, endereço…';
 
   @override

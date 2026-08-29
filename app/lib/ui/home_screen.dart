@@ -21,6 +21,7 @@ import '../core/platform/app_launcher.dart';
 import '../core/platform/notification_access.dart';
 import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
+import '../core/probe/clash_delay.dart';
 import '../core/probe/ping_result.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/server_search.dart';
@@ -749,6 +750,19 @@ class _HomeScreenState extends State<HomeScreen> {
     // ⚠️ ПОДНЯТЫЙ сервер, а не выбранный в списке: клик по другому серверу
     // живой туннель не трогает, и вердикт живого канала уехал бы чужому.
     probe.activeServerKey = () => state.connectedServerKey;
+    // Поднятый TUN затягивает сокеты приложения — TCP-цифры фазы 1 с этого
+    // момента про локальный туннель, а не про серверы. Пометка идёт по самому
+    // ФАКТУ захвата (в том числе пока канал ещё поднимается)…
+    probe.captureActive = () => state.captureCoreApi != null;
+    // …а честный замер ядром — только при «Подключено»: во время подъёма
+    // outbound уже слушает, но никуда не доставляет, и тест дал бы ложный
+    // провал (та же граница, что у liveProxyPort выше).
+    probe.liveCoreDelay = () {
+      final api = state.captureCoreApi;
+      if (api == null || !state.status.isConnected) return null;
+      return ClashDelayProbe(
+          port: api.port, secret: api.secret, tag: api.proxyTag);
+    };
     // #2.2 — всё временное показываем ПОВЕРХ интерфейса: раньше эти сообщения
     // жили в компоновке и сдвигали большую кнопку Connect.
     _showTransientMessages(context, state, settings);

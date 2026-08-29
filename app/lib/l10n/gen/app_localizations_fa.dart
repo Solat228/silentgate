@@ -1407,6 +1407,23 @@ class AppLocalizationsFa extends AppLocalizations {
       'تأخیر TCP تا سرور. سرور کار می‌کند: به TCP پاسخ داد و بررسی تونل (GET/HEAD) را پشت سر گذاشت';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms میلی‌ثانیه •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'اندازه‌گیری توسط خود هسته VPN از طریق تونل: زمان کامل درخواست به آدرس آزمایشی (نه تأخیر TCP تا سرور). سرور کار می‌کند — درخواست عبور کرد.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'هسته VPN نتوانست آدرس آزمایشی را از طریق این سرور باز کند — ترافیکی از تونل عبور نمی‌کند';
+
+  @override
+  String get pingViaTunnelNote =>
+      'عدد پنهان شد: اندازه‌گیری هنگام روشن بودن VPN انجام شد و تونل محلی به‌جای سرور پاسخ داد. برای اندازه‌گیری صادقانه TCP، VPN را قطع کنید.';
+
+  @override
   String get searchHint => 'جستجو بر اساس نام، کشور، آدرس…';
 
   @override

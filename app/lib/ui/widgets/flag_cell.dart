@@ -94,14 +94,31 @@ class _DiagonalFlagPair extends StatelessWidget {
   }
 }
 
-/// Верхний левый треугольник прямоугольника (диагональ из левого-нижнего
-/// угла в правый-верхний).
+/// ⚠️ ГДЕ ПРОХОДИТ ЛИНИЯ РАЗДЕЛА — РЕШЕНИЕ ВЛАДЕЛЬЦА 28.08.2026.
+///
+/// Первая редакция резала строго из угла в угол. На живом экране это читалось
+/// плохо: у флага 34×24 угловая диагональ идёт под ~35°, и верхний флаг терял
+/// почти всю правую половину — от «мост Россия → Германия» оставалась узкая
+/// полоска, по которой страну не узнать.
+///
+/// Теперь верхняя точка сдвинута к середине верхней грани: разрез начинается
+/// посередине между углом и центром грани и уходит в противоположный угол.
+/// Наклон получается круче (около 50–60°, как и просил владелец), и обе
+/// половины остаются узнаваемыми.
+///
+/// ⚠️ ДОЛЯ, А НЕ ПИКСЕЛИ. Ячейка рисуется в разных размерах (34×24 в списке,
+/// крупнее на экране сервера), и зашитый отступ дал бы разный наклон на разных
+/// экранах — то есть «съехавшую» линию там, где её никто не менял.
+const double _splitTopFraction = 0.75;
+
+/// Верхняя левая часть: от левого верхнего угла до точки на верхней грани,
+/// затем в левый нижний угол.
 class _TopLeftTriangleClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     return Path()
       ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
+      ..lineTo(size.width * _splitTopFraction, 0)
       ..lineTo(0, size.height)
       ..close();
   }
@@ -110,12 +127,15 @@ class _TopLeftTriangleClipper extends CustomClipper<Path> {
   bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
 }
 
-/// Нижний правый треугольник — дополнение к [_TopLeftTriangleClipper].
+/// Нижняя правая часть — дополнение к [_TopLeftTriangleClipper] по той же
+/// линии раздела. ⚠️ Обе фигуры обязаны опираться на одну константу: разойдись
+/// они, между половинами появилась бы щель или нахлёст.
 class _BottomRightTriangleClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     return Path()
-      ..moveTo(size.width, 0)
+      ..moveTo(size.width * _splitTopFraction, 0)
+      ..lineTo(size.width, 0)
       ..lineTo(size.width, size.height)
       ..lineTo(0, size.height)
       ..close();

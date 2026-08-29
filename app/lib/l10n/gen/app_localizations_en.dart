@@ -1407,6 +1407,23 @@ class AppLocalizationsEn extends AppLocalizations {
       'TCP latency to the server. Server is working: it responded over TCP and passed the tunnel check (GET/HEAD)';
 
   @override
+  String pingCoreMs(Object ms) {
+    return '$ms ms •';
+  }
+
+  @override
+  String get pingCoreTooltip =>
+      'Measured by the VPN core itself through the tunnel: full request time to the test URL (not TCP latency to the server). The server works — the request went through.';
+
+  @override
+  String get pingCoreFailedTooltip =>
+      'The VPN core could not open the test URL through this server — no traffic is passing through the tunnel';
+
+  @override
+  String get pingViaTunnelNote =>
+      'Number hidden: the probe ran while the VPN was up, so the local tunnel answered instead of the server. Disconnect the VPN for an honest TCP measurement.';
+
+  @override
   String get searchHint => 'Search by name, country, address…';
 
   @override

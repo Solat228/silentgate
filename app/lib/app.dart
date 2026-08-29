@@ -7,7 +7,7 @@ import 'core/settings/app_settings.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/settings_controller.dart';
 import 'ui/home_screen.dart';
-import 'ui/widgets/vpn_active_badge.dart';
+import 'ui/widgets/vpn_active_badge.dart' show NavDepthObserver;
 
 /// Затравка фирменной палитры — одна на светлую и тёмную тему.
 const _seed = Color(0xFF3B82F6);
@@ -81,14 +81,11 @@ class SilentGateApp extends StatelessWidget {
       theme: buildAppTheme(Brightness.light),
       darkTheme: buildAppTheme(Brightness.dark),
       themeMode: _mode(settings.themeMode),
-      // Индикатор «VPN активен» живёт над всем деревом: так он работает на любом
-      // экране, включая те, что появятся позже, и его не нужно вставлять в
-      // каждый Scaffold по отдельности.
-      // Именно общий экземпляр: MaterialApp пересобирается на смену темы и
-      // языка, а новый наблюдатель начал бы счёт с нуля и потерял глубину.
+      // Следим за глубиной навигации — понадобится для будущих индикаторов и
+      // плавающих окон. Единственный экземпляр: MaterialApp пересобирается на
+      // смену темы и языка, а новый наблюдатель начал бы счёт с нуля и потерял
+      // глубину.
       navigatorObservers: [NavDepthObserver.instance],
-      builder: (context, child) =>
-          VpnActiveBadge(child: child ?? const SizedBox.shrink()),
       home: const HomeScreen(),
     );
   }
