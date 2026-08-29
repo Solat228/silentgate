@@ -3,7 +3,7 @@
 > **Что это.** Крупные вехи продукта и их честное состояние. Переписано 19.08.2026 по факту кода
 > версии **1.9.3** — до этого содержание не менялось с 27.07.2026 (версия 1.0.0), то есть отставало
 > на 26 выпусков и вводило в заблуждение: Android числился «в работе», хотя выпущен и патчится, а
-> девяти подсистем не было здесь вовсе.
+> девяти подсистем не было здесь вовсе. Сверено с кодом 29.08.2026 (версия **1.11.0**).
 >
 > **Что это НЕ.** Не список задач. Задачи — в [BACKLOG.md](BACKLOG.md) (≈119 открытых пунктов).
 > Что уже выпущено — в [CHANGELOG.md](../CHANGELOG.md).
@@ -42,7 +42,8 @@
 |---|---|---|
 | Локальный HTTP-API управления | 1.4.0 | `core/net/api_server.dart`, `state/api_handlers.dart`, [API.md](API.md) |
 | Несколько выходов одновременно | 1.2.0 | `core/singbox/exit_outbounds.dart`, `exit_tags.dart` |
-| Настоящий kill switch на фильтрах WFP | в работе | `engine/windows/kill_switch_wfp.dart`, `wfp_rules.dart`, [BACKLOG](BACKLOG.md) #32 |
+| Настоящий kill switch на фильтрах WFP | 1.10.0 | `engine/windows/kill_switch_wfp.dart`, `wfp_rules.dart` — включён и проверен живьём в VM |
+| Диагностика: журнал переживает аварию, режим логирования | 1.11.0 | `core/platform/app_log.dart` (`fatalSync`), `ui/logs_screen.dart`, `main.dart` |
 | Гео-базы с проверкой контрольной суммы | 1.5.0 | `core/geo/` |
 | Проверка доступности 14 сервисов | 1.8.0–1.9.x | `core/probe/service_check.dart`, `ui/widgets/service_checks_row.dart` |
 | Замер скорости и оценка сервера | 0.8.4 | `core/net/speed_test.dart`, `core/probe/speed_score.dart` |
