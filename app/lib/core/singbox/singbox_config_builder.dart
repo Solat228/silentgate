@@ -283,7 +283,7 @@ class TunOptions {
       blockNotice: s.blockNoticeEnabled,
       dnsHijack: s.dnsHijack,
       dnsStrategy: s.dnsStrategy,
-      logLevel: s.singboxLogLevel.name,
+      logLevel: s.effectiveSingboxLogLevel.name,
       serverIps: serverIps,
       tunnelExcludeServerIps: tunnelExcludeServerIps,
       serverDomains: serverDomains,

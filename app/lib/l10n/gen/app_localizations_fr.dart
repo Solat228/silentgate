@@ -420,6 +420,39 @@ class AppLocalizationsFr extends AppLocalizations {
       'Application et TUN (sing-box) : import d\'abonnement, ping, erreurs';
 
   @override
+  String get logModeAppTitle => 'Journal de l’application';
+
+  @override
+  String get logModeAppSub =>
+      'Ce qui est consigné sur les actions de l’application';
+
+  @override
+  String get logModeCoreTitle => 'Journal du cœur';
+
+  @override
+  String get logModeCoreSub => 'Ce qui est consigné sur le tunnel (sing-box)';
+
+  @override
+  String get logLevelWarnLabel => 'Erreurs seulement';
+
+  @override
+  String get logLevelInfoLabel => 'Normal';
+
+  @override
+  String get logLevelDebugLabel => 'Détaillé';
+
+  @override
+  String get logVerboseTitle => 'Tout consigner';
+
+  @override
+  String get logVerboseSub =>
+      'Les deux journaux au niveau le plus détaillé. À activer le temps du diagnostic : les fichiers grossissent vite.';
+
+  @override
+  String get infoLogModeApp =>
+      'Niveau de détail du journal de l’application (app.log) : import de l’abonnement, ping, connexion, erreurs. « Erreurs seulement » est le plus court ; « Normal » correspond au comportement d’avant ce réglage ; « Détaillé » consigne tout, y compris les lignes de débogage. Pèse bien moins sur la taille du fichier que le journal du cœur.';
+
+  @override
   String get thirdPartyTitle => 'Composants tiers';
 
   @override
@@ -1394,6 +1427,54 @@ class AppLocalizationsFr extends AppLocalizations {
   String get srvTileSaved => 'Enregistré';
 
   @override
+  String get srvTileUpdatedTitle => 'Serveur mis à jour';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Modifié lors de la dernière mise à jour de l\'abonnement : $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'La dernière mise à jour de l\'abonnement a modifié la fiche de ce serveur';
+
+  @override
+  String get srvFieldId => 'ID / mot de passe';
+
+  @override
+  String get srvFieldEncryption => 'Chiffrement';
+
+  @override
+  String get srvFieldSecurity => 'Sécurité de connexion';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'En-tête Host';
+
+  @override
+  String get srvFieldPath => 'Chemin';
+
+  @override
+  String get srvFieldPublicKey => 'Clé publique Reality';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Obfuscation';
+
+  @override
+  String get srvFieldObfsPassword => 'Mot de passe d\'obfuscation';
+
+  @override
+  String get srvFieldHopPorts => 'Saut de ports';
+
+  @override
   String get pingNa => 'n/d';
 
   @override
@@ -1642,6 +1723,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'Échec de la création de la tâche (UAC refusé ou bloqué par une stratégie)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Le démarrage silencieux de TUN est cassé — chaque connexion demandera les droits administrateur';
+
+  @override
+  String get tunAutoFixAction => 'Corriger';
 
   @override
   String get tunLogTitle => 'Journal TUN (sing-box)';
@@ -2766,6 +2854,54 @@ class AppLocalizationsFr extends AppLocalizations {
   String get logsNothingToClean => 'Rien à supprimer';
 
   @override
+  String get logsSettingsLabel => 'Paramètres des journaux';
+
+  @override
+  String get logsClearAllLabel => 'Effacer tous les journaux';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Supprimer ce journal';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'Journal de l\'application — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'Journal du noyau TUN — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Journal du noyau proxy — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Anciens rapports d\'assistance — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Les journaux s\'accumulent du $from au $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count jours',
+      one: '$count jour',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Effacer';
+
+  @override
   String get speedTooltip => 'Débit de téléchargement via ce serveur';
 
   @override
@@ -2997,6 +3133,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitDeadPathFix =>
       'Appuyez pour faire correspondre par nom de fichier';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'Le chemin vers « $app » est obsolète — la règle ne s’appliquera pas cette fois';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Corriger';
 
   @override
   String get splitVersionedPath =>

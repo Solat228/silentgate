@@ -834,6 +834,66 @@ abstract class AppLocalizations {
   /// **'Приложение и TUN (sing-box): импорт подписки, пинг, ошибки'**
   String get logsSub;
 
+  /// No description provided for @logModeAppTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Журнал приложения'**
+  String get logModeAppTitle;
+
+  /// No description provided for @logModeAppSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что записывать о действиях самого приложения'**
+  String get logModeAppSub;
+
+  /// No description provided for @logModeCoreTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Журнал ядра'**
+  String get logModeCoreTitle;
+
+  /// No description provided for @logModeCoreSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что записывать о работе туннеля (sing-box)'**
+  String get logModeCoreSub;
+
+  /// No description provided for @logLevelWarnLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только ошибки'**
+  String get logLevelWarnLabel;
+
+  /// No description provided for @logLevelInfoLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обычный'**
+  String get logLevelInfoLabel;
+
+  /// No description provided for @logLevelDebugLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробный'**
+  String get logLevelDebugLabel;
+
+  /// No description provided for @logVerboseTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Записывать всё подряд'**
+  String get logVerboseTitle;
+
+  /// No description provided for @logVerboseSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оба журнала на самом подробном уровне. Включайте на время разбора: файлы растут быстро.'**
+  String get logVerboseSub;
+
+  /// No description provided for @infoLogModeApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подробность журнала приложения (app.log): импорт подписки, пинг, подключение, ошибки. «Только ошибки» — самый короткий журнал; «Обычный» — как работало до появления этой настройки; «Подробный» — всё, включая отладочные строки. На размер файла влияет заметно меньше, чем журнал ядра.'**
+  String get infoLogModeApp;
+
   /// No description provided for @thirdPartyTitle.
   ///
   /// In ru, this message translates to:
@@ -2484,6 +2544,96 @@ abstract class AppLocalizations {
   /// **'Сохранено'**
   String get srvTileSaved;
 
+  /// No description provided for @srvTileUpdatedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер обновился'**
+  String get srvTileUpdatedTitle;
+
+  /// No description provided for @srvTileUpdatedFields.
+  ///
+  /// In ru, this message translates to:
+  /// **'При обновлении подписки изменилось: {fields}'**
+  String srvTileUpdatedFields(Object fields);
+
+  /// No description provided for @srvTileUpdatedGeneric.
+  ///
+  /// In ru, this message translates to:
+  /// **'При обновлении подписки обновилась запись сервера'**
+  String get srvTileUpdatedGeneric;
+
+  /// No description provided for @srvFieldId.
+  ///
+  /// In ru, this message translates to:
+  /// **'Идентификатор / пароль'**
+  String get srvFieldId;
+
+  /// No description provided for @srvFieldEncryption.
+  ///
+  /// In ru, this message translates to:
+  /// **'Шифрование'**
+  String get srvFieldEncryption;
+
+  /// No description provided for @srvFieldSecurity.
+  ///
+  /// In ru, this message translates to:
+  /// **'Защита соединения'**
+  String get srvFieldSecurity;
+
+  /// No description provided for @srvFieldSni.
+  ///
+  /// In ru, this message translates to:
+  /// **'SNI'**
+  String get srvFieldSni;
+
+  /// No description provided for @srvFieldHost.
+  ///
+  /// In ru, this message translates to:
+  /// **'Host-заголовок'**
+  String get srvFieldHost;
+
+  /// No description provided for @srvFieldPath.
+  ///
+  /// In ru, this message translates to:
+  /// **'Путь'**
+  String get srvFieldPath;
+
+  /// No description provided for @srvFieldPublicKey.
+  ///
+  /// In ru, this message translates to:
+  /// **'Публичный ключ Reality'**
+  String get srvFieldPublicKey;
+
+  /// No description provided for @srvFieldShortId.
+  ///
+  /// In ru, this message translates to:
+  /// **'Short ID (Reality)'**
+  String get srvFieldShortId;
+
+  /// No description provided for @srvFieldAlpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'ALPN'**
+  String get srvFieldAlpn;
+
+  /// No description provided for @srvFieldObfs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обфускация'**
+  String get srvFieldObfs;
+
+  /// No description provided for @srvFieldObfsPassword.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль обфускации'**
+  String get srvFieldObfsPassword;
+
+  /// No description provided for @srvFieldHopPorts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт-хоппинг'**
+  String get srvFieldHopPorts;
+
   /// No description provided for @pingNa.
   ///
   /// In ru, this message translates to:
@@ -2939,6 +3089,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось создать задачу (UAC отклонён или запрещено политикой)'**
   String get tunTaskFailed;
+
+  /// No description provided for @tunAutoFixNoticeText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права'**
+  String get tunAutoFixNoticeText;
+
+  /// No description provided for @tunAutoFixAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исправить'**
+  String get tunAutoFixAction;
 
   /// No description provided for @tunLogTitle.
   ///
@@ -4806,6 +4968,66 @@ abstract class AppLocalizations {
   /// **'Удалять нечего'**
   String get logsNothingToClean;
 
+  /// No description provided for @logsSettingsLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки логов'**
+  String get logsSettingsLabel;
+
+  /// No description provided for @logsClearAllLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить все логи'**
+  String get logsClearAllLabel;
+
+  /// No description provided for @logsDeleteCurrentLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалить этот лог'**
+  String get logsDeleteCurrentLabel;
+
+  /// No description provided for @logsClearOptionApp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лог приложения — {size}'**
+  String logsClearOptionApp(String size);
+
+  /// No description provided for @logsClearOptionTun.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лог ядра TUN — {size}'**
+  String logsClearOptionTun(String size);
+
+  /// No description provided for @logsClearOptionProxy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Лог прокси-ядра — {size}'**
+  String logsClearOptionProxy(String size);
+
+  /// No description provided for @logsClearOptionReports.
+  ///
+  /// In ru, this message translates to:
+  /// **'Старые отчёты поддержки — {size}'**
+  String logsClearOptionReports(String size);
+
+  /// No description provided for @logsClearPeriod.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логи копятся с {from} по {to} ({days})'**
+  String logsClearPeriod(String from, String to, String days);
+
+  /// No description provided for @logsDaysCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}}'**
+  String logsDaysCount(int count);
+
+  /// No description provided for @logsClearConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get logsClearConfirm;
+
   /// No description provided for @speedTooltip.
   ///
   /// In ru, this message translates to:
@@ -5153,6 +5375,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Нажмите, чтобы сопоставлять по имени файла'**
   String get splitDeadPathFix;
+
+  /// No description provided for @splitDeadPathNoticeText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Путь к «{app}» устарел — правило не применится в этот раз'**
+  String splitDeadPathNoticeText(String app);
+
+  /// No description provided for @splitDeadPathNoticeAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Исправить'**
+  String get splitDeadPathNoticeAction;
 
   /// No description provided for @splitVersionedPath.
   ///

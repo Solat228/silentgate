@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 
@@ -138,6 +140,40 @@ void main() {
     test('незнакомая программа не находится', () {
       const cfg = SplitTunnelConfig(apps: [AppRule(v222, byName: true)]);
       expect(cfg.appRuleFor(r'C:\y\notepad.exe'), isNull);
+    });
+  });
+
+  group('appRulePathMissing — одна проверка на два потребителя', () {
+    // ⚠️ ОБЩАЯ С `DeadPathBadge.isMissing` ФУНКЦИЯ (см. её doc-комментарий в
+    // `dead_path_badge.dart`): виджет-тест `dead_path_test.dart` уже проверяет
+    // её косвенно через виджет, здесь — напрямую, как и положено чистой
+    // функции без Flutter.
+    late Directory tmp;
+    setUp(() => tmp = Directory.systemTemp.createTempSync('sg_apr_missing_'));
+    tearDown(() {
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('исчезнувший файл — true', () {
+      final gone = '${tmp.path}${Platform.pathSeparator}нет.exe';
+      expect(appRulePathMissing(AppRule(gone)), isTrue);
+    });
+
+    test('живой файл — false', () {
+      final alive = File('${tmp.path}${Platform.pathSeparator}есть.exe')
+        ..writeAsStringSync('x');
+      expect(appRulePathMissing(AppRule(alive.path)), isFalse);
+    });
+
+    test('«по имени» — путь не проверяется вовсе', () {
+      final gone = '${tmp.path}${Platform.pathSeparator}нет.exe';
+      expect(appRulePathMissing(AppRule(gone, byName: true)), isFalse);
+    });
+
+    test('пустой путь — false', () {
+      expect(appRulePathMissing(const AppRule('')), isFalse);
     });
   });
 }

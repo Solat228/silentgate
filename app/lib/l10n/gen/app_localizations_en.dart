@@ -412,6 +412,38 @@ class AppLocalizationsEn extends AppLocalizations {
       'App and TUN (sing-box): subscription import, ping, errors';
 
   @override
+  String get logModeAppTitle => 'App log';
+
+  @override
+  String get logModeAppSub => 'What to record about the app’s own actions';
+
+  @override
+  String get logModeCoreTitle => 'Core log';
+
+  @override
+  String get logModeCoreSub => 'What to record about the tunnel (sing-box)';
+
+  @override
+  String get logLevelWarnLabel => 'Errors only';
+
+  @override
+  String get logLevelInfoLabel => 'Normal';
+
+  @override
+  String get logLevelDebugLabel => 'Detailed';
+
+  @override
+  String get logVerboseTitle => 'Record everything';
+
+  @override
+  String get logVerboseSub =>
+      'Both logs at the most detailed level. Turn on while troubleshooting: files grow fast.';
+
+  @override
+  String get infoLogModeApp =>
+      'How detailed the app log (app.log) is: subscription import, ping, connection, errors. “Errors only” is the shortest; “Normal” is how it worked before this setting existed; “Detailed” records everything, including debug lines. Affects file size far less than the core log.';
+
+  @override
   String get thirdPartyTitle => 'Third-party components';
 
   @override
@@ -1375,6 +1407,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get srvTileSaved => 'Saved';
 
   @override
+  String get srvTileUpdatedTitle => 'Server updated';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Changed in the last subscription update: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'The last subscription update changed this server\'s record';
+
+  @override
+  String get srvFieldId => 'ID / password';
+
+  @override
+  String get srvFieldEncryption => 'Encryption';
+
+  @override
+  String get srvFieldSecurity => 'Connection security';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Host header';
+
+  @override
+  String get srvFieldPath => 'Path';
+
+  @override
+  String get srvFieldPublicKey => 'Reality public key';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Obfuscation';
+
+  @override
+  String get srvFieldObfsPassword => 'Obfuscation password';
+
+  @override
+  String get srvFieldHopPorts => 'Port hopping';
+
+  @override
   String get pingNa => 'n/a';
 
   @override
@@ -1620,6 +1700,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'Failed to create task (UAC declined or blocked by policy)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Silent TUN startup is broken — every connection will ask for administrator rights';
+
+  @override
+  String get tunAutoFixAction => 'Fix';
 
   @override
   String get tunLogTitle => 'TUN log (sing-box)';
@@ -2735,6 +2822,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logsNothingToClean => 'Nothing to delete';
 
   @override
+  String get logsSettingsLabel => 'Log settings';
+
+  @override
+  String get logsClearAllLabel => 'Clear all logs';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Delete this log';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'App log — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'TUN core log — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Proxy core log — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Old support reports — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Logs have been accumulating from $from to $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Clear';
+
+  @override
   String get speedTooltip => 'Download speed through this server';
 
   @override
@@ -2962,6 +3097,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Tap to match by file name instead';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'The path to “$app” is outdated — the rule won’t apply this time';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Fix';
 
   @override
   String get splitVersionedPath =>

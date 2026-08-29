@@ -88,7 +88,12 @@ class SupportReport {
         'двухфазный ${settings.pingTwoPhase}, таймаут ${settings.pingTimeoutMs} мс');
     b.writeln('Автообновление подписки: ${settings.autoUpdateEnabled}, '
         'проверка обновлений приложения: ${settings.appUpdateCheck}');
-    b.writeln('Уровень лога sing-box: ${settings.singboxLogLevel.name}');
+    // ⚠️ ДЕЙСТВУЮЩИЙ уровень: отчёт читают, чтобы понять, почему в журнале
+    // нет подробностей, и выбранный руками `warn` при включённом «всё
+    // подряд» отправил бы поддержку по ложному следу.
+    b.writeln('Уровень лога sing-box: ${settings.effectiveSingboxLogLevel.name}'
+        '${settings.verboseLogging ? " (всё подряд)" : ""}');
+    b.writeln('Уровень журнала приложения: ${settings.appLogLevel.name}');
     b.writeln();
 
     // ── Что логи занимают на диске ────────────────────────────────────────

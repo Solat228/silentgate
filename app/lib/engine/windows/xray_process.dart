@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../core/platform/app_log.dart';
 import '../../core/platform/core_cleanup.dart';
 import '../../core/platform/rotating_log.dart';
 
@@ -79,6 +80,12 @@ class XrayProcess {
     );
     _process = proc;
     _exited = false;
+    // ⚠️ УСПЕШНЫЙ СТАРТ ЯДРА — В ЕДИНЫЙ ЖУРНАЛ, А НЕ ТОЛЬКО В `xray.log`.
+    // Раньше в `app.log` попадал лишь ПРОВАЛ, и «подключение прошло» читалось
+    // из него косвенно, по отсутствию ошибки. Отличить «ядро поднялось, но
+    // трафик не пошёл» от «ядро не поднялось» по такому журналу было нельзя —
+    // а это два совершенно разных разбора.
+    AppLog.i('Ядро Xray запущено (pid ${proc.pid})');
     // Windows не убивает детей вместе с родителем — регистрируем, чтобы
     // погасить при выходе и не оставить работающее ядро после закрытия.
     CoreCleanup.register(proc);
@@ -131,6 +138,7 @@ class XrayProcess {
     // ⚠️ Пишем строку об остановке ПОСЛЕ ожидания: по ней в файле видно, что
     // ядро закрылось штатно, а не пропало вместе с приложением. Разница важна
     // при разборе «выключил и сразу включил».
+    AppLog.i('Ядро Xray остановлено');
     await log?.write('--- Xray остановлен ${DateTime.now().toIso8601String()}');
     await log?.close();
   }

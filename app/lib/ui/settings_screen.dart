@@ -34,6 +34,7 @@ import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
 import 'widgets/geo_bases_section.dart';
+import 'log_level_labels.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
@@ -666,7 +667,7 @@ List<SettingsSectionData> buildSettingsSections(
       id: SettingsSectionIds.about,
       title: l.sectionAbout,
       icon: Icons.info_outline,
-      rows: _aboutRows(l),
+      rows: _aboutRows(l, s, controller),
     ),
   ];
 }
@@ -1487,7 +1488,8 @@ List<SettingsRow> _identityRows(AppLocalizations l) {
 /// три показывали «…», а поиск по слову «версия» не мог оставить одну строку —
 /// строк как таковых не существовало, был один общий блок. Ровно из-за него
 /// владелец и не находил версию.
-List<SettingsRow> _aboutRows(AppLocalizations l) {
+List<SettingsRow> _aboutRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
   return [
     SettingsRow(
       search: l.aboutVersion,
@@ -1547,6 +1549,103 @@ List<SettingsRow> _aboutRows(AppLocalizations l) {
           MaterialPageRoute(builder: (_) => const LogsScreen()),
         ),
       ),
+    ),
+    // ── Режим логирования ────────────────────────────────────────────────
+    //
+    // ⚠️ ЗДЕСЬ, А НЕ ТОЛЬКО В НАСТРОЙКАХ TUN. Уровень ядра жил на экране
+    // туннеля — то есть за двумя переходами и под заголовком, который человек
+    // открывает, когда чинит туннель, а не когда собирает журнал для
+    // поддержки. Уровень же приложения не настраивался вовсе. Обе ручки нужны
+    // в один момент и по одному поводу, поэтому стоят рядом со строкой
+    // «Логи»; поле у них общее с экраном TUN, так что разойтись значения не
+    // могут.
+    SettingsRow(
+      search: '${l.logModeAppTitle} ${l.logLevelWarnLabel} '
+          '${l.logLevelInfoLabel} ${l.logLevelDebugLabel}',
+      build: (_) => ListTile(
+        title: Row(children: [
+          Expanded(child: Text(l.logModeAppTitle)),
+          InfoTooltip(l.infoLogModeApp, title: l.logModeAppTitle),
+        ]),
+        subtitle: Text(l.logModeAppSub),
+        // ⚠️ ПРИ ВКЛЮЧЁННОМ «ВСЁ ПОДРЯД» ОБА СПИСКА ГАСНУТ. Галочка сильнее
+        // выбранного уровня, и живой на вид переключатель, который ни на что
+        // не влияет, — это обман: человек подвигал бы его и решил, что
+        // настройка сломана.
+        //
+        // Выпадающий список, а не сегменты: подписи здесь словами, и три
+        // сегмента с ними не влезают в `trailing` на телефоне.
+        trailing: DropdownButton<AppLogLevel>(
+          value: settings.verboseLogging
+              ? AppLogLevel.debug
+              : settings.appLogLevel,
+          onChanged: settings.verboseLogging
+              ? null
+              : (v) {
+                  if (v == null) return;
+                  controller.update((st) => st.copyWith(appLogLevel: v));
+                },
+          items: [
+            for (final v in AppLogLevel.values)
+              DropdownMenuItem(value: v, child: Text(appLogLevelLabel(l, v))),
+          ],
+        ),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.logModeCoreTitle} ${l.tunSingboxLogLevel}',
+      build: (_) => ListTile(
+        title: Row(children: [
+          Expanded(child: Text(l.logModeCoreTitle)),
+          InfoTooltip(l.infoSingboxLogLevel, title: l.logModeCoreTitle),
+        ]),
+        subtitle: Text(l.logModeCoreSub),
+        trailing: DropdownButton<SingboxLogLevel>(
+          value: settings.effectiveSingboxLogLevel,
+          onChanged: settings.verboseLogging
+              ? null
+              : (v) {
+                  if (v == null) return;
+                  controller.update((st) => st.copyWith(singboxLogLevel: v));
+                },
+          items: [
+            for (final v in SingboxLogLevel.values)
+              DropdownMenuItem(
+                  value: v, child: Text(singboxLogLevelLabel(l, v))),
+          ],
+        ),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.logVerboseTitle} ${l.logVerboseSub}',
+      build: (context) => Column(children: [
+        SwitchListTile(
+          value: settings.verboseLogging,
+          onChanged: (v) =>
+              controller.update((st) => st.copyWith(verboseLogging: v)),
+          title: Text(l.logVerboseTitle),
+          subtitle: Text(l.logVerboseSub),
+        ),
+        // ⚠️ ЦЕНУ НАЗЫВАЕМ РЯДОМ С ПЕРЕКЛЮЧАТЕЛЕМ. Ядро на `debug` пишет
+        // сотни строк в секунду и забивает потолок журнала за минуты —
+        // включивший «всё подряд» «на всякий случай» и забывший выключить
+        // получает журнал, в котором нужной ему аварии уже нет.
+        if (settings.verboseLogging)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.warning_amber_rounded,
+                      size: 18, color: Theme.of(context).colorScheme.tertiary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(l.tunLogLevelDebugCost,
+                        style: Theme.of(context).textTheme.bodySmall),
+                  ),
+                ]),
+          ),
+      ]),
     ),
     SettingsRow(
       search: '${l.sectionSupport} ${l.supportButtonTitle}',

@@ -212,6 +212,22 @@ void main() {
       expect(report.single, contains('Москва 1. GRPC'));
     });
 
+    test('newKey — это ключ НОВОЙ записи, а не старой: по нему ищет значок '
+        '«обновлён»', () {
+      final was = parse(link(fp: 'chrome'));
+      final now = parse(link(fp: 'firefox'));
+      final r = diff([was], [now]);
+      expect(r.keyChanges.single.newKey, now.key);
+      expect(r.keyChanges.single.newKey, isNot(was.key));
+    });
+
+    test('newKey не попадает в журнал — там только имена полей и имя сервера',
+        () {
+      final r = diff([parse(link(fp: 'chrome'))], [parse(link(fp: 'firefox'))]);
+      final newKey = r.keyChanges.single.newKey;
+      expect(r.keyChangeReport.single, isNot(contains(newKey)));
+    });
+
     test('⚠️ ЗНАЧЕНИЯ НЕ ПИШУТСЯ: в ссылке лежат учётные данные', () {
       // uuid VLESS (у trojan/ss — пароль) уходит в отчёт поддержки вместе с
       // журналом, поэтому в диагностике допустимы только имена полей.
@@ -625,6 +641,47 @@ void main() {
           reason: 'считается НОВЫЙ список; 2 — это «до» и «после» наоборот');
       expect(r.keyChanges.single.fields, ['fingerprint'],
           reason: 'Alpha на месте, у неё сменился только отпечаток');
+    });
+
+    test('значок «обновлён»: AppState отдаёт изменившиеся поля по НОВОМУ ключу',
+        () async {
+      final alphaAfter =
+          parse(link(name: 'Alpha', host: 'a.example.com', fp: 'firefox'));
+      final bravo = parse(link(name: 'Bravo', host: 'b.example.com'));
+      final state = await importInto(
+        onDisk: [
+          link(name: 'Alpha', host: 'a.example.com'),
+          link(name: 'Bravo', host: 'b.example.com'),
+        ],
+        fromPanel: [alphaAfter, bravo],
+      );
+
+      expect(state.updatedFieldsOf(alphaAfter), ['fingerprint']);
+      expect(state.updatedFieldsOf(bravo), isNull,
+          reason: 'Bravo не менялся — значка быть не должно');
+    });
+
+    test('⚠️ ЗНАЧОК «ОБНОВЛЁН» ПЕРЕЖИВАЕТ ПЕРЕЗАПУСК ПРИЛОЖЕНИЯ', () async {
+      // Жалоба владельца — про список серверов ПОСЛЕ перезапуска, а не про
+      // текущую сессию: RAM-поле здесь недостаточно, нужен диск (как у пинов).
+      final alphaAfter =
+          parse(link(name: 'Alpha', host: 'a.example.com', fp: 'firefox'));
+      final state = await importInto(
+        onDisk: [link(name: 'Alpha', host: 'a.example.com')],
+        fromPanel: [alphaAfter],
+      );
+      expect(state.updatedFieldsOf(alphaAfter), ['fingerprint']);
+
+      // «Перезапуск»: новый AppState поверх ТОГО ЖЕ каталога данных, без
+      // единого сетевого запроса — только чтение того, что уже легло на диск.
+      final restarted = AppState(
+        engine: _FakeEngine(),
+        subscription: _FakePanel(
+            const SubscriptionResult([], SubscriptionInfo.empty)),
+      );
+      await restarted.init();
+      expect(restarted.updatedFieldsOf(alphaAfter), ['fingerprint'],
+          reason: 'метка обязана пережить перезапуск, а не жить только в RAM');
     });
 
     test('счётчики конфигов панели не перепутаны местами', () async {

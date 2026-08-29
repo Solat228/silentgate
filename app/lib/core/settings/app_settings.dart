@@ -89,6 +89,15 @@ extension DnsStrategySingbox on DnsStrategy {
 /// Уровень лога sing-box (для диагностики TUN).
 enum SingboxLogLevel { warn, info, debug }
 
+/// Уровень журнала приложения (`app.log`).
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ТИП, А НЕ `LogLevel` ИЗ `app_log.dart`. Тот описывает уровень
+/// ОДНОЙ СТРОКИ и содержит `error`, который порогом быть не может: выставив
+/// его, человек потерял бы весь журнал, кроме аварий, — то есть ровно тот
+/// контекст, без которого авария не разбирается. Здесь перечислены только
+/// осмысленные пороги.
+enum AppLogLevel { warn, info, debug }
+
 /// Сколько хранить логи и отчёты для поддержки.
 ///
 /// ⚠️ ЗАВЕДЕНО ПО ЖИВЫМ ДАННЫМ ВЛАДЕЛЬЦА: 18 отчётов на 4,3 МБ, ни один
@@ -521,6 +530,42 @@ class AppSettings {
   /// Уровень лога sing-box (`%APPDATA%\SilentGate\singbox.log`).
   final SingboxLogLevel singboxLogLevel;
 
+  /// Уровень журнала САМОГО ПРИЛОЖЕНИЯ (`app.log`) — отдельно от ядра.
+  ///
+  /// ⚠️ ДВЕ НАСТРОЙКИ, А НЕ ОДНА — решение владельца 29.08.2026. Ядро на
+  /// `debug` пишет сотни строк в секунду и за минуты раздувает файл до сотен
+  /// мегабайт; журнал приложения при этом спокоен. Одна общая настройка
+  /// означала бы «хочу подробностей о своих действиях — получи заодно потоп от
+  /// ядра», и человек перестал бы её включать вовсе.
+  ///
+  /// Умолчание `info` = прежнее поведение: отладочных вызовов до появления
+  /// порога в коде не было, всё остальное писалось всегда.
+  final AppLogLevel appLogLevel;
+
+  /// ⚠️ «ВСЁ ПОДРЯД» — ОДИН ПЕРЕКЛЮЧАТЕЛЬ ПОВЕРХ ОБЕИХ НАСТРОЕК.
+  ///
+  /// Просьба владельца: «в debug должно писаться вообще всё». Разбирать
+  /// аварию, выставляя два уровня по отдельности, — лишний шаг ровно тогда,
+  /// когда человеку не до настроек. Включённая галочка опускает до `debug` и
+  /// приложение, и ядро, а выключение возвращает то, что было выбрано руками:
+  /// поля выше не переписываются.
+  ///
+  /// ⚠️ Файлы растут ОЧЕНЬ быстро — предупреждение об этом обязано стоять
+  /// рядом с переключателем, а не в документации.
+  final bool verboseLogging;
+
+  /// Уровень, с которым ядро ДЕЙСТВИТЕЛЬНО поднимется, с учётом «всё подряд».
+  ///
+  /// ⚠️ СПРАШИВАТЬ НАДО ЭТО, А НЕ [singboxLogLevel]. Галочка обязана доходить
+  /// до конфига ядра — иначе «всё подряд» подробнее пишет только приложение, а
+  /// ядро молчит ровно так же, и человек уверен, что включил всё.
+  ///
+  /// Побочно чинится и лишний перезапуск туннеля: при включённой галочке
+  /// переключение уровня ядра руками ничего не меняет (оба раза `debug`), и
+  /// предлагать переподключиться из-за этого не за что.
+  SingboxLogLevel get effectiveSingboxLogLevel =>
+      verboseLogging ? SingboxLogLevel.debug : singboxLogLevel;
+
   /// Срок хранения логов и отчётов поддержки. Проверяется при запуске.
   ///
   /// ⚠️ НАМЕРЕННО НЕ В [reconnectReasons]: чистка старых файлов на диске к
@@ -757,6 +802,8 @@ class AppSettings {
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
     this.singboxLogLevel = SingboxLogLevel.warn,
+    this.appLogLevel = AppLogLevel.info,
+    this.verboseLogging = false,
     // Месяц, а не меньше: короче — рискуем стереть лог раньше, чем человек
     // дойдёт до жалобы, а разбирать нечего будет уже навсегда.
     this.logRetention = LogRetention.month,
@@ -883,6 +930,8 @@ class AppSettings {
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
     SingboxLogLevel? singboxLogLevel,
+    AppLogLevel? appLogLevel,
+    bool? verboseLogging,
     LogRetention? logRetention,
     bool? autoReconnect,
     bool? killSwitch,
@@ -959,6 +1008,8 @@ class AppSettings {
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
       singboxLogLevel: singboxLogLevel ?? this.singboxLogLevel,
+      appLogLevel: appLogLevel ?? this.appLogLevel,
+      verboseLogging: verboseLogging ?? this.verboseLogging,
       logRetention: logRetention ?? this.logRetention,
       autoReconnect: autoReconnect ?? this.autoReconnect,
       killSwitch: killSwitch ?? this.killSwitch,
@@ -1040,6 +1091,8 @@ class AppSettings {
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
         'singboxLogLevel': singboxLogLevel.name,
+        'appLogLevel': appLogLevel.name,
+        'verboseLogging': verboseLogging,
         'logRetention': logRetention.name,
         'autoReconnect': autoReconnect,
         'killSwitch': killSwitch,
@@ -1198,6 +1251,8 @@ class AppSettings {
       dnsStrategy: pick(DnsStrategy.values, j['dnsStrategy'], DnsStrategy.preferIpv4),
       singboxLogLevel:
           pick(SingboxLogLevel.values, j['singboxLogLevel'], SingboxLogLevel.warn),
+      appLogLevel: pick(AppLogLevel.values, j['appLogLevel'], AppLogLevel.info),
+      verboseLogging: j['verboseLogging'] as bool? ?? false,
       // ⚠️ Читается ОБЯЗАТЕЛЬНО: страж settings_roundtrip_test перебирает
       // булевы и числовые поля, а перечисления хранятся строкой и мимо него
       // проходят. Забытая строка здесь = «выбрал никогда не удалять, а после
@@ -1328,6 +1383,26 @@ class AppSettings {
       if (a != b) out.add(name);
     }
 
+    // ⚠️ ЧАСТЬ ПОЛЕЙ ЖИВЁТ НЕ ВО ВСЕХ РЕЖИМАХ, И ТРЕБОВАТЬ ИЗ-ЗА НИХ
+    // ПЕРЕПОДКЛЮЧЕНИЯ — ВРАНЬЁ ДВАЖДЫ. Первый раз — потому что рвётся живой
+    // туннель ради конфига, который не изменится. Второй, и худший, — потому
+    // что переподключение читается человеком как «применилось»: он включает
+    // пароль на локальный прокси в режиме системного прокси, видит просьбу
+    // переподключиться, переподключается и считает порт закрытым, хотя
+    // `applyLocalProxyAuth` креды в этом режиме принудительно обнуляет.
+    //
+    // Смотрим на режим ПОСЛЕ правки: если поменялся сам способ захвата, его
+    // строка и так уйдёт в список первой.
+    final mode = other.captureMode;
+    // TUN-конфиг собирается только в режиме туннеля (`raiseTun`).
+    final tunUp = mode == CaptureMode.tun;
+    // Пароль на 10808/10809 не применяется, когда системный прокси включён —
+    // ни как основной режим, ни как добавка к туннелю.
+    final localAuthApplies =
+        !(mode == CaptureMode.systemProxy || other.alsoSetSystemProxy);
+    // Отдельные порты выходов существуют везде, кроме системного прокси.
+    final apiPortsExist = mode != CaptureMode.systemProxy;
+
     diff('способ захвата', captureMode, other.captureMode);
     diff('стек TUN', tunStack, other.tunStack);
     diff('MTU', tunMtu, other.tunMtu);
@@ -1355,16 +1430,20 @@ class AppSettings {
     // слушать 10808/10809 без пароля до ручного переподключения. Зеркальный
     // случай — вписал свои логин и пароль для сторонней программы, интерфейс
     // показывает новые, ядро работает со старыми, программа получает 407.
-    diff('пароль на локальный прокси', localProxyAuth, other.localProxyAuth);
-    diff('логин локального прокси', localProxyUser, other.localProxyUser);
-    diff('пароль локального прокси', localProxyPassword,
-        other.localProxyPassword);
+    if (localAuthApplies) {
+      diff('пароль на локальный прокси', localProxyAuth, other.localProxyAuth);
+      diff('логин локального прокси', localProxyUser, other.localProxyUser);
+      diff('пароль локального прокси', localProxyPassword,
+          other.localProxyPassword);
+    }
     // Все три запекаются в конфиг ядра при подъёме: тумблер решает, поднимать
     // ли инбаунды серверов, токен становится их паролем, список — их составом.
-    diff('API для автоматизации', apiEnabled, other.apiEnabled);
-    diff('токен API', apiToken, other.apiToken);
-    diff('серверы с отдельным портом', apiExitServerKeys.join(','),
-        other.apiExitServerKeys.join(','));
+    if (apiPortsExist) {
+      diff('API для автоматизации', apiEnabled, other.apiEnabled);
+      diff('токен API', apiToken, other.apiToken);
+      diff('серверы с отдельным портом', apiExitServerKeys.join(','),
+          other.apiExitServerKeys.join(','));
+    }
     // Тоже запекается в конфиг маршрутизатора выходов при подъёме (задача 3b):
     // решает, добавлять ли туда блок-правила раздельного туннелирования.
     diff('правила раздельного туннелирования в «Только прокси»',
@@ -1379,7 +1458,25 @@ class AppSettings {
     diff('блокировка шифрованного DNS', blockEncryptedDns,
         other.blockEncryptedDns);
     diff('стратегия DNS', dnsStrategy, other.dnsStrategy);
-    diff('уровень лога ядра', singboxLogLevel, other.singboxLogLevel);
+    // ⚠️ ПО ДЕЙСТВУЮЩЕМУ уровню, а не по выбранному руками: при включённом
+    // «всё подряд» ядро и так на `debug`, и правка выпадающего списка
+    // конфиг не меняет — рвать из-за неё живой туннель не за что.
+    //
+    // И только в режиме туннеля: прокси-ядро (оно работает при любом режиме)
+    // уровень лога не спрашивает вовсе — там он прибит к `warn` в самом
+    // сборщике конфига.
+    if (tunUp) {
+      diff('уровень лога ядра', effectiveSingboxLogLevel,
+          other.effectiveSingboxLogLevel);
+    }
+    // ⚠️ Сторож зависшего TUN-ядра запекается при подъёме ровно так же, как
+    // поля конфига: `_startTunWatchdog` читает таймаут ОДИН раз и держит его в
+    // замыкании таймера. Без этой строки правка проходила молча — человек
+    // менял таймаут, ничего не происходило, и понять почему было нельзя.
+    if (tunUp) {
+      diff('таймаут сторожа туннеля', tunWatchdogSeconds,
+          other.tunWatchdogSeconds);
+    }
     diff('запрет реального IP', noRealIp, other.noRealIp);
     // Запекается в конфиг (`rerouteDirectThroughVpn` в engine_base): без этой
     // строки пользователь включал «Мои правила важнее правил панели» при живом

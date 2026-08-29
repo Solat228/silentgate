@@ -415,6 +415,38 @@ class AppLocalizationsRu extends AppLocalizations {
       'Приложение и TUN (sing-box): импорт подписки, пинг, ошибки';
 
   @override
+  String get logModeAppTitle => 'Журнал приложения';
+
+  @override
+  String get logModeAppSub => 'Что записывать о действиях самого приложения';
+
+  @override
+  String get logModeCoreTitle => 'Журнал ядра';
+
+  @override
+  String get logModeCoreSub => 'Что записывать о работе туннеля (sing-box)';
+
+  @override
+  String get logLevelWarnLabel => 'Только ошибки';
+
+  @override
+  String get logLevelInfoLabel => 'Обычный';
+
+  @override
+  String get logLevelDebugLabel => 'Подробный';
+
+  @override
+  String get logVerboseTitle => 'Записывать всё подряд';
+
+  @override
+  String get logVerboseSub =>
+      'Оба журнала на самом подробном уровне. Включайте на время разбора: файлы растут быстро.';
+
+  @override
+  String get infoLogModeApp =>
+      'Подробность журнала приложения (app.log): импорт подписки, пинг, подключение, ошибки. «Только ошибки» — самый короткий журнал; «Обычный» — как работало до появления этой настройки; «Подробный» — всё, включая отладочные строки. На размер файла влияет заметно меньше, чем журнал ядра.';
+
+  @override
   String get thirdPartyTitle => 'Сторонние компоненты';
 
   @override
@@ -1377,6 +1409,54 @@ class AppLocalizationsRu extends AppLocalizations {
   String get srvTileSaved => 'Сохранено';
 
   @override
+  String get srvTileUpdatedTitle => 'Сервер обновился';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'При обновлении подписки изменилось: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'При обновлении подписки обновилась запись сервера';
+
+  @override
+  String get srvFieldId => 'Идентификатор / пароль';
+
+  @override
+  String get srvFieldEncryption => 'Шифрование';
+
+  @override
+  String get srvFieldSecurity => 'Защита соединения';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Host-заголовок';
+
+  @override
+  String get srvFieldPath => 'Путь';
+
+  @override
+  String get srvFieldPublicKey => 'Публичный ключ Reality';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Обфускация';
+
+  @override
+  String get srvFieldObfsPassword => 'Пароль обфускации';
+
+  @override
+  String get srvFieldHopPorts => 'Порт-хоппинг';
+
+  @override
   String get pingNa => 'n/a';
 
   @override
@@ -1622,6 +1702,13 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'Не удалось создать задачу (UAC отклонён или запрещено политикой)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права';
+
+  @override
+  String get tunAutoFixAction => 'Исправить';
 
   @override
   String get tunLogTitle => 'Лог TUN (sing-box)';
@@ -2737,6 +2824,56 @@ class AppLocalizationsRu extends AppLocalizations {
   String get logsNothingToClean => 'Удалять нечего';
 
   @override
+  String get logsSettingsLabel => 'Настройки логов';
+
+  @override
+  String get logsClearAllLabel => 'Очистить все логи';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Удалить этот лог';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'Лог приложения — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'Лог ядра TUN — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Лог прокси-ядра — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Старые отчёты поддержки — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Логи копятся с $from по $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Очистить';
+
+  @override
   String get speedTooltip => 'Скорость скачивания через этот сервер';
 
   @override
@@ -2966,6 +3103,14 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Нажмите, чтобы сопоставлять по имени файла';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'Путь к «$app» устарел — правило не применится в этот раз';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Исправить';
 
   @override
   String get splitVersionedPath =>

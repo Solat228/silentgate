@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
 import '../data/settings_storage.dart';
 
@@ -27,7 +28,28 @@ class SettingsController extends ChangeNotifier {
 
   Future<void> init() async {
     _settings = _normalize(await _storage.load());
+    _applyLogLevel();
     notifyListeners();
+  }
+
+  /// ⚠️ ПОРОГ ЖУРНАЛА ЖИВЁТ В СТАТИКЕ [AppLog], А НАСТРОЙКА — ЗДЕСЬ.
+  ///
+  /// Их надо сводить в ОДНОМ месте, и это место — единственный путь, через
+  /// который настройки и загружаются, и меняются. Разложи это по вызывающим —
+  /// и кто-нибудь однажды поменяет уровень, а журнал останется прежним: тихо,
+  /// без ошибки, и заметить можно будет только по отсутствию строк в чужой
+  /// аварии.
+  ///
+  /// Галочка «всё подряд» сильнее выбранного уровня — так она и задумана:
+  /// один переключатель на случай, когда человеку не до настроек.
+  void _applyLogLevel() {
+    AppLog.minLevel = _settings.verboseLogging
+        ? LogLevel.debug
+        : switch (_settings.appLogLevel) {
+            AppLogLevel.warn => LogLevel.warn,
+            AppLogLevel.info => LogLevel.info,
+            AppLogLevel.debug => LogLevel.debug,
+          };
   }
 
   /// Изменить настройки: mutate -> persist -> notify.
@@ -46,6 +68,9 @@ class SettingsController extends ChangeNotifier {
   Future<void> update(AppSettings Function(AppSettings current) mutate) async {
     final before = _settings;
     _settings = _normalize(mutate(_settings));
+    // Порог применяем СРАЗУ, до записи на диск и уведомлений: человек, только
+    // что включивший подробный журнал, ждёт подробностей уже от этого действия.
+    _applyLogLevel();
     if (before.requiresReconnect(_settings)) {
       onRequiresReconnect?.call(before, _settings);
     }

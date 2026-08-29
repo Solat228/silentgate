@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
 import '../../core/settings/split_tunnel.dart';
@@ -44,8 +42,7 @@ class DeadPathBadge extends StatefulWidget {
   /// (`com.android.chrome`). Проверка существования файла там всегда давала бы
   /// «не найден» и пометила бы КАЖДОЕ правило — то есть предупреждение,
   /// кричащее всегда, а такое перестают замечать за день.
-  static bool appliesOn() =>
-      Platform.isWindows || Platform.isLinux || Platform.isMacOS;
+  static bool appliesOn() => appRulePathCheckApplies();
 
   /// ⚠️ ПУТЬ С НОМЕРОМ ВЕРСИИ СЛОМАЕТСЯ ПРИ СЛЕДУЮЩЕМ ОБНОВЛЕНИИ.
   ///
@@ -86,6 +83,14 @@ class DeadPathBadge extends StatefulWidget {
     return false;
   }
 
+  /// Указывает ли правило «по полному пути» на несуществующий файл.
+  ///
+  /// Реализация — общая с уведомлением при подключении
+  /// ([EngineNoticeKind.deadAppRule]): см. `appRulePathMissing` в
+  /// `core/settings/split_tunnel.dart`, чтобы «правило сломано» не решалось
+  /// в двух местах по-разному.
+  static bool isMissing(AppRule r) => appRulePathMissing(r);
+
   @override
   State<DeadPathBadge> createState() => _DeadPathBadgeState();
 }
@@ -100,7 +105,7 @@ class _DeadPathBadgeState extends State<DeadPathBadge> {
   void initState() {
     super.initState();
     // В initState `setState` не зовём — состояние ещё не смонтировано.
-    _missing = _isMissing(widget.rule);
+    _missing = DeadPathBadge.isMissing(widget.rule);
     _fragile = _isFragile(widget.rule);
   }
 
@@ -111,22 +116,8 @@ class _DeadPathBadgeState extends State<DeadPathBadge> {
     if (r.byName || !DeadPathBadge.appliesOn() || r.path.trim().isEmpty) {
       return false;
     }
-    if (_isMissing(r)) return false;
+    if (DeadPathBadge.isMissing(r)) return false;
     return DeadPathBadge.pathLooksVersioned(r.path);
-  }
-
-  /// Чистая проверка без побочных эффектов — её же зовёт [_check].
-  static bool _isMissing(AppRule r) {
-    if (r.byName || !DeadPathBadge.appliesOn() || r.path.trim().isEmpty) {
-      return false;
-    }
-    try {
-      return !File(r.path).existsSync();
-    } catch (_) {
-      // Нет доступа к каталогу — это не «файла нет». Ложная тревога здесь
-      // дороже пропуска: чинить пользователю будет нечего.
-      return false;
-    }
   }
 
   @override
@@ -150,7 +141,7 @@ class _DeadPathBadgeState extends State<DeadPathBadge> {
   /// то есть не стерёг бы ничего. А цена синхронного вызова здесь ничтожна:
   /// одно обращение к диску на строку при её появлении, а не на каждый кадр.
   void _check() {
-    final gone = _isMissing(widget.rule);
+    final gone = DeadPathBadge.isMissing(widget.rule);
     final fragile = _isFragile(widget.rule);
     if (gone != _missing || fragile != _fragile) {
       setState(() {

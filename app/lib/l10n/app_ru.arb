@@ -217,6 +217,16 @@
   "thirdPartyBodyEmbedded": "На Android ядра ВСТРОЕНЫ в приложение (нативная библиотека внутри APK).\n\n• sing-box — GPL-3.0. Библиотека слинкована с приложением, поэтому производные обязаны оставаться под GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nИсходный код клиента: https://github.com/Solat228/silentgate\nПолные тексты лицензий — кнопками ниже.",
   "logsTitle": "Логи",
   "logsSub": "Приложение и TUN (sing-box): импорт подписки, пинг, ошибки",
+  "logModeAppTitle": "Журнал приложения",
+  "logModeAppSub": "Что записывать о действиях самого приложения",
+  "logModeCoreTitle": "Журнал ядра",
+  "logModeCoreSub": "Что записывать о работе туннеля (sing-box)",
+  "logLevelWarnLabel": "Только ошибки",
+  "logLevelInfoLabel": "Обычный",
+  "logLevelDebugLabel": "Подробный",
+  "logVerboseTitle": "Записывать всё подряд",
+  "logVerboseSub": "Оба журнала на самом подробном уровне. Включайте на время разбора: файлы растут быстро.",
+  "infoLogModeApp": "Подробность журнала приложения (app.log): импорт подписки, пинг, подключение, ошибки. «Только ошибки» — самый короткий журнал; «Обычный» — как работало до появления этой настройки; «Подробный» — всё, включая отладочные строки. На размер файла влияет заметно меньше, чем журнал ядра.",
   "thirdPartyTitle": "Сторонние компоненты",
   "thirdPartyBody": "SilentGate поставляется вместе со сторонними исполняемыми файлами. Они запускаются ОТДЕЛЬНЫМИ процессами и не встроены в приложение.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  TUN-туннель и прокси-ядро для Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — лицензия Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — данные маршрутизации, CC-BY-SA-4.0\n\nПолные тексты лицензий — в папке «licenses» рядом с приложением.",
   "supportSectionNote": "Нажмите «Написать в поддержку» — откроется окно, где вы сами сгенерируете файл-лог (версии, ОС, настройки, app.log + хвост singbox.log; без паролей и токена подписки, URL скрыт). После этого появится кнопка отправки в Telegram поддержки.",
@@ -561,6 +571,21 @@
   "srvTileDelete": "Удалить",
   "srvTileServerDeleted": "Сервер удалён",
   "srvTileSaved": "Сохранено",
+  "srvTileUpdatedTitle": "Сервер обновился",
+  "srvTileUpdatedFields": "При обновлении подписки изменилось: {fields}",
+  "srvTileUpdatedGeneric": "При обновлении подписки обновилась запись сервера",
+  "srvFieldId": "Идентификатор / пароль",
+  "srvFieldEncryption": "Шифрование",
+  "srvFieldSecurity": "Защита соединения",
+  "srvFieldSni": "SNI",
+  "srvFieldHost": "Host-заголовок",
+  "srvFieldPath": "Путь",
+  "srvFieldPublicKey": "Публичный ключ Reality",
+  "srvFieldShortId": "Short ID (Reality)",
+  "srvFieldAlpn": "ALPN",
+  "srvFieldObfs": "Обфускация",
+  "srvFieldObfsPassword": "Пароль обфускации",
+  "srvFieldHopPorts": "Порт-хоппинг",
   "pingNa": "n/a",
   "pingNaTooltip": "Не ответил по TCP — сервер недоступен (мёртв)",
   "pingTimeout": "таймаут",
@@ -637,6 +662,8 @@
   "trayQuitVpn": "Отключить и выйти",
   "tunTaskDone": "Готово: TUN будет запускаться без запроса UAC",
   "tunTaskFailed": "Не удалось создать задачу (UAC отклонён или запрещено политикой)",
+  "tunAutoFixNoticeText": "Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права",
+  "tunAutoFixAction": "Исправить",
   "tunLogTitle": "Лог TUN (sing-box)",
   "tunLogEmpty": "Лог пуст — туннель ещё не запускался.",
   "tunCopy": "Копировать",
@@ -1362,6 +1389,64 @@
     }
   },
   "logsNothingToClean": "Удалять нечего",
+  "logsSettingsLabel": "Настройки логов",
+  "logsClearAllLabel": "Очистить все логи",
+  "logsDeleteCurrentLabel": "Удалить этот лог",
+  "logsClearOptionApp": "Лог приложения — {size}",
+  "@logsClearOptionApp": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsClearOptionTun": "Лог ядра TUN — {size}",
+  "@logsClearOptionTun": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsClearOptionProxy": "Лог прокси-ядра — {size}",
+  "@logsClearOptionProxy": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsClearOptionReports": "Старые отчёты поддержки — {size}",
+  "@logsClearOptionReports": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "logsClearPeriod": "Логи копятся с {from} по {to} ({days})",
+  "@logsClearPeriod": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      },
+      "days": {
+        "type": "String"
+      }
+    }
+  },
+  "logsDaysCount": "{count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}}",
+  "@logsDaysCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "logsClearConfirm": "Очистить",
   "speedTooltip": "Скорость скачивания через этот сервер",
   "speedFromAutoConfig": "Скорость измерена автонастройкой",
   "speedBlockedTooltip": "Скорость не измеряется: сервер не прошёл проверку канала (запрос через него не дошёл)",
@@ -1474,6 +1559,15 @@
   "autoSpeedTrafficGo": "Запустить",
   "splitDeadPath": "Файла по этому пути больше нет — правило не срабатывает",
   "splitDeadPathFix": "Нажмите, чтобы сопоставлять по имени файла",
+  "splitDeadPathNoticeText": "Путь к «{app}» устарел — правило не применится в этот раз",
+  "@splitDeadPathNoticeText": {
+    "placeholders": {
+      "app": {
+        "type": "String"
+      }
+    }
+  },
+  "splitDeadPathNoticeAction": "Исправить",
   "splitVersionedPath": "В пути есть номер версии — после обновления программы правило перестанет совпадать",
   "srvTileCopyKey": "Скопировать ключ",
   "serviceChecksBypassDirect": "Мимо VPN: правило «{rule}» в раздельном туннелировании отправляет этот домен напрямую — сервис пойдёт под вашим настоящим адресом.",

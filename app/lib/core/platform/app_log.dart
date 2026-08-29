@@ -7,7 +7,10 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'app_paths.dart';
 import 'rotating_log.dart';
 
-enum LogLevel { info, warn, error }
+/// ⚠️ ПОРЯДОК ЗНАЧИМ: чем дальше по списку, тем важнее. На этом держится
+/// сравнение в [AppLog.minLevel] — «писать всё, что не тише выбранного».
+/// Переставив значения местами, вы молча отключите половину журнала.
+enum LogLevel { debug, info, warn, error }
 
 class LogEntry {
   final DateTime at;
@@ -38,6 +41,11 @@ class LogEntry {
 /// и автонастройка, почему не поднялось подключение.
 class AppLog {
   static const _maxMemory = 500;
+
+  /// Имя файла лога приложения — вынесено в константу, потому что на него
+  /// же ссылается классификация в [LogInventory] (там же живёт `_tunLogName`
+  /// для симметрии).
+  static const _appLogName = 'app.log';
   static const _maxBytes = 512 * 1024;
 
   static final Queue<LogEntry> _memory = Queue<LogEntry>();
@@ -50,11 +58,84 @@ class AppLog {
   static void addListener(void Function() l) => _listeners.add(l);
   static void removeListener(void Function() l) => _listeners.remove(l);
 
+  /// ⚠️ ПОРОГ ЗАПИСИ. Ниже него строки не попадают ни в файл, ни в память —
+  /// то есть и в отчёт поддержки тоже.
+  ///
+  /// Умолчание `info` — ровно то поведение, что было до появления порога:
+  /// отладочных вызовов в коде тогда не существовало, а `info` и выше писались
+  /// всегда. Менять умолчание нельзя: разбирать чужую аварию по журналу, где
+  /// половины строк нет, невозможно, а человек про настройку не вспомнит.
+  ///
+  /// `debug` включают осознанно и ненадолго: ядро на этом уровне пишет сотни
+  /// строк в секунду (замерено), и журнал за минуты доходит до сотен мегабайт.
+  static LogLevel minLevel = LogLevel.info;
+
+  /// Отладочная строка. Пишется, ТОЛЬКО когда порог опущен до [LogLevel.debug].
+  static void d(String message) => _add(LogLevel.debug, message);
   static void i(String message) => _add(LogLevel.info, message);
   static void w(String message) => _add(LogLevel.warn, message);
   static void e(String message) => _add(LogLevel.error, message);
 
+  /// Первые кадры стека — те, где обычно и лежит причина.
+  ///
+  /// ⚠️ РЕЖЕМ НАРОЧНО. Полный стек Flutter — сотня строк служебных кадров
+  /// движка; в журнале объёмом 512 КБ одна авария вытеснила бы всю историю до
+  /// неё, то есть ровно тот контекст, по которому аварию и разбирают.
+  static String shortStack(StackTrace stack, {int lines = 12}) {
+    final all = stack.toString().split('\n');
+    final head = all.take(lines).join('\n');
+    return all.length > lines
+        ? '$head\n  … ещё ${all.length - lines} строк'
+        : head;
+  }
+
+  /// Записать АВАРИЮ так, чтобы она пережила смерть процесса.
+  ///
+  /// ⚠️ СИНХРОННО И МИМО ОЧЕРЕДИ — в этом весь смысл метода. Обычная запись
+  /// уходит в `_pending` и доходит до диска через микрозадачу; процесс,
+  /// который в этот момент падает, до неё не доживает — и в журнале не
+  /// оказывается ровно той строки, ради которой журнал и ведут. Владелец
+  /// спрашивал прямо: «если что-то упадёт, запишется ли это в логи или
+  /// пропадёт?» — вот ответ на этот вопрос.
+  ///
+  /// Цена честная и названа: счётчик размера в [RotatingLog] об этой строке не
+  /// знает, поэтому ротация случится на её длину позже, а при совпадении с
+  /// записью из очереди строки могут лечь в другом порядке. Обе платы ничтожны
+  /// против потери причины падения.
+  ///
+  /// Порог [minLevel] здесь НЕ проверяется: аварию нельзя отключить
+  /// настройкой.
+  static void fatalSync(String message) {
+    final entry = LogEntry(DateTime.now(), LogLevel.error, scrubSecrets(message));
+    _memory.addLast(entry);
+    while (_memory.length > _maxMemory) {
+      _memory.removeFirst();
+    }
+    for (final l in List.of(_listeners)) {
+      try {
+        l();
+      } catch (_) {}
+    }
+    if (!_fileWrites) return;
+    try {
+      // ⚠️ Путь берём СИНХРОННО и мирно переживаем его отсутствие: до
+      // `AppPaths.init()` (а на Android он только асинхронный) корня данных
+      // ещё нет. Тогда строка остаётся в памяти — это всё равно больше, чем
+      // было, и уж точно лучше, чем исключение внутри обработчика падения.
+      final path = _pathOverride ??
+          '${AppPaths.supportDirSync().path}${Platform.pathSeparator}app.log';
+      File(path).writeAsStringSync('${entry.line}\n',
+          mode: FileMode.append, flush: true);
+    } catch (_) {
+      // Диагностика не имеет права ронять приложение — тем более уже падающее.
+    }
+  }
+
   static void _add(LogLevel level, String message) {
+    // ⚠️ ОТСЕКАЕМ ДО ВСЕГО ОСТАЛЬНОГО — включая `scrubSecrets`, которая гоняет
+    // регулярные выражения по каждой строке. Отладочный вызов в горячем цикле
+    // не должен стоить ничего, когда его не пишут.
+    if (level.index < minLevel.index) return;
     final entry = LogEntry(DateTime.now(), level, scrubSecrets(message));
     _memory.addLast(entry);
     while (_memory.length > _maxMemory) {
@@ -252,14 +333,25 @@ class LogFileStat {
   /// порча вернулась, и увидеть это надо в отчёте, а не через год по жалобе.
   final int zeros;
 
+  /// Время последней записи — по нему считается и «не удалять живой файл»
+  /// в [LogMaintenance.clean], и период накопления на экране логов.
+  final DateTime modified;
+
   const LogFileStat({
     required this.name,
     required this.path,
     required this.bytes,
     required this.lines,
     required this.zeros,
+    required this.modified,
   });
 }
+
+/// Имя файла лога TUN-ядра — единственное, что классификация знает по имени
+/// явно (наряду с `app.log`). Всё остальное «*.log» — прокси-ядра и
+/// маршрутизаторы; их список НЕ перечисляется, чтобы шестой лог сам попал в
+/// нужную корзину на экране логов, а не выпал из неё молча.
+const _tunLogName = 'singbox.log';
 
 /// Что логи и отчёты занимают на диске.
 class LogInventory {
@@ -267,14 +359,56 @@ class LogInventory {
   final int reportCount;
   final int reportBytes;
 
+  /// Время последней записи САМОГО СТАРОГО и САМОГО НОВОГО файла (логи и
+  /// отчёты вместе) — «за какой период накоплены логи» на экране очистки.
+  /// `null` — на диске вообще ничего нет.
+  final DateTime? oldest;
+  final DateTime? newest;
+
   const LogInventory({
     required this.logs,
     required this.reportCount,
     required this.reportBytes,
+    this.oldest,
+    this.newest,
   });
 
   int get logBytes => logs.fold(0, (a, b) => a + b.bytes);
   int get totalBytes => logBytes + reportBytes;
+
+  /// Лог приложения — или `null`, если его ещё нет.
+  LogFileStat? get appLog => _byName(AppLog._appLogName);
+
+  /// Лог TUN-ядра (`singbox.log`) — предыдущая ротированная часть
+  /// (`singbox.prev.log`) в него не входит, но чистится той же категорией
+  /// (см. [LogMaintenance.cleanSelected]).
+  LogFileStat? get tunLog => _byName(_tunLogName);
+
+  /// Всё остальное «*.log»: прокси-ядра (hysteria2, xray) и маршрутизаторы
+  /// выходов. Специально не список имён — новый лог попадёт сюда сам.
+  List<LogFileStat> get proxyLogs => logs
+      .where((f) =>
+          f.name != AppLog._appLogName &&
+          f.name != _tunLogName &&
+          f.name != 'singbox.prev.log')
+      .toList();
+
+  int get proxyBytes => proxyLogs.fold(0, (a, b) => a + b.bytes);
+
+  LogFileStat? _byName(String name) {
+    for (final f in logs) {
+      if (f.name == name) return f;
+    }
+    return null;
+  }
+
+  /// Сколько дней накапливаются логи и отчёты — включительно (день первой
+  /// записи считается тоже). `null`, если данных ещё нет.
+  int? get periodDays {
+    final a = oldest, b = newest;
+    if (a == null || b == null) return null;
+    return b.difference(a).inDays + 1;
+  }
 }
 
 /// Итог чистки по сроку хранения.
@@ -304,11 +438,22 @@ class LogMaintenance {
   static Future<LogInventory> inventory({Directory? dir}) async {
     final root = dir ?? await AppPaths.supportDir();
     final logs = <LogFileStat>[];
+    // «С какой по какую дату копятся логи» — по факту последней записи
+    // ЛЮБОГО файла (лога или отчёта), поэтому считаем по ходу обоих обходов.
+    DateTime? oldest;
+    DateTime? newest;
+    void track(DateTime t) {
+      if (oldest == null || t.isBefore(oldest!)) oldest = t;
+      if (newest == null || t.isAfter(newest!)) newest = t;
+    }
+
     try {
       final entries = root.listSync().whereType<File>().where(
           (f) => f.path.toLowerCase().endsWith('.log'));
       for (final f in entries) {
-        logs.add(await statOf(f));
+        final stat = await statOf(f);
+        logs.add(stat);
+        track(stat.modified);
       }
     } catch (_) {}
     logs.sort((a, b) => a.name.compareTo(b.name));
@@ -322,6 +467,9 @@ class LogMaintenance {
         for (final f in reports.listSync().whereType<File>()) {
           reportCount++;
           reportBytes += await f.length();
+          try {
+            track(await f.lastModified());
+          } catch (_) {}
         }
       }
     } catch (_) {}
@@ -330,6 +478,8 @@ class LogMaintenance {
       logs: logs,
       reportCount: reportCount,
       reportBytes: reportBytes,
+      oldest: oldest,
+      newest: newest,
     );
   }
 
@@ -344,8 +494,10 @@ class LogMaintenance {
     var lines = 0;
     var zeros = 0;
     var last = 0;
+    var modified = DateTime.fromMillisecondsSinceEpoch(0);
     try {
       bytes = await f.length();
+      modified = await f.lastModified();
       await for (final chunk in f.openRead()) {
         for (final b in chunk) {
           if (b == 10) {
@@ -360,7 +512,12 @@ class LogMaintenance {
       if (bytes > 0 && last != 10) lines++;
     } catch (_) {}
     return LogFileStat(
-        name: name, path: f.path, bytes: bytes, lines: lines, zeros: zeros);
+        name: name,
+        path: f.path,
+        bytes: bytes,
+        lines: lines,
+        zeros: zeros,
+        modified: modified);
   }
 
   /// Удалить логи и отчёты старше [maxAge]. `null` — «никогда не удалять».
@@ -424,6 +581,69 @@ class LogMaintenance {
         }
       }
     } catch (_) {}
+
+    return LogCleanupResult(files, bytes);
+  }
+
+  /// Очистить ВЫБРАННЫЕ категории немедленно, без учёта возраста.
+  ///
+  /// От [clean] отличается тем, для чего его вызывают: [clean] — автоматика
+  /// по сроку хранения (не трогает свежее), а это — ручная кнопка «Очистить
+  /// логи» с диалогом-выбором: пользователь только что смотрел в лог и явно
+  /// попросил стереть ИМЕННО его, независимо от даты последней записи.
+  ///
+  /// ⚠️ Свой `app.log` по-прежнему ОБРЕЗАЕТСЯ через владельца, а не удаляется
+  /// файлом — причина та же, что в [clean]: у открытого потока смещение
+  /// зафиксировано, и удалённый файл вернулся бы дырой из нулей.
+  static Future<LogCleanupResult> cleanSelected({
+    bool app = false,
+    bool tun = false,
+    bool proxy = false,
+    bool reports = false,
+    Directory? dir,
+  }) async {
+    final root = dir ?? await AppPaths.supportDir();
+    final appLogPath = await AppLog.filePath();
+    var files = 0;
+    var bytes = 0;
+
+    try {
+      for (final f in root.listSync().whereType<File>()) {
+        if (!f.path.toLowerCase().endsWith('.log')) continue;
+        final name =
+            f.uri.pathSegments.isEmpty ? f.path : f.uri.pathSegments.last;
+        final isApp = f.path == appLogPath || name == AppLog._appLogName;
+        final isTun = name == _tunLogName || name == 'singbox.prev.log';
+        if (isApp && !app) continue;
+        if (isTun && !tun) continue;
+        if (!isApp && !isTun && !proxy) continue;
+
+        final size = await f.length();
+        if (size == 0) continue; // и так пуст — «удалять нечего»
+        if (isApp && AppLog.fileOpened) {
+          await AppLog.clear();
+        } else {
+          await f.delete();
+        }
+        files++;
+        bytes += size;
+      }
+    } catch (_) {}
+
+    if (reports) {
+      try {
+        final reportsDir =
+            Directory('${root.path}${Platform.pathSeparator}$reportsDirName');
+        if (reportsDir.existsSync()) {
+          for (final f in reportsDir.listSync().whereType<File>()) {
+            final size = await f.length();
+            await f.delete();
+            files++;
+            bytes += size;
+          }
+        }
+      } catch (_) {}
+    }
 
     return LogCleanupResult(files, bytes);
   }

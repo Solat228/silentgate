@@ -117,7 +117,16 @@ Set<SplitHonesty> splitHonestyWarnings(AppSettings s) {
 }
 
 class SplitTunnelScreen extends StatelessWidget {
-  const SplitTunnelScreen({super.key});
+  const SplitTunnelScreen({super.key, this.openRulePath});
+
+  /// Путь правила, к которому нужно сразу открыть диалог настройки.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ЗДЕСЬ. Уведомление о мёртвом пути ([EngineNoticeKind.deadAppRule])
+  /// ведёт «к этому правилу», а не просто на экран: открывать список и
+  /// заставлять искать нужную строку среди остальных значило бы заново
+  /// прятать то, что уведомление уже нашло. Диалог правила (`_appDialog`) и
+  /// есть место починки — там же переключатель «по имени».
+  final String? openRulePath;
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +144,7 @@ class SplitTunnelScreen extends StatelessWidget {
     final editable = splitRulesEditableIn(mode);
     final l = AppLocalizations.of(context);
 
-    return Scaffold(
+    final scaffold = Scaffold(
       appBar: AppBar(title: Text(l.splitTitle)),
       body: ListView(
         children: [
@@ -414,6 +423,18 @@ class SplitTunnelScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+
+    final path = openRulePath;
+    if (path == null) return scaffold;
+    final matches = st.apps.where((r) => r.path == path).toList();
+    if (matches.isEmpty) return scaffold;
+    return _OpenRuleOnce(
+      // Ключ на путь: возврат на этот же экран с ДРУГИМ правилом обязан снова
+      // открыть диалог, а не молчать по памяти о прошлом.
+      key: ValueKey('openRuleOnce:$path'),
+      onShow: () => _appDialog(context, controller, matches.first),
+      child: scaffold,
     );
   }
 
@@ -845,6 +866,38 @@ class SplitTunnelScreen extends StatelessWidget {
     );
     if (selected != null) _addApps(c, selected);
   }
+}
+
+/// Запускает [onShow] РОВНО ОДИН РАЗ — в `initState`, а не в `build`.
+///
+/// ⚠️ ЗАЧЕМ ЭТО ОТДЕЛЬНЫЙ ВИДЖЕТ. [SplitTunnelScreen] — `StatelessWidget`, и
+/// его `build` перевызывается на каждое изменение `AppState`/`SettingsController`
+/// (например, раз в секунду при живом VPN — тикают счётчики трафика). Если бы
+/// диалог открывался прямо из `build`, он открывался бы заново на каждый такой
+/// тик. `initState` вызывается один раз за жизнь `State` — а она переживает
+/// эти перерисовки, пока сам экран не будет закрыт и открыт заново.
+class _OpenRuleOnce extends StatefulWidget {
+  const _OpenRuleOnce(
+      {super.key, required this.onShow, required this.child});
+
+  final VoidCallback onShow;
+  final Widget child;
+
+  @override
+  State<_OpenRuleOnce> createState() => _OpenRuleOnceState();
+}
+
+class _OpenRuleOnceState extends State<_OpenRuleOnce> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onShow();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Плашка честности под выбором режима.

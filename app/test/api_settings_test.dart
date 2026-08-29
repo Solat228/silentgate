@@ -49,17 +49,45 @@ void main() {
   });
 
   group('Требуют переподключения', () {
+    // ⚠️ ТОЛЬКО ТАМ, ГДЕ ПОРТЫ ВЫХОДОВ ВООБЩЕ ПОДНИМАЮТСЯ. Инбаунды отдельных
+    // портов собираются в режимах туннеля и «только прокси»; в системном
+    // прокси их не строит никто (`ApiPorts.exitPortsExistIn`).
+    const tun = AppSettings(captureMode: CaptureMode.tun);
+
     test('все три поля названы в reconnectReasons', () {
       // Поля запекаются в конфиг ядра при подъёме. Без строки здесь правка
       // не применялась бы до ручного переподключения, а плашка «переподключитесь»
       // не появлялась бы — пользователь считал бы настройку сломанной.
-      const a = AppSettings();
-      expect(a.reconnectReasons(a.copyWith(apiEnabled: true)),
+      expect(tun.reconnectReasons(tun.copyWith(apiEnabled: true)),
           contains('API для автоматизации'));
-      expect(a.reconnectReasons(a.copyWith(apiToken: 'x')),
+      expect(tun.reconnectReasons(tun.copyWith(apiToken: 'x')),
           contains('токен API'));
-      expect(a.reconnectReasons(a.copyWith(apiExitServerKeys: ['k'])),
+      expect(tun.reconnectReasons(tun.copyWith(apiExitServerKeys: ['k'])),
           contains('серверы с отдельным портом'));
+    });
+
+    test('в режиме «Только прокси» — тоже', () {
+      const p = AppSettings(captureMode: CaptureMode.proxyOnly);
+      expect(p.reconnectReasons(p.copyWith(apiEnabled: true)),
+          contains('API для автоматизации'));
+    });
+
+    test('⚠️ в режиме системного прокси переподключаться НЕ за чем', () {
+      // Приложение само пишет на экране API, что в этом режиме отдельные порты
+      // не поднимутся. Рвать из-за них живой туннель — значит наказывать за
+      // правку, которая заведомо ни на что не влияет, и создавать у человека
+      // ложную уверенность «переподключился — значит применилось».
+      const sp = AppSettings(captureMode: CaptureMode.systemProxy);
+      expect(sp.reconnectReasons(sp.copyWith(apiEnabled: true)), isEmpty);
+      expect(sp.reconnectReasons(sp.copyWith(apiToken: 'x')), isEmpty);
+      expect(sp.reconnectReasons(sp.copyWith(apiExitServerKeys: ['k'])), isEmpty);
+    });
+
+    test('смена самого способа захвата переподключение требует', () {
+      // Страж от перегиба: гейт не должен проглотить главную причину.
+      const sp = AppSettings(captureMode: CaptureMode.systemProxy);
+      expect(sp.reconnectReasons(sp.copyWith(captureMode: CaptureMode.tun)),
+          contains('способ захвата'));
     });
   });
 

@@ -12,6 +12,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
+import 'log_level_labels.dart';
 
 /// Экран «TUN и маршрутизация»: права без UAC, стек/MTU, маршрутизация, DNS, диагностика.
 class TunSettingsScreen extends StatefulWidget {
@@ -352,14 +353,26 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               Text(l.tunSingboxLogLevel),
               InfoTooltip(l.infoSingboxLogLevel),
             ]),
-            trailing: SegmentedButton<SingboxLogLevel>(
-              segments: SingboxLogLevel.values
-                  .map((v) => ButtonSegment(value: v, label: Text(v.name)))
+            // ⚠️ Те же подписи и тот же вид, что в настройках: экран туннеля и
+            // раздел «О программе» правят ОДНО поле, и разные слова на
+            // одинаковых по смыслу переключателях читались бы как две разные
+            // настройки. Список, а не сегменты, — как у соседней «стратегии
+            // DNS»: словесные подписи в сегменты не влезают.
+            trailing: DropdownButton<SingboxLogLevel>(
+              // Галочка «всё подряд» сильнее выбора руками — показываем
+              // действующий уровень и не даём двигать то, что ни на что не
+              // влияет.
+              value: s.effectiveSingboxLogLevel,
+              onChanged: s.verboseLogging
+                  ? null
+                  : (v) {
+                      if (v == null) return;
+                      controller.update((st) => st.copyWith(singboxLogLevel: v));
+                    },
+              items: SingboxLogLevel.values
+                  .map((v) => DropdownMenuItem(
+                      value: v, child: Text(singboxLogLevelLabel(l, v))))
                   .toList(),
-              selected: {s.singboxLogLevel},
-              showSelectedIcon: false,
-              onSelectionChanged: (v) =>
-                  controller.update((st) => st.copyWith(singboxLogLevel: v.first)),
             ),
           ),
           // ⚠️ ЦЕНУ `debug` НАДО НАЗЫВАТЬ, А НЕ УМАЛЧИВАТЬ.
@@ -370,7 +383,7 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
           // РАДИ разбора обрыва, получает журнал, в котором этого обрыва уже
           // нет. Замерено на машине владельца 20.08.2026: 28 обрывов за шесть
           // дней, и ни один не попал в журнал ядра.
-          if (s.singboxLogLevel == SingboxLogLevel.debug)
+          if (s.effectiveSingboxLogLevel == SingboxLogLevel.debug)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [

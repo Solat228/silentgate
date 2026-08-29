@@ -400,6 +400,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logsSub => '应用和 TUN（sing-box）：订阅导入、延迟测试、错误';
 
   @override
+  String get logModeAppTitle => '应用日志';
+
+  @override
+  String get logModeAppSub => '记录应用自身操作的详细程度';
+
+  @override
+  String get logModeCoreTitle => '内核日志';
+
+  @override
+  String get logModeCoreSub => '记录隧道（sing-box）运行情况的详细程度';
+
+  @override
+  String get logLevelWarnLabel => '仅错误';
+
+  @override
+  String get logLevelInfoLabel => '普通';
+
+  @override
+  String get logLevelDebugLabel => '详细';
+
+  @override
+  String get logVerboseTitle => '记录全部';
+
+  @override
+  String get logVerboseSub => '两份日志都用最详细的级别。排查问题时再打开：文件增长很快。';
+
+  @override
+  String get infoLogModeApp =>
+      '应用日志（app.log）的详细程度：订阅导入、延迟测试、连接、错误。「仅错误」最简短；「普通」与本设置出现之前的行为一致；「详细」会记录包括调试行在内的全部内容。对文件大小的影响远小于内核日志。';
+
+  @override
   String get thirdPartyTitle => '第三方组件';
 
   @override
@@ -1350,6 +1381,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get srvTileSaved => '已保存';
 
   @override
+  String get srvTileUpdatedTitle => 'Server updated';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Changed in the last subscription update: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'The last subscription update changed this server\'s record';
+
+  @override
+  String get srvFieldId => 'ID / password';
+
+  @override
+  String get srvFieldEncryption => 'Encryption';
+
+  @override
+  String get srvFieldSecurity => 'Connection security';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Host header';
+
+  @override
+  String get srvFieldPath => 'Path';
+
+  @override
+  String get srvFieldPublicKey => 'Reality public key';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Obfuscation';
+
+  @override
+  String get srvFieldObfsPassword => 'Obfuscation password';
+
+  @override
+  String get srvFieldHopPorts => 'Port hopping';
+
+  @override
   String get pingNa => 'n/a';
 
   @override
@@ -1587,6 +1666,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tunTaskFailed => '无法创建任务（UAC 被拒绝或被策略阻止）';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Silent TUN startup is broken — every connection will ask for administrator rights';
+
+  @override
+  String get tunAutoFixAction => 'Fix';
 
   @override
   String get tunLogTitle => 'TUN 日志 (sing-box)';
@@ -2649,6 +2735,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logsNothingToClean => '没有可删除的内容';
 
   @override
+  String get logsSettingsLabel => 'Log settings';
+
+  @override
+  String get logsClearAllLabel => 'Clear all logs';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Delete this log';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'App log — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'TUN core log — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Proxy core log — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Old support reports — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Logs have been accumulating from $from to $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Clear';
+
+  @override
   String get speedTooltip => '经此服务器的下载速度';
 
   @override
@@ -2856,6 +2990,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => '点按改为按文件名匹配';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'The path to “$app” is outdated — the rule won’t apply this time';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Fix';
 
   @override
   String get splitVersionedPath => '路径中含有版本号——程序更新后该规则将不再匹配';

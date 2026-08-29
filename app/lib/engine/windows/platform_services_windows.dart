@@ -64,6 +64,9 @@ class _WindowsCoreVersions implements CoreVersionInfo {
 class _WindowsTunLog implements TunLogReader {
   @override
   Future<String> tail({int lines = 40}) => TunHelper.tailLog(lines: lines);
+
+  @override
+  Future<String> filePath() => TunHelper.currentLogPath();
 }
 
 class _WindowsPrivileges implements PrivilegeSetup {

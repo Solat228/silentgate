@@ -19,6 +19,8 @@ import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/platform/notification_access.dart';
+import '../core/platform/platform_services.dart';
+import '../core/settings/split_tunnel.dart';
 import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/probe/clash_delay.dart';
@@ -303,6 +305,28 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
   Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
 }
 
+/// Сколько висит заметка движка, прежде чем уехать вниз сама.
+///
+/// ⚠️ ТОП-УРОВНЕВАЯ ФУНКЦИЯ, А НЕ ЛИТЕРАЛ ВНУТРИ `_showEngineNotices` —
+/// иначе таймаут в 1 минуту для мёртвого правила приложения (решение
+/// владельца) нечем проверить без подъёма всего `HomeScreen` с `Provider`.
+@visibleForTesting
+Duration engineNoticeDuration(EngineNoticeKind kind, {required bool isProblem}) {
+  switch (kind) {
+    case EngineNoticeKind.deadAppRule:
+      // Решение владельца: минута, а не общие 6/10 секунд — правило касается
+      // защиты конкретной программы, отмахнуться от него в спешке хуже, чем
+      // от обычной заметки.
+      return const Duration(minutes: 1);
+    case EngineNoticeKind.staleScheduledTask:
+      // Требует прочитать и решить («Исправить» или нет) — обычных 6 секунд
+      // для этого мало, а красной ошибкой (10 с) это не является.
+      return const Duration(seconds: 15);
+    default:
+      return Duration(seconds: isProblem ? 10 : 6);
+  }
+}
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -557,12 +581,48 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       state.clearNotice();
+      final l = AppLocalizations.of(context);
       final detail = (notice.detail ?? '').trim();
+
+      // ⚠️ ДВА НОВЫХ ВИДА ПОКАЗАНЫ ОТДЕЛЬНОЙ ВЕТКОЙ, А НЕ ЧЕРЕЗ `notice.text`.
+      //
+      // Заметки движка исторически не локализованы (`notice.text` — готовая
+      // русская строка: движок не имеет доступа к `AppLocalizations`). Для
+      // НОВОГО текста, который видит человек, интерфейс переводит сам по
+      // `kind` — старые виды поведения не трогаем.
+      if (notice.kind == EngineNoticeKind.staleScheduledTask) {
+        AppToast.show(
+          context,
+          l.tunAutoFixNoticeText,
+          kind: ToastKind.warning,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+          actionLabel: l.tunAutoFixAction,
+          onAction: () => _fixStaleScheduledTask(context),
+        );
+        return;
+      }
+      if (notice.kind == EngineNoticeKind.deadAppRule) {
+        // Путь пришёл в `detail`; имя для текста — то же, что покажет строка
+        // правила на экране раздельного туннелирования ([AppRule.name]).
+        final appName = detail.isEmpty ? notice.text : AppRule(detail).name;
+        AppToast.show(
+          context,
+          l.splitDeadPathNoticeText(appName),
+          kind: ToastKind.warning,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+          actionLabel: l.splitDeadPathNoticeAction,
+          // «К ЭТОМУ ПРАВИЛУ», А НЕ ПРОСТО НА ЭКРАН — см. `openRulePath`.
+          onAction: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => SplitTunnelScreen(openRulePath: detail))),
+        );
+        return;
+      }
+
       AppToast.show(
         context,
         detail.isEmpty ? notice.text : '${notice.text} · $detail',
         kind: notice.isProblem ? ToastKind.error : ToastKind.info,
-        duration: Duration(seconds: notice.isProblem ? 10 : 6),
+        duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
         // У блокировки — путь к правилу: сообщение без «а где это менять»
         // заставляет искать настройку самому.
         actionLabel: notice.kind == EngineNoticeKind.blocked
@@ -574,6 +634,26 @@ class _HomeScreenState extends State<HomeScreen> {
             : null,
       );
     });
+  }
+
+  /// Действие кнопки заметки [EngineNoticeKind.staleScheduledTask]: одно окно
+  /// UAC пересоздаёт задачу Планировщика — дальше подключения идут без него.
+  ///
+  /// ⚠️ ТОТ ЖЕ ВЫЗОВ, ЧТО И В НАСТРОЙКАХ («TUN и маршрутизация» → «Настроить»,
+  /// см. `tun_settings_screen.dart`). Второго способа починить задачу в
+  /// проекте нет и не должно появиться.
+  Future<void> _fixStaleScheduledTask(BuildContext context) async {
+    AppLog.i('Пользователь согласился пересоздать задачу Планировщика '
+        'по предложению из уведомления');
+    final ok = await platform.privileges.configure();
+    AppLog.i(ok
+        ? 'Задача Планировщика пересоздана — дальше подключения пойдут без UAC'
+        : 'Пересоздать задачу Планировщика не удалось '
+            '(UAC отклонён или запрещено политикой)');
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    AppToast.show(context, ok ? l.tunTaskDone : l.tunTaskFailed,
+        kind: ok ? ToastKind.success : ToastKind.error);
   }
 
   void _showProgressToasts(BuildContext context) {

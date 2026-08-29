@@ -412,6 +412,38 @@ class AppLocalizationsFa extends AppLocalizations {
       'برنامه و TUN (sing-box): درون‌ریزی اشتراک، پینگ، خطاها';
 
   @override
+  String get logModeAppTitle => 'گزارش برنامه';
+
+  @override
+  String get logModeAppSub => 'چه چیزی دربارهٔ کارهای خودِ برنامه ثبت شود';
+
+  @override
+  String get logModeCoreTitle => 'گزارش هسته';
+
+  @override
+  String get logModeCoreSub => 'چه چیزی دربارهٔ کار تونل (sing-box) ثبت شود';
+
+  @override
+  String get logLevelWarnLabel => 'فقط خطاها';
+
+  @override
+  String get logLevelInfoLabel => 'عادی';
+
+  @override
+  String get logLevelDebugLabel => 'مفصل';
+
+  @override
+  String get logVerboseTitle => 'ثبت همه چیز';
+
+  @override
+  String get logVerboseSub =>
+      'هر دو گزارش در مفصل‌ترین سطح. هنگام بررسی مشکل روشن کنید: حجم فایل‌ها سریع بالا می‌رود.';
+
+  @override
+  String get infoLogModeApp =>
+      'میزان جزئیات گزارش برنامه (app.log): درون‌ریزی اشتراک، پینگ، اتصال، خطاها. «فقط خطاها» کوتاه‌ترین است؛ «عادی» همان رفتار پیش از افزودن این تنظیم است؛ «مفصل» همه چیز، از جمله سطرهای اشکال‌زدایی، را می‌نویسد. اثر آن بر حجم فایل بسیار کمتر از گزارش هسته است.';
+
+  @override
   String get thirdPartyTitle => 'مؤلفه‌های شخص ثالث';
 
   @override
@@ -1375,6 +1407,54 @@ class AppLocalizationsFa extends AppLocalizations {
   String get srvTileSaved => 'ذخیره شد';
 
   @override
+  String get srvTileUpdatedTitle => 'Server updated';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Changed in the last subscription update: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'The last subscription update changed this server\'s record';
+
+  @override
+  String get srvFieldId => 'ID / password';
+
+  @override
+  String get srvFieldEncryption => 'Encryption';
+
+  @override
+  String get srvFieldSecurity => 'Connection security';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Host header';
+
+  @override
+  String get srvFieldPath => 'Path';
+
+  @override
+  String get srvFieldPublicKey => 'Reality public key';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Obfuscation';
+
+  @override
+  String get srvFieldObfsPassword => 'Obfuscation password';
+
+  @override
+  String get srvFieldHopPorts => 'Port hopping';
+
+  @override
   String get pingNa => 'n/a';
 
   @override
@@ -1619,6 +1699,13 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'ساخت وظیفه ناموفق بود (UAC رد شد یا با سیاست مسدود شد)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Silent TUN startup is broken — every connection will ask for administrator rights';
+
+  @override
+  String get tunAutoFixAction => 'Fix';
 
   @override
   String get tunLogTitle => 'گزارش TUN (sing-box)';
@@ -2730,6 +2817,54 @@ class AppLocalizationsFa extends AppLocalizations {
   String get logsNothingToClean => 'چیزی برای حذف نیست';
 
   @override
+  String get logsSettingsLabel => 'Log settings';
+
+  @override
+  String get logsClearAllLabel => 'Clear all logs';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Delete this log';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'App log — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'TUN core log — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Proxy core log — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Old support reports — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Logs have been accumulating from $from to $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Clear';
+
+  @override
   String get speedTooltip => 'سرعت دریافت از راه این سرور';
 
   @override
@@ -2954,6 +3089,14 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'برای تطبیق بر اساس نام فایل ضربه بزنید';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'The path to “$app” is outdated — the rule won’t apply this time';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Fix';
 
   @override
   String get splitVersionedPath =>

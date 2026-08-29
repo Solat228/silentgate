@@ -22,9 +22,17 @@ import 'tun_scheduled_task.dart';
 /// Права: сначала пробуем задачу Планировщика (без UAC), иначе — прямой UAC-запуск.
 /// После старта ОБЯЗАТЕЛЬНО проверяем, что туннель реально поднялся: раньше сбой
 /// sing-box был невидим и приложение показывало «Подключено» без туннеля.
-class SingboxRouterWindows implements TunRouter {
+class SingboxRouterWindows implements TunRouter, StaleScheduledTaskReporter {
   bool _started = false;
   String _stopPath = '';
+
+  /// Последний `_startOnce` заметил устаревшую задачу Планировщика и пошёл
+  /// в обход неё. `WindowsEngine` читает это ПОСЛЕ `start()`, чтобы предложить
+  /// человеку одноразовую починку — см. [StaleScheduledTaskReporter].
+  bool _lastStaleScheduledTask = false;
+
+  @override
+  bool get lastStartHitStaleScheduledTask => _lastStaleScheduledTask;
 
   /// Выходы мульти-VPN текущей сессии.
   ///
@@ -196,7 +204,8 @@ class SingboxRouterWindows implements TunRouter {
     }
     final taskExists = await TunScheduledTask.exists();
     final taskCurrent = taskExists && await TunScheduledTask.isCurrent();
-    if (taskExists && !taskCurrent) {
+    _lastStaleScheduledTask = taskExists && !taskCurrent;
+    if (_lastStaleScheduledTask) {
       AppLog.w('Задача Планировщика «${TunScheduledTask.taskName}» устарела — '
           'она запускает другой файл или другие пути. Поднимаю туннель обычным '
           'путём (спросит права). Пересоздать: настройки → «TUN и '

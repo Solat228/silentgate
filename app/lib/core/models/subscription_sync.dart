@@ -20,7 +20,17 @@ class ServerKeyChange {
   /// выглядел дефект gRPC (`serviceName=` против `path=`).
   final List<String> fields;
 
-  const ServerKeyChange({required this.name, required this.fields});
+  /// [VpnServer.key] сервера ПОСЛЕ обновления — ссылка, под которой этот же
+  /// сервер сейчас лежит в списке.
+  ///
+  /// ⚠️ НЕ ДЛЯ ЖУРНАЛА. Единственный потребитель — `UpdatedServersStore`
+  /// (значок «обновлён» на карточке): ему нужен реальный ключ, чтобы найти
+  /// строку в списке, а журналу — только [name] и [fields]. Печатать это поле
+  /// в `keyChangeReport` нельзя: в ссылке лежат учётные данные (см. класс).
+  final String newKey;
+
+  const ServerKeyChange(
+      {required this.name, required this.fields, required this.newKey});
 }
 
 /// Итог обновления подписки: что изменилось в составе серверов (как в NekoBox)
@@ -86,6 +96,7 @@ class SubscriptionSyncResult {
         changes.add(ServerKeyChange(
           name: journalName(e.value, position),
           fields: changedFields(old, e.value),
+          newKey: e.value.key,
         ));
       }
     }

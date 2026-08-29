@@ -46,6 +46,7 @@ import '../data/pinned_store.dart';
 import '../data/server_overrides_store.dart';
 import '../data/subscriptions_store.dart';
 import '../data/settings_storage.dart';
+import '../data/updated_servers_store.dart';
 import '../engine/engine_factory.dart';
 import '../engine/vpn_engine.dart';
 import 'api_handlers.dart';
@@ -324,6 +325,12 @@ class AppState extends ChangeNotifier {
   final ServerOverridesStore _overridesStore = ServerOverridesStore();
   final Map<String, ServerOverride> _overrides = {};
 
+  /// Значок «обновлён при последнем обновлении подписки» (#переживает
+  /// перезапуск). Ключ — [VpnServer.key] сервера ПОСЛЕ обновления, значение —
+  /// имена изменившихся полей (см. `UpdatedServersStore`).
+  final UpdatedServersStore _updatedStore = UpdatedServersStore();
+  Map<String, List<String>> _updatedFields = {};
+
   /// Конфиги от панели (XRAY_JSON) по ключу сервера. На диске список серверов —
   /// это только ссылки, поэтому панельный конфиг храним отдельно, иначе он терялся
   /// бы при перезапуске и outbound'ы снова пересобирались из ссылок.
@@ -382,6 +389,24 @@ class AppState extends ChangeNotifier {
 
   /// Итог последнего обновления подписки (для баннера и экрана логов).
   SubscriptionSyncResult? get lastSync => _lastSync;
+
+  /// Изменившиеся поля сервера, если он обновился при ПОСЛЕДНЕМ обновлении
+  /// подписки, — источник значка «обновлён» на карточке. `null` — сервер не
+  /// трогали (обычный случай) либо он не пережил ни одного сравнения.
+  ///
+  /// ⚠️ Пустой список (не `null`) — законный ответ: сменилась только запись
+  /// ссылки, поля совпали (см. [ServerKeyChange.fields]). Карточка обязана
+  /// отличать «поля не менялись» от «сервер вообще не обновлялся».
+  List<String>? updatedFieldsOf(VpnServer server) => _updatedFields[server.key];
+
+  /// Только для тестов виджета `ServerTile`: настоящую метку ставит только
+  /// диф обновления подписки (`importSource`), а гонять полноценный импорт
+  /// ради проверки одной иконки — лишний вес. Прод-код этот сеттер не зовёт.
+  @visibleForTesting
+  void debugSetUpdatedFields(Map<String, List<String>> byKey) {
+    _updatedFields = byKey;
+    notifyListeners();
+  }
 
   /// Подписки НЕ СОХРАНЯЮТСЯ на диск: `subscriptions.json` не прочитан и не
   /// отодвинут в сторону, писать поверх него нельзя (`SubscriptionsStore`).
@@ -457,6 +482,45 @@ class AppState extends ChangeNotifier {
     // Новая попытка — новый разговор про гео-базы: прошлый вердикт мог
     // относиться к другому серверу, а базы с тех пор могли и скачать.
     _geoVerdict = null;
+  }
+
+  /// Предупредить о правиле приложения «по полному пути», которое устарело.
+  ///
+  /// ⚠️ РАДИ ЧЕГО ЭТО ЕСТЬ. Правило устаревает МОЛЧА, когда программа
+  /// обновляется и переезжает в папку с номером версии (пример владельца —
+  /// `claude.exe` в `…claude-code-2.1.238-win32-x64\…`): kill switch тихо
+  /// пропускает такое правило (`WfpRules.withoutMissingApps`), а строка про это
+  /// раньше уходила только в журнал. Человек видел «Подключено» и считал, что
+  /// защита этого приложения работает — до заметки на главном экране узнать
+  /// правду можно было, только зайдя в раздельное туннелирование САМОМУ.
+  ///
+  /// ⚠️ НЕ «ПО ИМЕНИ НЕ РАБОТАЕТ» — сопоставление по имени исправно
+  /// (`CHANGELOG.md` #602). Ломается путь, поэтому и берём первое ВКЛЮЧЁННОЕ
+  /// правило «по полному пути» ([AppRule.byName] == false) с мёртвым файлом —
+  /// см. общую проверку `appRulePathMissing`.
+  ///
+  /// Показывается на КАЖДОМ подключении (в отличие от предложения починить
+  /// задачу Планировщика): каждое новое правило или каждый новый мёртвый путь
+  /// — это новость, о которой стоит сказать заново, а не то же самое
+  /// предложение, которое человек уже отклонил в этой сессии.
+  void _warnAboutDeadAppRules(AppSettings settings) {
+    AppRule? dead;
+    for (final r in settings.splitTunnel.apps) {
+      if (r.enabled && appRulePathMissing(r)) {
+        dead = r;
+        break;
+      }
+    }
+    if (dead == null) return;
+    AppLog.w('Правило приложения «${dead.name}» указывает на несуществующий '
+        'файл (${dead.path}) — оно не применится в этом подключении. '
+        'Показываю уведомление на главном экране.');
+    _pendingNotice = EngineNotice(
+      EngineNoticeKind.deadAppRule,
+      'Путь к «${dead.name}» устарел — правило не применится',
+      detail: dead.path,
+    );
+    notifyListeners();
   }
 
   /// Пользователь выключил VPN — отсчёт снят.
@@ -634,6 +698,7 @@ class AppState extends ChangeNotifier {
     final rawLinks = active?.serverLinks ?? legacyLinks;
     _subServers =
         rawLinks.map(_serverFromStoredLink).whereType<VpnServer>().toList();
+    _updatedFields = await _updatedStore.load();
     final pinnedEntries = await _pinnedStore.load();
     _pinned.clear();
     _pinnedSourceByLink.clear();
@@ -1840,6 +1905,18 @@ class AppState extends ChangeNotifier {
       for (final line in _lastSync!.keyChangeReport) {
         AppLog.w(line);
       }
+      // Значок «обновлён» на карточке — из ТОГО ЖЕ дифа, второй источник
+      // правды не заводим. Карта ЗАМЕНЯЕТСЯ целиком (а не дополняется): значок
+      // держит «что изменилось В ПОСЛЕДНЕМ обновлении», а не историю — иначе
+      // он показывал бы правку недельной давности как только что случившуюся.
+      _updatedFields = {
+        for (final c in _lastSync!.keyChanges) c.newKey: c.fields,
+      };
+      // ⚠️ AWAIT, А НЕ `unawaited`. Это и есть гарантия «переживает
+      // перезапуск» — той же ценой, что и `_savePinned()` рядом: запись
+      // держит открытым обновление подписки на десятки миллисекунд, но без
+      // неё приложение, закрытое сразу после синхронизации, теряло бы значок.
+      await _updatedStore.save(_updatedFields);
     } catch (e) {
       _error = e.toString();
       _errorCode = null;
@@ -2380,6 +2457,7 @@ class AppState extends ChangeNotifier {
       // (свежая установка, удалили все серверы) заводило часы там, где
       // подключения не будет вовсе, а снять их было нечем.
       markUserConnect();
+      _warnAboutDeadAppRules(settings);
       final ov = _overrides[server.key];
       final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
           ? server.copyWith(rawJsonOverride: ov.rawJson)
@@ -2579,6 +2657,7 @@ class AppState extends ChangeNotifier {
     // Режим «Авто (лучший сервер)»: если текущий не поднимется после всех попыток,
     // движок переключится на следующий из этого списка. Ручной выбор не подменяем.
     markUserConnect();
+    _warnAboutDeadAppRules(settings);
     _engine.fallbackServers = _fallbackCandidates();
     _engine.bypassCandidates = _servers;
     await _engine.connectBalancer(

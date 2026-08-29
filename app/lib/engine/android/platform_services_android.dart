@@ -188,6 +188,12 @@ class _AndroidTunLog implements TunLogReader {
         ? fallback
         : rows.sublist(rows.length - lines).join('\n');
   }
+
+  @override
+  Future<String> filePath() async {
+    final dir = await AppPaths.supportDir();
+    return '${dir.path}${Platform.pathSeparator}singbox.log';
+  }
 }
 
 class _AndroidPrivileges implements PrivilegeSetup {

@@ -39,6 +39,20 @@ abstract class TunRouter {
   Future<void> stop();
 }
 
+/// Роутер, способный сказать: последний вызов [TunRouter.start] заметил, что
+/// задача Планировщика ведёт не туда, и поднял туннель В ОБХОД неё (через
+/// UAC), а не через неё.
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ИНТЕРФЕЙС, А НЕ НОВЫЙ ПАРАМЕТР [TunRouter.start]. Именованный
+/// параметр в абстрактном методе стал бы ОБЯЗАТЕЛЬНЫМ для каждого
+/// `implements TunRouter` — включая уже существующие тестовые фейки
+/// (`seamless_test.dart`, `tun_handover_test.dart`,
+/// `windows_session_guards_test.dart`), которым эта деталь ни к чему.
+/// `is`-проверка в `WindowsEngine` даёт то же самое, не трогая чужие тесты.
+abstract interface class StaleScheduledTaskReporter {
+  bool get lastStartHitStaleScheduledTask;
+}
+
 /// TUN не поднялся. [details] — хвост лога sing-box (для показа пользователю).
 class TunStartException implements Exception {
   final String message;

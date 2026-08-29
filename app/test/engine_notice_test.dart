@@ -52,11 +52,25 @@ void main() {
     test('все виды перечислены — набор закрыт', () {
       // Страж на случай, если кто-то добавит вид и забудет решить, проблема
       // это или заметка: тест упадёт и заставит подумать.
-      expect(EngineNoticeKind.values, hasLength(6));
+      expect(EngineNoticeKind.values, hasLength(8));
       for (final k in EngineNoticeKind.values) {
         final n = EngineNotice(k, 'x');
         expect(n.isProblem, isA<bool>());
       }
+    });
+
+    test('устаревшая задача Планировщика и мёртвый путь — обычные заметки', () {
+      // Обе новости не блокируют интерфейс сообщением-ошибкой: подключение в
+      // обоих случаях состоится (первым запасным путём через UAC, второе —
+      // просто без одного правила). Красная плашка обесценила бы настоящие
+      // проблемы соединения.
+      expect(
+          const EngineNotice(EngineNoticeKind.staleScheduledTask, 'x')
+              .isProblem,
+          isFalse);
+      expect(
+          const EngineNotice(EngineNoticeKind.deadAppRule, 'x').isProblem,
+          isFalse);
     });
   });
 }

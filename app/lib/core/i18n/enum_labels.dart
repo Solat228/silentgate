@@ -68,6 +68,64 @@ String syncSummary(AppLocalizations l, SubscriptionSyncResult r) {
   return parts.join(' · ');
 }
 
+/// Человекочитаемое имя поля сервера — для значка «обновлён» на карточке
+/// (`ServerTile`, значок берёт список полей из `AppState.updatedFieldsOf`).
+///
+/// ⚠️ ТОЛЬКО ТЕ ПОЛЯ, У КОТОРЫХ ЕСТЬ ПОНЯТНОЕ ЧЕЛОВЕКУ НАЗВАНИЕ. Список сырых
+/// имён общий с [SubscriptionSyncResult.changedFields] — это ЕДИНСТВЕННЫЙ
+/// источник того, что вообще могло измениться, второй список заводить нельзя
+/// (расхождение снова спрячет часть полей, как это уже было с журналом).
+/// Для полей без интуитивного смысла конечному пользователю (`alterId`,
+/// `flow`, `headerType`, `authority`, `xhttpMode`, `xPadding`, `spiderX`,
+/// `allowInsecure`) возвращается сырое имя как есть: придуманный перевод хуже
+/// технического названия, а показывать что-то надо — эти поля тоже входят в
+/// список изменившихся.
+String serverFieldLabel(AppLocalizations l, String field) {
+  switch (field) {
+    case 'address':
+      return l.srvInfoParamAddress;
+    case 'network':
+      return l.srvInfoParamTransport;
+    case 'fingerprint':
+      return l.srvInfoParamTlsFingerprint;
+    case 'id':
+      return l.srvFieldId;
+    case 'encryption':
+      return l.srvFieldEncryption;
+    case 'security':
+      return l.srvFieldSecurity;
+    case 'sni':
+      return l.srvFieldSni;
+    case 'host':
+      return l.srvFieldHost;
+    case 'path':
+      return l.srvFieldPath;
+    case 'publicKey':
+      return l.srvFieldPublicKey;
+    case 'shortId':
+      return l.srvFieldShortId;
+    case 'alpn':
+      return l.srvFieldAlpn;
+    case 'obfs':
+      return l.srvFieldObfs;
+    case 'obfsPassword':
+      return l.srvFieldObfsPassword;
+    case 'hopPorts':
+      return l.srvFieldHopPorts;
+    default:
+      return field;
+  }
+}
+
+/// Подсказка к значку «обновлён»: что именно изменилось при последней
+/// синхронизации подписки. Пустой [fields] — сменилась только запись ссылки
+/// (см. [ServerKeyChange.fields]), сами поля совпали.
+String updatedServerTooltip(AppLocalizations l, List<String> fields) {
+  if (fields.isEmpty) return l.srvTileUpdatedGeneric;
+  return l.srvTileUpdatedFields(
+      fields.map((f) => serverFieldLabel(l, f)).join(', '));
+}
+
 /// Подпись объёма спидтеста («20 МБ» / «5 МБ»).
 String speedSizeLabel(AppLocalizations l, SpeedTestSize s) =>
     s == SpeedTestSize.full ? l.speedSizeFull : l.speedSizeLight;

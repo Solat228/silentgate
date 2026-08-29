@@ -84,6 +84,12 @@ abstract interface class CoreVersionInfo {
 abstract interface class TunLogReader {
   /// Последние [lines] строк лога; пустая строка — лога ещё нет.
   Future<String> tail({int lines});
+
+  /// Путь файла лога — для «живого» инкрементального чтения на экране логов
+  /// ([RotatingLog.readSince]). [tail] для этого не годится: он каждый раз
+  /// заново декодирует хвост целиком, а ядро на `debug` пишет сотни строк в
+  /// секунду.
+  Future<String> filePath();
 }
 
 /// Подготовка прав на подъём туннеля.

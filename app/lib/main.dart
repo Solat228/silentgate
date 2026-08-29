@@ -1,6 +1,7 @@
 import 'core/util/key_migration.dart';
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -33,7 +34,43 @@ import 'state/provider_wiring.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
 
+/// Поставить ловушки необработанных ошибок.
+///
+/// ⚠️ БЕЗ НИХ ПАДЕНИЕ НЕ ПОПАДАЛО В ЖУРНАЛ ВООБЩЕ. Flutter печатает
+/// необработанную ошибку в консоль — а у собранного приложения консоли нет.
+/// То есть на вопрос «почему приложение не открылось» отвечать было нечем:
+/// журнал обрывался на последней удачной строке, и выглядело это как будто
+/// приложение просто перестало писать. Ровно эта жалоба и приходила:
+/// «у меня иногда НЕ включается приложение».
+///
+/// Прежнее поведение сохраняется целиком: [FlutterError.presentError] зовётся
+/// как и раньше, а `onError` возвращает `false` — «не обработана», пусть
+/// движок делает с ней то же, что делал. Мы только ДОПИСЫВАЕМ строку.
+void _installCrashHandlers() {
+  final prevFlutterError = FlutterError.onError;
+  FlutterError.onError = (details) {
+    AppLog.fatalSync('АВАРИЯ (интерфейс): ${details.exceptionAsString()}');
+    // ⚠️ Стек — отдельной строкой и ТОЛЬКО первые кадры: полный стек Flutter
+    // это сотня строк служебных вызовов движка, и в журнале на 512 КБ одна
+    // авария вытеснила бы всё, что происходило до неё.
+    final st = details.stack;
+    if (st != null) AppLog.fatalSync(AppLog.shortStack(st));
+    (prevFlutterError ?? FlutterError.presentError)(details);
+  };
+  // Асинхронные ошибки, которые не поймал никто (Flutter 3.3+). Возврат
+  // `false` означает «не обработана» — движок отработает как без нас.
+  PlatformDispatcher.instance.onError = (error, stack) {
+    AppLog.fatalSync('АВАРИЯ (асинхронная): $error');
+    AppLog.fatalSync(AppLog.shortStack(stack));
+    return false;
+  };
+}
+
 Future<void> main(List<String> args) async {
+  // ⚠️ ПЕРВОЙ СТРОКОЙ, ДО ВСЕГО ОСТАЛЬНОГО. Ловушка, поставленная после
+  // инициализации, не поймает падение самой инициализации — а это и есть
+  // случай «приложение не открылось».
+  _installCrashHandlers();
   // Отчёт о переносе ключей серверов — в журнал. Ставится здесь, потому что
   // сам KeyMigration про журнал знать не должен: его читают настройки, а
   // `app_log` тянет за собой `dart:ui` (см. комментарий у `onReport`).

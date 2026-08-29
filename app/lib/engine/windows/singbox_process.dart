@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/core_cleanup.dart';
 import '../../core/platform/rotating_log.dart';
@@ -103,6 +104,10 @@ class SingboxProcess {
     );
     _process = proc;
     _exited = false;
+    // ⚠️ В ЕДИНЫЙ ЖУРНАЛ, а не только в `singbox_proxy.log`: см. тот же
+    // разбор в `xray_process.dart`. Прокси-ядро поднимается для hysteria2,
+    // и «оно вообще запускалось?» — первый вопрос при жалобе на такой сервер.
+    AppLog.i('Прокси-ядро sing-box запущено (pid ${proc.pid})');
     // Windows не убивает детей вместе с родителем — регистрируем, чтобы
     // погасить при выходе и не оставить работающее ядро после закрытия.
     CoreCleanup.register(proc);
@@ -113,6 +118,13 @@ class SingboxProcess {
       // конфиге одинаково, а в логе различаются.
       unawaited(_log?.write('--- sing-box (прокси) завершился, код $code') ??
           Future<void>.value());
+      // ⚠️ НЕОЖИДАННАЯ смерть — уровень предупреждения, штатная остановка
+      // проходит через `stop()` и до сюда доходит уже с погашенным `_process`.
+      // Без этой строки падение прокси-ядра выглядело в журнале приложения
+      // как полная тишина: соединение просто переставало работать.
+      if (!_stopping) {
+        AppLog.w('Прокси-ядро sing-box завершилось само, код $code');
+      }
     }));
 
     void onLine(String line) {
@@ -136,9 +148,13 @@ class SingboxProcess {
 
   Future<int>? get exitCode => _process?.exitCode;
 
+  /// Идёт ли штатная остановка — чтобы не путать её с падением ядра.
+  bool _stopping = false;
+
   Future<void> stop() async {
     final proc = _process;
     _process = null;
+    _stopping = true;
     // ⚠️ `_log` НЕ обнуляем здесь. Обработчики `onLine` и `exitCode` читают
     // именно ПОЛЕ, поэтому раннее обнуление выбрасывало всё, что ядро выдало
     // при убийстве, — вместе со строкой «завершился, код N». То есть ровно ту
@@ -161,11 +177,13 @@ class SingboxProcess {
     // Дожидаемся ДОСТАВКИ вывода: `exitCode` завершается раньше, чем stdout
     // и stderr дочитаны до конца, — последние строки иначе теряются.
     await outputDone.timeout(const Duration(seconds: 2), onTimeout: () {});
+    AppLog.i('Прокси-ядро sing-box остановлено');
     final log = _log;
     _log = null;
     await log?.close();
     _tail.clear();
     _drains.clear();
+    _stopping = false;
   }
 
   void dispose() {}

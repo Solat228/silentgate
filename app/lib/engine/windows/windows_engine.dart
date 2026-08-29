@@ -76,6 +76,43 @@ class WindowsEngine extends VpnEngineBase {
   final TunRouter _tunRouter;
   bool _tunActive = false;
 
+  /// Предложение починить задачу Планировщика уже показано в ЭТОЙ сессии
+  /// приложения (движок живёт, пока живо приложение).
+  ///
+  /// ⚠️ ПОКАЗЫВАЕМ РОВНО ОДИН РАЗ, А НЕ НА КАЖДОМ ПОДКЛЮЧЕНИИ. Решение
+  /// владельца (29.08.2026): «Это разве не работа приложения фиксить это?» —
+  /// нужно спросить и починить, а не спрашивать снова и снова при отказе.
+  /// Если человек согласился — задача пересоздана, и условие ниже больше не
+  /// сработает само; если отказался — новый вопрос на каждом подключении был
+  /// бы навязчивее исходной проблемы.
+  bool _staleTaskFixOffered = false;
+
+  /// После `_tunRouter.start()` — если роутер умеет об этом сказать
+  /// ([StaleScheduledTaskReporter]) и последний подъём заметил устаревшую
+  /// задачу Планировщика, предложить человеку одноразовую починку.
+  void _offerScheduledTaskFixIfStale() {
+    final router = _tunRouter;
+    if (router is! StaleScheduledTaskReporter) return;
+    // ⚠️ Явное приведение, а не полагание на автопродвижение типа: анализатор
+    // не продвигает `router` до `StaleScheduledTaskReporter` после проверки
+    // выше (оба типа — интерфейсы, у `TunRouter` нет с ним общего предка).
+    final reporter = router as StaleScheduledTaskReporter;
+    if (!reporter.lastStartHitStaleScheduledTask) return;
+    if (_staleTaskFixOffered) {
+      AppLog.i('Задача Планировщика по-прежнему устарела, но починку уже '
+          'предлагали в этой сессии — молчу, чтобы не надоедать');
+      return;
+    }
+    _staleTaskFixOffered = true;
+    AppLog.w('Обнаружена устаревшая задача Планировщика — предлагаю человеку '
+        'пересоздать её одним нажатием (см. EngineNoticeKind.staleScheduledTask)');
+    // ⚠️ ТЕКСТ ЗДЕСЬ — ЗАПАСНОЙ (лог, toString). То, что реально увидит
+    // человек, интерфейс переводит по `kind` ([EngineNoticeKind]) — движок не
+    // имеет доступа к `AppLocalizations`.
+    emitNotice(EngineNoticeKind.staleScheduledTask,
+        'Автозапуск TUN без окна UAC сломан — задача Планировщика устарела');
+  }
+
   /// Конфиг ПОДНЯТОГО туннеля — чтобы не пересоздавать его, когда новый запуск
   /// получил бы ровно такой же. `null` — туннеля нет или его конфиг неизвестен.
   ///
@@ -493,6 +530,13 @@ class WindowsEngine extends VpnEngineBase {
       final wantProxy = options.captureMode == CaptureMode.systemProxy ||
           options.settings.alsoSetSystemProxy;
       if (wantProxy) {
+        // ⚠️ `_proxySet` ставим ДАЖЕ ПРИ ОТКАЗЕ, и это осознанно. `set()`
+        // делает три правки реестра подряд; провалиться может любая, и тогда
+        // часть значений уже записана. Пометка «мы трогали прокси» означает
+        // здесь «за нами надо убрать», а не «перехват работает» — снятие
+        // идемпотентно, а вот пропущенная уборка оставила бы человека без
+        // интернета. Сам отказ уже назван в журнале строкой уровня ошибки
+        // внутри `set()`.
         await SystemProxy.set('127.0.0.1:${ports.http}');
         _proxySet = true;
         _proxyOwnerGen = gen;
@@ -982,6 +1026,7 @@ class WindowsEngine extends VpnEngineBase {
       // #5 — прекратить перебор, если пользователь отключился за время подбора.
       abort: aborted,
     );
+    _offerScheduledTaskFixIfStale();
     // ⚠️ ЗАПОМИНАЕМ КОНФИГ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ПОДЪЁМА. Поставь мы отметку
     // раньше (рядом с `_tunActive = true`), и после отказа `start` следующая
     // попытка с тем же конфигом «переиспользовала» бы туннель, которого нет:

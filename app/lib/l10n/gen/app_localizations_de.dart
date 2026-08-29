@@ -416,6 +416,40 @@ class AppLocalizationsDe extends AppLocalizations {
       'App und TUN (sing-box): Abonnement-Import, Ping, Fehler';
 
   @override
+  String get logModeAppTitle => 'App-Protokoll';
+
+  @override
+  String get logModeAppSub =>
+      'Was über die Aktionen der App selbst festgehalten wird';
+
+  @override
+  String get logModeCoreTitle => 'Kern-Protokoll';
+
+  @override
+  String get logModeCoreSub =>
+      'Was über den Tunnel (sing-box) festgehalten wird';
+
+  @override
+  String get logLevelWarnLabel => 'Nur Fehler';
+
+  @override
+  String get logLevelInfoLabel => 'Normal';
+
+  @override
+  String get logLevelDebugLabel => 'Ausführlich';
+
+  @override
+  String get logVerboseTitle => 'Alles aufzeichnen';
+
+  @override
+  String get logVerboseSub =>
+      'Beide Protokolle auf der ausführlichsten Stufe. Zur Fehlersuche einschalten: die Dateien wachsen schnell.';
+
+  @override
+  String get infoLogModeApp =>
+      'Wie ausführlich das App-Protokoll (app.log) ist: Abo-Import, Ping, Verbindung, Fehler. „Nur Fehler“ ist das kürzeste; „Normal“ entspricht dem Verhalten vor dieser Einstellung; „Ausführlich“ zeichnet alles auf, auch Debug-Zeilen. Wirkt sich deutlich weniger auf die Dateigröße aus als das Kern-Protokoll.';
+
+  @override
   String get thirdPartyTitle => 'Drittanbieter-Komponenten';
 
   @override
@@ -1386,6 +1420,54 @@ class AppLocalizationsDe extends AppLocalizations {
   String get srvTileSaved => 'Gespeichert';
 
   @override
+  String get srvTileUpdatedTitle => 'Server aktualisiert';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Bei der letzten Abo-Aktualisierung geändert: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'Die letzte Abo-Aktualisierung hat den Eintrag dieses Servers geändert';
+
+  @override
+  String get srvFieldId => 'ID / Passwort';
+
+  @override
+  String get srvFieldEncryption => 'Verschlüsselung';
+
+  @override
+  String get srvFieldSecurity => 'Verbindungssicherheit';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Host-Header';
+
+  @override
+  String get srvFieldPath => 'Pfad';
+
+  @override
+  String get srvFieldPublicKey => 'Reality-öffentlicher Schlüssel';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Verschleierung';
+
+  @override
+  String get srvFieldObfsPassword => 'Verschleierungs-Passwort';
+
+  @override
+  String get srvFieldHopPorts => 'Port-Hopping';
+
+  @override
   String get pingNa => 'n/v';
 
   @override
@@ -1633,6 +1715,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'Aufgabe konnte nicht erstellt werden (UAC abgelehnt oder durch Richtlinie blockiert)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'Der stille TUN-Start ist defekt — bei jeder Verbindung werden Administratorrechte angefragt';
+
+  @override
+  String get tunAutoFixAction => 'Beheben';
 
   @override
   String get tunLogTitle => 'TUN-Protokoll (sing-box)';
@@ -2757,6 +2846,54 @@ class AppLocalizationsDe extends AppLocalizations {
   String get logsNothingToClean => 'Es gibt nichts zu löschen';
 
   @override
+  String get logsSettingsLabel => 'Protokolleinstellungen';
+
+  @override
+  String get logsClearAllLabel => 'Alle Protokolle löschen';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Dieses Protokoll löschen';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'App-Protokoll — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'TUN-Kernprotokoll — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Proxy-Kernprotokoll — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Alte Support-Berichte — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Protokolle sammeln sich seit $from bis $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Tage',
+      one: '$count Tag',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Löschen';
+
+  @override
   String get speedTooltip => 'Downloadgeschwindigkeit über diesen Server';
 
   @override
@@ -2987,6 +3124,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitDeadPathFix => 'Tippen, um nach Dateinamen abzugleichen';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'Der Pfad zu „$app“ ist veraltet — die Regel greift diesmal nicht';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Beheben';
 
   @override
   String get splitVersionedPath =>

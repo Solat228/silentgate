@@ -415,4 +415,42 @@ class RotatingLog {
       } catch (_) {}
     }
   }
+
+  /// Прирост файла с байтового смещения [offset] — для «живого» экрана логов.
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНО ОТ [tail]. Ядро на уровне `debug` пишет сотни строк в
+  /// секунду; перечитывать весь файл на каждый кадр интерфейса значило бы
+  /// заново декодировать сотни килобайт в секунду ради нескольких новых строк.
+  /// Здесь читается ТОЛЬКО хвост после уже показанного.
+  static Future<LogTailChunk> readSince(String path, int offset) async {
+    RandomAccessFile? raf;
+    try {
+      final f = File(path);
+      if (!await f.exists()) return const LogTailChunk('', 0);
+      final size = await f.length();
+      // Файл стал КОРОЧЕ смещения — его обрезали (чистка/«Удалить этот лог»)
+      // или он начался заново (ротация): продолжать читать со старой позиции
+      // означало бы либо промахнуться мимо начала, либо упасть. Читаем с нуля.
+      final from = size < offset ? 0 : offset;
+      if (from >= size) return LogTailChunk('', size); // прироста нет
+      raf = await f.open();
+      await raf.setPosition(from);
+      final bytes = await raf.read(size - from);
+      return LogTailChunk(utf8.decode(bytes, allowMalformed: true), size);
+    } catch (_) {
+      return LogTailChunk('', offset);
+    } finally {
+      try {
+        await raf?.close();
+      } catch (_) {}
+    }
+  }
+}
+
+/// Кусок лога, прочитанный с прошлого известного смещения, и само это новое
+/// смещение — вызывающий обязан запомнить его и передать следующим вызовом.
+class LogTailChunk {
+  final String text;
+  final int offset;
+  const LogTailChunk(this.text, this.offset);
 }

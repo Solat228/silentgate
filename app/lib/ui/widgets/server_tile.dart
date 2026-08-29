@@ -120,6 +120,14 @@ class ServerTile extends StatelessWidget {
     final panelInfo = server.isPanelProfile
         ? analyzePanelRouting(server.rawPanelConfig ?? '')
         : null;
+    // Сервер сохранил тождество, но сменил ключ на ПОСЛЕДНЕМ обновлении
+    // подписки — жалоба владельца была ровно про это: список молча показывал
+    // «+1 · −1» или вовсе ничего, и было не различить «сервер обновился» от
+    // «сервер пересоздан». Источник — тот же диф, что пишет строку журнала
+    // «Ключ сервера сменился» (см. `AppState.updatedFieldsOf`), второй расчёт
+    // здесь не заводится. `null` — сервер не менялся; `[]` — сменилась только
+    // запись ссылки, поля совпали (оба случая обрабатывает `updatedServerTooltip`).
+    final updatedFields = state.updatedFieldsOf(server);
 
     // Правой кнопки на тач-экране нет, а меню — единственный вход к пяти из
     // семи действий (инфо, пинг, пин, JSON, удаление). Поэтому там долгое
@@ -190,6 +198,14 @@ class ServerTile extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 textDirection: TextDirection.ltr),
           ),
+          // Значок «обновлён» — СВОЯ иконка и цвет, а не общее «!»: рядом уже
+          // сидят «!» панельной сводки и непригодности сервера, и одинаковая
+          // иконка на всех трёх сделала бы их неразличимы на глаз.
+          if (updatedFields != null)
+            InfoTooltip(updatedServerTooltip(l, updatedFields),
+                title: l.srvTileUpdatedTitle,
+                icon: Icons.published_with_changes,
+                color: scheme.secondary),
           if (panelInfo != null)
             InfoTooltip(_panelSummary(l, panelInfo), title: l.panelTunnelMarker),
           // Почему сервер не годится — «!» с диалогом, а не всплывающая

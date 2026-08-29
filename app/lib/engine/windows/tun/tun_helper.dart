@@ -63,6 +63,11 @@ class TunHelper {
   static String logPathFor(Directory supportDir) =>
       '${supportDir.path}${Platform.pathSeparator}singbox.log';
 
+  /// То же самое, но с уже резолвленным каталогом данных — экрану логов
+  /// нужен голый путь для инкрементального чтения ([RotatingLog.readSince]).
+  static Future<String> currentLogPath() async =>
+      logPathFor(await AppPaths.supportDir());
+
   /// Хвост лога sing-box — для показа реальной причины сбоя.
   /// Хвост лога sing-box.
   ///

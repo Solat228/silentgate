@@ -418,6 +418,40 @@ class AppLocalizationsEs extends AppLocalizations {
       'App y TUN (sing-box): importación de suscripción, ping, errores';
 
   @override
+  String get logModeAppTitle => 'Registro de la aplicación';
+
+  @override
+  String get logModeAppSub =>
+      'Qué anotar sobre las acciones de la propia aplicación';
+
+  @override
+  String get logModeCoreTitle => 'Registro del núcleo';
+
+  @override
+  String get logModeCoreSub =>
+      'Qué anotar sobre el funcionamiento del túnel (sing-box)';
+
+  @override
+  String get logLevelWarnLabel => 'Solo errores';
+
+  @override
+  String get logLevelInfoLabel => 'Normal';
+
+  @override
+  String get logLevelDebugLabel => 'Detallado';
+
+  @override
+  String get logVerboseTitle => 'Registrar todo';
+
+  @override
+  String get logVerboseSub =>
+      'Ambos registros al máximo detalle. Actívelo mientras diagnostica: los archivos crecen rápido.';
+
+  @override
+  String get infoLogModeApp =>
+      'Nivel de detalle del registro de la aplicación (app.log): importación de la suscripción, ping, conexión, errores. «Solo errores» es el más corto; «Normal» es como funcionaba antes de esta opción; «Detallado» lo anota todo, incluidas las líneas de depuración. Afecta al tamaño del archivo mucho menos que el registro del núcleo.';
+
+  @override
   String get thirdPartyTitle => 'Componentes de terceros';
 
   @override
@@ -1392,6 +1426,54 @@ class AppLocalizationsEs extends AppLocalizations {
   String get srvTileSaved => 'Guardado';
 
   @override
+  String get srvTileUpdatedTitle => 'Servidor actualizado';
+
+  @override
+  String srvTileUpdatedFields(Object fields) {
+    return 'Cambió en la última actualización de la suscripción: $fields';
+  }
+
+  @override
+  String get srvTileUpdatedGeneric =>
+      'La última actualización de la suscripción cambió el registro de este servidor';
+
+  @override
+  String get srvFieldId => 'ID / contraseña';
+
+  @override
+  String get srvFieldEncryption => 'Cifrado';
+
+  @override
+  String get srvFieldSecurity => 'Seguridad de conexión';
+
+  @override
+  String get srvFieldSni => 'SNI';
+
+  @override
+  String get srvFieldHost => 'Encabezado Host';
+
+  @override
+  String get srvFieldPath => 'Ruta';
+
+  @override
+  String get srvFieldPublicKey => 'Clave pública Reality';
+
+  @override
+  String get srvFieldShortId => 'Short ID (Reality)';
+
+  @override
+  String get srvFieldAlpn => 'ALPN';
+
+  @override
+  String get srvFieldObfs => 'Ofuscación';
+
+  @override
+  String get srvFieldObfsPassword => 'Contraseña de ofuscación';
+
+  @override
+  String get srvFieldHopPorts => 'Salto de puertos';
+
+  @override
   String get pingNa => 'n/d';
 
   @override
@@ -1640,6 +1722,13 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get tunTaskFailed =>
       'No se pudo crear la tarea (UAC rechazado o bloqueado por directiva)';
+
+  @override
+  String get tunAutoFixNoticeText =>
+      'El inicio silencioso de TUN está roto: cada conexión pedirá permisos de administrador';
+
+  @override
+  String get tunAutoFixAction => 'Corregir';
 
   @override
   String get tunLogTitle => 'Registro TUN (sing-box)';
@@ -2762,6 +2851,54 @@ class AppLocalizationsEs extends AppLocalizations {
   String get logsNothingToClean => 'No hay nada que borrar';
 
   @override
+  String get logsSettingsLabel => 'Ajustes de registros';
+
+  @override
+  String get logsClearAllLabel => 'Borrar todos los registros';
+
+  @override
+  String get logsDeleteCurrentLabel => 'Eliminar este registro';
+
+  @override
+  String logsClearOptionApp(String size) {
+    return 'Registro de la app — $size';
+  }
+
+  @override
+  String logsClearOptionTun(String size) {
+    return 'Registro del núcleo TUN — $size';
+  }
+
+  @override
+  String logsClearOptionProxy(String size) {
+    return 'Registro del núcleo proxy — $size';
+  }
+
+  @override
+  String logsClearOptionReports(String size) {
+    return 'Informes de soporte antiguos — $size';
+  }
+
+  @override
+  String logsClearPeriod(String from, String to, String days) {
+    return 'Los registros se acumulan desde $from hasta $to ($days)';
+  }
+
+  @override
+  String logsDaysCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count días',
+      one: '$count día',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get logsClearConfirm => 'Borrar';
+
+  @override
   String get speedTooltip => 'Velocidad de descarga a través de este servidor';
 
   @override
@@ -2993,6 +3130,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get splitDeadPathFix =>
       'Pulse para hacer coincidir por nombre de archivo';
+
+  @override
+  String splitDeadPathNoticeText(String app) {
+    return 'La ruta a «$app» está desactualizada: la regla no se aplicará esta vez';
+  }
+
+  @override
+  String get splitDeadPathNoticeAction => 'Corregir';
 
   @override
   String get splitVersionedPath =>

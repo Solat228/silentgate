@@ -73,7 +73,12 @@ class AndroidSupportReporter implements SupportReporter {
     b.writeln('Пинг: основной ${settings.pingPrimary.name}, '
         'таймаут ${settings.pingTimeoutMs} мс');
     b.writeln('Автообновление подписки: ${settings.autoUpdateEnabled}');
-    b.writeln('Уровень лога ядра: ${settings.singboxLogLevel.name}');
+    // ⚠️ ДЕЙСТВУЮЩИЙ уровень: отчёт читают, чтобы понять, почему в журнале
+    // нет подробностей, и выбранный руками `warn` при включённом «всё
+    // подряд» отправил бы поддержку по ложному следу.
+    b.writeln('Уровень лога ядра: ${settings.effectiveSingboxLogLevel.name}'
+        '${settings.verboseLogging ? " (всё подряд)" : ""}');
+    b.writeln('Уровень журнала приложения: ${settings.appLogLevel.name}');
     b.writeln();
 
     b.writeln('==================================================');
