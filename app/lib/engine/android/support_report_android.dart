@@ -6,9 +6,9 @@ import '../../core/app_info.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/platform/rotating_log.dart';
+import '../../core/platform/singbox_log_format.dart';
 import '../../core/platform/device_id.dart';
 import '../../core/platform/platform_services.dart';
-import '../../core/platform/support_context.dart';
 import '../../core/settings/app_settings.dart';
 
 /// Отчёт для поддержки на Android.
@@ -162,10 +162,21 @@ class AndroidSupportReporter implements SupportReporter {
   /// вовсе, так что риск тот же.
   static Future<String> _coreLog() async {
     final dir = await AppPaths.supportDir();
-    return RotatingLog.tail(
+    final raw = await RotatingLog.tail(
       '${dir.path}${Platform.pathSeparator}singbox.log',
       lines: 200,
     );
+    // ⚠️ ПРИЧЁСЫВАЕМ, КАК НА WINDOWS. До этой строки в отчёт с Android уезжали
+    // ESC-байты вокруг слова уровня и «+0700» в НАЧАЛЕ каждой строки — тот
+    // самый мусор, из-за которого поддержка промахивалась мимо поиска по слову
+    // ERROR, а владелец спрашивал «чё за +700». На Windows это причёсано давно
+    // (`support_report.dart:265-269`), и расхождение двух отчётов было просто
+    // недосмотром.
+    //
+    // ⚠️ ТОЛЬКО ПРИ ЧТЕНИИ: сам `singbox.log` не трогается, и ни одного своего
+    // символа в текст не добавляется — [tidySingboxLog] умеет ровно две вещи,
+    // и обе они про УДАЛЕНИЕ и перестановку уже написанного.
+    return tidySingboxLog(raw);
   }
 
   /// Ни один шаг сбора не должен ронять весь отчёт — он и нужен как раз тогда,

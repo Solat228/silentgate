@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -8,12 +9,20 @@ import 'package:provider/provider.dart';
 
 import '../core/models/traffic_stats.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/log_line.dart';
 import '../core/platform/platform_services.dart';
 import '../core/platform/rotating_log.dart';
+// ⚠️ Импорт остаётся РАДИ КОПИРОВАНИЯ, а не ради показа: в кадре
+// `tidySingboxLog` больше не участвует (см. [_spanFor]), а на кнопке
+// «Копировать» он повторяет порядок действий отчёта поддержки —
+// `SensitiveAddresses.mask(tidySingboxLog(raw))`, ровно как
+// `support_report.dart:266-267`. Прежняя редакция этого комментария обещала
+// «ровно тот текст, что в отчёте» ещё тогда, когда маски здесь не было вовсе.
 import '../core/platform/singbox_log_format.dart';
 import '../core/settings/app_settings.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
+import 'log_line_style.dart';
 
 /// Логи приложения и ядра — чтобы диагностировать без запуска из консоли.
 ///
@@ -44,6 +53,17 @@ class LogsScreen extends StatefulWidget {
   @visibleForTesting
   static bool debugSkipInitialLoad = false;
 
+  /// Хук для тестов: дёрнуть ровно одну ПЕРВУЮ загрузку.
+  ///
+  /// ⚠️ БЕЗ НЕГО ШОВ «первый показ → первый прирост» НЕ ПРОВЕРИТЬ НИЧЕМ.
+  /// `_load()` из `initState` уходит в поддельное время теста и не
+  /// завершается (см. [debugSkipInitialLoad]), а именно она задаёт стартовое
+  /// смещение — то самое, на котором первая новая строка когда-то
+  /// приклеивалась к последней старой. Тест обязан позвать её сам, внутри
+  /// `runAsync`.
+  @visibleForTesting
+  static Future<void> Function()? debugLoadOnce;
+
   @override
   State<LogsScreen> createState() => _LogsScreenState();
 }
@@ -52,11 +72,52 @@ class _LogsScreenState extends State<LogsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs = TabController(length: 2, vsync: this);
 
-  /// Сырой (хронологический, файловый) текст, накопленный за сессию экрана —
-  /// пополняется приростом, а не перечитывается целиком (см. [_pollIncrement]).
+  /// ПОКАЗЫВАЕМОЕ ОКНО: хвост журнала строками, а не весь накопленный буфер.
   /// `null` — ещё не загружено (показываем «Загрузка…»).
-  String? _appRaw;
-  String? _tunRaw;
+  ///
+  /// ⚠️ ЗАЧЕМ ОКНО И ПОЧЕМУ ИМЕННО ОНО ЛЕЧИТ ЭКРАН. Раньше здесь лежал один
+  /// растущий `String` со ВСЕМ, что накопилось за сессию, и кадр разбирал его
+  /// целиком: на восьмимегабайтном логе ядра 449-478 мс одной только стадии
+  /// `build()` и 209 971 спан в ОДНОМ абзаце `SelectableText.rich`. Раскладку
+  /// такого абзаца не мерил никто: 1 МиБ = 1951-2151 мс, 4 МиБ = 43-67 СЕКУНД
+  /// на кадр. При опросе раз в 500 мс это зависание, а не замедление, и росло
+  /// оно с каждой минутой сессии.
+  ///
+  /// ⚠️ РАСКЛАДКУ ЛЕЧИТ ОКНО, А НЕ ДЕШЁВЫЙ РАЗБОР. Текст живого лога меняется
+  /// КАЖДЫЙ тик, и `RenderParagraph` раскладывает абзац заново независимо от
+  /// любого кэша разобранных строк или собранных спанов. Уберёте окно,
+  /// посчитав разбор достаточно дешёвым, — вернёте зависание.
+  ///
+  /// ⚠️ СТРОКАМИ, А НЕ ОДНОЙ СТРОКОЙ. Срез окна обязан быть `removeRange`, а
+  /// не поиском N-го перевода строки с конца по мегабайтному буферу; заодно
+  /// исчезает склейка на стыке кусков — новые строки ДОБАВЛЯЮТСЯ списком, а не
+  /// приклеиваются к последней показанной.
+  List<String>? _appLines;
+  List<String>? _tunLines;
+
+  /// Длина окна в символах — ведётся по длинам строк, чтобы предел по объёму
+  /// не требовал прохода по всему буферу.
+  int _appChars = 0;
+  int _tunChars = 0;
+
+  /// ⚠️ ЧИСЛА ОКНА — ПРЕДЛОЖЕНИЕ, А НЕ РЕШЕНИЕ ВЛАДЕЛЬЦА (память
+  /// «спрашивать, а не угадывать»). Факт, который меняет ответ: вкладка «TUN»
+  /// и сегодня открывается с [_initialTunLines] = 400 строк, то есть 1500 —
+  /// это БОЛЬШЕ, чем видно сейчас при открытии; режется только длинная
+  /// сессия. Замеренные альтернативы: 800 строк / 96 КиБ (кадр вдвое дешевле,
+  /// видно меньше) и 3000 / 384 КиБ (видно вдвое больше, кадр уже за коленом
+  /// раскладки). Колено намерено: при 6 583 спанах новый и прежний путь
+  /// раскладываются неотличимо (61-64 против 68-71 мс), выше — расходятся в
+  /// десятки раз. 1500 строк ≈ 3 300 спанов — уверенно под коленом.
+  static const _windowLines = 1500;
+  static const _windowChars = 192 * 1024;
+
+  /// Во сколько раз окну позволено перерасти, пока человек прокрутил прочь от
+  /// конца (см. [_trimWindow]).
+  static const _windowPausedFactor = 2;
+
+  /// Сколько строк лога ядра показывать при открытии экрана.
+  static const _initialTunLines = 400;
 
   /// Байтовое смещение, докуда каждый файл уже прочитан.
   int _appOffset = 0;
@@ -79,6 +140,7 @@ class _LogsScreenState extends State<LogsScreen>
     _appScroll.addListener(() => _onScroll(_appScroll, (v) => _appFollow = v));
     _tunScroll.addListener(() => _onScroll(_tunScroll, (v) => _tunFollow = v));
     LogsScreen.debugPollOnce = _pollIncrement;
+    LogsScreen.debugLoadOnce = _load;
     if (!LogsScreen.debugSkipInitialLoad) _load();
     _poll = Timer.periodic(
         const Duration(milliseconds: 500), (_) => _pollIncrement());
@@ -89,6 +151,9 @@ class _LogsScreenState extends State<LogsScreen>
     _poll?.cancel();
     if (identical(LogsScreen.debugPollOnce, _pollIncrement)) {
       LogsScreen.debugPollOnce = null;
+    }
+    if (identical(LogsScreen.debugLoadOnce, _load)) {
+      LogsScreen.debugLoadOnce = null;
     }
     _appScroll.dispose();
     _tunScroll.dispose();
@@ -143,24 +208,69 @@ class _LogsScreenState extends State<LogsScreen>
   }
 
   Future<void> _load() async {
+    final appPath = await AppLog.filePath();
+    final tunPath = await platform.tunLog.filePath();
     final app = await AppLog.dump();
-    final tun = await platform.tunLog.tail(lines: 400);
-    var appLen = 0;
-    var tunLen = 0;
+    // ⚠️ МАСКА ЗДЕСЬ ОБЯЗАТЕЛЬНА, И ЭТО НЕ ДУБЛИРОВАНИЕ. Прирост
+    // маскируется в `_apply`, а ПЕРВЫЙ показ идёт мимо него — и именно его
+    // человек видит, открыв экран. У журнала приложения защита есть внутри
+    // `AppLog.dump()`, у журнала ядра нет НИ НА ОДНОЙ платформе: и
+    // `TunHelper.tailLog`, и `RotatingLog.tail` отдают файл как есть.
+    // Без этой строки самые частые записи ядра — `dial tcp <адрес>:443` —
+    // висели на экране с настоящими адресами узлов до тех пор, пока окно не
+    // срежет голову, то есть на спокойном ядре всю сессию.
+    final tun = SensitiveAddresses.mask(
+        await platform.tunLog.tail(lines: _initialTunLines));
+    // ⚠️ СТАРТОВОЕ СМЕЩЕНИЕ — ПО ПОСЛЕДНЕМУ ПЕРЕВОДУ СТРОКИ, А НЕ ПО
+    // ДЛИНЕ ФАЙЛА. Здесь был ШОВ: `tail` кончается на `join` по переводу
+    // строки, то есть БЕЗ хвостового, а длина файла — это байт ПОСЛЕ него.
+    // Первый же прирост приклеивался вплотную к последней показанной строке, и
+    // метка времени новой записи уезжала в середину предыдущего сообщения —
+    // разбор видел ОДНУ строку вместо двух. Недописанную строку не показываем
+    // вовсе: она придёт целиком следующим опросом (полсекунды).
+    final appEnd = await RotatingLog.completeTailOffset(appPath);
+    final tunEnd = await RotatingLog.completeTailOffset(tunPath);
+    var appLen = appEnd;
+    var tunLen = tunEnd;
     try {
-      appLen = await File(await AppLog.filePath()).length();
+      appLen = await File(appPath).length();
     } catch (_) {}
     try {
-      tunLen = await File(await platform.tunLog.filePath()).length();
+      tunLen = await File(tunPath).length();
     } catch (_) {}
     if (!mounted) return;
     setState(() {
-      _appRaw = app;
-      _appOffset = appLen;
-      _tunRaw = tun;
-      _tunOffset = tunLen;
+      _replaceLines(
+          app: true, lines: _linesOf(app, dropPartialTail: appEnd < appLen));
+      _appOffset = appEnd;
+      _replaceLines(
+          app: false, lines: _linesOf(tun, dropPartialTail: tunEnd < tunLen));
+      _tunOffset = tunEnd;
+      _trimWindow(app: true);
+      _trimWindow(app: false);
     });
     _followIfNeeded();
+  }
+
+  /// Разложить сплошной текст в строки окна.
+  ///
+  /// Хвостовой перевод строки даёт пустой последний элемент — это не строка, а
+  /// признак конца последней. [dropPartialTail] — выбросить ещё и последнюю
+  /// строку: она недописана (файл кончается не переводом строки), и показывать
+  /// её нельзя, иначе прирост приклеится к ней вторым куском той же строки.
+  static List<String> _linesOf(String text, {required bool dropPartialTail}) {
+    final rows = text.split('\n');
+    if (rows.isNotEmpty && rows.last.isEmpty) rows.removeLast();
+    if (dropPartialTail && rows.isNotEmpty) rows.removeLast();
+    return rows;
+  }
+
+  static int _charsOf(List<String> lines) {
+    var n = 0;
+    for (final l in lines) {
+      n += l.length + 1; // перевод строки между строками
+    }
+    return n;
   }
 
   /// Прирост — читает ТОЛЬКО то, что дописалось с прошлого раза
@@ -169,43 +279,260 @@ class _LogsScreenState extends State<LogsScreen>
   /// каждый тик — и подвесил бы интерфейс, а не просто нагрузил его.
   Future<void> _pollIncrement() async {
     await AppLog.flushFile();
-    final appChunk =
-        await RotatingLog.readSince(await AppLog.filePath(), _appOffset);
+    // ⚠️ `wholeLines: true` — НЕ КОСМЕТИКА. Чтение режет файл по байтам, и
+    // кусок может оборваться посреди строки: многобайтный символ (кириллица,
+    // «№») разваливается в «□» необратимо, а адрес своего узла, разрезанный
+    // границей куска, не попадает под маску ниже и уезжает на экран открытым
+    // (маска накладывается на каждый кусок отдельно). Обоснование целиком — у
+    // самого [RotatingLog.readSince].
+    final appChunk = await RotatingLog.readSince(
+        await AppLog.filePath(), _appOffset,
+        wholeLines: true);
     final tunChunk = await RotatingLog.readSince(
-        await platform.tunLog.filePath(), _tunOffset);
+        await platform.tunLog.filePath(), _tunOffset,
+        wholeLines: true);
     if (!mounted) return;
     final appChanged = appChunk.offset != _appOffset || appChunk.text.isNotEmpty;
     final tunChanged = tunChunk.offset != _tunOffset || tunChunk.text.isNotEmpty;
     if (!appChanged && !tunChanged) return; // ничего нового — не дёргаем кадр
     setState(() {
-      // Смещение НОВОГО чтения меньше прежнего — файл обрезали или он начался
-      // заново (своя кнопка «Удалить этот лог», общая чистка, ротация): текст
-      // ЗАМЕНЯЕТСЯ, а не дополняется, иначе на экране осталась бы призрачная
-      // хвостовая часть уже стёртого файла.
-      if (appChunk.offset < _appOffset) {
-        _appRaw = SensitiveAddresses.mask(appChunk.text);
-      } else if (appChunk.text.isNotEmpty) {
-        _appRaw = (_appRaw ?? '') + SensitiveAddresses.mask(appChunk.text);
-      }
-      _appOffset = appChunk.offset;
-
-      if (tunChunk.offset < _tunOffset) {
-        _tunRaw = tunChunk.text;
-      } else if (tunChunk.text.isNotEmpty) {
-        _tunRaw = (_tunRaw ?? '') + tunChunk.text;
-      }
-      _tunOffset = tunChunk.offset;
+      _apply(app: true, chunk: appChunk);
+      _apply(app: false, chunk: tunChunk);
     });
     _followIfNeeded();
   }
 
-  /// Текст вкладки для показа: пока не загружено — «Загрузка…», пусто — плашка,
-  /// иначе — сам лог, без хвостовых пустых строк.
-  String _display(String? raw, String loading, String empty) {
-    if (raw == null) return loading;
-    final trimmed = raw.replaceAll(RegExp(r'\n+$'), '');
-    if (trimmed.isEmpty) return empty;
-    return trimmed;
+  /// ⚠️ ЕДИНСТВЕННОЕ МЕСТО, ГДЕ МЕНЯЕТСЯ ПОКАЗЫВАЕМОЕ. Строки окна,
+  /// его длина в символах и байтовое смещение файла двигаются здесь — и только
+  /// здесь. Второго такого места не существует: разъедься они, разъехались бы
+  /// молча.
+  void _apply({required bool app, required LogTailChunk chunk}) {
+    final offset = app ? _appOffset : _tunOffset;
+    // ⚠️ МАСКА АДРЕСОВ — НА КУСОК, ДО РАЗБОРА, И НА ОБЕИХ ВКЛАДКАХ.
+    // До 30.08.2026 вкладка «TUN» не маскировалась ВООБЩЕ: реестр наполняется
+    // адресами ВСЕХ узлов подписки (`app_state.dart:932`), строки ядра вида
+    // `dial tcp <адрес>:443` называют боевой узел в каждой второй строке — и
+    // они уезжали и на экран, и в буфер обмена открытыми, тогда как отчёт
+    // поддержки те же строки маскирует (`support_report.dart:266-267`).
+    // Накладывать надо на кусок целиком: разбор режет строку на части, и
+    // адрес, попавший на границу частей, под маску бы уже не встал.
+    final text = SensitiveAddresses.mask(chunk.text);
+    // Смещение НОВОГО чтения меньше прежнего — файл обрезали или он начался
+    // заново (своя кнопка «Удалить этот лог», общая чистка, ротация): текст
+    // ЗАМЕНЯЕТСЯ, а не дополняется, иначе на экране осталась бы призрачная
+    // хвостовая часть уже стёртого файла.
+    if (chunk.offset < offset) {
+      _replaceLines(app: app, lines: _linesOf(text, dropPartialTail: false));
+    } else if (text.isNotEmpty) {
+      // ⚠️ Кусок от [RotatingLog.readSince] с `wholeLines: true`
+      // ВСЕГДА кончается переводом строки — недописанного хвоста тут не бывает.
+      _appendLines(app: app, lines: _linesOf(text, dropPartialTail: false));
+    }
+    if (app) {
+      _appOffset = chunk.offset;
+    } else {
+      _tunOffset = chunk.offset;
+    }
+    _trimWindow(app: app);
+  }
+
+  void _replaceLines({required bool app, required List<String> lines}) {
+    if (app) {
+      _appLines = lines;
+      _appChars = _charsOf(lines);
+    } else {
+      _tunLines = lines;
+      _tunChars = _charsOf(lines);
+    }
+  }
+
+  void _appendLines({required bool app, required List<String> lines}) {
+    if (lines.isEmpty) return;
+    final target = (app ? _appLines : _tunLines) ?? <String>[];
+    target.addAll(lines);
+    final grown = _charsOf(lines);
+    if (app) {
+      _appLines = target;
+      _appChars += grown;
+    } else {
+      _tunLines = target;
+      _tunChars += grown;
+    }
+  }
+
+  /// Срезать голову окна.
+  ///
+  /// ⚠️ ТОЛЬКО ЗДЕСЬ, В МЕСТЕ МУТАЦИИ СОСТОЯНИЯ, И НИКОГДА В
+  /// `build()`.
+  ///
+  /// ⚠️ ГИСТЕРЕЗИС ОБЯЗАТЕЛЕН: режем, лишь когда переросли в ПОЛТОРА
+  /// раза, и сразу до одного окна. Режь мы «всё лишнее» каждый тик — срез
+  /// случался бы на каждом кадре, а `maxScrollExtent` дрожал бы вместе с ним.
+  ///
+  /// ⚠️ ПОКА ЧЕЛОВЕК ПРОКРУТИЛ ПРОЧЬ ОТ КОНЦА, ГОЛОВУ НЕ ТРОГАЕМ:
+  /// срез сдвинул бы ровно то, что он сейчас читает. Но и расти бесконечно
+  /// нельзя — на уровне `debug` пауза в прокрутке вернула бы ту самую
+  /// стоимость кадра, ради которой окно и заведено. Поэтому на паузе окну
+  /// позволено перерасти в [_windowPausedFactor] раза, и на этом потолке мы
+  /// режем даже её. Цена названа честно: один рывок прокрутки у того, кто ушёл
+  /// далеко от конца и стоит там, пока ядро говорит сотнями строк в секунду.
+  void _trimWindow({required bool app}) {
+    final lines = app ? _appLines : _tunLines;
+    if (lines == null) return;
+    final following = app ? _appFollow : _tunFollow;
+    final factor = following ? 1 : _windowPausedFactor;
+    final maxLines = _windowLines * factor;
+    final maxChars = _windowChars * factor;
+    var chars = app ? _appChars : _tunChars;
+    if (lines.length * 2 <= maxLines * 3 && chars * 2 <= maxChars * 3) return;
+    var drop = 0;
+    while (drop < lines.length &&
+        (lines.length - drop > maxLines || chars > maxChars)) {
+      chars -= lines[drop].length + 1;
+      drop++;
+    }
+    if (drop == 0) return;
+    lines.removeRange(0, drop);
+    if (app) {
+      _appChars = chars;
+    } else {
+      _tunChars = chars;
+    }
+  }
+
+  /// Срезать хвостовые пустые строки — для текста, уходящего в буфер обмена.
+  ///
+  /// ⚠️ СКАНОМ С КОНЦА, А НЕ `replaceAll(RegExp(r'\n+$'))`. Прежняя
+  /// версия гоняла регулярку по ВСЕМУ буферу (до 512 КБ у нашего журнала и до
+  /// мегабайтов у лога ядра); здесь работа — несколько сравнений байт.
+  ///
+  /// ⚠️ И 0x0D ТОЖЕ, А НЕ ТОЛЬКО 0x0A. На файле с CRLF прежняя версия
+  /// оставляла после среза одинокий `\r`: «пустая» вкладка считалась
+  /// непустой и вместо плашки «Логи пусты» показывала невидимый мусор.
+  static String _trimTrailingNewlines(String s) {
+    var end = s.length;
+    while (end > 0 &&
+        (s.codeUnitAt(end - 1) == 0x0a || s.codeUnitAt(end - 1) == 0x0d)) {
+      end--;
+    }
+    return end == s.length ? s : s.substring(0, end);
+  }
+
+  /// Индекс за последней ЗНАЧАЩЕЙ строкой окна.
+  ///
+  /// ⚠️ ПУСТАЯ СТРОКА — ЭТО И СТРОКА ИЗ ОДНОГО `\r`. Та же ловушка CRLF,
+  /// что и у [_trimTrailingNewlines]: без этого вкладка, в файле которой одни
+  /// переводы строк, показывала бы невидимый мусор вместо плашки.
+  static int _visibleEnd(List<String> lines) {
+    var end = lines.length;
+    while (end > 0 && _isBlankLine(lines[end - 1])) {
+      end--;
+    }
+    return end;
+  }
+
+  static bool _isBlankLine(String s) {
+    for (var i = 0; i < s.length; i++) {
+      if (s.codeUnitAt(i) != 0x0d) return false;
+    }
+    return true;
+  }
+
+  /// Раскрашенный текст вкладки: пока не загружено — «Загрузка…», пусто —
+  /// плашка, иначе — ОКНО, разобранное построчно.
+  ///
+  /// ⚠️ ЧЕСТНО ПРО ЦЕНУ (прежняя редакция этого комментария утверждала ровно
+  /// обратное тому, что делал код). Кэша между кадрами здесь нет: разбор идёт
+  /// КАЖДЫЙ кадр. Дёшево это не потому, что мы что-то запомнили, а потому, что
+  /// разбирается ОКНО — [_windowLines] строк, — а не весь накопленный буфер.
+  /// Стоимость кадра перестала зависеть и от размера файла, и от длительности
+  /// сессии; сторожит это `log_window_perf_test.dart`.
+  ///
+  /// ⚠️ `tidySingboxLog` В КАДРЕ НЕ УЧАСТВУЕТ. Раньше он вызывался в
+  /// `build()` на ВЕСЬ буфер вкладки «TUN» — split + две регулярки + join по
+  /// мегабайтам на каждый кадр. Его работу делает тот же разбор, что и
+  /// раскраску, за один проход ([buildLogSpanForLines] → [parseLogLine]); на
+  /// кнопке «Копировать» он остался и платится один раз на нажатие.
+  TextSpan _spanFor(List<String>? lines, String loading, String empty,
+      ThemeData theme,
+      {required bool coreFormat}) {
+    if (lines == null) return logPlaceholderSpan(loading, theme);
+    final end = _visibleEnd(lines);
+    if (end == 0) return logPlaceholderSpan(empty, theme);
+    return buildLogSpanForLines(
+        end == lines.length ? lines : lines.sublist(0, end), theme,
+        coreFormat: coreFormat);
+  }
+
+  /// Текст вкладки «Приложение» ДЛЯ БУФЕРА ОБМЕНА.
+  ///
+  /// ⚠️ В БУФЕР УХОДЯТ ДАННЫЕ, А НЕ ПОКАЗ. Владелец делится с поддержкой
+  /// именно этим текстом — чаще, чем целым отчётом, — и его должно быть можно
+  /// сопоставить с присланным `app.log` посимвольно и найти в нём поиском.
+  /// Поэтому здесь нет ни колонок из пробелов, ни переставленных дат:
+  /// единственное отличие от файла — снятые управляющие последовательности
+  /// цвета, то есть УДАЛЕНИЕ мусора (ESC-байты попадают в `app.log` вместе с
+  /// сырым хвостом вывода ядра, `engine_base.dart:1697`), а не добавление
+  /// своего. Ровно это и есть «поддержке логи уходят нормальными, без utf
+  /// приколов».
+  ///
+  /// ⚠️ ЧИТАЕТСЯ ИЗ ФАЙЛА, А НЕ С ЭКРАНА, И ЭТО ОБЯЗАТЕЛЬНОЕ УСЛОВИЕ
+  /// ОКНА. Экран держит хвост в [_windowLines] строк; возьми копия его —
+  /// поддержка молча получила бы обрезок вместо журнала, а заметить это
+  /// снаружи было бы нечем. `AppLog.dump()` — тот же путь, которым журнал
+  /// вкладывается в отчёт поддержки, и он же накладывает маску адресов.
+  Future<String> _copyTextApp(AppLocalizations l) async {
+    final body = _trimTrailingNewlines(stripAnsiSequences(await AppLog.dump()));
+    return body.isEmpty ? l.logsEmpty : body;
+  }
+
+  /// Текст вкладки «TUN» для буфера обмена — ровно тот, что уходит в отчёт
+  /// поддержки. Показ на экране от него отличается: там дата переставлена в
+  /// наш формат ради единого вида двух вкладок, а сопоставлять с файлом надо
+  /// не показ, а данные.
+  ///
+  /// ⚠️ ПОРЯДОК ДЕЙСТВИЙ ПОБАЙТНО ТОТ ЖЕ, ЧТО У ОТЧЁТА: маска ПОВЕРХ
+  /// причёсывания, `SensitiveAddresses.mask(tidySingboxLog(raw))` — как
+  /// `SupportReport.maskCoreLog` (`support_report.dart:266-267`). Разойдись
+  /// они порядком — присланный кусок перестал бы совпадать с присланным
+  /// отчётом, и разошлись бы они молча.
+  ///
+  /// ⚠️ И ТОЖЕ ИЗ ФАЙЛА: см. [_copyTextApp]. Платим за это один раз на
+  /// нажатие, а не на каждый кадр.
+  Future<String> _copyTextTun(AppLocalizations l) async {
+    final body = _trimTrailingNewlines(
+        SensitiveAddresses.mask(tidySingboxLog(await _tunFileText())));
+    return body.isEmpty ? l.logsTunEmpty : body;
+  }
+
+  /// Лог ядра ЦЕЛИКОМ — как он лежит на диске.
+  Future<String> _tunFileText() async {
+    try {
+      final f = File(await platform.tunLog.filePath());
+      if (await f.exists()) {
+        final text = utf8.decode(await f.readAsBytes(), allowMalformed: true);
+        if (text.trim().isNotEmpty) return text;
+      }
+    } catch (_) {}
+    // ⚠️ ЗАПАСНОЙ ПУТЬ РАДИ ANDROID. Там при пустом `singbox.log` вкладка
+    // «TUN» показывает `app.log` (`platform_services_android.dart:183-189`), и
+    // чтение по `filePath()` отдало бы пустоту — то есть кнопка «Копировать»
+    // молча копировала бы плашку вместо того, что человек видит на экране.
+    try {
+      return await platform.tunLog.tail(lines: _initialTunLines);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// Кнопка «Копировать»: текст берётся из файла, поэтому нажатие ждёт
+  /// чтения — это видимая цена того, что в буфер уходит ВЕСЬ журнал, а не
+  /// показанное окно.
+  Future<void> _copyFrom(Future<String> Function(AppLocalizations) text) async {
+    final l = AppLocalizations.of(context);
+    final body = await text(l);
+    if (!mounted) return;
+    _copy(body);
   }
 
   static String _two(int v) => v < 10 ? '0$v' : '$v';
@@ -215,11 +542,7 @@ class _LogsScreenState extends State<LogsScreen>
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    final appText = _display(_appRaw, l.logsLoading, l.logsEmpty);
-    final tunText = _display(
-        _tunRaw == null ? null : tidySingboxLog(_tunRaw!),
-        l.logsLoading,
-        l.logsTunEmpty);
+    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(l.logsTitle),
@@ -259,15 +582,24 @@ class _LogsScreenState extends State<LogsScreen>
         controller: _tabs,
         children: [
           _view(
-            text: appText,
+            // ⚠️ ФОРМАТ ЯДРА ЗДЕСЬ НЕ РАЗБИРАЕТСЯ. В `app.log` строки
+            // формата sing-box попадают ТЕЛОМ НАШЕЙ записи: `engine_base`
+            // пишет «Последние строки вывода <ядро>:» и следом сам хвост
+            // вывода. Разбирая их как строки ядра, показ переставлял бы в них
+            // дату и синтезировал скобки — то есть переписывал бы тело чужой
+            // записи (см. `coreFormat` у [parseLogLine]).
+            spanOf: () => _spanFor(_appLines, l.logsLoading, l.logsEmpty, theme,
+                coreFormat: false),
             controller: _appScroll,
-            onCopy: () => _copy(appText),
+            onCopy: () => _copyFrom(_copyTextApp),
             onDeleteCurrent: () => _deleteCurrent(app: true),
           ),
           _view(
-            text: tunText,
+            spanOf: () => _spanFor(
+                _tunLines, l.logsLoading, l.logsTunEmpty, theme,
+                coreFormat: true),
             controller: _tunScroll,
-            onCopy: () => _copy(tunText),
+            onCopy: () => _copyFrom(_copyTextTun),
             onDeleteCurrent: () => _deleteCurrent(app: false),
           ),
         ],
@@ -290,10 +622,10 @@ class _LogsScreenState extends State<LogsScreen>
     if (!mounted) return;
     setState(() {
       if (app) {
-        _appRaw = '';
+        _replaceLines(app: true, lines: <String>[]);
         _appOffset = 0;
       } else {
-        _tunRaw = '';
+        _replaceLines(app: false, lines: <String>[]);
         _tunOffset = 0;
       }
     });
@@ -521,11 +853,11 @@ class _LogsScreenState extends State<LogsScreen>
                     );
                     setState(() {
                       if (app) {
-                        _appRaw = '';
+                        _replaceLines(app: true, lines: <String>[]);
                         _appOffset = 0;
                       }
                       if (tun) {
-                        _tunRaw = '';
+                        _replaceLines(app: false, lines: <String>[]);
                         _tunOffset = 0;
                       }
                     });
@@ -557,7 +889,7 @@ class _LogsScreenState extends State<LogsScreen>
   /// верхнем углу ЭТОЙ области — решение владельца 29.08.2026: кнопки
   /// относятся к конкретному открытому логу, а не к экрану в целом.
   Widget _view({
-    required String text,
+    required TextSpan Function() spanOf,
     required ScrollController controller,
     required VoidCallback onCopy,
     required VoidCallback onDeleteCurrent,
@@ -572,10 +904,38 @@ class _LogsScreenState extends State<LogsScreen>
               controller: controller,
               child: Padding(
                 padding: const EdgeInsets.only(top: 48),
-                child: SelectableText(
-                  text,
-                  textDirection: TextDirection.ltr,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                // ⚠️ `SelectableText.rich`, А НЕ ЛЕНИВЫЙ СПИСОК СТРОК —
+                // и запрет этот НЕ ВЕЧНЫЙ, а куплен окном. Ленивый список
+                // ломает три вещи: выделение мышью через весь лог
+                // (`SelectionArea` в этом проекте уже признана неприменимой,
+                // `sel_text.dart:11-14`), точность `maxScrollExtent`, на
+                // которой держится слежение за концом, и тест слежения в
+                // `logs_screen_test.dart`. Ради стоимости кадра он больше не
+                // нужен: её сделало постоянной ОКНО ([_windowLines]).
+                // Возвращаться к нему стоит ровно в одном случае — если
+                // владелец потребует бесконечную прокрутку ПОКАЗА, то есть
+                // видеть на экране больше окна.
+                //
+                // ⚠️ `Builder` — НЕ УКРАШЕНИЕ. `TabBarView` строит
+                // только ту страницу, которую показывает; собери мы спан в
+                // `build()` экрана — платили бы за обе вкладки, а раскладывали
+                // одну. Здесь спан собирается внутри страницы, то есть ровно
+                // для видимой (и обеих — на те кадры, пока идёт анимация
+                // переключения).
+                child: Builder(
+                  builder: (context) => SelectableText.rich(
+                    spanOf(),
+                    textDirection: TextDirection.ltr,
+                    // Цвет задан явно и здесь: `SelectableText` по умолчанию
+                    // берёт цвет темы, а спаны его переопределяют — без
+                    // корневого значения строки без своего цвета выглядели бы
+                    // иначе, чем строки с ним.
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
                 ),
               ),
             ),

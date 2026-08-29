@@ -13,6 +13,12 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: any
+  # Аннотации анализатора (@visibleForTesting). Транзитивно она приходит и с
+  # flutter, но импорт из lib/ без явной строки здесь запрещает линт
+  # depend_on_referenced_packages, а без аннотации счётчики работы показа
+  # (log_line.dart) выглядели бы боевым API. Сам log_line.dart тянуть flutter
+  # не может: его flutter-независимость стережёт log_parser_no_io_test.dart.
+  meta: any
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   provider: ^6.1.2

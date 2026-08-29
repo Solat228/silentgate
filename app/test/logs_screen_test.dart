@@ -1,12 +1,15 @@
+import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:silentgate/core/platform/app_log.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
+import 'package:silentgate/core/platform/log_line.dart';
 import 'package:silentgate/core/platform/platform_services.dart';
+import 'package:silentgate/core/platform/singbox_log_format.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/state/settings_controller.dart';
@@ -242,6 +245,300 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+
+  // ── Красивый показ (задание 4.1/4.2, 5.3) ───────────────────────────────
+  //
+  // ⚠️ ТЕСТ СЛЕЖЕНИЯ ВЫШЕ ОСТАЛСЯ БЕЗ ЕДИНОЙ ПРАВКИ — И ЭТО ЧАСТЬ
+  // ДОКАЗАТЕЛЬСТВА, А НЕ СОВПАДЕНИЕ. Он достаёт контроллер как
+  // `tester.widget<SingleChildScrollView>(find.byType(SingleChildScrollView))`
+  // и требует `scroll.offset == maxScrollExtent` ТОЧНО: любой ленивый список
+  // (или просто второй `SingleChildScrollView` в дереве) уронил бы его сразу.
+  // Понадобилась ему правка — значит вёрстка поехала, и это ранний сигнал.
+
+  testWidgets('текст лога рисуется СПАНАМИ, а не одной строкой',
+      (tester) async {
+    await tester.runAsync(() => File(appLogPath)
+        .writeAsString('04.08.2026 01:23:33 [ERROR] сбой\n'));
+    await pumpScreen(tester);
+
+    final shown = tester.widget<SelectableText>(find.byType(SelectableText));
+    expect(shown.data, isNull);
+    expect(shown.textSpan, isNotNull);
+    expect(shown.textSpan!.toPlainText(), '04.08.2026 01:23:33 [ERROR] сбой');
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('⚠️ буфер вкладки «TUN» = текст отчёта поддержки, а не показ',
+      (tester) async {
+    // На этой вкладке показ и данные РАСХОДЯТСЯ намеренно: на экране дата
+    // ядра переписана в наш вид ради единого вида двух вкладок, а в буфер
+    // уходит ровно то, что вкладывается в отчёт (`SupportReport.maskCoreLog`
+    // строится на том же `tidySingboxLog`) — иначе присланный кусок нельзя
+    // было бы сопоставить с присланным файлом.
+    final esc = String.fromCharCode(0x1b);
+    final zone = formatZoneOffset(DateTime.now().timeZoneOffset);
+    final raw = '$zone 2026-08-11 02:09:08 $esc[36mINFO$esc[0m router: тест\n';
+    await tester.runAsync(() => File(tunLogPath).writeAsString(raw));
+
+    final copied = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+
+    final l = await pumpScreen(tester);
+    await tester.tap(find.text(l.logsTabTun));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // На экране — наш формат времени, без зоны и без ESC.
+    final shown = tester.widget<SelectableText>(find.byType(SelectableText));
+    expect(shown.textSpan!.toPlainText(),
+        '11.08.2026 02:09:08 [INFO] router: тест');
+
+    // ⚠️ «Копировать» читает ФАЙЛ (иначе окно показа урезало бы то,
+    // что уходит поддержке), поэтому нажатию нужен настоящий ввод-вывод.
+    await tapAndSettleIo(tester, find.text(l.logsCopy));
+
+    expect(copied, hasLength(1));
+    expect(copied.single, tidySingboxLog(raw).trimRight());
+    expect(copied.single.contains(esc), isFalse,
+        reason: 'ESC-байты — те самые «utf приколы», поддержке они не нужны');
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  group('⚠️ Шов между первым показом и первым приростом', () {
+    // ⚠️ ЗДЕСЬ ЗОВЁТСЯ НАСТОЯЩАЯ `_load()` — через
+    // `LogsScreen.debugLoadOnce`. Без неё шов не воспроизводится вовсе:
+    // стартовое смещение задаёт именно она, а `debugSkipInitialLoad` (нужный,
+    // чтобы реальный ввод-вывод не подвисал в поддельном времени) её
+    // отменяет. Прежние тесты наполняли экран только приростом с нуля — и
+    // потому склейку не видели.
+    Future<String> shownText(WidgetTester tester) async {
+      final l = AppLocalizations.of(tester.element(find.byType(LogsScreen)));
+      await tester.tap(find.text(l.logsTabTun));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+      return tester
+          .widget<SelectableText>(find.byType(SelectableText))
+          .textSpan!
+          .toPlainText();
+    }
+
+    testWidgets(
+        '⚠️ ПЕРВЫЙ показ вкладки TUN маскирует адреса, а не только прирост',
+        (tester) async {
+      // ⚠️ ЛОВУШКА, НА КОТОРОЙ ЗДЕСЬ УЖЕ ОБОЖГЛИСЬ: при ПУСТОМ реестре
+      // `SensitiveAddresses.mask` — тождественная функция, и тест на фикстуре
+      // без единого зарегистрированного адреса зелен независимо от того, есть
+      // маскировка в коде или нет. Поэтому адрес регистрируется явно.
+      //
+      // Проверять надо именно ПЕРВУЮ загрузку: прирост идёт через `_apply`, где
+      // маска была, а `_load` брала хвост журнала ядра напрямую у платформы —
+      // и `TunHelper.tailLog`, и `RotatingLog.tail` отдают файл как есть. То
+      // есть открытый адрес узла показывался ровно там, куда человек смотрит,
+      // открыв экран, и висел там до среза окна — на спокойном ядре всю сессию.
+      SensitiveAddresses.remember('198.51.100.7');
+      await tester.runAsync(() => File(tunLogPath).writeAsString(
+          '04.08.2026 01:23:33 [INFO] router: dial tcp 198.51.100.7:443\n',
+          flush: true));
+      await tester.pumpWidget(host());
+      await tester.runAsync(() => LogsScreen.debugLoadOnce!());
+      await tester.pump();
+
+      final text = await shownText(tester);
+      expect(text, isNot(contains('198.51.100.7')),
+          reason: 'настоящий адрес узла на экране — это утечка, а строки '
+              '«dial tcp <адрес>» самые частые в журнале ядра');
+      expect(text, contains('443'),
+          reason: 'маскируется адрес, а не вся строка: без порта и текста '
+              'запись станет бесполезной для разбора');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('файл кончается переводом строки: две строки, а не одна',
+        (tester) async {
+      await tester.runAsync(() => File(tunLogPath)
+          .writeAsString('04.08.2026 01:23:33 [INFO] первая\n', flush: true));
+      await tester.pumpWidget(host());
+      await tester.runAsync(() => LogsScreen.debugLoadOnce!());
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await File(tunLogPath).writeAsString(
+            '04.08.2026 01:23:34 [INFO] вторая\n',
+            mode: FileMode.append,
+            flush: true);
+        await LogsScreen.debugPollOnce!();
+      });
+      await tester.pump();
+
+      final text = await shownText(tester);
+      expect(text.split('\n'), [
+        '04.08.2026 01:23:33 [INFO] первая',
+        '04.08.2026 01:23:34 [INFO] вторая',
+      ], reason: 'ЗДЕСЬ БЫЛА СКЛЕЙКА: смещение указывало на байт ПОСЛЕ '
+          'перевода строки, а показанный хвост его не содержал — метка '
+          'времени новой записи уезжала в середину предыдущей');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('файл оборван посреди строки: обрывок не показан и не потерян',
+        (tester) async {
+      await tester.runAsync(() => File(tunLogPath).writeAsString(
+          '04.08.2026 01:23:33 [INFO] первая\n04.08.2026 01:23:34 [INFO] вт',
+          flush: true));
+      await tester.pumpWidget(host());
+      await tester.runAsync(() => LogsScreen.debugLoadOnce!());
+      await tester.pump();
+
+      expect(await shownText(tester), '04.08.2026 01:23:33 [INFO] первая',
+          reason: 'недописанную строку показывать нельзя: следующий кусок '
+              'приклеился бы к ней вторым куском той же строки');
+
+      await tester.runAsync(() async {
+        await File(tunLogPath)
+            .writeAsString('орая\n', mode: FileMode.append, flush: true);
+        await LogsScreen.debugPollOnce!();
+      });
+      await tester.pump();
+
+      expect((await shownText(tester)).split('\n'), [
+        '04.08.2026 01:23:33 [INFO] первая',
+        '04.08.2026 01:23:34 [INFO] вторая',
+      ], reason: 'дописанная строка обязана прийти целиком');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  group('⚠️ Окно показа и чужая прокрутка', () {
+    // Экран держит не весь лог, а его хвост (см. `_windowLines`). Срез головы
+    // обязан считаться с тем, кто прокрутил прочь от конца: сдвинь мы у него
+    // содержимое — он потерял бы место, которое читает.
+    Future<ScrollController> openTun(WidgetTester tester) async {
+      final l = AppLocalizations.of(tester.element(find.byType(LogsScreen)));
+      await tester.tap(find.text(l.logsTabTun));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 400));
+      return tester
+          .widget<SingleChildScrollView>(find.byType(SingleChildScrollView))
+          .controller!;
+    }
+
+    String shown(WidgetTester tester) => tester
+        .widget<SelectableText>(find.byType(SelectableText))
+        .textSpan!
+        .toPlainText();
+
+    testWidgets('в слежении окно режет голову, а хвост остаётся на экране',
+        (tester) async {
+      final many = List.generate(
+              5000, (i) => '04.08.2026 01:23:34 [INFO] строка $i')
+          .join('\n');
+      await tester.runAsync(
+          () => File(tunLogPath).writeAsString('$many\n', flush: true));
+      await pumpScreen(tester);
+      final scroll = await openTun(tester);
+
+      final text = shown(tester);
+      expect(text, contains('строка 4999'), reason: 'конец лога виден');
+      expect(text.contains('строка 0\n'), isFalse,
+          reason: 'голова окна срезана — иначе окна нет');
+      expect(scroll.offset, scroll.position.maxScrollExtent,
+          reason: 'срез не должен ломать слежение за концом');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('⚠️ на паузе слежения голову НЕ режем', (tester) async {
+      // Человек прокрутил прочь и читает; срез сдвинул бы содержимое под ним.
+      final head = List.generate(
+              1000, (i) => '04.08.2026 01:23:34 [INFO] старая $i')
+          .join('\n');
+      await tester.runAsync(
+          () => File(tunLogPath).writeAsString('$head\n', flush: true));
+      await pumpScreen(tester);
+      final scroll = await openTun(tester);
+
+      scroll.jumpTo(0);
+      await tester.pump();
+
+      // ⚠️ ЧИСЛО ПОДОБРАНО: 1000 + 2000 = 3000 строк. Это БОЛЬШЕ полутора
+      // окон (срез в слежении случился бы), но не больше потолка паузы —
+      // ровно та вилка, в которой правило «на паузе не режем» и живёт.
+      final more = List.generate(
+              2000, (i) => '04.08.2026 01:23:35 [INFO] новая $i')
+          .join('\n');
+      await tester.runAsync(() async {
+        await File(tunLogPath)
+            .writeAsString('$more\n', mode: FileMode.append, flush: true);
+        await LogsScreen.debugPollOnce!();
+      });
+      await tester.pump();
+
+      final text = shown(tester);
+      expect(text, contains('старая 0'),
+          reason: 'ЗДЕСЬ БЫЛА БЫ ПОТЕРЯ МЕСТА: срез головы под человеком, '
+              'который ушёл от конца и читает');
+      expect(text, contains('новая 1999'), reason: 'прирост при этом пришёл');
+      expect(scroll.offset, 0,
+          reason: 'слежение на паузе — прокрутку не дёргаем');
+
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
+
+  testWidgets('⚠️ вкладка из одних CRLF показывает плашку, а не мусор',
+      (tester) async {
+    // Прежний `_trimTrailingNewlines` резал только 0x0A: на файле с CRLF
+    // оставался одинокий `\r`, вкладка считалась непустой и показывала
+    // невидимый мусор вместо «Логи пусты».
+    await tester.runAsync(
+        () => File(appLogPath).writeAsString('\r\n\r\n', flush: true));
+    final l = await pumpScreen(tester);
+
+    final text = tester
+        .widget<SelectableText>(find.byType(SelectableText))
+        .textSpan!
+        .toPlainText();
+    expect(text, l.logsEmpty);
+
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('пустая вкладка копируется плашкой, как и раньше',
+      (tester) async {
+    // Файл есть, но в нём одни переводы строк — их экран срезает и до правки.
+    await tester.runAsync(() => File(appLogPath).writeAsString('\n\n'));
+    final copied = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          copied.add((call.arguments as Map)['text'] as String);
+        }
+        return null;
+      },
+    );
+    final l = await pumpScreen(tester);
+    await tapAndSettleIo(tester, find.text(l.logsCopy));
+
+    expect(copied.single, l.logsEmpty,
+        reason: 'поведение до правки сохранено — молчаливая пустота в буфере '
+            'выглядела бы как «копирование не сработало»');
+
+    await tester.pumpWidget(const SizedBox());
+  });
 }
 
 class _FakeAppCatalog implements AppCatalog {
@@ -269,6 +566,10 @@ class _FakeCoreVersions implements CoreVersionInfo {
   Future<String> xray() async => 'test';
 }
 
+/// ⚠️ ПОВТОРЯЕТ `RotatingLog.tail` ДОСЛОВНО, В ТОМ ЧИСЛЕ ОТСУТСТВИЕ
+/// ХВОСТОВОГО ПЕРЕВОДА СТРОКИ. Прежний фейк возвращал текст С ним — и потому
+/// шов «первый показ → первый прирост» не воспроизводился ни одним тестом,
+/// хотя в бою склеивал первую новую строку с последней старой.
 class _FakeTunLog implements TunLogReader {
   _FakeTunLog(this.path);
   final String path;
@@ -277,11 +578,10 @@ class _FakeTunLog implements TunLogReader {
   Future<String> tail({int lines = 400}) async {
     final f = File(path);
     if (!await f.exists()) return '';
-    final all = await f.readAsString();
-    final rows = all.split('\n');
-    return rows.length <= lines
-        ? all
-        : rows.sublist(rows.length - lines).join('\n');
+    final all = const LineSplitter().convert(await f.readAsString());
+    return all.length <= lines
+        ? all.join('\n')
+        : all.sublist(all.length - lines).join('\n');
   }
 
   @override
