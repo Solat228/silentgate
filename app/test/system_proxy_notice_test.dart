@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
-import 'package:silentgate/engine/windows/system_proxy.dart';
 
 /// Молчаливый отказ системного прокси перестаёт быть молчаливым.
 ///

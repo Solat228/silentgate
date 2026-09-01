@@ -535,13 +535,13 @@ void main() {
       addTearDown(() => ServiceCheckController.prober = ServiceChecker.check);
 
       await c.ensureBaseline([ProbeService.steam]);
-      expect(c.baselineFor(ProbeService.steam)?.state, ServiceCheckState.fail);
+      expect(c.baselineFor(ProbeService.steam).state, ServiceCheckState.fail);
 
       // Вторая попытка обязана состояться — раньше запись «провал» её отменяла.
       await c.ensureBaseline([ProbeService.steam]);
       expect(calls, 2,
           reason: 'ЗДЕСЬ ПРОВАЛ КЭШИРОВАЛСЯ НАВСЕГДА');
-      expect(c.baselineFor(ProbeService.steam)?.state, ServiceCheckState.ok);
+      expect(c.baselineFor(ProbeService.steam).state, ServiceCheckState.ok);
     });
 
     test('удачный замер второй раз не гоняется', () async {

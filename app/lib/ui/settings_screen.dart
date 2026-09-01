@@ -33,7 +33,6 @@ import 'geo_bases_screen.dart';
 import 'tun_settings_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
-import 'widgets/geo_bases_section.dart';
 import 'log_level_labels.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
