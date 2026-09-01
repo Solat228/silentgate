@@ -11,6 +11,7 @@ import '../../../core/singbox/tun_autotune.dart';
 import '../../../data/tun_tuning_store.dart';
 import '../elevation.dart';
 import 'app_alive_mutex.dart';
+import 'helper_log_notices.dart';
 import 'tun_helper.dart';
 import 'tun_router.dart';
 import 'tun_scheduled_task.dart';
@@ -229,6 +230,27 @@ class SingboxRouterWindows implements TunRouter, StaleScheduledTaskReporter {
     _started = true;
 
     await _waitUp(abort: abort);
+    await _mirrorHelperFailures();
+  }
+
+  /// Перенести отказы помощника в ОБЩИЙ журнал.
+  ///
+  /// ⚠️ ЗОВЁМ ПОСЛЕ УДАЧНОГО ПОДЪЁМА — невидим был именно этот случай: туннель
+  /// встал, а kill switch не поднялся, и защиты нет при полностью исправном на
+  /// вид подключении. Провал подъёма и так виден человеку: там журнал помощника
+  /// целиком уезжает в `TunStartException.details`.
+  ///
+  /// Сбой чтения журнала подключение не рушит: мост — диагностика, а не часть
+  /// датапути, и падать из-за него значило бы менять рабочее на сломанное.
+  Future<void> _mirrorHelperFailures() async {
+    try {
+      final tail = await TunHelper.tailLog();
+      for (final line in killSwitchFailures(lastHelperSession(tail))) {
+        AppLog.w('Помощник TUN: $line');
+      }
+    } catch (e) {
+      AppLog.w('Журнал помощника TUN не перечитан: $e');
+    }
   }
 
   /// Конфиг, который реально уйдёт в файл для sing-box.
