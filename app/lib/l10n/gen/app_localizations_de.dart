@@ -2943,6 +2943,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Server hat die Kanalprüfung nicht bestanden – wir messen die Geschwindigkeit darüber nicht';
 
   @override
+  String get speedWaitsForPing =>
+      'Ping läuft — die Geschwindigkeitsmessung startet direkt danach';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Geschwindigkeit: $done von $total';
   }

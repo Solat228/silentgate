@@ -1078,6 +1078,7 @@
   "speedConfirmRun": "测速",
   "speedNoTargets": "没有可测的：只对通过通道检查的服务器测速。请先测试列表。",
   "speedNotVerified": "该服务器未通过通道检查——不经它测速",
+  "speedWaitsForPing": "正在测速前的延迟测试 — 测速将随后立即开始",
   "speedProgress": "速度：{total} 个中的 {done} 个",
   "updateOnStartTitle": "启动时刷新订阅",
   "updateOnStartSub": "每次都拉取最新服务器列表，而不只按计时器",

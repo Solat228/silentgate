@@ -2948,6 +2948,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'O servidor não passou na verificação do canal — não medimos a velocidade por ele';
 
   @override
+  String get speedWaitsForPing =>
+      'Ping em andamento — o teste de velocidade começará logo depois';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Velocidade: $done de $total';
   }

@@ -2951,6 +2951,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le serveur n\'a pas réussi la vérification du canal — nous ne mesurons pas le débit';
 
   @override
+  String get speedWaitsForPing =>
+      'Ping en cours — le test de débit démarrera juste après';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Débit : $done sur $total';
   }

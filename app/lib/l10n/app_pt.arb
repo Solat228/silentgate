@@ -1078,6 +1078,7 @@
   "speedConfirmRun": "Medir",
   "speedNoTargets": "Não há o que medir: a velocidade só é verificada em servidores que passaram na verificação do canal. Teste a lista primeiro.",
   "speedNotVerified": "O servidor não passou na verificação do canal — não medimos a velocidade por ele",
+  "speedWaitsForPing": "Ping em andamento — o teste de velocidade começará logo depois",
   "speedProgress": "Velocidade: {done} de {total}",
   "updateOnStartTitle": "Atualizar a assinatura ao iniciar",
   "updateOnStartSub": "Buscar uma lista de servidores nova sempre, não apenas pelo temporizador",

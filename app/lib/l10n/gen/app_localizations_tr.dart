@@ -2924,6 +2924,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Sunucu kanal denetimini geçemedi — üzerinden hız ölçmüyoruz';
 
   @override
+  String get speedWaitsForPing =>
+      'Ping sürüyor — hız ölçümü hemen ardından başlayacak';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Hız: $total sunucudan $done';
   }

@@ -1078,6 +1078,7 @@
   "speedConfirmRun": "Mesurer",
   "speedNoTargets": "Rien à mesurer : le débit n'est vérifié que sur les serveurs ayant réussi la vérification du canal. Testez d'abord la liste.",
   "speedNotVerified": "Le serveur n'a pas réussi la vérification du canal — nous ne mesurons pas le débit",
+  "speedWaitsForPing": "Ping en cours — le test de débit démarrera juste après",
   "speedProgress": "Débit : {done} sur {total}",
   "updateOnStartTitle": "Actualiser l'abonnement au démarrage",
   "updateOnStartSub": "Récupérer une liste de serveurs à jour à chaque fois, pas seulement selon la minuterie",

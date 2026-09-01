@@ -708,6 +708,14 @@ class _HomeScreenState extends State<HomeScreen> {
           message: l.speedProgress(probe.speedDone, total),
           value: total > 0 ? probe.speedDone / total : null,
         );
+      } else if (probe.speedWaitsForPing) {
+        // ⚠️ ОЖИДАНИЕ ТОЖЕ НАДО ПОКАЗАТЬ. Ручной замер, пришедший во время
+        // прогона пинга, честно ждёт своей очереди (харнесс один на процесс) —
+        // но без карточки это неотличимо от прежнего молчаливого отказа:
+        // человек нажал пункт меню и по экрану не понимает, принято ли нажатие.
+        // Полоски нет намеренно: сколько ждать, мы не знаем.
+        _shownSpeedDone = null;
+        AppToast.progress(context, id: 'speed', message: l.speedWaitsForPing);
       } else if (probe.speedFinishedAt != null &&
           probe.speedFinishedAt != _shownSpeedDone &&
           probe.speedSummary != null) {

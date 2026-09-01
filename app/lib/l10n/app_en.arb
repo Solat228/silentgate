@@ -1258,6 +1258,7 @@
   "speedConfirmRun": "Measure",
   "speedNoTargets": "Nothing to measure: speed is only checked for servers that passed the channel check. Ping the list first.",
   "speedNotVerified": "The server failed the channel check — speed through it is not measured",
+  "speedWaitsForPing": "Ping run in progress — the speed test will start right after it",
   "speedProgress": "Speed: {done} of {total}",
   "@speedProgress": {
     "placeholders": {

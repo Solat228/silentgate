@@ -2905,6 +2905,10 @@ class AppLocalizationsAr extends AppLocalizations {
       'الخادم لم يجتز فحص القناة، فلا نقيس السرعة عبره';
 
   @override
+  String get speedWaitsForPing =>
+      'جارٍ اختبار البينغ — سيبدأ قياس السرعة بعده مباشرة';
+
+  @override
   String speedProgress(int done, int total) {
     return 'السرعة: $done من $total';
   }

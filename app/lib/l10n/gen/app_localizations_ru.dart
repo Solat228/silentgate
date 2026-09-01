@@ -2922,6 +2922,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сервер не прошёл проверку канала — скорость через него не меряем';
 
   @override
+  String get speedWaitsForPing =>
+      'Идёт пинг — замер скорости начнётся сразу после него';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Скорость: $done из $total';
   }

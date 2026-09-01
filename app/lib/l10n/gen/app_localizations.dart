@@ -5106,6 +5106,12 @@ abstract class AppLocalizations {
   /// **'Сервер не прошёл проверку канала — скорость через него не меряем'**
   String get speedNotVerified;
 
+  /// No description provided for @speedWaitsForPing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Идёт пинг — замер скорости начнётся сразу после него'**
+  String get speedWaitsForPing;
+
   /// No description provided for @speedProgress.
   ///
   /// In ru, this message translates to:

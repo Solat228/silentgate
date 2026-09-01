@@ -2826,6 +2826,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get speedNotVerified => '该服务器未通过通道检查——不经它测速';
 
   @override
+  String get speedWaitsForPing => '正在测速前的延迟测试 — 测速将随后立即开始';
+
+  @override
   String speedProgress(int done, int total) {
     return '速度：$total 个中的 $done 个';
   }

@@ -108,6 +108,35 @@ void main() {
         reason: 'замер обязан состояться после пинга, а не пропасть молча');
     expect(probe.speedFor(measured), isNotNull);
   });
+
+  test('пока замер ждёт конца пинга, интерфейсу есть что показать', () async {
+    // ⚠️ Требование владельца прямое: «решить и назвать это в интерфейсе, а не
+    // молчать». Отложенный замер без признака ожидания — то же молчание, что
+    // и раньше: человек нажал пункт меню и по экрану не может понять, принято
+    // ли нажатие вообще.
+    final harness = _HoldOnceHarness();
+    final probe = ProbeController(harnessFactory: () => harness);
+    _countDownloads(probe);
+    final pinged = _hy2('Браво', 'b.example');
+    final measured = _hy2('Альфа', 'a.example');
+    probe.setResult(measured, _passed);
+
+    expect(probe.speedWaitsForPing, isFalse, reason: 'контроль: ждать нечего');
+
+    final ping = probe.pingAll([pinged], const AppSettings());
+    final one = probe.measureSpeedOne(measured, const AppSettings());
+    expect(probe.speedWaitsForPing, isTrue,
+        reason: 'нажатие принято и стоит в очереди — это и надо показать');
+
+    harness.release();
+    await ping;
+    await one;
+    await pumpEventQueue();
+
+    expect(probe.speedWaitsForPing, isFalse,
+        reason: 'дождался и состоялся — признак обязан сняться, иначе карточка '
+            'ожидания повиснет навсегда');
+  });
 }
 
 // ── Вспомогательное ─────────────────────────────────────────────────────────

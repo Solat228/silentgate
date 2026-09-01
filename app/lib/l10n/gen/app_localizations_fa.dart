@@ -2913,6 +2913,10 @@ class AppLocalizationsFa extends AppLocalizations {
       'سرور بررسی کانال را نگذرانده — سرعت را از راه آن نمی‌سنجیم';
 
   @override
+  String get speedWaitsForPing =>
+      'پینگ در حال اجراست — سنجش سرعت بلافاصله پس از آن آغاز می‌شود';
+
+  @override
   String speedProgress(int done, int total) {
     return 'سرعت: $done از $total';
   }

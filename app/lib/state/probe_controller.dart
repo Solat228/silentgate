@@ -378,6 +378,14 @@ class ProbeController extends ChangeNotifier {
   ServerSpeed? speedFor(VpnServer s) => _speeds[s.key];
 
   bool get speedRunning => _speedRunning;
+
+  /// Ручной замер принят и ждёт конца прогона пинга.
+  ///
+  /// ⚠️ Нужен интерфейсу, а не логике: без него отложенный замер выглядит
+  /// ровно как прежний молчаливый отказ — человек нажал пункт меню и по экрану
+  /// не может понять, принято ли нажатие. Требование владельца дословно:
+  /// «решить и назвать это в интерфейсе, а не молчать».
+  bool get speedWaitsForPing => _speedAfterPing.isNotEmpty;
   int get speedTotal => _speedTotal;
   int get speedDone => _speedDone;
   String? get speedSummary => _speedSummary;

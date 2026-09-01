@@ -2918,6 +2918,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'The server failed the channel check — speed through it is not measured';
 
   @override
+  String get speedWaitsForPing =>
+      'Ping run in progress — the speed test will start right after it';
+
+  @override
   String speedProgress(int done, int total) {
     return 'Speed: $done of $total';
   }

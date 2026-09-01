@@ -1078,6 +1078,7 @@
   "speedConfirmRun": "Ölç",
   "speedNoTargets": "Ölçülecek bir şey yok: hız yalnızca kanal denetimini geçen sunucularda sınanır. Önce listeyi sınayın.",
   "speedNotVerified": "Sunucu kanal denetimini geçemedi — üzerinden hız ölçmüyoruz",
+  "speedWaitsForPing": "Ping sürüyor — hız ölçümü hemen ardından başlayacak",
   "speedProgress": "Hız: {total} sunucudan {done}",
   "updateOnStartTitle": "Açılışta aboneliği yenile",
   "updateOnStartSub": "Yalnızca zamanlayıcıyla değil, her seferinde taze sunucu listesi çek",
