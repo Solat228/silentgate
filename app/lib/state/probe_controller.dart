@@ -352,6 +352,21 @@ class ProbeController extends ChangeNotifier {
   static const _speedStore = ResultsStore('speed_results.json');
 
   final Map<String, ServerSpeed> _speeds = {};
+
+  /// Очередь замера: кого ещё предстоит померить в идущем прогоне.
+  ///
+  /// ⚠️ Именно очередь, а не снимок списка. Снимок нельзя было подвинуть, и
+  /// ручной замер, нажатый во время массового прогона, деться было некуда —
+  /// он просто не начинался.
+  final List<VpnServer> _speedQueue = [];
+
+  /// Ручной замер, пришедший во время прогона ПИНГА, и настройки того запроса.
+  ///
+  /// ⚠️ Пинг держит тот же харнесс и те же локальные порты, параллельно замер
+  /// не запустить. Но отказать нельзя: требование владельца — «в любом случае
+  /// измерить». Поэтому запрос ждёт здесь и стартует в `finally` прогона пинга.
+  List<VpnServer> _speedAfterPing = const [];
+  AppSettings? _speedAfterPingSettings;
   bool _speedRunning = false;
   CancelToken? _speedCancel;
   int _speedTotal = 0;
@@ -453,8 +468,24 @@ class ProbeController extends ChangeNotifier {
   Future<void> _measureSpeeds(List<VpnServer> servers, AppSettings settings,
       {required bool force}) async {
     // Один харнесс на процесс: пинг и замер делят те же локальные порты, и
-    // параллельный запуск отобрал бы порт у уже идущего прогона.
-    if (_speedRunning || _running) return;
+    // параллельный запуск отобрал бы порт у уже идущего прогона. Поэтому
+    // второй прогон не запускается ПАРАЛЛЕЛЬНО — он встаёт в очередь (ниже).
+    //
+    // ⚠️ ПРОГОН ПИНГА — ОТДЕЛЬНЫЙ ЗАПРЕТ, И РУЧНОЙ ЗАМЕР ИМ НЕ ОТМЕНЯЕТСЯ.
+    // Требование владельца — «в любом случае измерить», поэтому отказать здесь
+    // нельзя: замер ждёт конца пинга и запускается сам (см. `_pingBatch`).
+    // Массовый прогон ждать не заставляем — его запускает кнопка с
+    // подтверждением объёма трафика, и решение «сейчас или потом» за человеком.
+    if (_running) {
+      if (force) {
+        // Кладём сырой список, а не отфильтрованный: пинг прямо сейчас меняет
+        // вердикты проверки канала, и фильтровать до его конца — гадать.
+        _speedAfterPing = [..._speedAfterPing, ...servers];
+        _speedAfterPingSettings = settings;
+        notifyListeners();
+      }
+      return;
+    }
     final targets = force
         ? [
             for (final s in servers)
@@ -478,7 +509,32 @@ class ProbeController extends ChangeNotifier {
       return;
     }
 
+    // ⚠️ РУЧНОЙ ЗАМЕР ВО ВРЕМЯ МАССОВОГО ПРОГОНА НЕ ПРОПАДАЕТ.
+    //
+    // Требование владельца 02.09.2026: «в любом случае просто запускаем пинг
+    // данного сервера раньше и вытесняем из общей очереди. Условно клиент
+    // запустил массовый скан и проверил вручную другой сервер — его дальше не
+    // проверяем». Поэтому выбранный руками сервер встаёт В ГОЛОВУ очереди и
+    // вычёркивается из её остатка: за один сервер платим один раз.
+    //
+    // ⚠️ Текущую закачку НЕ рвём: трафик за начатый сервер уже потрачен, и
+    // обрыв выбросил бы эти мегабайты впустую. Ручной замер идёт СЛЕДУЮЩИМ.
+    if (_speedRunning) {
+      for (final s in targets.reversed) {
+        _speedQueue.removeWhere((q) => q.key == s.key);
+        _speedQueue.insert(0, s);
+      }
+      // Счётчик прогона: сделано + осталось в очереди + тот, что качается
+      // прямо сейчас. Иначе «3 из 3» показывалось бы при четырёх замерах.
+      _speedTotal = _speedDone + _speedQueue.length + 1;
+      notifyListeners();
+      return;
+    }
+
     _speedRunning = true;
+    _speedQueue
+      ..clear()
+      ..addAll(targets);
     _speedTotal = targets.length;
     _speedDone = 0;
     _speedSummary = null;
@@ -490,8 +546,9 @@ class ProbeController extends ChangeNotifier {
     AppLog.i('Скорость: ${targets.length} серверов по '
         '${settings.speedTestSize.label}');
     try {
-      for (final s in targets) {
+      while (_speedQueue.isNotEmpty) {
         if (cancel.isCancelled) break;
+        final s = _speedQueue.removeAt(0);
         // ── ПОДКЛЮЧЁННЫЙ СЕРВЕР МЕРЯЕТСЯ ЧЕРЕЗ ЖИВОЙ КАНАЛ, А НЕ ХАРНЕССОМ.
         //
         // ⚠️ ЭТО И ЕСТЬ ЗАМЕР НА ANDROID, КОТОРОГО НЕ БЫЛО (жалоба 1.4.3).
@@ -566,10 +623,13 @@ class ProbeController extends ChangeNotifier {
       }
     } finally {
       _speedRunning = false;
+      _speedQueue.clear();
       _speedFinishedAt = DateTime.now();
+      // ⚠️ Счётчик берём из [_speedTotal], а не из длины исходного списка:
+      // ручной замер мог добавить в очередь сервер, которого в нём не было.
       _speedSummary = cancel.isCancelled
-          ? 'Замер скорости отменён: измерено $ok из ${targets.length}'
-          : 'Скорость измерена: $ok из ${targets.length} '
+          ? 'Замер скорости отменён: измерено $ok из $_speedTotal'
+          : 'Скорость измерена: $ok из $_speedTotal '
               '(${sw.elapsed.inSeconds} с)';
       AppLog.i(_speedSummary!);
       await _persistSpeeds();
@@ -922,6 +982,18 @@ class ProbeController extends ChangeNotifier {
       await _persist();
       await _persistUnfinished();
       notifyListeners();
+
+      // ⚠️ РУЧНОЙ ЗАМЕР ЖДАЛ ИМЕННО ЭТОГО МОМЕНТА. Пока шёл прогон, харнесс был
+      // занят, и запрос лёг в `_speedAfterPing` вместо того, чтобы пропасть.
+      // Запускаем ПОСЛЕ `_running = false`, иначе он упрётся в тот же запрет,
+      // из-за которого сюда и попал.
+      final pending = _speedAfterPing;
+      if (pending.isNotEmpty) {
+        _speedAfterPing = const [];
+        final pendingSettings = _speedAfterPingSettings ?? settings;
+        _speedAfterPingSettings = null;
+        unawaited(_measureSpeeds(pending, pendingSettings, force: true));
+      }
     }
   }
 
