@@ -52,7 +52,7 @@ void main() {
     test('все виды перечислены — набор закрыт', () {
       // Страж на случай, если кто-то добавит вид и забудет решить, проблема
       // это или заметка: тест упадёт и заставит подумать.
-      expect(EngineNoticeKind.values, hasLength(8));
+      expect(EngineNoticeKind.values, hasLength(9));
       for (final k in EngineNoticeKind.values) {
         final n = EngineNotice(k, 'x');
         expect(n.isProblem, isA<bool>());
