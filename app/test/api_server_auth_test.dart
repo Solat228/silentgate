@@ -13,7 +13,7 @@ import 'package:silentgate/core/platform/app_log.dart';
 /// любая открытая вкладка браузера.
 class _StubHandlers implements ApiHandlers {
   @override
-  Future<Map<String, dynamic>> status() async => {'state': 'disconnected'};
+  Future<Map<String, dynamic>> status({bool verify = false}) async => {'state': 'disconnected'};
   @override
   Future<List<Map<String, dynamic>>> servers() async => const [];
   @override
@@ -41,7 +41,7 @@ class _StubHandlers implements ApiHandlers {
 /// СОБИРАЛСЯ быть аккуратным.
 class _DirtyHandlers implements ApiHandlers {
   @override
-  Future<Map<String, dynamic>> status() async =>
+  Future<Map<String, dynamic>> status({bool verify = false}) async =>
       {'state': 'connected', 'apiToken': 'sekrit-do-not-leak'};
   @override
   Future<List<Map<String, dynamic>>> servers() async => const [];
