@@ -80,8 +80,8 @@ class SubscriptionSyncResult {
     required int panelProfiles,
     DateTime? at,
   }) {
-    final beforeById = {for (final s in before) s.identityKey: s};
-    final afterById = {for (final s in after) s.identityKey: s};
+    final beforeById = _byIdentity(before);
+    final afterById = _byIdentity(after);
 
     final changes = <ServerKeyChange>[];
     // Порядковый номер среди РАЗЛИЧНЫХ серверов нового списка: им подписываются
@@ -356,4 +356,30 @@ class SubscriptionSyncResult {
     if (n10 >= 2 && n10 <= 4) return 'сервера';
     return 'серверов';
   }
+}
+
+/// Разложить список по тождеству, разводя ОДИНАКОВЫЕ имена.
+///
+/// ⚠️ ЗАЧЕМ. [VpnServer.identityKey] намеренно не содержит адреса и порта:
+/// сервер с тем же именем, которому панель поправила адрес, обязан считаться
+/// обновлённым, а не парой «удалён + добавлен». Но у этого есть цена: два
+/// РАЗНЫХ сервера с одинаковым протоколом и именем схлопнулись бы в одну
+/// запись, и диф объявил бы один из них пропавшим.
+///
+/// Поэтому имя-дубликат уточняется адресом и портом — но только оно. Уникальное
+/// имя (а такими они и приходят от панели) остаётся тождеством как есть.
+Map<String, VpnServer> _byIdentity(List<VpnServer> list) {
+  final counts = <String, int>{};
+  for (final s in list) {
+    counts[s.identityKey] = (counts[s.identityKey] ?? 0) + 1;
+  }
+  final out = <String, VpnServer>{};
+  for (final s in list) {
+    final base = s.identityKey;
+    final key = counts[base]! > 1
+        ? '$base|${s.address.toLowerCase()}:${s.port}'
+        : base;
+    out[key] = s;
+  }
+  return out;
 }
