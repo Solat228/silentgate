@@ -411,6 +411,11 @@ void main() {
       await tester.pumpWidget(host());
       await tester.runAsync(() => LogsScreen.debugPollOnce!());
       await tester.pump();
+      // ⚠️ ВТОРОЙ КАДР ОБЯЗАТЕЛЕН: первый показывает текст одним спаном, без
+      // разбора, — ради мгновенного открытия экрана (`logs_screen.dart`,
+      // `_colorReady`). Раскраска, которую и проверяет этот тест, приезжает
+      // следующим кадром.
+      await tester.pump();
 
       final theme = Theme.of(tester.element(find.byType(LogsScreen)));
       final shown = tester.widget<SelectableText>(find.byType(SelectableText));

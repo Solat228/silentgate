@@ -296,6 +296,11 @@ void main() {
     await tester.tap(find.text(l.logsTabTun));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pump(const Duration(milliseconds: 400));
+    // ⚠️ ЛИШНИЙ КАДР ОБЯЗАТЕЛЕН: первый кадр с содержимым показывает текст
+    // одним спаном, без разбора (ради мгновенного открытия экрана —
+    // `logs_screen.dart`, `_colorReady`). Наш формат времени приезжает
+    // следующим кадром вместе с раскраской.
+    await tester.pump();
 
     // На экране — наш формат времени, без зоны и без ESC.
     final shown = tester.widget<SelectableText>(find.byType(SelectableText));
