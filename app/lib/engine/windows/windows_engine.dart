@@ -13,6 +13,8 @@ import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/models/vpn_server.dart';
+import '../../core/probe/exit_health.dart';
+import '../../core/singbox/exit_tags.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
 import '../../core/settings/app_settings.dart';
@@ -73,6 +75,7 @@ class WindowsEngine extends VpnEngineBase {
   /// НИ РАЗУ не отвечало, и сторож в этом случае молчит: см. [_startTunWatchdog].
   DateTime? _tunLastAlive;
   StreamSubscription<int>? _exitWatch;
+  ExitHealth? _exitHealth;
   final TunRouter _tunRouter;
   bool _tunActive = false;
 
@@ -151,7 +154,8 @@ class WindowsEngine extends VpnEngineBase {
   /// зависания и уведомления о блокировках молча перестали бы работать, а
   /// сторож ещё и решил бы, что ядро не отвечает.
   String? _liveTunApiSecret;
-  bool _proxySet = false; // чистим системный прокси только если ставили его сами
+  bool _proxySet =
+      false; // чистим системный прокси только если ставили его сами
 
   /// Поколение запуска, которое ВЛАДЕЕТ поднятым туннелем и прописанным прокси.
   ///
@@ -466,7 +470,8 @@ class WindowsEngine extends VpnEngineBase {
       // Следим за неожиданным падением ядра. Хвост вывода передаём вместе с
       // кодом: код сам по себе ничего не объясняет.
       _exitWatch = exited?.asStream().listen((code) {
-        if (status.isConnected || status.state == VpnConnectionState.connecting) {
+        if (status.isConnected ||
+            status.state == VpnConnectionState.connecting) {
           onCoreDied(code, tail: tailOf());
         }
       });
@@ -570,8 +575,8 @@ class WindowsEngine extends VpnEngineBase {
 
       _lastSnapshot = XrayTrafficSnapshot.zero;
       _lastSampleTime = DateTime.now();
-      _startStatsPolling(
-          singboxCore ? null : location!.executable, singbox: singboxCore);
+      _startStatsPolling(singboxCore ? null : location!.executable,
+          singbox: singboxCore);
 
       // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
       if (attempt > 0) {
@@ -855,7 +860,9 @@ class WindowsEngine extends VpnEngineBase {
     // Возвращаем поле к значению живого туннеля ДО сборки конфига: иначе и
     // сверка не совпадёт, и сторож пойдёт стучаться с чужим паролем.
     final liveSecret = _liveTunApiSecret;
-    if (_tunActive && options.settings.seamlessServerSwitch && liveSecret != null) {
+    if (_tunActive &&
+        options.settings.seamlessServerSwitch &&
+        liveSecret != null) {
       singboxApiSecret = liveSecret;
     }
     // Адреса серверов СЕССИИ — подмножество уже сделанного резолва exitHosts.
@@ -892,9 +899,8 @@ class WindowsEngine extends VpnEngineBase {
       // и рост накопителя `_bypassIps` в базе конфига не касается. Новые
       // адреса доезжают до исключений только тогда, когда конфиг и без того
       // изменился и туннель пересоздаётся.
-      tunnelExcludeServerIps:
-          tunnelExcludeIpsFor(
-              options.settings.tunnelExcludeScope, bypassIps, sessionHosts),
+      tunnelExcludeServerIps: tunnelExcludeIpsFor(
+          options.settings.tunnelExcludeScope, bypassIps, sessionHosts),
       // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
       serverDomains: knownServerDomains,
       // Резолвер для «Прямо». Спрашивается ДО подъёма НОВОГО туннеля: после
@@ -952,7 +958,8 @@ class WindowsEngine extends VpnEngineBase {
       exitOutbounds: exitsBuilt.outbounds,
       apiKeys: apiKeys,
       apiOnlyKeys: options.apiOnlyExitKeys.toList(),
-      apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+      apiToken:
+          _apiExitsActive(options.settings) ? options.settings.apiToken : '',
     );
     final live = _liveTunConfig;
     if (_tunActive &&
@@ -983,6 +990,9 @@ class WindowsEngine extends VpnEngineBase {
         AppLog.i('Туннель не пересоздаю: конфиг тот же и ядро отвечает — '
             'перезапускается только прокси-ядро, маршрут по умолчанию не мигает');
         _startTunWatchdog(options.settings, aborted);
+        // Сторож выходов — там же и по той же причине: до подъёма туннеля
+        // Clash API ещё не слушает, и проба уходила бы в пустоту.
+        _startExitHealth(exitsBuilt.outbounds, options.exitServers, aborted);
         startBlockNotice(
             settings: options.settings,
             apiPort: _tunApiPort,
@@ -1031,7 +1041,8 @@ class WindowsEngine extends VpnEngineBase {
       // правило «через активный сервер» завело бы второе соединение к
       // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
       apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
-      apiToken: _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+      apiToken:
+          _apiExitsActive(options.settings) ? options.settings.apiToken : '',
       options: tunOptions,
       // Автоподбор стека/MTU может занять время — показываем, что происходит
       // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
@@ -1059,6 +1070,9 @@ class WindowsEngine extends VpnEngineBase {
     // Сторож вооружается ТОЛЬКО когда туннель уже стоит: во время
     // автоподбора стека и MTU ядро законно молчит до двух минут.
     _startTunWatchdog(options.settings, aborted);
+    // Сторож выходов — там же и по той же причине: до подъёма туннеля
+    // Clash API ещё не слушает, и проба уходила бы в пустоту.
+    _startExitHealth(exitsBuilt.outbounds, options.exitServers, aborted);
     // Наблюдение за блокировками — ТОЛЬКО после подъёма туннеля: раньше
     // Clash API ещё не слушает, и опрос уходил бы в пустоту.
     startBlockNotice(
@@ -1127,6 +1141,8 @@ class WindowsEngine extends VpnEngineBase {
     // запуск до подъёма (и до вооружения своих) ещё не дошёл.
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
+    _exitHealth?.stop();
+    _exitHealth = null;
     stopBlockNotice();
     await _tunRouter.stop();
     _tunActive = false;
@@ -1134,8 +1150,8 @@ class WindowsEngine extends VpnEngineBase {
     // Забудь это, и следующий запуск с тем же конфигом решил бы, что
     // пересоздавать нечего, и оставил бы машину без маршрутов.
     _liveTunConfig = null;
-      _liveBypassIps = null;
-      _liveTunApiSecret = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
   }
 
   /// Снять системный прокси, если его прописал запуск [gen].
@@ -1221,8 +1237,8 @@ class WindowsEngine extends VpnEngineBase {
         applyRules: options.settings.applyRulesInProxyOnly,
         split: options.split,
       );
-      final configPath = await _writeConfigJson(builder.buildJson(),
-          name: 'exit_router.json');
+      final configPath =
+          await _writeConfigJson(builder.buildJson(), name: 'exit_router.json');
 
       final process = SingboxProcess();
       await process.start(
@@ -1245,8 +1261,7 @@ class WindowsEngine extends VpnEngineBase {
         await Future.delayed(const Duration(milliseconds: 300));
         if (aborted() || !process.isRunning) {
           if (!aborted()) {
-            AppLog.w(
-                'Маршрутизатор выходов API не поднялся:\n${process.tail}');
+            AppLog.w('Маршрутизатор выходов API не поднялся:\n${process.tail}');
           }
           return null;
         }
@@ -1280,6 +1295,8 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
+    _exitHealth?.stop();
+    _exitHealth = null;
     stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
@@ -1323,6 +1340,8 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
+    _exitHealth?.stop();
+    _exitHealth = null;
     stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
@@ -1342,8 +1361,8 @@ class WindowsEngine extends VpnEngineBase {
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
-      _liveBypassIps = null;
-      _liveTunApiSecret = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     if (_proxySet) {
       await SystemProxy.clear();
@@ -1397,6 +1416,71 @@ class WindowsEngine extends VpnEngineBase {
   /// Честная граница: это детектор зависшего ПРОЦЕССА, а не всякого затыка.
   /// HTTP-сервер API живёт в своей горутине, поэтому остановка обработки
   /// пакетов в стеке при живом API сторожем не ловится.
+
+  /// Сторож ВЫХОДОВ: по одному счётчику промахов на каждый `exit-<id>`.
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНО ОТ СТОРОЖА КАНАЛА. Тот щупает один порт — локальный
+  /// прокси основного туннеля. Выходы живут внутри того же sing-box и порта
+  /// наружу не имеют, поэтому смерть выхода в Эстонию не замечал НИКТО:
+  /// правило по сайту просто переставало работать, а человек считал, что лёг
+  /// сам сайт. Живой прогон в VM 02.09.2026 подтвердил и обратное — смерть
+  /// основного туннеля выходов не касается: здоровье у них раздельное.
+  ///
+  /// ⚠️ ПОЧЕМУ ТОЛЬКО ЗАМЕТКА, А НЕ ПЕРЕПОДКЛЮЧЕНИЕ. Ядро одно на все выходы:
+  /// перезапуск ради одного мёртвого выхода оборвал бы и основной туннель, и
+  /// все остальные выходы. Пока запасного выхода нет (#23), честнее сказать
+  /// человеку, чем рвать ему рабочие соединения.
+  void _startExitHealth(List<Map<String, dynamic>> exitOutbounds,
+      Map<String, VpnServer> exitServers, bool Function() aborted) {
+    _exitHealth?.stop();
+    _exitHealth = null;
+    final tags = exitTagsOf(exitOutbounds);
+    if (tags.isEmpty) return;
+    // Тег → человеческое имя: в журнале и заметке должно стоять «Эстония 1.4»,
+    // а не `exit-1a2b3c`, который ни о чём не говорит.
+    final names = <String, String>{
+      for (final e in exitServers.entries)
+        exitTagFor(e.key): e.value.displayName,
+    };
+    final stats = SingboxStats(apiPort: _tunApiPort, secret: singboxApiSecret);
+    final h = ExitHealth(
+      tags: tags,
+      probe: (tag) => stats.exitAlive(tag),
+    );
+    _exitHealth = h;
+    AppLog.i('Сторож выходов вооружён: ${tags.length} шт., '
+        'проба раз в ${h.interval.inSeconds} с, приговор после '
+        '${h.failuresToDeclareDown} промахов подряд');
+    h.start(
+      aborted: () => aborted() || !_tunActive || !status.isConnected,
+      onExitRecovered: (tag, missed) => AppLog.i(
+          'Выход «${names[tag] ?? tag}» снова отвечает (промахов было $missed)'),
+      onExitDown: (tag) async {
+        final name = names[tag] ?? tag;
+        AppLog.e('Выход «$name» не отвечает: '
+            '${h.failuresToDeclareDown} проверки подряд не прошли. Правила, '
+            'привязанные к нему, сейчас не работают. Основной туннель и '
+            'остальные выходы не затронуты.');
+        emitNotice(EngineNoticeKind.exitDown, 'Выход «$name» не отвечает',
+            detail: 'Правила, привязанные к этому серверу, сейчас не работают. '
+                'Основной туннель и остальные выходы продолжают работать.');
+      },
+    );
+  }
+
+  /// Теги выходов из готовых outbound-ов.
+  ///
+  /// ⚠️ Берём из САМОГО КОНФИГА, а не из списка серверов: сервер, который не
+  /// удалось собрать (панельный «Авто», незнакомый протокол), в конфиг не
+  /// попал — и сторожить его нечего. Спроси мы список серверов, сторож вечно
+  /// объявлял бы мёртвым выход, которого никогда и не было.
+  @visibleForTesting
+  static List<String> exitTagsOf(List<Map<String, dynamic>> outbounds) => [
+        for (final o in outbounds)
+          if (o['tag'] is String && (o['tag'] as String).startsWith('exit-'))
+            o['tag'] as String,
+      ];
+
   void _startTunWatchdog(AppSettings settings, bool Function() aborted) {
     _tunWatchdog?.cancel();
     _tunLastAlive = null;
@@ -1453,13 +1537,14 @@ class WindowsEngine extends VpnEngineBase {
     final client = HttpClient()
       ..connectionTimeout = const Duration(milliseconds: 700);
     try {
-      final req =
-          await client.getUrl(Uri.parse('http://127.0.0.1:$_tunApiPort/version'));
+      final req = await client
+          .getUrl(Uri.parse('http://127.0.0.1:$_tunApiPort/version'));
       if (singboxApiSecret.isNotEmpty) {
         req.headers
             .set(HttpHeaders.authorizationHeader, 'Bearer $singboxApiSecret');
       }
-      final resp = await req.close().timeout(const Duration(milliseconds: 1500));
+      final resp =
+          await req.close().timeout(const Duration(milliseconds: 1500));
       await resp.drain<void>();
       // 401 тоже означает «живо»: ядро ответило, просто пароль не понравился.
       // Считать это зависанием — значит убивать рабочий туннель из-за своей же
@@ -1474,10 +1559,11 @@ class WindowsEngine extends VpnEngineBase {
 
   /// Счётчики трафика: у Xray — `api statsquery`, у sing-box — Clash API.
   void _startStatsPolling(String? executable, {bool singbox = false}) {
-    final xrayStats = singbox
-        ? null
-        : XrayStats(executable: executable!, apiPort: ports.api);
-    final singboxStats = singbox ? SingboxStats(apiPort: ports.api, secret: singboxApiSecret) : null;
+    final xrayStats =
+        singbox ? null : XrayStats(executable: executable!, apiPort: ports.api);
+    final singboxStats = singbox
+        ? SingboxStats(apiPort: ports.api, secret: singboxApiSecret)
+        : null;
     _statsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
       // Timer.periodic не сериализует async-колбэки: опрос Xray идёт через
       // Process.run и на нагруженной машине легко перекрывает секунду, а два
@@ -1485,26 +1571,27 @@ class WindowsEngine extends VpnEngineBase {
       if (_polling) return;
       _polling = true;
       try {
-      final snap =
-          await (singboxStats?.query() ?? xrayStats!.query());
-      // Опрос не удался — такт ПРОПУСКАЕМ целиком. Раньше сюда приезжал ноль,
-      // и он затирал базу: скорость на следующем удачном опросе взлетала до
-      // «всего трафика за секунду», а счётчик сессии удваивался.
-      if (snap == null) return;
-      final now = DateTime.now();
-      final dt = now.difference(_lastSampleTime).inMilliseconds / 1000.0;
-      final upSpeed = dt > 0 ? ((snap.uplink - _lastSnapshot.uplink) / dt).round() : 0;
-      final downSpeed =
-          dt > 0 ? ((snap.downlink - _lastSnapshot.downlink) / dt).round() : 0;
-      _lastSnapshot = snap;
-      _lastSampleTime = now;
+        final snap = await (singboxStats?.query() ?? xrayStats!.query());
+        // Опрос не удался — такт ПРОПУСКАЕМ целиком. Раньше сюда приезжал ноль,
+        // и он затирал базу: скорость на следующем удачном опросе взлетала до
+        // «всего трафика за секунду», а счётчик сессии удваивался.
+        if (snap == null) return;
+        final now = DateTime.now();
+        final dt = now.difference(_lastSampleTime).inMilliseconds / 1000.0;
+        final upSpeed =
+            dt > 0 ? ((snap.uplink - _lastSnapshot.uplink) / dt).round() : 0;
+        final downSpeed = dt > 0
+            ? ((snap.downlink - _lastSnapshot.downlink) / dt).round()
+            : 0;
+        _lastSnapshot = snap;
+        _lastSampleTime = now;
 
-      emitStats(TrafficStats(
-        uplinkBytes: snap.uplink,
-        downlinkBytes: snap.downlink,
-        uplinkSpeed: upSpeed < 0 ? 0 : upSpeed,
-        downlinkSpeed: downSpeed < 0 ? 0 : downSpeed,
-      ));
+        emitStats(TrafficStats(
+          uplinkBytes: snap.uplink,
+          downlinkBytes: snap.downlink,
+          uplinkSpeed: upSpeed < 0 ? 0 : upSpeed,
+          downlinkSpeed: downSpeed < 0 ? 0 : downSpeed,
+        ));
       } finally {
         _polling = false;
       }
@@ -1776,10 +1863,10 @@ class WindowsEngine extends VpnEngineBase {
   Future<String> _writeConfigJson(String json,
       {bool singbox = false, String? name}) async {
     final dir = await AppPaths.supportDir();
-    final fileName = name ?? (singbox ? 'singbox_proxy.json' : 'xray_config.json');
+    final fileName =
+        name ?? (singbox ? 'singbox_proxy.json' : 'xray_config.json');
     final file = File('${dir.path}${Platform.pathSeparator}$fileName');
     await file.writeAsString(json);
     return file.path;
   }
-
 }

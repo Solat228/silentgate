@@ -115,6 +115,43 @@ class SingboxStats {
   @visibleForTesting
   static XrayTrafficSnapshot sumProxiedForTest(Object? raw) => _sumProxied(raw);
 
+  /// ЖИВ ЛИ ВЫХОД `exit-<id>` — по его собственной задержке.
+
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНАЯ ПРОБА. Выходы раздельного туннелирования живут внутри
+  /// того же sing-box и порта наружу не имеют: сторож канала щупает только
+  /// основной прокси, и смерть выхода в Эстонию не замечал никто. Clash API
+  /// умеет спросить конкретный outbound по тегу — этим и пользуемся.
+  ///
+  /// ⚠️ ОТВЕТ 200 — ЭТО «ОТВЕТИЛ», А НЕ «БЫСТРО». Само значение задержки нам
+  /// не нужно: решение принимает [ExitHealth] по числу промахов подряд, и
+  /// порог по миллисекундам здесь означал бы «рвём выход за медленность».
+  Future<bool> exitAlive(String tag,
+      {Duration timeout = const Duration(seconds: 5)}) async {
+    final client = HttpClient()..connectionTimeout = timeout;
+    try {
+      final url = Uri.parse('http://127.0.0.1:$apiPort/proxies/'
+          '${Uri.encodeComponent(tag)}/delay'
+          '?timeout=${timeout.inMilliseconds}'
+          '&url=${Uri.encodeComponent(_delayTarget)}');
+      final req = await client.getUrl(url);
+      if (secret.isNotEmpty) {
+        req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $secret');
+      }
+      final resp = await req.close().timeout(timeout);
+      // Тело дочитываем всегда: брошенный ответ оставляет сокет висеть.
+      await resp.drain<void>();
+      return resp.statusCode == 200;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Куда ходит проба задержки. Тот же адрес, что у сторожа канала: лёгкий,
+  /// без тела, и не принадлежит ни одному сервису из проверяемых.
+  static const _delayTarget = 'http://www.gstatic.com/generate_204';
+
   static int _int(Object? v) =>
       v is int ? v : int.tryParse('${v ?? 0}'.split('.').first) ?? 0;
 }

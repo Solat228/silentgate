@@ -161,6 +161,36 @@ abstract class VpnEngineBase implements VpnEngine {
   /// это подключение. Платформа отвечает за себя; база не знает про TUN.
   bool get liveCaptureKept => false;
 
+  /// ЧТО ИМЕННО УДЕРЖИВАЕТ KILL SWITCH — словами, а не капслоком.
+  ///
+  /// ⚠️ ЖИВОЙ ПРОГОН В VM 02.09.2026 ПОКАЗАЛ, ЧТО ПРЕЖНЯЯ СТРОКА ВРАЛА.
+  /// Она гласила «ТРАФИК ЗАБЛОКИРОВАН», а в ту же секунду выход в Эстонию и
+  /// правило «Прямо» отвечали как ни в чём не бывало: умер только `xray`
+  /// (основной туннель), а `sing-box` с адаптером и всеми выходами остался
+  /// жив. Удерживается ровно то, что шло в основной туннель.
+  ///
+  /// Цена вранья не косметическая: владелец прочитал ту же строку у себя как
+  /// «мне вырубили интернет» и пошёл выключать VPN — то есть строка толкала
+  /// снять защиту ровно тогда, когда она работала правильно.
+  ///
+  /// ⚠️ Разделение по [tunnelStillUp], а не по режиму: при мёртвом TUN-ядре
+  /// разбирать имена сайтов уже некому, и удержание действительно тотальное.
+  static String killSwitchHoldText({
+    required bool tunnelStillUp,
+    required CaptureMode mode,
+  }) {
+    if (mode == CaptureMode.systemProxy) {
+      // Здесь WFP не ставится вовсе: удержание — это системный прокси,
+      // указывающий на мёртвый порт. Всё, что ходит через него, стоит.
+      return 'трафик через системный прокси остановлен до восстановления связи';
+    }
+    if (tunnelStillUp) {
+      return 'остановлен трафик основного туннеля до восстановления связи; '
+          'другие выходы и правила «Прямо» продолжают работать';
+    }
+    return 'остановлен весь трафик мимо VPN до восстановления связи';
+  }
+
   void applyLocalProxyAuth(AppSettings s, {required bool systemProxyMode}) {
     // ⚠️ ЖИВОЙ ТУННЕЛЬ УЖЕ ЗНАЕТ СТАРЫЙ ПАРОЛЬ — МЕНЯТЬ ЕГО НЕЛЬЗЯ.
     //
@@ -1480,8 +1510,10 @@ abstract class VpnEngineBase implements VpnEngine {
     final endless = session.options.settings.killSwitch;
     if (endless && _blockingSince == null) {
       _blockingSince = DateTime.now();
-      AppLog.w('Kill switch: ТРАФИК ЗАБЛОКИРОВАН до восстановления связи '
-          '(причина обрыва: $reason). Попытки не прекращаются — решение '
+      AppLog.w('Kill switch: ${killSwitchHoldText(
+        tunnelStillUp: liveCaptureKept,
+        mode: session.options.settings.captureMode,
+      )} (причина обрыва: $reason). Попытки не прекращаются — решение '
           'владельца: держать блокировку до вмешательства пользователя.');
     }
     if (!endless && _attempt >= maxAttempts) {
