@@ -51,7 +51,9 @@ class ApiResult {
 /// Что умеет отдавать и делать API. Реализация живёт в состоянии приложения —
 /// сервер про него ничего не знает и потому тестируется отдельно.
 abstract interface class ApiHandlers {
-  Future<Map<String, dynamic>> status();
+  /// [verify] — измерить НАСТОЯЩИЙ выход запросом наружу (флаг `?verify=1`).
+  /// Стоит времени и трафика, поэтому по умолчанию выключено.
+  Future<Map<String, dynamic>> status({bool verify = false});
   Future<List<Map<String, dynamic>>> servers();
   Future<List<Map<String, dynamic>>> exits();
   Future<Map<String, dynamic>> traffic();
@@ -153,7 +155,11 @@ class LocalApiServer {
     if (req.method == 'GET') {
       switch (path) {
         case '/v1/status':
-          return _ok(res, await handlers.status());
+          // ⚠️ Только `?verify=1` — ровно та строка, что задокументирована.
+          // Принимать «true»/«yes»/пустое значило бы иметь четыре написания
+          // одного флага и расхождение между документом и кодом.
+          return _ok(res, await handlers.status(
+              verify: req.uri.queryParameters['verify'] == '1'));
         case '/v1/servers':
           return _ok(res, {'servers': await handlers.servers()});
         case '/v1/exits':

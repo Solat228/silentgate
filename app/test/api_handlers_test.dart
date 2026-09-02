@@ -9,6 +9,7 @@ import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/net/api_ports.dart';
+import 'package:silentgate/core/net/ip_info.dart';
 import 'package:silentgate/core/net/api_secrets.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
@@ -863,6 +864,51 @@ void main() {
       final st = await env.handlers.status();
       expect(st['server'], isNull);
       expect(st['selectedServer'], a.displayName);
+    });
+    test('?verify=1 меряет НАСТОЯЩИЙ выход, а без флага не ходит в сеть',
+        () async {
+      // ⚠️ Просьба владельца 02.09.2026 после того, как его egress.py поймал
+      // расхождение: статус говорил «connected, tun», а реальный выход был
+      // домашний. Проверка идёт БЕЗ прокси — намеренно: вопрос ровно в том,
+      // заворачивает ли туннель трафик САМОЙ МАШИНЫ. Запрос через порт ядра
+      // ответил бы на другой вопрос и всегда показывал бы VPN.
+      //
+      // По умолчанию флага нет: запрос наружу стоит времени и трафика, а
+      // статус дёргают часто.
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      var calls = 0;
+      AppStateApiHandlers.egressLookup = () async {
+        calls++;
+        return const IpInfo(ip: '203.0.113.7', country: 'Germany', city: 'Berlin');
+      };
+      addTearDown(() => AppStateApiHandlers.egressLookup = null);
+
+      final plain = await env.handlers.status();
+      expect(plain.containsKey('egress'), isFalse,
+          reason: 'без флага в сеть не ходим и поля не выдумываем');
+      expect(calls, 0, reason: 'и запроса тоже не делаем');
+
+      final checked = await env.handlers.status(verify: true);
+      expect(calls, 1);
+      final eg = checked['egress'] as Map<String, dynamic>;
+      expect(eg['ip'], '203.0.113.7');
+      expect(eg['country'], 'Germany');
+    });
+
+    test('⚠️ выход не измерился — так и сказано, а не тихо пропущено', () async {
+      // Отсутствие поля читалось бы как «проверка прошла и ничего не нашла».
+      // Это ровно то молчание, из-за которого статус и оказался ненадёжным.
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      AppStateApiHandlers.egressLookup = () async => null;
+      addTearDown(() => AppStateApiHandlers.egressLookup = null);
+
+      final st = await env.handlers.status(verify: true);
+      final eg = st['egress'] as Map<String, dynamic>;
+      expect(eg['ok'], isFalse);
+      expect(eg['error'], isNotNull,
+          reason: 'причина обязана быть названа, а не подразумеваться');
     });
   });
 }

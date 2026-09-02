@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
+import '../core/net/ip_info.dart';
 import '../core/platform/app_log.dart';
 import '../core/net/api_server.dart';
 import '../core/singbox/exit_outbounds.dart';
@@ -45,8 +46,16 @@ class AppStateApiHandlers implements ApiHandlers {
     return null;
   }
 
+  /// Чем меряется настоящий выход. Подменяется в тестах; `null` — боевой путь.
+  ///
+  /// ⚠️ БЕЗ ПРОКСИ, И ЭТО СУТЬ ПРОВЕРКИ. Вопрос в том, заворачивает ли туннель
+  /// трафик САМОЙ МАШИНЫ. Запрос через порт ядра ответил бы на другой вопрос —
+  /// «работает ли выход» — и показывал бы VPN даже тогда, когда система идёт
+  /// мимо. Именно это расхождение владелец и поймал 02.09.2026.
+  static Future<IpInfo?> Function()? egressLookup;
+
   @override
-  Future<Map<String, dynamic>> status() async => {
+  Future<Map<String, dynamic>> status({bool verify = false}) async => {
         'state': state.status.state.name,
         'server': _connectedServerName,
         // Выбор из статуса не пропадает — он уезжает в своё поле. Иначе скрипт
@@ -59,7 +68,26 @@ class AppStateApiHandlers implements ApiHandlers {
         // `GET /v1/servers` — без этого поля скрипту оставалось бы гадать,
         // сколько подождать перед чтением.
         'pinging': probe.running,
+        // Поля нет вовсе, пока не попросили: выдумывать «проверку», которой не
+        // было, — то же молчание, из-за которого статусу и перестали верить.
+        if (verify) 'egress': await _egress(),
       };
+
+  /// Настоящий выход: адрес и место, куда мы выходим ПРЯМО СЕЙЧАС.
+  ///
+  /// Не измерилось — говорим об этом прямо. Пустое поле читалось бы как
+  /// «проверили, всё хорошо».
+  Future<Map<String, dynamic>> _egress() async {
+    try {
+      final info = await (egressLookup ?? IpInfoService.lookup)();
+      if (info == null) {
+        return {'ok': false, 'error': 'не удалось узнать внешний адрес'};
+      }
+      return {'ok': true, ...info.toJson()};
+    } catch (e) {
+      return {'ok': false, 'error': '\$e'};
+    }
+  }
 
   @override
   Future<List<Map<String, dynamic>>> servers() async => [
