@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/vpn_server.dart';
 import '../../core/probe/ping_result.dart';
-import '../../core/util/country_flag.dart';
 import '../../core/i18n/enum_labels.dart';
 import '../../core/i18n/text_direction.dart';
 import '../../core/xray/panel_routing_summary.dart';
@@ -108,7 +107,11 @@ class ServerTile extends StatelessWidget {
     // не подключаемся — показываем сообщение и кнопку «Обновить».
     if (server.isNotice) return _noticeTile(context, state);
     final l = AppLocalizations.of(context);
-    final name = FlagUtil.strip(server.remark);
+    // ⚠️ ФЛАГИ В ИМЕНИ НЕ СРЕЗАЕМ — требование владельца 02.09.2026.
+    // Панель шлёт их осмысленно («🇷🇺→🇩🇪 Москва → Германия (мост)»):
+    // в ячейке слева видно направление, а в имени — что именно за
+    // страны. Дублирование здесь намеренное, а не недосмотр.
+    final name = server.remark.trim();
     final pinned = state.isPinned(server);
     // Подписка, из которой пришёл сервер, если сейчас выбрана другая. Свои
     // серверы значком не помечаются — иначе он был бы у каждой строки и
@@ -330,7 +333,7 @@ class ServerTile extends StatelessWidget {
   Widget _noticeTile(BuildContext context, AppState state) {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    final text = FlagUtil.strip(server.remark).trim();
+    final text = server.remark.trim();
     return ListTile(
       dense: true,
       leading: Icon(Icons.campaign_outlined, color: scheme.tertiary),

@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:country_flags/country_flags.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,5 +48,28 @@ void main() {
     // takeException() возвращает пойманное исключение (overflow и т.п.) и
     // одновременно гасит его — без вызова тест провалился бы сам.
     expect(t.takeException(), isNull);
+  });
+  test('⚠️ УГОЛ РАЗРЕЗА СЧИТАЕТСЯ В ГРАДУСАХ, а не сверяется с константой',
+      () {
+    // ⚠️ ЗАЧЕМ ИМЕННО ГРАДУСЫ. Владелец дважды просил «флаги с большим
+    // углом». Первая правка поставила долю 0.75, а комментарий рядом обещал
+    // 50–60° — по факту выходило 43°, и разницы с прежними 35° человек не
+    // увидел. Тест на равенство константы это пропустил бы: он проверял бы
+    // ЧИСЛО, а обещание было про УГОЛ.
+    //
+    // Ячейка списка 34×24 — тот размер, на котором это и смотрят.
+    const w = 34.0, h = 24.0;
+    final deg = math.atan(h / (w * splitTopFraction)) * 180 / math.pi;
+    expect(deg, greaterThanOrEqualTo(50),
+        reason: 'разрез положе, чем просил владелец: ${deg.round()}°');
+    expect(deg, lessThanOrEqualTo(60),
+        reason: 'разрез круче запрошенного — верхний флаг снова теряет половину: ${deg.round()}°');
+  });
+
+  test('половины разреза опираются на ОДНУ долю — без щели и нахлёста', () {
+    // Обе фигуры строятся от splitTopFraction. Разойдись они — между
+    // половинами появилась бы полоска фона либо один флаг залез бы на другой.
+    expect(splitTopFraction, greaterThan(0));
+    expect(splitTopFraction, lessThan(1));
   });
 }
