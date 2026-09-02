@@ -930,6 +930,21 @@ class _HomeScreenState extends State<HomeScreen> {
 /// плюс осмысленная колонка подключения рядом уже не помещаются.
 const double _twoPaneMinWidth = 760;
 
+/// Ширина МЕСТА ПОД КНОПКОЙ, с которой колонки проверок помещаются по бокам.
+///
+/// ⚠️ ОТДЕЛЬНАЯ КОНСТАНТА, А НЕ [_twoPaneMinWidth], И ЭТО СУТЬ ПРАВКИ. Раньше
+/// выбор раскладки спрашивал ту, что выше, — а она отвечает на ДРУГОЙ вопрос:
+/// «когда список серверов уезжает на отдельный экран», и меряет ширину ОКНА.
+/// Здесь же меряется ширина ЛЕВОЙ ПАНЕЛИ, то есть окно МИНУС список (380 px).
+/// Из-за подмены бока включались только при окне шире 1140: владелец с окном
+/// 964 видел ряды, «хотя место точно есть» — панель у него около 584 px.
+///
+/// Число не придумано, а ЗАМЕРЕНО (`test/service_checks_sides_width_test.dart`):
+/// на 520 px и выше раскладка «по бокам» строится без переполнения, на 360 px
+/// (телефон) — нет, и там ряды остаются правильным ответом. Меняя число, гоняйте
+/// тот тест: он проверяет ФАКТ раскладки, а не веру в него.
+const double _sidesMinWidth = 520;
+
 class _ConnectPane extends StatelessWidget {
   final VpnStatus status;
   final AppSettings settings;
@@ -1611,7 +1626,7 @@ class ConnectCenterpiece extends StatelessWidget {
         // этого места на экране, а не на копию.
         LayoutBuilder(builder: (context, c) {
           final effective = layout == ServiceChecksLayout.adaptive
-              ? (c.maxWidth >= _twoPaneMinWidth
+              ? (c.maxWidth >= _sidesMinWidth
                   ? ServiceChecksLayout.sides
                   : ServiceChecksLayout.rows)
               : layout;
