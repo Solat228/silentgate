@@ -132,6 +132,45 @@ void main() {
     return measureFrame(tester);
   }
 
+  group('⚠️ Первый кадр открытия — БЕЗ раскраски', () {
+    // ⚠️ ЖАЛОБА ВЛАДЕЛЬЦА 02.09.2026: «при открытии есть микро подвисание на
+    // секунду». Раскладка раскрашенного абзаца — самая дорогая часть кадра, и
+    // платится она ровно в тот момент, когда человек нажал «Логи» и ждёт.
+    // Решение: первый кадр показывает текст ОДНИМ спаном (разбора нет вовсе),
+    // а раскраска приезжает следующим кадром, когда экран уже открыт.
+    //
+    // ⚠️ Подвисание стало заметнее после того, как окно подняли с 1500 до
+    // 3000 строк по выбору владельца: работы на первый кадр стало вдвое
+    // больше. Здесь она с первого кадра снимается целиком.
+    testWidgets('открытие не разбирает НИ ОДНОЙ строки', (tester) async {
+      await tester.runAsync(
+          () => File(appLogPath).writeAsString(corpus(50000), flush: true));
+      await tester.pumpWidget(host());
+      await tester.runAsync(() => LogsScreen.debugPollOnce!());
+      final before = LogWorkCounters.parsedLines;
+      await tester.pump();
+      expect(LogWorkCounters.parsedLines - before, 0,
+          reason: 'первый кадр обязан быть без разбора — иначе человек ждёт '
+              'раскладку раскрашенного абзаца ровно в момент открытия');
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('⚠️ но раскраска ПРИЕЗЖАЕТ следующим кадром', (tester) async {
+      // Иначе «дёшево» превратилось бы в «раскраски нет вовсе» — а её и
+      // заводили ради читаемости.
+      await tester.runAsync(
+          () => File(appLogPath).writeAsString(corpus(50000), flush: true));
+      await tester.pumpWidget(host());
+      await tester.runAsync(() => LogsScreen.debugPollOnce!());
+      await tester.pump();
+      final plain = spansInTree(tester);
+      await tester.pump();
+      final painted = spansInTree(tester);
+      expect(painted, greaterThan(plain * 10),
+          reason: 'после первого кадра лог обязан стать раскрашенным');
+      await tester.pumpWidget(const SizedBox());
+    });
+  });
   group('⚠️ Стоимость кадра не зависит от размера буфера', () {
     testWidgets('50 000 строк и 200 000 строк стоят кадру ОДИНАКОВО',
         (tester) async {

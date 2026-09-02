@@ -461,15 +461,41 @@ class _LogsScreenState extends State<LogsScreen>
   /// мегабайтам на каждый кадр. Его работу делает тот же разбор, что и
   /// раскраску, за один проход ([buildLogSpanForLines] → [parseLogLine]); на
   /// кнопке «Копировать» он остался и платится один раз на нажатие.
+  /// ⚠️ ПЕРВЫЙ КАДР ОТКРЫТИЯ — БЕЗ РАСКРАСКИ, И ЭТО НЕ ЭКОНОМИЯ НА СПИЧКАХ.
+  ///
+  /// Жалоба владельца 02.09.2026: «при открытии есть микро подвисание на
+  /// секунду». Замер показал точную цену: первый кадр разбирал 3000 строк и
+  /// строил 5000 спанов — и платится это ровно тогда, когда человек нажал
+  /// «Логи» и смотрит на экран. Самое дорогое здесь не разбор, а РАСКЛАДКА
+  /// абзаца из тысяч спанов.
+  ///
+  /// Теперь первый кадр показывает текст ОДНИМ спаном (разбора нет вовсе), а
+  /// раскраска приезжает следующим — экран к тому моменту уже открыт, и
+  /// задержка попадает туда, где её не ждут.
+  ///
+  /// ⚠️ Флаг взводится ОДИН РАЗ на жизнь экрана, а не на каждую вкладку: иначе
+  /// переключение вкладок мигало бы серым текстом. И взводится он ИЗ `build`,
+  /// а не из `initState`, потому что содержимое приезжает асинхронно — на
+  /// момент `initState` показывать ещё нечего, и кадр «без раскраски» был бы
+  /// потрачен на заглушку «загружаю».
+  bool _colorReady = false;
+
   TextSpan _spanFor(List<String>? lines, String loading, String empty,
       ThemeData theme,
       {required bool coreFormat}) {
     if (lines == null) return logPlaceholderSpan(loading, theme);
     final end = _visibleEnd(lines);
     if (end == 0) return logPlaceholderSpan(empty, theme);
-    return buildLogSpanForLines(
-        end == lines.length ? lines : lines.sublist(0, end), theme,
-        coreFormat: coreFormat);
+    final window = end == lines.length ? lines : lines.sublist(0, end);
+    if (!_colorReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_colorReady) setState(() => _colorReady = true);
+      });
+      // Один спан: ни `parseLogLine`, ни таблицы стилей, ни перестановки
+      // времени у строк ядра. Всё это придёт следующим кадром.
+      return TextSpan(text: window.join('\n'));
+    }
+    return buildLogSpanForLines(window, theme, coreFormat: coreFormat);
   }
 
   /// Текст вкладки «Приложение» ДЛЯ БУФЕРА ОБМЕНА.
