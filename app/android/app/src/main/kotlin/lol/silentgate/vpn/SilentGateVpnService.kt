@@ -314,6 +314,23 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     private var coreLog: java.io.File? = null
     private var xrayRunning = false
     private var tunFd: ParcelFileDescriptor? = null
+
+    /// Отпечаток параметров, с которыми установлен ЖИВОЙ [tunFd].
+    ///
+    /// ⚠️ ЗАЧЕМ. [startOrReloadWithRetry] повторяет подъём ядра при занятом
+    /// порте, и каждый повтор приходит в [openTun] через колбэк libbox.
+    /// Раньше каждый повтор делал новый `establish()` — то есть НОВЫЙ
+    /// tun-интерфейс: живой прогон 02.09.2026 дал три `Established` за 1,1 с
+    /// (tun1…tun3) на одном переподключении и девять осиротевших интерфейсов
+    /// в DOWN за прогон. Прежние не исчезали и после закрытия нашего
+    /// ParcelFileDescriptor: Go-сторона держит СВОЙ `dup()` нашего fd (libbox
+    /// `platform.go`), а упавший на «порт занят» экземпляр ядра отдаёт его
+    /// не всегда (закрытие недоподнятого box в Go прикрыто recover — см.
+    /// «panic on early start» в box.Start).
+    ///
+    /// С отпечатком повтор с ТЕМИ ЖЕ параметрами получает прежний fd и не
+    /// создаёт ничего. В отпечаток входит всё, что реально уходит в Builder.
+    private var tunFingerprint: String? = null
     private var interfaceListener: InterfaceUpdateListener? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
@@ -732,8 +749,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     /// Перезагрузка ядра БЕЗ пересоздания сервиса.
     ///
     /// Нотификация, networkCallback и подписка на состояние остаются на месте —
-    /// пересоздавать их незачем. Сам tun-интерфейс система заменяет при
-    /// повторном `establish()` внутри `openTun`, и делает это без разрыва.
+    /// пересоздавать их незачем. Tun-интерфейс при неизменных параметрах
+    /// переиспользуется как есть (`openTun` сверяет отпечаток), а при
+    /// изменившихся система заменяет его повторным `establish()` без разрыва.
     ///
     /// Xray переподнимается только если конфиг пришёл: заглушка kill switch
     /// присылает один sing-box, и держать при ней живое соединение с VPN-сервером
@@ -921,6 +939,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         } catch (_: Throwable) {
         }
         tunFd = null
+        // Вместе с fd умирает и его отпечаток: иначе сервис «помнил» бы живой
+        // туннель, которого больше нет.
+        tunFingerprint = null
 
         running = false
         // Уведомление снимаем ПОСЛЕ закрытия commandServer, но ДО notifyState:
@@ -990,14 +1011,87 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * Каждый `addAllowedApplication`/`addDisallowedApplication` обёрнут в
      * try/catch: пакет мог быть удалён после того, как правило создали, и без
      * защиты VPN просто перестал бы подключаться.
+     *
+     * ⚠️ ПОВТОРНЫЙ вызов с ТЕМИ ЖЕ параметрами возвращает ЖИВОЙ fd, а не
+     * создаёт новый интерфейс. Иначе каждый повтор [startOrReloadWithRetry]
+     * (и каждая перезагрузка живого туннеля с прежними настройками) плодит
+     * tun-интерфейсы: за прогон 02.09.2026 их скопилось девять — tun0…tun8
+     * в DOWN при живом tun9.
      */
     override fun openTun(options: TunOptions): Int {
+        // ── Сначала СНИМАЕМ параметры в локальные списки. ────────────────────
+        //
+        // Дальше эти же списки идут и в отпечаток, и в Builder — то, что
+        // сравнили, и то, что применили, не может разойтись. Итераторы libbox
+        // одноразовые, но каждое обращение к свойству отдаёт новый (Go-сторона
+        // оборачивает срез заново), поэтому собирать можно смело.
+        val mtu = options.mtu
+        val addr4 = mutableListOf<Pair<String, Int>>()
+        options.inet4Address.forEach { addr4.add(it.address() to it.prefix()) }
+        val addr6 = mutableListOf<Pair<String, Int>>()
+        options.inet6Address.forEach { addr6.add(it.address() to it.prefix()) }
+        val route4 = mutableListOf<Pair<String, Int>>()
+        options.inet4RouteAddress.forEach { route4.add(it.address() to it.prefix()) }
+        val route6 = mutableListOf<Pair<String, Int>>()
+        options.inet6RouteAddress.forEach { route6.add(it.address() to it.prefix()) }
+        // Исключения из маршрутов доступны только с API 33; ниже этой версии
+        // они не применяются — и в отпечаток входить не должны.
+        val exclude4 = mutableListOf<Pair<String, Int>>()
+        val exclude6 = mutableListOf<Pair<String, Int>>()
+        if (Build.VERSION.SDK_INT >= 33) {
+            options.inet4RouteExcludeAddress.forEach { exclude4.add(it.address() to it.prefix()) }
+            options.inet6RouteExcludeAddress.forEach { exclude6.add(it.address() to it.prefix()) }
+        }
+        // runCatching: у конфига без DNS-сервера свойство отдаёт null/бросает —
+        // это то же состояние «сервера нет», что и раньше ловил try/catch.
+        val dns = runCatching { options.dnsServerAddress?.value }.getOrNull()
+        val includePkgs = mutableListOf<String>()
+        options.includePackage.forEach { pkg ->
+            // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
+            // приложения в собственный туннель (петля и ложные цифры проб).
+            if (pkg != packageName) includePkgs.add(pkg)
+        }
+        // excludePackage — итератор libbox, не коллекция: сначала собираем.
+        val excludePkgs = LinkedHashSet<String>()
+        options.excludePackage.forEach { excludePkgs.add(it) }
+        excludePkgs.add(packageName)
+
+        val fingerprint = listOf(
+            "mtu=$mtu", "a4=$addr4", "a6=$addr6", "r4=$route4", "r6=$route6",
+            "x4=$exclude4", "x6=$exclude6", "dns=$dns", "inc=$includePkgs",
+            "exc=$excludePkgs",
+        ).joinToString(";")
+
+        // ── ПОВТОР С ТЕМИ ЖЕ ПАРАМЕТРАМИ: интерфейс уже есть, отдаём его. ───
+        //
+        // Системе в этом случае НЕЧЕГО менять, а каждый лишний establish() —
+        // это новый tunN, прежний из которых остаётся висеть в DOWN (см.
+        // [tunFingerprint]). Go-сторона сделает свой dup() возвращённого fd и
+        // дальше живёт с ним как с новым.
+        //
+        // ⚠️ Читателей-конкурентов на этом fd нет. Перед новым экземпляром
+        // ядра libbox закрывает старый (StartOrReloadService в
+        // daemon/started_service.go зовёт oldInstance.Close() ПЕРВЫМ), а
+        // экземпляр, упавший на «порт занят», до чтения не доходит вовсе:
+        // стек начинает читать из tun только на этапе PostStart — ПОЗЖЕ
+        // привязки портов, на которой он и падает.
+        val live = tunFd
+        if (live != null && fingerprint == tunFingerprint) {
+            // getFd бросает, если дескриптор уже закрыт, — тогда честно
+            // строим новый интерфейс.
+            val liveFd = runCatching { live.fd }.getOrNull()
+            if (liveFd != null) {
+                Log.i(logTag, "openTun: параметры прежние — переиспользую живой tun (fd=$liveFd)")
+                return liveFd
+            }
+        }
+
         val builder = Builder()
             .setSession("SilentGate")
-            .setMtu(options.mtu)
+            .setMtu(mtu)
 
-        options.inet4Address.forEach { builder.addAddress(it.address(), it.prefix()) }
-        options.inet6Address.forEach { builder.addAddress(it.address(), it.prefix()) }
+        addr4.forEach { (addr, prefix) -> builder.addAddress(addr, prefix) }
+        addr6.forEach { (addr, prefix) -> builder.addAddress(addr, prefix) }
 
         // ⚠️ Маршруты ставим ВСЕГДА, не глядя на options.autoRoute.
         //
@@ -1013,33 +1107,28 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // Дефолтного маршрута не было, поэтому В ТУННЕЛЬ НЕ ШЛО НИЧЕГО:
         // запросы уходили напрямую, мимо VPN, а пользователь видел «Подключено».
         // Поймано живым запуском в эмуляторе (`dumpsys connectivity`).
-        options.inet4RouteAddress.let { routes ->
-            if (routes.hasNext()) {
-                routes.forEach { builder.addRoute(it.address(), it.prefix()) }
-            } else {
-                builder.addRoute("0.0.0.0", 0)
-            }
+        if (route4.isEmpty()) {
+            builder.addRoute("0.0.0.0", 0)
+        } else {
+            route4.forEach { (addr, prefix) -> builder.addRoute(addr, prefix) }
         }
-        options.inet6RouteAddress.let { routes ->
-            if (routes.hasNext()) {
-                routes.forEach { builder.addRoute(it.address(), it.prefix()) }
-            } else if (options.inet6Address.hasNext()) {
-                builder.addRoute("::", 0)
-            }
+        if (route6.isEmpty()) {
+            if (addr6.isNotEmpty()) builder.addRoute("::", 0)
+        } else {
+            route6.forEach { (addr, prefix) -> builder.addRoute(addr, prefix) }
         }
         // Исключения из маршрутов доступны только с API 33; ниже ядро само
-        // раскладывает их в набор покрывающих префиксов.
-        if (Build.VERSION.SDK_INT >= 33) {
-            options.inet4RouteExcludeAddress.forEach {
-                builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
-            }
-            options.inet6RouteExcludeAddress.forEach {
-                builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(it.address()), it.prefix()))
-            }
+        // раскладывает их в набор покрывающих префиксов (списки выше собраны
+        // пустыми).
+        exclude4.forEach { (addr, prefix) ->
+            builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(addr), prefix))
+        }
+        exclude6.forEach { (addr, prefix) ->
+            builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(addr), prefix))
         }
 
-        try {
-            builder.addDnsServer(options.dnsServerAddress.value)
+        if (dns != null) try {
+            builder.addDnsServer(dns)
         } catch (_: Throwable) {
             // Без DNS-сервера приложения пойдут в системный резолвер мимо
             // туннеля — ровно та утечка, которую чинили на Windows.
@@ -1048,12 +1137,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // include и exclude НЕЛЬЗЯ смешивать: наличие хотя бы одного allowed
         // уводит всё остальное мимо VPN.
         var perAppApplied = false
-        var includeWanted = false
-        options.includePackage.forEach { pkg ->
-            // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
-            // приложения в собственный туннель (петля и ложные цифры проб).
-            if (pkg == packageName) return@forEach
-            includeWanted = true
+        val includeWanted = includePkgs.isNotEmpty()
+        includePkgs.forEach { pkg ->
             try {
                 builder.addAllowedApplication(pkg)
                 perAppApplied = true
@@ -1081,11 +1166,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             //
             // При allowed-списке исключать себя и не нужно: в туннель идут
             // ТОЛЬКО перечисленные приложения, все прочие и так снаружи.
-            // excludePackage — итератор libbox, не коллекция: сначала собираем.
-            val excludes = LinkedHashSet<String>()
-            options.excludePackage.forEach { excludes.add(it) }
-            excludes.add(packageName)
-            excludes.forEach { pkg ->
+            // Свой пакет в [excludePkgs] уже добавлен при сборе.
+            excludePkgs.forEach { pkg ->
                 try {
                     builder.addDisallowedApplication(pkg)
                 } catch (_: PackageManager.NameNotFoundException) {
@@ -1105,6 +1187,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // Не закрывать вовсе — оставить дескриптор висеть до смерти процесса.
         val previous = tunFd
         tunFd = pfd
+        // Отпечаток — ПОСЛЕ успешного establish(): недоподнятый интерфейс не
+        // должен «узнаваться» следующим повтором.
+        tunFingerprint = fingerprint
         if (previous !== pfd) runCatching { previous?.close() }
         return pfd.fd
     }
