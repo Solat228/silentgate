@@ -29,4 +29,13 @@ void main() {
     expect(engineNoticeDuration(EngineNoticeKind.failed, isProblem: true),
         const Duration(seconds: 10));
   });
+  test('⚠️ мёртвый выход — дольше рядовой заметки', () {
+    // Сообщение адресное и требует решения: правила, привязанные к этому
+    // серверу, сейчас не работают, и человеку решать — ждать, сменить сервер
+    // у правила или отключить его. Шести секунд на такое мало, а красной
+    // ошибкой это не является: основной туннель и остальные выходы живы.
+    expect(
+        engineNoticeDuration(EngineNoticeKind.exitDown, isProblem: false),
+        greaterThan(const Duration(seconds: 6)));
+  });
 }

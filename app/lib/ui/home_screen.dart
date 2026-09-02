@@ -318,6 +318,11 @@ Duration engineNoticeDuration(EngineNoticeKind kind, {required bool isProblem}) 
       // защиты конкретной программы, отмахнуться от него в спешке хуже, чем
       // от обычной заметки.
       return const Duration(minutes: 1);
+    case EngineNoticeKind.exitDown:
+      // Правила, привязанные к этому серверу, сейчас не работают, и решать
+      // человеку. Красной ошибкой это не является: основной туннель и
+      // остальные выходы живы — проверено живым прогоном в VM 02.09.2026.
+      return const Duration(seconds: 20);
     case EngineNoticeKind.staleScheduledTask:
       // Требует прочитать и решить («Исправить» или нет) — обычных 6 секунд
       // для этого мало, а красной ошибкой (10 с) это не является.
