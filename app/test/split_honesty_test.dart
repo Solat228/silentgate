@@ -301,14 +301,28 @@ void main() {
       expect(src, contains('l.killSwitchOfferTun'));
     });
 
-    test('экран правил показывает плашку под выбором режима', () {
+    test('⚠️ красной плашки на экране правил НЕТ — убрана по требованию', () {
+      // Владелец потребовал убрать её дважды: она занимала треть экрана над
+      // списками и висела постоянно, а не по событию. Тест перевёрнут
+      // намеренно — чтобы плашка не вернулась «сама» при следующей правке
+      // экрана, а возвращалась только осознанно, вместе с этим тестом.
       final src = read('lib/ui/split_tunnel_screen.dart');
-      final banner = src.indexOf('SplitHonestyBanner()');
-      final radios = src.indexOf('RadioListTile<SplitMode>');
-      final diagram = src.indexOf('RouteDiagram(split: st)');
-      expect(banner, greaterThan(radios),
-          reason: 'оговорка обязана стоять там, где режим выбирают');
-      expect(banner, lessThan(diagram));
+      expect(src.contains('const SplitHonestyBanner(),'), isFalse,
+          reason: 'плашка снова на экране — это отмена решения владельца');
+    });
+
+    test('⚠️ но САМ ФАКТ жив: правило показа и тексты остались', () {
+      // Предупреждение верно по существу и перепроверено по коду: в режиме
+      // «Только отмеченные» неотмеченное идёт под реальным адресом. Убрана
+      // ФОРМА подачи, а не факт. Понадобится вернуть в другом виде —
+      // подсказкой или строкой — брать готовое, а не писать заново.
+      expect(
+          splitHonestyWarnings(const AppSettings().copyWith(
+              captureMode: CaptureMode.tun,
+              splitTunnel:
+                  const SplitTunnelConfig(mode: SplitMode.onlySelected))),
+          contains(SplitHonesty.realIpByDefault),
+          reason: 'правило показа снесли вместе с плашкой — тогда факт потерян');
     });
   });
 }
