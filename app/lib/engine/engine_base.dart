@@ -12,6 +12,9 @@ import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
 import '../core/probe/tunnel_health.dart';
+import '../core/probe/exit_health.dart';
+import '../core/singbox/exit_tags.dart';
+import 'windows/singbox_stats.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
@@ -392,6 +395,85 @@ abstract class VpnEngineBase implements VpnEngine {
   /// ты по своему API» — проверка ПРОЦЕССА. Ядро отвечает и тогда, когда через
   /// туннель не проходит ни байта. 08.08.2026 у владельца VPN перестал
   /// работать, а приложение за шесть часов не записало ничего.
+
+  ExitHealth? _exitHealth;
+
+  /// Сторож ВЫХОДОВ: по одному счётчику промахов на каждый `exit-<id>`.
+  ///
+  /// ⚠️ ЖИВЁТ В БАЗЕ, А НЕ У ПЛАТФОРМЫ — по той же причине, что и сторож
+  /// канала. Выходы собирает общий `ExitOutbounds`, тег строит общий
+  /// `exitTagFor`, а спрашивает их Clash API того же sing-box: на Windows он
+  /// на 10813, на Android — на 10812, и это ЕДИНСТВЕННОЕ различие. Оставь
+  /// сторож у Windows — и Android остался бы с выходами без присмотра, а
+  /// платформы разъехались бы на первом же исправлении.
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНО ОТ [startHealthWatch]. Тот щупает ОДИН порт — локальный
+  /// прокси основного туннеля. Выходы живут внутри того же ядра и порта наружу
+  /// не имеют, поэтому смерть выхода не замечал НИКТО: правило по сайту просто
+  /// переставало работать, а человек считал, что лёг сам сайт.
+  ///
+  /// ⚠️ ЗАМЕТКА, А НЕ ПЕРЕПОДКЛЮЧЕНИЕ. Ядро одно на все выходы: перезапуск
+  /// ради одного мёртвого оборвал бы и основной туннель, и остальные выходы.
+  /// Пока запасного выхода нет (бэклог #23), честнее сказать человеку, чем
+  /// рвать ему рабочие соединения.
+  void startExitHealth({
+    required List<Map<String, dynamic>> outbounds,
+    required Map<String, VpnServer> exitServers,
+    required int apiPort,
+    required String secret,
+    required bool Function() aborted,
+  }) {
+    stopExitHealth();
+    final tags = exitTagsOf(outbounds);
+    if (tags.isEmpty) return;
+    // Тег → человеческое имя: в журнале и заметке должно стоять «Эстония 1.4»,
+    // а не `exit-1a2b3c`, который ни о чём не говорит.
+    final names = <String, String>{
+      for (final e in exitServers.entries) exitTagFor(e.key): e.value.displayName,
+    };
+    final stats = SingboxStats(apiPort: apiPort, secret: secret);
+    final h = ExitHealth(tags: tags, probe: (tag) => stats.exitAlive(tag));
+    _exitHealth = h;
+    AppLog.i('Сторож выходов вооружён: ${tags.length} шт., проба раз в '
+        '${h.interval.inSeconds} с, приговор после '
+        '${h.failuresToDeclareDown} промахов подряд');
+    h.start(
+      aborted: () => aborted() || !status.isConnected,
+      onExitRecovered: (tag, missed) => AppLog.i(
+          'Выход «${names[tag] ?? tag}» снова отвечает (промахов было $missed)'),
+      onExitDown: (tag) async {
+        final name = names[tag] ?? tag;
+        AppLog.e('Выход «$name» не отвечает: ${h.failuresToDeclareDown} '
+            'проверки подряд не прошли. Правила, привязанные к нему, сейчас не '
+            'работают. Основной туннель и остальные выходы не затронуты.');
+        emitNotice(EngineNoticeKind.exitDown, 'Выход «$name» не отвечает',
+            detail: 'Правила, привязанные к этому серверу, сейчас не работают. '
+                'Основной туннель и остальные выходы продолжают работать.');
+      },
+    );
+  }
+
+  void stopExitHealth() {
+    _exitHealth?.stop();
+    _exitHealth = null;
+  }
+
+  /// Вооружён ли сторож выходов (для тестов и диагностики).
+  bool get exitHealthArmed => _exitHealth?.isArmed ?? false;
+
+  /// Теги выходов из готовых outbound-ов.
+  ///
+  /// ⚠️ Берём из САМОГО КОНФИГА, а не из списка серверов: сервер, который не
+  /// удалось собрать (панельный «Авто», незнакомый протокол), в конфиг не
+  /// попал — и сторожить его нечего. Спроси мы список серверов, сторож вечно
+  /// объявлял бы мёртвым выход, которого никогда и не было.
+  @visibleForTesting
+  static List<String> exitTagsOf(List<Map<String, dynamic>> outbounds) => [
+        for (final o in outbounds)
+          if (o['tag'] is String && (o['tag'] as String).startsWith('exit-'))
+            o['tag'] as String,
+      ];
+
   void startHealthWatch(bool Function() aborted) {
     // ⚠️ УСТАРЕВШИЙ ВЫЗОВ НЕ ТРОГАЕТ ЖИВОГО СТОРОЖА. Первая же строка ниже —
     // `stopHealthWatch()`, то есть снятие ТОГО, что стоит в поле сейчас; а

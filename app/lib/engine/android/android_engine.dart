@@ -959,6 +959,18 @@ class AndroidEngine extends VpnEngineBase {
       // не формальность: без неё Android остаётся с проверкой ПРОЦЕССА и
       // не замечает мёртвый туннель при живом ядре.
       startHealthWatch(() => aborted());
+
+      // ⚠️ ПАРИТЕТ С WINDOWS, И ЭТО НЕ ФОРМАЛЬНОСТЬ. Сторож канала щупает
+      // ОДИН порт — основной прокси. Выходы живут внутри того же sing-box и
+      // порта наружу не имеют: без этой строки смерть выхода на Android не
+      // замечал бы никто, правило по сайту просто переставало бы работать.
+      startExitHealth(
+        outbounds: exitsBuilt.outbounds,
+        exitServers: session.options.exitServers,
+        apiPort: clashApiPort,
+        secret: _apiSecret,
+        aborted: aborted,
+      );
       // Наблюдение за блокировками — после того, как туннель поднят: до этого
       // Clash API не слушает.
       startBlockNotice(
@@ -1188,6 +1200,7 @@ class AndroidEngine extends VpnEngineBase {
     _stopStatsPolling();
     // Сторож канала гоняет пробы через ядро — без ядра ему нечего проверять.
     stopHealthWatch();
+    stopExitHealth();
     // ⚠️ Форвардер гасим ВМЕСТЕ С ЯДРОМ, даже при keepCapture: он ходит через
     // локальный SOCKS Xray, и без ядра его основной путь ведёт в никуда —
     // остался бы таймаут на каждом запросе и замедлял бы переподключение.
@@ -1361,6 +1374,7 @@ class AndroidEngine extends VpnEngineBase {
   Future<void> platformCleanup() async {
     _stopStatsPolling();
     stopHealthWatch();
+    stopExitHealth();
     await _stopFallbackDns();
     // Туннеля, который мы знали, больше нет — и «знаю его параметры» обязано
     // перестать быть правдой вместе с ним. Иначе следующая заглушка kill

@@ -13,8 +13,6 @@ import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/models/vpn_server.dart';
-import '../../core/probe/exit_health.dart';
-import '../../core/singbox/exit_tags.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
 import '../../core/settings/app_settings.dart';
@@ -75,7 +73,6 @@ class WindowsEngine extends VpnEngineBase {
   /// НИ РАЗУ не отвечало, и сторож в этом случае молчит: см. [_startTunWatchdog].
   DateTime? _tunLastAlive;
   StreamSubscription<int>? _exitWatch;
-  ExitHealth? _exitHealth;
   final TunRouter _tunRouter;
   bool _tunActive = false;
 
@@ -992,7 +989,12 @@ class WindowsEngine extends VpnEngineBase {
         _startTunWatchdog(options.settings, aborted);
         // Сторож выходов — там же и по той же причине: до подъёма туннеля
         // Clash API ещё не слушает, и проба уходила бы в пустоту.
-        _startExitHealth(exitsBuilt.outbounds, options.exitServers, aborted);
+        startExitHealth(
+            outbounds: exitsBuilt.outbounds,
+            exitServers: options.exitServers,
+            apiPort: _tunApiPort,
+            secret: singboxApiSecret,
+            aborted: () => aborted() || !_tunActive);
         startBlockNotice(
             settings: options.settings,
             apiPort: _tunApiPort,
@@ -1072,7 +1074,12 @@ class WindowsEngine extends VpnEngineBase {
     _startTunWatchdog(options.settings, aborted);
     // Сторож выходов — там же и по той же причине: до подъёма туннеля
     // Clash API ещё не слушает, и проба уходила бы в пустоту.
-    _startExitHealth(exitsBuilt.outbounds, options.exitServers, aborted);
+    startExitHealth(
+            outbounds: exitsBuilt.outbounds,
+            exitServers: options.exitServers,
+            apiPort: _tunApiPort,
+            secret: singboxApiSecret,
+            aborted: () => aborted() || !_tunActive);
     // Наблюдение за блокировками — ТОЛЬКО после подъёма туннеля: раньше
     // Clash API ещё не слушает, и опрос уходил бы в пустоту.
     startBlockNotice(
@@ -1141,8 +1148,7 @@ class WindowsEngine extends VpnEngineBase {
     // запуск до подъёма (и до вооружения своих) ещё не дошёл.
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
-    _exitHealth?.stop();
-    _exitHealth = null;
+    stopExitHealth();
     stopBlockNotice();
     await _tunRouter.stop();
     _tunActive = false;
@@ -1295,8 +1301,7 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
-    _exitHealth?.stop();
-    _exitHealth = null;
+    stopExitHealth();
     stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
@@ -1340,8 +1345,7 @@ class WindowsEngine extends VpnEngineBase {
     _statsTimer = null;
     _tunWatchdog?.cancel();
     _tunWatchdog = null;
-    _exitHealth?.stop();
-    _exitHealth = null;
+    stopExitHealth();
     stopHealthWatch();
     await _exitWatch?.cancel();
     _exitWatch = null;
@@ -1416,70 +1420,6 @@ class WindowsEngine extends VpnEngineBase {
   /// Честная граница: это детектор зависшего ПРОЦЕССА, а не всякого затыка.
   /// HTTP-сервер API живёт в своей горутине, поэтому остановка обработки
   /// пакетов в стеке при живом API сторожем не ловится.
-
-  /// Сторож ВЫХОДОВ: по одному счётчику промахов на каждый `exit-<id>`.
-  ///
-  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНО ОТ СТОРОЖА КАНАЛА. Тот щупает один порт — локальный
-  /// прокси основного туннеля. Выходы живут внутри того же sing-box и порта
-  /// наружу не имеют, поэтому смерть выхода в Эстонию не замечал НИКТО:
-  /// правило по сайту просто переставало работать, а человек считал, что лёг
-  /// сам сайт. Живой прогон в VM 02.09.2026 подтвердил и обратное — смерть
-  /// основного туннеля выходов не касается: здоровье у них раздельное.
-  ///
-  /// ⚠️ ПОЧЕМУ ТОЛЬКО ЗАМЕТКА, А НЕ ПЕРЕПОДКЛЮЧЕНИЕ. Ядро одно на все выходы:
-  /// перезапуск ради одного мёртвого выхода оборвал бы и основной туннель, и
-  /// все остальные выходы. Пока запасного выхода нет (#23), честнее сказать
-  /// человеку, чем рвать ему рабочие соединения.
-  void _startExitHealth(List<Map<String, dynamic>> exitOutbounds,
-      Map<String, VpnServer> exitServers, bool Function() aborted) {
-    _exitHealth?.stop();
-    _exitHealth = null;
-    final tags = exitTagsOf(exitOutbounds);
-    if (tags.isEmpty) return;
-    // Тег → человеческое имя: в журнале и заметке должно стоять «Эстония 1.4»,
-    // а не `exit-1a2b3c`, который ни о чём не говорит.
-    final names = <String, String>{
-      for (final e in exitServers.entries)
-        exitTagFor(e.key): e.value.displayName,
-    };
-    final stats = SingboxStats(apiPort: _tunApiPort, secret: singboxApiSecret);
-    final h = ExitHealth(
-      tags: tags,
-      probe: (tag) => stats.exitAlive(tag),
-    );
-    _exitHealth = h;
-    AppLog.i('Сторож выходов вооружён: ${tags.length} шт., '
-        'проба раз в ${h.interval.inSeconds} с, приговор после '
-        '${h.failuresToDeclareDown} промахов подряд');
-    h.start(
-      aborted: () => aborted() || !_tunActive || !status.isConnected,
-      onExitRecovered: (tag, missed) => AppLog.i(
-          'Выход «${names[tag] ?? tag}» снова отвечает (промахов было $missed)'),
-      onExitDown: (tag) async {
-        final name = names[tag] ?? tag;
-        AppLog.e('Выход «$name» не отвечает: '
-            '${h.failuresToDeclareDown} проверки подряд не прошли. Правила, '
-            'привязанные к нему, сейчас не работают. Основной туннель и '
-            'остальные выходы не затронуты.');
-        emitNotice(EngineNoticeKind.exitDown, 'Выход «$name» не отвечает',
-            detail: 'Правила, привязанные к этому серверу, сейчас не работают. '
-                'Основной туннель и остальные выходы продолжают работать.');
-      },
-    );
-  }
-
-  /// Теги выходов из готовых outbound-ов.
-  ///
-  /// ⚠️ Берём из САМОГО КОНФИГА, а не из списка серверов: сервер, который не
-  /// удалось собрать (панельный «Авто», незнакомый протокол), в конфиг не
-  /// попал — и сторожить его нечего. Спроси мы список серверов, сторож вечно
-  /// объявлял бы мёртвым выход, которого никогда и не было.
-  @visibleForTesting
-  static List<String> exitTagsOf(List<Map<String, dynamic>> outbounds) => [
-        for (final o in outbounds)
-          if (o['tag'] is String && (o['tag'] as String).startsWith('exit-'))
-            o['tag'] as String,
-      ];
 
   void _startTunWatchdog(AppSettings settings, bool Function() aborted) {
     _tunWatchdog?.cancel();
