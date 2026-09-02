@@ -25,10 +25,33 @@ class AppStateApiHandlers implements ApiHandlers {
   final ProbeController probe;
   final SettingsController settings;
 
+  /// Сервер, ЧЕРЕЗ КОТОРЫЙ ИДЁТ ТРАФИК; `null` — сессии нет либо мы не знаем
+  /// точно (подхват чужого живого туннеля).
+  ///
+  /// ⚠️ ОТЧЁТ ВЛАДЕЛЬЦА 02.09.2026: «/v1/status → connected, Германия 1.4, tun
+  /// — а реальный выход Кемерово». Часть расхождения была прямо здесь: в поле
+  /// `server` стоял ВЫБРАННЫЙ в списке сервер. Клик по другой строке живой
+  /// туннель не трогает (появляется лишь плашка «переподключитесь»), значит
+  /// после клика выбран B, а трафик по-прежнему идёт через A — и статус
+  /// называл B. В `AppState.connectedServerKey` про это написано капслоком, и
+  /// проект на этом уже стоял: вердикт пробы записывался серверу, через
+  /// который не прошло ни байта.
+  String? get _connectedServerName {
+    final key = state.connectedServerKey;
+    if (key == null) return null;
+    for (final s in state.servers) {
+      if (s.key == key) return s.displayName;
+    }
+    return null;
+  }
+
   @override
   Future<Map<String, dynamic>> status() async => {
         'state': state.status.state.name,
-        'server': state.selectedServer?.displayName,
+        'server': _connectedServerName,
+        // Выбор из статуса не пропадает — он уезжает в своё поле. Иначе скрипт
+        // потерял бы то, что читал раньше, и правка вышла бы ломающей.
+        'selectedServer': state.selectedServer?.displayName,
         'captureMode': settings.settings.captureMode.name,
         'connectedSeconds': state.connectedFor?.inSeconds,
         // ⚠️ Единственный способ узнать, что `POST /v1/ping` доработал.

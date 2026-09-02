@@ -817,4 +817,52 @@ void main() {
       expect(splitRulesEditableIn(CaptureMode.systemProxy), isFalse);
     });
   });
+
+  group('⚠️ GET /v1/status отвечает про ФАКТ, а не про намерение', () {
+    test('называет ПОДКЛЮЧЁННЫЙ сервер, а не выбранный в списке', () async {
+      // ⚠️ Отчёт владельца 02.09.2026: «/v1/status → connected, Германия 1.4,
+      // tun — а реальный выход Кемерово». Часть расхождения объясняется
+      // прямо здесь: в статусе стоял ВЫБРАННЫЙ сервер. Клик по другой строке
+      // списка живой туннель не трогает (появляется лишь плашка
+      // «переподключитесь»), значит после клика выбран B, а трафик идёт
+      // через A — и статус называл B.
+      //
+      // В `AppState` про это написано капслоком («ЭТО НЕ selectedServer, И
+      // ПУТАТЬ ИХ НЕЛЬЗЯ»), и проект на этом уже стоял: вердикт пробы
+      // записывался серверу, через который не прошло ни байта.
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      final a = await env.addServer(_serverA);
+      final b = await env.addServer(_serverB);
+
+      await env.handlers.connect(serverKey: a.key);
+      expect(env.state.connectedServerKey, a.key,
+          reason: 'предпосылка: подключены к A');
+
+      // Клик по другой строке — туннель не трогается.
+      env.state.selectServer(env.state.servers.indexWhere((s) => s.key == b.key));
+      expect(env.state.selectedServer?.key, b.key,
+          reason: 'предпосылка: выбран уже B');
+
+      final st = await env.handlers.status();
+      expect(st['server'], a.displayName,
+          reason: 'статус обязан называть сервер, через который идёт трафик');
+      expect(st['selectedServer'], b.displayName,
+          reason: 'выбор из статуса не пропадает — он уезжает в своё поле, '
+              'иначе скрипт потеряет то, что раньше читал');
+    });
+
+    test('без подключения сервер не называется вовсе', () async {
+      // Пустое поле честнее имени: не подключены — сказать нечего. Раньше
+      // тут стояло имя выбранной строки, и статус выглядел осмысленным.
+      final env = await _Env.create();
+      addTearDown(env.dispose);
+      final a = await env.addServer(_serverA);
+      env.state.selectServer(env.state.servers.indexWhere((s) => s.key == a.key));
+
+      final st = await env.handlers.status();
+      expect(st['server'], isNull);
+      expect(st['selectedServer'], a.displayName);
+    });
+  });
 }
