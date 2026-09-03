@@ -702,30 +702,48 @@ class _SideColumn extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final row in rows) ...[
-          _SideGroupLabel(group: row.group, label: row.group.label(l)),
-          const SizedBox(height: 4),
-          for (final s in row.services)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: _ServicePair(
-                key: ValueKey('svc:${s.name}'),
-                service: s,
-                before: ctrl.baselineFor(s),
-                after: ctrl.resultFor(s),
-                live: live,
-                alignEnd: alignEnd,
-                bypass: bypassOf(s),
-                onTap: () => ctrl.check(s, httpPort),
-              ),
-            ),
-          const SizedBox(height: 6),
-        ],
-      ],
+    // ⚠️ ШИРИНА ПО СОДЕРЖИМОМУ, А НЕ ПО КОЛОНКЕ, И ВСЁ ПО ЦЕНТРУ.
+    //
+    // Жалоба владельца 03.09.2026 по полному снимку окна: «сервисы не
+    // центрованы, и линия отчёркивания слишком длинная». Обе беды — от
+    // одного места: колонка растягивалась на фиксированные [_columnWidth]
+    // пикселей, поэтому линия под подписью шла во всю ширину колонки
+    // независимо от числа иконок под ней, а пары прижимались к краю.
+    //
+    // `IntrinsicWidth` сводит колонку к ширине САМОГО ШИРОКОГО ряда:
+    // линия становится ровно такой, как содержимое под ней, а `Center` ставит
+    // столбик посередине отведённого места.
+    //
+    // ⚠️ Прижим к кнопке (`alignEnd`) теряет смысл: прижимать некуда,
+    // когда ширина равна содержимому.
+    return Center(
+      child: IntrinsicWidth(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final row in rows) ...[
+              _SideGroupLabel(group: row.group, label: row.group.label(l)),
+              const SizedBox(height: 4),
+              for (final s in row.services)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: _ServicePair(
+                    key: ValueKey('svc:${s.name}'),
+                    service: s,
+                    before: ctrl.baselineFor(s),
+                    after: ctrl.resultFor(s),
+                    live: live,
+                    alignEnd: false,
+                    bypass: bypassOf(s),
+                    onTap: () => ctrl.check(s, httpPort),
+                  ),
+                ),
+              const SizedBox(height: 6),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
