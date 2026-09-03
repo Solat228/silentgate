@@ -305,6 +305,40 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
   Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
 }
 
+/// Сколько высоты отдать блоку «проверки + кнопка», чтобы под ним уместилось
+/// то, что идёт ниже: строка статуса, «Информация о сервере», кнопки режима и
+/// счётчики трафика.
+///
+/// ⚠️ ЗАЧЕМ ОТДЕЛЬНАЯ ФУНКЦИЯ, А НЕ ВЫРАЖЕНИЕ В `build`. Жалоба владельца
+/// 03.09.2026: при четырнадцати сервисах блока с информацией о подключении
+/// внизу не видно ВООБЩЕ, при шести срезаны счётчики. Стражи вёрстки этого не
+/// поймали и поймать не могли: они поднимают публичный `ConnectCenterpiece`, а
+/// переполнялась ПАНЕЛЬ, которая приватна и в тест не поднимается. Значит
+/// единственное, что здесь можно проверить тестом, — сам расчёт; его и выносим.
+///
+/// ⚠️ ПЕРВАЯ ПОПЫТКА ПОЧИНИТЬ ЭТО БЫЛА НЕВЕРНОЙ И ОТКАЧЕНА. Блок оборачивали в
+/// `Flexible`, рассчитывая, что включится его собственное сжатие. Включилось
+/// другое: `Flexible` сжал блок НИЖЕ его минимума, и на снимке из VM
+/// «Автонастройка» легла поверх кнопки Connect. Потолок и доля остатка — разные
+/// вещи: здесь нужен именно потолок.
+///
+/// [reserveBelow] измерен на настоящем окне (снимки `case06`/`case14` из VM,
+/// 980×800): строка статуса ~24, «Информация о сервере» ~40, две кнопки ~88,
+/// счётчики ~48, отступы ~10.
+@visibleForTesting
+double checksHeightBudget({
+  required double paneHeight,
+  double reserveBelow = 210,
+}) {
+  if (!paneHeight.isFinite || paneHeight <= 0) return double.infinity;
+  final left = paneHeight - reserveBelow;
+  // ⚠️ НИЖЕ ЭТОГО НЕ ОПУСКАЕМСЯ. Отдать блоку меньше, чем занимает сама кнопка,
+  // значит получить наложение — ровно то, что дала первая попытка. Пусть лучше
+  // срежется низ, чем интерфейс сложится сам на себя.
+  const floor = 200.0;
+  return left < floor ? floor : left;
+}
+
 /// Сколько висит заметка движка, прежде чем уехать вниз сама.
 ///
 /// ⚠️ ТОП-УРОВНЕВАЯ ФУНКЦИЯ, А НЕ ЛИТЕРАЛ ВНУТРИ `_showEngineNotices` —
@@ -993,33 +1027,45 @@ class _ConnectPane extends StatelessWidget {
             // экране жёсткая колонка даёт overflow, поэтому там — прокрутка.
             child: _MaybeScroll(
               enabled: compact,
-              child: Column(
+              // ⚠️ ПОТОЛОК ВЫСОТЫ ПРИХОДИТ СВЕРХУ, И БЕЗ НЕГО СЖАТИЕ НЕ
+              // РАБОТАЕТ. Дети `Column` получают maxHeight = infinity, а
+              // сжатие по высоте (`_estimateScale`) включается только при
+              // `c.hasBoundedHeight`. Механизм был написан и подключён — и не
+              // срабатывал НИ РАЗУ: при четырнадцати сервисах блок с
+              // информацией о подключении уезжал за край окна.
+              child: LayoutBuilder(builder: (context, paneBox) {
+                return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
                 children: [
                   if (!compact) const Spacer(),
                 // Плашка активного сервера, кнопка и колонки проверок — одним
                 // виджетом: ровно то, что проверяет страж вёрстки.
-                ConnectCenterpiece(
-                  serverName: activeServerName(
-                    connected: status.isConnected,
-                    connectedKey: state.connectedServerKey,
-                    servers: state.servers,
-                    autoLabel: l.homeAutoBest,
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                      maxHeight:
+                          checksHeightBudget(paneHeight: paneBox.maxHeight)),
+                  child: ConnectCenterpiece(
+                    serverName: activeServerName(
+                      connected: status.isConnected,
+                      connectedKey: state.connectedServerKey,
+                      servers: state.servers,
+                      autoLabel: l.homeAutoBest,
+                    ),
+                    httpPort: status.isConnected ? state.httpProxyPort : 0,
+                    services: checks,
+                    layout: settings.serviceChecksLayout,
+                    // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
+                    // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
+                    // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
+                    // размер, от которого считается их коэффициент, должен
+                    // совпадать с тем, что здесь реально нарисовано.
+                    button: ConnectButton(
+                        status: status,
+                        diameter: context.sg.isShort ? 116 : 148,
+                        onTap: () => connectWithConflictCheck(context, state,
+                            () => state.toggleConnection(settings))),
                   ),
-                  httpPort: status.isConnected ? state.httpProxyPort : 0,
-                  services: checks,
-                  layout: settings.serviceChecksLayout,
-                  // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
-                  // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
-                  // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
-                  // размер, от которого считается их коэффициент, должен
-                  // совпадать с тем, что здесь реально нарисовано.
-                  button: ConnectButton(
-                      status: status,
-                      diameter: context.sg.isShort ? 116 : 148,
-                      onTap: () => connectWithConflictCheck(context, state,
-                          () => state.toggleConnection(settings))),
                 ),
                 // Без подписи два кружка у каждого значка — ребус. Говорим
                 // прямо, что слева замер без VPN, справа — через VPN, и что
@@ -1153,7 +1199,8 @@ class _ConnectPane extends StatelessWidget {
                     sessionDown: state.sessionDownlinkBytes,
                   ),
                 ],
-              ),
+                );
+              }),
             ),
           ),
         ),
