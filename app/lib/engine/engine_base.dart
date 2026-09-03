@@ -422,6 +422,7 @@ abstract class VpnEngineBase implements VpnEngine {
     required int apiPort,
     required String secret,
     required bool Function() aborted,
+    Set<String> apiOnlyKeys = const {},
   }) {
     stopExitHealth();
     final tags = exitTagsOf(outbounds);
@@ -431,6 +432,19 @@ abstract class VpnEngineBase implements VpnEngine {
     final names = <String, String>{
       for (final e in exitServers.entries) exitTagFor(e.key): e.value.displayName,
     };
+    // ⚠️ О ЧЁМ ЧЕЛОВЕКУ СООБЩАТЬ, А О ЧЁМ ТОЛЬКО В ЖУРНАЛ.
+    //
+    // Выход поднимается по двум РАЗНЫМ поводам: под правило раздельного
+    // туннелирования и под отдельный порт локального API. Первый касается
+    // человека прямо — его сайт или программа сейчас не работают. Второй не
+    // касается вовсе: портами пользуются скрипты, и для них есть журнал.
+    //
+    // ⚠️ ЖАЛОБА ВЛАДЕЛЬЦА 03.09.2026, ВТОРАЯ ПОДРЯД. Сначала шесть заметок
+    // разом, потом десять по одной за две минуты — и все про серверы, которых
+    // нет ни в одном его правиле: «у меня НЕТ таких правил». У него 41 выход,
+    // и почти все — под порты API. Прежнее правило «молчим, если легли ВСЕ
+    // разом» этого не ловило: они падают по одному.
+    final quiet = {for (final k in apiOnlyKeys) exitTagFor(k)};
     final stats = SingboxStats(apiPort: apiPort, secret: secret);
     final h = ExitHealth(tags: tags, probe: (tag) => stats.exitAlive(tag));
     _exitHealth = h;
@@ -463,6 +477,9 @@ abstract class VpnEngineBase implements VpnEngine {
         // Тот же урок в проекте уже усвоен на сервис-чипах: четырнадцать
         // красных кружков человек читает как «не работает ничего», хотя
         // проверялось ядро, которое ещё не встало.
+        // Выход только под порт API — в журнал уже написали, человека не
+        // трогаем: его правила от этого не страдают.
+        if (quiet.contains(tag)) return;
         if (!tellUserExitDown(down: down.length, total: tags.length)) {
           AppLog.w('Не отвечают ВСЕ выходы (${tags.length} из ${tags.length}) '
               '— похоже, отказал не выход, а сама проба через Clash API '

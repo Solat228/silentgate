@@ -994,7 +994,8 @@ class WindowsEngine extends VpnEngineBase {
             exitServers: options.exitServers,
             apiPort: _tunApiPort,
             secret: singboxApiSecret,
-            aborted: () => aborted() || !_tunActive);
+            aborted: () => aborted() || !_tunActive,
+            apiOnlyKeys: options.apiOnlyExitKeys);
         startBlockNotice(
             settings: options.settings,
             apiPort: _tunApiPort,
@@ -1079,7 +1080,8 @@ class WindowsEngine extends VpnEngineBase {
             exitServers: options.exitServers,
             apiPort: _tunApiPort,
             secret: singboxApiSecret,
-            aborted: () => aborted() || !_tunActive);
+            aborted: () => aborted() || !_tunActive,
+            apiOnlyKeys: options.apiOnlyExitKeys);
     // Наблюдение за блокировками — ТОЛЬКО после подъёма туннеля: раньше
     // Clash API ещё не слушает, и опрос уходил бы в пустоту.
     startBlockNotice(

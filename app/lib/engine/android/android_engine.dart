@@ -970,6 +970,7 @@ class AndroidEngine extends VpnEngineBase {
         apiPort: clashApiPort,
         secret: _apiSecret,
         aborted: aborted,
+        apiOnlyKeys: session.options.apiOnlyExitKeys,
       );
       // Наблюдение за блокировками — после того, как туннель поднят: до этого
       // Clash API не слушает.
