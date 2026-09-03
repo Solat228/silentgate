@@ -1123,47 +1123,66 @@ abstract class VpnEngineBase implements VpnEngine {
   Future<Map<String, List<String>>> resolveServerHosts(
       List<VpnServer> servers) async {
     await _loadResolveCache();
-    final out = <String, List<String>>{};
-    var changed = false;
+    // Уникальные имена во входном порядке: конфиг ядра собирается из этой
+    // карты, и «дышащий» порядок ломал бы сверку живого туннеля с будущим.
+    final hosts = <String>[];
     for (final s in servers) {
       final host = s.address.trim();
-      if (host.isEmpty || out.containsKey(host)) continue;
+      if (host.isNotEmpty && !hosts.contains(host)) hosts.add(host);
+    }
+    final out = <String, List<String>>{};
+    final toLookup = <String>[];
+    for (final host in hosts) {
+      // Готовый адрес спрашивать не у кого — и при поднятой блокировке это
+      // единственное, что вообще отвечает мгновенно.
       final parsed = InternetAddress.tryParse(host);
       if (parsed != null) {
         out[host] = [parsed.address];
+      } else {
+        toLookup.add(host);
+      }
+    }
+
+    final errors = <String, Object>{};
+    final resolved = await _resolveHosts(
+      toLookup,
+      (host) async {
+        final found =
+            await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
+        return found.map((a) => a.address).toList();
+      },
+      onError: (host, e) => errors[host] = e,
+    );
+
+    var changed = false;
+    for (final host in toLookup) {
+      final ips = resolved[host] ?? const <String>[];
+      if (ips.isNotEmpty) {
+        out[host] = ips;
+        // ⚠️ ОТРЕЗОЛВЛЕННЫЙ АДРЕС — ТОТ ЖЕ СЕКРЕТ, ЧТО И ДОМЕН. Реестр
+        // маскировки наполняется из подписки, а там лежит ИМЯ узла; в журнал
+        // же уезжает полученный из него IP — и в нашем, и в логе ядра
+        // («dial tcp <ip>:443»), который целиком вкладывается в отчёт
+        // поддержки. Регистрируем здесь: это единственное место, где имя и
+        // адрес известны разом.
+        for (final ip in ips) {
+          SensitiveAddresses.remember(ip);
+        }
+        if (_resolveCache[host]?.join(',') != ips.join(',')) changed = true;
+        _resolveCache[host] = ips;
         continue;
       }
-      try {
-        final found = await InternetAddress.lookup(host)
-            .timeout(const Duration(seconds: 5));
-        final ips = found.map((a) => a.address).toList();
-        if (ips.isNotEmpty) {
-          out[host] = ips;
-          // ⚠️ ОТРЕЗОЛВЛЕННЫЙ АДРЕС — ТОТ ЖЕ СЕКРЕТ, ЧТО И ДОМЕН. Реестр
-          // маскировки наполняется из подписки, а там лежит ИМЯ узла; в журнал
-          // же уезжает полученный из него IP — и в нашем (строка ниже, при
-          // провале резолва), и в логе ядра («dial tcp <ip>:443»), который
-          // целиком вкладывается в отчёт поддержки. Регистрируем здесь, потому
-          // что это единственное место, где имя и адрес известны разом.
-          for (final ip in ips) {
-            SensitiveAddresses.remember(ip);
-          }
-          if (_resolveCache[host]?.join(',') != ips.join(',')) changed = true;
-          _resolveCache[host] = ips;
-        }
-      } catch (e) {
-        // Молчать здесь было нельзя: провал резолва стоит защиты от петли, а в
-        // логе не оставалось ни строчки — причину «интернет пропал» искали
-        // вслепую.
-        final cached = _resolveCache[host];
-        if (cached != null) {
-          out[host] = cached;
-          AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес '
-              '(${cached.join(", ")}) — это и спасает старт при системном '
-              'always-on, когда DNS ещё заблокирован');
-        } else {
-          AppLog.w('Не удалось отрезолвить $host: $e');
-        }
+      // Молчать нельзя: провал резолва стоит защиты от петли, а в логе не
+      // оставалось ни строчки — причину «интернет пропал» искали вслепую.
+      final e = errors[host] ?? 'пустой ответ';
+      final cached = _resolveCache[host];
+      if (cached != null) {
+        out[host] = cached;
+        AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес '
+            '(${cached.join(", ")}) — это и спасает старт при системном '
+            'always-on, когда DNS ещё заблокирован');
+      } else {
+        AppLog.w('Не удалось отрезолвить $host: $e');
       }
     }
     // Пишем только когда что-то изменилось: резолв идёт на каждое подключение,
@@ -1171,6 +1190,70 @@ abstract class VpnEngineBase implements VpnEngine {
     if (changed) unawaited(_saveResolveCache());
     return out;
   }
+
+  /// Сколько имён спрашиваем у резолвера ОДНОВРЕМЕННО.
+  ///
+  /// ⚠️ НЕ «ВСЕ СРАЗУ». Сорок два одновременных запроса — это уже не резолв, а
+  /// мини-шторм: домашний роутер отвечает на такое отказами, и мы получили бы
+  /// ложные «адрес не резолвится» там, где сеть исправна.
+  static const resolveConcurrency = 8;
+
+  /// Резолв списка имён с ограниченной параллельностью.
+  ///
+  /// ⚠️ ЗАЧЕМ ПАРАЛЛЕЛЬНО — ЖАЛОБА ВЛАДЕЛЬЦА 03.09.2026. Обрыв держался
+  /// **3 минуты 17 секунд**, и в журнале видно, куда ушло время: два с
+  /// половиной десятка строк «Не удалось отрезолвить … (Timeout 5 сек)»
+  /// подряд. Беда складывалась из двух вещей, безобидных по отдельности:
+  ///
+  ///  1. цикл был ПОСЛЕДОВАТЕЛЬНЫМ, а таймаут — 5 с на адрес. У владельца
+  ///     42 выхода, то есть до 210 секунд только на ожидание;
+  ///  2. при поднятой блокировке DNS не отвечает В ПРИНЦИПЕ — правило «блок
+  ///     DNS мимо туннеля» стоит выше разрешения локальной сети, а на Windows
+  ///     DNS-запрос принадлежит `svchost.exe`, а не нашему бинарю. Значит
+  ///     КАЖДЫЙ запрос гарантированно доживает до полного таймаута.
+  ///
+  /// Само падение канала короткое — длинным его делала процедура
+  /// восстановления, и она удлинялась с каждым новым выходом в подписке.
+  /// Отсюда и «провалы стали втрое длиннее»: выросло число выходов, а не
+  /// ухудшился сервер.
+  ///
+  /// Порядок ключей в ответе — как во ВХОДНОМ списке, а не как ответил
+  /// резолвер: из этой карты собирается конфиг ядра, и «дышащий» между
+  /// запусками порядок ломал бы сверку живого туннеля с будущим.
+  static Future<Map<String, List<String>>> _resolveHosts(
+    List<String> hosts,
+    Future<List<String>> Function(String host) lookup, {
+    void Function(String host, Object error)? onError,
+  }) async {
+    final unique = <String>[];
+    for (final h in hosts) {
+      if (!unique.contains(h)) unique.add(h);
+    }
+    final out = <String, List<String>>{for (final h in unique) h: const []};
+    var next = 0;
+    Future<void> worker() async {
+      while (true) {
+        final i = next++;
+        if (i >= unique.length) return;
+        final host = unique[i];
+        try {
+          out[host] = await lookup(host);
+        } catch (e) {
+          onError?.call(host, e);
+        }
+      }
+    }
+
+    final n = unique.length < resolveConcurrency ? unique.length : resolveConcurrency;
+    await Future.wait([for (var i = 0; i < n; i++) worker()]);
+    return out;
+  }
+
+  /// Тот же резолв, но с подменённым запросом — для теста: сети в нём нет.
+  @visibleForTesting
+  static Future<Map<String, List<String>>> resolveHostsForTest(
+          List<String> hosts, Future<List<String>> Function(String) lookup) =>
+      _resolveHosts(hosts, lookup);
 
   /// Один адрес на хост — для подстановки в поле `server` outbound'а.
   ///
