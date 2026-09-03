@@ -446,7 +446,24 @@ abstract class VpnEngineBase implements VpnEngine {
     // разом» этого не ловило: они падают по одному.
     final quiet = {for (final k in apiOnlyKeys) exitTagFor(k)};
     final stats = SingboxStats(apiPort: apiPort, secret: secret);
-    final h = ExitHealth(tags: tags, probe: (tag) => stats.exitAlive(tag));
+    final h = ExitHealth(
+      tags: tags,
+      probe: (tag) => stats.exitAlive(tag),
+      // ⚠️ ПРОМАХ ПРИ МЁРТВОМ ОСНОВНОМ КАНАЛЕ НЕ ЗАСЧИТЫВАЕТСЯ. Выходы
+      // живут внутри того же туннеля: упал он — молчат все, и сторож
+      // объявил бы мёртвыми ВСЕ разом, не сломав ни одного. Спрашиваем
+      // сторож канала: пока он не набрал приговорных промахов, канал
+      // считаем живым.
+      //
+      // ⚠️ Сторож канала может быть не вооружён вовсе (его не поднимают
+      // при захвате системным прокси). Тогда гейта нет — прежнее
+      // поведение, а не молчаливое невооружение сторожа выходов.
+      mainChannelAlive: () {
+        final w = _health;
+        if (w == null) return true;
+        return w.consecutiveFailures < w.failuresToDeclareDown;
+      },
+    );
     _exitHealth = h;
     // Кого уже объявили мёртвым: заметка на выход — ОДНА, а не на каждый круг.
     final down = <String>{};

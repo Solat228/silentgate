@@ -52,6 +52,149 @@ void main() {
     return out;
   }
 
+  /// ⚠️ МАТЧЕРЫ СОВПАДАЮТ — А РЕЗОЛВЕР МОГ БЫТЬ ЛЮБОЙ.
+  ///
+  /// Соседний тест сверяет только МНОЖЕСТВО матчеров и в поле `server` не
+  /// смотрит вовсе. Значит подмена резолвера у правила «Прямо» на туннельный
+  /// (`dns-proxy`) оставила бы весь прогон зелёным, а имена банковского
+  /// клиента уехали бы резолвиться через VPN — при том что пользователь
+  /// пометил его «мимо VPN» именно чтобы этого не было.
+  ///
+  /// Дыру нашла адверсариальная проверка предложения BACKLOG #34 (03.09.2026),
+  /// а не прогон тестов: предложение «дать прямому DNS запас» разбирали три
+  /// независимых оппонента, и все трое показали, что подмена резолвера здесь
+  /// ничем не стережётся.
+  String? serverOf(Map<String, dynamic> r) => r['server'] as String?;
+
+  /// Чей это резолвер по правилам маршрутов: direct → локальный, proxy →
+  /// туннельный, `exit-X` → свой у выхода.
+  String outboundOf(Map<String, dynamic> r) {
+    final o = r['outbound'];
+    if (o is String) return o;
+    if (o is List && o.isNotEmpty) return '${o.first}';
+    return '${r['action'] ?? ''}';
+  }
+
+  test('⚠️ резолвер зеркалит ВЫХОД правила, а не только его матчер', () {
+    final routeByMatcher = <String, String>{};
+    for (final r in rulesOf('route', 'rules')) {
+      for (final field in ['process_name', 'process_path_regex']) {
+        final v = r[field];
+        if (v is! List) continue;
+        for (final x in v) {
+          if (field == 'process_name' && infra.contains(x)) continue;
+          routeByMatcher['$field=$x'] = outboundOf(r);
+        }
+      }
+    }
+    expect(routeByMatcher, isNotEmpty, reason: 'иначе тест ничего не проверяет');
+
+    // Чего ждём от резолвера при каждом выходе. `reject` (блок) в DNS
+    // выражается действием, а не сервером, — его тут не сверяем.
+    const want = {'direct': 'dns-local', 'proxy': 'dns-proxy'};
+
+    var checked = 0;
+    for (final r in rulesOf('dns', 'rules')) {
+      for (final field in ['process_name', 'process_path_regex']) {
+        final v = r[field];
+        if (v is! List) continue;
+        for (final x in v) {
+          final key = '$field=$x';
+          final out = routeByMatcher[key];
+          final expected = want[out];
+          if (expected == null) continue;
+          checked++;
+          expect(serverOf(r), expected,
+              reason: 'правило $key идёт в «$out», а имена резолвит через '
+                  '«${serverOf(r)}» вместо «$expected»');
+        }
+      }
+    }
+    expect(checked, greaterThan(0),
+        reason: 'ни одна пара не сверена — тест выродился');
+  });
+
+  test('⚠️ каждый упомянутый резолвер ОБЪЯВЛЕН — висячий тег ядро не ловит', () {
+    // Урок #21 этого проекта: `sing-box check` принимает ссылку на
+    // несуществующий тег с кодом 0 и без единой строки вывода, а трафик
+    // такого правила молча уезжает в `route.final`. Для DNS то же самое:
+    // сослаться на `dns-fallback`, которого в этой конфигурации нет
+    // (он объявляется только при поднятом форвардере), — тихая поломка
+    // резолва, и никакой прогон её не заметит.
+    final declared = {
+      for (final s in ((cfg['dns'] as Map)['servers'] as List))
+        (s as Map)['tag'] as String
+    };
+    expect(declared, isNotEmpty);
+
+    final used = <String>{};
+    for (final r in rulesOf('dns', 'rules')) {
+      final s = serverOf(r);
+      if (s != null) used.add(s);
+    }
+    final fin = (cfg['dns'] as Map)['final'];
+    if (fin is String) used.add(fin);
+    // `address_resolver` — такая же ссылка на тег, и такая же молчаливая.
+    for (final s in ((cfg['dns'] as Map)['servers'] as List)) {
+      final ar = (s as Map)['address_resolver'];
+      if (ar is String) used.add(ar);
+    }
+
+    expect(used.difference(declared), isEmpty,
+        reason: 'в dns.rules/final/address_resolver есть теги, которых нет '
+            'в dns.servers');
+  });
+
+  test('⚠️ и в режиме с поднятым форвардером — теги те же самые', () {
+    // Единственный конфиг наверху не задевает ветку с `dns-fallback` вовсе:
+    // при `tunnelDnsForAll: false` она недостижима. А именно там живёт тег,
+    // которого в других конфигурациях НЕТ, — то есть ровно тот случай, где
+    // висячая ссылка и появилась бы. Проверка без этой ветки была бы
+    // проверкой безопасного случая.
+    final live = jsonDecode(SingboxConfigBuilder(
+      options: const TunOptions(
+        serverIps: ['203.0.113.10'],
+        tunnelDnsForAll: true,
+        fallbackDnsPort: 10814,
+      ),
+    ).buildJson(split)) as Map<String, dynamic>;
+
+    final dns = live['dns'] as Map;
+    final declared = {
+      for (final x in (dns['servers'] as List)) (x as Map)['tag'] as String
+    };
+    expect(declared, contains('dns-fallback'),
+        reason: 'форвардер поднят, а его резолвер не объявлен');
+
+    final used = <String>{};
+    for (final r in (dns['rules'] as List)) {
+      final v = (r as Map)['server'];
+      if (v is String) used.add(v);
+    }
+    final fin = dns['final'];
+    if (fin is String) used.add(fin);
+    for (final x in (dns['servers'] as List)) {
+      final ar = (x as Map)['address_resolver'];
+      if (ar is String) used.add(ar);
+    }
+    expect(used.difference(declared), isEmpty);
+
+    // ⚠️ И ГЛАВНОЕ ПРО ЭТОТ ТЕГ. Форвардер спрашивает ТУННЕЛЬ ПЕРВЫМ
+    // (`core/net/dns_fallback_server.dart`), поэтому направить в него
+    // правила «Прямо» значит отправить их имена в туннель в исправном
+    // случае — то есть сделать ровно то, от чего пользователь их уводил.
+    // Разбор — BACKLOG #34.
+    for (final r in (dns['rules'] as List)) {
+      final m = r as Map;
+      final isDirectApp = m['process_path_regex'] is List &&
+          '${m['process_path_regex']}'.contains('bank');
+      if (isDirectApp) {
+        expect(m['server'], isNot('dns-fallback'),
+            reason: 'имена приложения «Прямо» уходят резолвиться в туннель');
+      }
+    }
+  });
+
   test('матчеры процессов в DNS те же, что в маршрутах', () {
     final route = processMatchers(rulesOf('route', 'rules'));
     final dns = processMatchers(rulesOf('dns', 'rules'));
