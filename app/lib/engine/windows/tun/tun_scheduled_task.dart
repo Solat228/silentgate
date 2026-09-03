@@ -132,7 +132,16 @@ class TunScheduledTask {
 
     final deadline = DateTime.now().add(const Duration(seconds: 10));
     while (DateTime.now().isBefore(deadline)) {
-      if (await exists()) return true;
+      // ⚠️ СВЕРЯЕМ isCurrent, А НЕ exists — ЗДЕСЬ И БЫЛ ДЕФЕКТ.
+      //
+      // Кнопку «Исправить» жмут ровно тогда, когда задача УЖЕ ЕСТЬ, но ведёт
+      // на другой exe или другие пути. exists() в этом случае истинно с
+      // первой же итерации: метод возвращал успех, даже если schtasks не
+      // отработал, интерфейс писал «задача пересоздана», а при следующем
+      // подключении заметка приходила снова. Жалоба владельца 03.09.2026:
+      // «кнопка Исправить НЕ РАБОТАЕТ» — она отчитывалась об успехе,
+      // которого не случилось.
+      if (await isCurrent()) return true;
       await Future.delayed(const Duration(milliseconds: 300));
     }
     return false;
