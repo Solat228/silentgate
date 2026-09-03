@@ -660,6 +660,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get autoConnect => 'Bağlan';
 
   @override
+  String get connectButtonConnect => 'Bağlan';
+
+  @override
+  String get connectButtonDisconnect => 'Bağlantıyı kes';
+
+  @override
   String get autoStopSearch => 'Aramayı durdur';
 
   @override

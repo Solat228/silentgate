@@ -1676,50 +1676,73 @@ class ConnectCenterpiece extends StatelessWidget {
         // ровно в том, что раскладка существовала в коде, но вызов её не
         // подставлял — здесь `LayoutBuilder` смотрит на РЕАЛЬНЫЕ ограничения
         // этого места на экране, а не на копию.
-        LayoutBuilder(builder: (context, c) {
-          final effective = layout == ServiceChecksLayout.adaptive
-              ? (c.maxWidth >= _sidesMinWidth
-                  ? ServiceChecksLayout.sides
-                  : ServiceChecksLayout.rows)
-              : layout;
-          switch (effective) {
-            case ServiceChecksLayout.hidden:
-              // ⚠️ Проверок нет ВООБЩЕ — ни рядов, ни плашки «канал не готов»:
-              // ей нечего было бы объяснять, раз человек сам их выключил.
-              return button;
-            case ServiceChecksLayout.rows:
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  button,
-                  // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
-                  // владелец просил галочку «полного отключения», и
-                  // выключенные проверки не должны занимать место у кнопки.
-                  ServiceChecksRows(services: services, httpPort: httpPort),
-                  ServiceChecksNotReadyBanner(
-                      httpPort: httpPort, services: services),
-                ],
-              );
-            case ServiceChecksLayout.sides:
-            case ServiceChecksLayout.grid:
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ServiceChecksSides(
-                    services: services,
-                    httpPort: httpPort,
-                    button: button,
-                    dense: effective == ServiceChecksLayout.grid,
-                  ),
-                  ServiceChecksNotReadyBanner(
-                      httpPort: httpPort, services: services),
-                ],
-              );
-            case ServiceChecksLayout.adaptive:
-              // Недостижимо: adaptive разрешён в sides/rows выше.
-              return button;
-          }
-        }),
+        // ⚠️ `Flexible` ДОВОДИТ ПОТОЛОК ДО БЛОКА. Дети `Column` получают
+        // `maxHeight: infinity`, поэтому `LayoutBuilder` ниже видел бы
+        // бесконечность даже когда сам блок стоит в `ConstrainedBox` от
+        // панели, — и сжатие по высоте, включающееся только при
+        // `hasBoundedHeight`, не включалось бы никогда. Симптом с живого
+        // окна: подпись «Доступность сервисов…» ложится ПОВЕРХ последнего
+        // ряда значков (`centerpiece_reports_its_height_test`).
+        //
+        // ⚠️ ПРОШЛАЯ ПОПЫТКА ЭТОГО ЖЕ БЫЛА ОТКАЧЕНА (1b9560e, 36229ab) —
+        // и правильно: тогда сервисы стояли одной длинной колонкой, при
+        // ограничении высоты оценка уводила раскладку в РЯДЫ, у которых
+        // сжатия нет вовсе, и весь экран складывался в кучу. С сеткой
+        // блоков высота нужна лишь немногим больше выданной (266 против
+        // 237), сжатие остаётся в пределах читаемого, и в ряды раскладка
+        // не падает.
+        Flexible(
+          child: LayoutBuilder(builder: (context, c) {
+            final effective = layout == ServiceChecksLayout.adaptive
+                ? (c.maxWidth >= _sidesMinWidth
+                    ? ServiceChecksLayout.sides
+                    : ServiceChecksLayout.rows)
+                : layout;
+            switch (effective) {
+              case ServiceChecksLayout.hidden:
+                // ⚠️ Проверок нет ВООБЩЕ — ни рядов, ни плашки «канал не готов»:
+                // ей нечего было бы объяснять, раз человек сам их выключил.
+                return button;
+              case ServiceChecksLayout.rows:
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    button,
+                    // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
+                    // владелец просил галочку «полного отключения», и
+                    // выключенные проверки не должны занимать место у кнопки.
+                    ServiceChecksRows(services: services, httpPort: httpPort),
+                    ServiceChecksNotReadyBanner(
+                        httpPort: httpPort, services: services),
+                  ],
+                );
+              case ServiceChecksLayout.sides:
+              case ServiceChecksLayout.grid:
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ⚠️ ТРЕТИЙ СЛОЙ. Потолок надо проводить через КАЖДУЮ
+                    // колонку на пути: панель → центральный блок → эта.
+                    // Пропусти любую — и ограничение снова станет
+                    // бесконечным, а сжатие внизу не включится.
+                    Flexible(
+                      child: ServiceChecksSides(
+                        services: services,
+                        httpPort: httpPort,
+                        button: button,
+                        dense: effective == ServiceChecksLayout.grid,
+                      ),
+                    ),
+                    ServiceChecksNotReadyBanner(
+                        httpPort: httpPort, services: services),
+                  ],
+                );
+              case ServiceChecksLayout.adaptive:
+                // Недостижимо: adaptive разрешён в sides/rows выше.
+                return button;
+            }
+          }),
+        ),
       ],
     );
   }
@@ -1949,6 +1972,7 @@ class ConnectButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final connected = status.isConnected;
     final busy = status.isBusy;
@@ -1984,10 +2008,40 @@ class ConnectButton extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.power_settings_new,
-                        // Значок ужимается, когда под ним появляется время, и
-                        // масштабируется вместе со всем кругом.
-                        size: (connected ? 56 : 68) * scale,
+                        // Значок ужимается, когда под ним появляются слово и
+                        // время, и масштабируется вместе со всем кругом.
+                        size: (connected ? 46 : 56) * scale,
                         color: connected ? scheme.onPrimary : scheme.onSurface),
+                    // ⚠️ СЛОВО ВНУТРИ КРУГА, А НЕ ПОД НИМ — требование
+                    // владельца (04.09.2026). До этого состояние читалось
+                    // только по цвету круга и по слову «Отключено» сбоку, а
+                    // цвет сам по себе не говорит, ЧТО СЛУЧИТСЯ ПО НАЖАТИЮ.
+                    //
+                    // Надпись называет ДЕЙСТВИЕ, а не состояние: на живом
+                    // канале написано «Отключить». Написать там состояние
+                    // («Подключено») значило бы, что кнопка обещает сделать
+                    // то, что уже сделано.
+                    SizedBox(
+                      // Круг узкий, а «Bağlantıyı kes» и «Déconnecter»
+                      // длинные: без ограничения ширины слово вылезло бы за
+                      // край круга на турецком и французском, и увидели бы
+                      // это только на этих языках.
+                      width: d * 0.78,
+                      child: Text(
+                        connected
+                            ? l.connectButtonDisconnect
+                            : l.connectButtonConnect,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14 * scale,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              connected ? scheme.onPrimary : scheme.onSurface,
+                        ),
+                      ),
+                    ),
                     if (connected) _UptimeLabel(scale: scale),
                   ],
                 ),

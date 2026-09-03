@@ -211,6 +211,8 @@
   "autoVariant": "گونه: {label}",
   "autoServicesPassed": "{ok} از {total} سرویس",
   "autoConnect": "اتصال",
+  "connectButtonConnect": "اتصال",
+  "connectButtonDisconnect": "قطع اتصال",
   "autoStopSearch": "توقف جستجو",
   "autoDoneRefreshPing": "انجام شد — بازخوانی پینگ موارد یافت‌شده",
   "autoFoundPinnedRefreshing": "{count} مورد یافت شد و در بالا سنجاق شد. در حال بازخوانی پینگ…",

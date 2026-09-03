@@ -636,6 +636,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoConnect => '连接';
 
   @override
+  String get connectButtonConnect => '连接';
+
+  @override
+  String get connectButtonDisconnect => '断开';
+
+  @override
   String get autoStopSearch => '停止搜索';
 
   @override

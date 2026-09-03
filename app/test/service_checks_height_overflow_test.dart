@@ -103,7 +103,7 @@ void main() {
       (t) async {
     // Обратный край: правка ради четырнадцати сервисов не должна раздувать
     // или ломать самый частый случай.
-    t.view.physicalSize = const Size(640, 320);
+    t.view.physicalSize = const Size(900, 400);
     t.view.devicePixelRatio = 1.0;
     addTearDown(t.view.resetPhysicalSize);
     await t.pumpWidget(MaterialApp(

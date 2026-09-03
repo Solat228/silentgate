@@ -69,13 +69,23 @@ void main() {
   /// `home_screen.dart` дословно, а не придумана заново.
   double diameterFor(Size s) => s.height < 600 ? 116.0 : 148.0;
 
-  /// Доля значка от диаметра при подключённом VPN — `56 / 148`, см.
-  /// `ConnectButton.build` (`Icon(size: (connected ? 56 : 68) * scale)`,
+  /// Доля значка от диаметра при подключённом VPN — `46 / 148`, см.
+  /// `ConnectButton.build` (`Icon(size: (connected ? 46 : 56) * scale)`,
   /// `scale = d / _baseline`, `_baseline == 148`).
-  const iconRatioConnected = 56 / 148;
+  ///
+  /// ⚠️ БЫЛО `56 / 148` ДО 04.09.2026. Значок уменьшен намеренно: внутри
+  /// круга появилось слово действия («Подключить» / «Отключить»), и втроём
+  /// со значком и таймером прежний размер в круг не помещался. Число здесь
+  /// не «подогнано под факт» — оно списано с кода, а проверка стережёт
+  /// ДРУГОЕ: что доля одинакова на всех экранах и раскладках, то есть значок
+  /// масштабируется вместе с кругом, а не живёт фиксированными пикселями.
+  const iconRatioConnected = 46 / 148;
 
   /// Та же доля для НЕподключённого состояния (нет таймера, значок крупнее).
-  const iconRatioIdle = 68 / 148;
+  /// ⚠️ БЫЛО `68 / 148` ДО 04.09.2026 — значок уменьшен, потому что под
+  /// ним появилось слово действия («Подключить»), и прежний размер вместе
+  /// со словом в круг не помещался.
+  const iconRatioIdle = 56 / 148;
 
   /// Допуск на отношение значок/диаметр.
   ///
@@ -209,13 +219,31 @@ void main() {
               matching: find.byIcon(Icons.power_settings_new)));
           expectInside(iconRect, buttonRect, 'значок питания', where);
 
-          // 3. Подпись таймера вписана в круг (кнопка "подключена" — она
-          // обязана быть на экране).
-          final labelFinder = find.descendant(
+          // 3. ВНУТРИ КРУГА ДВЕ ПОДПИСИ, И ОБЕ ОБЯЗАНЫ В НЕГО ВПИСАТЬСЯ:
+          // слово действия («Отключить») и таймер сессии.
+          //
+          // ⚠️ Слово добавлено 04.09.2026 по требованию владельца, и оно
+          // опаснее таймера: таймер это «0:00», а слово переводится на десять
+          // языков, и турецкое «Bağlantıyı kes» вчетверо длиннее русского.
+          // Проверяем ПРЯМОУГОЛЬНИК КАЖДОЙ подписи, а не факт их наличия.
+          final labels = find.descendant(
               of: find.byType(ConnectButton), matching: find.byType(Text));
-          expect(labelFinder, findsOneWidget,
-              reason: '$where: подпись таймера не нарисовалась');
-          expectInside(t.getRect(labelFinder), buttonRect, 'таймер сессии', where);
+          expect(labels, findsNWidgets(2),
+              reason: '$where: в кнопке должны быть слово действия и таймер');
+          for (var i = 0; i < 2; i++) {
+            expectInside(t.getRect(labels.at(i)), buttonRect, 'подпись $i', where);
+          }
+
+          // Слово называет ДЕЙСТВИЕ, а не состояние: на живом канале кнопка
+          // отключает. Написать там «Подключено» значило бы обещать сделать
+          // то, что уже сделано.
+          expect(
+              find.descendant(
+                  of: find.byType(ConnectButton),
+                  matching: find.text('Отключить')),
+              findsOneWidget,
+              reason: '$where: на живом канале кнопка обязана предлагать '
+                  'отключение');
 
           // 4. Пропорциональность: значок/диаметр — то же самое число на
           // любом экране и в любой раскладке (см. комментарий к
@@ -354,12 +382,26 @@ void main() {
         expect((buttonRect.width - buttonRect.height).abs(), lessThan(px),
             reason: '$where: кнопка не квадратная');
 
-        // Таймера нет вовсе — VPN не подключен, `_UptimeLabel` не строится.
+        // ⚠️ РОВНО ОДНА ПОДПИСЬ: слово действия есть, таймера нет.
+        //
+        // Таймер без подключения не строится (`_UptimeLabel` не создаётся), а
+        // слово («Подключить») стоит в круге всегда — оно и отвечает на
+        // вопрос «что будет по нажатию». Проверять «текста нет вовсе», как
+        // было до 04.09.2026, теперь нельзя: это утверждение про отсутствие
+        // таймера, а не про пустой круг, и оно молча запрещало бы подпись.
+        final texts = find.descendant(
+            of: find.byType(ConnectButton), matching: find.byType(Text));
+        expect(texts, findsOneWidget,
+            reason: '$where: в круге должно быть слово действия и НИКАКОГО '
+                'таймера');
         expect(
             find.descendant(
-                of: find.byType(ConnectButton), matching: find.byType(Text)),
-            findsNothing,
-            reason: '$where: таймер нарисовался без подключения');
+                of: find.byType(ConnectButton),
+                matching: find.text('Подключить')),
+            findsOneWidget,
+            reason: '$where: выключенная кнопка обязана предлагать '
+                'подключение');
+        expectInside(t.getRect(texts), buttonRect, 'слово действия', where);
 
         final iconRect = t.getRect(find.descendant(
             of: find.byType(ConnectButton),

@@ -211,6 +211,8 @@
   "autoVariant": "变体：{label}",
   "autoServicesPassed": "{total} 个服务中通过 {ok} 个",
   "autoConnect": "连接",
+  "connectButtonConnect": "连接",
+  "connectButtonDisconnect": "断开",
   "autoStopSearch": "停止搜索",
   "autoDoneRefreshPing": "完成——刷新已找到项的延迟",
   "autoFoundPinnedRefreshing": "找到 {count} 个，已置顶。正在刷新延迟…",

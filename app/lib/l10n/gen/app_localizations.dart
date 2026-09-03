@@ -1260,6 +1260,18 @@ abstract class AppLocalizations {
   /// **'Подключиться'**
   String get autoConnect;
 
+  /// Надпись ВНУТРИ круглой кнопки, пока VPN выключен
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключить'**
+  String get connectButtonConnect;
+
+  /// Надпись ВНУТРИ круглой кнопки, пока VPN включён
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить'**
+  String get connectButtonDisconnect;
+
   /// No description provided for @autoStopSearch.
   ///
   /// In ru, this message translates to:

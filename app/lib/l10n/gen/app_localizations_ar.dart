@@ -652,6 +652,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get autoConnect => 'اتصال';
 
   @override
+  String get connectButtonConnect => 'اتصال';
+
+  @override
+  String get connectButtonDisconnect => 'قطع الاتصال';
+
+  @override
   String get autoStopSearch => 'إيقاف البحث';
 
   @override

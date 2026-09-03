@@ -211,6 +211,8 @@
   "autoVariant": "المتغيّر: {label}",
   "autoServicesPassed": "{ok} من {total} خدمات",
   "autoConnect": "اتصال",
+  "connectButtonConnect": "اتصال",
+  "connectButtonDisconnect": "قطع الاتصال",
   "autoStopSearch": "إيقاف البحث",
   "autoDoneRefreshPing": "تم — حدّث Ping المُكتشَفة",
   "autoFoundPinnedRefreshing": "عُثر على {count}، مُثبَّتة في الأعلى. جارٍ تحديث Ping…",

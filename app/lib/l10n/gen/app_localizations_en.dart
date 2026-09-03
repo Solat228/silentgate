@@ -654,6 +654,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get autoConnect => 'Connect';
 
   @override
+  String get connectButtonConnect => 'Connect';
+
+  @override
+  String get connectButtonDisconnect => 'Disconnect';
+
+  @override
   String get autoStopSearch => 'Stop search';
 
   @override

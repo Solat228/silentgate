@@ -211,6 +211,8 @@
   "autoVariant": "Varyant: {label}",
   "autoServicesPassed": "{total} hizmetten {ok} tanesi",
   "autoConnect": "Bağlan",
+  "connectButtonConnect": "Bağlan",
+  "connectButtonDisconnect": "Bağlantıyı kes",
   "autoStopSearch": "Aramayı durdur",
   "autoDoneRefreshPing": "Bitti — bulunanların pingini yenile",
   "autoFoundPinnedRefreshing": "{count} bulundu, en üste sabitlendi. Ping yenileniyor…",

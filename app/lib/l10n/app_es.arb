@@ -272,6 +272,8 @@
   "autoVariant": "Variante: {label}",
   "autoServicesPassed": "{ok} de {total} servicios",
   "autoConnect": "Conectar",
+  "connectButtonConnect": "Conectar",
+  "connectButtonDisconnect": "Desconectar",
   "autoStopSearch": "Detener búsqueda",
   "autoDoneRefreshPing": "Listo — actualizar el ping de los encontrados",
   "autoFoundPinnedRefreshing": "Encontrados {count}, fijados arriba. Actualizando el ping…",

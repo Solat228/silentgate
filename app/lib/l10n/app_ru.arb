@@ -316,6 +316,14 @@
   "autoVariant": "Вариант: {label}",
   "autoServicesPassed": "сервисов {ok} из {total}",
   "autoConnect": "Подключиться",
+  "connectButtonConnect": "Подключить",
+  "@connectButtonConnect": {
+    "description": "Надпись ВНУТРИ круглой кнопки, пока VPN выключен"
+  },
+  "connectButtonDisconnect": "Отключить",
+  "@connectButtonDisconnect": {
+    "description": "Надпись ВНУТРИ круглой кнопки, пока VPN включён"
+  },
   "autoStopSearch": "Остановить поиск",
   "autoDoneRefreshPing": "Готово — обновить пинг найденных",
   "autoFoundPinnedRefreshing": "Найдено {count}, закреплены сверху. Обновляю пинг…",

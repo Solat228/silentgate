@@ -654,6 +654,12 @@ class AppLocalizationsFa extends AppLocalizations {
   String get autoConnect => 'اتصال';
 
   @override
+  String get connectButtonConnect => 'اتصال';
+
+  @override
+  String get connectButtonDisconnect => 'قطع اتصال';
+
+  @override
   String get autoStopSearch => 'توقف جستجو';
 
   @override

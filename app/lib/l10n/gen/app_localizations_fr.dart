@@ -667,6 +667,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get autoConnect => 'Se connecter';
 
   @override
+  String get connectButtonConnect => 'Connecter';
+
+  @override
+  String get connectButtonDisconnect => 'Déconnecter';
+
+  @override
   String get autoStopSearch => 'Arrêter la recherche';
 
   @override

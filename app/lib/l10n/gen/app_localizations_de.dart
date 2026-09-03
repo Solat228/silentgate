@@ -661,6 +661,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get autoConnect => 'Verbinden';
 
   @override
+  String get connectButtonConnect => 'Verbinden';
+
+  @override
+  String get connectButtonDisconnect => 'Trennen';
+
+  @override
   String get autoStopSearch => 'Suche stoppen';
 
   @override

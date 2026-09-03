@@ -656,6 +656,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get autoConnect => 'Подключиться';
 
   @override
+  String get connectButtonConnect => 'Подключить';
+
+  @override
+  String get connectButtonDisconnect => 'Отключить';
+
+  @override
   String get autoStopSearch => 'Остановить поиск';
 
   @override

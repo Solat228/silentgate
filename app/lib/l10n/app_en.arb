@@ -283,6 +283,8 @@
   "autoVariant": "Variant: {label}",
   "autoServicesPassed": "{ok} of {total} services",
   "autoConnect": "Connect",
+  "connectButtonConnect": "Connect",
+  "connectButtonDisconnect": "Disconnect",
   "autoStopSearch": "Stop search",
   "autoDoneRefreshPing": "Done — refresh ping of found",
   "autoFoundPinnedRefreshing": "Found {count}, pinned to the top. Refreshing ping…",
