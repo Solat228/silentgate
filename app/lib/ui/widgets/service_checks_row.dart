@@ -536,20 +536,42 @@ class ServiceChecksSides extends StatelessWidget {
             ? 0.0
             : math.min(leftover / 2 * _gapExtraShare, _gapExtraCap);
         final gap = _gap + extraGap;
-        return Row(
+        // ⚠️ `FittedBox` НУЖЕН И ЗДЕСЬ, ХОТЯ ОЦЕНКА СКАЗАЛА «ВЛЕЗАЮ».
+        //
+        // `_estimateScale` считает высоту по числу строк, то есть ОЦЕНИВАЕТ,
+        // и на четырнадцати сервисах ошибается в меньшую сторону. Снимок из
+        // VM 03.09.2026: панель 447 px, потолок блока 237, фактическая высота
+        // ~340 — блок нарисовался НИЖЕ выданного места, и подпись легла
+        // поверх кнопки Connect. В release полосок переполнения нет, поэтому
+        // ошибка оценки видна только глазами на живом окне.
+        //
+        // Соседняя ветка ровно об этом и говорит: `RenderFittedBox`
+        // физически не рисует ребёнка крупнее выделенного места, и
+        // переполнение становится структурно невозможным. Здесь этой защиты
+        // не было — правильность зависела от ТОЧНОСТИ оценки, а оценка на то
+        // и оценка. Теперь от неё зависит только ВЫБОР раскладки, а это
+        // вопрос вида, а не корректности.
+        //
+        // ⚠️ Пустот из предыстории класса это не возвращает: `scaleDown` не
+        // делает ничего, когда содержимое влезает, а лишняя ширина по-
+        // прежнему уходит в зазор — он посчитан ВЫШЕ.
+        return FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
           // Ключ — только чтобы страж вёрстки мог измерить фактическую
           // ширину блока напрямую (`_SideColumn` приватен и типом из теста не
           // достать); на поведение не влияет.
-          key: const ValueKey('serviceChecksSidesRow'),
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            left,
-            SizedBox(width: gap),
-            buttonBox,
-            SizedBox(width: gap),
-            right,
-          ],
+            key: const ValueKey('serviceChecksSidesRow'),
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              left,
+              SizedBox(width: gap),
+              buttonBox,
+              SizedBox(width: gap),
+              right,
+            ],
+          ),
         );
       }
 
