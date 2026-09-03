@@ -305,16 +305,6 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
   Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
 }
 
-double? _lastPaneHeight;
-
-/// Печатает высоту панели и выданный потолок — по одному разу на значение.
-void _logPaneBudget(double h) {
-  if (_lastPaneHeight != null && (_lastPaneHeight! - h).abs() < 1) return;
-  _lastPaneHeight = h;
-  AppLog.i('Вёрстка: высота панели '+h.toStringAsFixed(0)+', потолок блока '+
-      checksHeightBudget(paneHeight: h).toStringAsFixed(0));
-}
-
 /// Сколько высоты отдать блоку «проверки + кнопка», чтобы под ним уместилось
 /// то, что идёт ниже: строка статуса, «Информация о сервере», кнопки режима и
 /// счётчики трафика.
@@ -1044,13 +1034,6 @@ class _ConnectPane extends StatelessWidget {
               // срабатывал НИ РАЗУ: при четырнадцати сервисах блок с
               // информацией о подключении уезжал за край окна.
               child: LayoutBuilder(builder: (context, paneBox) {
-                // ⚠️ ДИАГНОСТИКА, А НЕ ДОГАДКА. Снимок из VM показал, что блок
-                // рисует НИЖЕ выданной высоты (подпись легла поверх кнопки), а
-                // в release полосок переполнения нет. Значит резерв подобран
-                // неверно — и подбирать его надо по числам, а не на глаз.
-                // Пишем один раз на КАЖДОЕ изменение, иначе строка полетит на
-                // каждую перерисовку и забьёт журнал.
-                _logPaneBudget(paneBox.maxHeight);
                 return Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
@@ -1693,74 +1676,50 @@ class ConnectCenterpiece extends StatelessWidget {
         // ровно в том, что раскладка существовала в коде, но вызов её не
         // подставлял — здесь `LayoutBuilder` смотрит на РЕАЛЬНЫЕ ограничения
         // этого места на экране, а не на копию.
-        // ⚠️ `Flexible` ОБЯЗАТЕЛЕН, ИНАЧЕ ПОТОЛОК НЕ ДОХОДИТ ДО БЛОКА.
-        //
-        // Дети `Column` получают `maxHeight: infinity`, поэтому
-        // `LayoutBuilder` ниже видел бесконечность ДАЖЕ когда сам блок стоит
-        // в `ConstrainedBox` от панели, — и сжатие по высоте, которое
-        // включается только при `hasBoundedHeight`, не включалось никогда.
-        // Тест `service_checks_height_overflow_test` ловит это как
-        // «RenderFlex overflowed by 186 pixels».
-        //
-        // ⚠️ И ЭТО НЕ ТО ЖЕ, ЧТО ОТКАЧЕННАЯ ПОПЫТКА (1b9560e). Там `Flexible`
-        // ставили вокруг ВСЕГО центрального блока в панели — он сжимал и
-        // плашку сервера, и кнопку, и надписи ложились друг на друга. Здесь
-        // он внутри блока и отдаёт проверкам ровно остаток после плашки, а
-        // `FittedBox` внутри уменьшает их пропорционально.
-        Flexible(
-          child: LayoutBuilder(builder: (context, c) {
-            final effective = layout == ServiceChecksLayout.adaptive
-                ? (c.maxWidth >= _sidesMinWidth
-                    ? ServiceChecksLayout.sides
-                    : ServiceChecksLayout.rows)
-                : layout;
-            switch (effective) {
-              case ServiceChecksLayout.hidden:
-                // ⚠️ Проверок нет ВООБЩЕ — ни рядов, ни плашки «канал не готов»:
-                // ей нечего было бы объяснять, раз человек сам их выключил.
-                return button;
-              case ServiceChecksLayout.rows:
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    button,
-                    // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
-                    // владелец просил галочку «полного отключения», и
-                    // выключенные проверки не должны занимать место у кнопки.
-                    ServiceChecksRows(services: services, httpPort: httpPort),
-                    ServiceChecksNotReadyBanner(
-                        httpPort: httpPort, services: services),
-                  ],
-                );
-              case ServiceChecksLayout.sides:
-              case ServiceChecksLayout.grid:
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // ⚠️ ТРЕТИЙ СЛОЙ, РАЗБИНТОВЫВАЮЩИЙ ВЫСОТУ. Потолок
-                    // приходится проводить через КАЖДУЮ колонку на пути:
-                    // панель → центральный блок → эта. Пропусти любую — и
-                    // ограничение снова станет бесконечным, а сжатие внизу
-                    // не включится. Именно так и выглядел дефект: две
-                    // обёртки уже стояли, а блок всё равно рисовал за края.
-                    Flexible(
-                      child: ServiceChecksSides(
-                        services: services,
-                        httpPort: httpPort,
-                        button: button,
-                        dense: effective == ServiceChecksLayout.grid,
-                      ),
-                    ),
-                    ServiceChecksNotReadyBanner(
-                        httpPort: httpPort, services: services),
-                  ],
-                );
-              case ServiceChecksLayout.adaptive:
-                // Недостижимо: adaptive разрешён в sides/rows выше.
-                return button;
-            }
-          }),
-        ),
+        LayoutBuilder(builder: (context, c) {
+          final effective = layout == ServiceChecksLayout.adaptive
+              ? (c.maxWidth >= _sidesMinWidth
+                  ? ServiceChecksLayout.sides
+                  : ServiceChecksLayout.rows)
+              : layout;
+          switch (effective) {
+            case ServiceChecksLayout.hidden:
+              // ⚠️ Проверок нет ВООБЩЕ — ни рядов, ни плашки «канал не готов»:
+              // ей нечего было бы объяснять, раз человек сам их выключил.
+              return button;
+            case ServiceChecksLayout.rows:
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  button,
+                  // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
+                  // владелец просил галочку «полного отключения», и
+                  // выключенные проверки не должны занимать место у кнопки.
+                  ServiceChecksRows(services: services, httpPort: httpPort),
+                  ServiceChecksNotReadyBanner(
+                      httpPort: httpPort, services: services),
+                ],
+              );
+            case ServiceChecksLayout.sides:
+            case ServiceChecksLayout.grid:
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ServiceChecksSides(
+                    services: services,
+                    httpPort: httpPort,
+                    button: button,
+                    dense: effective == ServiceChecksLayout.grid,
+                  ),
+                  ServiceChecksNotReadyBanner(
+                      httpPort: httpPort, services: services),
+                ],
+              );
+            case ServiceChecksLayout.adaptive:
+              // Недостижимо: adaptive разрешён в sides/rows выше.
+              return button;
+          }
+        }),
       ],
     );
   }
