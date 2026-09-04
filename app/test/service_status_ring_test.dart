@@ -22,8 +22,17 @@ import 'package:silentgate/ui/widgets/service_checks_row.dart';
 /// стрелки, окрашенной в цвет «до», сравнение исчезает — а ради него проверки
 /// и делаются. Убрать её значит оставить половину смысла.
 void main() {
-  Widget host({required int httpPort}) => MaterialApp(
-        locale: const Locale('ru'),
+  Widget host({
+    required int httpPort,
+    String locale = 'ru',
+    List<ProbeService> services = const [
+      ProbeService.youtube,
+      ProbeService.telegram,
+      ProbeService.chatgpt,
+    ],
+  }) =>
+      MaterialApp(
+        locale: Locale(locale),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: ChangeNotifierProvider<ServiceCheckController>(
@@ -38,11 +47,7 @@ void main() {
                   httpPort: httpPort,
                   button: const SizedBox(
                       key: Key('btn'), width: 148, height: 148),
-                  services: const [
-                    ProbeService.youtube,
-                    ProbeService.telegram,
-                    ProbeService.chatgpt,
-                  ],
+                  services: services,
                   layout: ServiceChecksLayout.sides,
                 ),
               ),
@@ -59,14 +64,47 @@ void main() {
     await t.pump();
     expect(t.takeException(), isNull);
 
-    // Обводка рисуется рамкой на самом значке. Кружок рядом — это то, от чего
-    // ушли: если он вернётся, ячейка снова начнёт расти на живом канале.
-    final borders = find.byWidgetPredicate((w) =>
-        w is DecoratedBox &&
-        w.decoration is BoxDecoration &&
-        (w.decoration as BoxDecoration).border != null);
-    expect(borders, findsWidgets,
-        reason: 'обводки состояния не нарисовалось');
+    // ⚠️ ФИНДЕР СУЖЕН ДО ОБВОДОК ЗНАЧКОВ, А НЕ «ЛЮБАЯ РАМКА В ДЕРЕВЕ».
+    //
+    // Найдено ревью 05.09.2026: прежний вариант искал любой `DecoratedBox` с
+    // рамкой во всём дереве и требовал «хотя бы одну». Такая рамка есть у
+    // плашки имени сервера (`ActiveServerLabel`), причём она в дереве ВСЕГДА —
+    // её держат `Visibility` с `maintainState`. Проверено прогоном: при
+    // `services: const []`, где нет ни одного значка и ни одной обводки
+    // состояния, тест находил одну рамку и оставался зелёным.
+    //
+    // То есть утверждение держалось на ЧУЖОЙ рамке: убери обводку из значка
+    // (или верни прежний кружок) — состояние сервисов перестанет отображаться
+    // вообще, а прогон останется зелёным.
+    //
+    // Теперь считаем рамки ВНУТРИ ячеек сервисов и требуем их столько, сколько
+    // сервисов на экране.
+    Finder ringsOf(Finder scope) => find.descendant(
+          of: scope,
+          matching: find.byWidgetPredicate((w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border != null),
+        );
+
+    final cells = find.byKey(const ValueKey('svc:telegram'));
+    expect(cells, findsOneWidget, reason: 'ячейка сервиса не нарисовалась');
+    expect(ringsOf(cells), findsWidgets,
+        reason: 'у значка сервиса нет обводки состояния');
+
+    // И контрольная проверка от вырожденности: без сервисов обводок быть не
+    // должно ВООБЩЕ. Прежний финдер здесь находил рамку плашки и проходил.
+    await t.pumpWidget(host(httpPort: 0, services: const []));
+    await t.pump();
+    expect(
+      find.byWidgetPredicate((w) =>
+          w is DecoratedBox &&
+          w.decoration is BoxDecoration &&
+          (w.decoration as BoxDecoration).border != null &&
+          ((w.decoration as BoxDecoration).border as Border?)?.top.width == 2),
+      findsNothing,
+      reason: 'обводка состояния нарисована там, где сервисов нет',
+    );
   });
 
   testWidgets('⚠️ на живом канале появляется стрелка перехода', (t) async {
@@ -94,5 +132,40 @@ void main() {
     expect(ServiceChecksSides.labelWidthFor(false),
         lessThanOrEqualTo(cellWidth + 6),
         reason: 'подпись снова стала диктовать ширину блока');
+  });
+
+  testWidgets('⚠️ в фарси пара НЕ переворачивается: «до» остаётся слева',
+      (t) async {
+    // Подпись под блоком переведена дословно — «چپ — بدون VPN» значит
+    // «слева — без VPN». Если `Row` возьмёт направление у локали, значки
+    // поменяются местами, а стрелка «→» не зеркалится (U+2192 не имеет пары
+    // в BidiMirroring) и станет показывать от «после» к «до».
+    //
+    // Иранский пользователь — ядро аудитории VPN-клиента: он прочтёт
+    // подпись, посмотрит на левый значок и увидит замер ЧЕРЕЗ VPN. Сервис,
+    // который VPN починил, будет выглядеть им сломанным.
+    t.view.physicalSize = const Size(900, 400);
+    t.view.devicePixelRatio = 1.0;
+    addTearDown(t.view.resetPhysicalSize);
+
+    Future<double> leftEdgeOfFirstIcon(String loc) async {
+      await t.pumpWidget(host(httpPort: 0, locale: loc));
+      await t.pump();
+      final cell = find.byKey(const ValueKey('svc:telegram'));
+      expect(cell, findsOneWidget);
+      final row = find.descendant(of: cell, matching: find.byType(Row));
+      return t.getTopLeft(row.first).dx;
+    }
+
+    // Само по себе положение ячейки в RTL зеркалится — это нормально.
+    // Проверяем ВНУТРЕННЕЕ направление: оно обязано остаться слева направо.
+    await leftEdgeOfFirstIcon('fa');
+    final dir = Directionality.of(
+        t.element(find.descendant(
+            of: find.byKey(const ValueKey('svc:telegram')),
+            matching: find.byType(Row)).first));
+    expect(dir, TextDirection.ltr,
+        reason: 'в RTL-локали пара «до → после» перевернулась, и подпись '
+            '«слева — без VPN» стала ложью');
   });
 }

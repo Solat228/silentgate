@@ -148,6 +148,41 @@ class SingboxStats {
     }
   }
 
+  /// Переключить группу-выход [groupTag] на участника [memberTag].
+  ///
+  /// Возвращает `true`, если ядро приняло команду.
+  ///
+  /// ⚠️ ЭТО ЕДИНСТВЕННЫЙ СПОСОБ ПЕРЕКЛЮЧИТЬ `selector`. Группа сама не решает
+  /// ничего — тем и хороша: в отличие от `urltest` она не пробует участников и
+  /// не будит радио на телефоне каждые три минуты. Решение принимает сторож
+  /// выходов по факту трёх промахов подряд и отдаёт его сюда.
+  ///
+  /// ⚠️ КОД ОТВЕТА ПРОВЕРЯЕТСЯ. Ядро отвечает 204 на успех и 400 на
+  /// несуществующего участника; вернуть `true` не глядя значило бы отрапортовать
+  /// о переключении, которого не было, — а именно на этом в проекте уже горели
+  /// («ядро приняло конфиг» не значит «правило работает»).
+  Future<bool> selectExitMember(String groupTag, String memberTag,
+      {Duration timeout = const Duration(seconds: 5)}) async {
+    final client = HttpClient()..connectionTimeout = timeout;
+    try {
+      final url = Uri.parse('http://127.0.0.1:$apiPort/proxies/'
+          '${Uri.encodeComponent(groupTag)}');
+      final req = await client.putUrl(url);
+      if (secret.isNotEmpty) {
+        req.headers.set(HttpHeaders.authorizationHeader, 'Bearer $secret');
+      }
+      req.headers.contentType = ContentType.json;
+      req.write(jsonEncode({'name': memberTag}));
+      final resp = await req.close().timeout(timeout);
+      await resp.drain<void>();
+      return resp.statusCode >= 200 && resp.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
   /// Куда ходит проба задержки. Тот же адрес, что у сторожа канала: лёгкий,
   /// без тела, и не принадлежит ни одному сервису из проверяемых.
   static const _delayTarget = 'http://www.gstatic.com/generate_204';

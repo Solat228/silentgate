@@ -191,4 +191,59 @@ void main() {
       h.stop();
     });
   });
+
+  group('⚠️ Такты не накладываются и гейт спрашивается на каждом выходе', () {
+    test('пока идёт проход, второй такт не начинается', () async {
+      // `Timer.periodic` не ждёт асинхронный обработчик, а проход по 41
+      // выходу с пятисекундным таймаутом длится дольше интервала в 60 с.
+      // Без флага занятости в воздухе оказывались три-четыре прохода разом,
+      // и КАЖДЫЙ прибавлял свой промах: приговор приходил за один реальный
+      // цикл вместо трёх, а человек получал пачку заметок.
+      var inFlight = 0;
+      var peak = 0;
+      final h = ExitHealth(
+        tags: const ['exit-a', 'exit-b'],
+        probe: (_) async {
+          inFlight++;
+          if (inFlight > peak) peak = inFlight;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          inFlight--;
+          return true;
+        },
+      );
+      h.start(onExitDown: (_) async {});
+      // Три такта подряд, не дожидаясь друг друга, — как это делает таймер.
+      final all = Future.wait([h.tick(), h.tick(), h.tick()]);
+      await all;
+      expect(peak, 1,
+          reason: 'проходы наложились — промахи будут расти кратно');
+      h.stop();
+    });
+
+    test('⚠️ канал умер в СЕРЕДИНЕ прохода — остаток не засчитывается', () async {
+      // Проход длится минуты, и канал успевает умереть внутри него. Гейт,
+      // спрошенный один раз на входе, пропускал бы промахи всем оставшимся
+      // выходам уже после смерти канала — мимо той самой защиты, ради
+      // которой он и заводился.
+      var alive = true;
+      var probed = 0;
+      final h = ExitHealth(
+        tags: const ['a', 'b', 'c', 'd'],
+        probe: (_) async {
+          probed++;
+          if (probed == 2) alive = false; // канал лёг после второго выхода
+          return false;
+        },
+        mainChannelAlive: () => alive,
+        failuresToDeclareDown: 1,
+      );
+      final down = <String>[];
+      h.start(onExitDown: (t) async => down.add(t));
+      await h.tick();
+      expect(probed, 2, reason: 'после смерти канала проход обязан оборваться');
+      expect(down, ['a', 'b'],
+          reason: 'выходы c и d приговорены уже при мёртвом канале');
+      h.stop();
+    });
+  });
 }
