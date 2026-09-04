@@ -116,6 +116,26 @@ class TunOptions {
   /// лишний способ его сломать.
   final int fallbackDnsPort;
 
+  /// Порт форвардера ЗАПАСА ДЛЯ ПРЯМОГО РЕЗОЛВА (BACKLOG #34). 0 — запаса нет,
+  /// `dns-local` смотрит прямо на резолвер сети, как раньше.
+  ///
+  /// ⚠️ ЭТО ДРУГОЙ ФОРВАРДЕР, НЕ [fallbackDnsPort]. Тот спрашивает туннель
+  /// первым; направив в него имена «Прямо», мы отправили бы их в VPN в
+  /// исправном случае — ровно то, от чего пользователь их уводил. Здесь
+  /// порядок обратный: локальный резолвер, при отказе — второй прямой апстрим,
+  /// и туннель не участвует вовсе.
+  ///
+  /// ⚠️ Подставляется в адрес САМОГО `dns-local`, а не отдельным правилом:
+  /// средств «не ответил — спроси другого» в конфиге нашей версии ядра нет
+  /// (`address_fallback`, `fallback` и список в `address` отвергаются с
+  /// `FATAL decode config`), а у DNS-правила поле `server` — одна строка.
+  ///
+  /// ⚠️ Следствие, которое надо держать в голове: на `dns-local` завязаны
+  /// `address_resolver` у `dns-proxy` и у каждого выхода, а также резолв
+  /// доменов НАШИХ ЖЕ серверов. Все они начинают ходить через этот форвардер —
+  /// и это безопасно ровно потому, что он никогда не идёт в туннель.
+  final int directFallbackDnsPort;
+
   /// Пользователь выбрал стек «авто» — подбирать стек и MTU перебором,
   /// пока туннель не поднимется (см. [TunAutotune]).
   final bool autotune;
@@ -220,6 +240,7 @@ class TunOptions {
     this.tunnelExcludeServerIps = const [],
     this.serverDomains = const [],
     this.fallbackDnsPort = 0,
+    this.directFallbackDnsPort = 0,
     this.blockNotice = false,
     this.autotune = false,
     this.noRealIp = false,
@@ -245,6 +266,7 @@ class TunOptions {
     List<String> tunnelExcludeServerIps = const [],
     List<String> serverDomains = const [],
     int fallbackDnsPort = 0,
+    int directFallbackDnsPort = 0,
     bool blockNotice = false,
     bool android = false,
     String? directDnsUpstream,
@@ -288,6 +310,7 @@ class TunOptions {
       tunnelExcludeServerIps: tunnelExcludeServerIps,
       serverDomains: serverDomains,
       fallbackDnsPort: fallbackDnsPort,
+      directFallbackDnsPort: directFallbackDnsPort,
       // «Авто» = подбирать стек/MTU перебором; явный выбор пользователя уважаем.
       autotune: s.tunStack == TunStack.auto,
       noRealIp: s.noRealIp,
@@ -327,6 +350,7 @@ class TunOptions {
         tunnelExcludeServerIps: tunnelExcludeServerIps,
         serverDomains: serverDomains,
         fallbackDnsPort: fallbackDnsPort,
+        directFallbackDnsPort: directFallbackDnsPort,
         blockNotice: blockNotice,
         autotune: autotune,
         noRealIp: noRealIp,
@@ -367,6 +391,7 @@ class TunOptions {
         tunnelExcludeServerIps: tunnelExcludeServerIps,
         serverDomains: serverDomains,
         fallbackDnsPort: fallbackDnsPort,
+        directFallbackDnsPort: directFallbackDnsPort,
         blockNotice: blockNotice,
         autotune: autotune,
         noRealIp: noRealIp,
@@ -997,9 +1022,20 @@ class SingboxConfigBuilder {
       // «Прямо» не резолвятся вовсе.
       {
         'tag': 'dns-local',
-        'address': (o.directDnsUpstream ?? '').isNotEmpty
-            ? 'udp://${o.directDnsUpstream}'
-            : 'local',
+        // ⚠️ ПРИ ПОДНЯТОМ ЗАПАСЕ АДРЕС УКАЗЫВАЕТ НА НЕГО (BACKLOG #34).
+        //
+        // Форвардер сам спрашивает резолвер сети, а при его молчании — второй
+        // прямой апстрим. До этой правки запаса у прямого резолва не было
+        // вовсе: не ответил провайдерский DNS — запрос провалился, и человек
+        // видел это как потери пакетов у непроксируемых программ.
+        //
+        // Туннель здесь не участвует ни на каком шаге: имя, помеченное
+        // «Прямо», обязано резолвиться мимо VPN.
+        'address': o.directFallbackDnsPort > 0
+            ? 'udp://127.0.0.1:${o.directFallbackDnsPort}'
+            : ((o.directDnsUpstream ?? '').isNotEmpty
+                ? 'udp://${o.directDnsUpstream}'
+                : 'local'),
         'detour': 'direct',
       },
       // Резолвер с ЗАПАСОМ — наш локальный форвардер (см. TunOptions.fallbackDnsPort).

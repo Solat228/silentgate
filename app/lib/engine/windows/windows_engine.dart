@@ -906,6 +906,12 @@ class WindowsEngine extends VpnEngineBase {
       // switch) при этом ещё стоит — потому у ответа и есть память о прошлом
       // рабочем адресе, см. `_systemDnsServer`.
       directDnsUpstream: await _systemDnsServer(),
+      // ⚠️ ЗАПАС ДЛЯ ПРЯМОГО РЕЗОЛВА (BACKLOG #34). Поднимается НЕЗАВИСИМО от
+      // галочки «весь DNS через туннель» и от режима захвата: прямой резолв
+      // существует в любой конфигурации, значит и запас ему нужен всегда.
+      // Подставляется вместо адреса `dns-local`, поэтому спрашивается ПОСЛЕ
+      // `_systemDnsServer` — тот как раз и находит оба апстрима.
+      directFallbackDnsPort: await _startDirectFallbackDns(gen, aborted),
       // Запасной резолвер под общий DNS — только когда пользователь
       // просил вести DNS через туннель. Без этой галочки прямой трафик и
       // так резолвится локально, и лишнее звено не нужно.
@@ -925,6 +931,7 @@ class WindowsEngine extends VpnEngineBase {
     // опций) и слушает порт, а конфиг с этим портом никуда не поедет.
     if (aborted()) {
       await _releaseOwnFallbackDns(gen);
+    await _releaseOwnDirectFallbackDns(gen);
       return false;
     }
 
@@ -1068,6 +1075,7 @@ class WindowsEngine extends VpnEngineBase {
     if (aborted()) {
       await _releaseOwnTun(gen);
       await _releaseOwnFallbackDns(gen);
+    await _releaseOwnDirectFallbackDns(gen);
       return false;
     }
     // Сторож вооружается ТОЛЬКО когда туннель уже стоит: во время
@@ -1133,6 +1141,7 @@ class WindowsEngine extends VpnEngineBase {
     // Форвардер — такой же ресурс запуска, как туннель и прокси: он слушает
     // UDP-порт на петле и без своего конфига никому не нужен.
     await _releaseOwnFallbackDns(gen);
+    await _releaseOwnDirectFallbackDns(gen);
     await _stopOwnProcesses(mine);
   }
 
@@ -1360,6 +1369,14 @@ class WindowsEngine extends VpnEngineBase {
     // всё это в своём platformCleanup с самого начала», — неправдой это было
     // ровно про эту строку.
     await _stopFallbackDns();
+    // ⚠️ ПРЯМОЙ ЗАПАС ГАСИТСЯ ТОЛЬКО ЗДЕСЬ, В ПОЛНОЙ ОСТАНОВКЕ, И НЕ В
+    // [teardownCore]. Туннельный форвардер там снимается безусловно, и для него
+    // это верно — его «основной» путь ведёт через ядро, которого в тот момент
+    // уже нет. У прямого запаса ядра на пути НЕТ: при бесшовном удержании
+    // туннеля прямой трафик продолжает ходить, и погасив запас там, мы отняли
+    // бы резолв ровно тогда, когда туннель болен, — то есть в единственный
+    // момент, ради которого запас и заводили.
+    await _stopDirectFallbackDns();
     if (_tunActive) {
       await _tunRouter.stop();
       _tunActive = false;
@@ -1673,6 +1690,73 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Поднять ЗАПАС ДЛЯ ПРЯМОГО РЕЗОЛВА (BACKLOG #34).
+  ///
+  /// ⚠️ ЧЕМ ОТЛИЧАЕТСЯ ОТ [_startFallbackDns]. Тот спрашивает ТУННЕЛЬ ПЕРВЫМ и
+  /// живёт только при `tunnelDnsForAll`. Этот — наоборот: локальный резолвер
+  /// первым, второй прямой апстрим вторым, SOCKS не трогается вовсе. Пустить
+  /// имена «Прямо» через туннельный форвардер значило бы отправить их в VPN в
+  /// исправном случае — ровно то, от чего пользователь их уводил.
+  ///
+  /// ⚠️ ГЕЙТ НЕЗАВИСИМ ОТ РЕЖИМА ЗАХВАТА И ОТ ГАЛОЧКИ. Прямой резолв есть в
+  /// любой конфигурации, значит и запас ему нужен всегда — иначе правка не
+  /// работала бы ровно там, где болит (умолчания: системный прокси и
+  /// `tunnelDnsForAll = false`).
+  Future<int> _startDirectFallbackDns(int gen, bool Function() aborted) async {
+    // Гейт до первого действия — по той же причине, что и у соседа: ниже стоит
+    // снятие форвардера ИЗ ПОЛЯ, а там может стоять форвардер живой сессии.
+    if (aborted()) {
+      AppLog.i('Прямой запас DNS не поднимаю: запуск устарел');
+      return 0;
+    }
+    await _stopDirectFallbackDns();
+    final local = _lastDirectDns;
+    final second = _secondaryDirectDns;
+    if (local == null || local.isEmpty) return 0;
+    if (second == null || second.isEmpty || second == local) {
+      // Молчать нельзя: отсутствие запаса неотличимо от его исправной работы.
+      AppLog.i('Прямой запас DNS не поднят: второго рабочего резолвера нет');
+      return 0;
+    }
+    final srv = DnsFallbackServer.direct(localDns: local, secondaryDns: second);
+    if (!srv.usefulAsDirectFallback) return 0;
+    try {
+      await srv.start();
+      _directFallbackDns = srv;
+      _directFallbackOwnerGen = gen;
+      AppLog.i('Прямой запас DNS поднят на :${srv.port} '
+          '(основной резолвер, при отказе — запасной)');
+      return srv.port;
+    } catch (e) {
+      // Не фатально: без запаса прямой резолв работает как раньше.
+      AppLog.w('Прямой запас DNS не поднялся: $e');
+      return 0;
+    }
+  }
+
+  DnsFallbackServer? _directFallbackDns;
+  int _directFallbackOwnerGen = -1;
+
+  Future<void> _stopDirectFallbackDns() async {
+    final srv = _directFallbackDns;
+    _directFallbackDns = null;
+    _directFallbackOwnerGen = -1;
+    if (srv != null) await srv.stop();
+  }
+
+  /// Снять прямой запас, если его поднял запуск [gen].
+  ///
+  /// ⚠️ ВЫЗЫВАЕТСЯ ТОЛЬКО ПРИ ПОЛНОЙ ОСТАНОВКЕ, А НЕ ПРИ УДЕРЖАНИИ ТУННЕЛЯ.
+  /// Туннельный форвардер гасится безусловно, ещё до проверки `keepCapture`, и
+  /// для него это верно — он ходит через ядро, которого в этот момент нет. У
+  /// прямого запаса ядра на пути НЕТ: при бесшовном переподключении прямой
+  /// трафик продолжает ходить, и погасив запас, мы отняли бы резолв ровно
+  /// тогда, когда туннель болен.
+  Future<void> _releaseOwnDirectFallbackDns(int gen) async {
+    if (_directFallbackDns == null || _directFallbackOwnerGen != gen) return;
+    await _stopDirectFallbackDns();
+  }
+
   /// Снять форвардер, если его поднял запуск [gen]. Чужой не трогаем — ровно
   /// как с туннелем и системным прокси.
   Future<void> _releaseOwnFallbackDns(int gen) async {
@@ -1722,6 +1806,13 @@ class WindowsEngine extends VpnEngineBase {
   /// при полной остановке ([platformCleanup]): следующее подключение по кнопке
   /// идёт уже без туннеля, и пробе ничто не мешает.
   String? _lastDirectDns;
+
+  /// Второй ОТВЕТИВШИЙ резолвер физической сети — запас для прямого пути.
+  ///
+  /// `null` означает «второго рабочего не нашлось», и запас в этом случае не
+  /// поднимается вовсе: один и тот же резолвер, спрошенный дважды, — это не
+  /// запас, а удвоенное ожидание.
+  String? _secondaryDirectDns;
 
   /// Смена сети: прежний резолвер к новой сети отношения не имеет.
   @override
@@ -1774,13 +1865,41 @@ class WindowsEngine extends VpnEngineBase {
       // порт 53 закрыт наглухо. Взяв его, мы получали резолвер, который не
       // отвечает никогда, и КАЖДЫЙ домен с правилом «Прямо» переставал
       // открываться — притом что настройка выглядела рабочей.
+      // ⚠️ ЗАПОМИНАЕМ И ВТОРОЙ ОТВЕТИВШИЙ, А НЕ ТОЛЬКО ПЕРВЫЙ (BACKLOG #34).
+      //
+      // Раньше цикл возвращался на первом же рабочем адресе, а остальные
+      // терялись. При этом у прямого резолва нет НИКАКОГО запаса: не ответил
+      // провайдерский DNS — запрос просто провалился. В журнале клиента,
+      // работающего круглосуточно, это 65 % всех ошибок ядра (23 261 строка),
+      // и человек видит их как потери пакетов и лаги у непроксируемых
+      // программ — 5–15 % против 0–1 % у проксируемых.
+      //
+      // Второй адрес и есть готовый запас: он уже проверен на ответ тем же
+      // циклом, оставалось лишь не выбрасывать его.
+      String? first;
       for (final ip in list) {
         if (await _dnsReachable(ip)) {
-          AppLog.i('Резолвер для «Прямо»: $ip');
-          _lastDirectDns = ip;
-          return ip;
+          if (first == null) {
+            first = ip;
+            AppLog.i('Резолвер для «Прямо»: $ip');
+            _lastDirectDns = ip;
+            continue;
+          }
+          _secondaryDirectDns = ip;
+          AppLog.i('Запасной резолвер для «Прямо»: $ip');
+          return first;
         }
         AppLog.w('DNS $ip не отвечает — пробую следующий');
+      }
+      if (first != null) {
+        // Второго рабочего не нашлось — запас поднимать не из чего, и об этом
+        // надо сказать вслух: молчаливое отсутствие запаса неотличимо от его
+        // исправной работы, а разница видна только в тот день, когда основной
+        // резолвер замолчит.
+        _secondaryDirectDns = null;
+        AppLog.w('Запасного резолвера для «Прямо» нет — отказ основного будет '
+            'выглядеть как пропажа связи у непроксируемых программ');
+        return first;
       }
       if (list.isEmpty) {
         AppLog.w('DNS физического адаптера не найден — домены «Прямо» '

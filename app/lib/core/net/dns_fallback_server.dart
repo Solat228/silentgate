@@ -45,7 +45,35 @@ class DnsFallbackServer {
     this.socksPassword = '',
     this.tunnelTimeout = const Duration(seconds: 3),
     this.localTimeout = const Duration(seconds: 3),
+    this.secondaryDns = '',
+    this.preferLocal = false,
   });
+
+  /// Запас для ПРЯМОГО резолва: локальный резолвер первым, второй прямой
+  /// апстрим — вторым. Туннель не трогается вовсе.
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНЫЙ РЕЖИМ, А НЕ ПЕРЕИСПОЛЬЗОВАНИЕ ОБЫЧНОГО (BACKLOG #34).
+  /// Обычный форвардер спрашивает ТУННЕЛЬ ПЕРВЫМ. Направив в него имена,
+  /// помеченные «Прямо», мы в исправном случае отправили бы 100 % из них через
+  /// VPN — ровно то, от чего пользователь эти имена уводил. Разбор тремя
+  /// независимыми оппонентами 03.09.2026 забраковал такую правку единогласно.
+  ///
+  /// ⚠️ И SOCKS ЗДЕСЬ НЕ НУЖЕН ВООБЩЕ. Он — тот самый путь, который мы
+  /// обходим; требовать его значило бы не поднимать запас там, где ядро с
+  /// прокси не запущено, то есть ровно в половине конфигураций.
+  factory DnsFallbackServer.direct({
+    required String localDns,
+    required String secondaryDns,
+    Duration localTimeout = const Duration(seconds: 2),
+  }) =>
+      DnsFallbackServer(
+        socksPort: 0,
+        tunnelDns: '',
+        localDns: localDns,
+        secondaryDns: secondaryDns,
+        preferLocal: true,
+        localTimeout: localTimeout,
+      );
 
   /// Локальный SOCKS ядра — через него идёт запрос к туннельному резолверу.
   final int socksPort;
@@ -68,6 +96,25 @@ class DnsFallbackServer {
 
   final Duration tunnelTimeout;
   final Duration localTimeout;
+
+  /// Второй прямой апстрим — тот, к кому идём, если первый промолчал.
+  ///
+  /// ⚠️ Он уже добывается и выбрасывается: `WindowsEngine._systemDnsServer`
+  /// перебирает резолверы адаптеров и возвращает ПЕРВЫЙ ответивший, остальные
+  /// теряются. Достаточно сохранить второй.
+  final String secondaryDns;
+
+  /// Спрашивать локальный резолвер первым (прямой запас), а не туннельный.
+  final bool preferLocal;
+
+  /// Есть ли смысл поднимать прямой запас.
+  ///
+  /// ⚠️ Один и тот же резолвер, спрошенный дважды, — не запас, а удвоенное
+  /// ожидание: не ответил раз, не ответит и два. Без ВТОРОГО, ОТЛИЧНОГО
+  /// апстрима поднимать нечего, и молчаливый подъём бесполезного слушателя
+  /// выглядел бы как исправная работа.
+  bool get usefulAsDirectFallback =>
+      preferLocal && secondaryDns.isNotEmpty && secondaryDns != localDns;
 
   RawDatagramSocket? _socket;
 
@@ -110,8 +157,21 @@ class DnsFallbackServer {
       // в задержку всех.
       unawaited(_handle(sock, dg));
     });
-    AppLog.i('Запасной DNS: слушаю 127.0.0.1:${sock.port}, '
-        'основной резолвер $tunnelDns через туннель, запасной $localDns');
+    // ⚠️ СООБЩЕНИЕ ОБЯЗАНО РАЗЛИЧАТЬ РЕЖИМЫ. Прежний текст говорил «основной
+    // резолвер через туннель» ВСЕГДА — и в прямом режиме, где туннель не
+    // участвует ни на одном шаге, это прямая ложь в журнале. Поймано живым
+    // прогоном в VM 05.09.2026: обе строки о старте выглядели одинаково, и
+    // отличить прямой запас от туннельного по журналу было нельзя.
+    //
+    // В этом проекте на таком уже горели: комментарии и сообщения, уверенно
+    // описывающие не то, что делает код, стоили двух релизов с открытым портом
+    // — никто не искал того, чего по описанию не существует.
+    AppLog.i(preferLocal
+        ? 'Прямой запас DNS: слушаю 127.0.0.1:${sock.port}, '
+            'основной резолвер $localDns, запасной $secondaryDns, '
+            'туннель не используется'
+        : 'Запасной DNS: слушаю 127.0.0.1:${sock.port}, '
+            'основной резолвер $tunnelDns через туннель, запасной $localDns');
   }
 
   Future<void> stop() async {
@@ -122,6 +182,33 @@ class DnsFallbackServer {
   Future<void> _handle(RawDatagramSocket sock, Datagram dg) async {
     _queryCount++;
     Uint8List? answer;
+    if (preferLocal) {
+      // ПРЯМОЙ ЗАПАС: локальный первым, второй апстрим — вторым, туннель
+      // не трогаем вовсе (см. `DnsFallbackServer.direct`).
+      try {
+        answer = await _askLocal(dg.data, localDns)
+            .timeout(localTimeout + const Duration(seconds: 1));
+      } catch (_) {
+        answer = null;
+      }
+      if (answer == null && secondaryDns.isNotEmpty) {
+        _fallbackCount++;
+        try {
+          answer = await _askLocal(dg.data, secondaryDns)
+              .timeout(localTimeout + const Duration(seconds: 1));
+        } catch (_) {
+          answer = null;
+        }
+        if (answer != null) _fallbackAnswered++;
+      }
+      if (answer == null) return;
+      try {
+        sock.send(answer, dg.address, dg.port);
+      } catch (_) {
+        // Сокет мог закрыться, пока ждали ответ.
+      }
+      return;
+    }
     try {
       // Таймауты живут ВНУТРИ обоих путей (иначе не закрывались бы сокеты);
       // здесь оставлен внешний предел с запасом — на случай, если внутренний
@@ -207,9 +294,9 @@ class DnsFallbackServer {
   /// есть подменить ответ мог любой, кто успеет раньше резолвера, даже не
   /// перехватывая трафик. Поэтому сверяем и отправителя, и идентификатор
   /// запроса (первые два байта DNS-сообщения).
-  Future<Uint8List?> _askLocal(Uint8List query) async {
+  Future<Uint8List?> _askLocal(Uint8List query, [String? upstream]) async {
     if (query.length < 2) return null;
-    final addr = InternetAddress.tryParse(localDns);
+    final addr = InternetAddress.tryParse(upstream ?? localDns);
     if (addr == null) return null;
     RawDatagramSocket? s;
     Timer? deadline;
