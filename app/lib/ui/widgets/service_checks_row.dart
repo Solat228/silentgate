@@ -588,6 +588,7 @@ class ServiceChecksSides extends StatelessWidget {
       // появились, подписи ужались, а значки не подросли ни на пиксель.
       final left = _SideColumn(
         perRow: perRow,
+        padTo: perRow,
         rows: split.left,
         httpPort: httpPort,
         dense: dense,
@@ -595,6 +596,7 @@ class ServiceChecksSides extends StatelessWidget {
       );
       final right = _SideColumn(
         perRow: perRow,
+        padTo: perRow,
         rows: split.right,
         httpPort: httpPort,
         dense: dense,
@@ -866,6 +868,7 @@ class ServiceChecksSides extends StatelessWidget {
 class _SideColumn extends StatelessWidget {
   const _SideColumn({
     required this.perRow,
+    this.padTo = 0,
     required this.rows,
     required this.httpPort,
     required this.dense,
@@ -877,6 +880,18 @@ class _SideColumn extends StatelessWidget {
 
   /// Сколько блоков в одном ряду — см. [ServiceChecksSides.blocksPerRowFor].
   final int perRow;
+
+  /// До скольких блоков дополнять сторону пустыми распорками.
+  ///
+  /// ⚠️ ЗАЧЕМ. Пять групп делятся между сторонами как 2 и 3, а вписывается
+  /// каждая сторона в место своим `FittedBox` — три блока ужимаются сильнее
+  /// двух. На снимке из VM 04.09.2026 это прямо видно: правая половина
+  /// значков заметно мельче левой, хотя стоят они в одной строке.
+  ///
+  /// Распорка уравнивает натуральную ширину сторон, поэтому масштаб у них
+  /// выходит один. Пустое место остаётся с дальнего от кнопки края — там,
+  /// где оно и должно быть.
+  final int padTo;
   final bool dense;
 
 
@@ -986,6 +1001,10 @@ class _SideColumn extends StatelessWidget {
           ),
         ),
     ];
+
+    while (blocks.length < padTo) {
+      blocks.add(SizedBox(width: ServiceChecksSides.labelWidthFor(dense)));
+    }
 
     final gridRows = <List<Widget>>[];
     for (var i = 0; i < blocks.length; i += perRow) {
@@ -1504,10 +1523,11 @@ class _MenuCheckRow extends StatelessWidget {
 /// Пара «до / после» для одного сервиса.
 /// Постоянная ширина ячейки сервиса на масштабе 1.0.
 ///
-/// Значок 26 + обводка 2×2 + внутренний отступ 2×2 = 34, плюс 14 под стрелку
-/// перехода. Резерв держится ВСЕГДА: без него включение VPN расширяло каждую
-/// ячейку, блоки разъезжались и масштаб пересчитывался — экран дёргался.
-const double cellWidth = 48;
+/// Пара «без VPN → через VPN»: маленький значок 18 (+обводка и отступ = 24),
+/// стрелка 8, основной значок 26 (+обводка и отступ = 32). Резерв держится
+/// ВСЕГДА: без него подключение расширяло бы каждую ячейку, блоки
+/// разъезжались и масштаб пересчитывался — экран дёргался на ровном месте.
+const double cellWidth = 64;
 
 class _ServicePair extends StatelessWidget {
   const _ServicePair({
@@ -1566,81 +1586,90 @@ class _ServicePair extends StatelessWidget {
     // значке и ширины не занимает вовсе, поэтому размер стал одинаковым в
     // обоих состояниях.
     //
-    // ⚠️ Стрелка ОСТАЁТСЯ (тоже требование владельца) и несёт вторую половину
-    // смысла: обводка показывает, как СТАЛО, а цвет стрелки — как БЫЛО. Без
-    // неё сравнение «до и после» пропало бы, а ради него проверки и делаются.
+    // ⚠️ Стрелка УКАЗЫВАЕТ НА ВТОРОЙ ЗНАЧОК, а не висит в пустоте: слева
+    // сервис без VPN, справа — он же через VPN. Цвет стрелки нейтральный,
+    // состояния несут обводки самих значков.
     final live0 = live && before.state != ServiceCheckState.idle;
     final arrow = live0
         ? Padding(
-            padding: const EdgeInsets.only(left: 3),
+            padding: const EdgeInsets.symmetric(horizontal: 2),
             child: Text('→',
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      color: statusColor(context, before),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline,
                       fontWeight: FontWeight.w700,
                     )),
           )
         : null;
 
     final rule = bypass;
-    // ⚠️ МЕСТО ПОД СТРЕЛКУ ЗАРЕЗЕРВИРОВАНО ВСЕГДА, ДАЖЕ КОГДА VPN ВЫКЛЮЧЕН.
+    // ⚠️ ДВА ЗНАЧКА СЕРВИСА, И СТРЕЛКА УКАЗЫВАЕТ НА ВТОРОЙ.
     //
-    // Владелец 04.09.2026: «если включить VPN, всё съедет — правильно понял?»
-    // Правильно: стрелка появляется только на живом канале, и без резерва
-    // каждая ячейка в этот момент становилась шире, блоки разъезжались, а
-    // масштаб всего блока пересчитывался — экран дёргался на ровном месте.
+    // Владелец 04.09.2026: «и чё это за отсталая стрелочка? стрелка указывает
+    // на то, что с сервисом, то есть на 2-й значок сервиса с альтернативной
+    // обводкой». Верно: до этого стрелка показывала в пустоту, а состояние
+    // «до» жило только в её цвете — догадаться об этом было нельзя.
     //
-    // Ширина ячейки постоянна: значок с обводкой плюс место под стрелку.
-    // При выключенном VPN это место пустое, и значок стоит ПО ЦЕНТРУ ячейки
-    // (тоже требование владельца) — пустой отступ сбоку читался бы как
-    // кривая вёрстка. При включении стрелка занимает своё место, а значок
-    // сдвигается внутри ячейки; соседи не двигаются вовсе.
-    final items = <Widget>[
-      // Обводка = состояние ПОСЛЕ (при выключенном VPN — единственный замер).
-      Stack(
+    // Теперь пара читается сама: слева сервис БЕЗ VPN, справа — ЧЕРЕЗ VPN,
+    // у каждого своя обводка. Первый нарочно меньше: он справочный, а
+    // отвечает на вопрос «работает ли сейчас» именно второй.
+    //
+    // ⚠️ ЦЕНА ЧЕСТНАЯ И ИЗМЕРЕНА. Пара занимает 64 px против 34 у одиночного
+    // значка, поэтому масштаб блока падает с 1,27 до 1,0 — основной значок
+    // остаётся 26 px, а не 33. Меньший «до» (18 вместо 26) выкуплен именно
+    // ради этого: при двух равных значках пара занимала бы 76 px и уронила
+    // размер до 22.
+    //
+    // ⚠️ Место под пару держится ВСЕГДА, даже когда VPN выключен: иначе
+    // подключение расширяло бы каждую ячейку, блоки разъезжались, и экран
+    // дёргался на ровном месте. Пока второго значка нет, первый стоит по
+    // центру ячейки.
+    Widget iconBox(ServiceCheckOutcome o, double size, {bool badge = false}) {
+      final box = DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(size * 0.3),
+          border: Border.all(color: statusColor(context, o), width: 2),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(1),
+          child: SiteFavicon(domain: service.domain, size: size, builtIn: true),
+        ),
+      );
+      if (!badge || bypass == null) return box;
+      // Пометка правила — накладкой: рядом она отняла бы ширину, а ширина
+      // здесь единственное, что ограничивает размер значков.
+      return Stack(
         clipBehavior: Clip.none,
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: statusColor(context, live ? after : before),
-                width: 2,
+          box,
+          Positioned(
+            left: -3,
+            top: -3,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                shape: BoxShape.circle,
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(2),
-              child:
-                  SiteFavicon(domain: service.domain, size: 26, builtIn: true),
+              child: Icon(
+                bypass!.action == AppAction.block
+                    ? Icons.block
+                    : Icons.lock_open_rounded,
+                size: 12,
+                color: bypass!.action == AppAction.block
+                    ? const Color(0xFFCC7777)
+                    : Colors.orange,
+              ),
             ),
           ),
-          // ⚠️ Пометка правила — НАКЛАДКОЙ НА ЗНАЧОК, а не строкой рядом.
-          // Рядом она отнимала бы ширину у ячейки, а ширина здесь —
-          // единственное, что ограничивает размер значков. Смысл прежний:
-          // перечёркнутый замок читается как «этот сервис вне защиты»,
-          // знак запрета — как «сюда вообще нельзя».
-          if (bypass != null)
-            Positioned(
-              left: -3,
-              top: -3,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  bypass!.action == AppAction.block
-                      ? Icons.block
-                      : Icons.lock_open_rounded,
-                  size: 12,
-                  color: bypass!.action == AppAction.block
-                      ? const Color(0xFFCC7777)
-                      : Colors.orange,
-                ),
-              ),
-            ),
         ],
-      ),
-      if (arrow != null) arrow,
+      );
+    }
+
+    final items = <Widget>[
+      if (live0) ...[
+        iconBox(before, 18),
+        arrow!,
+      ],
+      iconBox(live ? after : before, 26, badge: true),
     ];
     return Tooltip(
       message: _tip(l, rule),
