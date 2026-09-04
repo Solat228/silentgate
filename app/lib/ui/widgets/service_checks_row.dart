@@ -494,7 +494,53 @@ class ServiceChecksSides extends StatelessWidget {
   /// Ширина ячейки сервиса на масштабе 1.0: стрелка перехода, отступ, значок
   /// с обводкой. По ней же меряется подпись — блок не должен быть шире
   /// своего содержимого.
-  static double labelWidthFor(bool dense) => dense ? 34.0 : 44.0;
+  /// ⚠️ ЧУТЬ ШИРЕ ЯЧЕЙКИ, И ЭТО ИЗМЕРЕНО, А НЕ ПРИКИНУТО. «Мессенджеры»
+  /// шрифтом 8 занимают около 50 px, и в ячейку 48 не помещаются — Flutter
+  /// рвёт слово по буквам («Мессендже/ры» на снимке из VM, дважды). Четыре
+  /// лишних пикселя стоят двух пикселей размера значка и оставляют название
+  /// целым.
+  static double labelWidthFor(bool dense) => dense ? 34.0 : cellWidth + 4;
+
+  /// Базовый кегль подписи группы и его нижняя граница.
+  static const double labelFontBase = 9;
+  static const double labelFontMin = 6;
+
+  /// Кегль, при котором САМАЯ ДЛИННАЯ подпись укладывается в ширину блока
+  /// без разрыва слова — ОДИН на все группы экрана.
+  ///
+  /// ⚠️ ЗАЧЕМ СЧИТАТЬ, А НЕ ЗАДАТЬ ЧИСЛОМ. Я подбирал кегль на глаз дважды
+  /// (9, потом 8) и оба раза получал на снимке из VM «Мессендже/ры»: слово
+  /// не помещалось и рвалось по буквам. Ширина строки зависит от шрифта,
+  /// языка и системных настроек — угадать её нельзя, а измерить можно.
+  ///
+  /// ⚠️ И кегль ОБЩИЙ намеренно. Сжимать каждую подпись отдельно
+  /// (`FittedBox` на каждой) уже пробовали: «Мессенджеры» выходили мелкими,
+  /// «ИИ» крупными, столбики значков вставали на разной высоте — жалоба
+  /// владельца «а хули они у тебя вразброс».
+  static double labelFontFor(List<GroupedRow> rows, AppLocalizations l,
+      {required bool dense}) {
+    final width = labelWidthFor(dense);
+    var worst = 0.0;
+    for (final r in rows) {
+      // Меряем самое длинное СЛОВО, а не всю подпись: несколько слов
+      // переносятся по пробелам («Видео и» / «музыка»), и уменьшать кегль
+      // ради них не нужно.
+      for (final word in r.group.label(l).split(' ')) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: word,
+            style: const TextStyle(fontSize: labelFontBase, height: 1.15),
+          ),
+          textDirection: TextDirection.ltr,
+          maxLines: 1,
+        )..layout();
+        if (tp.width > worst) worst = tp.width;
+      }
+    }
+    if (worst <= 0 || worst <= width) return labelFontBase;
+    final fitted = labelFontBase * width / worst;
+    return fitted < labelFontMin ? labelFontMin : fitted;
+  }
 
   /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
   /// правильнее показать привычные ряды под кнопкой, чем ужимать до предела.
@@ -844,6 +890,8 @@ class _SideColumn extends StatelessWidget {
     if (rows.isEmpty) return const SizedBox.shrink();
     final l = AppLocalizations.of(context);
     final ctrl = context.watch<ServiceCheckController>();
+    final labelFont =
+        ServiceChecksSides.labelFontFor(rows, l, dense: dense);
     final live = httpPort > 0;
     // Настройки — необязательно, см. `ServiceChecksRows`.
     final split = context.watch<SettingsController?>()?.settings.splitTunnel;
@@ -911,6 +959,7 @@ class _SideColumn extends StatelessWidget {
                 group: row.group,
                 label: row.group.label(l),
                 maxWidth: ServiceChecksSides.labelWidthFor(dense),
+                fontSize: labelFont,
               ),
               const SizedBox(height: 4),
               for (final s in row.services)
@@ -1021,6 +1070,7 @@ class _SideGroupLabel extends StatelessWidget {
     required this.group,
     required this.label,
     required this.maxWidth,
+    required this.fontSize,
   });
 
   final ServiceGroup group;
@@ -1038,6 +1088,14 @@ class _SideGroupLabel extends StatelessWidget {
   /// 35 px ширины на каждый блок, то есть примерно полтора размера значка.
   final double maxWidth;
 
+  /// Высота области подписи — ровно две строки шрифтом 9 с интерлиньяжем
+  /// 1.15. Фиксирована намеренно: у всех групп она обязана быть одинаковой,
+  /// иначе столбики значков под подписями встают на разной высоте.
+  /// Кегль, общий на все группы экрана (см. `labelFontFor`).
+  final double fontSize;
+
+  static const double labelHeight = 22;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -1047,35 +1105,47 @@ class _SideGroupLabel extends StatelessWidget {
       key: ValueKey('serviceGroup:${group.name}'),
       mainAxisSize: MainAxisSize.min,
       children: [
+        // ⚠️ ВЫСОТА ОБЛАСТИ ПОДПИСИ ОДНА У ВСЕХ ГРУПП — ЭТО И ДЕРЖИТ
+        // ЗНАЧКИ В ЛИНИЮ.
+        //
+        // Жалоба владельца 04.09.2026: «а хули они у тебя вразброс». Причина
+        // была не в кегле, а в РАЗНОЙ ВЫСОТЕ подписей: однословная занимала
+        // строку, двухсловная — две, и столбик значков под ней уезжал вниз.
+        // Теперь область фиксирована [labelHeight], и сколько бы строк ни
+        // заняла подпись, значки начинаются с одной высоты.
+        //
+        // ⚠️ КЕГЛЬ ПОДБИРАЕТ САМ `FittedBox`, И ЭТО ПОСЛЕ ДВУХ НЕУДАЧ.
+        // Задавать его числом я пробовал дважды (9, потом 8) — оба раза на
+        // снимке из VM выходило «Мессендже/ры»: слово не влезало и рвалось по
+        // буквам. Вычислять кегль `TextPainter`-ом тоже не помогло: меряется
+        // один стиль, а рисуется другой (тема добавляет своё), и расхождения
+        // хватает, чтобы слово не поместилось. `FittedBox` меряет то самое,
+        // что рисует.
+        //
+        // Многословные названия переносятся ПО СЛОВАМ («Видео и» / «музыка» —
+        // как просил владелец), однословные ужимаются в строку целиком.
         SizedBox(
           width: maxWidth,
-          // ⚠️ ДВА СЛОЯ, И КАЖДЫЙ РЕШАЕТ СВОЮ ЗАДАЧУ. Внутренняя ширина
-          // ДВОЙНАЯ — она должна быть не меньше самого длинного СЛОВА, иначе
-          // Flutter рвёт слово по буквам: при ширине в одну ячейку выходило
-          // «Мессен/джеры», при полуторной — «Мессенджер/ы» (оба случая
-          // видел на снимках из VM). При двойной длинные названия
-          // укладываются в строку целиком, а «Видео и музыка» переносится ПО
-          // СЛОВАМ. Внешний `FittedBox` затем
-          // ужимает готовые строки до ширины блока, поэтому блок не
-          // раздувается, а текст остаётся ЦЕЛЫМ — требование владельца
-          // «текст не обрезай».
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: ConstrainedBox(
-              constraints: BoxConstraints(maxWidth: maxWidth * 2.0),
-              child: Text(
-                label,
-            // ⚠️ По центру и в две строки. `FittedBox`, стоявший здесь раньше,
-            // сжимал подпись ВИЗУАЛЬНО, но её собственная ширина оставалась
-            // полной — и блок всё равно раздувался под неё.
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                softWrap: true,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      letterSpacing: 0.2,
-                      height: 1.1,
-                    ),
+          height: labelHeight,
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: label.contains(' ') ? maxWidth : double.infinity,
+                ),
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: label.contains(' ') ? 2 : 1,
+                  softWrap: label.contains(' '),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        fontSize: fontSize,
+                        height: 1.15,
+                        letterSpacing: 0.1,
+                      ),
+                ),
               ),
             ),
           ),
@@ -1432,6 +1502,13 @@ class _MenuCheckRow extends StatelessWidget {
 }
 
 /// Пара «до / после» для одного сервиса.
+/// Постоянная ширина ячейки сервиса на масштабе 1.0.
+///
+/// Значок 26 + обводка 2×2 + внутренний отступ 2×2 = 34, плюс 14 под стрелку
+/// перехода. Резерв держится ВСЕГДА: без него включение VPN расширяло каждую
+/// ячейку, блоки разъезжались и масштаб пересчитывался — экран дёргался.
+const double cellWidth = 48;
+
 class _ServicePair extends StatelessWidget {
   const _ServicePair({
     // Ключ по имени сервиса ставят оба места вызова — см. комментарии там:
@@ -1495,7 +1572,7 @@ class _ServicePair extends StatelessWidget {
     final live0 = live && before.state != ServiceCheckState.idle;
     final arrow = live0
         ? Padding(
-            padding: const EdgeInsets.only(right: 3),
+            padding: const EdgeInsets.only(left: 3),
             child: Text('→',
                 style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       color: statusColor(context, before),
@@ -1505,39 +1582,65 @@ class _ServicePair extends StatelessWidget {
         : null;
 
     final rule = bypass;
+    // ⚠️ МЕСТО ПОД СТРЕЛКУ ЗАРЕЗЕРВИРОВАНО ВСЕГДА, ДАЖЕ КОГДА VPN ВЫКЛЮЧЕН.
+    //
+    // Владелец 04.09.2026: «если включить VPN, всё съедет — правильно понял?»
+    // Правильно: стрелка появляется только на живом канале, и без резерва
+    // каждая ячейка в этот момент становилась шире, блоки разъезжались, а
+    // масштаб всего блока пересчитывался — экран дёргался на ровном месте.
+    //
+    // Ширина ячейки постоянна: значок с обводкой плюс место под стрелку.
+    // При выключенном VPN это место пустое, и значок стоит ПО ЦЕНТРУ ячейки
+    // (тоже требование владельца) — пустой отступ сбоку читался бы как
+    // кривая вёрстка. При включении стрелка занимает своё место, а значок
+    // сдвигается внутри ячейки; соседи не двигаются вовсе.
     final items = <Widget>[
-      if (arrow != null) arrow,
       // Обводка = состояние ПОСЛЕ (при выключенном VPN — единственный замер).
-      DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: statusColor(context, live ? after : before),
-            width: 2,
+      Stack(
+        clipBehavior: Clip.none,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: statusColor(context, live ? after : before),
+                width: 2,
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(2),
+              child:
+                  SiteFavicon(domain: service.domain, size: 26, builtIn: true),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: SiteFavicon(domain: service.domain, size: 26, builtIn: true),
-        ),
+          // ⚠️ Пометка правила — НАКЛАДКОЙ НА ЗНАЧОК, а не строкой рядом.
+          // Рядом она отнимала бы ширину у ячейки, а ширина здесь —
+          // единственное, что ограничивает размер значков. Смысл прежний:
+          // перечёркнутый замок читается как «этот сервис вне защиты»,
+          // знак запрета — как «сюда вообще нельзя».
+          if (bypass != null)
+            Positioned(
+              left: -3,
+              top: -3,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  bypass!.action == AppAction.block
+                      ? Icons.block
+                      : Icons.lock_open_rounded,
+                  size: 12,
+                  color: bypass!.action == AppAction.block
+                      ? const Color(0xFFCC7777)
+                      : Colors.orange,
+                ),
+              ),
+            ),
+        ],
       ),
-      // Значок стоит ВПЛОТНУЮ к бренд-иконке, а не с краю строки: так он
-      // читается как пометка НА СЕРВИСЕ, а не как ещё один кружок состояния
-      // рядом с парой «до → после».
-      if (rule != null) ...[
-        const SizedBox(width: 2),
-        Icon(
-          // Перечёркнутый замок читается как «этот сервис вне защиты», знак
-          // запрета — как «сюда вообще нельзя». Разные вещи, разные значки.
-          rule.action == AppAction.block
-              ? Icons.block
-              : Icons.lock_open_rounded,
-          size: 14,
-          color: rule.action == AppAction.block
-              ? const Color(0xFFCC7777)
-              : Colors.orange,
-        ),
-      ],
+      if (arrow != null) arrow,
     ];
     return Tooltip(
       message: _tip(l, rule),
@@ -1559,21 +1662,33 @@ class _ServicePair extends StatelessWidget {
             alignment: alignEnd
                 ? AlignmentDirectional.centerEnd
                 : AlignmentDirectional.centerStart,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ КОЛОНКАХ, ЗЕРКАЛЕНИЯ БОЛЬШЕ НЕТ.
-              //
-              // Левая колонка раньше разворачивала строку (`items.reversed`),
-              // чтобы кружки смотрели на кнопку. Выходило, что бренд-иконки у
-              // левой половины сервисов стоят справа, у правой — слева, и глазу
-              // не за что зацепиться: чтобы найти нужный сервис, приходилось
-              // читать обе колонки по-разному. Требование владельца 18.08.2026 —
-              // «помести картинки сервисов у левой панели налево».
-              //
-              // Выравнивание БЛОКА (`alignment` выше) при этом осталось
-              // зеркальным: колонки по-прежнему прижаты к кнопке, разъезжается
-              // только внутренний порядок.
-              children: items,
+            child: SizedBox(
+              // Постоянная ширина: значок с обводкой (34) плюс место под
+              // стрелку (14). Пусто при выключенном VPN, занято при
+              // включённом — но ячейка одна и та же, поэтому раскладка
+              // при подключении не дёргается.
+              width: cellWidth,
+              child: Row(
+                // Значок по центру, пока стрелки нет; со стрелкой — от
+                // начала, чтобы она встала в отведённое ей место.
+                mainAxisAlignment: arrow == null
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ КОЛОНКАХ, ЗЕРКАЛЕНИЯ БОЛЬШЕ НЕТ.
+                //
+                // Левая колонка раньше разворачивала строку (`items.reversed`),
+                // чтобы кружки смотрели на кнопку. Выходило, что бренд-иконки у
+                // левой половины сервисов стоят справа, у правой — слева, и глазу
+                // не за что зацепиться: чтобы найти нужный сервис, приходилось
+                // читать обе колонки по-разному. Требование владельца 18.08.2026 —
+                // «помести картинки сервисов у левой панели налево».
+                //
+                // Выравнивание БЛОКА (`alignment` выше) при этом осталось
+                // зеркальным: колонки по-прежнему прижаты к кнопке, разъезжается
+                // только внутренний порядок.
+                children: items,
+              ),
             ),
           ),
         ),
