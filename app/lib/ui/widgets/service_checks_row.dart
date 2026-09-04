@@ -548,6 +548,14 @@ class ServiceChecksSides extends StatelessWidget {
   /// читаемости, не целостности.
   static const double _minReadableScale = 0.62;
 
+  /// Во сколько раз блоку позволено вырасти сверх натурального размера.
+  ///
+  /// ⚠️ Требование владельца (05.09.2026): «пропорционально оставшемуся
+  /// месту, но до определённого размера». Без потолка на широком мониторе
+  /// значки раздувались бы вместе с окном — экран превратился бы в набор
+  /// гигантских кружков вокруг кнопки.
+  static const double _maxGrow = 1.6;
+
   @override
   Widget build(BuildContext context) {
     final rows = ServiceChecks.grouped(services);
@@ -588,7 +596,6 @@ class ServiceChecksSides extends StatelessWidget {
       // появились, подписи ужались, а значки не подросли ни на пиксель.
       final left = _SideColumn(
         perRow: perRow,
-        padTo: perRow,
         rows: split.left,
         httpPort: httpPort,
         dense: dense,
@@ -596,7 +603,6 @@ class ServiceChecksSides extends StatelessWidget {
       );
       final right = _SideColumn(
         perRow: perRow,
-        padTo: perRow,
         rows: split.right,
         httpPort: httpPort,
         dense: dense,
@@ -641,47 +647,60 @@ class ServiceChecksSides extends StatelessWidget {
                   sideHeightOf(split.right, dense: dense, perRow: perRow)),
             );
 
+      // ⚠️ МАСШТАБ ОДИН НА ОБЕ СТОРОНЫ.
+      //
+      // Раньше каждая сторона вписывалась в свою половину своим `FittedBox`.
+      // Половины равны, а блоков в них разное число (пять групп делятся как
+      // 2 и 3), поэтому три блока ужимались сильнее двух: на снимке из VM
+      // правая половина значков выходила заметно мельче левой, хотя стоят
+      // они в одной строке.
+      //
+      // Теперь коэффициент считается по ХУДШЕЙ стороне и применяется к обеим:
+      // сторона с меньшим числом блоков просто не занимает свою половину
+      // целиком, и пустое место остаётся у дальнего от кнопки края.
+      final roomPerSide = (c.maxWidth - _naturalButton - _gap * 2) / 2;
+      final wL = sideWidthOf(split.left, dense: dense, perRow: perRow);
+      final wR = sideWidthOf(split.right, dense: dense, perRow: perRow);
+      final hL = sideHeightOf(split.left, dense: dense, perRow: perRow);
+      final hR = sideHeightOf(split.right, dense: dense, perRow: perRow);
+      final widest = math.max(wL, wR);
+      final tallest = math.max(hL, hR);
+      var k = _maxGrow;
+      if (widest > 0) k = math.min(k, roomPerSide / widest);
+      if (tallest > 0 && c.hasBoundedHeight) {
+        k = math.min(k, c.maxHeight / tallest);
+      }
+      if (k <= 0 || !k.isFinite) k = 1.0;
+
+      // ⚠️ `SizedBox` с ЯВНЫМ размером обязателен: `FittedBox` растягивает
+      // содержимое, только когда ему самому задан размер. Со свободными
+      // ограничениями он принимает размер ребёнка, и `BoxFit.contain` не
+      // делает ничего — блок остаётся натуральным посреди пустого места.
+      Widget scaled(Widget side, double w, double h, Alignment toButton) =>
+          Expanded(
+            child: Align(
+              // Прижим к кнопке: пустое место уходит к краю окна, а не в
+              // промежуток между блоками и кнопкой.
+              alignment: toButton,
+              child: SizedBox(
+                width: w * k,
+                height: h * k,
+                child: FittedBox(fit: BoxFit.contain, child: side),
+              ),
+            ),
+          );
+
       return SizedBox(
         height: boxHeight,
         child: Row(
           key: const ValueKey('serviceChecksSidesRow'),
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Прижим к кнопке: сторона занимает всю свою половину, но
-            // содержимое стоит у кнопки, а не у края окна — иначе на широком
-            // мониторе блоки разъезжались бы к рамкам.
-            // ⚠️ `SizedBox.expand` ОБЯЗАТЕЛЕН, ИНАЧЕ РОСТА НЕ БУДЕТ.
-            //
-            // `FittedBox` растягивает содержимое только когда ЕМУ САМОМУ
-            // задан размер. Со свободными ограничениями (а `Align` даёт
-            // именно такие) он принимает размер ребёнка, и `BoxFit.contain`
-            // не делает ничего: блок остаётся натуральным посреди пустого
-            // места. Ровно это и было видно на снимке 04.09.2026 — обводки
-            // появились, а значки не подросли ни на пиксель.
-            //
-            // Прижим к кнопке задаётся `alignment` самого `FittedBox`:
-            // содержимое стоит у кнопки, а не у края окна.
-            Expanded(
-              child: SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  alignment: Alignment.centerRight,
-                  child: left,
-                ),
-              ),
-            ),
+            scaled(left, wL, hL, Alignment.centerRight),
             const SizedBox(width: _gap),
             buttonBox,
             const SizedBox(width: _gap),
-            Expanded(
-              child: SizedBox.expand(
-                child: FittedBox(
-                  fit: BoxFit.contain,
-                  alignment: Alignment.centerLeft,
-                  child: right,
-                ),
-              ),
-            ),
+            scaled(right, wR, hR, Alignment.centerLeft),
           ],
         ),
       );
@@ -709,6 +728,14 @@ class ServiceChecksSides extends StatelessWidget {
   /// самый высокий блок. Отдельным помощником, потому что нужна и оценке
   /// размера, и расчёту роста в `build` — две копии этой формулы разошлись бы
   /// на первой же правке.
+  /// Ширина одной стороны при масштабе 1.0.
+  static double sideWidthOf(List<GroupedRow> rows,
+      {required bool dense, required int perRow}) {
+    if (rows.isEmpty) return 0;
+    final inRow = rows.length < perRow ? rows.length : perRow;
+    return labelWidthFor(dense) * inRow + _blockGap * (inRow - 1);
+  }
+
   static double sideHeightOf(List<GroupedRow> rows,
       {required bool dense, required int perRow}) {
     if (rows.isEmpty) return 0;
@@ -868,7 +895,6 @@ class ServiceChecksSides extends StatelessWidget {
 class _SideColumn extends StatelessWidget {
   const _SideColumn({
     required this.perRow,
-    this.padTo = 0,
     required this.rows,
     required this.httpPort,
     required this.dense,
@@ -881,17 +907,6 @@ class _SideColumn extends StatelessWidget {
   /// Сколько блоков в одном ряду — см. [ServiceChecksSides.blocksPerRowFor].
   final int perRow;
 
-  /// До скольких блоков дополнять сторону пустыми распорками.
-  ///
-  /// ⚠️ ЗАЧЕМ. Пять групп делятся между сторонами как 2 и 3, а вписывается
-  /// каждая сторона в место своим `FittedBox` — три блока ужимаются сильнее
-  /// двух. На снимке из VM 04.09.2026 это прямо видно: правая половина
-  /// значков заметно мельче левой, хотя стоят они в одной строке.
-  ///
-  /// Распорка уравнивает натуральную ширину сторон, поэтому масштаб у них
-  /// выходит один. Пустое место остаётся с дальнего от кнопки края — там,
-  /// где оно и должно быть.
-  final int padTo;
   final bool dense;
 
 
@@ -1001,10 +1016,6 @@ class _SideColumn extends StatelessWidget {
           ),
         ),
     ];
-
-    while (blocks.length < padTo) {
-      blocks.add(SizedBox(width: ServiceChecksSides.labelWidthFor(dense)));
-    }
 
     final gridRows = <List<Widget>>[];
     for (var i = 0; i < blocks.length; i += perRow) {
@@ -1523,11 +1534,11 @@ class _MenuCheckRow extends StatelessWidget {
 /// Пара «до / после» для одного сервиса.
 /// Постоянная ширина ячейки сервиса на масштабе 1.0.
 ///
-/// Пара «без VPN → через VPN»: маленький значок 18 (+обводка и отступ = 24),
-/// стрелка 8, основной значок 26 (+обводка и отступ = 32). Резерв держится
+/// Пара «без VPN → через VPN»: два значка по 26 (+обводка и отступ = 32
+/// каждый) и стрелка 8 между ними. Резерв держится
 /// ВСЕГДА: без него подключение расширяло бы каждую ячейку, блоки
 /// разъезжались и масштаб пересчитывался — экран дёргался на ровном месте.
-const double cellWidth = 64;
+const double cellWidth = 72;
 
 class _ServicePair extends StatelessWidget {
   const _ServicePair({
@@ -1613,12 +1624,14 @@ class _ServicePair extends StatelessWidget {
     // у каждого своя обводка. Первый нарочно меньше: он справочный, а
     // отвечает на вопрос «работает ли сейчас» именно второй.
     //
-    // ⚠️ ЦЕНА ЧЕСТНАЯ И ИЗМЕРЕНА. Пара занимает 64 px против 34 у одиночного
-    // значка, поэтому масштаб блока падает с 1,27 до 1,0 — основной значок
-    // остаётся 26 px, а не 33. Меньший «до» (18 вместо 26) выкуплен именно
-    // ради этого: при двух равных значках пара занимала бы 76 px и уронила
-    // размер до 22.
+    // ⚠️ ОБА ЗНАЧКА ОДНОГО РАЗМЕРА И ОБА С ОБВОДКОЙ — решение владельца
+    // (05.09.2026): «нужно знать, что было до включения». Первый значок
+    // сперва делали меньше, чтобы выгадать ширину, но так «до» читается как
+    // сноска, а не как равноправный замер, и цвет его обводки теряется.
     //
+    // ⚠️ ЦЕНА ИЗМЕРЕНА: пара равных занимает 72 px против 34 у одиночного
+    // значка, поэтому масштаб блока падает примерно до 0,9 — значок выходит
+    // около 23 px. Это осознанный размен: два состояния важнее размера.
     // ⚠️ Место под пару держится ВСЕГДА, даже когда VPN выключен: иначе
     // подключение расширяло бы каждую ячейку, блоки разъезжались, и экран
     // дёргался на ровном месте. Пока второго значка нет, первый стоит по
@@ -1666,7 +1679,7 @@ class _ServicePair extends StatelessWidget {
 
     final items = <Widget>[
       if (live0) ...[
-        iconBox(before, 18),
+        iconBox(before, 26),
         arrow!,
       ],
       iconBox(live ? after : before, 26, badge: true),
