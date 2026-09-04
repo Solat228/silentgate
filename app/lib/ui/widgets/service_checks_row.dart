@@ -491,7 +491,10 @@ class ServiceChecksSides extends StatelessWidget {
   /// 166 px и масштаб выходил 1,26; при 60 — 130 px и масштаб 1,6. Подпись
   /// при этом не теряется: она рисуется в том же увеличенном масштабе, то
   /// есть занимает около 96 настоящих пикселей.
-  static double labelWidthFor(bool dense) => dense ? 60.0 : 60.0;
+  /// Ширина ячейки сервиса на масштабе 1.0: стрелка перехода, отступ, значок
+  /// с обводкой. По ней же меряется подпись — блок не должен быть шире
+  /// своего содержимого.
+  static double labelWidthFor(bool dense) => dense ? 34.0 : 44.0;
 
   /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
   /// правильнее показать привычные ряды под кнопкой, чем ужимать до предела.
@@ -524,49 +527,32 @@ class ServiceChecksSides extends StatelessWidget {
         );
       }
 
-      // ⚠️ ОБЕ СТОРОНЫ ОДНОЙ ШИРИНЫ — ИНАЧЕ КНОПКА СЪЕЗЖАЕТ С ЦЕНТРА.
+      // ⚠️ ФИКСИРОВАННОЙ ШИРИНЫ У СТОРОНЫ БОЛЬШЕ НЕТ, И ЭТО НЕ ОТМЕНА
+      // ПРЕЖНЕЙ ПРАВКИ, А ЕЁ ЗАМЕНА.
       //
-      // Слева и справа разное число блоков и разной длины подписи, поэтому
-      // по содержимому стороны получаются неодинаковыми, и кнопка уезжает
-      // вбок ровно на половину разницы. Поймано `connect_button_content_test`
-      // (центр 131 вместо 160) — глазами такое замечают не сразу, а
-      // несимметричный экран выглядит сломанным.
+      // Раньше обе стороны зажимались в одинаковый `SizedBox`, чтобы кнопка
+      // не съезжала с центра (её сдвигало на половину разницы сторон). Теперь
+      // симметрию держат равные `Expanded` по бокам — по построению, а не по
+      // совпадению чисел.
       //
-      // Ширина считается по ЧИСЛУ БЛОКОВ В РЯДУ, общему для обеих сторон:
-      // зажать сторону в одну колонку (как было до сетки) значит получить
-      // переполнение вторым блоком.
-      //
-      // ⚠️ Сами блоки внутри остаются шириной ПО СОДЕРЖИМОМУ: `SizedBox`
-      // задаёт только габарит стороны. Иначе вернулась бы прежняя жалоба
-      // владельца — линия под подписью во всю ширину колонки независимо от
-      // того, сколько под ней иконок.
-      final inRow = dense
-          ? 1
-          : math.min(
-              math.max(split.left.length, split.right.length),
-              perRow);
-      final sideWidth =
-          _columnWidth(dense) * inRow + _blockGap * (inRow - 1);
-
-      final left = SizedBox(
-        width: sideWidth,
-        child: _SideColumn(
-          perRow: perRow,
-          rows: split.left,
-          httpPort: httpPort,
-          dense: dense,
-          alignEnd: true,
-        ),
+      // ⚠️ А ЗАЖИМАТЬ БЫЛО НЕЛЬЗЯ: ширина считалась по `_columnWidth` (108 на
+      // блок), то есть 344 px на три блока при настоящем содержимом в 152.
+      // `FittedBox` вписывал в место ЭТУ КОРОБКУ вместе с пустотой внутри —
+      // и вместо роста давал сжатие до 0,6. Снимок 04.09.2026: обводки
+      // появились, подписи ужались, а значки не подросли ни на пиксель.
+      final left = _SideColumn(
+        perRow: perRow,
+        rows: split.left,
+        httpPort: httpPort,
+        dense: dense,
+        alignEnd: true,
       );
-      final right = SizedBox(
-        width: sideWidth,
-        child: _SideColumn(
-          perRow: perRow,
-          rows: split.right,
-          httpPort: httpPort,
-          dense: dense,
-          alignEnd: false,
-        ),
+      final right = _SideColumn(
+        perRow: perRow,
+        rows: split.right,
+        httpPort: httpPort,
+        dense: dense,
+        alignEnd: false,
       );
       final buttonBox = SizedBox(
         width: _naturalButton,
@@ -616,19 +602,36 @@ class ServiceChecksSides extends StatelessWidget {
             // Прижим к кнопке: сторона занимает всю свою половину, но
             // содержимое стоит у кнопки, а не у края окна — иначе на широком
             // мониторе блоки разъезжались бы к рамкам.
+            // ⚠️ `SizedBox.expand` ОБЯЗАТЕЛЕН, ИНАЧЕ РОСТА НЕ БУДЕТ.
+            //
+            // `FittedBox` растягивает содержимое только когда ЕМУ САМОМУ
+            // задан размер. Со свободными ограничениями (а `Align` даёт
+            // именно такие) он принимает размер ребёнка, и `BoxFit.contain`
+            // не делает ничего: блок остаётся натуральным посреди пустого
+            // места. Ровно это и было видно на снимке 04.09.2026 — обводки
+            // появились, а значки не подросли ни на пиксель.
+            //
+            // Прижим к кнопке задаётся `alignment` самого `FittedBox`:
+            // содержимое стоит у кнопки, а не у края окна.
             Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FittedBox(fit: BoxFit.contain, child: left),
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerRight,
+                  child: left,
+                ),
               ),
             ),
             const SizedBox(width: _gap),
             buttonBox,
             const SizedBox(width: _gap),
             Expanded(
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: FittedBox(fit: BoxFit.contain, child: right),
+              child: SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                  child: right,
+                ),
               ),
             ),
           ],
@@ -1023,18 +1026,16 @@ class _SideGroupLabel extends StatelessWidget {
   final ServiceGroup group;
   final String label;
 
-  /// Потолок ширины подписи. Ставится по ширине колонки: подпись обязана
-  /// умещаться в блок, а не задавать его габарит.
+  /// Ширина, в которую подпись обязана уложиться.
   ///
-  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ. `FittedBox` сжимает подпись ВИЗУАЛЬНО, но собственная
-  /// ширина у неё остаётся полной, и `IntrinsicWidth` блока берёт именно её.
-  /// «Видео и музыка» шире колонки — блок раздувался, ряд блоков переполнялся
-  /// (поймано на ОДНОМ сервисе: `RenderFlex overflowed by 53 pixels`), а на
-  /// телефоне это отбирало место у самих значков.
+  /// ⚠️ ЭТО ГЛАВНЫЙ РЫЧАГ РАЗМЕРА ЗНАЧКОВ, и он совершенно неочевиден. Ширину
+  /// блока задаёт самый широкий его элемент, а это ПОДПИСЬ: «Видео и музыка»
+  /// в одну строку занимает около 78 px против 41 у самой ячейки. Пока подпись
+  /// шире содержимого, увеличивать значки бесполезно — сторона упирается в неё.
   ///
-  /// Решение владельца (04.09.2026): полные слова и отдельное сжатие подписи, а
-  /// не словарь сокращений — его пришлось бы вести на десяти языках, включая
-  /// турецкий и фарси.
+  /// Поэтому подпись переносится на ВТОРУЮ СТРОКУ, а не обрезается: требование
+  /// владельца — «текст не обрезай». Перенос стоит ~14 px высоты, а даёт около
+  /// 35 px ширины на каждый блок, то есть примерно полтора размера значка.
   final double maxWidth;
 
   @override
@@ -1046,27 +1047,46 @@ class _SideGroupLabel extends StatelessWidget {
       key: ValueKey('serviceGroup:${group.name}'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: maxWidth),
+        SizedBox(
+          width: maxWidth,
+          // ⚠️ ДВА СЛОЯ, И КАЖДЫЙ РЕШАЕТ СВОЮ ЗАДАЧУ. Внутренняя ширина
+          // ДВОЙНАЯ — она должна быть не меньше самого длинного СЛОВА, иначе
+          // Flutter рвёт слово по буквам: при ширине в одну ячейку выходило
+          // «Мессен/джеры», при полуторной — «Мессенджер/ы» (оба случая
+          // видел на снимках из VM). При двойной длинные названия
+          // укладываются в строку целиком, а «Видео и музыка» переносится ПО
+          // СЛОВАМ. Внешний `FittedBox` затем
+          // ужимает готовые строки до ширины блока, поэтому блок не
+          // раздувается, а текст остаётся ЦЕЛЫМ — требование владельца
+          // «текст не обрезай».
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    letterSpacing: 0.5,
-                  ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: maxWidth * 2.0),
+              child: Text(
+                label,
+            // ⚠️ По центру и в две строки. `FittedBox`, стоявший здесь раньше,
+            // сжимал подпись ВИЗУАЛЬНО, но её собственная ширина оставалась
+            // полной — и блок всё равно раздувался под неё.
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                softWrap: true,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      letterSpacing: 0.2,
+                      height: 1.1,
+                    ),
+              ),
             ),
           ),
         ),
         const SizedBox(height: 2),
-        const Divider(height: 1, thickness: 1),
+        SizedBox(width: maxWidth, child: const Divider(height: 1, thickness: 1)),
       ],
     );
   }
 }
+
 
 
 /// Кнопка подменю «что проверять при подключении» — рядом с самими проверками.
@@ -1459,25 +1479,48 @@ class _ServicePair extends StatelessWidget {
     // поменяются местами «до» и «после»: стрелка станет показывать в обратную
     // сторону, а подпись «слева — без VPN, справа — через VPN» превратится в
     // ложь ровно для половины сервисов.
-    final dots = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Пара «до → после» рисуется ТОЛЬКО когда есть что с чем сравнивать, то
-        // есть при живом VPN. Иначе один и тот же замер показывался дважды со
-        // стрелкой между ними — читалось как «проверено до и после», хотя
-        // подключения ещё не было.
-        if (live && before.state != ServiceCheckState.idle) ...[
-          _dot(context, before, dim: true),
-          const SizedBox(width: 4),
-          Text('→', style: Theme.of(context).textTheme.labelMedium),
-          const SizedBox(width: 4),
-        ],
-        _dot(context, live ? after : before, dim: false),
-      ],
-    );
+    // ⚠️ СОСТОЯНИЕ — ОБВОДКОЙ ЗНАЧКА, А НЕ КРУЖКОМ РЯДОМ. Решение владельца
+    // 04.09.2026 по разбору десяти раскладок в масштабе.
+    //
+    // Кружок рядом стоил дороже всего именно на ЖИВОМ канале: там к нему
+    // добавлялась пара «до → после» со стрелкой, и ячейка росла с 43 до 71 px.
+    // Из-за этого раскладка, крупная в покое, на подключённом VPN сжималась —
+    // то есть мельчала ровно тогда, когда на неё и смотрят. Обводка живёт НА
+    // значке и ширины не занимает вовсе, поэтому размер стал одинаковым в
+    // обоих состояниях.
+    //
+    // ⚠️ Стрелка ОСТАЁТСЯ (тоже требование владельца) и несёт вторую половину
+    // смысла: обводка показывает, как СТАЛО, а цвет стрелки — как БЫЛО. Без
+    // неё сравнение «до и после» пропало бы, а ради него проверки и делаются.
+    final live0 = live && before.state != ServiceCheckState.idle;
+    final arrow = live0
+        ? Padding(
+            padding: const EdgeInsets.only(right: 3),
+            child: Text('→',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: statusColor(context, before),
+                      fontWeight: FontWeight.w700,
+                    )),
+          )
+        : null;
+
     final rule = bypass;
     final items = <Widget>[
-      SiteFavicon(domain: service.domain, size: 26, builtIn: true),
+      if (arrow != null) arrow,
+      // Обводка = состояние ПОСЛЕ (при выключенном VPN — единственный замер).
+      DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: statusColor(context, live ? after : before),
+            width: 2,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(2),
+          child: SiteFavicon(domain: service.domain, size: 26, builtIn: true),
+        ),
+      ),
       // Значок стоит ВПЛОТНУЮ к бренд-иконке, а не с краю строки: так он
       // читается как пометка НА СЕРВИСЕ, а не как ещё один кружок состояния
       // рядом с парой «до → после».
@@ -1495,8 +1538,6 @@ class _ServicePair extends StatelessWidget {
               : Colors.orange,
         ),
       ],
-      const SizedBox(width: 8),
-      dots,
     ];
     return Tooltip(
       message: _tip(l, rule),
@@ -1648,26 +1689,15 @@ class _ServicePair extends StatelessWidget {
         ServiceCheckState.idle => l.serviceStatusTap,
       };
 
-  Widget _dot(BuildContext context, ServiceCheckOutcome o, {required bool dim}) {
-    if (o.state == ServiceCheckState.checking) {
-      return const SizedBox(
-          width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
-    }
-    final color = switch (o.state) {
-      ServiceCheckState.ok => Colors.green,
-      ServiceCheckState.geoBlocked => Colors.orange,
-      ServiceCheckState.fail => const Color(0xFFCC7777),
-      _ => Theme.of(context).disabledColor,
-    };
-    return Container(
-      width: 16,
-      height: 16,
-      decoration: BoxDecoration(
-        color: dim ? color.withValues(alpha: 0.45) : color,
-        shape: BoxShape.circle,
-      ),
-    );
-  }
+  /// Цвет состояния. Вынесен из [_dot], потому что теперь им красится не
+  /// только кружок, но и обводка значка со стрелкой перехода.
+  static Color statusColor(BuildContext context, ServiceCheckOutcome o) =>
+      switch (o.state) {
+        ServiceCheckState.ok => Colors.green,
+        ServiceCheckState.geoBlocked => Colors.orange,
+        ServiceCheckState.fail => const Color(0xFFCC7777),
+        _ => Theme.of(context).disabledColor,
+      };
 }
 
 /// Печатает НАСТОЯЩИЕ размеры, по одному разу на изменение.
