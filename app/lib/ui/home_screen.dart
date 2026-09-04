@@ -322,13 +322,18 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
 /// «Автонастройка» легла поверх кнопки Connect. Потолок и доля остатка — разные
 /// вещи: здесь нужен именно потолок.
 ///
-/// [reserveBelow] измерен на настоящем окне (снимки `case06`/`case14` из VM,
-/// 980×800): строка статуса ~24, «Информация о сервере» ~40, две кнопки ~88,
-/// счётчики ~48, отступы ~10.
+/// [reserveBelow] измерен на настоящем окне (снимки из VM, 980×800): строка
+/// статуса ~24, «Информация о сервере» ~40, две кнопки ~88, отступы ~10.
+///
+/// ⚠️ БЫЛО 210 ДО 04.09.2026. Подпись «Доступность сервисов проверена без
+/// VPN» переехала НАВЕРХ, над блоком (требование владельца), и её строка
+/// из резерва ушла. Оставить прежнее число значило бы держать под блоком
+/// место под то, чего там больше нет, — а блок ровно на это место и не
+/// дорастал.
 @visibleForTesting
 double checksHeightBudget({
   required double paneHeight,
-  double reserveBelow = 210,
+  double reserveBelow = 214,
 }) {
   if (!paneHeight.isFinite || paneHeight <= 0) return double.infinity;
   final left = paneHeight - reserveBelow;
@@ -1041,32 +1046,12 @@ class _ConnectPane extends StatelessWidget {
                   if (!compact) const Spacer(),
                 // Плашка активного сервера, кнопка и колонки проверок — одним
                 // виджетом: ровно то, что проверяет страж вёрстки.
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                      maxHeight:
-                          checksHeightBudget(paneHeight: paneBox.maxHeight)),
-                  child: ConnectCenterpiece(
-                    serverName: activeServerName(
-                      connected: status.isConnected,
-                      connectedKey: state.connectedServerKey,
-                      servers: state.servers,
-                      autoLabel: l.homeAutoBest,
-                    ),
-                    httpPort: status.isConnected ? state.httpProxyPort : 0,
-                    services: checks,
-                    layout: settings.serviceChecksLayout,
-                    // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
-                    // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
-                    // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
-                    // размер, от которого считается их коэффициент, должен
-                    // совпадать с тем, что здесь реально нарисовано.
-                    button: ConnectButton(
-                        status: status,
-                        diameter: context.sg.isShort ? 116 : 148,
-                        onTap: () => connectWithConflictCheck(context, state,
-                            () => state.toggleConnection(settings))),
-                  ),
-                ),
+                // ⚠️ ПОДПИСЬ СТОИТ НАД БЛОКОМ, А НЕ ПОД НИМ — требование
+                // владельца (04.09.2026): «перенеси наверх, выиграешь ещё
+                // немного места». Внизу она отбирала строку у того, ради
+                // чего экран и существует: кнопки, «Информации о сервере»
+                // и счётчиков. Наверху она объясняет две точки у значка
+                // ДО того, как человек их увидит, а не после.
                 // Без подписи два кружка у каждого значка — ребус. Говорим
                 // прямо, что слева замер без VPN, справа — через VPN, и что
                 // оба снимаются сами.
@@ -1096,6 +1081,33 @@ class _ConnectPane extends StatelessWidget {
                     // включить их больше неоткуда.
                     const ServiceChecksMenuButton(),
                   ],
+                ),
+                const SizedBox(height: 4),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                      maxHeight:
+                          checksHeightBudget(paneHeight: paneBox.maxHeight)),
+                  child: ConnectCenterpiece(
+                    serverName: activeServerName(
+                      connected: status.isConnected,
+                      connectedKey: state.connectedServerKey,
+                      servers: state.servers,
+                      autoLabel: l.homeAutoBest,
+                    ),
+                    httpPort: status.isConnected ? state.httpProxyPort : 0,
+                    services: checks,
+                    layout: settings.serviceChecksLayout,
+                    // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
+                    // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
+                    // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
+                    // размер, от которого считается их коэффициент, должен
+                    // совпадать с тем, что здесь реально нарисовано.
+                    button: ConnectButton(
+                        status: status,
+                        diameter: context.sg.isShort ? 116 : 148,
+                        onTap: () => connectWithConflictCheck(context, state,
+                            () => state.toggleConnection(settings))),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 Text(vpnStatusLabel(l, status.state),

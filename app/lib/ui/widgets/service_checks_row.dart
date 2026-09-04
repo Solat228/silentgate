@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/platform/app_log.dart';
 import '../../core/probe/auto_config_engine.dart';
 import '../../core/probe/service_check.dart';
 import '../../core/settings/app_settings.dart';
@@ -451,28 +452,46 @@ class ServiceChecksSides extends StatelessWidget {
   /// читается как сетка, только когда её просветы одинаковы.
   static const double _blockGap = 10.0;
 
-  /// Доля ЛИШНЕЙ ширины (сверх натурального размера всего блока), уходящая в
-  /// зазор у кнопки, когда места хватает с избытком — на каждую сторону.
-  ///
-  /// ⚠️ НЕ БОЛЬШЕ 0.5. [build] опирается на то, что `2 * доп.зазор` не
-  /// превышает всю лишнюю ширину — иначе блок стал бы шире окна. Само число —
-  /// вопрос вкуса (насколько заметно раздвигаются колонки на широком окне), не
-  /// целостности: целостность держит `min` с [_gapExtraCap] и с половиной
-  /// остатка одновременно.
-  static const double _gapExtraShare = 0.4;
-
-  /// Потолок ДОБАВКИ к [_gap] на сторону. Без потолка на сверхшироком мониторе
-  /// зазор рос бы неограниченно вместе с окном — та же жалоба «огромная
-  /// пустота», только перенесённая из полей у краёв в промежуток у кнопки.
-  static const double _gapExtraCap = 160.0;
-
   /// Ширина одной колонки на масштабе 1.0. Разная для `sides` (нужно место под
   /// пару «до → после») и `grid` (только иконка с кружком статуса).
+  /// Сколько блоков-групп ложится в один ряд с одной стороны от кнопки.
+  ///
+  /// Два — решение владельца: «слева и справа по 2 столбца, в высоту 3».
+  ///
+  /// ⚠️ ТРИ В РЯД СНАЧАЛА СДЕЛАЛИ ХУЖЕ, И ВОТ ПОЧЕМУ ЭТО НЕ ОТМЕНА ПРАВКИ.
+  /// При потолке подписи 108 блок занимал 78 px, три блока — 254 при
+  /// доступных 209, и сторона сжималась до 0,82: значки становились МЕЛЬЧЕ.
+  /// После ужатия подписи до 60 блок стал 60 px, три блока — 200, и они
+  /// помещаются. А главное — при пяти группах два в ряд дают ОДИН ряд слева
+  /// и ДВА справа (замер: высоты сторон 138 и 276), то есть правая сторона
+  /// сжимается вдвое сильнее левой, и это видно на глаз. Три в ряд кладут
+  /// обе стороны в один ряд — высоты равны, масштаб общий.
+  ///
+  /// На тесном экране остаётся два: там 209 px на сторону нет вовсе.
+  ///
+  /// Параметром, а не константой, оставлено намеренно: число меряется от
+  /// ширины, и если раскладка изменится, менять придётся ОДНО место.
+  static int blocksPerRowFor(double paneWidth) => paneWidth >= 520 ? 3 : 2;
+
   static double _columnWidth(bool dense) => dense ? 84.0 : 108.0;
 
   /// Та же ширина, доступная подписи группы: она обязана считаться ОДНИМ
   /// числом с шириной стороны, иначе подпись снова начнёт раздувать блок.
   static double columnWidthFor(bool dense) => _columnWidth(dense);
+
+  /// Потолок ширины ПОДПИСИ группы — заметно уже колонки.
+  ///
+  /// ⚠️ ЭТО ГЛАВНЫЙ РЫЧАГ РАЗМЕРА ЗНАЧКОВ, и он неочевиден. Ширину блока
+  /// задаёт самый широкий его элемент, а это ПОДПИСЬ: «Видео и музыка»
+  /// занимает около 78 px против 43 у самой ячейки. Чем шире подпись, тем
+  /// шире сторона и тем сильнее `BoxFit.contain` жмёт ВЕСЬ блок — значки в
+  /// том числе.
+  ///
+  /// Замер на живом окне (04.09.2026): при потолке 108 сторона занимала
+  /// 166 px и масштаб выходил 1,26; при 60 — 130 px и масштаб 1,6. Подпись
+  /// при этом не теряется: она рисуется в том же увеличенном масштабе, то
+  /// есть занимает около 96 настоящих пикселей.
+  static double labelWidthFor(bool dense) => dense ? 60.0 : 60.0;
 
   /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
   /// правильнее показать привычные ряды под кнопкой, чем ужимать до предела.
@@ -487,10 +506,11 @@ class ServiceChecksSides extends StatelessWidget {
     // остаётся: место у неё не отбираем.
     if (rows.isEmpty) return button;
 
-    final split = _splitColumns(rows, dense: dense);
-    final natural = _naturalSize(split, dense: dense);
 
     return LayoutBuilder(builder: (context, c) {
+      final perRow = blocksPerRowFor(c.maxWidth);
+      final split = _splitColumns(rows, dense: dense, perRow: perRow);
+      final natural = _naturalSize(split, dense: dense, perRow: perRow);
       final scale = _estimateScale(c, natural);
       if (scale < _minReadableScale) {
         // Места категорически мало — те же ряды, что и на узком телефоне,
@@ -524,13 +544,14 @@ class ServiceChecksSides extends StatelessWidget {
           ? 1
           : math.min(
               math.max(split.left.length, split.right.length),
-              _SideColumn.blocksPerRow);
+              perRow);
       final sideWidth =
           _columnWidth(dense) * inRow + _blockGap * (inRow - 1);
 
       final left = SizedBox(
         width: sideWidth,
         child: _SideColumn(
+          perRow: perRow,
           rows: split.left,
           httpPort: httpPort,
           dense: dense,
@@ -540,6 +561,7 @@ class ServiceChecksSides extends StatelessWidget {
       final right = SizedBox(
         width: sideWidth,
         child: _SideColumn(
+          perRow: perRow,
           rows: split.right,
           httpPort: httpPort,
           dense: dense,
@@ -552,74 +574,63 @@ class ServiceChecksSides extends StatelessWidget {
         child: Center(child: button),
       );
 
-      // `_estimateScale` капает результат единицей — `scale >= 1.0` значит
-      // «>= 1.0 ровно», то есть натуральный размер блока УЖЕ помещается по
-      // обеим осям и сжимать нечего.
-      if (scale >= 1.0) {
-        // ⚠️ ЗДЕСЬ И ЖИЛ БАГ «ОГРОМНЫЕ ПУСТОТЫ» — см. предысторию в шапке
-        // класса. Раньше в этом случае весь блок (колонки + кнопка) рисовался
-        // 1:1 и центрировался ОДНИМ куском, а вся лишняя ширина окна уходила в
-        // поля СНАРУЖИ блока, не доставаясь содержимому вовсе. Здесь вместо
-        // этого часть лишней ширины уходит в зазор у кнопки — колонки и кнопка
-        // остаются на своём читаемом размере (раздувать иконки до нелепого
-        // было бы хуже, чем оставить их как есть), но сам блок ощутимо шире
-        // прежнего острова и гораздо ближе к центру внимания на экране.
-        final leftover = c.maxWidth - natural.width;
-        final extraGap = leftover <= 0
-            ? 0.0
-            : math.min(leftover / 2 * _gapExtraShare, _gapExtraCap);
-        final gap = _gap + extraGap;
-        // ⚠️ `FittedBox` НУЖЕН И ЗДЕСЬ, ХОТЯ ОЦЕНКА СКАЗАЛА «ВЛЕЗАЮ».
-        //
-        // `_estimateScale` считает по формуле, а формула отстаёт от вёрстки
-        // при каждой её правке: с переходом на сетку блоков она снова
-        // разошлась с фактом, и ряд переполнился на 112 px при панели 520
-        // (поймано `service_checks_sides_width_test`). Соседняя ветка про это
-        // прямо и говорит: `RenderFittedBox` физически не рисует ребёнка
-        // крупнее выделенного места, и переполнение становится структурно
-        // невозможным. Здесь этой защиты не было — правильность зависела от
-        // ТОЧНОСТИ оценки, а оценка на то и оценка.
-        //
-        // ⚠️ Пустот это не возвращает: `scaleDown` не делает ничего, когда
-        // содержимое влезает, а лишняя ширина по-прежнему уходит в зазор —
-        // он посчитан ВЫШЕ.
-        return FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-          // Ключ — только чтобы страж вёрстки мог измерить фактическую
-          // ширину блока напрямую (`_SideColumn` приватен и типом из теста не
-          // достать); на поведение не влияет.
-            key: const ValueKey('serviceChecksSidesRow'),
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              left,
-              SizedBox(width: gap),
-              buttonBox,
-              SizedBox(width: gap),
-              right,
-            ],
-          ),
-        );
-      }
+      // ⚠️ ОЦЕНКОЙ РАЗМЕР БОЛЬШЕ НЕ РЕШАЕТСЯ — ТОЛЬКО ФАКТОМ.
+      //
+      // Жалоба владельца 04.09.2026 со снимком, где свободное место обведено
+      // красным: «есть же место, почему не используешь». Причина оказалась не
+      // в потолке роста, а в самой оценке: `_columnWidth` отводит блоку 108 px
+      // сверху, а настоящий блок занимает около 45 (иконка, отступ, точка).
+      // Формула считала, что места НЕ ХВАТАЕТ, когда его было вдвое больше
+      // нужного — и блок жался посреди пустого окна.
+      //
+      // Подпирать оценку бесполезно: она приблизительная по построению и
+      // расходится с вёрсткой при каждой её правке (в этом файле так было уже
+      // трижды). Поэтому сторонам отдаётся ВСЁ свободное место, а вписывает в
+      // него содержимое `FittedBox` — он меряет ребёнка по-настоящему и
+      // находит наибольший масштаб, при котором тот влезает. Это и есть
+      // «жать или растить, пока не влезет», без единого предположения о
+      // размерах.
+      //
+      // ⚠️ «БЕЗ ФАНАТИЗМА» обеспечивает ВЫСОТА: `BoxFit.contain` вписывает по
+      // МЕНЬШЕЙ из осей, а высота ограничена потолком, который панель выдаёт
+      // блоку. На широком мониторе рост упрётся в неё и остановится, а не
+      // раздует значки вместе с окном.
+      //
+      // ⚠️ Кнопку не растим: её размер задаёт панель, он одинаков во всех
+      // раскладках, и это стережёт `connect_button_content_test`.
+      _logSides(c, split, dense: dense, perRow: perRow);
+      final boxHeight = c.hasBoundedHeight
+          ? c.maxHeight
+          : math.max(
+              _naturalButton,
+              math.max(sideHeightOf(split.left, dense: dense, perRow: perRow),
+                  sideHeightOf(split.right, dense: dense, perRow: perRow)),
+            );
 
-      // Мало места хотя бы по одной оси (но выше порога читаемости) — прежний
-      // проверенный способ: единый `FittedBox` сжимает весь блок (колонки И
-      // кнопку) ОДНИМ множителем. `RenderFittedBox` физически не отрисует
-      // ребёнка крупнее выделенного места, поэтому переполнение здесь
-      // структурно невозможно — этот путь НЕ менялся 29.08.2026 ровно поэтому.
-      return FittedBox(
-        fit: BoxFit.scaleDown,
+      return SizedBox(
+        height: boxHeight,
         child: Row(
           key: const ValueKey('serviceChecksSidesRow'),
-          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            left,
+            // Прижим к кнопке: сторона занимает всю свою половину, но
+            // содержимое стоит у кнопки, а не у края окна — иначе на широком
+            // мониторе блоки разъезжались бы к рамкам.
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FittedBox(fit: BoxFit.contain, child: left),
+              ),
+            ),
             const SizedBox(width: _gap),
             buttonBox,
             const SizedBox(width: _gap),
-            right,
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: FittedBox(fit: BoxFit.contain, child: right),
+              ),
+            ),
           ],
         ),
       );
@@ -643,8 +654,38 @@ class ServiceChecksSides extends StatelessWidget {
   }
 
   /// Требуемый размер блока (обе колонки + кнопка) на масштабе 1.0.
+  /// Высота одной стороны при сетке блоков: сумма РЯДОВ, а в ряду берётся
+  /// самый высокий блок. Отдельным помощником, потому что нужна и оценке
+  /// размера, и расчёту роста в `build` — две копии этой формулы разошлись бы
+  /// на первой же правке.
+  static double sideHeightOf(List<GroupedRow> rows,
+      {required bool dense, required int perRow}) {
+    if (rows.isEmpty) return 0;
+    double blockHeight(GroupedRow r) => dense
+        ? (r.services.length / 2).ceil() * 40.0
+        : 26.0 + r.services.length * 34.0;
+    if (dense) {
+      var h = 0.0;
+      for (final r in rows) {
+        h += blockHeight(r) + 6;
+      }
+      return h;
+    }
+    var h = 0.0;
+    for (var i = 0; i < rows.length; i += perRow) {
+      var tallest = 0.0;
+      for (var k = i;
+          k < math.min(i + perRow, rows.length);
+          k++) {
+        tallest = math.max(tallest, blockHeight(rows[k]));
+      }
+      h += tallest + _blockGap;
+    }
+    return h;
+  }
+
   Size _naturalSize(({List<GroupedRow> left, List<GroupedRow> right}) split,
-      {required bool dense}) {
+      {required bool dense, required int perRow}) {
     // ⚠️ СЧИТАЕМ ПО СЕТКЕ БЛОКОВ, А НЕ ПО СТОЛБЦУ. Прежняя формула складывала
     // высоты всех групп подряд — она отвечала прежней раскладке, где группы
     // шли одна под другой. С сеткой «два в ширину» высота стороны это сумма
@@ -667,10 +708,10 @@ class ServiceChecksSides extends StatelessWidget {
         return h;
       }
       var h = 0.0;
-      for (var i = 0; i < rows.length; i += _SideColumn.blocksPerRow) {
+      for (var i = 0; i < rows.length; i += perRow) {
         var tallest = 0.0;
         for (var k = i;
-            k < math.min(i + _SideColumn.blocksPerRow, rows.length);
+            k < math.min(i + perRow, rows.length);
             k++) {
           tallest = math.max(tallest, blockHeight(rows[k]));
         }
@@ -690,7 +731,7 @@ class ServiceChecksSides extends StatelessWidget {
       if (rows.isEmpty) return 0;
       final inRow = dense
           ? 1
-          : math.min(rows.length, _SideColumn.blocksPerRow);
+          : math.min(rows.length, perRow);
       return _columnWidth(dense) * inRow + 10 * (inRow - 1);
     }
 
@@ -710,13 +751,13 @@ class ServiceChecksSides extends StatelessWidget {
   @visibleForTesting
   static ({List<GroupedRow> left, List<GroupedRow> right}) splitForTest(
           List<GroupedRow> rows,
-          {required bool dense}) =>
+          {required bool dense, int perRow = 2}) =>
       const ServiceChecksSides(services: [], httpPort: 0, button: SizedBox())
-          ._splitColumns(rows, dense: dense);
+          ._splitColumns(rows, dense: dense, perRow: perRow);
 
   ({List<GroupedRow> left, List<GroupedRow> right}) _splitColumns(
       List<GroupedRow> rows,
-      {required bool dense}) {
+      {required bool dense, required int perRow}) {
     // ⚠️ ДЕЛИМ ПОРОВНУ ПО ВЫСОТЕ, А НЕ ПО ЧИСЛУ СТРОК — решение владельца
     // (04.09.2026). С сеткой это разные вещи: два блока по три сервиса и
     // шесть блоков по одному дают одинаковое число строк и совершенно разную
@@ -729,10 +770,10 @@ class ServiceChecksSides extends StatelessWidget {
     int heightOf(List<GroupedRow> side) {
       if (dense) return side.fold<int>(0, (a, r) => a + linesOf(r));
       var h = 0;
-      for (var i = 0; i < side.length; i += _SideColumn.blocksPerRow) {
+      for (var i = 0; i < side.length; i += perRow) {
         var tallest = 0;
         for (var k = i;
-            k < math.min(i + _SideColumn.blocksPerRow, side.length);
+            k < math.min(i + perRow, side.length);
             k++) {
           tallest = math.max(tallest, linesOf(side[k]));
         }
@@ -775,6 +816,7 @@ class ServiceChecksSides extends StatelessWidget {
 /// Одна колонка внутри [ServiceChecksSides]: список групп сверху вниз.
 class _SideColumn extends StatelessWidget {
   const _SideColumn({
+    required this.perRow,
     required this.rows,
     required this.httpPort,
     required this.dense,
@@ -783,16 +825,11 @@ class _SideColumn extends StatelessWidget {
 
   final List<GroupedRow> rows;
   final int httpPort;
+
+  /// Сколько блоков в одном ряду — см. [ServiceChecksSides.blocksPerRowFor].
+  final int perRow;
   final bool dense;
 
-  /// Сколько блоков-групп ложится в один ряд с одной стороны от кнопки.
-  ///
-  /// Два — решение владельца (04.09.2026): сетка «два в ширину, до трёх в
-  /// высоту» с каждой стороны, то есть до двенадцати групп всего. Сегодня
-  /// групп ПЯТЬ (`ServiceGroup`), поэтому запас взят с большим избытком и
-  /// подпирать его нечем — но и упереться в него нельзя: набор проверок
-  /// пользователь не расширяет, он выбирает из готового списка.
-  static const int blocksPerRow = 2;
 
   /// Левая колонка прижимает пары «до → после» к кнопке (к правому краю своей
   /// колонки), правая — наоборот. Порядок иконка→точки при этом ОДИНАКОВЫЙ в
@@ -870,7 +907,7 @@ class _SideColumn extends StatelessWidget {
               _SideGroupLabel(
                 group: row.group,
                 label: row.group.label(l),
-                maxWidth: ServiceChecksSides.columnWidthFor(dense),
+                maxWidth: ServiceChecksSides.labelWidthFor(dense),
               ),
               const SizedBox(height: 4),
               for (final s in row.services)
@@ -899,9 +936,8 @@ class _SideColumn extends StatelessWidget {
     ];
 
     final gridRows = <List<Widget>>[];
-    for (var i = 0; i < blocks.length; i += blocksPerRow) {
-      gridRows.add(blocks.sublist(
-          i, math.min(i + blocksPerRow, blocks.length)));
+    for (var i = 0; i < blocks.length; i += perRow) {
+      gridRows.add(blocks.sublist(i, math.min(i + perRow, blocks.length)));
     }
 
     return Column(
@@ -1634,3 +1670,26 @@ class _ServicePair extends StatelessWidget {
   }
 }
 
+/// Печатает НАСТОЯЩИЕ размеры, по одному разу на изменение.
+///
+/// ⚠️ Четыре захода подряд по этой вёрстке я правил вслепую и трижды сделал
+/// хуже: то блок не рос, то жался сильнее прежнего. Все рассуждения строились
+/// на ОЦЕНКЕ `_naturalSize`, которая по построению приблизительна. Здесь
+/// печатаются факты — что реально выдал `LayoutBuilder` и сколько занимает
+/// содержимое.
+String? _lastSidesLog;
+void _logSides(BoxConstraints c,
+    ({List<GroupedRow> left, List<GroupedRow> right}) split,
+    {required bool dense, required int perRow}) {
+  final lh = ServiceChecksSides.sideHeightOf(split.left,
+      dense: dense, perRow: perRow);
+  final rh = ServiceChecksSides.sideHeightOf(split.right,
+      dense: dense, perRow: perRow);
+  final line = 'Проверки: место ${c.maxWidth.toStringAsFixed(0)}×'
+      '${c.hasBoundedHeight ? c.maxHeight.toStringAsFixed(0) : "∞"}, '
+      'блоков в ряду $perRow, групп ${split.left.length}/${split.right.length}, '
+      'высота сторон ${lh.toStringAsFixed(0)}/${rh.toStringAsFixed(0)}';
+  if (line == _lastSidesLog) return;
+  _lastSidesLog = line;
+  AppLog.i(line);
+}
