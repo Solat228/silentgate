@@ -639,13 +639,26 @@ class ServiceChecksSides extends StatelessWidget {
       // ⚠️ Кнопку не растим: её размер задаёт панель, он одинаков во всех
       // раскладках, и это стережёт `connect_button_content_test`.
       _logSides(c, split, dense: dense, perRow: perRow);
-      final boxHeight = c.hasBoundedHeight
+      // ⚠️ БЛОК ЗАНИМАЕТ СВОЮ ВЫСОТУ, А НЕ ВЕСЬ ВЫДАННЫЙ ПОТОЛОК.
+      //
+      // Найдено ревью 05.09.2026 и подтверждено замером: при потолке 486 px и
+      // трёх сервисах блок занимал ровно 486 при содержимом 186 — между
+      // последним значком и следующей строкой висело 190 px пустоты, а низ
+      // панели выдавливался за её край.
+      //
+      // Причина в том, что потолок доводится сюда цепочкой `Flexible` с
+      // нежёсткой посадкой, и `SizedBox(height: потолок)` заполнял его
+      // целиком. Потолок — это ОГРАНИЧЕНИЕ («больше нельзя»), а не задание
+      // («займи столько»); разница видна только когда содержимого мало, то
+      // есть в самом частом случае.
+      final wanted = math.max(
+        _naturalButton,
+        math.max(sideHeightOf(split.left, dense: dense, perRow: perRow),
+            sideHeightOf(split.right, dense: dense, perRow: perRow)),
+      );
+      final boxHeight = c.hasBoundedHeight && wanted > c.maxHeight
           ? c.maxHeight
-          : math.max(
-              _naturalButton,
-              math.max(sideHeightOf(split.left, dense: dense, perRow: perRow),
-                  sideHeightOf(split.right, dense: dense, perRow: perRow)),
-            );
+          : wanted;
 
       // ⚠️ МАСШТАБ ОДИН НА ОБЕ СТОРОНЫ.
       //
@@ -1637,6 +1650,7 @@ class _ServicePair extends StatelessWidget {
     // дёргался на ровном месте. Пока второго значка нет, первый стоит по
     // центру ячейки.
     Widget iconBox(ServiceCheckOutcome o, double size, {bool badge = false}) {
+      final busy = o.state == ServiceCheckState.checking;
       final box = DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(size * 0.3),
@@ -1644,7 +1658,45 @@ class _ServicePair extends StatelessWidget {
         ),
         child: Padding(
           padding: const EdgeInsets.all(1),
-          child: SiteFavicon(domain: service.domain, size: size, builtIn: true),
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                SiteFavicon(domain: service.domain, size: size, builtIn: true),
+                // ⚠️ «ИДЁТ ПРОВЕРКА» ОБЯЗАНО БЫТЬ ВИДНО. Найдено ревью
+                // 05.09.2026: при переходе с кружков на обводку индикатор
+                // потерялся — `checking` попал в общую ветку и красился тем же
+                // цветом, что и «не проверено».
+                //
+                // Обратной связи на нажатие не осталось ни на ПК, ни на
+                // телефоне: человек тапает, ничего не меняется секунд
+                // шестнадцать, тапает второй раз — а контроллер молча выходит,
+                // потому что проверка уже идёт. Выглядит как неработающая
+                // кнопка.
+                if (busy)
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .surface
+                          .withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(size * 0.3),
+                    ),
+                    child: Center(
+                      child: SizedBox(
+                        width: size * 0.55,
+                        height: size * 0.55,
+                        child: CircularProgressIndicator(
+                          strokeWidth: size * 0.09,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
         ),
       );
       if (!badge || bypass == null) return box;

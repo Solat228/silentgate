@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:silentgate/core/probe/service_check.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/state/service_check_controller.dart';
 import 'package:silentgate/ui/home_screen.dart';
 import 'package:silentgate/ui/widgets/service_checks_row.dart';
+import 'package:silentgate/ui/widgets/site_favicon.dart';
 
 /// СОСТОЯНИЕ — ОБВОДКОЙ ЗНАЧКА, ПЕРЕХОД — СТРЕЛКОЙ.
 ///
@@ -25,6 +27,7 @@ void main() {
   Widget host({
     required int httpPort,
     String locale = 'ru',
+    ServiceCheckController? ctrl,
     List<ProbeService> services = const [
       ProbeService.youtube,
       ProbeService.telegram,
@@ -36,7 +39,7 @@ void main() {
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: ChangeNotifierProvider<ServiceCheckController>(
-          create: (_) => ServiceCheckController(),
+          create: (_) => ctrl ?? ServiceCheckController(),
           child: Scaffold(
             body: Center(
               child: SizedBox(
@@ -167,5 +170,50 @@ void main() {
     expect(dir, TextDirection.ltr,
         reason: 'в RTL-локали пара «до → после» перевернулась, и подпись '
             '«слева — без VPN» стала ложью');
+  });
+
+  testWidgets('⚠️ на ЖИВОМ канале рисуется пара «до → после» со стрелкой',
+      (t) async {
+    // ⚠️ ДО РЕВЬЮ 05.09.2026 ЭТОГО НЕ ПРОВЕРЯЛ НИ ОДИН ТЕСТ. Ветка живой пары
+    // включается, только когда есть замер «до», а во всех виджет-тестах
+    // контроллер создавался пустым. Соседний тест назывался «на живом канале
+    // появляется стрелка» и утверждал ровно обратное — `findsNothing`.
+    //
+    // То есть можно было удалить второй значок и стрелку целиком — сравнение
+    // «без VPN → через VPN», ради которого весь блок и переделывали, исчезло
+    // бы с экрана, а прогон остался бы зелёным. Включая файл, в шапке
+    // которого написано, почему стрелка обязана остаться.
+    t.view.physicalSize = const Size(900, 500);
+    t.view.devicePixelRatio = 1.0;
+    addTearDown(t.view.resetPhysicalSize);
+
+    final saved = ServiceCheckController.prober;
+    addTearDown(() => ServiceCheckController.prober = saved);
+    ServiceCheckController.prober = (port, s) async =>
+        const ServiceCheckOutcome(ServiceCheckState.ok, latencyMs: 42);
+
+    final ctrl = ServiceCheckController();
+    // Замер «до» — то самое состояние, в которое тесты не заходили.
+    await ctrl.checkBaseline(const [
+      ProbeService.youtube,
+      ProbeService.telegram,
+      ProbeService.chatgpt,
+    ]);
+
+    await t.pumpWidget(host(httpPort: 10809, ctrl: ctrl));
+    await t.pump();
+    expect(t.takeException(), isNull);
+
+    expect(find.text('→'), findsNWidgets(3),
+        reason: 'стрелка перехода пропала — сравнение «до и после» исчезло');
+    // Два значка на сервис: «без VPN» и «через VPN».
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('svc:telegram')),
+        matching: find.byType(SiteFavicon),
+      ),
+      findsNWidgets(2),
+      reason: 'на живом канале должно быть ДВА значка: до и после',
+    );
   });
 }

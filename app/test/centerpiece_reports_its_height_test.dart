@@ -137,4 +137,61 @@ void main() {
               'на ${(low - below.top).toStringAsFixed(0)} px');
     });
   }
+
+  testWidgets('⚠️ блок берёт СВОЮ высоту, а не весь выданный потолок',
+      (t) async {
+    // Найдено ревью 05.09.2026. Потолок приходит `ConstrainedBox`-ом и
+    // доводится цепочкой `Flexible` с нежёсткой посадкой; блок заполнял его
+    // целиком, потому что корнем стоял `SizedBox(height: потолок)`.
+    //
+    // Замер тогда дал: потолок 486 px, содержимое 186 — и 190 px пустоты
+    // между последним значком и строкой под блоком, из-за которых низ панели
+    // уезжал за край. Потолок это «больше нельзя», а не «займи столько», и
+    // разница видна ровно в самом частом случае — когда сервисов немного.
+    t.view.physicalSize = const Size(1200, 1000);
+    t.view.devicePixelRatio = 1.0;
+    addTearDown(t.view.resetPhysicalSize);
+
+    Future<double> heightUnder(double ceiling) async {
+      await t.pumpWidget(MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ChangeNotifierProvider<ServiceCheckController>(
+          create: (_) => ServiceCheckController(),
+          child: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: 584, maxHeight: ceiling),
+                child: ConnectCenterpiece(
+                  serverName: 'Германия 2.4',
+                  httpPort: 0,
+                  button: const SizedBox(
+                      key: Key('btn'), width: 148, height: 148),
+                  services: const [
+                    ProbeService.youtube,
+                    ProbeService.telegram,
+                    ProbeService.chatgpt,
+                  ],
+                  layout: ServiceChecksLayout.sides,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await t.pump();
+      return t.getSize(find.byType(ConnectCenterpiece)).height;
+    }
+
+    final tight = await heightUnder(300);
+    final loose = await heightUnder(700);
+    expect(loose, closeTo(tight, 1.0),
+        reason: 'при вдвое большем потолке блок стал выше на '
+            '${(loose - tight).toStringAsFixed(0)} px — значит он съедает '
+            'потолок целиком, а не занимает своё');
+    expect(loose, lessThan(700),
+        reason: 'блок занял весь выданный потолок');
+  });
 }
