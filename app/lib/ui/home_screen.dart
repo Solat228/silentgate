@@ -2039,18 +2039,37 @@ class ConnectButton extends StatelessWidget {
                       // край круга на турецком и французском, и увидели бы
                       // это только на этих языках.
                       width: d * 0.78,
-                      child: Text(
-                        connected
-                            ? l.connectButtonDisconnect
-                            : l.connectButtonConnect,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14 * scale,
-                          fontWeight: FontWeight.w600,
-                          color:
-                              connected ? scheme.onPrimary : scheme.onSurface,
+                      // ⚠️ УЖИМАЕМ, НО НЕ УСЕКАЕМ. Найдено ревью 05.09.2026, и
+                      // это худший из возможных отказов: турецкое
+                      // «Bağlantıyı kes» («отключить») усекалось до
+                      // «Bağlan…», а «Bağlan» по-турецки значит ПОДКЛЮЧИТЬ.
+                      // То есть на живом канале кнопка предлагала бы ровно
+                      // противоположное тому, что сделает.
+                      //
+                      // Многоточие в надписи действия недопустимо в принципе:
+                      // усечённый глагол легко превращается в другой глагол.
+                      // Поэтому вместо `ellipsis` — перенос на вторую строку и
+                      // сжатие целиком: слово остаётся читаемым и правдивым
+                      // при любом языке и любом системном укрупнении текста.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: SizedBox(
+                          width: d * 0.78,
+                          child: Text(
+                            connected
+                                ? l.connectButtonDisconnect
+                                : l.connectButtonConnect,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            softWrap: true,
+                            style: TextStyle(
+                              fontSize: 14 * scale,
+                              fontWeight: FontWeight.w600,
+                              color: connected
+                                  ? scheme.onPrimary
+                                  : scheme.onSurface,
+                            ),
+                          ),
                         ),
                       ),
                     ),

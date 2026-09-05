@@ -1617,11 +1617,23 @@ class _ServicePair extends StatelessWidget {
     final arrow = live0
         ? Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2),
-            child: Text('→',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.outline,
-                      fontWeight: FontWeight.w700,
-                    )),
+            // ⚠️ СТРЕЛКА НЕ СЛУШАЕТ СИСТЕМНОЕ УКРУПНЕНИЕ ТЕКСТА. Найдено ревью
+            // 05.09.2026: ширина ячейки фиксирована (72 px под пару значков и
+            // стрелку), а стрелка нарисована ТЕКСТОМ и потому росла вместе с
+            // системным масштабом. При укрупнении 1.3 второй значок вылезал за
+            // отведённое место, и на телефоне с крупным шрифтом — то есть
+            // ровно у того, кому он нужен, — пара разъезжалась.
+            //
+            // Фиксируем осознанно: это графический разделитель, а не текст для
+            // чтения. Крупнее он не станет понятнее, а подписи групп и слово в
+            // кнопке укрупнение по-прежнему уважают.
+            child: MediaQuery.withNoTextScaling(
+              child: Text('→',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                        fontWeight: FontWeight.w700,
+                      )),
+            ),
           )
         : null;
 
