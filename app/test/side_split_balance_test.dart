@@ -42,4 +42,35 @@ void main() {
     expect(sides.left, hasLength(1));
     expect(sides.right, isEmpty);
   });
+
+  test('⚠️ в режиме «сетка» формулы описывают то, что рисуется', () {
+    // Найдено ревью 05.09.2026 замером: формула ширины умножала блок на
+    // число блоков В РЯДУ (то есть блоки бок о бок), а `_SideColumn` в этом
+    // режиме строит колонку из `Wrap`-ов — каждая группа своей строкой, и
+    // внутри строки иконки идут в одну линию.
+    //
+    // Расхождение стоило дорого: обе стороны получали коробки не по своему
+    // содержимому, общий коэффициент переставал быть общим, и значки левой
+    // половины выходили 25 px против 39 у правой — стоя в одной строке
+    // вокруг кнопки.
+    const three = [ProbeService.youtube, ProbeService.telegram,
+        ProbeService.chatgpt];
+    const two = [ProbeService.claude, ProbeService.gemini];
+    final rows = ServiceChecks.grouped([...three, ...two]);
+    expect(rows, isNotEmpty);
+
+    // Ширину задаёт САМАЯ ДЛИННАЯ группа, а не число групп.
+    final w = ServiceChecksSides.sideWidthOf(rows, dense: true, perRow: 2);
+    final longest = rows
+        .map((r) => r.services.length)
+        .reduce((a, b) => a > b ? a : b);
+    expect(w, closeTo(32.0 * longest + 6.0 * (longest - 1), 0.01),
+        reason: 'ширина сетки снова считается по числу блоков, а не по '
+            'самой длинной группе');
+
+    // Высота — по строке на группу, а не по «две иконки в ряд».
+    final h = ServiceChecksSides.sideHeightOf(rows, dense: true, perRow: 2);
+    expect(h, closeTo((32.0 + 6.0 + 6.0) * rows.length, 0.01),
+        reason: 'высота сетки снова считается с переносом, которого нет');
+  });
 }

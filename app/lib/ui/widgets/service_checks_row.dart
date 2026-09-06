@@ -775,15 +775,49 @@ class ServiceChecksSides extends StatelessWidget {
   static double sideWidthOf(List<GroupedRow> rows,
       {required bool dense, required int perRow}) {
     if (rows.isEmpty) return 0;
+    if (dense) {
+      // ⚠️ СЕТКА РИСУЕТСЯ СОВСЕМ ИНАЧЕ, ЧЕМ СЧИТАЛА ЭТА ФОРМУЛА.
+      //
+      // Найдено ревью 05.09.2026 замером. Формула умножала ширину блока на
+      // число блоков В РЯДУ, то есть описывала блоки бок о бок. А `_SideColumn`
+      // в этом режиме строит колонку из `Wrap`-ов: КАЖДАЯ ГРУППА — своей
+      // строкой, и внутри строки иконки идут в одну линию (ширина у `FittedBox`
+      // не ограничена).
+      //
+      // Из-за расхождения обе стороны получали коробки, не совпадающие со
+      // своим содержимым, и общий коэффициент переставал быть общим: замер дал
+      // значки 25 px слева против 39 справа — при том что стоят они в одной
+      // строке вокруг кнопки.
+      //
+      // Считаем то, что рисуется: самая длинная группа задаёт ширину.
+      var widest = 0.0;
+      for (final r in rows) {
+        final n = r.services.length;
+        final w = _denseIcon * n + _denseGap * (n - 1);
+        if (w > widest) widest = w;
+      }
+      return widest;
+    }
     final inRow = rows.length < perRow ? rows.length : perRow;
     return labelWidthFor(dense) * inRow + _blockGap * (inRow - 1);
   }
+
+  /// Размеры одной ячейки в режиме «сетка» — списаны с того, что реально
+  /// рисует `_SideColumn` (иконка 26 + обводка/отступ, просвет `Wrap`).
+  static const double _denseIcon = 32;
+  static const double _denseGap = 6;
 
   static double sideHeightOf(List<GroupedRow> rows,
       {required bool dense, required int perRow}) {
     if (rows.isEmpty) return 0;
     double blockHeight(GroupedRow r) => dense
-        ? (r.services.length / 2).ceil() * 40.0
+        // ⚠️ ОДНА СТРОКА НА ГРУППУ, А НЕ ПО ДВЕ ИКОНКИ В РЯД. Прежняя формула
+        // (`ceil(n/2) * 40`) предполагала перенос иконок по две, но `Wrap`
+        // внутри `FittedBox` получает неограниченную ширину и переносить
+        // ничего не станет: вся группа встаёт в линию. Считать надо то, что
+        // рисуется, — иначе оценка вдвое завышает высоту, и сторона ужимается
+        // там, где место есть (разбор — ревью 05.09.2026).
+        ? _denseIcon + _denseGap
         : 26.0 + r.services.length * 34.0;
     if (dense) {
       var h = 0.0;
