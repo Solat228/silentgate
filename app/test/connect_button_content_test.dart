@@ -117,14 +117,24 @@ void main() {
   /// не трогает вовсе, поэтому `AppState.init()` не зовётся и боевой каталог
   /// данных изолировать не от чего.
 
-  Widget host(Widget child, {required double width, required AppState state}) =>
+  /// ⚠️ ЛОКАЛЬ И МАСШТАБ ШРИФТА — ПАРАМЕТРЫ, А НЕ КОНСТАНТЫ.
+  ///
+  /// Ревью 05.09.2026: раньше здесь было жёстко `Locale('ru')`, поэтому
+  /// «Bağlantıyı kes» и «قطع الاتصال», которыми обоснованы проверки в
+  /// комментариях, не рисовались НИ РАЗУ. Проверка длинных переводов
+  /// существовала только на словах.
+  Widget host(Widget child,
+          {required double width,
+          required AppState state,
+          String locale = 'ru',
+          double textScale = 1.0}) =>
       MultiProvider(
         providers: [
           ChangeNotifierProvider(create: (_) => ServiceCheckController()),
           ChangeNotifierProvider<AppState>.value(value: state),
         ],
         child: MaterialApp(
-          locale: const Locale('ru'),
+          locale: Locale(locale),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           home: Scaffold(
@@ -132,9 +142,12 @@ void main() {
             // в шапке `connect_centerpiece_layout_test.dart`). Оборачивать в
             // скролл ВСЁ — значит не заметить переполнение там, где у экрана
             // прокрутки нет вовсе (широкое окно Windows).
-            body: width < twoPaneMinWidth
-                ? SingleChildScrollView(child: Center(child: child))
-                : Center(child: child),
+            body: MediaQuery(
+              data: MediaQueryData(textScaler: TextScaler.linear(textScale)),
+              child: width < twoPaneMinWidth
+                  ? SingleChildScrollView(child: Center(child: child))
+                  : Center(child: child),
+            ),
           ),
         ),
       );
@@ -451,6 +464,51 @@ void main() {
           'подключение, 320×568');
     });
   });
+
+  group('⚠️ Слово действия на ДЛИННЫХ языках и при крупном шрифте', () {
+    // ⚠️ Настоящий отказ был страшнее вылезания за круг: усечённое турецкое
+    // «Bağlan…» значит ПОДКЛЮЧИТЬ, то есть на живом канале кнопка предлагала
+    // бы противоположное тому, что сделает. Прежняя проверка поймать это не
+    // могла: слово стояло в `SizedBox` с `ellipsis`, и его прямоугольник по
+    // построению был уже круга при ЛЮБОМ тексте.
+    for (final locale in const ['tr', 'fr', 'ar', 'ru']) {
+      for (final textScale in const [1.0, 1.3]) {
+        testWidgets('$locale, шрифт ×$textScale: слово целое и в круге',
+            (t) async {
+          t.view.physicalSize = const Size(1000, 900);
+          t.view.devicePixelRatio = 1.0;
+          addTearDown(t.view.reset);
+          final state = AppState(engine: _FakeEngine())..markUserConnect();
+          await t.pumpWidget(host(
+            ConnectButton(
+              status: const VpnStatus(VpnConnectionState.connected),
+              onTap: () {},
+            ),
+            width: 1000,
+            state: state,
+            locale: locale,
+            textScale: textScale,
+          ));
+          await t.pump();
+          expect(t.takeException(), isNull);
+
+          final circle = t.getRect(find.byType(ConnectButton));
+          final texts = find.descendant(
+              of: find.byType(ConnectButton), matching: find.byType(Text));
+          expect(texts, findsWidgets);
+          for (var i = 0; i < t.widgetList<Text>(texts).length; i++) {
+            final w = t.widgetList<Text>(texts).elementAt(i);
+            // Многоточие в надписи ДЕЙСТВИЯ недопустимо: усечённый глагол
+            // легко превращается в другой глагол.
+            expect(w.overflow, isNot(TextOverflow.ellipsis),
+                reason: 'слово действия снова усекается многоточием');
+            final r = t.getRect(texts.at(i));
+            expectInside(r, circle, 'надпись $i', '$locale ×$textScale');
+          }
+        });
+      }
+    }
+  });
 }
 
 class _FakeEngine extends VpnEngine {
@@ -489,4 +547,5 @@ class _FakeEngine extends VpnEngine {
   Future<void> dispose() async {
     await _statusCtrl.close();
   }
+
 }

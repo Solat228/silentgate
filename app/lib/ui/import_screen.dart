@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/net/network_error_hint.dart';
+import '../core/platform/time_sync_windows.dart';
 import '../state/app_state.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -136,12 +138,106 @@ class _ImportScreenState extends State<ImportScreen> {
                       ),
                     ),
                   ),
+                  // ⚠️ КНОПКА ПОЯВЛЯЕТСЯ ТОЛЬКО У ОШИБКИ ПРО ЧАСЫ.
+                  //
+                  // Живой клиент 05.09.2026 не смог импортировать подписку:
+                  // сертификат сервера считался ещё не начавшим действовать,
+                  // потому что часы его компьютера отставали. Решение
+                  // владельца — не отправлять человека в настройки Windows, а
+                  // предложить кнопку и сделать это за него.
+                  //
+                  // Показываем её ровно там, где она к месту: при других
+                  // ошибках синхронизация не поможет, а кнопка «почини время»
+                  // рядом с «нет интернета» только собьёт с толку.
+                  if (TimeSyncWindows.isSupported &&
+                      _clockProblem(state.error!)) ...[
+                    const SizedBox(height: 12),
+                    _TimeSyncButton(),
+                  ],
                 ],
               ],
             ),
           ),
         ),
       )),
+    );
+  }
+}
+
+/// Та ли это ошибка, где виноваты часы.
+///
+/// ⚠️ Спрашиваем ТОТ ЖЕ разбор, что сформировал текст ошибки
+/// (`networkErrorHint`), а не ищем слова в готовой строке. Два независимых
+/// разбора одного текста в этом проекте уже дважды расходились и оба раза
+/// давали дыру: показ и решение обязаны спрашивать один код.
+bool _clockProblem(String error) {
+  final hint = networkErrorHint(error);
+  if (hint != null) {
+    return hint.kind == NetworkErrorKind.clockBehind ||
+        hint.kind == NetworkErrorKind.certExpired;
+  }
+  // Ошибка уже переведена в человеческий текст — узнаём его по той же
+  // подсказке, которую сами и подставили.
+  for (final k in [NetworkErrorKind.clockBehind, NetworkErrorKind.certExpired]) {
+    final sample = networkErrorHint(k == NetworkErrorKind.clockBehind
+        ? 'certificate is not yet valid'
+        : 'certificate has expired');
+    if (sample != null && error == sample.text) return true;
+  }
+  return false;
+}
+
+/// Кнопка «Синхронизировать время» с показом того, чем всё кончилось.
+class _TimeSyncButton extends StatefulWidget {
+  @override
+  State<_TimeSyncButton> createState() => _TimeSyncButtonState();
+}
+
+class _TimeSyncButtonState extends State<_TimeSyncButton> {
+  bool _busy = false;
+  String? _result;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FilledButton.tonalIcon(
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.schedule),
+          label: const Text('Синхронизировать время'),
+          onPressed: _busy
+              ? null
+              : () async {
+                  setState(() {
+                    _busy = true;
+                    _result = null;
+                  });
+                  final ok = await TimeSyncWindows.resync();
+                  if (!mounted) return;
+                  setState(() {
+                    _busy = false;
+                    // ⚠️ Отказ от UAC — законный ответ пользователя, а не
+                    // сбой: говорим об этом спокойно и без слова «ошибка».
+                    // ⚠️ При отказе даём НЕ приговор, а второй путь: человек
+                    // уже знает, что виноваты часы, и оставить его без
+                    // способа их поправить хуже, чем не иметь кнопки вовсе.
+                    _result = ok
+                        ? TimeSyncWindows.okText
+                        : TimeSyncWindows.manualHint;
+                  });
+                },
+        ),
+        if (_result != null) ...[
+          const SizedBox(height: 8),
+          Text(_result!, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ],
     );
   }
 }

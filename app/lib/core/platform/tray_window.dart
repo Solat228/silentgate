@@ -225,11 +225,25 @@ class TrayWindow with WindowListener, TrayListener {
     }
   }
 
+  /// Показать окно и вынести его вперёд.
+  ///
+  /// ⚠️ ОТДЕЛЬНЫМ МЕТОДОМ, А НЕ ПОВТОРОМ ДВУХ СТРОК. Точек показа теперь
+  /// две: клик по значку в трее и повторный запуск `.exe` (второй экземпляр
+  /// шлёт `silentgate://show` первому). Разъехавшиеся копии в этом проекте
+  /// уже давали расхождение поведения, и ловилось оно только руками.
+  ///
+  /// `focus()` обязателен вместе с `show()`: без него окно появляется ПОД
+  /// текущим, и человек, только что кликнувший ярлык, снова ничего не
+  /// увидит — то есть беда останется ровно та же.
+  static Future<void> showAndFocus() async {
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
   // ── Трей ─────────────────────────────────────────────────────────────────────
   @override
   void onTrayIconMouseDown() {
-    windowManager.show();
-    windowManager.focus();
+    unawaited(showAndFocus());
   }
 
   @override

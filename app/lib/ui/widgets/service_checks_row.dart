@@ -572,12 +572,42 @@ class ServiceChecksSides extends StatelessWidget {
       if (scale < _minReadableScale) {
         // Места категорически мало — те же ряды, что и на узком телефоне,
         // вместо нечитаемой мелочи по бокам.
-        return Column(
+        //
+        // ⚠️ И ЭТА ВЕТКА ТОЖЕ ОБЯЗАНА ВЛЕЗАТЬ. Найдено ревью 05.09.2026:
+        // здесь возвращался голый `Column` — ни сжатия, ни прокрутки. Пока
+        // блоку давали бесконечную высоту, ветка была недостижима; с
+        // появлением настоящего потолка она включается, и замер показал
+        // «RenderFlex overflowed by 277 pixels» при месте 500×171.
+        //
+        // В release полосок переполнения нет: подписи просто лягут поверх
+        // кнопки — ровно та жалоба, из-за которой всю эту вёрстку и
+        // переделывали. Шапка класса при этом обещала, что переполнение
+        // «структурно невозможно ни при каком экране»; обещание было ложным.
+        final fallback = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             button,
             ServiceChecksRows(services: services, httpPort: httpPort),
           ],
+        );
+        // Высота не ограничена (телефон целиком в прокрутке) — сжимать не от
+        // чего, и лишний `FittedBox` только смазал бы текст.
+        if (!c.hasBoundedHeight) return fallback;
+        return SizedBox(
+          height: c.maxHeight,
+          child: FittedBox(
+            fit: BoxFit.contain,
+            // ⚠️ ШИРИНУ ЗАДАЁМ ЯВНО. `FittedBox` меряет ребёнка в
+            // НЕОГРАНИЧЕННОЙ коробке, а рядам нужна конечная ширина: внутри
+            // есть `Wrap`, и на бесконечности он падает с «BoxConstraints
+            // forces an infinite width». Поймано этим же стражем при первой
+            // попытке починки — то есть лечение само едва не стало новым
+            // дефектом.
+            child: SizedBox(
+              width: c.hasBoundedWidth ? c.maxWidth : _naturalButton * 2,
+              child: fallback,
+            ),
+          ),
         );
       }
 
