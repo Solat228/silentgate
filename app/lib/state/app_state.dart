@@ -19,6 +19,7 @@ import '../core/util/key_migration.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
+import '../core/net/network_error_hint.dart';
 import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
 import '../core/parser/share_link_parser.dart';
@@ -1918,7 +1919,20 @@ class AppState extends ChangeNotifier {
       // неё приложение, закрытое сразу после синхронизации, теряло бы значок.
       await _updatedStore.save(_updatedFields);
     } catch (e) {
-      _error = e.toString();
+      // ⚠️ УЗНАННУЮ ОШИБКУ ОБЪЯСНЯЕМ, А НЕ ПЕРЕСКАЗЫВАЕМ ИСХОДНИКОМ.
+      //
+      // Живой клиент 05.09.2026 получил на экран при импорте подписки:
+      // «HandshakeException … CERTIFICATE_VERIFY_FAILED: certificate is not
+      // yet valid (../../../flutter/third_party/boringssl/src/ssl/
+      // handshake.cc:298)». Человеку тут нечего делать: ни слова о том, что
+      // случилось и как чинить, зато есть путь внутрь BoringSSL. А починка
+      // целиком на его стороне — у него отстают часы.
+      //
+      // ⚠️ Незнакомую ошибку НЕ подменяем: общий текст на всё подряд опаснее
+      // его отсутствия, человек поверит совету и пойдёт чинить не то.
+      // Исходный текст хотя бы правдив, и его можно прислать в поддержку.
+      final hint = networkErrorHint(e.toString());
+      _error = hint?.text ?? e.toString();
       _errorCode = null;
     } finally {
       _loading = false;
