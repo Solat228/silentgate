@@ -128,7 +128,14 @@ class TunScheduledTask {
     // ⚠️ Только асинхронно. Эту задачу заводят из настройки «запуск без UAC»,
     // то есть ровно тогда, когда пользователь уже устал от зависаний, — и
     // замерзший здесь интерфейс убил бы сам обходной путь.
-    if (!await Elevation.runElevatedAsync('schtasks.exe', args)) return false;
+    // ⚠️ ЖДЁМ РЕЗУЛЬТАТ. Смысл вызова здесь — создана ли задача, а не
+    // «запустился ли schtasks». Без ожидания мы возвращали успех, даже
+    // когда команда падала, и человек видел «UAC отклонён» там, где UAC
+    // вообще не участвовал (жалоба владельца 07.09.2026).
+    if (!await Elevation.runElevatedAsync('schtasks.exe', args,
+        waitForExit: true)) {
+      return false;
+    }
 
     final deadline = DateTime.now().add(const Duration(seconds: 10));
     while (DateTime.now().isBefore(deadline)) {
