@@ -10,6 +10,7 @@ import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
 import 'core/platform/app_instance_mutex.dart';
+import 'core/platform/log_archive.dart';
 import 'core/platform/app_log.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/platform_services.dart';
@@ -229,6 +230,30 @@ Future<void> main(List<String> args) async {
 Future<void> _cleanOldLogs() async {
   try {
     final settings = await SettingsStorage().load();
+
+    // ⚠️ СНАЧАЛА АРХИВ, ПОТОМ УБОРКА, И ПОРЯДОК ВАЖЕН.
+    //
+    // До этой правки настройка обещала срок хранения, а хранения не было:
+    // `clean()` удаляет файлы, которым давно не писали, но активный лог
+    // НИКОГДА не стареет — в него пишут постоянно. Значит удалять было нечего,
+    // архивов не образовывалось, и «хранить месяц» на деле означало «хранить
+    // последние восемь мегабайт». Владелец 07.09.2026 спросил прямо: «хочешь
+    // сказать, там всё затёрлось?» — затёрлось.
+    //
+    // Здесь единственный безопасный момент для сдвига: ядра ещё не запущены, а
+    // свой лог мы открываем позже, то есть файлы никем не заняты.
+    final moved = await LogArchive.rollDaily();
+    if (moved.isNotEmpty) {
+      AppLog.i('В архив уехало журналов: ${moved.length} (${moved.join(", ")})');
+    }
+    // Срок хранения применяется к АРХИВАМ — теперь ему есть что применять.
+    final pruned = await LogArchive.prune(maxAge: settings.logRetention.maxAge);
+    if (pruned.files > 0) {
+      AppLog.i('Из архива удалено по сроку хранения '
+          '(${settings.logRetention.name}): файлов ${pruned.files}, '
+          'освобождено ${TrafficStats.formatBytes(pruned.bytes)}');
+    }
+
     final r = await LogMaintenance.clean(maxAge: settings.logRetention.maxAge);
     if (!r.isEmpty) {
       AppLog.i('Чистка по сроку хранения (${settings.logRetention.name}): '
