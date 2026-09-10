@@ -349,6 +349,41 @@ class AppLocalizationsEs extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Recuperar';
 
   @override
+  String get networkSoftRecoverTitle => 'Recuperación suave';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'Limpia las cachés de DNS y ARP y quita el proxy del sistema. No borra nada, no hace falta reiniciar';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => '¿Recuperación suave de la red?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'Se vaciarán la caché de DNS y la caché ARP, y se quitarán el proxy del sistema y el proxy de WinHTTP. La configuración de los adaptadores, las direcciones y las rutas quedarán como están, no hará falta reiniciar. Se necesitarán permisos de administrador (UAC).';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Limpiar';
+
+  @override
+  String get networkFullResetTitle => 'Restablecimiento completo de red';
+
+  @override
+  String get networkFullResetSub =>
+      'Si lo suave no ayudó. Borra direcciones estáticas, requiere reiniciar';
+
+  @override
+  String get networkFullResetConfirmTitle =>
+      '¿Restablecimiento completo de la red?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'Además de la limpieza suave se hará lo siguiente.\n\n1) Se liberará y se volverá a solicitar la concesión DHCP en TODOS los adaptadores, incluidos los conmutadores virtuales de Hyper-V y VirtualBox: la red de tus máquinas virtuales puede caerse.\n\n2) El restablecimiento de winsock y de la pila IP devuelve la configuración de red a los valores de fábrica: las direcciones estáticas, las rutas y los complementos de red de terceros se borrarán y habrá que configurarlos de nuevo.\n\n3) Hará falta reiniciar, y hasta entonces la red puede funcionar peor que ahora.\n\nSe necesitarán permisos de administrador (UAC).';
+
+  @override
+  String get networkFullResetConfirmOk => 'Restablecer red';
+
+  @override
   String get interferenceTitle => 'Comprobar interferencias (otras VPN)';
 
   @override
@@ -1142,6 +1177,14 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'Restablece los parámetros de red si internet desaparece tras un fallo/apagado del PC con la VPN activada: winsock, la pila IP, la caché de DNS, el proxy del sistema. Requiere permisos de administrador; el restablecimiento de winsock y de la pila IP surte efecto tras REINICIAR.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'Limpieza segura tras un fallo de la VPN: la caché de DNS, la caché ARP, el proxy del sistema y el proxy de WinHTTP. No borra nada y no requiere reiniciar — es el punto de partida. Requiere permisos de administrador.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'Un último recurso si la recuperación suave no ayudó: a la limpieza se suman la renovación de la concesión DHCP en todos los adaptadores, un restablecimiento de winsock y un restablecimiento de la pila IP. Borra direcciones estáticas y rutas, rompe los complementos de red de terceros y solo surte efecto tras REINICIAR. También afecta a los conmutadores virtuales de Hyper-V y VirtualBox.';
 
   @override
   String get infoInterference =>

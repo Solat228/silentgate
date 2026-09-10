@@ -714,6 +714,66 @@ abstract class AppLocalizations {
   /// **'Восстановить'**
   String get networkRecoverConfirmOk;
 
+  /// No description provided for @networkSoftRecoverTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мягкое восстановление'**
+  String get networkSoftRecoverTitle;
+
+  /// No description provided for @networkSoftRecoverSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чистка кешей DNS и ARP, снятие системного прокси. Ничего не стирает, перезагрузка не нужна'**
+  String get networkSoftRecoverSub;
+
+  /// No description provided for @networkSoftRecoverConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мягкое восстановление сети?'**
+  String get networkSoftRecoverConfirmTitle;
+
+  /// No description provided for @networkSoftRecoverConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Будут очищены кеш DNS и кеш ARP, снят системный прокси и прокси WinHTTP. Настройки адаптеров, адреса и маршруты останутся как есть, перезагрузка не потребуется. Понадобятся права администратора (UAC).'**
+  String get networkSoftRecoverConfirmBody;
+
+  /// No description provided for @networkSoftRecoverConfirmOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Очистить'**
+  String get networkSoftRecoverConfirmOk;
+
+  /// No description provided for @networkFullResetTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Полный сброс сети'**
+  String get networkFullResetTitle;
+
+  /// No description provided for @networkFullResetSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если мягкое не помогло. Стирает статические адреса, требует перезагрузки'**
+  String get networkFullResetSub;
+
+  /// No description provided for @networkFullResetConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Полный сброс сети?'**
+  String get networkFullResetConfirmTitle;
+
+  /// No description provided for @networkFullResetConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Кроме мягкой чистки будет сделано следующее.\n\n1) Отпущена и запрошена заново аренда DHCP на ВСЕХ адаптерах — включая виртуальные коммутаторы Hyper-V и VirtualBox: сеть виртуальных машин может отвалиться.\n\n2) Сброс winsock и стека IP вернёт сетевые настройки к заводским: статические адреса, маршруты и надстройки сторонних программ будут стёрты, задавать их придётся заново.\n\n3) Потребуется перезагрузка, а до неё сеть может работать хуже, чем сейчас.\n\nПонадобятся права администратора (UAC).'**
+  String get networkFullResetConfirmBody;
+
+  /// No description provided for @networkFullResetConfirmOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить сеть'**
+  String get networkFullResetConfirmOk;
+
   /// No description provided for @interferenceTitle.
   ///
   /// In ru, this message translates to:
@@ -2015,6 +2075,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сброс сетевых параметров, если после сбоя/выключения ПК с включённым VPN пропал интернет: winsock, IP-стек, DNS-кэш, системный прокси. Требует прав администратора; сброс winsock и IP-стека вступает в силу после ПЕРЕЗАГРУЗКИ.'**
   String get infoNetworkRecover;
+
+  /// No description provided for @infoNetworkSoftRecover.
+  ///
+  /// In ru, this message translates to:
+  /// **'Безопасная чистка после сбоя VPN: кеш DNS, кеш ARP, системный прокси и прокси WinHTTP. Ничего не стирает и не требует перезагрузки — начинать стоит с неё. Требует прав администратора.'**
+  String get infoNetworkSoftRecover;
+
+  /// No description provided for @infoNetworkFullReset.
+  ///
+  /// In ru, this message translates to:
+  /// **'Крайняя мера, если мягкое восстановление не помогло: к чистке добавляются перезапрос аренды DHCP на всех адаптерах, сброс winsock и сброс стека IP. Стирает статические адреса и маршруты, ломает сетевые надстройки сторонних программ и вступает в силу только после ПЕРЕЗАГРУЗКИ. Затрагивает и виртуальные коммутаторы Hyper-V и VirtualBox.'**
+  String get infoNetworkFullReset;
 
   /// No description provided for @infoInterference.
   ///

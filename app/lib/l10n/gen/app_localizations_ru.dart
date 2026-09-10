@@ -346,6 +346,40 @@ class AppLocalizationsRu extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Восстановить';
 
   @override
+  String get networkSoftRecoverTitle => 'Мягкое восстановление';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'Чистка кешей DNS и ARP, снятие системного прокси. Ничего не стирает, перезагрузка не нужна';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => 'Мягкое восстановление сети?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'Будут очищены кеш DNS и кеш ARP, снят системный прокси и прокси WinHTTP. Настройки адаптеров, адреса и маршруты останутся как есть, перезагрузка не потребуется. Понадобятся права администратора (UAC).';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Очистить';
+
+  @override
+  String get networkFullResetTitle => 'Полный сброс сети';
+
+  @override
+  String get networkFullResetSub =>
+      'Если мягкое не помогло. Стирает статические адреса, требует перезагрузки';
+
+  @override
+  String get networkFullResetConfirmTitle => 'Полный сброс сети?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'Кроме мягкой чистки будет сделано следующее.\n\n1) Отпущена и запрошена заново аренда DHCP на ВСЕХ адаптерах — включая виртуальные коммутаторы Hyper-V и VirtualBox: сеть виртуальных машин может отвалиться.\n\n2) Сброс winsock и стека IP вернёт сетевые настройки к заводским: статические адреса, маршруты и надстройки сторонних программ будут стёрты, задавать их придётся заново.\n\n3) Потребуется перезагрузка, а до неё сеть может работать хуже, чем сейчас.\n\nПонадобятся права администратора (UAC).';
+
+  @override
+  String get networkFullResetConfirmOk => 'Сбросить сеть';
+
+  @override
   String get interferenceTitle => 'Проверить помехи (другие VPN)';
 
   @override
@@ -1128,6 +1162,14 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'Сброс сетевых параметров, если после сбоя/выключения ПК с включённым VPN пропал интернет: winsock, IP-стек, DNS-кэш, системный прокси. Требует прав администратора; сброс winsock и IP-стека вступает в силу после ПЕРЕЗАГРУЗКИ.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'Безопасная чистка после сбоя VPN: кеш DNS, кеш ARP, системный прокси и прокси WinHTTP. Ничего не стирает и не требует перезагрузки — начинать стоит с неё. Требует прав администратора.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'Крайняя мера, если мягкое восстановление не помогло: к чистке добавляются перезапрос аренды DHCP на всех адаптерах, сброс winsock и сброс стека IP. Стирает статические адреса и маршруты, ломает сетевые надстройки сторонних программ и вступает в силу только после ПЕРЕЗАГРУЗКИ. Затрагивает и виртуальные коммутаторы Hyper-V и VirtualBox.';
 
   @override
   String get infoInterference =>

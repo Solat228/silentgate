@@ -316,6 +316,21 @@ abstract final class ServiceChecks {
 /// ⚠️ РЯД НЕ ИМЕЕТ ПРАВА РАСПЕРЕТЬ ОКНО: пары лежат в `Wrap`, поэтому на узком
 /// экране они переносятся на вторую строку, а не уезжают за край. Ширину
 /// виджет берёт ту, что дал родитель, и своей не просит.
+///
+/// ⚠️ И НЕ ИМЕЕТ ПРАВА ПРОБИТЬ ВЫДАННЫЙ ПОТОЛОК ВЫСОТЫ. Замер 10.09.2026:
+/// четырнадцать сервисов рядами на широком окне переполняли панель на 97 px
+/// (1024×781) и 117 px (964×761) — причём и в отключённом состоянии, с пустым
+/// контроллером проверок. Потолок рядам выдавался (`checksHeightBudget`), а
+/// сжатия у них не было вовсе: они просто рисовались ниже кромки. В release
+/// полосок переполнения нет — низ экрана молча уезжает за край.
+///
+/// ⚠️ СЖИМАЕТСЯ ТОЛЬКО СВОЁ СОДЕРЖИМОЕ, КНОПКА CONNECT — НИКОГДА. Простое
+/// решение «обернуть весь блок в `FittedBox`» уже пробовали, и это был провал
+/// коммита `36229ab`: `FittedBox` жмёт блок ЦЕЛИКОМ, кнопка становилась
+/// крошечной, и владелец это забраковал. Поэтому `FittedBox` живёт ЗДЕСЬ,
+/// внутри рядов, — тем же приёмом, что и у `ServiceChecksSides` (общий
+/// коэффициент на всё содержимое стороны), а кнопка остаётся снаружи и своего
+/// диаметра (`connect_button_content_test`).
 class ServiceChecksRows extends StatelessWidget {
   const ServiceChecksRows({
     super.key,
@@ -344,7 +359,7 @@ class ServiceChecksRows extends StatelessWidget {
     // На узком экране просвет между рядами меньше: у кнопки Connect и без того
     // мало места по высоте, а рядов теперь до пяти.
     final compact = context.sg.isCompact;
-    return Column(
+    final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -379,6 +394,29 @@ class ServiceChecksRows extends StatelessWidget {
         ],
       ],
     );
+
+    return LayoutBuilder(builder: (_, box) {
+      // ⚠️ ПОТОЛКА НЕТ — СЖИМАТЬ НЕ ОТ ЧЕГО. Так рядам достаётся телефон
+      // (панель целиком в прокрутке) и запасная ветка `ServiceChecksSides`,
+      // которая уже меряет их своим `FittedBox`-ом. Лишний `FittedBox` там
+      // только смазал бы текст, а на бесконечной высоте коэффициент был бы
+      // равен нулю.
+      if (!box.hasBoundedHeight) return content;
+      return FittedBox(
+        // ⚠️ `scaleDown`, А НЕ `contain`: ряды имеют право УМЕНЬШИТЬСЯ, но не
+        // раздуться. `contain` растянул бы три сервиса по умолчанию на весь
+        // выданный потолок — значки размером с кнопку Connect.
+        fit: BoxFit.scaleDown,
+        // ⚠️ ШИРИНУ ЗАДАЁМ ЯВНО. `FittedBox` меряет ребёнка в НЕОГРАНИЧЕННОЙ
+        // коробке, а внутри рядов `Wrap`: на бесконечной ширине он падает с
+        // «BoxConstraints forces an infinite width». Та же грабля уже поймана
+        // в `ServiceChecksSides.rowsFallback`.
+        child: SizedBox(
+          width: box.hasBoundedWidth ? box.maxWidth : null,
+          child: content,
+        ),
+      );
+    });
   }
 }
 

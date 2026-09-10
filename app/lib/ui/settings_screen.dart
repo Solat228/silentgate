@@ -1326,16 +1326,33 @@ class _StepperRow extends StatelessWidget {
 // ── Сеть / помехи ────────────────────────────────────────────────────────────
 List<SettingsRow> _networkRows(AppLocalizations l) {
   return [
+    // ⚠️ ДВЕ КНОПКИ, А НЕ ОДНА, И ПОРЯДОК ЗДЕСЬ — ЧАСТЬ ЗАЩИТЫ. Сверху то, что
+    // помогает в большинстве случаев и ничего не ломает; полный сброс — ниже,
+    // за своим подтверждением. Поменять их местами значит подсунуть первым
+    // делом кнопку, которая стирает статические адреса и требует перезагрузки.
     SettingsRow(
-      search: '${l.networkRecoverTitle} ${l.networkRecoverSub}',
+      search: '${l.networkSoftRecoverTitle} ${l.networkSoftRecoverSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.cleaning_services_outlined),
+        title: Row(children: [
+          Expanded(child: Text(l.networkSoftRecoverTitle)),
+          InfoTooltip(l.infoNetworkSoftRecover,
+              title: l.networkSoftRecoverTitle),
+        ]),
+        subtitle: Text(l.networkSoftRecoverSub),
+        onTap: () => _recoverNetwork(context, full: false),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.networkFullResetTitle} ${l.networkFullResetSub}',
       build: (context) => ListTile(
         leading: const Icon(Icons.restart_alt),
         title: Row(children: [
-          Expanded(child: Text(l.networkRecoverTitle)),
-          InfoTooltip(l.infoNetworkRecover, title: l.networkRecoverTitle),
+          Expanded(child: Text(l.networkFullResetTitle)),
+          InfoTooltip(l.infoNetworkFullReset, title: l.networkFullResetTitle),
         ]),
-        subtitle: Text(l.networkRecoverSub),
-        onTap: () => _recoverNetwork(context),
+        subtitle: Text(l.networkFullResetSub),
+        onTap: () => _recoverNetwork(context, full: true),
       ),
     ),
     SettingsRow(
@@ -1352,24 +1369,56 @@ List<SettingsRow> _networkRows(AppLocalizations l) {
   ];
 }
 
-Future<void> _recoverNetwork(BuildContext context) async {
-    final l = AppLocalizations.of(context);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l.networkRecoverConfirmTitle),
-        content: Text(l.networkRecoverConfirmBody),
+/// Подтверждение и запуск восстановления сети.
+///
+/// ⚠️ ОДИН ПУТЬ НА ОБЕ КНОПКИ, РАЗЛИЧИЕ — ТОЛЬКО В ТЕКСТЕ И ФЛАГЕ. Две копии
+/// диалога разъехались бы: в одной забыли бы дождаться ответа, в другой —
+/// прокрутку длинного текста, и «отмена» в одной из них перестала бы что-то
+/// значить. Запуск идёт СТРОГО после `ok == true`.
+Future<void> _recoverNetwork(BuildContext context,
+    {required bool full}) async {
+  final l = AppLocalizations.of(context);
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      final scheme = Theme.of(ctx).colorScheme;
+      return AlertDialog(
+        title: Text(full
+            ? l.networkFullResetConfirmTitle
+            : l.networkSoftRecoverConfirmTitle),
+        // ⚠️ Текст полного сброса длинный по существу: он перечисляет поимённо
+        // всё, что будет стёрто. В узком окне без прокрутки его нижние строки
+        // (как раз про перезагрузку) просто не поместились бы — а человек
+        // узнаёт об этом ТОЛЬКО отсюда.
+        content: SingleChildScrollView(
+          child: Text(full
+              ? l.networkFullResetConfirmBody
+              : l.networkSoftRecoverConfirmBody),
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: Text(l.commonCancel)),
           FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l.networkRecoverConfirmOk)),
+            // Красная кнопка только у полного сброса: это необратимое действие
+            // над сетью машины, и оно обязано выглядеть иначе, чем мягкая
+            // чистка кешей.
+            style: full
+                ? FilledButton.styleFrom(
+                    backgroundColor: scheme.error,
+                    foregroundColor: scheme.onError,
+                  )
+                : null,
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(full
+                ? l.networkFullResetConfirmOk
+                : l.networkSoftRecoverConfirmOk),
+          ),
         ],
-      ),
-    );
-    if (ok == true) await NetworkRecovery.run();
+      );
+    },
+  );
+  if (ok == true) await NetworkRecovery.run(full: full);
 }
 
 /// Диалог сканирования помех (используется и из настроек, и со старта).

@@ -344,6 +344,40 @@ class AppLocalizationsFa extends AppLocalizations {
   String get networkRecoverConfirmOk => 'بازیابی';
 
   @override
+  String get networkSoftRecoverTitle => 'بازیابی نرم';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'پاک‌سازی حافظه نهان DNS و ARP، حذف پروکسی سیستم. چیزی پاک نمی‌کند، نیازی به راه‌اندازی مجدد نیست';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => 'بازیابی نرم شبکه؟';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'حافظه نهان DNS و حافظه نهان ARP پاک می‌شوند، پروکسی سیستم و پروکسی WinHTTP حذف می‌شوند. تنظیمات آداپتورها، آدرس‌ها و مسیرها بدون تغییر باقی می‌مانند، نیازی به راه‌اندازی مجدد نیست. به دسترسی مدیر (UAC) نیاز است.';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'پاک‌سازی';
+
+  @override
+  String get networkFullResetTitle => 'بازنشانی کامل شبکه';
+
+  @override
+  String get networkFullResetSub =>
+      'اگر روش نرم کمک نکرد. آدرس‌های ثابت را پاک می‌کند، نیازمند راه‌اندازی مجدد است';
+
+  @override
+  String get networkFullResetConfirmTitle => 'شبکه به طور کامل بازنشانی شود؟';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'علاوه بر پاک‌سازی نرم، موارد زیر انجام می‌شود.\n\n1) اجاره DHCP روی تمام آداپتورها — از جمله سوییچ‌های مجازی Hyper-V و VirtualBox — آزاد و دوباره درخواست می‌شود: شبکه ماشین‌های مجازی شما ممکن است قطع شود.\n\n2) بازنشانی winsock و پشته IP تنظیمات شبکه را به حالت کارخانه بازمی‌گرداند: آدرس‌های ثابت، مسیرها و افزونه‌های شبکه شخص ثالث پاک می‌شوند و باید دوباره تنظیم شوند.\n\n3) راه‌اندازی مجدد لازم است و تا آن زمان شبکه ممکن است بدتر از الان کار کند.\n\nبه دسترسی مدیر (UAC) نیاز است.';
+
+  @override
+  String get networkFullResetConfirmOk => 'بازنشانی شبکه';
+
+  @override
   String get interferenceTitle => 'بررسی تداخل (VPNهای دیگر)';
 
   @override
@@ -1127,6 +1161,14 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'بازنشانی پارامترهای شبکه اگر پس از خرابی/خاموش شدن رایانه با VPN روشن، اینترنت قطع شد: winsock، پشته IP، حافظه نهان DNS، پروکسی سیستمی. نیازمند دسترسی مدیر است؛ بازنشانی winsock و پشته IP پس از راه‌اندازی مجدد اعمال می‌شود.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'یک پاک‌سازی امن پس از خرابی VPN: حافظه نهان DNS، حافظه نهان ARP، پروکسی سیستم و پروکسی WinHTTP. چیزی پاک نمی‌کند و نیازی به راه‌اندازی مجدد ندارد — از همین شروع کنید. به دسترسی مدیر نیاز دارد.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'آخرین راه‌حل اگر بازیابی نرم کمک نکرد: به پاک‌سازی، تمدید اجاره DHCP روی تمام آداپتورها، بازنشانی winsock و بازنشانی پشته IP افزوده می‌شود. آدرس‌های ثابت و مسیرها را پاک می‌کند، افزونه‌های شبکه شخص ثالث را خراب می‌کند و فقط پس از راه‌اندازی مجدد اعمال می‌شود. سوییچ‌های مجازی Hyper-V و VirtualBox را نیز تحت تأثیر قرار می‌دهد.';
 
   @override
   String get infoInterference =>

@@ -344,6 +344,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Recover';
 
   @override
+  String get networkSoftRecoverTitle => 'Soft recovery';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'Flushes the DNS and ARP caches and clears the system proxy. Erases nothing, no reboot needed';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => 'Soft network recovery?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'The DNS cache and the ARP cache will be flushed, and the system proxy and the WinHTTP proxy will be cleared. Adapter settings, addresses and routes stay as they are, and no reboot will be needed. Administrator rights (UAC) are required.';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Flush';
+
+  @override
+  String get networkFullResetTitle => 'Full network reset';
+
+  @override
+  String get networkFullResetSub =>
+      'If the soft recovery did not help. Erases static addresses, needs a reboot';
+
+  @override
+  String get networkFullResetConfirmTitle => 'Full network reset?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'On top of the soft cleanup the following will happen.\n\n1) The DHCP lease will be released and requested again on ALL adapters — including the Hyper-V and VirtualBox virtual switches: the network of your virtual machines may go down.\n\n2) Resetting winsock and the IP stack returns the network settings to factory defaults: static addresses, routes and third-party network add-ons will be erased and will have to be set up again.\n\n3) A reboot will be required, and until then the network may work worse than it does now.\n\nAdministrator rights (UAC) are required.';
+
+  @override
+  String get networkFullResetConfirmOk => 'Reset network';
+
+  @override
   String get interferenceTitle => 'Check for interference (other VPNs)';
 
   @override
@@ -1126,6 +1160,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'Resets network parameters if the internet is gone after a crash/shutdown of the PC with the VPN enabled: winsock, the IP stack, the DNS cache, the system proxy. Requires administrator rights; resetting winsock and the IP stack takes effect after a RESTART.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'A safe cleanup after a VPN failure: the DNS cache, the ARP cache, the system proxy and the WinHTTP proxy. It erases nothing and needs no reboot — start here. Requires administrator rights.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'A last resort if the soft recovery did not help: the cleanup plus a DHCP lease renewal on all adapters, a winsock reset and an IP stack reset. It erases static addresses and routes, breaks third-party network add-ons and only takes effect after a REBOOT. It also affects the Hyper-V and VirtualBox virtual switches.';
 
   @override
   String get infoInterference =>

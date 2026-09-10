@@ -351,6 +351,41 @@ class AppLocalizationsFr extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Récupérer';
 
   @override
+  String get networkSoftRecoverTitle => 'Récupération douce';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'Vide les caches DNS et ARP, retire le proxy système. Ne supprime rien, aucun redémarrage nécessaire';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => 'Récupération douce du réseau ?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'Le cache DNS et le cache ARP seront vidés, le proxy système et le proxy WinHTTP seront retirés. Les paramètres des adaptateurs, les adresses et les routes resteront tels quels, aucun redémarrage ne sera nécessaire. Des droits administrateur seront nécessaires (UAC).';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Vider';
+
+  @override
+  String get networkFullResetTitle => 'Réinitialisation complète du réseau';
+
+  @override
+  String get networkFullResetSub =>
+      'Si la version douce n\'a pas aidé. Efface les adresses statiques, nécessite un redémarrage';
+
+  @override
+  String get networkFullResetConfirmTitle =>
+      'Réinitialisation complète du réseau ?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'En plus du nettoyage doux, les opérations suivantes seront effectuées.\n\n1) Le bail DHCP sera libéré puis redemandé sur TOUS les adaptateurs — y compris les commutateurs virtuels Hyper-V et VirtualBox : le réseau de vos machines virtuelles peut tomber.\n\n2) La réinitialisation de winsock et de la pile IP ramène les paramètres réseau aux valeurs d\'usine : les adresses statiques, les routes et les extensions réseau tierces seront effacées et devront être reconfigurées.\n\n3) Un redémarrage sera nécessaire, et d\'ici là le réseau peut fonctionner moins bien qu\'actuellement.\n\nDes droits administrateur seront nécessaires (UAC).';
+
+  @override
+  String get networkFullResetConfirmOk => 'Réinitialiser le réseau';
+
+  @override
   String get interferenceTitle => 'Vérifier les interférences (autres VPN)';
 
   @override
@@ -1143,6 +1178,14 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'Réinitialise les paramètres réseau si Internet a disparu après un plantage/arrêt du PC avec le VPN activé : winsock, la pile IP, le cache DNS, le proxy système. Nécessite des droits administrateur ; la réinitialisation de winsock et de la pile IP prend effet après un REDÉMARRAGE.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'Un nettoyage sûr après un échec du VPN : le cache DNS, le cache ARP, le proxy système et le proxy WinHTTP. Ne supprime rien et ne nécessite aucun redémarrage — à essayer en premier. Nécessite des droits administrateur.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'Un dernier recours si la récupération douce n\'a pas aidé : au nettoyage s\'ajoutent le renouvellement du bail DHCP sur tous les adaptateurs, une réinitialisation de winsock et une réinitialisation de la pile IP. Efface les adresses statiques et les routes, casse les extensions réseau tierces et ne prend effet qu\'après un REDÉMARRAGE. Affecte aussi les commutateurs virtuels Hyper-V et VirtualBox.';
 
   @override
   String get infoInterference =>

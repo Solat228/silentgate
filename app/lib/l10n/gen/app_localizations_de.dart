@@ -347,6 +347,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Wiederherstellen';
 
   @override
+  String get networkSoftRecoverTitle => 'Sanfte Wiederherstellung';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'Leert DNS- und ARP-Cache, entfernt den Systemproxy. Löscht nichts, kein Neustart nötig';
+
+  @override
+  String get networkSoftRecoverConfirmTitle =>
+      'Sanfte Netzwerkwiederherstellung?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'DNS-Cache und ARP-Cache werden geleert, Systemproxy und WinHTTP-Proxy werden entfernt. Adaptereinstellungen, Adressen und Routen bleiben unverändert, ein Neustart ist nicht nötig. Administratorrechte (UAC) werden benötigt.';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Leeren';
+
+  @override
+  String get networkFullResetTitle => 'Vollständiger Netzwerk-Reset';
+
+  @override
+  String get networkFullResetSub =>
+      'Falls die sanfte Variante nicht half. Löscht statische Adressen, erfordert einen Neustart';
+
+  @override
+  String get networkFullResetConfirmTitle =>
+      'Vollständigen Netzwerk-Reset durchführen?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'Zusätzlich zur sanften Bereinigung geschieht Folgendes.\n\n1) Der DHCP-Lease wird auf ALLEN Adaptern freigegeben und neu angefordert — einschließlich der virtuellen Hyper-V- und VirtualBox-Switches: Das Netzwerk Ihrer virtuellen Maschinen kann ausfallen.\n\n2) Das Zurücksetzen von Winsock und dem IP-Stack bringt die Netzwerkeinstellungen auf Werkszustand zurück: Statische Adressen, Routen und Netzwerk-Add-ons von Drittanbietern werden gelöscht und müssen neu eingerichtet werden.\n\n3) Ein Neustart wird erforderlich, und bis dahin kann das Netzwerk schlechter funktionieren als jetzt.\n\nAdministratorrechte (UAC) werden benötigt.';
+
+  @override
+  String get networkFullResetConfirmOk => 'Netzwerk zurücksetzen';
+
+  @override
   String get interferenceTitle => 'Auf Störungen prüfen (andere VPNs)';
 
   @override
@@ -1137,6 +1173,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'Setzt Netzwerkparameter zurück, falls nach einem Absturz/Herunterfahren des PCs mit aktiviertem VPN kein Internet mehr da ist: Winsock, den IP-Stack, den DNS-Cache, den Systemproxy. Erfordert Administratorrechte; das Zurücksetzen von Winsock und dem IP-Stack wird nach einem NEUSTART wirksam.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'Eine sichere Bereinigung nach einem VPN-Ausfall: DNS-Cache, ARP-Cache, Systemproxy und WinHTTP-Proxy. Löscht nichts und erfordert keinen Neustart — hiermit sollte man beginnen. Erfordert Administratorrechte.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'Das letzte Mittel, falls die sanfte Wiederherstellung nicht half: Zur Bereinigung kommen eine Erneuerung des DHCP-Lease auf allen Adaptern, ein Zurücksetzen von Winsock und ein Zurücksetzen des IP-Stacks hinzu. Löscht statische Adressen und Routen, beschädigt Netzwerk-Add-ons von Drittanbietern und wirkt erst nach einem NEUSTART. Betrifft auch die virtuellen Hyper-V- und VirtualBox-Switches.';
 
   @override
   String get infoInterference =>

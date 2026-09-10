@@ -345,6 +345,41 @@ class AppLocalizationsTr extends AppLocalizations {
   String get networkRecoverConfirmOk => 'Kurtar';
 
   @override
+  String get networkSoftRecoverTitle => 'Yumuşak kurtarma';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'DNS ve ARP önbelleklerini temizler, sistem proxy\'sini kaldırır. Hiçbir şeyi silmez, yeniden başlatma gerekmez';
+
+  @override
+  String get networkSoftRecoverConfirmTitle =>
+      'Ağ için yumuşak kurtarma yapılsın mı?';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'DNS önbelleği ve ARP önbelleği temizlenecek, sistem proxy\'si ve WinHTTP proxy\'si kaldırılacak. Bağdaştırıcı ayarları, adresler ve yollar olduğu gibi kalacak, yeniden başlatma gerekmeyecek. Yönetici hakları (UAC) gerekecek.';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'Temizle';
+
+  @override
+  String get networkFullResetTitle => 'Tam ağ sıfırlama';
+
+  @override
+  String get networkFullResetSub =>
+      'Yumuşak yöntem yardımcı olmadıysa. Statik adresleri siler, yeniden başlatma gerektirir';
+
+  @override
+  String get networkFullResetConfirmTitle => 'Ağ tamamen sıfırlansın mı?';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'Yumuşak temizliğe ek olarak şunlar yapılacak.\n\n1) TÜM bağdaştırıcılarda — Hyper-V ve VirtualBox sanal anahtarları dahil — DHCP kirası bırakılıp yeniden istenecek: sanal makinelerinizin ağı kopabilir.\n\n2) Winsock ve IP yığınının sıfırlanması ağ ayarlarını fabrika değerlerine döndürür: statik adresler, yollar ve üçüncü taraf ağ eklentileri silinecek ve yeniden ayarlanması gerekecek.\n\n3) Yeniden başlatma gerekecek, buna kadar ağ şu anki halinden daha kötü çalışabilir.\n\nYönetici hakları (UAC) gerekecek.';
+
+  @override
+  String get networkFullResetConfirmOk => 'Ağı sıfırla';
+
+  @override
   String get interferenceTitle => 'Girişim kontrolü (diğer VPN\'ler)';
 
   @override
@@ -1133,6 +1168,14 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'VPN etkinken bilgisayarın çökmesi/kapanmasının ardından internet gittiyse ağ parametrelerini sıfırlar: winsock, IP yığını, DNS önbelleği, sistem proxy\'si. Yönetici hakları gerektirir; winsock ve IP yığınının sıfırlanması YENİDEN BAŞLATMADAN sonra etkinleşir.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'VPN arızasından sonra güvenli bir temizlik: DNS önbelleği, ARP önbelleği, sistem proxy\'si ve WinHTTP proxy\'si. Hiçbir şeyi silmez ve yeniden başlatma gerektirmez — buradan başlamak gerekir. Yönetici hakları gerektirir.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'Yumuşak kurtarma yardımcı olmadıysa son çare: temizliğe tüm bağdaştırıcılarda DHCP kirası yenilemesi, winsock sıfırlaması ve IP yığını sıfırlaması eklenir. Statik adresleri ve yolları siler, üçüncü taraf ağ eklentilerini bozar ve yalnızca yeniden başlatmadan sonra etkinleşir. Hyper-V ve VirtualBox sanal anahtarlarını da etkiler.';
 
   @override
   String get infoInterference =>

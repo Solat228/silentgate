@@ -343,6 +343,41 @@ class AppLocalizationsAr extends AppLocalizations {
   String get networkRecoverConfirmOk => 'استعادة';
 
   @override
+  String get networkSoftRecoverTitle => 'استعادة سلسة';
+
+  @override
+  String get networkSoftRecoverSub =>
+      'تنظيف ذاكرة التخزين المؤقت لـ DNS وARP وإزالة بروكسي النظام. لا يمحو شيئًا، ولا حاجة لإعادة التشغيل';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => 'هل تريد استعادة سلسة للشبكة؟';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      'سيتم تفريغ ذاكرة التخزين المؤقت لـ DNS وذاكرة ARP، وإزالة بروكسي النظام وبروكسي WinHTTP. ستبقى إعدادات المهايئات والعناوين والمسارات كما هي، ولن تحتاج لإعادة التشغيل. ستحتاج إلى صلاحيات المسؤول (UAC).';
+
+  @override
+  String get networkSoftRecoverConfirmOk => 'تنظيف';
+
+  @override
+  String get networkFullResetTitle => 'إعادة تعيين كاملة للشبكة';
+
+  @override
+  String get networkFullResetSub =>
+      'إذا لم تساعد الطريقة السلسة. يمحو العناوين الثابتة، ويتطلب إعادة التشغيل';
+
+  @override
+  String get networkFullResetConfirmTitle =>
+      'هل تريد إعادة تعيين كاملة للشبكة؟';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      'بالإضافة إلى التنظيف السلس، سيتم تنفيذ ما يلي.\n\n1) سيتم تحرير وإعادة طلب إيجار DHCP على جميع المهايئات — بما في ذلك مفاتيح Hyper-V وVirtualBox الافتراضية: قد تتعطل شبكة أجهزتك الافتراضية.\n\n2) إعادة تعيين winsock وحزمة IP تعيد إعدادات الشبكة إلى قيم المصنع: سيتم محو العناوين الثابتة والمسارات وإضافات الشبكة من جهات خارجية، وستحتاج إلى إعدادها من جديد.\n\n3) ستحتاج إلى إعادة التشغيل، وحتى ذلك الحين قد تعمل الشبكة بشكل أسوأ مما هي عليه الآن.\n\nستحتاج إلى صلاحيات المسؤول (UAC).';
+
+  @override
+  String get networkFullResetConfirmOk => 'إعادة تعيين الشبكة';
+
+  @override
   String get interferenceTitle => 'التحقق من التداخل (شبكات VPN أخرى)';
 
   @override
@@ -1122,6 +1157,14 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       'يعيد تعيين معاملات الشبكة إذا اختفى الإنترنت بعد تعطّل/إيقاف الكمبيوتر مع تفعيل VPN: winsock، وحزمة IP، وذاكرة DNS المؤقتة، وبروكسي النظام. يتطلب صلاحيات المسؤول؛ تسري إعادة تعيين winsock وحزمة IP بعد إعادة التشغيل.';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'تنظيف آمن بعد فشل VPN: ذاكرة التخزين المؤقت لـ DNS، وذاكرة ARP، وبروكسي النظام، وبروكسي WinHTTP. لا يمحو شيئًا ولا يتطلب إعادة التشغيل — ابدأ به. يتطلب صلاحيات المسؤول.';
+
+  @override
+  String get infoNetworkFullReset =>
+      'ملاذ أخير إذا لم تساعد الاستعادة السلسة: يضاف إلى التنظيف تجديد إيجار DHCP على جميع المهايئات، وإعادة تعيين winsock، وإعادة تعيين حزمة IP. يمحو العناوين الثابتة والمسارات، ويعطل إضافات الشبكة من جهات خارجية، ولا يسري إلا بعد إعادة التشغيل. كما يؤثر على مفاتيح Hyper-V وVirtualBox الافتراضية.';
 
   @override
   String get infoInterference =>

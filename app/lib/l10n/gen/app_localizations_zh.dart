@@ -334,6 +334,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get networkRecoverConfirmOk => '恢复';
 
   @override
+  String get networkSoftRecoverTitle => '轻度恢复';
+
+  @override
+  String get networkSoftRecoverSub => '清除 DNS 和 ARP 缓存，取消系统代理。不会删除任何内容，无需重启';
+
+  @override
+  String get networkSoftRecoverConfirmTitle => '要进行网络轻度恢复吗？';
+
+  @override
+  String get networkSoftRecoverConfirmBody =>
+      '将清除 DNS 缓存和 ARP 缓存，取消系统代理和 WinHTTP 代理。适配器设置、地址和路由将保持不变，无需重启。需要管理员权限（UAC）。';
+
+  @override
+  String get networkSoftRecoverConfirmOk => '清除';
+
+  @override
+  String get networkFullResetTitle => '网络完全重置';
+
+  @override
+  String get networkFullResetSub => '如果轻度恢复没有帮助。会清除静态地址，需要重启';
+
+  @override
+  String get networkFullResetConfirmTitle => '要完全重置网络吗？';
+
+  @override
+  String get networkFullResetConfirmBody =>
+      '除了轻度清理之外，还将执行以下操作。\n\n1) 将在所有适配器上释放并重新申请 DHCP 租约——包括 Hyper-V 和 VirtualBox 虚拟交换机：您的虚拟机网络可能会中断。\n\n2) 重置 winsock 和 IP 协议栈会将网络设置恢复为出厂状态：静态地址、路由和第三方网络插件将被清除，需要重新配置。\n\n3) 需要重启，在此之前网络可能比现在运行得更差。\n\n需要管理员权限（UAC）。';
+
+  @override
+  String get networkFullResetConfirmOk => '重置网络';
+
+  @override
   String get interferenceTitle => '检查干扰（其他 VPN）';
 
   @override
@@ -1102,6 +1134,14 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get infoNetworkRecover =>
       '如果在启用 VPN 的电脑崩溃/关机后无法上网，则重置网络参数：winsock、IP 栈、DNS 缓存、系统代理。需要管理员权限；winsock 和 IP 栈的重置在重启后生效。';
+
+  @override
+  String get infoNetworkSoftRecover =>
+      'VPN 故障后的安全清理：DNS 缓存、ARP 缓存、系统代理和 WinHTTP 代理。不会删除任何内容，也不需要重启——应从此项开始。需要管理员权限。';
+
+  @override
+  String get infoNetworkFullReset =>
+      '如果轻度恢复没有帮助，这是最后手段：在清理的基础上增加在所有适配器上续租 DHCP、重置 winsock 和重置 IP 协议栈。会清除静态地址和路由，破坏第三方网络插件，且仅在重启后生效。还会影响 Hyper-V 和 VirtualBox 虚拟交换机。';
 
   @override
   String get infoInterference =>

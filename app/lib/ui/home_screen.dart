@@ -1994,14 +1994,33 @@ class ConnectCenterpiece extends StatelessWidget {
                 // ей нечего было бы объяснять, раз человек сам их выключил.
                 return button;
               case ServiceChecksLayout.rows:
+                // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
+                // владелец просил галочку «полного отключения», и выключенные
+                // проверки не должны занимать место у кнопки.
+                final checkRows =
+                    ServiceChecksRows(services: services, httpPort: httpPort);
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     button,
-                    // ⚠️ Пустой набор не строится ВОВСЕ, а не рисуется пустым:
-                    // владелец просил галочку «полного отключения», и
-                    // выключенные проверки не должны занимать место у кнопки.
-                    ServiceChecksRows(services: services, httpPort: httpPort),
+                    // ⚠️ ЧЕТВЁРТЫЙ СЛОЙ ПОТОЛКА — И БЕЗ НЕГО РЯДЫ ЕГО НЕ ВИДЯТ.
+                    // Дети `Column` получают `maxHeight: infinity`, поэтому
+                    // ряды считали бы, что места у них сколько угодно, и
+                    // рисовались ниже кромки панели: замер 10.09.2026 —
+                    // переполнение на 97 px (1024×781) и 117 px (964×761) при
+                    // четырнадцати сервисах. `Flexible` отдаёт им ОСТАТОК
+                    // после кнопки и плашки, то есть ровно то место, которое
+                    // им и принадлежит.
+                    //
+                    // ⚠️ И ТОЛЬКО КОГДА ПОТОЛОК ЕСТЬ: на телефоне панель
+                    // прокручивается, высота там бесконечна, а `Flexible` в
+                    // `Column` без потолка падает с «RenderFlex children have
+                    // non-zero flex but incoming height constraints are
+                    // unbounded».
+                    if (c.hasBoundedHeight)
+                      Flexible(child: checkRows)
+                    else
+                      checkRows,
                     ServiceChecksNotReadyBanner(
                         httpPort: httpPort, services: services),
                   ],
