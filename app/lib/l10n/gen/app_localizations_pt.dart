@@ -2037,7 +2037,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Cada serviço tem dois ícones: à esquerda, como ele abre sem VPN; à direita, o mesmo serviço com VPN; a seta entre eles mostra a mudança. A verificação «sem VPN» é feita sozinha ao abrir o aplicativo, «com VPN» logo após conectar. O anel ao redor do ícone mostra o estado: verde — abre, laranja — bloqueio por país, vermelho — inacessível, cinza — ainda não verificado. A marca no canto repete isso: ✓ abre, ! bloqueio por país, ✕ inacessível. Toque no ícone para verificar de novo. O conjunto de serviços muda pelo botão de configurações ao lado.';
+      'Dois ícones por serviço\n• esquerda: o serviço sem VPN\n• direita: o mesmo serviço com VPN\n• seta entre eles: a mudança\n\nQuando a medição é feita\n• sem VPN: sozinha ao abrir o aplicativo\n• com VPN: logo após conectar\n\nCor do anel ao redor do ícone\n• verde: abre\n• laranja: bloqueio por país\n• vermelho: inacessível\n• cinza: ainda não verificado\n\nA marca no canto repete a cor\n• ✓ abre\n• ! bloqueio por país\n• ✕ inacessível\n\nO que dá para tocar\n• o ícone: verificar o serviço de novo\n• o botão de configurações ao lado: mudar o conjunto de serviços';
 
   @override
   String get serviceStatusOk => 'Funciona';

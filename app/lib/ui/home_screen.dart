@@ -1282,10 +1282,12 @@ class ConnectPane extends StatelessWidget {
                             const ServiceChecksMenuButton(),
                           ],
                         ),
-                        // «Информация о сервере» — значком в левом краю той же
-                        // полосы. Своей строкой под статусом она стоила 48 px, и
-                        // ровно их не хватало низу экрана на минимальном окне.
-                        bannerLeading: const ServerInfoButton(),
+                        // «Информация о сервере» — значком ВПЛОТНУЮ к плашке
+                        // имени, слева от неё, и пропадает вместе с ней
+                        // (требование владельца 10.09.2026). Своей строкой под
+                        // статусом она стоила 48 px, и ровно их не хватало низу
+                        // экрана на минимальном окне.
+                        bannerInfo: const ServerInfoButton(),
                         // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
                         // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
                         // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
@@ -1904,13 +1906,13 @@ class ConnectCenterpiece extends StatelessWidget {
     this.services = ServiceChecks.services,
     this.layout = ServiceChecksLayout.rows,
     this.bannerTrailing,
-    this.bannerLeading,
+    this.bannerInfo,
   });
 
-  /// Что стоит в ЛЕВОМ краю полосы плашки — на экране это «Информация о
-  /// сервере». `null` — место под кнопку всё равно держится (см.
-  /// [ActiveServerBanner.leading]).
-  final Widget? bannerLeading;
+  /// Значок «Информация о сервере» — стоит ВПЛОТНУЮ к плашке имени, слева от
+  /// неё, и центрируется вместе с ней одной группой (см.
+  /// [ActiveServerBanner.info]). `null` — плашка стоит одна.
+  final Widget? bannerInfo;
 
   /// Что стоит в правом краю полосы плашки — на экране это «i» с подсказкой
   /// и кнопка подменю проверок. `null` — полоса без хвоста (стражи вёрстки).
@@ -1960,7 +1962,7 @@ class ConnectCenterpiece extends StatelessWidget {
         // Строка выше кнопки не пересекается ни с кругом, ни с чипами по
         // определению — пересекаться нечему.
         ActiveServerBanner(
-            name: serverName, trailing: bannerTrailing, leading: bannerLeading),
+            name: serverName, trailing: bannerTrailing, info: bannerInfo),
         // ⚠️ РАСКЛАДКА ВЫБИРАЕТСЯ ЗДЕСЬ, ПО ШИРИНЕ РОДИТЕЛЯ — И ЭТО ЕДИНСТВЕННОЕ
         // МЕСТО, ГДЕ ЭТОТ ВЫБОР ДЕЛАЕТСЯ. Прошлый регресс (см. шапку файла) был
         // ровно в том, что раскладка существовала в коде, но вызов её не
@@ -2120,7 +2122,7 @@ class ServiceChecksNotReadyBanner extends StatelessWidget {
 /// Тот же приём, что у строки трафика ниже, — она тоже висит с нулями.
 class ActiveServerBanner extends StatelessWidget {
   const ActiveServerBanner(
-      {super.key, required this.name, this.trailing, this.leading});
+      {super.key, required this.name, this.trailing, this.info});
 
   /// Имя активного сервера. `null`/пусто — плашка невидима, но место держит.
   final String? name;
@@ -2130,22 +2132,31 @@ class ActiveServerBanner extends StatelessWidget {
   /// вместе с плашкой значило бы оставить человека без пути назад.
   final Widget? trailing;
 
-  /// Левый край полосы — на экране это «Информация о сервере».
+  /// Значок «Информация о сервере» — ВПЛОТНУЮ к плашке, слева от неё.
   ///
-  /// ⚠️ МЕСТО ПОД НЕГО ДЕРЖИТСЯ ВСЕГДА, даже когда кнопки нет (сервер не
-  /// выбран): распорка слева симметрична хвосту, и без неё плашка съезжала бы
-  /// с оси кнопки Connect ровно в тот момент, когда человек выбирает сервер.
-  final Widget? leading;
+  /// ⚠️ ЖИВЁТ И ГАСНЕТ ВМЕСТЕ С ПЛАШКОЙ (требование владельца 10.09.2026):
+  /// нет имени — нет и значка, потому что называть нечего. Раньше он стоял
+  /// в отдельном слоте у ЛЕВОГО края полосы: на экране это выглядело как
+  /// значок сам по себе слева и плашка сама по себе по центру, и висел он там
+  /// даже при выключенном VPN.
+  ///
+  /// ⚠️ Скрытие — решение об ИНТЕРФЕЙСЕ, а не техническое ограничение: экран
+  /// информации о сервере меряет через проброс-харнесс и прекрасно работает
+  /// без VPN. Доступ к нему не теряется — он открывается из контекстного меню
+  /// сервера в списке, откуда его изначально и открывали.
+  final Widget? info;
 
   /// Просвет между плашкой и кнопкой.
   static const double gap = 10;
 
-  /// Ширина места под хвост — и РОВНО ТАКОЙ ЖЕ распорки слева.
+  /// Ширина места под хвост — и РОВНО ТАКОЙ ЖЕ пустой распорки слева.
   ///
-  /// ⚠️ РАСПОРКА СИММЕТРИЧНАЯ, И ЭТО НЕ КРАСОТА. Плашка центрируется в том,
-  /// что осталось от строки; хвост без пары слева сдвигал бы её от оси кнопки
-  /// на половину своей ширины — 30 px, заметно глазом. Две кнопки по 28 и
-  /// просвет 2 — 58; запас 2.
+  /// ⚠️ РАСПОРКА СИММЕТРИЧНАЯ, И ЭТО НЕ КРАСОТА. Группа «значок + плашка»
+  /// центрируется в том, что осталось от строки; хвост без пары слева сдвигал
+  /// бы её от оси кнопки на половину своей ширины — 30 px, заметно глазом.
+  /// Слот `leading` из полосы убран (значок переехал к плашке), а распорка
+  /// осталась: она держит именно центровку, а не чью-то кнопку.
+  /// Две кнопки по 28 и просвет 2 — 58; запас 2.
   static const double trailingWidth = 60;
 
   @override
@@ -2163,23 +2174,47 @@ class ActiveServerBanner extends StatelessWidget {
       child: ActiveServerLabel(name: shown ? n : ' '),
     );
     final tail = trailing;
+    final infoButton = info;
+    // ⚠️ ЗНАЧОК И ПЛАШКА — ОДНА ГРУППА, И ЦЕНТРИРУЕТСЯ ИМЕННО ОНА.
+    //
+    // Значок стоит вплотную к плашке (свой просвет он несёт сам, см.
+    // `ServerInfoButton.gap`), поэтому видно, что он про этот сервер, а не
+    // про полосу вообще. Показывается только вместе с именем: `shown` —
+    // единственный выключатель на оба, иначе значок пережил бы плашку.
+    //
+    // ⚠️ `Flexible` У ПЛАШКИ ОБЯЗАТЕЛЕН. Без него на узком окне имя считало
+    // бы, что места сколько угодно, и группа уехала бы за край экрана —
+    // ровно то переполнение, которое стережёт «длинное имя на узком окне».
+    //
+    // ⚠️ НИЖНИЙ ПРЕДЕЛ ВЫСОТЫ — СТОРОНА ЗНАЧКА, И ЭТО НЕ ПЕРЕСТРАХОВКА.
+    // При обычном системном шрифте плашка ровно 28 px (12 текста, по 5
+    // отступа, по пикселю рамки) — со значком совпало случайно. Стоит
+    // человеку уменьшить шрифт системы, и плашка становится ниже значка:
+    // полоса подрастает ровно в момент подключения, дёргая кнопку Connect и
+    // все ряды проверок под ней. Замер: 26 против 28 при ×0,8.
+    final group = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: ServerInfoButton.size),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (shown && infoButton != null) infoButton,
+          Flexible(child: label),
+        ],
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: gap),
-      // Без хвоста — прежняя одиночная плашка: `Row` с `Expanded` требует
+      // Без хвоста — одна группа посреди строки: `Row` с `Expanded` требует
       // конечной ширины, а без хвоста ему нечего делить.
-      child: tail == null && leading == null
-          ? label
+      child: tail == null
+          ? group
           : Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                SizedBox(
-                  width: trailingWidth,
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: leading ?? const SizedBox.shrink(),
-                  ),
-                ),
-                Expanded(child: Center(child: label)),
+                // Пустой противовес хвосту — держит группу на оси кнопки.
+                const SizedBox(width: trailingWidth),
+                Expanded(child: Center(child: group)),
                 SizedBox(
                   width: trailingWidth,
                   child: Align(
@@ -2193,13 +2228,20 @@ class ActiveServerBanner extends StatelessWidget {
   }
 }
 
-/// «Информация о сервере» — значком в левом краю полосы плашки.
+/// «Информация о сервере» — значком вплотную к плашке имени сервера.
 ///
 /// ⚠️ РЕГРЕСС-ОПАСНОЕ МЕСТО. Экран информации о сервере открывался с главного
 /// отдельной строкой-кнопкой под статусом; строка стоила 48 px, и ровно их не
 /// хватало низу экрана на минимальном окне 980×800. Убрать её было можно
 /// только вместе с новым входом: до этого экран открывался ещё лишь из
 /// контекстного меню в списке серверов, где его никто не находил.
+///
+/// ⚠️ ЗНАЧОК ПРОПАДАЕТ ВМЕСТЕ С ПЛАШКОЙ — И ЭТО РЕШЕНИЕ ОБ ИНТЕРФЕЙСЕ, А НЕ
+/// ТЕХНИЧЕСКОЕ ОГРАНИЧЕНИЕ. Сам экран работает и при выключенном VPN: он
+/// меряет через проброс-харнесс, туннель ему не нужен. Владелец (10.09.2026)
+/// попросил убирать значок, когда сервер не выбран, — «информация о сервере»
+/// без сервера ведёт в пустоту. Путь к экрану при этом остаётся: контекстное
+/// меню строки в списке серверов, откуда его изначально и открывали.
 ///
 /// ⚠️ ТУГАЯ КОРОБКА 28 px, как у кнопок хвоста. Область нажатия Material тянет
 /// `IconButton` до 40 px, если родитель не зажал, — полоса плашки поднялась бы
@@ -2210,6 +2252,13 @@ class ServerInfoButton extends StatelessWidget {
   /// Сторона кнопки — совпадает с `ServiceChecksMenuButton.size` и
   /// `InfoTooltip.compactSize`.
   static const double size = 28;
+
+  /// Просвет до плашки имени.
+  ///
+  /// ⚠️ ЖИВЁТ ЗДЕСЬ, А НЕ В ПОЛОСЕ. Когда сервера нет, кнопка не рисуется
+  /// вовсе — и просвет обязан исчезнуть вместе с ней; распорка, оставленная в
+  /// родителе, сдвинула бы плашку с оси кнопки Connect на свою половину.
+  static const double gap = 6;
 
   /// ⚠️ НЕ `Icons.info_outline` — И ЭТО НЕ ПРИДИРКА К ОФОРМЛЕНИЮ.
   ///
@@ -2232,25 +2281,29 @@ class ServerInfoButton extends StatelessWidget {
     final l = AppLocalizations.of(context);
     // Необязательное чтение: стражи вёрстки поднимают полосу без провайдеров.
     final server = context.watch<AppState?>()?.selectedServer;
-    // ⚠️ Место под кнопку держит РОДИТЕЛЬ (`ActiveServerBanner.leading`), а не
-    // эта пустышка: иначе плашка прыгала бы при выборе сервера.
-    if (server == null) return const SizedBox(width: size, height: size);
-    return SizedBox(
-      width: size,
-      height: size,
-      child: IconButton(
-        icon: const Icon(icon, size: 18),
-        // ⚠️ ПОДСКАЗКА ОБЯЗАТЕЛЬНА: на полосе нет подписей, и без неё
-        // назначение значка выясняется только нажатием. Соседняя «i» держит
-        // свою (`serviceChecksInfo`), и тексты у них разные — по ним и видно,
-        // куда ведёт каждый.
-        tooltip: l.homeServerInfo,
-        visualDensity: VisualDensity.compact,
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints.tightFor(width: size, height: size),
-        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ServerInfoScreen(server: server),
-        )),
+    // ⚠️ НИЧЕГО, А НЕ ПУСТАЯ КОРОБКА 28 px. Кнопка стоит внутри группы
+    // «значок + плашка», и пустышка развалила бы центровку группы ровно на
+    // свою ширину. Высоту полосы держит нижний предел в `ActiveServerBanner`.
+    if (server == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: gap),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: IconButton(
+          icon: const Icon(icon, size: 18),
+          // ⚠️ ПОДСКАЗКА ОБЯЗАТЕЛЬНА: на полосе нет подписей, и без неё
+          // назначение значка выясняется только нажатием. Соседняя «i» держит
+          // свою (`serviceChecksInfo`), и тексты у них разные — по ним и видно,
+          // куда ведёт каждый.
+          tooltip: l.homeServerInfo,
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: size, height: size),
+          onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => ServerInfoScreen(server: server),
+          )),
+        ),
       ),
     );
   }

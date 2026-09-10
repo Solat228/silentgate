@@ -2014,7 +2014,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Each service has two icons: on the left — how it opens without VPN, on the right — the same service through VPN; the arrow between them shows the change. The \"without VPN\" check runs on its own at app start, \"through VPN\" — right after connecting. The ring around the icon shows status: green — opens, orange — blocked by country, red — unreachable, grey — not checked yet. The corner mark repeats it: ✓ opens, ! blocked by country, ✕ unreachable. Tap the icon to re-check. The service set changes with the settings button nearby.';
+      'Two icons per service\n• left: the service without VPN\n• right: the same service through VPN\n• arrow between them: the transition\n\nWhen the measurement is taken\n• without VPN: automatically at app start\n• through VPN: right after connecting\n\nRing color around the icon\n• green: opens\n• orange: blocked by country\n• red: unreachable\n• grey: not checked yet\n\nCorner mark repeats the color\n• ✓ opens\n• ! blocked by country\n• ✕ unreachable\n\nWhat you can tap\n• the icon: check the service again\n• the settings button nearby: change the service set';
 
   @override
   String get serviceStatusOk => 'Works';

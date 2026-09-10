@@ -280,13 +280,17 @@ void main() {
     });
   });
 
-  group('⚠️ «Информация о сервере» не потеряна', () {
-    testWidgets('доступна с главного экрана значком в полосе плашки',
-        (t) async {
+  group('⚠️ «Информация о сервере» не потеряна и держится сервера', () {
+    /// Подключённый туннель: имя сессии в плашке появляется только при
+    /// `isConnected`. Ключ поднятого узла у поддельного движка пуст, поэтому
+    /// плашка называет сессию «Авто» — для геометрии это то же самое.
+    const live = VpnStatus(VpnConnectionState.connected);
+
+    testWidgets('доступна с главного экрана значком у плашки', (t) async {
       // Регресс-страж: кнопку убрали снизу, и потерять её целиком было бы
       // легко — второй вход в этот экран только в контекстном меню строки
       // списка, где его никто не находит.
-      await pumpHome(t, size: const Size(1024, 781));
+      await pumpHome(t, size: const Size(1024, 781), status: live);
       final info = find.byType(ServerInfoButton);
       expect(info, findsOneWidget);
       expect(
@@ -296,15 +300,16 @@ void main() {
           reason: 'сервер выбран — кнопка обязана быть нажимаемой');
 
       // ⚠️ ДВА ОДИНАКОВЫХ «i» НА ОДНОЙ ПОЛОСЕ — ЭТО РЕБУС, А НЕ ОФОРМЛЕНИЕ.
-      // Слева вход на целый экран (внешний адрес, страна, провайдер,
-      // скорость), справа — всплывающее пояснение про проверки сервисов.
-      // Подписей на полосе нет; пока глифы совпадали, назначение каждого
-      // выяснялось только нажатием.
+      // У плашки — вход на целый экран (внешний адрес, страна, провайдер,
+      // скорость), у правого края — всплывающее пояснение про проверки
+      // сервисов. Подписей на полосе нет; пока глифы совпадали, назначение
+      // каждого выяснялось только нажатием.
       expect(ServerInfoButton.icon, isNot(Icons.info_outline),
           reason: 'значок сервера снова стал неотличим от подсказки рядом');
       final banner0 = find.byType(ActiveServerBanner);
       expect(
-          find.descendant(of: banner0, matching: find.byIcon(Icons.info_outline)),
+          find.descendant(
+              of: banner0, matching: find.byIcon(Icons.info_outline)),
           findsOneWidget,
           reason: '«i» на полосе обязано быть ровно одно — у подсказки');
 
@@ -319,14 +324,33 @@ void main() {
       expect(tips.length, greaterThanOrEqualTo(2),
           reason: 'на полосе меньше двух РАЗНЫХ подсказок — значит какая-то '
               'кнопка молчит либо повторяет соседнюю');
-      // Стоит в полосе плашки, слева от неё.
-      final banner = t.getRect(find.byType(ActiveServerBanner));
-      final rect = t.getRect(info);
-      expect(rect.left, closeTo(banner.left, 0.5));
-      expect(rect.top, greaterThanOrEqualTo(banner.top - 0.5));
-      expect(rect.bottom, lessThanOrEqualTo(banner.bottom + 0.5),
+
+      // ⚠️ ГЕОМЕТРИЯ, А НЕ «ЛЕЖИТ В ТОМ ЖЕ РОДИТЕЛЕ». Владелец прислал снимок:
+      // значок висел сам по себе у левого края полосы, плашка — по центру,
+      // связи между ними глазом не видно. Значит проверять надо расстояние.
+      final banner = t.getRect(banner0);
+      final icon = t.getRect(
+          find.descendant(of: info, matching: find.byType(IconButton)));
+      final label = t.getRect(find.byType(ActiveServerLabel));
+      final gap = label.left - icon.right;
+      expect(gap, greaterThanOrEqualTo(0), reason: 'значок наехал на плашку');
+      expect(gap, lessThanOrEqualTo(10),
+          reason: 'значок оторвался от плашки на ${gap.toStringAsFixed(1)} px '
+              '— это и есть жалоба владельца');
+      expect(icon.top, greaterThanOrEqualTo(banner.top - 0.5));
+      expect(icon.bottom, lessThanOrEqualTo(banner.bottom + 0.5),
           reason: 'кнопка вылезла из полосы плашки — та поднялась бы, и весь '
               'выигрыш от переезда ушёл бы обратно');
+
+      // ⚠️ ЦЕНТРИРУЕТСЯ ГРУППА ЦЕЛИКОМ. Плашка одна на оси кнопки, а значок
+      // сбоку — это перекошенная пара, и перекос виден глазом.
+      final connect = t.getRect(find.byType(ConnectButton));
+      final group = icon.expandToInclude(label);
+      expect(group.center.dx, closeTo(connect.center.dx, 1.5),
+          reason: 'группа «значок + плашка» уехала с оси кнопки Connect на '
+              '${(group.center.dx - connect.center.dx).abs().toStringAsFixed(1)}'
+              ' px');
+
       // ⚠️ И полосы под статусом больше нет: её 48 px и есть предмет правки.
       expect(
           find.descendant(
@@ -334,6 +358,42 @@ void main() {
               matching: find.widgetWithIcon(TextButton, Icons.info_outline)),
           findsNothing,
           reason: 'строка «Информация о сервере» вернулась под статус');
+    });
+
+    testWidgets('⚠️ VPN выключен — значка нет, а полоса на месте', (t) async {
+      // Требование владельца 10.09.2026: «если VPN выключен, то и информация
+      // о сервере должна пропасть, так как VPN сервер не выбран». Это решение
+      // об интерфейсе: сам экран работает и без туннеля (меряет харнессом), и
+      // открыть его по-прежнему можно из контекстного меню строки списка.
+      await pumpHome(t, size: const Size(1024, 781), status: live);
+      final bannerOn = t.getRect(find.byType(ActiveServerBanner));
+      final connectOn = t.getRect(find.byType(ConnectButton));
+
+      await pumpHome(t, size: const Size(1024, 781));
+      expect(find.byType(ServerInfoButton), findsNothing,
+          reason: 'значок пережил отключение VPN — владелец просил обратного');
+      expect(find.byIcon(ServerInfoButton.icon), findsNothing,
+          reason: 'значок остался на экране где-то ещё');
+
+      // Полоса и кнопка Connect не двигаются: иначе весь блок дёргался бы на
+      // каждом подключении.
+      final bannerOff = t.getRect(find.byType(ActiveServerBanner));
+      expect(bannerOff.height, closeTo(bannerOn.height, 0.5),
+          reason: 'полоса просела с ${bannerOn.height} до ${bannerOff.height}');
+      expect(t.getRect(find.byType(ConnectButton)).center.dy,
+          closeTo(connectOn.center.dy, 0.5),
+          reason: 'кнопка Connect прыгает при подключении');
+
+      // Хвост полосы — про ПРОВЕРКИ, а не про сервер: он виден всегда, иначе
+      // выключенные проверки будет неоткуда включить обратно.
+      expect(
+          find.descendant(
+              of: find.byType(ActiveServerBanner),
+              matching: find.byIcon(Icons.info_outline)),
+          findsOneWidget,
+          reason: 'подсказка проверок пропала вместе с сервером');
+      expect(find.byType(ServiceChecksMenuButton), findsOneWidget,
+          reason: 'подменю проверок пропало вместе с сервером');
     });
   });
 

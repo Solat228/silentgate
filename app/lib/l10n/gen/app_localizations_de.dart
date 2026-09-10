@@ -2034,7 +2034,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Jeder Dienst hat zwei Symbole: links, wie er ohne VPN erreichbar ist, rechts derselbe Dienst über VPN; der Pfeil dazwischen zeigt die Änderung. Die Prüfung „ohne VPN“ läuft von selbst beim App-Start, „über VPN“ direkt nach dem Verbinden. Der Ring um das Symbol zeigt den Status: grün — erreichbar, orange — Ländersperre, rot — nicht erreichbar, grau — noch nicht geprüft. Das Zeichen in der Ecke wiederholt das: ✓ erreichbar, ! Ländersperre, ✕ nicht erreichbar. Tippen prüft erneut. Die Dienstauswahl ändert sich über die Einstellungen-Schaltfläche daneben.';
+      'Zwei Symbole pro Dienst\n• links: der Dienst ohne VPN\n• rechts: derselbe Dienst über VPN\n• Pfeil dazwischen: der Wechsel\n\nWann die Messung erfolgt\n• ohne VPN: von selbst beim App-Start\n• über VPN: direkt nach dem Verbinden\n\nRingfarbe um das Symbol\n• grün: erreichbar\n• orange: Ländersperre\n• rot: nicht erreichbar\n• grau: noch nicht geprüft\n\nDas Zeichen in der Ecke wiederholt die Farbe\n• ✓ erreichbar\n• ! Ländersperre\n• ✕ nicht erreichbar\n\nWas man antippen kann\n• das Symbol: den Dienst erneut prüfen\n• die Einstellungen-Schaltfläche daneben: die Dienstauswahl ändern';
 
   @override
   String get serviceStatusOk => 'Funktioniert';

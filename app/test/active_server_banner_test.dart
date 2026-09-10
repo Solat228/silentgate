@@ -170,6 +170,183 @@ void main() {
     });
   });
 
+  /// КНОПКА «ИНФОРМАЦИЯ О СЕРВЕРЕ» — ВПЛОТНУЮ К ПЛАШКЕ, А НЕ У КРАЯ ПОЛОСЫ.
+  ///
+  /// ⚠️ Требование владельца (10.09.2026, снимок экрана): «перемести кнопку
+  /// информации о сервере ближе к серверу и закрепи справа или слева от него.
+  /// То есть если VPN выключен, то и информация о сервере должна пропасть, так
+  /// как VPN сервер не выбран». До этого значок стоял в ЛЕВОМ краю полосы, в
+  /// полусотне пикселей от плашки: связи между ними глазом не видно, и висел он
+  /// там всегда — даже когда называть было нечего.
+  group('Значок «Информация о сервере» держится плашки', () {
+    const infoKey = Key('info');
+    const trailingKey = Key('trailing');
+
+    /// Заглушка ровно того размера, что настоящая кнопка: провайдеров в этом
+    /// страже нет, а `ServerInfoButton` читает `AppState`.
+    Widget info() => const SizedBox(
+        key: infoKey,
+        width: ServerInfoButton.size,
+        height: ServerInfoButton.size);
+
+    Widget trailing() => const Row(
+          key: trailingKey,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(width: 28, height: 28),
+            SizedBox(width: 2),
+            SizedBox(width: 28, height: 28),
+          ],
+        );
+
+    Future<void> pumpWith(WidgetTester t,
+        {required String? name,
+        Widget? infoButton,
+        double textScale = 1.0,
+        bool withTail = true,
+        double width = 584}) async {
+      t.view.devicePixelRatio = 1.0;
+      t.view.physicalSize = Size(width > 584 ? width : 584 + 1, 900);
+      // Узкое окно задаётся ОКНУ тоже: полоса шире экрана «уместилась» бы по
+      // чужой причине — за краем поверхности теста.
+      if (width < 584) t.view.physicalSize = Size(width, 900);
+      addTearDown(t.view.reset);
+      await t.pumpWidget(host(Builder(
+        builder: (context) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: TextScaler.linear(textScale)),
+          child: SizedBox(
+            width: width,
+            child: ConnectCenterpiece(
+              serverName: name,
+              httpPort: 10809,
+              button: const SizedBox(
+                  key: btnKey, width: buttonSize, height: buttonSize),
+              bannerTrailing: withTail ? trailing() : null,
+              bannerInfo: infoButton,
+            ),
+          ),
+        ),
+      )));
+      await t.pump();
+    }
+
+    testWidgets('⚠️ стоит вплотную к плашке, а не у края полосы', (t) async {
+      await pumpWith(t, name: ownerName, infoButton: info());
+      expect(t.takeException(), isNull);
+      final icon = t.getRect(find.byKey(infoKey));
+      final label = labelRect(t);
+      final banner = t.getRect(find.byType(ActiveServerBanner));
+
+      final gap = label.left - icon.right;
+      expect(gap, greaterThanOrEqualTo(0),
+          reason: 'значок наехал на плашку');
+      expect(gap, lessThanOrEqualTo(10),
+          reason: 'значок оторвался от плашки на ${gap.toStringAsFixed(1)} px '
+              '— ровно на это владелец и жаловался: висит сам по себе слева, '
+              'плашка по центру, связи не видно');
+      expect(icon.left, greaterThan(banner.left + 20),
+          reason: 'значок вернулся в левый край полосы');
+      expect(icon.center.dy, closeTo(label.center.dy, 1.0),
+          reason: 'значок и плашка обязаны стоять на одной линии');
+    });
+
+    testWidgets('⚠️ группа «значок + плашка» стоит на оси кнопки', (t) async {
+      await pumpWith(t, name: ownerName, infoButton: info());
+      final icon = t.getRect(find.byKey(infoKey));
+      final label = labelRect(t);
+      final btn = t.getRect(find.byKey(btnKey));
+      final group = icon.expandToInclude(label);
+      expect(group.center.dx, closeTo(btn.center.dx, 1.0),
+          reason: 'группа уехала с оси кнопки на '
+              '${(group.center.dx - btn.center.dx).abs().toStringAsFixed(1)} px');
+    });
+
+    testWidgets('без имени значка нет вовсе', (t) async {
+      // ⚠️ Решение владельца об интерфейсе: сервер не выбран — называть и
+      // показывать нечего.
+      await pumpWith(t, name: null, infoButton: info());
+      expect(find.byKey(infoKey), findsNothing,
+          reason: 'значок пережил исчезновение плашки');
+    });
+
+    /// ⚠️ МЕЛКИЙ СИСТЕМНЫЙ ШРИФТ — ЕДИНСТВЕННЫЙ СЛУЧАЙ, ГДЕ ЭТО ВИДНО.
+    ///
+    /// При обычном шрифте плашка ровно 28 px (12 px текста, по 5 отступа и по
+    /// пикселю рамки) — то есть случайно совпадает со стороной значка, и
+    /// полоса не дрогнет даже без нижнего предела высоты. Стоит человеку
+    /// уменьшить шрифт системы — плашка становится ниже значка, и полоса
+    /// подрастает ровно в момент подключения, дёргая кнопку и все ряды
+    /// проверок. Поэтому оба масштаба, а не один.
+    for (final scale in [1.0, 0.8]) {
+      for (final withTail in [true, false]) {
+        final where = withTail ? 'с хвостом' : 'без хвоста';
+        testWidgets('⚠️ полоса держит высоту при шрифте ×$scale ($where)',
+            (t) async {
+          await pumpWith(t,
+              name: null,
+              infoButton: info(),
+              textScale: scale,
+              withTail: withTail);
+          final off = t.getSize(find.byType(ActiveServerBanner)).height;
+          final btnOff = t.getRect(find.byKey(btnKey));
+          await pumpWith(t,
+              name: ownerName,
+              infoButton: info(),
+              textScale: scale,
+              withTail: withTail);
+          final on = t.getSize(find.byType(ActiveServerBanner)).height;
+          expect(on, closeTo(off, 0.5),
+              reason: 'полоса выросла с $off до $on — весь блок дёрнется на '
+                  'каждом подключении');
+          expect(t.getRect(find.byKey(btnKey)), btnOff,
+              reason: 'кнопка Connect сдвинулась при подключении');
+        });
+      }
+    }
+
+    testWidgets('хвост остаётся у правого края в обоих состояниях', (t) async {
+      // Хвост — про проверки сервисов, а не про сервер: когда проверки
+      // выключены, включить их больше неоткуда.
+      for (final name in [ownerName, null]) {
+        await pumpWith(t, name: name, infoButton: info());
+        final banner = t.getRect(find.byType(ActiveServerBanner));
+        final tail = t.getRect(find.byKey(trailingKey));
+        expect(find.byKey(trailingKey), findsOneWidget,
+            reason: 'хвост пропал при name=$name');
+        expect(tail.right, closeTo(banner.right, 0.5),
+            reason: 'хвост отлип от правого края при name=$name');
+      }
+    });
+
+    testWidgets('⚠️ узкое окно: группа со значком не вылезает за край',
+        (t) async {
+      // ⚠️ Значок отъедает у имени 34 px (28 значок + 6 просвет), и на узком
+      // окне плашка обязана на столько же ужаться. Без `Flexible` у плашки
+      // имя считало бы, что места сколько угодно: переполнение вёрстки — это
+      // и есть «плашка обрезалась» из жалобы владельца.
+      await pumpWith(t,
+          name: longName, infoButton: info(), withTail: false, width: 360);
+      expect(t.takeException(), isNull,
+          reason: 'группа «значок + плашка» переполнила узкое окно');
+      final icon = t.getRect(find.byKey(infoKey));
+      final label = labelRect(t);
+      expect(icon.left, greaterThanOrEqualTo(0));
+      expect(label.right, lessThanOrEqualTo(360.5),
+          reason: 'плашка уехала за правый край на '
+              '${(label.right - 360).toStringAsFixed(1)} px');
+    });
+
+    testWidgets('плашка без значка по-прежнему на оси кнопки', (t) async {
+      // Режим «Авто» без выбранного узла: значка нет, а плашка есть —
+      // центровка обязана уцелеть и в этом случае.
+      await pumpWith(t, name: ownerName);
+      final label = labelRect(t);
+      final btn = t.getRect(find.byKey(btnKey));
+      expect(label.center.dx, closeTo(btn.center.dx, 1.0));
+    });
+  });
+
   /// КНОПКИ «i» И ПОДМЕНЮ ЖИВУТ В ПОЛОСЕ ПЛАШКИ, А НЕ СВОЕЙ СТРОКОЙ.
   ///
   /// ⚠️ Решение владельца (08.09.2026): легенду «Слева — без VPN…» убрать
