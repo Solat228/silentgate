@@ -42,6 +42,7 @@ import 'auto_config_screen.dart';
 import 'import_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
 import 'widgets/server_search_field.dart';
@@ -322,27 +323,158 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
 /// «Автонастройка» легла поверх кнопки Connect. Потолок и доля остатка — разные
 /// вещи: здесь нужен именно потолок.
 ///
-/// [reserveBelow] измерен на настоящем окне (снимки из VM, 980×800): строка
-/// статуса ~24, «Информация о сервере» ~40, две кнопки ~88, отступы ~10.
+/// [reserveBelow] по умолчанию — [kChecksReserveBelow]; измерен на настоящем
+/// окне (снимки из VM, 980×800).
 ///
-/// ⚠️ БЫЛО 210 ДО 04.09.2026. Подпись «Доступность сервисов проверена без
-/// VPN» переехала НАВЕРХ, над блоком (требование владельца), и её строка
-/// из резерва ушла. Оставить прежнее число значило бы держать под блоком
-/// место под то, чего там больше нет, — а блок ровно на это место и не
-/// дорастал.
+/// [blockingNotice] и [errorLine] — то, что появляется под потолком НЕ ВСЕГДА:
+/// плашка kill switch и строка ошибки. Считаются [blockingNoticeHeight] и
+/// [errorLineHeight] по фактическому тексту; нет врезки — ноль.
+///
+/// ⚠️ ЗАЧЕМ ОНИ ОТДЕЛЬНЫМИ СЛАГАЕМЫМИ, А НЕ ЧАСТЬЮ [kChecksReserveBelow].
+/// Обе врезки стоят НИЖЕ `ConstrainedBox`, то есть в резерв обязаны входить, —
+/// но появляются в аварии, а не всегда. Заложить их в постоянный резерв значило
+/// бы держать 80 пустых пикселей всё остальное время, а это ровно те пиксели,
+/// из-за которых значки сервисов и сжимались. Пока их не было в расчёте,
+/// панель с четырнадцатью сервисами и поднятым kill switch переполнялась НА
+/// ВСЕХ окнах (замер: 964×761 — на 61 px, 980×800 — на 37, 1024×781 — на 9), и
+/// ломалась она ровно в тот момент, когда интерфейс обязан быть понятным:
+/// человек видит пропавший интернет и решает, не выключить ли VPN.
+///
+/// ⚠️ ИСТОРИЯ ЗНАЧЕНИЯ ПО УМОЛЧАНИЮ — ПО КОММИТАМ, А НЕ ПО ПАМЯТИ: 210 (до
+/// 04.09.2026) → 214 (до 10.09.2026) → [kChecksReserveBelow]. Числа 254 в коде
+/// не было НИКОГДА: оно появилось в комментарии как «сколько 214 должно было бы
+/// быть» и развело раскладку с арифметикой. Прежние значения складывались на
+/// глаз (собственная расшифровка 214 давала 162) и «работали» лишь потому, что
+/// блок никогда не дорастал до потолка: рост был зажат, см. `ServiceChecksSides`.
+/// Отсюда правило: число даёт ЗАМЕР в тесте, комментарий его только поясняет.
 @visibleForTesting
 double checksHeightBudget({
   required double paneHeight,
-  double reserveBelow = 214,
+  double reserveBelow = kChecksReserveBelow,
+  double textScale = 1.0,
+  double blockingNotice = 0,
+  double errorLine = 0,
 }) {
   if (!paneHeight.isFinite || paneHeight <= 0) return double.infinity;
-  final left = paneHeight - reserveBelow;
+  // ⚠️ РЕЗЕРВ РАСТЁТ ВМЕСТЕ С СИСТЕМНЫМ ШРИФТОМ. Всё, что лежит ниже потолка,
+  // — это текст: строка статуса, подпись кнопки, счётчики трафика. При
+  // масштабе 1,3 они занимают на треть больше, а потолок остался бы прежним —
+  // и низ уехал бы за край ровно у того, кто увеличил шрифт, чтобы читать.
+  // Уменьшать резерв ниже единицы НЕЛЬЗЯ: мелкий шрифт не сжимает ни кнопку
+  // (её высота — область нажатия), ни отступы.
+  final k = textScale.isFinite && textScale > 1 ? textScale : 1.0;
+  // ⚠️ ВРЕЗКИ НА `k` НЕ УМНОЖАЮТСЯ: их высота уже посчитана настоящим
+  // `TextScaler`-ом по настоящему тексту. Умножить ещё раз значило бы отобрать
+  // у блока проверок треть высоты врезки дважды.
+  final left = paneHeight - reserveBelow * k - _finite(blockingNotice) - _finite(errorLine);
   // ⚠️ НИЖЕ ЭТОГО НЕ ОПУСКАЕМСЯ. Отдать блоку меньше, чем занимает сама кнопка,
   // значит получить наложение — ровно то, что дала первая попытка. Пусть лучше
-  // срежется низ, чем интерфейс сложится сам на себя.
-  const floor = 200.0;
+  // срежется низ, чем интерфейс сложится сам на себя. 186 = плашка активного
+  // сервера 38 + кнопка 148: меньше этого кнопка не помещается физически.
+  const floor = 186.0;
   return left < floor ? floor : left;
 }
+
+/// Отрицательное/`NaN` слагаемое не должно РАСШИРЯТЬ потолок: расчёт врезки
+/// приходит извне, и ошибка в нём обязана стоить лишних пикселей, а не
+/// наложения кнопки на счётчики.
+double _finite(double v) => v.isFinite && v > 0 ? v : 0;
+
+/// Высота плашки kill switch ВМЕСТЕ с её отступом сверху.
+///
+/// ⚠️ СЧИТАЕТСЯ, А НЕ БЕРЁТСЯ КОНСТАНТОЙ. Текст сообщения приходит от движка,
+/// длина его не задана ничем, и при системном шрифте ×1,3 он переносится на
+/// вторую строку уже на минимальном окне. Константа «на одну строку» дала бы
+/// переполнение ровно у того, кто увеличил шрифт, чтобы читать.
+///
+/// Слагаемые берутся из самой [KillSwitchNotice] — один источник правды:
+/// разъедутся виджет и расчёт, и потолок отступит не на столько, на сколько
+/// нужно. Стережёт `test/auto_pick_placement_test.dart` («резерв под врезки
+/// замерен, а не прикинут»): он сверяет это число с НАСТОЯЩЕЙ высотой плашки.
+@visibleForTesting
+double blockingNoticeHeight({
+  required double paneWidth,
+  required TextStyle style,
+  required TextScaler scaler,
+  required String text,
+}) {
+  final textWidth = paneWidth -
+      KillSwitchNotice.paddingH * 2 -
+      KillSwitchNotice.iconSize -
+      KillSwitchNotice.gap;
+  final textHeight = _textHeight(text, textWidth, style, scaler);
+  // Значок в шрифте не растёт (`Icon` без `applyTextScaling`), поэтому строка
+  // не бывает ниже него.
+  final content =
+      textHeight > KillSwitchNotice.iconSize ? textHeight : KillSwitchNotice.iconSize;
+  return KillSwitchNotice.marginTop + KillSwitchNotice.paddingV * 2 + content;
+}
+
+/// Высота строки ошибки под статусом ВМЕСТЕ с её отступом сверху.
+///
+/// Текст ошибки движка бывает длинным (имя сервера, код, причина) — считаем
+/// перенос так же, как у плашки.
+@visibleForTesting
+double errorLineHeight({
+  required double paneWidth,
+  required TextStyle style,
+  required TextScaler scaler,
+  required String text,
+}) =>
+    ConnectErrorLine.paddingTop + _textHeight(text, paneWidth, style, scaler);
+
+/// Высота текста с учётом переноса по [maxWidth] и системного масштаба шрифта.
+double _textHeight(
+    String text, double maxWidth, TextStyle style, TextScaler scaler) {
+  if (!maxWidth.isFinite || maxWidth <= 0) return 0;
+  final painter = TextPainter(
+    text: TextSpan(text: text, style: style),
+    // Направление на метрики не влияет, а настоящее приходит из содержимого
+    // (`autoTextDirection`) и здесь неизвестно.
+    textDirection: TextDirection.ltr,
+    textScaler: scaler,
+  )..layout(maxWidth: maxWidth);
+  return painter.height;
+}
+
+/// Сколько высоты панели лежит НИЖЕ блока «плашка + проверки + кнопка».
+///
+/// ⚠️ ЧИСЛО ЗАМЕРЕНО, А НЕ ПРИКИНУТО — `test/auto_pick_placement_test.dart`
+/// считает его по настоящей вёрстке панели (низ счётчиков трафика минус низ
+/// блока минус распорка между ними) и краснеет, если оно разойдётся с
+/// реальностью. Врать в этом комментарии дороже, чем ошибиться в вёрстке:
+/// по нему принимают решения о размере значков.
+///
+/// Раскладка ПОСЛЕ сжатия низа (10.09.2026), сверху вниз:
+///   16  — просвет под блоком;
+///   24  — строка статуса (`titleMedium`: 16 × 1,5);
+///   20  — просвет перед кнопками;
+///   48  — ОДНА строка `Wrap` с кнопками («Подобрать настройки», на узком
+///         окне рядом с ней «Подобрать сервер»). ⚠️ 48, а не 40: Material
+///         дотягивает кнопку до области нажатия (`tapTargetSize: padded`),
+///         и на глаз здесь ошибаются ровно на эти 8 px;
+///   58  — счётчики трафика.
+///   ---
+///   166 итого — сумма сходится, и она же подтверждена замером.
+///
+/// ⚠️ ЧТО УШЛО ИЗ ЭТОЙ ОБЛАСТИ 10.09.2026: строка «Информация о сервере»
+/// (8 отступа + 40 кнопки = 48) уехала значком в полосу плашки, а вторая
+/// кнопка своей строкой (8 отступа + 48 кнопки = 56) встала в ту же строку
+/// `Wrap`. Итого прежней раскладке под потолком было нужно 166 + 48 + 56 = 270.
+/// ⚠️ И ЭТО НЕ ТО ЖЕ, ЧТО СТОЯЛО В КОДЕ: там было 214, то есть на 56 меньше
+/// нужного. Числа 254 не было НИКОГДА — оно появилось в комментарии как
+/// промежуточная прикидка и не сходилось ни с 214, ни с 270, ни с суммой
+/// слагаемых. Раскладка, которая не сходится, хуже отсутствующей: ей
+/// перестают верить, а она здесь единственный рычаг размера значков.
+///
+/// ⚠️ ПЛАШКА KILL SWITCH И СТРОКА ОШИБКИ В ЭТО ЧИСЛО НЕ ВХОДЯТ — они бывают не
+/// всегда и приходят отдельными слагаемыми [checksHeightBudget]
+/// ([blockingNoticeHeight] / [errorLineHeight]).
+///
+/// ⚠️ ИМЕНОВАННАЯ КОНСТАНТА, А НЕ ЛИТЕРАЛ В УМОЛЧАНИИ — НАМЕРЕННО: это
+/// главный рычаг размера значков сервисов (каждые 40 px резерва — около 3 px
+/// значка на окне 980×800), и менять его должно быть можно одной строкой.
+const double kChecksReserveBelow = 166;
 
 /// Сколько висит заметка движка, прежде чем уехать вниз сама.
 ///
@@ -939,34 +1071,64 @@ class _HomeScreenState extends State<HomeScreen> {
       // Компоновка выбирается по ШИРИНЕ, а не по платформе: узкое окно на
       // Windows получает ту же одноколоночную раскладку, что и телефон, и это
       // правильно — две панели по 380 px там просто не помещаются.
-      body: LayoutBuilder(
-        builder: (context, c) {
-          if (c.maxWidth < _twoPaneMinWidth) {
-            return _ConnectPane(
-              status: status,
-              settings: settings,
-              onOpen: (w) => _open(context, w),
-              compact: true,
-            );
-          }
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: _ConnectPane(
-                  status: status,
-                  settings: settings,
-                  onOpen: (w) => _open(context, w),
-                ),
-              ),
-              const VerticalDivider(width: 1),
-              SizedBox(
-                  width: 380, child: _ServerPane(onOpen: (w) => _open(context, w))),
-            ],
-          );
-        },
+      body: HomeBody(
+        status: status,
+        settings: settings,
+        onOpen: (w) => _open(context, w),
       ),
     ));
+  }
+}
+
+/// Тело главного экрана: одна колонка на узком окне, две — на широком.
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ПУБЛИЧНЫЙ ВИДЖЕТ РАДИ СТРАЖЕЙ, и это не украшательство. Пока
+/// выбор раскладки жил прямо в `Scaffold.body`, проверить его можно было только
+/// подъёмом всего `HomeScreen` — с `AppBar`, проверкой обновлений по сети и
+/// автозамером сервисов на первом же кадре. Ровно поэтому переполнение панели
+/// в тесном окне не поймал ни один страж: они поднимали публичный
+/// `ConnectCenterpiece`, а переполнялась панель. Здесь поднимается то самое
+/// место, где кнопка подбора либо есть, либо её нет.
+class HomeBody extends StatelessWidget {
+  const HomeBody({
+    super.key,
+    required this.status,
+    required this.settings,
+    required this.onOpen,
+  });
+
+  final VpnStatus status;
+  final AppSettings settings;
+  final void Function(Widget screen) onOpen;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, c) {
+        if (c.maxWidth < _twoPaneMinWidth) {
+          return ConnectPane(
+            status: status,
+            settings: settings,
+            onOpen: onOpen,
+            compact: true,
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: ConnectPane(
+                status: status,
+                settings: settings,
+                onOpen: onOpen,
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            SizedBox(width: 380, child: ServerPane(onOpen: onOpen)),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -989,7 +1151,11 @@ const double _twoPaneMinWidth = 760;
 /// тот тест: он проверяет ФАКТ раскладки, а не веру в него.
 const double _sidesMinWidth = 520;
 
-class _ConnectPane extends StatelessWidget {
+/// Левая (на узком окне — единственная) колонка главного экрана.
+///
+/// Публична ради стражей вёрстки: пока она была приватной, переполнение низа
+/// панели не мог поймать ни один тест — см. шапку [HomeBody].
+class ConnectPane extends StatelessWidget {
   final VpnStatus status;
   final AppSettings settings;
   final void Function(Widget screen) onOpen;
@@ -999,7 +1165,8 @@ class _ConnectPane extends StatelessWidget {
   /// прокручиваемым — гарантии минимального размера окна на телефоне нет.
   final bool compact;
 
-  const _ConnectPane({
+  const ConnectPane({
+    super.key,
     required this.status,
     required this.settings,
     required this.onOpen,
@@ -1039,178 +1206,163 @@ class _ConnectPane extends StatelessWidget {
               // срабатывал НИ РАЗУ: при четырнадцати сервисах блок с
               // информацией о подключении уезжал за край окна.
               child: LayoutBuilder(builder: (context, paneBox) {
+                // ⚠️ ВРЕЗКИ ПОД ПОТОЛКОМ СЧИТАЮТСЯ ЗДЕСЬ, А НЕ ВНУТРИ БЛОКА.
+                // Плашка kill switch и строка ошибки стоят НИЖЕ
+                // `ConstrainedBox`, и пока их не было в расчёте, панель с
+                // четырнадцатью сервисами и поднятой защитой переполнялась на
+                // всех окнах. Ширина и стиль берутся те же, что достанутся
+                // самим врезкам, — иначе перенос текста посчитается не так.
+                final noticeStyle = DefaultTextStyle.of(context).style;
+                final scaler = MediaQuery.textScalerOf(context);
+                final blockingText = status.blocking ? status.message ?? '' : null;
+                final errorText =
+                    status.state == VpnConnectionState.error ? status.message : null;
                 return Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
-                children: [
-                  if (!compact) const Spacer(),
-                // Плашка активного сервера, кнопка и колонки проверок — одним
-                // виджетом: ровно то, что проверяет страж вёрстки.
-                // ⚠️ ПОДПИСЬ СТОИТ НАД БЛОКОМ, А НЕ ПОД НИМ — требование
-                // владельца (04.09.2026): «перенеси наверх, выиграешь ещё
-                // немного места». Внизу она отбирала строку у того, ради
-                // чего экран и существует: кнопки, «Информации о сервере»
-                // и счётчиков. Наверху она объясняет две точки у значка
-                // ДО того, как человек их увидит, а не после.
-                // Без подписи два кружка у каждого значка — ребус. Говорим
-                // прямо, что слева замер без VPN, справа — через VPN, и что
-                // оба снимаются сами.
-                const SizedBox(height: 6),
-                Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
                   children: [
-                    // ⚠️ Строка ужимается: рядом встала кнопка подменю, и на
-                    // узком телефоне подпись без этого уезжала за край.
-                    Flexible(
-                      child: Text(
-                        checks.isEmpty
-                            // Проверки выключены — врать «проверено» нельзя,
-                            // а строку не убираем: она объясняет пустое место
-                            // и стоит рядом с кнопкой, которой их включают.
-                            ? l.serviceChecksLegendOff
-                            : status.isConnected
-                                ? l.serviceChecksLegendAfter
-                                : l.serviceChecksLegendBefore,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).hintColor),
-                      ),
-                    ),
-                    InfoTooltip(l.serviceChecksInfo),
-                    // Подменю набора — здесь, у самих проверок (требование
-                    // владельца). Видно ВСЕГДА: когда проверки выключены,
-                    // включить их больше неоткуда.
-                    const ServiceChecksMenuButton(),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                      maxHeight:
-                          checksHeightBudget(paneHeight: paneBox.maxHeight)),
-                  child: ConnectCenterpiece(
-                    serverName: activeServerName(
-                      connected: status.isConnected,
-                      connectedKey: state.connectedServerKey,
-                      servers: state.servers,
-                      autoLabel: l.homeAutoBest,
-                    ),
-                    httpPort: status.isConnected ? state.httpProxyPort : 0,
-                    services: checks,
-                    layout: settings.serviceChecksLayout,
-                    // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
-                    // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
-                    // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
-                    // размер, от которого считается их коэффициент, должен
-                    // совпадать с тем, что здесь реально нарисовано.
-                    button: ConnectButton(
-                        status: status,
-                        diameter: context.sg.isShort ? 116 : 148,
-                        onTap: () => connectWithConflictCheck(context, state,
-                            () => state.toggleConnection(settings))),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(vpnStatusLabel(l, status.state),
-                    style: Theme.of(context).textTheme.titleMedium),
-                // «Информация о сервере» прямо у кнопки: раньше экран
-                // открывался только из контекстного меню в списке серверов,
-                // где его никто не находил.
-                if (state.selectedServer != null) ...[
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    icon: const Icon(Icons.info_outline, size: 18),
-                    label: Text(l.homeServerInfo),
-                    onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              ServerInfoScreen(server: state.selectedServer!),
-                        )),
-                  ),
-                ],
-                // ⚠️ KILL SWITCH ДЕРЖИТ ТРАФИК — СКАЗАТЬ ЭТО ЗАМЕТНО.
-                //
-                // Пропавший интернет без объяснения выглядит поломкой, и самое
-                // естественное действие человека — выключить VPN, то есть ровно
-                // то, от чего защита оберегала. Строки статуса мало: она
-                // мелкая и теряется среди прочего.
-                if (status.blocking)
-                  Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.shield_outlined,
-                          size: 20,
-                          color: Theme.of(context).colorScheme.onErrorContainer),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          status.message ?? '',
-                          textDirection: autoTextDirection(status.message),
-                          style: TextStyle(
-                              color:
-                                  Theme.of(context).colorScheme.onErrorContainer),
+                    if (!compact) const Spacer(),
+                    // Плашка активного сервера, кнопка и колонки проверок — одним
+                    // виджетом: ровно то, что проверяет страж вёрстки.
+                    //
+                    // ⚠️ ЛЕГЕНДЫ «СЛЕВА — БЕЗ VPN, СПРАВА — ЧЕРЕЗ VPN» БОЛЬШЕ НЕТ —
+                    // решение владельца (08.09.2026): «совсем убрать, оставить
+                    // только i». Её строка с отступами стоила 42 px, и на
+                    // минимальном окне ровно этих пикселей не хватало низу экрана:
+                    // плашка 38 + легенда 42 + кнопка 148 + низ 270 = 498 против
+                    // панели 427–447 в VM. ⚠️ 270 — сколько НУЖНО было тогдашней
+                    // раскладке (см. [kChecksReserveBelow]); в коде на тот момент
+                    // стояло 214, и расходились они молча. Весь её смысл несёт подсказка
+                    // «i» (`serviceChecksInfo`), а сама «i» вместе с подменю
+                    // переехала в правый край полосы плашки: та держит высоту
+                    // всегда, и кнопки собственного ряда не стоят.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxHeight: checksHeightBudget(
+                              paneHeight: paneBox.maxHeight,
+                              // Крупный системный шрифт растит низ панели —
+                              // потолок обязан отступить на столько же.
+                              textScale: scaler.scale(1),
+                              blockingNotice: blockingText == null
+                                  ? 0
+                                  : blockingNoticeHeight(
+                                      paneWidth: paneBox.maxWidth,
+                                      style: noticeStyle,
+                                      scaler: scaler,
+                                      text: blockingText),
+                              errorLine: errorText == null
+                                  ? 0
+                                  : errorLineHeight(
+                                      paneWidth: paneBox.maxWidth,
+                                      style: noticeStyle,
+                                      scaler: scaler,
+                                      text: errorText))),
+                      child: ConnectCenterpiece(
+                        serverName: activeServerName(
+                          connected: status.isConnected,
+                          connectedKey: state.connectedServerKey,
+                          servers: state.servers,
+                          // ⚠️ ЗДЕСЬ ИМЯ СЕССИИ, А НЕ ЯРЛЫК КНОПКИ. Кнопка
+                          // подбора называется глаголом («Подобрать сервер»), а
+                          // плашка отвечает на вопрос «через что идёт трафик» —
+                          // глагол в ней читался бы как незавершённое действие.
+                          autoLabel: l.homeAutoSession,
                         ),
+                        httpPort: status.isConnected ? state.httpProxyPort : 0,
+                        services: checks,
+                        layout: settings.serviceChecksLayout,
+                        // Подменю набора — здесь, у самих проверок (требование
+                        // владельца). Видно ВСЕГДА: когда проверки выключены,
+                        // включить их больше неоткуда.
+                        bannerTrailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InfoTooltip(l.serviceChecksInfo, compact: true),
+                            const SizedBox(width: 2),
+                            const ServiceChecksMenuButton(),
+                          ],
+                        ),
+                        // «Информация о сервере» — значком в левом краю той же
+                        // полосы. Своей строкой под статусом она стоила 48 px, и
+                        // ровно их не хватало низу экрана на минимальном окне.
+                        bannerLeading: const ServerInfoButton(),
+                        // Диаметр передан ЯВНО (то же число, что дал бы умолчание):
+                        // раскладки колонок по бокам сжимают ВЕСЬ блок кнопки одним
+                        // виджетом (`ServiceChecksSides` → `FittedBox`), но опорный
+                        // размер, от которого считается их коэффициент, должен
+                        // совпадать с тем, что здесь реально нарисовано.
+                        button: ConnectButton(
+                            status: status,
+                            diameter: context.sg.isShort ? 116 : 148,
+                            onTap: () => connectWithConflictCheck(context,
+                                state, () => state.toggleConnection(settings))),
                       ),
-                    ]),
-                  ),
-                if (status.state == VpnConnectionState.error &&
-                    status.message != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(status.message!,
-                        textAlign: TextAlign.center,
-                        // Статус/ошибка: направление по содержимому — локализованный
-                        // текст читается верно, вложенные технические фрагменты (имена
-                        // exe/серверов) — по bidi.
-                        textDirection: autoTextDirection(status.message),
-                        style:
-                            TextStyle(color: Theme.of(context).colorScheme.error)),
-                  ),
-                const SizedBox(height: 20),
-                if (state.hasServers)
-                  FilledButton.tonalIcon(
-                    icon: const Icon(Icons.bolt),
-                    label: Text(l.homeAutoBest),
-                    onPressed: () => connectWithConflictCheck(
-                        context,
-                        state,
-                        () => state.connectAuto(
-                            context.read<SettingsController>().settings)),
-                  ),
-                // Автонастройка стоит на проброс-харнессе. На Android он
-                // ПОЯВИЛСЯ (`LibXray.ping` поднимает свой экземпляр ядра, не
-                // трогая туннель), поэтому кнопка снова на месте. Гейт оставлен:
-                // на платформе без харнесса нажатие показывало бы сырое
-                // «Unsupported operation», а обещать несуществующее хуже, чем
-                // не показывать.
-                if (proxyProbeSupported) ...[
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.auto_fix_high),
-                    label: Text(l.homeAutoConfig),
-                    // Через ту же точку, что и нажатие на карточку прогресса:
-                    // один экземпляр экрана на оба пути (и двойное нажатие по
-                    // самой кнопке второй копии тоже не откроет).
-                    onPressed: () => AppToast.openOnce(
-                      context,
-                      key: 'autoconfig',
-                      builder: (_) => const AutoConfigScreen(),
                     ),
-                  ),
-                ],
-                  if (!compact) const Spacer() else const SizedBox(height: 24),
-                  // Всегда на месте: при отключённом VPN — нули (иначе блок появлялся
-                  // рывком и двигал кнопки, а цифры не помещались).
-                  _TrafficRow(
-                    stats: status.isConnected ? state.stats : TrafficStats.zero,
-                    sessionUp: state.sessionUplinkBytes,
-                    sessionDown: state.sessionDownlinkBytes,
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(vpnStatusLabel(l, status.state),
+                        style: Theme.of(context).textTheme.titleMedium),
+                    // ⚠️ «ИНФОРМАЦИЯ О СЕРВЕРЕ» УЕХАЛА ОТСЮДА ЗНАЧКОМ В ПОЛОСУ
+                    // ПЛАШКИ (`bannerLeading` выше). Своей строкой она стоила
+                    // 48 px, а на минимальном окне 980×800 не хватало ровно их.
+                    // Экран не потерян — он открывается тем же значком.
+                    //
+                    // ⚠️ ОБЕ ВРЕЗКИ НИЖЕ — ВНЕ ПОТОЛКА, и их высота уже вычтена
+                    // из него выше (`blockingNotice`/`errorLine`). Добавишь
+                    // сюда третью, не тронув расчёт, — панель переполнится ровно
+                    // на её высоту, и именно в аварии, когда читать важнее всего.
+                    if (blockingText != null)
+                      KillSwitchNotice(message: blockingText),
+                    if (errorText != null) ConnectErrorLine(message: errorText),
+                    const SizedBox(height: 20),
+                    // ⚠️ `Wrap`, А НЕ `Row`: на узком окне с крупным системным
+                    // шрифтом две подписи в строку не влезают, и `Row` дал бы
+                    // переполнение вместо переноса.
+                    //
+                    // ⚠️ «Подобрать сервер» остаётся здесь ТОЛЬКО в узкой
+                    // раскладке. На широком окне список серверов виден справа, и
+                    // кнопка стоит над ним (`ServerPane`); внизу она была бы
+                    // вторым таким же входом в паре сантиметров от первого.
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (compact) const AutoPickServerButton(),
+                        // Автонастройка стоит на проброс-харнессе. На Android он
+                        // ПОЯВИЛСЯ (`LibXray.ping` поднимает свой экземпляр ядра,
+                        // не трогая туннель), поэтому кнопка снова на месте. Гейт
+                        // оставлен: на платформе без харнесса нажатие показывало бы
+                        // сырое «Unsupported operation», а обещать несуществующее
+                        // хуже, чем не показывать.
+                        if (proxyProbeSupported)
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.auto_fix_high),
+                            label: Text(l.homeAutoConfig),
+                            // Через ту же точку, что и нажатие на карточку
+                            // прогресса: один экземпляр экрана на оба пути (и
+                            // двойное нажатие по самой кнопке второй копии тоже не
+                            // откроет).
+                            onPressed: () => AppToast.openOnce(
+                              context,
+                              key: 'autoconfig',
+                              builder: (_) => const AutoConfigScreen(),
+                            ),
+                          ),
+                      ],
+                    ),
+                    if (!compact)
+                      const Spacer()
+                    else
+                      const SizedBox(height: 24),
+                    // Всегда на месте: при отключённом VPN — нули (иначе блок появлялся
+                    // рывком и двигал кнопки, а цифры не помещались).
+                    TrafficRow(
+                      stats:
+                          status.isConnected ? state.stats : TrafficStats.zero,
+                      sessionUp: state.sessionUplinkBytes,
+                      sessionDown: state.sessionDownlinkBytes,
+                    ),
+                  ],
                 );
               }),
             ),
@@ -1219,6 +1371,91 @@ class _ConnectPane extends StatelessWidget {
       ],
     );
   }
+}
+
+/// ⚠️ KILL SWITCH ДЕРЖИТ ТРАФИК — СКАЗАТЬ ЭТО ЗАМЕТНО.
+///
+/// Пропавший интернет без объяснения выглядит поломкой, и самое естественное
+/// действие человека — выключить VPN, то есть ровно то, от чего защита
+/// оберегала. Строки статуса мало: она мелкая и теряется среди прочего.
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ВИДЖЕТ, А НЕ КУСОК `build`, — не ради красоты. Плашка лежит
+/// НИЖЕ потолка блока проверок, значит её высота обязана входить в резерв
+/// ([blockingNoticeHeight]). Пока и геометрия, и расчёт жили в разных местах,
+/// расчёта просто не было: панель с четырнадцатью сервисами и поднятой защитой
+/// переполнялась на всех окнах. Числа ниже — единственный их источник, и по ним
+/// же считает [blockingNoticeHeight]; страж сверяет расчёт с настоящей высотой.
+class KillSwitchNotice extends StatelessWidget {
+  const KillSwitchNotice({super.key, required this.message});
+
+  final String message;
+
+  /// Отступ от блока проверок сверху.
+  static const double marginTop = 12;
+
+  /// Внутренние поля рамки.
+  static const double paddingV = 10;
+  static const double paddingH = 12;
+
+  /// Значок щита. В системном шрифте НЕ растёт (`Icon` без `applyTextScaling`),
+  /// поэтому строка не бывает ниже него.
+  static const double iconSize = 20;
+
+  /// Просвет между значком и текстом.
+  static const double gap = 10;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.only(top: marginTop),
+      padding: const EdgeInsets.symmetric(
+          horizontal: paddingH, vertical: paddingV),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(children: [
+        Icon(Icons.shield_outlined,
+            size: iconSize, color: scheme.onErrorContainer),
+        const SizedBox(width: gap),
+        Expanded(
+          child: Text(
+            message,
+            textDirection: autoTextDirection(message),
+            style: TextStyle(color: scheme.onErrorContainer),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+/// Текст ошибки под строкой статуса.
+///
+/// ⚠️ ОТДЕЛЬНЫЙ ВИДЖЕТ ПО ТОЙ ЖЕ ПРИЧИНЕ, ЧТО И [KillSwitchNotice]: строка
+/// лежит ниже потолка, её высота входит в резерв ([errorLineHeight]), а текст
+/// приходит от движка и переносится на вторую строку тем охотнее, чем крупнее
+/// системный шрифт. [paddingTop] — единственный источник отступа.
+class ConnectErrorLine extends StatelessWidget {
+  const ConnectErrorLine({super.key, required this.message});
+
+  final String message;
+
+  /// Отступ сверху — от плашки блокировки либо от строки статуса.
+  static const double paddingTop = 8;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(top: paddingTop),
+        child: Text(message,
+            textAlign: TextAlign.center,
+            // Статус/ошибка: направление по содержимому — локализованный текст
+            // читается верно, вложенные технические фрагменты (имена
+            // exe/серверов) — по bidi.
+            textDirection: autoTextDirection(message),
+            style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      );
 }
 
 /// Оборачивает содержимое в прокрутку только когда это нужно.
@@ -1397,15 +1634,18 @@ bool scrollListToRow(
   return true;
 }
 
-class _ServerPane extends StatefulWidget {
+/// Правая панель широкого окна: список серверов с поиском и кнопкой подбора.
+///
+/// Публична по той же причине, что и [ConnectPane], — см. шапку [HomeBody].
+class ServerPane extends StatefulWidget {
   final void Function(Widget screen) onOpen;
-  const _ServerPane({required this.onOpen});
+  const ServerPane({super.key, required this.onOpen});
 
   @override
-  State<_ServerPane> createState() => _ServerPaneState();
+  State<ServerPane> createState() => _ServerPaneState();
 }
 
-class _ServerPaneState extends State<_ServerPane> {
+class _ServerPaneState extends State<ServerPane> {
   String _query = '';
 
   /// Прокрутка к активному серверу: при запуске приложения и при подключении.
@@ -1508,6 +1748,12 @@ class _ServerPaneState extends State<_ServerPane> {
                     _query.isEmpty
                         ? l.homeServersCount(servers.length)
                         : l.homeFoundCount(shown.length, servers.length),
+                    // ⚠️ ОДНА СТРОКА С МНОГОТОЧИЕМ. При крупном системном
+                    // шрифте соседи съедали всю ширину, `Expanded` получал
+                    // ноль, и счётчик разворачивался в десять строк по букве —
+                    // шапка списка становилась высотой 260 px.
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleSmall),
               ),
               // ⚠️ ЧЕРЕЗ ОБЩИЙ ГЕЙТ, А НЕ СВОИМ УСЛОВИЕМ. Здесь стояло
@@ -1517,26 +1763,35 @@ class _ServerPaneState extends State<_ServerPane> {
               // выглядела совершенно живой: нажатие не делало ничего и ничего
               // не объясняло. Это самая заметная точка входа из четырёх, и
               // расхождение здесь стоило дороже всего.
-              Tooltip(
-                message: pingGate.label(
-                    l, _query.isEmpty ? l.homePingServers : l.homePingFound,
-                    noTargets: servers.isEmpty
-                        ? l.serversEmpty
-                        : l.serversNothingFound),
-                child: TextButton.icon(
-                  icon: probe.running
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.network_check, size: 18),
-                  // Пингуем то, что видно: при поиске — только найденное.
-                  label:
-                      Text(_query.isEmpty ? l.homePingServers : l.homePingFound),
-                  onPressed: pingGate.allowed
-                      ? () => probe.pingAll(
-                          [for (final i in shown) servers[i]], settings)
-                      : null,
+              // ⚠️ `Flexible` — ПРАВО УЖАТЬСЯ, А НЕ УКРАШЕНИЕ. Подпись кнопки
+              // не резиновая: при системном шрифте ×1,3 три соседа в этой
+              // строке не помещались в панель 380 px, и она переполнялась на
+              // 4,7 px — жёлто-чёрные полосы у человека, увеличившего шрифт,
+              // чтобы читать.
+              Flexible(
+                child: Tooltip(
+                  message: pingGate.label(
+                      l, _query.isEmpty ? l.homePingServers : l.homePingFound,
+                      noTargets: servers.isEmpty
+                          ? l.serversEmpty
+                          : l.serversNothingFound),
+                  child: TextButton.icon(
+                    icon: probe.running
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.network_check, size: 18),
+                    // Пингуем то, что видно: при поиске — только найденное.
+                    label: Text(
+                        _query.isEmpty ? l.homePingServers : l.homePingFound,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    onPressed: pingGate.allowed
+                        ? () => probe.pingAll(
+                            [for (final i in shown) servers[i]], settings)
+                        : null,
+                  ),
                 ),
               ),
               // Замер скорости — ИКОНКОЙ, а не второй текстовой кнопкой: панель
@@ -1569,6 +1824,14 @@ class _ServerPaneState extends State<_ServerPane> {
               value: _query,
               onChanged: (v) => setState(() => _query = v),
             ),
+          ),
+          // ⚠️ КНОПКА ЗАКРЕПЛЕНА НАД СПИСКОМ, А НЕ ЛЕЖИТ В НЁМ ПЕРВОЙ СТРОКОЙ.
+          // Она стоит ВНЕ `Expanded` ниже, поэтому список прокручивается под
+          // ней, а сама она остаётся на месте: у владельца сотня серверов, и
+          // уехавшая наверх кнопка означала бы «её нет».
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 12, 8),
+            child: AutoPickServerButton(wide: true),
           ),
           Expanded(
             child: shown.isEmpty
@@ -1640,7 +1903,21 @@ class ConnectCenterpiece extends StatelessWidget {
     required this.button,
     this.services = ServiceChecks.services,
     this.layout = ServiceChecksLayout.rows,
+    this.bannerTrailing,
+    this.bannerLeading,
   });
+
+  /// Что стоит в ЛЕВОМ краю полосы плашки — на экране это «Информация о
+  /// сервере». `null` — место под кнопку всё равно держится (см.
+  /// [ActiveServerBanner.leading]).
+  final Widget? bannerLeading;
+
+  /// Что стоит в правом краю полосы плашки — на экране это «i» с подсказкой
+  /// и кнопка подменю проверок. `null` — полоса без хвоста (стражи вёрстки).
+  ///
+  /// ⚠️ Умолчание `null` означает, что забытый параметр компилятор не поймает;
+  /// страж по исходнику — в `active_server_banner_test`.
+  final Widget? bannerTrailing;
 
   /// Имя активного сервера (см. [activeServerName]); `null` — плашка пустая.
   final String? serverName;
@@ -1682,7 +1959,8 @@ class ConnectCenterpiece extends StatelessWidget {
         // 148 px, и любая плашка, вписанная в него, режет имя после трёх букв.
         // Строка выше кнопки не пересекается ни с кругом, ни с чипами по
         // определению — пересекаться нечему.
-        ActiveServerBanner(name: serverName),
+        ActiveServerBanner(
+            name: serverName, trailing: bannerTrailing, leading: bannerLeading),
         // ⚠️ РАСКЛАДКА ВЫБИРАЕТСЯ ЗДЕСЬ, ПО ШИРИНЕ РОДИТЕЛЯ — И ЭТО ЕДИНСТВЕННОЕ
         // МЕСТО, ГДЕ ЭТОТ ВЫБОР ДЕЛАЕТСЯ. Прошлый регресс (см. шапку файла) был
         // ровно в том, что раскладка существовала в коде, но вызов её не
@@ -1822,29 +2100,138 @@ class ServiceChecksNotReadyBanner extends StatelessWidget {
 /// колонки проверок прыгали бы вверх-вниз на каждом подключении и отключении.
 /// Тот же приём, что у строки трафика ниже, — она тоже висит с нулями.
 class ActiveServerBanner extends StatelessWidget {
-  const ActiveServerBanner({super.key, required this.name});
+  const ActiveServerBanner(
+      {super.key, required this.name, this.trailing, this.leading});
 
   /// Имя активного сервера. `null`/пусто — плашка невидима, но место держит.
   final String? name;
 
+  /// Хвост полосы — кнопки в правом краю. Виден ВСЕГДА, независимо от того,
+  /// есть ли имя: кнопкой подменю проверки включают обратно, и прятать её
+  /// вместе с плашкой значило бы оставить человека без пути назад.
+  final Widget? trailing;
+
+  /// Левый край полосы — на экране это «Информация о сервере».
+  ///
+  /// ⚠️ МЕСТО ПОД НЕГО ДЕРЖИТСЯ ВСЕГДА, даже когда кнопки нет (сервер не
+  /// выбран): распорка слева симметрична хвосту, и без неё плашка съезжала бы
+  /// с оси кнопки Connect ровно в тот момент, когда человек выбирает сервер.
+  final Widget? leading;
+
   /// Просвет между плашкой и кнопкой.
   static const double gap = 10;
+
+  /// Ширина места под хвост — и РОВНО ТАКОЙ ЖЕ распорки слева.
+  ///
+  /// ⚠️ РАСПОРКА СИММЕТРИЧНАЯ, И ЭТО НЕ КРАСОТА. Плашка центрируется в том,
+  /// что осталось от строки; хвост без пары слева сдвигал бы её от оси кнопки
+  /// на половину своей ширины — 30 px, заметно глазом. Две кнопки по 28 и
+  /// просвет 2 — 58; запас 2.
+  static const double trailingWidth = 60;
 
   @override
   Widget build(BuildContext context) {
     final n = name;
     final shown = n != null && n.isNotEmpty;
+    final label = Visibility(
+      visible: shown,
+      maintainSize: true,
+      maintainAnimation: true,
+      maintainState: true,
+      // Пробел, а не пустая строка: место резервируется РОВНО той же
+      // вёрсткой, что потом рисует имя, поэтому оно не зависит ни от размера
+      // системного шрифта, ни от будущих правок отступов плашки.
+      child: ActiveServerLabel(name: shown ? n : ' '),
+    );
+    final tail = trailing;
     return Padding(
       padding: const EdgeInsets.only(bottom: gap),
-      child: Visibility(
-        visible: shown,
-        maintainSize: true,
-        maintainAnimation: true,
-        maintainState: true,
-        // Пробел, а не пустая строка: место резервируется РОВНО той же
-        // вёрсткой, что потом рисует имя, поэтому оно не зависит ни от размера
-        // системного шрифта, ни от будущих правок отступов плашки.
-        child: ActiveServerLabel(name: shown ? n : ' '),
+      // Без хвоста — прежняя одиночная плашка: `Row` с `Expanded` требует
+      // конечной ширины, а без хвоста ему нечего делить.
+      child: tail == null && leading == null
+          ? label
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: trailingWidth,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: leading ?? const SizedBox.shrink(),
+                  ),
+                ),
+                Expanded(child: Center(child: label)),
+                SizedBox(
+                  width: trailingWidth,
+                  child: Align(
+                    alignment: AlignmentDirectional.centerEnd,
+                    child: tail,
+                  ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+/// «Информация о сервере» — значком в левом краю полосы плашки.
+///
+/// ⚠️ РЕГРЕСС-ОПАСНОЕ МЕСТО. Экран информации о сервере открывался с главного
+/// отдельной строкой-кнопкой под статусом; строка стоила 48 px, и ровно их не
+/// хватало низу экрана на минимальном окне 980×800. Убрать её было можно
+/// только вместе с новым входом: до этого экран открывался ещё лишь из
+/// контекстного меню в списке серверов, где его никто не находил.
+///
+/// ⚠️ ТУГАЯ КОРОБКА 28 px, как у кнопок хвоста. Область нажатия Material тянет
+/// `IconButton` до 40 px, если родитель не зажал, — полоса плашки поднялась бы
+/// на 12 px, и весь выигрыш от переезда ушёл бы обратно.
+class ServerInfoButton extends StatelessWidget {
+  const ServerInfoButton({super.key});
+
+  /// Сторона кнопки — совпадает с `ServiceChecksMenuButton.size` и
+  /// `InfoTooltip.compactSize`.
+  static const double size = 28;
+
+  /// ⚠️ НЕ `Icons.info_outline` — И ЭТО НЕ ПРИДИРКА К ОФОРМЛЕНИЮ.
+  ///
+  /// В той же полосе плашки, у правого её края, стоит `InfoTooltip` — тоже
+  /// кружок «i». Два одинаковых значка в полусотне пикселей друг от друга
+  /// вели бы в совершенно разные места: этот — на целый экран с внешним
+  /// адресом, страной, провайдером и скоростью, тот — во всплывающее
+  /// пояснение про проверки сервисов. Подписей на полосе нет, и раньше вход
+  /// сюда был кнопкой СО СЛОВАМИ «Информация о сервере»; после переезда
+  /// значком назначение стало угадываться только тыком.
+  ///
+  /// `travel_explore` — глобус с лупой, «посмотреть, откуда выходит этот
+  /// сервер». В проекте он занят ещё одним местом (строка поиска помех в
+  /// настройках), но это другой экран, и на одной полосе они не встречаются;
+  /// «i» же обязано остаться за подсказкой, потому что это буквально она.
+  static const IconData icon = Icons.travel_explore;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    // Необязательное чтение: стражи вёрстки поднимают полосу без провайдеров.
+    final server = context.watch<AppState?>()?.selectedServer;
+    // ⚠️ Место под кнопку держит РОДИТЕЛЬ (`ActiveServerBanner.leading`), а не
+    // эта пустышка: иначе плашка прыгала бы при выборе сервера.
+    if (server == null) return const SizedBox(width: size, height: size);
+    return SizedBox(
+      width: size,
+      height: size,
+      child: IconButton(
+        icon: const Icon(icon, size: 18),
+        // ⚠️ ПОДСКАЗКА ОБЯЗАТЕЛЬНА: на полосе нет подписей, и без неё
+        // назначение значка выясняется только нажатием. Соседняя «i» держит
+        // свою (`serviceChecksInfo`), и тексты у них разные — по ним и видно,
+        // куда ведёт каждый.
+        tooltip: l.homeServerInfo,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: size, height: size),
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ServerInfoScreen(server: server),
+        )),
       ),
     );
   }
@@ -2151,11 +2538,17 @@ class _UptimeLabelState extends State<_UptimeLabel> {
 /// Трафик: скорость и объём текущего подключения + итог за сессию приложения.
 /// Показывается ВСЕГДА (нулями при отключённом VPN), чтобы блок не появлялся
 /// рывком и не сдвигал кнопки.
-class _TrafficRow extends StatelessWidget {
+/// Счётчики трафика — последняя строка панели.
+///
+/// Публична ради замера: именно её нижняя кромка задаёт резерв
+/// [kChecksReserveBelow], и число в комментарии рядом с константой обязано
+/// сверяться с настоящей вёрсткой, а не переписываться на глаз.
+class TrafficRow extends StatelessWidget {
   final TrafficStats stats;
   final int sessionUp;
   final int sessionDown;
-  const _TrafficRow({
+  const TrafficRow({
+    super.key,
     required this.stats,
     required this.sessionUp,
     required this.sessionDown,

@@ -35,8 +35,13 @@ pause
 exit /b 1
 
 :sg_free
+rem Бета собирается только осознанно: задайте SILENTGATE_CHANNEL=beta до запуска,
+rem обычная сборка (переменная не задана) остаётся стабильной без канала.
+rem Прочитается в "О программе" через AppInfo.channel (String.fromEnvironment).
+set "CHANNEL_DEFINE="
+if defined SILENTGATE_CHANNEL set "CHANNEL_DEFINE=--dart-define=SILENTGATE_CHANNEL=%SILENTGATE_CHANNEL%"
 echo Сборка release...
-call "%FLUTTER%" build windows --release
+call "%FLUTTER%" build windows --release %CHANNEL_DEFINE%
 if errorlevel 1 (
   echo.
   echo === СБОРКА НЕ УДАЛАСЬ ===
@@ -88,6 +93,7 @@ echo.
 echo === ГОТОВО ===
 for /f "tokens=2 delims=: " %%v in ('findstr /b "version:" "%JUNCTION%\app\pubspec.yaml"') do set "VER=%%v"
 echo Версия:     %VER%
+if defined SILENTGATE_CHANNEL echo Канал:      %SILENTGATE_CHANNEL%
 echo Приложение: %REL%\silentgate.exe
 start "" "%REL%"
 endlocal

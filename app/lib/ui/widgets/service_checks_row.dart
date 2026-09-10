@@ -401,13 +401,19 @@ class ServiceChecksRows extends StatelessWidget {
 /// не размер, который дал родитель. На растянутом окне это давало крошечный
 /// (392 px) остров с кнопкой и двумя колонками, центрированный посреди
 /// огромного пустого поля, — ровно то, на что пожаловался владелец. Сейчас
-/// [build] отдельно обрабатывает случай «места с избытком по обеим осям»: без
-/// FittedBox вовсе, с зазором у кнопки, растущим вместе с окном (в разумных,
-/// капнутых пределах) — см. [_gapExtraShare], [_gapExtraCap]. Случай нехватки
-/// места остался БЕЗ ИЗМЕНЕНИЙ — прежний проверенный `FittedBox` вокруг всего
-/// блока, тот же уровень надёжности.
+/// [build] отдаёт сторонам всё свободное место и вписывает содержимое
+/// `FittedBox`-ом по вычисленному коэффициенту `k` — с ростом до [_maxGrow].
 ///
-/// ⚠️ ГРУБАЯ ОЦЕНКА МАСШТАБА (`_estimateScale`) — ДРУГОЕ ЧИСЛО, И ОНО НЕ ОБЯЗАНО
+/// ⚠️ РОСТ НЕ РАБОТАЛ НИ РАЗУ ДО 09.09.2026. Высота блока (`boxHeight`)
+/// считалась по НЕМАСШТАБИРОВАННОЙ высоте стороны ДО вычисления `k`, и
+/// `SizedBox(h·k)` внутри зажимался строкой этой высоты: фактический потолок
+/// роста был `max(148, tallest) / tallest`, то есть ровно 1,0 при любой
+/// стороне выше кнопки — а это все раскладки с пятью группами. `_maxGrow`
+/// существовал в коде и не делал ничего. Порядок теперь обратный: сначала
+/// `k`, потом высота блока по нему. Страж —
+/// `centerpiece_reports_its_height_test` («рост до потолка 1,6»).
+///
+/// ⚠️ ГРУБАЯ ОЦЕНКА ПО ШИРИНЕ (`_widthFit`) — ДРУГОЕ ЧИСЛО, И ОНО НЕ ОБЯЗАНО
 /// БЫТЬ ТОЧНЫМ. От него зависит только порог, ниже которого колонки уступают
 /// место привычным рядам под кнопкой, потому что мелкий текст и микроскопические
 /// значки читать нельзя, даже если формально они поместились. Ошибка в этой
@@ -439,12 +445,10 @@ class ServiceChecksSides extends StatelessWidget {
   /// Диаметр кнопки на масштабе 1.0 — базовая величина, от которой считается
   /// коэффициент сжатия. Кнопка приходит готовым виджетом с уже своим
   /// размером (148 или 116 на коротком экране, см. `_ConnectButton`); мы не
-  /// лезем в него, а просто отводим ему опорную ширину/высоту для измерения —
-  /// `FittedBox` ниже досожмёт фактический размер вместе со всем остальным.
+  /// лезем в него, а просто отводим ему опорную ширину/высоту для измерения.
   static const double _naturalButton = 148.0;
 
-  /// Минимальный просвет между колонкой и кнопкой — то, что остаётся, когда
-  /// добавить нечего (места впритык) или расти некуда (см. [_gapExtraCap]).
+  /// Минимальный просвет между колонкой и кнопкой.
   static const double _gap = 14.0;
 
   /// Просвет между блоками-группами внутри одной стороны — и по горизонтали,
@@ -452,53 +456,38 @@ class ServiceChecksSides extends StatelessWidget {
   /// читается как сетка, только когда её просветы одинаковы.
   static const double _blockGap = 10.0;
 
-  /// Ширина одной колонки на масштабе 1.0. Разная для `sides` (нужно место под
-  /// пару «до → после») и `grid` (только иконка с кружком статуса).
-  /// Сколько блоков-групп ложится в один ряд с одной стороны от кнопки.
+  /// Сколько блоков-групп ложится в один ряд с одной стороны от кнопки —
+  /// и сколько рядов сторона может занять.
   ///
-  /// Два — решение владельца: «слева и справа по 2 столбца, в высоту 3».
+  /// ⚠️ КОНСТАНТЫ, А НЕ ФУНКЦИЯ ОТ ШИРИНЫ — ПРЯМОЕ ТРЕБОВАНИЕ ВЛАДЕЛЬЦА
+  /// (08.09.2026): «Колонки могут быть в ширину только 2 колонки. В высоту
+  /// строки могут быть до 3-ёх штук». До этого число блоков в ряду зависело
+  /// от ширины панели (`paneWidth >= 520 ? 3 : 2`), и ровно это условие
+  /// рождало жалобу «слева пустует место»: справа три блока в ряд, слева два,
+  /// а общий масштаб считался по широкой стороне — левая жалась вслед за
+  /// правой и оставляла пустоту у края окна. При двух в ряд пять групп
+  /// делятся 2/3, ширины сторон равны (174 = 174), и общий коэффициент
+  /// перестаёт обкрадывать левую сторону по построению.
   ///
-  /// ⚠️ ТРИ В РЯД СНАЧАЛА СДЕЛАЛИ ХУЖЕ, И ВОТ ПОЧЕМУ ЭТО НЕ ОТМЕНА ПРАВКИ.
-  /// При потолке подписи 108 блок занимал 78 px, три блока — 254 при
-  /// доступных 209, и сторона сжималась до 0,82: значки становились МЕЛЬЧЕ.
-  /// После ужатия подписи до 60 блок стал 60 px, три блока — 200, и они
-  /// помещаются. А главное — при пяти группах два в ряд дают ОДИН ряд слева
-  /// и ДВА справа (замер: высоты сторон 138 и 276), то есть правая сторона
-  /// сжимается вдвое сильнее левой, и это видно на глаз. Три в ряд кладут
-  /// обе стороны в один ряд — высоты равны, масштаб общий.
-  ///
-  /// На тесном экране остаётся два: там 209 px на сторону нет вовсе.
-  ///
-  /// Параметром, а не константой, оставлено намеренно: число меряется от
-  /// ширины, и если раскладка изменится, менять придётся ОДНО место.
-  static int blocksPerRowFor(double paneWidth) => paneWidth >= 520 ? 3 : 2;
+  /// ⚠️ Потолок в три ряда держит [_splitColumns]: сторона не получает больше
+  /// [perRow] × [maxRows] блоков. Групп в приложении пять при потолке
+  /// двенадцати; тринадцатая молча уводила бы раскладку в ряды под кнопкой
+  /// (см. [build]) — стережёт `side_split_balance_test`.
+  static const int perRow = 2;
+  static const int maxRows = 3;
 
-  static double _columnWidth(bool dense) => dense ? 84.0 : 108.0;
-
-  /// Та же ширина, доступная подписи группы: она обязана считаться ОДНИМ
-  /// числом с шириной стороны, иначе подпись снова начнёт раздувать блок.
-  static double columnWidthFor(bool dense) => _columnWidth(dense);
-
-  /// Потолок ширины ПОДПИСИ группы — заметно уже колонки.
+  /// Ширина, доступная подписи группы, — ЧУТЬ ШИРЕ ячейки сервиса.
   ///
   /// ⚠️ ЭТО ГЛАВНЫЙ РЫЧАГ РАЗМЕРА ЗНАЧКОВ, и он неочевиден. Ширину блока
-  /// задаёт самый широкий его элемент, а это ПОДПИСЬ: «Видео и музыка»
-  /// занимает около 78 px против 43 у самой ячейки. Чем шире подпись, тем
+  /// задаёт самый широкий его элемент, а это ПОДПИСЬ: чем шире подпись, тем
   /// шире сторона и тем сильнее `BoxFit.contain` жмёт ВЕСЬ блок — значки в
-  /// том числе.
+  /// том числе. Поэтому подпись меряется ОДНИМ числом с ячейкой, а не
+  /// собственной колонкой.
   ///
-  /// Замер на живом окне (04.09.2026): при потолке 108 сторона занимала
-  /// 166 px и масштаб выходил 1,26; при 60 — 130 px и масштаб 1,6. Подпись
-  /// при этом не теряется: она рисуется в том же увеличенном масштабе, то
-  /// есть занимает около 96 настоящих пикселей.
-  /// Ширина ячейки сервиса на масштабе 1.0: стрелка перехода, отступ, значок
-  /// с обводкой. По ней же меряется подпись — блок не должен быть шире
-  /// своего содержимого.
-  /// ⚠️ ЧУТЬ ШИРЕ ЯЧЕЙКИ, И ЭТО ИЗМЕРЕНО, А НЕ ПРИКИНУТО. «Мессенджеры»
-  /// шрифтом 8 занимают около 50 px, и в ячейку 48 не помещаются — Flutter
-  /// рвёт слово по буквам («Мессендже/ры» на снимке из VM, дважды). Четыре
-  /// лишних пикселя стоят двух пикселей размера значка и оставляют название
-  /// целым.
+  /// ⚠️ ЧЕТЫРЕ ЛИШНИХ ПИКСЕЛЯ ИЗМЕРЕНЫ, А НЕ ПРИКИНУТЫ. «Мессенджеры» шрифтом
+  /// 8 занимают около 50 px, и в ячейку 48 не помещались — Flutter рвал слово
+  /// по буквам («Мессендже/ры» на снимке из VM, дважды). Запас стоит двух
+  /// пикселей размера значка и оставляет название целым.
   static double labelWidthFor(bool dense) => dense ? 34.0 : cellWidth + 4;
 
   /// Базовый кегль подписи группы и его нижняя граница.
@@ -544,8 +533,12 @@ class ServiceChecksSides extends StatelessWidget {
 
   /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
   /// правильнее показать привычные ряды под кнопкой, чем ужимать до предела.
-  /// Само сжатие структурно безопасно (см. шапку класса), порог — вопрос
-  /// читаемости, не целостности.
+  ///
+  /// ⚠️ ПРИМЕНЯЕТСЯ ТОЛЬКО К ШИРИНЕ. При ограниченной ВЫСОТЕ бока остаются
+  /// на любом масштабе: `FittedBox` переполнения не даст, а ряды под потолком
+  /// сжимают вместе с кнопкой — это был провал коммита 36229ab, откаченного
+  /// по снимку из VM («Отключено», «Информация о сервере» и ряды сложились
+  /// друг на друга).
   static const double _minReadableScale = 0.62;
 
   /// Во сколько раз блоку позволено вырасти сверх натурального размера.
@@ -556,6 +549,11 @@ class ServiceChecksSides extends StatelessWidget {
   /// гигантских кружков вокруг кнопки.
   static const double _maxGrow = 1.6;
 
+  /// Ниже этого масштаба глиф состояния в углу кольца (12 px) — пятно, а не
+  /// знак: при 0,75 кружок 9 px ещё читается, при 0,6 — уже нет. Там кольцо
+  /// несёт состояние одно, как и раньше.
+  static const double glyphMinScale = 0.75;
+
   @override
   Widget build(BuildContext context) {
     final rows = ServiceChecks.grouped(services);
@@ -563,26 +561,19 @@ class ServiceChecksSides extends StatelessWidget {
     // остаётся: место у неё не отбираем.
     if (rows.isEmpty) return button;
 
-
     return LayoutBuilder(builder: (context, c) {
-      final perRow = blocksPerRowFor(c.maxWidth);
-      final split = _splitColumns(rows, dense: dense, perRow: perRow);
-      final natural = _naturalSize(split, dense: dense, perRow: perRow);
-      final scale = _estimateScale(c, natural);
-      if (scale < _minReadableScale) {
-        // Места категорически мало — те же ряды, что и на узком телефоне,
-        // вместо нечитаемой мелочи по бокам.
-        //
-        // ⚠️ И ЭТА ВЕТКА ТОЖЕ ОБЯЗАНА ВЛЕЗАТЬ. Найдено ревью 05.09.2026:
-        // здесь возвращался голый `Column` — ни сжатия, ни прокрутки. Пока
-        // блоку давали бесконечную высоту, ветка была недостижима; с
-        // появлением настоящего потолка она включается, и замер показал
-        // «RenderFlex overflowed by 277 pixels» при месте 500×171.
-        //
-        // В release полосок переполнения нет: подписи просто лягут поверх
-        // кнопки — ровно та жалоба, из-за которой всю эту вёрстку и
-        // переделывали. Шапка класса при этом обещала, что переполнение
-        // «структурно невозможно ни при каком экране»; обещание было ложным.
+      // Ряды под кнопкой — те же, что на узком телефоне. Включаются в двух
+      // случаях: (1) групп больше, чем помещается в сетку 2 × 3 на две
+      // стороны, — такого сегодня нет, страж не даст появиться молча;
+      // (2) упирается ШИРИНА, и бока вышли бы нечитаемо мелкими.
+      //
+      // ⚠️ И ЭТА ВЕТКА ТОЖЕ ОБЯЗАНА ВЛЕЗАТЬ. Найдено ревью 05.09.2026:
+      // здесь возвращался голый `Column` — ни сжатия, ни прокрутки, и замер
+      // показал «RenderFlex overflowed by 277 pixels» при месте 500×171.
+      // В release полосок переполнения нет: подписи просто лягут поверх
+      // кнопки — ровно та жалоба, из-за которой всю эту вёрстку и
+      // переделывали.
+      Widget rowsFallback() {
         final fallback = Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -611,32 +602,68 @@ class ServiceChecksSides extends StatelessWidget {
         );
       }
 
-      // ⚠️ ФИКСИРОВАННОЙ ШИРИНЫ У СТОРОНЫ БОЛЬШЕ НЕТ, И ЭТО НЕ ОТМЕНА
-      // ПРЕЖНЕЙ ПРАВКИ, А ЕЁ ЗАМЕНА.
+      if (rows.length > perRow * maxRows * 2) return rowsFallback();
+      final split = _splitColumns(rows, dense: dense);
+      if (_widthFit(c, split) < _minReadableScale) return rowsFallback();
+
+      // ⚠️ ФИКСИРОВАННОЙ ШИРИНЫ У СТОРОНЫ НЕТ: симметрию держат равные
+      // `Expanded` по бокам — по построению, а не по совпадению чисел.
+      // Зажимать стороны в одинаковый `SizedBox` было нельзя: коробка
+      // считалась по колонке 108 px на блок при настоящем содержимом в 82,
+      // и `FittedBox` вписывал в место ЭТУ КОРОБКУ вместе с пустотой внутри
+      // — вместо роста давал сжатие (снимок 04.09.2026).
+      final wL = sideWidthOf(split.left, dense: dense);
+      final wR = sideWidthOf(split.right, dense: dense);
+      final hL = sideHeightOf(split.left, dense: dense);
+      final hR = sideHeightOf(split.right, dense: dense);
+      final widest = math.max(wL, wR);
+      final tallest = math.max(hL, hR);
+
+      // ⚠️ МАСШТАБ ОДИН НА ОБЕ СТОРОНЫ И СЧИТАЕТСЯ ПЕРВЫМ.
       //
-      // Раньше обе стороны зажимались в одинаковый `SizedBox`, чтобы кнопка
-      // не съезжала с центра (её сдвигало на половину разницы сторон). Теперь
-      // симметрию держат равные `Expanded` по бокам — по построению, а не по
-      // совпадению чисел.
+      // Раньше каждая сторона вписывалась в свою половину своим `FittedBox`;
+      // блоков в половинах разное число, и три блока ужимались сильнее двух
+      // — на снимке из VM правая половина значков выходила заметно мельче
+      // левой, хотя стоят они в одной строке. Теперь коэффициент считается
+      // по ХУДШЕЙ стороне и применяется к обеим; сторона с меньшим числом
+      // блоков просто не занимает свою половину целиком.
       //
-      // ⚠️ А ЗАЖИМАТЬ БЫЛО НЕЛЬЗЯ: ширина считалась по `_columnWidth` (108 на
-      // блок), то есть 344 px на три блока при настоящем содержимом в 152.
-      // `FittedBox` вписывал в место ЭТУ КОРОБКУ вместе с пустотой внутри —
-      // и вместо роста давал сжатие до 0,6. Снимок 04.09.2026: обводки
-      // появились, подписи ужались, а значки не подросли ни на пиксель.
+      // ⚠️ «БЕЗ ФАНАТИЗМА» обеспечивают ВЫСОТА и [_maxGrow]: рост упирается
+      // в потолок, который панель выдаёт блоку, либо в 1,6 — а не раздувает
+      // значки вместе с окном. Кнопку не растим: её размер задаёт панель, он
+      // одинаков во всех раскладках (`connect_button_content_test`).
+      final roomPerSide = (c.maxWidth - _naturalButton - _gap * 2) / 2;
+      var k = _maxGrow;
+      if (widest > 0) k = math.min(k, roomPerSide / widest);
+      if (tallest > 0 && c.hasBoundedHeight) {
+        k = math.min(k, c.maxHeight / tallest);
+      }
+      if (k <= 0 || !k.isFinite) k = 1.0;
+
+      // ⚠️ ВЫСОТА БЛОКА — ПОСЛЕ `k`, А НЕ ДО. Считать её по немасштабированной
+      // стороне значило зажать `SizedBox(h·k)` ниже строкой ровно на рост —
+      // см. шапку класса. И блок занимает СВОЮ высоту, а не весь выданный
+      // потолок: потолок — ограничение («больше нельзя»), а не задание
+      // («займи столько»); разница видна, когда сервисов мало (замер
+      // 05.09.2026: 190 px пустоты под тремя значками, низ панели за краем).
+      final wanted = math.max(_naturalButton, tallest * k);
+      final boxHeight =
+          c.hasBoundedHeight ? math.min(c.maxHeight, wanted) : wanted;
+      final showGlyph = k >= glyphMinScale;
+
       final left = _SideColumn(
-        perRow: perRow,
         rows: split.left,
         httpPort: httpPort,
         dense: dense,
         alignEnd: true,
+        showGlyph: showGlyph,
       );
       final right = _SideColumn(
-        perRow: perRow,
         rows: split.right,
         httpPort: httpPort,
         dense: dense,
         alignEnd: false,
+        showGlyph: showGlyph,
       );
       final buttonBox = SizedBox(
         width: _naturalButton,
@@ -644,76 +671,7 @@ class ServiceChecksSides extends StatelessWidget {
         child: Center(child: button),
       );
 
-      // ⚠️ ОЦЕНКОЙ РАЗМЕР БОЛЬШЕ НЕ РЕШАЕТСЯ — ТОЛЬКО ФАКТОМ.
-      //
-      // Жалоба владельца 04.09.2026 со снимком, где свободное место обведено
-      // красным: «есть же место, почему не используешь». Причина оказалась не
-      // в потолке роста, а в самой оценке: `_columnWidth` отводит блоку 108 px
-      // сверху, а настоящий блок занимает около 45 (иконка, отступ, точка).
-      // Формула считала, что места НЕ ХВАТАЕТ, когда его было вдвое больше
-      // нужного — и блок жался посреди пустого окна.
-      //
-      // Подпирать оценку бесполезно: она приблизительная по построению и
-      // расходится с вёрсткой при каждой её правке (в этом файле так было уже
-      // трижды). Поэтому сторонам отдаётся ВСЁ свободное место, а вписывает в
-      // него содержимое `FittedBox` — он меряет ребёнка по-настоящему и
-      // находит наибольший масштаб, при котором тот влезает. Это и есть
-      // «жать или растить, пока не влезет», без единого предположения о
-      // размерах.
-      //
-      // ⚠️ «БЕЗ ФАНАТИЗМА» обеспечивает ВЫСОТА: `BoxFit.contain` вписывает по
-      // МЕНЬШЕЙ из осей, а высота ограничена потолком, который панель выдаёт
-      // блоку. На широком мониторе рост упрётся в неё и остановится, а не
-      // раздует значки вместе с окном.
-      //
-      // ⚠️ Кнопку не растим: её размер задаёт панель, он одинаков во всех
-      // раскладках, и это стережёт `connect_button_content_test`.
-      _logSides(c, split, dense: dense, perRow: perRow);
-      // ⚠️ БЛОК ЗАНИМАЕТ СВОЮ ВЫСОТУ, А НЕ ВЕСЬ ВЫДАННЫЙ ПОТОЛОК.
-      //
-      // Найдено ревью 05.09.2026 и подтверждено замером: при потолке 486 px и
-      // трёх сервисах блок занимал ровно 486 при содержимом 186 — между
-      // последним значком и следующей строкой висело 190 px пустоты, а низ
-      // панели выдавливался за её край.
-      //
-      // Причина в том, что потолок доводится сюда цепочкой `Flexible` с
-      // нежёсткой посадкой, и `SizedBox(height: потолок)` заполнял его
-      // целиком. Потолок — это ОГРАНИЧЕНИЕ («больше нельзя»), а не задание
-      // («займи столько»); разница видна только когда содержимого мало, то
-      // есть в самом частом случае.
-      final wanted = math.max(
-        _naturalButton,
-        math.max(sideHeightOf(split.left, dense: dense, perRow: perRow),
-            sideHeightOf(split.right, dense: dense, perRow: perRow)),
-      );
-      final boxHeight = c.hasBoundedHeight && wanted > c.maxHeight
-          ? c.maxHeight
-          : wanted;
-
-      // ⚠️ МАСШТАБ ОДИН НА ОБЕ СТОРОНЫ.
-      //
-      // Раньше каждая сторона вписывалась в свою половину своим `FittedBox`.
-      // Половины равны, а блоков в них разное число (пять групп делятся как
-      // 2 и 3), поэтому три блока ужимались сильнее двух: на снимке из VM
-      // правая половина значков выходила заметно мельче левой, хотя стоят
-      // они в одной строке.
-      //
-      // Теперь коэффициент считается по ХУДШЕЙ стороне и применяется к обеим:
-      // сторона с меньшим числом блоков просто не занимает свою половину
-      // целиком, и пустое место остаётся у дальнего от кнопки края.
-      final roomPerSide = (c.maxWidth - _naturalButton - _gap * 2) / 2;
-      final wL = sideWidthOf(split.left, dense: dense, perRow: perRow);
-      final wR = sideWidthOf(split.right, dense: dense, perRow: perRow);
-      final hL = sideHeightOf(split.left, dense: dense, perRow: perRow);
-      final hR = sideHeightOf(split.right, dense: dense, perRow: perRow);
-      final widest = math.max(wL, wR);
-      final tallest = math.max(hL, hR);
-      var k = _maxGrow;
-      if (widest > 0) k = math.min(k, roomPerSide / widest);
-      if (tallest > 0 && c.hasBoundedHeight) {
-        k = math.min(k, c.maxHeight / tallest);
-      }
-      if (k <= 0 || !k.isFinite) k = 1.0;
+      _logSides(c, split, k: k, dense: dense);
 
       // ⚠️ `SizedBox` с ЯВНЫМ размером обязателен: `FittedBox` растягивает
       // содержимое, только когда ему самому задан размер. Со свободными
@@ -750,45 +708,31 @@ class ServiceChecksSides extends StatelessWidget {
     });
   }
 
-  /// Насколько пришлось бы сжать блок, чтобы он влез в `c` — ОЦЕНКА для
-  /// решения «показывать колонки или ряды», не фактический рендер (тот считает
-  /// `FittedBox` сам, по-настоящему).
-  double _estimateScale(BoxConstraints c, Size natural) {
-    final wRatio =
-        natural.width <= 0 ? 1.0 : c.maxWidth / natural.width;
-    // Высота часто НЕ ограничена (узкий телефон целиком прокручивается, см.
-    // `_MaybeScroll` в `home_screen.dart`) — там сжимать по высоте не от чего,
-    // и `BoxConstraints.hasBoundedHeight` отличает этот случай от настоящего
-    // тесного окна (минимум Windows), где ограничение есть.
-    final hRatio = !c.hasBoundedHeight || natural.height <= 0
-        ? 1.0
-        : c.maxHeight / natural.height;
-    return math.min(1.0, math.min(wRatio, hRatio));
+  /// Насколько пришлось бы сжать блок ПО ШИРИНЕ, чтобы он влез в `c` —
+  /// ОЦЕНКА для решения «показывать колонки или ряды», не фактический
+  /// рендер (тот считает `FittedBox` сам, по-настоящему).
+  ///
+  /// Высота здесь не участвует намеренно — см. [_minReadableScale].
+  double _widthFit(
+      BoxConstraints c, ({List<GroupedRow> left, List<GroupedRow> right}) split) {
+    final natural = sideWidthOf(split.left, dense: dense) +
+        sideWidthOf(split.right, dense: dense) +
+        _naturalButton +
+        _gap * 2;
+    if (natural <= 0) return 1.0;
+    return math.min(1.0, c.maxWidth / natural);
   }
 
-  /// Требуемый размер блока (обе колонки + кнопка) на масштабе 1.0.
-  /// Высота одной стороны при сетке блоков: сумма РЯДОВ, а в ряду берётся
-  /// самый высокий блок. Отдельным помощником, потому что нужна и оценке
-  /// размера, и расчёту роста в `build` — две копии этой формулы разошлись бы
-  /// на первой же правке.
   /// Ширина одной стороны при масштабе 1.0.
-  static double sideWidthOf(List<GroupedRow> rows,
-      {required bool dense, required int perRow}) {
+  static double sideWidthOf(List<GroupedRow> rows, {required bool dense}) {
     if (rows.isEmpty) return 0;
     if (dense) {
-      // ⚠️ СЕТКА РИСУЕТСЯ СОВСЕМ ИНАЧЕ, ЧЕМ СЧИТАЛА ЭТА ФОРМУЛА.
-      //
-      // Найдено ревью 05.09.2026 замером. Формула умножала ширину блока на
-      // число блоков В РЯДУ, то есть описывала блоки бок о бок. А `_SideColumn`
-      // в этом режиме строит колонку из `Wrap`-ов: КАЖДАЯ ГРУППА — своей
-      // строкой, и внутри строки иконки идут в одну линию (ширина у `FittedBox`
-      // не ограничена).
-      //
-      // Из-за расхождения обе стороны получали коробки, не совпадающие со
-      // своим содержимым, и общий коэффициент переставал быть общим: замер дал
-      // значки 25 px слева против 39 справа — при том что стоят они в одной
-      // строке вокруг кнопки.
-      //
+      // ⚠️ СЕТКА РИСУЕТСЯ ИНАЧЕ, ЧЕМ БЛОКИ. Найдено ревью 05.09.2026 замером:
+      // `_SideColumn` в этом режиме строит колонку из `Wrap`-ов — КАЖДАЯ
+      // ГРУППА своей строкой, и внутри строки иконки идут в одну линию
+      // (ширина у `FittedBox` не ограничена). Формула, считавшая блоки бок
+      // о бок, давала коробки не по содержимому, общий коэффициент
+      // переставал быть общим: значки 25 px слева против 39 справа.
       // Считаем то, что рисуется: самая длинная группа задаёт ширину.
       var widest = 0.0;
       for (final r in rows) {
@@ -803,154 +747,95 @@ class ServiceChecksSides extends StatelessWidget {
   }
 
   /// Размеры одной ячейки в режиме «сетка» — списаны с того, что реально
-  /// рисует `_SideColumn` (иконка 26 + обводка/отступ, просвет `Wrap`).
+  /// рисует `_SideColumn` (зона 32 под кольцо 28, просвет `Wrap` 6).
   static const double _denseIcon = 32;
   static const double _denseGap = 6;
 
-  static double sideHeightOf(List<GroupedRow> rows,
-      {required bool dense, required int perRow}) {
+  /// Высота ОДНОГО блока-группы при масштабе 1.0 — то, что реально рисует
+  /// `_SideColumn`: подпись 22 + 2 + линия 1, зазор 4, на сервис — бокс
+  /// кольца плюс 8 px отступов (`_ServicePair`: 2 снаружи, 2 внутри, с двух
+  /// сторон).
+  ///
+  /// ⚠️ ОДНА ФОРМУЛА НА ВСЁ. До 09.09.2026 их было ДВЕ (`sideHeightOf` и
+  /// `_naturalSize`), и они уже расходились с вёрсткой и друг с другом
+  /// (34 на сервис при настоящих 36; просвет ряда прибавлялся и после
+  /// последнего). По этой высоте считаются и масштаб, и делёж сторон — ошибка
+  /// в ней это сжатие там, где место есть, или перекос сторон.
+  static double blockHeightOf(GroupedRow r, {required bool dense}) => dense
+      ? _denseIcon
+      : _SideGroupLabel.labelHeight +
+          2 +
+          1 +
+          4 +
+          r.services.length * (_StatusRing.boxSizeFor(_pairIconSize) + 8);
+
+  /// Высота одной стороны при масштабе 1.0: сумма РЯДОВ (в ряду — самый
+  /// высокий блок) и просвет [_blockGap] ТОЛЬКО МЕЖДУ рядами.
+  static double sideHeightOf(List<GroupedRow> rows, {required bool dense}) {
     if (rows.isEmpty) return 0;
-    double blockHeight(GroupedRow r) => dense
-        // ⚠️ ОДНА СТРОКА НА ГРУППУ, А НЕ ПО ДВЕ ИКОНКИ В РЯД. Прежняя формула
-        // (`ceil(n/2) * 40`) предполагала перенос иконок по две, но `Wrap`
-        // внутри `FittedBox` получает неограниченную ширину и переносить
-        // ничего не станет: вся группа встаёт в линию. Считать надо то, что
-        // рисуется, — иначе оценка вдвое завышает высоту, и сторона ужимается
-        // там, где место есть (разбор — ревью 05.09.2026).
-        ? _denseIcon + _denseGap
-        : 26.0 + r.services.length * 34.0;
     if (dense) {
-      var h = 0.0;
-      for (final r in rows) {
-        h += blockHeight(r) + 6;
-      }
-      return h;
+      // Каждая группа — своей строкой (см. [sideWidthOf]), просвет между
+      // строками — и только между.
+      return _denseIcon * rows.length + _denseGap * (rows.length - 1);
     }
     var h = 0.0;
+    var rowCount = 0;
     for (var i = 0; i < rows.length; i += perRow) {
       var tallest = 0.0;
-      for (var k = i;
-          k < math.min(i + perRow, rows.length);
-          k++) {
-        tallest = math.max(tallest, blockHeight(rows[k]));
+      for (var j = i; j < math.min(i + perRow, rows.length); j++) {
+        tallest = math.max(tallest, blockHeightOf(rows[j], dense: dense));
       }
-      h += tallest + _blockGap;
+      h += tallest;
+      rowCount++;
     }
-    return h;
+    return h + _blockGap * (rowCount - 1);
   }
 
-  Size _naturalSize(({List<GroupedRow> left, List<GroupedRow> right}) split,
-      {required bool dense, required int perRow}) {
-    // ⚠️ СЧИТАЕМ ПО СЕТКЕ БЛОКОВ, А НЕ ПО СТОЛБЦУ. Прежняя формула складывала
-    // высоты всех групп подряд — она отвечала прежней раскладке, где группы
-    // шли одна под другой. С сеткой «два в ширину» высота стороны это сумма
-    // РЯДОВ, а в ряду берётся самый высокий блок. Оставь старую формулу — и
-    // оценка завысит высоту вдвое, сжатие включится там, где не нужно, и
-    // блок уедет в раскладку рядами на ровном месте.
-    double blockHeight(GroupedRow r) => dense
-        // Сетка: иконки по две в ряд, без подписи группы.
-        ? (r.services.length / 2).ceil() * 40.0
-        // Блок: строка подписи группы + по строке на сервис.
-        : 26.0 + r.services.length * 34.0;
-
-    double sideHeight(List<GroupedRow> rows) {
-      if (rows.isEmpty) return 0;
-      if (dense) {
-        var h = 0.0;
-        for (final r in rows) {
-          h += blockHeight(r) + 6;
-        }
-        return h;
-      }
-      var h = 0.0;
-      for (var i = 0; i < rows.length; i += perRow) {
-        var tallest = 0.0;
-        for (var k = i;
-            k < math.min(i + perRow, rows.length);
-            k++) {
-          tallest = math.max(tallest, blockHeight(rows[k]));
-        }
-        h += tallest + 10; // просвет между рядами блоков
-      }
-      return h;
-    }
-
-    final height = math.max(
-      _naturalButton,
-      math.max(sideHeight(split.left), sideHeight(split.right)),
-    );
-    // Ширина стороны: столько блоков в ряд, сколько их реально есть, но не
-    // больше [blocksPerRow] — при двух группах сторона занимает две ширины,
-    // а не отведённые под сетку четыре.
-    double sideWidth(List<GroupedRow> rows) {
-      if (rows.isEmpty) return 0;
-      final inRow = dense
-          ? 1
-          : math.min(rows.length, perRow);
-      return _columnWidth(dense) * inRow + 10 * (inRow - 1);
-    }
-
-    final width = sideWidth(split.left) +
-        sideWidth(split.right) +
-        _naturalButton +
-        _gap * 2;
-    return Size(width, height);
-  }
-
-  /// Раскладывает ГРУППЫ (не отдельные сервисы — группа не разрывается между
-  /// колонками, иначе смысл ряда потерялся бы, см. шапку файла) по двум
-  /// колонкам, примерно поровну по числу строк.
   /// Тот же делёж, доступный стражу: равновесие сторон глазами видно, а
   /// тестом — только через эту точку (сам делёж приватен, а поднимать ради
   /// него всё дерево значит проверять вёрстку вместо арифметики).
   @visibleForTesting
   static ({List<GroupedRow> left, List<GroupedRow> right}) splitForTest(
           List<GroupedRow> rows,
-          {required bool dense, int perRow = 2}) =>
+          {required bool dense}) =>
       const ServiceChecksSides(services: [], httpPort: 0, button: SizedBox())
-          ._splitColumns(rows, dense: dense, perRow: perRow);
+          ._splitColumns(rows, dense: dense);
 
+  /// Раскладывает ГРУППЫ (не отдельные сервисы — группа не разрывается между
+  /// сторонами, иначе смысл ряда потерялся бы, см. шапку файла) по двум
+  /// сторонам, примерно поровну по высоте.
   ({List<GroupedRow> left, List<GroupedRow> right}) _splitColumns(
       List<GroupedRow> rows,
-      {required bool dense, required int perRow}) {
-    // ⚠️ ДЕЛИМ ПОРОВНУ ПО ВЫСОТЕ, А НЕ ПО ЧИСЛУ СТРОК — решение владельца
+      {required bool dense}) {
+    if (rows.length < 2) return (left: rows, right: const <GroupedRow>[]);
+
+    // ⚠️ ДЕЛИМ ПОРОВНУ ПО ВЫСОТЕ, А НЕ ПО ЧИСЛУ БЛОКОВ — решение владельца
     // (04.09.2026). С сеткой это разные вещи: два блока по три сервиса и
     // шесть блоков по одному дают одинаковое число строк и совершенно разную
-    // высоту стороны.
-    int linesOf(GroupedRow r) =>
-        dense ? (r.services.length / 2).ceil() : 1 + r.services.length;
-
-    // Высота стороны при данном наборе блоков: сумма рядов, в ряду —
-    // самый высокий.
-    int heightOf(List<GroupedRow> side) {
-      if (dense) return side.fold<int>(0, (a, r) => a + linesOf(r));
-      var h = 0;
-      for (var i = 0; i < side.length; i += perRow) {
-        var tallest = 0;
-        for (var k = i;
-            k < math.min(i + perRow, side.length);
-            k++) {
-          tallest = math.max(tallest, linesOf(side[k]));
-        }
-        h += tallest;
-      }
-      return h;
-    }
+    // высоту стороны. Высота — ТА ЖЕ формула, что и у рендера
+    // ([sideHeightOf]): второй копии, которая могла бы разойтись, нет.
+    double heightOf(List<GroupedRow> side) => sideHeightOf(side, dense: dense);
 
     // Порядок групп сохраняем: перетасовать их значило бы, что привычное
     // место сервиса меняется от набора к набору. Ищем лучшую ТОЧКУ РАЗРЕЗА.
+    //
     // ⚠️ ПРИ РАВНОЙ ВЫСОТЕ РЕШАЕТ ЧИСЛО БЛОКОВ — БЕЗ ЭТОГО СТОРОНЫ ВЫХОДЯТ
     // 1 ПРОТИВ 4. Высота стороны считается по РЯДАМ, а в ряду берётся самый
     // высокий блок: сторона из одного блока и сторона из двух дают ОДНУ И ТУ
-    // ЖЕ высоту. Значит по высоте все разрезы равны, и выигрывал просто
-    // первый — левая сторона получала один блок, правая четыре.
-    //
+    // ЖЕ высоту. По высоте все разрезы равны, и выигрывал просто первый.
     // Поймано живым снимком из VM 04.09.2026: числа сходились, тесты были
     // зелёными, а экран выглядел перекошенным.
+    //
+    // ⚠️ ПОТОЛОК В ТРИ РЯДА: разрез, отдающий стороне больше [perRow] ×
+    // [maxRows] блоков, не рассматривается вовсе. Число групп сверх удвоенного
+    // потолка сюда не доходит — [build] уводит такое в ряды.
+    const maxPerSide = perRow * maxRows;
+    final lo = math.max(1, rows.length - maxPerSide);
+    final hi = math.min(rows.length - 1, maxPerSide);
     var bestCut = (rows.length / 2).ceil();
-    var bestDiff = -1;
+    var bestDiff = -1.0;
     var bestCountDiff = -1;
-    for (var cut = 1; cut < rows.length; cut++) {
+    for (var cut = lo; cut <= hi; cut++) {
       final diff =
           (heightOf(rows.sublist(0, cut)) - heightOf(rows.sublist(cut))).abs();
       final countDiff = (cut - (rows.length - cut)).abs();
@@ -963,33 +848,31 @@ class ServiceChecksSides extends StatelessWidget {
         bestCut = cut;
       }
     }
-    if (rows.length < 2) return (left: rows, right: const <GroupedRow>[]);
     return (left: rows.sublist(0, bestCut), right: rows.sublist(bestCut));
   }
 }
 
-/// Одна колонка внутри [ServiceChecksSides]: список групп сверху вниз.
+/// Одна сторона внутри [ServiceChecksSides]: сетка блоков-групп.
 class _SideColumn extends StatelessWidget {
   const _SideColumn({
-    required this.perRow,
     required this.rows,
     required this.httpPort,
     required this.dense,
     required this.alignEnd,
+    required this.showGlyph,
   });
 
   final List<GroupedRow> rows;
   final int httpPort;
-
-  /// Сколько блоков в одном ряду — см. [ServiceChecksSides.blocksPerRowFor].
-  final int perRow;
-
   final bool dense;
 
+  /// Рисовать ли глиф состояния в углу кольца — см.
+  /// [ServiceChecksSides.glyphMinScale].
+  final bool showGlyph;
 
-  /// Левая колонка прижимает пары «до → после» к кнопке (к правому краю своей
-  /// колонки), правая — наоборот. Порядок иконка→точки при этом ОДИНАКОВЫЙ в
-  /// обеих колонках — см. предысторию в [_ServicePair].
+  /// Левая сторона прижимает неполный ряд к кнопке (к правому краю), правая
+  /// — наоборот. Порядок «до → после» внутри пары при этом ОДИНАКОВЫЙ с обеих
+  /// сторон — см. предысторию в [_ServicePair].
   final bool alignEnd;
 
   @override
@@ -1010,15 +893,20 @@ class _SideColumn extends StatelessWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (final row in rows)
+          for (var i = 0; i < rows.length; i++)
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              // Просвет — только МЕЖДУ строками, как и считает
+              // `sideHeightOf`: после последней его нет.
+              padding: EdgeInsets.only(
+                  bottom: i == rows.length - 1
+                      ? 0
+                      : ServiceChecksSides._denseGap),
               child: Wrap(
                 alignment: WrapAlignment.center,
-                spacing: 6,
-                runSpacing: 6,
+                spacing: ServiceChecksSides._denseGap,
+                runSpacing: ServiceChecksSides._denseGap,
                 children: [
-                  for (final s in row.services)
+                  for (final s in rows[i].services)
                     _ServicePair(
                       key: ValueKey('svc:${s.name}'),
                       service: s,
@@ -1027,7 +915,8 @@ class _SideColumn extends StatelessWidget {
                       live: live,
                       alignEnd: false,
                       dense: true,
-                      groupLabel: row.group.label(l),
+                      showGlyph: showGlyph,
+                      groupLabel: rows[i].group.label(l),
                       bypass: bypassOf(s),
                       onTap: () => ctrl.check(s, httpPort),
                     ),
@@ -1045,11 +934,6 @@ class _SideColumn extends StatelessWidget {
     // единым столбцом, и высота росла с КАЖДЫМ добавленным сервисом:
     // четырнадцать штук давали 366 px при доступных 237, и никакое сжатие
     // этого не лечило — жать пришлось бы до нечитаемого.
-    //
-    // Теперь блок это группа (подпись и сервисы друг под другом), а блоки
-    // ложатся сеткой по два в ширину. Высота перестаёт зависеть от числа
-    // сервисов линейно и растёт ступенями по рядам блоков, а рост идёт
-    // ВШИРЬ — туда, где место есть.
     //
     // ⚠️ Ширина каждого блока — ПО СОДЕРЖИМОМУ (`IntrinsicWidth`), а не по
     // общей колонке. Прежняя жалоба («линия отчёркивания слишком длинная»)
@@ -1079,12 +963,11 @@ class _SideColumn extends StatelessWidget {
                     after: ctrl.resultFor(s),
                     live: live,
                     // ⚠️ ВСЕГДА false, В ОБЕИХ СТОРОНАХ. Порядок
-                    // «иконка → точки» обязан совпадать слева и справа:
-                    // зеркальный порядок меняет местами «до» и «после»,
-                    // стрелка начинает показывать в обратную сторону, а
-                    // подпись «слева без VPN, справа через VPN» становится
-                    // ложью ровно для половины сервисов.
+                    // «до → после» обязан совпадать слева и справа:
+                    // зеркальный порядок меняет местами «до» и «после», и
+                    // стрелка начинает показывать в обратную сторону.
                     alignEnd: false,
+                    showGlyph: showGlyph,
                     bypass: bypassOf(s),
                     onTap: () => ctrl.check(s, httpPort),
                   ),
@@ -1095,8 +978,9 @@ class _SideColumn extends StatelessWidget {
     ];
 
     final gridRows = <List<Widget>>[];
-    for (var i = 0; i < blocks.length; i += perRow) {
-      gridRows.add(blocks.sublist(i, math.min(i + perRow, blocks.length)));
+    for (var i = 0; i < blocks.length; i += ServiceChecksSides.perRow) {
+      gridRows.add(blocks.sublist(
+          i, math.min(i + ServiceChecksSides.perRow, blocks.length)));
     }
 
     return Column(
@@ -1108,13 +992,17 @@ class _SideColumn extends StatelessWidget {
       children: [
         for (var r = 0; r < gridRows.length; r++)
           Padding(
-            padding: EdgeInsets.only(bottom: r == gridRows.length - 1 ? 0 : 10),
+            padding: EdgeInsets.only(
+                bottom: r == gridRows.length - 1
+                    ? 0
+                    : ServiceChecksSides._blockGap),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 for (var i = 0; i < gridRows[r].length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
+                  if (i > 0)
+                    const SizedBox(width: ServiceChecksSides._blockGap),
                   gridRows[r][i],
                 ],
               ],
@@ -1339,15 +1227,28 @@ class _ServiceChecksMenuButtonState extends State<ServiceChecksMenuButton> {
     // Настройки читаются как необязательные — см. `ServiceChecksColumn`.
     final settings = context.watch<SettingsController?>()?.settings;
     if (settings != null) _topUpBaseline(ServiceChecks.selected(settings));
-    return IconButton(
-      icon: const Icon(Icons.tune, size: 18),
-      tooltip: l.serviceChecksMenuTooltip,
-      visualDensity: VisualDensity.compact,
-      padding: EdgeInsets.zero,
-      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-      onPressed: () => _open(context),
+    // ⚠️ ТУГАЯ КОРОБКА [size], И `SizedBox` СНАРУЖИ ОБЯЗАТЕЛЕН. Кнопка стоит
+    // в полосе плашки активного сервера (`ActiveServerBanner.trailing`) и не
+    // имеет права её растить: область нажатия Material (`tapTargetSize:
+    // padded`) тянет `IconButton` до 40 px по высоте, если родитель не зажал,
+    // — полоса поднялась бы на 12 px и съела треть выигрыша от убранной
+    // легенды. Тот же размер у соседней «i» (`InfoTooltip.compactSize`).
+    return SizedBox(
+      width: size,
+      height: size,
+      child: IconButton(
+        icon: const Icon(Icons.tune, size: 18),
+        tooltip: l.serviceChecksMenuTooltip,
+        visualDensity: VisualDensity.compact,
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints.tightFor(width: size, height: size),
+        onPressed: () => _open(context),
+      ),
     );
   }
+
+  /// Сторона кнопки — см. [build].
+  static const double size = 28;
 
   Future<void> _open(BuildContext context) async {
     // Контроллер берём ДО показа меню: внутри пункта контекст принадлежит
@@ -1608,15 +1509,238 @@ class _MenuCheckRow extends StatelessWidget {
   }
 }
 
-/// Пара «до / после» для одного сервиса.
-/// Постоянная ширина ячейки сервиса на масштабе 1.0.
-///
-/// Пара «без VPN → через VPN»: два значка по 26 (+обводка и отступ = 32
-/// каждый) и стрелка 8 между ними. Резерв держится
-/// ВСЕГДА: без него подключение расширяло бы каждую ячейку, блоки
-/// разъезжались и масштаб пересчитывался — экран дёргался на ровном месте.
-const double cellWidth = 72;
+/// Размер значка сервиса в паре «до → после» (масштаб 1.0). Бокс кольца
+/// вокруг него — [_StatusRing.boxSizeFor] = 34.
+const double _pairIconSize = 26;
 
+/// Место под стрелку перехода между значками пары.
+///
+/// ⚠️ ФИКСИРОВАННОЕ, А НЕ ПО ТЕКСТУ. Стрелка нарисована символом «→», и
+/// ширина символа зависит от шрифта; ячейка же — константа. Растянись стрелка
+/// шире отведённого, второй значок вылез бы за ячейку ровно на живом канале,
+/// где на пару и смотрят. Внутри — `FittedBox`, который символ ужмёт, но не
+/// даст ему занять больше.
+const double _arrowWidth = 10;
+
+/// Постоянная ширина ячейки сервиса на масштабе 1.0: два бокса кольца по 34
+/// и стрелка [_arrowWidth] между ними — 78.
+///
+/// Резерв держится ВСЕГДА, даже когда VPN выключен: без него подключение
+/// расширяло бы каждую ячейку, блоки разъезжались и масштаб пересчитывался —
+/// экран дёргался на ровном месте. Пока второго значка нет, первый стоит по
+/// центру ячейки.
+const double cellWidth = 2 * (_pairIconSize + 2 * (_StatusRing.ringWidth +
+        _StatusRing.gapWidth)) +
+    _arrowWidth;
+
+/// ЗНАЧОК СЕРВИСА В КОЛЬЦЕ СОСТОЯНИЯ — единственный источник для обоих видов:
+/// пары «до → после» (`sides`, ряды) и плотной сетки (`grid`).
+///
+/// ⚠️ ДВОЙНОЙ КОНТУР, И ВОТ ПОЧЕМУ. Жалоба владельца (08.09.2026): «обводка
+/// сливается с брендом» у зелёного Spotify и красного YouTube. Механика
+/// найдена разведкой: прослойки между значком и кольцом не было ВООБЩЕ.
+/// `DecoratedBox` не отступает под рамку (в отличие от `Container`), и кольцо
+/// 2 px рисовалось ПОВЕРХ крайнего пикселя значка — зелёное на зелёном.
+/// Теперь между ними прослойка [gapWidth] цвета ФОНА окна
+/// (`scaffoldBackgroundColor`, а не `surface`: контраст нужен с тем, что
+/// нарисовано вокруг значка, а вокруг него — фон). Кольцо видно на любом
+/// бренде, потому что касается не бренда, а фона.
+///
+/// ⚠️ ДО 09.09.2026 ЛОГИКА ЦВЕТА ЖИЛА В ДВУХ КОПИЯХ (`iconBox` в паре и
+/// `_buildDense` в сетке), и они уже разошлись на индикаторе «идёт проверка».
+/// Здесь одна; страж на единый источник — `service_status_ring_test`
+/// проверяет прослойку и глиф в ОБЕИХ раскладках.
+///
+/// Раскладка (снаружи внутрь): кольцо [ringWidth] цвета состояния →
+/// прослойка [gapWidth] цвета фона → значок [iconSize]. Бокс =
+/// `iconSize + 2·(ringWidth + gapWidth)`. Прямоугольник прослойки равен
+/// прямоугольнику кольца, сжатому ровно на [ringWidth], — это и проверяется
+/// геометрией.
+class _StatusRing extends StatelessWidget {
+  const _StatusRing({
+    required this.domain,
+    required this.outcome,
+    required this.iconSize,
+    required this.circle,
+    required this.showGlyph,
+    this.badge,
+  });
+
+  final String domain;
+  final ServiceCheckOutcome outcome;
+  final double iconSize;
+
+  /// `true` — круг (плотная сетка), `false` — скруглённый квадрат (пара).
+  final bool circle;
+
+  /// Рисовать ли глиф состояния в правом нижнем углу — см.
+  /// [ServiceChecksSides.glyphMinScale].
+  final bool showGlyph;
+
+  /// Правило обхода — бейдж слева сверху. `null` — бейджа нет.
+  final SiteRule? badge;
+
+  static const double ringWidth = 2;
+  static const double gapWidth = 2;
+
+  /// Кружок глифа состояния и знак внутри него.
+  static const double glyphSize = 12;
+  static const double glyphIconSize = 8;
+
+  /// Насколько глиф и бейдж выступают за бокс. Не больше отступа ячейки
+  /// (2 + 2 = 4), иначе соседние ячейки наезжали бы друг на друга.
+  static const double _overhang = 3;
+
+  static double boxSizeFor(double iconSize) =>
+      iconSize + 2 * (ringWidth + gapWidth);
+
+  /// Цвет состояния — им красится кольцо и глиф.
+  static Color statusColor(BuildContext context, ServiceCheckOutcome o) =>
+      switch (o.state) {
+        ServiceCheckState.ok => Colors.green,
+        ServiceCheckState.geoBlocked => Colors.orange,
+        ServiceCheckState.fail => const Color(0xFFCC7777),
+        _ => Theme.of(context).disabledColor,
+      };
+
+  /// Знак в углу: ✓ / ! / ✕. У «идёт проверка» и «не проверено» знака нет —
+  /// там нечего утверждать.
+  ///
+  /// ⚠️ НЕ `Icons.block` для отказа: он занят бейджем правила «Блок», и
+  /// `service_chips_test` требует его отсутствия там, где правила нет.
+  static IconData? glyphFor(ServiceCheckOutcome o) => switch (o.state) {
+        ServiceCheckState.ok => Icons.check,
+        ServiceCheckState.geoBlocked => Icons.priority_high,
+        ServiceCheckState.fail => Icons.close,
+        _ => null,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = statusColor(context, outcome);
+    final gapColor = theme.scaffoldBackgroundColor;
+    final box = boxSizeFor(iconSize);
+    final busy = outcome.state == ServiceCheckState.checking;
+    // Радиус кольца ~0.3 бокса (у 34 — 10); у прослойки — на толщину кольца
+    // меньше, чтобы скругления шли параллельно.
+    final outerRadius = circle ? null : BorderRadius.circular(box * 0.3);
+    final innerRadius =
+        circle ? null : BorderRadius.circular(box * 0.3 - ringWidth);
+    final iconRadius = circle
+        ? null
+        : BorderRadius.circular(box * 0.3 - ringWidth - gapWidth);
+
+    final ring = DecoratedBox(
+      decoration: BoxDecoration(
+        shape: circle ? BoxShape.circle : BoxShape.rectangle,
+        borderRadius: outerRadius,
+        border: Border.all(color: color, width: ringWidth),
+      ),
+      // ⚠️ Отступ под кольцо — ЯВНЫЙ `Padding`: `DecoratedBox` сам под
+      // рамку не отступает, и без него прослойка легла бы под кольцо.
+      child: Padding(
+        padding: const EdgeInsets.all(ringWidth),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: circle ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: innerRadius,
+            color: gapColor,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(gapWidth),
+            child: SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  SiteFavicon(domain: domain, size: iconSize, builtIn: true),
+                  // ⚠️ «ИДЁТ ПРОВЕРКА» ОБЯЗАНО БЫТЬ ВИДНО. Найдено ревью
+                  // 05.09.2026: при переходе с кружков на обводку индикатор
+                  // потерялся — `checking` красился тем же цветом, что и
+                  // «не проверено». Обратной связи на нажатие не оставалось:
+                  // человек тапал, ничего не менялось секунд шестнадцать, и
+                  // кнопка выглядела неработающей.
+                  if (busy)
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: gapColor.withValues(alpha: 0.72),
+                        shape: circle ? BoxShape.circle : BoxShape.rectangle,
+                        borderRadius: iconRadius,
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          width: iconSize * 0.55,
+                          height: iconSize * 0.55,
+                          child: CircularProgressIndicator(
+                            strokeWidth: iconSize * 0.09,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final glyph = showGlyph ? glyphFor(outcome) : null;
+    final rule = badge;
+    if (glyph == null && rule == null) return ring;
+
+    // Накладки — поверх, а не рядом: рядом они отняли бы ширину, а ширина
+    // здесь единственное, что ограничивает размер значков. Бейдж обхода —
+    // слева сверху, глиф состояния — справа снизу; углы разные, столкнуться
+    // они не могут.
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        ring,
+        if (rule != null)
+          Positioned(
+            left: -_overhang,
+            top: -_overhang,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: gapColor, shape: BoxShape.circle),
+              child: Icon(
+                rule.action == AppAction.block
+                    ? Icons.block
+                    : Icons.lock_open_rounded,
+                size: glyphSize,
+                color: rule.action == AppAction.block
+                    ? const Color(0xFFCC7777)
+                    : Colors.orange,
+              ),
+            ),
+          ),
+        if (glyph != null)
+          Positioned(
+            right: -_overhang,
+            bottom: -_overhang,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                // Рамка цвета прослойки отделяет кружок от кольца того же
+                // цвета — иначе он сливался бы с ним в кляксу.
+                border: Border.all(color: gapColor, width: 1),
+              ),
+              child: SizedBox(
+                width: glyphSize,
+                height: glyphSize,
+                child: Icon(glyph, size: glyphIconSize, color: Colors.white),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Пара «до / после» для одного сервиса.
 class _ServicePair extends StatelessWidget {
   const _ServicePair({
     // Ключ по имени сервиса ставят оба места вызова — см. комментарии там:
@@ -1630,6 +1754,7 @@ class _ServicePair extends StatelessWidget {
     required this.onTap,
     this.bypass,
     this.dense = false,
+    this.showGlyph = true,
     this.groupLabel,
   });
 
@@ -1644,173 +1769,75 @@ class _ServicePair extends StatelessWidget {
   /// запрещающее его). `null` — сервис идёт как весь остальной трафик.
   final SiteRule? bypass;
 
-  /// `true` — плотная сетка (`ServiceChecksLayout.grid`): один кружок статуса
-  /// поверх иконки вместо пары «до → после», подпись группы уходит целиком в
-  /// `Tooltip` — там её видно долгим нажатием, а строка над колонкой ей больше
-  /// не нужна.
+  /// `true` — плотная сетка (`ServiceChecksLayout.grid`): одно кольцо поверх
+  /// иконки вместо пары «до → после», подпись группы уходит целиком в
+  /// `Tooltip`.
   final bool dense;
 
+  /// Глиф состояния в углу кольца — см. [ServiceChecksSides.glyphMinScale].
+  /// В рядах ([ServiceChecksRows]) масштаб всегда 1.0, и он рисуется всегда.
+  final bool showGlyph;
+
   /// Название группы для подсказки — заполняется только в [dense]. В обычном
-  /// виде группу уже называет строка-разделитель над сервисом, дублировать её
-  /// в каждой подсказке незачем.
+  /// виде группу уже называет подпись над сервисом.
   final String? groupLabel;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     if (dense) return _buildDense(context, l);
-    // ⚠️ Кружки собраны в ОТДЕЛЬНУЮ строку, и переворачивается только пара
-    // «значок + кружки». Если перевернуть всё подряд, в левой колонке
-    // поменяются местами «до» и «после»: стрелка станет показывать в обратную
-    // сторону, а подпись «слева — без VPN, справа — через VPN» превратится в
-    // ложь ровно для половины сервисов.
-    // ⚠️ СОСТОЯНИЕ — ОБВОДКОЙ ЗНАЧКА, А НЕ КРУЖКОМ РЯДОМ. Решение владельца
-    // 04.09.2026 по разбору десяти раскладок в масштабе.
+
+    // ⚠️ СОСТОЯНИЕ — КОЛЬЦОМ ЗНАЧКА, А НЕ КРУЖКОМ РЯДОМ. Решение владельца
+    // 04.09.2026 по разбору десяти раскладок в масштабе: кружок рядом стоил
+    // дороже всего именно на ЖИВОМ канале — к нему добавлялась пара «до →
+    // после», и ячейка росла с 43 до 71 px, то есть раскладка мельчала ровно
+    // тогда, когда на неё и смотрят. Кольцо живёт НА значке.
     //
-    // Кружок рядом стоил дороже всего именно на ЖИВОМ канале: там к нему
-    // добавлялась пара «до → после» со стрелкой, и ячейка росла с 43 до 71 px.
-    // Из-за этого раскладка, крупная в покое, на подключённом VPN сжималась —
-    // то есть мельчала ровно тогда, когда на неё и смотрят. Обводка живёт НА
-    // значке и ширины не занимает вовсе, поэтому размер стал одинаковым в
-    // обоих состояниях.
-    //
-    // ⚠️ Стрелка УКАЗЫВАЕТ НА ВТОРОЙ ЗНАЧОК, а не висит в пустоте: слева
-    // сервис без VPN, справа — он же через VPN. Цвет стрелки нейтральный,
-    // состояния несут обводки самих значков.
+    // ⚠️ ДВА ЗНАЧКА ОДНОГО РАЗМЕРА, И СТРЕЛКА УКАЗЫВАЕТ НА ВТОРОЙ. Слева
+    // сервис БЕЗ VPN, справа — ЧЕРЕЗ VPN, у каждого своё кольцо. Первый
+    // сперва делали меньше, чтобы выгадать ширину, но так «до» читается как
+    // сноска, а не как равноправный замер (решение владельца 05.09.2026:
+    // «нужно знать, что было до включения»).
     final live0 = live && before.state != ServiceCheckState.idle;
     final arrow = live0
-        ? Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2),
-            // ⚠️ СТРЕЛКА НЕ СЛУШАЕТ СИСТЕМНОЕ УКРУПНЕНИЕ ТЕКСТА. Найдено ревью
-            // 05.09.2026: ширина ячейки фиксирована (72 px под пару значков и
-            // стрелку), а стрелка нарисована ТЕКСТОМ и потому росла вместе с
-            // системным масштабом. При укрупнении 1.3 второй значок вылезал за
-            // отведённое место, и на телефоне с крупным шрифтом — то есть
-            // ровно у того, кому он нужен, — пара разъезжалась.
-            //
-            // Фиксируем осознанно: это графический разделитель, а не текст для
-            // чтения. Крупнее он не станет понятнее, а подписи групп и слово в
-            // кнопке укрупнение по-прежнему уважают.
-            child: MediaQuery.withNoTextScaling(
-              child: Text('→',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline,
-                        fontWeight: FontWeight.w700,
-                      )),
+        ? SizedBox(
+            width: _arrowWidth,
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                // ⚠️ СТРЕЛКА НЕ СЛУШАЕТ СИСТЕМНОЕ УКРУПНЕНИЕ ТЕКСТА. Найдено
+                // ревью 05.09.2026: ячейка фиксирована, а стрелка нарисована
+                // ТЕКСТОМ и росла вместе с системным масштабом — при 1.3
+                // второй значок вылезал за отведённое место. Это графический
+                // разделитель, а не текст для чтения.
+                child: MediaQuery.withNoTextScaling(
+                  child: Text('→',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context).colorScheme.outline,
+                            fontWeight: FontWeight.w700,
+                          )),
+                ),
+              ),
             ),
           )
         : null;
 
     final rule = bypass;
-    // ⚠️ ДВА ЗНАЧКА СЕРВИСА, И СТРЕЛКА УКАЗЫВАЕТ НА ВТОРОЙ.
-    //
-    // Владелец 04.09.2026: «и чё это за отсталая стрелочка? стрелка указывает
-    // на то, что с сервисом, то есть на 2-й значок сервиса с альтернативной
-    // обводкой». Верно: до этого стрелка показывала в пустоту, а состояние
-    // «до» жило только в её цвете — догадаться об этом было нельзя.
-    //
-    // Теперь пара читается сама: слева сервис БЕЗ VPN, справа — ЧЕРЕЗ VPN,
-    // у каждого своя обводка. Первый нарочно меньше: он справочный, а
-    // отвечает на вопрос «работает ли сейчас» именно второй.
-    //
-    // ⚠️ ОБА ЗНАЧКА ОДНОГО РАЗМЕРА И ОБА С ОБВОДКОЙ — решение владельца
-    // (05.09.2026): «нужно знать, что было до включения». Первый значок
-    // сперва делали меньше, чтобы выгадать ширину, но так «до» читается как
-    // сноска, а не как равноправный замер, и цвет его обводки теряется.
-    //
-    // ⚠️ ЦЕНА ИЗМЕРЕНА: пара равных занимает 72 px против 34 у одиночного
-    // значка, поэтому масштаб блока падает примерно до 0,9 — значок выходит
-    // около 23 px. Это осознанный размен: два состояния важнее размера.
-    // ⚠️ Место под пару держится ВСЕГДА, даже когда VPN выключен: иначе
-    // подключение расширяло бы каждую ячейку, блоки разъезжались, и экран
-    // дёргался на ровном месте. Пока второго значка нет, первый стоит по
-    // центру ячейки.
-    Widget iconBox(ServiceCheckOutcome o, double size, {bool badge = false}) {
-      final busy = o.state == ServiceCheckState.checking;
-      final box = DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(size * 0.3),
-          border: Border.all(color: statusColor(context, o), width: 2),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(1),
-          child: SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                SiteFavicon(domain: service.domain, size: size, builtIn: true),
-                // ⚠️ «ИДЁТ ПРОВЕРКА» ОБЯЗАНО БЫТЬ ВИДНО. Найдено ревью
-                // 05.09.2026: при переходе с кружков на обводку индикатор
-                // потерялся — `checking` попал в общую ветку и красился тем же
-                // цветом, что и «не проверено».
-                //
-                // Обратной связи на нажатие не осталось ни на ПК, ни на
-                // телефоне: человек тапает, ничего не меняется секунд
-                // шестнадцать, тапает второй раз — а контроллер молча выходит,
-                // потому что проверка уже идёт. Выглядит как неработающая
-                // кнопка.
-                if (busy)
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withValues(alpha: 0.72),
-                      borderRadius: BorderRadius.circular(size * 0.3),
-                    ),
-                    child: Center(
-                      child: SizedBox(
-                        width: size * 0.55,
-                        height: size * 0.55,
-                        child: CircularProgressIndicator(
-                          strokeWidth: size * 0.09,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      );
-      if (!badge || bypass == null) return box;
-      // Пометка правила — накладкой: рядом она отняла бы ширину, а ширина
-      // здесь единственное, что ограничивает размер значков.
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          box,
-          Positioned(
-            left: -3,
-            top: -3,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                bypass!.action == AppAction.block
-                    ? Icons.block
-                    : Icons.lock_open_rounded,
-                size: 12,
-                color: bypass!.action == AppAction.block
-                    ? const Color(0xFFCC7777)
-                    : Colors.orange,
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    Widget iconBox(ServiceCheckOutcome o, {bool badge = false}) => _StatusRing(
+          domain: service.domain,
+          outcome: o,
+          iconSize: _pairIconSize,
+          circle: false,
+          showGlyph: showGlyph,
+          badge: badge ? rule : null,
+        );
 
     final items = <Widget>[
       if (live0) ...[
-        iconBox(before, 26),
+        iconBox(before),
         arrow!,
       ],
-      iconBox(live ? after : before, 26, badge: true),
+      iconBox(live ? after : before, badge: true),
     ];
     return Tooltip(
       message: _tip(l, rule),
@@ -1819,24 +1846,16 @@ class _ServicePair extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
-          // ⚠️ Строка ужимается, а не обрезается.
-          //
-          // На узком телефоне правая колонка не влезала и уезжала за край:
-          // кружок «через VPN» оказывался за экраном, то есть пропадала ровно
-          // та половина сравнения, ради которой всё и сделано. Ширина здесь
-          // фиксированная по содержимому (значок + два кружка + стрелка), и
-          // растянуть её нечем — поэтому масштабируем целиком: на большом
-          // экране размер прежний, на маленьком всё то же, только мельче.
+          // ⚠️ Строка ужимается, а не обрезается: на узком телефоне правая
+          // колонка не влезала и уезжала за край — кружок «через VPN»
+          // оказывался за экраном, то есть пропадала ровно та половина
+          // сравнения, ради которой всё и сделано.
           child: FittedBox(
             fit: BoxFit.scaleDown,
             alignment: alignEnd
                 ? AlignmentDirectional.centerEnd
                 : AlignmentDirectional.centerStart,
             child: SizedBox(
-              // Постоянная ширина: значок с обводкой (34) плюс место под
-              // стрелку (14). Пусто при выключенном VPN, занято при
-              // включённом — но ячейка одна и та же, поэтому раскладка
-              // при подключении не дёргается.
               width: cellWidth,
               // ⚠️ ПАРА ВСЕГДА СЛЕВА НАПРАВО, ДАЖЕ В АРАБСКОМ И ФАРСИ.
               //
@@ -1845,16 +1864,8 @@ class _ServicePair extends StatelessWidget {
               // уезжал ВПРАВО, «после» — влево. При этом символ «→» не входит
               // в таблицу зеркалящихся (U+2192 не имеет пары в BidiMirroring),
               // и глиф продолжал смотреть вправо — то есть от «после» к «до».
-              //
-              // Подпись под блоком переведена дословно: «چپ — بدون VPN» и
-              // «يسارًا — دون VPN» значат «слева — без VPN». Иранский
-              // пользователь — а это ядро аудитории VPN-клиента — читал бы
-              // подпись, смотрел на левый значок и видел замер ЧЕРЕЗ VPN.
-              // Сервис, который VPN починил, читался бы как им сломанный.
-              //
-              // Проще всего было бы перевести подписи на «справа/слева» для
-              // RTL, но тогда правда зависела бы от аккуратности десяти
-              // переводов. Здесь порядок — часть СМЫСЛА, а не оформления,
+              // Подсказка «i» объясняет пару словами «слева/справа» на десяти
+              // языках; здесь порядок — часть СМЫСЛА, а не оформления,
               // поэтому он закреплён кодом.
               child: Directionality(
                 textDirection: TextDirection.ltr,
@@ -1865,18 +1876,12 @@ class _ServicePair extends StatelessWidget {
                       ? MainAxisAlignment.center
                       : MainAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
-                // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ КОЛОНКАХ, ЗЕРКАЛЕНИЯ БОЛЬШЕ НЕТ.
-                //
-                // Левая колонка раньше разворачивала строку (`items.reversed`),
-                // чтобы кружки смотрели на кнопку. Выходило, что бренд-иконки у
-                // левой половины сервисов стоят справа, у правой — слева, и глазу
-                // не за что зацепиться: чтобы найти нужный сервис, приходилось
-                // читать обе колонки по-разному. Требование владельца 18.08.2026 —
-                // «помести картинки сервисов у левой панели налево».
-                //
-                // Выравнивание БЛОКА (`alignment` выше) при этом осталось
-                // зеркальным: колонки по-прежнему прижаты к кнопке, разъезжается
-                // только внутренний порядок.
+                  // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ СТОРОНАХ, ЗЕРКАЛЕНИЯ НЕТ.
+                  // Левая сторона раньше разворачивала строку, чтобы кружки
+                  // смотрели на кнопку; выходило, что бренд-иконки у левой
+                  // половины сервисов стоят справа, у правой — слева, и глазу
+                  // не за что зацепиться. Требование владельца 18.08.2026 —
+                  // «помести картинки сервисов у левой панели налево».
                   children: items,
                 ),
               ),
@@ -1888,7 +1893,7 @@ class _ServicePair extends StatelessWidget {
   }
 
   /// Текст подсказки — общий для обычного вида и [dense]: набор фактов один и
-  /// тот же, различается только то, КАК они нарисованы кружками на экране.
+  /// тот же, различается только то, КАК они нарисованы на экране.
   String _tip(AppLocalizations l, SiteRule? rule) {
     // В сетке подписи группы над сервисом нет вовсе (см. [dense]) — имя
     // группы называет только подсказка, иначе оно терялось бы бесследно.
@@ -1920,67 +1925,34 @@ class _ServicePair extends StatelessWidget {
     return tip.toString();
   }
 
-  /// Плотный вид для `ServiceChecksLayout.grid`: один кружок статуса поверх
-  /// иконки вместо пары «до → после» — при 14 сервисах в узкой сетке места на
-  /// целую пару нет, а какое-то состояние показать надо. Показываем «после»
-  /// при живом VPN, иначе «до» — ровно то состояние, что интереснее человеку
-  /// прямо сейчас (см. `_dot` в обычном виде — та же логика).
+  /// Плотный вид для `ServiceChecksLayout.grid`: одно кольцо поверх иконки
+  /// вместо пары «до → после» — при 14 сервисах в узкой сетке места на целую
+  /// пару нет, а какое-то состояние показать надо. Показываем «после» при
+  /// живом VPN, иначе «до» — ровно то состояние, что интереснее человеку
+  /// прямо сейчас.
+  ///
+  /// Кольцо — тот же [_StatusRing], что и в паре: значок 20, бокс 28, в зоне
+  /// 32 (`ServiceChecksSides._denseIcon`), кругом.
   Widget _buildDense(BuildContext context, AppLocalizations l) {
     final rule = bypass;
     final outcome = live ? after : before;
-    final checking = outcome.state == ServiceCheckState.checking;
-    final ringColor = checking
-        ? Theme.of(context).disabledColor
-        : switch (outcome.state) {
-            ServiceCheckState.ok => Colors.green,
-            ServiceCheckState.geoBlocked => Colors.orange,
-            ServiceCheckState.fail => const Color(0xFFCC7777),
-            _ => Theme.of(context).disabledColor,
-          };
     return Tooltip(
       message: _tip(l, rule),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: ringColor, width: 2),
-                ),
-                child: const SizedBox(width: 28, height: 28),
-              ),
-              SiteFavicon(domain: service.domain, size: 20, builtIn: true),
-              if (checking)
-                const SizedBox(
-                  width: 32,
-                  height: 32,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              // Замок/запрет — тем же значком, что и в обычном виде, только
-              // мельче и в углу: сетка тесная, полноразмерный значок рядом с
-              // 20-пиксельной иконкой перетянул бы на себя весь кружок.
-              if (rule != null)
-                Positioned(
-                  right: -2,
-                  bottom: -2,
-                  child: Icon(
-                    rule.action == AppAction.block
-                        ? Icons.block
-                        : Icons.lock_open_rounded,
-                    size: 12,
-                    color: rule.action == AppAction.block
-                        ? const Color(0xFFCC7777)
-                        : Colors.orange,
-                  ),
-                ),
-            ],
+          width: ServiceChecksSides._denseIcon,
+          height: ServiceChecksSides._denseIcon,
+          child: Center(
+            child: _StatusRing(
+              domain: service.domain,
+              outcome: outcome,
+              iconSize: 20,
+              circle: true,
+              showGlyph: showGlyph,
+              badge: rule,
+            ),
           ),
         ),
       ),
@@ -1994,37 +1966,25 @@ class _ServicePair extends StatelessWidget {
         ServiceCheckState.checking => l.serviceStatusChecking,
         ServiceCheckState.idle => l.serviceStatusTap,
       };
-
-  /// Цвет состояния. Вынесен из [_dot], потому что теперь им красится не
-  /// только кружок, но и обводка значка со стрелкой перехода.
-  static Color statusColor(BuildContext context, ServiceCheckOutcome o) =>
-      switch (o.state) {
-        ServiceCheckState.ok => Colors.green,
-        ServiceCheckState.geoBlocked => Colors.orange,
-        ServiceCheckState.fail => const Color(0xFFCC7777),
-        _ => Theme.of(context).disabledColor,
-      };
 }
 
 /// Печатает НАСТОЯЩИЕ размеры, по одному разу на изменение.
 ///
 /// ⚠️ Четыре захода подряд по этой вёрстке я правил вслепую и трижды сделал
 /// хуже: то блок не рос, то жался сильнее прежнего. Все рассуждения строились
-/// на ОЦЕНКЕ `_naturalSize`, которая по построению приблизительна. Здесь
-/// печатаются факты — что реально выдал `LayoutBuilder` и сколько занимает
-/// содержимое.
+/// на ОЦЕНКЕ, которая по построению приблизительна. Здесь печатаются факты —
+/// что реально выдал `LayoutBuilder` и какой коэффициент из этого вышел.
 String? _lastSidesLog;
 void _logSides(BoxConstraints c,
     ({List<GroupedRow> left, List<GroupedRow> right}) split,
-    {required bool dense, required int perRow}) {
-  final lh = ServiceChecksSides.sideHeightOf(split.left,
-      dense: dense, perRow: perRow);
-  final rh = ServiceChecksSides.sideHeightOf(split.right,
-      dense: dense, perRow: perRow);
+    {required double k, required bool dense}) {
+  final lh = ServiceChecksSides.sideHeightOf(split.left, dense: dense);
+  final rh = ServiceChecksSides.sideHeightOf(split.right, dense: dense);
   final line = 'Проверки: место ${c.maxWidth.toStringAsFixed(0)}×'
       '${c.hasBoundedHeight ? c.maxHeight.toStringAsFixed(0) : "∞"}, '
-      'блоков в ряду $perRow, групп ${split.left.length}/${split.right.length}, '
-      'высота сторон ${lh.toStringAsFixed(0)}/${rh.toStringAsFixed(0)}';
+      'групп ${split.left.length}/${split.right.length}, '
+      'высота сторон ${lh.toStringAsFixed(0)}/${rh.toStringAsFixed(0)}, '
+      'масштаб ${k.toStringAsFixed(2)}';
   if (line == _lastSidesLog) return;
   _lastSidesLog = line;
   // ⚠️ ОТЛАДОЧНЫЙ УРОВЕНЬ, А НЕ БОЕВОЙ. Найдено ревью 05.09.2026.

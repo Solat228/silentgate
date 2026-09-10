@@ -385,6 +385,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get aboutVersion => 'SilentGate sürümü';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (beta)';
+  }
+
+  @override
   String get aboutXrayCore => 'Xray çekirdeği';
 
   @override
@@ -566,6 +571,41 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'Sürüm uç noktası';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'Beta sürümleri al';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'Ön sürümler dahil GitHub sürüm listesi, artı sitenin yedek adresi. Kararlı sürümlerin otomatik güncellemesini değiştirmez.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez — bu anahtarı açmayanlara beta gelmez.';
+
+  @override
+  String get appUpdateBetaBadge => 'BETA';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'Bu bir ön sürüm — sorunlar olabilir. Otomatik güncelleme bu sürümleri dağıtmaz.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'Önceki sürümler';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'Önceki sürümler';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'Bu liste GitHub Releases\'te bulunanlardır. Bazı sürümler eksik olabilir.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'Liste boş — GitHub Releases\'e ulaşılamıyor ya da hiç sürüm yok.';
+
+  @override
+  String get appUpdateOpenRelease => 'Sürüm sayfasını aç';
 
   @override
   String get urlSchemeSilentgateTitle => 'silentgate:// bağlantıları';
@@ -758,10 +798,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String get homeSettings => 'Ayarlar';
 
   @override
-  String get homeAutoBest => 'Otomatik (en iyi sunucu)';
+  String get homeAutoBest => 'Sunucu seç';
 
   @override
-  String get homeAutoConfig => 'Otomatik yapılandırma';
+  String get homeAutoSession => 'Otomatik (en iyi sunucu)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return '$count sunucunun tamamını test edecek ve en iyisine bağlanacak';
+  }
+
+  @override
+  String get homeAutoConfig => 'Ayarları seç';
 
   @override
   String homeServersCount(Object count) {
@@ -1932,7 +1980,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Altı popüler servis kendiliğinden sınanır: önce uygulama açılırken VPN kapalıyken, sonra bağlantı kurulur kurulmaz yeniden. İki nokta «önce → sonra» gösterir; böylece VPN’in neyi değiştirdiği görünür. Dokunmak yeniden sınar. Yeşil: açılıyor, turuncu: ülke engeli, kırmızı: erişilemiyor.';
+      'Her servisin iki simgesi vardır: solda VPN\'siz nasıl açıldığı, sağda aynı servisin VPN üzerinden hâli; aradaki ok geçişi gösterir. «VPN\'siz» sınama uygulama açılırken kendiliğinden yapılır, «VPN üzerinden» bağlantı kurulur kurulmaz. Simgenin etrafındaki halka durumu gösterir: yeşil — açılıyor, turuncu — ülke engeli, kırmızı — erişilemiyor, gri — henüz sınanmadı. Köşedeki işaret bunu tekrarlar: ✓ açılıyor, ! ülke engeli, ✕ erişilemiyor. Simgeye dokunmak yeniden sınar. Servis kümesi yandaki ayarlar düğmesiyle değişir.';
 
   @override
   String get serviceStatusOk => 'Çalışıyor';
@@ -2104,7 +2152,8 @@ class AppLocalizationsTr extends AppLocalizations {
   String get splitCopyPath => 'Yolu kopyala';
 
   @override
-  String get homeServerInfo => 'Sunucu bilgisi';
+  String get homeServerInfo =>
+      'Bu sunucu nereden çıkış yapıyor: adres, ülke, sağlayıcı, hız';
 
   @override
   String get serverInfoVerifyInBrowser => 'Tarayıcıda doğrula';
@@ -2218,13 +2267,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Yine de bağlan';
-
-  @override
-  String get serviceChecksLegendBefore => 'Erişilebilirlik VPN olmadan ölçüldü';
-
-  @override
-  String get serviceChecksLegendAfter =>
-      'Solda — VPN yokken, sağda — VPN üzerinden';
 
   @override
   String get serviceChecksBefore => 'VPN yokken';
@@ -2982,9 +3024,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'Hangi servisler kontrol edilsin';
-
-  @override
-  String get serviceChecksLegendOff => 'Servis kontrolü kapalı';
 
   @override
   String get srvInfoAutoNever =>

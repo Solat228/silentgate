@@ -388,6 +388,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aboutVersion => 'SilentGate-Version';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (Beta)';
+  }
+
+  @override
   String get aboutXrayCore => 'Xray-Kern';
 
   @override
@@ -570,6 +575,41 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'Versions-Endpunkt';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'Beta-Versionen erhalten';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'GitHub-Versionsliste inklusive Vorabversionen, plus eine Ausweichadresse der Website. Ändert nichts am automatischen Update stabiler Versionen.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'Die App sieht sich dann die vollständige GitHub-Versionsliste an, einschließlich Vorabversionen, nicht nur die letzte stabile. Der Hauptkanal für automatische Updates ändert sich dabei nicht — Beta erreicht niemanden, der diesen Schalter nicht aktiviert hat.';
+
+  @override
+  String get appUpdateBetaBadge => 'BETA';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'Das ist eine Vorabversion — Probleme sind möglich. Automatische Updates verteilen solche Versionen nicht.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'Frühere Versionen';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'Frühere Versionen';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'Die Liste zeigt, was in GitHub Releases liegt. Manche Versionen können fehlen.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'Liste ist leer — GitHub Releases ist nicht erreichbar oder enthält keine Versionen.';
+
+  @override
+  String get appUpdateOpenRelease => 'Release-Seite öffnen';
 
   @override
   String get urlSchemeSilentgateTitle => 'silentgate://-Links';
@@ -761,10 +801,18 @@ class AppLocalizationsDe extends AppLocalizations {
   String get homeSettings => 'Einstellungen';
 
   @override
-  String get homeAutoBest => 'Auto (bester Server)';
+  String get homeAutoBest => 'Server auswählen';
 
   @override
-  String get homeAutoConfig => 'Automatische Konfiguration';
+  String get homeAutoSession => 'Auto (bester Server)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return 'testet alle $count und verbindet sich mit dem besten';
+  }
+
+  @override
+  String get homeAutoConfig => 'Einstellungen auswählen';
 
   @override
   String homeServersCount(Object count) {
@@ -1942,7 +1990,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Sechs beliebte Dienste werden automatisch geprüft: zuerst beim Start der App bei ausgeschaltetem VPN, dann noch einmal direkt nach dem Verbinden. Die zwei Punkte zeigen „vorher → nachher“, damit sichtbar wird, was das VPN tatsächlich geändert hat. Tippen prüft erneut. Grün: erreichbar, Orange: Ländersperre, Rot: nicht erreichbar.';
+      'Jeder Dienst hat zwei Symbole: links, wie er ohne VPN erreichbar ist, rechts derselbe Dienst über VPN; der Pfeil dazwischen zeigt die Änderung. Die Prüfung „ohne VPN“ läuft von selbst beim App-Start, „über VPN“ direkt nach dem Verbinden. Der Ring um das Symbol zeigt den Status: grün — erreichbar, orange — Ländersperre, rot — nicht erreichbar, grau — noch nicht geprüft. Das Zeichen in der Ecke wiederholt das: ✓ erreichbar, ! Ländersperre, ✕ nicht erreichbar. Tippen prüft erneut. Die Dienstauswahl ändert sich über die Einstellungen-Schaltfläche daneben.';
 
   @override
   String get serviceStatusOk => 'Funktioniert';
@@ -2116,7 +2164,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitCopyPath => 'Pfad kopieren';
 
   @override
-  String get homeServerInfo => 'Server-Info';
+  String get homeServerInfo =>
+      'Von wo dieser Server ausgeht: Adresse, Land, Anbieter, Geschwindigkeit';
 
   @override
   String get serverInfoVerifyInBrowser => 'Im Browser prüfen';
@@ -2230,12 +2279,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Trotzdem verbinden';
-
-  @override
-  String get serviceChecksLegendBefore => 'Verfügbarkeit ohne VPN geprüft';
-
-  @override
-  String get serviceChecksLegendAfter => 'Links — ohne VPN, rechts — über VPN';
 
   @override
   String get serviceChecksBefore => 'Ohne VPN';
@@ -3001,9 +3044,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'Welche Dienste prüfen';
-
-  @override
-  String get serviceChecksLegendOff => 'Dienstprüfung ist aus';
 
   @override
   String get srvInfoAutoNever =>

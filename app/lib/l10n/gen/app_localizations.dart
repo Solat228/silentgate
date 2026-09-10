@@ -786,6 +786,12 @@ abstract class AppLocalizations {
   /// **'Версия SilentGate'**
   String get aboutVersion;
 
+  /// No description provided for @aboutVersionBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'{version} (бета)'**
+  String aboutVersionBeta(Object version);
+
   /// No description provided for @aboutXrayCore.
   ///
   /// In ru, this message translates to:
@@ -1110,6 +1116,66 @@ abstract class AppLocalizations {
   /// **'Эндпоинт версии'**
   String get appUpdateEndpointLabel;
 
+  /// No description provided for @appUpdateBetaChannelTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Получать бета-версии'**
+  String get appUpdateBetaChannelTitle;
+
+  /// No description provided for @appUpdateBetaChannelSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список релизов GitHub, включая пре-релизы, плюс резервный адрес сайта. Автообновление стабильных версий не меняет.'**
+  String get appUpdateBetaChannelSubtitle;
+
+  /// No description provided for @infoAppUpdateBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется — бета не придёт тем, кто эту галочку не включал.'**
+  String get infoAppUpdateBeta;
+
+  /// No description provided for @appUpdateBetaBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'БЕТА'**
+  String get appUpdateBetaBadge;
+
+  /// No description provided for @appUpdateBetaNotice.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это пре-релиз — возможны сбои. Автообновление такие версии не рассылает.'**
+  String get appUpdateBetaNotice;
+
+  /// No description provided for @appUpdatePreviousVersionsButton.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние версии'**
+  String get appUpdatePreviousVersionsButton;
+
+  /// No description provided for @appUpdatePreviousVersionsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние версии'**
+  String get appUpdatePreviousVersionsTitle;
+
+  /// No description provided for @appUpdatePreviousVersionsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список — это то, что лежит в GitHub Releases. Каких-то версий там может не быть.'**
+  String get appUpdatePreviousVersionsHint;
+
+  /// No description provided for @appUpdatePreviousVersionsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список пуст — GitHub Releases недоступен или релизов там нет.'**
+  String get appUpdatePreviousVersionsEmpty;
+
+  /// No description provided for @appUpdateOpenRelease.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть страницу релиза'**
+  String get appUpdateOpenRelease;
+
   /// No description provided for @urlSchemeSilentgateTitle.
   ///
   /// In ru, this message translates to:
@@ -1431,13 +1497,25 @@ abstract class AppLocalizations {
   /// No description provided for @homeAutoBest.
   ///
   /// In ru, this message translates to:
-  /// **'Авто (лучший сервер)'**
+  /// **'Подобрать сервер'**
   String get homeAutoBest;
+
+  /// No description provided for @homeAutoSession.
+  ///
+  /// In ru, this message translates to:
+  /// **'Авто (лучший сервер)'**
+  String get homeAutoSession;
+
+  /// No description provided for @homeAutoBestHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'проверит все {count} и подключится к лучшему'**
+  String homeAutoBestHint(int count);
 
   /// No description provided for @homeAutoConfig.
   ///
   /// In ru, this message translates to:
-  /// **'Автонастройка'**
+  /// **'Подобрать настройки'**
   String get homeAutoConfig;
 
   /// No description provided for @homeServersCount.
@@ -3507,7 +3585,7 @@ abstract class AppLocalizations {
   /// No description provided for @serviceChecksInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Шесть популярных сервисов проверяются сами: первый раз — при запуске приложения, пока VPN выключен, второй — сразу после подключения. Два кружка рядом показывают «было → стало», чтобы видеть, что изменил именно VPN. Нажатие проверяет сервис заново. Зелёный — открывается, оранжевый — блокировка по стране, красный — недоступен.'**
+  /// **'У каждого сервиса два значка: слева — как он открывается без VPN, справа — он же через VPN; стрелка между ними показывает переход. Замер «без VPN» снимается сам при запуске приложения, «через VPN» — сразу после подключения. Кольцо вокруг значка — состояние: зелёное — открывается, оранжевое — блокировка по стране, красное — недоступен, серое — ещё не проверялся. Знак в углу дублирует его: ✓ открывается, ! блокировка по стране, ✕ недоступен. Нажатие на значок проверяет сервис заново. Набор сервисов меняется кнопкой настроек рядом.'**
   String get serviceChecksInfo;
 
   /// No description provided for @serviceStatusOk.
@@ -3801,7 +3879,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeServerInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Информация о сервере'**
+  /// **'Откуда выходит этот сервер: адрес, страна, провайдер, скорость'**
   String get homeServerInfo;
 
   /// No description provided for @serverInfoVerifyInBrowser.
@@ -3977,18 +4055,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Всё равно подключиться'**
   String get conflictConnectAnyway;
-
-  /// No description provided for @serviceChecksLegendBefore.
-  ///
-  /// In ru, this message translates to:
-  /// **'Доступность сервисов проверена без VPN'**
-  String get serviceChecksLegendBefore;
-
-  /// No description provided for @serviceChecksLegendAfter.
-  ///
-  /// In ru, this message translates to:
-  /// **'Слева — без VPN, справа — через VPN'**
-  String get serviceChecksLegendAfter;
 
   /// No description provided for @serviceChecksBefore.
   ///
@@ -5183,12 +5249,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Какие сервисы проверять'**
   String get serviceChecksMenuTooltip;
-
-  /// No description provided for @serviceChecksLegendOff.
-  ///
-  /// In ru, this message translates to:
-  /// **'Проверка сервисов выключена'**
-  String get serviceChecksLegendOff;
 
   /// No description provided for @srvInfoAutoNever.
   ///

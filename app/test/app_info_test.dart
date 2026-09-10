@@ -46,5 +46,26 @@ void main() {
       if (Platform.isLinux) expect(AppInfo.platformTag, 'Linux');
       if (Platform.isMacOS) expect(AppInfo.platformTag, 'macOS');
     });
+
+    // ⚠️ Канал — свойство СБОРКИ (`String.fromEnvironment`), а не настроек:
+    // обычный прогон `flutter test`/`flutter run` не передаёт
+    // `--dart-define=SILENTGATE_CHANNEL=beta`, поэтому здесь всегда видна
+    // именно СТАБИЛЬНАЯ ветка. Она и есть то, что обязано остаться
+    // умолчанием: build-скрипты добавляют define только при осознанной
+    // бета-сборке (build-exe.bat/build-apk.bat, переменная SILENTGATE_CHANNEL).
+    test('без --dart-define канал пуст, isBeta=false', () {
+      expect(AppInfo.channel, isEmpty,
+          reason: 'обычная сборка не задаёт канал вовсе — иначе бета '
+              'просочилась бы в стабильный релиз незаметно');
+      expect(AppInfo.isBeta, isFalse);
+    });
+
+    test('isBeta — это ровно проверка channel == "beta"', () {
+      // Не проверка значения (его меняет только --dart-define на сборке),
+      // а страж на РЕАЛИЗАЦИЮ: если кто-то заменит сравнение на isNotEmpty
+      // или на что-то ещё, любой другой канал ('dev', опечатка) молча стал
+      // бы читаться как бета.
+      expect(AppInfo.isBeta, AppInfo.channel == 'beta');
+    });
   });
 }

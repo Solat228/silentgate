@@ -216,4 +216,226 @@ void main() {
       reason: 'на живом канале должно быть ДВА значка: до и после',
     );
   });
+
+  /// ДВОЙНОЙ КОНТУР: КОЛЬЦО, ПРОСЛОЙКА ЦВЕТА ФОНА, ЗНАЧОК.
+  ///
+  /// ⚠️ Жалоба владельца (08.09.2026): «обводка сливается с брендом» у
+  /// зелёного Spotify и красного YouTube. Механика найдена разведкой:
+  /// прослойки не было ВООБЩЕ. `DecoratedBox` не отступает под рамку (в
+  /// отличие от `Container`), и кольцо 2 px рисовалось ПОВЕРХ крайнего
+  /// пикселя значка — зелёное на зелёном.
+  ///
+  /// Проверяется ГЕОМЕТРИЕЙ, а не «на глаз»: прямоугольник прослойки обязан
+  /// быть прямоугольником кольца, сжатым ровно на его толщину.
+  group('⚠️ двойной контур и глиф состояния', () {
+    Finder ringsIn(Finder scope) => find.descendant(
+          of: scope,
+          matching: find.byWidgetPredicate((w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              ((w.decoration as BoxDecoration).border as Border?)?.top.width ==
+                  2),
+        );
+
+    /// Прослойка — цветная коробка БЕЗ рамки внутри кольца.
+    Finder gapsIn(Finder scope) => find.descendant(
+          of: scope,
+          matching: find.byWidgetPredicate((w) =>
+              w is DecoratedBox &&
+              w.decoration is BoxDecoration &&
+              (w.decoration as BoxDecoration).border == null &&
+              (w.decoration as BoxDecoration).color != null),
+        );
+
+    Future<ServiceCheckController> ctrlWith(ServiceCheckState state) async {
+      final saved = ServiceCheckController.prober;
+      addTearDown(() => ServiceCheckController.prober = saved);
+      ServiceCheckController.prober =
+          (port, s) async => ServiceCheckOutcome(state, latencyMs: 42);
+      final ctrl = ServiceCheckController();
+      await ctrl.checkBaseline(const [
+        ProbeService.youtube,
+        ProbeService.telegram,
+        ProbeService.chatgpt,
+      ]);
+      return ctrl;
+    }
+
+    for (final layout in const [
+      ServiceChecksLayout.sides,
+      ServiceChecksLayout.grid,
+    ]) {
+      testWidgets('прослойка = кольцо, сжатое на 2 px (${layout.name})',
+          (t) async {
+        t.view.physicalSize = const Size(900, 500);
+        t.view.devicePixelRatio = 1.0;
+        addTearDown(t.view.resetPhysicalSize);
+        await t.pumpWidget(MaterialApp(
+          locale: const Locale('ru'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ChangeNotifierProvider<ServiceCheckController>(
+            create: (_) => ServiceCheckController(),
+            child: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: 584,
+                  height: 260,
+                  child: ConnectCenterpiece(
+                    serverName: 'Германия 2.4',
+                    httpPort: 0,
+                    button: const SizedBox(
+                        key: Key('btn'), width: 148, height: 148),
+                    services: const [ProbeService.telegram],
+                    layout: layout,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ));
+        await t.pump();
+        expect(t.takeException(), isNull);
+
+        final cell = find.byKey(const ValueKey('svc:telegram'));
+        expect(ringsIn(cell), findsOneWidget, reason: 'кольца нет');
+        expect(gapsIn(cell), findsOneWidget,
+            reason: 'прослойки между кольцом и значком нет — кольцо снова '
+                'рисуется поверх значка и сливается с брендом');
+        final ring = t.getRect(ringsIn(cell));
+        final gap = t.getRect(gapsIn(cell));
+        final icon = t.getRect(
+            find.descendant(of: cell, matching: find.byType(SiteFavicon)));
+        // ⚠️ Прямоугольники — ЭКРАННЫЕ, а блок по бокам нарисован через
+        // `FittedBox` с ростом (здесь ×1,6): толщина 2 логических px на
+        // экране — это 2·k. Масштаб выводится из самого значка: 26 в паре,
+        // 20 в сетке (`_pairIconSize` / `_buildDense`).
+        final k = icon.width / (layout == ServiceChecksLayout.grid ? 20 : 26);
+        expect(k, greaterThan(0.99), reason: 'значок сжат там, где место есть');
+        void expectRect(Rect got, Rect want, String what) {
+          for (final (a, b) in [
+            (got.left, want.left),
+            (got.top, want.top),
+            (got.right, want.right),
+            (got.bottom, want.bottom),
+          ]) {
+            expect(a, closeTo(b, 0.05), reason: what);
+          }
+        }
+
+        expectRect(gap, ring.deflate(2 * k),
+            'прослойка не отступает от кольца ровно на его толщину');
+        // И значок отступает от прослойки ещё на 2 px — иначе прослойки
+        // не видно.
+        expectRect(icon, gap.deflate(2 * k),
+            'значок не отступает от прослойки на её ширину');
+        // Прослойка — цвета ФОНА окна, а не поверхности: контраст нужен с
+        // тем, что нарисовано вокруг значка.
+        final gapBox = t.widget<DecoratedBox>(gapsIn(cell));
+        expect((gapBox.decoration as BoxDecoration).color,
+            Theme.of(t.element(cell)).scaffoldBackgroundColor);
+      });
+
+      for (final (state, icon) in const [
+        (ServiceCheckState.ok, Icons.check),
+        (ServiceCheckState.geoBlocked, Icons.priority_high),
+        (ServiceCheckState.fail, Icons.close),
+      ]) {
+        testWidgets('глиф ${state.name} → ${icon.codePoint} (${layout.name})',
+            (t) async {
+          t.view.physicalSize = const Size(900, 500);
+          t.view.devicePixelRatio = 1.0;
+          addTearDown(t.view.resetPhysicalSize);
+          final ctrl = await ctrlWith(state);
+          await t.pumpWidget(MaterialApp(
+            locale: const Locale('ru'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: ChangeNotifierProvider<ServiceCheckController>.value(
+              value: ctrl,
+              child: Scaffold(
+                body: Center(
+                  child: SizedBox(
+                    width: 584,
+                    height: 260,
+                    child: ConnectCenterpiece(
+                      serverName: 'Германия 2.4',
+                      httpPort: 0,
+                      button: const SizedBox(
+                          key: Key('btn'), width: 148, height: 148),
+                      services: const [ProbeService.telegram],
+                      layout: layout,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ));
+          await t.pump();
+          expect(t.takeException(), isNull);
+          final cell = find.byKey(const ValueKey('svc:telegram'));
+          expect(find.descendant(of: cell, matching: find.byIcon(icon)),
+              findsOneWidget,
+              reason: 'у состояния ${state.name} нет глифа в углу');
+          // ⚠️ `Icons.block` запрещён: `service_chips_test` требует его
+          // отсутствия, а глиф отказа с ним путался бы с бейджем «Блок».
+          expect(find.byIcon(Icons.block), findsNothing);
+          // Глиф — в ПРАВОМ НИЖНЕМ углу кольца (бейдж обхода живёт слева
+          // сверху, и столкнуться они не должны).
+          final ring = t.getRect(ringsIn(cell));
+          final glyph = t.getRect(
+              find.descendant(of: cell, matching: find.byIcon(icon)));
+          expect(glyph.center.dx, greaterThan(ring.center.dx));
+          expect(glyph.center.dy, greaterThan(ring.center.dy));
+        });
+      }
+    }
+
+    testWidgets('без замера глифа нет', (t) async {
+      t.view.physicalSize = const Size(900, 500);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.resetPhysicalSize);
+      await t.pumpWidget(host(httpPort: 0));
+      await t.pump();
+      for (final i in const [Icons.check, Icons.priority_high, Icons.close]) {
+        expect(find.byIcon(i), findsNothing,
+            reason: 'глиф нарисован у непроверенного сервиса');
+      }
+    });
+
+    testWidgets('⚠️ на мелком масштабе глиф не рисуется', (t) async {
+      // Кружок 12 px при масштабе 0,5 — это 6 px: пятно, а не знак. Ниже
+      // порога читаемости глиф только пачкает кольцо.
+      t.view.physicalSize = const Size(900, 500);
+      t.view.devicePixelRatio = 1.0;
+      addTearDown(t.view.resetPhysicalSize);
+      final ctrl = await ctrlWith(ServiceCheckState.ok);
+      await t.pumpWidget(MaterialApp(
+        locale: const Locale('ru'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ChangeNotifierProvider<ServiceCheckController>.value(
+          value: ctrl,
+          child: const Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 584,
+                // Четырнадцать сервисов в 150 px — масштаб около 0,45.
+                height: 150,
+                child: ServiceChecksSides(
+                  services: ServiceChecks.catalog,
+                  httpPort: 0,
+                  button: SizedBox(width: 148, height: 148),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await t.pump();
+      expect(t.takeException(), isNull);
+      expect(find.byIcon(Icons.check), findsNothing,
+          reason: 'глиф рисуется на масштабе, где он нечитаем');
+    });
+  });
 }

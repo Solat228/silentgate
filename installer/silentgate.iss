@@ -12,6 +12,38 @@
 ; заметно. Брать значение через `SetupSetting("AppId")` нельзя: оно вернёт
 ; строку вместе с экранирующей фигурной скобкой.
 #define MyAppId "{B7F3B2A1-5C2E-4E7A-9F1D-51E4C0DE0001}"
+; ⚠️ ИМЯ МЬЮТЕКСА ЛЕЖИТ РОВНО ОДИН РАЗ. По нему установщик судит о том,
+; запущено ли приложение (`AppMutex` ниже) И его же ждёт после просьбы выйти
+; (`WaitForMutexGone`). Второй литерал означал бы, что одна из двух проверок
+; однажды начнёт смотреть не туда — и замолчит, ничего не сломав заметно.
+; Встречное имя — `AppInstanceMutex.name` в приложении, страж —
+; test/installer_test.dart.
+#define MyAppMutex "SilentGateAppMutex"
+
+; ⚠️ ДОГОВОР С ПРИЛОЖЕНИЕМ О САМОЗАКРЫТИИ. Числа и слова ниже обязаны совпадать
+; с `app/lib/core/platform/quit_protocol.dart`: два файла не компилируются
+; вместе, поэтому расхождение не поймает ни компилятор, ни анализатор — его
+; ловит test/installer_test.dart, сверяя эти `#define` с константами Dart.
+;
+; ⚠️ MinQuitVersion — НЕ ФОРМАЛЬНОСТЬ. Старый exe аргумента `--quit` не знает и
+; запустится ОБЫЧНЫМ ОБРАЗОМ: второй экземпляр перешлёт первому «покажи окно» и
+; тихо выйдет с кодом 0. То есть без этой проверки установщик принял бы запуск
+; второй копии за успешное закрытие первой.
+#define MinQuitVersion "1.13.0"
+#define QuitArg "--quit"
+#define QuitArgForce "--quit-force"
+#define QuitExitBye 0
+#define QuitExitBusy 10
+#define QuitExitNoContact 2
+#define QuitExitNoSecret 3
+#define QuitExitForeign 4
+
+; Диалог с тремя кнопками — `SuppressibleTaskDialogMsgBox`, она появилась в
+; Inno 6.1. На более старом ISCC сборка обязана падать внятно, а не собирать
+; установщик, который молча не спросит ничего.
+#if VER < EncodeVer(6,1,0)
+  #error Требуется Inno Setup 6.1 или новее: SuppressibleTaskDialogMsgBox появилась там
+#endif
 ; ⚠️ ПУТЬ К СБОРКЕ ЗАДАЁТСЯ СНАРУЖИ: ISCC.exe /DReleaseDir=<путь> installer\silentgate.iss
 ; Без `#ifndef` строка ниже переопределяла аргумент командной строки МОЛЧА, и
 ; установщик собирался из той папки, которая просто лежала в репозитории. Так и
@@ -97,7 +129,7 @@ DisableProgramGroupPage=auto
 ; приложение посылкой `WM_CLOSE`, а у нас на закрытие окна висит свёртывание в
 ; трей — процесс жив, файл занят, RM рапортует об успехе. Мьютекс от поведения
 ; окна не зависит.
-AppMutex=SilentGateAppMutex
+AppMutex={#MyAppMutex}
 ; RM всё равно оставляем: он корректно подхватывает случаи, когда окна нет вовсе.
 CloseApplications=yes
 ; ⚠️ А ВОТ ПЕРЕЗАПУСКАТЬ САМИ — НЕТ. Приложение поднимает VPN и просит UAC под
@@ -139,6 +171,11 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Run]
 Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; Flags: nowait postinstall skipifsilent
+; ⚠️ ОБЯЗАТЕЛЬНЫЙ СПУТНИК АВТОЗАКРЫТИЯ. Строка выше помечена `skipifsilent`,
+; поэтому после тихой установки приложение просто ИСЧЕЗЛО БЫ: мы его закрыли
+; сами, а поднять было бы некому. Поднимаем только то, что закрыли сами и
+; только в тихом режиме (`ShouldRelaunch`) — в обычном человек решает галочкой.
+Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
 ; Перед удалением: снять системный прокси, убить ядро/sing-box, удалить данные, снять схему.
@@ -193,6 +230,66 @@ de.NewerInstalledSilent=Abgebrochen: Eine neuere Version (%1) ist installiert (S
 pt.NewerInstalledSilent=Cancelado: está instalada uma versão mais recente (%1); o instalador contém a %2. Para reverter, execute o instalador sem /SILENT ou use /FORCEDOWNGRADE.
 tr.NewerInstalledSilent=İptal edildi: daha yeni bir sürüm (%1) kurulu (kurulumda %2 var). Geri almak için kurulumu /SILENT olmadan çalıştırın veya /FORCEDOWNGRADE ekleyin.
 ar.NewerInstalledSilent=تم الإلغاء: يوجد إصدار أحدث (%1) مثبَّت (المثبِّت يحتوي على %2). للرجوع إلى إصدار أقدم، شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEDOWNGRADE‎.
+
+; ── Приложение запущено и держит VPN ────────────────────────────────────────
+; Три кнопки, и третья не «на всякий случай»: «закрыть, но оставить VPN»
+; невозможно (выход всегда идёт после disconnect), «продолжить, не закрывая» =
+; установка упадёт на занятом файле. А «я отключусь сам» — это сегодняшнее
+; поведение, сохранённое как осознанный выбор: у человека может идти закачка.
+
+ru.QuitVpnTitle=Соединение SilentGate активно
+en.QuitVpnTitle=SilentGate is connected to a VPN
+es.QuitVpnTitle=SilentGate está conectado a una VPN
+fr.QuitVpnTitle=SilentGate est connecté à un VPN
+de.QuitVpnTitle=SilentGate ist mit einem VPN verbunden
+pt.QuitVpnTitle=O SilentGate está ligado a uma VPN
+tr.QuitVpnTitle=SilentGate bir VPN'e bağlı
+ar.QuitVpnTitle=‏SilentGate متصل بشبكة VPN
+
+ru.QuitVpnText=Чтобы обновить программу, её нужно закрыть: файлы заняты работающим приложением.%n%nЗакрыть приложение и разорвать соединение?
+en.QuitVpnText=The app must be closed before it can be updated: its files are in use.%n%nClose the app and drop the connection?
+es.QuitVpnText=Para actualizar el programa hay que cerrarlo: sus archivos están en uso.%n%n¿Cerrar la aplicación y cortar la conexión?
+fr.QuitVpnText=Le programme doit être fermé pour être mis à jour : ses fichiers sont utilisés.%n%nFermer l'application et couper la connexion ?
+de.QuitVpnText=Für die Aktualisierung muss das Programm geschlossen werden – seine Dateien sind in Benutzung.%n%nAnwendung schließen und die Verbindung trennen?
+pt.QuitVpnText=Para atualizar o programa é preciso fechá-lo: os seus ficheiros estão em uso.%n%nFechar a aplicação e terminar a ligação?
+tr.QuitVpnText=Programı güncellemek için kapatmak gerekiyor: dosyaları kullanımda.%n%nUygulama kapatılıp bağlantı kesilsin mi?
+ar.QuitVpnText=يجب إغلاق البرنامج لتحديثه؛ ملفاته قيد الاستخدام.%n%nهل تريد إغلاق التطبيق وقطع الاتصال؟
+
+ru.QuitBtnClose=Закрыть приложение
+en.QuitBtnClose=Close the app
+es.QuitBtnClose=Cerrar la aplicación
+fr.QuitBtnClose=Fermer l'application
+de.QuitBtnClose=Anwendung schließen
+pt.QuitBtnClose=Fechar a aplicação
+tr.QuitBtnClose=Uygulamayı kapat
+ar.QuitBtnClose=إغلاق التطبيق
+
+ru.QuitBtnSelf=Я отключусь сам
+en.QuitBtnSelf=I will disconnect myself
+es.QuitBtnSelf=Me desconectaré yo mismo
+fr.QuitBtnSelf=Je me déconnecterai moi-même
+de.QuitBtnSelf=Ich trenne selbst
+pt.QuitBtnSelf=Eu desligo-me
+tr.QuitBtnSelf=Bağlantıyı kendim keseceğim
+ar.QuitBtnSelf=سأقطع الاتصال بنفسي
+
+ru.QuitBtnCancel=Отмена
+en.QuitBtnCancel=Cancel
+es.QuitBtnCancel=Cancelar
+fr.QuitBtnCancel=Annuler
+de.QuitBtnCancel=Abbrechen
+pt.QuitBtnCancel=Cancelar
+tr.QuitBtnCancel=İptal
+ar.QuitBtnCancel=إلغاء
+
+ru.QuitBusySilent=Отказ: SilentGate подключён к VPN. Рвать живое соединение молча нельзя — запустите установщик без /SILENT либо укажите /FORCEQUIT.
+en.QuitBusySilent=Aborted: SilentGate is connected to a VPN. A live connection must not be dropped silently — run the installer without /SILENT or pass /FORCEQUIT.
+es.QuitBusySilent=Cancelado: SilentGate está conectado a una VPN. Una conexión activa no puede cortarse en silencio: ejecute el instalador sin /SILENT o use /FORCEQUIT.
+fr.QuitBusySilent=Abandon : SilentGate est connecté à un VPN. Une connexion active ne peut pas être coupée en silence — lancez le programme d'installation sans /SILENT ou ajoutez /FORCEQUIT.
+de.QuitBusySilent=Abgebrochen: SilentGate ist mit einem VPN verbunden. Eine aktive Verbindung darf nicht stillschweigend getrennt werden – starten Sie das Setup ohne /SILENT oder mit /FORCEQUIT.
+pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio — execute o instalador sem /SILENT ou use /FORCEQUIT.
+tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez — kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
+ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت — شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
 
 [Code]
 { ⚠️ ЧТО ЗДЕСЬ ЛЕЧИТСЯ. Inno сам НЕ СРАВНИВАЕТ версии: он ставит поверх что
@@ -255,7 +352,12 @@ begin
     end;
 end;
 
-function InitializeSetup(): Boolean;
+{ Вопросы про версию: обновление / переустановка / откат. Отдельной функцией,
+  потому что InitializeSetup теперь делает ДВА дела, и порядок между ними имеет
+  значение: сперва человек решает, ставим ли мы вообще, и только потом мы
+  трогаем работающее приложение. Иначе отказ от отката гасил бы VPN «за
+  компанию». }
+function ConfirmVersionChange: Boolean;
 var
   installed: String;
   diff: Integer;
@@ -294,4 +396,202 @@ begin
     SuppressibleMsgBox(
       FmtMessage(CustomMessage('OlderInstalled'), [installed, '{#MyAppVersion}']),
       mbInformation, MB_OK, IDOK);
+end;
+
+{ ── АВТОЗАКРЫТИЕ РАБОТАЮЩЕГО ПРИЛОЖЕНИЯ ──────────────────────────────────────
+
+  ⚠️ РАДИ ЧЕГО. До этой правки установщик показывал «обнаружен запущенный
+  экземпляр» и ждал, пока человек пойдёт в трей и нажмёт «Выход». А с треем
+  приложение запущено почти всегда — ручное действие требовалось на САМОМ
+  ЧАСТОМ пути обновления.
+
+  ⚠️ ПРАВО ЗАМЕНЯТЬ ФАЙЛЫ ДАЁТ ИСЧЕЗНУВШИЙ МЬЮТЕКС, А НЕ КОД ВОЗВРАТА ПОМОЩНИКА.
+  Иначе чужой процесс, занявший порт 47654 и ответивший «bye», обошёл бы
+  проверку целиком; и старая версия, не знающая `--quit`, запустилась бы
+  обычным образом и вернула 0. Помощник только ПРОСИТ; судит мьютекс.
+
+  ⚠️ ПРО ПРАВА. `PrivilegesRequired=lowest`, и это условие безопасности, а не
+  удобства: путь к exe мы читаем из HKCU — куста, доступного самому
+  пользователю на запись. Пока установщик работает от него же, подмена пути —
+  самоатака ценой ноль. Поднимут привилегии — та же строка станет повышением
+  прав, и запускать по ней ничего будет нельзя. }
+
+var
+  GClosedByUs: Boolean;
+
+{ Путь к установленному exe — из той же ветки реестра, что и версия. }
+function InstalledLocation: String;
+var
+  loc: String;
+begin
+  Result := '';
+  loc := '';
+  if not RegQueryStringValue(HKEY_CURRENT_USER, GetUninstallKey, 'InstallLocation', loc) then
+    if not RegQueryStringValue(HKEY_LOCAL_MACHINE, GetUninstallKey, 'InstallLocation', loc) then
+      loc := '';
+  if loc = '' then Exit;
+  Result := AddBackslash(RemoveQuotes(loc)) + '{#MyAppExe}';
+end;
+
+function AppIsRunning: Boolean;
+begin
+  Result := CheckForMutexes('{#MyAppMutex}');
+end;
+
+{ Ждём, пока приложение действительно умрёт. Мьютекс освобождается ядром при
+  завершении процесса, то есть ПОСЛЕ того, как приложение сняло туннель и
+  погасило ядра, — а это и есть та задержка, ради которой ожидание нужно. }
+function WaitForMutexGone(TimeoutMs: Integer): Boolean;
+var
+  waited: Integer;
+begin
+  waited := 0;
+  while AppIsRunning and (waited < TimeoutMs) do
+  begin
+    Sleep(200);
+    waited := waited + 200;
+  end;
+  Result := not AppIsRunning;
+end;
+
+{ /FORCEQUIT — согласие на разрыв живого туннеля, данное заранее. Нужен только
+  тихому режиму: в нём вопрос задавать некому (это контракт будущей кнопки
+  «Обновить» внутри приложения — там подтверждение уже нажато). }
+function ForceQuitRequested: Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/FORCEQUIT') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ Запустить помощника и вернуть его код возврата (QuitProtocol.exit*).
+  Не запустился вовсе — считаем «не достучались»: это ровно тот случай, когда
+  дальше обязан вступить штатный диалог Inno. }
+function RunQuitHelper(Force: Boolean): Integer;
+var
+  exe, params: String;
+  code: Integer;
+begin
+  Result := {#QuitExitNoContact};
+  exe := InstalledLocation;
+  if (exe = '') or (not FileExists(exe)) then
+  begin
+    Log('Автозакрытие: путь к установленному ' + '{#MyAppExe}' + ' не найден');
+    Exit;
+  end;
+  if Force then
+    params := '{#QuitArgForce}'
+  else
+    params := '{#QuitArg}';
+  if not Exec(exe, params, ExtractFileDir(exe), SW_HIDE, ewWaitUntilTerminated, code) then
+  begin
+    Log('Автозакрытие: помощник не запустился');
+    Exit;
+  end;
+  Log('Автозакрытие: помощник ' + params + ' вернул ' + IntToStr(code));
+  Result := code;
+end;
+
+function AskAboutActiveVpn: Integer;
+begin
+  Result := SuppressibleTaskDialogMsgBox(
+    CustomMessage('QuitVpnTitle'),
+    CustomMessage('QuitVpnText'),
+    mbConfirmation, MB_YESNOCANCEL,
+    [CustomMessage('QuitBtnClose'), CustomMessage('QuitBtnSelf'),
+     CustomMessage('QuitBtnCancel')],
+    0, IDCANCEL);
+end;
+
+{ Поднять приложение после ТИХОЙ установки — и только если закрыли его мы сами.
+  В обычном режиме за это отвечает галочка в конце мастера. }
+function ShouldRelaunch: Boolean;
+begin
+  Result := GClosedByUs and WizardSilent;
+end;
+
+function EnsureAppClosed: Boolean;
+var
+  installed: String;
+  code, answer: Integer;
+begin
+  Result := True;
+  { Не запущено — и делать нечего. }
+  if not AppIsRunning then Exit;
+
+  installed := InstalledVersion;
+  if (installed = '') or (CompareVersions(installed, '{#MinQuitVersion}') < 0) then
+  begin
+    Log('Автозакрытие пропущено: установленная версия "' + installed +
+        '" не понимает ' + '{#QuitArg}' + ' — дальше решает штатная проверка AppMutex');
+    Exit;
+  end;
+
+  code := RunQuitHelper(False);
+
+  if code = {#QuitExitBusy} then
+  begin
+    if WizardSilent then
+    begin
+      { ⚠️ РВАТЬ ЖИВОЙ ТУННЕЛЬ МОЛЧА НЕЛЬЗЯ. Тихая установка — это скрипт или
+        кнопка «Обновить»; человек за экраном может в этот момент работать
+        через VPN и не узнает даже задним числом. }
+      if not ForceQuitRequested then
+      begin
+        Log(CustomMessage('QuitBusySilent'));
+        Result := False;
+        Exit;
+      end;
+      code := RunQuitHelper(True);
+    end
+    else
+    begin
+      answer := AskAboutActiveVpn;
+      if answer = IDYES then
+        code := RunQuitHelper(True)
+      else if answer = IDNO then
+      begin
+        Log('Автозакрытие: человек закроет приложение сам');
+        Exit;
+      end
+      else
+      begin
+        Result := False;
+        Exit;
+      end;
+    end;
+  end;
+
+  if code <> {#QuitExitBye} then
+  begin
+    Log('Автозакрытие не подтверждено (код ' + IntToStr(code) +
+        ') — дальше решает штатная проверка AppMutex');
+    Exit;
+  end;
+
+  { ⚠️ ВОТ ЗДЕСЬ И РЕШАЕТСЯ ПРАВО СТАВИТЬ ФАЙЛЫ. Ответ «bye» — это обещание;
+    выполнено оно или нет, показывает только исчезнувший мьютекс. }
+  if not WaitForMutexGone(20000) then
+  begin
+    Log('Автозакрытие: ответ получен, но мьютекс за 20 с не освободился');
+    Exit;
+  end;
+  GClosedByUs := True;
+  Log('Автозакрытие: работавшее приложение закрыто по просьбе установщика');
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  { Порядок обязателен: сперва согласие на саму установку, потом — закрытие
+    работающего приложения. Наоборот означало бы гасить чужой VPN ради
+    установки, от которой человек в следующем окне откажется. }
+  Result := ConfirmVersionChange;
+  if not Result then Exit;
+  Result := EnsureAppClosed;
 end;

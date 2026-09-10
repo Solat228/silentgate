@@ -194,4 +194,56 @@ void main() {
     expect(loose, lessThan(700),
         reason: 'блок занял весь выданный потолок');
   });
+
+  testWidgets('⚠️ рост до потолка 1,6 больше не зажимается высотой блока',
+      (t) async {
+    // Найдено разведкой 08.09.2026: `boxHeight` считался по НЕМАСШТАБИРОВАННОЙ
+    // высоте стороны ДО вычисления `k`, и `SizedBox(h·k)` внутри зажимался
+    // строкой этой высоты. Фактический потолок роста был
+    // `max(148, tallest) / tallest` — то есть ровно 1,0 при любой стороне
+    // выше кнопки, а это все раскладки с пятью группами. `_maxGrow = 1.6`
+    // существовал в коде и не работал НИ РАЗУ.
+    //
+    // Здесь места с избытком по обеим осям: панель 1200 (по 512 на сторону
+    // при 174 нужных) и высота 700 (при 320 нужных). Значок обязан вырасти
+    // до 26 × 1,6.
+    t.view.physicalSize = const Size(1400, 1000);
+    t.view.devicePixelRatio = 1.0;
+    addTearDown(t.view.resetPhysicalSize);
+    await t.pumpWidget(MaterialApp(
+      locale: const Locale('ru'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ChangeNotifierProvider<ServiceCheckController>(
+        create: (_) => ServiceCheckController(),
+        child: const Scaffold(
+          body: Align(
+            alignment: Alignment.topLeft,
+            child: SizedBox(
+              width: 1200,
+              height: 700,
+              child: ServiceChecksSides(
+                services: ServiceChecks.catalog,
+                httpPort: 0,
+                button: SizedBox(
+                    key: Key('btn'), width: 148, height: 148),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await t.pump();
+    expect(t.takeException(), isNull);
+    final icon = t.getRect(find
+        .descendant(
+            of: find.byKey(const ValueKey('svc:telegram')),
+            matching: find.byType(SiteFavicon))
+        .first);
+    expect(icon.width, closeTo(26 * 1.6, 0.5),
+        reason: 'значок ${icon.width.toStringAsFixed(1)} px при свободном '
+            'месте — рост снова зажат');
+    // И кнопка при этом не растёт: её размер задаёт панель.
+    expect(t.getSize(find.byKey(const Key('btn'))), const Size(148, 148));
+  });
 }

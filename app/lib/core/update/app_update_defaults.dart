@@ -31,6 +31,16 @@ const kGithubRepo = 'silentgate';
 const kGithubReleasesApi =
     'https://api.github.com/repos/$kGithubOwner/$kGithubRepo/releases/latest';
 
+/// ⚠️ СПИСОК релизов — отдельный адрес, и он ВКЛЮЧАЕТ пре-релизы и черновики.
+/// `/releases/latest` их намеренно прячет (см. выше), а бета-каналу и списку
+/// «прежних версий» нужно как раз обратное: GitHub отдаёт их в порядке ОТ
+/// НОВЫХ К СТАРЫМ по дате публикации, поэтому первый элемент — это и есть
+/// «новейшее, включая беты», а весь список годится для отката версии.
+/// Черновики (`draft: true`) фильтруются на разборе — они не опубликованы,
+/// показывать их как доступную версию нечестно.
+const kGithubReleasesListApi =
+    'https://api.github.com/repos/$kGithubOwner/$kGithubRepo/releases';
+
 /// Страница релизов для человека — её открывает кнопка «Скачать».
 const kGithubReleasesPage =
     'https://github.com/$kGithubOwner/$kGithubRepo/releases/latest';
@@ -50,6 +60,16 @@ const kGithubReleasesPage =
 ///
 /// Что сервер обязан отдавать — `docs/APP_UPDATE_SERVER.md`.
 const kPanelUpdateEndpoint = 'https://silentgate.lol/api/app-version';
+
+/// ЗАПАСНОЙ ИСТОЧНИК БЕТА-КАНАЛА — тот же сайт, отдельный путь.
+///
+/// ⚠️ НЕ ПУТАТЬ с [kPanelUpdateEndpoint]: тот — стабильный канал, отдаёт то же
+/// самое ВСЕМ, и заводить в нём поле «бета» означало бы, что пре-релиз уедет
+/// в автообновление без спроса (прямое предупреждение сайт-агента, 1.12.0).
+/// Спрашивается ТОЛЬКО когда пользователь сам включил галочку «Получать
+/// бета-версии» — формат тот же, что у `app-version`, см.
+/// `docs/APP_UPDATE_SERVER.md`.
+const kPanelBetaUpdateEndpoint = 'https://silentgate.lol/api/app-version-beta';
 
 /// Страница загрузок для человека — открывается, когда прямой ссылки нет.
 const kPanelDownloadsPage = 'https://silentgate.lol/download';

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/platform/app_instance_mutex.dart';
+import 'package:silentgate/core/platform/quit_protocol.dart';
 
 /// СТРАЖ УСТАНОВЩИКА.
 ///
@@ -200,6 +201,132 @@ void main() {
       expect(langs, containsAll(['ru', 'en', 'es', 'fr', 'de', 'pt', 'tr', 'ar']));
       expect(langs, isNot(contains('fa')));
       expect(langs, isNot(contains('zh')));
+    });
+  });
+
+  group('Установщик закрывает приложение сам', () {
+    /// Числовые `#define` (коды возврата) — их не ловит разбор `defines` выше:
+    /// там значения обязаны быть в кавычках.
+    int? number(String name) {
+      final m = RegExp('^#define\\s+$name\\s+(\\d+)\\s*\$', multiLine: true)
+          .firstMatch(text);
+      return m == null ? null : int.parse(m.group(1)!);
+    }
+
+    /// Тело функции Pascal — чтобы проверять ПОРЯДОК действий внутри неё, а не
+    /// наличие слов где-то в файле.
+    String body(String signature) {
+      final at = text.indexOf(signature);
+      expect(at, greaterThan(0), reason: 'в .iss нет $signature');
+      final end = text.indexOf('\r\nend;', at);
+      expect(end, greaterThan(at));
+      return text.substring(at, end);
+    }
+
+    test('⚠️ ГЛАВНОЕ: EnsureAppClosed действительно ВЫЗЫВАЕТСЯ', () {
+      // Страж на вызов, а не на существование. В этом проекте четырежды
+      // ловили «код написан и не вызывается» — и каждый раз это выглядело
+      // как исправно работающая возможность.
+      expect(text, contains('function EnsureAppClosed'));
+      final init = body('function InitializeSetup(): Boolean;');
+      expect(init, contains('EnsureAppClosed'),
+          reason: 'без вызова весь автозакрыв — мёртвый код');
+      // И только ПОСЛЕ согласия человека на саму установку: иначе отказ от
+      // отката гасил бы чужой VPN «за компанию».
+      expect(init.indexOf('ConfirmVersionChange'),
+          lessThan(init.indexOf('EnsureAppClosed')));
+    });
+
+    test('⚠️ мьютекс спрашивают ПЕРЕД запуском помощника', () {
+      // Мьютекс — единственный судья о запущенности. Запуск помощника «на
+      // всякий случай» означал бы стук в порт при закрытом приложении.
+      final f = body('function EnsureAppClosed: Boolean;');
+      final mutexAt = f.indexOf('AppIsRunning');
+      final helperAt = f.indexOf('RunQuitHelper');
+      expect(mutexAt, greaterThan(0));
+      expect(helperAt, greaterThan(0));
+      expect(mutexAt, lessThan(helperAt));
+      expect(text, contains("CheckForMutexes('{#MyAppMutex}')"));
+    });
+
+    test('⚠️ право ставить файлы даёт исчезнувший мьютекс, а не код возврата',
+        () {
+      // Иначе чужой процесс на порту 47654, ответивший «bye», обошёл бы
+      // проверку целиком, а старый exe без --quit запустился бы обычным
+      // образом и вернул 0.
+      final f = body('function EnsureAppClosed: Boolean;');
+      expect(f, contains('WaitForMutexGone'));
+      expect(f.indexOf('{#QuitExitBye}'), lessThan(f.indexOf('WaitForMutexGone')),
+          reason: 'ожидание мьютекса обязано идти ПОСЛЕ ответа, а не вместо');
+      expect(text, contains('function WaitForMutexGone'));
+    });
+
+    test('⚠️ коды возврата совпадают с QuitProtocol', () {
+      // Два файла не компилируются вместе: разъедутся — установщик молча
+      // перестанет понимать ответы приложения.
+      expect(number('QuitExitBye'), QuitProtocol.exitBye);
+      expect(number('QuitExitBusy'), QuitProtocol.exitBusy);
+      expect(number('QuitExitNoContact'), QuitProtocol.exitNoContact);
+      expect(number('QuitExitNoSecret'), QuitProtocol.exitNoSecret);
+      expect(number('QuitExitForeign'), QuitProtocol.exitForeignAnswer);
+      expect(defines['QuitArg'], QuitProtocol.argQuit);
+      expect(defines['QuitArgForce'], QuitProtocol.argQuitForce);
+    });
+
+    test('имя мьютекса лежит в файле ровно один раз', () {
+      // Одно и то же имя нужно и `AppMutex`, и ожиданию после закрытия.
+      // Второй литерал — это будущее расхождение, которое ничего не сломает
+      // заметно.
+      expect(defines['MyAppMutex'], AppInstanceMutex.name);
+      expect(AppInstanceMutex.name.allMatches(text).length, 1);
+    });
+
+    test('⚠️ старую версию просить бесполезно — и это учтено', () {
+      // Старый exe аргумента --quit не знает и запустится ОБЫЧНЫМ образом:
+      // второй экземпляр перешлёт первому «покажи окно» и выйдет с кодом 0.
+      // Без порога установщик принял бы это за успешное закрытие.
+      final min = defines['MinQuitVersion'];
+      expect(min, isNotNull);
+      expect(RegExp(r'^\d+\.\d+\.\d+$').hasMatch(min!), isTrue);
+      expect(body('function EnsureAppClosed: Boolean;'),
+          contains('{#MinQuitVersion}'));
+    });
+
+    test('⚠️ в тихом режиме живой туннель молча не рвётся', () {
+      // /SILENT — это скрипт или будущая кнопка «Обновить»: вопрос задавать
+      // некому, а человек за экраном может работать через VPN.
+      final f = body('function EnsureAppClosed: Boolean;');
+      expect(f, contains('WizardSilent'));
+      expect(f, contains('ForceQuitRequested'));
+      expect(f, contains("Result := False"));
+      expect(text, contains("CompareText(ParamStr(i), '/FORCEQUIT')"));
+    });
+
+    test('⚠️ после тихой установки приложение поднимается обратно', () {
+      // Строка запуска помечена skipifsilent, значит закрытое нами приложение
+      // просто исчезло бы. Поднимаем только то, что закрыли сами.
+      expect(text, contains('Check: ShouldRelaunch'));
+      expect(text, contains('function ShouldRelaunch'));
+      expect(body('function ShouldRelaunch: Boolean;'),
+          contains('GClosedByUs and WizardSilent'));
+    });
+
+    test('⚠️ три кнопки диалога и требование Inno 6.1', () {
+      // SuppressibleTaskDialogMsgBox появилась в 6.1; на старом ISCC сборка
+      // обязана падать внятно, а не собирать установщик, который не спросит.
+      expect(text, contains('SuppressibleTaskDialogMsgBox'));
+      expect(text, contains('#if VER < EncodeVer(6,1,0)'));
+      for (final k in ['QuitBtnClose', 'QuitBtnSelf', 'QuitBtnCancel']) {
+        expect(text, contains('ru.$k='), reason: 'нет кнопки $k');
+      }
+    });
+
+    test('⚠️ установщик остаётся без прав администратора', () {
+      // Путь к exe читается из HKCU — куста, доступного пользователю на
+      // запись. Пока установщик работает от него же, подмена пути — самоатака
+      // ценой ноль; поднимут привилегии — станет повышением прав.
+      expect(setting('PrivilegesRequired'), 'lowest');
+      expect(text, contains('RegQueryStringValue(HKEY_CURRENT_USER'));
     });
   });
 

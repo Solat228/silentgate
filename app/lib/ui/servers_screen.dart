@@ -7,6 +7,7 @@ import '../state/app_state.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
 import 'home_screen.dart' show CopyServerKeyShortcut;
+import 'widgets/auto_pick_button.dart';
 import 'widgets/ping_gate.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
@@ -97,6 +98,14 @@ class _ServersScreenState extends State<ServersScreen> {
                     value: _query,
                     onChanged: (v) => setState(() => _query = v),
                   ),
+                ),
+                // ⚠️ ТО ЖЕ МЕСТО, ЧТО И В ПРАВОЙ ПАНЕЛИ ШИРОКОГО ОКНА: над
+                // списком, под поиском. Это НЕ вторая копия кнопки — человек
+                // никогда не видит оба места сразу: на узком окне списка на
+                // главном экране нет вовсе, он живёт только здесь.
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
+                  child: AutoPickServerButton(wide: true),
                 ),
                 Expanded(
                   child: shown.isEmpty

@@ -68,13 +68,18 @@ if errorlevel 8 (
 )
 
 cd /d "%WORK%\app"
+rem Бета собирается только осознанно: задайте SILENTGATE_CHANNEL=beta до запуска,
+rem обычная сборка (переменная не задана) остаётся стабильной без канала.
+rem Прочитается в "О программе" через AppInfo.channel (String.fromEnvironment).
+set "CHANNEL_DEFINE="
+if defined SILENTGATE_CHANNEL set "CHANNEL_DEFINE=--dart-define=SILENTGATE_CHANNEL=%SILENTGATE_CHANNEL%"
 echo Сборка release APK (arm64 + x86_64)...
 rem --split-per-abi обязателен: ядра приезжают из cores.aar сразу под все ABI,
 rem и без разделения один APK весит под 170 МБ вместо 76.
 rem --target-platform: без него --split-per-abi собирает ЕЩЁ и armeabi-v7a.
 rem Это 32-битные ARM, телефонов на них давно нет, а лишний APK каждый раз
 rem путает: в папке оказывается три файла вместо двух нужных.
-call "%FLUTTER%" build apk --release --split-per-abi --target-platform android-arm64,android-x64
+call "%FLUTTER%" build apk --release --split-per-abi --target-platform android-arm64,android-x64 %CHANNEL_DEFINE%
 
 rem Flutter кладёт рядом с каждым APK файл .sha1 - контрольную сумму, которая
 rem никому не нужна и только засоряет папку: вместо двух файлов там четыре,
@@ -111,6 +116,7 @@ echo.
 echo === ГОТОВО ===
 echo   SilentGate-arm64-v8a.apk  - на телефон
 echo   SilentGate-x86_64.apk     - на эмулятор
+if defined SILENTGATE_CHANNEL echo   Канал: %SILENTGATE_CHANNEL%
 echo.
 echo Установка на подключённый телефон:
 echo   "%SDK%\platform-tools\adb.exe" install -r "%DST%\SilentGate-arm64-v8a.apk"

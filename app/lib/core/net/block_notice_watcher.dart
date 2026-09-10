@@ -58,6 +58,14 @@ class BlockNoticeWatcher {
   /// Домены, о которых стоит сообщать. Пусто — сторож молчит.
   Set<String> blocked = const {};
 
+  /// Домены той же пары (без порта) с ДЕЙСТВИЕМ, ОТЛИЧНЫМ от «Блок».
+  ///
+  /// Нужны, чтобы не соврать «Сайт заблокирован» поддомену, который правило
+  /// маршрутизации подняло выше блока родителя (см. `_sitesNeedingPriority` в
+  /// `singbox_config_builder.dart`) — трафик туда уходит верно, суффиксное
+  /// сравнение [matchBlocked] иначе этого не видит.
+  Set<String> exceptions = const {};
+
   /// Имена заблокированных доменов, замеченные в трафике.
   Stream<String> get events => _controller.stream;
 
@@ -84,7 +92,7 @@ class BlockNoticeWatcher {
     final conns = await _connections();
     if (conns == null) return;
     final now = DateTime.now();
-    for (final host in _blockedHosts(conns, blocked)) {
+    for (final host in _blockedHosts(conns, blocked, exceptions: exceptions)) {
       final seen = _lastSeen[host];
       if (seen != null && now.difference(seen) < repeatAfter) continue;
       _lastSeen[host] = now;
@@ -95,11 +103,16 @@ class BlockNoticeWatcher {
   /// Разбор снимка соединений. Вынесен отдельно и статичен — чтобы его можно
   /// было проверить тестом без сети и без ядра.
   ///
-  /// Возвращает домены из [blocked], чей трафик ушёл в блокировку.
-  static Set<String> blockedHostsIn(Object? raw, Set<String> blocked) =>
-      _blockedHosts(raw is Map ? raw['connections'] : raw, blocked);
+  /// Возвращает домены из [blocked], чей трафик ушёл в блокировку. [exceptions]
+  /// — домены той же пары с ДРУГИМ действием; более конкретный из них
+  /// перекрывает менее конкретный блок (см. [matchBlocked]).
+  static Set<String> blockedHostsIn(Object? raw, Set<String> blocked,
+          {Set<String> exceptions = const {}}) =>
+      _blockedHosts(raw is Map ? raw['connections'] : raw, blocked,
+          exceptions: exceptions);
 
-  static Set<String> _blockedHosts(Object? raw, Set<String> blocked) {
+  static Set<String> _blockedHosts(Object? raw, Set<String> blocked,
+      {Set<String> exceptions = const {}}) {
     if (raw is! List || blocked.isEmpty) return const {};
     final out = <String>{};
     for (final c in raw) {
@@ -115,22 +128,32 @@ class BlockNoticeWatcher {
       // outbound-ом, поэтому в `chains` блок-тега может не оказаться вовсе:
       // ядру некуда его записать. Требовать тег значило бы не заметить ни
       // одной блокировки — то есть сделать уведомление, которое молчит всегда.
-      // Ложные срабатывания при этом исключены по построению: правила «Блок»
-      // стоят ВЫШЕ всех прочих, и раз хост есть в списке, его судьба решена.
-      final match = matchBlocked(host, blocked);
+      final match = matchBlocked(host, blocked, exceptions: exceptions);
       if (match != null) out.add(match);
     }
     return out;
   }
 
-  /// Какое из правил закрыло этот хост. `null` — ни одно.
+  /// Какое из правил «Блок» закрыло этот хост. `null` — ни одно (в том числе
+  /// когда хост открылся по более конкретному правилу из [exceptions]).
   ///
   /// ⚠️ Совпадение СУФФИКСНОЕ, как у самого ядра (`domain_suffix`): правило
   /// `example.com` закрывает и `cdn.example.com`. Сообщаем при этом ИМЯ
   /// ПРАВИЛА, а не хоста: человек ищет в списке то, что он туда вписывал.
   /// Показать `cdn.example.com` там, где в списке `example.com`, значит
   /// отправить его искать несуществующую строку.
-  static String? matchBlocked(String host, Set<String> blocked) {
+  ///
+  /// ⚠️ [exceptions] закрывает РЕАЛЬНУЮ дыру, а не гипотетическую: у сайтов
+  /// разрешено дерево «родитель → поддомен» с разными действиями
+  /// (`example.com` = Блок, `sub.example.com` = Туннель), и маршрутизация
+  /// корректно поднимает поддомен ВЫШЕ блока родителя
+  /// (`_sitesNeedingPriority`, `singbox_config_builder.dart`). Без этого
+  /// параметра суффиксное сравнение находило бы `example.com` для хоста
+  /// `sub.example.com` и врало «заблокирован» открывшемуся сайту. Побеждает
+  /// самое конкретное правило СРЕДИ ОБОИХ множеств — если это исключение,
+  /// блокировки не было.
+  static String? matchBlocked(String host, Set<String> blocked,
+      {Set<String> exceptions = const {}}) {
     final h = host.toLowerCase();
     String? best;
     for (final b in blocked) {
@@ -141,6 +164,14 @@ class BlockNoticeWatcher {
         // в списке победить должно второе — оно и сработало в ядре первым.
         if (best == null || rule.length > best.length) best = rule;
       }
+    }
+    if (best == null) return null;
+    for (final e in exceptions) {
+      final rule = e.toLowerCase().trim();
+      // Короче или равен найденному блоку — не может его перекрыть, это
+      // либо более общее правило, либо однопорядковое, а не поддомен-победитель.
+      if (rule.isEmpty || rule.length <= best.length) continue;
+      if (h == rule || h.endsWith('.$rule')) return null;
     }
     return best;
   }

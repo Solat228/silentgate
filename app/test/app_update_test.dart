@@ -252,6 +252,193 @@ void main() {
     });
   });
 
+  group('Бета-канал: check(beta:) смотрит на СПИСОК релизов, а не /latest', () {
+    // ⚠️ РАДИ ЧЕГО ЭТОТ БЛОК. `/releases/latest` пре-релизы не отдаёт по
+    // определению GitHub — значит единственный способ узнать про бету, не
+    // помещая признак канала в основной манифест (см. предупреждение сайт-
+    // агента про 1.12.0), это спросить список `/releases` и взять первый
+    // элемент: GitHub уже отдаёт его от новых к старым по дате публикации.
+
+    test('galochka выключена (умолчание) — запрос идёт на /latest', () async {
+      final seen = <String>[];
+      final r = await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        fetcher: (uri) async {
+          seen.add(uri.path);
+          return UpdateHttpResponse(
+              200, jsonEncode({'tag_name': 'v1.0.0', 'assets': []}));
+        },
+      );
+      expect(seen.single, endsWith('/latest'));
+      expect(r.release!.isBeta, isFalse);
+    });
+
+    test('⚠️ ГЛАВНОЕ: включена — запрос идёт НА СПИСОК, а не на /latest',
+        () async {
+      final body = jsonEncode([
+        {'tag_name': 'v99.0.0-beta.1', 'prerelease': true, 'assets': []},
+        {'tag_name': 'v98.0.0', 'prerelease': false, 'assets': []},
+      ]);
+      final r = await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        beta: true,
+        fetcher: (uri) async {
+          expect(uri.path, isNot(endsWith('/latest')),
+              reason: '/latest НИКОГДА не отдаёт пре-релизы — бета обязана '
+                  'спрашивать список');
+          return UpdateHttpResponse(200, body);
+        },
+      );
+      expect(r.state, UpdateCheckState.available);
+      expect(r.release!.version, '99.0.0-beta.1');
+      expect(r.release!.isBeta, isTrue,
+          reason: 'первый элемент списка — пре-релиз, и это обязано быть видно');
+    });
+
+    test('черновики (draft) выбрасываются из выбора беты', () async {
+      final body = jsonEncode([
+        {'tag_name': 'v100.0.0', 'draft': true, 'assets': []},
+        {'tag_name': 'v99.0.0', 'prerelease': true, 'assets': []},
+      ]);
+      final r = await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        beta: true,
+        fetcher: (_) async => UpdateHttpResponse(200, body),
+      );
+      expect(r.release!.version, '99.0.0',
+          reason: 'черновик не опубликован — предлагать его как версию нечестно');
+    });
+
+    test('galochka выключена — пре-релиз из основного /latest не пришёл бы '
+        'вовсе, но проверяем и явный prerelease:true в ответе', () async {
+      // Если бы GitHub всё же вернул на /latest объект с prerelease:true
+      // (не должен, но код не обязан на это полагаться), плашка «бета» всё
+      // равно обязана появиться — isBeta читается из самого ответа, а не из
+      // адреса запроса.
+      final r = await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        fetcher: (_) async => UpdateHttpResponse(
+            200, jsonEncode({'tag_name': 'v99.0.0', 'prerelease': true})),
+      );
+      expect(r.release!.isBeta, isTrue);
+    });
+
+    test('запасной источник беты — ОТДЕЛЬНЫЙ адрес, не app-version', () async {
+      final seenPaths = <String>[];
+      final r = await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        beta: true,
+        fetcher: (uri) async {
+          seenPaths.add(uri.path);
+          if (uri.host.contains('github')) return const UpdateHttpResponse(403, '');
+          return UpdateHttpResponse(
+              200, jsonEncode({'version': '77.0.0', 'beta': true}));
+        },
+      );
+      expect(seenPaths.last, contains('app-version-beta'));
+      expect(r.release!.isBeta, isTrue);
+    });
+  });
+
+  group('parseGithubReleaseList', () {
+    test('черновики не попадают в список вовсе', () {
+      final body = jsonEncode([
+        {'tag_name': 'v2.0.0', 'assets': []},
+        {'tag_name': 'v3.0.0', 'draft': true, 'assets': []},
+      ]);
+      final list =
+          AppUpdate.parseGithubReleaseList(body, assetHint: 'Setup.exe');
+      expect(list, isNotNull);
+      expect(list!.map((r) => r.version), ['2.0.0']);
+    });
+
+    test('порядок как у GitHub — новые впереди, не пересортировывается', () {
+      final body = jsonEncode([
+        {'tag_name': 'v3.0.0', 'assets': []},
+        {'tag_name': 'v1.0.0', 'assets': []},
+        {'tag_name': 'v2.0.0', 'assets': []},
+      ]);
+      final list =
+          AppUpdate.parseGithubReleaseList(body, assetHint: 'Setup.exe')!;
+      expect(list.map((r) => r.version), ['3.0.0', '1.0.0', '2.0.0']);
+    });
+
+    test('не массив — не список', () {
+      expect(
+          AppUpdate.parseGithubReleaseList(jsonEncode({'a': 1}),
+              assetHint: 'Setup.exe'),
+          isNull);
+    });
+  });
+
+  group('parsePanelRelease: признак канала', () {
+    test('поле beta:true → isBeta', () {
+      final r = AppUpdate.parsePanelRelease('{"version":"2.0.0","beta":true}');
+      expect(r!.isBeta, isTrue);
+    });
+
+    test('поле channel:"beta" → isBeta', () {
+      final r = AppUpdate.parsePanelRelease(
+          '{"version":"2.0.0","channel":"beta"}');
+      expect(r!.isBeta, isTrue);
+    });
+
+    test('⚠️ ни того, ни другого поля — isBeta=false (старый ответ панели)', () {
+      // Обратная совместимость: панель, которая ещё не знает про канал,
+      // отвечает как раньше, и приложение не должно домысливать бету.
+      final r = AppUpdate.parsePanelRelease('{"version":"2.0.0"}');
+      expect(r!.isBeta, isFalse);
+    });
+  });
+
+  group('fetchReleaseHistory: список для кнопки отката', () {
+    test('лимит применяется, порядок — как у GitHub', () async {
+      final body = jsonEncode([
+        {'tag_name': 'v3.0.0', 'assets': []},
+        {'tag_name': 'v2.0.0', 'assets': []},
+        {'tag_name': 'v1.0.0', 'assets': []},
+      ]);
+      final list = await AppUpdate.fetchReleaseHistory(
+        assetHint: 'Setup.exe',
+        limit: 2,
+        fetcher: (_) async => UpdateHttpResponse(200, body),
+      );
+      expect(list.map((r) => r.version), ['3.0.0', '2.0.0']);
+    });
+
+    test('дата публикации разбирается для отображения', () async {
+      final body = jsonEncode([
+        {
+          'tag_name': 'v1.0.0',
+          'assets': [],
+          'published_at': '2026-01-02T03:04:05Z',
+        },
+      ]);
+      final list = await AppUpdate.fetchReleaseHistory(
+        assetHint: 'Setup.exe',
+        fetcher: (_) async => UpdateHttpResponse(200, body),
+      );
+      expect(list.single.publishedAt, DateTime.utc(2026, 1, 2, 3, 4, 5));
+    });
+
+    test('⚠️ сеть недоступна — пустой список, а не исключение наружу', () async {
+      // Диалог «Прежние версии» не обязан падать целиком из-за сети — он
+      // покажет l.appUpdatePreviousVersionsEmpty и объяснит, что список пуст.
+      final list = await AppUpdate.fetchReleaseHistory(
+        assetHint: 'Setup.exe',
+        fetcher: (_) async => throw const SocketExceptionStub(),
+      );
+      expect(list, isEmpty);
+    });
+
+    test('сервер ответил ошибкой — тоже пустой список, не исключение', () async {
+      final list = await AppUpdate.fetchReleaseHistory(
+        assetHint: 'Setup.exe',
+        fetcher: (_) async => const UpdateHttpResponse(500, ''),
+      );
+      expect(list, isEmpty);
+    });
+  });
 }
 
 /// Чтобы не тянуть в тест `dart:io` ради одного исключения.

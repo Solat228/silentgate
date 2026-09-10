@@ -17,11 +17,27 @@ class AppRelease {
   /// равно есть смысл.
   final String? pageUrl;
 
+  /// Пре-релиз (GitHub `prerelease: true`) либо ответ, явно помеченный полем
+  /// `beta`/`channel` у запасного источника сайта.
+  ///
+  /// ⚠️ Умолчание — `false`, и это единственный безопасный выбор: обычный
+  /// путь (стабильный `/releases/latest` + основной манифест сайта) никогда
+  /// беты не отдаёт, но если когда-нибудь отдаст — молчаливое `true` было бы
+  /// хуже, чем незамеченная бета: человек решил бы, что ставит стабильную
+  /// версию, хотя это пре-релиз.
+  final bool isBeta;
+
+  /// Когда релиз опубликован — для списка «Прежние версии» (кнопка отката):
+  /// без даты человек не отличит вчерашний хвост от версии годовой давности.
+  final DateTime? publishedAt;
+
   const AppRelease({
     required this.version,
     this.downloadUrl,
     this.notes,
     this.pageUrl,
+    this.isBeta = false,
+    this.publishedAt,
   });
 
   /// Новее ли [version] текущей сборки.
@@ -119,18 +135,30 @@ class AppUpdate {
   /// разным людям — а обновление приложения должно быть одинаковым для всех.
   /// GitHub первым делает подмену версии заметной: чтобы обмануть, надо
   /// подменить оба источника.
+  /// [beta] — галочка «Получать бета-версии» из настроек
+  /// (`AppSettings.betaChannel`). По умолчанию `false`: источники те же, что
+  /// были всегда, `/releases/latest` пре-релизы не отдаёт по определению.
+  ///
+  /// ⚠️ ГАЛОЧКА МЕНЯЕТ ТОЛЬКО ЭТОТ ЗАПРОС, А НЕ ОСНОВНОЙ МАНИФЕСТ. Смотреть
+  /// список релизов вместо `/latest` при включённой галочке — единственный
+  /// способ узнать про бету, не поместив признак канала в манифест, который
+  /// получают ВСЕ: тогда бета уехала бы в рассылку без разрешения (см.
+  /// комментарий у [kPanelBetaUpdateEndpoint]).
   static Future<UpdateCheckResult> check({
     Duration timeout = const Duration(seconds: 10),
     UpdateFetcher? fetcher,
     String? assetHint,
+    bool beta = false,
   }) async {
     final hint = assetHint ?? kPlatformAssetHint;
     final fetch = fetcher ?? _fetch;
 
-    final primary = await _tryGithub(fetch, hint);
+    final primary =
+        beta ? await _tryGithubBeta(fetch, hint) : await _tryGithub(fetch, hint);
     if (primary.state != UpdateCheckState.failed) return primary;
 
-    final backup = await _tryPanel(fetch, hint);
+    final backup =
+        beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
     if (backup.state != UpdateCheckState.failed) {
       AppLog.i('Проверка обновлений: GitHub недоступен, ответил запасной '
           'источник');
@@ -189,6 +217,90 @@ class AppUpdate {
     }
   }
 
+  /// Бета-путь основного источника: СПИСОК релизов вместо `/latest`.
+  ///
+  /// GitHub отдаёт список от новых к старым по дате публикации — первый
+  /// элемент и есть «новейшее, включая пре-релизы», без отдельного сравнения
+  /// версий между элементами списка.
+  static Future<UpdateCheckResult> _tryGithubBeta(
+      UpdateFetcher fetch, String hint) async {
+    try {
+      final resp = await fetch(Uri.parse(kGithubReleasesListApi));
+      final failure = _failureFor(resp);
+      if (failure != null) {
+        AppLog.i('Проверка бета-обновлений не удалась: код ${resp.statusCode}');
+        return UpdateCheckResult.failed(failure);
+      }
+      final list = parseGithubReleaseList(resp.body, assetHint: hint);
+      if (list == null || list.isEmpty) {
+        return const UpdateCheckResult.failed(
+            'Сервер обновлений ответил непонятным образом');
+      }
+      final release = list.first;
+      return release.isNewer
+          ? UpdateCheckResult.available(release)
+          : UpdateCheckResult.upToDate(release);
+    } catch (e) {
+      AppLog.i('Проверка бета-обновлений недоступна: $e');
+      return const UpdateCheckResult.failed(
+          'Не удалось связаться с сервером обновлений');
+    }
+  }
+
+  /// Запасной источник бета-канала — тот же сайт, отдельный путь
+  /// ([kPanelBetaUpdateEndpoint]). Формат ответа общий с обычным
+  /// [_tryPanel] — тот же [parsePanelRelease] понимает необязательное поле
+  /// `beta`/`channel`.
+  static Future<UpdateCheckResult> _tryPanelBeta(
+      UpdateFetcher fetch, String hint) async {
+    try {
+      final resp = await fetch(Uri.parse(kPanelBetaUpdateEndpoint));
+      if (resp.statusCode != 200) {
+        return UpdateCheckResult.failed(
+            'Запасной сервер обновлений ответил кодом ${resp.statusCode}');
+      }
+      final release = parsePanelRelease(resp.body);
+      if (release == null) {
+        return const UpdateCheckResult.failed(
+            'Запасной сервер обновлений ответил непонятным образом');
+      }
+      return release.isNewer
+          ? UpdateCheckResult.available(release)
+          : UpdateCheckResult.upToDate(release);
+    } catch (e) {
+      AppLog.i('Запасная проверка бета-обновлений недоступна: $e');
+      return const UpdateCheckResult.failed(
+          'Не удалось связаться с сервером обновлений');
+    }
+  }
+
+  /// Прежние версии для кнопки отката — из того же СПИСКА релизов, что и
+  /// бета-канал, поэтому сети не требует ничего сверх того, что уже
+  /// запрашивается при включённой галочке «Получать бета-версии».
+  ///
+  /// ⚠️ ЧЕСТНОСТЬ СПИСКА. Это ровно то, что лежит в GitHub Releases — не
+  /// более. Если там нет какой-то версии (см. `docs/HANDOFF_1.11.0.md` про
+  /// пустой `GITHUB_TOKEN` — релизов 1.11.x не существует), в списке её тоже
+  /// не будет, и это не ошибка приложения.
+  static Future<List<AppRelease>> fetchReleaseHistory({
+    int limit = 15,
+    UpdateFetcher? fetcher,
+    String? assetHint,
+  }) async {
+    final hint = assetHint ?? kPlatformAssetHint;
+    final fetch = fetcher ?? _fetch;
+    try {
+      final resp = await fetch(Uri.parse(kGithubReleasesListApi));
+      if (resp.statusCode != 200) return const [];
+      final list = parseGithubReleaseList(resp.body, assetHint: hint);
+      if (list == null) return const [];
+      return list.take(limit).toList();
+    } catch (e) {
+      AppLog.i('Список прежних версий недоступен: $e');
+      return const [];
+    }
+  }
+
   /// Разбор ответа НАШЕГО сайта. Формат намеренно плоский — его пишет не
   /// GitHub, а наш бэкенд, и чем меньше в нём мест для ошибки, тем лучше.
   ///
@@ -200,6 +312,10 @@ class AppUpdate {
   /// кнопка ведёт на страницу загрузок — версию мы всё равно узнали.
   /// ⚠️ И `url` обязан быть `https`: иначе кнопка «Скачать» повела бы человека
   /// за установщиком по открытому каналу, где его можно подменить.
+  ///
+  /// ⚠️ Необязательное поле `beta` (булево) либо `channel: "beta"` — признак
+  /// канала. Умолчание `false`: старый ответ панели (ни того, ни другого
+  /// поля нет) ведёт себя ровно как раньше, обратная совместимость полная.
   static AppRelease? parsePanelRelease(String body) {
     final Object? j;
     try {
@@ -214,11 +330,14 @@ class AppUpdate {
     final url = '${j['url'] ?? ''}'.trim();
     final notes = '${j['notes'] ?? ''}'.trim();
     final page = '${j['page'] ?? ''}'.trim();
+    final beta = j['beta'] == true ||
+        '${j['channel'] ?? ''}'.trim().toLowerCase() == 'beta';
     return AppRelease(
       version: version,
       downloadUrl: url.startsWith('https://') ? url : null,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.startsWith('https://') ? page : kPanelDownloadsPage,
+      isBeta: beta,
     );
   }
 
@@ -267,7 +386,42 @@ class AppUpdate {
       return null;
     }
     if (j is! Map) return null;
+    return _releaseFromMap(j, assetHint);
+  }
 
+  /// Разбор СПИСКА релизов (`GET /releases`, без `/latest`) — для бета-канала
+  /// и кнопки отката версии.
+  ///
+  /// ⚠️ Черновики (`draft: true`) отбрасываются: они не опубликованы, и
+  /// предлагать их как доступную версию значило бы врать про статус релиза.
+  /// Пре-релизы, наоборот, ОСТАЮТСЯ — ради них список и запрашивается.
+  /// Порядок элементов не переставляется: GitHub уже отдаёт от новых к
+  /// старым по дате публикации, а пересчитывать это сравнением версий было
+  /// бы лишней операцией с тем же результатом.
+  static List<AppRelease>? parseGithubReleaseList(String body,
+      {required String assetHint}) {
+    final Object? j;
+    try {
+      j = jsonDecode(body);
+    } catch (_) {
+      return null;
+    }
+    if (j is! List) return null;
+    final out = <AppRelease>[];
+    for (final item in j) {
+      if (item is! Map) continue;
+      if (item['draft'] == true) continue;
+      final r = _releaseFromMap(item, assetHint);
+      if (r != null) out.add(r);
+    }
+    return out;
+  }
+
+  /// Общее тело разбора одного элемента ответа GitHub — использует и
+  /// [parseGithubRelease] (объект `/releases/latest`), и
+  /// [parseGithubReleaseList] (каждый элемент массива `/releases`): формат
+  /// объекта релиза у GitHub один и тот же в обоих ответах.
+  static AppRelease? _releaseFromMap(Map j, String assetHint) {
     // ⚠️ Тег обычно с приставкой `v` (`v1.4.3`), а сравниваем мы числа.
     // `_parts` её и так отбрасывает, но чистим и здесь: версия попадает в текст
     // для пользователя, и «доступна v1.4.4» рядом с «у вас 1.4.3» читается как
@@ -293,11 +447,15 @@ class AppUpdate {
 
     final page = '${j['html_url'] ?? ''}'.trim();
     final notes = '${j['body'] ?? ''}'.trim();
+    final publishedRaw = '${j['published_at'] ?? j['created_at'] ?? ''}';
+    final published = DateTime.tryParse(publishedRaw);
     return AppRelease(
       version: version,
       downloadUrl: asset,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.isEmpty ? kGithubReleasesPage : page,
+      isBeta: j['prerelease'] == true,
+      publishedAt: published,
     );
   }
 

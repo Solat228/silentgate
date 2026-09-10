@@ -5,7 +5,24 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.12.0';
+  static const version = '1.13.0';
+
+  /// Канал СБОРКИ — свойство конкретного exe/apk, а не то, что можно
+  /// прочитать из настроек или манифеста обновлений.
+  ///
+  /// ⚠️ ПОЧЕМУ ИМЕННО ТАК. Признак беты у уже установленной сборки нельзя
+  /// решить полем ответа сервера: манифест приходит уже ПОСЛЕ того, как
+  /// человек эту бету поставил, а «О программе» должно честно говорить,
+  /// что у него за файл, даже без единого сетевого запроса и даже если
+  /// человек ни разу не открывал раздел обновлений. Задаётся на сборке
+  /// (`build-exe.bat`/`build-apk.bat` → `--dart-define=SILENTGATE_CHANNEL=beta`),
+  /// обычная сборка канал не задаёт вовсе — `String.fromEnvironment` тогда
+  /// даёт пустую строку, и `isBeta` остаётся `false`.
+  static const channel =
+      String.fromEnvironment('SILENTGATE_CHANNEL', defaultValue: '');
+
+  /// Это бета-сборка (см. [channel]).
+  static bool get isBeta => channel == 'beta';
 
   /// Метка платформы в User-Agent. Панель Remnawave сопоставляет только ИМЯ
   /// (правило `user-agent CONTAINS SilentGate`), поэтому суффикс на выбор

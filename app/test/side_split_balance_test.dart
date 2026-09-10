@@ -27,6 +27,29 @@ void main() {
     expect(l + r, 5, reason: 'группа потерялась при делении');
     expect((l - r).abs(), lessThanOrEqualTo(1),
         reason: 'стороны разошлись: слева $l, справа $r');
+    // ⚠️ И именно 2/3, а не 3/2: слева [Мессенджеры, ИИ] одним рядом,
+    // справа [Видео, Соцсети, Прочее] двумя. Ширины сторон при этом равны
+    // (два блока в ряд с обеих сторон), и общий масштаб больше не обкрадывает
+    // левую сторону — «пустота слева» уходит по построению.
+    expect(l, 2);
+    expect(r, 3);
+    expect(ServiceChecksSides.sideWidthOf(sides.left, dense: false),
+        ServiceChecksSides.sideWidthOf(sides.right, dense: false));
+  });
+
+  test('⚠️ потолок сетки — три ряда на сторону', () {
+    // Двенадцать блоков (2 × 3 × 2 стороны) — предел. Групп сейчас пять;
+    // тринадцатая группа сверх потолка молча уводила бы раскладку в ряды.
+    expect(ServiceGroup.values.length,
+        lessThanOrEqualTo(ServiceChecksSides.perRow * ServiceChecksSides.maxRows * 2));
+    // Делёж не отдаёт стороне больше шести блоков: шесть групп из пяти
+    // получить нельзя, поэтому проверяем сам разрез на всех пяти.
+    final split = ServiceChecks.grouped(ServiceChecks.catalog);
+    final sides = ServiceChecksSides.splitForTest(split, dense: false);
+    expect(sides.left.length,
+        lessThanOrEqualTo(ServiceChecksSides.perRow * ServiceChecksSides.maxRows));
+    expect(sides.right.length,
+        lessThanOrEqualTo(ServiceChecksSides.perRow * ServiceChecksSides.maxRows));
   });
 
   test('порядок групп сохраняется — сервис не меняет привычное место', () {
@@ -60,7 +83,7 @@ void main() {
     expect(rows, isNotEmpty);
 
     // Ширину задаёт САМАЯ ДЛИННАЯ группа, а не число групп.
-    final w = ServiceChecksSides.sideWidthOf(rows, dense: true, perRow: 2);
+    final w = ServiceChecksSides.sideWidthOf(rows, dense: true);
     final longest = rows
         .map((r) => r.services.length)
         .reduce((a, b) => a > b ? a : b);
@@ -68,9 +91,10 @@ void main() {
         reason: 'ширина сетки снова считается по числу блоков, а не по '
             'самой длинной группе');
 
-    // Высота — по строке на группу, а не по «две иконки в ряд».
-    final h = ServiceChecksSides.sideHeightOf(rows, dense: true, perRow: 2);
-    expect(h, closeTo((32.0 + 6.0 + 6.0) * rows.length, 0.01),
+    // Высота — по строке на группу, а не по «две иконки в ряд»; просвет 6 —
+    // ТОЛЬКО между строками (после последней его нет, как и рисуется).
+    final h = ServiceChecksSides.sideHeightOf(rows, dense: true);
+    expect(h, closeTo(32.0 * rows.length + 6.0 * (rows.length - 1), 0.01),
         reason: 'высота сетки снова считается с переносом, которого нет');
   });
 }

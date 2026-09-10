@@ -120,6 +120,75 @@ void main() {
       expect(BlockNoticeWatcher.matchBlocked('xb.com', {'b.com'}), isNull);
       expect(BlockNoticeWatcher.matchBlocked('b.com', const {}), isNull);
     });
+
+    // ⚠️ РЕГРЕССИЯ: поддомен, поднятый маршрутизацией выше блока родителя
+    // (`example.com` = Блок, `sub.example.com` = Туннель). Трафик поддомена
+    // уходит в туннель ВЕРНО (`_sitesNeedingPriority`,
+    // singbox_config_builder.dart), но до фикса `matchBlocked` сравнивал
+    // хост СУФФИКСОМ только против блок-домена и врал «Сайт заблокирован»
+    // сайту, который на самом деле открылся.
+    test('поддомен с другим действием НЕ считается блокировкой', () {
+      expect(
+          BlockNoticeWatcher.matchBlocked(
+              'sub.example.com', {'example.com'},
+              exceptions: {'sub.example.com'}),
+          isNull,
+          reason: 'sub.example.com = Туннель поднят маршрутизацией выше '
+              'блока родителя — трафик открылся, а не заблокирован');
+    });
+
+    test('сам родитель остаётся заблокирован, когда исключение — только поддомен', () {
+      expect(
+          BlockNoticeWatcher.matchBlocked(
+              'example.com', {'example.com'},
+              exceptions: {'sub.example.com'}),
+          'example.com',
+          reason: 'исключение точнее относится только к своему поддереву');
+    });
+
+    test('другой поддомен без собственного правила остаётся заблокирован', () {
+      // У домена может быть НЕСКОЛЬКО поддоменов: правило-исключение есть
+      // только у одного из них, остальные наследуют блок родителя как раньше.
+      expect(
+          BlockNoticeWatcher.matchBlocked(
+              'ads.example.com', {'example.com'},
+              exceptions: {'sub.example.com'}),
+          'example.com');
+    });
+
+    test('исключение короче блока — не перекрывает (не поддомен-победитель)', () {
+      // Пограничный случай самой функции: правило-исключение, которое не
+      // длиннее найденного блока, победить не может — это защита от
+      // случайного совпадения не по вложенности.
+      expect(
+          BlockNoticeWatcher.matchBlocked(
+              'sub.example.com', {'sub.example.com'},
+              exceptions: {'example.com'}),
+          'sub.example.com');
+    });
+
+    test('без exceptions поведение прежнее', () {
+      expect(
+          BlockNoticeWatcher.matchBlocked('sub.example.com', {'example.com'}),
+          'example.com');
+    });
+  });
+
+  group('Что считается блокировкой (exceptions в blockedHostsIn)', () {
+    test('поддомен-исключение не попадает в результат опроса', () {
+      final hosts = BlockNoticeWatcher.blockedHostsIn(
+          {
+            'connections': [
+              conn('sub.example.com'),
+              conn('ads.example.com'),
+            ]
+          },
+          {'example.com'},
+          exceptions: {'sub.example.com'});
+      expect(hosts, {'example.com'},
+          reason: 'sub.example.com открылся по правилу поддомена, '
+              'ads.example.com — по-прежнему под блоком родителя');
+    });
   });
 
   group('Жизненный цикл', () {

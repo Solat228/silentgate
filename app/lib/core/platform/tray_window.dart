@@ -173,6 +173,53 @@ class TrayWindow with WindowListener, TrayListener {
     exit(0); // подписки/таймеры не должны держать мёртвый процесс
   }
 
+  /// ⚠️ ЕДИНСТВЕННАЯ ДОРОГА НАРУЖУ. Ею выходит и пункт трея «Выход», и
+  /// установщик через `QuitProtocol` — и это не борьба с дублированием кода
+  /// ради красоты. Разъехавшиеся копии выхода означали бы, что установщик
+  /// гасит приложение ИНАЧЕ, чем человек: без `disconnect()` в живых остаются
+  /// xray/sing-box (Windows не убивает дочерние процессы вместе с родителем),
+  /// а вместе с ними — системный прокси и TUN-адаптер. Человек получил бы
+  /// машину без интернета сразу после «успешного» обновления.
+  ///
+  /// Ничего не возвращает по существу: последней строкой внутри стоит
+  /// `exit(0)`, то есть будущее, которое не завершится никогда. Вызывающая
+  /// сторона обязана это учитывать (см. `SingleInstance._answerQuit`).
+  static Future<void> quitNow() async {
+    final ctx = instance._ctx;
+    if (ctx != null) {
+      try {
+        // Без гейта на isConnected: disconnect сам no-op при отключённом VPN,
+        // а при «подключении…» корректно гасит уже запущенные процессы.
+        await ctx.read<AppState>().disconnect();
+      } catch (e) {
+        // Отказ отключения не имеет права оставить приложение висеть: файл
+        // exe держит именно процесс, и установщик ждёт его смерти.
+        AppLog.w('Выход: отключение не удалось ($e) — гасим всё равно');
+      }
+    }
+    await instance._destroy();
+  }
+
+  /// ⚠️ ОДНО ОПРЕДЕЛЕНИЕ «VPN АКТИВЕН» НА ВСЁ ПРИЛОЖЕНИЕ.
+  ///
+  /// Учитывается и «подключение…»: xray/sing-box уже могли стартовать, и выход
+  /// без `disconnect` осиротил бы их вместе с системным прокси. Два места, где
+  /// этот вопрос задают (закрытие окна и просьба установщика), обязаны
+  /// отвечать на него одинаково — иначе установщик закрыл бы молча ровно тот
+  /// случай, на котором окно переспрашивает.
+  static bool get vpnActive {
+    final ctx = instance._ctx;
+    if (ctx == null) return false;
+    try {
+      final s = ctx.read<AppState>();
+      return s.status.isConnected ||
+          s.status.state == VpnConnectionState.connecting;
+    } catch (_) {
+      // Дерева нет (ранний старт, тесты без биндинга) — значит и туннеля нет.
+      return false;
+    }
+  }
+
   // ── Закрытие окна ───────────────────────────────────────────────────────────
   @override
   void onWindowClose() async {
@@ -184,10 +231,8 @@ class TrayWindow with WindowListener, TrayListener {
     final controller = ctx.read<SettingsController>();
     final settings = controller.settings;
     final state = ctx.read<AppState>();
-    // Учитываем и «подключение…»: xray/sing-box уже могли стартовать,
-    // а выход без disconnect осиротил бы их вместе с системным прокси.
-    final vpnActive = state.status.isConnected ||
-        state.status.state == VpnConnectionState.connecting;
+    // Одно определение на всё приложение — см. `TrayWindow.vpnActive`.
+    final vpnActive = TrayWindow.vpnActive;
 
     if (settings.closeToTray) {
       // #1.1 — сворачивание; спросить (если не «не спрашивать»)
@@ -280,10 +325,9 @@ class TrayWindow with WindowListener, TrayListener {
         }
         break;
       case 'quit':
-        // Без гейта на isConnected: disconnect сам no-op при отключённом VPN,
-        // а при «подключении…» корректно гасит уже запущенные процессы.
-        if (ctx != null) await ctx.read<AppState>().disconnect();
-        await _destroy();
+        // Та же дорога, которой выходит установщик, — и это обязательное
+        // условие, а не экономия строк (см. `quitNow`).
+        await quitNow();
         break;
     }
   }
@@ -501,7 +545,7 @@ class TrayWindow with WindowListener, TrayListener {
       final l = AppLocalizations.of(ctx);
       // Имя сервера отдаём как есть: это данные, а не интерфейсный текст.
       // Автовыбор имени не имеет — берём ту же подпись, что и главный экран.
-      final server = state.selectedServer?.displayName ?? l.homeAutoBest;
+      final server = state.selectedServer?.displayName ?? l.homeAutoSession;
       return composeTooltip(server: server, speed: speedLine(state.stats));
     } catch (_) {
       // Состояние ещё не подключено к дереву — подсказка не тот повод падать.

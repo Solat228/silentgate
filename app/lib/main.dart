@@ -17,6 +17,7 @@ import 'core/platform/platform_services.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
 import 'core/platform/instance_secret.dart';
+import 'core/platform/quit_protocol.dart';
 import 'core/platform/single_instance.dart';
 import 'core/platform/tray_window.dart';
 import 'core/platform/url_scheme_windows.dart';
@@ -142,8 +143,16 @@ Future<void> main(List<String> args) async {
     // импорт). Значение снимается один раз: файл не меняется при жизни
     // процесса, а файловый ввод-вывод в обработчике входящего соединения
     // задержал бы как раз ту ссылку, которую нетерпеливо ждёт пользователь.
+    // ⚠️ ОБСЛУЖИВАНИЕ ПРОСЬБЫ ВЫЙТИ ЗАВОДИТСЯ ЗДЕСЬ, И БЕЗ ЭТОГО ВСЯ ЗАТЕЯ
+    // МЕРТВА. Установщик получил бы «не достучались» при живом приложении и
+    // вернулся к прежнему ручному диалогу — молча, как будто так и надо.
+    // Ответ «занят» решается ТЕМ ЖЕ определением активности VPN, что и вопрос
+    // при закрытии окна (`TrayWindow.vpnActive`), а гасит приложение ТА ЖЕ
+    // дорога, что и пункт трея «Выход» (`TrayWindow.quitNow`).
     SingleInstance.listen(server, IncomingLinks.add,
-        secret: await InstanceSecret.ensure());
+        secret: await InstanceSecret.ensure(),
+        isVpnActive: () => TrayWindow.vpnActive,
+        onQuit: TrayWindow.quitNow);
 
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
@@ -274,6 +283,16 @@ Future<void> _cleanOldLogs() async {
 /// `VpnService` внутри процесса приложения, а данные при удалении стирает
 /// система.
 Future<bool> _runWindowsCliMode(List<String> args) async {
+  // ⚠️ ПРОСЬБА УСТАНОВЩИКА ЗАКРЫТЬ ПРИЛОЖЕНИЕ — ПЕРВОЙ И ДО `AppInstanceMutex.
+  // acquire()`. Мьютекс — единственное, по чему установщик судит о
+  // запущенности; помощник, взявший его, сам стал бы «запущенным приложением»
+  // и вечно ждал бы, пока освободится он же. Ветка живёт здесь, а не в
+  // `main()`, ровно поэтому: `_runWindowsCliMode` зовётся раньше.
+  final quitForce = QuitProtocol.forceFromArgs(args);
+  if (quitForce != null) {
+    exit(await SingleInstance.requestQuit(force: quitForce));
+  }
+
   // Элевейтнутый TUN-хелпер: запускает sing-box и держит туннель до stop-файла.
   // --tun-task [config] [stop] — запуск из задачи Планировщика (без UAC).
   // Пути передаём ЯВНО (см. TunScheduledTask), фолбэк — %APPDATA% задачи.

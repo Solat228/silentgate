@@ -387,6 +387,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get aboutVersion => 'Версия SilentGate';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (бета)';
+  }
+
+  @override
   String get aboutXrayCore => 'Ядро Xray';
 
   @override
@@ -565,6 +570,41 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'Эндпоинт версии';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'Получать бета-версии';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'Список релизов GitHub, включая пре-релизы, плюс резервный адрес сайта. Автообновление стабильных версий не меняет.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется — бета не придёт тем, кто эту галочку не включал.';
+
+  @override
+  String get appUpdateBetaBadge => 'БЕТА';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'Это пре-релиз — возможны сбои. Автообновление такие версии не рассылает.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'Прежние версии';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'Прежние версии';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'Список — это то, что лежит в GitHub Releases. Каких-то версий там может не быть.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'Список пуст — GitHub Releases недоступен или релизов там нет.';
+
+  @override
+  String get appUpdateOpenRelease => 'Открыть страницу релиза';
 
   @override
   String get urlSchemeSilentgateTitle => 'Ссылки silentgate://';
@@ -754,10 +794,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get homeSettings => 'Настройки';
 
   @override
-  String get homeAutoBest => 'Авто (лучший сервер)';
+  String get homeAutoBest => 'Подобрать сервер';
 
   @override
-  String get homeAutoConfig => 'Автонастройка';
+  String get homeAutoSession => 'Авто (лучший сервер)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return 'проверит все $count и подключится к лучшему';
+  }
+
+  @override
+  String get homeAutoConfig => 'Подобрать настройки';
 
   @override
   String homeServersCount(Object count) {
@@ -1926,7 +1974,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Шесть популярных сервисов проверяются сами: первый раз — при запуске приложения, пока VPN выключен, второй — сразу после подключения. Два кружка рядом показывают «было → стало», чтобы видеть, что изменил именно VPN. Нажатие проверяет сервис заново. Зелёный — открывается, оранжевый — блокировка по стране, красный — недоступен.';
+      'У каждого сервиса два значка: слева — как он открывается без VPN, справа — он же через VPN; стрелка между ними показывает переход. Замер «без VPN» снимается сам при запуске приложения, «через VPN» — сразу после подключения. Кольцо вокруг значка — состояние: зелёное — открывается, оранжевое — блокировка по стране, красное — недоступен, серое — ещё не проверялся. Знак в углу дублирует его: ✓ открывается, ! блокировка по стране, ✕ недоступен. Нажатие на значок проверяет сервис заново. Набор сервисов меняется кнопкой настроек рядом.';
 
   @override
   String get serviceStatusOk => 'Работает';
@@ -2100,7 +2148,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get splitCopyPath => 'Скопировать путь';
 
   @override
-  String get homeServerInfo => 'Информация о сервере';
+  String get homeServerInfo =>
+      'Откуда выходит этот сервер: адрес, страна, провайдер, скорость';
 
   @override
   String get serverInfoVerifyInBrowser => 'Проверить в браузере';
@@ -2214,13 +2263,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Всё равно подключиться';
-
-  @override
-  String get serviceChecksLegendBefore =>
-      'Доступность сервисов проверена без VPN';
-
-  @override
-  String get serviceChecksLegendAfter => 'Слева — без VPN, справа — через VPN';
 
   @override
   String get serviceChecksBefore => 'Без VPN';
@@ -2984,9 +3026,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'Какие сервисы проверять';
-
-  @override
-  String get serviceChecksLegendOff => 'Проверка сервисов выключена';
 
   @override
   String get srvInfoAutoNever =>

@@ -1494,7 +1494,14 @@ List<SettingsRow> _aboutRows(
       search: l.aboutVersion,
       build: (_) => _ValueTile(
         title: l.aboutVersion,
-        load: () async => 'v${(await PackageInfo.fromPlatform()).version}',
+        // ⚠️ Канал — из [AppInfo.channel] (свойство СБОРКИ, задано при
+        // компиляции), а не из PackageInfo: версия exe/apk знает номер, но
+        // не знает, что это бета-сборка — этот признак манифестом не решить,
+        // см. комментарий у `AppInfo.channel`.
+        load: () async {
+          final v = 'v${(await PackageInfo.fromPlatform()).version}';
+          return AppInfo.isBeta ? l.aboutVersionBeta(v) : v;
+        },
       ),
     ),
     SettingsRow(
@@ -1511,7 +1518,8 @@ List<SettingsRow> _aboutRows(
     // Обновление приложения: только проверка и открытие ссылки —
     // ставит пользователь сам (установщик не подписан).
     SettingsRow(
-      search: '${l.appUpdateCheckTitle} ${l.appUpdateEndpointLabel}',
+      search: '${l.appUpdateCheckTitle} ${l.appUpdateEndpointLabel} '
+          '${l.appUpdateBetaChannelTitle} ${l.appUpdatePreviousVersionsButton}',
       build: (_) => const _AppUpdateTile(),
     ),
     SettingsRow(
@@ -2829,17 +2837,27 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
   bool _checking = false;
   String? _status;
 
+  /// Был ли ПОСЛЕДНИЙ проверенный релиз пре-релизом — для плашки «БЕТА» под
+  /// статусом. Отдельное поле, а не чтение `result.release` заново: после
+  /// `setState` результат проверки больше нигде не хранится целиком.
+  bool _lastWasBeta = false;
+
   Future<void> _check() async {
     final l = AppLocalizations.of(context);
+    // ⚠️ Канал — из НАСТРОЕК ПОЛЬЗОВАТЕЛЯ, а не константа: выключенная
+    // галочка обязана давать ровно старое поведение (/releases/latest),
+    // включённая — смотреть список релизов вместе с пре-релизами.
+    final beta = context.read<SettingsController>().settings.betaChannel;
     setState(() {
       _checking = true;
       _status = null;
     });
-    final result = await AppUpdate.check();
+    final result = await AppUpdate.check(beta: beta);
     if (!mounted) return;
     final release = result.release;
     setState(() {
       _checking = false;
+      _lastWasBeta = release?.isBeta ?? false;
       // ⚠️ ТРИ ИСХОДА, А НЕ ДВА. Раньше отказ проверки был неотличим от «у вас
       // последняя версия», и человек с отключённой сетью получал успокоительное
       // «обновлений нет». Здесь причину показываем прямо: кнопку нажали, чтобы
@@ -2860,7 +2878,12 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
     if (!mounted) return;
     AppToast.show(
       context,
-      l.appUpdateAvailable(release.version),
+      // ⚠️ Пре-релиз честно назван ПРЯМО в тосте, а не только мелкой плашкой
+      // под статусом ниже: тост — то, что человек видит, даже если не читал
+      // остальной блок настроек, а ставить бету стоит осознанно.
+      release.isBeta
+          ? '${l.appUpdateAvailable(release.version)} · ${l.appUpdateBetaBadge}'
+          : l.appUpdateAvailable(release.version),
       actionLabel: l.appUpdateDownload,
       onAction: () => UrlOpener.open(target),
     );
@@ -2882,6 +2905,38 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
         ]),
         subtitle: Text(_status ?? l.appUpdateManual),
       ),
+      if (_status != null && _lastWasBeta)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 6,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                const _BetaBadge(),
+                Flexible(
+                  child: Text(l.appUpdateBetaNotice,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+              ],
+            ),
+          ),
+        ),
+      // ⚠️ ГАЛОЧКА МЕНЯЕТ ТОЛЬКО ИСТОЧНИК ЭТОЙ ПРОВЕРКИ, А НЕ АВТООБНОВЛЕНИЕ.
+      // Основной манифест (`silentgate.lol/api/app-version`) бету не отдаёт и
+      // не отдаст, пока владелец сам не решит иначе — см. комментарий у
+      // `AppSettings.betaChannel`.
+      SwitchListTile(
+        dense: true,
+        value: settings.betaChannel,
+        onChanged: (v) => controller.update((s) => s.copyWith(betaChannel: v)),
+        title: Row(children: [
+          Expanded(child: Text(l.appUpdateBetaChannelTitle)),
+          InfoTooltip(l.infoAppUpdateBeta),
+        ]),
+        subtitle: Text(l.appUpdateBetaChannelSubtitle),
+      ),
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
         // ⚠️ ПОЛЯ «ЭНДПОИНТ ВЕРСИИ» ЗДЕСЬ БОЛЬШЕ НЕТ. Оно просило пользователя
@@ -2891,14 +2946,157 @@ class _AppUpdateTileState extends State<_AppUpdateTile> {
         // GitHub, одинаковые для обеих платформ.
         child: Align(
           alignment: Alignment.centerLeft,
-          child: FilledButton.tonal(
-            onPressed: _checking ? null : _check,
-            child: Text(_checking ? '…' : l.commonCheck),
-          ),
+          child: Wrap(spacing: 8, runSpacing: 8, children: [
+            FilledButton.tonal(
+              onPressed: _checking ? null : _check,
+              child: Text(_checking ? '…' : l.commonCheck),
+            ),
+            // Список релизов мы и так спрашиваем ради беты — та же кнопка
+            // не завела бы отдельного сетевого пути, если бы галочка уже
+            // была включена, но UI-путь не делаем зависимым от неё: список
+            // прежних версий полезен и на стабильном канале (осознанный
+            // откат после неудачного обновления).
+            OutlinedButton.icon(
+              onPressed: () => _showPreviousVersions(context),
+              icon: const Icon(Icons.history, size: 18),
+              label: Text(l.appUpdatePreviousVersionsButton),
+            ),
+          ]),
         ),
       ),
     ]);
   }
+}
+
+/// Плашка «БЕТА» — общая для статуса проверки и списка прежних версий,
+/// чтобы пре-релиз выглядел одинаково узнаваемо в обоих местах.
+class _BetaBadge extends StatelessWidget {
+  const _BetaBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        child: Text(
+          l.appUpdateBetaBadge,
+          textDirection: TextDirection.ltr,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: scheme.onTertiaryContainer,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// «Прежние версии» — та же кнопка, что просил владелец: список последних
+/// релизов с GitHub и открытие ссылки на артефакт/страницу. Приложение
+/// НИЧЕГО не скачивает и не запускает — решение проекта из-за SmartScreen
+/// (см. класс-комментарий `AppUpdate`), откат делает сам установщик.
+Future<void> _showPreviousVersions(BuildContext context) async {
+  final l = AppLocalizations.of(context);
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text(l.appUpdatePreviousVersionsTitle),
+      content: SizedBox(
+        width: 420,
+        child: FutureBuilder<List<AppRelease>>(
+          // ⚠️ Без fetcher — настоящая сеть. Список запрашивается ТОЛЬКО по
+          // нажатию кнопки (диалог открывается — future создаётся), а не при
+          // каждом открытии настроек: он не нужен, пока человек явно не
+          // попросил откатиться.
+          future: AppUpdate.fetchReleaseHistory(),
+          builder: (context, snap) {
+            if (!snap.hasData) {
+              return const SizedBox(
+                height: 96,
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            final list = snap.data!;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ⚠️ ЧЕСТНОСТЬ СПИСКА — ПРЯМО В ДИАЛОГЕ. Список — это ровно то,
+                // что лежит в GitHub Releases; если каких-то версий там нет
+                // (см. `docs/HANDOFF_1.11.0.md`), человек должен понимать
+                // причину, а не решать, что приложение сломалось.
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(l.appUpdatePreviousVersionsHint,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ),
+                if (list.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(l.appUpdatePreviousVersionsEmpty),
+                  )
+                else
+                  Flexible(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 320),
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: list.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final r = list[i];
+                          final d = r.publishedAt;
+                          final dateStr = d == null
+                              ? ''
+                              : '${d.year.toString().padLeft(4, '0')}-'
+                                  '${d.month.toString().padLeft(2, '0')}-'
+                                  '${d.day.toString().padLeft(2, '0')}';
+                          return ListTile(
+                            dense: true,
+                            title: Row(children: [
+                              Text('v${r.version}',
+                                  textDirection: TextDirection.ltr),
+                              if (r.isBeta) ...[
+                                const SizedBox(width: 6),
+                                const _BetaBadge(),
+                              ],
+                            ]),
+                            subtitle: dateStr.isEmpty
+                                ? null
+                                : Text(dateStr, textDirection: TextDirection.ltr),
+                            trailing: IconButton(
+                              tooltip: l.appUpdateOpenRelease,
+                              icon: const Icon(Icons.open_in_new, size: 18),
+                              onPressed: () => UrlOpener.open(
+                                (r.downloadUrl ?? '').isNotEmpty
+                                    ? r.downloadUrl!
+                                    : (r.pageUrl ?? AppUpdate.releasesPage),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(l.commonClose)),
+      ],
+    ),
+  );
 }
 
 /// Разовое предложение включить системный always-on VPN (Android).

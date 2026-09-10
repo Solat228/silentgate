@@ -383,6 +383,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get aboutVersion => 'إصدار SilentGate';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (تجريبي)';
+  }
+
+  @override
   String get aboutXrayCore => 'نواة Xray';
 
   @override
@@ -562,6 +567,41 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'نقطة نهاية الإصدار';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'تلقّي الإصدارات التجريبية';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'قائمة إصدارات GitHub بما فيها الإصدارات التجريبية المسبقة، بالإضافة إلى عنوان احتياطي من الموقع. لا يغيّر التحديث التلقائي للإصدارات المستقرة.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر — لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.';
+
+  @override
+  String get appUpdateBetaBadge => 'تجريبي';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'هذا إصدار تجريبي مسبق — قد تحدث أعطال. التحديث التلقائي لا يوزّع هذه الإصدارات.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'إصدارات سابقة';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'إصدارات سابقة';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'هذه القائمة هي ما هو موجود في GitHub Releases. قد تكون بعض الإصدارات غير موجودة.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'القائمة فارغة — GitHub Releases غير متاح أو لا توجد إصدارات.';
+
+  @override
+  String get appUpdateOpenRelease => 'فتح صفحة الإصدار';
 
   @override
   String get urlSchemeSilentgateTitle => 'روابط silentgate://';
@@ -750,10 +790,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeSettings => 'الإعدادات';
 
   @override
-  String get homeAutoBest => 'تلقائي (أفضل خادم)';
+  String get homeAutoBest => 'اختر خادمًا';
 
   @override
-  String get homeAutoConfig => 'التهيئة التلقائية';
+  String get homeAutoSession => 'تلقائي (أفضل خادم)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return 'سيختبر كل الخوادم الـ$count ويتصل بالأفضل';
+  }
+
+  @override
+  String get homeAutoConfig => 'اختر الإعدادات';
 
   @override
   String homeServersCount(Object count) {
@@ -1915,7 +1963,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'تُفحص ست خدمات شائعة تلقائيًا: أولًا عند تشغيل التطبيق وVPN مُطفأ، ثم مرة أخرى فور الاتصال. النقطتان تُظهران «قبل ← بعد» لترى ما غيّره VPN فعلًا. اضغط لإعادة الفحص. أخضر: يفتح، برتقالي: حجب حسب الدولة، أحمر: غير متاح.';
+      'لكل خدمة أيقونتان: اليسرى توضّح كيف تُفتح بدون VPN، واليمنى نفس الخدمة عبر VPN؛ يوضّح السهم بينهما التغيّر. فحص «بدون VPN» يتم تلقائيًا عند تشغيل التطبيق، وفحص «عبر VPN» فور الاتصال. الحلقة حول الأيقونة تبيّن الحالة: أخضر — تُفتح، برتقالي — حجب حسب الدولة، أحمر — غير متاحة، رمادي — لم تُفحص بعد. العلامة في الزاوية تكرر ذلك: ✓ تُفتح، ! حجب حسب الدولة، ✕ غير متاحة. اضغط الأيقونة لإعادة الفحص. مجموعة الخدمات تتغيّر بزر الإعدادات المجاور.';
 
   @override
   String get serviceStatusOk => 'تعمل';
@@ -2090,7 +2138,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splitCopyPath => 'نسخ المسار';
 
   @override
-  String get homeServerInfo => 'معلومات الخادم';
+  String get homeServerInfo =>
+      'من أين يخرج هذا الخادم: العنوان، الدولة، مزود الخدمة، السرعة';
 
   @override
   String get serverInfoVerifyInBrowser => 'تحقق في المتصفح';
@@ -2203,12 +2252,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'الاتصال على أي حال';
-
-  @override
-  String get serviceChecksLegendBefore => 'جرى الفحص من دون VPN';
-
-  @override
-  String get serviceChecksLegendAfter => 'يسارًا — دون VPN، يمينًا — عبر VPN';
 
   @override
   String get serviceChecksBefore => 'دون VPN';
@@ -2971,9 +3014,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'الخدمات التي سيتم فحصها';
-
-  @override
-  String get serviceChecksLegendOff => 'فحص الخدمات معطّل';
 
   @override
   String get srvInfoAutoNever =>

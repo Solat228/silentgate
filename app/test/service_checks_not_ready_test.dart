@@ -45,7 +45,7 @@ void main() {
   const button = SizedBox(key: Key('btn'), width: 148, height: 148);
 
   /// Порог двухпанельной раскладки из `home_screen.dart` — ниже него
-  /// `_ConnectPane` прокручивается, выше держится распорками.
+  /// `ConnectPane` прокручивается, выше держится распорками.
   const twoPaneMinWidth = 760.0;
 
   Widget host(ServiceCheckController ctrl, Widget child,

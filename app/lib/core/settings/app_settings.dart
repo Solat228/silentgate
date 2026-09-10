@@ -755,6 +755,18 @@ class AppSettings {
   /// кто этого не просил.
   final bool appUpdateNotesHidden;
 
+  /// «Получать бета-версии» — по умолчанию ВЫКЛЮЧЕНО.
+  ///
+  /// ⚠️ МЕНЯЕТ ТОЛЬКО ТО, КАКОЙ ЗАПРОС ШЛЁТ ПРОВЕРКА ОБНОВЛЕНИЙ, А НЕ
+  /// ОСНОВНОЙ МАНИФЕСТ АВТООБНОВЛЕНИЯ. Выключено — источники ровно те же,
+  /// что были всегда (`/releases/latest` + `app-version`), пре-релизы туда
+  /// не попадают по определению GitHub. Включено — `AppUpdate.check(beta:
+  /// true)` смотрит СПИСОК релизов (включая пре-релизы) и запасной адрес
+  /// сайта `app-version-beta`. Признак канала в основном манифесте
+  /// намеренно не заводится: это разослало бы бету всем подряд без их
+  /// решения (см. `core/update/app_update_defaults.dart`).
+  final bool betaChannel;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -859,6 +871,7 @@ class AppSettings {
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
     this.appUpdateNotesHidden = false,
+    this.betaChannel = false,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -971,6 +984,7 @@ class AppSettings {
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
     bool? appUpdateNotesHidden,
+    bool? betaChannel,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -1054,6 +1068,7 @@ class AppSettings {
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
       appUpdateNotesHidden:
           appUpdateNotesHidden ?? this.appUpdateNotesHidden,
+      betaChannel: betaChannel ?? this.betaChannel,
     );
   }
 
@@ -1133,6 +1148,7 @@ class AppSettings {
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
         'appUpdateNotesHidden': appUpdateNotesHidden,
+        'betaChannel': betaChannel,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1346,6 +1362,7 @@ class AppSettings {
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,
       appUpdateNotesHidden: j['appUpdateNotesHidden'] as bool? ??
           defaults.appUpdateNotesHidden,
+      betaChannel: j['betaChannel'] as bool? ?? defaults.betaChannel,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.

@@ -1395,7 +1395,7 @@ class AppState extends ChangeNotifier {
     await _maybeStartUpdater();
     AppLog.i('Активная подписка: ${p.title} (${_subServers.length} серверов)');
     if (_status.isConnected) {
-      _pendingRestart = 'Подписка переключена — переподключитесь, чтобы применить';
+      _setPendingRestart('Подписка переключена — переподключитесь, чтобы применить');
     }
     notifyListeners();
   }
@@ -2347,7 +2347,7 @@ class AppState extends ChangeNotifier {
     // #13 — при активном VPN смена сервера НЕ применяется на лету: предлагаем
     // переподключиться, вместо того чтобы молча оставить старый туннель.
     if (_status.isConnected && wasKey != _servers[index].key) {
-      _pendingRestart = 'Выбран другой сервер — переподключитесь, чтобы применить';
+      _setPendingRestart('Выбран другой сервер — переподключитесь, чтобы применить');
     }
     _persist();
     notifyListeners();
@@ -2355,7 +2355,34 @@ class AppState extends ChangeNotifier {
 
   /// #13/#13.1 — что-то изменилось, но применится только после переподключения.
   String? _pendingRestart;
-  String? get pendingRestart => _pendingRestart;
+
+  /// ⚠️ У ПОДСКАЗКИ ЕСТЬ СРОК, И ЭТО ИМЕННО СРОК, А НЕ ФЛАГ.
+  ///
+  /// Просьба владельца от 28.08.2026: плашка «Настройка изменена —
+  /// переподключитесь» висела на главном экране БЕССРОЧНО. Снять её было
+  /// некому: событие одноразовое, «настройку вернули назад» приложению никто
+  /// не сообщает, а пользователь, решивший применить изменение позже, весь
+  /// день смотрел на упрёк.
+  ///
+  /// Флагом это не лечится по той же причине, по которой не лечилась пометка
+  /// о заблокированном сайте: снимать флаг пришлось бы кому-то, а этого
+  /// «кого-то» не существует. Поэтому у заметки есть момент смерти, и его
+  /// уважает сам геттер — даже если таймер по какой-то причине не отработал.
+  ///
+  /// ⚠️ НЕ `const`, И ЭТО НЕ НЕБРЕЖНОСТЬ. Проверить нужно САМО УГАСАНИЕ, а
+  /// тест, честно ждущий минуту, не напишет никто — значит срок остался бы
+  /// непроверенным, то есть известным только из комментария. Тот же приём уже
+  /// применён к пределу чтения локального сокета (`SingleInstance.listen`,
+  /// параметр `timeout`). В бою значение никем не меняется.
+  static Duration pendingRestartTtl = const Duration(minutes: 1);
+  DateTime? _pendingRestartUntil;
+  Timer? _pendingRestartTimer;
+
+  String? get pendingRestart {
+    final until = _pendingRestartUntil;
+    if (until != null && DateTime.now().isAfter(until)) return null;
+    return _pendingRestart;
+  }
 
   /// Чем именно вызван ожидающий перезапуск — для журнала, а не для экрана.
   ///
@@ -2366,15 +2393,38 @@ class AppState extends ChangeNotifier {
   /// Сообщить, что изменилась настройка, требующая переподключения.
   void notePendingRestart(String reason, {List<String> fields = const []}) {
     if (!_status.isConnected) return;
-    _pendingRestart = reason;
+    _setPendingRestart(reason);
     if (fields.isNotEmpty) _pendingRestartDetail = fields.join(', ');
     notifyListeners();
   }
 
   void clearPendingRestart() {
     if (_pendingRestart == null) return;
-    _pendingRestart = null;
+    _setPendingRestart(null);
     notifyListeners();
+  }
+
+  /// Поставить (или снять) заметку об ожидающем перезапуске вместе с её сроком.
+  ///
+  /// ⚠️ ЕДИНСТВЕННОЕ МЕСТО, ГДЕ ЗАМЕТКА МЕНЯЕТСЯ. Второе означало бы заметку
+  /// без срока: она поставилась бы, а погасить её было бы некому — ровно та
+  /// беда, ради которой срок и заводится.
+  void _setPendingRestart(String? reason) {
+    _pendingRestartTimer?.cancel();
+    _pendingRestartTimer = null;
+    _pendingRestart = reason;
+    if (reason == null) {
+      _pendingRestartUntil = null;
+      return;
+    }
+    _pendingRestartUntil = DateTime.now().add(pendingRestartTtl);
+    // ⚠️ ТАЙМЕР НУЖЕН ВДОБАВОК К СРОКУ, А НЕ ВМЕСТО НЕГО: экран читает
+    // `pendingRestart` при перерисовке, а перерисовывать его без уведомления
+    // никто не станет — плашка провисела бы до следующего чужого события.
+    _pendingRestartTimer = Timer(pendingRestartTtl, () {
+      _pendingRestartTimer = null;
+      notifyListeners();
+    });
   }
 
   /// Переподключиться: выключить и снова включить с текущими настройками.
@@ -2405,7 +2455,7 @@ class AppState extends ChangeNotifier {
     // собственная правка пользователя выглядят одинаково.
     AppLog.i('Перезапуск туннеля по команде пользователя'
         '${_pendingRestartDetail.isEmpty ? '' : ' (изменено: $_pendingRestartDetail)'}');
-    _pendingRestart = null;
+    _setPendingRestart(null);
     _pendingRestartDetail = '';
     notifyListeners();
     // ⚠️ Отсчёт таймера ПЕРЕЖИВАЕТ этот перезапуск. Пользователь VPN не
@@ -2712,6 +2762,7 @@ class AppState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _pendingRestartTimer?.cancel();
     _statusSub.cancel();
     _statsSub.cancel();
     _incomingSub.cancel();

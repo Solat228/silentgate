@@ -384,6 +384,11 @@ class AppLocalizationsFa extends AppLocalizations {
   String get aboutVersion => 'نسخه SilentGate';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (بتا)';
+  }
+
+  @override
   String get aboutXrayCore => 'هسته Xray';
 
   @override
@@ -563,6 +568,41 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'نقطه پایانی نسخه';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'دریافت نسخه‌های بتا';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'فهرست انتشارهای گیت‌هاب شامل پیش‌انتشارها، به‌علاوه نشانی پشتیبان سایت. به‌روزرسانی خودکار نسخه‌های پایدار را تغییر نمی‌دهد.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'برنامه از این پس فهرست کامل انتشارهای گیت‌هاب را می‌بیند، شامل پیش‌انتشارها، نه فقط آخرین نسخهٔ پایدار. کانال اصلی به‌روزرسانی خودکار تغییری نمی‌کند — بتا برای کسی که این گزینه را روشن نکرده ارسال نمی‌شود.';
+
+  @override
+  String get appUpdateBetaBadge => 'بتا';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'این یک پیش‌انتشار است — ممکن است خطا رخ دهد. به‌روزرسانی خودکار این نسخه‌ها را ارسال نمی‌کند.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'نسخه‌های قبلی';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'نسخه‌های قبلی';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'این فهرست همان چیزی است که در GitHub Releases وجود دارد. ممکن است برخی نسخه‌ها آنجا نباشند.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'فهرست خالی است — GitHub Releases در دسترس نیست یا انتشاری ندارد.';
+
+  @override
+  String get appUpdateOpenRelease => 'باز کردن صفحهٔ انتشار';
 
   @override
   String get urlSchemeSilentgateTitle => 'لینک‌های silentgate://';
@@ -752,10 +792,18 @@ class AppLocalizationsFa extends AppLocalizations {
   String get homeSettings => 'تنظیمات';
 
   @override
-  String get homeAutoBest => 'خودکار (بهترین سرور)';
+  String get homeAutoBest => 'انتخاب سرور';
 
   @override
-  String get homeAutoConfig => 'پیکربندی خودکار';
+  String get homeAutoSession => 'خودکار (بهترین سرور)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return 'همهٔ $count سرور را آزمایش می‌کند و به بهترین متصل می‌شود';
+  }
+
+  @override
+  String get homeAutoConfig => 'انتخاب تنظیمات';
 
   @override
   String homeServersCount(Object count) {
@@ -1923,7 +1971,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'شش سرویس پرکاربرد خودکار بررسی می‌شوند: نخست هنگام اجرای برنامه و خاموش بودن VPN، سپس بلافاصله پس از اتصال. دو نقطه «پیش ← پس» را نشان می‌دهند تا ببینید VPN واقعاً چه چیزی را تغییر داده است. برای بررسی دوباره ضربه بزنید. سبز: باز می‌شود، نارنجی: مسدودی کشوری، قرمز: در دسترس نیست.';
+      'هر سرویس دو نماد دارد: چپ — چگونگی بازشدنش بدون VPN، راست — همان سرویس از طریق VPN؛ پیکان میان آن‌ها گذار را نشان می‌دهد. بررسی «بدون VPN» خودش هنگام اجرای برنامه انجام می‌شود، «از طریق VPN» بلافاصله پس از اتصال. حلقهٔ دور نماد وضعیت را نشان می‌دهد: سبز — باز می‌شود، نارنجی — مسدودی کشوری، قرمز — در دسترس نیست، خاکستری — هنوز بررسی نشده. نشان گوشه همین را تکرار می‌کند: ✓ باز می‌شود، ! مسدودی کشوری، ✕ در دسترس نیست. زدن روی نماد دوباره بررسی می‌کند. مجموعهٔ سرویس‌ها با دکمهٔ تنظیمات کنارش تغییر می‌کند.';
 
   @override
   String get serviceStatusOk => 'کار می‌کند';
@@ -2095,7 +2143,8 @@ class AppLocalizationsFa extends AppLocalizations {
   String get splitCopyPath => 'کپی مسیر';
 
   @override
-  String get homeServerInfo => 'اطلاعات سرور';
+  String get homeServerInfo =>
+      'این سرور از کجا خارج می‌شود: آدرس، کشور، ارائه‌دهنده، سرعت';
 
   @override
   String get serverInfoVerifyInBrowser => 'بررسی در مرورگر';
@@ -2209,12 +2258,6 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'به‌هرحال متصل شو';
-
-  @override
-  String get serviceChecksLegendBefore => 'بدون VPN بررسی شد';
-
-  @override
-  String get serviceChecksLegendAfter => 'چپ — بدون VPN، راست — از راه VPN';
 
   @override
   String get serviceChecksBefore => 'بدون VPN';
@@ -2971,9 +3014,6 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'چه سرویس‌هایی بررسی شوند';
-
-  @override
-  String get serviceChecksLegendOff => 'بررسی سرویس‌ها خاموش است';
 
   @override
   String get srvInfoAutoNever =>

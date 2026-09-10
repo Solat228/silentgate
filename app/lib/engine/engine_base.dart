@@ -834,14 +834,39 @@ abstract class VpnEngineBase implements VpnEngine {
     // Такая же беда уже была у страницы-заглушки и чинилась в 1.0.3 — здесь она
     // вернулась в новом механизме. Про правило с портом сторож молчит: молчание
     // честнее вранья.
-    final blocked = {
-      for (final x in settings.splitTunnel.sites)
-        if (x.action == AppAction.block && x.port == null)
-          x.domain.trim().toLowerCase(),
-    }..removeWhere((d) => d.isEmpty);
+    //
+    // ⚠️ ГРАНИЦА СТОРОЖА: ПОДДОМЕН, ПОДНЯТЫЙ ВЫШЕ БЛОКА РОДИТЕЛЯ.
+    // Пара «example.com = Блок» + «sub.example.com = Туннель» в МАРШРУТИЗАЦИИ
+    // работает верно с версии 1.0.3: `_sitesNeedingPriority`
+    // (`singbox_config_builder.dart`, ~1437) поднимает конфликтующий поддомен
+    // отдельным правилом ВЫШЕ группы «Блок», трафик уходит в туннель. Но само
+    // ЭТО уведомление сравнивало хост суффиксом ПРОТИВ ОДНОГО множества
+    // (только домены с действием «Блок») и не знало о поддомене вовсе —
+    // `sub.example.com` совпадал по суффиксу с `example.com` и сторож врал
+    // «Сайт заблокирован» сайту, который на самом деле открылся. Лечение —
+    // `exceptions`: домены той же пары (без порта) с ДРУГИМ действием. Они не
+    // копируют алгоритм приоритета из построителя конфига (тот недоступен
+    // здесь — конфиг ядра к этому моменту уже собран и погашен из зоны
+    // ответственности `engine_base.dart`), а используют ту же идею — «более
+    // конкретное правило побеждает» — при сопоставлении единственного хоста,
+    // а не при построении маршрутов для всего трафика. Расхождение с
+    // построителем проверяется тестом на реальном хосте, а не декларацией.
+    final blocked = <String>{};
+    final exceptions = <String>{};
+    for (final x in settings.splitTunnel.sites) {
+      if (x.port != null) continue;
+      final domain = x.domain.trim().toLowerCase();
+      if (domain.isEmpty) continue;
+      if (x.action == AppAction.block) {
+        blocked.add(domain);
+      } else {
+        exceptions.add(domain);
+      }
+    }
     if (blocked.isEmpty) return;
     final w = BlockNoticeWatcher(apiPort: apiPort, secret: secret)
-      ..blocked = blocked;
+      ..blocked = blocked
+      ..exceptions = exceptions;
     w.events.listen((host) {
       if (!_blockedHosts.isClosed) _blockedHosts.add(host);
       emitNotice(EngineNoticeKind.blocked, 'Сайт заблокирован вашим правилом',

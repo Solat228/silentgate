@@ -373,6 +373,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get aboutVersion => 'SilentGate 版本';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version（测试版）';
+  }
+
+  @override
   String get aboutXrayCore => 'Xray 核心';
 
   @override
@@ -548,6 +553,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => '版本端点';
+
+  @override
+  String get appUpdateBetaChannelTitle => '接收测试版';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      '包含预发布版本的 GitHub 发布列表，外加网站的备用地址。不影响稳定版的自动更新。';
+
+  @override
+  String get infoAppUpdateBeta =>
+      '开启后应用会查看 GitHub 完整的发布列表，包括预发布版本，而不只是最新的正式版。主自动更新渠道不受影响——未打开此开关的用户不会收到测试版。';
+
+  @override
+  String get appUpdateBetaBadge => '测试版';
+
+  @override
+  String get appUpdateBetaNotice => '这是一个预发布版本，可能存在问题。自动更新不会推送这类版本。';
+
+  @override
+  String get appUpdatePreviousVersionsButton => '历史版本';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => '历史版本';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      '此列表来自 GitHub Releases，其中可能缺少某些版本。';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      '列表为空——GitHub Releases 无法访问，或没有发布记录。';
+
+  @override
+  String get appUpdateOpenRelease => '打开发布页面';
 
   @override
   String get urlSchemeSilentgateTitle => 'silentgate:// 链接';
@@ -734,10 +773,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeSettings => '设置';
 
   @override
-  String get homeAutoBest => '自动（最佳服务器）';
+  String get homeAutoBest => '选择服务器';
 
   @override
-  String get homeAutoConfig => '自动配置';
+  String get homeAutoSession => '自动（最佳服务器）';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return '将测试全部 $count 个并连接到最佳的';
+  }
+
+  @override
+  String get homeAutoConfig => '选择设置';
 
   @override
   String homeServersCount(Object count) {
@@ -1882,7 +1929,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      '六个常用服务会自动检测：第一次在应用启动、VPN 尚未开启时，第二次在连接成功后立即进行。两个圆点表示“之前 → 之后”，让你看清究竟是不是 VPN 起了作用。点按可重新检测。绿色表示可访问，橙色表示地区限制，红色表示不可达。';
+      '每个服务有两个图标：左边是不使用 VPN 时的可访问情况，右边是使用 VPN 后的同一服务；中间的箭头表示变化。“未使用 VPN”的检测在应用启动时自动进行，“使用 VPN”的检测在连接成功后立即进行。图标周围的圆环表示状态：绿色——可访问，橙色——所在地区被屏蔽，红色——无法访问，灰色——尚未检测。角标重复同样的信息：✓ 可访问，! 地区屏蔽，✕ 无法访问。点按图标可重新检测。旁边的设置按钮可更改服务组合。';
 
   @override
   String get serviceStatusOk => '可用';
@@ -2047,7 +2094,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitCopyPath => '复制路径';
 
   @override
-  String get homeServerInfo => '服务器信息';
+  String get homeServerInfo => '此服务器的出口信息:地址、国家、提供商、速度';
 
   @override
   String get serverInfoVerifyInBrowser => '在浏览器中核对';
@@ -2157,12 +2204,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => '仍然连接';
-
-  @override
-  String get serviceChecksLegendBefore => '已在未开 VPN 时检测';
-
-  @override
-  String get serviceChecksLegendAfter => '左侧为未开 VPN，右侧为经由 VPN';
 
   @override
   String get serviceChecksBefore => '未开 VPN';
@@ -2879,9 +2920,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => '检测哪些服务';
-
-  @override
-  String get serviceChecksLegendOff => '服务检测已关闭';
 
   @override
   String get srvInfoAutoNever => '自动配置尚未检测过该服务器——运行一次即可看到哪些服务能通过它使用。';

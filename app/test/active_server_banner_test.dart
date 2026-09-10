@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +8,7 @@ import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/state/service_check_controller.dart';
 import 'package:silentgate/ui/home_screen.dart';
+import 'package:silentgate/ui/widgets/info_tooltip.dart';
 import 'package:silentgate/ui/widgets/service_checks_row.dart';
 
 /// Жалоба владельца, поданная ДВАЖДЫ: «ты так и не исправил имя сервера,
@@ -16,7 +19,7 @@ import 'package:silentgate/ui/widgets/service_checks_row.dart';
 /// Прошлый страж собирал раскладку сам: `Row` с `Expanded`-заглушками вместо
 /// колонок проверок. Он был зелёным всё время, пока плашка наезжала на
 /// настоящие колонки, — потому что проверял копию, а не экран. Здесь поднимается
-/// ровно тот виджет, который стоит в `_ConnectPane`.
+/// ровно тот виджет, который стоит в `ConnectPane`.
 void main() {
   /// Круг кнопки Connect: 148 px — размер `_ConnectButton` на нормальной высоте
   /// (на низком экране он ужимается до 116, и плашке от этого только просторнее).
@@ -164,6 +167,160 @@ void main() {
           .first);
       expect(vis.visible, isFalse,
           reason: 'место держим, а пустую пилюлю не рисуем');
+    });
+  });
+
+  /// КНОПКИ «i» И ПОДМЕНЮ ЖИВУТ В ПОЛОСЕ ПЛАШКИ, А НЕ СВОЕЙ СТРОКОЙ.
+  ///
+  /// ⚠️ Решение владельца (08.09.2026): легенду «Слева — без VPN…» убрать
+  /// совсем, оставить только «i». Её строка стоила 42 px — ровно те, из-за
+  /// которых низ экрана обрезался на минимальном окне. Кнопки переезжают в
+  /// правый край полосы плашки: та держит высоту всегда
+  /// (`Visibility(maintainSize)`), значит собственного ряда они не стоят.
+  ///
+  /// ⚠️ ЦЕНТРОВКА — СИММЕТРИЧНОЙ РАСПОРКОЙ. Без неё плашка уезжает от оси
+  /// кнопки на половину ширины кнопок — и это видно глазом.
+  group('Хвост полосы плашки', () {
+    const trailingKey = Key('trailing');
+    Widget trailing() => const Row(
+          key: trailingKey,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(width: 28, height: 28),
+            SizedBox(width: 2),
+            SizedBox(width: 28, height: 28),
+          ],
+        );
+
+    Future<void> pumpWithTrailing(WidgetTester t,
+        {required String? name, Widget? tail}) async {
+      t.view.devicePixelRatio = 1.0;
+      t.view.physicalSize = const Size(1040, 900);
+      addTearDown(t.view.reset);
+      await t.pumpWidget(host(SizedBox(
+        width: 584,
+        child: ConnectCenterpiece(
+          serverName: name,
+          httpPort: 10809,
+          button: const SizedBox(
+              key: btnKey, width: buttonSize, height: buttonSize),
+          bannerTrailing: tail,
+        ),
+      )));
+      await t.pump();
+    }
+
+    testWidgets('⚠️ плашка остаётся на оси кнопки', (t) async {
+      await pumpWithTrailing(t, name: ownerName, tail: trailing());
+      expect(t.takeException(), isNull);
+      final label = labelRect(t);
+      final btn = t.getRect(find.byKey(btnKey));
+      expect(label.center.dx, closeTo(btn.center.dx, 1.0),
+          reason: 'хвост сдвинул плашку с оси кнопки на '
+              '${(label.center.dx - btn.center.dx).toStringAsFixed(1)} px');
+    });
+
+    testWidgets('хвост стоит в полосе плашки, у правого края', (t) async {
+      await pumpWithTrailing(t, name: ownerName, tail: trailing());
+      final banner = t.getRect(find.byType(ActiveServerBanner));
+      final tail = t.getRect(find.byKey(trailingKey));
+      final label = labelRect(t);
+      expect(tail.top, greaterThanOrEqualTo(banner.top - 0.5));
+      expect(tail.bottom, lessThanOrEqualTo(banner.bottom + 0.5),
+          reason: 'хвост вылез из полосы плашки');
+      expect(tail.left, greaterThanOrEqualTo(label.right),
+          reason: 'хвост наехал на плашку');
+      expect(tail.right, closeTo(banner.right, 0.5),
+          reason: 'хвост не прижат к правому краю полосы');
+    });
+
+    testWidgets('⚠️ хвост не стоит собственного ряда', (t) async {
+      // Полоса — это плашка плюс просвет до кнопки. Хвост ниже плашки по
+      // высоте, значит полоса с ним обязана быть той же высоты, что и без.
+      await pumpWithTrailing(t, name: ownerName);
+      final plain = t.getSize(find.byType(ActiveServerBanner)).height;
+      await pumpWithTrailing(t, name: ownerName, tail: trailing());
+      final withTail = t.getSize(find.byType(ActiveServerBanner)).height;
+      final label = labelRect(t).height;
+      // Хвост 28 px: если плашка ниже него, полоса растёт ровно до 28 —
+      // и ни на пиксель больше.
+      final expected = (label > 28 ? label : 28) + ActiveServerBanner.gap;
+      expect(withTail, closeTo(expected, 0.5),
+          reason: 'хвост занял собственную строку');
+      expect(withTail, greaterThanOrEqualTo(plain - 0.5),
+          reason: 'полоса с хвостом стала ниже, чем без него');
+    });
+
+    testWidgets('⚠️ НАСТОЯЩИЕ кнопки хвоста тоже не растят полосу', (t) async {
+      // Заглушки выше — 28 px по построению. Настоящие `IconButton` без
+      // зажима тянутся до 40 px областью нажатия Material — и полоса
+      // поднялась бы на 12 px, съев треть выигрыша от убранной легенды.
+      // Проверяем ровно те виджеты, что кладёт в хвост главный экран.
+      await pumpWithTrailing(t, name: ownerName);
+      final plain = t.getSize(find.byType(ActiveServerBanner)).height;
+      await pumpWithTrailing(
+        t,
+        name: ownerName,
+        tail: const Row(
+          key: trailingKey,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InfoTooltip('подсказка', compact: true),
+            SizedBox(width: 2),
+            ServiceChecksMenuButton(),
+          ],
+        ),
+      );
+      expect(t.takeException(), isNull);
+      final withTail = t.getSize(find.byType(ActiveServerBanner)).height;
+      final label = labelRect(t).height;
+      final expected = (label > 28 ? label : 28) + ActiveServerBanner.gap;
+      expect(withTail, closeTo(expected, 0.5),
+          reason: 'настоящие кнопки подняли полосу: было $plain, стало '
+              '$withTail');
+      final tail = t.getRect(find.byKey(trailingKey));
+      expect(tail.height, lessThanOrEqualTo(28.5),
+          reason: 'кнопки хвоста выше 28 px');
+      expect(tail.width, lessThanOrEqualTo(ActiveServerBanner.trailingWidth),
+          reason: 'хвост шире отведённой распорки — центровка уедет');
+      // И обе кнопки нажимаются: «i» открывает диалог.
+      await t.tap(find.byType(InfoTooltip));
+      await t.pumpAndSettle();
+      expect(find.byType(AlertDialog), findsOneWidget);
+    });
+
+    testWidgets('без имени хвост виден всё равно', (t) async {
+      // Кнопкой подменю проверки и включают обратно — прятать её вместе с
+      // плашкой значило бы оставить человека без пути назад.
+      await pumpWithTrailing(t, name: null, tail: trailing());
+      expect(find.byKey(trailingKey), findsOneWidget);
+      final tail = t.getRect(find.byKey(trailingKey));
+      expect(tail.width, greaterThan(0));
+    });
+
+    test('⚠️ страж по исходнику: экран кладёт кнопки в хвост, легенды нет',
+        () {
+      // Виджет с параметром по умолчанию `null` компилятор не проверит:
+      // забытый `bannerTrailing:` молча оставил бы главный экран без «i» и
+      // без подменю — а подменю единственный путь включить проверки обратно.
+      final home = File('lib/ui/home_screen.dart')
+          .readAsLinesSync()
+          .where((l) {
+            final t = l.trimLeft();
+            return !t.startsWith('//') && !t.startsWith('///');
+          })
+          .join(String.fromCharCode(10));
+      final at = home.indexOf('ConnectCenterpiece(');
+      expect(at, greaterThan(0));
+      final call = home.substring(at, at + 1200);
+      expect(call, contains('bannerTrailing:'),
+          reason: 'кнопки «i» и подменю не переданы в полосу плашки');
+      expect(call, contains('ServiceChecksMenuButton('),
+          reason: 'подменю проверок пропало с главного экрана');
+      expect(call, contains('serviceChecksInfo'),
+          reason: 'подсказка «i» пропала с главного экрана');
+      expect(home, isNot(contains('serviceChecksLegend')),
+          reason: 'легенда должна быть убрана целиком — решение владельца');
     });
   });
 

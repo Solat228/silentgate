@@ -384,6 +384,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutVersion => 'SilentGate version';
 
   @override
+  String aboutVersionBeta(Object version) {
+    return '$version (beta)';
+  }
+
+  @override
   String get aboutXrayCore => 'Xray core';
 
   @override
@@ -563,6 +568,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateEndpointLabel => 'Version endpoint';
+
+  @override
+  String get appUpdateBetaChannelTitle => 'Receive beta versions';
+
+  @override
+  String get appUpdateBetaChannelSubtitle =>
+      'GitHub releases list, including pre-releases, plus a fallback site address. Doesn\'t affect stable auto-update.';
+
+  @override
+  String get infoAppUpdateBeta =>
+      'The app will start checking the full GitHub releases list, including pre-releases, not just the latest stable one. The main auto-update channel doesn\'t change — beta won\'t reach anyone who hasn\'t enabled this switch.';
+
+  @override
+  String get appUpdateBetaBadge => 'BETA';
+
+  @override
+  String get appUpdateBetaNotice =>
+      'This is a pre-release — expect possible issues. Auto-update doesn\'t distribute these versions.';
+
+  @override
+  String get appUpdatePreviousVersionsButton => 'Previous versions';
+
+  @override
+  String get appUpdatePreviousVersionsTitle => 'Previous versions';
+
+  @override
+  String get appUpdatePreviousVersionsHint =>
+      'This list is what\'s in GitHub Releases. Some versions may be missing.';
+
+  @override
+  String get appUpdatePreviousVersionsEmpty =>
+      'List is empty — GitHub Releases is unreachable or has no releases.';
+
+  @override
+  String get appUpdateOpenRelease => 'Open release page';
 
   @override
   String get urlSchemeSilentgateTitle => 'silentgate:// links';
@@ -752,10 +792,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeSettings => 'Settings';
 
   @override
-  String get homeAutoBest => 'Auto (best server)';
+  String get homeAutoBest => 'Pick a server';
 
   @override
-  String get homeAutoConfig => 'Auto-configuration';
+  String get homeAutoSession => 'Auto (best server)';
+
+  @override
+  String homeAutoBestHint(int count) {
+    return 'will test all $count and connect to the best';
+  }
+
+  @override
+  String get homeAutoConfig => 'Pick settings';
 
   @override
   String homeServersCount(Object count) {
@@ -1924,7 +1972,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Six popular services are checked automatically: first at app start while the VPN is off, then again right after connecting. The two dots show \"before → after\", so you can see what the VPN actually changed. Tap to re-check. Green — opens, orange — blocked by region, red — unreachable.';
+      'Each service has two icons: on the left — how it opens without VPN, on the right — the same service through VPN; the arrow between them shows the change. The \"without VPN\" check runs on its own at app start, \"through VPN\" — right after connecting. The ring around the icon shows status: green — opens, orange — blocked by country, red — unreachable, grey — not checked yet. The corner mark repeats it: ✓ opens, ! blocked by country, ✕ unreachable. Tap the icon to re-check. The service set changes with the settings button nearby.';
 
   @override
   String get serviceStatusOk => 'Works';
@@ -2096,7 +2144,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitCopyPath => 'Copy path';
 
   @override
-  String get homeServerInfo => 'Server info';
+  String get homeServerInfo =>
+      'Where this server exits from: address, country, provider, speed';
 
   @override
   String get serverInfoVerifyInBrowser => 'Verify in browser';
@@ -2210,14 +2259,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get conflictConnectAnyway => 'Connect anyway';
-
-  @override
-  String get serviceChecksLegendBefore =>
-      'Service availability checked without VPN';
-
-  @override
-  String get serviceChecksLegendAfter =>
-      'Left — without VPN, right — through VPN';
 
   @override
   String get serviceChecksBefore => 'Without VPN';
@@ -2976,9 +3017,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceChecksMenuTooltip => 'Which services to check';
-
-  @override
-  String get serviceChecksLegendOff => 'Service checks are off';
 
   @override
   String get srvInfoAutoNever =>
