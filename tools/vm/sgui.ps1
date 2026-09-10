@@ -38,6 +38,10 @@ public class SgUi {
   [DllImport("user32.dll")] public static extern bool MoveWindow(IntPtr h, int x, int y, int w, int ht, bool repaint);
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool GetCursorPos(out POINT p);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string title);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, System.Text.StringBuilder sb, int max);
+  [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, System.Text.StringBuilder sb, int max);
+  [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, uint msg, IntPtr wp, IntPtr lp);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [StructLayout(LayoutKind.Sequential)] public struct POINT { public int X, Y; }
@@ -79,7 +83,18 @@ function Find-AppWindow {
   # ⚠️ Перебором EnumWindows, а НЕ через MainWindowHandle: у окна Flutter он
   # бывает нулевым, и «окно не найдено» тогда означает лишь неудачный способ
   # спросить.
-  $procs = Get-Process silentgate -ErrorAction SilentlyContinue
+  #
+  # $Name — имя процесса. Умолчание «silentgate», но снимать нужно и чужие окна:
+  # диалог установщика при активном VPN проверяется только так.
+  # $MinW/$MinH — порог отсева служебных окон. У Flutter их несколько нулевого
+  # размера, зато диалог установщика заметно меньше главного окна, и жёсткие
+  # 300×300 отсеяли бы как раз его.
+  param(
+    [string]$Name = 'silentgate',
+    [int]$MinW = 300,
+    [int]$MinH = 300
+  )
+  $procs = Get-Process $Name -ErrorAction SilentlyContinue
   if (-not $procs) { return [IntPtr]::Zero }
   $pids = @($procs | ForEach-Object { [uint32]$_.Id })
   # ⚠️ Именно $script:, и именно с инициализацией. Колбэк EnumWindows живёт в
@@ -95,7 +110,7 @@ function Find-AppWindow {
       $r = New-Object SgUi+RECT
       [void][SgUi]::GetClientRect($h, [ref]$r)
       # Отсекаем служебные окна нулевого размера: у Flutter их несколько.
-      if (($r.R - $r.L) -gt 300 -and ($r.B - $r.T) -gt 300) { $script:found = $h; return $false }
+      if (($r.R - $r.L) -gt $MinW -and ($r.B - $r.T) -gt $MinH) { $script:found = $h; return $false }
     }
     return $true
   }
@@ -170,8 +185,14 @@ try {
         Start-Sleep -Milliseconds 400
       }
       'shot' {
+        # ⚠️ ОКОННЫЙ прямоугольник, а НЕ клиентский, и это не придирка.
+        # `PrintWindow` рисует окно ЦЕЛИКОМ — вместе с заголовком и рамкой.
+        # Пока холст брался по `GetClientRect`, каждый снимок терял нижние
+        # ~31 px (высоту заголовка), и обрезанная последняя строка выглядела
+        # как дефект вёрстки. 10.09.2026 на этом чуть не завели ложную находку
+        # про «низ главного экрана снова не влезает».
         $r = New-Object SgUi+RECT
-        [void][SgUi]::GetClientRect($h, [ref]$r)
+        [void][SgUi]::GetWindowRect($h, [ref]$r)
         $w = $r.R - $r.L; $ht = $r.B - $r.T
         $bmp = New-Object System.Drawing.Bitmap($w, $ht)
         $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -184,6 +205,77 @@ try {
         $bmp.Save($out, [System.Drawing.Imaging.ImageFormat]::Png)
         $bmp.Dispose()
         Say "shot ${w}x${ht} PrintWindow=$ok -> $out"
+      }
+      'resize' {
+        # `resize <ширина> <высота>` — задать РАЗМЕР ОКНА (не клиентской
+        # области). Нужно, чтобы снимать вёрстку на минимальном окне 980×800:
+        # именно на нём владелец и видит, что низ прячется, а окно по
+        # умолчанию 1040×820 эту беду скрывает.
+        $wr3 = New-Object SgUi+RECT
+        [void][SgUi]::GetWindowRect($h, [ref]$wr3)
+        [void][SgUi]::MoveWindow($h, $wr3.L, $wr3.T, [int]$a[1], [int]$a[2], $true)
+        Start-Sleep -Milliseconds 700
+        $wr4 = New-Object SgUi+RECT
+        [void][SgUi]::GetWindowRect($h, [ref]$wr4)
+        Say "resize $($a[1])x$($a[2]) -> вышло $($wr4.R - $wr4.L)x$($wr4.B - $wr4.T)"
+      }
+      'cmdid' {
+        # ⚠️ САМЫЙ НАДЁЖНЫЙ СПОСОБ НАЖАТЬ КНОПКУ ДИАЛОГА — послать ему код
+        # результата, а не искать окно кнопки и не двигать мышь.
+        # Мышь и клавиатура в госте без VMConnect не доходят вовсе (рабочий
+        # стол блокировки), а перечисление детей у диалога Inno возвращает
+        # пусто. `WM_COMMAND` с идентификатором работает и там, и там.
+        # Коды: 1=ОК, 2=Отмена, 6=Да, 7=Нет, 100+ — кнопки TaskDialog.
+        $id = [int]$a[1]
+        [void][SgUi]::SendMessage($h, 0x0111, [IntPtr]$id, [IntPtr]::Zero)  # WM_COMMAND
+        Say "cmdid $id -> отправлено WM_COMMAND"
+        Start-Sleep -Milliseconds 600
+      }
+      'press' {
+        # ⚠️ НАЖАТИЕ СООБЩЕНИЕМ, А НЕ МЫШЬЮ — И ЭТО НЕ УДОБСТВО.
+        # 10.09.2026 выяснилось: в госте без подключённого VMConnect сеанс
+        # держит рабочий стол блокировки, и НИ `SendInput`, НИ `keybd_event`
+        # до окон не доходят — при том что `PrintWindow` снимает их прекрасно.
+        # Выглядит это молча: журнал говорит «SendInput принял 3 из 3», а на
+        # экране ничего не меняется. `BM_CLICK` идёт прямо окну кнопки и от
+        # фокуса ввода не зависит вовсе.
+        #
+        # Ищем среди ПРЯМЫХ детей окна кнопку, чья подпись содержит заданный
+        # текст (амперсанды подчёркивания в подписях выкидываем).
+        $want = ($a[1..($a.Count-1)] -join ' ')
+        $child = [IntPtr]::Zero
+        $hit = [IntPtr]::Zero
+        $seen = @()
+        while ($true) {
+          $child = [SgUi]::FindWindowEx($h, $child, $null, $null)
+          if ($child -eq [IntPtr]::Zero) { break }
+          $sb = New-Object System.Text.StringBuilder 256
+          [void][SgUi]::GetWindowText($child, $sb, 256)
+          $txt = $sb.ToString().Replace('&','')
+          $cb = New-Object System.Text.StringBuilder 128
+          [void][SgUi]::GetClassName($child, $cb, 128)
+          if ($txt) { $seen += "$($cb.ToString()):$txt" }
+          if ($txt -and $txt -like "*$want*") { $hit = $child; break }
+        }
+        if ($hit -eq [IntPtr]::Zero) {
+          Say "press '$want' -> КНОПКА НЕ НАЙДЕНА; на окне есть: $($seen -join ' | ')"
+        } else {
+          [void][SgUi]::SendMessage($hit, 0x00F5, [IntPtr]::Zero, [IntPtr]::Zero)  # BM_CLICK
+          Say "press '$want' -> отправлено BM_CLICK"
+        }
+        Start-Sleep -Milliseconds 500
+      }
+      'use' {
+        # Переключить окно: `use <имя процесса>`. Порог размера снижен —
+        # диалоги заметно меньше главного окна.
+        $nm = if ($a.Count -gt 1) { $a[1] } else { 'silentgate' }
+        # Порог можно задать: `use <имя> <minW> <minH>`. Диалог «закрыть
+        # приложение?» у Inno меньше 200×100, и умолчание его отсеивало.
+        $mw = if ($a.Count -gt 2) { [int]$a[2] } else { 200 }
+        $mh = if ($a.Count -gt 3) { [int]$a[3] } else { 100 }
+        $h2 = Find-AppWindow -Name $nm -MinW $mw -MinH $mh
+        if (-not $h2 -or $h2 -eq [IntPtr]::Zero) { Say "use $nm -> ОКНО НЕ НАЙДЕНО" }
+        else { $h = $h2; [void][SgUi]::ShowWindow($h, 9); [void][SgUi]::SetForegroundWindow($h); Say "use $nm -> окно найдено" }
       }
       default { Say "неизвестная команда: $t" }
     }

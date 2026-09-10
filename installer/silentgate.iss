@@ -503,9 +503,12 @@ begin
   Result := SuppressibleTaskDialogMsgBox(
     CustomMessage('QuitVpnTitle'),
     CustomMessage('QuitVpnText'),
-    mbConfirmation, MB_YESNOCANCEL,
-    [CustomMessage('QuitBtnClose'), CustomMessage('QuitBtnSelf'),
-     CustomMessage('QuitBtnCancel')],
+    { ⚠️ ОТКРЫВАЮЩАЯ СКОБКА МАССИВА ОБЯЗАНА СТОЯТЬ В КОНЦЕ ЭТОЙ СТРОКИ.
+      Inno считает секцией ЛЮБУЮ строку, чей первый непробельный символ — `[`,
+      отступ его не спасает. Перенесённая на свою строку скобка даёт
+      «Error on line NNN: Invalid section tag» и обрывает компиляцию целиком. }
+    mbConfirmation, MB_YESNOCANCEL, [CustomMessage('QuitBtnClose'),
+    CustomMessage('QuitBtnSelf'), CustomMessage('QuitBtnCancel')],
     0, IDCANCEL);
 end;
 

@@ -39,25 +39,28 @@ class AutoPickServerButton extends StatelessWidget {
     final button = FilledButton.tonalIcon(
       icon: const Icon(Icons.bolt),
       label: wide
-          ? Row(
+          // ⚠️ ПОЯСНЕНИЕ ПОД ПОДПИСЬЮ, А НЕ СПРАВА ОТ НЕЁ.
+          //
+          // Живой прогон в VM 10.09.2026, минимальное окно 980×800: панель
+          // списка там 380 px, и в строку «Подобрать сервер» + пояснение не
+          // помещались — многоточие съедало ровно то, ради чего размещение и
+          // выбирали («текст не особо понятен», требование владельца). Две
+          // строки стоят ~18 px высоты панели и ничего больше не двигают,
+          // а обрезанное пояснение бесполезно целиком.
+          ? Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Flexible(
-                  child: Text(l.homeAutoBest,
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                ),
-                const SizedBox(width: 8),
-                // Пояснение — мелким серым: это подпись к действию, а не
-                // второе действие. `Flexible` + многоточие обязательны:
-                // панель бывает 380 px, а системный шрифт — крупным.
-                Flexible(
-                  child: Text(
-                    l.homeAutoBestHint(state.servers.length),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.outline),
-                  ),
+                Text(l.homeAutoBest,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  l.homeAutoBestHint(state.servers.length),
+                  // Две строки: на турецком и немецком подпись длиннее русской,
+                  // и в одну она не укладывается даже на своей строке.
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.outline),
                 ),
               ],
             )
