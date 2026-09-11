@@ -376,6 +376,7 @@
   "subBarValidPerpetual": "Valid: unlimited  {auto}",
   "subBarExpired": "Subscription expired:",
   "subBarValidUntil": "Valid until:",
+  "subBarAnnounce": "Announcement from the panel",
   "subSwitcherPingAll": "Ping servers of all subscriptions",
   "subSwitcherPingBusySpeed": "Ping unavailable: a speed test is running",
   "subSwitcherExpired": "Expired",

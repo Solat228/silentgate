@@ -1788,6 +1788,12 @@ abstract class AppLocalizations {
   /// **'Действует до:'**
   String get subBarValidUntil;
 
+  /// No description provided for @subBarAnnounce.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявление от панели'**
+  String get subBarAnnounce;
+
   /// No description provided for @subSwitcherPingAll.
   ///
   /// In ru, this message translates to:

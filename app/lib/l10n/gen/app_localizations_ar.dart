@@ -964,6 +964,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subBarValidUntil => 'صالح حتى:';
 
   @override
+  String get subBarAnnounce => 'إعلان من اللوحة';
+
+  @override
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override

@@ -980,6 +980,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subBarValidUntil => 'Gültig bis:';
 
   @override
+  String get subBarAnnounce => 'Ankündigung vom Panel';
+
+  @override
   String get subSwitcherPingAll => 'Server aller Abos testen';
 
   @override

@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "صالح: غير محدود  {auto}",
   "subBarExpired": "انتهى الاشتراك:",
   "subBarValidUntil": "صالح حتى:",
+  "subBarAnnounce": "إعلان من اللوحة",
   "subSwitcherPingAll": "اختبار خوادم كل الاشتراكات",
   "subSwitcherPingBusySpeed": "قياس زمن الاستجابة غير متاح: يجري الآن اختبار السرعة",
   "subSwitcherExpired": "منتهٍ",

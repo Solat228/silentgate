@@ -984,6 +984,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subBarValidUntil => 'Valide jusqu\'au :';
 
   @override
+  String get subBarAnnounce => 'Annonce du panneau';
+
+  @override
   String get subSwitcherPingAll =>
       'Tester les serveurs de tous les abonnements';
 

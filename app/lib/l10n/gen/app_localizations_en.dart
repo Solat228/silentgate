@@ -967,6 +967,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subBarValidUntil => 'Valid until:';
 
   @override
+  String get subBarAnnounce => 'Announcement from the panel';
+
+  @override
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override

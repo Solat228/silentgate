@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "Válida: ilimitada  {auto}",
   "subBarExpired": "Assinatura expirada:",
   "subBarValidUntil": "Válida até:",
+  "subBarAnnounce": "Anúncio do painel",
   "subSwitcherPingAll": "Testar os servidores de todas as assinaturas",
   "subSwitcherPingBusySpeed": "Ping indisponível: há um teste de velocidade em andamento",
   "subSwitcherExpired": "Expirada",

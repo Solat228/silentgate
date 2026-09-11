@@ -415,6 +415,7 @@
   "subBarValidPerpetual": "Действует: бессрочно  {auto}",
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
+  "subBarAnnounce": "Объявление от панели",
   "subSwitcherPingAll": "Пинг серверов всех подписок",
   "subSwitcherPingBusySpeed": "Пинг недоступен: идёт замер скорости",
   "subSwitcherExpired": "Истекла",

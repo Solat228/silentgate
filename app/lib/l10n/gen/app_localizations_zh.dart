@@ -944,6 +944,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subBarValidUntil => '有效期至：';
 
   @override
+  String get subBarAnnounce => '面板公告';
+
+  @override
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override

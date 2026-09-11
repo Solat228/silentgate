@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "Gültig: unbegrenzt  {auto}",
   "subBarExpired": "Abonnement abgelaufen:",
   "subBarValidUntil": "Gültig bis:",
+  "subBarAnnounce": "Ankündigung vom Panel",
   "subSwitcherPingAll": "Server aller Abos testen",
   "subSwitcherPingBusySpeed": "Ping nicht verfügbar: Es läuft gerade eine Geschwindigkeitsmessung",
   "subSwitcherExpired": "Abgelaufen",

@@ -968,6 +968,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subBarValidUntil => 'معتبر تا:';
 
   @override
+  String get subBarAnnounce => 'اعلان از پنل';
+
+  @override
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override

@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "有效期：无限期  {auto}",
   "subBarExpired": "订阅已过期：",
   "subBarValidUntil": "有效期至：",
+  "subBarAnnounce": "面板公告",
   "subSwitcherPingAll": "测试全部订阅的服务器",
   "subSwitcherPingBusySpeed": "无法测延迟：正在进行测速",
   "subSwitcherExpired": "已过期",

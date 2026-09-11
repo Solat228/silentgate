@@ -980,6 +980,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get subBarValidUntil => 'Válida até:';
 
   @override
+  String get subBarAnnounce => 'Anúncio do painel';
+
+  @override
   String get subSwitcherPingAll =>
       'Testar os servidores de todas as assinaturas';
 

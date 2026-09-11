@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "Valide : illimité  {auto}",
   "subBarExpired": "Abonnement expiré :",
   "subBarValidUntil": "Valide jusqu'au :",
+  "subBarAnnounce": "Annonce du panneau",
   "subSwitcherPingAll": "Tester les serveurs de tous les abonnements",
   "subSwitcherPingBusySpeed": "Ping indisponible : un test de débit est en cours",
   "subSwitcherExpired": "Expiré",

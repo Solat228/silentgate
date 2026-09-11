@@ -40,6 +40,18 @@ rem обычная сборка (переменная не задана) остаётся стабильной без канала.
 rem Прочитается в "О программе" через AppInfo.channel (String.fromEnvironment).
 set "CHANNEL_DEFINE="
 if defined SILENTGATE_CHANNEL set "CHANNEL_DEFINE=--dart-define=SILENTGATE_CHANNEL=%SILENTGATE_CHANNEL%"
+
+rem === Версия для имени артефактов (контракт с сайтом, docs\APP_UPDATE_SERVER.md) ===
+rem pubspec хранит "X.Y.Z+N" - билд-номер после + сайту не нужен, срезаем.
+for /f "tokens=2 delims=: " %%v in ('findstr /b "version:" "%JUNCTION%\app\pubspec.yaml"') do set "PUBVER=%%v"
+for /f "tokens=1 delims=+" %%p in ("%PUBVER%") do set "VER=%%p"
+if not defined VER (
+  echo.
+  echo === Не удалось прочитать версию из pubspec.yaml ===
+  pause
+  exit /b 1
+)
+
 echo Сборка release...
 call "%FLUTTER%" build windows --release %CHANNEL_DEFINE%
 if errorlevel 1 (
@@ -89,11 +101,49 @@ if errorlevel 1 (
   echo [i] Сертификат не задан ^(SIGN_PFX / SIGN_THUMBPRINT^) - подпись пропущена.
 )
 
+rem ==== Портативный архив (контракт с сайтом, docs\APP_UPDATE_SERVER.md) ====
+rem Собираем ПОСЛЕ подписи - в архив должен попасть уже подписанный exe.
+rem !! Метка portable.txt кладётся ТОЛЬКО в архив, а НЕ в %REL% - иначе
+rem обычная (не портативная) установка, собранная тем же REL, начала бы
+rem писать данные рядом с собой вместо %APPDATA%, и инсталлятор молча
+rem унаследовал бы портативный режим.
+set "PORTSTAGE=%TEMP%\sg-portable-stage"
+if exist "%PORTSTAGE%" rmdir /s /q "%PORTSTAGE%"
+mkdir "%PORTSTAGE%\SilentGate"
+robocopy "%REL%" "%PORTSTAGE%\SilentGate" /E /NFL /NDL /NJH /NJS /NP >nul
+if errorlevel 8 (
+  echo.
+  echo === Не удалось скопировать Release для портативной сборки ===
+  pause
+  exit /b 1
+)
+> "%PORTSTAGE%\SilentGate\portable.txt" (
+  echo Портативная сборка SilentGate.
+  echo.
+  echo Обновление: распакуйте новый архив поверх этой папки. Папка sg-data -
+  echo в ней подписки, настройки и журнал - трогать не нужно, архив её не
+  echo содержит и не заменит.
+  echo.
+  echo Не удаляйте этот файл. По его наличию приложение узнаёт, что данные
+  echo нужно хранить рядом с собой, а не в %%APPDATA%%. Удалите его - и
+  echo приложение перейдёт на обычный каталог данных Windows.
+)
+set "PORTZIP=%JUNCTION%\app\build\windows\x64\runner\SilentGate-Portable-%VER%.zip"
+if exist "%PORTZIP%" del /q "%PORTZIP%"
+powershell -NoProfile -Command "Compress-Archive -Path '%PORTSTAGE%\SilentGate' -DestinationPath '%PORTZIP%' -Force"
+if not exist "%PORTZIP%" (
+  echo.
+  echo === Портативный архив не собрался ===
+  pause
+  exit /b 1
+)
+rmdir /s /q "%PORTSTAGE%"
+
 echo.
 echo === ГОТОВО ===
-for /f "tokens=2 delims=: " %%v in ('findstr /b "version:" "%JUNCTION%\app\pubspec.yaml"') do set "VER=%%v"
 echo Версия:     %VER%
 if defined SILENTGATE_CHANNEL echo Канал:      %SILENTGATE_CHANNEL%
 echo Приложение: %REL%\silentgate.exe
+echo Портатив:   %PORTZIP%
 start "" "%REL%"
 endlocal

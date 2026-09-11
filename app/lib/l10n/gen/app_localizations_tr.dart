@@ -975,6 +975,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subBarValidUntil => 'Geçerlilik tarihi:';
 
   @override
+  String get subBarAnnounce => 'Panel duyurusu';
+
+  @override
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override

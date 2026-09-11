@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "Geçerli: sınırsız  {auto}",
   "subBarExpired": "Aboneliğin süresi doldu:",
   "subBarValidUntil": "Geçerlilik tarihi:",
+  "subBarAnnounce": "Panel duyurusu",
   "subSwitcherPingAll": "Tüm aboneliklerin sunucularını sına",
   "subSwitcherPingBusySpeed": "Ping kullanılamıyor: hız ölçümü sürüyor",
   "subSwitcherExpired": "Süresi doldu",

@@ -304,6 +304,7 @@
   "subBarValidPerpetual": "اعتبار: نامحدود  {auto}",
   "subBarExpired": "اشتراک منقضی شد:",
   "subBarValidUntil": "معتبر تا:",
+  "subBarAnnounce": "اعلان از پنل",
   "subSwitcherPingAll": "آزمودن سرورهای همهٔ اشتراک‌ها",
   "subSwitcherPingBusySpeed": "پینگ در دسترس نیست: آزمایش سرعت در حال اجراست",
   "subSwitcherExpired": "منقضی",
