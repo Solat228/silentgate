@@ -225,11 +225,16 @@ object PlatformChannels {
             "coreVersions" -> result.success(
                 mapOf(
                     "singbox" to runCatching { Libbox.version() }.getOrNull(),
-                    // ⚠️ Версию Xray libXray отдаёт только через конверт
-                    // Invoke(json) — отдельный метод `xrayVersion()` в биндинге
-                    // отсутствует. Пока не разобран формат ответа, честно не
-                    // выдумываем: пустое значение интерфейс покажет как прочерк.
-                    "xray" to null,
+                    // Версия Xray — через конверт `LibXray.invoke`: отдельного
+                    // метода у биндинга нет. Здесь стояла заглушка `"xray" to
+                    // null` («формат не разобран»), и в «О программе» на
+                    // телефоне висел прочерк, пока Windows показывал номер.
+                    // Формат разобран по исходнику libXray — см. xrayVersion().
+                    //
+                    // ⚠️ Любой сбой — null, а не исключение: прочерк честнее
+                    // выдуманного номера, и из-за Xray не должен пропадать
+                    // ответ целиком вместе с версией sing-box.
+                    "xray" to runCatching { xrayVersion() }.getOrNull(),
                 )
             )
 
@@ -278,6 +283,54 @@ object PlatformChannels {
             )
             else -> handleDeviceRest(context, method, result)
         }
+    }
+
+    /**
+     * Команда версии в конверте libXray — имя из `invoke_model.go`
+     * (`LibXrayMethodXrayVersion = "xrayVersion"`).
+     *
+     * ⚠️ Регистр значим: на `XrayVersion` или `xray_version` ядро ответит
+     * `{"success":false,"error":"unknown method"}`, и прочерк вернётся молча.
+     * Страж `test/android_core_versions_test.dart` сверяет константу с
+     * исходником libXray, когда тот есть на машине.
+     */
+    private const val XRAY_VERSION_METHOD = "xrayVersion"
+
+    /**
+     * Версия Xray из конверта `LibXray.invoke`.
+     *
+     * Запрос: `{"apiVersion":1,"method":"xrayVersion"}` (payload у команды
+     * нет). Ответ: `{"success":true,"data":{"version":"26.3.27"},"error":""}`.
+     * Тип `XrayVersionResponse` в AAR есть, но `invoke` отдаёт строку JSON, а
+     * не объект, — разбираем текст. Возвращает null, если ядро отказало или
+     * версии в ответе нет; исключения не ловит — это делает вызывающая ветка.
+     */
+    internal fun xrayVersion(): String? {
+        val raw = LibXray.invoke("""{"apiVersion":1,"method":"$XRAY_VERSION_METHOD"}""")
+        val parsed = parseXrayVersion(raw)
+        if (parsed == null) {
+            // Тот же принцип, что у пинга: ответ ядра ОБЯЗАН попасть в лог,
+            // иначе «прочерк вместо версии» не разобрать ничем.
+            android.util.Log.w("SilentGateCore", "xrayVersion: $raw")
+        }
+        return parsed
+    }
+
+    /**
+     * Строка версии из ответа конверта; `success:false` или пустая версия → null.
+     *
+     * Разбор через `org.json`, а не регулярку: строка версии может нести что
+     * угодно (`26.3.27-custom`), и «поймать первое `version`» в тексте ошибки
+     * было бы гаданием.
+     */
+    internal fun parseXrayVersion(raw: String?): String? {
+        val body = raw?.trim().orEmpty()
+        if (body.isEmpty()) return null
+        val json = org.json.JSONObject(body)
+        // Служебный отказ ядра версии не содержит по определению.
+        if (!json.optBoolean("success", false)) return null
+        val data = json.optJSONObject("data") ?: return null
+        return data.optString("version", "").trim().ifEmpty { null }
     }
 
     /// Иконка приложения в PNG.
