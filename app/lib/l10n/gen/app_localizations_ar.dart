@@ -3070,6 +3070,12 @@ class AppLocalizationsAr extends AppLocalizations {
       'بيانات آخر تشغيل للضبط التلقائي. لا يُجرى هنا أي قياس جديد.';
 
   @override
+  String get srvInfoSectionSession => 'الاتصال الحالي';
+
+  @override
+  String get srvInfoSessionUptime => 'مدة الاتصال';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: يمكن الوصول إليه عبر هذا الخادم لكنه غير متاح في بلد الخروج. الخادم نفسه سليم — هذه الخدمات وحدها لا تعمل، وتحتاج إلى خادم في بلد آخر.';
   }

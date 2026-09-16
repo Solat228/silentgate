@@ -1198,6 +1198,8 @@
   "srvInfoAutoNever": "La configuración automática aún no ha comprobado este servidor: ejecútala para ver qué servicios funcionan a través de él.",
   "srvInfoAutoHint": "Datos de la última ejecución de la configuración automática. Aquí no se vuelve a medir nada.",
   "srvInfoAutoGeoNote": "{services}: se abre a través de este servidor, pero no está disponible en su país de salida. El servidor funciona bien: solo fallan estos servicios; para ellos necesitas una salida en otro país.",
+  "srvInfoSectionSession": "Conexión actual",
+  "srvInfoSessionUptime": "Tiempo de conexión",
   "settingsSectionChecks": "Comprobación de servicios",
   "settingsSectionAutotune": "Configuración automática",
   "settingsSpeedRankTitle": "Tener en cuenta la velocidad en la selección automática",

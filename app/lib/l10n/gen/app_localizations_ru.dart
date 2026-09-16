@@ -3081,6 +3081,12 @@ class AppLocalizationsRu extends AppLocalizations {
       'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.';
 
   @override
+  String get srvInfoSectionSession => 'Текущее подключение';
+
+  @override
+  String get srvInfoSessionUptime => 'Время подключения';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: открывается через этот сервер, но недоступен в стране его выхода. Сервер исправен — не работают именно эти сервисы, для них нужен выход в другой стране.';
   }

@@ -3104,6 +3104,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Datos de la última ejecución de la configuración automática. Aquí no se vuelve a medir nada.';
 
   @override
+  String get srvInfoSectionSession => 'Conexión actual';
+
+  @override
+  String get srvInfoSessionUptime => 'Tiempo de conexión';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: se abre a través de este servidor, pero no está disponible en su país de salida. El servidor funciona bien: solo fallan estos servicios; para ellos necesitas una salida en otro país.';
   }

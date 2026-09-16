@@ -3072,6 +3072,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Data from the last auto-tuning run. Nothing is measured again here.';
 
   @override
+  String get srvInfoSectionSession => 'Current connection';
+
+  @override
+  String get srvInfoSessionUptime => 'Connection time';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: reachable through this server, but unavailable in its exit country. The server itself is fine — only these services fail; for them you need an exit in another country.';
   }

@@ -3080,6 +3080,12 @@ class AppLocalizationsTr extends AppLocalizations {
       'Son otomatik ayar taramasının verileri. Burada yeniden ölçüm yapılmaz.';
 
   @override
+  String get srvInfoSectionSession => 'Geçerli bağlantı';
+
+  @override
+  String get srvInfoSessionUptime => 'Bağlantı süresi';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: bu sunucu üzerinden açılıyor ama çıkış ülkesinde kullanılamıyor. Sunucunun kendisi sağlam — yalnızca bu servisler çalışmaz, onlar için başka ülkede bir çıkış gerekir.';
   }

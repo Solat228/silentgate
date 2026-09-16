@@ -5340,6 +5340,18 @@ abstract class AppLocalizations {
   /// **'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.'**
   String get srvInfoAutoHint;
 
+  /// No description provided for @srvInfoSectionSession.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущее подключение'**
+  String get srvInfoSectionSession;
+
+  /// No description provided for @srvInfoSessionUptime.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время подключения'**
+  String get srvInfoSessionUptime;
+
   /// No description provided for @srvInfoAutoGeoNote.
   ///
   /// In ru, this message translates to:

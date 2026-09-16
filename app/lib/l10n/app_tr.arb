@@ -1137,6 +1137,8 @@
   "srvInfoAutoNever": "Otomatik ayar bu sunucuyu henüz denemedi — hangi servislerin bu sunucu üzerinden çalıştığını görmek için çalıştırın.",
   "srvInfoAutoHint": "Son otomatik ayar taramasının verileri. Burada yeniden ölçüm yapılmaz.",
   "srvInfoAutoGeoNote": "{services}: bu sunucu üzerinden açılıyor ama çıkış ülkesinde kullanılamıyor. Sunucunun kendisi sağlam — yalnızca bu servisler çalışmaz, onlar için başka ülkede bir çıkış gerekir.",
+  "srvInfoSectionSession": "Geçerli bağlantı",
+  "srvInfoSessionUptime": "Bağlantı süresi",
   "settingsSectionChecks": "Servis kontrolü",
   "settingsSectionAutotune": "Otomatik ayar",
   "settingsSpeedRankTitle": "Otomatik seçimde hızı da dikkate al",

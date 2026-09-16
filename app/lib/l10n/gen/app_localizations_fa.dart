@@ -3069,6 +3069,12 @@ class AppLocalizationsFa extends AppLocalizations {
       'داده‌های آخرین اجرای پیکربندی خودکار. اینجا چیزی دوباره اندازه‌گیری نمی‌شود.';
 
   @override
+  String get srvInfoSectionSession => 'اتصال کنونی';
+
+  @override
+  String get srvInfoSessionUptime => 'مدت اتصال';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services: از طریق این سرور باز می‌شود اما در کشور خروجی آن در دسترس نیست. خودِ سرور سالم است — فقط همین سرویس‌ها کار نمی‌کنند و برای آن‌ها به خروجی در کشور دیگری نیاز دارید.';
   }

@@ -2971,6 +2971,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get srvInfoAutoHint => '上次自动配置运行时的数据。此处不会重新测量。';
 
   @override
+  String get srvInfoSectionSession => '当前连接';
+
+  @override
+  String get srvInfoSessionUptime => '连接时长';
+
+  @override
   String srvInfoAutoGeoNote(Object services) {
     return '$services：可以通过该服务器访问，但在它的出口国家/地区不可用。服务器本身正常，只是这些服务用不了——需要换到其他国家的出口。';
   }

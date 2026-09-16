@@ -1137,6 +1137,8 @@
   "srvInfoAutoNever": "自动配置尚未检测过该服务器——运行一次即可看到哪些服务能通过它使用。",
   "srvInfoAutoHint": "上次自动配置运行时的数据。此处不会重新测量。",
   "srvInfoAutoGeoNote": "{services}：可以通过该服务器访问，但在它的出口国家/地区不可用。服务器本身正常，只是这些服务用不了——需要换到其他国家的出口。",
+  "srvInfoSectionSession": "当前连接",
+  "srvInfoSessionUptime": "连接时长",
   "settingsSectionChecks": "服务检测",
   "settingsSectionAutotune": "自动调优",
   "settingsSpeedRankTitle": "自动选择时参考速度",
