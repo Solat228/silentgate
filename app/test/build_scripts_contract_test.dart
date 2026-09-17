@@ -101,7 +101,16 @@ void main() {
       // Страховка на сам разбор: если кто-то поправит таблицу и уберёт
       // строку — тест обязан упасть здесь, а не молча проверить меньше.
       expect(patterns.any((p) => p.endsWith('-arm64-v8a.apk')), isTrue);
-      expect(patterns.any((p) => p.endsWith('-x86_64.apk')), isTrue);
+      // ⚠️ Эмуляторный APK НАРОЧНО не начинается с `SilentGate-`: владелец
+      // 17.09.2026 — «чтобы обычный юзер никогда не скачал». Префикс выводит
+      // файл из шаблона, по которому сайт строит страницу загрузок.
+      expect(
+          patterns.any((p) =>
+              p.startsWith('TEST-ONLY-') && p.endsWith('-x86_64.apk')),
+          isTrue,
+          reason: 'эмуляторный APK обязан быть помечен TEST-ONLY в имени');
+      expect(patterns.any((p) => p == 'SilentGate-<версия>-x86_64.apk'), isFalse,
+          reason: 'x86_64 под обычным именем снова попадёт на страницу загрузок');
       expect(patterns.any((p) => p.endsWith('.zip')), isTrue);
     });
 

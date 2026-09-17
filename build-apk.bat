@@ -120,7 +120,7 @@ if not defined VER (
 rem armeabi-v7a НЕ копируем: под эту архитектуру ядра в AAR нет, и такой APK
 rem установится, но работать не будет.
 if exist "%SRC%\app-arm64-v8a-release.apk" copy /Y "%SRC%\app-arm64-v8a-release.apk" "%DST%\SilentGate-%VER%-arm64-v8a.apk" >nul
-if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\SilentGate-%VER%-x86_64.apk"    >nul
+if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\TEST-ONLY-emulator-SilentGate-%VER%-x86_64.apk"    >nul
 
 if not exist "%DST%\SilentGate-%VER%-arm64-v8a.apk" (
   echo.
@@ -133,7 +133,7 @@ if not exist "%DST%\SilentGate-%VER%-arm64-v8a.apk" (
 echo.
 echo === ГОТОВО ===
 echo   SilentGate-%VER%-arm64-v8a.apk  - на телефон
-echo   SilentGate-%VER%-x86_64.apk     - на эмулятор
+echo   TEST-ONLY-emulator-SilentGate-%VER%-x86_64.apk - TOLKO DLYA TESTOV, na telefon ne stavit
 if defined SILENTGATE_CHANNEL echo   Канал: %SILENTGATE_CHANNEL%
 echo.
 echo Установка на подключённый телефон:
