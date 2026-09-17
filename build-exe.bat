@@ -110,7 +110,8 @@ rem унаследовал бы портативный режим.
 set "PORTSTAGE=%TEMP%\sg-portable-stage"
 if exist "%PORTSTAGE%" rmdir /s /q "%PORTSTAGE%"
 mkdir "%PORTSTAGE%\SilentGate"
-robocopy "%REL%" "%PORTSTAGE%\SilentGate" /E /NFL /NDL /NJH /NJS /NP >nul
+rem *.bak - rezerv geo-baz ot zapushchennogo exe, ne sborka: v arhiv ne kladem
+robocopy "%REL%" "%PORTSTAGE%\SilentGate" /E /XF *.bak /NFL /NDL /NJH /NJS /NP >nul
 if errorlevel 8 (
   echo.
   echo === Не удалось скопировать Release для портативной сборки ===
