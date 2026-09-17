@@ -987,6 +987,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subBarAnnounce => 'Annonce du panneau';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Annonces du service $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Annonces du service';
+
+  @override
+  String get hideAnnounceTitle => 'Masquer les annonces du service';
+
+  @override
+  String get hideAnnounceSub =>
+      'Les annonces de l’abonnement ne sont pas affichées sur la carte. Par défaut, elles sont visibles sur tout écran.';
+
+  @override
   String get subSwitcherPingAll =>
       'Tester les serveurs de tous les abonnements';
 

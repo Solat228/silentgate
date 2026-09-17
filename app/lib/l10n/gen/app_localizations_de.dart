@@ -983,6 +983,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subBarAnnounce => 'Ankündigung vom Panel';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Mitteilungen von $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Mitteilungen des Dienstes';
+
+  @override
+  String get hideAnnounceTitle => 'Mitteilungen des Dienstes ausblenden';
+
+  @override
+  String get hideAnnounceSub =>
+      'Mitteilungen aus dem Abo werden auf der Karte nicht angezeigt. Standardmäßig sind sie auf jedem Bildschirm sichtbar.';
+
+  @override
   String get subSwitcherPingAll => 'Server aller Abos testen';
 
   @override

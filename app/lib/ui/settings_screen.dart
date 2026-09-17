@@ -2328,6 +2328,21 @@ List<SettingsRow> _appearanceRows(
         ),
       ),
     ),
+    // Скрыть объявления от сервиса в карточке подписки. Здесь, а не в
+    // «Представлении панели»: тот раздел — о том, как приложение ПРЕДСТАВЛЯЕТСЯ
+    // панели (UA, HWID, Response-Rules), а это — о том, что показывать на
+    // главном экране, то есть ровня раскладке проверок сервисов строкой выше.
+    // Умолчание — показывать (решение владельца 17.09.2026, см. AppSettings).
+    SettingsRow(
+      search: '${l.hideAnnounceTitle} ${l.hideAnnounceSub}',
+      build: (_) => SwitchListTile(
+        value: settings.hidePanelAnnounce,
+        onChanged: (v) =>
+            controller.update((s) => s.copyWith(hidePanelAnnounce: v)),
+        title: Text(l.hideAnnounceTitle),
+        subtitle: Text(l.hideAnnounceSub),
+      ),
+    ),
     // Трея на Android нет: приложение сворачивается системой, а VPN
     // продолжает жить в foreground-сервисе с постоянной нотификацией —
     // она и играет роль значка в трее.

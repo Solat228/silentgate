@@ -416,6 +416,17 @@
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
   "subBarAnnounce": "Объявление от панели",
+  "subBarAnnounceFrom": "Объявления от сервиса {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Объявления от сервиса",
+  "hideAnnounceTitle": "Скрывать объявления от сервиса",
+  "hideAnnounceSub": "Объявления из подписки не показываются в карточке. По умолчанию они видны на любом экране.",
   "subSwitcherPingAll": "Пинг серверов всех подписок",
   "subSwitcherPingBusySpeed": "Пинг недоступен: идёт замер скорости",
   "subSwitcherExpired": "Истекла",

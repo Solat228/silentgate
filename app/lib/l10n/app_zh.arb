@@ -305,6 +305,17 @@
   "subBarExpired": "订阅已过期：",
   "subBarValidUntil": "有效期至：",
   "subBarAnnounce": "面板公告",
+  "subBarAnnounceFrom": "来自 {name} 的公告",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "服务公告",
+  "hideAnnounceTitle": "隐藏服务公告",
+  "hideAnnounceSub": "不在卡片中显示订阅公告。默认情况下，公告在任何屏幕上都可见。",
   "subSwitcherPingAll": "测试全部订阅的服务器",
   "subSwitcherPingBusySpeed": "无法测延迟：正在进行测速",
   "subSwitcherExpired": "已过期",

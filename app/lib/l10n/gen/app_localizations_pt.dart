@@ -983,6 +983,21 @@ class AppLocalizationsPt extends AppLocalizations {
   String get subBarAnnounce => 'Anúncio do painel';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Avisos do serviço $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Avisos do serviço';
+
+  @override
+  String get hideAnnounceTitle => 'Ocultar avisos do serviço';
+
+  @override
+  String get hideAnnounceSub =>
+      'Os avisos da assinatura não aparecem no cartão. Por padrão, ficam visíveis em qualquer tela.';
+
+  @override
   String get subSwitcherPingAll =>
       'Testar os servidores de todas as assinaturas';
 

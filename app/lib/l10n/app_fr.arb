@@ -305,6 +305,17 @@
   "subBarExpired": "Abonnement expiré :",
   "subBarValidUntil": "Valide jusqu'au :",
   "subBarAnnounce": "Annonce du panneau",
+  "subBarAnnounceFrom": "Annonces du service {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Annonces du service",
+  "hideAnnounceTitle": "Masquer les annonces du service",
+  "hideAnnounceSub": "Les annonces de l’abonnement ne sont pas affichées sur la carte. Par défaut, elles sont visibles sur tout écran.",
   "subSwitcherPingAll": "Tester les serveurs de tous les abonnements",
   "subSwitcherPingBusySpeed": "Ping indisponible : un test de débit est en cours",
   "subSwitcherExpired": "Expiré",

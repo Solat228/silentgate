@@ -1794,6 +1794,30 @@ abstract class AppLocalizations {
   /// **'Объявление от панели'**
   String get subBarAnnounce;
 
+  /// No description provided for @subBarAnnounceFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления от сервиса {name}'**
+  String subBarAnnounceFrom(String name);
+
+  /// No description provided for @subBarAnnounceFromUnnamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления от сервиса'**
+  String get subBarAnnounceFromUnnamed;
+
+  /// No description provided for @hideAnnounceTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрывать объявления от сервиса'**
+  String get hideAnnounceTitle;
+
+  /// No description provided for @hideAnnounceSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления из подписки не показываются в карточке. По умолчанию они видны на любом экране.'**
+  String get hideAnnounceSub;
+
   /// No description provided for @subSwitcherPingAll.
   ///
   /// In ru, this message translates to:

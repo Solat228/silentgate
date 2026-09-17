@@ -967,6 +967,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subBarAnnounce => 'إعلان من اللوحة';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'إعلانات من خدمة $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'إعلانات من الخدمة';
+
+  @override
+  String get hideAnnounceTitle => 'إخفاء إعلانات الخدمة';
+
+  @override
+  String get hideAnnounceSub =>
+      'لا تُعرض إعلانات الاشتراك في البطاقة. افتراضيًا تظهر على أي شاشة.';
+
+  @override
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override

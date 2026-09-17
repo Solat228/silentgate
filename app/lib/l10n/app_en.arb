@@ -377,6 +377,17 @@
   "subBarExpired": "Subscription expired:",
   "subBarValidUntil": "Valid until:",
   "subBarAnnounce": "Announcement from the panel",
+  "subBarAnnounceFrom": "Announcements from {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Announcements from the service",
+  "hideAnnounceTitle": "Hide service announcements",
+  "hideAnnounceSub": "Announcements from the subscription are not shown on the card. By default they are visible on any screen.",
   "subSwitcherPingAll": "Ping servers of all subscriptions",
   "subSwitcherPingBusySpeed": "Ping unavailable: a speed test is running",
   "subSwitcherExpired": "Expired",
