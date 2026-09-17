@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/probe/probe_harness.dart';
+import '../../core/xray/geodata_fallback.dart';
 import '../../core/xray/harness_config_builder.dart';
 
 /// Проброс-харнесс Android: замер идёт ОТДЕЛЬНЫМ экземпляром Xray внутри
@@ -29,6 +30,19 @@ import '../../core/xray/harness_config_builder.dart';
 /// подписки, обход правил пользователя). В 1.4.1 инбаунд закрыли паролем
 /// только на Windows, а комментарии в обоих файлах утверждали, что боевой путь
 /// креды выдаёт всегда. Теперь выдаёт: см. [builder] и [_AndroidHandle._proxyUrl].
+///
+/// ⚠️ ПРОФИЛЬ «АВТО» МЕРЯЕТСЯ ПО НЕСКОЛЬКИМ УЗЛАМ — И ЭТО ВТОРОЙ РАЗ, КОГДА
+/// ОДИН И ТОТ ЖЕ ДЕФЕКТ ЧИНИТСЯ. На Windows его закрыли 19.08.2026: харнесс
+/// мерил один узел балансировщика (тег `proxy`), и профиль числился мёртвым
+/// всякий раз, когда мёртв именно он. Починка (`ProbeController.
+/// _bestOverridePort`) пробует четыре узла и берёт лучший — но стоит за гейтом
+/// `proxyPortFor(i) > 0`, а здесь порт наружу не отдаётся: замер шёл через
+/// `base + 0`, то есть снова через первый узел. Конфиг при этом честно
+/// содержал четыре инбаунда, три из которых не спрашивал никто. У владельца
+/// 17.09.2026 (телефон, 1.10.0): «рабочих 72 из 95» при 15 профилях «Авто» —
+/// ни один не прошёл, в двух прогонах подряд. Теперь каждому узлу — свой
+/// файл с одним инбаундом (см. [_writeConfigs]), замер по всем параллельно,
+/// профиль жив, если ответил хоть один (см. [_AndroidHandle.delayMs]).
 class ProbeHarnessAndroid implements ProbeHarness {
   static const _channel = MethodChannel('lol.silentgate/probe');
 
@@ -59,9 +73,9 @@ class ProbeHarnessAndroid implements ProbeHarness {
   @override
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     final dir = await AppPaths.supportDir();
-    final files = <String?>[];
+    final entriesOut = <List<_Candidate>>[];
     try {
-      await _writeConfigs(entries, dir, files);
+      await _writeConfigs(entries, dir, entriesOut);
     } catch (_) {
       // ⚠️ УБОРКА НА ПУТИ ОШИБКИ, И ОНА НЕ ФОРМАЛЬНОСТЬ. Свалиться запись
       // может на любом кандидате (нет места, файл занят, каталог не тот) — и
@@ -70,13 +84,30 @@ class ProbeHarnessAndroid implements ProbeHarness {
       // сервера. Прибрать их некому: исключение уходит наверх ДО того, как
       // появится хендл, поэтому `finally` вызывающего (`ProbeController`,
       // `AutoConfigEngine`) зовёт `stop()` на `null` и не делает ничего.
-      await _deleteConfigs(files);
+      await _deleteConfigs(entriesOut);
       rethrow;
     }
-    return _AndroidHandle(files, builder);
+    return _AndroidHandle(entriesOut, builder);
   }
 
-  /// Пишет по конфигу на кандидата, складывая пути в [files] ПО ХОДУ ДЕЛА.
+  /// Сколько узлов-кандидатов у записи: у полного конфига (профиль «Авто»,
+  /// правка JSON) — сколько выставит [HarnessConfigBuilder.probeExitTags],
+  /// у обычного сервера — один.
+  ///
+  /// Ноль (конфиг не разобрался) — тоже один: построитель тогда уходит в
+  /// штатную ветку и собирает обычный конфиг по полям сервера.
+  static int candidateCount(HarnessEntry e) {
+    final s = e.server;
+    final raw = (s.rawJsonOverride ?? '').isNotEmpty
+        ? s.rawJsonOverride!
+        : (s.rawPanelConfig ?? '');
+    if (raw.isEmpty) return 1;
+    final n = HarnessConfigBuilder.overrideCandidateCount(raw);
+    return n < 1 ? 1 : n;
+  }
+
+  /// Пишет по конфигу на КАЖДЫЙ узел-кандидат каждой записи, складывая пути
+  /// в [entriesOut] ПО ХОДУ ДЕЛА.
   ///
   /// ⚠️ Список пополняется именно здесь, а не возвращается целиком в конце:
   /// упавшему [start] нужно знать, что уже легло на диск, — иначе убирать
@@ -84,40 +115,91 @@ class ProbeHarnessAndroid implements ProbeHarness {
   Future<void> _writeConfigs(
     List<HarnessEntry> entries,
     Directory dir,
-    List<String?> files,
+    List<List<_Candidate>> entriesOut,
   ) async {
-    // По файлу на кандидата: `ping` принимает ПУТЬ к конфигу, а не JSON.
+    // ⚠️ ПОРТ — СВОЙ НА КАЖДЫЙ КОНФИГ, ИНАЧЕ ОНИ ДЕРУТСЯ ЗА ОДИН. `ping`
+    // поднимает экземпляр ядра на весь файл, а `ProbeController` гоняет
+    // замеры пачкой (`Pool(pingConcurrency)`, по умолчанию 8 одновременно):
+    // второй бинд на занятый порт не проходит, `ping` молча отдаёт пустоту, и
+    // сервер красится в «n/a» — плавающе, по тому, кто успел первым. Ровно это
+    // и объясняло n/a, которые не воспроизводились поштучно.
+    //
+    // Раздача — сквозным счётчиком по всем конфигам, а не `base + индекс
+    // записи`: профиль «Авто» занимает столько портов, сколько у него узлов,
+    // и следующая запись обязана начаться ПОСЛЕ них. Запись без файла
+    // (hysteria2) порт всё равно занимает — так соседи не сдвигаются, и адрес
+    // замера сходится с портом в конфиге у всех, кто ниже по списку.
+    var next = 0;
     for (var i = 0; i < entries.length; i++) {
+      final e = entries[i];
+      final own = <_Candidate>[];
+      entriesOut.add(own);
       // ⚠️ libXray — это Xray, а он не умеет hysteria2 (QUIC + свой congestion
       // control). Собрать для него конфиг нельзя, и попытка замера пометила бы
       // рабочий сервер мёртвым. Такие кандидаты просто не меряются: их
       // состояние честно остаётся «не проверен», а по живому каналу
       // проверяется активный (см. ProbeController).
-      if (entries[i].server.protocol == 'hysteria2') {
-        files.add(null);
+      if (e.server.protocol == 'hysteria2') {
+        next++;
         continue;
       }
-      // По одному кандидату на конфиг: `ping` меряет ОДИН outbound, а общий
-      // харнесс Windows держит их пачкой на разных портах.
-      //
-      // ⚠️ ПОРТ — СВОЙ НА КАНДИДАТА, ИНАЧЕ ОНИ ДЕРУТСЯ ЗА ОДИН. Внутри своего
-      // конфига кандидат всегда идёт под индексом 0, поэтому без сдвига базы
-      // все они просили бы `HarnessPorts.base` (21000). А `ProbeController`
-      // гоняет замеры пачкой (`Pool(pingConcurrency)`, по умолчанию 8
-      // одновременно): второй бинд на занятый порт не проходит, `ping` молча
-      // отдаёт пустоту, и сервер красится в «n/a» — плавающе, по тому, кто
-      // успел первым. Ровно это и объясняло n/a, которые не воспроизводились
-      // поштучно. Раскладка теперь та же, что на Windows: base + индекс.
-      final json =
-          builder.withPortBase(builder.portFor(i)).buildJson([entries[i]]);
-      final f = File('${dir.path}${Platform.pathSeparator}probe_$i.json');
-      // Путь запоминаем ДО записи: файл может быть создан и оборван на
-      // середине — такой обрывок тоже надо убрать, а `delete` отсутствующего
-      // файла проглатывается в [_deleteConfigs].
-      files.add(f.path);
-      await f.writeAsString(json);
+      final count = candidateCount(e);
+      for (var j = 0; j < count; j++) {
+        final port = builder.portFor(next++);
+        // Внутри своего файла кандидат всегда идёт под индексом 0 — база
+        // сдвигается на выданный порт. `candidate` у обычного сервера
+        // построитель не смотрит (ветка полного конфига туда не заходит).
+        final json = _withoutGeodata(
+          builder.withPortBase(port).buildJson([e], candidate: j),
+          e,
+        );
+        // Имя нулевого кандидата — прежнее (`probe_<i>.json`): по нему
+        // конфиг ищут диагностика и стражи; остальные узлы — с суффиксом.
+        final name = j == 0 ? 'probe_$i.json' : 'probe_${i}_c$j.json';
+        final f = File('${dir.path}${Platform.pathSeparator}$name');
+        // Путь запоминаем ДО записи: файл может быть создан и оборван на
+        // середине — такой обрывок тоже надо убрать, а `delete` отсутствующего
+        // файла проглатывается в [_deleteConfigs].
+        own.add(_Candidate(f.path, port));
+        await f.writeAsString(json);
+      }
     }
   }
+
+  /// Конфиг замера без ссылок на гео-базы.
+  ///
+  /// ⚠️ БОЕВОЙ ПУТЬ НА ANDROID ЭТО ДЕЛАЕТ, ХАРНЕСС — НЕ ДЕЛАЛ. Xray ищет
+  /// `geosite.dat`/`geoip.dat` по файлам на устройстве; живой туннель либо
+  /// прописывает каталог баз в `env` конфига, либо чистит ссылки
+  /// (`AndroidEngine._guardGeodata`). Харнесс правила маршрутизации заменяет
+  /// своими, а вот `dns` профиля оставлял как есть — и `geosite:` в
+  /// `dns.servers[].domains` (российский DNS панели) означал, что ядро замера
+  /// не стартует: `failed to open geosite.dat`, профиль «мёртв» без единого
+  /// запроса. На Windows тот же конфиг работает — базы лежат рядом с xray.exe,
+  /// поэтому там дефекта не видно.
+  ///
+  /// Чистим всегда, а не «если баз нет»: замеру гео-маршрутизация не нужна
+  /// вовсе (его единственное правило — `inboundTag → узел`), а зависимость от
+  /// того, открыло ли ядро файлы, — это ровно тот отказ, который у владельца
+  /// уже случался при лежащих на месте базах.
+  static String _withoutGeodata(String json, HarnessEntry e) {
+    if (!needsGeodata(json)) return json;
+    final r = stripGeodata(json);
+    if (r.report.residual) {
+      // Вычистили что знали, ссылки остались — ядро замера, скорее всего,
+      // откажет. Молчать нельзя: снаружи это неотличимо от мёртвого сервера.
+      AppLog.w('Конфиг замера «${e.server.remark}»: после чистки остались '
+          'ссылки на гео-базы — замер может не подняться');
+    }
+    return r.json;
+  }
+}
+
+/// Один конфиг замера: файл на диске и порт его единственного инбаунда.
+class _Candidate {
+  final String path;
+  final int port;
+  const _Candidate(this.path, this.port);
 }
 
 /// Убрать временные конфиги харнесса. ОДНА уборка на оба пути: конец прогона
@@ -125,21 +207,25 @@ class ProbeHarnessAndroid implements ProbeHarness {
 /// этого цикла разъехались бы на первой же правке — а цена расхождения здесь
 /// это файл с паролем инбаунда, оставшийся лежать в каталоге данных.
 ///
-/// `null` в списке — кандидат, которому конфиг не писался вовсе (hysteria2);
-/// ошибку удаления глотаем: убирать мусор ценой падения прогона незачем.
-Future<void> _deleteConfigs(List<String?> paths) async {
-  for (final p in paths) {
-    if (p == null) continue;
-    try {
-      await File(p).delete();
-    } catch (_) {}
+/// Пустой список у записи — кандидат, которому конфиг не писался вовсе
+/// (hysteria2); ошибку удаления глотаем: убирать мусор ценой падения прогона
+/// незачем.
+Future<void> _deleteConfigs(List<List<_Candidate>> entries) async {
+  for (final own in entries) {
+    for (final c in own) {
+      try {
+        await File(c.path).delete();
+      } catch (_) {}
+    }
   }
 }
 
 class _AndroidHandle implements HarnessHandle {
-  _AndroidHandle(this._files, this._builder);
+  _AndroidHandle(this._entries, this._builder);
 
-  final List<String?> _files;
+  /// Кандидаты по записям: у обычного сервера один, у профиля «Авто» —
+  /// по узлу; пусто — конфиг не писался (hysteria2).
+  final List<List<_Candidate>> _entries;
   final HarnessConfigBuilder _builder;
 
   /// Креды инбаунда. Порт наружу не отдаётся (см. [proxyPortFor]), но пара
@@ -179,38 +265,62 @@ class _AndroidHandle implements HarnessHandle {
   /// [newHarnessSecret] — только буквы и цифры, но смена алфавита не должна
   /// молча ломать замер.
   ///
-  /// ⚠️ ПОРТ — ТОЖЕ ПО ИНДЕКСУ КАНДИДАТА. Конфиг кандидата i собран с базой
-  /// `base + i` (см. [ProbeHarnessAndroid.start]), и адрес обязан указывать на
-  /// ТОТ ЖЕ порт: разъехавшись, замер стучался бы в чужой инбаунд (а при
-  /// параллельном прогоне — в чужой туннель) или в никуда.
-  String _proxyUrl(int index) {
+  /// ⚠️ ПОРТ — ТОТ, ЧТО ЗАПЕЧЁН В КОНФИГЕ ЭТОГО КАНДИДАТА. Он выдан при
+  /// записи файла ([_Candidate.port]) и хранится рядом с путём: разъехавшись,
+  /// замер стучался бы в чужой инбаунд (а при параллельном прогоне — в чужой
+  /// туннель) или в никуда.
+  String _proxyUrl(int port) {
     final creds = _builder.user.isEmpty
         ? ''
         : '${Uri.encodeComponent(_builder.user)}:'
             '${Uri.encodeComponent(_builder.password)}@';
-    return 'http://${creds}127.0.0.1:${_builder.portFor(index)}';
+    return 'http://${creds}127.0.0.1:$port';
   }
 
   /// Задержка кандидата в миллисекундах; `null` — не отвечает.
+  ///
+  /// У профиля «Авто» узлов несколько: спрашиваем ВСЕ параллельно и берём
+  /// лучший ответивший — как `_bestOverridePort` на Windows. Последовательный
+  /// перебор растянул бы прогон вчетверо: у владельца полтора десятка
+  /// профилей, а нативный таймаут 5 с — это минуты ожидания на ровном месте.
+  /// Параллельно можно: у каждого узла свой файл и свой порт, экземпляры ядра
+  /// друг другу не мешают.
   @override
   Future<int?> delayMs(int index, {int timeoutSec = 5}) async {
-    if (index < 0 || index >= _files.length) return null;
-    final path = _files[index];
-    if (path == null) return null; // hysteria2 — Xray его не поднимет
+    if (index < 0 || index >= _entries.length) return null;
+    final own = _entries[index];
+    if (own.isEmpty) return null; // hysteria2 — Xray его не поднимет
+    if (own.length == 1) return _pingOne(own.single, timeoutSec);
+    final results = await Future.wait([
+      for (final c in own) _pingOne(c, timeoutSec),
+    ]);
+    int? best;
+    var alive = 0;
+    for (final r in results) {
+      if (r == null) continue;
+      alive++;
+      if (best == null || r < best) best = r;
+    }
+    // Цифра для разбора: «профиль жив по 1 узлу из 4» и «мёртв по всем» —
+    // разные состояния, а в итоге прогона они выглядят одинаково.
+    AppLog.i('Профиль с несколькими узлами: ответили $alive из ${own.length}');
+    return best;
+  }
+
+  Future<int?> _pingOne(_Candidate c, int timeoutSec) async {
     try {
       final v = await ProbeHarnessAndroid._channel.invokeMethod<int>('ping', {
-        'configPath': path,
+        'configPath': c.path,
         'timeout': timeoutSec,
         // ⚠️ Адрес инбаунда ОБЯЗАТЕЛЕН. Харнесс поднимает HTTP-прокси СВОЙ НА
-        // КАЖДОГО КАНДИДАТА (`base + индекс`, см. [_proxyUrl]), а нативная
-        // сторона без этого поля берёт `socks5://127.0.0.1:0` — и порт
-        // несуществующий, и протокол не тот. Считать порт одним нельзя: из
-        // этого предположения и вырос дефект с плавающими «n/a» — замер уходил
-        // в инбаунд чужого кандидата.
+        // КАЖДЫЙ КОНФИГ (см. [_proxyUrl]), а нативная сторона без этого поля
+        // берёт `socks5://127.0.0.1:0` — и порт несуществующий, и протокол не
+        // тот. Считать порт одним нельзя: из этого предположения и вырос
+        // дефект с плавающими «n/a» — замер уходил в инбаунд чужого кандидата.
         // Замер молча возвращал пустоту, а весь список серверов помечался
         // «отвечает по TCP, но не проксирует» — включая сервер, через который
         // пользователь в этот момент работал.
-        'proxy': _proxyUrl(index),
+        'proxy': _proxyUrl(c.port),
       });
       return (v == null || v <= 0) ? null : v;
     } catch (e) {
@@ -224,6 +334,6 @@ class _AndroidHandle implements HarnessHandle {
     // Экземпляр ядра гасит сама нативная сторона (defer в libXray); нам
     // остаётся убрать временные конфиги — иначе они копятся в каталоге данных,
     // и в каждом лежит пароль своего прогона.
-    await _deleteConfigs(_files);
+    await _deleteConfigs(_entries);
   }
 }

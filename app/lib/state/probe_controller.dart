@@ -1242,6 +1242,13 @@ class ProbeController extends ChangeNotifier {
       if (cancel.isCancelled) return;
       // Платформа может померить сама и порта не дать (Android: LibXray.ping
       // возвращает миллисекунды). Тогда ходить через прокси нечем и незачем.
+      //
+      // ⚠️ ПЕРЕБОР УЗЛОВ ПРОФИЛЯ НА ЭТОМ ПУТИ ДЕЛАЕТ САМ ХАРНЕСС. Ниже
+      // [_bestOverridePort] пробует четыре узла по портам — но порта здесь
+      // нет, и до 1.13.1 Android мерил ровно один узел (первый): у владельца
+      // 15 профилей «Авто» из 15 числились мёртвыми в каждом прогоне. Теперь
+      // `ProbeHarnessAndroid.delayMs` сам спрашивает все узлы и отдаёт лучший
+      // — страж `android_panel_profile_ping_test`.
       final ready = port == null ? await handle.delayMs(0) : null;
       if (cancel.isCancelled) return;
       if (port == null && ready != null) {

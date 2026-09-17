@@ -194,7 +194,17 @@ class HarnessConfigBuilder {
 
   int portFor(int index) => ports.base + index;
 
-  Map<String, dynamic> buildMap(List<HarnessEntry> entries) {
+  /// [candidate] — собрать конфиг полного профиля под ОДИН узел-кандидат (его
+  /// номер в [probeExitTags]) с единственным инбаундом на `portFor(0)`.
+  ///
+  /// ⚠️ ЗАЧЕМ ЭТО ANDROID. Windows держит все узлы профиля в одном конфиге и
+  /// спрашивает их по разным портам одного процесса. На Android замер — это
+  /// `LibXray.ping`, который поднимает экземпляр ядра на ВЕСЬ файл: четыре
+  /// параллельных замера одного файла с четырьмя инбаундами — это четыре
+  /// экземпляра, бьющихся за одни и те же порты, три из четырёх не поднялись
+  /// бы. Поэтому там на каждый узел — свой файл с одним инбаундом. Без
+  /// [candidate] (умолчание) — прежняя раскладка, как на Windows.
+  Map<String, dynamic> buildMap(List<HarnessEntry> entries, {int? candidate}) {
     // #8.2 — сервер с полным JSON-override: поднимаем его собственный конфиг
     // (со всеми outbounds/balancers/burstObservatory), но заменяем inbounds на
     // единственный http-inbound харнесса и роутим его на цель исходного конфига.
@@ -205,7 +215,7 @@ class HarnessConfigBuilder {
           ? s.rawJsonOverride
           : s.rawPanelConfig;
       if (raw != null && raw.isNotEmpty) {
-        final map = _tryOverrideMap(raw, portFor);
+        final map = _tryOverrideMap(raw, portFor, candidate: candidate);
         if (map != null) return map;
       }
     }
@@ -267,7 +277,8 @@ class HarnessConfigBuilder {
 
   /// Правила по сайтам в терминах Xray. `domain:foo.com` — домен и его
   /// поддомены (аналог `domain_suffix` в боевом конфиге sing-box).
-  List<Map<String, dynamic>> _siteRules(List<SiteRule> sites, String outbound) =>
+  List<Map<String, dynamic>> _siteRules(
+          List<SiteRule> sites, String outbound) =>
       [
         for (final s in sites)
           {
@@ -295,8 +306,9 @@ class HarnessConfigBuilder {
     };
   }
 
-  String buildJson(List<HarnessEntry> entries) =>
-      const JsonEncoder.withIndent('  ').convert(buildMap(entries));
+  String buildJson(List<HarnessEntry> entries, {int? candidate}) =>
+      const JsonEncoder.withIndent('  ')
+          .convert(buildMap(entries, candidate: candidate));
 
   /// Строит harness-конфиг из полного пользовательского JSON. Возвращает null,
   /// если JSON нераспарсиваемый или без outbounds (тогда откат на обычный путь).
@@ -310,7 +322,8 @@ class HarnessConfigBuilder {
   /// ниже собирается ОТДЕЛЬНЫМ от [buildMap] кодом, а ведёт он в туннель того
   /// самого профиля «Авто», который у владельца есть в каждой подписке. Пустой
   /// `settings` здесь означал бы, что закрыли только обычные серверы.
-  Map<String, dynamic>? _tryOverrideMap(String raw, int Function(int) portFor) {
+  Map<String, dynamic>? _tryOverrideMap(String raw, int Function(int) portFor,
+      {int? candidate}) {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
@@ -321,8 +334,15 @@ class HarnessConfigBuilder {
       final routing = cfg['routing'] is Map
           ? Map<String, dynamic>.from(cfg['routing'] as Map)
           : <String, dynamic>{};
-      final tags = probeExitTags(routing, outbounds);
+      var tags = probeExitTags(routing, outbounds);
       if (tags.isEmpty) return null;
+      if (candidate != null) {
+        // ⚠️ Номер вне списка — не «первый попавшийся», а отказ: вызывающий
+        // считал кандидатов по [overrideCandidateCount], и расхождение здесь
+        // означало бы замер не того узла под чужим номером.
+        if (candidate < 0 || candidate >= tags.length) return null;
+        tags = [tags[candidate]];
+      }
       // domainStrategy ФОРСИРУЕТСЯ, а не наследуется из профиля (там почти
       // всегда `IPIfNonMatch`). Причина та же, что в [buildMap]: IPIfNonMatch
       // заставляет ядро резолвить имя мишени ЛОКАЛЬНО, и этот резолв попадает
