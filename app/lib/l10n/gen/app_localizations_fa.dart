@@ -971,6 +971,21 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subBarAnnounce => 'اعلان از پنل';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'اعلان‌های سرویس $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'اعلان‌های سرویس';
+
+  @override
+  String get hideAnnounceTitle => 'پنهان کردن اعلان‌های سرویس';
+
+  @override
+  String get hideAnnounceSub =>
+      'اعلان‌های اشتراک در کارت نمایش داده نمی‌شوند. به‌طور پیش‌فرض در هر صفحه‌ای دیده می‌شوند.';
+
+  @override
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override

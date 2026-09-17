@@ -970,6 +970,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subBarAnnounce => 'Announcement from the panel';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Announcements from $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Announcements from the service';
+
+  @override
+  String get hideAnnounceTitle => 'Hide service announcements';
+
+  @override
+  String get hideAnnounceSub =>
+      'Announcements from the subscription are not shown on the card. By default they are visible on any screen.';
+
+  @override
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override

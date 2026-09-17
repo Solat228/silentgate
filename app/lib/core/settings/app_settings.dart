@@ -703,6 +703,17 @@ class AppSettings {
   /// Раскладка проверок сервисов на главном экране (см. [ServiceChecksLayout]).
   final ServiceChecksLayout serviceChecksLayout;
 
+  /// Не показывать объявления от сервиса (текст `announce` из подписки) в
+  /// карточке подписки.
+  ///
+  /// ⚠️ УМОЛЧАНИЕ — ПОКАЗЫВАТЬ, и это решение владельца (17.09.2026): до этого
+  /// компактная карточка на низком окне прятала объявление под «⋮», а на
+  /// телефоне окно низкое всегда — слово панели человек не видел вовсе.
+  /// Скрытие — осознанный выбор того, кому оно мешает; при `true` объявления
+  /// нет нигде, ни в карточке, ни в меню: попросил не видеть — значит не видеть.
+  /// Конфига ядра не касается, в `reconnectReasons` не входит.
+  final bool hidePanelAnnounce;
+
   /// Свёрнутые разделы экрана настроек — их ИДЕНТИФИКАТОРЫ.
   ///
   /// ⚠️ ПУСТОЙ СПИСОК = ВСЁ РАЗВЁРНУТО, и это умолчание задано владельцем
@@ -861,6 +872,7 @@ class AppSettings {
     this.autoConnectAfterImport = false,
     this.themeMode = AppThemeMode.system,
     this.serviceChecksLayout = ServiceChecksLayout.adaptive,
+    this.hidePanelAnnounce = false,
     this.collapsedSections = const [],
     this.languageCode = '',
     this.closeToTray = true,
@@ -974,6 +986,7 @@ class AppSettings {
     bool? autoConnectAfterImport,
     AppThemeMode? themeMode,
     ServiceChecksLayout? serviceChecksLayout,
+    bool? hidePanelAnnounce,
     List<String>? collapsedSections,
     String? languageCode,
     bool? closeToTray,
@@ -1056,6 +1069,7 @@ class AppSettings {
           autoConnectAfterImport ?? this.autoConnectAfterImport,
       themeMode: themeMode ?? this.themeMode,
       serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
+      hidePanelAnnounce: hidePanelAnnounce ?? this.hidePanelAnnounce,
       collapsedSections: collapsedSections ?? this.collapsedSections,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
@@ -1138,6 +1152,7 @@ class AppSettings {
         'autoConnectAfterImport': autoConnectAfterImport,
         'themeMode': themeMode.name,
         'serviceChecksLayout': serviceChecksLayout.name,
+        'hidePanelAnnounce': hidePanelAnnounce,
         'collapsedSections': collapsedSections,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
@@ -1341,6 +1356,7 @@ class AppSettings {
       // ронять весь разбор из-за одной раскладки главного экрана.
       serviceChecksLayout: pick(ServiceChecksLayout.values,
           j['serviceChecksLayout'], ServiceChecksLayout.adaptive),
+      hidePanelAnnounce: j['hidePanelAnnounce'] as bool? ?? false,
       // ⚠️ ЧИТАЕТСЯ ОБЯЗАТЕЛЬНО — иначе свёрнутые разделы разворачивались бы
       // при каждом запуске, хотя выбор пользователя лежит в файле (тот самый
       // класс «поле пишется, но не читается»; страж settings_roundtrip_test

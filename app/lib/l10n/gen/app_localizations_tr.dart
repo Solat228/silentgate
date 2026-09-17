@@ -978,6 +978,21 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subBarAnnounce => 'Panel duyurusu';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return '$name hizmetinden duyurular';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Hizmet duyuruları';
+
+  @override
+  String get hideAnnounceTitle => 'Hizmet duyurularını gizle';
+
+  @override
+  String get hideAnnounceSub =>
+      'Abonelikten gelen duyurular kartta gösterilmez. Varsayılan olarak her ekranda görünür.';
+
+  @override
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override

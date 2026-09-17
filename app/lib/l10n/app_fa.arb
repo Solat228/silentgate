@@ -305,6 +305,17 @@
   "subBarExpired": "اشتراک منقضی شد:",
   "subBarValidUntil": "معتبر تا:",
   "subBarAnnounce": "اعلان از پنل",
+  "subBarAnnounceFrom": "اعلان‌های سرویس {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "اعلان‌های سرویس",
+  "hideAnnounceTitle": "پنهان کردن اعلان‌های سرویس",
+  "hideAnnounceSub": "اعلان‌های اشتراک در کارت نمایش داده نمی‌شوند. به‌طور پیش‌فرض در هر صفحه‌ای دیده می‌شوند.",
   "subSwitcherPingAll": "آزمودن سرورهای همهٔ اشتراک‌ها",
   "subSwitcherPingBusySpeed": "پینگ در دسترس نیست: آزمایش سرعت در حال اجراست",
   "subSwitcherExpired": "منقضی",

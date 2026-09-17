@@ -305,6 +305,17 @@
   "subBarExpired": "انتهى الاشتراك:",
   "subBarValidUntil": "صالح حتى:",
   "subBarAnnounce": "إعلان من اللوحة",
+  "subBarAnnounceFrom": "إعلانات من خدمة {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "إعلانات من الخدمة",
+  "hideAnnounceTitle": "إخفاء إعلانات الخدمة",
+  "hideAnnounceSub": "لا تُعرض إعلانات الاشتراك في البطاقة. افتراضيًا تظهر على أي شاشة.",
   "subSwitcherPingAll": "اختبار خوادم كل الاشتراكات",
   "subSwitcherPingBusySpeed": "قياس زمن الاستجابة غير متاح: يجري الآن اختبار السرعة",
   "subSwitcherExpired": "منتهٍ",

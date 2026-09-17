@@ -305,6 +305,17 @@
   "subBarExpired": "Assinatura expirada:",
   "subBarValidUntil": "Válida até:",
   "subBarAnnounce": "Anúncio do painel",
+  "subBarAnnounceFrom": "Avisos do serviço {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Avisos do serviço",
+  "hideAnnounceTitle": "Ocultar avisos do serviço",
+  "hideAnnounceSub": "Os avisos da assinatura não aparecem no cartão. Por padrão, ficam visíveis em qualquer tela.",
   "subSwitcherPingAll": "Testar os servidores de todas as assinaturas",
   "subSwitcherPingBusySpeed": "Ping indisponível: há um teste de velocidade em andamento",
   "subSwitcherExpired": "Expirada",

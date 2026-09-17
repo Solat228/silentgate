@@ -305,6 +305,17 @@
   "subBarExpired": "Abonnement abgelaufen:",
   "subBarValidUntil": "Gültig bis:",
   "subBarAnnounce": "Ankündigung vom Panel",
+  "subBarAnnounceFrom": "Mitteilungen von {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Mitteilungen des Dienstes",
+  "hideAnnounceTitle": "Mitteilungen des Dienstes ausblenden",
+  "hideAnnounceSub": "Mitteilungen aus dem Abo werden auf der Karte nicht angezeigt. Standardmäßig sind sie auf jedem Bildschirm sichtbar.",
   "subSwitcherPingAll": "Server aller Abos testen",
   "subSwitcherPingBusySpeed": "Ping nicht verfügbar: Es läuft gerade eine Geschwindigkeitsmessung",
   "subSwitcherExpired": "Abgelaufen",

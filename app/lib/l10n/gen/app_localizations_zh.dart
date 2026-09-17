@@ -947,6 +947,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subBarAnnounce => '面板公告';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return '来自 $name 的公告';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => '服务公告';
+
+  @override
+  String get hideAnnounceTitle => '隐藏服务公告';
+
+  @override
+  String get hideAnnounceSub => '不在卡片中显示订阅公告。默认情况下，公告在任何屏幕上都可见。';
+
+  @override
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override

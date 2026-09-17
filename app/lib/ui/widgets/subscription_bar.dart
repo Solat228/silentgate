@@ -7,6 +7,7 @@ import '../../core/models/subscription_sync.dart';
 import '../../core/util/country_flag.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
+import '../../state/settings_controller.dart';
 import 'flag_cell.dart';
 import 'subscription_avatar.dart';
 import 'subscription_switcher.dart';
@@ -18,9 +19,18 @@ import '../../core/i18n/enum_labels.dart';
 /// ⚠️ ДВА ВИДА — ПОЛНЫЙ И КОМПАКТНЫЙ, и это не украшение. Разбор вёрстки
 /// 10.09.2026: на минимальном окне 980×800 (клиент 964×761) карточка с
 /// объявлением от панели съедала до 200 px, и при длинном тексте низ главного
-/// экрана прятался за край. На низком окне ([isCompactFor]) остаются только
-/// аватарка, имя, шкала и одна строка «N ГБ из M · срок»; объявление и ссылки
+/// экрана прятался за край. На низком окне ([isCompactFor]) остаются
+/// аватарка, имя, шкала и одна строка «N ГБ из M · срок»; ссылки
 /// «Поддержка / Сайт» уезжают под «⋮». Замер — `test/subscription_bar_compact_test.dart`.
+///
+/// ⚠️ ОБЪЯВЛЕНИЕ ОТ СЕРВИСА КОМПАКТНОСТЬ НЕ ПРЯЧЕТ. В 1.13.1 оно тоже уезжало
+/// под «⋮» с меткой «непрочитанное» — и 17.09.2026 владелец открыл телефон:
+/// «ты съел объявление от панели». На телефоне окно ниже порога ВСЕГДА, то
+/// есть компактный вид там — не исключение, а правило, и слово панели человек
+/// не видел вовсе; метка на «⋮» этого не спасала — её никто не трогает.
+/// Решение владельца: объявление видно по умолчанию на любой высоте (блок
+/// ограничен по высоте и крутится внутри), спрятать его можно настройкой
+/// [AppSettings.hidePanelAnnounce], заголовок — «Объявления от сервиса <имя>».
 class SubscriptionBar extends StatelessWidget {
   /// Принудительный вид: `true` — компактный, `false` — полный, `null` —
   /// по высоте окна ([isCompactFor]). Явное значение нужно стражам вёрстки
@@ -41,26 +51,20 @@ class SubscriptionBar extends StatelessWidget {
   /// (< 600) для этого не годится: он про телефон с клавиатурой, не про окно 800.
   static const double compactBelowHeight = 900;
 
-  /// Ключ метки «внутри непрочитанное» на кнопке «⋮» (для стражей).
-  static const Key unreadBadgeKey = Key('subscription-bar-unread-badge');
-
-  /// Объявления, которые пользователь уже открывал из меню в ЭТОМ запуске.
+  /// Заголовок блока объявления: «Объявления от сервиса <имя>», а без имени —
+  /// просто «Объявления от сервиса». Имя — то же, что у подписи «Написать в
+  /// поддержку (<имя>)» в настройках: `info.title` подписки.
   ///
-  /// ⚠️ Ключ — сам текст, а не подписка: панель прислала новый текст — это
-  /// новое непрочитанное объявление, и метка обязана загореться снова. На диск
-  /// не пишется сознательно: объявление панели — не переписка, и после
-  /// перезапуска напомнить о нём точкой дешевле, чем потерять.
-  static final Set<String> _readAnnounces = <String>{};
-  static final ValueNotifier<int> _readTick = ValueNotifier<int>(0);
-
-  @visibleForTesting
-  static void resetReadAnnouncesForTests() {
-    _readAnnounces.clear();
-    _readTick.value++;
+  /// ⚠️ Механизма «прочитано» (набор открытых текстов + метка на «⋮») больше
+  /// нет — ему нечего значить: объявление либо на виду всегда, либо спрятано
+  /// настройкой навсегда, а метка «внутри непрочитанное» на кнопке, которую
+  /// не нажимают, и была причиной, по которой объявление «съедалось».
+  static String announceTitle(AppLocalizations l, String? serviceName) {
+    final name = (serviceName ?? '').trim();
+    return name.isEmpty
+        ? l.subBarAnnounceFromUnnamed
+        : l.subBarAnnounceFrom(name);
   }
-
-  /// Подпись пункта меню и заголовок диалога объявления.
-  static String announceLabel(AppLocalizations l) => l.subBarAnnounce;
 
   /// Мало ли окну по высоте для полной карточки.
   static bool isCompactFor(BuildContext context) {
@@ -82,7 +86,15 @@ class SubscriptionBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final isCompact = compact ?? isCompactFor(context);
-    final announce = (info.announce ?? '').isNotEmpty ? info.announce : null;
+    // ⚠️ ГЕЙТ ОБЪЯВЛЕНИЯ — НАСТРОЙКА, А НЕ ВЫСОТА ОКНА. Контроллер спрашиваем
+    // как необязательный: карточка живёт и в стражах, где его нет, — тогда
+    // действует умолчание «показывать».
+    final hideAnnounce =
+        context.watch<SettingsController?>()?.settings.hidePanelAnnounce ??
+            false;
+    final announce = !hideAnnounce && (info.announce ?? '').isNotEmpty
+        ? info.announce
+        : null;
 
     final frac = info.usedFraction;
     final hasBar = info.usedBytes != null && !info.unlimitedTraffic;
@@ -132,16 +144,7 @@ class SubscriptionBar extends StatelessWidget {
                       ? null
                       : () => context.read<AppState>().refreshSubscription(),
                 ),
-                ValueListenableBuilder<int>(
-                  valueListenable: _readTick,
-                  builder: (context, _, __) => _MenuButton(
-                    offset: (pos) => _menu(context, pos),
-                    // Метка — только когда объявление спрятано И не открыто.
-                    unread: isCompact &&
-                        announce != null &&
-                        !_readAnnounces.contains(announce),
-                  ),
-                ),
+                _MenuButton(offset: (pos) => _menu(context, pos)),
               ]),
               // Шкала рисуется ТОЛЬКО когда есть реальный лимит. При безлимите
               // доля неизвестна, а LinearProgressIndicator с value == null
@@ -169,14 +172,15 @@ class SubscriptionBar extends StatelessWidget {
                 const SizedBox(height: 4),
                 _ExpiryLine(info: info),
               ],
-              // Объявление провайдера (announce) — как в Happ. Панель может
+              // Объявление сервиса (announce) — как в Happ. Панель может
               // прислать очень длинный текст, поэтому ограничиваем высоту и даём
               // прокрутку внутри — иначе карточка растянулась бы на весь экран.
               //
-              // ⚠️ В КОМПАКТНОМ ВИДЕ ОБЪЯВЛЕНИЯ ЗДЕСЬ НЕТ — оно в меню «⋮»
-              // (пункт открывает диалог с полным текстом), а на кнопке горит
-              // метка, пока его не открыли: терять слово панели молча нельзя.
-              if (!isCompact && announce != null)
+              // ⚠️ НЕ ЗАВИСИТ ОТ `isCompact` — и это не забывчивость (см.
+              // шапку класса): компактность на телефоне — постоянное
+              // состояние, и гейт по высоте прятал бы объявление там навсегда.
+              // Единственный гейт — настройка, она уже учтена в `announce`.
+              if (announce != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8, right: 8),
                   child: Container(
@@ -187,11 +191,33 @@ class SubscriptionBar extends StatelessWidget {
                       color: Theme.of(context).colorScheme.secondaryContainer,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: SingleChildScrollView(
-                      child: SelectableText(info.announce!,
-                          // Объявление провайдера — направление по содержимому.
-                          textDirection: autoTextDirection(info.announce),
-                          style: Theme.of(context).textTheme.bodySmall),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Заголовок с именем сервиса — вне прокрутки, чтобы
+                        // не уезжал вместе с текстом.
+                        Text(announceTitle(l, info.title),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context)
+                                .textTheme
+                                .labelSmall
+                                ?.copyWith(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        // `Flexible`, а не `Expanded`: при коротком тексте
+                        // блок берёт по содержимому, при длинном — остаток
+                        // до maxHeight и крутится.
+                        Flexible(
+                          child: SingleChildScrollView(
+                            child: SelectableText(announce,
+                                // Объявление сервиса — направление по
+                                // содержимому.
+                                textDirection: autoTextDirection(announce),
+                                style: Theme.of(context).textTheme.bodySmall),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -264,63 +290,22 @@ class SubscriptionBar extends StatelessWidget {
   /// экрана (`home_screen`, `l.homeImport`) и видна всегда, а на пустом
   /// состоянии экран импорта открывается сам. Меню карточки — про ЭТУ подписку,
   /// и заведение новой в нём чужое.
+  ///
+  /// ⚠️ Пункта «Объявление» здесь НЕТ (был в 1.13.1 для компактного вида):
+  /// объявление теперь в карточке на любой высоте, а при настройке «скрыть»
+  /// его не должно быть и в меню — человек попросил не видеть.
   Future<void> _menu(BuildContext context, Offset pos) async {
     final l = AppLocalizations.of(context);
     final state = context.read<AppState>();
-    final announce = state.info.announce;
-    // Пункт «Объявление» — ТОЛЬКО в компактном виде: в полном текст и так
-    // на виду, и второй вход к нему был бы шумом.
-    final showAnnounce =
-        (compact ?? isCompactFor(context)) && (announce ?? '').isNotEmpty;
 
     final action = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: [
-        if (showAnnounce)
-          SubscriptionActions.item(
-              _announceAction, Icons.campaign_outlined, announceLabel(l)),
-        ...SubscriptionActions.menuItems(l,
-            hasUrl: (state.subscriptionUrl ?? '').isNotEmpty),
-      ],
+      items: SubscriptionActions.menuItems(l,
+          hasUrl: (state.subscriptionUrl ?? '').isNotEmpty),
     );
     if (action == null || !context.mounted) return;
-    if (action == _announceAction) {
-      await _showAnnounce(context, announce!);
-      return;
-    }
     await SubscriptionActions.run(context, action);
-  }
-
-  static const String _announceAction = 'announce';
-
-  /// Диалог с полным текстом объявления. Открытие = прочитано: метка на «⋮»
-  /// гаснет до следующего НОВОГО текста от панели.
-  Future<void> _showAnnounce(BuildContext context, String announce) async {
-    final l = AppLocalizations.of(context);
-    _readAnnounces.add(announce);
-    _readTick.value++;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(announceLabel(l)),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            child: SelectableText(announce,
-                // Объявление провайдера — направление по содержимому.
-                textDirection: autoTextDirection(announce),
-                style: Theme.of(ctx).textTheme.bodyMedium),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonClose),
-          ),
-        ],
-      ),
-    );
   }
 
   /// Строка трафика: «N из M» при лимите, «Израсходовано N · без ограничений»
@@ -339,24 +324,13 @@ class SubscriptionBar extends StatelessWidget {
 class _MenuButton extends StatelessWidget {
   final void Function(Offset pos) offset;
 
-  /// Метка «внутри непрочитанное» (объявление спрятано в меню и не открыто).
-  final bool unread;
-
-  const _MenuButton({required this.offset, this.unread = false});
+  const _MenuButton({required this.offset});
 
   @override
   Widget build(BuildContext context) {
     return Builder(builder: (ctx) {
       return IconButton(
-        icon: Badge(
-          // Ключ — только пока метка горит: страж ищет именно горящую.
-          key: unread ? SubscriptionBar.unreadBadgeKey : null,
-          // Точка без числа (`label` пустой → `smallSize`): считать тут
-          // нечего, важен сам факт. С любым `label` Badge рисовал бы пилюлю.
-          smallSize: 8,
-          isLabelVisible: unread,
-          child: const Icon(Icons.more_vert, size: 20),
-        ),
+        icon: const Icon(Icons.more_vert, size: 20),
         onPressed: () {
           final box = ctx.findRenderObject() as RenderBox?;
           final pos =

@@ -973,6 +973,21 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subBarAnnounce => 'Объявление от панели';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Объявления от сервиса $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Объявления от сервиса';
+
+  @override
+  String get hideAnnounceTitle => 'Скрывать объявления от сервиса';
+
+  @override
+  String get hideAnnounceSub =>
+      'Объявления из подписки не показываются в карточке. По умолчанию они видны на любом экране.';
+
+  @override
   String get subSwitcherPingAll => 'Пинг серверов всех подписок';
 
   @override

@@ -305,6 +305,17 @@
   "subBarExpired": "Aboneliğin süresi doldu:",
   "subBarValidUntil": "Geçerlilik tarihi:",
   "subBarAnnounce": "Panel duyurusu",
+  "subBarAnnounceFrom": "{name} hizmetinden duyurular",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Hizmet duyuruları",
+  "hideAnnounceTitle": "Hizmet duyurularını gizle",
+  "hideAnnounceSub": "Abonelikten gelen duyurular kartta gösterilmez. Varsayılan olarak her ekranda görünür.",
   "subSwitcherPingAll": "Tüm aboneliklerin sunucularını sına",
   "subSwitcherPingBusySpeed": "Ping kullanılamıyor: hız ölçümü sürüyor",
   "subSwitcherExpired": "Süresi doldu",

@@ -366,6 +366,17 @@
   "subBarExpired": "Suscripción vencida:",
   "subBarValidUntil": "Válida hasta:",
   "subBarAnnounce": "Anuncio del panel",
+  "subBarAnnounceFrom": "Anuncios del servicio {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Anuncios del servicio",
+  "hideAnnounceTitle": "Ocultar anuncios del servicio",
+  "hideAnnounceSub": "Los anuncios de la suscripción no se muestran en la tarjeta. Por defecto se ven en cualquier pantalla.",
   "subSwitcherPingAll": "Probar los servidores de todas las suscripciones",
   "subSwitcherPingBusySpeed": "Ping no disponible: hay una prueba de velocidad en curso",
   "subSwitcherExpired": "Caducada",
