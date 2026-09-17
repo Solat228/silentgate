@@ -167,6 +167,24 @@ void main() {
               'жить только в промежуточной копии, упаковываемой в zip');
     });
   });
+  group('⚠️ Батник не выдаёт старые APK за новую сборку', () {
+    // 18.09.2026: Gradle упал (в зеркале не оказалось cores.aar), а батник
+    // дошёл до конца, скопировал ПРЕЖНИЕ APK из зеркала и напечатал «ГОТОВО».
+    // Бета +78 была бы выдана за эксперимент +79 — на телефон владельца.
+    test('после flutter build apk стоит проверка кода возврата', () {
+      final content = _decodeCp866(apkBat.readAsBytesSync());
+      final lines = content.split(String.fromCharCode(10)).map((l) => l.trimRight()).toList();
+      final i = lines.indexWhere((l) => l.contains('build apk --release'));
+      expect(i, greaterThanOrEqualTo(0), reason: 'строка сборки APK пропала');
+      // В пределах следующих десяти строк обязана быть ветка отказа.
+      final after = lines.skip(i + 1).take(10).join(' ');
+      expect(after, contains('if errorlevel 1'),
+          reason: 'после падения сборки батник снова понесёт старые APK');
+      expect(after, contains('exit /b 1'),
+          reason: 'ветка отказа обязана завершать батник, а не только ругаться');
+    });
+  });
+
 }
 
 /// Таблица перекодировки CP866 -> Unicode для байт 0x00..0xFF.
