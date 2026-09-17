@@ -984,6 +984,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get subBarValidUntil => 'Valide jusqu\'au :';
 
   @override
+  String get subBarAnnounce => 'Annonce du panneau';
+
+  @override
   String get subSwitcherPingAll =>
       'Tester les serveurs de tous les abonnements';
 
@@ -3102,6 +3105,12 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'Données du dernier passage de la configuration automatique. Rien n\'est mesuré à nouveau ici.';
+
+  @override
+  String get srvInfoSectionSession => 'Connexion actuelle';
+
+  @override
+  String get srvInfoSessionUptime => 'Durée de connexion';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

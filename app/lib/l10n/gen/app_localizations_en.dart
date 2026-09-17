@@ -967,6 +967,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subBarValidUntil => 'Valid until:';
 
   @override
+  String get subBarAnnounce => 'Announcement from the panel';
+
+  @override
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override
@@ -3067,6 +3070,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'Data from the last auto-tuning run. Nothing is measured again here.';
+
+  @override
+  String get srvInfoSectionSession => 'Current connection';
+
+  @override
+  String get srvInfoSessionUptime => 'Connection time';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

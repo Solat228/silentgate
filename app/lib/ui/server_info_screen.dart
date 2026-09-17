@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +12,7 @@ import '../core/platform/app_launcher.dart';
 import '../core/net/speed_test.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/util/country_flag.dart';
+import '../core/util/uptime_format.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -262,19 +265,20 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
             _kv(context, l.srvInfoParamTlsFingerprint, s.fingerprint!),
           if (s.isPanelProfile)
             _kv(context, l.srvInfoParamType, l.srvInfoPanelAutoProfile),
+          // Сколько уже длится текущее подключение — последним блоком.
+          //
+          // ⚠️ Раздел рисуется ЦЕЛИКОМ или не рисуется вовсе. Заголовок без
+          // строки под ним — это обещание данных, которых нет: при
+          // выключенном VPN отсчёта не существует, и «Текущее подключение» с
+          // пустотой под ним читалось бы как поломка, а не как «выключено».
+          const _SessionUptimeBlock(),
         ],
       ),
     );
   }
 
-  Widget _section(BuildContext context, String title) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: Theme.of(context).colorScheme.primary,
-                  fontWeight: FontWeight.bold,
-                )),
-      );
+  Widget _section(BuildContext context, String title) =>
+      _sectionTitle(context, title);
 
   Widget _ipCard(BuildContext context, String title, IpInfo? info,
       {bool primary = false}) {
@@ -348,7 +352,28 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   /// результат замера) наезжали друг на друга — владелец описал это как
   /// «текст плывёт». Теперь на узком экране подпись встаёт НАД значением, а на
   /// широком остаётся сбоку: и там и там читается, а вёрстка не ломается.
-  Widget _kv(BuildContext context, String k, String v) => Padding(
+  Widget _kv(BuildContext context, String k, String v) =>
+      _kvRow(context, k, v);
+
+}
+
+
+/// Заголовок раздела. Вынесен на уровень файла: его рисует и сам экран, и
+/// блок времени подключения внизу — отдельный виджет, которому методы
+/// состояния недоступны. Две копии оформления разъехались бы при первой же
+/// правке стиля, и низ экрана перестал бы совпадать с остальными разделами.
+Widget _sectionTitle(BuildContext context, String title) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
+                )),
+      );
+
+/// Строка «подпись — значение». Вынесена на уровень файла по той же причине,
+/// что и заголовок раздела.
+Widget _kvRow(BuildContext context, String k, String v) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: LayoutBuilder(builder: (context, box) {
           final label = Text(k, style: Theme.of(context).textTheme.bodySmall);
@@ -365,4 +390,57 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           ]);
         }),
       );
+
+/// Сколько уже длится текущее подключение — последний блок экрана.
+///
+/// ⚠️ СО СВОИМ ТАЙМЕРОМ, И ЭТО ОБЯЗАТЕЛЬНО. `AppState.connectedFor` —
+/// вычисляемое значение от точки отсчёта, и о его ходе состояние никого не
+/// уведомляет: раз в секунду перерисовки не будет. Без собственного тика
+/// число замерло бы на том, каким было в момент открытия шторки, и выглядело
+/// бы это не как «таймер не обновляется», а как «подключение встало».
+///
+/// ⚠️ И именно ОТДЕЛЬНЫМ виджетом, а не тиком всего экрана: на экране живут
+/// замеры скорости и карточки адресов, перерисовывать их каждую секунду
+/// незачем, а замер скорости идёт минутами.
+class _SessionUptimeBlock extends StatefulWidget {
+  const _SessionUptimeBlock();
+
+  @override
+  State<_SessionUptimeBlock> createState() => _SessionUptimeBlockState();
+}
+
+class _SessionUptimeBlockState extends State<_SessionUptimeBlock> {
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Необязательное чтение: стражи вёрстки поднимают экран без провайдеров.
+    final d = context.watch<AppState?>()?.connectedFor;
+    // VPN выключен — отсчёта не существует, блока нет целиком (см. коммент
+    // на месте вставки: заголовок без значения читается как поломка).
+    if (d == null) return const SizedBox.shrink();
+    final l = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        _sectionTitle(context, l.srvInfoSectionSession),
+        _kvRow(context, l.srvInfoSessionUptime, formatUptime(d)),
+      ],
+    );
+  }
 }

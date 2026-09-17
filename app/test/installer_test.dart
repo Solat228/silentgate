@@ -389,4 +389,34 @@ void main() {
               'становится только обновлению поверх');
     });
   });
+
+  group('⚠️ Резервные копии гео-баз не уезжают в поставку', () {
+    // Приложение при обновлении гео-баз оставляет рядом с .dat файл .bak
+    // (geo_bases.dart). Если собранный exe запускали из папки Release, эти
+    // .bak там лежат — и это состояние ЗАПУЩЕННОЙ программы, а не сборка.
+    // Без явного исключения они уезжали и в установщик, и в портативный
+    // архив: +30 МБ мусора, найдено на сборке 1.13.1.
+    test('установщик исключает *.bak из ReleaseDir', () {
+      final src = text
+          .split('\n')
+          .firstWhere((l) => l.startsWith('Source: "{#ReleaseDir}\\*"'),
+              orElse: () => '');
+      expect(src, isNotEmpty, reason: 'строка Source для ReleaseDir пропала');
+      expect(src, contains('Excludes: "*.bak"'),
+          reason: 'поставка снова понесёт резервные копии гео-баз');
+    });
+
+    test('портативный архив собирается без *.bak', () {
+      // Батник в cp866 — читаем байтами, ищем ASCII-часть команды.
+      final bat = File('../build-exe.bat').readAsBytesSync();
+      final ascii = String.fromCharCodes(bat.map((b) => b > 127 ? 0x3F : b));
+      final robo = ascii
+          .split('\n')
+          .firstWhere((l) => l.startsWith('robocopy "%REL%" "%PORTSTAGE%'),
+              orElse: () => '');
+      expect(robo, isNotEmpty, reason: 'строка robocopy в build-exe.bat пропала');
+      expect(robo, contains('/XF *.bak'),
+          reason: 'портативный архив снова понесёт резервные копии гео-баз');
+    });
+  });
 }

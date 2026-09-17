@@ -26,6 +26,7 @@ import '../core/settings/app_settings.dart';
 import '../core/probe/clash_delay.dart';
 import '../core/probe/ping_result.dart';
 import '../core/util/country_flag.dart';
+import '../core/util/uptime_format.dart';
 import '../core/util/server_search.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
@@ -2574,17 +2575,6 @@ class _UptimeLabelState extends State<_UptimeLabel> {
     super.dispose();
   }
 
-  /// «7:12» до часа, дальше «1:07:12» — как в плеере: ведущий ноль у минут не
-  /// нужен, а у секунд обязателен, иначе цифры прыгают при переходе через 10.
-  static String format(Duration d) {
-    final total = d.inSeconds;
-    final hh = total ~/ 3600;
-    final mm = (total ~/ 60) % 60;
-    final ss = total % 60;
-    String two(int v) => v.toString().padLeft(2, '0');
-    return hh > 0 ? '$hh:${two(mm)}:${two(ss)}' : '$mm:${two(ss)}';
-  }
-
   @override
   Widget build(BuildContext context) {
     final d = context.select<AppState, Duration?>((s) => s.connectedFor);
@@ -2593,7 +2583,7 @@ class _UptimeLabelState extends State<_UptimeLabel> {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Text(
-        format(d),
+        formatUptime(d),
         textDirection: TextDirection.ltr,
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Theme.of(context).colorScheme.onPrimary,

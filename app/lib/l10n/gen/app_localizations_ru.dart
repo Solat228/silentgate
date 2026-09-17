@@ -970,6 +970,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get subBarValidUntil => 'Действует до:';
 
   @override
+  String get subBarAnnounce => 'Объявление от панели';
+
+  @override
   String get subSwitcherPingAll => 'Пинг серверов всех подписок';
 
   @override
@@ -3076,6 +3079,12 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.';
+
+  @override
+  String get srvInfoSectionSession => 'Текущее подключение';
+
+  @override
+  String get srvInfoSessionUptime => 'Время подключения';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

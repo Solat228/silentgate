@@ -975,6 +975,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subBarValidUntil => 'Geçerlilik tarihi:';
 
   @override
+  String get subBarAnnounce => 'Panel duyurusu';
+
+  @override
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override
@@ -3075,6 +3078,12 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'Son otomatik ayar taramasının verileri. Burada yeniden ölçüm yapılmaz.';
+
+  @override
+  String get srvInfoSectionSession => 'Geçerli bağlantı';
+
+  @override
+  String get srvInfoSessionUptime => 'Bağlantı süresi';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

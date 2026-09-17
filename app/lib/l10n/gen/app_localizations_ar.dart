@@ -964,6 +964,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subBarValidUntil => 'صالح حتى:';
 
   @override
+  String get subBarAnnounce => 'إعلان من اللوحة';
+
+  @override
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override
@@ -3065,6 +3068,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'بيانات آخر تشغيل للضبط التلقائي. لا يُجرى هنا أي قياس جديد.';
+
+  @override
+  String get srvInfoSectionSession => 'الاتصال الحالي';
+
+  @override
+  String get srvInfoSessionUptime => 'مدة الاتصال';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

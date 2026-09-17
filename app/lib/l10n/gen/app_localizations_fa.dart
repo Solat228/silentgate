@@ -968,6 +968,9 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subBarValidUntil => 'معتبر تا:';
 
   @override
+  String get subBarAnnounce => 'اعلان از پنل';
+
+  @override
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override
@@ -3064,6 +3067,12 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'داده‌های آخرین اجرای پیکربندی خودکار. اینجا چیزی دوباره اندازه‌گیری نمی‌شود.';
+
+  @override
+  String get srvInfoSectionSession => 'اتصال کنونی';
+
+  @override
+  String get srvInfoSessionUptime => 'مدت اتصال';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

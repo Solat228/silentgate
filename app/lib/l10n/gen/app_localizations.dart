@@ -1788,6 +1788,12 @@ abstract class AppLocalizations {
   /// **'Действует до:'**
   String get subBarValidUntil;
 
+  /// No description provided for @subBarAnnounce.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявление от панели'**
+  String get subBarAnnounce;
+
   /// No description provided for @subSwitcherPingAll.
   ///
   /// In ru, this message translates to:
@@ -5333,6 +5339,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Данные последнего прогона автонастройки. Здесь ничего не измеряется заново.'**
   String get srvInfoAutoHint;
+
+  /// No description provided for @srvInfoSectionSession.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущее подключение'**
+  String get srvInfoSectionSession;
+
+  /// No description provided for @srvInfoSessionUptime.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время подключения'**
+  String get srvInfoSessionUptime;
 
   /// No description provided for @srvInfoAutoGeoNote.
   ///

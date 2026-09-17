@@ -153,7 +153,10 @@ Name: "tr"; MessagesFile: "compiler:Languages\Turkish.isl"
 Name: "ar"; MessagesFile: "compiler:Languages\Arabic.isl"
 
 [Files]
-Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Flags: recursesubdirs createallsubdirs ignoreversion
+; ⚠️ *.bak — резервные копии гео-баз, которые приложение оставляет рядом с .dat при
+; обновлении (geo_bases.dart). Это состояние ЗАПУЩЕННОГО exe, а не сборка: без Excludes
+; они уезжали в установщик и портативный архив (+30 МБ). Страж — installer_test.
+Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Excludes: "*.bak"; Flags: recursesubdirs createallsubdirs ignoreversion
 
 [Registry]
 ; URL-схема silentgate:// (per-user, без админа)

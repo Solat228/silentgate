@@ -944,6 +944,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subBarValidUntil => '有效期至：';
 
   @override
+  String get subBarAnnounce => '面板公告';
+
+  @override
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override
@@ -2966,6 +2969,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get srvInfoAutoHint => '上次自动配置运行时的数据。此处不会重新测量。';
+
+  @override
+  String get srvInfoSectionSession => '当前连接';
+
+  @override
+  String get srvInfoSessionUptime => '连接时长';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

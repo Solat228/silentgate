@@ -980,6 +980,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get subBarValidUntil => 'Gültig bis:';
 
   @override
+  String get subBarAnnounce => 'Ankündigung vom Panel';
+
+  @override
   String get subSwitcherPingAll => 'Server aller Abos testen';
 
   @override
@@ -3096,6 +3099,12 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get srvInfoAutoHint =>
       'Daten des letzten Durchlaufs der automatischen Einrichtung. Hier wird nichts erneut gemessen.';
+
+  @override
+  String get srvInfoSectionSession => 'Aktuelle Verbindung';
+
+  @override
+  String get srvInfoSessionUptime => 'Verbindungsdauer';
 
   @override
   String srvInfoAutoGeoNote(Object services) {

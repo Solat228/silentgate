@@ -99,12 +99,23 @@ set "SRC=%WORK%\app\build\app\outputs\flutter-apk"
 set "DST=%PROJECT%\app\build\app\outputs\flutter-apk"
 if not exist "%DST%\" mkdir "%DST%"
 
+rem === Версия для имени файла (контракт с сайтом, docs\APP_UPDATE_SERVER.md) ===
+rem pubspec хранит "X.Y.Z+N" - билд-номер после + сайту не нужен, срезаем.
+for /f "tokens=2 delims=: " %%v in ('findstr /b "version:" "%PROJECT%\app\pubspec.yaml"') do set "PUBVER=%%v"
+for /f "tokens=1 delims=+" %%p in ("%PUBVER%") do set "VER=%%p"
+if not defined VER (
+  echo.
+  echo === Не удалось прочитать версию из pubspec.yaml ===
+  pause
+  exit /b 1
+)
+
 rem armeabi-v7a НЕ копируем: под эту архитектуру ядра в AAR нет, и такой APK
 rem установится, но работать не будет.
-if exist "%SRC%\app-arm64-v8a-release.apk" copy /Y "%SRC%\app-arm64-v8a-release.apk" "%DST%\SilentGate-arm64-v8a.apk" >nul
-if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\SilentGate-x86_64.apk"    >nul
+if exist "%SRC%\app-arm64-v8a-release.apk" copy /Y "%SRC%\app-arm64-v8a-release.apk" "%DST%\SilentGate-%VER%-arm64-v8a.apk" >nul
+if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\SilentGate-%VER%-x86_64.apk"    >nul
 
-if not exist "%DST%\SilentGate-arm64-v8a.apk" (
+if not exist "%DST%\SilentGate-%VER%-arm64-v8a.apk" (
   echo.
   echo === APK НЕ ПОЯВИЛСЯ в %DST%
   echo Сборка прошла, но файла нет - проверьте %SRC%
@@ -114,12 +125,12 @@ if not exist "%DST%\SilentGate-arm64-v8a.apk" (
 
 echo.
 echo === ГОТОВО ===
-echo   SilentGate-arm64-v8a.apk  - на телефон
-echo   SilentGate-x86_64.apk     - на эмулятор
+echo   SilentGate-%VER%-arm64-v8a.apk  - на телефон
+echo   SilentGate-%VER%-x86_64.apk     - на эмулятор
 if defined SILENTGATE_CHANNEL echo   Канал: %SILENTGATE_CHANNEL%
 echo.
 echo Установка на подключённый телефон:
-echo   "%SDK%\platform-tools\adb.exe" install -r "%DST%\SilentGate-arm64-v8a.apk"
+echo   "%SDK%\platform-tools\adb.exe" install -r "%DST%\SilentGate-%VER%-arm64-v8a.apk"
 echo.
 start "" "%DST%"
 endlocal
