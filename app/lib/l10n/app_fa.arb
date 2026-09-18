@@ -1256,5 +1256,11 @@
   "notifOffTitle": "اعلان‌ها خاموش است",
   "notifOffSub": "قطع شدن اتصال را نمی‌بینید و دکمهٔ «قطع اتصال» ناپدید می‌شود",
   "notifOffOpen": "روشن کردن",
-  "notifOffNoScreen": "صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate."
+  "notifOffNoScreen": "صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate.",
+  "splitImport": "وارد کردن",
+  "splitExport": "برون‌بری",
+  "splitImportOk": "تنظیمات وارد شد",
+  "splitImportBad": "تنظیمات معتبر SilentGate در کلیپ‌بورد نیست",
+  "splitImportReplace": "جایگزینی",
+  "splitImportConfirm": "قوانین تونل تقسیمی فعلی با موارد وارد‌شده جایگزین شود؟"
 }

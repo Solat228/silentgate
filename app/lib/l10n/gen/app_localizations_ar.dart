@@ -3428,4 +3428,23 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'تعذّر فتح شاشة الإشعارات. فعّلها يدويًا: إعدادات أندرويد ← التطبيقات ← SilentGate.';
+
+  @override
+  String get splitImport => 'استيراد';
+
+  @override
+  String get splitExport => 'تصدير';
+
+  @override
+  String get splitImportOk => 'تم استيراد الإعدادات';
+
+  @override
+  String get splitImportBad => 'لا توجد إعدادات SilentGate صالحة في الحافظة';
+
+  @override
+  String get splitImportReplace => 'استبدال';
+
+  @override
+  String get splitImportConfirm =>
+      'استبدال قواعد النفق المقسّم الحالية بالمستوردة؟';
 }

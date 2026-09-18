@@ -1432,5 +1432,11 @@
   "notifOffTitle": "Notifications are off",
   "notifOffSub": "You will not see a dropped connection, and the “Disconnect” button will be gone",
   "notifOffOpen": "Turn on",
-  "notifOffNoScreen": "Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate."
+  "notifOffNoScreen": "Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate.",
+  "splitImport": "Import",
+  "splitExport": "Export",
+  "splitImportOk": "Settings imported",
+  "splitImportBad": "No valid SilentGate settings in the clipboard",
+  "splitImportReplace": "Replace",
+  "splitImportConfirm": "Replace the current split tunneling rules with the imported ones?"
 }

@@ -3437,4 +3437,24 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.';
+
+  @override
+  String get splitImport => 'Импорт';
+
+  @override
+  String get splitExport => 'Экспорт';
+
+  @override
+  String get splitImportOk => 'Настройки импортированы';
+
+  @override
+  String get splitImportBad =>
+      'В буфере обмена нет корректных настроек SilentGate';
+
+  @override
+  String get splitImportReplace => 'Заменить';
+
+  @override
+  String get splitImportConfirm =>
+      'Заменить текущие правила раздельного туннелирования импортированными?';
 }

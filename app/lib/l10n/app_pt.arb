@@ -1256,5 +1256,11 @@
   "notifOffTitle": "As notificações estão desligadas",
   "notifOffSub": "Não verá uma quebra de ligação e o botão «Desligar» desaparecerá",
   "notifOffOpen": "Ligar",
-  "notifOffNoScreen": "Não foi possível abrir o ecrã de notificações. Ligue-as manualmente: definições do Android → Aplicações → SilentGate."
+  "notifOffNoScreen": "Não foi possível abrir o ecrã de notificações. Ligue-as manualmente: definições do Android → Aplicações → SilentGate.",
+  "splitImport": "Importar",
+  "splitExport": "Exportar",
+  "splitImportOk": "Configurações importadas",
+  "splitImportBad": "Nenhuma configuração válida do SilentGate na área de transferência",
+  "splitImportReplace": "Substituir",
+  "splitImportConfirm": "Substituir as regras atuais de túnel dividido pelas importadas?"
 }

@@ -1317,5 +1317,11 @@
   "notifOffTitle": "Las notificaciones están desactivadas",
   "notifOffSub": "No verás una caída de la conexión y el botón «Desconectar» desaparecerá",
   "notifOffOpen": "Activar",
-  "notifOffNoScreen": "No se ha podido abrir la pantalla de notificaciones. Actívalas manualmente: ajustes de Android → Aplicaciones → SilentGate."
+  "notifOffNoScreen": "No se ha podido abrir la pantalla de notificaciones. Actívalas manualmente: ajustes de Android → Aplicaciones → SilentGate.",
+  "splitImport": "Importar",
+  "splitExport": "Exportar",
+  "splitImportOk": "Ajustes importados",
+  "splitImportBad": "No hay ajustes válidos de SilentGate en el portapapeles",
+  "splitImportReplace": "Reemplazar",
+  "splitImportConfirm": "¿Reemplazar las reglas actuales de túnel dividido por las importadas?"
 }

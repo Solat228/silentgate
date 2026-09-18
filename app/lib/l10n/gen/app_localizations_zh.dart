@@ -3308,4 +3308,22 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       '无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。';
+
+  @override
+  String get splitImport => '导入';
+
+  @override
+  String get splitExport => '导出';
+
+  @override
+  String get splitImportOk => '设置已导入';
+
+  @override
+  String get splitImportBad => '剪贴板中没有有效的 SilentGate 设置';
+
+  @override
+  String get splitImportReplace => '替换';
+
+  @override
+  String get splitImportConfirm => '用导入的规则替换当前的分流规则？';
 }

@@ -3469,4 +3469,24 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Não foi possível abrir o ecrã de notificações. Ligue-as manualmente: definições do Android → Aplicações → SilentGate.';
+
+  @override
+  String get splitImport => 'Importar';
+
+  @override
+  String get splitExport => 'Exportar';
+
+  @override
+  String get splitImportOk => 'Configurações importadas';
+
+  @override
+  String get splitImportBad =>
+      'Nenhuma configuração válida do SilentGate na área de transferência';
+
+  @override
+  String get splitImportReplace => 'Substituir';
+
+  @override
+  String get splitImportConfirm =>
+      'Substituir as regras atuais de túnel dividido pelas importadas?';
 }

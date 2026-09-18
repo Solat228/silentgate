@@ -3463,4 +3463,24 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Der Benachrichtigungsbildschirm ließ sich nicht öffnen. Schalten Sie sie manuell ein: Android-Einstellungen → Apps → SilentGate.';
+
+  @override
+  String get splitImport => 'Importieren';
+
+  @override
+  String get splitExport => 'Exportieren';
+
+  @override
+  String get splitImportOk => 'Einstellungen importiert';
+
+  @override
+  String get splitImportBad =>
+      'Keine gültigen SilentGate-Einstellungen in der Zwischenablage';
+
+  @override
+  String get splitImportReplace => 'Ersetzen';
+
+  @override
+  String get splitImportConfirm =>
+      'Aktuelle Split-Tunneling-Regeln durch die importierten ersetzen?';
 }

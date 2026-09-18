@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import '../parser/share_link_parser.dart';
@@ -516,6 +517,45 @@ class SplitTunnelConfig {
           .where((s) => s.domain.isNotEmpty)
           .toList(),
     );
+  }
+}
+
+/// Перенос настроек раздельного туннелирования между устройствами через буфер
+/// обмена (кнопки «Импорт»/«Экспорт» на экране).
+///
+/// ⚠️ ЛОГИКА ЧИСТАЯ И ЖИВЁТ В `core`, А НЕ В ВИДЖЕТЕ. Разбор чужого текста —
+/// именно то, что обязано быть под тестом: экран лишь читает буфер и показывает
+/// тост, а решает «наш это формат или мусор» вот этот код
+/// (`test/split_tunnel_backup_test.dart`). Конверт с меткой `silentgate` нужен,
+/// чтобы случайный JSON из буфера не подменил правила: [tryDecode] возвращает
+/// `null` на всём, что не помечено нами, и никогда не бросает.
+class SplitTunnelBackup {
+  static const _tag = 'split-tunnel';
+
+  /// Сериализует правила и настройку уведомления о блокировке в текст для буфера.
+  static String encode(SplitTunnelConfig split, {required bool blockNotice}) =>
+      const JsonEncoder.withIndent('  ').convert({
+        'silentgate': _tag,
+        'version': 1,
+        'splitTunnel': split.toJson(),
+        'blockNoticeEnabled': blockNotice,
+      });
+
+  /// Разбирает текст из буфера. `null` — это не наш формат (мусор/чужой JSON),
+  /// [blockNotice] может быть `null`, если поля в конверте не было.
+  static ({SplitTunnelConfig split, bool? blockNotice})? tryDecode(String text) {
+    try {
+      final j = jsonDecode(text.trim());
+      if (j is! Map || j['silentgate'] != _tag || j['splitTunnel'] is! Map) {
+        return null;
+      }
+      final split = SplitTunnelConfig.fromJson(
+          Map<String, dynamic>.from(j['splitTunnel'] as Map));
+      final bn = j['blockNoticeEnabled'];
+      return (split: split, blockNotice: bn is bool ? bn : null);
+    } catch (_) {
+      return null;
+    }
   }
 }
 

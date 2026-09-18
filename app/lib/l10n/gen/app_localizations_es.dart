@@ -3471,4 +3471,24 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'No se ha podido abrir la pantalla de notificaciones. Actívalas manualmente: ajustes de Android → Aplicaciones → SilentGate.';
+
+  @override
+  String get splitImport => 'Importar';
+
+  @override
+  String get splitExport => 'Exportar';
+
+  @override
+  String get splitImportOk => 'Ajustes importados';
+
+  @override
+  String get splitImportBad =>
+      'No hay ajustes válidos de SilentGate en el portapapeles';
+
+  @override
+  String get splitImportReplace => 'Reemplazar';
+
+  @override
+  String get splitImportConfirm =>
+      '¿Reemplazar las reglas actuales de túnel dividido por las importadas?';
 }

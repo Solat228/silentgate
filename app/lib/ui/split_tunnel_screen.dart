@@ -185,6 +185,9 @@ class SplitTunnelScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Наверху по просьбе владельца: импорт/экспорт настроек,
+                  // быстрое добавление сайта и галочка уведомления о блокировке.
+                  _topTools(context, controller, l, st),
                   // ⚠️ Пока «Не выходить под реальным IP» включено, часть
                   // правил «Прямо» работает не так, как написано в строке.
                   // Молчать об этом нельзя: человек видит «Прямо» и считает,
@@ -365,10 +368,6 @@ class SplitTunnelScreen extends StatelessWidget {
                           const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16),
                         _siteTile(context, controller, e.site, e.depth),
                       ]),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _AddSiteField(controller: controller),
-                  ),
                   // ⚠️ Побочный эффект правил по сайтам, о котором нельзя
                   // молчать: приложение глушит HTTP/3 для ВСЕГО трафика, а не
                   // только для перечисленных доменов. Иначе правило по сайту
@@ -398,10 +397,10 @@ class SplitTunnelScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  // Стоит здесь, а не в общих настройках: уведомление касается
-                  // только правил «Блок», а их заводят именно на этом экране.
-                  // Показываем, лишь когда блокировка реально есть, — иначе это
-                  // настройка ни для чего.
+                  // ⚠️ Уведомление о блокировке («Сообщать о заблокированных
+                  // сайтах») переехало НАВЕРХ, в `_topTools`, по просьбе
+                  // владельца — вместе с полем добавления сайта. Гейт там тот
+                  // же: показываем, лишь когда есть правило «Блок».
                   //
                   // ⚠️ ЗДЕСЬ БЫЛА СТРАНИЦА-ЗАГЛУШКА. Она подменяла ответ по
                   // http и до пользователя почти никогда не доходила: браузеры
@@ -412,18 +411,6 @@ class SplitTunnelScreen extends StatelessWidget {
                   // получить возможность читать весь TLS пользователя. Поэтому
                   // объяснение переехало туда, где оно работает всегда, —
                   // в само приложение.
-                  if (st.sites.any((x) => x.action == AppAction.block)) ...[
-                    const Divider(),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.notifications_active_outlined),
-                      value: controller.settings.blockNoticeEnabled,
-                      onChanged: (v) => controller
-                          .update((s) => s.copyWith(blockNoticeEnabled: v)),
-                      title: Text(l.blockNoticeTitle),
-                      subtitle: SelText(l.blockNoticeSub,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ),
-                  ],
                   ], // конец блока «списки при не-all режиме»
                 ],
               ),
@@ -457,6 +444,104 @@ class SplitTunnelScreen extends StatelessWidget {
           InfoTooltip(info, title: title),
         ]),
       );
+
+  /// Верхний тулбар: импорт/экспорт (всегда) плюс быстрое добавление сайта и
+  /// галочка уведомления о блокировке (когда правила применяются). Всё это
+  /// перенесено НАВЕРХ по прямой просьбе владельца — раньше поле добавления и
+  /// галочка жили под списком сайтов, и до них надо было доскроллить.
+  Widget _topTools(BuildContext context, SettingsController controller,
+      AppLocalizations l, SplitTunnelConfig st) {
+    final hasBlock = st.sites.any((x) => x.action == AppAction.block);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Импорт/экспорт полезны в любом режиме (перенести правила на другое
+        // устройство), поэтому не гейтятся по режиму.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: OverflowBar(
+            alignment: MainAxisAlignment.end,
+            spacing: 4,
+            children: [
+              TextButton.icon(
+                icon: const Icon(Icons.file_upload_outlined),
+                label: Text(l.splitExport),
+                onPressed: () => _exportSettings(context, controller),
+              ),
+              TextButton.icon(
+                icon: const Icon(Icons.file_download_outlined),
+                label: Text(l.splitImport),
+                onPressed: () => _importSettings(context, controller),
+              ),
+            ],
+          ),
+        ),
+        // Поле добавления и галочка — только когда правила реально применяются
+        // (не в режиме «Все через VPN»). Гейт тот же, что был у них на старом
+        // месте внизу.
+        if (st.mode != SplitMode.all) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: _AddSiteField(controller: controller),
+          ),
+          if (hasBlock)
+            SwitchListTile(
+              secondary: const Icon(Icons.notifications_active_outlined),
+              value: controller.settings.blockNoticeEnabled,
+              onChanged: (v) =>
+                  controller.update((s) => s.copyWith(blockNoticeEnabled: v)),
+              title: Text(l.blockNoticeTitle),
+              subtitle: SelText(l.blockNoticeSub,
+                  style: Theme.of(context).textTheme.bodySmall),
+            ),
+        ],
+        const Divider(),
+      ],
+    );
+  }
+
+  /// Экспорт правил и галочки уведомления в буфер обмена. Через буфер, а не
+  /// файлом: на телефоне сохранение файла ненадёжно, а буфер работает везде.
+  Future<void> _exportSettings(
+      BuildContext context, SettingsController c) async {
+    final text = SplitTunnelBackup.encode(c.settings.splitTunnel,
+        blockNotice: c.settings.blockNoticeEnabled);
+    await Clipboard.setData(ClipboardData(text: text));
+    if (context.mounted) AppToast.copied(context);
+  }
+
+  /// Импорт из буфера. Чужой/битый текст молча не применяется (тост об ошибке);
+  /// корректный — с подтверждением, потому что ЗАМЕНЯЕТ текущие правила целиком.
+  Future<void> _importSettings(
+      BuildContext context, SettingsController c) async {
+    final l = AppLocalizations.of(context);
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (!context.mounted) return;
+    final parsed = SplitTunnelBackup.tryDecode(data?.text ?? '');
+    if (parsed == null) {
+      AppToast.show(context, l.splitImportBad);
+      return;
+    }
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(l.splitImportConfirm),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.commonCancel)),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.splitImportReplace)),
+        ],
+      ),
+    );
+    if (ok != true || !context.mounted) return;
+    c.update((s) => s.copyWith(
+        splitTunnel: parsed.split,
+        blockNoticeEnabled: parsed.blockNotice ?? s.blockNoticeEnabled));
+    if (context.mounted) AppToast.show(context, l.splitImportOk);
+  }
 
   /// Добавить СРАЗУ НЕСКОЛЬКО приложений одним изменением настроек.
   ///

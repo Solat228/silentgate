@@ -5921,6 +5921,42 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.'**
   String get notifOffNoScreen;
+
+  /// No description provided for @splitImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт'**
+  String get splitImport;
+
+  /// No description provided for @splitExport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспорт'**
+  String get splitExport;
+
+  /// No description provided for @splitImportOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки импортированы'**
+  String get splitImportOk;
+
+  /// No description provided for @splitImportBad.
+  ///
+  /// In ru, this message translates to:
+  /// **'В буфере обмена нет корректных настроек SilentGate'**
+  String get splitImportBad;
+
+  /// No description provided for @splitImportReplace.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить'**
+  String get splitImportReplace;
+
+  /// No description provided for @splitImportConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить текущие правила раздельного туннелирования импортированными?'**
+  String get splitImportConfirm;
 }
 
 class _AppLocalizationsDelegate

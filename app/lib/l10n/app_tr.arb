@@ -1256,5 +1256,11 @@
   "notifOffTitle": "Bildirimler kapalı",
   "notifOffSub": "Bağlantı kopmasını göremezsiniz ve «Bağlantıyı kes» düğmesi kaybolur",
   "notifOffOpen": "Aç",
-  "notifOffNoScreen": "Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate."
+  "notifOffNoScreen": "Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate.",
+  "splitImport": "İçe aktar",
+  "splitExport": "Dışa aktar",
+  "splitImportOk": "Ayarlar içe aktarıldı",
+  "splitImportBad": "Panoda geçerli SilentGate ayarı yok",
+  "splitImportReplace": "Değiştir",
+  "splitImportConfirm": "Mevcut bölünmüş tünelleme kuralları içe aktarılanlarla değiştirilsin mi?"
 }

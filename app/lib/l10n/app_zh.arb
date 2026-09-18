@@ -1256,5 +1256,11 @@
   "notifOffTitle": "通知已关闭",
   "notifOffSub": "您将看不到连接中断，通知栏中的「断开」按钮也会消失",
   "notifOffOpen": "开启",
-  "notifOffNoScreen": "无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。"
+  "notifOffNoScreen": "无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。",
+  "splitImport": "导入",
+  "splitExport": "导出",
+  "splitImportOk": "设置已导入",
+  "splitImportBad": "剪贴板中没有有效的 SilentGate 设置",
+  "splitImportReplace": "替换",
+  "splitImportConfirm": "用导入的规则替换当前的分流规则？"
 }

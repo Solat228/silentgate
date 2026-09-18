@@ -3475,4 +3475,24 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Impossible d’ouvrir l’écran des notifications. Activez-les manuellement : paramètres Android → Applications → SilentGate.';
+
+  @override
+  String get splitImport => 'Importer';
+
+  @override
+  String get splitExport => 'Exporter';
+
+  @override
+  String get splitImportOk => 'Paramètres importés';
+
+  @override
+  String get splitImportBad =>
+      'Aucun paramètre SilentGate valide dans le presse-papiers';
+
+  @override
+  String get splitImportReplace => 'Remplacer';
+
+  @override
+  String get splitImportConfirm =>
+      'Remplacer les règles de tunneling fractionné actuelles par celles importées ?';
 }

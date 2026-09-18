@@ -3425,4 +3425,23 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate.';
+
+  @override
+  String get splitImport => 'وارد کردن';
+
+  @override
+  String get splitExport => 'برون‌بری';
+
+  @override
+  String get splitImportOk => 'تنظیمات وارد شد';
+
+  @override
+  String get splitImportBad => 'تنظیمات معتبر SilentGate در کلیپ‌بورد نیست';
+
+  @override
+  String get splitImportReplace => 'جایگزینی';
+
+  @override
+  String get splitImportConfirm =>
+      'قوانین تونل تقسیمی فعلی با موارد وارد‌شده جایگزین شود؟';
 }

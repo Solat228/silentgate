@@ -3440,4 +3440,23 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate.';
+
+  @override
+  String get splitImport => 'İçe aktar';
+
+  @override
+  String get splitExport => 'Dışa aktar';
+
+  @override
+  String get splitImportOk => 'Ayarlar içe aktarıldı';
+
+  @override
+  String get splitImportBad => 'Panoda geçerli SilentGate ayarı yok';
+
+  @override
+  String get splitImportReplace => 'Değiştir';
+
+  @override
+  String get splitImportConfirm =>
+      'Mevcut bölünmüş tünelleme kuralları içe aktarılanlarla değiştirilsin mi?';
 }
