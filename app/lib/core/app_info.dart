@@ -5,7 +5,7 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.13.1';
+  static const version = '1.13.2';
 
   /// Канал СБОРКИ — свойство конкретного exe/apk, а не то, что можно
   /// прочитать из настроек или манифеста обновлений.
