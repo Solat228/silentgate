@@ -577,7 +577,10 @@ class _HomeScreenState extends State<HomeScreen> {
     //
     // Человек, попросивший «больше не показывать», гасит ОКНО, а не проверку
     // обновлений: иначе он тихо остался бы без новых версий, о чём не просил.
-    if (settings.appUpdateNotesHidden) {
+    // Режим «только уведомлять» (1.14.0; сюда же мигрировал прежний флаг
+    // «не показывать окно»). ⚠️ Переходный код: волна 3 самообновления
+    // заменит этот метод контроллером целиком.
+    if (settings.appUpdateMode == AppUpdateMode.notifyOnly) {
       // Окно скрыто — но сообщить о новой версии всё равно надо, коротко.
       AppToast.show(
         context,
@@ -594,8 +597,8 @@ class _HomeScreenState extends State<HomeScreen> {
         version: release.version,
         notes: notes,
         onDownload: url.isEmpty ? null : () => UrlOpener.open(url),
-        onNeverShow: () => unawaited(settingsCtrl
-            .update((c) => c.copyWith(appUpdateNotesHidden: true))),
+        onNeverShow: () => unawaited(settingsCtrl.update(
+            (c) => c.copyWith(appUpdateMode: AppUpdateMode.notifyOnly))),
       ),
     );
   }

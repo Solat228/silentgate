@@ -1697,5 +1697,106 @@
   "splitImportOk": "Настройки импортированы",
   "splitImportBad": "В буфере обмена нет корректных настроек SilentGate",
   "splitImportReplace": "Заменить",
-  "splitImportConfirm": "Заменить текущие правила раздельного туннелирования импортированными?"
+  "splitImportConfirm": "Заменить текущие правила раздельного туннелирования импортированными?",
+  "updatesTitle": "Обновления",
+  "updatesCurrentVersion": "Текущая версия {version}",
+  "@updatesCurrentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesChannelStable": "Стабильный канал",
+  "updatesChannelBeta": "Бета-канал",
+  "updatesCheckNow": "Проверить сейчас",
+  "updatesStatusChecking": "Проверка…",
+  "updatesStatusUpToDate": "У вас последняя версия",
+  "updatesStatusAvailable": "Доступна версия {version}",
+  "@updatesStatusAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesStatusDownloading": "Загрузка… {percent}%",
+  "@updatesStatusDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "updatesStatusVerifying": "Проверка подписи…",
+  "updatesStatusReady": "Готово к установке",
+  "updatesStatusInstalling": "Установка…",
+  "updatesStatusFailed": "Не удалось: {reason}",
+  "@updatesStatusFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesStatusNeedsPermission": "Нужно разрешение на установку",
+  "updatesStatusLinkOnly": "Установите вручную",
+  "updatesModeTitle": "Как обновляться",
+  "updatesModeAsk": "Спрашивать",
+  "updatesModeAskHint": "Покажет, что нового, и установит только после вашего согласия",
+  "updatesModeAuto": "Автоматически",
+  "updatesModeAutoHint": "Скачает и установит само, когда VPN выключен",
+  "updatesModeNotify": "Только уведомлять",
+  "updatesModeNotifyHint": "Сообщит о новой версии, ничего не скачивая и не устанавливая",
+  "updatesAutoCheck": "Проверять при запуске",
+  "updatesBeta": "Получать бета-версии",
+  "updatesSignatureNote": "Каждый файл проверяется подписью разработчика и контрольной суммой; без совпадения установка не начнётся",
+  "updatesDialogTitle": "Доступно обновление {version}",
+  "@updatesDialogTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesInstall": "Обновить",
+  "updatesLater": "Позже",
+  "updatesSkipVersion": "Пропустить эту версию",
+  "updatesVpnWarning": "Установка разорвёт VPN-соединение",
+  "updatesAndroidUnknownSources": "Разрешите установку из этого приложения",
+  "updatesAndroidOpenSettings": "Открыть настройки",
+  "updatesAndroidNoSilent": "Android покажет системное окно установки: это требование системы",
+  "updatesPortableFallback": "Эта копия не установлена через установщик. Скачайте новую версию вручную",
+  "updatesInstalledToast": "Обновлено до {version}",
+  "@updatesInstalledToast": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesInstallFailedTitle": "Установка не завершилась",
+  "updatesInstallFailedBody": "Версия осталась {version}. Журнал установщика ниже",
+  "@updatesInstallFailedBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesShowLog": "Показать журнал",
+  "updatesOverrideBadge": "Источник обновлений подменён (тестовый режим)",
+  "updatesSettingsTile": "Обновления",
+  "updatesSettingsTileSubtitle": "Проверка, загрузка и установка новых версий",
+  "updatesPreviousVersions": "Прежние версии",
+  "updatesInstallOlder": "Установить",
+  "updatesDowngradeWarning": "Откат на более старую версию. Продолжить?",
+  "updatesSizeMb": "{mb} МБ",
+  "@updatesSizeMb": {
+    "placeholders": {
+      "mb": {
+        "type": "String"
+      }
+    }
+  }
 }

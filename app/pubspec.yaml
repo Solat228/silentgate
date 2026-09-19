@@ -1,7 +1,7 @@
 name: silentgate
 description: "SilentGate VPN client"
 publish_to: 'none'
-version: 1.13.2+81
+version: 1.14.0+82
 
 environment:
   sdk: ^3.4.0
@@ -21,6 +21,9 @@ dependencies:
   meta: any
   cupertino_icons: ^1.0.8
   http: ^1.2.2
+  # Подпись манифеста обновлений (Ed25519, RFC 8032) — чистый Dart, работает и в
+  # тестах на хосте, и в tool/, и на Android. Хэш файлов — своя Sha256Sink.
+  ed25519_edwards: ^0.3.1
   provider: ^6.1.2
   path_provider: ^2.1.4
   package_info_plus: ^8.0.2

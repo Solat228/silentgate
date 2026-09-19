@@ -281,6 +281,19 @@ object PlatformChannels {
             "openVpnSettings" -> result.success(
                 startAction(context, Settings.ACTION_VPN_SETTINGS)
             )
+            // ABI устройства — чтобы самообновление взяло APK своей архитектуры.
+            //
+            // Отдаём ОДНО значение: `Build.SUPPORTED_ABIS[0]` — это та ABI, под
+            // которую система предпочтёт ставить пакет (на arm64-телефоне она
+            // arm64-v8a, хотя armeabi-v7a там тоже в списке). Полный список
+            // Dart-стороне не нужен: у нас сборки только под arm64-v8a и
+            // x86_64, и выбор «второй по списку» дал бы 32-битный APK, которого
+            // в релизе нет. Таблица соответствий — `ApkInstallerAndroid.assetHintForAbi`.
+            // ⚠️ Устройство с первой ABI armeabi-v7a/x86 обновиться не сможет —
+            // Dart на такое честно отвечает «сборки нет», не подбирает чужую.
+            "abi" -> result.success(
+                runCatching { Build.SUPPORTED_ABIS.firstOrNull() }.getOrNull()
+            )
             else -> handleDeviceRest(context, method, result)
         }
     }
@@ -410,7 +423,47 @@ object PlatformChannels {
         }
     }
 
-    fun handleLauncher(context: Context, method: String, url: String?, result: MethodChannel.Result) {
+    /**
+     * Канал launcher. [url] — аргумент методов открытия ссылок/файлов,
+     * [path] — аргумент `installApk`.
+     *
+     * ⚠️ Методы самообновления разбираются ДО проверки непустого [url]: та
+     * проверка стоит первой строкой и отвечает `false` на всё, где ссылки нет,
+     * — а у `canInstallPackages`/`openInstallPermission` ссылки нет по смыслу,
+     * у `installApk` аргумент называется иначе. Поставь их ниже — и все три
+     * молча отвечали бы «false», а Dart принимал бы это за «разрешения нет».
+     * Позицию стережёт `test/android_manifest_update_test.dart`.
+     */
+    fun handleLauncher(
+        context: Context,
+        method: String,
+        url: String?,
+        result: MethodChannel.Result,
+        path: String? = null,
+    ) {
+        when (method) {
+            // Можно ли нам вообще звать системный установщик. Ниже API 26
+            // разрешение «неизвестные источники» общесистемное и до нас не
+            // касается — отвечаем `true`, а откажет уже сам установщик своим
+            // экраном, который человек увидит.
+            "canInstallPackages" -> {
+                result.success(canInstallPackages(context))
+                return
+            }
+            // Экран, где человек выдаёт разрешение. Включить его из кода
+            // нельзя — только руками, как и уведомления.
+            "openInstallPermission" -> {
+                result.success(openInstallPermission(context))
+                return
+            }
+            // Передать скачанный и ПРОВЕРЕННЫЙ APK системному установщику.
+            // Проверка подписи/хэша — на стороне Dart ДО вызова; здесь только
+            // граница: файл обязан лежать в cacheDir/updates/.
+            "installApk" -> {
+                result.success(installApk(context, path?.trim().orEmpty()))
+                return
+            }
+        }
         val target = url?.trim().orEmpty()
         if (target.isEmpty()) {
             result.success(false)
@@ -485,6 +538,111 @@ object PlatformChannels {
             // Чаще всего сюда приводит несовпадение authority или пути в
             // file_paths.xml — «Failed to find configured root». Падать из-за
             // отправки отчёта нельзя: он и нужен-то, когда что-то сломалось.
+            false
+        }
+    }
+
+    // ---------------------------------------------------------------- Самообновление
+
+    // MIME системного установщика пакетов. Другой тип (звёздочки или
+    // application/octet-stream) откроет не установщик, а «чем открыть файл».
+    private const val APK_MIME = "application/vnd.android.package-archive"
+
+    /**
+     * Куда закачка кладёт APK и ОТКУДА ЕДИНСТВЕННО разрешено ставить:
+     * `cacheDir/updates/`. Тот же путь объявлен в `res/xml/file_paths.xml`
+     * (`<cache-path name="updates" path="updates/"/>`) и в Dart
+     * (`UpdateInstallerAndroid.stagingDir` = `getTemporaryDirectory()/updates`).
+     */
+    private const val UPDATES_DIR = "updates"
+
+    /** Может ли приложение звать установщик (API 26+: разрешение пользователя). */
+    private fun canInstallPackages(context: Context): Boolean =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            runCatching { context.packageManager.canRequestPackageInstalls() }
+                .getOrDefault(false)
+        } else {
+            // API 24–25: тумблер общесистемный, персонального флага нет.
+            true
+        }
+
+    /**
+     * Открыть экран выдачи разрешения на установку.
+     *
+     * API 26+ — персональный экран «Разрешить из этого источника» с `package:`
+     * URI (без него откроется общий список приложений, и человеку придётся
+     * искать нас самому). API 24–25 — раздел «Безопасность» с общесистемным
+     * тумблером «Неизвестные источники». Запасной для обоих — «О приложении»:
+     * он есть на любой прошивке.
+     */
+    private fun openInstallPermission(context: Context): Boolean {
+        val primary = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                .setData(Uri.parse("package:" + context.packageName))
+        } else {
+            Intent(Settings.ACTION_SECURITY_SETTINGS)
+        }
+        val started = runCatching {
+            context.startActivity(primary.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            true
+        }.getOrDefault(false)
+        if (started) return true
+        // Тот же принцип, что у openNotificationSettings в MainActivity:
+        // соседний экран лучше, чем никакого.
+        return runCatching {
+            context.startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.fromParts("package", context.packageName, null))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        }.getOrDefault(false)
+    }
+
+    /**
+     * Передать APK системному установщику. `false` — файла нет, он лежит вне
+     * `cacheDir/updates/` либо установщик не запустился.
+     *
+     * ⚠️ ГРАНИЦА ПО КАТАЛОГУ — НЕ ФОРМАЛЬНОСТЬ. Канал принимает путь строкой,
+     * и без проверки он выдавал бы наружу (через FileProvider, с грантом на
+     * чтение) любой файл, до которого дотянется корень из `file_paths.xml`.
+     * Сравниваем канонические пути: `..` и симлинки внутри `path` иначе
+     * обходили бы проверку по префиксу.
+     */
+    private fun installApk(context: Context, path: String): Boolean {
+        if (path.isEmpty()) return false
+        val file = java.io.File(path)
+        if (!file.isFile) return false
+        val root = java.io.File(context.cacheDir, UPDATES_DIR)
+        val inside = runCatching {
+            val rootPath = root.canonicalPath + java.io.File.separator
+            file.canonicalPath.startsWith(rootPath)
+        }.getOrDefault(false)
+        if (!inside) {
+            android.util.Log.w("SilentGateUpdate", "installApk: путь вне каталога обновлений отвергнут")
+            return false
+        }
+        return try {
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                context, context.packageName + ".fileprovider", file)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, APK_MIME)
+                // Установщик читает файл по content://-ссылке — ему нужен
+                // грант; clipData обязателен по той же причине, что в
+                // shareFile: без него часть прошивок гранта не получает.
+                clipData = android.content.ClipData.newUri(
+                    context.contentResolver, file.name, uri)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                // Канал могут дёрнуть из свёрнутого приложения.
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(intent)
+            true
+        } catch (e: Throwable) {
+            // ActivityNotFoundException (нет установщика — бывает на урезанных
+            // прошивках) и «Failed to find configured root» при расхождении с
+            // file_paths.xml. В лог, наружу — false: Dart покажет ссылку.
+            android.util.Log.w("SilentGateUpdate", "installApk: $e")
             false
         }
     }

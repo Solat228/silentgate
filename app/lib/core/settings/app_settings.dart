@@ -162,6 +162,43 @@ enum ProbeService {
 /// Тема оформления.
 enum AppThemeMode { system, light, dark }
 
+/// Как приложение поступает с найденным обновлением самого себя.
+///
+/// Решение владельца 19.09.2026: по умолчанию — СПРАШИВАТЬ, с возможностью
+/// отключить. Три режима, а не галочка «обновляться самому»: человек,
+/// который не хочет автоматики, всё равно хочет ЗНАТЬ о новой версии, и
+/// «уведомлять» — это не «выключить».
+///
+/// * `ask` — показать диалог, качать и ставить только по кнопке;
+/// * `auto` — скачать, проверить подпись и установить самому (Windows — при
+///   выключенном VPN; Android всё равно покажет системное окно установки);
+/// * `notifyOnly` — только сообщить, что версия есть; ни закачки, ни установки.
+///
+/// ⚠️ На диск пишется КОРОТКОЕ ИМЯ ([wireName]: `ask | auto | notify`), а не
+/// `.name`: у `notifyOnly` они различаются. Переименование значения в коде не
+/// должно молча менять формат файла — за этим следит
+/// `test/app_update_settings_test.dart`.
+enum AppUpdateMode {
+  ask('ask'),
+  auto('auto'),
+  notifyOnly('notify');
+
+  const AppUpdateMode(this.wireName);
+
+  /// Имя значения в файле настроек.
+  final String wireName;
+
+  /// Разбор значения из файла. Неизвестное, чужого типа или отсутствующее —
+  /// [ask]: битый ключ не должен ни ронять разбор настроек целиком, ни
+  /// включать автоматику, которой человек не просил.
+  static AppUpdateMode parse(Object? raw) {
+    for (final v in values) {
+      if (v.wireName == raw) return v;
+    }
+    return ask;
+  }
+}
+
 /// Раскладка проверок сервисов на главном экране относительно кнопки подключения.
 ///
 /// ⚠️ `sides` (колонки по бокам) уже существовала как единственный режим и была
@@ -755,16 +792,29 @@ class AppSettings {
   /// Брать интервал ИЗ ПОДПИСКИ вместо нашего (галочка «чтобы было не так»).
   final bool autoUpdatePreferSubscription;
 
-  /// Проверять обновления самого приложения при запуске (скачивание — вручную).
+  /// Проверять обновления самого приложения при запуске.
+  ///
+  /// Что делать с найденным — решает [appUpdateMode]; эта галочка отвечает
+  /// только за то, идёт ли проверка сама, без кнопки.
   final bool appUpdateCheck;
 
-  /// Не показывать окно «что нового» при запуске после обновления.
+  /// Что делать с найденным обновлением — см. [AppUpdateMode].
   ///
-  /// ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО ВЫКЛЮЧИТЬ ПРОВЕРКУ ОБНОВЛЕНИЙ. Человек, нажавший
-  /// «больше не показывать», просит убрать окно — а не остаться без новых
-  /// версий. Свести их в один флаг значило бы тихо отключить обновления тому,
-  /// кто этого не просил.
-  final bool appUpdateNotesHidden;
+  /// ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО ВЫКЛЮЧИТЬ ПРОВЕРКУ ОБНОВЛЕНИЙ. Режим
+  /// [AppUpdateMode.notifyOnly] убирает диалог и автоматику — но не оставляет
+  /// человека без новых версий: о них по-прежнему сообщается. Свести это с
+  /// [appUpdateCheck] в один флаг значило бы тихо отключить обновления тому,
+  /// кто этого не просил. Прежний флаг `appUpdateNotesHidden` («не показывать
+  /// окно») переносится сюда при чтении старого файла: `true` → `notifyOnly`.
+  final AppUpdateMode appUpdateMode;
+
+  /// Версия, которую человек нажал «Пропустить» в диалоге обновления;
+  /// `null` — ничего не пропущено.
+  ///
+  /// Автопроверка на старте про эту версию молчит; ручная «Проверить сейчас»
+  /// показывает её всё равно (её спросили). Более новая версия пропуск
+  /// снимает по смыслу: сравнение — дело контроллера, здесь только хранение.
+  final String? appUpdateSkippedVersion;
 
   /// «Получать бета-версии» — по умолчанию ВЫКЛЮЧЕНО.
   ///
@@ -882,7 +932,8 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
-    this.appUpdateNotesHidden = false,
+    this.appUpdateMode = AppUpdateMode.ask,
+    this.appUpdateSkippedVersion,
     this.betaChannel = false,
   });
 
@@ -996,7 +1047,11 @@ class AppSettings {
     int? autoUpdateIntervalHours,
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
-    bool? appUpdateNotesHidden,
+    AppUpdateMode? appUpdateMode,
+    String? appUpdateSkippedVersion,
+    // `null` в copyWith означает «не трогать», поэтому сброс пропуска —
+    // отдельным флагом (та же идиома, что `clearLogo` у профиля подписки).
+    bool clearAppUpdateSkippedVersion = false,
     bool? betaChannel,
   }) {
     return AppSettings(
@@ -1080,8 +1135,10 @@ class AppSettings {
       autoUpdateIntervalHours: autoUpdateIntervalHours ?? this.autoUpdateIntervalHours,
       autoUpdatePreferSubscription: autoUpdatePreferSubscription ?? this.autoUpdatePreferSubscription,
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
-      appUpdateNotesHidden:
-          appUpdateNotesHidden ?? this.appUpdateNotesHidden,
+      appUpdateMode: appUpdateMode ?? this.appUpdateMode,
+      appUpdateSkippedVersion: clearAppUpdateSkippedVersion
+          ? null
+          : appUpdateSkippedVersion ?? this.appUpdateSkippedVersion,
       betaChannel: betaChannel ?? this.betaChannel,
     );
   }
@@ -1162,7 +1219,10 @@ class AppSettings {
         'autoUpdateIntervalHours': autoUpdateIntervalHours,
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
-        'appUpdateNotesHidden': appUpdateNotesHidden,
+        // Ключ `appUpdateNotesHidden` больше НЕ пишется: его смысл переехал в
+        // режим (см. миграцию в `fromJson`).
+        'appUpdateMode': appUpdateMode.wireName,
+        'appUpdateSkippedVersion': appUpdateSkippedVersion,
         'betaChannel': betaChannel,
       };
 
@@ -1376,8 +1436,20 @@ class AppSettings {
       autoUpdateIntervalHours: (j['autoUpdateIntervalHours'] as num?)?.toInt() ?? 12,
       autoUpdatePreferSubscription: j['autoUpdatePreferSubscription'] as bool? ?? false,
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,
-      appUpdateNotesHidden: j['appUpdateNotesHidden'] as bool? ??
-          defaults.appUpdateNotesHidden,
+      // Миграция со старого флага «не показывать окно» (до 1.14.0): человек,
+      // нажавший «больше не показывать», просил убрать окно — а не остаться
+      // без новых версий, и это ровно режим «только уведомлять». Действует
+      // ТОЛЬКО пока нового ключа в файле нет: явный выбор режима старый флаг
+      // перебивать не должен, даже если тот остался лежать в файле.
+      appUpdateMode: j.containsKey('appUpdateMode')
+          ? AppUpdateMode.parse(j['appUpdateMode'])
+          : (j['appUpdateNotesHidden'] == true
+              ? AppUpdateMode.notifyOnly
+              : defaults.appUpdateMode),
+      // Мусор вместо строки (битый файл) — как «ничего не пропущено».
+      appUpdateSkippedVersion: j['appUpdateSkippedVersion'] is String
+          ? j['appUpdateSkippedVersion'] as String
+          : null,
       betaChannel: j['betaChannel'] as bool? ?? defaults.betaChannel,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем

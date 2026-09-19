@@ -3457,4 +3457,165 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'Заменить текущие правила раздельного туннелирования импортированными?';
+
+  @override
+  String get updatesTitle => 'Обновления';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Текущая версия $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Стабильный канал';
+
+  @override
+  String get updatesChannelBeta => 'Бета-канал';
+
+  @override
+  String get updatesCheckNow => 'Проверить сейчас';
+
+  @override
+  String get updatesStatusChecking => 'Проверка…';
+
+  @override
+  String get updatesStatusUpToDate => 'У вас последняя версия';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'Доступна версия $version';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'Загрузка… $percent%';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'Проверка подписи…';
+
+  @override
+  String get updatesStatusReady => 'Готово к установке';
+
+  @override
+  String get updatesStatusInstalling => 'Установка…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Не удалось: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'Нужно разрешение на установку';
+
+  @override
+  String get updatesStatusLinkOnly => 'Установите вручную';
+
+  @override
+  String get updatesModeTitle => 'Как обновляться';
+
+  @override
+  String get updatesModeAsk => 'Спрашивать';
+
+  @override
+  String get updatesModeAskHint =>
+      'Покажет, что нового, и установит только после вашего согласия';
+
+  @override
+  String get updatesModeAuto => 'Автоматически';
+
+  @override
+  String get updatesModeAutoHint =>
+      'Скачает и установит само, когда VPN выключен';
+
+  @override
+  String get updatesModeNotify => 'Только уведомлять';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Сообщит о новой версии, ничего не скачивая и не устанавливая';
+
+  @override
+  String get updatesAutoCheck => 'Проверять при запуске';
+
+  @override
+  String get updatesBeta => 'Получать бета-версии';
+
+  @override
+  String get updatesSignatureNote =>
+      'Каждый файл проверяется подписью разработчика и контрольной суммой; без совпадения установка не начнётся';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'Доступно обновление $version';
+  }
+
+  @override
+  String get updatesInstall => 'Обновить';
+
+  @override
+  String get updatesLater => 'Позже';
+
+  @override
+  String get updatesSkipVersion => 'Пропустить эту версию';
+
+  @override
+  String get updatesVpnWarning => 'Установка разорвёт VPN-соединение';
+
+  @override
+  String get updatesAndroidUnknownSources =>
+      'Разрешите установку из этого приложения';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Открыть настройки';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android покажет системное окно установки: это требование системы';
+
+  @override
+  String get updatesPortableFallback =>
+      'Эта копия не установлена через установщик. Скачайте новую версию вручную';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'Обновлено до $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Установка не завершилась';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'Версия осталась $version. Журнал установщика ниже';
+  }
+
+  @override
+  String get updatesShowLog => 'Показать журнал';
+
+  @override
+  String get updatesOverrideBadge =>
+      'Источник обновлений подменён (тестовый режим)';
+
+  @override
+  String get updatesSettingsTile => 'Обновления';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Проверка, загрузка и установка новых версий';
+
+  @override
+  String get updatesPreviousVersions => 'Прежние версии';
+
+  @override
+  String get updatesInstallOlder => 'Установить';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Откат на более старую версию. Продолжить?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb МБ';
+  }
 }

@@ -3459,4 +3459,164 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'Mevcut bölünmüş tünelleme kuralları içe aktarılanlarla değiştirilsin mi?';
+
+  @override
+  String get updatesTitle => 'Güncellemeler';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Geçerli sürüm $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Kararlı kanal';
+
+  @override
+  String get updatesChannelBeta => 'Beta kanalı';
+
+  @override
+  String get updatesCheckNow => 'Şimdi denetle';
+
+  @override
+  String get updatesStatusChecking => 'Denetleniyor…';
+
+  @override
+  String get updatesStatusUpToDate => 'En son sürüme sahipsiniz';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return '$version sürümü mevcut';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'İndiriliyor… %$percent';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'İmza doğrulanıyor…';
+
+  @override
+  String get updatesStatusReady => 'Kurulmaya hazır';
+
+  @override
+  String get updatesStatusInstalling => 'Kuruluyor…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Başarısız: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'Kurulum izni gerekli';
+
+  @override
+  String get updatesStatusLinkOnly => 'Elle kurun';
+
+  @override
+  String get updatesModeTitle => 'Nasıl güncellensin';
+
+  @override
+  String get updatesModeAsk => 'Sor';
+
+  @override
+  String get updatesModeAskHint =>
+      'Yenilikleri gösterir ve yalnızca onayınızdan sonra kurar';
+
+  @override
+  String get updatesModeAuto => 'Otomatik';
+
+  @override
+  String get updatesModeAutoHint => 'VPN kapalıyken kendisi indirir ve kurar';
+
+  @override
+  String get updatesModeNotify => 'Yalnızca bildir';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Hiçbir şey indirmeden ve kurmadan yeni sürümü bildirir';
+
+  @override
+  String get updatesAutoCheck => 'Başlangıçta denetle';
+
+  @override
+  String get updatesBeta => 'Beta sürümleri al';
+
+  @override
+  String get updatesSignatureNote =>
+      'Her dosya geliştirici imzası ve sağlama toplamıyla doğrulanır; eşleşme yoksa kurulum başlamaz';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return '$version güncellemesi mevcut';
+  }
+
+  @override
+  String get updatesInstall => 'Güncelle';
+
+  @override
+  String get updatesLater => 'Sonra';
+
+  @override
+  String get updatesSkipVersion => 'Bu sürümü atla';
+
+  @override
+  String get updatesVpnWarning => 'Kurulum VPN bağlantısını kesecek';
+
+  @override
+  String get updatesAndroidUnknownSources =>
+      'Bu uygulamadan kuruluma izin verin';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Ayarları aç';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android sistemin kurulum penceresini gösterecek: bu bir sistem gereksinimidir';
+
+  @override
+  String get updatesPortableFallback =>
+      'Bu kopya kurulum programıyla kurulmamış. Yeni sürümü elle indirin';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return '$version sürümüne güncellendi';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Kurulum tamamlanmadı';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'Sürüm $version olarak kaldı. Kurulum günlüğü aşağıda';
+  }
+
+  @override
+  String get updatesShowLog => 'Günlüğü göster';
+
+  @override
+  String get updatesOverrideBadge =>
+      'Güncelleme kaynağı değiştirildi (test modu)';
+
+  @override
+  String get updatesSettingsTile => 'Güncellemeler';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Yeni sürümleri denetleme, indirme ve kurma';
+
+  @override
+  String get updatesPreviousVersions => 'Önceki sürümler';
+
+  @override
+  String get updatesInstallOlder => 'Kur';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Daha eski bir sürüme dönülüyor. Devam edilsin mi?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
 }

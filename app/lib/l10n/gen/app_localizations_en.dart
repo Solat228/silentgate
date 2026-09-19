@@ -3452,4 +3452,163 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'Replace the current split tunneling rules with the imported ones?';
+
+  @override
+  String get updatesTitle => 'Updates';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Current version $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Stable channel';
+
+  @override
+  String get updatesChannelBeta => 'Beta channel';
+
+  @override
+  String get updatesCheckNow => 'Check now';
+
+  @override
+  String get updatesStatusChecking => 'Checking…';
+
+  @override
+  String get updatesStatusUpToDate => 'You have the latest version';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'Version $version available';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'Verifying signature…';
+
+  @override
+  String get updatesStatusReady => 'Ready to install';
+
+  @override
+  String get updatesStatusInstalling => 'Installing…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Failed: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'Install permission required';
+
+  @override
+  String get updatesStatusLinkOnly => 'Install manually';
+
+  @override
+  String get updatesModeTitle => 'How to update';
+
+  @override
+  String get updatesModeAsk => 'Ask';
+
+  @override
+  String get updatesModeAskHint =>
+      'Shows what is new and installs only after you confirm';
+
+  @override
+  String get updatesModeAuto => 'Automatically';
+
+  @override
+  String get updatesModeAutoHint =>
+      'Downloads and installs on its own while the VPN is off';
+
+  @override
+  String get updatesModeNotify => 'Notify only';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Reports a new version without downloading or installing anything';
+
+  @override
+  String get updatesAutoCheck => 'Check on startup';
+
+  @override
+  String get updatesBeta => 'Receive beta versions';
+
+  @override
+  String get updatesSignatureNote =>
+      'Every file is verified against the developer\'s signature and a checksum; installation will not start unless they match';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'Update $version available';
+  }
+
+  @override
+  String get updatesInstall => 'Update';
+
+  @override
+  String get updatesLater => 'Later';
+
+  @override
+  String get updatesSkipVersion => 'Skip this version';
+
+  @override
+  String get updatesVpnWarning => 'Installing will disconnect the VPN';
+
+  @override
+  String get updatesAndroidUnknownSources => 'Allow installs from this app';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Open settings';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android will show the system install prompt: that is a system requirement';
+
+  @override
+  String get updatesPortableFallback =>
+      'This copy was not installed with the installer. Download the new version manually';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'Updated to $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Installation did not complete';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'The version is still $version. Installer log below';
+  }
+
+  @override
+  String get updatesShowLog => 'Show log';
+
+  @override
+  String get updatesOverrideBadge => 'Update source overridden (test mode)';
+
+  @override
+  String get updatesSettingsTile => 'Updates';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Check, download and install new versions';
+
+  @override
+  String get updatesPreviousVersions => 'Previous versions';
+
+  @override
+  String get updatesInstallOlder => 'Install';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Rolling back to an older version. Continue?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
 }

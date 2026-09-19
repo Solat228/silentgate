@@ -5957,6 +5957,276 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Заменить текущие правила раздельного туннелирования импортированными?'**
   String get splitImportConfirm;
+
+  /// No description provided for @updatesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления'**
+  String get updatesTitle;
+
+  /// No description provided for @updatesCurrentVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущая версия {version}'**
+  String updatesCurrentVersion(String version);
+
+  /// No description provided for @updatesChannelStable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стабильный канал'**
+  String get updatesChannelStable;
+
+  /// No description provided for @updatesChannelBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бета-канал'**
+  String get updatesChannelBeta;
+
+  /// No description provided for @updatesCheckNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить сейчас'**
+  String get updatesCheckNow;
+
+  /// No description provided for @updatesStatusChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка…'**
+  String get updatesStatusChecking;
+
+  /// No description provided for @updatesStatusUpToDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'У вас последняя версия'**
+  String get updatesStatusUpToDate;
+
+  /// No description provided for @updatesStatusAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}'**
+  String updatesStatusAvailable(String version);
+
+  /// No description provided for @updatesStatusDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка… {percent}%'**
+  String updatesStatusDownloading(int percent);
+
+  /// No description provided for @updatesStatusVerifying.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка подписи…'**
+  String get updatesStatusVerifying;
+
+  /// No description provided for @updatesStatusReady.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово к установке'**
+  String get updatesStatusReady;
+
+  /// No description provided for @updatesStatusInstalling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка…'**
+  String get updatesStatusInstalling;
+
+  /// No description provided for @updatesStatusFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось: {reason}'**
+  String updatesStatusFailed(String reason);
+
+  /// No description provided for @updatesStatusNeedsPermission.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно разрешение на установку'**
+  String get updatesStatusNeedsPermission;
+
+  /// No description provided for @updatesStatusLinkOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установите вручную'**
+  String get updatesStatusLinkOnly;
+
+  /// No description provided for @updatesModeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как обновляться'**
+  String get updatesModeTitle;
+
+  /// No description provided for @updatesModeAsk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Спрашивать'**
+  String get updatesModeAsk;
+
+  /// No description provided for @updatesModeAskHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Покажет, что нового, и установит только после вашего согласия'**
+  String get updatesModeAskHint;
+
+  /// No description provided for @updatesModeAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get updatesModeAuto;
+
+  /// No description provided for @updatesModeAutoHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачает и установит само, когда VPN выключен'**
+  String get updatesModeAutoHint;
+
+  /// No description provided for @updatesModeNotify.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только уведомлять'**
+  String get updatesModeNotify;
+
+  /// No description provided for @updatesModeNotifyHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сообщит о новой версии, ничего не скачивая и не устанавливая'**
+  String get updatesModeNotifyHint;
+
+  /// No description provided for @updatesAutoCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять при запуске'**
+  String get updatesAutoCheck;
+
+  /// No description provided for @updatesBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'Получать бета-версии'**
+  String get updatesBeta;
+
+  /// No description provided for @updatesSignatureNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждый файл проверяется подписью разработчика и контрольной суммой; без совпадения установка не начнётся'**
+  String get updatesSignatureNote;
+
+  /// No description provided for @updatesDialogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступно обновление {version}'**
+  String updatesDialogTitle(String version);
+
+  /// No description provided for @updatesInstall.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить'**
+  String get updatesInstall;
+
+  /// No description provided for @updatesLater.
+  ///
+  /// In ru, this message translates to:
+  /// **'Позже'**
+  String get updatesLater;
+
+  /// No description provided for @updatesSkipVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить эту версию'**
+  String get updatesSkipVersion;
+
+  /// No description provided for @updatesVpnWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка разорвёт VPN-соединение'**
+  String get updatesVpnWarning;
+
+  /// No description provided for @updatesAndroidUnknownSources.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешите установку из этого приложения'**
+  String get updatesAndroidUnknownSources;
+
+  /// No description provided for @updatesAndroidOpenSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки'**
+  String get updatesAndroidOpenSettings;
+
+  /// No description provided for @updatesAndroidNoSilent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Android покажет системное окно установки: это требование системы'**
+  String get updatesAndroidNoSilent;
+
+  /// No description provided for @updatesPortableFallback.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта копия не установлена через установщик. Скачайте новую версию вручную'**
+  String get updatesPortableFallback;
+
+  /// No description provided for @updatesInstalledToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлено до {version}'**
+  String updatesInstalledToast(String version);
+
+  /// No description provided for @updatesInstallFailedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка не завершилась'**
+  String get updatesInstallFailedTitle;
+
+  /// No description provided for @updatesInstallFailedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия осталась {version}. Журнал установщика ниже'**
+  String updatesInstallFailedBody(String version);
+
+  /// No description provided for @updatesShowLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать журнал'**
+  String get updatesShowLog;
+
+  /// No description provided for @updatesOverrideBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник обновлений подменён (тестовый режим)'**
+  String get updatesOverrideBadge;
+
+  /// No description provided for @updatesSettingsTile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления'**
+  String get updatesSettingsTile;
+
+  /// No description provided for @updatesSettingsTileSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка, загрузка и установка новых версий'**
+  String get updatesSettingsTileSubtitle;
+
+  /// No description provided for @updatesPreviousVersions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние версии'**
+  String get updatesPreviousVersions;
+
+  /// No description provided for @updatesInstallOlder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установить'**
+  String get updatesInstallOlder;
+
+  /// No description provided for @updatesDowngradeWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откат на более старую версию. Продолжить?'**
+  String get updatesDowngradeWarning;
+
+  /// No description provided for @updatesSizeMb.
+  ///
+  /// In ru, this message translates to:
+  /// **'{mb} МБ'**
+  String updatesSizeMb(String mb);
 }
 
 class _AppLocalizationsDelegate

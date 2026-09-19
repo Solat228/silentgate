@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../engine/windows/xray_paths.dart';
+import '../net/file_download.dart';
 import '../platform/app_log.dart';
 import '../platform/app_paths.dart';
 import 'geo_bases_store.dart';
@@ -592,7 +593,9 @@ class GeoBases {
   /// ⚠️ ВРЕМЕННЫЙ ФАЙЛ И ПЕРЕИМЕНОВАНИЕ. Оборванная закачка иначе оставила бы
   /// обрезанный `geoip.dat`, который ядро принимает за настоящий: вместо
   /// честного «баз нет» получилась бы неверная маршрутизация, которую никто не
-  /// заподозрит.
+  /// заподозрит. Ступеней две: [downloadToFile] качает в `<имя>.new.part` и
+  /// переименовывает в `<имя>.new` только после сверки суммы; рабочим файлом
+  /// `.new` становится лишь после проверки формата и категорий ниже.
   static Future<String?> download({
     required List<GeoBase> files,
     Map<GeoBase, String>? expectedSums,
@@ -606,74 +609,66 @@ class GeoBases {
       final d = await dir();
       return 'нет доступа на запись в ${d.path}: $problem';
     }
-    final own = client == null;
-    final c = client ?? http.Client();
     final store = await GeoBasesStore.load();
     final used = requiredRefs ?? await GeoUsage.fromDataDir();
-    try {
-      for (var i = 0; i < files.length; i++) {
-        final base = files[i];
-        final target = await fileOf(base);
-        final tmp = File('${target.path}.part');
-        try {
-          final sum = await _fetchTo(
-            c,
-            base.url,
-            tmp,
-            (received, total) => onProgress?.call(GeoProgress(
-                  base: base,
-                  received: received,
-                  total: total,
-                  index: i,
-                  count: files.length,
-                )),
-          );
-          final expected = expectedSums?[base];
-          if (expected != null && expected != sum) {
-            await _deleteQuiet(tmp);
-            return '${base.fileName}: контрольная сумма не совпала — '
-                'закачка повреждена';
-          }
-          final health = await healthOf(tmp);
-          if (health != GeoHealth.ok) {
-            await _deleteQuiet(tmp);
-            return '${base.fileName}: скачан не тот файл (${health.name})';
-          }
-          final lost = await missingCategories(tmp, base, used);
-          if (lost != null) {
-            await _deleteQuiet(tmp);
-            return lost;
-          }
-          await _keepPrevious(target);
-          try {
-            await tmp.rename(target.path);
-          } catch (e) {
-            // Замена не удалась — прежний файл обязан вернуться на место, иначе
-            // мы оставили бы человека вообще без гео-баз.
-            final backup = File('${target.path}$backupSuffix');
-            if (!await target.exists() && await backup.exists()) {
-              await backup.rename(target.path);
-            }
-            rethrow;
-          }
-          final st = await target.stat();
-          await store.rememberSum(
-            base.fileName,
-            size: st.size,
-            mtimeMs: st.modified.millisecondsSinceEpoch,
-            sum: sum,
-          );
-          AppLog.i('Гео-база ${base.fileName} обновлена: '
-              '${st.size ~/ 1024} КБ');
-        } catch (e) {
+    for (var i = 0; i < files.length; i++) {
+      final base = files[i];
+      final target = await fileOf(base);
+      final tmp = File('${target.path}.new');
+      try {
+        // Сумму сверяет сама закачка — до того, как `.new` появится на диске;
+        // несовпадение приходит сюда готовым [DownloadException] с тем же
+        // текстом, что и раньше (по нему интерфейс объясняет причину).
+        final sum = await downloadToFile(
+          Uri.parse(base.url),
+          tmp,
+          expectedSha256: expectedSums?[base],
+          client: client,
+          onProgress: (received, total) => onProgress?.call(GeoProgress(
+            base: base,
+            received: received,
+            total: total,
+            index: i,
+            count: files.length,
+          )),
+        );
+        final health = await healthOf(tmp);
+        if (health != GeoHealth.ok) {
           await _deleteQuiet(tmp);
-          return '${base.fileName}: $e';
+          return '${base.fileName}: скачан не тот файл (${health.name})';
         }
+        final lost = await missingCategories(tmp, base, used);
+        if (lost != null) {
+          await _deleteQuiet(tmp);
+          return lost;
+        }
+        await _keepPrevious(target);
+        try {
+          await tmp.rename(target.path);
+        } catch (e) {
+          // Замена не удалась — прежний файл обязан вернуться на место, иначе
+          // мы оставили бы человека вообще без гео-баз.
+          final backup = File('${target.path}$backupSuffix');
+          if (!await target.exists() && await backup.exists()) {
+            await backup.rename(target.path);
+          }
+          rethrow;
+        }
+        final st = await target.stat();
+        await store.rememberSum(
+          base.fileName,
+          size: st.size,
+          mtimeMs: st.modified.millisecondsSinceEpoch,
+          sum: sum,
+        );
+        AppLog.i('Гео-база ${base.fileName} обновлена: '
+            '${st.size ~/ 1024} КБ');
+      } catch (e) {
+        await _deleteQuiet(tmp);
+        return '${base.fileName}: $e';
       }
-      return null;
-    } finally {
-      if (own) c.close();
     }
+    return null;
   }
 
   /// ⚠️ ПРОВЕРКА КАТЕГОРИЙ ДО ЗАМЕНЫ. Возвращает `null`, если новый файл
@@ -733,47 +728,6 @@ class GeoBases {
       }
     }
     await _deleteQuiet(target);
-  }
-
-  /// Скачивание одного файла; возвращает sha256 скачанного.
-  ///
-  /// ⚠️ Хэш считается ПО ХОДУ. Второй проход по 25 МБ ради той же цифры — это
-  /// лишняя секунда и лишнее чтение с флеш-памяти телефона.
-  static Future<String> _fetchTo(
-    http.Client c,
-    String url,
-    File to,
-    void Function(int received, int? total) onBytes,
-  ) async {
-    // ⚠️ Переадресация обязательна: `releases/latest/download/…` отдаёт 302 на
-    // конкретный релиз. Без неё в файл лёг бы HTML редиректа.
-    final req = http.Request('GET', Uri.parse(url))
-      ..followRedirects = true
-      ..maxRedirects = 5;
-    final resp = await c.send(req);
-    if (resp.statusCode != 200) {
-      await resp.stream.drain<void>();
-      throw HttpException('HTTP ${resp.statusCode}', uri: Uri.parse(url));
-    }
-    final total = resp.contentLength;
-    final hash = Sha256Sink();
-    var received = 0;
-    final sink = to.openWrite();
-    try {
-      await for (final chunk in resp.stream) {
-        sink.add(chunk);
-        hash.add(chunk);
-        received += chunk.length;
-        onBytes(received, total);
-      }
-    } finally {
-      await sink.close();
-    }
-    if (received == 0) throw const HttpException('пустой ответ');
-    if (total != null && received != total) {
-      throw HttpException('получено $received из $total байт');
-    }
-    return hash.close();
   }
 
   static Future<void> _deleteQuiet(File f) async {

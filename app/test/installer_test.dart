@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/platform/app_instance_mutex.dart';
 import 'package:silentgate/core/platform/quit_protocol.dart';
+import 'package:silentgate/core/update/update_installer_windows.dart';
 
 /// СТРАЖ УСТАНОВЩИКА.
 ///
@@ -368,6 +369,92 @@ void main() {
       // ценой ноль; поднимут привилегии — станет повышением прав.
       expect(setting('PrivilegesRequired'), 'lowest');
       expect(text, contains('RegQueryStringValue(HKEY_CURRENT_USER'));
+    });
+  });
+
+  group('⚠️ Контракт кнопки «Обновить» внутри приложения (1.14.0)', () {
+    // Приложение запускает установщик само (`core/update/update_installer_
+    // windows.dart`) и разговаривает с ним ТОЛЬКО аргументами командной
+    // строки. Ключи `/FORCEQUIT` и `/FORCEDOWNGRADE` Inno не знает — их
+    // разбирает `[Code]` по точному тексту. Переименуют в одном месте — второе
+    // молча перестанет работать: тихая установка при живом VPN откажет, откат
+    // из «Прежних версий» откажет, и ни компилятор, ни анализатор этого не
+    // увидят. Поэтому сверяем ОБА файла: Dart — через импорт констант, `.iss`
+    // — текстом.
+    final dartSrc =
+        File('lib/core/update/update_installer_windows.dart').readAsStringSync();
+
+    String body(String signature) {
+      final at = text.indexOf(signature);
+      expect(at, greaterThan(0), reason: 'в .iss нет $signature');
+      final end = text.indexOf('\r\nend;', at);
+      expect(end, greaterThan(at));
+      return text.substring(at, end);
+    }
+
+    test('⚠️ ГЛАВНОЕ: наши ключи в .iss — ровно те, что строит Dart', () {
+      final issKeys = RegExp(r"CompareText\(ParamStr\(i\), '(/[A-Z]+)'\)")
+          .allMatches(text)
+          .map((m) => m.group(1)!)
+          .toSet();
+      expect(issKeys, {SetupArgs.forceQuit, SetupArgs.forceDowngrade},
+          reason: 'набор самодельных ключей [Code] разошёлся с SetupArgs');
+    });
+
+    test('строитель аргументов действительно выдаёт эти ключи', () {
+      // Страж на ИСПОЛЬЗОВАНИЕ, а не на существование константы.
+      final args = buildSetupArgs(
+          installLocation: r'C:\SG\',
+          logPath: r'C:\log.txt',
+          forceQuit: true,
+          allowDowngrade: true);
+      expect(args, contains(SetupArgs.forceQuit));
+      expect(args, contains(SetupArgs.forceDowngrade));
+      expect(args.first, '/SILENT',
+          reason: 'без /SILENT установщик задаст вопросы, отвечать некому');
+      expect(args, contains('/SUPPRESSMSGBOXES'));
+      expect(args, contains('/NORESTART'));
+    });
+
+    test('литералы ключей в Dart лежат по одному разу — в SetupArgs', () {
+      // Второй литерал в Dart — то же расхождение, только внутри одного
+      // файла: константу переименуют, а рукописная строка останется.
+      expect("'${SetupArgs.forceQuit}'".allMatches(dartSrc).length, 1);
+      expect("'${SetupArgs.forceDowngrade}'".allMatches(dartSrc).length, 1);
+    });
+
+    test('⚠️ GUID и ключ удаления совпадают с .iss', () {
+      // По этому ключу приложение решает «установленная ли это копия».
+      // Разъедется — самообновление молча уйдёт в «не установлено».
+      expect(kInnoAppId, defines['MyAppId']);
+      final key = body('function GetUninstallKey: String;');
+      final m = RegExp(r"Result := '([^']+)'").firstMatch(key);
+      expect(m, isNotNull);
+      expect(kUninstallKey, 'HKCU\\${expand(m!.group(1)!)}');
+      expect(text, contains("'$kInstallLocationValue'"),
+          reason: '[Code] читает InstallLocation тем же именем');
+    });
+
+    test('⚠️ тихая установка ТОЙ ЖЕ версии проходит без вопроса', () {
+      // Кнопка «Обновить» никогда не должна повиснуть на «переустановить?»:
+      // в тихом режиме выход из ConfirmVersionChange стоит ДО ветки diff = 0.
+      final f = body('function ConfirmVersionChange: Boolean;');
+      final silentExit = f.indexOf('if WizardSilent then Exit;');
+      final sameVersion = f.indexOf('if diff = 0 then');
+      expect(silentExit, greaterThan(0));
+      expect(sameVersion, greaterThan(0));
+      expect(silentExit, lessThan(sameVersion));
+    });
+
+    test('после тихой установки приложение поднимается, установщик без прав',
+        () {
+      // Обе строки уже стережёт группа автозакрытия; здесь они собраны как
+      // условия контракта кнопки: без ShouldRelaunch приложение исчезло бы
+      // после обновления, а с правами администратора путь из HKCU стал бы
+      // повышением прав (см. InstallCapability.elevated).
+      expect(text, contains('Check: ShouldRelaunch'));
+      expect(setting('PrivilegesRequired'), 'lowest');
+      expect(dartSrc, contains('InstallCapability.elevated'));
     });
   });
 

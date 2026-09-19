@@ -3444,4 +3444,163 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'قوانین تونل تقسیمی فعلی با موارد وارد‌شده جایگزین شود؟';
+
+  @override
+  String get updatesTitle => 'به‌روزرسانی‌ها';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'نسخهٔ فعلی $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'کانال پایدار';
+
+  @override
+  String get updatesChannelBeta => 'کانال بتا';
+
+  @override
+  String get updatesCheckNow => 'اکنون بررسی کن';
+
+  @override
+  String get updatesStatusChecking => 'در حال بررسی…';
+
+  @override
+  String get updatesStatusUpToDate => 'آخرین نسخه را دارید';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'نسخهٔ $version در دسترس است';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'در حال دانلود… $percent٪';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'در حال بررسی امضا…';
+
+  @override
+  String get updatesStatusReady => 'آمادهٔ نصب';
+
+  @override
+  String get updatesStatusInstalling => 'در حال نصب…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'ناموفق: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'مجوز نصب لازم است';
+
+  @override
+  String get updatesStatusLinkOnly => 'به‌صورت دستی نصب کنید';
+
+  @override
+  String get updatesModeTitle => 'نحوهٔ به‌روزرسانی';
+
+  @override
+  String get updatesModeAsk => 'پرسیدن';
+
+  @override
+  String get updatesModeAskHint =>
+      'تغییرات را نشان می‌دهد و فقط پس از تأیید شما نصب می‌کند';
+
+  @override
+  String get updatesModeAuto => 'خودکار';
+
+  @override
+  String get updatesModeAutoHint =>
+      'وقتی VPN خاموش است، خودش دانلود و نصب می‌کند';
+
+  @override
+  String get updatesModeNotify => 'فقط اطلاع دادن';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'نسخهٔ جدید را اعلام می‌کند، بدون دانلود یا نصب چیزی';
+
+  @override
+  String get updatesAutoCheck => 'بررسی هنگام راه‌اندازی';
+
+  @override
+  String get updatesBeta => 'دریافت نسخه‌های بتا';
+
+  @override
+  String get updatesSignatureNote =>
+      'هر فایل با امضای توسعه‌دهنده و جمع کنترلی بررسی می‌شود؛ بدون تطابق، نصب آغاز نمی‌شود';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'به‌روزرسانی $version در دسترس است';
+  }
+
+  @override
+  String get updatesInstall => 'به‌روزرسانی';
+
+  @override
+  String get updatesLater => 'بعداً';
+
+  @override
+  String get updatesSkipVersion => 'رد کردن این نسخه';
+
+  @override
+  String get updatesVpnWarning => 'نصب، اتصال VPN را قطع می‌کند';
+
+  @override
+  String get updatesAndroidUnknownSources => 'نصب از این برنامه را مجاز کنید';
+
+  @override
+  String get updatesAndroidOpenSettings => 'باز کردن تنظیمات';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'اندروید پنجرهٔ نصب سیستم را نشان می‌دهد: این الزام سیستم است';
+
+  @override
+  String get updatesPortableFallback =>
+      'این نسخه از طریق نصب‌کننده نصب نشده است. نسخهٔ جدید را به‌صورت دستی دانلود کنید';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'به $version به‌روزرسانی شد';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'نصب کامل نشد';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'نسخه همان $version ماند. گزارش نصب‌کننده در زیر';
+  }
+
+  @override
+  String get updatesShowLog => 'نمایش گزارش';
+
+  @override
+  String get updatesOverrideBadge =>
+      'منبع به‌روزرسانی جایگزین شده است (حالت آزمایشی)';
+
+  @override
+  String get updatesSettingsTile => 'به‌روزرسانی‌ها';
+
+  @override
+  String get updatesSettingsTileSubtitle => 'بررسی، دانلود و نصب نسخه‌های جدید';
+
+  @override
+  String get updatesPreviousVersions => 'نسخه‌های قبلی';
+
+  @override
+  String get updatesInstallOlder => 'نصب';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'بازگشت به نسخهٔ قدیمی‌تر. ادامه می‌دهید؟';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb مگابایت';
+  }
 }

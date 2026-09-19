@@ -272,8 +272,11 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
                 PlatformChannels.LAUNCHER_CHANNEL)
             .setMethodCallHandler { call, result ->
+                // `path` — только у installApk (самообновление); у остальных
+                // методов аргумент по-прежнему `url`.
                 PlatformChannels.handleLauncher(
-                    this, call.method, call.argument<String>("url"), result)
+                    this, call.method, call.argument<String>("url"), result,
+                    path = call.argument<String>("path"))
             }
 
         // Каталог установленных приложений и их иконки. Без него раздельное

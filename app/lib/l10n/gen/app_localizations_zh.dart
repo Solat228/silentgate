@@ -3326,4 +3326,155 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitImportConfirm => '用导入的规则替换当前的分流规则？';
+
+  @override
+  String get updatesTitle => '更新';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return '当前版本 $version';
+  }
+
+  @override
+  String get updatesChannelStable => '稳定渠道';
+
+  @override
+  String get updatesChannelBeta => '测试版渠道';
+
+  @override
+  String get updatesCheckNow => '立即检查';
+
+  @override
+  String get updatesStatusChecking => '正在检查…';
+
+  @override
+  String get updatesStatusUpToDate => '已是最新版本';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return '有新版本 $version';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return '正在下载… $percent%';
+  }
+
+  @override
+  String get updatesStatusVerifying => '正在验证签名…';
+
+  @override
+  String get updatesStatusReady => '准备安装';
+
+  @override
+  String get updatesStatusInstalling => '正在安装…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return '失败：$reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => '需要安装权限';
+
+  @override
+  String get updatesStatusLinkOnly => '请手动安装';
+
+  @override
+  String get updatesModeTitle => '更新方式';
+
+  @override
+  String get updatesModeAsk => '询问';
+
+  @override
+  String get updatesModeAskHint => '显示更新内容，仅在您确认后安装';
+
+  @override
+  String get updatesModeAuto => '自动';
+
+  @override
+  String get updatesModeAutoHint => '在 VPN 关闭时自动下载并安装';
+
+  @override
+  String get updatesModeNotify => '仅通知';
+
+  @override
+  String get updatesModeNotifyHint => '仅提示有新版本，不下载也不安装';
+
+  @override
+  String get updatesAutoCheck => '启动时检查';
+
+  @override
+  String get updatesBeta => '接收测试版';
+
+  @override
+  String get updatesSignatureNote => '每个文件都会通过开发者签名和校验和进行验证；不匹配则不会开始安装';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return '有可用更新 $version';
+  }
+
+  @override
+  String get updatesInstall => '更新';
+
+  @override
+  String get updatesLater => '稍后';
+
+  @override
+  String get updatesSkipVersion => '跳过此版本';
+
+  @override
+  String get updatesVpnWarning => '安装将断开 VPN 连接';
+
+  @override
+  String get updatesAndroidUnknownSources => '请允许从此应用安装';
+
+  @override
+  String get updatesAndroidOpenSettings => '打开设置';
+
+  @override
+  String get updatesAndroidNoSilent => 'Android 会显示系统安装窗口：这是系统要求';
+
+  @override
+  String get updatesPortableFallback => '此副本不是通过安装程序安装的。请手动下载新版本';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return '已更新到 $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => '安装未完成';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return '版本仍为 $version。安装程序日志见下方';
+  }
+
+  @override
+  String get updatesShowLog => '显示日志';
+
+  @override
+  String get updatesOverrideBadge => '更新来源已被替换（测试模式）';
+
+  @override
+  String get updatesSettingsTile => '更新';
+
+  @override
+  String get updatesSettingsTileSubtitle => '检查、下载并安装新版本';
+
+  @override
+  String get updatesPreviousVersions => '早期版本';
+
+  @override
+  String get updatesInstallOlder => '安装';
+
+  @override
+  String get updatesDowngradeWarning => '回退到更早的版本。是否继续？';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
 }

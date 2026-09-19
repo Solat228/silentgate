@@ -3447,4 +3447,161 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'استبدال قواعد النفق المقسّم الحالية بالمستوردة؟';
+
+  @override
+  String get updatesTitle => 'التحديثات';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'الإصدار الحالي $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'القناة المستقرة';
+
+  @override
+  String get updatesChannelBeta => 'قناة بيتا';
+
+  @override
+  String get updatesCheckNow => 'تحقق الآن';
+
+  @override
+  String get updatesStatusChecking => 'جارٍ التحقق…';
+
+  @override
+  String get updatesStatusUpToDate => 'لديك أحدث إصدار';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'الإصدار $version متاح';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'جارٍ التنزيل… $percent٪';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'جارٍ التحقق من التوقيع…';
+
+  @override
+  String get updatesStatusReady => 'جاهز للتثبيت';
+
+  @override
+  String get updatesStatusInstalling => 'جارٍ التثبيت…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'فشل: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'مطلوب إذن التثبيت';
+
+  @override
+  String get updatesStatusLinkOnly => 'ثبّت يدويًا';
+
+  @override
+  String get updatesModeTitle => 'كيفية التحديث';
+
+  @override
+  String get updatesModeAsk => 'السؤال';
+
+  @override
+  String get updatesModeAskHint => 'يعرض الجديد ويثبّت فقط بعد موافقتك';
+
+  @override
+  String get updatesModeAuto => 'تلقائيًا';
+
+  @override
+  String get updatesModeAutoHint => 'ينزّل ويثبّت بنفسه عندما تكون VPN مطفأة';
+
+  @override
+  String get updatesModeNotify => 'الإشعار فقط';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'يبلّغ عن الإصدار الجديد دون تنزيل أو تثبيت أي شيء';
+
+  @override
+  String get updatesAutoCheck => 'التحقق عند بدء التشغيل';
+
+  @override
+  String get updatesBeta => 'استلام إصدارات بيتا';
+
+  @override
+  String get updatesSignatureNote =>
+      'يتم التحقق من كل ملف بتوقيع المطوّر ومجموع اختباري؛ دون تطابق لن يبدأ التثبيت';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'التحديث $version متاح';
+  }
+
+  @override
+  String get updatesInstall => 'تحديث';
+
+  @override
+  String get updatesLater => 'لاحقًا';
+
+  @override
+  String get updatesSkipVersion => 'تخطي هذا الإصدار';
+
+  @override
+  String get updatesVpnWarning => 'سيقطع التثبيت اتصال VPN';
+
+  @override
+  String get updatesAndroidUnknownSources => 'اسمح بالتثبيت من هذا التطبيق';
+
+  @override
+  String get updatesAndroidOpenSettings => 'فتح الإعدادات';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'سيعرض Android نافذة التثبيت الخاصة بالنظام: هذا متطلب من النظام';
+
+  @override
+  String get updatesPortableFallback =>
+      'لم تُثبَّت هذه النسخة عبر برنامج التثبيت. نزّل الإصدار الجديد يدويًا';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'تم التحديث إلى $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'لم يكتمل التثبيت';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'بقي الإصدار $version. سجل برنامج التثبيت أدناه';
+  }
+
+  @override
+  String get updatesShowLog => 'عرض السجل';
+
+  @override
+  String get updatesOverrideBadge => 'تم استبدال مصدر التحديثات (وضع الاختبار)';
+
+  @override
+  String get updatesSettingsTile => 'التحديثات';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'التحقق من الإصدارات الجديدة وتنزيلها وتثبيتها';
+
+  @override
+  String get updatesPreviousVersions => 'الإصدارات السابقة';
+
+  @override
+  String get updatesInstallOlder => 'تثبيت';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'الرجوع إلى إصدار أقدم. هل تريد المتابعة؟';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb م.ب';
+  }
 }

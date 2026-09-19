@@ -3483,4 +3483,165 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitImportConfirm =>
       'Aktuelle Split-Tunneling-Regeln durch die importierten ersetzen?';
+
+  @override
+  String get updatesTitle => 'Updates';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Aktuelle Version $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Stabiler Kanal';
+
+  @override
+  String get updatesChannelBeta => 'Beta-Kanal';
+
+  @override
+  String get updatesCheckNow => 'Jetzt prüfen';
+
+  @override
+  String get updatesStatusChecking => 'Prüfung…';
+
+  @override
+  String get updatesStatusUpToDate => 'Sie haben die neueste Version';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'Version $version verfügbar';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'Wird heruntergeladen… $percent%';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'Signatur wird geprüft…';
+
+  @override
+  String get updatesStatusReady => 'Bereit zur Installation';
+
+  @override
+  String get updatesStatusInstalling => 'Wird installiert…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Fehlgeschlagen: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission =>
+      'Installationsberechtigung erforderlich';
+
+  @override
+  String get updatesStatusLinkOnly => 'Manuell installieren';
+
+  @override
+  String get updatesModeTitle => 'Wie aktualisieren';
+
+  @override
+  String get updatesModeAsk => 'Nachfragen';
+
+  @override
+  String get updatesModeAskHint =>
+      'Zeigt die Neuerungen und installiert erst nach Ihrer Zustimmung';
+
+  @override
+  String get updatesModeAuto => 'Automatisch';
+
+  @override
+  String get updatesModeAutoHint =>
+      'Lädt herunter und installiert selbst, wenn das VPN aus ist';
+
+  @override
+  String get updatesModeNotify => 'Nur benachrichtigen';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Meldet die neue Version, ohne etwas herunterzuladen oder zu installieren';
+
+  @override
+  String get updatesAutoCheck => 'Beim Start prüfen';
+
+  @override
+  String get updatesBeta => 'Beta-Versionen erhalten';
+
+  @override
+  String get updatesSignatureNote =>
+      'Jede Datei wird anhand der Entwicklersignatur und einer Prüfsumme geprüft; ohne Übereinstimmung beginnt die Installation nicht';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'Update $version verfügbar';
+  }
+
+  @override
+  String get updatesInstall => 'Aktualisieren';
+
+  @override
+  String get updatesLater => 'Später';
+
+  @override
+  String get updatesSkipVersion => 'Diese Version überspringen';
+
+  @override
+  String get updatesVpnWarning => 'Die Installation trennt die VPN-Verbindung';
+
+  @override
+  String get updatesAndroidUnknownSources =>
+      'Erlauben Sie die Installation aus dieser App';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Einstellungen öffnen';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android zeigt das Installationsfenster des Systems: das ist eine Systemanforderung';
+
+  @override
+  String get updatesPortableFallback =>
+      'Diese Kopie wurde nicht über den Installer installiert. Laden Sie die neue Version manuell herunter';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'Aktualisiert auf $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Installation nicht abgeschlossen';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'Die Version ist weiterhin $version. Installer-Protokoll unten';
+  }
+
+  @override
+  String get updatesShowLog => 'Protokoll anzeigen';
+
+  @override
+  String get updatesOverrideBadge => 'Update-Quelle ersetzt (Testmodus)';
+
+  @override
+  String get updatesSettingsTile => 'Updates';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Prüfen, Herunterladen und Installieren neuer Versionen';
+
+  @override
+  String get updatesPreviousVersions => 'Frühere Versionen';
+
+  @override
+  String get updatesInstallOlder => 'Installieren';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Rückkehr zu einer älteren Version. Fortfahren?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
 }
