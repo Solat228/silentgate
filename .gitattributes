@@ -1,0 +1,2 @@
+# Патчи для Go-исходников: только LF, иначе patch -p1 не совпадёт со строками из go mod cache.
+*.patch text eol=lf
