@@ -120,6 +120,31 @@ Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate
 unzip -p cores.aar classes.jar > /tmp/c.jar && unzip -l /tmp/c.jar | grep -c "go/Seq.class"   # ровно 1
 ```
 
+## ⚠️ ОБЯЗАТЕЛЬНЫЙ ПАТЧ sing-tun (иначе VPN не снимается после «Отключить»)
+
+`sing-box v1.13.14` тянет `sing-tun v0.8.11`, где `LinkEndpointFilter.Attach(nil)`
+заворачивает `nil` в обёртку. Для gvisor-эндпоинта это выглядит как ЖИВОЙ
+диспетчер: горутина-читатель tun не останавливается, сидит в `ppoll` на
+tun-дескрипторе и держит файл открытым — а системе для снятия VPN-сети нужно,
+чтобы закрылся ПОСЛЕДНИЙ дескриптор. Снаружи: приложение показывает
+«Отключено», а ключ VPN в статус-баре и `tun0` живут, пока в мёртвый туннель
+случайно не прилетит чей-то пакет (на эмуляторе — от 30 с до бесконечности).
+Найдено 19.09.2026 kprobe-трассировкой `fput`/`tun_chr_close` в госте.
+В апстриме sing-tun уже исправлено (`if dispatcher == nil`), в 0.8.11 — нет.
+
+Патч лежит в `engine/android/sing-tun-0.8.11-attach-nil.patch`. Порядок:
+
+```bash
+cp -r $GOPATH/pkg/mod/github.com/sagernet/sing-tun@v0.8.11 C:/dev/android/src/sing-tun
+chmod -R u+w C:/dev/android/src/sing-tun
+cd C:/dev/android/src/sing-tun && patch -p1 < <репозиторий>/engine/android/sing-tun-0.8.11-attach-nil.patch
+cd ../cores && go mod edit -replace=github.com/sagernet/sing-tun=C:/dev/android/src/sing-tun
+```
+
+Проверка после сборки — живьём на эмуляторе: подключиться → «Отключить» →
+`adb shell ip -o link show tun0` обязан ответить «does not exist» в течение
+~10 с. Как обновится sing-box с sing-tun ≥ 0.8.12 — снять replace, патч удалить.
+
 ## Куда класть
 
 `engine/android/cores.aar` (репозиторный слот, gitignored) и

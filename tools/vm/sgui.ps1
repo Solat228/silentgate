@@ -153,6 +153,19 @@ try {
     $a = $t -split '\s+'
     switch ($a[0].ToLower()) {
       'wait' { Start-Sleep -Milliseconds ([int]$a[1]); Say "wait $($a[1])" }
+      # Текст буфера обмена сессии 1 — в журнал. Нужен проверкам «Экспорт
+      # скопировал?»: из сессии 0 (PowerShell Direct) буфер сессии 1 не виден.
+      'clip' {
+        try { $c = Get-Clipboard -Raw -ErrorAction Stop } catch { $c = "<ошибка: $_>" }
+        if ($null -eq $c) { $c = '<пусто>' }
+        Say ("clip [{0}]: {1}" -f $c.Length, $c)
+      }
+      # Записать текст в буфер обмена сессии 1 (остаток строки — как есть).
+      'setclip' {
+        $txt = $t.Substring(7).Trim()
+        Set-Clipboard -Value $txt
+        Say ("setclip [{0}]" -f $txt.Length)
+      }
       'key' {
         [SgUi]::keybd_event([byte][int]$a[1], 0, 0, [IntPtr]::Zero)
         [SgUi]::keybd_event([byte][int]$a[1], 0, 2, [IntPtr]::Zero)

@@ -362,12 +362,15 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // сервера, правка настроек) выдавала себя за нажатие кнопки в
                 // шторке. Dart на такое честно отменял восстановление.
                 val byUser = intent?.getBooleanExtra(EXTRA_BY_USER, false) ?: false
+                Log.i(logTag, "ACTION_STOP получен (byUser=$byUser)")
                 work.execute {
+                    Log.i(logTag, "ACTION_STOP: выполняю остановку")
                     // Пометить ДО остановки: `stopTunnel` шлёт состояние наружу,
                     // и признак должен уехать вместе с ним.
                     stoppedByUser = byUser
                     stopTunnel()
                     stopSelf()
+                    Log.i(logTag, "ACTION_STOP: остановка завершена")
                 }
                 return START_NOT_STICKY
             }
@@ -910,13 +913,21 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     private fun stopTunnel() = synchronized(lifecycleLock) { stopTunnelLocked() }
 
     private fun stopTunnelLocked() {
+        // ⚠️ ДИАГНОСТИКА ОСТАНОВКИ ПИШЕТСЯ ВСЕГДА. Живой прогон 19.09.2026:
+        // после «Пинг серверов» отключение оставляло tun0 поднятым на минуты —
+        // и ни одной строки о том, что здесь произошло, не было: оба вызова
+        // ниже глотали исключения молча.
+        Log.i(logTag, "stopTunnel: tunFds=${tunFdCount()} commandServer=${commandServer != null}")
         try {
             commandServer?.closeService()
-        } catch (_: Throwable) {
+            Log.i(logTag, "stopTunnel: closeService ок, tunFds=${tunFdCount()}")
+        } catch (e: Throwable) {
+            Log.w(logTag, "stopTunnel: closeService бросил: $e")
         }
         try {
             commandServer?.close()
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Log.w(logTag, "stopTunnel: close бросил: $e")
         }
         commandServer = null
         stopXray()
@@ -936,12 +947,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
         try {
             tunFd?.close()
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            Log.w(logTag, "stopTunnel: tunFd.close бросил: $e")
         }
         tunFd = null
         // Вместе с fd умирает и его отпечаток: иначе сервис «помнил» бы живой
         // туннель, которого больше нет.
         tunFingerprint = null
+        Log.i(logTag, "stopTunnel: после закрытия tunFds=${tunFdCount()}")
 
         running = false
         // Уведомление снимаем ПОСЛЕ закрытия commandServer, но ДО notifyState:
@@ -951,6 +964,21 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         cancelNotification()
         runCatching { notifyState() }
     }
+
+    /**
+     * Сколько дескрипторов `/dev/tun` открыто в НАШЕМ процессе.
+     *
+     * Единственный способ увидеть снаружи, отдал ли Go-сторона свой `dup()`
+     * tun-fd: пока хоть один открыт, система держит VPN-сеть CONNECTED и
+     * интерфейс tun0 — что бы ни думал о себе Dart. Свой `/proc/self/fd`
+     * читается без прав; чужой — нет.
+     */
+    private fun tunFdCount(): Int = runCatching {
+        java.io.File("/proc/self/fd").listFiles()?.count { f ->
+            runCatching { android.system.Os.readlink(f.path) }.getOrNull()
+                ?.contains("/dev/tun") == true
+        } ?: -1
+    }.getOrDefault(-1)
 
     /**
      * Убрать уведомление ГАРАНТИРОВАННО.
@@ -1191,6 +1219,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // должен «узнаваться» следующим повтором.
         tunFingerprint = fingerprint
         if (previous !== pfd) runCatching { previous?.close() }
+        Log.i(logTag, "openTun: establish fd=${pfd.fd}, tunFds=${tunFdCount()}")
         return pfd.fd
     }
 

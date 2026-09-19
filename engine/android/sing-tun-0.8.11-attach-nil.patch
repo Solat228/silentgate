@@ -1,0 +1,19 @@
+--- a/stack_gvisor_filter.go	2026-07-28 00:27:41.568555300 +0700
++++ b/stack_gvisor_filter.go	2026-09-20 01:23:28.744098000 +0700
+@@ -19,6 +19,16 @@
+ }
+ 
+ func (w *LinkEndpointFilter) Attach(dispatcher stack.NetworkDispatcher) {
++	// SilentGate patch (backport of the upstream sing-tun fix): a nil
++	// dispatcher means "detach". Wrapping nil into networkDispatcherFilter
++	// made the fdbased endpoint see a non-nil dispatcher, so its reader
++	// goroutine was never stopped and kept the tun file open via ppoll until
++	// a stray packet arrived — on Android the VPN stayed established for
++	// minutes after disconnect.
++	if dispatcher == nil {
++		w.LinkEndpoint.Attach(nil)
++		return
++	}
+ 	w.LinkEndpoint.Attach(&networkDispatcherFilter{dispatcher, w.BroadcastAddress, w.Writer})
+ }
+ 
