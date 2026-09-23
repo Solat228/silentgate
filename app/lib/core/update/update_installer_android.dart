@@ -63,6 +63,10 @@ class UpdateInstallerAndroid extends StagedUpdateInstaller {
   @override
   Future<InstallCapability> capability() async => InstallCapability.ready;
 
+  /// Тот же вопрос, что задаёт [launch], — но до закачки (см. интерфейс).
+  @override
+  Future<bool> canInstallNow() => _apk.canInstallPackages();
+
   @override
   Future<void> launch(
     File verified, {

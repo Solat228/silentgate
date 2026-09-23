@@ -160,6 +160,16 @@ abstract class UpdateInstaller {
   /// Можно ли ставить самим (см. [InstallCapability]).
   Future<InstallCapability> capability();
 
+  /// Можно ли ПРЯМО СЕЙЧАС передать файл установщику — спрашивается ДО закачки.
+  ///
+  /// ⚠️ ЗАЧЕМ ДО, А НЕ В [launch]. На Android без разрешения «устанавливать из
+  /// этого приложения» человека отправляют в системные настройки, а выдача
+  /// этого разрешения УБИВАЕТ наш процесс (`am_kill … REQUEST_INSTALL_PACKAGES
+  /// changed`, живой прогон 24.09.2026). Скачанный APK (80+ МБ) при этом
+  /// вычищался на следующем старте, и качать приходилось второй раз. Спросив
+  /// заранее, мы не качаем ничего, что потом выбросим.
+  Future<bool> canInstallNow();
+
   /// Запустить установщик [verified] — файл, УЖЕ прошедший проверку подписи
   /// манифеста и хэша. [expectedSha256] сверяется ПОВТОРНО прямо перед
   /// запуском: между проверкой и запуском файл мог подменить кто угодно с
@@ -198,6 +208,9 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
 
   /// Имя подкаталога закачек внутри корня данных.
   static const stagingDirName = 'updates';
+
+  @override
+  Future<bool> canInstallNow() async => true;
 
   @override
   Future<Directory> stagingDir() async {

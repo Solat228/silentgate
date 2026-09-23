@@ -336,6 +336,8 @@ class AppUpdateController extends ChangeNotifier {
   final bool Function()? _overriddenOf;
   final Future<void> Function()? _loadOverride;
   final String _currentVersion;
+  final Duration _purgeRetryDelay;
+  final DateTime Function() _clock;
 
   /// Все зависимости внедряемы — умолчания боевые.
   ///
@@ -349,6 +351,8 @@ class AppUpdateController extends ChangeNotifier {
   /// тогда допустим `http://`, и интерфейс показывает плашку.
   /// [overriddenOf] — то же, но ЖИВЫМ вопросом (важнее [overridden]), а
   /// [loadOverride] — чем прочитать подмену до первой проверки.
+  /// [purgeRetryDelay] — через сколько после старта повторить чистку
+  /// `updates/` (см. [startup]); [clock] — часы для срока [ConsentMarker].
   ///
   /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
   /// файлом (`update_api.txt`) и читается асинхронно
@@ -373,6 +377,8 @@ class AppUpdateController extends ChangeNotifier {
     bool Function()? overriddenOf,
     Future<void> Function()? loadOverride,
     String? currentVersion,
+    Duration purgeRetryDelay = const Duration(seconds: 30),
+    DateTime Function()? clock,
   })  : _settings = settings,
         _updateSettings = updateSettings,
         _installer = installer,
@@ -387,7 +393,9 @@ class AppUpdateController extends ChangeNotifier {
         _overridden = overridden,
         _overriddenOf = overriddenOf,
         _loadOverride = loadOverride,
-        _currentVersion = currentVersion ?? AppUpdate.installedVersion {
+        _currentVersion = currentVersion ?? AppUpdate.installedVersion,
+        _purgeRetryDelay = purgeRetryDelay,
+        _clock = clock ?? DateTime.now {
     _vpnChanges?.addListener(_onVpnChanged);
   }
 
@@ -433,6 +441,17 @@ class AppUpdateController extends ChangeNotifier {
 
   _DownloadRun? _run;
   int _generation = 0;
+
+  /// Повторная чистка `updates/` после успешного обновления ([startup]).
+  Timer? _purgeRetry;
+
+  /// Намерение человека для текущей закачки ([downloadAndInstall]): поставить
+  /// сразу после проверки и с каким согласием. `null` — просто скачать.
+  ({bool forceQuit, bool allowDowngrade})? _intent;
+
+  /// Согласие прошлой жизни процесса ([ConsentMarker]): версия, которую
+  /// человек уже решил ставить, когда система убила нас за выдачу разрешения.
+  ConsentMarker? _resumeConsent;
 
   UpdatePhase get phase => _phase;
 
@@ -511,6 +530,7 @@ class AppUpdateController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _vpnChanges?.removeListener(_onVpnChanged);
+    _purgeRetry?.cancel();
     _run?.client.close();
     super.dispose();
   }
@@ -566,6 +586,9 @@ class AppUpdateController extends ChangeNotifier {
       }
       if (_disposed) return;
     }
+    // Метку согласия — ДО чистки: чистка каталога закачек её бы стёрла.
+    _resumeConsent = await _takeConsent();
+    if (_disposed) return;
     try {
       _lastOutcome =
           await _installer.reconcileAfterStart(currentVersion: _currentVersion);
@@ -583,6 +606,13 @@ class AppUpdateController extends ChangeNotifier {
       await _installer.purgeStaging(keepVersion: keep);
     } catch (e) {
       AppLog.w('Обновление: каталог закачек не вычищен: ${scrubUrls('$e')}');
+    }
+    // ⚠️ ПОСЛЕ ОБНОВЛЕНИЯ ЧИСТКА ПОВТОРЯЕТСЯ. Новую версию запускает сам
+    // установщик (Inno, `ShouldRelaunch`) и ещё несколько секунд держит свой
+    // exe открытым: первая чистка его не удаляет, и 90 МБ установщика лежали
+    // в `updates/` до следующего запуска (живой прогон в VM 24.09.2026).
+    if (_lastOutcome?.outcome == PendingOutcome.updated) {
+      _purgeRetry = Timer(_purgeRetryDelay, _retryPurge);
     }
     _notify();
     if (_disposed) return;
@@ -675,6 +705,23 @@ class AppUpdateController extends ChangeNotifier {
             (s) => s.copyWith(clearAppUpdateSkippedVersion: true));
       }
     }
+    final consent = _resumeConsent;
+    _resumeConsent = null;
+    if (consent != null &&
+        _sameVersion(consent.version, offer.version) &&
+        _settings().appUpdateMode != AppUpdateMode.notifyOnly) {
+      // Человек уже нажал «Обновить» в прошлой жизни процесса, а система
+      // убила нас, когда он выдал разрешение на установку. Спрашивать второй
+      // раз — то же нажатие дважды; продолжаем с того места.
+      AppLog.i('Обновление: продолжаю ${offer.version} после выдачи '
+          'разрешения на установку');
+      if (consent.install) {
+        await downloadAndInstall(forceQuit: consent.forceQuit);
+      } else {
+        await download();
+      }
+      return;
+    }
     await _applyMode();
   }
 
@@ -698,6 +745,7 @@ class AppUpdateController extends ChangeNotifier {
     if (_disposed || busy) return;
     _offer = _offerOf(release);
     _explicitRelease = true;
+    _intent = null;
     _verified = null;
     _verifiedVersion = null;
     _expectedSha = null;
@@ -708,6 +756,41 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   // ── Закачка ───────────────────────────────────────────────────────────────
+
+  /// Согласие на установку получено: скачать (если ещё не скачано) и
+  /// поставить. [forceQuit] — человек видел предупреждение о разрыве VPN;
+  /// [allowDowngrade] — осознанный откат из «Прежних версий».
+  ///
+  /// Намерение запоминается: если закачка упрётся в разрешение Android, оно
+  /// переживёт и возврат из настроек ([resumeAfterPermission]), и смерть
+  /// процесса ([ConsentMarker]).
+  Future<void> downloadAndInstall(
+      {bool forceQuit = false, bool allowDowngrade = false}) async {
+    if (_disposed) return;
+    _intent = (forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+    if (_phase != UpdatePhase.ready || _verified == null) await download();
+    if (_phase == UpdatePhase.ready) {
+      await _install(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+    }
+  }
+
+  /// Android: человек вернулся с экрана разрешения, а процесс выжил (не
+  /// выдал разрешение либо система нас не тронула). Повторить то, на чём
+  /// остановились, с тем же согласием.
+  Future<void> resumeAfterPermission() async {
+    if (_disposed || _phase != UpdatePhase.needsPermission) return;
+    final intent = _intent;
+    if (_verified != null) {
+      await _install(
+          forceQuit: intent?.forceQuit ?? false,
+          allowDowngrade: intent?.allowDowngrade ?? false);
+    } else if (intent != null) {
+      await downloadAndInstall(
+          forceQuit: intent.forceQuit, allowDowngrade: intent.allowDowngrade);
+    } else {
+      await download();
+    }
+  }
 
   /// Скачать и проверить установщик текущего предложения. Итог —
   /// [UpdatePhase.ready], [UpdatePhase.linkOnly] (ставить самим нельзя) или
@@ -767,6 +850,32 @@ class AppUpdateController extends ChangeNotifier {
         !_schemeAllowed(signatureUri) ||
         !_schemeAllowed(assetUri)) {
       _fail(UpdateErrorKind.insecureUrl);
+      return;
+    }
+
+    // Разрешение на установку — ДО единого байта (см.
+    // [UpdateInstaller.canInstallNow]): на Android его выдача убивает процесс.
+    var allowed = true;
+    try {
+      allowed = await _installer.canInstallNow();
+    } catch (e) {
+      // Не узнали — качаем: [launch] спросит ещё раз и скажет честно.
+      AppLog.w('Обновление: разрешение на установку не узнано: '
+          '${scrubUrls('$e')}');
+    }
+    if (!live()) return;
+    if (!allowed) {
+      AppLog.w('Обновление: нет разрешения на установку — прошу его до '
+          'закачки ${offer.version}');
+      final intent = _intent;
+      await _writeConsent(ConsentMarker(
+        version: offer.version,
+        install: intent != null,
+        forceQuit: intent?.forceQuit ?? false,
+        at: _clock().toUtc(),
+      ));
+      if (!live()) return;
+      _setPhase(UpdatePhase.needsPermission);
       return;
     }
 
@@ -1048,6 +1157,7 @@ class AppUpdateController extends ChangeNotifier {
         (s) => s.copyWith(appUpdateSkippedVersion: offer.version));
     _awaitingVpnOff = false;
     _postponed = false;
+    _intent = null;
     await _dropVerified(purge: true);
     AppLog.i('Обновление: версия ${offer.version} пропущена по просьбе '
         'пользователя');
@@ -1080,6 +1190,105 @@ class AppUpdateController extends ChangeNotifier {
       if (f.existsSync()) f.deleteSync();
     } catch (_) {
       // Занят установщиком — уберёт purgeStaging следующего старта.
+    }
+  }
+
+  void _retryPurge() {
+    _purgeRetry = null;
+    // Идёт своя закачка или лежит проверенный установщик — чистка снесла бы
+    // его; остатки уберёт следующий старт.
+    if (_disposed || busy || _verified != null) return;
+    unawaited(_installer.purgeStaging().catchError((Object e) {
+      AppLog.w('Обновление: повторная чистка каталога закачек не удалась: '
+          '${scrubUrls('$e')}');
+    }));
+  }
+
+  Future<File> _consentFile() async {
+    final dir = await _installer.stagingDir();
+    return File('${dir.path}${Platform.pathSeparator}${ConsentMarker.fileName}');
+  }
+
+  Future<void> _writeConsent(ConsentMarker m) async {
+    try {
+      await (await _consentFile())
+          .writeAsString(jsonEncode(m.toJson()), flush: true);
+    } catch (e) {
+      AppLog.w('Обновление: метка согласия не записана: ${scrubUrls('$e')}');
+    }
+  }
+
+  /// Прочитать и СРАЗУ удалить метку: второй старт её уже не увидит.
+  Future<ConsentMarker?> _takeConsent() async {
+    try {
+      final f = await _consentFile();
+      if (!f.existsSync()) return null;
+      final raw = await f.readAsString();
+      _deleteQuiet(f);
+      final m = ConsentMarker.tryParse(raw);
+      if (m == null) return null;
+      if (_clock().toUtc().difference(m.at).abs() > ConsentMarker.ttl) {
+        AppLog.i('Обновление: метка согласия на ${m.version} устарела');
+        return null;
+      }
+      return m;
+    } catch (e) {
+      AppLog.w('Обновление: метка согласия не прочитана: ${scrubUrls('$e')}');
+      return null;
+    }
+  }
+}
+
+/// Согласие на установку, пережившее смерть процесса.
+///
+/// ⚠️ ЗАЧЕМ. На Android выдача разрешения «устанавливать из этого приложения»
+/// убивает процесс (`am_kill … REQUEST_INSTALL_PACKAGES changed`). Человек
+/// нажал «Обновить», выдал разрешение, вернулся — и видел то же окно заново.
+/// Метка в каталоге закачек говорит следующему старту: эту версию уже решили
+/// ставить. Живёт [ttl] — вернувшийся через сутки человек мог и передумать.
+class ConsentMarker {
+  static const fileName = 'consent.json';
+  static const ttl = Duration(hours: 1);
+
+  final String version;
+
+  /// Просили поставить ([AppUpdateController.downloadAndInstall]), а не
+  /// только скачать.
+  final bool install;
+
+  /// Человек видел предупреждение о разрыве VPN.
+  final bool forceQuit;
+  final DateTime at;
+
+  const ConsentMarker({
+    required this.version,
+    required this.install,
+    required this.forceQuit,
+    required this.at,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'version': version,
+        'install': install,
+        'forceQuit': forceQuit,
+        'at': at.toUtc().toIso8601String(),
+      };
+
+  static ConsentMarker? tryParse(String raw) {
+    try {
+      final m = jsonDecode(raw);
+      if (m is! Map) return null;
+      final v = m['version'];
+      final at = DateTime.tryParse('${m['at']}');
+      if (v is! String || v.isEmpty || at == null) return null;
+      return ConsentMarker(
+        version: v,
+        install: m['install'] == true,
+        forceQuit: m['forceQuit'] == true,
+        at: at.toUtc(),
+      );
+    } catch (_) {
+      return null;
     }
   }
 }

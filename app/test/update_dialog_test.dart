@@ -122,6 +122,65 @@ void main() {
     }
   });
 
+  group('⚠️ Окно облегает содержимое (живой прогон 24.09.2026)', () {
+    // Сам `AlertDialog` занимает весь маршрут; видимое окно — его Material.
+    Rect dialogRect(WidgetTester t) => t.getRect(find
+        .descendant(of: find.byType(AlertDialog), matching: find.byType(Material))
+        .first);
+
+    const shortNotes = '## Стенд\n- Одна строка.\n- Вторая строка.';
+
+    testWidgets('короткое описание: окно не растянуто на весь телефон',
+        (t) async {
+      await offer(t, notes: shortNotes);
+      await open(t, size: const Size(411, 890));
+      final dialog = dialogRect(t);
+      expect(dialog.height, lessThan(890 * 0.6),
+          reason: 'две строки описания растягивали окно пустотой до кнопок');
+      expect(t.takeException(), isNull);
+    });
+
+    testWidgets('длинное описание упирается в потолок и прокручивается',
+        (t) async {
+      final long = List.generate(80, (i) => '- строка $i').join('\n');
+      await offer(t, notes: long);
+      await open(t, size: const Size(411, 890));
+      expect(t.takeException(), isNull);
+      final install = t.getRect(find.byKey(const Key('updateDialogInstall')));
+      expect(install.bottom, lessThanOrEqualTo(890));
+      final lastLine = t.getRect(find.text('•  строка 79'));
+      expect(lastLine.top, greaterThan(dialogRect(t).bottom),
+          reason: 'конец списка — за прокруткой, а не за краем экрана');
+    });
+
+    testWidgets(
+        'телефон: «Обновить» во всю ширину сверху, «Пропустить» и «Позже» '
+        'одним рядом под ней', (t) async {
+      await offer(t, notes: shortNotes);
+      await open(t, size: const Size(360, 800));
+      final install = t.getRect(find.byKey(const Key('updateDialogInstall')));
+      final skip = t.getRect(find.byKey(const Key('updateDialogSkip')));
+      final later = t.getRect(find.byKey(const Key('updateDialogLater')));
+      expect(install.bottom, lessThanOrEqualTo(skip.top));
+      expect(skip.center.dy, closeTo(later.center.dy, 1),
+          reason: 'второстепенные — в один ряд, а не столбиком');
+      expect(install.width, greaterThan(skip.width + later.width),
+          reason: 'главная кнопка — во всю ширину');
+    });
+
+    testWidgets('десктоп: три кнопки одним рядом, главная последней',
+        (t) async {
+      await offer(t, notes: shortNotes);
+      await open(t, size: const Size(1040, 820));
+      final install = t.getRect(find.byKey(const Key('updateDialogInstall')));
+      final skip = t.getRect(find.byKey(const Key('updateDialogSkip')));
+      final later = t.getRect(find.byKey(const Key('updateDialogLater')));
+      expect(skip.center.dy, closeTo(install.center.dy, 1));
+      expect(later.center.dy, closeTo(install.center.dy, 1));
+      expect(install.left, greaterThan(later.left));
+    });
+  });
+
   group('Текст читаемый, а не сырая разметка', () {
     testWidgets('⚠️ звёздочек и решёток на экране нет', (t) async {
       await offer(t);

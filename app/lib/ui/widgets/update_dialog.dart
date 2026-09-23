@@ -118,15 +118,62 @@ class UpdateDialog extends StatelessWidget {
         ),
     ];
 
+    final skip = TextButton(
+      key: const Key('updateDialogSkip'),
+      onPressed: () {
+        unawaited(controller.skipVersion());
+        Navigator.of(context).pop();
+      },
+      child: Text(l.updatesSkipVersion),
+    );
+    final later = TextButton(
+      key: const Key('updateDialogLater'),
+      onPressed: () {
+        controller.postpone();
+        Navigator.of(context).pop();
+      },
+      child: Text(l.updatesLater),
+    );
+    final primary = canInstall
+        ? FilledButton(
+            key: const Key('updateDialogInstall'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Согласие на разрыв VPN дано ровно тогда, когда предупреждение
+              // было на экране. Если VPN поднимут уже во время закачки,
+              // контроллер без forceQuit отложит установку до отключения.
+              unawaited(startUpdate(controller, forceQuit: vpn));
+            },
+            child: Text(l.updatesInstall),
+          )
+        : FilledButton(
+            key: const Key('updateDialogOpenPage'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(openUpdatePage(offer));
+            },
+            child: Text(l.updatesOpenPage),
+          );
+
+    // ⚠️ КНОПКИ НА ТЕЛЕФОНЕ — ДВА РЯДА, А НЕ ТРИ СТРОКИ. Три кнопки в один ряд
+    // на телефоне не влезают, и `AlertDialog` ставит их столбиком по правому
+    // краю: главная оказывается третьей строкой, а «Пропустить» — самой
+    // заметной (живой прогон 24.09.2026). Здесь главная — во всю ширину
+    // сверху, второстепенные — рядом под ней.
+    final compact = MediaQuery.sizeOf(context).width < 600;
+
     return AlertDialog(
       title: Text(l.updatesDialogTitle(offer.version)),
-      // ⚠️ ВЫСОТА ОГРАНИЧЕНА, СОДЕРЖИМОЕ ПРОКРУЧИВАЕТСЯ, а ширину и высоту
-      // считает общий помощник: на телефоне 460×420 недостижимы, и настаивать
-      // на них — это и есть окно, у которого кнопки уезжают за край экрана.
+      // ⚠️ ВЫСОТА — ПОТОЛОК, А НЕ РАЗМЕР: окно облегает содержимое и
+      // прокручивается, только упершись в потолок. Ширину и потолок считает
+      // общий помощник: на телефоне 460×420 недостижимы, и настаивать на них —
+      // это и есть окно, у которого кнопки уезжают за край экрана.
       content: adaptiveDialogBody(
         context,
         width: 460,
-        height: lines.isEmpty ? null : 420,
+        height: 420,
+        hugContent: true,
+        extraChrome: compact ? 48 : 0,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,46 +201,30 @@ class UpdateDialog extends StatelessWidget {
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          key: const Key('updateDialogSkip'),
-          onPressed: () {
-            unawaited(controller.skipVersion());
-            Navigator.of(context).pop();
-          },
-          child: Text(l.updatesSkipVersion),
-        ),
-        TextButton(
-          key: const Key('updateDialogLater'),
-          onPressed: () {
-            controller.postpone();
-            Navigator.of(context).pop();
-          },
-          child: Text(l.updatesLater),
-        ),
-        // ⚠️ ГЛАВНАЯ КНОПКА ПОСЛЕДНЯЯ — ближайшая к большому пальцу.
-        if (canInstall)
-          FilledButton(
-            key: const Key('updateDialogInstall'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Согласие на разрыв VPN дано ровно тогда, когда предупреждение
-              // было на экране. Если VPN поднимут уже во время закачки,
-              // контроллер без forceQuit отложит установку до отключения.
-              unawaited(startUpdate(controller, forceQuit: vpn));
-            },
-            child: Text(l.updatesInstall),
-          )
-        else
-          FilledButton(
-            key: const Key('updateDialogOpenPage'),
-            onPressed: () {
-              Navigator.of(context).pop();
-              unawaited(openUpdatePage(offer));
-            },
-            child: Text(l.updatesOpenPage),
-          ),
-      ],
+      actions: compact
+          ? [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  primary,
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(child: skip),
+                      Flexible(child: later),
+                    ],
+                  ),
+                ],
+              ),
+            ]
+          : [
+              skip,
+              later,
+              // ⚠️ ГЛАВНАЯ КНОПКА ПОСЛЕДНЯЯ — ближайшая к большому пальцу.
+              primary,
+            ],
     );
   }
 
@@ -257,12 +288,10 @@ Future<void> startUpdate(
   AppUpdateController c, {
   bool forceQuit = false,
   bool allowDowngrade = false,
-}) async {
-  if (c.phase != UpdatePhase.ready) await c.download();
-  if (c.phase == UpdatePhase.ready) {
-    await c.install(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
-  }
-}
+}) =>
+    // Порядок живёт в контроллере: там же он запоминается на случай, если
+    // Android попросит разрешение и убьёт процесс (см. `ConsentMarker`).
+    c.downloadAndInstall(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
 
 /// Открыть страницу релиза (или общую страницу загрузок, если у релиза её нет).
 Future<void> openUpdatePage(UpdateOffer? offer) {

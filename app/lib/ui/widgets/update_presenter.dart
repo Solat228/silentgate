@@ -84,13 +84,14 @@ class AppUpdatePresenter with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Android: человек вернулся с экрана «устанавливать из этого приложения»
-    // — повторяем установку сами. Согласие на неё уже дано: до экрана
-    // разрешения установка доходит только после него (или без живого VPN).
+    // Android: человек вернулся с экрана «устанавливать из этого приложения»,
+    // а процесс выжил — продолжаем с тем согласием, что он уже дал.
+    // (Если разрешение выдано, система нас убивает, и продолжение берёт на
+    // себя следующий старт — `ConsentMarker`.)
     if (state == AppLifecycleState.resumed &&
         controller.phase == UpdatePhase.needsPermission) {
       _permissionShown = false;
-      unawaited(controller.install(forceQuit: true));
+      unawaited(controller.resumeAfterPermission());
     }
   }
 

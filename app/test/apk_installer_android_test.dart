@@ -286,5 +286,15 @@ void main() {
     test('capability на Android всегда ready', () async {
       expect((await installer.capability()).name, 'ready');
     });
+
+    // ⚠️ Выдача разрешения убивает процесс (живой прогон 24.09.2026): спросить
+    // нужно ДО закачки, тем же вопросом, что задаёт launch.
+    test('canInstallNow спрашивает canInstallPackages', () async {
+      canInstall = false;
+      expect(await installer.canInstallNow(), isFalse);
+      canInstall = true;
+      expect(await installer.canInstallNow(), isTrue);
+      expect(calls.where((c) => c.method == 'canInstallPackages'), hasLength(2));
+    });
   });
 }

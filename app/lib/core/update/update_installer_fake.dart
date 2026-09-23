@@ -37,6 +37,10 @@ class FakeUpdateInstaller implements UpdateInstaller {
   /// настоящего (файл после разбора удалён).
   PendingResult? pendingResult;
 
+  /// Что ответит [canInstallNow].
+  bool canInstallNowResult = true;
+  int canInstallNowCalls = 0;
+
   /// Если задано — [launch] бросает это вместо записи вызова.
   Object? launchError;
 
@@ -55,6 +59,12 @@ class FakeUpdateInstaller implements UpdateInstaller {
   Future<InstallCapability> capability() async {
     capabilityCalls++;
     return capabilityResult;
+  }
+
+  @override
+  Future<bool> canInstallNow() async {
+    canInstallNowCalls++;
+    return canInstallNowResult;
   }
 
   @override

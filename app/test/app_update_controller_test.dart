@@ -226,6 +226,8 @@ void main() {
     String currentVersion = current,
     bool Function()? overriddenOf,
     Future<void> Function()? loadOverride,
+    Duration purgeRetryDelay = const Duration(hours: 1),
+    DateTime Function()? clock,
   }) =>
       AppUpdateController(
         settings: () => settings.value,
@@ -245,6 +247,8 @@ void main() {
         overriddenOf: overriddenOf,
         loadOverride: loadOverride,
         currentVersion: currentVersion,
+        purgeRetryDelay: purgeRetryDelay,
+        clock: clock,
       );
 
   File stagedFile(String name) =>
@@ -1057,6 +1061,220 @@ void main() {
           reason: 'половина набора бесполезна — не переносим ничего');
       expect(o.pageUrl, r.pageUrl);
       expect(o.assetUrl, r.downloadUrl);
+    });
+  });
+
+  group('Живой прогон 24.09.2026', () {
+    PendingResult updated() => PendingResult(
+          outcome: PendingOutcome.updated,
+          pending: PendingInstall(
+            version: next,
+            startedAt: DateTime.utc(2026, 9, 24),
+            exePath: stagedFile(assetName).path,
+            logPath: '',
+          ),
+        );
+
+    File consentFile() => stagedFile(ConsentMarker.fileName);
+
+    test(
+        '⚠️ после обновления чистка повторяется: первая не берёт exe, '
+        'который ещё держит установщик', () async {
+      checkResult = () => const UpdateCheckResult.upToDate();
+      installer.pendingResult = updated();
+      final c = make(purgeRetryDelay: const Duration(milliseconds: 20));
+      await c.startup();
+      expect(installer.purgeCalls, [null]);
+      await _waitFor(() => installer.purgeCalls.length == 2,
+          reason: 'повторная чистка');
+      expect(installer.purgeCalls, [null, null]);
+      c.dispose();
+    });
+
+    test('неудачная установка: повтора нет — журнал той версии нужен',
+        () async {
+      checkResult = () => const UpdateCheckResult.upToDate();
+      installer.pendingResult = PendingResult(
+        outcome: PendingOutcome.failed,
+        pending: updated().pending,
+        logTail: 'x',
+      );
+      final c = make(purgeRetryDelay: const Duration(milliseconds: 10));
+      await c.startup();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(installer.purgeCalls, [next]);
+      c.dispose();
+    });
+
+    test('повтор не трогает скачанный установщик новой версии', () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      installer.pendingResult = updated();
+      final c = make(
+        isVpnActive: () => true, // «авто» при VPN: скачано, ждёт отключения
+        purgeRetryDelay: const Duration(milliseconds: 20),
+      );
+      await c.startup();
+      expect(c.phase, UpdatePhase.ready);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(installer.purgeCalls, [null],
+          reason: 'чистка снесла бы проверенный установщик');
+      c.dispose();
+    });
+
+    test('dispose отменяет отложенную чистку', () async {
+      checkResult = () => const UpdateCheckResult.upToDate();
+      installer.pendingResult = updated();
+      final c = make(purgeRetryDelay: const Duration(milliseconds: 20));
+      await c.startup();
+      c.dispose();
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+      expect(installer.purgeCalls, [null]);
+    });
+
+    test(
+        '⚠️ Android: нет разрешения — НИ ОДНОГО байта не качается, '
+        'согласие записано', () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final c = make();
+      await c.startup();
+      await c.downloadAndInstall(forceQuit: true);
+
+      expect(c.phase, UpdatePhase.needsPermission);
+      expect(c.error, isNull);
+      expect(server.requested, isEmpty,
+          reason: 'выдача разрешения убивает процесс — скачанное пропало бы');
+      expect(installer.launches, isEmpty);
+      final m = ConsentMarker.tryParse(consentFile().readAsStringSync());
+      expect(m?.version, next);
+      expect(m?.install, isTrue);
+      expect(m?.forceQuit, isTrue);
+    });
+
+    test(
+        '⚠️ после смерти процесса следующий старт продолжает сам: '
+        'без окна, с тем же согласием', () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final first = make();
+      await first.startup();
+      await first.downloadAndInstall(forceQuit: true);
+      expect(first.phase, UpdatePhase.needsPermission);
+      first.dispose(); // система убила процесс
+
+      installer.canInstallNowResult = true;
+      final second = make(); // режим по умолчанию — «спрашивать»
+      await second.startup();
+
+      expect(installer.launches, hasLength(1),
+          reason: 'второй раз «Обновить» нажимать не должны');
+      expect(installer.launches.single.forceQuit, isTrue);
+      expect(second.phase, UpdatePhase.installing);
+      expect(consentFile().existsSync(), isFalse,
+          reason: 'метка одноразовая');
+    });
+
+    test('согласие только на закачку (экран «Обновления»): скачать и ждать',
+        () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final first = make();
+      await first.startup();
+      await first.download();
+      first.dispose();
+
+      installer.canInstallNowResult = true;
+      final second = make();
+      await second.startup();
+      expect(second.phase, UpdatePhase.ready);
+      expect(installer.launches, isEmpty);
+    });
+
+    test('устаревшая метка (больше часа) не действует: обычное окно',
+        () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final first = make();
+      await first.startup();
+      await first.downloadAndInstall();
+      first.dispose();
+
+      installer.canInstallNowResult = true;
+      final later = DateTime.now().add(const Duration(hours: 2));
+      final second = make(clock: () => later);
+      await second.startup();
+      expect(second.phase, UpdatePhase.available);
+      expect(installer.launches, isEmpty);
+      expect(consentFile().existsSync(), isFalse);
+    });
+
+    test('метка другой версии не действует', () async {
+      publish();
+      staging.createSync(recursive: true);
+      consentFile().writeAsStringSync(jsonEncode(ConsentMarker(
+        version: '1.13.9',
+        install: true,
+        forceQuit: true,
+        at: DateTime.now().toUtc(),
+      ).toJson()));
+      final c = make();
+      await c.startup();
+      expect(c.phase, UpdatePhase.available);
+      expect(server.requested, isEmpty);
+    });
+
+    test('«только сообщать» метку не исполняет', () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.notifyOnly);
+      staging.createSync(recursive: true);
+      consentFile().writeAsStringSync(jsonEncode(ConsentMarker(
+        version: next,
+        install: true,
+        forceQuit: false,
+        at: DateTime.now().toUtc(),
+      ).toJson()));
+      final c = make();
+      await c.startup();
+      expect(c.phase, UpdatePhase.linkOnly);
+      expect(server.requested, isEmpty);
+    });
+
+    test('вернулся из настроек живым: resumeAfterPermission качает и ставит',
+        () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final c = make();
+      await c.startup();
+      await c.downloadAndInstall(forceQuit: true);
+      expect(c.phase, UpdatePhase.needsPermission);
+
+      installer.canInstallNowResult = true;
+      await c.resumeAfterPermission();
+      expect(installer.launches, hasLength(1));
+      expect(installer.launches.single.forceQuit, isTrue);
+    });
+
+    test('вернулся без разрешения: снова needsPermission, закачки нет',
+        () async {
+      publish();
+      installer.canInstallNowResult = false;
+      final c = make();
+      await c.startup();
+      await c.downloadAndInstall();
+      await c.resumeAfterPermission();
+      expect(c.phase, UpdatePhase.needsPermission);
+      expect(server.requested, isEmpty);
+    });
+
+    test('ConsentMarker: мусор не разбирается', () {
+      expect(ConsentMarker.tryParse('не json'), isNull);
+      expect(ConsentMarker.tryParse('[]'), isNull);
+      expect(ConsentMarker.tryParse('{"version":"","at":"2026-09-24"}'),
+          isNull);
+      expect(ConsentMarker.tryParse('{"version":"1.14.1"}'), isNull);
     });
   });
 
