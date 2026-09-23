@@ -103,3 +103,7 @@ tools/__pycache__/
 *.saved.html
 
 build-out/
+
+# Артефакты установки плагинов агента (caveman и т.п.) — к проекту не относятся
+.agents/
+skills-lock.json
