@@ -528,45 +528,79 @@ class ServiceChecksSides extends StatelessWidget {
   /// пикселей размера значка и оставляет название целым.
   static double labelWidthFor(bool dense) => dense ? 34.0 : cellWidth + 4;
 
-  /// Базовый кегль подписи группы и его нижняя граница.
-  static const double labelFontBase = 9;
+  /// Насколько подпись группы может стать шире ячейки, когда по ширине
+  /// место есть.
+  ///
+  /// ⚠️ ЖАЛОБА ВЛАДЕЛЬЦА 24.09.2026: «имена и сами сервисы СЛИШКОМ маленькие,
+  /// хотя места полно». Замер из его журнала: место 535×225, стороны 155/320
+  /// по высоте, масштаб 0,70 — упирается ВЫСОТА (у стороны с тремя группами
+  /// два ряда блоков), а по ширине с каждой стороны пустовало около 57 px.
+  /// Подпись при этом была зажата в ширину ячейки (82) и рисовалась кеглем
+  /// 9 × 0,70 ≈ 6 px. Теперь пустующая ширина отдаётся подписям: масштаб
+  /// значков это не трогает (он уже посчитан по высоте), а текст растёт.
+  static const double _labelGrowMax = 48;
+
+  /// Потолки кегля подписи: для ОДНОЙ строки и для ДВУХ. Область подписи
+  /// ([_SideGroupLabel.labelHeight] = 22) вмещает две строки кеглем 9,5, а
+  /// одну — кеглем до 19; одна строка выше 14 уже спорит со значками.
+  static const double labelFontMax = 14;
+  static const double labelFontTwoLines = 9;
   static const double labelFontMin = 6;
 
-  /// Кегль, при котором САМАЯ ДЛИННАЯ подпись укладывается в ширину блока
-  /// без разрыва слова — ОДИН на все группы экрана.
+  /// Кегль подписей — ОДИН на все группы экрана — и число строк.
+  ///
+  /// Сперва пробуем ОДНУ строку: самая длинная подпись целиком в [width].
+  /// Если одной строкой выходит мельче, чем двумя, — переносим по словам
+  /// («Видео и» / «музыка»), и тогда в ширину обязано влезть самое длинное
+  /// СЛОВО.
   ///
   /// ⚠️ ЗАЧЕМ СЧИТАТЬ, А НЕ ЗАДАТЬ ЧИСЛОМ. Я подбирал кегль на глаз дважды
   /// (9, потом 8) и оба раза получал на снимке из VM «Мессендже/ры»: слово
   /// не помещалось и рвалось по буквам. Ширина строки зависит от шрифта,
   /// языка и системных настроек — угадать её нельзя, а измерить можно.
+  /// Меряем ТЕМ ЖЕ стилем и с тем же системным масштабом, что рисуем:
+  /// расхождение стилей уже давало разрыв слова.
   ///
   /// ⚠️ И кегль ОБЩИЙ намеренно. Сжимать каждую подпись отдельно
   /// (`FittedBox` на каждой) уже пробовали: «Мессенджеры» выходили мелкими,
   /// «ИИ» крупными, столбики значков вставали на разной высоте — жалоба
   /// владельца «а хули они у тебя вразброс».
-  static double labelFontFor(List<GroupedRow> rows, AppLocalizations l,
-      {required bool dense}) {
-    final width = labelWidthFor(dense);
-    var worst = 0.0;
+  static ({double size, bool oneLine}) labelFontFor(
+      List<GroupedRow> rows, AppLocalizations l,
+      {required double width,
+      TextStyle? style,
+      TextScaler textScaler = TextScaler.noScaling}) {
+    // Ширина текста на 1 px кегля: меряем на кегле 10 и делим — текст
+    // масштабируется линейно.
+    double widthPerPx(String text) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: (style ?? const TextStyle())
+              .copyWith(fontSize: 10, height: 1.15, letterSpacing: 0.1),
+        ),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      return tp.width / 10;
+    }
+
+    var wholeWorst = 0.0, wordWorst = 0.0;
     for (final r in rows) {
-      // Меряем самое длинное СЛОВО, а не всю подпись: несколько слов
-      // переносятся по пробелам («Видео и» / «музыка»), и уменьшать кегль
-      // ради них не нужно.
-      for (final word in r.group.label(l).split(' ')) {
-        final tp = TextPainter(
-          text: TextSpan(
-            text: word,
-            style: const TextStyle(fontSize: labelFontBase, height: 1.15),
-          ),
-          textDirection: TextDirection.ltr,
-          maxLines: 1,
-        )..layout();
-        if (tp.width > worst) worst = tp.width;
+      final label = r.group.label(l);
+      wholeWorst = math.max(wholeWorst, widthPerPx(label));
+      for (final word in label.split(' ')) {
+        wordWorst = math.max(wordWorst, widthPerPx(word));
       }
     }
-    if (worst <= 0 || worst <= width) return labelFontBase;
-    final fitted = labelFontBase * width / worst;
-    return fitted < labelFontMin ? labelFontMin : fitted;
+    if (wholeWorst <= 0) return (size: labelFontTwoLines, oneLine: false);
+    final one = math.min(labelFontMax, width / wholeWorst);
+    final two = wordWorst <= 0
+        ? labelFontTwoLines
+        : math.min(labelFontTwoLines, width / wordWorst);
+    if (one >= two) return (size: one, oneLine: true);
+    return (size: math.max(labelFontMin, two), oneLine: false);
   }
 
   /// Ниже этого множителя иконки и подписи превращаются в нечитаемую пыль —
@@ -689,12 +723,38 @@ class ServiceChecksSides extends StatelessWidget {
           c.hasBoundedHeight ? math.min(c.maxHeight, wanted) : wanted;
       final showGlyph = k >= glyphMinScale;
 
+      // Пустующая по ширине часть стороны — подписям (см. [_labelGrowMax]).
+      // Масштаб уже посчитан, и расширение его не меняет: сторона растёт
+      // ровно до места, которое у неё и так было.
+      var labelWidth = labelWidthFor(dense);
+      if (!dense && k > 0) {
+        final inRow = math.min(
+            perRow, math.max(split.left.length, split.right.length));
+        final slack = roomPerSide / k - widest - 0.5;
+        if (inRow > 0 && slack > 0) {
+          labelWidth += math.min(slack / inRow, _labelGrowMax);
+        }
+      }
+      final wL2 = sideWidthOf(split.left, dense: dense, labelWidth: labelWidth);
+      final wR2 =
+          sideWidthOf(split.right, dense: dense, labelWidth: labelWidth);
+      // ⚠️ КЕГЛЬ СЧИТАЕТСЯ ПО ВСЕМ ГРУППАМ ЭКРАНА, А НЕ ПО СТОРОНЕ. Раньше
+      // каждая сторона подбирала свой: слева «Мессенджеры» выходили одним
+      // кеглем, справа «Видео и музыка» — другим, и подписи в одной строке
+      // вокруг кнопки были разного размера (поймано стражем 24.09.2026).
+      final labelFont = labelFontFor(rows, AppLocalizations.of(context),
+          width: labelWidth,
+          style: Theme.of(context).textTheme.labelSmall,
+          textScaler: MediaQuery.textScalerOf(context));
+
       final left = _SideColumn(
         rows: split.left,
         httpPort: httpPort,
         dense: dense,
         alignEnd: true,
         showGlyph: showGlyph,
+        labelWidth: labelWidth,
+        labelFont: labelFont,
       );
       final right = _SideColumn(
         rows: split.right,
@@ -702,6 +762,8 @@ class ServiceChecksSides extends StatelessWidget {
         dense: dense,
         alignEnd: false,
         showGlyph: showGlyph,
+        labelWidth: labelWidth,
+        labelFont: labelFont,
       );
       final buttonBox = SizedBox(
         width: _naturalButton,
@@ -735,11 +797,11 @@ class ServiceChecksSides extends StatelessWidget {
           key: const ValueKey('serviceChecksSidesRow'),
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            scaled(left, wL, hL, Alignment.centerRight),
+            scaled(left, wL2, hL, Alignment.centerRight),
             const SizedBox(width: _gap),
             buttonBox,
             const SizedBox(width: _gap),
-            scaled(right, wR, hR, Alignment.centerLeft),
+            scaled(right, wR2, hR, Alignment.centerLeft),
           ],
         ),
       );
@@ -762,7 +824,11 @@ class ServiceChecksSides extends StatelessWidget {
   }
 
   /// Ширина одной стороны при масштабе 1.0.
-  static double sideWidthOf(List<GroupedRow> rows, {required bool dense}) {
+  ///
+  /// [labelWidth] — ширина подписи, если она расширена под свободное место
+  /// (см. [_labelGrowMax]); по умолчанию — [labelWidthFor].
+  static double sideWidthOf(List<GroupedRow> rows,
+      {required bool dense, double? labelWidth}) {
     if (rows.isEmpty) return 0;
     if (dense) {
       // ⚠️ СЕТКА РИСУЕТСЯ ИНАЧЕ, ЧЕМ БЛОКИ. Найдено ревью 05.09.2026 замером:
@@ -781,7 +847,8 @@ class ServiceChecksSides extends StatelessWidget {
       return widest;
     }
     final inRow = rows.length < perRow ? rows.length : perRow;
-    return labelWidthFor(dense) * inRow + _blockGap * (inRow - 1);
+    return (labelWidth ?? labelWidthFor(dense)) * inRow +
+        _blockGap * (inRow - 1);
   }
 
   /// Размеры одной ячейки в режиме «сетка» — списаны с того, что реально
@@ -898,10 +965,18 @@ class _SideColumn extends StatelessWidget {
     required this.dense,
     required this.alignEnd,
     required this.showGlyph,
+    required this.labelWidth,
+    required this.labelFont,
   });
 
   final List<GroupedRow> rows;
   final int httpPort;
+
+  /// Ширина подписи группы — см. `ServiceChecksSides._labelGrowMax`.
+  final double labelWidth;
+
+  /// Кегль подписей — общий на обе стороны, см. `labelFontFor`.
+  final ({double size, bool oneLine}) labelFont;
   final bool dense;
 
   /// Рисовать ли глиф состояния в углу кольца — см.
@@ -918,8 +993,6 @@ class _SideColumn extends StatelessWidget {
     if (rows.isEmpty) return const SizedBox.shrink();
     final l = AppLocalizations.of(context);
     final ctrl = context.watch<ServiceCheckController>();
-    final labelFont =
-        ServiceChecksSides.labelFontFor(rows, l, dense: dense);
     final live = httpPort > 0;
     // Настройки — необязательно, см. `ServiceChecksRows`.
     final split = context.watch<SettingsController?>()?.settings.splitTunnel;
@@ -987,27 +1060,33 @@ class _SideColumn extends StatelessWidget {
               _SideGroupLabel(
                 group: row.group,
                 label: row.group.label(l),
-                maxWidth: ServiceChecksSides.labelWidthFor(dense),
-                fontSize: labelFont,
+                maxWidth: labelWidth,
+                fontSize: labelFont.size,
+                oneLine: labelFont.oneLine,
               ),
               const SizedBox(height: 4),
               for (final s in row.services)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: _ServicePair(
-                    key: ValueKey('svc:${s.name}'),
-                    service: s,
-                    before: ctrl.baselineFor(s),
-                    after: ctrl.resultFor(s),
-                    live: live,
-                    // ⚠️ ВСЕГДА false, В ОБЕИХ СТОРОНАХ. Порядок
-                    // «до → после» обязан совпадать слева и справа:
-                    // зеркальный порядок меняет местами «до» и «после», и
-                    // стрелка начинает показывать в обратную сторону.
-                    alignEnd: false,
-                    showGlyph: showGlyph,
-                    bypass: bypassOf(s),
-                    onTap: () => ctrl.check(s, httpPort),
+                  // По центру блока: подпись бывает шире ячейки (см.
+                  // `_labelGrowMax`), и без этого значки прижимались бы к
+                  // левому краю под центрованной подписью.
+                  child: Center(
+                    child: _ServicePair(
+                      key: ValueKey('svc:${s.name}'),
+                      service: s,
+                      before: ctrl.baselineFor(s),
+                      after: ctrl.resultFor(s),
+                      live: live,
+                      // ⚠️ ВСЕГДА false, В ОБЕИХ СТОРОНАХ. Порядок
+                      // «до → после» обязан совпадать слева и справа:
+                      // зеркальный порядок меняет местами «до» и «после»,
+                      // и стрелка начинает показывать в обратную сторону.
+                      alignEnd: false,
+                      showGlyph: showGlyph,
+                      bypass: bypassOf(s),
+                      onTap: () => ctrl.check(s, httpPort),
+                    ),
                   ),
                 ),
             ],
@@ -1104,6 +1183,7 @@ class _SideGroupLabel extends StatelessWidget {
     required this.label,
     required this.maxWidth,
     required this.fontSize,
+    required this.oneLine,
   });
 
   final ServiceGroup group;
@@ -1127,11 +1207,16 @@ class _SideGroupLabel extends StatelessWidget {
   /// Кегль, общий на все группы экрана (см. `labelFontFor`).
   final double fontSize;
 
+  /// Подпись целиком в одну строку (место позволило) — иначе перенос по
+  /// словам. Решается сразу для всех групп, см. `labelFontFor`.
+  final bool oneLine;
+
   static const double labelHeight = 22;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final wraps = !oneLine && label.contains(' ');
     return Column(
       // Ключ — на весь блок подписи, как у `_GroupDivider`: по нему страж
       // вёрстки находит группу независимо от того, какая раскладка активна.
@@ -1165,13 +1250,13 @@ class _SideGroupLabel extends StatelessWidget {
               fit: BoxFit.scaleDown,
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  maxWidth: label.contains(' ') ? maxWidth : double.infinity,
+                  maxWidth: wraps ? maxWidth : double.infinity,
                 ),
                 child: Text(
                   label,
                   textAlign: TextAlign.center,
-                  maxLines: label.contains(' ') ? 2 : 1,
-                  softWrap: label.contains(' '),
+                  maxLines: wraps ? 2 : 1,
+                  softWrap: wraps,
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant,
                         fontSize: fontSize,

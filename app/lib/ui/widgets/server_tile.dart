@@ -149,7 +149,14 @@ class ServerTile extends StatelessWidget {
         // Кнопка правки/меню уезжает ВПЛОТНУЮ к краю строки — просьба владельца
         // («можно увести гораздо правее»). Штатные 16 dp справа отодвигали её от
         // края почти на ширину самой иконки.
-        contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 2),
+        //
+        // ⚠️ ПОЛЯ И ФЛАГ УЖАТЫ — вариант «Б», выбор владельца 24.09.2026 для ПК
+        // и телефона (листы `SHEET_pc/phone.png`): длинные имена серверов
+        // обрезались многоточием, а слева 16 dp поля и флаг 34 px съедали
+        // место под имя. Отвоёвано около 20 px строки.
+        contentPadding: const EdgeInsetsDirectional.only(start: 8, end: 0),
+        horizontalTitleGap: 10,
+        minLeadingWidth: 0,
         selected: selected,
         selectedTileColor: scheme.primary.withValues(alpha: 0.08),
         // Значок чужой подписки лежит НА флаге (правый верхний угол), а не
@@ -160,7 +167,8 @@ class ServerTile extends StatelessWidget {
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
-            FlagCell(server.remark, auto: server.isPanelProfile),
+            FlagCell(server.remark,
+                auto: server.isPanelProfile, width: 28, height: 20),
             if (foreign != null)
               Positioned(
                 top: 0,
@@ -181,7 +189,7 @@ class ServerTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    // ~треть стороны флаг-ячейки (34×24): значок остаётся
+                    // ~треть стороны флаг-ячейки (28×20): значок остаётся
                     // читаемым, но не закрывает сам флаг под ним.
                     child: SubscriptionAvatar(
                         path: foreign.logoPath, label: foreign.safeTitle, size: 10),
@@ -208,15 +216,18 @@ class ServerTile extends StatelessWidget {
             InfoTooltip(updatedServerTooltip(l, updatedFields),
                 title: l.srvTileUpdatedTitle,
                 icon: Icons.published_with_changes,
-                color: scheme.secondary),
+                color: scheme.secondary,
+                compact: true),
           if (panelInfo != null)
-            InfoTooltip(_panelSummary(l, panelInfo), title: l.panelTunnelMarker),
+            InfoTooltip(_panelSummary(l, panelInfo),
+                title: l.panelTunnelMarker, compact: true),
           // Почему сервер не годится — «!» с диалогом, а не всплывающая
           // подсказка: текст абзацем, и подсказка накрыла бы соседнюю строку
           // списка (см. tooltipTheme в app.dart). Плюс на тач-экране hover'а
           // нет вовсе, а долгое нажатие занято контекстным меню.
           if (unavailableNote != null)
-            InfoTooltip(unavailableNote!, title: server.displayName),
+            InfoTooltip(unavailableNote!,
+                title: server.displayName, compact: true),
         ]),
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
         // тач-экране подсказка вызывается долгим нажатием, а оно уже занято
