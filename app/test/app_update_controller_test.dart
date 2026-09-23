@@ -224,6 +224,8 @@ void main() {
     Listenable? vpnChanges,
     Future<void> Function()? openInstallPermission,
     String currentVersion = current,
+    bool Function()? overriddenOf,
+    Future<void> Function()? loadOverride,
   }) =>
       AppUpdateController(
         settings: () => settings.value,
@@ -240,6 +242,8 @@ void main() {
         openInstallPermission: openInstallPermission,
         publicKeyBase64: publicKey,
         overridden: overridden,
+        overriddenOf: overriddenOf,
+        loadOverride: loadOverride,
         currentVersion: currentVersion,
       );
 
@@ -884,6 +888,126 @@ void main() {
       expect(c.error?.kind, UpdateErrorKind.notNewer);
       await c.install(allowDowngrade: true);
       expect(installer.launches.single.version, '1.13.9');
+    });
+  });
+
+  group('Правки ревью волны 3', () {
+    // ⚠️ Android читает подмену источника из файла АСИНХРОННО, уже после
+    // того, как провайдер построил контроллер. Флаг, переданный значением в
+    // конструктор, навсегда оставался `false`: стенд с `http://` не работал,
+    // плашка «источник подменён» не появлялась.
+    test('⚠️ подмена источника читается живьём, и старт её дожидается',
+        () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      var flag = false;
+      var loads = 0;
+      final c = make(
+        overridden: false,
+        overriddenOf: () => flag,
+        loadOverride: () async {
+          loads++;
+          await Future<void>.delayed(const Duration(milliseconds: 20));
+          flag = true;
+        },
+      );
+      expect(c.overridden, isFalse, reason: 'до старта файл ещё не прочитан');
+      await c.startup();
+
+      expect(loads, 1);
+      expect(c.overridden, isTrue);
+      expect(c.error, isNull,
+          reason: 'проверка шла ПОСЛЕ чтения подмены — http:// разрешён');
+      expect(c.phase, UpdatePhase.installing);
+    });
+
+    test('подмена не прочиталась — старт не падает, http:// отвергается',
+        () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(
+        overridden: false,
+        overriddenOf: () => false,
+        loadOverride: () async => throw const FileSystemException('нет'),
+      );
+      await c.startup();
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.insecureUrl);
+    });
+
+    // ⚠️ «Прежние версии» показывают и беты. С выключенным бета-каналом
+    // откат на бету падал с channelMismatch: явный выбор из истории — это
+    // согласие на канал этого релиза.
+    test('⚠️ откат на бету из «Прежних версий» при выключенном бета-канале',
+        () async {
+      publish(
+          version: '1.13.2-beta',
+          name: 'SilentGateSetup-1.13.2-beta.exe',
+          channel: UpdateManifest.channelBeta);
+      checkResult = () => const UpdateCheckResult.upToDate();
+      expect(settings.value.betaChannel, isFalse);
+      final c = make();
+      await c.startup();
+
+      c.offerRelease(const AppRelease(version: '1.13.2-beta', isBeta: true));
+      await c.download();
+      expect(c.error, isNull, reason: 'не channelMismatch');
+      expect(c.phase, UpdatePhase.ready);
+      await c.install(allowDowngrade: true);
+      expect(installer.launches.single.version, '1.13.2-beta');
+    });
+
+    test('бета из обычной проверки без бета-канала по-прежнему отвергается',
+        () async {
+      publish(channel: UpdateManifest.channelBeta);
+      final c = make();
+      await c.startup();
+      await c.checkNow();
+      await c.download();
+      expect(c.error?.kind, UpdateErrorKind.manifestRejected);
+    });
+
+    test('⚠️ перед установкой в «авто» зовётся уведомление, при ручной — нет',
+        () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(isVpnActive: () => false);
+      final seen = <String>[];
+      c.beforeUnattendedInstall = (o) async {
+        seen.add(o.version);
+        expect(installer.launches, isEmpty,
+            reason: 'уведомление — ДО запуска установщика');
+      };
+      await c.startup();
+      expect(seen, [next]);
+      expect(installer.launches, hasLength(1));
+
+      // Ручная установка: человек сам нажал — уведомлять незачем.
+      installer.launches.clear();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.ask);
+      final m = make(isVpnActive: () => false);
+      final manual = <String>[];
+      m.beforeUnattendedInstall = (o) async => manual.add(o.version);
+      await m.startup();
+      await m.download();
+      await m.install();
+      expect(manual, isEmpty);
+      expect(installer.launches, hasLength(1));
+    });
+
+    test('зависшее уведомление не держит установку дольше таймаута', () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(isVpnActive: () => false);
+      c.beforeUnattendedInstall = (_) async => throw StateError('нет окна');
+      await c.startup();
+      expect(installer.launches, hasLength(1),
+          reason: 'сбой уведомления не отменяет установку');
     });
   });
 

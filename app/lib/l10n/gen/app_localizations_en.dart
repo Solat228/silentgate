@@ -30,9 +30,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonRefresh => 'Refresh';
 
   @override
-  String get commonCheck => 'Check';
-
-  @override
   String get commonOk => 'OK';
 
   @override
@@ -581,51 +578,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get testUrlLabel => 'Test URL (via Proxy)';
 
   @override
-  String get appUpdateServerUnavailable => 'Update server unavailable';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'Version $version available';
-  }
-
-  @override
-  String get appUpdateLatest => 'You have the latest version';
-
-  @override
-  String get appUpdateDownload => 'Download';
-
-  @override
-  String get appUpdateCheckTitle => 'Check for updates on launch';
-
-  @override
-  String get appUpdateManual => 'Downloading and installing — manually';
-
-  @override
-  String get appUpdateEndpointLabel => 'Version endpoint';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Receive beta versions';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'GitHub releases list, including pre-releases, plus a fallback site address. Doesn\'t affect stable auto-update.';
-
-  @override
   String get infoAppUpdateBeta =>
       'The app will start checking the full GitHub releases list, including pre-releases, not just the latest stable one. The main auto-update channel doesn\'t change — beta won\'t reach anyone who hasn\'t enabled this switch.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'This is a pre-release — expect possible issues. Auto-update doesn\'t distribute these versions.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Previous versions';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Previous versions';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -789,14 +746,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Block';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'Version $version available';
-  }
-
-  @override
-  String get homeDownload => 'Download';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1066,10 +1015,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN requires administrator rights. Once, we create a task in the Windows Task Scheduler with the highest privileges — after that the tunnel starts WITHOUT a UAC prompt on each connection. The task belongs to you and is removed with the button below or when the program is uninstalled.';
-
-  @override
-  String get infoAppUpdate =>
-      'Once per launch, the app asks your server whether a newer version exists and shows a notification with a «Download» button.\n\nThe app downloads and runs NOTHING on its own: the installer is not signed with a certificate, and auto-running a downloaded exe runs into SmartScreen and looks to antiviruses like malware behavior. You install the update yourself.\n\nIf the server is unavailable, the app simply stays silent and writes an entry to the log. The response format and server setup are described in docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -3410,15 +3355,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'What\'s new in $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'No release notes were provided.';
-
-  @override
-  String get updateNotesNeverShow => 'Don\'t show again';
 
   @override
   String get notifOffTitle => 'Notifications are off';
@@ -3610,5 +3547,96 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'The app will close and the VPN will be off during installation. Reconnect after the update';
+
+  @override
+  String get updatesOpenPage => 'Open download page';
+
+  @override
+  String get updatesLinkNotify =>
+      '“Notify only” mode is selected — download the new version from the download page';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'This release has no signed installer for your system — download it from the download page';
+
+  @override
+  String get updatesLinkIsolated =>
+      'This is an isolated test copy — it does not touch the installed app. Update it manually';
+
+  @override
+  String get updatesLinkLocation =>
+      'The app is not running from its installation folder — download the new version manually or start the installed copy';
+
+  @override
+  String get updatesLinkElevated =>
+      'The app is running as administrator — updating this way is unsafe. Start it normally';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'The app cannot update itself on this platform — download the new version manually';
+
+  @override
+  String get updatesErrCheck => 'the update server did not respond';
+
+  @override
+  String get updatesErrInsecure =>
+      'the download address is not secure (not https)';
+
+  @override
+  String get updatesErrAssetName =>
+      'the file name in the release is not allowed';
+
+  @override
+  String get updatesErrManifest => 'could not get the signed release manifest';
+
+  @override
+  String get updatesErrSignature =>
+      'the signature does not match — the file may have been tampered with';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'the release manifest does not fit this version or system';
+
+  @override
+  String get updatesErrDownload =>
+      'the file did not download or its checksum does not match';
+
+  @override
+  String get updatesErrInstall => 'the installer did not start';
+
+  @override
+  String get updatesErrNotNewer =>
+      'this version is not newer than the installed one';
+
+  @override
+  String get updatesInfo =>
+      'What the app does when a new version is found. In automatic mode installation never breaks an active VPN: it waits until you disconnect. In every mode a file is installed only if the developer signature matches.';
+
+  @override
+  String get updatesDownload => 'Download';
+
+  @override
+  String get updatesInstallNow => 'Install now';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Ready to install — it will start after the VPN is disconnected';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'Version $version skipped — you will be notified about the next one';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Installing update';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'The app will close while version $version is being installed';
   }
 }

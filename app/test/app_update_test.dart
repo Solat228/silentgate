@@ -184,6 +184,26 @@ void main() {
       expect(AppUpdate.isNewer('1.4.2', '1.4.3'), isFalse);
       expect(AppUpdate.isNewer('2.0.0', '1.99.99'), isTrue);
     });
+
+    // Раньше суффикс игнорировался: стабильная 1.14.1 и бета 1.14.1-beta.2
+    // считались одной версией, и поставивший бету не получал стабильную.
+    test('стабильная новее своей беты, бета — не новее стабильной', () {
+      expect(AppUpdate.isNewer('1.14.1', '1.14.1-beta'), isTrue);
+      expect(AppUpdate.isNewer('1.14.1', '1.14.1-beta.2'), isTrue);
+      expect(AppUpdate.isNewer('1.14.1-beta.1', '1.14.1'), isFalse);
+      expect(AppUpdate.isNewer('v1.14.1-beta.1', '1.14.0'), isTrue,
+          reason: 'числа по-прежнему решают первыми');
+    });
+
+    test('беты одного номера — по номеру беты, но только когда он известен', () {
+      expect(AppUpdate.isNewer('1.14.1-beta.2', '1.14.1-beta.1'), isTrue);
+      expect(AppUpdate.isNewer('1.14.1-beta.1', '1.14.1-beta.2'), isFalse);
+      expect(AppUpdate.isNewer('1.14.1-beta.10', '1.14.1-beta.9'), isTrue);
+      // Установленная бета знает только, что она бета (AppInfo.isBeta), —
+      // без оговорки та же бета предлагалась бы при каждой проверке.
+      expect(AppUpdate.isNewer('1.14.1-beta.1', '1.14.1-beta'), isFalse);
+      expect(AppUpdate.isNewer('1.14.1-beta.3', '1.14.1-beta'), isFalse);
+    });
   });
 
   group('Запасной источник — наш сайт', () {
@@ -506,6 +526,22 @@ void main() {
           assetHint: 'Setup.exe')!;
       expect(r.assetName, 'SilentGateSetup-1.13.1.exe',
           reason: 'портативный zip — не установщик');
+    });
+
+    test('⚠️ бета находит установщик, названный по версии exe без суффикса',
+        () {
+      // Inno называет файл по версии exe (`1.14.1`), а тег беты —
+      // `v1.14.1-beta.1`: вырезался только полный суффикс, и Windows-бета
+      // откатывалась на «открыть страницу».
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(tag: 'v1.14.1-beta.1', assets: [
+            asset('SilentGateSetup-1.14.1.exe'),
+            asset('SilentGate-1.14.1-beta.1.manifest.json'),
+            asset('SilentGate-1.14.1-beta.1.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.assetName, 'SilentGateSetup-1.14.1.exe');
+      expect(r.canSelfUpdate, isTrue);
     });
 
     test('⚠️ похожее имя манифеста («.manifest.json.bak») не берётся', () {

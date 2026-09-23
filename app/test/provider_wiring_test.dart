@@ -131,8 +131,9 @@ void main() {
     engine = _SpyEngine();
     state = _SpyAppState(engine: engine);
     await state.init();
+    // ⚠️ БЕЗ init(): загрузку настроек каждый тест самообновления делает
+    // сам и в нужный ему момент — запуск контроллера привязан именно к ней.
     settings = SettingsController();
-    await settings.init();
     probe = ProbeController();
     installer = FakeUpdateInstaller(
         staging: Directory('${dir.path}${Platform.pathSeparator}updates'));
@@ -158,6 +159,22 @@ void main() {
       dir.deleteSync(recursive: true);
     } catch (_) {}
   });
+
+  /// Дождаться [done], чередуя настоящее время и такты виджет-теста.
+  ///
+  /// ⚠️ Зачем чередовать. Продолжение `whenLoaded.then(startup)` повешено
+  /// внутри `pumpWidget`, то есть в зоне подменных часов: его микрозадачи
+  /// выполняются только на такте (`pump`). А сам старт читает и чистит
+  /// каталог закачек настоящим вводом-выводом, который движется только в
+  /// `runAsync`. Одного из двух не хватает — ожидание висит до таймаута.
+  Future<void> pumpUntil(WidgetTester tester, bool Function() done) async {
+    for (var i = 0; i < 200 && !done(); i++) {
+      await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)));
+      await tester.pump();
+    }
+    expect(done(), isTrue, reason: 'не дождались за 200 тактов');
+  }
 
   Widget buildTree() => MultiProvider(
         providers: [
@@ -256,12 +273,14 @@ void main() {
           reason: 'до сборки дерева контроллера ещё нет — база для сравнения');
 
       await tester.pumpWidget(buildTree());
+      await tester.pump();
 
       expect(updateCreateCalls, 1,
           reason: 'ChangeNotifierProvider<AppUpdateController> обязан быть '
               'с lazy:false — иначе контроллер появится только при первом '
               'чтении его типа, и «проверять при запуске» станет «проверять, '
               'когда откроют экран настроек»');
+      expect(settings.loaded, isFalse);
       expect(updateController.started, isFalse,
           reason: 'запуск привязан к загрузке настроек, а не к create: '
               'в момент сборки дерева настройки ещё умолчания');
@@ -269,28 +288,45 @@ void main() {
     });
 
     testWidgets(
-        'appUpdateProvider: startup запускается по ПЕРВОМУ уведомлению '
-        'SettingsController (его шлёт init после чтения с диска)',
-        (tester) async {
+        '⚠️ appUpdateProvider: правка настроек ДО загрузки startup НЕ '
+        'запускает — только SettingsController.whenLoaded', (tester) async {
       await tester.pumpWidget(buildTree());
+
+      // Прежняя связка (волна 2) стартовала по ПЕРВОМУ уведомлению — а его
+      // шлёт и правка, случившаяся раньше init(). Тогда проверка шла по
+      // умолчаниям, хотя человек мог автопроверку выключить.
+      await tester.runAsync(() => settings.update((s) => s));
+      await tester.pump();
+      expect(updateController.started, isFalse,
+          reason: 'уведомление без загрузки — не повод стартовать');
       expect(checkerCalls, 0);
 
-      // В приложении первое уведомление приходит из `init()`; здесь init уже
-      // отработал в setUp, поэтому уведомляем правкой без изменений. Файловый
-      // ввод-вывод контроллера настроек — вне FakeAsync.
-      await tester.runAsync(() async {
-        await settings.update((s) => s);
-        await checked.future.timeout(const Duration(seconds: 5));
-      });
+      await tester.runAsync(settings.init);
+      await pumpUntil(tester, () => checked.isCompleted);
 
+      expect(settings.loaded, isTrue);
       expect(updateController.started, isTrue);
-      expect(checkerCalls, 1,
-          reason: 'проверка при запуске — ровно одна');
+      expect(checkerCalls, 1, reason: 'проверка при запуске — ровно одна');
       expect(installer.reconcileCalls, hasLength(1),
           reason: 'итог прошлой установки разбирается при старте');
 
       // Повторные уведомления настроек ничего не запускают заново.
       await tester.runAsync(() => settings.update((s) => s));
+      expect(checkerCalls, 1);
+    });
+
+    testWidgets(
+        'appUpdateProvider: настройки загружены РАНЬШЕ сборки дерева — '
+        'startup всё равно случается (признак, а не событие)', (tester) async {
+      await tester.runAsync(settings.init);
+      expect(settings.loaded, isTrue);
+
+      await tester.pumpWidget(buildTree());
+      await pumpUntil(tester, () => checked.isCompleted);
+
+      expect(updateController.started, isTrue,
+          reason: 'слушатель «первого уведомления» здесь не сработал бы '
+              'никогда: уведомление ушло до того, как его повесили');
       expect(checkerCalls, 1);
     });
 

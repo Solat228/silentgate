@@ -30,9 +30,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get commonRefresh => 'بازخوانی';
 
   @override
-  String get commonCheck => 'بررسی';
-
-  @override
   String get commonOk => 'تأیید';
 
   @override
@@ -581,51 +578,11 @@ class AppLocalizationsFa extends AppLocalizations {
   String get testUrlLabel => 'URL آزمایشی (از طریق پروکسی)';
 
   @override
-  String get appUpdateServerUnavailable => 'سرور به‌روزرسانی در دسترس نیست';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'نسخه $version موجود است';
-  }
-
-  @override
-  String get appUpdateLatest => 'شما آخرین نسخه را دارید';
-
-  @override
-  String get appUpdateDownload => 'دانلود';
-
-  @override
-  String get appUpdateCheckTitle => 'بررسی به‌روزرسانی هنگام اجرا';
-
-  @override
-  String get appUpdateManual => 'دانلود و نصب — به‌صورت دستی';
-
-  @override
-  String get appUpdateEndpointLabel => 'نقطه پایانی نسخه';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'دریافت نسخه‌های بتا';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'فهرست انتشارهای گیت‌هاب شامل پیش‌انتشارها، به‌علاوه نشانی پشتیبان سایت. به‌روزرسانی خودکار نسخه‌های پایدار را تغییر نمی‌دهد.';
-
-  @override
   String get infoAppUpdateBeta =>
       'برنامه از این پس فهرست کامل انتشارهای گیت‌هاب را می‌بیند، شامل پیش‌انتشارها، نه فقط آخرین نسخهٔ پایدار. کانال اصلی به‌روزرسانی خودکار تغییری نمی‌کند — بتا برای کسی که این گزینه را روشن نکرده ارسال نمی‌شود.';
 
   @override
   String get appUpdateBetaBadge => 'بتا';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'این یک پیش‌انتشار است — ممکن است خطا رخ دهد. به‌روزرسانی خودکار این نسخه‌ها را ارسال نمی‌کند.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'نسخه‌های قبلی';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'نسخه‌های قبلی';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -789,14 +746,6 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'مسدود';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'نسخه $version موجود است';
-  }
-
-  @override
-  String get homeDownload => 'دانلود';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1067,10 +1016,6 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN نیازمند دسترسی مدیر است. یک‌بار، وظیفه‌ای در زمان‌بند وظایف ویندوز با بالاترین سطح دسترسی می‌سازیم — پس از آن تونل بدون درخواست UAC در هر اتصال آغاز می‌شود. این وظیفه متعلق به شماست و با دکمه پایین یا هنگام حذف برنامه پاک می‌شود.';
-
-  @override
-  String get infoAppUpdate =>
-      'برنامه یک‌بار در هر اجرا از سرور شما می‌پرسد که آیا نسخه جدیدتری هست و اعلانی با دکمه «دانلود» نمایش می‌دهد.\n\nبرنامه به‌تنهایی هیچ چیزی دانلود یا اجرا نمی‌کند: نصب‌کننده با گواهی امضا نشده و اجرای خودکار یک exe دانلود‌شده به SmartScreen برمی‌خورد و برای آنتی‌ویروس‌ها مانند رفتار بدافزار به نظر می‌رسد. به‌روزرسانی را خودتان نصب می‌کنید.\n\nاگر سرور در دسترس نباشد، برنامه فقط سکوت می‌کند و ورودی‌ای در گزارش می‌نویسد. قالب پاسخ و راه‌اندازی سرور در docs/APP_UPDATE.md توضیح داده شده است.';
 
   @override
   String get infoSpeedTest =>
@@ -3402,15 +3347,7 @@ class AppLocalizationsFa extends AppLocalizations {
       'کلید قطع اضطراری ترافیک را بر اساس برنامه نگه می‌دارد، نه بر اساس دامنه: تا زمانی که هسته در حال بازیابی است کسی نیست که نام سایت‌ها را تحلیل کند — در این مدت قوانین سایت‌ها اعمال نمی‌شوند.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'تازه‌های $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'یادداشت انتشار دریافت نشد.';
-
-  @override
-  String get updateNotesNeverShow => 'دیگر نشان نده';
 
   @override
   String get notifOffTitle => 'اعلان‌ها خاموش است';
@@ -3602,5 +3539,91 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb مگابایت';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'برنامه بسته می‌شود و VPN در طول نصب قطع خواهد بود. پس از به‌روزرسانی دوباره وصل شوید';
+
+  @override
+  String get updatesOpenPage => 'باز کردن صفحهٔ دانلود';
+
+  @override
+  String get updatesLinkNotify =>
+      'حالت «فقط اطلاع دادن» انتخاب شده است — نسخهٔ جدید را از صفحهٔ دانلود بگیرید';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'این نسخه نصب‌کنندهٔ امضاشده برای سیستم شما ندارد — آن را از صفحهٔ دانلود بگیرید';
+
+  @override
+  String get updatesLinkIsolated =>
+      'این یک نسخهٔ آزمایشی جداگانه است — به برنامهٔ نصب‌شده دست نمی‌زند. به‌صورت دستی به‌روزرسانی کنید';
+
+  @override
+  String get updatesLinkLocation =>
+      'برنامه از پوشهٔ نصب اجرا نشده است — نسخهٔ جدید را دستی بگیرید یا نسخهٔ نصب‌شده را اجرا کنید';
+
+  @override
+  String get updatesLinkElevated =>
+      'برنامه با دسترسی مدیر اجرا شده است — به‌روزرسانی به این شکل امن نیست. آن را به‌صورت عادی اجرا کنید';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'برنامه روی این سکو نمی‌تواند خودش را به‌روز کند — نسخهٔ جدید را دستی بگیرید';
+
+  @override
+  String get updatesErrCheck => 'سرور به‌روزرسانی پاسخ نداد';
+
+  @override
+  String get updatesErrInsecure => 'نشانی دانلود امن نیست (https نیست)';
+
+  @override
+  String get updatesErrAssetName => 'نام فایل در این نسخه مجاز نیست';
+
+  @override
+  String get updatesErrManifest => 'دریافت فهرست امضاشدهٔ نسخه ممکن نشد';
+
+  @override
+  String get updatesErrSignature =>
+      'امضا مطابقت ندارد — ممکن است فایل دست‌کاری شده باشد';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'فهرست نسخه با این نسخه یا سیستم سازگار نیست';
+
+  @override
+  String get updatesErrDownload => 'فایل دانلود نشد یا چک‌سام آن مطابقت ندارد';
+
+  @override
+  String get updatesErrInstall => 'نصب‌کننده اجرا نشد';
+
+  @override
+  String get updatesErrNotNewer => 'این نسخه از نسخهٔ نصب‌شده جدیدتر نیست';
+
+  @override
+  String get updatesInfo =>
+      'برنامه با نسخهٔ جدیدِ پیداشده چه می‌کند. در حالت خودکار، نصب هرگز VPN فعال را قطع نمی‌کند و تا قطع اتصال شما صبر می‌کند. در همهٔ حالت‌ها فایل فقط در صورت مطابقت امضای توسعه‌دهنده نصب می‌شود.';
+
+  @override
+  String get updatesDownload => 'دانلود';
+
+  @override
+  String get updatesInstallNow => 'نصب همین حالا';
+
+  @override
+  String get updatesWaitingVpn => 'آمادهٔ نصب — پس از قطع VPN شروع می‌شود';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'نسخهٔ $version رد شد — نسخهٔ بعدی را اطلاع می‌دهیم';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'در حال نصب به‌روزرسانی';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'برنامه هنگام نصب نسخهٔ $version بسته می‌شود';
   }
 }

@@ -8,6 +8,7 @@ import '../core/geo/geo_bases_controller.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/apk_installer_android.dart';
 import '../core/settings/app_settings.dart';
+import '../core/update/app_update.dart' show AppUpdate;
 import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
 import '../core/update/update_installer.dart';
 import '../core/update/update_installer_android.dart';
@@ -190,9 +191,11 @@ UpdateInstaller platformUpdateInstaller() {
 /// `SettingsController.init()` читает их с диска асинхронно и в момент сборки
 /// дерева ещё держит умолчания. Стартовать по умолчаниям значило бы качать
 /// установщик человеку, который автопроверку выключил. Поэтому [startup]
-/// зовётся по ПЕРВОМУ уведомлению контроллера настроек — оно приходит из
-/// `init()` (одноразовый слушатель снимает себя сам). `startup` идемпотентен:
-/// повторные уведомления ничего не запускают.
+/// зовётся по [SettingsController.whenLoaded] — явному признаку, что `init()`
+/// прочитал файл. ⚠️ Не по «первому уведомлению», как было в волне 2: его
+/// шлёт и любая правка настроек, случившаяся раньше загрузки, — такая связь
+/// держится на порядке вызовов, который не задан ничем. `startup`
+/// идемпотентен.
 ///
 /// «VPN активен» берётся из `AppState` тем же выражением, что у
 /// `TrayWindow.vpnActive` (подключено ЛИБО подключается) — второго
@@ -231,18 +234,16 @@ AppUpdateController _buildAppUpdateController(
     vpnChanges: state,
     openInstallPermission:
         Platform.isAndroid ? ApkInstallerAndroid().openInstallPermission : null,
-    overridden: kUpdateApiOverridden,
+    // Живым вопросом, а не флагом: на Android подмена читается из файла
+    // асинхронно, уже после постройки контроллера (см. `overriddenOf`).
+    overriddenOf: () => kUpdateApiOverridden,
+    loadOverride: AppUpdate.loadApiOverride,
   );
 }
 
-/// Один раз, по первому уведомлению [SettingsController] (его шлёт `init()`
-/// после чтения с диска), запустить [AppUpdateController.startup].
+/// Один раз, когда [SettingsController] прочитал настройки с диска,
+/// запустить [AppUpdateController.startup].
 void _startWhenSettingsLoaded(
     SettingsController settings, AppUpdateController controller) {
-  late final void Function() once;
-  once = () {
-    settings.removeListener(once);
-    unawaited(controller.startup());
-  };
-  settings.addListener(once);
+  unawaited(settings.whenLoaded.then((_) => controller.startup()));
 }

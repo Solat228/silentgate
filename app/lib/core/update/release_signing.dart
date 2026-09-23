@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../geo/sha256.dart';
 import 'update_manifest.dart';
+import 'update_pubkey.dart';
 import 'update_signature.dart';
 
 /// Сторона ВЫПУСКА: сборка и подпись манифеста релиза.
@@ -100,6 +101,20 @@ SignedManifestFiles writeSignedManifest(
     ..writeAsStringSync('${signManifestBytes(jsonBytes, seed)}\n');
   return SignedManifestFiles(manifestFile, sigFile);
 }
+
+/// Принимает ли подпись, ЗАПИСАННУЮ на диск, ключ, вшитый в приложение.
+///
+/// ⚠️ Сверка с вшитым ключом, а не с парой только что использованного seed:
+/// ровно так проверит приложение. Ключ в `signing/` подменили или перепутали —
+/// релиз подписан, но ни одна копия его не примет, и узнать об этом надо до
+/// публикации, а не от людей, у которых обновление молча не ставится.
+bool signedManifestVerifies(SignedManifestFiles f,
+        {String publicKeyBase64 = kUpdatePublicKeyBase64}) =>
+    UpdateSignature.verify(
+      f.manifest.readAsBytesSync(),
+      f.signature.readAsStringSync().trim(),
+      publicKeyBase64: publicKeyBase64,
+    );
 
 String _baseName(File f) {
   final p = f.path;

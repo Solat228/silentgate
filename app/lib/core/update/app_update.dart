@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../app_info.dart';
 import '../platform/app_log.dart';
+import '../platform/apk_installer_android.dart';
 import '../platform/app_paths.dart';
 import 'app_update_defaults.dart';
 import 'release_signing.dart' show manifestFileName, signatureFileName;
@@ -62,7 +63,7 @@ class AppRelease {
   });
 
   /// Новее ли [version] текущей сборки.
-  bool get isNewer => AppUpdate.isNewer(version, AppInfo.version);
+  bool get isNewer => AppUpdate.isNewer(version, AppUpdate.installedVersion);
 
   /// Хватает ли данных, чтобы скачать, проверить и поставить релиз самим.
   ///
@@ -140,9 +141,12 @@ typedef UpdateFetcher = Future<UpdateHttpResponse> Function(Uri url);
 
 /// Проверка обновлений самого приложения.
 ///
-/// Приложение НИЧЕГО не скачивает и не запускает само: без подписи кода
-/// самозапуск установщика упрётся в SmartScreen и выглядит как поведение
-/// зловреда. Мы лишь сообщаем о новой версии и открываем страницу по кнопке.
+/// Этот класс только УЗНАЁТ о новой версии и находит её файлы (актив,
+/// манифест, подпись). Скачивание, проверку подписи и запуск установщика с
+/// 1.14.0 ведёт `state/app_update_controller.dart` — и только для релиза с
+/// подписанным манифестом ([AppRelease.canSelfUpdate]); без него остаётся
+/// прежнее «открыть страницу». Почему SmartScreen здесь не мешает —
+/// `docs/APP_UPDATE.md`.
 ///
 /// ⚠️ ИСТОЧНИК ОДИН — GITHUB RELEASES (см. `app_update_defaults.dart`), адреса
 /// в настройках больше нет. Поле «Эндпоинт версии» просило пользователя
@@ -180,6 +184,23 @@ class AppUpdate {
     }
   }
 
+  static String? _hintCache;
+
+  /// Хвост имени актива ЭТОГО устройства. На Android — по ABI
+  /// (`Build.SUPPORTED_ABIS[0]`): без неё эмулятор x86_64 получал бы
+  /// телефонную arm64-сборку, которая на нём не запустится. ABI не меняется,
+  /// поэтому спрашиваем канал один раз; не ответил — телефонная сборка, как
+  /// было всегда, и ответ не кэшируем (спросим на следующей проверке).
+  static Future<String> _platformHint() async {
+    final cached = _hintCache;
+    if (cached != null) return cached;
+    if (!Platform.isAndroid) return _hintCache = kPlatformAssetHint;
+    final abi = await ApkInstallerAndroid().deviceAbi();
+    final hint = platformAssetHint(androidAbi: abi);
+    if (abi != null) _hintCache = hint;
+    return hint;
+  }
+
   /// ⚠️ ДВА ИСТОЧНИКА, И ВТОРОЙ ЗАВЕДЁН НЕ ДЛЯ КРАСОТЫ.
   ///
   /// GitHub — основной: он не зависит от нашей панели и переживает её простой.
@@ -214,7 +235,7 @@ class AppUpdate {
     bool beta = false,
   }) async {
     await loadApiOverride();
-    final hint = assetHint ?? kPlatformAssetHint;
+    final hint = assetHint ?? await _platformHint();
     final fetch = fetcher ?? _fetch;
     if (kUpdateApiOverridden) {
       AppLog.i('Проверка обновлений: ТЕСТОВЫЙ адрес API (override), '
@@ -356,7 +377,7 @@ class AppUpdate {
     String? assetHint,
   }) async {
     await loadApiOverride();
-    final hint = assetHint ?? kPlatformAssetHint;
+    final hint = assetHint ?? await _platformHint();
     final fetch = fetcher ?? _fetch;
     try {
       final resp = await fetch(Uri.parse(kGithubReleasesListApi));
@@ -597,7 +618,12 @@ class AppUpdate {
     if (n.endsWith(h)) return true;
     final v = version.toLowerCase();
     if (v.isEmpty) return false;
-    return n.replaceAll('-$v', '').endsWith(h);
+    if (n.replaceAll('-$v', '').endsWith(h)) return true;
+    // Бета: тег `1.14.1-beta.1`, а Inno называет установщик по версии exe —
+    // `SilentGateSetup-1.14.1.exe`. Без второго прохода Windows-бета не
+    // находила бы свой установщик и откатывалась на «открыть страницу».
+    final core = _core(v);
+    return core != v && n.replaceAll('-$core', '').endsWith(h);
   }
 
   static Future<UpdateHttpResponse> _fetch(Uri url) async {
@@ -629,16 +655,57 @@ class AppUpdate {
     }
   }
 
-  /// Сравнение версий вида `1.2.3` (лишние части и суффиксы игнорируются).
+  /// Сравнение версий вида `1.2.3[-beta.N]`.
+  ///
+  /// Три числа решают всё. При равных числах решает суффикс, как в SemVer:
+  /// стабильная `1.14.1` новее своей же беты `1.14.1-beta.2` — иначе человек,
+  /// поставивший бету, так и остался бы на ней, когда вышла стабильная с тем
+  /// же номером. Две беты одного номера сравниваются по номеру беты, но
+  /// только когда он есть у ОБЕИХ: у установленной беты номер неизвестен
+  /// (сборка знает только `AppInfo.isBeta`), и без этой оговорки та же самая
+  /// бета предлагалась бы заново при каждой проверке.
   static bool isNewer(String candidate, String current) {
-    final a = _parts(candidate);
-    final b = _parts(current);
+    final a = _parts(_core(candidate));
+    final b = _parts(_core(current));
     for (var i = 0; i < 3; i++) {
       final x = i < a.length ? a[i] : 0;
       final y = i < b.length ? b[i] : 0;
       if (x != y) return x > y;
     }
+    final candPre = _pre(candidate);
+    final curPre = _pre(current);
+    if (candPre == null) return curPre != null;
+    if (curPre == null) return false;
+    final pa = _parts(candPre);
+    final pb = _parts(curPre);
+    if (pa.isEmpty || pb.isEmpty) return false;
+    for (var i = 0; i < pa.length || i < pb.length; i++) {
+      final x = i < pa.length ? pa[i] : 0;
+      final y = i < pb.length ? pb[i] : 0;
+      if (x != y) return x > y;
+    }
     return false;
+  }
+
+  /// Версия ЭТОЙ сборки для сравнения: у бета-сборки — с суффиксом, чтобы
+  /// стабильная того же номера считалась новее (см. [isNewer]).
+  static String get installedVersion =>
+      AppInfo.isBeta ? '${AppInfo.version}-beta' : AppInfo.version;
+
+  /// Числовая часть без `v` и без суффикса после первого `-`.
+  static String _core(String v) {
+    final t = v.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    final dash = t.indexOf('-');
+    return dash < 0 ? t : t.substring(0, dash);
+  }
+
+  /// Суффикс пре-релиза (`beta.2`) либо `null` у стабильной.
+  static String? _pre(String v) {
+    final t = v.trim();
+    final dash = t.indexOf('-');
+    if (dash < 0) return null;
+    final s = t.substring(dash + 1);
+    return s.isEmpty ? null : s;
   }
 
   static List<int> _parts(String v) => v

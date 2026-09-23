@@ -17,11 +17,9 @@ import '../core/net/speed_test.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
-import '../core/platform/app_launcher.dart';
 import '../core/platform/notification_access.dart';
 import '../core/platform/platform_services.dart';
 import '../core/settings/split_tunnel.dart';
-import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/probe/clash_delay.dart';
 import '../core/probe/ping_result.dart';
@@ -38,6 +36,7 @@ import 'split_tunnel_screen.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/service_check_controller.dart';
+import '../state/app_update_controller.dart';
 import '../state/settings_controller.dart';
 import 'auto_config_screen.dart';
 import 'import_screen.dart';
@@ -49,7 +48,7 @@ import 'widgets/flag_cell.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/service_checks_row.dart';
-import 'widgets/update_notes_dialog.dart';
+import 'widgets/update_presenter.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/ping_gate.dart';
@@ -540,68 +539,29 @@ class _HomeScreenState extends State<HomeScreen> {
       if (found.isNotEmpty && mounted) {
         await scanInterferenceDialog(context);
       }
-      await _checkAppUpdate();
+      if (!mounted) return;
+      // Самообновление говорит с человеком ПОСЛЕ окна помех: два окна
+      // подряд друг друга перекрыли бы.
+      _updates = AppUpdatePresenter(
+        controller: context.read<AppUpdateController>(),
+        contextOf: () => mounted ? context : null,
+        modeOf: () =>
+            context.read<SettingsController>().settings.appUpdateMode,
+      )..attach();
     });
+  }
+
+  /// Уведомления самообновления (окно, ход закачки, итог установки).
+  AppUpdatePresenter? _updates;
+
+  @override
+  void dispose() {
+    _updates?.detach();
+    super.dispose();
   }
 
   void _open(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-
-  /// Обновление приложения: только сообщаем и открываем страницу загрузки.
-  /// Молча ничего не качаем и не запускаем — см. комментарий в [AppUpdate].
-  Future<void> _checkAppUpdate() async {
-    final settings = context.read<SettingsController>().settings;
-    if (!settings.appUpdateCheck) return;
-    final result = await AppUpdate.check();
-    // ⚠️ АВТОПРОВЕРКА МОЛЧИТ ОБО ВСЁМ, КРОМЕ НАЙДЕННОГО ОБНОВЛЕНИЯ, и это не
-    // то же самое, что прежнее «не отличаем отказ от отсутствия». Отказ теперь
-    // ОТЛИЧИМ (`UpdateCheckState.failed`) — мы просто не дёргаем им человека на
-    // старте: он этой проверки не просил. Ручная кнопка в настройках причину
-    // показывает, потому что там её спросили.
-    final release = result.release;
-    if (!result.isAvailable || release == null || !mounted) return;
-    AppLog.i('Доступна версия ${release.version} (у вас ${AppInfo.version})');
-    final l = AppLocalizations.of(context);
-    final notes = release.notes ?? '';
-    final settingsCtrl = context.read<SettingsController>();
-    final url = release.downloadUrl ?? '';
-
-    // ⚠️ ОПИСАНИЕ РЕЛИЗА — В ОКНО, А НЕ В ТОСТ.
-    //
-    // Раньше здесь стояло `AppToast.show(..., 'Доступна версия X — ' + notes)`,
-    // а `notes` — это тело релиза с GitHub, то есть весь раздел changelog:
-    // тысячи символов сырого markdown. На телефоне владельца (снимок
-    // 19.08.2026) оно заняло весь экран стеной со звёздочками и дефисами, без
-    // кнопки закрытия и без возможности отказаться от показа. Сообщение,
-    // которое нельзя ни прочитать, ни убрать, хуже отсутствующего.
-    //
-    // Человек, попросивший «больше не показывать», гасит ОКНО, а не проверку
-    // обновлений: иначе он тихо остался бы без новых версий, о чём не просил.
-    // Режим «только уведомлять» (1.14.0; сюда же мигрировал прежний флаг
-    // «не показывать окно»). ⚠️ Переходный код: волна 3 самообновления
-    // заменит этот метод контроллером целиком.
-    if (settings.appUpdateMode == AppUpdateMode.notifyOnly) {
-      // Окно скрыто — но сообщить о новой версии всё равно надо, коротко.
-      AppToast.show(
-        context,
-        l.homeUpdateAvailable(release.version),
-        kind: ToastKind.info,
-        actionLabel: url.isEmpty ? null : l.homeDownload,
-        onAction: url.isEmpty ? null : () => UrlOpener.open(url),
-      );
-      return;
-    }
-    await showDialog<void>(
-      context: context,
-      builder: (_) => UpdateNotesDialog(
-        version: release.version,
-        notes: notes,
-        onDownload: url.isEmpty ? null : () => UrlOpener.open(url),
-        onNeverShow: () => unawaited(settingsCtrl.update(
-            (c) => c.copyWith(appUpdateMode: AppUpdateMode.notifyOnly))),
-      ),
-    );
-  }
 
   // Что уже показали, чтобы один и тот же тост не всплывал на каждой перерисовке.
   String? _shownError;

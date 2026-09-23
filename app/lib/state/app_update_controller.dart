@@ -333,6 +333,8 @@ class AppUpdateController extends ChangeNotifier {
   final Future<void> Function() _openInstallPermission;
   final String _publicKey;
   final bool _overridden;
+  final bool Function()? _overriddenOf;
+  final Future<void> Function()? _loadOverride;
   final String _currentVersion;
 
   /// Все зависимости внедряемы — умолчания боевые.
@@ -345,6 +347,15 @@ class AppUpdateController extends ChangeNotifier {
   /// парой ключей; в приложении ключ вшит и не переопределяется ничем.
   /// [overridden] — источник подменён стендом (`SILENTGATE_UPDATE_API`):
   /// тогда допустим `http://`, и интерфейс показывает плашку.
+  /// [overriddenOf] — то же, но ЖИВЫМ вопросом (важнее [overridden]), а
+  /// [loadOverride] — чем прочитать подмену до первой проверки.
+  ///
+  /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
+  /// файлом (`update_api.txt`) и читается асинхронно
+  /// (`AppUpdate.loadApiOverride`) — а контроллер строится раньше. Флаг,
+  /// снятый в конструкторе, на Android был бы `false` ВСЕГДА: стенд получал
+  /// отказ `insecureUrl` на свой `http://`, а плашка «источник подменён» не
+  /// появлялась ни разу.
   AppUpdateController({
     required AppSettings Function() settings,
     required Future<void> Function(AppSettings Function(AppSettings))
@@ -359,6 +370,8 @@ class AppUpdateController extends ChangeNotifier {
     Future<void> Function()? openInstallPermission,
     String publicKeyBase64 = kUpdatePublicKeyBase64,
     bool overridden = false,
+    bool Function()? overriddenOf,
+    Future<void> Function()? loadOverride,
     String? currentVersion,
   })  : _settings = settings,
         _updateSettings = updateSettings,
@@ -372,7 +385,9 @@ class AppUpdateController extends ChangeNotifier {
         _openInstallPermission = openInstallPermission ?? _noPermissionScreen,
         _publicKey = publicKeyBase64,
         _overridden = overridden,
-        _currentVersion = currentVersion ?? AppInfo.version {
+        _overriddenOf = overriddenOf,
+        _loadOverride = loadOverride,
+        _currentVersion = currentVersion ?? AppUpdate.installedVersion {
     _vpnChanges?.addListener(_onVpnChanged);
   }
 
@@ -398,6 +413,12 @@ class AppUpdateController extends ChangeNotifier {
   PendingResult? _lastOutcome;
   LinkOnlyReason? _linkOnlyReason;
   bool _awaitingVpnOff = false;
+
+  /// Предложение выбрано человеком из «Прежних версий» ([offerRelease]), а
+  /// не найдено проверкой. Такой выбор — явный: бета из истории ставится и
+  /// при выключенном бета-канале (иначе откат на бету упирался бы в
+  /// `channelMismatch`, хотя человек сам ткнул именно в неё).
+  bool _explicitRelease = false;
   bool _postponed = false;
   bool _lastCheckManual = false;
   bool _started = false;
@@ -429,7 +450,7 @@ class AppUpdateController extends ChangeNotifier {
   PendingResult? get lastOutcome => _lastOutcome;
 
   /// Источник обновлений подменён стендом — интерфейс показывает плашку.
-  bool get overridden => _overridden;
+  bool get overridden => _overriddenOf?.call() ?? _overridden;
 
   LinkOnlyReason? get linkOnlyReason => _linkOnlyReason;
 
@@ -459,6 +480,26 @@ class AppUpdateController extends ChangeNotifier {
   String get currentVersion => _currentVersion;
 
   bool get started => _started;
+
+  /// VPN сейчас активен — тем же выражением, что решает отложить установку.
+  /// Интерфейсу нужно ДО нажатия: предупредить, что установка разорвёт VPN,
+  /// и только после этого звать [install] с `forceQuit: true`.
+  bool get vpnActive => _isVpnActive();
+
+  /// Может ли эта копия ставить обновления сама ([InstallCapability.ready])
+  /// — для «Прежних версий»: кнопка «Установить» там, где она сработает, и
+  /// «Открыть» там, где нет. Решает установщик, а не интерфейс своим кодом:
+  /// разрешение и исполнение обязаны спрашивать одно и то же.
+  Future<InstallCapability> installCapability() => _installer.capability();
+
+  /// Зовётся перед установкой, которую человек НЕ нажимал сам (режим «авто»
+  /// и отложенная до отключения VPN): интерфейс показывает системное
+  /// уведомление, если окно свёрнуто, — иначе приложение просто исчезло бы
+  /// из трея без объяснений. Ошибка и зависание обработчика установку не
+  /// останавливают (потолок — [_hookTimeout]).
+  Future<void> Function(UpdateOffer offer)? beforeUnattendedInstall;
+
+  static const _hookTimeout = Duration(seconds: 5);
 
   /// Идёт проверка, закачка или запуск установки.
   bool get busy =>
@@ -513,6 +554,18 @@ class AppUpdateController extends ChangeNotifier {
   Future<void> startup() async {
     if (_started || _disposed) return;
     _started = true;
+    // Подмена источника (Android: файл в каталоге данных) — ДО всего
+    // остального: от неё зависят и плашка, и допустимость `http://`.
+    final load = _loadOverride;
+    if (load != null) {
+      try {
+        await load();
+      } catch (e) {
+        AppLog.w('Обновление: подмена источника не прочитана: '
+            '${scrubUrls('$e')}');
+      }
+      if (_disposed) return;
+    }
     try {
       _lastOutcome =
           await _installer.reconcileAfterStart(currentVersion: _currentVersion);
@@ -595,6 +648,7 @@ class AppUpdateController extends ChangeNotifier {
 
     final offer = _offerOf(release);
     _linkOnlyReason = null;
+    _explicitRelease = false;
     // Тот же установщик уже скачан и проверен (повторная проверка руками) —
     // качать заново нечего.
     if (_verified != null && _sameVersion(_verifiedVersion ?? '', offer.version)) {
@@ -634,7 +688,7 @@ class AppUpdateController extends ChangeNotifier {
         _setPhase(UpdatePhase.available);
         await download();
         // Установщик сам решит, ждать ли отключения VPN.
-        if (_phase == UpdatePhase.ready) await install();
+        if (_phase == UpdatePhase.ready) await _install(unattended: true);
     }
   }
 
@@ -643,6 +697,7 @@ class AppUpdateController extends ChangeNotifier {
   void offerRelease(AppRelease release) {
     if (_disposed || busy) return;
     _offer = _offerOf(release);
+    _explicitRelease = true;
     _verified = null;
     _verifiedVersion = null;
     _expectedSha = null;
@@ -749,7 +804,7 @@ class AppUpdateController extends ChangeNotifier {
       manifest,
       expectedVersion: offer.version,
       assetName: assetName,
-      betaAllowed: _settings().betaChannel,
+      betaAllowed: _settings().betaChannel || _explicitRelease,
     );
     if (rejection != null) {
       AppLog.e('Обновление: манифест ${manifest.version} (${manifest.channel}) '
@@ -822,7 +877,7 @@ class AppUpdateController extends ChangeNotifier {
   /// `https://` всегда; `http://` — только при подменённом источнике (стенд):
   /// целостность там доказывает подпись, а не TLS.
   bool _schemeAllowed(Uri u) =>
-      u.scheme == 'https' || (_overridden && u.scheme == 'http');
+      u.scheme == 'https' || (overridden && u.scheme == 'http');
 
   Future<List<int>> _fetch(Uri url,
       {required int maxBytes, http.Client? client}) {
@@ -860,7 +915,14 @@ class AppUpdateController extends ChangeNotifier {
     return IOClient(io);
   }
 
-  static LinkOnlyReason _reasonFor(InstallCapability cap) => switch (cap) {
+  static LinkOnlyReason _reasonFor(InstallCapability cap) =>
+      linkOnlyReasonFor(cap);
+
+  /// Почему ставить самим нельзя — для интерфейса, который спрашивает
+  /// [installCapability] заранее (диалог, «Прежние версии»): объяснение то же,
+  /// что дал бы [download], без закачки ради него.
+  static LinkOnlyReason linkOnlyReasonFor(InstallCapability cap) =>
+      switch (cap) {
         InstallCapability.ready => LinkOnlyReason.noSelfUpdate,
         InstallCapability.portable => LinkOnlyReason.portable,
         InstallCapability.isolated => LinkOnlyReason.isolated,
@@ -896,7 +958,16 @@ class AppUpdateController extends ChangeNotifier {
   /// [waitingForVpnOff] и запуск сам по [vpnChanges]. [allowDowngrade] —
   /// осознанный откат из «Прежних версий»; без него версия не новее нашей —
   /// отказ [UpdateErrorKind.notNewer] (replay старого релиза).
-  Future<void> install({bool forceQuit = false, bool allowDowngrade = false}) async {
+  Future<void> install({bool forceQuit = false, bool allowDowngrade = false}) =>
+      _install(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+
+  /// [unattended] — установку никто не нажимал (режим «авто», отложенная до
+  /// отключения VPN): перед запуском зовётся [beforeUnattendedInstall].
+  Future<void> _install({
+    bool forceQuit = false,
+    bool allowDowngrade = false,
+    bool unattended = false,
+  }) async {
     if (_disposed) return;
     final offer = _offer;
     final file = _verified;
@@ -922,6 +993,16 @@ class AppUpdateController extends ChangeNotifier {
     _error = null;
     _setPhase(UpdatePhase.installing);
     try {
+      final hook = beforeUnattendedInstall;
+      if (unattended && hook != null) {
+        try {
+          await hook(offer).timeout(_hookTimeout);
+        } catch (e) {
+          AppLog.w('Обновление: уведомление перед установкой не показано: '
+              '${scrubUrls('$e')}');
+        }
+        if (_disposed) return;
+      }
       await _installer.launch(
         file,
         version: offer.version,
@@ -951,7 +1032,7 @@ class AppUpdateController extends ChangeNotifier {
     if (_phase != UpdatePhase.ready || _isVpnActive()) return;
     _awaitingVpnOff = false;
     AppLog.i('Обновление: VPN отключён — ставлю ${_offer?.version}');
-    unawaited(install());
+    unawaited(_install(unattended: true));
   }
 
   // ── Решения человека ──────────────────────────────────────────────────────

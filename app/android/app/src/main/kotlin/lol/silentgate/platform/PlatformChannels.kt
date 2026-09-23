@@ -562,8 +562,17 @@ object PlatformChannels {
             runCatching { context.packageManager.canRequestPackageInstalls() }
                 .getOrDefault(false)
         } else {
-            // API 24–25: тумблер общесистемный, персонального флага нет.
-            true
+            // API 24–25: тумблер общесистемный, персонального флага нет —
+            // читаем сам тумблер «Неизвестные источники». Не прочитали —
+            // `true`: откажет уже сам установщик, своим окном, и человек его
+            // увидит; ложное «нет» заперло бы обновление без выхода.
+            @Suppress("DEPRECATION")
+            runCatching {
+                Settings.Secure.getInt(
+                    context.contentResolver,
+                    Settings.Secure.INSTALL_NON_MARKET_APPS,
+                ) == 1
+            }.getOrDefault(true)
         }
 
     /**

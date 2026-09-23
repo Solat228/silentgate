@@ -30,9 +30,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get commonRefresh => 'Yenile';
 
   @override
-  String get commonCheck => 'Kontrol et';
-
-  @override
   String get commonOk => 'Tamam';
 
   @override
@@ -585,51 +582,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get testUrlLabel => 'Test URL\'si (Proxy üzerinden)';
 
   @override
-  String get appUpdateServerUnavailable => 'Güncelleme sunucusu erişilemez';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return '$version sürümü mevcut';
-  }
-
-  @override
-  String get appUpdateLatest => 'En son sürüme sahipsiniz';
-
-  @override
-  String get appUpdateDownload => 'İndir';
-
-  @override
-  String get appUpdateCheckTitle => 'Açılışta güncellemeleri kontrol et';
-
-  @override
-  String get appUpdateManual => 'İndirme ve kurulum — el ile';
-
-  @override
-  String get appUpdateEndpointLabel => 'Sürüm uç noktası';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Beta sürümleri al';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'Ön sürümler dahil GitHub sürüm listesi, artı sitenin yedek adresi. Kararlı sürümlerin otomatik güncellemesini değiştirmez.';
-
-  @override
   String get infoAppUpdateBeta =>
       'Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez — bu anahtarı açmayanlara beta gelmez.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'Bu bir ön sürüm — sorunlar olabilir. Otomatik güncelleme bu sürümleri dağıtmaz.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Önceki sürümler';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Önceki sürümler';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -796,14 +753,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Engelle';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return '$version sürümü mevcut';
-  }
-
-  @override
-  String get homeDownload => 'İndir';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1074,10 +1023,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN yönetici hakları gerektirir. Bir kez, en yüksek ayrıcalıklarla Windows Görev Zamanlayıcı\'da bir görev oluştururuz — bundan sonra tünel her bağlantıda UAC istemi OLMADAN başlar. Görev size aittir ve aşağıdaki düğmeyle veya program kaldırıldığında silinir.';
-
-  @override
-  String get infoAppUpdate =>
-      'Uygulama, her açılışta bir kez sunucunuza daha yeni bir sürümün olup olmadığını sorar ve bir «İndir» düğmesiyle bildirim gösterir.\n\nUygulama kendi başına HİÇBİR ŞEY indirmez ve çalıştırmaz: kurulum sertifikayla imzalanmamıştır ve indirilen bir exe\'yi otomatik çalıştırmak SmartScreen\'e takılır ve antivirüslere kötü amaçlı yazılım davranışı gibi görünür. Güncellemeyi kendiniz kurarsınız.\n\nSunucu erişilemezse uygulama sessiz kalır ve günlüğe bir kayıt yazar. Yanıt biçimi ve sunucu kurulumu docs/APP_UPDATE.md içinde açıklanmıştır.';
 
   @override
   String get infoSpeedTest =>
@@ -3417,15 +3362,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return '$version sürümünde yenilikler';
-  }
-
-  @override
   String get updateNotesEmpty => 'Sürüm notu gelmedi.';
-
-  @override
-  String get updateNotesNeverShow => 'Bir daha gösterme';
 
   @override
   String get notifOffTitle => 'Bildirimler kapalı';
@@ -3618,5 +3555,93 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'Uygulama kapanacak ve kurulum sırasında VPN bağlantısı kesilecek. Güncellemeden sonra yeniden bağlanın';
+
+  @override
+  String get updatesOpenPage => 'İndirme sayfasını aç';
+
+  @override
+  String get updatesLinkNotify =>
+      '“Yalnızca bildir” modu seçili — yeni sürümü indirme sayfasından indirin';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'Bu sürümde sisteminiz için imzalı bir yükleyici yok — indirme sayfasından indirin';
+
+  @override
+  String get updatesLinkIsolated =>
+      'Bu yalıtılmış bir test kopyasıdır — kurulu uygulamaya dokunmaz. Elle güncelleyin';
+
+  @override
+  String get updatesLinkLocation =>
+      'Uygulama kurulum klasöründen çalışmıyor — yeni sürümü elle indirin veya kurulu kopyayı başlatın';
+
+  @override
+  String get updatesLinkElevated =>
+      'Uygulama yönetici olarak çalışıyor — bu şekilde güncellemek güvenli değil. Normal şekilde başlatın';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'Bu platformda uygulama kendini güncelleyemez — yeni sürümü elle indirin';
+
+  @override
+  String get updatesErrCheck => 'güncelleme sunucusu yanıt vermedi';
+
+  @override
+  String get updatesErrInsecure => 'indirme adresi güvenli değil (https değil)';
+
+  @override
+  String get updatesErrAssetName => 'sürümdeki dosya adı geçersiz';
+
+  @override
+  String get updatesErrManifest => 'imzalı sürüm bildirimi alınamadı';
+
+  @override
+  String get updatesErrSignature =>
+      'imza eşleşmiyor — dosya değiştirilmiş olabilir';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'sürüm bildirimi bu sürüme veya sisteme uymuyor';
+
+  @override
+  String get updatesErrDownload =>
+      'dosya indirilemedi veya sağlama toplamı eşleşmiyor';
+
+  @override
+  String get updatesErrInstall => 'yükleyici başlatılamadı';
+
+  @override
+  String get updatesErrNotNewer => 'bu sürüm kurulu olandan daha yeni değil';
+
+  @override
+  String get updatesInfo =>
+      'Yeni bir sürüm bulunduğunda uygulamanın ne yapacağı. Otomatik modda kurulum etkin bir VPN\'i asla kesmez: bağlantıyı kesmenizi bekler. Her modda bir dosya yalnızca geliştirici imzası eşleşirse kurulur.';
+
+  @override
+  String get updatesDownload => 'İndir';
+
+  @override
+  String get updatesInstallNow => 'Şimdi kur';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Kuruluma hazır — VPN bağlantısı kesildikten sonra başlayacak';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return '$version sürümü atlandı — bir sonrakini bildireceğiz';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Güncelleme kuruluyor';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'Uygulama $version sürümü kurulurken kapanacak';
   }
 }

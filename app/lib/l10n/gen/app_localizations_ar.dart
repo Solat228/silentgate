@@ -30,9 +30,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonRefresh => 'تحديث';
 
   @override
-  String get commonCheck => 'فحص';
-
-  @override
   String get commonOk => 'موافق';
 
   @override
@@ -581,51 +578,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get testUrlLabel => 'URL الاختبار (عبر البروكسي)';
 
   @override
-  String get appUpdateServerUnavailable => 'خادم التحديث غير متاح';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'الإصدار $version متاح';
-  }
-
-  @override
-  String get appUpdateLatest => 'لديك أحدث إصدار';
-
-  @override
-  String get appUpdateDownload => 'تنزيل';
-
-  @override
-  String get appUpdateCheckTitle => 'التحقق من التحديثات عند التشغيل';
-
-  @override
-  String get appUpdateManual => 'التنزيل والتثبيت — يدوياً';
-
-  @override
-  String get appUpdateEndpointLabel => 'نقطة نهاية الإصدار';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'تلقّي الإصدارات التجريبية';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'قائمة إصدارات GitHub بما فيها الإصدارات التجريبية المسبقة، بالإضافة إلى عنوان احتياطي من الموقع. لا يغيّر التحديث التلقائي للإصدارات المستقرة.';
-
-  @override
   String get infoAppUpdateBeta =>
       'سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر — لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.';
 
   @override
   String get appUpdateBetaBadge => 'تجريبي';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'هذا إصدار تجريبي مسبق — قد تحدث أعطال. التحديث التلقائي لا يوزّع هذه الإصدارات.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'إصدارات سابقة';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'إصدارات سابقة';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -788,14 +745,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'حظر';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'الإصدار $version متاح';
-  }
-
-  @override
-  String get homeDownload => 'تنزيل';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1063,10 +1012,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'يتطلب TUN صلاحيات المسؤول. مرة واحدة، نُنشئ مهمة في Windows Task Scheduler بأعلى الصلاحيات — بعدها يبدأ النفق دون طلب UAC في كل اتصال. المهمة ملكك وتُزال بالزر أدناه أو عند إلغاء تثبيت البرنامج.';
-
-  @override
-  String get infoAppUpdate =>
-      'مرة واحدة في كل تشغيل، يسأل التطبيق خادمك عمّا إذا كان هناك إصدار أحدث ويعرض إشعاراً بزر «تنزيل».\n\nلا ينزّل التطبيق ولا يشغّل أي شيء بنفسه: المُثبِّت غير موقَّع بشهادة، وتشغيل ملف exe مُنزَّل تلقائياً يصطدم بـ SmartScreen ويبدو لبرامج مكافحة الفيروسات كسلوك برمجية خبيثة. تثبّت التحديث بنفسك.\n\nإذا كان الخادم غير متاح، يظل التطبيق صامتاً ويكتب إدخالاً في السجل. تنسيق الاستجابة وإعداد الخادم موصوفان في docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -3406,15 +3351,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'يحتجز مفتاح الإيقاف حركة المرور حسب البرامج لا حسب النطاقات: أثناء استعادة النواة لا يوجد من يحلّل أسماء المواقع، ولذلك لا تعمل قواعد المواقع في تلك الفترة.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'الجديد في $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'لم تصل ملاحظات الإصدار.';
-
-  @override
-  String get updateNotesNeverShow => 'عدم الإظهار مرة أخرى';
 
   @override
   String get notifOffTitle => 'الإشعارات مُعطَّلة';
@@ -3603,5 +3540,91 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb م.ب';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'سيُغلق التطبيق وسينقطع اتصال VPN أثناء التثبيت. أعد الاتصال بعد التحديث';
+
+  @override
+  String get updatesOpenPage => 'فتح صفحة التنزيل';
+
+  @override
+  String get updatesLinkNotify =>
+      'وضع «الإشعار فقط» مُفعَّل — نزّل الإصدار الجديد من صفحة التنزيل';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'لا يتضمن هذا الإصدار مثبّتًا موقّعًا لنظامك — نزّله من صفحة التنزيل';
+
+  @override
+  String get updatesLinkIsolated =>
+      'هذه نسخة اختبار معزولة — لا تمسّ التطبيق المثبّت. حدّثه يدويًا';
+
+  @override
+  String get updatesLinkLocation =>
+      'التطبيق لا يعمل من مجلد التثبيت — نزّل الإصدار الجديد يدويًا أو شغّل النسخة المثبّتة';
+
+  @override
+  String get updatesLinkElevated =>
+      'التطبيق يعمل بصلاحيات المسؤول — التحديث بهذه الطريقة غير آمن. شغّله بالطريقة العادية';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'لا يستطيع التطبيق تحديث نفسه على هذه المنصة — نزّل الإصدار الجديد يدويًا';
+
+  @override
+  String get updatesErrCheck => 'لم يستجب خادم التحديثات';
+
+  @override
+  String get updatesErrInsecure => 'عنوان التنزيل غير آمن (ليس https)';
+
+  @override
+  String get updatesErrAssetName => 'اسم الملف في الإصدار غير مسموح به';
+
+  @override
+  String get updatesErrManifest => 'تعذّر الحصول على بيان الإصدار الموقّع';
+
+  @override
+  String get updatesErrSignature => 'التوقيع غير مطابق — ربما جرى العبث بالملف';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'بيان الإصدار لا يناسب هذا الإصدار أو النظام';
+
+  @override
+  String get updatesErrDownload =>
+      'لم يُنزَّل الملف أو أن مجموعه الاختباري غير مطابق';
+
+  @override
+  String get updatesErrInstall => 'لم يبدأ المثبّت';
+
+  @override
+  String get updatesErrNotNewer => 'هذا الإصدار ليس أحدث من المثبّت';
+
+  @override
+  String get updatesInfo =>
+      'ما يفعله التطبيق عند العثور على إصدار جديد. في الوضع التلقائي لا يقطع التثبيت أبدًا اتصال VPN نشطًا، بل ينتظر حتى تقطع الاتصال. وفي كل الأوضاع لا يُثبَّت الملف إلا إذا طابق توقيع المطوّر.';
+
+  @override
+  String get updatesDownload => 'تنزيل';
+
+  @override
+  String get updatesInstallNow => 'التثبيت الآن';
+
+  @override
+  String get updatesWaitingVpn => 'جاهز للتثبيت — سيبدأ بعد قطع اتصال VPN';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'تم تخطي الإصدار $version — سنُعلمك بالإصدار التالي';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'جارٍ تثبيت التحديث';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'سيُغلق التطبيق أثناء تثبيت الإصدار $version';
   }
 }

@@ -30,9 +30,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get commonRefresh => 'Actualiser';
 
   @override
-  String get commonCheck => 'Vérifier';
-
-  @override
   String get commonOk => 'OK';
 
   @override
@@ -592,52 +589,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get testUrlLabel => 'URL de test (via proxy)';
 
   @override
-  String get appUpdateServerUnavailable =>
-      'Serveur de mise à jour indisponible';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'Version $version disponible';
-  }
-
-  @override
-  String get appUpdateLatest => 'Vous disposez de la dernière version';
-
-  @override
-  String get appUpdateDownload => 'Télécharger';
-
-  @override
-  String get appUpdateCheckTitle => 'Vérifier les mises à jour au démarrage';
-
-  @override
-  String get appUpdateManual => 'Téléchargement et installation — manuels';
-
-  @override
-  String get appUpdateEndpointLabel => 'Point de terminaison de version';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Recevoir les versions bêta';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'Liste des versions GitHub, préversions incluses, plus une adresse de secours du site. Ne change rien à la mise à jour automatique des versions stables.';
-
-  @override
   String get infoAppUpdateBeta =>
       'L\'application commencera à consulter la liste complète des versions GitHub, préversions incluses, et non plus seulement la dernière version stable. Le canal principal de mise à jour automatique ne change pas : la bêta n\'arrivera pas à ceux qui n\'ont pas activé cette option.';
 
   @override
   String get appUpdateBetaBadge => 'BÊTA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'C\'est une préversion : des problèmes sont possibles. La mise à jour automatique ne diffuse pas ces versions.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Versions précédentes';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Versions précédentes';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -804,14 +760,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Bloquer';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'Version $version disponible';
-  }
-
-  @override
-  String get homeDownload => 'Télécharger';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1084,10 +1032,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN nécessite des droits administrateur. Une seule fois, nous créons une tâche dans le Planificateur de tâches Windows avec les privilèges les plus élevés — après quoi le tunnel démarre SANS invite UAC à chaque connexion. La tâche vous appartient et est supprimée avec le bouton ci-dessous ou lors de la désinstallation du programme.';
-
-  @override
-  String get infoAppUpdate =>
-      'Une fois par démarrage, l\'application demande à votre serveur s\'il existe une version plus récente et affiche une notification avec un bouton « Télécharger ».\n\nL\'application ne télécharge et n\'exécute RIEN d\'elle-même : l\'installateur n\'est pas signé par un certificat, et l\'exécution automatique d\'un exe téléchargé se heurte à SmartScreen et ressemble, pour les antivirus, à un comportement de logiciel malveillant. Vous installez la mise à jour vous-même.\n\nSi le serveur est indisponible, l\'application reste simplement silencieuse et écrit une entrée dans le journal. Le format de réponse et la configuration du serveur sont décrits dans docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -3452,15 +3396,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le kill switch retient le trafic par programme, pas par domaine : pendant la reprise du noyau, personne n’analyse les noms de sites — les règles de sites ne s’appliquent pas durant ce laps de temps.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'Nouveautés de $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'Aucune note de version reçue.';
-
-  @override
-  String get updateNotesNeverShow => 'Ne plus afficher';
 
   @override
   String get notifOffTitle => 'Les notifications sont désactivées';
@@ -3657,5 +3593,97 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb Mo';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'L\'application va se fermer et le VPN sera coupé pendant l\'installation. Reconnectez-vous après la mise à jour';
+
+  @override
+  String get updatesOpenPage => 'Ouvrir la page de téléchargement';
+
+  @override
+  String get updatesLinkNotify =>
+      'Le mode « Notifier seulement » est sélectionné : téléchargez la nouvelle version depuis la page de téléchargement';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'Cette version ne contient pas d\'installateur signé pour votre système : téléchargez-le depuis la page de téléchargement';
+
+  @override
+  String get updatesLinkIsolated =>
+      'Ceci est une copie de test isolée : elle ne modifie pas l\'application installée. Mettez à jour manuellement';
+
+  @override
+  String get updatesLinkLocation =>
+      'L\'application n\'est pas lancée depuis son dossier d\'installation : téléchargez la nouvelle version manuellement ou lancez la copie installée';
+
+  @override
+  String get updatesLinkElevated =>
+      'L\'application est lancée en tant qu\'administrateur : une mise à jour dans ce cas n\'est pas sûre. Lancez-la normalement';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'Sur cette plateforme, l\'application ne peut pas se mettre à jour seule : téléchargez la nouvelle version manuellement';
+
+  @override
+  String get updatesErrCheck => 'le serveur de mises à jour n\'a pas répondu';
+
+  @override
+  String get updatesErrInsecure =>
+      'l\'adresse de téléchargement n\'est pas sécurisée (pas https)';
+
+  @override
+  String get updatesErrAssetName =>
+      'le nom de fichier de la version n\'est pas autorisé';
+
+  @override
+  String get updatesErrManifest =>
+      'impossible d\'obtenir le manifeste signé de la version';
+
+  @override
+  String get updatesErrSignature =>
+      'la signature ne correspond pas : le fichier a peut-être été modifié';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'le manifeste de la version ne correspond pas à cette version ou à ce système';
+
+  @override
+  String get updatesErrDownload =>
+      'le fichier n\'a pas été téléchargé ou sa somme de contrôle ne correspond pas';
+
+  @override
+  String get updatesErrInstall => 'l\'installateur ne s\'est pas lancé';
+
+  @override
+  String get updatesErrNotNewer =>
+      'cette version n\'est pas plus récente que celle installée';
+
+  @override
+  String get updatesInfo =>
+      'Ce que fait l\'application lorsqu\'une nouvelle version est trouvée. En mode automatique, l\'installation n\'interrompt jamais un VPN actif : elle attend que vous vous déconnectiez. Dans tous les modes, un fichier n\'est installé que si la signature du développeur correspond.';
+
+  @override
+  String get updatesDownload => 'Télécharger';
+
+  @override
+  String get updatesInstallNow => 'Installer maintenant';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Prêt à installer : l\'installation commencera après la déconnexion du VPN';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'Version $version ignorée : vous serez averti de la suivante';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Installation de la mise à jour';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'L\'application va se fermer pendant l\'installation de la version $version';
   }
 }

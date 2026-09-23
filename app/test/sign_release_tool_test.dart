@@ -22,8 +22,8 @@ import 'package:silentgate/core/update/update_signature.dart';
 void main() {
   late Directory tmp;
   final seed = List<int>.generate(32, (i) => (i * 17 + 5) & 0xff);
-  final pubBase64 =
-      base64.encode(ed.public(ed.newKeyFromSeed(Uint8List.fromList(seed))).bytes);
+  final pubBase64 = base64
+      .encode(ed.public(ed.newKeyFromSeed(Uint8List.fromList(seed))).bytes);
 
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('sg_sign_release_');
@@ -34,7 +34,8 @@ void main() {
   });
 
   File write(String name, List<int> bytes) =>
-      File('${tmp.path}${Platform.pathSeparator}$name')..writeAsBytesSync(bytes);
+      File('${tmp.path}${Platform.pathSeparator}$name')
+        ..writeAsBytesSync(bytes);
 
   group('buildManifest', () {
     test('размер и sha256 каждого файла совпадают с Sha256.ofFile', () async {
@@ -83,7 +84,8 @@ void main() {
 
     test('неизвестный канал — ArgumentError до чтения файлов', () async {
       final f = write('x.exe', [1]);
-      expect(() => buildManifest('1.14.1', 'nightly', [f]), throwsArgumentError);
+      expect(
+          () => buildManifest('1.14.1', 'nightly', [f]), throwsArgumentError);
     });
 
     test('пустой список файлов — ArgumentError', () async {
@@ -99,8 +101,8 @@ void main() {
       final a = write('same.exe', [1]);
       final b = File('${sub.path}${Platform.pathSeparator}same.exe')
         ..writeAsBytesSync([2]);
-      expect(() => buildManifest('1.14.1', 'stable', [a, b]),
-          throwsArgumentError);
+      expect(
+          () => buildManifest('1.14.1', 'stable', [a, b]), throwsArgumentError);
     });
 
     test('пустая версия — ArgumentError', () async {
@@ -173,8 +175,9 @@ void main() {
         () async {
       final sub = Directory('${tmp.path}${Platform.pathSeparator}out')
         ..createSync();
-      final f = File('${sub.path}${Platform.pathSeparator}SilentGateSetup-1.14.1.exe')
-        ..writeAsBytesSync([1, 2, 3, 4]);
+      final f =
+          File('${sub.path}${Platform.pathSeparator}SilentGateSetup-1.14.1.exe')
+            ..writeAsBytesSync([1, 2, 3, 4]);
       final m = await buildManifest('1.14.1', 'stable', [f]);
       final written = writeSignedManifest(m, seed, besides: f);
 
@@ -191,6 +194,26 @@ void main() {
       final back = UpdateManifest.parse(utf8.decode(jsonBytes));
       expect(back, isNotNull);
       expect(back!.assetNamed('SilentGateSetup-1.14.1.exe')?.size, 4);
+    });
+
+    // Инструмент после записи сверяет подпись с ключом, ВШИТЫМ в приложение:
+    // чужой ключ в signing/ дал бы релиз, который не примет ни одна копия.
+    test('signedManifestVerifies: свой ключ — да, вшитый чужой — нет',
+        () async {
+      final f =
+          File('${tmp.path}${Platform.pathSeparator}SilentGateSetup-1.14.2.exe')
+            ..writeAsBytesSync([5, 6, 7]);
+      final m = await buildManifest('1.14.2', 'stable', [f]);
+      final written = writeSignedManifest(m, seed, besides: f);
+      expect(
+          signedManifestVerifies(written, publicKeyBase64: pubBase64), isTrue);
+      // Тестовый seed не парный боевому ключу — сверка с умолчанием обязана
+      // отказать (это и ловит перепутанный ключ перед публикацией).
+      expect(signedManifestVerifies(written), isFalse);
+      // Подпись испорчена на диске — тоже отказ, а не исключение.
+      written.signature.writeAsStringSync('not-base64!!');
+      expect(
+          signedManifestVerifies(written, publicKeyBase64: pubBase64), isFalse);
     });
   });
 }

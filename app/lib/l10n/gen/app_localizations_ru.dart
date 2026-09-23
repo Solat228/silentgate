@@ -30,9 +30,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get commonRefresh => 'Обновить';
 
   @override
-  String get commonCheck => 'Проверить';
-
-  @override
   String get commonOk => 'ОК';
 
   @override
@@ -583,51 +580,11 @@ class AppLocalizationsRu extends AppLocalizations {
   String get testUrlLabel => 'Тестовый URL (via Proxy)';
 
   @override
-  String get appUpdateServerUnavailable => 'Сервер обновлений недоступен';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'Доступна версия $version';
-  }
-
-  @override
-  String get appUpdateLatest => 'У вас последняя версия';
-
-  @override
-  String get appUpdateDownload => 'Скачать';
-
-  @override
-  String get appUpdateCheckTitle => 'Проверять обновления при запуске';
-
-  @override
-  String get appUpdateManual => 'Скачивание и установка — вручную';
-
-  @override
-  String get appUpdateEndpointLabel => 'Эндпоинт версии';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Получать бета-версии';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'Список релизов GitHub, включая пре-релизы, плюс резервный адрес сайта. Автообновление стабильных версий не меняет.';
-
-  @override
   String get infoAppUpdateBeta =>
       'Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется — бета не придёт тем, кто эту галочку не включал.';
 
   @override
   String get appUpdateBetaBadge => 'БЕТА';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'Это пре-релиз — возможны сбои. Автообновление такие версии не рассылает.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Прежние версии';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Прежние версии';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -791,14 +748,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Блок';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'Доступна версия $version';
-  }
-
-  @override
-  String get homeDownload => 'Скачать';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -1068,10 +1017,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN требует прав администратора. Один раз создаём задачу в Планировщике Windows с высшими правами — после этого туннель стартует БЕЗ запроса UAC при каждом подключении. Задача принадлежит вам и удаляется кнопкой ниже или при удалении программы.';
-
-  @override
-  String get infoAppUpdate =>
-      'Раз в запуск приложение спрашивает у вашего сервера, нет ли версии новее, и показывает уведомление с кнопкой «Скачать».\n\nПриложение НИЧЕГО не скачивает и не запускает само: установщик не подписан сертификатом, и самозапуск скачанного exe упирается в SmartScreen и выглядит для антивирусов как поведение зловреда. Обновление ставите вы.\n\nЕсли сервер недоступен — приложение просто молчит, запись уходит в лог. Формат ответа и настройка сервера описаны в docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -3414,15 +3359,7 @@ class AppLocalizationsRu extends AppLocalizations {
       'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'Что нового в $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'Описание изменений не пришло.';
-
-  @override
-  String get updateNotesNeverShow => 'Больше не показывать';
 
   @override
   String get notifOffTitle => 'Уведомления выключены';
@@ -3617,5 +3554,94 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String updatesSizeMb(String mb) {
     return '$mb МБ';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'Приложение закроется, и VPN отключится на время установки. После обновления подключитесь снова';
+
+  @override
+  String get updatesOpenPage => 'Открыть страницу загрузки';
+
+  @override
+  String get updatesLinkNotify =>
+      'Выбран режим «Только уведомлять» — скачайте новую версию со страницы загрузки';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'В этом выпуске нет подписанного установщика для вашей системы — скачайте его со страницы загрузки';
+
+  @override
+  String get updatesLinkIsolated =>
+      'Это изолированная тестовая копия — она не трогает установленное приложение. Обновите его вручную';
+
+  @override
+  String get updatesLinkLocation =>
+      'Приложение запущено не из папки установки — скачайте новую версию вручную или запустите установленную копию';
+
+  @override
+  String get updatesLinkElevated =>
+      'Приложение запущено от имени администратора — так обновляться небезопасно. Запустите его обычным способом';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'На этой платформе приложение не обновляется само — скачайте новую версию вручную';
+
+  @override
+  String get updatesErrCheck => 'сервер обновлений не ответил';
+
+  @override
+  String get updatesErrInsecure => 'адрес загрузки не защищён (не https)';
+
+  @override
+  String get updatesErrAssetName => 'имя файла в выпуске недопустимо';
+
+  @override
+  String get updatesErrManifest =>
+      'не удалось получить подписанное описание выпуска';
+
+  @override
+  String get updatesErrSignature =>
+      'подпись не совпала — файл мог быть подменён';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'описание выпуска не подходит для этой версии или системы';
+
+  @override
+  String get updatesErrDownload =>
+      'файл не скачался или не совпал по контрольной сумме';
+
+  @override
+  String get updatesErrInstall => 'установщик не запустился';
+
+  @override
+  String get updatesErrNotNewer => 'эта версия не новее установленной';
+
+  @override
+  String get updatesInfo =>
+      'Что приложение делает с найденной новой версией. В автоматическом режиме установка не разрывает включённый VPN: она дождётся отключения. В любом режиме файл ставится, только если совпала подпись разработчика.';
+
+  @override
+  String get updatesDownload => 'Скачать';
+
+  @override
+  String get updatesInstallNow => 'Установить сейчас';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Готово к установке — начнётся после отключения VPN';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'Версия $version пропущена — сообщим о следующей';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Установка обновления';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'Приложение закроется на время установки версии $version';
   }
 }

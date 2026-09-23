@@ -65,6 +65,17 @@ Future<void> main(List<String> args) async {
     exit(1);
   }
 
+  if (!signedManifestVerifies(result.files)) {
+    for (final f in [result.files.manifest, result.files.signature]) {
+      try {
+        f.deleteSync();
+      } catch (_) {}
+    }
+    stderr.writeln('Подпись НЕ сходится с ключом, вшитым в приложение '
+        '(update_pubkey.dart). Ключ $keyPath не тот — манифест удалён.');
+    exit(1);
+  }
+
   stdout.writeln('Активов: ${result.count}');
   stdout.writeln('Манифест: ${result.files.manifest.path}');
   stdout.writeln('Подпись:  ${result.files.signature.path}');

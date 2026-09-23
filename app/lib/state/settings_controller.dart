@@ -26,9 +26,28 @@ class SettingsController extends ChangeNotifier {
   /// работает, хотя ядро о нём не знало.
   void Function(AppSettings before, AppSettings after)? onRequiresReconnect;
 
+  /// Настройки прочитаны с диска ([init] отработал). До этого [settings] —
+  /// умолчания, и решать по ним то, что человек мог выключить (проверка и
+  /// установка обновлений), нельзя.
+  bool get loaded => _loaded.isCompleted;
+
+  /// Завершается, когда [init] прочитал настройки (или не смог — тогда
+  /// остаются умолчания, но ждать дальше всё равно нечего).
+  ///
+  /// ⚠️ ЯВНЫЙ ПРИЗНАК, А НЕ «ПЕРВОЕ УВЕДОМЛЕНИЕ». Самообновление раньше
+  /// стартовало по первому `notifyListeners` — а его шлёт и любая [update],
+  /// случившаяся раньше `init` (или вместо него в тесте). Такая связь держится
+  /// на порядке вызовов, который ничем не задан; признак загрузки — нет.
+  Future<void> get whenLoaded => _loaded.future;
+  final Completer<void> _loaded = Completer<void>();
+
   Future<void> init() async {
-    _settings = _normalize(await _storage.load());
-    _applyLogLevel();
+    try {
+      _settings = _normalize(await _storage.load());
+      _applyLogLevel();
+    } finally {
+      if (!_loaded.isCompleted) _loaded.complete();
+    }
     notifyListeners();
   }
 

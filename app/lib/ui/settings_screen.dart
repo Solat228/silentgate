@@ -19,7 +19,6 @@ import '../core/platform/network_recovery.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/platform/vpn_lockdown.dart';
 import '../core/net/speed_test.dart';
-import '../core/update/app_update.dart';
 import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
@@ -31,6 +30,7 @@ import 'logs_screen.dart';
 import 'split_tunnel_screen.dart';
 import 'geo_bases_screen.dart';
 import 'tun_settings_screen.dart';
+import 'update_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
 import 'log_level_labels.dart';
@@ -1564,12 +1564,20 @@ List<SettingsRow> _aboutRows(
         load: () async => platform.coreVersions.xray(),
       ),
     ),
-    // Обновление приложения: только проверка и открытие ссылки —
-    // ставит пользователь сам (установщик не подписан).
+    // Обновление приложения — своим экраном: режим, бета-канал, откат и
+    // ход закачки не помещаются в одну строку «О программе».
     SettingsRow(
-      search: '${l.appUpdateCheckTitle} ${l.appUpdateEndpointLabel} '
-          '${l.appUpdateBetaChannelTitle} ${l.appUpdatePreviousVersionsButton}',
-      build: (_) => const _AppUpdateTile(),
+      search: '${l.updatesSettingsTile} ${l.updatesSettingsTileSubtitle} '
+          '${l.updatesBeta} ${l.updatesPreviousVersions} ${l.updatesModeTitle}',
+      build: (context) => ListTile(
+        key: const Key('updatesSettingsTile'),
+        leading: const Icon(Icons.system_update),
+        title: Text(l.updatesSettingsTile),
+        subtitle: Text(l.updatesSettingsTileSubtitle),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const UpdateScreen())),
+      ),
     ),
     SettingsRow(
       search: l.aboutHwid,
@@ -2883,282 +2891,6 @@ Widget _choice<T>(
       selected: {current},
       showSelectedIcon: false,
       onSelectionChanged: (sel) => onChanged(sel.first),
-    ),
-  );
-}
-
-/// Проверка обновлений приложения: статус + ручная проверка + переключатель.
-class _AppUpdateTile extends StatefulWidget {
-  const _AppUpdateTile();
-
-  @override
-  State<_AppUpdateTile> createState() => _AppUpdateTileState();
-
-
-}
-
-class _AppUpdateTileState extends State<_AppUpdateTile> {
-  bool _checking = false;
-  String? _status;
-
-  /// Был ли ПОСЛЕДНИЙ проверенный релиз пре-релизом — для плашки «БЕТА» под
-  /// статусом. Отдельное поле, а не чтение `result.release` заново: после
-  /// `setState` результат проверки больше нигде не хранится целиком.
-  bool _lastWasBeta = false;
-
-  Future<void> _check() async {
-    final l = AppLocalizations.of(context);
-    // ⚠️ Канал — из НАСТРОЕК ПОЛЬЗОВАТЕЛЯ, а не константа: выключенная
-    // галочка обязана давать ровно старое поведение (/releases/latest),
-    // включённая — смотреть список релизов вместе с пре-релизами.
-    final beta = context.read<SettingsController>().settings.betaChannel;
-    setState(() {
-      _checking = true;
-      _status = null;
-    });
-    final result = await AppUpdate.check(beta: beta);
-    if (!mounted) return;
-    final release = result.release;
-    setState(() {
-      _checking = false;
-      _lastWasBeta = release?.isBeta ?? false;
-      // ⚠️ ТРИ ИСХОДА, А НЕ ДВА. Раньше отказ проверки был неотличим от «у вас
-      // последняя версия», и человек с отключённой сетью получал успокоительное
-      // «обновлений нет». Здесь причину показываем прямо: кнопку нажали, чтобы
-      // узнать ответ, а «не смогли проверить» — это ответ.
-      _status = switch (result.state) {
-        UpdateCheckState.available => l.appUpdateAvailable(release!.version),
-        UpdateCheckState.upToDate => l.appUpdateLatest,
-        UpdateCheckState.failed =>
-          result.failure ?? l.appUpdateServerUnavailable,
-      };
-    });
-    if (!result.isAvailable || release == null) return;
-    // Ссылки под платформу в релизе может не быть (собрали только под одну) —
-    // тогда ведём на страницу релиза, а не прячем кнопку: версию мы узнали.
-    final target = (release.downloadUrl ?? '').isNotEmpty
-        ? release.downloadUrl!
-        : (release.pageUrl ?? AppUpdate.releasesPage);
-    if (!mounted) return;
-    AppToast.show(
-      context,
-      // ⚠️ Пре-релиз честно назван ПРЯМО в тосте, а не только мелкой плашкой
-      // под статусом ниже: тост — то, что человек видит, даже если не читал
-      // остальной блок настроек, а ставить бету стоит осознанно.
-      release.isBeta
-          ? '${l.appUpdateAvailable(release.version)} · ${l.appUpdateBetaBadge}'
-          : l.appUpdateAvailable(release.version),
-      actionLabel: l.appUpdateDownload,
-      onAction: () => UrlOpener.open(target),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final controller = context.watch<SettingsController>();
-    final settings = controller.settings;
-    return Column(children: [
-      SwitchListTile(
-        dense: true,
-        value: settings.appUpdateCheck,
-        onChanged: (v) => controller.update((s) => s.copyWith(appUpdateCheck: v)),
-        title: Row(children: [
-          Expanded(child: Text(l.appUpdateCheckTitle)),
-          InfoTooltip(l.infoAppUpdate),
-        ]),
-        subtitle: Text(_status ?? l.appUpdateManual),
-      ),
-      if (_status != null && _lastWasBeta)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Wrap(
-              spacing: 6,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const _BetaBadge(),
-                Flexible(
-                  child: Text(l.appUpdateBetaNotice,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ),
-              ],
-            ),
-          ),
-        ),
-      // ⚠️ ГАЛОЧКА МЕНЯЕТ ТОЛЬКО ИСТОЧНИК ЭТОЙ ПРОВЕРКИ, А НЕ АВТООБНОВЛЕНИЕ.
-      // Основной манифест (`silentgate.lol/api/app-version`) бету не отдаёт и
-      // не отдаст, пока владелец сам не решит иначе — см. комментарий у
-      // `AppSettings.betaChannel`.
-      SwitchListTile(
-        dense: true,
-        value: settings.betaChannel,
-        onChanged: (v) => controller.update((s) => s.copyWith(betaChannel: v)),
-        title: Row(children: [
-          Expanded(child: Text(l.appUpdateBetaChannelTitle)),
-          InfoTooltip(l.infoAppUpdateBeta),
-        ]),
-        subtitle: Text(l.appUpdateBetaChannelSubtitle),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-        // ⚠️ ПОЛЯ «ЭНДПОИНТ ВЕРСИИ» ЗДЕСЬ БОЛЬШЕ НЕТ. Оно просило пользователя
-        // настроить то, чего он знать не может, а пустым вело на панельные
-        // адреса, из которых андроидного не существует до сих пор — телефон
-        // молча не находил ничего вообще. Источник теперь один и вшит: релизы
-        // GitHub, одинаковые для обеих платформ.
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child: Wrap(spacing: 8, runSpacing: 8, children: [
-            FilledButton.tonal(
-              onPressed: _checking ? null : _check,
-              child: Text(_checking ? '…' : l.commonCheck),
-            ),
-            // Список релизов мы и так спрашиваем ради беты — та же кнопка
-            // не завела бы отдельного сетевого пути, если бы галочка уже
-            // была включена, но UI-путь не делаем зависимым от неё: список
-            // прежних версий полезен и на стабильном канале (осознанный
-            // откат после неудачного обновления).
-            OutlinedButton.icon(
-              onPressed: () => _showPreviousVersions(context),
-              icon: const Icon(Icons.history, size: 18),
-              label: Text(l.appUpdatePreviousVersionsButton),
-            ),
-          ]),
-        ),
-      ),
-    ]);
-  }
-}
-
-/// Плашка «БЕТА» — общая для статуса проверки и списка прежних версий,
-/// чтобы пре-релиз выглядел одинаково узнаваемо в обоих местах.
-class _BetaBadge extends StatelessWidget {
-  const _BetaBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: scheme.tertiaryContainer,
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Text(
-          l.appUpdateBetaBadge,
-          textDirection: TextDirection.ltr,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.bold,
-            color: scheme.onTertiaryContainer,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// «Прежние версии» — та же кнопка, что просил владелец: список последних
-/// релизов с GitHub и открытие ссылки на артефакт/страницу. Приложение
-/// НИЧЕГО не скачивает и не запускает — решение проекта из-за SmartScreen
-/// (см. класс-комментарий `AppUpdate`), откат делает сам установщик.
-Future<void> _showPreviousVersions(BuildContext context) async {
-  final l = AppLocalizations.of(context);
-  await showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l.appUpdatePreviousVersionsTitle),
-      content: SizedBox(
-        width: 420,
-        child: FutureBuilder<List<AppRelease>>(
-          // ⚠️ Без fetcher — настоящая сеть. Список запрашивается ТОЛЬКО по
-          // нажатию кнопки (диалог открывается — future создаётся), а не при
-          // каждом открытии настроек: он не нужен, пока человек явно не
-          // попросил откатиться.
-          future: AppUpdate.fetchReleaseHistory(),
-          builder: (context, snap) {
-            if (!snap.hasData) {
-              return const SizedBox(
-                height: 96,
-                child: Center(child: CircularProgressIndicator()),
-              );
-            }
-            final list = snap.data!;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ⚠️ ЧЕСТНОСТЬ СПИСКА — ПРЯМО В ДИАЛОГЕ. Список — это ровно то,
-                // что лежит в GitHub Releases; если каких-то версий там нет
-                // (см. `docs/HANDOFF_1.11.0.md`), человек должен понимать
-                // причину, а не решать, что приложение сломалось.
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Text(l.appUpdatePreviousVersionsHint,
-                      style: Theme.of(context).textTheme.bodySmall),
-                ),
-                if (list.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(l.appUpdatePreviousVersionsEmpty),
-                  )
-                else
-                  Flexible(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxHeight: 320),
-                      child: ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: list.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (context, i) {
-                          final r = list[i];
-                          final d = r.publishedAt;
-                          final dateStr = d == null
-                              ? ''
-                              : '${d.year.toString().padLeft(4, '0')}-'
-                                  '${d.month.toString().padLeft(2, '0')}-'
-                                  '${d.day.toString().padLeft(2, '0')}';
-                          return ListTile(
-                            dense: true,
-                            title: Row(children: [
-                              Text('v${r.version}',
-                                  textDirection: TextDirection.ltr),
-                              if (r.isBeta) ...[
-                                const SizedBox(width: 6),
-                                const _BetaBadge(),
-                              ],
-                            ]),
-                            subtitle: dateStr.isEmpty
-                                ? null
-                                : Text(dateStr, textDirection: TextDirection.ltr),
-                            trailing: IconButton(
-                              tooltip: l.appUpdateOpenRelease,
-                              icon: const Icon(Icons.open_in_new, size: 18),
-                              onPressed: () => UrlOpener.open(
-                                (r.downloadUrl ?? '').isNotEmpty
-                                    ? r.downloadUrl!
-                                    : (r.pageUrl ?? AppUpdate.releasesPage),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(l.commonClose)),
-      ],
     ),
   );
 }
