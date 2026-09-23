@@ -221,6 +221,13 @@ Future<void> main(List<String> args) async {
         // обязателен, написано в `state/provider_wiring.dart`. Сети при
         // создании не касается: `refresh()` только читает каталог.
         geoBasesProvider(),
+        // Самообновление: проверка при запуске (после загрузки настроек),
+        // закачка и проверка подписи установщика, установка по режиму из
+        // настроек. Почему `lazy: false` обязателен и почему запуск привязан
+        // к первому уведомлению SettingsController — в
+        // `state/provider_wiring.dart`. Требует AppState и SettingsController
+        // выше в дереве.
+        appUpdateProvider(),
       ],
       child: const SilentGateApp(),
     ),

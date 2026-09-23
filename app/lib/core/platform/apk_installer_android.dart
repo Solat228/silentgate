@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+import '../update/app_update_defaults.dart';
+
 /// Нативная сторона ответила `false`: файла нет, он вне `cacheDir/updates/`
 /// либо системный установщик не запустился (нет активности под ACTION_VIEW —
 /// бывает на урезанных прошивках). Подробность — в logcat `SilentGateUpdate`;
@@ -37,16 +39,10 @@ class ApkInstallerAndroid {
   /// ABI нет (armeabi-v7a, x86), и подбирать «похожую» нельзя: чужая ABI
   /// установится и не запустится, а versionCode у x86_64 (4000+) больше, чем
   /// у arm64 (2000+), — она выглядела бы «новее».
-  static String? assetHintForAbi(String? abi) {
-    switch ((abi ?? '').trim().toLowerCase()) {
-      case 'arm64-v8a':
-        return '-arm64-v8a.apk';
-      case 'x86_64':
-        return '-x86_64.apk';
-      default:
-        return null;
-    }
-  }
+  ///
+  /// Таблица одна на приложение — [androidAssetHintForAbi] в
+  /// `app_update_defaults.dart` (проверка обновлений выбирает актив по ней же).
+  static String? assetHintForAbi(String? abi) => androidAssetHintForAbi(abi);
 
   /// Предпочтительная ABI устройства (`Build.SUPPORTED_ABIS[0]`); `null` —
   /// канала нет или он не ответил.

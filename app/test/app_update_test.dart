@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/app_info.dart';
+import 'package:silentgate/core/platform/apk_installer_android.dart';
 import 'package:silentgate/core/update/app_update.dart';
 import 'package:silentgate/core/update/app_update_defaults.dart';
 
@@ -437,6 +439,480 @@ void main() {
         fetcher: (_) async => const UpdateHttpResponse(500, ''),
       );
       expect(list, isEmpty);
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // САМООБНОВЛЕНИЕ: метаданные релиза.
+  //
+  // ⚠️ Приложение качает и ставит сборку само только тогда, когда у релиза есть
+  // ВСЁ: прямая ссылка на актив, его точное имя и размер, манифест и подпись.
+  // Не хватает чего-то одного — прежнее поведение «открыть страницу». Ошибка в
+  // этой развилке опасна в обе стороны: лишнее `true` — попытка установки по
+  // неполным данным, лишнее `false` — самообновление молча не работает никогда.
+  String fullRelease({
+    String tag = 'v1.14.0',
+    required List<Map<String, Object>> assets,
+    bool prerelease = false,
+  }) =>
+      jsonEncode({
+        'tag_name': tag,
+        'html_url': 'https://github.com/o/r/releases/tag/$tag',
+        'body': 'Что нового',
+        'prerelease': prerelease,
+        'assets': [
+          for (final a in assets)
+            {
+              'name': a['name'],
+              'browser_download_url': a['url'],
+              if (a.containsKey('size')) 'size': a['size'],
+            },
+        ],
+      });
+
+  Map<String, Object> asset(String name, {int size = 1000, String? url}) =>
+      {'name': name, 'url': url ?? 'https://x/$name', 'size': size};
+
+  group('Самообновление: актив, манифест и подпись релиза GitHub', () {
+    tearDown(debugResetUpdateApiOverride);
+
+    test('всё на месте — canSelfUpdate, размер и имя актива попадают', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe', size: 34932418),
+            asset('SilentGate-1.14.0-arm64-v8a.apk', size: 81230968),
+            asset('SilentGate-1.14.0.manifest.json', size: 500),
+            asset('SilentGate-1.14.0.manifest.sig', size: 89),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.downloadUrl, 'https://x/SilentGateSetup-1.14.0.exe');
+      expect(r.assetName, 'SilentGateSetup-1.14.0.exe');
+      expect(r.assetSize, 34932418);
+      expect(r.manifestUrl, 'https://x/SilentGate-1.14.0.manifest.json');
+      expect(r.signatureUrl, 'https://x/SilentGate-1.14.0.manifest.sig');
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('⚠️ настоящее имя установщика «SilentGateSetup-<версия>.exe» находится',
+        () {
+      // Inno пишет `SilentGateSetup-1.13.1.exe` (OutputBaseFilename), и
+      // `contains('Setup.exe')` его НЕ находил: версия стоит между «Setup» и
+      // «.exe». Кнопка на Windows всегда вела на страницу, а не на файл.
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(tag: 'v1.13.1', assets: [
+            asset('SilentGate-Portable-1.13.1.zip'),
+            asset('SilentGateSetup-1.13.1.exe'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.assetName, 'SilentGateSetup-1.13.1.exe',
+          reason: 'портативный zip — не установщик');
+    });
+
+    test('⚠️ похожее имя манифеста («.manifest.json.bak») не берётся', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json.bak'),
+            asset('old-SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig.txt'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.manifestUrl, isNull,
+          reason: 'только ТОЧНОЕ имя: иначе проверялась бы подпись не того файла');
+      expect(r.signatureUrl, isNull);
+      expect(r.canSelfUpdate, isFalse);
+      expect(r.downloadUrl, isNotNull, reason: 'ссылка на файл остаётся');
+    });
+
+    test('точное имя находится, даже если похожее стоит в списке раньше', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGate-1.14.0.manifest.json.bak', url: 'https://x/bak'),
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json', url: 'https://x/real'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.manifestUrl, 'https://x/real');
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('нет манифеста — canSelfUpdate=false, старое поведение «ссылка»', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.manifestUrl, isNull);
+      expect(r.canSelfUpdate, isFalse);
+      expect(r.downloadUrl, 'https://x/SilentGateSetup-1.14.0.exe');
+    });
+
+    test('нет подписи — canSelfUpdate=false', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.signatureUrl, isNull);
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('манифест другой версии не подходит', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.13.2.manifest.json'),
+            asset('SilentGate-1.13.2.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('размера нет или он нулевой — canSelfUpdate=false', () {
+      for (final size in [0, -1]) {
+        final r = AppUpdate.parseGithubRelease(
+            fullRelease(assets: [
+              asset('SilentGateSetup-1.14.0.exe', size: size),
+              asset('SilentGate-1.14.0.manifest.json'),
+              asset('SilentGate-1.14.0.manifest.sig'),
+            ]),
+            assetHint: 'Setup.exe')!;
+        expect(r.canSelfUpdate, isFalse, reason: 'size=$size');
+      }
+      final noSize = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            {'name': 'SilentGateSetup-1.14.0.exe', 'url': 'https://x/s.exe'},
+            asset('SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(noSize.assetSize, isNull);
+      expect(noSize.canSelfUpdate, isFalse);
+    });
+
+    test('бета-тег v1.14.1-beta.1 — имена с ПОЛНОЙ версией', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(tag: 'v1.14.1-beta.1', prerelease: true, assets: [
+            asset('SilentGateSetup-1.14.1-beta.1.exe'),
+            asset('SilentGate-1.14.1.manifest.json', url: 'https://x/short'),
+            asset('SilentGate-1.14.1.manifest.sig', url: 'https://x/short-sig'),
+            asset('SilentGate-1.14.1-beta.1.manifest.json'),
+            asset('SilentGate-1.14.1-beta.1.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.isBeta, isTrue);
+      expect(r.assetName, 'SilentGateSetup-1.14.1-beta.1.exe');
+      expect(r.manifestUrl, 'https://x/SilentGate-1.14.1-beta.1.manifest.json');
+      expect(r.signatureUrl, 'https://x/SilentGate-1.14.1-beta.1.manifest.sig');
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('Android: подпись схемы APK (.apk.idsig) не принимается за APK', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGate-1.14.0-arm64-v8a.apk.idsig'),
+            asset('TEST-ONLY-emulator-SilentGate-1.14.0-x86_64.apk'),
+            asset('SilentGate-1.14.0-arm64-v8a.apk', size: 81230968),
+          ]),
+          assetHint: platformAssetHint(android: true, androidAbi: 'arm64-v8a'))!;
+      expect(r.assetName, 'SilentGate-1.14.0-arm64-v8a.apk');
+      expect(r.assetSize, 81230968);
+    });
+
+    test('эмулятор x86_64 получает TEST-ONLY-сборку, а не телефонную', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGate-1.14.0-arm64-v8a.apk'),
+            asset('TEST-ONLY-emulator-SilentGate-1.14.0-x86_64.apk'),
+          ]),
+          assetHint: platformAssetHint(android: true, androidAbi: 'x86_64'))!;
+      expect(r.assetName, 'TEST-ONLY-emulator-SilentGate-1.14.0-x86_64.apk');
+    });
+
+    test('⚠️ http:// без override — canSelfUpdate=false', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe',
+                url: 'http://x/SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.canSelfUpdate, isFalse,
+          reason: 'открытый канал в боевом режиме не принимается ни для чего');
+    });
+
+    test('http:// манифест без override — тоже отказ', () {
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json',
+                url: 'http://x/SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('с override http:// допустим — целостность держит подпись', () {
+      debugSetUpdateApiOverride('http://127.0.0.1:8080');
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe',
+                url: 'http://127.0.0.1:8080/d/SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json',
+                url: 'http://127.0.0.1:8080/d/SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig',
+                url: 'http://127.0.0.1:8080/d/SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('схема не http(s) не принимается даже с override', () {
+      debugSetUpdateApiOverride('http://127.0.0.1:8080');
+      final r = AppUpdate.parseGithubRelease(
+          fullRelease(assets: [
+            asset('SilentGateSetup-1.14.0.exe',
+                url: 'file:///C:/SilentGateSetup-1.14.0.exe'),
+            asset('SilentGate-1.14.0.manifest.json'),
+            asset('SilentGate-1.14.0.manifest.sig'),
+          ]),
+          assetHint: 'Setup.exe')!;
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('старый вызов конструктора без новых полей — canSelfUpdate=false', () {
+      const r = AppRelease(version: '9.9.9', downloadUrl: 'https://x/y.exe');
+      expect(r.assetName, isNull);
+      expect(r.assetSize, isNull);
+      expect(r.manifestUrl, isNull);
+      expect(r.signatureUrl, isNull);
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('список релизов разбирает те же поля у каждого элемента', () {
+      final body = jsonEncode([
+        jsonDecode(fullRelease(tag: 'v1.14.1-beta.1', prerelease: true, assets: [
+          asset('SilentGateSetup-1.14.1-beta.1.exe'),
+          asset('SilentGate-1.14.1-beta.1.manifest.json'),
+          asset('SilentGate-1.14.1-beta.1.manifest.sig'),
+        ])),
+        jsonDecode(fullRelease(tag: 'v1.14.0', assets: [
+          asset('SilentGateSetup-1.14.0.exe'),
+        ])),
+      ]);
+      final list =
+          AppUpdate.parseGithubReleaseList(body, assetHint: 'Setup.exe')!;
+      expect(list[0].canSelfUpdate, isTrue);
+      expect(list[1].canSelfUpdate, isFalse);
+      expect(list[1].downloadUrl, isNotNull);
+    });
+  });
+
+  group('Самообновление: поля ответа панели', () {
+    tearDown(debugResetUpdateApiOverride);
+
+    test('manifest/sig/size/asset — canSelfUpdate', () {
+      final r = AppUpdate.parsePanelRelease(jsonEncode({
+        'version': '1.14.0',
+        'url': 'https://silentgate.lol/download/SilentGateSetup-1.14.0.exe',
+        'asset': 'SilentGateSetup-1.14.0.exe',
+        'size': 34932418,
+        'manifest':
+            'https://silentgate.lol/download/SilentGate-1.14.0.manifest.json',
+        'sig': 'https://silentgate.lol/download/SilentGate-1.14.0.manifest.sig',
+      }))!;
+      expect(r.assetName, 'SilentGateSetup-1.14.0.exe');
+      expect(r.assetSize, 34932418);
+      expect(r.manifestUrl,
+          'https://silentgate.lol/download/SilentGate-1.14.0.manifest.json');
+      expect(r.signatureUrl,
+          'https://silentgate.lol/download/SilentGate-1.14.0.manifest.sig');
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('размер строкой тоже понимается', () {
+      final r = AppUpdate.parsePanelRelease(jsonEncode({
+        'version': '1.14.0',
+        'url': 'https://x/SilentGateSetup-1.14.0.exe',
+        'asset': 'SilentGateSetup-1.14.0.exe',
+        'size': '1234',
+        'manifest': 'https://x/m.json',
+        'sig': 'https://x/m.sig',
+      }))!;
+      expect(r.assetSize, 1234);
+      expect(r.canSelfUpdate, isTrue);
+    });
+
+    test('старый ответ панели (новых полей нет) — canSelfUpdate=false', () {
+      final r = AppUpdate.parsePanelRelease(
+          '{"version":"1.14.0","url":"https://x/SilentGateSetup-1.14.0.exe"}')!;
+      expect(r.downloadUrl, isNotNull);
+      expect(r.manifestUrl, isNull);
+      expect(r.signatureUrl, isNull);
+      expect(r.assetName, isNull);
+      expect(r.assetSize, isNull);
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('⚠️ http:// в манифесте панели без override — отказ', () {
+      final r = AppUpdate.parsePanelRelease(jsonEncode({
+        'version': '1.14.0',
+        'url': 'https://x/SilentGateSetup-1.14.0.exe',
+        'asset': 'SilentGateSetup-1.14.0.exe',
+        'size': 10,
+        'manifest': 'http://x/m.json',
+        'sig': 'https://x/m.sig',
+      }))!;
+      expect(r.canSelfUpdate, isFalse);
+    });
+
+    test('с override http:// у панели допустим', () {
+      debugSetUpdateApiOverride('http://10.0.2.2:8080');
+      final r = AppUpdate.parsePanelRelease(jsonEncode({
+        'version': '1.14.0',
+        'url': 'http://10.0.2.2:8080/SilentGateSetup-1.14.0.exe',
+        'asset': 'SilentGateSetup-1.14.0.exe',
+        'size': 10,
+        'manifest': 'http://10.0.2.2:8080/m.json',
+        'sig': 'http://10.0.2.2:8080/m.sig',
+      }))!;
+      expect(r.downloadUrl, isNotNull);
+      expect(r.canSelfUpdate, isTrue);
+    });
+  });
+
+  group('Тестовый override адреса API обновлений', () {
+    tearDown(debugResetUpdateApiOverride);
+
+    test('без override — GitHub', () {
+      debugSetUpdateApiOverride(null);
+      expect(kUpdateApiOverridden, isFalse);
+      expect(kGithubReleasesApi,
+          'https://api.github.com/repos/Solat228/silentgate/releases/latest');
+      expect(kGithubReleasesListApi,
+          'https://api.github.com/repos/Solat228/silentgate/releases');
+    });
+
+    test('override меняет базу обоих адресов API', () {
+      debugSetUpdateApiOverride('http://127.0.0.1:8080/');
+      expect(kUpdateApiOverridden, isTrue);
+      expect(kUpdateApiOverride, 'http://127.0.0.1:8080',
+          reason: 'хвостовой слэш срезается, иначе «//repos»');
+      expect(kGithubReleasesApi,
+          'http://127.0.0.1:8080/repos/Solat228/silentgate/releases/latest');
+      expect(kGithubReleasesListApi,
+          'http://127.0.0.1:8080/repos/Solat228/silentgate/releases');
+      expect(AppUpdate.endpoint, kGithubReleasesApi);
+    });
+
+    test('check() под override спрашивает стенд', () async {
+      debugSetUpdateApiOverride('http://127.0.0.1:8080');
+      final seen = <Uri>[];
+      await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        fetcher: (uri) async {
+          seen.add(uri);
+          return UpdateHttpResponse(
+              200, jsonEncode({'tag_name': 'v1.0.0', 'assets': []}));
+        },
+      );
+      expect(seen.single.toString(),
+          'http://127.0.0.1:8080/repos/Solat228/silentgate/releases/latest');
+    });
+
+    test('мусор вместо адреса — override не включается', () {
+      for (final bad in ['', '   ', 'ftp://x', 'не адрес', 'http://', '127.0.0.1']) {
+        debugSetUpdateApiOverride(bad);
+        expect(kUpdateApiOverridden, isFalse, reason: '«$bad»');
+        expect(kGithubReleasesApi, startsWith('https://api.github.com/'));
+      }
+    });
+
+    test('Android: файл update_api.txt в каталоге данных', () async {
+      final dir = await Directory.systemTemp.createTemp('sg_update_api_');
+      addTearDown(() => dir.delete(recursive: true));
+
+      expect(loadUpdateApiOverrideFrom(dir.path), isNull,
+          reason: 'файла нет — нет override');
+      expect(kUpdateApiOverridden, isFalse);
+
+      File('${dir.path}${Platform.pathSeparator}update_api.txt')
+          .writeAsStringSync('  http://10.0.2.2:8080/  \r\n');
+      expect(loadUpdateApiOverrideFrom(dir.path), 'http://10.0.2.2:8080');
+      expect(kGithubReleasesApi,
+          'http://10.0.2.2:8080/repos/Solat228/silentgate/releases/latest');
+    });
+
+    test('⚠️ override не касается публичного ключа', () async {
+      // Стенд подменяет только АДРЕС. Ключ, которым проверяется подпись, —
+      // константа в своём файле, и ни одна ветка override до неё не дотянется.
+      final src =
+          await File('lib/core/update/app_update_defaults.dart').readAsString();
+      final imports = RegExp(r'^\s*import\s+.*$', multiLine: true)
+          .allMatches(src)
+          .map((m) => m.group(0)!)
+          .toList();
+      expect(imports.where((i) => !i.contains("'dart:")), isEmpty,
+          reason: 'файл адресов не импортирует ничего, кроме dart:*');
+      expect(RegExp(r'kUpdatePublicKey').hasMatch(src), isFalse);
+    });
+
+    test('проверка обновлений идёт мимо прокси (findProxy DIRECT)', () async {
+      // Иначе запрос уходил бы через системный прокси нашего же туннеля.
+      final src = await File('lib/core/update/app_update.dart').readAsString();
+      expect(src, contains("findProxy = (_) => 'DIRECT'"));
+    });
+  });
+
+  group('platformAssetHint по ABI', () {
+    test('Windows — установщик', () {
+      expect(platformAssetHint(android: false), 'Setup.exe');
+      expect(platformAssetHint(android: false, androidAbi: 'x86_64'), 'Setup.exe');
+    });
+
+    test('arm64-v8a и x86_64 — своя сборка', () {
+      expect(platformAssetHint(android: true, androidAbi: 'arm64-v8a'),
+          '-arm64-v8a.apk');
+      expect(platformAssetHint(android: true, androidAbi: 'x86_64'),
+          '-x86_64.apk');
+      expect(platformAssetHint(android: true, androidAbi: ' ARM64-v8a '),
+          '-arm64-v8a.apk');
+    });
+
+    test('ABI неизвестна (канал не ответил) — телефонная сборка', () {
+      expect(platformAssetHint(android: true), 'arm64-v8a.apk');
+      expect(platformAssetHint(android: true, androidAbi: ''), 'arm64-v8a.apk');
+    });
+
+    test('⚠️ ABI, под которую сборки нет, не получает «похожую»', () {
+      // armeabi-v7a установит arm64-APK и не запустит; x86 — то же с x86_64.
+      for (final abi in ['armeabi-v7a', 'x86', 'arm64']) {
+        final hint = platformAssetHint(android: true, androidAbi: abi);
+        final r = AppUpdate.parseGithubRelease(
+            fullRelease(assets: [
+              asset('SilentGate-1.14.0-arm64-v8a.apk'),
+              asset('TEST-ONLY-emulator-SilentGate-1.14.0-x86_64.apk'),
+            ]),
+            assetHint: hint)!;
+        expect(r.downloadUrl, isNull, reason: 'ABI $abi → «$hint»');
+      }
+    });
+
+    test('таблица ABI одна: та же, что у установщика APK', () {
+      for (final abi in ['arm64-v8a', 'x86_64', 'armeabi-v7a', 'x86', null, '']) {
+        expect(androidAssetHintForAbi(abi),
+            ApkInstallerAndroid.assetHintForAbi(abi),
+            reason: 'ABI $abi');
+      }
+    });
+
+    test('kPlatformAssetHint — обёртка без ABI', () {
+      expect(kPlatformAssetHint, platformAssetHint());
     });
   });
 }

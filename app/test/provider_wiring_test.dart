@@ -11,8 +11,11 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/net/api_ports.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/update/app_update.dart';
+import 'package:silentgate/core/update/update_installer_fake.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
 import 'package:silentgate/state/app_state.dart';
+import 'package:silentgate/state/app_update_controller.dart';
 import 'package:silentgate/state/probe_controller.dart';
 import 'package:silentgate/state/provider_wiring.dart';
 import 'package:silentgate/state/settings_controller.dart';
@@ -115,6 +118,13 @@ void main() {
   late SettingsController settings;
   late ProbeController probe;
 
+  // Самообновление — на подменных зависимостях: ни сети, ни установщика.
+  late FakeUpdateInstaller installer;
+  late AppUpdateController updateController;
+  late Completer<void> checked;
+  var updateCreateCalls = 0;
+  var checkerCalls = 0;
+
   setUp(() async {
     dir = Directory.systemTemp.createTempSync('sg_provider_wiring_');
     AppPaths.overrideRoot(dir);
@@ -124,6 +134,22 @@ void main() {
     settings = SettingsController();
     await settings.init();
     probe = ProbeController();
+    installer = FakeUpdateInstaller(
+        staging: Directory('${dir.path}${Platform.pathSeparator}updates'));
+    checked = Completer<void>();
+    updateCreateCalls = 0;
+    checkerCalls = 0;
+    updateController = AppUpdateController(
+      settings: () => settings.settings,
+      updateSettings: settings.update,
+      installer: installer,
+      checker: ({required bool beta}) async {
+        checkerCalls++;
+        if (!checked.isCompleted) checked.complete();
+        return const UpdateCheckResult.upToDate();
+      },
+      overridden: true,
+    );
   });
 
   tearDown(() async {
@@ -145,6 +171,12 @@ void main() {
           apiSettingsLinkProvider(),
           // Связка №3 — та же функция, что в main.dart.
           unfinishedPruneLinkProvider(),
+          // Самообновление — та же функция, что в main.dart; контроллер
+          // подменён (create — параметр ради стража), сама функция — нет.
+          appUpdateProvider(create: (_) {
+            updateCreateCalls++;
+            return updateController;
+          }),
         ],
         child: const SizedBox.shrink(),
       );
@@ -215,6 +247,59 @@ void main() {
 
       expect(engine.capturedShadeHandler, isNotNull);
       expect(state.applyApiSettingsCalls, greaterThan(0));
+    });
+
+    testWidgets(
+        'appUpdateProvider: контроллер создан после одной сборки дерева, '
+        'хотя тип AppUpdateController никто не читает', (tester) async {
+      expect(updateCreateCalls, 0,
+          reason: 'до сборки дерева контроллера ещё нет — база для сравнения');
+
+      await tester.pumpWidget(buildTree());
+
+      expect(updateCreateCalls, 1,
+          reason: 'ChangeNotifierProvider<AppUpdateController> обязан быть '
+              'с lazy:false — иначе контроллер появится только при первом '
+              'чтении его типа, и «проверять при запуске» станет «проверять, '
+              'когда откроют экран настроек»');
+      expect(updateController.started, isFalse,
+          reason: 'запуск привязан к загрузке настроек, а не к create: '
+              'в момент сборки дерева настройки ещё умолчания');
+      expect(checkerCalls, 0);
+    });
+
+    testWidgets(
+        'appUpdateProvider: startup запускается по ПЕРВОМУ уведомлению '
+        'SettingsController (его шлёт init после чтения с диска)',
+        (tester) async {
+      await tester.pumpWidget(buildTree());
+      expect(checkerCalls, 0);
+
+      // В приложении первое уведомление приходит из `init()`; здесь init уже
+      // отработал в setUp, поэтому уведомляем правкой без изменений. Файловый
+      // ввод-вывод контроллера настроек — вне FakeAsync.
+      await tester.runAsync(() async {
+        await settings.update((s) => s);
+        await checked.future.timeout(const Duration(seconds: 5));
+      });
+
+      expect(updateController.started, isTrue);
+      expect(checkerCalls, 1,
+          reason: 'проверка при запуске — ровно одна');
+      expect(installer.reconcileCalls, hasLength(1),
+          reason: 'итог прошлой установки разбирается при старте');
+
+      // Повторные уведомления настроек ничего не запускают заново.
+      await tester.runAsync(() => settings.update((s) => s));
+      expect(checkerCalls, 1);
+    });
+
+    test('main.dart кладёт appUpdateProvider в тот же список провайдеров',
+        () {
+      final src = File('lib/main.dart').readAsStringSync();
+      expect(src, contains('appUpdateProvider('),
+          reason: 'страж выше проверяет функцию из provider_wiring.dart; '
+              'без этой строки в main.dart она в приложение не попадает');
     });
   });
 }

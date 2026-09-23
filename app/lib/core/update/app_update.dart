@@ -3,7 +3,9 @@ import 'dart:io';
 
 import '../app_info.dart';
 import '../platform/app_log.dart';
+import '../platform/app_paths.dart';
 import 'app_update_defaults.dart';
+import 'release_signing.dart' show manifestFileName, signatureFileName;
 
 /// Что сказал сервер обновлений.
 class AppRelease {
@@ -31,6 +33,21 @@ class AppRelease {
   /// без даты человек не отличит вчерашний хвост от версии годовой давности.
   final DateTime? publishedAt;
 
+  /// ТОЧНОЕ имя актива платформы (`SilentGateSetup-1.14.0.exe`) — по нему
+  /// актив ищется в подписанном манифесте. [downloadUrl] — его прямой адрес.
+  final String? assetName;
+
+  /// Размер актива в байтах, как его объявил источник. Сверяется с манифестом
+  /// и ограничивает закачку.
+  final int? assetSize;
+
+  /// Адрес `SilentGate-<версия>.manifest.json`.
+  final String? manifestUrl;
+
+  /// Адрес `SilentGate-<версия>.manifest.sig` (подпись Ed25519 над байтами
+  /// манифеста).
+  final String? signatureUrl;
+
   const AppRelease({
     required this.version,
     this.downloadUrl,
@@ -38,10 +55,31 @@ class AppRelease {
     this.pageUrl,
     this.isBeta = false,
     this.publishedAt,
+    this.assetName,
+    this.assetSize,
+    this.manifestUrl,
+    this.signatureUrl,
   });
 
   /// Новее ли [version] текущей сборки.
   bool get isNewer => AppUpdate.isNewer(version, AppInfo.version);
+
+  /// Хватает ли данных, чтобы скачать, проверить и поставить релиз самим.
+  ///
+  /// ⚠️ ВСЁ ИЛИ НИЧЕГО. Нет хоть одного из пяти (прямой адрес, имя, размер,
+  /// манифест, подпись) — прежнее поведение «открыть страницу». И каждый адрес
+  /// обязан пройти [isUpdateUrlAllowed]: `http://` допустим только под
+  /// тестовым override, в боевом режиме — никогда.
+  bool get canSelfUpdate =>
+      downloadUrl != null &&
+      assetName != null &&
+      assetName!.isNotEmpty &&
+      manifestUrl != null &&
+      signatureUrl != null &&
+      (assetSize ?? 0) > 0 &&
+      isUpdateUrlAllowed(downloadUrl) &&
+      isUpdateUrlAllowed(manifestUrl) &&
+      isUpdateUrlAllowed(signatureUrl);
 }
 
 /// Чем кончилась проверка обновлений.
@@ -117,6 +155,31 @@ class AppUpdate {
   /// Страница для кнопки «Скачать», когда артефакта под платформу нет.
   static String get releasesPage => kGithubReleasesPage;
 
+  static bool _apiOverrideLoaded = false;
+
+  /// Android: подхватить тестовый override адреса API из
+  /// `<каталог данных>/update_api.txt` (см. [kUpdateApiEnvVar] в
+  /// `app_update_defaults.dart`). На Windows ничего не делает — там override
+  /// читается из окружения лениво. Идемпотентна; [check] и
+  /// [fetchReleaseHistory] зовут её сами, но звать раньше (на старте) тоже
+  /// можно — чтобы плашка «тестовый адрес» появилась до первой проверки.
+  static Future<void> loadApiOverride() async {
+    if (_apiOverrideLoaded || !Platform.isAndroid) return;
+    try {
+      final dir = await AppPaths.supportDir();
+      final base = loadUpdateApiOverrideFrom(dir.path);
+      _apiOverrideLoaded = true;
+      if (base != null) {
+        AppLog.i('Проверка обновлений: найден $kUpdateApiOverrideFileName — '
+            'адрес API подменён');
+      }
+    } catch (e) {
+      // Каталог данных не получен — override просто не включается, а проверка
+      // идёт на боевой адрес. Флаг не ставим: следующая проверка попробует снова.
+      AppLog.i('Override адреса обновлений не прочитан: $e');
+    }
+  }
+
   /// ⚠️ ДВА ИСТОЧНИКА, И ВТОРОЙ ЗАВЕДЁН НЕ ДЛЯ КРАСОТЫ.
   ///
   /// GitHub — основной: он не зависит от нашей панели и переживает её простой.
@@ -150,8 +213,13 @@ class AppUpdate {
     String? assetHint,
     bool beta = false,
   }) async {
+    await loadApiOverride();
     final hint = assetHint ?? kPlatformAssetHint;
     final fetch = fetcher ?? _fetch;
+    if (kUpdateApiOverridden) {
+      AppLog.i('Проверка обновлений: ТЕСТОВЫЙ адрес API (override), '
+          'http:// для закачки разрешён');
+    }
 
     final primary =
         beta ? await _tryGithubBeta(fetch, hint) : await _tryGithub(fetch, hint);
@@ -287,6 +355,7 @@ class AppUpdate {
     UpdateFetcher? fetcher,
     String? assetHint,
   }) async {
+    await loadApiOverride();
     final hint = assetHint ?? kPlatformAssetHint;
     final fetch = fetcher ?? _fetch;
     try {
@@ -311,11 +380,16 @@ class AppUpdate {
   /// ⚠️ `url` НЕ обязателен: релиз бывает собран под одну платформу. Тогда
   /// кнопка ведёт на страницу загрузок — версию мы всё равно узнали.
   /// ⚠️ И `url` обязан быть `https`: иначе кнопка «Скачать» повела бы человека
-  /// за установщиком по открытому каналу, где его можно подменить.
+  /// за установщиком по открытому каналу, где его можно подменить. Исключение
+  /// одно — тестовый override адреса API ([isUpdateUrlAllowed]).
   ///
   /// ⚠️ Необязательное поле `beta` (булево) либо `channel: "beta"` — признак
   /// канала. Умолчание `false`: старый ответ панели (ни того, ни другого
   /// поля нет) ведёт себя ровно как раньше, обратная совместимость полная.
+  ///
+  /// Необязательные поля САМООБНОВЛЕНИЯ: `asset` (точное имя файла), `size`
+  /// (байты), `manifest` и `sig` (адреса манифеста и подписи). Нет любого —
+  /// [AppRelease.canSelfUpdate] ложно, и остаётся прежняя кнопка-ссылка.
   static AppRelease? parsePanelRelease(String body) {
     final Object? j;
     try {
@@ -332,13 +406,39 @@ class AppUpdate {
     final page = '${j['page'] ?? ''}'.trim();
     final beta = j['beta'] == true ||
         '${j['channel'] ?? ''}'.trim().toLowerCase() == 'beta';
+    final asset = '${j['asset'] ?? ''}'.trim();
     return AppRelease(
       version: version,
-      downloadUrl: url.startsWith('https://') ? url : null,
+      downloadUrl: isUpdateUrlAllowed(url) ? url : null,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.startsWith('https://') ? page : kPanelDownloadsPage,
       isBeta: beta,
+      assetName: asset.isEmpty ? null : asset,
+      assetSize: _positiveInt(j['size']),
+      manifestUrl: _allowedUrl(j['manifest']),
+      signatureUrl: _allowedUrl(j['sig']),
     );
+  }
+
+  /// Адрес из ответа — если он проходит [isUpdateUrlAllowed], иначе `null`.
+  static String? _allowedUrl(Object? raw) {
+    final s = '${raw ?? ''}'.trim();
+    return isUpdateUrlAllowed(s) ? s : null;
+  }
+
+  /// Положительное целое из числа или строки; иначе `null`.
+  static int? _positiveInt(Object? raw) {
+    final int? v;
+    if (raw is int) {
+      v = raw;
+    } else if (raw is num && raw == raw.truncate()) {
+      v = raw.toInt();
+    } else if (raw is String) {
+      v = int.tryParse(raw.trim());
+    } else {
+      v = null;
+    }
+    return (v != null && v > 0) ? v : null;
   }
 
   /// Причина отказа по коду ответа — или `null`, если ответ годный.
@@ -430,17 +530,33 @@ class AppUpdate {
     final version = tag.replaceFirst(RegExp('^[vV]'), '').trim();
     if (version.isEmpty) return null;
 
-    String? asset;
+    String? assetUrl;
+    String? assetName;
+    int? assetSize;
+    String? manifestUrl;
+    String? signatureUrl;
+    // ⚠️ Манифест и подпись — по ТОЧНОМУ имени (тег без `v`, у бет полный:
+    // `SilentGate-1.14.1-beta.1.manifest.json`). Не `contains`: соседний
+    // `….manifest.json.bak` или манифест другой версии в том же релизе
+    // означали бы проверку подписи НЕ ТОГО файла.
+    final manifestName = manifestFileName(version);
+    final signatureName = signatureFileName(version);
     final assets = j['assets'];
     if (assets is List) {
       for (final a in assets) {
         if (a is! Map) continue;
-        final name = '${a['name'] ?? ''}';
-        if (!name.toLowerCase().contains(assetHint.toLowerCase())) continue;
+        final name = '${a['name'] ?? ''}'.trim();
         final url = '${a['browser_download_url'] ?? ''}'.trim();
-        if (url.isNotEmpty) {
-          asset = url;
-          break;
+        if (name.isEmpty || url.isEmpty) continue;
+        if (name == manifestName) {
+          manifestUrl ??= url;
+        } else if (name == signatureName) {
+          signatureUrl ??= url;
+        } else if (assetUrl == null &&
+            _assetMatches(name, assetHint, version)) {
+          assetUrl = url;
+          assetName = name;
+          assetSize = _positiveInt(a['size']);
         }
       }
     }
@@ -451,17 +567,47 @@ class AppUpdate {
     final published = DateTime.tryParse(publishedRaw);
     return AppRelease(
       version: version,
-      downloadUrl: asset,
+      downloadUrl: assetUrl,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.isEmpty ? kGithubReleasesPage : page,
       isBeta: j['prerelease'] == true,
       publishedAt: published,
+      assetName: assetName,
+      assetSize: assetSize,
+      manifestUrl: manifestUrl,
+      signatureUrl: signatureUrl,
     );
+  }
+
+  /// Подходит ли актив [name] под хвост платформы [hint].
+  ///
+  /// ⚠️ СРАВНЕНИЕ ПО ХВОСТУ ИМЕНИ БЕЗ ВЕРСИИ, а не `contains`. Прежний
+  /// `contains('Setup.exe')` НЕ находил настоящий установщик: Inno называет его
+  /// `SilentGateSetup-1.13.1.exe` — версия стоит между «Setup» и «.exe», и
+  /// кнопка на Windows всегда вела на страницу, а не на файл. Поэтому сперва
+  /// из имени вырезается `-<версия>`, затем хвост сравнивается `endsWith`:
+  /// * `SilentGateSetup-1.13.1.exe` → `SilentGateSetup.exe` ⊃ `Setup.exe`;
+  /// * `SilentGate-1.13.1-arm64-v8a.apk` → `…-arm64-v8a.apk`;
+  /// * `….apk.idsig`, `….zip`, x86_64 для телефона — не подходят.
+  /// Регистр не важен: имена файлов на странице релиза пишут руками.
+  static bool _assetMatches(String name, String hint, String version) {
+    final n = name.toLowerCase();
+    final h = hint.toLowerCase();
+    if (h.isEmpty) return false;
+    if (n.endsWith(h)) return true;
+    final v = version.toLowerCase();
+    if (v.isEmpty) return false;
+    return n.replaceAll('-$v', '').endsWith(h);
   }
 
   static Future<UpdateHttpResponse> _fetch(Uri url) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
+    // ⚠️ «Напрямую» ЗАДАЁТСЯ ЯВНО (идиома `core/probe/proxy_probe.dart`).
+    // Умолчание Dart берёт прокси из окружения (`http_proxy`/`all_proxy`), и
+    // проверка обновлений могла бы уйти через чужой прокси или через порт
+    // нашего же туннеля — и упасть вместе с ним, когда туннель лежит.
+    client.findProxy = (_) => 'DIRECT';
     try {
       final req = await client.getUrl(url);
       req.headers.set(HttpHeaders.userAgentHeader, AppInfo.userAgent);
