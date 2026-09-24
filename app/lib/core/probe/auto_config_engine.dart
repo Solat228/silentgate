@@ -536,8 +536,18 @@ class AutoConfigEngine {
   }
 
   /// Широкий набор вариаций для «умного подбора» по одному ключу: перебор fingerprint × fragment.
+  ///
+  /// ⚠️ 25.09.2026: `randomized` убран из перебора — подтверждённый баг ядра
+  /// (Xray-core #6714, закрыт 03.09.2026): этот отпечаток объявляет
+  /// `X25519MLKEM768` без ключа к нему, uTLS обрывает рукопожатие после
+  /// ЗАКОННОГО HelloRetryRequest сервера, и сервер становится недоступен для
+  /// процесса до перезапуска. В переборе это не «ещё один вариант», а
+  /// гарантированный отказ, который к тому же может испортить последующие
+  /// попытки с другими отпечатками в том же процессе (`docs/research/
+  /// MASKING.md` §3.5). В ручном редакторе сервера отпечаток оставлен — это
+  /// осознанный выбор владельца сервера, не автоматический перебор.
   static List<OutboundVariant> deepVariants() {
-    const fps = ['chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'randomized'];
+    const fps = ['chrome', 'firefox', 'safari', 'edge', 'ios', 'android'];
     final list = <OutboundVariant>[
       OutboundVariant.none,
       const OutboundVariant(fragment: true),

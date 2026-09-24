@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
@@ -230,6 +232,156 @@ void main() {
       expect(s.protocol, 'vless');
       expect(s.address, '1.2.3.4');
       expect(s.core, ProxyCore.xray);
+    });
+  });
+
+  group('XRAY_JSON: hysteria2 finalmask (Xray 26.3.27+, docs/research/MASKING.md §3.1)', () {
+    // Адреса — TEST-NET (RFC 5737), пароли выдуманные: тела ниже нигде не ходят
+    // в сеть, только разбираются локально.
+    Map<String, dynamic> node({
+      Map<String, dynamic>? hysteriaSettings,
+      Map<String, dynamic>? finalmask,
+      String finalmaskKey = 'finalmask',
+    }) =>
+        {
+          'remarks': 'Test Hy2',
+          'outbounds': [
+            {
+              'tag': 'proxy',
+              'protocol': 'hysteria',
+              'settings': {
+                'address': '203.0.113.10',
+                'port': 443,
+                'version': 2,
+              },
+              'streamSettings': {
+                'network': 'hysteria',
+                'hysteriaSettings': {
+                  'version': 2,
+                  'auth': 'fake-auth-token',
+                  ...?hysteriaSettings,
+                },
+                'security': 'tls',
+                'tlsSettings': {'serverName': '203.0.113.10'},
+                if (finalmask != null) finalmaskKey: finalmask,
+              },
+            },
+            {'tag': 'direct', 'protocol': 'freedom'},
+            {'tag': 'block', 'protocol': 'blackhole'},
+          ],
+        };
+
+    test('salamander из finalmask.udp доезжает до obfs (ключ finalmask)', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'salamander',
+            'settings': {'password': 'fake-mask-pass'},
+          },
+        ],
+      });
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.obfs, 'salamander');
+      expect(s.obfsPassword, 'fake-mask-pass');
+      final ob = SingboxOutboundFactory.build(s, tag: 'proxy');
+      expect((ob['obfs'] as Map)['type'], 'salamander');
+      expect((ob['obfs'] as Map)['password'], 'fake-mask-pass');
+    });
+
+    test('тот же результат при ключе finalMask (camelCase от панели)', () {
+      final cfg = node(
+        finalmaskKey: 'finalMask',
+        finalmask: {
+          'udp': [
+            {
+              'type': 'salamander',
+              'settings': {'password': 'fake-mask-pass-2'},
+            },
+          ],
+        },
+      );
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.obfs, 'salamander');
+      expect(s.obfsPassword, 'fake-mask-pass-2');
+    });
+
+    test('без finalmask legacy hysteriaSettings.obfs по-прежнему работает', () {
+      final cfg = node(hysteriaSettings: {
+        'obfs': {'type': 'salamander', 'password': 'legacy-pass'},
+      });
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.obfs, 'salamander');
+      expect(s.obfsPassword, 'legacy-pass');
+    });
+
+    test('при обоих сразу finalmask побеждает legacy', () {
+      final cfg = node(
+        hysteriaSettings: {
+          'obfs': {'type': 'salamander', 'password': 'legacy-pass'},
+        },
+        finalmask: {
+          'udp': [
+            {
+              'type': 'salamander',
+              'settings': {'password': 'finalmask-pass'},
+            },
+          ],
+        },
+      );
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.obfsPassword, 'finalmask-pass');
+    });
+
+    test('gecko (packetSize у salamander) — узел пропускается, не тихо без маски', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'salamander',
+            'settings': {'password': 'fake-mask-pass', 'packetSize': '1200-1500'},
+          },
+        ],
+      });
+      final servers = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]');
+      expect(servers, isEmpty);
+    });
+
+    test('неизвестный тип UDP-маски — узел пропускается, не тихо без маски', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'xdns',
+            'settings': {'domains': ['example.com']},
+          },
+        ],
+      });
+      final servers = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]');
+      expect(servers, isEmpty);
+    });
+
+    test('порт-хоппинг переезжает из finalmask.quicParams.udpHop.ports', () {
+      final cfg = node(
+        hysteriaSettings: {'hopPorts': '10000-11000'},
+        finalmask: {
+          'udp': [],
+          'quicParams': {
+            'udpHop': {'ports': '20000-21000'},
+          },
+        },
+      );
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.hopPorts, '20000-21000');
+    });
+
+    test('пустой finalmask.udp не мешает legacy-полям остаться как есть', () {
+      final cfg = node(
+        hysteriaSettings: {
+          'obfs': {'type': 'salamander', 'password': 'legacy-only'},
+        },
+        finalmask: {'udp': <Map<String, dynamic>>[]},
+      );
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.obfs, 'salamander');
+      expect(s.obfsPassword, 'legacy-only');
     });
   });
 }

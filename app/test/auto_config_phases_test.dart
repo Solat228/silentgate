@@ -275,4 +275,17 @@ void main() {
           .effectiveAutoConfigConcurrency, AppSettings.autoConfigConcurrencyMax);
     });
   });
+
+  group('Перебор отпечатков в автонастройке (docs/research/MASKING.md §3.5)', () {
+    test('randomized не участвует в переборе — подтверждённый баг Xray #6714', () {
+      final fps = AutoConfigEngine.deepVariants()
+          .map((v) => v.fingerprint)
+          .whereType<String>()
+          .toSet();
+      expect(fps, isNot(contains('randomized')));
+      // Остальные шесть отпечатков перебираются как раньше — баг не повод
+      // обеднять перебор целиком.
+      expect(fps, {'chrome', 'firefox', 'safari', 'edge', 'ios', 'android'});
+    });
+  });
 }

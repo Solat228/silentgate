@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/vpn_server.dart';
+import '../platform/app_log.dart';
 import '../util/key_migration.dart';
 
 /// Разбор подписки в формате **XRAY_JSON** — том, что Remnawave отдаёт Happ/v2rayNG.
@@ -433,6 +434,71 @@ class XrayJsonSubscription {
         settings['insecure'] == true ||
         hy['insecure'] == true;
 
+    // Обфускация, старая форма (Xray до 26.3.27): hysteriaSettings.obfs.
+    String? obfsType = _str((hy['obfs'] as Map?)?['type']) ?? _str(hy['obfs']);
+    String? obfsPassword =
+        _str((hy['obfs'] as Map?)?['password']) ?? _str(hy['obfsPassword']);
+    String? hopPorts = _str(hy['hopPorts']) ?? _str(hy['ports']);
+
+    // Обфускация, новая форма (Xray 26.3.27+, docs/research/MASKING.md §3.1):
+    // маска живёт не в hysteriaSettings.obfs, а в streamSettings.finalmask.udp —
+    // отдельном «последнем слое» поверх транспорта. Панель включит salamander —
+    // и без этого разбора наш hy2-узел молча подключался бы БЕЗ маски: сервер
+    // ждёт перемешанные ключом пароля пакеты и тихо выбросит обычный QUIC,
+    // никакой ошибки в журнале при этом не будет.
+    //
+    // Ключи ищем без учёта регистра: у Go на стороне ядра `encoding/json`
+    // матчит поле регистронезависимо, если точного совпадения нет (проверено
+    // исходником `infra/conf/transport_internet.go`), а как именно панель
+    // сериализует `finalMask`/`finalmask` — не подтверждено (MASKING.md §6).
+    final finalMask = _ciMap(stream, 'finalmask');
+    if (finalMask != null) {
+      final udpMasks = _ci(finalMask, 'udp');
+      if (udpMasks is List) {
+        for (final raw in udpMasks) {
+          if (raw is! Map) continue;
+          final mask = raw.cast<String, dynamic>();
+          final type = (_str(_ci(mask, 'type')) ?? '').toLowerCase();
+          final maskSettings = _ciMap(mask, 'settings') ?? const {};
+          if (type == 'salamander') {
+            // packetSize задан → Xray строит НЕ Salamander.Config, а
+            // GeckoConfig (infra/conf/transport_finalmask.go: Salamander.Build)
+            // — а gecko нет ни в одном нашем ядре (в sing-box вообще, у
+            // Windows-Xray тоже). Тихо подключаться без части маски, которую
+            // включила панель, нельзя — сервер её ждёт.
+            final packetSize = _ci(maskSettings, 'packetSize');
+            final hasPacketSize =
+                packetSize != null && '$packetSize'.trim().isNotEmpty;
+            final password = _str(_ci(maskSettings, 'password'));
+            if (hasPacketSize || password == null) {
+              AppLog.w('XRAY_JSON: hysteria2 "$remark" пропущен — '
+                  'finalmask.udp несёт неподдерживаемую форму salamander '
+                  '(${hasPacketSize ? 'gecko/packetSize' : 'пустой пароль'})');
+              return null;
+            }
+            // finalmask — более новая форма, побеждает legacy hysteriaSettings.obfs.
+            obfsType = 'salamander';
+            obfsPassword = password;
+          } else {
+            // Остальные UDP-маски (noise/sudoku/xdns/xicmp/realm/header-custom/
+            // mkcp-legacy) требуют ноды и ни один наш строитель для hysteria2
+            // их не собирает (MASKING.md §3.2) — молча подключаться без части
+            // маски, которую сервер ждёт, нельзя.
+            AppLog.w('XRAY_JSON: hysteria2 "$remark" пропущен — '
+                'finalmask.udp несёт неподдерживаемый тип маски "$type"');
+            return null;
+          }
+        }
+      }
+      // Порт-хоппинг переехал туда же: было hysteriaSettings.hopPorts/ports,
+      // стало finalmask.quicParams.udpHop.ports (infra/conf/transport_method.go
+      // `UdpHop`) — finalmask и здесь побеждает legacy-поле.
+      final quicParams = _ciMap(finalMask, 'quicParams');
+      final udpHop = _ciMap(quicParams, 'udpHop');
+      final hopPortsFm = _str(_ci(udpHop, 'ports'));
+      if (hopPortsFm != null) hopPorts = hopPortsFm;
+    }
+
     final base = VpnServer(
       protocol: 'hysteria2',
       remark: remark,
@@ -444,11 +510,10 @@ class XrayJsonSubscription {
       sni: _str(tls['serverName']) ?? _str(hy['server_name']),
       alpn: alpn,
       fingerprint: _str(tls['fingerprint']),
-      obfs: _str((hy['obfs'] as Map?)?['type']) ?? _str(hy['obfs']),
-      obfsPassword:
-          _str((hy['obfs'] as Map?)?['password']) ?? _str(hy['obfsPassword']),
+      obfs: obfsType,
+      obfsPassword: obfsPassword,
       allowInsecure: insecure,
-      hopPorts: _str(hy['hopPorts']) ?? _str(hy['ports']),
+      hopPorts: hopPorts,
       rawLink: '',
     );
     // Стабильный ключ — восстановленная hysteria2://-ссылка (переживает перезапуск,
@@ -460,5 +525,22 @@ class XrayJsonSubscription {
     if (v == null) return null;
     final s = '$v';
     return s.isEmpty ? null : s;
+  }
+
+  /// Значение по ключу без учёта регистра (см. комментарий у finalmask выше).
+  static Object? _ci(Map<String, dynamic>? m, String key) {
+    if (m == null) return null;
+    if (m.containsKey(key)) return m[key];
+    final lower = key.toLowerCase();
+    for (final k in m.keys) {
+      if (k.toLowerCase() == lower) return m[k];
+    }
+    return null;
+  }
+
+  /// То же, что [_ci], но сразу приводит результат к `Map<String, dynamic>`.
+  static Map<String, dynamic>? _ciMap(Map<String, dynamic>? m, String key) {
+    final v = _ci(m, key);
+    return v is Map ? v.cast<String, dynamic>() : null;
   }
 }
