@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "«{type}» maskeleme bu istemcide henüz desteklenmiyor",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "Bu sunucu bu istemcide henüz desteklenmiyor",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "Aşağıda teknik bilgiler var. Göndermeden önce gözden geçirin;",
   "reportTechNoticeLine2": "burada parola veya abonelik jetonu yoktur, abonelik URL'si gizlidir.",
   "noRealIpTitle": "Gerçek IP'mi asla kullanma",
-  "noRealIpSub": "VPN açıkken bile tüm «doğrudan» trafik VPN üzerinden gider (RU siteleri dahil). Yerel ağ doğrudan kalır.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Güncelleme aralığı, sa",
   "autoUpdatePreferSub": "Aralığı abonelikten al",
@@ -654,6 +660,7 @@
   "errInvalidJson": "Geçersiz JSON",
   "errPickServerFirst": "Önce bir sunucu seçin",
   "errImportSubscriptionFirst": "Önce bir abonelik içe aktarın",
+  "errServerUnsupported": "Bu sunucu bu istemci tarafından desteklenmiyor",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/sn",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "En az bir site kuralı varken uygulama tüm trafik için HTTP/3 (QUIC) kapatır. Aksi hâlde tarayıcı HTTP/3’e geçer, site adını bırakmaz ve kural sessizce çalışmaz. Siteler bozulmaz: sıradan TLS’e döner, yalnızca biraz yavaşlar.",
   "splitNoRealIpBanner": "«Gerçek IP’mi asla kullanma» açık: kutusu işaretsiz «Doğrudan» kuralları VPN üzerinden gider",
-  "settingsNoRealIpAffects": "«Doğrudan» kurallarını etkiler: «gerçek IP’ye izin ver» kutusu işaretsizse VPN üzerinden giderler",
   "splitAppOverrideSites": "Site kurallarından önceliklidir",
   "splitAppOverrideSitesSub": "Bir site kuralı aksini söylese bile uygulamanın tüm trafiği bu kurala uyar",
   "settingsMyRulesOverridePanel": "Kurallarım panel kurallarından öncelikli",
@@ -1061,7 +1067,7 @@
   "autoTimer": "Geçen süre {elapsed} · yaklaşık {remaining} kaldı",
   "autoTimerNoEstimate": "Geçen süre {elapsed}",
   "autoSpeedRanking": "Hız ölçülüyor: {name}",
-  "autoWarnNoRealIp": "«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.",
+  "autoWarnNoRealIp": "«Gerçek IP kullanılmasın» açık — «Doğrudan» kurallarınız VPN üzerinden gidiyor.",
   "autoWarnAllVpn": "«Her şey VPN üzerinden» kipi seçili — kurallarınız şu anda geçerli değil.",
   "autoWarnPanelOverride": "«Kurallarım panel kurallarından önceliklidir» açık.",
   "autoWarnProbesDirect": "Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler — çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.",

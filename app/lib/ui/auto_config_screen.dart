@@ -27,7 +27,11 @@ class AutoConfigScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final ctrl = context.watch<AutoConfigController>();
     final appState = context.watch<AppState>();
-    final servers = appState.servers;
+    // Неподдерживаемый сервер (маска, которую клиент не умеет собрать) —
+    // не кандидат для автонастройки: контроллер их и так отбросит (см.
+    // `AutoConfigController.start`), но список выбора не должен предлагать
+    // отметить то, что заведомо не даст результата.
+    final servers = appState.servers.where((s) => !s.isUnsupported).toList();
     final hasServers = appState.hasServers;
     // Найденные закрепляются сверху списка — если включена соответствующая настройка.
     final autoPin = context.watch<SettingsController>().settings.autoPinFound;
@@ -710,7 +714,9 @@ class _ServerPicker extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final state = context.watch<AppState>();
     final ctrl = context.watch<AutoConfigController>();
-    final servers = state.servers;
+    // Неподдерживаемый сервер сюда не попадает — см. пояснение у
+    // AutoConfigScreen.build, тот же фильтр.
+    final servers = state.servers.where((s) => !s.isUnsupported).toList();
     final sel = ctrl.selection;
     final running = ctrl.running;
     // Уже найденные связки — чтобы отметить их прямо в списке перебора.

@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "استتار «{type}» هنوز در این کلاینت پشتیبانی نمی‌شود",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "این سرور هنوز در این کلاینت پشتیبانی نمی‌شود",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "در ادامه اطلاعات فنی آمده است. پیش از ارسال آن را مرور کنید؛",
   "reportTechNoticeLine2": "هیچ رمز عبور یا توکن اشتراکی اینجا نیست و URL اشتراک پنهان است.",
   "noRealIpTitle": "هرگز از IP واقعی من استفاده نکن",
-  "noRealIpSub": "حتی با روشن بودن VPN، همه ترافیک «مستقیم» از VPN عبور می‌کند (سایت‌های RU هم). شبکه محلی مستقیم می‌ماند.",
   "flagAuto": "خودکار",
   "autoUpdateIntervalLabel": "فاصله به‌روزرسانی، ساعت",
   "autoUpdatePreferSub": "استفاده از فاصله از اشتراک",
@@ -654,6 +660,7 @@
   "errInvalidJson": "JSON نامعتبر",
   "errPickServerFirst": "ابتدا یک سرور انتخاب کنید",
   "errImportSubscriptionFirst": "ابتدا یک اشتراک وارد کنید",
+  "errServerUnsupported": "این سرور در این کلاینت پشتیبانی نمی‌شود",
   "speedSizeFull": "۲۰ مگابایت",
   "speedSizeLight": "۵ مگابایت",
   "speedMbPerSec": "{value} مگابایت/ثانیه",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "تا زمانی که دست‌کم یک قانون سایت وجود دارد، برنامه HTTP/3 (QUIC) را برای همهٔ ترافیک خاموش می‌کند. وگرنه مرورگر به HTTP/3 می‌رود، نام سایت را نمی‌گذارد و قانون بی‌صدا کار نمی‌کند. سایت‌ها خراب نمی‌شوند: به TLS معمولی برمی‌گردند، فقط اندکی کندتر.",
   "splitNoRealIpBanner": "«هرگز با IP واقعی من» روشن است: قوانین «مستقیم» بدون تیک از راه VPN می‌روند",
-  "settingsNoRealIpAffects": "بر قوانین «مستقیم» اثر دارد: بدون تیک «اجازهٔ IP واقعی» از راه VPN می‌روند",
   "splitAppOverrideSites": "بر قوانین سایت اولویت دارد",
   "splitAppOverrideSitesSub": "همهٔ ترافیک برنامه از این قانون پیروی می‌کند، حتی اگر قانون سایتی خلافش بگوید",
   "settingsMyRulesOverridePanel": "قوانین من مهم‌تر از قوانین پنل است",
@@ -1061,7 +1067,7 @@
   "autoTimer": "گذشته {elapsed} · حدود {remaining} مانده",
   "autoTimerNoEstimate": "گذشته {elapsed}",
   "autoSpeedRanking": "اندازه‌گیری سرعت: {name}",
-  "autoWarnNoRealIp": "گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و همهٔ ترافیک از VPN می‌گذرد.",
+  "autoWarnNoRealIp": "گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و قوانین «مستقیم» شما از VPN می‌گذرند.",
   "autoWarnAllVpn": "حالت «همه‌چیز از راه VPN» انتخاب شده و قاعده‌های شما فعلاً اثری ندارند.",
   "autoWarnPanelOverride": "گزینهٔ «قاعده‌های من بر قاعده‌های پنل مقدم است» روشن است.",
   "autoWarnProbesDirect": "این بر خود بررسی اثری ندارد: کاوش‌ها با هر تنظیمی از کنار VPN می‌گذرند. اما در حالت TUN از فرایند هسته عبور می‌کنند؛ اگر هسته گیر کرده باشد، همهٔ نتیجه‌ها منفی کاذب خواهند بود.",

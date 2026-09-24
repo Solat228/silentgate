@@ -332,7 +332,10 @@ void main() {
       expect(s.obfsPassword, 'finalmask-pass');
     });
 
-    test('gecko (packetSize у salamander) — узел пропускается, не тихо без маски', () {
+    // ⚠️ РЕШЕНИЕ ВЛАДЕЛЬЦА 25.09.2026: узел больше НЕ выбрасывается — скрытый
+    // сервер человек читает как «подписка потеряна». Остаётся в списке,
+    // помеченный `unsupportedReason`, не тихо без маски (её не собираем).
+    test('gecko (packetSize у salamander) — узел остаётся, но помечен неподдерживаемым', () {
       final cfg = node(finalmask: {
         'udp': [
           {
@@ -342,10 +345,16 @@ void main() {
         ],
       });
       final servers = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]');
-      expect(servers, isEmpty);
+      expect(servers, hasLength(1));
+      final s = servers.single;
+      expect(s.isUnsupported, isTrue);
+      expect(s.unsupportedReason, 'hy2_mask:gecko');
+      // Маску не собираем — сервер не должен выглядеть как «обфускация есть».
+      expect(s.obfs, isNull);
+      expect(s.obfsPassword, isNull);
     });
 
-    test('неизвестный тип UDP-маски — узел пропускается, не тихо без маски', () {
+    test('неизвестный тип UDP-маски — узел остаётся, но помечен неподдерживаемым', () {
       final cfg = node(finalmask: {
         'udp': [
           {
@@ -355,7 +364,59 @@ void main() {
         ],
       });
       final servers = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]');
-      expect(servers, isEmpty);
+      expect(servers, hasLength(1));
+      final s = servers.single;
+      expect(s.isUnsupported, isTrue);
+      expect(s.unsupportedReason, 'hy2_mask:xdns');
+      expect(s.obfs, isNull);
+    });
+
+    test('пустой пароль salamander (finalmask) — узел остаётся, но помечен неподдерживаемым', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'salamander',
+            'settings': <String, dynamic>{},
+          },
+        ],
+      });
+      final servers = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]');
+      expect(servers, hasLength(1));
+      final s = servers.single;
+      expect(s.isUnsupported, isTrue);
+      expect(s.unsupportedReason, 'hy2_mask:salamander');
+    });
+
+    test('обычный сервер isUnsupported == false', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'salamander',
+            'settings': {'password': 'fake-mask-pass'},
+          },
+        ],
+      });
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      expect(s.isUnsupported, isFalse);
+      expect(s.unsupportedReason, isNull);
+    });
+
+    test('ключ restoring — сервер после круга ссылка→разбор остаётся помеченным', () {
+      final cfg = node(finalmask: {
+        'udp': [
+          {
+            'type': 'xdns',
+            'settings': {'domains': ['example.com']},
+          },
+        ],
+      });
+      final s = XrayJsonSubscription.parse('[${jsonEncode(cfg)}]').single;
+      final link = s.buildShareLink();
+      expect(link, contains('unsupported=hy2_mask'));
+      final restored = ShareLinkParser.tryParse(link);
+      expect(restored, isNotNull);
+      expect(restored!.isUnsupported, isTrue);
+      expect(restored.unsupportedReason, 'hy2_mask:xdns');
     });
 
     test('порт-хоппинг переезжает из finalmask.quicParams.udpHop.ports', () {

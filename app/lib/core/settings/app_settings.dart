@@ -904,7 +904,7 @@ class AppSettings {
       ProbeService.telegram,
     },
     this.tryFragment = true,
-    this.fingerprints = const [kDefaultTlsFingerprint],
+    this.fingerprints = const [kDefaultTlsFingerprint, 'qq'],
     this.strategy = AutoConfigStrategy.firstMatch,
     this.autoConfigBudgetSec = 60,
     this.autoPinFound = true,
@@ -1395,7 +1395,8 @@ class AppSettings {
       autoConfigServices:
           services.isEmpty ? defaults.autoConfigServices : services,
       tryFragment: j['tryFragment'] as bool? ?? true,
-      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ?? const [kDefaultTlsFingerprint],
+      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ??
+          const [kDefaultTlsFingerprint, 'qq'],
       strategy: pick(AutoConfigStrategy.values, j['strategy'], AutoConfigStrategy.firstMatch),
       autoConfigBudgetSec: (j['autoConfigBudgetSec'] as num?)?.toInt() ?? 60,
       autoPinFound: j['autoPinFound'] as bool? ?? defaults.autoPinFound,

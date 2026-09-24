@@ -333,11 +333,18 @@ class ProbeController extends ChangeNotifier {
     _persist();
   }
 
+  /// ⚠️ ЕДИНСТВЕННАЯ ТОЧКА ФИЛЬТРА. Неподдерживаемый сервер (`isUnsupported`)
+  /// не пингуется НИ ОДНИМ вызывающим — фильтр здесь, а не в каждом месте
+  /// сборки списка (главный экран/экран серверов/переключатель подписки/
+  /// локальный API), иначе будущий новый вызывающий забудет о нём, как уже
+  /// не раз бывало с похожими гейтами в этом файле (см. CLAUDE.md 1.9.3).
   Future<void> pingAll(List<VpnServer> servers, AppSettings settings) =>
-      _pingBatch(servers, settings);
+      _pingBatch(servers.where((s) => !s.isUnsupported).toList(), settings);
 
-  Future<void> pingOne(VpnServer server, AppSettings settings) =>
-      _pingBatch([server], settings);
+  Future<void> pingOne(VpnServer server, AppSettings settings) {
+    if (server.isUnsupported) return Future.value();
+    return _pingBatch([server], settings);
+  }
 
   void cancel() => _cancel?.cancel();
 
@@ -463,13 +470,19 @@ class ProbeController extends ChangeNotifier {
   }
 
   /// Замер одного сервера — пункт контекстного меню строки.
-  Future<void> measureSpeedOne(VpnServer server, AppSettings settings) =>
-      _measureSpeeds([server], settings, force: true);
+  Future<void> measureSpeedOne(VpnServer server, AppSettings settings) {
+    if (server.isUnsupported) return Future.value();
+    return _measureSpeeds([server], settings, force: true);
+  }
 
   /// Прогон по списку. Вызывающий ОБЯЗАН спросить подтверждение и назвать
   /// объём: 101 сервер × 5–20 МБ — это до двух гигабайт подписки.
+  ///
+  /// Неподдерживаемый сервер сюда не идёт — тот же фильтр, что у `pingAll`.
   Future<void> measureSpeedAll(List<VpnServer> servers, AppSettings settings) =>
-      _measureSpeeds(servers, settings, force: false);
+      _measureSpeeds(
+          servers.where((s) => !s.isUnsupported).toList(), settings,
+          force: false);
 
   void cancelSpeed() => _speedCancel?.cancel();
 

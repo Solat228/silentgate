@@ -1473,6 +1473,15 @@ class AppLocalizationsAr extends AppLocalizations {
       'The last subscription update changed this server\'s record';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'التمويه «$type» غير مدعوم في هذا العميل حتى الآن';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'هذا الخادم غير مدعوم في هذا العميل حتى الآن';
+
+  @override
   String get srvFieldId => 'ID / password';
 
   @override
@@ -1929,10 +1938,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noRealIpTitle => 'لا تستخدم عنوان IP الحقيقي أبدًا';
 
   @override
-  String get noRealIpSub =>
-      'حتى مع تشغيل VPN، تمر كل حركة المرور «المباشرة» عبر VPN (بما في ذلك مواقع RU). تبقى الشبكة المحلية مباشرة.';
-
-  @override
   String get flagAuto => 'تلقائي';
 
   @override
@@ -2060,6 +2065,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'استورد اشتراكًا أولاً';
+
+  @override
+  String get errServerUnsupported => 'هذا الخادم غير مدعوم في هذا العميل';
 
   @override
   String get speedSizeFull => '20 ميغابايت';
@@ -2311,10 +2319,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«لا تستخدم عنواني الحقيقي» مُفعَّل: قواعد «مباشر» بلا علامة تمر عبر VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'يؤثر على قواعد «مباشر»: بدون خيار «السماح بالعنوان الحقيقي» ستمر عبر VPN';
 
   @override
   String get splitAppOverrideSites => 'أولوية على قواعد المواقع';
@@ -2794,7 +2798,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      'خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وكل البيانات تمر عبر VPN.';
+      'خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وقواعد «مباشر» لديك تمر عبر VPN.';
 
   @override
   String get autoWarnAllVpn =>

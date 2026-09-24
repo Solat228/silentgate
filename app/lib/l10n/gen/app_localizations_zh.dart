@@ -1449,6 +1449,14 @@ class AppLocalizationsZh extends AppLocalizations {
       'The last subscription update changed this server\'s record';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return '此客户端暂不支持「$type」混淆';
+  }
+
+  @override
+  String get serverUnsupportedGeneric => '此客户端暂不支持该服务器';
+
+  @override
   String get srvFieldId => 'ID / password';
 
   @override
@@ -1895,9 +1903,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noRealIpTitle => '绝不使用真实 IP';
 
   @override
-  String get noRealIpSub => '即使 VPN 已连接，所有“直连”流量也走 VPN（包括 RU 网站）。本地网络保持直连。';
-
-  @override
   String get flagAuto => '自动';
 
   @override
@@ -2018,6 +2023,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => '请先导入订阅';
+
+  @override
+  String get errServerUnsupported => '客户端不支持此服务器';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2256,9 +2264,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitNoRealIpBanner => '“绝不使用真实 IP”已开启：未勾选的“直连”规则将走 VPN';
-
-  @override
-  String get settingsNoRealIpAffects => '影响“直连”规则：未勾选“允许真实 IP”时它们会走 VPN';
 
   @override
   String get splitAppOverrideSites => '优先于网站规则';
@@ -2717,7 +2722,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get autoWarnNoRealIp => '已开启“不暴露真实 IP”，全部流量都走 VPN。';
+  String get autoWarnNoRealIp => '已开启“不暴露真实 IP”，你的“直连”规则会走 VPN。';
 
   @override
   String get autoWarnAllVpn => '当前为“全部走 VPN”模式，您的规则暂时不生效。';

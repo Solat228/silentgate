@@ -440,6 +440,13 @@ class XrayJsonSubscription {
         _str((hy['obfs'] as Map?)?['password']) ?? _str(hy['obfsPassword']);
     String? hopPorts = _str(hy['hopPorts']) ?? _str(hy['ports']);
 
+    // Код причины, по которой клиент не умеет поднять узел (см.
+    // `VpnServer.unsupportedReason`). Сервер при этом НЕ выбрасывается —
+    // решение владельца 25.09.2026: скрытый узел читается как «подписка
+    // потеряна», а не как «клиент чего-то не умеет». Остаётся в списке
+    // серым, с пояснением, без возможности подключиться/пинговать.
+    String? unsupportedReason;
+
     // Обфускация, новая форма (Xray 26.3.27+, docs/research/MASKING.md §3.1):
     // маска живёт не в hysteriaSettings.obfs, а в streamSettings.finalmask.udp —
     // отдельном «последнем слое» поверх транспорта. Панель включит salamander —
@@ -471,22 +478,26 @@ class XrayJsonSubscription {
                 packetSize != null && '$packetSize'.trim().isNotEmpty;
             final password = _str(_ci(maskSettings, 'password'));
             if (hasPacketSize || password == null) {
-              AppLog.w('XRAY_JSON: hysteria2 "$remark" пропущен — '
-                  'finalmask.udp несёт неподдерживаемую форму salamander '
-                  '(${hasPacketSize ? 'gecko/packetSize' : 'пустой пароль'})');
-              return null;
+              final why = hasPacketSize ? 'gecko/packetSize' : 'пустой пароль';
+              AppLog.w('XRAY_JSON: hysteria2 "$remark" помечен как '
+                  'неподдерживаемый — finalmask.udp несёт неподдерживаемую '
+                  'форму salamander ($why)');
+              unsupportedReason =
+                  'hy2_mask:${hasPacketSize ? 'gecko' : 'salamander'}';
+            } else {
+              // finalmask — более новая форма, побеждает legacy hysteriaSettings.obfs.
+              obfsType = 'salamander';
+              obfsPassword = password;
             }
-            // finalmask — более новая форма, побеждает legacy hysteriaSettings.obfs.
-            obfsType = 'salamander';
-            obfsPassword = password;
           } else {
             // Остальные UDP-маски (noise/sudoku/xdns/xicmp/realm/header-custom/
             // mkcp-legacy) требуют ноды и ни один наш строитель для hysteria2
             // их не собирает (MASKING.md §3.2) — молча подключаться без части
             // маски, которую сервер ждёт, нельзя.
-            AppLog.w('XRAY_JSON: hysteria2 "$remark" пропущен — '
-                'finalmask.udp несёт неподдерживаемый тип маски "$type"');
-            return null;
+            AppLog.w('XRAY_JSON: hysteria2 "$remark" помечен как '
+                'неподдерживаемый — finalmask.udp несёт неподдерживаемый '
+                'тип маски "$type"');
+            unsupportedReason = 'hy2_mask:$type';
           }
         }
       }
@@ -515,6 +526,7 @@ class XrayJsonSubscription {
       allowInsecure: insecure,
       hopPorts: hopPorts,
       rawLink: '',
+      unsupportedReason: unsupportedReason,
     );
     // Стабильный ключ — восстановленная hysteria2://-ссылка (переживает перезапуск,
     // совместима с пинами/override).

@@ -83,6 +83,23 @@ class VpnServer {
   /// Профиль-автовыбор от панели (готовый balancer/burstObservatory).
   bool get isPanelProfile => (rawPanelConfig ?? '').isNotEmpty;
 
+  /// Почему клиент не умеет поднять этот сервер — машиночитаемый код,
+  /// НЕ переводится (см. `unsupportedServerNote` в `core/i18n/enum_labels.dart`
+  /// для локализованного текста). `null` — сервер обычный.
+  ///
+  /// ⚠️ РЕШЕНИЕ ВЛАДЕЛЬЦА 25.09.2026: скрытый сервер пользователь читает как
+  /// «подписка потеряна» — раньше такие узлы (например, hysteria2 с маской
+  /// `finalmask.udp`, которую ни одно наше ядро не строит: salamander/gecko,
+  /// noise/sudoku/xdns/…) молча выбрасывались парсером. Теперь сервер
+  /// остаётся в списке, серым, с пояснением, а не пропадает.
+  final String? unsupportedReason;
+
+  /// Есть ли причина не подключаться. Такой сервер нельзя выбрать для
+  /// подключения, пинговать, автонастраивать или брать в отдельный выход —
+  /// см. точки проверки: `AppState.selectServer`/`toggleConnection`/
+  /// `connectAuto`, `core/singbox/exit_outbounds.dart` (`exitServerRejection`).
+  bool get isUnsupported => (unsupportedReason ?? '').isNotEmpty;
+
   /// «Служебный» сервер-заглушка: панель Remnawave при истёкшей подписке
   /// возвращает фейковые серверы с адресом `0.0.0.0:1`, а в имени — сообщения
   /// («После оплаты нажмите…», «Ваша подписка истекла!»). Подключаться к ним
@@ -123,6 +140,7 @@ class VpnServer {
     this.rawJsonOverride,
     this.rawOutboundJson,
     this.rawPanelConfig,
+    this.unsupportedReason,
   });
 
   /// Стабильный ключ для карт результатов (пинг, автонастройка).
@@ -266,6 +284,7 @@ class VpnServer {
     String? rawJsonOverride,
     String? rawOutboundJson,
     String? rawPanelConfig,
+    String? unsupportedReason,
 
     /// Сбросить конфиги, пришедшие от панели. Нужно при РУЧНОЙ правке полей:
     /// [XrayOutboundFactory] отдаёт приоритет outbound'у панели, поэтому иначе
@@ -305,6 +324,7 @@ class VpnServer {
           clearPanelConfigs ? null : (rawOutboundJson ?? this.rawOutboundJson),
       rawPanelConfig:
           clearPanelConfigs ? null : (rawPanelConfig ?? this.rawPanelConfig),
+      unsupportedReason: unsupportedReason ?? this.unsupportedReason,
     );
   }
 
@@ -341,6 +361,11 @@ class VpnServer {
       // сервера меняется сам по себе при каждом чтении с диска.
       add('fp', fingerprint);
       if (allowInsecure) q['insecure'] = '1';
+      // ⚠️ ОБЯЗАН ПЕРЕЖИТЬ ПЕРЕЗАПУСК. Ссылка — единственное, что остаётся на
+      // диске (`subscriptions.json`); без этого поля восстановленный сервер
+      // (`ShareLinkParser.tryParse`) терял бы `unsupportedReason` и после
+      // рестарта считался бы обычным — молча подключался бы без части маски.
+      add('unsupported', unsupportedReason);
       final query = q.entries
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
           .join('&');

@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Server aktualisiert",
   "srvTileUpdatedFields": "Bei der letzten Abo-Aktualisierung geändert: {fields}",
   "srvTileUpdatedGeneric": "Die letzte Abo-Aktualisierung hat den Eintrag dieses Servers geändert",
+  "serverUnsupportedHy2Mask": "Die Maskierung „{type}“ wird von diesem Client noch nicht unterstützt",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "Dieser Server wird von diesem Client noch nicht unterstützt",
   "srvFieldId": "ID / Passwort",
   "srvFieldEncryption": "Verschlüsselung",
   "srvFieldSecurity": "Verbindungssicherheit",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "Nachfolgend technische Informationen. Prüfen Sie sie vor dem Senden;",
   "reportTechNoticeLine2": "hier gibt es keine Passwörter oder Abonnement-Token, die Abonnement-URL ist verborgen.",
   "noRealIpTitle": "Nie meine echte IP verwenden",
-  "noRealIpSub": "Auch bei aktivem VPN läuft der gesamte „direkte“ Verkehr über das VPN (auch RU-Seiten). Das lokale Netzwerk bleibt direkt.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Aktualisierungsintervall, Std.",
   "autoUpdatePreferSub": "Intervall aus dem Abo verwenden",
@@ -654,6 +660,7 @@
   "errInvalidJson": "Ungültiges JSON",
   "errPickServerFirst": "Wählen Sie zuerst einen Server",
   "errImportSubscriptionFirst": "Importieren Sie zuerst ein Abonnement",
+  "errServerUnsupported": "Dieser Server wird von diesem Client nicht unterstützt",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "Solange mindestens eine Site-Regel existiert, deaktiviert die App HTTP/3 (QUIC) für den gesamten Verkehr. Sonst wechselt der Browser zu HTTP/3, hinterlässt keinen Site-Namen und die Regel greift stillschweigend nicht. Seiten funktionieren weiter: Sie fallen auf normales TLS zurück, nur etwas langsamer.",
   "splitNoRealIpBanner": "„Nie mit echter IP“ ist aktiv: „Direkt“-Regeln ohne Häkchen laufen über das VPN",
-  "settingsNoRealIpAffects": "Betrifft „Direkt“-Regeln: ohne Häkchen „echte IP erlauben“ laufen sie über das VPN",
   "splitAppOverrideSites": "Hat Vorrang vor Site-Regeln",
   "splitAppOverrideSitesSub": "Der gesamte App-Verkehr folgt dieser Regel, auch wenn eine Site-Regel anderes sagt",
   "settingsMyRulesOverridePanel": "Meine Regeln haben Vorrang vor Panel-Regeln",
@@ -1061,7 +1067,7 @@
   "autoTimer": "Vergangen {elapsed} · noch etwa {remaining}",
   "autoTimerNoEstimate": "Vergangen {elapsed}",
   "autoSpeedRanking": "Geschwindigkeit wird gemessen: {name}",
-  "autoWarnNoRealIp": "„Echte IP nie verwenden“ ist aktiv – der gesamte Verkehr läuft über das VPN.",
+  "autoWarnNoRealIp": "„Echte IP nie verwenden“ ist aktiv – Ihre „Direkt“-Regeln laufen über das VPN.",
   "autoWarnAllVpn": "Der Modus „Alles über VPN“ ist gewählt – Ihre Regeln greifen im Moment nicht.",
   "autoWarnPanelOverride": "„Meine Regeln haben Vorrang vor den Panel-Regeln“ ist aktiv.",
   "autoWarnProbesDirect": "Auf die Prüfung selbst hat das keinen Einfluss: Die Tests laufen bei jeder Einstellung am VPN vorbei. Im TUN-Modus laufen sie jedoch über den Kernprozess – hängt der Kern, sind alle Ergebnisse falsch negativ.",

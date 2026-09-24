@@ -1494,6 +1494,15 @@ class AppLocalizationsPt extends AppLocalizations {
       'A última atualização da assinatura alterou o registro deste servidor';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'A mascaração «$type» ainda não é suportada por este cliente';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Este servidor ainda não é suportado por este cliente';
+
+  @override
   String get srvFieldId => 'ID / senha';
 
   @override
@@ -1958,10 +1967,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get noRealIpTitle => 'Nunca usar meu IP real';
 
   @override
-  String get noRealIpSub =>
-      'Mesmo com a VPN ativa, todo o tráfego «direto» passa pela VPN (sites RU também). A rede local continua direta.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2087,6 +2092,10 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Importe uma assinatura primeiro';
+
+  @override
+  String get errServerUnsupported =>
+      'Este servidor não é suportado por este cliente';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2340,10 +2349,6 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«Nunca usar meu IP real» está ligado: regras «Direto» sem a caixa marcada vão pela VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Afeta as regras «Direto»: sem a caixa «permitir IP real» elas vão pela VPN';
 
   @override
   String get splitAppOverrideSites => 'Tem prioridade sobre regras de sites';
@@ -2832,7 +2837,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '«Nunca usar o IP real» está ativado — todo o tráfego passa pela VPN.';
+      '«Nunca usar o IP real» está ativado — suas regras «Direto» passam pela VPN.';
 
   @override
   String get autoWarnAllVpn =>

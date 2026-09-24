@@ -562,6 +562,13 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "The \"{type}\" masking is not supported by this client yet",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "This server is not supported by this client yet",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -706,7 +713,6 @@
   "reportTechNoticeLine1": "Below is technical information. Review it before sending;",
   "reportTechNoticeLine2": "there are no passwords or subscription token here, the subscription URL is hidden.",
   "noRealIpTitle": "Never use my real IP",
-  "noRealIpSub": "Even with the VPN up, all “direct” traffic goes through the VPN (RU sites too). The local network stays direct.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Update interval, h",
   "autoUpdatePreferSub": "Use the interval from the subscription",
@@ -743,6 +749,7 @@
   "errInvalidJson": "Invalid JSON",
   "errPickServerFirst": "Select a server first",
   "errImportSubscriptionFirst": "Import a subscription first",
+  "errServerUnsupported": "This server is not supported by this client",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
@@ -896,7 +903,6 @@
   },
   "splitQuicNote": "While at least one site rule exists, the app disables HTTP/3 (QUIC) for all traffic. Otherwise the browser switches to HTTP/3, leaves no site name, and the rule silently fails — traffic bypasses it. Sites keep working: they fall back to regular TLS, just slightly slower.",
   "splitNoRealIpBanner": "“Never use my real IP” is on: “Direct” rules without the real-IP checkbox go through the VPN",
-  "settingsNoRealIpAffects": "Affects “Direct” rules: without the “allow real IP” checkbox they go through the VPN",
   "splitAppOverrideSites": "Takes priority over site rules",
   "splitAppOverrideSitesSub": "All app traffic follows this rule even if a site rule says otherwise",
   "settingsMyRulesOverridePanel": "My rules take priority over panel rules",
@@ -1181,7 +1187,7 @@
       }
     }
   },
-  "autoWarnNoRealIp": "“Never use the real IP” is on — all traffic goes through the VPN.",
+  "autoWarnNoRealIp": "“Never use the real IP” is on — your “Direct” rules go through the VPN.",
   "autoWarnAllVpn": "“Everything through VPN” mode is selected — your rules are not in effect right now.",
   "autoWarnPanelOverride": "“My rules override the panel's rules” is on.",
   "autoWarnProbesDirect": "This does not affect the check itself: probes bypass the VPN under any settings. But in TUN mode they still go through the core process — if the core has hung, every result will be a false negative.",

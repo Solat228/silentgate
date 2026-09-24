@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Servidor atualizado",
   "srvTileUpdatedFields": "Alterado na última atualização da assinatura: {fields}",
   "srvTileUpdatedGeneric": "A última atualização da assinatura alterou o registro deste servidor",
+  "serverUnsupportedHy2Mask": "A mascaração «{type}» ainda não é suportada por este cliente",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "Este servidor ainda não é suportado por este cliente",
   "srvFieldId": "ID / senha",
   "srvFieldEncryption": "Criptografia",
   "srvFieldSecurity": "Segurança da conexão",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "Abaixo estão as informações técnicas. Revise-as antes de enviar;",
   "reportTechNoticeLine2": "não há senhas ou token de assinatura aqui, e a URL da assinatura está oculta.",
   "noRealIpTitle": "Nunca usar meu IP real",
-  "noRealIpSub": "Mesmo com a VPN ativa, todo o tráfego «direto» passa pela VPN (sites RU também). A rede local continua direta.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Intervalo de atualização, h",
   "autoUpdatePreferSub": "Usar o intervalo da assinatura",
@@ -654,6 +660,7 @@
   "errInvalidJson": "JSON inválido",
   "errPickServerFirst": "Selecione um servidor primeiro",
   "errImportSubscriptionFirst": "Importe uma assinatura primeiro",
+  "errServerUnsupported": "Este servidor não é suportado por este cliente",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "Enquanto houver ao menos uma regra de site, o aplicativo desativa HTTP/3 (QUIC) para todo o tráfego. Caso contrário, o navegador passa a HTTP/3, não deixa o nome do site e a regra falha em silêncio. Os sites continuam funcionando: voltam ao TLS comum, apenas um pouco mais lentos.",
   "splitNoRealIpBanner": "«Nunca usar meu IP real» está ligado: regras «Direto» sem a caixa marcada vão pela VPN",
-  "settingsNoRealIpAffects": "Afeta as regras «Direto»: sem a caixa «permitir IP real» elas vão pela VPN",
   "splitAppOverrideSites": "Tem prioridade sobre regras de sites",
   "splitAppOverrideSitesSub": "Todo o tráfego do aplicativo segue esta regra mesmo se um site disser o contrário",
   "settingsMyRulesOverridePanel": "Minhas regras têm prioridade sobre as do painel",
@@ -1061,7 +1067,7 @@
   "autoTimer": "Decorrido {elapsed} · faltam cerca de {remaining}",
   "autoTimerNoEstimate": "Decorrido {elapsed}",
   "autoSpeedRanking": "Medindo a velocidade: {name}",
-  "autoWarnNoRealIp": "«Nunca usar o IP real» está ativado — todo o tráfego passa pela VPN.",
+  "autoWarnNoRealIp": "«Nunca usar o IP real» está ativado — suas regras «Direto» passam pela VPN.",
   "autoWarnAllVpn": "O modo «Tudo pela VPN» está selecionado — suas regras não estão em vigor agora.",
   "autoWarnPanelOverride": "«Minhas regras têm prioridade sobre as do painel» está ativado.",
   "autoWarnProbesDirect": "Isso não afeta a verificação em si: as sondagens contornam a VPN em qualquer configuração. Mas no modo TUN elas passam pelo processo do núcleo — se o núcleo travou, todos os resultados serão falsos negativos.",

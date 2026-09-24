@@ -107,6 +107,14 @@ class ServerTile extends StatelessWidget {
     // не подключаемся — показываем сообщение и кнопку «Обновить».
     if (server.isNotice) return _noticeTile(context, state);
     final l = AppLocalizations.of(context);
+    // Сервер сам не умеет подключиться (например, hysteria2 с маской, которую
+    // не строит ни одно наше ядро) — причина СВОЯ и побеждает то, что передал
+    // вызывающий код: непригодность вызывающего смысла (например, «не годится
+    // в отдельный выход») здесь уже не важна, сервер не годится вообще ни для
+    // чего. Решение владельца 25.09.2026 — не выбрасывать такой сервер из
+    // списка, а показать серым с пояснением (см. VpnServer.unsupportedReason).
+    final effectiveNote =
+        server.isUnsupported ? unsupportedServerNote(l, server) : unavailableNote;
     // ⚠️ ФЛАГИ В ИМЕНИ НЕ СРЕЗАЕМ — требование владельца 02.09.2026.
     // Панель шлёт их осмысленно («🇷🇺→🇩🇪 Москва → Германия (мост)»):
     // в ячейке слева видно направление, а в имени — что именно за
@@ -225,8 +233,8 @@ class ServerTile extends StatelessWidget {
           // подсказка: текст абзацем, и подсказка накрыла бы соседнюю строку
           // списка (см. tooltipTheme в app.dart). Плюс на тач-экране hover'а
           // нет вовсе, а долгое нажатие занято контекстным меню.
-          if (unavailableNote != null)
-            InfoTooltip(unavailableNote!,
+          if (effectiveNote != null)
+            InfoTooltip(effectiveNote,
                 title: server.displayName, compact: true),
         ]),
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
@@ -313,11 +321,16 @@ class ServerTile extends StatelessWidget {
     // с отступом внутрь. Высота здесь — не косметика, по ней считается
     // прокрутка к выбранному серверу в home_screen.
     final outlined = SelectionOutline(selected: selected, inset: 2, child: tile);
-    if (unavailableNote == null) return outlined;
+    if (effectiveNote == null) return outlined;
     // Непригодный сервер ПРИГЛУШАЕМ, но не выключаем: выбрать его по-прежнему
     // можно (решение владельца от 07.08.2026 — предупреждать, а не запрещать),
     // а выглядеть как рабочий он не должен. `Opacity` не перехватывает
     // нажатия, поэтому и строка, и «!» рядом с именем остаются рабочими.
+    //
+    // ⚠️ ИСКЛЮЧЕНИЕ — `server.isUnsupported`: там нажатие всё-таки перехвачено
+    // (см. `onTap`/меню ниже) — «предупреждать, а не запрещать» относится к
+    // ОБЫЧНОЙ непригодности (например, для отдельного выхода), а не к серверу,
+    // который клиент не умеет собрать вообще ни в каком качестве.
     return Opacity(opacity: 0.55, child: outlined);
   }
 
@@ -389,13 +402,19 @@ class ServerTile extends StatelessWidget {
     final navigator = Navigator.of(context);
     final pinned = state.isPinned(server);
 
+    // ⚠️ `showMenu` жёстко ограничивает ширину пункта 280 px (5 шагов по
+    // 56 — Material-константа `_kMenuMaxWidth`, НЕ зависит от места клика и
+    // размера окна). Длинный текст («Умный подбор параметров») превышал её
+    // и ронял `RenderFlex` переполнением — не визуальный дефект, а
+    // исключение, валящее кадр. `Flexible` + многоточие вместо жёсткого
+    // краша.
     PopupMenuItem<String> item(String value, IconData icon, String text) =>
         PopupMenuItem(
           value: value,
           child: Row(children: [
             Icon(icon, size: 18),
             const SizedBox(width: 12),
-            Text(text),
+            Flexible(child: Text(text, overflow: TextOverflow.ellipsis)),
           ]),
         );
 
@@ -404,13 +423,20 @@ class ServerTile extends StatelessWidget {
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
       items: [
         item('info', Icons.info_outline, l.srvTileInfo),
-        item('ping', Icons.network_check, l.srvTilePing),
-        item('speed', Icons.speed, l.srvTileMeasureSpeed),
+        // ⚠️ Пинг/скорость/автонастройка требуют живого подключения к серверу —
+        // у неподдерживаемого его нет и не будет: пункты бы просто молчали или
+        // ходили без маски, которую ждёт сервер. Прячем, а не гасим — гашёный
+        // пункт меню тут не даёт понять, почему он не работает.
+        if (!server.isUnsupported)
+          item('ping', Icons.network_check, l.srvTilePing),
+        if (!server.isUnsupported)
+          item('speed', Icons.speed, l.srvTileMeasureSpeed),
         item('pin', pinned ? Icons.push_pin_outlined : Icons.push_pin,
             pinned ? l.srvTileUnpin : l.srvTilePin),
         item('json', Icons.data_object, l.srvTileJsonConfig),
         item('copyKey', Icons.content_copy, l.srvTileCopyKey),
-        item('smart', Icons.auto_fix_high, l.srvTileSmart),
+        if (!server.isUnsupported)
+          item('smart', Icons.auto_fix_high, l.srvTileSmart),
         item('edit', Icons.edit, l.srvTileEdit),
         item('delete', Icons.delete_outline, l.srvTileDelete),
       ],

@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Serveur mis à jour",
   "srvTileUpdatedFields": "Modifié lors de la dernière mise à jour de l'abonnement : {fields}",
   "srvTileUpdatedGeneric": "La dernière mise à jour de l'abonnement a modifié la fiche de ce serveur",
+  "serverUnsupportedHy2Mask": "Le masquage « {type} » n'est pas encore pris en charge par ce client",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "Ce serveur n'est pas encore pris en charge par ce client",
   "srvFieldId": "ID / mot de passe",
   "srvFieldEncryption": "Chiffrement",
   "srvFieldSecurity": "Sécurité de connexion",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "Ci-dessous, des informations techniques. Vérifiez-les avant l'envoi ;",
   "reportTechNoticeLine2": "il n'y a ici ni mot de passe ni jeton d'abonnement, l'URL d'abonnement est masquée.",
   "noRealIpTitle": "Ne jamais utiliser ma vraie IP",
-  "noRealIpSub": "Même avec le VPN actif, tout le trafic « direct » passe par le VPN (sites RU compris). Le réseau local reste direct.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Intervalle de mise à jour, h",
   "autoUpdatePreferSub": "Utiliser l'intervalle de l'abonnement",
@@ -654,6 +660,7 @@
   "errInvalidJson": "JSON non valide",
   "errPickServerFirst": "Sélectionnez d’abord un serveur",
   "errImportSubscriptionFirst": "Importez d’abord un abonnement",
+  "errServerUnsupported": "Ce serveur n'est pas pris en charge par ce client",
   "speedSizeFull": "20 Mo",
   "speedSizeLight": "5 Mo",
   "speedMbPerSec": "{value} Mo/s",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "Tant qu'il existe au moins une règle de site, l'application désactive HTTP/3 (QUIC) pour tout le trafic. Sinon le navigateur passe en HTTP/3, ne laisse pas le nom du site et la règle échoue silencieusement. Les sites continuent de fonctionner : ils reviennent au TLS classique, un peu plus lentement.",
   "splitNoRealIpBanner": "« Ne jamais utiliser mon IP réelle » est actif : les règles « Direct » sans la case cochée passent par le VPN",
-  "settingsNoRealIpAffects": "Concerne les règles « Direct » : sans la case « autoriser l’IP réelle », elles passent par le VPN",
   "splitAppOverrideSites": "Prioritaire sur les règles de sites",
   "splitAppOverrideSitesSub": "Tout le trafic de l’application suit cette règle, même si un site indique le contraire",
   "settingsMyRulesOverridePanel": "Mes règles priment sur celles du panneau",
@@ -1061,7 +1067,7 @@
   "autoTimer": "Écoulé {elapsed} · il reste environ {remaining}",
   "autoTimerNoEstimate": "Écoulé {elapsed}",
   "autoSpeedRanking": "Mesure du débit : {name}",
-  "autoWarnNoRealIp": "« Ne jamais utiliser l'IP réelle » est activé : tout le trafic passe par le VPN.",
+  "autoWarnNoRealIp": "« Ne jamais utiliser l'IP réelle » est activé : vos règles « Direct » passent par le VPN.",
   "autoWarnAllVpn": "Le mode « Tout par le VPN » est sélectionné : vos règles ne s'appliquent pas pour le moment.",
   "autoWarnPanelOverride": "« Mes règles priment sur celles du panneau » est activé.",
   "autoWarnProbesDirect": "Cela n'influence pas la vérification elle-même : les sondes contournent le VPN quels que soient les réglages. Mais en mode TUN elles passent par le processus du cœur — si celui-ci est bloqué, tous les résultats seront des faux négatifs.",

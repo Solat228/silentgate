@@ -52,7 +52,7 @@ class _ServerEditorDialogState extends State<ServerEditorDialog> {
   static const _securities = ['none', 'tls', 'reality'];
   static const _flows = ['', 'xtls-rprx-vision'];
   static const _fps = [
-    'chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'randomized'
+    'chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'qq', 'randomized'
   ];
 
   @override

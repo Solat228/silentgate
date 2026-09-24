@@ -547,7 +547,7 @@ class AutoConfigEngine {
   /// MASKING.md` §3.5). В ручном редакторе сервера отпечаток оставлен — это
   /// осознанный выбор владельца сервера, не автоматический перебор.
   static List<OutboundVariant> deepVariants() {
-    const fps = ['chrome', 'firefox', 'safari', 'edge', 'ios', 'android'];
+    const fps = ['chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'qq'];
     final list = <OutboundVariant>[
       OutboundVariant.none,
       const OutboundVariant(fragment: true),

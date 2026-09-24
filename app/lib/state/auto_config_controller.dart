@@ -212,6 +212,13 @@ class AutoConfigController extends ChangeNotifier {
     List<OutboundVariant>? variants,
   }) async {
     if (_running) return;
+    // Неподдерживаемый сервер (например, hysteria2 с маской finalmask.udp,
+    // которую не строит ни одно наше ядро) автонастройка не перебирает —
+    // все её пробы шли бы без части маски, которую сервер ждёт, то есть
+    // впустую. Фильтр здесь, единственной точкой входа для обоих вызывающих
+    // (`startForKey` и массовый запуск с экрана автонастройки).
+    servers = servers.where((s) => !s.isUnsupported).toList();
+    if (servers.isEmpty) return;
     _running = true;
     _error = null;
     _progress = null;

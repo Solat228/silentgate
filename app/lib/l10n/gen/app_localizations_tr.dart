@@ -1486,6 +1486,15 @@ class AppLocalizationsTr extends AppLocalizations {
       'The last subscription update changed this server\'s record';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return '«$type» maskeleme bu istemcide henüz desteklenmiyor';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Bu sunucu bu istemcide henüz desteklenmiyor';
+
+  @override
   String get srvFieldId => 'ID / password';
 
   @override
@@ -1946,10 +1955,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noRealIpTitle => 'Gerçek IP\'mi asla kullanma';
 
   @override
-  String get noRealIpSub =>
-      'VPN açıkken bile tüm «doğrudan» trafik VPN üzerinden gider (RU siteleri dahil). Yerel ağ doğrudan kalır.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2073,6 +2078,10 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Önce bir abonelik içe aktarın';
+
+  @override
+  String get errServerUnsupported =>
+      'Bu sunucu bu istemci tarafından desteklenmiyor';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2326,10 +2335,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«Gerçek IP’mi asla kullanma» açık: kutusu işaretsiz «Doğrudan» kuralları VPN üzerinden gider';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      '«Doğrudan» kurallarını etkiler: «gerçek IP’ye izin ver» kutusu işaretsizse VPN üzerinden giderler';
 
   @override
   String get splitAppOverrideSites => 'Site kurallarından önceliklidir';
@@ -2813,7 +2818,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.';
+      '«Gerçek IP kullanılmasın» açık — «Doğrudan» kurallarınız VPN üzerinden gidiyor.';
 
   @override
   String get autoWarnAllVpn =>

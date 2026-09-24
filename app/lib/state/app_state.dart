@@ -2341,6 +2341,13 @@ class AppState extends ChangeNotifier {
 
   void selectServer(int index) {
     if (index < 0 || index >= _servers.length) return;
+    // Неподдерживаемый сервер нельзя не только подключить, но и выбрать для
+    // подключения — иначе «Подключить» на главном экране била бы по нему
+    // молча (индекс уже стоит, а причина отказа осталась в предыдущем нажатии).
+    if (_servers[index].isUnsupported) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
     final wasKey = selectedServer?.key;
     _selectedIndex = index;
     _selectedVariant = OutboundVariant.none; // ручной выбор — обычная вариация
@@ -2526,6 +2533,13 @@ class AppState extends ChangeNotifier {
       final server = selectedServer;
       if (server == null) {
         _fail(AppErrorCode.pickServerFirst);
+        return;
+      }
+      // Повторная проверка: `selectServer` уже не даёт выбрать такой сервер,
+      // но выбор мог прийти в обход (`silentgate://connect`, восстановление
+      // сессии) — двух разборов одной проверки не заводим, страхуемся тут же.
+      if (server.isUnsupported) {
+        _fail(AppErrorCode.serverUnsupported);
         return;
       }
       // Точка отсчёта таймера — ЗДЕСЬ, на нажатии, а не на подъёме туннеля:
@@ -2715,8 +2729,11 @@ class AppState extends ChangeNotifier {
   /// (у них свой балансировщик), затем обычные серверы. Порядок — как в списке,
   /// то есть закреплённые и найденные автонастройкой идут первыми.
   List<VpnServer> _fallbackCandidates() {
-    final profiles = _servers.where((s) => s.isPanelProfile).toList();
-    final plain = _servers.where((s) => !s.isPanelProfile).toList();
+    // Неподдерживаемый сервер сюда не попадает: подмена молча подключила бы
+    // узел без части маски, которую тот ждёт (та же ловушка, что «Авто» ниже).
+    final usable = _servers.where((s) => !s.isUnsupported);
+    final profiles = usable.where((s) => s.isPanelProfile).toList();
+    final plain = usable.where((s) => !s.isPanelProfile).toList();
     return [...profiles, ...plain].take(5).toList();
   }
 
@@ -2731,14 +2748,22 @@ class AppState extends ChangeNotifier {
       _fail(AppErrorCode.importSubscriptionFirst);
       return;
     }
+    if (_servers.every((s) => s.isUnsupported)) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
     // Режим «Авто (лучший сервер)»: если текущий не поднимется после всех попыток,
     // движок переключится на следующий из этого списка. Ручной выбор не подменяем.
     markUserConnect();
     _warnAboutDeadAppRules(settings);
     _engine.fallbackServers = _fallbackCandidates();
     _engine.bypassCandidates = _servers;
+    // Неподдерживаемый сервер не идёт в балансировщик «Авто»: `SingboxOutboundFactory`
+    // строит из него outbound БЕЗ части маски, которую ждёт сервер — тихая
+    // подмена того самого бага, который эта же правка закрывает у ручного выбора.
+    final balancerServers = _servers.where((s) => !s.isUnsupported).toList();
     await _engine.connectBalancer(
-      _servers,
+      balancerServers,
       options: ConnectionOptions(
           settings: settings,
           exitServers: _exitServers(settings),

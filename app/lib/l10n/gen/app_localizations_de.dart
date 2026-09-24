@@ -1493,6 +1493,15 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die letzte Abo-Aktualisierung hat den Eintrag dieses Servers geändert';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'Die Maskierung „$type“ wird von diesem Client noch nicht unterstützt';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Dieser Server wird von diesem Client noch nicht unterstützt';
+
+  @override
   String get srvFieldId => 'ID / Passwort';
 
   @override
@@ -1956,10 +1965,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get noRealIpTitle => 'Nie meine echte IP verwenden';
 
   @override
-  String get noRealIpSub =>
-      'Auch bei aktivem VPN läuft der gesamte „direkte“ Verkehr über das VPN (auch RU-Seiten). Das lokale Netzwerk bleibt direkt.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2086,6 +2091,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get errImportSubscriptionFirst =>
       'Importieren Sie zuerst ein Abonnement';
+
+  @override
+  String get errServerUnsupported =>
+      'Dieser Server wird von diesem Client nicht unterstützt';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2339,10 +2348,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '„Nie mit echter IP“ ist aktiv: „Direkt“-Regeln ohne Häkchen laufen über das VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Betrifft „Direkt“-Regeln: ohne Häkchen „echte IP erlauben“ laufen sie über das VPN';
 
   @override
   String get splitAppOverrideSites => 'Hat Vorrang vor Site-Regeln';
@@ -2831,7 +2836,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '„Echte IP nie verwenden“ ist aktiv – der gesamte Verkehr läuft über das VPN.';
+      '„Echte IP nie verwenden“ ist aktiv – Ihre „Direkt“-Regeln laufen über das VPN.';
 
   @override
   String get autoWarnAllVpn =>

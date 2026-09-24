@@ -1478,6 +1478,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'The last subscription update changed this server\'s record';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'The \"$type\" masking is not supported by this client yet';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'This server is not supported by this client yet';
+
+  @override
   String get srvFieldId => 'ID / password';
 
   @override
@@ -1937,10 +1946,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRealIpTitle => 'Never use my real IP';
 
   @override
-  String get noRealIpSub =>
-      'Even with the VPN up, all “direct” traffic goes through the VPN (RU sites too). The local network stays direct.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2064,6 +2069,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Import a subscription first';
+
+  @override
+  String get errServerUnsupported =>
+      'This server is not supported by this client';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2317,10 +2326,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '“Never use my real IP” is on: “Direct” rules without the real-IP checkbox go through the VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Affects “Direct” rules: without the “allow real IP” checkbox they go through the VPN';
 
   @override
   String get splitAppOverrideSites => 'Takes priority over site rules';
@@ -2804,7 +2809,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '“Never use the real IP” is on — all traffic goes through the VPN.';
+      '“Never use the real IP” is on — your “Direct” rules go through the VPN.';
 
   @override
   String get autoWarnAllVpn =>

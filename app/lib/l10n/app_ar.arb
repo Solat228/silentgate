@@ -473,6 +473,13 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "التمويه «{type}» غير مدعوم في هذا العميل حتى الآن",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {"type": "String"}
+    }
+  },
+  "serverUnsupportedGeneric": "هذا الخادم غير مدعوم في هذا العميل حتى الآن",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -617,7 +624,6 @@
   "reportTechNoticeLine1": "أدناه معلومات تقنية. راجعها قبل الإرسال؛",
   "reportTechNoticeLine2": "لا توجد هنا كلمات مرور أو رمز اشتراك، وURL الاشتراك مخفي.",
   "noRealIpTitle": "لا تستخدم عنوان IP الحقيقي أبدًا",
-  "noRealIpSub": "حتى مع تشغيل VPN، تمر كل حركة المرور «المباشرة» عبر VPN (بما في ذلك مواقع RU). تبقى الشبكة المحلية مباشرة.",
   "flagAuto": "تلقائي",
   "autoUpdateIntervalLabel": "فاصل التحديث، ساعة",
   "autoUpdatePreferSub": "استخدام الفاصل من الاشتراك",
@@ -654,6 +660,7 @@
   "errInvalidJson": "JSON غير صالح",
   "errPickServerFirst": "اختر خادمًا أولاً",
   "errImportSubscriptionFirst": "استورد اشتراكًا أولاً",
+  "errServerUnsupported": "هذا الخادم غير مدعوم في هذا العميل",
   "speedSizeFull": "20 ميغابايت",
   "speedSizeLight": "5 ميغابايت",
   "speedMbPerSec": "{value} ميغابايت/ث",
@@ -807,7 +814,6 @@
   },
   "splitQuicNote": "ما دامت هناك قاعدة موقع واحدة على الأقل، يعطّل التطبيق HTTP/3 (QUIC) لكل حركة المرور. وإلا ينتقل المتصفح إلى HTTP/3 ولا يترك اسم الموقع، فتفشل القاعدة بصمت. المواقع تظل تعمل: تعود إلى TLS العادي، أبطأ قليلًا فقط.",
   "splitNoRealIpBanner": "«لا تستخدم عنواني الحقيقي» مُفعَّل: قواعد «مباشر» بلا علامة تمر عبر VPN",
-  "settingsNoRealIpAffects": "يؤثر على قواعد «مباشر»: بدون خيار «السماح بالعنوان الحقيقي» ستمر عبر VPN",
   "splitAppOverrideSites": "أولوية على قواعد المواقع",
   "splitAppOverrideSitesSub": "كل حركة التطبيق تتبع هذه القاعدة حتى لو قال موقع غير ذلك",
   "settingsMyRulesOverridePanel": "قواعدي أهم من قواعد اللوحة",
@@ -1061,7 +1067,7 @@
   "autoTimer": "مضى {elapsed} · بقي نحو {remaining}",
   "autoTimerNoEstimate": "مضى {elapsed}",
   "autoSpeedRanking": "قياس السرعة: {name}",
-  "autoWarnNoRealIp": "خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وكل البيانات تمر عبر VPN.",
+  "autoWarnNoRealIp": "خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وقواعد «مباشر» لديك تمر عبر VPN.",
   "autoWarnAllVpn": "الوضع المختار هو «كل شيء عبر VPN»، وقواعدك غير سارية حاليًا.",
   "autoWarnPanelOverride": "خيار «قواعدي أولى من قواعد اللوحة» مفعَّل.",
   "autoWarnProbesDirect": "هذا لا يؤثر في الفحص نفسه: الاختبارات تتجاوز VPN مهما كانت الإعدادات. لكنها في وضع TUN تمر عبر عملية النواة، فإذا تعطّلت النواة صارت كل النتائج سلبية كاذبة.",

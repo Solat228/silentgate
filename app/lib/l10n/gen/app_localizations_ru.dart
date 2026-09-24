@@ -1480,6 +1480,15 @@ class AppLocalizationsRu extends AppLocalizations {
       'При обновлении подписки обновилась запись сервера';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'Маскировка «$type» пока не поддерживается клиентом';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Этот сервер пока не поддерживается клиентом';
+
+  @override
   String get srvFieldId => 'Идентификатор / пароль';
 
   @override
@@ -1939,10 +1948,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get noRealIpTitle => 'Не выходить под реальным IP';
 
   @override
-  String get noRealIpSub =>
-      'Даже при рабочем VPN весь «прямой» трафик идёт через VPN (RU-сайты — тоже). Локальная сеть остаётся напрямую.';
-
-  @override
   String get flagAuto => 'АВТО';
 
   @override
@@ -2068,6 +2073,9 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Сначала импортируйте подписку';
+
+  @override
+  String get errServerUnsupported => 'Этот сервер не поддерживается клиентом';
 
   @override
   String get speedSizeFull => '20 МБ';
@@ -2321,10 +2329,6 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       'Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN';
 
   @override
   String get splitAppOverrideSites => 'Важнее правил по сайтам';
@@ -2807,7 +2811,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      'Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.';
+      'Включено «Не выходить под реальным IP» — ваши правила «Прямо» уходят через VPN.';
 
   @override
   String get autoWarnAllVpn =>

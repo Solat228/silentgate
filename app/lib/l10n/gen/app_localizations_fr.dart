@@ -1498,6 +1498,15 @@ class AppLocalizationsFr extends AppLocalizations {
       'La dernière mise à jour de l\'abonnement a modifié la fiche de ce serveur';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'Le masquage « $type » n\'est pas encore pris en charge par ce client';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Ce serveur n\'est pas encore pris en charge par ce client';
+
+  @override
   String get srvFieldId => 'ID / mot de passe';
 
   @override
@@ -1962,10 +1971,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get noRealIpTitle => 'Ne jamais utiliser ma vraie IP';
 
   @override
-  String get noRealIpSub =>
-      'Même avec le VPN actif, tout le trafic « direct » passe par le VPN (sites RU compris). Le réseau local reste direct.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2090,6 +2095,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Importez d’abord un abonnement';
+
+  @override
+  String get errServerUnsupported =>
+      'Ce serveur n\'est pas pris en charge par ce client';
 
   @override
   String get speedSizeFull => '20 Mo';
@@ -2343,10 +2352,6 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '« Ne jamais utiliser mon IP réelle » est actif : les règles « Direct » sans la case cochée passent par le VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Concerne les règles « Direct » : sans la case « autoriser l’IP réelle », elles passent par le VPN';
 
   @override
   String get splitAppOverrideSites => 'Prioritaire sur les règles de sites';
@@ -2836,7 +2841,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '« Ne jamais utiliser l\'IP réelle » est activé : tout le trafic passe par le VPN.';
+      '« Ne jamais utiliser l\'IP réelle » est activé : vos règles « Direct » passent par le VPN.';
 
   @override
   String get autoWarnAllVpn =>

@@ -283,9 +283,18 @@ void main() {
           .whereType<String>()
           .toSet();
       expect(fps, isNot(contains('randomized')));
-      // Остальные шесть отпечатков перебираются как раньше — баг не повод
-      // обеднять перебор целиком.
-      expect(fps, {'chrome', 'firefox', 'safari', 'edge', 'ios', 'android'});
+      // Остальные отпечатки перебираются как раньше — баг не повод обеднять
+      // перебор целиком; qq добавлен 25.09.2026 (дефолт автонастройки).
+      expect(
+          fps, {'chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'qq'});
+    });
+
+    test('дефолт настроек — firefox + qq (решение владельца 25.09.2026)', () {
+      const s = AppSettings();
+      expect(s.fingerprints, ['firefox', 'qq']);
+      // fromJson без ключа отдаёт тот же дефолт, а не устаревший «только firefox».
+      final loaded = AppSettings.fromJson(const {});
+      expect(loaded.fingerprints, ['firefox', 'qq']);
     });
   });
 }

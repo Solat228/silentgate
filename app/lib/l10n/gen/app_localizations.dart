@@ -2658,6 +2658,18 @@ abstract class AppLocalizations {
   /// **'При обновлении подписки обновилась запись сервера'**
   String get srvTileUpdatedGeneric;
 
+  /// No description provided for @serverUnsupportedHy2Mask.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маскировка «{type}» пока не поддерживается клиентом'**
+  String serverUnsupportedHy2Mask(String type);
+
+  /// No description provided for @serverUnsupportedGeneric.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот сервер пока не поддерживается клиентом'**
+  String get serverUnsupportedGeneric;
+
   /// No description provided for @srvFieldId.
   ///
   /// In ru, this message translates to:
@@ -3522,12 +3534,6 @@ abstract class AppLocalizations {
   /// **'Не выходить под реальным IP'**
   String get noRealIpTitle;
 
-  /// No description provided for @noRealIpSub.
-  ///
-  /// In ru, this message translates to:
-  /// **'Даже при рабочем VPN весь «прямой» трафик идёт через VPN (RU-сайты — тоже). Локальная сеть остаётся напрямую.'**
-  String get noRealIpSub;
-
   /// No description provided for @flagAuto.
   ///
   /// In ru, this message translates to:
@@ -3743,6 +3749,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сначала импортируйте подписку'**
   String get errImportSubscriptionFirst;
+
+  /// No description provided for @errServerUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот сервер не поддерживается клиентом'**
+  String get errServerUnsupported;
 
   /// No description provided for @speedSizeFull.
   ///
@@ -4145,12 +4157,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN'**
   String get splitNoRealIpBanner;
-
-  /// No description provided for @settingsNoRealIpAffects.
-  ///
-  /// In ru, this message translates to:
-  /// **'Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN'**
-  String get settingsNoRealIpAffects;
 
   /// No description provided for @splitAppOverrideSites.
   ///
@@ -4935,7 +4941,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoWarnNoRealIp.
   ///
   /// In ru, this message translates to:
-  /// **'Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.'**
+  /// **'Включено «Не выходить под реальным IP» — ваши правила «Прямо» уходят через VPN.'**
   String get autoWarnNoRealIp;
 
   /// No description provided for @autoWarnAllVpn.

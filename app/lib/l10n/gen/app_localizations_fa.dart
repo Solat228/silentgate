@@ -1478,6 +1478,15 @@ class AppLocalizationsFa extends AppLocalizations {
       'The last subscription update changed this server\'s record';
 
   @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'استتار «$type» هنوز در این کلاینت پشتیبانی نمی‌شود';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'این سرور هنوز در این کلاینت پشتیبانی نمی‌شود';
+
+  @override
   String get srvFieldId => 'ID / password';
 
   @override
@@ -1936,10 +1945,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get noRealIpTitle => 'هرگز از IP واقعی من استفاده نکن';
 
   @override
-  String get noRealIpSub =>
-      'حتی با روشن بودن VPN، همه ترافیک «مستقیم» از VPN عبور می‌کند (سایت‌های RU هم). شبکه محلی مستقیم می‌ماند.';
-
-  @override
   String get flagAuto => 'خودکار';
 
   @override
@@ -2063,6 +2068,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'ابتدا یک اشتراک وارد کنید';
+
+  @override
+  String get errServerUnsupported => 'این سرور در این کلاینت پشتیبانی نمی‌شود';
 
   @override
   String get speedSizeFull => '۲۰ مگابایت';
@@ -2315,10 +2323,6 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«هرگز با IP واقعی من» روشن است: قوانین «مستقیم» بدون تیک از راه VPN می‌روند';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'بر قوانین «مستقیم» اثر دارد: بدون تیک «اجازهٔ IP واقعی» از راه VPN می‌روند';
 
   @override
   String get splitAppOverrideSites => 'بر قوانین سایت اولویت دارد';
@@ -2801,7 +2805,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      'گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و همهٔ ترافیک از VPN می‌گذرد.';
+      'گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و قوانین «مستقیم» شما از VPN می‌گذرند.';
 
   @override
   String get autoWarnAllVpn =>
