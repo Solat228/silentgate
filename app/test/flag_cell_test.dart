@@ -49,28 +49,39 @@ void main() {
     expect(t.takeException(), isNull);
   });
 
-  test('⚠️ РАЗРЕЗ ИЗ УГЛА В УГОЛ — доля ровно 1.0', () {
-    // ⚠️ ЭТОТ ТЕСТ ПЕРЕПИСАН 03.09.2026 ПО КАРТИНКЕ ВЛАДЕЛЬЦА: он провёл линию
-    // поверх снимка, и она идёт из левого нижнего угла в правый верхний.
-    //
-    // Прежняя редакция требовала «50–60°» и была НЕВЕРНА по существу. Владелец
-    // дважды просил «больший угол», и доля дважды уменьшалась (0.75, потом
-    // 0.5): линия становилась круче, но верхняя точка уезжала от правого угла
-    // к середине — и верхний флаг вырождался в узкий клин. На снимке от
-    // российского флага осталась полоска. Просили не крутизну, а РАВНЫЕ
-    // ПОЛОВИНЫ.
-    expect(splitTopFraction, 1.0,
-        reason: 'меньше единицы — верхний флаг снова станет клином');
+  testWidgets('пара флагов шире одного в 1.15 раза, одиночный — прежний',
+      (t) async {
+    await t.pumpWidget(host(const Column(mainAxisSize: MainAxisSize.min, children: [
+      FlagCell('🇺🇸🇩🇪 Bridge', key: ValueKey('pair'), width: 28, height: 20),
+      FlagCell('🇺🇸 USA', key: ValueKey('one'), width: 28, height: 20),
+    ])));
+    await t.pump();
+    expect(t.getSize(find.byKey(const ValueKey('pair'))).width,
+        closeTo(28 * 1.15, 0.01));
+    expect(t.getSize(find.byKey(const ValueKey('one'))).width, 28);
   });
 
-  test('обе половины покрывают ячейку целиком и не наезжают друг на друга', () {
-    // Верхний треугольник: (0,0) → (w,0) → (0,h). Нижний — его дополнение по
-    // той же линии. Сумма площадей равна площади ячейки: щели и нахлёста нет.
-    const w = 34.0, h = 24.0;
-    final top = 0.5 * (w * splitTopFraction) * h;
-    final bottom = w * h - top;
-    expect(top + bottom, closeTo(w * h, 0.001));
-    expect(top, closeTo(bottom, 0.001),
-        reason: 'из угла в угол — половины равны, это и просил владелец');
+  test('⚠️ решение владельца 25.09: ширина 1.15, наклон как у 25 %', () {
+    // Не «улучшать»: владелец прямо запретил и делать разрез круче, и
+    // вставлять зазор между флагами.
+    expect(kFlagPairWidthFactor, 1.15);
+    expect(kFlagPairCutOffset, 0.25);
+    const fw = 28.0;
+    final g = FlagPairGeometry.of(fw);
+    expect(g.cutTop - g.cutBottom, closeTo(0.5 * fw, 0.001),
+        reason: 'наклон как у прежних 25 %: (1 − 2·0.25)·ширина');
+  });
+
+  test('каждый флаг показан с начала и без зазора между ними', () {
+    const fw = 28.0;
+    final g = FlagPairGeometry.of(fw);
+    // Первый флаг дотягивается до верхней точки разреза — иначе справа от
+    // него была бы пустота.
+    expect(g.cutTop, lessThanOrEqualTo(fw));
+    // Второй начинается ровно в нижней точке разреза: левее — прятал бы
+    // своё начало, правее — зазор.
+    expect(g.secondLeft, g.cutBottom);
+    // И дотягивается до правой грани ячейки.
+    expect(g.secondLeft + fw, greaterThanOrEqualTo(g.cellWidth));
   });
 }
