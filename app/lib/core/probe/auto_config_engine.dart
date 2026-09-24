@@ -971,7 +971,7 @@ class AutoConfigEngine {
       variants.add(const OutboundVariant(fragment: true));
     }
     for (final fp in settings.fingerprints) {
-      if (fp == 'chrome') continue; // обычно уже дефолт сервера
+      if (fp == kDefaultTlsFingerprint) continue; // обычно уже дефолт сервера
       variants.add(OutboundVariant(fingerprint: fp));
     }
     return variants;

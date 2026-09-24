@@ -9,6 +9,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
 import 'flag_cell.dart';
+import 'flag_text.dart';
 import 'subscription_avatar.dart';
 import 'subscription_switcher.dart';
 import '../../core/i18n/enum_labels.dart';
@@ -210,7 +211,14 @@ class SubscriptionBar extends StatelessWidget {
                         // до maxHeight и крутится.
                         Flexible(
                           child: SingleChildScrollView(
-                            child: SelectableText(announce,
+                            // Флаг-эмодзи от панели картинкой: Windows их
+                            // не рисует, вместо 🇸🇬 выходят буквы «SG».
+                            child: SelectableText.rich(
+                                TextSpan(
+                                    children: buildFlagSpans(announce,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall)),
                                 // Объявление сервиса — направление по
                                 // содержимому.
                                 textDirection: autoTextDirection(announce),

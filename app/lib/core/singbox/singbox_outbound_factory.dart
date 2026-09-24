@@ -1,6 +1,7 @@
 import 'dart:io' show InternetAddress;
 
 import '../models/vpn_server.dart';
+import '../xray/outbound_variant.dart' show kDefaultTlsFingerprint;
 
 /// Строит outbound sing-box из [VpnServer].
 ///
@@ -159,14 +160,23 @@ class SingboxOutboundFactory {
         .where((a) => a.isNotEmpty)
         .toList();
 
+    // ⚠️ sing-box требует uTLS для REALITY (документация ядра: без него
+    // рукопожатие некорректно, а `sing-box check` этого не проверяет — см.
+    // предупреждение о непроверяемости конфига выше по CLAUDE.md). Отпечаток
+    // из ссылки — приоритет; отсутствует → тот же дефолт, что у Xray
+    // (`kDefaultTlsFingerprint`). Для обычного TLS uTLS необязателен —
+    // подставляем его лишь если отпечаток всё-таки задан, как и раньше.
+    final fp = (s.fingerprint ?? '').isNotEmpty
+        ? s.fingerprint
+        : (security == 'reality' ? kDefaultTlsFingerprint : null);
+
     return {
       'tls': {
         'enabled': true,
         if (_tlsName(s, resolvedIp) != null) 'server_name': _tlsName(s, resolvedIp),
         if (s.allowInsecure) 'insecure': true,
         if (alpn.isNotEmpty) 'alpn': alpn,
-        if ((s.fingerprint ?? '').isNotEmpty)
-          'utls': {'enabled': true, 'fingerprint': s.fingerprint},
+        if (fp != null) 'utls': {'enabled': true, 'fingerprint': fp},
         if (security == 'reality')
           'reality': {
             'enabled': true,

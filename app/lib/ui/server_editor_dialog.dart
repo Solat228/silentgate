@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import '../core/models/vpn_server.dart';
 import '../core/singbox/singbox_proxy_config_builder.dart';
+import '../core/xray/outbound_variant.dart';
 import '../core/xray/xray_config_builder.dart';
 import '../l10n/gen/app_localizations.dart';
 
@@ -45,7 +46,7 @@ class _ServerEditorDialogState extends State<ServerEditorDialog> {
   late String _network = widget.server.network;
   late String _security = widget.server.security;
   late String _flow = widget.server.flow ?? '';
-  late String _fp = widget.server.fingerprint ?? 'chrome';
+  late String _fp = widget.server.fingerprint ?? kDefaultTlsFingerprint;
 
   static const _networks = ['tcp', 'ws', 'grpc', 'http'];
   static const _securities = ['none', 'tls', 'reality'];

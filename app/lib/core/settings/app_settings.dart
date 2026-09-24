@@ -3,6 +3,9 @@ import 'dart:convert';
 import '../util/key_migration.dart';
 
 import '../net/speed_test.dart';
+// Чистый dart-файл без flutter/dart:ui — тот же повод, что и у комментария
+// ниже про app_update.dart, тут не действует.
+import '../xray/outbound_variant.dart' show kDefaultTlsFingerprint;
 // Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
 // path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
 // переставал работать. Нужна отсюда только константа адреса обновлений.
@@ -901,7 +904,7 @@ class AppSettings {
       ProbeService.telegram,
     },
     this.tryFragment = true,
-    this.fingerprints = const ['chrome'],
+    this.fingerprints = const [kDefaultTlsFingerprint],
     this.strategy = AutoConfigStrategy.firstMatch,
     this.autoConfigBudgetSec = 60,
     this.autoPinFound = true,
@@ -1392,7 +1395,7 @@ class AppSettings {
       autoConfigServices:
           services.isEmpty ? defaults.autoConfigServices : services,
       tryFragment: j['tryFragment'] as bool? ?? true,
-      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ?? const ['chrome'],
+      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ?? const [kDefaultTlsFingerprint],
       strategy: pick(AutoConfigStrategy.values, j['strategy'], AutoConfigStrategy.firstMatch),
       autoConfigBudgetSec: (j['autoConfigBudgetSec'] as num?)?.toInt() ?? 60,
       autoPinFound: j['autoPinFound'] as bool? ?? defaults.autoPinFound,

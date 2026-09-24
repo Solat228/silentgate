@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/probe/ping_result.dart';
 import '../../core/i18n/enum_labels.dart';
-import '../../core/i18n/text_direction.dart';
 import '../../core/xray/panel_routing_summary.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
@@ -20,6 +19,7 @@ import 'app_toast.dart';
 import '../server_info_screen.dart';
 import '../server_json_dialog.dart';
 import 'flag_cell.dart';
+import 'flag_text.dart';
 import 'info_tooltip.dart';
 import 'ping_chip.dart';
 import 'ping_gate.dart';
@@ -348,11 +348,12 @@ class ServerTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: Icon(Icons.campaign_outlined, color: scheme.tertiary),
-      title: Text(text.isEmpty ? l.srvTileNotice : text,
-          // Notice-сообщение провайдера — направление по содержимому
-          // (пустое → локализованный фолбэк, наследует локаль).
-          textDirection: text.isEmpty ? null : autoTextDirection(text),
-          style: TextStyle(color: scheme.onSurface)),
+      // Notice-сообщение провайдера — флаг-эмодзи картинкой (Windows их не
+      // рисует) + ограничение длины (панель может прислать очень длинный
+      // текст в `remark`). Пустое → локализованный фолбэк, без флагов/обрезки.
+      title: text.isEmpty
+          ? Text(l.srvTileNotice, style: TextStyle(color: scheme.onSurface))
+          : NoticeText(text, style: TextStyle(color: scheme.onSurface)),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         // «Обновить» — раньше «Скопировать»: после оплаты жмут именно её.
         FilledButton.tonalIcon(

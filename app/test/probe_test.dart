@@ -55,6 +55,24 @@ void main() {
     );
   });
 
+  test('ссылка без fp — дефолт отпечатка firefox (решение 24.09.2026)', () {
+    final s = ShareLinkParser.tryParse(_reality)!;
+    expect(s.fingerprint, isNull, reason: 'в ссылке fp вообще не задан');
+    final built = XrayOutboundFactory.build(s, tag: 'proxy');
+    final stream = built.firstWhere((o) => o['tag'] == 'proxy')['streamSettings'] as Map;
+    expect((stream['realitySettings'] as Map)['fingerprint'], kDefaultTlsFingerprint);
+    expect(kDefaultTlsFingerprint, 'firefox');
+  });
+
+  test('ссылка с fp=safari — отпечаток из ссылки не переписывается дефолтом', () {
+    // fp дописывается ДО фрагмента ссылки (#S) — после него уже не параметры.
+    final s = ShareLinkParser.tryParse(_reality.replaceFirst('#S', '&fp=safari#S'))!;
+    expect(s.fingerprint, 'safari');
+    final built = XrayOutboundFactory.build(s, tag: 'proxy');
+    final stream = built.firstWhere((o) => o['tag'] == 'proxy')['streamSettings'] as Map;
+    expect((stream['realitySettings'] as Map)['fingerprint'], 'safari');
+  });
+
   test('harness: N http-inbound → N outbound + routing', () {
     final s = ShareLinkParser.tryParse(_reality)!;
     const b = HarnessConfigBuilder();
