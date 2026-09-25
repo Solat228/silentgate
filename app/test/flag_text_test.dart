@@ -17,6 +17,8 @@ import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/state/app_state.dart';
 import 'package:silentgate/state/probe_controller.dart';
 import 'package:silentgate/state/settings_controller.dart';
+import 'package:silentgate/ui/widgets/app_toast.dart';
+import 'package:silentgate/ui/widgets/flag_cell.dart';
 import 'package:silentgate/ui/widgets/flag_text.dart';
 import 'package:silentgate/ui/widgets/server_tile.dart';
 
@@ -205,6 +207,146 @@ void main() {
       expect(copied, [longNotice.trim()],
           reason: 'в буфере обязан быть ОРИГИНАЛЬНЫЙ текст, а не обрезанный '
               'показ и не текст с картинками вместо флагов');
+    });
+  });
+
+  /// Решение владельца 25.09.2026: «ВЕЗДЕ, где в тексте есть флаг, — картинка,
+  /// НИГДЕ — буквы». Дополнительное правило: из текста вырезаются только те
+  /// флаги, что уже нарисованы иконкой рядом (первые два, см. [FlagCell]) —
+  /// третий и далее остаётся в тексте картинкой.
+  group('Имя с тремя флагами: буквы стран нигде не видны', () {
+    late Directory tmp;
+    late AppState state;
+    late ProbeController probe;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_flag_tile_');
+      AppPaths.overrideRoot(tmp);
+      state = AppState(engine: _FakeEngine());
+      probe = ProbeController();
+    });
+
+    tearDown(() {
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    Widget host(Widget child) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppState>.value(value: state),
+            ChangeNotifierProvider<ProbeController>.value(value: probe),
+          ],
+          child: MaterialApp(
+            locale: const Locale('ru'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: child),
+          ),
+        );
+
+    testWidgets(
+        'плитка сервера: ни одной буквы кода страны, третий флаг — картинкой',
+        (tester) async {
+      final server = VpnServer(
+        protocol: 'vless',
+        remark: '🇺🇸🇩🇪🇫🇷 Test',
+        address: 'example.com',
+        port: 443,
+        id: '11111111-2222-3333-4444-555555555555',
+        rawLink: 'vless://11111111-2222-3333-4444-555555555555'
+            '@example.com:443?encryption=none#test',
+      );
+
+      await tester.pumpWidget(
+          host(ServerTile(server: server, selected: false, onTap: () {})));
+      await tester.pump();
+
+      // Ни «US», ни «DE» голыми буквами на экране — их место заняли картинки
+      // (в ячейке FlagCell) или они вырезаны из текста (третий флаг — FR —
+      // остался в тексте картинкой через FlagText).
+      expect(find.textContaining('US'), findsNothing,
+          reason: 'код страны буквами — Windows такой эмодзи-пары не рисует');
+      expect(find.textContaining('DE'), findsNothing,
+          reason: 'код страны буквами — Windows такой эмодзи-пары не рисует');
+
+      // FlagCell рядом с именем показывает ПЕРВЫЕ два флага — US/DE.
+      final cellFlags = find.descendant(
+          of: find.byType(FlagCell), matching: find.byType(CountryFlag));
+      expect(cellFlags, findsNWidgets(2),
+          reason: 'ячейка рисует ровно первые два флага (мост вход · выход)');
+
+      // Третий флаг (FR) не нарисован иконкой — он остался в тексте и обязан
+      // достаться FlagText картинкой, а не буквами и не как обычный текст.
+      final textFlags = find.descendant(
+          of: find.byType(FlagText), matching: find.byType(CountryFlag));
+      expect(textFlags, findsOneWidget,
+          reason: 'третий флаг (FR) не влез в иконку — должен остаться '
+              'картинкой в тексте');
+
+      // И сам текст без первых двух флагов — «Test» цело.
+      expect(find.textContaining('Test'), findsWidgets);
+    });
+  });
+
+  group('Флаг в тосте рисуется картинкой', () {
+    Widget host(Widget child) => MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(body: child),
+        );
+
+    // ⚠️ `_MessageToasts._host`/`_items` — статика, общая на все тесты файла.
+    // Прошлый тест (копирование из notice-плитки) мог оставить в них
+    // `OverlayEntry` от УЖЕ УНИЧТОЖЕННОГО дерева прошлого теста: новый вызов
+    // `AppToast.show` увидел бы `_host != null` и тихо ничего не нарисовал
+    // бы в дереве ЭТОГО теста. Гасим стопку перед стартом.
+    setUp(() => AppToast.dismiss());
+
+    testWidgets('AppToast с флагом в сообщении показывает CountryFlag',
+        (tester) async {
+      await tester.pumpWidget(host(Builder(builder: (context) {
+        return ElevatedButton(
+          onPressed: () => AppToast.show(context, '🇳🇱 Сервер недоступен',
+              kind: ToastKind.error),
+          child: const Text('go'),
+        );
+      })));
+      await tester.tap(find.byType(ElevatedButton));
+      await tester.pump();
+      // Второй кадр: инлайн-виджет флага (WidgetSpan) внутри Text.rich
+      // довешивается к дереву элементов на следующем кадре после первого
+      // построения оверлея.
+      await tester.pump();
+
+      expect(find.byType(CountryFlag), findsWidgets,
+          reason: 'флаг в тексте тоста обязан рисоваться картинкой, а не '
+              'буквами NL');
+      expect(find.textContaining('NL'), findsNothing);
+    });
+  });
+
+  group('Заголовок подписки рисуется картинкой', () {
+    testWidgets('FlagText с названием подписки показывает CountryFlag',
+        (tester) async {
+      // Сам заголовок карточки подписки собирается внутри `SubscriptionBar`,
+      // который тянет `AppState`/сеть — здесь проверяем ровно то звено,
+      // которое подставлено на месте заголовка (`import_screen.dart`,
+      // `subscription_switcher.dart`): `FlagText(info.title)`.
+      await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(
+          body: FlagText('🇩🇪 Моя подписка'),
+        ),
+      ));
+      await tester.pump();
+
+      expect(find.byType(CountryFlag), findsOneWidget,
+          reason: 'название подписки с флагом обязано показать картинку');
+      expect(find.textContaining('DE'), findsNothing);
+      expect(find.textContaining('Моя подписка'), findsWidgets);
     });
   });
 }

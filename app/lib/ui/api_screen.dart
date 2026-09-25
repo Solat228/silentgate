@@ -12,6 +12,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../state/app_state.dart';
 import '../state/settings_controller.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/info_tooltip.dart';
 
@@ -515,7 +516,7 @@ class _ApiExitCheckbox extends StatelessWidget {
       dense: true,
       controlAffinity: ListTileControlAffinity.leading,
       value: checked,
-      title: Text(
+      title: FlagText(
         server.displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,

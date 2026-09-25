@@ -9,6 +9,7 @@ import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
 import 'widgets/subscription_avatar.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/flag_text.dart';
 
 class ImportScreen extends StatefulWidget {
   /// Первый запуск: показывается на весь экран, вернуться некуда — в приложении
@@ -87,7 +88,7 @@ class _ImportScreenState extends State<ImportScreen> {
                     SubscriptionAvatar(path: state.logoPath, label: state.info.title, size: 40),
                     const SizedBox(width: 10),
                     Flexible(
-                      child: Text(state.info.title ?? l.importScrSubscriptionFallback,
+                      child: FlagText(state.info.title ?? l.importScrSubscriptionFallback,
                           // Название подписки — направление по содержимому.
                           textDirection: autoTextDirection(state.info.title),
                           style: Theme.of(context).textTheme.titleMedium,

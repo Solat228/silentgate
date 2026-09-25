@@ -80,28 +80,51 @@ class FlagUtil {
     return String.fromCharCodes(runes.sublist(0, end));
   }
 
-  /// До ДВУХ ISO 3166-1 alpha-2 кодов из флаг-эмодзи в [name], в порядке
-  /// появления (мост «вход · выход» несёт два флага подряд).
+  /// Общий проход по [name] для [isoCodesFromName]/[stripIconFlags] — ОДИН
+  /// источник правды для того, какие пары считаются «первыми двумя» (иначе
+  /// ячейка [FlagCell] и вырезка из текста разошлись бы в выборе пар).
+  /// [onPair] зовётся на КАЖДУЮ из первых двух флаг-пар (руны половин),
+  /// [onPlain] — на все остальные руны, включая половины третьей и далее пар,
+  /// в порядке появления.
   ///
   /// ⚠️ После найденной пары индекс двигаем на i+2, а не на i+1: иначе вторая
   /// руна первой пары склеится с первой руной второй и даст мусорный код
   /// (например из 🇳🇱🇨🇿 вместо NL/CZ вышло бы NL/LC).
-  static List<String> isoCodesFromName(String name) {
+  static void _scanFirstTwoPairs(
+    String name, {
+    required void Function(int a, int b) onPair,
+    required void Function(int rune) onPlain,
+  }) {
     final runes = name.runes.toList();
-    final result = <String>[];
     var i = 0;
-    while (i < runes.length - 1 && result.length < 2) {
-      final a = runes[i];
-      final b = runes[i + 1];
-      if (a >= _base && a <= _last && b >= _base && b <= _last) {
-        final c1 = String.fromCharCode(0x41 + (a - _base));
-        final c2 = String.fromCharCode(0x41 + (b - _base));
-        result.add('$c1$c2');
+    var taken = 0;
+    while (i < runes.length) {
+      if (taken < 2 &&
+          i < runes.length - 1 &&
+          _isIndicator(runes[i]) &&
+          _isIndicator(runes[i + 1])) {
+        onPair(runes[i], runes[i + 1]);
+        taken++;
         i += 2;
       } else {
+        onPlain(runes[i]);
         i++;
       }
     }
+  }
+
+  /// До ДВУХ ISO 3166-1 alpha-2 кодов из флаг-эмодзи в [name], в порядке
+  /// появления (мост «вход · выход» несёт два флага подряд; столько же берёт
+  /// в работу [FlagCell]).
+  static List<String> isoCodesFromName(String name) {
+    final result = <String>[];
+    _scanFirstTwoPairs(name,
+        onPair: (a, b) {
+          final c1 = String.fromCharCode(0x41 + (a - _base));
+          final c2 = String.fromCharCode(0x41 + (b - _base));
+          result.add('$c1$c2');
+        },
+        onPlain: (_) {});
     return result;
   }
 
@@ -119,6 +142,18 @@ class FlagUtil {
       if (r >= _base && r <= _last) continue;
       sb.writeCharCode(r);
     }
+    return sb.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  /// Имя без ТЕХ флаг-пар, что уже нарисованы иконкой [FlagCell] рядом (те же
+  /// первые две, см. [isoCodesFromName]/[_scanFirstTwoPairs]) — третья и далее
+  /// пары остаются в тексте и рисуются картинкой через [FlagText]
+  /// (`ui/widgets/flag_text.dart`), а не буквами. Решение владельца
+  /// 25.09.2026: в тексте флаг либо картинка, либо (если уже показан в
+  /// иконке) вырезан — никогда не буквы `NL`/`DE`.
+  static String stripIconFlags(String name) {
+    final sb = StringBuffer();
+    _scanFirstTwoPairs(name, onPair: (_, __) {}, onPlain: sb.writeCharCode);
     return sb.toString().replaceAll(RegExp(r'\s+'), ' ').trim();
   }
 }

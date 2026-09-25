@@ -170,11 +170,15 @@ void main() {
 
       final tips = tester.widgetList<Tooltip>(find.byType(Tooltip)).toList();
       // Подсказка самой плашки: только имя сервера, без объяснения на абзац.
-      final badgeTip =
-          tips.firstWhere((t) => t.message == '🎬 Авто (YouTube)');
-      expect(badgeTip.message!.length, lessThan(60),
+      // ⚠️ Флаг в имени рисуется картинкой — подсказка ушла с `message` на
+      // `richMessage` (InlineSpan), сверяем его текст.
+      final badgeTip = tips.firstWhere((t) =>
+          (t.richMessage?.toPlainText() ?? t.message) ==
+          '🎬 Авто (YouTube)');
+      final badgeTipText = badgeTip.richMessage?.toPlainText() ?? badgeTip.message!;
+      expect(badgeTipText.length, lessThan(60),
           reason: 'в подсказке плашки не должно быть абзаца');
-      expect(badgeTip.message, isNot(contains('sing-box')));
+      expect(badgeTipText, isNot(contains('sing-box')));
     });
 
     testWidgets('у обычного сервера «!» нет — объяснять нечего',

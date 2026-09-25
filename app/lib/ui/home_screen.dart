@@ -45,6 +45,7 @@ import 'widgets/app_toast.dart';
 import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/service_checks_row.dart';
@@ -662,10 +663,10 @@ class _HomeScreenState extends State<HomeScreen> {
           kind: sync.hasChanges ? ToastKind.success : ToastKind.info,
           details: [
             for (final name in sync.added)
-              ToastDetail(FlagUtil.strip(name),
+              ToastDetail(FlagUtil.stripIconFlags(name),
                   added: true, leading: FlagCell(name, width: 20, height: 14)),
             for (final name in sync.removed)
-              ToastDetail(FlagUtil.strip(name),
+              ToastDetail(FlagUtil.stripIconFlags(name),
                   added: false, leading: FlagCell(name, width: 20, height: 14)),
           ],
         );
@@ -1386,7 +1387,7 @@ class KillSwitchNotice extends StatelessWidget {
             size: iconSize, color: scheme.onErrorContainer),
         const SizedBox(width: gap),
         Expanded(
-          child: Text(
+          child: FlagText(
             message,
             textDirection: autoTextDirection(message),
             style: TextStyle(color: scheme.onErrorContainer),
@@ -1414,7 +1415,7 @@ class ConnectErrorLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: paddingTop),
-        child: Text(message,
+        child: FlagText(message,
             textAlign: TextAlign.center,
             // Статус/ошибка: направление по содержимому — локализованный текст
             // читается верно, вложенные технические фрагменты (имена
@@ -1475,10 +1476,10 @@ class _SelectedServerBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    FlagText(
                       server == null
                           ? l.homeServersCount(state.servers.length)
-                          : FlagUtil.strip(server.displayName),
+                          : FlagUtil.stripIconFlags(server.displayName),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       // Имя сервера — технический текст: в ar/fa не зеркалим.
@@ -2304,8 +2305,8 @@ class ActiveServerLabel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       // Имя целиком: в плашку помещается не всякое, а знать, куда подключён,
-      // нужно точно.
-      message: n,
+      // нужно точно. Флаги — картинкой (Windows эмодзи-флаги не рендерит).
+      richMessage: flagTextSpan(n),
       child: Container(
         constraints: const BoxConstraints(maxWidth: maxWidth),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -2323,8 +2324,8 @@ class ActiveServerLabel extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Flexible(
-            child: Text(
-              FlagUtil.strip(n),
+            child: FlagText(
+              FlagUtil.stripIconFlags(n),
               maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

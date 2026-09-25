@@ -16,6 +16,7 @@ import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/site_favicon.dart';
@@ -454,12 +455,13 @@ class AutoConfigProgressView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (speed)
-          Text(
+          FlagText(
             // Пустое имя — замер СВОЕГО канала: он идёт мимо VPN и ни к какому
-            // серверу не относится.
+            // серверу не относится. Здесь FlagCell рядом нет — флаги (если
+            // остались в имени) остаются картинками в тексте, не срезаются.
             progress.candidateName.isEmpty
                 ? l.autoSpeedOwn
-                : l.autoSpeedRanking(FlagUtil.strip(progress.candidateName)),
+                : l.autoSpeedRanking(progress.candidateName),
           )
         else ...[
           // #1 — флаг картинкой: эмодзи-флаги на Windows не рендерятся.
@@ -468,7 +470,7 @@ class AutoConfigProgressView extends StatelessWidget {
             FlagCell(progress.candidateName, width: 26, height: 18),
             const SizedBox(width: 6),
             Flexible(
-              child: Text(FlagUtil.strip(progress.candidateName),
+              child: FlagText(FlagUtil.stripIconFlags(progress.candidateName),
                   textDirection: TextDirection.ltr,
                   overflow: TextOverflow.ellipsis),
             ),
@@ -581,7 +583,7 @@ class _FoundCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(FlagUtil.strip(result.server.displayName),
+                FlagText(FlagUtil.stripIconFlags(result.server.displayName),
                     textDirection: TextDirection.ltr,
                     style: Theme.of(context).textTheme.bodyMedium,
                     maxLines: 1,
@@ -753,7 +755,7 @@ class _ServerPicker extends StatelessWidget {
         // #5.1 — сервер, уже прошедший подбор, показывается результатом прямо здесь,
         // а не только отдельной карточкой ниже: иначе один сервер виден дважды.
         ...servers.map((s) {
-          final name = FlagUtil.strip(s.remark);
+          final name = FlagUtil.stripIconFlags(s.remark);
           final hit = found.where((r) => r.server.key == s.key).firstOrNull;
           final current = running &&
               (activeKeys.contains(s.key) ||
@@ -774,7 +776,7 @@ class _ServerPicker extends StatelessWidget {
                 : (v) => ctrl.setSelected(s.key, v == true),
             secondary: FlagCell(s.remark, width: 26, height: 18),
             title: Row(children: [
-              Expanded(child: Text(name.isEmpty ? s.address : name,
+              Expanded(child: FlagText(name.isEmpty ? s.address : name,
                   textDirection: TextDirection.ltr)),
               if (hit != null) ...[
                 Icon(Icons.check_circle, size: 16, color: scheme.primary),

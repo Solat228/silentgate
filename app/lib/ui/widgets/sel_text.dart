@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'flag_text.dart';
+
 /// Текст, который можно выделить и скопировать.
 ///
 /// ⚠️ НЕ применять внутри кликабельных строк (`ListTile` с `onTap`,
@@ -43,9 +45,14 @@ class SelText extends StatelessWidget {
     this.maxLines,
   }) : textDirection = TextDirection.ltr;
 
+  // ⚠️ `.rich` — не обычный текст ПОТОМУ, ЧТО могут встретиться флаг-эмодзи
+  // (например, имя сервера в подсказке `apiCheatSheetPortServer`): Windows их
+  // не рендерит буквами, картинка через [buildFlagSpans] — как у [FlagText],
+  // просто через `SelectableText.rich`. Без флагов в [data] спанов будет один
+  // обычный текстовый — поведение не меняется.
   @override
-  Widget build(BuildContext context) => SelectableText(
-        data,
+  Widget build(BuildContext context) => SelectableText.rich(
+        TextSpan(children: buildFlagSpans(data, style: style)),
         style: style,
         textAlign: textAlign,
         maxLines: maxLines,

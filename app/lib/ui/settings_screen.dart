@@ -34,6 +34,7 @@ import 'update_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
 import 'log_level_labels.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
@@ -2093,7 +2094,7 @@ class SupportRecipients extends StatelessWidget {
           icon: SubscriptionAvatar(
               path: logoPath, label: serviceName, size: 18),
           // В скобках — НАЗВАНИЕ СЕРВИСА, а не «владельцу».
-          label: Text(serviceName.isNotEmpty
+          label: FlagText(serviceName.isNotEmpty
               ? l.supportContactNamed(serviceName)
               : l.supportContact),
           onPressed: () => UrlOpener.openTelegram(supportUrl),

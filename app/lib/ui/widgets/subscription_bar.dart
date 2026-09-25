@@ -120,7 +120,7 @@ class SubscriptionBar extends StatelessWidget {
                     child: state.subscriptions.length > 1
                         ? SubscriptionSwitcher(
                             title: info.title ?? l.subBarSubscription)
-                        : Text(info.title ?? l.subBarSubscription,
+                        : FlagText(info.title ?? l.subBarSubscription,
                             // Название подписки — провайдерское: направление по
                             // содержимому (латиница не зеркалится, арабский — RTL).
                             textDirection: autoTextDirection(info.title),
@@ -198,7 +198,7 @@ class SubscriptionBar extends StatelessWidget {
                       children: [
                         // Заголовок с именем сервиса — вне прокрутки, чтобы
                         // не уезжал вместе с текстом.
-                        Text(announceTitle(l, info.title),
+                        FlagText(announceTitle(l, info.title),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context)
@@ -451,7 +451,9 @@ class _SyncSummaryState extends State<_SyncSummary> {
                 fontSize: 13, color: color, fontWeight: FontWeight.bold)),
       );
 
-  /// Строка с флагом страны — имя сервера без флаг-эмодзи (они не рендерятся на Windows).
+  /// Строка с флагом страны — имя сервера без ТЕХ флаг-эмодзи, что уже в
+  /// [FlagCell] рядом (третий и далее остаются картинкой через [FlagText]:
+  /// Windows голые эмодзи-флаги не рендерит).
   Widget _line(BuildContext ctx, String name, String sign, Color color) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -461,7 +463,7 @@ class _SyncSummaryState extends State<_SyncSummary> {
           FlagCell(name, width: 22, height: 15),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(FlagUtil.strip(name),
+            child: FlagText(FlagUtil.stripIconFlags(name),
                 style: const TextStyle(fontSize: 13),
                 maxLines: 1,
                 textDirection: TextDirection.ltr,

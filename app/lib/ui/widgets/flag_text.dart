@@ -42,6 +42,56 @@ List<InlineSpan> buildFlagSpans(String text, {TextStyle? style}) {
   ];
 }
 
+/// [InlineSpan] для мест, которые сами не рисуют виджет, а принимают только
+/// спаны — `Tooltip.richMessage`, `SelectableText.rich`. Та же сборка
+/// флаг-картинок, что у [FlagText].
+InlineSpan flagTextSpan(String text, {TextStyle? style}) =>
+    TextSpan(children: buildFlagSpans(text, style: style));
+
+/// Замена [Text] «капля в замену» для любой строки, где могут встретиться
+/// флаг-эмодзи (имя сервера, заголовок подписки, текст тоста): они рисуются
+/// картинками ([buildFlagSpans]), остальной текст — обычным [TextSpan].
+/// Решение владельца 25.09.2026: на Windows эмодзи-флаги не рендерятся вовсе
+/// (видны буквы кода страны) — картинка нужна ВЕЗДЕ, где раньше был голый
+/// [Text] с таким текстом.
+class FlagText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  final int? maxLines;
+  final TextOverflow? overflow;
+  final TextDirection? textDirection;
+  final TextAlign? textAlign;
+  final bool softWrap;
+
+  const FlagText(
+    this.text, {
+    super.key,
+    this.style,
+    this.maxLines,
+    this.overflow,
+    this.textDirection,
+    this.textAlign,
+    this.softWrap = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // Стиль резолвится ДО сборки спанов: высота картинки-флага завязана на
+    // fontSize текущего стиля ([buildFlagSpans]), унаследованный DefaultTextStyle
+    // даёт тот же размер, что получил бы обычный Text без явного style.
+    final effectiveStyle = style ?? DefaultTextStyle.of(context).style;
+    return Text.rich(
+      TextSpan(children: buildFlagSpans(text, style: effectiveStyle)),
+      style: effectiveStyle,
+      maxLines: maxLines,
+      overflow: overflow,
+      textDirection: textDirection,
+      textAlign: textAlign,
+      softWrap: softWrap,
+    );
+  }
+}
+
 /// Текст notice-сервера (фейковый сервер-заглушка от истёкшей подписки):
 /// флаги вместо голых эмодзи-пар + ограничение длины по [kNoticeTextCap] с
 /// разворотом по тапу — панель не ограничивает длину `remark`, а плитка

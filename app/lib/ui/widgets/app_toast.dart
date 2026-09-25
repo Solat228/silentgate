@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import 'flag_text.dart';
 
 /// Всплывающее сообщение ПОВЕРХ интерфейса.
 ///
@@ -697,7 +698,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                           Icon(icon, size: 18, color: color),
                           const SizedBox(width: 10),
                           Flexible(
-                            child: Text(widget.data.message,
+                            child: FlagText(widget.data.message,
                                 style: const TextStyle(fontSize: 13)),
                           ),
                           if (hasDetails)
@@ -749,7 +750,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                                             fontWeight: FontWeight.w700,
                                           )),
                                       Flexible(
-                                        child: Text(d.text,
+                                        child: FlagText(d.text,
                                             style: const TextStyle(fontSize: 12),
                                             overflow: TextOverflow.ellipsis),
                                       ),

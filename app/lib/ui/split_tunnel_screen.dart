@@ -19,6 +19,7 @@ import '../state/settings_controller.dart';
 import '../core/util/server_search.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/dead_path_badge.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/app_label.dart';
@@ -1336,8 +1337,10 @@ class ServerBadge extends StatelessWidget {
         // подсказок вдобавок ограничена темой (`buildAppTheme` в `app.dart`).
         //
         // Имя оставляем: плашка на узком экране показывает один флаг, и без
-        // подсказки не узнать, через какой сервер идёт правило.
-        message: name,
+        // подсказки не узнать, через какой сервер идёт правило. Значка
+        // FlagCell тут нет (значок плашки — один флаг по [iso]) — флаги в
+        // имени остаются картинками, ни один не срезается.
+        richMessage: flagTextSpan(name),
         child: Container(
           margin: const EdgeInsetsDirectional.only(end: 6),
           padding: EdgeInsets.symmetric(
@@ -1365,7 +1368,7 @@ class ServerBadge extends StatelessWidget {
             if (!flagOnly) ...[
               const SizedBox(width: 5),
               Flexible(
-                child: Text(
+                child: FlagText(
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1475,7 +1478,7 @@ class RuleServerField extends StatelessWidget {
         dense: true,
         leading: Icon(gone ? Icons.link_off : Icons.hub_outlined,
             color: gone ? scheme.error : null),
-        title: Text(
+        title: FlagText(
           gone
               ? l.exitServerGone
               // ⚠️ Умолчание — «тот, что включён сейчас», и оно НЕ фиксируется
@@ -1574,7 +1577,7 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
               dense: true,
               leading: const Icon(Icons.hub_outlined),
               selected: widget.serverKey == null,
-              title: Text(
+              title: FlagText(
                 widget.currentServer == null
                     ? l.ruleServerCurrent
                     : l.ruleServerCurrentNamed(

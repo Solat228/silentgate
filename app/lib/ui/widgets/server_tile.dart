@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/vpn_server.dart';
 import '../../core/probe/ping_result.dart';
+import '../../core/util/country_flag.dart';
 import '../../core/i18n/enum_labels.dart';
 import '../../core/xray/panel_routing_summary.dart';
 import '../../l10n/gen/app_localizations.dart';
@@ -115,10 +116,12 @@ class ServerTile extends StatelessWidget {
     // списка, а показать серым с пояснением (см. VpnServer.unsupportedReason).
     final effectiveNote =
         server.isUnsupported ? unsupportedServerNote(l, server) : unavailableNote;
-    // ⚠️ ФЛАГИ В ИМЕНИ НЕ СРЕЗАЕМ — требование владельца 02.09.2026.
-    // Панель шлёт их осмысленно («🇷🇺→🇩🇪 Москва → Германия (мост)»):
-    // в ячейке слева видно направление, а в имени — что именно за
-    // страны. Дублирование здесь намеренное, а не недосмотр.
+    // ⚠️ ФЛАГИ ИЗ ИМЕНИ ВЫРЕЗАЮТСЯ, НО ТОЛЬКО ТЕ, ЧТО УЖЕ В ЯЧЕЙКЕ СЛЕВА —
+    // решение владельца 25.09.2026, отменяет прежнее «дублировать всегда»
+    // (02.09.2026). Панель шлёт флаги осмысленно («🇷🇺→🇩🇪 Москва → Германия
+    // (мост)»): в ячейке видно направление первых двух, а третий и далее (их
+    // ячейка не рисует) остаются в тексте — картинкой через [FlagText], не
+    // буквами `RU`/`DE` (Windows эмодзи-флаги не рендерит).
     final name = server.remark.trim();
     final pinned = state.isPinned(server);
     // Подписка, из которой пришёл сервер, если сейчас выбрана другая. Свои
@@ -182,7 +185,7 @@ class ServerTile extends StatelessWidget {
                 top: 0,
                 right: 0,
                 child: Tooltip(
-                  message: foreign.safeTitle,
+                  richMessage: flagTextSpan(foreign.safeTitle),
                   child: Container(
                     // Тонкая обводка цветом фона карточки — иначе градиентная
                     // заглушка без логотипа сливалась бы с флагом под ней.
@@ -213,7 +216,8 @@ class ServerTile extends StatelessWidget {
               child: Icon(Icons.push_pin, size: 13),
             ),
           Flexible(
-            child: Text(name.isEmpty ? server.address : name,
+            child: FlagText(
+                FlagUtil.stripIconFlags(name.isEmpty ? server.address : name),
                 overflow: TextOverflow.ellipsis,
                 textDirection: TextDirection.ltr),
           ),
@@ -240,7 +244,7 @@ class ServerTile extends StatelessWidget {
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
         // тач-экране подсказка вызывается долгим нажатием, а оно уже занято
         // контекстным меню, и имя оказалось бы недостижимо.
-        subtitle: Text(
+        subtitle: FlagText(
             [
               // ⚠️ ИМЕННО `safeTitle`, А НЕ `title`. Запасное имя профиля — это
               // кусок URL подписки, а последний его сегмент у Remnawave и есть
