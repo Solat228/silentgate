@@ -5850,12 +5850,6 @@ abstract class AppLocalizations {
   /// **'Заменить'**
   String get splitImportReplace;
 
-  /// No description provided for @splitImportConfirm.
-  ///
-  /// In ru, this message translates to:
-  /// **'Заменить текущие правила раздельного туннелирования импортированными?'**
-  String get splitImportConfirm;
-
   /// No description provided for @updatesTitle.
   ///
   /// In ru, this message translates to:
@@ -6269,6 +6263,168 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Приложение закроется на время установки версии {version}'**
   String updatesAutoNoticeBody(String version);
+
+  /// No description provided for @splitImportTitleApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт приложений'**
+  String get splitImportTitleApps;
+
+  /// No description provided for @splitImportTitleSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт сайтов'**
+  String get splitImportTitleSites;
+
+  /// No description provided for @splitImportFormatNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.'**
+  String get splitImportFormatNote;
+
+  /// No description provided for @splitImportFieldHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'youtube.com\nnetflix.com'**
+  String get splitImportFieldHint;
+
+  /// No description provided for @splitImportPasteClipboard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставить из буфера'**
+  String get splitImportPasteClipboard;
+
+  /// No description provided for @splitImportAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get splitImportAdd;
+
+  /// No description provided for @splitImportReplaceAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить всё'**
+  String get splitImportReplaceAll;
+
+  /// No description provided for @splitImportStatNew.
+  ///
+  /// In ru, this message translates to:
+  /// **'новых: {n}'**
+  String splitImportStatNew(int n);
+
+  /// No description provided for @splitImportStatSame.
+  ///
+  /// In ru, this message translates to:
+  /// **'уже есть: {n}'**
+  String splitImportStatSame(int n);
+
+  /// No description provided for @splitImportStatConflict.
+  ///
+  /// In ru, this message translates to:
+  /// **'различаются: {n}'**
+  String splitImportStatConflict(int n);
+
+  /// No description provided for @splitImportStatBad.
+  ///
+  /// In ru, this message translates to:
+  /// **'не разобрано: {n}'**
+  String splitImportStatBad(int n);
+
+  /// No description provided for @splitImportOverwrite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезаписать различающиеся'**
+  String get splitImportOverwrite;
+
+  /// No description provided for @splitImportOverwriteSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключено — у таких правил остаются текущие настройки'**
+  String get splitImportOverwriteSub;
+
+  /// No description provided for @splitImportConflictLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'было {from}, станет {to}'**
+  String splitImportConflictLine(String from, String to);
+
+  /// No description provided for @splitImportBadLinesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эти строки не взяты'**
+  String get splitImportBadLinesTitle;
+
+  /// No description provided for @splitImportAdded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавлено {added}, изменено {changed}'**
+  String splitImportAdded(int added, int changed);
+
+  /// No description provided for @splitImportReplaced.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правил после замены: {n}'**
+  String splitImportReplaced(int n);
+
+  /// No description provided for @splitExportEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список пуст — экспортировать нечего'**
+  String get splitExportEmpty;
+
+  /// No description provided for @splitCountEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пусто'**
+  String get splitCountEmpty;
+
+  /// No description provided for @splitCountTotal.
+  ///
+  /// In ru, this message translates to:
+  /// **'всего {n}'**
+  String splitCountTotal(int n);
+
+  /// No description provided for @splitCountOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'вкл {n}'**
+  String splitCountOn(int n);
+
+  /// No description provided for @splitCountOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'выкл {n}'**
+  String splitCountOff(int n);
+
+  /// No description provided for @splitCountTunnel.
+  ///
+  /// In ru, this message translates to:
+  /// **'туннель {n}'**
+  String splitCountTunnel(int n);
+
+  /// No description provided for @splitCountDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'прямо {n}'**
+  String splitCountDirect(int n);
+
+  /// No description provided for @splitCountBlock.
+  ///
+  /// In ru, this message translates to:
+  /// **'блок {n}'**
+  String splitCountBlock(int n);
+
+  /// No description provided for @splitExpandList.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть список'**
+  String get splitExpandList;
+
+  /// No description provided for @splitCollapseList.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть список'**
+  String get splitCollapseList;
 }
 
 class _AppLocalizationsDelegate

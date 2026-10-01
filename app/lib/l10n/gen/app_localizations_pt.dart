@@ -3428,10 +3428,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get splitImportReplace => 'Substituir';
 
   @override
-  String get splitImportConfirm =>
-      'Substituir as regras atuais de túnel dividido pelas importadas?';
-
-  @override
   String get updatesTitle => 'Atualizações';
 
   @override
@@ -3684,4 +3680,114 @@ class AppLocalizationsPt extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'O aplicativo será fechado durante a instalação da versão $version';
   }
+
+  @override
+  String get splitImportTitleApps => 'Importar aplicativos';
+
+  @override
+  String get splitImportTitleSites => 'Importar sites';
+
+  @override
+  String get splitImportFormatNote =>
+      'Uma linha é uma regra. Os cabeçalhos [tunnel], [direct] e [block] definem a ação para as linhas abaixo. Uma linha sem marcação é adicionada exatamente como se fosse digitada manualmente.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Colar da área de transferência';
+
+  @override
+  String get splitImportAdd => 'Adicionar';
+
+  @override
+  String get splitImportReplaceAll => 'Substituir tudo';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'novas: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'já existem: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'diferentes: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'não reconhecidas: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Substituir as diferentes';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Desativado: essas regras mantêm a configuração atual';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'era $from, passa a $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'Estas linhas não foram usadas';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'Adicionadas $added, alteradas $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Regras após a substituição: $n';
+  }
+
+  @override
+  String get splitExportEmpty =>
+      'A lista está vazia, não há nada para exportar';
+
+  @override
+  String get splitCountEmpty => 'Vazio';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'total $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'ativas $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'inativas $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'túnel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'direto $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'bloqueio $n';
+  }
+
+  @override
+  String get splitExpandList => 'Expandir a lista';
+
+  @override
+  String get splitCollapseList => 'Recolher a lista';
 }

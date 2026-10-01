@@ -604,7 +604,9 @@
   "serverUnsupportedHy2Mask": "Маскировка «{type}» пока не поддерживается клиентом",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "Этот сервер пока не поддерживается клиентом",
@@ -1678,7 +1680,6 @@
   "splitImportOk": "Настройки импортированы",
   "splitImportBad": "В буфере обмена нет корректных настроек SilentGate",
   "splitImportReplace": "Заменить",
-  "splitImportConfirm": "Заменить текущие правила раздельного туннелирования импортированными?",
   "updatesTitle": "Обновления",
   "updatesCurrentVersion": "Текущая версия {version}",
   "@updatesCurrentVersion": {
@@ -1817,5 +1818,129 @@
         "type": "String"
       }
     }
-  }
+  },
+  "splitImportTitleApps": "Импорт приложений",
+  "splitImportTitleSites": "Импорт сайтов",
+  "splitImportFormatNote": "Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Вставить из буфера",
+  "splitImportAdd": "Добавить",
+  "splitImportReplaceAll": "Заменить всё",
+  "splitImportStatNew": "новых: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "уже есть: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "различаются: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "не разобрано: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Перезаписать различающиеся",
+  "splitImportOverwriteSub": "Выключено — у таких правил остаются текущие настройки",
+  "splitImportConflictLine": "было {from}, станет {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Эти строки не взяты",
+  "splitImportAdded": "Добавлено {added}, изменено {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Правил после замены: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "Список пуст — экспортировать нечего",
+  "splitCountEmpty": "Пусто",
+  "splitCountTotal": "всего {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "вкл {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "выкл {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "туннель {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "прямо {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "блок {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Развернуть список",
+  "splitCollapseList": "Свернуть список"
 }

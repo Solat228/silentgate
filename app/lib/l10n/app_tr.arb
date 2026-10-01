@@ -476,7 +476,9 @@
   "serverUnsupportedHy2Mask": "«{type}» maskeleme bu istemcide henüz desteklenmiyor",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "Bu sunucu bu istemcide henüz desteklenmiyor",
@@ -1250,7 +1252,6 @@
   "splitImportOk": "Ayarlar içe aktarıldı",
   "splitImportBad": "Panoda geçerli SilentGate ayarı yok",
   "splitImportReplace": "Değiştir",
-  "splitImportConfirm": "Mevcut bölünmüş tünelleme kuralları içe aktarılanlarla değiştirilsin mi?",
   "updatesTitle": "Güncellemeler",
   "updatesCurrentVersion": "Geçerli sürüm {version}",
   "updatesChannelStable": "Kararlı kanal",
@@ -1319,5 +1320,129 @@
   "updatesWaitingVpn": "Kuruluma hazır — VPN bağlantısı kesildikten sonra başlayacak",
   "updatesSkippedNote": "{version} sürümü atlandı — bir sonrakini bildireceğiz",
   "updatesAutoNoticeTitle": "Güncelleme kuruluyor",
-  "updatesAutoNoticeBody": "Uygulama {version} sürümü kurulurken kapanacak"
+  "updatesAutoNoticeBody": "Uygulama {version} sürümü kurulurken kapanacak",
+  "splitImportTitleApps": "Uygulamaları içe aktar",
+  "splitImportTitleSites": "Siteleri içe aktar",
+  "splitImportFormatNote": "Bir satır bir kuraldır. [tunnel], [direct] ve [block] başlıkları altındaki satırlar için eylemi belirler. İşaretsiz bir satır, elle girilmiş gibi eklenir.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Panodan yapıştır",
+  "splitImportAdd": "Ekle",
+  "splitImportReplaceAll": "Tümünü değiştir",
+  "splitImportStatNew": "yeni: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "zaten var: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "farklı: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "ayrıştırılamadı: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Farklı olanların üzerine yaz",
+  "splitImportOverwriteSub": "Kapalıyken bu kuralların mevcut ayarları kalır",
+  "splitImportConflictLine": "{from} idi, {to} olacak",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Bu satırlar alınmadı",
+  "splitImportAdded": "{added} eklendi, {changed} değiştirildi",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Değiştirmeden sonra kural sayısı: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "Liste boş — dışa aktarılacak bir şey yok",
+  "splitCountEmpty": "Boş",
+  "splitCountTotal": "toplam {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "açık {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "kapalı {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "tünel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "doğrudan {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "engelle {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Listeyi genişlet",
+  "splitCollapseList": "Listeyi daralt"
 }

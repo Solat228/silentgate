@@ -476,7 +476,9 @@
   "serverUnsupportedHy2Mask": "التمويه «{type}» غير مدعوم في هذا العميل حتى الآن",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "هذا الخادم غير مدعوم في هذا العميل حتى الآن",
@@ -1250,7 +1252,6 @@
   "splitImportOk": "تم استيراد الإعدادات",
   "splitImportBad": "لا توجد إعدادات SilentGate صالحة في الحافظة",
   "splitImportReplace": "استبدال",
-  "splitImportConfirm": "استبدال قواعد النفق المقسّم الحالية بالمستوردة؟",
   "updatesTitle": "التحديثات",
   "updatesCurrentVersion": "الإصدار الحالي {version}",
   "updatesChannelStable": "القناة المستقرة",
@@ -1319,5 +1320,129 @@
   "updatesWaitingVpn": "جاهز للتثبيت — سيبدأ بعد قطع اتصال VPN",
   "updatesSkippedNote": "تم تخطي الإصدار {version} — سنُعلمك بالإصدار التالي",
   "updatesAutoNoticeTitle": "جارٍ تثبيت التحديث",
-  "updatesAutoNoticeBody": "سيُغلق التطبيق أثناء تثبيت الإصدار {version}"
+  "updatesAutoNoticeBody": "سيُغلق التطبيق أثناء تثبيت الإصدار {version}",
+  "splitImportTitleApps": "استيراد التطبيقات",
+  "splitImportTitleSites": "استيراد المواقع",
+  "splitImportFormatNote": "كل سطر قاعدة واحدة. تحدد العناوين [tunnel] و[direct] و[block] الإجراء للأسطر التالية. يُضاف السطر بلا علامة تمامًا كما لو كُتب يدويًا.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "اللصق من الحافظة",
+  "splitImportAdd": "إضافة",
+  "splitImportReplaceAll": "استبدال الكل",
+  "splitImportStatNew": "جديد: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "موجود مسبقاً: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "مختلف: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "غير مفهوم: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "الكتابة فوق المختلفة",
+  "splitImportOverwriteSub": "عند الإيقاف تبقى الإعدادات الحالية لتلك القواعد",
+  "splitImportConflictLine": "كان {from}، سيصبح {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "هذه الأسطر لم تُؤخذ",
+  "splitImportAdded": "أُضيف {added}، تغيّر {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "عدد القواعد بعد الاستبدال: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "القائمة فارغة — لا شيء للتصدير",
+  "splitCountEmpty": "فارغة",
+  "splitCountTotal": "إجمالي {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "مفعّل {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "معطّل {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "نفق {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "مباشر {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "حظر {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "توسيع القائمة",
+  "splitCollapseList": "طي القائمة"
 }

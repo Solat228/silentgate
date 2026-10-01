@@ -3392,10 +3392,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get splitImportReplace => 'Replace';
 
   @override
-  String get splitImportConfirm =>
-      'Replace the current split tunneling rules with the imported ones?';
-
-  @override
   String get updatesTitle => 'Updates';
 
   @override
@@ -3644,4 +3640,113 @@ class AppLocalizationsEn extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'The app will close while version $version is being installed';
   }
+
+  @override
+  String get splitImportTitleApps => 'Import apps';
+
+  @override
+  String get splitImportTitleSites => 'Import sites';
+
+  @override
+  String get splitImportFormatNote =>
+      'One line is one rule. The [tunnel], [direct] and [block] headers set the action for the lines below. A line without flags is added exactly as if typed by hand.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Paste from clipboard';
+
+  @override
+  String get splitImportAdd => 'Add';
+
+  @override
+  String get splitImportReplaceAll => 'Replace all';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'new: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'already there: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'differ: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'not parsed: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Overwrite the differing ones';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Off keeps the current settings of those rules';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'was $from, becomes $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'These lines were not taken';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'Added $added, changed $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Rules after replacement: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'The list is empty, nothing to export';
+
+  @override
+  String get splitCountEmpty => 'Empty';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'total $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'on $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'off $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'tunnel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'direct $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'block $n';
+  }
+
+  @override
+  String get splitExpandList => 'Expand the list';
+
+  @override
+  String get splitCollapseList => 'Collapse the list';
 }

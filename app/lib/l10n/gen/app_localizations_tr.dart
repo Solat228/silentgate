@@ -3399,10 +3399,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get splitImportReplace => 'Değiştir';
 
   @override
-  String get splitImportConfirm =>
-      'Mevcut bölünmüş tünelleme kuralları içe aktarılanlarla değiştirilsin mi?';
-
-  @override
   String get updatesTitle => 'Güncellemeler';
 
   @override
@@ -3649,4 +3645,113 @@ class AppLocalizationsTr extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'Uygulama $version sürümü kurulurken kapanacak';
   }
+
+  @override
+  String get splitImportTitleApps => 'Uygulamaları içe aktar';
+
+  @override
+  String get splitImportTitleSites => 'Siteleri içe aktar';
+
+  @override
+  String get splitImportFormatNote =>
+      'Bir satır bir kuraldır. [tunnel], [direct] ve [block] başlıkları altındaki satırlar için eylemi belirler. İşaretsiz bir satır, elle girilmiş gibi eklenir.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Panodan yapıştır';
+
+  @override
+  String get splitImportAdd => 'Ekle';
+
+  @override
+  String get splitImportReplaceAll => 'Tümünü değiştir';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'yeni: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'zaten var: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'farklı: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'ayrıştırılamadı: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Farklı olanların üzerine yaz';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Kapalıyken bu kuralların mevcut ayarları kalır';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '$from idi, $to olacak';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'Bu satırlar alınmadı';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '$added eklendi, $changed değiştirildi';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Değiştirmeden sonra kural sayısı: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'Liste boş — dışa aktarılacak bir şey yok';
+
+  @override
+  String get splitCountEmpty => 'Boş';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'toplam $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'açık $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'kapalı $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'tünel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'doğrudan $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'engelle $n';
+  }
+
+  @override
+  String get splitExpandList => 'Listeyi genişlet';
+
+  @override
+  String get splitCollapseList => 'Listeyi daralt';
 }

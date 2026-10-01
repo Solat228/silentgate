@@ -476,7 +476,9 @@
   "serverUnsupportedHy2Mask": "此客户端暂不支持「{type}」混淆",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "此客户端暂不支持该服务器",
@@ -1250,7 +1252,6 @@
   "splitImportOk": "设置已导入",
   "splitImportBad": "剪贴板中没有有效的 SilentGate 设置",
   "splitImportReplace": "替换",
-  "splitImportConfirm": "用导入的规则替换当前的分流规则？",
   "updatesTitle": "更新",
   "updatesCurrentVersion": "当前版本 {version}",
   "updatesChannelStable": "稳定渠道",
@@ -1319,5 +1320,129 @@
   "updatesWaitingVpn": "已准备好安装——将在 VPN 断开后开始",
   "updatesSkippedNote": "已跳过版本 {version}——有下一个版本时会通知您",
   "updatesAutoNoticeTitle": "正在安装更新",
-  "updatesAutoNoticeBody": "安装版本 {version} 期间应用将关闭"
+  "updatesAutoNoticeBody": "安装版本 {version} 期间应用将关闭",
+  "splitImportTitleApps": "导入应用",
+  "splitImportTitleSites": "导入站点",
+  "splitImportFormatNote": "一行一条规则。[tunnel]、[direct]、[block] 标题用于设置其下方各行的动作。没有标记的行会按手动输入的方式添加。",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "从剪贴板粘贴",
+  "splitImportAdd": "添加",
+  "splitImportReplaceAll": "替换全部",
+  "splitImportStatNew": "新增：{n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "已存在：{n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "不同：{n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "未解析：{n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "覆盖不同的规则",
+  "splitImportOverwriteSub": "关闭时，这些规则保留当前设置",
+  "splitImportConflictLine": "原为 {from}，将变为 {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "以下行未被采用",
+  "splitImportAdded": "已添加 {added} 条，已修改 {changed} 条",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "替换后的规则数：{n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "列表为空——没有可导出的内容",
+  "splitCountEmpty": "空",
+  "splitCountTotal": "共 {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "启用 {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "禁用 {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "隧道 {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "直连 {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "阻止 {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "展开列表",
+  "splitCollapseList": "收起列表"
 }

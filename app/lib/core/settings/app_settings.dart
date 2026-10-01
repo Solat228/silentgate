@@ -534,6 +534,18 @@ class AppSettings {
   /// раскладку и УБРАТЬ и поле, и переключатель, и строки перевода.
   final bool compactNotification;
 
+  /// Список приложений на экране раздельного туннелирования свёрнут.
+  ///
+  /// ⚠️ ХРАНИТСЯ НА ДИСКЕ НАРОЧНО. У человека с сотнями правил свёрнутый
+  /// список — рабочее состояние, а не разовое действие: разворачивать его
+  /// заново при каждом открытии экрана значило бы не дать сворачивание вовсе.
+  /// На конфиг ядра не влияет, поэтому в [reconnectReasons] его нет.
+  final bool splitAppsCollapsed;
+
+  /// То же для списка сайтов. Два отдельных флага, а не один: списки живут
+  /// порознь, и человек чаще всего прячет именно длинный из двух.
+  final bool splitSitesCollapsed;
+
   /// Отказывать в QUIC (UDP:443).
   ///
   /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
@@ -874,6 +886,8 @@ class AppSettings {
     this.speedInAutoSelect = false,
     this.myRulesOverridePanel = true,
     this.compactNotification = false,
+    this.splitAppsCollapsed = false,
+    this.splitSitesCollapsed = false,
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -1005,6 +1019,8 @@ class AppSettings {
     bool? speedInAutoSelect,
     bool? myRulesOverridePanel,
     bool? compactNotification,
+    bool? splitAppsCollapsed,
+    bool? splitSitesCollapsed,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -1089,6 +1105,8 @@ class AppSettings {
       speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
       myRulesOverridePanel: myRulesOverridePanel ?? this.myRulesOverridePanel,
       compactNotification: compactNotification ?? this.compactNotification,
+      splitAppsCollapsed: splitAppsCollapsed ?? this.splitAppsCollapsed,
+      splitSitesCollapsed: splitSitesCollapsed ?? this.splitSitesCollapsed,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -1176,6 +1194,8 @@ class AppSettings {
         'speedInAutoSelect': speedInAutoSelect,
         'myRulesOverridePanel': myRulesOverridePanel,
         'compactNotification': compactNotification,
+        'splitAppsCollapsed': splitAppsCollapsed,
+        'splitSitesCollapsed': splitSitesCollapsed,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -1374,6 +1394,10 @@ class AppSettings {
             defaults.myRulesOverridePanel,
         compactNotification: j['compactNotification'] as bool? ??
             defaults.compactNotification,
+        splitAppsCollapsed:
+            j['splitAppsCollapsed'] as bool? ?? defaults.splitAppsCollapsed,
+        splitSitesCollapsed:
+            j['splitSitesCollapsed'] as bool? ?? defaults.splitSitesCollapsed,
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,

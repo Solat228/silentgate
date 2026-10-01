@@ -565,7 +565,9 @@
   "serverUnsupportedHy2Mask": "The \"{type}\" masking is not supported by this client yet",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "This server is not supported by this client yet",
@@ -1419,7 +1421,6 @@
   "splitImportOk": "Settings imported",
   "splitImportBad": "No valid SilentGate settings in the clipboard",
   "splitImportReplace": "Replace",
-  "splitImportConfirm": "Replace the current split tunneling rules with the imported ones?",
   "updatesTitle": "Updates",
   "updatesCurrentVersion": "Current version {version}",
   "updatesChannelStable": "Stable channel",
@@ -1488,5 +1489,129 @@
   "updatesWaitingVpn": "Ready to install — it will start after the VPN is disconnected",
   "updatesSkippedNote": "Version {version} skipped — you will be notified about the next one",
   "updatesAutoNoticeTitle": "Installing update",
-  "updatesAutoNoticeBody": "The app will close while version {version} is being installed"
+  "updatesAutoNoticeBody": "The app will close while version {version} is being installed",
+  "splitImportTitleApps": "Import apps",
+  "splitImportTitleSites": "Import sites",
+  "splitImportFormatNote": "One line is one rule. The [tunnel], [direct] and [block] headers set the action for the lines below. A line without flags is added exactly as if typed by hand.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Paste from clipboard",
+  "splitImportAdd": "Add",
+  "splitImportReplaceAll": "Replace all",
+  "splitImportStatNew": "new: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "already there: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "differ: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "not parsed: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Overwrite the differing ones",
+  "splitImportOverwriteSub": "Off keeps the current settings of those rules",
+  "splitImportConflictLine": "was {from}, becomes {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "These lines were not taken",
+  "splitImportAdded": "Added {added}, changed {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Rules after replacement: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "The list is empty, nothing to export",
+  "splitCountEmpty": "Empty",
+  "splitCountTotal": "total {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "on {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "off {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "tunnel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "direct {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "block {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Expand the list",
+  "splitCollapseList": "Collapse the list"
 }

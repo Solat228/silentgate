@@ -530,7 +530,9 @@
   "serverUnsupportedHy2Mask": "El camuflaje «{type}» todavía no es compatible con este cliente",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "Este servidor todavía no es compatible con este cliente",
@@ -1304,7 +1306,6 @@
   "splitImportOk": "Ajustes importados",
   "splitImportBad": "No hay ajustes válidos de SilentGate en el portapapeles",
   "splitImportReplace": "Reemplazar",
-  "splitImportConfirm": "¿Reemplazar las reglas actuales de túnel dividido por las importadas?",
   "updatesTitle": "Actualizaciones",
   "updatesCurrentVersion": "Versión actual {version}",
   "updatesChannelStable": "Canal estable",
@@ -1373,5 +1374,129 @@
   "updatesWaitingVpn": "Listo para instalar: empezará cuando se desconecte la VPN",
   "updatesSkippedNote": "Versión {version} omitida: le avisaremos de la siguiente",
   "updatesAutoNoticeTitle": "Instalando actualización",
-  "updatesAutoNoticeBody": "La aplicación se cerrará mientras se instala la versión {version}"
+  "updatesAutoNoticeBody": "La aplicación se cerrará mientras se instala la versión {version}",
+  "splitImportTitleApps": "Importar aplicaciones",
+  "splitImportTitleSites": "Importar sitios",
+  "splitImportFormatNote": "Una línea es una regla. Los encabezados [tunnel], [direct] y [block] definen la acción para las líneas siguientes. Una línea sin marcas se añade igual que si se escribiera a mano.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Pegar desde el portapapeles",
+  "splitImportAdd": "Añadir",
+  "splitImportReplaceAll": "Reemplazar todo",
+  "splitImportStatNew": "nuevas: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "ya existen: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "difieren: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "no reconocidas: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Sobrescribir las que difieren",
+  "splitImportOverwriteSub": "Desactivado: esas reglas conservan su configuración actual",
+  "splitImportConflictLine": "era {from}, pasa a {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Estas líneas no se tomaron",
+  "splitImportAdded": "Añadidas {added}, modificadas {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Reglas tras el reemplazo: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "La lista está vacía, no hay nada que exportar",
+  "splitCountEmpty": "Vacío",
+  "splitCountTotal": "total {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "activas {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "inactivas {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "túnel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "directo {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "bloqueo {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Expandir la lista",
+  "splitCollapseList": "Contraer la lista"
 }

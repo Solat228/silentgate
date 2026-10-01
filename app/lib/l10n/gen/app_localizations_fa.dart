@@ -3383,10 +3383,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get splitImportReplace => 'جایگزینی';
 
   @override
-  String get splitImportConfirm =>
-      'قوانین تونل تقسیمی فعلی با موارد وارد‌شده جایگزین شود؟';
-
-  @override
   String get updatesTitle => 'به‌روزرسانی‌ها';
 
   @override
@@ -3630,4 +3626,113 @@ class AppLocalizationsFa extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'برنامه هنگام نصب نسخهٔ $version بسته می‌شود';
   }
+
+  @override
+  String get splitImportTitleApps => 'درون‌ریزی برنامه‌ها';
+
+  @override
+  String get splitImportTitleSites => 'درون‌ریزی سایت‌ها';
+
+  @override
+  String get splitImportFormatNote =>
+      'هر خط یک قانون است. سرتیترهای [tunnel]، [direct] و [block] کنش خط‌های زیر خود را تعیین می‌کنند. خطی بدون برچسب، درست مثل خطی که دستی وارد شده باشد، افزوده می‌شود.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'جای‌گذاری از کلیپ‌بورد';
+
+  @override
+  String get splitImportAdd => 'افزودن';
+
+  @override
+  String get splitImportReplaceAll => 'جایگزینی همه';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'جدید: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'از پیش هست: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'متفاوت: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'تجزیه نشد: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'رونویسی موارد متفاوت';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'خاموش — تنظیمات کنونی این قانون‌ها می‌ماند';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '$from بود، $to می‌شود';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'این خط‌ها گرفته نشدند';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '$added افزوده شد، $changed تغییر کرد';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'تعداد قانون‌ها پس از جایگزینی: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'فهرست خالی است — چیزی برای برون‌بری نیست';
+
+  @override
+  String get splitCountEmpty => 'خالی';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'مجموع $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'روشن $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'خاموش $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'تونل $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'مستقیم $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'مسدود $n';
+  }
+
+  @override
+  String get splitExpandList => 'باز کردن فهرست';
+
+  @override
+  String get splitCollapseList => 'جمع کردن فهرست';
 }

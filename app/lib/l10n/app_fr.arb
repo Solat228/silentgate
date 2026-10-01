@@ -476,7 +476,9 @@
   "serverUnsupportedHy2Mask": "Le masquage « {type} » n'est pas encore pris en charge par ce client",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "Ce serveur n'est pas encore pris en charge par ce client",
@@ -1250,7 +1252,6 @@
   "splitImportOk": "Paramètres importés",
   "splitImportBad": "Aucun paramètre SilentGate valide dans le presse-papiers",
   "splitImportReplace": "Remplacer",
-  "splitImportConfirm": "Remplacer les règles de tunneling fractionné actuelles par celles importées ?",
   "updatesTitle": "Mises à jour",
   "updatesCurrentVersion": "Version actuelle {version}",
   "updatesChannelStable": "Canal stable",
@@ -1319,5 +1320,129 @@
   "updatesWaitingVpn": "Prêt à installer : l'installation commencera après la déconnexion du VPN",
   "updatesSkippedNote": "Version {version} ignorée : vous serez averti de la suivante",
   "updatesAutoNoticeTitle": "Installation de la mise à jour",
-  "updatesAutoNoticeBody": "L'application va se fermer pendant l'installation de la version {version}"
+  "updatesAutoNoticeBody": "L'application va se fermer pendant l'installation de la version {version}",
+  "splitImportTitleApps": "Importer des applications",
+  "splitImportTitleSites": "Importer des sites",
+  "splitImportFormatNote": "Une ligne, c'est une règle. Les en-têtes [tunnel], [direct] et [block] définissent l'action des lignes suivantes. Une ligne sans marque est ajoutée comme si elle avait été saisie à la main.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Coller depuis le presse-papiers",
+  "splitImportAdd": "Ajouter",
+  "splitImportReplaceAll": "Tout remplacer",
+  "splitImportStatNew": "nouvelles : {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "déjà présentes : {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "diffèrent : {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "non reconnues : {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Écraser celles qui diffèrent",
+  "splitImportOverwriteSub": "Désactivé : ces règles conservent leurs paramètres actuels",
+  "splitImportConflictLine": "était {from}, devient {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Ces lignes n'ont pas été prises en compte",
+  "splitImportAdded": "Ajoutées {added}, modifiées {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Règles après remplacement : {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "La liste est vide, il n'y a rien à exporter",
+  "splitCountEmpty": "Vide",
+  "splitCountTotal": "total {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "actives {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "inactives {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "tunnel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "direct {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "blocage {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Développer la liste",
+  "splitCollapseList": "Réduire la liste"
 }

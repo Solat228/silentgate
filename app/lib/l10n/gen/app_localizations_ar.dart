@@ -3386,10 +3386,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splitImportReplace => 'استبدال';
 
   @override
-  String get splitImportConfirm =>
-      'استبدال قواعد النفق المقسّم الحالية بالمستوردة؟';
-
-  @override
   String get updatesTitle => 'التحديثات';
 
   @override
@@ -3631,4 +3627,113 @@ class AppLocalizationsAr extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'سيُغلق التطبيق أثناء تثبيت الإصدار $version';
   }
+
+  @override
+  String get splitImportTitleApps => 'استيراد التطبيقات';
+
+  @override
+  String get splitImportTitleSites => 'استيراد المواقع';
+
+  @override
+  String get splitImportFormatNote =>
+      'كل سطر قاعدة واحدة. تحدد العناوين [tunnel] و[direct] و[block] الإجراء للأسطر التالية. يُضاف السطر بلا علامة تمامًا كما لو كُتب يدويًا.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'اللصق من الحافظة';
+
+  @override
+  String get splitImportAdd => 'إضافة';
+
+  @override
+  String get splitImportReplaceAll => 'استبدال الكل';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'جديد: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'موجود مسبقاً: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'مختلف: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'غير مفهوم: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'الكتابة فوق المختلفة';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'عند الإيقاف تبقى الإعدادات الحالية لتلك القواعد';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'كان $from، سيصبح $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'هذه الأسطر لم تُؤخذ';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'أُضيف $added، تغيّر $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'عدد القواعد بعد الاستبدال: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'القائمة فارغة — لا شيء للتصدير';
+
+  @override
+  String get splitCountEmpty => 'فارغة';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'إجمالي $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'مفعّل $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'معطّل $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'نفق $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'مباشر $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'حظر $n';
+  }
+
+  @override
+  String get splitExpandList => 'توسيع القائمة';
+
+  @override
+  String get splitCollapseList => 'طي القائمة';
 }

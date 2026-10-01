@@ -476,7 +476,9 @@
   "serverUnsupportedHy2Mask": "استتار «{type}» هنوز در این کلاینت پشتیبانی نمی‌شود",
   "@serverUnsupportedHy2Mask": {
     "placeholders": {
-      "type": {"type": "String"}
+      "type": {
+        "type": "String"
+      }
     }
   },
   "serverUnsupportedGeneric": "این سرور هنوز در این کلاینت پشتیبانی نمی‌شود",
@@ -1250,7 +1252,6 @@
   "splitImportOk": "تنظیمات وارد شد",
   "splitImportBad": "تنظیمات معتبر SilentGate در کلیپ‌بورد نیست",
   "splitImportReplace": "جایگزینی",
-  "splitImportConfirm": "قوانین تونل تقسیمی فعلی با موارد وارد‌شده جایگزین شود؟",
   "updatesTitle": "به‌روزرسانی‌ها",
   "updatesCurrentVersion": "نسخهٔ فعلی {version}",
   "updatesChannelStable": "کانال پایدار",
@@ -1319,5 +1320,129 @@
   "updatesWaitingVpn": "آمادهٔ نصب — پس از قطع VPN شروع می‌شود",
   "updatesSkippedNote": "نسخهٔ {version} رد شد — نسخهٔ بعدی را اطلاع می‌دهیم",
   "updatesAutoNoticeTitle": "در حال نصب به‌روزرسانی",
-  "updatesAutoNoticeBody": "برنامه هنگام نصب نسخهٔ {version} بسته می‌شود"
+  "updatesAutoNoticeBody": "برنامه هنگام نصب نسخهٔ {version} بسته می‌شود",
+  "splitImportTitleApps": "درون‌ریزی برنامه‌ها",
+  "splitImportTitleSites": "درون‌ریزی سایت‌ها",
+  "splitImportFormatNote": "هر خط یک قانون است. سرتیترهای [tunnel]، [direct] و [block] کنش خط‌های زیر خود را تعیین می‌کنند. خطی بدون برچسب، درست مثل خطی که دستی وارد شده باشد، افزوده می‌شود.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "جای‌گذاری از کلیپ‌بورد",
+  "splitImportAdd": "افزودن",
+  "splitImportReplaceAll": "جایگزینی همه",
+  "splitImportStatNew": "جدید: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "از پیش هست: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "متفاوت: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "تجزیه نشد: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "رونویسی موارد متفاوت",
+  "splitImportOverwriteSub": "خاموش — تنظیمات کنونی این قانون‌ها می‌ماند",
+  "splitImportConflictLine": "{from} بود، {to} می‌شود",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "این خط‌ها گرفته نشدند",
+  "splitImportAdded": "{added} افزوده شد، {changed} تغییر کرد",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "تعداد قانون‌ها پس از جایگزینی: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "فهرست خالی است — چیزی برای برون‌بری نیست",
+  "splitCountEmpty": "خالی",
+  "splitCountTotal": "مجموع {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "روشن {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "خاموش {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "تونل {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "مستقیم {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "مسدود {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "باز کردن فهرست",
+  "splitCollapseList": "جمع کردن فهرست"
 }

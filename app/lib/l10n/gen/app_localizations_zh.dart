@@ -3268,9 +3268,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitImportReplace => '替换';
 
   @override
-  String get splitImportConfirm => '用导入的规则替换当前的分流规则？';
-
-  @override
   String get updatesTitle => '更新';
 
   @override
@@ -3497,4 +3494,112 @@ class AppLocalizationsZh extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return '安装版本 $version 期间应用将关闭';
   }
+
+  @override
+  String get splitImportTitleApps => '导入应用';
+
+  @override
+  String get splitImportTitleSites => '导入站点';
+
+  @override
+  String get splitImportFormatNote =>
+      '一行一条规则。[tunnel]、[direct]、[block] 标题用于设置其下方各行的动作。没有标记的行会按手动输入的方式添加。';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => '从剪贴板粘贴';
+
+  @override
+  String get splitImportAdd => '添加';
+
+  @override
+  String get splitImportReplaceAll => '替换全部';
+
+  @override
+  String splitImportStatNew(int n) {
+    return '新增：$n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return '已存在：$n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return '不同：$n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return '未解析：$n';
+  }
+
+  @override
+  String get splitImportOverwrite => '覆盖不同的规则';
+
+  @override
+  String get splitImportOverwriteSub => '关闭时，这些规则保留当前设置';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '原为 $from，将变为 $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => '以下行未被采用';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '已添加 $added 条，已修改 $changed 条';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return '替换后的规则数：$n';
+  }
+
+  @override
+  String get splitExportEmpty => '列表为空——没有可导出的内容';
+
+  @override
+  String get splitCountEmpty => '空';
+
+  @override
+  String splitCountTotal(int n) {
+    return '共 $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return '启用 $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return '禁用 $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return '隧道 $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return '直连 $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return '阻止 $n';
+  }
+
+  @override
+  String get splitExpandList => '展开列表';
+
+  @override
+  String get splitCollapseList => '收起列表';
 }

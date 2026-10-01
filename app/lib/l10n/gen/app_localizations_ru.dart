@@ -3396,10 +3396,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get splitImportReplace => 'Заменить';
 
   @override
-  String get splitImportConfirm =>
-      'Заменить текущие правила раздельного туннелирования импортированными?';
-
-  @override
   String get updatesTitle => 'Обновления';
 
   @override
@@ -3648,4 +3644,113 @@ class AppLocalizationsRu extends AppLocalizations {
   String updatesAutoNoticeBody(String version) {
     return 'Приложение закроется на время установки версии $version';
   }
+
+  @override
+  String get splitImportTitleApps => 'Импорт приложений';
+
+  @override
+  String get splitImportTitleSites => 'Импорт сайтов';
+
+  @override
+  String get splitImportFormatNote =>
+      'Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Вставить из буфера';
+
+  @override
+  String get splitImportAdd => 'Добавить';
+
+  @override
+  String get splitImportReplaceAll => 'Заменить всё';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'новых: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'уже есть: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'различаются: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'не разобрано: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Перезаписать различающиеся';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Выключено — у таких правил остаются текущие настройки';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'было $from, станет $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'Эти строки не взяты';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'Добавлено $added, изменено $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Правил после замены: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'Список пуст — экспортировать нечего';
+
+  @override
+  String get splitCountEmpty => 'Пусто';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'всего $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'вкл $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'выкл $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'туннель $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'прямо $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'блок $n';
+  }
+
+  @override
+  String get splitExpandList => 'Развернуть список';
+
+  @override
+  String get splitCollapseList => 'Свернуть список';
 }
