@@ -733,6 +733,12 @@ class AppUpdateController extends ChangeNotifier {
         _linkOnly(LinkOnlyReason.notifyOnly);
       case AppUpdateMode.auto:
         _setPhase(UpdatePhase.available);
+        // ⚠️ Намерение ставить объявляется ДО закачки, хотя кнопку никто не
+        // нажимал: в режиме «авто» согласие дано настройкой. Без него метка
+        // согласия у гейта разрешения Android уходит с `install: false`, и
+        // следующий старт после выдачи разрешения ТОЛЬКО качает — авто-режим
+        // не ставит обновление никогда.
+        _intent = (forceQuit: false, allowDowngrade: false);
         await download();
         // Установщик сам решит, ждать ли отключения VPN.
         if (_phase == UpdatePhase.ready) await _install(unattended: true);
@@ -1067,8 +1073,14 @@ class AppUpdateController extends ChangeNotifier {
   /// [waitingForVpnOff] и запуск сам по [vpnChanges]. [allowDowngrade] —
   /// осознанный откат из «Прежних версий»; без него версия не новее нашей —
   /// отказ [UpdateErrorKind.notNewer] (replay старого релиза).
-  Future<void> install({bool forceQuit = false, bool allowDowngrade = false}) =>
-      _install(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+  Future<void> install({bool forceQuit = false, bool allowDowngrade = false}) {
+    // Намерение запоминается и здесь, а не только в [downloadAndInstall]:
+    // когда установщик уже скачан, интерфейс зовёт именно этот метод, и без
+    // записи согласие (в том числе разрешение на разрыв VPN) терялось бы при
+    // возврате через [resumeAfterPermission].
+    _intent = (forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+    return _install(forceQuit: forceQuit, allowDowngrade: allowDowngrade);
+  }
 
   /// [unattended] — установку никто не нажимал (режим «авто», отложенная до
   /// отключения VPN): перед запуском зовётся [beforeUnattendedInstall].
@@ -1121,6 +1133,16 @@ class AppUpdateController extends ChangeNotifier {
       );
       _launched = true;
     } on NeedsInstallPermission {
+      // Разрешение отозвали между проверкой у закачки и запуском. Метку пишем
+      // и здесь: выдача разрешения убивает процесс, а установщик уже скачан —
+      // без метки следующий старт не знал бы, что его просили поставить.
+      await _writeConsent(ConsentMarker(
+        version: offer.version,
+        install: true,
+        forceQuit: forceQuit,
+        at: _clock().toUtc(),
+      ));
+      if (_disposed) return;
       _setPhase(UpdatePhase.needsPermission);
     } on UpdateInstallException catch (e) {
       _fail(UpdateErrorKind.installFailed, detail: e.message);

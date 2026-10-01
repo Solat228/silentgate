@@ -1192,6 +1192,57 @@ void main() {
       expect(installer.launches, isEmpty);
     });
 
+    test(
+        '⚠️ «авто» на Android: отказ разрешения НЕ теряет намерение '
+        'поставить — иначе режим не ставит обновление никогда', () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      installer.canInstallNowResult = false;
+      final first = make();
+      await first.startup();
+
+      expect(first.phase, UpdatePhase.needsPermission);
+      expect(server.requested, isEmpty,
+          reason: 'разрешение спрашивается до единого байта');
+      final m = ConsentMarker.tryParse(consentFile().readAsStringSync());
+      expect(m?.install, isTrue,
+          reason: 'с install:false следующий старт только качает');
+      first.dispose();
+
+      installer.canInstallNowResult = true;
+      final second = make();
+      await second.startup();
+      expect(installer.launches, hasLength(1),
+          reason: 'в режиме «авто» ставим сами, без окна');
+      second.dispose();
+    });
+
+    test(
+        '⚠️ разрешение отозвали перед самым запуском: согласие записано, '
+        'повтор идёт с тем же forceQuit', () async {
+      publish();
+      final c = make();
+      await c.startup();
+      await c.download();
+      expect(c.phase, UpdatePhase.ready);
+
+      installer.launchError = const NeedsInstallPermission();
+      await c.install(forceQuit: true);
+      expect(c.phase, UpdatePhase.needsPermission);
+      final m = ConsentMarker.tryParse(consentFile().readAsStringSync());
+      expect(m?.version, next);
+      expect(m?.install, isTrue);
+      expect(m?.forceQuit, isTrue);
+
+      installer.launchError = null;
+      await c.resumeAfterPermission();
+      expect(installer.launches, hasLength(1));
+      expect(installer.launches.single.forceQuit, isTrue,
+          reason: 'согласие на разрыв VPN терялось вместе с намерением');
+      c.dispose();
+    });
+
     test('устаревшая метка (больше часа) не действует: обычное окно',
         () async {
       publish();

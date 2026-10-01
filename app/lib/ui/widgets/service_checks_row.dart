@@ -565,6 +565,11 @@ class ServiceChecksSides extends StatelessWidget {
   /// (`FittedBox` на каждой) уже пробовали: «Мессенджеры» выходили мелкими,
   /// «ИИ» крупными, столбики значков вставали на разной высоте — жалоба
   /// владельца «а хули они у тебя вразброс».
+  /// Заглушка кегля для плотной раскладки, где подписи групп не рисуются.
+  /// Нулевой размер выбран нарочно: если такой кегль куда-то утечёт, подпись
+  /// пропадёт на виду, а не ужмётся незаметно на пару пикселей.
+  static const _unusedLabelFont = (size: 0.0, oneLine: true);
+
   static ({double size, bool oneLine}) labelFontFor(
       List<GroupedRow> rows, AppLocalizations l,
       {required double width,
@@ -742,10 +747,16 @@ class ServiceChecksSides extends StatelessWidget {
       // каждая сторона подбирала свой: слева «Мессенджеры» выходили одним
       // кеглем, справа «Видео и музыка» — другим, и подписи в одной строке
       // вокруг кнопки были разного размера (поймано стражем 24.09.2026).
-      final labelFont = labelFontFor(rows, AppLocalizations.of(context),
-          width: labelWidth,
-          style: Theme.of(context).textTheme.labelSmall,
-          textScaler: MediaQuery.textScalerOf(context));
+      // ⚠️ В плотной раскладке подписей групп нет вовсе — название уходит в
+      // подсказку, и `labelFont` не читает никто. Считать его там незачем:
+      // `labelFontFor` раскладывает `TextPainter` по каждому слову каждой
+      // группы, а эта сборка идёт на КАЖДЫЙ тик проверки сервисов.
+      final labelFont = dense
+          ? _unusedLabelFont
+          : labelFontFor(rows, AppLocalizations.of(context),
+              width: labelWidth,
+              style: Theme.of(context).textTheme.labelSmall,
+              textScaler: MediaQuery.textScalerOf(context));
 
       final left = _SideColumn(
         rows: split.left,
