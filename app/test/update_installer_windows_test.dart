@@ -568,6 +568,61 @@ void main() {
         staging.deleteSync(recursive: true);
         await make().purgeStaging();
       });
+
+      test(
+          '⚠️ версия 1.14.10 НЕ принимается за 1.14.1 — иначе установщики '
+          'копятся вечно', () async {
+        final sep = Platform.pathSeparator;
+        final keep = File('${staging.path}${sep}SilentGateSetup-1.14.1.exe')
+          ..writeAsStringSync('a');
+        final next = File('${staging.path}${sep}SilentGateSetup-1.14.10.exe')
+          ..writeAsStringSync('b');
+        final nextLog = File('${staging.path}${sep}install-1.14.19.log')
+          ..writeAsStringSync('c');
+
+        await make().purgeStaging(keepVersion: '1.14.1');
+
+        expect(keep.existsSync(), isTrue);
+        expect(next.existsSync(), isFalse,
+            reason: 'подстрока «1.14.1» внутри «1.14.10» — не та же версия');
+        expect(nextLog.existsSync(), isFalse);
+      });
+    });
+
+    group('nameBelongsToVersion', () {
+      bool f(String name, String v) =>
+          StagedUpdateInstaller.nameBelongsToVersion(name, v);
+
+      test('точное совпадение по границам номера', () {
+        expect(f('SilentGateSetup-1.14.1.exe', '1.14.1'), isTrue);
+        expect(f('install-1.14.1.log', '1.14.1'), isTrue);
+        expect(f('SilentGateSetup-1.14.1.exe.part', '1.14.1'), isTrue);
+        expect(f('SilentGate-1.14.1-arm64-v8a.apk', '1.14.1'), isTrue);
+        expect(f('SilentGate-1.14.1-beta.2.manifest.json', '1.14.1-beta.2'),
+            isTrue);
+      });
+
+      test('номер, который лишь НАЧИНАЕТСЯ так же, не считается', () {
+        expect(f('SilentGateSetup-1.14.10.exe', '1.14.1'), isFalse);
+        expect(f('install-1.14.19.log', '1.14.1'), isFalse);
+        expect(f('SilentGateSetup-1.14.1.2.exe', '1.14.1'), isFalse);
+        expect(f('SilentGateSetup-11.14.1.exe', '1.14.1'), isFalse);
+      });
+
+      test('⚠️ суффикс за дефисом версию НЕ продолжает — и это осознанно', () {
+        // `SilentGate-1.14.1-arm64-v8a.apk` обязан совпасть с «1.14.1»: за
+        // дефисом там ABI. Отличить его от `-beta.1` нечем — оба начинаются
+        // буквой, — поэтому хвост за дефисом считается чужим суффиксом имени,
+        // а не частью номера. Цена ошибки разная: не удалить лишний файл беты
+        // можно пережить, а удалить активы текущей версии — нет.
+        expect(f('SilentGate-1.14.1-arm64-v8a.apk', '1.14.1'), isTrue);
+        expect(f('SilentGateSetup-1.14.1-beta.1.exe', '1.14.1'), isTrue);
+      });
+
+      test('чужое имя не совпадает', () {
+        expect(f('pending.json', '1.14.1'), isFalse);
+        expect(f('junk', '1.14.1'), isFalse);
+      });
     });
 
     test('capability — через инъецированный реестр', () async {

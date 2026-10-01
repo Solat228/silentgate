@@ -81,7 +81,21 @@ class UpdateInstallerAndroid extends StagedUpdateInstaller {
     if (!verified.existsSync()) {
       throw const UpdateInstallException('файл обновления исчез');
     }
-    final actual = await Sha256.ofFile(verified);
+    // ⚠️ Чтение в try: `existsSync` закрывает окно не полностью — файл может
+    // исчезнуть между проверкой и открытием потока, и тогда наружу ушло бы
+    // сырое `FileSystemException` вместо [UpdateInstallException], на которое
+    // рассчитывает вызывающий. Нашло облачное ревью 01.10.2026.
+    //
+    // ⚠️ Юнит-теста на эту ветку нет и быть не может: она срабатывает только
+    // в гонке между `existsSync` и открытием потока. Воспроизвести её из
+    // теста значило бы написать флакающий тест, а он хуже отсутствующего.
+    final String actual;
+    try {
+      actual = await Sha256.ofFile(verified);
+    } catch (e) {
+      AppLog.e('Обновление: файл APK не прочитан перед установкой: $e');
+      throw const UpdateInstallException('файл обновления не прочитан');
+    }
     if (actual.toLowerCase() != expectedSha256.trim().toLowerCase()) {
       AppLog.e('Обновление: хэш APK изменился после проверки — установка отменена');
       throw const UpdateInstallException(

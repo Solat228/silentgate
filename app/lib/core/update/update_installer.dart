@@ -294,7 +294,9 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
       // `pending.json` — забота reconcileAfterStart: чистка, вызванная до
       // разбора, не имеет права стереть итог установки.
       if (name == PendingInstall.fileName) continue;
-      if (keepVersion != null && keepVersion.isNotEmpty && name.contains(keepVersion)) {
+      if (keepVersion != null &&
+          keepVersion.isNotEmpty &&
+          nameBelongsToVersion(name, keepVersion)) {
         continue;
       }
       try {
@@ -303,6 +305,48 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
         // Занятый файл (установщик ещё работает) — уберём в следующий раз.
       }
     }
+  }
+
+  /// Принадлежит ли файл с именем [name] версии [version].
+  ///
+  /// ⚠️ НЕ `contains`. Версии — это цифры с точками, и одна целиком лежит
+  /// внутри другой: `'1.14.10'.contains('1.14.1')` истинно. С простым
+  /// вхождением чистка, вызванная с `keepVersion: '1.14.1'`, щадила бы
+  /// `SilentGateSetup-1.14.10.exe` и все последующие патчи до `1.14.19` —
+  /// установщики по сотне мегабайт оставались бы в каталоге навсегда, потому
+  /// что следующая чистка повторяла бы то же ложное совпадение уже со своей
+  /// версией. Нашло облачное ревью 01.10.2026.
+  ///
+  /// Совпадение считается настоящим, если по обе стороны от него нет
+  /// продолжения номера: ни цифры, ни точки с цифрой за ней.
+  static bool nameBelongsToVersion(String name, String version) {
+    var from = 0;
+    while (true) {
+      final at = name.indexOf(version, from);
+      if (at < 0) return false;
+      final end = at + version.length;
+      if (!_continuesNumber(name, at - 1, before: true) &&
+          !_continuesNumber(name, end, before: false)) {
+        return true;
+      }
+      from = at + 1;
+    }
+  }
+
+  static bool _continuesNumber(String s, int at, {required bool before}) {
+    if (at < 0 || at >= s.length) return false;
+    final c = s[at];
+    if (_isDigit(c)) return true;
+    if (c != '.') return false;
+    // Точка продолжает номер только вместе с цифрой: `install-1.14.1.log`
+    // заканчивается точкой перед буквой, и это конец версии, а не её хвост.
+    final next = before ? at - 1 : at + 1;
+    return next >= 0 && next < s.length && _isDigit(s[next]);
+  }
+
+  static bool _isDigit(String c) {
+    final code = c.codeUnitAt(0);
+    return code >= 0x30 && code <= 0x39;
   }
 
   static void _deleteQuietly(File f) {
