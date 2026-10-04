@@ -1015,6 +1015,132 @@ void main() {
     });
   });
 
+  group('Правки ревью rev2..rev3 (05.10.2026)', () {
+    test('откат, отложенный живым VPN, ставится после его отключения',
+        () async {
+      // Согласие на откат («Прежние версии») терялось ровно там, где его уже
+      // спросили: install(allowDowngrade: true) при живом VPN откладывался, а
+      // отложенный запуск шёл с умолчаниями и упирался в notNewer. Человек
+      // подтверждал откат и получал тупик.
+      publish(version: current, name: 'SilentGateSetup-$current.exe');
+      checkResult = () => UpdateCheckResult.available(
+          AppRelease(version: current, downloadUrl: '${server.base}/page'));
+      var vpn = true;
+      final signal = _VpnSignal();
+      final c = make(isVpnActive: () => vpn, vpnChanges: signal);
+      await c.startup();
+      await c.download();
+      expect(c.phase, UpdatePhase.ready);
+
+      await c.install(allowDowngrade: true);
+      expect(c.waitingForVpnOff, isTrue);
+      expect(installer.launches, isEmpty);
+
+      vpn = false;
+      signal.fire();
+      await _waitFor(() => installer.launches.isNotEmpty,
+          reason: 'отложенная установка запустилась');
+
+      expect(c.error?.kind, isNot(UpdateErrorKind.notNewer),
+          reason: 'согласие на откат обязано пережить ожидание VPN');
+      expect(installer.launches.single.allowDowngrade, isTrue);
+    });
+
+    test('обычное обновление, отложенное VPN, откат НЕ разрешает', () async {
+      // Обратная сторона: переживает то согласие, с которым звали, — не
+      // больше. Отложенная ШТАТНАЯ установка права на откат не получает.
+      publish();
+      var vpn = true;
+      final signal = _VpnSignal();
+      final c = make(isVpnActive: () => vpn, vpnChanges: signal);
+      await c.startup();
+      await c.download();
+      await c.install();
+      expect(c.waitingForVpnOff, isTrue);
+
+      vpn = false;
+      signal.fire();
+      await _waitFor(() => installer.launches.isNotEmpty,
+          reason: 'отложенная установка запустилась');
+
+      expect(installer.launches.single.allowDowngrade, isFalse);
+    });
+
+    test('отказ каталога закачек после отмены не воскрешает фазу failed',
+        () async {
+      // Все ветки отказа в закачке сверяются с поколением, кроме этой:
+      // отменённая закачка, чей stagingDir() упал уже после cancel(), затирала
+      // фазу, которую отмена успела выставить.
+      publish();
+      final c = make();
+      await c.startup();
+      expect(c.phase, UpdatePhase.available);
+
+      // ⚠️ Нужна ветка каталога ПОД АКТИВ — там и не хватало сверки с
+      // поколением. За одну закачку каталог спрашивают трижды (манифест,
+      // подпись, актив), поэтому целимся в третье обращение ОТ ТЕКУЩЕГО
+      // счётчика: числом было бы хрупко, старт тоже спрашивает каталог.
+      final assetCall = installer.stagingCalls + 3;
+      installer.stagingErrorFromCall = assetCall;
+      installer.stagingDelay = const Duration(milliseconds: 80);
+      installer.stagingError = const FileSystemException('каталог недоступен');
+
+      final run = c.download();
+      await _waitFor(() => installer.stagingCalls >= assetCall,
+          reason: 'дошли до каталога под актив');
+      c.cancel();
+      expect(c.phase, UpdatePhase.available);
+      await run;
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+
+      expect(c.phase, UpdatePhase.available,
+          reason: 'фазу выставила отмена — опоздавший отказ её не трогает');
+      expect(c.error, isNull);
+    });
+
+    test('отказ каталога закачек БЕЗ отмены по-прежнему даёт failed', () async {
+      publish();
+      final c = make();
+      await c.startup();
+      installer.stagingErrorFromCall = installer.stagingCalls + 3;
+      installer.stagingError = const FileSystemException('каталог недоступен');
+      await c.download();
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.downloadFailed);
+    });
+
+    test('журнал провалившейся установки переживает чистку в той же сессии',
+        () async {
+      // startup() берёг журнал через purgeStaging(keepVersion:), а любая
+      // следующая чистка в той же сессии звала purgeStaging() без аргумента и
+      // стирала его — кнопка «Показать журнал» вела в пустоту.
+      installer.pendingResult = PendingResult(
+        outcome: PendingOutcome.failed,
+        pending: PendingInstall(
+          version: next,
+          startedAt: DateTime.utc(2026, 9, 24),
+          exePath: stagedFile(assetName).path,
+          logPath: '',
+        ),
+        logTail: 'строка журнала',
+      );
+      publish();
+      final c = make();
+      await c.startup();
+      await c.download();
+      expect(c.phase, UpdatePhase.ready);
+      installer.purgeCalls.clear();
+
+      // Релиз отозвали: на следующей проверке мы снова самые свежие.
+      checkResult = () => const UpdateCheckResult.upToDate();
+      await c.checkNow();
+
+      expect(c.phase, UpdatePhase.upToDate);
+      expect(installer.purgeCalls, [next],
+          reason: 'скачанное убрано, а журнал провалившейся установки — нет');
+    });
+  });
+
   group('UpdateOffer.fromRelease', () {
     test('полный релиз: поля самообновления переносятся, версия без v',
         () {

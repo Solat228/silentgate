@@ -445,6 +445,10 @@ class AppUpdateController extends ChangeNotifier {
   /// Повторная чистка `updates/` после успешного обновления ([startup]).
   Timer? _purgeRetry;
 
+  /// Версия, чей журнал неудавшейся установки нельзя стирать (см. [startup]).
+  /// Спрашивает КАЖДАЯ чистка, а не только первая.
+  String? _keepLogVersion;
+
   /// Намерение человека для текущей закачки ([downloadAndInstall]): поставить
   /// сразу после проверки и с каким согласием. `null` — просто скачать.
   ({bool forceQuit, bool allowDowngrade})? _intent;
@@ -600,10 +604,11 @@ class AppUpdateController extends ChangeNotifier {
       // Журнал неудачной установки нужен кнопке «Показать журнал» — его
       // версию не трогаем; всё остальное в каталоге закачек — мусор.
       final outcome = _lastOutcome;
-      final keep = outcome != null && outcome.outcome == PendingOutcome.failed
-          ? outcome.pending.version
-          : null;
-      await _installer.purgeStaging(keepVersion: keep);
+      _keepLogVersion =
+          outcome != null && outcome.outcome == PendingOutcome.failed
+              ? outcome.pending.version
+              : null;
+      await _installer.purgeStaging(keepVersion: _keepLogVersion);
     } catch (e) {
       AppLog.w('Обновление: каталог закачек не вычищен: ${scrubUrls('$e')}');
     }
@@ -937,6 +942,9 @@ class AppUpdateController extends ChangeNotifier {
     try {
       dir = await _installer.stagingDir();
     } catch (e) {
+      // Как и все прочие ветки отказа здесь: за `await` закачку могли
+      // отменить, и тогда фазу уже сменил тот, кто отменял.
+      if (!live()) return;
       _fail(UpdateErrorKind.downloadFailed, detail: '$e');
       return;
     }
@@ -1163,7 +1171,15 @@ class AppUpdateController extends ChangeNotifier {
     if (_phase != UpdatePhase.ready || _isVpnActive()) return;
     _awaitingVpnOff = false;
     AppLog.i('Обновление: VPN отключён — ставлю ${_offer?.version}');
-    unawaited(_install(unattended: true));
+    // ⚠️ С ТЕМ ЖЕ СОГЛАСИЕМ, что дал человек, — как и [resumeAfterPermission].
+    // Без этого отложенный ОСОЗНАННЫЙ откат («Прежние версии» при живом VPN)
+    // упирался в [UpdateErrorKind.notNewer]: согласие теряли ровно на том
+    // пути, где его уже спросили, и откат становился тупиком.
+    final intent = _intent;
+    unawaited(_install(
+      unattended: true,
+      allowDowngrade: intent?.allowDowngrade ?? false,
+    ));
   }
 
   // ── Решения человека ──────────────────────────────────────────────────────
@@ -1201,7 +1217,10 @@ class AppUpdateController extends ChangeNotifier {
     _expectedSha = null;
     if (!purge) return;
     try {
-      await _installer.purgeStaging();
+      // ⚠️ `keepVersion` — не формальность: журнал неудавшейся установки
+      // берёгся в [startup] под кнопку «Показать журнал», а любая чистка
+      // внутри той же сессии стёрла бы его, и кнопка вела бы в пустоту.
+      await _installer.purgeStaging(keepVersion: _keepLogVersion);
     } catch (e) {
       AppLog.w('Обновление: каталог закачек не вычищен: ${scrubUrls('$e')}');
     }
@@ -1220,7 +1239,9 @@ class AppUpdateController extends ChangeNotifier {
     // Идёт своя закачка или лежит проверенный установщик — чистка снесла бы
     // его; остатки уберёт следующий старт.
     if (_disposed || busy || _verified != null) return;
-    unawaited(_installer.purgeStaging().catchError((Object e) {
+    unawaited(_installer
+        .purgeStaging(keepVersion: _keepLogVersion)
+        .catchError((Object e) {
       AppLog.w('Обновление: повторная чистка каталога закачек не удалась: '
           '${scrubUrls('$e')}');
     }));

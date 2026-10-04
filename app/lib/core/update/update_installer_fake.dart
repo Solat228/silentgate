@@ -44,6 +44,25 @@ class FakeUpdateInstaller implements UpdateInstaller {
   /// Если задано — [launch] бросает это вместо записи вызова.
   Object? launchError;
 
+  /// Если задано — [stagingDir] бросает это.
+  ///
+  /// ⚠️ [stagingErrorFromCall] существует потому, что каталог закачек в
+  /// контроллере спрашивают ТРИЖДЫ за одну закачку: под манифест, под подпись
+  /// и под сам актив (первые два — через `_fetchSmall`). Безусловный отказ
+  /// обрывает поток на манифесте, и до ветки актива тест не доходит.
+  Object? stagingError;
+
+  /// С какого по счёту обращения действует [stagingError] (с 1). `1` —
+  /// с первого же.
+  int stagingErrorFromCall = 1;
+
+  /// Задержка перед ответом [stagingDir] — окно, в котором тест успевает
+  /// позвать `cancel()`.
+  Duration? stagingDelay;
+
+  /// Сколько раз спросили каталог закачек.
+  int stagingCalls = 0;
+
   final List<FakeLaunch> launches = [];
   final List<String> reconcileCalls = [];
   final List<String?> purgeCalls = [];
@@ -51,6 +70,12 @@ class FakeUpdateInstaller implements UpdateInstaller {
 
   @override
   Future<Directory> stagingDir() async {
+    stagingCalls++;
+    final err = stagingError;
+    final armed = err != null && stagingCalls >= stagingErrorFromCall;
+    final delay = stagingDelay;
+    if (armed && delay != null) await Future<void>.delayed(delay);
+    if (armed) throw err;
     if (!staging.existsSync()) staging.createSync(recursive: true);
     return staging;
   }
