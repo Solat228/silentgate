@@ -344,6 +344,10 @@ SilentGateSetup-<версия>.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCE
 Сервер стенда отдаёт те же пути, что GitHub: `/repos/Solat228/silentgate/releases/latest`
 (и `/releases` для бета-канала и «Прежних версий») с `browser_download_url`, указывающими на
 файлы на том же сервере, плюс сами файлы — актив, `.manifest.json`, `.manifest.sig`.
+Запасной источник под override тоже уходит на стенд: `/api/app-version` и
+`/api/app-version-beta` на той же базе (с 1.15.0; раньше отказ GitHub на стенде уводил
+проверку на боевой сайт). Так проверяется и зеркало файлов: стенд отдаёт `404` на
+актив «GitHub», а `/api/app-version` указывает на копии по другому пути.
 Манифест подписывается настоящим ключом (`tool/sign_release.dart`): override меняет только
 адрес.
 

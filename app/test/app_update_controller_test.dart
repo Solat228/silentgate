@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -228,6 +229,7 @@ void main() {
     Future<void> Function()? loadOverride,
     Duration purgeRetryDelay = const Duration(hours: 1),
     DateTime Function()? clock,
+    UpdateMirrorLookup? mirror,
   }) =>
       AppUpdateController(
         settings: () => settings.value,
@@ -238,6 +240,10 @@ void main() {
           betaSeen.add(beta);
           return checkResult();
         },
+        // ⚠️ Запасной источник по умолчанию — «нет»: настоящий
+        // AppUpdate.mirrorRelease пошёл бы на боевой сайт.
+        mirror: mirror ??
+            ({required bool beta, required String version}) async => null,
         offerOf: (r) => offers[r.version] ?? UpdateOffer.fromRelease(r),
         isVpnActive: isVpnActive,
         vpnChanges: vpnChanges,
@@ -1138,6 +1144,254 @@ void main() {
       expect(c.phase, UpdatePhase.upToDate);
       expect(installer.purgeCalls, [next],
           reason: 'скачанное убрано, а журнал провалившейся установки — нет');
+    });
+  });
+
+  group('Запасной источник файлов (GitHub не отдал — берём с сайта)', () {
+    // Проверка версии проходит через GitHub, а его файлы минутой позже могут
+    // не отдаться: провайдер подменяет сертификат с перебоями. Тот же выпуск
+    // байт-в-байт лежит на сайте. Здесь «сайт» — префикс /mirror на том же
+    // локальном сервере.
+    final mirrorAsked = <({bool beta, String version})>[];
+
+    setUp(mirrorAsked.clear);
+
+    /// Положить копию выпуска под /mirror — снимается ДО того, как тест
+    /// уберёт что-то у «GitHub». [badSignature] портит подпись копии.
+    AppRelease mirrorCopy(
+      _Published pub, {
+      String name = assetName,
+      bool badSignature = false,
+    }) {
+      final manifest = server.routes['/m-$next.json']!;
+      server.routes['/mirror/$name'] = pub.body;
+      server.routes['/mirror/m-$next.json'] = manifest;
+      server.routes['/mirror/m-$next.sig'] = badSignature
+          ? utf8.encode(base64.encode(List<int>.filled(64, 1)))
+          : utf8.encode(UpdateSignature.sign(manifest, seed));
+      return AppRelease(
+        version: next,
+        downloadUrl: '${server.base}/mirror/$name',
+        assetName: name,
+        assetSize: pub.body.length,
+        manifestUrl: '${server.base}/mirror/m-$next.json',
+        signatureUrl: '${server.base}/mirror/m-$next.sig',
+      );
+    }
+
+    UpdateMirrorLookup answer(AppRelease? Function() r) =>
+        ({required bool beta, required String version}) async {
+          mirrorAsked.add((beta: beta, version: version));
+          return r();
+        };
+
+    Iterable<String> mirrorRequests() =>
+        server.requested.where((p) => p.startsWith('/mirror/'));
+
+    test('манифест у GitHub не отдался — выпуск взят с сайта и поставлен',
+        () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub);
+      server.routes.remove('/m-$next.json');
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(isVpnActive: () => false, mirror: answer(() => copy));
+      await c.startup();
+
+      expect(c.error, isNull);
+      expect(c.phase, UpdatePhase.installing);
+      expect(installer.launches.single.expectedSha256, pub.sha);
+      expect(mirrorAsked, [(beta: false, version: next)]);
+      expect(
+          server.requested,
+          containsAllInOrder([
+            '/m-$next.json',
+            '/mirror/m-$next.json',
+            '/mirror/m-$next.sig',
+            '/mirror/$assetName',
+          ]));
+    });
+
+    test('установщик у GitHub не отдался — взят с сайта', () async {
+      final pub = publish(assetPath: '/gone');
+      final copy = mirrorCopy(pub);
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(isVpnActive: () => false, mirror: answer(() => copy));
+      await c.startup();
+
+      expect(c.error, isNull);
+      expect(c.phase, UpdatePhase.installing);
+      expect(server.requested, contains('/gone'));
+      expect(server.requested, contains('/mirror/$assetName'));
+      expect(await Sha256.ofFile(installer.launches.single.file), pub.sha);
+    });
+
+    test('⚠️ плохая подпись — сайт НЕ спрашивается: те же байты дали бы то же',
+        () async {
+      publish(badSignature: true);
+      final c = make(mirror: answer(() => null));
+      await c.startup();
+      await c.download();
+
+      expect(c.error?.kind, UpdateErrorKind.badSignature);
+      expect(mirrorAsked, isEmpty);
+    });
+
+    test('манифест другой версии — сайт НЕ спрашивается', () async {
+      publish(manifestVersion: current);
+      final c = make(mirror: answer(() => null));
+      await c.startup();
+      await c.download();
+
+      expect(c.error?.rejection, ManifestRejection.versionMismatch);
+      expect(mirrorAsked, isEmpty);
+    });
+
+    test('хэш установщика не сошёлся с манифестом — повтор с сайта', () async {
+      // Отказ закачки (обрыв, подмена тела по дороге) — тоже транспорт: на
+      // сайте те же байты под той же подписью, и они сойдутся.
+      final pub = publish();
+      final copy = mirrorCopy(pub);
+      server.routes['/$assetName'] = List<int>.filled(pub.body.length, 0);
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(isVpnActive: () => false, mirror: answer(() => copy));
+      await c.startup();
+
+      expect(c.error, isNull);
+      expect(c.phase, UpdatePhase.installing);
+      expect(await Sha256.ofFile(installer.launches.single.file), pub.sha);
+    });
+
+    test('сайт отдаёт другой файл выпуска — повтора нет, отказ GitHub',
+        () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub, name: 'SilentGateSetup-other.exe');
+      server.routes.remove('/m-$next.json');
+      final c = make(mirror: answer(() => copy));
+      await c.startup();
+      await c.download();
+
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.manifestUnavailable);
+      expect(mirrorAsked, hasLength(1));
+      expect(mirrorRequests(), isEmpty);
+    });
+
+    test('сайт отдаёт те же адреса — второй раз тот же запрос не шлётся',
+        () async {
+      final pub = publish();
+      server.routes.remove('/m-$next.json');
+      final same = AppRelease(
+        version: next,
+        downloadUrl: pub.offer.assetUrl,
+        assetName: assetName,
+        assetSize: pub.body.length,
+        manifestUrl: pub.offer.manifestUrl,
+        signatureUrl: pub.offer.signatureUrl,
+      );
+      final c = make(mirror: answer(() => same));
+      await c.startup();
+      await c.download();
+
+      expect(c.error?.kind, UpdateErrorKind.manifestUnavailable);
+      expect(server.requested.where((p) => p == '/m-$next.json'),
+          hasLength(1));
+    });
+
+    test('сайту нечего дать — отказ остаётся отказом GitHub', () async {
+      publish();
+      server.routes.remove('/m-$next.json');
+      final c = make(mirror: answer(() => null));
+      await c.startup();
+      await c.download();
+
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.manifestUnavailable);
+      expect(mirrorAsked, hasLength(1));
+    });
+
+    test('запасной источник бросил — отказ GitHub, не исключение', () async {
+      publish();
+      server.routes.remove('/m-$next.json');
+      final c = make(
+          mirror: ({required bool beta, required String version}) async =>
+              throw const SocketException('нет сети'));
+      await c.startup();
+      await c.download();
+
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.manifestUnavailable);
+    });
+
+    test('сайт тоже не отдал — ровно один повтор, отказ по второй попытке',
+        () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub);
+      server.routes.remove('/m-$next.json');
+      server.routes.remove('/mirror/$assetName');
+      final c = make(mirror: answer(() => copy));
+      await c.startup();
+      await c.download();
+
+      expect(c.phase, UpdatePhase.failed);
+      expect(c.error?.kind, UpdateErrorKind.downloadFailed,
+          reason: 'называется отказ последней попытки');
+      expect(mirrorAsked, hasLength(1));
+      expect(installer.launches, isEmpty);
+      expect(stagingHasAnything(), isFalse);
+    });
+
+    test('⚠️ подпись копии на сайте не прошла — отказ, установщика нет',
+        () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub, badSignature: true);
+      server.routes.remove('/m-$next.json');
+      final c = make(mirror: answer(() => copy));
+      await c.startup();
+      await c.download();
+
+      expect(c.error?.kind, UpdateErrorKind.badSignature,
+          reason: 'смена хоста не ослабляет проверку: подпись та же');
+      expect(server.requested, isNot(contains('/mirror/$assetName')));
+      expect(installer.launches, isEmpty);
+    });
+
+    test('канал беты уходит в запрос к сайту', () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub);
+      server.routes.remove('/m-$next.json');
+      settings.value = settings.value.copyWith(betaChannel: true);
+      final c = make(mirror: answer(() => copy));
+      await c.startup();
+      await c.download();
+
+      expect(mirrorAsked, [(beta: true, version: next)]);
+    });
+
+    test('отмена во время вопроса к сайту — ни повтора, ни failed', () async {
+      final pub = publish();
+      final copy = mirrorCopy(pub);
+      server.routes.remove('/m-$next.json');
+      final gate = Completer<void>();
+      final c = make(
+          mirror: ({required bool beta, required String version}) async {
+        mirrorAsked.add((beta: beta, version: version));
+        await gate.future;
+        return copy;
+      });
+      await c.startup();
+      final run = c.download();
+      await _waitFor(() => mirrorAsked.isNotEmpty,
+          reason: 'дошли до запасного источника');
+      c.cancel();
+      gate.complete();
+      await run;
+
+      expect(c.phase, UpdatePhase.available);
+      expect(c.error, isNull);
+      expect(mirrorRequests(), isEmpty);
     });
   });
 

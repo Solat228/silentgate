@@ -70,6 +70,8 @@ class UpdateUiHarness {
       updateSettings: (m) async => unawaited(h.settings.update(m)),
       installer: h.installer,
       checker: ({required bool beta}) async => h.checkResult(),
+      // Боевой сайт в тестах интерфейса не спрашивается.
+      mirror: ({required bool beta, required String version}) async => null,
       fetchBytes: (url, {required int maxBytes, client}) async {
         final b = h.routes[url.toString()];
         if (b == null) throw HttpException('404', uri: url);

@@ -239,6 +239,11 @@ class UpdateOffer {
 typedef UpdateChecker = Future<UpdateCheckResult> Function(
     {required bool beta});
 
+/// Где взять ФАЙЛЫ того же выпуска, когда основной источник их не отдал:
+/// `AppUpdate.mirrorRelease` либо подмена в тесте. `null` — повторять нечем.
+typedef UpdateMirrorLookup = Future<AppRelease?> Function(
+    {required bool beta, required String version});
+
 /// Как из ответа сервера получить [UpdateOffer].
 typedef OfferBuilder = UpdateOffer Function(AppRelease release);
 
@@ -320,11 +325,37 @@ class _DownloadRun {
   _DownloadRun(this.gen, this.client);
 }
 
+/// Три адреса ОДНОГО выпуска. Вместе, а не по отдельности: у запасного
+/// источника они меняются все разом, и половина набора от одного хоста с
+/// половиной от другого — это не выпуск, а смесь.
+class _UpdateUrls {
+  final Uri manifest;
+  final Uri signature;
+  final Uri asset;
+
+  const _UpdateUrls(this.manifest, this.signature, this.asset);
+
+  bool sameAs(_UpdateUrls o) =>
+      manifest == o.manifest && signature == o.signature && asset == o.asset;
+}
+
+/// Чем кончилась попытка взять выпуск с одного источника.
+///
+/// `transportFailure == null` — делать больше нечего: либо скачали, либо отказ
+/// уже объявлен ([AppUpdateController._fail]), либо попытку отменили. Иначе
+/// это отказ ТРАНСПОРТА (файлы не доехали), и его единственного имеет смысл
+/// повторить с запасного источника: подпись, манифест и имя актива там те же
+/// байты, и отказ по ним повторился бы один в один.
+typedef _Attempt = ({UpdateErrorKind? transportFailure, String? detail});
+
+const _Attempt _attemptDone = (transportFailure: null, detail: null);
+
 class AppUpdateController extends ChangeNotifier {
   final AppSettings Function() _settings;
   final Future<void> Function(AppSettings Function(AppSettings)) _updateSettings;
   final UpdateInstaller _installer;
   final UpdateChecker _checker;
+  final UpdateMirrorLookup _mirror;
   final OfferBuilder _offerOf;
   final BytesFetcher _fetchBytes;
   final FileDownloader _downloader;
@@ -353,6 +384,8 @@ class AppUpdateController extends ChangeNotifier {
   /// [loadOverride] — чем прочитать подмену до первой проверки.
   /// [purgeRetryDelay] — через сколько после старта повторить чистку
   /// `updates/` (см. [startup]); [clock] — часы для срока [ConsentMarker].
+  /// [mirror] — откуда взять файлы того же выпуска, когда основной источник
+  /// их не отдал (см. [_mirrorUrls]).
   ///
   /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
   /// файлом (`update_api.txt`) и читается асинхронно
@@ -366,6 +399,7 @@ class AppUpdateController extends ChangeNotifier {
         updateSettings,
     required UpdateInstaller installer,
     UpdateChecker? checker,
+    UpdateMirrorLookup? mirror,
     OfferBuilder? offerOf,
     BytesFetcher? fetchBytes,
     FileDownloader? downloader,
@@ -383,6 +417,7 @@ class AppUpdateController extends ChangeNotifier {
         _updateSettings = updateSettings,
         _installer = installer,
         _checker = checker ?? _defaultChecker,
+        _mirror = mirror ?? AppUpdate.mirrorRelease,
         _offerOf = offerOf ?? UpdateOffer.fromRelease,
         _fetchBytes = fetchBytes ?? _noFetcher,
         _downloader = downloader ?? downloadToFile,
@@ -834,10 +869,8 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   Future<void> _runDownload(_DownloadRun run, UpdateOffer offer) async {
-    bool live() => !_disposed && run.gen == _generation && !run.cancelled;
-
     final cap = await _installer.capability();
-    if (!live()) return;
+    if (!_live(run)) return;
     if (cap != InstallCapability.ready) {
       _linkOnly(_reasonFor(cap));
       return;
@@ -851,15 +884,8 @@ class AppUpdateController extends ChangeNotifier {
       _fail(UpdateErrorKind.unsafeAssetName);
       return;
     }
-    final manifestUri = Uri.tryParse(offer.manifestUrl!);
-    final signatureUri = Uri.tryParse(offer.signatureUrl!);
-    final assetUri = Uri.tryParse(offer.assetUrl!);
-    if (manifestUri == null ||
-        signatureUri == null ||
-        assetUri == null ||
-        !_schemeAllowed(manifestUri) ||
-        !_schemeAllowed(signatureUri) ||
-        !_schemeAllowed(assetUri)) {
+    final urls = _urlsOf(offer.manifestUrl, offer.signatureUrl, offer.assetUrl);
+    if (urls == null) {
       _fail(UpdateErrorKind.insecureUrl);
       return;
     }
@@ -874,7 +900,7 @@ class AppUpdateController extends ChangeNotifier {
       AppLog.w('Обновление: разрешение на установку не узнано: '
           '${scrubUrls('$e')}');
     }
-    if (!live()) return;
+    if (!_live(run)) return;
     if (!allowed) {
       AppLog.w('Обновление: нет разрешения на установку — прошу его до '
           'закачки ${offer.version}');
@@ -885,40 +911,74 @@ class AppUpdateController extends ChangeNotifier {
         forceQuit: intent?.forceQuit ?? false,
         at: _clock().toUtc(),
       ));
-      if (!live()) return;
+      if (!_live(run)) return;
       _setPhase(UpdatePhase.needsPermission);
       return;
     }
 
+    var attempt = await _attemptDownload(run, offer, assetName, urls);
+    var failure = attempt.transportFailure;
+    if (failure == null) return;
+    if (!_live(run)) return;
+
+    // ⚠️ ВТОРАЯ ПОПЫТКА — ТОЛЬКО ПРИ ОТКАЗЕ ТРАНСПОРТА. Проверка версии
+    // проходит через GitHub, а его ФАЙЛЫ могут не отдаться минутой позже:
+    // подмену сертификата у провайдера включают с перебоями (у владельца
+    // 3 проверки из 4 ушли на запасной источник). Байт-в-байт копия лежит на
+    // нашем сайте — берём файлы оттуда, а не объявляем отказ.
+    final mirror = await _mirrorUrls(offer, assetName, urls);
+    // Пока спрашивали сайт, закачку могли отменить — фазу уже выставила
+    // отмена, и отказ первой попытки её не перебивает.
+    if (!_live(run)) return;
+    if (mirror != null) {
+      AppLog.w('Обновление: GitHub не отдал файлы — беру их с запасного '
+          'источника (${offer.version})');
+      _progress = null;
+      attempt = await _attemptDownload(run, offer, assetName, mirror);
+      failure = attempt.transportFailure;
+      if (failure == null) return;
+      if (!_live(run)) return;
+    }
+    _fail(failure, detail: attempt.detail);
+  }
+
+  /// Одна попытка взять выпуск с ОДНОГО источника: манифест с подписью →
+  /// проверка → установщик. Фазу и отказы ПО СОДЕРЖИМОМУ объявляет сама;
+  /// отказ транспорта только называет — решает по нему вызывающий, потому что
+  /// повторить с другого источника можно именно его.
+  Future<_Attempt> _attemptDownload(_DownloadRun run, UpdateOffer offer,
+      String assetName, _UpdateUrls urls) async {
     _setPhase(UpdatePhase.verifying);
     final List<int> manifestBytes;
     final String signature;
     try {
-      manifestBytes = await _fetch(manifestUri,
+      manifestBytes = await _fetch(urls.manifest,
           maxBytes: kUpdateManifestMaxBytes, client: run.client);
-      final sigBytes = await _fetch(signatureUri,
+      final sigBytes = await _fetch(urls.signature,
           maxBytes: kUpdateSignatureMaxBytes, client: run.client);
       signature = utf8.decode(sigBytes, allowMalformed: true).trim();
     } catch (e) {
-      if (!live()) return;
-      _fail(UpdateErrorKind.manifestUnavailable, detail: '$e');
-      return;
+      if (!_live(run)) return _attemptDone;
+      return (
+        transportFailure: UpdateErrorKind.manifestUnavailable,
+        detail: '$e',
+      );
     }
-    if (!live()) return;
+    if (!_live(run)) return _attemptDone;
 
     if (!UpdateSignature.verify(manifestBytes, signature,
         publicKeyBase64: _publicKey)) {
       AppLog.e('Обновление: подпись манифеста ${offer.version} НЕ прошла — '
           'установщик качать не буду');
       _fail(UpdateErrorKind.badSignature);
-      return;
+      return _attemptDone;
     }
     final manifest =
         UpdateManifest.parse(utf8.decode(manifestBytes, allowMalformed: true));
     if (manifest == null) {
       _fail(UpdateErrorKind.manifestRejected,
           rejection: ManifestRejection.malformed);
-      return;
+      return _attemptDone;
     }
     final rejection = validateManifest(
       manifest,
@@ -930,7 +990,7 @@ class AppUpdateController extends ChangeNotifier {
       AppLog.e('Обновление: манифест ${manifest.version} (${manifest.channel}) '
           'не подходит к релизу ${offer.version}: ${rejection.name}');
       _fail(UpdateErrorKind.manifestRejected, rejection: rejection);
-      return;
+      return _attemptDone;
     }
     final asset = manifest.assetNamed(assetName)!;
     if (offer.assetSize != null && offer.assetSize != asset.size) {
@@ -944,21 +1004,23 @@ class AppUpdateController extends ChangeNotifier {
     } catch (e) {
       // Как и все прочие ветки отказа здесь: за `await` закачку могли
       // отменить, и тогда фазу уже сменил тот, кто отменял.
-      if (!live()) return;
+      if (!_live(run)) return _attemptDone;
+      // Каталога закачек нет — это наша машина, а не источник: другой хост
+      // такого не лечит.
       _fail(UpdateErrorKind.downloadFailed, detail: '$e');
-      return;
+      return _attemptDone;
     }
     final target = File('${dir.path}${Platform.pathSeparator}${asset.name}');
     // Остаток прошлой закачки под тем же именем — не доверяем, качаем заново.
     _deleteQuiet(target);
-    if (!live()) return;
+    if (!_live(run)) return _attemptDone;
 
     _setPhase(UpdatePhase.downloading);
     AppLog.i('Обновление: качаю установщик ${offer.version} '
         '(${asset.size} байт)');
     try {
       await _downloader(
-        assetUri,
+        urls.asset,
         target,
         expectedSize: asset.size,
         expectedSha256: asset.sha256,
@@ -968,7 +1030,7 @@ class AppUpdateController extends ChangeNotifier {
           // Вторая линия отмены: закрытый клиент рвёт сокет, а это — на
           // случай, если кусок уже был в буфере. Исключение из onProgress
           // уходит в downloadToFile, и тот удаляет `.part`.
-          if (!live()) throw const DownloadException('закачка отменена');
+          if (!_live(run)) throw const DownloadException('закачка отменена');
           final denom = total != null && total > 0 ? total : asset.size;
           _progress = (received / denom).clamp(0.0, 1.0);
           _notify();
@@ -976,17 +1038,17 @@ class AppUpdateController extends ChangeNotifier {
       );
     } catch (e) {
       _progress = null;
-      if (!live()) {
-        // Отмена: фазу уже сменил cancel(); `.part` удалил downloadToFile.
-        _deleteQuiet(target);
-        return;
-      }
-      _fail(UpdateErrorKind.downloadFailed, detail: '$e');
-      return;
-    }
-    if (!live()) {
+      // Отмена: фазу уже сменил cancel(); `.part` удалил downloadToFile.
       _deleteQuiet(target);
-      return;
+      if (!_live(run)) return _attemptDone;
+      return (
+        transportFailure: UpdateErrorKind.downloadFailed,
+        detail: '$e',
+      );
+    }
+    if (!_live(run)) {
+      _deleteQuiet(target);
+      return _attemptDone;
     }
     _verified = target;
     _verifiedVersion = offer.version;
@@ -995,7 +1057,58 @@ class AppUpdateController extends ChangeNotifier {
     AppLog.i('Обновление: установщик ${offer.version} скачан и проверен '
         '(${asset.size} байт, sha256 сошёлся)');
     _setPhase(UpdatePhase.ready);
+    return _attemptDone;
   }
+
+  /// Адреса ТОГО ЖЕ выпуска у запасного источника — или `null`, если повторять
+  /// нечем.
+  ///
+  /// ⚠️ ПОВТОР ТОЛЬКО ПРИ ПОЛНОМ СОВПАДЕНИИ ВЫПУСКА. Другая версия или другое
+  /// имя актива — это другой релиз, а человеку уже показали предложение с его
+  /// номером; подменить под ним файлы значило бы поставить не то, на что он
+  /// согласился. Совпали адреса — предложение и так пришло с сайта, второй
+  /// заход был бы повтором того же запроса.
+  Future<_UpdateUrls?> _mirrorUrls(
+      UpdateOffer offer, String assetName, _UpdateUrls failed) async {
+    final AppRelease? release;
+    try {
+      // Канал беты: галочка человека либо сам выпуск — у запасного источника
+      // стабильные и пре-релизные выпуски лежат по разным адресам.
+      release = await _mirror(
+          beta: _settings().betaChannel || offer.isBeta,
+          version: offer.version);
+    } catch (e) {
+      AppLog.w('Обновление: запасной источник файлов не ответил: '
+          '${scrubUrls('$e')}');
+      return null;
+    }
+    if (release == null) return null;
+    if (release.assetName != assetName) {
+      AppLog.w('Обновление: у запасного источника другой файл выпуска '
+          '${offer.version} — беру это за другой релиз и не повторяю');
+      return null;
+    }
+    final urls =
+        _urlsOf(release.manifestUrl, release.signatureUrl, release.downloadUrl);
+    if (urls == null || urls.sameAs(failed)) return null;
+    return urls;
+  }
+
+  /// Три адреса выпуска, прошедшие [_schemeAllowed]; иначе `null`.
+  _UpdateUrls? _urlsOf(String? manifest, String? signature, String? asset) {
+    final m = Uri.tryParse(manifest ?? '');
+    final s = Uri.tryParse(signature ?? '');
+    final a = Uri.tryParse(asset ?? '');
+    if (m == null || s == null || a == null) return null;
+    if (!_schemeAllowed(m) || !_schemeAllowed(s) || !_schemeAllowed(a)) {
+      return null;
+    }
+    return _UpdateUrls(m, s, a);
+  }
+
+  /// Попытка ещё в силе: не выгрузились, не отменили, не начали новую.
+  bool _live(_DownloadRun run) =>
+      !_disposed && run.gen == _generation && !run.cancelled;
 
   /// `https://` всегда; `http://` — только при подменённом источнике (стенд):
   /// целостность там доказывает подпись, а не TLS.

@@ -846,6 +846,33 @@ void main() {
       expect(AppUpdate.endpoint, kGithubReleasesApi);
     });
 
+    test('⚠️ запасной источник под override — тоже стенд, не боевой сайт',
+        () async {
+      // Иначе на стенде отказ GitHub уводил проверку на настоящий сайт, и
+      // прогон запасного пути шёл бы по боевому серверу, а не по стенду.
+      debugSetUpdateApiOverride('http://127.0.0.1:8080/');
+      expect(kPanelUpdateEndpoint, 'http://127.0.0.1:8080/api/app-version');
+      expect(kPanelBetaUpdateEndpoint,
+          'http://127.0.0.1:8080/api/app-version-beta');
+      final seen = <Uri>[];
+      await AppUpdate.check(
+        assetHint: 'Setup.exe',
+        fetcher: (uri) async {
+          seen.add(uri);
+          return const UpdateHttpResponse(503, '');
+        },
+      );
+      expect(seen.map((u) => u.toString()), [
+        'http://127.0.0.1:8080/repos/Solat228/silentgate/releases/latest',
+        'http://127.0.0.1:8080/api/app-version',
+      ]);
+
+      debugSetUpdateApiOverride(null);
+      expect(kPanelUpdateEndpoint, 'https://silentgate.lol/api/app-version');
+      expect(kPanelBetaUpdateEndpoint,
+          'https://silentgate.lol/api/app-version-beta');
+    });
+
     test('check() под override спрашивает стенд', () async {
       debugSetUpdateApiOverride('http://127.0.0.1:8080');
       final seen = <Uri>[];
@@ -949,6 +976,114 @@ void main() {
 
     test('kPlatformAssetHint — обёртка без ABI', () {
       expect(kPlatformAssetHint, platformAssetHint());
+    });
+  });
+
+  group('mirrorRelease: файлы того же выпуска с сайта', () {
+    // GitHub ответил на проверку, а его файлы не отдались — повторяем с
+    // сайта. Здесь стережётся, что сайт отдаёт ИМЕННО тот выпуск, о котором
+    // человеку уже сказали, и что GitHub повторно не спрашивается.
+    String panel({
+      String version = '1.14.1',
+      bool full = true,
+    }) =>
+        jsonEncode({
+          'version': version,
+          'url': 'https://silentgate.lol/download/SilentGateSetup-$version.exe',
+          if (full) ...{
+            'asset': 'SilentGateSetup-$version.exe',
+            'size': 1234,
+            'manifest': 'https://silentgate.lol/download/'
+                'SilentGate-$version.manifest.json',
+            'sig': 'https://silentgate.lol/download/'
+                'SilentGate-$version.manifest.sig',
+          },
+        });
+
+    test('та же версия — выпуск сайта, спрошен ТОЛЬКО сайт', () async {
+      final asked = <Uri>[];
+      final r = await AppUpdate.mirrorRelease(
+        beta: false,
+        version: '1.14.1',
+        assetHint: 'Setup',
+        fetcher: (uri) async {
+          asked.add(uri);
+          return UpdateHttpResponse(200, panel());
+        },
+      );
+      expect(r, isNotNull);
+      expect(r!.version, '1.14.1');
+      expect(r.canSelfUpdate, isTrue);
+      expect(r.manifestUrl, contains('silentgate.lol'));
+      expect(asked, [Uri.parse(kPanelUpdateEndpoint)],
+          reason: 'GitHub свой ответ уже дал — второй раз его не спрашивают');
+    });
+
+    test('бета — спрашивается бета-адрес сайта', () async {
+      final asked = <Uri>[];
+      final r = await AppUpdate.mirrorRelease(
+        beta: true,
+        version: '1.14.1',
+        assetHint: 'Setup',
+        fetcher: (uri) async {
+          asked.add(uri);
+          return UpdateHttpResponse(200, panel());
+        },
+      );
+      expect(r, isNotNull);
+      expect(asked, [Uri.parse(kPanelBetaUpdateEndpoint)]);
+    });
+
+    test('версия с префиксом v сверяется как та же', () async {
+      final r = await AppUpdate.mirrorRelease(
+        beta: false,
+        version: 'v1.14.1',
+        assetHint: 'Setup',
+        fetcher: (_) async => UpdateHttpResponse(200, panel()),
+      );
+      expect(r, isNotNull);
+    });
+
+    test('⚠️ другая версия у сайта — null: это другой выпуск', () async {
+      final r = await AppUpdate.mirrorRelease(
+        beta: false,
+        version: '1.14.1',
+        assetHint: 'Setup',
+        fetcher: (_) async =>
+            UpdateHttpResponse(200, panel(version: '1.14.2')),
+      );
+      expect(r, isNull,
+          reason: 'подменить файлы под уже показанным номером версии нельзя');
+    });
+
+    test('сайт без манифеста и подписи — null, самому не поставить',
+        () async {
+      final r = await AppUpdate.mirrorRelease(
+        beta: false,
+        version: '1.14.1',
+        assetHint: 'Setup',
+        fetcher: (_) async => UpdateHttpResponse(200, panel(full: false)),
+      );
+      expect(r, isNull);
+    });
+
+    test('сайт ответил ошибкой или молчит — null, не исключение', () async {
+      expect(
+          await AppUpdate.mirrorRelease(
+            beta: false,
+            version: '1.14.1',
+            assetHint: 'Setup',
+            fetcher: (_) async => const UpdateHttpResponse(502, ''),
+          ),
+          isNull);
+      expect(
+          await AppUpdate.mirrorRelease(
+            beta: false,
+            version: '1.14.1',
+            assetHint: 'Setup',
+            fetcher: (_) async => throw const SocketExceptionStub(),
+          ),
+          isNull);
     });
   });
 }

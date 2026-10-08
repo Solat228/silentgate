@@ -177,7 +177,11 @@ const kGithubReleasesPage =
 /// ничего вовсе.
 ///
 /// Что сервер обязан отдавать — `docs/APP_UPDATE_SERVER.md`.
-const kPanelUpdateEndpoint = 'https://silentgate.lol/api/app-version';
+///
+/// ⚠️ Геттер, а не константа: под тестовым override сайт ТОЖЕ уходит на стенд.
+/// Иначе отказ GitHub на стенде уводил проверку на боевой сайт, и прогон
+/// запасного пути (в том числе зеркала файлов, 1.15.0) шёл бы мимо стенда.
+String get kPanelUpdateEndpoint => '$_panelBase/api/app-version';
 
 /// ЗАПАСНОЙ ИСТОЧНИК БЕТА-КАНАЛА — тот же сайт, отдельный путь.
 ///
@@ -187,7 +191,9 @@ const kPanelUpdateEndpoint = 'https://silentgate.lol/api/app-version';
 /// Спрашивается ТОЛЬКО когда пользователь сам включил галочку «Получать
 /// бета-версии» — формат тот же, что у `app-version`, см.
 /// `docs/APP_UPDATE_SERVER.md`.
-const kPanelBetaUpdateEndpoint = 'https://silentgate.lol/api/app-version-beta';
+String get kPanelBetaUpdateEndpoint => '$_panelBase/api/app-version-beta';
+
+String get _panelBase => kUpdateApiOverride ?? 'https://silentgate.lol';
 
 /// Страница загрузок для человека — открывается, когда прямой ссылки нет.
 const kPanelDownloadsPage = 'https://silentgate.lol/download';

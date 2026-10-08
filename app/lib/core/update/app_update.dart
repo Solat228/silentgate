@@ -7,6 +7,7 @@ import '../platform/apk_installer_android.dart';
 import '../platform/app_paths.dart';
 import 'app_update_defaults.dart';
 import 'release_signing.dart' show manifestFileName, signatureFileName;
+import 'update_manifest.dart' show normalizeVersion;
 
 /// Что сказал сервер обновлений.
 class AppRelease {
@@ -360,6 +361,49 @@ class AppUpdate {
       AppLog.i('Запасная проверка бета-обновлений недоступна: $e');
       return const UpdateCheckResult.failed(
           'Не удалось связаться с сервером обновлений');
+    }
+  }
+
+  /// Запасной источник ФАЙЛОВ того же выпуска: GitHub ответил на проверку, а
+  /// его файлы не отдаются (ТСПУ подменяет сертификат с перебоями — у владельца
+  /// 3 проверки из 4 ушли на запасной источник, при этом сама проверка потом
+  /// проходила). Наш сайт держит байт-в-байт копии.
+  ///
+  /// ⚠️ ВЕРСИЯ СВЕРЯЕТСЯ ТОЧНО: другая версия — другой выпуск, и подставлять
+  /// его файлы под уже показанное человеку предложение нельзя. Целостность
+  /// по-прежнему доказывает подпись манифеста, а не то, с какого хоста приехал
+  /// файл, — поэтому смена источника сама по себе ничего не ослабляет.
+  ///
+  /// Спрашивается ТОЛЬКО сайт: GitHub свой ответ уже дал, и повторять его
+  /// запрос смысла нет. Сети не бросает — не ответил никто, значит `null`.
+  static Future<AppRelease?> mirrorRelease({
+    required bool beta,
+    required String version,
+    UpdateFetcher? fetcher,
+    String? assetHint,
+  }) async {
+    try {
+      await loadApiOverride();
+      final hint = assetHint ?? await _platformHint();
+      final fetch = fetcher ?? _fetch;
+      final result =
+          beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
+      final release = result.release;
+      if (release == null) return null;
+      if (normalizeVersion(release.version) != normalizeVersion(version)) {
+        AppLog.w('Обновление: у запасного источника версия '
+            '${release.version}, а нужна $version — файлы не беру');
+        return null;
+      }
+      if (!release.canSelfUpdate) {
+        AppLog.w('Обновление: запасной источник не отдаёт манифест, подпись '
+            'и размер для $version — самому не поставить');
+        return null;
+      }
+      return release;
+    } catch (e) {
+      AppLog.i('Запасной источник файлов обновления недоступен: $e');
+      return null;
     }
   }
 
