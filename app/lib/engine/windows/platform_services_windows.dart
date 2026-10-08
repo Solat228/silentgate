@@ -86,7 +86,7 @@ class _WindowsPrivileges implements PrivilegeSetup {
       await TunScheduledTask.exists() && await TunScheduledTask.isCurrent();
 
   @override
-  Future<bool> configure() => TunScheduledTask.install();
+  Future<PrivilegeSetupResult> configure() => TunScheduledTask.install();
 
   @override
   Future<bool> remove() => TunScheduledTask.uninstall();

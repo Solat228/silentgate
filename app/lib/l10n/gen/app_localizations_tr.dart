@@ -1779,6 +1779,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Görev oluşturulamadı (UAC reddedildi veya ilke tarafından engellendi)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Görev Zamanlayıcı görevi kabul etmedi — nedeni günlükte (Ayarlar → Günlükler)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 

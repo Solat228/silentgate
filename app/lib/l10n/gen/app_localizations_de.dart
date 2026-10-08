@@ -1787,6 +1787,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aufgabe konnte nicht erstellt werden (UAC abgelehnt oder durch Richtlinie blockiert)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Die Aufgabenplanung hat die Aufgabe abgelehnt – der Grund steht im Protokoll (Einstellungen → Protokolle)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Der stille TUN-Start ist defekt — bei jeder Verbindung werden Administratorrechte angefragt';
 

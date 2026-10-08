@@ -1,12 +1,30 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
 
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:win32/win32.dart';
 
 import '../../core/platform/app_log.dart';
+
+/// Чем кончился запуск с правами администратора.
+///
+/// ⚠️ РАЗЛИЧИЕ НЕ КОСМЕТИЧЕСКОЕ. Раньше всё это было одним `false`, и
+/// интерфейс на любой отказ писал «UAC отклонён» — в том числе когда UAC не
+/// спрашивался вовсе, а падала сама команда. Человек искал беду в правах.
+enum ElevationOutcome {
+  /// Запуск состоялся (а при ожидании — команда завершилась с кодом 0).
+  ok,
+
+  /// Права не получены: отказ в окне UAC, запрет политикой или таймаут.
+  denied,
+
+  /// Права были, команда запустилась и завершилась с ошибкой.
+  commandFailed,
+}
 
 /// Запуск процесса с правами администратора.
 ///
@@ -81,6 +99,19 @@ class Elevation {
     /// нас. Для команд вроде `schtasks`, чей результат и есть смысл вызова,
     /// — `true`, иначе мы рапортуем об успехе, ничего о нём не зная.
     bool waitForExit = false,
+  }) async =>
+      await runElevatedDetailed(exePath, params,
+          show: show, timeout: timeout, waitForExit: waitForExit) ==
+      ElevationOutcome.ok;
+
+  /// То же, что [runElevatedAsync], но с причиной отказа — для тех, кто
+  /// показывает её человеку.
+  static Future<ElevationOutcome> runElevatedDetailed(
+    String exePath,
+    String params, {
+    bool show = false,
+    Duration timeout = const Duration(minutes: 2),
+    bool waitForExit = false,
   }) async {
     // Способ можно переопределить переменной окружения SILENTGATE_ELEVATION:
     //   direct    — только прямой запуск (когда права уже есть);
@@ -109,17 +140,17 @@ class Elevation {
         // stderr уходили в никуда. Возвращали `true` независимо от того, что
         // там случилось.
         if (!waitForExit) {
-          await Process.start(exePath, _splitArgs(params),
+          await Process.start(exePath, splitArgs(params),
               mode: ProcessStartMode.detached);
           AppLog.i(
               'Хелпер запущен напрямую (приложение уже с правами администратора)');
-          return true;
+          return ElevationOutcome.ok;
         }
-        final r = await Process.run(exePath, _splitArgs(params),
+        final r = await Process.run(exePath, splitArgs(params),
             runInShell: false);
         if (r.exitCode == 0) {
           AppLog.i('Команда выполнена напрямую (права администратора уже есть)');
-          return true;
+          return ElevationOutcome.ok;
         }
         // Причину печатаем ЦЕЛИКОМ: без неё «не удалось» неотличимо от
         // «отказали в правах», и человек ищет беду не там.
@@ -127,10 +158,10 @@ class Elevation {
         final out = '${r.stdout}'.trim();
         AppLog.e('Команда завершилась с кодом ${r.exitCode}: '
             '${err.isNotEmpty ? err : out}');
-        return false;
+        return ElevationOutcome.commandFailed;
       } catch (e) {
         AppLog.e('Не удалось запустить хелпер напрямую: $e');
-        return false;
+        return ElevationOutcome.commandFailed;
       }
     }
 
@@ -144,9 +175,15 @@ class Elevation {
     // Окно UAC пользователь видит ровно то же самое: его показывает система, а
     // не посредник.
     if (mode != 'shellexec') {
-      final viaPs = await _viaPowerShell(exePath, params, show, timeout);
+      final viaPs =
+          await _viaPowerShell(exePath, params, show, timeout, waitForExit);
       if (viaPs != null) {
-        AppLog.i('Права администратора: ${viaPs ? "получены" : "ОТКАЗ"}');
+        AppLog.i('Права администратора: ${switch (viaPs) {
+          ElevationOutcome.ok => 'получены',
+          ElevationOutcome.denied => 'ОТКАЗ',
+          ElevationOutcome.commandFailed =>
+            'получены, но команда завершилась с ошибкой',
+        }}');
         return viaPs;
       }
       // null = посредник недоступен (политика, урезанный PATH). Идём прежним
@@ -158,33 +195,38 @@ class Elevation {
       final ok = await Isolate.run(() => runElevated(exePath, params, show: show))
           .timeout(timeout);
       AppLog.i('Права администратора: ${ok ? "получены" : "ОТКАЗ"}');
-      return ok;
+      return ok ? ElevationOutcome.ok : ElevationOutcome.denied;
     } on TimeoutException {
       AppLog.e('Запрос прав администратора не ответил за '
           '${timeout.inSeconds} с — считаю отказом');
-      return false;
+      return ElevationOutcome.denied;
     } catch (e) {
       AppLog.e('Запрос прав администратора сорвался: $e');
-      return false;
+      return ElevationOutcome.denied;
     }
   }
 
   /// Возвышение чужими руками: `Start-Process -Verb RunAs` в отдельном процессе.
   ///
-  /// Возвращает true (запуск состоялся), false (пользователь отказал) или
-  /// **null** — посредник недоступен, решение принимать нечем.
+  /// Возвращает исход либо **null** — посредник недоступен, решение принимать
+  /// нечем.
   ///
   /// Почему не наш процесс: см. [runElevatedAsync]. Здесь важно, что ожидание
   /// прерываемо — зависший посредник можно убить, в отличие от зависшего FFI.
-  static Future<bool?> _viaPowerShell(
-      String exePath, String params, bool show, Duration timeout) async {
+  static Future<ElevationOutcome?> _viaPowerShell(String exePath,
+      String params, bool show, Duration timeout, bool waitForExit) async {
     Process proc;
     try {
+      // ⚠️ `-EncodedCommand`, А НЕ `-Command`. Текст команды несёт кавычки
+      // (строка параметров передаётся как есть, см. [psCommand]), а
+      // `-Command` прошёл бы ещё через один разбор командной строки — уже
+      // самого powershell.exe — со своими правилами про `\"`. Base64 в
+      // UTF-16LE экранирования не требует вовсе.
       proc = await Process.start('powershell.exe', [
         '-NoProfile',
         '-NonInteractive',
-        '-Command',
-        psCommand(exePath, params, show: show),
+        '-EncodedCommand',
+        encodePs(psCommand(exePath, params, show: show, wait: waitForExit)),
       ]);
     } catch (e) {
       // ⚠️ ПРИЧИНУ НАЗЫВАЕМ. Вызывающий пишет обобщённое «посредник
@@ -196,28 +238,64 @@ class Elevation {
     }
     try {
       final code = await proc.exitCode.timeout(timeout);
-      // 2 — сам посредник не смог даже попытаться; отказом это считать нельзя.
-      if (code == 2) return null;
-      return code == 0;
+      return outcomeOfPsExit(code);
     } on TimeoutException {
       AppLog.e('Посредник элевации не ответил за ${timeout.inSeconds} с');
       proc.kill(ProcessSignal.sigkill);
-      return false;
+      return ElevationOutcome.denied;
     }
+  }
+
+  /// Код возврата посредника → исход. Пары с [psCommand]: коды назначает он.
+  @visibleForTesting
+  static ElevationOutcome? outcomeOfPsExit(int code) => switch (code) {
+        0 => ElevationOutcome.ok,
+        1 => ElevationOutcome.denied,
+        // 2 — сам посредник не смог даже попытаться; отказом это считать нельзя.
+        2 => null,
+        3 => ElevationOutcome.commandFailed,
+        _ => ElevationOutcome.denied,
+      };
+
+  /// Текст для `powershell -EncodedCommand`: base64 от UTF-16LE.
+  @visibleForTesting
+  static String encodePs(String script) {
+    final bytes = <int>[];
+    for (final u in script.codeUnits) {
+      bytes
+        ..add(u & 0xFF)
+        ..add(u >> 8);
+    }
+    return base64.encode(bytes);
   }
 
   /// Команда для посредника. Вынесена отдельно ради тестов на экранирование:
   /// в путях бывают пробелы и апострофы, а неверная кавычка молча превратится
   /// в «конфиг не найден» уже внутри хелпера.
-  static String psCommand(String exePath, String params, {bool show = false}) {
-    final args = _splitArgs(params).map(_psQuote).join(',');
+  ///
+  /// ⚠️ ПАРАМЕТРЫ ИДУТ ОДНОЙ СТРОКОЙ, КАК ЕСТЬ. `Start-Process -ArgumentList`
+  /// склеивает элементы массива пробелом и НИЧЕГО НЕ ЭКРАНИРУЕТ: путь
+  /// `C:\Users\Иван Петров\…`, разобранный в отдельный элемент, на той стороне
+  /// снова распадался на два аргумента. Строка параметров у нас уже составлена
+  /// по правилам командной строки Windows — ровно её `ShellExecuteEx` и ждёт
+  /// в `lpParameters`, тем же путём, что и запасная ветка [runElevated].
+  ///
+  /// [wait] — дождаться команды и отличить её отказ (код 3) от отказа в правах.
+  static String psCommand(String exePath, String params,
+      {bool show = false, bool wait = false}) {
     final style = show ? 'Normal' : 'Hidden';
     final start = StringBuffer('Start-Process -FilePath ${_psQuote(exePath)}');
-    if (args.isNotEmpty) start.write(' -ArgumentList $args');
+    if (params.trim().isNotEmpty) {
+      start.write(' -ArgumentList ${_psQuote(params)}');
+    }
     start.write(' -Verb RunAs -WindowStyle $style -ErrorAction Stop');
+    if (wait) start.write(' -Wait -PassThru');
     // Отказ пользователя и невозможность запустить посредника — РАЗНЫЕ исходы:
     // первый окончателен, второй означает «попробуй иначе».
-    return 'try { $start; exit 0 } '
+    final body = wait
+        ? '\$p = $start; if (\$p.ExitCode -ne 0) { exit 3 }; exit 0'
+        : '$start; exit 0';
+    return 'try { $body } '
         'catch [System.ComponentModel.Win32Exception] { exit 1 } '
         'catch { exit 2 }';
   }
@@ -225,28 +303,71 @@ class Elevation {
   /// Апостроф внутри одинарных кавычек PowerShell удваивается.
   static String _psQuote(String v) => "'${v.replaceAll("'", "''")}'";
 
-  /// Разбор строки параметров в список аргументов.
+  /// Разбор строки параметров в список аргументов — по правилам
+  /// `CommandLineToArgvW`, то есть так же, как её разберёт запущенная программа.
   ///
   /// `ShellExecuteEx` принимает параметры одной строкой, `Process.start` — уже
-  /// разобранным списком. Кавычки вокруг путей обязаны сниматься здесь: иначе
-  /// хелпер получит имя файла ВМЕСТЕ с кавычками и не найдёт конфиг.
-  static List<String> _splitArgs(String params) {
+  /// разобранным списком (и экранирует его обратно сам). Кавычки вокруг путей
+  /// обязаны сниматься здесь: иначе хелпер получит имя файла ВМЕСТЕ с кавычками
+  /// и не найдёт конфиг.
+  ///
+  /// ⚠️ ОБРАТНАЯ КОСАЯ ПЕРЕД КАВЫЧКОЙ — НЕ МЕЛОЧЬ. Прежний разбор переключался на
+  /// КАЖДОЙ кавычке и про `\"` не знал ничего. А задача Планировщика заводится
+  /// строкой `/TR "\"<exe>\" --tun-task \"<cfg>\" \"<stop>\""` — вложенные
+  /// кавычки в ней экранированы именно так. Разбор рвал её на куски, и в
+  /// задачу записывалось `\I:\…\silentgate.exe\` — команда, которую Windows
+  /// запустить не может. Проверка после создания такую задачу честно не
+  /// узнавала, «Исправить» через 10 с сдавалось, а интерфейс объявлял
+  /// виноватым UAC. Каждое нажатие повторяло то же самое.
+  @visibleForTesting
+  static List<String> splitArgs(String params) {
     final out = <String>[];
     final buf = StringBuffer();
     var quoted = false;
-    for (final ch in params.split('')) {
+    // Аргумент начат, даже если пуст: `""` — это законный пустой аргумент.
+    var started = false;
+    var i = 0;
+    while (i < params.length) {
+      final ch = params[i];
+      if (ch == r'\') {
+        var n = 0;
+        while (i < params.length && params[i] == r'\') {
+          n++;
+          i++;
+        }
+        started = true;
+        if (i < params.length && params[i] == '"') {
+          // 2n косых + кавычка → n косых и кавычка-разделитель;
+          // 2n+1 косых + кавычка → n косых и буквальная кавычка.
+          buf.write(r'\' * (n ~/ 2));
+          if (n.isOdd) {
+            buf.write('"');
+          } else {
+            quoted = !quoted;
+          }
+          i++;
+        } else {
+          // Косые не перед кавычкой — буквально: это обычный путь Windows.
+          buf.write(r'\' * n);
+        }
+        continue;
+      }
       if (ch == '"') {
         quoted = !quoted;
-      } else if (ch == ' ' && !quoted) {
-        if (buf.isNotEmpty) {
+        started = true;
+      } else if ((ch == ' ' || ch == '\t') && !quoted) {
+        if (started) {
           out.add(buf.toString());
           buf.clear();
+          started = false;
         }
       } else {
         buf.write(ch);
+        started = true;
       }
+      i++;
     }
-    if (buf.isNotEmpty) out.add(buf.toString());
+    if (started) out.add(buf.toString());
     return out;
   }
 

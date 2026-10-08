@@ -1763,6 +1763,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tunTaskFailed => 'فشل إنشاء المهمة (رُفض UAC أو مُنع بالسياسة)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'رفض برنامج جدولة المهام المهمة — السبب في السجل (الإعدادات ← السجلات)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 

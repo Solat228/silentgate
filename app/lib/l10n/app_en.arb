@@ -659,6 +659,7 @@
   "trayQuitVpn": "Disconnect and quit",
   "tunTaskDone": "Done: TUN will start without a UAC prompt",
   "tunTaskFailed": "Failed to create task (UAC declined or blocked by policy)",
+  "tunTaskSchedulerFailed": "Task Scheduler rejected the task — the reason is in the log (Settings → Logs)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "TUN log (sing-box)",

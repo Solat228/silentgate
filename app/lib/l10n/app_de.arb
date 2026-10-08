@@ -570,6 +570,7 @@
   "trayQuitVpn": "Trennen und beenden",
   "tunTaskDone": "Fertig: TUN startet ohne UAC-Abfrage",
   "tunTaskFailed": "Aufgabe konnte nicht erstellt werden (UAC abgelehnt oder durch Richtlinie blockiert)",
+  "tunTaskSchedulerFailed": "Die Aufgabenplanung hat die Aufgabe abgelehnt – der Grund steht im Protokoll (Einstellungen → Protokolle)",
   "tunAutoFixNoticeText": "Der stille TUN-Start ist defekt — bei jeder Verbindung werden Administratorrechte angefragt",
   "tunAutoFixAction": "Beheben",
   "tunLogTitle": "TUN-Protokoll (sing-box)",

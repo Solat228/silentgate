@@ -1792,6 +1792,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo crear la tarea (UAC rechazado o bloqueado por directiva)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'El Programador de tareas rechazó la tarea: el motivo está en el registro (Ajustes → Registros)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'El inicio silencioso de TUN está roto: cada conexión pedirá permisos de administrador';
 

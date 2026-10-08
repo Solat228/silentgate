@@ -698,6 +698,7 @@
   "trayQuitVpn": "Отключить и выйти",
   "tunTaskDone": "Готово: TUN будет запускаться без запроса UAC",
   "tunTaskFailed": "Не удалось создать задачу (UAC отклонён или запрещено политикой)",
+  "tunTaskSchedulerFailed": "Планировщик не принял задачу — причина в журнале (Настройки → Логи)",
   "tunAutoFixNoticeText": "Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права",
   "tunAutoFixAction": "Исправить",
   "tunLogTitle": "Лог TUN (sing-box)",

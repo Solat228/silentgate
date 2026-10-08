@@ -3198,6 +3198,12 @@ abstract class AppLocalizations {
   /// **'Не удалось создать задачу (UAC отклонён или запрещено политикой)'**
   String get tunTaskFailed;
 
+  /// No description provided for @tunTaskSchedulerFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Планировщик не принял задачу — причина в журнале (Настройки → Логи)'**
+  String get tunTaskSchedulerFailed;
+
   /// No description provided for @tunAutoFixNoticeText.
   ///
   /// In ru, this message translates to:

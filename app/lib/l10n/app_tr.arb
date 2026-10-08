@@ -570,6 +570,7 @@
   "trayQuitVpn": "Bağlantıyı kes ve çık",
   "tunTaskDone": "Bitti: TUN, UAC istemi olmadan başlayacak",
   "tunTaskFailed": "Görev oluşturulamadı (UAC reddedildi veya ilke tarafından engellendi)",
+  "tunTaskSchedulerFailed": "Görev Zamanlayıcı görevi kabul etmedi — nedeni günlükte (Ayarlar → Günlükler)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "TUN günlüğü (sing-box)",

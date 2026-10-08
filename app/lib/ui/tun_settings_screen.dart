@@ -12,6 +12,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../state/settings_controller.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
+import 'widgets/tun_task_result_text.dart';
 import 'log_level_labels.dart';
 
 /// Экран «TUN и маршрутизация»: права без UAC, стек/MTU, маршрутизация, DNS, диагностика.
@@ -39,14 +40,14 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
 
   Future<void> _installTask() async {
     setState(() => _busy = true);
-    final ok = await platform.privileges.configure();
+    final result = await platform.privileges.configure();
     if (!mounted) return;
     setState(() => _busy = false);
     await _refreshTask();
     if (!mounted) return;
     final l = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(ok ? l.tunTaskDone : l.tunTaskFailed),
+      content: Text(tunTaskResultText(l, result)),
     ));
   }
 

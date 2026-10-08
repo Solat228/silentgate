@@ -48,6 +48,7 @@ import 'widgets/flag_cell.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
+import 'widgets/tun_task_result_text.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/update_presenter.dart';
 import 'widgets/subscription_bar.dart';
@@ -786,14 +787,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fixStaleScheduledTask(BuildContext context) async {
     AppLog.i('Пользователь согласился пересоздать задачу Планировщика '
         'по предложению из уведомления');
-    final ok = await platform.privileges.configure();
-    AppLog.i(ok
-        ? 'Задача Планировщика пересоздана — дальше подключения пойдут без UAC'
-        : 'Пересоздать задачу Планировщика не удалось '
-            '(UAC отклонён или запрещено политикой)');
+    final result = await platform.privileges.configure();
+    // Причину пишем ТУ, что есть: прежняя строка «UAC отклонён» ставилась на
+    // любой отказ, включая те, где UAC не спрашивался вовсе.
+    AppLog.i(switch (result) {
+      PrivilegeSetupResult.done =>
+        'Задача Планировщика пересоздана — дальше подключения пойдут без UAC',
+      PrivilegeSetupResult.denied =>
+        'Пересоздать задачу Планировщика не удалось: права не получены',
+      PrivilegeSetupResult.failed =>
+        'Пересоздать задачу Планировщика не удалось: Планировщик не принял '
+            'задачу (подробности выше)',
+    });
     if (!mounted) return;
     final l = AppLocalizations.of(context);
-    AppToast.show(context, ok ? l.tunTaskDone : l.tunTaskFailed,
+    final ok = result == PrivilegeSetupResult.done;
+    AppToast.show(context, tunTaskResultText(l, result),
         kind: ok ? ToastKind.success : ToastKind.error);
   }
 

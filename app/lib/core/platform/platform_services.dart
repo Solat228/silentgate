@@ -92,6 +92,19 @@ abstract interface class TunLogReader {
   Future<String> filePath();
 }
 
+/// Чем кончилась [PrivilegeSetup.configure].
+enum PrivilegeSetupResult {
+  /// Настроено и проверено.
+  done,
+
+  /// Права не дали: отказ в окне UAC, запрет политикой, таймаут.
+  denied,
+
+  /// Права были, но настройка не встала: команда упала или результат не тот.
+  /// Причина — в журнале приложения.
+  failed,
+}
+
 /// Подготовка прав на подъём туннеля.
 ///
 /// Windows: задача Планировщика, дающая старт без UAC при каждом подключении.
@@ -105,8 +118,12 @@ abstract interface class PrivilegeSetup {
   /// Настроено ли уже.
   Future<bool> isConfigured();
 
-  /// Настроить. `true` — успех.
-  Future<bool> configure();
+  /// Настроить.
+  ///
+  /// ⚠️ ИСХОД, А НЕ `bool`. На `false` интерфейс писал «UAC отклонён» —
+  /// и тогда, когда UAC не спрашивался вовсе, а Планировщик отверг саму
+  /// команду. Человек раз за разом жал «Да» в окне прав и получал тот же упрёк.
+  Future<PrivilegeSetupResult> configure();
 
   /// Снять настройку. `true` — успех.
   Future<bool> remove();

@@ -1732,6 +1732,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunTaskFailed => '无法创建任务（UAC 被拒绝或被策略阻止）';
 
   @override
+  String get tunTaskSchedulerFailed => '任务计划程序拒绝了该任务——原因见日志（设置 → 日志）';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 

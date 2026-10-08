@@ -1790,6 +1790,10 @@ class AppLocalizationsPt extends AppLocalizations {
       'Falha ao criar a tarefa (UAC recusado ou bloqueado por política)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'O Agendador de Tarefas recusou a tarefa — o motivo está no registro (Configurações → Logs)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'O início silencioso do TUN está quebrado — cada ligação vai pedir privilégios de administrador';
 

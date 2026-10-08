@@ -1772,6 +1772,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Не удалось создать задачу (UAC отклонён или запрещено политикой)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Планировщик не принял задачу — причина в журнале (Настройки → Логи)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права';
 

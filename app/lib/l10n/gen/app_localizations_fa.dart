@@ -1769,6 +1769,10 @@ class AppLocalizationsFa extends AppLocalizations {
       'ساخت وظیفه ناموفق بود (UAC رد شد یا با سیاست مسدود شد)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'زمان‌بند وظایف این وظیفه را نپذیرفت — علت در گزارش است (تنظیمات ← گزارش‌ها)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 

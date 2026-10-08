@@ -570,6 +570,7 @@
   "trayQuitVpn": "Déconnecter et quitter",
   "tunTaskDone": "Terminé : TUN démarrera sans invite UAC",
   "tunTaskFailed": "Échec de la création de la tâche (UAC refusé ou bloqué par une stratégie)",
+  "tunTaskSchedulerFailed": "Le Planificateur de tâches a refusé la tâche — le motif est dans le journal (Paramètres → Journaux)",
   "tunAutoFixNoticeText": "Le démarrage silencieux de TUN est cassé — chaque connexion demandera les droits administrateur",
   "tunAutoFixAction": "Corriger",
   "tunLogTitle": "Journal TUN (sing-box)",

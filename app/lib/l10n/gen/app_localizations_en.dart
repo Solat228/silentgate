@@ -1770,6 +1770,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to create task (UAC declined or blocked by policy)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Task Scheduler rejected the task — the reason is in the log (Settings → Logs)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 

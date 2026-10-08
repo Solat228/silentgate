@@ -1793,6 +1793,10 @@ class AppLocalizationsFr extends AppLocalizations {
       'Échec de la création de la tâche (UAC refusé ou bloqué par une stratégie)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Le Planificateur de tâches a refusé la tâche — le motif est dans le journal (Paramètres → Journaux)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Le démarrage silencieux de TUN est cassé — chaque connexion demandera les droits administrateur';
 

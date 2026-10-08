@@ -570,6 +570,7 @@
   "trayQuitVpn": "قطع و خروج",
   "tunTaskDone": "انجام شد: TUN بدون درخواست UAC آغاز می‌شود",
   "tunTaskFailed": "ساخت وظیفه ناموفق بود (UAC رد شد یا با سیاست مسدود شد)",
+  "tunTaskSchedulerFailed": "زمان‌بند وظایف این وظیفه را نپذیرفت — علت در گزارش است (تنظیمات ← گزارش‌ها)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "گزارش TUN (sing-box)",

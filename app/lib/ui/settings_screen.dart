@@ -2456,10 +2456,14 @@ Future<void> _enableTun(BuildContext context, SettingsController controller) asy
   );
   if (setup != true) return;
 
-  final ok = await platform.privileges.configure();
+  final result = await platform.privileges.configure();
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(ok ? l.tunUacDone : l.tunUacFail),
+    content: Text(switch (result) {
+      PrivilegeSetupResult.done => l.tunUacDone,
+      PrivilegeSetupResult.denied => l.tunUacFail,
+      PrivilegeSetupResult.failed => l.tunTaskSchedulerFailed,
+    }),
   ));
 }
 

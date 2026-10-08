@@ -570,6 +570,7 @@
   "trayQuitVpn": "قطع الاتصال والخروج",
   "tunTaskDone": "تم: سيبدأ TUN دون طلب UAC",
   "tunTaskFailed": "فشل إنشاء المهمة (رُفض UAC أو مُنع بالسياسة)",
+  "tunTaskSchedulerFailed": "رفض برنامج جدولة المهام المهمة — السبب في السجل (الإعدادات ← السجلات)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "سجل TUN (sing-box)",

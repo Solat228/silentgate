@@ -570,6 +570,7 @@
   "trayQuitVpn": "Desconectar e sair",
   "tunTaskDone": "Concluído: o TUN iniciará sem uma solicitação de UAC",
   "tunTaskFailed": "Falha ao criar a tarefa (UAC recusado ou bloqueado por política)",
+  "tunTaskSchedulerFailed": "O Agendador de Tarefas recusou a tarefa — o motivo está no registro (Configurações → Logs)",
   "tunAutoFixNoticeText": "O início silencioso do TUN está quebrado — cada ligação vai pedir privilégios de administrador",
   "tunAutoFixAction": "Corrigir",
   "tunLogTitle": "Registro do TUN (sing-box)",

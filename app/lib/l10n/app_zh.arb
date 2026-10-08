@@ -570,6 +570,7 @@
   "trayQuitVpn": "断开并退出",
   "tunTaskDone": "完成：TUN 启动将不再弹出 UAC 提示",
   "tunTaskFailed": "无法创建任务（UAC 被拒绝或被策略阻止）",
+  "tunTaskSchedulerFailed": "任务计划程序拒绝了该任务——原因见日志（设置 → 日志）",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "TUN 日志 (sing-box)",
