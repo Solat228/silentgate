@@ -104,7 +104,19 @@ class ProbeController extends ChangeNotifier {
     this.activeServerKey,
     this.captureActive,
     this.liveCoreDelay,
-  }) : _harnessFactory = harnessFactory ?? createProbeHarness;
+  }) : _harnessFactory = harnessFactory ?? createProbeHarness {
+    // Гейт пинга (`PingGate.of`) читает [serviceChecksRunning] при перерисовке,
+    // а перерисовку по этому контроллеру больше никто не вызовет: конец
+    // проверки сервисов обязан будить слушателей сам (см.
+    // [ServiceCheckActivity.listenable]).
+    ServiceCheckActivity.listenable.addListener(notifyListeners);
+  }
+
+  @override
+  void dispose() {
+    ServiceCheckActivity.listenable.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   bool get running => _running;
 
