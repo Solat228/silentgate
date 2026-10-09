@@ -151,7 +151,7 @@ class ExitOutbounds {
         } else {
           // Сам сервер уезжает под ВНУТРЕННИЙ тег, а имя выхода забирает
           // группа: так ссылки правил, DNS и портов API остаются целыми.
-          final nodeTag = '$tag-node';
+          final nodeTag = exitNodeTagFor(tag);
           out.add(SingboxOutboundFactory.build(
             server,
             tag: nodeTag,

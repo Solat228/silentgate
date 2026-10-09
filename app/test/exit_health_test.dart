@@ -72,6 +72,7 @@ void main() {
       tags: const ['exit-a'],
       probe: (_) async => alive,
       failuresToDeclareDown: 2,
+      successesToRecover: 1,
     );
     h.start(
       onExitDown: (tag) async => down.add(tag),
@@ -92,6 +93,66 @@ void main() {
     await h.tick();
     expect(down, ['exit-a', 'exit-a'],
         reason: 'после восстановления новая смерть обязана быть замечена');
+  });
+
+  test('⚠️ умолчания: приговор после ПЯТИ промахов, оживление после ДВУХ ответов',
+      () async {
+    // Решение владельца 10.10.2026: при трёх edge-узлы, пропускавшие пару
+    // проб, гоняли трафик правила в другую страну около 370 раз за 9 дней.
+    final h = ExitHealth(tags: const ['exit-a'], probe: (_) async => true);
+    expect(h.failuresToDeclareDown, 5);
+    expect(h.successesToRecover, 2);
+  });
+
+  test('один ответ между промахами мёртвый выход НЕ оживляет', () async {
+    final answers = [false, false, true, false, true, true];
+    final down = <String>[];
+    final up = <String>[];
+    final h = ExitHealth(
+      tags: const ['exit-a'],
+      probe: (_) async => answers.removeAt(0),
+      failuresToDeclareDown: 2,
+      successesToRecover: 2,
+    );
+    h.start(
+      onExitDown: (tag) async => down.add(tag),
+      onExitRecovered: (tag, missed) => up.add('$tag:$missed'),
+    );
+    await h.tick();
+    await h.tick();
+    expect(down, ['exit-a']);
+    await h.tick(); // один ответ
+    expect(up, isEmpty, reason: 'одного ответа мало — иначе трафик скачет');
+    await h.tick(); // снова промах: счёт ответов сначала
+    await h.tick();
+    expect(up, isEmpty);
+    await h.tick();
+    expect(up, ['exit-a:3'], reason: 'два ответа подряд — выход жив');
+    expect(down, ['exit-a'], reason: 'промах во время смерти — не новая смерть');
+  });
+
+  test('оживление ждёт асинхронный колбэк (возврат группы на сервер)',
+      () async {
+    var alive = false;
+    var switchedBack = false;
+    final h = ExitHealth(
+      tags: const ['exit-a'],
+      probe: (_) async => alive,
+      failuresToDeclareDown: 1,
+      successesToRecover: 1,
+    );
+    h.start(
+      onExitDown: (_) async {},
+      onExitRecovered: (tag, missed) async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        switchedBack = true;
+      },
+    );
+    await h.tick();
+    alive = true;
+    await h.tick();
+    expect(switchedBack, isTrue,
+        reason: 'такт завершается только после возврата');
   });
 
   test('отменённый сторож не тикает и не зовёт колбэки', () async {
@@ -197,7 +258,7 @@ void main() {
       final down = <String>[];
       final h = ExitHealth(tags: const ['exit-aaa'], probe: (_) async => false);
       h.start(onExitDown: (t) async => down.add(t));
-      for (var i = 0; i < 3; i++) {
+      for (var i = 0; i < h.failuresToDeclareDown; i++) {
         await h.tick();
       }
       expect(down, ['exit-aaa']);

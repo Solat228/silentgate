@@ -446,9 +446,19 @@ abstract class VpnEngineBase implements VpnEngine {
     // разом» этого не ловило: они падают по одному.
     final quiet = {for (final k in apiOnlyKeys) exitTagFor(k)};
     final stats = SingboxStats(apiPort: apiPort, secret: secret);
+    // ⚠️ ПРОБА — ЧЕРЕЗ САМ СЕРВЕР (`<тег>-node`), А НЕ ЧЕРЕЗ ГРУППУ.
+    //
+    // Группа — `selector` из сервера и общего туннеля, и проба задержки идёт
+    // через того участника, что выбран сейчас. После переключения на запас
+    // она мерила уже общий туннель, отвечала с первого раза — и сторож писал
+    // «снова отвечает», хотя сервер лежал. Обратно группу при этом не
+    // переключал никто: трафик правила оставался в чужой стране до
+    // переподключения. В журнале владельца так прошли 16 эпизодов
+    // («промахов было 3» — ровно следующий такт после приговора).
+    final probeTags = exitProbeTagsOf(outbounds);
     final h = ExitHealth(
       tags: tags,
-      probe: (tag) => stats.exitAlive(tag),
+      probe: (tag) => stats.exitAlive(probeTags[tag] ?? tag),
       // ⚠️ ПРОМАХ ПРИ МЁРТВОМ ОСНОВНОМ КАНАЛЕ НЕ ЗАСЧИТЫВАЕТСЯ. Выходы
       // живут внутри того же туннеля: упал он — молчат все, и сторож
       // объявил бы мёртвыми ВСЕ разом, не сломав ни одного. Спрашиваем
@@ -486,16 +496,30 @@ abstract class VpnEngineBase implements VpnEngine {
         '${h.failuresToDeclareDown} промахов подряд');
     h.start(
       aborted: () => aborted() || !status.isConnected,
-      onExitRecovered: (tag, missed) {
+      onExitRecovered: (tag, missed) async {
         down.remove(tag);
-        AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
-            '(промахов было $missed)');
+        final node = probeTags[tag];
+        // Группы нет (запасной путь не строился) — возвращать нечего.
+        if (node == null) {
+          AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed)');
+          return;
+        }
+        final back = await stats.selectExitMember(tag, node);
+        if (back) {
+          AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed) — трафик вернулся на этот сервер');
+        } else {
+          AppLog.w('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed), но вернуть на него трафик не удалось: '
+              'Clash API ядра не принял переключение');
+        }
       },
       onExitDown: (tag) async {
         if (!down.add(tag)) return;
         final name = names[tag] ?? tag;
-        AppLog.e('Выход «$name» не отвечает: ${h.failuresToDeclareDown} '
-            'проверки подряд не прошли.');
+        AppLog.e('Выход «$name» не отвечает: промахов подряд — '
+            '${h.failuresToDeclareDown}.');
 
         // ⚠️ ВСЕ ВЫХОДЫ РАЗОМ — ЭТО ОТКАЗ ПРОБЫ, А НЕ ВЫХОДОВ.
         //
@@ -581,12 +605,36 @@ abstract class VpnEngineBase implements VpnEngine {
   /// удалось собрать (панельный «Авто», незнакомый протокол), в конфиг не
   /// попал — и сторожить его нечего. Спроси мы список серверов, сторож вечно
   /// объявлял бы мёртвым выход, которого никогда и не было.
+  ///
+  /// ⚠️ ВНУТРЕННИЙ УЗЕЛ ГРУППЫ (`<тег>-node`) ВЫХОДОМ НЕ СЧИТАЕТСЯ. Он тоже
+  /// начинается с `exit-`, и прежде сторож вёл его как отдельный выход: каждый
+  /// отказ попадал в журнал дважды, второй раз под сырым тегом
+  /// («exit-987faff6-node»), а переключение «узла» на запас ядро отвергало.
   @visibleForTesting
   static List<String> exitTagsOf(List<Map<String, dynamic>> outbounds) => [
         for (final o in outbounds)
-          if (o['tag'] is String && (o['tag'] as String).startsWith('exit-'))
+          if (o['tag'] is String &&
+              (o['tag'] as String).startsWith('exit-') &&
+              !(o['tag'] as String).endsWith(exitNodeSuffix))
             o['tag'] as String,
       ];
+
+  /// Тег группы → тег её сервера, для групп, у которых сервер есть.
+  ///
+  /// Выход без группы (запасной путь не строился) сюда не попадает: его
+  /// проба идёт по тегу самого выхода, и переключать там нечего.
+  @visibleForTesting
+  static Map<String, String> exitProbeTagsOf(
+      List<Map<String, dynamic>> outbounds) {
+    final all = {
+      for (final o in outbounds)
+        if (o['tag'] is String) o['tag'] as String,
+    };
+    return {
+      for (final tag in exitTagsOf(outbounds))
+        if (all.contains(exitNodeTagFor(tag))) tag: exitNodeTagFor(tag),
+    };
+  }
 
   void startHealthWatch(bool Function() aborted) {
     // ⚠️ УСТАРЕВШИЙ ВЫЗОВ НЕ ТРОГАЕТ ЖИВОГО СТОРОЖА. Первая же строка ниже —
