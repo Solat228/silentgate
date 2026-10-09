@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
+import 'core/platform/autostart_windows.dart';
 import 'core/platform/app_instance_mutex.dart';
 import 'core/platform/log_archive.dart';
 import 'core/platform/app_log.dart';
@@ -108,6 +109,11 @@ Future<void> main(List<String> args) async {
     orElse: () => '',
   );
 
+  // Запуск системой при входе в Windows (см. AutostartWindows): окно не
+  // показываем, приложение сразу уходит в трей.
+  final autostart =
+      Platform.isWindows && AutostartWindows.launchedByAutostart(args);
+
   if (Platform.isWindows) {
     // Установщик обновления узнаёт о запущенном приложении по этому мьютексу и
     // ничем другим: у нас на закрытие окна висит свёртывание в трей, поэтому
@@ -121,6 +127,9 @@ Future<void> main(List<String> args) async {
     // На Android это даёт сама система (launchMode=singleTask + onNewIntent).
     final server = await SingleInstance.tryBecomePrimary();
     if (server == null) {
+      // Автозапуск при уже работающем приложении — просто выйти: окно посреди
+      // экрана при входе в систему никто не просил.
+      if (autostart) exit(0);
       // ⚠️ ПУСТАЯ ССЫЛКА — ЭТО ТОЖЕ СОБЫТИЕ, И РАНЬШЕ ОНО ТЕРЯЛОСЬ.
       //
       // Жалоба владельца 05.09.2026: приложение, свёрнутое в трей, нельзя было
@@ -163,7 +172,12 @@ Future<void> main(List<String> args) async {
     if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
     // Окно и трей — десктопные понятия; на Android их роль играет
     // foreground-сервис с постоянной нотификацией.
-    await TrayWindow.instance.init();
+    await TrayWindow.instance.init(startHidden: autostart);
+    // Реестр сверяется с настройкой на каждом старте: путь в `Run` мог
+    // устареть после переустановки в другую папку.
+    unawaited(SettingsStorage()
+        .load()
+        .then((s) => AutostartWindows.sync(s.launchAtLogin)));
   }
 
   // Android приносит ссылки интентом в Activity, а не через единственный
@@ -179,7 +193,10 @@ Future<void> main(List<String> args) async {
       providers: [
         ChangeNotifierProvider(
           create: (_) =>
-              AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
+              AppState(
+              initialUrl: incomingUrl.isEmpty ? null : incomingUrl,
+              autostart: autostart)
+            ..init(),
         ),
         ChangeNotifierProvider(create: (_) => SettingsController()..init()),
         // Кнопка «Свернуть» на самом уведомлении меняет раскладку в обход

@@ -749,6 +749,15 @@ class AppSettings {
   /// Подключаться к первому серверу сразу после импорта подписки по ссылке.
   final bool autoConnectAfterImport;
 
+  // ── Автозапуск (Windows) ────────────────────────────────────────────────────
+  /// Запускаться вместе с Windows (свёрнутым в трей). Выключено по умолчанию —
+  /// решение владельца 24.09.2026. См. `AutostartWindows`.
+  final bool launchAtLogin;
+
+  /// При автозапуске сразу подключаться. Отдельная галочка, выключена: человек,
+  /// включивший автозапуск ради трея, не просил поднимать VPN на каждом входе.
+  final bool connectOnAutostart;
+
   // ── Оформление и поведение ─────────────────────────────────────────────────
   final AppThemeMode themeMode;
 
@@ -937,6 +946,8 @@ class AppSettings {
     this.seamlessNetworkChange = true,
     this.seamlessKeepTun = true,
     this.autoConnectAfterImport = false,
+    this.launchAtLogin = false,
+    this.connectOnAutostart = false,
     this.themeMode = AppThemeMode.system,
     this.serviceChecksLayout = ServiceChecksLayout.adaptive,
     this.hidePanelAnnounce = false,
@@ -1054,6 +1065,8 @@ class AppSettings {
     bool? seamlessNetworkChange,
     bool? seamlessKeepTun,
     bool? autoConnectAfterImport,
+    bool? launchAtLogin,
+    bool? connectOnAutostart,
     AppThemeMode? themeMode,
     ServiceChecksLayout? serviceChecksLayout,
     bool? hidePanelAnnounce,
@@ -1143,6 +1156,8 @@ class AppSettings {
       seamlessKeepTun: seamlessKeepTun ?? this.seamlessKeepTun,
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
+      launchAtLogin: launchAtLogin ?? this.launchAtLogin,
+      connectOnAutostart: connectOnAutostart ?? this.connectOnAutostart,
       themeMode: themeMode ?? this.themeMode,
       serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
       hidePanelAnnounce: hidePanelAnnounce ?? this.hidePanelAnnounce,
@@ -1230,6 +1245,8 @@ class AppSettings {
         'seamlessNetworkChange': seamlessNetworkChange,
         'seamlessKeepTun': seamlessKeepTun,
         'autoConnectAfterImport': autoConnectAfterImport,
+        'launchAtLogin': launchAtLogin,
+        'connectOnAutostart': connectOnAutostart,
         'themeMode': themeMode.name,
         'serviceChecksLayout': serviceChecksLayout.name,
         'hidePanelAnnounce': hidePanelAnnounce,
@@ -1439,6 +1456,8 @@ class AppSettings {
       seamlessKeepTun:
           j['seamlessKeepTun'] as bool? ?? defaults.seamlessKeepTun,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
+      launchAtLogin: j['launchAtLogin'] as bool? ?? false,
+      connectOnAutostart: j['connectOnAutostart'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
       // Неизвестное/битое значение → adaptive: битый файл настроек не должен
       // ронять весь разбор из-за одной раскладки главного экрана.

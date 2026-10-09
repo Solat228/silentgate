@@ -17,6 +17,7 @@ import '../core/platform/device_id.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
 import '../core/platform/app_launcher.dart';
+import '../core/platform/autostart_windows.dart';
 import '../core/platform/vpn_lockdown.dart';
 import '../core/net/speed_test.dart';
 import '../core/models/vpn_server.dart';
@@ -2365,6 +2366,33 @@ List<SettingsRow> _appearanceRows(
           subtitle: Text(l.closeToTraySubtitle),
         ),
       ),
+    // Автозапуск — значение в HKCU\…\Run (см. AutostartWindows). Настройка —
+    // источник правды; реестр приводится к ней здесь и на каждом старте.
+    if (AutostartWindows.applicable) ...[
+      SettingsRow(
+        search: '${l.launchAtLoginTitle} ${l.launchAtLoginSub}',
+        build: (_) => SwitchListTile(
+          value: settings.launchAtLogin,
+          onChanged: (v) {
+            controller.update((s) => s.copyWith(launchAtLogin: v));
+            unawaited(AutostartWindows.sync(v));
+          },
+          title: Text(l.launchAtLoginTitle),
+          subtitle: Text(l.launchAtLoginSub),
+        ),
+      ),
+      if (settings.launchAtLogin)
+        SettingsRow(
+          search: '${l.connectOnAutostartTitle} ${l.connectOnAutostartSub}',
+          build: (_) => SwitchListTile(
+            value: settings.connectOnAutostart,
+            onChanged: (v) =>
+                controller.update((s) => s.copyWith(connectOnAutostart: v)),
+            title: Text(l.connectOnAutostartTitle),
+            subtitle: Text(l.connectOnAutostartSub),
+          ),
+        ),
+    ],
     SettingsRow(
       search: '${l.updateOnStartTitle} ${l.updateOnStartSub}',
       build: (_) => SwitchListTile(

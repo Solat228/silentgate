@@ -147,6 +147,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'The close button hides the window to the tray; turn off to close the app instead';
 
   @override
+  String get launchAtLoginTitle => 'Start with Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'The app starts minimized to the tray when you sign in';
+
+  @override
+  String get connectOnAutostartTitle => 'Connect on startup';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Bring up the VPN to the selected server right away when Windows starts the app';
+
+  @override
   String get autoUpdateSubTitle => 'Auto-update subscription';
 
   @override

@@ -51,7 +51,9 @@ class TrayWindow with WindowListener, TrayListener {
         titleBarStyle: TitleBarStyle.normal,
       );
 
-  Future<void> init() async {
+  /// [startHidden] — запуск системой при входе (см. `AutostartWindows`): окно
+  /// готовится, но не показывается, приложение живёт в трее до клика.
+  Future<void> init({bool startHidden = false}) async {
     await windowManager.ensureInitialized();
     windowManager.addListener(this);
     trayManager.addListener(this);
@@ -61,6 +63,7 @@ class TrayWindow with WindowListener, TrayListener {
     // waitUntilReadyToShow держит окно скрытым до первого корректного кадра.
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.setPreventClose(true); // крестик → onWindowClose
+      if (startHidden) return;
       await windowManager.show();
       await windowManager.focus();
     });

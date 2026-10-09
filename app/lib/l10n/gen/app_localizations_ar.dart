@@ -147,6 +147,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'زر الإغلاق يخفي النافذة إلى شريط المهام؛ أوقفه ليُغلق التطبيق بدلاً من ذلك';
 
   @override
+  String get launchAtLoginTitle => 'التشغيل مع Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'يبدأ التطبيق مصغّرًا في علبة النظام عند تسجيل الدخول';
+
+  @override
+  String get connectOnAutostartTitle => 'الاتصال عند التشغيل التلقائي';
+
+  @override
+  String get connectOnAutostartSub =>
+      'تشغيل VPN إلى الخادم المحدد فور تشغيل Windows للتطبيق';
+
+  @override
   String get autoUpdateSubTitle => 'التحديث التلقائي للاشتراك';
 
   @override

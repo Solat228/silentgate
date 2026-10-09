@@ -150,6 +150,20 @@ class AppLocalizationsEs extends AppLocalizations {
       'El botón de cerrar oculta la ventana en la bandeja; desactívalo para cerrar la aplicación';
 
   @override
+  String get launchAtLoginTitle => 'Iniciar con Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'La app se inicia minimizada en la bandeja al iniciar sesión';
+
+  @override
+  String get connectOnAutostartTitle => 'Conectar al iniciar';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Activar la VPN con el servidor elegido en cuanto Windows inicie la app';
+
+  @override
   String get autoUpdateSubTitle => 'Actualización automática de la suscripción';
 
   @override

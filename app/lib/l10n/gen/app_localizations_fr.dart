@@ -150,6 +150,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le bouton de fermeture masque la fenêtre dans la zone de notification ; désactivez pour fermer l\'application à la place';
 
   @override
+  String get launchAtLoginTitle => 'Lancer avec Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'L’application démarre réduite dans la barre d’état à l’ouverture de session';
+
+  @override
+  String get connectOnAutostartTitle => 'Se connecter au démarrage';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Activer le VPN vers le serveur choisi dès que Windows lance l’application';
+
+  @override
   String get autoUpdateSubTitle => 'Mise à jour automatique de l\'abonnement';
 
   @override

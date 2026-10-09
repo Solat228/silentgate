@@ -146,6 +146,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get closeToTraySubtitle => '关闭按钮会将窗口隐藏到托盘；关闭此项则改为退出应用';
 
   @override
+  String get launchAtLoginTitle => '随 Windows 启动';
+
+  @override
+  String get launchAtLoginSub => '登录时应用以最小化方式在托盘中启动';
+
+  @override
+  String get connectOnAutostartTitle => '自动启动时连接';
+
+  @override
+  String get connectOnAutostartSub => 'Windows 启动应用后立即连接到所选服务器的 VPN';
+
+  @override
   String get autoUpdateSubTitle => '自动更新订阅';
 
   @override

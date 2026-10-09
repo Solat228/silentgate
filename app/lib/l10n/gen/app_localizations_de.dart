@@ -148,6 +148,20 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Schließen-Schaltfläche blendet das Fenster in den Infobereich aus; deaktivieren, um die App stattdessen zu beenden';
 
   @override
+  String get launchAtLoginTitle => 'Mit Windows starten';
+
+  @override
+  String get launchAtLoginSub =>
+      'Die App startet bei der Anmeldung minimiert im Infobereich';
+
+  @override
+  String get connectOnAutostartTitle => 'Beim Autostart verbinden';
+
+  @override
+  String get connectOnAutostartSub =>
+      'VPN zum gewählten Server sofort aktivieren, wenn Windows die App startet';
+
+  @override
   String get autoUpdateSubTitle => 'Abonnement automatisch aktualisieren';
 
   @override

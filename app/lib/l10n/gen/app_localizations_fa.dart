@@ -147,6 +147,20 @@ class AppLocalizationsFa extends AppLocalizations {
       'دکمه بستن پنجره را در تری پنهان می‌کند؛ خاموش کنید تا به‌جای آن برنامه بسته شود';
 
   @override
+  String get launchAtLoginTitle => 'اجرا همراه با Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'برنامه هنگام ورود به سیستم کوچک‌شده در سینی سیستم اجرا می‌شود';
+
+  @override
+  String get connectOnAutostartTitle => 'اتصال هنگام اجرای خودکار';
+
+  @override
+  String get connectOnAutostartSub =>
+      'وقتی Windows برنامه را اجرا می‌کند، VPN بلافاصله به سرور انتخاب‌شده وصل شود';
+
+  @override
   String get autoUpdateSubTitle => 'به‌روزرسانی خودکار اشتراک';
 
   @override

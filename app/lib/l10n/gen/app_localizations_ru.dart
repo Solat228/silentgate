@@ -147,6 +147,20 @@ class AppLocalizationsRu extends AppLocalizations {
       'Крестик прячет окно в трей; выключите — крестик закрывает приложение';
 
   @override
+  String get launchAtLoginTitle => 'Запускать вместе с Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'При входе в систему приложение стартует свёрнутым в трей';
+
+  @override
+  String get connectOnAutostartTitle => 'Подключаться при автозапуске';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Сразу поднимать VPN к выбранному серверу, когда приложение запустила система';
+
+  @override
   String get autoUpdateSubTitle => 'Автообновление подписки';
 
   @override

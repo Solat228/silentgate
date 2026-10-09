@@ -69,10 +69,12 @@ class AppState extends ChangeNotifier {
     SubscriptionService? subscription,
     AppStorage? storage,
     String? initialUrl,
+    bool autostart = false,
   })  : _engine = engine ?? createVpnEngine(),
         _subscription = subscription ?? SubscriptionService(),
         _storage = storage ?? AppStorage(),
-        _initialUrl = initialUrl {
+        _initialUrl = initialUrl,
+        _autostart = autostart {
     _statusSub = _engine.statusStream.listen((s) {
       final was = _status.state;
       final wasBlocking = _status.blocking;
@@ -211,6 +213,9 @@ class AppState extends ChangeNotifier {
   String? get updateMessage => _updateMessage;
 
   final String? _initialUrl;
+
+  /// Приложение запустила система при входе (см. `AutostartWindows`).
+  final bool _autostart;
   late final StreamSubscription _statusSub;
   late final StreamSubscription _statsSub;
   StreamSubscription<String>? _blockedSub;
@@ -467,6 +472,24 @@ class AppState extends ChangeNotifier {
   /// названием. Профили-балансировщики и заглушки истёкшей подписки в поиск
   /// не берутся: имя профиля — не имя узла. Не нашли — `null`: выдумывать
   /// страну нельзя, человек по ней решает, через что он ходит.
+  /// Подключаться ли сразу после автозапуска.
+  ///
+  /// Только при запуске СИСТЕМОЙ и только с отдельной галочкой: ручной запуск
+  /// никогда не поднимает VPN сам. Подхваченный живой туннель не трогаем —
+  /// второе подключение поверх него было бы переподъёмом без причины.
+  @visibleForTesting
+  static bool shouldConnectOnAutostart({
+    required bool autostart,
+    required AppSettings settings,
+    required bool connected,
+    required bool hasServers,
+  }) =>
+      autostart &&
+      settings.launchAtLogin &&
+      settings.connectOnAutostart &&
+      !connected &&
+      hasServers;
+
   @visibleForTesting
   static String? nodeNameFor(ActiveNode? node, List<VpnServer> servers) {
     if (node == null) return null;
@@ -763,6 +786,17 @@ class AppState extends ChangeNotifier {
     final url = _initialUrl;
     if (url != null) {
       await handleIncomingUrl(url);
+    }
+    if (shouldConnectOnAutostart(
+        autostart: _autostart,
+        settings: await SettingsStorage().load(),
+        connected: _status.isConnected ||
+            _status.state == VpnConnectionState.connecting,
+        hasServers: _servers.isNotEmpty)) {
+      AppLog.i('Автозапуск: подключаюсь, как задано в настройках');
+      // Тот же путь, что команда silentgate://connect: выбранный сервер,
+      // текущие настройки, без отдельной логики «подключения при старте».
+      await handleIncomingUrl('${AppUrlScheme.scheme}://connect');
     }
     await _maybeStartUpdater();
     _maybeRefreshOnStart();

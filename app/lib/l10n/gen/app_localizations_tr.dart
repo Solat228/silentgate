@@ -147,6 +147,20 @@ class AppLocalizationsTr extends AppLocalizations {
       'Kapat düğmesi pencereyi tepsiye gizler; uygulamayı tamamen kapatmak için bunu kapatın';
 
   @override
+  String get launchAtLoginTitle => 'Windows ile başlat';
+
+  @override
+  String get launchAtLoginSub =>
+      'Oturum açıldığında uygulama sistem tepsisinde simge durumunda başlar';
+
+  @override
+  String get connectOnAutostartTitle => 'Otomatik başlatmada bağlan';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Windows uygulamayı başlattığında VPN\'i seçili sunucuya hemen bağla';
+
+  @override
   String get autoUpdateSubTitle => 'Aboneliği otomatik güncelle';
 
   @override

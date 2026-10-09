@@ -378,6 +378,30 @@ abstract class AppLocalizations {
   /// **'Крестик прячет окно в трей; выключите — крестик закрывает приложение'**
   String get closeToTraySubtitle;
 
+  /// No description provided for @launchAtLoginTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запускать вместе с Windows'**
+  String get launchAtLoginTitle;
+
+  /// No description provided for @launchAtLoginSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'При входе в систему приложение стартует свёрнутым в трей'**
+  String get launchAtLoginSub;
+
+  /// No description provided for @connectOnAutostartTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключаться при автозапуске'**
+  String get connectOnAutostartTitle;
+
+  /// No description provided for @connectOnAutostartSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сразу поднимать VPN к выбранному серверу, когда приложение запустила система'**
+  String get connectOnAutostartSub;
+
   /// No description provided for @autoUpdateSubTitle.
   ///
   /// In ru, this message translates to:
