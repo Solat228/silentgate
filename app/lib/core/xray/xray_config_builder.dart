@@ -258,7 +258,10 @@ class XrayConfigBuilder {
       },
       'api': {
         'tag': 'api',
-        'services': ['StatsService'],
+        // RoutingService — ради `xray api bi`: какой узел балансировщик
+        // выбрал сейчас (показывается у «Авто»). Слушает тот же служебный
+        // inbound на 127.0.0.1, что и StatsService.
+        'services': ['StatsService', 'RoutingService'],
       },
       'stats': {},
       'policy': {

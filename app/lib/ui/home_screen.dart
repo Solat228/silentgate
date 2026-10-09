@@ -1241,6 +1241,7 @@ class ConnectPane extends StatelessWidget {
                           // плашка отвечает на вопрос «через что идёт трафик» —
                           // глагол в ней читался бы как незавершённое действие.
                           autoLabel: l.homeAutoSession,
+                          activeNode: state.activeNodeName,
                         ),
                         httpPort: status.isConnected ? state.httpProxyPort : 0,
                         services: checks,
@@ -1849,18 +1850,28 @@ class _ServerPaneState extends State<ServerPane> {
 /// это режим «Авто (лучший)», где сессию держит балансировщик, а не отдельный
 /// узел. ⚠️ Сам ключ показывать НЕЛЬЗЯ ни при каких обстоятельствах — это
 /// share-ссылка с логином сервера внутри.
+///
+/// [activeNode] — узел, выбранный балансировщиком сейчас (решение владельца
+/// 24.09.2026: «Авто» обязан говорить, в какой он стране). Дописывается ТОЛЬКО
+/// к сессиям-балансировщикам: «Авто (лучший)» и профилям «Авто …» от панели.
+/// У обычного сервера узел один, и имя его уже стоит в подписи.
 @visibleForTesting
 String? activeServerName({
   required bool connected,
   required String? connectedKey,
   required List<VpnServer> servers,
   required String autoLabel,
+  String? activeNode,
 }) {
   if (!connected) return null;
+  String withNode(String name) =>
+      (activeNode == null || activeNode.isEmpty) ? name : '$name · $activeNode';
   for (final s in servers) {
-    if (s.key == connectedKey) return s.displayName;
+    if (s.key == connectedKey) {
+      return s.isPanelProfile ? withNode(s.displayName) : s.displayName;
+    }
   }
-  return autoLabel;
+  return withNode(autoLabel);
 }
 
 /// Центр главного экрана: плашка активного сервера, кнопка Connect и колонки

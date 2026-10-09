@@ -36,6 +36,7 @@ import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
 import '../core/util/server_rekey.dart';
+import '../core/xray/balancer_pick.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
 import '../core/subscription/xray_json_subscription.dart';
@@ -454,6 +455,30 @@ class AppState extends ChangeNotifier {
   bool get refreshing => _refreshing;
   VpnStatus get status => _status;
   TrafficStats get stats => _stats;
+
+  /// Имя узла, через который «Авто» ведёт трафик сейчас; `null` — не
+  /// балансировщик, ядро ещё не выбрало либо узел не опознан.
+  String? get activeNodeName => nodeNameFor(_stats.activeNode, _servers);
+
+  /// Имя узла по адресу и порту среди серверов подписки.
+  ///
+  /// ⚠️ ПО АДРЕСУ, А НЕ ПО ТЕГУ. Теги outbound-ов у профилей «Авто» от панели
+  /// безымянные (`proxy-2`), а тот же узел лежит в подписке обычной строкой с
+  /// названием. Профили-балансировщики и заглушки истёкшей подписки в поиск
+  /// не берутся: имя профиля — не имя узла. Не нашли — `null`: выдумывать
+  /// страну нельзя, человек по ней решает, через что он ходит.
+  @visibleForTesting
+  static String? nodeNameFor(ActiveNode? node, List<VpnServer> servers) {
+    if (node == null) return null;
+    final host = node.address.toLowerCase();
+    for (final s in servers) {
+      if (s.isPanelProfile || s.isNotice) continue;
+      if (s.port == node.port && s.address.toLowerCase() == host) {
+        return s.displayName;
+      }
+    }
+    return null;
+  }
 
   /// Момент, когда пользователь ВКЛЮЧИЛ VPN. null — выключен.
   ///

@@ -12,6 +12,7 @@ import '../../core/platform/app_paths.dart';
 import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
+import '../../core/xray/balancer_pick.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
@@ -573,7 +574,8 @@ class WindowsEngine extends VpnEngineBase {
       _lastSnapshot = XrayTrafficSnapshot.zero;
       _lastSampleTime = DateTime.now();
       _startStatsPolling(singboxCore ? null : location!.executable,
-          singbox: singboxCore);
+          singbox: singboxCore,
+          xrayConfig: singboxCore ? null : _decodeConfig(configJson));
 
       // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
       if (attempt > 0) {
@@ -1539,10 +1541,30 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Готовый конфиг Xray как словарь — для разбора балансировщика. Не
+  /// разобрался — `null`: показ узла не повод ронять подключение.
+  static Map<String, dynamic>? _decodeConfig(String json) {
+    try {
+      final d = jsonDecode(json);
+      return d is Map ? Map<String, dynamic>.from(d) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Счётчики трафика: у Xray — `api statsquery`, у sing-box — Clash API.
-  void _startStatsPolling(String? executable, {bool singbox = false}) {
+  void _startStatsPolling(String? executable,
+      {bool singbox = false, Map<String, dynamic>? xrayConfig}) {
     final xrayStats =
         singbox ? null : XrayStats(executable: executable!, apiPort: ports.api);
+    // Выбранный узел «Авто» спрашиваем реже счётчиков: балансировщик меняет
+    // выбор не чаще своих замеров, а лишний запуск `xray.exe` раз в секунду
+    // не нужен никому.
+    final balancerTag = xrayConfig == null
+        ? null
+        : BalancerPick.mainBalancerTag(xrayConfig);
+    var tick = 0;
+    ActiveNode? node;
     final singboxStats = singbox
         ? SingboxStats(apiPort: ports.api, secret: singboxApiSecret)
         : null;
@@ -1568,11 +1590,26 @@ class WindowsEngine extends VpnEngineBase {
         _lastSnapshot = snap;
         _lastSampleTime = now;
 
+        if (balancerTag != null && xrayStats != null && tick++ % 5 == 0) {
+          final picked = await xrayStats.balancerPick(balancerTag);
+          final next =
+              picked == null ? null : BalancerPick.nodeOf(xrayConfig!, picked);
+          if (next != node) {
+            AppLog.i(next == null
+                ? 'Авто: балансировщик пока не выбрал узел'
+                // Только тег: адрес узла панели в реестр маскировки может
+                // не попасть, а журнал уходит в отчёт поддержки.
+                : 'Авто: трафик идёт через узел ${next.tag}');
+          }
+          node = next;
+        }
+
         emitStats(TrafficStats(
           uplinkBytes: snap.uplink,
           downlinkBytes: snap.downlink,
           uplinkSpeed: upSpeed < 0 ? 0 : upSpeed,
           downlinkSpeed: downSpeed < 0 ? 0 : downSpeed,
+          activeNode: node,
         ));
       } finally {
         _polling = false;
