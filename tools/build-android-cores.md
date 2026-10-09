@@ -107,8 +107,21 @@ go mod edit -replace=github.com/sagernet/sing-box=<путь к клону sing-b
 go mod tidy      # тянет и tailscale-зависимости; сеть должна быть терпеливой
 
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH      # форк SagerNet
-gomobile bind   -target=android/arm64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
+gomobile bind -target=android/arm64,android/amd64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14 '-extldflags=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384'"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
 ```
+
+`android/amd64` — ядро для эмулятора (`TEST-ONLY-emulator-…-x86_64.apk`).
+
+## ⚠️ Выравнивание 16 КБ (обязательно)
+
+Устройства с Android 15+ бывают со страницей памяти 16 КБ, а Google Play с
+01.11.2025 требует такую совместимость для targetSdk 35. Библиотека, у которой
+сегменты `LOAD` выровнены на 4 КБ, на таком устройстве не загрузится вовсе.
+NDK r27 по умолчанию даёт 4 КБ (16 КБ по умолчанию — только с r28), поэтому флаг
+линковщика выше обязателен: без него `libcores.so` выходил с выравниванием 4096
+при том, что все библиотеки самого Flutter уже стояли на 16–64 КБ (найдено
+10.10.2026). Упаковку в APK по 16 КБ AGP делает сам. Страж —
+`app/test/android_16k_alignment_test.dart`: читает ELF внутри AAR.
 
 Результат — `cores.aar` ~18 МБ (против 13+12 по отдельности: рантайм общий).
 Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate.cores.libXray`,
