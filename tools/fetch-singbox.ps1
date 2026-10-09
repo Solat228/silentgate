@@ -5,7 +5,7 @@
 # («mere aggregation»). Не переименовывайте бинарник и соблюдайте no-name-условие sing-box.
 
 $ErrorActionPreference = 'Stop'
-$ver = '1.11.15'
+$ver = '1.13.14'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dest = Join-Path $repoRoot 'engine\windows\bin'
 New-Item -ItemType Directory -Force -Path $dest | Out-Null

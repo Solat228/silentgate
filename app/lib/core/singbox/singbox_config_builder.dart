@@ -979,7 +979,15 @@ class SingboxConfigBuilder {
     };
 
     final dns = _buildDns(finalOutbound, split);
-    if (dns != null) cfg['dns'] = dns;
+    if (dns != null) {
+      cfg['dns'] = dns;
+      // Чем резолвит имена САМ outbound (выход «Прямо», адрес сервера
+      // выхода) — только напрямую. Через туннель нельзя: адрес сервера
+      // спрашивался бы у туннеля, который к этому серверу ещё не построен.
+      // Замена устаревшего DNS-правила `outbound: direct` (см. [_buildDns]).
+      (cfg['route'] as Map<String, dynamic>)['default_domain_resolver'] =
+          'dns-local';
+    }
     return cfg;
   }
 
@@ -1007,14 +1015,30 @@ class SingboxConfigBuilder {
     // туннеля), а не через прокси.
     final systemMode = o.dnsMode == DnsMode.system;
 
+    // ⚠️ ФОРМАТ СЕРВЕРОВ — НОВЫЙ, sing-box 1.12+ (`type` + `server`), а не
+    // строка `address: 'tcp://…'`. Прежний формат 1.13 объявляет устаревшим, и
+    // официальная сборка под Windows ОТВЕРГАЕТ такой конфиг целиком
+    // (`FATAL legacy DNS servers is deprecated`), если не выставить переменную
+    // окружения; в 1.14 его нет вовсе. libbox на Android, собранный нами из
+    // исходников, только предупреждал — поэтому расхождение и не было видно.
+    //
+    // Что ушло вместе со старым форматом:
+    //  * `strategy` у сервера — её больше нет; стратегия задана для всей секции
+    //    ниже (`dns.strategy`), и у всех серверов она и раньше была одна;
+    //  * `address_resolver` → `domain_resolver` (нужен, только если резолвер
+    //    задан ИМЕНЕМ, а не адресом);
+    //  * `detour: 'direct'` — ядро 1.12+ отвергает его как бессмысленный:
+    //    сервер без `detour` и так ходит напрямую, мимо туннеля.
+    //
     // Резолвер туннеля: по TCP через прокси — работает даже там, где UDP не ходит.
-    // Хост чистим: пустой/битый `dnsServer` дал бы `tcp://` и отказ всего конфига.
+    // Хост чистим: пустой/битый `dnsServer` дал бы пустой `server` и отказ всего конфига.
+    final proxyDns = _dnsHost(o.dnsServer);
     final servers = <Map<String, dynamic>>[
       {
+        'type': 'tcp',
         'tag': 'dns-proxy',
-        'address': 'tcp://${_dnsHost(o.dnsServer)}',
-        'address_resolver': 'dns-local',
-        'strategy': o.dnsStrategy.singboxValue,
+        ..._dnsEndpoint(proxyDns),
+        if (_needsResolver(proxyDns)) 'domain_resolver': 'dns-local',
         'detour': 'proxy',
       },
       // Явный апстрим вместо `local`: см. TunOptions.directDnsUpstream —
@@ -1031,12 +1055,15 @@ class SingboxConfigBuilder {
         //
         // Туннель здесь не участвует ни на каком шаге: имя, помеченное
         // «Прямо», обязано резолвиться мимо VPN.
-        'address': o.directFallbackDnsPort > 0
-            ? 'udp://127.0.0.1:${o.directFallbackDnsPort}'
-            : ((o.directDnsUpstream ?? '').isNotEmpty
-                ? 'udp://${o.directDnsUpstream}'
-                : 'local'),
-        'detour': 'direct',
+        if (o.directFallbackDnsPort > 0) ...{
+          'type': 'udp',
+          'server': '127.0.0.1',
+          'server_port': o.directFallbackDnsPort,
+        } else if ((o.directDnsUpstream ?? '').isNotEmpty) ...{
+          'type': 'udp',
+          ..._dnsEndpoint(o.directDnsUpstream!),
+        } else
+          'type': 'local',
       },
       // Резолвер с ЗАПАСОМ — наш локальный форвардер (см. TunOptions.fallbackDnsPort).
       //
@@ -1045,10 +1072,10 @@ class SingboxConfigBuilder {
       // ровно там, где чинили её отсутствие.
       if (o.fallbackDnsPort > 0)
         {
+          'type': 'udp',
           'tag': 'dns-fallback',
-          'address': 'udp://127.0.0.1:${o.fallbackDnsPort}',
-          'strategy': o.dnsStrategy.singboxValue,
-          'detour': 'direct',
+          'server': '127.0.0.1',
+          'server_port': o.fallbackDnsPort,
         },
       // ⚠️ ПО РЕЗОЛВЕРУ НА КАЖДЫЙ ВЫХОД — ЭТО НЕ УКРАШЕНИЕ.
       //
@@ -1063,10 +1090,10 @@ class SingboxConfigBuilder {
       // sing-box 1.11.15.
       for (final tag in _liveExitTags)
         {
+          'type': 'tcp',
           'tag': 'dns-$tag',
-          'address': 'tcp://${_dnsHost(o.dnsServer)}',
-          'address_resolver': 'dns-local',
-          'strategy': o.dnsStrategy.singboxValue,
+          ..._dnsEndpoint(proxyDns),
+          if (_needsResolver(proxyDns)) 'domain_resolver': 'dns-local',
           'detour': tag,
         },
     ];
@@ -1126,10 +1153,10 @@ class SingboxConfigBuilder {
       if (!o.blockNotice) ..._dnsAppRules(split, AppAction.block, null),
       // Зеркало для правил выбора выхода в режиме «Всё через VPN».
       ..._dnsExitOnlyRules(split),
-      {
-        'outbound': ['direct'],
-        'server': 'dns-local',
-      },
+      // Прежнее правило `{'outbound': ['direct'], 'server': 'dns-local'}`
+      // (имена, которые резолвит сам выход «Прямо») заменено на
+      // `route.default_domain_resolver` — правило по outbound в 1.13 устарело
+      // так же фатально, как старый формат серверов.
     ];
 
     return {
@@ -1311,6 +1338,40 @@ class SingboxConfigBuilder {
   /// доставалась сырая строка, на которой рукопожатие SOCKS молча падало, — и
   /// весь DNS уходил провайдеру при внешне исправной работе.
   static String dnsHostOf(String raw) => _dnsHost(raw);
+
+  /// `host`, `host:port`, `[v6]:port`, голый IPv6 → поля `server`/`server_port`
+  /// нового формата DNS-серверов. Порт не задан — поле не пишется, ядро
+  /// подставит 53. Публичный — для тестов.
+  static Map<String, dynamic> dnsEndpoint(String hostPort) =>
+      _dnsEndpoint(hostPort);
+
+  static Map<String, dynamic> _dnsEndpoint(String hostPort) {
+    var s = hostPort.trim();
+    final bracket = RegExp(r'^\[([^\]]+)\](?::(\d+))?$').firstMatch(s);
+    if (bracket != null) {
+      final port = int.tryParse(bracket.group(2) ?? '');
+      return {
+        'server': bracket.group(1)!,
+        if (port != null && port > 0 && port < 65536) 'server_port': port,
+      };
+    }
+    // Голый IPv6 (двоеточий больше одного) порта не несёт — берём как есть.
+    if (':'.allMatches(s).length == 1) {
+      final i = s.lastIndexOf(':');
+      final port = int.tryParse(s.substring(i + 1));
+      if (port != null && port > 0 && port < 65536) {
+        return {'server': s.substring(0, i), 'server_port': port};
+      }
+      s = s.substring(0, i);
+    }
+    return {'server': s};
+  }
+
+  /// Резолвер задан именем (`dns.google`), а не адресом — ему нужен свой
+  /// резолвер, иначе ядру нечем узнать, куда слать запросы.
+  static bool _needsResolver(String hostPort) =>
+      InternetAddress.tryParse(_dnsEndpoint(hostPort)['server'] as String) ==
+      null;
 
   static String _dnsHost(String raw) {
     var s = raw.trim();

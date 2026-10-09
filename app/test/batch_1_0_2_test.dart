@@ -79,10 +79,12 @@ void main() {
     });
 
     test('DNS-зеркало пустое: иначе домен «Прямо» резолвился бы локально', () {
-      final d = dnsRules(build(SplitMode.all));
+      final c = build(SplitMode.all);
+      final d = dnsRules(c);
       expect(d.where((x) => x.containsKey('domain_suffix')), isEmpty);
-      // Правило-заглушка про direct-outbound остаётся: его убирать не просили.
-      expect(d, isNotEmpty);
+      // Резолв для самих outbound'ов (бывшее правило `outbound: direct`)
+      // остаётся — теперь это `route.default_domain_resolver`.
+      expect((c['route'] as Map)['default_domain_resolver'], 'dns-local');
     });
 
     test('инфраструктура на месте: IP сервера и петля по-прежнему direct', () {
@@ -402,13 +404,16 @@ void main() {
     test('явный апстрим попадает в dns-local', () {
       final local =
           servers(cfg(upstream: '192.0.2.53')).firstWhere((s) => s['tag'] == 'dns-local');
-      expect(local['address'], 'udp://192.0.2.53');
-      expect(local['detour'], 'direct');
+      expect(local['type'], 'udp');
+      expect(local['server'], '192.0.2.53');
+      // Без `detour` сервер и так ходит напрямую; `detour: direct` ядро 1.12+
+      // отвергает как бессмысленный.
+      expect(local.containsKey('detour'), isFalse);
     });
 
     test('без апстрима поведение прежнее', () {
       final local = servers(cfg()).firstWhere((s) => s['tag'] == 'dns-local');
-      expect(local['address'], 'local');
+      expect(local['type'], 'local');
     });
 
     test('loop-protection стоит ВЫШЕ перехвата DNS', () {

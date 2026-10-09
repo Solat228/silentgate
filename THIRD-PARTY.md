@@ -9,7 +9,7 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 | Компонент | Версия | Лицензия | Как используется | Исходный код |
 |---|---|---|---|---|
 | **Xray-core** (`xray.exe`) | см. «О программе» | MPL-2.0 | отдельный процесс, прокси-ядро | https://github.com/XTLS/Xray-core |
-| **sing-box** (`sing-box.exe`) | 1.11.15 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
+| **sing-box** (`sing-box.exe`) | 1.13.14 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
 | **Wintun** (`wintun.dll`) | — | лицензия Wintun (см. `LICENSE-wintun.txt`) | TUN-адаптер для Windows | https://www.wintun.net/ |
 | **geoip.dat / geosite.dat** | — | CC-BY-SA-4.0 (данные) | списки для маршрутизации | https://github.com/v2fly/domain-list-community |
 
