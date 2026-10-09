@@ -4,7 +4,7 @@ import 'dart:io';
 import '../core/models/subscription_profile.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Чем закончилось чтение `subscriptions.json`.
 ///
@@ -220,7 +220,7 @@ class SubscriptionsStore {
         return const SubscriptionsSnapshot([], null,
             outcome: SubscriptionsLoadOutcome.unreadable);
       }
-      final parsed = parseContent(await f.readAsString());
+      final parsed = parseContent(await SecretFiles.read(f));
       if (parsed != null) return parsed;
       AppLog.e('Подписки не прочитаны ($_fileName): файл есть, но разобрать '
           'его не удалось');
@@ -319,7 +319,7 @@ class SubscriptionsStore {
     }
     try {
       final f = await _file();
-      return await AtomicFile.writeString(f, jsonEncode({
+      return await SecretFiles.write(f, jsonEncode({
         'activeId': snapshot.activeId,
         'items': snapshot.items.map((p) => p.toJson()).toList(),
       }));

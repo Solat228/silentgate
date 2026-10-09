@@ -20,6 +20,15 @@ class AppPaths {
 
   static Directory? _cached;
 
+  /// Корень данных — портативный каталог рядом с exe ([portableDirName]).
+  ///
+  /// Спрашивает шифрование секретов (`SecretFiles`): портативная копия пишет
+  /// данные открытым текстом — решение владельца 25.09.2026. Ключ DPAPI
+  /// привязан к учётной записи Windows, и флешка, вставленная в другой
+  /// компьютер, принесла бы туда нечитаемые подписки.
+  static bool get isPortable => _portableRoot;
+  static bool _portableRoot = false;
+
   /// ⚠️ ПОД ТЕСТАМИ БОЕВОЙ КАТАЛОГ НЕ ОТДАЁТСЯ НИКОГДА.
   ///
   /// Стоит здесь, а не в тестах, по той же причине, что барьер секретов стоит в
@@ -86,10 +95,14 @@ class AppPaths {
   static void overrideRoot(Directory dir) {
     if (!dir.existsSync()) dir.createSync(recursive: true);
     _cached = dir;
+    _portableRoot = false;
   }
 
   /// Сбросить кэш (между тестами).
-  static void resetForTests() => _cached = null;
+  static void resetForTests() {
+    _cached = null;
+    _portableRoot = false;
+  }
 
   static Directory supportDirSync() {
     final known = _cached;
@@ -164,6 +177,7 @@ class AppPaths {
 
   static String _windowsBase() {
     final portable = _portableBase();
+    _portableRoot = portable != null;
     if (portable != null) return portable;
     final appData = Platform.environment['APPDATA'];
     return (appData != null && appData.isNotEmpty)

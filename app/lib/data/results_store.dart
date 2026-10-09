@@ -3,7 +3,7 @@ import 'dart:io';
 
 import '../core/platform/app_paths.dart';
 import '../core/util/key_migration.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Простое JSON-хранилище результатов (пинг, автонастройка) в каталоге поддержки приложения.
 class ResultsStore {
@@ -22,7 +22,7 @@ class ResultsStore {
     try {
       final f = await _file();
       if (!await f.exists()) return null;
-      final s = await f.readAsString();
+      final s = await SecretFiles.read(f);
       if (s.trim().isEmpty) return null;
       final data = jsonDecode(s);
       // ⚠️ Ключи приводим к каноническому виду ПРИ ЧТЕНИИ: до 1.4.2 сервер мог
@@ -90,7 +90,7 @@ class ResultsStore {
   Future<void> save(Object data) async {
     try {
       final f = await _file();
-      await AtomicFile.writeString(f, jsonEncode(data));
+      await SecretFiles.write(f, jsonEncode(data));
     } catch (_) {}
   }
 }

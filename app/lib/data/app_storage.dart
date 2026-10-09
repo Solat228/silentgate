@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Простое JSON-хранилище состояния приложения в каталоге поддержки приложения.
 ///
@@ -20,7 +20,7 @@ class AppStorage {
     try {
       final file = await _file();
       if (!await file.exists()) return {};
-      final content = await file.readAsString();
+      final content = await SecretFiles.read(file);
       if (content.trim().isEmpty) return {};
       return jsonDecode(content) as Map<String, dynamic>;
     } catch (_) {
@@ -31,7 +31,7 @@ class AppStorage {
   Future<void> save(Map<String, dynamic> data) async {
     try {
       final file = await _file();
-      await AtomicFile.writeString(file, jsonEncode(data));
+      await SecretFiles.write(file, jsonEncode(data));
     } catch (_) {
       // Потеря настроек не критична для работы туннеля.
     }
