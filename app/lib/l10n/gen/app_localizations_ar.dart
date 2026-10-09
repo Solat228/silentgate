@@ -161,6 +161,19 @@ class AppLocalizationsAr extends AppLocalizations {
       'تشغيل VPN إلى الخادم المحدد فور تشغيل Windows للتطبيق';
 
   @override
+  String get sortServersByCountryTitle => 'الترتيب حسب البلد';
+
+  @override
+  String get sortServersByCountrySub =>
+      'جمع خوادم البلد الواحد معًا. تحافظ البلدان على ترتيب المزوّد، وتبقى الخوادم المثبّتة في الأعلى';
+
+  @override
+  String get serverGroupCollapse => 'طيّ المجموعة';
+
+  @override
+  String get serverGroupExpand => 'توسيع المجموعة';
+
+  @override
   String get autoUpdateSubTitle => 'التحديث التلقائي للاشتراك';
 
   @override

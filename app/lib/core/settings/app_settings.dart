@@ -790,6 +790,17 @@ class AppSettings {
   /// живой туннель из-за нажатия на заголовок.
   final List<String> collapsedSections;
 
+  // ── Список серверов ────────────────────────────────────────────────────────
+  /// Собирать серверы одной страны вместе. Выключено по умолчанию — решение
+  /// владельца 25.09.2026: порядок провайдера не трогаем, а соседние серверы
+  /// одной страны и так сворачиваются в группу (`ServerGroups`). Переключатель
+  /// показывается только у перемешанного списка.
+  final bool sortServersByCountry;
+
+  /// Свёрнутые группы стран — ключи `ServerGroups.countryOf` (`DE`, `RU-DE`).
+  /// Как [collapsedSections], в [reconnectReasons] не входит.
+  final List<String> collapsedCountries;
+
   /// Код языка интерфейса (`ru`/`en`/`es`…). Пустая строка — следовать системе.
   final String languageCode;
   final bool closeToTray; // крестик: сворачивать в трей (true) / закрывать полностью (false)
@@ -952,6 +963,8 @@ class AppSettings {
     this.serviceChecksLayout = ServiceChecksLayout.adaptive,
     this.hidePanelAnnounce = false,
     this.collapsedSections = const [],
+    this.sortServersByCountry = false,
+    this.collapsedCountries = const [],
     this.languageCode = '',
     this.closeToTray = true,
     this.dontAskOnClose = false,
@@ -1071,6 +1084,8 @@ class AppSettings {
     ServiceChecksLayout? serviceChecksLayout,
     bool? hidePanelAnnounce,
     List<String>? collapsedSections,
+    bool? sortServersByCountry,
+    List<String>? collapsedCountries,
     String? languageCode,
     bool? closeToTray,
     bool? dontAskOnClose,
@@ -1162,6 +1177,8 @@ class AppSettings {
       serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
       hidePanelAnnounce: hidePanelAnnounce ?? this.hidePanelAnnounce,
       collapsedSections: collapsedSections ?? this.collapsedSections,
+      sortServersByCountry: sortServersByCountry ?? this.sortServersByCountry,
+      collapsedCountries: collapsedCountries ?? this.collapsedCountries,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
       dontAskOnClose: dontAskOnClose ?? this.dontAskOnClose,
@@ -1251,6 +1268,8 @@ class AppSettings {
         'serviceChecksLayout': serviceChecksLayout.name,
         'hidePanelAnnounce': hidePanelAnnounce,
         'collapsedSections': collapsedSections,
+        'sortServersByCountry': sortServersByCountry,
+        'collapsedCountries': collapsedCountries,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
         'dontAskOnClose': dontAskOnClose,
@@ -1472,6 +1491,10 @@ class AppSettings {
       // `whereType`, а не `cast`: битый файл настроек не должен ронять экран
       // настроек при первой же прокрутке — лишний элемент просто игнорируем.
       collapsedSections: ((j['collapsedSections'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      sortServersByCountry: j['sortServersByCountry'] as bool? ?? false,
+      collapsedCountries: ((j['collapsedCountries'] as List?) ?? const [])
           .whereType<String>()
           .toList(),
       languageCode: j['languageCode'] as String? ?? '',

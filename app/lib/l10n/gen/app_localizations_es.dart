@@ -164,6 +164,19 @@ class AppLocalizationsEs extends AppLocalizations {
       'Activar la VPN con el servidor elegido en cuanto Windows inicie la app';
 
   @override
+  String get sortServersByCountryTitle => 'Ordenar por país';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Agrupar los servidores de un mismo país. Los países siguen el orden del proveedor; los fijados quedan arriba';
+
+  @override
+  String get serverGroupCollapse => 'Contraer grupo';
+
+  @override
+  String get serverGroupExpand => 'Expandir grupo';
+
+  @override
   String get autoUpdateSubTitle => 'Actualización automática de la suscripción';
 
   @override

@@ -127,9 +127,6 @@ Future<void> main(List<String> args) async {
     // На Android это даёт сама система (launchMode=singleTask + onNewIntent).
     final server = await SingleInstance.tryBecomePrimary();
     if (server == null) {
-      // Автозапуск при уже работающем приложении — просто выйти: окно посреди
-      // экрана при входе в систему никто не просил.
-      if (autostart) exit(0);
       // ⚠️ ПУСТАЯ ССЫЛКА — ЭТО ТОЖЕ СОБЫТИЕ, И РАНЬШЕ ОНО ТЕРЯЛОСЬ.
       //
       // Жалоба владельца 05.09.2026: приложение, свёрнутое в трей, нельзя было
@@ -141,8 +138,13 @@ Future<void> main(List<String> args) async {
       // Для человека это выглядит как сломанный ярлык: он жмёт второй и третий
       // раз, а на экране пусто. Трей ради того и делают, чтобы приложение
       // возвращалось по клику; без этой строки он был ловушкой.
-      await SingleInstance.forward(
-          incomingUrl.isNotEmpty ? incomingUrl : AppUrlScheme.showWindowUrl);
+      //
+      // Автозапуск при уже работающем приложении ничего не пересылает: окно
+      // посреди экрана при входе в систему никто не просил.
+      if (!autostart) {
+        await SingleInstance.forward(
+            incomingUrl.isNotEmpty ? incomingUrl : AppUrlScheme.showWindowUrl);
+      }
       exit(0);
     }
     // ⚠️ Секрет ПОСТОЯННЫЙ и не зависит от настроек API: он существует всегда,

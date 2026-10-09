@@ -162,6 +162,19 @@ class AppLocalizationsDe extends AppLocalizations {
       'VPN zum gewählten Server sofort aktivieren, wenn Windows die App startet';
 
   @override
+  String get sortServersByCountryTitle => 'Nach Land sortieren';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Server eines Landes zusammenfassen. Die Länder behalten die Reihenfolge des Anbieters; angeheftete Server bleiben oben';
+
+  @override
+  String get serverGroupCollapse => 'Gruppe einklappen';
+
+  @override
+  String get serverGroupExpand => 'Gruppe ausklappen';
+
+  @override
   String get autoUpdateSubTitle => 'Abonnement automatisch aktualisieren';
 
   @override

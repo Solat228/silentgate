@@ -402,6 +402,30 @@ abstract class AppLocalizations {
   /// **'Сразу поднимать VPN к выбранному серверу, когда приложение запустила система'**
   String get connectOnAutostartSub;
 
+  /// No description provided for @sortServersByCountryTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сортировать по странам'**
+  String get sortServersByCountryTitle;
+
+  /// No description provided for @sortServersByCountrySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собрать серверы одной страны вместе. Страны идут в порядке провайдера, закреплённые остаются сверху'**
+  String get sortServersByCountrySub;
+
+  /// No description provided for @serverGroupCollapse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть группу'**
+  String get serverGroupCollapse;
+
+  /// No description provided for @serverGroupExpand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть группу'**
+  String get serverGroupExpand;
+
   /// No description provided for @autoUpdateSubTitle.
   ///
   /// In ru, this message translates to:

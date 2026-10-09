@@ -161,6 +161,19 @@ class AppLocalizationsTr extends AppLocalizations {
       'Windows uygulamayı başlattığında VPN\'i seçili sunucuya hemen bağla';
 
   @override
+  String get sortServersByCountryTitle => 'Ülkeye göre sırala';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Aynı ülkenin sunucularını bir araya topla. Ülkeler sağlayıcının sırasını korur; sabitlenenler üstte kalır';
+
+  @override
+  String get serverGroupCollapse => 'Grubu daralt';
+
+  @override
+  String get serverGroupExpand => 'Grubu genişlet';
+
+  @override
   String get autoUpdateSubTitle => 'Aboneliği otomatik güncelle';
 
   @override

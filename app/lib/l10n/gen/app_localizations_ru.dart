@@ -161,6 +161,19 @@ class AppLocalizationsRu extends AppLocalizations {
       'Сразу поднимать VPN к выбранному серверу, когда приложение запустила система';
 
   @override
+  String get sortServersByCountryTitle => 'Сортировать по странам';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Собрать серверы одной страны вместе. Страны идут в порядке провайдера, закреплённые остаются сверху';
+
+  @override
+  String get serverGroupCollapse => 'Свернуть группу';
+
+  @override
+  String get serverGroupExpand => 'Развернуть группу';
+
+  @override
   String get autoUpdateSubTitle => 'Автообновление подписки';
 
   @override

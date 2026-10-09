@@ -161,6 +161,19 @@ class AppLocalizationsFa extends AppLocalizations {
       'وقتی Windows برنامه را اجرا می‌کند، VPN بلافاصله به سرور انتخاب‌شده وصل شود';
 
   @override
+  String get sortServersByCountryTitle => 'مرتب‌سازی بر اساس کشور';
+
+  @override
+  String get sortServersByCountrySub =>
+      'سرورهای یک کشور را کنار هم بگذار. کشورها ترتیب ارائه‌دهنده را حفظ می‌کنند؛ سرورهای سنجاق‌شده بالا می‌مانند';
+
+  @override
+  String get serverGroupCollapse => 'جمع کردن گروه';
+
+  @override
+  String get serverGroupExpand => 'باز کردن گروه';
+
+  @override
   String get autoUpdateSubTitle => 'به‌روزرسانی خودکار اشتراک';
 
   @override

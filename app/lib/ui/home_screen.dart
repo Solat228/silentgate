@@ -26,6 +26,7 @@ import '../core/probe/ping_result.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/uptime_format.dart';
 import '../core/util/server_search.dart';
+import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -46,6 +47,7 @@ import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
 import 'widgets/flag_text.dart';
+import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/tun_task_result_text.dart';
@@ -1565,15 +1567,21 @@ ServerScrollTrigger serverScrollTrigger({
 ///
 /// ⚠️ Проверка видимости здесь не украшение: без неё «прокрутка к выбранному»
 /// на первой же строке дёргала бы список, который и так стоит на нужном месте.
+///
+/// [top] — готовый верх строки, когда высоты строк разные (заголовки групп
+/// стран, см. `serverEntryTop`); без него верх считается как [pos] × [rowExtent].
 double? serverRowScrollTarget({
   required int pos,
   required double rowExtent,
   required double pixels,
   required double viewport,
   required double maxScrollExtent,
+  double? top,
 }) {
-  if (pos < 0) return null;
-  final top = pos * rowExtent;
+  if (top == null) {
+    if (pos < 0) return null;
+    top = pos * rowExtent;
+  }
   if (top >= pixels && top + rowExtent <= pixels + viewport) return null;
   final target = top.clamp(0.0, maxScrollExtent);
   // Список уже упёрт в конец (или в начало) — мотать некуда.
@@ -1593,6 +1601,7 @@ bool scrollListToRow(
   double rowExtent = kServerRowExtent,
   bool onlyIfUntouched = false,
   Duration duration = const Duration(milliseconds: 400),
+  double? top,
 }) {
   if (!c.hasClients) return false;
   final p = c.position;
@@ -1605,6 +1614,7 @@ bool scrollListToRow(
     pixels: p.pixels,
     viewport: p.viewportDimension,
     maxScrollExtent: p.maxScrollExtent,
+    top: top,
   );
   if (target == null) return false;
   c.animateTo(target, duration: duration, curve: Curves.easeOut);
@@ -1661,11 +1671,15 @@ class _ServerPaneState extends State<ServerPane> {
     return _measuredRowExtent ?? kServerRowExtent;
   }
 
-  void _scrollToSelected(List<int> shown, int selected,
+  void _scrollToSelected(List<ServerListEntry> entries, int selected,
       {required bool onlyIfUntouched}) {
+    final rowExtent = _rowExtent();
+    final top = serverEntryTop(entries, selected, rowExtent: rowExtent);
+    if (top == null) return;
     scrollListToRow(_listCtrl,
-        pos: shown.indexOf(selected),
-        rowExtent: _rowExtent(),
+        pos: 0,
+        top: top,
+        rowExtent: rowExtent,
         onlyIfUntouched: onlyIfUntouched);
   }
 
@@ -1678,6 +1692,18 @@ class _ServerPaneState extends State<ServerPane> {
     final servers = state.servers;
     // Индексы исходного списка: выбор сервера идёт по индексу в AppState.servers.
     final shown = ServerSearch.matchIndices(servers, _query);
+    // Строки списка: серверы и заголовки групп стран (см. `ServerGroups`).
+    final entries = serverListEntries(
+      servers: servers,
+      shown: shown,
+      searching: _query.isNotEmpty,
+      settings: context.watch<SettingsController>().settings,
+      selected: state.selectedIndex,
+      isPinned: state.isPinned,
+    );
+    // Первая строка СЕРВЕРА — линейка высоты (см. `_rowExtent`); заголовок
+    // группы ниже ростом и линейкой служить не может.
+    final firstRow = entries.indexWhere((e) => e is ServerRowEntry);
 
     // Запуск приложения и момент подключения — два случая, когда листать
     // уместно. ⚠️ Прокрутку назначаем на ПОСЛЕ кадра: до него у списка нет
@@ -1696,7 +1722,7 @@ class _ServerPaneState extends State<ServerPane> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Стартовая прокрутка уступает пользователю: если он уже листает или
         // увёл список сам (серверы приходят с диска не мгновенно), не лезем.
-        if (mounted) _scrollToSelected(shown, sel, onlyIfUntouched: startup);
+        if (mounted) _scrollToSelected(entries, sel, onlyIfUntouched: startup);
       });
     }
     _wasConnected = connected;
@@ -1815,19 +1841,32 @@ class _ServerPaneState extends State<ServerPane> {
                 ? Center(child: Text(l.homeNothingFound))
                 : ListView.separated(
                     controller: _listCtrl,
-                    itemCount: shown.length,
+                    itemCount: entries.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final idx = shown[i];
-                      final tile = ServerTile(
+                      final entry = entries[i];
+                      if (entry is ServerGroupHeader) {
+                        return ServerGroupHeaderTile(
+                            group: entry,
+                            flagSource: servers[entry.indices.first].remark);
+                      }
+                      final row = entry as ServerRowEntry;
+                      final idx = row.index;
+                      Widget tile = ServerTile(
                         server: servers[idx],
                         selected: idx == state.selectedIndex,
                         onTap: () => state.selectServer(idx),
                       );
-                      // Первая строка — линейка для прокрутки по номеру строки
-                      // (см. `_rowExtent`). Обёртка ничего не рисует и на
-                      // раскладку не влияет.
-                      return i == 0
+                      if (row.grouped) {
+                        tile = Padding(
+                            padding: const EdgeInsetsDirectional.only(
+                                start: kServerGroupIndent),
+                            child: tile);
+                      }
+                      // Первая строка сервера — линейка для прокрутки (см.
+                      // `_rowExtent`). Обёртка ничего не рисует и на раскладку
+                      // не влияет.
+                      return i == firstRow
                           ? KeyedSubtree(key: _firstRowKey, child: tile)
                           : tile;
                     },

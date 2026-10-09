@@ -158,6 +158,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectOnAutostartSub => 'Windows 启动应用后立即连接到所选服务器的 VPN';
 
   @override
+  String get sortServersByCountryTitle => '按国家排序';
+
+  @override
+  String get sortServersByCountrySub => '将同一国家的服务器归在一起。国家保持服务商的顺序；已置顶的服务器仍在最上方';
+
+  @override
+  String get serverGroupCollapse => '折叠分组';
+
+  @override
+  String get serverGroupExpand => '展开分组';
+
+  @override
   String get autoUpdateSubTitle => '自动更新订阅';
 
   @override

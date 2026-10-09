@@ -90,7 +90,7 @@ void main() {
   test('main: автозапуск прячет окно и не всплывает поверх работающего', () {
     final src = File('lib/main.dart').readAsStringSync();
     expect(src, contains('init(startHidden: autostart)'));
-    expect(src, contains('if (autostart) exit(0);'));
+    expect(src, contains('if (!autostart) {'));
     expect(src, contains('AutostartWindows.sync(s.launchAtLogin)'));
   });
 

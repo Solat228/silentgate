@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'api_screen.dart';
 import '../core/app_info.dart';
+import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../core/platform/device_id.dart';
@@ -570,7 +571,8 @@ List<SettingsSectionData> buildSettingsSections(
       id: SettingsSectionIds.appearance,
       title: l.sectionAppearance,
       icon: Icons.palette_outlined,
-      rows: _appearanceRows(l, s, controller),
+      rows: _appearanceRows(l, s, controller,
+          serversJumbled: _serversJumbled(context)),
     ),
     SettingsSectionData(
       id: SettingsSectionIds.capture,
@@ -2277,8 +2279,25 @@ Widget _badge(BuildContext context, String text) {
 }
 
 // ── Оформление и поведение ───────────────────────────────────────────────────
+/// Перемешан ли список серверов по странам (см. `ServerGroups.isJumbled`).
+///
+/// Без [AppState] (тесты раскладки настроек строят экран без него) — `false`.
+bool _serversJumbled(BuildContext context) {
+  try {
+    final state = context.read<AppState>();
+    final servers = state.servers;
+    return ServerGroups.isJumbled(servers, pinned: {
+      for (var i = 0; i < servers.length; i++)
+        if (state.isPinned(servers[i])) i
+    });
+  } on ProviderNotFoundException {
+    return false;
+  }
+}
+
 List<SettingsRow> _appearanceRows(
-    AppLocalizations l, AppSettings settings, SettingsController controller) {
+    AppLocalizations l, AppSettings settings, SettingsController controller,
+    {bool serversJumbled = false}) {
   return [
     SettingsRow(
       search: '${l.appearanceTheme} ${l.themeSystem} ${l.themeLight} '
@@ -2353,6 +2372,21 @@ List<SettingsRow> _appearanceRows(
         subtitle: Text(l.hideAnnounceSub),
       ),
     ),
+    // Сортировка по странам. ⚠️ ПОКАЗЫВАЕТСЯ ТОЛЬКО У ПЕРЕМЕШАННОГО СПИСКА
+    // (или уже включённая — иначе её нельзя было бы выключить): решение
+    // владельца 25.09.2026. У провайдера, который сам разложил серверы по
+    // странам, переключатель ничего не меняет и только путает.
+    if (serversJumbled || settings.sortServersByCountry)
+      SettingsRow(
+        search: '${l.sortServersByCountryTitle} ${l.sortServersByCountrySub}',
+        build: (_) => SwitchListTile(
+          value: settings.sortServersByCountry,
+          onChanged: (v) =>
+              controller.update((s) => s.copyWith(sortServersByCountry: v)),
+          title: Text(l.sortServersByCountryTitle),
+          subtitle: Text(l.sortServersByCountrySub),
+        ),
+      ),
     // Трея на Android нет: приложение сворачивается системой, а VPN
     // продолжает жить в foreground-сервисе с постоянной нотификацией —
     // она и играет роль значка в трее.
