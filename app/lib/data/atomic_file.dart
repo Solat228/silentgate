@@ -19,7 +19,29 @@ abstract final class AtomicFile {
   ///
   /// Возвращает `false`, если записать не удалось (вызывающие сторы такие
   /// ошибки исторически глотают: потеря настроек не должна ронять туннель).
-  static Future<bool> writeString(File file, String content) async {
+  ///
+  /// ⚠️ ЗАПИСИ В ОДИН ФАЙЛ ИДУТ ПО ОЧЕРЕДИ. Времянка у файла одна
+  /// (`<имя>.tmp`), а сохранения часто зовут, не дожидаясь прошлого (результат
+  /// пинга пишется на каждый сервер). Две записи разом делили времянку: на
+  /// Windows вторая падала на занятом файле и молча терялась, а при удаче
+  /// поверх ложилась та, что закончила последней, — не обязательно новая.
+  /// Так перенос результатов пинга на новый ключ сервера затирался прежним
+  /// сохранением со старым ключом. Очередь сохраняет порядок вызовов.
+  static Future<bool> writeString(File file, String content) {
+    final key = file.absolute.path;
+    final prev = _queues[key] ?? Future<void>.value();
+    final run = prev.then((_) => _write(file, content));
+    final done = run.then<void>((_) {});
+    _queues[key] = done;
+    done.whenComplete(() {
+      if (identical(_queues[key], done)) _queues.remove(key);
+    });
+    return run;
+  }
+
+  static final _queues = <String, Future<void>>{};
+
+  static Future<bool> _write(File file, String content) async {
     final tmp = File('${file.path}.tmp');
     try {
       await tmp.writeAsString(content, flush: true);

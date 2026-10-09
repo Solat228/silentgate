@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/subscription/subscription_logo.dart';
 
 /// Поиск логотипа подписки целиком на MockClient — сети не требует.
@@ -314,6 +316,87 @@ void main() {
       expect(await SubscriptionLogo(client: client).findUrl(sub),
           'https://panel.example.org/own.png');
       expect(hosts.contains('t.me'), isFalse);
+    });
+  });
+
+  group('Логотип через туннель (viaLocalProxy)', () {
+    late Directory tmp;
+    late HttpServer proxy;
+    final seen = <String>[];
+
+    /// Локальный «прокси ядра»: требует Basic-авторизацию, как закрытый
+    /// паролем инбаунд, и отдаёт картинку на любой абсолютный адрес.
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('sg_logo_');
+      AppPaths.overrideRoot(tmp);
+      seen.clear();
+      proxy = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      proxy.listen((req) async {
+        final auth = req.headers.value('proxy-authorization');
+        seen.add('${req.uri} auth=${auth != null}');
+        if (auth != 'Basic ${base64Encode(utf8.encode('sg:secret'))}') {
+          req.response
+            ..statusCode = 407
+            ..headers.set('proxy-authenticate', 'Basic realm="core"');
+          await req.response.close();
+          return;
+        }
+        req.response.add([0x89, 0x50, 0x4e, 0x47]);
+        await req.response.close();
+      });
+    });
+
+    tearDown(() async {
+      await proxy.close(force: true);
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('запрос уходит в порт ядра с кредами и картинка сохраняется', () async {
+      final logo = SubscriptionLogo(
+          client: SubscriptionLogo.viaLocalProxy(proxy.port,
+              user: 'sg', password: 'secret'));
+      final path = await logo.download('http://cdn.example.net/ava.png',
+          cacheName: 'sub_logo_t');
+      logo.close();
+      expect(path, isNotNull);
+      expect(path, endsWith('sub_logo_t.png'));
+      expect(File(path!).readAsBytesSync(), [0x89, 0x50, 0x4e, 0x47]);
+      // Прокси получил абсолютный адрес картинки — запрос шёл ЧЕРЕЗ него.
+      expect(seen.last, 'http://cdn.example.net/ava.png auth=true');
+    });
+
+    test('без кредов закрытый порт даёт 407 — download отвечает null, не падает',
+        () async {
+      final logo = SubscriptionLogo(
+          client: SubscriptionLogo.viaLocalProxy(proxy.port));
+      final path = await logo.download('http://cdn.example.net/ava.png',
+          cacheName: 'sub_logo_t');
+      logo.close();
+      expect(path, isNull);
+      expect(seen, isNotEmpty);
+      expect(seen.every((l) => l.endsWith('auth=false')), isTrue);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+  });
+
+  group('LogoFailureMemo: один отказ — одна строка журнала', () {
+    test('первый отказ по адресу сообщается, повторный — нет', () {
+      final m = LogoFailureMemo();
+      expect(m.failedBefore('https://a/1.jpg'), isFalse);
+      expect(m.noteFailure('https://a/1.jpg'), isTrue);
+      expect(m.noteFailure('https://a/1.jpg'), isFalse);
+      expect(m.failedBefore('https://a/1.jpg'), isTrue);
+      // Другой адрес — свой первый отказ.
+      expect(m.noteFailure('https://a/2.jpg'), isTrue);
+    });
+
+    test('успех снимает пометку: следующий отказ снова виден', () {
+      final m = LogoFailureMemo();
+      m.noteFailure('https://a/1.jpg');
+      m.noteSuccess('https://a/1.jpg');
+      expect(m.failedBefore('https://a/1.jpg'), isFalse);
+      expect(m.noteFailure('https://a/1.jpg'), isTrue);
     });
   });
 }

@@ -29,8 +29,16 @@ class ServerKeyChange {
   /// в `keyChangeReport` нельзя: в ссылке лежат учётные данные (см. класс).
   final String newKey;
 
+  /// [VpnServer.key] того же сервера ДО обновления. ⚠️ НЕ ДЛЯ ЖУРНАЛА — по той
+  /// же причине, что [newKey]. Нужен переносу сохранённого (`ServerRekey`):
+  /// пин, правка, пинг и правила лежат именно по этому ключу.
+  final String oldKey;
+
   const ServerKeyChange(
-      {required this.name, required this.fields, required this.newKey});
+      {required this.name,
+      required this.fields,
+      required this.newKey,
+      this.oldKey = ''});
 }
 
 /// Итог обновления подписки: что изменилось в составе серверов (как в NekoBox)
@@ -97,6 +105,7 @@ class SubscriptionSyncResult {
           name: journalName(e.value, position),
           fields: changedFields(old, e.value),
           newKey: e.value.key,
+          oldKey: old.key,
         ));
       }
     }
@@ -119,6 +128,19 @@ class SubscriptionSyncResult {
   }
 
   bool get hasChanges => added.isNotEmpty || removed.isNotEmpty;
+
+  /// Старый ключ → новый для серверов, оставшихся на месте со сменой ключа.
+  ///
+  /// ⚠️ Профили «Авто …» сюда не входят: их ключ (`panel://<имя>?sub=…`) от
+  /// содержимого не зависит, и смена ключа у них означала бы ДРУГУЮ подписку,
+  /// а не правку сервера.
+  Map<String, String> get rekey => {
+        for (final c in keyChanges)
+          if (c.oldKey.isNotEmpty &&
+              !c.oldKey.startsWith('panel://') &&
+              !c.newKey.startsWith('panel://'))
+            c.oldKey: c.newKey,
+      };
 
   /// Строки для журнала: чем именно отличается новая запись сервера.
   ///

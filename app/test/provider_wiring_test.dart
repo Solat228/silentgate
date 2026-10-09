@@ -188,6 +188,8 @@ void main() {
           apiSettingsLinkProvider(),
           // Связка №3 — та же функция, что в main.dart.
           unfinishedPruneLinkProvider(),
+          // Перенос на новые ключи серверов — та же функция, что в main.dart.
+          serverRekeyLinkProvider(),
           // Самообновление — та же функция, что в main.dart; контроллер
           // подменён (create — параметр ради стража), сама функция — нет.
           appUpdateProvider(create: (_) {
@@ -253,6 +255,23 @@ void main() {
       // состава, иначе чистка случится ровно один раз за запуск.
       expect(state.onServersChanged, isNotNull,
           reason: 'без этого хука смена состава серверов проходит незамеченной');
+    });
+
+    testWidgets(
+        'serverRekeyLinkProvider: хук переноса на новые ключи дошёл до '
+        'состояния, хотя тип ServerRekeyLink никто не читает', (tester) async {
+      // Без связки правила «через Германию» после ротации ключей у панели
+      // молча уходили бы в основной туннель, а замеры висели бы на мёртвых
+      // ключах.
+      expect(state.onServerKeysChanged, isNull,
+          reason: 'до сборки дерева хука ещё нет — база для сравнения');
+
+      await tester.pumpWidget(buildTree());
+
+      expect(state.onServerKeysChanged, isNotNull,
+          reason: 'ProxyProvider3<AppState, SettingsController, '
+              'ProbeController, ServerRekeyLink> обязан построиться с '
+              'lazy:false — иначе update() не позовётся никогда');
     });
 
     testWidgets(

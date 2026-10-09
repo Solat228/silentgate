@@ -14,6 +14,7 @@ import '../core/platform/app_log.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/key_migration.dart';
+import '../core/util/server_rekey.dart';
 // HarnessRealism не входит в реэкспорт probe_harness.dart (там только сущности
 // самого харнесса), поэтому берём его из первоисточника.
 import '../core/xray/harness_config_builder.dart'
@@ -336,6 +337,33 @@ class ProbeController extends ChangeNotifier {
 
   Future<void> _persistUnfinished() =>
       _unfinishedStore.save(_unfinished.toList());
+
+  /// Панель переписала ссылки серверов (сервер тот же, ключ другой) —
+  /// переносим пинг и замер скорости на новые ключи, а записи старых убираем.
+  ///
+  /// Без этого результат прошлого замера висел на мёртвом ключе мусором, а у
+  /// того же сервера под новым ключом показывалось «не проверен». Своя запись
+  /// у нового ключа (если её успели снять после смены) важнее переносимой: она
+  /// по определению свежее.
+  Future<void> rekeyResults(Map<String, String> rekey) async {
+    if (rekey.isEmpty) return;
+    final results = ServerRekey.map(_results, rekey);
+    final speeds = ServerRekey.map(_speeds, rekey);
+    final unfinished = {
+      for (final k in _unfinished) rekey[k] ?? k,
+    };
+    _results
+      ..clear()
+      ..addAll(results);
+    _speeds
+      ..clear()
+      ..addAll(speeds);
+    _unfinished = unfinished;
+    notifyListeners();
+    await _persist();
+    await _persistSpeeds();
+    await _persistUnfinished();
+  }
 
   /// #3.2 — записать готовый результат извне (автонастройка меряет задержку сама),
   /// чтобы пинг на главной сразу подменился, а не ждал отдельного прогона.

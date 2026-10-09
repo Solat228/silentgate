@@ -13,6 +13,7 @@ import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
 import '../core/update/update_installer.dart';
 import '../core/update/update_installer_android.dart';
 import '../core/update/update_installer_windows.dart';
+import '../core/util/server_rekey.dart';
 import 'app_state.dart';
 import 'app_update_controller.dart';
 import 'probe_controller.dart';
@@ -166,6 +167,38 @@ ProxyProvider2<AppState, ProbeController, UnfinishedPruneLink>
         ProxyProvider2<AppState, ProbeController, UnfinishedPruneLink>(
           lazy: false,
           update: (_, state, probe, __) => UnfinishedPruneLink(state, probe),
+        );
+
+/// Связка «панель переписала ключи серверов → перенести настройки и замеры».
+///
+/// Пины и правки переносит само состояние; здесь — то, что лежит у других
+/// владельцев: выходы правил раздельного туннелирования и серверы с отдельным
+/// портом (настройки), результаты пинга и скорости (пробы). Разбор —
+/// `core/util/server_rekey.dart`.
+///
+/// ⚠️ `lazy: false` обязателен (см. верх файла): без него хук не назначался бы
+/// никогда, и правила «через Германию» после ротации ключей у панели молча
+/// уходили бы в основной туннель.
+class ServerRekeyLink {
+  ServerRekeyLink(
+      AppState state, SettingsController settings, ProbeController probe) {
+    state.onServerKeysChanged = (rekey) async {
+      final before = settings.settings;
+      final after = ServerRekey.settings(before, rekey);
+      if (!identical(before, after)) {
+        await settings.update((s) => ServerRekey.settings(s, rekey));
+      }
+      await probe.rekeyResults(rekey);
+    };
+  }
+}
+
+ProxyProvider3<AppState, SettingsController, ProbeController, ServerRekeyLink>
+    serverRekeyLinkProvider() => ProxyProvider3<AppState, SettingsController,
+            ProbeController, ServerRekeyLink>(
+          lazy: false,
+          update: (_, state, settings, probe, __) =>
+              ServerRekeyLink(state, settings, probe),
         );
 
 /// Установщик обновлений под платформу. Прочие платформы получают заглушку

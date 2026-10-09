@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 import '../platform/app_paths.dart';
 
@@ -105,6 +106,33 @@ class SubscriptionLogo {
 
   final http.Client _client;
   SubscriptionLogo({http.Client? client}) : _client = client ?? http.Client();
+
+  /// Клиент, который ходит через локальный http-порт ЖИВОГО ядра, то есть через
+  /// туннель.
+  ///
+  /// Зачем: адрес логотипа часто ведёт на чужой CDN (аватарка Telegram —
+  /// `cdn*.telesco.pe`), а его у провайдера режут. Напрямую картинка не
+  /// скачивается никогда, и без туннеля человек вечно видит букву вместо
+  /// логотипа. ⚠️ Обычный клиент Dart системный прокси Windows не читает, а в
+  /// TUN процесс приложения выпущен мимо туннеля правилом по имени процесса —
+  /// поэтому «VPN включён» само по себе запрос в туннель не уводит, порт надо
+  /// назвать явно.
+  ///
+  /// ⚠️ Креды обязательны вместе с портом: инбаунд закрыт паролем, без него
+  /// ядро отвечает 407, а [download] превратил бы это в молчаливый `null`.
+  static http.Client viaLocalProxy(int port,
+      {String user = '', String password = ''}) {
+    final io = HttpClient()..findProxy = ((_) => 'PROXY 127.0.0.1:$port');
+    if (user.isNotEmpty) {
+      final creds = HttpClientBasicCredentials(user, password);
+      io.addProxyCredentials('127.0.0.1', port, '', creds);
+      io.authenticateProxy = (host, p, scheme, realm) {
+        io.addProxyCredentials(host, p, realm ?? '', creds);
+        return Future.value(true);
+      };
+    }
+    return IOClient(io);
+  }
 
   /// Автоматический поиск URL логотипа по ссылке подписки. Возвращает абсолютный
   /// URL либо null. Порядок: брендинг панели (`/assets/.app-config-v2.json`) →
@@ -367,4 +395,23 @@ class SubscriptionLogo {
   }
 
   void close() => _client.close();
+}
+
+/// Какие адреса логотипа уже не скачались за этот запуск.
+///
+/// Логотип перепроверяется при каждом обновлении подписки, а обновление идёт
+/// по таймеру. Адрес, который у провайдера заблокирован, отказывает каждый
+/// раз — и в журнале владельца за девять дней набралось 172 одинаковых
+/// предупреждения, за которыми терялось всё остальное. Говорим о провале
+/// один раз на адрес за запуск; успех снимает пометку.
+class LogoFailureMemo {
+  final _failed = <String>{};
+
+  /// `true` — отказ по этому адресу первый за запуск, о нём стоит написать.
+  bool noteFailure(String url) => _failed.add(url);
+
+  /// Уже отказывал ли этот адрес в нынешнем запуске.
+  bool failedBefore(String url) => _failed.contains(url);
+
+  void noteSuccess(String url) => _failed.remove(url);
 }

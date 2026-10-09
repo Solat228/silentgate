@@ -35,6 +35,7 @@ import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
+import '../core/util/server_rekey.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
 import '../core/subscription/xray_json_subscription.dart';
@@ -53,6 +54,7 @@ import '../engine/vpn_engine.dart';
 import 'api_handlers.dart';
 import 'app_error.dart';
 import 'probe_controller.dart';
+import '../core/probe/proxy_probe.dart';
 import 'settings_controller.dart';
 
 /// Центральное состояние приложения. UI подписывается через Provider.
@@ -122,6 +124,9 @@ class AppState extends ChangeNotifier {
           _networkWatcher.resume();
         } else {
           _networkWatcher.start();
+          if (_logoRetryOnConnect != null) {
+            unawaited(_retryLogoAfterConnect());
+          }
         }
       } else {
         _networkWatcher.stop();
@@ -370,6 +375,13 @@ class AppState extends ChangeNotifier {
   /// подбирает UI — у состояния нет `AppLocalizations`.
   AppErrorCode? _errorCode;
   String? _logoPath; // #2 — кэшированная аватарка подписки
+
+  /// Адреса логотипа, которые уже не скачались (журнал — по разу на адрес).
+  final _logoFailures = LogoFailureMemo();
+
+  /// Адрес подписки, чей логотип не скачался без туннеля: при следующем
+  /// подъёме VPN пробуем ещё раз уже через него. `null` — ждать нечего.
+  String? _logoRetryOnConnect;
 
   /// #1/#1.1 — итог последнего обновления подписки (что добавилось/удалилось).
   SubscriptionSyncResult? _lastSync;
@@ -1052,10 +1064,24 @@ class AppState extends ChangeNotifier {
   /// источникам правды. Связка живёт в `state/provider_wiring.dart`.
   void Function()? onServersChanged;
 
+  /// Панель переписала ссылки серверов — старый ключ → новый (см.
+  /// `ServerRekey`). Слушатели переносят то, что лежит не здесь: правила
+  /// раздельного туннелирования (настройки) и результаты пинга (пробы).
+  /// ⚠️ Хук — по той же причине, что [onServersChanged]; связка —
+  /// `state/provider_wiring.dart`.
+  Future<void> Function(Map<String, String> rekey)? onServerKeysChanged;
+
+  /// Выбранный сервер мог сменить ключ при обновлении подписки — [_rebuild]
+  /// ищет его уже по новому, иначе выбор уехал бы на первый сервер списка.
+  /// Одноразовый: снимается первой же пересборкой.
+  Map<String, String> _selectionRekey = const {};
+
   void _rebuild() {
-    final prevKey = (_selectedIndex >= 0 && _selectedIndex < _servers.length)
+    var prevKey = (_selectedIndex >= 0 && _selectedIndex < _servers.length)
         ? _servers[_selectedIndex].key
         : null;
+    if (prevKey != null) prevKey = _selectionRekey[prevKey] ?? prevKey;
+    _selectionRekey = const {};
 
     final pinnedKeys = _pinned.map((s) => s.key).toSet();
     final base = [
@@ -1882,6 +1908,21 @@ class AppState extends ChangeNotifier {
       // сервера пользователем).
       final before = List<VpnServer>.of(_subServers);
 
+      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
+      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
+      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
+      // сервера «Москва 1. GRPC», который никуда не девался.
+      final sync = SubscriptionSyncResult.diff(
+        before: before,
+        after: result.servers,
+        withPanelConfig: withOutbound,
+        panelProfiles: withFullConfig,
+      );
+      // ⚠️ ДО ПЕРЕСБОРКИ СПИСКА: закреплённая СТАРАЯ запись иначе встала бы
+      // наверх рядом с новой, а выбор уехал бы на первый сервер.
+      final rekey = sync.rekey;
+      if (rekey.isNotEmpty) await _applyRekey(rekey, result.servers);
+
       _subServers = result.servers;
       // Панель увела редиректом — дальше ходим по новому адресу, иначе после
       // выключения старого домена обновления молча прекратятся.
@@ -1900,16 +1941,7 @@ class AppState extends ChangeNotifier {
       // Аватарку тянем ЗДЕСЬ (импорт/обновление), не в фоне и не на старте.
       await _refreshLogo(url);
 
-      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
-      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
-      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
-      // сервера «Москва 1. GRPC», который никуда не девался.
-      _lastSync = SubscriptionSyncResult.diff(
-        before: before,
-        after: result.servers,
-        withPanelConfig: withOutbound,
-        panelProfiles: withFullConfig,
-      );
+      _lastSync = sync;
       AppLog.i('Подписка обновлена: ${_lastSync!.summary} '
           '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
       // Сервер на месте, а ключ другой — расходятся форматы записи ссылки.
@@ -2088,24 +2120,132 @@ class AppState extends ChangeNotifier {
         return;
       }
 
-      AppLog.i('Логотип подписки: пробую $imageUrl');
+      final repeat = _logoFailures.failedBefore(imageUrl);
+      if (!repeat) AppLog.i('Логотип подписки: пробую $imageUrl');
       // Своё имя файла на подписку — чтобы логотипы разных подписок не затирали
       // друг друга (раньше всё писалось в один sub_logo.*, и после смены подписки
       // висела старая картинка).
       final name = 'sub_logo_$startedId';
-      final finder2 = SubscriptionLogo();
-      final path = await finder2.download(imageUrl, cacheName: name);
-      finder2.close();
+      final viaTunnel = _status.isConnected && httpProxyPort > 0;
+      final path = await _downloadLogo(imageUrl, name);
       if (switchedAway()) return; // переключились за время скачивания
       if (path == null) {
-        AppLog.w('Логотип найден ($imageUrl), но не скачался — оставляю прежний, '
-            'если он был, иначе букву названия.');
+        if (_logoFailures.noteFailure(imageUrl)) {
+          AppLog.w('Логотип найден ($imageUrl), но не скачался'
+              '${viaTunnel ? ' ни через туннель, ни напрямую' : ''} — '
+              'оставляю прежний, если он был, иначе букву названия. '
+              '${viaTunnel ? '' : 'Попробую через туннель, когда VPN включится. '}'
+              'Повторные отказы по этому адресу в журнал не пишу.');
+        }
+        // Без туннеля ещё не пробовали — попробуем, когда он поднимется.
+        _logoRetryOnConnect = viaTunnel ? null : url;
         if (!haveLogo()) await _setLogo(null);
         return;
       }
+      _logoFailures.noteSuccess(imageUrl);
+      _logoRetryOnConnect = null;
       AppLog.i('Логотип подписки скачан: $path');
       await _setLogo(path, sourceUrl: imageUrl);
     } catch (_) {}
+  }
+
+  /// Скачать картинку логотипа. При живом VPN — сперва ЧЕРЕЗ ТУННЕЛЬ, потом
+  /// напрямую; без VPN — только напрямую.
+  ///
+  /// ⚠️ Почему при поднятом туннеле он первый, а не запасной. Прямая попытка
+  /// по заблокированному адресу — это пять повторов с паузами и таймаутами,
+  /// до минуты ожидания на каждое обновление подписки. А CDN, на который
+  /// указывает логотип (аватарка Telegram), у провайдера режут как раз чаще
+  /// всего. Картинка — несколько килобайт; через включённый VPN её взял бы и
+  /// браузер человека.
+  Future<String?> _downloadLogo(String imageUrl, String cacheName) async {
+    final port = httpProxyPort;
+    if (_status.isConnected && port > 0) {
+      final tunnel = SubscriptionLogo(
+          client: SubscriptionLogo.viaLocalProxy(port,
+              user: ProxyProbe.user, password: ProxyProbe.password));
+      try {
+        final p = await tunnel.download(imageUrl, cacheName: cacheName);
+        if (p != null) {
+          AppLog.i('Логотип подписки взят через туннель');
+          return p;
+        }
+      } finally {
+        tunnel.close();
+      }
+    }
+    final direct = SubscriptionLogo();
+    try {
+      return await direct.download(imageUrl, cacheName: cacheName);
+    } finally {
+      direct.close();
+    }
+  }
+
+  /// VPN поднялся, а логотип до этого не скачался напрямую — пробуем ещё раз,
+  /// теперь через туннель. Без этого первый логотип после импорта (импорт почти
+  /// всегда идёт ДО первого подключения) ждал бы следующего обновления
+  /// подписки — до двенадцати часов.
+  Future<void> _retryLogoAfterConnect() async {
+    final url = _logoRetryOnConnect;
+    if (url == null) return;
+    _logoRetryOnConnect = null;
+    // «Подключено» ставится по факту туннеля; прокси-ядру нужна пара секунд,
+    // чтобы порт начал доставлять.
+    await Future<void>.delayed(const Duration(seconds: 5));
+    if (!_status.isConnected) {
+      _logoRetryOnConnect = url;
+      return;
+    }
+    if (_activeProfile?.url != url) return; // подписку уже сменили
+    await _refreshLogo(url);
+  }
+
+  /// Перенести сохранённое со старых ключей серверов на новые.
+  ///
+  /// Здесь — то, что живёт в состоянии: пины и ручные правки. Настройки и
+  /// результаты пинга переносят слушатели [onServerKeysChanged]. Разбор, что
+  /// переносится и что нет, — `ServerRekey`.
+  Future<void> _applyRekey(
+      Map<String, String> rekey, List<VpnServer> fresh) async {
+    final byKey = {for (final s in fresh) s.key: s};
+    final replacement = <String, VpnServer>{
+      for (final e in rekey.entries)
+        if (byKey[e.value] != null) e.key: byKey[e.value]!,
+    };
+    final pinsMoved =
+        _pinned.where((s) => replacement.containsKey(s.key)).length;
+    if (pinsMoved > 0) {
+      for (final e in replacement.entries) {
+        final source = _pinnedSourceByLink.remove(e.key);
+        if (source != null) {
+          _pinnedSourceByLink.putIfAbsent(e.value.rawLink, () => source);
+        }
+      }
+      final next = ServerRekey.pins(_pinned, replacement);
+      _pinned
+        ..clear()
+        ..addAll(next);
+      await _savePinned();
+    }
+    final ov = ServerRekey.overrides(_overrides, rekey);
+    if (ov.moved > 0) {
+      _overrides
+        ..clear()
+        ..addAll(ov.overrides);
+      await _overridesStore.save(_overrides);
+    }
+    _selectionRekey = rekey;
+    // Числа и только числа: ключи — это ссылки с учётными данными.
+    AppLog.i('Панель переписала ${rekey.length} сервер(ов) — перенесено на '
+        'новые ключи: закреплений $pinsMoved, правок ${ov.moved}'
+        '${ov.droppedJson > 0 ? '; ручной JSON не перенесён у ${ov.droppedJson} '
+            '(в нём прежние ключи сервера — с ними он не подключится)' : ''}');
+    try {
+      await onServerKeysChanged?.call(rekey);
+    } catch (e) {
+      AppLog.w('Перенос настроек и замеров на новые ключи не удался: $e');
+    }
   }
 
   /// Старый общий файл логотипа (без id подписки в имени): `sub_logo.png/.jpg…`.
