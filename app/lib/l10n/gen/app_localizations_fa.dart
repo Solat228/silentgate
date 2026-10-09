@@ -1249,6 +1249,98 @@ class AppLocalizationsFa extends AppLocalizations {
   String get importScrImportField => 'درون‌ریزی از فیلد';
 
   @override
+  String get importScrScanQr => 'اسکن QR';
+
+  @override
+  String get importScrQrFromImage => 'QR از تصویر';
+
+  @override
+  String get qrScanPrompt => 'دوربین را به سمت کد QR اشتراک بگیرید';
+
+  @override
+  String get qrCameraExplainTitle => 'دسترسی به دوربین';
+
+  @override
+  String get qrCameraExplainBody =>
+      'دوربین فقط برای خواندن کد QR اشتراک استفاده می‌شود. چیزی ذخیره یا ارسال نمی‌شود.';
+
+  @override
+  String get qrCameraContinue => 'ادامه';
+
+  @override
+  String get qrCameraDenied =>
+      'دسترسی به دوربین وجود ندارد. آن را در تنظیمات برنامه مجاز کنید یا تصویری با کد QR انتخاب کنید.';
+
+  @override
+  String get qrNotFound => 'کد QR در تصویر پیدا نشد.';
+
+  @override
+  String get qrReadFailed => 'باز کردن تصویر ممکن نشد.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'اتصال قطع شد و ترافیک مسدود است. اتصال دوباره تا $seconds ثانیه دیگر (تلاش $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'تونل برقرار است، اما ترافیکی از آن عبور نمی‌کند';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android اجازهٔ راه‌اندازی VPN را نداد. دوباره «اتصال» را بزنید و درخواست سیستم را تأیید کنید.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file کنار برنامه پیدا نشد. SilentGate را دوباره نصب کنید.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'پورت $port هنوز در اختیار هستهٔ ما ($holder) از نشست قبلی است.\n\nاگر VPN را خاموش و بلافاصله روشن کنید این اتفاق می‌افتد. چند ثانیه صبر کنید و دوباره امتحان کنید.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'پورت $port در اختیار برنامهٔ دیگری است که شناسایی نشد.\n\nبیشتر وقت‌ها یک کلاینت VPN دیگر است که روی همان پورت‌های محلی گوش می‌دهد. آن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'پورت $port در اختیار برنامهٔ $holder است.\n\nآن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'هستهٔ تونل از کار افتاد؛ تونل برداشته شد';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'اتصال ممکن نشد: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'هستهٔ $core متوقف شد (کد $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'هستهٔ $core متوقف شد (کد $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'پورت محلی $port از قبل در حال استفاده است';
+  }
+
+  @override
+  String get statusReasonPortBusyAny =>
+      'یک پورت محلی از قبل در حال استفاده است';
+
+  @override
+  String get statusReasonFailedToStart => 'هسته نتوانست اجرا شود';
+
+  @override
   String get serversTitle => 'سرورها';
 
   @override

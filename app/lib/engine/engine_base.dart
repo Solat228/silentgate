@@ -766,7 +766,8 @@ abstract class VpnEngineBase implements VpnEngine {
             keepCapture: s != null && keepCaptureBetweenAttempts(s));
         if (!await scheduleRetry('канал не пропускает трафик')) {
           setStatus(VpnConnectionState.error,
-              message: 'Туннель подключён, но трафик через него не идёт');
+              message: 'Туннель подключён, но трафик через него не идёт',
+              text: const StatusTrafficNotFlowing());
         }
       },
     );
@@ -1087,8 +1088,12 @@ abstract class VpnEngineBase implements VpnEngine {
   bool get userStopped => _userStopped;
 
   void setStatus(VpnConnectionState state,
-      {String? message, VpnPhase phase = VpnPhase.normal, bool blocking = false}) {
-    _status = VpnStatus(state, message: message, phase: phase, blocking: blocking);
+      {String? message,
+      StatusText? text,
+      VpnPhase phase = VpnPhase.normal,
+      bool blocking = false}) {
+    _status = VpnStatus(state,
+        message: message, text: text, phase: phase, blocking: blocking);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -1931,6 +1936,12 @@ abstract class VpnEngineBase implements VpnEngine {
                 'Переподключение через ${delay.inSeconds} с (попытка $_attempt)…'
             : 'Переподключение через ${delay.inSeconds} с '
                 '(попытка $_attempt из $maxAttempts)…',
+        // На экран попадает только вариант с блокировкой (плашка kill
+        // switch) — у него и есть код.
+        text: endless
+            ? StatusReconnectBlocked(
+                seconds: delay.inSeconds, attempt: _attempt)
+            : null,
         blocking: endless);
 
     _retryTimer?.cancel();
@@ -2075,7 +2086,8 @@ abstract class VpnEngineBase implements VpnEngine {
     // Имя ядра важно: по нему пользователь понимает, куда смотреть —
     // в xray_config.json или в singbox_proxy.json.
     final name = _session?.core == ProxyCore.singbox ? 'sing-box' : 'Xray';
-    final reason = _reasonFromTail(tail);
+    final why = coreStopReasonFromTail(tail);
+    final reason = coreStopReasonRu(why);
     AppLog.e('Ядро $name остановилось (код $code)'
         '${reason.isEmpty ? '' : ': $reason'}');
     if (tail.trim().isNotEmpty) {
@@ -2085,15 +2097,21 @@ abstract class VpnEngineBase implements VpnEngine {
         '${reason.isEmpty ? '' : ': $reason'}';
     if (await scheduleRetry(short)) return;
     await cleanup();
-    setStatus(VpnConnectionState.error, message: _capitalize(short));
+    setStatus(VpnConnectionState.error,
+        message: _capitalize(short),
+        text: StatusCoreStopped(core: name, code: code, reason: why));
   }
 
   /// Человеческая причина из вывода ядра — одной строкой, для журнала и статуса.
   ///
   /// Полный вывод всё равно пишется рядом; здесь только то, что должно попасть
   /// в заголовок ошибки, иначе пользователь увидит простыню и не найдёт сути.
-  static String _reasonFromTail(String tail) {
-    if (tail.trim().isEmpty) return '';
+  ///
+  /// Разбор ОДИН — и для журнала ([coreStopReasonRu]), и для экрана (UI
+  /// переводит [CoreStopReason] сам): два разбора одного вывода разошлись бы.
+  @visibleForTesting
+  static CoreStopReason? coreStopReasonFromTail(String tail) {
+    if (tail.trim().isEmpty) return null;
     final low = tail.toLowerCase();
     // Порт занят — самая частая и самая обидная причина: ядро печатает её
     // внятно, а мы показывали голый код возврата.
@@ -2101,17 +2119,28 @@ abstract class VpnEngineBase implements VpnEngine {
         low.contains('only one usage of each socket address') ||
         low.contains('bind:')) {
       final m = RegExp(r'127\.0\.0\.1:(\d+)').firstMatch(tail);
-      final port = m == null ? '' : ' ${m.group(1)}';
-      return 'локальный порт$port уже занят';
+      return CoreStopPortBusy(m == null ? null : int.tryParse(m.group(1)!));
     }
-    if (low.contains('failed to start')) return 'ядро не смогло запуститься';
+    if (low.contains('failed to start')) return const CoreStopFailedToStart();
     // Иначе — первая непустая строка, обрезанная до читаемой длины.
     final first = tail
         .split('\n')
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');
-    return first.length > 160 ? '${first.substring(0, 160)}…' : first;
+    if (first.isEmpty) return null;
+    return CoreStopRaw(
+        first.length > 160 ? '${first.substring(0, 160)}…' : first);
   }
+
+  /// Русский текст причины — для журнала и [VpnStatus.message].
+  @visibleForTesting
+  static String coreStopReasonRu(CoreStopReason? r) => switch (r) {
+        null => '',
+        CoreStopPortBusy(port: final p) =>
+          'локальный порт${p == null ? '' : ' $p'} уже занят',
+        CoreStopFailedToStart() => 'ядро не смогло запуститься',
+        CoreStopRaw(line: final l) => l,
+      };
 
   static String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);

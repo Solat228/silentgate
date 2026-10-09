@@ -529,6 +529,110 @@
   "importScrLoading": "Загрузка…",
   "importScrPasteImport": "Импорт из буфера обмена",
   "importScrImportField": "Импортировать из поля",
+  "importScrScanQr": "Сканировать QR",
+  "importScrQrFromImage": "QR с картинки",
+  "qrScanPrompt": "Наведите камеру на QR-код подписки",
+  "qrCameraExplainTitle": "Доступ к камере",
+  "qrCameraExplainBody": "Камера нужна только чтобы прочитать QR-код подписки. Снимки не сохраняются и никуда не отправляются.",
+  "qrCameraContinue": "Продолжить",
+  "qrCameraDenied": "Нет доступа к камере. Разрешите его в настройках приложения или выберите картинку с QR-кодом.",
+  "qrNotFound": "На картинке не найден QR-код.",
+  "qrReadFailed": "Не удалось открыть картинку.",
+  "statusReconnectBlocked": "Соединение потеряно, трафик заблокирован. Переподключение через {seconds} с (попытка {attempt})…",
+  "@statusReconnectBlocked": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      },
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "statusTrafficNotFlowing": "Туннель подключён, но трафик через него не идёт",
+  "statusVpnConsentDenied": "Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.",
+  "statusMissingCore": "Не найден {file} рядом с приложением. Переустановите SilentGate.",
+  "@statusMissingCore": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "statusPortOwnCore": "Порт {port} ещё занят нашим ядром ({holder}) от прошлой сессии.\n\nТак бывает, если выключить и сразу включить VPN. Подождите несколько секунд и попробуйте снова.",
+  "@statusPortOwnCore": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "holder": {
+        "type": "String"
+      }
+    }
+  },
+  "statusPortUnknown": "Порт {port} уже занят другой программой, определить её не удалось.\n\nЧаще всего это другой VPN-клиент: он слушает те же локальные порты. Закройте его полностью, в том числе из трея, и попробуйте снова.",
+  "@statusPortUnknown": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "statusPortHolder": "Порт {port} уже занят программой {holder}.\n\nЗакройте её полностью, в том числе из трея, и попробуйте снова.",
+  "@statusPortHolder": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "holder": {
+        "type": "String"
+      }
+    }
+  },
+  "statusTunCoreHung": "Туннельное ядро зависло, туннель снят",
+  "statusConnectFailed": "Не удалось подключиться: {detail}",
+  "@statusConnectFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "statusCoreStopped": "Ядро {core} остановилось (код {code})",
+  "@statusCoreStopped": {
+    "placeholders": {
+      "core": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "statusCoreStoppedReason": "Ядро {core} остановилось (код {code}): {reason}",
+  "@statusCoreStoppedReason": {
+    "placeholders": {
+      "core": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "statusReasonPortBusy": "локальный порт {port} уже занят",
+  "@statusReasonPortBusy": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "statusReasonPortBusyAny": "локальный порт уже занят",
+  "statusReasonFailedToStart": "ядро не смогло запуститься",
   "serversTitle": "Серверы",
   "serversFound": "Серверы — найдено {found} из {total}",
   "serversRefresh": "Обновить подписку",

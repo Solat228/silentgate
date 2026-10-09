@@ -1256,6 +1256,97 @@ class AppLocalizationsTr extends AppLocalizations {
   String get importScrImportField => 'Alandan içe aktar';
 
   @override
+  String get importScrScanQr => 'QR tara';
+
+  @override
+  String get importScrQrFromImage => 'Görselden QR';
+
+  @override
+  String get qrScanPrompt => 'Kamerayı aboneliğin QR koduna doğrultun';
+
+  @override
+  String get qrCameraExplainTitle => 'Kamera erişimi';
+
+  @override
+  String get qrCameraExplainBody =>
+      'Kamera yalnızca aboneliğin QR kodunu okumak için kullanılır. Hiçbir şey kaydedilmez veya gönderilmez.';
+
+  @override
+  String get qrCameraContinue => 'Devam';
+
+  @override
+  String get qrCameraDenied =>
+      'Kamera erişimi yok. Uygulama ayarlarından izin verin veya QR kodlu bir görsel seçin.';
+
+  @override
+  String get qrNotFound => 'Görselde QR kodu bulunamadı.';
+
+  @override
+  String get qrReadFailed => 'Görsel açılamadı.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Bağlantı koptu, trafik engellendi. $seconds sn sonra yeniden bağlanılacak (deneme $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'Tünel kuruldu ama içinden trafik geçmiyor';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android VPN\'e izin vermedi. Tekrar “Bağlan”a dokunun ve sistem isteğini onaylayın.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file uygulamanın yanında bulunamadı. SilentGate\'i yeniden yükleyin.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return '$port numaralı port önceki oturumdan kalan çekirdeğimiz ($holder) tarafından hâlâ kullanılıyor.\n\nVPN kapatılıp hemen açıldığında bu olur. Birkaç saniye bekleyip tekrar deneyin.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return '$port numaralı port, belirlenemeyen başka bir program tarafından kullanılıyor.\n\nÇoğunlukla aynı yerel portları dinleyen başka bir VPN istemcisidir. Tepsi dahil tamamen kapatıp tekrar deneyin.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return '$port numaralı port $holder tarafından kullanılıyor.\n\nTepsi dahil tamamen kapatıp tekrar deneyin.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'Tünel çekirdeği dondu; tünel kaldırıldı';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Bağlanılamadı: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return '$core çekirdeği durdu (kod $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return '$core çekirdeği durdu (kod $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return '$port numaralı yerel port zaten kullanımda';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'bir yerel port zaten kullanımda';
+
+  @override
+  String get statusReasonFailedToStart => 'çekirdek başlatılamadı';
+
+  @override
   String get serversTitle => 'Sunucular';
 
   @override

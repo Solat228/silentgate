@@ -1262,6 +1262,99 @@ class AppLocalizationsDe extends AppLocalizations {
   String get importScrImportField => 'Aus Feld importieren';
 
   @override
+  String get importScrScanQr => 'QR scannen';
+
+  @override
+  String get importScrQrFromImage => 'QR aus Bild';
+
+  @override
+  String get qrScanPrompt =>
+      'Richten Sie die Kamera auf den QR-Code des Abonnements';
+
+  @override
+  String get qrCameraExplainTitle => 'Kamerazugriff';
+
+  @override
+  String get qrCameraExplainBody =>
+      'Die Kamera wird nur zum Lesen des QR-Codes des Abonnements verwendet. Nichts wird gespeichert oder gesendet.';
+
+  @override
+  String get qrCameraContinue => 'Weiter';
+
+  @override
+  String get qrCameraDenied =>
+      'Kein Kamerazugriff. Erlauben Sie ihn in den App-Einstellungen oder wählen Sie ein Bild mit dem QR-Code.';
+
+  @override
+  String get qrNotFound => 'Im Bild wurde kein QR-Code gefunden.';
+
+  @override
+  String get qrReadFailed => 'Das Bild konnte nicht geöffnet werden.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Verbindung verloren, Datenverkehr blockiert. Neuer Verbindungsversuch in $seconds s (Versuch $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'Der Tunnel steht, aber es fließt kein Datenverkehr hindurch';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android hat das VPN nicht erlaubt. Tippen Sie erneut auf „Verbinden“ und bestätigen Sie die Systemanfrage.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file wurde neben der App nicht gefunden. Installieren Sie SilentGate neu.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'Port $port ist noch von unserem Kern ($holder) aus der vorherigen Sitzung belegt.\n\nDas passiert, wenn das VPN aus- und sofort wieder eingeschaltet wird. Warten Sie einige Sekunden und versuchen Sie es erneut.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'Port $port ist bereits von einem anderen Programm belegt, das nicht ermittelt werden konnte.\n\nMeist ist es ein anderer VPN-Client, der dieselben lokalen Ports nutzt. Beenden Sie ihn vollständig, auch im Infobereich, und versuchen Sie es erneut.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'Port $port ist bereits von $holder belegt.\n\nBeenden Sie das Programm vollständig, auch im Infobereich, und versuchen Sie es erneut.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'Der Tunnelkern ist eingefroren; der Tunnel wurde entfernt';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Verbindung fehlgeschlagen: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'Der Kern $core wurde beendet (Code $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'Der Kern $core wurde beendet (Code $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'lokaler Port $port ist bereits belegt';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'ein lokaler Port ist bereits belegt';
+
+  @override
+  String get statusReasonFailedToStart => 'der Kern konnte nicht starten';
+
+  @override
   String get serversTitle => 'Server';
 
   @override

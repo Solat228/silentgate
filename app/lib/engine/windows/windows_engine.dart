@@ -339,6 +339,7 @@ class WindowsEngine extends VpnEngineBase {
         VpnConnectionState.error,
         message: 'Для Hysteria2 нужен sing-box.exe рядом с xray.exe.\n'
             'Запустите tools/fetch-singbox.ps1',
+        text: const StatusMissingCore('sing-box.exe'),
       );
       return;
     }
@@ -347,6 +348,7 @@ class WindowsEngine extends VpnEngineBase {
       setStatus(
         VpnConnectionState.error,
         message: 'Не найден xray.exe. Запустите tools/fetch-xray.ps1',
+        text: const StatusMissingCore('xray.exe'),
       );
       return;
     }
@@ -414,7 +416,12 @@ class WindowsEngine extends VpnEngineBase {
       final message = conflict.fallbackMessage;
       AppLog.e('Конфликт портов: ${message.split("\n").first}');
       await cleanup();
-      setStatus(VpnConnectionState.error, message: message);
+      setStatus(VpnConnectionState.error,
+          message: message,
+          text: StatusPortConflict(
+              port: conflict.port,
+              holder: conflict.holder,
+              ownCore: conflict.heldByOwnCore));
       return;
     }
 
@@ -631,7 +638,8 @@ class WindowsEngine extends VpnEngineBase {
       if (await scheduleRetry('не удалось подключиться: $e')) return;
       await cleanup();
       setStatus(VpnConnectionState.error,
-          message: 'Не удалось подключиться: $e');
+          message: 'Не удалось подключиться: $e',
+          text: StatusConnectFailed('$e'));
     }
   }
 
@@ -1510,7 +1518,8 @@ class WindowsEngine extends VpnEngineBase {
       await teardownCore();
       if (!await scheduleRetry('туннельное ядро зависло')) {
         setStatus(VpnConnectionState.error,
-            message: 'Туннельное ядро зависло, туннель снят');
+            message: 'Туннельное ядро зависло, туннель снят',
+            text: const StatusTunCoreHung());
       }
     });
   }

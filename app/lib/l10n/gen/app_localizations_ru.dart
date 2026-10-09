@@ -1250,6 +1250,97 @@ class AppLocalizationsRu extends AppLocalizations {
   String get importScrImportField => 'Импортировать из поля';
 
   @override
+  String get importScrScanQr => 'Сканировать QR';
+
+  @override
+  String get importScrQrFromImage => 'QR с картинки';
+
+  @override
+  String get qrScanPrompt => 'Наведите камеру на QR-код подписки';
+
+  @override
+  String get qrCameraExplainTitle => 'Доступ к камере';
+
+  @override
+  String get qrCameraExplainBody =>
+      'Камера нужна только чтобы прочитать QR-код подписки. Снимки не сохраняются и никуда не отправляются.';
+
+  @override
+  String get qrCameraContinue => 'Продолжить';
+
+  @override
+  String get qrCameraDenied =>
+      'Нет доступа к камере. Разрешите его в настройках приложения или выберите картинку с QR-кодом.';
+
+  @override
+  String get qrNotFound => 'На картинке не найден QR-код.';
+
+  @override
+  String get qrReadFailed => 'Не удалось открыть картинку.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Соединение потеряно, трафик заблокирован. Переподключение через $seconds с (попытка $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'Туннель подключён, но трафик через него не идёт';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.';
+
+  @override
+  String statusMissingCore(String file) {
+    return 'Не найден $file рядом с приложением. Переустановите SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'Порт $port ещё занят нашим ядром ($holder) от прошлой сессии.\n\nТак бывает, если выключить и сразу включить VPN. Подождите несколько секунд и попробуйте снова.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'Порт $port уже занят другой программой, определить её не удалось.\n\nЧаще всего это другой VPN-клиент: он слушает те же локальные порты. Закройте его полностью, в том числе из трея, и попробуйте снова.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'Порт $port уже занят программой $holder.\n\nЗакройте её полностью, в том числе из трея, и попробуйте снова.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'Туннельное ядро зависло, туннель снят';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Не удалось подключиться: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'Ядро $core остановилось (код $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'Ядро $core остановилось (код $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'локальный порт $port уже занят';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'локальный порт уже занят';
+
+  @override
+  String get statusReasonFailedToStart => 'ядро не смогло запуститься';
+
+  @override
   String get serversTitle => 'Серверы';
 
   @override

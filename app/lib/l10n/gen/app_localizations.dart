@@ -2226,6 +2226,144 @@ abstract class AppLocalizations {
   /// **'Импортировать из поля'**
   String get importScrImportField;
 
+  /// No description provided for @importScrScanQr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сканировать QR'**
+  String get importScrScanQr;
+
+  /// No description provided for @importScrQrFromImage.
+  ///
+  /// In ru, this message translates to:
+  /// **'QR с картинки'**
+  String get importScrQrFromImage;
+
+  /// No description provided for @qrScanPrompt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Наведите камеру на QR-код подписки'**
+  String get qrScanPrompt;
+
+  /// No description provided for @qrCameraExplainTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступ к камере'**
+  String get qrCameraExplainTitle;
+
+  /// No description provided for @qrCameraExplainBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Камера нужна только чтобы прочитать QR-код подписки. Снимки не сохраняются и никуда не отправляются.'**
+  String get qrCameraExplainBody;
+
+  /// No description provided for @qrCameraContinue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get qrCameraContinue;
+
+  /// No description provided for @qrCameraDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет доступа к камере. Разрешите его в настройках приложения или выберите картинку с QR-кодом.'**
+  String get qrCameraDenied;
+
+  /// No description provided for @qrNotFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'На картинке не найден QR-код.'**
+  String get qrNotFound;
+
+  /// No description provided for @qrReadFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось открыть картинку.'**
+  String get qrReadFailed;
+
+  /// No description provided for @statusReconnectBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединение потеряно, трафик заблокирован. Переподключение через {seconds} с (попытка {attempt})…'**
+  String statusReconnectBlocked(int seconds, int attempt);
+
+  /// No description provided for @statusTrafficNotFlowing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Туннель подключён, но трафик через него не идёт'**
+  String get statusTrafficNotFlowing;
+
+  /// No description provided for @statusVpnConsentDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.'**
+  String get statusVpnConsentDenied;
+
+  /// No description provided for @statusMissingCore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден {file} рядом с приложением. Переустановите SilentGate.'**
+  String statusMissingCore(String file);
+
+  /// No description provided for @statusPortOwnCore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} ещё занят нашим ядром ({holder}) от прошлой сессии.\n\nТак бывает, если выключить и сразу включить VPN. Подождите несколько секунд и попробуйте снова.'**
+  String statusPortOwnCore(int port, String holder);
+
+  /// No description provided for @statusPortUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} уже занят другой программой, определить её не удалось.\n\nЧаще всего это другой VPN-клиент: он слушает те же локальные порты. Закройте его полностью, в том числе из трея, и попробуйте снова.'**
+  String statusPortUnknown(int port);
+
+  /// No description provided for @statusPortHolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} уже занят программой {holder}.\n\nЗакройте её полностью, в том числе из трея, и попробуйте снова.'**
+  String statusPortHolder(int port, String holder);
+
+  /// No description provided for @statusTunCoreHung.
+  ///
+  /// In ru, this message translates to:
+  /// **'Туннельное ядро зависло, туннель снят'**
+  String get statusTunCoreHung;
+
+  /// No description provided for @statusConnectFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось подключиться: {detail}'**
+  String statusConnectFailed(String detail);
+
+  /// No description provided for @statusCoreStopped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро {core} остановилось (код {code})'**
+  String statusCoreStopped(String core, int code);
+
+  /// No description provided for @statusCoreStoppedReason.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро {core} остановилось (код {code}): {reason}'**
+  String statusCoreStoppedReason(String core, int code, String reason);
+
+  /// No description provided for @statusReasonPortBusy.
+  ///
+  /// In ru, this message translates to:
+  /// **'локальный порт {port} уже занят'**
+  String statusReasonPortBusy(int port);
+
+  /// No description provided for @statusReasonPortBusyAny.
+  ///
+  /// In ru, this message translates to:
+  /// **'локальный порт уже занят'**
+  String get statusReasonPortBusyAny;
+
+  /// No description provided for @statusReasonFailedToStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'ядро не смогло запуститься'**
+  String get statusReasonFailedToStart;
+
   /// No description provided for @serversTitle.
   ///
   /// In ru, this message translates to:

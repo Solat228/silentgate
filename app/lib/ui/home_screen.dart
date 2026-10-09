@@ -30,6 +30,7 @@ import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
+import 'widgets/status_text_l10n.dart';
 import 'widgets/info_tooltip.dart';
 import '../state/app_state.dart';
 import '../core/models/engine_notice.dart';
@@ -1190,9 +1191,12 @@ class ConnectPane extends StatelessWidget {
                 // самим врезкам, — иначе перенос текста посчитается не так.
                 final noticeStyle = DefaultTextStyle.of(context).style;
                 final scaler = MediaQuery.textScalerOf(context);
-                final blockingText = status.blocking ? status.message ?? '' : null;
+                // Текст — на языке интерфейса: движок кладёт код, а не
+                // русскую строку (см. [StatusText]).
+                final line = statusLine(l, status);
+                final blockingText = status.blocking ? line ?? '' : null;
                 final errorText =
-                    status.state == VpnConnectionState.error ? status.message : null;
+                    status.state == VpnConnectionState.error ? line : null;
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,

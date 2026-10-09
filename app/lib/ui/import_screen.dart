@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/net/network_error_hint.dart';
+import '../core/platform/qr_scanner_android.dart';
 import '../core/platform/time_sync_windows.dart';
 import '../state/app_state.dart';
 import '../core/i18n/text_direction.dart';
@@ -26,6 +27,21 @@ class _ImportScreenState extends State<ImportScreen> {
   // «Импорт из буфера»). Старая ссылка в поле сбивала — легко импортировать не то.
   final _controller = TextEditingController();
 
+  /// QR — только на Android (ANDROID.md п.60а). Камеры может не быть
+  /// (планшет, ТВ) — тогда остаётся кнопка картинки.
+  final _qr = QrScannerAndroid();
+  bool _hasCamera = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (QrScannerAndroid.isSupported) {
+      _qr.hasCamera().then((v) {
+        if (mounted) setState(() => _hasCamera = v);
+      });
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -47,6 +63,52 @@ class _ImportScreenState extends State<ImportScreen> {
       // появятся серверы.
       final nav = Navigator.of(context);
       if (nav.canPop()) nav.pop();
+    }
+  }
+
+  /// Камера. Пока разрешения нет — сначала объясняем, зачем она: системный
+  /// запрос без пояснения у VPN-клиента выглядит подозрительно.
+  Future<void> _scanCamera() async {
+    final l = AppLocalizations.of(context);
+    if (!await _qr.cameraGranted()) {
+      if (!mounted) return;
+      final go = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l.qrCameraExplainTitle),
+          content: Text(l.qrCameraExplainBody),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: Text(l.commonCancel)),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: Text(l.qrCameraContinue)),
+          ],
+        ),
+      );
+      if (go != true) return;
+    }
+    await _qrImport(() => _qr.scanCamera(prompt: l.qrScanPrompt));
+  }
+
+  Future<void> _qrImport(Future<String?> Function() scan) async {
+    final l = AppLocalizations.of(context);
+    try {
+      final text = await scan();
+      if (text == null || !mounted) return;
+      _controller.text = text;
+      await _import();
+    } on QrScanException catch (e) {
+      if (!mounted) return;
+      final msg = switch (e.reason) {
+        QrScanFailure.cameraDenied => l.qrCameraDenied,
+        QrScanFailure.noQr => l.qrNotFound,
+        QrScanFailure.readFailed => l.qrReadFailed,
+        // Второй запрос поверх первого — нажали дважды; первый отработает сам.
+        QrScanFailure.busy => null,
+      };
+      if (msg != null) AppToast.show(context, msg, kind: ToastKind.error);
     }
   }
 
@@ -127,6 +189,32 @@ class _ImportScreenState extends State<ImportScreen> {
                   icon: const Icon(Icons.download),
                   label: Text(l.importScrImportField),
                 ),
+                // QR — равноправный путь ввода: страница подписки Remnawave
+                // штатно показывает ссылку QR-кодом.
+                if (QrScannerAndroid.isSupported) ...[
+                  const SizedBox(height: 8),
+                  Row(children: [
+                    if (_hasCamera) ...[
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: state.loading ? null : _scanCamera,
+                          icon: const Icon(Icons.qr_code_scanner),
+                          label: Text(l.importScrScanQr),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: state.loading
+                            ? null
+                            : () => _qrImport(_qr.scanImage),
+                        icon: const Icon(Icons.image_outlined),
+                        label: Text(l.importScrQrFromImage),
+                      ),
+                    ),
+                  ]),
+                ],
                 if (state.error != null) ...[
                   const SizedBox(height: 16),
                   // #7 — длинная ошибка не выталкивает кнопки: ограничиваем и скроллим.

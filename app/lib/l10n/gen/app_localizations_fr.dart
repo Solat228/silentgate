@@ -1266,6 +1266,99 @@ class AppLocalizationsFr extends AppLocalizations {
   String get importScrImportField => 'Importer depuis le champ';
 
   @override
+  String get importScrScanQr => 'Scanner un QR';
+
+  @override
+  String get importScrQrFromImage => 'QR depuis une image';
+
+  @override
+  String get qrScanPrompt =>
+      'Pointez la caméra vers le code QR de l\'abonnement';
+
+  @override
+  String get qrCameraExplainTitle => 'Accès à la caméra';
+
+  @override
+  String get qrCameraExplainBody =>
+      'La caméra sert uniquement à lire le code QR de l\'abonnement. Rien n\'est enregistré ni envoyé.';
+
+  @override
+  String get qrCameraContinue => 'Continuer';
+
+  @override
+  String get qrCameraDenied =>
+      'Pas d\'accès à la caméra. Autorisez-le dans les paramètres de l\'application ou choisissez une image contenant le code QR.';
+
+  @override
+  String get qrNotFound => 'Aucun code QR trouvé dans l\'image.';
+
+  @override
+  String get qrReadFailed => 'Impossible d\'ouvrir l\'image.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Connexion perdue, trafic bloqué. Reconnexion dans $seconds s (tentative $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'Le tunnel est établi, mais aucun trafic n\'y passe';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android n\'a pas autorisé le VPN. Appuyez de nouveau sur « Se connecter » et confirmez la demande du système.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file est introuvable à côté de l\'application. Réinstallez SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'Le port $port est encore occupé par notre moteur ($holder) de la session précédente.\n\nCela arrive si vous coupez puis rallumez aussitôt le VPN. Patientez quelques secondes et réessayez.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'Le port $port est déjà utilisé par un autre programme qui n\'a pas pu être identifié.\n\nLe plus souvent, c\'est un autre client VPN qui écoute les mêmes ports locaux. Fermez-le complètement, y compris depuis la zone de notification, puis réessayez.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'Le port $port est déjà utilisé par $holder.\n\nFermez-le complètement, y compris depuis la zone de notification, puis réessayez.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'Le moteur du tunnel s\'est figé ; le tunnel a été retiré';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Connexion impossible : $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'Le moteur $core s\'est arrêté (code $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'Le moteur $core s\'est arrêté (code $code) : $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'le port local $port est déjà utilisé';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'un port local est déjà utilisé';
+
+  @override
+  String get statusReasonFailedToStart => 'le moteur n\'a pas pu démarrer';
+
+  @override
   String get serversTitle => 'Serveurs';
 
   @override

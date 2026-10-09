@@ -1265,6 +1265,98 @@ class AppLocalizationsEs extends AppLocalizations {
   String get importScrImportField => 'Importar del campo';
 
   @override
+  String get importScrScanQr => 'Escanear QR';
+
+  @override
+  String get importScrQrFromImage => 'QR desde imagen';
+
+  @override
+  String get qrScanPrompt => 'Apunta la cámara al código QR de la suscripción';
+
+  @override
+  String get qrCameraExplainTitle => 'Acceso a la cámara';
+
+  @override
+  String get qrCameraExplainBody =>
+      'La cámara solo se usa para leer el código QR de la suscripción. No se guarda ni se envía nada.';
+
+  @override
+  String get qrCameraContinue => 'Continuar';
+
+  @override
+  String get qrCameraDenied =>
+      'Sin acceso a la cámara. Permítelo en los ajustes de la aplicación o elige una imagen con el código QR.';
+
+  @override
+  String get qrNotFound => 'No se encontró ningún código QR en la imagen.';
+
+  @override
+  String get qrReadFailed => 'No se pudo abrir la imagen.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Conexión perdida, tráfico bloqueado. Reconectando en $seconds s (intento $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'El túnel está activo, pero no pasa tráfico por él';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android no permitió activar la VPN. Pulsa «Conectar» de nuevo y confirma la solicitud del sistema.';
+
+  @override
+  String statusMissingCore(String file) {
+    return 'No se encontró $file junto a la aplicación. Reinstala SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'El puerto $port sigue ocupado por nuestro núcleo ($holder) de la sesión anterior.\n\nPasa si apagas y enciendes la VPN enseguida. Espera unos segundos y vuelve a intentarlo.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'El puerto $port ya está ocupado por otro programa que no se pudo identificar.\n\nLo más habitual es otro cliente VPN que escucha los mismos puertos locales. Ciérralo por completo, también desde la bandeja, y vuelve a intentarlo.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'El puerto $port ya está ocupado por $holder.\n\nCiérralo por completo, también desde la bandeja, y vuelve a intentarlo.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'El núcleo del túnel se colgó; el túnel se ha retirado';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'No se pudo conectar: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'El núcleo $core se detuvo (código $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'El núcleo $core se detuvo (código $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'el puerto local $port ya está en uso';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'un puerto local ya está en uso';
+
+  @override
+  String get statusReasonFailedToStart => 'el núcleo no pudo iniciarse';
+
+  @override
   String get serversTitle => 'Servidores';
 
   @override

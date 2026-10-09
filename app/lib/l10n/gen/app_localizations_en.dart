@@ -1249,6 +1249,98 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importScrImportField => 'Import from field';
 
   @override
+  String get importScrScanQr => 'Scan QR';
+
+  @override
+  String get importScrQrFromImage => 'QR from image';
+
+  @override
+  String get qrScanPrompt => 'Point the camera at the subscription QR code';
+
+  @override
+  String get qrCameraExplainTitle => 'Camera access';
+
+  @override
+  String get qrCameraExplainBody =>
+      'The camera is only used to read the subscription QR code. Nothing is saved or sent anywhere.';
+
+  @override
+  String get qrCameraContinue => 'Continue';
+
+  @override
+  String get qrCameraDenied =>
+      'No camera access. Allow it in the app settings or pick an image with the QR code.';
+
+  @override
+  String get qrNotFound => 'No QR code found in the image.';
+
+  @override
+  String get qrReadFailed => 'Couldn\'t open the image.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Connection lost, traffic blocked. Reconnecting in $seconds s (attempt $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'The tunnel is up, but no traffic goes through it';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android did not allow the VPN. Tap “Connect” again and confirm the system request.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file was not found next to the app. Reinstall SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'Port $port is still held by our core ($holder) from the previous session.\n\nThis happens if you turn the VPN off and right back on. Wait a few seconds and try again.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'Port $port is already used by another program that could not be identified.\n\nMost often it is another VPN client listening on the same local ports. Close it completely, including from the tray, and try again.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'Port $port is already used by $holder.\n\nClose it completely, including from the tray, and try again.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'The tunnel core froze; the tunnel was removed';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Could not connect: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'The $core core stopped (code $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'The $core core stopped (code $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'local port $port is already in use';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'a local port is already in use';
+
+  @override
+  String get statusReasonFailedToStart => 'the core could not start';
+
+  @override
   String get serversTitle => 'Servers';
 
   @override

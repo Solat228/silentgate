@@ -1245,6 +1245,97 @@ class AppLocalizationsAr extends AppLocalizations {
   String get importScrImportField => 'استيراد من الحقل';
 
   @override
+  String get importScrScanQr => 'مسح رمز QR';
+
+  @override
+  String get importScrQrFromImage => 'QR من صورة';
+
+  @override
+  String get qrScanPrompt => 'وجّه الكاميرا نحو رمز QR للاشتراك';
+
+  @override
+  String get qrCameraExplainTitle => 'الوصول إلى الكاميرا';
+
+  @override
+  String get qrCameraExplainBody =>
+      'تُستخدم الكاميرا فقط لقراءة رمز QR للاشتراك. لا يُحفظ أي شيء ولا يُرسل.';
+
+  @override
+  String get qrCameraContinue => 'متابعة';
+
+  @override
+  String get qrCameraDenied =>
+      'لا يوجد وصول إلى الكاميرا. اسمح به في إعدادات التطبيق أو اختر صورة تحتوي على رمز QR.';
+
+  @override
+  String get qrNotFound => 'لم يُعثر على رمز QR في الصورة.';
+
+  @override
+  String get qrReadFailed => 'تعذّر فتح الصورة.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'انقطع الاتصال وحُظرت حركة المرور. إعادة الاتصال خلال $seconds ث (المحاولة $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'النفق متصل، لكن لا تمر عبره أي حركة مرور';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'لم يسمح Android بتشغيل VPN. اضغط «اتصال» مرة أخرى ووافق على طلب النظام.';
+
+  @override
+  String statusMissingCore(String file) {
+    return 'لم يُعثر على $file بجانب التطبيق. أعد تثبيت SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'المنفذ $port لا يزال مشغولًا بنواتنا ($holder) من الجلسة السابقة.\n\nيحدث هذا عند إيقاف VPN وتشغيله فورًا. انتظر بضع ثوانٍ وحاول مجددًا.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'المنفذ $port مشغول ببرنامج آخر تعذّر تحديده.\n\nغالبًا ما يكون عميل VPN آخر يستمع على المنافذ المحلية نفسها. أغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'المنفذ $port مشغول بالبرنامج $holder.\n\nأغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'توقفت نواة النفق عن الاستجابة؛ أُزيل النفق';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'تعذّر الاتصال: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'توقفت نواة $core (الرمز $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'توقفت نواة $core (الرمز $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'المنفذ المحلي $port مستخدم بالفعل';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'منفذ محلي مستخدم بالفعل';
+
+  @override
+  String get statusReasonFailedToStart => 'تعذّر تشغيل النواة';
+
+  @override
   String get serversTitle => 'الخوادم';
 
   @override

@@ -1,3 +1,7 @@
+import 'status_text.dart';
+
+export 'status_text.dart';
+
 enum VpnConnectionState {
   disconnected,
   connecting,
@@ -19,7 +23,14 @@ enum VpnPhase {
 /// Текущее состояние туннеля + опциональное сообщение (например, текст ошибки).
 class VpnStatus {
   final VpnConnectionState state;
+
+  /// Русский текст для журнала — и для экрана, когда [text] нет (сырой вывод
+  /// ядра, исключение). На экране сначала смотрят [text].
   final String? message;
+
+  /// Что случилось — кодом, чтобы UI показал это на языке интерфейса
+  /// (см. [StatusText]).
+  final StatusText? text;
   final VpnPhase phase;
 
   /// ⚠️ KILL SWITCH СЕЙЧАС ДЕРЖИТ ТРАФИК: соединения падают, а не текут мимо VPN.
@@ -32,11 +43,15 @@ class VpnStatus {
   final bool blocking;
 
   const VpnStatus(this.state,
-      {this.message, this.phase = VpnPhase.normal, this.blocking = false});
+      {this.message,
+      this.text,
+      this.phase = VpnPhase.normal,
+      this.blocking = false});
 
   const VpnStatus.disconnected()
       : state = VpnConnectionState.disconnected,
         message = null,
+        text = null,
         phase = VpnPhase.normal,
         blocking = false;
 

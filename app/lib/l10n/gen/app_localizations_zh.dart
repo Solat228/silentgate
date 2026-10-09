@@ -1219,6 +1219,93 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importScrImportField => '从字段导入';
 
   @override
+  String get importScrScanQr => '扫描二维码';
+
+  @override
+  String get importScrQrFromImage => '从图片识别二维码';
+
+  @override
+  String get qrScanPrompt => '将摄像头对准订阅二维码';
+
+  @override
+  String get qrCameraExplainTitle => '相机权限';
+
+  @override
+  String get qrCameraExplainBody => '相机仅用于读取订阅二维码，不会保存或发送任何内容。';
+
+  @override
+  String get qrCameraContinue => '继续';
+
+  @override
+  String get qrCameraDenied => '没有相机权限。请在应用设置中允许，或选择包含二维码的图片。';
+
+  @override
+  String get qrNotFound => '图片中未找到二维码。';
+
+  @override
+  String get qrReadFailed => '无法打开图片。';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return '连接已断开，流量已被阻断。$seconds 秒后重新连接（第 $attempt 次尝试）…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing => '隧道已建立，但没有流量通过';
+
+  @override
+  String get statusVpnConsentDenied => 'Android 未允许启动 VPN。请再次点击“连接”并确认系统请求。';
+
+  @override
+  String statusMissingCore(String file) {
+    return '未在应用旁找到 $file。请重新安装 SilentGate。';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return '端口 $port 仍被上一次会话的本应用内核（$holder）占用。\n\n关闭 VPN 后立即重新打开时会出现这种情况。请等待几秒后重试。';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return '端口 $port 已被另一个无法识别的程序占用。\n\n通常是另一个监听相同本地端口的 VPN 客户端。请将其完全关闭（包括托盘中的），然后重试。';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return '端口 $port 已被 $holder 占用。\n\n请将其完全关闭（包括托盘中的），然后重试。';
+  }
+
+  @override
+  String get statusTunCoreHung => '隧道内核无响应，隧道已移除';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return '无法连接：$detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return '$core 内核已停止（代码 $code）';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return '$core 内核已停止（代码 $code）：$reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return '本地端口 $port 已被占用';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => '某个本地端口已被占用';
+
+  @override
+  String get statusReasonFailedToStart => '内核无法启动';
+
+  @override
   String get serversTitle => '服务器';
 
   @override

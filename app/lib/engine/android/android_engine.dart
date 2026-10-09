@@ -1029,7 +1029,8 @@ class AndroidEngine extends VpnEngineBase {
         AppLog.w('Android не выдал согласие на VPN — туннель не поднимался');
         setStatus(VpnConnectionState.error,
             message: 'Android не разрешил поднять VPN. Нажмите «Подключиться» '
-                'ещё раз и подтвердите запрос системы.');
+                'ещё раз и подтвердите запрос системы.',
+            text: const StatusVpnConsentDenied());
         return;
       }
       if (await scheduleRetry('не удалось подключиться: ${e.message}')) return;

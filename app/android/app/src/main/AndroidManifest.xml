@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Интернет нужен и без VPN: загрузка подписки, пинг, проверка обновлений. -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -28,6 +29,13 @@
          серверы метятся мёртвыми. Обычное разрешение, выдаётся при установке;
          замок с таймаутом 10 минут. -->
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- Камера — только для QR-кода подписки (platform/QrScanner.kt).
+         Спрашивается в момент сканирования, а не на старте; снимки не
+         сохраняются. Без камеры приложение ставится и работает:
+         required="false", QR читается и из картинки. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <application
         android:label="@string/app_name"
@@ -119,6 +127,14 @@
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
+
+        <!-- Сканер QR из zxing-android-embedded. У библиотеки ориентация
+             sensorLandscape — телефон для QR держат вертикально, поэтому
+             переопределяем на любую по датчику. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="android:screenOrientation"/>
 
         <!-- Перехват ссылок серверов вынесен в отдельный alias и ВЫКЛЮЧЕН по
              умолчанию: эти схемы обычно уже привязаны к другому клиенту (Happ,
