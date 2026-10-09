@@ -75,10 +75,26 @@ class TrayWindow with WindowListener, TrayListener {
   /// каждом такте — это утечка дескрипторов на всё время работы приложения.
   bool? _trayConnected;
 
-  /// Путь к значку состояния. Оба файла едут в поставке рядом.
-  String _trayIconPath(bool connected) {
+  /// Имя файла, который стоит в трее сейчас. `null` — ещё не ставили.
+  /// Сверяется перед `setIcon` по той же причине, что [_trayConnected].
+  String? _trayIconFile;
+
+  /// Имя значка для состояния.
+  ///
+  /// ⚠️ КРАСНЫЙ — ТОЛЬКО КОГДА KILL SWITCH ДЕРЖИТ ТРАФИК. Окно почти всегда
+  /// свёрнуто, а подсказку трея видно лишь при наведении: человек, у которого
+  /// пропал интернет, не знал, что это защита, а не поломка, и шёл отключать
+  /// VPN. Цвет виден без наведения. Блокировка важнее «подключено»: туннель в
+  /// этот момент формально может числиться живым.
+  @visibleForTesting
+  static String trayIconFor({required bool connected, required bool blocked}) {
+    if (blocked) return 'tray_icon_block.ico';
+    return connected ? 'tray_icon.ico' : 'tray_icon_off.ico';
+  }
+
+  /// Путь к значку. Все три файла едут в поставке рядом.
+  String _trayIconPath(String name) {
     final exeDir = File(Platform.resolvedExecutable).parent.path;
-    final name = connected ? 'tray_icon.ico' : 'tray_icon_off.ico';
     return '$exeDir\\data\\flutter_assets\\assets\\$name';
   }
 
@@ -89,13 +105,15 @@ class TrayWindow with WindowListener, TrayListener {
     _connected = connected;
     _syncTooltipTicker();
     await _pushTooltip();
-    if (_trayConnected == connected) return; // см. _trayConnected
     _trayConnected = connected;
-    await _applyTrayIcon(connected);
+    await _applyTrayIcon();
   }
 
-  Future<void> _applyTrayIcon(bool connected) async {
-    final path = _trayIconPath(connected);
+  Future<void> _applyTrayIcon() async {
+    final name =
+        trayIconFor(connected: _trayConnected ?? false, blocked: _blocked);
+    if (_trayIconFile == name) return; // см. _trayConnected
+    final path = _trayIconPath(name);
     // ⚠️ ПРОВЕРЯЕМ ФАЙЛ САМИ. Плагин отвечает успехом, даже когда Windows не
     // смогла загрузить значок: расширение `.ico` нигде не сверяется с
     // содержимым, и, например, PNG под именем `.ico` даёт ПУСТОЙ трей — без
@@ -107,6 +125,7 @@ class TrayWindow with WindowListener, TrayListener {
     }
     try {
       await trayManager.setIcon(path);
+      _trayIconFile = name;
     } catch (e) {
       AppLog.e('Не удалось поставить значок трея: $e');
     }
@@ -114,7 +133,8 @@ class TrayWindow with WindowListener, TrayListener {
 
   Future<void> _setupTray() async {
     try {
-      await _applyTrayIcon(_trayConnected ?? false);
+      _trayIconFile = null; // первый показ и пересборка меню ставят значок заново
+      await _applyTrayIcon();
       await _pushTooltip();
       // Контекст на старте может быть ещё не готов — тогда русский фолбэк; меню
       // пересобирается при смене языка (refreshTrayMenu из переключателя языка).
@@ -402,6 +422,7 @@ class TrayWindow with WindowListener, TrayListener {
   /// есть уже сейчас и решает главную задачу — объяснить причину.
   static Future<void> setBlocked(bool blocked) async {
     instance._blocked = blocked;
+    await instance._applyTrayIcon();
     await instance._pushTooltip();
   }
 

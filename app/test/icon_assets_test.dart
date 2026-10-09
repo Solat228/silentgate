@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/platform/tray_window.dart';
 
 /// Страж значков.
 ///
@@ -72,6 +73,7 @@ void main() {
     'значок приложения и окна': File('windows/runner/resources/app_icon.ico'),
     'трей: VPN включён': File('assets/tray_icon.ico'),
     'трей: VPN выключен': File('assets/tray_icon_off.ico'),
+    'трей: kill switch держит трафик': File('assets/tray_icon_block.ico'),
   };
 
   files.forEach((name, f) {
@@ -97,6 +99,27 @@ void main() {
     final on = File('assets/tray_icon.ico').readAsBytesSync();
     final off = File('assets/tray_icon_off.ico').readAsBytesSync();
     expect(on, isNot(equals(off)));
+    final block = File('assets/tray_icon_block.ico').readAsBytesSync();
+    expect(block, isNot(equals(on)));
+    expect(block, isNot(equals(off)));
+  });
+
+  test('каждое имя из TrayWindow.trayIconFor лежит в assets и в pubspec', () {
+    // Опечатка в имени даёт пустой трей ровно в тот момент, когда пропал
+    // интернет, — проверять это руками никто не станет.
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    for (final c in [false, true]) {
+      for (final b in [false, true]) {
+        final name = TrayWindow.trayIconFor(connected: c, blocked: b);
+        expect(File('assets/$name').existsSync(), isTrue, reason: name);
+        expect(pubspec, contains('assets/$name'), reason: name);
+      }
+    }
+    expect(TrayWindow.trayIconFor(connected: true, blocked: true),
+        'tray_icon_block.ico',
+        reason: 'блокировка важнее «подключено»');
+    expect(TrayWindow.trayIconFor(connected: false, blocked: false),
+        'tray_icon_off.ico');
   });
 
   test('значок трея не совпадает со значком приложения', () {
@@ -113,7 +136,11 @@ void main() {
     // Файл на диске, не попавший в pubspec, до пользователя не доедет: рядом с
     // exe его не окажется, и трей останется пустым.
     final pubspec = File('pubspec.yaml').readAsStringSync();
-    for (final a in ['assets/tray_icon.ico', 'assets/tray_icon_off.ico']) {
+    for (final a in [
+      'assets/tray_icon.ico',
+      'assets/tray_icon_off.ico',
+      'assets/tray_icon_block.ico',
+    ]) {
       expect(pubspec, contains(a), reason: '$a не объявлен в pubspec.yaml');
     }
   });
