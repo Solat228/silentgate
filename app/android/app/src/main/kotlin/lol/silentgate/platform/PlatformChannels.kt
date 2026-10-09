@@ -13,6 +13,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.cores.libbox.Libbox
@@ -388,6 +389,44 @@ object PlatformChannels {
             ?.substringBefore('%')
     }.getOrNull()
 
+    /**
+     * Таймаут удержания. Прогон пинга сотни серверов укладывается в пару
+     * минут, замер скорости — в несколько; повисший прогон (или Dart, умерший
+     * между hold и release) не держит процессор дольше этого срока.
+     */
+    private const val WAKE_TIMEOUT_MS = 10 * 60 * 1000L
+
+    private var wakeLock: PowerManager.WakeLock? = null
+
+    /**
+     * `PARTIAL_WAKE_LOCK`: экран гаснет, процессор работает. Без подсчёта
+     * ссылок — повторный `acquire` лишь продлевает таймаут, а один `release`
+     * снимает замок целиком (держателей считает Dart).
+     */
+    @Synchronized
+    private fun wakeHold(context: Context): Boolean = runCatching {
+        val lock = wakeLock ?: (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "SilentGate:probe")
+            .also {
+                it.setReferenceCounted(false)
+                wakeLock = it
+            }
+        lock.acquire(WAKE_TIMEOUT_MS)
+        true
+    }.getOrElse {
+        android.util.Log.w("SilentGate", "wakeHold: $it")
+        false
+    }
+
+    @Synchronized
+    private fun wakeRelease(): Boolean = runCatching {
+        wakeLock?.let { if (it.isHeld) it.release() }
+        true
+    }.getOrElse {
+        android.util.Log.w("SilentGate", "wakeRelease: $it")
+        false
+    }
+
     private fun handleDeviceRest(
         context: Context,
         method: String,
@@ -397,6 +436,11 @@ object PlatformChannels {
             // ANDROID_ID: стабилен для пары «устройство + подпись приложения»,
             // но меняется при сбросе к заводским настройкам — для device-limit
             // панели такое устройство станет новым. Это осознанно.
+            // Удержание процессора на время пинга и замера скорости — см.
+            // `lib/core/platform/wake_guard.dart`. Счётчик держателей живёт в
+            // Dart, здесь один замок без подсчёта ссылок.
+            "wakeHold" -> result.success(wakeHold(context))
+            "wakeRelease" -> result.success(wakeRelease())
             "hwid" -> result.success(androidId(context))
             // Именно версия ОС («11»), а не Build.FINGERPRINT: dart:io отдаёт
             // здесь строку прошивки, которая в отчёте выглядела мусором.

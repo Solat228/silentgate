@@ -22,6 +22,12 @@
          ACTION_MANAGE_UNKNOWN_APP_SOURCES (канал launcher →
          openInstallPermission). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Удержание процессора на время пинга и замера скорости
+         (lib/core/platform/wake_guard.dart). Без него при погасшем экране
+         система усыпляет процессор посреди прогона, пробы истекают, и живые
+         серверы метятся мёртвыми. Обычное разрешение, выдаётся при установке;
+         замок с таймаутом 10 минут. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
 
     <application
         android:label="@string/app_name"

@@ -11,6 +11,7 @@ import '../core/probe/ping_result.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/probe/tcp_ping.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/wake_guard.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/key_migration.dart';
@@ -593,6 +594,7 @@ class ProbeController extends ChangeNotifier {
     }
 
     _speedRunning = true;
+    final wake = WakeGuard.acquire('замер скорости');
     _speedQueue
       ..clear()
       ..addAll(targets);
@@ -684,6 +686,7 @@ class ProbeController extends ChangeNotifier {
       }
     } finally {
       _speedRunning = false;
+      wake.release();
       _speedQueue.clear();
       _speedFinishedAt = DateTime.now();
       // ⚠️ Счётчик берём из [_speedTotal], а не из длины исходного списка:
@@ -767,6 +770,9 @@ class ProbeController extends ChangeNotifier {
       return;
     }
     _running = true;
+    // Экран может погаснуть посреди прогона — процессор засыпать не должен,
+    // иначе живые серверы пометятся мёртвыми (см. [WakeGuard]).
+    final wake = WakeGuard.acquire('пинг');
     _batch = List.unmodifiable(servers);
     _batchKeys = {for (final s in servers) s.key};
     _done.clear();
@@ -1039,6 +1045,7 @@ class ProbeController extends ChangeNotifier {
         }
       }
       _running = false;
+      wake.release();
       _finishedAt = DateTime.now();
       await _persist();
       await _persistUnfinished();
