@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'app_log.dart';
+import 'core_job_windows.dart';
 
 /// Уборка за ядрами (xray.exe / sing-box.exe).
 ///
@@ -19,7 +20,14 @@ import 'app_log.dart';
 class CoreCleanup {
   static final Set<Process> _children = {};
 
-  static void register(Process p) => _children.add(p);
+  /// Запомнить ядро для уборки и положить его в объект задания Windows
+  /// ([CoreJob]): так оно умрёт вместе с приложением даже при аварии, когда
+  /// до [killChildren] дело не доходит.
+  static void register(Process p) {
+    _children.add(p);
+    CoreJob.adopt(p.pid);
+  }
+
   static void unregister(Process p) => _children.remove(p);
 
   /// Синхронно погасить всё своё. Вызывается перед `exit(0)`: ждать здесь
