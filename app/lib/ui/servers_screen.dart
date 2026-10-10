@@ -143,12 +143,7 @@ class _ServersScreenState extends State<ServersScreen> {
                                 Navigator.of(context).pop();
                               },
                             );
-                            return row.grouped
-                                ? Padding(
-                                    padding: const EdgeInsetsDirectional.only(
-                                        start: kServerGroupIndent),
-                                    child: tile)
-                                : tile;
+                            return serverListRow(row, tile);
                           },
                         ),
                 ),

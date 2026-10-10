@@ -801,6 +801,11 @@ class AppSettings {
   /// Как [collapsedSections], в [reconnectReasons] не входит.
   final List<String> collapsedCountries;
 
+  /// РАСКРЫТЫЕ группы профилей «Авто» — ключи `ServerGroups.autoGroupKey`.
+  /// Хранится обратное, потому что эти группы свёрнуты по умолчанию (решение
+  /// владельца 10.10.2026). В [reconnectReasons] не входит.
+  final List<String> expandedAutoGroups;
+
   /// Код языка интерфейса (`ru`/`en`/`es`…). Пустая строка — следовать системе.
   final String languageCode;
   final bool closeToTray; // крестик: сворачивать в трей (true) / закрывать полностью (false)
@@ -965,6 +970,7 @@ class AppSettings {
     this.collapsedSections = const [],
     this.sortServersByCountry = false,
     this.collapsedCountries = const [],
+    this.expandedAutoGroups = const [],
     this.languageCode = '',
     this.closeToTray = true,
     this.dontAskOnClose = false,
@@ -1086,6 +1092,7 @@ class AppSettings {
     List<String>? collapsedSections,
     bool? sortServersByCountry,
     List<String>? collapsedCountries,
+    List<String>? expandedAutoGroups,
     String? languageCode,
     bool? closeToTray,
     bool? dontAskOnClose,
@@ -1179,6 +1186,7 @@ class AppSettings {
       collapsedSections: collapsedSections ?? this.collapsedSections,
       sortServersByCountry: sortServersByCountry ?? this.sortServersByCountry,
       collapsedCountries: collapsedCountries ?? this.collapsedCountries,
+      expandedAutoGroups: expandedAutoGroups ?? this.expandedAutoGroups,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
       dontAskOnClose: dontAskOnClose ?? this.dontAskOnClose,
@@ -1270,6 +1278,7 @@ class AppSettings {
         'collapsedSections': collapsedSections,
         'sortServersByCountry': sortServersByCountry,
         'collapsedCountries': collapsedCountries,
+        'expandedAutoGroups': expandedAutoGroups,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
         'dontAskOnClose': dontAskOnClose,
@@ -1495,6 +1504,9 @@ class AppSettings {
           .toList(),
       sortServersByCountry: j['sortServersByCountry'] as bool? ?? false,
       collapsedCountries: ((j['collapsedCountries'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      expandedAutoGroups: ((j['expandedAutoGroups'] as List?) ?? const [])
           .whereType<String>()
           .toList(),
       languageCode: j['languageCode'] as String? ?? '',

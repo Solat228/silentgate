@@ -1856,17 +1856,15 @@ class _ServerPaneState extends State<ServerPane> {
                       }
                       final row = entry as ServerRowEntry;
                       final idx = row.index;
-                      Widget tile = ServerTile(
-                        server: servers[idx],
-                        selected: idx == state.selectedIndex,
-                        onTap: () => state.selectServer(idx),
-                      );
-                      if (row.grouped) {
-                        tile = Padding(
-                            padding: const EdgeInsetsDirectional.only(
-                                start: kServerGroupIndent),
-                            child: tile);
-                      }
+                      // Отступ в группе и шеврон у шапки «Авто» — общая
+                      // обёртка обоих списков.
+                      final tile = serverListRow(
+                          row,
+                          ServerTile(
+                            server: servers[idx],
+                            selected: idx == state.selectedIndex,
+                            onTap: () => state.selectServer(idx),
+                          ));
                       // Первая строка сервера — линейка для прокрутки (см.
                       // `_rowExtent`). Обёртка ничего не рисует и на раскладку
                       // не влияет.

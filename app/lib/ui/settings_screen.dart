@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'api_screen.dart';
 import '../core/app_info.dart';
+import '../core/util/auto_groups.dart';
 import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -2293,10 +2294,14 @@ bool _serversJumbled(BuildContext context) {
   try {
     final state = context.read<AppState>();
     final servers = state.servers;
-    return ServerGroups.isJumbled(servers, pinned: {
+    final pinned = {
       for (var i = 0; i < servers.length; i++)
         if (state.isPinned(servers[i])) i
-    });
+    };
+    // Серверы, собранные под профилями «Авто», сортировка не двигает — и
+    // разнобоем их расстановка у провайдера не считается.
+    return ServerGroups.isJumbled(servers,
+        pinned: pinned, auto: AutoGroups.bind(servers, skip: pinned));
   } on ProviderNotFoundException {
     return false;
   }
