@@ -140,12 +140,21 @@ class QrScanner(private val activity: Activity) {
                 Thread {
                     val outcome = runCatching { decodeUri(uri) }
                     main.post {
+                        // Исход — в logcat: без этой строки отказ разбора на
+                        // устройстве не отличить от потерянного ответа.
+                        // Распознанный текст не пишется — в нём ссылка-подписка.
                         outcome.fold(
                             onSuccess = { text ->
+                                android.util.Log.w("SilentGateQr",
+                                    if (text == null) "картинка: QR не найден"
+                                    else "картинка: QR прочитан, ${text.length} симв.")
                                 if (text == null) finishError("no_qr", "QR не найден")
                                 else finish(text)
                             },
-                            onFailure = { finishError("read_failed", it.toString()) },
+                            onFailure = {
+                                android.util.Log.w("SilentGateQr", "картинка: ошибка $it")
+                                finishError("read_failed", it.toString())
+                            },
                         )
                     }
                 }.start()
@@ -170,8 +179,13 @@ class QrScanner(private val activity: Activity) {
     private fun decodeUri(uri: Uri): String? {
         val resolver = activity.contentResolver
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
+        // ⚠️ С inJustDecodeBounds `decodeStream` ВСЕГДА возвращает null — размеры
+        // приходят в `bounds`. Проверка `?: throw` по его результату отвергала
+        // любую картинку (живой прогон на эмуляторе 10.10.2026), поэтому на null
+        // проверяется только сам поток.
+        val stream = resolver.openInputStream(uri)
             ?: throw IllegalStateException("картинка не открылась")
+        stream.use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
             throw IllegalStateException("не картинка")
         }

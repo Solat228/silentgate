@@ -84,6 +84,15 @@ void main() {
     expect(kt, contains("CHANNEL = \"lol.silentgate/qr\""));
     // Разбор картинки — не на главном потоке.
     expect(kt, contains('Thread {'));
+    // ⚠️ С inJustDecodeBounds decodeStream ВСЕГДА возвращает null. Проверка
+    // `?: throw` по результату чтения размеров отвергала любую картинку —
+    // QR с картинки не работал ни разу (живой прогон 10.10.2026).
+    expect(
+        RegExp(r'decodeStream\(it, null, bounds\)\s*\}\s*\?:').hasMatch(kt),
+        isFalse,
+        reason: 'null от чтения размеров — норма, а не отказ');
+    // Распознанный текст — ссылка-подписка с токеном, в logcat его нет.
+    expect(kt, isNot(contains(r'QR прочитан: $text')));
 
     final main = File('android/app/src/main/kotlin/lol/silentgate/MainActivity.kt')
         .readAsStringSync();
