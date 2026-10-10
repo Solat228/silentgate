@@ -1092,8 +1092,21 @@ abstract class VpnEngineBase implements VpnEngine {
       StatusText? text,
       VpnPhase phase = VpnPhase.normal,
       bool blocking = false}) {
+    // ⚠️ ПОКА KILL SWITCH ДЕРЖИТ ТРАФИК, ПРИЗНАК НЕСЁТ ЛЮБОЙ СТАТУС ПОПЫТКИ.
+    //
+    // Найдено живым прогоном в VM 10.10.2026: блокировка длилась 27 с, а значок
+    // в трее был красным меньше секунды. Признак ставил только статус
+    // «переподключение через N с», а через 800 мс сама попытка слала
+    // «Подключение…» с умолчанием `false` — трей сереел при живой блокировке,
+    // то есть ровно тогда, ради чего красный цвет и заводили.
+    // Снимается блокировка в [markConnected] и при ручном отключении.
+    final held =
+        _blockingSince != null && state == VpnConnectionState.connecting;
     _status = VpnStatus(state,
-        message: message, text: text, phase: phase, blocking: blocking);
+        message: message,
+        text: text,
+        phase: phase,
+        blocking: blocking || held);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -1164,6 +1177,19 @@ abstract class VpnEngineBase implements VpnEngine {
           '${_humanDuration(held)} — соединение восстановлено');
       _blockingSince = null;
     }
+  }
+
+  /// Снять признак «kill switch держит трафик», когда держать больше нечего:
+  /// человек отключился сам, сменил сервер или восстановление отменено.
+  ///
+  /// ⚠️ Без этого [setStatus] продолжал бы ставить признак на «Подключение…»
+  /// СЛЕДУЮЩЕГО подключения по кнопке — трей краснел бы без всякой блокировки.
+  void _endBlocking(String how) {
+    final since = _blockingSince;
+    if (since == null) return;
+    _blockingSince = null;
+    AppLog.i('Kill switch: блокировка снята ($how), держал '
+        '${_humanDuration(DateTime.now().difference(since))}');
   }
 
   /// «6 ч 12 мин» / «45 с» — для строки в отчёте поддержки.
@@ -1770,6 +1796,7 @@ abstract class VpnEngineBase implements VpnEngine {
       AppLog.e('Автопереподключение отменено: $reason. Повтор тут не поможет — '
           'не хватает файла программы, переустановите приложение.');
       _userStopped = true;
+      _endBlocking('восстановление отменено');
       return false;
     }
 
@@ -2163,6 +2190,7 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     // Явное отключение всегда отменяет автовосстановление, даже если оно уже идёт.
     _userStopped = true;
+    _endBlocking('отключение пользователем');
     // ⚠️ Пометку обрыва снимаем ЗДЕСЬ. Она означает «об обрыве уже сказали, и
     // при возврате связи надо сказать о восстановлении». Ручное отключение
     // закрывает ту историю: без этой строки следующее подключение — новое,
@@ -2210,6 +2238,7 @@ abstract class VpnEngineBase implements VpnEngine {
     // Дальше идёт немедленное подключение, поэтому автовосстановление старой
     // сессии должно быть отменено так же жёстко, как при обычном отключении.
     _userStopped = true;
+    _endBlocking('смена сервера');
     _noticedDrop = false;
     _noticedFailedAt = null;
     _generation++; // всё, что поднимется после этого момента, будет погашено
