@@ -2145,6 +2145,17 @@ class _SupportSection extends StatelessWidget {
   }
 }
 
+/// Тексты лицензий в ассетах: подпись кнопки → путь. MIT libXray нужен
+/// отдельным файлом: MIT разрешает всё, кроме одного — копирайт и текст
+/// лицензии обязаны ехать вместе с копией.
+@visibleForTesting
+const thirdPartyLicenseAssets = {
+  'NOTICE': 'assets/licenses/NOTICE.txt',
+  'GPL-3.0': 'assets/licenses/GPL-3.0.txt',
+  'MPL-2.0': 'assets/licenses/MPL-2.0.txt',
+  'MIT (libXray)': 'assets/licenses/MIT-libXray.txt',
+};
+
 /// Список стороннего кода в поставке.
 ///
 /// ⚠️ Тексты лицензий ЕДУТ В САМОМ ПРИЛОЖЕНИИ (`assets/licenses/`), а не
@@ -2170,11 +2181,7 @@ void _showThirdParty(BuildContext context) {
                 style: const TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 12),
-              for (final e in const {
-                'NOTICE': 'assets/licenses/NOTICE.txt',
-                'GPL-3.0': 'assets/licenses/GPL-3.0.txt',
-                'MPL-2.0': 'assets/licenses/MPL-2.0.txt',
-              }.entries)
+              for (final e in thirdPartyLicenseAssets.entries)
                 Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: TextButton.icon(
