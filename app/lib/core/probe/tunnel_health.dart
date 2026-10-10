@@ -91,9 +91,15 @@ class TunnelHealth {
   /// [onRecovered] — когда проба снова прошла после промахов, но до объявления
   /// смерти: это ровно тот случай, о котором стоит сказать в журнале, а
   /// дёргать соединение не надо.
+  ///
+  /// [onOk] — на КАЖДУЮ удачную пробу. Движку нужно знать, что канал этой
+  /// сессии хоть раз пропустил трафик: только тогда провал пробы после
+  /// восстановления — довод, а не особенность мишеней (см.
+  /// `VpnEngineBase.confirmRecoveredChannel`).
   void start({
     required Future<void> Function() onDown,
     void Function(int missed)? onRecovered,
+    void Function()? onOk,
     bool Function()? aborted,
   }) {
     stop();
@@ -113,6 +119,7 @@ class TunnelHealth {
         if (await probeOnce()) {
           final missed = _fails;
           _fails = 0;
+          onOk?.call();
           if (missed > 0) onRecovered?.call(missed);
           return;
         }

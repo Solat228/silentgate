@@ -2676,12 +2676,14 @@ class AppState extends ChangeNotifier {
     // мигание маршрута по умолчанию на каждой смене сервера.
     //
     // Выключенная галочка возвращает прежний путь целиком — это и есть откат.
+    // Кроме kill switch: полное отключение снимает и блокировку, и смена
+    // сервера выпускала трафик под реальным IP (см. `keepCaptureOnSwitch`).
     // ⚠️ СПРАШИВАЕМ ДВИЖОК, А НЕ ТОЛЬКО ГАЛОЧКУ. Режим захвата может смениться
     // прямо здесь: «Способ захвата» — тоже причина переподключения. Удерживать
     // TUN, когда следующая сессия идёт «Только прокси», значит оставить машину
     // в туннеле ровно в том режиме, который обещает обратное.
     final soft =
-        settings.seamlessServerSwitch && _engine.canKeepCaptureFor(settings);
+        settings.keepCaptureOnSwitch && _engine.canKeepCaptureFor(settings);
     if (soft) {
       await _engine.disconnectKeepingCapture();
     } else {

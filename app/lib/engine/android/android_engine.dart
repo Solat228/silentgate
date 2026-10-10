@@ -984,6 +984,14 @@ class AndroidEngine extends VpnEngineBase {
         throw StateError('Туннель не поднялся за отведённое время');
       }
 
+      // ⚠️ ПОСЛЕ ВОССТАНОВЛЕНИЯ «ПОДКЛЮЧЕНО» — ТОЛЬКО ПО ЖИВОЙ ПРОБЕ, как на
+      // Windows: ядро встаёт и при мёртвом сервере. Неудачу метод сам отдаёт
+      // автовосстановлению с удержанием захвата — общий `catch` ниже звал бы
+      // `cleanup()` и снимал VpnService, то есть открывал трафик.
+      if (!await confirmRecoveredChannel(() => aborted())) {
+        if (aborted()) await releaseOwnFallbackDns(gen);
+        return;
+      }
       markConnected();
       setStatus(VpnConnectionState.connected);
       _startStatsPolling();

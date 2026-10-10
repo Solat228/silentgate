@@ -123,6 +123,17 @@ class WindowsEngine extends VpnEngineBase {
   /// `platformTun` (см. `test/tun_options_carry_test.dart`).
   String? _liveTunConfig;
 
+  /// Состав блокировки kill switch, С КОТОРЫМ ПОДНЯТ живой туннель
+  /// ([killSwitchPlanSignature]). `null` — туннеля нет.
+  ///
+  /// ⚠️ СВЕРКИ КОНФИГА ДЛЯ ПЕРЕИСПОЛЬЗОВАНИЯ МАЛО. Состав блокировки в конфиг
+  /// sing-box не входит: он уходит помощнику файлом, и помощник читает его один
+  /// раз, на старте. Найдено живьём в VM 10.10.2026: kill switch включён на
+  /// живом соединении, переподключение «переиспользовало» туннель с тем же
+  /// конфигом — и помощник так и остался без блокировки, а обрыв сервера
+  /// выпускал трафик под реальным IP.
+  String? _liveKillSwitchPlan;
+
   /// Список адресов «мимо туннеля», С КОТОРЫМ ПОДНЯТ живой туннель.
   ///
   /// ⚠️ ЗАЧЕМ ХРАНИТЬ ЕГО ОТДЕЛЬНО. Сверка «тот же ли конфиг» точная, побайтная,
@@ -259,6 +270,42 @@ class WindowsEngine extends VpnEngineBase {
   /// ровном месте.
   bool _apiExitsActive(AppSettings s) => ApiPorts.exitPortsActive(s);
 
+  /// Живой туннель можно пересоздать руками его же помощника, не снимая
+  /// блокировки: она поднята сейчас и нужна следующей сессии.
+  bool _handoverPossible(AppSettings next) =>
+      _tunActive &&
+      _tunRouter is TunHandoverCapable &&
+      _liveKillSwitchOn &&
+      next.killSwitchActive;
+
+  /// Порты выходов держит живой туннель этого же приложения — проверять их
+  /// свободу перед подъёмом нельзя.
+  ///
+  /// ⚠️ ЛЮБОЙ ЖИВОЙ ТУННЕЛЬ, А НЕ ТОЛЬКО «СОХРАНЯЕМЫЙ». Проверка портов идёт
+  /// ДО `raiseTun`, а туннель снимается (если снимается) уже внутри него, прямо
+  /// перед подъёмом нового. Значит в момент проверки порты выходов при живом
+  /// туннеле заняты им всегда — сохранится он, будет перезапущен помощником
+  /// без снятия блокировки или снят обычным путём. Чужой программе на этих
+  /// портах быть неоткуда: их держит наш sing-box.
+  ///
+  /// Найдено живьём в VM 10.10.2026: при выключенной бесшовности смена сервера
+  /// и автопереподключение по включению kill switch падали «Порт 10820 ещё
+  /// занят нашим ядром». Прежнее условие учитывало только бесшовность, и тот
+  /// же отказ ждал повторные попытки kill switch при включённом API.
+  @visibleForTesting
+  bool get tunnelHoldsItsPorts => _tunActive;
+
+  /// Блокировку держит живой туннель: его план просил kill switch.
+  bool get _liveKillSwitchOn {
+    final p = _liveKillSwitchPlan;
+    if (p == null) return false;
+    try {
+      return (jsonDecode(p) as Map)['enabled'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Порты, которые обязаны быть свободны ПЕРЕД стартом ядра.
   ///
   /// ⚠️ ВЫНЕСЕНО ИЗ [startSession] РАДИ ТЕСТА, А НЕ РАДИ КРАСОТЫ. На
@@ -376,10 +423,10 @@ class WindowsEngine extends VpnEngineBase {
     final apiKeys = _apiExitsActive(options.settings)
         ? options.settings.apiExitServerKeys
         : const <String>[];
-    // Живой туннель остаётся на месте только при включённой бесшовности — тогда
-    // его порты не наши к освобождению. Иначе он будет снят и порты вернутся.
+    // Порты выходов живого туннеля — его, проверять их нельзя (см.
+    // [tunnelHoldsItsPorts]).
     final corePorts = corePortsFor(options.settings, ports,
-        tunnelStaysUp: _tunActive && options.settings.seamlessServerSwitch);
+        tunnelStaysUp: tunnelHoldsItsPorts);
     var conflict = await PortCheck.findConflict(corePorts);
     // ⚠️ ЖДЁМ И ТОГДА, КОГДА ВЛАДЕЛЬЦА ОПОЗНАТЬ НЕ УДАЛОСЬ.
     //
@@ -584,13 +631,20 @@ class WindowsEngine extends VpnEngineBase {
           singbox: singboxCore,
           xrayConfig: singboxCore ? null : _decodeConfig(configJson));
 
+      // ⚠️ ПОСЛЕ ВОССТАНОВЛЕНИЯ «ПОДКЛЮЧЕНО» — ТОЛЬКО ПО ЖИВОЙ ПРОБЕ. Ядро
+      // стартует и при мёртвом сервере; без этой строки человек получал
+      // «Соединение восстановлено» на канале, по которому не шло ни байта
+      // (найдено живьём в VM 10.10.2026, разбор — у метода).
+      if (!await confirmRecoveredChannel(aborted)) {
+        if (aborted()) await _abandonRun(gen, mine);
+        return;
+      }
       // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
+      // ⚠️ Только журнал: заметку «Соединение восстановлено» шлёт сам
+      // `markConnected()`. Здесь стояла вторая такая же, и на экран после
+      // обрыва приходили две одинаковые карточки.
       if (attempt > 0) {
         AppLog.i('Соединение восстановлено (попытка $attempt)');
-        // Говорим вслух ТОЛЬКО когда перед этим были неудачи: обычное
-        // подключение по кнопке в сообщении не нуждается.
-        emitNotice(EngineNoticeKind.recovered, 'Соединение восстановлено',
-            detail: 'Потребовалось попыток: $attempt');
       }
       markConnected(); // сбрасывает счётчик попыток и запускает grace смены сети
       setStatus(VpnConnectionState.connected);
@@ -790,6 +844,25 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Подпись того, что [_writeKillSwitchPlan] передаст помощнику: из тех же
+  /// входов и тем же кодом. Токен сессии сюда не входит — он один на весь
+  /// запуск приложения и туннеля не различает.
+  @visibleForTesting
+  static String killSwitchPlanSignature(
+      AppSettings s, List<String> serverIps) {
+    final selectors = KillSwitchAppSelectors.fromSplitTunnel(s.splitTunnel);
+    return jsonEncode({
+      'enabled': s.killSwitch,
+      'serverIps': serverIps.toSet().toList()..sort(),
+      'blockAll': s.splitTunnel.mode != SplitMode.onlySelected,
+      'blockedAppPaths': selectors.blockedAppPaths,
+      'blockedAppNames': selectors.blockedAppNames,
+      'allowedAppPaths': selectors.allowedAppPaths,
+      'allowedAppNames': selectors.allowedAppNames,
+      'allowLan': s.tunBypassLan,
+    });
+  }
+
   /// Значение для [TunOptions.tunnelExcludeServerIps] по выбранному охвату.
   ///
   /// ⚠️ ЧИСТАЯ ФУНКЦИЯ ОТ УЖЕ СТАБИЛИЗИРОВАННЫХ ВХОДОВ — в этом вся защита.
@@ -987,6 +1060,8 @@ class WindowsEngine extends VpnEngineBase {
           _apiExitsActive(options.settings) ? options.settings.apiToken : '',
     );
     final live = _liveTunConfig;
+    final wantPlan =
+        killSwitchPlanSignature(options.settings, tunOptions.serverIps);
     if (_tunActive &&
         options.settings.seamlessServerSwitch &&
         live != null &&
@@ -995,9 +1070,18 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.i('Туннель придётся пересоздать — конфиг отличается: '
           '${diff.isEmpty ? "(различий не найдено, отличаются пробелы/порядок)" : diff.join(", ")}');
     }
+    final planChanged = _liveKillSwitchPlan != wantPlan;
     if (_tunActive &&
         options.settings.seamlessServerSwitch &&
-        _liveTunConfig == wantConfig) {
+        live == wantConfig &&
+        planChanged) {
+      AppLog.i('Туннель придётся пересоздать — изменился состав блокировки '
+          'kill switch: помощник читает его только на старте');
+    }
+    if (_tunActive &&
+        options.settings.seamlessServerSwitch &&
+        _liveTunConfig == wantConfig &&
+        !planChanged) {
       // ⚠️ «ФЛАГ ПОДНЯТ» — ЭТО НЕ «ТУННЕЛЬ ЖИВ», И РАЗНИЦА ЗДЕСЬ РЕШАЮЩАЯ.
       //
       // При падении элевейтнутого хелпера Windows убирает адаптер сама, а нам
@@ -1034,14 +1118,51 @@ class WindowsEngine extends VpnEngineBase {
           'пересоздаю его, а не выдаю мёртвый за живой');
     }
 
+    // ⚠️ KILL SWITCH → KILL SWITCH: ПЕРЕСОЗДАЁМ, НЕ СНИМАЯ БЛОКИРОВКУ.
+    //
+    // Обычный путь ниже — stop-файл, помощник снимает фильтры WFP и выходит,
+    // пауза, новый помощник поднимает их заново. Между снятием и подъёмом у
+    // машины нет ни туннеля, ни блокировки: трафик идёт под реальным IP. Живой
+    // замер в VM (каждые 0,4 с) это окно не поймал, но оно есть по построению,
+    // а при kill switch утечка — ровно то, от чего человек защищался.
+    //
+    // Поэтому, когда блокировку держит прежний туннель и её просит новый,
+    // живой помощник перезапускает ядро сам, не отпуская фильтров. Отказ или
+    // молчание помощника — обычный путь, как раньше.
+    var handedOver = false;
+    // TunHandoverCapable не подтип TunRouter — `is` тут не сужает тип.
+    final router = _tunRouter is TunHandoverCapable
+        ? _tunRouter as TunHandoverCapable
+        : null;
+    if (router != null && _handoverPossible(options.settings)) {
+      _tunOwnerGen = gen;
+      // План — ДО просьбы: помощник прочтёт его, как только её увидит.
+      await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
+      handedOver = await router.handover(
+        options.split,
+        exitOutbounds: exitsBuilt.outbounds,
+        xraySocksPort: ports.socks,
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
+        apiExitServerKeys: apiKeys,
+        apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
+        apiToken:
+            _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+        options: tunOptions,
+        abort: aborted,
+      );
+      if (handedOver) {
+        AppLog.i('Туннель пересоздан без снятия блокировки kill switch');
+      }
+    }
+
     // Вот теперь — и только теперь — снимаем старый туннель, вплотную к
     // подъёму нового (см. заголовок метода).
-    if (_tunActive) {
+    if (_tunActive && !handedOver) {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
-      _liveBypassIps = null;
-      _liveTunApiSecret = null;
+      _liveKillSwitchPlan = null;
       _liveBypassIps = null;
       _liveTunApiSecret = null;
       await Future.delayed(const Duration(milliseconds: 600));
@@ -1056,38 +1177,43 @@ class WindowsEngine extends VpnEngineBase {
     //
     // Пишем ВСЕГДА, в том числе `enabled: false`: помощник обязан отличать
     // «блокировать не просили» от «файл потерян от прошлой сессии».
-    await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
-    await _tunRouter.start(
-      options.split,
-      exitOutbounds: exitsBuilt.outbounds,
-      xraySocksPort: ports.socks,
-      xraySocksUser: localInboundUser,
-      xraySocksPassword: localInboundPassword,
-      // ⚠️ Тот же гейт (`_apiExitsActive`/`apiKeys`), что и у `corePorts`
-      // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
-      // проверены — иначе PortCheck и построитель конфига разъедутся.
-      apiExitServerKeys: apiKeys,
-      // ⚠️ Кому outbound собран ТОЛЬКО ради порта. Тег у него в конфиге
-      // есть, но правила раздельного туннелирования его не видят — иначе
-      // правило «через активный сервер» завело бы второе соединение к
-      // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
-      apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
-      apiToken:
-          _apiExitsActive(options.settings) ? options.settings.apiToken : '',
-      options: tunOptions,
-      // Автоподбор стека/MTU может занять время — показываем, что происходит
-      // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
-      onProgress: (m) => setStatus(VpnConnectionState.connecting,
-          message: m, phase: VpnPhase.tunAutotune),
-      // #5 — прекратить перебор, если пользователь отключился за время подбора.
-      abort: aborted,
-    );
+    if (!handedOver) {
+      await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
+      await _tunRouter.start(
+        options.split,
+        exitOutbounds: exitsBuilt.outbounds,
+        xraySocksPort: ports.socks,
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
+        // ⚠️ Тот же гейт (`_apiExitsActive`/`apiKeys`), что и у `corePorts`
+        // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
+        // проверены — иначе PortCheck и построитель конфига разъедутся.
+        apiExitServerKeys: apiKeys,
+        // ⚠️ Кому outbound собран ТОЛЬКО ради порта. Тег у него в конфиге
+        // есть, но правила раздельного туннелирования его не видят — иначе
+        // правило «через активный сервер» завело бы второе соединение к
+        // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
+        apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
+        apiToken:
+            _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+        options: tunOptions,
+        // Автоподбор стека/MTU может занять время — показываем, что
+        // происходит (#8: отдельная фаза → прогресс-тост, не только строка
+        // статуса).
+        onProgress: (m) => setStatus(VpnConnectionState.connecting,
+            message: m, phase: VpnPhase.tunAutotune),
+        // #5 — прекратить перебор, если пользователь отключился за время
+        // подбора.
+        abort: aborted,
+      );
+    }
     _offerScheduledTaskFixIfStale();
     // ⚠️ ЗАПОМИНАЕМ КОНФИГ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ПОДЪЁМА. Поставь мы отметку
     // раньше (рядом с `_tunActive = true`), и после отказа `start` следующая
     // попытка с тем же конфигом «переиспользовала» бы туннель, которого нет:
     // приложение показало бы «Подключено» без единого маршрута.
     _liveTunConfig = wantConfig;
+    _liveKillSwitchPlan = wantPlan;
     _liveBypassIps = tunOptions.serverIps;
     _liveTunApiSecret = singboxApiSecret;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
@@ -1188,6 +1314,7 @@ class WindowsEngine extends VpnEngineBase {
     // Забудь это, и следующий запуск с тем же конфигом решил бы, что
     // пересоздавать нечего, и оставил бы машину без маршрутов.
     _liveTunConfig = null;
+    _liveKillSwitchPlan = null;
     _liveBypassIps = null;
     _liveTunApiSecret = null;
   }
@@ -1363,6 +1490,7 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
+      _liveKillSwitchPlan = null;
       _liveBypassIps = null;
       _liveTunApiSecret = null;
       _liveBypassIps = null;
@@ -1417,6 +1545,7 @@ class WindowsEngine extends VpnEngineBase {
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
+    _liveKillSwitchPlan = null;
     _liveBypassIps = null;
     _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
