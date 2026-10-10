@@ -16,6 +16,7 @@ import '../core/singbox/exit_outbounds.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/settings/split_tunnel_counts.dart';
 import '../core/settings/split_tunnel_text.dart';
+import '../core/settings/split_rule_layout.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
 import '../core/util/server_search.dart';
@@ -266,8 +267,16 @@ class SplitTunnelScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
+                  // Подгруппы по действию (Туннель → Прямо → Блок), внутри
+                  // новые сверху — решение владельца 11.10.2026. Раскладка в
+                  // `split_rule_layout.dart`; порядок на диске не меняется.
                   if (!controller.settings.splitAppsCollapsed)
-                  ...st.apps.map((rule) => Opacity(
+                  ...groupRulesByAction(st.apps, (r) => r.action).expand((g) => [
+                  _groupHeader(context, controller, l,
+                      list: 'apps', action: g.action, count: g.rules.length),
+                  if (!controller.settings.splitCollapsed
+                      .contains(splitGroupKey('apps', g.action)))
+                  ...g.rules.map((rule) => Opacity(
                         opacity: rule.enabled ? 1 : 0.45,
                         child: ListTile(
                           key: ValueKey('app:${rule.path}'),
@@ -342,6 +351,7 @@ class SplitTunnelScreen extends StatelessWidget {
                           onTap: () => _appDialog(context, controller, rule),
                         ),
                       )),
+                  ]),
                   const Divider(),
                   _listHeader(
                     context,
@@ -379,15 +389,26 @@ class SplitTunnelScreen extends StatelessWidget {
                       subtitle: SelText(l.blockNoticeSub,
                           style: Theme.of(context).textTheme.bodySmall),
                     ),
+                  // Те же подгруппы, что у приложений; внутри — дерево
+                  // поддоменов, каждый узел с потомками сворачивается.
                   if (!controller.settings.splitSitesCollapsed)
-                  ..._sortedSites(st.sites).expand((e) => [
-                        // Разделитель между группами: без него соседние сайты
-                        // читаются как один список, и поддомен одного домена
-                        // выглядит принадлежащим предыдущему.
+                  ...groupRulesByAction(st.sites, (x) => x.action).expand((g) => [
+                  _groupHeader(context, controller, l,
+                      list: 'sites', action: g.action, count: g.rules.length),
+                  if (!controller.settings.splitCollapsed
+                      .contains(splitGroupKey('sites', g.action)))
+                  ...siteTreeRows(
+                    [for (final x in st.sites) if (x.action == g.action) x],
+                    collapsed: controller.settings.splitCollapsed.toSet(),
+                  ).expand((e) => [
+                        // Разделитель между корневыми доменами: без него
+                        // соседние сайты читаются как один список, и поддомен
+                        // одного домена выглядит принадлежащим предыдущему.
                         if (e.newGroup)
                           const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16),
-                        _siteTile(context, controller, e.site, e.depth),
+                        _siteTile(context, controller, e),
                       ]),
+                  ]),
                   // ⚠️ Побочный эффект правил по сайтам, о котором нельзя
                   // молчать: приложение глушит HTTP/3 для ВСЕГО трафика, а не
                   // только для перечисленных доменов. Иначе правило по сайту
@@ -782,6 +803,9 @@ class SplitTunnelScreen extends StatelessWidget {
 
   void _removeSite(SettingsController c, SiteRule site) {
     c.update((s) => s.copyWith(
+        // Пометка «свёрнут» удалённого узла больше ни к чему не относится.
+        splitCollapsed:
+            s.splitCollapsed.where((k) => k != siteNodeKey(site)).toList(),
         splitTunnel: s.splitTunnel.copyWith(
             sites: s.splitTunnel.sites
                 .where((x) => !_sameSite(x, site))
@@ -847,96 +871,46 @@ class SplitTunnelScreen extends StatelessWidget {
                 .toList())));
   }
 
-  /// Упорядочивает сайты для показа деревом.
-  ///
-  /// Группируем по «корневому» домену (`example.com`), внутри группы корень
-  /// идёт первым, поддомены — под ним с отступом. [newGroup] помечает первую
-  /// строку каждой группы: по ней рисуется разделитель, иначе соседние группы
-  /// сливаются в один список.
-  ///
-  /// ⚠️ ГЛУБИНА СЧИТАЕТСЯ ПО РЕАЛЬНО ПРИСУТСТВУЮЩИМ ПРЕДКАМ, А НЕ ПО
-  /// ВЫЧИСЛЕННОМУ КОРНЮ. Раньше отступ брался как «число лишних уровней
-  /// относительно `baseDomain`», и строка получала его даже тогда, когда
-  /// родителя в списке НЕТ. У владельца это выглядело так: `xtls.github.com`
-  /// стоял с отступом сразу под `dnsleaktest.com` — то есть читался как его
-  /// поддомен, хотя не имеет к нему отношения вовсе. Ошибка чисто
-  /// отображательная (маршруты строятся отдельно), но она заставляет искать
-  /// поломку в конфиге, которой там нет.
-  /// Раскладка дерева для теста: логика чистая, а поднимать ради неё виджеты
-  /// значило бы проверять Flutter вместо своего кода.
-  @visibleForTesting
-  static List<({SiteRule site, int depth, bool newGroup})> debugSortedSites(
-          List<SiteRule> sites) =>
-      _sortedSites(sites);
-
-  static List<({SiteRule site, int depth, bool newGroup})> _sortedSites(
-      List<SiteRule> sites) {
-    // ⚠️ СОРТИРУЕМ ПО ПЕРЕВЁРНУТЫМ МЕТКАМ, А НЕ ПО ПАРЕ «КОРЕНЬ + ЧИСЛО ТОЧЕК».
-    //
-    // `a.b.example.com` → `[com, example, b, a]`, дальше обычное лексикографи-
-    // ческое сравнение. Это честный обход дерева сверху вниз: предок по
-    // построению оказывается перед любым своим потомком, а ветви не
-    // перемешиваются.
-    //
-    // Прежний порядок «сначала baseDomain, потом число меток» давал два
-    // разных дефекта, и оба нашлись проверкой:
-    //  1. голый публичный суффикс в списке (`co.uk` рядом с `bbc.co.uk`)
-    //     уезжал ПОД своего потомка: у них разный `baseDomain`, и ключи
-    //     сравнивались как чужие;
-    //  2. внутри группы сортировка по ЧИСЛУ меток — это обход в ширину:
-    //     `x.a.example.com` вставал после `b.example.com`, то есть прилипал
-    //     отступом к чужому соседу. Ровно тот класс ошибки, ради которого
-    //     правка и делалась.
-    // Регистр учитываем ЗДЕСЬ ЖЕ: `depthOf` его нормализует, и компаратор
-    // обязан вести себя так же, иначе `Example.COM` и `sub.example.com`
-    // разъезжаются.
-    List<String> key(SiteRule s) =>
-        s.domain.toLowerCase().split('.').reversed.toList();
-    final ordered = [...sites];
-    ordered.sort((a, b) {
-      final ka = key(a), kb = key(b);
-      for (var i = 0; i < ka.length && i < kb.length; i++) {
-        final c = ka[i].compareTo(kb[i]);
-        if (c != 0) return c;
-      }
-      if (ka.length != kb.length) return ka.length.compareTo(kb.length);
-      return (a.port ?? 0).compareTo(b.port ?? 0);
-    });
-
-    final present = ordered.map((s) => s.domain.toLowerCase()).toSet();
-    // Сколько предков этого домена реально есть в списке: столько отступов и
-    // рисуем. `a.b.example.com` при наличии только `example.com` получит 1, а
-    // не 2 — промежуточного уровня в списке нет, и «ступенька» в пустоту
-    // выглядела бы как пропущенная строка.
-    int depthOf(String domain) {
-      final d = domain.toLowerCase();
-      var n = 0;
-      final parts = d.split('.');
-      for (var i = 1; i < parts.length; i++) {
-        if (present.contains(parts.sublist(i).join('.'))) n++;
-      }
-      return n;
-    }
-
-    String? prevBase;
-    final out = <({SiteRule site, int depth, bool newGroup})>[];
-    for (final s in ordered) {
-      final base = baseDomain(s.domain);
-      out.add((
-        site: s,
-        depth: depthOf(s.domain),
-        newGroup: prevBase != null && prevBase != base,
-      ));
-      prevBase = base;
-    }
-    return out;
+  /// Заголовок подгруппы «Туннель / Прямо / Блок» со счётчиком и шевроном.
+  Widget _groupHeader(BuildContext context, SettingsController controller,
+      AppLocalizations l,
+      {required String list, required AppAction action, required int count}) {
+    final key = splitGroupKey(list, action);
+    final collapsed = controller.settings.splitCollapsed.contains(key);
+    void toggle() => controller.update((s) => s.copyWith(
+        splitCollapsed: toggleCollapsedKey(s.splitCollapsed, key)));
+    return InkWell(
+      key: ValueKey('group:$key'),
+      onTap: toggle,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 4, 0),
+        child: Row(children: [
+          _ActionChip(action: action),
+          const SizedBox(width: 8),
+          Text('$count',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).hintColor)),
+          const Spacer(),
+          IconButton(
+            tooltip: collapsed ? l.splitExpandGroup : l.splitCollapseGroup,
+            icon: Icon(collapsed ? Icons.expand_more : Icons.expand_less),
+            onPressed: toggle,
+          ),
+        ]),
+      ),
+    );
   }
 
-  Widget _siteTile(BuildContext context, SettingsController controller,
-      SiteRule site, int depth) {
+  Widget _siteTile(
+      BuildContext context, SettingsController controller, SiteTreeRow row) {
     final state = context.read<AppState>();
     final l = AppLocalizations.of(context);
+    final site = row.site;
+    final depth = row.depth;
     final indent = 16.0 + depth * 22.0;
+    final nodeKey = siteNodeKey(site);
     return ListTile(
       key: ValueKey('site:${site.domain}|${site.port ?? ''}'),
       contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
@@ -944,6 +918,30 @@ class SplitTunnelScreen extends StatelessWidget {
         if (depth > 0)
           Icon(Icons.subdirectory_arrow_right,
               size: 18, color: Theme.of(context).disabledColor),
+        // Узел с поддоменами сворачивается; свёрнутый показывает, сколько
+        // строк спрятано, иначе его не отличить от одиночного сайта.
+        if (row.descendants > 0)
+          InkWell(
+            key: ValueKey('toggle:$nodeKey'),
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => controller.update((s) => s.copyWith(
+                splitCollapsed: toggleCollapsedKey(s.splitCollapsed, nodeKey))),
+            child: Tooltip(
+              message: row.collapsed
+                  ? l.splitExpandSubdomains
+                  : l.splitCollapseSubdomains,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(end: 4),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(row.collapsed ? Icons.chevron_right : Icons.expand_more,
+                      size: 20),
+                  if (row.collapsed)
+                    Text('+${row.descendants}',
+                        style: Theme.of(context).textTheme.bodySmall),
+                ]),
+              ),
+            ),
+          ),
         // ⚠️ Открытый замок — ровно то же предупреждение, что показывает
         // браузер. `http://` означает, что провайдер видит соединение целиком:
         // и адрес страницы, и параметры запроса, и содержимое. Правило от

@@ -570,6 +570,13 @@ class AppSettings {
   /// порознь, и человек чаще всего прячет именно длинный из двух.
   final bool splitSitesCollapsed;
 
+  /// Свёрнутые части списков раздельного туннелирования: подгруппы по
+  /// действию (`apps:tunnel`, `sites:block`) и узлы дерева сайтов
+  /// (`site:example.com|443`) — ключи из `split_rule_layout.dart`.
+  /// Хранится на диске по той же причине, что [splitAppsCollapsed]; в
+  /// [reconnectReasons] не входит — на конфиг ядра не влияет.
+  final List<String> splitCollapsed;
+
   /// Отказывать в QUIC (UDP:443).
   ///
   /// Доменные правила применяются к ИМЕНИ сайта, а имя берётся из сниффинга.
@@ -937,6 +944,7 @@ class AppSettings {
     this.compactNotification = false,
     this.splitAppsCollapsed = false,
     this.splitSitesCollapsed = false,
+    this.splitCollapsed = const [],
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -1075,6 +1083,7 @@ class AppSettings {
     bool? compactNotification,
     bool? splitAppsCollapsed,
     bool? splitSitesCollapsed,
+    List<String>? splitCollapsed,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -1166,6 +1175,7 @@ class AppSettings {
       compactNotification: compactNotification ?? this.compactNotification,
       splitAppsCollapsed: splitAppsCollapsed ?? this.splitAppsCollapsed,
       splitSitesCollapsed: splitSitesCollapsed ?? this.splitSitesCollapsed,
+      splitCollapsed: splitCollapsed ?? this.splitCollapsed,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -1260,6 +1270,7 @@ class AppSettings {
         'compactNotification': compactNotification,
         'splitAppsCollapsed': splitAppsCollapsed,
         'splitSitesCollapsed': splitSitesCollapsed,
+        'splitCollapsed': splitCollapsed,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -1467,6 +1478,9 @@ class AppSettings {
             j['splitAppsCollapsed'] as bool? ?? defaults.splitAppsCollapsed,
         splitSitesCollapsed:
             j['splitSitesCollapsed'] as bool? ?? defaults.splitSitesCollapsed,
+        splitCollapsed: ((j['splitCollapsed'] as List?) ?? const [])
+            .whereType<String>()
+            .toList(),
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,

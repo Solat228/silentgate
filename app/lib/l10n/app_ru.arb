@@ -2055,5 +2055,9 @@
     }
   },
   "splitExpandList": "Развернуть список",
-  "splitCollapseList": "Свернуть список"
+  "splitCollapseList": "Свернуть список",
+  "splitExpandGroup": "Развернуть группу",
+  "splitCollapseGroup": "Свернуть группу",
+  "splitExpandSubdomains": "Показать поддомены",
+  "splitCollapseSubdomains": "Скрыть поддомены"
 }

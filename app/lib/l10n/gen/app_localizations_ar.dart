@@ -3858,4 +3858,16 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'طي القائمة';
+
+  @override
+  String get splitExpandGroup => 'توسيع المجموعة';
+
+  @override
+  String get splitCollapseGroup => 'طي المجموعة';
+
+  @override
+  String get splitExpandSubdomains => 'إظهار النطاقات الفرعية';
+
+  @override
+  String get splitCollapseSubdomains => 'إخفاء النطاقات الفرعية';
 }

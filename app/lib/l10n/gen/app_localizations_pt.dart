@@ -3913,4 +3913,16 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Recolher a lista';
+
+  @override
+  String get splitExpandGroup => 'Expandir o grupo';
+
+  @override
+  String get splitCollapseGroup => 'Recolher o grupo';
+
+  @override
+  String get splitExpandSubdomains => 'Mostrar subdomínios';
+
+  @override
+  String get splitCollapseSubdomains => 'Ocultar subdomínios';
 }

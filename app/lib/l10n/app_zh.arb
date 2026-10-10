@@ -1476,5 +1476,9 @@
     }
   },
   "splitExpandList": "展开列表",
-  "splitCollapseList": "收起列表"
+  "splitCollapseList": "收起列表",
+  "splitExpandGroup": "展开分组",
+  "splitCollapseGroup": "收起分组",
+  "splitExpandSubdomains": "显示子域名",
+  "splitCollapseSubdomains": "隐藏子域名"
 }

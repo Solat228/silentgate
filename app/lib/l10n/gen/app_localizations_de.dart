@@ -3909,4 +3909,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Liste einklappen';
+
+  @override
+  String get splitExpandGroup => 'Gruppe aufklappen';
+
+  @override
+  String get splitCollapseGroup => 'Gruppe zuklappen';
+
+  @override
+  String get splitExpandSubdomains => 'Subdomains anzeigen';
+
+  @override
+  String get splitCollapseSubdomains => 'Subdomains ausblenden';
 }

@@ -1476,5 +1476,9 @@
     }
   },
   "splitExpandList": "باز کردن فهرست",
-  "splitCollapseList": "جمع کردن فهرست"
+  "splitCollapseList": "جمع کردن فهرست",
+  "splitExpandGroup": "باز کردن گروه",
+  "splitCollapseGroup": "بستن گروه",
+  "splitExpandSubdomains": "نمایش زیردامنه‌ها",
+  "splitCollapseSubdomains": "پنهان کردن زیردامنه‌ها"
 }

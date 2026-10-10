@@ -1530,5 +1530,9 @@
     }
   },
   "splitExpandList": "Expandir la lista",
-  "splitCollapseList": "Contraer la lista"
+  "splitCollapseList": "Contraer la lista",
+  "splitExpandGroup": "Expandir el grupo",
+  "splitCollapseGroup": "Contraer el grupo",
+  "splitExpandSubdomains": "Mostrar subdominios",
+  "splitCollapseSubdomains": "Ocultar subdominios"
 }

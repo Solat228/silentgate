@@ -6617,6 +6617,30 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Свернуть список'**
   String get splitCollapseList;
+
+  /// No description provided for @splitExpandGroup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть группу'**
+  String get splitExpandGroup;
+
+  /// No description provided for @splitCollapseGroup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть группу'**
+  String get splitCollapseGroup;
+
+  /// No description provided for @splitExpandSubdomains.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать поддомены'**
+  String get splitExpandSubdomains;
+
+  /// No description provided for @splitCollapseSubdomains.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть поддомены'**
+  String get splitCollapseSubdomains;
 }
 
 class _AppLocalizationsDelegate

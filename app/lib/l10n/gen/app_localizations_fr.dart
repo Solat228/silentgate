@@ -3921,4 +3921,16 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Réduire la liste';
+
+  @override
+  String get splitExpandGroup => 'Développer le groupe';
+
+  @override
+  String get splitCollapseGroup => 'Réduire le groupe';
+
+  @override
+  String get splitExpandSubdomains => 'Afficher les sous-domaines';
+
+  @override
+  String get splitCollapseSubdomains => 'Masquer les sous-domaines';
 }

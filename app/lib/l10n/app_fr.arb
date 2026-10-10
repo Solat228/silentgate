@@ -1476,5 +1476,9 @@
     }
   },
   "splitExpandList": "Développer la liste",
-  "splitCollapseList": "Réduire la liste"
+  "splitCollapseList": "Réduire la liste",
+  "splitExpandGroup": "Développer le groupe",
+  "splitCollapseGroup": "Réduire le groupe",
+  "splitExpandSubdomains": "Afficher les sous-domaines",
+  "splitCollapseSubdomains": "Masquer les sous-domaines"
 }

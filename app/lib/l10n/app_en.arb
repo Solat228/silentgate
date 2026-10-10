@@ -1645,5 +1645,9 @@
     }
   },
   "splitExpandList": "Expand the list",
-  "splitCollapseList": "Collapse the list"
+  "splitCollapseList": "Collapse the list",
+  "splitExpandGroup": "Expand the group",
+  "splitCollapseGroup": "Collapse the group",
+  "splitExpandSubdomains": "Show subdomains",
+  "splitCollapseSubdomains": "Hide subdomains"
 }

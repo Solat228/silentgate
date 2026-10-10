@@ -3716,4 +3716,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitCollapseList => '收起列表';
+
+  @override
+  String get splitExpandGroup => '展开分组';
+
+  @override
+  String get splitCollapseGroup => '收起分组';
+
+  @override
+  String get splitExpandSubdomains => '显示子域名';
+
+  @override
+  String get splitCollapseSubdomains => '隐藏子域名';
 }

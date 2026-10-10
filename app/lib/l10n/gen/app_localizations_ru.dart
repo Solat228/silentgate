@@ -3875,4 +3875,16 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Свернуть список';
+
+  @override
+  String get splitExpandGroup => 'Развернуть группу';
+
+  @override
+  String get splitCollapseGroup => 'Свернуть группу';
+
+  @override
+  String get splitExpandSubdomains => 'Показать поддомены';
+
+  @override
+  String get splitCollapseSubdomains => 'Скрыть поддомены';
 }

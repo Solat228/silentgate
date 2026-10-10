@@ -1476,5 +1476,9 @@
     }
   },
   "splitExpandList": "توسيع القائمة",
-  "splitCollapseList": "طي القائمة"
+  "splitCollapseList": "طي القائمة",
+  "splitExpandGroup": "توسيع المجموعة",
+  "splitCollapseGroup": "طي المجموعة",
+  "splitExpandSubdomains": "إظهار النطاقات الفرعية",
+  "splitCollapseSubdomains": "إخفاء النطاقات الفرعية"
 }

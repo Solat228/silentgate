@@ -1476,5 +1476,9 @@
     }
   },
   "splitExpandList": "Listeyi genişlet",
-  "splitCollapseList": "Listeyi daralt"
+  "splitCollapseList": "Listeyi daralt",
+  "splitExpandGroup": "Grubu genişlet",
+  "splitCollapseGroup": "Grubu daralt",
+  "splitExpandSubdomains": "Alt alan adlarını göster",
+  "splitCollapseSubdomains": "Alt alan adlarını gizle"
 }

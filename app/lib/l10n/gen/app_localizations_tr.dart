@@ -3876,4 +3876,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Listeyi daralt';
+
+  @override
+  String get splitExpandGroup => 'Grubu genişlet';
+
+  @override
+  String get splitCollapseGroup => 'Grubu daralt';
+
+  @override
+  String get splitExpandSubdomains => 'Alt alan adlarını göster';
+
+  @override
+  String get splitCollapseSubdomains => 'Alt alan adlarını gizle';
 }

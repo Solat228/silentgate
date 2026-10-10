@@ -97,14 +97,14 @@ void main() {
 
     test('приложения: заголовок → кнопки добавления → список', () {
       expect(at('title: l.splitAppsHeader'), lessThan(at('_appTools(')));
-      expect(at('_appTools('), lessThan(at('...st.apps.map(')));
+      expect(at('_appTools('), lessThan(at('...g.rules.map(')));
     });
 
     test('сайты: заголовок → поле → экспорт/импорт → список', () {
       final header = at('title: l.splitSitesHeader');
       final field = at('_AddSiteField(controller: controller)');
       final tools = at('_siteTools(');
-      final list = at('..._sortedSites(st.sites)');
+      final list = at('...siteTreeRows(');
       expect(header, lessThan(field));
       expect(field, lessThan(tools));
       expect(tools, lessThan(list));

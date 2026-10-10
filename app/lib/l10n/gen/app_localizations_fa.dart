@@ -3858,4 +3858,16 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'جمع کردن فهرست';
+
+  @override
+  String get splitExpandGroup => 'باز کردن گروه';
+
+  @override
+  String get splitCollapseGroup => 'بستن گروه';
+
+  @override
+  String get splitExpandSubdomains => 'نمایش زیردامنه‌ها';
+
+  @override
+  String get splitCollapseSubdomains => 'پنهان کردن زیردامنه‌ها';
 }

@@ -3915,4 +3915,16 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get splitCollapseList => 'Contraer la lista';
+
+  @override
+  String get splitExpandGroup => 'Expandir el grupo';
+
+  @override
+  String get splitCollapseGroup => 'Contraer el grupo';
+
+  @override
+  String get splitExpandSubdomains => 'Mostrar subdominios';
+
+  @override
+  String get splitCollapseSubdomains => 'Ocultar subdominios';
 }
