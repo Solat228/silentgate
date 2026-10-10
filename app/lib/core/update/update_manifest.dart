@@ -141,6 +141,50 @@ String normalizeVersion(String v) {
   return t;
 }
 
+/// Работает ли сейчас та самая версия [target], которую ставил установщик.
+///
+/// ⚠️ НЕ СРАВНЕНИЕ СТРОК. Ставится версия тега (`1.15.0-beta.1`), а сборка
+/// знает о себе меньше: номера беты в ней нет вовсе (`1.15.0-beta` у сборки с
+/// `SILENTGATE_CHANNEL=beta`), а без этого флага — и самого слова «бета»
+/// (`1.15.0`). Строковое `==` объявляло каждую установку беты проваленной:
+/// 1.14.0 → 1.15.0-beta.1 прошла успешно, а человек получил карточку
+/// «Установка не завершилась» с журналом, где написано «succeeded».
+///
+/// Решают три числа. Номера бет сравниваются, только когда они есть у ОБЕИХ
+/// сторон — тот же принцип, что в `AppUpdate.isNewer`.
+bool sameRelease(String target, String current) {
+  final a = _versionNumbers(_versionCore(target));
+  final b = _versionNumbers(_versionCore(current));
+  for (var i = 0; i < 3; i++) {
+    if ((i < a.length ? a[i] : 0) != (i < b.length ? b[i] : 0)) return false;
+  }
+  final pa = _versionNumbers(_versionPre(target));
+  final pb = _versionNumbers(_versionPre(current));
+  if (pa.isEmpty || pb.isEmpty) return true;
+  for (var i = 0; i < pa.length || i < pb.length; i++) {
+    if ((i < pa.length ? pa[i] : 0) != (i < pb.length ? pb[i] : 0)) return false;
+  }
+  return true;
+}
+
+String _versionCore(String v) {
+  final t = normalizeVersion(v);
+  final dash = t.indexOf('-');
+  return dash < 0 ? t : t.substring(0, dash);
+}
+
+String _versionPre(String v) {
+  final t = normalizeVersion(v);
+  final dash = t.indexOf('-');
+  return dash < 0 ? '' : t.substring(dash + 1);
+}
+
+List<int> _versionNumbers(String v) => v
+    .split(RegExp(r'[^0-9]+'))
+    .where((p) => p.isNotEmpty)
+    .map((p) => int.tryParse(p) ?? 0)
+    .toList();
+
 final _hex64 = RegExp(r'^[0-9a-f]{64}$');
 
 /// Подходит ли [m] для установки [assetName] версии [expectedVersion].

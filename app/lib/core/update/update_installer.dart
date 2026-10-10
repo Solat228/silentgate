@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../platform/app_log.dart';
 import '../platform/app_paths.dart';
+import 'update_manifest.dart';
 
 /// УСТАНОВЩИК ВНУТРИ ПРИЛОЖЕНИЯ — платформенно-независимая часть.
 ///
@@ -139,7 +140,17 @@ class PendingResult {
   /// если журнал существует.
   final String? logTail;
 
-  const PendingResult({required this.outcome, required this.pending, this.logTail});
+  /// Версия, которая работает после перезапуска, — то, что «осталось» при
+  /// [PendingOutcome.failed]. ⚠️ Не [PendingInstall.version]: та — версия,
+  /// которую СТАВИЛИ, и карточка «Версия осталась <ставили>» врала вдвойне.
+  final String? currentVersion;
+
+  const PendingResult({
+    required this.outcome,
+    required this.pending,
+    this.logTail,
+    this.currentVersion,
+  });
 }
 
 /// Отказ запустить установку. Сообщение — для журнала и карточки.
@@ -256,7 +267,7 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
       return null;
     }
 
-    if (pending.version == currentVersion) {
+    if (sameRelease(pending.version, currentVersion)) {
       // Установщик своё дело сделал — его файлы больше не нужны.
       _deleteQuietly(File(pending.exePath));
       _deleteQuietly(File(pending.logPath));
@@ -281,7 +292,12 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
     }
     AppLog.e('Обновление: установка ${pending.version} не завершилась '
         '(текущая версия $currentVersion)');
-    return PendingResult(outcome: PendingOutcome.failed, pending: pending, logTail: tail);
+    return PendingResult(
+      outcome: PendingOutcome.failed,
+      pending: pending,
+      logTail: tail,
+      currentVersion: currentVersion,
+    );
   }
 
   @override

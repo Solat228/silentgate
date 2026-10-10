@@ -407,6 +407,8 @@ void main() {
         final r = await make().reconcileAfterStart(currentVersion: '1.14.0');
 
         expect(r?.outcome, PendingOutcome.failed);
+        expect(r?.currentVersion, '1.14.0',
+            reason: 'карточка пишет «Версия осталась» — работающую, а не ставившуюся');
         expect(r?.logTail, contains('Отказ: SilentGate подключён к VPN.'));
         expect(r?.logTail, isNot(contains('\uFEFF')), reason: 'BOM в хвосте');
         expect(logF.existsSync(), isTrue, reason: 'журнал нужен кнопке «Показать журнал»');
@@ -428,6 +430,27 @@ void main() {
         final r = await make(clock: () => now).reconcileAfterStart(currentVersion: '1.14.0');
         expect(r?.outcome, PendingOutcome.stale);
         expect(pendingFile().existsSync(), isFalse);
+      });
+
+      // ⚠️ Случай владельца 11.10.2026: 1.14.0 → 1.15.0-beta.1 установилась
+      // («Installation process succeeded»), а строковое сравнение с версией
+      // сборки (`1.15.0`, флаг канала не задан) объявило её проваленной.
+      for (final current in ['1.15.0', '1.15.0-beta']) {
+        test('бета по тегу 1.15.0-beta.1, сборка знает себя как $current → updated',
+            () async {
+          await writePending(version: '1.15.0-beta.1', startedAt: DateTime.now().toUtc());
+          final logF = File('${staging.path}${Platform.pathSeparator}install-1.15.0-beta.1.log')
+            ..writeAsStringSync('Installation process succeeded.');
+          final r = await make().reconcileAfterStart(currentVersion: current);
+          expect(r?.outcome, PendingOutcome.updated);
+          expect(logF.existsSync(), isFalse);
+        });
+      }
+
+      test('бета не встала (работает 1.14.0) → failed', () async {
+        await writePending(version: '1.15.0-beta.1', startedAt: DateTime.now().toUtc());
+        final r = await make().reconcileAfterStart(currentVersion: '1.14.0');
+        expect(r?.outcome, PendingOutcome.failed);
       });
 
       test('версия совпала спустя сутки — всё равно updated, а не stale', () async {

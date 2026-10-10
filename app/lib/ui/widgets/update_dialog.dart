@@ -343,8 +343,9 @@ Future<void> showInstallLog(BuildContext context, PendingResult result) {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(l.updatesInstallFailedBody(
-                  normalizeVersion(result.pending.version))),
+              // Версия, что ОСТАЛАСЬ, — работающая, а не та, которую ставили.
+              Text(l.updatesInstallFailedBody(normalizeVersion(
+                  result.currentVersion ?? AppUpdate.installedVersion))),
               const SizedBox(height: 8),
               // Журнал — технический текст: слева направо в любой локали,
               // моноширинный, выделяемый (его пересылают в поддержку).

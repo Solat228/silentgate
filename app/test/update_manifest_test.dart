@@ -279,4 +279,31 @@ void main() {
       expect(normalizeVersion('vv1'), 'v1');
     });
   });
+
+  group('sameRelease — итог установки, а не сравнение строк', () {
+    test('бета по тегу против того, что знает о себе сборка', () {
+      // Сборка без SILENTGATE_CHANNEL и сборка беты — номера беты не знает ни одна.
+      expect(sameRelease('1.15.0-beta.1', '1.15.0'), isTrue);
+      expect(sameRelease('1.15.0-beta.1', '1.15.0-beta'), isTrue);
+      expect(sameRelease('v1.15.0-beta.1', '1.15.0'), isTrue);
+    });
+
+    test('стабильная и точное совпадение', () {
+      expect(sameRelease('1.14.1', '1.14.1'), isTrue);
+      expect(sameRelease('v1.14.1', '1.14.1'), isTrue);
+      expect(sameRelease('1.14', '1.14.0'), isTrue);
+    });
+
+    test('другие числа — не та версия', () {
+      expect(sameRelease('1.15.0-beta.1', '1.14.0'), isFalse);
+      expect(sameRelease('1.14.1', '1.14.0'), isFalse);
+      expect(sameRelease('1.14.10', '1.14.1'), isFalse);
+      expect(sameRelease('2.0.0', '1.0.0'), isFalse);
+    });
+
+    test('номера бет решают, только когда известны обоим', () {
+      expect(sameRelease('1.15.0-beta.2', '1.15.0-beta.1'), isFalse);
+      expect(sameRelease('1.15.0-beta.2', '1.15.0-beta.2'), isTrue);
+    });
+  });
 }
