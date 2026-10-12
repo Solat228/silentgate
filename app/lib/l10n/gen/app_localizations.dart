@@ -6096,6 +6096,30 @@ abstract class AppLocalizations {
   /// **'Загрузка… {percent}%'**
   String updatesStatusDownloading(int percent);
 
+  /// No description provided for @updatesDownloadedOf.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка {done} из {total} МБ'**
+  String updatesDownloadedOf(String done, String total);
+
+  /// No description provided for @updatesDownloadLeft.
+  ///
+  /// In ru, this message translates to:
+  /// **'осталось {left} МБ'**
+  String updatesDownloadLeft(String left);
+
+  /// No description provided for @updatesDownloadEtaSec.
+  ///
+  /// In ru, this message translates to:
+  /// **'~{n} с'**
+  String updatesDownloadEtaSec(int n);
+
+  /// No description provided for @updatesDownloadEtaMin.
+  ///
+  /// In ru, this message translates to:
+  /// **'~{n} мин'**
+  String updatesDownloadEtaMin(int n);
+
   /// No description provided for @updatesStatusVerifying.
   ///
   /// In ru, this message translates to:

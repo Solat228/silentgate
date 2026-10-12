@@ -110,6 +110,9 @@ void main() {
       await t.pump();
       expect(h.controller.phase, UpdatePhase.downloading);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      // Просьба владельца 12.10.2026: байты и остаток, а не один процент.
+      expect(statusText(t), contains(ru().updatesDownloadLeft('0,0')),
+          reason: 'на экране «сколько осталось», а не только процент');
       expect(find.byKey(const Key('updatesCancelButton')), findsOneWidget);
       expect(find.byKey(const Key('updatesCheckButton')), findsOneWidget);
       expect(

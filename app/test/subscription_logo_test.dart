@@ -398,5 +398,17 @@ void main() {
       expect(m.failedBefore('https://a/1.jpg'), isFalse);
       expect(m.noteFailure('https://a/1.jpg'), isTrue);
     });
+
+    test('«адрес не найден» пишется раз до первой удачи', () {
+      // Журнал владельца 03–11.10.2026: 81 одинаковая строка «временно не
+      // найден» — по одной на каждое обновление подписки.
+      final m = LogoFailureMemo();
+      expect(m.noteNotFound(), isTrue);
+      expect(m.noteNotFound(), isFalse);
+      expect(m.noteNotFound(), isFalse);
+      m.noteFound();
+      expect(m.noteNotFound(), isTrue,
+          reason: 'после удачи новый провал снова виден');
+    });
   });
 }

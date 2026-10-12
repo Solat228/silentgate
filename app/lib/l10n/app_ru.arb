@@ -1823,6 +1823,41 @@
       }
     }
   },
+  "updatesDownloadedOf": "Загрузка {done} из {total} МБ",
+  "@updatesDownloadedOf": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesDownloadLeft": "осталось {left} МБ",
+  "@updatesDownloadLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesDownloadEtaSec": "~{n} с",
+  "@updatesDownloadEtaSec": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "updatesDownloadEtaMin": "~{n} мин",
+  "@updatesDownloadEtaMin": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
   "updatesStatusVerifying": "Проверка подписи…",
   "updatesStatusReady": "Готово к установке",
   "updatesStatusInstalling": "Установка…",

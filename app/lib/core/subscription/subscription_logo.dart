@@ -414,4 +414,16 @@ class LogoFailureMemo {
   bool failedBefore(String url) => _failed.contains(url);
 
   void noteSuccess(String url) => _failed.remove(url);
+
+  /// Адрес логотипа не нашёлся вовсе (страница панели не отдала брендинг).
+  ///
+  /// Тот же шум, что и с отказами закачки: в журнале владельца за неделю — 81
+  /// одинаковая строка «временно не найден», по одной на каждое обновление
+  /// подписки. `true` — первый такой случай за запуск.
+  bool noteNotFound() => _notFound ? false : (_notFound = true);
+
+  /// Адрес снова нашёлся — следующий провал опять стоит записать.
+  void noteFound() => _notFound = false;
+
+  bool _notFound = false;
 }

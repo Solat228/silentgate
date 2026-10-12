@@ -3586,6 +3586,26 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'Descargando $done de $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return 'quedan $left MB';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n s';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n min';
+  }
+
+  @override
   String get updatesStatusVerifying => 'Verificando la firma…';
 
   @override

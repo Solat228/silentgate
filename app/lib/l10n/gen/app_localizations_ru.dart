@@ -3551,6 +3551,26 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'Загрузка $done из $total МБ';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return 'осталось $left МБ';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n с';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n мин';
+  }
+
+  @override
   String get updatesStatusVerifying => 'Проверка подписи…';
 
   @override

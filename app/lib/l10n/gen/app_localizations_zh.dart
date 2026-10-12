@@ -3415,6 +3415,26 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return '正在下载 $done / $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '剩余 $left MB';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '约 $n 秒';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '约 $n 分钟';
+  }
+
+  @override
   String get updatesStatusVerifying => '正在验证签名…';
 
   @override

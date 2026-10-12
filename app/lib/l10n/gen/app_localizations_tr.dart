@@ -3554,6 +3554,26 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'İndiriliyor: $done / $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '$left MB kaldı';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n sn';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n dk';
+  }
+
+  @override
   String get updatesStatusVerifying => 'İmza doğrulanıyor…';
 
   @override

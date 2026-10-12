@@ -1431,8 +1431,9 @@ abstract class VpnEngineBase implements VpnEngine {
     }
 
     final errors = <String, Object>{};
-    final resolved = await _resolveHosts(
+    final probed = await _resolveWithProbe(
       toLookup,
+      _resolveCache.keys.toSet(),
       (host) async {
         final found =
             await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
@@ -1440,9 +1441,22 @@ abstract class VpnEngineBase implements VpnEngine {
       },
       onError: (host, e) => errors[host] = e,
     );
+    final resolved = probed.resolved;
+    if (probed.skipped.isNotEmpty) {
+      for (final host in probed.skipped) {
+        out[host] = _resolveCache[host]!;
+      }
+      // Одна строка вместо десятков «Не удалось отрезолвить … (Timeout 5 сек)»:
+      // спрашивать по одному резолвер, который молчит, — это и было время
+      // восстановления.
+      AppLog.w('DNS не ответил за ${dnsProbeTimeout.inSeconds} с — адреса '
+          '${probed.skipped.length} серверов беру из кэша, не дожидаясь '
+          'таймаутов (так бывает, пока kill switch держит трафик)');
+    }
 
     var changed = false;
     for (final host in toLookup) {
+      if (probed.skipped.contains(host)) continue;
       final ips = resolved[host] ?? const <String>[];
       if (ips.isNotEmpty) {
         out[host] = ips;
@@ -1535,6 +1549,82 @@ abstract class VpnEngineBase implements VpnEngine {
     await Future.wait([for (var i = 0; i < n; i++) worker()]);
     return out;
   }
+
+  /// Сколько ждём ПРОБНЫЙ запрос, прежде чем решить, что DNS молчит.
+  static const dnsProbeTimeout = Duration(seconds: 2);
+
+  /// Резолв с пробой: сначала ОДНО имя, у которого есть адрес в кэше, и только
+  /// потом остальные.
+  ///
+  /// ⚠️ ЗАЧЕМ — ЖУРНАЛ ВЛАДЕЛЬЦА 07.10.2026. Kill switch держал трафик 28 с, из
+  /// них ~27 с ушло на ожидание DNS: два прохода резолва по 30 имён (по 5 с на
+  /// каждую восьмёрку) плюс перебор DNS адаптера. Сам сервер ответил сразу,
+  /// как только до него дошла очередь. Параллельность (см. [_resolveHosts])
+  /// время сократила, но не убрала: пока захват стоит, а ядра нет, DNS не
+  /// отвечает В ПРИНЦИПЕ, и каждая восьмёрка честно ждёт свой таймаут.
+  ///
+  /// Проба различает «DNS молчит» и «DNS ответил». Молчит (именно таймаут) —
+  /// имена, для которых есть прошлый адрес, в [skipped]: спрашивать их
+  /// бесполезно, вызывающий берёт адрес из кэша. Имена без кэша спрашиваются
+  /// как обычно — других источников у них нет. Ответил (адресом или ошибкой
+  /// вроде «нет такого имени») — резолв идёт как прежде.
+  ///
+  /// Цена при живом DNS — один лишний последовательный запрос (десятки мс).
+  static Future<({Map<String, List<String>> resolved, Set<String> skipped})>
+      _resolveWithProbe(
+    List<String> hosts,
+    Set<String> cached,
+    Future<List<String>> Function(String host) lookup, {
+    void Function(String host, Object error)? onError,
+    Duration probeTimeout = dnsProbeTimeout,
+  }) async {
+    final withCache = [
+      for (final h in hosts)
+        if (cached.contains(h)) h,
+    ];
+    // Одно имя проба не ускорит: его и так спросят один раз.
+    if (withCache.length < 2) {
+      return (
+        resolved: await _resolveHosts(hosts, lookup, onError: onError),
+        skipped: <String>{},
+      );
+    }
+    final probe = withCache.first;
+    final resolved = <String, List<String>>{};
+    var silent = false;
+    try {
+      resolved[probe] = await lookup(probe).timeout(probeTimeout);
+    } on TimeoutException catch (e) {
+      silent = true;
+      onError?.call(probe, e);
+    } catch (e) {
+      // Ошибка — это тоже ответ: резолвер жив, просто не знает имени.
+      onError?.call(probe, e);
+    }
+    final skipped = silent ? withCache.toSet() : <String>{};
+    final rest = [
+      for (final h in hosts)
+        if (h != probe && !skipped.contains(h)) h,
+    ];
+    final others = await _resolveHosts(rest, lookup, onError: onError);
+    // Порядок ключей — как во входном списке (см. [_resolveHosts]).
+    final out = <String, List<String>>{};
+    for (final h in hosts) {
+      if (skipped.contains(h)) continue;
+      out[h] = resolved[h] ?? others[h] ?? const [];
+    }
+    return (resolved: out, skipped: skipped);
+  }
+
+  @visibleForTesting
+  static Future<({Map<String, List<String>> resolved, Set<String> skipped})>
+      resolveWithProbeForTest(
+    List<String> hosts,
+    Set<String> cached,
+    Future<List<String>> Function(String) lookup, {
+    Duration probeTimeout = dnsProbeTimeout,
+  }) =>
+          _resolveWithProbe(hosts, cached, lookup, probeTimeout: probeTimeout);
 
   /// Тот же резолв, но с подменённым запросом — для теста: сети в нём нет.
   @visibleForTesting

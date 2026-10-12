@@ -3539,6 +3539,26 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'در حال دانلود: $done از $total مگابایت';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '$left مگابایت مانده';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n ثانیه';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n دقیقه';
+  }
+
+  @override
   String get updatesStatusVerifying => 'در حال بررسی امضا…';
 
   @override

@@ -3541,6 +3541,26 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'جارٍ التنزيل: $done من $total م.ب';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return 'المتبقي $left م.ب';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n ث';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n د';
+  }
+
+  @override
   String get updatesStatusVerifying => 'جارٍ التحقق من التوقيع…';
 
   @override

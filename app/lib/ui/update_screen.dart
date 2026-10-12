@@ -14,6 +14,7 @@ import '../l10n/gen/app_localizations.dart';
 import '../state/app_update_controller.dart';
 import '../state/settings_controller.dart';
 import 'settings_screen.dart' show kSettingsContentMaxWidth;
+import 'widgets/download_progress_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/update_dialog.dart';
 
@@ -407,7 +408,9 @@ class _StatusCard extends StatelessWidget {
         }
       case UpdatePhase.downloading:
         final p = c.progress;
-        status = l.updatesStatusDownloading(((p ?? 0) * 100).round());
+        status = downloadProgressText(
+            l, Localizations.localeOf(context).toString(),
+            download: c.downloadProgress, fraction: p);
         progress = p;
         showProgress = true;
         actions.add(_cancelButton(l));

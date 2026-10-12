@@ -14,6 +14,7 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_update_controller.dart';
 import '../update_screen.dart';
 import 'app_toast.dart';
+import 'download_progress_text.dart';
 import 'update_dialog.dart';
 
 /// ГОЛОС САМООБНОВЛЕНИЯ НА ГЛАВНОМ ЭКРАНЕ.
@@ -162,7 +163,9 @@ class AppUpdatePresenter with WidgetsBindingObserver {
         final p = controller.progress;
         AppToast.progress(context,
             id: toastId,
-            message: l.updatesStatusDownloading(((p ?? 0) * 100).round()),
+            message: downloadProgressText(
+                l, Localizations.localeOf(context).toString(),
+                download: controller.downloadProgress, fraction: p),
             value: p,
             onTap: open,
             tapTooltip: l.updatesTitle);

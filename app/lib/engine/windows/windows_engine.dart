@@ -2080,6 +2080,9 @@ class WindowsEngine extends VpnEngineBase {
   @visibleForTesting
   Future<bool> Function()? tunAliveForTest;
 
+  @visibleForTesting
+  Future<String?> systemDnsServerForTest() => _systemDnsServer();
+
   Future<String?> _systemDnsServer() async {
     try {
       // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
@@ -2111,9 +2114,17 @@ class WindowsEngine extends VpnEngineBase {
       //
       // Второй адрес и есть готовый запас: он уже проверен на ответ тем же
       // циклом, оставалось лишь не выбрасывать его.
+      //
+      // ⚠️ ОПРАШИВАЕМ ВСЕ РАЗОМ, А НЕ ПО ОЧЕРЕДИ. У владельца 07.10.2026 при
+      // восстановлении под kill switch шесть адресов адаптера молчали по 2 с
+      // каждый — 12 с к блокировке, пока DNS заведомо недоступен. Порядок
+      // предпочтения при этом прежний: решаем по списку, а не по тому, кто
+      // ответил первым.
+      final reachable = await Future.wait(list.map(_dnsReachable));
       String? first;
-      for (final ip in list) {
-        if (await _dnsReachable(ip)) {
+      for (var i = 0; i < list.length; i++) {
+        final ip = list[i];
+        if (reachable[i]) {
           if (first == null) {
             first = ip;
             AppLog.i('Резолвер для «Прямо»: $ip');

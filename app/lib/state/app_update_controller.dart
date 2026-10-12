@@ -11,6 +11,7 @@ import '../core/net/file_download.dart';
 import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
 import '../core/update/app_update.dart';
+import '../core/update/download_progress.dart';
 import '../core/update/update_installer.dart';
 import '../core/update/update_installer_android.dart'
     show NeedsInstallPermission;
@@ -452,6 +453,7 @@ class AppUpdateController extends ChangeNotifier {
   UpdatePhase _phase = UpdatePhase.idle;
   UpdateOffer? _offer;
   double? _progress;
+  DownloadProgress? _download;
   UpdateError? _error;
   PendingResult? _lastOutcome;
   LinkOnlyReason? _linkOnlyReason;
@@ -500,6 +502,9 @@ class AppUpdateController extends ChangeNotifier {
 
   /// Доля закачки установщика 0..1; `null` — не качаем или размер неизвестен.
   double? get progress => _progress;
+
+  /// Ход закачки в байтах с оценкой времени; `null` — не качаем.
+  DownloadProgress? get downloadProgress => _download;
 
   UpdateError? get error => _error;
 
@@ -586,6 +591,7 @@ class AppUpdateController extends ChangeNotifier {
   void _fail(UpdateErrorKind kind,
       {ManifestRejection? rejection, String? detail}) {
     _progress = null;
+    _download = null;
     _error = UpdateError(kind,
         rejection: rejection, detail: detail == null ? null : scrubUrls(detail));
     AppLog.w('Обновление: отказ — $_error');
@@ -857,6 +863,7 @@ class AppUpdateController extends ChangeNotifier {
     _run = run;
     _error = null;
     _progress = null;
+    _download = null;
     _awaitingVpnOff = false;
     try {
       await _runDownload(run, offer);
@@ -934,6 +941,7 @@ class AppUpdateController extends ChangeNotifier {
       AppLog.w('Обновление: GitHub не отдал файлы — беру их с запасного '
           'источника (${offer.version})');
       _progress = null;
+      _download = null;
       attempt = await _attemptDownload(run, offer, assetName, mirror);
       failure = attempt.transportFailure;
       if (failure == null) return;
@@ -1015,6 +1023,7 @@ class AppUpdateController extends ChangeNotifier {
     _deleteQuiet(target);
     if (!_live(run)) return _attemptDone;
 
+    final meter = DownloadRateMeter(clock: _clock);
     _setPhase(UpdatePhase.downloading);
     AppLog.i('Обновление: качаю установщик ${offer.version} '
         '(${asset.size} байт)');
@@ -1033,11 +1042,13 @@ class AppUpdateController extends ChangeNotifier {
           if (!_live(run)) throw const DownloadException('закачка отменена');
           final denom = total != null && total > 0 ? total : asset.size;
           _progress = (received / denom).clamp(0.0, 1.0);
+          _download = meter.update(received, denom);
           _notify();
         },
       );
     } catch (e) {
       _progress = null;
+      _download = null;
       // Отмена: фазу уже сменил cancel(); `.part` удалил downloadToFile.
       _deleteQuiet(target);
       if (!_live(run)) return _attemptDone;
@@ -1054,6 +1065,7 @@ class AppUpdateController extends ChangeNotifier {
     _verifiedVersion = offer.version;
     _expectedSha = asset.sha256;
     _progress = null;
+    _download = null;
     AppLog.i('Обновление: установщик ${offer.version} скачан и проверен '
         '(${asset.size} байт, sha256 сошёлся)');
     _setPhase(UpdatePhase.ready);
@@ -1181,6 +1193,7 @@ class AppUpdateController extends ChangeNotifier {
     _generation++;
     run.client.close();
     _progress = null;
+    _download = null;
     AppLog.i('Обновление: закачка ${_offer?.version} отменена');
     _setPhase(UpdatePhase.available);
   }
