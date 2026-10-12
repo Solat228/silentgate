@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'balancer_pick.dart';
+
 /// Результат нормализации полного Xray-конфига (пользовательский override или
 /// профиль от панели) под порты захвата приложения.
 class OverrideNormalized {
@@ -61,6 +63,11 @@ String ensureXrayStats(String rawJson, {required int apiPort}) {
       ...(api['services'] is List ? api['services'] as List : const []),
     ];
     if (!services.contains('StatsService')) services.add('StatsService');
+    // Балансировщик есть — нужен и RoutingService: без него `xray api bi`
+    // не ответит, и выбранный узел «Авто» показать нечем.
+    if (BalancerPick.hasBalancer(cfg) && !services.contains('RoutingService')) {
+      services.add('RoutingService');
+    }
     api['services'] = services;
     cfg['api'] = api;
     cfg['stats'] ??= <String, dynamic>{};

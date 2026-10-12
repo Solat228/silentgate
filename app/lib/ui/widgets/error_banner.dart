@@ -23,8 +23,13 @@ class _ErrorBannerState extends State<ErrorBanner>
   @override
   void initState() {
     super.initState();
-    _c = AnimationController(vsync: this, duration: widget.duration)
-      ..addStatusListener((s) {
+    // Полоска — таймер, а не анимация: системное «убрать анимации» не должно
+    // сжимать его в 20 раз (см. AppToast, `AnimationBehavior.preserve`).
+    _c = AnimationController(
+      vsync: this,
+      duration: widget.duration,
+      animationBehavior: AnimationBehavior.preserve,
+    )..addStatusListener((s) {
         if (s == AnimationStatus.completed) widget.onClose();
       })
       ..forward();

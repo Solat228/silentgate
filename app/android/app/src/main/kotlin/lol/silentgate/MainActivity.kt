@@ -12,6 +12,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.platform.PlatformChannels
+import lol.silentgate.platform.QrScanner
 import lol.silentgate.vpn.AlertNotice
 import lol.silentgate.vpn.NativePrefs
 import lol.silentgate.vpn.SilentGateVpnService
@@ -63,8 +64,16 @@ class MainActivity : FlutterActivity() {
     private var pendingXrayConfig: String? = null
     private var pendingResult: MethodChannel.Result? = null
 
+    /** QR-код подписки с камеры и из картинки (п.60а). */
+    private val qr = QrScanner(this)
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, QrScanner.CHANNEL)
+            .setMethodCallHandler { call, result ->
+                qr.handle(call.method, call.argument<String>("prompt"), result)
+            }
 
         links = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LINKS_CHANNEL)
             .also { ch ->
@@ -272,8 +281,11 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger,
                 PlatformChannels.LAUNCHER_CHANNEL)
             .setMethodCallHandler { call, result ->
+                // `path` — только у installApk (самообновление); у остальных
+                // методов аргумент по-прежнему `url`.
                 PlatformChannels.handleLauncher(
-                    this, call.method, call.argument<String>("url"), result)
+                    this, call.method, call.argument<String>("url"), result,
+                    path = call.argument<String>("path"))
             }
 
         // Каталог установленных приложений и их иконки. Без него раздельное
@@ -431,6 +443,7 @@ class MainActivity : FlutterActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
+        if (qr.onActivityResult(requestCode, resultCode, data)) return
         if (requestCode != REQ_PREPARE) return
 
         val config = pendingConfig

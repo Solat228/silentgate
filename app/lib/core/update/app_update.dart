@@ -3,7 +3,11 @@ import 'dart:io';
 
 import '../app_info.dart';
 import '../platform/app_log.dart';
+import '../platform/apk_installer_android.dart';
+import '../platform/app_paths.dart';
 import 'app_update_defaults.dart';
+import 'release_signing.dart' show manifestFileName, signatureFileName;
+import 'update_manifest.dart' show normalizeVersion;
 
 /// Что сказал сервер обновлений.
 class AppRelease {
@@ -31,6 +35,21 @@ class AppRelease {
   /// без даты человек не отличит вчерашний хвост от версии годовой давности.
   final DateTime? publishedAt;
 
+  /// ТОЧНОЕ имя актива платформы (`SilentGateSetup-1.14.0.exe`) — по нему
+  /// актив ищется в подписанном манифесте. [downloadUrl] — его прямой адрес.
+  final String? assetName;
+
+  /// Размер актива в байтах, как его объявил источник. Сверяется с манифестом
+  /// и ограничивает закачку.
+  final int? assetSize;
+
+  /// Адрес `SilentGate-<версия>.manifest.json`.
+  final String? manifestUrl;
+
+  /// Адрес `SilentGate-<версия>.manifest.sig` (подпись Ed25519 над байтами
+  /// манифеста).
+  final String? signatureUrl;
+
   const AppRelease({
     required this.version,
     this.downloadUrl,
@@ -38,10 +57,31 @@ class AppRelease {
     this.pageUrl,
     this.isBeta = false,
     this.publishedAt,
+    this.assetName,
+    this.assetSize,
+    this.manifestUrl,
+    this.signatureUrl,
   });
 
   /// Новее ли [version] текущей сборки.
-  bool get isNewer => AppUpdate.isNewer(version, AppInfo.version);
+  bool get isNewer => AppUpdate.isNewer(version, AppUpdate.installedVersion);
+
+  /// Хватает ли данных, чтобы скачать, проверить и поставить релиз самим.
+  ///
+  /// ⚠️ ВСЁ ИЛИ НИЧЕГО. Нет хоть одного из пяти (прямой адрес, имя, размер,
+  /// манифест, подпись) — прежнее поведение «открыть страницу». И каждый адрес
+  /// обязан пройти [isUpdateUrlAllowed]: `http://` допустим только под
+  /// тестовым override, в боевом режиме — никогда.
+  bool get canSelfUpdate =>
+      downloadUrl != null &&
+      assetName != null &&
+      assetName!.isNotEmpty &&
+      manifestUrl != null &&
+      signatureUrl != null &&
+      (assetSize ?? 0) > 0 &&
+      isUpdateUrlAllowed(downloadUrl) &&
+      isUpdateUrlAllowed(manifestUrl) &&
+      isUpdateUrlAllowed(signatureUrl);
 }
 
 /// Чем кончилась проверка обновлений.
@@ -102,9 +142,12 @@ typedef UpdateFetcher = Future<UpdateHttpResponse> Function(Uri url);
 
 /// Проверка обновлений самого приложения.
 ///
-/// Приложение НИЧЕГО не скачивает и не запускает само: без подписи кода
-/// самозапуск установщика упрётся в SmartScreen и выглядит как поведение
-/// зловреда. Мы лишь сообщаем о новой версии и открываем страницу по кнопке.
+/// Этот класс только УЗНАЁТ о новой версии и находит её файлы (актив,
+/// манифест, подпись). Скачивание, проверку подписи и запуск установщика с
+/// 1.14.0 ведёт `state/app_update_controller.dart` — и только для релиза с
+/// подписанным манифестом ([AppRelease.canSelfUpdate]); без него остаётся
+/// прежнее «открыть страницу». Почему SmartScreen здесь не мешает —
+/// `docs/APP_UPDATE.md`.
 ///
 /// ⚠️ ИСТОЧНИК ОДИН — GITHUB RELEASES (см. `app_update_defaults.dart`), адреса
 /// в настройках больше нет. Поле «Эндпоинт версии» просило пользователя
@@ -116,6 +159,48 @@ class AppUpdate {
 
   /// Страница для кнопки «Скачать», когда артефакта под платформу нет.
   static String get releasesPage => kGithubReleasesPage;
+
+  static bool _apiOverrideLoaded = false;
+
+  /// Android: подхватить тестовый override адреса API из
+  /// `<каталог данных>/update_api.txt` (см. [kUpdateApiEnvVar] в
+  /// `app_update_defaults.dart`). На Windows ничего не делает — там override
+  /// читается из окружения лениво. Идемпотентна; [check] и
+  /// [fetchReleaseHistory] зовут её сами, но звать раньше (на старте) тоже
+  /// можно — чтобы плашка «тестовый адрес» появилась до первой проверки.
+  static Future<void> loadApiOverride() async {
+    if (_apiOverrideLoaded || !Platform.isAndroid) return;
+    try {
+      final dir = await AppPaths.supportDir();
+      final base = loadUpdateApiOverrideFrom(dir.path);
+      _apiOverrideLoaded = true;
+      if (base != null) {
+        AppLog.i('Проверка обновлений: найден $kUpdateApiOverrideFileName — '
+            'адрес API подменён');
+      }
+    } catch (e) {
+      // Каталог данных не получен — override просто не включается, а проверка
+      // идёт на боевой адрес. Флаг не ставим: следующая проверка попробует снова.
+      AppLog.i('Override адреса обновлений не прочитан: $e');
+    }
+  }
+
+  static String? _hintCache;
+
+  /// Хвост имени актива ЭТОГО устройства. На Android — по ABI
+  /// (`Build.SUPPORTED_ABIS[0]`): без неё эмулятор x86_64 получал бы
+  /// телефонную arm64-сборку, которая на нём не запустится. ABI не меняется,
+  /// поэтому спрашиваем канал один раз; не ответил — телефонная сборка, как
+  /// было всегда, и ответ не кэшируем (спросим на следующей проверке).
+  static Future<String> _platformHint() async {
+    final cached = _hintCache;
+    if (cached != null) return cached;
+    if (!Platform.isAndroid) return _hintCache = kPlatformAssetHint;
+    final abi = await ApkInstallerAndroid().deviceAbi();
+    final hint = platformAssetHint(androidAbi: abi);
+    if (abi != null) _hintCache = hint;
+    return hint;
+  }
 
   /// ⚠️ ДВА ИСТОЧНИКА, И ВТОРОЙ ЗАВЕДЁН НЕ ДЛЯ КРАСОТЫ.
   ///
@@ -150,8 +235,13 @@ class AppUpdate {
     String? assetHint,
     bool beta = false,
   }) async {
-    final hint = assetHint ?? kPlatformAssetHint;
+    await loadApiOverride();
+    final hint = assetHint ?? await _platformHint();
     final fetch = fetcher ?? _fetch;
+    if (kUpdateApiOverridden) {
+      AppLog.i('Проверка обновлений: ТЕСТОВЫЙ адрес API (override), '
+          'http:// для закачки разрешён');
+    }
 
     final primary =
         beta ? await _tryGithubBeta(fetch, hint) : await _tryGithub(fetch, hint);
@@ -274,6 +364,49 @@ class AppUpdate {
     }
   }
 
+  /// Запасной источник ФАЙЛОВ того же выпуска: GitHub ответил на проверку, а
+  /// его файлы не отдаются (ТСПУ подменяет сертификат с перебоями — у владельца
+  /// 3 проверки из 4 ушли на запасной источник, при этом сама проверка потом
+  /// проходила). Наш сайт держит байт-в-байт копии.
+  ///
+  /// ⚠️ ВЕРСИЯ СВЕРЯЕТСЯ ТОЧНО: другая версия — другой выпуск, и подставлять
+  /// его файлы под уже показанное человеку предложение нельзя. Целостность
+  /// по-прежнему доказывает подпись манифеста, а не то, с какого хоста приехал
+  /// файл, — поэтому смена источника сама по себе ничего не ослабляет.
+  ///
+  /// Спрашивается ТОЛЬКО сайт: GitHub свой ответ уже дал, и повторять его
+  /// запрос смысла нет. Сети не бросает — не ответил никто, значит `null`.
+  static Future<AppRelease?> mirrorRelease({
+    required bool beta,
+    required String version,
+    UpdateFetcher? fetcher,
+    String? assetHint,
+  }) async {
+    try {
+      await loadApiOverride();
+      final hint = assetHint ?? await _platformHint();
+      final fetch = fetcher ?? _fetch;
+      final result =
+          beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
+      final release = result.release;
+      if (release == null) return null;
+      if (normalizeVersion(release.version) != normalizeVersion(version)) {
+        AppLog.w('Обновление: у запасного источника версия '
+            '${release.version}, а нужна $version — файлы не беру');
+        return null;
+      }
+      if (!release.canSelfUpdate) {
+        AppLog.w('Обновление: запасной источник не отдаёт манифест, подпись '
+            'и размер для $version — самому не поставить');
+        return null;
+      }
+      return release;
+    } catch (e) {
+      AppLog.i('Запасной источник файлов обновления недоступен: $e');
+      return null;
+    }
+  }
+
   /// Прежние версии для кнопки отката — из того же СПИСКА релизов, что и
   /// бета-канал, поэтому сети не требует ничего сверх того, что уже
   /// запрашивается при включённой галочке «Получать бета-версии».
@@ -287,7 +420,8 @@ class AppUpdate {
     UpdateFetcher? fetcher,
     String? assetHint,
   }) async {
-    final hint = assetHint ?? kPlatformAssetHint;
+    await loadApiOverride();
+    final hint = assetHint ?? await _platformHint();
     final fetch = fetcher ?? _fetch;
     try {
       final resp = await fetch(Uri.parse(kGithubReleasesListApi));
@@ -311,11 +445,16 @@ class AppUpdate {
   /// ⚠️ `url` НЕ обязателен: релиз бывает собран под одну платформу. Тогда
   /// кнопка ведёт на страницу загрузок — версию мы всё равно узнали.
   /// ⚠️ И `url` обязан быть `https`: иначе кнопка «Скачать» повела бы человека
-  /// за установщиком по открытому каналу, где его можно подменить.
+  /// за установщиком по открытому каналу, где его можно подменить. Исключение
+  /// одно — тестовый override адреса API ([isUpdateUrlAllowed]).
   ///
   /// ⚠️ Необязательное поле `beta` (булево) либо `channel: "beta"` — признак
   /// канала. Умолчание `false`: старый ответ панели (ни того, ни другого
   /// поля нет) ведёт себя ровно как раньше, обратная совместимость полная.
+  ///
+  /// Необязательные поля САМООБНОВЛЕНИЯ: `asset` (точное имя файла), `size`
+  /// (байты), `manifest` и `sig` (адреса манифеста и подписи). Нет любого —
+  /// [AppRelease.canSelfUpdate] ложно, и остаётся прежняя кнопка-ссылка.
   static AppRelease? parsePanelRelease(String body) {
     final Object? j;
     try {
@@ -332,13 +471,39 @@ class AppUpdate {
     final page = '${j['page'] ?? ''}'.trim();
     final beta = j['beta'] == true ||
         '${j['channel'] ?? ''}'.trim().toLowerCase() == 'beta';
+    final asset = '${j['asset'] ?? ''}'.trim();
     return AppRelease(
       version: version,
-      downloadUrl: url.startsWith('https://') ? url : null,
+      downloadUrl: isUpdateUrlAllowed(url) ? url : null,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.startsWith('https://') ? page : kPanelDownloadsPage,
       isBeta: beta,
+      assetName: asset.isEmpty ? null : asset,
+      assetSize: _positiveInt(j['size']),
+      manifestUrl: _allowedUrl(j['manifest']),
+      signatureUrl: _allowedUrl(j['sig']),
     );
+  }
+
+  /// Адрес из ответа — если он проходит [isUpdateUrlAllowed], иначе `null`.
+  static String? _allowedUrl(Object? raw) {
+    final s = '${raw ?? ''}'.trim();
+    return isUpdateUrlAllowed(s) ? s : null;
+  }
+
+  /// Положительное целое из числа или строки; иначе `null`.
+  static int? _positiveInt(Object? raw) {
+    final int? v;
+    if (raw is int) {
+      v = raw;
+    } else if (raw is num && raw == raw.truncate()) {
+      v = raw.toInt();
+    } else if (raw is String) {
+      v = int.tryParse(raw.trim());
+    } else {
+      v = null;
+    }
+    return (v != null && v > 0) ? v : null;
   }
 
   /// Причина отказа по коду ответа — или `null`, если ответ годный.
@@ -430,17 +595,33 @@ class AppUpdate {
     final version = tag.replaceFirst(RegExp('^[vV]'), '').trim();
     if (version.isEmpty) return null;
 
-    String? asset;
+    String? assetUrl;
+    String? assetName;
+    int? assetSize;
+    String? manifestUrl;
+    String? signatureUrl;
+    // ⚠️ Манифест и подпись — по ТОЧНОМУ имени (тег без `v`, у бет полный:
+    // `SilentGate-1.14.1-beta.1.manifest.json`). Не `contains`: соседний
+    // `….manifest.json.bak` или манифест другой версии в том же релизе
+    // означали бы проверку подписи НЕ ТОГО файла.
+    final manifestName = manifestFileName(version);
+    final signatureName = signatureFileName(version);
     final assets = j['assets'];
     if (assets is List) {
       for (final a in assets) {
         if (a is! Map) continue;
-        final name = '${a['name'] ?? ''}';
-        if (!name.toLowerCase().contains(assetHint.toLowerCase())) continue;
+        final name = '${a['name'] ?? ''}'.trim();
         final url = '${a['browser_download_url'] ?? ''}'.trim();
-        if (url.isNotEmpty) {
-          asset = url;
-          break;
+        if (name.isEmpty || url.isEmpty) continue;
+        if (name == manifestName) {
+          manifestUrl ??= url;
+        } else if (name == signatureName) {
+          signatureUrl ??= url;
+        } else if (assetUrl == null &&
+            _assetMatches(name, assetHint, version)) {
+          assetUrl = url;
+          assetName = name;
+          assetSize = _positiveInt(a['size']);
         }
       }
     }
@@ -451,17 +632,52 @@ class AppUpdate {
     final published = DateTime.tryParse(publishedRaw);
     return AppRelease(
       version: version,
-      downloadUrl: asset,
+      downloadUrl: assetUrl,
       notes: notes.isEmpty ? null : notes,
       pageUrl: page.isEmpty ? kGithubReleasesPage : page,
       isBeta: j['prerelease'] == true,
       publishedAt: published,
+      assetName: assetName,
+      assetSize: assetSize,
+      manifestUrl: manifestUrl,
+      signatureUrl: signatureUrl,
     );
+  }
+
+  /// Подходит ли актив [name] под хвост платформы [hint].
+  ///
+  /// ⚠️ СРАВНЕНИЕ ПО ХВОСТУ ИМЕНИ БЕЗ ВЕРСИИ, а не `contains`. Прежний
+  /// `contains('Setup.exe')` НЕ находил настоящий установщик: Inno называет его
+  /// `SilentGateSetup-1.13.1.exe` — версия стоит между «Setup» и «.exe», и
+  /// кнопка на Windows всегда вела на страницу, а не на файл. Поэтому сперва
+  /// из имени вырезается `-<версия>`, затем хвост сравнивается `endsWith`:
+  /// * `SilentGateSetup-1.13.1.exe` → `SilentGateSetup.exe` ⊃ `Setup.exe`;
+  /// * `SilentGate-1.13.1-arm64-v8a.apk` → `…-arm64-v8a.apk`;
+  /// * `….apk.idsig`, `….zip`, x86_64 для телефона — не подходят.
+  /// Регистр не важен: имена файлов на странице релиза пишут руками.
+  static bool _assetMatches(String name, String hint, String version) {
+    final n = name.toLowerCase();
+    final h = hint.toLowerCase();
+    if (h.isEmpty) return false;
+    if (n.endsWith(h)) return true;
+    final v = version.toLowerCase();
+    if (v.isEmpty) return false;
+    if (n.replaceAll('-$v', '').endsWith(h)) return true;
+    // Бета: тег `1.14.1-beta.1`, а Inno называет установщик по версии exe —
+    // `SilentGateSetup-1.14.1.exe`. Без второго прохода Windows-бета не
+    // находила бы свой установщик и откатывалась на «открыть страницу».
+    final core = _core(v);
+    return core != v && n.replaceAll('-$core', '').endsWith(h);
   }
 
   static Future<UpdateHttpResponse> _fetch(Uri url) async {
     final client = HttpClient()
       ..connectionTimeout = const Duration(seconds: 10);
+    // ⚠️ «Напрямую» ЗАДАЁТСЯ ЯВНО (идиома `core/probe/proxy_probe.dart`).
+    // Умолчание Dart берёт прокси из окружения (`http_proxy`/`all_proxy`), и
+    // проверка обновлений могла бы уйти через чужой прокси или через порт
+    // нашего же туннеля — и упасть вместе с ним, когда туннель лежит.
+    client.findProxy = (_) => 'DIRECT';
     try {
       final req = await client.getUrl(url);
       req.headers.set(HttpHeaders.userAgentHeader, AppInfo.userAgent);
@@ -483,16 +699,57 @@ class AppUpdate {
     }
   }
 
-  /// Сравнение версий вида `1.2.3` (лишние части и суффиксы игнорируются).
+  /// Сравнение версий вида `1.2.3[-beta.N]`.
+  ///
+  /// Три числа решают всё. При равных числах решает суффикс, как в SemVer:
+  /// стабильная `1.14.1` новее своей же беты `1.14.1-beta.2` — иначе человек,
+  /// поставивший бету, так и остался бы на ней, когда вышла стабильная с тем
+  /// же номером. Две беты одного номера сравниваются по номеру беты, но
+  /// только когда он есть у ОБЕИХ: у установленной беты номер неизвестен
+  /// (сборка знает только `AppInfo.isBeta`), и без этой оговорки та же самая
+  /// бета предлагалась бы заново при каждой проверке.
   static bool isNewer(String candidate, String current) {
-    final a = _parts(candidate);
-    final b = _parts(current);
+    final a = _parts(_core(candidate));
+    final b = _parts(_core(current));
     for (var i = 0; i < 3; i++) {
       final x = i < a.length ? a[i] : 0;
       final y = i < b.length ? b[i] : 0;
       if (x != y) return x > y;
     }
+    final candPre = _pre(candidate);
+    final curPre = _pre(current);
+    if (candPre == null) return curPre != null;
+    if (curPre == null) return false;
+    final pa = _parts(candPre);
+    final pb = _parts(curPre);
+    if (pa.isEmpty || pb.isEmpty) return false;
+    for (var i = 0; i < pa.length || i < pb.length; i++) {
+      final x = i < pa.length ? pa[i] : 0;
+      final y = i < pb.length ? pb[i] : 0;
+      if (x != y) return x > y;
+    }
     return false;
+  }
+
+  /// Версия ЭТОЙ сборки для сравнения: у бета-сборки — с суффиксом, чтобы
+  /// стабильная того же номера считалась новее (см. [isNewer]).
+  static String get installedVersion =>
+      AppInfo.isBeta ? '${AppInfo.version}-beta' : AppInfo.version;
+
+  /// Числовая часть без `v` и без суффикса после первого `-`.
+  static String _core(String v) {
+    final t = v.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    final dash = t.indexOf('-');
+    return dash < 0 ? t : t.substring(0, dash);
+  }
+
+  /// Суффикс пре-релиза (`beta.2`) либо `null` у стабильной.
+  static String? _pre(String v) {
+    final t = v.trim();
+    final dash = t.indexOf('-');
+    if (dash < 0) return null;
+    final s = t.substring(dash + 1);
+    return s.isEmpty ? null : s;
   }
 
   static List<int> _parts(String v) => v

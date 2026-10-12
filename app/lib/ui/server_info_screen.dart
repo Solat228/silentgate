@@ -21,6 +21,7 @@ import '../engine/probe_factory.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/server_autoconfig_card.dart';
 
@@ -176,7 +177,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
             FlagCell(s.remark, width: 34, height: 24),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(FlagUtil.strip(s.displayName),
+              child: FlagText(FlagUtil.stripIconFlags(s.displayName),
                   textDirection: TextDirection.ltr,
                   style: Theme.of(context).textTheme.titleMedium),
             ),

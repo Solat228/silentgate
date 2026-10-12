@@ -4,7 +4,7 @@ import 'dart:io';
 import '../core/models/server_override.dart';
 import '../core/platform/app_paths.dart';
 import '../core/util/key_migration.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Хранилище override'ов серверов (ключ = rawLink сервера). Переживает перезапуск.
 class ServerOverridesStore {
@@ -19,7 +19,7 @@ class ServerOverridesStore {
     try {
       final f = await _file();
       if (!await f.exists()) return {};
-      final data = jsonDecode(await f.readAsString());
+      final data = jsonDecode(await SecretFiles.read(f));
       if (data is! Map) return {};
       final result = <String, ServerOverride>{};
       data.forEach((k, v) {
@@ -44,7 +44,7 @@ class ServerOverridesStore {
       overrides.forEach((k, v) {
         if (!v.isEmpty) map[k] = v.toJson();
       });
-      await AtomicFile.writeString(f, jsonEncode(map));
+      await SecretFiles.write(f, jsonEncode(map));
     } catch (_) {}
   }
 }

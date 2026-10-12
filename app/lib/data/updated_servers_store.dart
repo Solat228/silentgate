@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../core/platform/app_paths.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Персистентная пометка «сервер обновился при последнем обновлении подписки».
 ///
@@ -40,7 +40,7 @@ class UpdatedServersStore {
     try {
       final f = await _file();
       if (!await f.exists()) return {};
-      final data = jsonDecode(await f.readAsString());
+      final data = jsonDecode(await SecretFiles.read(f));
       if (data is! Map) return {};
       final out = <String, List<String>>{};
       for (final entry in data.entries) {
@@ -61,7 +61,7 @@ class UpdatedServersStore {
   Future<void> save(Map<String, List<String>> byKey) async {
     try {
       final f = await _file();
-      await AtomicFile.writeString(f, jsonEncode(byKey));
+      await SecretFiles.write(f, jsonEncode(byKey));
     } catch (_) {}
   }
 }

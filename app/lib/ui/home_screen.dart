@@ -17,20 +17,20 @@ import '../core/net/speed_test.dart';
 import '../core/platform/interference_scanner.dart';
 import '../core/app_info.dart';
 import '../core/platform/app_log.dart';
-import '../core/platform/app_launcher.dart';
 import '../core/platform/notification_access.dart';
 import '../core/platform/platform_services.dart';
 import '../core/settings/split_tunnel.dart';
-import '../core/update/app_update.dart';
 import '../core/settings/app_settings.dart';
 import '../core/probe/clash_delay.dart';
 import '../core/probe/ping_result.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/uptime_format.dart';
 import '../core/util/server_search.dart';
+import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
+import 'widgets/status_text_l10n.dart';
 import 'widgets/info_tooltip.dart';
 import '../state/app_state.dart';
 import '../core/models/engine_notice.dart';
@@ -38,6 +38,7 @@ import 'split_tunnel_screen.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/service_check_controller.dart';
+import '../state/app_update_controller.dart';
 import '../state/settings_controller.dart';
 import 'auto_config_screen.dart';
 import 'import_screen.dart';
@@ -46,10 +47,13 @@ import 'widgets/app_toast.dart';
 import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/flag_text.dart';
+import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
+import 'widgets/tun_task_result_text.dart';
 import 'widgets/service_checks_row.dart';
-import 'widgets/update_notes_dialog.dart';
+import 'widgets/update_presenter.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/ping_gate.dart';
@@ -540,65 +544,29 @@ class _HomeScreenState extends State<HomeScreen> {
       if (found.isNotEmpty && mounted) {
         await scanInterferenceDialog(context);
       }
-      await _checkAppUpdate();
+      if (!mounted) return;
+      // Самообновление говорит с человеком ПОСЛЕ окна помех: два окна
+      // подряд друг друга перекрыли бы.
+      _updates = AppUpdatePresenter(
+        controller: context.read<AppUpdateController>(),
+        contextOf: () => mounted ? context : null,
+        modeOf: () =>
+            context.read<SettingsController>().settings.appUpdateMode,
+      )..attach();
     });
+  }
+
+  /// Уведомления самообновления (окно, ход закачки, итог установки).
+  AppUpdatePresenter? _updates;
+
+  @override
+  void dispose() {
+    _updates?.detach();
+    super.dispose();
   }
 
   void _open(BuildContext context, Widget screen) =>
       Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
-
-  /// Обновление приложения: только сообщаем и открываем страницу загрузки.
-  /// Молча ничего не качаем и не запускаем — см. комментарий в [AppUpdate].
-  Future<void> _checkAppUpdate() async {
-    final settings = context.read<SettingsController>().settings;
-    if (!settings.appUpdateCheck) return;
-    final result = await AppUpdate.check();
-    // ⚠️ АВТОПРОВЕРКА МОЛЧИТ ОБО ВСЁМ, КРОМЕ НАЙДЕННОГО ОБНОВЛЕНИЯ, и это не
-    // то же самое, что прежнее «не отличаем отказ от отсутствия». Отказ теперь
-    // ОТЛИЧИМ (`UpdateCheckState.failed`) — мы просто не дёргаем им человека на
-    // старте: он этой проверки не просил. Ручная кнопка в настройках причину
-    // показывает, потому что там её спросили.
-    final release = result.release;
-    if (!result.isAvailable || release == null || !mounted) return;
-    AppLog.i('Доступна версия ${release.version} (у вас ${AppInfo.version})');
-    final l = AppLocalizations.of(context);
-    final notes = release.notes ?? '';
-    final settingsCtrl = context.read<SettingsController>();
-    final url = release.downloadUrl ?? '';
-
-    // ⚠️ ОПИСАНИЕ РЕЛИЗА — В ОКНО, А НЕ В ТОСТ.
-    //
-    // Раньше здесь стояло `AppToast.show(..., 'Доступна версия X — ' + notes)`,
-    // а `notes` — это тело релиза с GitHub, то есть весь раздел changelog:
-    // тысячи символов сырого markdown. На телефоне владельца (снимок
-    // 19.08.2026) оно заняло весь экран стеной со звёздочками и дефисами, без
-    // кнопки закрытия и без возможности отказаться от показа. Сообщение,
-    // которое нельзя ни прочитать, ни убрать, хуже отсутствующего.
-    //
-    // Человек, попросивший «больше не показывать», гасит ОКНО, а не проверку
-    // обновлений: иначе он тихо остался бы без новых версий, о чём не просил.
-    if (settings.appUpdateNotesHidden) {
-      // Окно скрыто — но сообщить о новой версии всё равно надо, коротко.
-      AppToast.show(
-        context,
-        l.homeUpdateAvailable(release.version),
-        kind: ToastKind.info,
-        actionLabel: url.isEmpty ? null : l.homeDownload,
-        onAction: url.isEmpty ? null : () => UrlOpener.open(url),
-      );
-      return;
-    }
-    await showDialog<void>(
-      context: context,
-      builder: (_) => UpdateNotesDialog(
-        version: release.version,
-        notes: notes,
-        onDownload: url.isEmpty ? null : () => UrlOpener.open(url),
-        onNeverShow: () => unawaited(settingsCtrl
-            .update((c) => c.copyWith(appUpdateNotesHidden: true))),
-      ),
-    );
-  }
 
   // Что уже показали, чтобы один и тот же тост не всплывал на каждой перерисовке.
   String? _shownError;
@@ -699,10 +667,10 @@ class _HomeScreenState extends State<HomeScreen> {
           kind: sync.hasChanges ? ToastKind.success : ToastKind.info,
           details: [
             for (final name in sync.added)
-              ToastDetail(FlagUtil.strip(name),
+              ToastDetail(FlagUtil.stripIconFlags(name),
                   added: true, leading: FlagCell(name, width: 20, height: 14)),
             for (final name in sync.removed)
-              ToastDetail(FlagUtil.strip(name),
+              ToastDetail(FlagUtil.stripIconFlags(name),
                   added: false, leading: FlagCell(name, width: 20, height: 14)),
           ],
         );
@@ -822,14 +790,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fixStaleScheduledTask(BuildContext context) async {
     AppLog.i('Пользователь согласился пересоздать задачу Планировщика '
         'по предложению из уведомления');
-    final ok = await platform.privileges.configure();
-    AppLog.i(ok
-        ? 'Задача Планировщика пересоздана — дальше подключения пойдут без UAC'
-        : 'Пересоздать задачу Планировщика не удалось '
-            '(UAC отклонён или запрещено политикой)');
+    final result = await platform.privileges.configure();
+    // Причину пишем ТУ, что есть: прежняя строка «UAC отклонён» ставилась на
+    // любой отказ, включая те, где UAC не спрашивался вовсе.
+    AppLog.i(switch (result) {
+      PrivilegeSetupResult.done =>
+        'Задача Планировщика пересоздана — дальше подключения пойдут без UAC',
+      PrivilegeSetupResult.denied =>
+        'Пересоздать задачу Планировщика не удалось: права не получены',
+      PrivilegeSetupResult.failed =>
+        'Пересоздать задачу Планировщика не удалось: Планировщик не принял '
+            'задачу (подробности выше)',
+    });
     if (!mounted) return;
     final l = AppLocalizations.of(context);
-    AppToast.show(context, ok ? l.tunTaskDone : l.tunTaskFailed,
+    final ok = result == PrivilegeSetupResult.done;
+    AppToast.show(context, tunTaskResultText(l, result),
         kind: ok ? ToastKind.success : ToastKind.error);
   }
 
@@ -997,11 +973,16 @@ class _HomeScreenState extends State<HomeScreen> {
     // применится только после переподключения. Без этого правка правил при
     // живом соединении проходила молча, и пользователь был уверен, что она
     // работает. Ставим здесь: тут доступны оба контроллера.
-    context.read<SettingsController>().onRequiresReconnect = (before, after) =>
-        state.notePendingRestart(l.homeSettingsNeedReconnect,
-            // На экране — общая фраза, в журнале — имена изменённых настроек:
-            // без них перезапуск туннеля неотличим от обрыва связи.
-            fields: before.reconnectReasons(after));
+    context.read<SettingsController>().onRequiresReconnect = (before, after) {
+      state.notePendingRestart(l.homeSettingsNeedReconnect,
+          // На экране — общая фраза, в журнале — имена изменённых настроек:
+          // без них перезапуск туннеля неотличим от обрыва связи.
+          fields: before.reconnectReasons(after));
+      // Включённая защита обязана действовать сразу — см. killSwitchTurnedOn.
+      if (before.killSwitchTurnedOn(after) && state.status.isConnected) {
+        unawaited(state.reconnect(after));
+      }
+    };
 
     final probe = context.read<ProbeController>();
     probe.variantFor = state.variantFor;
@@ -1215,9 +1196,12 @@ class ConnectPane extends StatelessWidget {
                 // самим врезкам, — иначе перенос текста посчитается не так.
                 final noticeStyle = DefaultTextStyle.of(context).style;
                 final scaler = MediaQuery.textScalerOf(context);
-                final blockingText = status.blocking ? status.message ?? '' : null;
+                // Текст — на языке интерфейса: движок кладёт код, а не
+                // русскую строку (см. [StatusText]).
+                final line = statusLine(l, status);
+                final blockingText = status.blocking ? line ?? '' : null;
                 final errorText =
-                    status.state == VpnConnectionState.error ? status.message : null;
+                    status.state == VpnConnectionState.error ? line : null;
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
@@ -1268,6 +1252,7 @@ class ConnectPane extends StatelessWidget {
                           // плашка отвечает на вопрос «через что идёт трафик» —
                           // глагол в ней читался бы как незавершённое действие.
                           autoLabel: l.homeAutoSession,
+                          activeNode: state.activeNodeName,
                         ),
                         httpPort: status.isConnected ? state.httpProxyPort : 0,
                         services: checks,
@@ -1423,7 +1408,7 @@ class KillSwitchNotice extends StatelessWidget {
             size: iconSize, color: scheme.onErrorContainer),
         const SizedBox(width: gap),
         Expanded(
-          child: Text(
+          child: FlagText(
             message,
             textDirection: autoTextDirection(message),
             style: TextStyle(color: scheme.onErrorContainer),
@@ -1451,7 +1436,7 @@ class ConnectErrorLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(top: paddingTop),
-        child: Text(message,
+        child: FlagText(message,
             textAlign: TextAlign.center,
             // Статус/ошибка: направление по содержимому — локализованный текст
             // читается верно, вложенные технические фрагменты (имена
@@ -1512,10 +1497,10 @@ class _SelectedServerBar extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
+                    FlagText(
                       server == null
                           ? l.homeServersCount(state.servers.length)
-                          : FlagUtil.strip(server.displayName),
+                          : FlagUtil.stripIconFlags(server.displayName),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       // Имя сервера — технический текст: в ar/fa не зеркалим.
@@ -1591,15 +1576,21 @@ ServerScrollTrigger serverScrollTrigger({
 ///
 /// ⚠️ Проверка видимости здесь не украшение: без неё «прокрутка к выбранному»
 /// на первой же строке дёргала бы список, который и так стоит на нужном месте.
+///
+/// [top] — готовый верх строки, когда высоты строк разные (заголовки групп
+/// стран, см. `serverEntryTop`); без него верх считается как [pos] × [rowExtent].
 double? serverRowScrollTarget({
   required int pos,
   required double rowExtent,
   required double pixels,
   required double viewport,
   required double maxScrollExtent,
+  double? top,
 }) {
-  if (pos < 0) return null;
-  final top = pos * rowExtent;
+  if (top == null) {
+    if (pos < 0) return null;
+    top = pos * rowExtent;
+  }
   if (top >= pixels && top + rowExtent <= pixels + viewport) return null;
   final target = top.clamp(0.0, maxScrollExtent);
   // Список уже упёрт в конец (или в начало) — мотать некуда.
@@ -1619,6 +1610,7 @@ bool scrollListToRow(
   double rowExtent = kServerRowExtent,
   bool onlyIfUntouched = false,
   Duration duration = const Duration(milliseconds: 400),
+  double? top,
 }) {
   if (!c.hasClients) return false;
   final p = c.position;
@@ -1631,6 +1623,7 @@ bool scrollListToRow(
     pixels: p.pixels,
     viewport: p.viewportDimension,
     maxScrollExtent: p.maxScrollExtent,
+    top: top,
   );
   if (target == null) return false;
   c.animateTo(target, duration: duration, curve: Curves.easeOut);
@@ -1687,11 +1680,15 @@ class _ServerPaneState extends State<ServerPane> {
     return _measuredRowExtent ?? kServerRowExtent;
   }
 
-  void _scrollToSelected(List<int> shown, int selected,
+  void _scrollToSelected(List<ServerListEntry> entries, int selected,
       {required bool onlyIfUntouched}) {
+    final rowExtent = _rowExtent();
+    final top = serverEntryTop(entries, selected, rowExtent: rowExtent);
+    if (top == null) return;
     scrollListToRow(_listCtrl,
-        pos: shown.indexOf(selected),
-        rowExtent: _rowExtent(),
+        pos: 0,
+        top: top,
+        rowExtent: rowExtent,
         onlyIfUntouched: onlyIfUntouched);
   }
 
@@ -1704,6 +1701,18 @@ class _ServerPaneState extends State<ServerPane> {
     final servers = state.servers;
     // Индексы исходного списка: выбор сервера идёт по индексу в AppState.servers.
     final shown = ServerSearch.matchIndices(servers, _query);
+    // Строки списка: серверы и заголовки групп стран (см. `ServerGroups`).
+    final entries = serverListEntries(
+      servers: servers,
+      shown: shown,
+      searching: _query.isNotEmpty,
+      settings: context.watch<SettingsController>().settings,
+      selected: state.selectedIndex,
+      isPinned: state.isPinned,
+    );
+    // Первая строка СЕРВЕРА — линейка высоты (см. `_rowExtent`); заголовок
+    // группы ниже ростом и линейкой служить не может.
+    final firstRow = entries.indexWhere((e) => e is ServerRowEntry);
 
     // Запуск приложения и момент подключения — два случая, когда листать
     // уместно. ⚠️ Прокрутку назначаем на ПОСЛЕ кадра: до него у списка нет
@@ -1722,7 +1731,7 @@ class _ServerPaneState extends State<ServerPane> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         // Стартовая прокрутка уступает пользователю: если он уже листает или
         // увёл список сам (серверы приходят с диска не мгновенно), не лезем.
-        if (mounted) _scrollToSelected(shown, sel, onlyIfUntouched: startup);
+        if (mounted) _scrollToSelected(entries, sel, onlyIfUntouched: startup);
       });
     }
     _wasConnected = connected;
@@ -1841,19 +1850,30 @@ class _ServerPaneState extends State<ServerPane> {
                 ? Center(child: Text(l.homeNothingFound))
                 : ListView.separated(
                     controller: _listCtrl,
-                    itemCount: shown.length,
+                    itemCount: entries.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final idx = shown[i];
-                      final tile = ServerTile(
-                        server: servers[idx],
-                        selected: idx == state.selectedIndex,
-                        onTap: () => state.selectServer(idx),
-                      );
-                      // Первая строка — линейка для прокрутки по номеру строки
-                      // (см. `_rowExtent`). Обёртка ничего не рисует и на
-                      // раскладку не влияет.
-                      return i == 0
+                      final entry = entries[i];
+                      if (entry is ServerGroupHeader) {
+                        return ServerGroupHeaderTile(
+                            group: entry,
+                            flagSource: servers[entry.indices.first].remark);
+                      }
+                      final row = entry as ServerRowEntry;
+                      final idx = row.index;
+                      // Отступ в группе и шеврон у шапки «Авто» — общая
+                      // обёртка обоих списков.
+                      final tile = serverListRow(
+                          row,
+                          ServerTile(
+                            server: servers[idx],
+                            selected: idx == state.selectedIndex,
+                            onTap: () => state.selectServer(idx),
+                          ));
+                      // Первая строка сервера — линейка для прокрутки (см.
+                      // `_rowExtent`). Обёртка ничего не рисует и на раскладку
+                      // не влияет.
+                      return i == firstRow
                           ? KeyedSubtree(key: _firstRowKey, child: tile)
                           : tile;
                     },
@@ -1876,18 +1896,28 @@ class _ServerPaneState extends State<ServerPane> {
 /// это режим «Авто (лучший)», где сессию держит балансировщик, а не отдельный
 /// узел. ⚠️ Сам ключ показывать НЕЛЬЗЯ ни при каких обстоятельствах — это
 /// share-ссылка с логином сервера внутри.
+///
+/// [activeNode] — узел, выбранный балансировщиком сейчас (решение владельца
+/// 24.09.2026: «Авто» обязан говорить, в какой он стране). Дописывается ТОЛЬКО
+/// к сессиям-балансировщикам: «Авто (лучший)» и профилям «Авто …» от панели.
+/// У обычного сервера узел один, и имя его уже стоит в подписи.
 @visibleForTesting
 String? activeServerName({
   required bool connected,
   required String? connectedKey,
   required List<VpnServer> servers,
   required String autoLabel,
+  String? activeNode,
 }) {
   if (!connected) return null;
+  String withNode(String name) =>
+      (activeNode == null || activeNode.isEmpty) ? name : '$name · $activeNode';
   for (final s in servers) {
-    if (s.key == connectedKey) return s.displayName;
+    if (s.key == connectedKey) {
+      return s.isPanelProfile ? withNode(s.displayName) : s.displayName;
+    }
   }
-  return autoLabel;
+  return withNode(autoLabel);
 }
 
 /// Центр главного экрана: плашка активного сервера, кнопка Connect и колонки
@@ -2341,8 +2371,8 @@ class ActiveServerLabel extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Tooltip(
       // Имя целиком: в плашку помещается не всякое, а знать, куда подключён,
-      // нужно точно.
-      message: n,
+      // нужно точно. Флаги — картинкой (Windows эмодзи-флаги не рендерит).
+      richMessage: flagTextSpan(n),
       child: Container(
         constraints: const BoxConstraints(maxWidth: maxWidth),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -2360,8 +2390,8 @@ class ActiveServerLabel extends StatelessWidget {
             const SizedBox(width: 6),
           ],
           Flexible(
-            child: Text(
-              FlagUtil.strip(n),
+            child: FlagText(
+              FlagUtil.stripIconFlags(n),
               maxLines: maxLines,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,

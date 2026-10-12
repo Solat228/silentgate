@@ -6,8 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../core/models/vpn_server.dart';
 import '../../core/probe/ping_result.dart';
+import '../../core/util/country_flag.dart';
 import '../../core/i18n/enum_labels.dart';
-import '../../core/i18n/text_direction.dart';
 import '../../core/xray/panel_routing_summary.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
@@ -20,6 +20,7 @@ import 'app_toast.dart';
 import '../server_info_screen.dart';
 import '../server_json_dialog.dart';
 import 'flag_cell.dart';
+import 'flag_text.dart';
 import 'info_tooltip.dart';
 import 'ping_chip.dart';
 import 'ping_gate.dart';
@@ -107,10 +108,20 @@ class ServerTile extends StatelessWidget {
     // не подключаемся — показываем сообщение и кнопку «Обновить».
     if (server.isNotice) return _noticeTile(context, state);
     final l = AppLocalizations.of(context);
-    // ⚠️ ФЛАГИ В ИМЕНИ НЕ СРЕЗАЕМ — требование владельца 02.09.2026.
-    // Панель шлёт их осмысленно («🇷🇺→🇩🇪 Москва → Германия (мост)»):
-    // в ячейке слева видно направление, а в имени — что именно за
-    // страны. Дублирование здесь намеренное, а не недосмотр.
+    // Сервер сам не умеет подключиться (например, hysteria2 с маской, которую
+    // не строит ни одно наше ядро) — причина СВОЯ и побеждает то, что передал
+    // вызывающий код: непригодность вызывающего смысла (например, «не годится
+    // в отдельный выход») здесь уже не важна, сервер не годится вообще ни для
+    // чего. Решение владельца 25.09.2026 — не выбрасывать такой сервер из
+    // списка, а показать серым с пояснением (см. VpnServer.unsupportedReason).
+    final effectiveNote =
+        server.isUnsupported ? unsupportedServerNote(l, server) : unavailableNote;
+    // ⚠️ ФЛАГИ ИЗ ИМЕНИ ВЫРЕЗАЮТСЯ, НО ТОЛЬКО ТЕ, ЧТО УЖЕ В ЯЧЕЙКЕ СЛЕВА —
+    // решение владельца 25.09.2026, отменяет прежнее «дублировать всегда»
+    // (02.09.2026). Панель шлёт флаги осмысленно («🇷🇺→🇩🇪 Москва → Германия
+    // (мост)»): в ячейке видно направление первых двух, а третий и далее (их
+    // ячейка не рисует) остаются в тексте — картинкой через [FlagText], не
+    // буквами `RU`/`DE` (Windows эмодзи-флаги не рендерит).
     final name = server.remark.trim();
     final pinned = state.isPinned(server);
     // Подписка, из которой пришёл сервер, если сейчас выбрана другая. Свои
@@ -149,7 +160,14 @@ class ServerTile extends StatelessWidget {
         // Кнопка правки/меню уезжает ВПЛОТНУЮ к краю строки — просьба владельца
         // («можно увести гораздо правее»). Штатные 16 dp справа отодвигали её от
         // края почти на ширину самой иконки.
-        contentPadding: const EdgeInsetsDirectional.only(start: 16, end: 2),
+        //
+        // ⚠️ ПОЛЯ И ФЛАГ УЖАТЫ — вариант «Б», выбор владельца 24.09.2026 для ПК
+        // и телефона (листы `SHEET_pc/phone.png`): длинные имена серверов
+        // обрезались многоточием, а слева 16 dp поля и флаг 34 px съедали
+        // место под имя. Отвоёвано около 20 px строки.
+        contentPadding: const EdgeInsetsDirectional.only(start: 8, end: 0),
+        horizontalTitleGap: 10,
+        minLeadingWidth: 0,
         selected: selected,
         selectedTileColor: scheme.primary.withValues(alpha: 0.08),
         // Значок чужой подписки лежит НА флаге (правый верхний угол), а не
@@ -160,13 +178,14 @@ class ServerTile extends StatelessWidget {
         leading: Stack(
           clipBehavior: Clip.none,
           children: [
-            FlagCell(server.remark, auto: server.isPanelProfile),
+            FlagCell(server.remark,
+                auto: server.isPanelProfile, width: 28, height: 20),
             if (foreign != null)
               Positioned(
                 top: 0,
                 right: 0,
                 child: Tooltip(
-                  message: foreign.safeTitle,
+                  richMessage: flagTextSpan(foreign.safeTitle),
                   child: Container(
                     // Тонкая обводка цветом фона карточки — иначе градиентная
                     // заглушка без логотипа сливалась бы с флагом под ней.
@@ -181,7 +200,7 @@ class ServerTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    // ~треть стороны флаг-ячейки (34×24): значок остаётся
+                    // ~треть стороны флаг-ячейки (28×20): значок остаётся
                     // читаемым, но не закрывает сам флаг под ним.
                     child: SubscriptionAvatar(
                         path: foreign.logoPath, label: foreign.safeTitle, size: 10),
@@ -197,7 +216,8 @@ class ServerTile extends StatelessWidget {
               child: Icon(Icons.push_pin, size: 13),
             ),
           Flexible(
-            child: Text(name.isEmpty ? server.address : name,
+            child: FlagText(
+                FlagUtil.stripIconFlags(name.isEmpty ? server.address : name),
                 overflow: TextOverflow.ellipsis,
                 textDirection: TextDirection.ltr),
           ),
@@ -208,20 +228,23 @@ class ServerTile extends StatelessWidget {
             InfoTooltip(updatedServerTooltip(l, updatedFields),
                 title: l.srvTileUpdatedTitle,
                 icon: Icons.published_with_changes,
-                color: scheme.secondary),
+                color: scheme.secondary,
+                compact: true),
           if (panelInfo != null)
-            InfoTooltip(_panelSummary(l, panelInfo), title: l.panelTunnelMarker),
+            InfoTooltip(_panelSummary(l, panelInfo),
+                title: l.panelTunnelMarker, compact: true),
           // Почему сервер не годится — «!» с диалогом, а не всплывающая
           // подсказка: текст абзацем, и подсказка накрыла бы соседнюю строку
           // списка (см. tooltipTheme в app.dart). Плюс на тач-экране hover'а
           // нет вовсе, а долгое нажатие занято контекстным меню.
-          if (unavailableNote != null)
-            InfoTooltip(unavailableNote!, title: server.displayName),
+          if (effectiveNote != null)
+            InfoTooltip(effectiveNote,
+                title: server.displayName, compact: true),
         ]),
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
         // тач-экране подсказка вызывается долгим нажатием, а оно уже занято
         // контекстным меню, и имя оказалось бы недостижимо.
-        subtitle: Text(
+        subtitle: FlagText(
             [
               // ⚠️ ИМЕННО `safeTitle`, А НЕ `title`. Запасное имя профиля — это
               // кусок URL подписки, а последний его сегмент у Remnawave и есть
@@ -302,11 +325,16 @@ class ServerTile extends StatelessWidget {
     // с отступом внутрь. Высота здесь — не косметика, по ней считается
     // прокрутка к выбранному серверу в home_screen.
     final outlined = SelectionOutline(selected: selected, inset: 2, child: tile);
-    if (unavailableNote == null) return outlined;
+    if (effectiveNote == null) return outlined;
     // Непригодный сервер ПРИГЛУШАЕМ, но не выключаем: выбрать его по-прежнему
     // можно (решение владельца от 07.08.2026 — предупреждать, а не запрещать),
     // а выглядеть как рабочий он не должен. `Opacity` не перехватывает
     // нажатия, поэтому и строка, и «!» рядом с именем остаются рабочими.
+    //
+    // ⚠️ ИСКЛЮЧЕНИЕ — `server.isUnsupported`: там нажатие всё-таки перехвачено
+    // (см. `onTap`/меню ниже) — «предупреждать, а не запрещать» относится к
+    // ОБЫЧНОЙ непригодности (например, для отдельного выхода), а не к серверу,
+    // который клиент не умеет собрать вообще ни в каком качестве.
     return Opacity(opacity: 0.55, child: outlined);
   }
 
@@ -337,11 +365,12 @@ class ServerTile extends StatelessWidget {
     return ListTile(
       dense: true,
       leading: Icon(Icons.campaign_outlined, color: scheme.tertiary),
-      title: Text(text.isEmpty ? l.srvTileNotice : text,
-          // Notice-сообщение провайдера — направление по содержимому
-          // (пустое → локализованный фолбэк, наследует локаль).
-          textDirection: text.isEmpty ? null : autoTextDirection(text),
-          style: TextStyle(color: scheme.onSurface)),
+      // Notice-сообщение провайдера — флаг-эмодзи картинкой (Windows их не
+      // рисует) + ограничение длины (панель может прислать очень длинный
+      // текст в `remark`). Пустое → локализованный фолбэк, без флагов/обрезки.
+      title: text.isEmpty
+          ? Text(l.srvTileNotice, style: TextStyle(color: scheme.onSurface))
+          : NoticeText(text, style: TextStyle(color: scheme.onSurface)),
       trailing: Row(mainAxisSize: MainAxisSize.min, children: [
         // «Обновить» — раньше «Скопировать»: после оплаты жмут именно её.
         FilledButton.tonalIcon(
@@ -377,13 +406,19 @@ class ServerTile extends StatelessWidget {
     final navigator = Navigator.of(context);
     final pinned = state.isPinned(server);
 
+    // ⚠️ `showMenu` жёстко ограничивает ширину пункта 280 px (5 шагов по
+    // 56 — Material-константа `_kMenuMaxWidth`, НЕ зависит от места клика и
+    // размера окна). Длинный текст («Умный подбор параметров») превышал её
+    // и ронял `RenderFlex` переполнением — не визуальный дефект, а
+    // исключение, валящее кадр. `Flexible` + многоточие вместо жёсткого
+    // краша.
     PopupMenuItem<String> item(String value, IconData icon, String text) =>
         PopupMenuItem(
           value: value,
           child: Row(children: [
             Icon(icon, size: 18),
             const SizedBox(width: 12),
-            Text(text),
+            Flexible(child: Text(text, overflow: TextOverflow.ellipsis)),
           ]),
         );
 
@@ -392,13 +427,20 @@ class ServerTile extends StatelessWidget {
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
       items: [
         item('info', Icons.info_outline, l.srvTileInfo),
-        item('ping', Icons.network_check, l.srvTilePing),
-        item('speed', Icons.speed, l.srvTileMeasureSpeed),
+        // ⚠️ Пинг/скорость/автонастройка требуют живого подключения к серверу —
+        // у неподдерживаемого его нет и не будет: пункты бы просто молчали или
+        // ходили без маски, которую ждёт сервер. Прячем, а не гасим — гашёный
+        // пункт меню тут не даёт понять, почему он не работает.
+        if (!server.isUnsupported)
+          item('ping', Icons.network_check, l.srvTilePing),
+        if (!server.isUnsupported)
+          item('speed', Icons.speed, l.srvTileMeasureSpeed),
         item('pin', pinned ? Icons.push_pin_outlined : Icons.push_pin,
             pinned ? l.srvTileUnpin : l.srvTilePin),
         item('json', Icons.data_object, l.srvTileJsonConfig),
         item('copyKey', Icons.content_copy, l.srvTileCopyKey),
-        item('smart', Icons.auto_fix_high, l.srvTileSmart),
+        if (!server.isUnsupported)
+          item('smart', Icons.auto_fix_high, l.srvTileSmart),
         item('edit', Icons.edit, l.srvTileEdit),
         item('delete', Icons.delete_outline, l.srvTileDelete),
       ],

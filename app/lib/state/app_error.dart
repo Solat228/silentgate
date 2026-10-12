@@ -9,7 +9,8 @@
 enum AppErrorCode {
   invalidJson('Некорректный JSON'),
   pickServerFirst('Сначала выберите сервер'),
-  importSubscriptionFirst('Сначала импортируйте подписку');
+  importSubscriptionFirst('Сначала импортируйте подписку'),
+  serverUnsupported('Этот сервер не поддерживается клиентом');
 
   const AppErrorCode(this.fallback);
 

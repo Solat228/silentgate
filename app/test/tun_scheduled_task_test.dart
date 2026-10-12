@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/engine/windows/tun/tun_scheduled_task.dart';
 
@@ -74,6 +76,19 @@ void main() {
       expect(TunScheduledTask.matches(xmlOf(exe, escaped), exe, args), isTrue);
     });
 
+    test('⚠️ программа в кавычках — как её хранит Планировщик — совпало', () {
+      // Снято живьём в VM 08.10.2026: `/TR "\"<exe>\" …"` ложится в
+      // `<Command>` В КАВЫЧКАХ, а аргументы — буквальными кавычками, без
+      // &quot;. Прежняя сверка этот вид не узнавала, и верно созданная задача
+      // считалась чужой.
+      expect(TunScheduledTask.matches(xmlOf('"$exe"', args), exe, args), isTrue);
+      // Но кавычки не делают чужую программу своей.
+      expect(
+          TunScheduledTask.matches(
+              xmlOf(r'"C:\Other\silentgate.exe"', args), exe, args),
+          isFalse);
+    });
+
     test('мусор вместо XML — не совпало, а не исключение', () {
       // «Не знаю» обязано вести себя как «не подходит»: иначе на нечитаемом
       // ответе мы бы запустили что попало.
@@ -83,26 +98,63 @@ void main() {
   });
 
   group('⚠️ Кодировка вывода schtasks', () {
+    test('⚠️ однобайтный вывод без BOM идёт в OEM-декодер, а не в UTF-16', () {
+      // Так `schtasks /XML` отдаёт в пайп на самом деле — снято 08.10.2026 и
+      // на хосте, и в VM: `3C 3F 78 6D 6C …`, несмотря на encoding="UTF-16"
+      // в шапке. Прежний код читал это как UTF-16 и получал мусор, поэтому
+      // проверка задачи не совпадала НИКОГДА.
+      const head = '<?xml version="1.0" encoding="UTF-16"?><Command>x</Command>';
+      final bytes = head.codeUnits;
+      List<int>? seen;
+      final got = TunScheduledTask.decodeQueryOutput(bytes, oem: (b) {
+        seen = b;
+        return String.fromCharCodes(b);
+      });
+      expect(seen, bytes, reason: 'однобайтный вывод обязан идти в OEM');
+      expect(TunScheduledTask.tag(got, 'Command'), 'x');
+    });
+
     test('UTF-16LE с меткой порядка байт разбирается', () {
-      // `schtasks /XML` печатает именно так. Прочитанный системной кодировкой,
-      // он приходит мусором — и сравнение не совпадает ни разу.
       const text = '<Command>C:\\путь\\silentgate.exe</Command>';
       final bytes = <int>[0xFF, 0xFE];
       for (final u in text.codeUnits) {
         bytes..add(u & 0xFF)..add(u >> 8);
       }
-      expect(TunScheduledTask.decodeUtf16(bytes), text);
-      expect(TunScheduledTask.tag(TunScheduledTask.decodeUtf16(bytes), 'Command'),
-          r'C:\путь\silentgate.exe');
+      var oemCalled = false;
+      final got = TunScheduledTask.decodeQueryOutput(bytes, oem: (_) {
+        oemCalled = true;
+        return '';
+      });
+      expect(oemCalled, isFalse);
+      expect(TunScheduledTask.tag(got, 'Command'), r'C:\путь\silentgate.exe');
     });
 
-    test('без метки порядка байт тоже разбирается', () {
+    test('UTF-16 без метки порядка байт узнаётся по нулевым байтам', () {
       const text = '<Arguments>--tun-task</Arguments>';
       final bytes = <int>[];
       for (final u in text.codeUnits) {
         bytes..add(u & 0xFF)..add(u >> 8);
       }
-      expect(TunScheduledTask.decodeUtf16(bytes), text);
+      expect(
+          TunScheduledTask.decodeQueryOutput(bytes, oem: (_) => 'OEM'), text);
+    });
+
+    test('настоящий OEM-декодер Windows: «Иван» в cp866', () {
+      // Байты сняты с настоящего вывода в VM. Проверка имеет смысл только на
+      // машине с OEM-страницей 866 — на других локалях эти байты значат иное.
+      if (!Platform.isWindows) return;
+      final oem = Process.runSync('cmd', ['/c', 'chcp']).stdout.toString();
+      if (!oem.contains('866')) {
+        markTestSkipped('OEM-страница не 866: $oem');
+        return;
+      }
+      final bytes = [
+        ...'<Command>"C:\\'.codeUnits,
+        0x88, 0xA2, 0xA0, 0xAD,
+        ...'\\x.exe"</Command>'.codeUnits,
+      ];
+      final xml = TunScheduledTask.decodeQueryOutput(bytes);
+      expect(TunScheduledTask.tag(xml, 'Command'), r'"C:\Иван\x.exe"');
     });
   });
 }

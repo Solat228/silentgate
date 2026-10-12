@@ -129,6 +129,45 @@ void main() {
       e.setStatus(VpnConnectionState.connected);
       expect(e.status.blocking, isFalse);
     });
+
+    // Найдено живым прогоном в VM 10.10.2026: TUN-ядро заморожено, kill
+    // switch держал трафик 27 с, а значок в трее был красным меньше секунды.
+    // Признак ставил только статус «переподключение через N с»; через 800 мс
+    // сама попытка слала «Подключение…» с умолчанием `blocking: false`, и
+    // трей сереел при живой блокировке.
+    test('признак держится и на статусах самой попытки', () async {
+      final e = await armed(killSwitch: true);
+      await e.scheduleRetry('обрыв');
+      e.settleRetry();
+      e.setStatus(VpnConnectionState.connecting, message: 'Подключение…');
+      expect(e.status.blocking, isTrue,
+          reason: 'блокировка не снята — трей обязан оставаться красным');
+    });
+
+    test('без kill switch попытка блокировкой не считается', () async {
+      final e = await armed(killSwitch: false);
+      await e.scheduleRetry('обрыв');
+      e.settleRetry();
+      e.setStatus(VpnConnectionState.connecting, message: 'Подключение…');
+      expect(e.status.blocking, isFalse);
+    });
+
+    test('ручное отключение во время блокировки её снимает', () async {
+      final e = await armed(killSwitch: true);
+      await e.scheduleRetry('обрыв');
+      await e.disconnect();
+      expect(e.status.blocking, isFalse);
+      // Следующее подключение — новое, по кнопке: на его «Подключение…»
+      // старая блокировка не переносится.
+      await e.connectWith(
+        '{}',
+        const ConnectionOptions(
+            settings: AppSettings(autoReconnect: true, killSwitch: true)),
+        [_server('a')],
+      );
+      e.setStatus(VpnConnectionState.connecting, message: 'Подключение…');
+      expect(e.status.blocking, isFalse);
+    });
   });
 
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/util/server_groups.dart';
 import '../core/util/server_search.dart';
 import '../l10n/gen/app_localizations.dart';
 import '../state/app_state.dart';
@@ -9,6 +10,7 @@ import '../state/settings_controller.dart';
 import 'home_screen.dart' show CopyServerKeyShortcut;
 import 'widgets/auto_pick_button.dart';
 import 'widgets/ping_gate.dart';
+import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 
@@ -31,6 +33,16 @@ class _ServersScreenState extends State<ServersScreen> {
     final servers = state.servers;
     // Исходные индексы: выбор идёт по позиции в AppState.servers.
     final shown = ServerSearch.matchIndices(servers, _query);
+    // Строки с заголовками групп стран — та же функция, что у правой панели
+    // главного экрана.
+    final entries = serverListEntries(
+      servers: servers,
+      shown: shown,
+      searching: _query.isNotEmpty,
+      settings: context.watch<SettingsController>().settings,
+      selected: state.selectedIndex,
+      isPinned: state.isPinned,
+    );
     // ⚠️ ГЕЙТ ОБЩИЙ С ОСТАЛЬНЫМИ ТОЧКАМИ ВХОДА, А НЕ «ИДЁТ ЛИ ПИНГ».
     // Здесь стояло одно условие `probe.running`, а прогон пинга не начинается
     // ещё и во время замера скорости — тот держит те же локальные порты.
@@ -111,11 +123,19 @@ class _ServersScreenState extends State<ServersScreen> {
                   child: shown.isEmpty
                       ? Center(child: Text(l.serversNothingFound))
                       : ListView.separated(
-                          itemCount: shown.length,
+                          itemCount: entries.length,
                           separatorBuilder: (_, __) => const Divider(height: 1),
                           itemBuilder: (context, i) {
-                            final idx = shown[i];
-                            return ServerTile(
+                            final entry = entries[i];
+                            if (entry is ServerGroupHeader) {
+                              return ServerGroupHeaderTile(
+                                  group: entry,
+                                  flagSource:
+                                      servers[entry.indices.first].remark);
+                            }
+                            final row = entry as ServerRowEntry;
+                            final idx = row.index;
+                            final tile = ServerTile(
                               server: servers[idx],
                               selected: idx == state.selectedIndex,
                               onTap: () {
@@ -123,6 +143,7 @@ class _ServersScreenState extends State<ServersScreen> {
                                 Navigator.of(context).pop();
                               },
                             );
+                            return serverListRow(row, tile);
                           },
                         ),
                 ),

@@ -14,17 +14,23 @@ import 'package:provider/provider.dart';
 import '../core/settings/app_settings.dart';
 import '../core/singbox/exit_outbounds.dart';
 import '../core/settings/split_tunnel.dart';
+import '../core/settings/split_tunnel_counts.dart';
+import '../core/settings/split_tunnel_text.dart';
+import '../core/settings/split_rule_layout.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
 import '../core/util/server_search.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/dead_path_badge.dart';
+import 'widgets/flag_text.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/app_label.dart';
 import 'widgets/route_diagram.dart';
 import 'widgets/site_favicon.dart';
 import 'widgets/info_tooltip.dart';
+import 'widgets/rule_counts_text.dart';
+import 'widgets/rule_import_dialog.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/app_toast.dart';
 import '../core/i18n/enum_labels.dart';
@@ -239,7 +245,21 @@ class SplitTunnelScreen extends StatelessWidget {
                   // показываем: и так понятно, что весь трафик идёт через VPN.
                   if (st.mode != SplitMode.all) ...[
                   const Divider(),
-                  _header(context, l.splitAppsHeader, l.infoSplitApps),
+                  // ⚠️ ЗАГОЛОВОК, ИНСТРУМЕНТЫ, ПОТОМ СПИСОК — именно в таком
+                  // порядке и внутри КАЖДОГО блока. У человека с сотнями
+                  // правил добавление, лежащее под списком, недостижимо без
+                  // прокрутки через весь список (прямое требование владельца).
+                  _listHeader(
+                    context,
+                    l,
+                    title: l.splitAppsHeader,
+                    info: l.infoSplitApps,
+                    counts: countAppRules(st.apps),
+                    collapsed: controller.settings.splitAppsCollapsed,
+                    onToggle: () => controller.update((s) => s.copyWith(
+                        splitAppsCollapsed: !s.splitAppsCollapsed)),
+                  ),
+                  _appTools(context, controller, state, l),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: SelText(
@@ -247,7 +267,16 @@ class SplitTunnelScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  ...st.apps.map((rule) => Opacity(
+                  // Подгруппы по действию (Туннель → Прямо → Блок), внутри
+                  // новые сверху — решение владельца 11.10.2026. Раскладка в
+                  // `split_rule_layout.dart`; порядок на диске не меняется.
+                  if (!controller.settings.splitAppsCollapsed)
+                  ...groupRulesByAction(st.apps, (r) => r.action).expand((g) => [
+                  _groupHeader(context, controller, l,
+                      list: 'apps', action: g.action, count: g.rules.length),
+                  if (!controller.settings.splitCollapsed
+                      .contains(splitGroupKey('apps', g.action)))
+                  ...g.rules.map((rule) => Opacity(
                         opacity: rule.enabled ? 1 : 0.45,
                         child: ListTile(
                           key: ValueKey('app:${rule.path}'),
@@ -322,34 +351,23 @@ class SplitTunnelScreen extends StatelessWidget {
                           onTap: () => _appDialog(context, controller, rule),
                         ),
                       )),
-                  OverflowBar(
-                    alignment: MainAxisAlignment.start,
-                    children: [
-                      TextButton.icon(
-                        icon: const Icon(Icons.list),
-                        // Формулировка зависит от платформы: на Windows каталог
-                        // строится из ЗАПУЩЕННЫХ процессов, на Android система
-                        // отдаёт список УСТАНОВЛЕННЫХ приложений. Назвать их
-                        // «запущенными» значило бы обмануть — пользователь стал
-                        // бы искать в списке то, что сейчас открыто.
-                        label: Text(platform.appCatalog.supportsManualPick
-                            ? l.splitFromRunning
-                            : l.splitPickInstalled),
-                        onPressed: () => _pickRunning(context, controller),
-                      ),
-                      // Выбор файла вручную осмыслен там, где правило адресует
-                      // исполняемый файл (Windows). На Android правило — это
-                      // packageName, и весь список даёт сама система.
-                      if (platform.appCatalog.supportsManualPick)
-                        TextButton.icon(
-                          icon: const Icon(Icons.folder_open),
-                          label: Text(l.splitPickExe),
-                          onPressed: () => _pickExe(context, controller),
-                        ),
-                    ],
-                  ),
+                  ]),
                   const Divider(),
-                  _header(context, l.splitSitesHeader, l.infoSplitDomains),
+                  _listHeader(
+                    context,
+                    l,
+                    title: l.splitSitesHeader,
+                    info: l.infoSplitDomains,
+                    counts: countSiteRules(st.sites),
+                    collapsed: controller.settings.splitSitesCollapsed,
+                    onToggle: () => controller.update((s) => s.copyWith(
+                        splitSitesCollapsed: !s.splitSitesCollapsed)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+                    child: _AddSiteField(controller: controller),
+                  ),
+                  _siteTools(context, controller, state, l),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: SelText(
@@ -357,18 +375,40 @@ class SplitTunnelScreen extends StatelessWidget {
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),
-                  ..._sortedSites(st.sites).expand((e) => [
-                        // Разделитель между группами: без него соседние сайты
-                        // читаются как один список, и поддомен одного домена
-                        // выглядит принадлежащим предыдущему.
+                  // Уведомление о блокировке — рядом со списком, который его
+                  // и порождает, но ВЫШЕ самого списка: иначе до галочки
+                  // пришлось бы прокручивать все правила.
+                  if (st.sites.any((x) => x.action == AppAction.block))
+                    SwitchListTile(
+                      secondary:
+                          const Icon(Icons.notifications_active_outlined),
+                      value: controller.settings.blockNoticeEnabled,
+                      onChanged: (v) => controller
+                          .update((s) => s.copyWith(blockNoticeEnabled: v)),
+                      title: Text(l.blockNoticeTitle),
+                      subtitle: SelText(l.blockNoticeSub,
+                          style: Theme.of(context).textTheme.bodySmall),
+                    ),
+                  // Те же подгруппы, что у приложений; внутри — дерево
+                  // поддоменов, каждый узел с потомками сворачивается.
+                  if (!controller.settings.splitSitesCollapsed)
+                  ...groupRulesByAction(st.sites, (x) => x.action).expand((g) => [
+                  _groupHeader(context, controller, l,
+                      list: 'sites', action: g.action, count: g.rules.length),
+                  if (!controller.settings.splitCollapsed
+                      .contains(splitGroupKey('sites', g.action)))
+                  ...siteTreeRows(
+                    [for (final x in st.sites) if (x.action == g.action) x],
+                    collapsed: controller.settings.splitCollapsed.toSet(),
+                  ).expand((e) => [
+                        // Разделитель между корневыми доменами: без него
+                        // соседние сайты читаются как один список, и поддомен
+                        // одного домена выглядит принадлежащим предыдущему.
                         if (e.newGroup)
                           const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16),
-                        _siteTile(context, controller, e.site, e.depth),
+                        _siteTile(context, controller, e),
                       ]),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: _AddSiteField(controller: controller),
-                  ),
+                  ]),
                   // ⚠️ Побочный эффект правил по сайтам, о котором нельзя
                   // молчать: приложение глушит HTTP/3 для ВСЕГО трафика, а не
                   // только для перечисленных доменов. Иначе правило по сайту
@@ -398,10 +438,10 @@ class SplitTunnelScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                  // Стоит здесь, а не в общих настройках: уведомление касается
-                  // только правил «Блок», а их заводят именно на этом экране.
-                  // Показываем, лишь когда блокировка реально есть, — иначе это
-                  // настройка ни для чего.
+                  // ⚠️ Уведомление о блокировке («Сообщать о заблокированных
+                  // сайтах») переехало НАВЕРХ, в `_topTools`, по просьбе
+                  // владельца — вместе с полем добавления сайта. Гейт там тот
+                  // же: показываем, лишь когда есть правило «Блок».
                   //
                   // ⚠️ ЗДЕСЬ БЫЛА СТРАНИЦА-ЗАГЛУШКА. Она подменяла ответ по
                   // http и до пользователя почти никогда не доходила: браузеры
@@ -412,18 +452,6 @@ class SplitTunnelScreen extends StatelessWidget {
                   // получить возможность читать весь TLS пользователя. Поэтому
                   // объяснение переехало туда, где оно работает всегда, —
                   // в само приложение.
-                  if (st.sites.any((x) => x.action == AppAction.block)) ...[
-                    const Divider(),
-                    SwitchListTile(
-                      secondary: const Icon(Icons.notifications_active_outlined),
-                      value: controller.settings.blockNoticeEnabled,
-                      onChanged: (v) => controller
-                          .update((s) => s.copyWith(blockNoticeEnabled: v)),
-                      title: Text(l.blockNoticeTitle),
-                      subtitle: SelText(l.blockNoticeSub,
-                          style: Theme.of(context).textTheme.bodySmall),
-                    ),
-                  ],
                   ], // конец блока «списки при не-all режиме»
                 ],
               ),
@@ -457,6 +485,243 @@ class SplitTunnelScreen extends StatelessWidget {
           InfoTooltip(info, title: title),
         ]),
       );
+
+  /// Заголовок блока: название, «!», сводка числами и сворачивание.
+  ///
+  /// ⚠️ СВОДКА — ЧАСТЬ СВОРАЧИВАНИЯ, А НЕ УКРАШЕНИЕ. Свёрнутый список не
+  /// показывает ничего, и без чисел человек не видит даже того, остались ли
+  /// там правила. Строится в [formatRuleCounts].
+  ///
+  /// ⚠️ Внутри заголовка `Text`, а не `SelText`: строка кликабельна целиком, а
+  /// жест выделения выигрывает арену у `InkWell` — заголовок перестал бы
+  /// сворачиваться (тот же случай, что с `SelText` в строках списков).
+  Widget _listHeader(
+    BuildContext context,
+    AppLocalizations l, {
+    required String title,
+    required String info,
+    required RuleCounts counts,
+    required bool collapsed,
+    required VoidCallback onToggle,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onToggle,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 14, 4, 2),
+        child: Row(children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Flexible(
+                    child: Text(title,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        )),
+                  ),
+                  InfoTooltip(info, title: title),
+                ]),
+                Text(formatRuleCounts(l, counts),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.hintColor)),
+              ],
+            ),
+          ),
+          IconButton(
+            tooltip: collapsed ? l.splitExpandList : l.splitCollapseList,
+            icon: Icon(collapsed ? Icons.expand_more : Icons.expand_less),
+            onPressed: onToggle,
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _appTools(BuildContext context, SettingsController controller,
+          AppState state, AppLocalizations l) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+        child: OverflowBar(
+          alignment: MainAxisAlignment.start,
+          spacing: 4,
+          children: [
+            TextButton.icon(
+              icon: const Icon(Icons.list),
+              // Формулировка зависит от платформы: на Windows каталог
+              // строится из ЗАПУЩЕННЫХ процессов, на Android система отдаёт
+              // список УСТАНОВЛЕННЫХ приложений. Назвать их «запущенными»
+              // значило бы обмануть — человек стал бы искать в списке то,
+              // что сейчас открыто.
+              label: Text(platform.appCatalog.supportsManualPick
+                  ? l.splitFromRunning
+                  : l.splitPickInstalled),
+              onPressed: () => _pickRunning(context, controller),
+            ),
+            // Выбор файла вручную осмыслен там, где правило адресует
+            // исполняемый файл (Windows). На Android правило — это
+            // packageName, и весь список даёт сама система.
+            if (platform.appCatalog.supportsManualPick)
+              TextButton.icon(
+                icon: const Icon(Icons.folder_open),
+                label: Text(l.splitPickExe),
+                onPressed: () => _pickExe(context, controller),
+              ),
+            TextButton.icon(
+              icon: const Icon(Icons.file_upload_outlined),
+              label: Text(l.splitExport),
+              onPressed: () => _exportApps(context, controller, state),
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.file_download_outlined),
+              label: Text(l.splitImport),
+              onPressed: () => _importApps(context, controller, state),
+            ),
+          ],
+        ),
+      );
+
+  Widget _siteTools(BuildContext context, SettingsController controller,
+          AppState state, AppLocalizations l) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(8, 0, 8, 0),
+        child: OverflowBar(
+          alignment: MainAxisAlignment.start,
+          spacing: 4,
+          children: [
+            TextButton.icon(
+              icon: const Icon(Icons.file_upload_outlined),
+              label: Text(l.splitExport),
+              onPressed: () => _exportSites(context, controller, state),
+            ),
+            TextButton.icon(
+              icon: const Icon(Icons.file_download_outlined),
+              label: Text(l.splitImport),
+              onPressed: () => _importSites(context, controller, state),
+            ),
+          ],
+        ),
+      );
+
+  /// Имя сервера для записи в текстовый список.
+  ///
+  /// ⚠️ НЕ `displayName`. При пустом названии он вырождается в `адрес:порт`, и
+  /// экспорт, который человек потом кому-то перешлёт, унёс бы адрес сервера
+  /// наружу — ровно та утечка, что разбиралась в 1.4.3. Безымянный сервер
+  /// просто не называется: правило уедет в общий туннель, и это видно.
+  static String? _exitName(AppState state, String key) {
+    for (final s in state.servers) {
+      if (s.key != key) continue;
+      final name = s.remark.trim();
+      return name.isEmpty ? null : name;
+    }
+    return null;
+  }
+
+  /// Обратный поиск: имя из текста → ключ сервера. Имени не нашлось — `null`,
+  /// то есть общий туннель (висячая ссылка на выход опаснее: ядро её не ловит).
+  static String? _exitKey(AppState state, String name) {
+    final want = name.trim();
+    if (want.isEmpty) return null;
+    for (final s in state.servers) {
+      if (s.remark.trim() == want) return s.key;
+    }
+    return null;
+  }
+
+  /// Экспорт в буфер обмена. Через буфер, а не файлом: на телефоне сохранение
+  /// файла ненадёжно, а буфер работает везде.
+  Future<void> _exportSites(
+      BuildContext context, SettingsController c, AppState state) async {
+    final l = AppLocalizations.of(context);
+    final sites = c.settings.splitTunnel.sites;
+    if (sites.isEmpty) {
+      AppToast.show(context, l.splitExportEmpty);
+      return;
+    }
+    await Clipboard.setData(ClipboardData(
+        text: encodeSiteRules(sites,
+            exitNameOf: (k) => _exitName(state, k))));
+    if (context.mounted) AppToast.copied(context);
+  }
+
+  Future<void> _exportApps(
+      BuildContext context, SettingsController c, AppState state) async {
+    final l = AppLocalizations.of(context);
+    final apps = c.settings.splitTunnel.apps;
+    if (apps.isEmpty) {
+      AppToast.show(context, l.splitExportEmpty);
+      return;
+    }
+    await Clipboard.setData(ClipboardData(
+        text: encodeAppRules(apps, exitNameOf: (k) => _exitName(state, k))));
+    if (context.mounted) AppToast.copied(context);
+  }
+
+  Future<void> _importSites(
+      BuildContext context, SettingsController c, AppState state) async {
+    final l = AppLocalizations.of(context);
+    final current = c.settings.splitTunnel.sites;
+    final defaultAction = c.settings.splitTunnel.defaultAction;
+    final res = await showDialog<RuleImportResult<SiteRule>>(
+      context: context,
+      builder: (ctx) => RuleImportDialog<SiteRule>(
+        title: l.splitImportTitleSites,
+        parse: (t) => parseSiteRules(t,
+            defaultAction: defaultAction,
+            exitKeyOf: (n) => _exitKey(state, n)),
+        plan: (incoming) => planSiteMerge(current, incoming),
+        apply: (p, {required overwrite}) =>
+            applySiteMerge(current, p, overwriteConflicts: overwrite),
+        label: (s) => s.label,
+        describe: (s) => appActionLabel(l, s.action),
+      ),
+    );
+    if (res == null || !context.mounted) return;
+    c.update((s) =>
+        s.copyWith(splitTunnel: s.splitTunnel.copyWith(sites: res.rules)));
+    _importToast(context, l, res.replaced, res.rules.length, res.added,
+        res.overwritten);
+  }
+
+  Future<void> _importApps(
+      BuildContext context, SettingsController c, AppState state) async {
+    final l = AppLocalizations.of(context);
+    final current = c.settings.splitTunnel.apps;
+    final defaultAction = c.settings.splitTunnel.defaultAction;
+    final res = await showDialog<RuleImportResult<AppRule>>(
+      context: context,
+      builder: (ctx) => RuleImportDialog<AppRule>(
+        title: l.splitImportTitleApps,
+        parse: (t) => parseAppRules(t,
+            defaultAction: defaultAction,
+            exitKeyOf: (n) => _exitKey(state, n)),
+        plan: (incoming) => planAppMerge(current, incoming),
+        apply: (p, {required overwrite}) =>
+            applyAppMerge(current, p, overwriteConflicts: overwrite),
+        label: (a) => a.byName ? a.name : a.path,
+        describe: (a) => a.enabled
+            ? appActionLabel(l, a.action)
+            : '${appActionLabel(l, a.action)} · ${l.splitRuleDisabled}',
+      ),
+    );
+    if (res == null || !context.mounted) return;
+    c.update((s) =>
+        s.copyWith(splitTunnel: s.splitTunnel.copyWith(apps: res.rules)));
+    _importToast(context, l, res.replaced, res.rules.length, res.added,
+        res.overwritten);
+  }
+
+  static void _importToast(BuildContext context, AppLocalizations l,
+      bool replaced, int total, int added, int overwritten) {
+    AppToast.show(
+        context,
+        replaced
+            ? l.splitImportReplaced(total)
+            : l.splitImportAdded(added, overwritten));
+  }
 
   /// Добавить СРАЗУ НЕСКОЛЬКО приложений одним изменением настроек.
   ///
@@ -538,6 +803,9 @@ class SplitTunnelScreen extends StatelessWidget {
 
   void _removeSite(SettingsController c, SiteRule site) {
     c.update((s) => s.copyWith(
+        // Пометка «свёрнут» удалённого узла больше ни к чему не относится.
+        splitCollapsed:
+            s.splitCollapsed.where((k) => k != siteNodeKey(site)).toList(),
         splitTunnel: s.splitTunnel.copyWith(
             sites: s.splitTunnel.sites
                 .where((x) => !_sameSite(x, site))
@@ -603,96 +871,46 @@ class SplitTunnelScreen extends StatelessWidget {
                 .toList())));
   }
 
-  /// Упорядочивает сайты для показа деревом.
-  ///
-  /// Группируем по «корневому» домену (`example.com`), внутри группы корень
-  /// идёт первым, поддомены — под ним с отступом. [newGroup] помечает первую
-  /// строку каждой группы: по ней рисуется разделитель, иначе соседние группы
-  /// сливаются в один список.
-  ///
-  /// ⚠️ ГЛУБИНА СЧИТАЕТСЯ ПО РЕАЛЬНО ПРИСУТСТВУЮЩИМ ПРЕДКАМ, А НЕ ПО
-  /// ВЫЧИСЛЕННОМУ КОРНЮ. Раньше отступ брался как «число лишних уровней
-  /// относительно `baseDomain`», и строка получала его даже тогда, когда
-  /// родителя в списке НЕТ. У владельца это выглядело так: `xtls.github.com`
-  /// стоял с отступом сразу под `dnsleaktest.com` — то есть читался как его
-  /// поддомен, хотя не имеет к нему отношения вовсе. Ошибка чисто
-  /// отображательная (маршруты строятся отдельно), но она заставляет искать
-  /// поломку в конфиге, которой там нет.
-  /// Раскладка дерева для теста: логика чистая, а поднимать ради неё виджеты
-  /// значило бы проверять Flutter вместо своего кода.
-  @visibleForTesting
-  static List<({SiteRule site, int depth, bool newGroup})> debugSortedSites(
-          List<SiteRule> sites) =>
-      _sortedSites(sites);
-
-  static List<({SiteRule site, int depth, bool newGroup})> _sortedSites(
-      List<SiteRule> sites) {
-    // ⚠️ СОРТИРУЕМ ПО ПЕРЕВЁРНУТЫМ МЕТКАМ, А НЕ ПО ПАРЕ «КОРЕНЬ + ЧИСЛО ТОЧЕК».
-    //
-    // `a.b.example.com` → `[com, example, b, a]`, дальше обычное лексикографи-
-    // ческое сравнение. Это честный обход дерева сверху вниз: предок по
-    // построению оказывается перед любым своим потомком, а ветви не
-    // перемешиваются.
-    //
-    // Прежний порядок «сначала baseDomain, потом число меток» давал два
-    // разных дефекта, и оба нашлись проверкой:
-    //  1. голый публичный суффикс в списке (`co.uk` рядом с `bbc.co.uk`)
-    //     уезжал ПОД своего потомка: у них разный `baseDomain`, и ключи
-    //     сравнивались как чужие;
-    //  2. внутри группы сортировка по ЧИСЛУ меток — это обход в ширину:
-    //     `x.a.example.com` вставал после `b.example.com`, то есть прилипал
-    //     отступом к чужому соседу. Ровно тот класс ошибки, ради которого
-    //     правка и делалась.
-    // Регистр учитываем ЗДЕСЬ ЖЕ: `depthOf` его нормализует, и компаратор
-    // обязан вести себя так же, иначе `Example.COM` и `sub.example.com`
-    // разъезжаются.
-    List<String> key(SiteRule s) =>
-        s.domain.toLowerCase().split('.').reversed.toList();
-    final ordered = [...sites];
-    ordered.sort((a, b) {
-      final ka = key(a), kb = key(b);
-      for (var i = 0; i < ka.length && i < kb.length; i++) {
-        final c = ka[i].compareTo(kb[i]);
-        if (c != 0) return c;
-      }
-      if (ka.length != kb.length) return ka.length.compareTo(kb.length);
-      return (a.port ?? 0).compareTo(b.port ?? 0);
-    });
-
-    final present = ordered.map((s) => s.domain.toLowerCase()).toSet();
-    // Сколько предков этого домена реально есть в списке: столько отступов и
-    // рисуем. `a.b.example.com` при наличии только `example.com` получит 1, а
-    // не 2 — промежуточного уровня в списке нет, и «ступенька» в пустоту
-    // выглядела бы как пропущенная строка.
-    int depthOf(String domain) {
-      final d = domain.toLowerCase();
-      var n = 0;
-      final parts = d.split('.');
-      for (var i = 1; i < parts.length; i++) {
-        if (present.contains(parts.sublist(i).join('.'))) n++;
-      }
-      return n;
-    }
-
-    String? prevBase;
-    final out = <({SiteRule site, int depth, bool newGroup})>[];
-    for (final s in ordered) {
-      final base = baseDomain(s.domain);
-      out.add((
-        site: s,
-        depth: depthOf(s.domain),
-        newGroup: prevBase != null && prevBase != base,
-      ));
-      prevBase = base;
-    }
-    return out;
+  /// Заголовок подгруппы «Туннель / Прямо / Блок» со счётчиком и шевроном.
+  Widget _groupHeader(BuildContext context, SettingsController controller,
+      AppLocalizations l,
+      {required String list, required AppAction action, required int count}) {
+    final key = splitGroupKey(list, action);
+    final collapsed = controller.settings.splitCollapsed.contains(key);
+    void toggle() => controller.update((s) => s.copyWith(
+        splitCollapsed: toggleCollapsedKey(s.splitCollapsed, key)));
+    return InkWell(
+      key: ValueKey('group:$key'),
+      onTap: toggle,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(16, 6, 4, 0),
+        child: Row(children: [
+          _ActionChip(action: action),
+          const SizedBox(width: 8),
+          Text('$count',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).hintColor)),
+          const Spacer(),
+          IconButton(
+            tooltip: collapsed ? l.splitExpandGroup : l.splitCollapseGroup,
+            icon: Icon(collapsed ? Icons.expand_more : Icons.expand_less),
+            onPressed: toggle,
+          ),
+        ]),
+      ),
+    );
   }
 
-  Widget _siteTile(BuildContext context, SettingsController controller,
-      SiteRule site, int depth) {
+  Widget _siteTile(
+      BuildContext context, SettingsController controller, SiteTreeRow row) {
     final state = context.read<AppState>();
     final l = AppLocalizations.of(context);
+    final site = row.site;
+    final depth = row.depth;
     final indent = 16.0 + depth * 22.0;
+    final nodeKey = siteNodeKey(site);
     return ListTile(
       key: ValueKey('site:${site.domain}|${site.port ?? ''}'),
       contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
@@ -700,6 +918,30 @@ class SplitTunnelScreen extends StatelessWidget {
         if (depth > 0)
           Icon(Icons.subdirectory_arrow_right,
               size: 18, color: Theme.of(context).disabledColor),
+        // Узел с поддоменами сворачивается; свёрнутый показывает, сколько
+        // строк спрятано, иначе его не отличить от одиночного сайта.
+        if (row.descendants > 0)
+          InkWell(
+            key: ValueKey('toggle:$nodeKey'),
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => controller.update((s) => s.copyWith(
+                splitCollapsed: toggleCollapsedKey(s.splitCollapsed, nodeKey))),
+            child: Tooltip(
+              message: row.collapsed
+                  ? l.splitExpandSubdomains
+                  : l.splitCollapseSubdomains,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(end: 4),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(row.collapsed ? Icons.chevron_right : Icons.expand_more,
+                      size: 20),
+                  if (row.collapsed)
+                    Text('+${row.descendants}',
+                        style: Theme.of(context).textTheme.bodySmall),
+                ]),
+              ),
+            ),
+          ),
         // ⚠️ Открытый замок — ровно то же предупреждение, что показывает
         // браузер. `http://` означает, что провайдер видит соединение целиком:
         // и адрес страницы, и параметры запроса, и содержимое. Правило от
@@ -1251,8 +1493,10 @@ class ServerBadge extends StatelessWidget {
         // подсказок вдобавок ограничена темой (`buildAppTheme` в `app.dart`).
         //
         // Имя оставляем: плашка на узком экране показывает один флаг, и без
-        // подсказки не узнать, через какой сервер идёт правило.
-        message: name,
+        // подсказки не узнать, через какой сервер идёт правило. Значка
+        // FlagCell тут нет (значок плашки — один флаг по [iso]) — флаги в
+        // имени остаются картинками, ни один не срезается.
+        richMessage: flagTextSpan(name),
         child: Container(
           margin: const EdgeInsetsDirectional.only(end: 6),
           padding: EdgeInsets.symmetric(
@@ -1280,7 +1524,7 @@ class ServerBadge extends StatelessWidget {
             if (!flagOnly) ...[
               const SizedBox(width: 5),
               Flexible(
-                child: Text(
+                child: FlagText(
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1390,7 +1634,7 @@ class RuleServerField extends StatelessWidget {
         dense: true,
         leading: Icon(gone ? Icons.link_off : Icons.hub_outlined,
             color: gone ? scheme.error : null),
-        title: Text(
+        title: FlagText(
           gone
               ? l.exitServerGone
               // ⚠️ Умолчание — «тот, что включён сейчас», и оно НЕ фиксируется
@@ -1489,7 +1733,7 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
               dense: true,
               leading: const Icon(Icons.hub_outlined),
               selected: widget.serverKey == null,
-              title: Text(
+              title: FlagText(
                 widget.currentServer == null
                     ? l.ruleServerCurrent
                     : l.ruleServerCurrentNamed(

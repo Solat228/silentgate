@@ -53,6 +53,28 @@ abstract interface class StaleScheduledTaskReporter {
   bool get lastStartHitStaleScheduledTask;
 }
 
+/// Роутер, умеющий пересоздать туннель, НЕ СНИМАЯ блокировку kill switch:
+/// живой помощник перезапускает ядро сам, держа свои фильтры WFP.
+///
+/// ⚠️ Отдельный интерфейс по той же причине, что [StaleScheduledTaskReporter]:
+/// тестовые фейки `TunRouter` эта деталь не касается.
+abstract interface class TunHandoverCapable {
+  /// Пересоздать живой туннель с новыми параметрами. `true` — новое ядро
+  /// поднялось, а блокировка не снималась ни на миг. `false` — передача не
+  /// состоялась (помощник отказал, не ответил, адаптер не поднялся); тогда
+  /// вызывающий идёт обычным путём `stop()` → `start()`.
+  Future<bool> handover(SplitTunnelConfig split,
+      {required int xraySocksPort,
+      required TunOptions options,
+      bool Function()? abort,
+      List<Map<String, dynamic>> exitOutbounds = const [],
+      String xraySocksUser = '',
+      String xraySocksPassword = '',
+      List<String> apiExitServerKeys = const [],
+      List<String> apiOnlyExitKeys = const [],
+      String apiToken = ''});
+}
+
 /// TUN не поднялся. [details] — хвост лога sing-box (для показа пользователю).
 class TunStartException implements Exception {
   final String message;

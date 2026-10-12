@@ -80,6 +80,13 @@ rem --target-platform: без него --split-per-abi собирает ЕЩЁ и armeabi-v7a.
 rem Это 32-битные ARM, телефонов на них давно нет, а лишний APK каждый раз
 rem путает: в папке оказывается три файла вместо двух нужных.
 call "%FLUTTER%" build apk --release --split-per-abi --target-platform android-arm64,android-x64 %CHANNEL_DEFINE%
+rem !! Bez etoi proverki batnik posle padeniya Gradle kopiroval STARYE APK iz zerkala
+rem !! i raportoval "GOTOVO" - videli 18.09.2026 (beta +78 vydana za eksperiment +79).
+if errorlevel 1 (
+    echo.
+    echo !! flutter build apk upal, kod %ERRORLEVEL%. APK NE sobran, nichego ne kopiruem.
+    exit /b 1
+)
 
 rem Flutter кладёт рядом с каждым APK файл .sha1 - контрольную сумму, которая
 rem никому не нужна и только засоряет папку: вместо двух файлов там четыре,
@@ -113,7 +120,7 @@ if not defined VER (
 rem armeabi-v7a НЕ копируем: под эту архитектуру ядра в AAR нет, и такой APK
 rem установится, но работать не будет.
 if exist "%SRC%\app-arm64-v8a-release.apk" copy /Y "%SRC%\app-arm64-v8a-release.apk" "%DST%\SilentGate-%VER%-arm64-v8a.apk" >nul
-if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\SilentGate-%VER%-x86_64.apk"    >nul
+if exist "%SRC%\app-x86_64-release.apk"    copy /Y "%SRC%\app-x86_64-release.apk"    "%DST%\TEST-ONLY-emulator-SilentGate-%VER%-x86_64.apk"    >nul
 
 if not exist "%DST%\SilentGate-%VER%-arm64-v8a.apk" (
   echo.
@@ -126,7 +133,7 @@ if not exist "%DST%\SilentGate-%VER%-arm64-v8a.apk" (
 echo.
 echo === ГОТОВО ===
 echo   SilentGate-%VER%-arm64-v8a.apk  - на телефон
-echo   SilentGate-%VER%-x86_64.apk     - на эмулятор
+echo   TEST-ONLY-emulator-SilentGate-%VER%-x86_64.apk - TOLKO DLYA TESTOV, na telefon ne stavit
 if defined SILENTGATE_CHANNEL echo   Канал: %SILENTGATE_CHANNEL%
 echo.
 echo Установка на подключённый телефон:

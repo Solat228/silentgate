@@ -190,7 +190,7 @@ class XrayOutboundFactory {
     if (s.security == 'reality') {
       stream['realitySettings'] = {
         'serverName': s.sni ?? '',
-        'fingerprint': fp ?? 'chrome',
+        'fingerprint': fp ?? kDefaultTlsFingerprint,
         'publicKey': s.publicKey ?? '',
         'shortId': s.shortId ?? '',
         'spiderX': s.spiderX ?? '',

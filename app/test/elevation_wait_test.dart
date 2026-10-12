@@ -25,7 +25,7 @@ void main() {
 
   test('⚠️ создание задачи Планировщика ЖДЁТ результат', () {
     final s = src('lib/engine/windows/tun/tun_scheduled_task.dart');
-    final i = s.indexOf("runElevatedAsync('schtasks.exe'");
+    final i = s.indexOf("runElevatedDetailed('schtasks.exe'");
     expect(i, greaterThan(0), reason: 'вызов schtasks не найден');
     // Смотрим сам вызов, а не весь файл: параметр мог остаться в соседнем.
     final call = s.substring(i, s.indexOf(';', i));

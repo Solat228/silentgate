@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import 'flag_text.dart';
 
 /// Всплывающее сообщение ПОВЕРХ интерфейса.
 ///
@@ -343,7 +344,12 @@ class _ProgressCardState extends State<_ProgressCard>
   }
 
   void _startCountdown() {
-    final c = AnimationController(vsync: this, duration: widget.data.hold);
+    // Отсчёт — таймер, а не анимация: см. `_life` у _ToastCardState.
+    final c = AnimationController(
+      vsync: this,
+      duration: widget.data.hold,
+      animationBehavior: AnimationBehavior.preserve,
+    );
     _countdown = c;
     c.addStatusListener((s) async {
       if (s != AnimationStatus.completed || !mounted) return;
@@ -598,9 +604,17 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
   )..forward();
 
   /// Полоска обратного отсчёта: пока идёт — уведомление на экране.
+  ///
+  /// ⚠️ `AnimationBehavior.preserve` обязателен. Это таймер, а не анимация:
+  /// при системном «убрать анимации» (Android: спецвозможности или нулевой
+  /// масштаб анимаций в параметрах разработчика) Flutter умножает
+  /// длительность обычного контроллера на 0,05, и 6-секундный тост жил
+  /// 0,3 с — его не успевали увидеть. Найдено живым прогоном на эмуляторе
+  /// 10.10.2026: ошибка «QR не найден» приходила, а на экране не было ничего.
   late final AnimationController _life = AnimationController(
     vsync: this,
     duration: widget.data.duration,
+    animationBehavior: AnimationBehavior.preserve,
   );
 
   bool _expanded = false;
@@ -697,7 +711,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                           Icon(icon, size: 18, color: color),
                           const SizedBox(width: 10),
                           Flexible(
-                            child: Text(widget.data.message,
+                            child: FlagText(widget.data.message,
                                 style: const TextStyle(fontSize: 13)),
                           ),
                           if (hasDetails)
@@ -749,7 +763,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                                             fontWeight: FontWeight.w700,
                                           )),
                                       Flexible(
-                                        child: Text(d.text,
+                                        child: FlagText(d.text,
                                             style: const TextStyle(fontSize: 12),
                                             overflow: TextOverflow.ellipsis),
                                       ),

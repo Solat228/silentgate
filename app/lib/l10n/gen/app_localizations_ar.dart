@@ -30,9 +30,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonRefresh => 'تحديث';
 
   @override
-  String get commonCheck => 'فحص';
-
-  @override
   String get commonOk => 'موافق';
 
   @override
@@ -148,6 +145,33 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get closeToTraySubtitle =>
       'زر الإغلاق يخفي النافذة إلى شريط المهام؛ أوقفه ليُغلق التطبيق بدلاً من ذلك';
+
+  @override
+  String get launchAtLoginTitle => 'التشغيل مع Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'يبدأ التطبيق مصغّرًا في علبة النظام عند تسجيل الدخول';
+
+  @override
+  String get connectOnAutostartTitle => 'الاتصال عند التشغيل التلقائي';
+
+  @override
+  String get connectOnAutostartSub =>
+      'تشغيل VPN إلى الخادم المحدد فور تشغيل Windows للتطبيق';
+
+  @override
+  String get sortServersByCountryTitle => 'الترتيب حسب البلد';
+
+  @override
+  String get sortServersByCountrySub =>
+      'جمع خوادم البلد الواحد معًا. تحافظ البلدان على ترتيب المزوّد، وتبقى الخوادم المثبّتة في الأعلى';
+
+  @override
+  String get serverGroupCollapse => 'طيّ المجموعة';
+
+  @override
+  String get serverGroupExpand => 'توسيع المجموعة';
 
   @override
   String get autoUpdateSubTitle => 'التحديث التلقائي للاشتراك';
@@ -581,51 +605,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get testUrlLabel => 'URL الاختبار (عبر البروكسي)';
 
   @override
-  String get appUpdateServerUnavailable => 'خادم التحديث غير متاح';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'الإصدار $version متاح';
-  }
-
-  @override
-  String get appUpdateLatest => 'لديك أحدث إصدار';
-
-  @override
-  String get appUpdateDownload => 'تنزيل';
-
-  @override
-  String get appUpdateCheckTitle => 'التحقق من التحديثات عند التشغيل';
-
-  @override
-  String get appUpdateManual => 'التنزيل والتثبيت — يدوياً';
-
-  @override
-  String get appUpdateEndpointLabel => 'نقطة نهاية الإصدار';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'تلقّي الإصدارات التجريبية';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'قائمة إصدارات GitHub بما فيها الإصدارات التجريبية المسبقة، بالإضافة إلى عنوان احتياطي من الموقع. لا يغيّر التحديث التلقائي للإصدارات المستقرة.';
-
-  @override
   String get infoAppUpdateBeta =>
       'سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر — لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.';
 
   @override
   String get appUpdateBetaBadge => 'تجريبي';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'هذا إصدار تجريبي مسبق — قد تحدث أعطال. التحديث التلقائي لا يوزّع هذه الإصدارات.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'إصدارات سابقة';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'إصدارات سابقة';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -788,14 +772,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'حظر';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'الإصدار $version متاح';
-  }
-
-  @override
-  String get homeDownload => 'تنزيل';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -967,6 +943,21 @@ class AppLocalizationsAr extends AppLocalizations {
   String get subBarAnnounce => 'إعلان من اللوحة';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'إعلانات من خدمة $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'إعلانات من الخدمة';
+
+  @override
+  String get hideAnnounceTitle => 'إخفاء إعلانات الخدمة';
+
+  @override
+  String get hideAnnounceSub =>
+      'لا تُعرض إعلانات الاشتراك في البطاقة. افتراضيًا تظهر على أي شاشة.';
+
+  @override
   String get subSwitcherPingAll => 'اختبار خوادم كل الاشتراكات';
 
   @override
@@ -1048,10 +1039,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'يتطلب TUN صلاحيات المسؤول. مرة واحدة، نُنشئ مهمة في Windows Task Scheduler بأعلى الصلاحيات — بعدها يبدأ النفق دون طلب UAC في كل اتصال. المهمة ملكك وتُزال بالزر أدناه أو عند إلغاء تثبيت البرنامج.';
-
-  @override
-  String get infoAppUpdate =>
-      'مرة واحدة في كل تشغيل، يسأل التطبيق خادمك عمّا إذا كان هناك إصدار أحدث ويعرض إشعاراً بزر «تنزيل».\n\nلا ينزّل التطبيق ولا يشغّل أي شيء بنفسه: المُثبِّت غير موقَّع بشهادة، وتشغيل ملف exe مُنزَّل تلقائياً يصطدم بـ SmartScreen ويبدو لبرامج مكافحة الفيروسات كسلوك برمجية خبيثة. تثبّت التحديث بنفسك.\n\nإذا كان الخادم غير متاح، يظل التطبيق صامتاً ويكتب إدخالاً في السجل. تنسيق الاستجابة وإعداد الخادم موصوفان في docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -1256,6 +1243,97 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get importScrImportField => 'استيراد من الحقل';
+
+  @override
+  String get importScrScanQr => 'مسح رمز QR';
+
+  @override
+  String get importScrQrFromImage => 'QR من صورة';
+
+  @override
+  String get qrScanPrompt => 'وجّه الكاميرا نحو رمز QR للاشتراك';
+
+  @override
+  String get qrCameraExplainTitle => 'الوصول إلى الكاميرا';
+
+  @override
+  String get qrCameraExplainBody =>
+      'تُستخدم الكاميرا فقط لقراءة رمز QR للاشتراك. لا يُحفظ أي شيء ولا يُرسل.';
+
+  @override
+  String get qrCameraContinue => 'متابعة';
+
+  @override
+  String get qrCameraDenied =>
+      'لا يوجد وصول إلى الكاميرا. اسمح به في إعدادات التطبيق أو اختر صورة تحتوي على رمز QR.';
+
+  @override
+  String get qrNotFound => 'لم يُعثر على رمز QR في الصورة.';
+
+  @override
+  String get qrReadFailed => 'تعذّر فتح الصورة.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'انقطع الاتصال وحُظرت حركة المرور. إعادة الاتصال خلال $seconds ث (المحاولة $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'النفق متصل، لكن لا تمر عبره أي حركة مرور';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'لم يسمح Android بتشغيل VPN. اضغط «اتصال» مرة أخرى ووافق على طلب النظام.';
+
+  @override
+  String statusMissingCore(String file) {
+    return 'لم يُعثر على $file بجانب التطبيق. أعد تثبيت SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'المنفذ $port لا يزال مشغولًا بنواتنا ($holder) من الجلسة السابقة.\n\nيحدث هذا عند إيقاف VPN وتشغيله فورًا. انتظر بضع ثوانٍ وحاول مجددًا.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'المنفذ $port مشغول ببرنامج آخر تعذّر تحديده.\n\nغالبًا ما يكون عميل VPN آخر يستمع على المنافذ المحلية نفسها. أغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'المنفذ $port مشغول بالبرنامج $holder.\n\nأغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'توقفت نواة النفق عن الاستجابة؛ أُزيل النفق';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'تعذّر الاتصال: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'توقفت نواة $core (الرمز $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'توقفت نواة $core (الرمز $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'المنفذ المحلي $port مستخدم بالفعل';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'منفذ محلي مستخدم بالفعل';
+
+  @override
+  String get statusReasonFailedToStart => 'تعذّر تشغيل النواة';
 
   @override
   String get serversTitle => 'الخوادم';
@@ -1511,6 +1589,15 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'The last subscription update changed this server\'s record';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'التمويه «$type» غير مدعوم في هذا العميل حتى الآن';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'هذا الخادم غير مدعوم في هذا العميل حتى الآن';
 
   @override
   String get srvFieldId => 'ID / password';
@@ -1794,6 +1881,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tunTaskFailed => 'فشل إنشاء المهمة (رُفض UAC أو مُنع بالسياسة)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'رفض برنامج جدولة المهام المهمة — السبب في السجل (الإعدادات ← السجلات)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 
@@ -1969,10 +2060,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noRealIpTitle => 'لا تستخدم عنوان IP الحقيقي أبدًا';
 
   @override
-  String get noRealIpSub =>
-      'حتى مع تشغيل VPN، تمر كل حركة المرور «المباشرة» عبر VPN (بما في ذلك مواقع RU). تبقى الشبكة المحلية مباشرة.';
-
-  @override
   String get flagAuto => 'تلقائي';
 
   @override
@@ -2100,6 +2187,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'استورد اشتراكًا أولاً';
+
+  @override
+  String get errServerUnsupported => 'هذا الخادم غير مدعوم في هذا العميل';
 
   @override
   String get speedSizeFull => '20 ميغابايت';
@@ -2351,10 +2441,6 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«لا تستخدم عنواني الحقيقي» مُفعَّل: قواعد «مباشر» بلا علامة تمر عبر VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'يؤثر على قواعد «مباشر»: بدون خيار «السماح بالعنوان الحقيقي» ستمر عبر VPN';
 
   @override
   String get splitAppOverrideSites => 'أولوية على قواعد المواقع';
@@ -2834,7 +2920,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      'خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وكل البيانات تمر عبر VPN.';
+      'خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وقواعد «مباشر» لديك تمر عبر VPN.';
 
   @override
   String get autoWarnAllVpn =>
@@ -3391,15 +3477,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'يحتجز مفتاح الإيقاف حركة المرور حسب البرامج لا حسب النطاقات: أثناء استعادة النواة لا يوجد من يحلّل أسماء المواقع، ولذلك لا تعمل قواعد المواقع في تلك الفترة.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'الجديد في $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'لم تصل ملاحظات الإصدار.';
-
-  @override
-  String get updateNotesNeverShow => 'عدم الإظهار مرة أخرى';
 
   @override
   String get notifOffTitle => 'الإشعارات مُعطَّلة';
@@ -3413,4 +3491,403 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'تعذّر فتح شاشة الإشعارات. فعّلها يدويًا: إعدادات أندرويد ← التطبيقات ← SilentGate.';
+
+  @override
+  String get splitImport => 'استيراد';
+
+  @override
+  String get splitExport => 'تصدير';
+
+  @override
+  String get splitImportOk => 'تم استيراد الإعدادات';
+
+  @override
+  String get splitImportBad => 'لا توجد إعدادات SilentGate صالحة في الحافظة';
+
+  @override
+  String get splitImportReplace => 'استبدال';
+
+  @override
+  String get updatesTitle => 'التحديثات';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'الإصدار الحالي $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'القناة المستقرة';
+
+  @override
+  String get updatesChannelBeta => 'قناة بيتا';
+
+  @override
+  String get updatesCheckNow => 'تحقق الآن';
+
+  @override
+  String get updatesStatusChecking => 'جارٍ التحقق…';
+
+  @override
+  String get updatesStatusUpToDate => 'لديك أحدث إصدار';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'الإصدار $version متاح';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'جارٍ التنزيل… $percent٪';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'جارٍ التنزيل: $done من $total م.ب';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return 'المتبقي $left م.ب';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n ث';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n د';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'جارٍ التحقق من التوقيع…';
+
+  @override
+  String get updatesStatusReady => 'جاهز للتثبيت';
+
+  @override
+  String get updatesStatusInstalling => 'جارٍ التثبيت…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'فشل: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'مطلوب إذن التثبيت';
+
+  @override
+  String get updatesStatusLinkOnly => 'ثبّت يدويًا';
+
+  @override
+  String get updatesModeTitle => 'كيفية التحديث';
+
+  @override
+  String get updatesModeAsk => 'السؤال';
+
+  @override
+  String get updatesModeAskHint => 'يعرض الجديد ويثبّت فقط بعد موافقتك';
+
+  @override
+  String get updatesModeAuto => 'تلقائيًا';
+
+  @override
+  String get updatesModeAutoHint => 'ينزّل ويثبّت بنفسه عندما تكون VPN مطفأة';
+
+  @override
+  String get updatesModeNotify => 'الإشعار فقط';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'يبلّغ عن الإصدار الجديد دون تنزيل أو تثبيت أي شيء';
+
+  @override
+  String get updatesAutoCheck => 'التحقق عند بدء التشغيل';
+
+  @override
+  String get updatesBeta => 'استلام إصدارات بيتا';
+
+  @override
+  String get updatesSignatureNote =>
+      'يتم التحقق من كل ملف بتوقيع المطوّر ومجموع اختباري؛ دون تطابق لن يبدأ التثبيت';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'التحديث $version متاح';
+  }
+
+  @override
+  String get updatesInstall => 'تحديث';
+
+  @override
+  String get updatesLater => 'لاحقًا';
+
+  @override
+  String get updatesSkipVersion => 'تخطي هذا الإصدار';
+
+  @override
+  String get updatesVpnWarning => 'سيقطع التثبيت اتصال VPN';
+
+  @override
+  String get updatesAndroidUnknownSources => 'اسمح بالتثبيت من هذا التطبيق';
+
+  @override
+  String get updatesAndroidOpenSettings => 'فتح الإعدادات';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'سيعرض Android نافذة التثبيت الخاصة بالنظام: هذا متطلب من النظام';
+
+  @override
+  String get updatesPortableFallback =>
+      'لم تُثبَّت هذه النسخة عبر برنامج التثبيت. نزّل الإصدار الجديد يدويًا';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'تم التحديث إلى $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'لم يكتمل التثبيت';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'بقي الإصدار $version. سجل برنامج التثبيت أدناه';
+  }
+
+  @override
+  String get updatesShowLog => 'عرض السجل';
+
+  @override
+  String get updatesOverrideBadge => 'تم استبدال مصدر التحديثات (وضع الاختبار)';
+
+  @override
+  String get updatesSettingsTile => 'التحديثات';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'التحقق من الإصدارات الجديدة وتنزيلها وتثبيتها';
+
+  @override
+  String get updatesPreviousVersions => 'الإصدارات السابقة';
+
+  @override
+  String get updatesInstallOlder => 'تثبيت';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'الرجوع إلى إصدار أقدم. هل تريد المتابعة؟';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb م.ب';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'سيُغلق التطبيق وسينقطع اتصال VPN أثناء التثبيت. أعد الاتصال بعد التحديث';
+
+  @override
+  String get updatesOpenPage => 'فتح صفحة التنزيل';
+
+  @override
+  String get updatesLinkNotify =>
+      'وضع «الإشعار فقط» مُفعَّل — نزّل الإصدار الجديد من صفحة التنزيل';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'لا يتضمن هذا الإصدار مثبّتًا موقّعًا لنظامك — نزّله من صفحة التنزيل';
+
+  @override
+  String get updatesLinkIsolated =>
+      'هذه نسخة اختبار معزولة — لا تمسّ التطبيق المثبّت. حدّثه يدويًا';
+
+  @override
+  String get updatesLinkLocation =>
+      'التطبيق لا يعمل من مجلد التثبيت — نزّل الإصدار الجديد يدويًا أو شغّل النسخة المثبّتة';
+
+  @override
+  String get updatesLinkElevated =>
+      'التطبيق يعمل بصلاحيات المسؤول — التحديث بهذه الطريقة غير آمن. شغّله بالطريقة العادية';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'لا يستطيع التطبيق تحديث نفسه على هذه المنصة — نزّل الإصدار الجديد يدويًا';
+
+  @override
+  String get updatesErrCheck => 'لم يستجب خادم التحديثات';
+
+  @override
+  String get updatesErrInsecure => 'عنوان التنزيل غير آمن (ليس https)';
+
+  @override
+  String get updatesErrAssetName => 'اسم الملف في الإصدار غير مسموح به';
+
+  @override
+  String get updatesErrManifest => 'تعذّر الحصول على بيان الإصدار الموقّع';
+
+  @override
+  String get updatesErrSignature => 'التوقيع غير مطابق — ربما جرى العبث بالملف';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'بيان الإصدار لا يناسب هذا الإصدار أو النظام';
+
+  @override
+  String get updatesErrDownload =>
+      'لم يُنزَّل الملف أو أن مجموعه الاختباري غير مطابق';
+
+  @override
+  String get updatesErrInstall => 'لم يبدأ المثبّت';
+
+  @override
+  String get updatesErrNotNewer => 'هذا الإصدار ليس أحدث من المثبّت';
+
+  @override
+  String get updatesInfo =>
+      'ما يفعله التطبيق عند العثور على إصدار جديد. في الوضع التلقائي لا يقطع التثبيت أبدًا اتصال VPN نشطًا، بل ينتظر حتى تقطع الاتصال. وفي كل الأوضاع لا يُثبَّت الملف إلا إذا طابق توقيع المطوّر.';
+
+  @override
+  String get updatesDownload => 'تنزيل';
+
+  @override
+  String get updatesInstallNow => 'التثبيت الآن';
+
+  @override
+  String get updatesWaitingVpn => 'جاهز للتثبيت — سيبدأ بعد قطع اتصال VPN';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'تم تخطي الإصدار $version — سنُعلمك بالإصدار التالي';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'جارٍ تثبيت التحديث';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'سيُغلق التطبيق أثناء تثبيت الإصدار $version';
+  }
+
+  @override
+  String get splitImportTitleApps => 'استيراد التطبيقات';
+
+  @override
+  String get splitImportTitleSites => 'استيراد المواقع';
+
+  @override
+  String get splitImportFormatNote =>
+      'كل سطر قاعدة واحدة. تحدد العناوين [tunnel] و[direct] و[block] الإجراء للأسطر التالية. يُضاف السطر بلا علامة تمامًا كما لو كُتب يدويًا.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'اللصق من الحافظة';
+
+  @override
+  String get splitImportAdd => 'إضافة';
+
+  @override
+  String get splitImportReplaceAll => 'استبدال الكل';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'جديد: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'موجود مسبقاً: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'مختلف: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'غير مفهوم: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'الكتابة فوق المختلفة';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'عند الإيقاف تبقى الإعدادات الحالية لتلك القواعد';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'كان $from، سيصبح $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'هذه الأسطر لم تُؤخذ';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'أُضيف $added، تغيّر $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'عدد القواعد بعد الاستبدال: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'القائمة فارغة — لا شيء للتصدير';
+
+  @override
+  String get splitCountEmpty => 'فارغة';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'إجمالي $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'مفعّل $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'معطّل $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'نفق $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'مباشر $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'حظر $n';
+  }
+
+  @override
+  String get splitExpandList => 'توسيع القائمة';
+
+  @override
+  String get splitCollapseList => 'طي القائمة';
+
+  @override
+  String get splitExpandGroup => 'توسيع المجموعة';
+
+  @override
+  String get splitCollapseGroup => 'طي المجموعة';
+
+  @override
+  String get splitExpandSubdomains => 'إظهار النطاقات الفرعية';
+
+  @override
+  String get splitCollapseSubdomains => 'إخفاء النطاقات الفرعية';
 }

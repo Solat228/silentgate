@@ -7,7 +7,6 @@
   "commonClear": "Temizle",
   "commonCopied": "Kopyalandı",
   "commonRefresh": "Yenile",
-  "commonCheck": "Kontrol et",
   "commonOk": "Tamam",
   "commonDone": "Bitti",
   "commonPathCopied": "Yol kopyalandı",
@@ -45,6 +44,14 @@
   "tunnelExcludeScopeOffHint": "Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.",
   "closeToTrayTitle": "Kapatınca sistem tepsisine küçült",
   "closeToTraySubtitle": "Kapat düğmesi pencereyi tepsiye gizler; uygulamayı tamamen kapatmak için bunu kapatın",
+  "launchAtLoginTitle": "Windows ile başlat",
+  "launchAtLoginSub": "Oturum açıldığında uygulama sistem tepsisinde simge durumunda başlar",
+  "connectOnAutostartTitle": "Otomatik başlatmada bağlan",
+  "connectOnAutostartSub": "Windows uygulamayı başlattığında VPN'i seçili sunucuya hemen bağla",
+  "sortServersByCountryTitle": "Ülkeye göre sırala",
+  "sortServersByCountrySub": "Aynı ülkenin sunucularını bir araya topla. Ülkeler sağlayıcının sırasını korur; sabitlenenler üstte kalır",
+  "serverGroupCollapse": "Grubu daralt",
+  "serverGroupExpand": "Grubu genişlet",
   "autoUpdateSubTitle": "Aboneliği otomatik güncelle",
   "autoUpdateSubText": "Sunucu listesini düzenli olarak yenile",
   "captureSystemProxy": "Sistem proxy'si",
@@ -195,20 +202,8 @@
   "speedTestFull": "20 MB (daha doğru)",
   "speedTestLight": "5 MB (ekonomik)",
   "testUrlLabel": "Test URL'si (Proxy üzerinden)",
-  "appUpdateServerUnavailable": "Güncelleme sunucusu erişilemez",
-  "appUpdateAvailable": "{version} sürümü mevcut",
-  "appUpdateLatest": "En son sürüme sahipsiniz",
-  "appUpdateDownload": "İndir",
-  "appUpdateCheckTitle": "Açılışta güncellemeleri kontrol et",
-  "appUpdateManual": "İndirme ve kurulum — el ile",
-  "appUpdateEndpointLabel": "Sürüm uç noktası",
-  "appUpdateBetaChannelTitle": "Beta sürümleri al",
-  "appUpdateBetaChannelSubtitle": "Ön sürümler dahil GitHub sürüm listesi, artı sitenin yedek adresi. Kararlı sürümlerin otomatik güncellemesini değiştirmez.",
   "infoAppUpdateBeta": "Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez — bu anahtarı açmayanlara beta gelmez.",
   "appUpdateBetaBadge": "BETA",
-  "appUpdateBetaNotice": "Bu bir ön sürüm — sorunlar olabilir. Otomatik güncelleme bu sürümleri dağıtmaz.",
-  "appUpdatePreviousVersionsButton": "Önceki sürümler",
-  "appUpdatePreviousVersionsTitle": "Önceki sürümler",
   "appUpdatePreviousVersionsHint": "Bu liste GitHub Releases'te bulunanlardır. Bazı sürümler eksik olabilir.",
   "appUpdatePreviousVersionsEmpty": "Liste boş — GitHub Releases'e ulaşılamıyor ya da hiç sürüm yok.",
   "appUpdateOpenRelease": "Sürüm sayfasını aç",
@@ -256,8 +251,6 @@
   "enumActionTunnel": "Tünel",
   "enumActionDirect": "Doğrudan",
   "enumActionBlock": "Engelle",
-  "homeUpdateAvailable": "{version} sürümü mevcut",
-  "homeDownload": "İndir",
   "homeSubscriptionUpdated": "Abonelik güncellendi: {summary}",
   "homeReconnect": "Yeniden bağlan",
   "homePingProgress": "Sunucular pingleniyor: {total} sunucudan {done} tanesi",
@@ -305,6 +298,17 @@
   "subBarExpired": "Aboneliğin süresi doldu:",
   "subBarValidUntil": "Geçerlilik tarihi:",
   "subBarAnnounce": "Panel duyurusu",
+  "subBarAnnounceFrom": "{name} hizmetinden duyurular",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Hizmet duyuruları",
+  "hideAnnounceTitle": "Hizmet duyurularını gizle",
+  "hideAnnounceSub": "Abonelikten gelen duyurular kartta gösterilmez. Varsayılan olarak her ekranda görünür.",
   "subSwitcherPingAll": "Tüm aboneliklerin sunucularını sına",
   "subSwitcherPingBusySpeed": "Ping kullanılamıyor: hız ölçümü sürüyor",
   "subSwitcherExpired": "Süresi doldu",
@@ -342,7 +346,6 @@
   "infoTunBypassLan": "Yerel ağ (özel adresler 192.168.*, 10.*, yönlendirici, yazıcılar, NAS) VPN'i atlar. Genellikle bunu açık istersiniz, aksi hâlde ağdaki cihazlara erişimi kaybedersiniz.",
   "infoTunExcludeCidrs": "Her zaman VPN'i atlayan ek alt ağlar (CIDR biçimi, örn. 10.8.0.0/24). Kurumsal ağlar ve diğer VPN'ler için kullanışlıdır.",
   "infoTunPrivilege": "TUN yönetici hakları gerektirir. Bir kez, en yüksek ayrıcalıklarla Windows Görev Zamanlayıcı'da bir görev oluştururuz — bundan sonra tünel her bağlantıda UAC istemi OLMADAN başlar. Görev size aittir ve aşağıdaki düğmeyle veya program kaldırıldığında silinir.",
-  "infoAppUpdate": "Uygulama, her açılışta bir kez sunucunuza daha yeni bir sürümün olup olmadığını sorar ve bir «İndir» düğmesiyle bildirim gösterir.\n\nUygulama kendi başına HİÇBİR ŞEY indirmez ve çalıştırmaz: kurulum sertifikayla imzalanmamıştır ve indirilen bir exe'yi otomatik çalıştırmak SmartScreen'e takılır ve antivirüslere kötü amaçlı yazılım davranışı gibi görünür. Güncellemeyi kendiniz kurarsınız.\n\nSunucu erişilemezse uygulama sessiz kalır ve günlüğe bir kayıt yazar. Yanıt biçimi ve sunucu kurulumu docs/APP_UPDATE.md içinde açıklanmıştır.",
   "infoSpeedTest": "Hız ölçülürken indirilen veri miktarı (bir sunucuya sağ tık → «Sunucu bilgisi» → «Hızı ölç»).\n\n20 MB — ana mod: hızlı bağlantılarda (100+ Mbps) kısa bir ölçüm hızlanmaya vakit bulamaz ve sonucu olduğundan düşük gösterir.\n5 MB — ekonomik mod: trafik açısından belirgin şekilde daha ucuz, birçok sunucuyu taramak için kullanışlı.\n\nÖlçüm YALNIZCA el ile çalışır ve aboneliğinizin trafiğini tüketir. Hız iki kez ölçülür: doğrudan ve seçili sunucu üzerinden, böylece VPN'de tam olarak ne kadar kaybedildiğini görebilirsiniz.",
   "infoAutoReconnect": "Çekirdek çöktüyse, sunucu düştüyse veya ağ değiştiyse (Wi-Fi ↔ kablo, uykudan çıkma, yeni IP), uygulama bağlantıyı kendi başına yeniden kurar. Denemeler arasındaki bekleme süresi artar: 0,8 sn → 3 sn → 8 sn → 20 sn ve sonrasında 20 sn'de kalır. Sekiz deneme yapılır, ardından uygulama pes eder ve bir hata gösterir. Düğmeyle bağlantıyı kesmek kurtarmayı her zaman iptal eder.\n\n⚠️ Kill switch açıkken denemeler BİTMEZ. Denemeler sürerken trafik engelli kalır ve onları durdurmak trafiği VPN'in dışına salıvermek olurdu — bu yüzden uygulama, VPN'i siz kapatana kadar 20 saniyede bir denemeyi sürdürür ve başarısızlığı en fazla 15 dakikada bir hatırlatır. Bir saat sonra geri gelen sunucu kendiliğinden yeniden yakalanır.\n\n«Otomatik (en iyi sunucu)» kipinde uygulama son denemeyi ölü bir sunucuya harcamaz: daha sekizde yedincide bir sonraki adaya geçer ve sayım orada baştan başlar.\n\nAğ değişikliği, diğer bağdaştırıcıların gerçek adreslerinden saptanır: kendi tünelimiz ve hizmet adresleri (link-local) sayılmaz, bir değişiklik ancak üst üste iki yoklamada sürdüyse kabul edilir ve bağlantıdan sonraki ilk 15 saniye boyunca sinyal yok sayılır. Bu emniyetler olmadan tünelin kurulması kendisi «ağ değişikliği» sayılır ve sonsuz yeniden bağlanmaya yol açardı.",
   "infoKillSwitch": "Bağlantı geri getirilirken trafiğin VPN etrafından çıkmasına izin verme. Yakalama denemeler arasında BIRAKILMAZ: TUN modunda bağdaştırıcı açık kalır, «Sistem proxy'si» modunda proxy yapılandırılmış kalır — uygulamalar internete şifrelenmemiş erişim yerine bir bağlantı hatası alır.\n\nSınırlar hakkında dürüstçe: «Sistem proxy'si» modunda bu yalnızca sistem proxy'sine saygı duyan programları (tarayıcılar ve çoğu uygulama) korur. Proxy'yi yok sayan programlar ve UDP doğrudan çıkar — tam sızdırmazlık yalnızca TUN moduyla sağlanır. Otomatik yeniden bağlanmanın etkin olmasını gerektirir.",
@@ -398,6 +401,29 @@
   "importScrLoading": "Yükleniyor…",
   "importScrPasteImport": "Panodan içe aktar",
   "importScrImportField": "Alandan içe aktar",
+  "importScrScanQr": "QR tara",
+  "importScrQrFromImage": "Görselden QR",
+  "qrScanPrompt": "Kamerayı aboneliğin QR koduna doğrultun",
+  "qrCameraExplainTitle": "Kamera erişimi",
+  "qrCameraExplainBody": "Kamera yalnızca aboneliğin QR kodunu okumak için kullanılır. Hiçbir şey kaydedilmez veya gönderilmez.",
+  "qrCameraContinue": "Devam",
+  "qrCameraDenied": "Kamera erişimi yok. Uygulama ayarlarından izin verin veya QR kodlu bir görsel seçin.",
+  "qrNotFound": "Görselde QR kodu bulunamadı.",
+  "qrReadFailed": "Görsel açılamadı.",
+  "statusReconnectBlocked": "Bağlantı koptu, trafik engellendi. {seconds} sn sonra yeniden bağlanılacak (deneme {attempt})…",
+  "statusTrafficNotFlowing": "Tünel kuruldu ama içinden trafik geçmiyor",
+  "statusVpnConsentDenied": "Android VPN'e izin vermedi. Tekrar “Bağlan”a dokunun ve sistem isteğini onaylayın.",
+  "statusMissingCore": "{file} uygulamanın yanında bulunamadı. SilentGate'i yeniden yükleyin.",
+  "statusPortOwnCore": "{port} numaralı port önceki oturumdan kalan çekirdeğimiz ({holder}) tarafından hâlâ kullanılıyor.\n\nVPN kapatılıp hemen açıldığında bu olur. Birkaç saniye bekleyip tekrar deneyin.",
+  "statusPortUnknown": "{port} numaralı port, belirlenemeyen başka bir program tarafından kullanılıyor.\n\nÇoğunlukla aynı yerel portları dinleyen başka bir VPN istemcisidir. Tepsi dahil tamamen kapatıp tekrar deneyin.",
+  "statusPortHolder": "{port} numaralı port {holder} tarafından kullanılıyor.\n\nTepsi dahil tamamen kapatıp tekrar deneyin.",
+  "statusTunCoreHung": "Tünel çekirdeği dondu; tünel kaldırıldı",
+  "statusConnectFailed": "Bağlanılamadı: {detail}",
+  "statusCoreStopped": "{core} çekirdeği durdu (kod {code})",
+  "statusCoreStoppedReason": "{core} çekirdeği durdu (kod {code}): {reason}",
+  "statusReasonPortBusy": "{port} numaralı yerel port zaten kullanımda",
+  "statusReasonPortBusyAny": "bir yerel port zaten kullanımda",
+  "statusReasonFailedToStart": "çekirdek başlatılamadı",
   "serversTitle": "Sunucular",
   "serversFound": "Sunucular — {total} sunucudan {found} tanesi bulundu",
   "serversRefresh": "Aboneliği yenile",
@@ -478,6 +504,15 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "«{type}» maskeleme bu istemcide henüz desteklenmiyor",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUnsupportedGeneric": "Bu sunucu bu istemcide henüz desteklenmiyor",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -566,6 +601,7 @@
   "trayQuitVpn": "Bağlantıyı kes ve çık",
   "tunTaskDone": "Bitti: TUN, UAC istemi olmadan başlayacak",
   "tunTaskFailed": "Görev oluşturulamadı (UAC reddedildi veya ilke tarafından engellendi)",
+  "tunTaskSchedulerFailed": "Görev Zamanlayıcı görevi kabul etmedi — nedeni günlükte (Ayarlar → Günlükler)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "TUN günlüğü (sing-box)",
@@ -622,7 +658,6 @@
   "reportTechNoticeLine1": "Aşağıda teknik bilgiler var. Göndermeden önce gözden geçirin;",
   "reportTechNoticeLine2": "burada parola veya abonelik jetonu yoktur, abonelik URL'si gizlidir.",
   "noRealIpTitle": "Gerçek IP'mi asla kullanma",
-  "noRealIpSub": "VPN açıkken bile tüm «doğrudan» trafik VPN üzerinden gider (RU siteleri dahil). Yerel ağ doğrudan kalır.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Güncelleme aralığı, sa",
   "autoUpdatePreferSub": "Aralığı abonelikten al",
@@ -659,6 +694,7 @@
   "errInvalidJson": "Geçersiz JSON",
   "errPickServerFirst": "Önce bir sunucu seçin",
   "errImportSubscriptionFirst": "Önce bir abonelik içe aktarın",
+  "errServerUnsupported": "Bu sunucu bu istemci tarafından desteklenmiyor",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/sn",
@@ -812,7 +848,6 @@
   },
   "splitQuicNote": "En az bir site kuralı varken uygulama tüm trafik için HTTP/3 (QUIC) kapatır. Aksi hâlde tarayıcı HTTP/3’e geçer, site adını bırakmaz ve kural sessizce çalışmaz. Siteler bozulmaz: sıradan TLS’e döner, yalnızca biraz yavaşlar.",
   "splitNoRealIpBanner": "«Gerçek IP’mi asla kullanma» açık: kutusu işaretsiz «Doğrudan» kuralları VPN üzerinden gider",
-  "settingsNoRealIpAffects": "«Doğrudan» kurallarını etkiler: «gerçek IP’ye izin ver» kutusu işaretsizse VPN üzerinden giderler",
   "splitAppOverrideSites": "Site kurallarından önceliklidir",
   "splitAppOverrideSitesSub": "Bir site kuralı aksini söylese bile uygulamanın tüm trafiği bu kurala uyar",
   "settingsMyRulesOverridePanel": "Kurallarım panel kurallarından öncelikli",
@@ -1066,7 +1101,7 @@
   "autoTimer": "Geçen süre {elapsed} · yaklaşık {remaining} kaldı",
   "autoTimerNoEstimate": "Geçen süre {elapsed}",
   "autoSpeedRanking": "Hız ölçülüyor: {name}",
-  "autoWarnNoRealIp": "«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.",
+  "autoWarnNoRealIp": "«Gerçek IP kullanılmasın» açık — «Doğrudan» kurallarınız VPN üzerinden gidiyor.",
   "autoWarnAllVpn": "«Her şey VPN üzerinden» kipi seçili — kurallarınız şu anda geçerli değil.",
   "autoWarnPanelOverride": "«Kurallarım panel kurallarından önceliklidir» açık.",
   "autoWarnProbesDirect": "Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler — çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.",
@@ -1239,11 +1274,215 @@
   "splitOnlySelectedWarnBody": "Tünele yalnızca «Tünel» eylemi verilmiş kayıtlar girer. Geri kalan trafik — varlığından haberdar olmadığınız programlar dâhil — gerçek adresinizle doğrudan çıkar. Tüm cihaz gizlenmeliyse «Tümü VPN üzerinden» seçeneğini kullanın.",
   "splitOnlySelectedNoRealIp": "«Gerçek IP ile çıkma» ayarı bunu değiştirmez: yalnızca «Doğrudan» kurallarını yeniden yazar, varsayılan rotayı değil.",
   "splitKillSwitchIsPerApp": "Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.",
-  "updateNotesTitle": "{version} sürümünde yenilikler",
   "updateNotesEmpty": "Sürüm notu gelmedi.",
-  "updateNotesNeverShow": "Bir daha gösterme",
   "notifOffTitle": "Bildirimler kapalı",
   "notifOffSub": "Bağlantı kopmasını göremezsiniz ve «Bağlantıyı kes» düğmesi kaybolur",
   "notifOffOpen": "Aç",
-  "notifOffNoScreen": "Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate."
+  "notifOffNoScreen": "Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate.",
+  "splitImport": "İçe aktar",
+  "splitExport": "Dışa aktar",
+  "splitImportOk": "Ayarlar içe aktarıldı",
+  "splitImportBad": "Panoda geçerli SilentGate ayarı yok",
+  "splitImportReplace": "Değiştir",
+  "updatesTitle": "Güncellemeler",
+  "updatesCurrentVersion": "Geçerli sürüm {version}",
+  "updatesChannelStable": "Kararlı kanal",
+  "updatesChannelBeta": "Beta kanalı",
+  "updatesCheckNow": "Şimdi denetle",
+  "updatesStatusChecking": "Denetleniyor…",
+  "updatesStatusUpToDate": "En son sürüme sahipsiniz",
+  "updatesStatusAvailable": "{version} sürümü mevcut",
+  "updatesStatusDownloading": "İndiriliyor… %{percent}",
+  "updatesDownloadedOf": "İndiriliyor: {done} / {total} MB",
+  "updatesDownloadLeft": "{left} MB kaldı",
+  "updatesDownloadEtaSec": "~{n} sn",
+  "updatesDownloadEtaMin": "~{n} dk",
+  "updatesStatusVerifying": "İmza doğrulanıyor…",
+  "updatesStatusReady": "Kurulmaya hazır",
+  "updatesStatusInstalling": "Kuruluyor…",
+  "updatesStatusFailed": "Başarısız: {reason}",
+  "updatesStatusNeedsPermission": "Kurulum izni gerekli",
+  "updatesStatusLinkOnly": "Elle kurun",
+  "updatesModeTitle": "Nasıl güncellensin",
+  "updatesModeAsk": "Sor",
+  "updatesModeAskHint": "Yenilikleri gösterir ve yalnızca onayınızdan sonra kurar",
+  "updatesModeAuto": "Otomatik",
+  "updatesModeAutoHint": "VPN kapalıyken kendisi indirir ve kurar",
+  "updatesModeNotify": "Yalnızca bildir",
+  "updatesModeNotifyHint": "Hiçbir şey indirmeden ve kurmadan yeni sürümü bildirir",
+  "updatesAutoCheck": "Başlangıçta denetle",
+  "updatesBeta": "Beta sürümleri al",
+  "updatesSignatureNote": "Her dosya geliştirici imzası ve sağlama toplamıyla doğrulanır; eşleşme yoksa kurulum başlamaz",
+  "updatesDialogTitle": "{version} güncellemesi mevcut",
+  "updatesInstall": "Güncelle",
+  "updatesLater": "Sonra",
+  "updatesSkipVersion": "Bu sürümü atla",
+  "updatesVpnWarning": "Kurulum VPN bağlantısını kesecek",
+  "updatesAndroidUnknownSources": "Bu uygulamadan kuruluma izin verin",
+  "updatesAndroidOpenSettings": "Ayarları aç",
+  "updatesAndroidNoSilent": "Android sistemin kurulum penceresini gösterecek: bu bir sistem gereksinimidir",
+  "updatesPortableFallback": "Bu kopya kurulum programıyla kurulmamış. Yeni sürümü elle indirin",
+  "updatesInstalledToast": "{version} sürümüne güncellendi",
+  "updatesInstallFailedTitle": "Kurulum tamamlanmadı",
+  "updatesInstallFailedBody": "Sürüm {version} olarak kaldı. Kurulum günlüğü aşağıda",
+  "updatesShowLog": "Günlüğü göster",
+  "updatesOverrideBadge": "Güncelleme kaynağı değiştirildi (test modu)",
+  "updatesSettingsTile": "Güncellemeler",
+  "updatesSettingsTileSubtitle": "Yeni sürümleri denetleme, indirme ve kurma",
+  "updatesPreviousVersions": "Önceki sürümler",
+  "updatesInstallOlder": "Kur",
+  "updatesDowngradeWarning": "Daha eski bir sürüme dönülüyor. Devam edilsin mi?",
+  "updatesSizeMb": "{mb} MB",
+  "updatesVpnWarningBody": "Uygulama kapanacak ve kurulum sırasında VPN bağlantısı kesilecek. Güncellemeden sonra yeniden bağlanın",
+  "updatesOpenPage": "İndirme sayfasını aç",
+  "updatesLinkNotify": "“Yalnızca bildir” modu seçili — yeni sürümü indirme sayfasından indirin",
+  "updatesLinkNoSelfUpdate": "Bu sürümde sisteminiz için imzalı bir yükleyici yok — indirme sayfasından indirin",
+  "updatesLinkIsolated": "Bu yalıtılmış bir test kopyasıdır — kurulu uygulamaya dokunmaz. Elle güncelleyin",
+  "updatesLinkLocation": "Uygulama kurulum klasöründen çalışmıyor — yeni sürümü elle indirin veya kurulu kopyayı başlatın",
+  "updatesLinkElevated": "Uygulama yönetici olarak çalışıyor — bu şekilde güncellemek güvenli değil. Normal şekilde başlatın",
+  "updatesLinkUnsupported": "Bu platformda uygulama kendini güncelleyemez — yeni sürümü elle indirin",
+  "updatesErrCheck": "güncelleme sunucusu yanıt vermedi",
+  "updatesErrInsecure": "indirme adresi güvenli değil (https değil)",
+  "updatesErrAssetName": "sürümdeki dosya adı geçersiz",
+  "updatesErrManifest": "imzalı sürüm bildirimi alınamadı",
+  "updatesErrSignature": "imza eşleşmiyor — dosya değiştirilmiş olabilir",
+  "updatesErrManifestRejected": "sürüm bildirimi bu sürüme veya sisteme uymuyor",
+  "updatesErrDownload": "dosya indirilemedi veya sağlama toplamı eşleşmiyor",
+  "updatesErrInstall": "yükleyici başlatılamadı",
+  "updatesErrNotNewer": "bu sürüm kurulu olandan daha yeni değil",
+  "updatesInfo": "Yeni bir sürüm bulunduğunda uygulamanın ne yapacağı. Otomatik modda kurulum etkin bir VPN'i asla kesmez: bağlantıyı kesmenizi bekler. Her modda bir dosya yalnızca geliştirici imzası eşleşirse kurulur.",
+  "updatesDownload": "İndir",
+  "updatesInstallNow": "Şimdi kur",
+  "updatesWaitingVpn": "Kuruluma hazır — VPN bağlantısı kesildikten sonra başlayacak",
+  "updatesSkippedNote": "{version} sürümü atlandı — bir sonrakini bildireceğiz",
+  "updatesAutoNoticeTitle": "Güncelleme kuruluyor",
+  "updatesAutoNoticeBody": "Uygulama {version} sürümü kurulurken kapanacak",
+  "splitImportTitleApps": "Uygulamaları içe aktar",
+  "splitImportTitleSites": "Siteleri içe aktar",
+  "splitImportFormatNote": "Bir satır bir kuraldır. [tunnel], [direct] ve [block] başlıkları altındaki satırlar için eylemi belirler. İşaretsiz bir satır, elle girilmiş gibi eklenir.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Panodan yapıştır",
+  "splitImportAdd": "Ekle",
+  "splitImportReplaceAll": "Tümünü değiştir",
+  "splitImportStatNew": "yeni: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "zaten var: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "farklı: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "ayrıştırılamadı: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Farklı olanların üzerine yaz",
+  "splitImportOverwriteSub": "Kapalıyken bu kuralların mevcut ayarları kalır",
+  "splitImportConflictLine": "{from} idi, {to} olacak",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Bu satırlar alınmadı",
+  "splitImportAdded": "{added} eklendi, {changed} değiştirildi",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Değiştirmeden sonra kural sayısı: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "Liste boş — dışa aktarılacak bir şey yok",
+  "splitCountEmpty": "Boş",
+  "splitCountTotal": "toplam {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "açık {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "kapalı {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "tünel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "doğrudan {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "engelle {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Listeyi genişlet",
+  "splitCollapseList": "Listeyi daralt",
+  "splitExpandGroup": "Grubu genişlet",
+  "splitCollapseGroup": "Grubu daralt",
+  "splitExpandSubdomains": "Alt alan adlarını göster",
+  "splitCollapseSubdomains": "Alt alan adlarını gizle"
 }

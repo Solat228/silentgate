@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../../core/xray/balancer_pick.dart';
+
 /// Снимок счётчиков трафика outbound "proxy".
 class XrayTrafficSnapshot {
   final int uplink;
@@ -31,6 +33,22 @@ class XrayStats {
       if (result.exitCode != 0) return null;
 
       return sumStatsQuery(result.stdout as String);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Какой узел выбрал балансировщик [balancerTag] — тег outbound-а или
+  /// `null` (ядро не ответило, замеров ещё нет). Нужен RoutingService в
+  /// `api.services` (его дописывают построитель и `ensureXrayStats`).
+  Future<String?> balancerPick(String balancerTag) async {
+    try {
+      final result = await Process.run(
+        executable,
+        ['api', 'bi', '-json', '--server=127.0.0.1:$apiPort', balancerTag],
+      ).timeout(const Duration(seconds: 3));
+      if (result.exitCode != 0) return null;
+      return BalancerPick.parseBi(result.stdout as String, balancerTag);
     } catch (_) {
       return null;
     }

@@ -1,11 +1,21 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
 import '../core/geo/geo_bases_controller.dart';
+import '../core/models/vpn_status.dart';
+import '../core/platform/apk_installer_android.dart';
 import '../core/settings/app_settings.dart';
+import '../core/update/app_update.dart' show AppUpdate;
+import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
+import '../core/update/update_installer.dart';
+import '../core/update/update_installer_android.dart';
+import '../core/update/update_installer_windows.dart';
+import '../core/util/server_rekey.dart';
 import 'app_state.dart';
+import 'app_update_controller.dart';
 import 'probe_controller.dart';
 import 'settings_controller.dart';
 
@@ -158,3 +168,115 @@ ProxyProvider2<AppState, ProbeController, UnfinishedPruneLink>
           lazy: false,
           update: (_, state, probe, __) => UnfinishedPruneLink(state, probe),
         );
+
+/// Связка «панель переписала ключи серверов → перенести настройки и замеры».
+///
+/// Пины и правки переносит само состояние; здесь — то, что лежит у других
+/// владельцев: выходы правил раздельного туннелирования и серверы с отдельным
+/// портом (настройки), результаты пинга и скорости (пробы). Разбор —
+/// `core/util/server_rekey.dart`.
+///
+/// ⚠️ `lazy: false` обязателен (см. верх файла): без него хук не назначался бы
+/// никогда, и правила «через Германию» после ротации ключей у панели молча
+/// уходили бы в основной туннель.
+class ServerRekeyLink {
+  ServerRekeyLink(
+      AppState state, SettingsController settings, ProbeController probe) {
+    state.onServerKeysChanged = (rekey) async {
+      final before = settings.settings;
+      final after = ServerRekey.settings(before, rekey);
+      if (!identical(before, after)) {
+        await settings.update((s) => ServerRekey.settings(s, rekey));
+      }
+      await probe.rekeyResults(rekey);
+    };
+  }
+}
+
+ProxyProvider3<AppState, SettingsController, ProbeController, ServerRekeyLink>
+    serverRekeyLinkProvider() => ProxyProvider3<AppState, SettingsController,
+            ProbeController, ServerRekeyLink>(
+          lazy: false,
+          update: (_, state, settings, probe, __) =>
+              ServerRekeyLink(state, settings, probe),
+        );
+
+/// Установщик обновлений под платформу. Прочие платформы получают заглушку
+/// с [InstallCapability.unsupported] — контроллер там показывает ссылку.
+UpdateInstaller platformUpdateInstaller() {
+  if (Platform.isWindows) return WindowsUpdateInstaller();
+  if (Platform.isAndroid) return UpdateInstallerAndroid();
+  return UnsupportedUpdateInstaller();
+}
+
+/// Самообновление ([AppUpdateController]): проверка при запуске, закачка,
+/// проверка подписи, установка — по режиму из настроек.
+///
+/// ⚠️ `lazy: false` ОБЯЗАТЕЛЕН — по той же причине, что у [geoBasesProvider].
+/// Проверка при запуске и автоустановка обязаны случиться, даже если человек
+/// за всю сессию не открыл ни настроек, ни диалога обновления: ленивый
+/// провайдер строил бы контроллер только при первом чтении его типа, и
+/// «проверять при запуске» превратилось бы в «проверять, когда откроют
+/// экран, где это читают». Компилятор и `flutter analyze` такого не видят.
+///
+/// ⚠️ ЗАПУСК — ПОСЛЕ ЗАГРУЗКИ НАСТРОЕК, А НЕ В `create`. Контроллер решает по
+/// настройкам (проверять ли, каким режимом, какой канал, что пропущено), а
+/// `SettingsController.init()` читает их с диска асинхронно и в момент сборки
+/// дерева ещё держит умолчания. Стартовать по умолчаниям значило бы качать
+/// установщик человеку, который автопроверку выключил. Поэтому [startup]
+/// зовётся по [SettingsController.whenLoaded] — явному признаку, что `init()`
+/// прочитал файл. ⚠️ Не по «первому уведомлению», как было в волне 2: его
+/// шлёт и любая правка настроек, случившаяся раньше загрузки, — такая связь
+/// держится на порядке вызовов, который не задан ничем. `startup`
+/// идемпотентен.
+///
+/// «VPN активен» берётся из `AppState` тем же выражением, что у
+/// `TrayWindow.vpnActive` (подключено ЛИБО подключается) — второго
+/// определения этому понятию не нужно. Слушаем сам `AppState`: он уведомляет
+/// раз в секунду счётчиками, и это дёшево — контроллер смотрит на флаг
+/// ожидания первым делом.
+///
+/// [create] — для стража (`test/provider_wiring_test.dart`): тест подставляет
+/// контроллер на подменных зависимостях и проверяет, что провайдер строит его
+/// без единого чтения типа и что запуск привязан к загрузке настроек. В боевом
+/// коде параметр не передаётся.
+ChangeNotifierProvider<AppUpdateController> appUpdateProvider({
+  AppUpdateController Function(BuildContext context)? create,
+}) =>
+    ChangeNotifierProvider<AppUpdateController>(
+      lazy: false,
+      create: (context) {
+        final settings = context.read<SettingsController>();
+        final controller =
+            create?.call(context) ?? _buildAppUpdateController(context, settings);
+        _startWhenSettingsLoaded(settings, controller);
+        return controller;
+      },
+    );
+
+AppUpdateController _buildAppUpdateController(
+    BuildContext context, SettingsController settings) {
+  final state = context.read<AppState>();
+  return AppUpdateController(
+    settings: () => settings.settings,
+    updateSettings: settings.update,
+    installer: platformUpdateInstaller(),
+    isVpnActive: () =>
+        state.status.isConnected ||
+        state.status.state == VpnConnectionState.connecting,
+    vpnChanges: state,
+    openInstallPermission:
+        Platform.isAndroid ? ApkInstallerAndroid().openInstallPermission : null,
+    // Живым вопросом, а не флагом: на Android подмена читается из файла
+    // асинхронно, уже после постройки контроллера (см. `overriddenOf`).
+    overriddenOf: () => kUpdateApiOverridden,
+    loadOverride: AppUpdate.loadApiOverride,
+  );
+}
+
+/// Один раз, когда [SettingsController] прочитал настройки с диска,
+/// запустить [AppUpdateController.startup].
+void _startWhenSettingsLoaded(
+    SettingsController settings, AppUpdateController controller) {
+  unawaited(settings.whenLoaded.then((_) => controller.startup()));
+}

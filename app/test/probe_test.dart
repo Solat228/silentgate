@@ -55,6 +55,24 @@ void main() {
     );
   });
 
+  test('ссылка без fp — дефолт отпечатка firefox (решение 24.09.2026)', () {
+    final s = ShareLinkParser.tryParse(_reality)!;
+    expect(s.fingerprint, isNull, reason: 'в ссылке fp вообще не задан');
+    final built = XrayOutboundFactory.build(s, tag: 'proxy');
+    final stream = built.firstWhere((o) => o['tag'] == 'proxy')['streamSettings'] as Map;
+    expect((stream['realitySettings'] as Map)['fingerprint'], kDefaultTlsFingerprint);
+    expect(kDefaultTlsFingerprint, 'firefox');
+  });
+
+  test('ссылка с fp=safari — отпечаток из ссылки не переписывается дефолтом', () {
+    // fp дописывается ДО фрагмента ссылки (#S) — после него уже не параметры.
+    final s = ShareLinkParser.tryParse(_reality.replaceFirst('#S', '&fp=safari#S'))!;
+    expect(s.fingerprint, 'safari');
+    final built = XrayOutboundFactory.build(s, tag: 'proxy');
+    final stream = built.firstWhere((o) => o['tag'] == 'proxy')['streamSettings'] as Map;
+    expect((stream['realitySettings'] as Map)['fingerprint'], 'safari');
+  });
+
   test('harness: N http-inbound → N outbound + routing', () {
     final s = ShareLinkParser.tryParse(_reality)!;
     const b = HarnessConfigBuilder();
@@ -281,7 +299,7 @@ void main() {
       final dns = vpn['dns'] as Map;
       final servers = (dns['servers'] as List).cast<Map>();
       expect(servers.any((s) => s['detour'] == 'proxy'), isTrue);
-      expect(servers.any((s) => s['address'] == 'local'), isTrue);
+      expect(servers.any((s) => s['type'] == 'local'), isTrue);
       // Режим «весь трафик» → финальный резолвер через туннель.
       expect(dns['final'], 'dns-proxy');
       expect(rulesOf(vpn).any((r) => r['action'] == 'hijack-dns'), isTrue);
@@ -303,7 +321,8 @@ void main() {
         options: TunOptions(dnsMode: DnsMode.custom, dnsServer: '9.9.9.9'),
       ).buildMap(split);
       final cs = ((custom['dns'] as Map)['servers'] as List).cast<Map>();
-      expect(cs.first['address'], 'tcp://9.9.9.9');
+      expect(cs.first['type'], 'tcp');
+      expect(cs.first['server'], '9.9.9.9');
     });
 
     test('IPv6 / strict_route / EIN / исключения попадают в tun-inbound', () {
@@ -761,19 +780,66 @@ void main() {
           containsAll(['10.0.0.0/8', '2001:db8::/32']));
     });
 
-    test('пустой/битый custom DNS → фолбэк tcp://1.1.1.1, схема срезается', () {
-      String proxyAddr(String server) {
+    test('пустой/битый custom DNS → фолбэк 1.1.1.1, схема срезается', () {
+      Map proxy(String server) {
         final cfg = SingboxConfigBuilder(
           options: TunOptions(dnsMode: DnsMode.custom, dnsServer: server),
         ).buildMap(const SplitTunnelConfig());
         final servers = ((cfg['dns'] as Map)['servers'] as List).cast<Map>();
-        return servers.firstWhere((x) => x['tag'] == 'dns-proxy')['address']
-            as String;
+        return servers.firstWhere((x) => x['tag'] == 'dns-proxy');
       }
 
-      expect(proxyAddr('   '), 'tcp://1.1.1.1'); // пусто → фолбэк
-      expect(proxyAddr('https://dns.google/dns-query'), 'tcp://dns.google');
-      expect(proxyAddr('8.8.8.8'), 'tcp://8.8.8.8');
+      expect(proxy('   ')['server'], '1.1.1.1'); // пусто → фолбэк
+      expect(proxy('   ')['type'], 'tcp');
+      expect(proxy('https://dns.google/dns-query')['server'], 'dns.google');
+      // Резолвер по ИМЕНИ требует резолвера для себя, по адресу — нет.
+      expect(proxy('https://dns.google/dns-query')['domain_resolver'],
+          'dns-local');
+      expect(proxy('8.8.8.8')['server'], '8.8.8.8');
+      expect(proxy('8.8.8.8').containsKey('domain_resolver'), isFalse);
+    });
+
+    test('адрес резолвера с портом и IPv6 раскладывается на server/server_port',
+        () {
+      expect(SingboxConfigBuilder.dnsEndpoint('1.1.1.1'), {'server': '1.1.1.1'});
+      expect(SingboxConfigBuilder.dnsEndpoint('1.1.1.1:5353'),
+          {'server': '1.1.1.1', 'server_port': 5353});
+      expect(SingboxConfigBuilder.dnsEndpoint('dns.google:53'),
+          {'server': 'dns.google', 'server_port': 53});
+      expect(SingboxConfigBuilder.dnsEndpoint('2606:4700::1111'),
+          {'server': '2606:4700::1111'});
+      expect(SingboxConfigBuilder.dnsEndpoint('[2606:4700::1111]:853'),
+          {'server': '2606:4700::1111', 'server_port': 853});
+      expect(SingboxConfigBuilder.dnsEndpoint('[2606:4700::1111]'),
+          {'server': '2606:4700::1111'});
+      // Мусорный порт не пишется — ядро отвергло бы весь конфиг.
+      expect(SingboxConfigBuilder.dnsEndpoint('1.1.1.1:99999'),
+          {'server': '1.1.1.1'});
+    });
+
+    test('ни одного устаревшего в 1.13 поля DNS не осталось', () {
+      final cfg = SingboxConfigBuilder(
+        exitOutbounds: const [
+          {'type': 'socks', 'tag': 'exit-1', 'server': '127.0.0.1', 'server_port': 1}
+        ],
+        options: const TunOptions(
+            dnsMode: DnsMode.custom,
+            dnsServer: 'dns.google',
+            fallbackDnsPort: 5300,
+            directFallbackDnsPort: 5301),
+      ).buildMap(const SplitTunnelConfig(mode: SplitMode.exceptSelected));
+      final dns = cfg['dns'] as Map;
+      for (final s in (dns['servers'] as List).cast<Map>()) {
+        for (final legacy in ['address', 'address_resolver', 'strategy']) {
+          expect(s.containsKey(legacy), isFalse, reason: '${s['tag']}: $legacy');
+        }
+        expect(s['type'], isNotNull, reason: '${s['tag']}');
+        expect(s['detour'], isNot('direct'), reason: '${s['tag']}');
+      }
+      for (final r in (dns['rules'] as List).cast<Map>()) {
+        expect(r.containsKey('outbound'), isFalse, reason: '$r');
+      }
+      expect((cfg['route'] as Map)['default_domain_resolver'], 'dns-local');
     });
 
     test('#3.5 БЛОК сайта важнее «Туннель»-приложения (порядок правил)', () {

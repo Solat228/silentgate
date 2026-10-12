@@ -78,6 +78,8 @@ Widget adaptiveDialogBody(
   BuildContext context, {
   required double width,
   double? height,
+  bool hugContent = false,
+  double extraChrome = 0,
   required Widget child,
 }) {
   final size = MediaQuery.sizeOf(context);
@@ -87,10 +89,19 @@ Widget adaptiveDialogBody(
   final w = math.min(width, size.width - 80);
   if (height == null) return SizedBox(width: w, child: child);
   const chrome = 48.0 + 64.0 + 52.0; // инсеты + заголовок + кнопки
-  final avail = size.height - keyboard - chrome;
-  return SizedBox(
-    width: w,
-    height: math.max(120, math.min(height, avail)),
-    child: child,
-  );
+  // [extraChrome] — то, что диалог держит сверх одного ряда кнопок (кнопки
+  // в два ряда на телефоне).
+  final avail = size.height - keyboard - chrome - extraChrome;
+  final h = math.max(120.0, math.min(height, avail));
+  // [hugContent]: [height] — потолок, а не размер. Короткое содержимое не
+  // растягивает окно пустотой (окно обновления с двумя строками описания
+  // стояло на весь экран телефона — живой прогон 24.09.2026), длинное
+  // упирается в потолок и прокручивается.
+  if (hugContent) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(minWidth: w, maxWidth: w, maxHeight: h),
+      child: child,
+    );
+  }
+  return SizedBox(width: w, height: h, child: child);
 }

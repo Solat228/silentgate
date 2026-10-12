@@ -4,7 +4,7 @@ import 'dart:io';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
 import '../core/settings/app_settings.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Персистенс настроек в отдельном JSON-файле (не смешиваем с состоянием сети/серверов).
 class SettingsStorage {
@@ -42,7 +42,7 @@ class SettingsStorage {
     final file = await _file();
     try {
       if (!await file.exists()) return AppSettings.defaults;
-      final parsed = parseContent(await file.readAsString());
+      final parsed = parseContent(await SecretFiles.read(file));
       if (parsed != null) return parsed;
       // Откат к дефолтам остаётся (приложение обязано стартовать), но теперь это
       // ВИДНО в логе и битый файл сохраняется — иначе первое же сохранение
@@ -76,7 +76,7 @@ class SettingsStorage {
   Future<void> save(AppSettings settings) async {
     try {
       final file = await _file();
-      await AtomicFile.writeString(file, jsonEncode(settings.toJson()));
+      await SecretFiles.write(file, jsonEncode(settings.toJson()));
     } catch (_) {
       // Потеря настроек не критична.
     }

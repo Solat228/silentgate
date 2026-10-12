@@ -134,14 +134,17 @@ void main() {
     }
     final fin = (cfg['dns'] as Map)['final'];
     if (fin is String) used.add(fin);
-    // `address_resolver` — такая же ссылка на тег, и такая же молчаливая.
+    // `domain_resolver` (бывший `address_resolver`) — такая же ссылка на
+    // тег, и такая же молчаливая. И резолвер outbound'ов в `route` — тоже.
     for (final s in ((cfg['dns'] as Map)['servers'] as List)) {
-      final ar = (s as Map)['address_resolver'];
+      final ar = (s as Map)['domain_resolver'];
       if (ar is String) used.add(ar);
     }
+    final ddr = (cfg['route'] as Map)['default_domain_resolver'];
+    if (ddr is String) used.add(ddr);
 
     expect(used.difference(declared), isEmpty,
-        reason: 'в dns.rules/final/address_resolver есть теги, которых нет '
+        reason: 'в dns.rules/final/domain_resolver есть теги, которых нет '
             'в dns.servers');
   });
 
@@ -174,7 +177,7 @@ void main() {
     final fin = dns['final'];
     if (fin is String) used.add(fin);
     for (final x in (dns['servers'] as List)) {
-      final ar = (x as Map)['address_resolver'];
+      final ar = (x as Map)['domain_resolver'];
       if (ar is String) used.add(ar);
     }
     expect(used.difference(declared), isEmpty);

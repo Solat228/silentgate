@@ -107,6 +107,12 @@ dependencies {
     //             профили «Авто» с balancers/burstObservatory, которые
     //             sing-box переварить не может.
     implementation(files("libs/cores.aar"))
+
+    // QR-код подписки (platform/QrScanner.kt): камера — готовая CaptureActivity,
+    // картинка — ядро ZXing. Обе под Apache-2.0, совместимы с GPL-3.0.
+    // ML Kit не взят: закрытый бинарь и зависимость от сервисов Google Play.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("com.google.zxing:core:3.5.3")
 }
 
 kotlin {

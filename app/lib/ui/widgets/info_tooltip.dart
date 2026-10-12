@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import 'flag_text.dart';
 
 /// Иконка «!» с всплывающим пояснением (по клику — диалог, по наведению — tooltip).
 /// [title] — необязательный заголовок диалога; по умолчанию локализованный «Пояснение».
@@ -53,11 +54,14 @@ class InfoTooltip extends StatelessWidget {
       onPressed: () => showDialog<void>(
         context: context,
         builder: (dctx) => AlertDialog(
-          title: Text(title ?? l.infoDialogTitle),
+          // Заголовок/текст могут прийти с именем сервера («!» непригодности
+          // держит его в title) — флаги в нём рисуем картинкой, не буквами.
+          title: FlagText(title ?? l.infoDialogTitle),
           // #9 — весь текст пояснения ВЫДЕЛЯЕМЫЙ (Ctrl+C / ПКМ→копировать),
           // отдельная кнопка «копировать» не нужна.
           content: SingleChildScrollView(
-            child: SelectableText(message,
+            child: SelectableText.rich(
+                TextSpan(children: buildFlagSpans(message)),
                 contextMenuBuilder: (ctx, s) =>
                     AdaptiveTextSelectionToolbar.editableText(
                         editableTextState: s)),
@@ -72,7 +76,7 @@ class InfoTooltip extends StatelessWidget {
       ),
     );
     return Tooltip(
-      message: message,
+      richMessage: flagTextSpan(message),
       preferBelow: true,
       waitDuration: const Duration(milliseconds: 300),
       // ⚠️ `SizedBox` снаружи обязателен: `constraints` у `IconButton` задают

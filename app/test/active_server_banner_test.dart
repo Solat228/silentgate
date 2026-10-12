@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
+import 'package:silentgate/core/util/country_flag.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/state/service_check_controller.dart';
 import 'package:silentgate/ui/home_screen.dart';
@@ -139,8 +140,19 @@ void main() {
 
     testWidgets('полное имя всегда доступно подсказкой', (t) async {
       await pump(t, name: longName);
-      expect(find.byTooltip(longName), findsOneWidget,
-          reason: 'что не влезло в плашку, человек обязан суметь прочитать');
+      // ⚠️ Флаг рисуется картинкой (WidgetSpan) — у неё нет текста, поэтому
+      // подсказка ушла с `message` (простая строка) на `richMessage`
+      // (InlineSpan). `find.byTooltip` этого не видит: сверяем сам `richMessage`
+      // — текстовый остаток обязан совпасть целиком, а флаг остаться картинкой.
+      final tooltip = t
+          .widgetList<Tooltip>(find.byType(Tooltip))
+          .firstWhere((tt) => tt.richMessage != null);
+      final span = tooltip.richMessage! as TextSpan;
+      expect(span.toPlainText(includePlaceholders: false).trim(),
+          FlagUtil.stripIconFlags(longName),
+          reason: 'текст имени без флага обязан дойти до подсказки целиком');
+      expect(span.children!.any((c) => c is WidgetSpan), isTrue,
+          reason: 'флаг из имени обязан остаться в подсказке картинкой');
     });
   });
 

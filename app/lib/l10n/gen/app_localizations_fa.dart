@@ -30,9 +30,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get commonRefresh => 'بازخوانی';
 
   @override
-  String get commonCheck => 'بررسی';
-
-  @override
   String get commonOk => 'تأیید';
 
   @override
@@ -148,6 +145,33 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get closeToTraySubtitle =>
       'دکمه بستن پنجره را در تری پنهان می‌کند؛ خاموش کنید تا به‌جای آن برنامه بسته شود';
+
+  @override
+  String get launchAtLoginTitle => 'اجرا همراه با Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'برنامه هنگام ورود به سیستم کوچک‌شده در سینی سیستم اجرا می‌شود';
+
+  @override
+  String get connectOnAutostartTitle => 'اتصال هنگام اجرای خودکار';
+
+  @override
+  String get connectOnAutostartSub =>
+      'وقتی Windows برنامه را اجرا می‌کند، VPN بلافاصله به سرور انتخاب‌شده وصل شود';
+
+  @override
+  String get sortServersByCountryTitle => 'مرتب‌سازی بر اساس کشور';
+
+  @override
+  String get sortServersByCountrySub =>
+      'سرورهای یک کشور را کنار هم بگذار. کشورها ترتیب ارائه‌دهنده را حفظ می‌کنند؛ سرورهای سنجاق‌شده بالا می‌مانند';
+
+  @override
+  String get serverGroupCollapse => 'جمع کردن گروه';
+
+  @override
+  String get serverGroupExpand => 'باز کردن گروه';
 
   @override
   String get autoUpdateSubTitle => 'به‌روزرسانی خودکار اشتراک';
@@ -581,51 +605,11 @@ class AppLocalizationsFa extends AppLocalizations {
   String get testUrlLabel => 'URL آزمایشی (از طریق پروکسی)';
 
   @override
-  String get appUpdateServerUnavailable => 'سرور به‌روزرسانی در دسترس نیست';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'نسخه $version موجود است';
-  }
-
-  @override
-  String get appUpdateLatest => 'شما آخرین نسخه را دارید';
-
-  @override
-  String get appUpdateDownload => 'دانلود';
-
-  @override
-  String get appUpdateCheckTitle => 'بررسی به‌روزرسانی هنگام اجرا';
-
-  @override
-  String get appUpdateManual => 'دانلود و نصب — به‌صورت دستی';
-
-  @override
-  String get appUpdateEndpointLabel => 'نقطه پایانی نسخه';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'دریافت نسخه‌های بتا';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'فهرست انتشارهای گیت‌هاب شامل پیش‌انتشارها، به‌علاوه نشانی پشتیبان سایت. به‌روزرسانی خودکار نسخه‌های پایدار را تغییر نمی‌دهد.';
-
-  @override
   String get infoAppUpdateBeta =>
       'برنامه از این پس فهرست کامل انتشارهای گیت‌هاب را می‌بیند، شامل پیش‌انتشارها، نه فقط آخرین نسخهٔ پایدار. کانال اصلی به‌روزرسانی خودکار تغییری نمی‌کند — بتا برای کسی که این گزینه را روشن نکرده ارسال نمی‌شود.';
 
   @override
   String get appUpdateBetaBadge => 'بتا';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'این یک پیش‌انتشار است — ممکن است خطا رخ دهد. به‌روزرسانی خودکار این نسخه‌ها را ارسال نمی‌کند.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'نسخه‌های قبلی';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'نسخه‌های قبلی';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -789,14 +773,6 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'مسدود';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'نسخه $version موجود است';
-  }
-
-  @override
-  String get homeDownload => 'دانلود';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -971,6 +947,21 @@ class AppLocalizationsFa extends AppLocalizations {
   String get subBarAnnounce => 'اعلان از پنل';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'اعلان‌های سرویس $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'اعلان‌های سرویس';
+
+  @override
+  String get hideAnnounceTitle => 'پنهان کردن اعلان‌های سرویس';
+
+  @override
+  String get hideAnnounceSub =>
+      'اعلان‌های اشتراک در کارت نمایش داده نمی‌شوند. به‌طور پیش‌فرض در هر صفحه‌ای دیده می‌شوند.';
+
+  @override
   String get subSwitcherPingAll => 'آزمودن سرورهای همهٔ اشتراک‌ها';
 
   @override
@@ -1052,10 +1043,6 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN نیازمند دسترسی مدیر است. یک‌بار، وظیفه‌ای در زمان‌بند وظایف ویندوز با بالاترین سطح دسترسی می‌سازیم — پس از آن تونل بدون درخواست UAC در هر اتصال آغاز می‌شود. این وظیفه متعلق به شماست و با دکمه پایین یا هنگام حذف برنامه پاک می‌شود.';
-
-  @override
-  String get infoAppUpdate =>
-      'برنامه یک‌بار در هر اجرا از سرور شما می‌پرسد که آیا نسخه جدیدتری هست و اعلانی با دکمه «دانلود» نمایش می‌دهد.\n\nبرنامه به‌تنهایی هیچ چیزی دانلود یا اجرا نمی‌کند: نصب‌کننده با گواهی امضا نشده و اجرای خودکار یک exe دانلود‌شده به SmartScreen برمی‌خورد و برای آنتی‌ویروس‌ها مانند رفتار بدافزار به نظر می‌رسد. به‌روزرسانی را خودتان نصب می‌کنید.\n\nاگر سرور در دسترس نباشد، برنامه فقط سکوت می‌کند و ورودی‌ای در گزارش می‌نویسد. قالب پاسخ و راه‌اندازی سرور در docs/APP_UPDATE.md توضیح داده شده است.';
 
   @override
   String get infoSpeedTest =>
@@ -1260,6 +1247,98 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get importScrImportField => 'درون‌ریزی از فیلد';
+
+  @override
+  String get importScrScanQr => 'اسکن QR';
+
+  @override
+  String get importScrQrFromImage => 'QR از تصویر';
+
+  @override
+  String get qrScanPrompt => 'دوربین را به سمت کد QR اشتراک بگیرید';
+
+  @override
+  String get qrCameraExplainTitle => 'دسترسی به دوربین';
+
+  @override
+  String get qrCameraExplainBody =>
+      'دوربین فقط برای خواندن کد QR اشتراک استفاده می‌شود. چیزی ذخیره یا ارسال نمی‌شود.';
+
+  @override
+  String get qrCameraContinue => 'ادامه';
+
+  @override
+  String get qrCameraDenied =>
+      'دسترسی به دوربین وجود ندارد. آن را در تنظیمات برنامه مجاز کنید یا تصویری با کد QR انتخاب کنید.';
+
+  @override
+  String get qrNotFound => 'کد QR در تصویر پیدا نشد.';
+
+  @override
+  String get qrReadFailed => 'باز کردن تصویر ممکن نشد.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'اتصال قطع شد و ترافیک مسدود است. اتصال دوباره تا $seconds ثانیه دیگر (تلاش $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'تونل برقرار است، اما ترافیکی از آن عبور نمی‌کند';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android اجازهٔ راه‌اندازی VPN را نداد. دوباره «اتصال» را بزنید و درخواست سیستم را تأیید کنید.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file کنار برنامه پیدا نشد. SilentGate را دوباره نصب کنید.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'پورت $port هنوز در اختیار هستهٔ ما ($holder) از نشست قبلی است.\n\nاگر VPN را خاموش و بلافاصله روشن کنید این اتفاق می‌افتد. چند ثانیه صبر کنید و دوباره امتحان کنید.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'پورت $port در اختیار برنامهٔ دیگری است که شناسایی نشد.\n\nبیشتر وقت‌ها یک کلاینت VPN دیگر است که روی همان پورت‌های محلی گوش می‌دهد. آن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'پورت $port در اختیار برنامهٔ $holder است.\n\nآن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'هستهٔ تونل از کار افتاد؛ تونل برداشته شد';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'اتصال ممکن نشد: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'هستهٔ $core متوقف شد (کد $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'هستهٔ $core متوقف شد (کد $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'پورت محلی $port از قبل در حال استفاده است';
+  }
+
+  @override
+  String get statusReasonPortBusyAny =>
+      'یک پورت محلی از قبل در حال استفاده است';
+
+  @override
+  String get statusReasonFailedToStart => 'هسته نتوانست اجرا شود';
 
   @override
   String get serversTitle => 'سرورها';
@@ -1516,6 +1595,15 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'The last subscription update changed this server\'s record';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'استتار «$type» هنوز در این کلاینت پشتیبانی نمی‌شود';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'این سرور هنوز در این کلاینت پشتیبانی نمی‌شود';
 
   @override
   String get srvFieldId => 'ID / password';
@@ -1800,6 +1888,10 @@ class AppLocalizationsFa extends AppLocalizations {
       'ساخت وظیفه ناموفق بود (UAC رد شد یا با سیاست مسدود شد)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'زمان‌بند وظایف این وظیفه را نپذیرفت — علت در گزارش است (تنظیمات ← گزارش‌ها)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 
@@ -1976,10 +2068,6 @@ class AppLocalizationsFa extends AppLocalizations {
   String get noRealIpTitle => 'هرگز از IP واقعی من استفاده نکن';
 
   @override
-  String get noRealIpSub =>
-      'حتی با روشن بودن VPN، همه ترافیک «مستقیم» از VPN عبور می‌کند (سایت‌های RU هم). شبکه محلی مستقیم می‌ماند.';
-
-  @override
   String get flagAuto => 'خودکار';
 
   @override
@@ -2103,6 +2191,9 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'ابتدا یک اشتراک وارد کنید';
+
+  @override
+  String get errServerUnsupported => 'این سرور در این کلاینت پشتیبانی نمی‌شود';
 
   @override
   String get speedSizeFull => '۲۰ مگابایت';
@@ -2355,10 +2446,6 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«هرگز با IP واقعی من» روشن است: قوانین «مستقیم» بدون تیک از راه VPN می‌روند';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'بر قوانین «مستقیم» اثر دارد: بدون تیک «اجازهٔ IP واقعی» از راه VPN می‌روند';
 
   @override
   String get splitAppOverrideSites => 'بر قوانین سایت اولویت دارد';
@@ -2841,7 +2928,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      'گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و همهٔ ترافیک از VPN می‌گذرد.';
+      'گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و قوانین «مستقیم» شما از VPN می‌گذرند.';
 
   @override
   String get autoWarnAllVpn =>
@@ -3387,15 +3474,7 @@ class AppLocalizationsFa extends AppLocalizations {
       'کلید قطع اضطراری ترافیک را بر اساس برنامه نگه می‌دارد، نه بر اساس دامنه: تا زمانی که هسته در حال بازیابی است کسی نیست که نام سایت‌ها را تحلیل کند — در این مدت قوانین سایت‌ها اعمال نمی‌شوند.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'تازه‌های $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'یادداشت انتشار دریافت نشد.';
-
-  @override
-  String get updateNotesNeverShow => 'دیگر نشان نده';
 
   @override
   String get notifOffTitle => 'اعلان‌ها خاموش است';
@@ -3410,4 +3489,405 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate.';
+
+  @override
+  String get splitImport => 'وارد کردن';
+
+  @override
+  String get splitExport => 'برون‌بری';
+
+  @override
+  String get splitImportOk => 'تنظیمات وارد شد';
+
+  @override
+  String get splitImportBad => 'تنظیمات معتبر SilentGate در کلیپ‌بورد نیست';
+
+  @override
+  String get splitImportReplace => 'جایگزینی';
+
+  @override
+  String get updatesTitle => 'به‌روزرسانی‌ها';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'نسخهٔ فعلی $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'کانال پایدار';
+
+  @override
+  String get updatesChannelBeta => 'کانال بتا';
+
+  @override
+  String get updatesCheckNow => 'اکنون بررسی کن';
+
+  @override
+  String get updatesStatusChecking => 'در حال بررسی…';
+
+  @override
+  String get updatesStatusUpToDate => 'آخرین نسخه را دارید';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'نسخهٔ $version در دسترس است';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'در حال دانلود… $percent٪';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'در حال دانلود: $done از $total مگابایت';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '$left مگابایت مانده';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n ثانیه';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n دقیقه';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'در حال بررسی امضا…';
+
+  @override
+  String get updatesStatusReady => 'آمادهٔ نصب';
+
+  @override
+  String get updatesStatusInstalling => 'در حال نصب…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'ناموفق: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'مجوز نصب لازم است';
+
+  @override
+  String get updatesStatusLinkOnly => 'به‌صورت دستی نصب کنید';
+
+  @override
+  String get updatesModeTitle => 'نحوهٔ به‌روزرسانی';
+
+  @override
+  String get updatesModeAsk => 'پرسیدن';
+
+  @override
+  String get updatesModeAskHint =>
+      'تغییرات را نشان می‌دهد و فقط پس از تأیید شما نصب می‌کند';
+
+  @override
+  String get updatesModeAuto => 'خودکار';
+
+  @override
+  String get updatesModeAutoHint =>
+      'وقتی VPN خاموش است، خودش دانلود و نصب می‌کند';
+
+  @override
+  String get updatesModeNotify => 'فقط اطلاع دادن';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'نسخهٔ جدید را اعلام می‌کند، بدون دانلود یا نصب چیزی';
+
+  @override
+  String get updatesAutoCheck => 'بررسی هنگام راه‌اندازی';
+
+  @override
+  String get updatesBeta => 'دریافت نسخه‌های بتا';
+
+  @override
+  String get updatesSignatureNote =>
+      'هر فایل با امضای توسعه‌دهنده و جمع کنترلی بررسی می‌شود؛ بدون تطابق، نصب آغاز نمی‌شود';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'به‌روزرسانی $version در دسترس است';
+  }
+
+  @override
+  String get updatesInstall => 'به‌روزرسانی';
+
+  @override
+  String get updatesLater => 'بعداً';
+
+  @override
+  String get updatesSkipVersion => 'رد کردن این نسخه';
+
+  @override
+  String get updatesVpnWarning => 'نصب، اتصال VPN را قطع می‌کند';
+
+  @override
+  String get updatesAndroidUnknownSources => 'نصب از این برنامه را مجاز کنید';
+
+  @override
+  String get updatesAndroidOpenSettings => 'باز کردن تنظیمات';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'اندروید پنجرهٔ نصب سیستم را نشان می‌دهد: این الزام سیستم است';
+
+  @override
+  String get updatesPortableFallback =>
+      'این نسخه از طریق نصب‌کننده نصب نشده است. نسخهٔ جدید را به‌صورت دستی دانلود کنید';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'به $version به‌روزرسانی شد';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'نصب کامل نشد';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'نسخه همان $version ماند. گزارش نصب‌کننده در زیر';
+  }
+
+  @override
+  String get updatesShowLog => 'نمایش گزارش';
+
+  @override
+  String get updatesOverrideBadge =>
+      'منبع به‌روزرسانی جایگزین شده است (حالت آزمایشی)';
+
+  @override
+  String get updatesSettingsTile => 'به‌روزرسانی‌ها';
+
+  @override
+  String get updatesSettingsTileSubtitle => 'بررسی، دانلود و نصب نسخه‌های جدید';
+
+  @override
+  String get updatesPreviousVersions => 'نسخه‌های قبلی';
+
+  @override
+  String get updatesInstallOlder => 'نصب';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'بازگشت به نسخهٔ قدیمی‌تر. ادامه می‌دهید؟';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb مگابایت';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'برنامه بسته می‌شود و VPN در طول نصب قطع خواهد بود. پس از به‌روزرسانی دوباره وصل شوید';
+
+  @override
+  String get updatesOpenPage => 'باز کردن صفحهٔ دانلود';
+
+  @override
+  String get updatesLinkNotify =>
+      'حالت «فقط اطلاع دادن» انتخاب شده است — نسخهٔ جدید را از صفحهٔ دانلود بگیرید';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'این نسخه نصب‌کنندهٔ امضاشده برای سیستم شما ندارد — آن را از صفحهٔ دانلود بگیرید';
+
+  @override
+  String get updatesLinkIsolated =>
+      'این یک نسخهٔ آزمایشی جداگانه است — به برنامهٔ نصب‌شده دست نمی‌زند. به‌صورت دستی به‌روزرسانی کنید';
+
+  @override
+  String get updatesLinkLocation =>
+      'برنامه از پوشهٔ نصب اجرا نشده است — نسخهٔ جدید را دستی بگیرید یا نسخهٔ نصب‌شده را اجرا کنید';
+
+  @override
+  String get updatesLinkElevated =>
+      'برنامه با دسترسی مدیر اجرا شده است — به‌روزرسانی به این شکل امن نیست. آن را به‌صورت عادی اجرا کنید';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'برنامه روی این سکو نمی‌تواند خودش را به‌روز کند — نسخهٔ جدید را دستی بگیرید';
+
+  @override
+  String get updatesErrCheck => 'سرور به‌روزرسانی پاسخ نداد';
+
+  @override
+  String get updatesErrInsecure => 'نشانی دانلود امن نیست (https نیست)';
+
+  @override
+  String get updatesErrAssetName => 'نام فایل در این نسخه مجاز نیست';
+
+  @override
+  String get updatesErrManifest => 'دریافت فهرست امضاشدهٔ نسخه ممکن نشد';
+
+  @override
+  String get updatesErrSignature =>
+      'امضا مطابقت ندارد — ممکن است فایل دست‌کاری شده باشد';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'فهرست نسخه با این نسخه یا سیستم سازگار نیست';
+
+  @override
+  String get updatesErrDownload => 'فایل دانلود نشد یا چک‌سام آن مطابقت ندارد';
+
+  @override
+  String get updatesErrInstall => 'نصب‌کننده اجرا نشد';
+
+  @override
+  String get updatesErrNotNewer => 'این نسخه از نسخهٔ نصب‌شده جدیدتر نیست';
+
+  @override
+  String get updatesInfo =>
+      'برنامه با نسخهٔ جدیدِ پیداشده چه می‌کند. در حالت خودکار، نصب هرگز VPN فعال را قطع نمی‌کند و تا قطع اتصال شما صبر می‌کند. در همهٔ حالت‌ها فایل فقط در صورت مطابقت امضای توسعه‌دهنده نصب می‌شود.';
+
+  @override
+  String get updatesDownload => 'دانلود';
+
+  @override
+  String get updatesInstallNow => 'نصب همین حالا';
+
+  @override
+  String get updatesWaitingVpn => 'آمادهٔ نصب — پس از قطع VPN شروع می‌شود';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'نسخهٔ $version رد شد — نسخهٔ بعدی را اطلاع می‌دهیم';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'در حال نصب به‌روزرسانی';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'برنامه هنگام نصب نسخهٔ $version بسته می‌شود';
+  }
+
+  @override
+  String get splitImportTitleApps => 'درون‌ریزی برنامه‌ها';
+
+  @override
+  String get splitImportTitleSites => 'درون‌ریزی سایت‌ها';
+
+  @override
+  String get splitImportFormatNote =>
+      'هر خط یک قانون است. سرتیترهای [tunnel]، [direct] و [block] کنش خط‌های زیر خود را تعیین می‌کنند. خطی بدون برچسب، درست مثل خطی که دستی وارد شده باشد، افزوده می‌شود.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'جای‌گذاری از کلیپ‌بورد';
+
+  @override
+  String get splitImportAdd => 'افزودن';
+
+  @override
+  String get splitImportReplaceAll => 'جایگزینی همه';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'جدید: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'از پیش هست: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'متفاوت: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'تجزیه نشد: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'رونویسی موارد متفاوت';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'خاموش — تنظیمات کنونی این قانون‌ها می‌ماند';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '$from بود، $to می‌شود';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'این خط‌ها گرفته نشدند';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '$added افزوده شد، $changed تغییر کرد';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'تعداد قانون‌ها پس از جایگزینی: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'فهرست خالی است — چیزی برای برون‌بری نیست';
+
+  @override
+  String get splitCountEmpty => 'خالی';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'مجموع $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'روشن $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'خاموش $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'تونل $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'مستقیم $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'مسدود $n';
+  }
+
+  @override
+  String get splitExpandList => 'باز کردن فهرست';
+
+  @override
+  String get splitCollapseList => 'جمع کردن فهرست';
+
+  @override
+  String get splitExpandGroup => 'باز کردن گروه';
+
+  @override
+  String get splitCollapseGroup => 'بستن گروه';
+
+  @override
+  String get splitExpandSubdomains => 'نمایش زیردامنه‌ها';
+
+  @override
+  String get splitCollapseSubdomains => 'پنهان کردن زیردامنه‌ها';
 }

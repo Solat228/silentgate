@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'app.dart';
 import 'core/platform/app_cleanup.dart';
 import 'core/platform/app_env.dart';
+import 'core/platform/autostart_windows.dart';
 import 'core/platform/app_instance_mutex.dart';
 import 'core/platform/log_archive.dart';
 import 'core/platform/app_log.dart';
@@ -108,6 +109,11 @@ Future<void> main(List<String> args) async {
     orElse: () => '',
   );
 
+  // Запуск системой при входе в Windows (см. AutostartWindows): окно не
+  // показываем, приложение сразу уходит в трей.
+  final autostart =
+      Platform.isWindows && AutostartWindows.launchedByAutostart(args);
+
   if (Platform.isWindows) {
     // Установщик обновления узнаёт о запущенном приложении по этому мьютексу и
     // ничем другим: у нас на закрытие окна висит свёртывание в трей, поэтому
@@ -132,8 +138,13 @@ Future<void> main(List<String> args) async {
       // Для человека это выглядит как сломанный ярлык: он жмёт второй и третий
       // раз, а на экране пусто. Трей ради того и делают, чтобы приложение
       // возвращалось по клику; без этой строки он был ловушкой.
-      await SingleInstance.forward(
-          incomingUrl.isNotEmpty ? incomingUrl : AppUrlScheme.showWindowUrl);
+      //
+      // Автозапуск при уже работающем приложении ничего не пересылает: окно
+      // посреди экрана при входе в систему никто не просил.
+      if (!autostart) {
+        await SingleInstance.forward(
+            incomingUrl.isNotEmpty ? incomingUrl : AppUrlScheme.showWindowUrl);
+      }
       exit(0);
     }
     // ⚠️ Секрет ПОСТОЯННЫЙ и не зависит от настроек API: он существует всегда,
@@ -163,7 +174,12 @@ Future<void> main(List<String> args) async {
     if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
     // Окно и трей — десктопные понятия; на Android их роль играет
     // foreground-сервис с постоянной нотификацией.
-    await TrayWindow.instance.init();
+    await TrayWindow.instance.init(startHidden: autostart);
+    // Реестр сверяется с настройкой на каждом старте: путь в `Run` мог
+    // устареть после переустановки в другую папку.
+    unawaited(SettingsStorage()
+        .load()
+        .then((s) => AutostartWindows.sync(s.launchAtLogin)));
   }
 
   // Android приносит ссылки интентом в Activity, а не через единственный
@@ -179,7 +195,10 @@ Future<void> main(List<String> args) async {
       providers: [
         ChangeNotifierProvider(
           create: (_) =>
-              AppState(initialUrl: incomingUrl.isEmpty ? null : incomingUrl)..init(),
+              AppState(
+              initialUrl: incomingUrl.isEmpty ? null : incomingUrl,
+              autostart: autostart)
+            ..init(),
         ),
         ChangeNotifierProvider(create: (_) => SettingsController()..init()),
         // Кнопка «Свернуть» на самом уведомлении меняет раскладку в обход
@@ -215,12 +234,20 @@ Future<void> main(List<String> args) async {
         // `applyIfChanged` читает его через `context.read`.
         apiSettingsLinkProvider(),
         unfinishedPruneLinkProvider(),
+        serverRekeyLinkProvider(),
         // Гео-базы (`geoip.dat`/`geosite.dat`): состояние файлов, проверка
         // выпуска, закачка по явному согласию. Живёт с запуска приложения, а
         // не с открытия настроек, — почему именно так и почему `lazy: false`
         // обязателен, написано в `state/provider_wiring.dart`. Сети при
         // создании не касается: `refresh()` только читает каталог.
         geoBasesProvider(),
+        // Самообновление: проверка при запуске (после загрузки настроек),
+        // закачка и проверка подписи установщика, установка по режиму из
+        // настроек. Почему `lazy: false` обязателен и почему запуск привязан
+        // к первому уведомлению SettingsController — в
+        // `state/provider_wiring.dart`. Требует AppState и SettingsController
+        // выше в дереве.
+        appUpdateProvider(),
       ],
       child: const SilentGateApp(),
     ),

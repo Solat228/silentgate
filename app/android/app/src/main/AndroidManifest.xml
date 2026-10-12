@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Интернет нужен и без VPN: загрузка подписки, пинг, проверка обновлений. -->
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -11,6 +12,30 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
+    <!-- Самообновление: скачанный APK отдаётся СИСТЕМНОМУ установщику
+         (ACTION_VIEW + application/vnd.android.package-archive). Без этого
+         разрешения на Android 8+ такой интент молча не сработает: система
+         покажет «установка из неизвестных источников запрещена» или не
+         покажет ничего вовсе. Само разрешение — не «тихая установка»: её без
+         root на Android нет, лист согласия человек видит всегда. Разрешение
+         на уровне пользователя выдаётся один раз через
+         ACTION_MANAGE_UNKNOWN_APP_SOURCES (канал launcher →
+         openInstallPermission). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Удержание процессора на время пинга и замера скорости
+         (lib/core/platform/wake_guard.dart). Без него при погасшем экране
+         система усыпляет процессор посреди прогона, пробы истекают, и живые
+         серверы метятся мёртвыми. Обычное разрешение, выдаётся при установке;
+         замок с таймаутом 10 минут. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+
+    <!-- Камера — только для QR-кода подписки (platform/QrScanner.kt).
+         Спрашивается в момент сканирования, а не на старте; снимки не
+         сохраняются. Без камеры приложение ставится и работает:
+         required="false", QR читается и из картинки. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
 
     <application
         android:label="@string/app_name"
@@ -102,6 +127,14 @@
                 <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
+
+        <!-- Сканер QR из zxing-android-embedded. У библиотеки ориентация
+             sensorLandscape — телефон для QR держат вертикально, поэтому
+             переопределяем на любую по датчику. -->
+        <activity
+            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+            android:screenOrientation="fullSensor"
+            tools:replace="android:screenOrientation"/>
 
         <!-- Перехват ссылок серверов вынесен в отдельный alias и ВЫКЛЮЧЕН по
              умолчанию: эти схемы обычно уже привязаны к другому клиенту (Happ,

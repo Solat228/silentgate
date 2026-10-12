@@ -9,9 +9,16 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 | Компонент | Версия | Лицензия | Как используется | Исходный код |
 |---|---|---|---|---|
 | **Xray-core** (`xray.exe`) | см. «О программе» | MPL-2.0 | отдельный процесс, прокси-ядро | https://github.com/XTLS/Xray-core |
-| **sing-box** (`sing-box.exe`) | 1.11.15 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
+| **sing-box** (`sing-box.exe`) | 1.13.14 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
 | **Wintun** (`wintun.dll`) | — | лицензия Wintun (см. `LICENSE-wintun.txt`) | TUN-адаптер для Windows | https://www.wintun.net/ |
 | **geoip.dat / geosite.dat** | — | CC-BY-SA-4.0 (данные) | списки для маршрутизации | https://github.com/v2fly/domain-list-community |
+
+Только в Android-сборке:
+
+| Компонент | Версия | Лицензия | Как используется | Исходный код |
+|---|---|---|---|---|
+| **ZXing** (`com.google.zxing:core`) | 3.5.3 | Apache-2.0 | распознавание QR-кода подписки с картинки | https://github.com/zxing/zxing |
+| **zxing-android-embedded** | 4.3.0 | Apache-2.0 | экран сканирования QR камерой | https://github.com/journeyapps/zxing-android-embedded |
 
 > Android-компоненты (`libxray.aar`, `libbox.aar`) будут добавлены в таблицу на этапе M7
 > с пином версий — см. `docs/platforms/ANDROID.md`.
@@ -27,6 +34,8 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
   На Windows sing-box исторически запускается отдельным процессом — это сложившаяся
   архитектура, а не лицензионное требование.
 * **MIT** (libXray, hev-socks5-tunnel) — без копилефта.
+* **Apache-2.0** (ZXing, zxing-android-embedded) совместима с GPL-3.0 (но не с GPL-2.0);
+  сохраняем уведомления об авторстве и текст лицензии.
 
 ## Наши обязанности
 

@@ -56,5 +56,20 @@ void main() {
       }
       expect(file.readAsStringSync(), '{"i":19}');
     });
+      test('⚠️ записи без ожидания: побеждает ПОСЛЕДНИЙ вызов, ни одна не теряется',
+        () async {
+      // Так пишут результаты пинга: сохранение на каждый сервер без await.
+      // Раньше записи делили одну времянку — вторая падала на занятом файле
+      // или первая ложилась поверх второй.
+      final file = f('burst.json');
+      final big = 'x' * 200000;
+      final futures = [
+        for (var i = 0; i < 30; i++)
+          AtomicFile.writeString(file, '{"i":$i,"pad":"$big"}'),
+      ];
+      final ok = await Future.wait(futures);
+      expect(ok, everyElement(isTrue));
+      expect(file.readAsStringSync(), startsWith('{"i":29,'));
+    });
   });
 }

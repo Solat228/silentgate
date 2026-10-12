@@ -6,6 +6,7 @@ import '../../engine/windows/system_proxy.dart';
 import '../../engine/windows/tun/tun_scheduled_task.dart';
 import '../../engine/windows/xray_paths.dart';
 import 'app_paths.dart';
+import 'autostart_windows.dart';
 import 'core_cleanup.dart';
 import 'url_scheme_windows.dart';
 
@@ -24,6 +25,9 @@ class AppCleanup {
     await UrlSchemeWindows.unregisterServerSchemes();
     await killOwnCores();
     await _deleteTunTask();
+    // Автозапуск указывал бы на стёртый exe: Windows молча пропускает такую
+    // запись, но она висит в «Автозагрузке» Диспетчера задач навсегда.
+    await AutostartWindows.remove();
     _deleteData();
   }
 
@@ -116,6 +120,8 @@ class AppCleanup {
     await SystemProxy.clear();
     await UrlSchemeWindows.unregister();
     await UrlSchemeWindows.unregisterServerSchemes();
+    // Настройки стираются вместе с данными — а с ними и «запускать с Windows».
+    await AutostartWindows.remove();
     _deleteData();
   }
 

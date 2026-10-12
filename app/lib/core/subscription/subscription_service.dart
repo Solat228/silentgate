@@ -13,13 +13,23 @@ class SubscriptionResult {
   final List<VpnServer> servers;
   final SubscriptionInfo info;
 
-  /// Адрес, по которому подписка РЕАЛЬНО отдалась, если панель увела редиректом.
+  /// Новый ПОСТОЯННЫЙ адрес подписки, если панель увела редиректом 301/308.
   ///
-  /// ⚠️ Стандарт подписок XTLS требует запоминать постоянный редирект: владелец
-  /// панели переезжает на новый домен, старый однажды выключают — и все
-  /// пользователи молча остаются без обновлений. `package:http` следует за
-  /// редиректом сам, поэтому конечный адрес виден только здесь.
-  /// null — редиректа не было.
+  /// ⚠️ Стандарт подписок XTLS требует запоминать ТОЛЬКО постоянный редирект:
+  /// владелец панели переезжает на новый домен, старый однажды выключают — и все
+  /// пользователи молча остаются без обновлений.
+  ///
+  /// ⚠️ ВРЕМЕННЫЙ редирект (302/303/307) запоминать НЕЛЬЗЯ. Наша инфраструктура
+  /// отдаёт `302` как совместимость: короткая ссылка `s.silentgate.lol/<id>`
+  /// (новый канон) при попадании на мейн уводит на легаси `sub.silentgate.lol/
+  /// sub/<id>`. Если запомнить конечный адрес, пользователя молча переносит с
+  /// нового домена на старый — а смена URL ещё и меняет id профиля, из-за чего
+  /// цикл автообновления теряет подписку. Поэтому за 302 мы следуем ради ЭТОГО
+  /// запроса, но сохранённый адрес не трогаем.
+  ///
+  /// Следуем редиректам вручную (`followRedirects = false`), потому что
+  /// `package:http` при авто-следовании прячет коды статуса — а без них 301 и
+  /// 302 неразличимы. `null` — постоянного переезда не было.
   final String? movedTo;
 
   const SubscriptionResult(this.servers, this.info, {this.movedTo});
@@ -32,20 +42,16 @@ class SubscriptionResult {
 class SubscriptionService {
   final http.Client _client;
 
-  /// ⚠️ КЛИЕНТ С UA НА УРОВНЕ САМОГО HttpClient, А НЕ ЗАГОЛОВКОМ ЗАПРОСА.
+  /// Транспортный UA — ВТОРАЯ линия защиты формата ответа.
   ///
   /// Панель Remnawave выбирает ФОРМАТ ответа по User-Agent: своим клиентам она
-  /// отдаёт XRAY_JSON, остальным — base64-ссылки. А `package:http` при редиректе
-  /// (301/308 — штатный способ переезда подписки на новый домен) выполняет
-  /// повторный запрос БЕЗ наших заголовков: панель видела `Dart/3.12 (dart:io)`
-  /// и присылала не тот формат.
-  ///
-  /// Поймано живым прогоном: локальная панель-заглушка с 301 показала в логе
-  /// сначала `SilentGate/1.0.3 (Android)`, а после редиректа — `Dart/3.12`.
-  /// Ровно этот баг чинили у себя FlClash (v0.8.79 «Fix get profile redirect
-  /// client ua issues») — их опыт оказался нашим.
-  ///
-  /// `HttpClient.userAgent` ставится на транспорт и переживает редиректы.
+  /// отдаёт XRAY_JSON, остальным — base64-ссылки. Раньше `package:http` при
+  /// АВТО-следовании за редиректом выполнял повторный запрос без заголовков
+  /// запроса — панель видела `Dart/3.12 (dart:io)` и присылала не тот формат
+  /// (на этом горели и мы, и FlClash v0.8.79 «Fix get profile redirect client
+  /// ua issues»). Теперь [fetch] следует за редиректами САМ и ставит UA на
+  /// КАЖДЫЙ хоп, поэтому потерять его негде; транспортный UA оставлен как
+  /// подстраховка на случай запросов мимо этого пути.
   static http.Client _defaultClient() {
     final io = HttpClient()..userAgent = AppInfo.userAgent;
     return IOClient(io);
@@ -65,14 +71,10 @@ class SubscriptionService {
   }) async {
     // Всегда своё имя и версия: панель по нему выбирает формат (XRAY_JSON).
     final ua = defaultUserAgent;
-    final resp = await _client.get(
-      Uri.parse(url),
-      headers: {
-        'User-Agent': ua,
-        'Accept': '*/*',
-        ...deviceHeaders,
-      },
-    );
+    // Следуем редиректам САМИ, чтобы видеть коды статуса: постоянный переезд
+    // (301/308) запоминаем, временный (302/303/307) — нет. См. [movedTo].
+    final (resp, permanentMove) =
+        await _fetchFollowing(Uri.parse(url), ua, deviceHeaders);
 
     if (resp.statusCode < 200 || resp.statusCode >= 300) {
       // ⚠️ ЛИМИТ УСТРОЙСТВ ВЫГЛЯДИТ КАК ПОЛОМКА, ЕСЛИ ЕГО НЕ НАЗВАТЬ.
@@ -130,13 +132,65 @@ class SubscriptionService {
       AppLog.w('Панель прислала НЕ XRAY_JSON — конфиги пересобираются из ссылок. '
           'Проверьте правило Response Rules (user-agent CONTAINS SilentGate → XRAY_JSON).');
     }
-    // Куда нас в итоге привели. Сравниваем без учёта регистра схемы и хоста.
-    final finalUrl = resp.request?.url.toString();
-    final moved = (finalUrl != null && finalUrl != url) ? finalUrl : null;
+    // Постоянный переезд (301/308) — новый адрес; временный (302/307) сюда не
+    // попадает (см. [_fetchFollowing] и [movedTo]).
+    final moved = (permanentMove != null && permanentMove != url) ? permanentMove : null;
     if (moved != null) {
-      AppLog.w('Подписка переехала: $url → $moved (адрес обновлён)');
+      AppLog.w('Подписка переехала (постоянно, 301/308): $url → $moved (адрес обновлён)');
     }
     return SubscriptionResult(servers, info, movedTo: moved);
+  }
+
+  /// Выполняет GET, следуя редиректам ВРУЧНУЮ (до пяти хопов), и возвращает
+  /// конечный ответ вместе с новым ПОСТОЯННЫМ адресом (или `null`).
+  ///
+  /// Ручное следование нужно ради двух вещей сразу:
+  ///  * видеть код каждого редиректа — 301/308 (постоянный) закрепляем адресом,
+  ///    302/303/307 (временный) только проходим;
+  ///  * ставить наш User-Agent на КАЖДЫЙ хоп. Панель выбирает формат ответа по
+  ///    UA, а `package:http` при АВТО-следовании выполняет повторный запрос без
+  ///    заголовков запроса — панель видела `Dart/3.x` и присылала base64 вместо
+  ///    XRAY_JSON. На этом горели и мы, и FlClash (v0.8.79). Теперь UA явный на
+  ///    каждом запросе, потерять его негде.
+  ///
+  /// `movedTo` = адрес, достигнутый НЕПРЕРЫВНОЙ цепочкой постоянных редиректов от
+  /// начала: первый же временный редирект обрывает её, и дальше адрес не растёт
+  /// (конечный адрес за 302 нестабилен — запоминать нечего).
+  Future<(http.Response, String?)> _fetchFollowing(
+    Uri start,
+    String ua,
+    Map<String, String> deviceHeaders,
+  ) async {
+    var current = start;
+    String? permanentMove;
+    var chainStillPermanent = true;
+    for (var hop = 0;; hop++) {
+      final request = http.Request('GET', current)
+        ..followRedirects = false;
+      request.headers['User-Agent'] = ua;
+      request.headers['Accept'] = '*/*';
+      request.headers.addAll(deviceHeaders);
+      final resp = await http.Response.fromStream(await _client.send(request));
+      final code = resp.statusCode;
+      final isRedirect =
+          code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
+      final location = resp.headers['location'];
+      if (!isRedirect || location == null || location.isEmpty) {
+        return (resp, permanentMove);
+      }
+      if (hop >= 5) {
+        throw SubscriptionException('Слишком много редиректов подписки');
+      }
+      final next = current.resolve(location);
+      // Постоянный редирект в непрерывной цепочке двигает запоминаемый адрес;
+      // временный — обрывает цепочку, дальше адрес не запоминаем.
+      if ((code == 301 || code == 308) && chainStillPermanent) {
+        permanentMove = next.toString();
+      } else {
+        chainStillPermanent = false;
+      }
+      current = next;
+    }
   }
 
   void close() => _client.close();

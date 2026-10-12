@@ -170,6 +170,31 @@ void main() {
       final map = _androidConfig(_fixtures['vless']!);
       expect(((map['dns'] as Map)['final']), 'dns-proxy');
     });
+
+    test('REALITY без fp в ссылке — sing-box всё равно получает uTLS', () {
+      // sing-box требует uTLS для REALITY (иначе рукопожатие некорректно, а
+      // `sing-box check` этого не проверяет). Отпечаток в ссылке отсутствует
+      // → тот же дефолт, что у Xray (kDefaultTlsFingerprint = firefox).
+      // ⚠️ `copyWith(fingerprint: null)` тут не годится — там `?? this.…`,
+      // null значит «не менять», а не «сбросить»; поэтому строим сервер заново.
+      const noFp = VpnServer(
+        protocol: 'vless',
+        remark: 'reality-no-fp',
+        address: 'example.com',
+        port: 443,
+        id: '11111111-2222-3333-4444-555555555555',
+        flow: 'xtls-rprx-vision',
+        network: 'tcp',
+        security: 'reality',
+        sni: 'www.google.com',
+        publicKey: 'jNXHt1yRo0vDuchQlIP6Z0ZvjT3KtzVI-T4E7RoLJS0',
+        shortId: '0123abcd',
+        rawLink: 'vless://fixture-no-fp',
+      );
+      final out = SingboxOutboundFactory.build(noFp);
+      final tls = out['tls'] as Map;
+      expect(tls['utls'], {'enabled': true, 'fingerprint': 'firefox'});
+    });
   });
 
   // ──────────────────────────────────────────────────────────────────────────

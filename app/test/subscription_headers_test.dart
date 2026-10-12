@@ -53,23 +53,86 @@ void main() {
     });
   });
 
-  group('Переезд подписки запоминается', () {
-    test('конечный адрес отличается — он и возвращается', () async {
-      final svc = SubscriptionService(
-        client: MockClient((req) async => http.Response(link, 200,
-            request: http.Request('GET', Uri.parse('https://new.example.org/sub')))),
-      );
+  group('Переезд подписки запоминается ТОЛЬКО постоянный', () {
+    // Хелпер: панель отдаёт [code] с Location на [to] для стартового адреса,
+    // а по [to] — обычный 200 со списком серверов.
+    MockClient redirectOnce(String from, String to, int code) =>
+        MockClient((req) async {
+          if (req.url.toString() == from) {
+            return http.Response('', code, headers: {'location': to});
+          }
+          return http.Response(link, 200);
+        });
+
+    test('301 (постоянный) — новый адрес запоминается', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://old.example.org/sub', 'https://new.example.org/sub', 301));
       final r = await svc.fetch('https://old.example.org/sub');
       expect(r.movedTo, 'https://new.example.org/sub');
     });
 
+    test('308 (постоянный) — новый адрес запоминается', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://old.example.org/sub', 'https://new.example.org/sub', 308));
+      final r = await svc.fetch('https://old.example.org/sub');
+      expect(r.movedTo, 'https://new.example.org/sub');
+    });
+
+    // ⚠️ ГЛАВНЫЙ РЕГРЕСС. Инфраструктура отдаёт 302: короткая ссылка
+    // `s.silentgate.lol/<id>` (новый канон) при попадании на мейн уводит на
+    // легаси `sub.silentgate.lol/sub/<id>`. Запомнить конечный адрес — значит
+    // молча перенести пользователя на старый домен и сменить id профиля, из-за
+    // чего автообновление теряет подписку. За 302 следуем, адрес НЕ меняем.
+    test('302 (временный) — movedTo пуст, следуем ради ответа', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://s.example.org/id', 'https://sub.example.org/sub/id', 302));
+      final r = await svc.fetch('https://s.example.org/id');
+      expect(r.movedTo, isNull, reason: '302 — временный, адрес не запоминаем');
+      expect(r.servers, isNotEmpty, reason: 'но по редиректу подписку получили');
+    });
+
+    test('307 (временный) — movedTo пуст', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://s.example.org/id', 'https://sub.example.org/sub/id', 307));
+      final r = await svc.fetch('https://s.example.org/id');
+      expect(r.movedTo, isNull);
+    });
+
+    test('301, затем 302 — запоминаем адрес до временного хопа', () async {
+      final svc = SubscriptionService(client: MockClient((req) async {
+        switch (req.url.toString()) {
+          case 'https://a.example.org/sub':
+            return http.Response('', 301,
+                headers: {'location': 'https://b.example.org/sub'});
+          case 'https://b.example.org/sub':
+            return http.Response('', 302,
+                headers: {'location': 'https://c.example.org/sub'});
+          default:
+            return http.Response(link, 200);
+        }
+      }));
+      final r = await svc.fetch('https://a.example.org/sub');
+      expect(r.movedTo, 'https://b.example.org/sub',
+          reason: 'постоянный переезд A→B закрепляем, временный B→C — нет');
+    });
+
     test('без переезда movedTo пуст', () async {
       final svc = SubscriptionService(
-        client: MockClient((req) async => http.Response(link, 200,
-            request: http.Request('GET', Uri.parse('https://example.org/sub')))),
+        client: MockClient((req) async => http.Response(link, 200)),
       );
       final r = await svc.fetch('https://example.org/sub');
       expect(r.movedTo, isNull);
+    });
+
+    test('петля редиректов обрывается ошибкой, а не висит', () async {
+      final svc = SubscriptionService(
+        client: MockClient((req) async => http.Response('', 302,
+            headers: {'location': 'https://loop.example.org/sub'})),
+      );
+      await expectLater(
+        svc.fetch('https://loop.example.org/sub'),
+        throwsA(predicate((e) => '$e'.contains('редирект'))),
+      );
     });
   });
 
@@ -77,17 +140,22 @@ void main() {
     // ⚠️ FlClash на этом горел (v0.8.79 «Fix get profile redirect client ua
     // issues»): при 301/302 UA терялся, и панель отдавала НЕ ТОТ формат —
     // base64 вместо XRAY_JSON. Снаружи это «конфиги вдруг стали хуже».
-    test('на конечном запросе UA всё ещё наш', () async {
+    // Теперь UA ставится на КАЖДЫЙ хоп явно — проверяем это на обоих запросах.
+    test('UA наш и на первом, и на редиректном запросе', () async {
       final seen = <String>[];
       final svc = SubscriptionService(
         client: MockClient((req) async {
           seen.add(req.headers['User-Agent'] ?? req.headers['user-agent'] ?? '');
-          return http.Response(link, 200, request: req);
+          if (req.url.toString() == 'https://start.example.org/sub') {
+            return http.Response('', 302,
+                headers: {'location': 'https://end.example.org/sub'});
+          }
+          return http.Response(link, 200);
         }),
       );
-      await svc.fetch('https://example.org/sub');
-      expect(seen, isNotEmpty);
-      expect(seen.last, contains('SilentGate'),
+      await svc.fetch('https://start.example.org/sub');
+      expect(seen.length, 2, reason: 'два хопа: старт + редирект');
+      expect(seen.every((ua) => ua.contains('SilentGate')), isTrue,
           reason: 'панель выбирает формат по UA — потеряв его, получим base64');
     });
   });

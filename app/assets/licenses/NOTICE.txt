@@ -23,8 +23,10 @@ ANDROID
       Исходники: https://github.com/XTLS/Xray-core
 
   libXray (XTLS/libXray) — MIT
+      Полный текст: MIT-libXray.txt
       Исходники: https://github.com/XTLS/libXray
-      Разрешительная лицензия, копилефта нет.
+      Разрешительная лицензия, копилефта нет, но текст лицензии с
+      копирайтом обязан ехать вместе с копией.
 
 
 WINDOWS

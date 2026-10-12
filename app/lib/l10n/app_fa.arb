@@ -7,7 +7,6 @@
   "commonClear": "پاک کردن",
   "commonCopied": "کپی شد",
   "commonRefresh": "بازخوانی",
-  "commonCheck": "بررسی",
   "commonOk": "تأیید",
   "commonDone": "انجام شد",
   "commonPathCopied": "مسیر کپی شد",
@@ -45,6 +44,14 @@
   "tunnelExcludeScopeOffHint": "Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.",
   "closeToTrayTitle": "کوچک شدن به تری هنگام بستن",
   "closeToTraySubtitle": "دکمه بستن پنجره را در تری پنهان می‌کند؛ خاموش کنید تا به‌جای آن برنامه بسته شود",
+  "launchAtLoginTitle": "اجرا همراه با Windows",
+  "launchAtLoginSub": "برنامه هنگام ورود به سیستم کوچک‌شده در سینی سیستم اجرا می‌شود",
+  "connectOnAutostartTitle": "اتصال هنگام اجرای خودکار",
+  "connectOnAutostartSub": "وقتی Windows برنامه را اجرا می‌کند، VPN بلافاصله به سرور انتخاب‌شده وصل شود",
+  "sortServersByCountryTitle": "مرتب‌سازی بر اساس کشور",
+  "sortServersByCountrySub": "سرورهای یک کشور را کنار هم بگذار. کشورها ترتیب ارائه‌دهنده را حفظ می‌کنند؛ سرورهای سنجاق‌شده بالا می‌مانند",
+  "serverGroupCollapse": "جمع کردن گروه",
+  "serverGroupExpand": "باز کردن گروه",
   "autoUpdateSubTitle": "به‌روزرسانی خودکار اشتراک",
   "autoUpdateSubText": "به‌صورت دوره‌ای فهرست سرورها را تازه کن",
   "captureSystemProxy": "پروکسی سیستمی",
@@ -195,20 +202,8 @@
   "speedTestFull": "۲۰ مگابایت (دقیق‌تر)",
   "speedTestLight": "۵ مگابایت (صرفه‌جویانه)",
   "testUrlLabel": "URL آزمایشی (از طریق پروکسی)",
-  "appUpdateServerUnavailable": "سرور به‌روزرسانی در دسترس نیست",
-  "appUpdateAvailable": "نسخه {version} موجود است",
-  "appUpdateLatest": "شما آخرین نسخه را دارید",
-  "appUpdateDownload": "دانلود",
-  "appUpdateCheckTitle": "بررسی به‌روزرسانی هنگام اجرا",
-  "appUpdateManual": "دانلود و نصب — به‌صورت دستی",
-  "appUpdateEndpointLabel": "نقطه پایانی نسخه",
-  "appUpdateBetaChannelTitle": "دریافت نسخه‌های بتا",
-  "appUpdateBetaChannelSubtitle": "فهرست انتشارهای گیت‌هاب شامل پیش‌انتشارها، به‌علاوه نشانی پشتیبان سایت. به‌روزرسانی خودکار نسخه‌های پایدار را تغییر نمی‌دهد.",
   "infoAppUpdateBeta": "برنامه از این پس فهرست کامل انتشارهای گیت‌هاب را می‌بیند، شامل پیش‌انتشارها، نه فقط آخرین نسخهٔ پایدار. کانال اصلی به‌روزرسانی خودکار تغییری نمی‌کند — بتا برای کسی که این گزینه را روشن نکرده ارسال نمی‌شود.",
   "appUpdateBetaBadge": "بتا",
-  "appUpdateBetaNotice": "این یک پیش‌انتشار است — ممکن است خطا رخ دهد. به‌روزرسانی خودکار این نسخه‌ها را ارسال نمی‌کند.",
-  "appUpdatePreviousVersionsButton": "نسخه‌های قبلی",
-  "appUpdatePreviousVersionsTitle": "نسخه‌های قبلی",
   "appUpdatePreviousVersionsHint": "این فهرست همان چیزی است که در GitHub Releases وجود دارد. ممکن است برخی نسخه‌ها آنجا نباشند.",
   "appUpdatePreviousVersionsEmpty": "فهرست خالی است — GitHub Releases در دسترس نیست یا انتشاری ندارد.",
   "appUpdateOpenRelease": "باز کردن صفحهٔ انتشار",
@@ -256,8 +251,6 @@
   "enumActionTunnel": "تونل",
   "enumActionDirect": "مستقیم",
   "enumActionBlock": "مسدود",
-  "homeUpdateAvailable": "نسخه {version} موجود است",
-  "homeDownload": "دانلود",
   "homeSubscriptionUpdated": "اشتراک به‌روزرسانی شد: {summary}",
   "homeReconnect": "اتصال مجدد",
   "homePingProgress": "پینگ سرورها: {done} از {total}",
@@ -305,6 +298,17 @@
   "subBarExpired": "اشتراک منقضی شد:",
   "subBarValidUntil": "معتبر تا:",
   "subBarAnnounce": "اعلان از پنل",
+  "subBarAnnounceFrom": "اعلان‌های سرویس {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "اعلان‌های سرویس",
+  "hideAnnounceTitle": "پنهان کردن اعلان‌های سرویس",
+  "hideAnnounceSub": "اعلان‌های اشتراک در کارت نمایش داده نمی‌شوند. به‌طور پیش‌فرض در هر صفحه‌ای دیده می‌شوند.",
   "subSwitcherPingAll": "آزمودن سرورهای همهٔ اشتراک‌ها",
   "subSwitcherPingBusySpeed": "پینگ در دسترس نیست: آزمایش سرعت در حال اجراست",
   "subSwitcherExpired": "منقضی",
@@ -342,7 +346,6 @@
   "infoTunBypassLan": "شبکه محلی (آدرس‌های خصوصی 192.168.*، 10.*، روتر، چاپگرها، NAS) از کنار VPN عبور می‌کند. معمولاً بهتر است روشن باشد، وگرنه دسترسی به دستگاه‌های شبکه را از دست می‌دهید.",
   "infoTunExcludeCidrs": "زیرشبکه‌های بیشتری که همیشه از کنار VPN عبور می‌کنند (قالب CIDR، مثلاً 10.8.0.0/24). برای شبکه‌های سازمانی و VPNهای دیگر مفید است.",
   "infoTunPrivilege": "TUN نیازمند دسترسی مدیر است. یک‌بار، وظیفه‌ای در زمان‌بند وظایف ویندوز با بالاترین سطح دسترسی می‌سازیم — پس از آن تونل بدون درخواست UAC در هر اتصال آغاز می‌شود. این وظیفه متعلق به شماست و با دکمه پایین یا هنگام حذف برنامه پاک می‌شود.",
-  "infoAppUpdate": "برنامه یک‌بار در هر اجرا از سرور شما می‌پرسد که آیا نسخه جدیدتری هست و اعلانی با دکمه «دانلود» نمایش می‌دهد.\n\nبرنامه به‌تنهایی هیچ چیزی دانلود یا اجرا نمی‌کند: نصب‌کننده با گواهی امضا نشده و اجرای خودکار یک exe دانلود‌شده به SmartScreen برمی‌خورد و برای آنتی‌ویروس‌ها مانند رفتار بدافزار به نظر می‌رسد. به‌روزرسانی را خودتان نصب می‌کنید.\n\nاگر سرور در دسترس نباشد، برنامه فقط سکوت می‌کند و ورودی‌ای در گزارش می‌نویسد. قالب پاسخ و راه‌اندازی سرور در docs/APP_UPDATE.md توضیح داده شده است.",
   "infoSpeedTest": "حجم داده‌ای که هنگام سنجش سرعت دانلود می‌شود (کلیک راست روی سرور ← «اطلاعات سرور» ← «سنجش سرعت»).\n\n۲۰ مگابایت — حالت اصلی: روی خطوط پرسرعت (۱۰۰+ مگابیت بر ثانیه) یک کاوش کوتاه فرصت شتاب‌گیری ندارد و نتیجه را کمتر از واقع نشان می‌دهد.\n۵ مگابایت — حالت صرفه‌جویانه: از نظر ترافیک به‌مراتب ارزان‌تر، برای عبور از سرورهای زیاد کاربردی است.\n\nسنجش فقط به‌صورت دستی اجرا می‌شود و از ترافیک اشتراک شما مصرف می‌کند. سرعت دو بار سنجیده می‌شود: مستقیم و از طریق سرور انتخاب‌شده، تا دقیقاً ببینید چقدر روی VPN از دست می‌رود.",
   "infoAutoReconnect": "اگر هسته از کار بیفتد، سرور قطع شود یا شبکه تغییر کند (وای‌فای ↔ کابل، بیدار شدن از خواب، آی‌پی جدید)، برنامه خودش اتصال را دوباره برقرار می‌کند. فاصلهٔ میان تلاش‌ها بیشتر می‌شود: ۰٫۸ ثانیه ← ۳ ثانیه ← ۸ ثانیه ← ۲۰ ثانیه و پس از آن روی ۲۰ ثانیه می‌ماند. هشت تلاش انجام می‌شود و پس از آن برنامه تسلیم می‌شود و خطا نشان می‌دهد. قطع اتصال با دکمه همیشه بازیابی را لغو می‌کند.\n\n⚠️ با روشن بودن کلید قطع، تلاش‌ها هرگز تمام نمی‌شوند. تا زمانی که ادامه دارند ترافیک مسدود می‌ماند، و متوقف کردنشان یعنی رها کردن آن به بیرون از وی‌پی‌ان — بنابراین برنامه هر ۲۰ ثانیه تلاش را ادامه می‌دهد تا خودتان وی‌پی‌ان را خاموش کنید، و دربارهٔ شکست حداکثر هر ۱۵ دقیقه یک‌بار یادآوری می‌کند. سروری که یک ساعت بعد برگردد، خودبه‌خود دوباره گرفته می‌شود.\n\nدر حالت «خودکار (بهترین سرور)» برنامه آخرین تلاش را روی سرور مرده هدر نمی‌دهد: همان در هفتمین از هشت، به نامزد بعدی می‌رود و شمارش آنجا از نو آغاز می‌شود.\n\nتغییر شبکه از روی نشانی‌های واقعی کارت‌های دیگر تشخیص داده می‌شود: تونل خودمان و نشانی‌های سرویس (link-local) به حساب نمی‌آیند، تغییر تنها وقتی پذیرفته می‌شود که در دو بررسی پیاپی پابرجا مانده باشد، و در ۱۵ ثانیهٔ نخست پس از اتصال این نشانه نادیده گرفته می‌شود. بدون این محافظ‌ها، بالا آمدن خود تونل «تغییر شبکه» شمرده می‌شد و باعث اتصال مجدد بی‌پایان می‌گشت.",
   "infoKillSwitch": "نگذار ترافیک هنگام بازیابی اتصال از کنار VPN بیرون برود. گرفتن ترافیک بین تلاش‌ها رها نمی‌شود: در حالت TUN آداپتور بالا می‌ماند و در حالت «پروکسی سیستمی» پروکسی همچنان تنظیم‌شده می‌ماند — برنامه‌ها به‌جای دسترسی رمزنگاری‌نشده به اینترنت، خطای اتصال می‌گیرند.\n\nصادقانه درباره محدودیت‌ها: در حالت «پروکسی سیستمی» این فقط از برنامه‌هایی که به پروکسی سیستمی احترام می‌گذارند محافظت می‌کند (مرورگرها و بیشتر برنامه‌ها). برنامه‌هایی که پروکسی را نادیده می‌گیرند و UDP به‌طور مستقیم عبور می‌کنند — آب‌بندی کامل فقط با حالت TUN فراهم می‌شود. نیازمند فعال بودن اتصال مجدد خودکار است.",
@@ -398,6 +401,29 @@
   "importScrLoading": "در حال بارگذاری…",
   "importScrPasteImport": "درون‌ریزی از کلیپ‌بورد",
   "importScrImportField": "درون‌ریزی از فیلد",
+  "importScrScanQr": "اسکن QR",
+  "importScrQrFromImage": "QR از تصویر",
+  "qrScanPrompt": "دوربین را به سمت کد QR اشتراک بگیرید",
+  "qrCameraExplainTitle": "دسترسی به دوربین",
+  "qrCameraExplainBody": "دوربین فقط برای خواندن کد QR اشتراک استفاده می‌شود. چیزی ذخیره یا ارسال نمی‌شود.",
+  "qrCameraContinue": "ادامه",
+  "qrCameraDenied": "دسترسی به دوربین وجود ندارد. آن را در تنظیمات برنامه مجاز کنید یا تصویری با کد QR انتخاب کنید.",
+  "qrNotFound": "کد QR در تصویر پیدا نشد.",
+  "qrReadFailed": "باز کردن تصویر ممکن نشد.",
+  "statusReconnectBlocked": "اتصال قطع شد و ترافیک مسدود است. اتصال دوباره تا {seconds} ثانیه دیگر (تلاش {attempt})…",
+  "statusTrafficNotFlowing": "تونل برقرار است، اما ترافیکی از آن عبور نمی‌کند",
+  "statusVpnConsentDenied": "Android اجازهٔ راه‌اندازی VPN را نداد. دوباره «اتصال» را بزنید و درخواست سیستم را تأیید کنید.",
+  "statusMissingCore": "{file} کنار برنامه پیدا نشد. SilentGate را دوباره نصب کنید.",
+  "statusPortOwnCore": "پورت {port} هنوز در اختیار هستهٔ ما ({holder}) از نشست قبلی است.\n\nاگر VPN را خاموش و بلافاصله روشن کنید این اتفاق می‌افتد. چند ثانیه صبر کنید و دوباره امتحان کنید.",
+  "statusPortUnknown": "پورت {port} در اختیار برنامهٔ دیگری است که شناسایی نشد.\n\nبیشتر وقت‌ها یک کلاینت VPN دیگر است که روی همان پورت‌های محلی گوش می‌دهد. آن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.",
+  "statusPortHolder": "پورت {port} در اختیار برنامهٔ {holder} است.\n\nآن را کامل ببندید، از جمله از سینی سیستم، و دوباره امتحان کنید.",
+  "statusTunCoreHung": "هستهٔ تونل از کار افتاد؛ تونل برداشته شد",
+  "statusConnectFailed": "اتصال ممکن نشد: {detail}",
+  "statusCoreStopped": "هستهٔ {core} متوقف شد (کد {code})",
+  "statusCoreStoppedReason": "هستهٔ {core} متوقف شد (کد {code}): {reason}",
+  "statusReasonPortBusy": "پورت محلی {port} از قبل در حال استفاده است",
+  "statusReasonPortBusyAny": "یک پورت محلی از قبل در حال استفاده است",
+  "statusReasonFailedToStart": "هسته نتوانست اجرا شود",
   "serversTitle": "سرورها",
   "serversFound": "سرورها — {found} از {total} یافت شد",
   "serversRefresh": "بازخوانی اشتراک",
@@ -478,6 +504,15 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "استتار «{type}» هنوز در این کلاینت پشتیبانی نمی‌شود",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUnsupportedGeneric": "این سرور هنوز در این کلاینت پشتیبانی نمی‌شود",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -566,6 +601,7 @@
   "trayQuitVpn": "قطع و خروج",
   "tunTaskDone": "انجام شد: TUN بدون درخواست UAC آغاز می‌شود",
   "tunTaskFailed": "ساخت وظیفه ناموفق بود (UAC رد شد یا با سیاست مسدود شد)",
+  "tunTaskSchedulerFailed": "زمان‌بند وظایف این وظیفه را نپذیرفت — علت در گزارش است (تنظیمات ← گزارش‌ها)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "گزارش TUN (sing-box)",
@@ -622,7 +658,6 @@
   "reportTechNoticeLine1": "در ادامه اطلاعات فنی آمده است. پیش از ارسال آن را مرور کنید؛",
   "reportTechNoticeLine2": "هیچ رمز عبور یا توکن اشتراکی اینجا نیست و URL اشتراک پنهان است.",
   "noRealIpTitle": "هرگز از IP واقعی من استفاده نکن",
-  "noRealIpSub": "حتی با روشن بودن VPN، همه ترافیک «مستقیم» از VPN عبور می‌کند (سایت‌های RU هم). شبکه محلی مستقیم می‌ماند.",
   "flagAuto": "خودکار",
   "autoUpdateIntervalLabel": "فاصله به‌روزرسانی، ساعت",
   "autoUpdatePreferSub": "استفاده از فاصله از اشتراک",
@@ -659,6 +694,7 @@
   "errInvalidJson": "JSON نامعتبر",
   "errPickServerFirst": "ابتدا یک سرور انتخاب کنید",
   "errImportSubscriptionFirst": "ابتدا یک اشتراک وارد کنید",
+  "errServerUnsupported": "این سرور در این کلاینت پشتیبانی نمی‌شود",
   "speedSizeFull": "۲۰ مگابایت",
   "speedSizeLight": "۵ مگابایت",
   "speedMbPerSec": "{value} مگابایت/ثانیه",
@@ -812,7 +848,6 @@
   },
   "splitQuicNote": "تا زمانی که دست‌کم یک قانون سایت وجود دارد، برنامه HTTP/3 (QUIC) را برای همهٔ ترافیک خاموش می‌کند. وگرنه مرورگر به HTTP/3 می‌رود، نام سایت را نمی‌گذارد و قانون بی‌صدا کار نمی‌کند. سایت‌ها خراب نمی‌شوند: به TLS معمولی برمی‌گردند، فقط اندکی کندتر.",
   "splitNoRealIpBanner": "«هرگز با IP واقعی من» روشن است: قوانین «مستقیم» بدون تیک از راه VPN می‌روند",
-  "settingsNoRealIpAffects": "بر قوانین «مستقیم» اثر دارد: بدون تیک «اجازهٔ IP واقعی» از راه VPN می‌روند",
   "splitAppOverrideSites": "بر قوانین سایت اولویت دارد",
   "splitAppOverrideSitesSub": "همهٔ ترافیک برنامه از این قانون پیروی می‌کند، حتی اگر قانون سایتی خلافش بگوید",
   "settingsMyRulesOverridePanel": "قوانین من مهم‌تر از قوانین پنل است",
@@ -1066,7 +1101,7 @@
   "autoTimer": "گذشته {elapsed} · حدود {remaining} مانده",
   "autoTimerNoEstimate": "گذشته {elapsed}",
   "autoSpeedRanking": "اندازه‌گیری سرعت: {name}",
-  "autoWarnNoRealIp": "گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و همهٔ ترافیک از VPN می‌گذرد.",
+  "autoWarnNoRealIp": "گزینهٔ «آی‌پی واقعی استفاده نشود» روشن است و قوانین «مستقیم» شما از VPN می‌گذرند.",
   "autoWarnAllVpn": "حالت «همه‌چیز از راه VPN» انتخاب شده و قاعده‌های شما فعلاً اثری ندارند.",
   "autoWarnPanelOverride": "گزینهٔ «قاعده‌های من بر قاعده‌های پنل مقدم است» روشن است.",
   "autoWarnProbesDirect": "این بر خود بررسی اثری ندارد: کاوش‌ها با هر تنظیمی از کنار VPN می‌گذرند. اما در حالت TUN از فرایند هسته عبور می‌کنند؛ اگر هسته گیر کرده باشد، همهٔ نتیجه‌ها منفی کاذب خواهند بود.",
@@ -1239,11 +1274,215 @@
   "splitOnlySelectedWarnBody": "فقط مواردی که کنش «تونل» دارند وارد تونل می‌شوند. بقیهٔ ترافیک — از جمله برنامه‌هایی که از آن‌ها خبر ندارید — مستقیم و با نشانی واقعی شما خارج می‌شود. اگر باید کل دستگاه پنهان بماند، «همه از طریق VPN» را انتخاب کنید.",
   "splitOnlySelectedNoRealIp": "تنظیم «با IP واقعی خارج نشو» این را تغییر نمی‌دهد: فقط قوانین «مستقیم» را بازنویسی می‌کند، نه مسیر پیش‌فرض را.",
   "splitKillSwitchIsPerApp": "کلید قطع اضطراری ترافیک را بر اساس برنامه نگه می‌دارد، نه بر اساس دامنه: تا زمانی که هسته در حال بازیابی است کسی نیست که نام سایت‌ها را تحلیل کند — در این مدت قوانین سایت‌ها اعمال نمی‌شوند.",
-  "updateNotesTitle": "تازه‌های {version}",
   "updateNotesEmpty": "یادداشت انتشار دریافت نشد.",
-  "updateNotesNeverShow": "دیگر نشان نده",
   "notifOffTitle": "اعلان‌ها خاموش است",
   "notifOffSub": "قطع شدن اتصال را نمی‌بینید و دکمهٔ «قطع اتصال» ناپدید می‌شود",
   "notifOffOpen": "روشن کردن",
-  "notifOffNoScreen": "صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate."
+  "notifOffNoScreen": "صفحهٔ اعلان‌ها باز نشد. آن‌ها را دستی روشن کنید: تنظیمات اندروید ← برنامه‌ها ← SilentGate.",
+  "splitImport": "وارد کردن",
+  "splitExport": "برون‌بری",
+  "splitImportOk": "تنظیمات وارد شد",
+  "splitImportBad": "تنظیمات معتبر SilentGate در کلیپ‌بورد نیست",
+  "splitImportReplace": "جایگزینی",
+  "updatesTitle": "به‌روزرسانی‌ها",
+  "updatesCurrentVersion": "نسخهٔ فعلی {version}",
+  "updatesChannelStable": "کانال پایدار",
+  "updatesChannelBeta": "کانال بتا",
+  "updatesCheckNow": "اکنون بررسی کن",
+  "updatesStatusChecking": "در حال بررسی…",
+  "updatesStatusUpToDate": "آخرین نسخه را دارید",
+  "updatesStatusAvailable": "نسخهٔ {version} در دسترس است",
+  "updatesStatusDownloading": "در حال دانلود… {percent}٪",
+  "updatesDownloadedOf": "در حال دانلود: {done} از {total} مگابایت",
+  "updatesDownloadLeft": "{left} مگابایت مانده",
+  "updatesDownloadEtaSec": "~{n} ثانیه",
+  "updatesDownloadEtaMin": "~{n} دقیقه",
+  "updatesStatusVerifying": "در حال بررسی امضا…",
+  "updatesStatusReady": "آمادهٔ نصب",
+  "updatesStatusInstalling": "در حال نصب…",
+  "updatesStatusFailed": "ناموفق: {reason}",
+  "updatesStatusNeedsPermission": "مجوز نصب لازم است",
+  "updatesStatusLinkOnly": "به‌صورت دستی نصب کنید",
+  "updatesModeTitle": "نحوهٔ به‌روزرسانی",
+  "updatesModeAsk": "پرسیدن",
+  "updatesModeAskHint": "تغییرات را نشان می‌دهد و فقط پس از تأیید شما نصب می‌کند",
+  "updatesModeAuto": "خودکار",
+  "updatesModeAutoHint": "وقتی VPN خاموش است، خودش دانلود و نصب می‌کند",
+  "updatesModeNotify": "فقط اطلاع دادن",
+  "updatesModeNotifyHint": "نسخهٔ جدید را اعلام می‌کند، بدون دانلود یا نصب چیزی",
+  "updatesAutoCheck": "بررسی هنگام راه‌اندازی",
+  "updatesBeta": "دریافت نسخه‌های بتا",
+  "updatesSignatureNote": "هر فایل با امضای توسعه‌دهنده و جمع کنترلی بررسی می‌شود؛ بدون تطابق، نصب آغاز نمی‌شود",
+  "updatesDialogTitle": "به‌روزرسانی {version} در دسترس است",
+  "updatesInstall": "به‌روزرسانی",
+  "updatesLater": "بعداً",
+  "updatesSkipVersion": "رد کردن این نسخه",
+  "updatesVpnWarning": "نصب، اتصال VPN را قطع می‌کند",
+  "updatesAndroidUnknownSources": "نصب از این برنامه را مجاز کنید",
+  "updatesAndroidOpenSettings": "باز کردن تنظیمات",
+  "updatesAndroidNoSilent": "اندروید پنجرهٔ نصب سیستم را نشان می‌دهد: این الزام سیستم است",
+  "updatesPortableFallback": "این نسخه از طریق نصب‌کننده نصب نشده است. نسخهٔ جدید را به‌صورت دستی دانلود کنید",
+  "updatesInstalledToast": "به {version} به‌روزرسانی شد",
+  "updatesInstallFailedTitle": "نصب کامل نشد",
+  "updatesInstallFailedBody": "نسخه همان {version} ماند. گزارش نصب‌کننده در زیر",
+  "updatesShowLog": "نمایش گزارش",
+  "updatesOverrideBadge": "منبع به‌روزرسانی جایگزین شده است (حالت آزمایشی)",
+  "updatesSettingsTile": "به‌روزرسانی‌ها",
+  "updatesSettingsTileSubtitle": "بررسی، دانلود و نصب نسخه‌های جدید",
+  "updatesPreviousVersions": "نسخه‌های قبلی",
+  "updatesInstallOlder": "نصب",
+  "updatesDowngradeWarning": "بازگشت به نسخهٔ قدیمی‌تر. ادامه می‌دهید؟",
+  "updatesSizeMb": "{mb} مگابایت",
+  "updatesVpnWarningBody": "برنامه بسته می‌شود و VPN در طول نصب قطع خواهد بود. پس از به‌روزرسانی دوباره وصل شوید",
+  "updatesOpenPage": "باز کردن صفحهٔ دانلود",
+  "updatesLinkNotify": "حالت «فقط اطلاع دادن» انتخاب شده است — نسخهٔ جدید را از صفحهٔ دانلود بگیرید",
+  "updatesLinkNoSelfUpdate": "این نسخه نصب‌کنندهٔ امضاشده برای سیستم شما ندارد — آن را از صفحهٔ دانلود بگیرید",
+  "updatesLinkIsolated": "این یک نسخهٔ آزمایشی جداگانه است — به برنامهٔ نصب‌شده دست نمی‌زند. به‌صورت دستی به‌روزرسانی کنید",
+  "updatesLinkLocation": "برنامه از پوشهٔ نصب اجرا نشده است — نسخهٔ جدید را دستی بگیرید یا نسخهٔ نصب‌شده را اجرا کنید",
+  "updatesLinkElevated": "برنامه با دسترسی مدیر اجرا شده است — به‌روزرسانی به این شکل امن نیست. آن را به‌صورت عادی اجرا کنید",
+  "updatesLinkUnsupported": "برنامه روی این سکو نمی‌تواند خودش را به‌روز کند — نسخهٔ جدید را دستی بگیرید",
+  "updatesErrCheck": "سرور به‌روزرسانی پاسخ نداد",
+  "updatesErrInsecure": "نشانی دانلود امن نیست (https نیست)",
+  "updatesErrAssetName": "نام فایل در این نسخه مجاز نیست",
+  "updatesErrManifest": "دریافت فهرست امضاشدهٔ نسخه ممکن نشد",
+  "updatesErrSignature": "امضا مطابقت ندارد — ممکن است فایل دست‌کاری شده باشد",
+  "updatesErrManifestRejected": "فهرست نسخه با این نسخه یا سیستم سازگار نیست",
+  "updatesErrDownload": "فایل دانلود نشد یا چک‌سام آن مطابقت ندارد",
+  "updatesErrInstall": "نصب‌کننده اجرا نشد",
+  "updatesErrNotNewer": "این نسخه از نسخهٔ نصب‌شده جدیدتر نیست",
+  "updatesInfo": "برنامه با نسخهٔ جدیدِ پیداشده چه می‌کند. در حالت خودکار، نصب هرگز VPN فعال را قطع نمی‌کند و تا قطع اتصال شما صبر می‌کند. در همهٔ حالت‌ها فایل فقط در صورت مطابقت امضای توسعه‌دهنده نصب می‌شود.",
+  "updatesDownload": "دانلود",
+  "updatesInstallNow": "نصب همین حالا",
+  "updatesWaitingVpn": "آمادهٔ نصب — پس از قطع VPN شروع می‌شود",
+  "updatesSkippedNote": "نسخهٔ {version} رد شد — نسخهٔ بعدی را اطلاع می‌دهیم",
+  "updatesAutoNoticeTitle": "در حال نصب به‌روزرسانی",
+  "updatesAutoNoticeBody": "برنامه هنگام نصب نسخهٔ {version} بسته می‌شود",
+  "splitImportTitleApps": "درون‌ریزی برنامه‌ها",
+  "splitImportTitleSites": "درون‌ریزی سایت‌ها",
+  "splitImportFormatNote": "هر خط یک قانون است. سرتیترهای [tunnel]، [direct] و [block] کنش خط‌های زیر خود را تعیین می‌کنند. خطی بدون برچسب، درست مثل خطی که دستی وارد شده باشد، افزوده می‌شود.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "جای‌گذاری از کلیپ‌بورد",
+  "splitImportAdd": "افزودن",
+  "splitImportReplaceAll": "جایگزینی همه",
+  "splitImportStatNew": "جدید: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "از پیش هست: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "متفاوت: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "تجزیه نشد: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "رونویسی موارد متفاوت",
+  "splitImportOverwriteSub": "خاموش — تنظیمات کنونی این قانون‌ها می‌ماند",
+  "splitImportConflictLine": "{from} بود، {to} می‌شود",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "این خط‌ها گرفته نشدند",
+  "splitImportAdded": "{added} افزوده شد، {changed} تغییر کرد",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "تعداد قانون‌ها پس از جایگزینی: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "فهرست خالی است — چیزی برای برون‌بری نیست",
+  "splitCountEmpty": "خالی",
+  "splitCountTotal": "مجموع {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "روشن {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "خاموش {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "تونل {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "مستقیم {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "مسدود {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "باز کردن فهرست",
+  "splitCollapseList": "جمع کردن فهرست",
+  "splitExpandGroup": "باز کردن گروه",
+  "splitCollapseGroup": "بستن گروه",
+  "splitExpandSubdomains": "نمایش زیردامنه‌ها",
+  "splitCollapseSubdomains": "پنهان کردن زیردامنه‌ها"
 }

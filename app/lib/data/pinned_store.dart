@@ -4,7 +4,7 @@ import 'dart:io';
 import '../core/parser/share_link_parser.dart';
 import '../core/platform/app_paths.dart';
 import '../core/util/key_migration.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Одна запись закреплённого сервера.
 ///
@@ -43,7 +43,7 @@ class PinnedStore {
     try {
       final f = await _file();
       if (!await f.exists()) return [];
-      final data = jsonDecode(await f.readAsString());
+      final data = jsonDecode(await SecretFiles.read(f));
       if (data is! List) return [];
 
       // Пары (ссылка, источник) до канонизации ключа. Плохие элементы (не
@@ -89,7 +89,7 @@ class PinnedStore {
   Future<void> save(List<PinnedEntry> entries) async {
     try {
       final f = await _file();
-      await AtomicFile.writeString(
+      await SecretFiles.write(
           f, jsonEncode(entries.map((e) => e.toJson()).toList()));
     } catch (_) {}
   }

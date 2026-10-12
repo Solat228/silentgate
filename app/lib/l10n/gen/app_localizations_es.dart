@@ -30,9 +30,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get commonRefresh => 'Actualizar';
 
   @override
-  String get commonCheck => 'Comprobar';
-
-  @override
   String get commonOk => 'OK';
 
   @override
@@ -151,6 +148,33 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get closeToTraySubtitle =>
       'El botón de cerrar oculta la ventana en la bandeja; desactívalo para cerrar la aplicación';
+
+  @override
+  String get launchAtLoginTitle => 'Iniciar con Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'La app se inicia minimizada en la bandeja al iniciar sesión';
+
+  @override
+  String get connectOnAutostartTitle => 'Conectar al iniciar';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Activar la VPN con el servidor elegido en cuanto Windows inicie la app';
+
+  @override
+  String get sortServersByCountryTitle => 'Ordenar por país';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Agrupar los servidores de un mismo país. Los países siguen el orden del proveedor; los fijados quedan arriba';
+
+  @override
+  String get serverGroupCollapse => 'Contraer grupo';
+
+  @override
+  String get serverGroupExpand => 'Expandir grupo';
 
   @override
   String get autoUpdateSubTitle => 'Actualización automática de la suscripción';
@@ -592,52 +616,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get testUrlLabel => 'URL de prueba (via Proxy)';
 
   @override
-  String get appUpdateServerUnavailable =>
-      'Servidor de actualizaciones no disponible';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'Versión $version disponible';
-  }
-
-  @override
-  String get appUpdateLatest => 'Tienes la última versión';
-
-  @override
-  String get appUpdateDownload => 'Descargar';
-
-  @override
-  String get appUpdateCheckTitle => 'Buscar actualizaciones al iniciar';
-
-  @override
-  String get appUpdateManual => 'Descarga e instalación — manual';
-
-  @override
-  String get appUpdateEndpointLabel => 'Endpoint de versión';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Recibir versiones beta';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'Lista de versiones de GitHub, incluidos los prelanzamientos, más una dirección de respaldo del sitio. No afecta la actualización automática de versiones estables.';
-
-  @override
   String get infoAppUpdateBeta =>
       'La aplicación empezará a mirar la lista completa de versiones de GitHub, incluidos los prelanzamientos, no solo la última estable. El canal principal de actualización automática no cambia: la beta no llegará a quien no haya activado esta opción.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'Es un prelanzamiento: puede haber fallos. La actualización automática no distribuye estas versiones.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Versiones anteriores';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Versiones anteriores';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -804,14 +787,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Bloquear';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'Versión $version disponible';
-  }
-
-  @override
-  String get homeDownload => 'Descargar';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -986,6 +961,21 @@ class AppLocalizationsEs extends AppLocalizations {
   String get subBarAnnounce => 'Anuncio del panel';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Anuncios del servicio $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Anuncios del servicio';
+
+  @override
+  String get hideAnnounceTitle => 'Ocultar anuncios del servicio';
+
+  @override
+  String get hideAnnounceSub =>
+      'Los anuncios de la suscripción no se muestran en la tarjeta. Por defecto se ven en cualquier pantalla.';
+
+  @override
   String get subSwitcherPingAll =>
       'Probar los servidores de todas las suscripciones';
 
@@ -1068,10 +1058,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN requiere permisos de administrador. Una sola vez creamos una tarea en el Programador de tareas de Windows con los máximos privilegios — después de eso el túnel arranca SIN pedir UAC en cada conexión. La tarea te pertenece y se elimina con el botón de abajo o al desinstalar el programa.';
-
-  @override
-  String get infoAppUpdate =>
-      'Una vez por inicio, la aplicación pregunta a tu servidor si hay una versión más reciente y muestra una notificación con el botón «Descargar».\n\nLa aplicación NO descarga ni ejecuta nada por sí sola: el instalador no está firmado con un certificado, y ejecutar automáticamente un exe descargado choca con SmartScreen y para los antivirus parece comportamiento de malware. La actualización la instalas tú.\n\nSi el servidor no está disponible, la aplicación simplemente calla y deja una entrada en el registro. El formato de la respuesta y la configuración del servidor se describen en docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -1277,6 +1263,98 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get importScrImportField => 'Importar del campo';
+
+  @override
+  String get importScrScanQr => 'Escanear QR';
+
+  @override
+  String get importScrQrFromImage => 'QR desde imagen';
+
+  @override
+  String get qrScanPrompt => 'Apunta la cámara al código QR de la suscripción';
+
+  @override
+  String get qrCameraExplainTitle => 'Acceso a la cámara';
+
+  @override
+  String get qrCameraExplainBody =>
+      'La cámara solo se usa para leer el código QR de la suscripción. No se guarda ni se envía nada.';
+
+  @override
+  String get qrCameraContinue => 'Continuar';
+
+  @override
+  String get qrCameraDenied =>
+      'Sin acceso a la cámara. Permítelo en los ajustes de la aplicación o elige una imagen con el código QR.';
+
+  @override
+  String get qrNotFound => 'No se encontró ningún código QR en la imagen.';
+
+  @override
+  String get qrReadFailed => 'No se pudo abrir la imagen.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Conexión perdida, tráfico bloqueado. Reconectando en $seconds s (intento $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'El túnel está activo, pero no pasa tráfico por él';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android no permitió activar la VPN. Pulsa «Conectar» de nuevo y confirma la solicitud del sistema.';
+
+  @override
+  String statusMissingCore(String file) {
+    return 'No se encontró $file junto a la aplicación. Reinstala SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'El puerto $port sigue ocupado por nuestro núcleo ($holder) de la sesión anterior.\n\nPasa si apagas y enciendes la VPN enseguida. Espera unos segundos y vuelve a intentarlo.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'El puerto $port ya está ocupado por otro programa que no se pudo identificar.\n\nLo más habitual es otro cliente VPN que escucha los mismos puertos locales. Ciérralo por completo, también desde la bandeja, y vuelve a intentarlo.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'El puerto $port ya está ocupado por $holder.\n\nCiérralo por completo, también desde la bandeja, y vuelve a intentarlo.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'El núcleo del túnel se colgó; el túnel se ha retirado';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'No se pudo conectar: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'El núcleo $core se detuvo (código $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'El núcleo $core se detuvo (código $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'el puerto local $port ya está en uso';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'un puerto local ya está en uso';
+
+  @override
+  String get statusReasonFailedToStart => 'el núcleo no pudo iniciarse';
 
   @override
   String get serversTitle => 'Servidores';
@@ -1536,6 +1614,15 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'La última actualización de la suscripción cambió el registro de este servidor';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'El camuflaje «$type» todavía no es compatible con este cliente';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Este servidor todavía no es compatible con este cliente';
 
   @override
   String get srvFieldId => 'ID / contraseña';
@@ -1824,6 +1911,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'No se pudo crear la tarea (UAC rechazado o bloqueado por directiva)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'El Programador de tareas rechazó la tarea: el motivo está en el registro (Ajustes → Registros)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'El inicio silencioso de TUN está roto: cada conexión pedirá permisos de administrador';
 
@@ -2001,10 +2092,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get noRealIpTitle => 'Nunca usar mi IP real';
 
   @override
-  String get noRealIpSub =>
-      'Incluso con la VPN activa, todo el tráfico «directo» pasa por la VPN (también los sitios RU). La red local sigue directa.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2130,6 +2217,10 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Primero importe una suscripción';
+
+  @override
+  String get errServerUnsupported =>
+      'Este servidor no es compatible con este cliente';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2383,10 +2474,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«Nunca usar mi IP real» está activo: las reglas «Directo» sin la casilla van por la VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Afecta a las reglas «Directo»: sin la casilla «permitir IP real» irán por la VPN';
 
   @override
   String get splitAppOverrideSites => 'Prioridad sobre las reglas de sitios';
@@ -2874,7 +2961,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '«Nunca usar la IP real» está activado: todo el tráfico pasa por la VPN.';
+      '«Nunca usar la IP real» está activado: tus reglas «Directo» pasan por la VPN.';
 
   @override
   String get autoWarnAllVpn =>
@@ -3433,15 +3520,7 @@ class AppLocalizationsEs extends AppLocalizations {
       'El kill switch retiene el tráfico por programa, no por dominio: mientras el núcleo se restablece no hay quien analice los nombres de los sitios, así que las reglas de sitios no se aplican durante ese tiempo.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'Novedades en $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'No se recibieron notas de la versión.';
-
-  @override
-  String get updateNotesNeverShow => 'No mostrar de nuevo';
 
   @override
   String get notifOffTitle => 'Las notificaciones están desactivadas';
@@ -3456,4 +3535,416 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'No se ha podido abrir la pantalla de notificaciones. Actívalas manualmente: ajustes de Android → Aplicaciones → SilentGate.';
+
+  @override
+  String get splitImport => 'Importar';
+
+  @override
+  String get splitExport => 'Exportar';
+
+  @override
+  String get splitImportOk => 'Ajustes importados';
+
+  @override
+  String get splitImportBad =>
+      'No hay ajustes válidos de SilentGate en el portapapeles';
+
+  @override
+  String get splitImportReplace => 'Reemplazar';
+
+  @override
+  String get updatesTitle => 'Actualizaciones';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Versión actual $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Canal estable';
+
+  @override
+  String get updatesChannelBeta => 'Canal beta';
+
+  @override
+  String get updatesCheckNow => 'Comprobar ahora';
+
+  @override
+  String get updatesStatusChecking => 'Comprobando…';
+
+  @override
+  String get updatesStatusUpToDate => 'Tienes la última versión';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'Versión $version disponible';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'Descargando… $percent%';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'Descargando $done de $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return 'quedan $left MB';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n s';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n min';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'Verificando la firma…';
+
+  @override
+  String get updatesStatusReady => 'Listo para instalar';
+
+  @override
+  String get updatesStatusInstalling => 'Instalando…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Error: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission =>
+      'Se necesita permiso para instalar';
+
+  @override
+  String get updatesStatusLinkOnly => 'Instala manualmente';
+
+  @override
+  String get updatesModeTitle => 'Cómo actualizar';
+
+  @override
+  String get updatesModeAsk => 'Preguntar';
+
+  @override
+  String get updatesModeAskHint =>
+      'Muestra las novedades e instala solo tras tu confirmación';
+
+  @override
+  String get updatesModeAuto => 'Automáticamente';
+
+  @override
+  String get updatesModeAutoHint =>
+      'Descarga e instala por sí solo cuando la VPN está apagada';
+
+  @override
+  String get updatesModeNotify => 'Solo avisar';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Informa de la nueva versión sin descargar ni instalar nada';
+
+  @override
+  String get updatesAutoCheck => 'Comprobar al iniciar';
+
+  @override
+  String get updatesBeta => 'Recibir versiones beta';
+
+  @override
+  String get updatesSignatureNote =>
+      'Cada archivo se verifica con la firma del desarrollador y una suma de comprobación; sin coincidencia, la instalación no comenzará';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'Actualización $version disponible';
+  }
+
+  @override
+  String get updatesInstall => 'Actualizar';
+
+  @override
+  String get updatesLater => 'Más tarde';
+
+  @override
+  String get updatesSkipVersion => 'Omitir esta versión';
+
+  @override
+  String get updatesVpnWarning => 'La instalación cortará la conexión VPN';
+
+  @override
+  String get updatesAndroidUnknownSources =>
+      'Permite la instalación desde esta aplicación';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Abrir ajustes';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android mostrará la ventana de instalación del sistema: es un requisito del sistema';
+
+  @override
+  String get updatesPortableFallback =>
+      'Esta copia no se instaló con el instalador. Descarga la nueva versión manualmente';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'Actualizado a $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'La instalación no se completó';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'La versión sigue siendo $version. Registro del instalador abajo';
+  }
+
+  @override
+  String get updatesShowLog => 'Mostrar registro';
+
+  @override
+  String get updatesOverrideBadge =>
+      'Fuente de actualizaciones sustituida (modo de prueba)';
+
+  @override
+  String get updatesSettingsTile => 'Actualizaciones';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Comprobación, descarga e instalación de nuevas versiones';
+
+  @override
+  String get updatesPreviousVersions => 'Versiones anteriores';
+
+  @override
+  String get updatesInstallOlder => 'Instalar';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Volver a una versión anterior. ¿Continuar?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'La aplicación se cerrará y la VPN se desconectará durante la instalación. Vuelva a conectarse después de la actualización';
+
+  @override
+  String get updatesOpenPage => 'Abrir página de descarga';
+
+  @override
+  String get updatesLinkNotify =>
+      'Está seleccionado el modo «Solo avisar»: descargue la nueva versión desde la página de descarga';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'Esta versión no incluye un instalador firmado para su sistema: descárguelo desde la página de descarga';
+
+  @override
+  String get updatesLinkIsolated =>
+      'Esta es una copia de prueba aislada: no modifica la aplicación instalada. Actualice manualmente';
+
+  @override
+  String get updatesLinkLocation =>
+      'La aplicación no se ejecuta desde su carpeta de instalación: descargue la nueva versión manualmente o abra la copia instalada';
+
+  @override
+  String get updatesLinkElevated =>
+      'La aplicación se ejecuta como administrador: actualizar así no es seguro. Iníciela de forma normal';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'En esta plataforma la aplicación no puede actualizarse sola: descargue la nueva versión manualmente';
+
+  @override
+  String get updatesErrCheck => 'el servidor de actualizaciones no respondió';
+
+  @override
+  String get updatesErrInsecure =>
+      'la dirección de descarga no es segura (no es https)';
+
+  @override
+  String get updatesErrAssetName =>
+      'el nombre de archivo de la versión no es válido';
+
+  @override
+  String get updatesErrManifest =>
+      'no se pudo obtener el manifiesto firmado de la versión';
+
+  @override
+  String get updatesErrSignature =>
+      'la firma no coincide: el archivo podría haber sido alterado';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'el manifiesto de la versión no corresponde a esta versión o sistema';
+
+  @override
+  String get updatesErrDownload =>
+      'el archivo no se descargó o su suma de comprobación no coincide';
+
+  @override
+  String get updatesErrInstall => 'el instalador no se inició';
+
+  @override
+  String get updatesErrNotNewer =>
+      'esta versión no es más reciente que la instalada';
+
+  @override
+  String get updatesInfo =>
+      'Qué hace la aplicación cuando encuentra una nueva versión. En modo automático la instalación nunca corta una VPN activa: espera a que se desconecte. En cualquier modo, un archivo solo se instala si coincide la firma del desarrollador.';
+
+  @override
+  String get updatesDownload => 'Descargar';
+
+  @override
+  String get updatesInstallNow => 'Instalar ahora';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Listo para instalar: empezará cuando se desconecte la VPN';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'Versión $version omitida: le avisaremos de la siguiente';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Instalando actualización';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'La aplicación se cerrará mientras se instala la versión $version';
+  }
+
+  @override
+  String get splitImportTitleApps => 'Importar aplicaciones';
+
+  @override
+  String get splitImportTitleSites => 'Importar sitios';
+
+  @override
+  String get splitImportFormatNote =>
+      'Una línea es una regla. Los encabezados [tunnel], [direct] y [block] definen la acción para las líneas siguientes. Una línea sin marcas se añade igual que si se escribiera a mano.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Pegar desde el portapapeles';
+
+  @override
+  String get splitImportAdd => 'Añadir';
+
+  @override
+  String get splitImportReplaceAll => 'Reemplazar todo';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'nuevas: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'ya existen: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'difieren: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'no reconocidas: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Sobrescribir las que difieren';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Desactivado: esas reglas conservan su configuración actual';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'era $from, pasa a $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'Estas líneas no se tomaron';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'Añadidas $added, modificadas $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Reglas tras el reemplazo: $n';
+  }
+
+  @override
+  String get splitExportEmpty =>
+      'La lista está vacía, no hay nada que exportar';
+
+  @override
+  String get splitCountEmpty => 'Vacío';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'total $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'activas $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'inactivas $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'túnel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'directo $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'bloqueo $n';
+  }
+
+  @override
+  String get splitExpandList => 'Expandir la lista';
+
+  @override
+  String get splitCollapseList => 'Contraer la lista';
+
+  @override
+  String get splitExpandGroup => 'Expandir el grupo';
+
+  @override
+  String get splitCollapseGroup => 'Contraer el grupo';
+
+  @override
+  String get splitExpandSubdomains => 'Mostrar subdominios';
+
+  @override
+  String get splitCollapseSubdomains => 'Ocultar subdominios';
 }

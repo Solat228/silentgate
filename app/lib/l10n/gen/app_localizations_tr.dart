@@ -30,9 +30,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get commonRefresh => 'Yenile';
 
   @override
-  String get commonCheck => 'Kontrol et';
-
-  @override
   String get commonOk => 'Tamam';
 
   @override
@@ -148,6 +145,33 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get closeToTraySubtitle =>
       'Kapat düğmesi pencereyi tepsiye gizler; uygulamayı tamamen kapatmak için bunu kapatın';
+
+  @override
+  String get launchAtLoginTitle => 'Windows ile başlat';
+
+  @override
+  String get launchAtLoginSub =>
+      'Oturum açıldığında uygulama sistem tepsisinde simge durumunda başlar';
+
+  @override
+  String get connectOnAutostartTitle => 'Otomatik başlatmada bağlan';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Windows uygulamayı başlattığında VPN\'i seçili sunucuya hemen bağla';
+
+  @override
+  String get sortServersByCountryTitle => 'Ülkeye göre sırala';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Aynı ülkenin sunucularını bir araya topla. Ülkeler sağlayıcının sırasını korur; sabitlenenler üstte kalır';
+
+  @override
+  String get serverGroupCollapse => 'Grubu daralt';
+
+  @override
+  String get serverGroupExpand => 'Grubu genişlet';
 
   @override
   String get autoUpdateSubTitle => 'Aboneliği otomatik güncelle';
@@ -585,51 +609,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get testUrlLabel => 'Test URL\'si (Proxy üzerinden)';
 
   @override
-  String get appUpdateServerUnavailable => 'Güncelleme sunucusu erişilemez';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return '$version sürümü mevcut';
-  }
-
-  @override
-  String get appUpdateLatest => 'En son sürüme sahipsiniz';
-
-  @override
-  String get appUpdateDownload => 'İndir';
-
-  @override
-  String get appUpdateCheckTitle => 'Açılışta güncellemeleri kontrol et';
-
-  @override
-  String get appUpdateManual => 'İndirme ve kurulum — el ile';
-
-  @override
-  String get appUpdateEndpointLabel => 'Sürüm uç noktası';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Beta sürümleri al';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'Ön sürümler dahil GitHub sürüm listesi, artı sitenin yedek adresi. Kararlı sürümlerin otomatik güncellemesini değiştirmez.';
-
-  @override
   String get infoAppUpdateBeta =>
       'Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez — bu anahtarı açmayanlara beta gelmez.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'Bu bir ön sürüm — sorunlar olabilir. Otomatik güncelleme bu sürümleri dağıtmaz.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Önceki sürümler';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Önceki sürümler';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -796,14 +780,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Engelle';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return '$version sürümü mevcut';
-  }
-
-  @override
-  String get homeDownload => 'İndir';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -978,6 +954,21 @@ class AppLocalizationsTr extends AppLocalizations {
   String get subBarAnnounce => 'Panel duyurusu';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return '$name hizmetinden duyurular';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Hizmet duyuruları';
+
+  @override
+  String get hideAnnounceTitle => 'Hizmet duyurularını gizle';
+
+  @override
+  String get hideAnnounceSub =>
+      'Abonelikten gelen duyurular kartta gösterilmez. Varsayılan olarak her ekranda görünür.';
+
+  @override
   String get subSwitcherPingAll => 'Tüm aboneliklerin sunucularını sına';
 
   @override
@@ -1059,10 +1050,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN yönetici hakları gerektirir. Bir kez, en yüksek ayrıcalıklarla Windows Görev Zamanlayıcı\'da bir görev oluştururuz — bundan sonra tünel her bağlantıda UAC istemi OLMADAN başlar. Görev size aittir ve aşağıdaki düğmeyle veya program kaldırıldığında silinir.';
-
-  @override
-  String get infoAppUpdate =>
-      'Uygulama, her açılışta bir kez sunucunuza daha yeni bir sürümün olup olmadığını sorar ve bir «İndir» düğmesiyle bildirim gösterir.\n\nUygulama kendi başına HİÇBİR ŞEY indirmez ve çalıştırmaz: kurulum sertifikayla imzalanmamıştır ve indirilen bir exe\'yi otomatik çalıştırmak SmartScreen\'e takılır ve antivirüslere kötü amaçlı yazılım davranışı gibi görünür. Güncellemeyi kendiniz kurarsınız.\n\nSunucu erişilemezse uygulama sessiz kalır ve günlüğe bir kayıt yazar. Yanıt biçimi ve sunucu kurulumu docs/APP_UPDATE.md içinde açıklanmıştır.';
 
   @override
   String get infoSpeedTest =>
@@ -1267,6 +1254,97 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get importScrImportField => 'Alandan içe aktar';
+
+  @override
+  String get importScrScanQr => 'QR tara';
+
+  @override
+  String get importScrQrFromImage => 'Görselden QR';
+
+  @override
+  String get qrScanPrompt => 'Kamerayı aboneliğin QR koduna doğrultun';
+
+  @override
+  String get qrCameraExplainTitle => 'Kamera erişimi';
+
+  @override
+  String get qrCameraExplainBody =>
+      'Kamera yalnızca aboneliğin QR kodunu okumak için kullanılır. Hiçbir şey kaydedilmez veya gönderilmez.';
+
+  @override
+  String get qrCameraContinue => 'Devam';
+
+  @override
+  String get qrCameraDenied =>
+      'Kamera erişimi yok. Uygulama ayarlarından izin verin veya QR kodlu bir görsel seçin.';
+
+  @override
+  String get qrNotFound => 'Görselde QR kodu bulunamadı.';
+
+  @override
+  String get qrReadFailed => 'Görsel açılamadı.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Bağlantı koptu, trafik engellendi. $seconds sn sonra yeniden bağlanılacak (deneme $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'Tünel kuruldu ama içinden trafik geçmiyor';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android VPN\'e izin vermedi. Tekrar “Bağlan”a dokunun ve sistem isteğini onaylayın.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file uygulamanın yanında bulunamadı. SilentGate\'i yeniden yükleyin.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return '$port numaralı port önceki oturumdan kalan çekirdeğimiz ($holder) tarafından hâlâ kullanılıyor.\n\nVPN kapatılıp hemen açıldığında bu olur. Birkaç saniye bekleyip tekrar deneyin.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return '$port numaralı port, belirlenemeyen başka bir program tarafından kullanılıyor.\n\nÇoğunlukla aynı yerel portları dinleyen başka bir VPN istemcisidir. Tepsi dahil tamamen kapatıp tekrar deneyin.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return '$port numaralı port $holder tarafından kullanılıyor.\n\nTepsi dahil tamamen kapatıp tekrar deneyin.';
+  }
+
+  @override
+  String get statusTunCoreHung => 'Tünel çekirdeği dondu; tünel kaldırıldı';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Bağlanılamadı: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return '$core çekirdeği durdu (kod $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return '$core çekirdeği durdu (kod $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return '$port numaralı yerel port zaten kullanımda';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'bir yerel port zaten kullanımda';
+
+  @override
+  String get statusReasonFailedToStart => 'çekirdek başlatılamadı';
 
   @override
   String get serversTitle => 'Sunucular';
@@ -1524,6 +1602,15 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'The last subscription update changed this server\'s record';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return '«$type» maskeleme bu istemcide henüz desteklenmiyor';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'Bu sunucu bu istemcide henüz desteklenmiyor';
 
   @override
   String get srvFieldId => 'ID / password';
@@ -1810,6 +1897,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Görev oluşturulamadı (UAC reddedildi veya ilke tarafından engellendi)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Görev Zamanlayıcı görevi kabul etmedi — nedeni günlükte (Ayarlar → Günlükler)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 
@@ -1986,10 +2077,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get noRealIpTitle => 'Gerçek IP\'mi asla kullanma';
 
   @override
-  String get noRealIpSub =>
-      'VPN açıkken bile tüm «doğrudan» trafik VPN üzerinden gider (RU siteleri dahil). Yerel ağ doğrudan kalır.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2113,6 +2200,10 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Önce bir abonelik içe aktarın';
+
+  @override
+  String get errServerUnsupported =>
+      'Bu sunucu bu istemci tarafından desteklenmiyor';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2366,10 +2457,6 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '«Gerçek IP’mi asla kullanma» açık: kutusu işaretsiz «Doğrudan» kuralları VPN üzerinden gider';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      '«Doğrudan» kurallarını etkiler: «gerçek IP’ye izin ver» kutusu işaretsizse VPN üzerinden giderler';
 
   @override
   String get splitAppOverrideSites => 'Site kurallarından önceliklidir';
@@ -2853,7 +2940,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '«Gerçek IP kullanılmasın» açık — tüm trafik VPN üzerinden gidiyor.';
+      '«Gerçek IP kullanılmasın» açık — «Doğrudan» kurallarınız VPN üzerinden gidiyor.';
 
   @override
   String get autoWarnAllVpn =>
@@ -3402,15 +3489,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return '$version sürümünde yenilikler';
-  }
-
-  @override
   String get updateNotesEmpty => 'Sürüm notu gelmedi.';
-
-  @override
-  String get updateNotesNeverShow => 'Bir daha gösterme';
 
   @override
   String get notifOffTitle => 'Bildirimler kapalı';
@@ -3425,4 +3504,408 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Bildirim ekranı açılamadı. Bunları elle açın: Android ayarları → Uygulamalar → SilentGate.';
+
+  @override
+  String get splitImport => 'İçe aktar';
+
+  @override
+  String get splitExport => 'Dışa aktar';
+
+  @override
+  String get splitImportOk => 'Ayarlar içe aktarıldı';
+
+  @override
+  String get splitImportBad => 'Panoda geçerli SilentGate ayarı yok';
+
+  @override
+  String get splitImportReplace => 'Değiştir';
+
+  @override
+  String get updatesTitle => 'Güncellemeler';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Geçerli sürüm $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Kararlı kanal';
+
+  @override
+  String get updatesChannelBeta => 'Beta kanalı';
+
+  @override
+  String get updatesCheckNow => 'Şimdi denetle';
+
+  @override
+  String get updatesStatusChecking => 'Denetleniyor…';
+
+  @override
+  String get updatesStatusUpToDate => 'En son sürüme sahipsiniz';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return '$version sürümü mevcut';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'İndiriliyor… %$percent';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'İndiriliyor: $done / $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '$left MB kaldı';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n sn';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n dk';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'İmza doğrulanıyor…';
+
+  @override
+  String get updatesStatusReady => 'Kurulmaya hazır';
+
+  @override
+  String get updatesStatusInstalling => 'Kuruluyor…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Başarısız: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'Kurulum izni gerekli';
+
+  @override
+  String get updatesStatusLinkOnly => 'Elle kurun';
+
+  @override
+  String get updatesModeTitle => 'Nasıl güncellensin';
+
+  @override
+  String get updatesModeAsk => 'Sor';
+
+  @override
+  String get updatesModeAskHint =>
+      'Yenilikleri gösterir ve yalnızca onayınızdan sonra kurar';
+
+  @override
+  String get updatesModeAuto => 'Otomatik';
+
+  @override
+  String get updatesModeAutoHint => 'VPN kapalıyken kendisi indirir ve kurar';
+
+  @override
+  String get updatesModeNotify => 'Yalnızca bildir';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Hiçbir şey indirmeden ve kurmadan yeni sürümü bildirir';
+
+  @override
+  String get updatesAutoCheck => 'Başlangıçta denetle';
+
+  @override
+  String get updatesBeta => 'Beta sürümleri al';
+
+  @override
+  String get updatesSignatureNote =>
+      'Her dosya geliştirici imzası ve sağlama toplamıyla doğrulanır; eşleşme yoksa kurulum başlamaz';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return '$version güncellemesi mevcut';
+  }
+
+  @override
+  String get updatesInstall => 'Güncelle';
+
+  @override
+  String get updatesLater => 'Sonra';
+
+  @override
+  String get updatesSkipVersion => 'Bu sürümü atla';
+
+  @override
+  String get updatesVpnWarning => 'Kurulum VPN bağlantısını kesecek';
+
+  @override
+  String get updatesAndroidUnknownSources =>
+      'Bu uygulamadan kuruluma izin verin';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Ayarları aç';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android sistemin kurulum penceresini gösterecek: bu bir sistem gereksinimidir';
+
+  @override
+  String get updatesPortableFallback =>
+      'Bu kopya kurulum programıyla kurulmamış. Yeni sürümü elle indirin';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return '$version sürümüne güncellendi';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Kurulum tamamlanmadı';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'Sürüm $version olarak kaldı. Kurulum günlüğü aşağıda';
+  }
+
+  @override
+  String get updatesShowLog => 'Günlüğü göster';
+
+  @override
+  String get updatesOverrideBadge =>
+      'Güncelleme kaynağı değiştirildi (test modu)';
+
+  @override
+  String get updatesSettingsTile => 'Güncellemeler';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Yeni sürümleri denetleme, indirme ve kurma';
+
+  @override
+  String get updatesPreviousVersions => 'Önceki sürümler';
+
+  @override
+  String get updatesInstallOlder => 'Kur';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Daha eski bir sürüme dönülüyor. Devam edilsin mi?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'Uygulama kapanacak ve kurulum sırasında VPN bağlantısı kesilecek. Güncellemeden sonra yeniden bağlanın';
+
+  @override
+  String get updatesOpenPage => 'İndirme sayfasını aç';
+
+  @override
+  String get updatesLinkNotify =>
+      '“Yalnızca bildir” modu seçili — yeni sürümü indirme sayfasından indirin';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'Bu sürümde sisteminiz için imzalı bir yükleyici yok — indirme sayfasından indirin';
+
+  @override
+  String get updatesLinkIsolated =>
+      'Bu yalıtılmış bir test kopyasıdır — kurulu uygulamaya dokunmaz. Elle güncelleyin';
+
+  @override
+  String get updatesLinkLocation =>
+      'Uygulama kurulum klasöründen çalışmıyor — yeni sürümü elle indirin veya kurulu kopyayı başlatın';
+
+  @override
+  String get updatesLinkElevated =>
+      'Uygulama yönetici olarak çalışıyor — bu şekilde güncellemek güvenli değil. Normal şekilde başlatın';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'Bu platformda uygulama kendini güncelleyemez — yeni sürümü elle indirin';
+
+  @override
+  String get updatesErrCheck => 'güncelleme sunucusu yanıt vermedi';
+
+  @override
+  String get updatesErrInsecure => 'indirme adresi güvenli değil (https değil)';
+
+  @override
+  String get updatesErrAssetName => 'sürümdeki dosya adı geçersiz';
+
+  @override
+  String get updatesErrManifest => 'imzalı sürüm bildirimi alınamadı';
+
+  @override
+  String get updatesErrSignature =>
+      'imza eşleşmiyor — dosya değiştirilmiş olabilir';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'sürüm bildirimi bu sürüme veya sisteme uymuyor';
+
+  @override
+  String get updatesErrDownload =>
+      'dosya indirilemedi veya sağlama toplamı eşleşmiyor';
+
+  @override
+  String get updatesErrInstall => 'yükleyici başlatılamadı';
+
+  @override
+  String get updatesErrNotNewer => 'bu sürüm kurulu olandan daha yeni değil';
+
+  @override
+  String get updatesInfo =>
+      'Yeni bir sürüm bulunduğunda uygulamanın ne yapacağı. Otomatik modda kurulum etkin bir VPN\'i asla kesmez: bağlantıyı kesmenizi bekler. Her modda bir dosya yalnızca geliştirici imzası eşleşirse kurulur.';
+
+  @override
+  String get updatesDownload => 'İndir';
+
+  @override
+  String get updatesInstallNow => 'Şimdi kur';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Kuruluma hazır — VPN bağlantısı kesildikten sonra başlayacak';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return '$version sürümü atlandı — bir sonrakini bildireceğiz';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Güncelleme kuruluyor';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'Uygulama $version sürümü kurulurken kapanacak';
+  }
+
+  @override
+  String get splitImportTitleApps => 'Uygulamaları içe aktar';
+
+  @override
+  String get splitImportTitleSites => 'Siteleri içe aktar';
+
+  @override
+  String get splitImportFormatNote =>
+      'Bir satır bir kuraldır. [tunnel], [direct] ve [block] başlıkları altındaki satırlar için eylemi belirler. İşaretsiz bir satır, elle girilmiş gibi eklenir.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Panodan yapıştır';
+
+  @override
+  String get splitImportAdd => 'Ekle';
+
+  @override
+  String get splitImportReplaceAll => 'Tümünü değiştir';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'yeni: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'zaten var: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'farklı: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'ayrıştırılamadı: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Farklı olanların üzerine yaz';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Kapalıyken bu kuralların mevcut ayarları kalır';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '$from idi, $to olacak';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'Bu satırlar alınmadı';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '$added eklendi, $changed değiştirildi';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Değiştirmeden sonra kural sayısı: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'Liste boş — dışa aktarılacak bir şey yok';
+
+  @override
+  String get splitCountEmpty => 'Boş';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'toplam $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'açık $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'kapalı $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'tünel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'doğrudan $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'engelle $n';
+  }
+
+  @override
+  String get splitExpandList => 'Listeyi genişlet';
+
+  @override
+  String get splitCollapseList => 'Listeyi daralt';
+
+  @override
+  String get splitExpandGroup => 'Grubu genişlet';
+
+  @override
+  String get splitCollapseGroup => 'Grubu daralt';
+
+  @override
+  String get splitExpandSubdomains => 'Alt alan adlarını göster';
+
+  @override
+  String get splitCollapseSubdomains => 'Alt alan adlarını gizle';
 }

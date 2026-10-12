@@ -4,12 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 
-/// Ядро на Android — libbox 1.13.14, на Windows — sing-box 1.11.15. Это РАЗНЫЕ
-/// парсеры: поле, принятое одним, второй может отвергнуть, и тогда конфиг
-/// падает ЦЕЛИКОМ, а туннель не поднимается вовсе.
+/// Ядро на Android — libbox 1.13.14, собранный нами; на Windows — официальная
+/// сборка sing-box 1.13.14 (до 1.15.0 была 1.11.15). Версия одна, но сборки
+/// РАЗНЫЕ и ведут себя по-разному: наша на устаревшем поле только
+/// предупреждает, официальная отвергает конфиг целиком (так прятался старый
+/// формат DNS-серверов). Поэтому проверяем обеими.
 ///
-/// Проверять надо обеими: `sing-box check` версии 1.13.14 лежит в
-/// C:\dev\android\out (собран из исходников libbox того же тега).
+/// `sing-box check` нашей сборки лежит в C:\dev\android\out.
 void main() {
   const split = SplitTunnelConfig(
     mode: SplitMode.exceptSelected,
@@ -54,9 +55,9 @@ void main() {
     await checkWith(exe, 'sing-box 1.13.14');
   });
 
-  test('ядро 1.11.15 (Windows) принимает тот же набор полей', () async {
+  test('официальное ядро Windows принимает тот же набор полей', () async {
     final exe = File('../engine/windows/bin/sing-box.exe');
     if (!exe.existsSync()) return;
-    await checkWith(exe.path, 'sing-box 1.11.15');
+    await checkWith(exe.path, 'официальный sing-box (Windows)');
   });
 }

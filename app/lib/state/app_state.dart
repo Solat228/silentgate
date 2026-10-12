@@ -35,6 +35,8 @@ import '../core/url_scheme.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
+import '../core/util/server_rekey.dart';
+import '../core/xray/balancer_pick.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
 import '../core/subscription/xray_json_subscription.dart';
@@ -53,6 +55,7 @@ import '../engine/vpn_engine.dart';
 import 'api_handlers.dart';
 import 'app_error.dart';
 import 'probe_controller.dart';
+import '../core/probe/proxy_probe.dart';
 import 'settings_controller.dart';
 
 /// Центральное состояние приложения. UI подписывается через Provider.
@@ -66,10 +69,12 @@ class AppState extends ChangeNotifier {
     SubscriptionService? subscription,
     AppStorage? storage,
     String? initialUrl,
+    bool autostart = false,
   })  : _engine = engine ?? createVpnEngine(),
         _subscription = subscription ?? SubscriptionService(),
         _storage = storage ?? AppStorage(),
-        _initialUrl = initialUrl {
+        _initialUrl = initialUrl,
+        _autostart = autostart {
     _statusSub = _engine.statusStream.listen((s) {
       final was = _status.state;
       final wasBlocking = _status.blocking;
@@ -122,6 +127,9 @@ class AppState extends ChangeNotifier {
           _networkWatcher.resume();
         } else {
           _networkWatcher.start();
+          if (_logoRetryOnConnect != null) {
+            unawaited(_retryLogoAfterConnect());
+          }
         }
       } else {
         _networkWatcher.stop();
@@ -205,6 +213,9 @@ class AppState extends ChangeNotifier {
   String? get updateMessage => _updateMessage;
 
   final String? _initialUrl;
+
+  /// Приложение запустила система при входе (см. `AutostartWindows`).
+  final bool _autostart;
   late final StreamSubscription _statusSub;
   late final StreamSubscription _statsSub;
   StreamSubscription<String>? _blockedSub;
@@ -371,6 +382,13 @@ class AppState extends ChangeNotifier {
   AppErrorCode? _errorCode;
   String? _logoPath; // #2 — кэшированная аватарка подписки
 
+  /// Адреса логотипа, которые уже не скачались (журнал — по разу на адрес).
+  final _logoFailures = LogoFailureMemo();
+
+  /// Адрес подписки, чей логотип не скачался без туннеля: при следующем
+  /// подъёме VPN пробуем ещё раз уже через него. `null` — ждать нечего.
+  String? _logoRetryOnConnect;
+
   /// #1/#1.1 — итог последнего обновления подписки (что добавилось/удалилось).
   SubscriptionSyncResult? _lastSync;
   bool _refreshing = false;
@@ -442,6 +460,48 @@ class AppState extends ChangeNotifier {
   bool get refreshing => _refreshing;
   VpnStatus get status => _status;
   TrafficStats get stats => _stats;
+
+  /// Имя узла, через который «Авто» ведёт трафик сейчас; `null` — не
+  /// балансировщик, ядро ещё не выбрало либо узел не опознан.
+  String? get activeNodeName => nodeNameFor(_stats.activeNode, _servers);
+
+  /// Имя узла по адресу и порту среди серверов подписки.
+  ///
+  /// ⚠️ ПО АДРЕСУ, А НЕ ПО ТЕГУ. Теги outbound-ов у профилей «Авто» от панели
+  /// безымянные (`proxy-2`), а тот же узел лежит в подписке обычной строкой с
+  /// названием. Профили-балансировщики и заглушки истёкшей подписки в поиск
+  /// не берутся: имя профиля — не имя узла. Не нашли — `null`: выдумывать
+  /// страну нельзя, человек по ней решает, через что он ходит.
+  /// Подключаться ли сразу после автозапуска.
+  ///
+  /// Только при запуске СИСТЕМОЙ и только с отдельной галочкой: ручной запуск
+  /// никогда не поднимает VPN сам. Подхваченный живой туннель не трогаем —
+  /// второе подключение поверх него было бы переподъёмом без причины.
+  @visibleForTesting
+  static bool shouldConnectOnAutostart({
+    required bool autostart,
+    required AppSettings settings,
+    required bool connected,
+    required bool hasServers,
+  }) =>
+      autostart &&
+      settings.launchAtLogin &&
+      settings.connectOnAutostart &&
+      !connected &&
+      hasServers;
+
+  @visibleForTesting
+  static String? nodeNameFor(ActiveNode? node, List<VpnServer> servers) {
+    if (node == null) return null;
+    final host = node.address.toLowerCase();
+    for (final s in servers) {
+      if (s.isPanelProfile || s.isNotice) continue;
+      if (s.port == node.port && s.address.toLowerCase() == host) {
+        return s.displayName;
+      }
+    }
+    return null;
+  }
 
   /// Момент, когда пользователь ВКЛЮЧИЛ VPN. null — выключен.
   ///
@@ -726,6 +786,17 @@ class AppState extends ChangeNotifier {
     final url = _initialUrl;
     if (url != null) {
       await handleIncomingUrl(url);
+    }
+    if (shouldConnectOnAutostart(
+        autostart: _autostart,
+        settings: await SettingsStorage().load(),
+        connected: _status.isConnected ||
+            _status.state == VpnConnectionState.connecting,
+        hasServers: _servers.isNotEmpty)) {
+      AppLog.i('Автозапуск: подключаюсь, как задано в настройках');
+      // Тот же путь, что команда silentgate://connect: выбранный сервер,
+      // текущие настройки, без отдельной логики «подключения при старте».
+      await handleIncomingUrl('${AppUrlScheme.scheme}://connect');
     }
     await _maybeStartUpdater();
     _maybeRefreshOnStart();
@@ -1052,10 +1123,24 @@ class AppState extends ChangeNotifier {
   /// источникам правды. Связка живёт в `state/provider_wiring.dart`.
   void Function()? onServersChanged;
 
+  /// Панель переписала ссылки серверов — старый ключ → новый (см.
+  /// `ServerRekey`). Слушатели переносят то, что лежит не здесь: правила
+  /// раздельного туннелирования (настройки) и результаты пинга (пробы).
+  /// ⚠️ Хук — по той же причине, что [onServersChanged]; связка —
+  /// `state/provider_wiring.dart`.
+  Future<void> Function(Map<String, String> rekey)? onServerKeysChanged;
+
+  /// Выбранный сервер мог сменить ключ при обновлении подписки — [_rebuild]
+  /// ищет его уже по новому, иначе выбор уехал бы на первый сервер списка.
+  /// Одноразовый: снимается первой же пересборкой.
+  Map<String, String> _selectionRekey = const {};
+
   void _rebuild() {
-    final prevKey = (_selectedIndex >= 0 && _selectedIndex < _servers.length)
+    var prevKey = (_selectedIndex >= 0 && _selectedIndex < _servers.length)
         ? _servers[_selectedIndex].key
         : null;
+    if (prevKey != null) prevKey = _selectionRekey[prevKey] ?? prevKey;
+    _selectionRekey = const {};
 
     final pinnedKeys = _pinned.map((s) => s.key).toSet();
     final base = [
@@ -1882,6 +1967,21 @@ class AppState extends ChangeNotifier {
       // сервера пользователем).
       final before = List<VpnServer>.of(_subServers);
 
+      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
+      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
+      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
+      // сервера «Москва 1. GRPC», который никуда не девался.
+      final sync = SubscriptionSyncResult.diff(
+        before: before,
+        after: result.servers,
+        withPanelConfig: withOutbound,
+        panelProfiles: withFullConfig,
+      );
+      // ⚠️ ДО ПЕРЕСБОРКИ СПИСКА: закреплённая СТАРАЯ запись иначе встала бы
+      // наверх рядом с новой, а выбор уехал бы на первый сервер.
+      final rekey = sync.rekey;
+      if (rekey.isNotEmpty) await _applyRekey(rekey, result.servers);
+
       _subServers = result.servers;
       // Панель увела редиректом — дальше ходим по новому адресу, иначе после
       // выключения старого домена обновления молча прекратятся.
@@ -1900,16 +2000,7 @@ class AppState extends ChangeNotifier {
       // Аватарку тянем ЗДЕСЬ (импорт/обновление), не в фоне и не на старте.
       await _refreshLogo(url);
 
-      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
-      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
-      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
-      // сервера «Москва 1. GRPC», который никуда не девался.
-      _lastSync = SubscriptionSyncResult.diff(
-        before: before,
-        after: result.servers,
-        withPanelConfig: withOutbound,
-        panelProfiles: withFullConfig,
-      );
+      _lastSync = sync;
       AppLog.i('Подписка обновлена: ${_lastSync!.summary} '
           '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
       // Сервер на месте, а ключ другой — расходятся форматы записи ссылки.
@@ -2067,11 +2158,13 @@ class AppState extends ChangeNotifier {
         if (!haveLogo()) {
           AppLog.w('Логотип подписки не найден — показываем букву названия.');
           await _setLogo(null);
-        } else {
-          AppLog.w('Логотип подписки временно не найден — оставляю прежний.');
+        } else if (_logoFailures.noteNotFound()) {
+          AppLog.w('Логотип подписки временно не найден — оставляю прежний. '
+              'Повторы до первой удачи в журнал не пишу.');
         }
         return;
       }
+      _logoFailures.noteFound();
 
       // Не изменился адрес логотипа и файл на месте — оставляем старую картинку,
       // ничего не перекачиваем (требование: «если не изменилась — оставляй»).
@@ -2088,24 +2181,132 @@ class AppState extends ChangeNotifier {
         return;
       }
 
-      AppLog.i('Логотип подписки: пробую $imageUrl');
+      final repeat = _logoFailures.failedBefore(imageUrl);
+      if (!repeat) AppLog.i('Логотип подписки: пробую $imageUrl');
       // Своё имя файла на подписку — чтобы логотипы разных подписок не затирали
       // друг друга (раньше всё писалось в один sub_logo.*, и после смены подписки
       // висела старая картинка).
       final name = 'sub_logo_$startedId';
-      final finder2 = SubscriptionLogo();
-      final path = await finder2.download(imageUrl, cacheName: name);
-      finder2.close();
+      final viaTunnel = _status.isConnected && httpProxyPort > 0;
+      final path = await _downloadLogo(imageUrl, name);
       if (switchedAway()) return; // переключились за время скачивания
       if (path == null) {
-        AppLog.w('Логотип найден ($imageUrl), но не скачался — оставляю прежний, '
-            'если он был, иначе букву названия.');
+        if (_logoFailures.noteFailure(imageUrl)) {
+          AppLog.w('Логотип найден ($imageUrl), но не скачался'
+              '${viaTunnel ? ' ни через туннель, ни напрямую' : ''} — '
+              'оставляю прежний, если он был, иначе букву названия. '
+              '${viaTunnel ? '' : 'Попробую через туннель, когда VPN включится. '}'
+              'Повторные отказы по этому адресу в журнал не пишу.');
+        }
+        // Без туннеля ещё не пробовали — попробуем, когда он поднимется.
+        _logoRetryOnConnect = viaTunnel ? null : url;
         if (!haveLogo()) await _setLogo(null);
         return;
       }
+      _logoFailures.noteSuccess(imageUrl);
+      _logoRetryOnConnect = null;
       AppLog.i('Логотип подписки скачан: $path');
       await _setLogo(path, sourceUrl: imageUrl);
     } catch (_) {}
+  }
+
+  /// Скачать картинку логотипа. При живом VPN — сперва ЧЕРЕЗ ТУННЕЛЬ, потом
+  /// напрямую; без VPN — только напрямую.
+  ///
+  /// ⚠️ Почему при поднятом туннеле он первый, а не запасной. Прямая попытка
+  /// по заблокированному адресу — это пять повторов с паузами и таймаутами,
+  /// до минуты ожидания на каждое обновление подписки. А CDN, на который
+  /// указывает логотип (аватарка Telegram), у провайдера режут как раз чаще
+  /// всего. Картинка — несколько килобайт; через включённый VPN её взял бы и
+  /// браузер человека.
+  Future<String?> _downloadLogo(String imageUrl, String cacheName) async {
+    final port = httpProxyPort;
+    if (_status.isConnected && port > 0) {
+      final tunnel = SubscriptionLogo(
+          client: SubscriptionLogo.viaLocalProxy(port,
+              user: ProxyProbe.user, password: ProxyProbe.password));
+      try {
+        final p = await tunnel.download(imageUrl, cacheName: cacheName);
+        if (p != null) {
+          AppLog.i('Логотип подписки взят через туннель');
+          return p;
+        }
+      } finally {
+        tunnel.close();
+      }
+    }
+    final direct = SubscriptionLogo();
+    try {
+      return await direct.download(imageUrl, cacheName: cacheName);
+    } finally {
+      direct.close();
+    }
+  }
+
+  /// VPN поднялся, а логотип до этого не скачался напрямую — пробуем ещё раз,
+  /// теперь через туннель. Без этого первый логотип после импорта (импорт почти
+  /// всегда идёт ДО первого подключения) ждал бы следующего обновления
+  /// подписки — до двенадцати часов.
+  Future<void> _retryLogoAfterConnect() async {
+    final url = _logoRetryOnConnect;
+    if (url == null) return;
+    _logoRetryOnConnect = null;
+    // «Подключено» ставится по факту туннеля; прокси-ядру нужна пара секунд,
+    // чтобы порт начал доставлять.
+    await Future<void>.delayed(const Duration(seconds: 5));
+    if (!_status.isConnected) {
+      _logoRetryOnConnect = url;
+      return;
+    }
+    if (_activeProfile?.url != url) return; // подписку уже сменили
+    await _refreshLogo(url);
+  }
+
+  /// Перенести сохранённое со старых ключей серверов на новые.
+  ///
+  /// Здесь — то, что живёт в состоянии: пины и ручные правки. Настройки и
+  /// результаты пинга переносят слушатели [onServerKeysChanged]. Разбор, что
+  /// переносится и что нет, — `ServerRekey`.
+  Future<void> _applyRekey(
+      Map<String, String> rekey, List<VpnServer> fresh) async {
+    final byKey = {for (final s in fresh) s.key: s};
+    final replacement = <String, VpnServer>{
+      for (final e in rekey.entries)
+        if (byKey[e.value] != null) e.key: byKey[e.value]!,
+    };
+    final pinsMoved =
+        _pinned.where((s) => replacement.containsKey(s.key)).length;
+    if (pinsMoved > 0) {
+      for (final e in replacement.entries) {
+        final source = _pinnedSourceByLink.remove(e.key);
+        if (source != null) {
+          _pinnedSourceByLink.putIfAbsent(e.value.rawLink, () => source);
+        }
+      }
+      final next = ServerRekey.pins(_pinned, replacement);
+      _pinned
+        ..clear()
+        ..addAll(next);
+      await _savePinned();
+    }
+    final ov = ServerRekey.overrides(_overrides, rekey);
+    if (ov.moved > 0) {
+      _overrides
+        ..clear()
+        ..addAll(ov.overrides);
+      await _overridesStore.save(_overrides);
+    }
+    _selectionRekey = rekey;
+    // Числа и только числа: ключи — это ссылки с учётными данными.
+    AppLog.i('Панель переписала ${rekey.length} сервер(ов) — перенесено на '
+        'новые ключи: закреплений $pinsMoved, правок ${ov.moved}'
+        '${ov.droppedJson > 0 ? '; ручной JSON не перенесён у ${ov.droppedJson} '
+            '(в нём прежние ключи сервера — с ними он не подключится)' : ''}');
+    try {
+      await onServerKeysChanged?.call(rekey);
+    } catch (e) {
+      AppLog.w('Перенос настроек и замеров на новые ключи не удался: $e');
+    }
   }
 
   /// Старый общий файл логотипа (без id подписки в имени): `sub_logo.png/.jpg…`.
@@ -2341,6 +2542,13 @@ class AppState extends ChangeNotifier {
 
   void selectServer(int index) {
     if (index < 0 || index >= _servers.length) return;
+    // Неподдерживаемый сервер нельзя не только подключить, но и выбрать для
+    // подключения — иначе «Подключить» на главном экране била бы по нему
+    // молча (индекс уже стоит, а причина отказа осталась в предыдущем нажатии).
+    if (_servers[index].isUnsupported) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
     final wasKey = selectedServer?.key;
     _selectedIndex = index;
     _selectedVariant = OutboundVariant.none; // ручной выбор — обычная вариация
@@ -2470,12 +2678,14 @@ class AppState extends ChangeNotifier {
     // мигание маршрута по умолчанию на каждой смене сервера.
     //
     // Выключенная галочка возвращает прежний путь целиком — это и есть откат.
+    // Кроме kill switch: полное отключение снимает и блокировку, и смена
+    // сервера выпускала трафик под реальным IP (см. `keepCaptureOnSwitch`).
     // ⚠️ СПРАШИВАЕМ ДВИЖОК, А НЕ ТОЛЬКО ГАЛОЧКУ. Режим захвата может смениться
     // прямо здесь: «Способ захвата» — тоже причина переподключения. Удерживать
     // TUN, когда следующая сессия идёт «Только прокси», значит оставить машину
     // в туннеле ровно в том режиме, который обещает обратное.
     final soft =
-        settings.seamlessServerSwitch && _engine.canKeepCaptureFor(settings);
+        settings.keepCaptureOnSwitch && _engine.canKeepCaptureFor(settings);
     if (soft) {
       await _engine.disconnectKeepingCapture();
     } else {
@@ -2526,6 +2736,13 @@ class AppState extends ChangeNotifier {
       final server = selectedServer;
       if (server == null) {
         _fail(AppErrorCode.pickServerFirst);
+        return;
+      }
+      // Повторная проверка: `selectServer` уже не даёт выбрать такой сервер,
+      // но выбор мог прийти в обход (`silentgate://connect`, восстановление
+      // сессии) — двух разборов одной проверки не заводим, страхуемся тут же.
+      if (server.isUnsupported) {
+        _fail(AppErrorCode.serverUnsupported);
         return;
       }
       // Точка отсчёта таймера — ЗДЕСЬ, на нажатии, а не на подъёме туннеля:
@@ -2715,8 +2932,11 @@ class AppState extends ChangeNotifier {
   /// (у них свой балансировщик), затем обычные серверы. Порядок — как в списке,
   /// то есть закреплённые и найденные автонастройкой идут первыми.
   List<VpnServer> _fallbackCandidates() {
-    final profiles = _servers.where((s) => s.isPanelProfile).toList();
-    final plain = _servers.where((s) => !s.isPanelProfile).toList();
+    // Неподдерживаемый сервер сюда не попадает: подмена молча подключила бы
+    // узел без части маски, которую тот ждёт (та же ловушка, что «Авто» ниже).
+    final usable = _servers.where((s) => !s.isUnsupported);
+    final profiles = usable.where((s) => s.isPanelProfile).toList();
+    final plain = usable.where((s) => !s.isPanelProfile).toList();
     return [...profiles, ...plain].take(5).toList();
   }
 
@@ -2731,14 +2951,22 @@ class AppState extends ChangeNotifier {
       _fail(AppErrorCode.importSubscriptionFirst);
       return;
     }
+    if (_servers.every((s) => s.isUnsupported)) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
     // Режим «Авто (лучший сервер)»: если текущий не поднимется после всех попыток,
     // движок переключится на следующий из этого списка. Ручной выбор не подменяем.
     markUserConnect();
     _warnAboutDeadAppRules(settings);
     _engine.fallbackServers = _fallbackCandidates();
     _engine.bypassCandidates = _servers;
+    // Неподдерживаемый сервер не идёт в балансировщик «Авто»: `SingboxOutboundFactory`
+    // строит из него outbound БЕЗ части маски, которую ждёт сервер — тихая
+    // подмена того самого бага, который эта же правка закрывает у ручного выбора.
+    final balancerServers = _servers.where((s) => !s.isUnsupported).toList();
     await _engine.connectBalancer(
-      _servers,
+      balancerServers,
       options: ConnectionOptions(
           settings: settings,
           exitServers: _exitServers(settings),

@@ -49,8 +49,10 @@ void main() {
     final local = (dns['servers'] as List)
         .cast<Map>()
         .firstWhere((s) => s['tag'] == 'dns-local');
-    expect(local['address'], 'udp://192.168.1.1');
-    expect(local['detour'], 'direct');
+    expect(local['type'], 'udp');
+    expect(local['server'], '192.168.1.1');
+    // Напрямую — потому что `detour` нет (см. batch_1_0_2_test).
+    expect(local.containsKey('detour'), isFalse);
   });
 
   test('перехваченный DNS не попадает под «приватные адреса → напрямую»', () {

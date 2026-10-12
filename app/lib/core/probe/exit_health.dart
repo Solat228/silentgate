@@ -21,7 +21,8 @@ class ExitHealth {
     required this.tags,
     required this.probe,
     this.interval = const Duration(seconds: 60),
-    this.failuresToDeclareDown = 3,
+    this.failuresToDeclareDown = 5,
+    this.successesToRecover = 2,
     this.mainChannelAlive,
   });
 
@@ -33,7 +34,17 @@ class ExitHealth {
   final Future<bool> Function(String tag) probe;
 
   final Duration interval;
+  /// ⚠️ ПЯТЬ, А НЕ ТРИ, — решение владельца 10.10.2026. В его журнале за
+  /// девять дней около 370 приговоров, почти все — edge-узлам, которые
+  /// пропускали две-три пробы и оживали сами. Каждый приговор уводит трафик
+  /// правила в другую страну, и при трёх это случалось на ровном месте.
   final int failuresToDeclareDown;
+
+  /// Сколько ответов ПОДРЯД нужно мёртвому выходу, чтобы считаться живым.
+  ///
+  /// ⚠️ ДВА, А НЕ ОДИН: восстановление возвращает трафик правила на сервер,
+  /// и выход, ответивший один раз между промахами, гонял бы его туда-обратно.
+  final int successesToRecover;
 
   /// Жив ли ОСНОВНОЙ канал прямо сейчас. `null` — не спрашиваем.
   ///
@@ -51,12 +62,13 @@ class ExitHealth {
 
   /// Промахов подряд и «уже объявлен мёртвым» — на каждый тег свои.
   final Map<String, int> _fails = {};
+  final Map<String, int> _oks = {};
   final Set<String> _down = {};
 
   Timer? _timer;
   bool Function()? _aborted;
   Future<void> Function(String tag)? _onDown;
-  void Function(String tag, int missed)? _onRecovered;
+  FutureOr<void> Function(String tag, int missed)? _onRecovered;
   bool _armed = false;
 
   /// Вооружён ли сторож. Пустой список выходов — тикать не по чему.
@@ -67,7 +79,7 @@ class ExitHealth {
 
   void start({
     required Future<void> Function(String tag) onExitDown,
-    void Function(String tag, int missed)? onExitRecovered,
+    FutureOr<void> Function(String tag, int missed)? onExitRecovered,
     bool Function()? aborted,
   }) {
     stop();
@@ -147,6 +159,7 @@ class ExitHealth {
       if (_channelWasDown) {
         _channelWasDown = false;
         _fails.clear();
+        _oks.clear();
       }
       final ok = await probe(tag);
       // Отмена могла случиться ПОКА шла проба: она длится секунды, и за это
@@ -154,12 +167,20 @@ class ExitHealth {
       // объявил бы мёртвым выход, которого уже нет.
       if (_aborted?.call() ?? false) return;
       if (ok) {
-        if (_down.remove(tag)) {
-          _onRecovered?.call(tag, _fails[tag] ?? 0);
+        if (_down.contains(tag)) {
+          final good = (_oks[tag] ?? 0) + 1;
+          _oks[tag] = good;
+          // Промахи не обнуляем, пока выход не признан живым: иначе журнал
+          // не узнал бы, сколько их было.
+          if (good < successesToRecover) continue;
+          _down.remove(tag);
+          _oks.remove(tag);
+          await _onRecovered?.call(tag, _fails[tag] ?? 0);
         }
         _fails[tag] = 0;
         continue;
       }
+      _oks.remove(tag);
       final n = (_fails[tag] ?? 0) + 1;
       _fails[tag] = n;
       // ⚠️ РОВНО ОДИН РАЗ НА СМЕРТЬ. Без этого мёртвый выход бил бы
@@ -179,6 +200,7 @@ class ExitHealth {
     _timer = null;
     _armed = false;
     _fails.clear();
+    _oks.clear();
     _down.clear();
     _onDown = null;
     _onRecovered = null;

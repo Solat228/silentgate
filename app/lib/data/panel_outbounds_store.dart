@@ -4,7 +4,7 @@ import 'dart:io';
 import '../core/platform/app_paths.dart';
 import '../core/subscription/xray_json_subscription.dart';
 import '../core/util/key_migration.dart';
-import 'atomic_file.dart';
+import '../core/platform/secret_files.dart';
 
 /// Что панель прислала для конкретного сервера (формат XRAY_JSON).
 class PanelConfig {
@@ -53,7 +53,7 @@ class PanelOutboundsStore {
     try {
       final f = await _file();
       if (!await f.exists()) return {};
-      final data = jsonDecode(await f.readAsString());
+      final data = jsonDecode(await SecretFiles.read(f));
       if (data is! Map) return {};
       final raw = data.cast<String, dynamic>();
       // ⚠️ ПСЕВДОНИМЫ ПРОФИЛЕЙ «АВТО …» ЗАВОДЯТСЯ ЗДЕСЬ, И ЭТО ЕДИНСТВЕННОЕ
@@ -91,7 +91,7 @@ class PanelOutboundsStore {
   Future<void> save(Map<String, PanelConfig> configs) async {
     try {
       final f = await _file();
-      await AtomicFile.writeString(f,
+      await SecretFiles.write(f,
           jsonEncode({for (final e in configs.entries) e.key: e.value.toJson()}));
     } catch (_) {}
   }

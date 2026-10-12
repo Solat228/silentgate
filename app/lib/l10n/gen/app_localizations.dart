@@ -156,12 +156,6 @@ abstract class AppLocalizations {
   /// **'Обновить'**
   String get commonRefresh;
 
-  /// No description provided for @commonCheck.
-  ///
-  /// In ru, this message translates to:
-  /// **'Проверить'**
-  String get commonCheck;
-
   /// No description provided for @commonOk.
   ///
   /// In ru, this message translates to:
@@ -383,6 +377,54 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Крестик прячет окно в трей; выключите — крестик закрывает приложение'**
   String get closeToTraySubtitle;
+
+  /// No description provided for @launchAtLoginTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запускать вместе с Windows'**
+  String get launchAtLoginTitle;
+
+  /// No description provided for @launchAtLoginSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'При входе в систему приложение стартует свёрнутым в трей'**
+  String get launchAtLoginSub;
+
+  /// No description provided for @connectOnAutostartTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключаться при автозапуске'**
+  String get connectOnAutostartTitle;
+
+  /// No description provided for @connectOnAutostartSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сразу поднимать VPN к выбранному серверу, когда приложение запустила система'**
+  String get connectOnAutostartSub;
+
+  /// No description provided for @sortServersByCountryTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сортировать по странам'**
+  String get sortServersByCountryTitle;
+
+  /// No description provided for @sortServersByCountrySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Собрать серверы одной страны вместе. Страны идут в порядке провайдера, закреплённые остаются сверху'**
+  String get sortServersByCountrySub;
+
+  /// No description provided for @serverGroupCollapse.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть группу'**
+  String get serverGroupCollapse;
+
+  /// No description provided for @serverGroupExpand.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть группу'**
+  String get serverGroupExpand;
 
   /// No description provided for @autoUpdateSubTitle.
   ///
@@ -1134,60 +1176,6 @@ abstract class AppLocalizations {
   /// **'Тестовый URL (via Proxy)'**
   String get testUrlLabel;
 
-  /// No description provided for @appUpdateServerUnavailable.
-  ///
-  /// In ru, this message translates to:
-  /// **'Сервер обновлений недоступен'**
-  String get appUpdateServerUnavailable;
-
-  /// No description provided for @appUpdateAvailable.
-  ///
-  /// In ru, this message translates to:
-  /// **'Доступна версия {version}'**
-  String appUpdateAvailable(String version);
-
-  /// No description provided for @appUpdateLatest.
-  ///
-  /// In ru, this message translates to:
-  /// **'У вас последняя версия'**
-  String get appUpdateLatest;
-
-  /// No description provided for @appUpdateDownload.
-  ///
-  /// In ru, this message translates to:
-  /// **'Скачать'**
-  String get appUpdateDownload;
-
-  /// No description provided for @appUpdateCheckTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Проверять обновления при запуске'**
-  String get appUpdateCheckTitle;
-
-  /// No description provided for @appUpdateManual.
-  ///
-  /// In ru, this message translates to:
-  /// **'Скачивание и установка — вручную'**
-  String get appUpdateManual;
-
-  /// No description provided for @appUpdateEndpointLabel.
-  ///
-  /// In ru, this message translates to:
-  /// **'Эндпоинт версии'**
-  String get appUpdateEndpointLabel;
-
-  /// No description provided for @appUpdateBetaChannelTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Получать бета-версии'**
-  String get appUpdateBetaChannelTitle;
-
-  /// No description provided for @appUpdateBetaChannelSubtitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Список релизов GitHub, включая пре-релизы, плюс резервный адрес сайта. Автообновление стабильных версий не меняет.'**
-  String get appUpdateBetaChannelSubtitle;
-
   /// No description provided for @infoAppUpdateBeta.
   ///
   /// In ru, this message translates to:
@@ -1199,24 +1187,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'БЕТА'**
   String get appUpdateBetaBadge;
-
-  /// No description provided for @appUpdateBetaNotice.
-  ///
-  /// In ru, this message translates to:
-  /// **'Это пре-релиз — возможны сбои. Автообновление такие версии не рассылает.'**
-  String get appUpdateBetaNotice;
-
-  /// No description provided for @appUpdatePreviousVersionsButton.
-  ///
-  /// In ru, this message translates to:
-  /// **'Прежние версии'**
-  String get appUpdatePreviousVersionsButton;
-
-  /// No description provided for @appUpdatePreviousVersionsTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Прежние версии'**
-  String get appUpdatePreviousVersionsTitle;
 
   /// No description provided for @appUpdatePreviousVersionsHint.
   ///
@@ -1500,18 +1470,6 @@ abstract class AppLocalizations {
   /// **'Блок'**
   String get enumActionBlock;
 
-  /// No description provided for @homeUpdateAvailable.
-  ///
-  /// In ru, this message translates to:
-  /// **'Доступна версия {version}'**
-  String homeUpdateAvailable(Object version);
-
-  /// No description provided for @homeDownload.
-  ///
-  /// In ru, this message translates to:
-  /// **'Скачать'**
-  String get homeDownload;
-
   /// No description provided for @homeSubscriptionUpdated.
   ///
   /// In ru, this message translates to:
@@ -1794,6 +1752,30 @@ abstract class AppLocalizations {
   /// **'Объявление от панели'**
   String get subBarAnnounce;
 
+  /// No description provided for @subBarAnnounceFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления от сервиса {name}'**
+  String subBarAnnounceFrom(String name);
+
+  /// No description provided for @subBarAnnounceFromUnnamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления от сервиса'**
+  String get subBarAnnounceFromUnnamed;
+
+  /// No description provided for @hideAnnounceTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрывать объявления от сервиса'**
+  String get hideAnnounceTitle;
+
+  /// No description provided for @hideAnnounceSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Объявления из подписки не показываются в карточке. По умолчанию они видны на любом экране.'**
+  String get hideAnnounceSub;
+
   /// No description provided for @subSwitcherPingAll.
   ///
   /// In ru, this message translates to:
@@ -1913,12 +1895,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'TUN требует прав администратора. Один раз создаём задачу в Планировщике Windows с высшими правами — после этого туннель стартует БЕЗ запроса UAC при каждом подключении. Задача принадлежит вам и удаляется кнопкой ниже или при удалении программы.'**
   String get infoTunPrivilege;
-
-  /// No description provided for @infoAppUpdate.
-  ///
-  /// In ru, this message translates to:
-  /// **'Раз в запуск приложение спрашивает у вашего сервера, нет ли версии новее, и показывает уведомление с кнопкой «Скачать».\n\nПриложение НИЧЕГО не скачивает и не запускает само: установщик не подписан сертификатом, и самозапуск скачанного exe упирается в SmartScreen и выглядит для антивирусов как поведение зловреда. Обновление ставите вы.\n\nЕсли сервер недоступен — приложение просто молчит, запись уходит в лог. Формат ответа и настройка сервера описаны в docs/APP_UPDATE.md.'**
-  String get infoAppUpdate;
 
   /// No description provided for @infoSpeedTest.
   ///
@@ -2249,6 +2225,144 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Импортировать из поля'**
   String get importScrImportField;
+
+  /// No description provided for @importScrScanQr.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сканировать QR'**
+  String get importScrScanQr;
+
+  /// No description provided for @importScrQrFromImage.
+  ///
+  /// In ru, this message translates to:
+  /// **'QR с картинки'**
+  String get importScrQrFromImage;
+
+  /// No description provided for @qrScanPrompt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Наведите камеру на QR-код подписки'**
+  String get qrScanPrompt;
+
+  /// No description provided for @qrCameraExplainTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступ к камере'**
+  String get qrCameraExplainTitle;
+
+  /// No description provided for @qrCameraExplainBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Камера нужна только чтобы прочитать QR-код подписки. Снимки не сохраняются и никуда не отправляются.'**
+  String get qrCameraExplainBody;
+
+  /// No description provided for @qrCameraContinue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get qrCameraContinue;
+
+  /// No description provided for @qrCameraDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет доступа к камере. Разрешите его в настройках приложения или выберите картинку с QR-кодом.'**
+  String get qrCameraDenied;
+
+  /// No description provided for @qrNotFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'На картинке не найден QR-код.'**
+  String get qrNotFound;
+
+  /// No description provided for @qrReadFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось открыть картинку.'**
+  String get qrReadFailed;
+
+  /// No description provided for @statusReconnectBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединение потеряно, трафик заблокирован. Переподключение через {seconds} с (попытка {attempt})…'**
+  String statusReconnectBlocked(int seconds, int attempt);
+
+  /// No description provided for @statusTrafficNotFlowing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Туннель подключён, но трафик через него не идёт'**
+  String get statusTrafficNotFlowing;
+
+  /// No description provided for @statusVpnConsentDenied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.'**
+  String get statusVpnConsentDenied;
+
+  /// No description provided for @statusMissingCore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не найден {file} рядом с приложением. Переустановите SilentGate.'**
+  String statusMissingCore(String file);
+
+  /// No description provided for @statusPortOwnCore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} ещё занят нашим ядром ({holder}) от прошлой сессии.\n\nТак бывает, если выключить и сразу включить VPN. Подождите несколько секунд и попробуйте снова.'**
+  String statusPortOwnCore(int port, String holder);
+
+  /// No description provided for @statusPortUnknown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} уже занят другой программой, определить её не удалось.\n\nЧаще всего это другой VPN-клиент: он слушает те же локальные порты. Закройте его полностью, в том числе из трея, и попробуйте снова.'**
+  String statusPortUnknown(int port);
+
+  /// No description provided for @statusPortHolder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Порт {port} уже занят программой {holder}.\n\nЗакройте её полностью, в том числе из трея, и попробуйте снова.'**
+  String statusPortHolder(int port, String holder);
+
+  /// No description provided for @statusTunCoreHung.
+  ///
+  /// In ru, this message translates to:
+  /// **'Туннельное ядро зависло, туннель снят'**
+  String get statusTunCoreHung;
+
+  /// No description provided for @statusConnectFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось подключиться: {detail}'**
+  String statusConnectFailed(String detail);
+
+  /// No description provided for @statusCoreStopped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро {core} остановилось (код {code})'**
+  String statusCoreStopped(String core, int code);
+
+  /// No description provided for @statusCoreStoppedReason.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро {core} остановилось (код {code}): {reason}'**
+  String statusCoreStoppedReason(String core, int code, String reason);
+
+  /// No description provided for @statusReasonPortBusy.
+  ///
+  /// In ru, this message translates to:
+  /// **'локальный порт {port} уже занят'**
+  String statusReasonPortBusy(int port);
+
+  /// No description provided for @statusReasonPortBusyAny.
+  ///
+  /// In ru, this message translates to:
+  /// **'локальный порт уже занят'**
+  String get statusReasonPortBusyAny;
+
+  /// No description provided for @statusReasonFailedToStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'ядро не смогло запуститься'**
+  String get statusReasonFailedToStart;
 
   /// No description provided for @serversTitle.
   ///
@@ -2729,6 +2843,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'При обновлении подписки обновилась запись сервера'**
   String get srvTileUpdatedGeneric;
+
+  /// No description provided for @serverUnsupportedHy2Mask.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маскировка «{type}» пока не поддерживается клиентом'**
+  String serverUnsupportedHy2Mask(String type);
+
+  /// No description provided for @serverUnsupportedGeneric.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот сервер пока не поддерживается клиентом'**
+  String get serverUnsupportedGeneric;
 
   /// No description provided for @srvFieldId.
   ///
@@ -3258,6 +3384,12 @@ abstract class AppLocalizations {
   /// **'Не удалось создать задачу (UAC отклонён или запрещено политикой)'**
   String get tunTaskFailed;
 
+  /// No description provided for @tunTaskSchedulerFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Планировщик не принял задачу — причина в журнале (Настройки → Логи)'**
+  String get tunTaskSchedulerFailed;
+
   /// No description provided for @tunAutoFixNoticeText.
   ///
   /// In ru, this message translates to:
@@ -3594,12 +3726,6 @@ abstract class AppLocalizations {
   /// **'Не выходить под реальным IP'**
   String get noRealIpTitle;
 
-  /// No description provided for @noRealIpSub.
-  ///
-  /// In ru, this message translates to:
-  /// **'Даже при рабочем VPN весь «прямой» трафик идёт через VPN (RU-сайты — тоже). Локальная сеть остаётся напрямую.'**
-  String get noRealIpSub;
-
   /// No description provided for @flagAuto.
   ///
   /// In ru, this message translates to:
@@ -3815,6 +3941,12 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Сначала импортируйте подписку'**
   String get errImportSubscriptionFirst;
+
+  /// No description provided for @errServerUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот сервер не поддерживается клиентом'**
+  String get errServerUnsupported;
 
   /// No description provided for @speedSizeFull.
   ///
@@ -4217,12 +4349,6 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN'**
   String get splitNoRealIpBanner;
-
-  /// No description provided for @settingsNoRealIpAffects.
-  ///
-  /// In ru, this message translates to:
-  /// **'Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN'**
-  String get settingsNoRealIpAffects;
 
   /// No description provided for @splitAppOverrideSites.
   ///
@@ -5007,7 +5133,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoWarnNoRealIp.
   ///
   /// In ru, this message translates to:
-  /// **'Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.'**
+  /// **'Включено «Не выходить под реальным IP» — ваши правила «Прямо» уходят через VPN.'**
   String get autoWarnNoRealIp;
 
   /// No description provided for @autoWarnAllVpn.
@@ -5856,23 +5982,11 @@ abstract class AppLocalizations {
   /// **'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.'**
   String get splitKillSwitchIsPerApp;
 
-  /// No description provided for @updateNotesTitle.
-  ///
-  /// In ru, this message translates to:
-  /// **'Что нового в {version}'**
-  String updateNotesTitle(Object version);
-
   /// No description provided for @updateNotesEmpty.
   ///
   /// In ru, this message translates to:
   /// **'Описание изменений не пришло.'**
   String get updateNotesEmpty;
-
-  /// No description provided for @updateNotesNeverShow.
-  ///
-  /// In ru, this message translates to:
-  /// **'Больше не показывать'**
-  String get updateNotesNeverShow;
 
   /// No description provided for @notifOffTitle.
   ///
@@ -5897,6 +6011,660 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.'**
   String get notifOffNoScreen;
+
+  /// No description provided for @splitImport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт'**
+  String get splitImport;
+
+  /// No description provided for @splitExport.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспорт'**
+  String get splitExport;
+
+  /// No description provided for @splitImportOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки импортированы'**
+  String get splitImportOk;
+
+  /// No description provided for @splitImportBad.
+  ///
+  /// In ru, this message translates to:
+  /// **'В буфере обмена нет корректных настроек SilentGate'**
+  String get splitImportBad;
+
+  /// No description provided for @splitImportReplace.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить'**
+  String get splitImportReplace;
+
+  /// No description provided for @updatesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления'**
+  String get updatesTitle;
+
+  /// No description provided for @updatesCurrentVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущая версия {version}'**
+  String updatesCurrentVersion(String version);
+
+  /// No description provided for @updatesChannelStable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стабильный канал'**
+  String get updatesChannelStable;
+
+  /// No description provided for @updatesChannelBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'Бета-канал'**
+  String get updatesChannelBeta;
+
+  /// No description provided for @updatesCheckNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверить сейчас'**
+  String get updatesCheckNow;
+
+  /// No description provided for @updatesStatusChecking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка…'**
+  String get updatesStatusChecking;
+
+  /// No description provided for @updatesStatusUpToDate.
+  ///
+  /// In ru, this message translates to:
+  /// **'У вас последняя версия'**
+  String get updatesStatusUpToDate;
+
+  /// No description provided for @updatesStatusAvailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступна версия {version}'**
+  String updatesStatusAvailable(String version);
+
+  /// No description provided for @updatesStatusDownloading.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка… {percent}%'**
+  String updatesStatusDownloading(int percent);
+
+  /// No description provided for @updatesDownloadedOf.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузка {done} из {total} МБ'**
+  String updatesDownloadedOf(String done, String total);
+
+  /// No description provided for @updatesDownloadLeft.
+  ///
+  /// In ru, this message translates to:
+  /// **'осталось {left} МБ'**
+  String updatesDownloadLeft(String left);
+
+  /// No description provided for @updatesDownloadEtaSec.
+  ///
+  /// In ru, this message translates to:
+  /// **'~{n} с'**
+  String updatesDownloadEtaSec(int n);
+
+  /// No description provided for @updatesDownloadEtaMin.
+  ///
+  /// In ru, this message translates to:
+  /// **'~{n} мин'**
+  String updatesDownloadEtaMin(int n);
+
+  /// No description provided for @updatesStatusVerifying.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка подписи…'**
+  String get updatesStatusVerifying;
+
+  /// No description provided for @updatesStatusReady.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово к установке'**
+  String get updatesStatusReady;
+
+  /// No description provided for @updatesStatusInstalling.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка…'**
+  String get updatesStatusInstalling;
+
+  /// No description provided for @updatesStatusFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось: {reason}'**
+  String updatesStatusFailed(String reason);
+
+  /// No description provided for @updatesStatusNeedsPermission.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нужно разрешение на установку'**
+  String get updatesStatusNeedsPermission;
+
+  /// No description provided for @updatesStatusLinkOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установите вручную'**
+  String get updatesStatusLinkOnly;
+
+  /// No description provided for @updatesModeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Как обновляться'**
+  String get updatesModeTitle;
+
+  /// No description provided for @updatesModeAsk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Спрашивать'**
+  String get updatesModeAsk;
+
+  /// No description provided for @updatesModeAskHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Покажет, что нового, и установит только после вашего согласия'**
+  String get updatesModeAskHint;
+
+  /// No description provided for @updatesModeAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автоматически'**
+  String get updatesModeAuto;
+
+  /// No description provided for @updatesModeAutoHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачает и установит само, когда VPN выключен'**
+  String get updatesModeAutoHint;
+
+  /// No description provided for @updatesModeNotify.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только уведомлять'**
+  String get updatesModeNotify;
+
+  /// No description provided for @updatesModeNotifyHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сообщит о новой версии, ничего не скачивая и не устанавливая'**
+  String get updatesModeNotifyHint;
+
+  /// No description provided for @updatesAutoCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверять при запуске'**
+  String get updatesAutoCheck;
+
+  /// No description provided for @updatesBeta.
+  ///
+  /// In ru, this message translates to:
+  /// **'Получать бета-версии'**
+  String get updatesBeta;
+
+  /// No description provided for @updatesSignatureNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Каждый файл проверяется подписью разработчика и контрольной суммой; без совпадения установка не начнётся'**
+  String get updatesSignatureNote;
+
+  /// No description provided for @updatesDialogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Доступно обновление {version}'**
+  String updatesDialogTitle(String version);
+
+  /// No description provided for @updatesInstall.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить'**
+  String get updatesInstall;
+
+  /// No description provided for @updatesLater.
+  ///
+  /// In ru, this message translates to:
+  /// **'Позже'**
+  String get updatesLater;
+
+  /// No description provided for @updatesSkipVersion.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить эту версию'**
+  String get updatesSkipVersion;
+
+  /// No description provided for @updatesVpnWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка разорвёт VPN-соединение'**
+  String get updatesVpnWarning;
+
+  /// No description provided for @updatesAndroidUnknownSources.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешите установку из этого приложения'**
+  String get updatesAndroidUnknownSources;
+
+  /// No description provided for @updatesAndroidOpenSettings.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть настройки'**
+  String get updatesAndroidOpenSettings;
+
+  /// No description provided for @updatesAndroidNoSilent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Android покажет системное окно установки: это требование системы'**
+  String get updatesAndroidNoSilent;
+
+  /// No description provided for @updatesPortableFallback.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта копия не установлена через установщик. Скачайте новую версию вручную'**
+  String get updatesPortableFallback;
+
+  /// No description provided for @updatesInstalledToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлено до {version}'**
+  String updatesInstalledToast(String version);
+
+  /// No description provided for @updatesInstallFailedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка не завершилась'**
+  String get updatesInstallFailedTitle;
+
+  /// No description provided for @updatesInstallFailedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия осталась {version}. Журнал установщика ниже'**
+  String updatesInstallFailedBody(String version);
+
+  /// No description provided for @updatesShowLog.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать журнал'**
+  String get updatesShowLog;
+
+  /// No description provided for @updatesOverrideBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'Источник обновлений подменён (тестовый режим)'**
+  String get updatesOverrideBadge;
+
+  /// No description provided for @updatesSettingsTile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновления'**
+  String get updatesSettingsTile;
+
+  /// No description provided for @updatesSettingsTileSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка, загрузка и установка новых версий'**
+  String get updatesSettingsTileSubtitle;
+
+  /// No description provided for @updatesPreviousVersions.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прежние версии'**
+  String get updatesPreviousVersions;
+
+  /// No description provided for @updatesInstallOlder.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установить'**
+  String get updatesInstallOlder;
+
+  /// No description provided for @updatesDowngradeWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откат на более старую версию. Продолжить?'**
+  String get updatesDowngradeWarning;
+
+  /// No description provided for @updatesSizeMb.
+  ///
+  /// In ru, this message translates to:
+  /// **'{mb} МБ'**
+  String updatesSizeMb(String mb);
+
+  /// No description provided for @updatesVpnWarningBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение закроется, и VPN отключится на время установки. После обновления подключитесь снова'**
+  String get updatesVpnWarningBody;
+
+  /// No description provided for @updatesOpenPage.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть страницу загрузки'**
+  String get updatesOpenPage;
+
+  /// No description provided for @updatesLinkNotify.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбран режим «Только уведомлять» — скачайте новую версию со страницы загрузки'**
+  String get updatesLinkNotify;
+
+  /// No description provided for @updatesLinkNoSelfUpdate.
+  ///
+  /// In ru, this message translates to:
+  /// **'В этом выпуске нет подписанного установщика для вашей системы — скачайте его со страницы загрузки'**
+  String get updatesLinkNoSelfUpdate;
+
+  /// No description provided for @updatesLinkIsolated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это изолированная тестовая копия — она не трогает установленное приложение. Обновите его вручную'**
+  String get updatesLinkIsolated;
+
+  /// No description provided for @updatesLinkLocation.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение запущено не из папки установки — скачайте новую версию вручную или запустите установленную копию'**
+  String get updatesLinkLocation;
+
+  /// No description provided for @updatesLinkElevated.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение запущено от имени администратора — так обновляться небезопасно. Запустите его обычным способом'**
+  String get updatesLinkElevated;
+
+  /// No description provided for @updatesLinkUnsupported.
+  ///
+  /// In ru, this message translates to:
+  /// **'На этой платформе приложение не обновляется само — скачайте новую версию вручную'**
+  String get updatesLinkUnsupported;
+
+  /// No description provided for @updatesErrCheck.
+  ///
+  /// In ru, this message translates to:
+  /// **'сервер обновлений не ответил'**
+  String get updatesErrCheck;
+
+  /// No description provided for @updatesErrInsecure.
+  ///
+  /// In ru, this message translates to:
+  /// **'адрес загрузки не защищён (не https)'**
+  String get updatesErrInsecure;
+
+  /// No description provided for @updatesErrAssetName.
+  ///
+  /// In ru, this message translates to:
+  /// **'имя файла в выпуске недопустимо'**
+  String get updatesErrAssetName;
+
+  /// No description provided for @updatesErrManifest.
+  ///
+  /// In ru, this message translates to:
+  /// **'не удалось получить подписанное описание выпуска'**
+  String get updatesErrManifest;
+
+  /// No description provided for @updatesErrSignature.
+  ///
+  /// In ru, this message translates to:
+  /// **'подпись не совпала — файл мог быть подменён'**
+  String get updatesErrSignature;
+
+  /// No description provided for @updatesErrManifestRejected.
+  ///
+  /// In ru, this message translates to:
+  /// **'описание выпуска не подходит для этой версии или системы'**
+  String get updatesErrManifestRejected;
+
+  /// No description provided for @updatesErrDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'файл не скачался или не совпал по контрольной сумме'**
+  String get updatesErrDownload;
+
+  /// No description provided for @updatesErrInstall.
+  ///
+  /// In ru, this message translates to:
+  /// **'установщик не запустился'**
+  String get updatesErrInstall;
+
+  /// No description provided for @updatesErrNotNewer.
+  ///
+  /// In ru, this message translates to:
+  /// **'эта версия не новее установленной'**
+  String get updatesErrNotNewer;
+
+  /// No description provided for @updatesInfo.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что приложение делает с найденной новой версией. В автоматическом режиме установка не разрывает включённый VPN: она дождётся отключения. В любом режиме файл ставится, только если совпала подпись разработчика.'**
+  String get updatesInfo;
+
+  /// No description provided for @updatesDownload.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать'**
+  String get updatesDownload;
+
+  /// No description provided for @updatesInstallNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установить сейчас'**
+  String get updatesInstallNow;
+
+  /// No description provided for @updatesWaitingVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Готово к установке — начнётся после отключения VPN'**
+  String get updatesWaitingVpn;
+
+  /// No description provided for @updatesSkippedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Версия {version} пропущена — сообщим о следующей'**
+  String updatesSkippedNote(String version);
+
+  /// No description provided for @updatesAutoNoticeTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Установка обновления'**
+  String get updatesAutoNoticeTitle;
+
+  /// No description provided for @updatesAutoNoticeBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Приложение закроется на время установки версии {version}'**
+  String updatesAutoNoticeBody(String version);
+
+  /// No description provided for @splitImportTitleApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт приложений'**
+  String get splitImportTitleApps;
+
+  /// No description provided for @splitImportTitleSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт сайтов'**
+  String get splitImportTitleSites;
+
+  /// No description provided for @splitImportFormatNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.'**
+  String get splitImportFormatNote;
+
+  /// No description provided for @splitImportFieldHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'youtube.com\nnetflix.com'**
+  String get splitImportFieldHint;
+
+  /// No description provided for @splitImportPasteClipboard.
+  ///
+  /// In ru, this message translates to:
+  /// **'Вставить из буфера'**
+  String get splitImportPasteClipboard;
+
+  /// No description provided for @splitImportAdd.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавить'**
+  String get splitImportAdd;
+
+  /// No description provided for @splitImportReplaceAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить всё'**
+  String get splitImportReplaceAll;
+
+  /// No description provided for @splitImportStatNew.
+  ///
+  /// In ru, this message translates to:
+  /// **'новых: {n}'**
+  String splitImportStatNew(int n);
+
+  /// No description provided for @splitImportStatSame.
+  ///
+  /// In ru, this message translates to:
+  /// **'уже есть: {n}'**
+  String splitImportStatSame(int n);
+
+  /// No description provided for @splitImportStatConflict.
+  ///
+  /// In ru, this message translates to:
+  /// **'различаются: {n}'**
+  String splitImportStatConflict(int n);
+
+  /// No description provided for @splitImportStatBad.
+  ///
+  /// In ru, this message translates to:
+  /// **'не разобрано: {n}'**
+  String splitImportStatBad(int n);
+
+  /// No description provided for @splitImportOverwrite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезаписать различающиеся'**
+  String get splitImportOverwrite;
+
+  /// No description provided for @splitImportOverwriteSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключено — у таких правил остаются текущие настройки'**
+  String get splitImportOverwriteSub;
+
+  /// No description provided for @splitImportConflictLine.
+  ///
+  /// In ru, this message translates to:
+  /// **'было {from}, станет {to}'**
+  String splitImportConflictLine(String from, String to);
+
+  /// No description provided for @splitImportBadLinesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эти строки не взяты'**
+  String get splitImportBadLinesTitle;
+
+  /// No description provided for @splitImportAdded.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавлено {added}, изменено {changed}'**
+  String splitImportAdded(int added, int changed);
+
+  /// No description provided for @splitImportReplaced.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правил после замены: {n}'**
+  String splitImportReplaced(int n);
+
+  /// No description provided for @splitExportEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список пуст — экспортировать нечего'**
+  String get splitExportEmpty;
+
+  /// No description provided for @splitCountEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пусто'**
+  String get splitCountEmpty;
+
+  /// No description provided for @splitCountTotal.
+  ///
+  /// In ru, this message translates to:
+  /// **'всего {n}'**
+  String splitCountTotal(int n);
+
+  /// No description provided for @splitCountOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'вкл {n}'**
+  String splitCountOn(int n);
+
+  /// No description provided for @splitCountOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'выкл {n}'**
+  String splitCountOff(int n);
+
+  /// No description provided for @splitCountTunnel.
+  ///
+  /// In ru, this message translates to:
+  /// **'туннель {n}'**
+  String splitCountTunnel(int n);
+
+  /// No description provided for @splitCountDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'прямо {n}'**
+  String splitCountDirect(int n);
+
+  /// No description provided for @splitCountBlock.
+  ///
+  /// In ru, this message translates to:
+  /// **'блок {n}'**
+  String splitCountBlock(int n);
+
+  /// No description provided for @splitExpandList.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть список'**
+  String get splitExpandList;
+
+  /// No description provided for @splitCollapseList.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть список'**
+  String get splitCollapseList;
+
+  /// No description provided for @splitExpandGroup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Развернуть группу'**
+  String get splitExpandGroup;
+
+  /// No description provided for @splitCollapseGroup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Свернуть группу'**
+  String get splitCollapseGroup;
+
+  /// No description provided for @splitExpandSubdomains.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать поддомены'**
+  String get splitExpandSubdomains;
+
+  /// No description provided for @splitCollapseSubdomains.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скрыть поддомены'**
+  String get splitCollapseSubdomains;
 }
 
 class _AppLocalizationsDelegate

@@ -1,8 +1,12 @@
+import 'dart:ffi';
 import 'dart:io';
 
+import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
+import '../../../core/platform/platform_services.dart';
 import '../elevation.dart';
 import 'tun_helper.dart';
 
@@ -60,11 +64,9 @@ class TunScheduledTask {
           'schtasks', ['/Query', '/TN', taskName, '/XML'],
           stdoutEncoding: null);
       if (r.exitCode != 0) return false;
-      // ⚠️ Вывод в UTF-16LE с BOM: `schtasks /XML` печатает именно так, и
-      // системная кодировка его не берёт — строка приходила мусором, а
-      // сравнение всегда давало «не совпало».
       final want = await expected();
-      return matches(decodeUtf16(r.stdout as List<int>), want.exe, want.args);
+      return matches(
+          decodeQueryOutput(r.stdout as List<int>), want.exe, want.args);
     } catch (_) {
       return false;
     }
@@ -79,9 +81,19 @@ class TunScheduledTask {
   static bool matches(String xml, String exe, String args) {
     // Пути сравниваем без учёта регистра: Windows его не различает, а
     // Планировщик возвращает то, что записали.
-    return tag(xml, 'Command').toLowerCase() == exe.toLowerCase() &&
+    return _unquote(tag(xml, 'Command')).toLowerCase() == exe.toLowerCase() &&
         tag(xml, 'Arguments').toLowerCase() == args.toLowerCase();
   }
+
+  /// ⚠️ ПЛАНИРОВЩИК ХРАНИТ ПРОГРАММУ В КАВЫЧКАХ: `/TR "\"<exe>\" …"` ложится
+  /// в `<Command>` как `"C:\…\silentgate.exe"`. Проверено живьём в VM
+  /// 08.10.2026. Прежняя сверка сравнивала это с путём без кавычек, и верно
+  /// созданная задача объявлялась чужой — тесты писались по догадке о
+  /// формате, а не по настоящему выводу.
+  static String _unquote(String v) =>
+      v.length >= 2 && v.startsWith('"') && v.endsWith('"')
+          ? v.substring(1, v.length - 1)
+          : v;
 
   /// Содержимое одного тега XML. Полноценный разбор здесь не нужен: оба поля
   /// плоские и без вложенности.
@@ -96,9 +108,60 @@ class TunScheduledTask {
     return (m?.group(1) ?? '').trim().replaceAll('&quot;', '"');
   }
 
-  /// ⚠️ `schtasks /XML` печатает UTF-16LE с меткой порядка байт. Системная
-  /// кодировка его не берёт: строка приходила мусором, и сравнение не совпало
-  /// бы ни разу.
+  /// Вывод `schtasks /Query … /XML`, прочитанный через пайп, — в строку.
+  ///
+  /// ⚠️ ШАПКА XML ВРЁТ. Она пишет `encoding="UTF-16"`, а в пайп `schtasks`
+  /// отдаёт ОДНОБАЙТНЫЙ текст в OEM-кодировке консоли (cp866 на русской
+  /// Windows) и без метки порядка байт. Проверено 08.10.2026 и на хосте
+  /// (26100), и в VM (23H2): первые байты `3C 3F 78 6D 6C`, «Иван» —
+  /// `88 A2 A0 AD`. Прежний код читал вывод как UTF-16 ВСЕГДА, получал мусор,
+  /// и [isCurrent] не совпадал НИКОГДА и ни у кого: заметка «задача устарела»
+  /// приходила в каждой сессии, а «Исправить» через 10 с сдавалось.
+  ///
+  /// UTF-16 оставлен на случай, если на какой-то сборке Windows он всё-таки
+  /// придёт: с меткой или по нулевым старшим байтам ASCII.
+  @visibleForTesting
+  static String decodeQueryOutput(List<int> bytes,
+      {String Function(List<int>)? oem}) {
+    final utf16 = bytes.length >= 2 &&
+        ((bytes[0] == 0xFF && bytes[1] == 0xFE) || bytes[1] == 0);
+    if (utf16) return decodeUtf16(bytes);
+    return (oem ?? _decodeOem)(bytes);
+  }
+
+  /// OEM-кодировка консоли → строка, средствами самой Windows.
+  ///
+  /// Своя таблица cp866 была бы верна только на русской системе; Windows знает
+  /// OEM-страницу любой локали.
+  static String _decodeOem(List<int> bytes) {
+    if (bytes.isEmpty) return '';
+    final src = calloc<Uint8>(bytes.length);
+    try {
+      src.asTypedList(bytes.length).setAll(0, bytes);
+      // CP_OEMCP = 1.
+      final n = _multiByteToWideChar(1, 0, src, bytes.length, nullptr, 0);
+      if (n <= 0) return String.fromCharCodes(bytes);
+      final dst = calloc<Uint16>(n);
+      try {
+        _multiByteToWideChar(1, 0, src, bytes.length, dst, n);
+        return String.fromCharCodes(dst.asTypedList(n));
+      } finally {
+        calloc.free(dst);
+      }
+    } finally {
+      calloc.free(src);
+    }
+  }
+
+  // В пакете win32 5.15 этой функции нет — привязка вручную.
+  static final _multiByteToWideChar = DynamicLibrary.open('kernel32.dll')
+      .lookupFunction<
+          Int32 Function(Uint32, Uint32, Pointer<Uint8>, Int32, Pointer<Uint16>,
+              Int32),
+          int Function(int, int, Pointer<Uint8>, int, Pointer<Uint16>,
+              int)>('MultiByteToWideChar');
+
+  /// UTF-16LE (с меткой порядка байт или без) → строка.
   @visibleForTesting
   static String decodeUtf16(List<int> bytes) {
     var b = bytes;
@@ -110,11 +173,22 @@ class TunScheduledTask {
     return String.fromCharCodes(units);
   }
 
-  /// Создать/пересоздать задачу. Показывает UAC ОДИН раз. true — запуск подтверждён.
+  /// Строка параметров `schtasks /Create` — одна на все пути элевации.
+  ///
+  /// ⚠️ ВЛОЖЕННЫЕ КАВЫЧКИ ЭКРАНИРОВАНЫ ПО ПРАВИЛАМ КОМАНДНОЙ СТРОКИ WINDOWS
+  /// (`\"`). Значение `/TR` после разбора обязано быть ровно
+  /// `"<exe>" --tun-task "<cfg>" "<stop>"` — то, с чем потом сверяет
+  /// [isCurrent]. Тест сверяет именно разобранное, а не саму строку.
+  @visibleForTesting
+  static String createArgs(String exe, String cfg, String stop) =>
+      '/Create /TN $taskName /TR "\\"$exe\\" --tun-task \\"$cfg\\" \\"$stop\\"" '
+      '/SC ONCE /ST 00:00 /RL HIGHEST /F';
+
+  /// Создать/пересоздать задачу. Показывает UAC ОДИН раз.
   ///
   /// Ждём появления задачи: `ShellExecuteEx` возвращает управление сразу, а schtasks
   /// отрабатывает уже в элевейтнутом процессе.
-  static Future<bool> install() async {
+  static Future<PrivilegeSetupResult> install() async {
     final exe = Platform.resolvedExecutable;
     // Пути к конфигу/stop берём из per-user appdata GUI и ЗАПЕКАЕМ в команду
     // задачи — иначе задача, выполняясь от отдельного админа, читала бы чужой
@@ -122,9 +196,7 @@ class TunScheduledTask {
     final dir = await AppPaths.supportDir();
     final cfg = TunHelper.configPathFor(dir);
     final stop = TunHelper.stopFilePathFor(dir);
-    final args =
-        '/Create /TN $taskName /TR "\\"$exe\\" --tun-task \\"$cfg\\" \\"$stop\\"" '
-        '/SC ONCE /ST 00:00 /RL HIGHEST /F';
+    final args = createArgs(exe, cfg, stop);
     // ⚠️ Только асинхронно. Эту задачу заводят из настройки «запуск без UAC»,
     // то есть ровно тогда, когда пользователь уже устал от зависаний, — и
     // замерзший здесь интерфейс убил бы сам обходной путь.
@@ -132,9 +204,15 @@ class TunScheduledTask {
     // «запустился ли schtasks». Без ожидания мы возвращали успех, даже
     // когда команда падала, и человек видел «UAC отклонён» там, где UAC
     // вообще не участвовал (жалоба владельца 07.09.2026).
-    if (!await Elevation.runElevatedAsync('schtasks.exe', args,
-        waitForExit: true)) {
-      return false;
+    final outcome = await Elevation.runElevatedDetailed('schtasks.exe', args,
+        waitForExit: true);
+    switch (outcome) {
+      case ElevationOutcome.ok:
+        break;
+      case ElevationOutcome.denied:
+        return PrivilegeSetupResult.denied;
+      case ElevationOutcome.commandFailed:
+        return PrivilegeSetupResult.failed;
     }
 
     final deadline = DateTime.now().add(const Duration(seconds: 10));
@@ -148,10 +226,31 @@ class TunScheduledTask {
       // подключении заметка приходила снова. Жалоба владельца 03.09.2026:
       // «кнопка Исправить НЕ РАБОТАЕТ» — она отчитывалась об успехе,
       // которого не случилось.
-      if (await isCurrent()) return true;
+      if (await isCurrent()) {
+        AppLog.i('Задача Планировщика создана и запускает то, что нужно');
+        return PrivilegeSetupResult.done;
+      }
       await Future.delayed(const Duration(milliseconds: 300));
     }
-    return false;
+    // Права были, команда отработала — а задача не та. Это не отказ в
+    // правах, и называть его так нельзя: в журнал — что именно записалось.
+    AppLog.e('Задача Планировщика после создания не совпала с ожидаемой. '
+        'Записано: ${await _describe()}');
+    return PrivilegeSetupResult.failed;
+  }
+
+  /// Команда и аргументы задачи как они лежат в Планировщике — для журнала.
+  static Future<String> _describe() async {
+    try {
+      final r = await Process.run(
+          'schtasks', ['/Query', '/TN', taskName, '/XML'],
+          stdoutEncoding: null);
+      if (r.exitCode != 0) return 'задачи нет';
+      final xml = decodeQueryOutput(r.stdout as List<int>);
+      return '«${tag(xml, 'Command')}» «${tag(xml, 'Arguments')}»';
+    } catch (e) {
+      return 'не прочитать: $e';
+    }
   }
 
   /// Запустить TUN через задачу — без UAC. false, если задачи нет или запуск не удался.
@@ -179,9 +278,12 @@ class TunScheduledTask {
 
   static Future<bool> _isRunning() async {
     try {
+      // Вывод — в OEM-кодировке, см. [decodeQueryOutput]: прочитанный
+      // системной, русский статус «Выполняется» не узнавался бы никогда.
       final r = await Process.run(
-          'schtasks', ['/Query', '/TN', taskName, '/FO', 'LIST', '/V']);
-      final out = '${r.stdout}';
+          'schtasks', ['/Query', '/TN', taskName, '/FO', 'LIST', '/V'],
+          stdoutEncoding: null);
+      final out = decodeQueryOutput(r.stdout as List<int>);
       // Статус локализован: en «Running», ru «Выполняется».
       return out.contains('Running') || out.contains('Выполняется');
     } catch (_) {

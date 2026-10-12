@@ -56,4 +56,55 @@ void main() {
       expect(FlagUtil.isoFromName('Plain server name'), isNull);
     });
   });
+
+  /// Решение владельца 25.09.2026: в тексте у имени сервера флаг либо
+  /// картинка ([FlagText]), либо (если уже показан в [FlagCell] рядом) вырезан
+  /// целиком — никогда не буквы кода страны. `stripIconFlags` обязан резать
+  /// РОВНО те пары, что `isoCodesFromName` берёт себе (первые две) — общий
+  /// проход `_scanFirstTwoPairs` гарантирует, что выбор не разойдётся.
+  group('FlagUtil.stripIconFlags', () {
+    test('без флагов — текст как есть', () {
+      expect(FlagUtil.stripIconFlags('Plain server name'), 'Plain server name');
+    });
+
+    test('один флаг — вырезается целиком', () {
+      expect(FlagUtil.stripIconFlags('🇳🇱 Amsterdam'), 'Amsterdam');
+    });
+
+    test('два флага подряд — оба вырезаются', () {
+      expect(FlagUtil.stripIconFlags('🇳🇱🇨🇿 Bridge'), 'Bridge');
+    });
+
+    test('третий флаг остаётся в тексте — его FlagCell не рисует', () {
+      // FlagCell показывает только первые два (isoCodesFromName), третий и
+      // далее обязаны уцелеть в тексте и достаться FlagText как картинка.
+      expect(FlagUtil.stripIconFlags('🇳🇱🇨🇿🇩🇪 Triple'), '🇩🇪 Triple');
+    });
+
+    test('флаг в середине имени — вырезается, соседний текст схлопывается',
+        () {
+      expect(FlagUtil.stripIconFlags('Node 🇳🇱 premium'), 'Node premium');
+    });
+
+    test('два флага в середине и в конце — оба вырезаются', () {
+      expect(FlagUtil.stripIconFlags('Bridge 🇳🇱 -> 🇨🇿 edge'), 'Bridge -> edge');
+    });
+
+    test('обычные эмодзи (не regional-indicator) не трогаются', () {
+      // 🚀 и 🏳️ не собраны из пары regional-indicator — это не флаг-пара
+      // в смысле [FlagUtil], значит вырезать нечего.
+      expect(FlagUtil.stripIconFlags('🚀Германия 2.7 (edge)'),
+          '🚀Германия 2.7 (edge)');
+      expect(FlagUtil.stripIconFlags('🏳️ White flag'), '🏳️ White flag');
+    });
+
+    test('флаг рядом с обычным эмодзи — вырезается только сам флаг', () {
+      expect(FlagUtil.stripIconFlags('🇩🇪 🚀Германия 2.7 (edge)'),
+          '🚀Германия 2.7 (edge)');
+    });
+
+    test('одинокая непарная руна indicator не вырезается как мусор', () {
+      expect(FlagUtil.stripIconFlags('🇳 Amsterdam'), '🇳 Amsterdam');
+    });
+  });
 }

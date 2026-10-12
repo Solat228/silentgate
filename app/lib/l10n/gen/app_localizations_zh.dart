@@ -30,9 +30,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonRefresh => '刷新';
 
   @override
-  String get commonCheck => '检查';
-
-  @override
   String get commonOk => '确定';
 
   @override
@@ -147,6 +144,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get closeToTraySubtitle => '关闭按钮会将窗口隐藏到托盘；关闭此项则改为退出应用';
+
+  @override
+  String get launchAtLoginTitle => '随 Windows 启动';
+
+  @override
+  String get launchAtLoginSub => '登录时应用以最小化方式在托盘中启动';
+
+  @override
+  String get connectOnAutostartTitle => '自动启动时连接';
+
+  @override
+  String get connectOnAutostartSub => 'Windows 启动应用后立即连接到所选服务器的 VPN';
+
+  @override
+  String get sortServersByCountryTitle => '按国家排序';
+
+  @override
+  String get sortServersByCountrySub => '将同一国家的服务器归在一起。国家保持服务商的顺序；已置顶的服务器仍在最上方';
+
+  @override
+  String get serverGroupCollapse => '折叠分组';
+
+  @override
+  String get serverGroupExpand => '展开分组';
 
   @override
   String get autoUpdateSubTitle => '自动更新订阅';
@@ -564,50 +585,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get testUrlLabel => '测试 URL（经由代理）';
 
   @override
-  String get appUpdateServerUnavailable => '更新服务器不可用';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return '有可用版本 $version';
-  }
-
-  @override
-  String get appUpdateLatest => '您已是最新版本';
-
-  @override
-  String get appUpdateDownload => '下载';
-
-  @override
-  String get appUpdateCheckTitle => '启动时检查更新';
-
-  @override
-  String get appUpdateManual => '下载与安装——手动进行';
-
-  @override
-  String get appUpdateEndpointLabel => '版本端点';
-
-  @override
-  String get appUpdateBetaChannelTitle => '接收测试版';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      '包含预发布版本的 GitHub 发布列表，外加网站的备用地址。不影响稳定版的自动更新。';
-
-  @override
   String get infoAppUpdateBeta =>
       '开启后应用会查看 GitHub 完整的发布列表，包括预发布版本，而不只是最新的正式版。主自动更新渠道不受影响——未打开此开关的用户不会收到测试版。';
 
   @override
   String get appUpdateBetaBadge => '测试版';
-
-  @override
-  String get appUpdateBetaNotice => '这是一个预发布版本，可能存在问题。自动更新不会推送这类版本。';
-
-  @override
-  String get appUpdatePreviousVersionsButton => '历史版本';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => '历史版本';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -768,14 +750,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get enumActionBlock => '阻止';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return '有可用版本 $version';
-  }
-
-  @override
-  String get homeDownload => '下载';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -947,6 +921,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get subBarAnnounce => '面板公告';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return '来自 $name 的公告';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => '服务公告';
+
+  @override
+  String get hideAnnounceTitle => '隐藏服务公告';
+
+  @override
+  String get hideAnnounceSub => '不在卡片中显示订阅公告。默认情况下，公告在任何屏幕上都可见。';
+
+  @override
   String get subSwitcherPingAll => '测试全部订阅的服务器';
 
   @override
@@ -1027,10 +1015,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN 需要管理员权限。我们会一次性在 Windows 任务计划程序中创建一个最高权限的任务——之后每次连接时隧道启动将不再弹出 UAC 提示。该任务属于您，可通过下方按钮删除，或在卸载程序时删除。';
-
-  @override
-  String get infoAppUpdate =>
-      '每次启动时，应用会向您的服务器询问是否有更新版本，并显示带有“下载”按钮的通知。\n\n应用不会自行下载或运行任何内容：安装程序未使用证书签名，自动运行下载的 exe 会触发 SmartScreen，并在杀毒软件看来像恶意行为。更新由您自行安装。\n\n如果服务器不可用，应用只会保持静默并向日志写入一条记录。响应格式和服务器配置详见 docs/APP_UPDATE.md。';
 
   @override
   String get infoSpeedTest =>
@@ -1233,6 +1217,93 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get importScrImportField => '从字段导入';
+
+  @override
+  String get importScrScanQr => '扫描二维码';
+
+  @override
+  String get importScrQrFromImage => '从图片识别二维码';
+
+  @override
+  String get qrScanPrompt => '将摄像头对准订阅二维码';
+
+  @override
+  String get qrCameraExplainTitle => '相机权限';
+
+  @override
+  String get qrCameraExplainBody => '相机仅用于读取订阅二维码，不会保存或发送任何内容。';
+
+  @override
+  String get qrCameraContinue => '继续';
+
+  @override
+  String get qrCameraDenied => '没有相机权限。请在应用设置中允许，或选择包含二维码的图片。';
+
+  @override
+  String get qrNotFound => '图片中未找到二维码。';
+
+  @override
+  String get qrReadFailed => '无法打开图片。';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return '连接已断开，流量已被阻断。$seconds 秒后重新连接（第 $attempt 次尝试）…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing => '隧道已建立，但没有流量通过';
+
+  @override
+  String get statusVpnConsentDenied => 'Android 未允许启动 VPN。请再次点击“连接”并确认系统请求。';
+
+  @override
+  String statusMissingCore(String file) {
+    return '未在应用旁找到 $file。请重新安装 SilentGate。';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return '端口 $port 仍被上一次会话的本应用内核（$holder）占用。\n\n关闭 VPN 后立即重新打开时会出现这种情况。请等待几秒后重试。';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return '端口 $port 已被另一个无法识别的程序占用。\n\n通常是另一个监听相同本地端口的 VPN 客户端。请将其完全关闭（包括托盘中的），然后重试。';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return '端口 $port 已被 $holder 占用。\n\n请将其完全关闭（包括托盘中的），然后重试。';
+  }
+
+  @override
+  String get statusTunCoreHung => '隧道内核无响应，隧道已移除';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return '无法连接：$detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return '$core 内核已停止（代码 $code）';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return '$core 内核已停止（代码 $code）：$reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return '本地端口 $port 已被占用';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => '某个本地端口已被占用';
+
+  @override
+  String get statusReasonFailedToStart => '内核无法启动';
 
   @override
   String get serversTitle => '服务器';
@@ -1487,6 +1558,14 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'The last subscription update changed this server\'s record';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return '此客户端暂不支持「$type」混淆';
+  }
+
+  @override
+  String get serverUnsupportedGeneric => '此客户端暂不支持该服务器';
 
   @override
   String get srvFieldId => 'ID / password';
@@ -1764,6 +1843,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunTaskFailed => '无法创建任务（UAC 被拒绝或被策略阻止）';
 
   @override
+  String get tunTaskSchedulerFailed => '任务计划程序拒绝了该任务——原因见日志（设置 → 日志）';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 
@@ -1935,9 +2017,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get noRealIpTitle => '绝不使用真实 IP';
 
   @override
-  String get noRealIpSub => '即使 VPN 已连接，所有“直连”流量也走 VPN（包括 RU 网站）。本地网络保持直连。';
-
-  @override
   String get flagAuto => '自动';
 
   @override
@@ -2058,6 +2137,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => '请先导入订阅';
+
+  @override
+  String get errServerUnsupported => '客户端不支持此服务器';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2296,9 +2378,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitNoRealIpBanner => '“绝不使用真实 IP”已开启：未勾选的“直连”规则将走 VPN';
-
-  @override
-  String get settingsNoRealIpAffects => '影响“直连”规则：未勾选“允许真实 IP”时它们会走 VPN';
 
   @override
   String get splitAppOverrideSites => '优先于网站规则';
@@ -2757,7 +2836,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get autoWarnNoRealIp => '已开启“不暴露真实 IP”，全部流量都走 VPN。';
+  String get autoWarnNoRealIp => '已开启“不暴露真实 IP”，你的“直连”规则会走 VPN。';
 
   @override
   String get autoWarnAllVpn => '当前为“全部走 VPN”模式，您的规则暂时不生效。';
@@ -3272,15 +3351,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。';
 
   @override
-  String updateNotesTitle(Object version) {
-    return '$version 更新内容';
-  }
-
-  @override
   String get updateNotesEmpty => '未收到更新说明。';
-
-  @override
-  String get updateNotesNeverShow => '不再显示';
 
   @override
   String get notifOffTitle => '通知已关闭';
@@ -3294,4 +3365,387 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       '无法打开通知设置页面。请手动开启：Android 设置 → 应用 → SilentGate。';
+
+  @override
+  String get splitImport => '导入';
+
+  @override
+  String get splitExport => '导出';
+
+  @override
+  String get splitImportOk => '设置已导入';
+
+  @override
+  String get splitImportBad => '剪贴板中没有有效的 SilentGate 设置';
+
+  @override
+  String get splitImportReplace => '替换';
+
+  @override
+  String get updatesTitle => '更新';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return '当前版本 $version';
+  }
+
+  @override
+  String get updatesChannelStable => '稳定渠道';
+
+  @override
+  String get updatesChannelBeta => '测试版渠道';
+
+  @override
+  String get updatesCheckNow => '立即检查';
+
+  @override
+  String get updatesStatusChecking => '正在检查…';
+
+  @override
+  String get updatesStatusUpToDate => '已是最新版本';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return '有新版本 $version';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return '正在下载… $percent%';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return '正在下载 $done / $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '剩余 $left MB';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '约 $n 秒';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '约 $n 分钟';
+  }
+
+  @override
+  String get updatesStatusVerifying => '正在验证签名…';
+
+  @override
+  String get updatesStatusReady => '准备安装';
+
+  @override
+  String get updatesStatusInstalling => '正在安装…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return '失败：$reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => '需要安装权限';
+
+  @override
+  String get updatesStatusLinkOnly => '请手动安装';
+
+  @override
+  String get updatesModeTitle => '更新方式';
+
+  @override
+  String get updatesModeAsk => '询问';
+
+  @override
+  String get updatesModeAskHint => '显示更新内容，仅在您确认后安装';
+
+  @override
+  String get updatesModeAuto => '自动';
+
+  @override
+  String get updatesModeAutoHint => '在 VPN 关闭时自动下载并安装';
+
+  @override
+  String get updatesModeNotify => '仅通知';
+
+  @override
+  String get updatesModeNotifyHint => '仅提示有新版本，不下载也不安装';
+
+  @override
+  String get updatesAutoCheck => '启动时检查';
+
+  @override
+  String get updatesBeta => '接收测试版';
+
+  @override
+  String get updatesSignatureNote => '每个文件都会通过开发者签名和校验和进行验证；不匹配则不会开始安装';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return '有可用更新 $version';
+  }
+
+  @override
+  String get updatesInstall => '更新';
+
+  @override
+  String get updatesLater => '稍后';
+
+  @override
+  String get updatesSkipVersion => '跳过此版本';
+
+  @override
+  String get updatesVpnWarning => '安装将断开 VPN 连接';
+
+  @override
+  String get updatesAndroidUnknownSources => '请允许从此应用安装';
+
+  @override
+  String get updatesAndroidOpenSettings => '打开设置';
+
+  @override
+  String get updatesAndroidNoSilent => 'Android 会显示系统安装窗口：这是系统要求';
+
+  @override
+  String get updatesPortableFallback => '此副本不是通过安装程序安装的。请手动下载新版本';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return '已更新到 $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => '安装未完成';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return '版本仍为 $version。安装程序日志见下方';
+  }
+
+  @override
+  String get updatesShowLog => '显示日志';
+
+  @override
+  String get updatesOverrideBadge => '更新来源已被替换（测试模式）';
+
+  @override
+  String get updatesSettingsTile => '更新';
+
+  @override
+  String get updatesSettingsTileSubtitle => '检查、下载并安装新版本';
+
+  @override
+  String get updatesPreviousVersions => '早期版本';
+
+  @override
+  String get updatesInstallOlder => '安装';
+
+  @override
+  String get updatesDowngradeWarning => '回退到更早的版本。是否继续？';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody => '应用将关闭，安装期间 VPN 会断开。更新后请重新连接';
+
+  @override
+  String get updatesOpenPage => '打开下载页面';
+
+  @override
+  String get updatesLinkNotify => '已选择“仅通知”模式——请从下载页面获取新版本';
+
+  @override
+  String get updatesLinkNoSelfUpdate => '此版本没有适用于您系统的已签名安装程序——请从下载页面获取';
+
+  @override
+  String get updatesLinkIsolated => '这是隔离的测试副本——不会改动已安装的应用。请手动更新';
+
+  @override
+  String get updatesLinkLocation => '应用不是从安装目录运行的——请手动下载新版本，或启动已安装的副本';
+
+  @override
+  String get updatesLinkElevated => '应用正以管理员身份运行——这样更新不安全。请以普通方式启动';
+
+  @override
+  String get updatesLinkUnsupported => '在此平台上应用无法自行更新——请手动下载新版本';
+
+  @override
+  String get updatesErrCheck => '更新服务器没有响应';
+
+  @override
+  String get updatesErrInsecure => '下载地址不安全（不是 https）';
+
+  @override
+  String get updatesErrAssetName => '版本中的文件名不被允许';
+
+  @override
+  String get updatesErrManifest => '无法获取已签名的版本清单';
+
+  @override
+  String get updatesErrSignature => '签名不匹配——文件可能已被篡改';
+
+  @override
+  String get updatesErrManifestRejected => '版本清单与此版本或系统不匹配';
+
+  @override
+  String get updatesErrDownload => '文件未下载成功或校验和不匹配';
+
+  @override
+  String get updatesErrInstall => '安装程序未能启动';
+
+  @override
+  String get updatesErrNotNewer => '此版本不比已安装的版本新';
+
+  @override
+  String get updatesInfo =>
+      '发现新版本时应用如何处理。自动模式下，安装绝不会中断正在使用的 VPN，而是等到您断开连接后再进行。任何模式下，只有开发者签名匹配的文件才会被安装。';
+
+  @override
+  String get updatesDownload => '下载';
+
+  @override
+  String get updatesInstallNow => '立即安装';
+
+  @override
+  String get updatesWaitingVpn => '已准备好安装——将在 VPN 断开后开始';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return '已跳过版本 $version——有下一个版本时会通知您';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => '正在安装更新';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return '安装版本 $version 期间应用将关闭';
+  }
+
+  @override
+  String get splitImportTitleApps => '导入应用';
+
+  @override
+  String get splitImportTitleSites => '导入站点';
+
+  @override
+  String get splitImportFormatNote =>
+      '一行一条规则。[tunnel]、[direct]、[block] 标题用于设置其下方各行的动作。没有标记的行会按手动输入的方式添加。';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => '从剪贴板粘贴';
+
+  @override
+  String get splitImportAdd => '添加';
+
+  @override
+  String get splitImportReplaceAll => '替换全部';
+
+  @override
+  String splitImportStatNew(int n) {
+    return '新增：$n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return '已存在：$n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return '不同：$n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return '未解析：$n';
+  }
+
+  @override
+  String get splitImportOverwrite => '覆盖不同的规则';
+
+  @override
+  String get splitImportOverwriteSub => '关闭时，这些规则保留当前设置';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return '原为 $from，将变为 $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => '以下行未被采用';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return '已添加 $added 条，已修改 $changed 条';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return '替换后的规则数：$n';
+  }
+
+  @override
+  String get splitExportEmpty => '列表为空——没有可导出的内容';
+
+  @override
+  String get splitCountEmpty => '空';
+
+  @override
+  String splitCountTotal(int n) {
+    return '共 $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return '启用 $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return '禁用 $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return '隧道 $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return '直连 $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return '阻止 $n';
+  }
+
+  @override
+  String get splitExpandList => '展开列表';
+
+  @override
+  String get splitCollapseList => '收起列表';
+
+  @override
+  String get splitExpandGroup => '展开分组';
+
+  @override
+  String get splitCollapseGroup => '收起分组';
+
+  @override
+  String get splitExpandSubdomains => '显示子域名';
+
+  @override
+  String get splitCollapseSubdomains => '隐藏子域名';
 }

@@ -107,8 +107,21 @@ go mod edit -replace=github.com/sagernet/sing-box=<путь к клону sing-b
 go mod tidy      # тянет и tailscale-зависимости; сеть должна быть терпеливой
 
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH      # форк SagerNet
-gomobile bind   -target=android/arm64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
+gomobile bind -target=android/arm64,android/amd64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14 '-extldflags=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384'"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
 ```
+
+`android/amd64` — ядро для эмулятора (`TEST-ONLY-emulator-…-x86_64.apk`).
+
+## ⚠️ Выравнивание 16 КБ (обязательно)
+
+Устройства с Android 15+ бывают со страницей памяти 16 КБ, а Google Play с
+01.11.2025 требует такую совместимость для targetSdk 35. Библиотека, у которой
+сегменты `LOAD` выровнены на 4 КБ, на таком устройстве не загрузится вовсе.
+NDK r27 по умолчанию даёт 4 КБ (16 КБ по умолчанию — только с r28), поэтому флаг
+линковщика выше обязателен: без него `libcores.so` выходил с выравниванием 4096
+при том, что все библиотеки самого Flutter уже стояли на 16–64 КБ (найдено
+10.10.2026). Упаковку в APK по 16 КБ AGP делает сам. Страж —
+`app/test/android_16k_alignment_test.dart`: читает ELF внутри AAR.
 
 Результат — `cores.aar` ~18 МБ (против 13+12 по отдельности: рантайм общий).
 Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate.cores.libXray`,
@@ -119,6 +132,31 @@ Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate
 ```bash
 unzip -p cores.aar classes.jar > /tmp/c.jar && unzip -l /tmp/c.jar | grep -c "go/Seq.class"   # ровно 1
 ```
+
+## ⚠️ ОБЯЗАТЕЛЬНЫЙ ПАТЧ sing-tun (иначе VPN не снимается после «Отключить»)
+
+`sing-box v1.13.14` тянет `sing-tun v0.8.11`, где `LinkEndpointFilter.Attach(nil)`
+заворачивает `nil` в обёртку. Для gvisor-эндпоинта это выглядит как ЖИВОЙ
+диспетчер: горутина-читатель tun не останавливается, сидит в `ppoll` на
+tun-дескрипторе и держит файл открытым — а системе для снятия VPN-сети нужно,
+чтобы закрылся ПОСЛЕДНИЙ дескриптор. Снаружи: приложение показывает
+«Отключено», а ключ VPN в статус-баре и `tun0` живут, пока в мёртвый туннель
+случайно не прилетит чей-то пакет (на эмуляторе — от 30 с до бесконечности).
+Найдено 19.09.2026 kprobe-трассировкой `fput`/`tun_chr_close` в госте.
+В апстриме sing-tun уже исправлено (`if dispatcher == nil`), в 0.8.11 — нет.
+
+Патч лежит в `engine/android/sing-tun-0.8.11-attach-nil.patch`. Порядок:
+
+```bash
+cp -r $GOPATH/pkg/mod/github.com/sagernet/sing-tun@v0.8.11 C:/dev/android/src/sing-tun
+chmod -R u+w C:/dev/android/src/sing-tun
+cd C:/dev/android/src/sing-tun && patch -p1 < <репозиторий>/engine/android/sing-tun-0.8.11-attach-nil.patch
+cd ../cores && go mod edit -replace=github.com/sagernet/sing-tun=C:/dev/android/src/sing-tun
+```
+
+Проверка после сборки — живьём на эмуляторе: подключиться → «Отключить» →
+`adb shell ip -o link show tun0` обязан ответить «does not exist» в течение
+~10 с. Как обновится sing-box с sing-tun ≥ 0.8.12 — снять replace, патч удалить.
 
 ## Куда класть
 

@@ -1,0 +1,126 @@
+import 'dart:io';
+
+import 'update_installer.dart';
+
+/// Один вызов [FakeUpdateInstaller.launch] — что именно просили запустить.
+class FakeLaunch {
+  final File file;
+  final String version;
+  final String expectedSha256;
+  final bool forceQuit;
+  final bool allowDowngrade;
+
+  const FakeLaunch({
+    required this.file,
+    required this.version,
+    required this.expectedSha256,
+    required this.forceQuit,
+    required this.allowDowngrade,
+  });
+}
+
+/// Подменный установщик для тестов контроллера обновлений.
+///
+/// Ничего не запускает и не читает: записывает вызовы и отдаёт то, что в
+/// него положил тест. Лежит в `lib/`, а не в `test/`, чтобы им могли
+/// пользоваться тесты разных файлов без копирования.
+class FakeUpdateInstaller implements UpdateInstaller {
+  /// Каталог закачек — тест даёт временный.
+  final Directory staging;
+
+  FakeUpdateInstaller({required this.staging});
+
+  /// Что ответит [capability].
+  InstallCapability capabilityResult = InstallCapability.ready;
+
+  /// Что ответит ПЕРВЫЙ [reconcileAfterStart]; дальше — `null`, как и у
+  /// настоящего (файл после разбора удалён).
+  PendingResult? pendingResult;
+
+  /// Что ответит [canInstallNow].
+  bool canInstallNowResult = true;
+  int canInstallNowCalls = 0;
+
+  /// Если задано — [launch] бросает это вместо записи вызова.
+  Object? launchError;
+
+  /// Если задано — [stagingDir] бросает это.
+  ///
+  /// ⚠️ [stagingErrorFromCall] существует потому, что каталог закачек в
+  /// контроллере спрашивают ТРИЖДЫ за одну закачку: под манифест, под подпись
+  /// и под сам актив (первые два — через `_fetchSmall`). Безусловный отказ
+  /// обрывает поток на манифесте, и до ветки актива тест не доходит.
+  Object? stagingError;
+
+  /// С какого по счёту обращения действует [stagingError] (с 1). `1` —
+  /// с первого же.
+  int stagingErrorFromCall = 1;
+
+  /// Задержка перед ответом [stagingDir] — окно, в котором тест успевает
+  /// позвать `cancel()`.
+  Duration? stagingDelay;
+
+  /// Сколько раз спросили каталог закачек.
+  int stagingCalls = 0;
+
+  final List<FakeLaunch> launches = [];
+  final List<String> reconcileCalls = [];
+  final List<String?> purgeCalls = [];
+  int capabilityCalls = 0;
+
+  @override
+  Future<Directory> stagingDir() async {
+    stagingCalls++;
+    final err = stagingError;
+    final armed = err != null && stagingCalls >= stagingErrorFromCall;
+    final delay = stagingDelay;
+    if (armed && delay != null) await Future<void>.delayed(delay);
+    if (armed) throw err;
+    if (!staging.existsSync()) staging.createSync(recursive: true);
+    return staging;
+  }
+
+  @override
+  Future<InstallCapability> capability() async {
+    capabilityCalls++;
+    return capabilityResult;
+  }
+
+  @override
+  Future<bool> canInstallNow() async {
+    canInstallNowCalls++;
+    return canInstallNowResult;
+  }
+
+  @override
+  Future<void> launch(
+    File verified, {
+    required String version,
+    required String expectedSha256,
+    bool forceQuit = false,
+    bool allowDowngrade = false,
+  }) async {
+    final err = launchError;
+    if (err != null) throw err;
+    launches.add(FakeLaunch(
+      file: verified,
+      version: version,
+      expectedSha256: expectedSha256,
+      forceQuit: forceQuit,
+      allowDowngrade: allowDowngrade,
+    ));
+  }
+
+  @override
+  Future<PendingResult?> reconcileAfterStart({required String currentVersion}) async {
+    reconcileCalls.add(currentVersion);
+    final r = pendingResult;
+    pendingResult = null;
+    return r;
+  }
+
+  @override
+  Future<void> purgeStaging({String? keepVersion}) async {
+    purgeCalls.add(keepVersion);
+  }
+}

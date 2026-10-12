@@ -12,6 +12,7 @@ import '../../core/platform/app_paths.dart';
 import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
+import '../../core/xray/balancer_pick.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
@@ -121,6 +122,17 @@ class WindowsEngine extends VpnEngineBase {
   /// перечень полей руками в этом проекте уже терял `ipv6Upstream` и
   /// `platformTun` (см. `test/tun_options_carry_test.dart`).
   String? _liveTunConfig;
+
+  /// Состав блокировки kill switch, С КОТОРЫМ ПОДНЯТ живой туннель
+  /// ([killSwitchPlanSignature]). `null` — туннеля нет.
+  ///
+  /// ⚠️ СВЕРКИ КОНФИГА ДЛЯ ПЕРЕИСПОЛЬЗОВАНИЯ МАЛО. Состав блокировки в конфиг
+  /// sing-box не входит: он уходит помощнику файлом, и помощник читает его один
+  /// раз, на старте. Найдено живьём в VM 10.10.2026: kill switch включён на
+  /// живом соединении, переподключение «переиспользовало» туннель с тем же
+  /// конфигом — и помощник так и остался без блокировки, а обрыв сервера
+  /// выпускал трафик под реальным IP.
+  String? _liveKillSwitchPlan;
 
   /// Список адресов «мимо туннеля», С КОТОРЫМ ПОДНЯТ живой туннель.
   ///
@@ -258,6 +270,42 @@ class WindowsEngine extends VpnEngineBase {
   /// ровном месте.
   bool _apiExitsActive(AppSettings s) => ApiPorts.exitPortsActive(s);
 
+  /// Живой туннель можно пересоздать руками его же помощника, не снимая
+  /// блокировки: она поднята сейчас и нужна следующей сессии.
+  bool _handoverPossible(AppSettings next) =>
+      _tunActive &&
+      _tunRouter is TunHandoverCapable &&
+      _liveKillSwitchOn &&
+      next.killSwitchActive;
+
+  /// Порты выходов держит живой туннель этого же приложения — проверять их
+  /// свободу перед подъёмом нельзя.
+  ///
+  /// ⚠️ ЛЮБОЙ ЖИВОЙ ТУННЕЛЬ, А НЕ ТОЛЬКО «СОХРАНЯЕМЫЙ». Проверка портов идёт
+  /// ДО `raiseTun`, а туннель снимается (если снимается) уже внутри него, прямо
+  /// перед подъёмом нового. Значит в момент проверки порты выходов при живом
+  /// туннеле заняты им всегда — сохранится он, будет перезапущен помощником
+  /// без снятия блокировки или снят обычным путём. Чужой программе на этих
+  /// портах быть неоткуда: их держит наш sing-box.
+  ///
+  /// Найдено живьём в VM 10.10.2026: при выключенной бесшовности смена сервера
+  /// и автопереподключение по включению kill switch падали «Порт 10820 ещё
+  /// занят нашим ядром». Прежнее условие учитывало только бесшовность, и тот
+  /// же отказ ждал повторные попытки kill switch при включённом API.
+  @visibleForTesting
+  bool get tunnelHoldsItsPorts => _tunActive;
+
+  /// Блокировку держит живой туннель: его план просил kill switch.
+  bool get _liveKillSwitchOn {
+    final p = _liveKillSwitchPlan;
+    if (p == null) return false;
+    try {
+      return (jsonDecode(p) as Map)['enabled'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Порты, которые обязаны быть свободны ПЕРЕД стартом ядра.
   ///
   /// ⚠️ ВЫНЕСЕНО ИЗ [startSession] РАДИ ТЕСТА, А НЕ РАДИ КРАСОТЫ. На
@@ -338,6 +386,7 @@ class WindowsEngine extends VpnEngineBase {
         VpnConnectionState.error,
         message: 'Для Hysteria2 нужен sing-box.exe рядом с xray.exe.\n'
             'Запустите tools/fetch-singbox.ps1',
+        text: const StatusMissingCore('sing-box.exe'),
       );
       return;
     }
@@ -346,6 +395,7 @@ class WindowsEngine extends VpnEngineBase {
       setStatus(
         VpnConnectionState.error,
         message: 'Не найден xray.exe. Запустите tools/fetch-xray.ps1',
+        text: const StatusMissingCore('xray.exe'),
       );
       return;
     }
@@ -373,10 +423,10 @@ class WindowsEngine extends VpnEngineBase {
     final apiKeys = _apiExitsActive(options.settings)
         ? options.settings.apiExitServerKeys
         : const <String>[];
-    // Живой туннель остаётся на месте только при включённой бесшовности — тогда
-    // его порты не наши к освобождению. Иначе он будет снят и порты вернутся.
+    // Порты выходов живого туннеля — его, проверять их нельзя (см.
+    // [tunnelHoldsItsPorts]).
     final corePorts = corePortsFor(options.settings, ports,
-        tunnelStaysUp: _tunActive && options.settings.seamlessServerSwitch);
+        tunnelStaysUp: tunnelHoldsItsPorts);
     var conflict = await PortCheck.findConflict(corePorts);
     // ⚠️ ЖДЁМ И ТОГДА, КОГДА ВЛАДЕЛЬЦА ОПОЗНАТЬ НЕ УДАЛОСЬ.
     //
@@ -413,7 +463,12 @@ class WindowsEngine extends VpnEngineBase {
       final message = conflict.fallbackMessage;
       AppLog.e('Конфликт портов: ${message.split("\n").first}');
       await cleanup();
-      setStatus(VpnConnectionState.error, message: message);
+      setStatus(VpnConnectionState.error,
+          message: message,
+          text: StatusPortConflict(
+              port: conflict.port,
+              holder: conflict.holder,
+              ownCore: conflict.heldByOwnCore));
       return;
     }
 
@@ -573,15 +628,23 @@ class WindowsEngine extends VpnEngineBase {
       _lastSnapshot = XrayTrafficSnapshot.zero;
       _lastSampleTime = DateTime.now();
       _startStatsPolling(singboxCore ? null : location!.executable,
-          singbox: singboxCore);
+          singbox: singboxCore,
+          xrayConfig: singboxCore ? null : _decodeConfig(configJson));
 
+      // ⚠️ ПОСЛЕ ВОССТАНОВЛЕНИЯ «ПОДКЛЮЧЕНО» — ТОЛЬКО ПО ЖИВОЙ ПРОБЕ. Ядро
+      // стартует и при мёртвом сервере; без этой строки человек получал
+      // «Соединение восстановлено» на канале, по которому не шло ни байта
+      // (найдено живьём в VM 10.10.2026, разбор — у метода).
+      if (!await confirmRecoveredChannel(aborted)) {
+        if (aborted()) await _abandonRun(gen, mine);
+        return;
+      }
       // Читаем ДО markConnected(): он и обнуляет счётчик попыток.
+      // ⚠️ Только журнал: заметку «Соединение восстановлено» шлёт сам
+      // `markConnected()`. Здесь стояла вторая такая же, и на экран после
+      // обрыва приходили две одинаковые карточки.
       if (attempt > 0) {
         AppLog.i('Соединение восстановлено (попытка $attempt)');
-        // Говорим вслух ТОЛЬКО когда перед этим были неудачи: обычное
-        // подключение по кнопке в сообщении не нуждается.
-        emitNotice(EngineNoticeKind.recovered, 'Соединение восстановлено',
-            detail: 'Потребовалось попыток: $attempt');
       }
       markConnected(); // сбрасывает счётчик попыток и запускает grace смены сети
       setStatus(VpnConnectionState.connected);
@@ -629,7 +692,8 @@ class WindowsEngine extends VpnEngineBase {
       if (await scheduleRetry('не удалось подключиться: $e')) return;
       await cleanup();
       setStatus(VpnConnectionState.error,
-          message: 'Не удалось подключиться: $e');
+          message: 'Не удалось подключиться: $e',
+          text: StatusConnectFailed('$e'));
     }
   }
 
@@ -778,6 +842,25 @@ class WindowsEngine extends VpnEngineBase {
       // об этом нельзя: человек будет считать себя защищённым.
       AppLog.w('Не удалось передать помощнику состав блокировки: $e');
     }
+  }
+
+  /// Подпись того, что [_writeKillSwitchPlan] передаст помощнику: из тех же
+  /// входов и тем же кодом. Токен сессии сюда не входит — он один на весь
+  /// запуск приложения и туннеля не различает.
+  @visibleForTesting
+  static String killSwitchPlanSignature(
+      AppSettings s, List<String> serverIps) {
+    final selectors = KillSwitchAppSelectors.fromSplitTunnel(s.splitTunnel);
+    return jsonEncode({
+      'enabled': s.killSwitch,
+      'serverIps': serverIps.toSet().toList()..sort(),
+      'blockAll': s.splitTunnel.mode != SplitMode.onlySelected,
+      'blockedAppPaths': selectors.blockedAppPaths,
+      'blockedAppNames': selectors.blockedAppNames,
+      'allowedAppPaths': selectors.allowedAppPaths,
+      'allowedAppNames': selectors.allowedAppNames,
+      'allowLan': s.tunBypassLan,
+    });
   }
 
   /// Значение для [TunOptions.tunnelExcludeServerIps] по выбранному охвату.
@@ -977,6 +1060,8 @@ class WindowsEngine extends VpnEngineBase {
           _apiExitsActive(options.settings) ? options.settings.apiToken : '',
     );
     final live = _liveTunConfig;
+    final wantPlan =
+        killSwitchPlanSignature(options.settings, tunOptions.serverIps);
     if (_tunActive &&
         options.settings.seamlessServerSwitch &&
         live != null &&
@@ -985,9 +1070,18 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.i('Туннель придётся пересоздать — конфиг отличается: '
           '${diff.isEmpty ? "(различий не найдено, отличаются пробелы/порядок)" : diff.join(", ")}');
     }
+    final planChanged = _liveKillSwitchPlan != wantPlan;
     if (_tunActive &&
         options.settings.seamlessServerSwitch &&
-        _liveTunConfig == wantConfig) {
+        live == wantConfig &&
+        planChanged) {
+      AppLog.i('Туннель придётся пересоздать — изменился состав блокировки '
+          'kill switch: помощник читает его только на старте');
+    }
+    if (_tunActive &&
+        options.settings.seamlessServerSwitch &&
+        _liveTunConfig == wantConfig &&
+        !planChanged) {
       // ⚠️ «ФЛАГ ПОДНЯТ» — ЭТО НЕ «ТУННЕЛЬ ЖИВ», И РАЗНИЦА ЗДЕСЬ РЕШАЮЩАЯ.
       //
       // При падении элевейтнутого хелпера Windows убирает адаптер сама, а нам
@@ -1024,14 +1118,51 @@ class WindowsEngine extends VpnEngineBase {
           'пересоздаю его, а не выдаю мёртвый за живой');
     }
 
+    // ⚠️ KILL SWITCH → KILL SWITCH: ПЕРЕСОЗДАЁМ, НЕ СНИМАЯ БЛОКИРОВКУ.
+    //
+    // Обычный путь ниже — stop-файл, помощник снимает фильтры WFP и выходит,
+    // пауза, новый помощник поднимает их заново. Между снятием и подъёмом у
+    // машины нет ни туннеля, ни блокировки: трафик идёт под реальным IP. Живой
+    // замер в VM (каждые 0,4 с) это окно не поймал, но оно есть по построению,
+    // а при kill switch утечка — ровно то, от чего человек защищался.
+    //
+    // Поэтому, когда блокировку держит прежний туннель и её просит новый,
+    // живой помощник перезапускает ядро сам, не отпуская фильтров. Отказ или
+    // молчание помощника — обычный путь, как раньше.
+    var handedOver = false;
+    // TunHandoverCapable не подтип TunRouter — `is` тут не сужает тип.
+    final router = _tunRouter is TunHandoverCapable
+        ? _tunRouter as TunHandoverCapable
+        : null;
+    if (router != null && _handoverPossible(options.settings)) {
+      _tunOwnerGen = gen;
+      // План — ДО просьбы: помощник прочтёт его, как только её увидит.
+      await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
+      handedOver = await router.handover(
+        options.split,
+        exitOutbounds: exitsBuilt.outbounds,
+        xraySocksPort: ports.socks,
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
+        apiExitServerKeys: apiKeys,
+        apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
+        apiToken:
+            _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+        options: tunOptions,
+        abort: aborted,
+      );
+      if (handedOver) {
+        AppLog.i('Туннель пересоздан без снятия блокировки kill switch');
+      }
+    }
+
     // Вот теперь — и только теперь — снимаем старый туннель, вплотную к
     // подъёму нового (см. заголовок метода).
-    if (_tunActive) {
+    if (_tunActive && !handedOver) {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
-      _liveBypassIps = null;
-      _liveTunApiSecret = null;
+      _liveKillSwitchPlan = null;
       _liveBypassIps = null;
       _liveTunApiSecret = null;
       await Future.delayed(const Duration(milliseconds: 600));
@@ -1046,38 +1177,43 @@ class WindowsEngine extends VpnEngineBase {
     //
     // Пишем ВСЕГДА, в том числе `enabled: false`: помощник обязан отличать
     // «блокировать не просили» от «файл потерян от прошлой сессии».
-    await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
-    await _tunRouter.start(
-      options.split,
-      exitOutbounds: exitsBuilt.outbounds,
-      xraySocksPort: ports.socks,
-      xraySocksUser: localInboundUser,
-      xraySocksPassword: localInboundPassword,
-      // ⚠️ Тот же гейт (`_apiExitsActive`/`apiKeys`), что и у `corePorts`
-      // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
-      // проверены — иначе PortCheck и построитель конфига разъедутся.
-      apiExitServerKeys: apiKeys,
-      // ⚠️ Кому outbound собран ТОЛЬКО ради порта. Тег у него в конфиге
-      // есть, но правила раздельного туннелирования его не видят — иначе
-      // правило «через активный сервер» завело бы второе соединение к
-      // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
-      apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
-      apiToken:
-          _apiExitsActive(options.settings) ? options.settings.apiToken : '',
-      options: tunOptions,
-      // Автоподбор стека/MTU может занять время — показываем, что происходит
-      // (#8: отдельная фаза → прогресс-тост, не только строка статуса).
-      onProgress: (m) => setStatus(VpnConnectionState.connecting,
-          message: m, phase: VpnPhase.tunAutotune),
-      // #5 — прекратить перебор, если пользователь отключился за время подбора.
-      abort: aborted,
-    );
+    if (!handedOver) {
+      await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
+      await _tunRouter.start(
+        options.split,
+        exitOutbounds: exitsBuilt.outbounds,
+        xraySocksPort: ports.socks,
+        xraySocksUser: localInboundUser,
+        xraySocksPassword: localInboundPassword,
+        // ⚠️ Тот же гейт (`_apiExitsActive`/`apiKeys`), что и у `corePorts`
+        // выше: конфиг обязан создавать РОВНО те инбаунды, чьи порты уже
+        // проверены — иначе PortCheck и построитель конфига разъедутся.
+        apiExitServerKeys: apiKeys,
+        // ⚠️ Кому outbound собран ТОЛЬКО ради порта. Тег у него в конфиге
+        // есть, но правила раздельного туннелирования его не видят — иначе
+        // правило «через активный сервер» завело бы второе соединение к
+        // тому же узлу (см. `SingboxConfigBuilder.apiOnlyExitKeys`).
+        apiOnlyExitKeys: options.apiOnlyExitKeys.toList(),
+        apiToken:
+            _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+        options: tunOptions,
+        // Автоподбор стека/MTU может занять время — показываем, что
+        // происходит (#8: отдельная фаза → прогресс-тост, не только строка
+        // статуса).
+        onProgress: (m) => setStatus(VpnConnectionState.connecting,
+            message: m, phase: VpnPhase.tunAutotune),
+        // #5 — прекратить перебор, если пользователь отключился за время
+        // подбора.
+        abort: aborted,
+      );
+    }
     _offerScheduledTaskFixIfStale();
     // ⚠️ ЗАПОМИНАЕМ КОНФИГ ТОЛЬКО ПОСЛЕ УСПЕШНОГО ПОДЪЁМА. Поставь мы отметку
     // раньше (рядом с `_tunActive = true`), и после отказа `start` следующая
     // попытка с тем же конфигом «переиспользовала» бы туннель, которого нет:
     // приложение показало бы «Подключено» без единого маршрута.
     _liveTunConfig = wantConfig;
+    _liveKillSwitchPlan = wantPlan;
     _liveBypassIps = tunOptions.serverIps;
     _liveTunApiSecret = singboxApiSecret;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
@@ -1178,6 +1314,7 @@ class WindowsEngine extends VpnEngineBase {
     // Забудь это, и следующий запуск с тем же конфигом решил бы, что
     // пересоздавать нечего, и оставил бы машину без маршрутов.
     _liveTunConfig = null;
+    _liveKillSwitchPlan = null;
     _liveBypassIps = null;
     _liveTunApiSecret = null;
   }
@@ -1353,6 +1490,7 @@ class WindowsEngine extends VpnEngineBase {
       await _tunRouter.stop();
       _tunActive = false;
       _liveTunConfig = null;
+      _liveKillSwitchPlan = null;
       _liveBypassIps = null;
       _liveTunApiSecret = null;
       _liveBypassIps = null;
@@ -1407,6 +1545,7 @@ class WindowsEngine extends VpnEngineBase {
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
+    _liveKillSwitchPlan = null;
     _liveBypassIps = null;
     _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
@@ -1501,17 +1640,36 @@ class WindowsEngine extends VpnEngineBase {
       t.cancel();
       AppLog.e('Туннельное ядро не отвечает $silent с — считаю его зависшим. '
           'Снимаю туннель, чтобы система вернула сеть.');
-      // Гасим ЖЁСТКО и вместе с захватом: смысл всей затеи в том, чтобы исчез
-      // адаптер, иначе трафик так и останется в чёрной дыре. Kill switch здесь
-      // не спорит — он защищает от утечки, а утекать при зависшем туннеле
-      // нечему: наружу и так ничего не проходит.
-      await teardownCore();
+      // Без kill switch гасим ЖЁСТКО и вместе с захватом: смысл всей затеи в
+      // том, чтобы исчез адаптер, иначе трафик так и останется в чёрной дыре.
+      // С kill switch захват НЕ снимаем — см. [hungTunKeepsCapture].
+      await teardownCore(keepCapture: hungTunKeepsCapture(settings));
       if (!await scheduleRetry('туннельное ядро зависло')) {
         setStatus(VpnConnectionState.error,
-            message: 'Туннельное ядро зависло, туннель снят');
+            message: 'Туннельное ядро зависло, туннель снят',
+            text: const StatusTunCoreHung());
       }
     });
   }
+
+  /// Оставлять ли захват, когда сторож снимает зависшее туннельное ядро.
+  ///
+  /// ⚠️ С KILL SWITCH — ОСТАВЛЯТЬ. Найдено живым прогоном в VM 09.10.2026:
+  /// сторож снимал туннель вместе с захватом, а стоп-файл велит помощнику
+  /// снять и блокировку WFP. Следующая попытка сперва ~8 с опрашивает
+  /// резолверы адаптера и только потом поднимает нового помощника, и всё
+  /// это время машина ходила наружу под НАСТОЯЩИМ адресом — при включённом
+  /// kill switch. Прежний довод «утекать при зависшем туннеле нечему» верен,
+  /// лишь пока адаптер на месте; снятие захвата его и убирает.
+  ///
+  /// Удержание здесь ничем не хуже: зависший адаптер и так глотает трафик,
+  /// а помощник при мёртвом ядре держит блокировку сам. Снимет туннель уже
+  /// [scheduleRetry] → пересоздание, вплотную к подъёму нового.
+  ///
+  /// Без kill switch — снимать, даже при `seamlessKeepTun`: бесшовность
+  /// обещает не мигать маршрутом у ЖИВОГО туннеля, а не держать мёртвый.
+  @visibleForTesting
+  static bool hungTunKeepsCapture(AppSettings s) => s.killSwitch;
 
   /// Отвечает ли туннельное ядро по своему API. Короткий таймаут: сторож
   /// спрашивает раз в 5 с, и висеть на ответе ему нельзя.
@@ -1539,10 +1697,30 @@ class WindowsEngine extends VpnEngineBase {
     }
   }
 
+  /// Готовый конфиг Xray как словарь — для разбора балансировщика. Не
+  /// разобрался — `null`: показ узла не повод ронять подключение.
+  static Map<String, dynamic>? _decodeConfig(String json) {
+    try {
+      final d = jsonDecode(json);
+      return d is Map ? Map<String, dynamic>.from(d) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Счётчики трафика: у Xray — `api statsquery`, у sing-box — Clash API.
-  void _startStatsPolling(String? executable, {bool singbox = false}) {
+  void _startStatsPolling(String? executable,
+      {bool singbox = false, Map<String, dynamic>? xrayConfig}) {
     final xrayStats =
         singbox ? null : XrayStats(executable: executable!, apiPort: ports.api);
+    // Выбранный узел «Авто» спрашиваем реже счётчиков: балансировщик меняет
+    // выбор не чаще своих замеров, а лишний запуск `xray.exe` раз в секунду
+    // не нужен никому.
+    final balancerTag = xrayConfig == null
+        ? null
+        : BalancerPick.mainBalancerTag(xrayConfig);
+    var tick = 0;
+    ActiveNode? node;
     final singboxStats = singbox
         ? SingboxStats(apiPort: ports.api, secret: singboxApiSecret)
         : null;
@@ -1568,11 +1746,26 @@ class WindowsEngine extends VpnEngineBase {
         _lastSnapshot = snap;
         _lastSampleTime = now;
 
+        if (balancerTag != null && xrayStats != null && tick++ % 5 == 0) {
+          final picked = await xrayStats.balancerPick(balancerTag);
+          final next =
+              picked == null ? null : BalancerPick.nodeOf(xrayConfig!, picked);
+          if (next != node) {
+            AppLog.i(next == null
+                ? 'Авто: балансировщик пока не выбрал узел'
+                // Только тег: адрес узла панели в реестр маскировки может
+                // не попасть, а журнал уходит в отчёт поддержки.
+                : 'Авто: трафик идёт через узел ${next.tag}');
+          }
+          node = next;
+        }
+
         emitStats(TrafficStats(
           uplinkBytes: snap.uplink,
           downlinkBytes: snap.downlink,
           uplinkSpeed: upSpeed < 0 ? 0 : upSpeed,
           downlinkSpeed: downSpeed < 0 ? 0 : downSpeed,
+          activeNode: node,
         ));
       } finally {
         _polling = false;
@@ -1887,6 +2080,9 @@ class WindowsEngine extends VpnEngineBase {
   @visibleForTesting
   Future<bool> Function()? tunAliveForTest;
 
+  @visibleForTesting
+  Future<String?> systemDnsServerForTest() => _systemDnsServer();
+
   Future<String?> _systemDnsServer() async {
     try {
       // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
@@ -1918,9 +2114,17 @@ class WindowsEngine extends VpnEngineBase {
       //
       // Второй адрес и есть готовый запас: он уже проверен на ответ тем же
       // циклом, оставалось лишь не выбрасывать его.
+      //
+      // ⚠️ ОПРАШИВАЕМ ВСЕ РАЗОМ, А НЕ ПО ОЧЕРЕДИ. У владельца 07.10.2026 при
+      // восстановлении под kill switch шесть адресов адаптера молчали по 2 с
+      // каждый — 12 с к блокировке, пока DNS заведомо недоступен. Порядок
+      // предпочтения при этом прежний: решаем по списку, а не по тому, кто
+      // ответил первым.
+      final reachable = await Future.wait(list.map(_dnsReachable));
       String? first;
-      for (final ip in list) {
-        if (await _dnsReachable(ip)) {
+      for (var i = 0; i < list.length; i++) {
+        final ip = list[i];
+        if (reachable[i]) {
           if (first == null) {
             first = ip;
             AppLog.i('Резолвер для «Прямо»: $ip');

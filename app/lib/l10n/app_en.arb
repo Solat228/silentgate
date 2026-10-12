@@ -7,7 +7,6 @@
   "commonClear": "Clear",
   "commonCopied": "Copied",
   "commonRefresh": "Refresh",
-  "commonCheck": "Check",
   "commonOk": "OK",
   "commonDone": "Done",
   "commonPathCopied": "Path copied",
@@ -56,6 +55,14 @@
   "tunnelExcludeScopeOffHint": "Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.",
   "closeToTrayTitle": "Minimize to tray on close",
   "closeToTraySubtitle": "The close button hides the window to the tray; turn off to close the app instead",
+  "launchAtLoginTitle": "Start with Windows",
+  "launchAtLoginSub": "The app starts minimized to the tray when you sign in",
+  "connectOnAutostartTitle": "Connect on startup",
+  "connectOnAutostartSub": "Bring up the VPN to the selected server right away when Windows starts the app",
+  "sortServersByCountryTitle": "Sort by country",
+  "sortServersByCountrySub": "Gather servers of one country together. Countries keep the provider's order; pinned servers stay on top",
+  "serverGroupCollapse": "Collapse group",
+  "serverGroupExpand": "Expand group",
   "autoUpdateSubTitle": "Auto-update subscription",
   "autoUpdateSubText": "Periodically refresh the server list",
   "captureSystemProxy": "System proxy",
@@ -253,27 +260,8 @@
   "speedTestFull": "20 MB (more accurate)",
   "speedTestLight": "5 MB (economical)",
   "testUrlLabel": "Test URL (via Proxy)",
-  "appUpdateServerUnavailable": "Update server unavailable",
-  "appUpdateAvailable": "Version {version} available",
-  "@appUpdateAvailable": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
-  "appUpdateLatest": "You have the latest version",
-  "appUpdateDownload": "Download",
-  "appUpdateCheckTitle": "Check for updates on launch",
-  "appUpdateManual": "Downloading and installing — manually",
-  "appUpdateEndpointLabel": "Version endpoint",
-  "appUpdateBetaChannelTitle": "Receive beta versions",
-  "appUpdateBetaChannelSubtitle": "GitHub releases list, including pre-releases, plus a fallback site address. Doesn't affect stable auto-update.",
   "infoAppUpdateBeta": "The app will start checking the full GitHub releases list, including pre-releases, not just the latest stable one. The main auto-update channel doesn't change — beta won't reach anyone who hasn't enabled this switch.",
   "appUpdateBetaBadge": "BETA",
-  "appUpdateBetaNotice": "This is a pre-release — expect possible issues. Auto-update doesn't distribute these versions.",
-  "appUpdatePreviousVersionsButton": "Previous versions",
-  "appUpdatePreviousVersionsTitle": "Previous versions",
   "appUpdatePreviousVersionsHint": "This list is what's in GitHub Releases. Some versions may be missing.",
   "appUpdatePreviousVersionsEmpty": "List is empty — GitHub Releases is unreachable or has no releases.",
   "appUpdateOpenRelease": "Open release page",
@@ -328,8 +316,6 @@
   "enumActionTunnel": "Tunnel",
   "enumActionDirect": "Direct",
   "enumActionBlock": "Block",
-  "homeUpdateAvailable": "Version {version} available",
-  "homeDownload": "Download",
   "homeSubscriptionUpdated": "Subscription updated: {summary}",
   "homeReconnect": "Reconnect",
   "homePingProgress": "Pinging servers: {done} of {total}",
@@ -377,6 +363,17 @@
   "subBarExpired": "Subscription expired:",
   "subBarValidUntil": "Valid until:",
   "subBarAnnounce": "Announcement from the panel",
+  "subBarAnnounceFrom": "Announcements from {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Announcements from the service",
+  "hideAnnounceTitle": "Hide service announcements",
+  "hideAnnounceSub": "Announcements from the subscription are not shown on the card. By default they are visible on any screen.",
   "subSwitcherPingAll": "Ping servers of all subscriptions",
   "subSwitcherPingBusySpeed": "Ping unavailable: a speed test is running",
   "subSwitcherExpired": "Expired",
@@ -438,7 +435,6 @@
   "infoTunBypassLan": "The local network (private addresses 192.168.*, 10.*, router, printers, NAS) goes around the VPN. Usually you want this on, otherwise you lose access to devices on the network.",
   "infoTunExcludeCidrs": "Additional subnets that always go around the VPN (CIDR format, e.g. 10.8.0.0/24). Useful for corporate networks and other VPNs.",
   "infoTunPrivilege": "TUN requires administrator rights. Once, we create a task in the Windows Task Scheduler with the highest privileges — after that the tunnel starts WITHOUT a UAC prompt on each connection. The task belongs to you and is removed with the button below or when the program is uninstalled.",
-  "infoAppUpdate": "Once per launch, the app asks your server whether a newer version exists and shows a notification with a «Download» button.\n\nThe app downloads and runs NOTHING on its own: the installer is not signed with a certificate, and auto-running a downloaded exe runs into SmartScreen and looks to antiviruses like malware behavior. You install the update yourself.\n\nIf the server is unavailable, the app simply stays silent and writes an entry to the log. The response format and server setup are described in docs/APP_UPDATE.md.",
   "infoSpeedTest": "The amount of data downloaded when measuring speed (right-click a server → «Server info» → «Measure speed»).\n\n20 MB — the main mode: on fast links (100+ Mbps) a short probe does not have time to ramp up and underestimates the result.\n5 MB — the economical mode: noticeably cheaper on traffic, handy for running through many servers.\n\nThe measurement runs ONLY manually and consumes your subscription's traffic. Speed is measured twice: directly and through the selected server, so you can see exactly how much is lost on the VPN.",
   "infoAutoReconnect": "If the core crashed, the server dropped, or the network changed (Wi-Fi ↔ cable, waking from sleep, a new IP), the app brings the connection back up on its own. Pauses between attempts grow: 0.8 s → 3 s → 8 s → 20 s and stay at 20 s from then on. There are eight attempts, after which the app gives up and shows an error. Disconnecting with the button always cancels the recovery.\n\n⚠️ With the kill switch on, the attempts NEVER RUN OUT. While they continue, traffic stays blocked, and stopping them would mean letting it out around the VPN — so the app keeps trying once every 20 seconds until you turn the VPN off yourself, and reminds you about the failure no more than once every 15 minutes. A server that comes back an hour later is picked up on its own.\n\nIn «Auto (best server)» mode the app does not waste the last attempt on a dead server: already on the seventh of eight it moves on to the next candidate, and the count starts over there.\n\nA network change is detected by the real addresses of other adapters: your own tunnel and service addresses (link-local) are not counted, a change is accepted only if it held for two polls in a row, and the signal is ignored for the first 15 seconds after connecting. Without these safeguards, bringing up the tunnel would itself count as a «network change» and cause endless reconnection.",
   "infoKillSwitch": "Do not let traffic out around the VPN while the connection is being restored. The capture is NOT released between attempts: in TUN mode the adapter stays up, in «System proxy» mode the proxy stays configured — applications get a connection error instead of unencrypted access to the internet.\n\nHonestly about the limits: in «System proxy» mode this protects only programs that respect the system proxy (browsers and most applications). Programs that ignore the proxy, and UDP, will go directly — full tightness is provided only by TUN mode. Requires auto-reconnect enabled.",
@@ -494,6 +490,29 @@
   "importScrLoading": "Loading…",
   "importScrPasteImport": "Import from clipboard",
   "importScrImportField": "Import from field",
+  "importScrScanQr": "Scan QR",
+  "importScrQrFromImage": "QR from image",
+  "qrScanPrompt": "Point the camera at the subscription QR code",
+  "qrCameraExplainTitle": "Camera access",
+  "qrCameraExplainBody": "The camera is only used to read the subscription QR code. Nothing is saved or sent anywhere.",
+  "qrCameraContinue": "Continue",
+  "qrCameraDenied": "No camera access. Allow it in the app settings or pick an image with the QR code.",
+  "qrNotFound": "No QR code found in the image.",
+  "qrReadFailed": "Couldn't open the image.",
+  "statusReconnectBlocked": "Connection lost, traffic blocked. Reconnecting in {seconds} s (attempt {attempt})…",
+  "statusTrafficNotFlowing": "The tunnel is up, but no traffic goes through it",
+  "statusVpnConsentDenied": "Android did not allow the VPN. Tap “Connect” again and confirm the system request.",
+  "statusMissingCore": "{file} was not found next to the app. Reinstall SilentGate.",
+  "statusPortOwnCore": "Port {port} is still held by our core ({holder}) from the previous session.\n\nThis happens if you turn the VPN off and right back on. Wait a few seconds and try again.",
+  "statusPortUnknown": "Port {port} is already used by another program that could not be identified.\n\nMost often it is another VPN client listening on the same local ports. Close it completely, including from the tray, and try again.",
+  "statusPortHolder": "Port {port} is already used by {holder}.\n\nClose it completely, including from the tray, and try again.",
+  "statusTunCoreHung": "The tunnel core froze; the tunnel was removed",
+  "statusConnectFailed": "Could not connect: {detail}",
+  "statusCoreStopped": "The {core} core stopped (code {code})",
+  "statusCoreStoppedReason": "The {core} core stopped (code {code}): {reason}",
+  "statusReasonPortBusy": "local port {port} is already in use",
+  "statusReasonPortBusyAny": "a local port is already in use",
+  "statusReasonFailedToStart": "the core could not start",
   "serversTitle": "Servers",
   "serversFound": "Servers — found {found} of {total}",
   "serversRefresh": "Refresh subscription",
@@ -574,6 +593,15 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "The \"{type}\" masking is not supported by this client yet",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUnsupportedGeneric": "This server is not supported by this client yet",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -662,6 +690,7 @@
   "trayQuitVpn": "Disconnect and quit",
   "tunTaskDone": "Done: TUN will start without a UAC prompt",
   "tunTaskFailed": "Failed to create task (UAC declined or blocked by policy)",
+  "tunTaskSchedulerFailed": "Task Scheduler rejected the task — the reason is in the log (Settings → Logs)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "TUN log (sing-box)",
@@ -718,7 +747,6 @@
   "reportTechNoticeLine1": "Below is technical information. Review it before sending;",
   "reportTechNoticeLine2": "there are no passwords or subscription token here, the subscription URL is hidden.",
   "noRealIpTitle": "Never use my real IP",
-  "noRealIpSub": "Even with the VPN up, all “direct” traffic goes through the VPN (RU sites too). The local network stays direct.",
   "flagAuto": "AUTO",
   "autoUpdateIntervalLabel": "Update interval, h",
   "autoUpdatePreferSub": "Use the interval from the subscription",
@@ -755,6 +783,7 @@
   "errInvalidJson": "Invalid JSON",
   "errPickServerFirst": "Select a server first",
   "errImportSubscriptionFirst": "Import a subscription first",
+  "errServerUnsupported": "This server is not supported by this client",
   "speedSizeFull": "20 MB",
   "speedSizeLight": "5 MB",
   "speedMbPerSec": "{value} MB/s",
@@ -908,7 +937,6 @@
   },
   "splitQuicNote": "While at least one site rule exists, the app disables HTTP/3 (QUIC) for all traffic. Otherwise the browser switches to HTTP/3, leaves no site name, and the rule silently fails — traffic bypasses it. Sites keep working: they fall back to regular TLS, just slightly slower.",
   "splitNoRealIpBanner": "“Never use my real IP” is on: “Direct” rules without the real-IP checkbox go through the VPN",
-  "settingsNoRealIpAffects": "Affects “Direct” rules: without the “allow real IP” checkbox they go through the VPN",
   "splitAppOverrideSites": "Takes priority over site rules",
   "splitAppOverrideSitesSub": "All app traffic follows this rule even if a site rule says otherwise",
   "settingsMyRulesOverridePanel": "My rules take priority over panel rules",
@@ -1193,7 +1221,7 @@
       }
     }
   },
-  "autoWarnNoRealIp": "“Never use the real IP” is on — all traffic goes through the VPN.",
+  "autoWarnNoRealIp": "“Never use the real IP” is on — your “Direct” rules go through the VPN.",
   "autoWarnAllVpn": "“Everything through VPN” mode is selected — your rules are not in effect right now.",
   "autoWarnPanelOverride": "“My rules override the panel's rules” is on.",
   "autoWarnProbesDirect": "This does not affect the check itself: probes bypass the VPN under any settings. But in TUN mode they still go through the core process — if the core has hung, every result will be a false negative.",
@@ -1415,11 +1443,215 @@
   "splitOnlySelectedWarnBody": "Only entries with the “Tunnel” action go into the tunnel. All other traffic — including programs you do not know about — leaves directly, with your real address. If the whole device must be hidden, choose “All through VPN”.",
   "splitOnlySelectedNoRealIp": "The “Never leave under the real IP” setting does not change this: it rewrites only the “Direct” rules, not the default route.",
   "splitKillSwitchIsPerApp": "The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.",
-  "updateNotesTitle": "What's new in {version}",
   "updateNotesEmpty": "No release notes were provided.",
-  "updateNotesNeverShow": "Don't show again",
   "notifOffTitle": "Notifications are off",
   "notifOffSub": "You will not see a dropped connection, and the “Disconnect” button will be gone",
   "notifOffOpen": "Turn on",
-  "notifOffNoScreen": "Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate."
+  "notifOffNoScreen": "Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate.",
+  "splitImport": "Import",
+  "splitExport": "Export",
+  "splitImportOk": "Settings imported",
+  "splitImportBad": "No valid SilentGate settings in the clipboard",
+  "splitImportReplace": "Replace",
+  "updatesTitle": "Updates",
+  "updatesCurrentVersion": "Current version {version}",
+  "updatesChannelStable": "Stable channel",
+  "updatesChannelBeta": "Beta channel",
+  "updatesCheckNow": "Check now",
+  "updatesStatusChecking": "Checking…",
+  "updatesStatusUpToDate": "You have the latest version",
+  "updatesStatusAvailable": "Version {version} available",
+  "updatesStatusDownloading": "Downloading… {percent}%",
+  "updatesDownloadedOf": "Downloading {done} of {total} MB",
+  "updatesDownloadLeft": "{left} MB left",
+  "updatesDownloadEtaSec": "~{n} s",
+  "updatesDownloadEtaMin": "~{n} min",
+  "updatesStatusVerifying": "Verifying signature…",
+  "updatesStatusReady": "Ready to install",
+  "updatesStatusInstalling": "Installing…",
+  "updatesStatusFailed": "Failed: {reason}",
+  "updatesStatusNeedsPermission": "Install permission required",
+  "updatesStatusLinkOnly": "Install manually",
+  "updatesModeTitle": "How to update",
+  "updatesModeAsk": "Ask",
+  "updatesModeAskHint": "Shows what is new and installs only after you confirm",
+  "updatesModeAuto": "Automatically",
+  "updatesModeAutoHint": "Downloads and installs on its own while the VPN is off",
+  "updatesModeNotify": "Notify only",
+  "updatesModeNotifyHint": "Reports a new version without downloading or installing anything",
+  "updatesAutoCheck": "Check on startup",
+  "updatesBeta": "Receive beta versions",
+  "updatesSignatureNote": "Every file is verified against the developer's signature and a checksum; installation will not start unless they match",
+  "updatesDialogTitle": "Update {version} available",
+  "updatesInstall": "Update",
+  "updatesLater": "Later",
+  "updatesSkipVersion": "Skip this version",
+  "updatesVpnWarning": "Installing will disconnect the VPN",
+  "updatesAndroidUnknownSources": "Allow installs from this app",
+  "updatesAndroidOpenSettings": "Open settings",
+  "updatesAndroidNoSilent": "Android will show the system install prompt: that is a system requirement",
+  "updatesPortableFallback": "This copy was not installed with the installer. Download the new version manually",
+  "updatesInstalledToast": "Updated to {version}",
+  "updatesInstallFailedTitle": "Installation did not complete",
+  "updatesInstallFailedBody": "The version is still {version}. Installer log below",
+  "updatesShowLog": "Show log",
+  "updatesOverrideBadge": "Update source overridden (test mode)",
+  "updatesSettingsTile": "Updates",
+  "updatesSettingsTileSubtitle": "Check, download and install new versions",
+  "updatesPreviousVersions": "Previous versions",
+  "updatesInstallOlder": "Install",
+  "updatesDowngradeWarning": "Rolling back to an older version. Continue?",
+  "updatesSizeMb": "{mb} MB",
+  "updatesVpnWarningBody": "The app will close and the VPN will be off during installation. Reconnect after the update",
+  "updatesOpenPage": "Open download page",
+  "updatesLinkNotify": "“Notify only” mode is selected — download the new version from the download page",
+  "updatesLinkNoSelfUpdate": "This release has no signed installer for your system — download it from the download page",
+  "updatesLinkIsolated": "This is an isolated test copy — it does not touch the installed app. Update it manually",
+  "updatesLinkLocation": "The app is not running from its installation folder — download the new version manually or start the installed copy",
+  "updatesLinkElevated": "The app is running as administrator — updating this way is unsafe. Start it normally",
+  "updatesLinkUnsupported": "The app cannot update itself on this platform — download the new version manually",
+  "updatesErrCheck": "the update server did not respond",
+  "updatesErrInsecure": "the download address is not secure (not https)",
+  "updatesErrAssetName": "the file name in the release is not allowed",
+  "updatesErrManifest": "could not get the signed release manifest",
+  "updatesErrSignature": "the signature does not match — the file may have been tampered with",
+  "updatesErrManifestRejected": "the release manifest does not fit this version or system",
+  "updatesErrDownload": "the file did not download or its checksum does not match",
+  "updatesErrInstall": "the installer did not start",
+  "updatesErrNotNewer": "this version is not newer than the installed one",
+  "updatesInfo": "What the app does when a new version is found. In automatic mode installation never breaks an active VPN: it waits until you disconnect. In every mode a file is installed only if the developer signature matches.",
+  "updatesDownload": "Download",
+  "updatesInstallNow": "Install now",
+  "updatesWaitingVpn": "Ready to install — it will start after the VPN is disconnected",
+  "updatesSkippedNote": "Version {version} skipped — you will be notified about the next one",
+  "updatesAutoNoticeTitle": "Installing update",
+  "updatesAutoNoticeBody": "The app will close while version {version} is being installed",
+  "splitImportTitleApps": "Import apps",
+  "splitImportTitleSites": "Import sites",
+  "splitImportFormatNote": "One line is one rule. The [tunnel], [direct] and [block] headers set the action for the lines below. A line without flags is added exactly as if typed by hand.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Paste from clipboard",
+  "splitImportAdd": "Add",
+  "splitImportReplaceAll": "Replace all",
+  "splitImportStatNew": "new: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "already there: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "differ: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "not parsed: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Overwrite the differing ones",
+  "splitImportOverwriteSub": "Off keeps the current settings of those rules",
+  "splitImportConflictLine": "was {from}, becomes {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "These lines were not taken",
+  "splitImportAdded": "Added {added}, changed {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Rules after replacement: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "The list is empty, nothing to export",
+  "splitCountEmpty": "Empty",
+  "splitCountTotal": "total {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "on {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "off {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "tunnel {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "direct {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "block {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Expand the list",
+  "splitCollapseList": "Collapse the list",
+  "splitExpandGroup": "Expand the group",
+  "splitCollapseGroup": "Collapse the group",
+  "splitExpandSubdomains": "Show subdomains",
+  "splitCollapseSubdomains": "Hide subdomains"
 }

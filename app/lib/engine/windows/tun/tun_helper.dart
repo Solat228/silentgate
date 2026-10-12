@@ -10,6 +10,7 @@ import '../process_list_windows.dart';
 import '../wfp_rules.dart' show baseName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
+import 'tun_reload.dart';
 import 'kill_switch_plan_file.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
@@ -229,18 +230,10 @@ class TunHelper {
     }
 
     _delete(stopFile);
-    Process proc;
-    try {
-      proc = await Process.start(
-        singbox,
-        ['run', '-c', configPath],
-        workingDirectory: loc?.assetDir,
-      );
-    } catch (e) {
-      await log.write('НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
-      await log.close();
-      return;
-    }
+    final dataDir = _dataDir(configPath);
+    // Просьба о перезапуске, оставшаяся от ПРОШЛОГО помощника, этому не
+    // адресована: исполнив её, он перезапустил бы только что поднятое ядро.
+    TunReload.cancel(dataDir);
 
     // Вывод ядра — в лог (иначе диагностировать сбой невозможно). Режем на
     // СТРОКИ, а не пишем чанками: по строкам считается порог усечения, и на
@@ -249,14 +242,43 @@ class TunHelper {
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen((line) => unawaited(log.write(line)), onError: (_) {});
-    pipe(proc.stdout);
-    pipe(proc.stderr);
 
+    // ⚠️ ПОКОЛЕНИЕ ЯДРА. Ядро за сеанс помощника может смениться (перезапуск
+    // без снятия блокировки, см. [TunReload]), и смерть ПРЕЖНЕГО процесса не
+    // имеет права выдать себя за смерть нового.
+    var coreGen = 0;
     var procExited = false;
-    unawaited(proc.exitCode.then((code) {
-      procExited = true;
-      unawaited(log.write('--- sing-box завершился, код $code'));
-    }));
+    Future<Process?> startCore() async {
+      final Process p;
+      try {
+        p = await Process.start(
+          singbox,
+          ['run', '-c', configPath],
+          workingDirectory: loc?.assetDir,
+        );
+      } catch (e) {
+        await log.write('НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
+        return null;
+      }
+      final gen = ++coreGen;
+      procExited = false;
+      pipe(p.stdout);
+      pipe(p.stderr);
+      unawaited(p.exitCode.then((code) {
+        if (gen == coreGen) procExited = true;
+        unawaited(log.write('--- sing-box завершился, код $code'));
+      }));
+      return p;
+    }
+
+    final first = await startCore();
+    if (first == null) {
+      hold?.release();
+      alive?.dispose();
+      await log.close();
+      return;
+    }
+    var proc = first;
 
     // ⚠️ ОДИН ЦИКЛ И ОДИН ВЫХОД. Ожиданий ВНЕ цикла быть не должно: пока
     // помощник ждёт что-то отдельно, он не смотрит ни stop-файл, ни признак
@@ -271,7 +293,7 @@ class TunHelper {
     // бесплатно, а состав плана за сеанс не меняется: файл пишется до запуска
     // помощника. Значит спросить один раз достаточно, и сеансы с правилами по
     // полному пути не платят за наблюдение ничего.
-    final watched = _watchedNames(configPath);
+    var watched = _watchedNames(configPath);
 
     // ⚠️ ПУТИ НАКАПЛИВАЮТСЯ, А НЕ ПЕРЕСЧИТЫВАЮТСЯ ЗАНОВО. Путь, однажды
     // попавший под выбранное имя, остаётся в наборе до конца сеанса: программу
@@ -286,6 +308,63 @@ class TunHelper {
     var watchTick = 0;
     String? lastUpdateFailure;
 
+    // ⚠️ ПЕРЕЗАПУСК ЯДРА БЕЗ СНЯТИЯ БЛОКИРОВКИ (см. [TunReload]). `null` —
+    // новое ядро запущено; строка — почему отказались. Отказ ничего не
+    // ломает: интерфейс уходит обычным путём, через stop-файл.
+    Future<String?> reloadCore() async {
+      final h = hold;
+      if (h == null) return 'блокировка не поднята — передавать нечего';
+      await log.write('--- просьба перезапустить ядро без снятия блокировки');
+      final oldLuid = tunnelLuid ?? TunLuid.forAlias();
+      final next = _freshPlan(configPath, oldLuid, _runningProcesses());
+      if (next == null) return 'новый план блокировки не просит';
+      final cleaned = _cleanMissing(next).plan;
+      if (cleaned.isEmpty) return 'новый план блокировки пуст';
+      // ⚠️ СНАЧАЛА НОВЫЙ СОСТАВ, ПОТОМ СТАРОЕ ЯДРО. Замена идёт одной
+      // транзакцией: не принял WFP — стоит прежний набор и работает прежний
+      // туннель, ничего не сломано. Правило старого туннеля (oldLuid) в новом
+      // составе оставлено, чтобы до остановки ядра его трафик не душился.
+      if (!h.reengage(cleaned, log: (m) => unawaited(log.write('--- $m')))) {
+        return 'WFP не принял новый состав — прежний набор держится';
+      }
+      applied = _appSnapshot(cleaned);
+      await log.write('--- останавливаю прежнее ядро, блокировка ДЕРЖИТСЯ');
+      coreGen++; // смерть прежнего процесса — уже не смерть ядра сеанса
+      proc.kill();
+      try {
+        await proc.exitCode.timeout(const Duration(seconds: 5));
+      } catch (_) {
+        try {
+          proc.kill(ProcessSignal.sigkill);
+        } catch (_) {}
+      }
+      // ⚠️ ЖДЁМ, ПОКА УЙДЁТ ПРЕЖНИЙ АДАПТЕР. Иначе цикл спросит LUID раньше,
+      // чем адаптер снимется, получит ПРЕЖНИЙ и разрешит интерфейс, которого
+      // через секунду не будет, — а новый так и останется задушен.
+      if (oldLuid != null) {
+        final deadline = DateTime.now().add(const Duration(seconds: 5));
+        while (DateTime.now().isBefore(deadline) &&
+            TunLuid.forAlias() == oldLuid) {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        }
+      }
+      await log.write('--- запуск sing-box без снятия блокировки '
+          '${DateTime.now().toIso8601String()}');
+      final p = await startCore();
+      luidApplied = false;
+      tunnelLuid = null;
+      coreDeathLogged = false;
+      watched = _watchedNames(configPath);
+      matched.clear();
+      lastUpdateFailure = null;
+      if (p == null) {
+        procExited = true; // блокировка держится, ядра нет — как при смерти
+        return 'новое ядро не запустилось';
+      }
+      proc = p;
+      return null;
+    }
+
     while (true) {
       if (stopFile.existsSync()) {
         await log.write('--- получен stop-файл, останавливаю sing-box');
@@ -298,6 +377,21 @@ class TunHelper {
         await log.write('--- интерфейс завершился, останавливаю sing-box');
         proc.kill();
         break;
+      }
+      final reloadToken = TunReload.take(dataDir);
+      if (reloadToken != null) {
+        final refusal = await reloadCore();
+        if (refusal != null) {
+          await log.write('--- перезапуск без снятия блокировки отклонён: '
+              '$refusal');
+        }
+        TunReload.answer(
+            dataDir,
+            reloadToken,
+            refusal == null
+                ? const TunReloadAnswer.started()
+                : TunReloadAnswer.refused(refusal));
+        continue;
       }
 
       // ⚠️ НАБЛЮДЕНИЕ ИДЁТ РЕЖЕ ЦИКЛА. Тик в 400 мс принадлежит stop-файлу и

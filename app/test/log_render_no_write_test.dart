@@ -558,7 +558,7 @@ class _FakePrivileges implements PrivilegeSetup {
   @override
   Future<bool> isConfigured() async => true;
   @override
-  Future<bool> configure() async => true;
+  Future<PrivilegeSetupResult> configure() async => PrivilegeSetupResult.done;
   @override
   Future<bool> remove() async => true;
 }

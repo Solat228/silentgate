@@ -31,6 +31,14 @@ String? exitServerRejection(VpnServer s) {
   if (s.isNotice) {
     return 'это не сервер, а сообщение подписки: ${s.displayName}';
   }
+  // Сервер, который клиент не умеет собрать вообще (например, hysteria2 с
+  // маской finalmask.udp, которую не строит ни одно наше ядро) — решение
+  // владельца 25.09.2026: сервер не выбрасывается из списка, но не годится
+  // НИ ДЛЯ ЧЕГО, включая отдельный выход.
+  if (s.isUnsupported) {
+    return 'сервер не поддерживается клиентом (${s.unsupportedReason}): '
+        '${s.displayName}';
+  }
   // Панельный профиль «Авто …» — готовый конфиг Xray целиком (`balancers` +
   // `burstObservatory`), а выходы разводит sing-box. Разобрать его он не может,
   // и молча взять из него один узел хуже, чем честно отказать.
@@ -143,7 +151,7 @@ class ExitOutbounds {
         } else {
           // Сам сервер уезжает под ВНУТРЕННИЙ тег, а имя выхода забирает
           // группа: так ссылки правил, DNS и портов API остаются целыми.
-          final nodeTag = '$tag-node';
+          final nodeTag = exitNodeTagFor(tag);
           out.add(SingboxOutboundFactory.build(
             server,
             tag: nodeTag,

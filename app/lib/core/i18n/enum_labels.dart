@@ -143,7 +143,19 @@ String appErrorText(AppLocalizations l, AppErrorCode c) => switch (c) {
       AppErrorCode.invalidJson => l.errInvalidJson,
       AppErrorCode.pickServerFirst => l.errPickServerFirst,
       AppErrorCode.importSubscriptionFirst => l.errImportSubscriptionFirst,
+      AppErrorCode.serverUnsupported => l.errServerUnsupported,
     };
+
+/// Текст «!»-подсказки у сервера, который клиент не умеет поднять
+/// ([VpnServer.isUnsupported]). Код причины хранится в модели
+/// машиночитаемым (не переводится) — единственное место перевода здесь.
+String unsupportedServerNote(AppLocalizations l, VpnServer s) {
+  final reason = s.unsupportedReason ?? '';
+  if (reason.startsWith('hy2_mask:')) {
+    return l.serverUnsupportedHy2Mask(reason.substring('hy2_mask:'.length));
+  }
+  return l.serverUnsupportedGeneric;
+}
 
 /// Подписи тегов сервера: переводимые маркеры ([VpnServerTags]) заменяются на
 /// локализованные, технические (VLESS/TCP/REALITY…) остаются как есть.

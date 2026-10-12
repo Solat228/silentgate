@@ -446,9 +446,19 @@ abstract class VpnEngineBase implements VpnEngine {
     // разом» этого не ловило: они падают по одному.
     final quiet = {for (final k in apiOnlyKeys) exitTagFor(k)};
     final stats = SingboxStats(apiPort: apiPort, secret: secret);
+    // ⚠️ ПРОБА — ЧЕРЕЗ САМ СЕРВЕР (`<тег>-node`), А НЕ ЧЕРЕЗ ГРУППУ.
+    //
+    // Группа — `selector` из сервера и общего туннеля, и проба задержки идёт
+    // через того участника, что выбран сейчас. После переключения на запас
+    // она мерила уже общий туннель, отвечала с первого раза — и сторож писал
+    // «снова отвечает», хотя сервер лежал. Обратно группу при этом не
+    // переключал никто: трафик правила оставался в чужой стране до
+    // переподключения. В журнале владельца так прошли 16 эпизодов
+    // («промахов было 3» — ровно следующий такт после приговора).
+    final probeTags = exitProbeTagsOf(outbounds);
     final h = ExitHealth(
       tags: tags,
-      probe: (tag) => stats.exitAlive(tag),
+      probe: (tag) => stats.exitAlive(probeTags[tag] ?? tag),
       // ⚠️ ПРОМАХ ПРИ МЁРТВОМ ОСНОВНОМ КАНАЛЕ НЕ ЗАСЧИТЫВАЕТСЯ. Выходы
       // живут внутри того же туннеля: упал он — молчат все, и сторож
       // объявил бы мёртвыми ВСЕ разом, не сломав ни одного. Спрашиваем
@@ -486,16 +496,30 @@ abstract class VpnEngineBase implements VpnEngine {
         '${h.failuresToDeclareDown} промахов подряд');
     h.start(
       aborted: () => aborted() || !status.isConnected,
-      onExitRecovered: (tag, missed) {
+      onExitRecovered: (tag, missed) async {
         down.remove(tag);
-        AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
-            '(промахов было $missed)');
+        final node = probeTags[tag];
+        // Группы нет (запасной путь не строился) — возвращать нечего.
+        if (node == null) {
+          AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed)');
+          return;
+        }
+        final back = await stats.selectExitMember(tag, node);
+        if (back) {
+          AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed) — трафик вернулся на этот сервер');
+        } else {
+          AppLog.w('Выход «${names[tag] ?? tag}» снова отвечает '
+              '(промахов было $missed), но вернуть на него трафик не удалось: '
+              'Clash API ядра не принял переключение');
+        }
       },
       onExitDown: (tag) async {
         if (!down.add(tag)) return;
         final name = names[tag] ?? tag;
-        AppLog.e('Выход «$name» не отвечает: ${h.failuresToDeclareDown} '
-            'проверки подряд не прошли.');
+        AppLog.e('Выход «$name» не отвечает: промахов подряд — '
+            '${h.failuresToDeclareDown}.');
 
         // ⚠️ ВСЕ ВЫХОДЫ РАЗОМ — ЭТО ОТКАЗ ПРОБЫ, А НЕ ВЫХОДОВ.
         //
@@ -581,12 +605,36 @@ abstract class VpnEngineBase implements VpnEngine {
   /// удалось собрать (панельный «Авто», незнакомый протокол), в конфиг не
   /// попал — и сторожить его нечего. Спроси мы список серверов, сторож вечно
   /// объявлял бы мёртвым выход, которого никогда и не было.
+  ///
+  /// ⚠️ ВНУТРЕННИЙ УЗЕЛ ГРУППЫ (`<тег>-node`) ВЫХОДОМ НЕ СЧИТАЕТСЯ. Он тоже
+  /// начинается с `exit-`, и прежде сторож вёл его как отдельный выход: каждый
+  /// отказ попадал в журнал дважды, второй раз под сырым тегом
+  /// («exit-987faff6-node»), а переключение «узла» на запас ядро отвергало.
   @visibleForTesting
   static List<String> exitTagsOf(List<Map<String, dynamic>> outbounds) => [
         for (final o in outbounds)
-          if (o['tag'] is String && (o['tag'] as String).startsWith('exit-'))
+          if (o['tag'] is String &&
+              (o['tag'] as String).startsWith('exit-') &&
+              !(o['tag'] as String).endsWith(exitNodeSuffix))
             o['tag'] as String,
       ];
+
+  /// Тег группы → тег её сервера, для групп, у которых сервер есть.
+  ///
+  /// Выход без группы (запасной путь не строился) сюда не попадает: его
+  /// проба идёт по тегу самого выхода, и переключать там нечего.
+  @visibleForTesting
+  static Map<String, String> exitProbeTagsOf(
+      List<Map<String, dynamic>> outbounds) {
+    final all = {
+      for (final o in outbounds)
+        if (o['tag'] is String) o['tag'] as String,
+    };
+    return {
+      for (final tag in exitTagsOf(outbounds))
+        if (all.contains(exitNodeTagFor(tag))) tag: exitNodeTagFor(tag),
+    };
+  }
 
   void startHealthWatch(bool Function() aborted) {
     // ⚠️ УСТАРЕВШИЙ ВЫЗОВ НЕ ТРОГАЕТ ЖИВОГО СТОРОЖА. Первая же строка ниже —
@@ -618,6 +666,7 @@ abstract class VpnEngineBase implements VpnEngine {
         '${h.failuresToDeclareDown} промахов подряд');
     h.start(
       aborted: () => aborted() || !status.isConnected,
+      onOk: () => _channelProven = true,
       onRecovered: (missed) => AppLog.w(
           'Канал восстановился сам: подряд не прошло проб — $missed. '
           'Переподключение не потребовалось.'),
@@ -718,7 +767,8 @@ abstract class VpnEngineBase implements VpnEngine {
             keepCapture: s != null && keepCaptureBetweenAttempts(s));
         if (!await scheduleRetry('канал не пропускает трафик')) {
           setStatus(VpnConnectionState.error,
-              message: 'Туннель подключён, но трафик через него не идёт');
+              message: 'Туннель подключён, но трафик через него не идёт',
+              text: const StatusTrafficNotFlowing());
         }
       },
     );
@@ -731,7 +781,113 @@ abstract class VpnEngineBase implements VpnEngine {
 
   /// Сбросить предохранитель. Зовётся при подключении ПО КОМАНДЕ пользователя:
   /// его действие — знак, что прошлые неудачи больше не в счёт.
-  void resetHealthGuard() => _healthRestarts = 0;
+  ///
+  /// Вместе с ним забывается и [_channelProven]: новое подключение может идти
+  /// через другой сервер и другие мишени, и прошлый успех о нём ничего не
+  /// говорит.
+  void resetHealthGuard() {
+    _healthRestarts = 0;
+    _channelProven = false;
+  }
+
+  /// Канал ЭТОЙ сессии хоть раз пропустил сквозную пробу.
+  ///
+  /// ⚠️ БЕЗ ЭТОГО ПРИЗНАКА ПРОВЕРКА ПОСЛЕ ВОССТАНОВЛЕНИЯ СТАЛА БЫ ЛОВУШКОЙ.
+  /// Бывает, что мишени пробы недоступны из страны выхода или режутся
+  /// правилами панельного профиля, а сам канал исправен (ради этого случая и
+  /// заведён предохранитель [_healthGiveUpAfter]). Там проба не проходит
+  /// НИКОГДА, и проверка «восстановлено только при живой пробе» держала бы
+  /// человека без интернета вечно — при kill switch попытки не кончаются.
+  /// Если же проба на этой сессии уже проходила, а после восстановления
+  /// молчит, это довод: мишени были доступны, значит умер канал.
+  bool _channelProven = false;
+
+  @visibleForTesting
+  bool get channelProven => _channelProven;
+
+  /// Сколько раз повторять пробу перед приговором восстановленному каналу.
+  ///
+  /// Ядро только что поднялось: первый запрос может не успеть на рукопожатие
+  /// с сервером. Одна проба — это до трёх мишеней по 8 с; вторая после паузы
+  /// закрывает медленный старт и не растягивает ожидание сверх ~50 с.
+  static const _confirmRounds = 2;
+
+  /// Пауза между пробами подтверждения. Не `const` ради теста — настоящие
+  /// секунды в прогоне ждать некому.
+  @visibleForTesting
+  static Duration confirmPause = const Duration(seconds: 2);
+
+  /// ПОДТВЕРДИТЬ, ЧТО ВОССТАНОВЛЕННЫЙ КАНАЛ ПРОПУСКАЕТ ТРАФИК.
+  ///
+  /// ⚠️ НАЙДЕНО ЖИВЬЁМ В VM 10.10.2026. Сервер умер — сторож честно признал
+  /// канал мёртвым и переподключился. Повтор поднял ЯДРО (процесс стартует и
+  /// при недоступном сервере), платформа позвала [markConnected], и человек
+  /// получил «Соединение восстановлено» и значок «Подключено». Через ~2,5 мин
+  /// сторож снова видел мёртвый канал, и так раз в ~3,5 мин; после трёх кругов
+  /// предохранитель сторожа умолкал навсегда, оставляя «Подключено» на
+  /// мёртвом канале. Kill switch при этом формально держал (трафик уходил в
+  /// туннель к мёртвому серверу), но признак блокировки и красный трей
+  /// снимались тем же [markConnected].
+  ///
+  /// Теперь после ВОССТАНОВЛЕНИЯ (не после нажатия кнопки) платформа сначала
+  /// спрашивает этот метод. Проба не прошла — попытка считается неудачной и
+  /// уходит в обычный [scheduleRetry]: с kill switch захват удерживается и
+  /// попытки не кончаются, без него после [maxAttempts] человек получает
+  /// честную ошибку.
+  ///
+  /// `true` — можно ставить «Подключено». `false` — попытка уже передана
+  /// автовосстановлению (или сессия устарела); вызывающий обязан просто выйти,
+  /// ничего не трогая.
+  ///
+  /// Не проверяем:
+  ///  * подключение по команде пользователя — его проверит сторож канала, а
+  ///    задерживать «Подключено» на каждое нажатие незачем;
+  ///  * канал, на котором проба не проходила ни разу (см. [_channelProven]).
+  @protected
+  Future<bool> confirmRecoveredChannel(bool Function() aborted) async {
+    final recovery = !_freshUserConnect && (_noticedDrop || _attempt > 0);
+    if (!recovery) return true;
+    if (!_channelProven) {
+      AppLog.i('Восстановление: сквозную пробу не проверяю — на этой сессии '
+          'она не проходила ни разу, её провал ничего не доказывает');
+      return true;
+    }
+    setStatus(VpnConnectionState.connecting,
+        message: 'Проверяю, идёт ли трафик через восстановленный канал…');
+    final auth = healthProbeAuth;
+    final probe = createHealthProbe(
+      proxyPort: httpProxyPort,
+      proxyUser: auth.user,
+      proxyPassword: auth.password,
+    );
+    for (var round = 0; round < _confirmRounds; round++) {
+      if (aborted()) return false;
+      if (round > 0) await Future<void>.delayed(confirmPause);
+      if (aborted()) return false;
+      if (await probe.probeOnce()) {
+        AppLog.i('Восстановление подтверждено сквозной пробой '
+            '(${probe.lastOkTarget})');
+        return true;
+      }
+    }
+    // ⚠️ ПЕРЕПРОВЕРКА ОТМЕНЫ ПОСЛЕ ДОЛГОГО ОЖИДАНИЯ. Пробы идут до ~50 с; за
+    // это время человек успевает отключиться или переподключиться, и чужую
+    // сессию трогать нельзя — тот же урок, что в ветке разрыва сторожа.
+    if (aborted()) return false;
+    AppLog.e('Ядро поднялось, но трафик через канал не идёт: $_confirmRounds '
+        'пробы подряд не прошли через 127.0.0.1:$httpProxyPort. '
+        '«Восстановлено» не объявляю — считаю попытку неудачной.');
+    final s = session?.options.settings;
+    await teardownCore(
+        keepCapture: s != null && keepCaptureBetweenAttempts(s));
+    if (aborted()) return false;
+    if (!await scheduleRetry('канал не пропускает трафик')) {
+      setStatus(VpnConnectionState.error,
+          message: 'Туннель подключён, но трафик через него не идёт',
+          text: const StatusTrafficNotFlowing());
+    }
+    return false;
+  }
 
   /// Кончаются ли попытки. При kill switch — нет: см. [_scheduleRetryLocked].
   ///
@@ -1039,8 +1195,25 @@ abstract class VpnEngineBase implements VpnEngine {
   bool get userStopped => _userStopped;
 
   void setStatus(VpnConnectionState state,
-      {String? message, VpnPhase phase = VpnPhase.normal, bool blocking = false}) {
-    _status = VpnStatus(state, message: message, phase: phase, blocking: blocking);
+      {String? message,
+      StatusText? text,
+      VpnPhase phase = VpnPhase.normal,
+      bool blocking = false}) {
+    // ⚠️ ПОКА KILL SWITCH ДЕРЖИТ ТРАФИК, ПРИЗНАК НЕСЁТ ЛЮБОЙ СТАТУС ПОПЫТКИ.
+    //
+    // Найдено живым прогоном в VM 10.10.2026: блокировка длилась 27 с, а значок
+    // в трее был красным меньше секунды. Признак ставил только статус
+    // «переподключение через N с», а через 800 мс сама попытка слала
+    // «Подключение…» с умолчанием `false` — трей сереел при живой блокировке,
+    // то есть ровно тогда, ради чего красный цвет и заводили.
+    // Снимается блокировка в [markConnected] и при ручном отключении.
+    final held =
+        _blockingSince != null && state == VpnConnectionState.connecting;
+    _status = VpnStatus(state,
+        message: message,
+        text: text,
+        phase: phase,
+        blocking: blocking || held);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -1111,6 +1284,19 @@ abstract class VpnEngineBase implements VpnEngine {
           '${_humanDuration(held)} — соединение восстановлено');
       _blockingSince = null;
     }
+  }
+
+  /// Снять признак «kill switch держит трафик», когда держать больше нечего:
+  /// человек отключился сам, сменил сервер или восстановление отменено.
+  ///
+  /// ⚠️ Без этого [setStatus] продолжал бы ставить признак на «Подключение…»
+  /// СЛЕДУЮЩЕГО подключения по кнопке — трей краснел бы без всякой блокировки.
+  void _endBlocking(String how) {
+    final since = _blockingSince;
+    if (since == null) return;
+    _blockingSince = null;
+    AppLog.i('Kill switch: блокировка снята ($how), держал '
+        '${_humanDuration(DateTime.now().difference(since))}');
   }
 
   /// «6 ч 12 мин» / «45 с» — для строки в отчёте поддержки.
@@ -1245,8 +1431,9 @@ abstract class VpnEngineBase implements VpnEngine {
     }
 
     final errors = <String, Object>{};
-    final resolved = await _resolveHosts(
+    final probed = await _resolveWithProbe(
       toLookup,
+      _resolveCache.keys.toSet(),
       (host) async {
         final found =
             await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
@@ -1254,9 +1441,22 @@ abstract class VpnEngineBase implements VpnEngine {
       },
       onError: (host, e) => errors[host] = e,
     );
+    final resolved = probed.resolved;
+    if (probed.skipped.isNotEmpty) {
+      for (final host in probed.skipped) {
+        out[host] = _resolveCache[host]!;
+      }
+      // Одна строка вместо десятков «Не удалось отрезолвить … (Timeout 5 сек)»:
+      // спрашивать по одному резолвер, который молчит, — это и было время
+      // восстановления.
+      AppLog.w('DNS не ответил за ${dnsProbeTimeout.inSeconds} с — адреса '
+          '${probed.skipped.length} серверов беру из кэша, не дожидаясь '
+          'таймаутов (так бывает, пока kill switch держит трафик)');
+    }
 
     var changed = false;
     for (final host in toLookup) {
+      if (probed.skipped.contains(host)) continue;
       final ips = resolved[host] ?? const <String>[];
       if (ips.isNotEmpty) {
         out[host] = ips;
@@ -1349,6 +1549,82 @@ abstract class VpnEngineBase implements VpnEngine {
     await Future.wait([for (var i = 0; i < n; i++) worker()]);
     return out;
   }
+
+  /// Сколько ждём ПРОБНЫЙ запрос, прежде чем решить, что DNS молчит.
+  static const dnsProbeTimeout = Duration(seconds: 2);
+
+  /// Резолв с пробой: сначала ОДНО имя, у которого есть адрес в кэше, и только
+  /// потом остальные.
+  ///
+  /// ⚠️ ЗАЧЕМ — ЖУРНАЛ ВЛАДЕЛЬЦА 07.10.2026. Kill switch держал трафик 28 с, из
+  /// них ~27 с ушло на ожидание DNS: два прохода резолва по 30 имён (по 5 с на
+  /// каждую восьмёрку) плюс перебор DNS адаптера. Сам сервер ответил сразу,
+  /// как только до него дошла очередь. Параллельность (см. [_resolveHosts])
+  /// время сократила, но не убрала: пока захват стоит, а ядра нет, DNS не
+  /// отвечает В ПРИНЦИПЕ, и каждая восьмёрка честно ждёт свой таймаут.
+  ///
+  /// Проба различает «DNS молчит» и «DNS ответил». Молчит (именно таймаут) —
+  /// имена, для которых есть прошлый адрес, в [skipped]: спрашивать их
+  /// бесполезно, вызывающий берёт адрес из кэша. Имена без кэша спрашиваются
+  /// как обычно — других источников у них нет. Ответил (адресом или ошибкой
+  /// вроде «нет такого имени») — резолв идёт как прежде.
+  ///
+  /// Цена при живом DNS — один лишний последовательный запрос (десятки мс).
+  static Future<({Map<String, List<String>> resolved, Set<String> skipped})>
+      _resolveWithProbe(
+    List<String> hosts,
+    Set<String> cached,
+    Future<List<String>> Function(String host) lookup, {
+    void Function(String host, Object error)? onError,
+    Duration probeTimeout = dnsProbeTimeout,
+  }) async {
+    final withCache = [
+      for (final h in hosts)
+        if (cached.contains(h)) h,
+    ];
+    // Одно имя проба не ускорит: его и так спросят один раз.
+    if (withCache.length < 2) {
+      return (
+        resolved: await _resolveHosts(hosts, lookup, onError: onError),
+        skipped: <String>{},
+      );
+    }
+    final probe = withCache.first;
+    final resolved = <String, List<String>>{};
+    var silent = false;
+    try {
+      resolved[probe] = await lookup(probe).timeout(probeTimeout);
+    } on TimeoutException catch (e) {
+      silent = true;
+      onError?.call(probe, e);
+    } catch (e) {
+      // Ошибка — это тоже ответ: резолвер жив, просто не знает имени.
+      onError?.call(probe, e);
+    }
+    final skipped = silent ? withCache.toSet() : <String>{};
+    final rest = [
+      for (final h in hosts)
+        if (h != probe && !skipped.contains(h)) h,
+    ];
+    final others = await _resolveHosts(rest, lookup, onError: onError);
+    // Порядок ключей — как во входном списке (см. [_resolveHosts]).
+    final out = <String, List<String>>{};
+    for (final h in hosts) {
+      if (skipped.contains(h)) continue;
+      out[h] = resolved[h] ?? others[h] ?? const [];
+    }
+    return (resolved: out, skipped: skipped);
+  }
+
+  @visibleForTesting
+  static Future<({Map<String, List<String>> resolved, Set<String> skipped})>
+      resolveWithProbeForTest(
+    List<String> hosts,
+    Set<String> cached,
+    Future<List<String>> Function(String) lookup, {
+    Duration probeTimeout = dnsProbeTimeout,
+  }) =>
+          _resolveWithProbe(hosts, cached, lookup, probeTimeout: probeTimeout);
 
   /// Тот же резолв, но с подменённым запросом — для теста: сети в нём нет.
   @visibleForTesting
@@ -1717,6 +1993,7 @@ abstract class VpnEngineBase implements VpnEngine {
       AppLog.e('Автопереподключение отменено: $reason. Повтор тут не поможет — '
           'не хватает файла программы, переустановите приложение.');
       _userStopped = true;
+      _endBlocking('восстановление отменено');
       return false;
     }
 
@@ -1883,6 +2160,12 @@ abstract class VpnEngineBase implements VpnEngine {
                 'Переподключение через ${delay.inSeconds} с (попытка $_attempt)…'
             : 'Переподключение через ${delay.inSeconds} с '
                 '(попытка $_attempt из $maxAttempts)…',
+        // На экран попадает только вариант с блокировкой (плашка kill
+        // switch) — у него и есть код.
+        text: endless
+            ? StatusReconnectBlocked(
+                seconds: delay.inSeconds, attempt: _attempt)
+            : null,
         blocking: endless);
 
     _retryTimer?.cancel();
@@ -2027,7 +2310,8 @@ abstract class VpnEngineBase implements VpnEngine {
     // Имя ядра важно: по нему пользователь понимает, куда смотреть —
     // в xray_config.json или в singbox_proxy.json.
     final name = _session?.core == ProxyCore.singbox ? 'sing-box' : 'Xray';
-    final reason = _reasonFromTail(tail);
+    final why = coreStopReasonFromTail(tail);
+    final reason = coreStopReasonRu(why);
     AppLog.e('Ядро $name остановилось (код $code)'
         '${reason.isEmpty ? '' : ': $reason'}');
     if (tail.trim().isNotEmpty) {
@@ -2037,15 +2321,21 @@ abstract class VpnEngineBase implements VpnEngine {
         '${reason.isEmpty ? '' : ': $reason'}';
     if (await scheduleRetry(short)) return;
     await cleanup();
-    setStatus(VpnConnectionState.error, message: _capitalize(short));
+    setStatus(VpnConnectionState.error,
+        message: _capitalize(short),
+        text: StatusCoreStopped(core: name, code: code, reason: why));
   }
 
   /// Человеческая причина из вывода ядра — одной строкой, для журнала и статуса.
   ///
   /// Полный вывод всё равно пишется рядом; здесь только то, что должно попасть
   /// в заголовок ошибки, иначе пользователь увидит простыню и не найдёт сути.
-  static String _reasonFromTail(String tail) {
-    if (tail.trim().isEmpty) return '';
+  ///
+  /// Разбор ОДИН — и для журнала ([coreStopReasonRu]), и для экрана (UI
+  /// переводит [CoreStopReason] сам): два разбора одного вывода разошлись бы.
+  @visibleForTesting
+  static CoreStopReason? coreStopReasonFromTail(String tail) {
+    if (tail.trim().isEmpty) return null;
     final low = tail.toLowerCase();
     // Порт занят — самая частая и самая обидная причина: ядро печатает её
     // внятно, а мы показывали голый код возврата.
@@ -2053,17 +2343,28 @@ abstract class VpnEngineBase implements VpnEngine {
         low.contains('only one usage of each socket address') ||
         low.contains('bind:')) {
       final m = RegExp(r'127\.0\.0\.1:(\d+)').firstMatch(tail);
-      final port = m == null ? '' : ' ${m.group(1)}';
-      return 'локальный порт$port уже занят';
+      return CoreStopPortBusy(m == null ? null : int.tryParse(m.group(1)!));
     }
-    if (low.contains('failed to start')) return 'ядро не смогло запуститься';
+    if (low.contains('failed to start')) return const CoreStopFailedToStart();
     // Иначе — первая непустая строка, обрезанная до читаемой длины.
     final first = tail
         .split('\n')
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');
-    return first.length > 160 ? '${first.substring(0, 160)}…' : first;
+    if (first.isEmpty) return null;
+    return CoreStopRaw(
+        first.length > 160 ? '${first.substring(0, 160)}…' : first);
   }
+
+  /// Русский текст причины — для журнала и [VpnStatus.message].
+  @visibleForTesting
+  static String coreStopReasonRu(CoreStopReason? r) => switch (r) {
+        null => '',
+        CoreStopPortBusy(port: final p) =>
+          'локальный порт${p == null ? '' : ' $p'} уже занят',
+        CoreStopFailedToStart() => 'ядро не смогло запуститься',
+        CoreStopRaw(line: final l) => l,
+      };
 
   static String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
@@ -2086,6 +2387,7 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     // Явное отключение всегда отменяет автовосстановление, даже если оно уже идёт.
     _userStopped = true;
+    _endBlocking('отключение пользователем');
     // ⚠️ Пометку обрыва снимаем ЗДЕСЬ. Она означает «об обрыве уже сказали, и
     // при возврате связи надо сказать о восстановлении». Ручное отключение
     // закрывает ту историю: без этой строки следующее подключение — новое,
@@ -2133,6 +2435,7 @@ abstract class VpnEngineBase implements VpnEngine {
     // Дальше идёт немедленное подключение, поэтому автовосстановление старой
     // сессии должно быть отменено так же жёстко, как при обычном отключении.
     _userStopped = true;
+    _endBlocking('смена сервера');
     _noticedDrop = false;
     _noticedFailedAt = null;
     _generation++; // всё, что поднимется после этого момента, будет погашено

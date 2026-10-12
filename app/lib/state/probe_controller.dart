@@ -11,9 +11,11 @@ import '../core/probe/ping_result.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/probe/tcp_ping.dart';
 import '../core/platform/app_log.dart';
+import '../core/platform/wake_guard.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/settings/app_settings.dart';
 import '../core/util/key_migration.dart';
+import '../core/util/server_rekey.dart';
 // HarnessRealism не входит в реэкспорт probe_harness.dart (там только сущности
 // самого харнесса), поэтому берём его из первоисточника.
 import '../core/xray/harness_config_builder.dart'
@@ -104,7 +106,19 @@ class ProbeController extends ChangeNotifier {
     this.activeServerKey,
     this.captureActive,
     this.liveCoreDelay,
-  }) : _harnessFactory = harnessFactory ?? createProbeHarness;
+  }) : _harnessFactory = harnessFactory ?? createProbeHarness {
+    // Гейт пинга (`PingGate.of`) читает [serviceChecksRunning] при перерисовке,
+    // а перерисовку по этому контроллеру больше никто не вызовет: конец
+    // проверки сервисов обязан будить слушателей сам (см.
+    // [ServiceCheckActivity.listenable]).
+    ServiceCheckActivity.listenable.addListener(notifyListeners);
+  }
+
+  @override
+  void dispose() {
+    ServiceCheckActivity.listenable.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   bool get running => _running;
 
@@ -325,6 +339,33 @@ class ProbeController extends ChangeNotifier {
   Future<void> _persistUnfinished() =>
       _unfinishedStore.save(_unfinished.toList());
 
+  /// Панель переписала ссылки серверов (сервер тот же, ключ другой) —
+  /// переносим пинг и замер скорости на новые ключи, а записи старых убираем.
+  ///
+  /// Без этого результат прошлого замера висел на мёртвом ключе мусором, а у
+  /// того же сервера под новым ключом показывалось «не проверен». Своя запись
+  /// у нового ключа (если её успели снять после смены) важнее переносимой: она
+  /// по определению свежее.
+  Future<void> rekeyResults(Map<String, String> rekey) async {
+    if (rekey.isEmpty) return;
+    final results = ServerRekey.map(_results, rekey);
+    final speeds = ServerRekey.map(_speeds, rekey);
+    final unfinished = {
+      for (final k in _unfinished) rekey[k] ?? k,
+    };
+    _results
+      ..clear()
+      ..addAll(results);
+    _speeds
+      ..clear()
+      ..addAll(speeds);
+    _unfinished = unfinished;
+    notifyListeners();
+    await _persist();
+    await _persistSpeeds();
+    await _persistUnfinished();
+  }
+
   /// #3.2 — записать готовый результат извне (автонастройка меряет задержку сама),
   /// чтобы пинг на главной сразу подменился, а не ждал отдельного прогона.
   void setResult(VpnServer server, PingResult result) {
@@ -333,11 +374,18 @@ class ProbeController extends ChangeNotifier {
     _persist();
   }
 
+  /// ⚠️ ЕДИНСТВЕННАЯ ТОЧКА ФИЛЬТРА. Неподдерживаемый сервер (`isUnsupported`)
+  /// не пингуется НИ ОДНИМ вызывающим — фильтр здесь, а не в каждом месте
+  /// сборки списка (главный экран/экран серверов/переключатель подписки/
+  /// локальный API), иначе будущий новый вызывающий забудет о нём, как уже
+  /// не раз бывало с похожими гейтами в этом файле (см. CLAUDE.md 1.9.3).
   Future<void> pingAll(List<VpnServer> servers, AppSettings settings) =>
-      _pingBatch(servers, settings);
+      _pingBatch(servers.where((s) => !s.isUnsupported).toList(), settings);
 
-  Future<void> pingOne(VpnServer server, AppSettings settings) =>
-      _pingBatch([server], settings);
+  Future<void> pingOne(VpnServer server, AppSettings settings) {
+    if (server.isUnsupported) return Future.value();
+    return _pingBatch([server], settings);
+  }
 
   void cancel() => _cancel?.cancel();
 
@@ -463,13 +511,19 @@ class ProbeController extends ChangeNotifier {
   }
 
   /// Замер одного сервера — пункт контекстного меню строки.
-  Future<void> measureSpeedOne(VpnServer server, AppSettings settings) =>
-      _measureSpeeds([server], settings, force: true);
+  Future<void> measureSpeedOne(VpnServer server, AppSettings settings) {
+    if (server.isUnsupported) return Future.value();
+    return _measureSpeeds([server], settings, force: true);
+  }
 
   /// Прогон по списку. Вызывающий ОБЯЗАН спросить подтверждение и назвать
   /// объём: 101 сервер × 5–20 МБ — это до двух гигабайт подписки.
+  ///
+  /// Неподдерживаемый сервер сюда не идёт — тот же фильтр, что у `pingAll`.
   Future<void> measureSpeedAll(List<VpnServer> servers, AppSettings settings) =>
-      _measureSpeeds(servers, settings, force: false);
+      _measureSpeeds(
+          servers.where((s) => !s.isUnsupported).toList(), settings,
+          force: false);
 
   void cancelSpeed() => _speedCancel?.cancel();
 
@@ -540,6 +594,7 @@ class ProbeController extends ChangeNotifier {
     }
 
     _speedRunning = true;
+    final wake = WakeGuard.acquire('замер скорости');
     _speedQueue
       ..clear()
       ..addAll(targets);
@@ -631,6 +686,7 @@ class ProbeController extends ChangeNotifier {
       }
     } finally {
       _speedRunning = false;
+      wake.release();
       _speedQueue.clear();
       _speedFinishedAt = DateTime.now();
       // ⚠️ Счётчик берём из [_speedTotal], а не из длины исходного списка:
@@ -714,6 +770,9 @@ class ProbeController extends ChangeNotifier {
       return;
     }
     _running = true;
+    // Экран может погаснуть посреди прогона — процессор засыпать не должен,
+    // иначе живые серверы пометятся мёртвыми (см. [WakeGuard]).
+    final wake = WakeGuard.acquire('пинг');
     _batch = List.unmodifiable(servers);
     _batchKeys = {for (final s in servers) s.key};
     _done.clear();
@@ -986,6 +1045,7 @@ class ProbeController extends ChangeNotifier {
         }
       }
       _running = false;
+      wake.release();
       _finishedAt = DateTime.now();
       await _persist();
       await _persistUnfinished();

@@ -15,6 +15,7 @@ import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
 import '../settings_screen.dart';
 import 'app_toast.dart';
+import 'flag_text.dart';
 import 'ping_gate.dart';
 import 'subscription_avatar.dart';
 
@@ -157,7 +158,7 @@ abstract final class SubscriptionActions {
         builder: (dctx, setState) => AlertDialog(
           // Из меню можно удалить ЛЮБУЮ строку, в том числе не ту, что открыта,
           // — имя в заголовке единственное, что отличает их друг от друга.
-          title: Text(profile == null
+          title: FlagText(profile == null
               ? l.subBarDeleteConfirmTitle
               : l.subBarDeleteConfirmNamed(profile.safeTitle)),
           content: Column(
@@ -342,7 +343,7 @@ class SubscriptionSwitcher extends StatelessWidget {
           Icon(Icons.swap_horiz, size: 16, color: scheme.onPrimaryContainer),
           const SizedBox(width: 6),
           Flexible(
-            child: Text(title,
+            child: FlagText(title,
                 // Название подписки — направление по содержимому.
                 textDirection: autoTextDirection(title),
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
@@ -607,7 +608,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(p.title,
+                            FlagText(p.title,
                                 // Доминирует название подписки — направление по нему.
                                 textDirection: autoTextDirection(p.title),
                                 overflow: TextOverflow.ellipsis,

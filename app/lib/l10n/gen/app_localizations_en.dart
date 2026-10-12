@@ -30,9 +30,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonRefresh => 'Refresh';
 
   @override
-  String get commonCheck => 'Check';
-
-  @override
   String get commonOk => 'OK';
 
   @override
@@ -148,6 +145,33 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get closeToTraySubtitle =>
       'The close button hides the window to the tray; turn off to close the app instead';
+
+  @override
+  String get launchAtLoginTitle => 'Start with Windows';
+
+  @override
+  String get launchAtLoginSub =>
+      'The app starts minimized to the tray when you sign in';
+
+  @override
+  String get connectOnAutostartTitle => 'Connect on startup';
+
+  @override
+  String get connectOnAutostartSub =>
+      'Bring up the VPN to the selected server right away when Windows starts the app';
+
+  @override
+  String get sortServersByCountryTitle => 'Sort by country';
+
+  @override
+  String get sortServersByCountrySub =>
+      'Gather servers of one country together. Countries keep the provider\'s order; pinned servers stay on top';
+
+  @override
+  String get serverGroupCollapse => 'Collapse group';
+
+  @override
+  String get serverGroupExpand => 'Expand group';
 
   @override
   String get autoUpdateSubTitle => 'Auto-update subscription';
@@ -581,51 +605,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get testUrlLabel => 'Test URL (via Proxy)';
 
   @override
-  String get appUpdateServerUnavailable => 'Update server unavailable';
-
-  @override
-  String appUpdateAvailable(String version) {
-    return 'Version $version available';
-  }
-
-  @override
-  String get appUpdateLatest => 'You have the latest version';
-
-  @override
-  String get appUpdateDownload => 'Download';
-
-  @override
-  String get appUpdateCheckTitle => 'Check for updates on launch';
-
-  @override
-  String get appUpdateManual => 'Downloading and installing — manually';
-
-  @override
-  String get appUpdateEndpointLabel => 'Version endpoint';
-
-  @override
-  String get appUpdateBetaChannelTitle => 'Receive beta versions';
-
-  @override
-  String get appUpdateBetaChannelSubtitle =>
-      'GitHub releases list, including pre-releases, plus a fallback site address. Doesn\'t affect stable auto-update.';
-
-  @override
   String get infoAppUpdateBeta =>
       'The app will start checking the full GitHub releases list, including pre-releases, not just the latest stable one. The main auto-update channel doesn\'t change — beta won\'t reach anyone who hasn\'t enabled this switch.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
-
-  @override
-  String get appUpdateBetaNotice =>
-      'This is a pre-release — expect possible issues. Auto-update doesn\'t distribute these versions.';
-
-  @override
-  String get appUpdatePreviousVersionsButton => 'Previous versions';
-
-  @override
-  String get appUpdatePreviousVersionsTitle => 'Previous versions';
 
   @override
   String get appUpdatePreviousVersionsHint =>
@@ -789,14 +773,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enumActionBlock => 'Block';
-
-  @override
-  String homeUpdateAvailable(Object version) {
-    return 'Version $version available';
-  }
-
-  @override
-  String get homeDownload => 'Download';
 
   @override
   String homeSubscriptionUpdated(Object summary) {
@@ -970,6 +946,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get subBarAnnounce => 'Announcement from the panel';
 
   @override
+  String subBarAnnounceFrom(String name) {
+    return 'Announcements from $name';
+  }
+
+  @override
+  String get subBarAnnounceFromUnnamed => 'Announcements from the service';
+
+  @override
+  String get hideAnnounceTitle => 'Hide service announcements';
+
+  @override
+  String get hideAnnounceSub =>
+      'Announcements from the subscription are not shown on the card. By default they are visible on any screen.';
+
+  @override
   String get subSwitcherPingAll => 'Ping servers of all subscriptions';
 
   @override
@@ -1051,10 +1042,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get infoTunPrivilege =>
       'TUN requires administrator rights. Once, we create a task in the Windows Task Scheduler with the highest privileges — after that the tunnel starts WITHOUT a UAC prompt on each connection. The task belongs to you and is removed with the button below or when the program is uninstalled.';
-
-  @override
-  String get infoAppUpdate =>
-      'Once per launch, the app asks your server whether a newer version exists and shows a notification with a «Download» button.\n\nThe app downloads and runs NOTHING on its own: the installer is not signed with a certificate, and auto-running a downloaded exe runs into SmartScreen and looks to antiviruses like malware behavior. You install the update yourself.\n\nIf the server is unavailable, the app simply stays silent and writes an entry to the log. The response format and server setup are described in docs/APP_UPDATE.md.';
 
   @override
   String get infoSpeedTest =>
@@ -1260,6 +1247,98 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get importScrImportField => 'Import from field';
+
+  @override
+  String get importScrScanQr => 'Scan QR';
+
+  @override
+  String get importScrQrFromImage => 'QR from image';
+
+  @override
+  String get qrScanPrompt => 'Point the camera at the subscription QR code';
+
+  @override
+  String get qrCameraExplainTitle => 'Camera access';
+
+  @override
+  String get qrCameraExplainBody =>
+      'The camera is only used to read the subscription QR code. Nothing is saved or sent anywhere.';
+
+  @override
+  String get qrCameraContinue => 'Continue';
+
+  @override
+  String get qrCameraDenied =>
+      'No camera access. Allow it in the app settings or pick an image with the QR code.';
+
+  @override
+  String get qrNotFound => 'No QR code found in the image.';
+
+  @override
+  String get qrReadFailed => 'Couldn\'t open the image.';
+
+  @override
+  String statusReconnectBlocked(int seconds, int attempt) {
+    return 'Connection lost, traffic blocked. Reconnecting in $seconds s (attempt $attempt)…';
+  }
+
+  @override
+  String get statusTrafficNotFlowing =>
+      'The tunnel is up, but no traffic goes through it';
+
+  @override
+  String get statusVpnConsentDenied =>
+      'Android did not allow the VPN. Tap “Connect” again and confirm the system request.';
+
+  @override
+  String statusMissingCore(String file) {
+    return '$file was not found next to the app. Reinstall SilentGate.';
+  }
+
+  @override
+  String statusPortOwnCore(int port, String holder) {
+    return 'Port $port is still held by our core ($holder) from the previous session.\n\nThis happens if you turn the VPN off and right back on. Wait a few seconds and try again.';
+  }
+
+  @override
+  String statusPortUnknown(int port) {
+    return 'Port $port is already used by another program that could not be identified.\n\nMost often it is another VPN client listening on the same local ports. Close it completely, including from the tray, and try again.';
+  }
+
+  @override
+  String statusPortHolder(int port, String holder) {
+    return 'Port $port is already used by $holder.\n\nClose it completely, including from the tray, and try again.';
+  }
+
+  @override
+  String get statusTunCoreHung =>
+      'The tunnel core froze; the tunnel was removed';
+
+  @override
+  String statusConnectFailed(String detail) {
+    return 'Could not connect: $detail';
+  }
+
+  @override
+  String statusCoreStopped(String core, int code) {
+    return 'The $core core stopped (code $code)';
+  }
+
+  @override
+  String statusCoreStoppedReason(String core, int code, String reason) {
+    return 'The $core core stopped (code $code): $reason';
+  }
+
+  @override
+  String statusReasonPortBusy(int port) {
+    return 'local port $port is already in use';
+  }
+
+  @override
+  String get statusReasonPortBusyAny => 'a local port is already in use';
+
+  @override
+  String get statusReasonFailedToStart => 'the core could not start';
 
   @override
   String get serversTitle => 'Servers';
@@ -1516,6 +1595,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get srvTileUpdatedGeneric =>
       'The last subscription update changed this server\'s record';
+
+  @override
+  String serverUnsupportedHy2Mask(String type) {
+    return 'The \"$type\" masking is not supported by this client yet';
+  }
+
+  @override
+  String get serverUnsupportedGeneric =>
+      'This server is not supported by this client yet';
 
   @override
   String get srvFieldId => 'ID / password';
@@ -1801,6 +1889,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Failed to create task (UAC declined or blocked by policy)';
 
   @override
+  String get tunTaskSchedulerFailed =>
+      'Task Scheduler rejected the task — the reason is in the log (Settings → Logs)';
+
+  @override
   String get tunAutoFixNoticeText =>
       'Silent TUN startup is broken — every connection will ask for administrator rights';
 
@@ -1977,10 +2069,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noRealIpTitle => 'Never use my real IP';
 
   @override
-  String get noRealIpSub =>
-      'Even with the VPN up, all “direct” traffic goes through the VPN (RU sites too). The local network stays direct.';
-
-  @override
   String get flagAuto => 'AUTO';
 
   @override
@@ -2104,6 +2192,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errImportSubscriptionFirst => 'Import a subscription first';
+
+  @override
+  String get errServerUnsupported =>
+      'This server is not supported by this client';
 
   @override
   String get speedSizeFull => '20 MB';
@@ -2357,10 +2449,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get splitNoRealIpBanner =>
       '“Never use my real IP” is on: “Direct” rules without the real-IP checkbox go through the VPN';
-
-  @override
-  String get settingsNoRealIpAffects =>
-      'Affects “Direct” rules: without the “allow real IP” checkbox they go through the VPN';
 
   @override
   String get splitAppOverrideSites => 'Takes priority over site rules';
@@ -2844,7 +2932,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '“Never use the real IP” is on — all traffic goes through the VPN.';
+      '“Never use the real IP” is on — your “Direct” rules go through the VPN.';
 
   @override
   String get autoWarnAllVpn =>
@@ -3395,15 +3483,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The kill switch holds traffic per program, not per domain: while the core is recovering there is nobody to resolve site names — site rules do not apply during that time.';
 
   @override
-  String updateNotesTitle(Object version) {
-    return 'What\'s new in $version';
-  }
-
-  @override
   String get updateNotesEmpty => 'No release notes were provided.';
-
-  @override
-  String get updateNotesNeverShow => 'Don\'t show again';
 
   @override
   String get notifOffTitle => 'Notifications are off';
@@ -3418,4 +3498,410 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get notifOffNoScreen =>
       'Could not open the notifications screen. Turn them on manually: Android settings → Apps → SilentGate.';
+
+  @override
+  String get splitImport => 'Import';
+
+  @override
+  String get splitExport => 'Export';
+
+  @override
+  String get splitImportOk => 'Settings imported';
+
+  @override
+  String get splitImportBad => 'No valid SilentGate settings in the clipboard';
+
+  @override
+  String get splitImportReplace => 'Replace';
+
+  @override
+  String get updatesTitle => 'Updates';
+
+  @override
+  String updatesCurrentVersion(String version) {
+    return 'Current version $version';
+  }
+
+  @override
+  String get updatesChannelStable => 'Stable channel';
+
+  @override
+  String get updatesChannelBeta => 'Beta channel';
+
+  @override
+  String get updatesCheckNow => 'Check now';
+
+  @override
+  String get updatesStatusChecking => 'Checking…';
+
+  @override
+  String get updatesStatusUpToDate => 'You have the latest version';
+
+  @override
+  String updatesStatusAvailable(String version) {
+    return 'Version $version available';
+  }
+
+  @override
+  String updatesStatusDownloading(int percent) {
+    return 'Downloading… $percent%';
+  }
+
+  @override
+  String updatesDownloadedOf(String done, String total) {
+    return 'Downloading $done of $total MB';
+  }
+
+  @override
+  String updatesDownloadLeft(String left) {
+    return '$left MB left';
+  }
+
+  @override
+  String updatesDownloadEtaSec(int n) {
+    return '~$n s';
+  }
+
+  @override
+  String updatesDownloadEtaMin(int n) {
+    return '~$n min';
+  }
+
+  @override
+  String get updatesStatusVerifying => 'Verifying signature…';
+
+  @override
+  String get updatesStatusReady => 'Ready to install';
+
+  @override
+  String get updatesStatusInstalling => 'Installing…';
+
+  @override
+  String updatesStatusFailed(String reason) {
+    return 'Failed: $reason';
+  }
+
+  @override
+  String get updatesStatusNeedsPermission => 'Install permission required';
+
+  @override
+  String get updatesStatusLinkOnly => 'Install manually';
+
+  @override
+  String get updatesModeTitle => 'How to update';
+
+  @override
+  String get updatesModeAsk => 'Ask';
+
+  @override
+  String get updatesModeAskHint =>
+      'Shows what is new and installs only after you confirm';
+
+  @override
+  String get updatesModeAuto => 'Automatically';
+
+  @override
+  String get updatesModeAutoHint =>
+      'Downloads and installs on its own while the VPN is off';
+
+  @override
+  String get updatesModeNotify => 'Notify only';
+
+  @override
+  String get updatesModeNotifyHint =>
+      'Reports a new version without downloading or installing anything';
+
+  @override
+  String get updatesAutoCheck => 'Check on startup';
+
+  @override
+  String get updatesBeta => 'Receive beta versions';
+
+  @override
+  String get updatesSignatureNote =>
+      'Every file is verified against the developer\'s signature and a checksum; installation will not start unless they match';
+
+  @override
+  String updatesDialogTitle(String version) {
+    return 'Update $version available';
+  }
+
+  @override
+  String get updatesInstall => 'Update';
+
+  @override
+  String get updatesLater => 'Later';
+
+  @override
+  String get updatesSkipVersion => 'Skip this version';
+
+  @override
+  String get updatesVpnWarning => 'Installing will disconnect the VPN';
+
+  @override
+  String get updatesAndroidUnknownSources => 'Allow installs from this app';
+
+  @override
+  String get updatesAndroidOpenSettings => 'Open settings';
+
+  @override
+  String get updatesAndroidNoSilent =>
+      'Android will show the system install prompt: that is a system requirement';
+
+  @override
+  String get updatesPortableFallback =>
+      'This copy was not installed with the installer. Download the new version manually';
+
+  @override
+  String updatesInstalledToast(String version) {
+    return 'Updated to $version';
+  }
+
+  @override
+  String get updatesInstallFailedTitle => 'Installation did not complete';
+
+  @override
+  String updatesInstallFailedBody(String version) {
+    return 'The version is still $version. Installer log below';
+  }
+
+  @override
+  String get updatesShowLog => 'Show log';
+
+  @override
+  String get updatesOverrideBadge => 'Update source overridden (test mode)';
+
+  @override
+  String get updatesSettingsTile => 'Updates';
+
+  @override
+  String get updatesSettingsTileSubtitle =>
+      'Check, download and install new versions';
+
+  @override
+  String get updatesPreviousVersions => 'Previous versions';
+
+  @override
+  String get updatesInstallOlder => 'Install';
+
+  @override
+  String get updatesDowngradeWarning =>
+      'Rolling back to an older version. Continue?';
+
+  @override
+  String updatesSizeMb(String mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get updatesVpnWarningBody =>
+      'The app will close and the VPN will be off during installation. Reconnect after the update';
+
+  @override
+  String get updatesOpenPage => 'Open download page';
+
+  @override
+  String get updatesLinkNotify =>
+      '“Notify only” mode is selected — download the new version from the download page';
+
+  @override
+  String get updatesLinkNoSelfUpdate =>
+      'This release has no signed installer for your system — download it from the download page';
+
+  @override
+  String get updatesLinkIsolated =>
+      'This is an isolated test copy — it does not touch the installed app. Update it manually';
+
+  @override
+  String get updatesLinkLocation =>
+      'The app is not running from its installation folder — download the new version manually or start the installed copy';
+
+  @override
+  String get updatesLinkElevated =>
+      'The app is running as administrator — updating this way is unsafe. Start it normally';
+
+  @override
+  String get updatesLinkUnsupported =>
+      'The app cannot update itself on this platform — download the new version manually';
+
+  @override
+  String get updatesErrCheck => 'the update server did not respond';
+
+  @override
+  String get updatesErrInsecure =>
+      'the download address is not secure (not https)';
+
+  @override
+  String get updatesErrAssetName =>
+      'the file name in the release is not allowed';
+
+  @override
+  String get updatesErrManifest => 'could not get the signed release manifest';
+
+  @override
+  String get updatesErrSignature =>
+      'the signature does not match — the file may have been tampered with';
+
+  @override
+  String get updatesErrManifestRejected =>
+      'the release manifest does not fit this version or system';
+
+  @override
+  String get updatesErrDownload =>
+      'the file did not download or its checksum does not match';
+
+  @override
+  String get updatesErrInstall => 'the installer did not start';
+
+  @override
+  String get updatesErrNotNewer =>
+      'this version is not newer than the installed one';
+
+  @override
+  String get updatesInfo =>
+      'What the app does when a new version is found. In automatic mode installation never breaks an active VPN: it waits until you disconnect. In every mode a file is installed only if the developer signature matches.';
+
+  @override
+  String get updatesDownload => 'Download';
+
+  @override
+  String get updatesInstallNow => 'Install now';
+
+  @override
+  String get updatesWaitingVpn =>
+      'Ready to install — it will start after the VPN is disconnected';
+
+  @override
+  String updatesSkippedNote(String version) {
+    return 'Version $version skipped — you will be notified about the next one';
+  }
+
+  @override
+  String get updatesAutoNoticeTitle => 'Installing update';
+
+  @override
+  String updatesAutoNoticeBody(String version) {
+    return 'The app will close while version $version is being installed';
+  }
+
+  @override
+  String get splitImportTitleApps => 'Import apps';
+
+  @override
+  String get splitImportTitleSites => 'Import sites';
+
+  @override
+  String get splitImportFormatNote =>
+      'One line is one rule. The [tunnel], [direct] and [block] headers set the action for the lines below. A line without flags is added exactly as if typed by hand.';
+
+  @override
+  String get splitImportFieldHint => 'youtube.com\nnetflix.com';
+
+  @override
+  String get splitImportPasteClipboard => 'Paste from clipboard';
+
+  @override
+  String get splitImportAdd => 'Add';
+
+  @override
+  String get splitImportReplaceAll => 'Replace all';
+
+  @override
+  String splitImportStatNew(int n) {
+    return 'new: $n';
+  }
+
+  @override
+  String splitImportStatSame(int n) {
+    return 'already there: $n';
+  }
+
+  @override
+  String splitImportStatConflict(int n) {
+    return 'differ: $n';
+  }
+
+  @override
+  String splitImportStatBad(int n) {
+    return 'not parsed: $n';
+  }
+
+  @override
+  String get splitImportOverwrite => 'Overwrite the differing ones';
+
+  @override
+  String get splitImportOverwriteSub =>
+      'Off keeps the current settings of those rules';
+
+  @override
+  String splitImportConflictLine(String from, String to) {
+    return 'was $from, becomes $to';
+  }
+
+  @override
+  String get splitImportBadLinesTitle => 'These lines were not taken';
+
+  @override
+  String splitImportAdded(int added, int changed) {
+    return 'Added $added, changed $changed';
+  }
+
+  @override
+  String splitImportReplaced(int n) {
+    return 'Rules after replacement: $n';
+  }
+
+  @override
+  String get splitExportEmpty => 'The list is empty, nothing to export';
+
+  @override
+  String get splitCountEmpty => 'Empty';
+
+  @override
+  String splitCountTotal(int n) {
+    return 'total $n';
+  }
+
+  @override
+  String splitCountOn(int n) {
+    return 'on $n';
+  }
+
+  @override
+  String splitCountOff(int n) {
+    return 'off $n';
+  }
+
+  @override
+  String splitCountTunnel(int n) {
+    return 'tunnel $n';
+  }
+
+  @override
+  String splitCountDirect(int n) {
+    return 'direct $n';
+  }
+
+  @override
+  String splitCountBlock(int n) {
+    return 'block $n';
+  }
+
+  @override
+  String get splitExpandList => 'Expand the list';
+
+  @override
+  String get splitCollapseList => 'Collapse the list';
+
+  @override
+  String get splitExpandGroup => 'Expand the group';
+
+  @override
+  String get splitCollapseGroup => 'Collapse the group';
+
+  @override
+  String get splitExpandSubdomains => 'Show subdomains';
+
+  @override
+  String get splitCollapseSubdomains => 'Hide subdomains';
 }

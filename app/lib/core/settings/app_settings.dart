@@ -3,6 +3,9 @@ import 'dart:convert';
 import '../util/key_migration.dart';
 
 import '../net/speed_test.dart';
+// Чистый dart-файл без flutter/dart:ui — тот же повод, что и у комментария
+// ниже про app_update.dart, тут не действует.
+import '../xray/outbound_variant.dart' show kDefaultTlsFingerprint;
 // Намеренно НЕ '../update/app_update.dart': он тянет app_log → app_paths →
 // path_provider → package:flutter → dart:ui, из-за чего `dart run tool/emit_*`
 // переставал работать. Нужна отсюда только константа адреса обновлений.
@@ -162,6 +165,43 @@ enum ProbeService {
 /// Тема оформления.
 enum AppThemeMode { system, light, dark }
 
+/// Как приложение поступает с найденным обновлением самого себя.
+///
+/// Решение владельца 19.09.2026: по умолчанию — СПРАШИВАТЬ, с возможностью
+/// отключить. Три режима, а не галочка «обновляться самому»: человек,
+/// который не хочет автоматики, всё равно хочет ЗНАТЬ о новой версии, и
+/// «уведомлять» — это не «выключить».
+///
+/// * `ask` — показать диалог, качать и ставить только по кнопке;
+/// * `auto` — скачать, проверить подпись и установить самому (Windows — при
+///   выключенном VPN; Android всё равно покажет системное окно установки);
+/// * `notifyOnly` — только сообщить, что версия есть; ни закачки, ни установки.
+///
+/// ⚠️ На диск пишется КОРОТКОЕ ИМЯ ([wireName]: `ask | auto | notify`), а не
+/// `.name`: у `notifyOnly` они различаются. Переименование значения в коде не
+/// должно молча менять формат файла — за этим следит
+/// `test/app_update_settings_test.dart`.
+enum AppUpdateMode {
+  ask('ask'),
+  auto('auto'),
+  notifyOnly('notify');
+
+  const AppUpdateMode(this.wireName);
+
+  /// Имя значения в файле настроек.
+  final String wireName;
+
+  /// Разбор значения из файла. Неизвестное, чужого типа или отсутствующее —
+  /// [ask]: битый ключ не должен ни ронять разбор настроек целиком, ни
+  /// включать автоматику, которой человек не просил.
+  static AppUpdateMode parse(Object? raw) {
+    for (final v in values) {
+      if (v.wireName == raw) return v;
+    }
+    return ask;
+  }
+}
+
 /// Раскладка проверок сервисов на главном экране относительно кнопки подключения.
 ///
 /// ⚠️ `sides` (колонки по бокам) уже существовала как единственный режим и была
@@ -295,6 +335,30 @@ class AppSettings {
   /// время переподключения, а машина здесь и так ходит мимо туннеля. Тумблер,
   /// который виден и ничего не делает, хуже отсутствующего.
   bool get killSwitchApplies => captureMode != CaptureMode.proxyOnly;
+
+  /// Kill switch в силе: включён И применим к текущему захвату.
+  bool get killSwitchActive => killSwitch && killSwitchApplies;
+
+  /// Удерживать ли захват при смене сервера (ядро гасится, туннель остаётся).
+  ///
+  /// ⚠️ KILL SWITCH ТРЕБУЕТ ЭТОГО НЕЗАВИСИМО ОТ БЕСШОВНОСТИ. Найдено живьём в
+  /// VM 10.10.2026: при выключенной бесшовности смена сервера шла полным
+  /// отключением — помощник снимал туннель вместе с фильтрами WFP, и до
+  /// подъёма нового туннеля машина ~8 с ходила под реальным IP (замер каждые
+  /// 0,4 с). Удержанный захват доводит пересоздание до живого помощника, а тот
+  /// перезапускает ядро, не отпуская блокировки.
+  bool get keepCaptureOnSwitch => seamlessServerSwitch || killSwitchActive;
+
+  /// Правка [after] ВКЛЮЧАЕТ kill switch, который до неё не действовал.
+  ///
+  /// ⚠️ ТОЛЬКО ЭТОТ СЛУЧАЙ ПЕРЕПОДКЛЮЧАЕТ САМ, БЕЗ ВОПРОСА. Человек включает
+  /// защиту, чтобы она действовала СЕЙЧАС; плашка «переподключите» здесь
+  /// означала бы, что до нажатия на неё обрыв сервера проходит без блокировки,
+  /// то есть ровно то, от чего он только что защитился. Остальные правки, в
+  /// том числе ВЫКЛЮЧЕНИЕ kill switch, ждут его решения: лишняя блокировка до
+  /// переподключения ничего не стоит, а разрыв по каждой правке раздражает.
+  bool killSwitchTurnedOn(AppSettings after) =>
+      !killSwitchActive && after.killSwitchActive;
 
   final TunProvider tunProvider;
   final TunStack tunStack;
@@ -493,6 +557,25 @@ class AppSettings {
   /// живом телефоне и выбрать одну. Когда выбор сделан — оставить победившую
   /// раскладку и УБРАТЬ и поле, и переключатель, и строки перевода.
   final bool compactNotification;
+
+  /// Список приложений на экране раздельного туннелирования свёрнут.
+  ///
+  /// ⚠️ ХРАНИТСЯ НА ДИСКЕ НАРОЧНО. У человека с сотнями правил свёрнутый
+  /// список — рабочее состояние, а не разовое действие: разворачивать его
+  /// заново при каждом открытии экрана значило бы не дать сворачивание вовсе.
+  /// На конфиг ядра не влияет, поэтому в [reconnectReasons] его нет.
+  final bool splitAppsCollapsed;
+
+  /// То же для списка сайтов. Два отдельных флага, а не один: списки живут
+  /// порознь, и человек чаще всего прячет именно длинный из двух.
+  final bool splitSitesCollapsed;
+
+  /// Свёрнутые части списков раздельного туннелирования: подгруппы по
+  /// действию (`apps:tunnel`, `sites:block`) и узлы дерева сайтов
+  /// (`site:example.com|443`) — ключи из `split_rule_layout.dart`.
+  /// Хранится на диске по той же причине, что [splitAppsCollapsed]; в
+  /// [reconnectReasons] не входит — на конфиг ядра не влияет.
+  final List<String> splitCollapsed;
 
   /// Отказывать в QUIC (UDP:443).
   ///
@@ -697,11 +780,31 @@ class AppSettings {
   /// Подключаться к первому серверу сразу после импорта подписки по ссылке.
   final bool autoConnectAfterImport;
 
+  // ── Автозапуск (Windows) ────────────────────────────────────────────────────
+  /// Запускаться вместе с Windows (свёрнутым в трей). Выключено по умолчанию —
+  /// решение владельца 24.09.2026. См. `AutostartWindows`.
+  final bool launchAtLogin;
+
+  /// При автозапуске сразу подключаться. Отдельная галочка, выключена: человек,
+  /// включивший автозапуск ради трея, не просил поднимать VPN на каждом входе.
+  final bool connectOnAutostart;
+
   // ── Оформление и поведение ─────────────────────────────────────────────────
   final AppThemeMode themeMode;
 
   /// Раскладка проверок сервисов на главном экране (см. [ServiceChecksLayout]).
   final ServiceChecksLayout serviceChecksLayout;
+
+  /// Не показывать объявления от сервиса (текст `announce` из подписки) в
+  /// карточке подписки.
+  ///
+  /// ⚠️ УМОЛЧАНИЕ — ПОКАЗЫВАТЬ, и это решение владельца (17.09.2026): до этого
+  /// компактная карточка на низком окне прятала объявление под «⋮», а на
+  /// телефоне окно низкое всегда — слово панели человек не видел вовсе.
+  /// Скрытие — осознанный выбор того, кому оно мешает; при `true` объявления
+  /// нет нигде, ни в карточке, ни в меню: попросил не видеть — значит не видеть.
+  /// Конфига ядра не касается, в `reconnectReasons` не входит.
+  final bool hidePanelAnnounce;
 
   /// Свёрнутые разделы экрана настроек — их ИДЕНТИФИКАТОРЫ.
   ///
@@ -717,6 +820,22 @@ class AppSettings {
   /// не попадает, и предлагать из-за неё переподключиться значило бы рвать
   /// живой туннель из-за нажатия на заголовок.
   final List<String> collapsedSections;
+
+  // ── Список серверов ────────────────────────────────────────────────────────
+  /// Собирать серверы одной страны вместе. Выключено по умолчанию — решение
+  /// владельца 25.09.2026: порядок провайдера не трогаем, а соседние серверы
+  /// одной страны и так сворачиваются в группу (`ServerGroups`). Переключатель
+  /// показывается только у перемешанного списка.
+  final bool sortServersByCountry;
+
+  /// Свёрнутые группы стран — ключи `ServerGroups.countryOf` (`DE`, `RU-DE`).
+  /// Как [collapsedSections], в [reconnectReasons] не входит.
+  final List<String> collapsedCountries;
+
+  /// РАСКРЫТЫЕ группы профилей «Авто» — ключи `ServerGroups.autoGroupKey`.
+  /// Хранится обратное, потому что эти группы свёрнуты по умолчанию (решение
+  /// владельца 10.10.2026). В [reconnectReasons] не входит.
+  final List<String> expandedAutoGroups;
 
   /// Код языка интерфейса (`ru`/`en`/`es`…). Пустая строка — следовать системе.
   final String languageCode;
@@ -744,16 +863,29 @@ class AppSettings {
   /// Брать интервал ИЗ ПОДПИСКИ вместо нашего (галочка «чтобы было не так»).
   final bool autoUpdatePreferSubscription;
 
-  /// Проверять обновления самого приложения при запуске (скачивание — вручную).
+  /// Проверять обновления самого приложения при запуске.
+  ///
+  /// Что делать с найденным — решает [appUpdateMode]; эта галочка отвечает
+  /// только за то, идёт ли проверка сама, без кнопки.
   final bool appUpdateCheck;
 
-  /// Не показывать окно «что нового» при запуске после обновления.
+  /// Что делать с найденным обновлением — см. [AppUpdateMode].
   ///
-  /// ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО ВЫКЛЮЧИТЬ ПРОВЕРКУ ОБНОВЛЕНИЙ. Человек, нажавший
-  /// «больше не показывать», просит убрать окно — а не остаться без новых
-  /// версий. Свести их в один флаг значило бы тихо отключить обновления тому,
-  /// кто этого не просил.
-  final bool appUpdateNotesHidden;
+  /// ⚠️ ЭТО НЕ ТО ЖЕ, ЧТО ВЫКЛЮЧИТЬ ПРОВЕРКУ ОБНОВЛЕНИЙ. Режим
+  /// [AppUpdateMode.notifyOnly] убирает диалог и автоматику — но не оставляет
+  /// человека без новых версий: о них по-прежнему сообщается. Свести это с
+  /// [appUpdateCheck] в один флаг значило бы тихо отключить обновления тому,
+  /// кто этого не просил. Прежний флаг `appUpdateNotesHidden` («не показывать
+  /// окно») переносится сюда при чтении старого файла: `true` → `notifyOnly`.
+  final AppUpdateMode appUpdateMode;
+
+  /// Версия, которую человек нажал «Пропустить» в диалоге обновления;
+  /// `null` — ничего не пропущено.
+  ///
+  /// Автопроверка на старте про эту версию молчит; ручная «Проверить сейчас»
+  /// показывает её всё равно (её спросили). Более новая версия пропуск
+  /// снимает по смыслу: сравнение — дело контроллера, здесь только хранение.
+  final String? appUpdateSkippedVersion;
 
   /// «Получать бета-версии» — по умолчанию ВЫКЛЮЧЕНО.
   ///
@@ -810,6 +942,9 @@ class AppSettings {
     this.speedInAutoSelect = false,
     this.myRulesOverridePanel = true,
     this.compactNotification = false,
+    this.splitAppsCollapsed = false,
+    this.splitSitesCollapsed = false,
+    this.splitCollapsed = const [],
     this.blockQuic = false,
     this.blockEncryptedDns = false,
     this.dnsStrategy = DnsStrategy.preferIpv4,
@@ -840,7 +975,7 @@ class AppSettings {
       ProbeService.telegram,
     },
     this.tryFragment = true,
-    this.fingerprints = const ['chrome'],
+    this.fingerprints = const [kDefaultTlsFingerprint, 'qq'],
     this.strategy = AutoConfigStrategy.firstMatch,
     this.autoConfigBudgetSec = 60,
     this.autoPinFound = true,
@@ -859,9 +994,15 @@ class AppSettings {
     this.seamlessNetworkChange = true,
     this.seamlessKeepTun = true,
     this.autoConnectAfterImport = false,
+    this.launchAtLogin = false,
+    this.connectOnAutostart = false,
     this.themeMode = AppThemeMode.system,
     this.serviceChecksLayout = ServiceChecksLayout.adaptive,
+    this.hidePanelAnnounce = false,
     this.collapsedSections = const [],
+    this.sortServersByCountry = false,
+    this.collapsedCountries = const [],
+    this.expandedAutoGroups = const [],
     this.languageCode = '',
     this.closeToTray = true,
     this.dontAskOnClose = false,
@@ -870,7 +1011,8 @@ class AppSettings {
     this.autoUpdateIntervalHours = 12,
     this.autoUpdatePreferSubscription = false,
     this.appUpdateCheck = true,
-    this.appUpdateNotesHidden = false,
+    this.appUpdateMode = AppUpdateMode.ask,
+    this.appUpdateSkippedVersion,
     this.betaChannel = false,
   });
 
@@ -939,6 +1081,9 @@ class AppSettings {
     bool? speedInAutoSelect,
     bool? myRulesOverridePanel,
     bool? compactNotification,
+    bool? splitAppsCollapsed,
+    bool? splitSitesCollapsed,
+    List<String>? splitCollapsed,
     bool? blockQuic,
     bool? blockEncryptedDns,
     DnsStrategy? dnsStrategy,
@@ -972,9 +1117,15 @@ class AppSettings {
     bool? seamlessNetworkChange,
     bool? seamlessKeepTun,
     bool? autoConnectAfterImport,
+    bool? launchAtLogin,
+    bool? connectOnAutostart,
     AppThemeMode? themeMode,
     ServiceChecksLayout? serviceChecksLayout,
+    bool? hidePanelAnnounce,
     List<String>? collapsedSections,
+    bool? sortServersByCountry,
+    List<String>? collapsedCountries,
+    List<String>? expandedAutoGroups,
     String? languageCode,
     bool? closeToTray,
     bool? dontAskOnClose,
@@ -983,7 +1134,11 @@ class AppSettings {
     int? autoUpdateIntervalHours,
     bool? autoUpdatePreferSubscription,
     bool? appUpdateCheck,
-    bool? appUpdateNotesHidden,
+    AppUpdateMode? appUpdateMode,
+    String? appUpdateSkippedVersion,
+    // `null` в copyWith означает «не трогать», поэтому сброс пропуска —
+    // отдельным флагом (та же идиома, что `clearLogo` у профиля подписки).
+    bool clearAppUpdateSkippedVersion = false,
     bool? betaChannel,
   }) {
     return AppSettings(
@@ -1018,6 +1173,9 @@ class AppSettings {
       speedInAutoSelect: speedInAutoSelect ?? this.speedInAutoSelect,
       myRulesOverridePanel: myRulesOverridePanel ?? this.myRulesOverridePanel,
       compactNotification: compactNotification ?? this.compactNotification,
+      splitAppsCollapsed: splitAppsCollapsed ?? this.splitAppsCollapsed,
+      splitSitesCollapsed: splitSitesCollapsed ?? this.splitSitesCollapsed,
+      splitCollapsed: splitCollapsed ?? this.splitCollapsed,
       blockQuic: blockQuic ?? this.blockQuic,
       blockEncryptedDns: blockEncryptedDns ?? this.blockEncryptedDns,
       dnsStrategy: dnsStrategy ?? this.dnsStrategy,
@@ -1054,9 +1212,15 @@ class AppSettings {
       seamlessKeepTun: seamlessKeepTun ?? this.seamlessKeepTun,
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
+      launchAtLogin: launchAtLogin ?? this.launchAtLogin,
+      connectOnAutostart: connectOnAutostart ?? this.connectOnAutostart,
       themeMode: themeMode ?? this.themeMode,
       serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
+      hidePanelAnnounce: hidePanelAnnounce ?? this.hidePanelAnnounce,
       collapsedSections: collapsedSections ?? this.collapsedSections,
+      sortServersByCountry: sortServersByCountry ?? this.sortServersByCountry,
+      collapsedCountries: collapsedCountries ?? this.collapsedCountries,
+      expandedAutoGroups: expandedAutoGroups ?? this.expandedAutoGroups,
       languageCode: languageCode ?? this.languageCode,
       closeToTray: closeToTray ?? this.closeToTray,
       dontAskOnClose: dontAskOnClose ?? this.dontAskOnClose,
@@ -1066,8 +1230,10 @@ class AppSettings {
       autoUpdateIntervalHours: autoUpdateIntervalHours ?? this.autoUpdateIntervalHours,
       autoUpdatePreferSubscription: autoUpdatePreferSubscription ?? this.autoUpdatePreferSubscription,
       appUpdateCheck: appUpdateCheck ?? this.appUpdateCheck,
-      appUpdateNotesHidden:
-          appUpdateNotesHidden ?? this.appUpdateNotesHidden,
+      appUpdateMode: appUpdateMode ?? this.appUpdateMode,
+      appUpdateSkippedVersion: clearAppUpdateSkippedVersion
+          ? null
+          : appUpdateSkippedVersion ?? this.appUpdateSkippedVersion,
       betaChannel: betaChannel ?? this.betaChannel,
     );
   }
@@ -1102,6 +1268,9 @@ class AppSettings {
         'speedInAutoSelect': speedInAutoSelect,
         'myRulesOverridePanel': myRulesOverridePanel,
         'compactNotification': compactNotification,
+        'splitAppsCollapsed': splitAppsCollapsed,
+        'splitSitesCollapsed': splitSitesCollapsed,
+        'splitCollapsed': splitCollapsed,
         'blockQuic': blockQuic,
         'blockEncryptedDns': blockEncryptedDns,
         'dnsStrategy': dnsStrategy.name,
@@ -1136,9 +1305,15 @@ class AppSettings {
         'seamlessNetworkChange': seamlessNetworkChange,
         'seamlessKeepTun': seamlessKeepTun,
         'autoConnectAfterImport': autoConnectAfterImport,
+        'launchAtLogin': launchAtLogin,
+        'connectOnAutostart': connectOnAutostart,
         'themeMode': themeMode.name,
         'serviceChecksLayout': serviceChecksLayout.name,
+        'hidePanelAnnounce': hidePanelAnnounce,
         'collapsedSections': collapsedSections,
+        'sortServersByCountry': sortServersByCountry,
+        'collapsedCountries': collapsedCountries,
+        'expandedAutoGroups': expandedAutoGroups,
         'languageCode': languageCode,
         'closeToTray': closeToTray,
         'dontAskOnClose': dontAskOnClose,
@@ -1147,7 +1322,10 @@ class AppSettings {
         'autoUpdateIntervalHours': autoUpdateIntervalHours,
         'autoUpdatePreferSubscription': autoUpdatePreferSubscription,
         'appUpdateCheck': appUpdateCheck,
-        'appUpdateNotesHidden': appUpdateNotesHidden,
+        // Ключ `appUpdateNotesHidden` больше НЕ пишется: его смысл переехал в
+        // режим (см. миграцию в `fromJson`).
+        'appUpdateMode': appUpdateMode.wireName,
+        'appUpdateSkippedVersion': appUpdateSkippedVersion,
         'betaChannel': betaChannel,
       };
 
@@ -1296,6 +1474,13 @@ class AppSettings {
             defaults.myRulesOverridePanel,
         compactNotification: j['compactNotification'] as bool? ??
             defaults.compactNotification,
+        splitAppsCollapsed:
+            j['splitAppsCollapsed'] as bool? ?? defaults.splitAppsCollapsed,
+        splitSitesCollapsed:
+            j['splitSitesCollapsed'] as bool? ?? defaults.splitSitesCollapsed,
+        splitCollapsed: ((j['splitCollapsed'] as List?) ?? const [])
+            .whereType<String>()
+            .toList(),
         blockQuic: j['blockQuic'] as bool? ?? defaults.blockQuic,
         blockEncryptedDns:
             j['blockEncryptedDns'] as bool? ?? defaults.blockEncryptedDns,
@@ -1317,7 +1502,8 @@ class AppSettings {
       autoConfigServices:
           services.isEmpty ? defaults.autoConfigServices : services,
       tryFragment: j['tryFragment'] as bool? ?? true,
-      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ?? const ['chrome'],
+      fingerprints: ((j['fingerprints'] as List?)?.cast<String>()) ??
+          const [kDefaultTlsFingerprint, 'qq'],
       strategy: pick(AutoConfigStrategy.values, j['strategy'], AutoConfigStrategy.firstMatch),
       autoConfigBudgetSec: (j['autoConfigBudgetSec'] as num?)?.toInt() ?? 60,
       autoPinFound: j['autoPinFound'] as bool? ?? defaults.autoPinFound,
@@ -1336,11 +1522,14 @@ class AppSettings {
       seamlessKeepTun:
           j['seamlessKeepTun'] as bool? ?? defaults.seamlessKeepTun,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
+      launchAtLogin: j['launchAtLogin'] as bool? ?? false,
+      connectOnAutostart: j['connectOnAutostart'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
       // Неизвестное/битое значение → adaptive: битый файл настроек не должен
       // ронять весь разбор из-за одной раскладки главного экрана.
       serviceChecksLayout: pick(ServiceChecksLayout.values,
           j['serviceChecksLayout'], ServiceChecksLayout.adaptive),
+      hidePanelAnnounce: j['hidePanelAnnounce'] as bool? ?? false,
       // ⚠️ ЧИТАЕТСЯ ОБЯЗАТЕЛЬНО — иначе свёрнутые разделы разворачивались бы
       // при каждом запуске, хотя выбор пользователя лежит в файле (тот самый
       // класс «поле пишется, но не читается»; страж settings_roundtrip_test
@@ -1349,6 +1538,13 @@ class AppSettings {
       // `whereType`, а не `cast`: битый файл настроек не должен ронять экран
       // настроек при первой же прокрутке — лишний элемент просто игнорируем.
       collapsedSections: ((j['collapsedSections'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      sortServersByCountry: j['sortServersByCountry'] as bool? ?? false,
+      collapsedCountries: ((j['collapsedCountries'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      expandedAutoGroups: ((j['expandedAutoGroups'] as List?) ?? const [])
           .whereType<String>()
           .toList(),
       languageCode: j['languageCode'] as String? ?? '',
@@ -1360,8 +1556,20 @@ class AppSettings {
       autoUpdateIntervalHours: (j['autoUpdateIntervalHours'] as num?)?.toInt() ?? 12,
       autoUpdatePreferSubscription: j['autoUpdatePreferSubscription'] as bool? ?? false,
       appUpdateCheck: j['appUpdateCheck'] as bool? ?? defaults.appUpdateCheck,
-      appUpdateNotesHidden: j['appUpdateNotesHidden'] as bool? ??
-          defaults.appUpdateNotesHidden,
+      // Миграция со старого флага «не показывать окно» (до 1.14.0): человек,
+      // нажавший «больше не показывать», просил убрать окно — а не остаться
+      // без новых версий, и это ровно режим «только уведомлять». Действует
+      // ТОЛЬКО пока нового ключа в файле нет: явный выбор режима старый флаг
+      // перебивать не должен, даже если тот остался лежать в файле.
+      appUpdateMode: j.containsKey('appUpdateMode')
+          ? AppUpdateMode.parse(j['appUpdateMode'])
+          : (j['appUpdateNotesHidden'] == true
+              ? AppUpdateMode.notifyOnly
+              : defaults.appUpdateMode),
+      // Мусор вместо строки (битый файл) — как «ничего не пропущено».
+      appUpdateSkippedVersion: j['appUpdateSkippedVersion'] is String
+          ? j['appUpdateSkippedVersion'] as String
+          : null,
       betaChannel: j['betaChannel'] as bool? ?? defaults.betaChannel,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
@@ -1495,6 +1703,15 @@ class AppSettings {
           other.tunWatchdogSeconds);
     }
     diff('запрет реального IP', noRealIp, other.noRealIp);
+    // ⚠️ KILL SWITCH ТОЖЕ ЗАПЕКАЕТСЯ ПРИ ПОДЪЁМЕ, ХОТЬ И НЕ В КОНФИГ ЯДРА.
+    // Движок читает его из снимка сессии (`session.options.settings`), а на
+    // Windows состав блокировки WFP пишется файлом ДО запуска помощника TUN и
+    // читается им один раз. Найдено живьём в VM 10.10.2026: тумблер включён
+    // на живом соединении, интерфейс молчит, а обрыв сервера проходит БЕЗ
+    // блокировки — защиты нет до ручного переподключения, и узнать об этом
+    // было неоткуда. Смотрим на ДЕЙСТВУЮЩЕЕ значение: в «Только прокси»
+    // kill switch не применяется, и рвать туннель ради него незачем.
+    diff('kill switch', killSwitchActive, other.killSwitchActive);
     // Запекается в конфиг (`rerouteDirectThroughVpn` в engine_base): без этой
     // строки пользователь включал «Мои правила важнее правил панели» при живом
     // соединении, конфиг оставался прежним, и предложения переподключиться —

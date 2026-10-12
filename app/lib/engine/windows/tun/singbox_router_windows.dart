@@ -13,6 +13,7 @@ import '../elevation.dart';
 import 'app_alive_mutex.dart';
 import 'helper_log_notices.dart';
 import 'tun_helper.dart';
+import 'tun_reload.dart';
 import 'tun_router.dart';
 import 'tun_scheduled_task.dart';
 
@@ -23,9 +24,15 @@ import 'tun_scheduled_task.dart';
 /// Права: сначала пробуем задачу Планировщика (без UAC), иначе — прямой UAC-запуск.
 /// После старта ОБЯЗАТЕЛЬНО проверяем, что туннель реально поднялся: раньше сбой
 /// sing-box был невидим и приложение показывало «Подключено» без туннеля.
-class SingboxRouterWindows implements TunRouter, StaleScheduledTaskReporter {
+class SingboxRouterWindows
+    implements TunRouter, StaleScheduledTaskReporter, TunHandoverCapable {
   bool _started = false;
   String _stopPath = '';
+
+  /// Параметры, на которых поднялся живой туннель (после автоподбора — с
+  /// подобранными стеком и MTU). Нужны [handover]: перебирать комбинации на
+  /// живом помощнике нельзя, а повторить заведомо рабочую — можно.
+  TunOptions? _liveOptions;
 
   /// Последний `_startOnce` заметил устаревшую задачу Планировщика и пошёл
   /// в обход неё. `WindowsEngine` читает это ПОСЛЕ `start()`, чтобы предложить
@@ -230,7 +237,76 @@ class SingboxRouterWindows implements TunRouter, StaleScheduledTaskReporter {
     _started = true;
 
     await _waitUp(abort: abort);
+    _liveOptions = options;
     await _mirrorHelperFailures();
+  }
+
+  @override
+  Future<bool> handover(SplitTunnelConfig split,
+      {required int xraySocksPort,
+      required TunOptions options,
+      bool Function()? abort,
+      List<Map<String, dynamic>> exitOutbounds = const [],
+      String xraySocksUser = '',
+      String xraySocksPassword = '',
+      List<String> apiExitServerKeys = const [],
+      List<String> apiOnlyExitKeys = const [],
+      String apiToken = ''}) async {
+    if (!_started) return false;
+    final live = _liveOptions;
+    // При автоподборе берём комбинацию, на которой туннель уже работает:
+    // перебор требует пересоздания помощника, а именно его мы и избегаем.
+    if (options.autotune && live == null) return false;
+    final attempt = options.autotune
+        ? options.copyWith(stack: live!.stack, mtu: live.mtu)
+        : options;
+    _prime(
+      exitOutbounds: exitOutbounds,
+      xraySocksUser: xraySocksUser,
+      xraySocksPassword: xraySocksPassword,
+      apiExitServerKeys: apiExitServerKeys,
+      apiOnlyExitKeys: apiOnlyExitKeys,
+      apiToken: apiToken,
+    );
+    final dir = await AppPaths.supportDir();
+    final String token;
+    try {
+      await File(TunHelper.configPathFor(dir))
+          .writeAsString(configJsonFor(split, xraySocksPort, attempt));
+      await File(TunHelper.aliveFilePathFor(dir))
+          .writeAsString(AppAliveMutex.acquire());
+      token = TunReload.request(dir);
+    } catch (e) {
+      AppLog.w('TUN: просьбу о перезапуске без снятия блокировки не '
+          'передать: $e');
+      return false;
+    }
+    // Помощник ждёт остановки ядра (до 5 с) и ухода адаптера (до 5 с) —
+    // запас сверху на его 400-мс цикл и запуск процесса.
+    final answer = await TunReload.waitAnswer(dir, token,
+        timeout: const Duration(seconds: 15), abort: abort);
+    if (answer == null) {
+      TunReload.cancel(dir);
+      AppLog.w('TUN: помощник не ответил на просьбу о перезапуске без снятия '
+          'блокировки — пересоздаю обычным путём');
+      return false;
+    }
+    if (!answer.started) {
+      AppLog.w('TUN: помощник отказался перезапускать ядро без снятия '
+          'блокировки (${answer.reason}) — пересоздаю обычным путём');
+      return false;
+    }
+    try {
+      await _waitUp(abort: abort);
+    } on TunStartException catch (e) {
+      // `_waitUp` уже попросил помощника остановиться: дальше обычный путь.
+      AppLog.w('TUN: после перезапуска без снятия блокировки адаптер не '
+          'поднялся: ${e.message}');
+      return false;
+    }
+    _liveOptions = attempt;
+    await _mirrorHelperFailures();
+    return true;
   }
 
   /// Перенести отказы помощника в ОБЩИЙ журнал.
@@ -417,5 +493,6 @@ class SingboxRouterWindows implements TunRouter, StaleScheduledTaskReporter {
         ? _stopPath
         : TunHelper.stopFilePathFor(await AppPaths.supportDir()));
     _started = false;
+    _liveOptions = null;
   }
 }

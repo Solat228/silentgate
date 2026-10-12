@@ -1,3 +1,5 @@
+import '../xray/balancer_pick.dart';
+
 /// Накопленный трафик и мгновенная скорость (байт/сек) по outbound "proxy".
 class TrafficStats {
   final int uplinkBytes;
@@ -5,11 +7,16 @@ class TrafficStats {
   final int uplinkSpeed; // байт/сек
   final int downlinkSpeed; // байт/сек
 
+  /// Узел, выбранный балансировщиком «Авто» прямо сейчас; `null` — подключение
+  /// не через балансировщик либо ядро ещё не выбрало.
+  final ActiveNode? activeNode;
+
   const TrafficStats({
     this.uplinkBytes = 0,
     this.downlinkBytes = 0,
     this.uplinkSpeed = 0,
     this.downlinkSpeed = 0,
+    this.activeNode,
   });
 
   static const zero = TrafficStats();

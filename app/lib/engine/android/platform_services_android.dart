@@ -209,7 +209,7 @@ class _AndroidPrivileges implements PrivilegeSetup {
   Future<bool> isConfigured() async => false;
 
   @override
-  Future<bool> configure() async => false;
+  Future<PrivilegeSetupResult> configure() async => PrivilegeSetupResult.failed;
 
   @override
   Future<bool> remove() async => false;

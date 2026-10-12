@@ -10,7 +10,6 @@
   "commonClear": "Очистить",
   "commonCopied": "Скопировано",
   "commonRefresh": "Обновить",
-  "commonCheck": "Проверить",
   "commonOk": "ОК",
   "commonDone": "Готово",
   "commonPathCopied": "Путь скопирован",
@@ -65,6 +64,14 @@
   "tunnelExcludeScopeOffHint": "Адресов серверов в таблице маршрутов нет, но пинг при включённом VPN показывает время до локального стека, а не до сервера.",
   "closeToTrayTitle": "Сворачивать в трей при закрытии",
   "closeToTraySubtitle": "Крестик прячет окно в трей; выключите — крестик закрывает приложение",
+  "launchAtLoginTitle": "Запускать вместе с Windows",
+  "launchAtLoginSub": "При входе в систему приложение стартует свёрнутым в трей",
+  "connectOnAutostartTitle": "Подключаться при автозапуске",
+  "connectOnAutostartSub": "Сразу поднимать VPN к выбранному серверу, когда приложение запустила система",
+  "sortServersByCountryTitle": "Сортировать по странам",
+  "sortServersByCountrySub": "Собрать серверы одной страны вместе. Страны идут в порядке провайдера, закреплённые остаются сверху",
+  "serverGroupCollapse": "Свернуть группу",
+  "serverGroupExpand": "Развернуть группу",
   "autoUpdateSubTitle": "Автообновление подписки",
   "autoUpdateSubText": "Периодически обновлять список серверов",
   "captureSystemProxy": "Системный прокси",
@@ -286,27 +293,8 @@
   "speedTestFull": "20 МБ (точнее)",
   "speedTestLight": "5 МБ (экономно)",
   "testUrlLabel": "Тестовый URL (via Proxy)",
-  "appUpdateServerUnavailable": "Сервер обновлений недоступен",
-  "appUpdateAvailable": "Доступна версия {version}",
-  "@appUpdateAvailable": {
-    "placeholders": {
-      "version": {
-        "type": "String"
-      }
-    }
-  },
-  "appUpdateLatest": "У вас последняя версия",
-  "appUpdateDownload": "Скачать",
-  "appUpdateCheckTitle": "Проверять обновления при запуске",
-  "appUpdateManual": "Скачивание и установка — вручную",
-  "appUpdateEndpointLabel": "Эндпоинт версии",
-  "appUpdateBetaChannelTitle": "Получать бета-версии",
-  "appUpdateBetaChannelSubtitle": "Список релизов GitHub, включая пре-релизы, плюс резервный адрес сайта. Автообновление стабильных версий не меняет.",
   "infoAppUpdateBeta": "Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется — бета не придёт тем, кто эту галочку не включал.",
   "appUpdateBetaBadge": "БЕТА",
-  "appUpdateBetaNotice": "Это пре-релиз — возможны сбои. Автообновление такие версии не рассылает.",
-  "appUpdatePreviousVersionsButton": "Прежние версии",
-  "appUpdatePreviousVersionsTitle": "Прежние версии",
   "appUpdatePreviousVersionsHint": "Список — это то, что лежит в GitHub Releases. Каких-то версий там может не быть.",
   "appUpdatePreviousVersionsEmpty": "Список пуст — GitHub Releases недоступен или релизов там нет.",
   "appUpdateOpenRelease": "Открыть страницу релиза",
@@ -367,8 +355,6 @@
   "enumActionTunnel": "Туннель",
   "enumActionDirect": "Прямо",
   "enumActionBlock": "Блок",
-  "homeUpdateAvailable": "Доступна версия {version}",
-  "homeDownload": "Скачать",
   "homeSubscriptionUpdated": "Подписка обновлена: {summary}",
   "homeReconnect": "Переподключить",
   "homePingProgress": "Пинг серверов: {done} из {total}",
@@ -416,6 +402,17 @@
   "subBarExpired": "Подписка истекла:",
   "subBarValidUntil": "Действует до:",
   "subBarAnnounce": "Объявление от панели",
+  "subBarAnnounceFrom": "Объявления от сервиса {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "Объявления от сервиса",
+  "hideAnnounceTitle": "Скрывать объявления от сервиса",
+  "hideAnnounceSub": "Объявления из подписки не показываются в карточке. По умолчанию они видны на любом экране.",
   "subSwitcherPingAll": "Пинг серверов всех подписок",
   "subSwitcherPingBusySpeed": "Пинг недоступен: идёт замер скорости",
   "subSwitcherExpired": "Истекла",
@@ -477,7 +474,6 @@
   "infoTunBypassLan": "Локальная сеть (частные адреса 192.168.*, 10.*, роутер, принтеры, NAS) идёт мимо VPN. Обычно нужно включённым, иначе пропадёт доступ к устройствам в сети.",
   "infoTunExcludeCidrs": "Дополнительные подсети, которые всегда идут мимо VPN (формат CIDR, напр. 10.8.0.0/24). Полезно для корпоративных сетей и других VPN.",
   "infoTunPrivilege": "TUN требует прав администратора. Один раз создаём задачу в Планировщике Windows с высшими правами — после этого туннель стартует БЕЗ запроса UAC при каждом подключении. Задача принадлежит вам и удаляется кнопкой ниже или при удалении программы.",
-  "infoAppUpdate": "Раз в запуск приложение спрашивает у вашего сервера, нет ли версии новее, и показывает уведомление с кнопкой «Скачать».\n\nПриложение НИЧЕГО не скачивает и не запускает само: установщик не подписан сертификатом, и самозапуск скачанного exe упирается в SmartScreen и выглядит для антивирусов как поведение зловреда. Обновление ставите вы.\n\nЕсли сервер недоступен — приложение просто молчит, запись уходит в лог. Формат ответа и настройка сервера описаны в docs/APP_UPDATE.md.",
   "infoSpeedTest": "Объём данных, который скачивается при замере скорости (ПКМ по серверу → «Информация о сервере» → «Измерить скорость»).\n\n20 МБ — основной режим: на быстрых каналах (100+ Мбит/с) короткая проба не успевает разогнаться и занижает результат.\n5 МБ — экономный: заметно дешевле по трафику, удобно прогнать много серверов.\n\nЗамер запускается ТОЛЬКО вручную и расходует трафик вашей подписки. Скорость меряется дважды: напрямую и через выбранный сервер, чтобы было видно, сколько именно теряется на VPN.",
   "infoAutoReconnect": "Если ядро упало, сервер отвалился или сменилась сеть (Wi-Fi ↔ кабель, выход из сна, новый IP) — приложение само поднимает подключение заново. Паузы между попытками растут: 0,8 с → 3 с → 8 с → 20 с и дальше держатся на 20 с. Попыток восемь, после чего приложение сдаётся и показывает ошибку. Отключение кнопкой всегда отменяет восстановление.\n\n⚠️ При включённом kill switch попытки НЕ КОНЧАЮТСЯ. Пока они идут, трафик остаётся заблокированным, и прекратить их означало бы выпустить его мимо VPN — поэтому приложение продолжает пробовать раз в 20 секунд, пока вы не отключите VPN сами, и напоминает о неудаче не чаще раза в 15 минут. Вернувшийся через час сервер подхватится сам.\n\nВ режиме «Авто (лучший сервер)» приложение не тратит последнюю попытку на мёртвый сервер: уже на седьмой из восьми оно переходит к следующему кандидату, и отсчёт начинается там заново.\n\nСмена сети определяется по реальным адресам чужих адаптеров: собственный туннель и служебные адреса (link-local) не учитываются, изменение принимается только если продержалось два опроса подряд, и первые 15 секунд после подключения сигнал игнорируется. Без этих предохранителей подъём туннеля сам считался «сменой сети» и вызывал бесконечное переподключение.",
   "infoKillSwitch": "Не выпускать трафик мимо VPN, пока соединение восстанавливается. Захват НЕ снимается между попытками: в TUN-режиме адаптер остаётся поднятым, в режиме «Системный прокси» прокси остаётся прописанным — приложения получают ошибку соединения вместо незашифрованного выхода в интернет.\n\nЧестно о границах: в режиме «Системный прокси» это защищает только программы, уважающие системный прокси (браузеры и большинство приложений). Программы, игнорирующие прокси, и UDP пойдут напрямую — полную герметичность даёт только TUN-режим. Требует включённого автопереподключения.",
@@ -533,6 +529,110 @@
   "importScrLoading": "Загрузка…",
   "importScrPasteImport": "Импорт из буфера обмена",
   "importScrImportField": "Импортировать из поля",
+  "importScrScanQr": "Сканировать QR",
+  "importScrQrFromImage": "QR с картинки",
+  "qrScanPrompt": "Наведите камеру на QR-код подписки",
+  "qrCameraExplainTitle": "Доступ к камере",
+  "qrCameraExplainBody": "Камера нужна только чтобы прочитать QR-код подписки. Снимки не сохраняются и никуда не отправляются.",
+  "qrCameraContinue": "Продолжить",
+  "qrCameraDenied": "Нет доступа к камере. Разрешите его в настройках приложения или выберите картинку с QR-кодом.",
+  "qrNotFound": "На картинке не найден QR-код.",
+  "qrReadFailed": "Не удалось открыть картинку.",
+  "statusReconnectBlocked": "Соединение потеряно, трафик заблокирован. Переподключение через {seconds} с (попытка {attempt})…",
+  "@statusReconnectBlocked": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      },
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "statusTrafficNotFlowing": "Туннель подключён, но трафик через него не идёт",
+  "statusVpnConsentDenied": "Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.",
+  "statusMissingCore": "Не найден {file} рядом с приложением. Переустановите SilentGate.",
+  "@statusMissingCore": {
+    "placeholders": {
+      "file": {
+        "type": "String"
+      }
+    }
+  },
+  "statusPortOwnCore": "Порт {port} ещё занят нашим ядром ({holder}) от прошлой сессии.\n\nТак бывает, если выключить и сразу включить VPN. Подождите несколько секунд и попробуйте снова.",
+  "@statusPortOwnCore": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "holder": {
+        "type": "String"
+      }
+    }
+  },
+  "statusPortUnknown": "Порт {port} уже занят другой программой, определить её не удалось.\n\nЧаще всего это другой VPN-клиент: он слушает те же локальные порты. Закройте его полностью, в том числе из трея, и попробуйте снова.",
+  "@statusPortUnknown": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "statusPortHolder": "Порт {port} уже занят программой {holder}.\n\nЗакройте её полностью, в том числе из трея, и попробуйте снова.",
+  "@statusPortHolder": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      },
+      "holder": {
+        "type": "String"
+      }
+    }
+  },
+  "statusTunCoreHung": "Туннельное ядро зависло, туннель снят",
+  "statusConnectFailed": "Не удалось подключиться: {detail}",
+  "@statusConnectFailed": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "statusCoreStopped": "Ядро {core} остановилось (код {code})",
+  "@statusCoreStopped": {
+    "placeholders": {
+      "core": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "statusCoreStoppedReason": "Ядро {core} остановилось (код {code}): {reason}",
+  "@statusCoreStoppedReason": {
+    "placeholders": {
+      "core": {
+        "type": "String"
+      },
+      "code": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "statusReasonPortBusy": "локальный порт {port} уже занят",
+  "@statusReasonPortBusy": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "statusReasonPortBusyAny": "локальный порт уже занят",
+  "statusReasonFailedToStart": "ядро не смогло запуститься",
   "serversTitle": "Серверы",
   "serversFound": "Серверы — найдено {found} из {total}",
   "serversRefresh": "Обновить подписку",
@@ -613,6 +713,15 @@
   "srvTileUpdatedTitle": "Сервер обновился",
   "srvTileUpdatedFields": "При обновлении подписки изменилось: {fields}",
   "srvTileUpdatedGeneric": "При обновлении подписки обновилась запись сервера",
+  "serverUnsupportedHy2Mask": "Маскировка «{type}» пока не поддерживается клиентом",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUnsupportedGeneric": "Этот сервер пока не поддерживается клиентом",
   "srvFieldId": "Идентификатор / пароль",
   "srvFieldEncryption": "Шифрование",
   "srvFieldSecurity": "Защита соединения",
@@ -701,6 +810,7 @@
   "trayQuitVpn": "Отключить и выйти",
   "tunTaskDone": "Готово: TUN будет запускаться без запроса UAC",
   "tunTaskFailed": "Не удалось создать задачу (UAC отклонён или запрещено политикой)",
+  "tunTaskSchedulerFailed": "Планировщик не принял задачу — причина в журнале (Настройки → Логи)",
   "tunAutoFixNoticeText": "Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права",
   "tunAutoFixAction": "Исправить",
   "tunLogTitle": "Лог TUN (sing-box)",
@@ -757,7 +867,6 @@
   "reportTechNoticeLine1": "Ниже — техническая информация. Проверьте её перед отправкой;",
   "reportTechNoticeLine2": "паролей и токена подписки здесь нет, URL подписки скрыт.",
   "noRealIpTitle": "Не выходить под реальным IP",
-  "noRealIpSub": "Даже при рабочем VPN весь «прямой» трафик идёт через VPN (RU-сайты — тоже). Локальная сеть остаётся напрямую.",
   "flagAuto": "АВТО",
   "autoUpdateIntervalLabel": "Интервал обновления, ч",
   "autoUpdatePreferSub": "Брать интервал из подписки",
@@ -794,6 +903,7 @@
   "errInvalidJson": "Некорректный JSON",
   "errPickServerFirst": "Сначала выберите сервер",
   "errImportSubscriptionFirst": "Сначала импортируйте подписку",
+  "errServerUnsupported": "Этот сервер не поддерживается клиентом",
   "speedSizeFull": "20 МБ",
   "speedSizeLight": "5 МБ",
   "speedMbPerSec": "{value} МБ/с",
@@ -1095,7 +1205,6 @@
   },
   "splitQuicNote": "Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.",
   "splitNoRealIpBanner": "Включено «Не выходить под реальным IP»: правила «Прямо» без поднятой галочки идут через VPN",
-  "settingsNoRealIpAffects": "Затрагивает правила «Прямо»: без галочки «разрешить реальный IP» они пойдут через VPN",
   "splitAppOverrideSites": "Важнее правил по сайтам",
   "splitAppOverrideSitesSub": "Весь трафик приложения идёт как указано, даже если для сайта задано другое",
   "settingsMyRulesOverridePanel": "Мои правила важнее правил панели",
@@ -1380,7 +1489,7 @@
       }
     }
   },
-  "autoWarnNoRealIp": "Включено «Не выходить под реальным IP» — весь трафик уходит через VPN.",
+  "autoWarnNoRealIp": "Включено «Не выходить под реальным IP» — ваши правила «Прямо» уходят через VPN.",
   "autoWarnAllVpn": "Выбран режим «Все — через VPN» — ваши правила сейчас не действуют.",
   "autoWarnPanelOverride": "Включено «Мои правила важнее правил панели».",
   "autoWarnProbesDirect": "На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра — если ядро зависло, все результаты будут ложно-отрицательными.",
@@ -1674,11 +1783,316 @@
   "splitOnlySelectedWarnBody": "В туннель идёт только то, чему задано действие «Туннель». Остальной трафик — включая программы, о которых вы не знаете, — выходит напрямую, с вашим настоящим адресом. Если скрыто должно быть всё устройство, выберите «Все — через VPN».",
   "splitOnlySelectedNoRealIp": "Настройка «Не выходить под реальным IP» этого не меняет: она переписывает только правила «Прямо», а не базу маршрута.",
   "splitKillSwitchIsPerApp": "Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.",
-  "updateNotesTitle": "Что нового в {version}",
   "updateNotesEmpty": "Описание изменений не пришло.",
-  "updateNotesNeverShow": "Больше не показывать",
   "notifOffTitle": "Уведомления выключены",
   "notifOffSub": "Не увидите обрыв связи, а кнопка «Отключить» в шторке пропадёт",
   "notifOffOpen": "Включить",
-  "notifOffNoScreen": "Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate."
+  "notifOffNoScreen": "Не удалось открыть экран уведомлений. Включите их вручную: настройки Android → Приложения → SilentGate.",
+  "splitImport": "Импорт",
+  "splitExport": "Экспорт",
+  "splitImportOk": "Настройки импортированы",
+  "splitImportBad": "В буфере обмена нет корректных настроек SilentGate",
+  "splitImportReplace": "Заменить",
+  "updatesTitle": "Обновления",
+  "updatesCurrentVersion": "Текущая версия {version}",
+  "@updatesCurrentVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesChannelStable": "Стабильный канал",
+  "updatesChannelBeta": "Бета-канал",
+  "updatesCheckNow": "Проверить сейчас",
+  "updatesStatusChecking": "Проверка…",
+  "updatesStatusUpToDate": "У вас последняя версия",
+  "updatesStatusAvailable": "Доступна версия {version}",
+  "@updatesStatusAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesStatusDownloading": "Загрузка… {percent}%",
+  "@updatesStatusDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "updatesDownloadedOf": "Загрузка {done} из {total} МБ",
+  "@updatesDownloadedOf": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesDownloadLeft": "осталось {left} МБ",
+  "@updatesDownloadLeft": {
+    "placeholders": {
+      "left": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesDownloadEtaSec": "~{n} с",
+  "@updatesDownloadEtaSec": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "updatesDownloadEtaMin": "~{n} мин",
+  "@updatesDownloadEtaMin": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "updatesStatusVerifying": "Проверка подписи…",
+  "updatesStatusReady": "Готово к установке",
+  "updatesStatusInstalling": "Установка…",
+  "updatesStatusFailed": "Не удалось: {reason}",
+  "@updatesStatusFailed": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesStatusNeedsPermission": "Нужно разрешение на установку",
+  "updatesStatusLinkOnly": "Установите вручную",
+  "updatesModeTitle": "Как обновляться",
+  "updatesModeAsk": "Спрашивать",
+  "updatesModeAskHint": "Покажет, что нового, и установит только после вашего согласия",
+  "updatesModeAuto": "Автоматически",
+  "updatesModeAutoHint": "Скачает и установит само, когда VPN выключен",
+  "updatesModeNotify": "Только уведомлять",
+  "updatesModeNotifyHint": "Сообщит о новой версии, ничего не скачивая и не устанавливая",
+  "updatesAutoCheck": "Проверять при запуске",
+  "updatesBeta": "Получать бета-версии",
+  "updatesSignatureNote": "Каждый файл проверяется подписью разработчика и контрольной суммой; без совпадения установка не начнётся",
+  "updatesDialogTitle": "Доступно обновление {version}",
+  "@updatesDialogTitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesInstall": "Обновить",
+  "updatesLater": "Позже",
+  "updatesSkipVersion": "Пропустить эту версию",
+  "updatesVpnWarning": "Установка разорвёт VPN-соединение",
+  "updatesAndroidUnknownSources": "Разрешите установку из этого приложения",
+  "updatesAndroidOpenSettings": "Открыть настройки",
+  "updatesAndroidNoSilent": "Android покажет системное окно установки: это требование системы",
+  "updatesPortableFallback": "Эта копия не установлена через установщик. Скачайте новую версию вручную",
+  "updatesInstalledToast": "Обновлено до {version}",
+  "@updatesInstalledToast": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesInstallFailedTitle": "Установка не завершилась",
+  "updatesInstallFailedBody": "Версия осталась {version}. Журнал установщика ниже",
+  "@updatesInstallFailedBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesShowLog": "Показать журнал",
+  "updatesOverrideBadge": "Источник обновлений подменён (тестовый режим)",
+  "updatesSettingsTile": "Обновления",
+  "updatesSettingsTileSubtitle": "Проверка, загрузка и установка новых версий",
+  "updatesPreviousVersions": "Прежние версии",
+  "updatesInstallOlder": "Установить",
+  "updatesDowngradeWarning": "Откат на более старую версию. Продолжить?",
+  "updatesSizeMb": "{mb} МБ",
+  "@updatesSizeMb": {
+    "placeholders": {
+      "mb": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesVpnWarningBody": "Приложение закроется, и VPN отключится на время установки. После обновления подключитесь снова",
+  "updatesOpenPage": "Открыть страницу загрузки",
+  "updatesLinkNotify": "Выбран режим «Только уведомлять» — скачайте новую версию со страницы загрузки",
+  "updatesLinkNoSelfUpdate": "В этом выпуске нет подписанного установщика для вашей системы — скачайте его со страницы загрузки",
+  "updatesLinkIsolated": "Это изолированная тестовая копия — она не трогает установленное приложение. Обновите его вручную",
+  "updatesLinkLocation": "Приложение запущено не из папки установки — скачайте новую версию вручную или запустите установленную копию",
+  "updatesLinkElevated": "Приложение запущено от имени администратора — так обновляться небезопасно. Запустите его обычным способом",
+  "updatesLinkUnsupported": "На этой платформе приложение не обновляется само — скачайте новую версию вручную",
+  "updatesErrCheck": "сервер обновлений не ответил",
+  "updatesErrInsecure": "адрес загрузки не защищён (не https)",
+  "updatesErrAssetName": "имя файла в выпуске недопустимо",
+  "updatesErrManifest": "не удалось получить подписанное описание выпуска",
+  "updatesErrSignature": "подпись не совпала — файл мог быть подменён",
+  "updatesErrManifestRejected": "описание выпуска не подходит для этой версии или системы",
+  "updatesErrDownload": "файл не скачался или не совпал по контрольной сумме",
+  "updatesErrInstall": "установщик не запустился",
+  "updatesErrNotNewer": "эта версия не новее установленной",
+  "updatesInfo": "Что приложение делает с найденной новой версией. В автоматическом режиме установка не разрывает включённый VPN: она дождётся отключения. В любом режиме файл ставится, только если совпала подпись разработчика.",
+  "updatesDownload": "Скачать",
+  "updatesInstallNow": "Установить сейчас",
+  "updatesWaitingVpn": "Готово к установке — начнётся после отключения VPN",
+  "updatesSkippedNote": "Версия {version} пропущена — сообщим о следующей",
+  "@updatesSkippedNote": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesAutoNoticeTitle": "Установка обновления",
+  "updatesAutoNoticeBody": "Приложение закроется на время установки версии {version}",
+  "@updatesAutoNoticeBody": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportTitleApps": "Импорт приложений",
+  "splitImportTitleSites": "Импорт сайтов",
+  "splitImportFormatNote": "Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "Вставить из буфера",
+  "splitImportAdd": "Добавить",
+  "splitImportReplaceAll": "Заменить всё",
+  "splitImportStatNew": "новых: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "уже есть: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "различаются: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "не разобрано: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "Перезаписать различающиеся",
+  "splitImportOverwriteSub": "Выключено — у таких правил остаются текущие настройки",
+  "splitImportConflictLine": "было {from}, станет {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "Эти строки не взяты",
+  "splitImportAdded": "Добавлено {added}, изменено {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "Правил после замены: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "Список пуст — экспортировать нечего",
+  "splitCountEmpty": "Пусто",
+  "splitCountTotal": "всего {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "вкл {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "выкл {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "туннель {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "прямо {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "блок {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "Развернуть список",
+  "splitCollapseList": "Свернуть список",
+  "splitExpandGroup": "Развернуть группу",
+  "splitCollapseGroup": "Свернуть группу",
+  "splitExpandSubdomains": "Показать поддомены",
+  "splitCollapseSubdomains": "Скрыть поддомены"
 }

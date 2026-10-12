@@ -7,7 +7,6 @@
   "commonClear": "مسح",
   "commonCopied": "تم النسخ",
   "commonRefresh": "تحديث",
-  "commonCheck": "فحص",
   "commonOk": "موافق",
   "commonDone": "تم",
   "commonPathCopied": "تم نسخ المسار",
@@ -45,6 +44,14 @@
   "tunnelExcludeScopeOffHint": "Server addresses are not in the routing table, but ping with VPN enabled shows latency to the local stack, not the server.",
   "closeToTrayTitle": "التصغير إلى شريط المهام عند الإغلاق",
   "closeToTraySubtitle": "زر الإغلاق يخفي النافذة إلى شريط المهام؛ أوقفه ليُغلق التطبيق بدلاً من ذلك",
+  "launchAtLoginTitle": "التشغيل مع Windows",
+  "launchAtLoginSub": "يبدأ التطبيق مصغّرًا في علبة النظام عند تسجيل الدخول",
+  "connectOnAutostartTitle": "الاتصال عند التشغيل التلقائي",
+  "connectOnAutostartSub": "تشغيل VPN إلى الخادم المحدد فور تشغيل Windows للتطبيق",
+  "sortServersByCountryTitle": "الترتيب حسب البلد",
+  "sortServersByCountrySub": "جمع خوادم البلد الواحد معًا. تحافظ البلدان على ترتيب المزوّد، وتبقى الخوادم المثبّتة في الأعلى",
+  "serverGroupCollapse": "طيّ المجموعة",
+  "serverGroupExpand": "توسيع المجموعة",
   "autoUpdateSubTitle": "التحديث التلقائي للاشتراك",
   "autoUpdateSubText": "تحديث قائمة الخوادم دورياً",
   "captureSystemProxy": "بروكسي النظام",
@@ -195,20 +202,8 @@
   "speedTestFull": "20 MB (أكثر دقة)",
   "speedTestLight": "5 MB (اقتصادي)",
   "testUrlLabel": "URL الاختبار (عبر البروكسي)",
-  "appUpdateServerUnavailable": "خادم التحديث غير متاح",
-  "appUpdateAvailable": "الإصدار {version} متاح",
-  "appUpdateLatest": "لديك أحدث إصدار",
-  "appUpdateDownload": "تنزيل",
-  "appUpdateCheckTitle": "التحقق من التحديثات عند التشغيل",
-  "appUpdateManual": "التنزيل والتثبيت — يدوياً",
-  "appUpdateEndpointLabel": "نقطة نهاية الإصدار",
-  "appUpdateBetaChannelTitle": "تلقّي الإصدارات التجريبية",
-  "appUpdateBetaChannelSubtitle": "قائمة إصدارات GitHub بما فيها الإصدارات التجريبية المسبقة، بالإضافة إلى عنوان احتياطي من الموقع. لا يغيّر التحديث التلقائي للإصدارات المستقرة.",
   "infoAppUpdateBeta": "سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر — لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.",
   "appUpdateBetaBadge": "تجريبي",
-  "appUpdateBetaNotice": "هذا إصدار تجريبي مسبق — قد تحدث أعطال. التحديث التلقائي لا يوزّع هذه الإصدارات.",
-  "appUpdatePreviousVersionsButton": "إصدارات سابقة",
-  "appUpdatePreviousVersionsTitle": "إصدارات سابقة",
   "appUpdatePreviousVersionsHint": "هذه القائمة هي ما هو موجود في GitHub Releases. قد تكون بعض الإصدارات غير موجودة.",
   "appUpdatePreviousVersionsEmpty": "القائمة فارغة — GitHub Releases غير متاح أو لا توجد إصدارات.",
   "appUpdateOpenRelease": "فتح صفحة الإصدار",
@@ -256,8 +251,6 @@
   "enumActionTunnel": "نفق",
   "enumActionDirect": "مباشر",
   "enumActionBlock": "حظر",
-  "homeUpdateAvailable": "الإصدار {version} متاح",
-  "homeDownload": "تنزيل",
   "homeSubscriptionUpdated": "تم تحديث الاشتراك: {summary}",
   "homeReconnect": "إعادة الاتصال",
   "homePingProgress": "جارٍ Ping الخوادم: {done} من {total}",
@@ -305,6 +298,17 @@
   "subBarExpired": "انتهى الاشتراك:",
   "subBarValidUntil": "صالح حتى:",
   "subBarAnnounce": "إعلان من اللوحة",
+  "subBarAnnounceFrom": "إعلانات من خدمة {name}",
+  "@subBarAnnounceFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarAnnounceFromUnnamed": "إعلانات من الخدمة",
+  "hideAnnounceTitle": "إخفاء إعلانات الخدمة",
+  "hideAnnounceSub": "لا تُعرض إعلانات الاشتراك في البطاقة. افتراضيًا تظهر على أي شاشة.",
   "subSwitcherPingAll": "اختبار خوادم كل الاشتراكات",
   "subSwitcherPingBusySpeed": "قياس زمن الاستجابة غير متاح: يجري الآن اختبار السرعة",
   "subSwitcherExpired": "منتهٍ",
@@ -342,7 +346,6 @@
   "infoTunBypassLan": "الشبكة المحلية (العناوين الخاصة 192.168.*، 10.*، الراوتر، الطابعات، NAS) تلتفّ حول VPN. عادةً تريد هذا مُفعَّلاً، وإلا فقدت الوصول إلى الأجهزة على الشبكة.",
   "infoTunExcludeCidrs": "شبكات فرعية إضافية تلتفّ دائماً حول VPN (بتنسيق CIDR، مثل 10.8.0.0/24). مفيدة للشبكات المؤسسية وشبكات VPN الأخرى.",
   "infoTunPrivilege": "يتطلب TUN صلاحيات المسؤول. مرة واحدة، نُنشئ مهمة في Windows Task Scheduler بأعلى الصلاحيات — بعدها يبدأ النفق دون طلب UAC في كل اتصال. المهمة ملكك وتُزال بالزر أدناه أو عند إلغاء تثبيت البرنامج.",
-  "infoAppUpdate": "مرة واحدة في كل تشغيل، يسأل التطبيق خادمك عمّا إذا كان هناك إصدار أحدث ويعرض إشعاراً بزر «تنزيل».\n\nلا ينزّل التطبيق ولا يشغّل أي شيء بنفسه: المُثبِّت غير موقَّع بشهادة، وتشغيل ملف exe مُنزَّل تلقائياً يصطدم بـ SmartScreen ويبدو لبرامج مكافحة الفيروسات كسلوك برمجية خبيثة. تثبّت التحديث بنفسك.\n\nإذا كان الخادم غير متاح، يظل التطبيق صامتاً ويكتب إدخالاً في السجل. تنسيق الاستجابة وإعداد الخادم موصوفان في docs/APP_UPDATE.md.",
   "infoSpeedTest": "كمية البيانات المُنزَّلة عند قياس السرعة (انقر بزر الفأرة الأيمن على خادم ← «معلومات الخادم» ← «قياس السرعة»).\n\n20 MB — الوضع الرئيسي: على الوصلات السريعة (100+ ميغابت/ث) لا يجد المسبار القصير وقتاً كافياً لبلوغ الذروة فيقلّل تقدير النتيجة.\n5 MB — الوضع الاقتصادي: أرخص بوضوح على حركة المرور، ومفيد للمرور عبر عدة خوادم.\n\nيُجرى القياس يدوياً فقط ويستهلك حركة مرور اشتراكك. تُقاس السرعة مرتين: مباشرة وعبر الخادم المحدَّد، لترى بالضبط كم يُفقد على VPN.",
   "infoAutoReconnect": "إذا انهارت النواة أو سقط الخادم أو تغيّرت الشبكة (واي-فاي ↔ كابل، الخروج من السكون، عنوان IP جديد)، يعيد التطبيق الاتصال من تلقاء نفسه. تتزايد فترات الانتظار بين المحاولات: 0.8 ث ← 3 ث ← 8 ث ← 20 ث، ثم تبقى عند 20 ث. عدد المحاولات ثماني، وبعدها يستسلم التطبيق ويعرض خطأً. أما قطع الاتصال بالزر فيلغي الاستعادة دائمًا.\n\n⚠️ عند تفعيل مفتاح الإيقاف، المحاولات لا تنفد أبدًا. ما دامت مستمرة تبقى حركة البيانات محجوبة، وإيقافها يعني إطلاقها خارج الشبكة الافتراضية — لذلك يواصل التطبيق المحاولة كل 20 ثانية حتى تُطفئ الشبكة الافتراضية بنفسك، ويذكّرك بالإخفاق مرة كل 15 دقيقة على الأكثر. والخادم الذي يعود بعد ساعة يُلتقط تلقائيًا.\n\nفي وضع «تلقائي (أفضل خادم)» لا يهدر التطبيق المحاولة الأخيرة على خادم ميت: فمنذ السابعة من أصل ثماني ينتقل إلى المرشح التالي، ويبدأ العدّ هناك من جديد.\n\nيُكتشف تغيّر الشبكة من العناوين الحقيقية للمحوّلات الأخرى: نفقنا الخاص وعناوين الخدمة (link-local) لا تُحتسب، ولا يُقبل التغيير إلا إذا استمر في استطلاعين متتاليين، وتُتجاهل الإشارة في أول 15 ثانية بعد الاتصال. بدون هذه الاحتياطات كان رفع النفق نفسه يُحتسب «تغيّر شبكة» ويسبب إعادة اتصال لا تنتهي.",
   "infoKillSwitch": "لا تسمح لحركة المرور بالخروج حول VPN أثناء استعادة الاتصال. لا يُحرَّر الالتقاط بين المحاولات: في وضع TUN يبقى المحوّل قائماً، وفي وضع «بروكسي النظام» يبقى البروكسي مُهيَّأً — فتحصل التطبيقات على خطأ اتصال بدلاً من وصول غير مُشفَّر إلى الإنترنت.\n\nبصراحة عن الحدود: في وضع «بروكسي النظام» يحمي هذا البرامج التي تحترم بروكسي النظام فقط (المتصفحات ومعظم التطبيقات). أما البرامج التي تتجاهل البروكسي، وUDP، فستذهب مباشرة — والإحكام الكامل لا يوفّره إلا وضع TUN. يتطلب تفعيل إعادة الاتصال التلقائية.",
@@ -398,6 +401,29 @@
   "importScrLoading": "جارٍ التحميل…",
   "importScrPasteImport": "استيراد من الحافظة",
   "importScrImportField": "استيراد من الحقل",
+  "importScrScanQr": "مسح رمز QR",
+  "importScrQrFromImage": "QR من صورة",
+  "qrScanPrompt": "وجّه الكاميرا نحو رمز QR للاشتراك",
+  "qrCameraExplainTitle": "الوصول إلى الكاميرا",
+  "qrCameraExplainBody": "تُستخدم الكاميرا فقط لقراءة رمز QR للاشتراك. لا يُحفظ أي شيء ولا يُرسل.",
+  "qrCameraContinue": "متابعة",
+  "qrCameraDenied": "لا يوجد وصول إلى الكاميرا. اسمح به في إعدادات التطبيق أو اختر صورة تحتوي على رمز QR.",
+  "qrNotFound": "لم يُعثر على رمز QR في الصورة.",
+  "qrReadFailed": "تعذّر فتح الصورة.",
+  "statusReconnectBlocked": "انقطع الاتصال وحُظرت حركة المرور. إعادة الاتصال خلال {seconds} ث (المحاولة {attempt})…",
+  "statusTrafficNotFlowing": "النفق متصل، لكن لا تمر عبره أي حركة مرور",
+  "statusVpnConsentDenied": "لم يسمح Android بتشغيل VPN. اضغط «اتصال» مرة أخرى ووافق على طلب النظام.",
+  "statusMissingCore": "لم يُعثر على {file} بجانب التطبيق. أعد تثبيت SilentGate.",
+  "statusPortOwnCore": "المنفذ {port} لا يزال مشغولًا بنواتنا ({holder}) من الجلسة السابقة.\n\nيحدث هذا عند إيقاف VPN وتشغيله فورًا. انتظر بضع ثوانٍ وحاول مجددًا.",
+  "statusPortUnknown": "المنفذ {port} مشغول ببرنامج آخر تعذّر تحديده.\n\nغالبًا ما يكون عميل VPN آخر يستمع على المنافذ المحلية نفسها. أغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.",
+  "statusPortHolder": "المنفذ {port} مشغول بالبرنامج {holder}.\n\nأغلقه تمامًا، بما في ذلك من شريط النظام، وحاول مجددًا.",
+  "statusTunCoreHung": "توقفت نواة النفق عن الاستجابة؛ أُزيل النفق",
+  "statusConnectFailed": "تعذّر الاتصال: {detail}",
+  "statusCoreStopped": "توقفت نواة {core} (الرمز {code})",
+  "statusCoreStoppedReason": "توقفت نواة {core} (الرمز {code}): {reason}",
+  "statusReasonPortBusy": "المنفذ المحلي {port} مستخدم بالفعل",
+  "statusReasonPortBusyAny": "منفذ محلي مستخدم بالفعل",
+  "statusReasonFailedToStart": "تعذّر تشغيل النواة",
   "serversTitle": "الخوادم",
   "serversFound": "الخوادم — عُثر على {found} من {total}",
   "serversRefresh": "تحديث الاشتراك",
@@ -478,6 +504,15 @@
   "srvTileUpdatedTitle": "Server updated",
   "srvTileUpdatedFields": "Changed in the last subscription update: {fields}",
   "srvTileUpdatedGeneric": "The last subscription update changed this server's record",
+  "serverUnsupportedHy2Mask": "التمويه «{type}» غير مدعوم في هذا العميل حتى الآن",
+  "@serverUnsupportedHy2Mask": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "serverUnsupportedGeneric": "هذا الخادم غير مدعوم في هذا العميل حتى الآن",
   "srvFieldId": "ID / password",
   "srvFieldEncryption": "Encryption",
   "srvFieldSecurity": "Connection security",
@@ -566,6 +601,7 @@
   "trayQuitVpn": "قطع الاتصال والخروج",
   "tunTaskDone": "تم: سيبدأ TUN دون طلب UAC",
   "tunTaskFailed": "فشل إنشاء المهمة (رُفض UAC أو مُنع بالسياسة)",
+  "tunTaskSchedulerFailed": "رفض برنامج جدولة المهام المهمة — السبب في السجل (الإعدادات ← السجلات)",
   "tunAutoFixNoticeText": "Silent TUN startup is broken — every connection will ask for administrator rights",
   "tunAutoFixAction": "Fix",
   "tunLogTitle": "سجل TUN (sing-box)",
@@ -622,7 +658,6 @@
   "reportTechNoticeLine1": "أدناه معلومات تقنية. راجعها قبل الإرسال؛",
   "reportTechNoticeLine2": "لا توجد هنا كلمات مرور أو رمز اشتراك، وURL الاشتراك مخفي.",
   "noRealIpTitle": "لا تستخدم عنوان IP الحقيقي أبدًا",
-  "noRealIpSub": "حتى مع تشغيل VPN، تمر كل حركة المرور «المباشرة» عبر VPN (بما في ذلك مواقع RU). تبقى الشبكة المحلية مباشرة.",
   "flagAuto": "تلقائي",
   "autoUpdateIntervalLabel": "فاصل التحديث، ساعة",
   "autoUpdatePreferSub": "استخدام الفاصل من الاشتراك",
@@ -659,6 +694,7 @@
   "errInvalidJson": "JSON غير صالح",
   "errPickServerFirst": "اختر خادمًا أولاً",
   "errImportSubscriptionFirst": "استورد اشتراكًا أولاً",
+  "errServerUnsupported": "هذا الخادم غير مدعوم في هذا العميل",
   "speedSizeFull": "20 ميغابايت",
   "speedSizeLight": "5 ميغابايت",
   "speedMbPerSec": "{value} ميغابايت/ث",
@@ -812,7 +848,6 @@
   },
   "splitQuicNote": "ما دامت هناك قاعدة موقع واحدة على الأقل، يعطّل التطبيق HTTP/3 (QUIC) لكل حركة المرور. وإلا ينتقل المتصفح إلى HTTP/3 ولا يترك اسم الموقع، فتفشل القاعدة بصمت. المواقع تظل تعمل: تعود إلى TLS العادي، أبطأ قليلًا فقط.",
   "splitNoRealIpBanner": "«لا تستخدم عنواني الحقيقي» مُفعَّل: قواعد «مباشر» بلا علامة تمر عبر VPN",
-  "settingsNoRealIpAffects": "يؤثر على قواعد «مباشر»: بدون خيار «السماح بالعنوان الحقيقي» ستمر عبر VPN",
   "splitAppOverrideSites": "أولوية على قواعد المواقع",
   "splitAppOverrideSitesSub": "كل حركة التطبيق تتبع هذه القاعدة حتى لو قال موقع غير ذلك",
   "settingsMyRulesOverridePanel": "قواعدي أهم من قواعد اللوحة",
@@ -1066,7 +1101,7 @@
   "autoTimer": "مضى {elapsed} · بقي نحو {remaining}",
   "autoTimerNoEstimate": "مضى {elapsed}",
   "autoSpeedRanking": "قياس السرعة: {name}",
-  "autoWarnNoRealIp": "خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وكل البيانات تمر عبر VPN.",
+  "autoWarnNoRealIp": "خيار «عدم استخدام العنوان الحقيقي» مفعَّل، وقواعد «مباشر» لديك تمر عبر VPN.",
   "autoWarnAllVpn": "الوضع المختار هو «كل شيء عبر VPN»، وقواعدك غير سارية حاليًا.",
   "autoWarnPanelOverride": "خيار «قواعدي أولى من قواعد اللوحة» مفعَّل.",
   "autoWarnProbesDirect": "هذا لا يؤثر في الفحص نفسه: الاختبارات تتجاوز VPN مهما كانت الإعدادات. لكنها في وضع TUN تمر عبر عملية النواة، فإذا تعطّلت النواة صارت كل النتائج سلبية كاذبة.",
@@ -1239,11 +1274,215 @@
   "splitOnlySelectedWarnBody": "لا يدخل النفق إلا ما عُيِّن له إجراء «النفق». أمّا بقية حركة المرور — بما فيها برامج لا تعلم بوجودها — فتخرج مباشرة بعنوانك الحقيقي. إذا وجب إخفاء الجهاز كله فاختر «كل شيء عبر VPN».",
   "splitOnlySelectedNoRealIp": "لا يغيّر إعداد «عدم الخروج بعنوان IP الحقيقي» هذا الأمر: فهو يعيد كتابة قواعد «مباشر» فقط، لا المسار الافتراضي.",
   "splitKillSwitchIsPerApp": "يحتجز مفتاح الإيقاف حركة المرور حسب البرامج لا حسب النطاقات: أثناء استعادة النواة لا يوجد من يحلّل أسماء المواقع، ولذلك لا تعمل قواعد المواقع في تلك الفترة.",
-  "updateNotesTitle": "الجديد في {version}",
   "updateNotesEmpty": "لم تصل ملاحظات الإصدار.",
-  "updateNotesNeverShow": "عدم الإظهار مرة أخرى",
   "notifOffTitle": "الإشعارات مُعطَّلة",
   "notifOffSub": "لن ترى انقطاع الاتصال، وسيختفي زر «قطع الاتصال»",
   "notifOffOpen": "تفعيل",
-  "notifOffNoScreen": "تعذّر فتح شاشة الإشعارات. فعّلها يدويًا: إعدادات أندرويد ← التطبيقات ← SilentGate."
+  "notifOffNoScreen": "تعذّر فتح شاشة الإشعارات. فعّلها يدويًا: إعدادات أندرويد ← التطبيقات ← SilentGate.",
+  "splitImport": "استيراد",
+  "splitExport": "تصدير",
+  "splitImportOk": "تم استيراد الإعدادات",
+  "splitImportBad": "لا توجد إعدادات SilentGate صالحة في الحافظة",
+  "splitImportReplace": "استبدال",
+  "updatesTitle": "التحديثات",
+  "updatesCurrentVersion": "الإصدار الحالي {version}",
+  "updatesChannelStable": "القناة المستقرة",
+  "updatesChannelBeta": "قناة بيتا",
+  "updatesCheckNow": "تحقق الآن",
+  "updatesStatusChecking": "جارٍ التحقق…",
+  "updatesStatusUpToDate": "لديك أحدث إصدار",
+  "updatesStatusAvailable": "الإصدار {version} متاح",
+  "updatesStatusDownloading": "جارٍ التنزيل… {percent}٪",
+  "updatesDownloadedOf": "جارٍ التنزيل: {done} من {total} م.ب",
+  "updatesDownloadLeft": "المتبقي {left} م.ب",
+  "updatesDownloadEtaSec": "~{n} ث",
+  "updatesDownloadEtaMin": "~{n} د",
+  "updatesStatusVerifying": "جارٍ التحقق من التوقيع…",
+  "updatesStatusReady": "جاهز للتثبيت",
+  "updatesStatusInstalling": "جارٍ التثبيت…",
+  "updatesStatusFailed": "فشل: {reason}",
+  "updatesStatusNeedsPermission": "مطلوب إذن التثبيت",
+  "updatesStatusLinkOnly": "ثبّت يدويًا",
+  "updatesModeTitle": "كيفية التحديث",
+  "updatesModeAsk": "السؤال",
+  "updatesModeAskHint": "يعرض الجديد ويثبّت فقط بعد موافقتك",
+  "updatesModeAuto": "تلقائيًا",
+  "updatesModeAutoHint": "ينزّل ويثبّت بنفسه عندما تكون VPN مطفأة",
+  "updatesModeNotify": "الإشعار فقط",
+  "updatesModeNotifyHint": "يبلّغ عن الإصدار الجديد دون تنزيل أو تثبيت أي شيء",
+  "updatesAutoCheck": "التحقق عند بدء التشغيل",
+  "updatesBeta": "استلام إصدارات بيتا",
+  "updatesSignatureNote": "يتم التحقق من كل ملف بتوقيع المطوّر ومجموع اختباري؛ دون تطابق لن يبدأ التثبيت",
+  "updatesDialogTitle": "التحديث {version} متاح",
+  "updatesInstall": "تحديث",
+  "updatesLater": "لاحقًا",
+  "updatesSkipVersion": "تخطي هذا الإصدار",
+  "updatesVpnWarning": "سيقطع التثبيت اتصال VPN",
+  "updatesAndroidUnknownSources": "اسمح بالتثبيت من هذا التطبيق",
+  "updatesAndroidOpenSettings": "فتح الإعدادات",
+  "updatesAndroidNoSilent": "سيعرض Android نافذة التثبيت الخاصة بالنظام: هذا متطلب من النظام",
+  "updatesPortableFallback": "لم تُثبَّت هذه النسخة عبر برنامج التثبيت. نزّل الإصدار الجديد يدويًا",
+  "updatesInstalledToast": "تم التحديث إلى {version}",
+  "updatesInstallFailedTitle": "لم يكتمل التثبيت",
+  "updatesInstallFailedBody": "بقي الإصدار {version}. سجل برنامج التثبيت أدناه",
+  "updatesShowLog": "عرض السجل",
+  "updatesOverrideBadge": "تم استبدال مصدر التحديثات (وضع الاختبار)",
+  "updatesSettingsTile": "التحديثات",
+  "updatesSettingsTileSubtitle": "التحقق من الإصدارات الجديدة وتنزيلها وتثبيتها",
+  "updatesPreviousVersions": "الإصدارات السابقة",
+  "updatesInstallOlder": "تثبيت",
+  "updatesDowngradeWarning": "الرجوع إلى إصدار أقدم. هل تريد المتابعة؟",
+  "updatesSizeMb": "{mb} م.ب",
+  "updatesVpnWarningBody": "سيُغلق التطبيق وسينقطع اتصال VPN أثناء التثبيت. أعد الاتصال بعد التحديث",
+  "updatesOpenPage": "فتح صفحة التنزيل",
+  "updatesLinkNotify": "وضع «الإشعار فقط» مُفعَّل — نزّل الإصدار الجديد من صفحة التنزيل",
+  "updatesLinkNoSelfUpdate": "لا يتضمن هذا الإصدار مثبّتًا موقّعًا لنظامك — نزّله من صفحة التنزيل",
+  "updatesLinkIsolated": "هذه نسخة اختبار معزولة — لا تمسّ التطبيق المثبّت. حدّثه يدويًا",
+  "updatesLinkLocation": "التطبيق لا يعمل من مجلد التثبيت — نزّل الإصدار الجديد يدويًا أو شغّل النسخة المثبّتة",
+  "updatesLinkElevated": "التطبيق يعمل بصلاحيات المسؤول — التحديث بهذه الطريقة غير آمن. شغّله بالطريقة العادية",
+  "updatesLinkUnsupported": "لا يستطيع التطبيق تحديث نفسه على هذه المنصة — نزّل الإصدار الجديد يدويًا",
+  "updatesErrCheck": "لم يستجب خادم التحديثات",
+  "updatesErrInsecure": "عنوان التنزيل غير آمن (ليس https)",
+  "updatesErrAssetName": "اسم الملف في الإصدار غير مسموح به",
+  "updatesErrManifest": "تعذّر الحصول على بيان الإصدار الموقّع",
+  "updatesErrSignature": "التوقيع غير مطابق — ربما جرى العبث بالملف",
+  "updatesErrManifestRejected": "بيان الإصدار لا يناسب هذا الإصدار أو النظام",
+  "updatesErrDownload": "لم يُنزَّل الملف أو أن مجموعه الاختباري غير مطابق",
+  "updatesErrInstall": "لم يبدأ المثبّت",
+  "updatesErrNotNewer": "هذا الإصدار ليس أحدث من المثبّت",
+  "updatesInfo": "ما يفعله التطبيق عند العثور على إصدار جديد. في الوضع التلقائي لا يقطع التثبيت أبدًا اتصال VPN نشطًا، بل ينتظر حتى تقطع الاتصال. وفي كل الأوضاع لا يُثبَّت الملف إلا إذا طابق توقيع المطوّر.",
+  "updatesDownload": "تنزيل",
+  "updatesInstallNow": "التثبيت الآن",
+  "updatesWaitingVpn": "جاهز للتثبيت — سيبدأ بعد قطع اتصال VPN",
+  "updatesSkippedNote": "تم تخطي الإصدار {version} — سنُعلمك بالإصدار التالي",
+  "updatesAutoNoticeTitle": "جارٍ تثبيت التحديث",
+  "updatesAutoNoticeBody": "سيُغلق التطبيق أثناء تثبيت الإصدار {version}",
+  "splitImportTitleApps": "استيراد التطبيقات",
+  "splitImportTitleSites": "استيراد المواقع",
+  "splitImportFormatNote": "كل سطر قاعدة واحدة. تحدد العناوين [tunnel] و[direct] و[block] الإجراء للأسطر التالية. يُضاف السطر بلا علامة تمامًا كما لو كُتب يدويًا.",
+  "splitImportFieldHint": "youtube.com\nnetflix.com",
+  "splitImportPasteClipboard": "اللصق من الحافظة",
+  "splitImportAdd": "إضافة",
+  "splitImportReplaceAll": "استبدال الكل",
+  "splitImportStatNew": "جديد: {n}",
+  "@splitImportStatNew": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatSame": "موجود مسبقاً: {n}",
+  "@splitImportStatSame": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatConflict": "مختلف: {n}",
+  "@splitImportStatConflict": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportStatBad": "غير مفهوم: {n}",
+  "@splitImportStatBad": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportOverwrite": "الكتابة فوق المختلفة",
+  "splitImportOverwriteSub": "عند الإيقاف تبقى الإعدادات الحالية لتلك القواعد",
+  "splitImportConflictLine": "كان {from}، سيصبح {to}",
+  "@splitImportConflictLine": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "splitImportBadLinesTitle": "هذه الأسطر لم تُؤخذ",
+  "splitImportAdded": "أُضيف {added}، تغيّر {changed}",
+  "@splitImportAdded": {
+    "placeholders": {
+      "added": {
+        "type": "int"
+      },
+      "changed": {
+        "type": "int"
+      }
+    }
+  },
+  "splitImportReplaced": "عدد القواعد بعد الاستبدال: {n}",
+  "@splitImportReplaced": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExportEmpty": "القائمة فارغة — لا شيء للتصدير",
+  "splitCountEmpty": "فارغة",
+  "splitCountTotal": "إجمالي {n}",
+  "@splitCountTotal": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOn": "مفعّل {n}",
+  "@splitCountOn": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountOff": "معطّل {n}",
+  "@splitCountOff": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountTunnel": "نفق {n}",
+  "@splitCountTunnel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountDirect": "مباشر {n}",
+  "@splitCountDirect": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitCountBlock": "حظر {n}",
+  "@splitCountBlock": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "splitExpandList": "توسيع القائمة",
+  "splitCollapseList": "طي القائمة",
+  "splitExpandGroup": "توسيع المجموعة",
+  "splitCollapseGroup": "طي المجموعة",
+  "splitExpandSubdomains": "إظهار النطاقات الفرعية",
+  "splitCollapseSubdomains": "إخفاء النطاقات الفرعية"
 }

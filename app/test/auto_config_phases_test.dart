@@ -275,4 +275,26 @@ void main() {
           .effectiveAutoConfigConcurrency, AppSettings.autoConfigConcurrencyMax);
     });
   });
+
+  group('Перебор отпечатков в автонастройке (docs/research/MASKING.md §3.5)', () {
+    test('randomized не участвует в переборе — подтверждённый баг Xray #6714', () {
+      final fps = AutoConfigEngine.deepVariants()
+          .map((v) => v.fingerprint)
+          .whereType<String>()
+          .toSet();
+      expect(fps, isNot(contains('randomized')));
+      // Остальные отпечатки перебираются как раньше — баг не повод обеднять
+      // перебор целиком; qq добавлен 25.09.2026 (дефолт автонастройки).
+      expect(
+          fps, {'chrome', 'firefox', 'safari', 'edge', 'ios', 'android', 'qq'});
+    });
+
+    test('дефолт настроек — firefox + qq (решение владельца 25.09.2026)', () {
+      const s = AppSettings();
+      expect(s.fingerprints, ['firefox', 'qq']);
+      // fromJson без ключа отдаёт тот же дефолт, а не устаревший «только firefox».
+      final loaded = AppSettings.fromJson(const {});
+      expect(loaded.fingerprints, ['firefox', 'qq']);
+    });
+  });
 }

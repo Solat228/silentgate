@@ -262,6 +262,10 @@ class ShareLinkParser {
       allowInsecure: _bool(q['insecure'] ?? q['allowInsecure']),
       hopPorts: _nz(q['mport'] ?? q['ports']),
       rawLink: link,
+      // `unsupported` — наше расширение (не часть протокола hysteria2://),
+      // пишет его только наш buildShareLink для узлов с finalmask.udp,
+      // которую клиент не умеет собрать (см. VpnServer.unsupportedReason).
+      unsupportedReason: _nz(q['unsupported']),
     );
   }
 
