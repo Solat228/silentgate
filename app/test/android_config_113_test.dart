@@ -4,8 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 
-/// Ядро на Android — libbox 1.13.14, собранный нами; на Windows — официальная
-/// сборка sing-box 1.13.14 (до 1.15.0 была 1.11.15). Версия одна, но сборки
+/// Ядро на Android — libbox 1.14.3, собранный нами; на Windows — официальная
+/// сборка sing-box 1.14.3 (до 1.15.0 была 1.11.15, до 1.15.2 — 1.13.14).
+/// Версия одна, но сборки
 /// РАЗНЫЕ и ведут себя по-разному: наша на устаревшем поле только
 /// предупреждает, официальная отвергает конфиг целиком (так прятался старый
 /// формат DNS-серверов). Поэтому проверяем обеими.
@@ -47,12 +48,12 @@ void main() {
     expect(r.exitCode, 0, reason: '$label отверг конфиг:\n${r.stdout}${r.stderr}');
   }
 
-  test('ядро 1.13.14 (Android) принимает конфиг', () async {
-    const exe = r'C:\dev\android\out\sing-box-1.13.14.exe';
+  test('ядро 1.14.3 (Android) принимает конфиг', () async {
+    const exe = r'C:\dev\android\out\sing-box-1.14.3.exe';
     if (!File(exe).existsSync()) {
       fail('нет $exe — проверить нечем, а расхождение версий уже ломало сборку');
     }
-    await checkWith(exe, 'sing-box 1.13.14');
+    await checkWith(exe, 'sing-box 1.14.3');
   });
 
   test('официальное ядро Windows принимает тот же набор полей', () async {

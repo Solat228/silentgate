@@ -18,6 +18,8 @@ import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.system.OsConstants
 import android.util.Log
+import lol.silentgate.cores.libbox.BridgeOptions
+import lol.silentgate.cores.libbox.BridgeSession
 import lol.silentgate.cores.libbox.CommandServer
 import lol.silentgate.cores.libbox.CommandServerHandler
 import lol.silentgate.cores.libbox.ConnectionOwner
@@ -25,11 +27,14 @@ import lol.silentgate.cores.libbox.InterfaceUpdateListener
 import lol.silentgate.cores.libbox.Libbox
 import lol.silentgate.cores.libbox.LocalDNSTransport
 import lol.silentgate.cores.libbox.NetworkInterface as LibboxNetworkInterface
+import lol.silentgate.cores.libbox.NeighborUpdateListener
 import lol.silentgate.cores.libbox.NetworkInterfaceIterator
 import lol.silentgate.cores.libbox.OverrideOptions
 import lol.silentgate.cores.libbox.PlatformInterface
+import lol.silentgate.cores.libbox.PlatformUser
 import lol.silentgate.cores.libbox.RoutePrefix
 import lol.silentgate.cores.libbox.SetupOptions
+import lol.silentgate.cores.libbox.ShellSession
 import lol.silentgate.cores.libbox.StringIterator
 import lol.silentgate.cores.libbox.SystemProxyStatus
 import lol.silentgate.cores.libbox.TunOptions
@@ -103,6 +108,40 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         /// ⚠️ Имя хранилища и ключ языка переехали в [NativePrefs] — их читает
         /// не только сервис. Здесь их больше нет намеренно: копия константы
         /// рядом с общей быстро начинает жить своей жизнью.
+
+        /** Имя источника в файле паник ядра: `CrashReport-tunnel.log`. */
+        private const val CRASH_SOURCE = "tunnel"
+
+        /**
+         * Новый `singbox.log` на каждый подъём туннеля, прежний — в `.old`.
+         *
+         * До sing-box 1.14 это делал `Libbox.redirectStderr`: он же направлял в
+         * файл паники Go. В 1.14 его убрали, и паники ядро пишет само, в
+         * `CrashReport-<источник>.log`, а при следующем `Libbox.setup` уносит
+         * файл в свой архив. Экран «Логи» и отчёт поддержки этот архив не
+         * читают, поэтому текст паники дописываем в лог ТОЙ сессии, которая
+         * упала, то есть в `.old`. Без этого причина падения ядра снова не
+         * дошла бы до пользователя.
+         */
+        internal fun rotateCoreLog(log: java.io.File, crash: java.io.File) {
+            if (log.length() > 0) {
+                val old = java.io.File(log.path + ".old")
+                old.delete()
+                log.renameTo(old)
+            }
+            if (crash.length() > 0) {
+                val maxBytes = 64 * 1024L
+                val text = java.io.RandomAccessFile(crash, "r").use { raf ->
+                    val from = (raf.length() - maxBytes).coerceAtLeast(0L)
+                    raf.seek(from)
+                    val buf = ByteArray((raf.length() - from).toInt())
+                    raf.readFully(buf)
+                    String(buf, Charsets.UTF_8)
+                }
+                java.io.File(log.path + ".old").appendText(
+                    "\n=== Ядро упало (паника Go), текст из ${crash.name} ===\n$text\n")
+            }
+        }
 
         private const val CHANNEL_ID = "silentgate_vpn"
 
@@ -676,12 +715,18 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             coreLog = filesDir.resolve("SilentGate")
                 .also { it.mkdirs() }
                 .resolve("singbox.log")
-            runCatching { Libbox.redirectStderr(coreLog!!.absolutePath) }
+            val coreWorkDir = filesDir.resolve("sing-box").also { it.mkdirs() }
+            runCatching {
+                rotateCoreLog(coreLog!!, coreWorkDir.resolve("CrashReport-$CRASH_SOURCE.log"))
+            }
 
             Libbox.setup(SetupOptions().apply {
                 basePath = filesDir.absolutePath
-                workingPath = filesDir.resolve("sing-box").also { it.mkdirs() }.absolutePath
+                workingPath = coreWorkDir.absolutePath
                 tempPath = cacheDir.absolutePath
+                // Паники Go ядро пишет в `CrashReport-<источник>.log` рабочего
+                // каталога. Текст оттуда переносит [rotateCoreLog].
+                crashReportSource = CRASH_SOURCE
                 // На Android нужен обход особенности стека Go — иначе часть
                 // соединений не поднимается.
                 fixAndroidStack = true
@@ -1070,9 +1115,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             options.inet4RouteExcludeAddress.forEach { exclude4.add(it.address() to it.prefix()) }
             options.inet6RouteExcludeAddress.forEach { exclude6.add(it.address() to it.prefix()) }
         }
-        // runCatching: у конфига без DNS-сервера свойство отдаёт null/бросает —
-        // это то же состояние «сервера нет», что и раньше ловил try/catch.
-        val dns = runCatching { options.dnsServerAddress?.value }.getOrNull()
+        // С sing-box 1.14 адресов DNS может быть несколько, и у TUN появился
+        // режим DNS. При `disabled` ядро DNS интерфейса не перехватывает, и
+        // назначать его системе нельзя: запросы ушли бы в никуда. Так делает и
+        // официальный клиент SFA. runCatching: без DNS-сервера свойство
+        // отдаёт null или бросает, это то же состояние «сервера нет».
+        val dnsMode = runCatching { options.dnsMode?.value }.getOrNull()
+        val dns = mutableListOf<String>()
+        if (dnsMode != Libbox.DNSModeDisabled) runCatching {
+            options.dnsServerAddress?.forEach { dns.add(it) }
+        }
         val includePkgs = mutableListOf<String>()
         options.includePackage.forEach { pkg ->
             // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
@@ -1155,11 +1207,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(addr), prefix))
         }
 
-        if (dns != null) try {
-            builder.addDnsServer(dns)
-        } catch (_: Throwable) {
-            // Без DNS-сервера приложения пойдут в системный резолвер мимо
-            // туннеля — ровно та утечка, которую чинили на Windows.
+        dns.forEach { server ->
+            try {
+                builder.addDnsServer(server)
+            } catch (_: Throwable) {
+                // Без DNS-сервера приложения пойдут в системный резолвер мимо
+                // туннеля — ровно та утечка, которую чинили на Windows.
+            }
         }
 
         // include и exclude НЕЛЬЗЯ смешивать: наличие хотя бы одного allowed
@@ -1385,9 +1439,37 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     // Пустое состояние вместо null: значение уходит в Go через JNI, и null там
     // разыменовывается без проверки.
     override fun readWIFIState(): WIFIState = WIFIState("", "")
-    override fun systemCertificates(): StringIterator = StringArray(emptyList())
     override fun localDNSTransport(): LocalDNSTransport? = null
     override fun sendNotification(notification: lol.silentgate.cores.libbox.Notification) {}
+    override fun cancelNotification(identifier: String?, typeID: Int) {}
+
+    // ── Возможности sing-box 1.14, которых у нас нет ──────────────────────────
+    //
+    // SSH-оболочка, мост и таблица соседей нужны Tailscale и встроенному
+    // SSH-серверу ядра. Наши конфиги их не включают. «Не поддерживается»
+    // отвечаем явно: так ядро сообщит причину, а не упадёт на пустом значении.
+
+    override fun usePlatformShell(): Boolean = false
+    override fun checkPlatformShell() = throw UnsupportedOperationException("shell not supported")
+    override fun openShellSession(
+        user: PlatformUser?,
+        command: String?,
+        environ: StringIterator?,
+        term: String?,
+        rows: Int,
+        cols: Int,
+    ): ShellSession = throw UnsupportedOperationException("shell not supported")
+    override fun lookupUser(username: String?): PlatformUser =
+        throw UnsupportedOperationException("shell not supported")
+    override fun lookupSFTPServer(): String = throw UnsupportedOperationException("sftp not supported")
+    override fun readSystemSSHHostKey(): String = throw UnsupportedOperationException("ssh not supported")
+    override fun usePlatformBridge(): Boolean = false
+    override fun createBridge(options: BridgeOptions?): BridgeSession =
+        throw UnsupportedOperationException("bridge not supported")
+    override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
+    override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
+    override fun registerMyInterface(name: String?) {}
+    override fun tailscaleHostname(): String = ""
 
     // ── CommandServerHandler ──────────────────────────────────────────────────
 
@@ -1404,6 +1486,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun setSystemProxyEnabled(isEnabled: Boolean) {}
     override fun writeDebugMessage(message: String) {}
+    // Отладочные команды ядра 1.14: падение по запросу и SSH-агент нам не нужны.
+    override fun triggerNativeCrash() {}
+    override fun connectSSHAgent(): Int = -1
 
     // ── Нотификация ───────────────────────────────────────────────────────────
 

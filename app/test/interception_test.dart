@@ -147,7 +147,7 @@ void _ipv6Guards() {
     test('оба ядра принимают конфиг с отказом IPv6', () async {
       // Поле `ip_version` появилось не во всех версиях одинаково, а конфиг
       // отвергается ЦЕЛИКОМ — на этом уже обжигались с DNS-действием
-      // `predefined`. Проверяем обеими: 1.11.15 (Windows) и 1.13.14 (Android).
+      // `predefined`. Проверяем обеими: официальной (Windows) и нашей сборкой (Android).
       final dir = Directory('build/emit')..createSync(recursive: true);
       final f = File('${dir.path}/no-ipv6.json')
         ..writeAsStringSync(SingboxConfigBuilder(
@@ -156,7 +156,7 @@ void _ipv6Guards() {
 
       for (final exe in [
         File('../engine/windows/bin/sing-box.exe'),
-        File(r'C:\dev\android\out\sing-box-1.13.14.exe'),
+        File(r'C:\dev\android\out\sing-box-1.14.3.exe'),
       ]) {
         if (!exe.existsSync()) continue;
         final r = await Process.run(exe.path, ['check', '-c', f.path]);

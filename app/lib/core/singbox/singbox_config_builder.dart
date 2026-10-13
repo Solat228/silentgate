@@ -1199,7 +1199,9 @@ class SingboxConfigBuilder {
               ? 'dns-local'
               : (o.fallbackDnsPort > 0 ? 'dns-fallback' : 'dns-proxy'),
       'strategy': o.dnsStrategy.singboxValue,
-      'independent_cache': true,
+      // `independent_cache` здесь больше нет: в sing-box 1.14 поле объявлено
+      // устаревшим, ядро его игнорирует и пишет предупреждение. Кэш теперь
+      // всегда раздельный по серверу. Страж — singbox_113_guard_test.
     };
   }
 
@@ -2053,7 +2055,7 @@ class SingboxConfigBuilder {
   ///     идёт напрямую всё время попыток. Ровно наоборот тому, зачем это
   ///     делалось. Поэтому здесь ни одного правила, кроме catch-all reject.
   ///  2. ТИП `block` УДАЛЁН. Outbound `{'type':'block'}` объявлен устаревшим в
-  ///     1.11 и убран в 1.13, а на Android у нас libbox 1.13.14. Блокируем
+  ///     1.11 и убран в 1.13, а на Android у нас libbox 1.14.3. Блокируем
   ///     маршрутным `action: reject` — он поддерживается.
   ///  3. ИНТЕРФЕЙС ПЕРЕСОЗДАВАЛСЯ. Заглушка строилась из ДЕФОЛТНЫХ опций, а
   ///     живой конфиг — из пользовательских: другой MTU, другой набор

@@ -82,7 +82,7 @@ void main() {
     ).buildJson(const SplitTunnelConfig()));
 
     for (final exe in [
-      r'C:\dev\android\out\sing-box-1.13.14.exe',
+      r'C:\dev\android\out\sing-box-1.14.3.exe',
       '../engine/windows/bin/sing-box.exe',
     ]) {
       if (!File(exe).existsSync()) continue;
