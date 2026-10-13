@@ -83,6 +83,7 @@ abstract final class AutoGroups {
     for (var i = 0; i < servers.length; i++) {
       final s = servers[i];
       if (s.isPanelProfile || s.isNotice || skip.contains(i)) continue;
+      if (isBridgeName(s.displayName)) continue;
       final sig = serverSignature(s);
       if (sig != null) sigOf[i] = sig;
     }
@@ -125,6 +126,20 @@ abstract final class AutoGroups {
     }
     return AutoBinding(members: members, ownerOf: ownerOf);
   }
+
+  /// Мост: вход в одной стране, выход в другой («Мск 2 -> Германия 2 (мост)»).
+  ///
+  /// ⚠️ МОСТ ПОД СТРАНОВУЮ ШАПКУ НЕ ИДЁТ, ДАЖЕ ЕСЛИ ПАНЕЛЬ ПОЛОЖИЛА ЕГО В
+  /// ПРОФИЛЬ СТРАНЫ (владелец, 13.10.2026). Под «Германией» он выглядит
+  /// обычным немецким узлом, а подключение к нему идёт через Россию — человек
+  /// выбирал бы не то, что видит. Узнаём по названию: другого признака в
+  /// подписке нет, а слово «мост» и стрелку панель ставит сама.
+  static bool isBridgeName(String name) => _bridge.hasMatch(name);
+
+  static final RegExp _bridge = RegExp(
+      r'(?<![а-яёa-z])(мост|bridge)(?![а-яёa-z])|->|→|=>',
+      caseSensitive: false,
+      unicode: true);
 
   /// Зонтик — профиль, строго содержащий серверы ДВУХ непересекающихся
   /// профилей («Авто YouTube» содержит и Польшу, и Германию).

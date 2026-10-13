@@ -813,12 +813,20 @@ class SensitiveAddresses {
       v.startsWith('172.19.0.') ||
       v.startsWith('fdfe:dcba:9876:');
 
-  /// Заменить в [text] все известные адреса на их метки.
+  /// Заменить в [text] все известные адреса на их метки, а пароли и
+  /// подобные им значения — на звёздочки.
   ///
-  /// Пустой реестр — мгновенный выход: до импорта подписки (и в тестах, где
-  /// серверов нет) журнал не платит ничего.
+  /// ⚠️ ПАРОЛИ МАСКИРУЮТСЯ ЗДЕСЬ, А НЕ В ОДНОМ ИЗ ОТЧЁТОВ. Через этот метод
+  /// идёт всё, что покидает приложение текстом: наш журнал, логи ядер в отчёте
+  /// поддержки на обеих платформах, экран логов. sing-box при отказе в доступе
+  /// к локальному порту печатает присланные креды целиком (`username=sg,
+  /// password=<hex>`) — так пароль живого инбаунда проб уехал в отчёт
+  /// владельца 13.10.2026. От реестра адресов он не зависит, поэтому
+  /// маскируется ДО выхода по пустому реестру.
   static String mask(String text) {
-    if (_labels.isEmpty || text.isEmpty) return text;
+    if (text.isEmpty) return text;
+    text = _maskCredentials(text);
+    if (_labels.isEmpty) return text;
     final byToken = text.replaceAllMapped(_token, (m) {
       final token = m[0]!;
       final core = _core(token);
@@ -826,6 +834,21 @@ class SensitiveAddresses {
       return label == null ? token : '$label${token.substring(core.length)}';
     });
     return _maskGlued(byToken);
+  }
+
+  /// `password=…`, `secret=…`, `token=…`, `Bearer …` — значение до пробела
+  /// или разделителя. Ключ остаётся: без него не понять, что именно отвергли.
+  static final RegExp _credential = RegExp(
+      r'\b(password|passwd|secret|token)=[^\s,;&"\x27]+|\b(Bearer)\s+[^\s,;&"\x27]+',
+      caseSensitive: false);
+
+  static String _maskCredentials(String text) {
+    // Дешёвая проверка до регулярки: журнал бывает в мегабайты, а секрет в
+    // нём — редкость.
+    final lower = text.toLowerCase();
+    if (!lower.contains('=') && !lower.contains('bearer')) return text;
+    return text.replaceAllMapped(_credential,
+        (m) => m[1] != null ? '${m[1]}=***' : '${m[2]} ***');
   }
 
   /// Второй проход: известный адрес, СЛИПШИЙСЯ с окружением.

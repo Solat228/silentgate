@@ -1,18 +1,54 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Шина входящих ссылок silentgate:// (из deep link'а браузера).
 /// Первичный экземпляр приложения кладёт сюда полученные URL; [AppState] их слушает.
+///
+/// ⚠️ ССЫЛКА БЕЗ СЛУШАТЕЛЯ ОТКЛАДЫВАЕТСЯ, А НЕ ПРОПАДАЕТ. Поток широковещательный,
+/// а у такого потока нет памяти. Слушатель — [AppState], его создаёт ленивый
+/// провайдер при первой отрисовке, а ссылку холодного старта [bindPlatform]
+/// забирает ещё до `runApp`. Кто успеет первым, не задано ничем; проигрыш
+/// выглядел как «приложение открылось, подписка не добавилась» (13.10.2026).
+/// Отложенные отдаются ПЕРВОМУ слушателю и только ему: второй раз та же ссылка
+/// означала бы повторный импорт.
 class IncomingLinks {
-  static final StreamController<String> _controller =
-      StreamController<String>.broadcast();
+  static final List<String> _pending = <String>[];
+
+  static StreamController<String> _controller = _newController();
+
+  static StreamController<String> _newController() =>
+      StreamController<String>.broadcast(onListen: () {
+        // Отдаём после того, как подписка встала: внутри `onListen` она ещё
+        // может не получать событий.
+        scheduleMicrotask(_flush);
+      });
+
+  static void _flush() {
+    if (!_controller.hasListener) return;
+    final queued = List<String>.of(_pending);
+    _pending.clear();
+    queued.forEach(_controller.add);
+  }
 
   static Stream<String> get stream => _controller.stream;
 
   static void add(String url) {
-    if (url.trim().isNotEmpty) _controller.add(url.trim());
+    final v = url.trim();
+    if (v.isEmpty) return;
+    if (_controller.hasListener) {
+      _controller.add(v);
+    } else {
+      _pending.add(v);
+    }
+  }
+
+  @visibleForTesting
+  static void resetForTest() {
+    _pending.clear();
+    _controller = _newController();
   }
 
   static const _channel = MethodChannel('lol.silentgate/links');

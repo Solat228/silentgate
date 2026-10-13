@@ -115,7 +115,11 @@ void main() {
     // ML Kit — закрытый бинарь, в GPL-клиент его не тянем.
     expect(gradle, isNot(contains('mlkit')));
 
-    final screen = File('lib/ui/import_screen.dart').readAsStringSync();
+    // Концы строк в рабочей копии зависят от core.autocrlf: после checkout
+    // файл бывает с CRLF, и проверка многострочного куска падала не по делу.
+    final screen = File('lib/ui/import_screen.dart')
+        .readAsStringSync()
+        .replaceAll('\r\n', '\n');
     expect(screen, contains('QrScannerAndroid.isSupported'));
     // Распознанное идёт тем же путём, что и вставка из буфера.
     expect(screen, contains('_controller.text = text;\n      await _import();'));

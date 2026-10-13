@@ -7,8 +7,11 @@ import android.content.pm.PackageManager
 import android.Manifest
 import android.net.VpnService
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.platform.PlatformChannels
@@ -20,11 +23,21 @@ import lol.silentgate.vpn.SilentGateVpnService
 /**
  * Единственная Activity приложения плюс мост к VPN-сервису.
  *
- * ⚠️ По решению 4а (`docs/platforms/ANDROID.md`) Activity обязана
- * переиспользовать КЭШИРОВАННЫЙ `FlutterEngine`, а не создавать свой: иначе
- * появится второй Dart-изолят, а с ним гонка записи в хранилища и смерть
- * автопереподключения при свайпе UI. Сейчас изолят один (его создаёт Flutter),
- * кэширование включается вместе с работой сервиса при закрытом интерфейсе.
+ * ⚠️ ДВИЖОК FLUTTER ЖИВЁТ ДОЛЬШЕ ACTIVITY (решение 4а, `docs/platforms/ANDROID.md`).
+ * Движок кэшируется на процесс ([provideFlutterEngine]) и не гасится вместе с
+ * Activity ([shouldDestroyEngineWithHost]). До 13.10.2026 решение было записано,
+ * но не сделано: каждая Activity поднимала свой движок и уносила его с собой.
+ * А система снимает Activity, ушедшую в фон, при каждом удобном случае —
+ * агрессивные прошивки, нехватка памяти, «Не сохранять действия» в параметрах
+ * разработчика. На телефоне владельца так перезапускался весь Dart: пинг при
+ * погашенном экране обрывался, интерфейс открывался на главном вместо экрана,
+ * где человек был, а QR с камеры распознавался и не импортировался — ответ
+ * сканера приходил новой Activity, а ждал его Dart, которого уже не было.
+ *
+ * ⚠️ ОТСЮДА ПРАВИЛО: всё, что должно пережить смену Activity, лежит в
+ * companion object (ожидание согласия на VPN, ссылка холодного старта, сток
+ * событий сервиса, ответ сканера в [QrScanner]). Поле экземпляра умирает с
+ * Activity, а ответ на вызов Dart должен дойти и после этого.
  */
 class MainActivity : FlutterActivity() {
 
@@ -42,27 +55,74 @@ class MainActivity : FlutterActivity() {
         private val SCHEMES = listOf(
             "silentgate", "vless", "vmess", "trojan", "ss", "hysteria2", "hy2",
         )
-    }
 
-    private var events: EventChannel.EventSink? = null
+        /** Ключ движка в [FlutterEngineCache]. */
+        private const val ENGINE_ID = "silentgate_main"
+
+        private val main = Handler(Looper.getMainLooper())
+
+        /** Сток событий сервиса. Подписка Dart живёт с движком, не с Activity. */
+        private var events: EventChannel.EventSink? = null
+
+        /**
+         * Движок, на котором уже зарегистрирован канал событий.
+         *
+         * ⚠️ РЕГИСТРИРОВАТЬ ЕГО ПОВТОРНО НЕЛЬЗЯ. Dart подписывается один раз за
+         * жизнь движка; новый обработчик, поставленный следующей Activity,
+         * подписки не увидел бы, и отписка Dart уходила бы в пустоту.
+         */
+        private var eventsEngine: FlutterEngine? = null
+
+        /**
+         * Ссылка, пришедшая до того, как Dart-сторона успела подписаться.
+         *
+         * Холодный старт по ссылке — самый частый случай (человек нажал ссылку в
+         * Telegram, приложение ещё не запущено), и именно в нём канал появляется
+         * ПОЗЖЕ интента. Без этой очереди первая ссылка терялась бы, а
+         * пользователь видел бы пустой экран импорта.
+         */
+        private var pendingLink: String? = null
+
+        /**
+         * Dart уже забрал ссылку холодного старта.
+         *
+         * ⚠️ БЕЗ ЭТОГО ФЛАГА ССЫЛКА ПРИ ЖИВОМ ДВИЖКЕ ТЕРЯЕТСЯ. Activity, снятую
+         * системой, ссылка с сайта создаёт заново — и ссылка приходит в
+         * [configureFlutterEngine], а не в [onNewIntent]. Положи мы её в
+         * [pendingLink], её не забрал бы никто: `consumeInitial` Dart зовёт один
+         * раз за жизнь движка. Значит, при живом Dart отдаём сразу.
+         */
+        private var dartTookInitial = false
+
+        /** Конфиги, ждущие согласия пользователя на VPN. */
+        private var pendingConfig: String? = null
+        private var pendingXrayConfig: String? = null
+        private var pendingResult: MethodChannel.Result? = null
+    }
 
     /** Канал входящих ссылок silentgate:// / vless:// и прочих схем. */
     private var links: MethodChannel? = null
 
     /**
-     * Ссылка, пришедшая до того, как Dart-сторона успела подписаться.
+     * Движок общий на весь процесс: Activity берёт готовый, а не создаёт свой.
      *
-     * Холодный старт по ссылке — самый частый случай (человек нажал ссылку в
-     * Telegram, приложение ещё не запущено), и именно в нём канал появляется
-     * ПОЗЖЕ интента. Без этой очереди первая ссылка терялась бы, а
-     * пользователь видел бы пустой экран импорта.
+     * Первый вызов создаёт движок; Dart в нём запускает сама Activity. Плагины
+     * регистрирует конструктор движка, поэтому `super.configureFlutterEngine`
+     * для такого движка их повторно не трогает.
      */
-    private var pendingLink: String? = null
+    override fun provideFlutterEngine(context: Context): FlutterEngine {
+        FlutterEngineCache.getInstance().get(ENGINE_ID)?.let { return it }
+        // Новый движок — новый Dart: ссылку холодного старта он заберёт сам.
+        dartTookInitial = false
+        eventsEngine = null
+        events = null
+        return FlutterEngine(context.applicationContext).also {
+            FlutterEngineCache.getInstance().put(ENGINE_ID, it)
+        }
+    }
 
-    /** Конфиги, ждущие согласия пользователя на VPN. */
-    private var pendingConfig: String? = null
-    private var pendingXrayConfig: String? = null
-    private var pendingResult: MethodChannel.Result? = null
+    /** Activity уходит — движок и Dart остаются. См. описание класса. */
+    override fun shouldDestroyEngineWithHost(): Boolean = false
 
     /** QR-код подписки с камеры и из картинки (п.60а). */
     private val qr = QrScanner(this)
@@ -83,6 +143,7 @@ class MainActivity : FlutterActivity() {
                         "consumeInitial" -> {
                             result.success(pendingLink)
                             pendingLink = null
+                            dartTookInitial = true
                         }
                         else -> result.notImplemented()
                     }
@@ -104,7 +165,7 @@ class MainActivity : FlutterActivity() {
         val fromHistory =
             (intent?.flags ?: 0) and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (!fromHistory) {
-            linkFrom(intent)?.let { pendingLink = it }
+            linkFrom(intent)?.let { deliverLink(it) }
             // Интент отработан: гасим ссылку в задаче, чтобы следующее
             // пересоздание Activity не подобрало её снова.
             intent?.data = null
@@ -130,8 +191,8 @@ class MainActivity : FlutterActivity() {
                     }
 
                     "stop" -> {
-                        startService(
-                            Intent(this, SilentGateVpnService::class.java)
+                        applicationContext.startService(
+                            Intent(applicationContext, SilentGateVpnService::class.java)
                                 .setAction(SilentGateVpnService.ACTION_STOP)
                                 // ⚠️ ЯВНО `false`, И ЭТО НЕ ФОРМАЛЬНОСТЬ.
                                 // Этим путём идут ОБЕ остановки: и нажатие
@@ -303,7 +364,7 @@ class MainActivity : FlutterActivity() {
                 Thread {
                     PlatformChannels.handleApps(
                         applicationContext, call.method, arg,
-                        MainThreadResult(this, result),
+                        MainThreadResult(result),
                     )
                 }.start()
             }
@@ -322,17 +383,26 @@ class MainActivity : FlutterActivity() {
                 Thread {
                     PlatformChannels.handleProbe(
                         call.method, cfg, timeout, url, proxy,
-                        MainThreadResult(this, result),
+                        MainThreadResult(result),
                     )
                 }.start()
             }
 
+        if (eventsEngine !== flutterEngine) {
+            eventsEngine = flutterEngine
+            registerEvents(flutterEngine)
+        }
+    }
+
+    private fun registerEvents(flutterEngine: FlutterEngine) {
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, EVENT_CHANNEL)
             .setStreamHandler(object : EventChannel.StreamHandler {
                 override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
                     events = sink
+                    // ⚠️ `main.post`, а не `runOnUiThread`: обработчик живёт
+                    // с движком и переживает Activity, которой его поставили.
                     SilentGateVpnService.stateListener = { running, error, byUser ->
-                        runOnUiThread {
+                        main.post {
                             events?.success(
                                 mapOf(
                                     "running" to running,
@@ -349,7 +419,7 @@ class MainActivity : FlutterActivity() {
                     // кнопкой в шторке — Dart обязан узнать об этом, иначе
                     // вернёт прежнюю со следующим обновлением счётчиков.
                     SilentGateVpnService.layoutListener = { compact ->
-                        runOnUiThread {
+                        main.post {
                             events?.success(mapOf("compactNotification" to compact))
                         }
                     }
@@ -384,6 +454,14 @@ class MainActivity : FlutterActivity() {
     ) {
         val consent = VpnService.prepare(this)
         if (consent != null) {
+            // Dart живёт дольше Activity и может попросить подключение, когда
+            // её уже сняли (автопереподключение при закрытом интерфейсе). Окно
+            // согласия с мёртвой Activity не показать, а промолчать — значит
+            // оставить «Подключение…» навсегда.
+            if (isFinishing || isDestroyed) {
+                result.error("consent_denied", "Нет окна для согласия на VPN", null)
+                return
+            }
             pendingConfig = config
             pendingXrayConfig = xrayConfig
             pendingResult = result
@@ -395,14 +473,16 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun launchService(config: String, xrayConfig: String?) {
-        val intent = Intent(this, SilentGateVpnService::class.java)
+        // Контекст приложения: вызов может прийти, когда Activity уже снята.
+        val app = applicationContext
+        val intent = Intent(app, SilentGateVpnService::class.java)
             .setAction(SilentGateVpnService.ACTION_START)
             .putExtra(SilentGateVpnService.EXTRA_CONFIG, config)
             .putExtra(SilentGateVpnService.EXTRA_XRAY_CONFIG, xrayConfig)
         if (Build.VERSION.SDK_INT >= 26) {
-            startForegroundService(intent)
+            app.startForegroundService(intent)
         } else {
-            startService(intent)
+            app.startService(intent)
         }
     }
 
@@ -471,8 +551,21 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         val url = linkFrom(intent) ?: return
-        // Канал есть — отдаём сразу; нет (движок ещё поднимается) — придержим.
-        if (links == null) pendingLink = url else links?.invokeMethod("link", url)
+        deliverLink(url)
+    }
+
+    /**
+     * Dart уже слушает — отдаём сразу; ещё нет (движок поднимается) — придержим
+     * до `consumeInitial`. Решает [dartTookInitial], а не наличие канала: канал
+     * у новой Activity есть всегда, а Dart мог ещё не стартовать.
+     */
+    private fun deliverLink(url: String) {
+        val ch = links
+        if (dartTookInitial && ch != null) {
+            ch.invokeMethod("link", url)
+        } else {
+            pendingLink = url
+        }
     }
 
     /**
@@ -543,13 +636,21 @@ class MainActivity : FlutterActivity() {
  * правил открывается с задержкой, а на слабом устройстве это ANR.
  */
 private class MainThreadResult(
-    private val activity: Activity,
     private val inner: MethodChannel.Result,
 ) : MethodChannel.Result {
-    override fun success(value: Any?) = activity.runOnUiThread { inner.success(value) }
+    // Главный поток процесса, а не `activity.runOnUiThread`: ответ обязан
+    // дойти до Dart и тогда, когда Activity сняли посреди тяжёлого вызова.
+    private val main = Handler(Looper.getMainLooper())
 
-    override fun error(code: String, message: String?, details: Any?) =
-        activity.runOnUiThread { inner.error(code, message, details) }
+    override fun success(value: Any?) {
+        main.post { inner.success(value) }
+    }
 
-    override fun notImplemented() = activity.runOnUiThread { inner.notImplemented() }
+    override fun error(code: String, message: String?, details: Any?) {
+        main.post { inner.error(code, message, details) }
+    }
+
+    override fun notImplemented() {
+        main.post { inner.notImplemented() }
+    }
 }

@@ -76,4 +76,54 @@ void main() {
       expect(out, contains('INFO'));
     });
   });
+
+  group('Пароли в логе ядра', () {
+    // Строка из настоящего отчёта владельца (13.10.2026): sing-box при отказе
+    // в доступе к локальному порту печатает присланные креды целиком. Это
+    // пароль живого инбаунда проб — с ним любой процесс телефона получает
+    // туннель. Отчёт уходит в чат постороннему человеку.
+    const secret = '0123456789abcdef0123456789abcdef';
+    const leaking = 'ERROR inbound/mixed[probe-in]: process connection from '
+        '127.0.0.1:46218: http: authentication failed, username=sg, '
+        'password=$secret';
+
+    test('⚠️ пароль из отказа в доступе не уходит в отчёт', () {
+      final out = SupportReport.maskCoreLog(leaking);
+      expect(out, isNot(contains(secret)));
+      expect(out, contains('password=***'));
+      expect(out, contains('authentication failed'),
+          reason: 'сам факт отказа поддержке нужен');
+      expect(out, contains('127.0.0.1:46218'));
+    });
+
+    test('⚠️ маска работает и при пустом реестре адресов', () {
+      // Реестр пуст до импорта подписки — и раньше `mask` выходил сразу,
+      // ничего не трогая. Пароль от реестра не зависит.
+      SensitiveAddresses.forgetAllForTest();
+      expect(SupportReport.maskCoreLog(leaking), isNot(contains(secret)));
+      expect(SensitiveAddresses.mask(leaking), isNot(contains(secret)));
+    });
+
+    test('наш журнал — та же граница', () {
+      SensitiveAddresses.forgetAllForTest();
+      expect(scrubSecrets(leaking), isNot(contains(secret)));
+    });
+
+    test('другие формы секрета', () {
+      for (final line in [
+        'clash api: secret=$secret',
+        'auth token=$secret;',
+        'Authorization: Bearer $secret',
+        'passwd=$secret&x=1',
+      ]) {
+        expect(SensitiveAddresses.mask(line), isNot(contains(secret)),
+            reason: line);
+      }
+    });
+
+    test('обычные строки не портятся', () {
+      const plain = 'router: match[3] outbound=direct, network=tcp, port=443';
+      expect(SensitiveAddresses.mask(plain), plain);
+    });
+  });
 }
