@@ -2733,7 +2733,8 @@ class AppState extends ChangeNotifier {
   // ── Подключение ─────────────────────────────────────────────────────────────
   Future<void> toggleConnection(AppSettings settings) async {
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
-      AppLog.i('Отключение по команде пользователя');
+      // Строку «Отключение по команде пользователя» пишет движок: здесь она
+      // дублировала его запись, и одно нажатие выглядело в журнале как два.
       markUserDisconnect();
       await _engine.disconnect();
     } else {

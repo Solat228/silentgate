@@ -1994,6 +1994,22 @@ abstract class VpnEngineBase implements VpnEngine {
       List<VpnServer> servers, ConnectionOptions options) async {
     // Живую сессию не трогаем: она точнее любой реконструкции.
     if (_session != null || servers.isEmpty || !_status.isConnected) return;
+    // ⚠️ КРЕДЫ ЖИВОГО ТУННЕЛЯ ПЕРЕЖИВАЮТ СБОРКУ СЕССИИ.
+    //
+    // Сборка идёт через [prepareLocalProxyAuth], а он выдаёт НОВЫЙ пароль и
+    // публикует его в `ProxyProbe`. Туннель же поднят прошлым запуском и
+    // слушает со старым паролем, который подхват только что прочитал с диска.
+    // Найдено в журнале владельца 13.10.2026: через секунду после подхвата
+    // сервис-чипы получили поток «authentication failed», и сторож канала с
+    // тем же паролем объявил бы исправный туннель мёртвым. Новая сессия
+    // нужна только для повтора при обрыве. Android при повторе кладёт текущие
+    // креды поверх запечённых в конфиг (`_guardXrayInbounds`) и выдаёт пробам
+    // новый пароль, поэтому вернуть прежние здесь безопасно.
+    final liveUser = localInboundUser;
+    final livePassword = localInboundPassword;
+    final liveApiSecret = singboxApiSecret;
+    final probeUser = ProxyProbe.user;
+    final probePassword = ProxyProbe.password;
     try {
       _session = servers.length == 1
           ? await sessionFor(servers.first, options)
@@ -2004,6 +2020,12 @@ abstract class VpnEngineBase implements VpnEngine {
       // Не смогли собрать — честно в лог. Туннель работает, но автозащиты нет.
       AppLog.w('Не удалось восстановить сессию подхваченного туннеля: $e. '
           'Автопереподключение и kill switch не сработают до переподключения');
+    } finally {
+      localInboundUser = liveUser;
+      localInboundPassword = livePassword;
+      singboxApiSecret = liveApiSecret;
+      ProxyProbe.user = probeUser;
+      ProxyProbe.password = probePassword;
     }
   }
 

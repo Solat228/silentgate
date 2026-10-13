@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/probe/proxy_probe.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
@@ -48,6 +49,33 @@ void main() {
           [_server('live')]);
       await e.armAdoptedSession([_server('other')], const ConnectionOptions());
       expect(e.sessionConfig, '{"живой":1}');
+    });
+
+    // Было (журнал владельца 13.10.2026): сборка сессии выдавала новый пароль
+    // и публиковала его в ProxyProbe. Подхваченный туннель слушает со старым,
+    // и через секунду после подхвата сервис-чипы получали «authentication
+    // failed», а сторож канала с тем же паролем объявил бы исправный канал
+    // мёртвым.
+    test('креды живого туннеля переживают восстановление сессии', () async {
+      final e = _FakeEngine()..pretendAdopted();
+      e.localInboundUser = 'sg';
+      e.localInboundPassword = 'live-inbound';
+      e.singboxApiSecret = 'live-api';
+      ProxyProbe.user = 'sg';
+      ProxyProbe.password = 'live-probe';
+      addTearDown(() {
+        ProxyProbe.user = '';
+        ProxyProbe.password = '';
+      });
+      await e.armAdoptedSession(
+        [_server('a')],
+        const ConnectionOptions(settings: AppSettings()),
+      );
+      expect(e.sessionConfig, isNotNull, reason: 'сессия всё же собрана');
+      expect(ProxyProbe.password, 'live-probe');
+      expect(ProxyProbe.user, 'sg');
+      expect(e.localInboundPassword, 'live-inbound');
+      expect(e.singboxApiSecret, 'live-api');
     });
 
     test('на отключённом движке восстанавливать нечего', () async {

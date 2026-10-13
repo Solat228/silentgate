@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -65,17 +66,22 @@ class _FakeEngine extends VpnEngine {
 /// Панель, которая запоминает, ЧЬЮ подписку у неё спросили, и отдаёт свой
 /// список серверов на каждый адрес.
 class _FakePanel extends SubscriptionService {
-  _FakePanel({this.answers = const {}, this.fail = false});
+  _FakePanel({this.answers = const {}, this.fail = false, this.gate});
 
   /// url → ссылки серверов, которые «прислала» панель.
   final Map<String, List<String>> answers;
   final bool fail;
   final List<String> urls = [];
 
+  /// Ответ задерживается, пока тест не откроет ворота: так в окно ожидания
+  /// помещается действие пользователя (удаление подписки).
+  final Completer<void>? gate;
+
   @override
   Future<SubscriptionResult> fetch(String url,
       {Map<String, String> deviceHeaders = const {}}) async {
     urls.add(url);
+    if (gate != null) await gate!.future;
     if (fail) throw SubscriptionException('панель недоступна');
     final links = answers[url] ?? const <String>[];
     return SubscriptionResult(
@@ -333,6 +339,80 @@ void main() {
       expect(ok, isFalse);
       expect(panel.urls, isEmpty,
           reason: 'подменять активной нельзя: человек просил не эту');
+    });
+  });
+
+  group('Удаление во время обновления', () {
+    // Жалоба владельца 13.10.2026: удалил подписку, пока она обновлялась, —
+    // и сомневался, не вернётся ли она с ответом панели. Ответ приходит в
+    // профиль, которого уже нет; воскрешать его нельзя ни в одном из путей.
+
+    /// Подписка, которую удалили, не должна вернуться ни в память, ни на диск.
+    void expectGone(AppState state, String id) {
+      expect(state.subscriptions.map((p) => p.id), isNot(contains(id)),
+          reason: 'ответ панели воскресил удалённую подписку');
+      final onDisk = jsonDecode(File(path('subscriptions.json'))
+          .readAsStringSync()) as Map<String, dynamic>;
+      expect((onDisk['items'] as List).map((e) => (e as Map)['id']),
+          isNot(contains(id)),
+          reason: 'на диске удалённая подписка снова появилась');
+      expect(onDisk['activeId'], isNot(id));
+    }
+
+    test('⚠️ активная: удалена посреди обновления — не воскресает', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlA: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+
+      final refresh = state.refreshSubscription();
+      await Future<void>.delayed(Duration.zero);
+      expect(panel.urls, [urlA], reason: 'запрос к панели уже ушёл');
+
+      await state.deleteSubscription(id: idA);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idA);
+      expect(state.activeSubscriptionId, idB,
+          reason: 'активной остаётся та, на которую переключило удаление');
+      expect(state.servers.map((s) => s.key),
+          isNot(contains(ShareLinkParser.tryParse(linkFresh)!.key)),
+          reason: 'серверы удалённой подписки не лезут в открытый список');
+    });
+
+    test('⚠️ последняя подписка: удалена посреди обновления', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlA: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+      await state.deleteSubscription(id: idB);
+
+      final refresh = state.refreshSubscription();
+      await Future<void>.delayed(Duration.zero);
+      await state.deleteSubscription(id: idA);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idA);
+      expect(state.subscriptions, isEmpty);
+      expect(state.activeSubscriptionId, isNull);
+    });
+
+    test('соседняя: удалена посреди тихого обновления', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlB: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+
+      final refresh = state.refreshSubscription(id: idB);
+      await Future<void>.delayed(Duration.zero);
+      await state.deleteSubscription(id: idB);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idB);
+      expect(state.activeSubscriptionId, idA);
     });
   });
 
