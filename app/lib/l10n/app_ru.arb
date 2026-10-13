@@ -550,6 +550,10 @@
     }
   },
   "statusTrafficNotFlowing": "Туннель подключён, но трафик через него не идёт",
+  "statusNoInternet": "Нет интернета. VPN подключится сам, когда сеть вернётся",
+  "noticeNoInternet": "Нет интернета",
+  "noticeNoInternetDetail": "VPN подключится сам, когда сеть вернётся",
+  "noticeInternetRestored": "Связь восстановлена",
   "statusVpnConsentDenied": "Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.",
   "statusMissingCore": "Не найден {file} рядом с приложением. Переустановите SilentGate.",
   "@statusMissingCore": {

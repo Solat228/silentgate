@@ -12,6 +12,7 @@ import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
 import '../core/probe/tunnel_health.dart';
+import '../core/probe/direct_internet.dart';
 import '../core/probe/exit_health.dart';
 import '../core/singbox/exit_tags.dart';
 import 'windows/singbox_stats.dart';
@@ -469,6 +470,9 @@ abstract class VpnEngineBase implements VpnEngine {
       // при захвате системным прокси). Тогда гейта нет — прежнее
       // поведение, а не молчаливое невооружение сторожа выходов.
       mainChannelAlive: () {
+        // Ждём сеть — канал мёртв вместе со всеми выходами, и объявлять
+        // каждый выход мёртвым по отдельности значило бы врать.
+        if (_offlineSince != null) return false;
         final w = _health;
         if (w == null) return true;
         // ⚠️ ОСТАНОВЛЕННЫЙ СТОРОЖ = «НЕ ЗНАЮ», А НЕ «КАНАЛ МЁРТВ».
@@ -721,6 +725,19 @@ abstract class VpnEngineBase implements VpnEngine {
               'соединение не трогаю');
           return;
         }
+        // ⚠️ СНАЧАЛА — ЕСТЬ ЛИ ИНТЕРНЕТ ВООБЩЕ. Канал молчит и тогда, когда
+        // умер сервер, и тогда, когда пропала сама сеть. Во втором случае
+        // переподключение бесполезно: ждём сеть (см. [_enterOffline]).
+        final direct = await directInternetAvailable();
+        if (aborted() || !status.isConnected || _userStopped) {
+          AppLog.i('Сторож канала: за время проверки сети состояние '
+              'изменилось — соединение не трогаю');
+          return;
+        }
+        if (direct == false) {
+          _enterOffline(aborted, h);
+          return;
+        }
         // Долгая исправная работа заканчивает прошлую серию: три разрыва,
         // разделённые часами, — это не «переподключение не помогает».
         final last = _lastHealthRestartAt;
@@ -758,25 +775,173 @@ abstract class VpnEngineBase implements VpnEngine {
         AppLog.e('Канал не отвечает: ${h.failuresToDeclareDown} проверки подряд '
             'не прошли через прокси-порт $httpProxyPort ($what). Ядро при этом '
             'живо — переподключаюсь, иначе «Подключено» осталось бы враньём.');
-        // ⚠️ ЗАМЕТКУ ЗДЕСЬ НЕ ШЛЁМ. `scheduleRetry` ниже отправит свою — с той
+        // ⚠️ ЗАМЕТКУ ЗДЕСЬ НЕ ШЛЁМ. `scheduleRetry` отправит свою — с той
         // же причиной («канал не пропускает трафик»), и на экране всплывали ДВА
         // сообщения об одном событии. Поймано живым прогоном в VM: на снимке
         // обе карточки стоят друг под другом. Одно событие — одна заметка.
-        final s = session?.options.settings;
-        await teardownCore(
-            keepCapture: s != null && keepCaptureBetweenAttempts(s));
-        if (!await scheduleRetry('канал не пропускает трафик')) {
-          setStatus(VpnConnectionState.error,
-              message: 'Туннель подключён, но трафик через него не идёт',
-              text: const StatusTrafficNotFlowing());
-        }
+        await _restartDeadChannel('канал не пропускает трафик');
       },
     );
+  }
+
+  /// Погасить ядро мёртвого канала и запланировать повтор.
+  Future<void> _restartDeadChannel(String reason) async {
+    final s = session?.options.settings;
+    await teardownCore(keepCapture: s != null && keepCaptureBetweenAttempts(s));
+    if (!await scheduleRetry(reason)) {
+      setStatus(VpnConnectionState.error,
+          message: 'Туннель подключён, но трафик через него не идёт',
+          text: const StatusTrafficNotFlowing());
+    }
   }
 
   void stopHealthWatch() {
     _health?.stop();
     _health = null;
+  }
+
+  // ── Нет интернета: ждём сеть, а не переподключаемся ─────────────────────
+
+  /// С какого момента ждём сеть; `null` — не ждём.
+  ///
+  /// ⚠️ ЗАЧЕМ ОТДЕЛЬНЫЙ РЕЖИМ. Владелец 13.10.2026: выдернул кабель из
+  /// роутера — трей остался фиолетовым, а приложение молча крутило
+  /// переподключения. Без сети переподключение бесполезно: каждая попытка
+  /// гасит ядро, а заметка «Связь оборвалась, восстанавливаю» обещает то,
+  /// чего не будет. Решение владельца: «Нет интернета», красный трей, без
+  /// бесполезных переподключений; вернулась сеть — «Связь восстановлена».
+  /// И отдельно: «без сильного спама уведомлениями».
+  ///
+  /// Ядро и захват трафика в это время НЕ трогаем: kill switch держит
+  /// блокировку как держал, а вернувшаяся сеть часто оживляет тот же туннель
+  /// без единого переподключения.
+  DateTime? _offlineSince;
+  Timer? _offlineTimer;
+  bool _offlineBusy = false;
+  TunnelHealth? _offlineProbe;
+  bool Function()? _offlineAborted;
+
+  /// О пропаже сети в этом эпизоде сказали человеку. Только тогда при
+  /// возврате говорим «Связь восстановлена».
+  bool _offlineAnnounced = false;
+
+  /// Повтор идёт ПОСЛЕ ожидания сети. О пропаже уже сказано (или сознательно
+  /// не сказано, см. [offlineNoticeEvery]) — «Связь оборвалась,
+  /// восстанавливаю» и «Соединение восстановлено» здесь лишние.
+  bool _afterOffline = false;
+
+  DateTime? _lastOfflineNoticeAt;
+
+  /// Как часто ждущий движок проверяет сеть. Решение владельца: 5 секунд.
+  static const offlineCheckEvery = Duration(seconds: 5);
+
+  /// Не чаще одного уведомления о пропаже сети за это время. Wi-Fi, который
+  /// моргает раз в минуту, иначе давал бы пару уведомлений в минуту. Тихий
+  /// эпизод всё равно виден: красный трей и плашка на главном.
+  static const offlineNoticeEvery = Duration(minutes: 5);
+
+  /// Ждём ли сеть сейчас.
+  bool get waitingForNetwork => _offlineSince != null;
+
+  /// Есть ли интернет мимо туннеля. `null` — узнать нельзя.
+  ///
+  /// `null` отдаёт платформа, где прямой запрос не пройдёт даже при живой
+  /// сети (Android с блокировкой без VPN). Ответ «нет» там был бы ложью и
+  /// остановил бы переподключения; при `null` движок ведёт себя как раньше.
+  /// Тесты подменяют его наследником, платформа — своим правилом.
+  @protected
+  Future<bool?> directInternetAvailable() => DirectInternetProbe().check();
+
+  void _enterOffline(bool Function() aborted, TunnelHealth probe) {
+    if (_offlineSince != null) return;
+    final now = DateTime.now();
+    _offlineSince = now;
+    _offlineAborted = aborted;
+    _offlineProbe = probe..markSuspect();
+    stopHealthWatch();
+    AppLog.w('Нет интернета ни через туннель, ни напрямую — жду сеть, '
+        'проверка раз в ${offlineCheckEvery.inSeconds} с. Не переподключаюсь: '
+        'без сети это бесполезно');
+    setStatus(VpnConnectionState.connected,
+        message: 'Нет интернета', text: const StatusNoInternet());
+    final last = _lastOfflineNoticeAt;
+    if (last == null || now.difference(last) >= offlineNoticeEvery) {
+      _lastOfflineNoticeAt = now;
+      _offlineAnnounced = true;
+      emitNotice(EngineNoticeKind.noInternet, 'Нет интернета',
+          detail: 'VPN подключится сам, когда сеть вернётся');
+    } else {
+      AppLog.i('Нет интернета: уведомление не шлю, прошлое было '
+          '${_humanDuration(now.difference(last))} назад');
+    }
+    _offlineTimer?.cancel();
+    _offlineTimer = Timer.periodic(
+        offlineCheckEvery, (_) => unawaited(checkNetworkWhileOffline()));
+  }
+
+  void _stopOffline() {
+    _offlineTimer?.cancel();
+    _offlineTimer = null;
+    _offlineSince = null;
+    _offlineProbe = null;
+    _offlineAborted = null;
+  }
+
+  /// Один шаг ожидания сети. Зовётся таймером раз в [offlineCheckEvery] и
+  /// сразу — при смене сети (вставили кабель, подключился Wi-Fi).
+  ///
+  /// Канал ожил сам — возвращаемся к обычной работе без переподключения.
+  /// Канал молчит, а напрямую интернет есть — сеть вернулась, а туннель нет:
+  /// переподключаемся.
+  @visibleForTesting
+  Future<void> checkNetworkWhileOffline() async {
+    final aborted = _offlineAborted;
+    final probe = _offlineProbe;
+    final since = _offlineSince;
+    if (since == null || aborted == null || probe == null) return;
+    if (_offlineBusy) return;
+    bool gone() => aborted() || _userStopped || !_status.isConnected;
+    if (gone()) {
+      _stopOffline();
+      return;
+    }
+    _offlineBusy = true;
+    try {
+      final tunnelOk = await probe.probeOnce();
+      // Эпизод кончился, пока шла проба (отключение, повтор по смерти ядра).
+      if (!identical(_offlineProbe, probe)) return;
+      if (gone()) {
+        _stopOffline();
+        return;
+      }
+      if (tunnelOk) {
+        _stopOffline();
+        AppLog.i('Сеть вернулась, канал снова пропускает трафик — '
+            'переподключение не понадобилось (ждал '
+            '${_humanDuration(DateTime.now().difference(since))})');
+        if (_offlineAnnounced) {
+          emitNotice(EngineNoticeKind.internetRestored, 'Связь восстановлена');
+        }
+        _offlineAnnounced = false;
+        setStatus(VpnConnectionState.connected);
+        startHealthWatch(aborted);
+        return;
+      }
+      final direct = await directInternetAvailable();
+      if (!identical(_offlineProbe, probe)) return;
+      if (gone()) {
+        _stopOffline();
+        return;
+      }
+      if (direct == false) return;
+      AppLog.w('Сеть вернулась, а канал молчит — переподключаюсь');
+      _stopOffline();
+      _afterOffline = true;
+      _attempt = 0;
+      await _restartDeadChannel('сеть вернулась, канал не ответил');
+    } finally {
+      _offlineBusy = false;
+    }
   }
 
   /// Сбросить предохранитель. Зовётся при подключении ПО КОМАНДЕ пользователя:
@@ -1209,11 +1374,16 @@ abstract class VpnEngineBase implements VpnEngine {
     // Снимается блокировка в [markConnected] и при ручном отключении.
     final held =
         _blockingSince != null && state == VpnConnectionState.connecting;
+    // Признак «ждём сеть» несёт любой статус «Подключено», пока ждём: иначе
+    // первый же статус от платформы перекрасил бы трей обратно.
+    final offline =
+        _offlineSince != null && state == VpnConnectionState.connected;
     _status = VpnStatus(state,
         message: message,
         text: text,
         phase: phase,
-        blocking: blocking || held);
+        blocking: blocking || held,
+        offline: offline);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -1269,9 +1439,19 @@ abstract class VpnEngineBase implements VpnEngine {
     // сессию иначе прошёл бы молча — пользователь узнал бы только о первом.
     // Сообщаем о восстановлении лишь тогда, когда об обрыве уже говорили,
     // иначе обычное подключение по кнопке сопровождалось бы лишней всплывашкой.
-    if (_noticedDrop) {
+    //
+    // После ожидания сети говорим о СЕТИ, а не о соединении: человек слышал
+    // «Нет интернета», и ответ должен быть на тот же вопрос.
+    _stopOffline();
+    if (_afterOffline) {
+      if (_offlineAnnounced) {
+        emitNotice(EngineNoticeKind.internetRestored, 'Связь восстановлена');
+      }
+    } else if (_noticedDrop) {
       emitNotice(EngineNoticeKind.recovered, 'Соединение восстановлено');
     }
+    _afterOffline = false;
+    _offlineAnnounced = false;
     _noticedDrop = false;
     _noticedFailedAt = null;
     // ⚠️ ЗДЕСЬ НЕТ И НЕ ДОЛЖНО БЫТЬ `_healthRestarts = 0`. Подключение бывает и
@@ -1955,6 +2135,12 @@ abstract class VpnEngineBase implements VpnEngine {
   Future<bool> scheduleRetry(String reason) async {
     final session = _session;
     if (session == null || _userStopped) return false;
+    // Повтор посреди ожидания сети (ядро умерло само) кончает ожидание: дальше
+    // решает обычная цепочка повторов, а о пропаже сети уже сказано.
+    if (_offlineSince != null) {
+      _stopOffline();
+      _afterOffline = true;
+    }
     if (!session.options.settings.autoReconnect) return false;
 
     // Дальше идёт АВТОПОВТОР, а не команда человека, — чем бы ни кончилась
@@ -2060,8 +2246,11 @@ abstract class VpnEngineBase implements VpnEngine {
   Future<bool> _scheduleRetryLocked(String reason, EngineSession session) async {
     if (!_noticedDrop) {
       _noticedDrop = true;
-      emitNotice(EngineNoticeKind.reconnecting, 'Связь оборвалась, восстанавливаю',
-          detail: reason);
+      if (!_afterOffline) {
+        emitNotice(EngineNoticeKind.reconnecting,
+            'Связь оборвалась, восстанавливаю',
+            detail: reason);
+      }
     } else if (endlessRetries(session)) {
       final since = _noticedFailedAt;
       if (since == null ||
@@ -2225,6 +2414,12 @@ abstract class VpnEngineBase implements VpnEngine {
     final session = _session;
     if (session == null || _userStopped) return;
     if (!_status.isConnected) return;
+    // Ждём сеть — смена сети значит, что она, возможно, вернулась: проверяем
+    // сразу, не дожидаясь шага таймера.
+    if (_offlineSince != null) {
+      await checkNetworkWhileOffline();
+      return;
+    }
     if (!session.options.settings.autoReconnect) return;
     // Страховка от цикла: сразу после подключения «смена сети» — это почти всегда
     // наш же туннель, а не реальное изменение.
@@ -2236,6 +2431,26 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     if (session.options.settings.seamlessNetworkChange &&
         await _channelSurvivedNetworkChange(session)) {
+      return;
+    }
+    // ⚠️ «СЕТЬ СМЕНИЛАСЬ» БЫВАЕТ И «СЕТЬ ПРОПАЛА»: выдернутый кабель меняет
+    // адреса так же, как переход на другой Wi-Fi. Без этой проверки движок
+    // переподключался в пустоту и слал «Связь оборвалась, восстанавливаю».
+    final gen = _generation;
+    final direct = await directInternetAvailable();
+    if (_userStopped || !_status.isConnected || !identical(_session, session)) {
+      return;
+    }
+    if (direct == false) {
+      final auth = healthProbeAuth;
+      _enterOffline(
+          () => gen != _generation,
+          _health ??
+              createHealthProbe(
+                proxyPort: httpProxyPort,
+                proxyUser: auth.user,
+                proxyPassword: auth.password,
+              ));
       return;
     }
     AppLog.w('Смена сети — восстанавливаю подключение');
@@ -2395,6 +2610,9 @@ abstract class VpnEngineBase implements VpnEngine {
     // рвалось и восстанавливать было нечего.
     _noticedDrop = false;
     _noticedFailedAt = null;
+    _stopOffline();
+    _afterOffline = false;
+    _offlineAnnounced = false;
     _generation++; // всё, что поднимется после этого момента, будет погашено
     _session = null;
     _attempt = 0;
@@ -2438,6 +2656,9 @@ abstract class VpnEngineBase implements VpnEngine {
     _endBlocking('смена сервера');
     _noticedDrop = false;
     _noticedFailedAt = null;
+    _stopOffline();
+    _afterOffline = false;
+    _offlineAnnounced = false;
     _generation++; // всё, что поднимется после этого момента, будет погашено
     _session = null;
     _attempt = 0;
@@ -2461,6 +2682,7 @@ abstract class VpnEngineBase implements VpnEngine {
   /// в наследниках).
   Future<void> cleanup() async {
     stopBlockNotice();
+    _stopOffline();
     _generation++;
     _retryTimer?.cancel();
     _retryTimer = null;

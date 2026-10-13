@@ -1303,6 +1303,20 @@ class AppLocalizationsEs extends AppLocalizations {
       'El túnel está activo, pero no pasa tráfico por él';
 
   @override
+  String get statusNoInternet =>
+      'Sin internet. La VPN se reconectará sola cuando vuelva la red';
+
+  @override
+  String get noticeNoInternet => 'Sin internet';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'La VPN se reconectará sola cuando vuelva la red';
+
+  @override
+  String get noticeInternetRestored => 'Conexión restablecida';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android no permitió activar la VPN. Pulsa «Conectar» de nuevo y confirma la solicitud del sistema.';
 

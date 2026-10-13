@@ -77,6 +77,11 @@ class _AliveHealth extends TunnelHealth {
 }
 
 class _HealthEngine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   final List<TunnelHealth> made = [];
   late TunnelHealth Function() factory;
 

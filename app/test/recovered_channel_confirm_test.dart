@@ -156,6 +156,11 @@ class _Scripted extends TunnelHealth {
 }
 
 class _Engine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   _Scripted Function()? nextProbe;
   _Scripted? lastProbe;
   int probesMade = 0;

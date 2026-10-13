@@ -1287,6 +1287,19 @@ class AppLocalizationsFa extends AppLocalizations {
       'تونل برقرار است، اما ترافیکی از آن عبور نمی‌کند';
 
   @override
+  String get statusNoInternet =>
+      'اینترنت قطع است. وقتی شبکه برگردد، VPN خودش وصل می‌شود';
+
+  @override
+  String get noticeNoInternet => 'اینترنت قطع است';
+
+  @override
+  String get noticeNoInternetDetail => 'وقتی شبکه برگردد، VPN خودش وصل می‌شود';
+
+  @override
+  String get noticeInternetRestored => 'اتصال برقرار شد';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android اجازهٔ راه‌اندازی VPN را نداد. دوباره «اتصال» را بزنید و درخواست سیستم را تأیید کنید.';
 

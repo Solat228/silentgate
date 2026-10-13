@@ -21,6 +21,11 @@ final class StatusReconnectBlocked extends StatusText {
   const StatusReconnectBlocked({required this.seconds, required this.attempt});
 }
 
+/// Нет интернета ни через туннель, ни напрямую — ждём сеть.
+final class StatusNoInternet extends StatusText {
+  const StatusNoInternet();
+}
+
 /// Туннель поднят, сторож канала трижды не дождался ответа.
 final class StatusTrafficNotFlowing extends StatusText {
   const StatusTrafficNotFlowing();

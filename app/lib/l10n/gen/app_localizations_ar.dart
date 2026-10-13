@@ -1283,6 +1283,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'النفق متصل، لكن لا تمر عبره أي حركة مرور';
 
   @override
+  String get statusNoInternet =>
+      'لا يوجد اتصال بالإنترنت. سيعيد VPN الاتصال تلقائيًا عند عودة الشبكة';
+
+  @override
+  String get noticeNoInternet => 'لا يوجد اتصال بالإنترنت';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'سيعيد VPN الاتصال تلقائيًا عند عودة الشبكة';
+
+  @override
+  String get noticeInternetRestored => 'تمت استعادة الاتصال';
+
+  @override
   String get statusVpnConsentDenied =>
       'لم يسمح Android بتشغيل VPN. اضغط «اتصال» مرة أخرى ووافق على طلب النظام.';
 

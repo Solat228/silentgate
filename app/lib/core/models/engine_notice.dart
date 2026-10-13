@@ -87,6 +87,18 @@ enum EngineNoticeKind {
   /// Обратное тоже верно: умерший выход не повод рвать всё соединение, ядро
   /// одно на все выходы. Поэтому здесь заметка, а не переподключение.
   exitDown,
+
+  /// Канал мёртв, и напрямую интернета тоже нет: пропала сама сеть.
+  ///
+  /// ⚠️ НЕ ОБРЫВ VPN. Переподключаться при этом бесполезно, поэтому движок
+  /// не переподключается, а ждёт сеть. Владелец 13.10.2026: при выдернутом
+  /// кабеле трей не покраснел, а приложение молча крутило попытки.
+  noInternet,
+
+  /// Сеть вернулась после [noInternet]. Шлётся только тогда, когда о пропаже
+  /// человеку сказали, — иначе «восстановлено» было бы ответом на вопрос,
+  /// которого он не задавал.
+  internetRestored,
 }
 
 class EngineNotice {
@@ -109,7 +121,17 @@ class EngineNotice {
   bool get isProblem =>
       kind == EngineNoticeKind.failed ||
       kind == EngineNoticeKind.reconnecting ||
-      kind == EngineNoticeKind.systemProxyFailed;
+      kind == EngineNoticeKind.systemProxyFailed ||
+      kind == EngineNoticeKind.noInternet;
+
+  /// Событие стоит системного уведомления: человек почти всегда не смотрит
+  /// на окно, и узнать о нём он должен даже свёрнутым.
+  ///
+  /// Это все проблемы плюс возврат сети: раз о пропаже сказали системным
+  /// уведомлением, о возврате надо сказать тем же путём — иначе человек
+  /// так и будет думать, что интернета нет.
+  bool get needsSystemNotice =>
+      isProblem || kind == EngineNoticeKind.internetRestored;
 
   @override
   String toString() => 'EngineNotice(${kind.name}, $text)';

@@ -15,6 +15,7 @@ String statusTextL10n(AppLocalizations l, StatusText t) => switch (t) {
       StatusReconnectBlocked(seconds: final sec, attempt: final a) =>
         l.statusReconnectBlocked(sec, a),
       StatusTrafficNotFlowing() => l.statusTrafficNotFlowing,
+      StatusNoInternet() => l.statusNoInternet,
       StatusVpnConsentDenied() => l.statusVpnConsentDenied,
       StatusMissingCore(file: final f) => l.statusMissingCore(f),
       StatusPortConflict(port: final p, holder: final h, ownCore: final own) =>

@@ -114,7 +114,8 @@ class TrayWindow with WindowListener, TrayListener {
 
   Future<void> _applyTrayIcon() async {
     final name =
-        trayIconFor(connected: _trayConnected ?? false, blocked: _blocked);
+        trayIconFor(
+            connected: _trayConnected ?? false, blocked: _blocked || _offline);
     if (_trayIconFile == name) return; // см. _trayConnected
     final path = _trayIconPath(name);
     // ⚠️ ПРОВЕРЯЕМ ФАЙЛ САМИ. Плагин отвечает успехом, даже когда Windows не
@@ -429,6 +430,18 @@ class TrayWindow with WindowListener, TrayListener {
     await instance._pushTooltip();
   }
 
+  /// Пропал интернет целиком — и через туннель, и напрямую.
+  ///
+  /// Значок тот же красный, что у блокировки: для человека это одно и то же —
+  /// «сейчас интернета нет». Различается подсказка: здесь виноват не сервер,
+  /// и выключать VPN бесполезно. Владелец 13.10.2026: при выдернутом кабеле
+  /// трей оставался фиолетовым.
+  static Future<void> setOffline(bool offline) async {
+    instance._offline = offline;
+    await instance._applyTrayIcon();
+    await instance._pushTooltip();
+  }
+
   // ── Подсказка трея: РОВНО ДВЕ СТРОКИ ────────────────────────────────────────
 
   /// ⚠️ WINDOWS МОЛЧА РЕЖЕТ ПОДСКАЗКУ НА 127 СИМВОЛАХ.
@@ -521,6 +534,7 @@ class TrayWindow with WindowListener, TrayListener {
 
   /// Kill switch держит трафик — подсказка говорит об этом вместо сервера.
   bool _blocked = false;
+  bool _offline = false;
 
   /// Состояние по последнему вызову [setConnected].
   bool _connected = false;
@@ -558,6 +572,11 @@ class TrayWindow with WindowListener, TrayListener {
   }
 
   String _currentTooltip() {
+    // Пропавшая сеть важнее удержания: она объясняет, почему удерживать
+    // приходится, и что VPN тут ни при чём.
+    if (_offline) {
+      return composeTooltip(blocked: _offlineNote());
+    }
     if (_blocked) {
       return composeTooltip(blocked: _blockedNote());
     }
@@ -582,4 +601,8 @@ class TrayWindow with WindowListener, TrayListener {
   /// Остаётся русским литералом, как и был: своего ключа в ARB у него нет, а
   /// заводить его ради одной строки значит оставить восемь языков без перевода.
   String _blockedNote() => 'соединение потеряно, трафик заблокирован';
+
+  /// Текст про пропавшую сеть. Русский литерал по той же причине, что и
+  /// [_blockedNote].
+  String _offlineNote() => 'нет интернета, жду сеть';
 }

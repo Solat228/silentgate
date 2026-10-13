@@ -42,18 +42,27 @@ class VpnStatus {
   /// то, от чего защита и оберегала.
   final bool blocking;
 
+  /// ⚠️ НЕТ ИНТЕРНЕТА ВООБЩЕ: не отвечает ни туннель, ни прямая сеть.
+  ///
+  /// Туннель при этом не трогаем — переподключать нечего, пока нет сети.
+  /// Признак красит трей и показывает плашку так же, как [blocking]: человек
+  /// должен видеть, что пропал интернет, а не VPN (владелец 13.10.2026).
+  final bool offline;
+
   const VpnStatus(this.state,
       {this.message,
       this.text,
       this.phase = VpnPhase.normal,
-      this.blocking = false});
+      this.blocking = false,
+      this.offline = false});
 
   const VpnStatus.disconnected()
       : state = VpnConnectionState.disconnected,
         message = null,
         text = null,
         phase = VpnPhase.normal,
-        blocking = false;
+        blocking = false,
+        offline = false;
 
   bool get isConnected => state == VpnConnectionState.connected;
   bool get isBusy =>

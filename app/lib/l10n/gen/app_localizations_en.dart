@@ -1287,6 +1287,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'The tunnel is up, but no traffic goes through it';
 
   @override
+  String get statusNoInternet =>
+      'No internet. VPN will reconnect by itself when the network is back';
+
+  @override
+  String get noticeNoInternet => 'No internet';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'VPN will reconnect by itself when the network is back';
+
+  @override
+  String get noticeInternetRestored => 'Connection restored';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android did not allow the VPN. Tap “Connect” again and confirm the system request.';
 

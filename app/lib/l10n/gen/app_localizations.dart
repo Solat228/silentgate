@@ -2292,6 +2292,30 @@ abstract class AppLocalizations {
   /// **'Туннель подключён, но трафик через него не идёт'**
   String get statusTrafficNotFlowing;
 
+  /// No description provided for @statusNoInternet.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет интернета. VPN подключится сам, когда сеть вернётся'**
+  String get statusNoInternet;
+
+  /// No description provided for @noticeNoInternet.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет интернета'**
+  String get noticeNoInternet;
+
+  /// No description provided for @noticeNoInternetDetail.
+  ///
+  /// In ru, this message translates to:
+  /// **'VPN подключится сам, когда сеть вернётся'**
+  String get noticeNoInternetDetail;
+
+  /// No description provided for @noticeInternetRestored.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связь восстановлена'**
+  String get noticeInternetRestored;
+
   /// No description provided for @statusVpnConsentDenied.
   ///
   /// In ru, this message translates to:

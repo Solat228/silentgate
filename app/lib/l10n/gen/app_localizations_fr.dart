@@ -1305,6 +1305,20 @@ class AppLocalizationsFr extends AppLocalizations {
       'Le tunnel est établi, mais aucun trafic n\'y passe';
 
   @override
+  String get statusNoInternet =>
+      'Pas d\'internet. Le VPN se reconnectera tout seul au retour du réseau';
+
+  @override
+  String get noticeNoInternet => 'Pas d\'internet';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'Le VPN se reconnectera tout seul au retour du réseau';
+
+  @override
+  String get noticeInternetRestored => 'Connexion rétablie';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android n\'a pas autorisé le VPN. Appuyez de nouveau sur « Se connecter » et confirmez la demande du système.';
 

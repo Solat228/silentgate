@@ -1254,6 +1254,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get statusTrafficNotFlowing => '隧道已建立，但没有流量通过';
 
   @override
+  String get statusNoInternet => '没有网络。网络恢复后 VPN 会自动重新连接';
+
+  @override
+  String get noticeNoInternet => '没有网络';
+
+  @override
+  String get noticeNoInternetDetail => '网络恢复后 VPN 会自动重新连接';
+
+  @override
+  String get noticeInternetRestored => '连接已恢复';
+
+  @override
   String get statusVpnConsentDenied => 'Android 未允许启动 VPN。请再次点击“连接”并确认系统请求。';
 
   @override

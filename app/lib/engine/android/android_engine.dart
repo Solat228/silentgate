@@ -13,6 +13,7 @@ import '../../core/models/engine_notice.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/vpn_lockdown.dart';
 import '../../core/probe/proxy_probe.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
@@ -422,6 +423,25 @@ class AndroidEngine extends VpnEngineBase {
   @override
   ({String user, String password}) get healthProbeAuth =>
       (user: ProxyProbe.user, password: ProxyProbe.password);
+
+  /// Прямой интернет на Android спрашиваем, только когда ответ «нет» правдив.
+  ///
+  /// Сам пакет исключён из `VpnService`, поэтому прямой запрос идёт в
+  /// обычную сеть. Но блокировка без VPN (lockdown) режет и исключённые
+  /// приложения: там проба не прошла бы никогда, и движок считал бы, что
+  /// интернета нет, — и перестал бы переподключаться к упавшему серверу.
+  /// Узнать режим нельзя (старый Android, ошибка канала) — тоже «не знаю».
+  @override
+  Future<bool?> directInternetAvailable() async {
+    final st = await VpnLockdown.query();
+    if (!st.supported || st.lockdown) {
+      AppLog.i('Проверка прямого интернета пропущена: '
+          '${st.supported ? 'включена блокировка без VPN' : 'режим блокировки не узнать'}'
+          ' — веду себя как раньше');
+      return null;
+    }
+    return super.directInternetAvailable();
+  }
 
   static const _channel = MethodChannel('lol.silentgate/vpn');
   static const _events = EventChannel('lol.silentgate/vpn_events');

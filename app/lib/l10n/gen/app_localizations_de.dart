@@ -1301,6 +1301,20 @@ class AppLocalizationsDe extends AppLocalizations {
       'Der Tunnel steht, aber es fließt kein Datenverkehr hindurch';
 
   @override
+  String get statusNoInternet =>
+      'Kein Internet. Das VPN verbindet sich von selbst, sobald das Netz zurück ist';
+
+  @override
+  String get noticeNoInternet => 'Kein Internet';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'Das VPN verbindet sich von selbst, sobald das Netz zurück ist';
+
+  @override
+  String get noticeInternetRestored => 'Verbindung wiederhergestellt';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android hat das VPN nicht erlaubt. Tippen Sie erneut auf „Verbinden“ und bestätigen Sie die Systemanfrage.';
 

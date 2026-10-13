@@ -1294,6 +1294,20 @@ class AppLocalizationsTr extends AppLocalizations {
       'Tünel kuruldu ama içinden trafik geçmiyor';
 
   @override
+  String get statusNoInternet =>
+      'İnternet yok. Ağ geri geldiğinde VPN kendiliğinden bağlanacak';
+
+  @override
+  String get noticeNoInternet => 'İnternet yok';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'Ağ geri geldiğinde VPN kendiliğinden bağlanacak';
+
+  @override
+  String get noticeInternetRestored => 'Bağlantı geri geldi';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android VPN\'e izin vermedi. Tekrar “Bağlan”a dokunun ve sistem isteğini onaylayın.';
 

@@ -78,6 +78,7 @@ class AppState extends ChangeNotifier {
     _statusSub = _engine.statusStream.listen((s) {
       final was = _status.state;
       final wasBlocking = _status.blocking;
+      final wasOffline = _status.offline;
       _status = s;
       _trackAutotune(s);
       // ⚠️ Kill switch держит трафик — сказать об этом ТАМ, ГДЕ ВИДНО.
@@ -89,6 +90,9 @@ class AppState extends ChangeNotifier {
       // интерфейсе — когда его развернут.
       if (s.blocking != wasBlocking) {
         unawaited(_reflectBlocking(s.blocking));
+      }
+      if (s.offline != wasOffline) {
+        unawaited(_reflectOffline(s.offline));
       }
       // Значок в трее показывает состояние: серый — выключен, фиолетовый —
       // включён. Трей — единственное место на Windows, где состояние видно
@@ -172,8 +176,9 @@ class AppState extends ChangeNotifier {
       // нейтральной и тогда — дыра сидела на шаг ниже.
       //
       // Показываем только то, что требует внимания: обычные заметки остаются
-      // внутри приложения, чтобы их не начали отмахивать не читая.
-      if (n.isProblem) {
+      // внутри приложения, чтобы их не начали отмахивать не читая. Плюс
+      // возврат сети: о пропаже сказали снаружи — и о возврате говорим там же.
+      if (n.needsSystemNotice) {
         final detail = (n.detail ?? '').trim();
         unawaited(DesktopNotice.show(
             n.text, detail.isEmpty ? 'SilentGate' : detail));
@@ -3014,6 +3019,17 @@ class AppState extends ChangeNotifier {
     if (!Platform.isWindows) return;
     try {
       await TrayWindow.setBlocked(blocking);
+    } catch (_) {
+      // Трей может быть недоступен (запуск без окна) — не повод падать.
+    }
+  }
+
+  /// Показать/снять признак «нет интернета» в трее: красный значок и
+  /// подсказка. На Android то же видно по системному уведомлению.
+  Future<void> _reflectOffline(bool offline) async {
+    if (!Platform.isWindows) return;
+    try {
+      await TrayWindow.setOffline(offline);
     } catch (_) {
       // Трей может быть недоступен (запуск без окна) — не повод падать.
     }

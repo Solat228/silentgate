@@ -88,6 +88,11 @@ class _FakeHealth extends TunnelHealth {
 }
 
 class _FakeEngine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   /// Подменяет ответ платформы «туннель сейчас поднят» — своего TUN у фейка нет.
   bool liveCaptureKeptForTest = false;
 

@@ -1288,6 +1288,20 @@ class AppLocalizationsRu extends AppLocalizations {
       'Туннель подключён, но трафик через него не идёт';
 
   @override
+  String get statusNoInternet =>
+      'Нет интернета. VPN подключится сам, когда сеть вернётся';
+
+  @override
+  String get noticeNoInternet => 'Нет интернета';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'VPN подключится сам, когда сеть вернётся';
+
+  @override
+  String get noticeInternetRestored => 'Связь восстановлена';
+
+  @override
   String get statusVpnConsentDenied =>
       'Android не разрешил поднять VPN. Нажмите «Подключиться» ещё раз и подтвердите запрос системы.';
 

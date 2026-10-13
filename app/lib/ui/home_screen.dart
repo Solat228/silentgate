@@ -762,6 +762,25 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return;
       }
+      // Пропажа и возврат сети — тоже новые виды, переводятся по `kind`.
+      if (notice.kind == EngineNoticeKind.noInternet) {
+        AppToast.show(
+          context,
+          '${l.noticeNoInternet} · ${l.noticeNoInternetDetail}',
+          kind: ToastKind.error,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+        );
+        return;
+      }
+      if (notice.kind == EngineNoticeKind.internetRestored) {
+        AppToast.show(
+          context,
+          l.noticeInternetRestored,
+          kind: ToastKind.info,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+        );
+        return;
+      }
 
       AppToast.show(
         context,
@@ -1199,7 +1218,13 @@ class ConnectPane extends StatelessWidget {
                 // Текст — на языке интерфейса: движок кладёт код, а не
                 // русскую строку (см. [StatusText]).
                 final line = statusLine(l, status);
-                final blockingText = status.blocking ? line ?? '' : null;
+                // Нет сети — та же красная плашка, но со своим текстом и
+                // значком: защита тут ни при чём, и выключать VPN бесполезно.
+                // Текст — по признаку, а не по коду статуса: платформа может
+                // прислать «Подключено» без кода, а признак движок несёт сам.
+                final blockingText = status.offline
+                    ? l.statusNoInternet
+                    : (status.blocking ? line ?? '' : null);
                 final errorText =
                     status.state == VpnConnectionState.error ? line : null;
                 return Column(
@@ -1299,7 +1324,11 @@ class ConnectPane extends StatelessWidget {
                     // сюда третью, не тронув расчёт, — панель переполнится ровно
                     // на её высоту, и именно в аварии, когда читать важнее всего.
                     if (blockingText != null)
-                      KillSwitchNotice(message: blockingText),
+                      KillSwitchNotice(
+                          message: blockingText,
+                          icon: status.offline
+                              ? Icons.wifi_off
+                              : Icons.shield_outlined),
                     if (errorText != null) ConnectErrorLine(message: errorText),
                     const SizedBox(height: 20),
                     // ⚠️ `Wrap`, А НЕ `Row`: на узком окне с крупным системным
@@ -1374,9 +1403,14 @@ class ConnectPane extends StatelessWidget {
 /// переполнялась на всех окнах. Числа ниже — единственный их источник, и по ним
 /// же считает [blockingNoticeHeight]; страж сверяет расчёт с настоящей высотой.
 class KillSwitchNotice extends StatelessWidget {
-  const KillSwitchNotice({super.key, required this.message});
+  const KillSwitchNotice(
+      {super.key, required this.message, this.icon = Icons.shield_outlined});
 
   final String message;
+
+  /// Щит — защита держит трафик; без сети — перечёркнутый Wi-Fi. Размер один
+  /// ([iconSize]), поэтому расчёт высоты от значка не зависит.
+  final IconData icon;
 
   /// Отступ от блока проверок сверху.
   static const double marginTop = 12;
@@ -1404,8 +1438,7 @@ class KillSwitchNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(children: [
-        Icon(Icons.shield_outlined,
-            size: iconSize, color: scheme.onErrorContainer),
+        Icon(icon, size: iconSize, color: scheme.onErrorContainer),
         const SizedBox(width: gap),
         Expanded(
           child: FlagText(
