@@ -159,6 +159,32 @@ String get kGithubReleasesApi =>
 String get kGithubReleasesListApi =>
     '$_apiBase/repos/$kGithubOwner/$kGithubRepo/releases';
 
+/// ВТОРОЙ ПУТЬ К ТЕМ ЖЕ РЕЛИЗАМ — САМ САЙТ GITHUB, БЕЗ API.
+///
+/// ⚠️ Заведён 13.10.2026 по живому случаю: у владельца `api.github.com`
+/// падает на TLS (подмена сертификата), а `github.com` открывается, и файлы
+/// по `releases/download/…` скачиваются. Запасной сайт при этом не отдавал
+/// манифест и подпись, и самообновление сводилось к ссылке. Здесь версия
+/// берётся из ленты релизов, а манифест, подпись и файлы — по прямым адресам
+/// загрузки. Целостность по-прежнему держит подпись манифеста.
+///
+/// Геттер: под тестовым override лента и файлы тоже уходят на стенд.
+String get kGithubWebBase => kUpdateApiOverride ?? 'https://github.com';
+
+/// Лента релизов (Atom). Включает пре-релизы, черновиков не показывает.
+String get kGithubReleasesFeed =>
+    '$kGithubWebBase/$kGithubOwner/$kGithubRepo/releases.atom';
+
+/// Прямой адрес файла [name] релиза [tag].
+String githubDownloadUrl(String tag, String name) =>
+    '$kGithubWebBase/$kGithubOwner/$kGithubRepo/releases/download/'
+    '${Uri.encodeComponent(tag)}/${Uri.encodeComponent(name)}';
+
+/// Страница релиза [tag] для человека.
+String githubTagPage(String tag) =>
+    'https://github.com/$kGithubOwner/$kGithubRepo/releases/tag/'
+    '${Uri.encodeComponent(tag)}';
+
 /// Страница релизов для человека — её открывает кнопка «Скачать».
 const kGithubReleasesPage =
     'https://github.com/$kGithubOwner/$kGithubRepo/releases/latest';

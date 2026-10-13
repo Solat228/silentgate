@@ -1,12 +1,17 @@
 // Инструмент выпуска: манифест релиза + подпись Ed25519.
 //
 // Запуск из `app/`, после сборки exe/apk:
-//   dart run tool/sign_release.dart <версия> <stable|beta> <файл> [<файл>…]
+//   dart run tool/sign_release.dart [--legacy-names] <версия> <stable|beta> <файл> [<файл>…]
 //
 // Читает `../signing/update_ed25519.key` (приватный seed, НЕ в git), считает
 // размер и SHA-256 каждого файла и кладёт РЯДОМ С ПЕРВЫМ файлом:
-//   SilentGate-<версия>.manifest.json   — что качать, размеры, хэши;
-//   SilentGate-<версия>.manifest.sig    — base64-подпись над байтами .json.
+//   update-SilentGate-<версия>.manifest.json   — что качать, размеры, хэши;
+//   update-SilentGate-<версия>.manifest.sig    — base64-подпись над байтами .json.
+// Приставка `update-` уводит их в конец списка активов на странице релиза.
+// `--legacy-names` кладёт ещё и копии под прежними именами
+// `SilentGate-<версия>.manifest.*`: только их понимают 1.14.0–1.15.1, и без
+// копий эти версии не обновятся сами. Нужен в переходных выпусках, пока такие
+// версии в ходу.
 // Оба файла идут в релиз вместе с активами. Версия — тег без `v`, для беты
 // полный (`1.14.1-beta.1`).
 //
@@ -23,14 +28,16 @@ import 'package:silentgate/core/update/release_signing.dart';
 const keyPath = '../signing/update_ed25519.key';
 
 Future<void> main(List<String> args) async {
-  if (args.length < 3) {
-    stderr.writeln(
-        'Использование: dart run tool/sign_release.dart <версия> <stable|beta> <файл>…');
+  final legacyNames = args.contains('--legacy-names');
+  final rest = [for (final a in args) if (a != '--legacy-names') a];
+  if (rest.length < 3) {
+    stderr.writeln('Использование: dart run tool/sign_release.dart '
+        '[--legacy-names] <версия> <stable|beta> <файл>…');
     exit(2);
   }
-  final version = args[0];
-  final channel = args[1];
-  final files = [for (final p in args.sublist(2)) File(p)];
+  final version = rest[0];
+  final channel = rest[1];
+  final files = [for (final p in rest.sublist(2)) File(p)];
 
   for (final f in files) {
     if (!f.existsSync()) {
@@ -58,7 +65,8 @@ Future<void> main(List<String> args) async {
     final manifest = await buildManifest(version, channel, files);
     result = UpdateManifestResult(
       manifest.assets.length,
-      writeSignedManifest(manifest, seed, besides: files.first),
+      writeSignedManifest(manifest, seed,
+          besides: files.first, legacyNames: legacyNames),
     );
   } on ArgumentError catch (e) {
     stderr.writeln('Ошибка: ${e.message}');
@@ -66,7 +74,11 @@ Future<void> main(List<String> args) async {
   }
 
   if (!signedManifestVerifies(result.files)) {
-    for (final f in [result.files.manifest, result.files.signature]) {
+    for (final f in [
+      result.files.manifest,
+      result.files.signature,
+      ...result.files.legacy,
+    ]) {
       try {
         f.deleteSync();
       } catch (_) {}
@@ -79,6 +91,9 @@ Future<void> main(List<String> args) async {
   stdout.writeln('Активов: ${result.count}');
   stdout.writeln('Манифест: ${result.files.manifest.path}');
   stdout.writeln('Подпись:  ${result.files.signature.path}');
+  for (final f in result.files.legacy) {
+    stdout.writeln('Копия для 1.14.0–1.15.1: ${f.path}');
+  }
 }
 
 class UpdateManifestResult {

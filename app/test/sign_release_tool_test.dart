@@ -163,10 +163,31 @@ void main() {
 
   group('имена файлов манифеста', () {
     test('по версии без v, для беты — полный тег', () {
-      expect(manifestFileName('1.14.1'), 'SilentGate-1.14.1.manifest.json');
-      expect(signatureFileName('1.14.1'), 'SilentGate-1.14.1.manifest.sig');
+      expect(manifestFileName('1.14.1'),
+          'update-SilentGate-1.14.1.manifest.json');
+      expect(signatureFileName('1.14.1'),
+          'update-SilentGate-1.14.1.manifest.sig');
       expect(manifestFileName('v1.14.1-beta.1'),
-          'SilentGate-1.14.1-beta.1.manifest.json');
+          'update-SilentGate-1.14.1-beta.1.manifest.json');
+      expect(legacyManifestFileName('1.14.1'),
+          'SilentGate-1.14.1.manifest.json');
+      expect(legacySignatureFileName('1.14.1'),
+          'SilentGate-1.14.1.manifest.sig');
+    });
+
+    // Владелец, 13.10.2026: служебные файлы — в конце списка активов.
+    // GitHub сортирует по имени; строчная «u» больше любой заглавной.
+    test('⚠️ манифест и подпись сортируются после всех файлов программы', () {
+      final names = [
+        'SilentGateSetup-1.15.2.exe',
+        'SilentGate-1.15.2-windows-x64.zip',
+        'SilentGate-1.15.2-arm64-v8a.apk',
+        'TEST-ONLY-emulator-SilentGate-1.15.2-x86_64.apk',
+        manifestFileName('1.15.2'),
+        signatureFileName('1.15.2'),
+      ]..sort();
+      expect(names.sublist(names.length - 2),
+          [manifestFileName('1.15.2'), signatureFileName('1.15.2')]);
     });
   });
 
@@ -182,9 +203,9 @@ void main() {
       final written = writeSignedManifest(m, seed, besides: f);
 
       expect(written.manifest.path,
-          '${sub.path}${Platform.pathSeparator}SilentGate-1.14.1.manifest.json');
+          '${sub.path}${Platform.pathSeparator}update-SilentGate-1.14.1.manifest.json');
       expect(written.signature.path,
-          '${sub.path}${Platform.pathSeparator}SilentGate-1.14.1.manifest.sig');
+          '${sub.path}${Platform.pathSeparator}update-SilentGate-1.14.1.manifest.sig');
 
       final jsonBytes = written.manifest.readAsBytesSync();
       final sig = written.signature.readAsStringSync().trim();
@@ -194,6 +215,27 @@ void main() {
       final back = UpdateManifest.parse(utf8.decode(jsonBytes));
       expect(back, isNotNull);
       expect(back!.assetNamed('SilentGateSetup-1.14.1.exe')?.size, 4);
+      expect(written.legacy, isEmpty);
+    });
+
+    test('legacyNames: копии под прежними именами — те же байты и подпись',
+        () async {
+      final sub = Directory('${tmp.path}${Platform.pathSeparator}legacy')
+        ..createSync();
+      final f =
+          File('${sub.path}${Platform.pathSeparator}SilentGateSetup-1.15.2.exe')
+            ..writeAsBytesSync([5, 6, 7]);
+      final m = await buildManifest('1.15.2', 'stable', [f]);
+      final written = writeSignedManifest(m, seed, besides: f, legacyNames: true);
+
+      expect(written.legacy.map((e) => e.uri.pathSegments.last), [
+        'SilentGate-1.15.2.manifest.json',
+        'SilentGate-1.15.2.manifest.sig',
+      ]);
+      expect(written.legacy[0].readAsBytesSync(),
+          written.manifest.readAsBytesSync());
+      expect(written.legacy[1].readAsStringSync(),
+          written.signature.readAsStringSync());
     });
 
     // Инструмент после записи сверяет подпись с ключом, ВШИТЫМ в приложение:

@@ -864,6 +864,7 @@ void main() {
       );
       expect(seen.map((u) => u.toString()), [
         'http://127.0.0.1:8080/repos/Solat228/silentgate/releases/latest',
+        'http://127.0.0.1:8080/Solat228/silentgate/releases.atom',
         'http://127.0.0.1:8080/api/app-version',
       ]);
 

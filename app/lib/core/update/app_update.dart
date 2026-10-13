@@ -6,8 +6,15 @@ import '../platform/app_log.dart';
 import '../platform/apk_installer_android.dart';
 import '../platform/app_paths.dart';
 import 'app_update_defaults.dart';
-import 'release_signing.dart' show manifestFileName, signatureFileName;
-import 'update_manifest.dart' show normalizeVersion;
+import 'release_signing.dart'
+    show
+        legacyManifestFileName,
+        legacySignatureFileName,
+        manifestFileName,
+        signatureFileName;
+import 'update_manifest.dart' show UpdateManifest, normalizeVersion;
+import 'update_pubkey.dart';
+import 'update_signature.dart';
 
 /// Что сказал сервер обновлений.
 class AppRelease {
@@ -126,6 +133,24 @@ class UpdateCheckResult {
 
 /// Ответ сети в том виде, в каком его разбирает [AppUpdate]. Отдельный тип —
 /// чтобы проверку можно было гонять тестом без сети.
+/// Запись ленты релизов github.com.
+class GithubFeedEntry {
+  /// Тег как есть (`v1.15.1`) — из него собираются адреса загрузки.
+  final String tag;
+
+  /// Тег без `v`.
+  final String version;
+  final String? notes;
+  final DateTime? updated;
+
+  const GithubFeedEntry({
+    required this.tag,
+    required this.version,
+    this.notes,
+    this.updated,
+  });
+}
+
 class UpdateHttpResponse {
   final int statusCode;
   final String body;
@@ -234,6 +259,9 @@ class AppUpdate {
     UpdateFetcher? fetcher,
     String? assetHint,
     bool beta = false,
+    // ТОЛЬКО для тестов: своя пара ключей. Боевой вызов не передаёт ничего,
+    // и подпись проверяется вшитым ключом.
+    String publicKeyBase64 = kUpdatePublicKeyBase64,
   }) async {
     await loadApiOverride();
     final hint = assetHint ?? await _platformHint();
@@ -246,6 +274,17 @@ class AppUpdate {
     final primary =
         beta ? await _tryGithubBeta(fetch, hint) : await _tryGithub(fetch, hint);
     if (primary.state != UpdateCheckState.failed) return primary;
+
+    // API не ответил — тот же GitHub через сайт (лента + прямые загрузки).
+    // Раньше запасного сайта: только здесь есть манифест и подпись, то есть
+    // самообновление, а не ссылка.
+    final web = await _tryGithubWeb(fetch, hint,
+        beta: beta, publicKeyBase64: publicKeyBase64);
+    if (web.state != UpdateCheckState.failed) {
+      AppLog.i('Проверка обновлений: api.github.com недоступен, ответил '
+          'github.com');
+      return web;
+    }
 
     final backup =
         beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
@@ -283,6 +322,172 @@ class AppUpdate {
           'Не удалось связаться с сервером обновлений');
     }
   }
+
+  /// Источник «сайт GitHub без API»: версия из ленты релизов, манифест,
+  /// подпись и файлы — по прямым адресам `releases/download/<тег>/<имя>`.
+  ///
+  /// Имя и размер файла берутся из ПОДПИСАННОГО манифеста: лента их не знает.
+  /// Манифест не скачался или подпись не сошлась — версию мы всё равно знаем,
+  /// поэтому ответ не «не удалось проверить», а релиз без самообновления
+  /// (кнопка откроет страницу).
+  static Future<UpdateCheckResult> _tryGithubWeb(
+      UpdateFetcher fetch, String hint,
+      {required bool beta, required String publicKeyBase64}) async {
+    try {
+      final resp = await fetch(Uri.parse(kGithubReleasesFeed));
+      if (resp.statusCode != 200) {
+        AppLog.i('Лента релизов github.com: код ${resp.statusCode}');
+        return UpdateCheckResult.failed(
+            'Сервер обновлений ответил кодом ${resp.statusCode}');
+      }
+      final entry = pickFeedEntry(parseReleasesFeed(resp.body), beta: beta);
+      if (entry == null) {
+        return const UpdateCheckResult.failed(
+            'Сервер обновлений ответил непонятным образом');
+      }
+      final bare = AppRelease(
+        version: entry.version,
+        notes: entry.notes,
+        pageUrl: githubTagPage(entry.tag),
+        isBeta: _pre(entry.version) != null,
+        publishedAt: entry.updated,
+      );
+      if (!bare.isNewer) return UpdateCheckResult.upToDate(bare);
+      final full =
+          await _webSelfUpdate(fetch, hint, entry, bare, publicKeyBase64);
+      return UpdateCheckResult.available(full ?? bare);
+    } catch (e) {
+      AppLog.i('Лента релизов github.com недоступна: $e');
+      return const UpdateCheckResult.failed(
+          'Не удалось связаться с сервером обновлений');
+    }
+  }
+
+  /// Манифест релиза [entry] с github.com: новое имя, затем прежнее. Подпись
+  /// проверяется уже здесь — иначе предложение «обновить само» строилось бы
+  /// на файле, который потом всё равно отвергнет закачка.
+  static Future<AppRelease?> _webSelfUpdate(UpdateFetcher fetch, String hint,
+      GithubFeedEntry entry, AppRelease bare, String publicKeyBase64) async {
+    final v = entry.version;
+    final pairs = [
+      (manifestFileName(v), signatureFileName(v)),
+      (legacyManifestFileName(v), legacySignatureFileName(v)),
+    ];
+    for (final (manifestName, sigName) in pairs) {
+      final manifestUrl = githubDownloadUrl(entry.tag, manifestName);
+      final signatureUrl = githubDownloadUrl(entry.tag, sigName);
+      final m = await fetch(Uri.parse(manifestUrl));
+      if (m.statusCode != 200) continue;
+      final sig = await fetch(Uri.parse(signatureUrl));
+      if (sig.statusCode != 200) continue;
+      if (!UpdateSignature.verify(utf8.encode(m.body), sig.body.trim(),
+          publicKeyBase64: publicKeyBase64)) {
+        AppLog.w('Обновление $v: подпись манифеста $manifestName не сошлась');
+        continue;
+      }
+      final manifest = UpdateManifest.parse(m.body);
+      if (manifest == null || normalizeVersion(manifest.version) != v) {
+        AppLog.w('Обновление $v: манифест $manifestName не той версии');
+        continue;
+      }
+      for (final a in manifest.assets) {
+        if (!_assetMatches(a.name, hint, v)) continue;
+        return AppRelease(
+          version: v,
+          downloadUrl: githubDownloadUrl(entry.tag, a.name),
+          notes: bare.notes,
+          pageUrl: bare.pageUrl,
+          isBeta: bare.isBeta,
+          publishedAt: bare.publishedAt,
+          assetName: a.name,
+          assetSize: a.size,
+          manifestUrl: manifestUrl,
+          signatureUrl: signatureUrl,
+        );
+      }
+      AppLog.i('Обновление $v: в манифесте нет файла под эту платформу');
+      return null;
+    }
+    AppLog.i('Обновление $v: подписанного манифеста на github.com нет');
+    return null;
+  }
+
+  /// Записи ленты релизов github.com (`releases.atom`).
+  ///
+  /// Разбор регулярными выражениями, без XML-пакета: из ленты нужны три поля
+  /// на запись, и формат её у GitHub не менялся годами. Запись без тега
+  /// пропускается.
+  static List<GithubFeedEntry> parseReleasesFeed(String xml) {
+    final out = <GithubFeedEntry>[];
+    final entryRe = RegExp(r'<entry>(.*?)</entry>', dotAll: true);
+    final tagRe = RegExp(r'/releases/tag/([^"<>\s]+)"');
+    final contentRe = RegExp(r'<content[^>]*>(.*?)</content>', dotAll: true);
+    final updatedRe = RegExp(r'<updated>([^<]+)</updated>');
+    for (final m in entryRe.allMatches(xml)) {
+      final body = m[1]!;
+      final tagRaw = tagRe.firstMatch(body)?[1];
+      if (tagRaw == null) continue;
+      final tag = Uri.decodeComponent(tagRaw);
+      final version = tag.replaceFirst(RegExp('^[vV]'), '').trim();
+      if (version.isEmpty) continue;
+      // Содержимое экранировано дважды: XML поверх HTML. Сперва снимаем
+      // слой XML, получаем HTML, его переводим в текст.
+      final html = _unescapeXml(contentRe.firstMatch(body)?[1] ?? '');
+      final notes = htmlToText(html);
+      out.add(GithubFeedEntry(
+        tag: tag,
+        version: version,
+        notes: notes.isEmpty ? null : notes,
+        updated: DateTime.tryParse(updatedRe.firstMatch(body)?[1] ?? ''),
+      ));
+    }
+    return out;
+  }
+
+  /// Новейшая запись канала.
+  ///
+  /// ⚠️ Стабильный канал — только версии без суффикса: лента, в отличие от
+  /// `/releases/latest`, пре-релизов не прячет, а признака «prerelease» в ней
+  /// нет. Бета у нас всегда с суффиксом (`1.15.0-beta.1`). Выбор по номеру
+  /// версии, а не по порядку записей.
+  static GithubFeedEntry? pickFeedEntry(List<GithubFeedEntry> entries,
+      {required bool beta}) {
+    GithubFeedEntry? best;
+    for (final e in entries) {
+      if (!beta && _pre(e.version) != null) continue;
+      if (best == null || isNewer(e.version, best.version)) best = e;
+    }
+    return best;
+  }
+
+  /// HTML заметок релиза в текст для окна обновления: пункты списка — «- »,
+  /// абзацы — с новой строки, остальные теги снимаются.
+  static String htmlToText(String html) {
+    // Переводы строк между тегами — разметка исходника, не текст: без их
+    // снятия между пунктами списка появлялись пустые строки.
+    var t = html
+        .replaceAll(RegExp(r'>\s+<'), '><')
+        .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '- ')
+        .replaceAll(RegExp(r'</(p|h[1-6])>', caseSensitive: false), '\n\n')
+        .replaceAll(
+            RegExp(r'</(li|ul|ol)>|<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<[^>]+>'), '');
+    t = _unescapeXml(t);
+    return t
+        .split('\n')
+        .map((l) => l.trimRight())
+        .join('\n')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+  }
+
+  static String _unescapeXml(String s) => s
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&#x27;', "'")
+      .replaceAll('&amp;', '&');
 
   static Future<UpdateCheckResult> _tryPanel(
       UpdateFetcher fetch, String hint) async {
@@ -600,12 +805,17 @@ class AppUpdate {
     int? assetSize;
     String? manifestUrl;
     String? signatureUrl;
+    String? legacyManifestUrl;
+    String? legacySignatureUrl;
     // ⚠️ Манифест и подпись — по ТОЧНОМУ имени (тег без `v`, у бет полный:
-    // `SilentGate-1.14.1-beta.1.manifest.json`). Не `contains`: соседний
-    // `….manifest.json.bak` или манифест другой версии в том же релизе
-    // означали бы проверку подписи НЕ ТОГО файла.
+    // `update-SilentGate-1.14.1-beta.1.manifest.json`). Не `contains`:
+    // соседний `….manifest.json.bak` или манифест другой версии в том же
+    // релизе означали бы проверку подписи НЕ ТОГО файла. Прежнее имя без
+    // `update-` — запасное: им подписаны выпуски 1.14.0–1.15.1.
     final manifestName = manifestFileName(version);
     final signatureName = signatureFileName(version);
+    final legacyManifestName = legacyManifestFileName(version);
+    final legacySignatureName = legacySignatureFileName(version);
     final assets = j['assets'];
     if (assets is List) {
       for (final a in assets) {
@@ -617,6 +827,10 @@ class AppUpdate {
           manifestUrl ??= url;
         } else if (name == signatureName) {
           signatureUrl ??= url;
+        } else if (name == legacyManifestName) {
+          legacyManifestUrl ??= url;
+        } else if (name == legacySignatureName) {
+          legacySignatureUrl ??= url;
         } else if (assetUrl == null &&
             _assetMatches(name, assetHint, version)) {
           assetUrl = url;
@@ -639,8 +853,14 @@ class AppUpdate {
       publishedAt: published,
       assetName: assetName,
       assetSize: assetSize,
-      manifestUrl: manifestUrl,
-      signatureUrl: signatureUrl,
+      // Пара берётся целиком из одного поколения имён: копии под старым
+      // именем байт в байт те же, но смешивать незачем.
+      manifestUrl: manifestUrl != null && signatureUrl != null
+          ? manifestUrl
+          : legacyManifestUrl,
+      signatureUrl: manifestUrl != null && signatureUrl != null
+          ? signatureUrl
+          : legacySignatureUrl,
     );
   }
 
