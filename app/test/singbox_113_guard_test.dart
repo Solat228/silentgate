@@ -26,7 +26,10 @@ import 'package:silentgate/core/xray/harness_config_builder.dart';
 /// Проверяются ВСЕ построители, а не один: каждый из них — отдельный путь к
 /// ядру, и прежде дыры находились именно в «втором» пути.
 void main() {
-  final exe = File('../engine/windows/bin/sing-box.exe');
+  // `SG_SINGBOX_EXE` — прогнать те же конфиги на другой сборке ядра (разведка
+  // новой версии перед переходом), не подменяя штатную.
+  final exe = File(Platform.environment['SG_SINGBOX_EXE'] ??
+      '../engine/windows/bin/sing-box.exe');
 
   final vless = ShareLinkParser.tryParse(
       'vless://11111111-2222-3333-4444-555555555555@exit.example.com:443'

@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'adapter_dns_windows.dart';
 import '../../core/platform/app_env.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/probe/network_loss_watch.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
 import '../../core/net/api_ports.dart';
@@ -225,6 +226,13 @@ class WindowsEngine extends VpnEngineBase {
   /// сервера он останется жить, и его креды менять нельзя.
   @override
   bool get liveCaptureKept => _tunActive;
+
+  /// На ПК обрыв сети ловится частым прямым запросом, а не сквозной пробой
+  /// раз в 45 секунд (см. [NetworkLossWatch]). Батареи телефона тут нет, а
+  /// смену сети без смены адаптера (кабель выдернут из роутера) Windows не
+  /// сообщает вовсе.
+  @override
+  NetworkLossWatch? createNetworkLossWatch() => NetworkLossWatch();
 
   /// Поднятый TUN затягивает сокеты самого приложения — TCP-пинг с этого
   /// момента меряет локальный стек sing-box, а не серверы (1–3 мс у всех

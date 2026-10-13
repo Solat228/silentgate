@@ -13,6 +13,7 @@ import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
 import '../core/probe/tunnel_health.dart';
 import '../core/probe/direct_internet.dart';
+import '../core/probe/network_loss_watch.dart';
 import '../core/probe/exit_health.dart';
 import '../core/singbox/exit_tags.dart';
 import 'windows/singbox_stats.dart';
@@ -782,6 +783,50 @@ abstract class VpnEngineBase implements VpnEngine {
         await _restartDeadChannel('канал не пропускает трафик');
       },
     );
+    final w = createNetworkLossWatch();
+    _lossWatch = w;
+    if (w != null) {
+      w.start(onLoss: () => unawaited(_onDirectInternetLost(aborted, h)));
+      AppLog.i('Прямой интернет проверяется раз в ${w.every.inSeconds} с: '
+          'пропал — канал проверяется сразу');
+    }
+  }
+
+  /// Частая проверка прямого интернета при живом стороже канала, см.
+  /// [NetworkLossWatch]. `null` — платформа её не ведёт.
+  NetworkLossWatch? _lossWatch;
+
+  /// Как создаётся частая проверка прямого интернета. По умолчанию её нет:
+  /// на телефоне запрос раз в 5 секунд сажал бы батарею. Windows включает.
+  @protected
+  NetworkLossWatch? createNetworkLossWatch() => null;
+
+  /// Прямой интернет пропал: проверить канал сейчас, не дожидаясь очередной
+  /// пробы сторожа (до 45 секунд).
+  ///
+  /// Канал тоже молчит — сети нет вовсе, ждём её (`_enterOffline`): это то
+  /// же решение, к которому сторож пришёл бы сам, только на полминуты позже.
+  /// Канал отвечает — значит прямой путь закрыт чем-то своим (провайдер
+  /// закрыл адрес, правило брандмауэра), туннель жив, и трогать его нельзя.
+  Future<void> _onDirectInternetLost(
+      bool Function() aborted, TunnelHealth h) async {
+    bool stale() =>
+        aborted() ||
+        !status.isConnected ||
+        _userStopped ||
+        !identical(_health, h) ||
+        _offlineSince != null;
+    if (stale()) return;
+    AppLog.w('Прямой интернет пропал: две проверки подряд мимо туннеля не '
+        'прошли — проверяю канал сейчас, не дожидаясь очередной пробы');
+    final ok = await h.probeNow();
+    if (stale()) return;
+    if (ok) {
+      AppLog.i('Канал при этом отвечает — прямой путь закрыт чем-то своим, '
+          'соединение не трогаю');
+      return;
+    }
+    _enterOffline(aborted, h);
   }
 
   /// Погасить ядро мёртвого канала и запланировать повтор.
@@ -798,6 +843,8 @@ abstract class VpnEngineBase implements VpnEngine {
   void stopHealthWatch() {
     _health?.stop();
     _health = null;
+    _lossWatch?.stop();
+    _lossWatch = null;
   }
 
   // ── Нет интернета: ждём сеть, а не переподключаемся ─────────────────────

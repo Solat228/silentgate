@@ -208,8 +208,17 @@ class TunnelHealth {
   /// ⚠️ ПОСЛЕ ПРОМАХА — ВСЕ МИШЕНИ СРАЗУ И С КОРОТКИМ ТАЙМАУТОМ. По очереди
   /// мёртвый канал отвечал бы молчанием 3 × 8 = 24 секунды на пробу, и
   /// «нет интернета за 15 секунд» было бы недостижимо при любой паузе.
-  Future<bool> probeOnce() async {
-    final suspect = _fails > 0;
+  Future<bool> probeOnce() => _probe(suspect: _fails > 0);
+
+  /// Проба «под подозрением» вне очереди: все мишени разом, короткий
+  /// таймаут, счётчик промахов не трогается.
+  ///
+  /// Зовёт её движок, когда пропал прямой интернет (`NetworkLossWatch`):
+  /// ждать очередной пробы до 45 секунд незачем, а записать промах в счёт
+  /// нельзя — у таймера сторожа может идти своя проба.
+  Future<bool> probeNow() => _probe(suspect: true);
+
+  Future<bool> _probe({required bool suspect}) async {
     final wait = suspect ? suspectTimeout : timeout;
     final first = suspect ? <String>[] : targets.take(1).toList();
     for (final url in first) {
