@@ -73,6 +73,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
     final s = settingsCtrl.settings;
     final theme = Theme.of(context);
 
+    if (c.storeManaged) return _storeManaged(context, c);
+
     return Scaffold(
       appBar: AppBar(title: Text(l.updatesTitle)),
       body: Align(
@@ -165,6 +167,44 @@ class _UpdateScreenState extends State<UpdateScreen> {
               _Note(icon: Icons.verified_user_outlined, text: l.updatesSignatureNote),
               if (Platform.isAndroid)
                 _Note(icon: Icons.info_outline, text: l.updatesAndroidNoSilent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Сборка из Google Play: обновляет её только Play (правило Play «Device
+  /// and Network Abuse»). Ни режимов, ни бета-канала, ни отката — всё это
+  /// здесь было бы контролами-обманками.
+  Widget _storeManaged(BuildContext context, AppUpdateController c) {
+    final l = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(l.updatesTitle)),
+      body: Align(
+        alignment: AlignmentDirectional.topStart,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kSettingsContentMaxWidth),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.system_update_alt),
+                title: Text(l.updatesCurrentVersion(AppInfo.version)),
+              ),
+              _Note(icon: Icons.shop, text: l.updatesPlayManaged),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FilledButton.icon(
+                    key: const Key('updatesOpenPlayButton'),
+                    onPressed: () => unawaited(c.openPlayStore()),
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: Text(l.updatesOpenPlay),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -376,6 +416,19 @@ class _StatusCard extends StatelessWidget {
       }
     }
 
+    // Сборка GitHub при установленном Google Play: Play — первой кнопкой,
+    // закачка и страница релиза остаются запасными.
+    final viaPlay = c.offerViaPlay &&
+        (c.phase == UpdatePhase.available || c.phase == UpdatePhase.linkOnly);
+    if (viaPlay) {
+      actions.add(FilledButton.icon(
+        key: const Key('updatesPlayButton'),
+        onPressed: () => unawaited(c.openPlayStore()),
+        icon: const Icon(Icons.shop, size: 18),
+        label: Text(l.updatesViaPlay),
+      ));
+    }
+
     Widget openPage() => OutlinedButton.icon(
           key: const Key('updatesOpenPageButton'),
           onPressed: () => unawaited(openUpdatePage(offer)),
@@ -399,12 +452,19 @@ class _StatusCard extends StatelessWidget {
           detail = linkOnlyReasonText(l, earlyReason);
           actions.add(openPage());
         } else if (capability != null) {
-          actions.add(FilledButton.icon(
-            key: const Key('updatesDownloadButton'),
-            onPressed: () => unawaited(c.download()),
-            icon: const Icon(Icons.download, size: 18),
-            label: Text(l.updatesDownload),
-          ));
+          actions.add(viaPlay
+              ? OutlinedButton.icon(
+                  key: const Key('updatesDownloadButton'),
+                  onPressed: () => unawaited(c.download()),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: Text(l.updatesViaGithub),
+                )
+              : FilledButton.icon(
+                  key: const Key('updatesDownloadButton'),
+                  onPressed: () => unawaited(c.download()),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: Text(l.updatesDownload),
+                ));
         }
       case UpdatePhase.downloading:
         final p = c.progress;

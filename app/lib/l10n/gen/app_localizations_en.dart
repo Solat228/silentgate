@@ -3693,6 +3693,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check, download and install new versions';
 
   @override
+  String get updatesSettingsTilePlay => 'New versions come through Google Play';
+
+  @override
   String get updatesPreviousVersions => 'Previous versions';
 
   @override
@@ -3918,4 +3921,57 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Hide subdomains';
+
+  @override
+  String get consentTitle => 'What data SilentGate sends';
+
+  @override
+  String get consentIntro =>
+      'SilentGate is a VPN client: it connects to your VPN provider\'s servers using the subscription link you added yourself. Traffic goes through an encrypted tunnel. SilentGate does not collect, store or sell your traffic, and the app has no analytics of its own.';
+
+  @override
+  String get consentDeviceTitle => 'Device data for your provider';
+
+  @override
+  String get consentDeviceBody =>
+      'When the subscription is loaded or updated, the app may send the subscription server your device identifier (Android ID), phone model and Android version. Your provider uses them to count your devices (the device limit of your plan). This data goes only to your subscription address — the SilentGate developer never receives it.';
+
+  @override
+  String get consentDeclineNote =>
+      'If you decline, this data is not sent. Some providers do not issue a subscription without it — then it cannot be loaded. You can change your choice in Settings → About → \"Data and privacy\".';
+
+  @override
+  String get consentPolicy => 'Privacy policy';
+
+  @override
+  String get consentAccept => 'Allow';
+
+  @override
+  String get consentDecline => 'Don\'t send';
+
+  @override
+  String get privacyTileTitle => 'Data and privacy';
+
+  @override
+  String get privacyTileOn =>
+      'Device data is sent to the subscription provider';
+
+  @override
+  String get privacyTileOff => 'Device data is not sent';
+
+  @override
+  String get privacyPolicyTile => 'Privacy policy';
+
+  @override
+  String get updatesViaPlay => 'Update in Google Play';
+
+  @override
+  String get updatesViaGithub => 'Download from GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'This copy was installed from Google Play and is updated only through it: new versions arrive in Google Play automatically or with the \"Update\" button on the app page.';
+
+  @override
+  String get updatesOpenPlay => 'Open in Google Play';
 }

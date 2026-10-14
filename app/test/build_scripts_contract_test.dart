@@ -24,6 +24,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final apkBat = File('../build-apk.bat');
   final exeBat = File('../build-exe.bat');
+  final playBat = File('../build-play.bat');
   final contract = File('../docs/APP_UPDATE_SERVER.md');
 
   setUpAll(() {
@@ -36,7 +37,11 @@ void main() {
   });
 
   group('кодировка батников (CLAUDE.md, правило №3)', () {
-    for (final entry in {'build-apk.bat': apkBat, 'build-exe.bat': exeBat}.entries) {
+    for (final entry in {
+      'build-apk.bat': apkBat,
+      'build-exe.bat': exeBat,
+      'build-play.bat': playBat,
+    }.entries) {
       final name = entry.key;
       final file = entry.value;
 
@@ -194,6 +199,52 @@ void main() {
     });
   });
 
+  group('⚠️ Две сборки Android: github и play', () {
+    // Сборка без --flavor на проекте с флейворами не пройдёт вовсе, а с
+    // ЧУЖИМ флейвором выйдет молча: APK с GitHub без самообновления или AAB
+    // для Play с разрешением на установку пакетов, за которое Play снимает
+    // приложение с публикации.
+    test('build-apk.bat собирает флейвор github и берёт его APK', () {
+      final content = _decodeCp866(apkBat.readAsBytesSync());
+      expect(content, contains('build apk --release --flavor github'));
+      expect(content, contains('app-arm64-v8a-github-release.apk'));
+      expect(content, contains('app-x86_64-github-release.apk'));
+      expect(content, isNot(contains('--flavor play')));
+    });
+
+    test('build-play.bat собирает AAB флейвора play', () {
+      final content = _decodeCp866(playBat.readAsBytesSync());
+      expect(content, contains('build appbundle --release --flavor play'));
+      expect(content, contains('android-arm64,android-x64'),
+          reason: 'armeabi-v7a без ядра: туннель там не поднимется');
+      expect(content, contains('playRelease'));
+      expect(content, contains('upload.properties'));
+      expect(content, contains('pubspec.yaml'));
+      expect(content, contains('SilentGate-%VER%-play.aab'));
+      expect(content, isNot(contains('--flavor github')));
+    });
+
+    test('build-play.bat проверяет код возврата сборки', () {
+      final content = _decodeCp866(playBat.readAsBytesSync());
+      final lines = content
+          .split(String.fromCharCode(10))
+          .map((l) => l.trimRight())
+          .toList();
+      final i = lines.indexWhere((l) => l.contains('build appbundle --release'));
+      expect(i, greaterThanOrEqualTo(0));
+      final after = lines.skip(i + 1).take(6).join(' ');
+      expect(after, contains('if errorlevel 1'));
+      expect(after, contains('exit /b 1'));
+    });
+
+    test('исключения robocopy — полными путями (правило 2)', () {
+      for (final bat in [apkBat, playBat]) {
+        final content = _decodeCp866(bat.readAsBytesSync());
+        expect(content, contains(r'"%PROJECT%\app\windows"'));
+        expect(content, isNot(contains('/XD windows')));
+      }
+    });
+  });
 }
 
 /// Таблица перекодировки CP866 -> Unicode для байт 0x00..0xFF.

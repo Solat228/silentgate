@@ -3684,6 +3684,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'التحقق من الإصدارات الجديدة وتنزيلها وتثبيتها';
 
   @override
+  String get updatesSettingsTilePlay => 'تصل الإصدارات الجديدة عبر Google Play';
+
+  @override
   String get updatesPreviousVersions => 'الإصدارات السابقة';
 
   @override
@@ -3904,4 +3907,56 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'إخفاء النطاقات الفرعية';
+
+  @override
+  String get consentTitle => 'ما البيانات التي يرسلها SilentGate';
+
+  @override
+  String get consentIntro =>
+      'SilentGate عميل VPN: يتصل بخوادم مزوّد VPN الخاص بك عبر رابط الاشتراك الذي أضفته بنفسك. تمر حركة المرور عبر نفق مشفّر. لا يجمع SilentGate حركة مرورك ولا يخزّنها ولا يبيعها، وليس للتطبيق تحليلات خاصة به.';
+
+  @override
+  String get consentDeviceTitle => 'بيانات الجهاز لمزوّدك';
+
+  @override
+  String get consentDeviceBody =>
+      'عند تحميل الاشتراك أو تحديثه قد يرسل التطبيق إلى خادم الاشتراك معرّف الجهاز (Android ID) وطراز الهاتف وإصدار Android. يستخدمها مزوّدك لعدّ أجهزتك (حدّ الأجهزة في خطتك). تذهب هذه البيانات إلى عنوان اشتراكك فقط، ولا يتلقاها مطوّر SilentGate أبداً.';
+
+  @override
+  String get consentDeclineNote =>
+      'إذا رفضت فلن تُرسل هذه البيانات. بعض المزوّدين لا يمنحون الاشتراك بدونها، وعندها لن يمكن تحميله. يمكنك تغيير اختيارك من الإعدادات ← حول ← «البيانات والخصوصية».';
+
+  @override
+  String get consentPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get consentAccept => 'السماح';
+
+  @override
+  String get consentDecline => 'عدم الإرسال';
+
+  @override
+  String get privacyTileTitle => 'البيانات والخصوصية';
+
+  @override
+  String get privacyTileOn => 'تُرسل بيانات الجهاز إلى مزوّد الاشتراك';
+
+  @override
+  String get privacyTileOff => 'لا تُرسل بيانات الجهاز';
+
+  @override
+  String get privacyPolicyTile => 'سياسة الخصوصية';
+
+  @override
+  String get updatesViaPlay => 'التحديث عبر Google Play';
+
+  @override
+  String get updatesViaGithub => 'التنزيل من GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'ثُبّتت هذه النسخة من Google Play ولا تُحدَّث إلا عبره: تصل الإصدارات الجديدة إلى Google Play تلقائياً أو بزر «تحديث» في صفحة التطبيق.';
+
+  @override
+  String get updatesOpenPlay => 'الفتح في Google Play';
 }

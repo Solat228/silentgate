@@ -3700,6 +3700,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Yeni sürümleri denetleme, indirme ve kurma';
 
   @override
+  String get updatesSettingsTilePlay =>
+      'Yeni sürümler Google Play üzerinden gelir';
+
+  @override
   String get updatesPreviousVersions => 'Önceki sürümler';
 
   @override
@@ -3922,4 +3926,57 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Alt alan adlarını gizle';
+
+  @override
+  String get consentTitle => 'SilentGate hangi verileri gönderir';
+
+  @override
+  String get consentIntro =>
+      'SilentGate bir VPN istemcisidir: kendi eklediğiniz abonelik bağlantısıyla VPN sağlayıcınızın sunucularına bağlanır. Trafik şifreli bir tünelden geçer. SilentGate trafiğinizi toplamaz, saklamaz veya satmaz; uygulamanın kendi analitiği yoktur.';
+
+  @override
+  String get consentDeviceTitle => 'Sağlayıcınız için cihaz verileri';
+
+  @override
+  String get consentDeviceBody =>
+      'Abonelik yüklenirken veya güncellenirken uygulama abonelik sunucusuna cihaz kimliğini (Android ID), telefon modelini ve Android sürümünü gönderebilir. Sağlayıcınız bunlarla cihazlarınızı sayar (tarifenizdeki cihaz sınırı). Bu veriler yalnızca abonelik adresinize gider; SilentGate geliştiricisi bunları hiçbir zaman almaz.';
+
+  @override
+  String get consentDeclineNote =>
+      'Reddederseniz bu veriler gönderilmez. Bazı sağlayıcılar bunlar olmadan aboneliği vermez; o zaman abonelik yüklenemez. Seçiminizi Ayarlar → Hakkında → \"Veriler ve gizlilik\" bölümünden değiştirebilirsiniz.';
+
+  @override
+  String get consentPolicy => 'Gizlilik politikası';
+
+  @override
+  String get consentAccept => 'İzin ver';
+
+  @override
+  String get consentDecline => 'Gönderme';
+
+  @override
+  String get privacyTileTitle => 'Veriler ve gizlilik';
+
+  @override
+  String get privacyTileOn =>
+      'Cihaz verileri abonelik sağlayıcısına gönderilir';
+
+  @override
+  String get privacyTileOff => 'Cihaz verileri gönderilmez';
+
+  @override
+  String get privacyPolicyTile => 'Gizlilik politikası';
+
+  @override
+  String get updatesViaPlay => 'Google Play\'de güncelle';
+
+  @override
+  String get updatesViaGithub => 'GitHub\'dan indir';
+
+  @override
+  String get updatesPlayManaged =>
+      'Bu kopya Google Play\'den yüklendi ve yalnızca onun üzerinden güncellenir: yeni sürümler Google Play\'e otomatik olarak ya da uygulama sayfasındaki \"Güncelle\" düğmesiyle gelir.';
+
+  @override
+  String get updatesOpenPlay => 'Google Play\'de aç';
 }

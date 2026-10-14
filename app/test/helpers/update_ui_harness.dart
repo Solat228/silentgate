@@ -6,6 +6,7 @@ import 'package:ed25519_edwards/ed25519_edwards.dart' as ed;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:silentgate/core/app_store.dart';
 import 'package:silentgate/core/geo/sha256.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/update/app_update.dart';
@@ -47,6 +48,9 @@ class UpdateUiHarness {
 
   /// Источник обновлений «подменён стендом» — читается контроллером ЖИВЬЁМ.
   bool overridden = false;
+
+  /// Сколько раз открывали страницу в Google Play.
+  int playOpened = 0;
   final vpnSignal = _Signal();
 
   static const base = 'https://updates.test';
@@ -55,7 +59,11 @@ class UpdateUiHarness {
       .encode(ed.public(ed.newKeyFromSeed(Uint8List.fromList(_seed))).bytes);
 
   /// Собрать обвязку. [current] — «установленная» версия.
-  static UpdateUiHarness create({String current = '1.14.0'}) {
+  static UpdateUiHarness create({
+    String current = '1.14.0',
+    AppStore store = AppStore.github,
+    bool playAvailable = false,
+  }) {
     final root = Directory.systemTemp.createTempSync('sg_update_ui_');
     AppPaths.overrideRoot(root);
     final h = UpdateUiHarness._(root);
@@ -94,6 +102,13 @@ class UpdateUiHarness {
       publicKeyBase64: publicKey,
       overriddenOf: () => h.overridden,
       currentVersion: current,
+      store: store,
+      // Узнаётся в `startup()` — тестам с Google Play звать его, а не checkNow.
+      playStoreAvailable: () async => playAvailable,
+      openPlayStore: () async {
+        h.playOpened++;
+        return true;
+      },
     );
     return h;
   }

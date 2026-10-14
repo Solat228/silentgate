@@ -899,6 +899,15 @@ class AppSettings {
   /// решения (см. `core/update/app_update_defaults.dart`).
   final bool betaChannel;
 
+  /// Согласие на отправку данных устройства провайдеру подписки (заголовки
+  /// `X-HWID`, `X-Device-OS`, `X-Ver-OS`, `X-Device-Model`).
+  ///
+  /// Спрашивается ОДИН раз и только в сборке из Google Play (там это
+  /// требование правил о раскрытии данных; см. `core/privacy/
+  /// device_info_consent.dart`). `null` — ещё не спрашивали: до ответа
+  /// заголовки не уходят. В сборке GitHub поле не читается.
+  final bool? deviceInfoConsent;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -1014,6 +1023,7 @@ class AppSettings {
     this.appUpdateMode = AppUpdateMode.ask,
     this.appUpdateSkippedVersion,
     this.betaChannel = false,
+    this.deviceInfoConsent,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -1140,6 +1150,7 @@ class AppSettings {
     // отдельным флагом (та же идиома, что `clearLogo` у профиля подписки).
     bool clearAppUpdateSkippedVersion = false,
     bool? betaChannel,
+    bool? deviceInfoConsent,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -1235,6 +1246,7 @@ class AppSettings {
           ? null
           : appUpdateSkippedVersion ?? this.appUpdateSkippedVersion,
       betaChannel: betaChannel ?? this.betaChannel,
+      deviceInfoConsent: deviceInfoConsent ?? this.deviceInfoConsent,
     );
   }
 
@@ -1327,6 +1339,7 @@ class AppSettings {
         'appUpdateMode': appUpdateMode.wireName,
         'appUpdateSkippedVersion': appUpdateSkippedVersion,
         'betaChannel': betaChannel,
+        'deviceInfoConsent': deviceInfoConsent,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1571,6 +1584,11 @@ class AppSettings {
           ? j['appUpdateSkippedVersion'] as String
           : null,
       betaChannel: j['betaChannel'] as bool? ?? defaults.betaChannel,
+      // Мусор вместо bool — как «не спрашивали»: спросим ещё раз, а не
+      // решим за человека.
+      deviceInfoConsent: j['deviceInfoConsent'] is bool
+          ? j['deviceInfoConsent'] as bool
+          : null,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.

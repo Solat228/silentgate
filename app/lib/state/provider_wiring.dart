@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../core/app_store.dart';
 import '../core/geo/geo_bases_controller.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/apk_installer_android.dart';
+import '../core/platform/play_store_android.dart';
 import '../core/settings/app_settings.dart';
 import '../core/update/app_update.dart' show AppUpdate;
 import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
@@ -271,6 +273,14 @@ AppUpdateController _buildAppUpdateController(
     // асинхронно, уже после постройки контроллера (см. `overriddenOf`).
     overriddenOf: () => kUpdateApiOverridden,
     loadOverride: AppUpdate.loadApiOverride,
+    store: AppStoreInfo.current,
+    // Play первым — только на Android и только когда страница в Play открыта
+    // всем (`AppStoreInfo.playListingLive`): иначе кнопка вела бы на «не
+    // найдено».
+    playStoreAvailable: Platform.isAndroid && AppStoreInfo.playListingLive
+        ? PlayStoreAndroid().installed
+        : null,
+    openPlayStore: Platform.isAndroid ? PlayStoreAndroid().open : null,
   );
 }
 

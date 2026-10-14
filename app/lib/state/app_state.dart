@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import '../core/app_info.dart';
+import '../core/app_store.dart';
 // Только ради GeoAction: «что сейчас с гео-базами» знает контроллер, и второго
 // мнения об этом в приложении быть не должно.
 import '../core/geo/geo_bases_controller.dart';
@@ -32,6 +33,7 @@ import '../core/platform/device_id.dart';
 import '../core/platform/incoming_links.dart';
 import '../core/platform/port_check.dart';
 import '../core/url_scheme.dart';
+import '../core/privacy/device_info_consent.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
@@ -2541,7 +2543,20 @@ class AppState extends ChangeNotifier {
   }
 
   Future<Map<String, String>> _deviceHeaders() async {
-    final h = await DeviceHeaders.build();
+    // Сборка Play без согласия человека данные устройства не отдаёт (см.
+    // `DeviceInfoConsent`). Настройки читаем с диска в момент запроса: на
+    // старте подписка обновляется раньше, чем человек успевает ответить, и
+    // ответ, данный секунду назад, обязан действовать сразу.
+    var allowed = true;
+    if (AppStoreInfo.isPlay) {
+      try {
+        allowed = DeviceInfoConsent.allowed(await SettingsStorage().load());
+      } catch (_) {
+        allowed = false;
+      }
+    }
+    final h = DeviceInfoConsent.filter(await DeviceHeaders.build(),
+        allowed: allowed);
     return {...h, 'X-App-Version': AppInfo.version};
   }
 

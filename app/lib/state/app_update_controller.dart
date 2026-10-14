@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
 import '../core/app_info.dart';
+import '../core/app_store.dart';
 import '../core/net/file_download.dart';
 import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
@@ -370,6 +371,9 @@ class AppUpdateController extends ChangeNotifier {
   final String _currentVersion;
   final Duration _purgeRetryDelay;
   final DateTime Function() _clock;
+  final AppStore _store;
+  final Future<bool> Function()? _playStoreAvailable;
+  final Future<bool> Function()? _openPlayStore;
 
   /// Все зависимости внедряемы — умолчания боевые.
   ///
@@ -387,6 +391,9 @@ class AppUpdateController extends ChangeNotifier {
   /// `updates/` (см. [startup]); [clock] — часы для срока [ConsentMarker].
   /// [mirror] — откуда взять файлы того же выпуска, когда основной источник
   /// их не отдал (см. [_mirrorUrls]).
+  /// [store] — какая это сборка ([AppStore]); [playStoreAvailable] — есть ли
+  /// на устройстве Google Play и открыта ли там наша страница (`null` — нет:
+  /// Windows); [openPlayStore] — открыть страницу приложения в Play.
   ///
   /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
   /// файлом (`update_api.txt`) и читается асинхронно
@@ -414,6 +421,9 @@ class AppUpdateController extends ChangeNotifier {
     String? currentVersion,
     Duration purgeRetryDelay = const Duration(seconds: 30),
     DateTime Function()? clock,
+    AppStore store = AppStore.github,
+    Future<bool> Function()? playStoreAvailable,
+    Future<bool> Function()? openPlayStore,
   })  : _settings = settings,
         _updateSettings = updateSettings,
         _installer = installer,
@@ -431,7 +441,10 @@ class AppUpdateController extends ChangeNotifier {
         _loadOverride = loadOverride,
         _currentVersion = currentVersion ?? AppUpdate.installedVersion,
         _purgeRetryDelay = purgeRetryDelay,
-        _clock = clock ?? DateTime.now {
+        _clock = clock ?? DateTime.now,
+        _store = store,
+        _playStoreAvailable = playStoreAvailable,
+        _openPlayStore = openPlayStore {
     _vpnChanges?.addListener(_onVpnChanged);
   }
 
@@ -470,6 +483,10 @@ class AppUpdateController extends ChangeNotifier {
   bool _installing = false;
   bool _launched = false;
   bool _disposed = false;
+
+  /// Google Play есть и страница открыта: предложение обновиться идёт через
+  /// него первым ([offerViaPlay]). Узнаётся в [startup].
+  bool _playAvailable = false;
 
   /// Скачанный и проверенный установщик (с версией и хэшем из манифеста).
   File? _verified;
@@ -543,6 +560,36 @@ class AppUpdateController extends ChangeNotifier {
   String get currentVersion => _currentVersion;
 
   bool get started => _started;
+
+  /// Сборка из Google Play: обновляет её ТОЛЬКО Play. Проверки обновлений,
+  /// закачки и установки в ней нет вовсе — интерфейс показывает кнопку
+  /// «Открыть в Google Play» вместо всего экрана обновлений.
+  bool get storeManaged => _store == AppStore.play;
+
+  /// Сборка GitHub: текущее предложение лучше взять через Google Play — он
+  /// установлен, страница открыта, а версия стабильная (бет в Play нет) и
+  /// найдена проверкой, а не выбрана руками из «Прежних версий». Тогда
+  /// главная кнопка — Play, а закачка APK остаётся запасной.
+  bool get offerViaPlay {
+    final o = _offer;
+    return !storeManaged &&
+        _playAvailable &&
+        o != null &&
+        !o.isBeta &&
+        !_explicitRelease;
+  }
+
+  /// Открыть страницу приложения в Google Play. `false` — не открылась.
+  Future<bool> openPlayStore() async {
+    final open = _openPlayStore;
+    if (open == null) return false;
+    try {
+      return await open();
+    } catch (e) {
+      AppLog.w('Обновление: Google Play не открылся: ${scrubUrls('$e')}');
+      return false;
+    }
+  }
 
   /// VPN сейчас активен — тем же выражением, что решает отложить установку.
   /// Интерфейсу нужно ДО нажатия: предупредить, что установка разорвёт VPN,
@@ -619,6 +666,22 @@ class AppUpdateController extends ChangeNotifier {
   Future<void> startup() async {
     if (_started || _disposed) return;
     _started = true;
+    // ⚠️ Сборку из Play обновляет только Play (правило «Device and Network
+    // Abuse»): ни проверки, ни закачки — даже ссылки на GitHub не ищем.
+    if (storeManaged) {
+      AppLog.i('Обновление: сборка Google Play — обновляет Play');
+      _notify();
+      return;
+    }
+    final playAvailable = _playStoreAvailable;
+    if (playAvailable != null) {
+      try {
+        _playAvailable = await playAvailable();
+      } catch (_) {
+        _playAvailable = false;
+      }
+      if (_disposed) return;
+    }
     // Подмена источника (Android: файл в каталоге данных) — ДО всего
     // остального: от неё зависят и плашка, и допустимость `http://`.
     final load = _loadOverride;
@@ -673,7 +736,7 @@ class AppUpdateController extends ChangeNotifier {
   Future<void> checkNow() => _check(manual: true);
 
   Future<void> _check({required bool manual}) async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     // Закачка или установка идут — проверка сверху перепутала бы состояние.
     if (_installing || (_run != null && !_run!.cancelled)) return;
     _lastCheckManual = manual;
@@ -772,6 +835,13 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   Future<void> _applyMode() async {
+    // Сначала Play: молча качать APK мимо Play, когда тот установлен, значит
+    // обойти выбор, который сборка обещает. Режим «авто» здесь спрашивает.
+    if (offerViaPlay && _settings().appUpdateMode == AppUpdateMode.auto) {
+      AppLog.i('Обновление: есть Google Play — предлагаю его, не качаю сам');
+      _setPhase(UpdatePhase.available);
+      return;
+    }
     switch (_settings().appUpdateMode) {
       case AppUpdateMode.ask:
         _setPhase(UpdatePhase.available);
@@ -794,7 +864,7 @@ class AppUpdateController extends ChangeNotifier {
   /// «Прежние версии»: предложить конкретный релиз (например, для отката).
   /// Дальше — [download] и [install] с `allowDowngrade: true`.
   void offerRelease(AppRelease release) {
-    if (_disposed || busy) return;
+    if (_disposed || busy || storeManaged) return;
     _offer = _offerOf(release);
     _explicitRelease = true;
     _intent = null;
@@ -818,7 +888,7 @@ class AppUpdateController extends ChangeNotifier {
   /// процесса ([ConsentMarker]).
   Future<void> downloadAndInstall(
       {bool forceQuit = false, bool allowDowngrade = false}) async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     _intent = (forceQuit: forceQuit, allowDowngrade: allowDowngrade);
     if (_phase != UpdatePhase.ready || _verified == null) await download();
     if (_phase == UpdatePhase.ready) {
@@ -848,7 +918,7 @@ class AppUpdateController extends ChangeNotifier {
   /// [UpdatePhase.ready], [UpdatePhase.linkOnly] (ставить самим нельзя) или
   /// [UpdatePhase.failed]. Согласие человека уже получено вызывающим.
   Future<void> download() async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     final offer = _offer;
     if (offer == null || _installing) return;
     final prev = _run;
@@ -1223,7 +1293,7 @@ class AppUpdateController extends ChangeNotifier {
     bool allowDowngrade = false,
     bool unattended = false,
   }) async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     final offer = _offer;
     final file = _verified;
     final sha = _expectedSha;

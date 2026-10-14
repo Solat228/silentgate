@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:ed25519_edwards/ed25519_edwards.dart' as ed;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/app_store.dart';
 import 'package:silentgate/core/geo/sha256.dart';
 import 'package:silentgate/core/platform/app_log.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
@@ -230,6 +231,9 @@ void main() {
     Duration purgeRetryDelay = const Duration(hours: 1),
     DateTime Function()? clock,
     UpdateMirrorLookup? mirror,
+    AppStore store = AppStore.github,
+    Future<bool> Function()? playStoreAvailable,
+    Future<bool> Function()? openPlayStore,
   }) =>
       AppUpdateController(
         settings: () => settings.value,
@@ -255,6 +259,9 @@ void main() {
         currentVersion: currentVersion,
         purgeRetryDelay: purgeRetryDelay,
         clock: clock,
+        store: store,
+        playStoreAvailable: playStoreAvailable,
+        openPlayStore: openPlayStore,
       );
 
   File stagedFile(String name) =>
@@ -1753,6 +1760,113 @@ void main() {
         expect(l, isNot(contains('127.0.0.1')), reason: l);
         expect(l, isNot(contains('${server.port}')), reason: l);
       }
+    });
+  });
+
+  group('Две сборки: Google Play и GitHub', () {
+    // ⚠️ Правило Google Play «Device and Network Abuse»: приложение из Play
+    // обновляется только через Play. Любой запрос к серверу обновлений,
+    // закачка или запуск установщика в сборке play — нарушение, за которое
+    // приложение снимают с публикации.
+    test('⚠️ сборка play: ни проверки, ни запросов, ни установки', () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(store: AppStore.play);
+      await c.startup();
+      await c.checkNow();
+      await c.download();
+      await c.downloadAndInstall();
+      c.offerRelease(AppRelease(
+          version: next, downloadUrl: '${server.base}/$assetName'));
+
+      expect(c.storeManaged, isTrue);
+      expect(checkerCalls, 0);
+      expect(server.requested, isEmpty);
+      expect(installer.launches, isEmpty);
+      expect(installer.reconcileCalls, isEmpty);
+      expect(c.offer, isNull);
+      expect(c.offerViaPlay, isFalse);
+    });
+
+    test('сборка github без Google Play — всё как раньше', () async {
+      publish();
+      final c = make(playStoreAvailable: () async => false);
+      await c.startup();
+      expect(c.storeManaged, isFalse);
+      expect(c.phase, UpdatePhase.available);
+      expect(c.offerViaPlay, isFalse);
+    });
+
+    test('сборка github с Google Play: стабильная версия — через Play',
+        () async {
+      publish();
+      final c = make(playStoreAvailable: () async => true);
+      await c.startup();
+      expect(c.phase, UpdatePhase.available);
+      expect(c.offerViaPlay, isTrue);
+    });
+
+    test('⚠️ «авто» при Google Play спрашивает, а не качает APK мимо Play',
+        () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(
+          isVpnActive: () => false, playStoreAvailable: () async => true);
+      await c.startup();
+      expect(c.phase, UpdatePhase.available);
+      expect(server.requested, isEmpty);
+      expect(installer.launches, isEmpty);
+    });
+
+    test('бета через Play не предлагается — в Play бет нет', () async {
+      offers[next] = UpdateOffer(
+          version: next, pageUrl: '${server.base}/page', isBeta: true);
+      final c = make(playStoreAvailable: () async => true);
+      await c.startup();
+      expect(c.offer?.isBeta, isTrue);
+      expect(c.offerViaPlay, isFalse);
+    });
+
+    test('версия из «Прежних версий» — мимо Play (откат Play не умеет)',
+        () async {
+      publish();
+      final c = make(playStoreAvailable: () async => true);
+      await c.startup();
+      c.offerRelease(AppRelease(
+          version: '1.13.1', downloadUrl: '${server.base}/x.apk'));
+      expect(c.offerViaPlay, isFalse);
+    });
+
+    test('запасной путь GitHub работает и при Google Play', () async {
+      final pub = publish();
+      final c = make(
+          isVpnActive: () => false, playStoreAvailable: () async => true);
+      await c.startup();
+      await c.downloadAndInstall();
+      expect(installer.launches.single.expectedSha256, pub.sha);
+    });
+
+    test('сбой проверки Google Play — считаем, что Play нет', () async {
+      publish();
+      final c = make(playStoreAvailable: () async => throw StateError('x'));
+      await c.startup();
+      expect(c.offerViaPlay, isFalse);
+      expect(c.phase, UpdatePhase.available);
+    });
+
+    test('openPlayStore: ответ канала и сбой без исключения', () async {
+      var calls = 0;
+      final ok = make(openPlayStore: () async {
+        calls++;
+        return true;
+      });
+      expect(await ok.openPlayStore(), isTrue);
+      expect(calls, 1);
+      final broken = make(openPlayStore: () async => throw StateError('x'));
+      expect(await broken.openPlayStore(), isFalse);
+      expect(await make().openPlayStore(), isFalse);
     });
   });
 }

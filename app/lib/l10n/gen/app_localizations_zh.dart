@@ -3551,6 +3551,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatesSettingsTileSubtitle => '检查、下载并安装新版本';
 
   @override
+  String get updatesSettingsTilePlay => '新版本通过 Google Play 推送';
+
+  @override
   String get updatesPreviousVersions => '早期版本';
 
   @override
@@ -3760,4 +3763,56 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => '隐藏子域名';
+
+  @override
+  String get consentTitle => 'SilentGate 会发送哪些数据';
+
+  @override
+  String get consentIntro =>
+      'SilentGate 是一款 VPN 客户端：它通过你自己添加的订阅链接连接到你的 VPN 服务商的服务器。流量经过加密隧道传输。SilentGate 不收集、不存储、也不出售你的流量，应用本身没有任何分析统计。';
+
+  @override
+  String get consentDeviceTitle => '提供给服务商的设备数据';
+
+  @override
+  String get consentDeviceBody =>
+      '加载或更新订阅时，应用可能会向订阅服务器发送设备标识（Android ID）、手机型号和 Android 版本。服务商用它们统计你的设备数量（套餐中的设备上限）。这些数据只发送到你的订阅地址，SilentGate 开发者永远不会收到。';
+
+  @override
+  String get consentDeclineNote =>
+      '如果拒绝，这些数据不会被发送。部分服务商没有这些数据就不提供订阅，届时订阅将无法加载。你可以在 设置 → 关于 →「数据与隐私」中更改选择。';
+
+  @override
+  String get consentPolicy => '隐私政策';
+
+  @override
+  String get consentAccept => '允许';
+
+  @override
+  String get consentDecline => '不发送';
+
+  @override
+  String get privacyTileTitle => '数据与隐私';
+
+  @override
+  String get privacyTileOn => '设备数据会发送给订阅服务商';
+
+  @override
+  String get privacyTileOff => '不发送设备数据';
+
+  @override
+  String get privacyPolicyTile => '隐私政策';
+
+  @override
+  String get updatesViaPlay => '在 Google Play 中更新';
+
+  @override
+  String get updatesViaGithub => '从 GitHub 下载';
+
+  @override
+  String get updatesPlayManaged =>
+      '此副本安装自 Google Play，只能通过它更新：新版本会自动出现在 Google Play 中，或通过应用页面上的「更新」按钮获取。';
+
+  @override
+  String get updatesOpenPlay => '在 Google Play 中打开';
 }

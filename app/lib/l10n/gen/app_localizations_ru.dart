@@ -3698,6 +3698,10 @@ class AppLocalizationsRu extends AppLocalizations {
       'Проверка, загрузка и установка новых версий';
 
   @override
+  String get updatesSettingsTilePlay =>
+      'Новые версии приходят через Google Play';
+
+  @override
   String get updatesPreviousVersions => 'Прежние версии';
 
   @override
@@ -3921,4 +3925,57 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Скрыть поддомены';
+
+  @override
+  String get consentTitle => 'Какие данные отправляет SilentGate';
+
+  @override
+  String get consentIntro =>
+      'SilentGate — VPN-клиент: он подключается к серверам вашего VPN-провайдера по ссылке подписки, которую вы добавили сами. Трафик идёт через зашифрованный туннель. SilentGate не собирает ваш трафик, не хранит и не продаёт его, и у приложения нет своей аналитики.';
+
+  @override
+  String get consentDeviceTitle => 'Данные устройства для вашего провайдера';
+
+  @override
+  String get consentDeviceBody =>
+      'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор устройства (Android ID), модель телефона и версию Android. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки — разработчику SilentGate они не приходят.';
+
+  @override
+  String get consentDeclineNote =>
+      'Если отказаться, эти данные не отправляются. Некоторые провайдеры без них не выдают подписку — тогда её не удастся загрузить. Решение можно изменить: Настройки → О программе → «Данные и конфиденциальность».';
+
+  @override
+  String get consentPolicy => 'Политика конфиденциальности';
+
+  @override
+  String get consentAccept => 'Разрешить';
+
+  @override
+  String get consentDecline => 'Не отправлять';
+
+  @override
+  String get privacyTileTitle => 'Данные и конфиденциальность';
+
+  @override
+  String get privacyTileOn =>
+      'Данные устройства отправляются провайдеру подписки';
+
+  @override
+  String get privacyTileOff => 'Данные устройства не отправляются';
+
+  @override
+  String get privacyPolicyTile => 'Политика конфиденциальности';
+
+  @override
+  String get updatesViaPlay => 'Обновить в Google Play';
+
+  @override
+  String get updatesViaGithub => 'Скачать с GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'Эта копия установлена из Google Play и обновляется только через него: новые версии приходят в Google Play сами или по кнопке «Обновить» на странице приложения.';
+
+  @override
+  String get updatesOpenPlay => 'Открыть в Google Play';
 }

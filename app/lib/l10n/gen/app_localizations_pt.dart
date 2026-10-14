@@ -3732,6 +3732,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'Verificação, download e instalação de novas versões';
 
   @override
+  String get updatesSettingsTilePlay => 'Novas versões chegam pelo Google Play';
+
+  @override
   String get updatesPreviousVersions => 'Versões anteriores';
 
   @override
@@ -3959,4 +3962,57 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Ocultar subdomínios';
+
+  @override
+  String get consentTitle => 'Quais dados o SilentGate envia';
+
+  @override
+  String get consentIntro =>
+      'O SilentGate é um cliente VPN: ele se conecta aos servidores do seu provedor de VPN pelo link de assinatura que você mesmo adicionou. O tráfego passa por um túnel criptografado. O SilentGate não coleta, não armazena nem vende seu tráfego, e o app não tem análise própria.';
+
+  @override
+  String get consentDeviceTitle => 'Dados do dispositivo para o seu provedor';
+
+  @override
+  String get consentDeviceBody =>
+      'Ao carregar ou atualizar a assinatura, o app pode enviar ao servidor da assinatura o identificador do dispositivo (Android ID), o modelo do telefone e a versão do Android. Seu provedor os usa para contar seus dispositivos (limite de dispositivos do plano). Esses dados vão apenas para o endereço da sua assinatura — o desenvolvedor do SilentGate nunca os recebe.';
+
+  @override
+  String get consentDeclineNote =>
+      'Se você recusar, esses dados não são enviados. Alguns provedores não liberam a assinatura sem eles — nesse caso ela não poderá ser carregada. Você pode mudar a escolha em Configurações → Sobre → \"Dados e privacidade\".';
+
+  @override
+  String get consentPolicy => 'Política de privacidade';
+
+  @override
+  String get consentAccept => 'Permitir';
+
+  @override
+  String get consentDecline => 'Não enviar';
+
+  @override
+  String get privacyTileTitle => 'Dados e privacidade';
+
+  @override
+  String get privacyTileOn =>
+      'Os dados do dispositivo são enviados ao provedor da assinatura';
+
+  @override
+  String get privacyTileOff => 'Os dados do dispositivo não são enviados';
+
+  @override
+  String get privacyPolicyTile => 'Política de privacidade';
+
+  @override
+  String get updatesViaPlay => 'Atualizar no Google Play';
+
+  @override
+  String get updatesViaGithub => 'Baixar do GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'Esta cópia foi instalada pelo Google Play e só é atualizada por ele: novas versões chegam ao Google Play automaticamente ou pelo botão \"Atualizar\" na página do app.';
+
+  @override
+  String get updatesOpenPlay => 'Abrir no Google Play';
 }

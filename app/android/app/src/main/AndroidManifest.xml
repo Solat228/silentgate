@@ -13,16 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Самообновление: скачанный APK отдаётся СИСТЕМНОМУ установщику
-         (ACTION_VIEW + application/vnd.android.package-archive). Без этого
-         разрешения на Android 8+ такой интент молча не сработает: система
-         покажет «установка из неизвестных источников запрещена» или не
-         покажет ничего вовсе. Само разрешение — не «тихая установка»: её без
-         root на Android нет, лист согласия человек видит всегда. Разрешение
-         на уровне пользователя выдаётся один раз через
-         ACTION_MANAGE_UNKNOWN_APP_SOURCES (канал launcher →
-         openInstallPermission). -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Разрешение на установку APK (самообновление) живёт ТОЛЬКО в сборке
+         github: src/github/AndroidManifest.xml. В сборке для Google Play его
+         быть не должно — правило Play запрещает обновляться мимо Play. -->
     <!-- Удержание процессора на время пинга и замера скорости
          (lib/core/platform/wake_guard.dart). Без него при погасшем экране
          система усыпляет процессор посреди прогона, пробы истекают, и живые

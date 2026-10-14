@@ -6336,6 +6336,12 @@ abstract class AppLocalizations {
   /// **'Проверка, загрузка и установка новых версий'**
   String get updatesSettingsTileSubtitle;
 
+  /// No description provided for @updatesSettingsTilePlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новые версии приходят через Google Play'**
+  String get updatesSettingsTilePlay;
+
   /// No description provided for @updatesPreviousVersions.
   ///
   /// In ru, this message translates to:
@@ -6689,6 +6695,102 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Скрыть поддомены'**
   String get splitCollapseSubdomains;
+
+  /// No description provided for @consentTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Какие данные отправляет SilentGate'**
+  String get consentTitle;
+
+  /// No description provided for @consentIntro.
+  ///
+  /// In ru, this message translates to:
+  /// **'SilentGate — VPN-клиент: он подключается к серверам вашего VPN-провайдера по ссылке подписки, которую вы добавили сами. Трафик идёт через зашифрованный туннель. SilentGate не собирает ваш трафик, не хранит и не продаёт его, и у приложения нет своей аналитики.'**
+  String get consentIntro;
+
+  /// No description provided for @consentDeviceTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные устройства для вашего провайдера'**
+  String get consentDeviceTitle;
+
+  /// No description provided for @consentDeviceBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор устройства (Android ID), модель телефона и версию Android. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки — разработчику SilentGate они не приходят.'**
+  String get consentDeviceBody;
+
+  /// No description provided for @consentDeclineNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Если отказаться, эти данные не отправляются. Некоторые провайдеры без них не выдают подписку — тогда её не удастся загрузить. Решение можно изменить: Настройки → О программе → «Данные и конфиденциальность».'**
+  String get consentDeclineNote;
+
+  /// No description provided for @consentPolicy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Политика конфиденциальности'**
+  String get consentPolicy;
+
+  /// No description provided for @consentAccept.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разрешить'**
+  String get consentAccept;
+
+  /// No description provided for @consentDecline.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не отправлять'**
+  String get consentDecline;
+
+  /// No description provided for @privacyTileTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные и конфиденциальность'**
+  String get privacyTileTitle;
+
+  /// No description provided for @privacyTileOn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные устройства отправляются провайдеру подписки'**
+  String get privacyTileOn;
+
+  /// No description provided for @privacyTileOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'Данные устройства не отправляются'**
+  String get privacyTileOff;
+
+  /// No description provided for @privacyPolicyTile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Политика конфиденциальности'**
+  String get privacyPolicyTile;
+
+  /// No description provided for @updatesViaPlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновить в Google Play'**
+  String get updatesViaPlay;
+
+  /// No description provided for @updatesViaGithub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачать с GitHub'**
+  String get updatesViaGithub;
+
+  /// No description provided for @updatesPlayManaged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта копия установлена из Google Play и обновляется только через него: новые версии приходят в Google Play сами или по кнопке «Обновить» на странице приложения.'**
+  String get updatesPlayManaged;
+
+  /// No description provided for @updatesOpenPlay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть в Google Play'**
+  String get updatesOpenPlay;
 }
 
 class _AppLocalizationsDelegate

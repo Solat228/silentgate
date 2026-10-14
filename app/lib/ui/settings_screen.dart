@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 
 import 'api_screen.dart';
 import '../core/app_info.dart';
+import '../core/app_store.dart';
 import '../core/util/auto_groups.dart';
 import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
@@ -36,6 +37,7 @@ import 'tun_settings_screen.dart';
 import 'update_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/data_consent_dialog.dart';
 import 'log_level_labels.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
@@ -1572,13 +1574,13 @@ List<SettingsRow> _aboutRows(
     // Обновление приложения — своим экраном: режим, бета-канал, откат и
     // ход закачки не помещаются в одну строку «О программе».
     SettingsRow(
-      search: '${l.updatesSettingsTile} ${l.updatesSettingsTileSubtitle} '
+      search: '${l.updatesSettingsTile} ${updatesTileSubtitle(l)} '
           '${l.updatesBeta} ${l.updatesPreviousVersions} ${l.updatesModeTitle}',
       build: (context) => ListTile(
         key: const Key('updatesSettingsTile'),
         leading: const Icon(Icons.system_update),
         title: Text(l.updatesSettingsTile),
-        subtitle: Text(l.updatesSettingsTileSubtitle),
+        subtitle: Text(updatesTileSubtitle(l)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const UpdateScreen())),
@@ -1587,6 +1589,36 @@ List<SettingsRow> _aboutRows(
     SettingsRow(
       search: l.aboutHwid,
       build: (_) => const _HwidTile(),
+    ),
+    // Сборка Google Play: ответ на окно согласия можно поменять здесь —
+    // путь к этой строке назван в самом окне.
+    if (AppStoreInfo.isPlay)
+      SettingsRow(
+        search: '${l.privacyTileTitle} ${l.consentDeviceTitle}',
+        build: (context) => ListTile(
+          key: const Key('privacyConsentTile'),
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: Text(l.privacyTileTitle),
+          subtitle: Text(settings.deviceInfoConsent == true
+              ? l.privacyTileOn
+              : l.privacyTileOff),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () async {
+            final ok = await showDataConsentDialog(context);
+            if (ok == null) return;
+            await controller.update((s) => s.copyWith(deviceInfoConsent: ok));
+          },
+        ),
+      ),
+    SettingsRow(
+      search: l.privacyPolicyTile,
+      build: (context) => ListTile(
+        key: const Key('privacyPolicyTile'),
+        leading: const Icon(Icons.policy_outlined),
+        title: Text(l.privacyPolicyTile),
+        trailing: const Icon(Icons.open_in_new, size: 18),
+        onTap: () => unawaited(UrlOpener.open(AppStoreInfo.privacyPolicyUrl)),
+      ),
     ),
     // Обязательное раскрытие: вместе с приложением поставляются
     // xray.exe (MPL-2.0), sing-box.exe (GPL-3.0) и wintun.dll —
@@ -3206,3 +3238,12 @@ class SettingsRailTile extends StatelessWidget {
     );
   }
 }
+
+/// Подпись плитки «Обновления». Сборка Google Play не качает и не ставит
+/// себя сама (правило Play «Device and Network Abuse»), и обещание «скачать
+/// и установить» в ней было бы неправдой.
+@visibleForTesting
+String updatesTileSubtitle(AppLocalizations l, {AppStore? store}) =>
+    (store ?? AppStoreInfo.current) == AppStore.play
+        ? l.updatesSettingsTilePlay
+        : l.updatesSettingsTileSubtitle;

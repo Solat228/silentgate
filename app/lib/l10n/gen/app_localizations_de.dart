@@ -3727,6 +3727,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Prüfen, Herunterladen und Installieren neuer Versionen';
 
   @override
+  String get updatesSettingsTilePlay =>
+      'Neue Versionen kommen über Google Play';
+
+  @override
   String get updatesPreviousVersions => 'Frühere Versionen';
 
   @override
@@ -3955,4 +3959,56 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Subdomains ausblenden';
+
+  @override
+  String get consentTitle => 'Welche Daten SilentGate sendet';
+
+  @override
+  String get consentIntro =>
+      'SilentGate ist ein VPN-Client: Er verbindet sich über den Abo-Link, den du selbst hinzugefügt hast, mit den Servern deines VPN-Anbieters. Der Verkehr läuft durch einen verschlüsselten Tunnel. SilentGate erfasst, speichert oder verkauft deinen Verkehr nicht, und die App hat keine eigene Analytik.';
+
+  @override
+  String get consentDeviceTitle => 'Gerätedaten für deinen Anbieter';
+
+  @override
+  String get consentDeviceBody =>
+      'Beim Laden oder Aktualisieren des Abos kann die App dem Abo-Server die Gerätekennung (Android ID), das Telefonmodell und die Android-Version senden. Dein Anbieter zählt damit deine Geräte (Gerätelimit deines Tarifs). Diese Daten gehen nur an die Adresse deines Abos – der Entwickler von SilentGate erhält sie nie.';
+
+  @override
+  String get consentDeclineNote =>
+      'Wenn du ablehnst, werden diese Daten nicht gesendet. Manche Anbieter geben das Abo ohne sie nicht heraus – dann lässt es sich nicht laden. Du kannst deine Wahl unter Einstellungen → Über → „Daten und Datenschutz“ ändern.';
+
+  @override
+  String get consentPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get consentAccept => 'Erlauben';
+
+  @override
+  String get consentDecline => 'Nicht senden';
+
+  @override
+  String get privacyTileTitle => 'Daten und Datenschutz';
+
+  @override
+  String get privacyTileOn => 'Gerätedaten werden an den Abo-Anbieter gesendet';
+
+  @override
+  String get privacyTileOff => 'Gerätedaten werden nicht gesendet';
+
+  @override
+  String get privacyPolicyTile => 'Datenschutzerklärung';
+
+  @override
+  String get updatesViaPlay => 'In Google Play aktualisieren';
+
+  @override
+  String get updatesViaGithub => 'Von GitHub herunterladen';
+
+  @override
+  String get updatesPlayManaged =>
+      'Diese Kopie wurde aus Google Play installiert und wird nur darüber aktualisiert: Neue Versionen kommen automatisch über Google Play oder über die Schaltfläche „Aktualisieren“ auf der App-Seite.';
+
+  @override
+  String get updatesOpenPlay => 'In Google Play öffnen';
 }

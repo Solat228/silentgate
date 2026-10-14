@@ -73,6 +73,8 @@ docs/PLAN_1_4_2.md
 # Android
 app/android/local.properties
 app/android/key.properties
+# Ключ загрузки в Google Play (пароль открытым текстом).
+app/android/upload.properties
 app/android/.gradle/
 app/android/build/
 app/android/hs_err_pid*.log

@@ -3683,6 +3683,10 @@ class AppLocalizationsFa extends AppLocalizations {
   String get updatesSettingsTileSubtitle => 'بررسی، دانلود و نصب نسخه‌های جدید';
 
   @override
+  String get updatesSettingsTilePlay =>
+      'نسخه‌های جدید از طریق Google Play می‌رسند';
+
+  @override
   String get updatesPreviousVersions => 'نسخه‌های قبلی';
 
   @override
@@ -3903,4 +3907,57 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'پنهان کردن زیردامنه‌ها';
+
+  @override
+  String get consentTitle => 'SilentGate چه داده‌هایی می‌فرستد';
+
+  @override
+  String get consentIntro =>
+      'SilentGate یک کلاینت VPN است: با لینک اشتراکی که خودتان افزوده‌اید به سرورهای ارائه‌دهندهٔ VPN شما وصل می‌شود. ترافیک از یک تونل رمزنگاری‌شده می‌گذرد. SilentGate ترافیک شما را جمع‌آوری، ذخیره یا فروش نمی‌کند و برنامه تحلیل‌گر اختصاصی ندارد.';
+
+  @override
+  String get consentDeviceTitle => 'داده‌های دستگاه برای ارائه‌دهندهٔ شما';
+
+  @override
+  String get consentDeviceBody =>
+      'هنگام بارگیری یا به‌روزرسانی اشتراک، برنامه ممکن است شناسهٔ دستگاه (Android ID)، مدل گوشی و نسخهٔ Android را به سرور اشتراک بفرستد. ارائه‌دهنده با آن‌ها دستگاه‌های شما را می‌شمارد (محدودیت تعداد دستگاه در طرح). این داده‌ها فقط به نشانی اشتراک شما می‌روند و توسعه‌دهندهٔ SilentGate هرگز آن‌ها را دریافت نمی‌کند.';
+
+  @override
+  String get consentDeclineNote =>
+      'اگر رد کنید، این داده‌ها فرستاده نمی‌شوند. برخی ارائه‌دهندگان بدون آن‌ها اشتراک را نمی‌دهند و در این صورت بارگیری آن ممکن نیست. می‌توانید انتخاب خود را در تنظیمات ← درباره ← «داده‌ها و حریم خصوصی» تغییر دهید.';
+
+  @override
+  String get consentPolicy => 'سیاست حریم خصوصی';
+
+  @override
+  String get consentAccept => 'اجازه دادن';
+
+  @override
+  String get consentDecline => 'نفرست';
+
+  @override
+  String get privacyTileTitle => 'داده‌ها و حریم خصوصی';
+
+  @override
+  String get privacyTileOn =>
+      'داده‌های دستگاه به ارائه‌دهندهٔ اشتراک فرستاده می‌شوند';
+
+  @override
+  String get privacyTileOff => 'داده‌های دستگاه فرستاده نمی‌شوند';
+
+  @override
+  String get privacyPolicyTile => 'سیاست حریم خصوصی';
+
+  @override
+  String get updatesViaPlay => 'به‌روزرسانی در Google Play';
+
+  @override
+  String get updatesViaGithub => 'دانلود از GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'این نسخه از Google Play نصب شده و فقط از طریق آن به‌روز می‌شود: نسخه‌های جدید خودکار یا با دکمهٔ «به‌روزرسانی» در صفحهٔ برنامه در Google Play می‌رسند.';
+
+  @override
+  String get updatesOpenPlay => 'باز کردن در Google Play';
 }

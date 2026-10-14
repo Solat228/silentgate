@@ -54,6 +54,8 @@ import 'widgets/server_tile.dart';
 import 'widgets/tun_task_result_text.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/update_presenter.dart';
+import 'widgets/data_consent_dialog.dart';
+import '../core/privacy/device_info_consent.dart';
 import 'widgets/subscription_bar.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/ping_gate.dart';
@@ -521,6 +523,14 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Сборка Google Play: раскрытие данных и согласие — первым окном,
+      // до остальных (см. `DeviceInfoConsent`). До ответа данные устройства
+      // и так не уходят, поэтому ждать ответа здесь безопасно.
+      final settingsCtrl = context.read<SettingsController>();
+      await askDataConsentIfNeeded(context, settingsCtrl,
+          needsAsking: () =>
+              DeviceInfoConsent.needsAsking(settingsCtrl.settings));
+      if (!mounted) return;
       // Замер «до» — на старте приложения, пока VPN выключен. Это половина
       // сравнения у кнопки: без него видно только «сейчас работает», но не
       // видно, VPN ли это сделал. Второй замер снимется сам при подъёме
