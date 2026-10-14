@@ -9,7 +9,9 @@ import 'package:flutter/services.dart'
 import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
 
+import '../core/geo/geo_bases.dart';
 import '../core/geo/geo_bases_controller.dart';
+import '../core/platform/network_cost.dart';
 import '../core/models/traffic_stats.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
@@ -2762,7 +2764,8 @@ class GeoOfferBanner extends StatefulWidget {
   State<GeoOfferBanner> createState() => _GeoOfferBannerState();
 }
 
-class _GeoOfferBannerState extends State<GeoOfferBanner> {
+class _GeoOfferBannerState extends State<GeoOfferBanner>
+    with WidgetsBindingObserver {
   /// Состояние файлов на диске. Экземпляр свой, но правда — общая: контроллер
   /// её не хранит, а перечитывает с диска, поэтому «второго мнения» тут не
   /// заводится. Сети он не касается, пока не позвали `check`/`download`.
@@ -2772,10 +2775,64 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
   /// зовётся из `build`, и без отметки он звался бы на каждой перерисовке.
   bool _asked = false;
 
+  /// Безлимитная ли сеть по последнему вопросу ([NetworkCost.unmetered]).
+  /// `null` — не знаем (не Android, канал не ответил, ещё не спрашивали).
+  bool? _unmetered;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _geo.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    // Человек вернулся в приложение — мог прийти домой на Wi-Fi. Без этого
+    // полные базы качались бы только при холодном старте.
+    if (s == AppLifecycleState.resumed && _asked && mounted) {
+      unawaited(_refreshAndPrefetch());
+    }
+  }
+
+  /// Автозакачка включена в настройках — и настройки уже прочитаны с диска.
+  ///
+  /// ⚠️ ДО ЧТЕНИЯ НАСТРОЕК — «НЕТ». Умолчание тумблера «вкл», и решать по нему
+  /// значило бы качать 30 МБ тому, кто тумблер выключил, просто потому что
+  /// диск ответил на долю секунды позже.
+  bool get _autoEnabled {
+    final c = context.read<SettingsController?>();
+    return c != null && c.loaded && c.settings.geoAutoDownloadWifi;
+  }
+
+  /// Перечитать диск и сеть; на Wi-Fi — скачать полные базы самим.
+  Future<void> _refreshAndPrefetch() async {
+    // ⚠️ НАБОР КЛАДЁТСЯ СРАЗУ, А НЕ ПРИ ПЕРВОМ ПОДКЛЮЧЕНИИ. Иначе на чистой
+    // установке человек видел бы сперва «Гео-базы не скачаны», а после
+    // подключения — другую плашку про встроенный набор (найдено живым
+    // прогоном в эмуляторе 14.10.2026). Рабочие файлы набор не трогает.
+    if (Platform.isAndroid && context.read<AppState>().geoRulesInUse) {
+      await GeoBases.seedBundled();
+    }
+    await _geo.refresh();
+    final unmetered = await NetworkCost.unmetered();
+    if (!mounted) return;
+    setState(() => _unmetered = unmetered);
+    final state = context.read<AppState>();
+    if (shouldPrefetchGeo(
+      enabled: _autoEnabled,
+      unmetered: unmetered == true,
+      rulesInUse: state.geoRulesInUse,
+      status: _geo.status,
+    )) {
+      await _geo.prefetch();
+    }
   }
 
   Future<void> _openSettings() async {
@@ -2801,9 +2858,12 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
     if (!state.geoRulesInUse && state.geoVerdict == null) {
       return const SizedBox.shrink();
     }
+    // Тумблер автозакачки читается и здесь — чтобы плашка ответила на его
+    // правку сразу, а не на следующем возврате в приложение.
+    context.watch<SettingsController?>();
     if (!_asked) {
       _asked = true;
-      unawaited(_geo.refresh());
+      unawaited(_refreshAndPrefetch());
     }
     return ListenableBuilder(
       listenable: _geo,
@@ -2817,38 +2877,56 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
       rulesInUse: state.geoRulesInUse,
       verdict: state.geoVerdict,
       dismissed: state.geoOfferDismissedFor,
+      bundled: _geo.status?.bundled ?? false,
+      // На Wi-Fi с включённой автозакачкой предлагать нечего: базы уже едут.
+      // Идёт закачка — тоже молчим, иначе плашка звала бы делать то, что
+      // делается прямо сейчас.
+      autoDownloads: _geo.busy || (_unmetered == true && _autoEnabled),
+      bundledOfferSpent: state.geoBundledOfferSpent,
     );
     if (reason == null) return const SizedBox.shrink();
+    if (reason == EngineNoticeKind.geoAssetsBundled) {
+      // Показали — запоминаем: следующий запуск разовое предложение уже не
+      // повторит. После кадра: запись меняет состояние, а это сборка.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => state.markGeoBundledOfferShown());
+    }
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     // Два РАЗНЫХ случая: файлов нет — предлагаем скачать; файлы есть, а ядро их
     // не открыло — предлагать «скачайте» бессмысленно, там нужно перекачать.
     final missing = reason == EngineNoticeKind.geoAssetsMissing;
+    final bundled = reason == EngineNoticeKind.geoAssetsBundled;
     // ⚠️ И ДВЕ РАЗНЫЕ ПОДПИСИ У ОДНОГО ПОВОДА. Ядро уже жаловалось — говорим о
     // том, что происходит («правила сейчас отключены»); предлагаем заранее —
     // о том, что будет. Прошедшее время в предложении, сделанном до первого
     // подключения, читалось бы как рассказ о поломке, которой не было.
-    final sub = missing
-        ? (state.geoVerdict == EngineNoticeKind.geoAssetsMissing
-            ? l.geoVerdictMissingSub
-            : l.geoOfferMissingSub)
-        : l.geoVerdictUnusableSub;
+    final sub = bundled
+        ? l.geoOfferBundledSub
+        : missing
+            ? (state.geoVerdict == EngineNoticeKind.geoAssetsMissing
+                ? l.geoVerdictMissingSub
+                : l.geoOfferMissingSub)
+            : l.geoVerdictUnusableSub;
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       color: scheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
         child: Row(children: [
-          Icon(Icons.public_off, size: 20, color: scheme.onTertiaryContainer),
+          Icon(bundled ? Icons.public : Icons.public_off,
+              size: 20, color: scheme.onTertiaryContainer),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                    missing
-                        ? l.geoVerdictMissingTitle
-                        : l.geoVerdictUnusableTitle,
+                    bundled
+                        ? l.geoOfferBundledTitle
+                        : missing
+                            ? l.geoVerdictMissingTitle
+                            : l.geoVerdictUnusableTitle,
                     style: Theme.of(context)
                         .textTheme
                         .titleSmall
@@ -2868,7 +2946,7 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
             // случая «нет прав на запись в каталог ядра» — всё это уже есть на
             // том экране, и вторая копия того же разошлась бы с первой.
             onPressed: _openSettings,
-            child: Text(missing ? l.geoDownload : l.geoUpdate),
+            child: Text(missing || bundled ? l.geoDownload : l.geoUpdate),
           ),
           IconButton(
             key: const ValueKey('geoOfferDismiss'),

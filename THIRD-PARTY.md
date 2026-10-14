@@ -17,6 +17,7 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 
 | Компонент | Версия | Лицензия | Как используется | Исходный код |
 |---|---|---|---|---|
+| **Встроенный набор гео-баз** (`assets/geo/geoip.dat`, `geosite.dat`) | вырезка из релиза Loyalsoldier на дату сборки | GPL-3.0 (сборка Loyalsoldier); данные — v2fly/domain-list-community (MIT), GeoLite2 (CC-BY-SA-4.0) | категории `geoip:private/ru/telegram` и `geosite:category-ru`, `category-gov-ru`, `yandex`, `vk`, `ok`, `telegram`, `youtube`, `category-ads-all` до закачки полных баз; вырезает `app/tool/build_geo_mini.dart` | https://github.com/Loyalsoldier/v2ray-rules-dat |
 | **ZXing** (`com.google.zxing:core`) | 3.5.3 | Apache-2.0 | распознавание QR-кода подписки с картинки | https://github.com/zxing/zxing |
 | **zxing-android-embedded** | 4.3.0 | Apache-2.0 | экран сканирования QR камерой | https://github.com/journeyapps/zxing-android-embedded |
 

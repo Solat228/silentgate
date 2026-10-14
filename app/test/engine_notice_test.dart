@@ -52,11 +52,20 @@ void main() {
     test('все виды перечислены — набор закрыт', () {
       // Страж на случай, если кто-то добавит вид и забудет решить, проблема
       // это или заметка: тест упадёт и заставит подумать.
-      expect(EngineNoticeKind.values, hasLength(12));
+      expect(EngineNoticeKind.values, hasLength(13));
       for (final k in EngineNoticeKind.values) {
         final n = EngineNotice(k, 'x');
         expect(n.isProblem, isA<bool>());
       }
+    });
+
+    test('встроенный набор гео-баз — не проблема и не системное уведомление',
+        () {
+      // Правила по России и рекламе работают; это только предложение
+      // докачать полные базы, красная плашка его бы обесценила.
+      const n = EngineNotice(EngineNoticeKind.geoAssetsBundled, 'x');
+      expect(n.isProblem, isFalse);
+      expect(n.needsSystemNotice, isFalse);
     });
 
     test('устаревшая задача Планировщика и мёртвый путь — обычные заметки', () {

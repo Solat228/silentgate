@@ -25,6 +25,7 @@ import '../../core/xray/xray_config_builder.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/geo/geo_assets.dart';
+import '../../core/geo/geo_bases.dart';
 import '../../core/xray/geodata_fallback.dart';
 import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
@@ -682,15 +683,37 @@ class AndroidEngine extends VpnEngineBase {
     // сломанном случае выглядит правильным. Настоящий ответ даёт только
     // сравнение «что было на входе» и «что ушло ядру».
     final need = needsGeodata(json);
-    final have = await GeoAssets.available();
     if (!need) {
       AppLog.i('Xray-конфиг: ссылок на гео-базы нет');
       return json;
     }
+    var have = await GeoAssets.available();
+    if (!have) {
+      // Чистая установка или человек удалил базы: кладём встроенный набор, и
+      // правила панели по России и рекламе работают сразу, без закачки.
+      await GeoBases.seedBundled();
+      have = await GeoAssets.available();
+    }
     if (!_geodataUnusable && have) {
+      // ⚠️ ЧИСТИМ ССЫЛКИ НА КАТЕГОРИИ, КОТОРЫХ В ФАЙЛАХ НЕТ. Со встроенным
+      // набором это обычное дело (`geoip:de` в него не входит), а Xray на
+      // такую ссылку отвергает конфиг ЦЕЛИКОМ — VPN не поднялся бы вовсе.
+      // Файлы не разобрались — отдаём как есть, как и раньше: решать «что
+      // вычистить» по догадке нельзя.
+      final cats = await GeoBases.scanCategories();
+      if (cats != null) {
+        final r = stripGeodata(json,
+            keep: (kind, name) => cats[kind]?.has(name) ?? false);
+        if (r.report.changed) {
+          AppLog.i('Xray-конфиг: в гео-базах на диске нет части категорий — '
+              '${r.report.describe()}. Этот трафик пойдёт через VPN; полные '
+              'базы скачиваются в настройках.');
+        }
+        json = r.json;
+      }
       json = await _withAssetEnv(json);
-      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы скачаны — '
-          'отдаю как есть');
+      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы на месте — '
+          'отдаю ядру');
       return json;
     }
     final r = stripGeodata(json);

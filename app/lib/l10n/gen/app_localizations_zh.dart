@@ -2819,6 +2819,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoOfferDismiss => '不再提示';
 
   @override
+  String get geoOfferBundledTitle => '内置地理数据库';
+
+  @override
+  String get geoOfferBundledSub =>
+      '俄罗斯和广告规则已生效。其他国家需要完整数据库（约 30 MB）——方便时下载；连接 Wi-Fi 时会自动下载。';
+
+  @override
+  String geoFileBundled(String size) {
+    return '内置集合，$size';
+  }
+
+  @override
+  String get geoBundledNote => '正在使用内置集合：俄罗斯和广告规则已生效。其他国家和类别需要完整数据库。';
+
+  @override
+  String get geoAutoWifi => '通过 Wi-Fi 下载完整数据库';
+
+  @override
+  String get geoAutoWifiSub => '自动下载，无需询问。使用移动数据时仅在您点击按钮后下载。';
+
+  @override
   String get pingPendingTooltip => '到服务器的 TCP 延迟。通道检查仍在进行，服务器是否真正可用尚不清楚。';
 
   @override

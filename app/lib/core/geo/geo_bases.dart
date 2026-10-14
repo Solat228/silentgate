@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../../engine/windows/xray_paths.dart';
@@ -8,6 +9,7 @@ import '../net/file_download.dart';
 import '../platform/app_log.dart';
 import '../platform/app_paths.dart';
 import 'geo_bases_store.dart';
+import 'geo_bundled_set.dart';
 import 'geo_dat.dart';
 import 'geo_usage.dart';
 import 'sha256.dart';
@@ -102,11 +104,15 @@ class GeoFileStatus {
   final int bytes;
   final DateTime? updatedAt;
 
+  /// На месте встроенный набор ([GeoBundledSet]), а не полная база.
+  final bool bundled;
+
   const GeoFileStatus({
     required this.base,
     required this.health,
     this.bytes = 0,
     this.updatedAt,
+    this.bundled = false,
   });
 
   bool get ok => health == GeoHealth.ok;
@@ -123,6 +129,10 @@ class GeoBasesStatus {
   /// ⚠️ Именно ОБЕ. С одной половиной конфиг всё равно не соберётся, а
   /// «установлено наполовину» — состояние, которое пользователю не объяснить.
   bool get ready => files.isNotEmpty && files.every((f) => f.ok);
+
+  /// Базы рабочие, но хотя бы одна из них — встроенный набор: правила по
+  /// категориям вне набора вычищаются, полные базы ещё предстоит скачать.
+  bool get bundled => ready && files.any((f) => f.bundled);
 
   bool get anyMissing => files.any((f) => f.health == GeoHealth.missing);
   bool get anyCorrupt => files.any((f) => f.health == GeoHealth.corrupt);
@@ -439,9 +449,104 @@ class GeoBases {
         health: health,
         bytes: st?.size ?? 0,
         updatedAt: st?.modified,
+        bundled: health == GeoHealth.ok &&
+            await isBundledFile(f, base, size: st?.size),
       ));
     }
     return GeoBasesStatus(files: out, dirPath: d.path);
+  }
+
+  // ── Встроенный набор ──────────────────────────────────────────────────────
+
+  /// Полные базы больше этого, набор — меньше: файл крупнее даже не
+  /// разбираем. Полный `geoip.dat` — 16–20 МБ, `geosite.dat` — 10–11 МБ;
+  /// набор — 0,4 и 5 МБ. Разбор `geosite.dat` целиком — полторы тысячи
+  /// коротких чтений на каждое открытие экрана, а здесь хватает размера.
+  static const _bundledMaxBytes = 8 * 1024 * 1024;
+
+  /// Лежит ли на месте [base] встроенный набор, а не полная база.
+  ///
+  /// ⚠️ ПО СОСТАВУ, А НЕ ПО ОТМЕТКЕ. Отметка «поставили набор» потерялась бы
+  /// при очистке данных или установке поверх, а состав файла всегда при нём.
+  @visibleForTesting
+  static Future<bool> isBundledFile(File f, GeoBase base, {int? size}) async {
+    try {
+      final bytes = size ?? await f.length();
+      if (bytes > _bundledMaxBytes) return false;
+      final scan = await GeoDat.scan(f);
+      return scan.readable &&
+          GeoBundledSet.looksBundled(scan.names, base.fileName);
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Чем читать набор из поставки. По умолчанию — ассеты приложения; `null`
+  /// в ответе значит «набора в этой сборке нет» (Windows: там флейвора нет, и
+  /// набор в поставку не попадает — `pubspec.yaml`).
+  static Future<Uint8List?> _loadBundledAsset(String path) async {
+    try {
+      final data = await rootBundle.load(path);
+      return data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Положить встроенный набор на место недостающих или испорченных баз.
+  /// Возвращает, сколько файлов положено.
+  ///
+  /// ⚠️ ТОЛЬКО ТУДА, ГДЕ РАБОЧЕГО ФАЙЛА НЕТ. Полную базу набор не заменяет
+  /// никогда: это был бы откат маршрутизации, о котором человек не просил.
+  /// Испорченный файл — заменяет: ядро отвергает конфиг с ним целиком, и
+  /// набор лучше, чем отказ.
+  ///
+  /// ⚠️ ЧЕРЕЗ ВРЕМЕННЫЙ ФАЙЛ И ПЕРЕИМЕНОВАНИЕ — по той же причине, что и
+  /// закачка: обрыв записи оставил бы обрезанный `geoip.dat`, который ядро
+  /// примет за настоящий.
+  static Future<int> seedBundled({
+    Future<Uint8List?> Function(String assetPath)? load,
+  }) async {
+    final read = load ?? _loadBundledAsset;
+    var seeded = 0;
+    for (final base in GeoBase.values) {
+      try {
+        final target = await fileOf(base);
+        if (await healthOf(target) == GeoHealth.ok) continue;
+        final bytes = await read(GeoBundledSet.assetPath(base.fileName));
+        if (bytes == null) continue;
+        if (bytes.length < 1024 || bytes.first != 0x0a) {
+          AppLog.w('Встроенная гео-база ${base.fileName} не похожа на '
+              'гео-базу — не кладу');
+          continue;
+        }
+        final tmp = File('${target.path}.seed');
+        await tmp.writeAsBytes(bytes, flush: true);
+        await _deleteQuiet(target);
+        await tmp.rename(target.path);
+        seeded++;
+        AppLog.i('Гео-база ${base.fileName}: положен встроенный набор '
+            '(${bytes.length ~/ 1024} КБ)');
+      } catch (e) {
+        AppLog.w('Встроенная гео-база ${base.fileName} не положена: $e');
+      }
+    }
+    return seeded;
+  }
+
+  /// Категории, которые есть в файлах на диске, — чтобы вычистить из конфига
+  /// ссылки ровно на те, которых нет (а не все подряд).
+  ///
+  /// `null` — хотя бы один файл не разобрался: что внутри, мы не знаем, и
+  /// решать «что вычистить» по догадке нельзя.
+  static Future<Map<GeoRefKind, GeoDatScan>?> scanCategories() async {
+    final out = <GeoRefKind, GeoDatScan>{};
+    for (final base in GeoBase.values) {
+      final scan = await GeoDat.scan(await fileOf(base));
+      if (!scan.readable) return null;
+      out[base.kind] = scan;
+    }
+    return out;
   }
 
   /// Обе базы годны к работе (быстрая проверка для движка).
@@ -596,7 +701,39 @@ class GeoBases {
   /// заподозрит. Ступеней две: [downloadToFile] качает в `<имя>.new.part` и
   /// переименовывает в `<имя>.new` только после сверки суммы; рабочим файлом
   /// `.new` становится лишь после проверки формата и категорий ниже.
+  ///
+  /// ⚠️ ОДНА ЗАКАЧКА НА ПРОЦЕСС. Полные базы качает и автозакачка по Wi-Fi
+  /// (плашка на главном), и кнопка на экране гео-баз — у каждого свой
+  /// контроллер. Две закачки разом писали бы одни и те же `.new`-файлы и
+  /// резервные копии. Второй вызов не начинает свою, а ждёт первую и отдаёт её
+  /// итог.
   static Future<String?> download({
+    required List<GeoBase> files,
+    Map<GeoBase, String>? expectedSums,
+    Set<GeoRef>? requiredRefs,
+    void Function(GeoProgress)? onProgress,
+    http.Client? client,
+  }) async {
+    final running = _downloading;
+    if (running != null) return running;
+    final job = _downloadOnce(
+      files: files,
+      expectedSums: expectedSums,
+      requiredRefs: requiredRefs,
+      onProgress: onProgress,
+      client: client,
+    );
+    _downloading = job;
+    try {
+      return await job;
+    } finally {
+      if (identical(_downloading, job)) _downloading = null;
+    }
+  }
+
+  static Future<String?>? _downloading;
+
+  static Future<String?> _downloadOnce({
     required List<GeoBase> files,
     Map<GeoBase, String>? expectedSums,
     Set<GeoRef>? requiredRefs,
@@ -642,7 +779,14 @@ class GeoBases {
           await _deleteQuiet(tmp);
           return lost;
         }
-        await _keepPrevious(target);
+        // Встроенный набор в резерв не идёт: «вернуть прежние» после закачки
+        // полных баз означало бы откатиться к урезанным, а набор и так лежит в
+        // поставке.
+        if (await isBundledFile(target, base)) {
+          await _deleteQuiet(target);
+        } else {
+          await _keepPrevious(target);
+        }
         try {
           await tmp.rename(target.path);
         } catch (e) {

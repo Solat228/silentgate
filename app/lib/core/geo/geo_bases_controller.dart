@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../platform/app_log.dart';
 import 'geo_bases.dart';
 import 'geo_bases_store.dart';
 
@@ -120,7 +121,9 @@ class GeoBasesController extends ChangeNotifier {
   GeoAction get action {
     final s = _status;
     if (s == null) return GeoAction.check;
-    if (!s.ready) return GeoAction.download;
+    // Встроенный набор — не «базы скачаны»: полных ещё нет, и честная кнопка
+    // здесь — «Скачать».
+    if (!s.ready || s.bundled) return GeoAction.download;
     final c = _lastCheck;
     if (c == null || c.failed) return GeoAction.check;
     if (c.pending.isNotEmpty) return GeoAction.update;
@@ -189,7 +192,9 @@ class GeoBasesController extends ChangeNotifier {
       // Свежая проверка нужна не ради кнопки, а ради двух вещей: сказать
       // человеку размер ДО закачки и получить сумму для сверки скачанного.
       var c = _lastCheck;
-      if (c == null) {
+      // Неудавшаяся проверка ничего не знает о релизе: по ней «качать нечего»,
+      // хотя на месте встроенный набор. Спрашиваем заново.
+      if (c == null || c.failed) {
         _checking = true;
         _notify();
         c = await GeoBases.check(client: _http);
@@ -208,7 +213,7 @@ class GeoBasesController extends ChangeNotifier {
       final plan = GeoDownloadPlan(
         files: files,
         bytes: c.pendingBytes,
-        isUpdate: c.toDownload.isEmpty,
+        isUpdate: c.toDownload.isEmpty && !(_status?.bundled ?? false),
       );
       if (!await confirm(plan)) {
         _outcome = GeoOutcome.declined;
@@ -243,6 +248,35 @@ class GeoBasesController extends ChangeNotifier {
       _progress = null;
       _notify();
     }
+  }
+
+  /// Когда последний раз пробовали скачать полные базы сами (по Wi-Fi).
+  DateTime? _prefetchAt;
+
+  /// Не чаще этого: неудачная закачка (GitHub недоступен, сеть рвётся) иначе
+  /// повторялась бы на каждом возврате в приложение.
+  static const prefetchRetry = Duration(hours: 6);
+
+  /// Скачать полные базы без вопросов — на безлимитной сети (Wi-Fi), если
+  /// вместо них встроенный набор или ничего.
+  ///
+  /// ⚠️ РЕШЕНИЕ «МОЖНО ЛИ» ПРИНИМАЕТ ВЫЗЫВАЮЩИЙ ([shouldPrefetchGeo]): сеть,
+  /// настройку и надобность знает он. Здесь — только «не чаще раза в шесть
+  /// часов» и сама закачка с теми же проверками, что у кнопки.
+  Future<bool> prefetch({DateTime? now}) async {
+    final t = now ?? DateTime.now();
+    final last = _prefetchAt;
+    if (_busy) return false;
+    if (last != null && t.difference(last) < prefetchRetry) return false;
+    _prefetchAt = t;
+    AppLog.i('Гео-базы: безлимитная сеть — качаю полные сам');
+    final ok = await download(confirm: (_) async => true);
+    if (!ok && _outcome == GeoOutcome.failed) {
+      // Тихая закачка не показывает ошибку на экране — но и молчать о ней
+      // нельзя: «почему базы так и не скачались» иначе не разобрать.
+      AppLog.w('Гео-базы по Wi-Fi не скачались: $_error');
+    }
+    return ok;
   }
 
   /// Вернуть прежние базы. `true` — вернули.
@@ -305,4 +339,24 @@ bool shouldAutoCheckGeo({
   if (lastCheckAt == null) return true;
   final days = intervalDays < 1 ? 1 : intervalDays;
   return !now.isBefore(lastCheckAt.add(Duration(days: days)));
+}
+
+/// Пора ли качать полные гео-базы самим, без вопроса.
+///
+/// Решение владельца 14.10.2026: на Wi-Fi полные базы качаются сами, если
+/// вместо них встроенный набор (или ничего), — тумблер «Скачивать по Wi-Fi»
+/// в настройках гео-баз, включён по умолчанию. На мобильной сети — никогда:
+/// там вместо закачки плашка с предложением, один раз.
+///
+/// ⚠️ ТОЛЬКО ТЕМ, КОМУ БАЗЫ НУЖНЫ ([rulesInUse]). 30 МБ на диске телефона у
+/// человека без единой гео-ссылки в конфигах — плата ни за что.
+bool shouldPrefetchGeo({
+  required bool enabled,
+  required bool unmetered,
+  required bool rulesInUse,
+  required GeoBasesStatus? status,
+}) {
+  if (!enabled || !unmetered || !rulesInUse) return false;
+  if (status == null) return false;
+  return !status.ready || status.bundled;
 }

@@ -2922,6 +2922,29 @@ class AppLocalizationsTr extends AppLocalizations {
   String get geoOfferDismiss => 'Bir daha önerme';
 
   @override
+  String get geoOfferBundledTitle => 'Yerleşik coğrafi veritabanları';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Rusya ve reklam kuralları çalışıyor. Diğer ülkeler için tam veritabanları (yaklaşık 30 MB) gerekir — uygun olduğunda indirin; Wi-Fi\'de kendiliğinden inerler.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'yerleşik set, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Yerleşik set kullanılıyor: Rusya ve reklam kuralları çalışıyor. Diğer ülkeler ve kategoriler için tam veritabanları gerekir.';
+
+  @override
+  String get geoAutoWifi => 'Tam veritabanlarını Wi-Fi\'de indir';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Otomatik, sormadan. Mobil veride yalnızca siz düğmeye bastığınızda.';
+
+  @override
   String get pingPendingTooltip =>
       'Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.';
 

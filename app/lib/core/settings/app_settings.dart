@@ -754,6 +754,11 @@ class AppSettings {
   // не продолжится через сервер B, и обещать этого нельзя. Здесь речь только о
   // том, чтобы у машины не мигала сеть.
 
+  /// Качать полные гео-базы самим на безлимитной сети (Wi-Fi), пока вместо
+  /// них встроенный набор. Решение владельца 14.10.2026, по умолчанию ВКЛ.
+  /// На мобильной сети не качается никогда — там плашка с предложением.
+  final bool geoAutoDownloadWifi;
+
   /// Не пересоздавать туннель, когда меняется только сервер.
   ///
   /// Конфиг TUN запекает адреса серверов в правило «мимо туннеля», поэтому
@@ -999,6 +1004,7 @@ class AppSettings {
       ProbeService.chatgpt,
       ProbeService.telegram,
     },
+    this.geoAutoDownloadWifi = true,
     this.seamlessServerSwitch = true,
     this.seamlessNetworkChange = true,
     this.seamlessKeepTun = true,
@@ -1123,6 +1129,7 @@ class AppSettings {
     int? autoConfigConcurrency,
     bool? connectChecksEnabled,
     Set<ProbeService>? connectCheckServices,
+    bool? geoAutoDownloadWifi,
     bool? seamlessServerSwitch,
     bool? seamlessNetworkChange,
     bool? seamlessKeepTun,
@@ -1217,6 +1224,7 @@ class AppSettings {
           autoConfigConcurrency ?? this.autoConfigConcurrency,
       connectChecksEnabled: connectChecksEnabled ?? this.connectChecksEnabled,
       connectCheckServices: connectCheckServices ?? this.connectCheckServices,
+      geoAutoDownloadWifi: geoAutoDownloadWifi ?? this.geoAutoDownloadWifi,
       seamlessServerSwitch: seamlessServerSwitch ?? this.seamlessServerSwitch,
       seamlessNetworkChange:
           seamlessNetworkChange ?? this.seamlessNetworkChange,
@@ -1313,6 +1321,7 @@ class AppSettings {
         'connectChecksEnabled': connectChecksEnabled,
         'connectCheckServices':
             connectCheckServices.map((s) => s.name).toList(),
+        'geoAutoDownloadWifi': geoAutoDownloadWifi,
         'seamlessServerSwitch': seamlessServerSwitch,
         'seamlessNetworkChange': seamlessNetworkChange,
         'seamlessKeepTun': seamlessKeepTun,
@@ -1528,6 +1537,8 @@ class AppSettings {
       connectChecksEnabled: j['connectChecksEnabled'] as bool? ??
           defaults.connectChecksEnabled,
       connectCheckServices: connectServices,
+      geoAutoDownloadWifi: j['geoAutoDownloadWifi'] as bool? ??
+          defaults.geoAutoDownloadWifi,
       seamlessServerSwitch: j['seamlessServerSwitch'] as bool? ??
           defaults.seamlessServerSwitch,
       seamlessNetworkChange: j['seamlessNetworkChange'] as bool? ??

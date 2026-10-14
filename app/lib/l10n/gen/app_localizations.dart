@@ -5112,6 +5112,42 @@ abstract class AppLocalizations {
   /// **'Больше не предлагать'**
   String get geoOfferDismiss;
 
+  /// No description provided for @geoOfferBundledTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Встроенные гео-базы'**
+  String get geoOfferBundledTitle;
+
+  /// No description provided for @geoOfferBundledSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Работают правила по России и рекламе. Полные базы (около 30 МБ) нужны для остальных стран — скачайте, когда удобно; по Wi-Fi они скачаются сами.'**
+  String get geoOfferBundledSub;
+
+  /// No description provided for @geoFileBundled.
+  ///
+  /// In ru, this message translates to:
+  /// **'встроенный набор, {size}'**
+  String geoFileBundled(String size);
+
+  /// No description provided for @geoBundledNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас встроенный набор: правила по России и рекламе работают. Полные базы нужны для остальных стран и категорий.'**
+  String get geoBundledNote;
+
+  /// No description provided for @geoAutoWifi.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачивать полные базы по Wi-Fi'**
+  String get geoAutoWifi;
+
+  /// No description provided for @geoAutoWifiSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сами, без вопроса. На мобильной сети — только по вашей кнопке.'**
+  String get geoAutoWifiSub;
+
   /// No description provided for @pingPendingTooltip.
   ///
   /// In ru, this message translates to:

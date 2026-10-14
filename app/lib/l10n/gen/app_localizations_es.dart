@@ -2943,6 +2943,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get geoOfferDismiss => 'No volver a ofrecer';
 
   @override
+  String get geoOfferBundledTitle => 'Geobases integradas';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Funcionan las reglas de Rusia y de publicidad. Las bases completas (unos 30 MB) hacen falta para otros países: descárgalas cuando te venga bien; por Wi-Fi se descargan solas.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'conjunto integrado, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Se usa el conjunto integrado: funcionan las reglas de Rusia y de publicidad. Las bases completas hacen falta para otros países y categorías.';
+
+  @override
+  String get geoAutoWifi => 'Descargar las bases completas por Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Solas, sin preguntar. Con datos móviles, solo cuando pulses el botón.';
+
+  @override
   String get pingPendingTooltip =>
       'Latencia TCP hasta el servidor. La comprobación del canal sigue en curso: todavía no se sabe si el servidor funciona.';
 

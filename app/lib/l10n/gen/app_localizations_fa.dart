@@ -2909,6 +2909,29 @@ class AppLocalizationsFa extends AppLocalizations {
   String get geoOfferDismiss => 'دیگر پیشنهاد نشود';
 
   @override
+  String get geoOfferBundledTitle => 'پایگاه‌های جغرافیایی داخلی';
+
+  @override
+  String get geoOfferBundledSub =>
+      'قوانین روسیه و تبلیغات کار می‌کنند. پایگاه‌های کامل (حدود ۳۰ مگابایت) برای کشورهای دیگر لازم است — هر وقت مناسب بود دانلود کنید؛ روی Wi-Fi خودکار دانلود می‌شوند.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'مجموعهٔ داخلی، $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'مجموعهٔ داخلی در حال استفاده است: قوانین روسیه و تبلیغات کار می‌کنند. پایگاه‌های کامل برای کشورها و دسته‌های دیگر لازم است.';
+
+  @override
+  String get geoAutoWifi => 'دانلود پایگاه‌های کامل روی Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'خودکار، بدون پرسش. روی دادهٔ همراه — فقط با زدن دکمه.';
+
+  @override
   String get pingPendingTooltip =>
       'تأخیر TCP تا سرور. بررسی کانال هنوز ادامه دارد و معلوم نیست سرور واقعاً کار می‌کند یا نه.';
 

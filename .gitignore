@@ -6,6 +6,10 @@ engine/**/bin/*
 *.dll
 geoip.dat
 geosite.dat
+# Встроенный набор гео-баз для Android — исходник сборки, коммитится
+# (tool/build_geo_mini.dart). Полные базы по-прежнему не коммитим.
+!app/assets/geo/geoip.dat
+!app/assets/geo/geosite.dat
 
 # ── Flutter / Dart ───────────────────────────────────────────────────
 app/.dart_tool/

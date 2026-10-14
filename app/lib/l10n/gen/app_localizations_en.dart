@@ -2914,6 +2914,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get geoOfferDismiss => 'Do not offer again';
 
   @override
+  String get geoOfferBundledTitle => 'Built-in geo bases';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Russia and ad rules work. The full bases (about 30 MB) are needed for other countries — download them when convenient; on Wi-Fi they download by themselves.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'built-in set, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Built-in set in use: Russia and ad rules work. The full bases are needed for other countries and categories.';
+
+  @override
+  String get geoAutoWifi => 'Download full bases on Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Automatically, without asking. On mobile data — only when you press the button.';
+
+  @override
   String get pingPendingTooltip =>
       'TCP latency to the server. The channel check is still running — whether the server actually works is not known yet.';
 

@@ -2902,6 +2902,29 @@ class AppLocalizationsAr extends AppLocalizations {
   String get geoOfferDismiss => 'عدم الاقتراح مرة أخرى';
 
   @override
+  String get geoOfferBundledTitle => 'قواعد البيانات الجغرافية المدمجة';
+
+  @override
+  String get geoOfferBundledSub =>
+      'قواعد روسيا والإعلانات تعمل. القواعد الكاملة (نحو 30 ميغابايت) لازمة لبقية الدول — نزّلها متى ناسبك؛ وعلى Wi-Fi تُنزَّل تلقائيًا.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'المجموعة المدمجة، $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'المجموعة المدمجة قيد الاستخدام: قواعد روسيا والإعلانات تعمل. القواعد الكاملة لازمة لبقية الدول والفئات.';
+
+  @override
+  String get geoAutoWifi => 'تنزيل القواعد الكاملة عبر Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'تلقائيًا ودون سؤال. على بيانات الجوال — فقط عند ضغطك الزر.';
+
+  @override
   String get pingPendingTooltip =>
       'زمن استجابة TCP إلى الخادم. فحص القناة ما زال جاريًا، ولا يُعرف بعد ما إذا كان الخادم يعمل فعلًا.';
 

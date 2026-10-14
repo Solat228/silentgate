@@ -296,6 +296,9 @@ object PlatformChannels {
             "abi" -> result.success(
                 runCatching { Build.SUPPORTED_ABIS.firstOrNull() }.getOrNull()
             )
+            // Есть ли безлимитная сеть (Wi-Fi, Ethernet) — можно ли качать
+            // полные гео-базы, не спрашивая. null — не удалось узнать.
+            "unmeteredNetwork" -> result.success(unmeteredNetwork(context))
             else -> handleDeviceRest(context, method, result)
         }
     }
@@ -388,6 +391,23 @@ object PlatformChannels {
             .firstOrNull { it.hostAddress?.isNotEmpty() == true }
             ?.hostAddress
             ?.substringBefore('%')
+    }.getOrNull()
+
+    /**
+     * Есть ли среди физических сетей безлимитная с выходом в интернет.
+     *
+     * ⚠️ НЕ `isActiveNetworkMetered`: при поднятом туннеле активная сеть — сам
+     * VPN, а он с Android 10 по умолчанию считается тарифицируемым, даже когда
+     * под ним Wi-Fi. Поэтому смотрим сети в обход VPN, как `directDns`.
+     */
+    private fun unmeteredNetwork(context: Context): Boolean? = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.allNetworks.any { net ->
+            val caps = cm.getNetworkCapabilities(net) ?: return@any false
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        }
     }.getOrNull()
 
     /**

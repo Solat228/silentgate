@@ -2942,6 +2942,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get geoOfferDismiss => 'Nicht mehr anbieten';
 
   @override
+  String get geoOfferBundledTitle => 'Integrierte Geo-Datenbanken';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Die Regeln für Russland und Werbung funktionieren. Die vollständigen Datenbanken (ca. 30 MB) werden für andere Länder benötigt — laden Sie sie herunter, wann es passt; im WLAN geschieht das automatisch.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'integrierter Satz, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Integrierter Satz aktiv: Regeln für Russland und Werbung funktionieren. Die vollständigen Datenbanken werden für andere Länder und Kategorien benötigt.';
+
+  @override
+  String get geoAutoWifi => 'Vollständige Datenbanken im WLAN herunterladen';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Automatisch, ohne Nachfrage. Im Mobilfunknetz nur auf Ihren Knopfdruck.';
+
+  @override
   String get pingPendingTooltip =>
       'TCP-Latenz zum Server. Die Kanalprüfung läuft noch – ob der Server wirklich funktioniert, ist noch nicht bekannt.';
 

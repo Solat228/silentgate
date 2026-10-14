@@ -315,9 +315,43 @@ class AppState extends ChangeNotifier {
 
   /// «Больше не предлагать» по конкретному поводу.
   void dismissGeoOffer(EngineNoticeKind reason) {
+    if (reason == EngineNoticeKind.geoAssetsBundled) {
+      // Предложение полных баз и так разовое — закрытие только прячет его
+      // сейчас. Прежний отказ по другому поводу НЕ затираем: поводы разные.
+      _geoBundledOfferHidden = true;
+      _geoBundledOfferShownNow = true;
+      notifyListeners();
+      unawaited(_persist());
+      return;
+    }
     _geoVerdict = null;
     _geoOfferDismissed = reason;
     notifyListeners();
+    unawaited(_persist());
+  }
+
+  /// Предложение полных гео-баз (при встроенном наборе) уже показывали в
+  /// ПРОШЛЫХ запусках — больше не показываем.
+  ///
+  /// ⚠️ ОДИН РАЗ — РЕШЕНИЕ ВЛАДЕЛЬЦА 14.10.2026: «на мобильной сети показывай
+  /// плашку 1 раз». Встроенный набор — не поломка, правила по России и
+  /// рекламе работают, и напоминать о 30 МБ на каждом запуске значило бы
+  /// давить на человека с тарифом. Значение читается при старте и до конца
+  /// запуска не меняется: показанная сейчас плашка не исчезает из-под рук.
+  bool _geoBundledOfferSpent = false;
+  bool get geoBundledOfferSpent => _geoBundledOfferSpent || _geoBundledOfferHidden;
+
+  /// Плашку закрыли в этом запуске.
+  bool _geoBundledOfferHidden = false;
+
+  /// Плашку показали в этом запуске — на диск уйдёт «показано».
+  bool _geoBundledOfferShownNow = false;
+
+  /// Отметить, что предложение полных баз показано. Следующий запуск его уже
+  /// не покажет; этот — показывает до конца.
+  void markGeoBundledOfferShown() {
+    if (_geoBundledOfferShownNow || _geoBundledOfferSpent) return;
+    _geoBundledOfferShownNow = true;
     unawaited(_persist());
   }
 
@@ -677,6 +711,7 @@ class AppState extends ChangeNotifier {
       _info = SubscriptionInfo.fromJson(data['info'] as Map<String, dynamic>);
     }
     _geoOfferDismissed = _geoDismissedFromJson(data['geoOfferDismissed']);
+    _geoBundledOfferSpent = data['geoBundledOfferShown'] == true;
     // ⚠️ КОНФИГИ ПАНЕЛИ ГРУЗЯТСЯ ПЕРВЫМИ, И ЭТО НЕ ПОРЯДОК «ДЛЯ КРАСОТЫ».
     //
     // Профили «Авто …» хранятся как `panel://…` и восстанавливаются только
@@ -1109,6 +1144,8 @@ class AppState extends ChangeNotifier {
       // «Больше не предлагать гео-базы»: отказ обязан пережить перезапуск,
       // иначе плашка возвращается на следующем старте — см. [_geoOfferDismissed].
       'geoOfferDismissed': _geoOfferDismissed?.name,
+      // Разовое предложение полных гео-баз — см. [_geoBundledOfferSpent].
+      'geoBundledOfferShown': _geoBundledOfferSpent || _geoBundledOfferShownNow,
     });
   }
 
@@ -3075,10 +3112,23 @@ EngineNoticeKind? geoOfferReason({
   required bool rulesInUse,
   required EngineNoticeKind? verdict,
   required EngineNoticeKind? dismissed,
+  bool bundled = false,
+  bool autoDownloads = false,
+  bool bundledOfferSpent = false,
 }) {
+  // ⚠️ ВСТРОЕННЫЙ НАБОР — ОТДЕЛЬНЫЙ ПОВОД, А НЕ «ФАЙЛОВ НЕТ». Контроллер на нём
+  // тоже отвечает `download` (полных баз нет — кнопка честно «Скачать»), но
+  // правила по России и рекламе уже работают, и пугать «правила отключены»
+  // было бы враньём. Предлагаем полные базы один раз и только тому, кому их
+  // не скачают сами по Wi-Fi.
+  if (bundled && verdict != EngineNoticeKind.geoAssetsUnusable) {
+    if (!rulesInUse || autoDownloads || bundledOfferSpent) return null;
+    return EngineNoticeKind.geoAssetsBundled;
+  }
   // `download` у контроллера означает ровно одно: рабочих файлов на диске нет
   // (не скачаны либо испорчены). Все прочие его состояния — «файлы на месте».
-  final filesMissing = filesAction == GeoAction.download;
+  // Встроенный набор сюда доходит только с жалобой ядра — это «не открыло».
+  final filesMissing = filesAction == GeoAction.download && !bundled;
   final EngineNoticeKind? reason = filesMissing
       ? EngineNoticeKind.geoAssetsMissing
       : (verdict == EngineNoticeKind.geoAssetsUnusable

@@ -2915,6 +2915,29 @@ class AppLocalizationsRu extends AppLocalizations {
   String get geoOfferDismiss => 'Больше не предлагать';
 
   @override
+  String get geoOfferBundledTitle => 'Встроенные гео-базы';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Работают правила по России и рекламе. Полные базы (около 30 МБ) нужны для остальных стран — скачайте, когда удобно; по Wi-Fi они скачаются сами.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'встроенный набор, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Сейчас встроенный набор: правила по России и рекламе работают. Полные базы нужны для остальных стран и категорий.';
+
+  @override
+  String get geoAutoWifi => 'Скачивать полные базы по Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Сами, без вопроса. На мобильной сети — только по вашей кнопке.';
+
+  @override
   String get pingPendingTooltip =>
       'Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.';
 

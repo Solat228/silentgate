@@ -7,6 +7,7 @@ import '../../core/geo/geo_bases.dart';
 import '../../core/geo/geo_bases_controller.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../l10n/gen/app_localizations.dart';
+import '../../state/settings_controller.dart';
 import 'app_toast.dart';
 import 'info_tooltip.dart';
 import 'sel_text.dart';
@@ -305,6 +306,7 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: theme.disabledColor)),
           ],
+          if (Platform.isAndroid) _wifiSwitch(l, theme),
           if (Platform.isWindows) ...[
             const SizedBox(height: 4),
             Text(l.geoBundledWindows,
@@ -348,9 +350,28 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
     );
   }
 
+  /// Тумблер «Скачивать полные базы по Wi-Fi» (только Android — встроенный
+  /// набор есть только там). Решение владельца 14.10.2026, по умолчанию вкл.
+  Widget _wifiSwitch(AppLocalizations l, ThemeData theme) {
+    final settings = context.watch<SettingsController?>();
+    if (settings == null) return const SizedBox.shrink();
+    return SwitchListTile(
+      key: const ValueKey('geoAutoWifi'),
+      contentPadding: EdgeInsets.zero,
+      dense: true,
+      value: settings.settings.geoAutoDownloadWifi,
+      title: Text(l.geoAutoWifi, style: theme.textTheme.bodyMedium),
+      subtitle: Text(l.geoAutoWifiSub, style: theme.textTheme.bodySmall),
+      onChanged: (v) =>
+          settings.update((s) => s.copyWith(geoAutoDownloadWifi: v)),
+    );
+  }
+
   /// Строка одного файла: `geoip.dat — 19.2 MB, обновлён 05.08.2026`.
   Widget _fileLine(AppLocalizations l, ThemeData theme, GeoFileStatus f) {
     final (String text, Color? color) = switch (f.health) {
+      // Встроенный набор — цел, но это не полные базы, и сказать надо прямо.
+      GeoHealth.ok when f.bundled => (l.geoFileBundled(_size(f.bytes)), null),
       GeoHealth.ok => (
           l.geoFileOk(_size(f.bytes),
               f.updatedAt == null ? '—' : _date(f.updatedAt!)),
@@ -410,8 +431,13 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
     final children = <Widget>[];
 
     if (action == GeoAction.download && c.status != null) {
-      children.add(_notice(theme, Icons.info_outline, l.geoMissing,
-          theme.colorScheme.tertiary));
+      // Встроенный набор — не «баз нет»: правила по России и рекламе уже
+      // работают, полные базы нужны для остального.
+      children.add(c.status!.bundled
+          ? _notice(theme, Icons.info_outline, l.geoBundledNote,
+              theme.colorScheme.primary)
+          : _notice(theme, Icons.info_outline, l.geoMissing,
+              theme.colorScheme.tertiary));
     }
     if (action == GeoAction.update) {
       final bytes = c.pendingBytes;
