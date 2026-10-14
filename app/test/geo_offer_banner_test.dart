@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:silentgate/core/geo/geo_bases.dart';
-import 'package:silentgate/core/geo/geo_bases_controller.dart' show GeoAction;
+import 'package:silentgate/core/geo/geo_bases_controller.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
@@ -16,7 +16,9 @@ import 'package:silentgate/engine/vpn_engine.dart';
 import 'package:silentgate/l10n/gen/app_localizations.dart';
 import 'package:silentgate/l10n/gen/app_localizations_ru.dart';
 import 'package:silentgate/state/app_state.dart';
+import 'package:silentgate/ui/geo_bases_screen.dart';
 import 'package:silentgate/ui/home_screen.dart';
+import 'package:silentgate/ui/settings_screen.dart';
 
 /// СТРАЖ НА `geoOfferReason` И `GeoOfferBanner` (`app/lib/state/app_state.dart`
 /// + `app/lib/ui/home_screen.dart`) — из BACKLOG.md, раздел отложенных тестов
@@ -188,8 +190,14 @@ void main() {
       return state;
     }
 
-    Widget host(AppState state) => ChangeNotifierProvider<AppState>.value(
-          value: state,
+    // Контроллер гео-баз в приложении общий (`geoBasesProvider` в main.dart):
+    // без него экран, на который ведёт кнопка плашки, не построится.
+    Widget host(AppState state) => MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppState>.value(value: state),
+            ChangeNotifierProvider<GeoBasesController>(
+                create: (_) => GeoBasesController()),
+          ],
           child: const MaterialApp(
             locale: Locale('ru'),
             localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -264,6 +272,18 @@ void main() {
           reason: 'базы УЖЕ скачаны и не открылись — кнопка обязана звать '
               '«Обновить» (перекачать), а не «Скачать» — предлагать «скачать» '
               'тому, у кого файлы уже есть, было бы бессмысленным советом');
+    });
+
+    testWidgets('⚠️ кнопка плашки ведёт прямо на экран гео-баз', (t) async {
+      // Найдено владельцем на чистой установке 14.10.2026: «Скачать» вело на
+      // общий экран настроек, а сами базы с 20.08 живут в подменю — кнопку
+      // закачки приходилось искать.
+      await pumpUnusable(t);
+      await t.tap(find.byKey(const ValueKey('geoOfferAct')));
+      await t.pump();
+      await t.pump(const Duration(milliseconds: 500));
+      expect(find.byType(GeoBasesScreen), findsOneWidget);
+      expect(find.byType(SettingsScreen), findsNothing);
     });
 
     testWidgets('нажатие «больше не предлагать» прячет плашку и запоминает '

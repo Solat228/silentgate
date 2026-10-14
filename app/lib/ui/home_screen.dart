@@ -43,6 +43,7 @@ import '../state/settings_controller.dart';
 import 'auto_config_screen.dart';
 import 'import_screen.dart';
 import 'settings_screen.dart';
+import 'geo_bases_screen.dart';
 import 'widgets/app_toast.dart';
 import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
@@ -2778,8 +2779,12 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const SettingsScreen(scrollToGeo: true)));
+    // ⚠️ Прямо на экран гео-баз, а не в настройки с прокруткой к строке.
+    // С тех пор как базы переехали в подменю, «Скачать» приводило на общий
+    // экран настроек, и кнопку закачки человек искал сам (найдено владельцем
+    // на чистой установке 14.10.2026).
+    await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const GeoBasesScreen()));
     // Вернулись из настроек — базы могли появиться. Перечитываем диск сами: у
     // раздела настроек свой экземпляр контроллера, ждать от него уведомления
     // нельзя.
@@ -2858,10 +2863,10 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
           ),
           TextButton(
             key: const ValueKey('geoOfferAct'),
-            // Ведём в настройки, а не качаем отсюда. Закачка требует согласия с
-            // размером, полоски хода, разбора ошибки и отдельного случая «нет
-            // прав на запись в каталог ядра» — всё это уже есть в разделе
-            // настроек, и вторая копия того же разошлась бы с первой.
+            // Ведём на экран гео-баз, а не качаем отсюда. Закачка требует
+            // согласия с размером, полоски хода, разбора ошибки и отдельного
+            // случая «нет прав на запись в каталог ядра» — всё это уже есть на
+            // том экране, и вторая копия того же разошлась бы с первой.
             onPressed: _openSettings,
             child: Text(missing ? l.geoDownload : l.geoUpdate),
           ),

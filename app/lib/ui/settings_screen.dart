@@ -53,19 +53,10 @@ import 'widgets/subscription_avatar.dart';
 /// «Поддержка» из любого места (карточка подписки и т.п.) и прокрутить.
 final GlobalKey supportSectionKey = GlobalKey();
 
-/// Якорь строки гео-баз: на неё ведёт плашка с главного экрана.
-final GlobalKey geoAssetsKey = GlobalKey();
-
 class SettingsScreen extends StatefulWidget {
   /// Открыть настройки и сразу прокрутить к разделу «Поддержка».
   final bool scrollToSupport;
-
-  /// Открыть настройки и подвести к строке гео-баз. Нужно плашке с главного
-  /// экрана: сказать «скачайте в настройках» и бросить искать самому — то же
-  /// самое, что промолчать.
-  final bool scrollToGeo;
-  const SettingsScreen(
-      {super.key, this.scrollToSupport = false, this.scrollToGeo = false});
+  const SettingsScreen({super.key, this.scrollToSupport = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -106,22 +97,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               duration: const Duration(milliseconds: 350), curve: Curves.easeOut);
         }
         if (mounted) await _support(context);
-      });
-    }
-    if (widget.scrollToGeo) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        // Строка гео-баз живёт в разделе «Захват трафика»: свёрнутым он её не
-        // строит, и `ensureVisible` не находил бы ничего.
-        await _ensureExpanded(SettingsSectionIds.capture);
-        if (!mounted) return;
-        await WidgetsBinding.instance.endOfFrame;
-        final ctx = geoAssetsKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          Scrollable.ensureVisible(ctx,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-              alignment: 0.3);
-        }
       });
     }
   }
@@ -2669,13 +2644,11 @@ List<SettingsRow> _captureRows(
     // ⚠️ ПО РЕЖИМУ ЗАХВАТА: гео-базы разбирает Xray по конфигу ПАНЕЛИ, а он
     // одинаков и в системном прокси, и в TUN, и в «Только прокси». Под веткой
     // TUN строка не строилась вовсе в режиме системного прокси — то есть в
-    // умолчании Windows, — и переход «плашка на главном → настройки»
-    // (`scrollToGeo` → `geoAssetsKey`) молча приводил в никуда: у ключа не
-    // было контекста.
+    // умолчании Windows. Плашка на главном ведёт уже не сюда, а сразу на
+    // экран гео-баз (`GeoOfferBanner`).
     SettingsRow(
       search: '${l.geoTitle} geoip.dat geosite.dat ${l.geoWhy}',
       build: (context) => ListTile(
-        key: geoAssetsKey,
         dense: true,
         leading: const Icon(Icons.public),
         title: Text(l.geoTitle),
