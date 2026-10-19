@@ -1091,14 +1091,20 @@ class AndroidEngine extends VpnEngineBase {
             text: const StatusVpnConsentDenied());
         return;
       }
-      if (await scheduleRetry('не удалось подключиться: ${e.message}')) return;
+      if (await scheduleRetry('не удалось подключиться: ${e.message}',
+          why: StatusConnectFailed('${e.message}'))) {
+        return;
+      }
       setStatus(VpnConnectionState.error, message: e.message);
     } catch (e) {
       _starting = false;
       final wasAborted = aborted();
       await cleanup();
       if (wasAborted) return;
-      if (await scheduleRetry('не удалось подключиться: $e')) return;
+      if (await scheduleRetry('не удалось подключиться: $e',
+          why: StatusConnectFailed('$e'))) {
+        return;
+      }
       setStatus(VpnConnectionState.error, message: '$e');
     }
   }
@@ -1266,7 +1272,10 @@ class AndroidEngine extends VpnEngineBase {
           'Повторяю без правил по странам и категориям: маршрутизация панели '
           'будет неполной, зато туннель поднимется.');
       await teardownCore();
-      if (await scheduleRetry('ядру недоступны гео-базы')) return;
+      if (await scheduleRetry('ядру недоступны гео-базы',
+          why: const StatusGeoUnavailable())) {
+        return;
+      }
     }
 
     // Причина известна — показываем её вместо безымянного «ядро остановилось».

@@ -3822,6 +3822,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacyTileOff => '不发送设备数据';
 
   @override
+  String get consentDeviceBodyWindows =>
+      '加载或更新订阅时，应用可能会向订阅服务器发送电脑标识符（HWID）、Windows 版本和电脑型号。服务商用它们统计您的设备数（套餐的设备上限）。这些数据只发往您的订阅地址，且只通过安全连接发送——SilentGate 开发者永远不会收到。';
+
+  @override
+  String get consentNoticeNote =>
+      '服务商需要这些数据来统计您套餐中的设备。可在 设置 → 关于 → “数据与隐私” 中再次打开此消息。';
+
+  @override
+  String get consentNoticeOk => '知道了';
+
+  @override
   String get privacyPolicyTile => '隐私政策';
 
   @override
@@ -3836,4 +3847,200 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => '在 Google Play 中打开';
+
+  @override
+  String get statusNetworkChanged => '网络已变化';
+
+  @override
+  String get statusRecoveryError => '恢复出错';
+
+  @override
+  String get statusGeoUnavailable => '内核无法使用地理数据库';
+
+  @override
+  String get statusNetworkBackChannelDead => '网络已恢复，但隧道没有响应';
+
+  @override
+  String get noticeReconnecting => '连接中断，正在恢复';
+
+  @override
+  String get noticeRecovered => '连接已恢复';
+
+  @override
+  String get noticeStillDown => '连接仍未恢复';
+
+  @override
+  String get noticeRecoverFailed => '无法恢复连接';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return '尝试次数：$count。原因：$reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return '尝试次数：$count';
+  }
+
+  @override
+  String get noticeBlocked => '网站已被你的规则屏蔽';
+
+  @override
+  String get noticeBlockedAction => '规则';
+
+  @override
+  String noticeExitDown(String name) {
+    return '出口“$name”无响应';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      '经此服务器转发的流量暂时改走主隧道，也就是从另一个国家出去。服务器恢复响应后会自动切回。';
+
+  @override
+  String get noticeExitDownStopped => '经此服务器转发的流量目前不通。主隧道和其他出口正常工作。';
+
+  @override
+  String get noticeSystemProxyFailed => '系统代理未能开启——流量绕过 VPN，使用你的真实地址';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      '最常见的原因是注册表禁止写入（域策略或配置文件损坏）。详情见应用日志。替代办法：使用“TUN”捕获模式。';
+
+  @override
+  String get noticeGeoMissing => '未下载地理数据库——面板的按国家规则已停用';
+
+  @override
+  String get noticeGeoUnusable => '内核无法打开地理数据库——面板的按国家规则已停用';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping 完成：$total 个中有 $ok 个可用（$seconds 秒）';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping 完成：$total 个中有 $ok 个可达（$seconds 秒）';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping 已取消：$total 个中有 $ok 个可用';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping 已取消：$total 个中有 $ok 个可达';
+  }
+
+  @override
+  String get pingFailed => 'Ping 因错误中断';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return '已测速：$total 个中 $ok 个（$seconds 秒）';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return '测速已取消：$total 个中已测 $ok 个';
+  }
+
+  @override
+  String get speedNeedsLive => '此处无法测量该服务器的速度：测速需通过当前连接进行。请先连接该服务器再重试';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return '自动配置完成：找到 $count 个';
+  }
+
+  @override
+  String get autoConfigDoneNone => '自动配置：未找到可用服务器';
+
+  @override
+  String get autoConfigUnsupportedShort => '此平台不支持自动配置';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      '此平台不支持自动配置：这里无法通过服务器检查各项服务。请改用 Ping。';
+
+  @override
+  String get autoConfigBadKey =>
+      '无法识别该密钥（需要 vless:// / vmess:// / trojan:// / ss:// / hysteria2://）';
+
+  @override
+  String get autoConfigNoneFound => '未找到可用服务器';
+
+  @override
+  String autoConfigError(String detail) {
+    return '错误：$detail';
+  }
+
+  @override
+  String get restartServerChanged => '已选择其他服务器——重新连接后生效';
+
+  @override
+  String get restartSubscriptionSwitched => '已切换订阅——重新连接后生效';
+
+  @override
+  String errorServerNotFound(String name) {
+    return '未找到服务器“$name”';
+  }
+
+  @override
+  String get hintClockBehind =>
+      '本设备的日期和时间不正确——时间偏慢，因此服务器证书看起来尚未生效。请检查时钟并开启时间同步，然后重新导入。';
+
+  @override
+  String get hintCertExpired =>
+      '服务器证书已过期。请先检查本设备的日期和时间——如果偏快，也会出现同样的错误。如果时间正确，说明服务方的证书已过期：请联系客服。';
+
+  @override
+  String get hintHostnameMismatch =>
+      '证书是为其他名称签发的。请检查订阅地址——可能有拼写错误，或者有中间方在拦截连接。';
+
+  @override
+  String get hintNoNetwork =>
+      '无法连接订阅服务器。请检查网络；如果网络正常，该地址可能被封锁——请尝试开启 VPN 后重新导入。';
+
+  @override
+  String get importSyncTime => '同步时间';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return '已达到设备数量上限（$limit）。请在账户中移除多余的设备后重试。';
+  }
+
+  @override
+  String get subDeviceLimitAny => '已达到设备数量上限。请在账户中移除多余的设备后重试。';
+
+  @override
+  String get subHwidRequired => '面板要求提供设备标识，但应用没有发送。请更新应用。';
+
+  @override
+  String subHttpCode(int code) {
+    return '服务器返回代码 $code';
+  }
+
+  @override
+  String get subNoServers => '订阅中未找到任何服务器';
+
+  @override
+  String get subTooManyRedirects => '订阅重定向次数过多';
+
+  @override
+  String get trayNoteBlocked => '连接已断开，流量已拦截';
+
+  @override
+  String get trayNoteOffline => '无网络，正在等待网络';
+
+  @override
+  String get routeYourPhone => '你的手机';
+
+  @override
+  String get importSyncTimeOk => '时间已同步。请重新导入。';
+
+  @override
+  String get importSyncTimeManual =>
+      '无法自动同步——这需要管理员权限。\n\n手动修复：Windows 设置 → 时间和语言 → 日期和时间。打开“自动设置时间”，然后点击“立即同步”。如果开关已经打开，请先关闭再重新打开。';
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -8,7 +9,11 @@ import '../../l10n/gen/app_localizations.dart';
 import '../../state/settings_controller.dart';
 import '../layout/adaptive.dart';
 
-/// Окно раскрытия данных и согласия (сборка Google Play).
+/// Окно раскрытия данных и согласия (сборки Google Play и Microsoft Store).
+///
+/// [noticeOnly] — сборка GitHub: то же раскрытие, но без выбора, одна кнопка
+/// «Понятно» (решение владельца 19.10.2026: согласие спрашивают магазины,
+/// GitHub только сообщает).
 ///
 /// Правила Play требуют заметного раскрытия ДО отправки идентификатора
 /// устройства и явного выбора — оба варианта равноправны, отказ не ломает
@@ -22,32 +27,48 @@ import '../layout/adaptive.dart';
 Future<bool?> showDataConsentDialog(
   BuildContext context, {
   bool mandatory = false,
+  bool noticeOnly = false,
 }) =>
     showDialog<bool>(
       context: context,
       barrierDismissible: !mandatory,
       builder: (ctx) => PopScope(
         canPop: !mandatory,
-        child: const DataConsentDialog(),
+        child: DataConsentDialog(noticeOnly: noticeOnly),
       ),
     );
 
 /// Спросить на первом запуске и сохранить ответ. Ничего не делает, если
-/// уже спрашивали или сборка не из Play (решает [needsAsking]).
+/// уже спрашивали или сборка не из магазина (решает [needsAsking]).
+///
+/// [needsNotice] — сборка GitHub: показать раскрытие без выбора один раз.
 Future<void> askDataConsentIfNeeded(
   BuildContext context,
   SettingsController settings, {
   required bool Function() needsAsking,
+  bool Function()? needsNotice,
 }) async {
   await settings.whenLoaded;
-  if (!context.mounted || !needsAsking()) return;
-  final ok = await showDataConsentDialog(context, mandatory: true);
-  if (ok == null) return;
-  await settings.update((s) => s.copyWith(deviceInfoConsent: ok));
+  if (!context.mounted) return;
+  if (needsAsking()) {
+    final ok = await showDataConsentDialog(context, mandatory: true);
+    if (ok == null) return;
+    await settings.update((s) => s.copyWith(deviceInfoConsent: ok));
+  } else if (needsNotice != null && needsNotice()) {
+    await showDataConsentDialog(context, mandatory: true, noticeOnly: true);
+    await settings.update((s) => s.copyWith(deviceInfoNoticeShown: true));
+  }
 }
 
 class DataConsentDialog extends StatelessWidget {
-  const DataConsentDialog({super.key});
+  const DataConsentDialog({super.key, this.noticeOnly = false, this.windows});
+
+  /// Только раскрытие, без выбора (сборка GitHub).
+  final bool noticeOnly;
+
+  /// Текст про Windows (HWID компьютера) или Android (Android ID). `null` —
+  /// по платформе.
+  final bool? windows;
 
   @override
   Widget build(BuildContext context) {
@@ -84,24 +105,35 @@ class DataConsentDialog extends StatelessWidget {
                 ),
               ),
               para(l.consentDeviceTitle, style: theme.textTheme.titleSmall),
-              para(l.consentDeviceBody),
-              para(l.consentDeclineNote, style: theme.textTheme.bodySmall),
+              para((windows ?? Platform.isWindows)
+                  ? l.consentDeviceBodyWindows
+                  : l.consentDeviceBody),
+              para(noticeOnly ? l.consentNoticeNote : l.consentDeclineNote,
+                  style: theme.textTheme.bodySmall),
             ],
           ),
         ),
       ),
-      actions: [
-        TextButton(
-          key: const Key('consentDecline'),
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l.consentDecline),
-        ),
-        FilledButton(
-          key: const Key('consentAccept'),
-          onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l.consentAccept),
-        ),
-      ],
+      actions: noticeOnly
+          ? [
+              FilledButton(
+                key: const Key('consentNoticeOk'),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l.consentNoticeOk),
+              ),
+            ]
+          : [
+              TextButton(
+                key: const Key('consentDecline'),
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(l.consentDecline),
+              ),
+              FilledButton(
+                key: const Key('consentAccept'),
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(l.consentAccept),
+              ),
+            ],
     );
   }
 }

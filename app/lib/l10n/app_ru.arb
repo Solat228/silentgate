@@ -2124,9 +2124,193 @@
   "privacyTileTitle": "Данные и конфиденциальность",
   "privacyTileOn": "Данные устройства отправляются провайдеру подписки",
   "privacyTileOff": "Данные устройства не отправляются",
+  "consentDeviceBodyWindows": "При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению — разработчику SilentGate они не приходят.",
+  "consentNoticeNote": "Эти данные нужны провайдеру, чтобы считать устройства в вашем тарифе. Сообщение можно открыть снова: Настройки → О программе → «Данные и конфиденциальность».",
+  "consentNoticeOk": "Понятно",
   "privacyPolicyTile": "Политика конфиденциальности",
   "updatesViaPlay": "Обновить в Google Play",
   "updatesViaGithub": "Скачать с GitHub",
   "updatesPlayManaged": "Эта копия установлена из Google Play и обновляется только через него: новые версии приходят в Google Play сами или по кнопке «Обновить» на странице приложения.",
-  "updatesOpenPlay": "Открыть в Google Play"
+  "updatesOpenPlay": "Открыть в Google Play",
+  "statusNetworkChanged": "сменилось сетевое окружение",
+  "statusRecoveryError": "ошибка восстановления",
+  "statusGeoUnavailable": "ядру недоступны гео-базы",
+  "statusNetworkBackChannelDead": "сеть вернулась, канал не ответил",
+  "noticeReconnecting": "Связь оборвалась, восстанавливаю",
+  "noticeRecovered": "Соединение восстановлено",
+  "noticeStillDown": "Связь до сих пор не восстановлена",
+  "noticeRecoverFailed": "Не удалось восстановить связь",
+  "noticeAttempts": "Попыток: {count}. Причина: {reason}",
+  "@noticeAttempts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeAttemptsOnly": "Попыток: {count}",
+  "@noticeAttemptsOnly": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noticeBlocked": "Сайт заблокирован вашим правилом",
+  "noticeBlockedAction": "Правила",
+  "noticeExitDown": "Выход «{name}» не отвечает",
+  "@noticeExitDown": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "noticeExitDownSwitched": "Трафик, направленный через этот сервер, временно идёт через основной туннель — значит из другой страны. Вернётся обратно, как только сервер снова ответит.",
+  "noticeExitDownStopped": "Трафик, направленный через этот сервер, сейчас не идёт. Основной туннель и остальные выходы работают.",
+  "noticeSystemProxyFailed": "Системный прокси не включился — трафик идёт мимо VPN, под вашим реальным адресом",
+  "noticeSystemProxyFailedDetail": "Чаще всего это запрет записи в реестр (политика домена или повреждённый профиль). Подробности — в журнале приложения. Обходной путь: режим захвата «TUN».",
+  "noticeGeoMissing": "Гео-базы не скачаны — правила панели по странам отключены",
+  "noticeGeoUnusable": "Ядро не открыло гео-базы — правила панели по странам отключены",
+  "pingDoneWorking": "Пинг завершён: рабочих {ok} из {total} ({seconds} с)",
+  "@pingDoneWorking": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "pingDoneReachable": "Пинг завершён: доступных {ok} из {total} ({seconds} с)",
+  "@pingDoneReachable": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "pingCancelledWorking": "Пинг отменён: рабочих {ok} из {total}",
+  "@pingCancelledWorking": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "pingCancelledReachable": "Пинг отменён: доступных {ok} из {total}",
+  "@pingCancelledReachable": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "pingFailed": "Пинг прерван ошибкой",
+  "speedDone": "Скорость измерена: {ok} из {total} ({seconds} с)",
+  "@speedDone": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "speedCancelled": "Замер скорости отменён: измерено {ok} из {total}",
+  "@speedCancelled": {
+    "placeholders": {
+      "ok": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "speedNeedsLive": "Скорость этого сервера здесь не измерить: замер идёт через живое подключение. Подключитесь к нему и повторите",
+  "autoConfigDoneFound": "Автонастройка завершена: найдено {count}",
+  "@autoConfigDoneFound": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "autoConfigDoneNone": "Автонастройка: рабочих серверов не найдено",
+  "autoConfigUnsupportedShort": "Автонастройка недоступна на этой платформе",
+  "autoConfigUnsupportedLong": "Автонастройка недоступна на этой платформе: проверить доступность сервисов через сервер нечем. Пользуйтесь пингом.",
+  "autoConfigBadKey": "Не удалось распознать ключ (нужен vless:// / vmess:// / trojan:// / ss:// / hysteria2://)",
+  "autoConfigNoneFound": "Рабочих серверов не найдено",
+  "autoConfigError": "Ошибка: {detail}",
+  "@autoConfigError": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "restartServerChanged": "Выбран другой сервер — переподключитесь, чтобы применить",
+  "restartSubscriptionSwitched": "Подписка переключена — переподключитесь, чтобы применить",
+  "errorServerNotFound": "Сервер «{name}» не найден",
+  "@errorServerNotFound": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "hintClockBehind": "На устройстве неверные дата и время — они отстают, поэтому сертификат сервера считается ещё не начавшим действовать. Проверьте часы и включите синхронизацию времени, затем повторите импорт.",
+  "hintCertExpired": "Срок действия сертификата сервера истёк. Сначала проверьте дату и время на устройстве — если они спешат, ошибка будет такой же. Если время верное, сертификат просрочен на стороне сервиса: напишите в поддержку.",
+  "hintHostnameMismatch": "Сертификат выписан на другое имя. Проверьте адрес подписки — возможно, в нём опечатка, либо соединение подменяет посредник.",
+  "hintNoNetwork": "Не удалось связаться с сервером подписки. Проверьте интернет; если он есть, адрес может быть заблокирован — попробуйте включить VPN и повторить импорт.",
+  "importSyncTime": "Синхронизировать время",
+  "subDeviceLimit": "Достигнут лимит устройств ({limit}). Отключите лишнее устройство в личном кабинете и повторите.",
+  "@subDeviceLimit": {
+    "placeholders": {
+      "limit": {
+        "type": "String"
+      }
+    }
+  },
+  "subDeviceLimitAny": "Достигнут лимит устройств. Отключите лишнее устройство в личном кабинете и повторите.",
+  "subHwidRequired": "Панель требует идентификатор устройства, а приложение его не прислало. Обновите приложение.",
+  "subHttpCode": "Сервер вернул код {code}",
+  "@subHttpCode": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "subNoServers": "В подписке не найдено ни одного сервера",
+  "subTooManyRedirects": "Слишком много редиректов подписки",
+  "trayNoteBlocked": "соединение потеряно, трафик заблокирован",
+  "trayNoteOffline": "нет интернета, жду сеть",
+  "routeYourPhone": "Ваш телефон",
+  "importSyncTimeOk": "Время синхронизировано. Повторите импорт.",
+  "importSyncTimeManual": "Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова."
 }

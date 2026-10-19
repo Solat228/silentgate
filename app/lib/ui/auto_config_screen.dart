@@ -20,6 +20,7 @@ import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/site_favicon.dart';
+import 'widgets/ui_message_l10n.dart';
 
 class AutoConfigScreen extends StatelessWidget {
   const AutoConfigScreen({super.key});
@@ -70,7 +71,7 @@ class AutoConfigScreen extends StatelessWidget {
           // потрачено на решение, которое ничего не значило.
           if (!autoConfigSupported)
             MaterialBanner(
-              content: Text(AutoConfigController.unsupportedMessage),
+              content: Text(AppLocalizations.of(context).autoConfigUnsupportedLong),
               leading: const Icon(Icons.info_outline),
               actions: const [SizedBox.shrink()],
             ),
@@ -102,7 +103,11 @@ class AutoConfigScreen extends StatelessWidget {
                 if (ctrl.error != null && ctrl.found.isEmpty && !ctrl.running)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(ctrl.error!,
+                    child: Text(
+                        ctrl.errorMessage != null
+                            ? uiMessageL10n(
+                                AppLocalizations.of(context), ctrl.errorMessage!)
+                            : ctrl.error!,
                         style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ),
                 if (ctrl.found.isNotEmpty) ...[

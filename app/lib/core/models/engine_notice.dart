@@ -1,3 +1,5 @@
+import 'status_text.dart';
+
 /// Событие движка, о котором пользователь должен узнать СРАЗУ, а не из журнала.
 ///
 /// ## Зачем отдельная сущность, а не строка статуса
@@ -110,15 +112,47 @@ enum EngineNoticeKind {
 }
 
 class EngineNotice {
-  const EngineNotice(this.kind, this.text, {this.detail});
+  const EngineNotice(
+    this.kind,
+    this.text, {
+    this.detail,
+    this.reason,
+    this.attempts,
+    this.subject,
+    this.switched = false,
+    this.stillTrying = false,
+  });
 
   final EngineNoticeKind kind;
 
   /// Короткая строка для всплывающего сообщения.
+  ///
+  /// ⚠️ РУССКАЯ, ДЛЯ ЖУРНАЛА. На экран и в системное уведомление идёт перевод
+  /// по [kind] и полям ниже (`ui/widgets/ui_message_l10n.dart`): движок языка
+  /// интерфейса не знает. До 1.17.0 эта строка шла на экран как есть, и при
+  /// английском интерфейсе человек видел «Соединение восстановлено» (MS1 S13).
   final String text;
 
-  /// Уточнение: причина обрыва, имя домена. Может быть пустым.
+  /// Уточнение: причина обрыва, имя домена. Может быть пустым. Тоже русское.
   final String? detail;
+
+  /// Причина обрыва кодом — для перевода. `null` — причина известна только
+  /// русской строкой [detail] (сырой текст ядра или исключения).
+  final StatusText? reason;
+
+  /// Сколько попыток восстановления сделано ([EngineNoticeKind.failed]).
+  final int? attempts;
+
+  /// Имя, о котором речь: выход ([EngineNoticeKind.exitDown]), домен
+  /// ([EngineNoticeKind.blocked]). Это данные, они не переводятся.
+  final String? subject;
+
+  /// [EngineNoticeKind.exitDown]: трафик выхода ушёл в основной туннель.
+  final bool switched;
+
+  /// [EngineNoticeKind.failed]: попытки продолжаются бесконечно («до сих пор
+  /// не восстановлена»), а не исчерпаны («не удалось восстановить»).
+  final bool stillTrying;
 
   /// Событие требует внимания — показывается как ошибка, а не как обычная
   /// заметка.

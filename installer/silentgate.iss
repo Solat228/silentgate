@@ -50,6 +50,12 @@
 ; вышло 16.08.2026: на выходе получился `SilentGateSetup-1.4.3.49.exe`, хотя
 ; собирали 1.5.1 — версию установщик берёт из exe, поэтому подлог был виден
 ; только в имени файла.
+; Суффикс имени установщика: сборке для Microsoft Store - /DSetupSuffix=-msstore,
+; чтобы её файл не путался с установщиком GitHub той же версии.
+#ifndef SetupSuffix
+  #define SetupSuffix ""
+#endif
+
 #ifndef ReleaseDir
   #define ReleaseDir "..\app\build\windows\x64\runner\Release"
 #endif
@@ -93,7 +99,7 @@ UninstallDisplayName={#MyAppName}
 ; — с лишним дефисом, — и файл на сервере пришлось бы переименовывать руками
 ; при каждом выпуске. Ровно так и рождаются «скачал по кнопке, а там 404».
 ; Меняешь имя тут — меняй и в документе, и на сервере.
-OutputBaseFilename=SilentGateSetup-{#ShortVersion}
+OutputBaseFilename=SilentGateSetup-{#ShortVersion}{#SetupSuffix}
 OutputDir=Output
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}

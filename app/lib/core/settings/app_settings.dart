@@ -913,6 +913,11 @@ class AppSettings {
   /// заголовки не уходят. В сборке GitHub поле не читается.
   final bool? deviceInfoConsent;
 
+  /// Сборка GitHub уже показала сообщение о данных устройства (без выбора,
+  /// только раскрытие; решение владельца 19.10.2026). В сборках магазинов
+  /// вместо него — окно согласия ([deviceInfoConsent]).
+  final bool deviceInfoNoticeShown;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -1030,6 +1035,7 @@ class AppSettings {
     this.appUpdateSkippedVersion,
     this.betaChannel = false,
     this.deviceInfoConsent,
+    this.deviceInfoNoticeShown = false,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -1158,6 +1164,7 @@ class AppSettings {
     bool clearAppUpdateSkippedVersion = false,
     bool? betaChannel,
     bool? deviceInfoConsent,
+    bool? deviceInfoNoticeShown,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -1255,6 +1262,8 @@ class AppSettings {
           : appUpdateSkippedVersion ?? this.appUpdateSkippedVersion,
       betaChannel: betaChannel ?? this.betaChannel,
       deviceInfoConsent: deviceInfoConsent ?? this.deviceInfoConsent,
+      deviceInfoNoticeShown:
+          deviceInfoNoticeShown ?? this.deviceInfoNoticeShown,
     );
   }
 
@@ -1349,6 +1358,7 @@ class AppSettings {
         'appUpdateSkippedVersion': appUpdateSkippedVersion,
         'betaChannel': betaChannel,
         'deviceInfoConsent': deviceInfoConsent,
+        'deviceInfoNoticeShown': deviceInfoNoticeShown,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1600,6 +1610,7 @@ class AppSettings {
       deviceInfoConsent: j['deviceInfoConsent'] is bool
           ? j['deviceInfoConsent'] as bool
           : null,
+      deviceInfoNoticeShown: j['deviceInfoNoticeShown'] == true,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.

@@ -25,6 +25,10 @@ String statusTextL10n(AppLocalizations l, StatusText t) => switch (t) {
                 ? l.statusPortOwnCore(p, h)
                 : l.statusPortHolder(p, h),
       StatusTunCoreHung() => l.statusTunCoreHung,
+      StatusNetworkChanged() => l.statusNetworkChanged,
+      StatusRecoveryError() => l.statusRecoveryError,
+      StatusGeoUnavailable() => l.statusGeoUnavailable,
+      StatusNetworkBackChannelDead() => l.statusNetworkBackChannelDead,
       StatusConnectFailed(detail: final d) => l.statusConnectFailed(d),
       StatusCoreStopped(core: final c, code: final code, reason: final r) =>
         r == null

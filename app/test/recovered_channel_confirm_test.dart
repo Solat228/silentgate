@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/models/status_text.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/probe/tunnel_health.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
@@ -201,9 +202,9 @@ class _Engine extends VpnEngineBase {
       confirmRecoveredChannel(aborted ?? () => false);
 
   @override
-  Future<bool> scheduleRetry(String reason) {
+  Future<bool> scheduleRetry(String reason, {StatusText? why}) {
     retries.add(reason);
-    return super.scheduleRetry(reason);
+    return super.scheduleRetry(reason, why: why);
   }
 
   @override

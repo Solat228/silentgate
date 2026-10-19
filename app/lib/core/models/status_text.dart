@@ -61,6 +61,29 @@ final class StatusTunCoreHung extends StatusText {
   const StatusTunCoreHung();
 }
 
+/// Сменилось сетевое окружение — повод переподнять туннель.
+///
+/// Эта и три следующие — причины обрыва для заметки «Связь оборвалась»
+/// ([EngineNotice.reason]); в строку статуса они не попадают.
+final class StatusNetworkChanged extends StatusText {
+  const StatusNetworkChanged();
+}
+
+/// Сама попытка восстановления упала исключением.
+final class StatusRecoveryError extends StatusText {
+  const StatusRecoveryError();
+}
+
+/// Ядру недоступны гео-базы (Android).
+final class StatusGeoUnavailable extends StatusText {
+  const StatusGeoUnavailable();
+}
+
+/// Сеть вернулась, а канал на проверку не ответил.
+final class StatusNetworkBackChannelDead extends StatusText {
+  const StatusNetworkBackChannelDead();
+}
+
 /// Подключение не удалось; [detail] — сырой текст исключения (не переводится).
 final class StatusConnectFailed extends StatusText {
   final String detail;

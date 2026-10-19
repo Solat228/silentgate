@@ -6798,6 +6798,24 @@ abstract class AppLocalizations {
   /// **'Данные устройства не отправляются'**
   String get privacyTileOff;
 
+  /// No description provided for @consentDeviceBodyWindows.
+  ///
+  /// In ru, this message translates to:
+  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению — разработчику SilentGate они не приходят.'**
+  String get consentDeviceBodyWindows;
+
+  /// No description provided for @consentNoticeNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эти данные нужны провайдеру, чтобы считать устройства в вашем тарифе. Сообщение можно открыть снова: Настройки → О программе → «Данные и конфиденциальность».'**
+  String get consentNoticeNote;
+
+  /// No description provided for @consentNoticeOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Понятно'**
+  String get consentNoticeOk;
+
   /// No description provided for @privacyPolicyTile.
   ///
   /// In ru, this message translates to:
@@ -6827,6 +6845,324 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Открыть в Google Play'**
   String get updatesOpenPlay;
+
+  /// No description provided for @statusNetworkChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'сменилось сетевое окружение'**
+  String get statusNetworkChanged;
+
+  /// No description provided for @statusRecoveryError.
+  ///
+  /// In ru, this message translates to:
+  /// **'ошибка восстановления'**
+  String get statusRecoveryError;
+
+  /// No description provided for @statusGeoUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'ядру недоступны гео-базы'**
+  String get statusGeoUnavailable;
+
+  /// No description provided for @statusNetworkBackChannelDead.
+  ///
+  /// In ru, this message translates to:
+  /// **'сеть вернулась, канал не ответил'**
+  String get statusNetworkBackChannelDead;
+
+  /// No description provided for @noticeReconnecting.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связь оборвалась, восстанавливаю'**
+  String get noticeReconnecting;
+
+  /// No description provided for @noticeRecovered.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединение восстановлено'**
+  String get noticeRecovered;
+
+  /// No description provided for @noticeStillDown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Связь до сих пор не восстановлена'**
+  String get noticeStillDown;
+
+  /// No description provided for @noticeRecoverFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось восстановить связь'**
+  String get noticeRecoverFailed;
+
+  /// No description provided for @noticeAttempts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Попыток: {count}. Причина: {reason}'**
+  String noticeAttempts(int count, String reason);
+
+  /// No description provided for @noticeAttemptsOnly.
+  ///
+  /// In ru, this message translates to:
+  /// **'Попыток: {count}'**
+  String noticeAttemptsOnly(int count);
+
+  /// No description provided for @noticeBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт заблокирован вашим правилом'**
+  String get noticeBlocked;
+
+  /// No description provided for @noticeBlockedAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила'**
+  String get noticeBlockedAction;
+
+  /// No description provided for @noticeExitDown.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выход «{name}» не отвечает'**
+  String noticeExitDown(String name);
+
+  /// No description provided for @noticeExitDownSwitched.
+  ///
+  /// In ru, this message translates to:
+  /// **'Трафик, направленный через этот сервер, временно идёт через основной туннель — значит из другой страны. Вернётся обратно, как только сервер снова ответит.'**
+  String get noticeExitDownSwitched;
+
+  /// No description provided for @noticeExitDownStopped.
+  ///
+  /// In ru, this message translates to:
+  /// **'Трафик, направленный через этот сервер, сейчас не идёт. Основной туннель и остальные выходы работают.'**
+  String get noticeExitDownStopped;
+
+  /// No description provided for @noticeSystemProxyFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Системный прокси не включился — трафик идёт мимо VPN, под вашим реальным адресом'**
+  String get noticeSystemProxyFailed;
+
+  /// No description provided for @noticeSystemProxyFailedDetail.
+  ///
+  /// In ru, this message translates to:
+  /// **'Чаще всего это запрет записи в реестр (политика домена или повреждённый профиль). Подробности — в журнале приложения. Обходной путь: режим захвата «TUN».'**
+  String get noticeSystemProxyFailedDetail;
+
+  /// No description provided for @noticeGeoMissing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Гео-базы не скачаны — правила панели по странам отключены'**
+  String get noticeGeoMissing;
+
+  /// No description provided for @noticeGeoUnusable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ядро не открыло гео-базы — правила панели по странам отключены'**
+  String get noticeGeoUnusable;
+
+  /// No description provided for @pingDoneWorking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг завершён: рабочих {ok} из {total} ({seconds} с)'**
+  String pingDoneWorking(int ok, int total, int seconds);
+
+  /// No description provided for @pingDoneReachable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг завершён: доступных {ok} из {total} ({seconds} с)'**
+  String pingDoneReachable(int ok, int total, int seconds);
+
+  /// No description provided for @pingCancelledWorking.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг отменён: рабочих {ok} из {total}'**
+  String pingCancelledWorking(int ok, int total);
+
+  /// No description provided for @pingCancelledReachable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг отменён: доступных {ok} из {total}'**
+  String pingCancelledReachable(int ok, int total);
+
+  /// No description provided for @pingFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пинг прерван ошибкой'**
+  String get pingFailed;
+
+  /// No description provided for @speedDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость измерена: {ok} из {total} ({seconds} с)'**
+  String speedDone(int ok, int total, int seconds);
+
+  /// No description provided for @speedCancelled.
+  ///
+  /// In ru, this message translates to:
+  /// **'Замер скорости отменён: измерено {ok} из {total}'**
+  String speedCancelled(int ok, int total);
+
+  /// No description provided for @speedNeedsLive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скорость этого сервера здесь не измерить: замер идёт через живое подключение. Подключитесь к нему и повторите'**
+  String get speedNeedsLive;
+
+  /// No description provided for @autoConfigDoneFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка завершена: найдено {count}'**
+  String autoConfigDoneFound(int count);
+
+  /// No description provided for @autoConfigDoneNone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка: рабочих серверов не найдено'**
+  String get autoConfigDoneNone;
+
+  /// No description provided for @autoConfigUnsupportedShort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка недоступна на этой платформе'**
+  String get autoConfigUnsupportedShort;
+
+  /// No description provided for @autoConfigUnsupportedLong.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автонастройка недоступна на этой платформе: проверить доступность сервисов через сервер нечем. Пользуйтесь пингом.'**
+  String get autoConfigUnsupportedLong;
+
+  /// No description provided for @autoConfigBadKey.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось распознать ключ (нужен vless:// / vmess:// / trojan:// / ss:// / hysteria2://)'**
+  String get autoConfigBadKey;
+
+  /// No description provided for @autoConfigNoneFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Рабочих серверов не найдено'**
+  String get autoConfigNoneFound;
+
+  /// No description provided for @autoConfigError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ошибка: {detail}'**
+  String autoConfigError(String detail);
+
+  /// No description provided for @restartServerChanged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбран другой сервер — переподключитесь, чтобы применить'**
+  String get restartServerChanged;
+
+  /// No description provided for @restartSubscriptionSwitched.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписка переключена — переподключитесь, чтобы применить'**
+  String get restartSubscriptionSwitched;
+
+  /// No description provided for @errorServerNotFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер «{name}» не найден'**
+  String errorServerNotFound(String name);
+
+  /// No description provided for @hintClockBehind.
+  ///
+  /// In ru, this message translates to:
+  /// **'На устройстве неверные дата и время — они отстают, поэтому сертификат сервера считается ещё не начавшим действовать. Проверьте часы и включите синхронизацию времени, затем повторите импорт.'**
+  String get hintClockBehind;
+
+  /// No description provided for @hintCertExpired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Срок действия сертификата сервера истёк. Сначала проверьте дату и время на устройстве — если они спешат, ошибка будет такой же. Если время верное, сертификат просрочен на стороне сервиса: напишите в поддержку.'**
+  String get hintCertExpired;
+
+  /// No description provided for @hintHostnameMismatch.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сертификат выписан на другое имя. Проверьте адрес подписки — возможно, в нём опечатка, либо соединение подменяет посредник.'**
+  String get hintHostnameMismatch;
+
+  /// No description provided for @hintNoNetwork.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось связаться с сервером подписки. Проверьте интернет; если он есть, адрес может быть заблокирован — попробуйте включить VPN и повторить импорт.'**
+  String get hintNoNetwork;
+
+  /// No description provided for @importSyncTime.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизировать время'**
+  String get importSyncTime;
+
+  /// No description provided for @subDeviceLimit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Достигнут лимит устройств ({limit}). Отключите лишнее устройство в личном кабинете и повторите.'**
+  String subDeviceLimit(String limit);
+
+  /// No description provided for @subDeviceLimitAny.
+  ///
+  /// In ru, this message translates to:
+  /// **'Достигнут лимит устройств. Отключите лишнее устройство в личном кабинете и повторите.'**
+  String get subDeviceLimitAny;
+
+  /// No description provided for @subHwidRequired.
+  ///
+  /// In ru, this message translates to:
+  /// **'Панель требует идентификатор устройства, а приложение его не прислало. Обновите приложение.'**
+  String get subHwidRequired;
+
+  /// No description provided for @subHttpCode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер вернул код {code}'**
+  String subHttpCode(int code);
+
+  /// No description provided for @subNoServers.
+  ///
+  /// In ru, this message translates to:
+  /// **'В подписке не найдено ни одного сервера'**
+  String get subNoServers;
+
+  /// No description provided for @subTooManyRedirects.
+  ///
+  /// In ru, this message translates to:
+  /// **'Слишком много редиректов подписки'**
+  String get subTooManyRedirects;
+
+  /// No description provided for @trayNoteBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'соединение потеряно, трафик заблокирован'**
+  String get trayNoteBlocked;
+
+  /// No description provided for @trayNoteOffline.
+  ///
+  /// In ru, this message translates to:
+  /// **'нет интернета, жду сеть'**
+  String get trayNoteOffline;
+
+  /// No description provided for @routeYourPhone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваш телефон'**
+  String get routeYourPhone;
+
+  /// No description provided for @importSyncTimeOk.
+  ///
+  /// In ru, this message translates to:
+  /// **'Время синхронизировано. Повторите импорт.'**
+  String get importSyncTimeOk;
+
+  /// No description provided for @importSyncTimeManual.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.'**
+  String get importSyncTimeManual;
 }
 
 class _AppLocalizationsDelegate

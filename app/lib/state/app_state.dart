@@ -20,6 +20,7 @@ import '../core/util/key_migration.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
+import '../core/models/ui_message.dart';
 import '../core/net/network_error_hint.dart';
 import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
@@ -181,9 +182,15 @@ class AppState extends ChangeNotifier {
       // внутри приложения, чтобы их не начали отмахивать не читая. Плюс
       // возврат сети: о пропаже сказали снаружи — и о возврате говорим там же.
       if (n.needsSystemNotice) {
+        // Текст — на языке интерфейса (MS1 S13): до 1.17.0 сюда шла русская
+        // строка движка, и шторка англоязычного телефона писала «Соединение
+        // восстановлено». Без интерфейса (перевести нечем) — русский текст.
+        final localized = systemNoticeText?.call(n);
         final detail = (n.detail ?? '').trim();
-        unawaited(DesktopNotice.show(
-            n.text, detail.isEmpty ? 'SilentGate' : detail));
+        unawaited(localized != null
+            ? DesktopNotice.show(localized.title, localized.body)
+            : DesktopNotice.show(
+                n.text, detail.isEmpty ? 'SilentGate' : detail));
       }
       notifyListeners();
     });
@@ -421,6 +428,11 @@ class AppState extends ChangeNotifier {
   /// [_error] и не переводятся; известные состояния несут код, а текст к нему
   /// подбирает UI — у состояния нет `AppLocalizations`.
   AppErrorCode? _errorCode;
+
+  /// Перевод заметки движка для системного уведомления. Ставит `main.dart`:
+  /// состоянию язык интерфейса недоступен. `null` или ответ `null` —
+  /// показываем русский текст движка.
+  ({String title, String body})? Function(EngineNotice n)? systemNoticeText;
   String? _logoPath; // #2 — кэшированная аватарка подписки
 
   /// Адреса логотипа, которые уже не скачались (журнал — по разу на адрес).
@@ -677,6 +689,21 @@ class AppState extends ChangeNotifier {
 
   /// Код распознанной ошибки (null — ошибки нет либо она динамическая).
   AppErrorCode? get errorCode => _errorCode;
+
+  /// Динамическая ошибка кодом — для перевода (MS1 S13). Действует, только
+  /// пока [error] — та самая строка, к которой она выставлена: `_error`
+  /// сбрасывается и переписывается во многих местах, и отдельный сброс кода
+  /// в каждом из них забыли бы.
+  UiMessage? get errorMessage =>
+      _error != null && _error == _errorMessageFor ? _errorMessage : null;
+  UiMessage? _errorMessage;
+  String? _errorMessageFor;
+
+  void _setErrorMessage(String text, UiMessage? m) {
+    _error = text;
+    _errorMessage = m;
+    _errorMessageFor = m == null ? null : text;
+  }
   bool get hasServers => _servers.isNotEmpty;
 
   // ── Инициализация из хранилища ─────────────────────────────────────────────
@@ -1096,7 +1123,8 @@ class AppState extends ChangeNotifier {
       final wanted = AppUrlScheme.serverName(url);
       if (wanted != null && (action == 'connect' || action == 'toggle')) {
         if (!_selectServerByName(wanted)) {
-          _error = 'Сервер «$wanted» не найден';
+          _setErrorMessage(
+              'Сервер «$wanted» не найден', UiServerNotFound(wanted));
           notifyListeners();
           return;
         }
@@ -1524,7 +1552,9 @@ class AppState extends ChangeNotifier {
     await _maybeStartUpdater();
     AppLog.i('Активная подписка: ${p.title} (${_subServers.length} серверов)');
     if (_status.isConnected) {
-      _setPendingRestart('Подписка переключена — переподключитесь, чтобы применить');
+      _setPendingRestart(
+          'Подписка переключена — переподключитесь, чтобы применить',
+          message: const UiRestartSubscriptionSwitched());
     }
     notifyListeners();
   }
@@ -2080,7 +2110,13 @@ class AppState extends ChangeNotifier {
       // его отсутствия, человек поверит совету и пойдёт чинить не то.
       // Исходный текст хотя бы правдив, и его можно прислать в поддержку.
       final hint = networkErrorHint(e.toString());
-      _error = hint?.text ?? e.toString();
+      _setErrorMessage(
+          hint?.text ?? e.toString(),
+          hint != null
+              ? UiNetworkHint(hint.kind)
+              : e is SubscriptionException
+                  ? e.ui
+                  : null);
       _errorCode = null;
     } finally {
       _loading = false;
@@ -2580,12 +2616,12 @@ class AppState extends ChangeNotifier {
   }
 
   Future<Map<String, String>> _deviceHeaders() async {
-    // Сборка Play без согласия человека данные устройства не отдаёт (см.
+    // Сборки магазинов без согласия человека данные устройства не отдают (см.
     // `DeviceInfoConsent`). Настройки читаем с диска в момент запроса: на
     // старте подписка обновляется раньше, чем человек успевает ответить, и
     // ответ, данный секунду назад, обязан действовать сразу.
     var allowed = true;
-    if (AppStoreInfo.isPlay) {
+    if (AppStoreInfo.asksDataConsent(AppStoreInfo.current)) {
       try {
         allowed = DeviceInfoConsent.allowed(await SettingsStorage().load());
       } catch (_) {
@@ -2612,7 +2648,9 @@ class AppState extends ChangeNotifier {
     // #13 — при активном VPN смена сервера НЕ применяется на лету: предлагаем
     // переподключиться, вместо того чтобы молча оставить старый туннель.
     if (_status.isConnected && wasKey != _servers[index].key) {
-      _setPendingRestart('Выбран другой сервер — переподключитесь, чтобы применить');
+      _setPendingRestart(
+          'Выбран другой сервер — переподключитесь, чтобы применить',
+          message: const UiRestartServerChanged());
     }
     _persist();
     notifyListeners();
@@ -2649,6 +2687,12 @@ class AppState extends ChangeNotifier {
     return _pendingRestart;
   }
 
+  /// Та же заметка кодом — для перевода. `null`, если текст пришёл уже
+  /// переведённым (правка настроек: его подбирает сам экран).
+  UiMessage? get pendingRestartMessage =>
+      pendingRestart == null ? null : _pendingRestartMessage;
+  UiMessage? _pendingRestartMessage;
+
   /// Чем именно вызван ожидающий перезапуск — для журнала, а не для экрана.
   ///
   /// На экране висит одна общая фраза «переподключитесь, чтобы применить»;
@@ -2674,10 +2718,11 @@ class AppState extends ChangeNotifier {
   /// ⚠️ ЕДИНСТВЕННОЕ МЕСТО, ГДЕ ЗАМЕТКА МЕНЯЕТСЯ. Второе означало бы заметку
   /// без срока: она поставилась бы, а погасить её было бы некому — ровно та
   /// беда, ради которой срок и заводится.
-  void _setPendingRestart(String? reason) {
+  void _setPendingRestart(String? reason, {UiMessage? message}) {
     _pendingRestartTimer?.cancel();
     _pendingRestartTimer = null;
     _pendingRestart = reason;
+    _pendingRestartMessage = reason == null ? null : message;
     if (reason == null) {
       _pendingRestartUntil = null;
       return;

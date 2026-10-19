@@ -1,4 +1,5 @@
 import 'dart:io';
+import '../models/ui_message.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 
@@ -86,19 +87,23 @@ class SubscriptionService {
       final hw = resp.headers;
       if (hw['x-hwid-max-devices-reached']?.toLowerCase() == 'true') {
         final limit = hw['x-hwid-limit'];
-        throw SubscriptionException(limit != null && limit.isNotEmpty
-            ? 'Достигнут лимит устройств ($limit). Отключите лишнее устройство '
-                'в личном кабинете и повторите.'
-            : 'Достигнут лимит устройств. Отключите лишнее устройство в личном '
-                'кабинете и повторите.');
+        throw SubscriptionException(
+            limit != null && limit.isNotEmpty
+                ? 'Достигнут лимит устройств ($limit). Отключите лишнее '
+                    'устройство в личном кабинете и повторите.'
+                : 'Достигнут лимит устройств. Отключите лишнее устройство в '
+                    'личном кабинете и повторите.',
+            ui: UiSubDeviceLimit(limit));
       }
       if (hw['x-hwid-not-supported']?.toLowerCase() == 'true') {
         throw SubscriptionException(
             'Панель требует идентификатор устройства, а приложение его не '
-            'прислало. Обновите приложение.');
+            'прислало. Обновите приложение.',
+            ui: const UiSubHwidRequired());
       }
       throw SubscriptionException(
         'Сервер вернул код ${resp.statusCode}',
+        ui: UiSubHttpCode(resp.statusCode),
       );
     }
 
@@ -120,7 +125,8 @@ class SubscriptionService {
       servers = ShareLinkParser.parseSubscriptionBody(body);
     }
     if (servers.isEmpty) {
-      throw SubscriptionException('В подписке не найдено ни одного сервера');
+      throw SubscriptionException('В подписке не найдено ни одного сервера',
+          ui: const UiSubNoServers());
     }
     final info = SubscriptionInfo.fromHeaders(resp.headers);
     final ct = resp.headers['content-type'] ?? '?';
@@ -169,7 +175,11 @@ class SubscriptionService {
         ..followRedirects = false;
       request.headers['User-Agent'] = ua;
       request.headers['Accept'] = '*/*';
-      request.headers.addAll(deviceHeaders);
+      // ⚠️ ДАННЫЕ УСТРОЙСТВА — ТОЛЬКО ПО HTTPS (MS1, решение 19.10.2026).
+      // По открытому `http://` идентификатор устройства и модель видит любой
+      // узел по дороге. Проверка на КАЖДОМ шаге: редирект с https на http
+      // тоже не должен их унести.
+      if (current.scheme == 'https') request.headers.addAll(deviceHeaders);
       final resp = await http.Response.fromStream(await _client.send(request));
       final code = resp.statusCode;
       final isRedirect =
@@ -179,7 +189,8 @@ class SubscriptionService {
         return (resp, permanentMove);
       }
       if (hop >= 5) {
-        throw SubscriptionException('Слишком много редиректов подписки');
+        throw SubscriptionException('Слишком много редиректов подписки',
+            ui: const UiSubTooManyRedirects());
       }
       final next = current.resolve(location);
       // Постоянный редирект в непрерывной цепочке двигает запоминаемый адрес;
@@ -197,8 +208,12 @@ class SubscriptionService {
 }
 
 class SubscriptionException implements Exception {
+  /// Русский текст — для журнала и отчёта поддержки.
   final String message;
-  SubscriptionException(this.message);
+
+  /// То же кодом — для перевода на экране (MS1 S13).
+  final UiMessage? ui;
+  SubscriptionException(this.message, {this.ui});
   @override
   String toString() => message;
 }

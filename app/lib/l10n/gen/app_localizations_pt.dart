@@ -4024,6 +4024,17 @@ class AppLocalizationsPt extends AppLocalizations {
   String get privacyTileOff => 'Os dados do dispositivo não são enviados';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'Ao carregar ou atualizar a assinatura, o app pode enviar ao servidor da assinatura o identificador do computador (HWID), a versão do Windows e o modelo do computador. Seu provedor os usa para contar seus dispositivos (o limite de dispositivos do seu plano). Esses dados vão apenas para o endereço da sua assinatura e apenas por uma conexão segura — o desenvolvedor do SilentGate nunca os recebe.';
+
+  @override
+  String get consentNoticeNote =>
+      'Seu provedor precisa desses dados para contar os dispositivos do seu plano. Você pode abrir esta mensagem de novo em Configurações → Sobre → \"Dados e privacidade\".';
+
+  @override
+  String get consentNoticeOk => 'Entendi';
+
+  @override
   String get privacyPolicyTile => 'Política de privacidade';
 
   @override
@@ -4038,4 +4049,213 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'Abrir no Google Play';
+
+  @override
+  String get statusNetworkChanged => 'a rede mudou';
+
+  @override
+  String get statusRecoveryError => 'erro de recuperação';
+
+  @override
+  String get statusGeoUnavailable =>
+      'o núcleo não consegue usar as bases geográficas';
+
+  @override
+  String get statusNetworkBackChannelDead =>
+      'a rede voltou, mas o túnel não respondeu';
+
+  @override
+  String get noticeReconnecting => 'A conexão caiu, restaurando';
+
+  @override
+  String get noticeRecovered => 'Conexão restaurada';
+
+  @override
+  String get noticeStillDown => 'A conexão ainda não foi restaurada';
+
+  @override
+  String get noticeRecoverFailed => 'Não foi possível restaurar a conexão';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'Tentativas: $count. Motivo: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'Tentativas: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'Site bloqueado pela sua regra';
+
+  @override
+  String get noticeBlockedAction => 'Regras';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'A saída “$name” não responde';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'O tráfego direcionado por este servidor passa temporariamente pelo túnel principal, ou seja, a partir de outro país. Volta assim que o servidor responder de novo.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'O tráfego direcionado por este servidor não está passando agora. O túnel principal e as outras saídas funcionam.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'O proxy do sistema não foi ativado — o tráfego passa fora da VPN com o seu endereço real';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'Na maioria das vezes, o registro está protegido contra gravação (política de domínio ou perfil danificado). Os detalhes estão no log do app. Alternativa: o modo de captura “TUN”.';
+
+  @override
+  String get noticeGeoMissing =>
+      'As bases geográficas não foram baixadas — as regras por país do painel estão desativadas';
+
+  @override
+  String get noticeGeoUnusable =>
+      'O núcleo não conseguiu abrir as bases geográficas — as regras por país do painel estão desativadas';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping concluído: $ok de $total funcionando ($seconds s)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping concluído: $ok de $total acessíveis ($seconds s)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping cancelado: $ok de $total funcionando';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping cancelado: $ok de $total acessíveis';
+  }
+
+  @override
+  String get pingFailed => 'O ping foi interrompido por um erro';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'Velocidade medida: $ok de $total ($seconds s)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'Teste de velocidade cancelado: $ok de $total medidos';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'A velocidade deste servidor não pode ser medida aqui: o teste usa a conexão ativa. Conecte-se a ele e tente de novo';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'Configuração automática concluída: $count encontrados';
+  }
+
+  @override
+  String get autoConfigDoneNone =>
+      'Configuração automática: nenhum servidor funcionando encontrado';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'A configuração automática não está disponível nesta plataforma';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'A configuração automática não está disponível nesta plataforma: aqui não há como verificar serviços por meio de um servidor. Use o ping.';
+
+  @override
+  String get autoConfigBadKey =>
+      'Não foi possível reconhecer a chave (esperado vless:// / vmess:// / trojan:// / ss:// / hysteria2://)';
+
+  @override
+  String get autoConfigNoneFound => 'Nenhum servidor funcionando encontrado';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'Erro: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'Outro servidor foi selecionado — reconecte para aplicar';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'Assinatura trocada — reconecte para aplicar';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'Servidor “$name” não encontrado';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'A data e a hora do dispositivo estão erradas — estão atrasadas, por isso o certificado do servidor parece ainda não válido. Verifique o relógio, ative a sincronização de hora e importe de novo.';
+
+  @override
+  String get hintCertExpired =>
+      'O certificado do servidor expirou. Primeiro verifique a data e a hora do dispositivo — se estiverem adiantadas, o erro é o mesmo. Se a hora estiver certa, o certificado expirou no serviço: fale com o suporte.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'O certificado foi emitido para outro nome. Verifique o endereço da assinatura — pode haver um erro de digitação, ou um intermediário está interceptando a conexão.';
+
+  @override
+  String get hintNoNetwork =>
+      'Não foi possível contatar o servidor da assinatura. Verifique sua internet; se estiver funcionando, o endereço pode estar bloqueado — tente ativar uma VPN e importar de novo.';
+
+  @override
+  String get importSyncTime => 'Sincronizar a hora';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'O limite de dispositivos foi atingido ($limit). Remova um dispositivo extra na sua conta e tente de novo.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'O limite de dispositivos foi atingido. Remova um dispositivo extra na sua conta e tente de novo.';
+
+  @override
+  String get subHwidRequired =>
+      'O painel exige um identificador do dispositivo, mas o app não o enviou. Atualize o app.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'O servidor retornou o código $code';
+  }
+
+  @override
+  String get subNoServers => 'Nenhum servidor encontrado na assinatura';
+
+  @override
+  String get subTooManyRedirects => 'Redirecionamentos demais da assinatura';
+
+  @override
+  String get trayNoteBlocked => 'conexão perdida, tráfego bloqueado';
+
+  @override
+  String get trayNoteOffline => 'sem internet, aguardando a rede';
+
+  @override
+  String get routeYourPhone => 'Seu telefone';
+
+  @override
+  String get importSyncTimeOk => 'Hora sincronizada. Importe de novo.';
+
+  @override
+  String get importSyncTimeManual =>
+      'Não foi possível sincronizar automaticamente — são necessários direitos de administrador.\n\nPara corrigir manualmente: Configurações do Windows → Hora e idioma → Data e hora. Ative “Definir horário automaticamente” e clique em “Sincronizar agora”. Se a opção já estiver ativada, desative e ative de novo.';
 }

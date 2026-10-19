@@ -40,6 +40,10 @@ rem обычная сборка (переменная не задана) остаётся стабильной без канала.
 rem Прочитается в "О программе" через AppInfo.channel (String.fromEnvironment).
 set "CHANNEL_DEFINE="
 if defined SILENTGATE_CHANNEL set "CHANNEL_DEFINE=--dart-define=SILENTGATE_CHANNEL=%SILENTGATE_CHANNEL%"
+rem Сборка для Microsoft Store: задайте SILENTGATE_STORE=msstore до запуска.
+rem Отличие одно - окно согласия на данные устройства (AppStoreInfo.current).
+set "STORE_DEFINE="
+if defined SILENTGATE_STORE set "STORE_DEFINE=--dart-define=SILENTGATE_STORE=%SILENTGATE_STORE%"
 
 rem === Версия для имени артефактов (контракт с сайтом, docs\APP_UPDATE_SERVER.md) ===
 rem pubspec хранит "X.Y.Z+N" - билд-номер после + сайту не нужен, срезаем.
@@ -53,7 +57,7 @@ if not defined VER (
 )
 
 echo Сборка release...
-call "%FLUTTER%" build windows --release %CHANNEL_DEFINE%
+call "%FLUTTER%" build windows --release %CHANNEL_DEFINE% %STORE_DEFINE%
 if errorlevel 1 (
   echo.
   echo === СБОРКА НЕ УДАЛАСЬ ===
@@ -144,6 +148,7 @@ echo.
 echo === ГОТОВО ===
 echo Версия:     %VER%
 if defined SILENTGATE_CHANNEL echo Канал:      %SILENTGATE_CHANNEL%
+if defined SILENTGATE_STORE echo Магазин:    %SILENTGATE_STORE%
 echo Приложение: %REL%\silentgate.exe
 echo Портатив:   %PORTZIP%
 start "" "%REL%"

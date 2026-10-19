@@ -1565,24 +1565,38 @@ List<SettingsRow> _aboutRows(
       search: l.aboutHwid,
       build: (_) => const _HwidTile(),
     ),
-    // Сборка Google Play: ответ на окно согласия можно поменять здесь —
-    // путь к этой строке назван в самом окне.
-    if (AppStoreInfo.isPlay)
+    // Сборки магазинов: согласие отзывается и даётся здесь — путь к этой
+    // строке назван в самом окне. Отзыв — сразу; включение — через то же
+    // окно раскрытия: человек должен видеть, на что соглашается.
+    if (AppStoreInfo.asksDataConsent(AppStoreInfo.current))
       SettingsRow(
         search: '${l.privacyTileTitle} ${l.consentDeviceTitle}',
-        build: (context) => ListTile(
+        build: (context) => SwitchListTile(
           key: const Key('privacyConsentTile'),
-          leading: const Icon(Icons.privacy_tip_outlined),
+          secondary: const Icon(Icons.privacy_tip_outlined),
           title: Text(l.privacyTileTitle),
           subtitle: Text(settings.deviceInfoConsent == true
               ? l.privacyTileOn
               : l.privacyTileOff),
-          trailing: const Icon(Icons.chevron_right, size: 18),
-          onTap: () async {
-            final ok = await showDataConsentDialog(context);
+          value: settings.deviceInfoConsent == true,
+          onChanged: (on) async {
+            final ok = on ? await showDataConsentDialog(context) : false;
             if (ok == null) return;
             await controller.update((s) => s.copyWith(deviceInfoConsent: ok));
           },
+        ),
+      )
+    else
+      // Сборка GitHub: согласия нет, но раскрытие можно перечитать.
+      SettingsRow(
+        search: '${l.privacyTileTitle} ${l.consentDeviceTitle}',
+        build: (context) => ListTile(
+          key: const Key('privacyNoticeTile'),
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: Text(l.privacyTileTitle),
+          subtitle: Text(l.privacyTileOn),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => showDataConsentDialog(context, noticeOnly: true),
         ),
       ),
     SettingsRow(

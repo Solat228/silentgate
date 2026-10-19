@@ -36,6 +36,7 @@ import 'state/probe_controller.dart';
 import 'state/provider_wiring.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
+import 'ui/widgets/ui_message_l10n.dart';
 
 /// Поставить ловушки необработанных ошибок.
 ///
@@ -198,6 +199,7 @@ Future<void> main(List<String> args) async {
               AppState(
               initialUrl: incomingUrl.isEmpty ? null : incomingUrl,
               autostart: autostart)
+            ..systemNoticeText = systemNoticeL10n
             ..init(),
         ),
         ChangeNotifierProvider(create: (_) => SettingsController()..init()),

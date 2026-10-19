@@ -3987,6 +3987,17 @@ class AppLocalizationsRu extends AppLocalizations {
   String get privacyTileOff => 'Данные устройства не отправляются';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению — разработчику SilentGate они не приходят.';
+
+  @override
+  String get consentNoticeNote =>
+      'Эти данные нужны провайдеру, чтобы считать устройства в вашем тарифе. Сообщение можно открыть снова: Настройки → О программе → «Данные и конфиденциальность».';
+
+  @override
+  String get consentNoticeOk => 'Понятно';
+
+  @override
   String get privacyPolicyTile => 'Политика конфиденциальности';
 
   @override
@@ -4001,4 +4012,210 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'Открыть в Google Play';
+
+  @override
+  String get statusNetworkChanged => 'сменилось сетевое окружение';
+
+  @override
+  String get statusRecoveryError => 'ошибка восстановления';
+
+  @override
+  String get statusGeoUnavailable => 'ядру недоступны гео-базы';
+
+  @override
+  String get statusNetworkBackChannelDead => 'сеть вернулась, канал не ответил';
+
+  @override
+  String get noticeReconnecting => 'Связь оборвалась, восстанавливаю';
+
+  @override
+  String get noticeRecovered => 'Соединение восстановлено';
+
+  @override
+  String get noticeStillDown => 'Связь до сих пор не восстановлена';
+
+  @override
+  String get noticeRecoverFailed => 'Не удалось восстановить связь';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'Попыток: $count. Причина: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'Попыток: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'Сайт заблокирован вашим правилом';
+
+  @override
+  String get noticeBlockedAction => 'Правила';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'Выход «$name» не отвечает';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'Трафик, направленный через этот сервер, временно идёт через основной туннель — значит из другой страны. Вернётся обратно, как только сервер снова ответит.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'Трафик, направленный через этот сервер, сейчас не идёт. Основной туннель и остальные выходы работают.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'Системный прокси не включился — трафик идёт мимо VPN, под вашим реальным адресом';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'Чаще всего это запрет записи в реестр (политика домена или повреждённый профиль). Подробности — в журнале приложения. Обходной путь: режим захвата «TUN».';
+
+  @override
+  String get noticeGeoMissing =>
+      'Гео-базы не скачаны — правила панели по странам отключены';
+
+  @override
+  String get noticeGeoUnusable =>
+      'Ядро не открыло гео-базы — правила панели по странам отключены';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Пинг завершён: рабочих $ok из $total ($seconds с)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Пинг завершён: доступных $ok из $total ($seconds с)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Пинг отменён: рабочих $ok из $total';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Пинг отменён: доступных $ok из $total';
+  }
+
+  @override
+  String get pingFailed => 'Пинг прерван ошибкой';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'Скорость измерена: $ok из $total ($seconds с)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'Замер скорости отменён: измерено $ok из $total';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'Скорость этого сервера здесь не измерить: замер идёт через живое подключение. Подключитесь к нему и повторите';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'Автонастройка завершена: найдено $count';
+  }
+
+  @override
+  String get autoConfigDoneNone => 'Автонастройка: рабочих серверов не найдено';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'Автонастройка недоступна на этой платформе';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'Автонастройка недоступна на этой платформе: проверить доступность сервисов через сервер нечем. Пользуйтесь пингом.';
+
+  @override
+  String get autoConfigBadKey =>
+      'Не удалось распознать ключ (нужен vless:// / vmess:// / trojan:// / ss:// / hysteria2://)';
+
+  @override
+  String get autoConfigNoneFound => 'Рабочих серверов не найдено';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'Ошибка: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'Выбран другой сервер — переподключитесь, чтобы применить';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'Подписка переключена — переподключитесь, чтобы применить';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'Сервер «$name» не найден';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'На устройстве неверные дата и время — они отстают, поэтому сертификат сервера считается ещё не начавшим действовать. Проверьте часы и включите синхронизацию времени, затем повторите импорт.';
+
+  @override
+  String get hintCertExpired =>
+      'Срок действия сертификата сервера истёк. Сначала проверьте дату и время на устройстве — если они спешат, ошибка будет такой же. Если время верное, сертификат просрочен на стороне сервиса: напишите в поддержку.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'Сертификат выписан на другое имя. Проверьте адрес подписки — возможно, в нём опечатка, либо соединение подменяет посредник.';
+
+  @override
+  String get hintNoNetwork =>
+      'Не удалось связаться с сервером подписки. Проверьте интернет; если он есть, адрес может быть заблокирован — попробуйте включить VPN и повторить импорт.';
+
+  @override
+  String get importSyncTime => 'Синхронизировать время';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'Достигнут лимит устройств ($limit). Отключите лишнее устройство в личном кабинете и повторите.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'Достигнут лимит устройств. Отключите лишнее устройство в личном кабинете и повторите.';
+
+  @override
+  String get subHwidRequired =>
+      'Панель требует идентификатор устройства, а приложение его не прислало. Обновите приложение.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'Сервер вернул код $code';
+  }
+
+  @override
+  String get subNoServers => 'В подписке не найдено ни одного сервера';
+
+  @override
+  String get subTooManyRedirects => 'Слишком много редиректов подписки';
+
+  @override
+  String get trayNoteBlocked => 'соединение потеряно, трафик заблокирован';
+
+  @override
+  String get trayNoteOffline => 'нет интернета, жду сеть';
+
+  @override
+  String get routeYourPhone => 'Ваш телефон';
+
+  @override
+  String get importSyncTimeOk => 'Время синхронизировано. Повторите импорт.';
+
+  @override
+  String get importSyncTimeManual =>
+      'Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.';
 }

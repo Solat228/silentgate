@@ -11,22 +11,39 @@
 ///   «Device and Network Abuse» запрещает приложению из Play обновлять себя
 ///   любым другим способом, поэтому проверки обновлений там нет вовсе.
 ///
+/// * [AppStore.msstore] — Windows-сборка для Microsoft Store. Обновляется сама,
+///   как сборка GitHub (правила Store это разрешают приложениям EXE/MSI), но
+///   данные устройства отправляет только с явного согласия человека (правило
+///   Store 10.5.1; решение владельца 19.10.2026). Собирается с
+///   `--dart-define=SILENTGATE_STORE=msstore`: флейворов у Flutter на Windows нет.
+///
 /// Windows и тесты собираются без флейвора — это [AppStore.github].
-enum AppStore { github, play }
+enum AppStore { github, play, msstore }
 
 abstract final class AppStoreInfo {
   /// Имя флейвора: Flutter кладёт его в эту константу сам при
   /// `flutter build … --flavor <имя>`. Без флага — пустая строка.
   static const String flavor = String.fromEnvironment('FLUTTER_APP_FLAVOR');
 
-  /// Сборка по имени флейвора. Всё, что не `play`, — GitHub: ошибиться в
-  /// эту сторону безопаснее, чем молча лишить сборку обновлений.
-  static AppStore storeOf(String flavor) =>
-      flavor.trim().toLowerCase() == 'play' ? AppStore.play : AppStore.github;
+  /// Магазин Windows-сборки: `--dart-define=SILENTGATE_STORE=msstore`.
+  static const String storeDefine = String.fromEnvironment('SILENTGATE_STORE');
 
-  static AppStore get current => storeOf(flavor);
+  /// Сборка по имени флейвора и [storeDefine]. Всё неизвестное — GitHub:
+  /// ошибиться в эту сторону безопаснее, чем молча лишить сборку обновлений.
+  static AppStore storeOf(String flavor, {String store = ''}) {
+    if (flavor.trim().toLowerCase() == 'play') return AppStore.play;
+    if (store.trim().toLowerCase() == 'msstore') return AppStore.msstore;
+    return AppStore.github;
+  }
+
+  static AppStore get current => storeOf(flavor, store: storeDefine);
 
   static bool get isPlay => current == AppStore.play;
+
+  /// Сборка спрашивает согласие на данные устройства (Play и Microsoft
+  /// Store). Сборка GitHub только сообщает о них — см. `DeviceInfoConsent`.
+  static bool asksDataConsent(AppStore store) =>
+      store == AppStore.play || store == AppStore.msstore;
 
   /// Страница приложения в Google Play открыта всем (production).
   ///

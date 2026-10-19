@@ -154,7 +154,11 @@ void main() {
       // Эндпоинт /api/app-version ссылается на SilentGateSetup-<версия>.exe
       // (docs/APP_UPDATE_SERVER.md §3). Лишний дефис здесь = 404 по кнопке
       // «Скачать» у каждого пользователя.
-      expect(setting('OutputBaseFilename'), 'SilentGateSetup-{#ShortVersion}');
+      expect(setting('OutputBaseFilename'),
+          'SilentGateSetup-{#ShortVersion}{#SetupSuffix}');
+      // Суффикс есть только у сборки Store (/DSetupSuffix=-msstore); по
+      // умолчанию он пуст, и имя для сервера обновлений прежнее.
+      expect(text, contains('#ifndef SetupSuffix\r\n  #define SetupSuffix ""'));
     });
 
     test('в имени файла три числа, без номера сборки', () {
@@ -506,4 +510,26 @@ void main() {
           reason: 'портативный архив снова понесёт резервные копии гео-баз');
     });
   });
+
+  group('Схема silentgate:// — и в установщике, и на старте', () {
+    // MS1 (решение владельца 19.10.2026): установщик регистрирует схему сам,
+    // чтобы ссылки работали сразу после установки, до первого запуска;
+    // регистрация на старте остаётся — она чинит запись после переноса папки
+    // и в портативной копии.
+    test('установщик пишет все четыре значения и удаляет их при удалении', () {
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate"; '
+          r'ValueType: string; ValueName: ""; ValueData: "URL:SilentGate Protocol"; '
+          'Flags: uninsdeletekey'));
+      expect(text, contains(r'ValueName: "URL Protocol"'));
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate\DefaultIcon"'));
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate\shell\open\command"; '
+          r'ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExe}"" ""%1"""'));
+    });
+
+    test('регистрация на старте приложения не убрана', () {
+      final main = File('lib/main.dart').readAsStringSync();
+      expect(main, contains('UrlSchemeWindows.register()'));
+    });
+  });
 }
+

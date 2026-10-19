@@ -3988,6 +3988,17 @@ class AppLocalizationsTr extends AppLocalizations {
   String get privacyTileOff => 'Cihaz verileri gönderilmez';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'Abonelik yüklenirken veya güncellenirken uygulama, abonelik sunucusuna bilgisayar kimliğini (HWID), Windows sürümünü ve bilgisayar modelini gönderebilir. Sağlayıcınız bunlarla cihazlarınızı sayar (tarifenizdeki cihaz sınırı). Bu veriler yalnızca abonelik adresinize ve yalnızca güvenli bağlantı üzerinden gider — SilentGate geliştiricisi bunları asla almaz.';
+
+  @override
+  String get consentNoticeNote =>
+      'Sağlayıcınız, tarifenizdeki cihazları saymak için bu verilere ihtiyaç duyar. Bu mesajı yeniden açabilirsiniz: Ayarlar → Hakkında → \"Veriler ve gizlilik\".';
+
+  @override
+  String get consentNoticeOk => 'Anladım';
+
+  @override
   String get privacyPolicyTile => 'Gizlilik politikası';
 
   @override
@@ -4002,4 +4013,212 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'Google Play\'de aç';
+
+  @override
+  String get statusNetworkChanged => 'ağ değişti';
+
+  @override
+  String get statusRecoveryError => 'kurtarma hatası';
+
+  @override
+  String get statusGeoUnavailable =>
+      'çekirdek coğrafi veritabanlarını kullanamıyor';
+
+  @override
+  String get statusNetworkBackChannelDead =>
+      'ağ geri geldi ama tünel yanıt vermedi';
+
+  @override
+  String get noticeReconnecting => 'Bağlantı koptu, yeniden kuruluyor';
+
+  @override
+  String get noticeRecovered => 'Bağlantı yeniden kuruldu';
+
+  @override
+  String get noticeStillDown => 'Bağlantı hâlâ kurulamadı';
+
+  @override
+  String get noticeRecoverFailed => 'Bağlantı yeniden kurulamadı';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'Deneme: $count. Neden: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'Deneme: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'Site kuralınız tarafından engellendi';
+
+  @override
+  String get noticeBlockedAction => 'Kurallar';
+
+  @override
+  String noticeExitDown(String name) {
+    return '“$name” çıkışı yanıt vermiyor';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'Bu sunucu üzerinden yönlendirilen trafik geçici olarak ana tünelden, yani başka bir ülkeden geçiyor. Sunucu yeniden yanıt verdiğinde geri döner.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'Bu sunucu üzerinden yönlendirilen trafik şu anda geçmiyor. Ana tünel ve diğer çıkışlar çalışıyor.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'Sistem proxy’si açılmadı — trafik VPN’i atlayarak gerçek adresinizle gidiyor';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'Çoğu zaman kayıt defterine yazma engellidir (etki alanı ilkesi veya bozuk profil). Ayrıntılar uygulama günlüğünde. Geçici çözüm: “TUN” yakalama modu.';
+
+  @override
+  String get noticeGeoMissing =>
+      'Coğrafi veritabanları indirilmedi — panelin ülke kuralları kapalı';
+
+  @override
+  String get noticeGeoUnusable =>
+      'Çekirdek coğrafi veritabanlarını açamadı — panelin ülke kuralları kapalı';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping bitti: $total sunucudan $ok tanesi çalışıyor ($seconds sn)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping bitti: $total sunucudan $ok tanesine erişilebiliyor ($seconds sn)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping iptal edildi: $total sunucudan $ok tanesi çalışıyor';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping iptal edildi: $total sunucudan $ok tanesine erişilebiliyor';
+  }
+
+  @override
+  String get pingFailed => 'Ping bir hata nedeniyle durdu';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'Hız ölçüldü: $total sunucudan $ok ($seconds sn)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'Hız testi iptal edildi: $total sunucudan $ok ölçüldü';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'Bu sunucunun hızı burada ölçülemez: test canlı bağlantı üzerinden yapılır. Ona bağlanın ve tekrar deneyin';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'Otomatik ayar bitti: $count bulundu';
+  }
+
+  @override
+  String get autoConfigDoneNone => 'Otomatik ayar: çalışan sunucu bulunamadı';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'Otomatik ayar bu platformda kullanılamıyor';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'Otomatik ayar bu platformda kullanılamıyor: burada hizmetleri bir sunucu üzerinden denetlemenin yolu yok. Ping kullanın.';
+
+  @override
+  String get autoConfigBadKey =>
+      'Anahtar tanınamadı (vless:// / vmess:// / trojan:// / ss:// / hysteria2:// bekleniyor)';
+
+  @override
+  String get autoConfigNoneFound => 'Çalışan sunucu bulunamadı';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'Hata: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'Başka bir sunucu seçildi — uygulamak için yeniden bağlanın';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'Abonelik değiştirildi — uygulamak için yeniden bağlanın';
+
+  @override
+  String errorServerNotFound(String name) {
+    return '“$name” sunucusu bulunamadı';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'Cihazın tarihi ve saati yanlış — geride, bu yüzden sunucu sertifikası henüz geçerli değil görünüyor. Saati kontrol edin, zaman eşitlemeyi açın ve yeniden içe aktarın.';
+
+  @override
+  String get hintCertExpired =>
+      'Sunucu sertifikasının süresi doldu. Önce cihazın tarihini ve saatini kontrol edin — ileri ise aynı hata çıkar. Saat doğruysa sertifikanın süresi hizmet tarafında dolmuştur: desteğe yazın.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'Sertifika başka bir ad için verilmiş. Abonelik adresini kontrol edin — yazım hatası olabilir ya da araya giren biri bağlantıyı yakalıyor olabilir.';
+
+  @override
+  String get hintNoNetwork =>
+      'Abonelik sunucusuna ulaşılamadı. İnternetinizi kontrol edin; çalışıyorsa adres engellenmiş olabilir — bir VPN açıp yeniden içe aktarmayı deneyin.';
+
+  @override
+  String get importSyncTime => 'Saati eşitle';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'Cihaz sınırına ulaşıldı ($limit). Hesabınızdan fazla bir cihazı kaldırıp tekrar deneyin.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'Cihaz sınırına ulaşıldı. Hesabınızdan fazla bir cihazı kaldırıp tekrar deneyin.';
+
+  @override
+  String get subHwidRequired =>
+      'Panel bir cihaz kimliği istiyor ama uygulama göndermedi. Uygulamayı güncelleyin.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'Sunucu $code kodunu döndürdü';
+  }
+
+  @override
+  String get subNoServers => 'Abonelikte hiç sunucu bulunamadı';
+
+  @override
+  String get subTooManyRedirects => 'Abonelikte çok fazla yönlendirme var';
+
+  @override
+  String get trayNoteBlocked => 'bağlantı koptu, trafik engellendi';
+
+  @override
+  String get trayNoteOffline => 'internet yok, ağ bekleniyor';
+
+  @override
+  String get routeYourPhone => 'Telefonunuz';
+
+  @override
+  String get importSyncTimeOk => 'Saat eşitlendi. Yeniden içe aktarın.';
+
+  @override
+  String get importSyncTimeManual =>
+      'Otomatik eşitleme yapılamadı — bunun için yönetici hakları gerekiyor.\n\nElle düzeltmek için: Windows Ayarları → Zaman ve dil → Tarih ve saat. “Saati otomatik olarak ayarla”yı açın ve “Şimdi eşitle”ye tıklayın. Anahtar zaten açıksa kapatıp yeniden açın.';
 }

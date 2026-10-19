@@ -32,6 +32,7 @@ import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
+import 'widgets/ui_message_l10n.dart';
 import 'widgets/status_text_l10n.dart';
 import 'widgets/info_tooltip.dart';
 import '../state/app_state.dart';
@@ -526,13 +527,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      // Сборка Google Play: раскрытие данных и согласие — первым окном,
-      // до остальных (см. `DeviceInfoConsent`). До ответа данные устройства
-      // и так не уходят, поэтому ждать ответа здесь безопасно.
+      // Сборки магазинов: раскрытие данных и согласие — первым окном, до
+      // остальных (см. `DeviceInfoConsent`). До ответа данные устройства и
+      // так не уходят, поэтому ждать ответа здесь безопасно. Сборка GitHub
+      // показывает то же раскрытие один раз, без выбора.
       final settingsCtrl = context.read<SettingsController>();
       await askDataConsentIfNeeded(context, settingsCtrl,
           needsAsking: () =>
-              DeviceInfoConsent.needsAsking(settingsCtrl.settings));
+              DeviceInfoConsent.needsAsking(settingsCtrl.settings),
+          needsNotice: () =>
+              DeviceInfoConsent.needsNotice(settingsCtrl.settings));
       if (!mounted) return;
       // Замер «до» — на старте приложения, пока VPN выключен. Это половина
       // сравнения у кнопки: без него видно только «сейчас работает», но не
@@ -661,7 +665,12 @@ class _HomeScreenState extends State<HomeScreen> {
       // Распознанные ошибки переводятся по коду; динамические (текст
       // исключения от сети или ядра) показываются как есть.
       final code = state.errorCode;
-      final err = code != null ? appErrorText(l, code) : state.error;
+      final typed = state.errorMessage;
+      final err = code != null
+          ? appErrorText(l, code)
+          : typed != null
+              ? uiMessageL10n(l, typed)
+              : state.error;
       if (err != null && err != _shownError) {
         _shownError = err;
         state.clearError();
@@ -695,9 +704,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final restart = state.pendingRestart;
       if (restart != null && restart != _shownRestart) {
         _shownRestart = restart;
+        final typedRestart = state.pendingRestartMessage;
         AppToast.show(
           context,
-          restart,
+          typedRestart != null ? uiMessageL10n(l, typedRestart) : restart,
           kind: ToastKind.warning,
           actionLabel: l.homeReconnect,
           onAction: () => state.reconnect(settings),
@@ -795,15 +805,19 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
+      // Текст — на языке интерфейса по `kind` и полям заметки (MS1 S13);
+      // `notice.text` русский и остаётся журналу.
+      final shown = engineNoticeL10n(l, notice);
+      final shownDetail = (shown.detail ?? '').trim();
       AppToast.show(
         context,
-        detail.isEmpty ? notice.text : '${notice.text} · $detail',
+        shownDetail.isEmpty ? shown.title : '${shown.title} · $shownDetail',
         kind: notice.isProblem ? ToastKind.error : ToastKind.info,
         duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
         // У блокировки — путь к правилу: сообщение без «а где это менять»
         // заставляет искать настройку самому.
         actionLabel: notice.kind == EngineNoticeKind.blocked
-            ? 'Правила'
+            ? l.noticeBlockedAction
             : null,
         onAction: notice.kind == EngineNoticeKind.blocked
             ? () => Navigator.of(context).push(MaterialPageRoute(
@@ -877,7 +891,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownPingDone = probe.finishedAt;
         AppToast.progress(context,
             id: 'ping',
-            message: probe.lastSummary!,
+            message: probe.lastSummaryMessage != null
+                ? uiMessageL10n(l, probe.lastSummaryMessage!)
+                : probe.lastSummary!,
             finished: true,
             kind: ToastKind.success);
       }
@@ -907,7 +923,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownSpeedDone = probe.speedFinishedAt;
         AppToast.progress(context,
             id: 'speed',
-            message: probe.speedSummary!,
+            message: probe.speedSummaryMessage != null
+                ? uiMessageL10n(l, probe.speedSummaryMessage!)
+                : probe.speedSummary!,
             finished: true,
             kind: ToastKind.success);
       }
@@ -938,7 +956,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownAutoDone = auto.finishedAt;
         AppToast.progress(context,
             id: 'autoconfig',
-            message: auto.lastSummary!,
+            message: auto.lastSummaryMessage != null
+                ? uiMessageL10n(l, auto.lastSummaryMessage!)
+                : auto.lastSummary!,
             finished: true,
             pinned: true,
             onTap: () => _openAutoConfig(context),

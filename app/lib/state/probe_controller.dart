@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/models/ui_message.dart';
 import '../core/models/vpn_server.dart';
 import '../core/net/speed_test.dart';
 import '../core/probe/cancel_token.dart';
@@ -148,6 +149,7 @@ class ProbeController extends ChangeNotifier {
   /// бы на 100% на всё время фазы 2 (самой долгой).
   final Set<String> _done = {};
   String? _lastSummary;
+  UiMessage? _lastSummaryMessage;
   DateTime? _finishedAt;
   Set<String> _unfinished = const {};
 
@@ -262,6 +264,10 @@ class ProbeController extends ChangeNotifier {
   /// Итог последнего прогона и момент завершения — уведомление висит ещё
   /// несколько секунд после конца, поэтому текст нужен и после `running == false`.
   String? get lastSummary => _lastSummary;
+
+  /// Тот же итог кодом — для перевода на экране ([lastSummary] — русский,
+  /// для журнала).
+  UiMessage? get lastSummaryMessage => _lastSummaryMessage;
   DateTime? get finishedAt => _finishedAt;
 
   /// #6 — сохранённая вариация сервера (fragment/fingerprint из автонастройки).
@@ -420,6 +426,7 @@ class ProbeController extends ChangeNotifier {
   int _speedTotal = 0;
   int _speedDone = 0;
   String? _speedSummary;
+  UiMessage? _speedSummaryMessage;
   DateTime? _speedFinishedAt;
 
   /// Замер скорости этого сервера. `null` — не мерили.
@@ -437,6 +444,7 @@ class ProbeController extends ChangeNotifier {
   int get speedTotal => _speedTotal;
   int get speedDone => _speedDone;
   String? get speedSummary => _speedSummary;
+  UiMessage? get speedSummaryMessage => _speedSummaryMessage;
   DateTime? get speedFinishedAt => _speedFinishedAt;
 
   /// Кого имеет смысл гнать в прогон по списку: прошёл проверку канала, ещё не
@@ -565,6 +573,7 @@ class ProbeController extends ChangeNotifier {
               (s) => resultFor(s).speedMeasurable && !canMeasureSpeed(s))) {
         _speedSummary = 'Скорость этого сервера здесь не измерить: замер идёт '
             'через живое подключение. Подключитесь к нему и повторите';
+        _speedSummaryMessage = const UiSpeedNeedsLive();
         _speedFinishedAt = DateTime.now();
         notifyListeners();
       }
@@ -601,6 +610,7 @@ class ProbeController extends ChangeNotifier {
     _speedTotal = targets.length;
     _speedDone = 0;
     _speedSummary = null;
+    _speedSummaryMessage = null;
     final cancel = _speedCancel = CancelToken();
     notifyListeners();
 
@@ -695,6 +705,11 @@ class ProbeController extends ChangeNotifier {
           ? 'Замер скорости отменён: измерено $ok из $_speedTotal'
           : 'Скорость измерена: $ok из $_speedTotal '
               '(${sw.elapsed.inSeconds} с)';
+      _speedSummaryMessage = UiSpeedDone(
+          cancelled: cancel.isCancelled,
+          ok: ok,
+          total: _speedTotal,
+          seconds: sw.elapsed.inSeconds);
       AppLog.i(_speedSummary!);
       await _persistSpeeds();
       notifyListeners();
@@ -777,6 +792,7 @@ class ProbeController extends ChangeNotifier {
     _batchKeys = {for (final s in servers) s.key};
     _done.clear();
     _lastSummary = null;
+    _lastSummaryMessage = null;
     // ⚠️ ПОМЕТКА СНИМАЕТСЯ ТОЛЬКО С СЕРВЕРОВ ЭТОГО ПРОГОНА, А НЕ ЦЕЛИКОМ.
     // Раньше здесь стояло `_unfinished = const {}`, и через эту строку проходит
     // ТАКЖЕ перепроверка одной строки (`pingOne` — тот же `_pingBatch`).
@@ -1002,16 +1018,24 @@ class ProbeController extends ChangeNotifier {
       // ⚠️ Слово подбирается по ФАКТУ проверки, а не по галочке в настройках:
       // «рабочих» — только когда проба через сервер реально была. Иначе итог
       // обещал бы проверку, которой не делали.
-      final word = _anyVerified(servers) ? 'рабочих' : 'доступных';
+      final verified = _anyVerified(servers);
+      final word = verified ? 'рабочих' : 'доступных';
       _lastSummary = cancel.isCancelled
           ? 'Пинг отменён: $word $ok из ${servers.length}'
           : 'Пинг завершён: $word $ok из ${servers.length} '
               '(${sw.elapsed.inSeconds} с)';
+      _lastSummaryMessage = UiPingDone(
+          verified: verified,
+          cancelled: cancel.isCancelled,
+          ok: ok,
+          total: servers.length,
+          seconds: sw.elapsed.inSeconds);
       AppLog.i('Пинг: $word $ok из ${servers.length} за '
           '${sw.elapsed.inSeconds} с');
     } catch (e) {
       interrupted = true;
       _lastSummary = 'Пинг прерван ошибкой';
+      _lastSummaryMessage = const UiPingFailed();
       AppLog.e('Пинг: сбой — $e');
     } finally {
       // Кого прогон не успел проверить — считаем ДО очистки состояния: только

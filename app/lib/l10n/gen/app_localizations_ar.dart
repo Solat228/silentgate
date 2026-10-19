@@ -3968,6 +3968,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get privacyTileOff => 'لا تُرسل بيانات الجهاز';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'عند تحميل الاشتراك أو تحديثه، قد يرسل التطبيق إلى خادم الاشتراك معرّف الحاسوب (HWID) وإصدار Windows وطراز الحاسوب. يستخدمها مزوّدك لعدّ أجهزتك (حدّ الأجهزة في خطتك). تذهب هذه البيانات إلى عنوان اشتراكك فقط وعبر اتصال آمن فقط — ولا يتلقاها مطوّر SilentGate أبداً.';
+
+  @override
+  String get consentNoticeNote =>
+      'يحتاج مزوّدك هذه البيانات لعدّ الأجهزة في خطتك. يمكنك فتح هذه الرسالة مجدداً من الإعدادات ← حول ← «البيانات والخصوصية».';
+
+  @override
+  String get consentNoticeOk => 'فهمت';
+
+  @override
   String get privacyPolicyTile => 'سياسة الخصوصية';
 
   @override
@@ -3982,4 +3993,212 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'الفتح في Google Play';
+
+  @override
+  String get statusNetworkChanged => 'تغيّرت الشبكة';
+
+  @override
+  String get statusRecoveryError => 'خطأ في الاستعادة';
+
+  @override
+  String get statusGeoUnavailable =>
+      'لا تستطيع النواة استخدام قواعد البيانات الجغرافية';
+
+  @override
+  String get statusNetworkBackChannelDead => 'عادت الشبكة لكن النفق لم يستجب';
+
+  @override
+  String get noticeReconnecting => 'انقطع الاتصال، جارٍ الاستعادة';
+
+  @override
+  String get noticeRecovered => 'تمت استعادة الاتصال';
+
+  @override
+  String get noticeStillDown => 'لم تتم استعادة الاتصال بعد';
+
+  @override
+  String get noticeRecoverFailed => 'تعذّرت استعادة الاتصال';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'المحاولات: $count. السبب: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'المحاولات: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'الموقع محظور بقاعدتك';
+
+  @override
+  String get noticeBlockedAction => 'القواعد';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'المخرج «$name» لا يستجيب';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'حركة المرور الموجّهة عبر هذا الخادم تمر مؤقتًا عبر النفق الرئيسي، أي من بلد آخر. ستعود فور استجابة الخادم مجددًا.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'حركة المرور الموجّهة عبر هذا الخادم لا تمر الآن. النفق الرئيسي والمخارج الأخرى تعمل.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'لم يُفعَّل وكيل النظام — حركة المرور تتجاوز VPN بعنوانك الحقيقي';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'في الغالب تكون الكتابة في السجل ممنوعة (سياسة المجال أو ملف تعريف تالف). التفاصيل في سجل التطبيق. الحل البديل: وضع الالتقاط «TUN».';
+
+  @override
+  String get noticeGeoMissing =>
+      'لم يتم تنزيل قواعد البيانات الجغرافية — قواعد اللوحة حسب البلد معطّلة';
+
+  @override
+  String get noticeGeoUnusable =>
+      'لم تتمكن النواة من فتح قواعد البيانات الجغرافية — قواعد اللوحة حسب البلد معطّلة';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'انتهى الفحص: $ok من $total تعمل ($seconds ث)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'انتهى الفحص: $ok من $total يمكن الوصول إليها ($seconds ث)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'أُلغي الفحص: $ok من $total تعمل';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'أُلغي الفحص: $ok من $total يمكن الوصول إليها';
+  }
+
+  @override
+  String get pingFailed => 'توقف الفحص بسبب خطأ';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'تم قياس السرعة: $ok من $total ($seconds ث)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'أُلغي قياس السرعة: تم قياس $ok من $total';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'لا يمكن قياس سرعة هذا الخادم هنا: يتم القياس عبر الاتصال النشط. اتصل به وأعد المحاولة';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'انتهى الإعداد التلقائي: تم العثور على $count';
+  }
+
+  @override
+  String get autoConfigDoneNone =>
+      'الإعداد التلقائي: لم يتم العثور على خوادم تعمل';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'الإعداد التلقائي غير متاح على هذه المنصة';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'الإعداد التلقائي غير متاح على هذه المنصة: لا توجد طريقة هنا لفحص الخدمات عبر خادم. استخدم الفحص (ping).';
+
+  @override
+  String get autoConfigBadKey =>
+      'تعذّر التعرّف على المفتاح (المتوقع vless:// / vmess:// / trojan:// / ss:// / hysteria2://)';
+
+  @override
+  String get autoConfigNoneFound => 'لم يتم العثور على خوادم تعمل';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'خطأ: $detail';
+  }
+
+  @override
+  String get restartServerChanged => 'تم اختيار خادم آخر — أعد الاتصال للتطبيق';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'تم تبديل الاشتراك — أعد الاتصال للتطبيق';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'لم يتم العثور على الخادم «$name»';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'تاريخ الجهاز ووقته غير صحيحين — إنهما متأخران، لذلك تبدو شهادة الخادم غير سارية بعد. تحقق من الساعة وفعّل مزامنة الوقت، ثم أعد الاستيراد.';
+
+  @override
+  String get hintCertExpired =>
+      'انتهت صلاحية شهادة الخادم. تحقق أولًا من تاريخ الجهاز ووقته — إن كانا متقدمين فسيظهر الخطأ نفسه. إن كان الوقت صحيحًا فقد انتهت الشهادة لدى الخدمة: تواصل مع الدعم.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'الشهادة صادرة لاسم آخر. تحقق من عنوان الاشتراك — قد يكون فيه خطأ مطبعي، أو أن وسيطًا يعترض الاتصال.';
+
+  @override
+  String get hintNoNetwork =>
+      'تعذّر الوصول إلى خادم الاشتراك. تحقق من الإنترنت؛ إن كان يعمل فقد يكون العنوان محظورًا — جرّب تشغيل VPN ثم أعد الاستيراد.';
+
+  @override
+  String get importSyncTime => 'مزامنة الوقت';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'تم بلوغ حد الأجهزة ($limit). أزل جهازًا زائدًا من حسابك وأعد المحاولة.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'تم بلوغ حد الأجهزة. أزل جهازًا زائدًا من حسابك وأعد المحاولة.';
+
+  @override
+  String get subHwidRequired =>
+      'تتطلب اللوحة معرّف الجهاز، لكن التطبيق لم يرسله. حدّث التطبيق.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'أعاد الخادم الرمز $code';
+  }
+
+  @override
+  String get subNoServers => 'لم يتم العثور على أي خادم في الاشتراك';
+
+  @override
+  String get subTooManyRedirects =>
+      'عدد كبير جدًا من عمليات إعادة توجيه الاشتراك';
+
+  @override
+  String get trayNoteBlocked => 'انقطع الاتصال، حركة المرور محظورة';
+
+  @override
+  String get trayNoteOffline => 'لا يوجد إنترنت، بانتظار الشبكة';
+
+  @override
+  String get routeYourPhone => 'هاتفك';
+
+  @override
+  String get importSyncTimeOk => 'تمت مزامنة الوقت. أعد الاستيراد.';
+
+  @override
+  String get importSyncTimeManual =>
+      'تعذّرت المزامنة تلقائيًا — يتطلب ذلك صلاحيات المسؤول.\n\nللإصلاح يدويًا: إعدادات Windows ← الوقت واللغة ← التاريخ والوقت. فعّل «تعيين الوقت تلقائيًا» واضغط «المزامنة الآن». إن كان المفتاح مفعّلًا بالفعل فأوقفه ثم فعّله مجددًا.';
 }

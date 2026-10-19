@@ -3983,6 +3983,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyTileOff => 'Device data is not sent';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'When the subscription is loaded or updated, the app may send the subscription server your computer identifier (HWID), Windows version and computer model. Your provider uses them to count your devices (the device limit of your plan). This data goes only to your subscription address and only over a secure connection — the SilentGate developer never receives it.';
+
+  @override
+  String get consentNoticeNote =>
+      'Your provider needs this data to count the devices on your plan. You can open this message again in Settings → About → \"Data and privacy\".';
+
+  @override
+  String get consentNoticeOk => 'Got it';
+
+  @override
   String get privacyPolicyTile => 'Privacy policy';
 
   @override
@@ -3997,4 +4008,211 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'Open in Google Play';
+
+  @override
+  String get statusNetworkChanged => 'the network changed';
+
+  @override
+  String get statusRecoveryError => 'recovery error';
+
+  @override
+  String get statusGeoUnavailable => 'the core cannot use the geo databases';
+
+  @override
+  String get statusNetworkBackChannelDead =>
+      'the network is back, but the tunnel did not answer';
+
+  @override
+  String get noticeReconnecting => 'Connection dropped, restoring';
+
+  @override
+  String get noticeRecovered => 'Connection restored';
+
+  @override
+  String get noticeStillDown => 'The connection is still not restored';
+
+  @override
+  String get noticeRecoverFailed => 'Could not restore the connection';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'Attempts: $count. Reason: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'Attempts: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'Site blocked by your rule';
+
+  @override
+  String get noticeBlockedAction => 'Rules';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'Exit “$name” is not responding';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'Traffic routed through this server temporarily goes through the main tunnel, so it comes from another country. It switches back as soon as the server responds again.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'Traffic routed through this server is not flowing right now. The main tunnel and the other exits work.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'The system proxy did not turn on — traffic bypasses the VPN under your real address';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'Most often the registry is write-protected (domain policy or a damaged profile). Details are in the app log. Workaround: the “TUN” capture mode.';
+
+  @override
+  String get noticeGeoMissing =>
+      'Geo databases are not downloaded — the panel’s country rules are off';
+
+  @override
+  String get noticeGeoUnusable =>
+      'The core could not open the geo databases — the panel’s country rules are off';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping finished: $ok of $total working ($seconds s)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping finished: $ok of $total reachable ($seconds s)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping cancelled: $ok of $total working';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping cancelled: $ok of $total reachable';
+  }
+
+  @override
+  String get pingFailed => 'Ping stopped by an error';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'Speed measured: $ok of $total ($seconds s)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'Speed test cancelled: $ok of $total measured';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'This server’s speed can’t be measured here: the test runs through the live connection. Connect to it and try again';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'Auto-setup finished: $count found';
+  }
+
+  @override
+  String get autoConfigDoneNone => 'Auto-setup: no working servers found';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'Auto-setup is not available on this platform';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'Auto-setup is not available on this platform: there is no way to check services through a server here. Use ping instead.';
+
+  @override
+  String get autoConfigBadKey =>
+      'Could not recognize the key (vless:// / vmess:// / trojan:// / ss:// / hysteria2:// expected)';
+
+  @override
+  String get autoConfigNoneFound => 'No working servers found';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'Error: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'Another server is selected — reconnect to apply';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'Subscription switched — reconnect to apply';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'Server “$name” not found';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'The date and time on this device are wrong — they are behind, so the server certificate looks not yet valid. Check the clock and turn on time sync, then import again.';
+
+  @override
+  String get hintCertExpired =>
+      'The server certificate has expired. First check the date and time on this device — if they are ahead, you get the same error. If the time is correct, the certificate expired on the service side: contact support.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'The certificate is issued for a different name. Check the subscription address — it may have a typo, or something in between is intercepting the connection.';
+
+  @override
+  String get hintNoNetwork =>
+      'Could not reach the subscription server. Check your internet; if it works, the address may be blocked — try turning on a VPN and importing again.';
+
+  @override
+  String get importSyncTime => 'Sync time';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'The device limit is reached ($limit). Remove an extra device in your account and try again.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'The device limit is reached. Remove an extra device in your account and try again.';
+
+  @override
+  String get subHwidRequired =>
+      'The panel requires a device ID, but the app did not send one. Update the app.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'The server returned code $code';
+  }
+
+  @override
+  String get subNoServers => 'No servers found in the subscription';
+
+  @override
+  String get subTooManyRedirects => 'Too many subscription redirects';
+
+  @override
+  String get trayNoteBlocked => 'connection lost, traffic blocked';
+
+  @override
+  String get trayNoteOffline => 'no internet, waiting for the network';
+
+  @override
+  String get routeYourPhone => 'Your phone';
+
+  @override
+  String get importSyncTimeOk => 'Time synced. Import again.';
+
+  @override
+  String get importSyncTimeManual =>
+      'Could not sync automatically — administrator rights are needed for that.\n\nTo fix it manually: Windows Settings → Time & language → Date & time. Turn on “Set time automatically” and click “Sync now”. If the switch is already on, turn it off and on again.';
 }

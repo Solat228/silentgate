@@ -596,13 +596,22 @@ class TrayWindow with WindowListener, TrayListener {
     }
   }
 
-  /// Текст про удержанный трафик.
-  ///
-  /// Остаётся русским литералом, как и был: своего ключа в ARB у него нет, а
-  /// заводить его ради одной строки значит оставить восемь языков без перевода.
-  String _blockedNote() => 'соединение потеряно, трафик заблокирован';
+  /// Текст про удержанный трафик — на языке интерфейса; без дерева виджетов
+  /// (ранний старт, тесты) — русский.
+  String _blockedNote() {
+    final ctx = _ctx;
+    final l = ctx == null
+        ? null
+        : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
+    return l?.trayNoteBlocked ?? 'соединение потеряно, трафик заблокирован';
+  }
 
-  /// Текст про пропавшую сеть. Русский литерал по той же причине, что и
-  /// [_blockedNote].
-  String _offlineNote() => 'нет интернета, жду сеть';
+  /// Текст про пропавшую сеть — как [_blockedNote].
+  String _offlineNote() {
+    final ctx = _ctx;
+    final l = ctx == null
+        ? null
+        : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
+    return l?.trayNoteOffline ?? 'нет интернета, жду сеть';
+  }
 }

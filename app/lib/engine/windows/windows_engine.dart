@@ -697,7 +697,10 @@ class WindowsEngine extends VpnEngineBase {
       }
       // Сеть могла быть ещё не готова (например, сразу после пробуждения) —
       // это как раз случай для повторной попытки.
-      if (await scheduleRetry('не удалось подключиться: $e')) return;
+      if (await scheduleRetry('не удалось подключиться: $e',
+          why: StatusConnectFailed('$e'))) {
+        return;
+      }
       await cleanup();
       setStatus(VpnConnectionState.error,
           message: 'Не удалось подключиться: $e',
@@ -1652,7 +1655,8 @@ class WindowsEngine extends VpnEngineBase {
       // том, чтобы исчез адаптер, иначе трафик так и останется в чёрной дыре.
       // С kill switch захват НЕ снимаем — см. [hungTunKeepsCapture].
       await teardownCore(keepCapture: hungTunKeepsCapture(settings));
-      if (!await scheduleRetry('туннельное ядро зависло')) {
+      if (!await scheduleRetry('туннельное ядро зависло',
+          why: const StatusTunCoreHung())) {
         setStatus(VpnConnectionState.error,
             message: 'Туннельное ядро зависло, туннель снят',
             text: const StatusTunCoreHung());

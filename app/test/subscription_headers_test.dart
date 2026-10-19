@@ -159,4 +159,46 @@ void main() {
           reason: 'панель выбирает формат по UA — потеряв его, получим base64');
     });
   });
+
+  group('Данные устройства уходят только по https', () {
+    const dev = {'X-HWID': 'test-hwid', 'X-Device-Model': 'Test'};
+
+    test('https — заголовки на месте', () async {
+      final seen = <Map<String, String>>[];
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen.add(req.headers);
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('https://example.org/sub', deviceHeaders: dev);
+      expect(seen.single['X-HWID'], 'test-hwid');
+    });
+
+    test('http — ни идентификатора, ни модели', () async {
+      final seen = <Map<String, String>>[];
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen.add(req.headers);
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('http://example.org/sub', deviceHeaders: dev);
+      expect(seen.single.containsKey('X-HWID'), isFalse);
+      expect(seen.single.containsKey('X-Device-Model'), isFalse);
+      // Свой UA остаётся: по нему панель выбирает формат.
+      expect(seen.single['User-Agent'], startsWith('SilentGate/'));
+    });
+
+    test('⚠️ редирект https → http не уносит данные устройства', () async {
+      final seen = <String, Map<String, String>>{};
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen[req.url.scheme] = req.headers;
+        if (req.url.scheme == 'https') {
+          return http.Response('', 302,
+              headers: {'location': 'http://example.org/sub'});
+        }
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('https://example.org/sub', deviceHeaders: dev);
+      expect(seen['https']!['X-HWID'], 'test-hwid');
+      expect(seen['http']!.containsKey('X-HWID'), isFalse);
+    });
+  });
 }

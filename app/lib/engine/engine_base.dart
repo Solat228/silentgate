@@ -568,6 +568,8 @@ abstract class VpnEngineBase implements VpnEngine {
         emitNotice(
           EngineNoticeKind.exitDown,
           'Выход «$name» не отвечает',
+          subject: name,
+          switched: switched,
           detail: switched
               // Про смену страны говорим ПРЯМО. Человек направил этот трафик
               // через конкретный сервер осознанно, и молчаливая подмена
@@ -780,7 +782,8 @@ abstract class VpnEngineBase implements VpnEngine {
         // же причиной («канал не пропускает трафик»), и на экране всплывали ДВА
         // сообщения об одном событии. Поймано живым прогоном в VM: на снимке
         // обе карточки стоят друг под другом. Одно событие — одна заметка.
-        await _restartDeadChannel('канал не пропускает трафик');
+        await _restartDeadChannel('канал не пропускает трафик',
+            const StatusTrafficNotFlowing());
       },
     );
     final w = createNetworkLossWatch();
@@ -830,10 +833,10 @@ abstract class VpnEngineBase implements VpnEngine {
   }
 
   /// Погасить ядро мёртвого канала и запланировать повтор.
-  Future<void> _restartDeadChannel(String reason) async {
+  Future<void> _restartDeadChannel(String reason, StatusText why) async {
     final s = session?.options.settings;
     await teardownCore(keepCapture: s != null && keepCaptureBetweenAttempts(s));
-    if (!await scheduleRetry(reason)) {
+    if (!await scheduleRetry(reason, why: why)) {
       setStatus(VpnConnectionState.error,
           message: 'Туннель подключён, но трафик через него не идёт',
           text: const StatusTrafficNotFlowing());
@@ -985,7 +988,8 @@ abstract class VpnEngineBase implements VpnEngine {
       _stopOffline();
       _afterOffline = true;
       _attempt = 0;
-      await _restartDeadChannel('сеть вернулась, канал не ответил');
+      await _restartDeadChannel('сеть вернулась, канал не ответил',
+          const StatusNetworkBackChannelDead());
     } finally {
       _offlineBusy = false;
     }
@@ -1093,7 +1097,8 @@ abstract class VpnEngineBase implements VpnEngine {
     await teardownCore(
         keepCapture: s != null && keepCaptureBetweenAttempts(s));
     if (aborted()) return false;
-    if (!await scheduleRetry('канал не пропускает трафик')) {
+    if (!await scheduleRetry('канал не пропускает трафик',
+        why: const StatusTrafficNotFlowing())) {
       setStatus(VpnConnectionState.error,
           message: 'Туннель подключён, но трафик через него не идёт',
           text: const StatusTrafficNotFlowing());
@@ -1181,9 +1186,24 @@ abstract class VpnEngineBase implements VpnEngine {
 
   /// Отправить заметку. Молча пропускает, если поток уже закрыт: заметка не
   /// стоит того, чтобы уронить остановку движка.
-  void emitNotice(EngineNoticeKind kind, String text, {String? detail}) {
+  void emitNotice(
+    EngineNoticeKind kind,
+    String text, {
+    String? detail,
+    StatusText? reason,
+    int? attempts,
+    String? subject,
+    bool switched = false,
+    bool stillTrying = false,
+  }) {
     if (_notices.isClosed) return;
-    _notices.add(EngineNotice(kind, text, detail: detail));
+    _notices.add(EngineNotice(kind, text,
+        detail: detail,
+        reason: reason,
+        attempts: attempts,
+        subject: subject,
+        switched: switched,
+        stillTrying: stillTrying));
   }
 
   /// Запустить наблюдение. Зовётся движком после подъёма туннеля: раньше
@@ -1238,7 +1258,7 @@ abstract class VpnEngineBase implements VpnEngine {
     w.events.listen((host) {
       if (!_blockedHosts.isClosed) _blockedHosts.add(host);
       emitNotice(EngineNoticeKind.blocked, 'Сайт заблокирован вашим правилом',
-          detail: host);
+          detail: host, subject: host);
     });
     w.start();
     _blockWatcher = w;
@@ -2201,7 +2221,10 @@ abstract class VpnEngineBase implements VpnEngine {
 
   /// Запланировать повторную попытку, если включено автопереподключение и
   /// пользователь не отключался сам. Возвращает true, если попытка запланирована.
-  Future<bool> scheduleRetry(String reason) async {
+  ///
+  /// [why] — та же причина кодом, для перевода заметки «Связь оборвалась»
+  /// (MS1 S13). [reason] остаётся русской строкой для журнала.
+  Future<bool> scheduleRetry(String reason, {StatusText? why}) async {
     final session = _session;
     if (session == null || _userStopped) return false;
     // Повтор посреди ожидания сети (ядро умерло само) кончает ожидание: дальше
@@ -2268,7 +2291,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (_retryPending || (_retryTimer?.isActive ?? false)) return true;
     _retryPending = true;
     try {
-      return await _scheduleRetryLocked(reason, session);
+      return await _scheduleRetryLocked(reason, session, why);
     } finally {
       _retryPending = false;
     }
@@ -2312,13 +2335,14 @@ abstract class VpnEngineBase implements VpnEngine {
   DateTime? _noticedFailedAt;
   static const _failedNoticeEvery = Duration(minutes: 15);
 
-  Future<bool> _scheduleRetryLocked(String reason, EngineSession session) async {
+  Future<bool> _scheduleRetryLocked(
+      String reason, EngineSession session, StatusText? why) async {
     if (!_noticedDrop) {
       _noticedDrop = true;
       if (!_afterOffline) {
         emitNotice(EngineNoticeKind.reconnecting,
             'Связь оборвалась, восстанавливаю',
-            detail: reason);
+            detail: reason, reason: why);
       }
     } else if (endlessRetries(session)) {
       final since = _noticedFailedAt;
@@ -2326,7 +2350,10 @@ abstract class VpnEngineBase implements VpnEngine {
           DateTime.now().difference(since) >= _failedNoticeEvery) {
         _noticedFailedAt = DateTime.now();
         emitNotice(EngineNoticeKind.failed, 'Связь до сих пор не восстановлена',
-            detail: 'Попыток: $_attempt. Причина: $reason');
+            detail: 'Попыток: $_attempt. Причина: $reason',
+            reason: why,
+            attempts: _attempt,
+            stillTrying: true);
       }
     }
 
@@ -2358,7 +2385,9 @@ abstract class VpnEngineBase implements VpnEngine {
     if (!endless && _attempt >= maxAttempts) {
       AppLog.e('Автопереподключение: исчерпаны попытки ($maxAttempts)');
       emitNotice(EngineNoticeKind.failed, 'Не удалось восстановить связь',
-          detail: 'Попыток: $maxAttempts. Причина обрыва: $reason');
+          detail: 'Попыток: $maxAttempts. Причина обрыва: $reason',
+          reason: why,
+          attempts: maxAttempts);
       return false;
     }
 
@@ -2444,7 +2473,8 @@ abstract class VpnEngineBase implements VpnEngine {
       await startSession();
     } catch (e) {
       AppLog.e('Попытка восстановления не удалась: $e');
-      if (!await scheduleRetry('ошибка восстановления')) {
+      if (!await scheduleRetry('ошибка восстановления',
+          why: const StatusRecoveryError())) {
         setStatus(VpnConnectionState.error, message: '$e');
       }
     }
@@ -2524,7 +2554,8 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     AppLog.w('Смена сети — восстанавливаю подключение');
     _attempt = 0;
-    await scheduleRetry('сменилось сетевое окружение');
+    await scheduleRetry('сменилось сетевое окружение',
+        why: const StatusNetworkChanged());
   }
 
   /// Пережил ли канал смену сети. `true` — трогать соединение не нужно.
@@ -2603,7 +2634,10 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     final short = 'ядро $name остановилось (код $code)'
         '${reason.isEmpty ? '' : ': $reason'}';
-    if (await scheduleRetry(short)) return;
+    if (await scheduleRetry(short,
+        why: StatusCoreStopped(core: name, code: code, reason: why))) {
+      return;
+    }
     await cleanup();
     setStatus(VpnConnectionState.error,
         message: _capitalize(short),

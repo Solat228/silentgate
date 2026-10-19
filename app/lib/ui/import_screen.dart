@@ -8,6 +8,8 @@ import '../core/platform/time_sync_windows.dart';
 import '../state/app_state.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
+import '../core/models/ui_message.dart';
+import 'widgets/ui_message_l10n.dart';
 import 'widgets/subscription_avatar.dart';
 import 'widgets/app_toast.dart';
 import 'widgets/flag_text.dart';
@@ -222,7 +224,12 @@ class _ImportScreenState extends State<ImportScreen> {
                     constraints: const BoxConstraints(maxHeight: 220),
                     child: SingleChildScrollView(
                       child: Text(
-                        state.error!,
+                        // Узнанная ошибка — на языке интерфейса (MS1 S13);
+                        // сырой текст исключения — как есть.
+                        state.errorMessage != null
+                            ? uiMessageL10n(
+                                AppLocalizations.of(context), state.errorMessage!)
+                            : state.error!,
                         style: TextStyle(color: Theme.of(context).colorScheme.error),
                       ),
                     ),
@@ -239,7 +246,7 @@ class _ImportScreenState extends State<ImportScreen> {
                   // ошибках синхронизация не поможет, а кнопка «почини время»
                   // рядом с «нет интернета» только собьёт с толку.
                   if (TimeSyncWindows.isSupported &&
-                      _clockProblem(state.error!)) ...[
+                      _clockProblem(state.error!, state.errorMessage)) ...[
                     const SizedBox(height: 12),
                     _TimeSyncButton(),
                   ],
@@ -259,7 +266,11 @@ class _ImportScreenState extends State<ImportScreen> {
 /// (`networkErrorHint`), а не ищем слова в готовой строке. Два независимых
 /// разбора одного текста в этом проекте уже дважды расходились и оба раза
 /// давали дыру: показ и решение обязаны спрашивать один код.
-bool _clockProblem(String error) {
+bool _clockProblem(String error, [UiMessage? typed]) {
+  if (typed is UiNetworkHint) {
+    return typed.kind == NetworkErrorKind.clockBehind ||
+        typed.kind == NetworkErrorKind.certExpired;
+  }
   final hint = networkErrorHint(error);
   if (hint != null) {
     return hint.kind == NetworkErrorKind.clockBehind ||
@@ -299,7 +310,7 @@ class _TimeSyncButtonState extends State<_TimeSyncButton> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.schedule),
-          label: const Text('Синхронизировать время'),
+          label: Text(AppLocalizations.of(context).importSyncTime),
           onPressed: _busy
               ? null
               : () async {
@@ -316,9 +327,11 @@ class _TimeSyncButtonState extends State<_TimeSyncButton> {
                     // ⚠️ При отказе даём НЕ приговор, а второй путь: человек
                     // уже знает, что виноваты часы, и оставить его без
                     // способа их поправить хуже, чем не иметь кнопки вовсе.
-                    _result = ok
-                        ? TimeSyncWindows.okText
-                        : TimeSyncWindows.manualHint;
+                    // Русские тексты [TimeSyncWindows.okText] и
+                    // [TimeSyncWindows.manualHint] — для журнала; на экран
+                    // идёт перевод.
+                    final l = AppLocalizations.of(context);
+                    _result = ok ? l.importSyncTimeOk : l.importSyncTimeManual;
                   });
                 },
         ),

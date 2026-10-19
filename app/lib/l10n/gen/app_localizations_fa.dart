@@ -3969,6 +3969,17 @@ class AppLocalizationsFa extends AppLocalizations {
   String get privacyTileOff => 'داده‌های دستگاه فرستاده نمی‌شوند';
 
   @override
+  String get consentDeviceBodyWindows =>
+      'هنگام بارگیری یا به‌روزرسانی اشتراک، برنامه ممکن است شناسه رایانه (HWID)، نسخه Windows و مدل رایانه را به سرور اشتراک بفرستد. ارائه‌دهنده با آن‌ها دستگاه‌های شما را می‌شمارد (محدودیت دستگاه در طرح شما). این داده‌ها فقط به نشانی اشتراک شما و فقط از راه اتصال امن می‌روند — توسعه‌دهنده SilentGate هرگز آن‌ها را دریافت نمی‌کند.';
+
+  @override
+  String get consentNoticeNote =>
+      'ارائه‌دهنده برای شمردن دستگاه‌های طرح شما به این داده‌ها نیاز دارد. می‌توانید این پیام را دوباره باز کنید: تنظیمات ← درباره ← «داده‌ها و حریم خصوصی».';
+
+  @override
+  String get consentNoticeOk => 'متوجه شدم';
+
+  @override
   String get privacyPolicyTile => 'سیاست حریم خصوصی';
 
   @override
@@ -3983,4 +3994,211 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get updatesOpenPlay => 'باز کردن در Google Play';
+
+  @override
+  String get statusNetworkChanged => 'شبکه تغییر کرد';
+
+  @override
+  String get statusRecoveryError => 'خطا در بازیابی';
+
+  @override
+  String get statusGeoUnavailable =>
+      'هسته به پایگاه‌های جغرافیایی دسترسی ندارد';
+
+  @override
+  String get statusNetworkBackChannelDead => 'شبکه برگشت، اما تونل پاسخ نداد';
+
+  @override
+  String get noticeReconnecting => 'اتصال قطع شد، در حال بازیابی';
+
+  @override
+  String get noticeRecovered => 'اتصال بازیابی شد';
+
+  @override
+  String get noticeStillDown => 'اتصال هنوز بازیابی نشده است';
+
+  @override
+  String get noticeRecoverFailed => 'بازیابی اتصال ممکن نشد';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'تلاش‌ها: $count. علت: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'تلاش‌ها: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'سایت با قانون شما مسدود شد';
+
+  @override
+  String get noticeBlockedAction => 'قوانین';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'خروجی «$name» پاسخ نمی‌دهد';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'ترافیکی که از این سرور هدایت شده موقتاً از تونل اصلی، یعنی از کشوری دیگر، عبور می‌کند. به‌محض پاسخ دوبارهٔ سرور برمی‌گردد.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'ترافیکی که از این سرور هدایت شده اکنون عبور نمی‌کند. تونل اصلی و دیگر خروجی‌ها کار می‌کنند.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'پراکسی سیستم روشن نشد — ترافیک بدون VPN و با نشانی واقعی شما می‌رود';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'بیشتر وقت‌ها نوشتن در رجیستری ممنوع است (سیاست دامنه یا پروفایل آسیب‌دیده). جزئیات در گزارش برنامه است. راه جایگزین: حالت ضبط «TUN».';
+
+  @override
+  String get noticeGeoMissing =>
+      'پایگاه‌های جغرافیایی دانلود نشده‌اند — قوانین کشوری پنل خاموش است';
+
+  @override
+  String get noticeGeoUnusable =>
+      'هسته نتوانست پایگاه‌های جغرافیایی را باز کند — قوانین کشوری پنل خاموش است';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'پینگ تمام شد: $ok از $total کار می‌کنند ($seconds ثانیه)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'پینگ تمام شد: $ok از $total در دسترس‌اند ($seconds ثانیه)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'پینگ لغو شد: $ok از $total کار می‌کنند';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'پینگ لغو شد: $ok از $total در دسترس‌اند';
+  }
+
+  @override
+  String get pingFailed => 'پینگ با خطا متوقف شد';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'سرعت اندازه‌گیری شد: $ok از $total ($seconds ثانیه)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'سنجش سرعت لغو شد: $ok از $total اندازه‌گیری شد';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'سرعت این سرور اینجا قابل اندازه‌گیری نیست: سنجش از راه اتصال فعال انجام می‌شود. به آن وصل شوید و دوباره امتحان کنید';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'تنظیم خودکار تمام شد: $count مورد پیدا شد';
+  }
+
+  @override
+  String get autoConfigDoneNone => 'تنظیم خودکار: سرور فعالی پیدا نشد';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'تنظیم خودکار در این پلتفرم در دسترس نیست';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'تنظیم خودکار در این پلتفرم در دسترس نیست: اینجا راهی برای بررسی سرویس‌ها از طریق سرور نیست. از پینگ استفاده کنید.';
+
+  @override
+  String get autoConfigBadKey =>
+      'کلید شناسایی نشد (vless:// / vmess:// / trojan:// / ss:// / hysteria2:// لازم است)';
+
+  @override
+  String get autoConfigNoneFound => 'سرور فعالی پیدا نشد';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'خطا: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'سرور دیگری انتخاب شد — برای اعمال دوباره وصل شوید';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'اشتراک عوض شد — برای اعمال دوباره وصل شوید';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'سرور «$name» پیدا نشد';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'تاریخ و ساعت دستگاه درست نیست — عقب است، برای همین گواهی سرور هنوز معتبر به نظر نمی‌رسد. ساعت را بررسی کنید، همگام‌سازی زمان را روشن کنید و دوباره وارد کنید.';
+
+  @override
+  String get hintCertExpired =>
+      'گواهی سرور منقضی شده است. اول تاریخ و ساعت دستگاه را بررسی کنید — اگر جلو باشد همین خطا رخ می‌دهد. اگر ساعت درست است، گواهی در سمت سرویس منقضی شده: به پشتیبانی پیام دهید.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'گواهی برای نام دیگری صادر شده است. نشانی اشتراک را بررسی کنید — شاید غلط تایپی دارد، یا واسطه‌ای اتصال را رهگیری می‌کند.';
+
+  @override
+  String get hintNoNetwork =>
+      'ارتباط با سرور اشتراک برقرار نشد. اینترنت را بررسی کنید؛ اگر وصل است، شاید نشانی مسدود باشد — یک VPN روشن کنید و دوباره وارد کنید.';
+
+  @override
+  String get importSyncTime => 'همگام‌سازی زمان';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'به سقف دستگاه‌ها رسیده‌اید ($limit). یک دستگاه اضافه را در حساب خود حذف کنید و دوباره امتحان کنید.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'به سقف دستگاه‌ها رسیده‌اید. یک دستگاه اضافه را در حساب خود حذف کنید و دوباره امتحان کنید.';
+
+  @override
+  String get subHwidRequired =>
+      'پنل شناسهٔ دستگاه می‌خواهد، اما برنامه آن را نفرستاد. برنامه را به‌روزرسانی کنید.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'سرور کد $code را برگرداند';
+  }
+
+  @override
+  String get subNoServers => 'هیچ سروری در اشتراک پیدا نشد';
+
+  @override
+  String get subTooManyRedirects => 'تغییر مسیرهای اشتراک بیش از حد است';
+
+  @override
+  String get trayNoteBlocked => 'اتصال قطع شد، ترافیک مسدود است';
+
+  @override
+  String get trayNoteOffline => 'اینترنت نیست، منتظر شبکه';
+
+  @override
+  String get routeYourPhone => 'تلفن شما';
+
+  @override
+  String get importSyncTimeOk => 'زمان همگام شد. دوباره وارد کنید.';
+
+  @override
+  String get importSyncTimeManual =>
+      'همگام‌سازی خودکار ممکن نشد — برای آن دسترسی مدیر لازم است.\n\nاصلاح دستی: تنظیمات Windows ← زمان و زبان ← تاریخ و زمان. «تنظیم خودکار زمان» را روشن کنید و «اکنون همگام‌سازی کن» را بزنید. اگر کلید از قبل روشن است، آن را خاموش و دوباره روشن کنید.';
 }
