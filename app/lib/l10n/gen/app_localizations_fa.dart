@@ -3980,6 +3980,101 @@ class AppLocalizationsFa extends AppLocalizations {
   String get consentNoticeOk => 'متوجه شدم';
 
   @override
+  String get sectionBackup => 'پشتیبان‌گیری';
+
+  @override
+  String get backupExportTitle => 'برون‌بری تنظیمات';
+
+  @override
+  String get backupExportSub =>
+      'ذخیره تنظیمات و اشتراک‌ها در یک فایل — برای رایانه یا تلفن دیگر';
+
+  @override
+  String get backupExportWithSubs => 'شامل اشتراک‌ها و سرورها';
+
+  @override
+  String get backupExportSubsWarning =>
+      'فایل نشانی اشتراک‌ها را در بر دارد — این‌ها کلید دسترسی به VPN هستند. فایل را برای کسی نفرستید.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'فقط تنظیمات و قوانین — بدون اشتراک و سرور.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'گذرواژه درگاه‌های محلی، توکن API و رضایت داده‌های دستگاه در فایل نیستند.';
+
+  @override
+  String get backupExportAction => 'برون‌بری';
+
+  @override
+  String backupExportDone(String path) {
+    return 'تنظیمات ذخیره شد: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'ذخیره فایل تنظیمات ممکن نشد';
+
+  @override
+  String get backupImportTitle => 'درون‌ریزی تنظیمات';
+
+  @override
+  String get backupImportSub =>
+      'بارگیری تنظیمات از فایل برون‌بری. برنامه دوباره راه‌اندازی می‌شود';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'اول VPN را قطع کنید: پس از درون‌ریزی برنامه دوباره راه‌اندازی می‌شود';
+
+  @override
+  String get backupImportBadFile =>
+      'این فایل تنظیمات SilentGate نیست یا آسیب دیده است';
+
+  @override
+  String get backupImportConfirmTitle => 'تنظیمات درون‌ریزی شود؟';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'فایل: $platform، نسخه $version، $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'اشتراک‌های داخل فایل: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'جایگزینی اشتراک‌ها و سرورها';
+
+  @override
+  String get backupImportBody =>
+      'تنظیمات فعلی جایگزین می‌شود. گذرواژه درگاه‌های محلی، توکن API و رضایت داده‌های دستگاه همان مقادیر این دستگاه می‌مانند.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'فایل از سکوی دیگری است: فهرست برنامه‌های تونل‌زنی جداگانه و تنظیماتی که فقط این‌جا هستند تغییر نمی‌کنند.';
+
+  @override
+  String get backupImportAction => 'درون‌ریزی و راه‌اندازی دوباره';
+
+  @override
+  String get backupImportRestartManually =>
+      'تنظیمات آماده است. برای اعمال، برنامه را دوباره راه‌اندازی کنید';
+
+  @override
+  String get backupImportApplied => 'تنظیمات درون‌ریزی شد';
+
+  @override
+  String get backupRestoredFromGoogle => 'تنظیمات از پشتیبان Google بازیابی شد';
+
+  @override
+  String get backupGoogleSubsTitle => 'نگه‌داشتن اشتراک‌ها در پشتیبان Google';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'تنظیمات همیشه پشتیبان‌گیری می‌شوند. اشتراک‌ها کلید دسترسی به VPN هستند: اگر قفل صفحه فعال باشد، پشتیبان روی تلفن رمزنگاری می‌شود';
+
+  @override
   String get privacyPolicyTile => 'سیاست حریم خصوصی';
 
   @override

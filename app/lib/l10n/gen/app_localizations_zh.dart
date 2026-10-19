@@ -3833,6 +3833,90 @@ class AppLocalizationsZh extends AppLocalizations {
   String get consentNoticeOk => '知道了';
 
   @override
+  String get sectionBackup => '备份';
+
+  @override
+  String get backupExportTitle => '导出设置';
+
+  @override
+  String get backupExportSub => '将设置和订阅保存到文件，用于其他电脑或手机';
+
+  @override
+  String get backupExportWithSubs => '包含订阅和服务器';
+
+  @override
+  String get backupExportSubsWarning => '文件将包含订阅地址——它们是 VPN 访问密钥。请勿将文件发送给他人。';
+
+  @override
+  String get backupExportNoSubsNote => '仅设置和规则——不含订阅和服务器。';
+
+  @override
+  String get backupExportDeviceNote => '本地端口密码、API 令牌和设备数据同意不会包含在内。';
+
+  @override
+  String get backupExportAction => '导出';
+
+  @override
+  String backupExportDone(String path) {
+    return '设置已保存：$path';
+  }
+
+  @override
+  String get backupExportFailed => '无法保存设置文件';
+
+  @override
+  String get backupImportTitle => '导入设置';
+
+  @override
+  String get backupImportSub => '从导出文件加载设置。应用将重新启动';
+
+  @override
+  String get backupImportDisconnectFirst => '请先断开 VPN：导入后应用会重新启动';
+
+  @override
+  String get backupImportBadFile => '这不是 SilentGate 设置文件，或文件已损坏';
+
+  @override
+  String get backupImportConfirmTitle => '导入设置？';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return '文件：$platform，版本 $version，$date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return '文件中的订阅：$count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => '替换订阅和服务器';
+
+  @override
+  String get backupImportBody => '当前设置将被替换。本地端口密码、API 令牌和设备数据同意保留本设备的值。';
+
+  @override
+  String get backupImportOtherPlatform => '文件来自其他平台：分流隧道的应用列表以及仅本平台有的设置保持不变。';
+
+  @override
+  String get backupImportAction => '导入并重启';
+
+  @override
+  String get backupImportRestartManually => '设置已就绪。请重启应用以应用设置';
+
+  @override
+  String get backupImportApplied => '设置已导入';
+
+  @override
+  String get backupRestoredFromGoogle => '已从 Google 备份恢复设置';
+
+  @override
+  String get backupGoogleSubsTitle => '在 Google 备份中保留订阅';
+
+  @override
+  String get backupGoogleSubsSub => '设置始终会备份。订阅是 VPN 访问密钥：设置了屏幕锁时，备份会在手机上加密';
+
+  @override
   String get privacyPolicyTile => '隐私政策';
 
   @override

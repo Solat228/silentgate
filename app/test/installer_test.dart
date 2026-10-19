@@ -195,8 +195,33 @@ void main() {
     });
 
     test('данные пользователя удаляются при удалении программы', () {
-      expect(text, contains(r'Type: filesandordirs; Name: "{userappdata}\SilentGate"'));
-      expect(text, contains('--cleanup'));
+      expect(text, contains('--cleanup --keep-data'));
+      // Каталог стирает [Code], если человек не попросил сохранить настройки.
+      expect(text, contains(r"ExpandConstant('{userappdata}\SilentGate')"));
+      expect(text, contains('DelTree(dataDir, True, True, True)'));
+    });
+
+    test('⚠️ вопрос «сохранить настройки» — по умолчанию «Нет»', () {
+      // В каталоге лежат подписки — ключи доступа к VPN. Оставить их на
+      // машине можно только с согласия человека: кнопка по умолчанию «Нет»,
+      // тихое удаление стирает всё, кроме явного /KEEPDATA.
+      expect(text, contains('MB_YESNO or MB_DEFBUTTON2'));
+      expect(text, contains("CompareText(ParamStr(i), '/KEEPDATA')"));
+      expect(text, contains('GKeepData := KeepDataRequested'));
+    });
+
+    test('⚠️ каталог данных не стирается секцией [UninstallDelete]', () {
+      // Check у этой секции вычисляется при УСТАНОВКЕ, ответ человека при
+      // удалении она не учла бы — и стёрла бы сохранённые настройки.
+      expect(text, isNot(contains(r'Type: filesandordirs; Name: "{userappdata}\SilentGate"')));
+    });
+
+    test('флаг --keep-data совпадает с тем, что разбирает приложение', () {
+      final main = File('lib/main.dart').readAsStringSync();
+      final cleanup =
+          File('lib/core/platform/app_cleanup.dart').readAsStringSync();
+      expect(cleanup, contains("keepDataArg = '--keep-data'"));
+      expect(main, contains('args.contains(AppCleanup.keepDataArg)'));
     });
   });
 
@@ -400,7 +425,10 @@ void main() {
       final issKeys = RegExp(r"CompareText\(ParamStr\(i\), '(/[A-Z]+)'\)")
           .allMatches(text)
           .map((m) => m.group(1)!)
-          .toSet();
+          .toSet()
+        // `/KEEPDATA` — ключ ДЕИНСТАЛЛЯТОРА (сохранить настройки при тихом
+        // удалении); приложение его не передаёт, установщику он не нужен.
+        ..remove('/KEEPDATA');
       expect(issKeys, {SetupArgs.forceQuit, SetupArgs.forceDowngrade},
           reason: 'набор самодельных ключей [Code] разошёлся с SetupArgs');
     });

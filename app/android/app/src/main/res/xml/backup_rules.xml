@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Резервная копия Google для Android 11 и ниже (android:fullBackupContent).
+  Смысл тот же, что в data_extraction_rules.xml: только снимок
+  files/SilentGate/backup/, и только при шифровании на устройстве
+  (requireFlags="clientSideEncryption" действует с Android 9). ⚠️ Android 8 и
+  ниже флаг не знают и копируют снимок без шифрования на устройстве — там
+  его хранит только защита Google. Выключатель подписок в настройках решает
+  и этот случай: без подписок в снимке токена нет.
+-->
+<full-backup-content>
+    <include domain="file" path="SilentGate/backup/" requireFlags="clientSideEncryption" />
+</full-backup-content>

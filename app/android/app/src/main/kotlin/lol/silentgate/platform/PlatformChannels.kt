@@ -520,6 +520,16 @@ object PlatformChannels {
                 result.success(openPlayStore(context))
                 return
             }
+            // Перезапуск после импорта настроек (P11). Импорт кладёт файлы
+            // рядом, а раскладывает их Dart на следующем старте — ДО того,
+            // как хранилища прочли диск. Подменять файлы под живым
+            // приложением нельзя: каждое хранилище перезаписало бы свой
+            // файл из памяти. VPN к этому моменту обязан быть выключен —
+            // проверяет Dart.
+            "restartApp" -> {
+                result.success(restartApp(context))
+                return
+            }
         }
         // ⚠️ Сборка play НЕ СТАВИТ APK НИКОГДА. Правило Play «Device and
         // Network Abuse»: приложение из Play обновляется только через Play.
@@ -585,6 +595,29 @@ object PlatformChannels {
                 result.success(shareFile(context, target))
             }
             else -> result.notImplemented()
+        }
+    }
+
+    /**
+     * Перезапустить приложение: новая задача с главной Activity, затем выход
+     * процесса. Система поднимает процесс заново ради этой Activity.
+     *
+     * Выход — с задержкой: сначала канал должен отдать ответ Dart, а
+     * Activity — встать в очередь запуска.
+     */
+    private fun restartApp(context: Context): Boolean {
+        val launch = context.packageManager
+            .getLaunchIntentForPackage(context.packageName) ?: return false
+        val component = launch.component ?: return false
+        return try {
+            val restart = Intent.makeRestartActivityTask(component)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(restart)
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+                { Runtime.getRuntime().exit(0) }, 300)
+            true
+        } catch (_: Throwable) {
+            false
         }
     }
 

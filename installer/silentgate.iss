@@ -187,11 +187,18 @@ Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; F
 Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
-; Перед удалением: снять системный прокси, убить ядро/sing-box, удалить данные, снять схему.
-Filename: "{app}\{#MyAppExe}"; Parameters: "--cleanup"; Flags: runhidden; RunOnceId: "SilentGateCleanup"
+; Перед удалением: снять системный прокси, убить ядро/sing-box, снять схему,
+; стереть журналы, кэши и закачки. Настройки и подписки остаются — их судьбу
+; решает вопрос «Сохранить настройки?» (CurUninstallStepChanged в [Code]).
+; ⚠️ Параметры [UninstallRun] Inno раскрывает при УСТАНОВКЕ, а не при удалении,
+; поэтому ответ человека сюда не передать: приложение всегда оставляет нужное
+; для переустановки, а стирает каталог целиком уже [Code], если ответ «нет».
+Filename: "{app}\{#MyAppExe}"; Parameters: "--cleanup --keep-data"; Flags: runhidden; RunOnceId: "SilentGateCleanup"
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{userappdata}\SilentGate"
+; ⚠️ [UninstallDelete] для {userappdata}\SilentGate БОЛЬШЕ НЕТ: Check у этой
+; секции тоже вычисляется при установке. Каталог данных стирает [Code]
+; (CurUninstallStepChanged, шаг usPostUninstall), если человек не попросил
+; сохранить настройки. Тихое удаление стирает всё, кроме случая /KEEPDATA.
 
 [Messages]
 ru.WelcomeLabel2=Будет установлен {#MyAppName} {#ShortVersion} — VPN-клиент.%n%nРекомендуется закрыть все другие приложения перед продолжением.
@@ -299,6 +306,19 @@ de.QuitBusySilent=Abgebrochen: SilentGate ist mit einem VPN verbunden. Eine akti
 pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio — execute o instalador sem /SILENT ou use /FORCEQUIT.
 tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez — kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
 ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت — شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
+
+; ── Удаление: сохранить настройки? ─────────────────────────────────────────
+; По умолчанию — «Нет»: в каталоге лежат подписки, то есть ключи доступа к
+; VPN, и оставлять их на машине можно только с согласия человека.
+
+ru.KeepDataQuestion=Сохранить настройки и подписки SilentGate на этом компьютере?%n%nОни пригодятся, если вы установите программу снова. Если ответить «Нет», все данные программы будут удалены.
+en.KeepDataQuestion=Keep SilentGate settings and subscriptions on this computer?%n%nThey will be used if you install the program again. If you answer No, all program data will be deleted.
+es.KeepDataQuestion=¿Conservar los ajustes y las suscripciones de SilentGate en este equipo?%n%nSe usarán si vuelve a instalar el programa. Si responde No, se eliminarán todos los datos del programa.
+fr.KeepDataQuestion=Conserver les paramètres et abonnements de SilentGate sur cet ordinateur ?%n%nIls seront réutilisés si vous réinstallez le programme. Si vous répondez Non, toutes les données du programme seront supprimées.
+de.KeepDataQuestion=SilentGate-Einstellungen und Abonnements auf diesem Computer behalten?%n%nSie werden bei einer erneuten Installation verwendet. Bei „Nein“ werden alle Programmdaten gelöscht.
+pt.KeepDataQuestion=Manter as definições e subscrições do SilentGate neste computador?%n%nSerão usadas se voltar a instalar o programa. Se responder Não, todos os dados do programa serão eliminados.
+tr.KeepDataQuestion=SilentGate ayarları ve abonelikleri bu bilgisayarda saklansın mı?%n%nProgramı yeniden kurarsanız kullanılırlar. Hayır derseniz programın tüm verileri silinir.
+ar.KeepDataQuestion=هل تريد الاحتفاظ بإعدادات SilentGate واشتراكاته على هذا الحاسوب؟%n%nستُستخدم إذا ثبَّتَّ البرنامج مرة أخرى. إذا أجبت «لا» فستُحذف كل بيانات البرنامج.
 
 [Code]
 { ⚠️ ЧТО ЗДЕСЬ ЛЕЧИТСЯ. Inno сам НЕ СРАВНИВАЕТ версии: он ставит поверх что
@@ -606,4 +626,52 @@ begin
   Result := ConfirmVersionChange;
   if not Result then Exit;
   Result := EnsureAppClosed;
+end;
+
+
+{ ── Удаление: сохранить настройки? ──────────────────────────────────────────
+  Вопрос задаётся ПОСЛЕ подтверждения удаления (шаг usUninstall), а не в
+  InitializeUninstall: иначе он всплывал бы раньше окна «Удалить SilentGate?»,
+  и человек, передумавший удалять, отвечал бы на вопрос зря.
+  Тихое удаление (/SILENT, /VERYSILENT) вопросов не задаёт: данные стираются,
+  как и до 1.17.0, кроме случая /KEEPDATA. }
+var
+  GKeepData: Boolean;
+
+function KeepDataRequested: Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/KEEPDATA') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  dataDir: String;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    if UninstallSilent then
+      GKeepData := KeepDataRequested
+    else
+      GKeepData := MsgBox(CustomMessage('KeepDataQuestion'), mbConfirmation,
+        MB_YESNO or MB_DEFBUTTON2) = IDYES;
+    if GKeepData then
+      Log('Удаление: настройки и подписки сохраняются')
+    else
+      Log('Удаление: данные программы будут стёрты');
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    if GKeepData then Exit;
+    dataDir := ExpandConstant('{userappdata}\SilentGate');
+    if DirExists(dataDir) and not DelTree(dataDir, True, True, True) then
+      Log('Удаление: каталог данных стёрт не полностью: ' + dataDir);
+  end;
 end;

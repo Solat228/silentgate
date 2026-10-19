@@ -6816,6 +6816,162 @@ abstract class AppLocalizations {
   /// **'Понятно'**
   String get consentNoticeOk;
 
+  /// No description provided for @sectionBackup.
+  ///
+  /// In ru, this message translates to:
+  /// **'Резервная копия'**
+  String get sectionBackup;
+
+  /// No description provided for @backupExportTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспорт настроек'**
+  String get backupExportTitle;
+
+  /// No description provided for @backupExportSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранить настройки и подписки в файл — для другого компьютера или телефона'**
+  String get backupExportSub;
+
+  /// No description provided for @backupExportWithSubs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить подписки и серверы'**
+  String get backupExportWithSubs;
+
+  /// No description provided for @backupExportSubsWarning.
+  ///
+  /// In ru, this message translates to:
+  /// **'В файле будут адреса подписок — это ключи доступа к VPN. Не отправляйте файл посторонним.'**
+  String get backupExportSubsWarning;
+
+  /// No description provided for @backupExportNoSubsNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только настройки и правила — без подписок и серверов.'**
+  String get backupExportNoSubsNote;
+
+  /// No description provided for @backupExportDeviceNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пароль локальных портов, токен API и согласие на данные устройства в файл не попадают.'**
+  String get backupExportDeviceNote;
+
+  /// No description provided for @backupExportAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Экспортировать'**
+  String get backupExportAction;
+
+  /// No description provided for @backupExportDone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки сохранены: {path}'**
+  String backupExportDone(String path);
+
+  /// No description provided for @backupExportFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить файл настроек'**
+  String get backupExportFailed;
+
+  /// No description provided for @backupImportTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импорт настроек'**
+  String get backupImportTitle;
+
+  /// No description provided for @backupImportSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Загрузить настройки из файла экспорта. Приложение перезапустится'**
+  String get backupImportSub;
+
+  /// No description provided for @backupImportDisconnectFirst.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сначала отключите VPN: после импорта приложение перезапустится'**
+  String get backupImportDisconnectFirst;
+
+  /// No description provided for @backupImportBadFile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Это не файл настроек SilentGate, или он повреждён'**
+  String get backupImportBadFile;
+
+  /// No description provided for @backupImportConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импортировать настройки?'**
+  String get backupImportConfirmTitle;
+
+  /// No description provided for @backupImportFrom.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файл: {platform}, версия {version}, {date}'**
+  String backupImportFrom(String platform, String version, String date);
+
+  /// No description provided for @backupImportSubsCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписок в файле: {count}'**
+  String backupImportSubsCount(int count);
+
+  /// No description provided for @backupImportReplaceSubs.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заменить подписки и серверы'**
+  String get backupImportReplaceSubs;
+
+  /// No description provided for @backupImportBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Текущие настройки будут заменены. Пароль локальных портов, токен API и согласие на данные устройства останутся с этого устройства.'**
+  String get backupImportBody;
+
+  /// No description provided for @backupImportOtherPlatform.
+  ///
+  /// In ru, this message translates to:
+  /// **'Файл с другой платформы: список приложений раздельного туннелирования и настройки, которые есть только здесь, останутся прежними.'**
+  String get backupImportOtherPlatform;
+
+  /// No description provided for @backupImportAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Импортировать и перезапустить'**
+  String get backupImportAction;
+
+  /// No description provided for @backupImportRestartManually.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки подготовлены. Перезапустите приложение, чтобы применить их'**
+  String get backupImportRestartManually;
+
+  /// No description provided for @backupImportApplied.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки импортированы'**
+  String get backupImportApplied;
+
+  /// No description provided for @backupRestoredFromGoogle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки восстановлены из резервной копии Google'**
+  String get backupRestoredFromGoogle;
+
+  /// No description provided for @backupGoogleSubsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранять подписки в резервной копии Google'**
+  String get backupGoogleSubsTitle;
+
+  /// No description provided for @backupGoogleSubsSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки попадают в копию всегда. Подписки — ключи доступа к VPN: копия шифруется на телефоне, если включена блокировка экрана'**
+  String get backupGoogleSubsSub;
+
   /// No description provided for @privacyPolicyTile.
   ///
   /// In ru, this message translates to:

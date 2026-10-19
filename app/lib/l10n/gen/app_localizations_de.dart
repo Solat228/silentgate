@@ -4031,6 +4031,104 @@ class AppLocalizationsDe extends AppLocalizations {
   String get consentNoticeOk => 'Verstanden';
 
   @override
+  String get sectionBackup => 'Sicherung';
+
+  @override
+  String get backupExportTitle => 'Einstellungen exportieren';
+
+  @override
+  String get backupExportSub =>
+      'Einstellungen und Abonnements in eine Datei speichern — für einen anderen Computer oder ein anderes Telefon';
+
+  @override
+  String get backupExportWithSubs => 'Abonnements und Server einschließen';
+
+  @override
+  String get backupExportSubsWarning =>
+      'Die Datei enthält Abonnement-Adressen — das sind VPN-Zugangsschlüssel. Senden Sie die Datei an niemanden.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Nur Einstellungen und Regeln — ohne Abonnements und Server.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'Das Passwort der lokalen Ports, das API-Token und die Einwilligung zu Gerätedaten sind nicht enthalten.';
+
+  @override
+  String get backupExportAction => 'Exportieren';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Einstellungen gespeichert: $path';
+  }
+
+  @override
+  String get backupExportFailed =>
+      'Die Einstellungsdatei konnte nicht gespeichert werden';
+
+  @override
+  String get backupImportTitle => 'Einstellungen importieren';
+
+  @override
+  String get backupImportSub =>
+      'Einstellungen aus einer Exportdatei laden. Die App startet neu';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Trennen Sie zuerst das VPN: Die App startet nach dem Import neu';
+
+  @override
+  String get backupImportBadFile =>
+      'Dies ist keine SilentGate-Einstellungsdatei, oder sie ist beschädigt';
+
+  @override
+  String get backupImportConfirmTitle => 'Einstellungen importieren?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Datei: $platform, Version $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Abonnements in der Datei: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Abonnements und Server ersetzen';
+
+  @override
+  String get backupImportBody =>
+      'Die aktuellen Einstellungen werden ersetzt. Das Passwort der lokalen Ports, das API-Token und die Einwilligung zu Gerätedaten bleiben die dieses Geräts.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'Die Datei stammt von einer anderen Plattform: Die App-Liste des Split-Tunnelings und plattformeigene Einstellungen bleiben unverändert.';
+
+  @override
+  String get backupImportAction => 'Importieren und neu starten';
+
+  @override
+  String get backupImportRestartManually =>
+      'Die Einstellungen sind bereit. Starten Sie die App neu, um sie anzuwenden';
+
+  @override
+  String get backupImportApplied => 'Einstellungen importiert';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Einstellungen aus der Google-Sicherung wiederhergestellt';
+
+  @override
+  String get backupGoogleSubsTitle =>
+      'Abonnements in der Google-Sicherung speichern';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Einstellungen werden immer gesichert. Abonnements sind VPN-Zugangsschlüssel: Die Sicherung wird auf dem Telefon verschlüsselt, wenn eine Displaysperre eingerichtet ist';
+
+  @override
   String get privacyPolicyTile => 'Datenschutzerklärung';
 
   @override

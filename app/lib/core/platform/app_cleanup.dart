@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../engine/windows/system_proxy.dart';
 import '../../engine/windows/tun/tun_scheduled_task.dart';
 import '../../engine/windows/xray_paths.dart';
+import '../backup/settings_bundle.dart';
 import 'app_paths.dart';
 import 'autostart_windows.dart';
 import 'core_cleanup.dart';
@@ -15,7 +16,14 @@ class AppCleanup {
   /// Без плагинов Flutter — для режима `--cleanup` (вызывается деинсталлятором):
   /// снять системный прокси, снять URL-схему, погасить СВОИ (и только свои —
   /// см. [killOwnCores]) процессы ядра, удалить данные.
-  static Future<void> runHeadless() async {
+  ///
+  /// [keepData] (`--keep-data`) — деинсталлятор спросит человека, сохранить
+  /// ли настройки, уже ПОСЛЕ этого вызова и сам сотрёт каталог, если ответ
+  /// «нет» (см. `CurUninstallStepChanged` в `installer/silentgate.iss`).
+  /// Здесь тогда остаётся только то, что нужно переустановленной копии:
+  /// настройки, подписки, правки серверов ([keptOnUninstall]). Журналы, кэши,
+  /// отчёты поддержки и закачки обновлений уходят в любом случае.
+  static Future<void> runHeadless({bool keepData = false}) async {
     await SystemProxy.clear();
     await UrlSchemeWindows.unregister();
     // И серверные схемы (vless/vmess/trojan/ss/hysteria2/hy2): если пользователь
@@ -28,7 +36,37 @@ class AppCleanup {
     // Автозапуск указывал бы на стёртый exe: Windows молча пропускает такую
     // запись, но она висит в «Автозагрузке» Диспетчера задач навсегда.
     await AutostartWindows.remove();
-    _deleteData();
+    if (keepData) {
+      pruneForReinstall(AppPaths.supportDirSync());
+    } else {
+      _deleteData();
+    }
+  }
+
+  /// Аргумент режима «сохранить настройки» для `--cleanup`.
+  static const keepDataArg = '--keep-data';
+
+  /// Что переживает удаление с сохранением настроек. Файлы — те же, что
+  /// уходят в экспорт настроек ([SettingsBundle.allFiles]), плюс файл
+  /// состояния (выбранный сервер, карточка подписки) и логотипы подписок.
+  static bool keptOnUninstall(String name) =>
+      SettingsBundle.allFiles.contains(name) ||
+      name == 'silentgate_state.json' ||
+      name.startsWith('sub_logo_');
+
+  /// Оставить в каталоге данных только [keptOnUninstall], остальное стереть.
+  @visibleForTesting
+  static void pruneForReinstall(Directory dir) {
+    try {
+      if (!dir.existsSync()) return;
+      for (final e in dir.listSync()) {
+        final name = e.uri.pathSegments.where((s) => s.isNotEmpty).last;
+        if (e is File && keptOnUninstall(name)) continue;
+        try {
+          e.deleteSync(recursive: true);
+        } catch (_) {}
+      }
+    } catch (_) {}
   }
 
   /// Погасить ядра — ТОЛЬКО СВОИ, по полному пути процесса.

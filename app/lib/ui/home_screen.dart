@@ -35,6 +35,8 @@ import '../l10n/gen/app_localizations.dart';
 import 'widgets/ui_message_l10n.dart';
 import 'widgets/status_text_l10n.dart';
 import 'widgets/info_tooltip.dart';
+import '../data/settings_backup.dart';
+import '../state/backup_snapshot_keeper.dart';
 import '../state/app_state.dart';
 import '../core/models/engine_notice.dart';
 import 'split_tunnel_screen.dart';
@@ -525,8 +527,12 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (Platform.isAndroid) {
+      _backup = BackupSnapshotKeeper.attach(context.read<SettingsController>());
+    }
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _sayRestored();
       // Сборки магазинов: раскрытие данных и согласие — первым окном, до
       // остальных (см. `DeviceInfoConsent`). До ответа данные устройства и
       // так не уходят, поэтому ждать ответа здесь безопасно. Сборка GitHub
@@ -576,9 +582,30 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Уведомления самообновления (окно, ход закачки, итог установки).
   AppUpdatePresenter? _updates;
 
+  /// Android: снимок для резервной копии Google (P11).
+  BackupSnapshotKeeper? _backup;
+
+  /// Настройки на этом старте пришли из файла импорта или из резервной
+  /// копии Google — сказать один раз: иначе человек не поймёт, откуда у
+  /// только что установленного приложения его подписки.
+  void _sayRestored() {
+    final src = SettingsBackup.restoredOnStart;
+    if (src == null || !mounted) return;
+    SettingsBackup.restoredOnStart = null;
+    final l = AppLocalizations.of(context);
+    AppToast.show(
+        context,
+        src == RestoreSource.googleBackup
+            ? l.backupRestoredFromGoogle
+            : l.backupImportApplied,
+        kind: ToastKind.success,
+        duration: const Duration(seconds: 10));
+  }
+
   @override
   void dispose() {
     _updates?.detach();
+    _backup?.detach();
     super.dispose();
   }
 

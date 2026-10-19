@@ -69,23 +69,24 @@ void main() {
       );
     });
 
-    test('нет корня шире SilentGate/support/ и updates/', () {
-      // Всё, что объявлено, — ровно два узких корня. Любой новый или
+    test('нет корня шире SilentGate/support/, SilentGate/export/ и updates/',
+        () {
+      // Всё, что объявлено, — ровно три узких корня. Любой новый или
       // расширенный (`path="."`, `path="SilentGate/"`) открыл бы наружу
       // подписки с токенами.
       final tags = RegExp(r'<(files-path|cache-path|external-[a-z-]*path|root-path)\b[^>]*>')
           .allMatches(filePaths)
           .map((m) => m.group(0)!)
           .toList();
-      expect(tags, hasLength(2));
+      expect(tags, hasLength(3));
       for (final t in tags) {
         final path = RegExp(r'path="([^"]*)"').firstMatch(t)?.group(1);
-        expect(path, anyOf('SilentGate/support/', 'updates/'),
+        expect(path,
+            anyOf('SilentGate/support/', 'SilentGate/export/', 'updates/'),
             reason: 'лишний корень FileProvider: $t');
       }
       final filesTags = tags.where((t) => t.startsWith('<files-path'));
-      expect(filesTags, hasLength(1));
-      expect(filesTags.single, contains('path="SilentGate/support/"'));
+      expect(filesTags, hasLength(2));
     });
   });
 

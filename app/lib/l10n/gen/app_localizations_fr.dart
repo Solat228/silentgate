@@ -4046,6 +4046,105 @@ class AppLocalizationsFr extends AppLocalizations {
   String get consentNoticeOk => 'Compris';
 
   @override
+  String get sectionBackup => 'Sauvegarde';
+
+  @override
+  String get backupExportTitle => 'Exporter les paramètres';
+
+  @override
+  String get backupExportSub =>
+      'Enregistrer les paramètres et abonnements dans un fichier — pour un autre ordinateur ou téléphone';
+
+  @override
+  String get backupExportWithSubs => 'Inclure les abonnements et les serveurs';
+
+  @override
+  String get backupExportSubsWarning =>
+      'Le fichier contiendra les adresses d\'abonnement — ce sont des clés d\'accès au VPN. Ne l\'envoyez à personne.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Paramètres et règles uniquement — sans abonnements ni serveurs.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'Le mot de passe des ports locaux, le jeton API et le consentement aux données de l\'appareil ne sont pas inclus.';
+
+  @override
+  String get backupExportAction => 'Exporter';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Paramètres enregistrés : $path';
+  }
+
+  @override
+  String get backupExportFailed =>
+      'Impossible d\'enregistrer le fichier de paramètres';
+
+  @override
+  String get backupImportTitle => 'Importer les paramètres';
+
+  @override
+  String get backupImportSub =>
+      'Charger les paramètres depuis un fichier d\'export. L\'application redémarrera';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Déconnectez d\'abord le VPN : l\'application redémarre après l\'import';
+
+  @override
+  String get backupImportBadFile =>
+      'Ce n\'est pas un fichier de paramètres SilentGate, ou il est endommagé';
+
+  @override
+  String get backupImportConfirmTitle => 'Importer les paramètres ?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Fichier : $platform, version $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Abonnements dans le fichier : $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs =>
+      'Remplacer les abonnements et les serveurs';
+
+  @override
+  String get backupImportBody =>
+      'Les paramètres actuels seront remplacés. Le mot de passe des ports locaux, le jeton API et le consentement aux données de l\'appareil restent ceux de cet appareil.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'Le fichier provient d\'une autre plateforme : la liste des applications du tunnel fractionné et les paramètres propres à cette plateforme restent inchangés.';
+
+  @override
+  String get backupImportAction => 'Importer et redémarrer';
+
+  @override
+  String get backupImportRestartManually =>
+      'Les paramètres sont prêts. Redémarrez l\'application pour les appliquer';
+
+  @override
+  String get backupImportApplied => 'Paramètres importés';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Paramètres restaurés depuis la sauvegarde Google';
+
+  @override
+  String get backupGoogleSubsTitle =>
+      'Conserver les abonnements dans la sauvegarde Google';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Les paramètres sont toujours sauvegardés. Les abonnements sont des clés d\'accès au VPN : la sauvegarde est chiffrée sur le téléphone si un verrouillage d\'écran est défini';
+
+  @override
   String get privacyPolicyTile => 'Politique de confidentialité';
 
   @override

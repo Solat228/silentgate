@@ -3999,6 +3999,102 @@ class AppLocalizationsTr extends AppLocalizations {
   String get consentNoticeOk => 'Anladım';
 
   @override
+  String get sectionBackup => 'Yedekleme';
+
+  @override
+  String get backupExportTitle => 'Ayarları dışa aktar';
+
+  @override
+  String get backupExportSub =>
+      'Ayarları ve abonelikleri bir dosyaya kaydet — başka bir bilgisayar veya telefon için';
+
+  @override
+  String get backupExportWithSubs => 'Abonelikleri ve sunucuları dahil et';
+
+  @override
+  String get backupExportSubsWarning =>
+      'Dosya abonelik adreslerini içerecek — bunlar VPN erişim anahtarlarıdır. Dosyayı kimseye göndermeyin.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Yalnızca ayarlar ve kurallar — abonelik ve sunucu yok.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'Yerel bağlantı noktası parolası, API belirteci ve cihaz verisi onayı dahil edilmez.';
+
+  @override
+  String get backupExportAction => 'Dışa aktar';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Ayarlar kaydedildi: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'Ayar dosyası kaydedilemedi';
+
+  @override
+  String get backupImportTitle => 'Ayarları içe aktar';
+
+  @override
+  String get backupImportSub =>
+      'Ayarları dışa aktarma dosyasından yükle. Uygulama yeniden başlayacak';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Önce VPN bağlantısını kesin: içe aktarmadan sonra uygulama yeniden başlar';
+
+  @override
+  String get backupImportBadFile =>
+      'Bu bir SilentGate ayar dosyası değil veya bozuk';
+
+  @override
+  String get backupImportConfirmTitle => 'Ayarlar içe aktarılsın mı?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Dosya: $platform, sürüm $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Dosyadaki abonelikler: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Abonelikleri ve sunucuları değiştir';
+
+  @override
+  String get backupImportBody =>
+      'Geçerli ayarlar değiştirilecek. Yerel bağlantı noktası parolası, API belirteci ve cihaz verisi onayı bu cihazınki olarak kalır.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'Dosya başka bir platformdan: bölünmüş tünel uygulama listesi ve yalnızca burada olan ayarlar değişmez.';
+
+  @override
+  String get backupImportAction => 'İçe aktar ve yeniden başlat';
+
+  @override
+  String get backupImportRestartManually =>
+      'Ayarlar hazır. Uygulamak için uygulamayı yeniden başlatın';
+
+  @override
+  String get backupImportApplied => 'Ayarlar içe aktarıldı';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Ayarlar Google yedeğinden geri yüklendi';
+
+  @override
+  String get backupGoogleSubsTitle => 'Abonelikleri Google yedeğinde sakla';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Ayarlar her zaman yedeklenir. Abonelikler VPN erişim anahtarlarıdır: ekran kilidi varsa yedek telefonda şifrelenir';
+
+  @override
   String get privacyPolicyTile => 'Gizlilik politikası';
 
   @override

@@ -3979,6 +3979,103 @@ class AppLocalizationsAr extends AppLocalizations {
   String get consentNoticeOk => 'فهمت';
 
   @override
+  String get sectionBackup => 'النسخ الاحتياطي';
+
+  @override
+  String get backupExportTitle => 'تصدير الإعدادات';
+
+  @override
+  String get backupExportSub =>
+      'حفظ الإعدادات والاشتراكات في ملف — لحاسوب أو هاتف آخر';
+
+  @override
+  String get backupExportWithSubs => 'تضمين الاشتراكات والخوادم';
+
+  @override
+  String get backupExportSubsWarning =>
+      'سيحتوي الملف على عناوين الاشتراكات — وهي مفاتيح الوصول إلى VPN. لا ترسل الملف لأي أحد.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'الإعدادات والقواعد فقط — دون اشتراكات أو خوادم.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'لا تُضمَّن كلمة مرور المنافذ المحلية ورمز API والموافقة على بيانات الجهاز.';
+
+  @override
+  String get backupExportAction => 'تصدير';
+
+  @override
+  String backupExportDone(String path) {
+    return 'تم حفظ الإعدادات: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'تعذّر حفظ ملف الإعدادات';
+
+  @override
+  String get backupImportTitle => 'استيراد الإعدادات';
+
+  @override
+  String get backupImportSub =>
+      'تحميل الإعدادات من ملف تصدير. سيُعاد تشغيل التطبيق';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'افصل VPN أولاً: يُعاد تشغيل التطبيق بعد الاستيراد';
+
+  @override
+  String get backupImportBadFile =>
+      'هذا ليس ملف إعدادات SilentGate، أو أنه تالف';
+
+  @override
+  String get backupImportConfirmTitle => 'استيراد الإعدادات؟';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'الملف: $platform، الإصدار $version، $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'الاشتراكات في الملف: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'استبدال الاشتراكات والخوادم';
+
+  @override
+  String get backupImportBody =>
+      'ستُستبدل الإعدادات الحالية. تبقى كلمة مرور المنافذ المحلية ورمز API والموافقة على بيانات الجهاز الخاصة بهذا الجهاز.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'الملف من منصة أخرى: تبقى قائمة تطبيقات النفق المنقسم والإعدادات الخاصة بهذه المنصة كما هي.';
+
+  @override
+  String get backupImportAction => 'استيراد وإعادة التشغيل';
+
+  @override
+  String get backupImportRestartManually =>
+      'الإعدادات جاهزة. أعد تشغيل التطبيق لتطبيقها';
+
+  @override
+  String get backupImportApplied => 'تم استيراد الإعدادات';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'تمت استعادة الإعدادات من نسخة Google الاحتياطية';
+
+  @override
+  String get backupGoogleSubsTitle =>
+      'الاحتفاظ بالاشتراكات في نسخة Google الاحتياطية';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'تُنسخ الإعدادات دائماً. الاشتراكات مفاتيح وصول إلى VPN: تُشفَّر النسخة على الهاتف عند تفعيل قفل الشاشة';
+
+  @override
   String get privacyPolicyTile => 'سياسة الخصوصية';
 
   @override

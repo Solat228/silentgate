@@ -1,28 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Данные приложения НЕ уезжают ни в облачный бэкап, ни на новое устройство.
+  Резервная копия Google и перенос на новое устройство (Android 12+).
 
-  Причина: subscriptions.json содержит ссылку подписки — фактически пароль от
-  VPN. По умолчанию на Android бэкап ВКЛЮЧЁН, и одного android:allowBackup
-  на targetSdk 31+ недостаточно: перенос между устройствами управляется
-  отдельной секцией (задача 73а плана docs/platforms/ANDROID.md).
+  ⚠️ В КОПИЮ ИДЁТ ТОЛЬКО СНИМОК files/SilentGate/backup/. Всё остальное — журналы,
+  кэш значков, гео-базы, секреты сессии (пароль Clash API, пароль проб),
+  восстановленный конфиг постоянной VPN — остаётся вне копии по построению:
+  при наличии <include> система берёт ровно перечисленное.
 
-  Осознанная плата: настройки не переносятся при смене устройства. Явный
-  экспорт/импорт файла — в плане будущих апдейтов (A10).
+  Снимок собирает приложение (`SettingsBackup.writeSnapshot`): настройки без
+  секретов устройства и — если человек не выключил «Сохранять подписки в
+  резервной копии Google» — подписки. Адрес подписки — токен доступа, поэтому
+  облачная копия разрешена только там, где она шифруется на устройстве
+  (disableIfNoEncryptionCapabilities): без блокировки экрана Google хранил бы
+  её с ключом на своей стороне.
+
+  Решение владельца 19.10.2026 (P11). До этого бэкап был выключен целиком.
 -->
 <data-extraction-rules>
-    <cloud-backup>
-        <exclude domain="root" />
-        <exclude domain="file" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="external" />
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <include domain="file" path="SilentGate/backup/" />
     </cloud-backup>
     <device-transfer>
-        <exclude domain="root" />
-        <exclude domain="file" />
-        <exclude domain="database" />
-        <exclude domain="sharedpref" />
-        <exclude domain="external" />
+        <include domain="file" path="SilentGate/backup/" />
     </device-transfer>
 </data-extraction-rules>

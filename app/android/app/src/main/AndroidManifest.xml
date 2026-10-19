@@ -35,9 +35,9 @@
         android:name=".SilentGateApplication"
         android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:allowBackup="false"
+        android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="false">
+        android:fullBackupContent="@xml/backup_rules">
         <!--
           Отдача отчёта поддержки НАРУЖУ. Приватный каталог приложения другим
           программам недоступен, поэтому просто «показать путь» на Android не

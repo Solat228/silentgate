@@ -2127,6 +2127,59 @@
   "consentDeviceBodyWindows": "При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению — разработчику SilentGate они не приходят.",
   "consentNoticeNote": "Эти данные нужны провайдеру, чтобы считать устройства в вашем тарифе. Сообщение можно открыть снова: Настройки → О программе → «Данные и конфиденциальность».",
   "consentNoticeOk": "Понятно",
+  "sectionBackup": "Резервная копия",
+  "backupExportTitle": "Экспорт настроек",
+  "backupExportSub": "Сохранить настройки и подписки в файл — для другого компьютера или телефона",
+  "backupExportWithSubs": "Включить подписки и серверы",
+  "backupExportSubsWarning": "В файле будут адреса подписок — это ключи доступа к VPN. Не отправляйте файл посторонним.",
+  "backupExportNoSubsNote": "Только настройки и правила — без подписок и серверов.",
+  "backupExportDeviceNote": "Пароль локальных портов, токен API и согласие на данные устройства в файл не попадают.",
+  "backupExportAction": "Экспортировать",
+  "backupExportDone": "Настройки сохранены: {path}",
+  "@backupExportDone": {
+    "placeholders": {
+      "path": {
+        "type": "String"
+      }
+    }
+  },
+  "backupExportFailed": "Не удалось сохранить файл настроек",
+  "backupImportTitle": "Импорт настроек",
+  "backupImportSub": "Загрузить настройки из файла экспорта. Приложение перезапустится",
+  "backupImportDisconnectFirst": "Сначала отключите VPN: после импорта приложение перезапустится",
+  "backupImportBadFile": "Это не файл настроек SilentGate, или он повреждён",
+  "backupImportConfirmTitle": "Импортировать настройки?",
+  "backupImportFrom": "Файл: {platform}, версия {version}, {date}",
+  "@backupImportFrom": {
+    "placeholders": {
+      "platform": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "backupImportSubsCount": "Подписок в файле: {count}",
+  "@backupImportSubsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "backupImportReplaceSubs": "Заменить подписки и серверы",
+  "backupImportBody": "Текущие настройки будут заменены. Пароль локальных портов, токен API и согласие на данные устройства останутся с этого устройства.",
+  "backupImportOtherPlatform": "Файл с другой платформы: список приложений раздельного туннелирования и настройки, которые есть только здесь, останутся прежними.",
+  "backupImportAction": "Импортировать и перезапустить",
+  "backupImportRestartManually": "Настройки подготовлены. Перезапустите приложение, чтобы применить их",
+  "backupImportApplied": "Настройки импортированы",
+  "backupRestoredFromGoogle": "Настройки восстановлены из резервной копии Google",
+  "backupGoogleSubsTitle": "Сохранять подписки в резервной копии Google",
+  "backupGoogleSubsSub": "Настройки попадают в копию всегда. Подписки — ключи доступа к VPN: копия шифруется на телефоне, если включена блокировка экрана",
   "privacyPolicyTile": "Политика конфиденциальности",
   "updatesViaPlay": "Обновить в Google Play",
   "updatesViaGithub": "Скачать с GitHub",

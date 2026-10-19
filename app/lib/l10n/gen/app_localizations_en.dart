@@ -3994,6 +3994,102 @@ class AppLocalizationsEn extends AppLocalizations {
   String get consentNoticeOk => 'Got it';
 
   @override
+  String get sectionBackup => 'Backup';
+
+  @override
+  String get backupExportTitle => 'Export settings';
+
+  @override
+  String get backupExportSub =>
+      'Save settings and subscriptions to a file — for another computer or phone';
+
+  @override
+  String get backupExportWithSubs => 'Include subscriptions and servers';
+
+  @override
+  String get backupExportSubsWarning =>
+      'The file will contain subscription addresses — they are VPN access keys. Do not send the file to anyone else.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Settings and rules only — no subscriptions or servers.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'The local port password, API token and device data consent are not included.';
+
+  @override
+  String get backupExportAction => 'Export';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Settings saved: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'Could not save the settings file';
+
+  @override
+  String get backupImportTitle => 'Import settings';
+
+  @override
+  String get backupImportSub =>
+      'Load settings from an export file. The app will restart';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Disconnect the VPN first: the app restarts after the import';
+
+  @override
+  String get backupImportBadFile =>
+      'This is not a SilentGate settings file, or it is damaged';
+
+  @override
+  String get backupImportConfirmTitle => 'Import settings?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'File: $platform, version $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Subscriptions in the file: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Replace subscriptions and servers';
+
+  @override
+  String get backupImportBody =>
+      'Current settings will be replaced. The local port password, API token and device data consent stay from this device.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'The file comes from another platform: the split tunneling app list and settings that exist only here stay unchanged.';
+
+  @override
+  String get backupImportAction => 'Import and restart';
+
+  @override
+  String get backupImportRestartManually =>
+      'Settings are ready. Restart the app to apply them';
+
+  @override
+  String get backupImportApplied => 'Settings imported';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Settings restored from your Google backup';
+
+  @override
+  String get backupGoogleSubsTitle => 'Keep subscriptions in Google backup';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Settings are always backed up. Subscriptions are VPN access keys: the backup is encrypted on the phone when a screen lock is set';
+
+  @override
   String get privacyPolicyTile => 'Privacy policy';
 
   @override

@@ -3998,6 +3998,103 @@ class AppLocalizationsRu extends AppLocalizations {
   String get consentNoticeOk => 'Понятно';
 
   @override
+  String get sectionBackup => 'Резервная копия';
+
+  @override
+  String get backupExportTitle => 'Экспорт настроек';
+
+  @override
+  String get backupExportSub =>
+      'Сохранить настройки и подписки в файл — для другого компьютера или телефона';
+
+  @override
+  String get backupExportWithSubs => 'Включить подписки и серверы';
+
+  @override
+  String get backupExportSubsWarning =>
+      'В файле будут адреса подписок — это ключи доступа к VPN. Не отправляйте файл посторонним.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Только настройки и правила — без подписок и серверов.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'Пароль локальных портов, токен API и согласие на данные устройства в файл не попадают.';
+
+  @override
+  String get backupExportAction => 'Экспортировать';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Настройки сохранены: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'Не удалось сохранить файл настроек';
+
+  @override
+  String get backupImportTitle => 'Импорт настроек';
+
+  @override
+  String get backupImportSub =>
+      'Загрузить настройки из файла экспорта. Приложение перезапустится';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Сначала отключите VPN: после импорта приложение перезапустится';
+
+  @override
+  String get backupImportBadFile =>
+      'Это не файл настроек SilentGate, или он повреждён';
+
+  @override
+  String get backupImportConfirmTitle => 'Импортировать настройки?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Файл: $platform, версия $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Подписок в файле: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Заменить подписки и серверы';
+
+  @override
+  String get backupImportBody =>
+      'Текущие настройки будут заменены. Пароль локальных портов, токен API и согласие на данные устройства останутся с этого устройства.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'Файл с другой платформы: список приложений раздельного туннелирования и настройки, которые есть только здесь, останутся прежними.';
+
+  @override
+  String get backupImportAction => 'Импортировать и перезапустить';
+
+  @override
+  String get backupImportRestartManually =>
+      'Настройки подготовлены. Перезапустите приложение, чтобы применить их';
+
+  @override
+  String get backupImportApplied => 'Настройки импортированы';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Настройки восстановлены из резервной копии Google';
+
+  @override
+  String get backupGoogleSubsTitle =>
+      'Сохранять подписки в резервной копии Google';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Настройки попадают в копию всегда. Подписки — ключи доступа к VPN: копия шифруется на телефоне, если включена блокировка экрана';
+
+  @override
   String get privacyPolicyTile => 'Политика конфиденциальности';
 
   @override

@@ -759,6 +759,15 @@ class AppSettings {
   /// На мобильной сети не качается никогда — там плашка с предложением.
   final bool geoAutoDownloadWifi;
 
+  /// Android: класть ли подписки в резервную копию Google (Auto Backup).
+  ///
+  /// Умолчание — да (решение владельца 19.10.2026): новый телефон поднимается
+  /// из копии сразу с подписками. Но адрес подписки — это токен доступа, и
+  /// человек вправе не отдавать его в облако; тогда в копию идут только
+  /// настройки. Секреты устройства (пароль портов, токен API) не идут туда
+  /// никогда — см. `SettingsBundle.deviceOnlyKeys`.
+  final bool backupSubscriptionsToGoogle;
+
   /// Не пересоздавать туннель, когда меняется только сервер.
   ///
   /// Конфиг TUN запекает адреса серверов в правило «мимо туннеля», поэтому
@@ -1010,6 +1019,7 @@ class AppSettings {
       ProbeService.telegram,
     },
     this.geoAutoDownloadWifi = true,
+    this.backupSubscriptionsToGoogle = true,
     this.seamlessServerSwitch = true,
     this.seamlessNetworkChange = true,
     this.seamlessKeepTun = true,
@@ -1136,6 +1146,7 @@ class AppSettings {
     bool? connectChecksEnabled,
     Set<ProbeService>? connectCheckServices,
     bool? geoAutoDownloadWifi,
+    bool? backupSubscriptionsToGoogle,
     bool? seamlessServerSwitch,
     bool? seamlessNetworkChange,
     bool? seamlessKeepTun,
@@ -1232,6 +1243,8 @@ class AppSettings {
       connectChecksEnabled: connectChecksEnabled ?? this.connectChecksEnabled,
       connectCheckServices: connectCheckServices ?? this.connectCheckServices,
       geoAutoDownloadWifi: geoAutoDownloadWifi ?? this.geoAutoDownloadWifi,
+      backupSubscriptionsToGoogle:
+          backupSubscriptionsToGoogle ?? this.backupSubscriptionsToGoogle,
       seamlessServerSwitch: seamlessServerSwitch ?? this.seamlessServerSwitch,
       seamlessNetworkChange:
           seamlessNetworkChange ?? this.seamlessNetworkChange,
@@ -1331,6 +1344,7 @@ class AppSettings {
         'connectCheckServices':
             connectCheckServices.map((s) => s.name).toList(),
         'geoAutoDownloadWifi': geoAutoDownloadWifi,
+        'backupSubscriptionsToGoogle': backupSubscriptionsToGoogle,
         'seamlessServerSwitch': seamlessServerSwitch,
         'seamlessNetworkChange': seamlessNetworkChange,
         'seamlessKeepTun': seamlessKeepTun,
@@ -1549,6 +1563,8 @@ class AppSettings {
       connectCheckServices: connectServices,
       geoAutoDownloadWifi: j['geoAutoDownloadWifi'] as bool? ??
           defaults.geoAutoDownloadWifi,
+      backupSubscriptionsToGoogle: j['backupSubscriptionsToGoogle'] as bool? ??
+          defaults.backupSubscriptionsToGoogle,
       seamlessServerSwitch: j['seamlessServerSwitch'] as bool? ??
           defaults.seamlessServerSwitch,
       seamlessNetworkChange: j['seamlessNetworkChange'] as bool? ??

@@ -45,6 +45,7 @@ import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
 import 'widgets/selection_outline.dart';
 import 'widgets/service_checks_row.dart';
+import 'widgets/settings_backup_actions.dart';
 import 'widgets/site_favicon.dart';
 import 'widgets/speed_traffic_note.dart';
 import 'widgets/subscription_avatar.dart';
@@ -193,6 +194,9 @@ abstract final class SettingsSectionIds {
   static const identity = 'identity';
   static const network = 'network';
   static const api = 'api';
+
+  /// Резервная копия: экспорт и импорт файлом, копия Google на Android.
+  static const backup = 'backup';
   static const about = 'about';
 }
 
@@ -642,6 +646,12 @@ List<SettingsSectionData> buildSettingsSections(
           ),
         ],
       ),
+    SettingsSectionData(
+      id: SettingsSectionIds.backup,
+      title: l.sectionBackup,
+      icon: Icons.settings_backup_restore,
+      rows: _backupRows(l, s, controller),
+    ),
     // «URL-схемы» переехали в раздел «Представление панели» (как приложение
     // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
     SettingsSectionData(
@@ -650,6 +660,44 @@ List<SettingsSectionData> buildSettingsSections(
       icon: Icons.info_outline,
       rows: _aboutRows(l, s, controller),
     ),
+  ];
+}
+
+// ── Резервная копия ──────────────────────────────────────────────────────────
+List<SettingsRow> _backupRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.backupExportTitle} ${l.backupExportSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.upload_file),
+        title: Text(l.backupExportTitle),
+        subtitle: Text(l.backupExportSub),
+        onTap: () => exportSettings(context),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.backupImportTitle} ${l.backupImportSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.download_for_offline_outlined),
+        title: Text(l.backupImportTitle),
+        subtitle: Text(l.backupImportSub),
+        onTap: () => importSettings(context),
+      ),
+    ),
+    // Копия Google есть только на Android (`res/xml/backup_rules.xml`). На
+    // Windows её роль играют экспорт файлом и галочка деинсталлятора.
+    if (Platform.isAndroid)
+      SettingsRow(
+        search: '${l.backupGoogleSubsTitle} ${l.backupGoogleSubsSub}',
+        build: (context) => SwitchListTile(
+          value: settings.backupSubscriptionsToGoogle,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(backupSubscriptionsToGoogle: v)),
+          title: Text(l.backupGoogleSubsTitle),
+          subtitle: Text(l.backupGoogleSubsSub),
+        ),
+      ),
   ];
 }
 

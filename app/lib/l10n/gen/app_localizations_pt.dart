@@ -4035,6 +4035,103 @@ class AppLocalizationsPt extends AppLocalizations {
   String get consentNoticeOk => 'Entendi';
 
   @override
+  String get sectionBackup => 'Backup';
+
+  @override
+  String get backupExportTitle => 'Exportar configurações';
+
+  @override
+  String get backupExportSub =>
+      'Salvar configurações e assinaturas em um arquivo — para outro computador ou telefone';
+
+  @override
+  String get backupExportWithSubs => 'Incluir assinaturas e servidores';
+
+  @override
+  String get backupExportSubsWarning =>
+      'O arquivo conterá os endereços das assinaturas — são chaves de acesso à VPN. Não envie o arquivo a ninguém.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Somente configurações e regras — sem assinaturas nem servidores.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'A senha das portas locais, o token da API e o consentimento de dados do dispositivo não são incluídos.';
+
+  @override
+  String get backupExportAction => 'Exportar';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Configurações salvas: $path';
+  }
+
+  @override
+  String get backupExportFailed =>
+      'Não foi possível salvar o arquivo de configurações';
+
+  @override
+  String get backupImportTitle => 'Importar configurações';
+
+  @override
+  String get backupImportSub =>
+      'Carregar configurações de um arquivo exportado. O app será reiniciado';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Desconecte a VPN primeiro: o app reinicia após a importação';
+
+  @override
+  String get backupImportBadFile =>
+      'Este não é um arquivo de configurações do SilentGate, ou está danificado';
+
+  @override
+  String get backupImportConfirmTitle => 'Importar configurações?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Arquivo: $platform, versão $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Assinaturas no arquivo: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Substituir assinaturas e servidores';
+
+  @override
+  String get backupImportBody =>
+      'As configurações atuais serão substituídas. A senha das portas locais, o token da API e o consentimento de dados do dispositivo continuam os deste dispositivo.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'O arquivo é de outra plataforma: a lista de apps do túnel dividido e as configurações exclusivas desta plataforma não mudam.';
+
+  @override
+  String get backupImportAction => 'Importar e reiniciar';
+
+  @override
+  String get backupImportRestartManually =>
+      'As configurações estão prontas. Reinicie o app para aplicá-las';
+
+  @override
+  String get backupImportApplied => 'Configurações importadas';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Configurações restauradas do backup do Google';
+
+  @override
+  String get backupGoogleSubsTitle => 'Manter assinaturas no backup do Google';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'As configurações sempre entram no backup. Assinaturas são chaves de acesso à VPN: o backup é criptografado no telefone quando há bloqueio de tela';
+
+  @override
   String get privacyPolicyTile => 'Política de privacidade';
 
   @override
