@@ -599,26 +599,18 @@ object PlatformChannels {
     }
 
     /**
-     * Перезапустить приложение: новая задача с главной Activity, затем выход
-     * процесса. Система поднимает процесс заново ради этой Activity.
+     * Перезапустить приложение: открыть [RestartActivity] в отдельном процессе
+     * и выйти. Она дождётся смерти этого процесса и откроет приложение заново
+     * (почему не проще — см. её описание).
      *
      * Выход — с задержкой: сначала канал должен отдать ответ Dart, а
-     * Activity — встать в очередь запуска.
+     * Activity перезапуска — встать в очередь запуска.
      */
     private fun restartApp(context: Context): Boolean {
-        val launch = context.packageManager
-            .getLaunchIntentForPackage(context.packageName) ?: return false
-        val component = launch.component ?: return false
-        return try {
-            val restart = Intent.makeRestartActivityTask(component)
-                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(restart)
-            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
-                { Runtime.getRuntime().exit(0) }, 300)
-            true
-        } catch (_: Throwable) {
-            false
-        }
+        if (!RestartActivity.start(context)) return false
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { Runtime.getRuntime().exit(0) }, 300)
+        return true
     }
 
     /**

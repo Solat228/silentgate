@@ -532,7 +532,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      _sayRestored();
       // Сборки магазинов: раскрытие данных и согласие — первым окном, до
       // остальных (см. `DeviceInfoConsent`). До ответа данные устройства и
       // так не уходят, поэтому ждать ответа здесь безопасно. Сборка GitHub
@@ -544,6 +543,11 @@ class _HomeScreenState extends State<HomeScreen> {
           needsNotice: () =>
               DeviceInfoConsent.needsNotice(settingsCtrl.settings));
       if (!mounted) return;
+      // ⚠️ ПОСЛЕ окна раскрытия, а не до: восстановление из копии Google —
+      // это всегда свежая установка, а согласие в копию не входит, так что
+      // окно раскрытия там есть всегда. Тост до него прятался под окном и
+      // гас, пока человек читал (найдено живьём в эмуляторе).
+      unawaited(_sayRestored());
       // Замер «до» — на старте приложения, пока VPN выключен. Это половина
       // сравнения у кнопки: без него видно только «сейчас работает», но не
       // видно, VPN ли это сделал. Второй замер снимется сам при подъёме
@@ -588,10 +592,17 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Настройки на этом старте пришли из файла импорта или из резервной
   /// копии Google — сказать один раз: иначе человек не поймёт, откуда у
   /// только что установленного приложения его подписки.
-  void _sayRestored() {
+  Future<void> _sayRestored() async {
     final src = SettingsBackup.restoredOnStart;
     if (src == null || !mounted) return;
     SettingsBackup.restoredOnStart = null;
+    // ⚠️ Текст берётся ПОСЛЕ того, как настройки прочитаны и кадр с их языком
+    // нарисован. Импорт как раз и меняет язык, а на первых кадрах интерфейс
+    // ещё на языке системы — тост выходил по-английски поверх русского
+    // интерфейса (найдено живьём в эмуляторе).
+    await context.read<SettingsController>().whenLoaded;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
     final l = AppLocalizations.of(context);
     AppToast.show(
         context,

@@ -9,6 +9,7 @@ import '../../core/backup/settings_bundle.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
 import '../../core/platform/app_restart.dart';
+import '../../core/platform/text_file_picker_android.dart';
 import '../../data/settings_backup.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
@@ -17,15 +18,28 @@ import 'app_toast.dart';
 /// Экспорт и импорт настроек файлом (P11). Строки раздела «Резервная копия»
 /// собираются в `settings_screen.dart`, здесь — окна и работа с файлом.
 
+/// Контекст, который переживает системное окно выбора файла.
+///
+/// ⚠️ КОНТЕКСТ СТРОКИ НАСТРОЕК ДЛЯ ЭТОГО НЕ ГОДИТСЯ. Строка — элемент
+/// ленивого списка: пока поверх приложения открыто системное окно, экран
+/// настроек пересобирается, и элемент строки создаётся заново. Прежний
+/// `context.mounted` становится `false`, и импорт молча обрывался сразу
+/// после выбора файла — ни окна, ни ошибки (найдено живьём в эмуляторе).
+/// Контекст маршрута живёт, пока открыт сам экран.
+@visibleForTesting
+BuildContext backupActionHost(BuildContext context) =>
+    ModalRoute.of(context)?.subtreeContext ?? context;
+
 /// Экспорт: спросить про подписки, собрать файл и отдать его человеку
 /// (Windows — окно «Сохранить как», Android — системное «Поделиться»).
 Future<void> exportSettings(BuildContext context) async {
-  final l = AppLocalizations.of(context);
+  final host = backupActionHost(context);
+  final l = AppLocalizations.of(host);
   final withSubs = await showDialog<bool>(
-    context: context,
+    context: host,
     builder: (_) => const ExportSettingsDialog(),
   );
-  if (withSubs == null || !context.mounted) return;
+  if (withSubs == null || !host.mounted) return;
   try {
     final text = await SettingsBackup.exportText(includeSubscriptions: withSubs);
     if (Platform.isAndroid) {
@@ -48,67 +62,89 @@ Future<void> exportSettings(BuildContext context) async {
       path = '$path.${SettingsBundle.extension}';
     }
     await File(path).writeAsString(text, flush: true);
-    if (context.mounted) {
-      AppToast.show(context, l.backupExportDone(path), kind: ToastKind.success);
+    if (host.mounted) {
+      AppToast.show(host, l.backupExportDone(path), kind: ToastKind.success);
     }
   } catch (e) {
     AppLog.w('Экспорт настроек не удался: $e');
-    if (context.mounted) {
-      AppToast.show(context, l.backupExportFailed, kind: ToastKind.error);
+    if (host.mounted) {
+      AppToast.show(host, l.backupExportFailed, kind: ToastKind.error);
     }
   }
 }
 
 /// Импорт: выбрать файл, показать, что в нём, подготовить и перезапуститься.
 Future<void> importSettings(BuildContext context) async {
-  final l = AppLocalizations.of(context);
+  final host = backupActionHost(context);
+  final l = AppLocalizations.of(host);
   // VPN обязан быть выключен: перезапуск снял бы живой туннель на полуслове,
   // а с kill switch оставил бы машину без сети до следующего подключения.
-  final state = context.read<AppState>().status.state;
+  final state = host.read<AppState>().status.state;
   if (state != VpnConnectionState.disconnected &&
       state != VpnConnectionState.error) {
-    AppToast.show(context, l.backupImportDisconnectFirst);
+    AppToast.show(host, l.backupImportDisconnectFirst);
     return;
   }
-  // ⚠️ На Android без фильтра типов: расширения `.sgsettings` система не
-  // знает, и с фильтром файл в окне выбора просто не показался бы.
-  final file = await openFile(
-    acceptedTypeGroups: Platform.isAndroid
-        ? const []
-        : const [
-            XTypeGroup(
-                label: 'SilentGate', extensions: [SettingsBundle.extension]),
-          ],
-  );
-  if (file == null || !context.mounted) return;
-  BundleContents? bundle;
+  // Отказ окна выбора (поставщик не отдал файл, файл слишком большой)
+  // приходит исключением — без перехвата нажатие «Импорт» молча ничего не
+  // делало бы.
+  PickedTextFile? file;
   try {
-    bundle = SettingsBundle.parse(await file.readAsString());
+    file = await _pickBundleFile();
   } catch (e) {
-    AppLog.w('Импорт настроек: файл не прочитан ($e)');
+    AppLog.w('Импорт настроек: окно выбора файла вернуло ошибку ($e)');
+    if (host.mounted) {
+      AppToast.show(host, l.backupImportBadFile, kind: ToastKind.error);
+    }
+    return;
   }
-  if (!context.mounted) return;
+  if (file == null) {
+    AppLog.i('Импорт настроек: файл не выбран');
+    return;
+  }
+  AppLog.i('Импорт настроек: выбран файл ${file.name}');
+  if (!host.mounted) {
+    AppLog.w('Импорт настроек: экран настроек закрыт — импорт отменён');
+    return;
+  }
+  final bundle = SettingsBundle.parse(file.text);
   if (bundle == null || (!bundle.hasSettings && !bundle.hasSubscriptions)) {
-    AppToast.show(context, l.backupImportBadFile, kind: ToastKind.error);
+    AppLog.w('Импорт настроек: ${file.name} — не файл экспорта SilentGate');
+    AppToast.show(host, l.backupImportBadFile, kind: ToastKind.error);
     return;
   }
   final replaceSubs = await showDialog<bool>(
-    context: context,
-    builder: (_) => ImportSettingsDialog(bundle: bundle!),
+    context: host,
+    builder: (_) => ImportSettingsDialog(bundle: bundle),
   );
-  if (replaceSubs == null || !context.mounted) return;
+  if (replaceSubs == null || !host.mounted) return;
   final staged = await SettingsBackup.stageImport(bundle,
       includeSubscriptions: replaceSubs);
-  if (!context.mounted) return;
+  if (!host.mounted) return;
   if (!staged) {
-    AppToast.show(context, l.backupImportBadFile, kind: ToastKind.error);
+    AppToast.show(host, l.backupImportBadFile, kind: ToastKind.error);
     return;
   }
   final restarted = await AppRestart.restart();
-  if (!restarted && context.mounted) {
-    AppToast.show(context, l.backupImportRestartManually,
+  if (!restarted && host.mounted) {
+    AppToast.show(host, l.backupImportRestartManually,
         duration: const Duration(seconds: 15));
   }
+}
+
+/// Выбрать файл экспорта и прочитать его.
+///
+/// ⚠️ На Android — своё окно выбора, а не `file_selector`: ответ плагина
+/// терялся, если система пересоздавала Activity, пока открыто окно (см.
+/// `platform/TextFilePicker.kt`). И без фильтра типов: расширения
+/// `.sgsettings` система не знает, с фильтром файл просто не показался бы.
+Future<PickedTextFile?> _pickBundleFile() async {
+  if (Platform.isAndroid) return TextFilePickerAndroid().pickText();
+  final x = await openFile(acceptedTypeGroups: const [
+    XTypeGroup(label: 'SilentGate', extensions: [SettingsBundle.extension]),
+  ]);
+  if (x == null) return null;
+  return PickedTextFile(name: x.name, text: await x.readAsString());
 }
 
 class ExportSettingsDialog extends StatefulWidget {

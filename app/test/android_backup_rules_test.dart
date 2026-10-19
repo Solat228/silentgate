@@ -54,4 +54,20 @@ void main() {
     expect(restart, greaterThan(launcher));
     expect(restart, lessThan(urlCheck));
   });
+
+  // Activity в главном процессе умирала вместе с ним: после импорта человек
+  // оказывался на рабочем столе (живьём в эмуляторе 20.10.2026).
+  test('⚠️ перезапуск идёт через Activity в отдельном процессе', () {
+    final m = read('AndroidManifest.xml');
+    final decl = RegExp(r'<activity\s+android:name="\.platform\.RestartActivity"[^>]*>')
+        .firstMatch(m)
+        ?.group(0);
+    expect(decl, isNotNull);
+    expect(decl, contains('android:process=":restart"'));
+    expect(decl, contains('android:exported="false"'));
+    final k = read('kotlin/lol/silentgate/platform/PlatformChannels.kt');
+    final fn = k.substring(k.indexOf('private fun restartApp('));
+    expect(fn.substring(0, fn.indexOf('\n    }\n')),
+        contains('RestartActivity.start(context)'));
+  });
 }

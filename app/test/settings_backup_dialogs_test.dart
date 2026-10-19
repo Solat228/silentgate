@@ -128,6 +128,31 @@ void main() {
     });
   });
 
+  // Пока открыто системное окно выбора файла, экран настроек пересобирается,
+  // и элемент строки создаётся заново. Импорт, державшийся за контекст
+  // строки, молча обрывался после выбора файла (найдено живьём в эмуляторе).
+  testWidgets('контекст действия переживает пересоздание строки',
+      (tester) async {
+    late BuildContext row;
+    Widget screen(Key rowKey) => MaterialApp(
+          home: Scaffold(
+            body: Builder(
+              key: rowKey,
+              builder: (c) {
+                row = c;
+                return const SizedBox();
+              },
+            ),
+          ),
+        );
+    await tester.pumpWidget(screen(const ValueKey('a')));
+    final firstRow = row;
+    final host = backupActionHost(firstRow);
+    await tester.pumpWidget(screen(const ValueKey('b')));
+    expect(firstRow.mounted, isFalse);
+    expect(host.mounted, isTrue);
+  });
+
   test('имя файла экспорта — с датой и своим расширением', () {
     expect(SettingsBackup.exportFileName(DateTime(2026, 10, 20, 9, 5)),
         'SilentGate-settings-20261020-0905.sgsettings');

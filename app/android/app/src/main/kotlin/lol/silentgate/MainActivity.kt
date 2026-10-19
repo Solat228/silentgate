@@ -16,6 +16,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 import lol.silentgate.platform.PlatformChannels
 import lol.silentgate.platform.QrScanner
+import lol.silentgate.platform.TextFilePicker
 import lol.silentgate.vpn.AlertNotice
 import lol.silentgate.vpn.NativePrefs
 import lol.silentgate.vpn.SilentGateVpnService
@@ -127,12 +128,20 @@ class MainActivity : FlutterActivity() {
     /** QR-код подписки с камеры и из картинки (п.60а). */
     private val qr = QrScanner(this)
 
+    /** Выбор файла для импорта настроек (P11). */
+    private val files = TextFilePicker(this)
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, QrScanner.CHANNEL)
             .setMethodCallHandler { call, result ->
                 qr.handle(call.method, call.argument<String>("prompt"), result)
+            }
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, TextFilePicker.CHANNEL)
+            .setMethodCallHandler { call, result ->
+                files.handle(call.method, call.argument<Int>("maxBytes"), result)
             }
 
         links = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, LINKS_CHANNEL)
@@ -524,6 +533,7 @@ class MainActivity : FlutterActivity() {
         @Suppress("DEPRECATION")
         super.onActivityResult(requestCode, resultCode, data)
         if (qr.onActivityResult(requestCode, resultCode, data)) return
+        if (files.onActivityResult(requestCode, resultCode, data)) return
         if (requestCode != REQ_PREPARE) return
 
         val config = pendingConfig
