@@ -120,7 +120,16 @@ function Find-AppWindow {
 
 try {
   $h = Find-AppWindow
-  if (-not $h -or $h -eq [IntPtr]::Zero) { Say 'ОКНО НЕ НАЙДЕНО (приложение свёрнуто в трей или не запущено)'; exit 2 }
+  # Сценарий, начатый с `use`, работает с чужим окном (деинсталлятор,
+  # установщик) и приложения может не быть вовсе — тогда не выходим.
+  $first = @(Get-Content (Join-Path $dir 'sgui.cmd') -ErrorAction SilentlyContinue |
+    Where-Object { $_.Trim() -and -not $_.Trim().StartsWith('#') })[0]
+  $startsWithUse = $first -and $first.Trim().ToLower().StartsWith('use ')
+  if ((-not $h -or $h -eq [IntPtr]::Zero) -and $startsWithUse) {
+    $h = [IntPtr]::Zero
+    Say 'окна приложения нет — сценарий начнётся с use'
+  } elseif (-not $h -or $h -eq [IntPtr]::Zero) { Say 'ОКНО НЕ НАЙДЕНО (приложение свёрнуто в трей или не запущено)'; exit 2 }
+  if ($h -ne [IntPtr]::Zero) {
   # Приложение сворачивается в трей — поднимаем перед любой работой.
   [void][SgUi]::ShowWindow($h, 9)   # SW_RESTORE
   [void][SgUi]::SetForegroundWindow($h)
@@ -142,6 +151,7 @@ try {
     [void][SgUi]::MoveWindow($h, 0, 0, $scr.Width, $scr.Height, $true)
     Start-Sleep -Milliseconds 600
     Say "окно вписано в экран $($scr.Width)x$($scr.Height) (было $($wr.L),$($wr.T)-$($wr.R),$($wr.B))"
+  }
   }
 
   $cmdFile = Join-Path $dir 'sgui.cmd'
@@ -170,6 +180,17 @@ try {
         [SgUi]::keybd_event([byte][int]$a[1], 0, 0, [IntPtr]::Zero)
         [SgUi]::keybd_event([byte][int]$a[1], 0, 2, [IntPtr]::Zero)
         Say "key $($a[1])"
+      }
+      # Сочетание: `chord 17 86` — Ctrl+V. Клавиши жмутся по порядку и
+      # отпускаются в обратном. Нужно окну выбора файла: путь в поле имени
+      # вставляется из буфера (`setclip`), потому что раскладка гостя русская
+      # и набранный клавишами путь превращается в кириллицу.
+      'chord' {
+        $vk = $a[1..($a.Count-1)] | ForEach-Object { [byte][int]$_ }
+        foreach ($k in $vk) { [SgUi]::keybd_event($k, 0, 0, [IntPtr]::Zero) }
+        [array]::Reverse($vk)
+        foreach ($k in $vk) { [SgUi]::keybd_event($k, 0, 2, [IntPtr]::Zero) }
+        Say "chord $($a[1..($a.Count-1)] -join '+')"
       }
       'click' {
         # ⚠️ КООРДИНАТЫ — ОКОННЫЕ, ТЕ ЖЕ, ЧТО НА СНИМКЕ. Здесь стояло
