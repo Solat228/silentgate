@@ -133,6 +133,47 @@ void main() {
     expect(calls.where((c) => c.first == 'add').length, 1);
   });
 
+  // Удаление программы и «Удалить все данные» снимают прокси, не зная, был ли
+  // он нашим: приложение в этот момент не подключено. До 1.17.0 они
+  // выключали ЛЮБОЙ включённый прокси — корпоративный тоже (VM, 20.10.2026).
+  group('releaseIfOurs: удаление программы не трогает чужой прокси', () {
+    test('⚠️ чужой включённый прокси без маркера остаётся как был', () async {
+      reg = {'ProxyEnable': '0x1', 'ProxyServer': '192.0.2.10:3128'};
+      await SystemProxy.releaseIfOurs();
+      expect(reg, {'ProxyEnable': '0x1', 'ProxyServer': '192.0.2.10:3128'});
+      expect(calls.where((c) => c.first != 'query'), isEmpty);
+    });
+
+    test('наш адрес без маркера (авария, маркер пропал) — выключается',
+        () async {
+      reg = {'ProxyEnable': '0x1', 'ProxyServer': '127.0.0.1:10809'};
+      await SystemProxy.releaseIfOurs();
+      expect(reg['ProxyEnable'], '0x0');
+    });
+
+    test('маркер со снимком — возвращается прежний прокси', () async {
+      reg = {'ProxyEnable': '0x1', 'ProxyServer': '192.0.2.10:3128'};
+      await SystemProxy.set('127.0.0.1:10809');
+      await SystemProxy.releaseIfOurs();
+      expect(reg['ProxyServer'], '192.0.2.10:3128');
+      expect(reg['ProxyEnable'], '0x1');
+      expect(File(SystemProxy.markerPathOverride!).existsSync(), isFalse);
+    });
+
+    test('прокси выключен и маркера нет — реестр не трогается', () async {
+      reg = {'ProxyEnable': '0x0', 'ProxyServer': '127.0.0.1:10809'};
+      await SystemProxy.releaseIfOurs();
+      expect(calls.where((c) => c.first != 'query'), isEmpty);
+    });
+
+    test('⚠️ AppCleanup снимает прокси только через releaseIfOurs', () {
+      final src =
+          File('lib/core/platform/app_cleanup.dart').readAsStringSync();
+      expect(src, isNot(contains('SystemProxy.clear(')));
+      expect('SystemProxy.releaseIfOurs('.allMatches(src).length, 2);
+    });
+  });
+
   group('разбор вывода reg query', () {
     test('строка, DWORD, пустое значение', () {
       const out = '\r\nHKEY_CURRENT_USER\\Software\r\n'

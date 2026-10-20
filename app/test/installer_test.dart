@@ -216,6 +216,28 @@ void main() {
       expect(text, isNot(contains(r'Type: filesandordirs; Name: "{userappdata}\SilentGate"')));
     });
 
+    test('⚠️ сохранённые данные переживают записи журнала прежних версий', () {
+      // Inno ДОПИСЫВАЕТ журнал удаления при обновлении: у обновлённой с 1.16.0
+      // копии в нём остаются её [UninstallDelete] каталога данных и
+      // `--cleanup` без `--keep-data`. Живьём в VM (20.10.2026) ответ «Да»
+      // стирал всё. Лечение — каталог уезжает в сторону ДО записей журнала
+      // (шаг usUninstall) и возвращается на шаге usPostUninstall.
+      final step = text.substring(text.indexOf('procedure CurUninstallStepChanged'));
+      final uninstall = step.indexOf('usUninstall then');
+      final post = step.indexOf('usPostUninstall then');
+      final park = step.indexOf('ParkKeptData');
+      final restore = step.indexOf('RestoreKeptData');
+      expect(park, greaterThan(uninstall));
+      expect(park, lessThan(post));
+      expect(restore, greaterThan(post));
+      final parkFn = text.substring(text.indexOf('procedure ParkKeptData'));
+      // Прежде чем отодвинуть — оставить в каталоге только нужное
+      // переустановке: само приложение знает список, Pascal его не дублирует.
+      expect(parkFn.indexOf("'--cleanup --keep-data'"),
+          lessThan(parkFn.indexOf('RenameFile(dataDir, keepDir)')));
+      expect(text, contains('RenameFile(keepDir, dataDir)'));
+    });
+
     test('флаг --keep-data совпадает с тем, что разбирает приложение', () {
       final main = File('lib/main.dart').readAsStringSync();
       final cleanup =

@@ -24,7 +24,7 @@ class AppCleanup {
   /// настройки, подписки, правки серверов ([keptOnUninstall]). Журналы, кэши,
   /// отчёты поддержки и закачки обновлений уходят в любом случае.
   static Future<void> runHeadless({bool keepData = false}) async {
-    await SystemProxy.clear();
+    await SystemProxy.releaseIfOurs();
     await UrlSchemeWindows.unregister();
     // И серверные схемы (vless/vmess/trojan/ss/hysteria2/hy2): если пользователь
     // включал их перехват, после удаления они иначе остаются в реестре и
@@ -155,7 +155,7 @@ class AppCleanup {
 
   /// Из работающего приложения (кнопка «Удалить все данные»).
   static Future<void> runInApp() async {
-    await SystemProxy.clear();
+    await SystemProxy.releaseIfOurs();
     await UrlSchemeWindows.unregister();
     await UrlSchemeWindows.unregisterServerSchemes();
     // Настройки стираются вместе с данными — а с ними и «запускать с Windows».

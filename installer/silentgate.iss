@@ -651,6 +651,54 @@ begin
     end;
 end;
 
+{ ⚠️ ЖУРНАЛ УДАЛЕНИЯ INNO ДОПИСЫВАЕТСЯ ПРИ КАЖДОМ ОБНОВЛЕНИИ, старые записи
+  в нём остаются. У копии, обновлённой с 1.16.0 и раньше, там лежат её
+  удаление каталога данных (секция UninstallDelete) и `--cleanup` без `--keep-data`, и
+  исполняются они ПОСЛЕ этого шага при любом ответе. Живьём в VM (20.10.2026)
+  ответ «Да» стирал всё. Поэтому сохраняемое уезжает в сторону до записей
+  журнала и возвращается на шаге usPostUninstall, когда они уже отработали. }
+const
+  KeepDirSuffix = '.uninstall-keep';
+var
+  GKeptParked: Boolean;
+
+procedure ParkKeptData;
+var
+  dataDir, keepDir: String;
+  rc: Integer;
+begin
+  dataDir := ExpandConstant('{userappdata}\SilentGate');
+  keepDir := dataDir + KeepDirSuffix;
+  if not DirExists(dataDir) then Exit;
+  { Оставить в каталоге только нужное переустановке. Список знает само
+    приложение (AppCleanup.keptOnUninstall) — Pascal его не дублирует. }
+  if not Exec(ExpandConstant('{app}\{#MyAppExe}'), '--cleanup --keep-data', '',
+      SW_HIDE, ewWaitUntilTerminated, rc) then
+    Log('Удаление: --cleanup --keep-data не запустился, код ' + IntToStr(rc));
+  { Остаток прошлого оборванного удаления: его данные устарели — актуальны
+    те, что сейчас в dataDir. }
+  if DirExists(keepDir) then DelTree(keepDir, True, True, True);
+  GKeptParked := RenameFile(dataDir, keepDir);
+  if not GKeptParked then
+    Log('Удаление: каталог данных не отодвинуть — старые записи журнала могут его стереть');
+end;
+
+procedure RestoreKeptData;
+var
+  dataDir, keepDir: String;
+begin
+  if not GKeptParked then Exit;
+  dataDir := ExpandConstant('{userappdata}\SilentGate');
+  keepDir := dataDir + KeepDirSuffix;
+  { Записи журнала (`--cleanup`) могли завести каталог заново ради своего
+    журнала — в нём нет ничего, что стоило бы хранить. }
+  if DirExists(dataDir) then DelTree(dataDir, True, True, True);
+  if RenameFile(keepDir, dataDir) then
+    Log('Удаление: настройки и подписки сохранены')
+  else
+    Log('Удаление: сохранённые данные остались в ' + keepDir);
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   dataDir: String;
@@ -663,13 +711,20 @@ begin
       GKeepData := MsgBox(CustomMessage('KeepDataQuestion'), mbConfirmation,
         MB_YESNO or MB_DEFBUTTON2) = IDYES;
     if GKeepData then
-      Log('Удаление: настройки и подписки сохраняются')
+    begin
+      Log('Удаление: настройки и подписки сохраняются');
+      ParkKeptData;
+    end
     else
       Log('Удаление: данные программы будут стёрты');
   end
   else if CurUninstallStep = usPostUninstall then
   begin
-    if GKeepData then Exit;
+    if GKeepData then
+    begin
+      RestoreKeptData;
+      Exit;
+    end;
     dataDir := ExpandConstant('{userappdata}\SilentGate');
     if DirExists(dataDir) and not DelTree(dataDir, True, True, True) then
       Log('Удаление: каталог данных стёрт не полностью: ' + dataDir);

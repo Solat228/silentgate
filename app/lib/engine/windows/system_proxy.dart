@@ -97,6 +97,30 @@ class SystemProxy {
     return ok;
   }
 
+  /// Наш адрес системного прокси у установленной копии.
+  static const String defaultHostPort = '127.0.0.1:10809';
+
+  /// Снять прокси, НЕ ЗНАЯ, ставили ли его мы: удаление программы
+  /// (`--cleanup`) и «Удалить все данные».
+  ///
+  /// ⚠️ [clear] БЕЗ МАРКЕРА ВЫКЛЮЧАЕТ ЛЮБОЙ ПРОКСИ. Движок зовёт его только
+  /// после своего [set], а удаление звало всегда — и у человека с
+  /// корпоративным прокси деинсталлятор молча его выключал (VM, 20.10.2026).
+  /// Здесь трогаем только своё: маркер есть (мы включали и не сняли) либо
+  /// включённым стоит наш адрес (авария, а маркер пропал вместе с `%TEMP%`).
+  static Future<void> releaseIfOurs({String ours = defaultHostPort}) async {
+    if (_markerFile.existsSync()) {
+      await clear();
+      return;
+    }
+    final enable = await _query('ProxyEnable');
+    if (enable == null || parseRegDword(enable) != 1) return;
+    if (await _query('ProxyServer') == ours) {
+      AppLog.w('Системный прокси указывает на наш порт без маркера — снимаю');
+      await clear();
+    }
+  }
+
   /// Восстановление при старте: если прошлый запуск упал с включённым прокси,
   /// маркер остался — снимаем прокси, чтобы у пользователя не «пропал» интернет.
   static Future<void> recoverIfDirty() async {
