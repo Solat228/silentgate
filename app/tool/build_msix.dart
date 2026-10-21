@@ -5,8 +5,9 @@
 //       [--publisher-display-name <имя>] [--release <каталог>] [--out <каталог>]
 //       [--sign-pfx <файл>] [--version <x.y.z> — только для стенда]
 //
-// Identity Name и Publisher берутся из Partner Center (продукт → Product
-// identity) и обязаны совпасть дословно. Без них пакет собирается с ТЕСТОВОЙ
+// Identity Name, Publisher, PublisherDisplayName и DisplayName (зарезервированное
+// имя продукта) берутся из Partner Center (продукт → Product identity) и обязаны
+// совпасть дословно; без --display-name настоящая идентификация не собирается. Без них пакет собирается с ТЕСТОВОЙ
 // идентификацией (`SilentGate.Test`, `CN=SilentGateTest`) — для VM, не для
 // Store; имя файла тогда кончается на `-test.msix`.
 //
@@ -38,6 +39,11 @@ Future<void> main(List<String> args) async {
   final identity = opt['identity-name'] ?? _testIdentity;
   final publisher = opt['publisher'] ?? _testPublisher;
   final test = identity == _testIdentity || publisher == _testPublisher;
+  // DisplayName обязан совпасть с зарезервированным именем продукта — пакет
+  // с умолчанием «SilentGate» Store не примет (продукт зовётся SilentGateVPN).
+  if (!test && opt['display-name'] == null) {
+    _fail('Для Store нужен --display-name (имя продукта в Partner Center)');
+  }
   if (!File('${release.path}${sep}silentgate.exe').existsSync()) {
     _fail('Нет ${release.path}${sep}silentgate.exe — сначала сборка Windows');
   }

@@ -10,6 +10,9 @@ rem  - Identity Name и Publisher - из Partner Center, переменными окружения
 rem    SG_MSIX_IDENTITY и SG_MSIX_PUBLISHER. Без них пакет ТЕСТОВЫЙ
 rem    (SilentGate.Test, CN=SilentGateTest, имя кончается на -test.msix) -
 rem    для VM, не для Store;
+rem  - для Store ещё SG_MSIX_DISPLAY_NAME (зарезервированное имя продукта,
+rem    сейчас SilentGateVPN) и SG_MSIX_PUBLISHER_DISPLAY_NAME (SilentGate) -
+rem    со страницы "Удостоверение продукта", дословно;
 rem  - подпись для VM: SG_MSIX_PFX=путь к pfx, пароль в MSIX_PFX_PASSWORD.
 rem  - версия пакета - из pubspec.yaml ("x.y.z+N" даёт x.y.z.0).
 rem
@@ -70,6 +73,8 @@ if exist "%PROJECT%\THIRD-PARTY.md"  copy /Y "%PROJECT%\THIRD-PARTY.md"  "%REL%\
 set "MSIX_ARGS="
 if defined SG_MSIX_IDENTITY set "MSIX_ARGS=%MSIX_ARGS% --identity-name %SG_MSIX_IDENTITY%"
 if defined SG_MSIX_PUBLISHER set "MSIX_ARGS=%MSIX_ARGS% --publisher "%SG_MSIX_PUBLISHER%""
+if defined SG_MSIX_DISPLAY_NAME set "MSIX_ARGS=%MSIX_ARGS% --display-name "%SG_MSIX_DISPLAY_NAME%""
+if defined SG_MSIX_PUBLISHER_DISPLAY_NAME set "MSIX_ARGS=%MSIX_ARGS% --publisher-display-name "%SG_MSIX_PUBLISHER_DISPLAY_NAME%""
 if defined SG_MSIX_PFX set "MSIX_ARGS=%MSIX_ARGS% --sign-pfx "%SG_MSIX_PFX%""
 
 echo Упаковка MSIX...

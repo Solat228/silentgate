@@ -236,6 +236,10 @@ void main() {
             reason: 'без ядра пакет не подключится — flutter build их не кладёт');
       }
       expect(content, contains('tool/build_msix.dart'));
+      // Store сверяет DisplayName и PublisherDisplayName с Partner Center.
+      expect(content, contains('--display-name "%SG_MSIX_DISPLAY_NAME%"'));
+      expect(content, contains(
+          '--publisher-display-name "%SG_MSIX_PUBLISHER_DISPLAY_NAME%"'));
       final lines = content
           .split(String.fromCharCode(10))
           .map((l) => l.trimRight())
