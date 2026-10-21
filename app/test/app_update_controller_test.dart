@@ -232,6 +232,7 @@ void main() {
     DateTime Function()? clock,
     UpdateMirrorLookup? mirror,
     AppStore store = AppStore.github,
+    bool msStorePackage = false,
     Future<bool> Function()? playStoreAvailable,
     Future<bool> Function()? openPlayStore,
   }) =>
@@ -260,6 +261,7 @@ void main() {
         purgeRetryDelay: purgeRetryDelay,
         clock: clock,
         store: store,
+        msStorePackage: msStorePackage,
         playStoreAvailable: playStoreAvailable,
         openPlayStore: openPlayStore,
       );
@@ -1787,6 +1789,38 @@ void main() {
       expect(installer.reconcileCalls, isEmpty);
       expect(c.offer, isNull);
       expect(c.offerViaPlay, isFalse);
+    });
+
+    // Пакет MSIX обновляет только Microsoft Store: закачка и установщик мимо
+    // него сломали бы пакет (файлы в WindowsApps менять нельзя).
+    test('⚠️ пакет Microsoft Store: ни проверки, ни запросов, ни установки',
+        () async {
+      publish();
+      settings.value =
+          settings.value.copyWith(appUpdateMode: AppUpdateMode.auto);
+      final c = make(store: AppStore.msstore, msStorePackage: true);
+      await c.startup();
+      await c.checkNow();
+      await c.download();
+      await c.downloadAndInstall();
+
+      expect(c.storeManaged, isTrue);
+      expect(c.msStoreManaged, isTrue);
+      expect(checkerCalls, 0);
+      expect(server.requested, isEmpty);
+      expect(installer.launches, isEmpty);
+      expect(installer.reconcileCalls, isEmpty);
+    });
+
+    test('флаг сборки Store без пакета — обновляется как обычная установка',
+        () async {
+      publish();
+      final c = make(
+          store: AppStore.msstore, playStoreAvailable: () async => false);
+      await c.startup();
+      expect(c.storeManaged, isFalse);
+      expect(c.msStoreManaged, isFalse);
+      expect(c.phase, UpdatePhase.available);
     });
 
     test('сборка github без Google Play — всё как раньше', () async {

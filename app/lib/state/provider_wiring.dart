@@ -8,6 +8,8 @@ import '../core/app_store.dart';
 import '../core/geo/geo_bases_controller.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/apk_installer_android.dart';
+import '../core/platform/app_launcher.dart';
+import '../core/platform/package_identity_windows.dart';
 import '../core/platform/play_store_android.dart';
 import '../core/settings/app_settings.dart';
 import '../core/update/app_update.dart' show AppUpdate;
@@ -259,6 +261,7 @@ ChangeNotifierProvider<AppUpdateController> appUpdateProvider({
 AppUpdateController _buildAppUpdateController(
     BuildContext context, SettingsController settings) {
   final state = context.read<AppState>();
+  final msix = Platform.isWindows && PackageIdentity.isPackaged;
   return AppUpdateController(
     settings: () => settings.settings,
     updateSettings: settings.update,
@@ -274,13 +277,21 @@ AppUpdateController _buildAppUpdateController(
     overriddenOf: () => kUpdateApiOverridden,
     loadOverride: AppUpdate.loadApiOverride,
     store: AppStoreInfo.current,
+    msStorePackage: msix,
     // Play первым — только на Android и только когда страница в Play открыта
     // всем (`AppStoreInfo.playListingLive`): иначе кнопка вела бы на «не
     // найдено».
     playStoreAvailable: Platform.isAndroid && AppStoreInfo.playListingLive
         ? PlayStoreAndroid().installed
         : null,
-    openPlayStore: Platform.isAndroid ? PlayStoreAndroid().open : null,
+    openPlayStore: Platform.isAndroid
+        ? PlayStoreAndroid().open
+        : msix
+            ? () async {
+                await UrlOpener.open(AppStoreInfo.msStoreUpdatesUri);
+                return true;
+              }
+            : null,
   );
 }
 

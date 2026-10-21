@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 
 import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
+import '../../../core/platform/package_identity_windows.dart';
 import '../../../core/platform/platform_services.dart';
 import '../elevation.dart';
 import 'tun_helper.dart';
@@ -38,7 +39,9 @@ class TunScheduledTask {
   static Future<({String exe, String args})> expected() async {
     final dir = await AppPaths.supportDir();
     return (
-      exe: Platform.resolvedExecutable,
+      // В пакете MSIX — постоянный псевдоним: папка самого exe меняется с
+      // каждым обновлением, и задача устаревала бы после каждого.
+      exe: PackageIdentity.launchPath(),
       args: '--tun-task "${TunHelper.configPathFor(dir)}" '
           '"${TunHelper.stopFilePathFor(dir)}"',
     );
@@ -189,7 +192,7 @@ class TunScheduledTask {
   /// Ждём появления задачи: `ShellExecuteEx` возвращает управление сразу, а schtasks
   /// отрабатывает уже в элевейтнутом процессе.
   static Future<PrivilegeSetupResult> install() async {
-    final exe = Platform.resolvedExecutable;
+    final exe = PackageIdentity.launchPath();
     // Пути к конфигу/stop берём из per-user appdata GUI и ЗАПЕКАЕМ в команду
     // задачи — иначе задача, выполняясь от отдельного админа, читала бы чужой
     // %APPDATA% и поднимала туннель по пустому конфигу (#7).

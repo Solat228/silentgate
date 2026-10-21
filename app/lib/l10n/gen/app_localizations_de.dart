@@ -4356,4 +4356,27 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'Automatische Synchronisierung fehlgeschlagen – dafür sind Administratorrechte nötig.\n\nManuell beheben: Windows-Einstellungen → Zeit und Sprache → Datum und Uhrzeit. Schalten Sie „Uhrzeit automatisch festlegen“ ein und klicken Sie auf „Jetzt synchronisieren“. Ist der Schalter schon an, schalten Sie ihn aus und wieder ein.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'Diese Kopie wurde aus dem Microsoft Store installiert und wird nur darüber aktualisiert: Der Store installiert neue Versionen selbst oder über die Schaltfläche „Updates abrufen“ unter Downloads.';
+
+  @override
+  String get updatesOpenMsStore => 'Microsoft Store öffnen';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'Neue Versionen kommen über den Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Abonnements in der Kopie unter Dokumente speichern';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows löscht die Daten einer Microsoft-Store-App beim Deinstallieren, daher werden die Einstellungen immer nach „Dokumente\\SilentGate“ kopiert. Nach einer Neuinstallation stellt die App sie selbst wieder her. Die Kopie ist mit dem Schlüssel Ihres Windows-Kontos verschlüsselt';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Einstellungen aus der Kopie unter Dokumente wiederhergestellt';
 }

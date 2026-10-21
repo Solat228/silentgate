@@ -4296,4 +4296,27 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'همگام‌سازی خودکار ممکن نشد — برای آن دسترسی مدیر لازم است.\n\nاصلاح دستی: تنظیمات Windows ← زمان و زبان ← تاریخ و زمان. «تنظیم خودکار زمان» را روشن کنید و «اکنون همگام‌سازی کن» را بزنید. اگر کلید از قبل روشن است، آن را خاموش و دوباره روشن کنید.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'این نسخه از Microsoft Store نصب شده و فقط از طریق آن به‌روز می‌شود: Store نسخه‌های جدید را خودش یا با دکمهٔ «دریافت به‌روزرسانی‌ها» در بخش دانلودها نصب می‌کند.';
+
+  @override
+  String get updatesOpenMsStore => 'باز کردن Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'نسخه‌های جدید از طریق Microsoft Store می‌رسند';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'نگه‌داشتن اشتراک‌ها در نسخهٔ پوشهٔ «اسناد»';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows هنگام حذف برنامهٔ Microsoft Store داده‌های آن را پاک می‌کند، برای همین تنظیمات همیشه در «اسناد\\SilentGate» کپی می‌شوند. پس از نصب دوباره، برنامه خودش آن‌ها را بازمی‌گرداند. این نسخه با کلید حساب Windows شما رمزگذاری شده است';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'تنظیمات از نسخهٔ پوشهٔ «اسناد» بازگردانده شد';
 }

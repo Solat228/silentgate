@@ -21,11 +21,13 @@ import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/platform/autostart_windows.dart';
+import '../core/platform/package_identity_windows.dart';
 import '../core/platform/vpn_lockdown.dart';
 import '../core/net/speed_test.dart';
 import '../core/models/vpn_server.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
+import '../data/settings_backup.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
 import '../state/app_state.dart';
@@ -686,7 +688,8 @@ List<SettingsRow> _backupRows(
       ),
     ),
     // Копия Google есть только на Android (`res/xml/backup_rules.xml`). На
-    // Windows её роль играют экспорт файлом и галочка деинсталлятора.
+    // Windows её роль играют экспорт файлом и галочка деинсталлятора, а у
+    // пакета Store — копия в «Документах» (тот же выключатель подписок).
     if (Platform.isAndroid)
       SettingsRow(
         search: '${l.backupGoogleSubsTitle} ${l.backupGoogleSubsSub}',
@@ -696,6 +699,17 @@ List<SettingsRow> _backupRows(
               .update((s) => s.copyWith(backupSubscriptionsToGoogle: v)),
           title: Text(l.backupGoogleSubsTitle),
           subtitle: Text(l.backupGoogleSubsSub),
+        ),
+      )
+    else if (SettingsBackup.usesDocumentsCopy)
+      SettingsRow(
+        search: '${l.backupDocumentsSubsTitle} ${l.backupDocumentsSubsSub}',
+        build: (context) => SwitchListTile(
+          value: settings.backupSubscriptionsToGoogle,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(backupSubscriptionsToGoogle: v)),
+          title: Text(l.backupDocumentsSubsTitle),
+          subtitle: Text(l.backupDocumentsSubsSub),
         ),
       ),
   ];
@@ -2577,6 +2591,11 @@ List<SettingsRow> _appearanceRows(
 Future<void> _enableTun(BuildContext context, SettingsController controller) async {
   final l = AppLocalizations.of(context);
   controller.update((s) => s.copyWith(captureMode: CaptureMode.tun));
+  // Пакет MSIX ставит задачу сам при первом подключении (`TunTaskAutoSetup`),
+  // спрашивать заранее незачем.
+  if (PackageIdentity.isPackaged && !controller.settings.tunTaskDeclined) {
+    return;
+  }
   if (await platform.privileges.isConfigured()) return;
   if (!context.mounted) return;
 
@@ -2600,6 +2619,9 @@ Future<void> _enableTun(BuildContext context, SettingsController controller) asy
   if (setup != true) return;
 
   final result = await platform.privileges.configure();
+  if (result == PrivilegeSetupResult.done) {
+    controller.update((s) => s.copyWith(tunTaskDeclined: false));
+  }
   if (!context.mounted) return;
   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
     content: Text(switch (result) {
@@ -3278,7 +3300,10 @@ class SettingsRailTile extends StatelessWidget {
 /// себя сама (правило Play «Device and Network Abuse»), и обещание «скачать
 /// и установить» в ней было бы неправдой.
 @visibleForTesting
-String updatesTileSubtitle(AppLocalizations l, {AppStore? store}) =>
-    (store ?? AppStoreInfo.current) == AppStore.play
-        ? l.updatesSettingsTilePlay
-        : l.updatesSettingsTileSubtitle;
+String updatesTileSubtitle(AppLocalizations l,
+        {AppStore? store, bool? msStorePackage}) =>
+    (msStorePackage ?? (Platform.isWindows && PackageIdentity.isPackaged))
+        ? l.updatesSettingsTileMsStore
+        : (store ?? AppStoreInfo.current) == AppStore.play
+            ? l.updatesSettingsTilePlay
+            : l.updatesSettingsTileSubtitle;

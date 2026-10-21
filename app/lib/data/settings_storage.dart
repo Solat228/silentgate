@@ -3,6 +3,7 @@ import 'dart:io';
 
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
+import '../core/platform/package_identity_windows.dart';
 import '../core/settings/app_settings.dart';
 import '../core/platform/secret_files.dart';
 
@@ -38,10 +39,21 @@ class SettingsStorage {
     }
   }
 
+  /// Настройки свежей установки (файла ещё нет).
+  ///
+  /// В пакете MSIX способ захвата по умолчанию — TUN (решение владельца
+  /// 21.10.2026): Store-версия и делалась ради туннеля. Только для СВЕЖЕЙ
+  /// установки — у существующего файла настроек способ захвата записан всегда,
+  /// и переделывать чужой выбор при обновлении нельзя.
+  static AppSettings firstRunDefaults({bool? packaged}) =>
+      (packaged ?? PackageIdentity.isPackaged)
+          ? AppSettings.defaults.copyWith(captureMode: CaptureMode.tun)
+          : AppSettings.defaults;
+
   Future<AppSettings> load() async {
     final file = await _file();
     try {
-      if (!await file.exists()) return AppSettings.defaults;
+      if (!await file.exists()) return firstRunDefaults();
       final parsed = parseContent(await SecretFiles.read(file));
       if (parsed != null) return parsed;
       // Откат к дефолтам остаётся (приложение обязано стартовать), но теперь это

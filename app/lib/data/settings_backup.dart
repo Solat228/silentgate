@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+
 import '../core/app_info.dart';
 import '../core/backup/settings_bundle.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/app_paths.dart';
+import '../core/platform/known_folders_windows.dart';
+import '../core/platform/package_identity_windows.dart';
 import '../core/platform/secret_files.dart';
 import 'app_storage.dart';
 import 'atomic_file.dart';
 
 /// Откуда пришли восстановленные данные — для сообщения на старте.
-enum RestoreSource { importFile, googleBackup }
+enum RestoreSource { importFile, googleBackup, documentsBackup }
 
 /// Экспорт и импорт настроек файлом, снимок для Android Auto Backup (P11).
 ///
@@ -186,17 +190,70 @@ abstract final class SettingsBackup {
     await storage.save(state);
   }
 
-  // ── Android Auto Backup ────────────────────────────────────────────────────
+  // ── Снимок: Android Auto Backup и копия в «Документах» (Store) ─────────────
 
-  static Future<File> _snapshot() async {
-    final dir = await AppPaths.supportDir();
+  /// Каталог и файл копии в «Документах» у пакета Microsoft Store.
+  static const documentsDirName = 'SilentGate';
+  static const documentsFile = 'settings-backup.dat';
+
+  /// Подмена каталога «Документы» для тестов. Без неё под тестами копия не
+  /// пишется и не читается: настоящие «Документы» владельца тесту трогать
+  /// нельзя (та же причина, что у предохранителя в `AppPaths`).
+  @visibleForTesting
+  static Directory? debugDocumentsDir;
+
+  /// Подмена признака «копия в Документах» для тестов.
+  @visibleForTesting
+  static bool? debugDocumentsCopy;
+
+  /// Пакет Microsoft Store: Windows стирает данные пакета при удалении
+  /// (свежая установка держит `%APPDATA%` в песочнице пакета), поэтому снимок
+  /// живёт в «Документах» — их удаление пакета не трогает. Решение владельца
+  /// 21.10.2026. Обычная установка Windows снимка не ведёт: её данные
+  /// удаление сохраняет по вопросу деинсталлятора.
+  static bool get usesDocumentsCopy =>
+      debugDocumentsCopy ?? (Platform.isWindows && PackageIdentity.isPackaged);
+
+  /// Ведётся ли снимок на этой копии вообще.
+  static bool get keepsSnapshot => Platform.isAndroid || usesDocumentsCopy;
+
+  static Future<File?> _snapshot() async {
     final sep = Platform.pathSeparator;
+    if (usesDocumentsCopy) {
+      final docs = debugDocumentsDir ??
+          (Platform.environment.containsKey('FLUTTER_TEST')
+              ? null
+              : KnownFolders.documents());
+      if (docs == null) return null;
+      return File('${docs.path}$sep$documentsDirName$sep$documentsFile');
+    }
+    final dir = await AppPaths.supportDir();
     return File('${dir.path}$sep$snapshotDir$sep$snapshotFile');
   }
 
-  /// Обновить снимок для резервной копии Google. Пишется только при
-  /// изменении содержимого: система копирует каталог раз в сутки, а лишние
-  /// записи на телефоне — это лишний износ памяти.
+  /// Прочитать снимок. В «Документах» он зашифрован DPAPI: адрес подписки —
+  /// токен доступа, а «Документы» часто синхронизирует OneDrive.
+  static Future<String> _readSnapshot(File f) async =>
+      usesDocumentsCopy ? SecretFiles.read(f) : f.readAsString();
+
+  /// Стереть копию в «Документах» — «Удалить все данные» обещает не оставить
+  /// ничего.
+  static Future<void> deleteDocumentsCopy() async {
+    if (!usesDocumentsCopy) return;
+    try {
+      final f = await _snapshot();
+      if (f == null) return;
+      if (await f.exists()) await f.delete();
+      final dir = f.parent;
+      if (await dir.exists() && await dir.list().isEmpty) await dir.delete();
+    } catch (e) {
+      AppLog.w('Копия настроек в «Документах» не удалена: $e');
+    }
+  }
+
+  /// Обновить снимок: резервная копия Google на Android, копия в «Документах»
+  /// у пакета Store. Пишется только при изменении содержимого: система
+  /// копирует каталог раз в сутки, а лишние записи — это лишний износ памяти.
   static Future<void> writeSnapshot({required bool includeSubscriptions}) async {
     try {
       final bundle = SettingsBundle.build(
@@ -206,12 +263,27 @@ abstract final class SettingsBackup {
         appVersion: AppInfo.version,
         // Время в снимке не пишем — иначе он «менялся» бы на каждой записи.
         now: DateTime.utc(2000),
+        // Копию в «Документах» прочтёт только эта учётная запись (DPAPI) —
+        // токен API и автозапуск переживают переустановку. Копия Google
+        // уезжает на НОВЫЙ телефон — там они свои.
+        sameDevice: usesDocumentsCopy,
       );
       final text = SettingsBundle.encode(bundle);
       final f = await _snapshot();
-      if (await f.exists() && await f.readAsString() == text) return;
+      if (f == null) return;
+      if (await f.exists()) {
+        try {
+          if (await _readSnapshot(f) == text) return;
+        } catch (_) {
+          // Не расшифровался (другая учётная запись) — перепишем своим.
+        }
+      }
       await f.parent.create(recursive: true);
-      await AtomicFile.writeString(f, text);
+      if (usesDocumentsCopy) {
+        await SecretFiles.write(f, text);
+      } else {
+        await AtomicFile.writeString(f, text);
+      }
     } catch (e) {
       AppLog.w('Снимок для резервной копии не записан: $e');
     }
@@ -225,23 +297,26 @@ abstract final class SettingsBackup {
   static Future<bool> restoreSnapshotIfFresh() async {
     try {
       final snap = await _snapshot();
-      if (!await snap.exists()) return false;
+      if (snap == null || !await snap.exists()) return false;
       final settings = await _file(SettingsBundle.settingsFile);
       final subs = await _file(SettingsBundle.subscriptionsFile);
       if (await settings.exists() || await subs.exists()) return false;
-      final bundle = SettingsBundle.parse(await snap.readAsString());
+      final bundle = SettingsBundle.parse(await _readSnapshot(snap));
       if (bundle == null) {
         AppLog.w('Снимок резервной копии не разобран — пропущен');
         return false;
       }
+      final docs = usesDocumentsCopy;
       final files = SettingsBundle.merge(bundle,
           localSettings: const {},
           platform: platform,
-          includeSubscriptions: true);
+          includeSubscriptions: true,
+          sameDevice: docs);
       if (files.isEmpty) return false;
       await _writeFiles(files);
-      restoredOnStart = RestoreSource.googleBackup;
-      AppLog.i('Восстановлено из резервной копии Google: '
+      restoredOnStart =
+          docs ? RestoreSource.documentsBackup : RestoreSource.googleBackup;
+      AppLog.i('Восстановлено из ${docs ? 'копии в «Документах»' : 'резервной копии Google'}: '
           '${files.keys.join(', ')}');
       return true;
     } catch (e) {

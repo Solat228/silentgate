@@ -11,9 +11,10 @@
 ///   «Device and Network Abuse» запрещает приложению из Play обновлять себя
 ///   любым другим способом, поэтому проверки обновлений там нет вовсе.
 ///
-/// * [AppStore.msstore] — Windows-сборка для Microsoft Store. Обновляется сама,
-///   как сборка GitHub (правила Store это разрешают приложениям EXE/MSI), но
-///   данные устройства отправляет только с явного согласия человека (правило
+/// * [AppStore.msstore] — Windows-сборка для Microsoft Store. Пакет MSIX
+///   обновляет только Store (признак — идентификация пакета у процесса,
+///   `PackageIdentity`); та же сборка вне пакета обновляется сама, как GitHub.
+///   Данные устройства отправляет только с явного согласия человека (правило
 ///   Store 10.5.1; решение владельца 19.10.2026). Собирается с
 ///   `--dart-define=SILENTGATE_STORE=msstore`: флейворов у Flutter на Windows нет.
 ///
@@ -55,6 +56,12 @@ abstract final class AppStoreInfo {
 
   /// Пакет приложения — он же идентификатор страницы в Play.
   static const String packageName = 'lol.silentgate';
+
+  /// «Загрузки и обновления» Microsoft Store. Страница самого приложения
+  /// требует его ID в Store, а он известен только после публикации; этот
+  /// экран обновляет пакет и без него.
+  static const String msStoreUpdatesUri =
+      'ms-windows-store://downloadsandupdates';
 
   static const String playStoreUrl =
       'https://play.google.com/store/apps/details?id=$packageName';

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/interference_scanner.dart';
+import '../../../core/platform/package_identity_windows.dart';
 import '../../../core/settings/split_tunnel.dart';
 import '../../../core/singbox/singbox_config_builder.dart';
 import '../../../core/singbox/tun_autotune.dart';
@@ -223,8 +224,10 @@ class SingboxRouterWindows
     if (!viaTask) {
       // Fallback: разовый UAC-запуск хелпера. Если приложение уже возвышено,
       // окна UAC не будет вовсе — хелпер стартует напрямую (см. Elevation).
+      // Пакет Store: через псевдоним — exe в WindowsApps запускается только
+      // в контексте пакета, и только так помощник видит те же файлы данных.
       final ok = await Elevation.runElevatedAsync(
-        Platform.resolvedExecutable,
+        PackageIdentity.launchPath(),
         '--tun "$cfgPath" "$_stopPath"',
       );
       if (!ok) {

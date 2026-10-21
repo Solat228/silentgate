@@ -1762,5 +1762,11 @@
   "trayNoteOffline": "no internet, waiting for the network",
   "routeYourPhone": "Your phone",
   "importSyncTimeOk": "Time synced. Import again.",
-  "importSyncTimeManual": "Could not sync automatically — administrator rights are needed for that.\n\nTo fix it manually: Windows Settings → Time & language → Date & time. Turn on “Set time automatically” and click “Sync now”. If the switch is already on, turn it off and on again."
+  "importSyncTimeManual": "Could not sync automatically — administrator rights are needed for that.\n\nTo fix it manually: Windows Settings → Time & language → Date & time. Turn on “Set time automatically” and click “Sync now”. If the switch is already on, turn it off and on again.",
+  "updatesMsStoreManaged": "This copy was installed from Microsoft Store and is updated only through it: Store installs new versions itself or with the \"Get updates\" button in Downloads.",
+  "updatesOpenMsStore": "Open Microsoft Store",
+  "updatesSettingsTileMsStore": "New versions come through Microsoft Store",
+  "backupDocumentsSubsTitle": "Keep subscriptions in the copy in Documents",
+  "backupDocumentsSubsSub": "Windows deletes the data of a Microsoft Store app when it is uninstalled, so settings are always copied to \"Documents\\SilentGate\". After a reinstall the app restores them itself. The copy is encrypted with your Windows account key",
+  "backupRestoredFromDocuments": "Settings restored from the copy in Documents"
 }

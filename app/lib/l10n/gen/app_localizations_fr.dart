@@ -4368,4 +4368,27 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'Impossible de synchroniser automatiquement : il faut des droits d’administrateur.\n\nPour corriger à la main : Paramètres Windows → Heure et langue → Date et heure. Activez « Régler l’heure automatiquement » et cliquez sur « Synchroniser maintenant ». Si l’option est déjà activée, désactivez-la puis réactivez-la.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'Cette copie a été installée depuis Microsoft Store et n\'est mise à jour que par lui : Store installe les nouvelles versions lui-même ou via le bouton « Obtenir les mises à jour » dans Téléchargements.';
+
+  @override
+  String get updatesOpenMsStore => 'Ouvrir Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'Les nouvelles versions arrivent via Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Conserver les abonnements dans la copie des Documents';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows efface les données d\'une application Microsoft Store à sa désinstallation, c\'est pourquoi les paramètres sont toujours copiés dans « Documents\\SilentGate ». Après une réinstallation, l\'application les restaure seule. La copie est chiffrée avec la clé de votre compte Windows';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Paramètres restaurés depuis la copie dans Documents';
 }

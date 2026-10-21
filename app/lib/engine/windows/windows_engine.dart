@@ -34,6 +34,7 @@ import 'tun/app_alive_mutex.dart';
 import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
+import 'tun/tun_task_auto_setup.dart';
 import 'xray_paths.dart';
 import 'xray_process.dart';
 import 'xray_stats.dart';
@@ -76,6 +77,10 @@ class WindowsEngine extends VpnEngineBase {
   DateTime? _tunLastAlive;
   StreamSubscription<int>? _exitWatch;
   final TunRouter _tunRouter;
+
+  /// Пакет MSIX: поставить задачу Планировщика перед первым подъёмом TUN
+  /// ([TunTaskAutoSetup]). Подменяется в тестах.
+  final Future<void> Function(AppSettings settings) _tunTaskSetup;
   bool _tunActive = false;
 
   /// Предложение починить задачу Планировщика уже показано в ЭТОЙ сессии
@@ -209,7 +214,9 @@ class WindowsEngine extends VpnEngineBase {
     super.ports,
     TunRouter? tunRouter,
     bool recoverSystemProxy = true,
-  }) : _tunRouter = tunRouter ?? SingboxRouterWindows() {
+    Future<void> Function(AppSettings settings)? tunTaskSetup,
+  })  : _tunRouter = tunRouter ?? SingboxRouterWindows(),
+        _tunTaskSetup = tunTaskSetup ?? TunTaskAutoSetup.ensure {
     // Восстановление после аварийного выхода прошлого запуска.
     if (recoverSystemProxy) SystemProxy.recoverIfDirty();
   }
@@ -1189,6 +1196,9 @@ class WindowsEngine extends VpnEngineBase {
     // Пишем ВСЕГДА, в том числе `enabled: false`: помощник обязан отличать
     // «блокировать не просили» от «файл потерян от прошлой сессии».
     if (!handedOver) {
+      // Пакет MSIX: задача Планировщика ставится до запуска помощника — тогда
+      // он сам стартует уже через неё, а не через второе окно UAC.
+      await _tunTaskSetup(options.settings);
       await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
       await _tunRouter.start(
         options.split,

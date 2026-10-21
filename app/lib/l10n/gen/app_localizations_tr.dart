@@ -4317,4 +4317,27 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'Otomatik eşitleme yapılamadı — bunun için yönetici hakları gerekiyor.\n\nElle düzeltmek için: Windows Ayarları → Zaman ve dil → Tarih ve saat. “Saati otomatik olarak ayarla”yı açın ve “Şimdi eşitle”ye tıklayın. Anahtar zaten açıksa kapatıp yeniden açın.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'Bu kopya Microsoft Store\'dan yüklendi ve yalnızca onun üzerinden güncellenir: Store yeni sürümleri kendisi ya da İndirilenler\'deki \"Güncellemeleri al\" düğmesiyle yükler.';
+
+  @override
+  String get updatesOpenMsStore => 'Microsoft Store\'u aç';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'Yeni sürümler Microsoft Store üzerinden gelir';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Abonelikleri Belgeler\'deki kopyada sakla';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows, Microsoft Store uygulamasının verilerini kaldırırken siler; bu yüzden ayarlar her zaman \"Belgeler\\SilentGate\" klasörüne kopyalanır. Yeniden yüklemeden sonra uygulama bunları kendisi geri yükler. Kopya Windows hesabınızın anahtarıyla şifrelenir';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Ayarlar Belgeler\'deki kopyadan geri yüklendi';
 }

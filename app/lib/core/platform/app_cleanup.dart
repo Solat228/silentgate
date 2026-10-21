@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../../data/settings_backup.dart';
 import '../../engine/windows/system_proxy.dart';
 import '../../engine/windows/tun/tun_scheduled_task.dart';
 import '../../engine/windows/xray_paths.dart';
@@ -160,6 +161,9 @@ class AppCleanup {
     await UrlSchemeWindows.unregisterServerSchemes();
     // Настройки стираются вместе с данными — а с ними и «запускать с Windows».
     await AutostartWindows.remove();
+    // Пакет Store: копия в «Документах» пережила бы удаление данных и
+    // вернула бы их при следующем запуске.
+    await SettingsBackup.deleteDocumentsCopy();
     _deleteData();
   }
 

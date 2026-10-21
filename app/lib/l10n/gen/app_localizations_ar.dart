@@ -4298,4 +4298,27 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'تعذّرت المزامنة تلقائيًا — يتطلب ذلك صلاحيات المسؤول.\n\nللإصلاح يدويًا: إعدادات Windows ← الوقت واللغة ← التاريخ والوقت. فعّل «تعيين الوقت تلقائيًا» واضغط «المزامنة الآن». إن كان المفتاح مفعّلًا بالفعل فأوقفه ثم فعّله مجددًا.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'ثُبّتت هذه النسخة من Microsoft Store ولا تُحدَّث إلا عبره: يثبّت المتجر الإصدارات الجديدة بنفسه أو بزر «الحصول على التحديثات» في قسم التنزيلات.';
+
+  @override
+  String get updatesOpenMsStore => 'فتح Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'تصل الإصدارات الجديدة عبر Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'الاحتفاظ بالاشتراكات في النسخة داخل «المستندات»';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'يحذف Windows بيانات تطبيق Microsoft Store عند إزالته، لذلك تُنسخ الإعدادات دائماً إلى «المستندات\\SilentGate». بعد إعادة التثبيت يستعيدها التطبيق بنفسه. النسخة مشفّرة بمفتاح حساب Windows الخاص بك';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'استُعيدت الإعدادات من النسخة في «المستندات»';
 }

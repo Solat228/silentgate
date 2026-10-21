@@ -1593,5 +1593,11 @@
   "trayNoteOffline": "无网络，正在等待网络",
   "routeYourPhone": "你的手机",
   "importSyncTimeOk": "时间已同步。请重新导入。",
-  "importSyncTimeManual": "无法自动同步——这需要管理员权限。\n\n手动修复：Windows 设置 → 时间和语言 → 日期和时间。打开“自动设置时间”，然后点击“立即同步”。如果开关已经打开，请先关闭再重新打开。"
+  "importSyncTimeManual": "无法自动同步——这需要管理员权限。\n\n手动修复：Windows 设置 → 时间和语言 → 日期和时间。打开“自动设置时间”，然后点击“立即同步”。如果开关已经打开，请先关闭再重新打开。",
+  "updatesMsStoreManaged": "此副本安装自 Microsoft Store，只能通过它更新：Store 会自行安装新版本，或在“下载”中点击“获取更新”按钮。",
+  "updatesOpenMsStore": "打开 Microsoft Store",
+  "updatesSettingsTileMsStore": "新版本通过 Microsoft Store 推送",
+  "backupDocumentsSubsTitle": "在“文档”中的副本里保留订阅",
+  "backupDocumentsSubsSub": "卸载 Microsoft Store 应用时，Windows 会删除其数据，因此设置始终会复制到“文档\\SilentGate”。重新安装后，应用会自动恢复它们。副本使用您的 Windows 帐户密钥加密",
+  "backupRestoredFromDocuments": "已从“文档”中的副本恢复设置"
 }

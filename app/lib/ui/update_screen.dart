@@ -192,7 +192,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 leading: const Icon(Icons.system_update_alt),
                 title: Text(l.updatesCurrentVersion(AppInfo.version)),
               ),
-              _Note(icon: Icons.shop, text: l.updatesPlayManaged),
+              _Note(
+                  icon: Icons.shop,
+                  text: c.msStoreManaged
+                      ? l.updatesMsStoreManaged
+                      : l.updatesPlayManaged),
               Padding(
                 padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
                 child: Align(
@@ -201,7 +205,9 @@ class _UpdateScreenState extends State<UpdateScreen> {
                     key: const Key('updatesOpenPlayButton'),
                     onPressed: () => unawaited(c.openPlayStore()),
                     icon: const Icon(Icons.open_in_new, size: 18),
-                    label: Text(l.updatesOpenPlay),
+                    label: Text(c.msStoreManaged
+                        ? l.updatesOpenMsStore
+                        : l.updatesOpenPlay),
                   ),
                 ),
               ),

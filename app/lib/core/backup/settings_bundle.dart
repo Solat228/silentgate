@@ -17,6 +17,11 @@ import 'dart:convert';
 /// порт по старому паролю), ответ на окно согласия (его даёт человек на
 /// каждом устройстве сам — так требуют магазины) и автозапуск (он живёт в
 /// реестре или системе, флаг без самой записи соврал бы).
+///
+/// Исключение — копия ТОГО ЖЕ устройства ([sameDevice]): копия пакета Store в
+/// «Документах» зашифрована ключом этой учётной записи Windows и читается
+/// только ею. Там [sameDeviceKeys] сохраняются — иначе переустановка молча
+/// ломала бы скрипты локального API (новый токен) и выключала автозапуск.
 abstract final class SettingsBundle {
   static const format = 'silentgate-settings';
   static const version = 1;
@@ -47,6 +52,20 @@ abstract final class SettingsBundle {
     'localProxyPassword',
     'apiToken',
     'deviceInfoConsent',
+    'deviceInfoNoticeShown',
+    'launchAtLogin',
+  };
+
+  /// Ключи из [deviceOnlyKeys], которые копия того же устройства сохраняет.
+  ///
+  /// ⚠️ Ответа на окно согласия здесь нет: после переустановки его
+  /// спрашивают заново — одно нажатие, зато решение о данных устройства
+  /// всегда свежее. Автозапуск честен: `AutostartWindows.sync` на старте
+  /// приводит запись в реестре к флагу.
+  static const sameDeviceKeys = {
+    'localProxyUser',
+    'localProxyPassword',
+    'apiToken',
     'deviceInfoNoticeShown',
     'launchAtLogin',
   };
@@ -93,12 +112,13 @@ abstract final class SettingsBundle {
     required String platform,
     required String appVersion,
     DateTime? now,
+    bool sameDevice = false,
   }) {
     final out = <String, Object?>{};
     final settings = files[settingsFile];
     if (settings is Map) {
-      out[settingsFile] =
-          _cleanSettings(settings, includeSubscriptions: includeSubscriptions);
+      out[settingsFile] = _cleanSettings(settings,
+          includeSubscriptions: includeSubscriptions, sameDevice: sameDevice);
     }
     if (includeSubscriptions) {
       for (final name in subscriptionFiles) {
@@ -171,6 +191,7 @@ abstract final class SettingsBundle {
     required Map<String, Object?> localSettings,
     required String platform,
     required bool includeSubscriptions,
+    bool sameDevice = false,
   }) {
     final out = <String, Object?>{};
     final imported = bundle.files[settingsFile];
@@ -179,6 +200,9 @@ abstract final class SettingsBundle {
     if (imported is Map) {
       final s = Map<String, Object?>.from(imported);
       for (final k in deviceOnlyKeys) {
+        if (sameDevice && sameDeviceKeys.contains(k) && s.containsKey(k)) {
+          continue;
+        }
         s.remove(k);
         if (localSettings.containsKey(k)) s[k] = localSettings[k];
       }
@@ -211,9 +235,10 @@ abstract final class SettingsBundle {
   }
 
   static Map<String, Object?> _cleanSettings(Map settings,
-      {required bool includeSubscriptions}) {
+      {required bool includeSubscriptions, bool sameDevice = false}) {
     final s = Map<String, Object?>.from(settings);
     for (final k in deviceOnlyKeys) {
+      if (sameDevice && sameDeviceKeys.contains(k)) continue;
       s.remove(k);
     }
     if (!includeSubscriptions) {

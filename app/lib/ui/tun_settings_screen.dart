@@ -42,6 +42,13 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
     setState(() => _busy = true);
     final result = await platform.privileges.configure();
     if (!mounted) return;
+    if (result == PrivilegeSetupResult.done) {
+      // Задачу снова выбрали — пакет MSIX может ставить её сам, если её
+      // снимет что-то кроме человека (см. `TunTaskAutoSetup`).
+      context
+          .read<SettingsController>()
+          .update((s) => s.copyWith(tunTaskDeclined: false));
+    }
     setState(() => _busy = false);
     await _refreshTask();
     if (!mounted) return;
@@ -55,6 +62,11 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
     setState(() => _busy = true);
     await platform.privileges.remove();
     if (!mounted) return;
+    // Выбор человека — окно UAC на каждое подключение. В пакете MSIX без
+    // этого флага задача поставилась бы снова при следующем подключении.
+    context
+        .read<SettingsController>()
+        .update((s) => s.copyWith(tunTaskDeclined: true));
     setState(() => _busy = false);
     await _refreshTask();
   }

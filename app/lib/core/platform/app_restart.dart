@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 
 import 'app_log.dart';
+import 'package_identity_windows.dart';
 import 'single_instance.dart';
 import 'tray_window.dart';
 
@@ -30,7 +31,9 @@ abstract final class AppRestart {
         // Новая копия стартует ДО выхода старой и ждёт её (см.
         // [becomePrimaryAfterRestart]). Наоборот нельзя: после выхода
         // запускать было бы уже некому.
-        await Process.start(Platform.resolvedExecutable, const [waitArg],
+        // В пакете MSIX — через псевдоним: так новая копия гарантированно
+        // получает идентификацию пакета (и его каталог данных).
+        await Process.start(PackageIdentity.launchPath(), const [waitArg],
             mode: ProcessStartMode.detached);
         await TrayWindow.quitNow();
         return true;

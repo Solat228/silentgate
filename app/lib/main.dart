@@ -12,6 +12,7 @@ import 'core/platform/app_env.dart';
 import 'core/platform/autostart_windows.dart';
 import 'core/platform/app_instance_mutex.dart';
 import 'core/platform/log_archive.dart';
+import 'core/platform/package_identity_windows.dart';
 import 'core/platform/app_log.dart';
 import 'core/platform/app_paths.dart';
 import 'core/platform/app_restart.dart';
@@ -173,6 +174,9 @@ Future<void> main(List<String> args) async {
     // Импорт настроек раскладывается ДО того, как хоть что-то прочло диск,
     // и только первичной копией: вторая, пересылающая ссылку, сюда не дошла.
     await SettingsBackup.applyPending();
+    // Пакет MSIX: свежая установка после удаления — данные Windows стёрла
+    // вместе с пакетом, а копия в «Документах» осталась.
+    if (PackageIdentity.isPackaged) await SettingsBackup.restoreSnapshotIfFresh();
 
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
@@ -180,7 +184,11 @@ Future<void> main(List<String> args) async {
     if (ourBin != null) unawaited(CoreCleanup.sweepOrphans(ourBin));
     // Изолированная копия не перехватывает silentgate:// у установленной версии.
     // На Android схемы объявляются в манифесте, регистрировать нечего.
-    if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
+    // Пакет MSIX: схему объявляет его манифест. Запись в HKCU пережила бы
+    // удаление пакета и вела бы в пустоту (проверено в VM 21.10.2026).
+    if (!AppEnv.skipSchemeRegistration && !PackageIdentity.isPackaged) {
+      await UrlSchemeWindows.register();
+    }
     // Окно и трей — десктопные понятия; на Android их роль играет
     // foreground-сервис с постоянной нотификацией.
     await TrayWindow.instance.init(startHidden: autostart);

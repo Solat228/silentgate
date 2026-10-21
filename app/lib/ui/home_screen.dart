@@ -527,8 +527,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    if (Platform.isAndroid) {
-      _backup = BackupSnapshotKeeper.attach(context.read<SettingsController>());
+    if (SettingsBackup.keepsSnapshot) {
+      _backup = BackupSnapshotKeeper.attach(context.read<SettingsController>(),
+          periodic: Platform.isWindows);
     }
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -606,9 +607,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final l = AppLocalizations.of(context);
     AppToast.show(
         context,
-        src == RestoreSource.googleBackup
-            ? l.backupRestoredFromGoogle
-            : l.backupImportApplied,
+        switch (src) {
+          RestoreSource.googleBackup => l.backupRestoredFromGoogle,
+          RestoreSource.documentsBackup => l.backupRestoredFromDocuments,
+          RestoreSource.importFile => l.backupImportApplied,
+        },
         kind: ToastKind.success,
         duration: const Duration(seconds: 10));
   }

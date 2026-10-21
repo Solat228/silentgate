@@ -799,6 +799,15 @@ class AppSettings {
   /// решение владельца 24.09.2026. См. `AutostartWindows`.
   final bool launchAtLogin;
 
+  // ── Права для TUN (Windows, пакет MSIX) ────────────────────────────────────
+  /// Человек удалил задачу Планировщика `SilentGateTun` сам («TUN и
+  /// маршрутизация» → «Удалить задачу») — то есть выбрал окно UAC на каждое
+  /// подключение. В пакете MSIX задача ставится сама при первом подключении
+  /// TUN (решение владельца 21.10.2026: выбор в настройках, по умолчанию
+  /// задача); этот флаг не даёт поставить её снова против воли. Вне пакета
+  /// задачу и так ставят только руками — флаг там ничего не меняет.
+  final bool tunTaskDeclined;
+
   /// При автозапуске сразу подключаться. Отдельная галочка, выключена: человек,
   /// включивший автозапуск ради трея, не просил поднимать VPN на каждом входе.
   final bool connectOnAutostart;
@@ -1025,6 +1034,7 @@ class AppSettings {
     this.seamlessKeepTun = true,
     this.autoConnectAfterImport = false,
     this.launchAtLogin = false,
+    this.tunTaskDeclined = false,
     this.connectOnAutostart = false,
     this.themeMode = AppThemeMode.system,
     this.serviceChecksLayout = ServiceChecksLayout.adaptive,
@@ -1152,6 +1162,7 @@ class AppSettings {
     bool? seamlessKeepTun,
     bool? autoConnectAfterImport,
     bool? launchAtLogin,
+    bool? tunTaskDeclined,
     bool? connectOnAutostart,
     AppThemeMode? themeMode,
     ServiceChecksLayout? serviceChecksLayout,
@@ -1252,6 +1263,7 @@ class AppSettings {
       autoConnectAfterImport:
           autoConnectAfterImport ?? this.autoConnectAfterImport,
       launchAtLogin: launchAtLogin ?? this.launchAtLogin,
+      tunTaskDeclined: tunTaskDeclined ?? this.tunTaskDeclined,
       connectOnAutostart: connectOnAutostart ?? this.connectOnAutostart,
       themeMode: themeMode ?? this.themeMode,
       serviceChecksLayout: serviceChecksLayout ?? this.serviceChecksLayout,
@@ -1350,6 +1362,7 @@ class AppSettings {
         'seamlessKeepTun': seamlessKeepTun,
         'autoConnectAfterImport': autoConnectAfterImport,
         'launchAtLogin': launchAtLogin,
+        'tunTaskDeclined': tunTaskDeclined,
         'connectOnAutostart': connectOnAutostart,
         'themeMode': themeMode.name,
         'serviceChecksLayout': serviceChecksLayout.name,
@@ -1573,6 +1586,7 @@ class AppSettings {
           j['seamlessKeepTun'] as bool? ?? defaults.seamlessKeepTun,
       autoConnectAfterImport: j['autoConnectAfterImport'] as bool? ?? false,
       launchAtLogin: j['launchAtLogin'] as bool? ?? false,
+      tunTaskDeclined: j['tunTaskDeclined'] as bool? ?? false,
       connectOnAutostart: j['connectOnAutostart'] as bool? ?? false,
       themeMode: pick(AppThemeMode.values, j['themeMode'], AppThemeMode.system),
       // Неизвестное/битое значение → adaptive: битый файл настроек не должен

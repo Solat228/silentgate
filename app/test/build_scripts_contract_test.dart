@@ -25,6 +25,7 @@ void main() {
   final apkBat = File('../build-apk.bat');
   final exeBat = File('../build-exe.bat');
   final playBat = File('../build-play.bat');
+  final msixBat = File('../build-msix.bat');
   final contract = File('../docs/APP_UPDATE_SERVER.md');
 
   setUpAll(() {
@@ -41,6 +42,7 @@ void main() {
       'build-apk.bat': apkBat,
       'build-exe.bat': exeBat,
       'build-play.bat': playBat,
+      'build-msix.bat': msixBat,
     }.entries) {
       final name = entry.key;
       final file = entry.value;
@@ -222,6 +224,28 @@ void main() {
       expect(content, contains('pubspec.yaml'));
       expect(content, contains('SilentGate-%VER%-play.aab'));
       expect(content, isNot(contains('--flavor github')));
+    });
+
+    test('build-msix.bat: сборка Store, ядра в пакете, упаковка инструментом',
+        () {
+      final content = _decodeCp866(msixBat.readAsBytesSync());
+      expect(content,
+          contains('build windows --release --dart-define=SILENTGATE_STORE=msstore'));
+      for (final core in ['xray.exe', 'sing-box.exe', 'wintun.dll']) {
+        expect(content, contains(core),
+            reason: 'без ядра пакет не подключится — flutter build их не кладёт');
+      }
+      expect(content, contains('tool/build_msix.dart'));
+      final lines = content
+          .split(String.fromCharCode(10))
+          .map((l) => l.trimRight())
+          .toList();
+      for (final marker in ['build windows --release', 'tool/build_msix.dart']) {
+        final i = lines.indexWhere((l) => l.contains(marker));
+        expect(i, greaterThanOrEqualTo(0), reason: marker);
+        final after = lines.skip(i + 1).take(4).join(' ');
+        expect(after, contains('if errorlevel 1'), reason: marker);
+      }
     });
 
     test('build-play.bat проверяет код возврата сборки', () {

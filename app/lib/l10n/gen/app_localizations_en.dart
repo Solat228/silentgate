@@ -4311,4 +4311,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'Could not sync automatically — administrator rights are needed for that.\n\nTo fix it manually: Windows Settings → Time & language → Date & time. Turn on “Set time automatically” and click “Sync now”. If the switch is already on, turn it off and on again.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'This copy was installed from Microsoft Store and is updated only through it: Store installs new versions itself or with the \"Get updates\" button in Downloads.';
+
+  @override
+  String get updatesOpenMsStore => 'Open Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'New versions come through Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Keep subscriptions in the copy in Documents';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows deletes the data of a Microsoft Store app when it is uninstalled, so settings are always copied to \"Documents\\SilentGate\". After a reinstall the app restores them itself. The copy is encrypted with your Windows account key';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Settings restored from the copy in Documents';
 }

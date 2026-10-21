@@ -1593,5 +1593,11 @@
   "trayNoteOffline": "internet yok, ağ bekleniyor",
   "routeYourPhone": "Telefonunuz",
   "importSyncTimeOk": "Saat eşitlendi. Yeniden içe aktarın.",
-  "importSyncTimeManual": "Otomatik eşitleme yapılamadı — bunun için yönetici hakları gerekiyor.\n\nElle düzeltmek için: Windows Ayarları → Zaman ve dil → Tarih ve saat. “Saati otomatik olarak ayarla”yı açın ve “Şimdi eşitle”ye tıklayın. Anahtar zaten açıksa kapatıp yeniden açın."
+  "importSyncTimeManual": "Otomatik eşitleme yapılamadı — bunun için yönetici hakları gerekiyor.\n\nElle düzeltmek için: Windows Ayarları → Zaman ve dil → Tarih ve saat. “Saati otomatik olarak ayarla”yı açın ve “Şimdi eşitle”ye tıklayın. Anahtar zaten açıksa kapatıp yeniden açın.",
+  "updatesMsStoreManaged": "Bu kopya Microsoft Store'dan yüklendi ve yalnızca onun üzerinden güncellenir: Store yeni sürümleri kendisi ya da İndirilenler'deki \"Güncellemeleri al\" düğmesiyle yükler.",
+  "updatesOpenMsStore": "Microsoft Store'u aç",
+  "updatesSettingsTileMsStore": "Yeni sürümler Microsoft Store üzerinden gelir",
+  "backupDocumentsSubsTitle": "Abonelikleri Belgeler'deki kopyada sakla",
+  "backupDocumentsSubsSub": "Windows, Microsoft Store uygulamasının verilerini kaldırırken siler; bu yüzden ayarlar her zaman \"Belgeler\\SilentGate\" klasörüne kopyalanır. Yeniden yüklemeden sonra uygulama bunları kendisi geri yükler. Kopya Windows hesabınızın anahtarıyla şifrelenir",
+  "backupRestoredFromDocuments": "Ayarlar Belgeler'deki kopyadan geri yüklendi"
 }

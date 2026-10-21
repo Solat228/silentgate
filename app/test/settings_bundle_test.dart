@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/backup/settings_bundle.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
+import 'package:silentgate/core/platform/secret_files.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/data/settings_backup.dart';
 
@@ -149,6 +150,56 @@ void main() {
       expect(p.platform, 'android');
       expect(p.files.keys, ['silentgate_settings.json']);
       expect(p.hasSubscriptions, isFalse);
+    });
+  });
+
+  group('Копия того же устройства', () {
+    Map<String, Object?> built({required bool same}) =>
+        (SettingsBundle.build(
+                files: files(),
+                includeSubscriptions: true,
+                platform: 'windows',
+                appVersion: '1.17.0',
+                sameDevice: same)['files'] as Map)[SettingsBundle.settingsFile]
+            as Map<String, Object?>;
+
+    test('сохраняет секреты устройства, но не согласие', () {
+      final s = built(same: true);
+      expect(s['apiToken'], 'api-token-1');
+      expect(s['localProxyPassword'], 'secret-pass');
+      expect(s['launchAtLogin'], isTrue);
+      expect(s.containsKey('deviceInfoConsent'), isFalse);
+    });
+
+    test('⚠️ ключи того же устройства — подмножество ключей устройства', () {
+      expect(SettingsBundle.deviceOnlyKeys.containsAll(
+              SettingsBundle.sameDeviceKeys),
+          isTrue);
+      expect(SettingsBundle.sameDeviceKeys, isNot(contains('deviceInfoConsent')));
+    });
+
+    test('слияние копии того же устройства берёт её секреты', () {
+      final b = SettingsBundle.parse(SettingsBundle.encode(SettingsBundle.build(
+          files: files(),
+          includeSubscriptions: true,
+          platform: 'windows',
+          appVersion: '1.17.0',
+          sameDevice: true)))!;
+      final s = SettingsBundle.merge(b,
+          localSettings: const {},
+          platform: 'windows',
+          includeSubscriptions: true,
+          sameDevice: true)[SettingsBundle.settingsFile] as Map;
+      expect(s['apiToken'], 'api-token-1');
+      expect(s['launchAtLogin'], isTrue);
+      expect(s.containsKey('deviceInfoConsent'), isFalse);
+      // Обычный импорт того же файла секреты не берёт.
+      final o = SettingsBundle.merge(b,
+          localSettings: const {'apiToken': 'local'},
+          platform: 'windows',
+          includeSubscriptions: true)[SettingsBundle.settingsFile] as Map;
+      expect(o['apiToken'], 'local');
+      expect(o.containsKey('launchAtLogin'), isFalse);
     });
   });
 
@@ -323,5 +374,148 @@ void main() {
       expect(text, isNot(contains('TOKEN123')));
       expect(text, isNot(contains('203.0.113.10')));
     });
+  });
+
+  // Пакет Microsoft Store: Windows стирает данные пакета при удалении, снимок
+  // живёт в «Документах» (решение владельца 21.10.2026).
+  group('Пакет Store: копия в «Документах»', () {
+    late Directory tmp;
+    late Directory docs;
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_backup_docs_');
+      docs = Directory.systemTemp.createTempSync('sg_documents_');
+      AppPaths.overrideRoot(tmp);
+      SettingsBackup.restoredOnStart = null;
+      SettingsBackup.debugDocumentsCopy = true;
+      SettingsBackup.debugDocumentsDir = docs;
+    });
+    tearDown(() {
+      SettingsBackup.debugDocumentsCopy = null;
+      SettingsBackup.debugDocumentsDir = null;
+      SecretFiles.debugEnabled = null;
+      AppPaths.resetForTests();
+      tmp.deleteSync(recursive: true);
+      if (docs.existsSync()) docs.deleteSync(recursive: true);
+    });
+
+    File f(String name) => File('${tmp.path}${Platform.pathSeparator}$name');
+    File copy() => File('${docs.path}${Platform.pathSeparator}'
+        '${SettingsBackup.documentsDirName}${Platform.pathSeparator}'
+        '${SettingsBackup.documentsFile}');
+
+    void writeAll() =>
+        files().forEach((k, v) => f(k).writeAsStringSync(jsonEncode(v)));
+
+    test('снимок пишется в «Документы», а не в каталог данных', () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      expect(copy().existsSync(), isTrue);
+      expect(
+          f('${SettingsBackup.snapshotDir}${Platform.pathSeparator}'
+                  '${SettingsBackup.snapshotFile}')
+              .existsSync(),
+          isFalse,
+          reason: 'каталог данных пакета Windows сотрёт вместе с ним');
+    });
+
+    test('⚠️ переустановка не теряет токен API, пароль прокси и автозапуск',
+        () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      for (final e in tmp.listSync()) {
+        e.deleteSync(recursive: true);
+      }
+      expect(await SettingsBackup.restoreSnapshotIfFresh(), isTrue);
+      final s = AppSettings.fromJson(
+          jsonDecode(f(SettingsBundle.settingsFile).readAsStringSync())
+              as Map<String, dynamic>);
+      expect(s.apiToken, 'api-token-1',
+          reason: 'новый токен молча сломал бы скрипты локального API');
+      expect(s.localProxyPassword, 'secret-pass');
+      expect(s.localProxyUser, 'me');
+      expect(s.launchAtLogin, isTrue);
+      expect(s.deviceInfoConsent, isNull,
+          reason: 'согласие после переустановки спрашивается заново');
+    });
+
+    test('после переустановки данные возвращаются из «Документов»', () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      expect(await SettingsBackup.restoreSnapshotIfFresh(), isFalse,
+          reason: 'живые данные новее копии');
+      // Удаление пакета: каталог данных пуст, «Документы» целы.
+      for (final e in tmp.listSync()) {
+        e.deleteSync(recursive: true);
+      }
+      expect(await SettingsBackup.restoreSnapshotIfFresh(), isTrue);
+      expect(SettingsBackup.restoredOnStart, RestoreSource.documentsBackup);
+      expect(f(SettingsBundle.subscriptionsFile).readAsStringSync(),
+          contains('TOKEN123'));
+    });
+
+    test('без подписок — адресов подписок в копии нет', () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: false);
+      expect(copy().readAsStringSync(), isNot(contains('TOKEN123')));
+    });
+
+    test(
+        '⚠️ под тестом без подмены «Документов» копия не пишется в настоящие',
+        () async {
+      SettingsBackup.debugDocumentsDir = null;
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      expect(await SettingsBackup.restoreSnapshotIfFresh(), isFalse);
+      expect(docs.listSync(), isEmpty);
+    });
+
+    test('«Удалить все данные» стирает копию и пустую папку', () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      await SettingsBackup.deleteDocumentsCopy();
+      expect(copy().existsSync(), isFalse);
+      expect(copy().parent.existsSync(), isFalse);
+    });
+
+    test('чужой файл в папке копии не удаляется вместе с ней', () async {
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      final other = File('${copy().parent.path}${Platform.pathSeparator}'
+          'notes.txt')
+        ..writeAsStringSync('мой файл');
+      await SettingsBackup.deleteDocumentsCopy();
+      expect(copy().existsSync(), isFalse);
+      expect(other.existsSync(), isTrue);
+    });
+
+    test('вне пакета копия в «Документах» не ведётся', () async {
+      SettingsBackup.debugDocumentsCopy = false;
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      await SettingsBackup.deleteDocumentsCopy();
+      expect(docs.listSync(), isEmpty);
+    });
+
+    test('⚠️ копия зашифрована DPAPI и переживает перезапись без изменений',
+        () async {
+      SecretFiles.debugEnabled = true;
+      writeAll();
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      final stored = copy().readAsStringSync();
+      expect(SecretFiles.isEncrypted(stored), isTrue);
+      expect(stored, isNot(contains('TOKEN123')));
+      final stamp = copy().lastModifiedSync();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      await SettingsBackup.writeSnapshot(includeSubscriptions: true);
+      expect(copy().lastModifiedSync(), stamp,
+          reason: 'сравнивается расшифрованное содержимое');
+      for (final e in tmp.listSync()) {
+        e.deleteSync(recursive: true);
+      }
+      expect(await SettingsBackup.restoreSnapshotIfFresh(), isTrue);
+      expect(SecretFiles.decode(
+              f(SettingsBundle.subscriptionsFile).readAsStringSync()),
+          contains('TOKEN123'));
+    }, skip: !Platform.isWindows);
   });
 }

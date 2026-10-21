@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Манифест пакета MSIX для Microsoft Store. Шаблон: {{…}} подставляет
+  app/tool/build_msix.dart. Identity Name и Publisher выдаёт Partner Center
+  (страница продукта → Product identity) и они обязаны совпасть ДОСЛОВНО.
+
+  Почему так (разведка в VM SG-Test 21.10.2026, Windows 11 23H2):
+  * без unvirtualizedResources: TUN, установка wintun, kill switch на WFP,
+    системный прокси (reg.exe пишет в настоящий HKCU) и локальный API работают;
+  * allowElevation: помощник TUN и задача Планировщика поднимаются с правами
+    изнутри пакета;
+  * псевдоним silentgate.exe — постоянный путь запуска: папка пакета в
+    WindowsApps меняется с каждой версией. Совпадение с PackageIdentity.aliasName
+    стережёт test/msix_package_test.dart;
+  * схема silentgate:// объявлена здесь, в HKCU приложение её не пишет —
+    запись пережила бы удаление пакета и указывала бы в пустоту.
+-->
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap3="http://schemas.microsoft.com/appx/manifest/uap/windows10/3"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap3 desktop rescap">
+  <Identity Name="{{IDENTITY_NAME}}" Publisher="{{PUBLISHER}}" Version="{{VERSION}}" ProcessorArchitecture="x64"/>
+  <Properties>
+    <DisplayName>{{DISPLAY_NAME}}</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Dependencies>
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.17763.0" MaxVersionTested="10.0.26100.0"/>
+  </Dependencies>
+  <Resources>
+{{LANGUAGES}}
+  </Resources>
+  <Applications>
+    <Application Id="SilentGate" Executable="silentgate.exe" EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements DisplayName="{{DISPLAY_NAME}}" Description="{{DESCRIPTION}}"
+        BackgroundColor="transparent" Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
+      </uap:VisualElements>
+      <Extensions>
+        <uap3:Extension Category="windows.appExecutionAlias" Executable="silentgate.exe" EntryPoint="Windows.FullTrustApplication">
+          <uap3:AppExecutionAlias>
+            <desktop:ExecutionAlias Alias="silentgate.exe"/>
+          </uap3:AppExecutionAlias>
+        </uap3:Extension>
+        <uap:Extension Category="windows.protocol">
+          <uap:Protocol Name="silentgate">
+            <uap:DisplayName>SilentGate</uap:DisplayName>
+          </uap:Protocol>
+        </uap:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities>
+    <Capability Name="internetClient"/>
+    <rescap:Capability Name="runFullTrust"/>
+    <rescap:Capability Name="allowElevation"/>
+  </Capabilities>
+</Package>

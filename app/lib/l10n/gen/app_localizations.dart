@@ -7319,6 +7319,42 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.'**
   String get importSyncTimeManual;
+
+  /// No description provided for @updatesMsStoreManaged.
+  ///
+  /// In ru, this message translates to:
+  /// **'Эта копия установлена из Microsoft Store и обновляется только через него: новые версии Store ставит сам или по кнопке «Получить обновления» в разделе «Загрузки».'**
+  String get updatesMsStoreManaged;
+
+  /// No description provided for @updatesOpenMsStore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открыть Microsoft Store'**
+  String get updatesOpenMsStore;
+
+  /// No description provided for @updatesSettingsTileMsStore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новые версии приходят через Microsoft Store'**
+  String get updatesSettingsTileMsStore;
+
+  /// No description provided for @backupDocumentsSubsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сохранять подписки в копии в «Документах»'**
+  String get backupDocumentsSubsTitle;
+
+  /// No description provided for @backupDocumentsSubsSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'При удалении Windows стирает данные приложения из Microsoft Store, поэтому настройки всегда копируются в «Документы\\SilentGate». После переустановки приложение восстановит их само. Копия зашифрована ключом вашей учётной записи Windows'**
+  String get backupDocumentsSubsSub;
+
+  /// No description provided for @backupRestoredFromDocuments.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настройки восстановлены из копии в «Документах»'**
+  String get backupRestoredFromDocuments;
 }
 
 class _AppLocalizationsDelegate

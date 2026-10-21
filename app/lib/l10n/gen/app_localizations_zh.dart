@@ -4127,4 +4127,24 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       '无法自动同步——这需要管理员权限。\n\n手动修复：Windows 设置 → 时间和语言 → 日期和时间。打开“自动设置时间”，然后点击“立即同步”。如果开关已经打开，请先关闭再重新打开。';
+
+  @override
+  String get updatesMsStoreManaged =>
+      '此副本安装自 Microsoft Store，只能通过它更新：Store 会自行安装新版本，或在“下载”中点击“获取更新”按钮。';
+
+  @override
+  String get updatesOpenMsStore => '打开 Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore => '新版本通过 Microsoft Store 推送';
+
+  @override
+  String get backupDocumentsSubsTitle => '在“文档”中的副本里保留订阅';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      '卸载 Microsoft Store 应用时，Windows 会删除其数据，因此设置始终会复制到“文档\\SilentGate”。重新安装后，应用会自动恢复它们。副本使用您的 Windows 帐户密钥加密';
+
+  @override
+  String get backupRestoredFromDocuments => '已从“文档”中的副本恢复设置';
 }

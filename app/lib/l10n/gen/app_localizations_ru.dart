@@ -4315,4 +4315,27 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get importSyncTimeManual =>
       'Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'Эта копия установлена из Microsoft Store и обновляется только через него: новые версии Store ставит сам или по кнопке «Получить обновления» в разделе «Загрузки».';
+
+  @override
+  String get updatesOpenMsStore => 'Открыть Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'Новые версии приходят через Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Сохранять подписки в копии в «Документах»';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'При удалении Windows стирает данные приложения из Microsoft Store, поэтому настройки всегда копируются в «Документы\\SilentGate». После переустановки приложение восстановит их само. Копия зашифрована ключом вашей учётной записи Windows';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Настройки восстановлены из копии в «Документах»';
 }

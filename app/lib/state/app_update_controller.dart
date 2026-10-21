@@ -372,6 +372,7 @@ class AppUpdateController extends ChangeNotifier {
   final Duration _purgeRetryDelay;
   final DateTime Function() _clock;
   final AppStore _store;
+  final bool _msStorePackage;
   final Future<bool> Function()? _playStoreAvailable;
   final Future<bool> Function()? _openPlayStore;
 
@@ -393,7 +394,10 @@ class AppUpdateController extends ChangeNotifier {
   /// их не отдал (см. [_mirrorUrls]).
   /// [store] — какая это сборка ([AppStore]); [playStoreAvailable] — есть ли
   /// на устройстве Google Play и открыта ли там наша страница (`null` — нет:
-  /// Windows); [openPlayStore] — открыть страницу приложения в Play.
+  /// Windows); [openPlayStore] — открыть страницу приложения в Play (в
+  /// пакете MSIX — «Загрузки и обновления» Microsoft Store).
+  /// [msStorePackage] — копия запущена из пакета MSIX: её обновляет только
+  /// Microsoft Store.
   ///
   /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
   /// файлом (`update_api.txt`) и читается асинхронно
@@ -422,6 +426,7 @@ class AppUpdateController extends ChangeNotifier {
     Duration purgeRetryDelay = const Duration(seconds: 30),
     DateTime Function()? clock,
     AppStore store = AppStore.github,
+    bool msStorePackage = false,
     Future<bool> Function()? playStoreAvailable,
     Future<bool> Function()? openPlayStore,
   })  : _settings = settings,
@@ -443,6 +448,7 @@ class AppUpdateController extends ChangeNotifier {
         _purgeRetryDelay = purgeRetryDelay,
         _clock = clock ?? DateTime.now,
         _store = store,
+        _msStorePackage = msStorePackage,
         _playStoreAvailable = playStoreAvailable,
         _openPlayStore = openPlayStore {
     _vpnChanges?.addListener(_onVpnChanged);
@@ -564,7 +570,13 @@ class AppUpdateController extends ChangeNotifier {
   /// Сборка из Google Play: обновляет её ТОЛЬКО Play. Проверки обновлений,
   /// закачки и установки в ней нет вовсе — интерфейс показывает кнопку
   /// «Открыть в Google Play» вместо всего экрана обновлений.
-  bool get storeManaged => _store == AppStore.play;
+  ///
+  /// Пакет MSIX (Microsoft Store) — так же: пакет обновляет Store, а
+  /// установщик Inno поверх пакета поставил бы ВТОРУЮ копию приложения рядом.
+  bool get storeManaged => _store == AppStore.play || _msStorePackage;
+
+  /// Копия из пакета MSIX — её обновляет Microsoft Store.
+  bool get msStoreManaged => _msStorePackage;
 
   /// Сборка GitHub: текущее предложение лучше взять через Google Play — он
   /// установлен, страница открыта, а версия стабильная (бет в Play нет) и
@@ -669,7 +681,9 @@ class AppUpdateController extends ChangeNotifier {
     // ⚠️ Сборку из Play обновляет только Play (правило «Device and Network
     // Abuse»): ни проверки, ни закачки — даже ссылки на GitHub не ищем.
     if (storeManaged) {
-      AppLog.i('Обновление: сборка Google Play — обновляет Play');
+      AppLog.i(_msStorePackage
+          ? 'Обновление: пакет Microsoft Store — обновляет Store'
+          : 'Обновление: сборка Google Play — обновляет Play');
       _notify();
       return;
     }
