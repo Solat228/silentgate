@@ -117,8 +117,11 @@ class SingboxOutboundFactory {
         'server_port': s.port,
         'uuid': s.id,
         if ((s.flow ?? '').isNotEmpty) 'flow': s.flow,
-        if ((s.encryption ?? '').isNotEmpty && s.encryption != 'none')
-          'packet_encoding': s.encryption,
+        // ⚠️ `encryption` ССЫЛКИ — НЕ `packet_encoding` sing-box. Первое — шифр
+        // VLESS (`none` или новый mlkem у Xray), второе — упаковка UDP
+        // (`xudp`/`packetaddr`). Подстановка давала неизвестное значение, и
+        // ядро отвергало ВЕСЬ конфиг из-за одного сервера (аудит, E).
+        // Шифра VLESS sing-box не умеет вовсе.
         ..._tlsBlock(s, resolvedIp),
         ..._transportBlock(s, resolvedIp),
       };

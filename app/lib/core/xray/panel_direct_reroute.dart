@@ -38,10 +38,27 @@ String rerouteDirectThroughVpn(String rawJson) {
 
     final outs = cfg['outbounds'] is List ? cfg['outbounds'] as List : const [];
     final hasDirect = outs.any((o) => o is Map && '${o['tag']}' == 'direct');
+    // ⚠️ ПРЯМОЙ ВЫХОД — ПО ПРОТОКОЛУ, А НЕ ПО ИМЕНИ. Панель вправе назвать
+    // `freedom` как угодно («DIRECT», «freedom», «ru-direct»), и правила на
+    // такой тег проходили мимо реврайта — трафик уходил под реальным IP при
+    // обещанном «всё через VPN» (аудит 25.10.2026, E).
+    final directTags = <String>{
+      'direct',
+      for (final o in outs)
+        if (o is Map &&
+            '${o['protocol']}' == 'freedom' &&
+            '${o['tag'] ?? ''}'.isNotEmpty)
+          '${o['tag']}',
+    };
 
     final newRules = <dynamic>[];
     for (final r in rules) {
-      if (r is! Map || '${r['outboundTag']}' != 'direct') {
+      if (r is! Map || !directTags.contains('${r['outboundTag']}')) {
+        newRules.add(r);
+        continue;
+      }
+      // Наша же страховка LAN — не переписывать (идемпотентность).
+      if (_isPrivateSafetyRule(r)) {
         newRules.add(r);
         continue;
       }
@@ -62,10 +79,24 @@ String rerouteDirectThroughVpn(String rawJson) {
         newRules.add(
             _toTarget(Map<String, dynamic>.from(r)..['ip'] = pub, target));
       } else {
-        // Без ip (домен/протокол/порт). Приватный домен оставляем direct.
-        if (_ruleHasPrivateDomain(r)) {
-          newRules.add(r);
-          continue;
+        // Без ip (домен/протокол/порт). Приватные домены оставляем direct,
+        // остальные — в VPN. ⚠️ РАЗБИВАЕМ, как и `ip`: правило
+        // `["geosite:private","geosite:ru"]` целиком оставалось прямым, и
+        // все российские домены шли под реальным IP (аудит, E).
+        final d = r['domain'];
+        if (d is List) {
+          final priv = d.where(_isPrivateDomain).toList();
+          final pub = d.where((e) => !_isPrivateDomain(e)).toList();
+          if (pub.isEmpty) {
+            newRules.add(r);
+            continue;
+          }
+          if (priv.isNotEmpty) {
+            newRules.add(Map<String, dynamic>.from(r)..['domain'] = priv);
+            newRules.add(_toTarget(
+                Map<String, dynamic>.from(r)..['domain'] = pub, target));
+            continue;
+          }
         }
         newRules.add(_toTarget(Map<String, dynamic>.from(r), target));
       }
@@ -150,11 +181,8 @@ bool _isPrivateEntry(dynamic e) {
       s.startsWith('fe80');
 }
 
-/// Правило без `ip`, но с приватным доменом (`geosite:private`)?
-bool _ruleHasPrivateDomain(Map r) {
-  final d = r['domain'];
-  return d is List && d.any((e) => '$e'.toLowerCase().contains('private'));
-}
+/// Запись `domain`, означающая локальную сеть (`geosite:private`)?
+bool _isPrivateDomain(dynamic e) => '$e'.toLowerCase().contains('private');
 
 /// Это уже наша страховка «приватные → direct» (для идемпотентности)?
 ///
@@ -165,6 +193,7 @@ bool _ruleHasPrivateDomain(Map r) {
 bool _isPrivateSafetyRule(dynamic r) {
   if (r is! Map) return false;
   if (r['outboundTag'] != 'direct') return false;
+  if (r['domain'] != null || r['port'] != null) return false;
   final ip = r['ip'];
   if (ip is! List || ip.isEmpty) return false;
   if (ip.length == 1 && '${ip.first}' == 'geoip:private') return true;
