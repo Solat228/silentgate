@@ -23,6 +23,9 @@ class OverrideNormalized {
 const _socksTag = 'sg-socks-in';
 const _httpTag = 'sg-http-in';
 
+/// Службы Xray API, которые мы читаем сами (счётчики и выбор балансера).
+const _allowedApiServices = {'StatsService', 'RoutingService'};
+
 /// Дописывает в конфиг (профиль панели/override) сервис статистики Xray, если его
 /// нет: `api`+`stats`+`policy`+dokodemo-inbound `api` на [apiPort] и правило
 /// роутинга api-inbound→api. Без этого `xray api statsquery` не отдаёт счётчики —
@@ -38,6 +41,10 @@ String ensureXrayStats(String rawJson, {required int apiPort}) {
     ];
     final hasApiInbound =
         inbounds.any((i) => i is Map && '${i['tag']}' == 'api');
+    // Свой api-inbound панели — только на петле: через него идут команды ядру.
+    for (final i in inbounds) {
+      if (i is Map && '${i['tag']}' == 'api') i['listen'] = '127.0.0.1';
+    }
     if (!hasApiInbound) {
       // Порт api уже занят ЧУЖИМ inbound'ом → второй inbound на нём уронил бы старт
       // Xray целиком. Тогда статистику не добавляем (покажется 0), но туннель жив.
@@ -59,8 +66,12 @@ String ensureXrayStats(String rawJson, {required int apiPort}) {
       ...(cfg['api'] is Map ? cfg['api'] as Map : const {}),
     };
     api['tag'] ??= 'api';
+    // ⚠️ ТОЛЬКО НУЖНЫЕ НАМ СЛУЖБЫ. `HandlerService` из конфига панели
+    // позволял бы любому процессу на петле дописать ядру свой inbound или
+    // outbound, `LoggerService` — перезапустить журнал (аудит, F).
     final services = <dynamic>[
-      ...(api['services'] is List ? api['services'] as List : const []),
+      ...(api['services'] is List ? api['services'] as List : const [])
+          .where((e) => _allowedApiServices.contains('$e')),
     ];
     if (!services.contains('StatsService')) services.add('StatsService');
     // Балансировщик есть — нужен и RoutingService: без него `xray api bi`
@@ -171,7 +182,31 @@ OverrideNormalized normalizeOverridePorts(
           raw['settings'] = st;
         }
         hasHttp = true;
+      } else {
+        // ⚠️ ОСТАЛЬНЫЕ INBOUND'Ы — ТОЛЬКО НА ПЕТЛЕ. Раньше их пропускали как
+        // есть, и второй socks панели на `0.0.0.0` открывал VPN всей
+        // локальной сети (аудит 25.10.2026, F). На Android — ещё и с тем же
+        // паролем: петля там общая для всех приложений.
+        raw['listen'] = '127.0.0.1';
+        if (socksUser.isNotEmpty && (proto == 'socks' || proto == 'http')) {
+          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
+          if (proto == 'socks') st['auth'] = 'password';
+          st['accounts'] = [
+            {'user': socksUser, 'pass': socksPassword},
+          ];
+          raw['settings'] = st;
+        }
       }
+    }
+
+    // ⚠️ ПУТИ ЖУРНАЛОВ ИЗ ЧУЖОГО КОНФИГА НЕ ПРИНИМАЕМ. `log.access` с путём в
+    // «Автозагрузку» дал бы панели или импортированной ссылке запись файла
+    // с подконтрольным содержимым (имена сайтов) — то есть запуск кода при
+    // следующем входе. Без путей ядро пишет в stdout, который собираем мы.
+    final log = cfg['log'];
+    if (log is Map) {
+      log.remove('access');
+      log.remove('error');
     }
 
     final added = <String>[];
