@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/app_store.dart';
 import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
 import '../data/settings_storage.dart';
@@ -115,9 +116,28 @@ class SettingsController extends ChangeNotifier {
   /// неактивным: он гейтится ровно по этому полю. Туннель при этом работал —
   /// движок Android поле не читает, — то есть настройка расходилась с
   /// действительностью и отбирала у пользователя целую подсистему.
-  static AppSettings _normalize(AppSettings s) {
-    if (Platform.isAndroid && s.captureMode != CaptureMode.tun) {
-      return s.copyWith(captureMode: CaptureMode.tun);
+  static AppSettings _normalize(AppSettings s) => normalizeFor(s,
+      android: Platform.isAndroid, tunAvailable: AppStoreInfo.tunAvailable);
+
+  /// [_normalize] с явной платформой и сборкой — для тестов.
+  ///
+  /// ⚠️ Сборка без драйвера ([AppStoreInfo.tunAvailable] = `false`) умеет
+  /// только системный прокси. Режим TUN, «Только прокси» и смешанный режим
+  /// туда приезжают из старого файла настроек или из `.sgsettings` с другого
+  /// ПК — без sing-box подключение в них упало бы, а переключателя, чтобы
+  /// уйти из режима, в этой сборке нет.
+  @visibleForTesting
+  static AppSettings normalizeFor(AppSettings s,
+      {required bool android, required bool tunAvailable}) {
+    if (android) {
+      return s.captureMode == CaptureMode.tun
+          ? s
+          : s.copyWith(captureMode: CaptureMode.tun);
+    }
+    if (!tunAvailable &&
+        (s.captureMode != CaptureMode.systemProxy || s.alsoSetSystemProxy)) {
+      return s.copyWith(
+          captureMode: CaptureMode.systemProxy, alsoSetSystemProxy: false);
     }
     return s;
   }

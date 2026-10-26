@@ -283,13 +283,37 @@ void main() {
     test('build-exe.bat падает, если в engine\\windows\\bin нет ядра', () {
       final content = _decodeCp866(exeBat.readAsBytesSync());
       expect(content,
-          contains('for %%f in (xray.exe sing-box.exe geoip.dat geosite.dat wintun.dll)'));
-      final i = content.indexOf('for %%f in (xray.exe');
+          contains('set "CORES=xray.exe sing-box.exe geoip.dat geosite.dat wintun.dll"'));
+      final i = content.indexOf('for %%f in (%CORES%)');
+      expect(i, greaterThanOrEqualTo(0));
       final block = content.substring(i, i + 700);
       expect(block, contains(r'if not exist "%BIN%\%%f"'));
       expect(block, contains('exit /b 1'));
       // Прежнее «нет файла — тихо не копируем» не вернулось.
       expect(content, isNot(contains(r'if exist "%BIN%\xray.exe"')));
+    });
+
+    // Заявка MS3 (27.10.2026): EXE для Microsoft Store без драйвера wintun.
+    test('build-exe.bat без драйвера не кладёт wintun и sing-box', () {
+      final content = _decodeCp866(exeBat.readAsBytesSync());
+      expect(content,
+          contains('--dart-define=SILENTGATE_NO_TUN=true'));
+      expect(content, contains('%NOTUN_DEFINE%'));
+      expect(content, contains(
+          'if defined SILENTGATE_NO_TUN set "CORES=xray.exe geoip.dat geosite.dat"'));
+      // Release общий: остатки обычной сборки вычищаются, иначе Inno
+      // заберёт их вместе со всей папкой.
+      final i = content.indexOf('if defined SILENTGATE_NO_TUN (');
+      expect(i, greaterThanOrEqualTo(0));
+      final block = content.substring(i, i + 500);
+      for (final f in ['sing-box.exe', 'wintun.dll', 'LICENSE-wintun.txt']) {
+        expect(block, contains(f));
+      }
+      expect(block, contains('del /q'));
+      expect(block, contains('exit /b 1'));
+      // Портативный архив обычной сборки не затирается.
+      expect(content, contains('if defined SILENTGATE_NO_TUN goto :sg_done'));
+      expect(content, contains(':sg_done'));
     });
 
     test('build-exe.bat останавливается на неудачной подписи', () {

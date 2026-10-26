@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/app_store.dart';
 import '../core/models/vpn_server.dart';
 import '../core/singbox/exit_outbounds.dart';
 import '../engine/engine_base.dart';
@@ -133,7 +134,11 @@ class _ApiBody extends StatelessWidget {
           // Режим захвата, в котором портов выходов физически нет. Плашка
           // стоит НАД списком серверов: она объясняет, почему галочки ниже
           // сейчас ни к чему не приведут.
-          if (!exitPortsExist)
+          //
+          // В сборке без драйвера портов выходов нет никогда: TUN и «Только
+          // прокси» держит sing-box, а его в поставке нет (MS3). Ни плашки, ни
+          // списка серверов, ни подсказки о портах там не показываем.
+          if (!exitPortsExist && AppStoreInfo.tunAvailable)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
               child: Container(
@@ -154,7 +159,7 @@ class _ApiBody extends StatelessWidget {
             ),
           // Серверы с отдельным портом — только если подписка вообще что-то
           // дала: пустой список чекбоксов под заголовком выглядел бы поломкой.
-          if (servers.isNotEmpty) ...[
+          if (servers.isNotEmpty && AppStoreInfo.tunAvailable) ...[
             ListTile(
               dense: true,
               title: Text(l.apiExitsTitle),
@@ -184,6 +189,7 @@ class _ApiBody extends StatelessWidget {
                             .toList())),
               ),
           ],
+          if (AppStoreInfo.tunAvailable)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
@@ -438,6 +444,10 @@ class _ApiCheatSheet extends StatelessWidget {
             Text(l.apiCheatSheetBase, style: small),
             const SelText('http://127.0.0.1:${ApiPorts.control}',
                 textDirection: TextDirection.ltr, style: mono),
+            // Сборка без драйвера: портов выходов нет вовсе, раздела тоже.
+            if (!AppStoreInfo.tunAvailable)
+              const SizedBox.shrink()
+            else ...[
             const SizedBox(height: 8),
             Text(l.apiCheatSheetExitPorts, style: small),
             // Три взаимоисключающих ответа, и ни один нельзя пропустить: режим
@@ -458,6 +468,7 @@ class _ApiCheatSheet extends StatelessWidget {
                       textDirection: TextDirection.ltr, style: mono),
               const SizedBox(height: 4),
               Text(l.apiCheatSheetPortsWhenConnected, style: small),
+            ],
             ],
             const SizedBox(height: 8),
             Text(l.apiCheatSheetEndpoints, style: small),

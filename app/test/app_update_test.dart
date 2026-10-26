@@ -939,6 +939,36 @@ void main() {
       expect(platformAssetHint(android: false, androidAbi: 'x86_64'), 'Setup.exe');
     });
 
+    // Заявка MS3: сборка без драйвера обязана тянуть СВОЙ установщик —
+    // обычный несёт wintun, и обновление вернуло бы драйвер в Store-сборку.
+    test('⚠️ Windows без драйвера — свой установщик, и только он', () {
+      expect(platformAssetHint(android: false, tunAvailable: false),
+          'Setup-msstore.exe');
+      expect(platformAssetHint(android: false, tunAvailable: true), 'Setup.exe');
+      final both = fullRelease(tag: 'v1.17.1', assets: [
+        asset('SilentGateSetup-1.17.1.exe'),
+        asset('SilentGateSetup-1.17.1-msstore.exe'),
+      ]);
+      expect(
+          AppUpdate.parseGithubRelease(both,
+                  assetHint: platformAssetHint(android: false, tunAvailable: false))!
+              .assetName,
+          'SilentGateSetup-1.17.1-msstore.exe');
+      expect(
+          AppUpdate.parseGithubRelease(both,
+                  assetHint: platformAssetHint(android: false, tunAvailable: true))!
+              .assetName,
+          'SilentGateSetup-1.17.1.exe');
+      // Своего актива в релизе нет — ссылка, а не чужой установщик.
+      final githubOnly = fullRelease(
+          tag: 'v1.17.1', assets: [asset('SilentGateSetup-1.17.1.exe')]);
+      expect(
+          AppUpdate.parseGithubRelease(githubOnly,
+                  assetHint: platformAssetHint(android: false, tunAvailable: false))!
+              .downloadUrl,
+          isNull);
+    });
+
     test('arm64-v8a и x86_64 — своя сборка', () {
       expect(platformAssetHint(android: true, androidAbi: 'arm64-v8a'),
           '-arm64-v8a.apk');
@@ -975,8 +1005,11 @@ void main() {
       }
     });
 
-    test('kPlatformAssetHint — обёртка без ABI', () {
-      expect(kPlatformAssetHint, platformAssetHint());
+    test('Windows: вызывающий передаёт признак сборки без драйвера', () {
+      // Файл адресов не импортирует `app_store.dart` (только dart:*), поэтому
+      // признак берёт `AppUpdate` — и обязан его передать.
+      final src = File('lib/core/update/app_update.dart').readAsStringSync();
+      expect(src, contains('platformAssetHint(tunAvailable: AppStoreInfo.tunAvailable)'));
     });
   });
 

@@ -1,3 +1,5 @@
+import 'package:meta/meta.dart';
+
 /// Откуда пришла эта копия приложения: с GitHub (и сайта) или из Google Play.
 ///
 /// Это две СБОРКИ одного приложения (Gradle `productFlavors` в
@@ -38,6 +40,23 @@ abstract final class AppStoreInfo {
   }
 
   static AppStore get current => storeOf(flavor, store: storeDefine);
+
+  /// Сборка без драйвера туннеля: `--dart-define=SILENTGATE_NO_TUN=true`.
+  ///
+  /// Установщик EXE для Microsoft Store (MS3, команда владельца 27.10.2026):
+  /// правило 10.2.4.2 запрещает сторонние драйверы, а их несут `wintun.dll` и
+  /// `sing-box.exe` (sing-tun встраивает wintun). Оба файла в поставку не
+  /// кладутся, а интерфейс прячет всё, что без них не работает: TUN,
+  /// смешанный режим, «Только прокси», раздельное туннелирование, порты
+  /// выходов API и серверы hysteria2. Остаётся системный прокси через Xray.
+  static const bool noTunDefine = bool.fromEnvironment('SILENTGATE_NO_TUN');
+
+  /// Подмена [noTunDefine] для тестов интерфейса.
+  @visibleForTesting
+  static bool? tunAvailableOverride;
+
+  /// В поставке есть TUN и sing-box. `false` только у сборки без драйвера.
+  static bool get tunAvailable => tunAvailableOverride ?? !noTunDefine;
 
   static bool get isPlay => current == AppStore.play;
 

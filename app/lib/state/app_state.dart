@@ -1214,6 +1214,19 @@ class AppState extends ChangeNotifier {
   /// Одноразовый: снимается первой же пересборкой.
   Map<String, String> _selectionRekey = const {};
 
+  /// Серверы, которые эта сборка умеет подключить.
+  ///
+  /// В сборке без драйвера (Microsoft Store, MS3) нет `sing-box.exe`, а
+  /// серверы hysteria2 поднимает только он. Такие серверы не показываем: в
+  /// списке они пинговались бы и выбирались, а подключение падало бы. Из
+  /// подписки и с диска они не удаляются — вернутся в сборке с туннелем.
+  @visibleForTesting
+  static List<VpnServer> visibleServers(Iterable<VpnServer> servers,
+          {required bool singboxAvailable}) =>
+      singboxAvailable
+          ? servers.toList()
+          : servers.where((s) => s.core != ProxyCore.singbox).toList();
+
   void _rebuild() {
     var prevKey = (_selectedIndex >= 0 && _selectedIndex < _servers.length)
         ? _servers[_selectedIndex].key
@@ -1226,7 +1239,8 @@ class AppState extends ChangeNotifier {
       ..._pinned,
       ..._subServers.where((s) => !pinnedKeys.contains(s.key)),
     ];
-    _servers = base.map(_withStoredExtras).toList();
+    _servers = visibleServers(base.map(_withStoredExtras),
+        singboxAvailable: AppStoreInfo.tunAvailable);
 
     // ⚠️ ДО любых ранних выходов ниже: движку нужен полный список имён, иначе
     // резолв чужих серверов уйдёт в туннель и подключение зациклится.

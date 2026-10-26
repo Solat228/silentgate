@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../app_info.dart';
+import '../app_store.dart';
 import '../platform/app_log.dart';
 import '../platform/apk_installer_android.dart';
 import '../platform/app_paths.dart';
@@ -220,7 +221,10 @@ class AppUpdate {
   static Future<String> _platformHint() async {
     final cached = _hintCache;
     if (cached != null) return cached;
-    if (!Platform.isAndroid) return _hintCache = kPlatformAssetHint;
+    if (!Platform.isAndroid) {
+      return _hintCache =
+          platformAssetHint(tunAvailable: AppStoreInfo.tunAvailable);
+    }
     final abi = await ApkInstallerAndroid().deviceAbi();
     final hint = platformAssetHint(androidAbi: abi);
     if (abi != null) _hintCache = hint;

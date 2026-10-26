@@ -52,6 +52,7 @@
 ; только в имени файла.
 ; Суффикс имени установщика: сборке для Microsoft Store - /DSetupSuffix=-msstore,
 ; чтобы её файл не путался с установщиком GitHub той же версии.
+; Сборке без драйвера (build-exe.bat с SILENTGATE_NO_TUN) - ещё и /DNoTun.
 #ifndef SetupSuffix
   #define SetupSuffix ""
 #endif
@@ -163,6 +164,17 @@ Name: "ar"; MessagesFile: "compiler:Languages\Arabic.isl"
 ; обновлении (geo_bases.dart). Это состояние ЗАПУЩЕННОГО exe, а не сборка: без Excludes
 ; они уезжали в установщик и портативный архив (+30 МБ). Страж — installer_test.
 Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Excludes: "*.bak"; Flags: recursesubdirs createallsubdirs ignoreversion
+
+#ifdef NoTun
+; Сборка без драйвера для Microsoft Store (/DNoTun, заявка MS3): wintun.dll и
+; sing-box.exe в ней нет. Inno не удаляет файлы, которых нет в новой версии, и
+; установка поверх обычной копии оставила бы драйвер на месте.
+[InstallDelete]
+Type: files; Name: "{app}\sing-box.exe"
+Type: files; Name: "{app}\wintun.dll"
+Type: files; Name: "{app}\licenses\LICENSE-wintun.txt"
+Type: files; Name: "{app}\licenses\LICENSE-singbox.txt"
+#endif
 
 [Registry]
 ; URL-схема silentgate:// (per-user, без админа)

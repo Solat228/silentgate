@@ -822,7 +822,9 @@ List<SettingsRow> _reliabilityRows(
     // время восстановления ядра нет. Условие спрашиваем у общей чистой функции
     // (`splitHonestyWarnings`), чтобы экран настроек и экран правил не
     // разъехались в том, что считают правдой.
-    if (splitHonestyWarnings(settings).contains(SplitHonesty.killSwitchIsPerApp))
+    if (AppStoreInfo.tunAvailable &&
+        splitHonestyWarnings(settings)
+            .contains(SplitHonesty.killSwitchIsPerApp))
       SettingsRow(
         search: '${l.killSwitchTitle} ${l.splitKillSwitchIsPerApp}',
         build: (context) => Padding(
@@ -841,8 +843,10 @@ List<SettingsRow> _reliabilityRows(
     // Два независимых ответа на один вопрос — это всегда расхождение, вопрос
     // только когда; тот же урок в проекте уже записан про разрешение и
     // исполнение url-схем.
-    if (splitHonestyWarnings(settings)
-        .contains(SplitHonesty.killSwitchWeakInSystemProxy))
+    // В сборке без драйвера TUN нет — предлагать его некуда.
+    if (AppStoreInfo.tunAvailable &&
+        splitHonestyWarnings(settings)
+            .contains(SplitHonesty.killSwitchWeakInSystemProxy))
       SettingsRow(
         search: '${l.killSwitchTitle} ${l.killSwitchOfferTun}',
         build: (context) => ListTile(
@@ -1060,6 +1064,8 @@ List<SettingsRow> _seamlessRows(
         subtitle: Text(l.settingsSeamlessNetworkSub),
       ),
     ),
+    // Адаптера в сборке без драйвера нет — удерживать нечего.
+    if (AppStoreInfo.tunAvailable)
     SettingsRow(
       search:
           '${l.settingsSeamlessKeepTunTitle} ${l.settingsSeamlessKeepTunSub}',
@@ -2641,9 +2647,14 @@ Future<void> _enableTun(BuildContext context, SettingsController controller) asy
 // ── Захват трафика ───────────────────────────────────────────────────────────
 List<SettingsRow> _captureRows(
     AppLocalizations l, AppSettings settings, SettingsController controller) {
+  // Сборка без драйвера (Microsoft Store, MS3): режим один — системный прокси.
+  // Выбирать нечего, а TUN, «Только прокси» и раздельное туннелирование без
+  // sing-box и wintun не работают — поэтому их строк нет совсем.
+  final tun = AppStoreInfo.tunAvailable;
   return [
     // Выбор режима — ОДНА строка поиска на все варианты: по отдельности они
     // бессмысленны (переключатель с одним вариантом не переключает).
+    if (tun)
     SettingsRow(
       search: '${l.captureSystemProxy} ${l.captureSystemProxySub} '
           '${l.captureTun} ${l.captureTunSub} '
@@ -2752,7 +2763,8 @@ List<SettingsRow> _captureRows(
     // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
     // в режиме системного прокси эти настройки ни на что не влияют.
     // На Android туннель — единственный режим, поэтому показываем всегда.
-    if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
+    if (tun &&
+        (Platform.isAndroid || settings.captureMode == CaptureMode.tun)) ...[
       // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
       SettingsRow(
         search: '${l.tunRoutingTitle} ${l.dnsShortVpn}',
@@ -2791,7 +2803,7 @@ List<SettingsRow> _captureRows(
             ),
           ),
       ),
-    ] else ...[
+    ] else if (tun) ...[
       SettingsRow(
         search: l.captureTunHint,
         build: (_) => Padding(

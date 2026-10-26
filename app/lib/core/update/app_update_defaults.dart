@@ -254,13 +254,23 @@ String? androidAssetHintForAbi(String? abi) {
 /// На Windows это установщик Inno Setup (`SilentGateSetup-<версия>.exe`;
 /// версия из имени перед сравнением вырезается, см. `AppUpdate`).
 ///
-/// [android] — только для тестов (по умолчанию — текущая платформа).
-String platformAssetHint({String? androidAbi, bool? android}) {
-  if (!(android ?? Platform.isAndroid)) return 'Setup.exe';
+/// Сборка без драйвера (Microsoft Store, MS3) обновляется своим
+/// установщиком `SilentGateSetup-<версия>-msstore.exe`. Обычный `Setup.exe`
+/// вернул бы в неё `wintun.dll` и `sing-box.exe` — ровно то, из-за чего Store
+/// отклонил сборку. Нет такого актива в релизе — приложение лишь даёт ссылку.
+/// Обычной сборке этот файл не подходит: `…-msstore.exe` не кончается на
+/// `Setup.exe`.
+///
+/// [tunAvailable] передаёт вызывающий (`AppStoreInfo.tunAvailable`): файл
+/// адресов не импортирует ничего, кроме `dart:*`. [android] — только для
+/// тестов (по умолчанию — текущая платформа).
+String platformAssetHint(
+    {String? androidAbi, bool? android, bool tunAvailable = true}) {
+  if (!(android ?? Platform.isAndroid)) {
+    return tunAvailable ? 'Setup.exe' : 'Setup-msstore.exe';
+  }
   final abi = (androidAbi ?? '').trim();
   if (abi.isEmpty) return 'arm64-v8a.apk';
   return androidAssetHintForAbi(abi) ?? '-${abi.toLowerCase()}.apk';
 }
 
-/// Обёртка без ABI — для мест, где её не спрашивали.
-String get kPlatformAssetHint => platformAssetHint();

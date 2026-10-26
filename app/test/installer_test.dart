@@ -581,5 +581,18 @@ void main() {
       expect(main, contains('UrlSchemeWindows.register()'));
     });
   });
+
+  // Заявка MS3 (27.10.2026): установщик для Microsoft Store без драйвера.
+  test('сборка без драйвера удаляет wintun и sing-box прежней копии', () {
+    final i = text.indexOf('#ifdef NoTun');
+    expect(i, greaterThanOrEqualTo(0));
+    final block = text.substring(i, text.indexOf('#endif', i));
+    expect(block, contains('[InstallDelete]'));
+    expect(block, contains(r'Name: "{app}\sing-box.exe"'));
+    expect(block, contains(r'Name: "{app}\wintun.dll"'));
+    // Батник собирает Release без них, а ISCC вызывается с /DNoTun —
+    // описано в шапке скрипта.
+    expect(text, contains('/DNoTun'));
+  });
 }
 
