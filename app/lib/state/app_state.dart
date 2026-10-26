@@ -2872,9 +2872,32 @@ class AppState extends ChangeNotifier {
   Future<void> reconnectAuto(AppSettings settings) =>
       _reconnectWith(() => connectAuto(settings), settings);
 
+  /// Текущий перезапуск; следующий ждёт его конца.
+  Future<void>? _reconnectRun;
+
+  /// Перезапуски идут строго по одному.
+  ///
+  /// ⚠️ Два перезапуска внахлёст (плашка «Переподключить» и команда API в ту
+  /// же секунду) звали `connectFn` дважды, а это ПЕРЕКЛЮЧАТЕЛЬ: второй вызов
+  /// на поднятом канале отключал VPN (аудит 25.10.2026, G). Второй перезапуск
+  /// ждёт первый и идёт уже с последними настройками.
+  Future<void> _reconnectWith(
+      Future<void> Function() connectFn, AppSettings settings) {
+    final prev = _reconnectRun;
+    late final Future<void> run;
+    run = (prev ?? Future<void>.value())
+        .catchError((_) {})
+        .then((_) => _reconnectOnce(connectFn, settings))
+        .whenComplete(() {
+      if (identical(_reconnectRun, run)) _reconnectRun = null;
+    });
+    _reconnectRun = run;
+    return run;
+  }
+
   /// Общее тело [reconnect]/[reconnectAuto]: снять, поднять заново через
   /// [connectFn], сохранить отсчёт таймера сессии.
-  Future<void> _reconnectWith(
+  Future<void> _reconnectOnce(
       Future<void> Function() connectFn, AppSettings settings) async {
     // ⚠️ БЕЗ ЭТОЙ СТРОКИ ПЕРЕЗАПУСК НЕ ОСТАВЛЯЛ В ЖУРНАЛЕ НИЧЕГО.
     //

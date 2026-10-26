@@ -63,9 +63,37 @@ class SettingsStorage {
       await _preserveBroken(file);
       return AppSettings.defaults;
     } catch (e) {
+      // ⚠️ Файл есть, но прочитать его не вышло (держит антивирус, сбой
+      // расшифровки). Раньше брались значения по умолчанию, и первое же
+      // сохранение затирало настройки пользователя навсегда (аудит
+      // 25.10.2026, G). Теперь — несколько повторов, а если не помогло,
+      // копия файла остаётся в `*.bad`.
+      for (var i = 0; i < readRetries; i++) {
+        await Future<void>.delayed(readRetryDelay);
+        try {
+          final parsed = parseContent(await SecretFiles.read(file));
+          if (parsed != null) return parsed;
+          break;
+        } catch (_) {}
+      }
       AppLog.e('Файл настроек недоступен ($_fileName): $e');
+      await _keepCopy(file);
       return AppSettings.defaults;
     }
+  }
+
+  /// Сколько раз перечитывать файл после сбоя и с какой паузой.
+  static int readRetries = 3;
+  static Duration readRetryDelay = const Duration(milliseconds: 300);
+
+  /// Копия нечитаемого файла в `*.bad` — сам файл остаётся на месте.
+  Future<void> _keepCopy(File file) async {
+    try {
+      final bad = File('${file.path}.bad');
+      if (await bad.exists() || !await file.exists()) return;
+      await file.copy(bad.path);
+      AppLog.w('Нечитаемый файл настроек скопирован в ${bad.path}');
+    } catch (_) {}
   }
 
   /// Переименовывает нечитаемый файл в `*.bad`, чтобы его не затёрло сохранением.

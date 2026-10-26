@@ -46,6 +46,9 @@ class _FakeEngine extends VpnEngine {
   int balancerCalls = 0;
   int disconnectCalls = 0;
 
+  /// Пауза в connect/disconnect — чтобы вызовы могли идти внахлёст.
+  Duration delay = Duration.zero;
+
   @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
 
@@ -73,6 +76,7 @@ class _FakeEngine extends VpnEngine {
   Future<void> connect(VpnServer server,
       {ConnectionOptions options = const ConnectionOptions()}) async {
     connectCalls++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     lastConnectedKey = server.key;
     _emit(const VpnStatus(VpnConnectionState.connected));
   }
@@ -88,6 +92,7 @@ class _FakeEngine extends VpnEngine {
   @override
   Future<void> disconnect() async {
     disconnectCalls++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     lastConnectedKey = null;
     _emit(const VpnStatus.disconnected());
   }
@@ -923,5 +928,24 @@ void main() {
       expect(eg['error'], isNotNull,
           reason: 'причина обязана быть названа, а не подразумеваться');
     });
+  });
+  test('⚠️ два перезапуска внахлёст не выключают VPN (аудит G)', () async {
+    final env = await _Env.create();
+    addTearDown(env.dispose);
+    final a = await env.addServer(_serverA);
+    env.state.selectServer(env.state.servers.indexWhere((s) => s.key == a.key));
+    await env.state.toggleConnection(env.settings.settings);
+    await pumpEventQueue(); // статус движка доходит до AppState потоком
+    expect(env.state.status.isConnected, isTrue, reason: 'предпосылка');
+
+    env.engine.delay = const Duration(milliseconds: 5);
+    // Плашка «Переподключить» и команда API в один такт.
+    await Future.wait([
+      env.state.reconnect(env.settings.settings),
+      env.state.reconnect(env.settings.settings),
+    ]);
+
+    expect(env.engine.status.isConnected, isTrue,
+        reason: 'второй перезапуск попал на поднятый канал и выключил его');
   });
 }
