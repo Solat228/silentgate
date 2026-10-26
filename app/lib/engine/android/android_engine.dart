@@ -1567,6 +1567,11 @@ class AndroidEngine extends VpnEngineBase {
     }
     await _stopFallbackDns();
     if (!s.tunnelDnsForAll) return 0;
+    if (!VpnEngineBase.providerDnsFallbackAllowed(s)) {
+      AppLog.i('Запасной DNS не поднимаю: kill switch не выпускает имена '
+          'к провайдеру');
+      return 0;
+    }
     // ⚠️ ГЕЙТ ПО ФАКТУ ЗАПУСКА XRAY, А НЕ ПО НАЛИЧИЮ ПАРОЛЯ. Раньше здесь
     // стояло `localInboundUser.isEmpty`, и это два РАЗНЫХ предиката, которые
     // разошлись в обе стороны сразу:

@@ -1912,6 +1912,11 @@ class WindowsEngine extends VpnEngineBase {
     }
     await _stopFallbackDns();
     if (s.captureMode != CaptureMode.tun || !s.tunnelDnsForAll) return 0;
+    if (!VpnEngineBase.providerDnsFallbackAllowed(s)) {
+      AppLog.i('Запасной DNS не поднимаю: kill switch не выпускает имена '
+          'к провайдеру');
+      return 0;
+    }
     final local = await _systemDnsServer();
     if (local == null || local.isEmpty) {
       AppLog.w('Запасной DNS не поднят: локальный резолвер не определён');

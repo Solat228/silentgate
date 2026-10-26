@@ -1157,6 +1157,17 @@ abstract class VpnEngineBase implements VpnEngine {
           s.captureMode == CaptureMode.tun &&
           !s.alsoSetSystemProxy);
 
+  /// Можно ли запасному DNS доспрашивать резолвер провайдера, когда
+  /// туннельный молчит.
+  ///
+  /// ⚠️ ПОД KILL SWITCH — НЕТ. Он обещает, что мимо VPN не уходит ничего, а
+  /// форвардер работает в нашем процессе: блокировка его пропускает, и при
+  /// первой же заминке туннеля имена всех сайтов уезжали к провайдеру (аудит
+  /// 25.10.2026, E). То же для «не выходить под реальным IP». Без форвардера
+  /// `dns.final` остаётся туннельным — имена ждут туннель, как и весь трафик.
+  static bool providerDnsFallbackAllowed(AppSettings s) =>
+      !s.killSwitch && !s.noRealIp;
+
   /// Случайная строка для паролей локальных портов и Clash API.
   static String randomSecret() {
     final rnd = Random.secure();
