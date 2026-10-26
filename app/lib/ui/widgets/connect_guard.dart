@@ -60,7 +60,8 @@ Future<void> connectWithConflictCheck(
     return;
   }
 
-  final ok = await InterferenceScanner.kill(conflict.pid!);
+  final ok = await InterferenceScanner.kill(conflict.pid!,
+      expectedPath: conflict.appPath);
   if (!context.mounted) return;
   if (!ok) {
     AppToast.show(context, l.toastAppCloseFailed(app), kind: ToastKind.error);

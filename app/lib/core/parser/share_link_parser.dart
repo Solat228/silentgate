@@ -304,8 +304,15 @@ class ShareLinkParser {
 
   // ── shadowsocks ───────────────────────────────────────────────────────────
   // Форматы:
-  //  ss://base64(method:password)@host:port#tag
-  //  ss://base64(method:password@host:port)#tag
+  //  ss://base64(method:password)@host:port#tag          (SIP002)
+  //  ss://method:password@host:port#tag                  (SIP002, без base64 —
+  //                                                       так пишут 2022-шифры)
+  //  ss://base64(method:password@host:port)#tag          (старый)
+  // Адрес IPv6 — в квадратных скобках: `[2001:db8::1]:8388`.
+  //
+  // ⚠️ Плагин (`?plugin=obfs-local;…`) клиент не поднимает. Раньше параметр
+  // молча отбрасывался, и сервер выглядел рабочим, а соединение не шло
+  // (аудит 25.10.2026, H) — теперь он помечается неподдерживаемым.
   static VpnServer _parseShadowsocks(String link) {
     var rest = link.substring('ss://'.length);
     String remark = '';
@@ -314,34 +321,41 @@ class ShareLinkParser {
       remark = Uri.decodeComponent(rest.substring(hashIdx + 1));
       rest = rest.substring(0, hashIdx);
     }
-    // Отбросить query, если есть (?plugin=…)
+    String? plugin;
     final qIdx = rest.indexOf('?');
-    if (qIdx >= 0) rest = rest.substring(0, qIdx);
+    if (qIdx >= 0) {
+      final query = Uri.splitQueryString(rest.substring(qIdx + 1));
+      plugin = _nz(query['plugin']);
+      rest = rest.substring(0, qIdx);
+    }
+    if (rest.endsWith('/')) rest = rest.substring(0, rest.length - 1);
 
-    String method, password, host;
-    int port;
+    String creds, hostPart;
     if (rest.contains('@')) {
       final at = rest.lastIndexOf('@');
-      final creds = B64.decodeToString(rest.substring(0, at));
-      final hostPart = rest.substring(at + 1);
-      final ci = creds.indexOf(':');
-      method = creds.substring(0, ci);
-      password = creds.substring(ci + 1);
-      final hi = hostPart.lastIndexOf(':');
-      host = hostPart.substring(0, hi);
-      port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
+      final user = rest.substring(0, at);
+      hostPart = rest.substring(at + 1);
+      final plain = Uri.decodeComponent(user);
+      creds = plain.contains(':') ? plain : B64.decodeToString(user);
     } else {
       final decoded = B64.decodeToString(rest);
       final at = decoded.lastIndexOf('@');
-      final creds = decoded.substring(0, at);
-      final hostPart = decoded.substring(at + 1);
-      final ci = creds.indexOf(':');
-      method = creds.substring(0, ci);
-      password = creds.substring(ci + 1);
-      final hi = hostPart.lastIndexOf(':');
-      host = hostPart.substring(0, hi);
-      port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
+      if (at < 0) throw const FormatException('ss: нет адреса сервера');
+      creds = decoded.substring(0, at);
+      hostPart = decoded.substring(at + 1);
     }
+    final ci = creds.indexOf(':');
+    if (ci <= 0) throw const FormatException('ss: нет метода шифрования');
+    final method = creds.substring(0, ci);
+    final password = creds.substring(ci + 1);
+
+    final hi = hostPart.lastIndexOf(':');
+    if (hi <= 0) throw const FormatException('ss: нет порта');
+    var host = hostPart.substring(0, hi);
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.substring(1, host.length - 1);
+    }
+    final port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
 
     return VpnServer(
       protocol: 'shadowsocks',
@@ -353,6 +367,7 @@ class ShareLinkParser {
       network: 'tcp',
       security: 'none',
       rawLink: link,
+      unsupportedReason: plugin == null ? null : 'ss_plugin',
     );
   }
 

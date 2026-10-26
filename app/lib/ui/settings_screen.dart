@@ -1502,7 +1502,8 @@ Future<void> scanInterferenceDialog(BuildContext context) async {
                           trailing: i.closable
                               ? TextButton(
                                   onPressed: () async {
-                                    await InterferenceScanner.kill(i.pid!);
+                                    await InterferenceScanner.kill(i.pid!,
+                                        expectedPath: i.appPath);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   },
                                   child: Text(l.errorCloseApp(i.appName!)),

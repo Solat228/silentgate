@@ -17,24 +17,37 @@ class PortCheck {
     }
   }
 
+  /// PID процесса, слушающего [port] на петле или на всех адресах, по
+  /// выводу `netstat -ano`.
+  ///
+  /// ⚠️ Сравнивается ВСЁ поле адреса, а не подстрока: `127.0.0.1:1080`
+  /// входит в `127.0.0.1:10808`, и порт 1080 «занимал» чужой процесс
+  /// (аудит 25.10.2026, H).
+  static int? listeningPid(String netstat, int port) {
+    final wanted = {
+      '127.0.0.1:$port',
+      '0.0.0.0:$port',
+      '[::]:$port',
+      '[::1]:$port',
+    };
+    for (final raw in netstat.split('\n')) {
+      final f = raw.trim().split(RegExp(r'\s+'));
+      if (f.length < 5 || !f.contains('LISTENING')) continue;
+      if (!wanted.contains(f[1])) continue;
+      final pid = int.tryParse(f.last);
+      if (pid != null) return pid;
+    }
+    return null;
+  }
+
   /// Имя процесса, слушающего порт («Happ.exe»), либо null.
   /// Best-effort: netstat + tasklist; ошибки молча игнорируются.
   static Future<String?> holderName(int port) async {
     try {
       final net = await Process.run('netstat', ['-ano', '-p', 'TCP'])
           .timeout(const Duration(seconds: 5));
-      final line = '${net.stdout}'
-          .split('\n')
-          .map((l) => l.trim())
-          .firstWhere(
-            (l) =>
-                l.contains('LISTENING') &&
-                (l.contains('127.0.0.1:$port') || l.contains('0.0.0.0:$port')),
-            orElse: () => '',
-          );
-      if (line.isEmpty) return null;
-      final pid = line.split(RegExp(r'\s+')).last;
-      if (int.tryParse(pid) == null) return null;
+      final pid = listeningPid('${net.stdout}', port);
+      if (pid == null) return null;
 
       final tl = await Process.run(
               'tasklist', ['/FI', 'PID eq $pid', '/NH', '/FO', 'CSV'])

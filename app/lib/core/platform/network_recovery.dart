@@ -97,8 +97,17 @@ class NetworkRecovery {
   /// пишется в cp866.
   static String batPathFor({required bool full}) {
     final name = full ? 'silentgate_netreset.bat' : 'silentgate_netrecover.bat';
-    return '${Directory.systemTemp.path}${Platform.pathSeparator}$name';
+    return '${_batDir().path}${Platform.pathSeparator}$name';
   }
+
+  /// Каталог батников: свой на каждый запуск приложения, со случайным именем.
+  ///
+  /// ⚠️ Батник идёт под администратором. Постоянное имя прямо в `%TEMP%`
+  /// позволяло заранее положить туда свой файл или подменить его между
+  /// записью и запуском (аудит 25.10.2026, H).
+  static Directory _batDir() =>
+      _batDirCache ??= Directory.systemTemp.createTempSync('sg_net_');
+  static Directory? _batDirCache;
 
   /// Строки батника без разделителей.
   ///

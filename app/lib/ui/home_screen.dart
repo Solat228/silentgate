@@ -655,7 +655,8 @@ class _HomeScreenState extends State<HomeScreen> {
       duration: const Duration(seconds: 20),
       actionLabel: l.errorCloseApp(app),
       onAction: () async {
-        final ok = await InterferenceScanner.kill(conflict.pid!);
+        final ok = await InterferenceScanner.kill(conflict.pid!,
+            expectedPath: conflict.appPath);
         if (!context.mounted) return;
         AppToast.show(
           context,
