@@ -74,7 +74,9 @@ class AppState extends ChangeNotifier {
     AppStorage? storage,
     String? initialUrl,
     bool autostart = false,
+    SubscriptionLogo Function()? logoFinder,
   })  : _engine = engine ?? createVpnEngine(),
+        _logoFinder = logoFinder ?? SubscriptionLogo.new,
         _subscription = subscription ?? SubscriptionService(),
         _storage = storage ?? AppStorage(),
         _initialUrl = initialUrl,
@@ -381,6 +383,10 @@ class AppState extends ChangeNotifier {
   /// Следит за сменой сети (Wi-Fi ↔ кабель, сон): туннель поверх старого адаптера
   /// мёртв, даже если процессы живы.
   final NetworkWatcher _networkWatcher = NetworkWatcher();
+
+  /// Откуда брать поиск логотипа. Тесты подсовывают поиск без сети: иначе
+  /// каждый импорт в тесте уходил бы на выдуманный адрес панели.
+  final SubscriptionLogo Function() _logoFinder;
 
   final PinnedStore _pinnedStore = PinnedStore();
   final ServerOverridesStore _overridesStore = ServerOverridesStore();
@@ -2134,7 +2140,26 @@ class AppState extends ChangeNotifier {
       // Копия, а не сама ссылка на список: ниже идут четыре await, и за это
       // время состав может измениться из другого места (например, удалением
       // сервера пользователем).
-      final before = List<VpnServer>.of(_subServers);
+      //
+      // ⚠️ СРАВНИВАЕМ С ПРОШЛЫМ СОСТАВОМ ЭТОЙ ЖЕ ПОДПИСКИ, А НЕ С ЭКРАНОМ.
+      // `_subServers` — серверы ОТКРЫТОЙ подписки. Импорт второй подписки
+      // сравнивал её с первой и рапортовал «все серверы удалены, добавлены
+      // новые» (жалоба владельца с телефона 26.10.2026), а заодно гонял
+      // перенос ключей и значки «обновлён» по чужому списку. Подписки
+      // независимы: у неоткрытой прошлый состав лежит в её профиле, у
+      // совсем новой его нет — тогда изменений нет, есть только итог.
+      final List<VpnServer> before;
+      if (incomingId == startedActive) {
+        before = List<VpnServer>.of(_subServers);
+      } else {
+        final stored = _profiles.where((p) => p.id == incomingId);
+        before = stored.isEmpty
+            ? result.servers
+            : stored.first.serverLinks
+                .map(_serverFromStoredLink)
+                .whereType<VpnServer>()
+                .toList();
+      }
 
       // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
       // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
@@ -2319,7 +2344,7 @@ class AppState extends ChangeNotifier {
     bool haveLogo() =>
         (_logoPath ?? '').isNotEmpty && File(_logoPath!).existsSync();
     try {
-      final finder = SubscriptionLogo();
+      final finder = _logoFinder();
       // Логотип ищем автоматически: заголовок ответа панели (`x-logo-url`, если
       // задан) → брендинг панели `/assets/.app-config-v2.json` → разбор страницы.
       final imageUrl = _info.logoUrl?.trim().isNotEmpty == true

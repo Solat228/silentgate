@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
 import 'package:silentgate/core/models/subscription_info.dart';
 import 'package:silentgate/core/models/subscription_profile.dart';
@@ -12,6 +14,7 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/platform/device_id.dart';
+import 'package:silentgate/core/subscription/subscription_logo.dart';
 import 'package:silentgate/core/subscription/subscription_service.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
 import 'package:silentgate/state/app_state.dart';
@@ -169,6 +172,9 @@ void main() {
     return live = AppState(
       engine: _FakeEngine(),
       subscription: panel ?? _FakePanel(),
+      // Логотип ищется без сети: панель выдуманная.
+      logoFinder: () => SubscriptionLogo(
+          client: MockClient((_) async => http.Response('', 404))),
     );
   }
 
@@ -343,6 +349,62 @@ void main() {
       final state = boot();
       await state.init();
       expect(await state.deleteSubscription(id: 'sub_нет'), isNull);
+    });
+  });
+
+  group('Сводка импорта считается по СВОЕЙ подписке', () {
+    // Жалоба владельца с телефона 26.10.2026: импорт второй подписки
+    // показывал «все серверы удалены и добавлены новые» — её сравнивали с
+    // открытой первой.
+    const urlC = 'https://panel.example/sub/token-c';
+
+    test('⚠️ новая подписка: ничего не «удалено»', () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlC: [linkFresh],
+      }));
+      await state.init();
+      expect(state.activeSubscriptionId, idA);
+
+      await state.importSource(urlC);
+
+      final sync = state.lastSync!;
+      expect(sync.removed, isEmpty,
+          reason: 'серверы первой подписки никуда не делись — она отдельная');
+      expect(sync.added, isEmpty,
+          reason: 'у новой подписки нет прошлого состава — есть только итог');
+      expect(sync.total, 1);
+      expect(state.subscriptions.map((p) => p.id),
+          containsAll([idA, idB, SubscriptionProfile.idFor(urlC)]));
+    });
+
+    test('⚠️ уже известная неоткрытая: разница с ЕЁ прошлым составом',
+        () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlB: [linkB, linkFresh],
+      }));
+      await state.init();
+      expect(state.activeSubscriptionId, idA);
+
+      await state.importSource(urlB);
+
+      final sync = state.lastSync!;
+      expect(sync.removed, isEmpty,
+          reason: 'сервер A принадлежит другой подписке — он не «удалён»');
+      expect(sync.added.length, 1, reason: 'добавился ровно FRESH');
+      expect(state.activeSubscriptionId, idB);
+    });
+
+    test('открытая: сравнение с тем, что на экране, как раньше', () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlA: [linkFresh],
+      }));
+      await state.init();
+
+      await state.importSource(urlA);
+
+      final sync = state.lastSync!;
+      expect(sync.removed.length, 1, reason: 'A ушёл из своей же подписки');
+      expect(sync.added.length, 1);
     });
   });
 
