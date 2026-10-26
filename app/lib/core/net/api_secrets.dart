@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import '../geo/sha256.dart';
+
 /// Поля, которых в ответах локального API быть НЕ ДОЛЖНО.
 ///
 /// ⚠️ Явный список, а не «по умолчанию не отдаём». Креды локального прокси
@@ -20,11 +24,37 @@ const apiSecretMarkers = <String>[
   'rawPanelConfig',
 ];
 
+/// Схемы ключей сервера. Ключ — share-ссылка с адресом и кредами (uuid,
+/// пароль), в ответ API он не уходит НИКОГДА (аудит 25.10.2026, F).
+const apiServerKeySchemes = <String>[
+  'vless://',
+  'vmess://',
+  'trojan://',
+  'ss://',
+  'hysteria2://',
+  'hy2://',
+  'tuic://',
+  'panel://',
+  'json://',
+];
+
+/// Непрозрачный устойчивый id сервера для API вместо его ключа.
+///
+/// Тот же ключ — тот же id, поэтому скрипт может запомнить его между
+/// запусками. Обратно из id ключ не восстановить.
+String apiServerId(String key) =>
+    'srv-${Sha256.ofBytes(utf8.encode(key)).substring(0, 16)}';
+
 /// Бросает [StateError], если в сериализованном ответе встретилось запрещённое.
 void assertNoSecrets(String json) {
   for (final m in apiSecretMarkers) {
     if (json.contains(m)) {
       throw StateError('В ответе API запрещённое поле: $m');
+    }
+  }
+  for (final m in apiServerKeySchemes) {
+    if (json.contains(m)) {
+      throw StateError('В ответе API ключ сервера ($m…)');
     }
   }
 }

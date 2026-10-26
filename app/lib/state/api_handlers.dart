@@ -4,6 +4,7 @@ import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
 import '../core/net/ip_info.dart';
 import '../core/platform/app_log.dart';
+import '../core/net/api_secrets.dart';
 import '../core/net/api_server.dart';
 import '../core/singbox/exit_outbounds.dart';
 import '../core/util/country_flag.dart';
@@ -93,7 +94,7 @@ class AppStateApiHandlers implements ApiHandlers {
   Future<List<Map<String, dynamic>>> servers() async => [
         for (final s in state.servers)
           {
-            'key': s.key,
+            'key': apiServerId(s.key),
             'name': s.displayName,
             'country': FlagUtil.isoFromName(s.remark),
             'protocol': s.protocol,
@@ -144,7 +145,7 @@ class AppStateApiHandlers implements ApiHandlers {
       final port = ApiPorts.forServer(keys, s.key);
       if (port == null) continue;
       out.add({
-        'serverKey': s.key,
+        'serverKey': apiServerId(s.key),
         'name': s.displayName,
         'country': FlagUtil.isoFromName(s.remark),
         'port': port,
@@ -214,7 +215,10 @@ class AppStateApiHandlers implements ApiHandlers {
     // переименование на панели; имя панель меняет когда угодно, и скрипт,
     // написанный по имени, тихо сломался бы.
     if ((serverKey ?? '').isNotEmpty) {
-      final i = state.servers.indexWhere((s) => s.key == serverKey);
+      // Свой непрозрачный id; сырой ключ — для скриптов, написанных до
+      // 26.10.2026, когда API его ещё отдавал.
+      final i = state.servers.indexWhere(
+          (s) => apiServerId(s.key) == serverKey || s.key == serverKey);
       if (i < 0) {
         return const ApiResult.fail('server_not_found', 'Сервер не найден');
       }

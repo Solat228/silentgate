@@ -194,6 +194,17 @@ void main() {
       expect(() => assertNoSecrets(dirty), throwsA(isA<StateError>()));
     });
 
+    test('проверка ответа ловит ключ сервера в любом поле', () {
+      final dirty = jsonEncode({
+        'name': 'x',
+        'note': 'vless://uuid@203.0.113.10:443#x',
+      });
+      expect(() => assertNoSecrets(dirty), throwsA(isA<StateError>()));
+      expect(apiServerId('vless://a'), apiServerId('vless://a'));
+      expect(apiServerId('vless://a'), isNot(apiServerId('vless://b')));
+      expect(apiServerId('vless://a'), startsWith('srv-'));
+    });
+
     test('чистый ответ проходит', () {
       final clean = jsonEncode({'state': 'connected', 'server': 'Германия'});
       expect(() => assertNoSecrets(clean), returnsNormally);
@@ -246,12 +257,14 @@ void main() {
       final exits = await env.handlers.exits();
 
       expect(servers, hasLength(1));
-      expect(servers.single['key'], a.key);
+      expect(servers.single['key'], apiServerId(a.key));
+      expect(jsonEncode(servers), isNot(contains('vless://')),
+          reason: 'ключ с кредами в ответ API не уходит (аудит F)');
       expect(servers.single['name'], 'Германия');
       // «Прямо» — всегда последней записью, даже без единого сервера-выхода.
       expect(exits.last['name'], 'Прямо');
       expect(exits.last['port'], ApiPorts.direct);
-      expect(exits.any((e) => e['serverKey'] == a.key), isTrue);
+      expect(exits.any((e) => e['serverKey'] == apiServerId(a.key)), isTrue);
     });
 
     group('exits() и гейт «канал реально поднят»', () {
@@ -299,7 +312,7 @@ void main() {
 
         final exits = await env.handlers.exits();
 
-        expect(exits.any((e) => e['serverKey'] == a.key), isFalse,
+        expect(exits.any((e) => e['serverKey'] == apiServerId(a.key)), isFalse,
             reason: 'ключ вне диапазона — порта для него нет физически');
         expect(exits.any((e) => e['port'] == null), isFalse,
             reason: 'запись без порта собрала бы у клиента битый URL '
@@ -328,13 +341,13 @@ void main() {
             apiExitServerKeys: [ok.key, bad.key]));
 
         final exits = await env.handlers.exits();
-        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
-        expect(exits.any((e) => e['serverKey'] == bad.key), isFalse);
+        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
+        expect(exits.any((e) => e['serverKey'] == apiServerId(bad.key)), isFalse);
         // ⚠️ Номера портов от исключения НЕ съезжают: индекс считается по
         // полному списку ключей настройки, а не по отфильтрованному ответу.
         // Иначе снятие одной галочки увело бы чужой запрос в другую страну.
         expect(
-            exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+            exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
             ApiPorts.forServer([ok.key, bad.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
@@ -368,13 +381,13 @@ void main() {
             apiExitServerKeys: [ok.key, panel.key]));
 
         final exits = await env.handlers.exits();
-        expect(exits.any((e) => e['serverKey'] == panel.key), isFalse,
+        expect(exits.any((e) => e['serverKey'] == apiServerId(panel.key)), isFalse,
             reason: 'инбаунда под него не создастся — публиковать порт значило '
                 'бы назвать скрипту адрес, на который ядро не сядет');
-        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
+        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
         // Номер порта уцелевшего сервера считается по ПОЛНОМУ списку ключей —
         // исключение профиля не должно сдвигать чужие порты.
-        expect(exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
             ApiPorts.forServer([ok.key, panel.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
@@ -387,7 +400,7 @@ void main() {
       addTearDown(env.dispose);
       final a = await env.addServer(_serverA);
 
-      final r = await env.handlers.connect(serverKey: a.key);
+      final r = await env.handlers.connect(serverKey: apiServerId(a.key));
       await pumpEventQueue();
 
       expect(r.isOk, isTrue);

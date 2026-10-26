@@ -260,7 +260,7 @@ curl -s http://127.0.0.1:10870/v1/servers -H "Authorization: Bearer $TOKEN"
 {
   "servers": [
     {
-      "key": "vless://…@1.2.3.4:443#Германия",
+      "key": "srv-7c16bb1cbf90da6e",
       "name": "Германия · VLESS",
       "country": "DE",
       "protocol": "vless",
@@ -271,8 +271,11 @@ curl -s http://127.0.0.1:10870/v1/servers -H "Authorization: Bearer $TOKEN"
 }
 ```
 
-`key` — стабильная share-ссылка сервера, а не его отображаемое имя (панель меняет имя когда
-угодно). Именно `key` идёт в тело `POST /v1/connect`. `pingMs`/`working` — последний результат
+`key` — устойчивый непрозрачный id сервера, а не его отображаемое имя (панель меняет имя когда
+угодно). Именно `key` идёт в тело `POST /v1/connect`. ⚠️ С 26.10.2026 это не share-ссылка: в ссылке
+лежат адрес сервера и креды (uuid, пароль), и ответ API их больше не отдаёт — барьер на границе
+транспорта (`assertNoSecrets`) отвергает любой ответ со схемой `vless://`, `ss://` и т. п.
+`connect` по-прежнему принимает и старый ключ-ссылку, чтобы не ломать написанные скрипты. `pingMs`/`working` — последний результат
 измерения (`ProbeController`), обновляется по `POST /v1/ping` или ручному пингу в интерфейсе.
 `country` может быть `null` — `FlagUtil.isoFromName` достаёт код страны из имени сервера (обычно
 из флага-эмодзи в `remark`), и если панель имя без такого флага не выдала, определить страну
@@ -305,8 +308,8 @@ curl -s http://127.0.0.1:10870/v1/exits -H "Authorization: Bearer $TOKEN"
 ```json
 {
   "exits": [
-    {"serverKey": "vless://…#Германия", "name": "Германия · VLESS", "country": "DE", "port": 10820},
-    {"serverKey": "vless://…#США",      "name": "США · VLESS",      "country": "US", "port": 10821},
+    {"serverKey": "srv-7c16bb1cbf90da6e", "name": "Германия · VLESS", "country": "DE", "port": 10820},
+    {"serverKey": "srv-0a91e4d25b37c8f1", "name": "США · VLESS",      "country": "US", "port": 10821},
     {"serverKey": null, "name": "Прямо", "port": 10819}
   ]
 }
@@ -416,7 +419,7 @@ curl -s http://127.0.0.1:10870/v1/subscription -H "Authorization: Bearer $TOKEN"
 # По ключу сервера — стабильный способ, рекомендуемый для скриптов
 curl -s -X POST http://127.0.0.1:10870/v1/connect \
   -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"server": "vless://…#Германия"}'
+  -d '{"server": "srv-7c16bb1cbf90da6e"}'
 
 # По имени — только для ручных проб, панель меняет имена
 curl -s -X POST http://127.0.0.1:10870/v1/connect \
@@ -613,11 +616,12 @@ print(sg.status())                 # {'state': 'connected', 'server': 'Герм�
 for e in sg.exits():
     print(e["name"], "->", e["port"])
 
-sg.connect(server_key="vless://…#Германия")   # или auto=True
+de = next(s["key"] for s in sg.servers() if s["country"] == "DE")
+sg.connect(server_key=de)   # или auto=True
 sg.disconnect()
 
 # Прокси-словарь под конкретный выход — для requests:
-proxies = sg.proxies_for("vless://…#Германия")
+proxies = sg.proxies_for(de)
 r = requests.get("https://api.ipify.org?format=json", proxies=proxies)
 
 # None — порт «Прямо» (мимо VPN, реальный IP), для сравнения с/без туннеля:
@@ -652,7 +656,7 @@ best = max((s for s in sg.servers() if s["working"]),
 from silentgate import SilentGate, SilentGateError
 
 try:
-    sg.connect(server_key="vless://…#несуществующий")
+    sg.connect(server_key="srv-0000000000000000")
 except SilentGateError as e:
     print(e.code, e.message)   # 'server_not_found' 'Сервер не найден'
 ```
