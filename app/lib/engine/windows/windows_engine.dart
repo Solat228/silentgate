@@ -694,6 +694,18 @@ class WindowsEngine extends VpnEngineBase {
         await _abandonRun(gen, mine);
         return;
       }
+      // ⚠️ НА АВТОВОССТАНОВЛЕНИИ ОТКАЗ TUN — ЕЩЁ ОДНА ПОПЫТКА, А НЕ КОНЕЦ.
+      // До 26.10.2026 любой отказ шёл в `cleanup()`: он снимает TUN, прокси и
+      // фильтры WFP. Сторож уронил канал, переподъём не удался один раз — и
+      // kill switch молча снят, трафик машины пошёл под реальным IP (аудит,
+      // находка D1). Повтор держит захват так же, как при обрыве.
+      if (tunFailureRetries(
+              freshUserConnect: isFreshUserConnect,
+              elevationDenied: e is TunElevationDenied) &&
+          await scheduleRetry('TUN не поднялся: $e',
+              why: StatusConnectFailed('$e'))) {
+        return;
+      }
       await cleanup();
       setStatus(VpnConnectionState.error, message: e.toString());
     } catch (e) {
@@ -714,6 +726,16 @@ class WindowsEngine extends VpnEngineBase {
           text: StatusConnectFailed('$e'));
     }
   }
+
+  /// Повторять ли подъём после [TunStartException].
+  ///
+  /// Нажатие пользователя — нет: автоподбор уже перебрал стеки и MTU, и
+  /// человеку нужна честная ошибка. Отказ в правах — нет: повтор означал бы
+  /// окно UAC каждые 30 с. Остальное на автовосстановлении — да.
+  @visibleForTesting
+  static bool tunFailureRetries(
+          {required bool freshUserConnect, required bool elevationDenied}) =>
+      !freshUserConnect && !elevationDenied;
 
   /// Поднять туннель текущей сессии. `false` — запуск устарел и туннеля нет:
   /// вызывающий обязан свернуться, не трогая чужого.
