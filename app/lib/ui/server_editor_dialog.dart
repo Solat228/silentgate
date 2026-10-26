@@ -111,7 +111,7 @@ class _ServerEditorDialogState extends State<ServerEditorDialog> {
       path: _nz(_path),
       clearPanelConfigs: true,
     );
-    return edited.copyWith(rawLink: edited.buildShareLink());
+    return edited.copyWith(rawLink: edited.buildEditedLink());
   }
 
   void _save() => Navigator.of(context).pop(_buildEdited());

@@ -23,7 +23,31 @@ Future<void> connectWithConflictCheck(
     go(); // это нажатие «Отключить»
     return;
   }
+  // ⚠️ Двойное нажатие. Пока идёт проверка помех (и пока статус «подключаюсь»
+  // не дошёл до экрана), второе нажатие проходило ту же ветку и звало
+  // переключатель второй раз — тот видел «подключаюсь» и ОТКЛЮЧАЛ (аудит
+  // 25.10.2026, I). Второе нажатие в это окно глотается.
+  if (_checkInFlight) return;
+  _checkInFlight = true;
+  var started = false;
+  try {
+    await _checkThenConnect(context, () {
+      started = true;
+      go();
+    });
+  } finally {
+    if (started) await Future<void>.delayed(doubleTapWindow);
+    _checkInFlight = false;
+  }
+}
 
+bool _checkInFlight = false;
+
+/// Сколько после запуска подключения глотаются повторные нажатия.
+@visibleForTesting
+Duration doubleTapWindow = const Duration(milliseconds: 800);
+
+Future<void> _checkThenConnect(BuildContext context, VoidCallback go) async {
   final conflict = await InterferenceScanner.activeForeignTunnel();
   if (!context.mounted) return;
   if (conflict == null) {

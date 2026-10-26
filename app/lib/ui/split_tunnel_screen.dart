@@ -1028,13 +1028,21 @@ class SplitTunnelScreen extends StatelessWidget {
   Future<void> _appDialog(
       BuildContext context, SettingsController c, AppRule rule) async {
     final state = context.read<AppState>();
+    // ⚠️ Смена «по имени / по пути» меняет ключ правила ([AppRule.matchKey]).
+    // Правки, сделанные в том же диалоге ПОСЛЕ неё, искали старый ключ и
+    // терялись (аудит 25.10.2026, I) — ведём актуальное правило, как у сайта.
+    var current = rule;
     await showDialog<void>(
       context: context,
       builder: (ctx) => _RuleDialog(
         servers: state.servers,
         currentServer: state.selectedServer,
         serverKey: rule.serverKey,
-        onServer: (key) => _setAppServer(c, rule, key),
+        onServer: (key) {
+          _setAppServer(c, current, key);
+          current =
+              current.copyWith(serverKey: key, clearServer: key == null);
+        },
         // Строка списка уже прогрела кэш меток — берём готовую.
         title: (hasPlatformServices
                 ? platform.appCatalog.cachedLabel(rule.path)
@@ -1046,10 +1054,22 @@ class SplitTunnelScreen extends StatelessWidget {
         allowRealIp: c.settings.noRealIp ? rule.allowRealIp : null,
         // Только у приложений: у сайта переопределять нечего.
         overrideSites: rule.overrideSites,
-        onAction: (a) => _updateApp(c, rule, action: a),
-        onByName: (b) => _updateApp(c, rule, byName: b),
-        onAllowRealIp: (v) => _updateApp(c, rule, allowRealIp: v),
-        onOverrideSites: (v) => _updateApp(c, rule, overrideSites: v),
+        onAction: (a) {
+          _updateApp(c, current, action: a);
+          current = current.copyWith(action: a);
+        },
+        onByName: (b) {
+          _updateApp(c, current, byName: b);
+          current = current.copyWith(byName: b);
+        },
+        onAllowRealIp: (v) {
+          _updateApp(c, current, allowRealIp: v);
+          current = current.copyWith(allowRealIp: v);
+        },
+        onOverrideSites: (v) {
+          _updateApp(c, current, overrideSites: v);
+          current = current.copyWith(overrideSites: v);
+        },
       ),
     );
   }

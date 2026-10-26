@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Каким ядром поднимается сервер. Xray не умеет hysteria2 (QUIC-протокол),
 /// поэтому такие серверы обслуживает sing-box — он уже есть в комплекте ради TUN.
 /// На Windows sing-box запускается отдельным процессом (сложившаяся архитектура);
@@ -435,6 +437,49 @@ class VpnServer {
       return '$protocol://${_hostPart()}:$port$frag';
     }
     return rawLink;
+  }
+
+  /// Ссылка после РУЧНОЙ ПРАВКИ полей.
+  ///
+  /// ⚠️ [buildShareLink] для vmess и ss нарочно отдаёт прежнюю ссылку: она —
+  /// ключ сервера. Но после правки на диск (`pinned.json`) уходит только
+  /// ссылка, и правка vmess/ss пропадала при перезапуске, а у узла из
+  /// панельного XRAY_JSON (ссылки нет вовсе) вместе с конфигом панели
+  /// исчезали и учётные данные (аудит 25.10.2026, I). Здесь ссылка
+  /// собирается заново из полей — тем же форматом, что читает
+  /// `ShareLinkParser`.
+  String buildEditedLink() {
+    if (protocol == 'vmess') {
+      final m = <String, String>{
+        'v': '2',
+        'ps': remark,
+        'add': address,
+        'port': '$port',
+        'id': id,
+        'aid': '$alterId',
+        'scy': encryption ?? 'auto',
+        'net': network,
+        'tls': security == 'tls' ? 'tls' : '',
+      };
+      void add(String k, String? v) {
+        if (v != null && v.isNotEmpty) m[k] = v;
+      }
+
+      add('type', headerType);
+      add('host', host);
+      add('path', path);
+      add('sni', sni);
+      add('alpn', alpn);
+      return 'vmess://${base64.encode(utf8.encode(jsonEncode(m)))}';
+    }
+    if (protocol == 'shadowsocks') {
+      final user = base64Url
+          .encode(utf8.encode('${encryption ?? ''}:$id'))
+          .replaceAll('=', '');
+      final frag = remark.isNotEmpty ? '#${Uri.encodeComponent(remark)}' : '';
+      return 'ss://$user@${_hostPart()}:$port$frag';
+    }
+    return buildShareLink();
   }
 
   /// Адрес для ссылки. IPv6 обязан быть в квадратных скобках: `Uri.host` их

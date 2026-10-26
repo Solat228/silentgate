@@ -1735,6 +1735,15 @@ void _subscriptionsAndUpdateTests() {
       expect(autoTextDirection('01 · Server'), TextDirection.ltr);
       expect(autoTextDirection('🔒 السلام'), TextDirection.rtl);
     });
+    test('⚠️ селектор эмодзи U+FE0F не делает латиницу RTL (аудит I)', () {
+      expect(autoTextDirection('❤️ Premium'), TextDirection.ltr);
+      expect(autoTextDirection('﻿Server'), TextDirection.ltr);
+    });
+    test('⚠️ скобки и знаки не решают направление (аудит I)', () {
+      expect(autoTextDirection('[1] _ السلام'), TextDirection.rtl);
+      expect(autoTextDirection('© فارسی'), TextDirection.rtl);
+      expect(autoTextDirection('中国 Server'), TextDirection.ltr);
+    });
     test('пусто/null → null (наследует локаль)', () {
       expect(autoTextDirection(''), isNull);
       expect(autoTextDirection('   '), isNull);

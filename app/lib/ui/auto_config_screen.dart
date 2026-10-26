@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/models/vpn_status.dart';
 import '../core/models/vpn_server.dart';
 import '../core/probe/auto_config_engine.dart';
 import '../core/settings/app_settings.dart';
@@ -618,9 +619,15 @@ class _FoundCard extends StatelessWidget {
             icon: const Icon(Icons.power_settings_new, size: 20),
             onPressed: () {
               final state = context.read<AppState>();
+              final settings = context.read<SettingsController>().settings;
               state.applyAutoConfigResult(result.server, result.variant);
-              state.toggleConnection(
-                  context.read<SettingsController>().settings);
+              // ⚠️ `toggleConnection` — переключатель: на живом канале
+              // «Подключить» ОТКЛЮЧАЛ VPN (аудит 25.10.2026, I).
+              final live = state.status.isConnected ||
+                  state.status.state == VpnConnectionState.connecting;
+              live
+                  ? state.reconnect(settings)
+                  : state.toggleConnection(settings);
               Navigator.of(context).pop();
             },
           ),

@@ -608,7 +608,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                       Opacity(
                         opacity: expired ? 0.45 : 1,
                         child: SubscriptionAvatar(
-                            path: p.logoPath, label: p.title, size: 24),
+                            path: p.logoPath, label: p.safeTitle, size: 24),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -616,9 +616,12 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FlagText(p.title,
+                            // ⚠️ `safeTitle`, не `title`: запасное имя в
+                            // `title` несёт токен подписки, а открытое меню
+                            // шлют в поддержку скриншотом (аудит 25.10.2026, I).
+                            FlagText(p.safeTitle,
                                 // Доминирует название подписки — направление по нему.
-                                textDirection: autoTextDirection(p.title),
+                                textDirection: autoTextDirection(p.safeTitle),
                                 overflow: TextOverflow.ellipsis,
                                 style: expired
                                     ? TextStyle(

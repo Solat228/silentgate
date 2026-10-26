@@ -1865,10 +1865,15 @@ class _HwidTileState extends State<_HwidTile> {
           trailing: IconButton(
             tooltip: l.commonCopy,
             icon: const Icon(Icons.copy, size: 18),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: hwid));
-              AppToast.copied(context);
-            },
+            // ⚠️ Пока идентификатор не прочитан, на экране «…» — и кнопка
+            // копировала именно его, с тостом «Скопировано» (аудит
+            // 25.10.2026, I). До готовности кнопка погашена.
+            onPressed: snap.hasData
+                ? () {
+                    Clipboard.setData(ClipboardData(text: hwid));
+                    AppToast.copied(context);
+                  }
+                : null,
           ),
         );
       },

@@ -5,6 +5,7 @@ import 'widgets/app_toast.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
@@ -72,7 +73,11 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
   }
 
   Future<void> _showLog() async {
-    final log = await platform.tunLog.tail(lines: 200);
+    // ⚠️ Окно журнала шлют в поддержку скриншотом и копией: адреса серверов
+    // в нём (каждая строка `dial tcp`) маскируются так же, как в отчёте
+    // поддержки (аудит 25.10.2026, I).
+    final log =
+        SensitiveAddresses.mask(await platform.tunLog.tail(lines: 200));
     if (!mounted) return;
     final l = AppLocalizations.of(context);
     await showDialog<void>(

@@ -127,7 +127,8 @@ void main() {
     test('⚠️ запросы подписки идут через фильтр согласия', () {
       // Единственное место, где собираются заголовки подписки: оба вызова
       // `fetch` берут их из `_deviceHeaders()`.
-      final src = File('lib/state/app_state.dart').readAsStringSync();
+      final src = File('lib/state/app_state.dart').readAsStringSync()
+          .replaceAll('\r\n', '\n');
       final at = src.indexOf('Future<Map<String, String>> _deviceHeaders()');
       expect(at, greaterThan(0));
       final body = src.substring(at, src.indexOf('\n  }\n', at));

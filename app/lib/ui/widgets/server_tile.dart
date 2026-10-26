@@ -377,10 +377,22 @@ class ServerTile extends StatelessWidget {
             icon: const Icon(Icons.refresh, size: 18),
             label: Text(l.srvTileRefresh),
             onPressed: () async {
-              await state.refreshSubscription();
-              if (context.mounted) {
+              // ⚠️ Раньше «Подписка обновлена» показывалось при ЛЮБОМ исходе —
+              // и после отказа сервера подписки (аудит 25.10.2026, I).
+              final ok = await state.refreshSubscription();
+              if (!context.mounted) return;
+              if (ok) {
                 AppToast.show(context, l.srvTileSubscriptionUpdated,
                     kind: ToastKind.success);
+              } else if (state.error != null) {
+                final id = state.activeSubscriptionId;
+                final name = state.subscriptions
+                        .where((p) => p.id == id)
+                        .firstOrNull
+                        ?.safeTitle ??
+                    '';
+                AppToast.show(context, l.subSwitcherRefreshFailedOne(name),
+                    kind: ToastKind.error);
               }
             },
           ),
