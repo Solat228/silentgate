@@ -201,4 +201,55 @@ void main() {
       expect(seen['http']!.containsKey('X-HWID'), isFalse);
     });
   });
+  group('Переезд запоминается только в пределах домена (аудит F)', () {
+    MockClient redirectOnce(String from, String to, int code) =>
+        MockClient((req) async {
+          if (req.url.toString() == from) {
+            return http.Response('', code, headers: {'location': to});
+          }
+          return http.Response(link, 200);
+        });
+
+    test('301 на чужой домен — идём, но адрес не запоминаем', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://sub.example.org/x', 'https://evil.example.net/x', 301));
+      final r = await svc.fetch('https://sub.example.org/x');
+      expect(r.movedTo, isNull);
+      expect(r.servers, isNotEmpty);
+    });
+
+    test('301 https → http не запоминается', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://sub.example.org/x', 'http://sub.example.org/x', 301));
+      final r = await svc.fetch('https://sub.example.org/x');
+      expect(r.movedTo, isNull);
+    });
+
+    test('правило домена', () {
+      bool ok(String a, String b) => SubscriptionService
+          .acceptablePermanentMove(Uri.parse(a), Uri.parse(b));
+      expect(ok('https://a.example.org/x', 'https://b.example.org/y'), isTrue);
+      expect(ok('http://a.example.org/x', 'https://a.example.org/x'), isTrue);
+      expect(ok('https://a.example.org/x', 'https://example.net/x'), isFalse);
+      expect(ok('https://a.example.co.uk/x', 'https://b.other.co.uk/x'),
+          isFalse, reason: 'co.uk — общий суффикс, владельцы разные');
+      expect(ok('https://203.0.113.1/x', 'https://203.0.113.2/x'), isFalse);
+      expect(ok('https://a.example.org/x', 'ftp://a.example.org/x'), isFalse);
+    });
+  });
+
+  test('⚠️ тело больше предела — исключение, а не память до отказа',
+      () async {
+    final big = List<int>.filled(1024 * 1024, 0x41);
+    final client = MockClient.streaming((req, _) async =>
+        http.StreamedResponse(
+            Stream.fromIterable(List.generate(
+                SubscriptionService.maxBodyBytes ~/ big.length + 2,
+                (_) => big)),
+            200));
+    final svc = SubscriptionService(client: client);
+    await expectLater(svc.fetch('https://sub.example.org/x'),
+        throwsA(isA<SubscriptionException>().having(
+            (e) => e.message, 'message', contains('слишком большой'))));
+  });
 }

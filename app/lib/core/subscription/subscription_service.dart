@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import '../models/ui_message.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
@@ -142,7 +143,9 @@ class SubscriptionService {
     // попадает (см. [_fetchFollowing] и [movedTo]).
     final moved = (permanentMove != null && permanentMove != url) ? permanentMove : null;
     if (moved != null) {
-      AppLog.w('Подписка переехала (постоянно, 301/308): $url → $moved (адрес обновлён)');
+      // ⚠️ В журнал — только узел: в адресе подписки лежит токен.
+      AppLog.w('Подписка переехала (постоянно, 301/308): '
+          '${Uri.parse(url).host} → ${Uri.parse(moved).host} (адрес обновлён)');
     }
     return SubscriptionResult(servers, info, movedTo: moved);
   }
@@ -180,7 +183,7 @@ class SubscriptionService {
       // узел по дороге. Проверка на КАЖДОМ шаге: редирект с https на http
       // тоже не должен их унести.
       if (current.scheme == 'https') request.headers.addAll(deviceHeaders);
-      final resp = await http.Response.fromStream(await _client.send(request));
+      final resp = await _readLimited(await _client.send(request));
       final code = resp.statusCode;
       final isRedirect =
           code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
@@ -195,13 +198,77 @@ class SubscriptionService {
       final next = current.resolve(location);
       // Постоянный редирект в непрерывной цепочке двигает запоминаемый адрес;
       // временный — обрывает цепочку, дальше адрес не запоминаем.
-      if ((code == 301 || code == 308) && chainStillPermanent) {
+      if ((code == 301 || code == 308) &&
+          chainStillPermanent &&
+          acceptablePermanentMove(start, next)) {
         permanentMove = next.toString();
       } else {
         chainStillPermanent = false;
       }
       current = next;
     }
+  }
+
+  /// Предел тела ответа. Самая большая подписка владельца — сотня профилей по
+  /// ~40 КБ, то есть ~4 МБ; 32 МиБ — с запасом. Без предела сервер (или узел
+  /// по дороге при `http://`) мог бы отдавать тело бесконечно, и приложение
+  /// падало бы по памяти на каждом автообновлении (аудит, F).
+  static const maxBodyBytes = 32 * 1024 * 1024;
+
+  static Future<http.Response> _readLimited(http.StreamedResponse r) async {
+    final declared = r.contentLength;
+    if (declared != null && declared > maxBodyBytes) {
+      throw SubscriptionException('Ответ подписки слишком большой',
+          ui: UiSubHttpCode(r.statusCode));
+    }
+    final buf = BytesBuilder(copy: false);
+    await for (final chunk in r.stream) {
+      buf.add(chunk);
+      if (buf.length > maxBodyBytes) {
+        throw SubscriptionException('Ответ подписки слишком большой',
+            ui: UiSubHttpCode(r.statusCode));
+      }
+    }
+    return http.Response.bytes(buf.takeBytes(), r.statusCode,
+        request: r.request,
+        headers: r.headers,
+        isRedirect: r.isRedirect,
+        persistentConnection: r.persistentConnection,
+        reasonPhrase: r.reasonPhrase);
+  }
+
+  /// Можно ли ЗАПОМНИТЬ постоянный переезд подписки с [from] на [to].
+  ///
+  /// ⚠️ Запомненный адрес остаётся навсегда: один 301 от узла по дороге или
+  /// со взломанного зеркала — и подписка до конца жизни приложения берёт
+  /// серверы у чужого. Поэтому идём куда угодно, но запоминаем только
+  /// переезд в пределах того же домена второго уровня и без понижения
+  /// https → http (аудит 25.10.2026, F).
+  static bool acceptablePermanentMove(Uri from, Uri to) {
+    if (from.scheme == 'https' && to.scheme != 'https') return false;
+    if (to.scheme != 'https' && to.scheme != 'http') return false;
+    final a = from.host.toLowerCase(), b = to.host.toLowerCase();
+    if (a == b) return true;
+    if (InternetAddress.tryParse(a) != null ||
+        InternetAddress.tryParse(b) != null) {
+      return false;
+    }
+    // `co.uk`, `com.ru` и подобные — общие суффиксы: там владелец домена
+    // начинается с третьей метки с конца.
+    const shared = {'co', 'com', 'net', 'org', 'gov', 'edu', 'ac'};
+    String base(String h) {
+      final parts = h.split('.');
+      var keep = 2;
+      if (parts.length >= 3 &&
+          parts.last.length == 2 &&
+          shared.contains(parts[parts.length - 2])) {
+        keep = 3;
+      }
+      return parts.length <= keep
+          ? h
+          : parts.sublist(parts.length - keep).join('.');
+    }
+    return base(a) == base(b);
   }
 
   void close() => _client.close();
