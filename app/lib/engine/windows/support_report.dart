@@ -206,9 +206,11 @@ class SupportReport {
       await Process.run('explorer', ['/select,', path]);
     } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 900));
-    // 2) Сам файл лога.
+    // 2) Сам файл лога — через Проводник, а не `cmd /c start`: путь лежит в
+    // профиле пользователя, и `&` в имени учётной записи `cmd` исполнил бы
+    // как разделитель команд.
     try {
-      await Process.run('cmd', ['/c', 'start', '', path], runInShell: true);
+      await Process.run('explorer', [path]);
     } catch (_) {}
   }
 
