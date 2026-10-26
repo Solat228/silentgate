@@ -133,7 +133,7 @@ class TunHelper {
   /// Вызывается из main при `--tun`. Блокируется до остановки.
   static Future<void> run(String configPath, {String stopPath = ''}) async {
     final stopFile = stopPath.isNotEmpty ? File(stopPath) : _defaultStopFile();
-    final loc = XrayPaths.locate();
+    final loc = XrayPaths.locateTrusted();
     final singbox = loc != null
         ? '${loc.assetDir}${Platform.pathSeparator}sing-box.exe'
         : 'sing-box.exe';
@@ -251,11 +251,20 @@ class TunHelper {
     Future<Process?> startCore() async {
       final Process p;
       try {
+        // ⚠️ КОНФИГ ЧЕРЕЗ stdin, ОЧИЩЕННЫЙ. Файл лежит в `%APPDATA%`, писать
+        // туда может любой процесс пользователя; ядро с правами администратора
+        // по `log.output` или `cache_file` записало бы файл куда угодно.
+        // Читаем один раз и отдаём из памяти: подменить файл между проверкой
+        // и чтением ядром уже нельзя (аудит 25.10.2026, D2).
+        final config = sanitizeElevatedConfig(
+            await File(configPath).readAsString());
         p = await Process.start(
           singbox,
-          ['run', '-c', configPath],
+          ['run', '-c', 'stdin'],
           workingDirectory: loc?.assetDir,
         );
+        p.stdin.write(config);
+        await p.stdin.close();
       } catch (e) {
         await log.write('НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
         return null;
@@ -703,6 +712,31 @@ class TunHelper {
     }
   }
 
+  /// Убрать из конфига поля, по которым ядро ПИШЕТ файлы.
+  ///
+  /// Ядро помощника работает с правами администратора, а конфиг пишет
+  /// приложение без прав. `log.output`, `experimental.cache_file` и
+  /// загрузка `external_ui` дали бы запись в любой путь системы. Наш
+  /// построитель этих полей на Windows не ставит — вывод ядра помощник
+  /// собирает сам из stdout. Не JSON — исключение, ядро не запускается.
+  @visibleForTesting
+  static String sanitizeElevatedConfig(String raw) {
+    final cfg = jsonDecode(raw) as Map<String, dynamic>;
+    final log = cfg['log'];
+    if (log is Map) log.remove('output');
+    final exp = cfg['experimental'];
+    if (exp is Map) {
+      exp.remove('cache_file');
+      final clash = exp['clash_api'];
+      if (clash is Map) {
+        clash.remove('external_ui');
+        clash.remove('external_ui_download_url');
+        clash.remove('external_ui_download_detour');
+      }
+    }
+    return jsonEncode(cfg);
+  }
+
   /// Свои бинари — те, что обязаны ходить в сеть при поднятой блокировке.
   ///
   /// ⚠️ СПРАШИВАЕМ У СЕБЯ, А НЕ У ИНТЕРФЕЙСА. Помощник и есть `silentgate.exe`,
@@ -710,7 +744,7 @@ class TunHelper {
   /// источник правды о том, что помощник знает точнее всех.
   static List<String> _ownBinaries() {
     final out = <String>[Platform.resolvedExecutable];
-    final loc = XrayPaths.locate();
+    final loc = XrayPaths.locateTrusted();
     if (loc != null) {
       for (final n in const ['sing-box.exe', 'xray.exe']) {
         final f = File('${loc.assetDir}${Platform.pathSeparator}$n');
