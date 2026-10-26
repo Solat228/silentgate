@@ -7355,6 +7355,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Настройки восстановлены из копии в «Документах»'**
   String get backupRestoredFromDocuments;
+
+  /// No description provided for @subBarSubscriptionDeletedNamed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подписка «{name}» удалена'**
+  String subBarSubscriptionDeletedNamed(String name);
+
+  /// No description provided for @subBarRestore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Восстановить'**
+  String get subBarRestore;
 }
 
 class _AppLocalizationsDelegate

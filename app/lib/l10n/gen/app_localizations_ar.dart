@@ -4321,4 +4321,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get backupRestoredFromDocuments =>
       'استُعيدت الإعدادات من النسخة في «المستندات»';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return 'تم حذف الاشتراك «$name»';
+  }
+
+  @override
+  String get subBarRestore => 'استعادة';
 }

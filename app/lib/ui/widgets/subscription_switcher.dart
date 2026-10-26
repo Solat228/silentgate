@@ -187,12 +187,20 @@ abstract final class SubscriptionActions {
         ),
       ),
     );
-    if (ok != true) return;
-    await state.deleteSubscription(removePinned: alsoPinned, id: id);
-    if (context.mounted) {
-      AppToast.show(context, l.subBarSubscriptionDeleted,
-          kind: ToastKind.success);
-    }
+    if (ok != true || !context.mounted) return;
+    // Оверлей — ДО удаления: удаление последней подписки уводит главный экран
+    // на импорт, и контекст этого виджета к моменту уведомления уже мёртв.
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final deleted =
+        await state.deleteSubscription(removePinned: alsoPinned, id: id);
+    if (deleted == null) return;
+    // Имя — ТОЛЬКО `safeTitle`: запасное `title` содержит токен подписки.
+    AppToast.undo(
+      overlay,
+      l.subBarSubscriptionDeletedNamed(deleted.profile.safeTitle),
+      actionLabel: l.subBarRestore,
+      onAction: () => state.restoreSubscription(deleted),
+    );
   }
 }
 

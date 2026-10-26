@@ -44,6 +44,42 @@ class AppToast {
     );
   }
 
+  /// Уведомление с отменой («Подписка удалена — Восстановить»).
+  ///
+  /// В отличие от [show] с `actionLabel`:
+  ///  * кнопка стоит В НАЧАЛЕ строки, на противоположной стороне от крестика
+  ///    — промахнуться и закрыть вместо «Восстановить» нельзя;
+  ///  * уведомление гаснет само ВСЕГДА, через [duration] (10 с — просьба
+  ///    владельца), а не висит до нажатия: отмена нужна сразу или никогда.
+  ///
+  /// Принимает [OverlayState], а не `BuildContext`: показывают его ПОСЛЕ
+  /// действия, которое вполне могло снести виджет-источник (удаление последней
+  /// подписки уводит главный экран на импорт), и контекст к тому моменту мёртв.
+  /// Оверлей берут заранее, пока контекст жив.
+  static void undo(
+    OverlayState? overlay,
+    String message, {
+    required String actionLabel,
+    required VoidCallback onAction,
+    ToastKind kind = ToastKind.success,
+    Duration duration = const Duration(seconds: 10),
+  }) {
+    if (overlay == null || !overlay.mounted) return;
+    _MessageToasts.addTo(
+      overlay,
+      _MsgData(
+        id: ++_seq,
+        message: message,
+        kind: kind,
+        duration: duration,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        details: const [],
+        undo: true,
+      ),
+    );
+  }
+
   /// Снять все сообщения-уведомления немедленно.
   static void dismiss() => _MessageToasts.clear();
 
@@ -511,6 +547,9 @@ class _MsgData {
   final String? actionLabel;
   final VoidCallback? onAction;
   final List<ToastDetail> details;
+
+  /// Отмена (см. [AppToast.undo]): кнопка слева, таймер идёт и при кнопке.
+  final bool undo;
   const _MsgData({
     required this.id,
     required this.message,
@@ -519,7 +558,12 @@ class _MsgData {
     required this.details,
     this.actionLabel,
     this.onAction,
+    this.undo = false,
   });
+
+  /// Гаснет ли само. С обычной кнопкой — нет: пользователь должен успеть
+  /// нажать; у отмены — да, всегда.
+  bool get timed => actionLabel == null || undo;
 }
 
 /// Реестр сообщений-уведомлений: один оверлей на всё окно, внутри — колонка
@@ -533,6 +577,10 @@ class _MessageToasts {
   static void add(BuildContext context, _MsgData d) {
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
+    addTo(overlay, d);
+  }
+
+  static void addTo(OverlayState overlay, _MsgData d) {
     if (_host == null) {
       _host = OverlayEntry(builder: (_) => const _MessageStack());
       overlay.insert(_host!);
@@ -623,7 +671,8 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     // С кнопкой действия не гасим: пользователь должен успеть нажать.
-    if (widget.data.actionLabel == null) {
+    // Кроме отмены — та гаснет всегда (см. [AppToast.undo]).
+    if (widget.data.timed) {
       _life.forward();
       _life.addStatusListener((s) {
         if (s == AnimationStatus.completed && mounted) _hide();
@@ -648,7 +697,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
     // Раскрыли — останавливаем таймер, свернули — досчитываем.
     if (_expanded) {
       _life.stop();
-    } else if (widget.data.actionLabel == null) {
+    } else if (widget.data.timed) {
       _life.forward();
     }
   }
@@ -708,6 +757,15 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          // Отмена — В НАЧАЛЕ строки, подальше от крестика.
+                          if (widget.data.undo &&
+                              widget.data.actionLabel != null) ...[
+                            TextButton(
+                              onPressed: _act,
+                              child: Text(widget.data.actionLabel!),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                           Icon(icon, size: 18, color: color),
                           const SizedBox(width: 10),
                           Flexible(
@@ -721,7 +779,8 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                                     : Icons.expand_less,
                                 size: 18,
                                 color: color),
-                          if (widget.data.actionLabel != null) ...[
+                          if (!widget.data.undo &&
+                              widget.data.actionLabel != null) ...[
                             const SizedBox(width: 8),
                             TextButton(
                               onPressed: _act,
@@ -775,7 +834,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                         ),
                       ),
                     // Бегущая строка: сколько уведомление ещё провисит.
-                    if (widget.data.actionLabel == null)
+                    if (widget.data.timed)
                       AnimatedBuilder(
                         animation: _life,
                         builder: (_, __) => LinearProgressIndicator(

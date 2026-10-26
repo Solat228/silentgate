@@ -57,6 +57,7 @@ import '../engine/engine_factory.dart';
 import '../engine/vpn_engine.dart';
 import 'api_handlers.dart';
 import 'app_error.dart';
+import 'deleted_subscription.dart';
 import 'probe_controller.dart';
 import '../core/probe/proxy_probe.dart';
 import 'settings_controller.dart';
@@ -1684,7 +1685,101 @@ class AppState extends ChangeNotifier {
   /// [id] — какую именно удалять; null = активную (так зовёт карточка). Явный
   /// id нужен меню переключателя: там действия относятся к строке, на которой
   /// нажали, а не к той подписке, которая сейчас открыта.
-  Future<void> deleteSubscription({bool removePinned = false, String? id}) async {
+  ///
+  /// Возвращает снимок удалённого для [restoreSubscription] (кнопка
+  /// «Восстановить» в уведомлении) либо null, если удалять было нечего.
+  Future<DeletedSubscription?> deleteSubscription(
+      {bool removePinned = false, String? id}) async {
+    final target = id ?? _activeId;
+    final index = _profiles.indexWhere((p) => p.id == target);
+    if (index < 0) return null;
+    final profile = _profiles[index];
+    final wasActive = target == _activeId;
+    final selectedKey = wasActive ? selectedServer?.key : null;
+    final pinnedBefore = List<VpnServer>.of(_pinned);
+    final sourceBefore = Map<String, String>.of(_pinnedSourceByLink);
+    final overridesBefore = Map<String, ServerOverride>.of(_overrides);
+    final panelBefore = Map<String, PanelConfig>.of(_panelConfigs);
+
+    await _deleteSubscription(removePinned: removePinned, id: id);
+
+    final pinnedNow = _pinned.map((s) => s.key).toSet();
+    return DeletedSubscription(
+      profile: profile,
+      index: index,
+      wasActive: wasActive,
+      selectedKey: selectedKey,
+      pinned: [
+        for (var i = 0; i < pinnedBefore.length; i++)
+          if (!pinnedNow.contains(pinnedBefore[i].key)) (i, pinnedBefore[i]),
+      ],
+      pinnedSource: {
+        for (final e in sourceBefore.entries)
+          if (!_pinnedSourceByLink.containsKey(e.key)) e.key: e.value,
+      },
+      overrides: {
+        for (final e in overridesBefore.entries)
+          if (!_overrides.containsKey(e.key)) e.key: e.value,
+      },
+      panelConfigs: {
+        for (final e in panelBefore.entries)
+          if (!_panelConfigs.containsKey(e.key)) e.key: e.value,
+      },
+    );
+  }
+
+  /// Вернуть подписку, удалённую [deleteSubscription], вместе со всем, что
+  /// ушло с ней: закреплениями, правками, конфигами панели. Была открыта —
+  /// снова становится открытой, с тем же выбранным сервером.
+  ///
+  /// ⚠️ ВОЗВРАЩАЕМ ТОЛЬКО НЕДОСТАЮЩЕЕ. Если за время уведомления ту же ссылку
+  /// импортировали заново или закрепили тот же сервер, свежее не затирается.
+  Future<void> restoreSubscription(DeletedSubscription d) async {
+    if (_profiles.any((p) => p.id == d.profile.id)) return;
+    _profiles.insert(d.index.clamp(0, _profiles.length), d.profile);
+
+    final pinnedKeys = _pinned.map((s) => s.key).toSet();
+    for (final (i, server) in d.pinned) {
+      if (pinnedKeys.add(server.key)) {
+        _pinned.insert(i.clamp(0, _pinned.length), server);
+      }
+    }
+    for (final e in d.pinnedSource.entries) {
+      _pinnedSourceByLink.putIfAbsent(e.key, () => e.value);
+    }
+    for (final e in d.overrides.entries) {
+      _overrides.putIfAbsent(e.key, () => e.value);
+    }
+    for (final e in d.panelConfigs.entries) {
+      _panelConfigs.putIfAbsent(e.key, () => e.value);
+    }
+    if (d.pinned.isNotEmpty || d.pinnedSource.isNotEmpty) await _savePinned();
+    if (d.overrides.isNotEmpty) await _overridesStore.save(_overrides);
+    if (d.panelConfigs.isNotEmpty) {
+      await _panelOutboundsStore.save(_panelConfigs);
+    }
+
+    // Не было ни одной подписки — восстановленная обязана стать открытой,
+    // иначе экран остался бы пустым при непустом списке.
+    if (d.wasActive || _activeId == null) {
+      // [switchSubscription] выходит сразу, если id уже активный, — а после
+      // удаления последней подписки активной нет, и это как раз наш случай.
+      await switchSubscription(d.profile.id);
+      final key = d.selectedKey;
+      if (key != null) {
+        final i = _servers.indexWhere((s) => s.key == key);
+        if (i >= 0) _selectedIndex = i;
+      }
+    } else {
+      await _saveSubscriptions();
+      _rebuild();
+      await _persist();
+    }
+    AppLog.i('Подписка «${d.profile.safeTitle}» восстановлена');
+    notifyListeners();
+  }
+
+  Future<void> _deleteSubscription({bool removePinned = false, String? id}) async {
     // ⚠️ ЗАПОМИНАЕМ, ЧТО ИМЕННО УДАЛЯЕМ, ДО УДАЛЕНИЯ.
     //
     // Пины в этом приложении ОБЩИЕ: они переживают переключение подписки, и в

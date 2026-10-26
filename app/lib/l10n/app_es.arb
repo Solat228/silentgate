@@ -1653,5 +1653,7 @@
   "updatesSettingsTileMsStore": "Las nuevas versiones llegan a través de Microsoft Store",
   "backupDocumentsSubsTitle": "Guardar suscripciones en la copia de Documentos",
   "backupDocumentsSubsSub": "Windows borra los datos de una app de Microsoft Store al desinstalarla, por eso la configuración se copia siempre en «Documentos\\SilentGate». Tras reinstalar, la app la restaura sola. La copia está cifrada con la clave de tu cuenta de Windows",
-  "backupRestoredFromDocuments": "Configuración restaurada desde la copia en Documentos"
+  "backupRestoredFromDocuments": "Configuración restaurada desde la copia en Documentos",
+  "subBarSubscriptionDeletedNamed": "Suscripción «{name}» eliminada",
+  "subBarRestore": "Restaurar"
 }

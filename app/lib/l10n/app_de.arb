@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "Neue Versionen kommen über den Microsoft Store",
   "backupDocumentsSubsTitle": "Abonnements in der Kopie unter Dokumente speichern",
   "backupDocumentsSubsSub": "Windows löscht die Daten einer Microsoft-Store-App beim Deinstallieren, daher werden die Einstellungen immer nach „Dokumente\\SilentGate“ kopiert. Nach einer Neuinstallation stellt die App sie selbst wieder her. Die Kopie ist mit dem Schlüssel Ihres Windows-Kontos verschlüsselt",
-  "backupRestoredFromDocuments": "Einstellungen aus der Kopie unter Dokumente wiederhergestellt"
+  "backupRestoredFromDocuments": "Einstellungen aus der Kopie unter Dokumente wiederhergestellt",
+  "subBarSubscriptionDeletedNamed": "Abonnement „{name}“ gelöscht",
+  "subBarRestore": "Wiederherstellen"
 }

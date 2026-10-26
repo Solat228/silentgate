@@ -4147,4 +4147,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get backupRestoredFromDocuments => '已从“文档”中的副本恢复设置';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return '订阅“$name”已删除';
+  }
+
+  @override
+  String get subBarRestore => '恢复';
 }

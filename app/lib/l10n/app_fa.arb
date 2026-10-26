@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "نسخه‌های جدید از طریق Microsoft Store می‌رسند",
   "backupDocumentsSubsTitle": "نگه‌داشتن اشتراک‌ها در نسخهٔ پوشهٔ «اسناد»",
   "backupDocumentsSubsSub": "Windows هنگام حذف برنامهٔ Microsoft Store داده‌های آن را پاک می‌کند، برای همین تنظیمات همیشه در «اسناد\\SilentGate» کپی می‌شوند. پس از نصب دوباره، برنامه خودش آن‌ها را بازمی‌گرداند. این نسخه با کلید حساب Windows شما رمزگذاری شده است",
-  "backupRestoredFromDocuments": "تنظیمات از نسخهٔ پوشهٔ «اسناد» بازگردانده شد"
+  "backupRestoredFromDocuments": "تنظیمات از نسخهٔ پوشهٔ «اسناد» بازگردانده شد",
+  "subBarSubscriptionDeletedNamed": "اشتراک «{name}» حذف شد",
+  "subBarRestore": "بازیابی"
 }

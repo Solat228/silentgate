@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "新版本通过 Microsoft Store 推送",
   "backupDocumentsSubsTitle": "在“文档”中的副本里保留订阅",
   "backupDocumentsSubsSub": "卸载 Microsoft Store 应用时，Windows 会删除其数据，因此设置始终会复制到“文档\\SilentGate”。重新安装后，应用会自动恢复它们。副本使用您的 Windows 帐户密钥加密",
-  "backupRestoredFromDocuments": "已从“文档”中的副本恢复设置"
+  "backupRestoredFromDocuments": "已从“文档”中的副本恢复设置",
+  "subBarSubscriptionDeletedNamed": "订阅“{name}”已删除",
+  "subBarRestore": "恢复"
 }

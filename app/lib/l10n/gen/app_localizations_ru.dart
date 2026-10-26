@@ -4338,4 +4338,12 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get backupRestoredFromDocuments =>
       'Настройки восстановлены из копии в «Документах»';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return 'Подписка «$name» удалена';
+  }
+
+  @override
+  String get subBarRestore => 'Восстановить';
 }

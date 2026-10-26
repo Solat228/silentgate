@@ -4340,4 +4340,12 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get backupRestoredFromDocuments =>
       'Ayarlar Belgeler\'deki kopyadan geri yüklendi';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return '“$name” aboneliği silindi';
+  }
+
+  @override
+  String get subBarRestore => 'Geri yükle';
 }

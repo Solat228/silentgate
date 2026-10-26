@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "تصل الإصدارات الجديدة عبر Microsoft Store",
   "backupDocumentsSubsTitle": "الاحتفاظ بالاشتراكات في النسخة داخل «المستندات»",
   "backupDocumentsSubsSub": "يحذف Windows بيانات تطبيق Microsoft Store عند إزالته، لذلك تُنسخ الإعدادات دائماً إلى «المستندات\\SilentGate». بعد إعادة التثبيت يستعيدها التطبيق بنفسه. النسخة مشفّرة بمفتاح حساب Windows الخاص بك",
-  "backupRestoredFromDocuments": "استُعيدت الإعدادات من النسخة في «المستندات»"
+  "backupRestoredFromDocuments": "استُعيدت الإعدادات من النسخة في «المستندات»",
+  "subBarSubscriptionDeletedNamed": "تم حذف الاشتراك «{name}»",
+  "subBarRestore": "استعادة"
 }

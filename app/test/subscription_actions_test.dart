@@ -270,6 +270,82 @@ void main() {
     });
   });
 
+  group('Восстановление удалённой подписки (кнопка в уведомлении)', () {
+    test('неактивная: встаёт на своё место вместе с закреплениями', () async {
+      final state = boot(pinned: [linkA, linkB]);
+      await state.init();
+
+      final d = await state.deleteSubscription(id: idB, removePinned: true);
+      expect(d, isNotNull);
+      expect(d!.profile.id, idB);
+      expect(d.wasActive, isFalse);
+      expect(state.pinnedCount, 1);
+
+      await state.restoreSubscription(d);
+
+      expect(state.subscriptions.map((p) => p.id), [idA, idB],
+          reason: 'порядок подписок — данные: встаёт туда, где была');
+      expect(state.activeSubscriptionId, idA,
+          reason: 'удаляли не открытую — открытая не меняется');
+      expect(state.pinnedCount, 2, reason: 'снятое закрепление вернулось');
+      final saved = jsonDecode(File(path('subscriptions.json'))
+          .readAsStringSync()) as Map<String, dynamic>;
+      expect((saved['items'] as List).map((e) => e['id']),
+          containsAll([idA, idB]),
+          reason: 'восстановление обязано дойти до диска');
+    });
+
+    test('открытая: снова открыта, с тем же выбранным сервером', () async {
+      final state = boot();
+      await state.init();
+      final keyA = ShareLinkParser.tryParse(linkA)!.key;
+      expect(state.selectedServer?.key, keyA);
+
+      final d = await state.deleteSubscription();
+      expect(d!.wasActive, isTrue);
+      expect(state.activeSubscriptionId, idB);
+
+      await state.restoreSubscription(d);
+
+      expect(state.activeSubscriptionId, idA);
+      expect(state.subscriptions.map((p) => p.id), [idA, idB]);
+      expect(state.subscriptionUrl, urlA);
+      expect(state.selectedServer?.key, keyA);
+    });
+
+    test('последняя подписка: экран снова не пустой', () async {
+      final state = boot(pinned: [linkA]);
+      await state.init();
+      await state.deleteSubscription(id: idB);
+      final d = await state.deleteSubscription(removePinned: true);
+      expect(state.subscriptions, isEmpty);
+      expect(state.pinnedCount, 0);
+
+      await state.restoreSubscription(d!);
+
+      expect(state.activeSubscriptionId, idA);
+      expect(state.subscriptionUrl, urlA);
+      expect(state.pinnedCount, 1);
+      expect(state.servers.map((s) => s.key),
+          contains(ShareLinkParser.tryParse(linkA)!.key));
+    });
+
+    test('повторное нажатие не плодит копий', () async {
+      final state = boot();
+      await state.init();
+      final d = await state.deleteSubscription(id: idB);
+      await state.restoreSubscription(d!);
+      await state.restoreSubscription(d);
+      expect(state.subscriptions.map((p) => p.id), [idA, idB]);
+    });
+
+    test('удалять было нечего — снимка нет', () async {
+      final state = boot();
+      await state.init();
+      expect(await state.deleteSubscription(id: 'sub_нет'), isNull);
+    });
+  });
+
   group('Обновление указанной подписки', () {
     test('⚠️ ГЛАВНОЕ: спрашивают адрес НАЗВАННОЙ подписки', () async {
       final panel = _FakePanel(answers: {urlB: [linkFresh]});

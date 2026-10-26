@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "Novas versões chegam pela Microsoft Store",
   "backupDocumentsSubsTitle": "Manter assinaturas na cópia em Documentos",
   "backupDocumentsSubsSub": "O Windows apaga os dados de um app da Microsoft Store ao desinstalá-lo, por isso as configurações são sempre copiadas para \"Documentos\\SilentGate\". Após reinstalar, o app as restaura sozinho. A cópia é criptografada com a chave da sua conta do Windows",
-  "backupRestoredFromDocuments": "Configurações restauradas da cópia em Documentos"
+  "backupRestoredFromDocuments": "Configurações restauradas da cópia em Documentos",
+  "subBarSubscriptionDeletedNamed": "Assinatura “{name}” excluída",
+  "subBarRestore": "Restaurar"
 }

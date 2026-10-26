@@ -4378,4 +4378,12 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get backupRestoredFromDocuments =>
       'Configurações restauradas da cópia em Documentos';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return 'Assinatura “$name” excluída';
+  }
+
+  @override
+  String get subBarRestore => 'Restaurar';
 }

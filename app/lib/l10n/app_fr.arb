@@ -1599,5 +1599,7 @@
   "updatesSettingsTileMsStore": "Les nouvelles versions arrivent via Microsoft Store",
   "backupDocumentsSubsTitle": "Conserver les abonnements dans la copie des Documents",
   "backupDocumentsSubsSub": "Windows efface les données d'une application Microsoft Store à sa désinstallation, c'est pourquoi les paramètres sont toujours copiés dans « Documents\\SilentGate ». Après une réinstallation, l'application les restaure seule. La copie est chiffrée avec la clé de votre compte Windows",
-  "backupRestoredFromDocuments": "Paramètres restaurés depuis la copie dans Documents"
+  "backupRestoredFromDocuments": "Paramètres restaurés depuis la copie dans Documents",
+  "subBarSubscriptionDeletedNamed": "Abonnement « {name} » supprimé",
+  "subBarRestore": "Restaurer"
 }

@@ -4319,4 +4319,12 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String get backupRestoredFromDocuments =>
       'تنظیمات از نسخهٔ پوشهٔ «اسناد» بازگردانده شد';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return 'اشتراک «$name» حذف شد';
+  }
+
+  @override
+  String get subBarRestore => 'بازیابی';
 }

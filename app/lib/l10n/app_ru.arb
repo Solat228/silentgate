@@ -2371,5 +2371,14 @@
   "updatesSettingsTileMsStore": "Новые версии приходят через Microsoft Store",
   "backupDocumentsSubsTitle": "Сохранять подписки в копии в «Документах»",
   "backupDocumentsSubsSub": "При удалении Windows стирает данные приложения из Microsoft Store, поэтому настройки всегда копируются в «Документы\\SilentGate». После переустановки приложение восстановит их само. Копия зашифрована ключом вашей учётной записи Windows",
-  "backupRestoredFromDocuments": "Настройки восстановлены из копии в «Документах»"
+  "backupRestoredFromDocuments": "Настройки восстановлены из копии в «Документах»",
+  "subBarSubscriptionDeletedNamed": "Подписка «{name}» удалена",
+  "@subBarSubscriptionDeletedNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "subBarRestore": "Восстановить"
 }
