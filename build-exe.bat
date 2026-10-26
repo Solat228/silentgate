@@ -67,11 +67,24 @@ if errorlevel 1 (
 
 set "REL=%JUNCTION%\app\build\windows\x64\runner\Release"
 set "BIN=%JUNCTION%\engine\windows\bin"
-if exist "%BIN%\xray.exe"     copy /Y "%BIN%\xray.exe"     "%REL%\" >nul
-if exist "%BIN%\sing-box.exe" copy /Y "%BIN%\sing-box.exe" "%REL%\" >nul
-if exist "%BIN%\geoip.dat"    copy /Y "%BIN%\geoip.dat"    "%REL%\" >nul
-if exist "%BIN%\geosite.dat"  copy /Y "%BIN%\geosite.dat"  "%REL%\" >nul
-if exist "%BIN%\wintun.dll"   copy /Y "%BIN%\wintun.dll"   "%REL%\" >nul
+rem Ядра и базы ОБЯЗАТЕЛЬНЫ: без них приложение собирается, но не подключается.
+rem Раньше отсутствующий файл молча пропускался, и в поставку уходила сборка
+rem без ядра (аудит 25.10.2026, J).
+for %%f in (xray.exe sing-box.exe geoip.dat geosite.dat wintun.dll) do (
+  if not exist "%BIN%\%%f" (
+    echo.
+    echo === Нет %%f в engine\windows\bin - запустите tools\fetch-xray.ps1 и tools\fetch-singbox.ps1 ===
+    pause
+    exit /b 1
+  )
+  copy /Y "%BIN%\%%f" "%REL%\" >nul
+  if errorlevel 1 (
+    echo.
+    echo === Не удалось скопировать %%f в Release ===
+    pause
+    exit /b 1
+  )
+)
 if exist "%PROJECT%\uninstall.bat" copy /Y "%PROJECT%\uninstall.bat" "%REL%\" >nul
 
 rem ==== Лицензии сторонних компонентов ====
@@ -98,9 +111,21 @@ if errorlevel 1 (
 ) else if defined SIGN_PFX (
   echo Подпись silentgate.exe ^(PFX^)...
   signtool sign /fd SHA256 /f "%SIGN_PFX%" /p "%SIGN_PASS%" /tr http://timestamp.digicert.com /td SHA256 "%REL%\silentgate.exe"
+  if errorlevel 1 (
+    echo.
+    echo === ПОДПИСЬ НЕ УДАЛАСЬ - неподписанный exe в поставку не идёт ===
+    pause
+    exit /b 1
+  )
 ) else if defined SIGN_THUMBPRINT (
   echo Подпись silentgate.exe ^(хранилище^)...
   signtool sign /fd SHA256 /sha1 "%SIGN_THUMBPRINT%" /tr http://timestamp.digicert.com /td SHA256 "%REL%\silentgate.exe"
+  if errorlevel 1 (
+    echo.
+    echo === ПОДПИСЬ НЕ УДАЛАСЬ - неподписанный exe в поставку не идёт ===
+    pause
+    exit /b 1
+  )
 ) else (
   echo [i] Сертификат не задан ^(SIGN_PFX / SIGN_THUMBPRINT^) - подпись пропущена.
 )

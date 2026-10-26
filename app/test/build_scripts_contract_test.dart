@@ -273,6 +273,92 @@ void main() {
       }
     });
   });
+
+  // Аудит 25.10.2026, J: сборка не должна молча выпускать неполную или
+  // неподписанную поставку, а скачанные ядра — уезжать в неё без сверки.
+  group('⚠️ Сборка не выпускает неполную поставку (аудит J)', () {
+    String read(String path) =>
+        File(path).readAsStringSync().replaceAll('\r\n', '\n');
+
+    test('build-exe.bat падает, если в engine\\windows\\bin нет ядра', () {
+      final content = _decodeCp866(exeBat.readAsBytesSync());
+      expect(content,
+          contains('for %%f in (xray.exe sing-box.exe geoip.dat geosite.dat wintun.dll)'));
+      final i = content.indexOf('for %%f in (xray.exe');
+      final block = content.substring(i, i + 700);
+      expect(block, contains(r'if not exist "%BIN%\%%f"'));
+      expect(block, contains('exit /b 1'));
+      // Прежнее «нет файла — тихо не копируем» не вернулось.
+      expect(content, isNot(contains(r'if exist "%BIN%\xray.exe"')));
+    });
+
+    test('build-exe.bat останавливается на неудачной подписи', () {
+      final lines = _decodeCp866(exeBat.readAsBytesSync())
+          .split(String.fromCharCode(10))
+          .map((l) => l.trim())
+          .toList();
+      final signs = [
+        for (var i = 0; i < lines.length; i++)
+          if (lines[i].startsWith('signtool sign')) i,
+      ];
+      expect(signs, isNotEmpty);
+      for (final i in signs) {
+        final after = lines.skip(i + 1).take(5).join(' ');
+        expect(after, contains('if errorlevel 1'),
+            reason: 'строка ${i + 1}: signtool без проверки кода возврата');
+        expect(after, contains('exit /b 1'));
+      }
+    });
+
+    test('.gitattributes держит батники в CRLF', () {
+      final attrs = read('../.gitattributes');
+      expect(attrs, contains('*.bat text eol=crlf'));
+      expect(attrs, contains('*.cmd text eol=crlf'));
+    });
+
+    test('.gitignore не пускает в репозиторий ключи', () {
+      final ignore = read('../.gitignore').split('\n').map((l) => l.trim());
+      for (final p in ['*.pfx', '*.p12', '*.pem', '*.key']) {
+        expect(ignore, contains(p));
+      }
+    });
+
+    for (final name in ['fetch-xray', 'fetch-singbox', 'fetch-wintun']) {
+      test('$name.ps1: версия и SHA-256 закреплены, хэш сверяется', () {
+        final s = read('../tools/$name.ps1');
+        expect(RegExp(r"\$sha256 = '[0-9A-F]{64}'").hasMatch(s), isTrue);
+        expect(s, contains('Get-FileHash'));
+        expect(s, contains(r'-ne $sha256'));
+        expect(s, contains('throw'));
+        expect(s, isNot(contains('/latest')));
+      });
+    }
+
+    test('скрипты tools с кириллицей — UTF-8 с BOM (иначе PS 5.1 читает ANSI)', () {
+      for (final name in [
+        'fetch-xray',
+        'fetch-singbox',
+        'fetch-wintun',
+        'bootstrap-windows',
+      ]) {
+        final b = File('../tools/$name.ps1').readAsBytesSync();
+        expect(b.take(3).toList(), [0xEF, 0xBB, 0xBF], reason: '$name.ps1');
+      }
+    });
+
+    test('ключ выпуска проверяется в задаче github-релиза, а не при конфигурации', () {
+      final g = read('android/app/build.gradle.kts');
+      final buildTypes = g.substring(
+          g.indexOf('buildTypes {'), g.indexOf('tasks.configureEach'));
+      expect(buildTypes, isNot(contains('throw GradleException')),
+          reason: 'проверка в release {} роняла даже --debug и сборку play');
+      final i = g.indexOf('name.contains("GithubRelease")');
+      expect(i, greaterThan(0));
+      final task = g.substring(i, g.indexOf('dependencies {'));
+      expect(task, contains('doFirst'));
+      expect(task, contains('keystorePropertiesFile.exists()'));
+    });
+  });
 }
 
 /// Таблица перекодировки CP866 -> Unicode для байт 0x00..0xFF.

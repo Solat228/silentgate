@@ -146,7 +146,27 @@ android {
             // Сборка теперь падает с внятным текстом. Это осознанная смена
             // поведения: команды, которые раньше «проходили», начнут ругаться —
             // и это лучше, чем узнать о подмене подписи после раздачи.
-            // Отладочные сборки (`flutter run`, `--debug`) не затронуты.
+            //
+            // ⚠️ Проверка — в задаче github-релиза (ниже), а не здесь. Блок
+            // `release {}` исполняется при КОНФИГУРАЦИИ любой задачи, и на
+            // чистой машине без ключа падали даже `flutter run` / `--debug`,
+            // а сборка для Play требовала чужой ей ключ выпуска (аудит
+            // 25.10.2026, J).
+            //
+            // Подпись задаёт СБОРКА (productFlavors выше), а не тип: подпись
+            // типа перекрыла бы сборку. github — ключ выпуска, play — загрузки.
+        }
+    }
+}
+
+// Релиз github без ключа выпуска вышел бы НЕПОДПИСАННЫМ (signingConfig сборки
+// = null). Проверяем до упаковки, чтобы файл не появился вовсе.
+tasks.configureEach {
+    val githubRelease = name.contains("GithubRelease") &&
+        (name.startsWith("package") || name.startsWith("assemble") ||
+            name.startsWith("bundle") || name.startsWith("sign"))
+    if (githubRelease) {
+        doFirst {
             if (!keystorePropertiesFile.exists()) {
                 throw GradleException(
                     "Нет android/key.properties — релизный APK подписывать нечем.\n" +
@@ -156,8 +176,6 @@ android {
                     "обновить настоящим релизом."
                 )
             }
-            // Подпись задаёт СБОРКА (productFlavors выше), а не тип: подпись
-            // типа перекрыла бы сборку. github — ключ выпуска, play — загрузки.
         }
     }
 }

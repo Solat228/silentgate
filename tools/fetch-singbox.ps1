@@ -1,11 +1,15 @@
-# Загружает sing-box (Windows x64) в engine/windows/bin/ — TUN-роутер для раздельного туннелирования.
+﻿# Загружает sing-box (Windows x64) в engine/windows/bin/ — TUN-роутер для раздельного туннелирования.
 # Использование:  powershell -ExecutionPolicy Bypass -File tools/fetch-singbox.ps1
 #
 # sing-box запускается ОТДЕЛЬНЫМ процессом (не линкуется) — это допускает его лицензию GPL
 # («mere aggregation»). Не переименовывайте бинарник и соблюдайте no-name-условие sing-box.
 
+# ⚠️ SHA-256 архива закреплён вместе с версией (аудит 25.10.2026, J): подменённый
+# архив иначе уехал бы в поставку молча. Обновление: поменять $ver и $sha256 вместе.
+
 $ErrorActionPreference = 'Stop'
 $ver = '1.14.3'
+$sha256 = 'D8B86EF58936DBA9230EC6A57FFA4243933F3C14EF4809828B6C553440ED1518'
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $dest = Join-Path $repoRoot 'engine\windows\bin'
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
@@ -17,6 +21,11 @@ $tmp = Join-Path $env:TEMP 'sbx'
 Write-Host "Загрузка sing-box: $url"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+$got = (Get-FileHash $zip -Algorithm SHA256).Hash
+if ($got -ne $sha256) {
+  Remove-Item $zip -Force
+  throw "SHA-256 архива не совпал: ждали $sha256, получили $got"
+}
 Expand-Archive -Path $zip -DestinationPath $tmp -Force
 $exe = Get-ChildItem -Recurse $tmp -Filter 'sing-box.exe' | Select-Object -First 1
 Copy-Item $exe.FullName (Join-Path $dest 'sing-box.exe') -Force
