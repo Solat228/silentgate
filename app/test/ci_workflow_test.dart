@@ -129,6 +129,18 @@ void main() {
     expect(buildCore.readAsStringSync(), contains(r'-notmatch "^Xray $([regex]::Escape($xrayVer)) "'));
   });
 
+  test('dartjni.dll не едет в Windows-поставку', () {
+    // Пакет jni нужен только path_provider_android; на Windows эта DLL —
+    // лишний PE, который SignPath не подпишет (MS6). Исключение и стирание
+    // старой копии живут в CMake, иначе Inno забрал бы её из Release.
+    final cmake = File('windows/CMakeLists.txt').readAsStringSync();
+    final remove = cmake.indexOf(r'list(REMOVE_ITEM PLUGIN_BUNDLED_LIBRARIES "$<TARGET_FILE:jni>")');
+    final install = cmake.indexOf(r'install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"');
+    expect(remove, greaterThan(-1));
+    expect(remove, lessThan(install), reason: 'исключать до install(FILES)');
+    expect(cmake, contains(r'file(REMOVE \"${INSTALL_BUNDLE_LIB_DIR}/dartjni.dll\")'));
+  });
+
   test('деинсталлятор подписывается в два прохода только по запросу', () {
     final src = iss.readAsStringSync();
     final block = RegExp(r'#ifdef SignUninstallerDir([\s\S]*?)#endif').firstMatch(src);
