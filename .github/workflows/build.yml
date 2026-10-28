@@ -1,86 +1,170 @@
-name: Build & Release (Windows)
+name: Windows build (Microsoft Store)
 
-# Сборка релиза по пушу тега vX.Y.Z:
-#   1) ставим Flutter, качаем ядра (в репо их нет),
-#   2) собираем Windows release,
-#   3) компилируем установщик Inno Setup (версия берётся из exe),
-#   4) публикуем setup.exe и портативный zip в GitHub Release.
-# Ручной запуск (workflow_dispatch) собирает без публикации.
+# Сборка Store-варианта Windows на раннере GitHub (заявка MS6, подпись SignPath).
+#
+# Store требует подписи у каждого PE поставки, а SignPath Foundation подписывает
+# только то, что собрано из исходников проекта в CI на раннерах GitHub. Отсюда:
+#   * ядро Xray — не официальный xray.exe, а своя программа engine/xraycore
+#     (Xray-core подключён библиотекой), собранная здесь же;
+#   * деинсталлятор Inno подписывается в два прохода (installer/silentgate.iss,
+#     SignUninstallerDir): проход 1 выдаёт неподписанный uninst-*.e32.
+#
+# Шагов подписи пока нет: SignPath ещё не одобрил проект. Вместо них задание
+# check-signing подписывает те же файлы одноразовым самоподписанным сертификатом
+# и проверяет, что вся цепочка (два прохода Inno) собирается. Когда SignPath
+# одобрит — на место самоподписи встают signpath/github-action-submit-signing-request
+# над артефактами unsigned-*.
+#
+# ⚠️ Публикации релизов здесь НЕТ намеренно: выпуски делает публикатор руками
+# (docs/HANDOFF_PUBLISH.md). Прежний build.yml по тегу v* сам создавал релиз.
 
 on:
-  push:
-    tags: ['v*']
   workflow_dispatch:
+  push:
+    branches: ['ci/**']
 
 permissions:
-  contents: write   # для создания релиза
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.44.6'
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: engine/xraycore/go.mod
+          cache-dependency-path: engine/xraycore/go.sum
+
+      - uses: subosito/flutter-action@v2
         with:
           channel: stable
+          flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
-      - name: Fetch cores (Xray / sing-box / wintun)
+      # Архив Xray-core с закреплённым SHA-256 — ради геобаз и текста лицензии.
+      # Его xray.exe следующий шаг заменяет своим.
+      - name: Fetch geo bases
         shell: pwsh
-        run: |
-          ./tools/fetch-xray.ps1
-          ./tools/fetch-singbox.ps1
-          ./tools/fetch-wintun.ps1
+        run: ./tools/fetch-xray.ps1
 
-      - name: Analyze & test
+      - name: Build own Xray core
+        shell: pwsh
+        run: ./tools/build-xraycore.ps1
+
+      - name: Build Windows release (Store, no TUN)
         working-directory: app
         run: |
-          flutter --version
           flutter pub get
-          flutter analyze
-          flutter test
+          flutter build windows --release --dart-define=SILENTGATE_STORE=msstore --dart-define=SILENTGATE_NO_TUN=true
 
-      - name: Build Windows release
-        working-directory: app
-        run: flutter build windows --release
-
-      - name: Stage engine binaries next to exe
+      - name: Stage cores and licenses
         shell: pwsh
-        run: |
-          $rel = "app/build/windows/x64/runner/Release"
-          Copy-Item engine/windows/bin/xray.exe     $rel -Force
-          Copy-Item engine/windows/bin/sing-box.exe $rel -Force
-          Copy-Item engine/windows/bin/wintun.dll   $rel -Force
-          Copy-Item engine/windows/bin/geoip.dat    $rel -Force
-          Copy-Item engine/windows/bin/geosite.dat  $rel -Force
+        run: ./tools/stage-release.ps1 -NoTun
 
-      - name: Compile installer (Inno Setup)
+      - name: Install Inno Setup
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
-          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer/silentgate.iss
+          (Get-Item "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe").VersionInfo.ProductVersion
 
-      - name: Package portable zip
+      # Проход 1: Inno кладёт неподписанный деинсталлятор и обязан упасть с
+      # «нужна подпись». Упал по другой причине (нет файла) — ошибка сборки.
+      - name: Installer pass 1 (unsigned uninstaller)
         shell: pwsh
         run: |
-          Compress-Archive -Path app/build/windows/x64/runner/Release/* `
-            -DestinationPath SilentGate-portable-win64.zip -Force
+          $dir = "$env:RUNNER_TEMP\uninst"
+          New-Item -ItemType Directory -Force $dir | Out-Null
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q /DSetupSuffix=-msstore /DNoTun "/DSignUninstallerDir=$dir" installer/silentgate.iss
+          $e32 = Get-ChildItem $dir -Filter 'uninst-*.e32'
+          if ($e32.Count -ne 1) { throw "Проход 1 не выдал uninst-*.e32 (код ISCC $LASTEXITCODE)" }
+          New-Item -ItemType Directory -Force unsigned/uninstaller | Out-Null
+          Copy-Item $e32.FullName unsigned/uninstaller/
+          $global:LASTEXITCODE = 0
 
-      - name: Upload build artifacts
+      # Обычный установщик без подписи — его проверяют живьём в VM.
+      - name: Installer (unsigned, for VM check)
+        shell: pwsh
+        run: |
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q /DSetupSuffix=-msstore /DNoTun installer/silentgate.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC: код $LASTEXITCODE" }
+          Get-FileHash installer/Output/*.exe -Algorithm SHA256 | Format-List
+
+      - name: Upload unsigned application files
         uses: actions/upload-artifact@v4
         with:
-          name: silentgate-windows
-          path: |
-            installer/Output/*.exe
-            SilentGate-portable-win64.zip
+          name: unsigned-release
+          path: app/build/windows/x64/runner/Release
+          if-no-files-found: error
 
-      - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - name: Upload unsigned uninstaller
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            installer/Output/*.exe
-            SilentGate-portable-win64.zip
-          generate_release_notes: true
+          name: unsigned-uninstaller
+          path: unsigned/uninstaller
+          if-no-files-found: error
+
+      - name: Upload unsigned installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer-msstore
+          path: installer/Output/*.exe
+          if-no-files-found: error
+
+  # Репетиция подписи: всё, что потом подпишет SignPath, подписывается
+  # одноразовым самоподписанным сертификатом, и установщик собирается заново
+  # вторым проходом. Результат НЕ выкладывается — он только доказывает, что схема
+  # работает. Сертификат живёт в хранилище одноразового раннера.
+  check-signing:
+    needs: build
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-release
+          path: app/build/windows/x64/runner/Release
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: unsigned-uninstaller
+          path: uninst
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: choco install innosetup --no-progress -y
+
+      - name: Self-sign PE files and build installer (pass 2)
+        shell: pwsh
+        run: |
+          $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject 'CN=SilentGate CI rehearsal' `
+            -CertStoreLocation Cert:\CurrentUser\My -NotAfter (Get-Date).AddDays(1)
+          function Sign-Pe($path) {
+            $r = Set-AuthenticodeSignature $path -Certificate $cert -HashAlgorithm SHA256
+            # Самоподписанный сертификат не доверен — статус UnknownError, но
+            # подпись в файле есть. Нет подписи вовсе — NotSigned.
+            if ($r.Status -eq 'NotSigned') { throw "Не подписался: $path" }
+          }
+          # Только своё: silentgate.exe, ядро и DLL плагинов, собранные этой
+          # сборкой. flutter_windows.dll — чужая готовая сборка, SignPath её
+          # не подпишет (вопрос открыт в заявке, docs/HANDOFF_PUBLISH.md MS6).
+          $rel = 'app/build/windows/x64/runner/Release'
+          Get-ChildItem $rel -Recurse -Include *.exe, *.dll |
+            Where-Object { $_.Name -ne 'flutter_windows.dll' } |
+            ForEach-Object { Sign-Pe $_.FullName }
+          $e32 = (Get-ChildItem uninst -Filter 'uninst-*.e32').FullName
+          Copy-Item $e32 "$e32.exe"; Sign-Pe "$e32.exe"; Move-Item "$e32.exe" $e32 -Force
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" /Q /DSetupSuffix=-msstore /DNoTun "/DSignUninstallerDir=$((Resolve-Path uninst).Path)" installer/silentgate.iss
+          if ($LASTEXITCODE -ne 0) { throw "Проход 2: ISCC код $LASTEXITCODE" }
+          $setup = Get-ChildItem installer/Output/*.exe
+          Sign-Pe $setup.FullName
+          Get-ChildItem $rel -Recurse -Include *.exe, *.dll | ForEach-Object {
+            '{0,-40} {1,-12} {2}' -f $_.Name, (Get-AuthenticodeSignature $_.FullName).Status, $_.VersionInfo.ProductName
+          }

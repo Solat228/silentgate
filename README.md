@@ -154,7 +154,10 @@ Android идут через то же Xray-ядро, что и на ПК, — и
 
 Один Flutter/Dart-интерфейс на все платформы, движок — **Xray-core** (VLESS/XTLS/Reality)
 плюс **sing-box** отдельным процессом для TUN-режима и Hysteria2. Оба ядра — отдельные
-бинарники, не линкуются в приложение. Подробное обоснование стека, архитектура и
+бинарники, не линкуются в приложение. В сборке для Microsoft Store `xray.exe` — своя
+программа [engine/xraycore](engine/xraycore): Xray-core подключён к ней библиотекой той же
+версии, что и официальный бинарник, — ради подписи кода (см. «Code signing policy»).
+Подробное обоснование стека, архитектура и
 поэтапный план по платформам — в [docs/STACK_DECISION.md](docs/STACK_DECISION.md),
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) и [docs/ROADMAP.md](docs/ROADMAP.md).
 
@@ -172,13 +175,38 @@ flutter run -d windows
 
 Подробности разработки Windows-версии — [docs/platforms/WINDOWS.md](docs/platforms/WINDOWS.md).
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+Подписываются только файлы, собранные из исходников этого репозитория на раннерах GitHub
+Actions ([.github/workflows/build.yml](.github/workflows/build.yml)): `silentgate.exe`, ядро
+`xray.exe` (своя программа [engine/xraycore](engine/xraycore), Xray-core подключён к ней
+библиотекой), DLL плагинов, установщик и деинсталлятор. Готовые файлы других проектов
+(`flutter_windows.dll`) этой подписью не подписываются. Каждый выпуск подписывается только
+после ручного одобрения.
+
+Only files built from this repository's sources on GitHub Actions runners are signed. Prebuilt
+files of other projects are not signed with this certificate. Every release is approved manually.
+
+Team roles / роли:
+
+- Committers and reviewers: [Solat228](https://github.com/Solat228)
+- Approvers: [Solat228](https://github.com/Solat228)
+
+Privacy policy / политика конфиденциальности: <https://silentgate.lol/privacy>. Приложение
+обращается к сети только ради своей работы: подписка на серверы, VPN-соединение, проверка
+обновлений — подробно в политике.
+
 ## Лицензия
 
 Приложение распространяется под **[GNU GPL-3.0](LICENSE)**: форки и производные обязаны
 оставаться открытыми под той же лицензией.
 
 Оно поставляется вместе с чужими исполняемыми файлами: **Xray-core** (MPL-2.0, совместима
-с GPL-3.0) и **sing-box** (GPL-3.0) идут отдельными процессами, не линкуются; **Wintun** —
+с GPL-3.0) и **sing-box** (GPL-3.0) идут отдельными процессами, не линкуются (в сборке для
+Store Xray-core собран библиотекой внутри своей программы `engine/xraycore`); **Wintun** —
 своя разрешительная лицензия; гео-базы маршрутизации — CC-BY-SA-4.0. Ядра и гео-файлы в
 репозиторий не коммитятся, их скачивают скрипты `tools/fetch-*.ps1` при сборке. Полный
 разбор зависимостей — **[THIRD-PARTY.md](THIRD-PARTY.md)**.

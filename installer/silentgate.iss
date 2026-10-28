@@ -105,6 +105,21 @@ OutputDir=Output
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} — установка
+VersionInfoProductName={#MyAppName}
+#ifdef SignUninstallerDir
+; Подпись деинсталлятора для Microsoft Store (/DSignUninstallerDir=<каталог>,
+; заявка MS6). Store требует подписи у каждого PE поставки, а unins000.exe
+; Inno собирает сам, внутри компиляции. Подпись SignPath — внешняя служба с
+; ручным одобрением, синхронной командой SignTool её не вызвать, поэтому два
+; прохода (устройство — Compiler.SetupCompiler.pas, SignSetupMemoryFile):
+;   1) без подписанного файла компиляция кладёт в каталог неподписанный
+;      uninst-<версия>-<хэш>.e32 и падает с «нужна подпись»;
+;   2) .e32 подписывается снаружи и кладётся обратно под тем же именем —
+;      повторная компиляция берёт его, сверив содержимое без подписи.
+; Хэш в имени — от содержимого, так что чужой или устаревший файл не подхватится.
+SignedUninstaller=yes
+SignedUninstallerDir={#SignUninstallerDir}
+#endif
 Compression=lzma2
 SolidCompression=yes
 ; Per-user установка без прав администратора; TUN запросит UAC уже в рантайме.
