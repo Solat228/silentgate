@@ -140,6 +140,30 @@ flutter run -d windows
 
 Подробности разработки Windows-версии — [docs/platforms/WINDOWS.md](docs/platforms/WINDOWS.md).
 
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by
+[SignPath Foundation](https://signpath.org/).
+
+Подписываются только файлы, собранные из исходников этого репозитория на раннерах GitHub
+Actions ([.github/workflows/build.yml](.github/workflows/build.yml)): `silentgate.exe`, ядро
+`xray.exe` (своя программа [engine/xraycore](https://github.com/Solat228/silentgate/tree/ci/store/engine/xraycore), Xray-core подключён к ней
+библиотекой), DLL плагинов, установщик и деинсталлятор. Готовые файлы других проектов
+(`flutter_windows.dll`) этой подписью не подписываются. Каждый выпуск подписывается только
+после ручного одобрения.
+
+Only files built from this repository's sources on GitHub Actions runners are signed. Prebuilt
+files of other projects are not signed with this certificate. Every release is approved manually.
+
+Team roles / роли:
+
+- Committers and reviewers: [Solat228](https://github.com/Solat228)
+- Approvers: [Solat228](https://github.com/Solat228)
+
+Privacy policy / политика конфиденциальности: <https://silentgate.lol/privacy>. Приложение
+обращается к сети только ради своей работы: подписка на серверы, VPN-соединение, проверка
+обновлений — подробно в политике.
+
 ## Лицензия
 
 Приложение распространяется под **[GNU GPL-3.0](LICENSE)**: форки и производные обязаны
