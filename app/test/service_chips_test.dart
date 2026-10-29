@@ -465,7 +465,7 @@ void main() {
           reason: 'иначе непонятно, кто главнее: общий выключатель или набор');
     });
 
-    testWidgets('замок появляется только у сервиса с явным правилом',
+    testWidgets('развилка появляется только у сервиса с явным правилом',
         (t) async {
       // ⚠️ Падает на старом поведении: пометки не существовало.
       await t.runAsync(() => settings.update((c) => c.copyWith(
@@ -481,12 +481,12 @@ void main() {
       )));
       await t.pumpAndSettle();
 
-      expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget,
+      expect(find.byIcon(Icons.alt_route_rounded), findsOneWidget,
           reason: 'ровно один сервис уведён мимо VPN правилом');
-      expect(find.byIcon(Icons.block), findsNothing);
+      expect(find.byIcon(Icons.block_rounded), findsNothing);
     });
 
-    testWidgets('в режиме «Всё через VPN» замков нет', (t) async {
+    testWidgets('в режиме «Всё через VPN» развилок нет', (t) async {
       await t.runAsync(() => settings.update((c) => c.copyWith(
               splitTunnel: const SplitTunnelConfig(
             mode: SplitMode.all,
@@ -499,7 +499,7 @@ void main() {
         button: SizedBox(key: Key('btn'), width: 148, height: 148),
       )));
       await t.pumpAndSettle();
-      expect(find.byIcon(Icons.lock_open_rounded), findsNothing);
+      expect(find.byIcon(Icons.alt_route_rounded), findsNothing);
     });
 
     testWidgets('подменю открывается со всеми четырнадцатью сервисами',

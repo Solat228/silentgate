@@ -45,4 +45,13 @@ void main() {
     expect(bad.existsSync(), isTrue);
     expect(bad.readAsStringSync(), 'SGDPAPI1:!!!');
   });
+
+  // Ревью 29.10.2026, L5: старый `.bad` запрещал сохранить копию нового сбоя.
+  test('старый .bad не мешает сохранить копию нового сбоя', () async {
+    File('${file.path}.bad').writeAsStringSync('старый сбой');
+    file.writeAsStringSync('SGDPAPI1:новый');
+    await SettingsStorage().load();
+    expect(File('${file.path}.bad').readAsStringSync(), 'старый сбой');
+    expect(File('${file.path}.bad2').readAsStringSync(), 'SGDPAPI1:новый');
+  });
 }

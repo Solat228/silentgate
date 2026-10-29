@@ -1279,6 +1279,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'انقطع الاتصال ولم يُنشأ النفق — الحركة تمر خارج VPN. إعادة الاتصال خلال $seconds ث (المحاولة $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'النفق متصل، لكن لا تمر عبره أي حركة مرور';
 
@@ -2110,7 +2115,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'لكل خدمة أيقونتان\n• اليسار: الخدمة بدون VPN\n• اليمين: نفس الخدمة عبر VPN\n• السهم بينهما: التغيّر\n\nمتى يُؤخذ القياس\n• بدون VPN: تلقائيًا عند تشغيل التطبيق\n• عبر VPN: فور الاتصال\n\nلون الحلقة حول الأيقونة\n• أخضر: تُفتح\n• برتقالي: حجب حسب الدولة\n• أحمر: غير متاحة\n• رمادي: لم تُفحص بعد\n\nالعلامة في الزاوية تكرر اللون\n• ✓ تُفتح\n• ! حجب حسب الدولة\n• ✕ غير متاحة\n\nما يمكن الضغط عليه\n• الأيقونة: إعادة فحص الخدمة\n• زر الإعدادات المجاور: تغيير مجموعة الخدمات';
+      'الإطار حول الأيقونة مقسوم إلى نصفين\n• النصف الأيسر: الخدمة بدون VPN\n• النصف الأيمن: نفس الخدمة عبر VPN\n• الدائرة أسفل اليمين: الحالة الآن (✓ / ! / ✕)\n\nمتى يُؤخذ القياس\n• بدون VPN: تلقائيًا عند تشغيل التطبيق\n• عبر VPN: فور الاتصال\n\nلون نصفي الإطار والدائرة\n• أخضر: تُفتح\n• برتقالي: حجب حسب الدولة\n• أحمر: غير متاحة\n• رمادي: لم تُفحص بعد\n\nالعلامات في الزوايا\n• قفل مفتوح وقفل مغلق: أي نصف بدون VPN وأيهما عبر VPN\n• تفرّع على اليسار وإطار دائري: قاعدة «مباشر»، الخدمة تمر خارج VPN\n• قفل أزرق بسهم أو علامة منع حمراء: قاعدة توجّهها عبر خادم آخر أو تحجبها\n\nما يمكن الضغط عليه\n• الأيقونة: إعادة فحص الخدمة\n• زر الإعدادات المجاور: تغيير مجموعة الخدمات';
 
   @override
   String get serviceStatusOk => 'تعمل';
@@ -3339,6 +3344,17 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'محظور: قاعدة النفق المُقسَّم «$rule» تمنع هذا النطاق — لن تُفتح الخدمة سواء عبر الشبكة الافتراضية أو بدونها.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN متوقف';
+
+  @override
+  String get serviceChecksNow => 'الآن';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'عبر خادم آخر: قاعدة النفق المقسّم «$rule» توجّه هذا النطاق عبر «$server».';
   }
 
   @override

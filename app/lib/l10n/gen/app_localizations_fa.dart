@@ -1283,6 +1283,11 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'اتصال قطع شد و تونل برقرار نشد — ترافیک خارج از VPN می‌رود. اتصال دوباره تا $seconds ثانیه دیگر (تلاش $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'تونل برقرار است، اما ترافیکی از آن عبور نمی‌کند';
 
@@ -2117,7 +2122,7 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'دو نماد برای هر سرویس\n• چپ: سرویس بدون VPN\n• راست: همان سرویس از طریق VPN\n• پیکان میان آن‌ها: گذار\n\nزمان انجام سنجش\n• بدون VPN: خودکار هنگام اجرای برنامه\n• از طریق VPN: بلافاصله پس از اتصال\n\nرنگ حلقهٔ دور نماد\n• سبز: باز می‌شود\n• نارنجی: مسدودی کشوری\n• قرمز: در دسترس نیست\n• خاکستری: هنوز بررسی نشده\n\nنشان گوشه همان رنگ را تکرار می‌کند\n• ✓ باز می‌شود\n• ! مسدودی کشوری\n• ✕ در دسترس نیست\n\nچه چیزی را می‌توان زد\n• نماد: بررسی دوباره سرویس\n• دکمهٔ تنظیمات کنار آن: تغییر مجموعهٔ سرویس‌ها';
+      'قاب دور نماد دو نیمه است\n• نیمهٔ چپ: سرویس بدون VPN\n• نیمهٔ راست: همان سرویس از طریق VPN\n• دایرهٔ پایین سمت راست: وضعیت فعلی (✓ / ! / ✕)\n\nزمان انجام سنجش\n• بدون VPN: خودکار هنگام اجرای برنامه\n• از طریق VPN: بلافاصله پس از اتصال\n\nرنگ نیمه‌های قاب و دایره\n• سبز: باز می‌شود\n• نارنجی: مسدودی کشوری\n• قرمز: در دسترس نیست\n• خاکستری: هنوز بررسی نشده\n\nنشان‌های گوشه‌ها\n• قفل باز و قفل بسته: کدام نیمه بدون VPN و کدام از طریق VPN است\n• دوراهی در چپ و قاب گرد: قانون «مستقیم»، سرویس بیرون از VPN می‌رود\n• قفل آبی با پیکان یا نشان ممنوع قرمز: قانونی آن را از سرور دیگر عبور می‌دهد یا مسدود می‌کند\n\nچه چیزی را می‌توان زد\n• نماد: بررسی دوباره سرویس\n• دکمهٔ تنظیمات کنار آن: تغییر مجموعهٔ سرویس‌ها';
 
   @override
   String get serviceStatusOk => 'کار می‌کند';
@@ -3337,6 +3342,17 @@ class AppLocalizationsFa extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'مسدود: قانون تونل تفکیک‌شده «$rule» این دامنه را ممنوع کرده — سرویس نه با VPN باز می‌شود و نه بدون آن.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN خاموش است';
+
+  @override
+  String get serviceChecksNow => 'اکنون';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'از طریق سرور دیگر: قانون تونل‌زنی تقسیم‌شده «$rule» این دامنه را از «$server» عبور می‌دهد.';
   }
 
   @override

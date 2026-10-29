@@ -87,14 +87,14 @@ void main() {
     final longest = rows
         .map((r) => r.services.length)
         .reduce((a, b) => a > b ? a : b);
-    expect(w, closeTo(32.0 * longest + 6.0 * (longest - 1), 0.01),
+    expect(w, closeTo(40.0 * longest + 4.0 * (longest - 1), 0.01),
         reason: 'ширина сетки снова считается по числу блоков, а не по '
             'самой длинной группе');
 
-    // Высота — по строке на группу, а не по «две иконки в ряд»; просвет 6 —
+    // Высота — по строке на группу, а не по «две иконки в ряд»; просвет 4 —
     // ТОЛЬКО между строками (после последней его нет, как и рисуется).
     final h = ServiceChecksSides.sideHeightOf(rows, dense: true);
-    expect(h, closeTo(32.0 * rows.length + 6.0 * (rows.length - 1), 0.01),
+    expect(h, closeTo(40.0 * rows.length + 4.0 * (rows.length - 1), 0.01),
         reason: 'высота сетки снова считается с переносом, которого нет');
   });
 }

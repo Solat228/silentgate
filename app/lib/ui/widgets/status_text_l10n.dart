@@ -14,6 +14,8 @@ String? statusLine(AppLocalizations l, VpnStatus s) {
 String statusTextL10n(AppLocalizations l, StatusText t) => switch (t) {
       StatusReconnectBlocked(seconds: final sec, attempt: final a) =>
         l.statusReconnectBlocked(sec, a),
+      StatusReconnectUnprotected(seconds: final sec, attempt: final a) =>
+        l.statusReconnectUnprotected(sec, a),
       StatusTrafficNotFlowing() => l.statusTrafficNotFlowing,
       StatusNoInternet() => l.statusNoInternet,
       StatusVpnConsentDenied() => l.statusVpnConsentDenied,

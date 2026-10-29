@@ -1283,6 +1283,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'Connection lost, the tunnel did not come up — traffic is bypassing the VPN. Reconnecting in $seconds s (attempt $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'The tunnel is up, but no traffic goes through it';
 
@@ -2119,7 +2124,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Two icons per service\n• left: the service without VPN\n• right: the same service through VPN\n• arrow between them: the transition\n\nWhen the measurement is taken\n• without VPN: automatically at app start\n• through VPN: right after connecting\n\nRing color around the icon\n• green: opens\n• orange: blocked by country\n• red: unreachable\n• grey: not checked yet\n\nCorner mark repeats the color\n• ✓ opens\n• ! blocked by country\n• ✕ unreachable\n\nWhat you can tap\n• the icon: check the service again\n• the settings button nearby: change the service set';
+      'The frame around the icon is split in half\n• left half: the service without VPN\n• right half: the same service through VPN\n• circle at the bottom right: the current state (✓ / ! / ✕)\n\nWhen the measurement is taken\n• without VPN: automatically at app start\n• through VPN: right after connecting\n\nColor of the frame halves and the circle\n• green: opens\n• orange: blocked by country\n• red: unreachable\n• grey: not checked yet\n\nCorner badges\n• open and closed lock: which half is without VPN and which is through VPN\n• fork on the left and a round frame: a “Direct” rule, the service bypasses the VPN\n• blue lock with an arrow or red ban sign: a rule sends it through another server or blocks it\n\nWhat you can tap\n• the icon: check the service again\n• the settings button nearby: change the service set';
 
   @override
   String get serviceStatusOk => 'Works';
@@ -3345,6 +3350,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'Blocked: the split tunneling rule “$rule” forbids this domain — the service will not open, with or without the VPN.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN is off';
+
+  @override
+  String get serviceChecksNow => 'Now';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'Through another server: the split tunneling rule “$rule” routes this domain through “$server”.';
   }
 
   @override

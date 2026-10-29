@@ -1571,12 +1571,8 @@ class AppState extends ChangeNotifier {
     await _saveSubscriptions();
     await _persist();
     await _maybeStartUpdater();
-    AppLog.i('Активная подписка: ${p.title} (${_subServers.length} серверов)');
-    if (_status.isConnected) {
-      _setPendingRestart(
-          'Подписка переключена — переподключитесь, чтобы применить',
-          message: const UiRestartSubscriptionSwitched());
-    }
+    AppLog.i('Активная подписка: ${p.safeTitle} (${_subServers.length} серверов)');
+    _noteSubscriptionSelection();
     notifyListeners();
   }
 
@@ -1755,8 +1751,13 @@ class AppState extends ChangeNotifier {
   /// ⚠️ ВОЗВРАЩАЕМ ТОЛЬКО НЕДОСТАЮЩЕЕ. Если за время уведомления ту же ссылку
   /// импортировали заново или закрепили тот же сервер, свежее не затирается.
   Future<void> restoreSubscription(DeletedSubscription d) async {
-    if (_profiles.any((p) => p.id == d.profile.id)) return;
-    _profiles.insert(d.index.clamp(0, _profiles.length), d.profile);
+    // ⚠️ ПРОПУСКАЕМ ТОЛЬКО ВСТАВКУ ПРОФИЛЯ, А НЕ ВСЁ ВОССТАНОВЛЕНИЕ. Ту же
+    // ссылку могли переимпортировать, пока висело уведомление: профиль уже
+    // свежий, а пины и правки, ушедшие с удалением, импорт не возвращает.
+    // Ранний выход оставлял их потерянными вопреки обещанию кнопки.
+    if (!_profiles.any((p) => p.id == d.profile.id)) {
+      _profiles.insert(d.index.clamp(0, _profiles.length), d.profile);
+    }
 
     final pinnedKeys = _pinned.map((s) => s.key).toSet();
     for (final (i, server) in d.pinned) {
@@ -1790,6 +1791,12 @@ class AppState extends ChangeNotifier {
         final i = _servers.indexWhere((s) => s.key == key);
         if (i >= 0) _selectedIndex = i;
       }
+      // [switchSubscription] уже записал состояние — с первым сервером списка.
+      // Без второй записи после перезапуска выбранным оказывался не тот.
+      await _persist();
+      // Плашку ставил [switchSubscription] до возврата выбора; теперь выбор
+      // окончательный, и сверять с поднятым сервером надо заново.
+      _noteSubscriptionSelection();
     } else {
       await _saveSubscriptions();
       _rebuild();
@@ -1857,7 +1864,8 @@ class AppState extends ChangeNotifier {
       }
       _rebuild();
       await _persist();
-      AppLog.i('Подписка удалена, активной стала «${next.title}»');
+      AppLog.i('Подписка удалена, активной стала «${next.safeTitle}»');
+      _noteSubscriptionSelection();
       notifyListeners();
       return;
     }
@@ -2788,6 +2796,27 @@ class AppState extends ChangeNotifier {
     }
     _persist();
     notifyListeners();
+  }
+
+  /// Сменилась открытая подписка — сверить выбор с поднятым сервером.
+  ///
+  /// ⚠️ СРАВНИВАЕМ С ТЕМ, ЧТО ПОДНЯТО, А НЕ «ПОДПИСКА СМЕНИЛАСЬ — ЗНАЧИТ
+  /// ПЕРЕПОДКЛЮЧАЙСЯ». Пины общие: после смены подписки выбранным может
+  /// остаться тот же сервер, и плашка была бы ложной. И наоборот: удаление
+  /// открытой подписки уводило выбор на сервер другой подписки молча — трафик
+  /// шёл через удалённый сервер, а на экране был выбран другой.
+  void _noteSubscriptionSelection() {
+    if (!_status.isConnected) return;
+    final connected = _connectedServerKey;
+    if (connected != null && selectedServer?.key == connected) {
+      if (_pendingRestartMessage is UiRestartSubscriptionSwitched) {
+        _setPendingRestart(null);
+      }
+      return;
+    }
+    _setPendingRestart(
+        'Подписка переключена — переподключитесь, чтобы применить',
+        message: const UiRestartSubscriptionSwitched());
   }
 
   /// #13/#13.1 — что-то изменилось, но применится только после переподключения.

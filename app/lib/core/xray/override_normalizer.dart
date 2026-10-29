@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'balancer_pick.dart';
+import 'xray_keys.dart';
 
 /// Результат нормализации полного Xray-конфига (пользовательский override или
 /// профиль от панели) под порты захвата приложения.
@@ -66,6 +67,8 @@ String ensureXrayStats(String rawJson, {required int apiPort}) {
       ...(cfg['api'] is Map ? cfg['api'] as Map : const {}),
     };
     api['tag'] ??= 'api';
+    // См. `normalizeOverridePorts`: `listen` у api — слушатель мимо inbound'а.
+    api.remove('listen');
     // ⚠️ ТОЛЬКО НУЖНЫЕ НАМ СЛУЖБЫ. `HandlerService` из конфига панели
     // позволял бы любому процессу на петле дописать ядру свой inbound или
     // outbound, `LoggerService` — перезапустить журнал (аудит, F).
@@ -208,6 +211,23 @@ OverrideNormalized normalizeOverridePorts(
       log.remove('access');
       log.remove('error');
     }
+
+    // ⚠️ СВОИ СЛУШАТЕЛИ ЯДРА — ТОЛЬКО ЧЕРЕЗ INBOUND НА ПЕТЛЕ (ревью 29.10.2026,
+    // M1/L14). Непустой `listen` у `api` открывает gRPC управления ядром
+    // напрямую, мимо inbound'ов, — то есть мимо `127.0.0.1` выше; у `metrics`
+    // — pprof и expvar (история назначений соединений). С `0.0.0.0` из чужого
+    // конфига это видела вся сеть. Без `listen` раздел работает через inbound
+    // с его тегом, а без тега у `metrics` достучаться до него нечем.
+    final api = cfg['api'];
+    if (api is Map) api.remove('listen');
+    final metrics = cfg['metrics'];
+    if (metrics is Map) {
+      metrics.remove('listen');
+      if ('${metrics['tag'] ?? ''}'.isEmpty) cfg.remove('metrics');
+    } else if (metrics != null) {
+      cfg.remove('metrics');
+    }
+    stripMasterKeyLog(cfg);
 
     final added = <String>[];
     if (!hasSocks) {

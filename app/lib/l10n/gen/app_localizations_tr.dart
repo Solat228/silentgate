@@ -1290,6 +1290,11 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'Bağlantı koptu, tünel kurulamadı — trafik VPN dışından gidiyor. $seconds sn sonra yeniden bağlanılıyor ($attempt. deneme)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'Tünel kuruldu ama içinden trafik geçmiyor';
 
@@ -2127,7 +2132,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Her serviste iki simge\n• solda: VPN\'siz servis\n• sağda: aynı servisin VPN üzerinden hâli\n• aralarındaki ok: geçiş\n\nÖlçüm ne zaman alınır\n• VPN\'siz: uygulama açılırken kendiliğinden\n• VPN üzerinden: bağlanır bağlanmaz\n\nSimgenin etrafındaki halka rengi\n• yeşil: açılıyor\n• turuncu: ülke engeli\n• kırmızı: erişilemiyor\n• gri: henüz sınanmadı\n\nKöşedeki işaret aynı rengi tekrarlar\n• ✓ açılıyor\n• ! ülke engeli\n• ✕ erişilemiyor\n\nNeye dokunulabilir\n• simgeye: servisi yeniden sına\n• yandaki ayarlar düğmesine: servis kümesini değiştir';
+      'Simgenin çerçevesi ikiye bölünmüştür\n• sol yarı: VPN\'siz servis\n• sağ yarı: aynı servisin VPN üzerinden hâli\n• sağ alttaki daire: şu anki durum (✓ / ! / ✕)\n\nÖlçüm ne zaman alınır\n• VPN\'siz: uygulama açılırken kendiliğinden\n• VPN üzerinden: bağlanır bağlanmaz\n\nÇerçeve yarılarının ve dairenin rengi\n• yeşil: açılıyor\n• turuncu: ülke engeli\n• kırmızı: erişilemiyor\n• gri: henüz sınanmadı\n\nKöşelerdeki işaretler\n• açık ve kapalı kilit: hangi yarı VPN\'siz, hangisi VPN üzerinden\n• solda çatal ve yuvarlak çerçeve: “Doğrudan” kuralı, servis VPN dışından gider\n• oklu mavi kilit veya kırmızı yasak işareti: bir kural onu başka sunucudan geçirir ya da engeller\n\nNeye dokunulabilir\n• simgeye: servisi yeniden sına\n• yandaki ayarlar düğmesine: servis kümesini değiştir';
 
   @override
   String get serviceStatusOk => 'Çalışıyor';
@@ -3350,6 +3355,17 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'Engelli: bölünmüş tünel kuralı “$rule” bu alan adını yasaklıyor — servis VPN ile de VPN’siz de açılmaz.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN kapalı';
+
+  @override
+  String get serviceChecksNow => 'Şu an';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'Başka sunucu üzerinden: bölünmüş tünel kuralı “$rule” bu alan adını “$server” üzerinden yönlendiriyor.';
   }
 
   @override

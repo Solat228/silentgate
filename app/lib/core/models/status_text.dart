@@ -21,6 +21,15 @@ final class StatusReconnectBlocked extends StatusText {
   const StatusReconnectBlocked({required this.seconds, required this.attempt});
 }
 
+/// Kill switch включён, но захват потерян (туннель не поднялся): трафик идёт
+/// мимо VPN, впереди очередная попытка.
+final class StatusReconnectUnprotected extends StatusText {
+  final int seconds;
+  final int attempt;
+  const StatusReconnectUnprotected(
+      {required this.seconds, required this.attempt});
+}
+
 /// Нет интернета ни через туннель, ни напрямую — ждём сеть.
 final class StatusNoInternet extends StatusText {
   const StatusNoInternet();

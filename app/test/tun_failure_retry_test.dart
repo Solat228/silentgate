@@ -39,4 +39,41 @@ void main() {
     expect(clean, greaterThan(retry));
     expect(body, contains('tunFailureRetries('));
   });
+
+  // Ревью 29.10.2026, H4: отказ TUN уже снял захват (помощник, выходя, убирает
+  // фильтры WFP). Бесконечный повтор с «трафик заблокирован» на экране врал.
+  test('отказы TUN подряд ограничены', () {
+    for (var n = 1; n < WindowsEngine.tunFailureLimit; n++) {
+      expect(
+          WindowsEngine.tunFailureRetries(
+              freshUserConnect: false, elevationDenied: false, failStreak: n),
+          isTrue,
+          reason: 'отказ №$n');
+    }
+    expect(
+        WindowsEngine.tunFailureRetries(
+            freshUserConnect: false,
+            elevationDenied: false,
+            failStreak: WindowsEngine.tunFailureLimit),
+        isFalse);
+  });
+
+  test('после отказа TUN состояние туннеля сброшено ДО повтора', () {
+    final src =
+        File('lib/engine/windows/windows_engine.dart').readAsStringSync();
+    final start = src.indexOf('} on TunStartException catch (e) {');
+    final end = src.indexOf('} catch (e) {', start);
+    final body = src.substring(start, end);
+    final release = body.indexOf('await _releaseOwnTun(gen);');
+    expect(release, greaterThan(0));
+    expect(body.indexOf('scheduleRetry('), greaterThan(release));
+    expect(src, contains('bool killSwitchHolding(EngineSession session) =>'));
+  });
+
+  test('статус повтора без захвата не говорит «заблокирован»', () {
+    final src = File('lib/engine/engine_base.dart').readAsStringSync();
+    expect(src, contains('final holding = capturing && killSwitchHolding(session);'));
+    expect(src, contains('blocking: holding);'));
+    expect(src, contains('StatusReconnectUnprotected('));
+  });
 }

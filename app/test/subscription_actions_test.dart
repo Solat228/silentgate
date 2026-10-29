@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
+import 'package:silentgate/core/models/ui_message.dart';
 import 'package:silentgate/core/models/subscription_info.dart';
 import 'package:silentgate/core/models/subscription_profile.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
@@ -14,6 +15,7 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/platform/device_id.dart';
+import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/subscription/subscription_logo.dart';
 import 'package:silentgate/core/subscription/subscription_service.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
@@ -33,11 +35,15 @@ import 'package:silentgate/state/app_state.dart';
 /// боевой `%APPDATA%` тесты не трогают никогда (предохранитель в `AppPaths`).
 /// В сеть никто не ходит — панель подменена.
 class _FakeEngine extends VpnEngine {
+  // Подключение «поднимается» сразу: тестам удаления при живом туннеле нужен
+  // статус «Подключено», а сеть и ядро им ни к чему.
+  final _statusCtrl = StreamController<VpnStatus>.broadcast();
+
   @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
 
   @override
-  Stream<VpnStatus> get statusStream => const Stream.empty();
+  Stream<VpnStatus> get statusStream => _statusCtrl.stream;
 
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
@@ -53,7 +59,9 @@ class _FakeEngine extends VpnEngine {
 
   @override
   Future<void> connect(VpnServer server,
-      {ConnectionOptions options = const ConnectionOptions()}) async {}
+      {ConnectionOptions options = const ConnectionOptions()}) async {
+    _statusCtrl.add(const VpnStatus(VpnConnectionState.connected));
+  }
 
   @override
   Future<void> connectBalancer(List<VpnServer> servers,
@@ -63,7 +71,9 @@ class _FakeEngine extends VpnEngine {
   Future<void> disconnect() async {}
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    await _statusCtrl.close();
+  }
 }
 
 /// Панель, которая запоминает, ЧЬЮ подписку у неё спросили, и отдаёт свой
@@ -120,6 +130,8 @@ void main() {
       '?type=tcp&security=none#B';
   const linkFresh = 'vless://44444444-4444-4444-4444-444444444444@fresh.example'
       ':443?type=tcp&security=none#FRESH';
+  const linkA2 = 'vless://55555555-5555-5555-5555-555555555555@a2.example:443'
+      '?type=tcp&security=none#A2';
 
   Directory? tmp;
   AppState? live;
@@ -134,9 +146,20 @@ void main() {
   /// [withUrl] == false — состояние БЕЗ единой подписки, но с названием в
   /// карточке: так выглядит клиент, в который сервер добавили руками (ссылкой
   /// или своим JSON). Подписки за таким сервером нет, и открывать нечего.
+  /// Поднять `AppState` над уже засеянным каталогом (и при перезапуске).
+  AppState open({_FakePanel? panel}) => live = AppState(
+        engine: _FakeEngine(),
+        subscription: panel ?? _FakePanel(),
+        // Логотип ищется без сети: панель выдуманная.
+        logoFinder: () => SubscriptionLogo(
+            client: MockClient((_) async => http.Response('', 404))),
+      );
+
   AppState boot({
     bool withUrl = true,
     List<String> pinned = const [],
+    List<String> serversA = const [linkA],
+    int selectedIndex = 0,
     _FakePanel? panel,
   }) {
     tmp = Directory.systemTemp.createTempSync('sg_sub_actions_');
@@ -151,13 +174,13 @@ void main() {
     if (withUrl) {
       seed('silentgate_state.json', {
         'subscriptionUrl': urlA,
-        'servers': [linkA],
-        'selectedIndex': 0,
+        'servers': serversA,
+        'selectedIndex': selectedIndex,
       });
       seed('subscriptions.json', {
         'activeId': idA,
         'items': [
-          {'id': idA, 'url': urlA, 'servers': [linkA]},
+          {'id': idA, 'url': urlA, 'servers': serversA},
           {'id': idB, 'url': urlB, 'servers': [linkB]},
         ],
       });
@@ -169,13 +192,7 @@ void main() {
         'info': const SubscriptionInfo(title: 'Ручной сервер').toJson(),
       });
     }
-    return live = AppState(
-      engine: _FakeEngine(),
-      subscription: panel ?? _FakePanel(),
-      // Логотип ищется без сети: панель выдуманная.
-      logoFinder: () => SubscriptionLogo(
-          client: MockClient((_) async => http.Response('', 404))),
-    );
+    return open(panel: panel);
   }
 
   setUp(() => setDeviceIdProviderForTests(_FakeDeviceId()));
@@ -349,6 +366,88 @@ void main() {
       final state = boot();
       await state.init();
       expect(await state.deleteSubscription(id: 'sub_нет'), isNull);
+    });
+  });
+
+  // Ревью 29.10.2026, L9–L11 и H6.
+  group('Восстановление и удаление: что дошло до диска и до экрана', () {
+    test('⚠️ L9: открытая подписка возвращается с выбором и на диске',
+        () async {
+      final state = boot(serversA: [linkA, linkA2], selectedIndex: 1);
+      await state.init();
+      final keyA2 = ShareLinkParser.tryParse(linkA2)!.key;
+      expect(state.selectedServer?.key, keyA2);
+
+      final d = await state.deleteSubscription();
+      await state.restoreSubscription(d!);
+      expect(state.selectedServer?.key, keyA2);
+
+      // Перезапуск: состояние читается с диска заново.
+      state.dispose();
+      final again = open();
+      await again.init();
+      expect(again.selectedServer?.key, keyA2,
+          reason: 'ЗДЕСЬ БЫЛА ПОТЕРЯ: выбор возвращали в память после записи '
+              'на диск, и после перезапуска выбран был первый сервер');
+    });
+
+    test('⚠️ L10: подписку переимпортировали — закрепления всё равно '
+        'возвращаются', () async {
+      final state = boot(
+          pinned: [linkA, linkB], panel: _FakePanel(answers: {urlB: [linkB]}));
+      await state.init();
+      final d = await state.deleteSubscription(id: idB, removePinned: true);
+      expect(state.pinnedCount, 1);
+
+      // Пока висело уведомление, ту же ссылку импортировали заново.
+      await state.importSource(urlB);
+      expect(state.subscriptions.map((p) => p.id), contains(idB));
+
+      await state.restoreSubscription(d!);
+      expect(state.pinnedCount, 2,
+          reason: 'ЗДЕСЬ БЫЛА ПОТЕРЯ: профиль уже был, и восстановление '
+              'выходило сразу, не вернув снятое закрепление');
+      expect(state.subscriptions.where((p) => p.id == idB).length, 1,
+          reason: 'профиль не задвоился');
+    });
+
+    test('⚠️ L11: удалили открытую при живом туннеле — плашка есть, '
+        'после восстановления снята', () async {
+      // Поднят НЕ первый сервер подписки: переключение на неё ставит первый,
+      // и только возврат выбора снимает расхождение.
+      final state = boot(serversA: [linkA, linkA2], selectedIndex: 1);
+      await state.init();
+      await state.toggleConnection(const AppSettings());
+      await Future<void>.delayed(Duration.zero);
+      expect(state.status.isConnected, isTrue);
+      expect(state.pendingRestartMessage, isNull);
+
+      final d = await state.deleteSubscription();
+      expect(state.selectedServer?.key, ShareLinkParser.tryParse(linkB)!.key);
+      expect(state.pendingRestartMessage, isA<UiRestartSubscriptionSwitched>(),
+          reason: 'туннель идёт через сервер удалённой подписки, а выбран '
+              'другой — без плашки об этом не узнать');
+
+      await state.restoreSubscription(d!);
+      expect(state.selectedServer?.key, ShareLinkParser.tryParse(linkA2)!.key);
+      expect(state.pendingRestartMessage, isNull,
+          reason: 'выбор снова совпал с поднятым сервером — плашка ложная');
+    });
+
+    test('H6: журнал называет подписку безопасным именем', () {
+      // Запасное имя подписки (`title` без названия) — хвост адреса, у
+      // Remnawave это токен. В журнал и отчёт поддержки — только `safeTitle`.
+      final src = File('lib/state/app_state.dart').readAsStringSync();
+      final calls = RegExp(r'AppLog\.[a-z]+\([^;]*?\);')
+          .allMatches(src)
+          .map((m) => m.group(0)!)
+          .toList();
+      expect(calls, isNotEmpty);
+      final leaks = [
+        for (final c in calls)
+          if (RegExp(r'\.title\b').hasMatch(c)) c,
+      ];
+      expect(leaks, isEmpty);
     });
   });
 

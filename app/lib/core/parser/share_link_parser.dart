@@ -297,6 +297,10 @@ class ShareLinkParser {
       host: _nz(s('host')),
       path: _nz(s('path')),
       alpn: _nz(s('alpn')),
+      // Отпечаток uTLS. Сборка (`buildEditedLink`) его пишет — без чтения
+      // здесь правка отпечатка у vmess пропадала после перезапуска (ревью
+      // 29.10.2026, L16). Ключ vmess — исходная ссылка, он от поля не зависит.
+      fingerprint: _nz(s('fp')),
       headerType: _nz(s('type')),
       rawLink: link,
     );

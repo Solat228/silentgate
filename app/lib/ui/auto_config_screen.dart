@@ -617,10 +617,15 @@ class _FoundCard extends StatelessWidget {
           IconButton(
             tooltip: l.autoConnect,
             icon: const Icon(Icons.power_settings_new, size: 20),
-            onPressed: () {
+            onPressed: () async {
               final state = context.read<AppState>();
               final settings = context.read<SettingsController>().settings;
-              state.applyAutoConfigResult(result.server, result.variant);
+              final nav = Navigator.of(context);
+              // ⚠️ ЖДЁМ ПРИМЕНЕНИЯ. Выбор и вариация ставятся после записи
+              // пина на диск, а подключение читает выбор сразу: без `await`
+              // туннель поднимался через прежний сервер, а в списке был
+              // выбран найденный (ревью 29.10.2026, H5).
+              await state.applyAutoConfigResult(result.server, result.variant);
               // ⚠️ `toggleConnection` — переключатель: на живом канале
               // «Подключить» ОТКЛЮЧАЛ VPN (аудит 25.10.2026, I).
               final live = state.status.isConnected ||
@@ -628,7 +633,7 @@ class _FoundCard extends StatelessWidget {
               live
                   ? state.reconnect(settings)
                   : state.toggleConnection(settings);
-              Navigator.of(context).pop();
+              if (nav.mounted) nav.pop();
             },
           ),
         ]),

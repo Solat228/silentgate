@@ -712,16 +712,66 @@ class TunHelper {
     }
   }
 
-  /// Убрать из конфига поля, по которым ядро ПИШЕТ файлы.
+  /// Разделы верхнего уровня, которые строит наш построитель TUN.
+  static const _allowedTopLevel = {
+    'log', 'dns', 'inbounds', 'outbounds', 'route', 'experimental', //
+  };
+
+  /// Типы inbound, которые строит наш построитель TUN.
+  static const _allowedInboundTypes = {'tun', 'mixed', 'socks', 'http'};
+
+  /// Типы outbound, которые строят наши построители (TUN и выходы).
+  static const _allowedOutboundTypes = {
+    'direct', 'block', 'dns', 'socks', 'http', 'selector', 'urltest', //
+    'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2',
+  };
+
+  /// Проверить конфиг ядра помощника и убрать поля, по которым ядро ПИШЕТ файлы.
   ///
   /// Ядро помощника работает с правами администратора, а конфиг пишет
   /// приложение без прав. `log.output`, `experimental.cache_file` и
   /// загрузка `external_ui` дали бы запись в любой путь системы. Наш
   /// построитель этих полей на Windows не ставит — вывод ядра помощник
-  /// собирает сам из stdout. Не JSON — исключение, ядро не запускается.
+  /// собирает сам из stdout.
+  ///
+  /// ⚠️ БЕЛЫЙ СПИСОК, А НЕ ЧЁРНЫЙ (ревью 29.10.2026, H1/H2). Чёрный список
+  /// не знал outbound `tor`: его `executable_path` запускает любой exe от
+  /// администратора. А декодер sing-box сравнивает ключи БЕЗ учёта регистра:
+  /// `{"Log":{"output":…}}` проходил мимо удаления `log.output`. Поэтому:
+  /// - ключи только в нижнем регистре (у sing-box других нет), кроме
+  ///   содержимого `headers` — там имена HTTP-заголовков (`Host`);
+  /// - разделы верхнего уровня, типы inbound и outbound — только те, что
+  ///   строим мы сами; inbound с `tls` не строим вовсе (там ACME пишет файлы).
+  /// Отказ — исключение, ядро не запускается: конфиг пишет только наше
+  /// приложение, и чужое в нём означает подмену.
   @visibleForTesting
   static String sanitizeElevatedConfig(String raw) {
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
+    _requireLowercaseKeys(cfg, r'$');
+    for (final k in cfg.keys) {
+      if (!_allowedTopLevel.contains(k)) {
+        throw FormatException('конфиг помощника: раздел «$k» не наш');
+      }
+    }
+    for (final (field, allowed) in [
+      ('inbounds', _allowedInboundTypes),
+      ('outbounds', _allowedOutboundTypes),
+    ]) {
+      final list = cfg[field];
+      if (list == null) continue;
+      if (list is! List) {
+        throw FormatException('конфиг помощника: «$field» не список');
+      }
+      for (final e in list) {
+        final type = e is Map ? e['type'] : null;
+        if (type is! String || !allowed.contains(type)) {
+          throw FormatException('конфиг помощника: $field типа «$type» не наш');
+        }
+        if (field == 'inbounds' && (e as Map).containsKey('tls')) {
+          throw const FormatException('конфиг помощника: inbound с tls не наш');
+        }
+      }
+    }
     final log = cfg['log'];
     if (log is Map) log.remove('output');
     final exp = cfg['experimental'];
@@ -735,6 +785,27 @@ class TunHelper {
       }
     }
     return jsonEncode(cfg);
+  }
+
+  /// Все ключи — в нижнем регистре; иначе исключение с путём до ключа.
+  static void _requireLowercaseKeys(Object? node, String path) {
+    if (node is Map) {
+      for (final e in node.entries) {
+        final k = '${e.key}';
+        if (k != k.toLowerCase()) {
+          throw FormatException('конфиг помощника: ключ «$path.$k» не в '
+              'нижнем регистре');
+        }
+        // Имена HTTP-заголовков пишутся как угодно (`Host`), и ядро их не
+        // сопоставляет с полями — проверять там нечего.
+        if (k == 'headers') continue;
+        _requireLowercaseKeys(e.value, '$path.$k');
+      }
+    } else if (node is List) {
+      for (var i = 0; i < node.length; i++) {
+        _requireLowercaseKeys(node[i], '$path[$i]');
+      }
+    }
   }
 
   /// Свои бинари — те, что обязаны ходить в сеть при поднятой блокировке.

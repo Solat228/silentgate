@@ -1251,6 +1251,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return '连接已断开，隧道未能建立——流量正在绕过 VPN。$seconds 秒后重新连接（第 $attempt 次尝试）…';
+  }
+
+  @override
   String get statusTrafficNotFlowing => '隧道已建立，但没有流量通过';
 
   @override
@@ -2063,7 +2068,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      '每个服务两个图标\n• 左边：不使用 VPN 时的该服务\n• 右边：使用 VPN 时的同一服务\n• 中间的箭头：变化\n\n何时进行检测\n• 不使用 VPN：应用启动时自动进行\n• 使用 VPN：连接成功后立即进行\n\n图标外圈颜色\n• 绿色：可访问\n• 橙色：所在地区被屏蔽\n• 红色：无法访问\n• 灰色：尚未检测\n\n角标颜色含义相同\n• ✓ 可访问\n• ! 地区屏蔽\n• ✕ 无法访问\n\n可以点按的内容\n• 图标：重新检测该服务\n• 旁边的设置按钮：更改服务组合';
+      '图标外框分为两半\n• 左半边：不使用 VPN 时的该服务\n• 右半边：使用 VPN 时的同一服务\n• 右下角圆点：当前状态（✓ / ! / ✕）\n\n何时进行检测\n• 不使用 VPN：应用启动时自动进行\n• 使用 VPN：连接成功后立即进行\n\n外框两半和圆点的颜色\n• 绿色：可访问\n• 橙色：所在地区被屏蔽\n• 红色：无法访问\n• 灰色：尚未检测\n\n角上的标记\n• 打开的锁和关闭的锁：哪一半不使用 VPN，哪一半使用 VPN\n• 左侧分叉和圆形外框：“直连”规则，该服务不经过 VPN\n• 带箭头的蓝色锁或红色禁止标志：规则让它经其他服务器访问或将其屏蔽\n\n可以点按的内容\n• 图标：重新检测该服务\n• 旁边的设置按钮：更改服务组合';
 
   @override
   String get serviceStatusOk => '可用';
@@ -3221,6 +3226,17 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return '已拦截：分应用代理规则「$rule」禁止该域名——无论是否开启 VPN，该服务都无法打开。';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN 已关闭';
+
+  @override
+  String get serviceChecksNow => '当前';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return '经其他服务器：分流规则“$rule”让该域名经“$server”访问。';
   }
 
   @override

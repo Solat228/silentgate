@@ -236,6 +236,24 @@ void main() {
       expect(ok('https://203.0.113.1/x', 'https://203.0.113.2/x'), isFalse);
       expect(ok('https://a.example.org/x', 'ftp://a.example.org/x'), isFalse);
     });
+
+    // Ревью 29.10.2026, L8: общий хостинг раздаёт поддомены разным людям.
+    test('общий хостинг — суффикс, соседи чужие', () {
+      bool ok(String a, String b) => SubscriptionService
+          .acceptablePermanentMove(Uri.parse(a), Uri.parse(b));
+      expect(ok('https://mine.duckdns.org/s', 'https://evil.duckdns.org/s'),
+          isFalse);
+      expect(ok('https://me.github.io/s', 'https://you.github.io/s'), isFalse);
+      expect(ok('https://a.workers.dev/s', 'https://b.workers.dev/s'), isFalse);
+      expect(
+          ok('https://a.up.railway.app/s', 'https://b.up.railway.app/s'),
+          isFalse);
+      expect(
+          ok('https://x.mine.duckdns.org/s', 'https://y.mine.duckdns.org/s'),
+          isTrue, reason: 'внутри своего поддомена — тот же владелец');
+      expect(ok('https://sub.example.lol/s', 'https://s.example.lol/s'),
+          isTrue);
+    });
   });
 
   test('⚠️ тело больше предела — исключение, а не память до отказа',

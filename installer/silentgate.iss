@@ -180,6 +180,13 @@ Name: "ar"; MessagesFile: "compiler:Languages\Arabic.isl"
 ; они уезжали в установщик и портативный архив (+30 МБ). Страж — installer_test.
 Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Excludes: "*.bak"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+; dartjni.dll (пакет jni) Windows-сборке не нужен и с 2569690 в поставку не едет
+; (CMake стирает его из Release). Inno не удаляет файлы, которых нет в новой
+; версии: без этой строки обновление поверх 1.17.1 и старше оставляло бы старую
+; неподписанную DLL в каталоге программы (ревью 29.10.2026, L3).
+[InstallDelete]
+Type: files; Name: "{app}\dartjni.dll"
+
 #ifdef NoTun
 ; Сборка без драйвера для Microsoft Store (/DNoTun, заявка MS3): wintun.dll и
 ; sing-box.exe в ней нет. Inno не удаляет файлы, которых нет в новой версии, и

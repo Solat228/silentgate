@@ -264,12 +264,40 @@ class SubscriptionService {
           shared.contains(parts[parts.length - 2])) {
         keep = 3;
       }
+      // ⚠️ ОБЩИЙ ХОСТИНГ — ТОЖЕ СУФФИКС (ревью 29.10.2026, L8). На
+      // `duckdns.org` или `github.io` у каждого клиента свой поддомен, и
+      // «тот же домен второго уровня» означал любого соседа по сервису.
+      // Самый длинный подходящий: `up.railway.app` точнее `railway.app`.
+      for (final suffix in multiTenantSuffixes) {
+        if (h == suffix || h.endsWith('.$suffix')) {
+          final k = suffix.split('.').length + 1;
+          if (k > keep) keep = k;
+        }
+      }
       return parts.length <= keep
           ? h
           : parts.sublist(parts.length - keep).join('.');
     }
     return base(a) == base(b);
   }
+
+  /// Домены, где поддомены раздаются разным владельцам (выдержка из Public
+  /// Suffix List: динамический DNS, бесплатный хостинг, туннели).
+  ///
+  /// Полный список — тысячи строк и свой разборщик; здесь — то, на чём
+  /// реально держат панели и зеркала подписок. Ошибка «не узнали суффикс»
+  /// стоит лишь того, что переезд не запомнится, а «узнали лишнее» — нет.
+  static const multiTenantSuffixes = [
+    'duckdns.org', 'ddns.net', 'no-ip.org', 'no-ip.com', 'hopto.org',
+    'zapto.org', 'sytes.net', 'dynu.net', 'freemyip.com', 'dynv6.net',
+    'afraid.org', 'mooo.com', 'github.io', 'gitlab.io', 'workers.dev',
+    'pages.dev', 'trycloudflare.com', 'herokuapp.com', 'netlify.app',
+    'vercel.app', 'onrender.com', 'fly.dev', 'web.app', 'firebaseapp.com',
+    'appspot.com', 'azurewebsites.net', 'cloudfront.net', 'ngrok.io',
+    'ngrok-free.app', 'ngrok.app', 'glitch.me', 'replit.app', 'deno.dev',
+    'surge.sh', 'loca.lt', 'serveo.net', 'repl.co', 'koyeb.app',
+    'railway.app', 'up.railway.app', 'vercel.dev', 'blogspot.com',
+  ];
 
   void close() => _client.close();
 }

@@ -75,6 +75,27 @@ void main() {
       expect(back.id, src.id);
     });
 
+    // Ревью 29.10.2026, L16: `fp` не писался в ссылку vmess и не читался из
+    // неё — отпечаток uTLS пропадал после перезапуска.
+    test('vmess: отпечаток uTLS переживает перезапуск', () {
+      const base = VpnServer(
+        protocol: 'vmess',
+        remark: 'V',
+        address: '203.0.113.9',
+        port: 443,
+        id: '00000000-0000-0000-0000-00000000000a',
+        network: 'ws',
+        security: 'tls',
+        rawLink: '',
+      );
+      final back = ShareLinkParser.tryParse(
+          base.copyWith(fingerprint: 'firefox').buildEditedLink())!;
+      expect(back.fingerprint, 'firefox');
+      // Без отпечатка поле не появляется пустым.
+      final plain = ShareLinkParser.tryParse(base.buildEditedLink())!;
+      expect(plain.fingerprint, isNull);
+    });
+
     test('ss, в том числе узел панели без ссылки', () {
       const panel = VpnServer(
         protocol: 'shadowsocks',

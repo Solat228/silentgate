@@ -42,7 +42,11 @@ class SettingsController extends ChangeNotifier {
   Future<void> get whenLoaded => _loaded.future;
   final Completer<void> _loaded = Completer<void>();
 
+  /// [init] уже запущен (возможно, ещё не дочитал файл).
+  bool _initStarted = false;
+
   Future<void> init() async {
+    _initStarted = true;
     try {
       _settings = _normalize(await _storage.load());
       _applyLogLevel();
@@ -86,6 +90,11 @@ class SettingsController extends ChangeNotifier {
   }
 
   Future<void> update(AppSettings Function(AppSettings current) mutate) async {
+    // ⚠️ ПРАВКА ДО ДОЧИТАННОГО ФАЙЛА (ревью 29.10.2026, L6). Мутация
+    // применялась к умолчаниям: `init` затем затирал её значениями с диска, а
+    // если `save` успевал раньше — умолчания с одной правкой ложились поверх
+    // настроек пользователя. Без запущенного `init` (тесты) ждать нечего.
+    if (_initStarted && !loaded) await whenLoaded;
     final before = _settings;
     _settings = _normalize(mutate(_settings));
     // Порог применяем СРАЗУ, до записи на диск и уведомлений: человек, только

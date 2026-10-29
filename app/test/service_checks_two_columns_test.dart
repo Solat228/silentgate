@@ -141,31 +141,31 @@ void main() {
     final rows = ServiceChecks.grouped(ServiceChecks.catalog);
     final split = ServiceChecksSides.splitForTest(rows, dense: false);
     expect(ServiceChecksSides.sideWidthOf(split.right, dense: false),
-        closeTo(2 * 82 + 10, 0.01),
+        closeTo(2 * (cellWidth + 4) + 10, 0.01),
         reason: 'сторона шире двух блоков — в ряд встало больше двух');
     expect(ServiceChecksSides.sideWidthOf(split.left, dense: false),
-        closeTo(2 * 82 + 10, 0.01));
+        closeTo(2 * (cellWidth + 4) + 10, 0.01));
   });
 
   test('⚠️ формула высоты блока описывает то, что рисуется', () {
-    // Подпись 22 + 2 + линия 1 = 25, зазор 4, на сервис — бокс 34 плюс
-    // 8 отступов. Просвет 10 — ТОЛЬКО между рядами. Две копии этой формулы
+    // Подпись 22 + 2 + линия 1 = 25, зазор 4, на сервис — слот ячейки
+    // [cellWidth]: рамка 42 и выступы значков по углам. Просвет 10 — ТОЛЬКО между рядами. Две копии этой формулы
     // (`sideHeightOf` и `_naturalSize`) уже расходились; теперь она одна.
     final one = ServiceChecks.grouped(const [ProbeService.youtube]);
     expect(ServiceChecksSides.sideHeightOf(one, dense: false),
-        closeTo(25 + 4 + 1 * (34 + 8), 0.01));
+        closeTo(25 + 4 + 1 * cellWidth, 0.01));
     final rows = ServiceChecks.grouped(ServiceChecks.catalog);
     final split = ServiceChecksSides.splitForTest(rows, dense: false);
     // Справа три блока: ряд из двух (самый высокий — три сервиса) + ряд из
     // одного (три сервиса) + просвет между ними.
     expect(ServiceChecksSides.sideHeightOf(split.right, dense: false),
-        closeTo((29 + 3 * 42) * 2 + 10, 0.01));
+        closeTo((29 + 3 * cellWidth) * 2 + 10, 0.01));
   });
 
-  testWidgets('⚠️ живая пара со стрелкой не шире ячейки', (t) async {
-    // Стрелка нарисована текстом; ширина ячейки — константа. Если стрелка
-    // окажется шире отведённого ей места, второй значок вылезет за ячейку и
-    // пара разъедется ровно на живом канале, где на неё и смотрят.
+  testWidgets('⚠️ живая ячейка со значками по углам не шире слота', (t) async {
+    // Ширина слота — константа [cellWidth], а замки и кружок выступают за
+    // рамку. Если выступы окажутся шире отведённого места, соседние ячейки
+    // наедут друг на друга ровно на живом канале, где на них и смотрят.
     t.view.physicalSize = const Size(900, 700);
     t.view.devicePixelRatio = 1.0;
     addTearDown(t.view.reset);
@@ -175,6 +175,7 @@ void main() {
         const ServiceCheckOutcome(ServiceCheckState.ok, latencyMs: 42);
     final ctrl = ServiceCheckController();
     await ctrl.checkBaseline(const [ProbeService.telegram]);
+    await ctrl.check(ProbeService.telegram, 10809);
 
     await t.pumpWidget(MaterialApp(
       locale: const Locale('ru'),
@@ -194,12 +195,23 @@ void main() {
       ),
     ));
     await t.pump();
-    expect(find.text('→'), findsOneWidget);
+    expect(t.takeException(), isNull);
     final cell = find.byKey(const ValueKey('svc:telegram'));
-    final pair = find.descendant(of: cell, matching: find.byType(Row)).first;
+    // Рамка со всеми выступами: от левого замка до кружка справа.
+    final parts = [
+      find.byKey(const ValueKey('serviceRing')),
+      find.byKey(const ValueKey('lockOpen')),
+      find.byKey(const ValueKey('lockClosed')),
+      find.descendant(of: cell, matching: find.byIcon(Icons.check)),
+    ];
+    var box = t.getRect(parts.first);
+    for (final p in parts.skip(1)) {
+      expect(p, findsOneWidget);
+      box = box.expandToInclude(t.getRect(p));
+    }
     // В рядах масштаб 1.0, поэтому ширина здесь — в тех же единицах, что
     // и константа.
-    expect(t.getSize(pair).width, lessThanOrEqualTo(cellWidth + 0.5),
-        reason: 'пара «до → после» шире ячейки');
+    expect(box.width, lessThanOrEqualTo(cellWidth + 0.5),
+        reason: 'значки по углам вылезают за слот ячейки');
   });
 }

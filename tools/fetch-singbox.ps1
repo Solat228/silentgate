@@ -26,6 +26,10 @@ if ($got -ne $sha256) {
   Remove-Item $zip -Force
   throw "SHA-256 архива не совпал: ждали $sha256, получили $got"
 }
+# Каталог распаковки чистится заранее: после прерванного прогона в нём мог
+# остаться exe прежней версии, и `Select-Object -First 1` взял бы его, а не
+# только что проверенный по SHA-256 (ревью 29.10.2026, L4).
+if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }
 Expand-Archive -Path $zip -DestinationPath $tmp -Force
 $exe = Get-ChildItem -Recurse $tmp -Filter 'sing-box.exe' | Select-Object -First 1
 Copy-Item $exe.FullName (Join-Path $dest 'sing-box.exe') -Force

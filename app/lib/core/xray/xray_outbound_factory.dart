@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/vpn_server.dart';
 import 'outbound_variant.dart';
+import 'xray_keys.dart';
 
 /// Строит outbound(ы) Xray из [VpnServer]. Общая фабрика для основного конфига,
 /// проброс-харнесса и вариаций автонастройки.
@@ -51,10 +52,15 @@ class XrayOutboundFactory {
     final raw = server.rawOutboundJson;
     if (raw == null || raw.isEmpty) return null;
     try {
-      final decoded = jsonDecode(raw);
+      // Канонические ключи — как у полного конфига (ревью 29.10.2026, H3):
+      // иначе `"Tag"` или `"StreamSettings"` прошли бы мимо правок ниже.
+      final decoded = canonicalXrayValue(jsonDecode(raw));
       if (decoded is! Map) return null;
       final out = Map<String, dynamic>.from(decoded);
       out['tag'] = tag;
+      // Обычный сервер панели минует нормализатор полного конфига — путь
+      // журнала TLS-ключей снимаем здесь же (L15).
+      stripMasterKeyLog(out);
 
       final stream = out['streamSettings'] is Map
           ? Map<String, dynamic>.from(out['streamSettings'] as Map)

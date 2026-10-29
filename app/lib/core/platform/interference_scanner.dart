@@ -381,15 +381,17 @@ class InterferenceScanner {
           break;
       }
     }
+    final image = expectedPath == null ? null : _baseName(expectedPath);
     try {
-      await Process.run('taskkill', ['/F', '/PID', '$pid', '/T']);
+      await Process.run('taskkill', killArgs(pid, image: image));
     } catch (_) {}
     if (!await _alive(pid)) return true;
 
     // ⚠️ Только асинхронная элевация. Синхронный вызов через FFI умеет не
     // возвращаться вовсе (см. Elevation) — и тогда кнопка «закрыть приложение»
     // намертво вешала бы весь интерфейс.
-    await Elevation.runElevatedAsync('taskkill.exe', '/F /PID $pid /T');
+    await Elevation.runElevatedAsync(
+        'taskkill.exe', elevatedKillParams(pid, image: image));
     // Элевейтнутый процесс завершается асинхронно — ждём результата.
     for (var i = 0; i < 10; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -397,6 +399,32 @@ class InterferenceScanner {
     }
     return false;
   }
+
+  /// Аргументы `taskkill` для помехи [pid].
+  ///
+  /// ⚠️ ИМЯ ОБРАЗА — В САМОЙ КОМАНДЕ, А НЕ ТОЛЬКО В СВЕРКЕ ДО НЕЁ (ревью
+  /// 29.10.2026, L13). Сверка номера процесса идёт ДО окна UAC, а человек
+  /// смотрит на это окно сколько угодно: помеха успевает закрыться, номер
+  /// достаётся другой программе, и `taskkill` с правами администратора
+  /// убивал бы её. Фильтр `IMAGENAME` проверяет имя в момент убийства.
+  static List<String> killArgs(int pid, {String? image}) => [
+        '/F',
+        '/PID',
+        '$pid',
+        '/T',
+        if (image != null && _safeImage(image)) ...['/FI', 'IMAGENAME eq $image'],
+      ];
+
+  /// Те же аргументы одной строкой — для запуска через UAC.
+  static String elevatedKillParams(int pid, {String? image}) => [
+        for (final a in killArgs(pid, image: image))
+          a.contains(' ') ? '"$a"' : a,
+      ].join(' ');
+
+  /// Имя образа без кавычек и служебных символов фильтра — иначе оно
+  /// разорвало бы строку параметров UAC.
+  static bool _safeImage(String image) =>
+      image.isNotEmpty && !RegExp(r'["*?<>|]').hasMatch(image);
 
   /// Тот ли процесс под номером [pid]: `true` — тот же путь, `false` —
   /// номер у другой программы, `null` — процесса нет.

@@ -470,6 +470,7 @@ class VpnServer {
       add('path', path);
       add('sni', sni);
       add('alpn', alpn);
+      add('fp', fingerprint);
       return 'vmess://${base64.encode(utf8.encode(jsonEncode(m)))}';
     }
     if (protocol == 'shadowsocks') {

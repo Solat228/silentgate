@@ -6,6 +6,7 @@ import '../models/vpn_server.dart';
 import '../singbox/api_exit_guard.dart';
 import '../settings/split_tunnel.dart';
 import 'outbound_variant.dart';
+import 'xray_keys.dart';
 import 'xray_outbound_factory.dart';
 
 /// Порты проброс-харнесса (отдельный экземпляр Xray для пинга/проб).
@@ -325,7 +326,9 @@ class HarnessConfigBuilder {
   Map<String, dynamic>? _tryOverrideMap(String raw, int Function(int) portFor,
       {int? candidate}) {
     try {
-      final decoded = jsonDecode(raw);
+      // Канонические ключи: иначе `"Api"`/`"Metrics"` пережили бы удаление
+      // ниже — ядро сверяет их без учёта регистра (ревью 29.10.2026, H3).
+      final decoded = canonicalXrayValue(jsonDecode(raw));
       if (decoded is! Map) return null;
       final cfg = Map<String, dynamic>.from(decoded);
       final outbounds = cfg['outbounds'];
@@ -378,6 +381,10 @@ class HarnessConfigBuilder {
       cfg.remove('api');
       cfg.remove('stats');
       cfg.remove('policy');
+      // `metrics.listen` поднимает pprof и expvar на любом адресе — замеру
+      // пинга он не нужен вовсе.
+      cfg.remove('metrics');
+      stripMasterKeyLog(cfg);
       // ⚠️ НАБЛЮДАТЕЛЬ ТОЖЕ УБИРАЕТСЯ, И ЭТО ОТДЕЛЬНАЯ ПРИЧИНА, А НЕ СЛЕДСТВИЕ
       // ПРЕДЫДУЩЕЙ. `burstObservatory` начинает работу вместе с ядром и шлёт
       // свою пробу (у Remnawave это `https://www.youtube.com/generate_204`)

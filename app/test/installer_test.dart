@@ -582,6 +582,19 @@ void main() {
     });
   });
 
+  // Ревью 29.10.2026, L3: dartjni.dll больше не в поставке, а Inno не
+  // удаляет файлы прежней версии. Удаление — В ЛЮБОЙ сборке, не только Store.
+  test('обновление удаляет оставшийся dartjni.dll', () {
+    const line = r'Type: files; Name: "{app}\dartjni.dll"';
+    final at = text.indexOf(line);
+    expect(at, greaterThan(0));
+    final before = text.substring(0, at);
+    expect(before.lastIndexOf('[InstallDelete]'),
+        greaterThan(before.lastIndexOf('#endif')));
+    expect(before.lastIndexOf('#ifdef'), lessThan(before.lastIndexOf('#endif')),
+        reason: 'строка внутри #ifdef — обычная сборка её не получит');
+  });
+
   // Заявка MS3 (27.10.2026): установщик для Microsoft Store без драйвера.
   test('сборка без драйвера удаляет wintun и sing-box прежней копии', () {
     final i = text.indexOf('#ifdef NoTun');

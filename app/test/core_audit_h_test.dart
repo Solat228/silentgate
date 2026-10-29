@@ -96,6 +96,24 @@ void main() {
     });
   });
 
+  // Ревью 29.10.2026, L13: номер процесса сверяется до окна UAC — имя образа
+  // обязано ехать в самой команде.
+  group('InterferenceScanner.killArgs', () {
+    test('имя образа в фильтре команды', () {
+      expect(InterferenceScanner.killArgs(10, image: 'winws.exe'),
+          ['/F', '/PID', '10', '/T', '/FI', 'IMAGENAME eq winws.exe']);
+    });
+    test('строка для UAC: фильтр в кавычках', () {
+      expect(InterferenceScanner.elevatedKillParams(10, image: 'Good Bye.exe'),
+          '/F /PID 10 /T /FI "IMAGENAME eq Good Bye.exe"');
+    });
+    test('без пути — без фильтра; кавычки в имени не пропускаем', () {
+      expect(InterferenceScanner.killArgs(10), ['/F', '/PID', '10', '/T']);
+      expect(InterferenceScanner.killArgs(10, image: 'a" /PID 4 "x.exe'),
+          ['/F', '/PID', '10', '/T']);
+    });
+  });
+
   test('⚠️ сторож сети перепроверяет паузу после чтения интерфейсов', () {
     // Отпечаток статический, подменить его в тесте нечем — стережём текст.
     final src = File('lib/core/platform/network_watcher.dart')

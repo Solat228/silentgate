@@ -234,6 +234,25 @@ class WindowsEngine extends VpnEngineBase {
   @override
   bool get liveCaptureKept => _tunActive;
 
+  /// В TUN захват — это сам туннель с фильтрами WFP; нет туннеля — нет и
+  /// блокировки (ревью 29.10.2026, H4). Системный прокси указывает на мёртвый
+  /// порт и между попытками не снимается.
+  @override
+  bool killSwitchHolding(EngineSession session) =>
+      session.options.captureMode != CaptureMode.tun || _tunActive;
+
+  /// Отказов подъёма TUN подряд на автовосстановлении. Сбрасывается успешным
+  /// подъёмом.
+  int _tunFailStreak = 0;
+
+  /// Сколько отказов TUN подряд терпим, прежде чем сдаться.
+  ///
+  /// ⚠️ Вечные попытки kill switch оправданы, пока захват держится. Отказ
+  /// TUN захват уже снял, и с постоянной причиной (подслой WFP занят,
+  /// помощник не стартует) цикл шёл бесконечно с «трафик заблокирован» на
+  /// экране — ревью 29.10.2026, H4.
+  static const tunFailureLimit = 5;
+
   /// На ПК обрыв сети ловится частым прямым запросом, а не сквозной пробой
   /// раз в 45 секунд (см. [NetworkLossWatch]). Батареи телефона тут нет, а
   /// смену сети без смены адаптера (кабель выдернут из роутера) Windows не
@@ -699,13 +718,30 @@ class WindowsEngine extends VpnEngineBase {
       // фильтры WFP. Сторож уронил канал, переподъём не удался один раз — и
       // kill switch молча снят, трафик машины пошёл под реальным IP (аудит,
       // находка D1). Повтор держит захват так же, как при обрыве.
+      //
+      // ⚠️ Но туннеля после отказа НЕТ: помощник, выходя, снял фильтры WFP.
+      // Состояние приводим к факту (ревью 29.10.2026, H4) — иначе
+      // `_tunActive` оставался true, статус говорил «трафик заблокирован», а
+      // трафик шёл под реальным IP.
+      await _releaseOwnTun(gen);
+      _tunFailStreak++;
       if (tunFailureRetries(
               freshUserConnect: isFreshUserConnect,
-              elevationDenied: e is TunElevationDenied) &&
+              elevationDenied: e is TunElevationDenied,
+              failStreak: _tunFailStreak) &&
           await scheduleRetry('TUN не поднялся: $e',
               why: StatusConnectFailed('$e'))) {
         return;
       }
+      if (_tunFailStreak >= tunFailureLimit) {
+        AppLog.e('TUN не поднялся $_tunFailStreak раз подряд — прекращаю '
+            'попытки: захват трафика уже потерян');
+        emitNotice(EngineNoticeKind.failed, 'Не удалось восстановить связь',
+            detail: 'Туннель не поднялся $_tunFailStreak раз подряд: $e',
+            reason: StatusConnectFailed('$e'),
+            attempts: _tunFailStreak);
+      }
+      _tunFailStreak = 0;
       await cleanup();
       setStatus(VpnConnectionState.error, message: e.toString());
     } catch (e) {
@@ -734,8 +770,10 @@ class WindowsEngine extends VpnEngineBase {
   /// окно UAC каждые 30 с. Остальное на автовосстановлении — да.
   @visibleForTesting
   static bool tunFailureRetries(
-          {required bool freshUserConnect, required bool elevationDenied}) =>
-      !freshUserConnect && !elevationDenied;
+          {required bool freshUserConnect,
+          required bool elevationDenied,
+          int failStreak = 1}) =>
+      !freshUserConnect && !elevationDenied && failStreak < tunFailureLimit;
 
   /// Поднять туннель текущей сессии. `false` — запуск устарел и туннеля нет:
   /// вызывающий обязан свернуться, не трогая чужого.
@@ -1259,6 +1297,7 @@ class WindowsEngine extends VpnEngineBase {
     _liveKillSwitchPlan = wantPlan;
     _liveBypassIps = tunOptions.serverIps;
     _liveTunApiSecret = singboxApiSecret;
+    _tunFailStreak = 0;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
     // отключиться. Туннель, поднятый уже «после отмены», гасим сразу — но
     // ТОЛЬКО свой (за две минуты успевает начаться и новый запуск).
@@ -1552,6 +1591,7 @@ class WindowsEngine extends VpnEngineBase {
   @override
   Future<void> platformCleanup() async {
     _polling = false;
+    _tunFailStreak = 0;
     // Полная остановка: следующее подключение начнётся без нашего туннеля, и
     // проба резолвера пройдёт честно. Память о прошлом ответе тут только вредна
     // — см. [_lastDirectDns].

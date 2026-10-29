@@ -358,6 +358,19 @@ void main() {
       });
     }
 
+    // Ревью 29.10.2026, L4: распаковка во временный каталог, где остался exe
+    // прерванного прогона, и `Select-Object -First 1` брал старый файл мимо
+    // проверки SHA-256. У fetch-xray каталога нет: он распаковывает в bin.
+    for (final name in ['fetch-singbox', 'fetch-wintun']) {
+      test('$name.ps1: каталог распаковки чистится перед Expand-Archive', () {
+        final s = read('../tools/$name.ps1');
+        final clean = s.indexOf(
+            r'if (Test-Path $tmp) { Remove-Item $tmp -Recurse -Force }');
+        expect(clean, greaterThan(0));
+        expect(s.indexOf('Expand-Archive'), greaterThan(clean));
+      });
+    }
+
     test('скрипты tools с кириллицей — UTF-8 с BOM (иначе PS 5.1 читает ANSI)', () {
       for (final name in [
         'fetch-xray',

@@ -2286,6 +2286,12 @@ abstract class AppLocalizations {
   /// **'Соединение потеряно, трафик заблокирован. Переподключение через {seconds} с (попытка {attempt})…'**
   String statusReconnectBlocked(int seconds, int attempt);
 
+  /// No description provided for @statusReconnectUnprotected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединение потеряно, туннель не поднялся — трафик идёт мимо VPN. Переподключение через {seconds} с (попытка {attempt})…'**
+  String statusReconnectUnprotected(int seconds, int attempt);
+
   /// No description provided for @statusTrafficNotFlowing.
   ///
   /// In ru, this message translates to:
@@ -3813,7 +3819,7 @@ abstract class AppLocalizations {
   /// No description provided for @serviceChecksInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Два значка у каждого сервиса\n• слева: сервис без VPN\n• справа: он же через VPN\n• стрелка между ними: переход\n\nКогда снимается замер\n• без VPN: сам при запуске приложения\n• через VPN: сразу после подключения\n\nЦвет кольца вокруг значка\n• зелёное: открывается\n• оранжевое: блокировка по стране\n• красное: недоступен\n• серое: ещё не проверялся\n\nЗнак в углу повторяет цвет\n• ✓ открывается\n• ! блокировка по стране\n• ✕ недоступен\n\nЧто можно нажать\n• значок: проверить сервис заново\n• кнопку настроек рядом: изменить набор сервисов'**
+  /// **'Рамка вокруг значка разрезана пополам\n• левая половина: сервис без VPN\n• правая половина: он же через VPN\n• кружок внизу справа: как сейчас (✓ / ! / ✕)\n\nКогда снимается замер\n• без VPN: сам при запуске приложения\n• через VPN: сразу после подключения\n\nЦвет половин рамки и кружка\n• зелёный: открывается\n• оранжевый: блокировка по стране\n• красный: недоступен\n• серый: ещё не проверялся\n\nЗначки по углам\n• открытый и закрытый замок: какая половина без VPN, какая через VPN\n• развилка слева и круглая рамка: правило «Прямо», сервис идёт мимо VPN\n• синий замок со стрелкой или красный запрет: правило ведёт через другой сервер или блокирует\n\nЧто можно нажать\n• значок: проверить сервис заново\n• кнопку настроек рядом: изменить набор сервисов'**
   String get serviceChecksInfo;
 
   /// No description provided for @serviceStatusOk.
@@ -5765,6 +5771,24 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Заблокирован: правило «{rule}» в раздельном туннелировании запрещает этот домен — сервис не откроется ни через VPN, ни мимо него.'**
   String serviceChecksBypassBlock(Object rule);
+
+  /// No description provided for @serviceChecksAfterOff.
+  ///
+  /// In ru, this message translates to:
+  /// **'VPN выключен'**
+  String get serviceChecksAfterOff;
+
+  /// No description provided for @serviceChecksNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас'**
+  String get serviceChecksNow;
+
+  /// No description provided for @serviceChecksExitServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через другой сервер: правило «{rule}» в раздельном туннелировании ведёт этот домен через «{server}».'**
+  String serviceChecksExitServer(String rule, String server);
 
   /// No description provided for @subBarOpenSite.
   ///

@@ -1296,6 +1296,11 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'Conexão perdida, o túnel não subiu — o tráfego está passando fora da VPN. Reconectando em $seconds s (tentativa $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'O túnel está ativo, mas nenhum tráfego passa por ele';
 
@@ -2141,7 +2146,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Dois ícones por serviço\n• esquerda: o serviço sem VPN\n• direita: o mesmo serviço com VPN\n• seta entre eles: a mudança\n\nQuando a medição é feita\n• sem VPN: sozinha ao abrir o aplicativo\n• com VPN: logo após conectar\n\nCor do anel ao redor do ícone\n• verde: abre\n• laranja: bloqueio por país\n• vermelho: inacessível\n• cinza: ainda não verificado\n\nA marca no canto repete a cor\n• ✓ abre\n• ! bloqueio por país\n• ✕ inacessível\n\nO que dá para tocar\n• o ícone: verificar o serviço de novo\n• o botão de configurações ao lado: mudar o conjunto de serviços';
+      'A moldura do ícone é dividida ao meio\n• metade esquerda: o serviço sem VPN\n• metade direita: o mesmo serviço com VPN\n• círculo no canto inferior direito: o estado atual (✓ / ! / ✕)\n\nQuando a medição é feita\n• sem VPN: sozinha ao abrir o aplicativo\n• com VPN: logo após conectar\n\nCor das metades da moldura e do círculo\n• verde: abre\n• laranja: bloqueio por país\n• vermelho: inacessível\n• cinza: ainda não verificado\n\nÍcones nos cantos\n• cadeado aberto e fechado: qual metade é sem VPN e qual é com VPN\n• bifurcação à esquerda e moldura redonda: regra “Direto”, o serviço passa fora da VPN\n• cadeado azul com seta ou proibição vermelha: uma regra o envia por outro servidor ou o bloqueia\n\nO que dá para tocar\n• o ícone: verificar o serviço de novo\n• o botão de configurações ao lado: mudar o conjunto de serviços';
 
   @override
   String get serviceStatusOk => 'Funciona';
@@ -3378,6 +3383,17 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'Bloqueado: a regra de túnel dividido “$rule” proíbe este domínio — o serviço não abrirá nem com nem sem VPN.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN desligada';
+
+  @override
+  String get serviceChecksNow => 'Agora';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'Por outro servidor: a regra de túnel dividido “$rule” envia este domínio por “$server”.';
   }
 
   @override

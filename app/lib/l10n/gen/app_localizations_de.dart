@@ -1297,6 +1297,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'Verbindung verloren, der Tunnel wurde nicht aufgebaut – der Datenverkehr läuft am VPN vorbei. Neuer Versuch in $seconds s (Versuch $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'Der Tunnel steht, aber es fließt kein Datenverkehr hindurch';
 
@@ -2140,7 +2145,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Zwei Symbole pro Dienst\n• links: der Dienst ohne VPN\n• rechts: derselbe Dienst über VPN\n• Pfeil dazwischen: der Wechsel\n\nWann die Messung erfolgt\n• ohne VPN: von selbst beim App-Start\n• über VPN: direkt nach dem Verbinden\n\nRingfarbe um das Symbol\n• grün: erreichbar\n• orange: Ländersperre\n• rot: nicht erreichbar\n• grau: noch nicht geprüft\n\nDas Zeichen in der Ecke wiederholt die Farbe\n• ✓ erreichbar\n• ! Ländersperre\n• ✕ nicht erreichbar\n\nWas man antippen kann\n• das Symbol: den Dienst erneut prüfen\n• die Einstellungen-Schaltfläche daneben: die Dienstauswahl ändern';
+      'Der Rahmen um das Symbol ist zweigeteilt\n• linke Hälfte: der Dienst ohne VPN\n• rechte Hälfte: derselbe Dienst über VPN\n• Kreis unten rechts: der aktuelle Zustand (✓ / ! / ✕)\n\nWann die Messung erfolgt\n• ohne VPN: von selbst beim App-Start\n• über VPN: direkt nach dem Verbinden\n\nFarbe der Rahmenhälften und des Kreises\n• grün: erreichbar\n• orange: Ländersperre\n• rot: nicht erreichbar\n• grau: noch nicht geprüft\n\nZeichen in den Ecken\n• offenes und geschlossenes Schloss: welche Hälfte ohne VPN und welche über VPN ist\n• Abzweigung links und runder Rahmen: Regel „Direkt“, der Dienst läuft am VPN vorbei\n• blaues Schloss mit Pfeil oder rotes Verbotszeichen: eine Regel leitet ihn über einen anderen Server oder sperrt ihn\n\nWas man antippen kann\n• das Symbol: den Dienst erneut prüfen\n• die Einstellungen-Schaltfläche daneben: die Dienstauswahl ändern';
 
   @override
   String get serviceStatusOk => 'Funktioniert';
@@ -3377,6 +3382,17 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String serviceChecksBypassBlock(Object rule) {
     return 'Blockiert: Die Split-Tunneling-Regel „$rule“ verbietet diese Domain — der Dienst öffnet sich weder mit noch ohne VPN.';
+  }
+
+  @override
+  String get serviceChecksAfterOff => 'VPN ist aus';
+
+  @override
+  String get serviceChecksNow => 'Jetzt';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'Über einen anderen Server: Die Split-Tunneling-Regel „$rule“ leitet diese Domain über „$server“.';
   }
 
   @override
