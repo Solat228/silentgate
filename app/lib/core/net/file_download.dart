@@ -91,7 +91,7 @@ Future<String> downloadToFile(
     final want = expectedSha256?.trim().toLowerCase();
     if (want != null && want != sum) {
       throw const DownloadException(
-          'контрольная сумма не совпала — закачка повреждена');
+          'контрольная сумма не совпала - закачка повреждена');
     }
     try {
       await part.rename(target.path);
@@ -170,7 +170,7 @@ Future<String> _downloadPart(
       received += chunk.length;
       if (received > maxBytes) {
         throw DownloadException(
-            'получено больше потолка maxBytes=$maxBytes байт — закачка остановлена');
+            'получено больше потолка maxBytes=$maxBytes байт - закачка остановлена');
       }
       sink.add(chunk);
       hash.add(chunk);

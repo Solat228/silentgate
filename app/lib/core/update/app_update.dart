@@ -201,7 +201,7 @@ class AppUpdate {
       final base = loadUpdateApiOverrideFrom(dir.path);
       _apiOverrideLoaded = true;
       if (base != null) {
-        AppLog.i('Проверка обновлений: найден $kUpdateApiOverrideFileName — '
+        AppLog.i('Проверка обновлений: найден $kUpdateApiOverrideFileName - '
             'адрес API подменён');
       }
     } catch (e) {
@@ -601,12 +601,12 @@ class AppUpdate {
       if (release == null) return null;
       if (normalizeVersion(release.version) != normalizeVersion(version)) {
         AppLog.w('Обновление: у запасного источника версия '
-            '${release.version}, а нужна $version — файлы не беру');
+            '${release.version}, а нужна $version - файлы не беру');
         return null;
       }
       if (!release.canSelfUpdate) {
         AppLog.w('Обновление: запасной источник не отдаёт манифест, подпись '
-            'и размер для $version — самому не поставить');
+            'и размер для $version - самому не поставить');
         return null;
       }
       return release;
@@ -734,7 +734,7 @@ class AppUpdate {
     if (resp.statusCode == 403 || resp.statusCode == 429) {
       final left = resp.headers['x-ratelimit-remaining'];
       if (left == '0' || resp.statusCode == 429) {
-        return 'Слишком много проверок с этого адреса — попробуйте через час';
+        return 'Слишком много проверок с этого адреса - попробуйте через час';
       }
       return 'Сервер обновлений отказал в доступе';
     }

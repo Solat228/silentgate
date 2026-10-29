@@ -107,17 +107,17 @@ class WindowsEngine extends VpnEngineBase {
     if (!reporter.lastStartHitStaleScheduledTask) return;
     if (_staleTaskFixOffered) {
       AppLog.i('Задача Планировщика по-прежнему устарела, но починку уже '
-          'предлагали в этой сессии — молчу, чтобы не надоедать');
+          'предлагали в этой сессии - молчу, чтобы не надоедать');
       return;
     }
     _staleTaskFixOffered = true;
-    AppLog.w('Обнаружена устаревшая задача Планировщика — предлагаю человеку '
+    AppLog.w('Обнаружена устаревшая задача Планировщика - предлагаю человеку '
         'пересоздать её одним нажатием (см. EngineNoticeKind.staleScheduledTask)');
     // ⚠️ ТЕКСТ ЗДЕСЬ — ЗАПАСНОЙ (лог, toString). То, что реально увидит
     // человек, интерфейс переводит по `kind` ([EngineNoticeKind]) — движок не
     // имеет доступа к `AppLocalizations`.
     emitNotice(EngineNoticeKind.staleScheduledTask,
-        'Автозапуск TUN без окна UAC сломан — задача Планировщика устарела');
+        'Автозапуск TUN без окна UAC сломан - задача Планировщика устарела');
   }
 
   /// Конфиг ПОДНЯТОГО туннеля — чтобы не пересоздавать его, когда новый запуск
@@ -481,8 +481,8 @@ class WindowsEngine extends VpnEngineBase {
     if (conflict != null) {
       AppLog.i(conflict.heldByOwnCore
           ? 'Порт ${conflict.port} ещё держит наше ядро '
-              '(${conflict.holder}) — жду освобождения'
-          : 'Порт ${conflict.port} занят, владелец не определён — жду: на смене '
+              '(${conflict.holder}) - жду освобождения'
+          : 'Порт ${conflict.port} занят, владелец не определён - жду: на смене '
               'сервера так выглядит наш же процесс, чей сокет ещё не отпущен');
       await PortCheck.waitFree(corePorts);
       if (aborted()) return;
@@ -637,10 +637,10 @@ class WindowsEngine extends VpnEngineBase {
         if (!proxyOk) {
           emitNotice(
               EngineNoticeKind.systemProxyFailed,
-              'Системный прокси не включился — трафик идёт мимо VPN, '
+              'Системный прокси не включился - трафик идёт мимо VPN, '
               'под вашим реальным адресом',
               detail: 'Чаще всего это запрет записи в реестр (политика домена '
-                  'или повреждённый профиль). Подробности — в журнале '
+                  'или повреждённый профиль). Подробности - в журнале '
                   'приложения. Обходной путь: режим захвата «TUN».');
         }
         _proxySet = true;
@@ -734,7 +734,7 @@ class WindowsEngine extends VpnEngineBase {
         return;
       }
       if (_tunFailStreak >= tunFailureLimit) {
-        AppLog.e('TUN не поднялся $_tunFailStreak раз подряд — прекращаю '
+        AppLog.e('TUN не поднялся $_tunFailStreak раз подряд - прекращаю '
             'попытки: захват трафика уже потерян');
         emitNotice(EngineNoticeKind.failed, 'Не удалось восстановить связь',
             detail: 'Туннель не поднялся $_tunFailStreak раз подряд: $e',
@@ -978,7 +978,7 @@ class WindowsEngine extends VpnEngineBase {
     if (needed.isNotEmpty && live.toSet().containsAll(needed)) {
       return live;
     }
-    AppLog.i('Адреса нового сервера не покрыты правилом живого туннеля — '
+    AppLog.i('Адреса нового сервера не покрыты правилом живого туннеля - '
         'туннель придётся пересоздать');
     return fresh;
   }
@@ -1017,7 +1017,7 @@ class WindowsEngine extends VpnEngineBase {
     fallbackTag: 'proxy',
     );
     for (final e in exitsBuilt.skipped.entries) {
-      AppLog.i('Сервер правила не поднят: ${e.value} — '
+      AppLog.i('Сервер правила не поднят: ${e.value} - '
           'эти правила пойдут основным туннелем');
     }
     if (exitsBuilt.outbounds.isNotEmpty) {
@@ -1145,7 +1145,7 @@ class WindowsEngine extends VpnEngineBase {
         live != null &&
         live != wantConfig) {
       final diff = tunConfigDiff(live, wantConfig);
-      AppLog.i('Туннель придётся пересоздать — конфиг отличается: '
+      AppLog.i('Туннель придётся пересоздать - конфиг отличается: '
           '${diff.isEmpty ? "(различий не найдено, отличаются пробелы/порядок)" : diff.join(", ")}');
     }
     final planChanged = _liveKillSwitchPlan != wantPlan;
@@ -1153,7 +1153,7 @@ class WindowsEngine extends VpnEngineBase {
         options.settings.seamlessServerSwitch &&
         live == wantConfig &&
         planChanged) {
-      AppLog.i('Туннель придётся пересоздать — изменился состав блокировки '
+      AppLog.i('Туннель придётся пересоздать - изменился состав блокировки '
           'kill switch: помощник читает его только на старте');
     }
     if (_tunActive &&
@@ -1174,7 +1174,7 @@ class WindowsEngine extends VpnEngineBase {
         // Туннель остаётся тот же, но ведёт его теперь ЭТОТ запуск: иначе
         // устаревшее поколение сняло бы его, вернувшись из своего ожидания.
         _tunOwnerGen = gen;
-        AppLog.i('Туннель не пересоздаю: конфиг тот же и ядро отвечает — '
+        AppLog.i('Туннель не пересоздаю: конфиг тот же и ядро отвечает - '
             'перезапускается только прокси-ядро, маршрут по умолчанию не мигает');
         _startTunWatchdog(options.settings, aborted);
         // Сторож выходов — там же и по той же причине: до подъёма туннеля
@@ -1192,7 +1192,7 @@ class WindowsEngine extends VpnEngineBase {
             secret: singboxApiSecret);
         return true;
       }
-      AppLog.w('Туннель с тем же конфигом не отвечает по своему API — '
+      AppLog.w('Туннель с тем же конфигом не отвечает по своему API - '
           'пересоздаю его, а не выдаю мёртвый за живой');
     }
 
@@ -1449,7 +1449,7 @@ class WindowsEngine extends VpnEngineBase {
       ConnectionOptions options, bool Function() aborted) async {
     final routerExe = SingboxProcess.locate();
     if (routerExe == null) {
-      AppLog.w('sing-box.exe не найден — порты API для серверов не поднимутся');
+      AppLog.w('sing-box.exe не найден - порты API для серверов не поднимутся');
       return null;
     }
     try {
@@ -1721,7 +1721,7 @@ class WindowsEngine extends VpnEngineBase {
       if (silent < limit) return;
 
       t.cancel();
-      AppLog.e('Туннельное ядро не отвечает $silent с — считаю его зависшим. '
+      AppLog.e('Туннельное ядро не отвечает $silent с - считаю его зависшим. '
           'Снимаю туннель, чтобы система вернула сеть.');
       // Без kill switch гасим ЖЁСТКО и вместе с захватом: смысл всей затеи в
       // том, чтобы исчез адаптер, иначе трафик так и останется в чёрной дыре.
@@ -1877,7 +1877,7 @@ class WindowsEngine extends VpnEngineBase {
   Future<bool> _ipv6Reality() async {
     final has = await Ipv6Support.hasGlobalIpv6();
     if (!has) {
-      AppLog.i('IPv6 наружу не найден — в туннеле он выключен, иначе '
+      AppLog.i('IPv6 наружу не найден - в туннеле он выключен, иначе '
           'двустековые сайты упирались бы в «unreachable network»');
     }
     return has;
@@ -1971,7 +1971,7 @@ class WindowsEngine extends VpnEngineBase {
     final ip = InternetAddress.tryParse(upstream);
     if (ip == null || ip.type != InternetAddressType.IPv4) {
       AppLog.w('Запасной DNS не поднят: резолвер «$upstream» не литеральный '
-          'IPv4-адрес. DNS работает как раньше — целиком через туннель.');
+          'IPv4-адрес. DNS работает как раньше - целиком через туннель.');
       return 0;
     }
     try {
@@ -2024,7 +2024,7 @@ class WindowsEngine extends VpnEngineBase {
     // случайно, при сжатии памяти. Здесь она в коде, а не в заметке.
     if (s.killSwitch || s.noRealIp) {
       AppLog.i('Прямой запас DNS не поднимаю: включён '
-          '${s.killSwitch ? "kill switch" : "режим без реального IP"} — прямой резолв в обход туннеля противоречил бы ему');
+          '${s.killSwitch ? "kill switch" : "режим без реального IP"} - прямой резолв в обход туннеля противоречил бы ему');
       return 0;
     }
     // Гейт до первого действия — по той же причине, что и у соседа: ниже стоит
@@ -2049,7 +2049,7 @@ class WindowsEngine extends VpnEngineBase {
       _directFallbackDns = srv;
       _directFallbackOwnerGen = gen;
       AppLog.i('Прямой запас DNS поднят на :${srv.port} '
-          '(основной резолвер, при отказе — запасной)');
+          '(основной резолвер, при отказе - запасной)');
       return srv.port;
     } catch (e) {
       // Не фатально: без запаса прямой резолв работает как раньше.
@@ -2224,7 +2224,7 @@ class WindowsEngine extends VpnEngineBase {
           AppLog.i('Запасной резолвер для «Прямо»: $ip');
           return first;
         }
-        AppLog.w('DNS $ip не отвечает — пробую следующий');
+        AppLog.w('DNS $ip не отвечает - пробую следующий');
       }
       if (first != null) {
         // Второго рабочего не нашлось — запас поднимать не из чего, и об этом
@@ -2232,16 +2232,16 @@ class WindowsEngine extends VpnEngineBase {
         // исправной работы, а разница видна только в тот день, когда основной
         // резолвер замолчит.
         _secondaryDirectDns = null;
-        AppLog.w('Запасного резолвера для «Прямо» нет — отказ основного будет '
+        AppLog.w('Запасного резолвера для «Прямо» нет - отказ основного будет '
             'выглядеть как пропажа связи у непроксируемых программ');
         return first;
       }
       if (list.isEmpty) {
-        AppLog.w('DNS физического адаптера не найден — домены «Прямо» '
+        AppLog.w('DNS физического адаптера не найден - домены «Прямо» '
             'будут резолвиться ${_directDnsFallbackNote()}');
         return _lastDirectDns;
       }
-      AppLog.w('Ни один DNS адаптера не ответил — «Прямо» пойдёт '
+      AppLog.w('Ни один DNS адаптера не ответил - «Прямо» пойдёт '
           '${_directDnsFallbackNote()}');
       return _lastDirectDns;
     } catch (e) {

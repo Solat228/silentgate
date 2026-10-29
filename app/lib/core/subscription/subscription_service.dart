@@ -136,7 +136,7 @@ class SubscriptionService {
     AppLog.i('Подписка: UA=$ua, Content-Type=$ct, ${resp.bodyBytes.length} Б, '
         'серверов=${servers.length}, с конфигом панели=$panel, профилей «Авто»=$profiles');
     if (panel == 0) {
-      AppLog.w('Панель прислала НЕ XRAY_JSON — конфиги пересобираются из ссылок. '
+      AppLog.w('Панель прислала НЕ XRAY_JSON - конфиги пересобираются из ссылок. '
           'Проверьте правило Response Rules (user-agent CONTAINS SilentGate → XRAY_JSON).');
     }
     // Постоянный переезд (301/308) — новый адрес; временный (302/307) сюда не

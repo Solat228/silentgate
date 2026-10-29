@@ -86,7 +86,7 @@ class _GeoAssetsTileState extends State<GeoAssetsTile> {
             ? l.geoDownloading(_stage)
             : present
                 ? l.geoPresent(_size(s!.bytes),
-                    s.updatedAt == null ? '—' : _date(s.updatedAt!))
+                    s.updatedAt == null ? '-' : _date(s.updatedAt!))
                 : l.geoMissing,
       ),
       trailing: _busy

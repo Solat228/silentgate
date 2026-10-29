@@ -188,7 +188,7 @@ class Elevation {
       }
       // null = посредник недоступен (политика, урезанный PATH). Идём прежним
       // путём: он ненадёжен, но лучше, чем ничего.
-      AppLog.w('Посредник элевации недоступен — пробую напрямую');
+      AppLog.w('Посредник элевации недоступен - пробую напрямую');
     }
 
     try {
@@ -198,7 +198,7 @@ class Elevation {
       return ok ? ElevationOutcome.ok : ElevationOutcome.denied;
     } on TimeoutException {
       AppLog.e('Запрос прав администратора не ответил за '
-          '${timeout.inSeconds} с — считаю отказом');
+          '${timeout.inSeconds} с - считаю отказом');
       return ElevationOutcome.denied;
     } catch (e) {
       AppLog.e('Запрос прав администратора сорвался: $e');

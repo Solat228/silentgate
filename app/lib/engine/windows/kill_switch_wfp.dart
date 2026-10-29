@@ -96,7 +96,7 @@ class KillSwitchWfp {
     }
     return KillSwitchProbe(
       canFilter: false,
-      detail: 'права не получены — ${tried.join('; ')}',
+      detail: 'права не получены - ${tried.join('; ')}',
     );
   }
 
@@ -118,7 +118,7 @@ class KillSwitchWfp {
     }
     final rules = buildWfpRules(plan);
     if (rules.isEmpty) {
-      say('kill switch: блокировать нечего — систему не трогаем');
+      say('kill switch: блокировать нечего - систему не трогаем');
       return null;
     }
 
@@ -176,7 +176,7 @@ class KillSwitchWfp {
           if (code != 0) {
             // ⚠️ ЛИБО ВЕСЬ ПЛАН, ЛИБО НИЧЕГО: половина правил — это дыра,
             // выдающая себя за защиту.
-            say('kill switch: правило «${rule.name}» отвергнуто, код $code — '
+            say('kill switch: правило «${rule.name}» отвергнуто, код $code - '
                 'откатываю всё');
             return null;
           }
@@ -194,7 +194,7 @@ class KillSwitchWfp {
       engine = nullptr; // держатель забрал владение
       return hold;
     } catch (e) {
-      say('kill switch: исключение при подъёме — $e');
+      say('kill switch: исключение при подъёме - $e');
       return null;
     } finally {
       // ⚠️ ОТКАТ ДО ЗАКРЫТИЯ ДВИЖКА. Незакрытая транзакция при закрытии
@@ -475,7 +475,7 @@ class KillSwitchHold {
   bool reengage(KillSwitchPlan plan, {void Function(String)? log}) {
     void say(String s) => log?.call(s);
     if (_released || _engine == nullptr) {
-      say('kill switch: замена набора невозможна — блокировка уже снята');
+      say('kill switch: замена набора невозможна - блокировка уже снята');
       return false;
     }
     final rules = buildWfpRules(plan);
@@ -506,7 +506,7 @@ class KillSwitchHold {
               KillSwitchWfp._addFilter(arena, _engine, rule, layer, blobs, ids);
           if (code != 0) {
             say('kill switch: при замене отвергнуто «${rule.name}», код $code '
-                '— откатываю, остаётся прежний набор');
+                '- откатываю, остаётся прежний набор');
             return false;
           }
         }
@@ -522,7 +522,7 @@ class KillSwitchHold {
       say('kill switch обновлён: правил ${rules.length}, фильтров ${ids.length}');
       return true;
     } catch (e) {
-      say('kill switch: исключение при замене набора — $e');
+      say('kill switch: исключение при замене набора - $e');
       return false;
     } finally {
       if (!committed) {

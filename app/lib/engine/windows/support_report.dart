@@ -105,7 +105,7 @@ class SupportReport {
     b.writeln('[Логи на диске]');
     b.writeln('Срок хранения: ${settings.logRetention.name}');
     if (!await AppLog.ownsFile()) {
-      b.writeln('⚠ app.log ведёт ДРУГОЙ экземпляр приложения — '
+      b.writeln('⚠ app.log ведёт ДРУГОЙ экземпляр приложения - '
           'запущены две копии, обе пишут в один файл');
     }
     try {
@@ -132,19 +132,19 @@ class SupportReport {
     // этот файл не пишет вовсе, поэтому его отказ по отчёту не диагностировался.
     final dirForLogs = await AppPaths.supportDir();
     b.writeln('==================================================');
-    b.writeln('[singbox.log — TUN-ядро, последние строки]'
+    b.writeln('[singbox.log - TUN-ядро, последние строки]'
         '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sb = await _safe(() => TunHelper.tailLog(lines: 200));
-    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : _core(sb));
+    b.writeln(sb.isEmpty ? '(пусто - TUN в этой сессии не поднимался)' : _core(sb));
     b.writeln();
     b.writeln('==================================================');
-    b.writeln('[singbox_proxy.log — прокси-ядро (hysteria2), последние строки]'
+    b.writeln('[singbox_proxy.log - прокси-ядро (hysteria2), последние строки]'
         '${await _mtime(SingboxProcess.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sbp = await _safe(() => SingboxProcess.tailLog(lines: 200));
     b.writeln(sbp.isEmpty
-        ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
+        ? '(пусто - прокси-ядро sing-box в этой сессии не поднималось)'
         : _core(sbp));
     b.writeln();
     // Третий лог: маршрутизатор выходов режима «Только прокси» (задача 3b) —
@@ -154,14 +154,14 @@ class SupportReport {
     // маршрутизатора не разобрать вовсе.
     const exitRouterLogName = 'singbox_exit_router.log';
     b.writeln('==================================================');
-    b.writeln('[singbox_exit_router.log — маршрутизатор выходов '
+    b.writeln('[singbox_exit_router.log - маршрутизатор выходов '
         '«Только прокси», последние строки]'
         '${await _mtime(SingboxProcess.logPathFor(dirForLogs, name: exitRouterLogName))}');
     b.writeln('==================================================');
     final sbr = await _safe(
         () => SingboxProcess.tailLog(lines: 200, name: exitRouterLogName));
     b.writeln(sbr.isEmpty
-        ? '(пусто — маршрутизатор выходов в этой сессии не поднимался)'
+        ? '(пусто - маршрутизатор выходов в этой сессии не поднимался)'
         : _core(sbr));
     b.writeln();
 

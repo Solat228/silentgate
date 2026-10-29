@@ -653,13 +653,13 @@ class AppUpdateController extends ChangeNotifier {
     _download = null;
     _error = UpdateError(kind,
         rejection: rejection, detail: detail == null ? null : scrubUrls(detail));
-    AppLog.w('Обновление: отказ — $_error');
+    AppLog.w('Обновление: отказ - $_error');
     _setPhase(UpdatePhase.failed);
   }
 
   void _linkOnly(LinkOnlyReason reason) {
     _linkOnlyReason = reason;
-    AppLog.i('Обновление: только ссылка — ${reason.name}');
+    AppLog.i('Обновление: только ссылка - ${reason.name}');
     _setPhase(UpdatePhase.linkOnly);
   }
 
@@ -682,8 +682,8 @@ class AppUpdateController extends ChangeNotifier {
     // Abuse»): ни проверки, ни закачки — даже ссылки на GitHub не ищем.
     if (storeManaged) {
       AppLog.i(_msStorePackage
-          ? 'Обновление: пакет Microsoft Store — обновляет Store'
-          : 'Обновление: сборка Google Play — обновляет Play');
+          ? 'Обновление: пакет Microsoft Store - обновляет Store'
+          : 'Обновление: сборка Google Play - обновляет Play');
       _notify();
       return;
     }
@@ -778,7 +778,7 @@ class AppUpdateController extends ChangeNotifier {
       case UpdateCheckState.failed:
         _error = UpdateError(UpdateErrorKind.checkFailed,
             detail: result.failure == null ? null : scrubUrls(result.failure!));
-        AppLog.i('Обновление: проверка не удалась — '
+        AppLog.i('Обновление: проверка не удалась - '
             '${scrubUrls(result.failure ?? '')}');
         _setPhase(UpdatePhase.failed);
         return;
@@ -818,7 +818,7 @@ class AppUpdateController extends ChangeNotifier {
     if (skipped != null && skipped.isNotEmpty) {
       if (_sameVersion(skipped, offer.version)) {
         if (!manual) {
-          AppLog.i('Обновление: версия ${offer.version} пропущена — молчу');
+          AppLog.i('Обновление: версия ${offer.version} пропущена - молчу');
           _setPhase(UpdatePhase.idle);
           return;
         }
@@ -852,7 +852,7 @@ class AppUpdateController extends ChangeNotifier {
     // Сначала Play: молча качать APK мимо Play, когда тот установлен, значит
     // обойти выбор, который сборка обещает. Режим «авто» здесь спрашивает.
     if (offerViaPlay && _settings().appUpdateMode == AppUpdateMode.auto) {
-      AppLog.i('Обновление: есть Google Play — предлагаю его, не качаю сам');
+      AppLog.i('Обновление: есть Google Play - предлагаю его, не качаю сам');
       _setPhase(UpdatePhase.available);
       return;
     }
@@ -993,7 +993,7 @@ class AppUpdateController extends ChangeNotifier {
     }
     if (!_live(run)) return;
     if (!allowed) {
-      AppLog.w('Обновление: нет разрешения на установку — прошу его до '
+      AppLog.w('Обновление: нет разрешения на установку - прошу его до '
           'закачки ${offer.version}');
       final intent = _intent;
       await _writeConsent(ConsentMarker(
@@ -1022,7 +1022,7 @@ class AppUpdateController extends ChangeNotifier {
     // отмена, и отказ первой попытки её не перебивает.
     if (!_live(run)) return;
     if (mirror != null) {
-      AppLog.w('Обновление: GitHub не отдал файлы — беру их с запасного '
+      AppLog.w('Обновление: GitHub не отдал файлы - беру их с запасного '
           'источника (${offer.version})');
       _progress = null;
       _download = null;
@@ -1060,7 +1060,7 @@ class AppUpdateController extends ChangeNotifier {
 
     if (!UpdateSignature.verify(manifestBytes, signature,
         publicKeyBase64: _publicKey)) {
-      AppLog.e('Обновление: подпись манифеста ${offer.version} НЕ прошла — '
+      AppLog.e('Обновление: подпись манифеста ${offer.version} НЕ прошла - '
           'установщик качать не буду');
       _fail(UpdateErrorKind.badSignature);
       return _attemptDone;
@@ -1087,7 +1087,7 @@ class AppUpdateController extends ChangeNotifier {
     final asset = manifest.assetNamed(assetName)!;
     if (offer.assetSize != null && offer.assetSize != asset.size) {
       AppLog.w('Обновление: размер актива в релизе (${offer.assetSize}) '
-          'не равен манифесту (${asset.size}) — верю манифесту');
+          'не равен манифесту (${asset.size}) - верю манифесту');
     }
 
     final Directory dir;
@@ -1181,7 +1181,7 @@ class AppUpdateController extends ChangeNotifier {
     if (release == null) return null;
     if (release.assetName != assetName) {
       AppLog.w('Обновление: у запасного источника другой файл выпуска '
-          '${offer.version} — беру это за другой релиз и не повторяю');
+          '${offer.version} - беру это за другой релиз и не повторяю');
       return null;
     }
     final urls =
@@ -1316,7 +1316,7 @@ class AppUpdateController extends ChangeNotifier {
     _awaitingVpnOff = false;
 
     if (!allowDowngrade && !AppUpdate.isNewer(offer.version, _currentVersion)) {
-      AppLog.e('Обновление: ${offer.version} не новее $_currentVersion — '
+      AppLog.e('Обновление: ${offer.version} не новее $_currentVersion - '
           'установка отклонена (защита от отката)');
       _fail(UpdateErrorKind.notNewer);
       return;
@@ -1380,7 +1380,7 @@ class AppUpdateController extends ChangeNotifier {
     if (_disposed || !_awaitingVpnOff) return;
     if (_phase != UpdatePhase.ready || _isVpnActive()) return;
     _awaitingVpnOff = false;
-    AppLog.i('Обновление: VPN отключён — ставлю ${_offer?.version}');
+    AppLog.i('Обновление: VPN отключён - ставлю ${_offer?.version}');
     // ⚠️ С ТЕМ ЖЕ СОГЛАСИЕМ, что дал человек, — как и [resumeAfterPermission].
     // Без этого отложенный ОСОЗНАННЫЙ откат («Прежние версии» при живом VPN)
     // упирался в [UpdateErrorKind.notNewer]: согласие теряли ровно на том

@@ -65,7 +65,7 @@ abstract final class SettingsBackup {
         if (text.trim().isEmpty) continue;
         out[name] = jsonDecode(text);
       } catch (e) {
-        AppLog.w('Экспорт настроек: $name не прочитан ($e) — пропущен');
+        AppLog.w('Экспорт настроек: $name не прочитан ($e) - пропущен');
       }
     }
     return out;
@@ -79,7 +79,7 @@ abstract final class SettingsBackup {
       platform: platform,
       appVersion: AppInfo.version,
     );
-    AppLog.i('Экспорт настроек: подписки — '
+    AppLog.i('Экспорт настроек: подписки - '
         '${includeSubscriptions ? 'да' : 'нет'}');
     return SettingsBundle.encode(bundle);
   }
@@ -131,7 +131,7 @@ abstract final class SettingsBackup {
     if (files.isEmpty) return false;
     final ok = await SecretFiles.write(await _file(pendingFile),
         jsonEncode({'source': RestoreSource.importFile.name, 'files': files}));
-    AppLog.i('Импорт настроек подготовлен: ${files.keys.join(', ')} — '
+    AppLog.i('Импорт настроек подготовлен: ${files.keys.join(', ')} - '
         'применится после перезапуска');
     return ok;
   }
@@ -303,7 +303,7 @@ abstract final class SettingsBackup {
       if (await settings.exists() || await subs.exists()) return false;
       final bundle = SettingsBundle.parse(await _readSnapshot(snap));
       if (bundle == null) {
-        AppLog.w('Снимок резервной копии не разобран — пропущен');
+        AppLog.w('Снимок резервной копии не разобран - пропущен');
         return false;
       }
       final docs = usesDocumentsCopy;

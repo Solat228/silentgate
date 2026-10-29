@@ -456,7 +456,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                                 strings().getString(R.string.vpn_always_on_no_session)),
                         )
                     }
-                    lastError = "Постоянная VPN: нет сохранённой сессии — подключитесь один раз вручную"
+                    lastError = "Постоянная VPN: нет сохранённой сессии - подключитесь один раз вручную"
                     notifyState()
                     // Снимаем уведомление вместе с сервисом: висящее «нет
                     // сессии» после ухода сервиса — мусор в шторке.
@@ -1161,7 +1161,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // строим новый интерфейс.
             val liveFd = runCatching { live.fd }.getOrNull()
             if (liveFd != null) {
-                Log.i(logTag, "openTun: параметры прежние — переиспользую живой tun (fd=$liveFd)")
+                Log.i(logTag, "openTun: параметры прежние - переиспользую живой tun (fd=$liveFd)")
                 return liveFd
             }
         }
@@ -1235,7 +1235,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // пользователь, и заметить подмену нечем.
         if (includeWanted && !perAppApplied) {
             throw IllegalStateException(
-                "Выбранные приложения не установлены — режим «только выбранные» применить не к чему"
+                "Выбранные приложения не установлены - режим «только выбранные» применить не к чему"
             )
         }
         if (!perAppApplied) {

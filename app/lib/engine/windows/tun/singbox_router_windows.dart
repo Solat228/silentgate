@@ -114,7 +114,7 @@ class SingboxRouterWindows
         await _startOnce(split, xraySocksPort, attempt, abort: abort);
         // Успели подняться, но пользователь уже отключился — снимаем сразу.
         if (abort?.call() ?? false) {
-          AppLog.i('TUN поднялся после отмены — снимаю');
+          AppLog.i('TUN поднялся после отмены - снимаю');
           await stop();
           return;
         }
@@ -175,7 +175,7 @@ class SingboxRouterWindows
       // Никто не забрал за пять секунд: прошлого хелпера, скорее всего, и не
       // было (права не дали, задача не запустилась). Файл убираем сами — иначе
       // он убьёт СЛЕДУЮЩИЙ хелпер сразу после старта.
-      AppLog.w('stop-файл TUN никто не забрал за 5 с — убираю сам. '
+      AppLog.w('stop-файл TUN никто не забрал за 5 с - убираю сам. '
           'Если прошлый помощник всё же жив, он останется работать.');
       TunHelper.clearStopAt(_stopPath);
     }
@@ -208,14 +208,14 @@ class SingboxRouterWindows
     // снятием поднятого. Между ожиданием stop-файла (до 5 с) и этим местом
     // человек вполне мог нажать «Отключить».
     if (abort?.call() ?? false) {
-      AppLog.i('TUN: отключение пользователем — помощник не запускается');
+      AppLog.i('TUN: отключение пользователем - помощник не запускается');
       return;
     }
     final taskExists = await TunScheduledTask.exists();
     final taskCurrent = taskExists && await TunScheduledTask.isCurrent();
     _lastStaleScheduledTask = taskExists && !taskCurrent;
     if (_lastStaleScheduledTask) {
-      AppLog.w('Задача Планировщика «${TunScheduledTask.taskName}» устарела — '
+      AppLog.w('Задача Планировщика «${TunScheduledTask.taskName}» устарела - '
           'она запускает другой файл или другие пути. Поднимаю туннель обычным '
           'путём (спросит права). Пересоздать: настройки → «TUN и '
           'маршрутизация» → запуск без UAC.');
@@ -233,7 +233,7 @@ class SingboxRouterWindows
       if (!ok) {
         throw TunElevationDenied(
           'Не удалось получить права администратора для TUN (UAC отклонён).\n'
-          'Чтобы больше не спрашивало — настройте запуск без UAC в разделе «TUN и маршрутизация».',
+          'Чтобы больше не спрашивало - настройте запуск без UAC в разделе «TUN и маршрутизация».',
         );
       }
     }
@@ -291,12 +291,12 @@ class SingboxRouterWindows
     if (answer == null) {
       TunReload.cancel(dir);
       AppLog.w('TUN: помощник не ответил на просьбу о перезапуске без снятия '
-          'блокировки — пересоздаю обычным путём');
+          'блокировки - пересоздаю обычным путём');
       return false;
     }
     if (!answer.started) {
       AppLog.w('TUN: помощник отказался перезапускать ядро без снятия '
-          'блокировки (${answer.reason}) — пересоздаю обычным путём');
+          'блокировки (${answer.reason}) - пересоздаю обычным путём');
       return false;
     }
     try {
@@ -430,11 +430,11 @@ class SingboxRouterWindows
     final conflict = await _conflictingTunnels();
     final hint = conflict.isNotEmpty
         ? 'Обнаружен другой активный VPN-туннель: ${conflict.join(', ')}.\n'
-            'Два TUN-адаптера одновременно борются за маршрут по умолчанию — '
+            'Два TUN-адаптера одновременно борются за маршрут по умолчанию - '
             'отключите другой VPN и попробуйте снова.\n\n'
         : '';
     throw TunStartException(
-      'TUN-адаптер не поднялся за 12 секунд — sing-box не запустился.',
+      'TUN-адаптер не поднялся за 12 секунд - sing-box не запустился.',
       details: hint +
           (log.isEmpty
               ? 'Лог sing-box пуст. Проверьте, что рядом с xray.exe лежат '

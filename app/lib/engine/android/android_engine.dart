@@ -438,7 +438,7 @@ class AndroidEngine extends VpnEngineBase {
     if (!st.supported || st.lockdown) {
       AppLog.i('Проверка прямого интернета пропущена: '
           '${st.supported ? 'включена блокировка без VPN' : 'режим блокировки не узнать'}'
-          ' — веду себя как раньше');
+          ' - веду себя как раньше');
       return null;
     }
     return super.directInternetAvailable();
@@ -499,7 +499,7 @@ class AndroidEngine extends VpnEngineBase {
       return await ch.invokeMethod<T>(method).timeout(channelTimeout);
     } on TimeoutException {
       AppLog.w('Главный поток Android не ответил на «$what» за '
-          '${channelTimeout.inSeconds} с — считаю ответ неизвестным. Обычно это '
+          '${channelTimeout.inSeconds} с - считаю ответ неизвестным. Обычно это '
           'значит, что он занят: интерфейс в этот момент застыл.');
       return null;
     }
@@ -531,7 +531,7 @@ class AndroidEngine extends VpnEngineBase {
       // Пароль Clash API — от ТОГО запуска: свежесгенерированный туннель не
       // знает, и счётчики навсегда остались бы нулями (401 на каждый такт).
       if (!await _restoreApiSecret()) {
-        AppLog.w('Пароль Clash API прошлой сессии не найден — '
+        AppLog.w('Пароль Clash API прошлой сессии не найден - '
             'счётчики трафика будут пустыми до переподключения');
       }
       // ⚠️ ПАРОЛЬ ПРОБ — ДО «ПОДКЛЮЧЕНО». На смену статуса интерфейс сразу
@@ -565,7 +565,7 @@ class AndroidEngine extends VpnEngineBase {
         startHealthWatch(() => isStale(gen));
       } else {
         AppLog.w('Сторож канала НЕ вооружён после подхвата: пароль проб '
-            'прошлой сессии не найден. Обрыв этого туннеля замечен не будет — '
+            'прошлой сессии не найден. Обрыв этого туннеля замечен не будет - '
             'переподключитесь, чтобы вернуть присмотр.');
       }
     } catch (e) {
@@ -705,14 +705,14 @@ class AndroidEngine extends VpnEngineBase {
         final r = stripGeodata(json,
             keep: (kind, name) => cats[kind]?.has(name) ?? false);
         if (r.report.changed) {
-          AppLog.i('Xray-конфиг: в гео-базах на диске нет части категорий — '
+          AppLog.i('Xray-конфиг: в гео-базах на диске нет части категорий - '
               '${r.report.describe()}. Этот трафик пойдёт через VPN; полные '
               'базы скачиваются в настройках.');
         }
         json = r.json;
       }
       json = await _withAssetEnv(json);
-      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы на месте — '
+      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы на месте - '
           'отдаю ядру');
       return json;
     }
@@ -721,7 +721,7 @@ class AndroidEngine extends VpnEngineBase {
       // Мы вычистили что могли, а ссылки остались — значит есть место, о
       // котором мы не знаем. Ядро сейчас откажет, и лучше сказать об этом
       // заранее, чем оставить «страховка есть, но не сработала».
-      AppLog.e('В конфиге остались ссылки на гео-базы после чистки — '
+      AppLog.e('В конфиге остались ссылки на гео-базы после чистки - '
           'ядро, скорее всего, откажет. Это дефект: сообщите разработчику.');
     }
     AppLog.i('Xray-конфиг после чистки: ссылки остались='
@@ -733,17 +733,17 @@ class AndroidEngine extends VpnEngineBase {
       // скачаны» в обоих — то есть врал ровно тому, у кого базы уже лежат на
       // диске, и советовал ему скачать их ещё раз.
       if (have) {
-        AppLog.w('Гео-базы на диске есть, но ядро их не открыло — правила по '
+        AppLog.w('Гео-базы на диске есть, но ядро их не открыло - правила по '
             'ним отброшены: ${r.report.describe()}. Этот трафик пойдёт через '
             'VPN, а не напрямую. Помогает перекачивание баз в настройках.');
         emitNotice(EngineNoticeKind.geoAssetsUnusable,
-            'Ядро не открыло гео-базы — правила панели по странам отключены');
+            'Ядро не открыло гео-базы - правила панели по странам отключены');
       } else {
-        AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
+        AppLog.w('Гео-базы не скачаны - правила по ним отброшены: '
             '${r.report.describe()}. Этот трафик пойдёт через VPN, а не '
             'напрямую. Скачать базы можно в настройках.');
         emitNotice(EngineNoticeKind.geoAssetsMissing,
-            'Гео-базы не скачаны — правила панели по странам отключены');
+            'Гео-базы не скачаны - правила панели по странам отключены');
       }
     }
     return r.json;
@@ -947,7 +947,7 @@ class AndroidEngine extends VpnEngineBase {
       fallbackTag: 'proxy',
       );
       for (final e in exitsBuilt.skipped.entries) {
-        AppLog.i('Выход «${e.key}» не поднят: ${e.value} — '
+        AppLog.i('Выход «${e.key}» не поднят: ${e.value} - '
             'его правила пойдут общим туннелем');
       }
       if (exitsBuilt.outbounds.isNotEmpty) {
@@ -1084,7 +1084,7 @@ class AndroidEngine extends VpnEngineBase {
         // активность, диалог закрыла оболочка, приложение свернули поверх него
         // (BACKLOG #28). В этих случаях фраза про «пользователь не разрешил»
         // прямо вводит в заблуждение.
-        AppLog.w('Android не выдал согласие на VPN — туннель не поднимался');
+        AppLog.w('Android не выдал согласие на VPN - туннель не поднимался');
         setStatus(VpnConnectionState.error,
             message: 'Android не разрешил поднять VPN. Нажмите «Подключиться» '
                 'ещё раз и подтвердите запрос системы.',
@@ -1332,7 +1332,7 @@ class AndroidEngine extends VpnEngineBase {
         // Заглушку не из чего собрать: ни живых опций, ни сессии. Собранная
         // «из чего попало» она не удержала бы туннель, а ПОДМЕНИЛА его чужим
         // интерфейсом — с другими списками пакетов и другим MTU.
-        AppLog.w('Удержать туннель нечем — параметры живого туннеля '
+        AppLog.w('Удержать туннель нечем - параметры живого туннеля '
             'неизвестны. Гашу, чтобы не подменять интерфейс наугад.');
         await _stopService();
         return;
@@ -1356,7 +1356,7 @@ class AndroidEngine extends VpnEngineBase {
           // (дескриптором владеет libbox). Разница с kill switch в том, что
           // попытки здесь КОНЧАЮТСЯ, и после них `cleanup()` снимет туннель.
           AppLog.i('Туннель удержан между попытками, чтобы не пересоздавать '
-              'интерфейс; блокировка при этом НЕ включается — попытки конечны');
+              'интерфейс; блокировка при этом НЕ включается - попытки конечны');
         }
         return;
       } catch (e) {
@@ -1394,7 +1394,7 @@ class AndroidEngine extends VpnEngineBase {
     if (reconstructed && !_warnedStubFromSettings) {
       _warnedStubFromSettings = true;
       AppLog.w('Kill switch: опций живого туннеля нет (его поднял прошлый '
-          'запуск интерфейса) — собираю заглушку из настроек сессии. Совпадёт '
+          'запуск интерфейса) - собираю заглушку из настроек сессии. Совпадёт '
           'с живым туннелем, пока настройки не менялись после его подъёма.');
     }
     return SingboxConfigBuilder(
@@ -1532,7 +1532,7 @@ class AndroidEngine extends VpnEngineBase {
   static Future<bool> _ipv6Reality() async {
     final has = await Ipv6Support.hasGlobalIpv6();
     if (!has) {
-      AppLog.i('IPv6 наружу не найден — в туннеле он выключен, иначе '
+      AppLog.i('IPv6 наружу не найден - в туннеле он выключен, иначе '
           'двустековые сайты упирались бы в «unreachable network»');
     }
     return has;
@@ -1600,7 +1600,7 @@ class AndroidEngine extends VpnEngineBase {
     final ip = InternetAddress.tryParse(upstream);
     if (ip == null || ip.type != InternetAddressType.IPv4) {
       AppLog.w('Запасной DNS не поднят: резолвер «$upstream» не литеральный '
-          'IPv4-адрес. DNS работает как раньше — целиком через туннель.');
+          'IPv4-адрес. DNS работает как раньше - целиком через туннель.');
       return 0;
     }
     try {

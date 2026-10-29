@@ -249,7 +249,7 @@ class _RuleImportDialogState<T> extends State<RuleImportDialog<T>> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: SelText(
-                '${widget.label(c.incoming)} — '
+                '${widget.label(c.incoming)} - '
                 '${l.splitImportConflictLine(widget.describe(c.current), widget.describe(c.incoming))}',
                 style: theme.textTheme.bodySmall,
               ),

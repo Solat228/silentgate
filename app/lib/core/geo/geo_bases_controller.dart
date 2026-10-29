@@ -269,7 +269,7 @@ class GeoBasesController extends ChangeNotifier {
     if (_busy) return false;
     if (last != null && t.difference(last) < prefetchRetry) return false;
     _prefetchAt = t;
-    AppLog.i('Гео-базы: безлимитная сеть — качаю полные сам');
+    AppLog.i('Гео-базы: безлимитная сеть - качаю полные сам');
     final ok = await download(confirm: (_) async => true);
     if (!ok && _outcome == GeoOutcome.failed) {
       // Тихая закачка не показывает ошибку на экране — но и молчать о ней

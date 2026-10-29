@@ -51,7 +51,7 @@ abstract final class TunTaskAutoSetup {
           'Не удалось получить права администратора для TUN (UAC отклонён).',
         );
       case PrivilegeSetupResult.failed:
-        AppLog.w('TUN: задача Планировщика не поставилась — запускаю помощника '
+        AppLog.w('TUN: задача Планировщика не поставилась - запускаю помощника '
             'с окном UAC');
     }
   }

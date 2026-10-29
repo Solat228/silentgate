@@ -204,7 +204,7 @@ class _ServerEditorDialogState extends State<ServerEditorDialog> {
       actions: [
         TextButton(
             onPressed: _showJson,
-            child: const Text('JSON')), // #5 — из редактора открыть JSON
+            child: const Text('JSON')), // #5 - из редактора открыть JSON
         TextButton(onPressed: () => Navigator.pop(context), child: Text(l.editorCancel)),
         FilledButton(onPressed: _save, child: Text(l.editorSave)),
       ],

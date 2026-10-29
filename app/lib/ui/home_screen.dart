@@ -883,7 +883,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // любой отказ, включая те, где UAC не спрашивался вовсе.
     AppLog.i(switch (result) {
       PrivilegeSetupResult.done =>
-        'Задача Планировщика пересоздана — дальше подключения пойдут без UAC',
+        'Задача Планировщика пересоздана - дальше подключения пойдут без UAC',
       PrivilegeSetupResult.denied =>
         'Пересоздать задачу Планировщика не удалось: права не получены',
       PrivilegeSetupResult.failed =>

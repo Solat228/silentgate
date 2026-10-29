@@ -480,7 +480,7 @@ class XrayJsonSubscription {
             if (hasPacketSize || password == null) {
               final why = hasPacketSize ? 'gecko/packetSize' : 'пустой пароль';
               AppLog.w('XRAY_JSON: hysteria2 "$remark" помечен как '
-                  'неподдерживаемый — finalmask.udp несёт неподдерживаемую '
+                  'неподдерживаемый - finalmask.udp несёт неподдерживаемую '
                   'форму salamander ($why)');
               unsupportedReason =
                   'hy2_mask:${hasPacketSize ? 'gecko' : 'salamander'}';
@@ -495,7 +495,7 @@ class XrayJsonSubscription {
             // их не собирает (MASKING.md §3.2) — молча подключаться без части
             // маски, которую сервер ждёт, нельзя.
             AppLog.w('XRAY_JSON: hysteria2 "$remark" помечен как '
-                'неподдерживаемый — finalmask.udp несёт неподдерживаемый '
+                'неподдерживаемый - finalmask.udp несёт неподдерживаемый '
                 'тип маски "$type"');
             unsupportedReason = 'hy2_mask:$type';
           }

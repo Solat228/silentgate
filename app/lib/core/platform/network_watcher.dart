@@ -134,7 +134,7 @@ class NetworkWatcher {
         now0.difference(prev) > interval * 4) {
       final gap = now0.difference(prev);
       AppLog.w('Похоже, устройство выходило из сна (пауза '
-          '${gap.inSeconds} с) — считаем это сменой сети и переприменяем '
+          '${gap.inSeconds} с) - считаем это сменой сети и переприменяем '
           'маршруты с DNS');
       _lastSignature = null; // заставит обработать как смену
       _pendingSignature = null;

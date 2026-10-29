@@ -527,7 +527,7 @@ abstract class VpnEngineBase implements VpnEngine {
         final back = await stats.selectExitMember(tag, node);
         if (back) {
           AppLog.i('Выход «${names[tag] ?? tag}» снова отвечает '
-              '(промахов было $missed) — трафик вернулся на этот сервер');
+              '(промахов было $missed) - трафик вернулся на этот сервер');
         } else {
           AppLog.w('Выход «${names[tag] ?? tag}» снова отвечает '
               '(промахов было $missed), но вернуть на него трафик не удалось: '
@@ -537,7 +537,7 @@ abstract class VpnEngineBase implements VpnEngine {
       onExitDown: (tag) async {
         if (!down.add(tag)) return;
         final name = names[tag] ?? tag;
-        AppLog.e('Выход «$name» не отвечает: промахов подряд — '
+        AppLog.e('Выход «$name» не отвечает: промахов подряд - '
             '${h.failuresToDeclareDown}.');
 
         // ⚠️ ВСЕ ВЫХОДЫ РАЗОМ — ЭТО ОТКАЗ ПРОБЫ, А НЕ ВЫХОДОВ.
@@ -556,7 +556,7 @@ abstract class VpnEngineBase implements VpnEngine {
         if (quiet.contains(tag)) return;
         if (!tellUserExitDown(down: down.length, total: tags.length)) {
           AppLog.w('Не отвечают ВСЕ выходы (${tags.length} из ${tags.length}) '
-              '— похоже, отказал не выход, а сама проба через Clash API '
+              '- похоже, отказал не выход, а сама проба через Clash API '
               'ядра. Человеку не сообщаю: одновременная смерть всех выходов '
               'неправдоподобна, и шесть заметок были бы шестью ошибками.');
           return;
@@ -589,7 +589,7 @@ abstract class VpnEngineBase implements VpnEngine {
               // через конкретный сервер осознанно, и молчаливая подмена
               // страны — это ровно то, чего он не просил.
               ? 'Трафик, направленный через этот сервер, временно идёт через '
-                  'основной туннель — значит из другой страны. Вернётся '
+                  'основной туннель - значит из другой страны. Вернётся '
                   'обратно, как только сервер снова ответит.'
               : 'Трафик, направленный через этот сервер, сейчас не идёт. '
                   'Основной туннель и остальные выходы работают.',
@@ -689,7 +689,7 @@ abstract class VpnEngineBase implements VpnEngine {
       aborted: () => aborted() || !status.isConnected,
       onOk: () => _channelProven = true,
       onRecovered: (missed) => AppLog.w(
-          'Канал восстановился сам: подряд не прошло проб — $missed. '
+          'Канал восстановился сам: подряд не прошло проб - $missed. '
           'Переподключение не потребовалось.'),
       onDown: () async {
         if (aborted()) return;
@@ -697,7 +697,7 @@ abstract class VpnEngineBase implements VpnEngine {
         // могла восстановиться за те секунды, что мы шли сюда, и рвать
         // соединение впустую незачем.
         if (await h.probeOnce()) {
-          AppLog.w('Канал ответил на повторной пробе — не переподключаюсь');
+          AppLog.w('Канал ответил на повторной пробе - не переподключаюсь');
           // ⚠️ ПЕРЕПРОВЕРКА НУЖНА И ЗДЕСЬ, А НЕ ТОЛЬКО В ВЕТКЕ РАЗРЫВА.
           //
           // Подтверждающая проба идёт до трёх мишеней по 8 секунд — до ~24
@@ -724,7 +724,7 @@ abstract class VpnEngineBase implements VpnEngine {
           //    условия, отдельным стражем не прикрыто и прикрыто быть не может.
           if (aborted() || !status.isConnected || !identical(_health, h)) {
             AppLog.i('Сторож канала: за время подтверждающей пробы сессия '
-                'сменилась — сторожа новой сессии не трогаю');
+                'сменилась - сторожа новой сессии не трогаю');
             return;
           }
           startHealthWatch(aborted);
@@ -738,7 +738,7 @@ abstract class VpnEngineBase implements VpnEngine {
         // повтор поверх живого подключения; а если пользователь просто
         // отключился, честное «Отключено» затиралось бы ложной ошибкой.
         if (aborted() || !status.isConnected) {
-          AppLog.i('Сторож канала: за время пробы состояние изменилось — '
+          AppLog.i('Сторож канала: за время пробы состояние изменилось - '
               'соединение не трогаю');
           return;
         }
@@ -748,7 +748,7 @@ abstract class VpnEngineBase implements VpnEngine {
         final direct = await directInternetAvailable();
         if (aborted() || !status.isConnected || _userStopped) {
           AppLog.i('Сторож канала: за время проверки сети состояние '
-              'изменилось — соединение не трогаю');
+              'изменилось - соединение не трогаю');
           return;
         }
         if (direct == false) {
@@ -765,7 +765,7 @@ abstract class VpnEngineBase implements VpnEngine {
         if (_healthRestarts >= _healthGiveUpAfter) {
           AppLog.e('Сторож канала умолкает: $_healthRestarts переподключения '
               'подряд не помогли. Похоже, проверочные адреса недоступны из '
-              'этой страны — дальше соединение не трогаю, чтобы не рвать его '
+              'этой страны - дальше соединение не трогаю, чтобы не рвать его '
               'без пользы.');
           return;
         }
@@ -782,17 +782,17 @@ abstract class VpnEngineBase implements VpnEngine {
         final byIp = await h.probeOnce();
         final byName = byIp ? await h.nameResolutionWorks() : false;
         final what = !byIp
-            ? 'не отвечает ничего — похоже, умер транспорт'
+            ? 'не отвечает ничего - похоже, умер транспорт'
             : (byName
-                ? 'на повторе ответило всё — вероятно, помеха была недолгой'
-                : 'ОТВЕЧАЕТ ТОЛЬКО МИШЕНЬ ПО АДРЕСУ, по именам — нет: '
+                ? 'на повторе ответило всё - вероятно, помеха была недолгой'
+                : 'ОТВЕЧАЕТ ТОЛЬКО МИШЕНЬ ПО АДРЕСУ, по именам - нет: '
                     'транспорт жив, сломан DNS в туннеле');
         // Ещё до двух проб по 8 секунд — сессия за это время могла смениться
         // (та же причина, что у проверки выше). Аудит 25.10.2026, G.
         if (aborted() || !status.isConnected || _userStopped ||
             !identical(_health, h)) {
           AppLog.i('Сторож канала: за время разбора причины состояние '
-              'изменилось — соединение не трогаю');
+              'изменилось - соединение не трогаю');
           return;
         }
         // На повторе ответило ВСЁ — канал жив, рвать его незачем: помеха
@@ -800,7 +800,7 @@ abstract class VpnEngineBase implements VpnEngine {
         // переподключений не растёт.
         if (byIp && byName) {
           AppLog.w('Канал не отвечал ${h.failuresToDeclareDown} проверки '
-              'подряд, но на повторе ответило всё — соединение не трогаю, '
+              'подряд, но на повторе ответило всё - соединение не трогаю, '
               'сторож встаёт заново');
           startHealthWatch(aborted);
           return;
@@ -809,7 +809,7 @@ abstract class VpnEngineBase implements VpnEngine {
         _lastHealthRestartAt = DateTime.now();
         AppLog.e('Канал не отвечает: ${h.failuresToDeclareDown} проверки подряд '
             'не прошли через прокси-порт $httpProxyPort ($what). Ядро при этом '
-            'живо — переподключаюсь, иначе «Подключено» осталось бы враньём.');
+            'живо - переподключаюсь, иначе «Подключено» осталось бы враньём.');
         // ⚠️ ЗАМЕТКУ ЗДЕСЬ НЕ ШЛЁМ. `scheduleRetry` отправит свою — с той
         // же причиной («канал не пропускает трафик»), и на экране всплывали ДВА
         // сообщения об одном событии. Поймано живым прогоном в VM: на снимке
@@ -823,7 +823,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (w != null) {
       w.start(onLoss: () => unawaited(_onDirectInternetLost(aborted, h)));
       AppLog.i('Прямой интернет проверяется раз в ${w.every.inSeconds} с: '
-          'пропал — канал проверяется сразу');
+          'пропал - канал проверяется сразу');
     }
   }
 
@@ -853,11 +853,11 @@ abstract class VpnEngineBase implements VpnEngine {
         _offlineSince != null;
     if (stale()) return;
     AppLog.w('Прямой интернет пропал: две проверки подряд мимо туннеля не '
-        'прошли — проверяю канал сейчас, не дожидаясь очередной пробы');
+        'прошли - проверяю канал сейчас, не дожидаясь очередной пробы');
     final ok = await h.probeNow();
     if (stale()) return;
     if (ok) {
-      AppLog.i('Канал при этом отвечает — прямой путь закрыт чем-то своим, '
+      AppLog.i('Канал при этом отвечает - прямой путь закрыт чем-то своим, '
           'соединение не трогаю');
       return;
     }
@@ -941,7 +941,7 @@ abstract class VpnEngineBase implements VpnEngine {
     _offlineAborted = aborted;
     _offlineProbe = probe..markSuspect();
     stopHealthWatch();
-    AppLog.w('Нет интернета ни через туннель, ни напрямую — жду сеть, '
+    AppLog.w('Нет интернета ни через туннель, ни напрямую - жду сеть, '
         'проверка раз в ${offlineCheckEvery.inSeconds} с. Не переподключаюсь: '
         'без сети это бесполезно');
     setStatus(VpnConnectionState.connected,
@@ -998,7 +998,7 @@ abstract class VpnEngineBase implements VpnEngine {
       }
       if (tunnelOk) {
         _stopOffline();
-        AppLog.i('Сеть вернулась, канал снова пропускает трафик — '
+        AppLog.i('Сеть вернулась, канал снова пропускает трафик - '
             'переподключение не понадобилось (ждал '
             '${_humanDuration(DateTime.now().difference(since))})');
         if (_offlineAnnounced) {
@@ -1016,7 +1016,7 @@ abstract class VpnEngineBase implements VpnEngine {
         return;
       }
       if (direct == false) return;
-      AppLog.w('Сеть вернулась, а канал молчит — переподключаюсь');
+      AppLog.w('Сеть вернулась, а канал молчит - переподключаюсь');
       _stopOffline();
       _afterOffline = true;
       _attempt = 0;
@@ -1096,7 +1096,7 @@ abstract class VpnEngineBase implements VpnEngine {
     final recovery = !_freshUserConnect && (_noticedDrop || _attempt > 0);
     if (!recovery) return true;
     if (!_channelProven) {
-      AppLog.i('Восстановление: сквозную пробу не проверяю — на этой сессии '
+      AppLog.i('Восстановление: сквозную пробу не проверяю - на этой сессии '
           'она не проходила ни разу, её провал ничего не доказывает');
       return true;
     }
@@ -1124,7 +1124,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (aborted()) return false;
     AppLog.e('Ядро поднялось, но трафик через канал не идёт: $_confirmRounds '
         'пробы подряд не прошли через 127.0.0.1:$httpProxyPort. '
-        '«Восстановлено» не объявляю — считаю попытку неудачной.');
+        '«Восстановлено» не объявляю - считаю попытку неудачной.');
     final s = session?.options.settings;
     await teardownCore(
         keepCapture: s != null && keepCaptureBetweenAttempts(s));
@@ -1580,7 +1580,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (since != null) {
       final held = DateTime.now().difference(since);
       AppLog.i('Kill switch: трафик разблокирован, держал '
-          '${_humanDuration(held)} — соединение восстановлено');
+          '${_humanDuration(held)} - соединение восстановлено');
       _blockingSince = null;
     }
   }
@@ -1748,7 +1748,7 @@ abstract class VpnEngineBase implements VpnEngine {
       // Одна строка вместо десятков «Не удалось отрезолвить … (Timeout 5 сек)»:
       // спрашивать по одному резолвер, который молчит, — это и было время
       // восстановления.
-      AppLog.w('DNS не ответил за ${dnsProbeTimeout.inSeconds} с — адреса '
+      AppLog.w('DNS не ответил за ${dnsProbeTimeout.inSeconds} с - адреса '
           '${probed.skipped.length} серверов беру из кэша, не дожидаясь '
           'таймаутов (так бывает, пока kill switch держит трафик)');
     }
@@ -1779,7 +1779,7 @@ abstract class VpnEngineBase implements VpnEngine {
       if (cached != null) {
         out[host] = cached;
         AppLog.w('Не удалось отрезолвить $host ($e), беру прошлый адрес '
-            '(${cached.join(", ")}) — это и спасает старт при системном '
+            '(${cached.join(", ")}) - это и спасает старт при системном '
             'always-on, когда DNS ещё заблокирован');
       } else {
         AppLog.w('Не удалось отрезолвить $host: $e');
@@ -1982,7 +1982,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (server.core == ProxyCore.singbox &&
         ((server.rawJsonOverride ?? '').trim().isNotEmpty ||
             (server.rawPanelConfig ?? '').trim().isNotEmpty)) {
-      AppLog.w('У ${server.displayName} есть Xray-JSON, но это hysteria2 — '
+      AppLog.w('У ${server.displayName} есть Xray-JSON, но это hysteria2 - '
           'правка игнорируется, поднимаю sing-box');
     }
 
@@ -2319,7 +2319,7 @@ abstract class VpnEngineBase implements VpnEngine {
     if (up != null && DateTime.now().difference(up) < _flapWindow) {
       _attempt = _attemptBeforeUp;
       AppLog.w('Туннель развалился через ${DateTime.now().difference(up).inMilliseconds} мс '
-          'после подъёма — считаю это продолжением серии отказов, а не новой '
+          'после подъёма - считаю это продолжением серии отказов, а не новой '
           'сессией (попыток уже $_attempt из $maxAttempts)');
     }
     _lastUpAt = null;
@@ -2335,7 +2335,7 @@ abstract class VpnEngineBase implements VpnEngine {
     // Такие отказы неустранимы повтором по своей природе: пока файла нет, ничего
     // не изменится. Останавливаемся сразу и говорим, ЧЕГО не хватает.
     if (_isUnrecoverable(reason)) {
-      AppLog.e('Автопереподключение отменено: $reason. Повтор тут не поможет — '
+      AppLog.e('Автопереподключение отменено: $reason. Повтор тут не поможет - '
           'не хватает файла программы, переустановите приложение.');
       _userStopped = true;
       _endBlocking('восстановление отменено');
@@ -2535,7 +2535,7 @@ abstract class VpnEngineBase implements VpnEngine {
             ? 'Соединение потеряно, трафик заблокирован. '
                 'Переподключение через ${delay.inSeconds} с (попытка $_attempt)…'
             : endless
-                ? 'Соединение потеряно, туннель не поднялся — трафик идёт '
+                ? 'Соединение потеряно, туннель не поднялся - трафик идёт '
                     'мимо VPN. Переподключение через ${delay.inSeconds} с '
                     '(попытка $_attempt)…'
                 : 'Переподключение через ${delay.inSeconds} с '
@@ -2647,7 +2647,7 @@ abstract class VpnEngineBase implements VpnEngine {
               ));
       return;
     }
-    AppLog.w('Смена сети — восстанавливаю подключение');
+    AppLog.w('Смена сети - восстанавливаю подключение');
     _attempt = 0;
     await scheduleRetry('сменилось сетевое окружение',
         why: const StatusNetworkChanged());
@@ -2691,7 +2691,7 @@ abstract class VpnEngineBase implements VpnEngine {
         );
     if (!await probe.probeOnce()) {
       AppLog.i('Смена сети: канал не отвечает через прокси-порт '
-          '$httpProxyPort — переподключаюсь');
+          '$httpProxyPort - переподключаюсь');
       return false;
     }
     // ⚠️ ПОСЛЕ ДОЛГОГО AWAIT — ПЕРЕПРОВЕРКА. Проба идёт по трём мишеням до 8 с
@@ -2699,11 +2699,11 @@ abstract class VpnEngineBase implements VpnEngine {
     // отключиться, а сессия — смениться целиком. Во всех таких случаях отвечаем
     // «не трогать»: решение по НОВОМУ состоянию принимает тот, кто его создал.
     if (_userStopped || !_status.isConnected || !identical(_session, session)) {
-      AppLog.i('Смена сети: за время пробы состояние изменилось — '
+      AppLog.i('Смена сети: за время пробы состояние изменилось - '
           'соединение не трогаю');
       return true;
     }
-    AppLog.i('Смена сети: трафик через канал по-прежнему идёт — '
+    AppLog.i('Смена сети: трафик через канал по-прежнему идёт - '
         'переподключение не требуется (QUIC умеет пережить смену адреса сам)');
     return true;
   }

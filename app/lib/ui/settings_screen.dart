@@ -1972,7 +1972,7 @@ class _SupportDialogState extends State<_SupportDialog> {
       serverCount: state.servers.length,
       activeServer: server == null ? '(нет)' : server.displayName,
       activeCore: server == null
-          ? '—'
+          ? '-'
           : (server.core == ProxyCore.singbox ? 'sing-box' : 'Xray'),
       header: header,
     );

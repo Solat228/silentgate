@@ -654,7 +654,7 @@ class ProbeController extends ChangeNotifier {
             );
             if (_recordSpeed(s, res)) ok++;
           } catch (e) {
-            AppLog.w('Скорость «${s.displayName}» по живому каналу — $e');
+            AppLog.w('Скорость «${s.displayName}» по живому каналу - $e');
           }
           _speedDone++;
           notifyListeners();
@@ -687,7 +687,7 @@ class ProbeController extends ChangeNotifier {
             AppLog.w('Скорость «${s.displayName}»: харнесс не дал порт');
           }
         } catch (e) {
-          AppLog.w('Скорость «${s.displayName}» не замерена — $e');
+          AppLog.w('Скорость «${s.displayName}» не замерена - $e');
         } finally {
           await handle?.stop();
         }
@@ -840,7 +840,7 @@ class ProbeController extends ChangeNotifier {
     // файла настроек — на Android этого достаточно, чтобы получить дефект.
     try {
       final icmp = icmpSingle ? createIcmpPinger() : null;
-      AppLog.i('Пинг: ${servers.length} серверов — '
+      AppLog.i('Пинг: ${servers.length} серверов - '
           '${twoPhase ? "TCP + проверка ${head ? "HEAD" : "GET"}" : "метод ${method.name}"}');
 
       // ── ФАЗА 1: измерение выбранным методом. Кто не ответил (TCP/ICMP) — «мёртв».
@@ -955,7 +955,7 @@ class ProbeController extends ChangeNotifier {
         verify.removeWhere((s) => s.key == liveAll.server.key);
         AppLog.i('Замер «${liveAll.server.remark}» самим ядром: '
             'GET /proxies/${core.tag}/delay через Clash API '
-            '(127.0.0.1:${core.port}) — запрос выполняет процесс ядра, '
+            '(127.0.0.1:${core.port}) - запрос выполняет процесс ядра, '
             'мимо захвата TUN');
         await _applyCoreDelay(liveAll.server, core, liveAll.port, settings,
             head: head, forceProxy: proxySingle);
@@ -965,7 +965,7 @@ class ProbeController extends ChangeNotifier {
         if (live != null && !cancel.isCancelled) {
           verify.remove(live.server);
           AppLog.i('Проверка «${live.server.remark}»: через ЖИВОЕ ядро '
-              '(127.0.0.1:${live.port}) — тем же путём, что идёт обычный трафик');
+              '(127.0.0.1:${live.port}) - тем же путём, что идёт обычный трафик');
           await _applyVerify(live.server, live.port, settings,
               head: head, forceProxy: proxySingle);
           liveChecked = true;
@@ -1036,7 +1036,7 @@ class ProbeController extends ChangeNotifier {
       interrupted = true;
       _lastSummary = 'Пинг прерван ошибкой';
       _lastSummaryMessage = const UiPingFailed();
-      AppLog.e('Пинг: сбой — $e');
+      AppLog.e('Пинг: сбой - $e');
     } finally {
       // Кого прогон не успел проверить — считаем ДО очистки состояния: только
       // здесь ещё известны и состав прогона, и то, до кого он дошёл.
@@ -1373,7 +1373,7 @@ class ProbeController extends ChangeNotifier {
       timeout: Duration(milliseconds: settings.pingTimeoutMs),
     );
     if (r.unavailable) {
-      AppLog.w('Clash API ядра не ответил — проверяю «${s.remark}» через '
+      AppLog.w('Clash API ядра не ответил - проверяю «${s.remark}» через '
           'живой прокси-порт 127.0.0.1:$livePort');
       await _applyVerify(s, livePort, settings,
           head: head, forceProxy: forceProxy);

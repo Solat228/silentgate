@@ -242,7 +242,7 @@ class _ApiBody extends StatelessWidget {
         '# Какие порты выходов раскладка обещает\n'
         'curl -s $base/v1/exits -H "Authorization: Bearer $token"\n'
         '\n'
-        '# Подключиться «Авто» (на живом канале — сменить сервер)\n'
+        '# Подключиться «Авто» (на живом канале - сменить сервер)\n'
         'curl -s -X POST $base/v1/connect '
         '-H "Authorization: Bearer $token" '
         '-H "Content-Type: application/json" '

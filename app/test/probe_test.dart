@@ -1430,7 +1430,7 @@ void _serverInfoTests() {
 
     const bad = SpeedResult.failed('нет связи');
     expect(bad.ok, isFalse);
-    expect(bad.label, '—');
+    expect(bad.label, '-');
   });
 
   test('размер пробы переживает сохранение настроек', () {
@@ -1449,7 +1449,7 @@ void _serverInfoTests() {
     expect(onlyCountry.location, 'Germany');
 
     const nothing = IpInfo(ip: '1.2.3.4');
-    expect(nothing.location, '—');
+    expect(nothing.location, '-');
   });
 
   test('IpInfo round-trip', () {

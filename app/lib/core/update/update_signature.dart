@@ -49,7 +49,7 @@ abstract final class UpdateSignature {
   static String sign(List<int> bytes, List<int> seed32) {
     if (seed32.length != ed.SeedSize) {
       throw ArgumentError.value(
-          seed32.length, 'seed32', 'seed Ed25519 — ровно ${ed.SeedSize} байта');
+          seed32.length, 'seed32', 'seed Ed25519 - ровно ${ed.SeedSize} байта');
     }
     final priv = ed.newKeyFromSeed(Uint8List.fromList(seed32));
     return base64.encode(ed.sign(priv, Uint8List.fromList(bytes)));

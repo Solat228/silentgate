@@ -601,7 +601,7 @@ class AutoConfigEngine {
     if (!_harnessFactory().supportsProxyRequests) {
       AppLog.w('Автонастройка: на этой платформе замер даёт только задержку, '
           'а подбор проверяет доступность сервисов через сам сервер. '
-          'Проверять нечем — прогон не начат.');
+          'Проверять нечем - прогон не начат.');
       throw const AutoConfigUnsupported();
     }
     final variants = variantsOverride ?? _buildVariants(settings);
@@ -658,7 +658,7 @@ class AutoConfigEngine {
       onPing?.call(s, ping);
     });
     cancel.throwIfCancelled();
-    AppLog.i('Автонастройка: TCP-отсев — из ${servers.length} серверов '
+    AppLog.i('Автонастройка: TCP-отсев - из ${servers.length} серверов '
         'отвечают ${aliveServers.length}, проверено $tcpDone');
 
     // ── ФАЗЫ 2–3: проверка сервисов у выживших ───────────────────────────────
@@ -709,7 +709,7 @@ class AutoConfigEngine {
       } catch (e) {
         done++;
         AppLog.w('Автонастройка: ${c.server.displayName} '
-            '(${c.variant.label}) пропущен — $e');
+            '(${c.variant.label}) пропущен - $e');
         return;
       }
       final port = handle.proxyPortFor(0);
@@ -852,7 +852,7 @@ class AutoConfigEngine {
     if (retry.isNotEmpty) {
       total = base.length + retry.length;
       AppLog.i('Автонастройка: внятного ответа не дали '
-          '${aliveServers.length - solved.length} серверов — перебираю вариации '
+          '${aliveServers.length - solved.length} серверов - перебираю вариации '
           '(${retry.length} проверок)');
       await _pooled(retry, limit, probe);
     }
@@ -944,7 +944,7 @@ class AutoConfigEngine {
       } on CancelledException {
         rethrow;
       } catch (e) {
-        AppLog.w('Автонастройка: скорость ${r.server.displayName} не замерена — $e');
+        AppLog.w('Автонастройка: скорость ${r.server.displayName} не замерена - $e');
       }
       measured.add(r.withSpeed(
         mbps: mbps,

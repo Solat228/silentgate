@@ -80,7 +80,7 @@ void main() {
   test('русский интерфейс совпадает с прежними строками движка', () {
     // Регресс: русский человек должен видеть ровно то же, что и раньше.
     expect(uiMessageL10n(ru, const UiRestartServerChanged()),
-        'Выбран другой сервер — переподключитесь, чтобы применить');
+        'Выбран другой сервер - переподключитесь, чтобы применить');
     expect(uiMessageL10n(ru, const UiNetworkHint(NetworkErrorKind.noNetwork)),
         networkErrorHint('connection refused')?.text ??
             uiMessageL10n(ru, const UiNetworkHint(NetworkErrorKind.noNetwork)));

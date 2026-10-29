@@ -97,7 +97,7 @@ class UpdateInstallerAndroid extends StagedUpdateInstaller {
       throw const UpdateInstallException('файл обновления не прочитан');
     }
     if (actual.toLowerCase() != expectedSha256.trim().toLowerCase()) {
-      AppLog.e('Обновление: хэш APK изменился после проверки — установка отменена');
+      AppLog.e('Обновление: хэш APK изменился после проверки - установка отменена');
       throw const UpdateInstallException(
           'файл обновления изменился после проверки');
     }

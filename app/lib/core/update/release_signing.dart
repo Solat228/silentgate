@@ -64,7 +64,7 @@ Future<UpdateManifest> buildManifest(
   for (final f in files) {
     final name = _baseName(f);
     if (!seen.add(name)) {
-      throw ArgumentError('два файла с именем «$name» — актив неоднозначен');
+      throw ArgumentError('два файла с именем «$name» - актив неоднозначен');
     }
   }
 

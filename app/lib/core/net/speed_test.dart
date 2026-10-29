@@ -44,7 +44,7 @@ class SpeedResult {
 
   /// «10.9 МБ/с» / «870 КБ/с».
   String get label {
-    if (!ok) return '—';
+    if (!ok) return '-';
     final mbs = bytesPerSecond / 1000000;
     if (mbs >= 1) return '${mbs.toStringAsFixed(1)} МБ/с';
     return '${(bytesPerSecond / 1000).toStringAsFixed(0)} КБ/с';
@@ -113,7 +113,7 @@ class SpeedTest {
         elapsed: sw.elapsed,
       );
     } on TimeoutException {
-      return const SpeedResult.failed('Таймаут — канал слишком медленный');
+      return const SpeedResult.failed('Таймаут - канал слишком медленный');
     } catch (e) {
       return SpeedResult.failed('$e');
     } finally {

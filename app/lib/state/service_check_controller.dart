@@ -161,7 +161,7 @@ class ServiceCheckController extends ChangeNotifier {
     if (_autoSkipReason == reason) return;
     _autoSkipReason = reason;
     if (report) {
-      (onAutoSkip ?? AppLog.i)('Проверка сервисов: автопрогон не начат — '
+      (onAutoSkip ?? AppLog.i)('Проверка сервисов: автопрогон не начат - '
           '$reason');
     }
   }
@@ -348,7 +348,7 @@ class ServiceCheckController extends ChangeNotifier {
         // Пачку НЕ запускаем: 14 красных кружков человек читает как «через VPN
         // не работает ничего», хотя канал просто ещё не встал. Показываем
         // отдельное состояние, которое можно повторить ([retryAutoCheck]).
-        AppLog.w('Проверка сервисов: канал не отвечает — автопрогон '
+        AppLog.w('Проверка сервисов: канал не отвечает - автопрогон '
             'не запускался (порт $httpPort)');
         return;
       }

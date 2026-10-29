@@ -22,7 +22,7 @@ class IpInfo {
   /// «Кемерово, Россия» либо что есть.
   String get location {
     final parts = [city, region, country].where((p) => (p ?? '').isNotEmpty);
-    return parts.isEmpty ? '—' : parts.join(', ');
+    return parts.isEmpty ? '-' : parts.join(', ');
   }
 
   Map<String, dynamic> toJson() => {

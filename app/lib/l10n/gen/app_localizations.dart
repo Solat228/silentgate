@@ -375,7 +375,7 @@ abstract class AppLocalizations {
   /// No description provided for @closeToTraySubtitle.
   ///
   /// In ru, this message translates to:
-  /// **'Крестик прячет окно в трей; выключите — крестик закрывает приложение'**
+  /// **'Крестик прячет окно в трей; выключите - крестик закрывает приложение'**
   String get closeToTraySubtitle;
 
   /// No description provided for @launchAtLoginTitle.
@@ -501,7 +501,7 @@ abstract class AppLocalizations {
   /// No description provided for @captureTunHint.
   ///
   /// In ru, this message translates to:
-  /// **'Настройки TUN, DNS и раздельного туннелирования появятся при выборе режима TUN — в режиме системного прокси они не работают.'**
+  /// **'Настройки TUN, DNS и раздельного туннелирования появятся при выборе режима TUN - в режиме системного прокси они не работают.'**
   String get captureTunHint;
 
   /// No description provided for @captureProxyOnly.
@@ -531,7 +531,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiEnableSub.
   ///
   /// In ru, this message translates to:
-  /// **'HTTP на 127.0.0.1:{port} — управление клиентом из скриптов'**
+  /// **'HTTP на 127.0.0.1:{port} - управление клиентом из скриптов'**
   String apiEnableSub(int port);
 
   /// No description provided for @apiTokenTitle.
@@ -543,7 +543,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiTokenUnset.
   ///
   /// In ru, this message translates to:
-  /// **'Не задан — API не поднимается'**
+  /// **'Не задан - API не поднимается'**
   String get apiTokenUnset;
 
   /// No description provided for @apiTokenRegenerate.
@@ -567,7 +567,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiExitsSub.
   ///
   /// In ru, this message translates to:
-  /// **'Каждому выдаётся свой локальный порт — запрос в него идёт через этот сервер'**
+  /// **'Каждому выдаётся свой локальный порт - запрос в него идёт через этот сервер'**
   String get apiExitsSub;
 
   /// No description provided for @apiCopyPythonExample.
@@ -579,7 +579,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiPortsHint.
   ///
   /// In ru, this message translates to:
-  /// **'Управление — порт {control}. «Прямо» — порт {direct}. Серверы — с {first}.'**
+  /// **'Управление - порт {control}. «Прямо» - порт {direct}. Серверы - с {first}.'**
   String apiPortsHint(int control, int direct, int first);
 
   /// No description provided for @apiRulesInProxyOnly.
@@ -597,7 +597,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiCaptureModeWarning.
   ///
   /// In ru, this message translates to:
-  /// **'⚠️ Выбран захват «Системный прокси» — порты выходов в нём не открываются, и соединение в них будет отвергнуто. Управляющий порт {control} работает при любом захвате. Нужны порты выходов — выберите «TUN (полный туннель)» или «Только прокси».'**
+  /// **'⚠️ Выбран захват «Системный прокси» - порты выходов в нём не открываются, и соединение в них будет отвергнуто. Управляющий порт {control} работает при любом захвате. Нужны порты выходов - выберите «TUN (полный туннель)» или «Только прокси».'**
   String apiCaptureModeWarning(int control);
 
   /// No description provided for @apiPortBusyTitle.
@@ -675,7 +675,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunUacFail.
   ///
   /// In ru, this message translates to:
-  /// **'Не удалось создать задачу — UAC будет запрашиваться при подключении'**
+  /// **'Не удалось создать задачу - UAC будет запрашиваться при подключении'**
   String get tunUacFail;
 
   /// No description provided for @autoReconnectTitle.
@@ -705,7 +705,7 @@ abstract class AppLocalizations {
   /// No description provided for @alwaysOnSub.
   ///
   /// In ru, this message translates to:
-  /// **'Always-on VPN и «блокировать соединения без VPN» — держит блокировку даже когда приложение закрыто'**
+  /// **'Always-on VPN и «блокировать соединения без VPN» - держит блокировку даже когда приложение закрыто'**
   String get alwaysOnSub;
 
   /// No description provided for @killSwitchSubTun.
@@ -717,7 +717,7 @@ abstract class AppLocalizations {
   /// No description provided for @killSwitchSubProxy.
   ///
   /// In ru, this message translates to:
-  /// **'В режиме «Системный прокси» защищает только приложения, уважающие прокси. Полностью — только TUN'**
+  /// **'В режиме «Системный прокси» защищает только приложения, уважающие прокси. Полностью - только TUN'**
   String get killSwitchSubProxy;
 
   /// No description provided for @killSwitchSubOff.
@@ -807,7 +807,7 @@ abstract class AppLocalizations {
   /// No description provided for @networkFullResetConfirmBody.
   ///
   /// In ru, this message translates to:
-  /// **'Кроме мягкой чистки будет сделано следующее.\n\n1) Отпущена и запрошена заново аренда DHCP на ВСЕХ адаптерах — включая виртуальные коммутаторы Hyper-V и VirtualBox: сеть виртуальных машин может отвалиться.\n\n2) Сброс winsock и стека IP вернёт сетевые настройки к заводским: статические адреса, маршруты и надстройки сторонних программ будут стёрты, задавать их придётся заново.\n\n3) Потребуется перезагрузка, а до неё сеть может работать хуже, чем сейчас.\n\nПонадобятся права администратора (UAC).'**
+  /// **'Кроме мягкой чистки будет сделано следующее.\n\n1) Отпущена и запрошена заново аренда DHCP на ВСЕХ адаптерах - включая виртуальные коммутаторы Hyper-V и VirtualBox: сеть виртуальных машин может отвалиться.\n\n2) Сброс winsock и стека IP вернёт сетевые настройки к заводским: статические адреса, маршруты и надстройки сторонних программ будут стёрты, задавать их придётся заново.\n\n3) Потребуется перезагрузка, а до неё сеть может работать хуже, чем сейчас.\n\nПонадобятся права администратора (UAC).'**
   String get networkFullResetConfirmBody;
 
   /// No description provided for @networkFullResetConfirmOk.
@@ -873,7 +873,7 @@ abstract class AppLocalizations {
   /// No description provided for @panelOwnerBody.
   ///
   /// In ru, this message translates to:
-  /// **'Обычному пользователю это не нужно — можно пропустить.\n\nЧтобы приложение получало вашу подписку в правильном JSON-формате (XRAY_JSON), добавьте этот блок в «Правила ответов» (Response Rules) панели Remnawave — он сопоставляет наш User-Agent:'**
+  /// **'Обычному пользователю это не нужно - можно пропустить.\n\nЧтобы приложение получало вашу подписку в правильном JSON-формате (XRAY_JSON), добавьте этот блок в «Правила ответов» (Response Rules) панели Remnawave - он сопоставляет наш User-Agent:'**
   String get panelOwnerBody;
 
   /// No description provided for @panelOwnerCopy.
@@ -915,19 +915,19 @@ abstract class AppLocalizations {
   /// No description provided for @aboutThirdPartySub.
   ///
   /// In ru, this message translates to:
-  /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — запускаются отдельными процессами'**
+  /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun - запускаются отдельными процессами'**
   String get aboutThirdPartySub;
 
   /// No description provided for @aboutThirdPartySubEmbedded.
   ///
   /// In ru, this message translates to:
-  /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) — встроены в приложение'**
+  /// **'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) - встроены в приложение'**
   String get aboutThirdPartySubEmbedded;
 
   /// No description provided for @thirdPartyBodyEmbedded.
   ///
   /// In ru, this message translates to:
-  /// **'На Android ядра ВСТРОЕНЫ в приложение (нативная библиотека внутри APK).\n\n• sing-box — GPL-3.0. Библиотека слинкована с приложением, поэтому производные обязаны оставаться под GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nИсходный код клиента: https://github.com/Solat228/silentgate\nПолные тексты лицензий — кнопками ниже.'**
+  /// **'На Android ядра ВСТРОЕНЫ в приложение (нативная библиотека внутри APK).\n\n• sing-box - GPL-3.0. Библиотека слинкована с приложением, поэтому производные обязаны оставаться под GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray - MIT\n  https://github.com/XTLS/libXray\n\nИсходный код клиента: https://github.com/Solat228/silentgate\nПолные тексты лицензий - кнопками ниже.'**
   String get thirdPartyBodyEmbedded;
 
   /// No description provided for @logsTitle.
@@ -999,7 +999,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoLogModeApp.
   ///
   /// In ru, this message translates to:
-  /// **'Подробность журнала приложения (app.log): импорт подписки, пинг, подключение, ошибки. «Только ошибки» — самый короткий журнал; «Обычный» — как работало до появления этой настройки; «Подробный» — всё, включая отладочные строки. На размер файла влияет заметно меньше, чем журнал ядра.'**
+  /// **'Подробность журнала приложения (app.log): импорт подписки, пинг, подключение, ошибки. «Только ошибки» - самый короткий журнал; «Обычный» - как работало до появления этой настройки; «Подробный» - всё, включая отладочные строки. На размер файла влияет заметно меньше, чем журнал ядра.'**
   String get infoLogModeApp;
 
   /// No description provided for @thirdPartyTitle.
@@ -1011,13 +1011,13 @@ abstract class AppLocalizations {
   /// No description provided for @thirdPartyBody.
   ///
   /// In ru, this message translates to:
-  /// **'SilentGate поставляется вместе со сторонними исполняемыми файлами. Они запускаются ОТДЕЛЬНЫМИ процессами и не встроены в приложение.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  TUN-туннель и прокси-ядро для Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — лицензия Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — данные маршрутизации, CC-BY-SA-4.0\n\nПолные тексты лицензий — в папке «licenses» рядом с приложением.'**
+  /// **'SilentGate поставляется вместе со сторонними исполняемыми файлами. Они запускаются ОТДЕЛЬНЫМИ процессами и не встроены в приложение.\n\n• Xray-core (xray.exe) - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) - GPL-3.0-or-later\n  TUN-туннель и прокси-ядро для Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) - лицензия Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat - данные маршрутизации, CC-BY-SA-4.0\n\nПолные тексты лицензий - в папке «licenses» рядом с приложением.'**
   String get thirdPartyBody;
 
   /// No description provided for @supportSectionNote.
   ///
   /// In ru, this message translates to:
-  /// **'Нажмите «Написать в поддержку» — откроется окно, где вы сами сгенерируете файл-лог (версии, ОС, настройки, app.log + хвост singbox.log; без паролей и токена подписки, URL скрыт). После этого появится кнопка отправки в Telegram поддержки.'**
+  /// **'Нажмите «Написать в поддержку» - откроется окно, где вы сами сгенерируете файл-лог (версии, ОС, настройки, app.log + хвост singbox.log; без паролей и токена подписки, URL скрыт). После этого появится кнопка отправки в Telegram поддержки.'**
   String get supportSectionNote;
 
   /// No description provided for @supportButtonTitle.
@@ -1041,7 +1041,7 @@ abstract class AppLocalizations {
   /// No description provided for @supportDialogTitleDone.
   ///
   /// In ru, this message translates to:
-  /// **'Лог готов — кому отправить'**
+  /// **'Лог готов - кому отправить'**
   String get supportDialogTitleDone;
 
   /// No description provided for @supportWhatWillHappen.
@@ -1059,7 +1059,7 @@ abstract class AppLocalizations {
   /// No description provided for @supportBullet2.
   ///
   /// In ru, this message translates to:
-  /// **'• После нажатия откроется СНАЧАЛА папка с файлом, затем сам файл. Впишите описание проблемы вверху, сохраните — и появится кнопка отправки в поддержку.'**
+  /// **'• После нажатия откроется СНАЧАЛА папка с файлом, затем сам файл. Впишите описание проблемы вверху, сохраните - и появится кнопка отправки в поддержку.'**
   String get supportBullet2;
 
   /// No description provided for @supportError.
@@ -1071,7 +1071,7 @@ abstract class AppLocalizations {
   /// No description provided for @supportDoneText.
   ///
   /// In ru, this message translates to:
-  /// **'Отчёт собран и открыт (папка, затем файл). Впишите описание проблемы вверху, сохраните файл и отправьте его в поддержку — приложение поможет открыть Telegram.'**
+  /// **'Отчёт собран и открыт (папка, затем файл). Впишите описание проблемы вверху, сохраните файл и отправьте его в поддержку - приложение поможет открыть Telegram.'**
   String get supportDoneText;
 
   /// No description provided for @supportWhoTo.
@@ -1131,7 +1131,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingTwoPhaseSubOn.
   ///
   /// In ru, this message translates to:
-  /// **'После TCP — запрос через сервер: отсекает нерабочие (Reality и т.п.)'**
+  /// **'После TCP - запрос через сервер: отсекает нерабочие (Reality и т.п.)'**
   String get pingTwoPhaseSubOn;
 
   /// No description provided for @pingTwoPhaseSubOff.
@@ -1179,7 +1179,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoAppUpdateBeta.
   ///
   /// In ru, this message translates to:
-  /// **'Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется — бета не придёт тем, кто эту галочку не включал.'**
+  /// **'Приложение начнёт смотреть список релизов GitHub целиком, включая пре-релизы, а не только последний стабильный. Основной канал автообновления при этом не меняется - бета не придёт тем, кто эту галочку не включал.'**
   String get infoAppUpdateBeta;
 
   /// No description provided for @appUpdateBetaBadge.
@@ -1191,13 +1191,13 @@ abstract class AppLocalizations {
   /// No description provided for @appUpdatePreviousVersionsHint.
   ///
   /// In ru, this message translates to:
-  /// **'Список — это то, что лежит в GitHub Releases. Каких-то версий там может не быть.'**
+  /// **'Список - это то, что лежит в GitHub Releases. Каких-то версий там может не быть.'**
   String get appUpdatePreviousVersionsHint;
 
   /// No description provided for @appUpdatePreviousVersionsEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Список пуст — GitHub Releases недоступен или релизов там нет.'**
+  /// **'Список пуст - GitHub Releases недоступен или релизов там нет.'**
   String get appUpdatePreviousVersionsEmpty;
 
   /// No description provided for @appUpdateOpenRelease.
@@ -1293,7 +1293,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoPinnedTop.
   ///
   /// In ru, this message translates to:
-  /// **' — закреплены сверху списка'**
+  /// **' - закреплены сверху списка'**
   String get autoPinnedTop;
 
   /// No description provided for @autoSearchContinues.
@@ -1323,7 +1323,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoNoSubscriptionPasteKey.
   ///
   /// In ru, this message translates to:
-  /// **'Подписки нет. Вставьте один ключ — подберём рабочие настройки:'**
+  /// **'Подписки нет. Вставьте один ключ - подберём рабочие настройки:'**
   String get autoNoSubscriptionPasteKey;
 
   /// No description provided for @autoTuneByKey.
@@ -1377,7 +1377,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoDoneRefreshPing.
   ///
   /// In ru, this message translates to:
-  /// **'Готово — обновить пинг найденных'**
+  /// **'Готово - обновить пинг найденных'**
   String get autoDoneRefreshPing;
 
   /// No description provided for @autoFoundPinnedRefreshing.
@@ -1437,19 +1437,19 @@ abstract class AppLocalizations {
   /// No description provided for @enumSplitAll.
   ///
   /// In ru, this message translates to:
-  /// **'Все — через VPN'**
+  /// **'Все - через VPN'**
   String get enumSplitAll;
 
   /// No description provided for @enumSplitOnly.
   ///
   /// In ru, this message translates to:
-  /// **'Только отмеченные — через VPN'**
+  /// **'Только отмеченные - через VPN'**
   String get enumSplitOnly;
 
   /// No description provided for @enumSplitExcept.
   ///
   /// In ru, this message translates to:
-  /// **'Отмеченные — мимо VPN'**
+  /// **'Отмеченные - мимо VPN'**
   String get enumSplitExcept;
 
   /// No description provided for @enumActionTunnel.
@@ -1497,7 +1497,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeAutoConfigProgress.
   ///
   /// In ru, this message translates to:
-  /// **'Автонастройка: {current} из {total} — {name}'**
+  /// **'Автонастройка: {current} из {total} - {name}'**
   String homeAutoConfigProgress(int current, int total, String name);
 
   /// No description provided for @homeImport.
@@ -1803,7 +1803,7 @@ abstract class AppLocalizations {
   /// No description provided for @subSwitcherCountTotal.
   ///
   /// In ru, this message translates to:
-  /// **'Серверов в подписке: {total}. Проверка канала ещё не проводилась — запустите «Пинг серверов всех подписок».'**
+  /// **'Серверов в подписке: {total}. Проверка канала ещё не проводилась - запустите «Пинг серверов всех подписок».'**
   String subSwitcherCountTotal(int total);
 
   /// No description provided for @subSwitcherCountWorking.
@@ -1815,7 +1815,7 @@ abstract class AppLocalizations {
   /// No description provided for @subSwitcherCountChecking.
   ///
   /// In ru, this message translates to:
-  /// **'Серверов в подписке: {total}. Проверка идёт прямо сейчас — число рабочих появится, когда прогон закончится.'**
+  /// **'Серверов в подписке: {total}. Проверка идёт прямо сейчас - число рабочих появится, когда прогон закончится.'**
   String subSwitcherCountChecking(int total);
 
   /// No description provided for @subSwitcherCountPartial.
@@ -1827,7 +1827,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoCaptureMode.
   ///
   /// In ru, this message translates to:
-  /// **'Как перехватывается трафик. «Системный прокси» — прописывает локальный прокси в системе (без прав администратора, ловит браузеры и большинство приложений). «TUN» — виртуальный сетевой адаптер, ловит ВЕСЬ трафик (в т.ч. UDP и приложения, игнорирующие прокси), но требует прав администратора.'**
+  /// **'Как перехватывается трафик. «Системный прокси» - прописывает локальный прокси в системе (без прав администратора, ловит браузеры и большинство приложений). «TUN» - виртуальный сетевой адаптер, ловит ВЕСЬ трафик (в т.ч. UDP и приложения, игнорирующие прокси), но требует прав администратора.'**
   String get infoCaptureMode;
 
   /// No description provided for @infoSystemProxy.
@@ -1851,13 +1851,13 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunStack.
   ///
   /// In ru, this message translates to:
-  /// **'Сетевой стек TUN (sing-box).\n\n«auto» — АВТОПОДБОР: если туннель не поднялся, приложение само перебирает system → gvisor → mixed, а затем уменьшает MTU (1400, 1280). Комбинация, на которой всё заработало, запоминается и в следующий раз пробуется первой. Ход подбора виден в статусе и в логе.\n\nЯвный выбор отключает подбор: system — стек ОС, быстрее всего, но капризнее к антивирусам; gvisor — userspace, медленнее, максимально совместим; mixed — TCP через system, UDP через gvisor.'**
+  /// **'Сетевой стек TUN (sing-box).\n\n«auto» - АВТОПОДБОР: если туннель не поднялся, приложение само перебирает system → gvisor → mixed, а затем уменьшает MTU (1400, 1280). Комбинация, на которой всё заработало, запоминается и в следующий раз пробуется первой. Ход подбора виден в статусе и в логе.\n\nЯвный выбор отключает подбор: system - стек ОС, быстрее всего, но капризнее к антивирусам; gvisor - userspace, медленнее, максимально совместим; mixed - TCP через system, UDP через gvisor.'**
   String get infoTunStack;
 
   /// No description provided for @infoTunMtu.
   ///
   /// In ru, this message translates to:
-  /// **'Максимальный размер пакета в TUN-адаптере. По умолчанию 1500; уменьшайте (1400, 1280), если бывают обрывы — слишком маленький снижает скорость.\n\nПри стеке «auto» это лишь стартовое значение: если туннель не поднимется, приложение само попробует меньшие MTU.'**
+  /// **'Максимальный размер пакета в TUN-адаптере. По умолчанию 1500; уменьшайте (1400, 1280), если бывают обрывы - слишком маленький снижает скорость.\n\nПри стеке «auto» это лишь стартовое значение: если туннель не поднимется, приложение само попробует меньшие MTU.'**
   String get infoTunMtu;
 
   /// No description provided for @infoTunStrictRoute.
@@ -1875,7 +1875,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunEndpointIndependentNat.
   ///
   /// In ru, this message translates to:
-  /// **'Режим NAT для UDP. Нужен играм, голосовым чатам и WebRTC — без него соединения могут не устанавливаться. Отключайте только для экономии памяти.'**
+  /// **'Режим NAT для UDP. Нужен играм, голосовым чатам и WebRTC - без него соединения могут не устанавливаться. Отключайте только для экономии памяти.'**
   String get infoTunEndpointIndependentNat;
 
   /// No description provided for @infoTunBypassLan.
@@ -1893,37 +1893,37 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunPrivilege.
   ///
   /// In ru, this message translates to:
-  /// **'TUN требует прав администратора. Один раз создаём задачу в Планировщике Windows с высшими правами — после этого туннель стартует БЕЗ запроса UAC при каждом подключении. Задача принадлежит вам и удаляется кнопкой ниже или при удалении программы.'**
+  /// **'TUN требует прав администратора. Один раз создаём задачу в Планировщике Windows с высшими правами - после этого туннель стартует БЕЗ запроса UAC при каждом подключении. Задача принадлежит вам и удаляется кнопкой ниже или при удалении программы.'**
   String get infoTunPrivilege;
 
   /// No description provided for @infoSpeedTest.
   ///
   /// In ru, this message translates to:
-  /// **'Объём данных, который скачивается при замере скорости (ПКМ по серверу → «Информация о сервере» → «Измерить скорость»).\n\n20 МБ — основной режим: на быстрых каналах (100+ Мбит/с) короткая проба не успевает разогнаться и занижает результат.\n5 МБ — экономный: заметно дешевле по трафику, удобно прогнать много серверов.\n\nЗамер запускается ТОЛЬКО вручную и расходует трафик вашей подписки. Скорость меряется дважды: напрямую и через выбранный сервер, чтобы было видно, сколько именно теряется на VPN.'**
+  /// **'Объём данных, который скачивается при замере скорости (ПКМ по серверу → «Информация о сервере» → «Измерить скорость»).\n\n20 МБ - основной режим: на быстрых каналах (100+ Мбит/с) короткая проба не успевает разогнаться и занижает результат.\n5 МБ - экономный: заметно дешевле по трафику, удобно прогнать много серверов.\n\nЗамер запускается ТОЛЬКО вручную и расходует трафик вашей подписки. Скорость меряется дважды: напрямую и через выбранный сервер, чтобы было видно, сколько именно теряется на VPN.'**
   String get infoSpeedTest;
 
   /// No description provided for @infoAutoReconnect.
   ///
   /// In ru, this message translates to:
-  /// **'Если ядро упало, сервер отвалился или сменилась сеть (Wi-Fi ↔ кабель, выход из сна, новый IP) — приложение само поднимает подключение заново. Паузы между попытками растут: 0,8 с → 3 с → 8 с → 20 с и дальше держатся на 20 с. Попыток восемь, после чего приложение сдаётся и показывает ошибку. Отключение кнопкой всегда отменяет восстановление.\n\n⚠️ При включённом kill switch попытки НЕ КОНЧАЮТСЯ. Пока они идут, трафик остаётся заблокированным, и прекратить их означало бы выпустить его мимо VPN — поэтому приложение продолжает пробовать раз в 20 секунд, пока вы не отключите VPN сами, и напоминает о неудаче не чаще раза в 15 минут. Вернувшийся через час сервер подхватится сам.\n\nВ режиме «Авто (лучший сервер)» приложение не тратит последнюю попытку на мёртвый сервер: уже на седьмой из восьми оно переходит к следующему кандидату, и отсчёт начинается там заново.\n\nСмена сети определяется по реальным адресам чужих адаптеров: собственный туннель и служебные адреса (link-local) не учитываются, изменение принимается только если продержалось два опроса подряд, и первые 15 секунд после подключения сигнал игнорируется. Без этих предохранителей подъём туннеля сам считался «сменой сети» и вызывал бесконечное переподключение.'**
+  /// **'Если ядро упало, сервер отвалился или сменилась сеть (Wi-Fi ↔ кабель, выход из сна, новый IP) - приложение само поднимает подключение заново. Паузы между попытками растут: 0,8 с → 3 с → 8 с → 20 с и дальше держатся на 20 с. Попыток восемь, после чего приложение сдаётся и показывает ошибку. Отключение кнопкой всегда отменяет восстановление.\n\n⚠️ При включённом kill switch попытки НЕ КОНЧАЮТСЯ. Пока они идут, трафик остаётся заблокированным, и прекратить их означало бы выпустить его мимо VPN - поэтому приложение продолжает пробовать раз в 20 секунд, пока вы не отключите VPN сами, и напоминает о неудаче не чаще раза в 15 минут. Вернувшийся через час сервер подхватится сам.\n\nВ режиме «Авто (лучший сервер)» приложение не тратит последнюю попытку на мёртвый сервер: уже на седьмой из восьми оно переходит к следующему кандидату, и отсчёт начинается там заново.\n\nСмена сети определяется по реальным адресам чужих адаптеров: собственный туннель и служебные адреса (link-local) не учитываются, изменение принимается только если продержалось два опроса подряд, и первые 15 секунд после подключения сигнал игнорируется. Без этих предохранителей подъём туннеля сам считался «сменой сети» и вызывал бесконечное переподключение.'**
   String get infoAutoReconnect;
 
   /// No description provided for @infoKillSwitch.
   ///
   /// In ru, this message translates to:
-  /// **'Не выпускать трафик мимо VPN, пока соединение восстанавливается. Захват НЕ снимается между попытками: в TUN-режиме адаптер остаётся поднятым, в режиме «Системный прокси» прокси остаётся прописанным — приложения получают ошибку соединения вместо незашифрованного выхода в интернет.\n\nЧестно о границах: в режиме «Системный прокси» это защищает только программы, уважающие системный прокси (браузеры и большинство приложений). Программы, игнорирующие прокси, и UDP пойдут напрямую — полную герметичность даёт только TUN-режим. Требует включённого автопереподключения.'**
+  /// **'Не выпускать трафик мимо VPN, пока соединение восстанавливается. Захват НЕ снимается между попытками: в TUN-режиме адаптер остаётся поднятым, в режиме «Системный прокси» прокси остаётся прописанным - приложения получают ошибку соединения вместо незашифрованного выхода в интернет.\n\nЧестно о границах: в режиме «Системный прокси» это защищает только программы, уважающие системный прокси (браузеры и большинство приложений). Программы, игнорирующие прокси, и UDP пойдут напрямую - полную герметичность даёт только TUN-режим. Требует включённого автопереподключения.'**
   String get infoKillSwitch;
 
   /// No description provided for @infoUserAgent.
   ///
   /// In ru, this message translates to:
-  /// **'Как приложение представляется панели (заголовок User-Agent). Всегда отправляется «SilentGate/версия (Windows)».\n\nПанель Remnawave по этому имени выбирает ФОРМАТ подписки. Нужен XRAY_JSON — в нём приходят готовые конфиги серверов; из base64-списка ссылок часть настроек восстанавливается приблизительно, и автовыбор (burstObservatory) работает хуже.\n\nНастраивается в панели: Templates → Response Rules → правило с условием user-agent CONTAINS SilentGate и типом ответа XRAY_JSON (поставьте его выше правила Fallback Base64).\n\nПоле переопределения нужно только как временный обходной путь — если панель ещё не знает приложение, можно представиться клиентом, который она знает.'**
+  /// **'Как приложение представляется панели (заголовок User-Agent). Всегда отправляется «SilentGate/версия (Windows)».\n\nПанель Remnawave по этому имени выбирает ФОРМАТ подписки. Нужен XRAY_JSON - в нём приходят готовые конфиги серверов; из base64-списка ссылок часть настроек восстанавливается приблизительно, и автовыбор (burstObservatory) работает хуже.\n\nНастраивается в панели: Templates → Response Rules → правило с условием user-agent CONTAINS SilentGate и типом ответа XRAY_JSON (поставьте его выше правила Fallback Base64).\n\nПоле переопределения нужно только как временный обходной путь - если панель ещё не знает приложение, можно представиться клиентом, который она знает.'**
   String get infoUserAgent;
 
   /// No description provided for @infoDnsMode.
   ///
   /// In ru, this message translates to:
-  /// **'Кто резолвит домены в TUN-режиме. «Через VPN» (рекомендуется) — запросы уходят в туннель по TCP, провайдер не видит, какие сайты вы открываете. «Системный» — как в Windows: возможна утечка DNS, а если сервер не пропускает UDP — интернет может пропасть совсем. «Свой» — указанный вами сервер через туннель.'**
+  /// **'Кто резолвит домены в TUN-режиме. «Через VPN» (рекомендуется) - запросы уходят в туннель по TCP, провайдер не видит, какие сайты вы открываете. «Системный» - как в Windows: возможна утечка DNS, а если сервер не пропускает UDP - интернет может пропасть совсем. «Свой» - указанный вами сервер через туннель.'**
   String get infoDnsMode;
 
   /// No description provided for @infoDnsCustomServer.
@@ -1941,31 +1941,31 @@ abstract class AppLocalizations {
   /// No description provided for @infoDnsStrategy.
   ///
   /// In ru, this message translates to:
-  /// **'Какие адреса запрашивать: prefer_ipv4 (рекомендуется) — сначала IPv4, ipv4_only — только IPv4 (лечит проблемы с кривым IPv6), prefer_ipv6/ipv6_only — для IPv6-сетей.'**
+  /// **'Какие адреса запрашивать: prefer_ipv4 (рекомендуется) - сначала IPv4, ipv4_only - только IPv4 (лечит проблемы с кривым IPv6), prefer_ipv6/ipv6_only - для IPv6-сетей.'**
   String get infoDnsStrategy;
 
   /// No description provided for @infoSingboxLogLevel.
   ///
   /// In ru, this message translates to:
-  /// **'Подробность лога sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — обычный режим. info/debug — если туннель не работает: в логе будет видна точная причина. debug заметно увеличивает размер файла.'**
+  /// **'Подробность лога sing-box (%APPDATA%\\SilentGate\\singbox.log). warn - обычный режим. info/debug - если туннель не работает: в логе будет видна точная причина. debug заметно увеличивает размер файла.'**
   String get infoSingboxLogLevel;
 
   /// No description provided for @tunLogLevelDebugCost.
   ///
   /// In ru, this message translates to:
-  /// **'На уровне debug ядро пишет сотни строк в секунду: журнал покрывает минуты, а не часы, и растёт на мегабайты. Для разбора обрыва, случившегося раньше, он бесполезен — смотрите журнал приложения.'**
+  /// **'На уровне debug ядро пишет сотни строк в секунду: журнал покрывает минуты, а не часы, и растёт на мегабайты. Для разбора обрыва, случившегося раньше, он бесполезен - смотрите журнал приложения.'**
   String get tunLogLevelDebugCost;
 
   /// No description provided for @infoSplitMode.
   ///
   /// In ru, this message translates to:
-  /// **'База — куда идёт всё, чему не задано действие вручную, и какое действие присваивается новым записям. «Все — через VPN»: по умолчанию весь трафик в туннель. «Только отмеченные — через VPN»: по умолчанию напрямую, в туннель — лишь помеченные «Туннель». «Отмеченные — мимо VPN»: наоборот, всё в туннель, а помеченные «Прямо» — напрямую.'**
+  /// **'База - куда идёт всё, чему не задано действие вручную, и какое действие присваивается новым записям. «Все - через VPN»: по умолчанию весь трафик в туннель. «Только отмеченные - через VPN»: по умолчанию напрямую, в туннель - лишь помеченные «Туннель». «Отмеченные - мимо VPN»: наоборот, всё в туннель, а помеченные «Прямо» - напрямую.'**
   String get infoSplitMode;
 
   /// No description provided for @infoSplitApps.
   ///
   /// In ru, this message translates to:
-  /// **'Нажмите на приложение — откроется окно, где выбираются действие (Туннель — через VPN, Прямо — мимо VPN, Блок — нет сети) и способ сопоставления: по имени exe (надёжно) или по полному пути. Можно выбрать из запущенных или указать .exe.'**
+  /// **'Нажмите на приложение - откроется окно, где выбираются действие (Туннель - через VPN, Прямо - мимо VPN, Блок - нет сети) и способ сопоставления: по имени exe (надёжно) или по полному пути. Можно выбрать из запущенных или указать .exe.'**
   String get infoSplitApps;
 
   /// No description provided for @infoSplitDomains.
@@ -1977,7 +1977,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoVerifyViaProxy.
   ///
   /// In ru, this message translates to:
-  /// **'Сначала проверяем работоспособность через прокси (сервер реально отдаёт 204), и только если сервер ответил — отдельно измеряем задержку выбранным методом (TCP/ICMP).'**
+  /// **'Сначала проверяем работоспособность через прокси (сервер реально отдаёт 204), и только если сервер ответил - отдельно измеряем задержку выбранным методом (TCP/ICMP).'**
   String get infoVerifyViaProxy;
 
   /// No description provided for @infoProxyGet.
@@ -1989,7 +1989,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoProxyHead.
   ///
   /// In ru, this message translates to:
-  /// **'Как GET, но только заголовки — быстрее и меньше трафика. Отдельные серверы/CDN могут не поддерживать HEAD.'**
+  /// **'Как GET, но только заголовки - быстрее и меньше трафика. Отдельные серверы/CDN могут не поддерживать HEAD.'**
   String get infoProxyHead;
 
   /// No description provided for @infoTcp.
@@ -2007,13 +2007,13 @@ abstract class AppLocalizations {
   /// No description provided for @infoTestUrl.
   ///
   /// In ru, this message translates to:
-  /// **'URL для проверки работоспособности через прокси. По умолчанию https://www.gstatic.com/generate_204 — отдаёт пустой ответ 204, что удобно и быстро.'**
+  /// **'URL для проверки работоспособности через прокси. По умолчанию https://www.gstatic.com/generate_204 - отдаёт пустой ответ 204, что удобно и быстро.'**
   String get infoTestUrl;
 
   /// No description provided for @infoAutoConfig.
   ///
   /// In ru, this message translates to:
-  /// **'Перебирает серверы и варианты обхода (fragment, fingerprint) и собирает список тех, где работают выбранные сервисы. Не останавливается на первом — вы выбираете из найденных. Проверка через прокси, VPN на это время не включается.'**
+  /// **'Перебирает серверы и варианты обхода (fragment, fingerprint) и собирает список тех, где работают выбранные сервисы. Не останавливается на первом - вы выбираете из найденных. Проверка через прокси, VPN на это время не включается.'**
   String get infoAutoConfig;
 
   /// No description provided for @infoAutoConfigServices.
@@ -2025,7 +2025,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoAutoPinFound.
   ///
   /// In ru, this message translates to:
-  /// **'Найденные рабочие связки (сервер + вариация обхода) сразу закрепляются сверху общего списка серверов, чтобы ими можно было пользоваться не возвращаясь сюда. Выключите, если не хотите, чтобы автонастройка меняла порядок вашего списка — результаты останутся видны на этом экране.'**
+  /// **'Найденные рабочие связки (сервер + вариация обхода) сразу закрепляются сверху общего списка серверов, чтобы ими можно было пользоваться не возвращаясь сюда. Выключите, если не хотите, чтобы автонастройка меняла порядок вашего списка - результаты останутся видны на этом экране.'**
   String get infoAutoPinFound;
 
   /// No description provided for @infoTryFragment.
@@ -2037,7 +2037,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoAutoStrategy.
   ///
   /// In ru, this message translates to:
-  /// **'«Первый рабочий» — перебрать всё и подключиться к любому найденному (вы выбираете). «Лучший за бюджет» — искать в пределах времени и выбрать самый быстрый.'**
+  /// **'«Первый рабочий» - перебрать всё и подключиться к любому найденному (вы выбираете). «Лучший за бюджет» - искать в пределах времени и выбрать самый быстрый.'**
   String get infoAutoStrategy;
 
   /// No description provided for @infoScheme.
@@ -2061,7 +2061,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoNetworkSoftRecover.
   ///
   /// In ru, this message translates to:
-  /// **'Безопасная чистка после сбоя VPN: кеш DNS, кеш ARP, системный прокси и прокси WinHTTP. Ничего не стирает и не требует перезагрузки — начинать стоит с неё. Требует прав администратора.'**
+  /// **'Безопасная чистка после сбоя VPN: кеш DNS, кеш ARP, системный прокси и прокси WinHTTP. Ничего не стирает и не требует перезагрузки - начинать стоит с неё. Требует прав администратора.'**
   String get infoNetworkSoftRecover;
 
   /// No description provided for @infoNetworkFullReset.
@@ -2085,7 +2085,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingInfoProxyHead.
   ///
   /// In ru, this message translates to:
-  /// **'Как GET, но запрашивает только заголовки — меньше трафика и быстрее. Проверяет работоспособность туннеля; отдельные серверы/CDN могут не поддерживать HEAD.'**
+  /// **'Как GET, но запрашивает только заголовки - меньше трафика и быстрее. Проверяет работоспособность туннеля; отдельные серверы/CDN могут не поддерживать HEAD.'**
   String get pingInfoProxyHead;
 
   /// No description provided for @pingInfoTcp.
@@ -2109,13 +2109,13 @@ abstract class AppLocalizations {
   /// No description provided for @pingInfoTunStage.
   ///
   /// In ru, this message translates to:
-  /// **'Полный туннель (TUN) — следующий этап. Сейчас работает режим «Системный прокси». В TUN-режиме весь трафик (включая UDP и приложения, игнорирующие прокси) пойдёт через виртуальный адаптер wintun + tun2socks. Требует прав администратора.'**
+  /// **'Полный туннель (TUN) - следующий этап. Сейчас работает режим «Системный прокси». В TUN-режиме весь трафик (включая UDP и приложения, игнорирующие прокси) пойдёт через виртуальный адаптер wintun + tun2socks. Требует прав администратора.'**
   String get pingInfoTunStage;
 
   /// No description provided for @pingInfoTunStack.
   ///
   /// In ru, this message translates to:
-  /// **'Сетевой стек TUN (sing-box). auto — оставить на усмотрение ядра (сейчас mixed). system — стек ОС: максимальная скорость, но капризнее к правам/антивирусам. gvisor — userspace-стек: медленнее, зато самый совместимый. mixed — TCP через system, UDP через gvisor (баланс). Если TUN не подключается или рвёт соединения — попробуйте gvisor.'**
+  /// **'Сетевой стек TUN (sing-box). auto - оставить на усмотрение ядра (сейчас mixed). system - стек ОС: максимальная скорость, но капризнее к правам/антивирусам. gvisor - userspace-стек: медленнее, зато самый совместимый. mixed - TCP через system, UDP через gvisor (баланс). Если TUN не подключается или рвёт соединения - попробуйте gvisor.'**
   String get pingInfoTunStack;
 
   /// No description provided for @pingInfoAutoConfig.
@@ -2175,7 +2175,7 @@ abstract class AppLocalizations {
   /// No description provided for @logsTunEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Пусто — TUN ещё не запускался в этой системе.'**
+  /// **'Пусто - TUN ещё не запускался в этой системе.'**
   String get logsTunEmpty;
 
   /// No description provided for @importScrDone.
@@ -2289,7 +2289,7 @@ abstract class AppLocalizations {
   /// No description provided for @statusReconnectUnprotected.
   ///
   /// In ru, this message translates to:
-  /// **'Соединение потеряно, туннель не поднялся — трафик идёт мимо VPN. Переподключение через {seconds} с (попытка {attempt})…'**
+  /// **'Соединение потеряно, туннель не поднялся - трафик идёт мимо VPN. Переподключение через {seconds} с (попытка {attempt})…'**
   String statusReconnectUnprotected(int seconds, int attempt);
 
   /// No description provided for @statusTrafficNotFlowing.
@@ -2403,7 +2403,7 @@ abstract class AppLocalizations {
   /// No description provided for @serversFound.
   ///
   /// In ru, this message translates to:
-  /// **'Серверы — найдено {found} из {total}'**
+  /// **'Серверы - найдено {found} из {total}'**
   String serversFound(int found, int total);
 
   /// No description provided for @serversRefresh.
@@ -2481,7 +2481,7 @@ abstract class AppLocalizations {
   /// No description provided for @srvInfoExitHint.
   ///
   /// In ru, this message translates to:
-  /// **'Определяется по адресу сервера — туннель для этого не поднимается.'**
+  /// **'Определяется по адресу сервера - туннель для этого не поднимается.'**
   String get srvInfoExitHint;
 
   /// No description provided for @srvInfoAddressLocation.
@@ -2715,7 +2715,7 @@ abstract class AppLocalizations {
   /// No description provided for @jsonPanelProfileApplied.
   ///
   /// In ru, this message translates to:
-  /// **'Профиль автовыбора от панели: {summary} — применяется целиком'**
+  /// **'Профиль автовыбора от панели: {summary} - применяется целиком'**
   String jsonPanelProfileApplied(Object summary);
 
   /// No description provided for @jsonPanelConfig.
@@ -2727,7 +2727,7 @@ abstract class AppLocalizations {
   /// No description provided for @jsonBuiltFromShareLink.
   ///
   /// In ru, this message translates to:
-  /// **'Собран из share-ссылки — панель не прислала JSON. Обновите подписку; если не помогло, проверьте правило Response Rules в панели.'**
+  /// **'Собран из share-ссылки - панель не прислала JSON. Обновите подписку; если не помогло, проверьте правило Response Rules в панели.'**
   String get jsonBuiltFromShareLink;
 
   /// No description provided for @jsonInvalidJson.
@@ -2967,7 +2967,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingNaTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Не ответил по TCP — сервер недоступен (мёртв)'**
+  /// **'Не ответил по TCP - сервер недоступен (мёртв)'**
   String get pingNaTooltip;
 
   /// No description provided for @pingTimeout.
@@ -2979,7 +2979,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingTimeoutTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'TCP-проба не уложилась в таймаут — сервер недоступен'**
+  /// **'TCP-проба не уложилась в таймаут - сервер недоступен'**
   String get pingTimeoutTooltip;
 
   /// No description provided for @pingMs.
@@ -2997,7 +2997,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingNoProxyTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Отвечает по TCP (задержка показана), но проверка через туннель (GET/HEAD) не прошла — трафик не идёт'**
+  /// **'Отвечает по TCP (задержка показана), но проверка через туннель (GET/HEAD) не прошла - трафик не идёт'**
   String get pingNoProxyTooltip;
 
   /// No description provided for @pingOk.
@@ -3021,13 +3021,13 @@ abstract class AppLocalizations {
   /// No description provided for @pingCoreTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Замер выполнен самим ядром VPN через туннель: время полного запроса к тестовому адресу (не TCP до сервера). Сервер рабочий — запрос прошёл.'**
+  /// **'Замер выполнен самим ядром VPN через туннель: время полного запроса к тестовому адресу (не TCP до сервера). Сервер рабочий - запрос прошёл.'**
   String get pingCoreTooltip;
 
   /// No description provided for @pingCoreFailedTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Ядро VPN не смогло открыть тестовый адрес через этот сервер — трафик по туннелю не идёт'**
+  /// **'Ядро VPN не смогло открыть тестовый адрес через этот сервер - трафик по туннелю не идёт'**
   String get pingCoreFailedTooltip;
 
   /// No description provided for @pingViaTunnelNote.
@@ -3057,13 +3057,13 @@ abstract class AppLocalizations {
   /// No description provided for @splitTunOnlyBanner.
   ///
   /// In ru, this message translates to:
-  /// **'Работает только в TUN-режиме. В режиме «Системный прокси» приложения сами решают, использовать ли прокси — управлять ими принудительно нельзя.'**
+  /// **'Работает только в TUN-режиме. В режиме «Системный прокси» приложения сами решают, использовать ли прокси - управлять ими принудительно нельзя.'**
   String get splitTunOnlyBanner;
 
   /// No description provided for @splitProxyOnlyBanner.
   ///
   /// In ru, this message translates to:
-  /// **'В режиме «Только прокси» перехватывать нечего: правила не действуют ни для одной программы компьютера. Список «Блок» применяется только к локальным портам API — и только если включён тумблер «Применять правила раздельного туннелирования» в разделе «Захват трафика». Остальные правила можно задать здесь заранее: они заработают при переходе на TUN.'**
+  /// **'В режиме «Только прокси» перехватывать нечего: правила не действуют ни для одной программы компьютера. Список «Блок» применяется только к локальным портам API - и только если включён тумблер «Применять правила раздельного туннелирования» в разделе «Захват трафика». Остальные правила можно задать здесь заранее: они заработают при переходе на TUN.'**
   String get splitProxyOnlyBanner;
 
   /// No description provided for @splitEnableTun.
@@ -3087,7 +3087,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitAppsHint.
   ///
   /// In ru, this message translates to:
-  /// **'Нажмите на приложение — действие (Туннель / Прямо / Блок) и способ сопоставления. Галочка слева включает/выключает правило.'**
+  /// **'Нажмите на приложение - действие (Туннель / Прямо / Блок) и способ сопоставления. Галочка слева включает/выключает правило.'**
   String get splitAppsHint;
 
   /// No description provided for @splitByName.
@@ -3105,7 +3105,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitRuleDisabled.
   ///
   /// In ru, this message translates to:
-  /// **'Отключено — правило не применяется'**
+  /// **'Отключено - правило не применяется'**
   String get splitRuleDisabled;
 
   /// No description provided for @splitRemove.
@@ -3417,13 +3417,13 @@ abstract class AppLocalizations {
   /// No description provided for @tunTaskSchedulerFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Планировщик не принял задачу — причина в журнале (Настройки → Логи)'**
+  /// **'Планировщик не принял задачу - причина в журнале (Настройки → Логи)'**
   String get tunTaskSchedulerFailed;
 
   /// No description provided for @tunAutoFixNoticeText.
   ///
   /// In ru, this message translates to:
-  /// **'Автозапуск TUN без окна UAC сломан — при каждом подключении будут спрашиваться права'**
+  /// **'Автозапуск TUN без окна UAC сломан - при каждом подключении будут спрашиваться права'**
   String get tunAutoFixNoticeText;
 
   /// No description provided for @tunAutoFixAction.
@@ -3441,7 +3441,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunLogEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Лог пуст — туннель ещё не запускался.'**
+  /// **'Лог пуст - туннель ещё не запускался.'**
   String get tunLogEmpty;
 
   /// No description provided for @tunCopy.
@@ -3609,7 +3609,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunDnsVpnHint.
   ///
   /// In ru, this message translates to:
-  /// **'Запросы уходят в туннель по TCP — без утечек'**
+  /// **'Запросы уходят в туннель по TCP - без утечек'**
   String get tunDnsVpnHint;
 
   /// No description provided for @tunDnsSystemHint.
@@ -3705,7 +3705,7 @@ abstract class AppLocalizations {
   /// No description provided for @reportTitle.
   ///
   /// In ru, this message translates to:
-  /// **'SilentGate — отчёт для техподдержки'**
+  /// **'SilentGate - отчёт для техподдержки'**
   String get reportTitle;
 
   /// No description provided for @reportDescribeHere.
@@ -3741,7 +3741,7 @@ abstract class AppLocalizations {
   /// No description provided for @reportTechNoticeLine1.
   ///
   /// In ru, this message translates to:
-  /// **'Ниже — техническая информация. Проверьте её перед отправкой;'**
+  /// **'Ниже - техническая информация. Проверьте её перед отправкой;'**
   String get reportTechNoticeLine1;
 
   /// No description provided for @reportTechNoticeLine2.
@@ -3777,7 +3777,7 @@ abstract class AppLocalizations {
   /// No description provided for @pingLegendInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Цвет плашки пинга: зелёный/жёлтый/оранжевый — сервер рабочий (TCP + проверка через туннель). Серый — отвечает по TCP, но трафик не проксирует (типичный Reality-порт). Красный «n/a» — не ответил, из проверки исключён. Пинг всегда меряется НАПРЯМУЮ (вне VPN).'**
+  /// **'Цвет плашки пинга: зелёный/жёлтый/оранжевый - сервер рабочий (TCP + проверка через туннель). Серый - отвечает по TCP, но трафик не проксирует (типичный Reality-порт). Красный «n/a» - не ответил, из проверки исключён. Пинг всегда меряется НАПРЯМУЮ (вне VPN).'**
   String get pingLegendInfo;
 
   /// No description provided for @pingUntestedHint.
@@ -3885,7 +3885,7 @@ abstract class AppLocalizations {
   /// No description provided for @hy2NoteBody.
   ///
   /// In ru, this message translates to:
-  /// **'Hysteria2-серверы приходят только в формате XRAY_JSON — SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON — в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно.'**
+  /// **'Hysteria2-серверы приходят только в формате XRAY_JSON - SilentGate его и запрашивает, sing-box поднимает их автоматически. Если Hysteria2 не появляется в списке: (владельцу панели Remnawave) включите hysteria-инбаунды и назначьте их подписке. Важно: Remnawave до 2.8.0 отдаёт Hysteria2 ТОЛЬКО в XRAY_JSON - в base64/CLASH/SINGBOX её нет, поэтому правило Response Rules → XRAY_JSON выше обязательно.'**
   String get hy2NoteBody;
 
   /// No description provided for @enumStatusDisconnected.
@@ -4023,7 +4023,7 @@ abstract class AppLocalizations {
   /// No description provided for @supportReportCopied.
   ///
   /// In ru, this message translates to:
-  /// **'Отчёт скопирован — вставьте его в чат поддержки'**
+  /// **'Отчёт скопирован - вставьте его в чат поддержки'**
   String get supportReportCopied;
 
   /// No description provided for @subBarUsedOnly.
@@ -4053,13 +4053,13 @@ abstract class AppLocalizations {
   /// No description provided for @supportDescribeRequired.
   ///
   /// In ru, this message translates to:
-  /// **'Опишите проблему — без описания отчёт бесполезен'**
+  /// **'Опишите проблему - без описания отчёт бесполезен'**
   String get supportDescribeRequired;
 
   /// No description provided for @supportNoScreenshots.
   ///
   /// In ru, this message translates to:
-  /// **'Скриншоты сюда не вставляйте — присылайте их отдельным сообщением в чат Telegram.'**
+  /// **'Скриншоты сюда не вставляйте - присылайте их отдельным сообщением в чат Telegram.'**
   String get supportNoScreenshots;
 
   /// No description provided for @supportDescriptionSection.
@@ -4083,7 +4083,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitAllowRealIpOff.
   ///
   /// In ru, this message translates to:
-  /// **'Снята: правило идёт через VPN — защита выше всех правил'**
+  /// **'Снята: правило идёт через VPN - защита выше всех правил'**
   String get splitAllowRealIpOff;
 
   /// No description provided for @splitRealIpExposed.
@@ -4137,19 +4137,19 @@ abstract class AppLocalizations {
   /// No description provided for @infoDnsForAll.
   ///
   /// In ru, this message translates to:
-  /// **'Работает только в режиме «Только отмеченные». Включено: ни один DNS-запрос не уходит провайдеру, но домены НЕотмеченных приложений резолвятся через туннель — CDN отдаёт адрес в стране выхода, и такие приложения идут напрямую, но на дальний сервер (заметно медленнее). Выключено: неотмеченные приложения получают близкий CDN и работают быстро, зато провайдер видит, куда ходят все приложения, включая защищаемые. ⚠️ Изменение применяется только после переподключения.'**
+  /// **'Работает только в режиме «Только отмеченные». Включено: ни один DNS-запрос не уходит провайдеру, но домены НЕотмеченных приложений резолвятся через туннель - CDN отдаёт адрес в стране выхода, и такие приложения идут напрямую, но на дальний сервер (заметно медленнее). Выключено: неотмеченные приложения получают близкий CDN и работают быстро, зато провайдер видит, куда ходят все приложения, включая защищаемые. ⚠️ Изменение применяется только после переподключения.'**
   String get infoDnsForAll;
 
   /// No description provided for @homeSettingsNeedReconnect.
   ///
   /// In ru, this message translates to:
-  /// **'Настройка изменена — переподключитесь, чтобы применить'**
+  /// **'Настройка изменена - переподключитесь, чтобы применить'**
   String get homeSettingsNeedReconnect;
 
   /// No description provided for @blockPageWindowTitle.
   ///
   /// In ru, this message translates to:
-  /// **'Заблокировано — {app}'**
+  /// **'Заблокировано - {app}'**
   String blockPageWindowTitle(String app);
 
   /// No description provided for @blockPageHeading.
@@ -4215,7 +4215,7 @@ abstract class AppLocalizations {
   /// No description provided for @toastAppCloseFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Не удалось закрыть {app} — закройте вручную'**
+  /// **'Не удалось закрыть {app} - закройте вручную'**
   String toastAppCloseFailed(String app);
 
   /// No description provided for @tunBlockQuic.
@@ -4227,7 +4227,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoBlockQuic.
   ///
   /// In ru, this message translates to:
-  /// **'Правила по сайтам применяются к ИМЕНИ, а имя приложение видит только в обычном TLS. Браузер, ушедший на HTTP/3, имени не показывает — и правило по домену молча не срабатывает. Запрет возвращает браузер на обычное соединение, где имя видно. Сайты от этого не ломаются: HTTP/3 для них не обязателен, но видео может грузиться чуть медленнее. Включайте, если правила по сайтам не действуют.'**
+  /// **'Правила по сайтам применяются к ИМЕНИ, а имя приложение видит только в обычном TLS. Браузер, ушедший на HTTP/3, имени не показывает - и правило по домену молча не срабатывает. Запрет возвращает браузер на обычное соединение, где имя видно. Сайты от этого не ломаются: HTTP/3 для них не обязателен, но видео может грузиться чуть медленнее. Включайте, если правила по сайтам не действуют.'**
   String get infoBlockQuic;
 
   /// No description provided for @tunBlockEncryptedDns.
@@ -4239,7 +4239,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoBlockEncryptedDns.
   ///
   /// In ru, this message translates to:
-  /// **'Браузеры и Windows умеют спрашивать адреса сайтов по HTTPS в обход нашего перехвата. Тогда правила «Прямо» и «Блок» на уровне DNS не работают вовсе. Запрет возвращает запросы под наш контроль. ⚠️ Если в браузере жёстко выбран поставщик шифрованного DNS, он не откатится на обычный, а просто перестанет открывать сайты — тогда выключите настройку или уберите поставщика в браузере. Список известных поставщиков неполон по своей природе: свой можно поднять за вечер.'**
+  /// **'Браузеры и Windows умеют спрашивать адреса сайтов по HTTPS в обход нашего перехвата. Тогда правила «Прямо» и «Блок» на уровне DNS не работают вовсе. Запрет возвращает запросы под наш контроль. ⚠️ Если в браузере жёстко выбран поставщик шифрованного DNS, он не откатится на обычный, а просто перестанет открывать сайты - тогда выключите настройку или уберите поставщика в браузере. Список известных поставщиков неполон по своей природе: свой можно поднять за вечер.'**
   String get infoBlockEncryptedDns;
 
   /// No description provided for @autoUseSpeed.
@@ -4251,7 +4251,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoAutoUseSpeed.
   ///
   /// In ru, this message translates to:
-  /// **'После отбора по сервисам и задержке трёх лучших кандидатов проверяем скачиванием и ставим первым того, кто реально быстрее. Скорость сравнивается с ВАШИМ каналом: сервер, отдающий почти весь ваш канал, дальше не оценивается по мегабитам — там решает задержка, потому что лишняя скорость сверх канала вам всё равно не достанется. ⚠️ Расходует трафик подписки: 5 МБ на ваш канал и по 5 МБ на каждого из трёх кандидатов, около 20 МБ за прогон.'**
+  /// **'После отбора по сервисам и задержке трёх лучших кандидатов проверяем скачиванием и ставим первым того, кто реально быстрее. Скорость сравнивается с ВАШИМ каналом: сервер, отдающий почти весь ваш канал, дальше не оценивается по мегабитам - там решает задержка, потому что лишняя скорость сверх канала вам всё равно не достанется. ⚠️ Расходует трафик подписки: 5 МБ на ваш канал и по 5 МБ на каждого из трёх кандидатов, около 20 МБ за прогон.'**
   String get infoAutoUseSpeed;
 
   /// No description provided for @autoSpeedOwn.
@@ -4281,7 +4281,7 @@ abstract class AppLocalizations {
   /// No description provided for @conflictDialogBody.
   ///
   /// In ru, this message translates to:
-  /// **'Похоже, работает {app} — у него поднят собственный туннель. Два туннеля одновременно борются за маршрут по умолчанию, и подключение может не подняться или подняться без доступа в сеть.'**
+  /// **'Похоже, работает {app} - у него поднят собственный туннель. Два туннеля одновременно борются за маршрут по умолчанию, и подключение может не подняться или подняться без доступа в сеть.'**
   String conflictDialogBody(String app);
 
   /// No description provided for @conflictCloseAndConnect.
@@ -4353,7 +4353,7 @@ abstract class AppLocalizations {
   /// No description provided for @urlDescConnectServer.
   ///
   /// In ru, this message translates to:
-  /// **'Подключиться к КОНКРЕТНОМУ серверу. Имя — то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет — сработает поиск: по стране, адресу или протоколу. Работает и с toggle.'**
+  /// **'Подключиться к КОНКРЕТНОМУ серверу. Имя - то же, что видно в списке и что присылает подписка, например «Польша 1.5». Флаг-эмодзи и регистр можно опустить. Точного совпадения нет - сработает поиск: по стране, адресу или протоколу. Работает и с toggle.'**
   String get urlDescConnectServer;
 
   /// No description provided for @splitSelectAllFound.
@@ -4371,7 +4371,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitQuicNote.
   ///
   /// In ru, this message translates to:
-  /// **'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает — трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.'**
+  /// **'Пока есть хотя бы одно правило по сайту, приложение отключает HTTP/3 (QUIC) для всего трафика. Иначе браузер уходит на HTTP/3, не оставляет имени сайта, и правило молча не срабатывает - трафик идёт мимо. Сайты от этого не ломаются: они переходят на обычный TLS, лишь чуть медленнее.'**
   String get splitQuicNote;
 
   /// No description provided for @splitNoRealIpBanner.
@@ -4401,7 +4401,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsMyRulesOverridePanelSub.
   ///
   /// In ru, this message translates to:
-  /// **'Панель отдаёт своё разделение — обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» — значит туннель. Цена: российские сайты пойдут кругом и медленнее.'**
+  /// **'Панель отдаёт своё разделение - обычно «российские сайты мимо VPN». Оно применяется после ваших правил, поэтому сайт, помеченный «Туннель», может выйти напрямую под реальным IP. Включено: написано «туннель» - значит туннель. Цена: российские сайты пойдут кругом и медленнее.'**
   String get settingsMyRulesOverridePanelSub;
 
   /// No description provided for @commonOpen.
@@ -4419,13 +4419,13 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunRouteOnlyCidrs.
   ///
   /// In ru, this message translates to:
-  /// **'Единственный способ на Windows сделать часть трафика по-настоящему независимой от VPN-клиента.\n\nОбычно туннель забирает маршрут по умолчанию, и в него заходит ВЕСЬ трафик машины: пометка «Прямо» разбирается уже внутри ядра, которое принимает пакет и выпускает его наружу от своего имени. Такой трафик живёт ровно столько, сколько живёт ядро, и зависает вместе с ним.\n\nЕсли список не пуст, маршрут по умолчанию туннелю не отдаётся: он забирает только перечисленные подсети, а всё прочее система отправляет обычным адаптером — клиент этого трафика не видит вовсе.\n\nЦена: деление идёт по адресу, а правила по приложениям и сайтам — по имени. Сайт, чей адрес не попал в список, ядро не увидит ни одним правилом. Оставьте пусто, чтобы туннель работал как обычно.'**
+  /// **'Единственный способ на Windows сделать часть трафика по-настоящему независимой от VPN-клиента.\n\nОбычно туннель забирает маршрут по умолчанию, и в него заходит ВЕСЬ трафик машины: пометка «Прямо» разбирается уже внутри ядра, которое принимает пакет и выпускает его наружу от своего имени. Такой трафик живёт ровно столько, сколько живёт ядро, и зависает вместе с ним.\n\nЕсли список не пуст, маршрут по умолчанию туннелю не отдаётся: он забирает только перечисленные подсети, а всё прочее система отправляет обычным адаптером - клиент этого трафика не видит вовсе.\n\nЦена: деление идёт по адресу, а правила по приложениям и сайтам - по имени. Сайт, чей адрес не попал в список, ядро не увидит ни одним правилом. Оставьте пусто, чтобы туннель работал как обычно.'**
   String get infoTunRouteOnlyCidrs;
 
   /// No description provided for @tunRouteOnlyWarning.
   ///
   /// In ru, this message translates to:
-  /// **'Туннель забирает только перечисленные подсети. Правила по приложениям и сайтам действуют ТОЛЬКО внутри них: то, что в туннель не зашло, ядру не показали — заблокировать или увести такой сайт нельзя.'**
+  /// **'Туннель забирает только перечисленные подсети. Правила по приложениям и сайтам действуют ТОЛЬКО внутри них: то, что в туннель не зашло, ядру не показали - заблокировать или увести такой сайт нельзя.'**
   String get tunRouteOnlyWarning;
 
   /// No description provided for @tunAlsoSystemProxy.
@@ -4437,13 +4437,13 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunAlsoSystemProxy.
   ///
   /// In ru, this message translates to:
-  /// **'Смешанный режим: работает и туннель, и системный прокси одновременно.\n\nПриложения, которые уважают системный прокси (браузеры, Telegram), пойдут коротким путём прямо в локальный порт, минуя пользовательский стек туннеля, и отдадут ядру имя домена вместо голого адреса — правила по сайтам для них станут точнее и перестанут зависеть от разбора TLS.\n\nНезависимыми от клиента они при этом НЕ становятся: ходят через тот же процесс.'**
+  /// **'Смешанный режим: работает и туннель, и системный прокси одновременно.\n\nПриложения, которые уважают системный прокси (браузеры, Telegram), пойдут коротким путём прямо в локальный порт, минуя пользовательский стек туннеля, и отдадут ядру имя домена вместо голого адреса - правила по сайтам для них станут точнее и перестанут зависеть от разбора TLS.\n\nНезависимыми от клиента они при этом НЕ становятся: ходят через тот же процесс.'**
   String get infoTunAlsoSystemProxy;
 
   /// No description provided for @tunMixedModeWarning.
   ///
   /// In ru, this message translates to:
-  /// **'У соединения, пришедшего через системный прокси, нет процесса-владельца — для ядра это локальное подключение. Поэтому правила ПО ПРИЛОЖЕНИЯМ для таких программ не срабатывают. Правила по сайтам работают, и даже точнее обычного.'**
+  /// **'У соединения, пришедшего через системный прокси, нет процесса-владельца - для ядра это локальное подключение. Поэтому правила ПО ПРИЛОЖЕНИЯМ для таких программ не срабатывают. Правила по сайтам работают, и даже точнее обычного.'**
   String get tunMixedModeWarning;
 
   /// No description provided for @tunWatchdog.
@@ -4455,7 +4455,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoTunWatchdog.
   ///
   /// In ru, this message translates to:
-  /// **'Сколько секунд ядру туннеля можно не отвечать, прежде чем считать его зависшим и снять туннель.\n\nЕсли ядро падает, Windows убирает за ним сама — адаптер, маршруты и правила брандмауэра снимаются, сеть возвращается. Если ядро зависает, не снимается ничего: адаптер остаётся и глотает весь трафик машины, включая помеченный «Прямо». Снаружи это «интернет пропал совсем», и само оно не проходит.\n\nСторож вооружается только после первого успешного ответа ядра: иначе он убивал бы подключение там, где не удалось поднять служебный порт. 0 — не следить. Минимум 10 секунд.'**
+  /// **'Сколько секунд ядру туннеля можно не отвечать, прежде чем считать его зависшим и снять туннель.\n\nЕсли ядро падает, Windows убирает за ним сама - адаптер, маршруты и правила брандмауэра снимаются, сеть возвращается. Если ядро зависает, не снимается ничего: адаптер остаётся и глотает весь трафик машины, включая помеченный «Прямо». Снаружи это «интернет пропал совсем», и само оно не проходит.\n\nСторож вооружается только после первого успешного ответа ядра: иначе он убивал бы подключение там, где не удалось поднять служебный порт. 0 - не следить. Минимум 10 секунд.'**
   String get infoTunWatchdog;
 
   /// No description provided for @tunWatchdogOff.
@@ -4473,7 +4473,7 @@ abstract class AppLocalizations {
   /// No description provided for @tunDnsForAllWarning.
   ///
   /// In ru, this message translates to:
-  /// **'Резолв имён ВСЕЙ машины пойдёт через туннель. Если туннель встанет, имена перестанут определяться даже у приложений, которые идут напрямую и в VPN не нуждаются, — со стороны это выглядит как полная потеря интернета.'**
+  /// **'Резолв имён ВСЕЙ машины пойдёт через туннель. Если туннель встанет, имена перестанут определяться даже у приложений, которые идут напрямую и в VPN не нуждаются, - со стороны это выглядит как полная потеря интернета.'**
   String get tunDnsForAllWarning;
 
   /// No description provided for @tunCidrInvalid.
@@ -4497,7 +4497,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoMissing.
   ///
   /// In ru, this message translates to:
-  /// **'Не скачаны — правила по странам и категориям не работают'**
+  /// **'Не скачаны - правила по странам и категориям не работают'**
   String get geoMissing;
 
   /// No description provided for @geoPresent.
@@ -4533,7 +4533,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoWhy.
   ///
   /// In ru, this message translates to:
-  /// **'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям. По ним ядро разбирает правила вида geoip:ru и geosite:category-ads, которые задаёт панель подписки. Без файлов такие правила из конфига убираются.'**
+  /// **'Файлы geoip.dat и geosite.dat - списки адресов по странам и доменов по категориям. По ним ядро разбирает правила вида geoip:ru и geosite:category-ads, которые задаёт панель подписки. Без файлов такие правила из конфига убираются.'**
   String get geoWhy;
 
   /// No description provided for @geoFileOk.
@@ -4551,7 +4551,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoFileCorrupt.
   ///
   /// In ru, this message translates to:
-  /// **'файл повреждён — ядро его не прочитает'**
+  /// **'файл повреждён - ядро его не прочитает'**
   String get geoFileCorrupt;
 
   /// No description provided for @geoFolder.
@@ -4569,7 +4569,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoSource.
   ///
   /// In ru, this message translates to:
-  /// **'Источник — тот же, из которого файлы приходят в поставке Xray: Loyalsoldier/v2ray-rules-dat. Скачанное сверяется с контрольной суммой из того же выпуска.'**
+  /// **'Источник - тот же, из которого файлы приходят в поставке Xray: Loyalsoldier/v2ray-rules-dat. Скачанное сверяется с контрольной суммой из того же выпуска.'**
   String get geoSource;
 
   /// No description provided for @geoReplaceWarning.
@@ -4581,7 +4581,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoBackupLine.
   ///
   /// In ru, this message translates to:
-  /// **'Есть резервная копия: {files} — {size}, от {date}'**
+  /// **'Есть резервная копия: {files} - {size}, от {date}'**
   String geoBackupLine(String files, String size, String date);
 
   /// No description provided for @geoRestore.
@@ -4611,13 +4611,13 @@ abstract class AppLocalizations {
   /// No description provided for @geoErrorCategories.
   ///
   /// In ru, this message translates to:
-  /// **'В новом файле нет категорий, на которые ссылается ваша подписка. Замена отменена, прежние файлы остались на месте — маршрутизация не пострадала. Каких именно категорий не хватило, видно в строке ниже.'**
+  /// **'В новом файле нет категорий, на которые ссылается ваша подписка. Замена отменена, прежние файлы остались на месте - маршрутизация не пострадала. Каких именно категорий не хватило, видно в строке ниже.'**
   String get geoErrorCategories;
 
   /// No description provided for @geoNoWrite.
   ///
   /// In ru, this message translates to:
-  /// **'В эту папку нельзя писать — скачать сюда не получится. Обычно так бывает при установке в Program Files: запустите приложение от имени администратора.'**
+  /// **'В эту папку нельзя писать - скачать сюда не получится. Обычно так бывает при установке в Program Files: запустите приложение от имени администратора.'**
   String get geoNoWrite;
 
   /// No description provided for @geoCheck.
@@ -4653,7 +4653,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoUpdateAvailable.
   ///
   /// In ru, this message translates to:
-  /// **'Есть обновление: {files} — {size}'**
+  /// **'Есть обновление: {files} - {size}'**
   String geoUpdateAvailable(String files, String size);
 
   /// No description provided for @geoSizeUnknown.
@@ -4713,7 +4713,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoErrorServer.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер обновлений ответил отказом. Скорее всего, это временно — попробуйте позже.'**
+  /// **'Сервер обновлений ответил отказом. Скорее всего, это временно - попробуйте позже.'**
   String get geoErrorServer;
 
   /// No description provided for @geoErrorWrite.
@@ -4725,7 +4725,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoErrorCorrupt.
   ///
   /// In ru, this message translates to:
-  /// **'Скачанный файл не прошёл проверку — закачка повредилась. Попробуйте ещё раз.'**
+  /// **'Скачанный файл не прошёл проверку - закачка повредилась. Попробуйте ещё раз.'**
   String get geoErrorCorrupt;
 
   /// No description provided for @geoErrorOther.
@@ -4743,19 +4743,19 @@ abstract class AppLocalizations {
   /// No description provided for @infoGeoAssets.
   ///
   /// In ru, this message translates to:
-  /// **'Файлы geoip.dat и geosite.dat — списки адресов по странам и доменов по категориям (например «российские сайты», «госуслуги», «ВКонтакте»). По ним работают правила маршрутизации, которые задаёт панель подписки.\n\nВ приложение они не вложены: вдвоём весят около 30 МБ, а нужны не всем — обычному серверу они не требуются вовсе.\n\nПока файлов нет, такие правила из конфига убираются, и трафик, который они уводили напрямую, идёт через VPN. Это безопасно, но медленнее, и российские сайты могут отказывать в доступе из-за иностранного адреса. Правила по конкретным сайтам и приложениям, заданные вами, работают в любом случае — они не зависят от этих файлов.'**
+  /// **'Файлы geoip.dat и geosite.dat - списки адресов по странам и доменов по категориям (например «российские сайты», «госуслуги», «ВКонтакте»). По ним работают правила маршрутизации, которые задаёт панель подписки.\n\nВ приложение они не вложены: вдвоём весят около 30 МБ, а нужны не всем - обычному серверу они не требуются вовсе.\n\nПока файлов нет, такие правила из конфига убираются, и трафик, который они уводили напрямую, идёт через VPN. Это безопасно, но медленнее, и российские сайты могут отказывать в доступе из-за иностранного адреса. Правила по конкретным сайтам и приложениям, заданные вами, работают в любом случае - они не зависят от этих файлов.'**
   String get infoGeoAssets;
 
   /// No description provided for @supportBullet2Android.
   ///
   /// In ru, this message translates to:
-  /// **'• После нажатия отчёт соберётся в один файл, и откроется системное окно «Поделиться» — выберите Telegram, и он уйдёт одним вложением. Опишите проблему в поле выше: без описания разбирать нечего.'**
+  /// **'• После нажатия отчёт соберётся в один файл, и откроется системное окно «Поделиться» - выберите Telegram, и он уйдёт одним вложением. Опишите проблему в поле выше: без описания разбирать нечего.'**
   String get supportBullet2Android;
 
   /// No description provided for @supportDoneTextAndroid.
   ///
   /// In ru, this message translates to:
-  /// **'Отчёт собран в один файл. Выберите в системном окне, куда его отправить — в Telegram он уйдёт вложением, а не текстом.'**
+  /// **'Отчёт собран в один файл. Выберите в системном окне, куда его отправить - в Telegram он уйдёт вложением, а не текстом.'**
   String get supportDoneTextAndroid;
 
   /// No description provided for @exitsHeader.
@@ -4767,7 +4767,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitsHint.
   ///
   /// In ru, this message translates to:
-  /// **'Правило «Туннель» можно направить в конкретный выход: один сайт через Германию, другой — через США. Без выхода правило идёт в общий туннель, как раньше.'**
+  /// **'Правило «Туннель» можно направить в конкретный выход: один сайт через Германию, другой - через США. Без выхода правило идёт в общий туннель, как раньше.'**
   String get exitsHint;
 
   /// No description provided for @exitsAdd.
@@ -4809,7 +4809,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitsAutoSelectSub.
   ///
   /// In ru, this message translates to:
-  /// **'Ядро само держит трафик на живом сервере. Цена — проба каждого сервера раз в три минуты; на телефоне это будит радио.'**
+  /// **'Ядро само держит трафик на живом сервере. Цена - проба каждого сервера раз в три минуты; на телефоне это будит радио.'**
   String get exitsAutoSelectSub;
 
   /// No description provided for @exitsAutoSelectNeedsTwo.
@@ -4827,7 +4827,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitsNoServers.
   ///
   /// In ru, this message translates to:
-  /// **'Нет серверов — сначала импортируйте подписку'**
+  /// **'Нет серверов - сначала импортируйте подписку'**
   String get exitsNoServers;
 
   /// No description provided for @exitsSearch.
@@ -4851,7 +4851,7 @@ abstract class AppLocalizations {
   /// No description provided for @infoExits.
   ///
   /// In ru, this message translates to:
-  /// **'Выход — это адресат правила «Туннель».\n\nПо умолчанию выход состоит из ОДНОГО сервера, и в фоне он не стоит ничего: обычные протоколы постоянного соединения не держат. Группа из нескольких серверов с автовыбором нужна только там, где важна страховка от падения узла, — она добавляет периодические замеры, а на телефоне это пробуждения радио.\n\nВыход имеет смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» — противоречие: прямое правило идёт мимо всех выходов.\n\nСайт и его поддомен можно отправить в РАЗНЫЕ выходы — приложение само поднимет более конкретное правило выше, иначе родитель поглотил бы поддомен.\n\nВАЖНО: при системном прокси на Windows выходы не работают вовсе — в этом режиме правил маршрутизации не строится. Нужен режим туннеля.'**
+  /// **'Выход - это адресат правила «Туннель».\n\nПо умолчанию выход состоит из ОДНОГО сервера, и в фоне он не стоит ничего: обычные протоколы постоянного соединения не держат. Группа из нескольких серверов с автовыбором нужна только там, где важна страховка от падения узла, - она добавляет периодические замеры, а на телефоне это пробуждения радио.\n\nВыход имеет смысл ТОЛЬКО у действия «Туннель». «Прямо через Германию» - противоречие: прямое правило идёт мимо всех выходов.\n\nСайт и его поддомен можно отправить в РАЗНЫЕ выходы - приложение само поднимет более конкретное правило выше, иначе родитель поглотил бы поддомен.\n\nВАЖНО: при системном прокси на Windows выходы не работают вовсе - в этом режиме правил маршрутизации не строится. Нужен режим туннеля.'**
   String get infoExits;
 
   /// No description provided for @ruleServer.
@@ -4905,7 +4905,7 @@ abstract class AppLocalizations {
   /// No description provided for @notifCompactSub.
   ///
   /// In ru, this message translates to:
-  /// **'Выключено — подписка, сервер и скорость, с кнопками. Включено — в заголовке приложение и подписка, ниже сервер, без скорости и без кнопок.'**
+  /// **'Выключено - подписка, сервер и скорость, с кнопками. Включено - в заголовке приложение и подписка, ниже сервер, без скорости и без кнопок.'**
   String get notifCompactSub;
 
   /// No description provided for @localProxyAuthTitle.
@@ -4917,7 +4917,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyAuthInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Локальный порт ядра (127.0.0.1) — это полноценный прокси в ваш VPN. Без пароля к нему подключается любая программа на этом же устройстве и получает ваш туннель целиком: выходной IP, квоту подписки и обход ваших же правил раздельного туннелирования — включая приложения, которым вы поставили «Блок». На Android это особенно важно: там локальные порты видит любое установленное приложение.\n\nВыключайте, только если сознательно ходите в этот прокси чем-то, что не умеет аутентификацию.'**
+  /// **'Локальный порт ядра (127.0.0.1) - это полноценный прокси в ваш VPN. Без пароля к нему подключается любая программа на этом же устройстве и получает ваш туннель целиком: выходной IP, квоту подписки и обход ваших же правил раздельного туннелирования - включая приложения, которым вы поставили «Блок». На Android это особенно важно: там локальные порты видит любое установленное приложение.\n\nВыключайте, только если сознательно ходите в этот прокси чем-то, что не умеет аутентификацию.'**
   String get localProxyAuthInfo;
 
   /// No description provided for @localProxyAuthOff.
@@ -4935,7 +4935,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyAuthRandom.
   ///
   /// In ru, this message translates to:
-  /// **'Новый случайный пароль на каждое подключение — не хранится в настройках'**
+  /// **'Новый случайный пароль на каждое подключение - не хранится в настройках'**
   String get localProxyAuthRandom;
 
   /// No description provided for @localProxyAuthCustom.
@@ -4953,7 +4953,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyCredsUnset.
   ///
   /// In ru, this message translates to:
-  /// **'Не заданы — используется случайный пароль'**
+  /// **'Не заданы - используется случайный пароль'**
   String get localProxyCredsUnset;
 
   /// No description provided for @localProxyCredsUser.
@@ -4971,7 +4971,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyDialogBody.
   ///
   /// In ru, this message translates to:
-  /// **'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми — и пароль будет случайным на каждое подключение: он не хранится в настройках и не попадает ни в журнал, ни в отчёт для поддержки. Заданный вручную остаётся в файле настроек открытым текстом.'**
+  /// **'Нужны, только если вы сами прописываете наш прокси (127.0.0.1) в стороннюю программу. Оставьте поля пустыми - и пароль будет случайным на каждое подключение: он не хранится в настройках и не попадает ни в журнал, ни в отчёт для поддержки. Заданный вручную остаётся в файле настроек открытым текстом.'**
   String get localProxyDialogBody;
 
   /// No description provided for @localProxyFieldUser.
@@ -4989,7 +4989,7 @@ abstract class AppLocalizations {
   /// No description provided for @localProxyFieldHint.
   ///
   /// In ru, this message translates to:
-  /// **'пусто — случайный'**
+  /// **'пусто - случайный'**
   String get localProxyFieldHint;
 
   /// No description provided for @lockdownOnTitle.
@@ -5013,7 +5013,7 @@ abstract class AppLocalizations {
   /// No description provided for @lockdownHalfSub.
   ///
   /// In ru, this message translates to:
-  /// **'Постоянная VPN назначена, но «Блокировать соединения без VPN» выключено. Пока приложение живо — трафик защищён; если система его выгрузит, он пойдёт открыто.'**
+  /// **'Постоянная VPN назначена, но «Блокировать соединения без VPN» выключено. Пока приложение живо - трафик защищён; если система его выгрузит, он пойдёт открыто.'**
   String get lockdownHalfSub;
 
   /// No description provided for @lockdownOffTitle.
@@ -5055,19 +5055,19 @@ abstract class AppLocalizations {
   /// No description provided for @blockNoticeSub.
   ///
   /// In ru, this message translates to:
-  /// **'Когда приложение или браузер стучится на сайт из списка «Блок», внизу появится уведомление с его именем. Нажмите — откроется этот экран.'**
+  /// **'Когда приложение или браузер стучится на сайт из списка «Блок», внизу появится уведомление с его именем. Нажмите - откроется этот экран.'**
   String get blockNoticeSub;
 
   /// No description provided for @siteInsecureScheme.
   ///
   /// In ru, this message translates to:
-  /// **'Адрес задан как http:// — соединение не шифруется, и провайдер видит его целиком. Уберите «http://», чтобы браузер шёл по https.'**
+  /// **'Адрес задан как http:// - соединение не шифруется, и провайдер видит его целиком. Уберите «http://», чтобы браузер шёл по https.'**
   String get siteInsecureScheme;
 
   /// No description provided for @exitServerGone.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер этого правила пропал из подписки — трафик идёт основным туннелем'**
+  /// **'Сервер этого правила пропал из подписки - трафик идёт основным туннелем'**
   String get exitServerGone;
 
   /// No description provided for @exitServerUnsupported.
@@ -5091,7 +5091,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoVerdictMissingSub.
   ///
   /// In ru, this message translates to:
-  /// **'Правила подписки по странам и категориям сейчас отключены — этот трафик идёт через VPN, а не напрямую.'**
+  /// **'Правила подписки по странам и категориям сейчас отключены - этот трафик идёт через VPN, а не напрямую.'**
   String get geoVerdictMissingSub;
 
   /// No description provided for @geoVerdictUnusableTitle.
@@ -5109,7 +5109,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoOfferMissingSub.
   ///
   /// In ru, this message translates to:
-  /// **'Без них правила подписки по странам и категориям работать не будут — этот трафик пойдёт через VPN, а не напрямую.'**
+  /// **'Без них правила подписки по странам и категориям работать не будут - этот трафик пойдёт через VPN, а не напрямую.'**
   String get geoOfferMissingSub;
 
   /// No description provided for @geoOfferDismiss.
@@ -5127,7 +5127,7 @@ abstract class AppLocalizations {
   /// No description provided for @geoOfferBundledSub.
   ///
   /// In ru, this message translates to:
-  /// **'Работают правила по России и рекламе. Полные базы (около 30 МБ) нужны для остальных стран — скачайте, когда удобно; по Wi-Fi они скачаются сами.'**
+  /// **'Работают правила по России и рекламе. Полные базы (около 30 МБ) нужны для остальных стран - скачайте, когда удобно; по Wi-Fi они скачаются сами.'**
   String get geoOfferBundledSub;
 
   /// No description provided for @geoFileBundled.
@@ -5151,19 +5151,19 @@ abstract class AppLocalizations {
   /// No description provided for @geoAutoWifiSub.
   ///
   /// In ru, this message translates to:
-  /// **'Сами, без вопроса. На мобильной сети — только по вашей кнопке.'**
+  /// **'Сами, без вопроса. На мобильной сети - только по вашей кнопке.'**
   String get geoAutoWifiSub;
 
   /// No description provided for @pingPendingTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Задержка TCP до сервера. Проверка канала ещё идёт — рабочий сервер или нет, пока неизвестно.'**
+  /// **'Задержка TCP до сервера. Проверка канала ещё идёт - рабочий сервер или нет, пока неизвестно.'**
   String get pingPendingTooltip;
 
   /// No description provided for @pingUnverifiedTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Задержка TCP до сервера. Проверка через туннель не проводилась — известна только достижимость.'**
+  /// **'Задержка TCP до сервера. Проверка через туннель не проводилась - известна только достижимость.'**
   String get pingUnverifiedTooltip;
 
   /// No description provided for @pingMeasuredAt.
@@ -5199,13 +5199,13 @@ abstract class AppLocalizations {
   /// No description provided for @autoWarnNoRealIp.
   ///
   /// In ru, this message translates to:
-  /// **'Включено «Не выходить под реальным IP» — ваши правила «Прямо» уходят через VPN.'**
+  /// **'Включено «Не выходить под реальным IP» - ваши правила «Прямо» уходят через VPN.'**
   String get autoWarnNoRealIp;
 
   /// No description provided for @autoWarnAllVpn.
   ///
   /// In ru, this message translates to:
-  /// **'Выбран режим «Все — через VPN» — ваши правила сейчас не действуют.'**
+  /// **'Выбран режим «Все - через VPN» - ваши правила сейчас не действуют.'**
   String get autoWarnAllVpn;
 
   /// No description provided for @autoWarnPanelOverride.
@@ -5217,7 +5217,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoWarnProbesDirect.
   ///
   /// In ru, this message translates to:
-  /// **'На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра — если ядро зависло, все результаты будут ложно-отрицательными.'**
+  /// **'На саму проверку это не влияет: пробы идут мимо VPN при любых настройках. Но в режиме TUN они проходят через процесс ядра - если ядро зависло, все результаты будут ложно-отрицательными.'**
   String get autoWarnProbesDirect;
 
   /// No description provided for @autoWarnTurnOff.
@@ -5253,7 +5253,7 @@ abstract class AppLocalizations {
   /// No description provided for @logsFileLine.
   ///
   /// In ru, this message translates to:
-  /// **'{name} — {size}, строк {lines}'**
+  /// **'{name} - {size}, строк {lines}'**
   String logsFileLine(String name, String size, int lines);
 
   /// No description provided for @logsReportsLine.
@@ -5295,7 +5295,7 @@ abstract class AppLocalizations {
   /// No description provided for @logsRetentionInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Логи и отчёты для поддержки удаляются, когда становятся старше выбранного срока. Проверка идёт при запуске приложения. «Никогда» оставляет всё на диске — тогда следите за размером сами: отчёт включает в себя логи целиком и растёт вместе с ними.'**
+  /// **'Логи и отчёты для поддержки удаляются, когда становятся старше выбранного срока. Проверка идёт при запуске приложения. «Никогда» оставляет всё на диске - тогда следите за размером сами: отчёт включает в себя логи целиком и растёт вместе с ними.'**
   String get logsRetentionInfo;
 
   /// No description provided for @logsCleanNow.
@@ -5337,25 +5337,25 @@ abstract class AppLocalizations {
   /// No description provided for @logsClearOptionApp.
   ///
   /// In ru, this message translates to:
-  /// **'Лог приложения — {size}'**
+  /// **'Лог приложения - {size}'**
   String logsClearOptionApp(String size);
 
   /// No description provided for @logsClearOptionTun.
   ///
   /// In ru, this message translates to:
-  /// **'Лог ядра TUN — {size}'**
+  /// **'Лог ядра TUN - {size}'**
   String logsClearOptionTun(String size);
 
   /// No description provided for @logsClearOptionProxy.
   ///
   /// In ru, this message translates to:
-  /// **'Лог прокси-ядра — {size}'**
+  /// **'Лог прокси-ядра - {size}'**
   String logsClearOptionProxy(String size);
 
   /// No description provided for @logsClearOptionReports.
   ///
   /// In ru, this message translates to:
-  /// **'Старые отчёты поддержки — {size}'**
+  /// **'Старые отчёты поддержки - {size}'**
   String logsClearOptionReports(String size);
 
   /// No description provided for @logsClearPeriod.
@@ -5397,7 +5397,7 @@ abstract class AppLocalizations {
   /// No description provided for @speedStaleServerTooltip.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер сейчас не отвечает — показан замер скорости из прошлого'**
+  /// **'Сервер сейчас не отвечает - показан замер скорости из прошлого'**
   String get speedStaleServerTooltip;
 
   /// No description provided for @speedOlderThanPingTooltip.
@@ -5427,7 +5427,7 @@ abstract class AppLocalizations {
   /// No description provided for @speedConfirmBody.
   ///
   /// In ru, this message translates to:
-  /// **'Проверим серверов: {count}. Каждый качает пробу по {size} — около {total} трафика вашей подписки.'**
+  /// **'Проверим серверов: {count}. Каждый качает пробу по {size} - около {total} трафика вашей подписки.'**
   String speedConfirmBody(int count, String size, String total);
 
   /// No description provided for @speedConfirmSkipped.
@@ -5451,13 +5451,13 @@ abstract class AppLocalizations {
   /// No description provided for @speedNotVerified.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер не прошёл проверку канала — скорость через него не меряем'**
+  /// **'Сервер не прошёл проверку канала - скорость через него не меряем'**
   String get speedNotVerified;
 
   /// No description provided for @speedWaitsForPing.
   ///
   /// In ru, this message translates to:
-  /// **'Идёт пинг — замер скорости начнётся сразу после него'**
+  /// **'Идёт пинг - замер скорости начнётся сразу после него'**
   String get speedWaitsForPing;
 
   /// No description provided for @speedProgress.
@@ -5481,7 +5481,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiSectionSub.
   ///
   /// In ru, this message translates to:
-  /// **'HTTP на 127.0.0.1 — управление клиентом из скриптов'**
+  /// **'HTTP на 127.0.0.1 - управление клиентом из скриптов'**
   String get apiSectionSub;
 
   /// No description provided for @momentJustNow.
@@ -5523,7 +5523,7 @@ abstract class AppLocalizations {
   /// No description provided for @srvInfoAutoNever.
   ///
   /// In ru, this message translates to:
-  /// **'Автонастройка этот сервер ещё не проверяла — запустите её, чтобы увидеть, какие сервисы через него работают.'**
+  /// **'Автонастройка этот сервер ещё не проверяла - запустите её, чтобы увидеть, какие сервисы через него работают.'**
   String get srvInfoAutoNever;
 
   /// No description provided for @srvInfoAutoHint.
@@ -5547,7 +5547,7 @@ abstract class AppLocalizations {
   /// No description provided for @srvInfoAutoGeoNote.
   ///
   /// In ru, this message translates to:
-  /// **'{services}: открывается через этот сервер, но недоступен в стране его выхода. Сервер исправен — не работают именно эти сервисы, для них нужен выход в другой стране.'**
+  /// **'{services}: открывается через этот сервер, но недоступен в стране его выхода. Сервер исправен - не работают именно эти сервисы, для них нужен выход в другой стране.'**
   String srvInfoAutoGeoNote(Object services);
 
   /// No description provided for @settingsSectionChecks.
@@ -5571,7 +5571,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSpeedRankSub.
   ///
   /// In ru, this message translates to:
-  /// **'Кандидаты, прошедшие проверку сервисов, дополнительно проверяются скачиванием — первым встаёт тот, кто действительно быстрее. Расходует трафик подписки.'**
+  /// **'Кандидаты, прошедшие проверку сервисов, дополнительно проверяются скачиванием - первым встаёт тот, кто действительно быстрее. Расходует трафик подписки.'**
   String get settingsSpeedRankSub;
 
   /// No description provided for @settingsSpeedTopNLabel.
@@ -5583,7 +5583,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSpeedTopNSub.
   ///
   /// In ru, this message translates to:
-  /// **'Плюс один замер своего канала — без него не с чем сравнивать: 60 Мбит/с это отлично на канале 60 и скверно на канале 300.'**
+  /// **'Плюс один замер своего канала - без него не с чем сравнивать: 60 Мбит/с это отлично на канале 60 и скверно на канале 300.'**
   String get settingsSpeedTopNSub;
 
   /// No description provided for @settingsSpeedTrafficNote.
@@ -5619,7 +5619,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsConcurrencySub.
   ///
   /// In ru, this message translates to:
-  /// **'1 — прежнее поведение: кандидаты проверяются строго по очереди, и сюда же стоит вернуться, если результаты стали странными. Больше — быстрее, но каждый кандидат поднимает своё ядро: машина нагружена сильнее, а замеры задержки начинают влиять друг на друга.'**
+  /// **'1 - прежнее поведение: кандидаты проверяются строго по очереди, и сюда же стоит вернуться, если результаты стали странными. Больше - быстрее, но каждый кандидат поднимает своё ядро: машина нагружена сильнее, а замеры задержки начинают влиять друг на друга.'**
   String get settingsConcurrencySub;
 
   /// No description provided for @settingsConnectChecksTitle.
@@ -5655,7 +5655,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsConnectChecksEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Не выбрано ни одного сервиса — проверять будет нечего.'**
+  /// **'Не выбрано ни одного сервиса - проверять будет нечего.'**
   String get settingsConnectChecksEmpty;
 
   /// No description provided for @settingsSectionSeamless.
@@ -5667,7 +5667,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSeamlessNote.
   ///
   /// In ru, this message translates to:
-  /// **'Открытые соединения ни один из пунктов не сохраняет: у другого сервера другой внешний IP, и удалённая сторона видит другой адрес — звонок или загрузка оборвутся в любом случае. Речь только о том, чтобы у машины не мигала сеть.'**
+  /// **'Открытые соединения ни один из пунктов не сохраняет: у другого сервера другой внешний IP, и удалённая сторона видит другой адрес - звонок или загрузка оборвутся в любом случае. Речь только о том, чтобы у машины не мигала сеть.'**
   String get settingsSeamlessNote;
 
   /// No description provided for @settingsSeamlessServerTitle.
@@ -5703,7 +5703,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsSeamlessKeepTunSub.
   ///
   /// In ru, this message translates to:
-  /// **'Маршрут по умолчанию не дёргается, пока идёт восстановление. ⚠️ Это НЕ kill switch: трафик мимо VPN не блокируется — удерживается только сам адаптер.'**
+  /// **'Маршрут по умолчанию не дёргается, пока идёт восстановление. ⚠️ Это НЕ kill switch: трафик мимо VPN не блокируется - удерживается только сам адаптер.'**
   String get settingsSeamlessKeepTunSub;
 
   /// No description provided for @autoSpeedTrafficTitle.
@@ -5715,7 +5715,7 @@ abstract class AppLocalizations {
   /// No description provided for @autoSpeedTrafficBody.
   ///
   /// In ru, this message translates to:
-  /// **'Будет измерена скорость {servers} лучших серверов и вашего канала — примерно {mb} МБ трафика вашей подписки.\n\nЗамер можно отключить в настройках.'**
+  /// **'Будет измерена скорость {servers} лучших серверов и вашего канала - примерно {mb} МБ трафика вашей подписки.\n\nЗамер можно отключить в настройках.'**
   String autoSpeedTrafficBody(int servers, int mb);
 
   /// No description provided for @autoSpeedTrafficGo.
@@ -5727,7 +5727,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitDeadPath.
   ///
   /// In ru, this message translates to:
-  /// **'Файла по этому пути больше нет — правило не срабатывает'**
+  /// **'Файла по этому пути больше нет - правило не срабатывает'**
   String get splitDeadPath;
 
   /// No description provided for @splitDeadPathFix.
@@ -5739,7 +5739,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitDeadPathNoticeText.
   ///
   /// In ru, this message translates to:
-  /// **'Путь к «{app}» устарел — правило не применится в этот раз'**
+  /// **'Путь к «{app}» устарел - правило не применится в этот раз'**
   String splitDeadPathNoticeText(String app);
 
   /// No description provided for @splitDeadPathNoticeAction.
@@ -5751,7 +5751,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitVersionedPath.
   ///
   /// In ru, this message translates to:
-  /// **'В пути есть номер версии — после обновления программы правило перестанет совпадать'**
+  /// **'В пути есть номер версии - после обновления программы правило перестанет совпадать'**
   String get splitVersionedPath;
 
   /// No description provided for @srvTileCopyKey.
@@ -5763,13 +5763,13 @@ abstract class AppLocalizations {
   /// No description provided for @serviceChecksBypassDirect.
   ///
   /// In ru, this message translates to:
-  /// **'Мимо VPN: правило «{rule}» в раздельном туннелировании отправляет этот домен напрямую — сервис пойдёт под вашим настоящим адресом.'**
+  /// **'Мимо VPN: правило «{rule}» в раздельном туннелировании отправляет этот домен напрямую - сервис пойдёт под вашим настоящим адресом.'**
   String serviceChecksBypassDirect(Object rule);
 
   /// No description provided for @serviceChecksBypassBlock.
   ///
   /// In ru, this message translates to:
-  /// **'Заблокирован: правило «{rule}» в раздельном туннелировании запрещает этот домен — сервис не откроется ни через VPN, ни мимо него.'**
+  /// **'Заблокирован: правило «{rule}» в раздельном туннелировании запрещает этот домен - сервис не откроется ни через VPN, ни мимо него.'**
   String serviceChecksBypassBlock(Object rule);
 
   /// No description provided for @serviceChecksAfterOff.
@@ -5841,7 +5841,7 @@ abstract class AppLocalizations {
   /// No description provided for @serviceChecksChannelNotReady.
   ///
   /// In ru, this message translates to:
-  /// **'Канал ещё не готов — проверка не запускалась'**
+  /// **'Канал ещё не готов - проверка не запускалась'**
   String get serviceChecksChannelNotReady;
 
   /// No description provided for @serviceChecksRetryCheck.
@@ -5883,7 +5883,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiTokenHidden.
   ///
   /// In ru, this message translates to:
-  /// **'скрыт — нажмите «показать»'**
+  /// **'скрыт - нажмите «показать»'**
   String get apiTokenHidden;
 
   /// No description provided for @apiTokenShow.
@@ -5919,19 +5919,19 @@ abstract class AppLocalizations {
   /// No description provided for @apiCheatSheetPortDirect.
   ///
   /// In ru, this message translates to:
-  /// **'{port} — «Прямо»: мимо VPN, реальный IP'**
+  /// **'{port} - «Прямо»: мимо VPN, реальный IP'**
   String apiCheatSheetPortDirect(Object port);
 
   /// No description provided for @apiCheatSheetPortServer.
   ///
   /// In ru, this message translates to:
-  /// **'{port} — {name}'**
+  /// **'{port} - {name}'**
   String apiCheatSheetPortServer(int port, String name);
 
   /// No description provided for @apiCheatSheetNoExitServers.
   ///
   /// In ru, this message translates to:
-  /// **'ни один сервер не отмечен — портов серверов не будет'**
+  /// **'ни один сервер не отмечен - портов серверов не будет'**
   String get apiCheatSheetNoExitServers;
 
   /// No description provided for @apiCheatSheetPortsSystemProxy.
@@ -5943,7 +5943,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiCheatSheetTokenOff.
   ///
   /// In ru, this message translates to:
-  /// **'токен пуст — канал не поднимается, ни один порт не слушает'**
+  /// **'токен пуст - канал не поднимается, ни один порт не слушает'**
   String get apiCheatSheetTokenOff;
 
   /// No description provided for @apiCheatSheetPortsWhenConnected.
@@ -5991,7 +5991,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiEpConnect.
   ///
   /// In ru, this message translates to:
-  /// **'Подключиться по ключу сервера, по имени или «Авто»; на живом канале — смена сервера'**
+  /// **'Подключиться по ключу сервера, по имени или «Авто»; на живом канале - смена сервера'**
   String get apiEpConnect;
 
   /// No description provided for @apiEpDisconnect.
@@ -6015,25 +6015,25 @@ abstract class AppLocalizations {
   /// No description provided for @noRealIpSubRulesOnly.
   ///
   /// In ru, this message translates to:
-  /// **'Переписывает только ваши правила «Прямо»: они уходят в туннель (RU-сайты — тоже). Базу маршрута не меняет, локальная сеть остаётся напрямую.'**
+  /// **'Переписывает только ваши правила «Прямо»: они уходят в туннель (RU-сайты - тоже). Базу маршрута не меняет, локальная сеть остаётся напрямую.'**
   String get noRealIpSubRulesOnly;
 
   /// No description provided for @noRealIpOnlySelectedNote.
   ///
   /// In ru, this message translates to:
-  /// **'В режиме «Только отмеченные» всё неотмеченное всё равно выходит под вашим реальным IP — эта настройка на него не действует.'**
+  /// **'В режиме «Только отмеченные» всё неотмеченное всё равно выходит под вашим реальным IP - эта настройка на него не действует.'**
   String get noRealIpOnlySelectedNote;
 
   /// No description provided for @infoNoRealIp.
   ///
   /// In ru, this message translates to:
-  /// **'Действует ТОЛЬКО на явные правила «Прямо» (приложения и сайты) и на прямые правила из конфига панели: они уводятся в туннель. Правило, у которого поднята галочка «Разрешить реальный IP», остаётся прямым.\n\nЧего настройка НЕ делает: она не меняет базу маршрута. В режиме «Только отмеченные» базой остаётся прямой выход, поэтому весь неотмеченный трафик идёт под вашим настоящим адресом независимо от неё. Нужна герметичность — режим «Все — через VPN».\n\nЛокальная сеть остаётся напрямую всегда.'**
+  /// **'Действует ТОЛЬКО на явные правила «Прямо» (приложения и сайты) и на прямые правила из конфига панели: они уводятся в туннель. Правило, у которого поднята галочка «Разрешить реальный IP», остаётся прямым.\n\nЧего настройка НЕ делает: она не меняет базу маршрута. В режиме «Только отмеченные» базой остаётся прямой выход, поэтому весь неотмеченный трафик идёт под вашим настоящим адресом независимо от неё. Нужна герметичность - режим «Все - через VPN».\n\nЛокальная сеть остаётся напрямую всегда.'**
   String get infoNoRealIp;
 
   /// No description provided for @killSwitchSubProxyNoAdmin.
   ///
   /// In ru, this message translates to:
-  /// **'Это не блокировка: в режиме «Системный прокси» права администратора не берутся, и всё удержание — оставленный прописанным прокси. Программы, которые его игнорируют, и весь UDP уйдут напрямую. Полностью держит только TUN.'**
+  /// **'Это не блокировка: в режиме «Системный прокси» права администратора не берутся, и всё удержание - оставленный прописанным прокси. Программы, которые его игнорируют, и весь UDP уйдут напрямую. Полностью держит только TUN.'**
   String get killSwitchSubProxyNoAdmin;
 
   /// No description provided for @killSwitchOfferTun.
@@ -6051,7 +6051,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitOnlySelectedWarnBody.
   ///
   /// In ru, this message translates to:
-  /// **'В туннель идёт только то, чему задано действие «Туннель». Остальной трафик — включая программы, о которых вы не знаете, — выходит напрямую, с вашим настоящим адресом. Если скрыто должно быть всё устройство, выберите «Все — через VPN».'**
+  /// **'В туннель идёт только то, чему задано действие «Туннель». Остальной трафик - включая программы, о которых вы не знаете, - выходит напрямую, с вашим настоящим адресом. Если скрыто должно быть всё устройство, выберите «Все - через VPN».'**
   String get splitOnlySelectedWarnBody;
 
   /// No description provided for @splitOnlySelectedNoRealIp.
@@ -6063,7 +6063,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitKillSwitchIsPerApp.
   ///
   /// In ru, this message translates to:
-  /// **'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому — правила по сайтам на это время не действуют.'**
+  /// **'Kill switch удерживает трафик по программам, а не по доменам: пока ядро восстанавливается, разбирать имена сайтов некому - правила по сайтам на это время не действуют.'**
   String get splitKillSwitchIsPerApp;
 
   /// No description provided for @updateNotesEmpty.
@@ -6441,37 +6441,37 @@ abstract class AppLocalizations {
   /// No description provided for @updatesLinkNotify.
   ///
   /// In ru, this message translates to:
-  /// **'Выбран режим «Только уведомлять» — скачайте новую версию со страницы загрузки'**
+  /// **'Выбран режим «Только уведомлять» - скачайте новую версию со страницы загрузки'**
   String get updatesLinkNotify;
 
   /// No description provided for @updatesLinkNoSelfUpdate.
   ///
   /// In ru, this message translates to:
-  /// **'В этом выпуске нет подписанного установщика для вашей системы — скачайте его со страницы загрузки'**
+  /// **'В этом выпуске нет подписанного установщика для вашей системы - скачайте его со страницы загрузки'**
   String get updatesLinkNoSelfUpdate;
 
   /// No description provided for @updatesLinkIsolated.
   ///
   /// In ru, this message translates to:
-  /// **'Это изолированная тестовая копия — она не трогает установленное приложение. Обновите его вручную'**
+  /// **'Это изолированная тестовая копия - она не трогает установленное приложение. Обновите его вручную'**
   String get updatesLinkIsolated;
 
   /// No description provided for @updatesLinkLocation.
   ///
   /// In ru, this message translates to:
-  /// **'Приложение запущено не из папки установки — скачайте новую версию вручную или запустите установленную копию'**
+  /// **'Приложение запущено не из папки установки - скачайте новую версию вручную или запустите установленную копию'**
   String get updatesLinkLocation;
 
   /// No description provided for @updatesLinkElevated.
   ///
   /// In ru, this message translates to:
-  /// **'Приложение запущено от имени администратора — так обновляться небезопасно. Запустите его обычным способом'**
+  /// **'Приложение запущено от имени администратора - так обновляться небезопасно. Запустите его обычным способом'**
   String get updatesLinkElevated;
 
   /// No description provided for @updatesLinkUnsupported.
   ///
   /// In ru, this message translates to:
-  /// **'На этой платформе приложение не обновляется само — скачайте новую версию вручную'**
+  /// **'На этой платформе приложение не обновляется само - скачайте новую версию вручную'**
   String get updatesLinkUnsupported;
 
   /// No description provided for @updatesErrCheck.
@@ -6501,7 +6501,7 @@ abstract class AppLocalizations {
   /// No description provided for @updatesErrSignature.
   ///
   /// In ru, this message translates to:
-  /// **'подпись не совпала — файл мог быть подменён'**
+  /// **'подпись не совпала - файл мог быть подменён'**
   String get updatesErrSignature;
 
   /// No description provided for @updatesErrManifestRejected.
@@ -6549,13 +6549,13 @@ abstract class AppLocalizations {
   /// No description provided for @updatesWaitingVpn.
   ///
   /// In ru, this message translates to:
-  /// **'Готово к установке — начнётся после отключения VPN'**
+  /// **'Готово к установке - начнётся после отключения VPN'**
   String get updatesWaitingVpn;
 
   /// No description provided for @updatesSkippedNote.
   ///
   /// In ru, this message translates to:
-  /// **'Версия {version} пропущена — сообщим о следующей'**
+  /// **'Версия {version} пропущена - сообщим о следующей'**
   String updatesSkippedNote(String version);
 
   /// No description provided for @updatesAutoNoticeTitle.
@@ -6585,7 +6585,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitImportFormatNote.
   ///
   /// In ru, this message translates to:
-  /// **'Одна строка — одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.'**
+  /// **'Одна строка - одно правило. Заголовки [tunnel], [direct], [block] задают действие для строк ниже. Строка без пометок добавляется так же, как введённая вручную.'**
   String get splitImportFormatNote;
 
   /// No description provided for @splitImportFieldHint.
@@ -6645,7 +6645,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitImportOverwriteSub.
   ///
   /// In ru, this message translates to:
-  /// **'Выключено — у таких правил остаются текущие настройки'**
+  /// **'Выключено - у таких правил остаются текущие настройки'**
   String get splitImportOverwriteSub;
 
   /// No description provided for @splitImportConflictLine.
@@ -6675,7 +6675,7 @@ abstract class AppLocalizations {
   /// No description provided for @splitExportEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Список пуст — экспортировать нечего'**
+  /// **'Список пуст - экспортировать нечего'**
   String get splitExportEmpty;
 
   /// No description provided for @splitCountEmpty.
@@ -6765,7 +6765,7 @@ abstract class AppLocalizations {
   /// No description provided for @consentIntro.
   ///
   /// In ru, this message translates to:
-  /// **'SilentGate — VPN-клиент: он подключается к серверам вашего VPN-провайдера по ссылке подписки, которую вы добавили сами. Трафик идёт через зашифрованный туннель. SilentGate не собирает ваш трафик, не хранит и не продаёт его, и у приложения нет своей аналитики.'**
+  /// **'SilentGate - VPN-клиент: он подключается к серверам вашего VPN-провайдера по ссылке подписки, которую вы добавили сами. Трафик идёт через зашифрованный туннель. SilentGate не собирает ваш трафик, не хранит и не продаёт его, и у приложения нет своей аналитики.'**
   String get consentIntro;
 
   /// No description provided for @consentDeviceTitle.
@@ -6777,13 +6777,13 @@ abstract class AppLocalizations {
   /// No description provided for @consentDeviceBody.
   ///
   /// In ru, this message translates to:
-  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор устройства (Android ID), модель телефона и версию Android. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки — разработчику SilentGate они не приходят.'**
+  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор устройства (Android ID), модель телефона и версию Android. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки - разработчику SilentGate они не приходят.'**
   String get consentDeviceBody;
 
   /// No description provided for @consentDeclineNote.
   ///
   /// In ru, this message translates to:
-  /// **'Если отказаться, эти данные не отправляются. Некоторые провайдеры без них не выдают подписку — тогда её не удастся загрузить. Решение можно изменить: Настройки → О программе → «Данные и конфиденциальность».'**
+  /// **'Если отказаться, эти данные не отправляются. Некоторые провайдеры без них не выдают подписку - тогда её не удастся загрузить. Решение можно изменить: Настройки → О программе → «Данные и конфиденциальность».'**
   String get consentDeclineNote;
 
   /// No description provided for @consentPolicy.
@@ -6825,7 +6825,7 @@ abstract class AppLocalizations {
   /// No description provided for @consentDeviceBodyWindows.
   ///
   /// In ru, this message translates to:
-  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению — разработчику SilentGate они не приходят.'**
+  /// **'При загрузке и обновлении подписки приложение может передать серверу подписки идентификатор компьютера (HWID), версию Windows и модель компьютера. По ним провайдер считает ваши устройства (лимит устройств в тарифе). Эти данные уходят только по адресу вашей подписки и только по защищённому соединению - разработчику SilentGate они не приходят.'**
   String get consentDeviceBodyWindows;
 
   /// No description provided for @consentNoticeNote.
@@ -6855,7 +6855,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupExportSub.
   ///
   /// In ru, this message translates to:
-  /// **'Сохранить настройки и подписки в файл — для другого компьютера или телефона'**
+  /// **'Сохранить настройки и подписки в файл - для другого компьютера или телефона'**
   String get backupExportSub;
 
   /// No description provided for @backupExportWithSubs.
@@ -6867,13 +6867,13 @@ abstract class AppLocalizations {
   /// No description provided for @backupExportSubsWarning.
   ///
   /// In ru, this message translates to:
-  /// **'В файле будут адреса подписок — это ключи доступа к VPN. Не отправляйте файл посторонним.'**
+  /// **'В файле будут адреса подписок - это ключи доступа к VPN. Не отправляйте файл посторонним.'**
   String get backupExportSubsWarning;
 
   /// No description provided for @backupExportNoSubsNote.
   ///
   /// In ru, this message translates to:
-  /// **'Только настройки и правила — без подписок и серверов.'**
+  /// **'Только настройки и правила - без подписок и серверов.'**
   String get backupExportNoSubsNote;
 
   /// No description provided for @backupExportDeviceNote.
@@ -6993,7 +6993,7 @@ abstract class AppLocalizations {
   /// No description provided for @backupGoogleSubsSub.
   ///
   /// In ru, this message translates to:
-  /// **'Настройки попадают в копию всегда. Подписки — ключи доступа к VPN: копия шифруется на телефоне, если включена блокировка экрана'**
+  /// **'Настройки попадают в копию всегда. Подписки - ключи доступа к VPN: копия шифруется на телефоне, если включена блокировка экрана'**
   String get backupGoogleSubsSub;
 
   /// No description provided for @privacyPolicyTile.
@@ -7107,7 +7107,7 @@ abstract class AppLocalizations {
   /// No description provided for @noticeExitDownSwitched.
   ///
   /// In ru, this message translates to:
-  /// **'Трафик, направленный через этот сервер, временно идёт через основной туннель — значит из другой страны. Вернётся обратно, как только сервер снова ответит.'**
+  /// **'Трафик, направленный через этот сервер, временно идёт через основной туннель - значит из другой страны. Вернётся обратно, как только сервер снова ответит.'**
   String get noticeExitDownSwitched;
 
   /// No description provided for @noticeExitDownStopped.
@@ -7119,25 +7119,25 @@ abstract class AppLocalizations {
   /// No description provided for @noticeSystemProxyFailed.
   ///
   /// In ru, this message translates to:
-  /// **'Системный прокси не включился — трафик идёт мимо VPN, под вашим реальным адресом'**
+  /// **'Системный прокси не включился - трафик идёт мимо VPN, под вашим реальным адресом'**
   String get noticeSystemProxyFailed;
 
   /// No description provided for @noticeSystemProxyFailedDetail.
   ///
   /// In ru, this message translates to:
-  /// **'Чаще всего это запрет записи в реестр (политика домена или повреждённый профиль). Подробности — в журнале приложения. Обходной путь: режим захвата «TUN».'**
+  /// **'Чаще всего это запрет записи в реестр (политика домена или повреждённый профиль). Подробности - в журнале приложения. Обходной путь: режим захвата «TUN».'**
   String get noticeSystemProxyFailedDetail;
 
   /// No description provided for @noticeGeoMissing.
   ///
   /// In ru, this message translates to:
-  /// **'Гео-базы не скачаны — правила панели по странам отключены'**
+  /// **'Гео-базы не скачаны - правила панели по странам отключены'**
   String get noticeGeoMissing;
 
   /// No description provided for @noticeGeoUnusable.
   ///
   /// In ru, this message translates to:
-  /// **'Ядро не открыло гео-базы — правила панели по странам отключены'**
+  /// **'Ядро не открыло гео-базы - правила панели по странам отключены'**
   String get noticeGeoUnusable;
 
   /// No description provided for @pingDoneWorking.
@@ -7233,13 +7233,13 @@ abstract class AppLocalizations {
   /// No description provided for @restartServerChanged.
   ///
   /// In ru, this message translates to:
-  /// **'Выбран другой сервер — переподключитесь, чтобы применить'**
+  /// **'Выбран другой сервер - переподключитесь, чтобы применить'**
   String get restartServerChanged;
 
   /// No description provided for @restartSubscriptionSwitched.
   ///
   /// In ru, this message translates to:
-  /// **'Подписка переключена — переподключитесь, чтобы применить'**
+  /// **'Подписка переключена - переподключитесь, чтобы применить'**
   String get restartSubscriptionSwitched;
 
   /// No description provided for @errorServerNotFound.
@@ -7251,25 +7251,25 @@ abstract class AppLocalizations {
   /// No description provided for @hintClockBehind.
   ///
   /// In ru, this message translates to:
-  /// **'На устройстве неверные дата и время — они отстают, поэтому сертификат сервера считается ещё не начавшим действовать. Проверьте часы и включите синхронизацию времени, затем повторите импорт.'**
+  /// **'На устройстве неверные дата и время - они отстают, поэтому сертификат сервера считается ещё не начавшим действовать. Проверьте часы и включите синхронизацию времени, затем повторите импорт.'**
   String get hintClockBehind;
 
   /// No description provided for @hintCertExpired.
   ///
   /// In ru, this message translates to:
-  /// **'Срок действия сертификата сервера истёк. Сначала проверьте дату и время на устройстве — если они спешат, ошибка будет такой же. Если время верное, сертификат просрочен на стороне сервиса: напишите в поддержку.'**
+  /// **'Срок действия сертификата сервера истёк. Сначала проверьте дату и время на устройстве - если они спешат, ошибка будет такой же. Если время верное, сертификат просрочен на стороне сервиса: напишите в поддержку.'**
   String get hintCertExpired;
 
   /// No description provided for @hintHostnameMismatch.
   ///
   /// In ru, this message translates to:
-  /// **'Сертификат выписан на другое имя. Проверьте адрес подписки — возможно, в нём опечатка, либо соединение подменяет посредник.'**
+  /// **'Сертификат выписан на другое имя. Проверьте адрес подписки - возможно, в нём опечатка, либо соединение подменяет посредник.'**
   String get hintHostnameMismatch;
 
   /// No description provided for @hintNoNetwork.
   ///
   /// In ru, this message translates to:
-  /// **'Не удалось связаться с сервером подписки. Проверьте интернет; если он есть, адрес может быть заблокирован — попробуйте включить VPN и повторить импорт.'**
+  /// **'Не удалось связаться с сервером подписки. Проверьте интернет; если он есть, адрес может быть заблокирован - попробуйте включить VPN и повторить импорт.'**
   String get hintNoNetwork;
 
   /// No description provided for @importSyncTime.
@@ -7341,7 +7341,7 @@ abstract class AppLocalizations {
   /// No description provided for @importSyncTimeManual.
   ///
   /// In ru, this message translates to:
-  /// **'Не удалось синхронизировать автоматически — для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.'**
+  /// **'Не удалось синхронизировать автоматически - для этого нужны права администратора.\n\nПоправить вручную: Параметры Windows → Время и язык → Дата и время. Включите «Установить время автоматически» и нажмите «Синхронизировать сейчас». Если переключатель уже включён, выключите и включите снова.'**
   String get importSyncTimeManual;
 
   /// No description provided for @updatesMsStoreManaged.

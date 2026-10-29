@@ -210,7 +210,7 @@ class LocalApiServer {
     try {
       v = jsonDecode(text);
     } catch (e) {
-      return _BodyParseResult.fail('Тело запроса — не JSON: $e');
+      return _BodyParseResult.fail('Тело запроса - не JSON: $e');
     }
     if (v is! Map<String, dynamic>) {
       return const _BodyParseResult.fail('Тело запроса должно быть JSON-объектом');
@@ -250,7 +250,7 @@ class LocalApiServer {
       // ⚠️ ВИДНО В ЖУРНАЛЕ, А НЕ ТИХО. Заблокированный секрет — это баг в
       // обработчике (см. `AppStateApiHandlers`), и если событие не оставит
       // следа, тот же баг проживёт до следующего раунда ревью незамеченным.
-      AppLog.e('API: заблокирован ответ с запрещённым полем — $e');
+      AppLog.e('API: заблокирован ответ с запрещённым полем - $e');
       outStatus = HttpStatus.internalServerError;
       outBody = jsonEncode({
         'error': {

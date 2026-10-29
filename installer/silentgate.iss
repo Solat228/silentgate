@@ -104,7 +104,7 @@ OutputBaseFilename=SilentGateSetup-{#ShortVersion}{#SetupSuffix}
 OutputDir=Output
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription={#MyAppName} — установка
+VersionInfoDescription={#MyAppName} - установка
 VersionInfoProductName={#MyAppName}
 #ifdef SignUninstallerDir
 ; Подпись деинсталлятора для Microsoft Store (/DSignUninstallerDir=<каталог>,
@@ -235,8 +235,8 @@ Filename: "{app}\{#MyAppExe}"; Parameters: "--cleanup --keep-data"; Flags: runhi
 ; сохранить настройки. Тихое удаление стирает всё, кроме случая /KEEPDATA.
 
 [Messages]
-ru.WelcomeLabel2=Будет установлен {#MyAppName} {#ShortVersion} — VPN-клиент.%n%nРекомендуется закрыть все другие приложения перед продолжением.
-en.WelcomeLabel2={#MyAppName} {#ShortVersion} — VPN client — will be installed.%n%nIt is recommended that you close all other applications before continuing.
+ru.WelcomeLabel2=Будет установлен {#MyAppName} {#ShortVersion} - VPN-клиент.%n%nРекомендуется закрыть все другие приложения перед продолжением.
+en.WelcomeLabel2={#MyAppName} {#ShortVersion} - VPN client - will be installed.%n%nIt is recommended that you close all other applications before continuing.
 
 [CustomMessages]
 ; ⚠️ ПЕРЕВОД ОБЯЗАН БЫТЬ У КАЖДОГО ЯЗЫКА ИЗ [Languages].
@@ -332,14 +332,14 @@ pt.QuitBtnCancel=Cancelar
 tr.QuitBtnCancel=İptal
 ar.QuitBtnCancel=إلغاء
 
-ru.QuitBusySilent=Отказ: SilentGate подключён к VPN. Рвать живое соединение молча нельзя — запустите установщик без /SILENT либо укажите /FORCEQUIT.
-en.QuitBusySilent=Aborted: SilentGate is connected to a VPN. A live connection must not be dropped silently — run the installer without /SILENT or pass /FORCEQUIT.
+ru.QuitBusySilent=Отказ: SilentGate подключён к VPN. Рвать живое соединение молча нельзя - запустите установщик без /SILENT либо укажите /FORCEQUIT.
+en.QuitBusySilent=Aborted: SilentGate is connected to a VPN. A live connection must not be dropped silently - run the installer without /SILENT or pass /FORCEQUIT.
 es.QuitBusySilent=Cancelado: SilentGate está conectado a una VPN. Una conexión activa no puede cortarse en silencio: ejecute el instalador sin /SILENT o use /FORCEQUIT.
-fr.QuitBusySilent=Abandon : SilentGate est connecté à un VPN. Une connexion active ne peut pas être coupée en silence — lancez le programme d'installation sans /SILENT ou ajoutez /FORCEQUIT.
+fr.QuitBusySilent=Abandon : SilentGate est connecté à un VPN. Une connexion active ne peut pas être coupée en silence - lancez le programme d'installation sans /SILENT ou ajoutez /FORCEQUIT.
 de.QuitBusySilent=Abgebrochen: SilentGate ist mit einem VPN verbunden. Eine aktive Verbindung darf nicht stillschweigend getrennt werden – starten Sie das Setup ohne /SILENT oder mit /FORCEQUIT.
-pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio — execute o instalador sem /SILENT ou use /FORCEQUIT.
-tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez — kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
-ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت — شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
+pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio - execute o instalador sem /SILENT ou use /FORCEQUIT.
+tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez - kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
+ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت - شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
 
 ; ── Удаление: сохранить настройки? ─────────────────────────────────────────
 ; По умолчанию — «Нет»: в каталоге лежат подписки, то есть ключи доступа к

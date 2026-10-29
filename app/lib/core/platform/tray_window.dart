@@ -124,7 +124,7 @@ class TrayWindow with WindowListener, TrayListener {
     // ошибки, без исключения и без строчки в журнале. Молчащий трей потом
     // ищут часами, а причина всё это время лежит в имени файла.
     if (!File(path).existsSync()) {
-      AppLog.e('Значок трея не найден: $path — трей останется пустым');
+      AppLog.e('Значок трея не найден: $path - трей останется пустым');
       return;
     }
     try {
@@ -218,7 +218,7 @@ class TrayWindow with WindowListener, TrayListener {
       } catch (e) {
         // Отказ отключения не имеет права оставить приложение висеть: файл
         // exe держит именно процесс, и установщик ждёт его смерти.
-        AppLog.w('Выход: отключение не удалось ($e) — гасим всё равно');
+        AppLog.w('Выход: отключение не удалось ($e) - гасим всё равно');
       }
     }
     await instance._destroy();
@@ -286,7 +286,7 @@ class TrayWindow with WindowListener, TrayListener {
       if (vpnActive) {
         // #1.2 — всегда спрашивать при активном VPN
         final choice = await _askCloseWithVpn(ctx);
-        if (choice != 'quit') return; // 'stay' / null — остаёмся
+        if (choice != 'quit') return; // 'stay' / null - остаёмся
       }
       // disconnect сам no-op, если отключены; страхует и от гонки disconnecting.
       await state.disconnect();
@@ -480,10 +480,10 @@ class TrayWindow with WindowListener, TrayListener {
     final note = blocked?.trim() ?? '';
     // Блокировка трафика важнее сервера и скорости: пока kill switch держит
     // канал, объяснять надо именно это.
-    if (note.isNotEmpty) return _clip('$name — $note', tooltipLimit);
+    if (note.isNotEmpty) return _clip('$name - $note', tooltipLimit);
 
     final srv = server?.trim() ?? '';
-    final first = srv.isEmpty ? name : '$name — $srv';
+    final first = srv.isEmpty ? name : '$name - $srv';
     final second = speed?.trim() ?? '';
     if (second.isEmpty) return _clip(first, tooltipLimit);
     // -1 — перевод строки. Он тоже занимает место в szTip.

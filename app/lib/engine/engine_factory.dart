@@ -30,6 +30,6 @@ VpnEngine createVpnEngine() {
   if (Platform.isAndroid) return AndroidEngine();
   throw UnsupportedError(
     'Движок для ${Platform.operatingSystem} ещё не реализован. '
-    'Порядок платформ — docs/ROADMAP.md.',
+    'Порядок платформ - docs/ROADMAP.md.',
   );
 }

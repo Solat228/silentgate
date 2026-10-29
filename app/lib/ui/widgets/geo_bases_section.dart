@@ -374,7 +374,7 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
       GeoHealth.ok when f.bundled => (l.geoFileBundled(_size(f.bytes)), null),
       GeoHealth.ok => (
           l.geoFileOk(_size(f.bytes),
-              f.updatedAt == null ? '—' : _date(f.updatedAt!)),
+              f.updatedAt == null ? '-' : _date(f.updatedAt!)),
           null
         ),
       GeoHealth.missing => (l.geoFileMissing, theme.colorScheme.tertiary),
@@ -418,7 +418,7 @@ class _GeoBasesSectionState extends State<GeoBasesSection> {
       l.geoBackupLine(
         b.map((x) => x.base.fileName).join(', '),
         _size(bytes),
-        at == null ? '—' : _date(at),
+        at == null ? '-' : _date(at),
       ),
       theme.disabledColor,
     );

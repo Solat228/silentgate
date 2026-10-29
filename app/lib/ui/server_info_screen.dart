@@ -333,7 +333,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       child: Row(children: [
         Expanded(child: Text(title)),
         Text(
-          r == null ? '—' : (r.ok ? speedResultLabel(l, r) : (r.error ?? '—')),
+          r == null ? '-' : (r.ok ? speedResultLabel(l, r) : (r.error ?? '-')),
           textDirection: TextDirection.ltr,
           style: TextStyle(
             fontWeight: primary ? FontWeight.w700 : FontWeight.w400,

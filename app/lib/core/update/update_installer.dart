@@ -263,7 +263,7 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
     // показать ту же карточку ещё раз.
     _deleteQuietly(f);
     if (pending == null) {
-      AppLog.w('Обновление: pending.json не разобрался — удалён');
+      AppLog.w('Обновление: pending.json не разобрался - удалён');
       return null;
     }
 
@@ -276,7 +276,7 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
     }
 
     if (pending.isStale(clock())) {
-      AppLog.w('Обновление: запись об установке ${pending.version} старше суток — '
+      AppLog.w('Обновление: запись об установке ${pending.version} старше суток - '
           'итог не разбираю');
       return PendingResult(outcome: PendingOutcome.stale, pending: pending);
     }

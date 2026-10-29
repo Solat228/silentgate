@@ -76,7 +76,7 @@ class SubscriptionBar extends StatelessWidget {
   }
 
   static String _gb(int? bytes, String gb) =>
-      bytes == null ? '—' : '${(bytes / (1 << 30)).toStringAsFixed(1)} $gb';
+      bytes == null ? '-' : '${(bytes / (1 << 30)).toStringAsFixed(1)} $gb';
 
   @override
   Widget build(BuildContext context) {

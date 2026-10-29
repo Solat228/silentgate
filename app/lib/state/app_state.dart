@@ -634,11 +634,11 @@ class AppState extends ChangeNotifier {
     }
     if (dead == null) return;
     AppLog.w('Правило приложения «${dead.name}» указывает на несуществующий '
-        'файл (${dead.path}) — оно не применится в этом подключении. '
+        'файл (${dead.path}) - оно не применится в этом подключении. '
         'Показываю уведомление на главном экране.');
     _pendingNotice = EngineNotice(
       EngineNoticeKind.deadAppRule,
-      'Путь к «${dead.name}» устарел — правило не применится',
+      'Путь к «${dead.name}» устарел - правило не применится',
       detail: dead.path,
     );
     notifyListeners();
@@ -800,7 +800,7 @@ class AppState extends ChangeNotifier {
     // нечитаемого файла хранилище уже прокричало, а здесь важно другое — что
     // именно не было сделано и почему.
     if (!snapshot.isReadable && (_subscriptionUrl ?? '').isNotEmpty) {
-      AppLog.e('Миграция подписок пропущена: файл подписок не прочитан — '
+      AppLog.e('Миграция подписок пропущена: файл подписок не прочитан - '
           'перезаписывать его нельзя');
     }
     if (snapshot.isReadable &&
@@ -1175,7 +1175,7 @@ class AppState extends ChangeNotifier {
       'selectedIndex': _selectedIndex,
       'selectedVariant': _selectedVariant.toJson(),
       'logoPath': _logoPath,
-      'info': _info.toJson(), // #5 — карточка подписки полная сразу после запуска
+      'info': _info.toJson(), // #5 - карточка подписки полная сразу после запуска
       // «Больше не предлагать гео-базы»: отказ обязан пережить перезапуск,
       // иначе плашка возвращается на следующем старте — см. [_geoOfferDismissed].
       'geoOfferDismissed': _geoOfferDismissed?.name,
@@ -2152,7 +2152,7 @@ class AppState extends ChangeNotifier {
         // Пользователь ушёл на другую подписку. Данные не выбрасываем — кладём
         // в её профиль на диск, чтобы при возврате они уже были свежими.
         await _updateProfileQuietly(url, result.info, result.servers);
-        AppLog.i('Ответ подписки пришёл после переключения на другую — '
+        AppLog.i('Ответ подписки пришёл после переключения на другую - '
             'записан в её профиль, экран не трогаем '
             '(${result.servers.length} серверов)');
         return;
@@ -2378,10 +2378,10 @@ class AppState extends ChangeNotifier {
         // Адрес не нашли. Если картинка уже была — НЕ снимаем её (разовый сбой
         // сети/панели не должен мигать на букву); если не было — показываем букву.
         if (!haveLogo()) {
-          AppLog.w('Логотип подписки не найден — показываем букву названия.');
+          AppLog.w('Логотип подписки не найден - показываем букву названия.');
           await _setLogo(null);
         } else if (_logoFailures.noteNotFound()) {
-          AppLog.w('Логотип подписки временно не найден — оставляю прежний. '
+          AppLog.w('Логотип подписки временно не найден - оставляю прежний. '
               'Повторы до первой удачи в журнал не пишу.');
         }
         return;
@@ -2399,7 +2399,7 @@ class AppState extends ChangeNotifier {
           _logoPath = active.logoPath;
           notifyListeners();
         }
-        AppLog.i('Логотип подписки не изменился ($imageUrl) — оставляю прежний.');
+        AppLog.i('Логотип подписки не изменился ($imageUrl) - оставляю прежний.');
         return;
       }
 
@@ -2415,7 +2415,7 @@ class AppState extends ChangeNotifier {
       if (path == null) {
         if (_logoFailures.noteFailure(imageUrl)) {
           AppLog.w('Логотип найден ($imageUrl), но не скачался'
-              '${viaTunnel ? ' ни через туннель, ни напрямую' : ''} — '
+              '${viaTunnel ? ' ни через туннель, ни напрямую' : ''} - '
               'оставляю прежний, если он был, иначе букву названия. '
               '${viaTunnel ? '' : 'Попробую через туннель, когда VPN включится. '}'
               'Повторные отказы по этому адресу в журнал не пишу.');
@@ -2520,10 +2520,10 @@ class AppState extends ChangeNotifier {
     }
     _selectionRekey = rekey;
     // Числа и только числа: ключи — это ссылки с учётными данными.
-    AppLog.i('Панель переписала ${rekey.length} сервер(ов) — перенесено на '
+    AppLog.i('Панель переписала ${rekey.length} сервер(ов) - перенесено на '
         'новые ключи: закреплений $pinsMoved, правок ${ov.moved}'
         '${ov.droppedJson > 0 ? '; ручной JSON не перенесён у ${ov.droppedJson} '
-            '(в нём прежние ключи сервера — с ними он не подключится)' : ''}');
+            '(в нём прежние ключи сервера - с ними он не подключится)' : ''}');
     try {
       await onServerKeysChanged?.call(rekey);
     } catch (e) {
@@ -2671,7 +2671,7 @@ class AppState extends ChangeNotifier {
     // таймеру легко наложится на нажатую руками кнопку. Кнопка на время работы
     // гаснет, а таймер о ней не знает — гейт нужен здесь.
     if (_refreshing) {
-      AppLog.i('Обновление подписки уже идёт — повторный запуск пропущен');
+      AppLog.i('Обновление подписки уже идёт - повторный запуск пропущен');
       return false;
     }
     // #1 — видимый признак работы: кнопка показывает крутилку, по завершении
@@ -2704,7 +2704,7 @@ class AppState extends ChangeNotifier {
     if (p.url.isEmpty) return false;
     // Тот же гейт, что у активной: два ответа подряд пишут в один профиль.
     if (_quietRefreshing.contains(p.id)) {
-      AppLog.i('Обновление подписки «${p.safeTitle}» уже идёт — пропущено');
+      AppLog.i('Обновление подписки «${p.safeTitle}» уже идёт - пропущено');
       return false;
     }
     _quietRefreshing.add(p.id);
@@ -2722,7 +2722,7 @@ class AppState extends ChangeNotifier {
       // адрес закрепляет ближайшее обновление её же в активном виде.
       await _updateProfileQuietly(p.url, result.info, result.servers);
       if ((result.movedTo ?? p.url) != p.url) {
-        AppLog.w('Подписка «${p.safeTitle}» отвечает с другого адреса — '
+        AppLog.w('Подписка «${p.safeTitle}» отвечает с другого адреса - '
             'новый адрес запомнится при обновлении её как активной');
       }
       AppLog.i('Подписка «${p.safeTitle}» обновлена: ${result.servers.length} '
@@ -2791,7 +2791,7 @@ class AppState extends ChangeNotifier {
     // переподключиться, вместо того чтобы молча оставить старый туннель.
     if (_status.isConnected && wasKey != _servers[index].key) {
       _setPendingRestart(
-          'Выбран другой сервер — переподключитесь, чтобы применить',
+          'Выбран другой сервер - переподключитесь, чтобы применить',
           message: const UiRestartServerChanged());
     }
     _persist();
@@ -2815,7 +2815,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     _setPendingRestart(
-        'Подписка переключена — переподключитесь, чтобы применить',
+        'Подписка переключена - переподключитесь, чтобы применить',
         message: const UiRestartSubscriptionSwitched());
   }
 
@@ -2989,7 +2989,7 @@ class AppState extends ChangeNotifier {
     // здесь, где ещё известно, что захват удерживали.
     if (soft && !_status.isConnected &&
         _status.state != VpnConnectionState.connecting) {
-      AppLog.w('Подключение после смены не началось — снимаю удержанный захват, '
+      AppLog.w('Подключение после смены не началось - снимаю удержанный захват, '
           'иначе туннель остался бы жить без единого ядра');
       await _engine.disconnect();
     }

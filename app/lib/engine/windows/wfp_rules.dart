@@ -380,7 +380,7 @@ class WfpRule {
     final what = isBlock ? 'БЛОК' : 'ПУСК';
     final conds = conditions.map((c) => c.toString()).join(', ');
     return '$what w$weight [${layers.length} сл.] $name'
-        '${conds.isEmpty ? '' : ' — $conds'}';
+        '${conds.isEmpty ? '' : ' - $conds'}';
   }
 }
 

@@ -58,7 +58,7 @@ NetworkErrorHint? networkErrorHint(String raw) {
   if (s.contains('not yet valid')) {
     return const NetworkErrorHint(
       NetworkErrorKind.clockBehind,
-      'На компьютере неверные дата и время — они отстают, поэтому сертификат '
+      'На компьютере неверные дата и время - они отстают, поэтому сертификат '
       'сервера считается ещё не начавшим действовать. Проверьте часы Windows '
       'и включите синхронизацию времени, затем повторите импорт.',
     );
@@ -71,7 +71,7 @@ NetworkErrorHint? networkErrorHint(String raw) {
     return const NetworkErrorHint(
       NetworkErrorKind.certExpired,
       'Срок действия сертификата сервера истёк. Сначала проверьте дату и '
-      'время на компьютере — если они спешат, ошибка будет такой же. Если '
+      'время на компьютере - если они спешат, ошибка будет такой же. Если '
       'время верное, сертификат просрочен на стороне сервиса: напишите в '
       'поддержку.',
     );
@@ -80,7 +80,7 @@ NetworkErrorHint? networkErrorHint(String raw) {
   if (s.contains('hostname mismatch')) {
     return const NetworkErrorHint(
       NetworkErrorKind.hostnameMismatch,
-      'Сертификат выписан на другое имя. Проверьте адрес подписки — возможно, '
+      'Сертификат выписан на другое имя. Проверьте адрес подписки - возможно, '
       'в нём опечатка, либо соединение подменяет посредник.',
     );
   }
@@ -92,7 +92,7 @@ NetworkErrorHint? networkErrorHint(String raw) {
     return const NetworkErrorHint(
       NetworkErrorKind.noNetwork,
       'Не удалось связаться с сервером подписки. Проверьте интернет; если он '
-      'есть, адрес может быть заблокирован — попробуйте включить VPN и '
+      'есть, адрес может быть заблокирован - попробуйте включить VPN и '
       'повторить импорт.',
     );
   }

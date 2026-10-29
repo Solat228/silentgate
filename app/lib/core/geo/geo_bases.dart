@@ -517,7 +517,7 @@ class GeoBases {
         if (bytes == null) continue;
         if (bytes.length < 1024 || bytes.first != 0x0a) {
           AppLog.w('Встроенная гео-база ${base.fileName} не похожа на '
-              'гео-базу — не кладу');
+              'гео-базу - не кладу');
           continue;
         }
         final tmp = File('${target.path}.seed');
@@ -838,13 +838,13 @@ class GeoBases {
     final scan = await GeoDat.scan(candidate);
     if (!scan.readable) {
       return '${base.fileName}: не удалось прочитать список категорий '
-          'в скачанном файле — прежний файл оставлен на месте';
+          'в скачанном файле - прежний файл оставлен на месте';
     }
     final lost = [for (final n in need) if (!scan.has(n)) n]..sort();
     if (lost.isEmpty) return null;
     return '${base.fileName}: в новом файле нет категорий, которые использует '
         'ваша подписка: ${lost.map((n) => '${base.kind == GeoRefKind.ip ? 'geoip' : 'geosite'}:$n').join(', ')}'
-        ' — прежний файл оставлен на месте';
+        ' - прежний файл оставлен на месте';
   }
 
   /// Убрать прежний рабочий файл в резерв.
@@ -868,7 +868,7 @@ class GeoBases {
         // Резерв не вышел (нет места, файл занят) — обновление из-за этого не
         // отменяем, но и тихо делать вид, что копия есть, нельзя.
         AppLog.i('Гео-базы: не удалось сохранить прежний '
-            '${target.uri.pathSegments.last} — отката не будет');
+            '${target.uri.pathSegments.last} - отката не будет');
       }
     }
     await _deleteQuiet(target);

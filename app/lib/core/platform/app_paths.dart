@@ -190,13 +190,13 @@ class AppPaths {
 
   static Never _refuseProductionRoot(String caller) => throw StateError(
         '$caller под тестами: корень данных не задан.\n'
-        'Тест обратился к каталогу данных, не объявив свой, — а боевой здесь '
+        'Тест обратился к каталогу данных, не объявив свой, - а боевой здесь '
         'отдавать нельзя: именно так тест переписал реальный '
         'subscriptions.json владельца (14.08.2026).\n'
         'Лечение в setUp:\n'
         "  final tmp = Directory.systemTemp.createTempSync('sg_test_');\n"
         '  AppPaths.overrideRoot(tmp);\n'
-        'и в tearDown — AppPaths.resetForTests() плюс удаление tmp.\n'
+        'и в tearDown - AppPaths.resetForTests() плюс удаление tmp.\n'
         '⚠️ Если падение прилетело ПОСЛЕ окончания теста, каталог сбросили '
         'раньше, чем досчитала фоновая цепочка (unawaited): дождитесь её до '
         'resetForTests, иначе путь резолвится заново уже без подмены.',

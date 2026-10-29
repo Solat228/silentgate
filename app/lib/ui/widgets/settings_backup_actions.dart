@@ -104,12 +104,12 @@ Future<void> importSettings(BuildContext context) async {
   }
   AppLog.i('Импорт настроек: выбран файл ${file.name}');
   if (!host.mounted) {
-    AppLog.w('Импорт настроек: экран настроек закрыт — импорт отменён');
+    AppLog.w('Импорт настроек: экран настроек закрыт - импорт отменён');
     return;
   }
   final bundle = SettingsBundle.parse(file.text);
   if (bundle == null || (!bundle.hasSettings && !bundle.hasSubscriptions)) {
-    AppLog.w('Импорт настроек: ${file.name} — не файл экспорта SilentGate');
+    AppLog.w('Импорт настроек: ${file.name} - не файл экспорта SilentGate');
     AppToast.show(host, l.backupImportBadFile, kind: ToastKind.error);
     return;
   }
@@ -231,7 +231,7 @@ class ImportSettingsDialogState extends State<ImportSettingsDialog> {
       };
 
   static String _date(DateTime? d) {
-    if (d == null) return '—';
+    if (d == null) return '-';
     final t = d.toLocal();
     String two(int v) => v.toString().padLeft(2, '0');
     return '${t.year}-${two(t.month)}-${two(t.day)} ${two(t.hour)}:${two(t.minute)}';

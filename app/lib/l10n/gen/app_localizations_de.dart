@@ -218,7 +218,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get captureTunHint =>
-      'TUN-, DNS- und Split-Tunneling-Einstellungen erscheinen, wenn der TUN-Modus ausgewählt ist — im Systemproxy-Modus haben sie keine Wirkung.';
+      'TUN-, DNS- und Split-Tunneling-Einstellungen erscheinen, wenn der TUN-Modus ausgewählt ist - im Systemproxy-Modus haben sie keine Wirkung.';
 
   @override
   String get captureProxyOnly => 'Nur Proxy';
@@ -235,14 +235,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String apiEnableSub(int port) {
-    return 'HTTP auf 127.0.0.1:$port — den Client per Skript steuern';
+    return 'HTTP auf 127.0.0.1:$port - den Client per Skript steuern';
   }
 
   @override
   String get apiTokenTitle => 'Token';
 
   @override
-  String get apiTokenUnset => 'Nicht festgelegt — die API startet nicht';
+  String get apiTokenUnset => 'Nicht festgelegt - die API startet nicht';
 
   @override
   String get apiTokenRegenerate => 'Token erneuern';
@@ -256,14 +256,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get apiExitsSub =>
-      'Jeder erhält einen eigenen lokalen Port — eine Anfrage dorthin läuft über diesen Server';
+      'Jeder erhält einen eigenen lokalen Port - eine Anfrage dorthin läuft über diesen Server';
 
   @override
   String get apiCopyPythonExample => 'Python-Beispiel kopieren';
 
   @override
   String apiPortsHint(int control, int direct, int first) {
-    return 'Steuerung — Port $control. „Direkt“ — Port $direct. Server — ab $first.';
+    return 'Steuerung - Port $control. „Direkt“ - Port $direct. Server - ab $first.';
   }
 
   @override
@@ -275,7 +275,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String apiCaptureModeWarning(int control) {
-    return '⚠️ Als Erfassung ist „Systemproxy“ gewählt – Ausgangsports werden dabei nicht geöffnet, Verbindungen dorthin werden abgewiesen. Der Steuerport $control funktioniert bei jeder Erfassung. Wenn Sie Ausgangsports brauchen, wählen Sie „TUN (vollständiger Tunnel)“ oder „Nur Proxy“.';
+    return '⚠️ Als Erfassung ist „Systemproxy“ gewählt - Ausgangsports werden dabei nicht geöffnet, Verbindungen dorthin werden abgewiesen. Der Steuerport $control funktioniert bei jeder Erfassung. Wenn Sie Ausgangsports brauchen, wählen Sie „TUN (vollständiger Tunnel)“ oder „Nur Proxy“.';
   }
 
   @override
@@ -322,7 +322,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tunUacFail =>
-      'Aufgabe konnte nicht erstellt werden — UAC wird beim Verbinden angefordert';
+      'Aufgabe konnte nicht erstellt werden - UAC wird beim Verbinden angefordert';
 
   @override
   String get autoReconnectTitle => 'Automatisch neu verbinden';
@@ -339,7 +339,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get alwaysOnSub =>
-      'Always-on-VPN mit „Verbindungen ohne VPN blockieren“ — wirkt auch bei geschlossener App';
+      'Always-on-VPN mit „Verbindungen ohne VPN blockieren“ - wirkt auch bei geschlossener App';
 
   @override
   String get killSwitchSubTun =>
@@ -347,7 +347,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get killSwitchSubProxy =>
-      'Im Modus „Systemproxy“ schützt er nur proxyfähige Apps. Vollständig — nur TUN';
+      'Im Modus „Systemproxy“ schützt er nur proxyfähige Apps. Vollständig - nur TUN';
 
   @override
   String get killSwitchSubOff =>
@@ -401,7 +401,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get networkFullResetConfirmBody =>
-      'Zusätzlich zur sanften Bereinigung geschieht Folgendes.\n\n1) Der DHCP-Lease wird auf ALLEN Adaptern freigegeben und neu angefordert — einschließlich der virtuellen Hyper-V- und VirtualBox-Switches: Das Netzwerk Ihrer virtuellen Maschinen kann ausfallen.\n\n2) Das Zurücksetzen von Winsock und dem IP-Stack bringt die Netzwerkeinstellungen auf Werkszustand zurück: Statische Adressen, Routen und Netzwerk-Add-ons von Drittanbietern werden gelöscht und müssen neu eingerichtet werden.\n\n3) Ein Neustart wird erforderlich, und bis dahin kann das Netzwerk schlechter funktionieren als jetzt.\n\nAdministratorrechte (UAC) werden benötigt.';
+      'Zusätzlich zur sanften Bereinigung geschieht Folgendes.\n\n1) Der DHCP-Lease wird auf ALLEN Adaptern freigegeben und neu angefordert - einschließlich der virtuellen Hyper-V- und VirtualBox-Switches: Das Netzwerk Ihrer virtuellen Maschinen kann ausfallen.\n\n2) Das Zurücksetzen von Winsock und dem IP-Stack bringt die Netzwerkeinstellungen auf Werkszustand zurück: Statische Adressen, Routen und Netzwerk-Add-ons von Drittanbietern werden gelöscht und müssen neu eingerichtet werden.\n\n3) Ein Neustart wird erforderlich, und bis dahin kann das Netzwerk schlechter funktionieren als jetzt.\n\nAdministratorrechte (UAC) werden benötigt.';
 
   @override
   String get networkFullResetConfirmOk => 'Netzwerk zurücksetzen';
@@ -439,7 +439,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get panelOwnerBody =>
-      'Normale Nutzer brauchen das nicht — Sie können es überspringen.\n\nDamit die App Ihr Abonnement im richtigen JSON-Format (XRAY_JSON) erhält, fügen Sie diesen Block zu den Response Rules Ihres Remnawave-Panels hinzu — er passt zu unserem User-Agent:';
+      'Normale Nutzer brauchen das nicht - Sie können es überspringen.\n\nDamit die App Ihr Abonnement im richtigen JSON-Format (XRAY_JSON) erhält, fügen Sie diesen Block zu den Response Rules Ihres Remnawave-Panels hinzu - er passt zu unserem User-Agent:';
 
   @override
   String get panelOwnerCopy => 'Block kopieren';
@@ -463,15 +463,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutThirdPartySub =>
-      'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — laufen als separate Prozesse';
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun - laufen als separate Prozesse';
 
   @override
   String get aboutThirdPartySubEmbedded =>
-      'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) — in die App eingebettet';
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) - in die App eingebettet';
 
   @override
   String get thirdPartyBodyEmbedded =>
-      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box — GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts — buttons below.';
+      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box - GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray - MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts - buttons below.';
 
   @override
   String get logsTitle => 'Protokolle';
@@ -519,11 +519,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get thirdPartyBody =>
-      'SilentGate wird zusammen mit ausführbaren Dateien von Drittanbietern ausgeliefert. Sie laufen als SEPARATE Prozesse und sind nicht in die App eingebettet.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  TUN-Tunnel und Proxy-Kern für Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — Wintun-Lizenz\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — Routing-Daten, CC-BY-SA-4.0\n\nDie vollständigen Lizenztexte befinden sich im Ordner „licenses“ neben der App.';
+      'SilentGate wird zusammen mit ausführbaren Dateien von Drittanbietern ausgeliefert. Sie laufen als SEPARATE Prozesse und sind nicht in die App eingebettet.\n\n• Xray-core (xray.exe) - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) - GPL-3.0-or-later\n  TUN-Tunnel und Proxy-Kern für Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) - Wintun-Lizenz\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat - Routing-Daten, CC-BY-SA-4.0\n\nDie vollständigen Lizenztexte befinden sich im Ordner „licenses“ neben der App.';
 
   @override
   String get supportSectionNote =>
-      'Tippen Sie auf „Support kontaktieren“ — es öffnet sich ein Fenster, in dem Sie selbst eine Protokolldatei erzeugen (Versionen, Betriebssystem, Einstellungen, app.log + Ende von singbox.log; keine Passwörter oder Abonnement-Token, URL verborgen). Danach erscheint eine Schaltfläche, um es an den Telegram-Support zu senden.';
+      'Tippen Sie auf „Support kontaktieren“ - es öffnet sich ein Fenster, in dem Sie selbst eine Protokolldatei erzeugen (Versionen, Betriebssystem, Einstellungen, app.log + Ende von singbox.log; keine Passwörter oder Abonnement-Token, URL verborgen). Danach erscheint eine Schaltfläche, um es an den Telegram-Support zu senden.';
 
   @override
   String get supportButtonTitle => 'Support kontaktieren';
@@ -536,7 +536,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get supportDialogTitle => 'Support';
 
   @override
-  String get supportDialogTitleDone => 'Protokoll ist bereit — wohin senden';
+  String get supportDialogTitleDone => 'Protokoll ist bereit - wohin senden';
 
   @override
   String get supportWhatWillHappen => 'Was passieren wird:';
@@ -547,7 +547,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get supportBullet2 =>
-      '• Nach dem Tippen öffnet sich ZUERST der Ordner mit der Datei, dann die Datei selbst. Beschreiben Sie das Problem oben, speichern Sie — und eine Schaltfläche zum Senden an den Support erscheint.';
+      '• Nach dem Tippen öffnet sich ZUERST der Ordner mit der Datei, dann die Datei selbst. Beschreiben Sie das Problem oben, speichern Sie - und eine Schaltfläche zum Senden an den Support erscheint.';
 
   @override
   String supportError(String error) {
@@ -556,7 +556,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get supportDoneText =>
-      'Der Bericht wurde erstellt und geöffnet (Ordner, dann Datei). Beschreiben Sie das Problem oben, speichern Sie die Datei und senden Sie sie an den Support — die App hilft beim Öffnen von Telegram.';
+      'Der Bericht wurde erstellt und geöffnet (Ordner, dann Datei). Beschreiben Sie das Problem oben, speichern Sie die Datei und senden Sie sie an den Support - die App hilft beim Öffnen von Telegram.';
 
   @override
   String get supportWhoTo => 'Wohin senden:';
@@ -589,7 +589,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingTwoPhaseSubOn =>
-      'Nach TCP — eine Anfrage über den Server: filtert nicht funktionierende heraus (Reality usw.)';
+      'Nach TCP - eine Anfrage über den Server: filtert nicht funktionierende heraus (Reality usw.)';
 
   @override
   String get pingTwoPhaseSubOff =>
@@ -615,7 +615,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoAppUpdateBeta =>
-      'Die App sieht sich dann die vollständige GitHub-Versionsliste an, einschließlich Vorabversionen, nicht nur die letzte stabile. Der Hauptkanal für automatische Updates ändert sich dabei nicht — Beta erreicht niemanden, der diesen Schalter nicht aktiviert hat.';
+      'Die App sieht sich dann die vollständige GitHub-Versionsliste an, einschließlich Vorabversionen, nicht nur die letzte stabile. Der Hauptkanal für automatische Updates ändert sich dabei nicht - Beta erreicht niemanden, der diesen Schalter nicht aktiviert hat.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
@@ -626,7 +626,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get appUpdatePreviousVersionsEmpty =>
-      'Liste ist leer — GitHub Releases ist nicht erreichbar oder enthält keine Versionen.';
+      'Liste ist leer - GitHub Releases ist nicht erreichbar oder enthält keine Versionen.';
 
   @override
   String get appUpdateOpenRelease => 'Release-Seite öffnen';
@@ -681,7 +681,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get autoPinnedTop => ' — oben an die Liste angeheftet';
+  String get autoPinnedTop => ' - oben an die Liste angeheftet';
 
   @override
   String get autoSearchContinues => ' (Suche läuft weiter…)';
@@ -697,7 +697,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoNoSubscriptionPasteKey =>
-      'Kein Abonnement. Fügen Sie einen einzelnen Schlüssel ein — wir finden funktionierende Einstellungen:';
+      'Kein Abonnement. Fügen Sie einen einzelnen Schlüssel ein - wir finden funktionierende Einstellungen:';
 
   @override
   String get autoTuneByKey => 'Nach Schlüssel einstellen';
@@ -731,7 +731,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoDoneRefreshPing =>
-      'Fertig — Ping der gefundenen aktualisieren';
+      'Fertig - Ping der gefundenen aktualisieren';
 
   @override
   String autoFoundPinnedRefreshing(Object count) {
@@ -767,13 +767,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commonGotIt => 'Verstanden';
 
   @override
-  String get enumSplitAll => 'Alles — über VPN';
+  String get enumSplitAll => 'Alles - über VPN';
 
   @override
-  String get enumSplitOnly => 'Nur ausgewählte — über VPN';
+  String get enumSplitOnly => 'Nur ausgewählte - über VPN';
 
   @override
-  String get enumSplitExcept => 'Ausgewählte — außerhalb des VPN';
+  String get enumSplitExcept => 'Ausgewählte - außerhalb des VPN';
 
   @override
   String get enumActionTunnel => 'Tunnel';
@@ -803,7 +803,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String homeAutoConfigProgress(int current, int total, String name) {
-    return 'Automatische Konfiguration: $current von $total — $name';
+    return 'Automatische Konfiguration: $current von $total - $name';
   }
 
   @override
@@ -990,7 +990,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String subSwitcherCountTotal(int total) {
-    return 'Server im Abo: $total. Der Kanal wurde noch nicht geprüft – starten Sie „Server aller Abos testen“.';
+    return 'Server im Abo: $total. Der Kanal wurde noch nicht geprüft - starten Sie „Server aller Abos testen“.';
   }
 
   @override
@@ -1000,12 +1000,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String subSwitcherCountChecking(int total) {
-    return 'Server im Abonnement: $total. Die Prüfung läuft gerade — die Anzahl der funktionierenden Server erscheint, sobald sie abgeschlossen ist.';
+    return 'Server im Abonnement: $total. Die Prüfung läuft gerade - die Anzahl der funktionierenden Server erscheint, sobald sie abgeschlossen ist.';
   }
 
   @override
   String subSwitcherCountPartial(int total, int working) {
-    return 'Server im Abonnement: $total. Der Durchlauf wurde nicht beendet (abgebrochen oder unterbrochen), daher ist die Zahl unvollständig: $working haben die Kanalprüfung bestanden — von denen, die erreicht wurden.';
+    return 'Server im Abonnement: $total. Der Durchlauf wurde nicht beendet (abgebrochen oder unterbrochen), daher ist die Zahl unvollständig: $working haben die Kanalprüfung bestanden - von denen, die erreicht wurden.';
   }
 
   @override
@@ -1026,11 +1026,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTunStack =>
-      'Der TUN-Netzwerkstack (sing-box).\n\n„auto“ — AUTOMATISCHE AUSWAHL: Wenn der Tunnel nicht aufgebaut werden kann, durchläuft die App selbst system → gvisor → mixed und senkt anschließend die MTU (1400, 1280). Die funktionierende Kombination wird gemerkt und beim nächsten Mal zuerst versucht. Der Auswahlfortschritt wird im Status und im Protokoll angezeigt.\n\nEine explizite Auswahl deaktiviert die Auto-Auswahl: system — der Betriebssystem-Stack, am schnellsten, aber empfindlicher gegenüber Antivirenprogrammen; gvisor — im Userspace, langsamer, maximal kompatibel; mixed — TCP über system, UDP über gvisor.';
+      'Der TUN-Netzwerkstack (sing-box).\n\n„auto“ - AUTOMATISCHE AUSWAHL: Wenn der Tunnel nicht aufgebaut werden kann, durchläuft die App selbst system → gvisor → mixed und senkt anschließend die MTU (1400, 1280). Die funktionierende Kombination wird gemerkt und beim nächsten Mal zuerst versucht. Der Auswahlfortschritt wird im Status und im Protokoll angezeigt.\n\nEine explizite Auswahl deaktiviert die Auto-Auswahl: system - der Betriebssystem-Stack, am schnellsten, aber empfindlicher gegenüber Antivirenprogrammen; gvisor - im Userspace, langsamer, maximal kompatibel; mixed - TCP über system, UDP über gvisor.';
 
   @override
   String get infoTunMtu =>
-      'Die maximale Paketgröße im TUN-Adapter. Standard ist 1500; senken Sie sie (1400, 1280) bei Verbindungsabbrüchen — ein zu kleiner Wert verringert die Geschwindigkeit.\n\nMit dem „auto“-Stack ist dies nur der Startwert: Wenn der Tunnel nicht aufgebaut werden kann, versucht die App selbst kleinere MTUs.';
+      'Die maximale Paketgröße im TUN-Adapter. Standard ist 1500; senken Sie sie (1400, 1280) bei Verbindungsabbrüchen - ein zu kleiner Wert verringert die Geschwindigkeit.\n\nMit dem „auto“-Stack ist dies nur der Startwert: Wenn der Tunnel nicht aufgebaut werden kann, versucht die App selbst kleinere MTUs.';
 
   @override
   String get infoTunStrictRoute =>
@@ -1042,7 +1042,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTunEndpointIndependentNat =>
-      'NAT-Modus für UDP. Wird für Spiele, Sprach-Chats und WebRTC benötigt — ohne ihn lassen sich Verbindungen möglicherweise nicht aufbauen. Deaktivieren Sie ihn nur, um Speicher zu sparen.';
+      'NAT-Modus für UDP. Wird für Spiele, Sprach-Chats und WebRTC benötigt - ohne ihn lassen sich Verbindungen möglicherweise nicht aufbauen. Deaktivieren Sie ihn nur, um Speicher zu sparen.';
 
   @override
   String get infoTunBypassLan =>
@@ -1054,27 +1054,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTunPrivilege =>
-      'TUN erfordert Administratorrechte. Einmalig erstellen wir eine Aufgabe in der Windows-Aufgabenplanung mit höchsten Rechten — danach startet der Tunnel bei jeder Verbindung OHNE UAC-Abfrage. Die Aufgabe gehört Ihnen und wird mit der Schaltfläche unten oder bei der Deinstallation des Programms entfernt.';
+      'TUN erfordert Administratorrechte. Einmalig erstellen wir eine Aufgabe in der Windows-Aufgabenplanung mit höchsten Rechten - danach startet der Tunnel bei jeder Verbindung OHNE UAC-Abfrage. Die Aufgabe gehört Ihnen und wird mit der Schaltfläche unten oder bei der Deinstallation des Programms entfernt.';
 
   @override
   String get infoSpeedTest =>
-      'Die beim Messen der Geschwindigkeit heruntergeladene Datenmenge (Rechtsklick auf einen Server → „Serverinfo“ → „Geschwindigkeit messen“).\n\n20 MB — der Hauptmodus: Auf schnellen Verbindungen (100+ Mbit/s) kommt eine kurze Probe nicht in Fahrt und unterschätzt das Ergebnis.\n5 MB — der sparsame Modus: deutlich günstiger beim Verkehr, praktisch für den Durchlauf vieler Server.\n\nDie Messung läuft NUR manuell und verbraucht den Verkehr Ihres Abonnements. Die Geschwindigkeit wird zweimal gemessen: direkt und über den ausgewählten Server, damit Sie genau sehen, wie viel am VPN verloren geht.';
+      'Die beim Messen der Geschwindigkeit heruntergeladene Datenmenge (Rechtsklick auf einen Server → „Serverinfo“ → „Geschwindigkeit messen“).\n\n20 MB - der Hauptmodus: Auf schnellen Verbindungen (100+ Mbit/s) kommt eine kurze Probe nicht in Fahrt und unterschätzt das Ergebnis.\n5 MB - der sparsame Modus: deutlich günstiger beim Verkehr, praktisch für den Durchlauf vieler Server.\n\nDie Messung läuft NUR manuell und verbraucht den Verkehr Ihres Abonnements. Die Geschwindigkeit wird zweimal gemessen: direkt und über den ausgewählten Server, damit Sie genau sehen, wie viel am VPN verloren geht.';
 
   @override
   String get infoAutoReconnect =>
-      'Wenn der Kern abgestürzt ist, der Server weggefallen ist oder sich das Netzwerk geändert hat (WLAN ↔ Kabel, Aufwachen aus dem Ruhezustand, neue IP), baut die App die Verbindung von selbst wieder auf. Die Pausen zwischen den Versuchen wachsen: 0,8 s → 3 s → 8 s → 20 s und bleiben danach bei 20 s. Es gibt acht Versuche, danach gibt die App auf und zeigt einen Fehler. Trennen per Schaltfläche bricht die Wiederherstellung immer ab.\n\n⚠️ Bei aktiviertem Kill Switch GEHEN DIE VERSUCHE NIE AUS. Solange sie laufen, bleibt der Verkehr blockiert, und sie zu stoppen hieße, ihn am VPN vorbei hinauszulassen — deshalb versucht es die App weiter alle 20 Sekunden, bis Sie das VPN selbst ausschalten, und erinnert höchstens alle 15 Minuten an den Fehlschlag. Ein Server, der eine Stunde später zurückkommt, wird von selbst wieder übernommen.\n\nIm Modus «Auto (bester Server)» verschwendet die App den letzten Versuch nicht an einen toten Server: schon beim siebten von acht wechselt sie zum nächsten Kandidaten, und dort beginnt die Zählung von vorn.\n\nEin Netzwerkwechsel wird an den echten Adressen der anderen Adapter erkannt: der eigene Tunnel und Dienstadressen (Link-Local) zählen nicht, eine Änderung wird nur akzeptiert, wenn sie zwei Abfragen in Folge hielt, und in den ersten 15 Sekunden nach dem Verbinden wird das Signal ignoriert. Ohne diese Sicherungen würde das Aufbauen des Tunnels selbst als «Netzwerkwechsel» zählen und endloses Neuverbinden auslösen.';
+      'Wenn der Kern abgestürzt ist, der Server weggefallen ist oder sich das Netzwerk geändert hat (WLAN ↔ Kabel, Aufwachen aus dem Ruhezustand, neue IP), baut die App die Verbindung von selbst wieder auf. Die Pausen zwischen den Versuchen wachsen: 0,8 s → 3 s → 8 s → 20 s und bleiben danach bei 20 s. Es gibt acht Versuche, danach gibt die App auf und zeigt einen Fehler. Trennen per Schaltfläche bricht die Wiederherstellung immer ab.\n\n⚠️ Bei aktiviertem Kill Switch GEHEN DIE VERSUCHE NIE AUS. Solange sie laufen, bleibt der Verkehr blockiert, und sie zu stoppen hieße, ihn am VPN vorbei hinauszulassen - deshalb versucht es die App weiter alle 20 Sekunden, bis Sie das VPN selbst ausschalten, und erinnert höchstens alle 15 Minuten an den Fehlschlag. Ein Server, der eine Stunde später zurückkommt, wird von selbst wieder übernommen.\n\nIm Modus «Auto (bester Server)» verschwendet die App den letzten Versuch nicht an einen toten Server: schon beim siebten von acht wechselt sie zum nächsten Kandidaten, und dort beginnt die Zählung von vorn.\n\nEin Netzwerkwechsel wird an den echten Adressen der anderen Adapter erkannt: der eigene Tunnel und Dienstadressen (Link-Local) zählen nicht, eine Änderung wird nur akzeptiert, wenn sie zwei Abfragen in Folge hielt, und in den ersten 15 Sekunden nach dem Verbinden wird das Signal ignoriert. Ohne diese Sicherungen würde das Aufbauen des Tunnels selbst als «Netzwerkwechsel» zählen und endloses Neuverbinden auslösen.';
 
   @override
   String get infoKillSwitch =>
-      'Lässt keinen Verkehr am VPN vorbei nach draußen, während die Verbindung wiederhergestellt wird. Die Erfassung wird zwischen den Versuchen NICHT freigegeben: im TUN-Modus bleibt der Adapter aktiv, im Modus „Systemproxy“ bleibt der Proxy konfiguriert — Anwendungen erhalten einen Verbindungsfehler statt unverschlüsselten Internetzugriff.\n\nEhrlich zu den Grenzen: Im Modus „Systemproxy“ schützt dies nur Programme, die den Systemproxy respektieren (Browser und die meisten Anwendungen). Programme, die den Proxy ignorieren, sowie UDP gehen direkt — vollständige Dichtheit bietet nur der TUN-Modus. Erfordert aktiviertes automatisches Neuverbinden.';
+      'Lässt keinen Verkehr am VPN vorbei nach draußen, während die Verbindung wiederhergestellt wird. Die Erfassung wird zwischen den Versuchen NICHT freigegeben: im TUN-Modus bleibt der Adapter aktiv, im Modus „Systemproxy“ bleibt der Proxy konfiguriert - Anwendungen erhalten einen Verbindungsfehler statt unverschlüsselten Internetzugriff.\n\nEhrlich zu den Grenzen: Im Modus „Systemproxy“ schützt dies nur Programme, die den Systemproxy respektieren (Browser und die meisten Anwendungen). Programme, die den Proxy ignorieren, sowie UDP gehen direkt - vollständige Dichtheit bietet nur der TUN-Modus. Erfordert aktiviertes automatisches Neuverbinden.';
 
   @override
   String get infoUserAgent =>
-      'Wie sich die App gegenüber dem Panel identifiziert (der User-Agent-Header). Sie sendet immer „SilentGate/Version (Windows)“.\n\nAnhand dieses Namens wählt das Remnawave-Panel das FORMAT des Abonnements. XRAY_JSON wird benötigt — es liefert fertige Serverkonfigurationen; aus einer base64-Liste von Links werden einige Einstellungen nur näherungsweise wiederhergestellt, und die automatische Auswahl (burstObservatory) funktioniert schlechter.\n\nIm Panel konfiguriert: Templates → Response Rules → eine Regel mit der Bedingung user-agent CONTAINS SilentGate und dem Antworttyp XRAY_JSON (platzieren Sie sie oberhalb der Fallback-Base64-Regel).\n\nDas Überschreibungsfeld wird nur als vorübergehende Umgehung benötigt — wenn das Panel die App noch nicht kennt, können Sie sich als ein ihm bekannter Client identifizieren.';
+      'Wie sich die App gegenüber dem Panel identifiziert (der User-Agent-Header). Sie sendet immer „SilentGate/Version (Windows)“.\n\nAnhand dieses Namens wählt das Remnawave-Panel das FORMAT des Abonnements. XRAY_JSON wird benötigt - es liefert fertige Serverkonfigurationen; aus einer base64-Liste von Links werden einige Einstellungen nur näherungsweise wiederhergestellt, und die automatische Auswahl (burstObservatory) funktioniert schlechter.\n\nIm Panel konfiguriert: Templates → Response Rules → eine Regel mit der Bedingung user-agent CONTAINS SilentGate und dem Antworttyp XRAY_JSON (platzieren Sie sie oberhalb der Fallback-Base64-Regel).\n\nDas Überschreibungsfeld wird nur als vorübergehende Umgehung benötigt - wenn das Panel die App noch nicht kennt, können Sie sich als ein ihm bekannter Client identifizieren.';
 
   @override
   String get infoDnsMode =>
-      'Wer im TUN-Modus Domains auflöst. „Über VPN“ (empfohlen) — Anfragen gehen über TCP in den Tunnel, und Ihr Anbieter sieht nicht, welche Websites Sie öffnen. „System“ — wie in Windows: ein DNS-Leak ist möglich, und wenn der Server kein UDP durchlässt, kann das Internet ganz ausfallen. „Benutzerdefiniert“ — der von Ihnen angegebene Server, durch den Tunnel.';
+      'Wer im TUN-Modus Domains auflöst. „Über VPN“ (empfohlen) - Anfragen gehen über TCP in den Tunnel, und Ihr Anbieter sieht nicht, welche Websites Sie öffnen. „System“ - wie in Windows: ein DNS-Leak ist möglich, und wenn der Server kein UDP durchlässt, kann das Internet ganz ausfallen. „Benutzerdefiniert“ - der von Ihnen angegebene Server, durch den Tunnel.';
 
   @override
   String get infoDnsCustomServer =>
@@ -1086,23 +1086,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoDnsStrategy =>
-      'Welche Adressen abgefragt werden: prefer_ipv4 (empfohlen) — zuerst IPv4, ipv4_only — nur IPv4 (behebt Probleme mit defektem IPv6), prefer_ipv6/ipv6_only — für IPv6-Netzwerke.';
+      'Welche Adressen abgefragt werden: prefer_ipv4 (empfohlen) - zuerst IPv4, ipv4_only - nur IPv4 (behebt Probleme mit defektem IPv6), prefer_ipv6/ipv6_only - für IPv6-Netzwerke.';
 
   @override
   String get infoSingboxLogLevel =>
-      'Die Ausführlichkeit des sing-box-Protokolls (%APPDATA%\\SilentGate\\singbox.log). warn — Normalmodus. info/debug — wenn der Tunnel nicht funktioniert: Das Protokoll zeigt die genaue Ursache. debug vergrößert die Dateigröße merklich.';
+      'Die Ausführlichkeit des sing-box-Protokolls (%APPDATA%\\SilentGate\\singbox.log). warn - Normalmodus. info/debug - wenn der Tunnel nicht funktioniert: Das Protokoll zeigt die genaue Ursache. debug vergrößert die Dateigröße merklich.';
 
   @override
   String get tunLogLevelDebugCost =>
-      'Auf der Stufe debug schreibt der Kern Hunderte Zeilen pro Sekunde: Das Protokoll deckt Minuten ab, nicht Stunden, und wächst um Megabyte. Für einen früheren Ausfall ist es nutzlos — sehen Sie stattdessen ins App-Protokoll.';
+      'Auf der Stufe debug schreibt der Kern Hunderte Zeilen pro Sekunde: Das Protokoll deckt Minuten ab, nicht Stunden, und wächst um Megabyte. Für einen früheren Ausfall ist es nutzlos - sehen Sie stattdessen ins App-Protokoll.';
 
   @override
   String get infoSplitMode =>
-      'Die Basis — wohin alles geht, dem keine manuell festgelegte Aktion zugewiesen ist, und welche Aktion neuen Einträgen zugewiesen wird. „Alles — über VPN“: standardmäßig der gesamte Verkehr in den Tunnel. „Nur ausgewählte — über VPN“: standardmäßig direkt, in den Tunnel nur die als „Tunnel“ markierten. „Ausgewählte — außerhalb des VPN“: umgekehrt, alles in den Tunnel, und die als „Direkt“ markierten gehen direkt.';
+      'Die Basis - wohin alles geht, dem keine manuell festgelegte Aktion zugewiesen ist, und welche Aktion neuen Einträgen zugewiesen wird. „Alles - über VPN“: standardmäßig der gesamte Verkehr in den Tunnel. „Nur ausgewählte - über VPN“: standardmäßig direkt, in den Tunnel nur die als „Tunnel“ markierten. „Ausgewählte - außerhalb des VPN“: umgekehrt, alles in den Tunnel, und die als „Direkt“ markierten gehen direkt.';
 
   @override
   String get infoSplitApps =>
-      'Klicken Sie auf eine Anwendung — es öffnet sich ein Fenster, in dem Sie die Aktion wählen (Tunnel — über VPN, Direkt — am VPN vorbei, Blockieren — kein Netzwerk) und die Zuordnungsmethode: nach exe-Name (zuverlässig) oder nach vollständigem Pfad. Sie können aus laufenden Apps wählen oder eine .exe angeben.';
+      'Klicken Sie auf eine Anwendung - es öffnet sich ein Fenster, in dem Sie die Aktion wählen (Tunnel - über VPN, Direkt - am VPN vorbei, Blockieren - kein Netzwerk) und die Zuordnungsmethode: nach exe-Name (zuverlässig) oder nach vollständigem Pfad. Sie können aus laufenden Apps wählen oder eine .exe angeben.';
 
   @override
   String get infoSplitDomains =>
@@ -1118,7 +1118,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoProxyHead =>
-      'Wie GET, aber nur die Header — schneller und weniger Verkehr. Manche Server/CDNs unterstützen HEAD möglicherweise nicht.';
+      'Wie GET, aber nur die Header - schneller und weniger Verkehr. Manche Server/CDNs unterstützen HEAD möglicherweise nicht.';
 
   @override
   String get infoTcp =>
@@ -1130,11 +1130,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTestUrl =>
-      'Die URL zur Prüfung der Funktionalität über den Proxy. Standardmäßig https://www.gstatic.com/generate_204 — sie gibt eine leere 204-Antwort zurück, was praktisch und schnell ist.';
+      'Die URL zur Prüfung der Funktionalität über den Proxy. Standardmäßig https://www.gstatic.com/generate_204 - sie gibt eine leere 204-Antwort zurück, was praktisch und schnell ist.';
 
   @override
   String get infoAutoConfig =>
-      'Durchläuft Server und Umgehungsvarianten (Fragment, Fingerprint) und erstellt eine Liste derer, bei denen die ausgewählten Dienste funktionieren. Es stoppt nicht beim ersten — Sie wählen aus den gefundenen. Die Prüfung erfolgt über den Proxy; das VPN wird dabei nicht aktiviert.';
+      'Durchläuft Server und Umgehungsvarianten (Fragment, Fingerprint) und erstellt eine Liste derer, bei denen die ausgewählten Dienste funktionieren. Es stoppt nicht beim ersten - Sie wählen aus den gefundenen. Die Prüfung erfolgt über den Proxy; das VPN wird dabei nicht aktiviert.';
 
   @override
   String get infoAutoConfigServices =>
@@ -1142,7 +1142,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoAutoPinFound =>
-      'Gefundene funktionierende Kombinationen (Server + Umgehungsvariante) werden sofort oben an die allgemeine Serverliste angeheftet, sodass Sie sie nutzen können, ohne hierher zurückzukehren. Deaktivieren Sie es, wenn die automatische Konfiguration die Reihenfolge Ihrer Liste nicht ändern soll — die Ergebnisse bleiben auf diesem Bildschirm sichtbar.';
+      'Gefundene funktionierende Kombinationen (Server + Umgehungsvariante) werden sofort oben an die allgemeine Serverliste angeheftet, sodass Sie sie nutzen können, ohne hierher zurückzukehren. Deaktivieren Sie es, wenn die automatische Konfiguration die Reihenfolge Ihrer Liste nicht ändern soll - die Ergebnisse bleiben auf diesem Bildschirm sichtbar.';
 
   @override
   String get infoTryFragment =>
@@ -1150,7 +1150,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoAutoStrategy =>
-      '„Erster funktionierender“ — alles durchlaufen und mit einem beliebigen gefundenen verbinden (Sie wählen). „Bester im Budget“ — innerhalb eines Zeitlimits suchen und den schnellsten wählen.';
+      '„Erster funktionierender“ - alles durchlaufen und mit einem beliebigen gefundenen verbinden (Sie wählen). „Bester im Budget“ - innerhalb eines Zeitlimits suchen und den schnellsten wählen.';
 
   @override
   String get infoScheme =>
@@ -1166,7 +1166,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoNetworkSoftRecover =>
-      'Eine sichere Bereinigung nach einem VPN-Ausfall: DNS-Cache, ARP-Cache, Systemproxy und WinHTTP-Proxy. Löscht nichts und erfordert keinen Neustart — hiermit sollte man beginnen. Erfordert Administratorrechte.';
+      'Eine sichere Bereinigung nach einem VPN-Ausfall: DNS-Cache, ARP-Cache, Systemproxy und WinHTTP-Proxy. Löscht nichts und erfordert keinen Neustart - hiermit sollte man beginnen. Erfordert Administratorrechte.';
 
   @override
   String get infoNetworkFullReset =>
@@ -1182,7 +1182,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingInfoProxyHead =>
-      'Wie GET, fragt aber nur die Header ab — weniger Verkehr und schneller. Prüft die Funktionalität des Tunnels; manche Server/CDNs unterstützen HEAD möglicherweise nicht.';
+      'Wie GET, fragt aber nur die Header ab - weniger Verkehr und schneller. Prüft die Funktionalität des Tunnels; manche Server/CDNs unterstützen HEAD möglicherweise nicht.';
 
   @override
   String get pingInfoTcp =>
@@ -1202,7 +1202,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingInfoTunStack =>
-      'Der TUN-Netzwerkstack (sing-box). auto — dem Ermessen des Kerns überlassen (derzeit mixed). system — der Betriebssystem-Stack: maximale Geschwindigkeit, aber empfindlicher gegenüber Rechten/Antivirenprogrammen. gvisor — ein Userspace-Stack: langsamer, aber am kompatibelsten. mixed — TCP über system, UDP über gvisor (ein Ausgleich). Wenn TUN keine Verbindung herstellt oder Verbindungen abbrechen — versuchen Sie gvisor.';
+      'Der TUN-Netzwerkstack (sing-box). auto - dem Ermessen des Kerns überlassen (derzeit mixed). system - der Betriebssystem-Stack: maximale Geschwindigkeit, aber empfindlicher gegenüber Rechten/Antivirenprogrammen. gvisor - ein Userspace-Stack: langsamer, aber am kompatibelsten. mixed - TCP über system, UDP über gvisor (ein Ausgleich). Wenn TUN keine Verbindung herstellt oder Verbindungen abbrechen - versuchen Sie gvisor.';
 
   @override
   String get pingInfoAutoConfig =>
@@ -1234,7 +1234,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get logsTunEmpty =>
-      'Leer — TUN wurde auf diesem System noch nicht gestartet.';
+      'Leer - TUN wurde auf diesem System noch nicht gestartet.';
 
   @override
   String get importScrDone => 'Importiert';
@@ -1298,7 +1298,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String statusReconnectUnprotected(int seconds, int attempt) {
-    return 'Verbindung verloren, der Tunnel wurde nicht aufgebaut – der Datenverkehr läuft am VPN vorbei. Neuer Versuch in $seconds s (Versuch $attempt)…';
+    return 'Verbindung verloren, der Tunnel wurde nicht aufgebaut - der Datenverkehr läuft am VPN vorbei. Neuer Versuch in $seconds s (Versuch $attempt)…';
   }
 
   @override
@@ -1378,7 +1378,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String serversFound(int found, int total) {
-    return 'Server — $found von $total gefunden';
+    return 'Server - $found von $total gefunden';
   }
 
   @override
@@ -1423,7 +1423,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get srvInfoExitHint =>
-      'Anhand der Serveradresse ermittelt — dafür wird kein Tunnel gestartet.';
+      'Anhand der Serveradresse ermittelt - dafür wird kein Tunnel gestartet.';
 
   @override
   String get srvInfoAddressLocation => 'Serveradresse und Standort';
@@ -1546,7 +1546,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String jsonPanelProfileApplied(Object summary) {
-    return 'Auto-Auswahl-Profil aus dem Panel: $summary — vollständig angewendet';
+    return 'Auto-Auswahl-Profil aus dem Panel: $summary - vollständig angewendet';
   }
 
   @override
@@ -1554,7 +1554,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get jsonBuiltFromShareLink =>
-      'Aus dem Share-Link erstellt — das Panel hat kein JSON gesendet. Aktualisieren Sie das Abonnement; falls das nicht hilft, prüfen Sie die Response-Rules-Regel im Panel.';
+      'Aus dem Share-Link erstellt - das Panel hat kein JSON gesendet. Aktualisieren Sie das Abonnement; falls das nicht hilft, prüfen Sie die Response-Rules-Regel im Panel.';
 
   @override
   String get jsonInvalidJson => 'Ungültiges JSON';
@@ -1681,14 +1681,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingNaTooltip =>
-      'Keine TCP-Antwort — Server nicht erreichbar (tot)';
+      'Keine TCP-Antwort - Server nicht erreichbar (tot)';
 
   @override
   String get pingTimeout => 'Zeitüberschreitung';
 
   @override
   String get pingTimeoutTooltip =>
-      'TCP-Probe wurde nicht innerhalb der Zeitüberschreitung abgeschlossen — Server nicht erreichbar';
+      'TCP-Probe wurde nicht innerhalb der Zeitüberschreitung abgeschlossen - Server nicht erreichbar';
 
   @override
   String pingMs(Object ms) {
@@ -1700,7 +1700,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingNoProxyTooltip =>
-      'Antwortet über TCP (Latenz angezeigt), aber die Tunnelprüfung (GET/HEAD) ist fehlgeschlagen — es geht kein Verkehr durch';
+      'Antwortet über TCP (Latenz angezeigt), aber die Tunnelprüfung (GET/HEAD) ist fehlgeschlagen - es geht kein Verkehr durch';
 
   @override
   String get pingOk => 'ok';
@@ -1716,11 +1716,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingCoreTooltip =>
-      'Vom VPN-Kern selbst durch den Tunnel gemessen: Gesamtzeit der Anfrage an die Testadresse (nicht die TCP-Latenz zum Server). Der Server funktioniert — die Anfrage kam durch.';
+      'Vom VPN-Kern selbst durch den Tunnel gemessen: Gesamtzeit der Anfrage an die Testadresse (nicht die TCP-Latenz zum Server). Der Server funktioniert - die Anfrage kam durch.';
 
   @override
   String get pingCoreFailedTooltip =>
-      'Der VPN-Kern konnte die Testadresse über diesen Server nicht öffnen — durch den Tunnel fließt kein Verkehr';
+      'Der VPN-Kern konnte die Testadresse über diesen Server nicht öffnen - durch den Tunnel fließt kein Verkehr';
 
   @override
   String get pingViaTunnelNote =>
@@ -1737,7 +1737,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitTunOnlyBanner =>
-      'Funktioniert nur im TUN-Modus. Im Modus „Systemproxy“ entscheiden Apps selbst, ob sie den Proxy verwenden — sie können nicht gezwungen werden.';
+      'Funktioniert nur im TUN-Modus. Im Modus „Systemproxy“ entscheiden Apps selbst, ob sie den Proxy verwenden - sie können nicht gezwungen werden.';
 
   @override
   String get splitProxyOnlyBanner =>
@@ -1763,7 +1763,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get splitByPath => 'Nach Pfad';
 
   @override
-  String get splitRuleDisabled => 'Deaktiviert — Regel wird nicht angewendet';
+  String get splitRuleDisabled => 'Deaktiviert - Regel wird nicht angewendet';
 
   @override
   String get splitRemove => 'Entfernen';
@@ -1927,11 +1927,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tunTaskSchedulerFailed =>
-      'Die Aufgabenplanung hat die Aufgabe abgelehnt – der Grund steht im Protokoll (Einstellungen → Protokolle)';
+      'Die Aufgabenplanung hat die Aufgabe abgelehnt - der Grund steht im Protokoll (Einstellungen → Protokolle)';
 
   @override
   String get tunAutoFixNoticeText =>
-      'Der stille TUN-Start ist defekt — bei jeder Verbindung werden Administratorrechte angefragt';
+      'Der stille TUN-Start ist defekt - bei jeder Verbindung werden Administratorrechte angefragt';
 
   @override
   String get tunAutoFixAction => 'Beheben';
@@ -1941,7 +1941,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tunLogEmpty =>
-      'Protokoll ist leer — der Tunnel wurde noch nicht gestartet.';
+      'Protokoll ist leer - der Tunnel wurde noch nicht gestartet.';
 
   @override
   String get tunCopy => 'Kopieren';
@@ -2027,7 +2027,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tunDnsVpnHint =>
-      'Anfragen gehen über TCP in den Tunnel — keine Leaks';
+      'Anfragen gehen über TCP in den Tunnel - keine Leaks';
 
   @override
   String get tunDnsSystemHint => 'Wie in Windows: DNS-Leak möglich';
@@ -2078,7 +2078,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Beim Import versteht die App: eine Abonnement-URL (http/https) sowie einzelne Server vless:// / vmess:// / trojan:// / ss:// / hysteria2:// (hy2://).';
 
   @override
-  String get reportTitle => 'SilentGate — Support-Bericht';
+  String get reportTitle => 'SilentGate - Support-Bericht';
 
   @override
   String get reportDescribeHere =>
@@ -2118,7 +2118,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingLegendInfo =>
-      'Farbe des Ping-Badges: grün/gelb/orange — Server funktioniert (TCP + Prüfung durch den Tunnel). Grau — antwortet über TCP, leitet aber keinen Verkehr weiter (typischer Reality-Port). Rot „n/a“ — keine Antwort, ausgeschlossen. Ping wird immer DIREKT gemessen (außerhalb des VPN).';
+      'Farbe des Ping-Badges: grün/gelb/orange - Server funktioniert (TCP + Prüfung durch den Tunnel). Grau - antwortet über TCP, leitet aber keinen Verkehr weiter (typischer Reality-Port). Rot „n/a“ - keine Antwort, ausgeschlossen. Ping wird immer DIREKT gemessen (außerhalb des VPN).';
 
   @override
   String get pingUntestedHint =>
@@ -2182,7 +2182,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get hy2NoteBody =>
-      'Hysteria2-Server kommen nur im Format XRAY_JSON — SilentGate fordert genau dieses an, und sing-box startet sie automatisch. Falls Hysteria2 nicht in der Liste erscheint: (für den Remnawave-Panel-Betreiber) aktivieren Sie die Hysteria-Inbounds und weisen Sie sie dem Abo zu. Hinweis: Remnawave vor 2.8.0 liefert Hysteria2 NUR in XRAY_JSON — in base64/CLASH/SINGBOX fehlt es, daher ist die obige Regel Response Rules → XRAY_JSON erforderlich.';
+      'Hysteria2-Server kommen nur im Format XRAY_JSON - SilentGate fordert genau dieses an, und sing-box startet sie automatisch. Falls Hysteria2 nicht in der Liste erscheint: (für den Remnawave-Panel-Betreiber) aktivieren Sie die Hysteria-Inbounds und weisen Sie sie dem Abo zu. Hinweis: Remnawave vor 2.8.0 liefert Hysteria2 NUR in XRAY_JSON - in base64/CLASH/SINGBOX fehlt es, daher ist die obige Regel Response Rules → XRAY_JSON erforderlich.';
 
   @override
   String get enumStatusDisconnected => 'Getrennt';
@@ -2268,7 +2268,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get supportReportCopied =>
-      'Bericht kopiert — fügen Sie ihn im Support-Chat ein';
+      'Bericht kopiert - fügen Sie ihn im Support-Chat ein';
 
   @override
   String subBarUsedOnly(String used) {
@@ -2287,11 +2287,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get supportDescribeRequired =>
-      'Beschreiben Sie das Problem — ohne Beschreibung ist der Bericht nutzlos';
+      'Beschreiben Sie das Problem - ohne Beschreibung ist der Bericht nutzlos';
 
   @override
   String get supportNoScreenshots =>
-      'Fügen Sie hier keine Screenshots ein — senden Sie sie separat im Telegram-Chat.';
+      'Fügen Sie hier keine Screenshots ein - senden Sie sie separat im Telegram-Chat.';
 
   @override
   String get supportDescriptionSection => 'BESCHREIBUNG DES NUTZERS';
@@ -2305,7 +2305,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitAllowRealIpOff =>
-      'Aus: Die Regel läuft über das VPN – der Schutz steht über allen Regeln';
+      'Aus: Die Regel läuft über das VPN - der Schutz steht über allen Regeln';
 
   @override
   String get splitRealIpExposed => 'echte IP';
@@ -2338,11 +2338,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get homeSettingsNeedReconnect =>
-      'Einstellung geändert – zum Übernehmen neu verbinden';
+      'Einstellung geändert - zum Übernehmen neu verbinden';
 
   @override
   String blockPageWindowTitle(String app) {
-    return 'Blockiert — $app';
+    return 'Blockiert - $app';
   }
 
   @override
@@ -2366,7 +2366,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsBlockPageSub =>
-      'Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren – und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen.';
+      'Statt eines Verbindungsfehlers erklärt eine Seite, welche Regel die Website gesperrt hat. Funktioniert nur mit http: Eine https-Seite lässt sich nicht ersetzen, ohne ein eigenes Stammzertifikat im System zu installieren - und dieses Zertifikat würde das Mitlesen Ihres gesamten verschlüsselten Datenverkehrs ermöglichen.';
 
   @override
   String get trayCloseFully => 'Vollständig schließen';
@@ -2388,7 +2388,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String toastAppCloseFailed(String app) {
-    return '$app konnte nicht geschlossen werden – bitte manuell schließen';
+    return '$app konnte nicht geschlossen werden - bitte manuell schließen';
   }
 
   @override
@@ -2396,7 +2396,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoBlockQuic =>
-      'Website-Regeln greifen über den NAMEN, und den sieht die App nur bei gewöhnlichem TLS. Ein Browser, der auf HTTP/3 wechselt, zeigt keinen Namen – die Domain-Regel bleibt stillschweigend wirkungslos. Die Blockade holt den Browser zurück auf eine normale Verbindung, in der der Name sichtbar ist. Websites funktionieren weiterhin: HTTP/3 ist für sie optional, Videos laden eventuell etwas langsamer.';
+      'Website-Regeln greifen über den NAMEN, und den sieht die App nur bei gewöhnlichem TLS. Ein Browser, der auf HTTP/3 wechselt, zeigt keinen Namen - die Domain-Regel bleibt stillschweigend wirkungslos. Die Blockade holt den Browser zurück auf eine normale Verbindung, in der der Name sichtbar ist. Websites funktionieren weiterhin: HTTP/3 ist für sie optional, Videos laden eventuell etwas langsamer.';
 
   @override
   String get tunBlockEncryptedDns => 'Verschlüsseltes DNS (DoH/DoT) blockieren';
@@ -2410,7 +2410,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoAutoUseSpeed =>
-      'Nach der Auswahl über Dienste und Latenz werden die drei besten Kandidaten per Download geprüft, und der tatsächlich schnellere kommt zuerst. Die Geschwindigkeit wird mit IHRER Leitung verglichen: Ein Server, der fast alles davon liefert, wird nicht mehr nach Megabit bewertet – dann entscheidet die Latenz. ⚠️ Verbraucht Abo-Datenvolumen: 5 MB für Ihre Leitung plus 5 MB je Kandidat, rund 20 MB pro Durchlauf.';
+      'Nach der Auswahl über Dienste und Latenz werden die drei besten Kandidaten per Download geprüft, und der tatsächlich schnellere kommt zuerst. Die Geschwindigkeit wird mit IHRER Leitung verglichen: Ein Server, der fast alles davon liefert, wird nicht mehr nach Megabit bewertet - dann entscheidet die Latenz. ⚠️ Verbraucht Abo-Datenvolumen: 5 MB für Ihre Leitung plus 5 MB je Kandidat, rund 20 MB pro Durchlauf.';
 
   @override
   String get autoSpeedOwn => 'Messe Ihre eigene Geschwindigkeit…';
@@ -2430,7 +2430,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String conflictDialogBody(String app) {
-    return 'Offenbar läuft $app mit einem eigenen Tunnel. Zwei gleichzeitige Tunnel streiten sich um die Standardroute – die Verbindung kann scheitern oder ohne Netzzugang zustande kommen.';
+    return 'Offenbar läuft $app mit einem eigenen Tunnel. Zwei gleichzeitige Tunnel streiten sich um die Standardroute - die Verbindung kann scheitern oder ohne Netzzugang zustande kommen.';
   }
 
   @override
@@ -2505,7 +2505,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsMyRulesOverridePanelSub =>
-      'Das Panel liefert eigenes Routing – meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.';
+      'Das Panel liefert eigenes Routing - meist „lokale Seiten am VPN vorbei“. Es greift nach Ihren Regeln, daher kann eine als „Tunnel“ markierte Seite doch direkt mit Ihrer echten IP hinausgehen. Aktiv: Tunnel heißt Tunnel. Preis: lokale Seiten nehmen den Umweg und werden langsamer.';
 
   @override
   String get commonOpen => 'Öffnen';
@@ -2515,29 +2515,29 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoTunRouteOnlyCidrs =>
-      'Der einzige Weg unter Windows, einen Teil des Verkehrs wirklich unabhängig vom VPN-Client zu machen.\n\nNormalerweise übernimmt der Tunnel die Standardroute, und der GESAMTE Verkehr des Rechners läuft hinein: Die Markierung „Direkt“ wird erst im Kern ausgewertet, der das Paket annimmt und unter eigenem Namen wieder nach draußen schickt. Solcher Verkehr lebt genau so lange wie der Kern und hängt mit ihm zusammen fest.\n\nIst die Liste nicht leer, bekommt der Tunnel die Standardroute nicht: Er übernimmt nur die aufgeführten Subnetze, alles Übrige schickt das System über den normalen Adapter — der Client sieht diesen Verkehr überhaupt nicht.\n\nDer Preis: Die Aufteilung erfolgt nach Adresse, App- und Website-Regeln greifen dagegen über den Namen. Eine Website, deren Adresse nicht in der Liste steht, sieht der Kern durch keine einzige Regel. Leer lassen, damit der Tunnel wie gewohnt arbeitet.';
+      'Der einzige Weg unter Windows, einen Teil des Verkehrs wirklich unabhängig vom VPN-Client zu machen.\n\nNormalerweise übernimmt der Tunnel die Standardroute, und der GESAMTE Verkehr des Rechners läuft hinein: Die Markierung „Direkt“ wird erst im Kern ausgewertet, der das Paket annimmt und unter eigenem Namen wieder nach draußen schickt. Solcher Verkehr lebt genau so lange wie der Kern und hängt mit ihm zusammen fest.\n\nIst die Liste nicht leer, bekommt der Tunnel die Standardroute nicht: Er übernimmt nur die aufgeführten Subnetze, alles Übrige schickt das System über den normalen Adapter - der Client sieht diesen Verkehr überhaupt nicht.\n\nDer Preis: Die Aufteilung erfolgt nach Adresse, App- und Website-Regeln greifen dagegen über den Namen. Eine Website, deren Adresse nicht in der Liste steht, sieht der Kern durch keine einzige Regel. Leer lassen, damit der Tunnel wie gewohnt arbeitet.';
 
   @override
   String get tunRouteOnlyWarning =>
-      'Der Tunnel übernimmt nur die aufgeführten Subnetze. App- und Website-Regeln gelten NUR innerhalb dieser Subnetze: Was nicht in den Tunnel gelangt, bekommt der Kern nie zu sehen — eine solche Website lässt sich weder blockieren noch umleiten.';
+      'Der Tunnel übernimmt nur die aufgeführten Subnetze. App- und Website-Regeln gelten NUR innerhalb dieser Subnetze: Was nicht in den Tunnel gelangt, bekommt der Kern nie zu sehen - eine solche Website lässt sich weder blockieren noch umleiten.';
 
   @override
   String get tunAlsoSystemProxy => 'Systemproxy zusätzlich zum Tunnel';
 
   @override
   String get infoTunAlsoSystemProxy =>
-      'Gemischter Modus: Tunnel und Systemproxy laufen gleichzeitig.\n\nApps, die den Systemproxy respektieren (Browser, Telegram), nehmen den kurzen Weg direkt zum lokalen Port, umgehen den Userspace-Stack des Tunnels und übergeben dem Kern den Domainnamen statt einer nackten Adresse — Website-Regeln greifen für sie genauer und hängen nicht mehr von der TLS-Auswertung ab.\n\nUnabhängig vom Client werden sie dadurch NICHT: Sie laufen weiterhin über denselben Prozess.';
+      'Gemischter Modus: Tunnel und Systemproxy laufen gleichzeitig.\n\nApps, die den Systemproxy respektieren (Browser, Telegram), nehmen den kurzen Weg direkt zum lokalen Port, umgehen den Userspace-Stack des Tunnels und übergeben dem Kern den Domainnamen statt einer nackten Adresse - Website-Regeln greifen für sie genauer und hängen nicht mehr von der TLS-Auswertung ab.\n\nUnabhängig vom Client werden sie dadurch NICHT: Sie laufen weiterhin über denselben Prozess.';
 
   @override
   String get tunMixedModeWarning =>
-      'Eine Verbindung, die über den Systemproxy hereinkommt, hat keinen besitzenden Prozess — für den Kern ist sie eine lokale Verbindung. APP-Regeln greifen für solche Programme deshalb nicht. Website-Regeln funktionieren, sogar genauer als sonst.';
+      'Eine Verbindung, die über den Systemproxy hereinkommt, hat keinen besitzenden Prozess - für den Kern ist sie eine lokale Verbindung. APP-Regeln greifen für solche Programme deshalb nicht. Website-Regeln funktionieren, sogar genauer als sonst.';
 
   @override
   String get tunWatchdog => 'Wächter für hängenden Kern';
 
   @override
   String get infoTunWatchdog =>
-      'Wie viele Sekunden der Tunnel-Kern schweigen darf, bevor er als hängend gilt und der Tunnel abgebaut wird.\n\nStürzt der Kern ab, räumt Windows selbst auf — Adapter, Routen und Firewall-Regeln verschwinden, das Netzwerk kommt zurück. Hängt der Kern dagegen, wird nichts entfernt: Der Adapter bleibt bestehen und verschluckt den gesamten Verkehr des Rechners, auch den als „Direkt“ markierten. Von außen sieht das aus wie „das Internet ist komplett weg“, und von allein geht es nicht vorbei.\n\nDer Wächter wird erst nach der ersten erfolgreichen Antwort des Kerns scharf: Sonst würde er die Verbindung auch dort beenden, wo sich lediglich der Dienstport nicht öffnen ließ. 0 — nicht überwachen. Mindestens 10 Sekunden.';
+      'Wie viele Sekunden der Tunnel-Kern schweigen darf, bevor er als hängend gilt und der Tunnel abgebaut wird.\n\nStürzt der Kern ab, räumt Windows selbst auf - Adapter, Routen und Firewall-Regeln verschwinden, das Netzwerk kommt zurück. Hängt der Kern dagegen, wird nichts entfernt: Der Adapter bleibt bestehen und verschluckt den gesamten Verkehr des Rechners, auch den als „Direkt“ markierten. Von außen sieht das aus wie „das Internet ist komplett weg“, und von allein geht es nicht vorbei.\n\nDer Wächter wird erst nach der ersten erfolgreichen Antwort des Kerns scharf: Sonst würde er die Verbindung auch dort beenden, wo sich lediglich der Dienstport nicht öffnen ließ. 0 - nicht überwachen. Mindestens 10 Sekunden.';
 
   @override
   String get tunWatchdogOff => 'Aus: Ein hängender Tunnel wird nicht erkannt';
@@ -2549,7 +2549,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tunDnsForAllWarning =>
-      'Die Namensauflösung des GESAMTEN Rechners läuft über den Tunnel. Bleibt der Tunnel stehen, werden Namen auch für Apps nicht mehr aufgelöst, die direkt gehen und gar kein VPN brauchen — von außen wirkt das wie ein kompletter Internetausfall.';
+      'Die Namensauflösung des GESAMTEN Rechners läuft über den Tunnel. Bleibt der Tunnel stehen, werden Namen auch für Apps nicht mehr aufgelöst, die direkt gehen und gar kein VPN brauchen - von außen wirkt das wie ein kompletter Internetausfall.';
 
   @override
   String get tunCidrInvalid =>
@@ -2564,7 +2564,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoMissing =>
-      'Nicht heruntergeladen — Regeln nach Land und Kategorie greifen nicht';
+      'Nicht heruntergeladen - Regeln nach Land und Kategorie greifen nicht';
 
   @override
   String geoPresent(String size, String date) {
@@ -2599,7 +2599,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoFileCorrupt =>
-      'Datei beschädigt — der Kern kann sie nicht lesen';
+      'Datei beschädigt - der Kern kann sie nicht lesen';
 
   @override
   String geoFolder(String path) {
@@ -2620,7 +2620,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String geoBackupLine(String files, String size, String date) {
-    return 'Sicherungskopie vorhanden: $files — $size, Stand $date';
+    return 'Sicherungskopie vorhanden: $files - $size, Stand $date';
   }
 
   @override
@@ -2638,11 +2638,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoErrorCategories =>
-      'In der neuen Datei fehlen Kategorien, auf die sich Ihr Abonnement bezieht. Der Austausch wurde abgebrochen, die bisherigen Dateien liegen unverändert an Ort und Stelle — am Routing hat sich nichts geändert. Welche Kategorien genau gefehlt haben, steht in der Zeile darunter.';
+      'In der neuen Datei fehlen Kategorien, auf die sich Ihr Abonnement bezieht. Der Austausch wurde abgebrochen, die bisherigen Dateien liegen unverändert an Ort und Stelle - am Routing hat sich nichts geändert. Welche Kategorien genau gefehlt haben, steht in der Zeile darunter.';
 
   @override
   String get geoNoWrite =>
-      'In diesen Ordner kann nicht geschrieben werden — das Herunterladen schlägt hier fehl. Das kommt meist bei einer Installation in Program Files vor: Starten Sie die App als Administrator.';
+      'In diesen Ordner kann nicht geschrieben werden - das Herunterladen schlägt hier fehl. Das kommt meist bei einer Installation in Program Files vor: Starten Sie die App als Administrator.';
 
   @override
   String get geoCheck => 'Auf Update prüfen';
@@ -2663,7 +2663,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String geoUpdateAvailable(String files, String size) {
-    return 'Update verfügbar: $files — $size';
+    return 'Update verfügbar: $files - $size';
   }
 
   @override
@@ -2704,7 +2704,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoErrorServer =>
-      'Der Update-Server hat die Anfrage abgelehnt. Das ist meist vorübergehend — versuchen Sie es später erneut.';
+      'Der Update-Server hat die Anfrage abgelehnt. Das ist meist vorübergehend - versuchen Sie es später erneut.';
 
   @override
   String get geoErrorWrite =>
@@ -2712,7 +2712,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoErrorCorrupt =>
-      'Die heruntergeladene Datei hat die Prüfung nicht bestanden — der Download ist beschädigt. Versuchen Sie es erneut.';
+      'Die heruntergeladene Datei hat die Prüfung nicht bestanden - der Download ist beschädigt. Versuchen Sie es erneut.';
 
   @override
   String get geoErrorOther => 'Es hat nicht geklappt. Details unten.';
@@ -2724,15 +2724,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoGeoAssets =>
-      'Die Dateien geoip.dat und geosite.dat enthalten Adresslisten nach Ländern und Domainlisten nach Kategorien (zum Beispiel „russische Websites“, „Behördenportale“, „VK“). Auf ihnen beruhen die Routing-Regeln, die das Panel Ihres Abonnements vorgibt.\n\nIn der App sind sie nicht enthalten: Zusammen sind sie rund 30 MB groß und werden nicht von jedem gebraucht — ein gewöhnlicher Server kommt ganz ohne sie aus.\n\nSolange die Dateien fehlen, werden solche Regeln aus der Konfiguration entfernt, und der Verkehr, den sie bisher direkt geleitet haben, läuft stattdessen über das VPN. Das ist sicher, aber langsamer, und lokale Websites verweigern den Zugriff möglicherweise, weil die Adresse im Ausland liegt. Ihre eigenen Regeln für einzelne Websites und Anwendungen gelten unabhängig davon — sie hängen nicht von diesen Dateien ab.';
+      'Die Dateien geoip.dat und geosite.dat enthalten Adresslisten nach Ländern und Domainlisten nach Kategorien (zum Beispiel „russische Websites“, „Behördenportale“, „VK“). Auf ihnen beruhen die Routing-Regeln, die das Panel Ihres Abonnements vorgibt.\n\nIn der App sind sie nicht enthalten: Zusammen sind sie rund 30 MB groß und werden nicht von jedem gebraucht - ein gewöhnlicher Server kommt ganz ohne sie aus.\n\nSolange die Dateien fehlen, werden solche Regeln aus der Konfiguration entfernt, und der Verkehr, den sie bisher direkt geleitet haben, läuft stattdessen über das VPN. Das ist sicher, aber langsamer, und lokale Websites verweigern den Zugriff möglicherweise, weil die Adresse im Ausland liegt. Ihre eigenen Regeln für einzelne Websites und Anwendungen gelten unabhängig davon - sie hängen nicht von diesen Dateien ab.';
 
   @override
   String get supportBullet2Android =>
-      '• Nach dem Tippen wird der Bericht in einer einzigen Datei gesammelt und das Systemfenster „Teilen“ öffnet sich — wählen Sie Telegram, und er geht als ein einziger Anhang hinaus. Beschreiben Sie das Problem im Feld oben: ohne Beschreibung gibt es nichts zu analysieren.';
+      '• Nach dem Tippen wird der Bericht in einer einzigen Datei gesammelt und das Systemfenster „Teilen“ öffnet sich - wählen Sie Telegram, und er geht als ein einziger Anhang hinaus. Beschreiben Sie das Problem im Feld oben: ohne Beschreibung gibt es nichts zu analysieren.';
 
   @override
   String get supportDoneTextAndroid =>
-      'Der Bericht wurde in einer einzigen Datei gesammelt. Wählen Sie im Systemfenster aus, wohin Sie ihn senden — in Telegram geht er als Anhang, nicht als Text.';
+      'Der Bericht wurde in einer einzigen Datei gesammelt. Wählen Sie im Systemfenster aus, wohin Sie ihn senden - in Telegram geht er als Anhang, nicht als Text.';
 
   @override
   String get exitsHeader => 'Ausgänge';
@@ -2771,7 +2771,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get exitsNoServers =>
-      'Keine Server – importieren Sie zuerst ein Abonnement';
+      'Keine Server - importieren Sie zuerst ein Abonnement';
 
   @override
   String get exitsSearch => 'Server suchen';
@@ -2785,7 +2785,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get infoExits =>
-      'Ein Ausgang ist das Ziel einer „Tunnel“-Regel.\n\nStandardmäßig besteht ein Ausgang aus EINEM Server und kostet im Hintergrund nichts: Gewöhnliche Protokolle halten keine dauerhafte Verbindung. Eine Gruppe mehrerer Server mit Auto-Auswahl wird nur gebraucht, wenn Absicherung gegen Knotenausfall zählt — sie fügt regelmäßige Messungen hinzu, auf dem Telefon sind das Funk-Weckvorgänge.\n\nEin Ausgang ergibt NUR bei der Aktion „Tunnel“ Sinn. „Direkt über Deutschland“ ist ein Widerspruch: Eine direkte Regel umgeht alle Ausgänge.\n\nEine Seite und ihre Subdomain dürfen in VERSCHIEDENE Ausgänge gehen — die App stellt die konkretere Regel nach oben, sonst würde der Elternteil die Subdomain verschlucken.\n\nWICHTIG: Mit dem Systemproxy unter Windows funktionieren Ausgänge gar nicht — in diesem Modus werden keine Routing-Regeln gebaut. Der Tunnelmodus ist nötig.';
+      'Ein Ausgang ist das Ziel einer „Tunnel“-Regel.\n\nStandardmäßig besteht ein Ausgang aus EINEM Server und kostet im Hintergrund nichts: Gewöhnliche Protokolle halten keine dauerhafte Verbindung. Eine Gruppe mehrerer Server mit Auto-Auswahl wird nur gebraucht, wenn Absicherung gegen Knotenausfall zählt - sie fügt regelmäßige Messungen hinzu, auf dem Telefon sind das Funk-Weckvorgänge.\n\nEin Ausgang ergibt NUR bei der Aktion „Tunnel“ Sinn. „Direkt über Deutschland“ ist ein Widerspruch: Eine direkte Regel umgeht alle Ausgänge.\n\nEine Seite und ihre Subdomain dürfen in VERSCHIEDENE Ausgänge gehen - die App stellt die konkretere Regel nach oben, sonst würde der Elternteil die Subdomain verschlucken.\n\nWICHTIG: Mit dem Systemproxy unter Windows funktionieren Ausgänge gar nicht - in diesem Modus werden keine Routing-Regeln gebaut. Der Tunnelmodus ist nötig.';
 
   @override
   String get ruleServer => 'Über Server';
@@ -2815,14 +2815,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notifCompactSub =>
-      'Aus: Abonnement, Server und Geschwindigkeit, mit Schaltflächen. Ein: in der Kopfzeile App und Abonnement, darunter der Server — ohne Geschwindigkeit und ohne Schaltflächen.';
+      'Aus: Abonnement, Server und Geschwindigkeit, mit Schaltflächen. Ein: in der Kopfzeile App und Abonnement, darunter der Server - ohne Geschwindigkeit und ohne Schaltflächen.';
 
   @override
   String get localProxyAuthTitle => 'Passwort für den lokalen Proxy';
 
   @override
   String get localProxyAuthInfo =>
-      'Der lokale Port des Kerns (127.0.0.1) ist ein vollwertiger Proxy in Ihr VPN. Ohne Passwort verbindet sich jedes Programm auf demselben Gerät damit und bekommt Ihren Tunnel komplett: die Ausgangs-IP, das Kontingent Ihres Abonnements und die Umgehung Ihrer eigenen Split-Tunneling-Regeln — auch für Apps, die Sie auf „Blockieren“ gesetzt haben. Unter Android ist das besonders wichtig: Dort sieht jede installierte App die lokalen Ports.\n\nSchalten Sie es nur aus, wenn Sie diesen Proxy bewusst mit etwas nutzen, das keine Authentifizierung beherrscht.';
+      'Der lokale Port des Kerns (127.0.0.1) ist ein vollwertiger Proxy in Ihr VPN. Ohne Passwort verbindet sich jedes Programm auf demselben Gerät damit und bekommt Ihren Tunnel komplett: die Ausgangs-IP, das Kontingent Ihres Abonnements und die Umgehung Ihrer eigenen Split-Tunneling-Regeln - auch für Apps, die Sie auf „Blockieren“ gesetzt haben. Unter Android ist das besonders wichtig: Dort sieht jede installierte App die lokalen Ports.\n\nSchalten Sie es nur aus, wenn Sie diesen Proxy bewusst mit etwas nutzen, das keine Authentifizierung beherrscht.';
 
   @override
   String get localProxyAuthOff =>
@@ -2834,7 +2834,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'Bei jeder Verbindung ein neues Zufallspasswort – wird nicht in den Einstellungen gespeichert';
+      'Bei jeder Verbindung ein neues Zufallspasswort - wird nicht in den Einstellungen gespeichert';
 
   @override
   String get localProxyAuthCustom =>
@@ -2845,7 +2845,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get localProxyCredsUnset =>
-      'Nicht festgelegt — es wird ein Zufallspasswort verwendet';
+      'Nicht festgelegt - es wird ein Zufallspasswort verwendet';
 
   @override
   String localProxyCredsUser(String user) {
@@ -2867,7 +2867,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get localProxyFieldPassword => 'Passwort';
 
   @override
-  String get localProxyFieldHint => 'leer — zufällig';
+  String get localProxyFieldHint => 'leer - zufällig';
 
   @override
   String get lockdownOnTitle => 'Systemweiter Schutz ist aktiv';
@@ -2910,11 +2910,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get siteInsecureScheme =>
-      'Die Adresse ist als http:// angegeben — die Verbindung ist unverschlüsselt und der Anbieter sieht sie vollständig. Entfernen Sie „http://“, damit der Browser https verwendet.';
+      'Die Adresse ist als http:// angegeben - die Verbindung ist unverschlüsselt und der Anbieter sieht sie vollständig. Entfernen Sie „http://“, damit der Browser https verwendet.';
 
   @override
   String get exitServerGone =>
-      'Der Server dieser Regel ist aus dem Abonnement verschwunden — der Verkehr läuft über den Haupttunnel';
+      'Der Server dieser Regel ist aus dem Abonnement verschwunden - der Verkehr läuft über den Haupttunnel';
 
   @override
   String exitServerUnsupported(String name) {
@@ -2929,7 +2929,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoVerdictMissingSub =>
-      'Die Abonnement-Regeln nach Land und Kategorie sind derzeit deaktiviert — dieser Verkehr läuft über das VPN statt direkt.';
+      'Die Abonnement-Regeln nach Land und Kategorie sind derzeit deaktiviert - dieser Verkehr läuft über das VPN statt direkt.';
 
   @override
   String get geoVerdictUnusableTitle =>
@@ -2941,7 +2941,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoOfferMissingSub =>
-      'Ohne sie funktionieren die Abonnement-Regeln nach Land und Kategorie nicht — dieser Verkehr läuft dann über das VPN statt direkt.';
+      'Ohne sie funktionieren die Abonnement-Regeln nach Land und Kategorie nicht - dieser Verkehr läuft dann über das VPN statt direkt.';
 
   @override
   String get geoOfferDismiss => 'Nicht mehr anbieten';
@@ -2951,7 +2951,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get geoOfferBundledSub =>
-      'Die Regeln für Russland und Werbung funktionieren. Die vollständigen Datenbanken (ca. 30 MB) werden für andere Länder benötigt — laden Sie sie herunter, wann es passt; im WLAN geschieht das automatisch.';
+      'Die Regeln für Russland und Werbung funktionieren. Die vollständigen Datenbanken (ca. 30 MB) werden für andere Länder benötigt - laden Sie sie herunter, wann es passt; im WLAN geschieht das automatisch.';
 
   @override
   String geoFileBundled(String size) {
@@ -2971,11 +2971,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get pingPendingTooltip =>
-      'TCP-Latenz zum Server. Die Kanalprüfung läuft noch – ob der Server wirklich funktioniert, ist noch nicht bekannt.';
+      'TCP-Latenz zum Server. Die Kanalprüfung läuft noch - ob der Server wirklich funktioniert, ist noch nicht bekannt.';
 
   @override
   String get pingUnverifiedTooltip =>
-      'TCP-Latenz zum Server. Es wurde keine Prüfung durch den Tunnel durchgeführt – bekannt ist nur die Erreichbarkeit.';
+      'TCP-Latenz zum Server. Es wurde keine Prüfung durch den Tunnel durchgeführt - bekannt ist nur die Erreichbarkeit.';
 
   @override
   String pingMeasuredAt(String time) {
@@ -3002,11 +3002,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '„Echte IP nie verwenden“ ist aktiv – Ihre „Direkt“-Regeln laufen über das VPN.';
+      '„Echte IP nie verwenden“ ist aktiv - Ihre „Direkt“-Regeln laufen über das VPN.';
 
   @override
   String get autoWarnAllVpn =>
-      'Der Modus „Alles über VPN“ ist gewählt – Ihre Regeln greifen im Moment nicht.';
+      'Der Modus „Alles über VPN“ ist gewählt - Ihre Regeln greifen im Moment nicht.';
 
   @override
   String get autoWarnPanelOverride =>
@@ -3014,7 +3014,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get autoWarnProbesDirect =>
-      'Auf die Prüfung selbst hat das keinen Einfluss: Die Tests laufen bei jeder Einstellung am VPN vorbei. Im TUN-Modus laufen sie jedoch über den Kernprozess – hängt der Kern, sind alle Ergebnisse falsch negativ.';
+      'Auf die Prüfung selbst hat das keinen Einfluss: Die Tests laufen bei jeder Einstellung am VPN vorbei. Im TUN-Modus laufen sie jedoch über den Kernprozess - hängt der Kern, sind alle Ergebnisse falsch negativ.';
 
   @override
   String get autoWarnTurnOff => 'Ausschalten';
@@ -3034,7 +3034,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String logsFileLine(String name, String size, int lines) {
-    return '$name – $size, $lines Zeilen';
+    return '$name - $size, $lines Zeilen';
   }
 
   @override
@@ -3059,7 +3059,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get logsRetentionInfo =>
-      'Protokolle und Support-Berichte werden gelöscht, sobald sie älter als der gewählte Zeitraum sind. Geprüft wird beim Start der App. „Nie“ behält alles auf der Festplatte – dann behalten Sie die Größe selbst im Auge: Ein Bericht enthält die Protokolle vollständig und wächst mit ihnen.';
+      'Protokolle und Support-Berichte werden gelöscht, sobald sie älter als der gewählte Zeitraum sind. Geprüft wird beim Start der App. „Nie“ behält alles auf der Festplatte - dann behalten Sie die Größe selbst im Auge: Ein Bericht enthält die Protokolle vollständig und wächst mit ihnen.';
 
   @override
   String get logsCleanNow => 'Alte jetzt löschen';
@@ -3083,22 +3083,22 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String logsClearOptionApp(String size) {
-    return 'App-Protokoll — $size';
+    return 'App-Protokoll - $size';
   }
 
   @override
   String logsClearOptionTun(String size) {
-    return 'TUN-Kernprotokoll — $size';
+    return 'TUN-Kernprotokoll - $size';
   }
 
   @override
   String logsClearOptionProxy(String size) {
-    return 'Proxy-Kernprotokoll — $size';
+    return 'Proxy-Kernprotokoll - $size';
   }
 
   @override
   String logsClearOptionReports(String size) {
-    return 'Alte Support-Berichte — $size';
+    return 'Alte Support-Berichte - $size';
   }
 
   @override
@@ -3133,7 +3133,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get speedStaleServerTooltip =>
-      'Der Server antwortet gerade nicht – angezeigt wird eine frühere Geschwindigkeitsmessung';
+      'Der Server antwortet gerade nicht - angezeigt wird eine frühere Geschwindigkeitsmessung';
 
   @override
   String get speedOlderThanPingTooltip =>
@@ -3150,7 +3150,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String speedConfirmBody(int count, String size, String total) {
-    return 'Es werden $count Server geprüft. Jeder lädt eine Probe von $size – etwa $total vom Datenvolumen Ihres Abos.';
+    return 'Es werden $count Server geprüft. Jeder lädt eine Probe von $size - etwa $total vom Datenvolumen Ihres Abos.';
   }
 
   @override
@@ -3167,11 +3167,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get speedNotVerified =>
-      'Der Server hat die Kanalprüfung nicht bestanden – wir messen die Geschwindigkeit darüber nicht';
+      'Der Server hat die Kanalprüfung nicht bestanden - wir messen die Geschwindigkeit darüber nicht';
 
   @override
   String get speedWaitsForPing =>
-      'Ping läuft — die Geschwindigkeitsmessung startet direkt danach';
+      'Ping läuft - die Geschwindigkeitsmessung startet direkt danach';
 
   @override
   String speedProgress(int done, int total) {
@@ -3187,7 +3187,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get apiSectionSub =>
-      'HTTP auf 127.0.0.1 – den Client aus Skripten steuern';
+      'HTTP auf 127.0.0.1 - den Client aus Skripten steuern';
 
   @override
   String get momentJustNow => 'gerade eben';
@@ -3225,7 +3225,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get srvInfoAutoNever =>
-      'Die automatische Einrichtung hat diesen Server noch nicht geprüft – starten Sie sie, um zu sehen, welche Dienste darüber funktionieren.';
+      'Die automatische Einrichtung hat diesen Server noch nicht geprüft - starten Sie sie, um zu sehen, welche Dienste darüber funktionieren.';
 
   @override
   String get srvInfoAutoHint =>
@@ -3239,7 +3239,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String srvInfoAutoGeoNote(Object services) {
-    return '$services: über diesen Server erreichbar, im Ausgangsland aber nicht verfügbar. Der Server selbst ist in Ordnung – nur diese Dienste funktionieren nicht; dafür brauchen Sie einen Ausgang in einem anderen Land.';
+    return '$services: über diesen Server erreichbar, im Ausgangsland aber nicht verfügbar. Der Server selbst ist in Ordnung - nur diese Dienste funktionieren nicht; dafür brauchen Sie einen Ausgang in einem anderen Land.';
   }
 
   @override
@@ -3254,14 +3254,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsSpeedRankSub =>
-      'Kandidaten, welche die Dienstprüfung bestanden haben, werden zusätzlich per Download gemessen — ganz vorn landet der wirklich schnellere. Verbraucht Traffic deines Abos.';
+      'Kandidaten, welche die Dienstprüfung bestanden haben, werden zusätzlich per Download gemessen - ganz vorn landet der wirklich schnellere. Verbraucht Traffic deines Abos.';
 
   @override
   String get settingsSpeedTopNLabel => 'Server in der Geschwindigkeitsmessung';
 
   @override
   String get settingsSpeedTopNSub =>
-      'Plus eine Messung der eigenen Leitung — ohne sie fehlt der Vergleich: 60 Mbit/s sind auf einer 60er-Leitung ausgezeichnet und auf einer 300er schlecht.';
+      'Plus eine Messung der eigenen Leitung - ohne sie fehlt der Vergleich: 60 Mbit/s sind auf einer 60er-Leitung ausgezeichnet und auf einer 300er schlecht.';
 
   @override
   String settingsSpeedTrafficNote(Object mb) {
@@ -3285,7 +3285,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsConcurrencySub =>
-      '1 ist das bisherige Verhalten: Kandidaten werden streng nacheinander geprüft — hierher zurück, wenn die Ergebnisse seltsam werden. Mehr ist schneller, aber jeder Kandidat startet seinen eigenen Kern: Die Maschine wird stärker belastet und die Latenzmessungen beeinflussen sich gegenseitig.';
+      '1 ist das bisherige Verhalten: Kandidaten werden streng nacheinander geprüft - hierher zurück, wenn die Ergebnisse seltsam werden. Mehr ist schneller, aber jeder Kandidat startet seinen eigenen Kern: Die Maschine wird stärker belastet und die Latenzmessungen beeinflussen sich gegenseitig.';
 
   @override
   String get settingsConnectChecksTitle => 'Dienste beim Verbinden prüfen';
@@ -3307,14 +3307,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsConnectChecksEmpty =>
-      'Kein Dienst ausgewählt — es gibt nichts zu prüfen.';
+      'Kein Dienst ausgewählt - es gibt nichts zu prüfen.';
 
   @override
   String get settingsSectionSeamless => 'Nahtlosigkeit';
 
   @override
   String get settingsSeamlessNote =>
-      'Keine dieser Optionen hält offene Verbindungen am Leben: Ein anderer Server bedeutet eine andere externe IP, und die Gegenseite sieht eine andere Adresse — ein Anruf oder ein Download reißt so oder so ab. Es geht nur darum, dass das Netzwerk der Maschine nicht flackert.';
+      'Keine dieser Optionen hält offene Verbindungen am Leben: Ein anderer Server bedeutet eine andere externe IP, und die Gegenseite sieht eine andere Adresse - ein Anruf oder ein Download reißt so oder so ab. Es geht nur darum, dass das Netzwerk der Maschine nicht flackert.';
 
   @override
   String get settingsSeamlessServerTitle =>
@@ -3338,7 +3338,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsSeamlessKeepTunSub =>
-      'Die Standardroute wird während der Wiederherstellung nicht hin- und hergerissen. ⚠️ Das ist KEIN Kill Switch: Verkehr außerhalb des VPN wird nicht blockiert — gehalten wird nur der Adapter selbst.';
+      'Die Standardroute wird während der Wiederherstellung nicht hin- und hergerissen. ⚠️ Das ist KEIN Kill Switch: Verkehr außerhalb des VPN wird nicht blockiert - gehalten wird nur der Adapter selbst.';
 
   @override
   String get autoSpeedTrafficTitle =>
@@ -3346,7 +3346,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String autoSpeedTrafficBody(int servers, int mb) {
-    return 'Gemessen werden die $servers besten Server und Ihre eigene Verbindung — etwa $mb MB Ihres Abo-Datenvolumens.\n\nSie können den Test in den Einstellungen abschalten.';
+    return 'Gemessen werden die $servers besten Server und Ihre eigene Verbindung - etwa $mb MB Ihres Abo-Datenvolumens.\n\nSie können den Test in den Einstellungen abschalten.';
   }
 
   @override
@@ -3354,14 +3354,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitDeadPath =>
-      'Die Datei unter diesem Pfad existiert nicht mehr — die Regel greift nie';
+      'Die Datei unter diesem Pfad existiert nicht mehr - die Regel greift nie';
 
   @override
   String get splitDeadPathFix => 'Tippen, um nach Dateinamen abzugleichen';
 
   @override
   String splitDeadPathNoticeText(String app) {
-    return 'Der Pfad zu „$app“ ist veraltet — die Regel greift diesmal nicht';
+    return 'Der Pfad zu „$app“ ist veraltet - die Regel greift diesmal nicht';
   }
 
   @override
@@ -3369,19 +3369,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitVersionedPath =>
-      'Der Pfad enthält eine Versionsnummer — nach dem Update des Programms greift die Regel nicht mehr';
+      'Der Pfad enthält eine Versionsnummer - nach dem Update des Programms greift die Regel nicht mehr';
 
   @override
   String get srvTileCopyKey => 'Schlüssel kopieren';
 
   @override
   String serviceChecksBypassDirect(Object rule) {
-    return 'Am VPN vorbei: Die Split-Tunneling-Regel „$rule“ leitet diese Domain direkt — der Dienst nutzt Ihre echte Adresse.';
+    return 'Am VPN vorbei: Die Split-Tunneling-Regel „$rule“ leitet diese Domain direkt - der Dienst nutzt Ihre echte Adresse.';
   }
 
   @override
   String serviceChecksBypassBlock(Object rule) {
-    return 'Blockiert: Die Split-Tunneling-Regel „$rule“ verbietet diese Domain — der Dienst öffnet sich weder mit noch ohne VPN.';
+    return 'Blockiert: Die Split-Tunneling-Regel „$rule“ verbietet diese Domain - der Dienst öffnet sich weder mit noch ohne VPN.';
   }
 
   @override
@@ -3431,7 +3431,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get serviceChecksChannelNotReady =>
-      'Der Tunnel ist noch nicht bereit – die Prüfungen wurden nicht ausgeführt';
+      'Der Tunnel ist noch nicht bereit - die Prüfungen wurden nicht ausgeführt';
 
   @override
   String get serviceChecksRetryCheck => 'Prüfung wiederholen';
@@ -3452,7 +3452,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get serviceGroupOther => 'Sonstiges';
 
   @override
-  String get apiTokenHidden => 'verborgen – auf „anzeigen“ klicken';
+  String get apiTokenHidden => 'verborgen - auf „anzeigen“ klicken';
 
   @override
   String get apiTokenShow => 'Token anzeigen';
@@ -3471,17 +3471,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String apiCheatSheetPortDirect(Object port) {
-    return '$port – „Direkt“: am VPN vorbei, echte IP';
+    return '$port - „Direkt“: am VPN vorbei, echte IP';
   }
 
   @override
   String apiCheatSheetPortServer(int port, String name) {
-    return '$port – $name';
+    return '$port - $name';
   }
 
   @override
   String get apiCheatSheetNoExitServers =>
-      'kein Server ausgewählt – es gibt keine Server-Ports';
+      'kein Server ausgewählt - es gibt keine Server-Ports';
 
   @override
   String apiCheatSheetPortsSystemProxy(Object control) {
@@ -3490,7 +3490,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get apiCheatSheetTokenOff =>
-      'Token ist leer – der Kanal startet nicht, kein Port lauscht';
+      'Token ist leer - der Kanal startet nicht, kein Port lauscht';
 
   @override
   String get apiCheatSheetPortsWhenConnected =>
@@ -3536,11 +3536,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noRealIpOnlySelectedNote =>
-      'Im Modus „Nur ausgewählte“ geht alles Nicht-Ausgewählte weiterhin mit Ihrer echten IP hinaus – diese Einstellung ändert daran nichts.';
+      'Im Modus „Nur ausgewählte“ geht alles Nicht-Ausgewählte weiterhin mit Ihrer echten IP hinaus - diese Einstellung ändert daran nichts.';
 
   @override
   String get infoNoRealIp =>
-      'Gilt NUR für ausdrückliche „Direkt“-Regeln (Programme und Websites) und für direkte Regeln aus der Panel-Konfiguration: Sie werden in den Tunnel geholt. Eine Regel mit gesetztem Haken „Echte IP erlauben“ bleibt direkt.\n\nWas sie NICHT tut: Sie ändert die Standardroute nicht. Im Modus „Nur ausgewählte“ bleibt die Standardroute direkt, deshalb verlässt der gesamte nicht ausgewählte Verkehr das Gerät mit Ihrer echten Adresse – unabhängig von dieser Einstellung. Wenn alles abgedeckt sein muss, nutzen Sie „Alles über VPN“.\n\nDas lokale Netz bleibt immer direkt.';
+      'Gilt NUR für ausdrückliche „Direkt“-Regeln (Programme und Websites) und für direkte Regeln aus der Panel-Konfiguration: Sie werden in den Tunnel geholt. Eine Regel mit gesetztem Haken „Echte IP erlauben“ bleibt direkt.\n\nWas sie NICHT tut: Sie ändert die Standardroute nicht. Im Modus „Nur ausgewählte“ bleibt die Standardroute direkt, deshalb verlässt der gesamte nicht ausgewählte Verkehr das Gerät mit Ihrer echten Adresse - unabhängig von dieser Einstellung. Wenn alles abgedeckt sein muss, nutzen Sie „Alles über VPN“.\n\nDas lokale Netz bleibt immer direkt.';
 
   @override
   String get killSwitchSubProxyNoAdmin =>
@@ -3556,7 +3556,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitOnlySelectedWarnBody =>
-      'In den Tunnel geht nur, was die Aktion „Tunnel“ hat. Der übrige Verkehr – auch von Programmen, von denen Sie nichts wissen – geht direkt hinaus, mit Ihrer echten Adresse. Soll das ganze Gerät verborgen sein, wählen Sie „Alles über VPN“.';
+      'In den Tunnel geht nur, was die Aktion „Tunnel“ hat. Der übrige Verkehr - auch von Programmen, von denen Sie nichts wissen - geht direkt hinaus, mit Ihrer echten Adresse. Soll das ganze Gerät verborgen sein, wählen Sie „Alles über VPN“.';
 
   @override
   String get splitOnlySelectedNoRealIp =>
@@ -3564,7 +3564,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get splitKillSwitchIsPerApp =>
-      'Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet – Website-Regeln gelten in dieser Zeit nicht.';
+      'Der Kill Switch hält den Verkehr programmweise, nicht domainweise: Während der Kern wiederhergestellt wird, gibt es niemanden, der Website-Namen auswertet - Website-Regeln gelten in dieser Zeit nicht.';
 
   @override
   String get updateNotesEmpty => 'Keine Versionshinweise erhalten.';
@@ -3793,27 +3793,27 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updatesLinkNotify =>
-      'Der Modus „Nur benachrichtigen“ ist gewählt – laden Sie die neue Version von der Download-Seite herunter';
+      'Der Modus „Nur benachrichtigen“ ist gewählt - laden Sie die neue Version von der Download-Seite herunter';
 
   @override
   String get updatesLinkNoSelfUpdate =>
-      'Diese Version enthält keinen signierten Installer für Ihr System – laden Sie ihn von der Download-Seite herunter';
+      'Diese Version enthält keinen signierten Installer für Ihr System - laden Sie ihn von der Download-Seite herunter';
 
   @override
   String get updatesLinkIsolated =>
-      'Dies ist eine isolierte Testkopie – sie verändert die installierte App nicht. Aktualisieren Sie manuell';
+      'Dies ist eine isolierte Testkopie - sie verändert die installierte App nicht. Aktualisieren Sie manuell';
 
   @override
   String get updatesLinkLocation =>
-      'Die App läuft nicht aus ihrem Installationsordner – laden Sie die neue Version manuell herunter oder starten Sie die installierte Kopie';
+      'Die App läuft nicht aus ihrem Installationsordner - laden Sie die neue Version manuell herunter oder starten Sie die installierte Kopie';
 
   @override
   String get updatesLinkElevated =>
-      'Die App läuft als Administrator – so zu aktualisieren ist unsicher. Starten Sie sie normal';
+      'Die App läuft als Administrator - so zu aktualisieren ist unsicher. Starten Sie sie normal';
 
   @override
   String get updatesLinkUnsupported =>
-      'Auf dieser Plattform kann sich die App nicht selbst aktualisieren – laden Sie die neue Version manuell herunter';
+      'Auf dieser Plattform kann sich die App nicht selbst aktualisieren - laden Sie die neue Version manuell herunter';
 
   @override
   String get updatesErrCheck => 'der Update-Server hat nicht geantwortet';
@@ -3832,7 +3832,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updatesErrSignature =>
-      'die Signatur stimmt nicht – die Datei wurde möglicherweise manipuliert';
+      'die Signatur stimmt nicht - die Datei wurde möglicherweise manipuliert';
 
   @override
   String get updatesErrManifestRejected =>
@@ -3862,11 +3862,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updatesWaitingVpn =>
-      'Bereit zur Installation – sie beginnt, sobald das VPN getrennt ist';
+      'Bereit zur Installation - sie beginnt, sobald das VPN getrennt ist';
 
   @override
   String updatesSkippedNote(String version) {
-    return 'Version $version übersprungen – Sie werden über die nächste informiert';
+    return 'Version $version übersprungen - Sie werden über die nächste informiert';
   }
 
   @override
@@ -4011,11 +4011,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get consentDeviceBody =>
-      'Beim Laden oder Aktualisieren des Abos kann die App dem Abo-Server die Gerätekennung (Android ID), das Telefonmodell und die Android-Version senden. Dein Anbieter zählt damit deine Geräte (Gerätelimit deines Tarifs). Diese Daten gehen nur an die Adresse deines Abos – der Entwickler von SilentGate erhält sie nie.';
+      'Beim Laden oder Aktualisieren des Abos kann die App dem Abo-Server die Gerätekennung (Android ID), das Telefonmodell und die Android-Version senden. Dein Anbieter zählt damit deine Geräte (Gerätelimit deines Tarifs). Diese Daten gehen nur an die Adresse deines Abos - der Entwickler von SilentGate erhält sie nie.';
 
   @override
   String get consentDeclineNote =>
-      'Wenn du ablehnst, werden diese Daten nicht gesendet. Manche Anbieter geben das Abo ohne sie nicht heraus – dann lässt es sich nicht laden. Du kannst deine Wahl unter Einstellungen → Über → „Daten und Datenschutz“ ändern.';
+      'Wenn du ablehnst, werden diese Daten nicht gesendet. Manche Anbieter geben das Abo ohne sie nicht heraus - dann lässt es sich nicht laden. Du kannst deine Wahl unter Einstellungen → Über → „Daten und Datenschutz“ ändern.';
 
   @override
   String get consentPolicy => 'Datenschutzerklärung';
@@ -4037,7 +4037,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get consentDeviceBodyWindows =>
-      'Beim Laden oder Aktualisieren des Abonnements kann die App dem Abonnement-Server die Computerkennung (HWID), die Windows-Version und das Computermodell senden. Ihr Anbieter zählt damit Ihre Geräte (Gerätelimit Ihres Tarifs). Diese Daten gehen nur an die Adresse Ihres Abonnements und nur über eine sichere Verbindung — der Entwickler von SilentGate erhält sie nie.';
+      'Beim Laden oder Aktualisieren des Abonnements kann die App dem Abonnement-Server die Computerkennung (HWID), die Windows-Version und das Computermodell senden. Ihr Anbieter zählt damit Ihre Geräte (Gerätelimit Ihres Tarifs). Diese Daten gehen nur an die Adresse Ihres Abonnements und nur über eine sichere Verbindung - der Entwickler von SilentGate erhält sie nie.';
 
   @override
   String get consentNoticeNote =>
@@ -4054,18 +4054,18 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get backupExportSub =>
-      'Einstellungen und Abonnements in eine Datei speichern — für einen anderen Computer oder ein anderes Telefon';
+      'Einstellungen und Abonnements in eine Datei speichern - für einen anderen Computer oder ein anderes Telefon';
 
   @override
   String get backupExportWithSubs => 'Abonnements und Server einschließen';
 
   @override
   String get backupExportSubsWarning =>
-      'Die Datei enthält Abonnement-Adressen — das sind VPN-Zugangsschlüssel. Senden Sie die Datei an niemanden.';
+      'Die Datei enthält Abonnement-Adressen - das sind VPN-Zugangsschlüssel. Senden Sie die Datei an niemanden.';
 
   @override
   String get backupExportNoSubsNote =>
-      'Nur Einstellungen und Regeln — ohne Abonnements und Server.';
+      'Nur Einstellungen und Regeln - ohne Abonnements und Server.';
 
   @override
   String get backupExportDeviceNote =>
@@ -4220,7 +4220,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noticeSystemProxyFailed =>
-      'Der Systemproxy wurde nicht aktiviert – der Verkehr läuft am VPN vorbei unter Ihrer echten Adresse';
+      'Der Systemproxy wurde nicht aktiviert - der Verkehr läuft am VPN vorbei unter Ihrer echten Adresse';
 
   @override
   String get noticeSystemProxyFailedDetail =>
@@ -4228,11 +4228,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get noticeGeoMissing =>
-      'Geo-Datenbanken sind nicht heruntergeladen – die Länderregeln des Panels sind aus';
+      'Geo-Datenbanken sind nicht heruntergeladen - die Länderregeln des Panels sind aus';
 
   @override
   String get noticeGeoUnusable =>
-      'Der Kern konnte die Geo-Datenbanken nicht öffnen – die Länderregeln des Panels sind aus';
+      'Der Kern konnte die Geo-Datenbanken nicht öffnen - die Länderregeln des Panels sind aus';
 
   @override
   String pingDoneWorking(int ok, int total, int seconds) {
@@ -4302,11 +4302,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get restartServerChanged =>
-      'Ein anderer Server ist ausgewählt – verbinden Sie sich neu, um ihn zu übernehmen';
+      'Ein anderer Server ist ausgewählt - verbinden Sie sich neu, um ihn zu übernehmen';
 
   @override
   String get restartSubscriptionSwitched =>
-      'Abo gewechselt – verbinden Sie sich neu, um es zu übernehmen';
+      'Abo gewechselt - verbinden Sie sich neu, um es zu übernehmen';
 
   @override
   String errorServerNotFound(String name) {
@@ -4315,19 +4315,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get hintClockBehind =>
-      'Datum und Uhrzeit des Geräts sind falsch – sie gehen nach, daher gilt das Serverzertifikat als noch nicht gültig. Prüfen Sie die Uhr, aktivieren Sie die Zeitsynchronisierung und importieren Sie erneut.';
+      'Datum und Uhrzeit des Geräts sind falsch - sie gehen nach, daher gilt das Serverzertifikat als noch nicht gültig. Prüfen Sie die Uhr, aktivieren Sie die Zeitsynchronisierung und importieren Sie erneut.';
 
   @override
   String get hintCertExpired =>
-      'Das Serverzertifikat ist abgelaufen. Prüfen Sie zuerst Datum und Uhrzeit des Geräts – gehen sie vor, entsteht derselbe Fehler. Stimmt die Zeit, ist das Zertifikat beim Dienst abgelaufen: Wenden Sie sich an den Support.';
+      'Das Serverzertifikat ist abgelaufen. Prüfen Sie zuerst Datum und Uhrzeit des Geräts - gehen sie vor, entsteht derselbe Fehler. Stimmt die Zeit, ist das Zertifikat beim Dienst abgelaufen: Wenden Sie sich an den Support.';
 
   @override
   String get hintHostnameMismatch =>
-      'Das Zertifikat ist auf einen anderen Namen ausgestellt. Prüfen Sie die Abo-Adresse – vielleicht enthält sie einen Tippfehler, oder ein Zwischenglied fängt die Verbindung ab.';
+      'Das Zertifikat ist auf einen anderen Namen ausgestellt. Prüfen Sie die Abo-Adresse - vielleicht enthält sie einen Tippfehler, oder ein Zwischenglied fängt die Verbindung ab.';
 
   @override
   String get hintNoNetwork =>
-      'Der Abo-Server ist nicht erreichbar. Prüfen Sie Ihre Internetverbindung; funktioniert sie, ist die Adresse vielleicht gesperrt – schalten Sie ein VPN ein und importieren Sie erneut.';
+      'Der Abo-Server ist nicht erreichbar. Prüfen Sie Ihre Internetverbindung; funktioniert sie, ist die Adresse vielleicht gesperrt - schalten Sie ein VPN ein und importieren Sie erneut.';
 
   @override
   String get importSyncTime => 'Uhrzeit synchronisieren';
@@ -4371,7 +4371,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get importSyncTimeManual =>
-      'Automatische Synchronisierung fehlgeschlagen – dafür sind Administratorrechte nötig.\n\nManuell beheben: Windows-Einstellungen → Zeit und Sprache → Datum und Uhrzeit. Schalten Sie „Uhrzeit automatisch festlegen“ ein und klicken Sie auf „Jetzt synchronisieren“. Ist der Schalter schon an, schalten Sie ihn aus und wieder ein.';
+      'Automatische Synchronisierung fehlgeschlagen - dafür sind Administratorrechte nötig.\n\nManuell beheben: Windows-Einstellungen → Zeit und Sprache → Datum und Uhrzeit. Schalten Sie „Uhrzeit automatisch festlegen“ ein und klicken Sie auf „Jetzt synchronisieren“. Ist der Schalter schon an, schalten Sie ihn aus und wieder ein.';
 
   @override
   String get updatesMsStoreManaged =>

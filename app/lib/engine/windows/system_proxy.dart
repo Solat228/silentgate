@@ -61,7 +61,7 @@ class SystemProxy {
     if (ok) {
       AppLog.i('Системный прокси включён: $hostPort');
     } else {
-      AppLog.e('Системный прокси НЕ включён — трафик пойдёт мимо туннеля');
+      AppLog.e('Системный прокси НЕ включён - трафик пойдёт мимо туннеля');
     }
     return ok;
   }
@@ -91,7 +91,7 @@ class SystemProxy {
           ? 'Системный прокси снят, возвращён прежний'
           : 'Системный прокси снят');
     } else {
-      AppLog.e('Системный прокси НЕ снят — интернет может не работать, '
+      AppLog.e('Системный прокси НЕ снят - интернет может не работать, '
           'пока настройки прокси Windows не выключены вручную');
     }
     return ok;
@@ -116,7 +116,7 @@ class SystemProxy {
     final enable = await _query('ProxyEnable');
     if (enable == null || parseRegDword(enable) != 1) return;
     if (await _query('ProxyServer') == ours) {
-      AppLog.w('Системный прокси указывает на наш порт без маркера — снимаю');
+      AppLog.w('Системный прокси указывает на наш порт без маркера - снимаю');
       await clear();
     }
   }
@@ -131,7 +131,7 @@ class SystemProxy {
         // причину жалобы «после сбоя браузер не открывал сайты». Без неё
         // восстановление проходило совершенно молча.
         AppLog.w('Прошлый запуск завершился аварийно с включённым системным '
-            'прокси — снимаю');
+            'прокси - снимаю');
         await clear();
       }
     } catch (e) {
@@ -165,7 +165,7 @@ class SystemProxy {
     final override = await _query('ProxyOverride');
     final enabled = enable != null && parseRegDword(enable) == 1;
     if (enabled && server == ours) {
-      AppLog.w('Системный прокси уже указывал на наш порт — прежнего '
+      AppLog.w('Системный прокси уже указывал на наш порт - прежнего '
           'прокси нет, после отключения он будет выключен');
       return ProxySnapshot(enabled: false, server: null, override: override);
     }
@@ -232,7 +232,7 @@ class SystemProxy {
       // Маркер — единственный след «мы включили прокси» для следующего
       // запуска. Без него авария оставит пользователя без интернета, и понять
       // почему будет нечем.
-      AppLog.w('Системный прокси: маркер не записан ($e) — '
+      AppLog.w('Системный прокси: маркер не записан ($e) - '
           'после аварийного выхода прокси придётся снять вручную');
     }
   }
@@ -281,7 +281,7 @@ class SystemProxy {
       // код возврата поэтому называем всегда, а текст только если он есть.
       final err = '${r.stderr}'.trim();
       AppLog.e('Системный прокси, $what: reg вернул ${r.exitCode}'
-          '${err.isEmpty ? '' : ' — $err'}');
+          '${err.isEmpty ? '' : ' - $err'}');
       return false;
     } catch (e) {
       AppLog.e('Системный прокси, $what: $e');

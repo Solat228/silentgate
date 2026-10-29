@@ -78,14 +78,14 @@ abstract final class CoreJob {
         _job = createKillOnCloseJob();
         if (_job == 0) {
           _failed = true;
-          AppLog.w('Объект задания для ядер не создан — при аварии приложения '
+          AppLog.w('Объект задания для ядер не создан - при аварии приложения '
               'ядра останутся жить до следующего запуска');
           return false;
         }
       }
       final ok = assignTo(_job, pid);
       if (!ok) {
-        AppLog.w('Ядро (pid $pid) не помещено в объект задания — при аварии '
+        AppLog.w('Ядро (pid $pid) не помещено в объект задания - при аварии '
             'приложения оно останется жить до следующего запуска');
       }
       return ok;

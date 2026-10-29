@@ -88,11 +88,11 @@ class AndroidSupportReporter implements SupportReporter {
     b.writeln();
 
     b.writeln('==================================================');
-    b.writeln('[лог ядра — последние строки]');
+    b.writeln('[лог ядра - последние строки]');
     b.writeln('==================================================');
     final core = await _safe(_coreLog);
     b.writeln(core.isEmpty
-        ? '(пусто — туннель в этой сессии не поднимался)'
+        ? '(пусто - туннель в этой сессии не поднимался)'
         : core);
     b.writeln();
     b.writeln('=== конец отчёта ===');
@@ -137,7 +137,7 @@ class AndroidSupportReporter implements SupportReporter {
   Future<void> reveal(String path) async {
     final shared = await _shareFile(path);
     if (shared) return;
-    AppLog.w('Не удалось отдать отчёт файлом — копирую текстом в буфер обмена');
+    AppLog.w('Не удалось отдать отчёт файлом - копирую текстом в буфер обмена');
     final text = await _safe(() => File(path).readAsString());
     if (text.isEmpty) return;
     await Clipboard.setData(ClipboardData(text: text));

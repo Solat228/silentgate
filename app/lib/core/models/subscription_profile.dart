@@ -63,7 +63,7 @@ class SubscriptionProfile {
     if (t.isNotEmpty) return t;
     final u = Uri.tryParse(url);
     final host = u?.host ?? '';
-    return host.isEmpty ? '—' : host;
+    return host.isEmpty ? '-' : host;
   }
 
   /// Истекла ли подписка к моменту [now] — по дате из СОХРАНЁННЫХ метаданных.
