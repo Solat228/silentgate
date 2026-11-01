@@ -26,6 +26,7 @@ class SingboxOutboundFactory {
         'vless',
         'trojan',
         'shadowsocks',
+        'whitelist_bypass',
       }.contains(s.protocol);
 
   /// [resolvedIp] — адрес сервера, отрезолвленный ЗАРАНЕЕ (до подъёма TUN).
@@ -48,6 +49,8 @@ class SingboxOutboundFactory {
         return _trojan(s, tag, resolvedIp);
       case 'shadowsocks':
         return _shadowsocks(s, tag, resolvedIp);
+      case 'whitelist_bypass':
+        return _whitelistBypass(s, tag);
       case 'hysteria2':
         break;
       default:
@@ -105,6 +108,16 @@ class SingboxOutboundFactory {
     if (resolvedIp != null && resolvedIp.isNotEmpty) return _domainOf(s);
     return null;
   }
+
+  // ── Whitelist Bypass SOCKS Outbound ───────────────────────────────────────
+
+  static Map<String, dynamic> _whitelistBypass(VpnServer s, String tag) => {
+        'type': 'socks',
+        'tag': tag,
+        'server': s.address.isNotEmpty ? s.address : '127.0.0.1',
+        'server_port': s.port > 0 ? s.port : 10855,
+        'version': '5',
+      };
 
   // ── VLESS / Trojan / Shadowsocks ────────────────────────────────────────────
 

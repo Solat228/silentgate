@@ -69,6 +69,12 @@ class ShareLinkParser {
       if (l.startsWith('hysteria2://') || l.startsWith('hy2://')) {
         return _parseHysteria2(l);
       }
+      if (l.startsWith('whitelist://') || l.startsWith('wbstream://')) {
+        return _parseWhitelistBypass(l);
+      }
+      if (_isWhitelistCallUrl(l)) {
+        return _parseWhitelistCallUrl(l);
+      }
       return _parseNodeId(l);
     } catch (_) {
       return null;
@@ -380,4 +386,96 @@ class ShareLinkParser {
 
   /// null для пустых строк — чтобы не тянуть "" в конфиг.
   static String? _nz(String? v) => (v == null || v.isEmpty) ? null : v;
+
+  // ── Whitelist Bypass ───────────────────────────────────────────────────────
+  static VpnServer _parseWhitelistBypass(String link) {
+    if (link.startsWith('wbstream://')) {
+      final rest = link.substring('wbstream://'.length);
+      final hashIdx = rest.indexOf('#');
+      final roomPart = hashIdx >= 0 ? rest.substring(0, hashIdx) : rest;
+      final remark = hashIdx >= 0 ? Uri.decodeComponent(rest.substring(hashIdx + 1)) : 'WB Stream';
+      return VpnServer(
+        protocol: 'whitelist_bypass',
+        remark: remark.isNotEmpty ? remark : 'WB Stream',
+        address: '127.0.0.1',
+        port: 10855,
+        id: '',
+        whitelistPlatform: 'wbstream',
+        whitelistRoom: roomPart.replaceAll(RegExp(r'^room/'), ''),
+        whitelistMode: 'video',
+        rawLink: link,
+      );
+    }
+    final uri = Uri.parse(link);
+    final platform = uri.host.isNotEmpty ? uri.host : 'wbstream';
+    final q = uri.queryParameters;
+    final room = q['room'] ?? '';
+    final mode = q['mode'] ?? 'video';
+    final remark = _remark(uri);
+    return VpnServer(
+      protocol: 'whitelist_bypass',
+      remark: remark.isNotEmpty ? remark : 'Обход БС (${platform.toUpperCase()})',
+      address: '127.0.0.1',
+      port: 10855,
+      id: '',
+      whitelistPlatform: platform,
+      whitelistRoom: room,
+      whitelistMode: mode,
+      rawLink: link,
+    );
+  }
+
+  static bool _isWhitelistCallUrl(String l) {
+    return l.contains('stream.wb.ru/room/') ||
+        l.contains('telemost.yandex.ru/j/') ||
+        l.contains('vk.ru/call/join/') ||
+        l.contains('vk.com/call/join/') ||
+        l.contains('dion.vc/') ||
+        l.contains('.bitrix24.ru/');
+  }
+
+  static VpnServer _parseWhitelistCallUrl(String rawUrl) {
+    final uri = Uri.parse(rawUrl);
+    String platform = 'wbstream';
+    String room = rawUrl;
+    String defaultRemark = 'Обход БС';
+
+    final host = uri.host.toLowerCase();
+    final path = uri.path;
+
+    if (host.contains('wb.ru')) {
+      platform = 'wbstream';
+      room = path.replaceFirst(RegExp(r'^/room/'), '');
+      defaultRemark = 'WB Stream';
+    } else if (host.contains('telemost.yandex.ru')) {
+      platform = 'telemost';
+      room = path.replaceFirst(RegExp(r'^/j/'), '');
+      defaultRemark = 'Яндекс Телемост';
+    } else if (host.contains('vk.ru') || host.contains('vk.com')) {
+      platform = 'vk';
+      room = path.replaceFirst(RegExp(r'^/call/join/'), '');
+      defaultRemark = 'VK Звонки';
+    } else if (host.contains('dion.vc')) {
+      platform = 'dion';
+      room = path.replaceFirst(RegExp(r'^/'), '');
+      defaultRemark = 'Dion';
+    } else if (host.contains('bitrix24.ru')) {
+      platform = 'bitrix';
+      room = rawUrl;
+      defaultRemark = 'Битрикс24';
+    }
+
+    final remark = _remark(uri);
+    return VpnServer(
+      protocol: 'whitelist_bypass',
+      remark: remark.isNotEmpty ? remark : defaultRemark,
+      address: '127.0.0.1',
+      port: 10855,
+      id: '',
+      whitelistPlatform: platform,
+      whitelistRoom: room,
+      whitelistMode: 'video',
+      rawLink: rawUrl,
+    );
+  }
 }

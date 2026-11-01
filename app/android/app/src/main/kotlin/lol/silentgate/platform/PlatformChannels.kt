@@ -253,6 +253,7 @@ object PlatformChannels {
             // было писать» было НЕЧЕМ: владелец прислал отчёт с сорока двумя
             // минутами тишины, и ответить по нему нельзя ни да, ни нет.
             "alive" -> result.success(true)
+            "nativeLibraryDir" -> result.success(context.applicationInfo.nativeLibraryDir)
 
             // DNS ФИЗИЧЕСКОЙ сети — для доменов с правилом «Прямо».
             //

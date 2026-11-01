@@ -90,6 +90,7 @@ app/android/*.iml
 release-android/
 engine/android/*.aar
 app/android/app/libs/
+app/android/app/src/main/jniLibs/
 
 # Артефакты сборки и ключ подписи — в репозиторий не едут.
 release-windows-test/

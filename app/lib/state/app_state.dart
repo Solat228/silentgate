@@ -38,6 +38,7 @@ import '../core/privacy/device_info_consent.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/subscription/subscription_logo.dart';
+import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import '../core/util/server_rekey.dart';
 import '../core/xray/balancer_pick.dart';
 import '../core/subscription/subscription_service.dart';
@@ -1052,6 +1053,9 @@ class AppState extends ChangeNotifier {
     for (final s in _servers) {
       final a = s.address.trim();
       if (a.isNotEmpty) domains.add(a);
+      if (s.isWhitelistBypass) {
+        domains.addAll(WhitelistBypassEndpoint.domainsForServer(s));
+      }
     }
     // Хост подписки: её автообновление тоже не должно ходить через туннель,
     // иначе обновиться нельзя ровно тогда, когда серверы перестали работать.

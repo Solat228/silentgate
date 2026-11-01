@@ -30,6 +30,7 @@ import '../../core/xray/geodata_fallback.dart';
 import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
+import '../../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import 'app_heartbeat.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
@@ -450,6 +451,7 @@ class AndroidEngine extends VpnEngineBase {
   /// Идёт ли сейчас наш собственный подъём: нужно, чтобы не принять
   /// подтверждение «сервис запущен» за неожиданное падение.
   bool _starting = false;
+  WhitelistBypassProcess? _whitelistBypass;
 
   /// Опции и правила ЖИВОГО конфига — чтобы заглушка kill switch совпала с ним
   /// поле в поле. Разойдутся хоть в одном (MTU, списки пакетов) — `VpnService`
@@ -995,6 +997,27 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
 
+      if (session.server.isWhitelistBypass) {
+        final bypass = WhitelistBypassProcess();
+        _whitelistBypass = bypass;
+        setStatus(
+          VpnConnectionState.connecting,
+          message: 'Подключение к комнате (${session.server.whitelistPlatform ?? "БС"})...',
+        );
+        final nativeDir = await const MethodChannel('lol.silentgate/device')
+            .invokeMethod<String>('nativeLibraryDir');
+        final libPath = nativeDir != null ? '$nativeDir/librelay.so' : null;
+        await bypass.start(
+          server: session.server,
+          socksPort: session.server.port > 0 ? session.server.port : 10855,
+          executablePath: libPath,
+        );
+        if (aborted()) {
+          await bypass.stop();
+          return;
+        }
+      }
+
       _starting = true;
       await _channel.invokeMethod<void>(
           'start',
@@ -1296,6 +1319,8 @@ class AndroidEngine extends VpnEngineBase {
 
   @override
   Future<void> teardownCore({bool keepCapture = false}) async {
+    await _whitelistBypass?.stop();
+    _whitelistBypass = null;
     // Ядро уходит — счётчики уходят вместе с ним. Иначе таймер продолжал бы
     // раз в секунду стучаться в мёртвый порт, а на экране висели бы цифры
     // прошлой сессии, выдавая себя за текущие.
@@ -1474,6 +1499,8 @@ class AndroidEngine extends VpnEngineBase {
   /// месте.
   @override
   Future<void> platformCleanup() async {
+    await _whitelistBypass?.stop();
+    _whitelistBypass = null;
     _stopStatsPolling();
     stopHealthWatch();
     stopExitHealth();

@@ -26,6 +26,7 @@ import '../core/xray/override_normalizer.dart';
 import '../core/xray/panel_direct_reroute.dart';
 import '../core/xray/xray_config_builder.dart';
 import '../core/xray/xray_keys.dart';
+import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import 'vpn_engine.dart';
 
 /// Снимок «чем подключались»: готовый конфиг, настройки, серверы и ядро.
@@ -39,6 +40,8 @@ class EngineSession {
   final List<VpnServer> servers;
   final ProxyCore core;
   const EngineSession(this.configJson, this.options, this.servers, this.core);
+
+  VpnServer get server => servers.first;
 }
 
 /// Платформо-независимая часть движка: жизненный цикл сессии, автовосстановление,
@@ -2237,6 +2240,11 @@ abstract class VpnEngineBase implements VpnEngine {
   Future<List<String>> tunnelBypassIps(
       Map<String, List<String>> resolvedHosts, AppSettings s) async {
     final ips = resolvedHosts.values.expand((e) => e).toSet();
+    for (final s in [..._fallbacks, ..._bypassCandidates, ...?_session?.servers]) {
+      if (s.isWhitelistBypass) {
+        ips.addAll(WhitelistBypassEndpoint.cidrsForServer(s));
+      }
+    }
     if (!s.seamlessServerSwitch) return ips.toList();
     // Кандидаты = запасные (режим «Авто») + ВСЕ известные серверы подписки.
     // Второе слагаемое и есть то, чего не хватало: без него в ручном режиме

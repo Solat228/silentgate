@@ -34,6 +34,7 @@ import 'tun/app_alive_mutex.dart';
 import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
+import '../../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import 'tun/tun_task_auto_setup.dart';
 import 'xray_paths.dart';
 import 'xray_process.dart';
@@ -67,6 +68,7 @@ class WindowsEngine extends VpnEngineBase {
   /// (`_tunRouter`) физически не запускается (он живёт только при
   /// `captureMode == CaptureMode.tun`).
   SingboxProcess? _exitRouter;
+  WhitelistBypassProcess? _whitelistBypass;
   Timer? _statsTimer;
 
   /// Сторож зависшего TUN-ядра. См. [AppSettings.tunWatchdogSeconds].
@@ -412,6 +414,16 @@ class WindowsEngine extends VpnEngineBase {
     final singboxCore = session.core == ProxyCore.singbox;
     final location = XrayPaths.locate();
     final singboxExe = singboxCore ? SingboxProcess.locate() : null;
+    if (session.server.isWhitelistBypass && WhitelistBypassProcess.locateExecutable() == null) {
+      await cleanup();
+      setStatus(
+        VpnConnectionState.error,
+        message: 'Не найден бинарник whitelist-bypass.exe для обхода белых списков.\n'
+            'Поместите его в engine\\windows\\bin\\whitelist-bypass.exe',
+        text: const StatusMissingCore('whitelist-bypass.exe'),
+      );
+      return;
+    }
     if (singboxCore && singboxExe == null) {
       // _cleanup обязателен: при kill switch захват трафика мог остаться с
       // прошлой попытки, и без него интернет остался бы заблокированным.
@@ -511,6 +523,24 @@ class WindowsEngine extends VpnEngineBase {
     // сессии (см. [_stopOwnProcesses]).
     final mine = <Object?>[];
     try {
+      if (session.server.isWhitelistBypass) {
+        final bypass = WhitelistBypassProcess();
+        _whitelistBypass = bypass;
+        mine.add(bypass);
+        setStatus(
+          VpnConnectionState.connecting,
+          message: 'Подключение к комнате (${session.server.whitelistPlatform ?? "БС"})...',
+        );
+        await bypass.start(
+          server: session.server,
+          socksPort: session.server.port > 0 ? session.server.port : 10855,
+        );
+        if (aborted()) {
+          await _stopOwnProcesses(mine);
+          return;
+        }
+      }
+
       final configPath =
           await _writeConfigJson(configJson, singbox: singboxCore);
 
@@ -1420,12 +1450,15 @@ class WindowsEngine extends VpnEngineBase {
       if (identical(_process, p)) _process = null;
       if (identical(_singbox, p)) _singbox = null;
       if (identical(_exitRouter, p)) _exitRouter = null;
+      if (identical(_whitelistBypass, p)) _whitelistBypass = null;
       if (p is XrayProcess) {
         await p.stop();
         p.dispose();
       } else if (p is SingboxProcess) {
         await p.stop();
         p.dispose();
+      } else if (p is WhitelistBypassProcess) {
+        await p.stop();
       }
     }
   }
@@ -1655,6 +1688,8 @@ class WindowsEngine extends VpnEngineBase {
     await _exitRouter?.stop();
     _exitRouter?.dispose();
     _exitRouter = null;
+    await _whitelistBypass?.stop();
+    _whitelistBypass = null;
   }
 
   /// Порт Clash API туннельного sing-box. Только петля, только для сторожа.
