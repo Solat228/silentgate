@@ -69,7 +69,13 @@ class ShareLinkParser {
       if (l.startsWith('hysteria2://') || l.startsWith('hy2://')) {
         return _parseHysteria2(l);
       }
-      if (l.startsWith('whitelist://') || l.startsWith('wbstream://')) {
+      if (l.startsWith('whitelist://') ||
+          l.startsWith('wbstream://') ||
+          l.startsWith('telemost://') ||
+          l.startsWith('vkcall://') ||
+          l.startsWith('dion://') ||
+          l.startsWith('bitrix://') ||
+          l.startsWith('blink://')) {
         return _parseWhitelistBypass(l);
       }
       if (_isWhitelistCallUrl(l)) {
@@ -407,10 +413,16 @@ class ShareLinkParser {
       );
     }
     final uri = Uri.parse(link);
-    final platform = uri.host.isNotEmpty ? uri.host : 'wbstream';
+    var platform = uri.host.isNotEmpty ? uri.host : 'wbstream';
+    if (link.startsWith('telemost://')) platform = 'telemost';
+    if (link.startsWith('vkcall://')) platform = 'vk';
+    if (link.startsWith('dion://')) platform = 'dion';
+    if (link.startsWith('bitrix://')) platform = 'bitrix';
+    if (link.startsWith('blink://')) platform = 'blink';
     final q = uri.queryParameters;
-    final room = q['room'] ?? '';
+    final room = q['room'] ?? uri.path.replaceAll(RegExp(r'^/'), '');
     final mode = q['mode'] ?? 'video';
+    final creatorHost = q['host'] ?? q['creator'];
     final remark = _remark(uri);
     return VpnServer(
       protocol: 'whitelist_bypass',
@@ -421,6 +433,7 @@ class ShareLinkParser {
       whitelistPlatform: platform,
       whitelistRoom: room,
       whitelistMode: mode,
+      whitelistCreatorHost: creatorHost,
       rawLink: link,
     );
   }
@@ -431,7 +444,8 @@ class ShareLinkParser {
         l.contains('vk.ru/call/join/') ||
         l.contains('vk.com/call/join/') ||
         l.contains('dion.vc/') ||
-        l.contains('.bitrix24.ru/');
+        l.contains('.bitrix24.ru/') ||
+        l.contains('blink.im/');
   }
 
   static VpnServer _parseWhitelistCallUrl(String rawUrl) {
@@ -463,6 +477,10 @@ class ShareLinkParser {
       platform = 'bitrix';
       room = rawUrl;
       defaultRemark = 'Битрикс24';
+    } else if (host.contains('blink.im')) {
+      platform = 'blink';
+      room = path.replaceFirst(RegExp(r'^/'), '');
+      defaultRemark = 'Blink';
     }
 
     final remark = _remark(uri);
@@ -475,6 +493,7 @@ class ShareLinkParser {
       whitelistPlatform: platform,
       whitelistRoom: room,
       whitelistMode: 'video',
+      whitelistCreatorHost: uri.queryParameters['host'] ?? uri.queryParameters['creator'],
       rawLink: rawUrl,
     );
   }

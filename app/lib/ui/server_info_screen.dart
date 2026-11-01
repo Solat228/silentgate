@@ -10,6 +10,7 @@ import '../core/models/vpn_server.dart';
 import '../core/net/ip_info.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/net/speed_test.dart';
+import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import '../core/probe/probe_harness.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/uptime_format.dart';
@@ -62,11 +63,19 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   Future<T?> _withHarness<T>(
       Future<T> Function(int port, String user, String password) action) async {
     final l = AppLocalizations.of(context);
+    final state = context.read<AppState>();
+    final isLive =
+        state.status.isConnected && state.connectedServerKey == widget.server.key;
+    if (isLive && state.httpProxyPort > 0) {
+      return await action(
+          state.httpProxyPort, ProxyProbe.user, ProxyProbe.password);
+    }
+    if (widget.server.isWhitelistBypass) {
+      if (mounted) setState(() => _error = l.srvInfoNeedsConnection);
+      return null;
+    }
     HarnessHandle? handle;
     try {
-      // Вариация (fragment/fingerprint) обязательна: без неё сервер, который
-      // работает только с обходом, покажет «не удалось» вместо скорости —
-      // ровно как это было до автонастройки.
       final variant = context.read<AppState>().variantFor(widget.server);
       handle = await createProbeHarness().start([
         HarnessEntry(key: widget.server.key, server: widget.server, variant: variant),
@@ -75,17 +84,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       var user = handle.proxyUser;
       var password = handle.proxyPassword;
 
-      // ⚠️ Платформа может мерить САМА и порта не давать: на Android харнесс
-      // возвращает готовую задержку, а `proxyPortFor` там ВСЕГДА 0. Ходить
-      // «через прокси на порту 0» нельзя — запрос молча уходил напрямую и
-      // падал, а на экране висела ошибка проверки.
-      //
-      // Зато при живом туннеле канал уже есть, и он честнее любого временного:
-      // это ровно тот сервер, которым пользователь сейчас пользуется. Если
-      // туннель не поднят — измерять нечем, и об этом надо сказать прямо, а не
-      // показывать ноль.
       if (port <= 0) {
-        final state = context.read<AppState>();
         final live = state.status.isConnected ? state.httpProxyPort : 0;
         if (live <= 0) {
           if (mounted) {
@@ -94,8 +93,6 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           return null;
         }
         port = live;
-        // Живое ядро — СВОИ креды, сессионные. Пароль харнесса тут не подойдёт:
-        // это другой процесс с другим инбаундом.
         user = ProxyProbe.user;
         password = ProxyProbe.password;
       }
@@ -118,7 +115,12 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       _loadingIp = true;
       _error = null;
     });
-    final info = await IpInfoService.lookupHost(widget.server.address);
+    final hostToLookup = widget.server.isWhitelistBypass
+        ? (widget.server.whitelistCreatorHost?.isNotEmpty == true
+            ? widget.server.whitelistCreatorHost!
+            : (WhitelistBypassEndpoint.domainsForServer(widget.server).firstOrNull ?? widget.server.address))
+        : widget.server.address;
+    final info = await IpInfoService.lookupHost(hostToLookup);
     if (!mounted) return;
     setState(() {
       _viaServer = info;

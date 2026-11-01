@@ -34,6 +34,8 @@ abstract final class WhitelistBypassEndpoint {
         return const ['dion.vc'];
       case 'bitrix':
         return const ['bitrix24.ru', 'bitrix.info'];
+      case 'blink':
+        return const ['blink.im'];
       default:
         return const [];
     }

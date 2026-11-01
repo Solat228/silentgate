@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
@@ -170,6 +169,41 @@ void main() {
 
       final wbDomains = WhitelistBypassEndpoint.domainsFor('wbstream');
       expect(wbDomains, contains('stream.wb.ru'));
+
+      final dionDomains = WhitelistBypassEndpoint.domainsFor('dion');
+      expect(dionDomains, contains('dion.vc'));
+
+      final bitrixDomains = WhitelistBypassEndpoint.domainsFor('bitrix');
+      expect(bitrixDomains, contains('bitrix24.ru'));
+
+      final blinkDomains = WhitelistBypassEndpoint.domainsFor('blink');
+      expect(blinkDomains, contains('blink.im'));
+    });
+
+    test('Разбор ссылок Dion, Bitrix24, Blink и хоста создателя', () {
+      const dionUrl = 'https://dion.vc/room-dion-123';
+      final sDion = ShareLinkParser.tryParse(dionUrl);
+      expect(sDion, isNotNull);
+      expect(sDion!.whitelistPlatform, 'dion');
+      expect(sDion.whitelistRoom, 'room-dion-123');
+
+      const bitrixUrl = 'https://portal.bitrix24.ru/call/abc?host=35.228.252.74';
+      final sBitrix = ShareLinkParser.tryParse(bitrixUrl);
+      expect(sBitrix, isNotNull);
+      expect(sBitrix!.whitelistPlatform, 'bitrix');
+      expect(sBitrix.whitelistCreatorHost, '35.228.252.74');
+
+      const blinkUrl = 'https://blink.im/room/blink-456';
+      final sBlink = ShareLinkParser.tryParse(blinkUrl);
+      expect(sBlink, isNotNull);
+      expect(sBlink!.whitelistPlatform, 'blink');
+      expect(sBlink.whitelistRoom, 'room/blink-456');
+
+      const customLink = 'whitelist://telemost?room=123&host=35.228.252.74#Telemost%20VPS';
+      final sCustom = ShareLinkParser.tryParse(customLink);
+      expect(sCustom, isNotNull);
+      expect(sCustom!.whitelistCreatorHost, '35.228.252.74');
+      expect(sCustom.buildShareLink(), contains('host=35.228.252.74'));
     });
   });
 }

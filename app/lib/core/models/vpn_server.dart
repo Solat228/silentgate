@@ -74,6 +74,9 @@ class VpnServer {
   /// Режим туннеля через медиапоток ('video' или 'dc' - data channel).
   final String? whitelistMode;
 
+  /// Внешний адрес/IP хоста создателя звонка (VPS-ноды) для отображения и гео-справки.
+  final String? whitelistCreatorHost;
+
   /// Является ли сервер точкой обхода белых списков.
   bool get isWhitelistBypass => protocol == 'whitelist_bypass';
 
@@ -154,6 +157,7 @@ class VpnServer {
     this.whitelistPlatform,
     this.whitelistRoom,
     this.whitelistMode,
+    this.whitelistCreatorHost,
     required this.rawLink,
     this.rawJsonOverride,
     this.rawOutboundJson,
@@ -314,6 +318,7 @@ class VpnServer {
     String? whitelistPlatform,
     String? whitelistRoom,
     String? whitelistMode,
+    String? whitelistCreatorHost,
     String? rawLink,
     String? rawJsonOverride,
     String? rawOutboundJson,
@@ -355,6 +360,7 @@ class VpnServer {
       whitelistPlatform: whitelistPlatform ?? this.whitelistPlatform,
       whitelistRoom: whitelistRoom ?? this.whitelistRoom,
       whitelistMode: whitelistMode ?? this.whitelistMode,
+      whitelistCreatorHost: whitelistCreatorHost ?? this.whitelistCreatorHost,
       rawLink: rawLink ?? this.rawLink,
       rawJsonOverride: rawJsonOverride ?? this.rawJsonOverride,
       rawOutboundJson:
@@ -390,6 +396,9 @@ class VpnServer {
       }
       if (whitelistMode != null && whitelistMode!.isNotEmpty) {
         q['mode'] = whitelistMode!;
+      }
+      if (whitelistCreatorHost != null && whitelistCreatorHost!.isNotEmpty) {
+        q['host'] = whitelistCreatorHost!;
       }
       final query = q.entries
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')

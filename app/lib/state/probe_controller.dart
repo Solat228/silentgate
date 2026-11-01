@@ -22,6 +22,7 @@ import '../core/util/server_rekey.dart';
 import '../core/xray/harness_config_builder.dart'
     show HarnessConfigBuilder, HarnessRealism;
 import '../core/xray/outbound_variant.dart';
+import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
 import 'service_check_controller.dart' show ServiceCheckActivity;
@@ -478,8 +479,9 @@ class ProbeController extends ChangeNotifier {
   /// ⚠️ Спрашиваем САМ ХАРНЕСС (`supportsProxyRequests`), а не `Platform.isX`:
   /// платформенная развилка уже описана в одном месте (`probe_factory`), и
   /// вторая её копия здесь разъехалась бы с первой на первой же платформе.
-  bool canMeasureSpeed(VpnServer s) =>
-      _harnessCanMeasure || _liveTargetIn([s]) != null;
+  bool canMeasureSpeed(VpnServer s) => s.isWhitelistBypass
+      ? _liveTargetIn([s]) != null
+      : (_harnessCanMeasure || _liveTargetIn([s]) != null);
 
   /// Кэш ответа харнесса: план прогона спрашивают на каждое нажатие, а создание
   /// харнесса на Android генерирует пароль через `Random.secure`.
@@ -881,18 +883,14 @@ class ProbeController extends ChangeNotifier {
               notifyListeners();
               return;
             }
-            final r = await TcpPing.measure(s.address, s.port, timeout: timeout);
+            final targetHost = s.isWhitelistBypass
+                ? (WhitelistBypassEndpoint.domainsForServer(s).firstOrNull ?? s.address)
+                : s.address;
+            final targetPort = s.isWhitelistBypass ? 443 : s.port;
+            final r = await TcpPing.measure(targetHost, targetPort, timeout: timeout);
             if (r.outcome == PingOutcome.ok) {
-              // ⚠️ ЗДЕСЬ БЫЛ ГЛАВНЫЙ ОБМАН: сервер помечался «рабочим» авансом,
-              // по признаку `twoPhase && proxyProbeSupported` — то есть «фаза 2
-              // БУДЕТ», а не «фаза 2 ПРОШЛА». Плашка зеленела сразу после TCP и
-              // держалась зелёной всю фазу 2 (самую долгую), в том числе на
-              // сервере, через который не работало ничего.
-              //
-              // TCP-ответ говорит ровно одно: порт открыт — а на типичном
-              // Reality-порту он открыт всегда. Поэтому итог проверки ставится
-              // отдельно: `pending`, если фаза 2 будет, иначе `notRun`.
-              final willVerify = twoPhase && proxyProbeSupported;
+              final isLive = s.key == activeServerKey?.call();
+              final willVerify = (twoPhase && proxyProbeSupported) || isLive;
               _results[s.key] = PingResult(
                 outcome: PingOutcome.ok,
                 latencyMs: r.latencyMs,
@@ -905,9 +903,20 @@ class ProbeController extends ChangeNotifier {
                 latencyThroughTunnel: captured,
                 measuredAt: DateTime.now(),
               );
-              survivors.add(s);
-              // Без фазы 2 сервер уже финализирован; иначе «сделан» — после GET/HEAD.
-              if (!twoPhase) _done.add(s.key);
+              if (s.isWhitelistBypass && !isLive) {
+                _results[s.key] = PingResult(
+                  outcome: PingOutcome.ok,
+                  latencyMs: r.latencyMs,
+                  verification: PingVerification.notRun,
+                  latencyMethod: PingMethod.tcp,
+                  latencyThroughTunnel: captured,
+                  measuredAt: DateTime.now(),
+                );
+                _done.add(s.key);
+              } else {
+                survivors.add(s);
+                if (!twoPhase && !isLive) _done.add(s.key);
+              }
             } else {
               _results[s.key] = PingResult(
                 outcome: PingOutcome.failed,
