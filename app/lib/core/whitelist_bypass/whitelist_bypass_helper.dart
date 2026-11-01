@@ -125,10 +125,22 @@ class WhitelistBypassProcess {
 
     final exe = executablePath ?? locateExecutable();
     if (exe == null || !File(exe).existsSync()) {
+      if (Platform.isAndroid) {
+        throw StateError(
+          'Модуль обхода белых списков (librelay.so) не найден по пути: $exe. '
+          'Убедитесь, что APK собран с нативным модулем и extractNativeLibs=true.',
+        );
+      }
       throw StateError(
-        'Исполняемый файл whitelist-bypass не найден. '
+        'Исполняемый файл whitelist-bypass не найден: $exe. '
         'Убедитесь, что whitelist-bypass.exe находится в папке ядра.',
       );
+    }
+
+    if (!Platform.isWindows) {
+      try {
+        await Process.run('chmod', ['755', exe]);
+      } catch (_) {}
     }
 
     final platform = (server.whitelistPlatform ?? 'wbstream').toLowerCase();

@@ -1006,6 +1006,7 @@ class AndroidEngine extends VpnEngineBase {
         );
         final nativeDir = await const MethodChannel('lol.silentgate/device')
             .invokeMethod<String>('nativeLibraryDir');
+        AppLog.i('Каталог нативных библиотек: $nativeDir');
         final libPath = nativeDir != null ? '$nativeDir/librelay.so' : null;
         await bypass.start(
           server: session.server,

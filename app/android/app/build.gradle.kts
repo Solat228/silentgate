@@ -129,7 +129,10 @@ android {
     // фильтры складываются. Сборки GitHub это не меняет: --split-per-abi с
     // --target-platform armeabi-v7a не собирает вовсе.
     packaging {
-        jniLibs { excludes += "lib/armeabi-v7a/**" }
+        jniLibs {
+            excludes += "lib/armeabi-v7a/**"
+            useLegacyPackaging = true
+        }
     }
 
     buildTypes {

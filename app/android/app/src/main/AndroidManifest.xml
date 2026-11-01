@@ -36,6 +36,8 @@
         android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:allowBackup="true"
+        android:extractNativeLibs="true"
+        tools:replace="android:extractNativeLibs"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules">
         <!--
