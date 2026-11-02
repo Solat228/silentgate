@@ -20,6 +20,21 @@ enum VpnPhase {
   tunAutotune,
 }
 
+/// Этап подключения или отключения — для компактной подписи прямо внутри
+/// кнопки Connect без разбора русских строк.
+enum ConnectStep {
+  none,
+  checkConflicts,
+  checkPorts,
+  dns,
+  relay,
+  core,
+  tun,
+  traffic,
+  stopping,
+  forceKill,
+}
+
 /// Текущее состояние туннеля + опциональное сообщение (например, текст ошибки).
 class VpnStatus {
   final VpnConnectionState state;
@@ -32,6 +47,7 @@ class VpnStatus {
   /// (см. [StatusText]).
   final StatusText? text;
   final VpnPhase phase;
+  final ConnectStep step;
 
   /// ⚠️ KILL SWITCH СЕЙЧАС ДЕРЖИТ ТРАФИК: соединения падают, а не текут мимо VPN.
   ///
@@ -53,6 +69,7 @@ class VpnStatus {
       {this.message,
       this.text,
       this.phase = VpnPhase.normal,
+      this.step = ConnectStep.none,
       this.blocking = false,
       this.offline = false});
 
@@ -61,6 +78,7 @@ class VpnStatus {
         message = null,
         text = null,
         phase = VpnPhase.normal,
+        step = ConnectStep.none,
         blocking = false,
         offline = false;
 

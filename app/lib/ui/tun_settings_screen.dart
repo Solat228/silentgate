@@ -2,6 +2,7 @@ import 'dart:io' show InternetAddress, InternetAddressType, Platform;
 
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -196,6 +197,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               width: 90,
               child: TextFormField(
                 initialValue: '${s.tunMtu}',
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 textAlign: TextAlign.end,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(isDense: true),
@@ -274,6 +277,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               width: 84,
               child: TextFormField(
                 initialValue: '${s.tunWatchdogSeconds}',
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(
@@ -304,6 +309,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextFormField(
                 initialValue: s.dnsCustomServer,
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 decoration: InputDecoration(
                   labelText: l.tunDnsServer,
                   border: const OutlineInputBorder(),
@@ -611,6 +618,8 @@ class _CidrEditorState extends State<_CidrEditor> {
             Expanded(
               child: TextField(
                 controller: _input,
+                contentInsertionConfiguration:
+                    buildExtendedContentInsertion(_input),
                 decoration: InputDecoration(
                   hintText: widget.hint,
                   errorText: _error,

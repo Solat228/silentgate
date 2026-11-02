@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'adapter_dns_windows.dart';
 import '../../core/platform/app_env.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/core_cleanup.dart';
 import '../../core/probe/network_loss_watch.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
@@ -272,9 +273,21 @@ class WindowsEngine extends VpnEngineBase {
   /// смене сервера поле возвращается к секрету живого туннеля (см. `raiseTun`),
   /// и снимок, сделанный раньше, стучался бы с чужим паролем.
   @override
+  @override
   LiveCoreApi? get captureCoreApi => _tunActive
       ? LiveCoreApi(port: _tunApiPort, secret: singboxApiSecret)
       : null;
+
+  @override
+  LiveCoreApi? get connectionsCoreApi {
+    if (_tunActive) {
+      return LiveCoreApi(port: _tunApiPort, secret: singboxApiSecret);
+    }
+    if (_singbox != null && _singbox!.isRunning) {
+      return LiveCoreApi(port: ports.api, secret: singboxApiSecret);
+    }
+    return null;
+  }
 
   /// Удержать захват можно, только если он НЕ МЕНЯЕТСЯ: живой туннель и новая
   /// сессия — оба чистый TUN.
@@ -404,6 +417,7 @@ class WindowsEngine extends VpnEngineBase {
     // — она ставит его прямо перед этим вызовом, и подпись жила меньше секунды.
     setStatus(
       VpnConnectionState.connecting,
+      step: ConnectStep.checkPorts,
       message: attempt > 0
           ? 'Переподключение (попытка $attempt)…'
           : (status.state == VpnConnectionState.connecting
@@ -496,7 +510,7 @@ class WindowsEngine extends VpnEngineBase {
               '(${conflict.holder}) - жду освобождения'
           : 'Порт ${conflict.port} занят, владелец не определён - жду: на смене '
               'сервера так выглядит наш же процесс, чей сокет ещё не отпущен');
-      await PortCheck.waitFree(corePorts);
+      await PortCheck.waitFree(corePorts, abort: aborted);
       if (aborted()) return;
       conflict = await PortCheck.findConflict(corePorts);
     }
@@ -529,11 +543,13 @@ class WindowsEngine extends VpnEngineBase {
         mine.add(bypass);
         setStatus(
           VpnConnectionState.connecting,
+          step: ConnectStep.relay,
           message: 'Подключение к комнате (${session.server.whitelistPlatform ?? "БС"})...',
         );
         await bypass.start(
           server: session.server,
           socksPort: session.server.port > 0 ? session.server.port : 10855,
+          abort: aborted,
         );
         if (aborted()) {
           await _stopOwnProcesses(mine);
@@ -541,6 +557,8 @@ class WindowsEngine extends VpnEngineBase {
         }
       }
 
+      setStatus(VpnConnectionState.connecting,
+          step: ConnectStep.core, message: status.message);
       final configPath =
           await _writeConfigJson(configJson, singbox: singboxCore);
 
@@ -609,6 +627,8 @@ class WindowsEngine extends VpnEngineBase {
       }
 
       if (options.captureMode == CaptureMode.tun) {
+        setStatus(VpnConnectionState.connecting,
+            step: ConnectStep.tun, message: status.message);
         if (!await raiseTun(
           options: options,
           servers: servers,
@@ -699,6 +719,10 @@ class WindowsEngine extends VpnEngineBase {
       // стартует и при мёртвом сервере; без этой строки человек получал
       // «Соединение восстановлено» на канале, по которому не шло ни байта
       // (найдено живьём в VM 10.10.2026, разбор — у метода).
+      if (!await confirmInitialChannel(aborted)) {
+        if (aborted()) await _abandonRun(gen, mine);
+        return;
+      }
       if (!await confirmRecoveredChannel(aborted)) {
         if (aborted()) await _abandonRun(gen, mine);
         return;
@@ -1444,6 +1468,7 @@ class WindowsEngine extends VpnEngineBase {
   /// устаревшего запуска в полях уже ядро НОВОЙ сессии, и общий гаситель убивал
   /// бы его — «Подключено» при мёртвом ядре, само не чинится.
   Future<void> _stopOwnProcesses(List<Object?> mine) async {
+    final tasks = <Future<void>>[];
     for (final p in mine) {
       if (p == null) continue;
       // Поле обнуляем только если оно указывает на НАС.
@@ -1452,15 +1477,14 @@ class WindowsEngine extends VpnEngineBase {
       if (identical(_exitRouter, p)) _exitRouter = null;
       if (identical(_whitelistBypass, p)) _whitelistBypass = null;
       if (p is XrayProcess) {
-        await p.stop();
-        p.dispose();
+        tasks.add(p.stop().whenComplete(p.dispose));
       } else if (p is SingboxProcess) {
-        await p.stop();
-        p.dispose();
+        tasks.add(p.stop().whenComplete(p.dispose));
       } else if (p is WhitelistBypassProcess) {
-        await p.stop();
+        tasks.add(p.stop());
       }
     }
+    if (tasks.isNotEmpty) await Future.wait(tasks);
   }
 
   /// Маршрутизатор выходов режима «Только прокси» (задача 3b): отдельный
@@ -1529,6 +1553,8 @@ class WindowsEngine extends VpnEngineBase {
         applyRules: options.settings.applyRulesInProxyOnly,
         split: options.split,
       );
+      setStatus(VpnConnectionState.connecting,
+          step: ConnectStep.core, message: status.message);
       final configPath =
           await _writeConfigJson(builder.buildJson(), name: 'exit_router.json');
 
@@ -1645,19 +1671,8 @@ class WindowsEngine extends VpnEngineBase {
     // провайдера. Комментарий в Android-движке утверждал, что «Windows гасит
     // всё это в своём platformCleanup с самого начала», — неправдой это было
     // ровно про эту строку.
-    await _stopFallbackDns();
-    // ⚠️ ПРЯМОЙ ЗАПАС ГАСИТСЯ ТОЛЬКО ЗДЕСЬ, В ПОЛНОЙ ОСТАНОВКЕ, И НЕ В
-    // [teardownCore]. Туннельный форвардер там снимается безусловно, и для него
-    // это верно — его «основной» путь ведёт через ядро, которого в тот момент
-    // уже нет. У прямого запаса ядра на пути НЕТ: при бесшовном удержании
-    // туннеля прямой трафик продолжает ходить, и погасив запас там, мы отняли
-    // бы резолв ровно тогда, когда туннель болен, — то есть в единственный
-    // момент, ради которого запас и заводили.
-    await _stopDirectFallbackDns();
-    if (_tunActive) {
-      await _tunRouter.stop();
-      _tunActive = false;
-    }
+    final hadTun = _tunActive;
+    _tunActive = false;
     // Полная остановка: туннеля больше нет ни при каком исходе, и память о его
     // конфиге обязана уйти вместе с ним (см. [_liveTunConfig]).
     _liveTunConfig = null;
@@ -1665,11 +1680,61 @@ class WindowsEngine extends VpnEngineBase {
     _liveBypassIps = null;
     _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
-    if (_proxySet) {
-      await SystemProxy.clear();
-      _proxySet = false;
-    }
-    await _stopCoreProcesses();
+    final hadProxy = _proxySet;
+    _proxySet = false;
+    await Future.wait([
+      _stopFallbackDns(),
+      _stopDirectFallbackDns(),
+      if (hadTun) _tunRouter.stop(),
+      if (hadProxy) SystemProxy.clear(),
+      _stopCoreProcesses(),
+    ]);
+  }
+
+  @override
+  Future<void> forceKillCleanup() async {
+    _polling = false;
+    _tunFailStreak = 0;
+    _lastDirectDns = null;
+    _statsTimer?.cancel();
+    _statsTimer = null;
+    _tunWatchdog?.cancel();
+    _tunWatchdog = null;
+    stopExitHealth();
+    stopHealthWatch();
+    unawaited(_exitWatch?.cancel());
+    _exitWatch = null;
+
+    _process?.forceKill();
+    _process?.dispose();
+    _process = null;
+    _singbox?.forceKill();
+    _singbox?.dispose();
+    _singbox = null;
+    _exitRouter?.forceKill();
+    _exitRouter?.dispose();
+    _exitRouter = null;
+    _whitelistBypass?.forceKill();
+    _whitelistBypass = null;
+    CoreCleanup.killChildren();
+
+    final hadTun = _tunActive;
+    _tunActive = false;
+    _liveTunConfig = null;
+    _liveKillSwitchPlan = null;
+    _liveBypassIps = null;
+    _liveTunApiSecret = null;
+    final hadProxy = _proxySet;
+    _proxySet = false;
+
+    try {
+      await Future.wait([
+        _stopFallbackDns(),
+        _stopDirectFallbackDns(),
+        if (hadTun) _tunRouter.stop(),
+        if (hadProxy) SystemProxy.clear(),
+      ]).timeout(const Duration(milliseconds: 700));
+    } catch (_) {}
   }
 
   /// Гасим все прокси-ядра: основное (Xray/sing-box, зависит от протокола
@@ -1679,17 +1744,20 @@ class WindowsEngine extends VpnEngineBase {
   /// путём, что и остальные ядра (`teardownCore`/`platformCleanup` зовут
   /// этот метод и при обычном отключении, и при сбое подъёма).
   Future<void> _stopCoreProcesses() async {
-    await _process?.stop();
-    _process?.dispose();
+    final proc = _process;
+    final sb = _singbox;
+    final er = _exitRouter;
+    final wb = _whitelistBypass;
     _process = null;
-    await _singbox?.stop();
-    _singbox?.dispose();
     _singbox = null;
-    await _exitRouter?.stop();
-    _exitRouter?.dispose();
     _exitRouter = null;
-    await _whitelistBypass?.stop();
     _whitelistBypass = null;
+    await Future.wait([
+      if (proc != null) proc.stop().whenComplete(proc.dispose),
+      if (sb != null) sb.stop().whenComplete(sb.dispose),
+      if (er != null) er.stop().whenComplete(er.dispose),
+      if (wb != null) wb.stop(),
+    ]);
   }
 
   /// Порт Clash API туннельного sing-box. Только петля, только для сторожа.
@@ -1952,7 +2020,7 @@ class WindowsEngine extends VpnEngineBase {
         }
       });
       return await got.future
-          .timeout(const Duration(seconds: 2), onTimeout: () => false);
+          .timeout(const Duration(milliseconds: 1200), onTimeout: () => false);
     } catch (_) {
       return false;
     } finally {

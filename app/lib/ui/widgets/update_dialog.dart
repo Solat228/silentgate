@@ -399,6 +399,65 @@ Future<void> showInstallLog(BuildContext context, PendingResult result) {
 // ── Тексты ───────────────────────────────────────────────────────────────────
 
 /// Размер в мегабайтах с одним знаком — для «{mb} МБ».
+Future<bool> showUpdateTrafficWarningDialog(
+  BuildContext context,
+  AppUpdateController controller, {
+  required bool isDownload,
+  int? sizeBytes,
+}) async {
+  var dontShowAgain = false;
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      final l = AppLocalizations.of(ctx);
+      final body = isDownload
+          ? l.updatesTrafficWarningDownloadBody(
+              formatMegabytes(sizeBytes != null && sizeBytes > 0 ? sizeBytes : 0))
+          : l.updatesTrafficWarningCheckBody;
+      return StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(l.updatesTrafficWarningTitle),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(body),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  key: const Key('updateTrafficDontShowAgain'),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: dontShowAgain,
+                  onChanged: (v) => setState(() => dontShowAgain = v ?? false),
+                  title: Text(l.updatesTrafficDontShowAgain),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('updateTrafficCancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.commonCancel),
+            ),
+            FilledButton(
+              key: const Key('updateTrafficContinue'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.updatesContinue),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  if (result == true && dontShowAgain) {
+    await controller.setSkipTrafficWarning(true);
+  }
+  return result == true;
+}
+
 String formatMegabytes(int bytes) =>
     (bytes / (1024 * 1024)).toStringAsFixed(1);
 

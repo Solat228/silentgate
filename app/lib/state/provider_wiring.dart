@@ -12,7 +12,8 @@ import '../core/platform/app_launcher.dart';
 import '../core/platform/package_identity_windows.dart';
 import '../core/platform/play_store_android.dart';
 import '../core/settings/app_settings.dart';
-import '../core/update/app_update.dart' show AppUpdate;
+import '../core/probe/proxy_probe.dart';
+import '../core/update/app_update.dart' show AppUpdate, UpdateProxy;
 import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
 import '../core/update/update_installer.dart';
 import '../core/update/update_installer_android.dart';
@@ -270,6 +271,17 @@ AppUpdateController _buildAppUpdateController(
         state.status.isConnected ||
         state.status.state == VpnConnectionState.connecting,
     vpnChanges: state,
+    vpnProxyOf: () {
+      if (!state.status.isConnected) return null;
+      final port = state.httpProxyPort;
+      if (port <= 0) return null;
+      return UpdateProxy(
+        port: port,
+        user: ProxyProbe.user,
+        password: ProxyProbe.password,
+      );
+    },
+    installStuckTimeout: const Duration(seconds: 20),
     openInstallPermission:
         Platform.isAndroid ? ApkInstallerAndroid().openInstallPermission : null,
     // Живым вопросом, а не флагом: на Android подмена читается из файла

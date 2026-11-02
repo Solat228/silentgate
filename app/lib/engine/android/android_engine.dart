@@ -92,6 +92,11 @@ class AndroidEngine extends VpnEngineBase {
   @override
   bool get readsXrayStats => false;
 
+  @override
+  LiveCoreApi? get connectionsCoreApi => status.isConnected
+      ? LiveCoreApi(port: clashApiPort, secret: _apiSecret)
+      : null;
+
   /// Отметка «приложение живо» + замер отзывчивости главного потока Android.
   ///
   /// ⚠️ ЖИВЁТ СТОЛЬКО ЖЕ, СКОЛЬКО ДВИЖОК, И НЕ ЗАВИСИТ ОТ ПОДКЛЮЧЕНИЯ. Зависание
@@ -775,7 +780,8 @@ class AndroidEngine extends VpnEngineBase {
     // Новая попытка — снова слушаем события остановки.
     _handlingStop = false;
 
-    setStatus(VpnConnectionState.connecting);
+    setStatus(VpnConnectionState.connecting,
+        step: ConnectStep.dns, message: status.message);
     // Пароль — на КАЖДУЮ сессию, и он же кладётся на диск: следующий запуск
     // интерфейса подхватит этот туннель и должен уметь его опросить.
     await _rotateApiSecret();
@@ -1002,6 +1008,7 @@ class AndroidEngine extends VpnEngineBase {
         _whitelistBypass = bypass;
         setStatus(
           VpnConnectionState.connecting,
+          step: ConnectStep.relay,
           message: 'Подключение к комнате (${session.server.whitelistPlatform ?? "БС"})...',
         );
         final nativeDir = await const MethodChannel('lol.silentgate/device')
@@ -1012,6 +1019,7 @@ class AndroidEngine extends VpnEngineBase {
           server: session.server,
           socksPort: session.server.port > 0 ? session.server.port : 10855,
           executablePath: libPath,
+          abort: aborted,
         );
         if (aborted()) {
           await bypass.stop();
@@ -1019,6 +1027,8 @@ class AndroidEngine extends VpnEngineBase {
         }
       }
 
+      setStatus(VpnConnectionState.connecting,
+          step: ConnectStep.tun, message: status.message);
       _starting = true;
       await _channel.invokeMethod<void>(
           'start',
@@ -1062,6 +1072,10 @@ class AndroidEngine extends VpnEngineBase {
       // Windows: ядро встаёт и при мёртвом сервере. Неудачу метод сам отдаёт
       // автовосстановлению с удержанием захвата — общий `catch` ниже звал бы
       // `cleanup()` и снимал VpnService, то есть открывал трафик.
+      if (!await confirmInitialChannel(() => aborted())) {
+        if (aborted()) await releaseOwnFallbackDns(gen);
+        return;
+      }
       if (!await confirmRecoveredChannel(() => aborted())) {
         if (aborted()) await releaseOwnFallbackDns(gen);
         return;
@@ -1176,7 +1190,7 @@ class AndroidEngine extends VpnEngineBase {
   /// объявить отказ там, где туннель встал бы через секунду.
   Future<bool> _waitTunnelUp(
     bool Function() aborted, {
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 12),
     Duration step = const Duration(milliseconds: 200),
   }) async {
     final deadline = DateTime.now().add(timeout);
@@ -1500,24 +1514,42 @@ class AndroidEngine extends VpnEngineBase {
   /// месте.
   @override
   Future<void> platformCleanup() async {
-    await _whitelistBypass?.stop();
+    final wb = _whitelistBypass;
     _whitelistBypass = null;
     _stopStatsPolling();
     stopHealthWatch();
     stopExitHealth();
-    await _stopFallbackDns();
-    // Туннеля, который мы знали, больше нет — и «знаю его параметры» обязано
-    // перестать быть правдой вместе с ним. Иначе следующая заглушка kill
-    // switch собралась бы по ПРОШЛОМУ подключению: пользователь успел сменить
-    // сервер и настройки, а мы держали бы интерфейс от предыдущего.
     _liveOptions = null;
     _liveSplit = null;
-    await _stopService();
+    await Future.wait([
+      if (wb != null) wb.stop(),
+      _stopFallbackDns(),
+      _stopService(),
+    ]);
+  }
+
+  @override
+  Future<void> forceKillCleanup() async {
+    _whitelistBypass?.forceKill();
+    _whitelistBypass = null;
+    _stopStatsPolling();
+    stopHealthWatch();
+    stopExitHealth();
+    _liveOptions = null;
+    _liveSplit = null;
+    try {
+      await Future.wait([
+        _stopFallbackDns(),
+        _stopService(),
+      ]).timeout(const Duration(milliseconds: 700));
+    } catch (_) {}
   }
 
   Future<void> _stopService() async {
     try {
-      await _channel.invokeMethod<void>('stop');
+      await _channel
+          .invokeMethod<void>('stop')
+          .timeout(const Duration(milliseconds: 1500));
     } catch (e) {
       AppLog.w('Не удалось остановить VPN-сервис: $e');
     }

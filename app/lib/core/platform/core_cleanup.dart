@@ -36,6 +36,10 @@ class CoreCleanup {
     for (final p in _children.toList()) {
       try {
         p.kill(ProcessSignal.sigkill);
+        if (Platform.isWindows) {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${p.pid}'],
+              mode: ProcessStartMode.detached);
+        }
       } catch (_) {}
     }
     _children.clear();
@@ -54,7 +58,7 @@ class CoreCleanup {
         '-NoProfile',
         '-NonInteractive',
         '-Command',
-        r"Get-Process -Name xray,sing-box -ErrorAction SilentlyContinue | "
+        r"Get-Process -Name xray,sing-box,whitelist-bypass -ErrorAction SilentlyContinue | "
             r"ForEach-Object { try { '{0}|{1}' -f $_.Id, $_.Path } catch {} }",
       ]).timeout(const Duration(seconds: 8));
 

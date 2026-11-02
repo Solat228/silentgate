@@ -886,7 +886,7 @@ class TunHelper {
   /// («при переборе адресов VPN не даёт себя выключить»). Отмена здесь — не
   /// оптимизация, а право человека прекратить то, что он начал.
   static Future<bool> waitStopConsumed(String stopPath,
-      {Duration timeout = const Duration(seconds: 5),
+      {Duration timeout = const Duration(milliseconds: 1500),
       bool Function()? abort}) async {
     if (stopPath.isEmpty) return true;
     final f = File(stopPath);

@@ -194,7 +194,8 @@ class SystemProxy {
   /// Значение из `Internet Settings`; `null` — значения нет.
   static Future<String?> _query(String name) async {
     try {
-      final r = await runner('reg', ['query', _regKey, '/v', name]);
+      final r = await runner('reg', ['query', _regKey, '/v', name])
+          .timeout(const Duration(milliseconds: 1000));
       if (r.exitCode != 0) return null;
       return parseRegValue('${r.stdout}', name);
     } catch (e) {
@@ -205,7 +206,8 @@ class SystemProxy {
 
   static Future<bool> _regDelete(String name) async {
     try {
-      final r = await runner('reg', ['delete', _regKey, '/v', name, '/f']);
+      final r = await runner('reg', ['delete', _regKey, '/v', name, '/f'])
+          .timeout(const Duration(milliseconds: 1000));
       // Значения и так нет — это успех, а не отказ.
       return r.exitCode == 0 || await _query(name) == null;
     } catch (e) {
@@ -275,7 +277,8 @@ class SystemProxy {
   /// Одна правка реестра. `false` — правка НЕ применилась.
   static Future<bool> _reg(String what, List<String> args) async {
     try {
-      final r = await runner('reg', ['add', _regKey, ...args]);
+      final r = await runner('reg', ['add', _regKey, ...args])
+          .timeout(const Duration(milliseconds: 1000));
       if (r.exitCode == 0) return true;
       // Текст ошибки `reg.exe` приходит в кодировке консоли и бывает пустым —
       // код возврата поэтому называем всегда, а текст только если он есть.

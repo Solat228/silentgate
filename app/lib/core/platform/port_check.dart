@@ -45,13 +45,13 @@ class PortCheck {
   static Future<String?> holderName(int port) async {
     try {
       final net = await Process.run('netstat', ['-ano', '-p', 'TCP'])
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(milliseconds: 1500));
       final pid = listeningPid('${net.stdout}', port);
       if (pid == null) return null;
 
       final tl = await Process.run(
               'tasklist', ['/FI', 'PID eq $pid', '/NH', '/FO', 'CSV'])
-          .timeout(const Duration(seconds: 5));
+          .timeout(const Duration(milliseconds: 1500));
       final row = '${tl.stdout}'.trim();
       if (row.isEmpty || !row.startsWith('"')) return null;
       return row.split('","').first.replaceAll('"', '');
@@ -88,11 +88,13 @@ class PortCheck {
   /// задерживает подключение на быстрой.
   static Future<bool> waitFree(
     Iterable<int> ports, {
-    Duration timeout = const Duration(seconds: 6),
-    Duration step = const Duration(milliseconds: 200),
+    Duration timeout = const Duration(milliseconds: 2500),
+    Duration step = const Duration(milliseconds: 150),
+    bool Function()? abort,
   }) async {
     final deadline = DateTime.now().add(timeout);
     while (true) {
+      if (abort?.call() ?? false) return false;
       if (await findConflict(ports) == null) return true;
       if (!DateTime.now().isBefore(deadline)) return false;
       await Future.delayed(step);
@@ -120,7 +122,10 @@ class PortConflict {
   /// уйдёт сам, надо лишь подождать.
   bool get heldByOwnCore {
     final h = (holder ?? '').toLowerCase();
-    return h == 'xray.exe' || h == 'sing-box.exe' || h == 'silentgate.exe';
+    return h == 'xray.exe' ||
+        h == 'sing-box.exe' ||
+        h == 'silentgate.exe' ||
+        h == 'whitelist-bypass.exe';
   }
 
   String get fallbackMessage {

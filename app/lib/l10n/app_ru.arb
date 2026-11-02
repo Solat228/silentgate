@@ -2404,5 +2404,72 @@
       }
     }
   },
-  "subBarRestore": "Восстановить"
+  "subBarRestore": "Восстановить",
+  "connectButtonCancel": "Отменить",
+  "connectButtonStop": "Стоп",
+  "connectStepCheckConflicts": "Проверка помех…",
+  "connectStepCheckPorts": "Проверка портов…",
+  "connectStepDns": "DNS…",
+  "connectStepRelay": "Комната звонка…",
+  "connectStepCore": "Запуск ядра…",
+  "connectStepTun": "Запуск TUN…",
+  "connectStepTraffic": "Проверка трафика…",
+  "connectStepStopping": "Остановка…",
+  "connectStepForceKill": "Принудительно…",
+  "splitSiteAlreadyExists": "Сайт уже указан, пропуск",
+  "splitSiteSearchEmpty": "Ничего не похоже на «{query}» - нажмите «Добавить», чтобы внести сайт",
+  "@splitSiteSearchEmpty": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "splitAlwaysReloadOnNewSite": "Всегда перезагружать VPN при добавлении нового сайта",
+  "splitVirtualGroupBadge": "поддомены",
+  "liveConnsBadge": "Соединения: {count}",
+  "@liveConnsBadge": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsTitle": "Открытые соединения",
+  "liveConnsSubtitle": "Обновляется в реальном времени",
+  "liveConnsSectionVpn": "Через VPN",
+  "liveConnsSectionBlocked": "Блокируются",
+  "liveConnsSectionDirect": "Прямые",
+  "liveConnsEmpty": "Сейчас активных соединений нет",
+  "liveConnsUnavailable": "В режиме системного прокси без TUN список соединений недоступен",
+  "liveConnsRouteMismatchTitle": "Маршруты обновились",
+  "liveConnsRouteMismatchBody": "Сайт «{domain}» добавлен в правила, но активный туннель ещё использует прежний список (соединения идут не по новому правилу). Перезагрузить VPN сейчас?",
+  "@liveConnsRouteMismatchBody": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsNewSiteReloadBody": "Сайт «{domain}» добавлен в список. Перезагрузить VPN сейчас, чтобы новое правило сразу применилось?",
+  "@liveConnsNewSiteReloadBody": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsReloadNow": "Перезагрузить VPN",
+  "updatesTrafficWarningTitle": "Расход трафика подписки",
+  "updatesTrafficWarningCheckBody": "Прямой доступ к серверам обновлений сейчас недоступен или весь трафик направлен через VPN. Проверка и скачивание обновления потратят трафик вашей подписки. Продолжить?",
+  "updatesTrafficWarningDownloadBody": "Скачивание обновления ({sizeMb} МБ) пойдёт через активный VPN и потратит трафик вашей подписки. Продолжить?",
+  "@updatesTrafficWarningDownloadBody": {
+    "placeholders": {
+      "sizeMb": {
+        "type": "String"
+      }
+    }
+  },
+  "updatesTrafficDontShowAgain": "Больше не показывать это предупреждение",
+  "updatesContinue": "Продолжить"
 }

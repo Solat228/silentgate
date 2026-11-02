@@ -504,6 +504,13 @@ class _StatusCard extends StatelessWidget {
         status = l.updatesStatusInstalling;
         showProgress = true;
         if (Platform.isAndroid) detail = l.updatesAndroidNoSilent;
+        if (!c.busy) {
+          actions.add(OutlinedButton(
+            key: const Key('updatesCancelInstallButton'),
+            onPressed: c.recoverFromInstalling,
+            child: Text(l.commonCancel),
+          ));
+        }
       case UpdatePhase.failed:
         final e = c.error;
         status = l.updatesStatusFailed(
@@ -573,7 +580,7 @@ class _StatusCard extends StatelessWidget {
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.tonal(
                 key: const Key('updatesCheckButton'),
-                onPressed: c.busy || c.phase == UpdatePhase.installing
+                onPressed: c.busy
                     ? null
                     : () => unawaited(c.checkNow()),
                 child: Text(l.updatesCheckNow),

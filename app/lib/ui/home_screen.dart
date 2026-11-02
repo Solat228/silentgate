@@ -53,6 +53,7 @@ import 'widgets/app_toast.dart';
 import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/live_connections_sheet.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
@@ -1265,7 +1266,10 @@ class ConnectPane extends StatelessWidget {
         const NotificationsOffBanner(),
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
-          child: Padding(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
             // На телефоне 24 dp с каждой стороны — это 13 % ширины экрана,
             // которых не хватает содержимому. На десктопе остаётся 24.
             padding: EdgeInsets.all(context.sg.pagePadding),
@@ -1458,6 +1462,14 @@ class ConnectPane extends StatelessWidget {
                 );
               }),
             ),
+              ),
+              if (status.isConnected)
+                PositionedDirectional(
+                  start: compact ? 8 : 12,
+                  bottom: compact ? 8 : 12,
+                  child: const LiveConnectionsBadge(),
+                ),
+            ],
           ),
         ),
       ],
@@ -2599,7 +2611,7 @@ class ConnectButton extends StatelessWidget {
     final scale = d / _baseline;
 
     return GestureDetector(
-      onTap: busy ? null : onTap,
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         width: d,
@@ -2613,7 +2625,55 @@ class ConnectButton extends StatelessWidget {
         ),
         child: Center(
           child: busy
-              ? const CircularProgressIndicator()
+              ? SizedBox(
+                  width: d * 0.72,
+                  height: d * 0.68,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: d * 0.72,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 30 * scale,
+                            height: 30 * scale,
+                            child: CircularProgressIndicator(
+                              strokeWidth: (3.0 * scale).clamp(2.0, 3.5),
+                            ),
+                          ),
+                          SizedBox(height: 6 * scale),
+                          Text(
+                            status.state == VpnConnectionState.disconnecting
+                                ? l.connectButtonStop
+                                : l.connectButtonCancel,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            softWrap: true,
+                            style: TextStyle(
+                              fontSize: 13 * scale,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          if (connectStepLabel(l, status.step) != null) ...[
+                            SizedBox(height: 2 * scale),
+                            Text(
+                              connectStepLabel(l, status.step)!,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              softWrap: true,
+                              style: TextStyle(
+                                fontSize: 11 * scale,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                )
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [

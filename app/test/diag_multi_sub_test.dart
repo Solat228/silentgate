@@ -18,6 +18,10 @@ import 'package:silentgate/state/app_state.dart';
 
 class _FakeEngine implements VpnEngine {
   @override
+  LiveCoreApi? get connectionsCoreApi => null;
+  @override
+  Future<void> forceDisconnect() => disconnect();
+  @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
   @override
   Stream<VpnStatus> get statusStream => const Stream.empty();

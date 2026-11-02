@@ -129,8 +129,12 @@ class XrayProcess {
     proc.kill();
     // Дать процессу закрыться; если завис — не блокируемся навечно.
     await proc.exitCode.timeout(
-      const Duration(seconds: 3),
+      const Duration(milliseconds: 800),
       onTimeout: () {
+        if (Platform.isWindows) {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        }
         proc.kill(ProcessSignal.sigkill);
         return -1;
       },
@@ -141,6 +145,26 @@ class XrayProcess {
     AppLog.i('Ядро Xray остановлено');
     await log?.write('--- Xray остановлен ${DateTime.now().toIso8601String()}');
     await log?.close();
+  }
+
+  void forceKill() {
+    final proc = _process;
+    _process = null;
+    if (proc != null) {
+      CoreCleanup.unregister(proc);
+      if (Platform.isWindows) {
+        try {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        } catch (_) {}
+      }
+      try {
+        proc.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    }
+    final log = _log;
+    _log = null;
+    unawaited(log?.close() ?? Future<void>.value());
   }
 
   void dispose() {

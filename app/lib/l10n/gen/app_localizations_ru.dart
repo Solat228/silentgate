@@ -4362,4 +4362,114 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get subBarRestore => 'Восстановить';
+
+  @override
+  String get connectButtonCancel => 'Отменить';
+
+  @override
+  String get connectButtonStop => 'Стоп';
+
+  @override
+  String get connectStepCheckConflicts => 'Проверка помех…';
+
+  @override
+  String get connectStepCheckPorts => 'Проверка портов…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'Комната звонка…';
+
+  @override
+  String get connectStepCore => 'Запуск ядра…';
+
+  @override
+  String get connectStepTun => 'Запуск TUN…';
+
+  @override
+  String get connectStepTraffic => 'Проверка трафика…';
+
+  @override
+  String get connectStepStopping => 'Остановка…';
+
+  @override
+  String get connectStepForceKill => 'Принудительно…';
+
+  @override
+  String get splitSiteAlreadyExists => 'Сайт уже указан, пропуск';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return 'Ничего не похоже на «$query» - нажмите «Добавить», чтобы внести сайт';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'Всегда перезагружать VPN при добавлении нового сайта';
+
+  @override
+  String get splitVirtualGroupBadge => 'поддомены';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'Соединения: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'Открытые соединения';
+
+  @override
+  String get liveConnsSubtitle => 'Обновляется в реальном времени';
+
+  @override
+  String get liveConnsSectionVpn => 'Через VPN';
+
+  @override
+  String get liveConnsSectionBlocked => 'Блокируются';
+
+  @override
+  String get liveConnsSectionDirect => 'Прямые';
+
+  @override
+  String get liveConnsEmpty => 'Сейчас активных соединений нет';
+
+  @override
+  String get liveConnsUnavailable =>
+      'В режиме системного прокси без TUN список соединений недоступен';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'Маршруты обновились';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return 'Сайт «$domain» добавлен в правила, но активный туннель ещё использует прежний список (соединения идут не по новому правилу). Перезагрузить VPN сейчас?';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return 'Сайт «$domain» добавлен в список. Перезагрузить VPN сейчас, чтобы новое правило сразу применилось?';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'Перезагрузить VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => 'Расход трафика подписки';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'Прямой доступ к серверам обновлений сейчас недоступен или весь трафик направлен через VPN. Проверка и скачивание обновления потратят трафик вашей подписки. Продолжить?';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'Скачивание обновления ($sizeMb МБ) пойдёт через активный VPN и потратит трафик вашей подписки. Продолжить?';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain =>
+      'Больше не показывать это предупреждение';
+
+  @override
+  String get updatesContinue => 'Продолжить';
 }

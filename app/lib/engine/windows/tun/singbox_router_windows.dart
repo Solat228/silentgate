@@ -414,7 +414,7 @@ class SingboxRouterWindows
   /// поднятое снимается. Бросать здесь ошибку значило бы показать человеку
   /// «не удалось подключиться» на действие, которое он сам и совершил.
   Future<void> _waitUp({bool Function()? abort}) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
     while (DateTime.now().isBefore(deadline)) {
       if (abort?.call() ?? false) {
         AppLog.i('Ожидание TUN-адаптера прервано: отключение пользователем');
@@ -434,7 +434,7 @@ class SingboxRouterWindows
             'отключите другой VPN и попробуйте снова.\n\n'
         : '';
     throw TunStartException(
-      'TUN-адаптер не поднялся за 12 секунд - sing-box не запустился.',
+      'TUN-адаптер не поднялся за 5 секунд - sing-box не запустился.',
       details: hint +
           (log.isEmpty
               ? 'Лог sing-box пуст. Проверьте, что рядом с xray.exe лежат '
@@ -464,7 +464,8 @@ class SingboxRouterWindows
   /// то есть давал бы ложный успех. Имя адаптера ASCII — локаль не мешает.
   Future<bool> _adapterUp() async {
     try {
-      final r = await Process.run('netsh', ['interface', 'show', 'interface']);
+      final r = await Process.run('netsh', ['interface', 'show', 'interface'])
+          .timeout(const Duration(milliseconds: 1500));
       if ('${r.stdout}'.toLowerCase().contains('silentgate-tun')) return true;
     } catch (_) {
       // netsh недоступен (SRP, урезанный PATH) — ищем НАШ адрес туннеля.

@@ -4345,4 +4345,113 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get subBarRestore => 'استعادة';
+
+  @override
+  String get connectButtonCancel => 'إلغاء';
+
+  @override
+  String get connectButtonStop => 'إيقاف';
+
+  @override
+  String get connectStepCheckConflicts => 'فحص التعارضات…';
+
+  @override
+  String get connectStepCheckPorts => 'فحص المنافذ…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'غرفة المكالمة…';
+
+  @override
+  String get connectStepCore => 'تشغيل النواة…';
+
+  @override
+  String get connectStepTun => 'تشغيل TUN…';
+
+  @override
+  String get connectStepTraffic => 'فحص الاتصال…';
+
+  @override
+  String get connectStepStopping => 'جارٍ الإيقاف…';
+
+  @override
+  String get connectStepForceKill => 'إيقاف فوري…';
+
+  @override
+  String get splitSiteAlreadyExists => 'الموقع مضاف بالفعل، تم التخطي';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return 'لا توجد مواقع مطابقة لـ \"$query\" - اضغط \"إضافة\" لإدراجه';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'إعادة تشغيل VPN دائماً عند إضافة موقع جديد';
+
+  @override
+  String get splitVirtualGroupBadge => 'نطاقات فرعية';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'الاتصالات: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'الاتصالات المفتوحة';
+
+  @override
+  String get liveConnsSubtitle => 'يتحدث في الوقت الفعلي';
+
+  @override
+  String get liveConnsSectionVpn => 'عبر VPN';
+
+  @override
+  String get liveConnsSectionBlocked => 'محظورة';
+
+  @override
+  String get liveConnsSectionDirect => 'مباشرة';
+
+  @override
+  String get liveConnsEmpty => 'لا توجد اتصالات نشطة حالياً';
+
+  @override
+  String get liveConnsUnavailable =>
+      'قائمة الاتصالات غير متاحة في وضع وكيل النظام بدون TUN';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'تم تحديث المسارات';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return 'تمت إضافة \"$domain\" إلى القواعد، لكن النفق النشط لا يزال يستخدم القائمة السابقة. هل تريد إعادة تشغيل VPN الآن؟';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return 'تمت إضافة \"$domain\". هل تريد إعادة تشغيل VPN الآن لتطبيق القاعدة فوراً؟';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'إعادة تشغيل VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => 'استهلاك بيانات الاشتراك';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'الوصول المباشر إلى خوادم التحديث غير متاح أو يتم توجيه كل حركة المرور عبر VPN. سيؤدي التحقق والتنزيل إلى استهلاك رصيد اشتراكك. المتابعة؟';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'سيتم تنزيل التحديث ($sizeMb ميغابايت) عبر VPN النشط وسيستهلك من رصيد اشتراكك. المتابعة؟';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'عدم إظهار هذا التحذير مرة أخرى';
+
+  @override
+  String get updatesContinue => 'متابعة';
 }

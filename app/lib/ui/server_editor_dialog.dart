@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 import 'package:flutter/services.dart';
 
 import '../core/models/vpn_server.dart';
@@ -215,6 +216,7 @@ class _ServerEditorDialogState extends State<ServerEditorDialog> {
         padding: const EdgeInsets.symmetric(vertical: 4),
         child: TextField(
           controller: c,
+          contentInsertionConfiguration: buildExtendedContentInsertion(c),
           decoration: InputDecoration(labelText: label, isDense: true, border: const OutlineInputBorder()),
         ),
       );

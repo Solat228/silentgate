@@ -4402,4 +4402,113 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get subBarRestore => 'Restaurar';
+
+  @override
+  String get connectButtonCancel => 'Cancelar';
+
+  @override
+  String get connectButtonStop => 'Parar';
+
+  @override
+  String get connectStepCheckConflicts => 'Verificando conflitos…';
+
+  @override
+  String get connectStepCheckPorts => 'Verificando portas…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'Sala de chamada…';
+
+  @override
+  String get connectStepCore => 'Iniciando núcleo…';
+
+  @override
+  String get connectStepTun => 'Iniciando TUN…';
+
+  @override
+  String get connectStepTraffic => 'Verificando tráfego…';
+
+  @override
+  String get connectStepStopping => 'Parando…';
+
+  @override
+  String get connectStepForceKill => 'Parada forçada…';
+
+  @override
+  String get splitSiteAlreadyExists => 'Site já adicionado, ignorado';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return 'Nenhum site parecido com \"$query\" - toque em \"Adicionar\" para incluí-lo';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'Sempre recarregar a VPN ao adicionar um novo site';
+
+  @override
+  String get splitVirtualGroupBadge => 'subdomínios';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'Conexões: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'Conexões abertas';
+
+  @override
+  String get liveConnsSubtitle => 'Atualizado em tempo real';
+
+  @override
+  String get liveConnsSectionVpn => 'Pela VPN';
+
+  @override
+  String get liveConnsSectionBlocked => 'Bloqueadas';
+
+  @override
+  String get liveConnsSectionDirect => 'Diretas';
+
+  @override
+  String get liveConnsEmpty => 'Nenhuma conexão ativa no momento';
+
+  @override
+  String get liveConnsUnavailable =>
+      'Lista de conexões indisponível no modo proxy do sistema sem TUN';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'Rotas atualizadas';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return 'O site \"$domain\" está nas regras, mas o túnel ativo ainda usa a lista anterior. Recarregar a VPN agora?';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return 'O site \"$domain\" foi adicionado. Recarregar a VPN agora para aplicar a regra imediatamente?';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'Recarregar VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => 'Uso de tráfego da assinatura';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'O acesso direto aos servidores de atualização está indisponível ou todo o tráfego passa pela VPN. Verificar e baixar usará tráfego da assinatura. Continuar?';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'O download da atualização ($sizeMb MB) passará pela VPN ativa e consumirá tráfego da assinatura. Continuar?';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'Não mostrar este aviso novamente';
+
+  @override
+  String get updatesContinue => 'Continuar';
 }

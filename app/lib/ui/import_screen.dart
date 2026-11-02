@@ -12,6 +12,7 @@ import '../core/models/ui_message.dart';
 import 'widgets/ui_message_l10n.dart';
 import 'widgets/subscription_avatar.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 import 'widgets/flag_text.dart';
 
 class ImportScreen extends StatefulWidget {
@@ -165,6 +166,9 @@ class _ImportScreenState extends State<ImportScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _controller,
+                  autofocus: !QrScannerAndroid.isSupported,
+                  contentInsertionConfiguration:
+                      buildExtendedContentInsertion(_controller),
                   minLines: 2,
                   maxLines: 5,
                   decoration: const InputDecoration(

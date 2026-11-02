@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/gen/app_localizations.dart';
+import 'extended_clipboard.dart';
 
 /// Поле поиска по серверам: свободный текст, крестик для сброса.
 class ServerSearchField extends StatefulWidget {
@@ -33,6 +34,13 @@ class _ServerSearchFieldState extends State<ServerSearchField> {
     final l = AppLocalizations.of(context);
     return TextField(
       controller: _controller,
+      contentInsertionConfiguration: buildExtendedContentInsertion(
+        _controller,
+        onInserted: (v) {
+          widget.onChanged(v);
+          setState(() {});
+        },
+      ),
       decoration: InputDecoration(
         prefixIcon: const Icon(Icons.search, size: 20),
         hintText: widget.hint ?? l.searchHint,

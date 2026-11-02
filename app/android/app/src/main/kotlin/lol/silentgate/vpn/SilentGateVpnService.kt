@@ -348,6 +348,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * бы посреди `startOrReloadService`.
      */
     private val lifecycleLock = Any()
+    @Volatile
+    private var cancelRequested = false
 
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
@@ -401,6 +403,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // сервера, правка настроек) выдавала себя за нажатие кнопки в
                 // шторке. Dart на такое честно отменял восстановление.
                 val byUser = intent?.getBooleanExtra(EXTRA_BY_USER, false) ?: false
+                cancelRequested = true
                 Log.i(logTag, "ACTION_STOP получен (byUser=$byUser)")
                 work.execute {
                     Log.i(logTag, "ACTION_STOP: выполняю остановку")
@@ -482,6 +485,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                         )
                     }
                 }
+                cancelRequested = false
                 val xray = intent?.getStringExtra(EXTRA_XRAY_CONFIG) ?: xrayRestored
                 work.execute {
                     // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
@@ -504,7 +508,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     // мы его на главном потоке, он обогнал бы уже поставленную в
                     // очередь остановку и снял бы её признак.
                     stoppedByUser = false
-                    startTunnel(config, xray)
+                    if (!cancelRequested) startTunnel(config, xray)
                 }
             }
         }
@@ -836,7 +840,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 val text = generateSequence(e) { it.cause }
                     .mapNotNull { it.message }.joinToString(" | ")
                 val portBusy = text.contains("address already in use", ignoreCase = true)
-                if (!portBusy || attempt >= 4) throw e
+                if (cancelRequested || !portBusy || attempt >= 4) throw e
                 attempt++
                 Thread.sleep(250L * attempt)
             }

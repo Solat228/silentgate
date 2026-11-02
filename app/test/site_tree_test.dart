@@ -239,4 +239,54 @@ void main() {
           reason: 'нажатие на шеврон не должно рвать туннель');
     });
   });
+
+  group('Virtual grouping of orphan sibling subdomains & live search', () {
+    test('two or more orphan subdomains under same baseDomain form a virtual parent group', () {
+      final t = tree(['other.org', 'api.anthropic.com', 'docs.anthropic.com']);
+      expect(order(t), ['anthropic.com', 'docs.anthropic.com', 'api.anthropic.com', 'other.org']);
+
+      final vRoot = t.firstWhere((e) => e.site.domain == 'anthropic.com');
+      expect(vRoot.isVirtualGroup, isTrue);
+      expect(vRoot.depth, 0);
+      expect(vRoot.descendants, 2);
+      expect(depthOf(t, 'docs.anthropic.com'), 1);
+      expect(depthOf(t, 'api.anthropic.com'), 1);
+
+      // Collapsing virtual group hides its child subdomains cleanly.
+      final collapsedTree = tree(
+        ['other.org', 'api.anthropic.com', 'docs.anthropic.com'],
+        collapsed: {virtualGroupNodeKey('anthropic.com')},
+      );
+      expect(order(collapsedTree), ['anthropic.com', 'other.org']);
+      expect(collapsedTree.first.collapsed, isTrue);
+    });
+
+    test('filterSiteRules keeps matching & family domains and hides unrelated sites', () {
+      const sites = [
+        SiteRule('youtube.com', action: AppAction.tunnel),
+        SiteRule('api.anthropic.com', action: AppAction.tunnel),
+        SiteRule('claude.anthropic.com', action: AppAction.tunnel),
+        SiteRule('github.com', action: AppAction.direct),
+      ];
+      final filtered = filterSiteRules(sites, 'console.anthropic.com');
+      expect(
+        [for (final s in filtered) s.domain],
+        ['api.anthropic.com', 'claude.anthropic.com'],
+      );
+      expect(isSameDomainFamily('console.anthropic.com', 'api.anthropic.com'), isTrue);
+      expect(isSameDomainFamily('youtube.com', 'anthropic.com'), isFalse);
+
+      final uncollapsed = expandCollapsedForSite(
+        currentCollapsed: [
+          splitGroupKey('sites', AppAction.tunnel),
+          virtualGroupNodeKey('anthropic.com'),
+          splitGroupKey('sites', AppAction.direct),
+        ],
+        allSites: sites,
+        domain: 'api.anthropic.com',
+        action: AppAction.tunnel,
+      );
+      expect(uncollapsed, [splitGroupKey('sites', AppAction.direct)]);
+    });
+  });
 }

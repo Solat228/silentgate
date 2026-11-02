@@ -3019,6 +3019,11 @@ class AppState extends ChangeNotifier {
 
   // ── Подключение ─────────────────────────────────────────────────────────────
   Future<void> toggleConnection(AppSettings settings) async {
+    if (_status.state == VpnConnectionState.disconnecting) {
+      markUserDisconnect();
+      await _engine.forceDisconnect();
+      return;
+    }
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
       // Строку «Отключение по команде пользователя» пишет движок: здесь она
       // дублировала его запись, и одно нажатие выглядело в журнале как два.
@@ -3079,6 +3084,15 @@ class AppState extends ChangeNotifier {
       await _engine.disconnect();
     }
   }
+
+  /// Принудительная остановка при повторном нажатии во время «Отключение…».
+  Future<void> forceDisconnect() async {
+    markUserDisconnect();
+    await _engine.forceDisconnect();
+  }
+
+  /// Clash API живого ядра для списка открытых соединений в реальном времени.
+  LiveCoreApi? get connectionsCoreApi => _engine.connectionsCoreApi;
 
   /// Серверы именованных выходов: ключ правила → живые серверы.
   ///

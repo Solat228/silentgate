@@ -95,6 +95,7 @@ for %%f in (%CORES%) do (
   )
 )
 if exist "%PROJECT%\uninstall.bat" copy /Y "%PROJECT%\uninstall.bat" "%REL%\" >nul
+if not defined SILENTGATE_NO_TUN if exist "%BIN%\whitelist-bypass.exe" copy /Y "%BIN%\whitelist-bypass.exe" "%REL%\" >nul
 rem Release общий для обеих сборок: файлы драйвера от прошлой обычной сборки
 rem надо убрать, иначе установщик Inno заберёт их из папки целиком.
 if defined SILENTGATE_NO_TUN (

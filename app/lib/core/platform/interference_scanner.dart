@@ -64,9 +64,11 @@ class InterferenceScanner {
   static Future<List<Interference>> _scanProxy() async {
     try {
       final key = r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
-      final en = await Process.run('reg', ['query', key, '/v', 'ProxyEnable']);
+      final en = await Process.run('reg', ['query', key, '/v', 'ProxyEnable'])
+          .timeout(const Duration(milliseconds: 1500));
       if (!'${en.stdout}'.contains('0x1')) return [];
-      final sv = await Process.run('reg', ['query', key, '/v', 'ProxyServer']);
+      final sv = await Process.run('reg', ['query', key, '/v', 'ProxyServer'])
+          .timeout(const Duration(milliseconds: 1500));
       final out = '${sv.stdout}';
       // Наш прокси — 127.0.0.1:10809; любой другой активный прокси считаем помехой.
       if (out.contains('127.0.0.1:10809')) return [];
@@ -211,9 +213,11 @@ class InterferenceScanner {
   /// так и не исчез, — тогда честнее сказать «закрыл, но подожди», чем молча
   /// подключаться в заведомо плохой момент.
   static Future<bool> waitTunnelGone(
-      {Duration timeout = const Duration(seconds: 6)}) async {
+      {Duration timeout = const Duration(seconds: 3),
+      bool Function()? abort}) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
+      if (abort?.call() ?? false) return false;
       if ((await _foreignTunnelAdapters()).isEmpty) return true;
       await Future<void>.delayed(const Duration(milliseconds: 400));
     }
@@ -302,7 +306,12 @@ class InterferenceScanner {
     final self = Platform.resolvedExecutable.toLowerCase();
     final path = p.path.toLowerCase();
     if (path == self) return true;
-    const mine = {'silentgate.exe', 'sing-box.exe', 'xray.exe'};
+    const mine = {
+      'silentgate.exe',
+      'sing-box.exe',
+      'xray.exe',
+      'whitelist-bypass.exe',
+    };
     if (!mine.contains(p.name.toLowerCase())) return false;
     // Ядро с таким же именем может принадлежать ЧУЖОМУ клиенту (sing-box и Xray
     // используют многие), поэтому «своим» считаем только то, что лежит в нашей
@@ -383,7 +392,8 @@ class InterferenceScanner {
     }
     final image = expectedPath == null ? null : _baseName(expectedPath);
     try {
-      await Process.run('taskkill', killArgs(pid, image: image));
+      await Process.run('taskkill', killArgs(pid, image: image))
+          .timeout(const Duration(milliseconds: 1500));
     } catch (_) {}
     if (!await _alive(pid)) return true;
 
@@ -443,8 +453,11 @@ class InterferenceScanner {
   /// Имя exe процесса по `tasklist` (видит и процессы администратора).
   static Future<String?> _imageName(int pid) async {
     try {
+
+
       final r = await Process.run(
-          'tasklist', ['/FI', 'PID eq $pid', '/NH', '/FO', 'CSV']);
+              'tasklist', ['/FI', 'PID eq $pid', '/NH', '/FO', 'CSV'])
+          .timeout(const Duration(milliseconds: 1500));
       final row = '${r.stdout}'.trim();
       if (!row.startsWith('"')) return null;
       return row.split('","').first.replaceAll('"', '');
@@ -455,7 +468,8 @@ class InterferenceScanner {
 
   static Future<bool> _alive(int pid) async {
     try {
-      final r = await Process.run('tasklist', ['/FI', 'PID eq $pid', '/NH']);
+      final r = await Process.run('tasklist', ['/FI', 'PID eq $pid', '/NH'])
+          .timeout(const Duration(milliseconds: 1500));
       return '${r.stdout}'.contains('$pid');
     } catch (_) {
       return false;

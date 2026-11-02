@@ -7391,6 +7391,198 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Восстановить'**
   String get subBarRestore;
+
+  /// No description provided for @connectButtonCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить'**
+  String get connectButtonCancel;
+
+  /// No description provided for @connectButtonStop.
+  ///
+  /// In ru, this message translates to:
+  /// **'Стоп'**
+  String get connectButtonStop;
+
+  /// No description provided for @connectStepCheckConflicts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка помех…'**
+  String get connectStepCheckConflicts;
+
+  /// No description provided for @connectStepCheckPorts.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка портов…'**
+  String get connectStepCheckPorts;
+
+  /// No description provided for @connectStepDns.
+  ///
+  /// In ru, this message translates to:
+  /// **'DNS…'**
+  String get connectStepDns;
+
+  /// No description provided for @connectStepRelay.
+  ///
+  /// In ru, this message translates to:
+  /// **'Комната звонка…'**
+  String get connectStepRelay;
+
+  /// No description provided for @connectStepCore.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск ядра…'**
+  String get connectStepCore;
+
+  /// No description provided for @connectStepTun.
+  ///
+  /// In ru, this message translates to:
+  /// **'Запуск TUN…'**
+  String get connectStepTun;
+
+  /// No description provided for @connectStepTraffic.
+  ///
+  /// In ru, this message translates to:
+  /// **'Проверка трафика…'**
+  String get connectStepTraffic;
+
+  /// No description provided for @connectStepStopping.
+  ///
+  /// In ru, this message translates to:
+  /// **'Остановка…'**
+  String get connectStepStopping;
+
+  /// No description provided for @connectStepForceKill.
+  ///
+  /// In ru, this message translates to:
+  /// **'Принудительно…'**
+  String get connectStepForceKill;
+
+  /// No description provided for @splitSiteAlreadyExists.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт уже указан, пропуск'**
+  String get splitSiteAlreadyExists;
+
+  /// No description provided for @splitSiteSearchEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ничего не похоже на «{query}» - нажмите «Добавить», чтобы внести сайт'**
+  String splitSiteSearchEmpty(String query);
+
+  /// No description provided for @splitAlwaysReloadOnNewSite.
+  ///
+  /// In ru, this message translates to:
+  /// **'Всегда перезагружать VPN при добавлении нового сайта'**
+  String get splitAlwaysReloadOnNewSite;
+
+  /// No description provided for @splitVirtualGroupBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'поддомены'**
+  String get splitVirtualGroupBadge;
+
+  /// No description provided for @liveConnsBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'Соединения: {count}'**
+  String liveConnsBadge(int count);
+
+  /// No description provided for @liveConnsTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Открытые соединения'**
+  String get liveConnsTitle;
+
+  /// No description provided for @liveConnsSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновляется в реальном времени'**
+  String get liveConnsSubtitle;
+
+  /// No description provided for @liveConnsSectionVpn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через VPN'**
+  String get liveConnsSectionVpn;
+
+  /// No description provided for @liveConnsSectionBlocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Блокируются'**
+  String get liveConnsSectionBlocked;
+
+  /// No description provided for @liveConnsSectionDirect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прямые'**
+  String get liveConnsSectionDirect;
+
+  /// No description provided for @liveConnsEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сейчас активных соединений нет'**
+  String get liveConnsEmpty;
+
+  /// No description provided for @liveConnsUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'В режиме системного прокси без TUN список соединений недоступен'**
+  String get liveConnsUnavailable;
+
+  /// No description provided for @liveConnsRouteMismatchTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Маршруты обновились'**
+  String get liveConnsRouteMismatchTitle;
+
+  /// No description provided for @liveConnsRouteMismatchBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт «{domain}» добавлен в правила, но активный туннель ещё использует прежний список (соединения идут не по новому правилу). Перезагрузить VPN сейчас?'**
+  String liveConnsRouteMismatchBody(String domain);
+
+  /// No description provided for @liveConnsNewSiteReloadBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайт «{domain}» добавлен в список. Перезагрузить VPN сейчас, чтобы новое правило сразу применилось?'**
+  String liveConnsNewSiteReloadBody(String domain);
+
+  /// No description provided for @liveConnsReloadNow.
+  ///
+  /// In ru, this message translates to:
+  /// **'Перезагрузить VPN'**
+  String get liveConnsReloadNow;
+
+  /// No description provided for @updatesTrafficWarningTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Расход трафика подписки'**
+  String get updatesTrafficWarningTitle;
+
+  /// No description provided for @updatesTrafficWarningCheckBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прямой доступ к серверам обновлений сейчас недоступен или весь трафик направлен через VPN. Проверка и скачивание обновления потратят трафик вашей подписки. Продолжить?'**
+  String get updatesTrafficWarningCheckBody;
+
+  /// No description provided for @updatesTrafficWarningDownloadBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скачивание обновления ({sizeMb} МБ) пойдёт через активный VPN и потратит трафик вашей подписки. Продолжить?'**
+  String updatesTrafficWarningDownloadBody(String sizeMb);
+
+  /// No description provided for @updatesTrafficDontShowAgain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Больше не показывать это предупреждение'**
+  String get updatesTrafficDontShowAgain;
+
+  /// No description provided for @updatesContinue.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить'**
+  String get updatesContinue;
 }
 
 class _AppLocalizationsDelegate

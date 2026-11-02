@@ -51,6 +51,28 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // When returning from system overlays like Win+V (Clipboard History), the
+  // VK_LWIN/VK_RWIN key-up was consumed by the overlay, leaving Meta latched
+  // in Flutter when the injected Ctrl+V arrives. Clear any physically released
+  // Win key on reactivation / focus restore.
+  if (flutter_controller_ &&
+      ((message == WM_ACTIVATE && LOWORD(wparam) != WA_INACTIVE) ||
+       message == WM_SETFOCUS)) {
+    const int win_keys[2] = {VK_LWIN, VK_RWIN};
+    for (const int vk : win_keys) {
+      if ((static_cast<USHORT>(::GetAsyncKeyState(vk)) & 0x8000U) == 0U) {
+        const UINT scan =
+            ::MapVirtualKeyW(static_cast<UINT>(vk), MAPVK_VK_TO_VSC);
+        const ULONG_PTR flags =
+            1ULL | (static_cast<ULONG_PTR>(scan & 0xFFU) << 16) |
+            (1ULL << 24) | (1ULL << 30) | (1ULL << 31);
+        (void)flutter_controller_->HandleTopLevelWindowProc(
+            hwnd, WM_KEYUP, static_cast<WPARAM>(vk),
+            static_cast<LPARAM>(flags));
+      }
+    }
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

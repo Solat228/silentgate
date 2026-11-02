@@ -4172,4 +4172,111 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get subBarRestore => '恢复';
+
+  @override
+  String get connectButtonCancel => '取消';
+
+  @override
+  String get connectButtonStop => '停止';
+
+  @override
+  String get connectStepCheckConflicts => '检查冲突…';
+
+  @override
+  String get connectStepCheckPorts => '检查端口…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => '通话房间…';
+
+  @override
+  String get connectStepCore => '启动核心…';
+
+  @override
+  String get connectStepTun => '启动 TUN…';
+
+  @override
+  String get connectStepTraffic => '检查流量…';
+
+  @override
+  String get connectStepStopping => '正在停止…';
+
+  @override
+  String get connectStepForceKill => '强制停止…';
+
+  @override
+  String get splitSiteAlreadyExists => '该网站已存在，已跳过';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return '没有与“$query”相似的网站 - 点击“添加”将其加入';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite => '添加新网站时始终重新加载 VPN';
+
+  @override
+  String get splitVirtualGroupBadge => '子域名';
+
+  @override
+  String liveConnsBadge(int count) {
+    return '连接: $count';
+  }
+
+  @override
+  String get liveConnsTitle => '当前活动连接';
+
+  @override
+  String get liveConnsSubtitle => '实时刷新';
+
+  @override
+  String get liveConnsSectionVpn => '通过 VPN';
+
+  @override
+  String get liveConnsSectionBlocked => '已拦截';
+
+  @override
+  String get liveConnsSectionDirect => '直连';
+
+  @override
+  String get liveConnsEmpty => '当前没有活动连接';
+
+  @override
+  String get liveConnsUnavailable => '无 TUN 的系统代理模式下无法查看连接列表';
+
+  @override
+  String get liveConnsRouteMismatchTitle => '路由规则已更新';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return '网站“$domain”已加入规则，但当前隧道仍在使用旧列表。是否立即重新加载 VPN？';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return '网站“$domain”已添加。是否立即重新加载 VPN 使新规则生效？';
+  }
+
+  @override
+  String get liveConnsReloadNow => '重新加载 VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => '将消耗订阅流量';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      '当前无法直连更新服务器或已开启全局 VPN 模式。检查并下载更新将消耗您的订阅流量，是否继续？';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return '下载更新 ($sizeMb MB) 将通过当前 VPN 进行并消耗您的订阅流量，是否继续？';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => '不再显示此提示';
+
+  @override
+  String get updatesContinue => '继续';
 }

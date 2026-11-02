@@ -59,6 +59,7 @@ class AppUpdatePresenter with WidgetsBindingObserver {
   bool _dialogPending = false;
   String? _linkShownFor;
   bool _permissionShown = false;
+  bool _leftForInstaller = false;
   UpdatePhase? _lastPhase;
 
   /// Подписаться. Зовётся один раз, когда главный экран готов показывать
@@ -68,6 +69,7 @@ class AppUpdatePresenter with WidgetsBindingObserver {
     _attached = true;
     controller.addListener(_onChange);
     controller.beforeUnattendedInstall = _beforeUnattendedInstall;
+    controller.confirmVpnTraffic = _confirmVpnTraffic;
     WidgetsBinding.instance.addObserver(this);
     // Контроллер мог отработать старт раньше, чем мы подписались.
     _onChange();
@@ -80,22 +82,46 @@ class AppUpdatePresenter with WidgetsBindingObserver {
     if (controller.beforeUnattendedInstall == _beforeUnattendedInstall) {
       controller.beforeUnattendedInstall = null;
     }
+    if (controller.confirmVpnTraffic == _confirmVpnTraffic) {
+      controller.confirmVpnTraffic = null;
+    }
     WidgetsBinding.instance.removeObserver(this);
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Android: человек вернулся с экрана «устанавливать из этого приложения»,
-    // а процесс выжил — продолжаем с тем согласием, что он уже дал.
-    // (Если разрешение выдано, система нас убивает, и продолжение берёт на
-    // себя следующий старт — `ConsentMarker`.)
-    if (state == AppLifecycleState.resumed &&
-        controller.phase == UpdatePhase.needsPermission) {
-      _permissionShown = false;
-      unawaited(controller.resumeAfterPermission());
+    if ((state == AppLifecycleState.inactive ||
+            state == AppLifecycleState.paused) &&
+        controller.phase == UpdatePhase.installing) {
+      _leftForInstaller = true;
+      return;
+    }
+    if (state == AppLifecycleState.resumed) {
+      if (controller.phase == UpdatePhase.needsPermission) {
+        _permissionShown = false;
+        unawaited(controller.resumeAfterPermission());
+      } else if (_leftForInstaller &&
+          controller.phase == UpdatePhase.installing &&
+          !controller.busy) {
+        _leftForInstaller = false;
+        controller.recoverFromInstalling();
+      }
     }
   }
 
+  Future<bool> _confirmVpnTraffic({
+    required bool isDownload,
+    int? sizeBytes,
+  }) async {
+    final context = contextOf();
+    if (context == null || !context.mounted) return false;
+    return showUpdateTrafficWarningDialog(
+      context,
+      controller,
+      isDownload: isDownload,
+      sizeBytes: sizeBytes,
+    );
+  }
   void _onChange() {
     final context = contextOf();
     if (context == null || !context.mounted) return;
@@ -206,7 +232,10 @@ class AppUpdatePresenter with WidgetsBindingObserver {
   bool _dialogWanted() {
     final c = controller;
     final offer = c.offer;
-    return c.phase == UpdatePhase.available &&
+    final readyFromLastRun = c.phase == UpdatePhase.ready &&
+        c.restoredFromStaging &&
+        !c.waitingForVpnOff;
+    return (c.phase == UpdatePhase.available || readyFromLastRun) &&
         offer != null &&
         !c.lastCheckManual &&
         !c.postponed &&

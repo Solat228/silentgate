@@ -168,19 +168,47 @@ class SingboxProcess {
     CoreCleanup.unregister(proc);
     proc.kill();
     await proc.exitCode.timeout(
-      const Duration(seconds: 3),
+      const Duration(milliseconds: 800),
       onTimeout: () {
+        if (Platform.isWindows) {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        }
         proc.kill(ProcessSignal.sigkill);
         return -1;
       },
     );
     // Дожидаемся ДОСТАВКИ вывода: `exitCode` завершается раньше, чем stdout
     // и stderr дочитаны до конца, — последние строки иначе теряются.
-    await outputDone.timeout(const Duration(seconds: 2), onTimeout: () {});
+    await outputDone.timeout(const Duration(milliseconds: 300), onTimeout: () {});
     AppLog.i('Прокси-ядро sing-box остановлено');
     final log = _log;
     _log = null;
     await log?.close();
+    _tail.clear();
+    _drains.clear();
+    _stopping = false;
+  }
+
+  void forceKill() {
+    final proc = _process;
+    _process = null;
+    _stopping = true;
+    if (proc != null) {
+      CoreCleanup.unregister(proc);
+      if (Platform.isWindows) {
+        try {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        } catch (_) {}
+      }
+      try {
+        proc.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    }
+    final log = _log;
+    _log = null;
+    unawaited(log?.close() ?? Future<void>.value());
     _tail.clear();
     _drains.clear();
     _stopping = false;

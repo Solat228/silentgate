@@ -936,6 +936,14 @@ class AppSettings {
   /// вместо него — окно согласия ([deviceInfoConsent]).
   final bool deviceInfoNoticeShown;
 
+  /// Всегда автоматически перезагружать живой VPN при добавлении нового сайта
+  /// в раздельное туннелирование (без повторного вопроса).
+  final bool alwaysReloadVpnOnNewSite;
+
+  /// Больше не показывать предупреждение о расходе трафика подписки при
+  /// проверке и скачивании обновлений приложения через VPN.
+  final bool skipUpdateVpnTrafficWarning;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -1056,6 +1064,8 @@ class AppSettings {
     this.betaChannel = false,
     this.deviceInfoConsent,
     this.deviceInfoNoticeShown = false,
+    this.alwaysReloadVpnOnNewSite = false,
+    this.skipUpdateVpnTrafficWarning = false,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -1187,6 +1197,8 @@ class AppSettings {
     bool? betaChannel,
     bool? deviceInfoConsent,
     bool? deviceInfoNoticeShown,
+    bool? alwaysReloadVpnOnNewSite,
+    bool? skipUpdateVpnTrafficWarning,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -1289,6 +1301,10 @@ class AppSettings {
       deviceInfoConsent: deviceInfoConsent ?? this.deviceInfoConsent,
       deviceInfoNoticeShown:
           deviceInfoNoticeShown ?? this.deviceInfoNoticeShown,
+      alwaysReloadVpnOnNewSite:
+          alwaysReloadVpnOnNewSite ?? this.alwaysReloadVpnOnNewSite,
+      skipUpdateVpnTrafficWarning:
+          skipUpdateVpnTrafficWarning ?? this.skipUpdateVpnTrafficWarning,
     );
   }
 
@@ -1386,6 +1402,8 @@ class AppSettings {
         'betaChannel': betaChannel,
         'deviceInfoConsent': deviceInfoConsent,
         'deviceInfoNoticeShown': deviceInfoNoticeShown,
+        'alwaysReloadVpnOnNewSite': alwaysReloadVpnOnNewSite,
+        'skipUpdateVpnTrafficWarning': skipUpdateVpnTrafficWarning,
       };
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
@@ -1641,6 +1659,10 @@ class AppSettings {
           ? j['deviceInfoConsent'] as bool
           : null,
       deviceInfoNoticeShown: j['deviceInfoNoticeShown'] == true,
+      alwaysReloadVpnOnNewSite: j['alwaysReloadVpnOnNewSite'] as bool? ??
+          defaults.alwaysReloadVpnOnNewSite,
+      skipUpdateVpnTrafficWarning: j['skipUpdateVpnTrafficWarning'] as bool? ??
+          defaults.skipUpdateVpnTrafficWarning,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.

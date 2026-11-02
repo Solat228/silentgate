@@ -139,12 +139,12 @@ class UpdateInstallerAndroid extends StagedUpdateInstaller {
       final name = entry.uri.pathSegments
           .lastWhere((s) => s.isNotEmpty, orElse: () => '');
       if (name == PendingInstall.fileName) continue;
-      if (keepVersion != null &&
-          keepVersion.isNotEmpty &&
-          name.contains(keepVersion)) {
-        continue;
-      }
-      try {
+      if (keepVersion != null && keepVersion.isNotEmpty) {
+        if (name == StagedUpdateInstaller.stagedMetadataFileName ||
+            StagedUpdateInstaller.nameBelongsToVersion(name, keepVersion)) {
+          continue;
+        }
+      }      try {
         entry.deleteSync(recursive: true);
       } catch (_) {
         // Файл занят установщиком — уберём в следующий раз.

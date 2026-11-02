@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../models/vpn_server.dart';
 import '../platform/app_log.dart';
+import '../platform/core_cleanup.dart';
 import '../../engine/windows/xray_paths.dart';
 
 /// Эндпоинты медиа-серверов белых списков для прямого роутинга (direct).
@@ -119,7 +120,8 @@ class WhitelistBypassProcess {
     required VpnServer server,
     int socksPort = 10855,
     String? executablePath,
-    Duration timeout = const Duration(seconds: 35),
+    Duration timeout = const Duration(seconds: 20),
+    bool Function()? abort,
   }) async {
     if (_process != null) {
       await stop();
@@ -161,6 +163,7 @@ class WhitelistBypassProcess {
     AppLog.i('Запуск релея обхода БС: $exe ${args.join(" ")}');
 
     final proc = await Process.start(exe, args, mode: ProcessStartMode.normal);
+    CoreCleanup.register(proc);
     _process = proc;
 
     // Чтение stdout построчно для протокола handshake и DNS-резолвинга
@@ -187,6 +190,7 @@ class WhitelistBypassProcess {
 
     proc.exitCode.then((code) {
       _exited = true;
+      CoreCleanup.unregister(proc);
       AppLog.i('Процесс релея завершился с кодом $code');
       if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
         _connectCompleter!.completeError(
@@ -196,10 +200,35 @@ class WhitelistBypassProcess {
     });
 
     try {
-      await _connectCompleter!.future.timeout(timeout);
+      await _waitConnectedOrAborted(timeout, abort);
     } on TimeoutException {
       await stop();
       throw TimeoutException('Превышено время ожидания подключения к комнате видеозвонка ($timeout)');
+    }
+  }
+
+  Future<void> _waitConnectedOrAborted(
+      Duration timeout, bool Function()? abort) async {
+    final completer = _connectCompleter!;
+    Timer? poll;
+    if (abort != null) {
+      poll = Timer.periodic(const Duration(milliseconds: 200), (t) {
+        if ((abort()) && !completer.isCompleted) {
+          t.cancel();
+          completer.completeError(
+              const SocketException('Подключение отменено пользователем'));
+        }
+      });
+    }
+    try {
+      await completer.future.timeout(timeout);
+    } catch (e) {
+      if (abort?.call() ?? false) {
+        await stop();
+      }
+      rethrow;
+    } finally {
+      poll?.cancel();
     }
   }
 
@@ -258,7 +287,9 @@ class WhitelistBypassProcess {
 
   void _resolveAndReply(Process proc, String hostname) {
     AppLog.d('Релей запросил резолв: $hostname');
-    InternetAddress.lookup(hostname).then((addrs) {
+    InternetAddress.lookup(hostname)
+        .timeout(const Duration(seconds: 3))
+        .then((addrs) {
       if (addrs.isEmpty) {
         proc.stdin.writeln('');
         return;
@@ -283,15 +314,38 @@ class WhitelistBypassProcess {
   }
 
   /// Остановка релея.
+  void forceKill() {
+    final p = _process;
+    _process = null;
+    if (p != null) {
+      CoreCleanup.unregister(p);
+      if (Platform.isWindows) {
+        try {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${p.pid}'],
+              mode: ProcessStartMode.detached);
+        } catch (_) {}
+      }
+      try {
+        p.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    }
+    _exited = true;
+  }
+
   Future<void> stop() async {
     final p = _process;
     _process = null;
     if (p != null && !_exited) {
       try {
+        CoreCleanup.unregister(p);
         p.kill(ProcessSignal.sigterm);
         await p.exitCode.timeout(
-          const Duration(seconds: 2),
+          const Duration(milliseconds: 800),
           onTimeout: () {
+            if (Platform.isWindows) {
+              Process.start('taskkill', ['/F', '/T', '/PID', '${p.pid}'],
+                  mode: ProcessStartMode.detached);
+            }
             p.kill(ProcessSignal.sigkill);
             return -1;
           },

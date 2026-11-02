@@ -16,6 +16,7 @@ import '../state/app_state.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
+import 'widgets/extended_clipboard.dart';
 import 'widgets/flag_cell.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
@@ -408,6 +409,8 @@ class _KeyInputState extends State<_KeyInput> {
         const SizedBox(height: 8),
         TextField(
           controller: _controller,
+          contentInsertionConfiguration:
+              buildExtendedContentInsertion(_controller),
           minLines: 1,
           maxLines: 3,
           decoration: const InputDecoration(

@@ -4343,4 +4343,113 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get subBarRestore => 'بازیابی';
+
+  @override
+  String get connectButtonCancel => 'لغو';
+
+  @override
+  String get connectButtonStop => 'توقف';
+
+  @override
+  String get connectStepCheckConflicts => 'بررسی تداخل…';
+
+  @override
+  String get connectStepCheckPorts => 'بررسی پورت‌ها…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'اتاق تماس…';
+
+  @override
+  String get connectStepCore => 'اجرای هسته…';
+
+  @override
+  String get connectStepTun => 'اجرای TUN…';
+
+  @override
+  String get connectStepTraffic => 'بررسی ترافیک…';
+
+  @override
+  String get connectStepStopping => 'در حال توقف…';
+
+  @override
+  String get connectStepForceKill => 'توقف فوری…';
+
+  @override
+  String get splitSiteAlreadyExists => 'سایت قبلاً اضافه شده است، رد شد';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return 'موردی شبیه \"$query\" یافت نشد - برای افزودن روی \"افزودن\" بزنید';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'همیشه پس از افزودن سایت جدید، VPN را راه‌اندازی مجدد کن';
+
+  @override
+  String get splitVirtualGroupBadge => 'زیردامنه‌ها';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'اتصال‌ها: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'اتصال‌های باز';
+
+  @override
+  String get liveConnsSubtitle => 'به‌روزرسانی زنده';
+
+  @override
+  String get liveConnsSectionVpn => 'از طریق VPN';
+
+  @override
+  String get liveConnsSectionBlocked => 'مسدودشده';
+
+  @override
+  String get liveConnsSectionDirect => 'مستقیم';
+
+  @override
+  String get liveConnsEmpty => 'در حال حاضر اتصال فعالی وجود ندارد';
+
+  @override
+  String get liveConnsUnavailable =>
+      'فهرست اتصال‌ها در حالت پروکسی سیستم بدون TUN در دسترس نیست';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'مسیرها تغییر کردند';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return 'سایت \"$domain\" در قوانین است اما تونل فعال هنوز از فهرست قبلی استفاده می‌کند. اکنون VPN راه‌اندازی مجدد شود؟';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return 'سایت \"$domain\" اضافه شد. برای اعمال فوری قانون، VPN راه‌اندازی مجدد شود؟';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'راه‌اندازی مجدد VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => 'مصرف ترافیک اشتراک';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'دسترسی مستقیم به سرورهای به‌روزرسانی برقرار نیست یا تمام ترافیک از VPN عبور می‌کند. بررسی و دانلود به‌روزرسانی از حجم اشتراک شما کم می‌کند. ادامه می‌دهید؟';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'دانلود به‌روزرسانی ($sizeMb مگابایت) از طریق VPN فعال انجام می‌شود و از ترافیک اشتراک شما مصرف می‌کند. ادامه می‌دهید؟';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'دیگر این هشدار نمایش داده نشود';
+
+  @override
+  String get updatesContinue => 'ادامه';
 }

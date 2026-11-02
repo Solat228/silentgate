@@ -119,6 +119,12 @@ abstract class VpnEngine {
   /// путь до сервера. Переопределяет только Windows с поднятым TUN.
   LiveCoreApi? get captureCoreApi => null;
 
+  /// Clash API активного ядра для отображения открытых соединений в реальном
+  /// времени (`GET /connections`). В отличие от [captureCoreApi], доступен и
+  /// на Android (где свой пакет исключён из TUN и пинг не искажается, но список
+  /// открытых соединений в ядре sing-box есть).
+  LiveCoreApi? get connectionsCoreApi => captureCoreApi;
+
   /// Подключиться к выбранному серверу с опциями (вариация обхода, режим захвата, split).
   Future<void> connect(VpnServer server,
       {ConnectionOptions options = const ConnectionOptions()});
@@ -130,6 +136,11 @@ abstract class VpnEngine {
 
   /// Отключиться и вернуть систему в исходное состояние.
   Future<void> disconnect();
+
+  /// Мгновенное принудительное отключение (повторное нажатие на кнопку во время
+  /// «Отключение…»): без мягкого ожидания гасит дочерние процессы и сразу
+  /// переводит состояние в [VpnConnectionState.disconnected].
+  Future<void> forceDisconnect() => disconnect();
 
   /// Отключение ПОД СМЕНУ СЕРВЕРА: погасить ядро, но не снимать захват трафика,
   /// чтобы у машины не мигал маршрут по умолчанию (BACKLOG #30).

@@ -24,7 +24,8 @@ class TunScheduledTask {
   /// Задача зарегистрирована в Планировщике?
   static Future<bool> exists() async {
     try {
-      final r = await Process.run('schtasks', ['/Query', '/TN', taskName]);
+      final r = await Process.run('schtasks', ['/Query', '/TN', taskName])
+          .timeout(const Duration(milliseconds: 1500));
       return r.exitCode == 0;
     } catch (_) {
       return false;
@@ -65,7 +66,8 @@ class TunScheduledTask {
     try {
       final r = await Process.run(
           'schtasks', ['/Query', '/TN', taskName, '/XML'],
-          stdoutEncoding: null);
+          stdoutEncoding: null)
+          .timeout(const Duration(milliseconds: 1500));
       if (r.exitCode != 0) return false;
       final want = await expected();
       return matches(
@@ -247,7 +249,8 @@ class TunScheduledTask {
     try {
       final r = await Process.run(
           'schtasks', ['/Query', '/TN', taskName, '/XML'],
-          stdoutEncoding: null);
+          stdoutEncoding: null)
+          .timeout(const Duration(milliseconds: 1500));
       if (r.exitCode != 0) return 'задачи нет';
       final xml = decodeQueryOutput(r.stdout as List<int>);
       return '«${tag(xml, 'Command')}» «${tag(xml, 'Arguments')}»';
@@ -263,7 +266,8 @@ class TunScheduledTask {
       // Running: при частом переподключении новый старт терялся, пока прошлый
       // инстанс доигрывал. Ждём, пока прошлый завершится (до 5 с), потом стартуем.
       await _waitNotRunning();
-      final r = await Process.run('schtasks', ['/Run', '/TN', taskName]);
+      final r = await Process.run('schtasks', ['/Run', '/TN', taskName])
+          .timeout(const Duration(milliseconds: 1500));
       return r.exitCode == 0;
     } catch (_) {
       return false;
@@ -272,7 +276,7 @@ class TunScheduledTask {
 
   /// Ждать, пока задача НЕ в состоянии Running (или истечёт таймаут).
   static Future<void> _waitNotRunning() async {
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    final deadline = DateTime.now().add(const Duration(milliseconds: 1500));
     while (DateTime.now().isBefore(deadline)) {
       if (!await _isRunning()) return;
       await Future.delayed(const Duration(milliseconds: 250));
@@ -285,7 +289,8 @@ class TunScheduledTask {
       // системной, русский статус «Выполняется» не узнавался бы никогда.
       final r = await Process.run(
           'schtasks', ['/Query', '/TN', taskName, '/FO', 'LIST', '/V'],
-          stdoutEncoding: null);
+          stdoutEncoding: null)
+          .timeout(const Duration(milliseconds: 1500));
       final out = decodeQueryOutput(r.stdout as List<int>);
       // Статус локализован: en «Running», ru «Выполняется».
       return out.contains('Running') || out.contains('Выполняется');
@@ -297,7 +302,8 @@ class TunScheduledTask {
   /// Удалить задачу (кнопка в настройках и деинсталлятор).
   static Future<bool> uninstall() async {
     try {
-      final r = await Process.run('schtasks', ['/Delete', '/TN', taskName, '/F']);
+      final r = await Process.run('schtasks', ['/Delete', '/TN', taskName, '/F'])
+          .timeout(const Duration(milliseconds: 1500));
       if (r.exitCode == 0) return true;
     } catch (_) {}
     // Своя задача обычно удаляется и без прав; если нет — просим их.

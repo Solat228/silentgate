@@ -39,6 +39,7 @@ import 'tun_settings_screen.dart';
 import 'update_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 import 'widgets/data_consent_dialog.dart';
 import 'log_level_labels.dart';
 import 'widgets/flag_text.dart';
@@ -131,6 +132,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: TextField(
               controller: _search,
+              contentInsertionConfiguration: buildExtendedContentInsertion(
+                _search,
+                onInserted: (v) => setState(() => _query = v),
+              ),
               onChanged: (v) => setState(() => _query = v),
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
@@ -2049,6 +2054,14 @@ class _SupportDialogState extends State<_SupportDialog> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _description,
+                  contentInsertionConfiguration: buildExtendedContentInsertion(
+                    _description,
+                    onInserted: (_) {
+                      if (_descriptionMissing) {
+                        setState(() => _descriptionMissing = false);
+                      }
+                    },
+                  ),
                   minLines: 3,
                   maxLines: 6,
                   textCapitalization: TextCapitalization.sentences,
@@ -2568,6 +2581,8 @@ List<SettingsRow> _appearanceRows(
                   width: 90,
                   child: TextFormField(
                     initialValue: '${settings.autoUpdateIntervalHours}',
+                    contentInsertionConfiguration:
+                        buildFocusedExtendedContentInsertion(),
                     enabled: !settings.autoUpdatePreferSubscription,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
@@ -3032,6 +3047,7 @@ List<SettingsRow> _pingRows(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         child: TextFormField(
           initialValue: settings.testUrl,
+          contentInsertionConfiguration: buildFocusedExtendedContentInsertion(),
           decoration: InputDecoration(
             labelText: l.testUrlLabel,
             border: const OutlineInputBorder(),
@@ -3130,6 +3146,7 @@ Future<void> _editLocalProxyCreds(BuildContext context,
           const SizedBox(height: 12),
           TextField(
             controller: user,
+            contentInsertionConfiguration: buildExtendedContentInsertion(user),
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
@@ -3138,6 +3155,7 @@ Future<void> _editLocalProxyCreds(BuildContext context,
           ),
           TextField(
             controller: pass,
+            contentInsertionConfiguration: buildExtendedContentInsertion(pass),
             obscureText: obscure,
             autocorrect: false,
             enableSuggestions: false,

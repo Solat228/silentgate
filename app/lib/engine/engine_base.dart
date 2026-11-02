@@ -175,6 +175,9 @@ abstract class VpnEngineBase implements VpnEngine {
   /// это подключение. Платформа отвечает за себя; база не знает про TUN.
   bool get liveCaptureKept => false;
 
+  @override
+  LiveCoreApi? get connectionsCoreApi => captureCoreApi;
+
   /// ЧТО ИМЕННО УДЕРЖИВАЕТ KILL SWITCH — словами, а не капслоком.
   ///
   /// ⚠️ ЖИВОЙ ПРОГОН В VM 02.09.2026 ПОКАЗАЛ, ЧТО ПРЕЖНЯЯ СТРОКА ВРАЛА.
@@ -400,6 +403,7 @@ abstract class VpnEngineBase implements VpnEngine {
         proxyPort: proxyPort,
         proxyUser: proxyUser,
         proxyPassword: proxyPassword,
+        suspectTimeout: const Duration(milliseconds: 1800),
       );
 
   /// Запустить сквозную проверку канала.
@@ -1095,6 +1099,110 @@ abstract class VpnEngineBase implements VpnEngine {
   ///    задерживать «Подключено» на каждое нажатие незачем;
   ///  * канал, на котором проба не проходила ни разу (см. [_channelProven]).
   @protected
+  /// Проверять ли сквозное прохождение трафика на каждом свежем подключении
+  /// перед объявлением «Подключено» (по умолчанию включено в приложении и
+  /// отключено в модульных тестах без живого прокси, если тест не включил сам).
+  @visibleForTesting
+  bool verifyInitialTraffic = !Platform.environment.containsKey('FLUTTER_TEST');
+
+  /// Быстрая проба для первичной проверки трафика (таймаут ≤ 1.8 с, все мишени
+  /// опрашиваются параллельно).
+  @visibleForTesting
+  TunnelHealth createInitialTrafficProbe({
+    required int proxyPort,
+    required String proxyUser,
+    required String proxyPassword,
+  }) =>
+      createHealthProbe(
+        proxyPort: proxyPort,
+        proxyUser: proxyUser,
+        proxyPassword: proxyPassword,
+      )..markSuspect();
+
+  Future<T?> _raceAbort<T>(Future<T> work, bool Function() aborted) {
+    if (aborted()) return Future.value(null);
+    final c = Completer<T?>();
+    final t = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      if (aborted()) {
+        timer.cancel();
+        if (!c.isCompleted) c.complete(null);
+      }
+    });
+    work.then((v) {
+      t.cancel();
+      if (!c.isCompleted) c.complete(v);
+    }, onError: (Object e, StackTrace st) {
+      t.cancel();
+      if (!c.isCompleted) c.completeError(e, st);
+    });
+    return c.future;
+  }
+
+  /// Обязательная проверка реального трафика на свежем подключении (бюджет ≤ 4 с).
+  /// В режиме «Авто» при провале сразу переключает на запасной сервер;
+  /// в ручном режиме сворачивает ядро и ставит ошибку [StatusTrafficNotFlowing].
+  @protected
+  Future<bool> confirmInitialChannel(bool Function() aborted) async {
+    if (!_freshUserConnect || !verifyInitialTraffic) return true;
+    setStatus(VpnConnectionState.connecting,
+        step: ConnectStep.traffic, message: status.message);
+    final auth = healthProbeAuth;
+    final probe = createInitialTrafficProbe(
+      proxyPort: httpProxyPort,
+      proxyUser: auth.user,
+      proxyPassword: auth.password,
+    );
+    for (var round = 0; round < 2; round++) {
+      if (aborted()) return false;
+      if (round > 0) {
+        await _raceAbort(
+            Future<void>.delayed(const Duration(milliseconds: 250)), aborted);
+        if (aborted()) return false;
+      }
+      final ok = await _raceAbort(probe.probeOnce(), aborted);
+      if (aborted()) return false;
+      if (ok == true) {
+        _channelProven = true;
+        AppLog.i('Сквозная проверка при подключении пройдена '
+            '(${probe.lastOkTarget})');
+        return true;
+      }
+    }
+    if (aborted()) return false;
+    AppLog.e('Ядро поднялось, но сквозная проверка трафика через '
+        '127.0.0.1:$httpProxyPort не прошла.');
+    final cur = session;
+    while (cur != null && _fallbacks.isNotEmpty) {
+      final next = _fallbacks.removeAt(0);
+      AppLog.w('Трафик через ${cur.server.displayName} не идёт - '
+          'переключаюсь на запасной сервер: ${next.displayName}');
+      await teardownCore(
+          keepCapture: keepCaptureBetweenAttempts(cur.options.settings));
+      if (aborted() || _userStopped) return false;
+      _attempt = 0;
+      final resolved = pickOneIpPerHost(await resolveServerHosts([next]));
+      if (aborted() || _userStopped) return false;
+      try {
+        final cfg = configFor(next, cur.options, resolvedIps: resolved);
+        _session = EngineSession(cfg.json, cur.options, [next], cfg.core);
+        setStatus(VpnConnectionState.connecting,
+            step: ConnectStep.core,
+            message: 'Пробую другой сервер: ${next.displayName}…');
+        _retryTimer?.cancel();
+        _retryTimer =
+            Timer(const Duration(milliseconds: 200), () => _runAttempt());
+        return false;
+      } on FormatException catch (e) {
+        AppLog.e('Запасной сервер ${next.displayName} пропущен: ${e.message}');
+      }
+    }
+    await cleanup();
+    setStatus(VpnConnectionState.error,
+        message: 'Туннель подключён, но трафик через него не идёт',
+        text: const StatusTrafficNotFlowing());
+    return false;
+  }
+
   Future<bool> confirmRecoveredChannel(bool Function() aborted) async {
     final recovery = !_freshUserConnect && (_noticedDrop || _attempt > 0);
     if (!recovery) return true;
@@ -1476,7 +1584,8 @@ abstract class VpnEngineBase implements VpnEngine {
       {String? message,
       StatusText? text,
       VpnPhase phase = VpnPhase.normal,
-      bool blocking = false}) {
+      bool blocking = false,
+      ConnectStep step = ConnectStep.none}) {
     // ⚠️ ОШИБКА ПОСЛЕ «ОТКЛЮЧИТЬ» — НЕ ПОКАЗЫВАЕМ (ревью 29.10.2026, L12).
     // Человек нажал «Отключить», пока сторож гасил ядро; `scheduleRetry`
     // честно отказывал (остановлено пользователем), и пять веток вызова
@@ -1505,7 +1614,8 @@ abstract class VpnEngineBase implements VpnEngine {
         text: text,
         phase: phase,
         blocking: blocking || held,
-        offline: offline);
+        offline: offline,
+        step: step);
     if (!_statusController.isClosed) _statusController.add(_status);
   }
 
@@ -1738,7 +1848,8 @@ abstract class VpnEngineBase implements VpnEngine {
       _resolveCache.keys.toSet(),
       (host) async {
         final found =
-            await InternetAddress.lookup(host).timeout(const Duration(seconds: 5));
+            await InternetAddress.lookup(host)
+                .timeout(const Duration(milliseconds: 2500));
         return found.map((a) => a.address).toList();
       },
       onError: (host, e) => errors[host] = e,
@@ -2053,10 +2164,19 @@ abstract class VpnEngineBase implements VpnEngine {
     // Резолвим ДО сборки конфига: с доменом в outbound'е ядро полезло бы за
     // адресом уже из-под поднятого туннеля — и упёрлось бы в собственный
     // перехват DNS (см. SingboxOutboundFactory.build).
-    final EngineSession s;
+    if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      return;
+    }
+    _userStopped = false;
+    _stopCommanded = false;
+    final preGen = newGeneration();
+    setStatus(VpnConnectionState.connecting, step: ConnectStep.dns);
+    final EngineSession? s;
     try {
-      s = await sessionFor(server, options);
+      s = await _raceAbort(
+          sessionFor(server, options), () => _userStopped || isStale(preGen));
     } on XrayDuplicateKeyException catch (e) {
+      if (_userStopped || isStale(preGen)) return;
       // Конфиг сервера отвергнут до запуска ядра (ревью 29.10.2026, H3):
       // без этого исключение уходило в интерфейс необработанным, а статус
       // оставался «Отключено» без объяснения.
@@ -2065,15 +2185,31 @@ abstract class VpnEngineBase implements VpnEngine {
       setStatus(VpnConnectionState.error, message: e.message);
       return;
     }
-    await connectWith(s.configJson, options, s.servers, core: s.core);
+    if (s == null || _userStopped || isStale(preGen)) return;
+    await connectWith(s.configJson, options, s.servers,
+        core: s.core, preStartedGen: preGen);
   }
 
   @override
   Future<void> connectBalancer(List<VpnServer> servers,
       {ConnectionOptions options = const ConnectionOptions()}) async {
-    final s = await balancerSessionFor(servers, options);
-    if (s == null) return;
-    await connectWith(s.configJson, options, s.servers, core: s.core);
+    if (servers.isEmpty) return;
+    if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      return;
+    }
+    _userStopped = false;
+    _stopCommanded = false;
+    final preGen = newGeneration();
+    setStatus(VpnConnectionState.connecting, step: ConnectStep.dns);
+    final s = await _raceAbort(balancerSessionFor(servers, options),
+        () => _userStopped || isStale(preGen));
+    if (_userStopped || isStale(preGen)) return;
+    if (s == null) {
+      setStatus(VpnConnectionState.disconnected);
+      return;
+    }
+    await connectWith(s.configJson, options, s.servers,
+        core: s.core, preStartedGen: preGen);
   }
 
   /// Сессия одиночного сервера — БЕЗ подъёма туннеля.
@@ -2167,8 +2303,11 @@ abstract class VpnEngineBase implements VpnEngine {
 
   Future<void> connectWith(String configJson, ConnectionOptions options,
       List<VpnServer> servers,
-      {ProxyCore core = ProxyCore.xray}) async {
-    if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      {ProxyCore core = ProxyCore.xray, int? preStartedGen}) async {
+    if (preStartedGen != null) {
+      if (_userStopped || isStale(preStartedGen) || _status.isConnected) return;
+    } else if (_status.isConnected ||
+        _status.state == VpnConnectionState.connecting) {
       return;
     }
     // Запоминаем сессию — по ней восстанавливаемся при обрыве и смене сети.
@@ -2831,8 +2970,48 @@ abstract class VpnEngineBase implements VpnEngine {
       await cleanup();
       return;
     }
-    setStatus(VpnConnectionState.disconnecting);
-    await cleanup();
+    setStatus(VpnConnectionState.disconnecting, step: ConnectStep.stopping);
+    try {
+      await cleanup().timeout(const Duration(seconds: 2));
+    } on TimeoutException {
+      AppLog.w('Отключение превысило 2 с - принудительное завершение');
+      try {
+        await forceKillCleanup().timeout(const Duration(milliseconds: 800));
+      } catch (_) {}
+    }
+    setStatus(VpnConnectionState.disconnected);
+    emitStats(TrafficStats.zero);
+  }
+
+  /// Принудительная зачистка всех процессов и захвата (при повторном нажатии
+  /// во время «Отключение…» или истечении 2-секундного потолка).
+  @protected
+  Future<void> forceKillCleanup() => platformCleanup();
+
+  @override
+  Future<void> forceDisconnect() async {
+    AppLog.w('Принудительное отключение по повторному нажатию');
+    _userStopped = true;
+    _stopCommanded = true;
+    _endBlocking('принудительное отключение');
+    _noticedDrop = false;
+    _noticedFailedAt = null;
+    _stopOffline();
+    _afterOffline = false;
+    _offlineAnnounced = false;
+    _generation++;
+    _session = null;
+    _attempt = 0;
+    _fallbacks = [];
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _connectedAt = null;
+    stopBlockNotice();
+    setStatus(VpnConnectionState.disconnecting,
+        step: ConnectStep.forceKill);
+    try {
+      await forceKillCleanup().timeout(const Duration(milliseconds: 800));
+    } catch (_) {}
     setStatus(VpnConnectionState.disconnected);
     emitStats(TrafficStats.zero);
   }
@@ -2878,7 +3057,7 @@ abstract class VpnEngineBase implements VpnEngine {
     // строки смена сервера просто не делала бы ничего.
     if (_status.state != VpnConnectionState.disconnected) {
       AppLog.i('Смена сервера: гашу ядро, захват оставляю');
-      setStatus(VpnConnectionState.disconnecting);
+      setStatus(VpnConnectionState.disconnecting, step: ConnectStep.stopping);
     }
     await teardownCore(keepCapture: true);
     setStatus(VpnConnectionState.disconnected);

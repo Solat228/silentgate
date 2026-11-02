@@ -220,6 +220,8 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
   /// Имя подкаталога закачек внутри корня данных.
   static const stagingDirName = 'updates';
 
+  static const stagedMetadataFileName = 'staged.json';
+
   @override
   Future<bool> canInstallNow() async => true;
 
@@ -310,6 +312,11 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
       // `pending.json` — забота reconcileAfterStart: чистка, вызванная до
       // разбора, не имеет права стереть итог установки.
       if (name == PendingInstall.fileName) continue;
+      if (keepVersion != null &&
+          keepVersion.isNotEmpty &&
+          name == stagedMetadataFileName) {
+        continue;
+      }
       if (keepVersion != null &&
           keepVersion.isNotEmpty &&
           nameBelongsToVersion(name, keepVersion)) {

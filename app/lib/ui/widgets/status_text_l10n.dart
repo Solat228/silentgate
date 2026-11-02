@@ -11,6 +11,20 @@ String? statusLine(AppLocalizations l, VpnStatus s) {
   return t == null ? s.message : statusTextL10n(l, t);
 }
 
+/// Короткая подпись текущего шага подключения/отключения внутри кнопки Connect.
+String? connectStepLabel(AppLocalizations l, ConnectStep step) => switch (step) {
+      ConnectStep.none => null,
+      ConnectStep.checkConflicts => l.connectStepCheckConflicts,
+      ConnectStep.checkPorts => l.connectStepCheckPorts,
+      ConnectStep.dns => l.connectStepDns,
+      ConnectStep.relay => l.connectStepRelay,
+      ConnectStep.core => l.connectStepCore,
+      ConnectStep.tun => l.connectStepTun,
+      ConnectStep.traffic => l.connectStepTraffic,
+      ConnectStep.stopping => l.connectStepStopping,
+      ConnectStep.forceKill => l.connectStepForceKill,
+    };
+
 String statusTextL10n(AppLocalizations l, StatusText t) => switch (t) {
       StatusReconnectBlocked(seconds: final sec, attempt: final a) =>
         l.statusReconnectBlocked(sec, a),

@@ -2,6 +2,7 @@ import '../core/models/vpn_server.dart';
 import '../core/util/country_flag.dart';
 import 'package:country_flags/country_flags.dart';
 import '../state/app_state.dart';
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:file_selector/file_selector.dart';
@@ -33,6 +34,8 @@ import 'widgets/rule_counts_text.dart';
 import 'widgets/rule_import_dialog.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
+import 'widgets/vpn_reload_prompt_dialog.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
 
@@ -122,7 +125,29 @@ Set<SplitHonesty> splitHonestyWarnings(AppSettings s) {
   return out;
 }
 
-class SplitTunnelScreen extends StatelessWidget {
+class _SplitSitesScope extends InheritedWidget {
+  final void Function(String query) onQueryChanged;
+  final void Function(
+    BuildContext context, {
+    required String domain,
+    required int? port,
+    required bool alreadyExisted,
+  }) onSiteSubmitted;
+
+  const _SplitSitesScope({
+    required this.onQueryChanged,
+    required this.onSiteSubmitted,
+    required super.child,
+  });
+
+  static _SplitSitesScope? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<_SplitSitesScope>();
+
+  @override
+  bool updateShouldNotify(_SplitSitesScope oldWidget) => false;
+}
+
+class SplitTunnelScreen extends StatefulWidget {
   const SplitTunnelScreen({super.key, this.openRulePath});
 
   /// Путь правила, к которому нужно сразу открыть диалог настройки.
@@ -133,6 +158,98 @@ class SplitTunnelScreen extends StatelessWidget {
   /// прятать то, что уведомление уже нашло. Диалог правила (`_appDialog`) и
   /// есть место починки — там же переключатель «по имени».
   final String? openRulePath;
+
+  @override
+  State<SplitTunnelScreen> createState() => _SplitTunnelScreenState();
+}
+
+class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
+  String _siteQuery = '';
+  String? _primaryHighlightNodeKey;
+  String? _highlightFamilyDomain;
+  Timer? _highlightTimer;
+  final Map<String, GlobalKey> _siteRowKeys = <String, GlobalKey>{};
+
+  GlobalKey _keyForSiteNode(String nodeKey) =>
+      _siteRowKeys.putIfAbsent(nodeKey, GlobalKey.new);
+
+  @override
+  void dispose() {
+    _highlightTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onSiteQueryChanged(String query) {
+    if (_siteQuery == query) return;
+    setState(() => _siteQuery = query);
+    if (query.trim().isNotEmpty) {
+      final controller = context.read<SettingsController>();
+      if (controller.settings.splitSitesCollapsed) {
+        controller.update((s) => s.copyWith(splitSitesCollapsed: false));
+      }
+    }
+  }
+
+  void _onSiteSubmitted(
+    BuildContext submitContext, {
+    required String domain,
+    required int? port,
+    required bool alreadyExisted,
+  }) {
+    final controller = context.read<SettingsController>();
+    final state = context.read<AppState>();
+    final l = AppLocalizations.of(context);
+    final targetKey =
+        siteNodeKey(SiteRule(domain, port: port, action: AppAction.tunnel));
+
+    _highlightTimer?.cancel();
+    setState(() {
+      _siteQuery = '';
+      _primaryHighlightNodeKey = targetKey;
+      _highlightFamilyDomain = domain;
+    });
+    _highlightTimer = Timer(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      setState(() {
+        _primaryHighlightNodeKey = null;
+        _highlightFamilyDomain = null;
+      });
+    });
+
+    if (alreadyExisted) {
+      AppToast.show(context, l.splitSiteAlreadyExists);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final rowCtx = _siteRowKeys[targetKey]?.currentContext ??
+          _siteRowKeys[virtualGroupNodeKey(baseDomain(domain))]?.currentContext;
+      if (rowCtx != null) {
+        Scrollable.ensureVisible(
+          rowCtx,
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          alignment: 0.28,
+        );
+      }
+    });
+
+    if (!alreadyExisted &&
+        state.status.isConnected &&
+        splitRulesEditableIn(controller.settings.captureMode)) {
+      if (controller.settings.alwaysReloadVpnOnNewSite) {
+        unawaited(state.reconnect(controller.settings));
+      } else {
+        unawaited(showVpnReloadPromptDialog(
+          context,
+          domain: domain,
+          settingsController: controller,
+          appState: state,
+          isLiveMismatch: false,
+        ));
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +495,13 @@ class SplitTunnelScreen extends StatelessWidget {
                   // Уведомление о блокировке — рядом со списком, который его
                   // и порождает, но ВЫШЕ самого списка: иначе до галочки
                   // пришлось бы прокручивать все правила.
+                  SwitchListTile(
+                    secondary: const Icon(Icons.sync_outlined),
+                    value: controller.settings.alwaysReloadVpnOnNewSite,
+                    onChanged: (v) => controller.update(
+                        (s) => s.copyWith(alwaysReloadVpnOnNewSite: v)),
+                    title: Text(l.splitAlwaysReloadOnNewSite),
+                  ),
                   if (st.sites.any((x) => x.action == AppAction.block))
                     SwitchListTile(
                       secondary:
@@ -389,26 +513,43 @@ class SplitTunnelScreen extends StatelessWidget {
                       subtitle: SelText(l.blockNoticeSub,
                           style: Theme.of(context).textTheme.bodySmall),
                     ),
-                  // Те же подгруппы, что у приложений; внутри — дерево
-                  // поддоменов, каждый узел с потомками сворачивается.
-                  if (!controller.settings.splitSitesCollapsed)
-                  ...groupRulesByAction(st.sites, (x) => x.action).expand((g) => [
+                  if (!controller.settings.splitSitesCollapsed) ...[
+                  if (_siteQuery.trim().isNotEmpty &&
+                      filterSiteRules(st.sites, _siteQuery).isEmpty)
+                    Padding(
+                      key: const Key('splitSiteSearchEmpty'),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                      child: SelText(
+                        l.splitSiteSearchEmpty(_siteQuery.trim()),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: Theme.of(context).hintColor),
+                      ),
+                    ),
+                  ...groupRulesByAction(
+                          filterSiteRules(st.sites, _siteQuery), (x) => x.action)
+                      .expand((g) => [
                   _groupHeader(context, controller, l,
                       list: 'sites', action: g.action, count: g.rules.length),
-                  if (!controller.settings.splitCollapsed
-                      .contains(splitGroupKey('sites', g.action)))
+                  if (_siteQuery.trim().isNotEmpty ||
+                      !controller.settings.splitCollapsed
+                          .contains(splitGroupKey('sites', g.action)))
                   ...siteTreeRows(
-                    [for (final x in st.sites) if (x.action == g.action) x],
-                    collapsed: controller.settings.splitCollapsed.toSet(),
+                    [
+                      for (final x in filterSiteRules(st.sites, _siteQuery))
+                        if (x.action == g.action) x
+                    ],
+                    collapsed: _siteQuery.trim().isNotEmpty
+                        ? const <String>{}
+                        : controller.settings.splitCollapsed.toSet(),
                   ).expand((e) => [
-                        // Разделитель между корневыми доменами: без него
-                        // соседние сайты читаются как один список, и поддомен
-                        // одного домена выглядит принадлежащим предыдущему.
                         if (e.newGroup)
                           const Divider(height: 1, thickness: 1, indent: 16, endIndent: 16),
                         _siteTile(context, controller, e),
                       ]),
                   ]),
+                  ],
                   // ⚠️ Побочный эффект правил по сайтам, о котором нельзя
                   // молчать: приложение глушит HTTP/3 для ВСЕГО трафика, а не
                   // только для перечисленных доменов. Иначе правило по сайту
@@ -461,16 +602,19 @@ class SplitTunnelScreen extends StatelessWidget {
       ),
     );
 
-    final path = openRulePath;
-    if (path == null) return scaffold;
+    final scoped = _SplitSitesScope(
+      onQueryChanged: _onSiteQueryChanged,
+      onSiteSubmitted: _onSiteSubmitted,
+      child: scaffold,
+    );
+    final path = widget.openRulePath;
+    if (path == null) return scoped;
     final matches = st.apps.where((r) => r.path == path).toList();
-    if (matches.isEmpty) return scaffold;
+    if (matches.isEmpty) return scoped;
     return _OpenRuleOnce(
-      // Ключ на путь: возврат на этот же экран с ДРУГИМ правилом обязан снова
-      // открыть диалог, а не молчать по памяти о прошлом.
       key: ValueKey('openRuleOnce:$path'),
       onShow: () => _appDialog(context, controller, matches.first),
-      child: scaffold,
+      child: scoped,
     );
   }
 
@@ -907,25 +1051,34 @@ class SplitTunnelScreen extends StatelessWidget {
       BuildContext context, SettingsController controller, SiteTreeRow row) {
     final state = context.read<AppState>();
     final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
     final site = row.site;
     final depth = row.depth;
     final indent = 16.0 + depth * 22.0;
-    final nodeKey = siteNodeKey(site);
-    return ListTile(
-      key: ValueKey('site:${site.domain}|${site.port ?? ''}'),
-      contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
-      leading: Row(mainAxisSize: MainAxisSize.min, children: [
-        if (depth > 0)
-          Icon(Icons.subdirectory_arrow_right,
-              size: 18, color: Theme.of(context).disabledColor),
-        // Узел с поддоменами сворачивается; свёрнутый показывает, сколько
-        // строк спрятано, иначе его не отличить от одиночного сайта.
-        if (row.descendants > 0)
+    final nodeKey = row.nodeKey;
+
+    final isPrimary = !row.isVirtualGroup && _primaryHighlightNodeKey == nodeKey;
+    final inSubmittedFamily = _highlightFamilyDomain != null &&
+        isSameDomainFamily(site.domain, _highlightFamilyDomain!);
+    final liveNorm = normalizeDomain(_siteQuery);
+    final inLiveFamily = liveNorm.contains('.') &&
+        isSameDomainFamily(site.domain, liveNorm);
+    final highlighted = isPrimary || inSubmittedFamily || inLiveFamily;
+
+    void toggleNode() => controller.update((s) => s.copyWith(
+        splitCollapsed: toggleCollapsedKey(s.splitCollapsed, nodeKey)));
+
+    Widget tile;
+    if (row.isVirtualGroup) {
+      tile = ListTile(
+        key: ValueKey('vgroup:${site.domain}'),
+        dense: true,
+        contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
+        leading: Row(mainAxisSize: MainAxisSize.min, children: [
           InkWell(
             key: ValueKey('toggle:$nodeKey'),
             borderRadius: BorderRadius.circular(12),
-            onTap: () => controller.update((s) => s.copyWith(
-                splitCollapsed: toggleCollapsedKey(s.splitCollapsed, nodeKey))),
+            onTap: toggleNode,
             child: Tooltip(
               message: row.collapsed
                   ? l.splitExpandSubdomains
@@ -942,53 +1095,121 @@ class SplitTunnelScreen extends StatelessWidget {
               ),
             ),
           ),
-        // ⚠️ Открытый замок — ровно то же предупреждение, что показывает
-        // браузер. `http://` означает, что провайдер видит соединение целиком:
-        // и адрес страницы, и параметры запроса, и содержимое. Правило от
-        // этого не спасает — оно решает, КУДА идёт трафик, а не шифрует его.
-        // Показываем только когда схему написал сам пользователь: додумывать
-        // за него, чего он не писал, нельзя.
-        if (site.insecureScheme)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(end: 4),
-            child: Tooltip(
-              message: l.siteInsecureScheme,
-              child: Icon(Icons.no_encryption_gmailerrorred_outlined,
-                  size: 18, color: Theme.of(context).colorScheme.error),
+          SiteFavicon(domain: site.domain),
+        ]),
+        title: Row(children: [
+          Flexible(
+            child: Text(
+              site.domain,
+              textDirection: TextDirection.ltr,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
-        SiteFavicon(domain: site.domain),
-      ]),
-      // ⚠️ У ПОДДОМЕНА ПОКАЗЫВАЕМ ТОЛЬКО ЕГО ЧАСТЬ, а общий хвост приглушаем.
-      // Иначе в столбце стоят три почти одинаковые строки, отличающиеся первым
-      // словом, и разница между `xtls.github.io` и `github.io` теряется — а от
-      // неё зависит, какое правило сработает.
-      title: depth > 0
-          ? _SubdomainLabel(site: site)
-          : Text(site.label,
-              textDirection: TextDirection.ltr,
-              style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: _ruleSubtitle(
-          context,
-          site.port != null ? l.splitOnlyPort(site.port!) : null,
-          action: site.action,
-          allowRealIp: site.allowRealIp,
-          noRealIp: controller.settings.noRealIp),
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        ServerBadge(
-            servers: state.servers,
-            serverKey: site.serverKey,
-            action: site.action),
-        _ActionChip(action: site.action),
-        // Показать заглушку вручную.
-        //
-        IconButton(
-          tooltip: l.splitRemove,
-          icon: const Icon(Icons.delete_outline),
-          onPressed: () => _removeSite(controller, site),
-        ),
-      ]),
-      onTap: () => _siteDialog(context, controller, site),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              l.splitVirtualGroupBadge,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        ]),
+        onTap: toggleNode,
+      );
+    } else {
+      tile = ListTile(
+        key: ValueKey('site:${site.domain}|${site.port ?? ''}'),
+        contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
+        leading: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (depth > 0)
+            Icon(Icons.subdirectory_arrow_right,
+                size: 18, color: Theme.of(context).disabledColor),
+          if (row.descendants > 0)
+            InkWell(
+              key: ValueKey('toggle:$nodeKey'),
+              borderRadius: BorderRadius.circular(12),
+              onTap: toggleNode,
+              child: Tooltip(
+                message: row.collapsed
+                    ? l.splitExpandSubdomains
+                    : l.splitCollapseSubdomains,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 4),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(row.collapsed ? Icons.chevron_right : Icons.expand_more,
+                        size: 20),
+                    if (row.collapsed)
+                      Text('+${row.descendants}',
+                          style: Theme.of(context).textTheme.bodySmall),
+                  ]),
+                ),
+              ),
+            ),
+          if (site.insecureScheme)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 4),
+              child: Tooltip(
+                message: l.siteInsecureScheme,
+                child: Icon(Icons.no_encryption_gmailerrorred_outlined,
+                    size: 18, color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          SiteFavicon(domain: site.domain),
+        ]),
+        title: depth > 0
+            ? _SubdomainLabel(site: site)
+            : Text(site.label,
+                textDirection: TextDirection.ltr,
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: _ruleSubtitle(
+            context,
+            site.port != null ? l.splitOnlyPort(site.port!) : null,
+            action: site.action,
+            allowRealIp: site.allowRealIp,
+            noRealIp: controller.settings.noRealIp),
+        trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+          ServerBadge(
+              servers: state.servers,
+              serverKey: site.serverKey,
+              action: site.action),
+          _ActionChip(action: site.action),
+          IconButton(
+            tooltip: l.splitRemove,
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _removeSite(controller, site),
+          ),
+        ]),
+        onTap: () => _siteDialog(context, controller, site),
+      );
+    }
+
+    return AnimatedContainer(
+      key: _keyForSiteNode(nodeKey),
+      duration: const Duration(milliseconds: 220),
+      margin: highlighted
+          ? const EdgeInsets.symmetric(horizontal: 8, vertical: 2)
+          : EdgeInsets.zero,
+      decoration: highlighted
+          ? BoxDecoration(
+              color: scheme.primary.withValues(alpha: isPrimary ? 0.14 : 0.07),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isPrimary
+                    ? scheme.primary
+                    : scheme.primary.withValues(alpha: 0.7),
+                width: isPrimary ? 2.0 : 1.3,
+              ),
+            )
+          : null,
+      child: tile,
     );
   }
 
@@ -2042,6 +2263,10 @@ class _RuleDialogState extends State<_RuleDialog> {
             TextField(
               controller: _port,
               keyboardType: TextInputType.number,
+              contentInsertionConfiguration: buildExtendedContentInsertion(
+                _port,
+                onInserted: (_) => _applyPort(),
+              ),
               decoration: InputDecoration(
                 isDense: true,
                 border: const OutlineInputBorder(),
@@ -2117,15 +2342,32 @@ class _AddSiteFieldState extends State<_AddSiteField> {
   final _portController = TextEditingController();
   String? _error;
 
+  void _notifyQuery() {
+    final dom = _controller.text;
+    final p = _portController.text.trim();
+    final combined =
+        (p.isNotEmpty && dom.isNotEmpty && !dom.contains(':')) ? '$dom:$p' : dom;
+    _SplitSitesScope.maybeOf(context)?.onQueryChanged(combined);
+    setState(() {
+      if (_error != null && dom.trim().isNotEmpty) _error = null;
+    });
+  }
+
+  void _clearSearch() {
+    _controller.clear();
+    _portController.clear();
+    setState(() => _error = null);
+    _SplitSitesScope.maybeOf(context)?.onQueryChanged('');
+  }
+
   void _add() {
     final l = AppLocalizations.of(context);
-    // https://www.EXAMPLE.com:8443/lk → домен example.com, порт 8443.
-    final domain = normalizeDomain(_controller.text);
+    final rawInput = _controller.text;
+    final domain = normalizeDomain(rawInput);
     if (domain.isEmpty) {
       setState(() => _error = l.splitEnterDomain);
       return;
     }
-    // Порт: приоритет у отдельного поля, иначе — из самой строки домена.
     int? port;
     final rawPort = _portController.text.trim();
     if (rawPort.isNotEmpty) {
@@ -2135,24 +2377,46 @@ class _AddSiteFieldState extends State<_AddSiteField> {
         return;
       }
     } else {
-      port = extractPort(_controller.text);
+      port = extractPort(rawInput);
     }
+
+    final existed =
+        widget.controller.settings.splitTunnel.containsSite(domain, port: port);
     widget.controller.update((s) {
-      if (s.splitTunnel.containsSite(domain, port: port)) return s;
+      final existingRule = s.splitTunnel.sites
+          .where(
+              (x) => x.domain.toLowerCase() == domain.toLowerCase() && x.port == port)
+          .firstOrNull;
+      final effectiveAction = existingRule?.action ?? s.splitTunnel.defaultAction;
+      final nextSites = existingRule != null
+          ? s.splitTunnel.sites
+          : [
+              ...s.splitTunnel.sites,
+              SiteRule(domain,
+                  port: port,
+                  action: effectiveAction,
+                  insecureScheme: hasInsecureScheme(rawInput)),
+            ];
       return s.copyWith(
-          splitTunnel: s.splitTunnel.copyWith(
-              sites: [...s.splitTunnel.sites,
-                SiteRule(domain,
-                    port: port,
-                    action: s.splitTunnel.defaultAction,
-                    // Схему запоминаем ТОЛЬКО если пользователь написал её сам:
-                    // `normalizeDomain` её срезает, и после этого отличить
-                    // «http://site.com» от «site.com» уже нельзя.
-                    insecureScheme: hasInsecureScheme(_controller.text))]));
+        splitSitesCollapsed: false,
+        splitCollapsed: expandCollapsedForSite(
+          currentCollapsed: s.splitCollapsed,
+          allSites: nextSites,
+          domain: domain,
+          action: effectiveAction,
+        ),
+        splitTunnel: s.splitTunnel.copyWith(sites: nextSites),
+      );
     });
     _controller.clear();
     _portController.clear();
     setState(() => _error = null);
+    _SplitSitesScope.maybeOf(context)?.onSiteSubmitted(
+      context,
+      domain: domain,
+      port: port,
+      alreadyExisted: existed,
+    );
   }
 
   @override
@@ -2165,18 +2429,32 @@ class _AddSiteFieldState extends State<_AddSiteField> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final hasQuery =
+        _controller.text.isNotEmpty || _portController.text.isNotEmpty;
     return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Expanded(
         flex: 3,
         child: TextField(
           controller: _controller,
+          contentInsertionConfiguration: buildExtendedContentInsertion(
+            _controller,
+            onInserted: (_) => _notifyQuery(),
+          ),
           decoration: InputDecoration(
             hintText: 'youtube.com',
             labelText: l.splitAddSite,
+            prefixIcon: const Icon(Icons.search, size: 18),
+            suffixIcon: hasQuery
+                ? IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: _clearSearch,
+                  )
+                : null,
             border: const OutlineInputBorder(),
             isDense: true,
             errorText: _error,
           ),
+          onChanged: (_) => _notifyQuery(),
           onSubmitted: (_) => _add(),
         ),
       ),
@@ -2186,12 +2464,17 @@ class _AddSiteFieldState extends State<_AddSiteField> {
         child: TextField(
           controller: _portController,
           keyboardType: TextInputType.number,
+          contentInsertionConfiguration: buildExtendedContentInsertion(
+            _portController,
+            onInserted: (_) => _notifyQuery(),
+          ),
           decoration: InputDecoration(
             hintText: l.splitAnyPort,
             labelText: l.splitPort,
             border: const OutlineInputBorder(),
             isDense: true,
           ),
+          onChanged: (_) => _notifyQuery(),
           onSubmitted: (_) => _add(),
         ),
       ),

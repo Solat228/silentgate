@@ -166,6 +166,28 @@ class UpdateHttpResponse {
 
 typedef UpdateFetcher = Future<UpdateHttpResponse> Function(Uri url);
 
+class UpdateProxy {
+  final String host;
+  final int port;
+  final String user;
+  final String password;
+
+  const UpdateProxy({
+    this.host = '127.0.0.1',
+    required this.port,
+    this.user = '',
+    this.password = '',
+  });
+
+  void configure(HttpClient client) {
+    client.findProxy = (_) => 'PROXY $host:$port';
+    if (user.isNotEmpty) {
+      client.addProxyCredentials(
+          host, port, '', HttpClientBasicCredentials(user, password));
+    }
+  }
+}
+
 /// Проверка обновлений самого приложения.
 ///
 /// Этот класс только УЗНАЁТ о новой версии и находит её файлы (актив,
@@ -261,47 +283,52 @@ class AppUpdate {
   static Future<UpdateCheckResult> check({
     Duration timeout = const Duration(seconds: 10),
     UpdateFetcher? fetcher,
+    UpdateProxy? proxy,
     String? assetHint,
     bool beta = false,
-    // ТОЛЬКО для тестов: своя пара ключей. Боевой вызов не передаёт ничего,
-    // и подпись проверяется вшитым ключом.
     String publicKeyBase64 = kUpdatePublicKeyBase64,
   }) async {
     await loadApiOverride();
     final hint = assetHint ?? await _platformHint();
-    final fetch = fetcher ?? _fetch;
+    final fetch =
+        fetcher ?? (proxy == null ? _fetch : fetcherViaProxy(proxy));
     if (kUpdateApiOverridden) {
-      AppLog.i('Проверка обновлений: ТЕСТОВЫЙ адрес API (override), '
-          'http:// для закачки разрешён');
+      AppLog.i('Update check: override API active, http:// allowed');
     }
 
     final primary =
         beta ? await _tryGithubBeta(fetch, hint) : await _tryGithub(fetch, hint);
     if (primary.state != UpdateCheckState.failed) return primary;
 
-    // API не ответил — тот же GitHub через сайт (лента + прямые загрузки).
-    // Раньше запасного сайта: только здесь есть манифест и подпись, то есть
-    // самообновление, а не ссылка.
-    final web = await _tryGithubWeb(fetch, hint,
-        beta: beta, publicKeyBase64: publicKeyBase64);
-    if (web.state != UpdateCheckState.failed) {
-      AppLog.i('Проверка обновлений: api.github.com недоступен, ответил '
-          'github.com');
+    var webBlocked = false;
+    final web = await _tryGithubWeb(
+      fetch,
+      hint,
+      beta: beta,
+      publicKeyBase64: publicKeyBase64,
+      onAssetBlocked: () => webBlocked = true,
+    );
+    if (web.state == UpdateCheckState.upToDate ||
+        (web.state == UpdateCheckState.available &&
+            ((web.release?.canSelfUpdate ?? false) || !webBlocked))) {
       return web;
     }
 
     final backup =
         beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
-    if (backup.state != UpdateCheckState.failed) {
-      AppLog.i('Проверка обновлений: GitHub недоступен, ответил запасной '
-          'источник');
+    if (backup.state == UpdateCheckState.available) {
+      if (web.state == UpdateCheckState.available &&
+          web.release != null &&
+          backup.release != null &&
+          isNewer(web.release!.version, backup.release!.version)) {
+        return web;
+      }
       return backup;
     }
-    // Оба молчат — показываем причину ПЕРВОГО: она конкретнее («лимит»,
-    // «репозиторий закрыт»), чем общее «не удалось связаться» у запасного.
+    if (web.state != UpdateCheckState.failed) return web;
+    if (backup.state != UpdateCheckState.failed) return backup;
     return primary;
   }
-
   static Future<UpdateCheckResult> _tryGithub(
       UpdateFetcher fetch, String hint) async {
     try {
@@ -336,18 +363,18 @@ class AppUpdate {
   /// (кнопка откроет страницу).
   static Future<UpdateCheckResult> _tryGithubWeb(
       UpdateFetcher fetch, String hint,
-      {required bool beta, required String publicKeyBase64}) async {
+      {required bool beta,
+      required String publicKeyBase64,
+      void Function()? onAssetBlocked}) async {
     try {
       final resp = await fetch(Uri.parse(kGithubReleasesFeed));
       if (resp.statusCode != 200) {
-        AppLog.i('Лента релизов github.com: код ${resp.statusCode}');
         return UpdateCheckResult.failed(
-            'Сервер обновлений ответил кодом ${resp.statusCode}');
+            'Update feed HTTP ${resp.statusCode}');
       }
       final entry = pickFeedEntry(parseReleasesFeed(resp.body), beta: beta);
       if (entry == null) {
-        return const UpdateCheckResult.failed(
-            'Сервер обновлений ответил непонятным образом');
+        return const UpdateCheckResult.failed('Malformed update feed');
       }
       final bare = AppRelease(
         version: entry.version,
@@ -357,21 +384,25 @@ class AppUpdate {
         publishedAt: entry.updated,
       );
       if (!bare.isNewer) return UpdateCheckResult.upToDate(bare);
-      final full =
-          await _webSelfUpdate(fetch, hint, entry, bare, publicKeyBase64);
+      final full = await _webSelfUpdate(
+        fetch,
+        hint,
+        entry,
+        bare,
+        publicKeyBase64,
+        onAssetBlocked: onAssetBlocked,
+      );
       return UpdateCheckResult.available(full ?? bare);
     } catch (e) {
-      AppLog.i('Лента релизов github.com недоступна: $e');
+      AppLog.i('github.com releases feed unavailable: $e');
       return const UpdateCheckResult.failed(
-          'Не удалось связаться с сервером обновлений');
+          'Unable to reach update server');
     }
   }
 
-  /// Манифест релиза [entry] с github.com: новое имя, затем прежнее. Подпись
-  /// проверяется уже здесь — иначе предложение «обновить само» строилось бы
-  /// на файле, который потом всё равно отвергнет закачка.
   static Future<AppRelease?> _webSelfUpdate(UpdateFetcher fetch, String hint,
-      GithubFeedEntry entry, AppRelease bare, String publicKeyBase64) async {
+      GithubFeedEntry entry, AppRelease bare, String publicKeyBase64,
+      {void Function()? onAssetBlocked}) async {
     final v = entry.version;
     final pairs = [
       (manifestFileName(v), signatureFileName(v)),
@@ -380,18 +411,29 @@ class AppUpdate {
     for (final (manifestName, sigName) in pairs) {
       final manifestUrl = githubDownloadUrl(entry.tag, manifestName);
       final signatureUrl = githubDownloadUrl(entry.tag, sigName);
-      final m = await fetch(Uri.parse(manifestUrl));
-      if (m.statusCode != 200) continue;
-      final sig = await fetch(Uri.parse(signatureUrl));
-      if (sig.statusCode != 200) continue;
+      final UpdateHttpResponse m;
+      final UpdateHttpResponse sig;
+      try {
+        m = await fetch(Uri.parse(manifestUrl));
+        if (m.statusCode != 200) {
+          if (m.statusCode != 404) onAssetBlocked?.call();
+          continue;
+        }
+        sig = await fetch(Uri.parse(signatureUrl));
+        if (sig.statusCode != 200) {
+          if (sig.statusCode != 404) onAssetBlocked?.call();
+          continue;
+        }
+      } catch (_) {
+        onAssetBlocked?.call();
+        continue;
+      }
       if (!UpdateSignature.verify(utf8.encode(m.body), sig.body.trim(),
           publicKeyBase64: publicKeyBase64)) {
-        AppLog.w('Обновление $v: подпись манифеста $manifestName не сошлась');
         continue;
       }
       final manifest = UpdateManifest.parse(m.body);
       if (manifest == null || normalizeVersion(manifest.version) != v) {
-        AppLog.w('Обновление $v: манифест $manifestName не той версии');
         continue;
       }
       for (final a in manifest.assets) {
@@ -409,18 +451,10 @@ class AppUpdate {
           signatureUrl: signatureUrl,
         );
       }
-      AppLog.i('Обновление $v: в манифесте нет файла под эту платформу');
       return null;
     }
-    AppLog.i('Обновление $v: подписанного манифеста на github.com нет');
     return null;
   }
-
-  /// Записи ленты релизов github.com (`releases.atom`).
-  ///
-  /// Разбор регулярными выражениями, без XML-пакета: из ленты нужны три поля
-  /// на запись, и формат её у GitHub не менялся годами. Запись без тега
-  /// пропускается.
   static List<GithubFeedEntry> parseReleasesFeed(String xml) {
     final out = <GithubFeedEntry>[];
     final entryRe = RegExp(r'<entry>(.*?)</entry>', dotAll: true);
@@ -589,81 +623,67 @@ class AppUpdate {
     required bool beta,
     required String version,
     UpdateFetcher? fetcher,
+    UpdateProxy? proxy,
     String? assetHint,
   }) async {
     try {
       await loadApiOverride();
       final hint = assetHint ?? await _platformHint();
-      final fetch = fetcher ?? _fetch;
+      final fetch =
+          fetcher ?? (proxy == null ? _fetch : fetcherViaProxy(proxy));
       final result =
           beta ? await _tryPanelBeta(fetch, hint) : await _tryPanel(fetch, hint);
       final release = result.release;
       if (release == null) return null;
       if (normalizeVersion(release.version) != normalizeVersion(version)) {
-        AppLog.w('Обновление: у запасного источника версия '
-            '${release.version}, а нужна $version - файлы не беру');
         return null;
       }
       if (!release.canSelfUpdate) {
-        AppLog.w('Обновление: запасной источник не отдаёт манифест, подпись '
-            'и размер для $version - самому не поставить');
         return null;
       }
       return release;
-    } catch (e) {
-      AppLog.i('Запасной источник файлов обновления недоступен: $e');
+    } catch (_) {
       return null;
     }
   }
 
-  /// Прежние версии для кнопки отката — из того же СПИСКА релизов, что и
-  /// бета-канал, поэтому сети не требует ничего сверх того, что уже
-  /// запрашивается при включённой галочке «Получать бета-версии».
-  ///
-  /// ⚠️ ЧЕСТНОСТЬ СПИСКА. Это ровно то, что лежит в GitHub Releases — не
-  /// более. Если там нет какой-то версии (см. `docs/HANDOFF_1.11.0.md` про
-  /// пустой `GITHUB_TOKEN` — релизов 1.11.x не существует), в списке её тоже
-  /// не будет, и это не ошибка приложения.
   static Future<List<AppRelease>> fetchReleaseHistory({
     int limit = 15,
     UpdateFetcher? fetcher,
+    UpdateProxy? proxy,
     String? assetHint,
   }) async {
     await loadApiOverride();
     final hint = assetHint ?? await _platformHint();
-    final fetch = fetcher ?? _fetch;
+    final fetch =
+        fetcher ?? (proxy == null ? _fetch : fetcherViaProxy(proxy));
     try {
       final resp = await fetch(Uri.parse(kGithubReleasesListApi));
-      if (resp.statusCode != 200) return const [];
-      final list = parseGithubReleaseList(resp.body, assetHint: hint);
-      if (list == null) return const [];
-      return list.take(limit).toList();
-    } catch (e) {
-      AppLog.i('Список прежних версий недоступен: $e');
-      return const [];
-    }
+      if (resp.statusCode == 200) {
+        final list = parseGithubReleaseList(resp.body, assetHint: hint);
+        if (list != null) return list.take(limit).toList();
+      }
+    } catch (_) {}
+    try {
+      final feed = await fetch(Uri.parse(kGithubReleasesFeed));
+      if (feed.statusCode == 200) {
+        final entries = parseReleasesFeed(feed.body);
+        if (entries.isNotEmpty) {
+          return entries
+              .take(limit)
+              .map((e) => AppRelease(
+                    version: e.version,
+                    notes: e.notes,
+                    pageUrl: githubTagPage(e.tag),
+                    isBeta: _pre(e.version) != null,
+                    publishedAt: e.updated,
+                  ))
+              .toList();
+        }
+      }
+    } catch (_) {}
+    return const [];
   }
-
-  /// Разбор ответа НАШЕГО сайта. Формат намеренно плоский — его пишет не
-  /// GitHub, а наш бэкенд, и чем меньше в нём мест для ошибки, тем лучше.
-  ///
-  /// ```json
-  /// {"version":"1.5.1","url":"https://…/SilentGateSetup.exe","notes":"…"}
-  /// ```
-  ///
-  /// ⚠️ `url` НЕ обязателен: релиз бывает собран под одну платформу. Тогда
-  /// кнопка ведёт на страницу загрузок — версию мы всё равно узнали.
-  /// ⚠️ И `url` обязан быть `https`: иначе кнопка «Скачать» повела бы человека
-  /// за установщиком по открытому каналу, где его можно подменить. Исключение
-  /// одно — тестовый override адреса API ([isUpdateUrlAllowed]).
-  ///
-  /// ⚠️ Необязательное поле `beta` (булево) либо `channel: "beta"` — признак
-  /// канала. Умолчание `false`: старый ответ панели (ни того, ни другого
-  /// поля нет) ведёт себя ровно как раньше, обратная совместимость полная.
-  ///
-  /// Необязательные поля САМООБНОВЛЕНИЯ: `asset` (точное имя файла), `size`
-  /// (байты), `manifest` и `sig` (адреса манифеста и подписи). Нет любого —
-  /// [AppRelease.canSelfUpdate] ложно, и остаётся прежняя кнопка-ссылка.
   static AppRelease? parsePanelRelease(String body) {
     final Object? j;
     try {
@@ -896,23 +916,33 @@ class AppUpdate {
 
   static Future<UpdateHttpResponse> _fetch(Uri url) async {
     final client = HttpClient()
-      ..connectionTimeout = const Duration(seconds: 10);
-    // ⚠️ «Напрямую» ЗАДАЁТСЯ ЯВНО (идиома `core/probe/proxy_probe.dart`).
-    // Умолчание Dart берёт прокси из окружения (`http_proxy`/`all_proxy`), и
-    // проверка обновлений могла бы уйти через чужой прокси или через порт
-    // нашего же туннеля — и упасть вместе с ним, когда туннель лежит.
+      ..connectionTimeout = const Duration(seconds: 6);
     client.findProxy = (_) => 'DIRECT';
+    return _executeFetch(client, url, timeout: const Duration(seconds: 6));
+  }
+
+  static UpdateFetcher fetcherViaProxy(
+    UpdateProxy proxy, {
+    Duration timeout = const Duration(seconds: 8),
+  }) =>
+      (Uri url) async {
+        final client = HttpClient()..connectionTimeout = timeout;
+        proxy.configure(client);
+        return _executeFetch(client, url, timeout: timeout);
+      };
+
+  static Future<UpdateHttpResponse> _executeFetch(
+    HttpClient client,
+    Uri url, {
+    required Duration timeout,
+  }) async {
     try {
-      final req = await client.getUrl(url);
+      final req = await client.getUrl(url).timeout(timeout);
       req.headers.set(HttpHeaders.userAgentHeader, AppInfo.userAgent);
-      // Без этого GitHub вправе отдать другой формат: версия API закрепляется
-      // заголовком, а не адресом.
       req.headers.set(HttpHeaders.acceptHeader, 'application/vnd.github+json');
-      final resp = await req.close().timeout(const Duration(seconds: 10));
-      final body = await resp
-          .transform(utf8.decoder)
-          .join()
-          .timeout(const Duration(seconds: 10));
+      final resp = await req.close().timeout(timeout);
+      final body =
+          await resp.transform(utf8.decoder).join().timeout(timeout);
       final headers = <String, String>{};
       resp.headers.forEach((k, v) {
         if (v.isNotEmpty) headers[k.toLowerCase()] = v.first;
@@ -922,16 +952,6 @@ class AppUpdate {
       client.close(force: true);
     }
   }
-
-  /// Сравнение версий вида `1.2.3[-beta.N]`.
-  ///
-  /// Три числа решают всё. При равных числах решает суффикс, как в SemVer:
-  /// стабильная `1.14.1` новее своей же беты `1.14.1-beta.2` — иначе человек,
-  /// поставивший бету, так и остался бы на ней, когда вышла стабильная с тем
-  /// же номером. Две беты одного номера сравниваются по номеру беты, но
-  /// только когда он есть у ОБЕИХ: у установленной беты номер неизвестен
-  /// (сборка знает только `AppInfo.isBeta`), и без этой оговорки та же самая
-  /// бета предлагалась бы заново при каждой проверке.
   static bool isNewer(String candidate, String current) {
     final a = _parts(_core(candidate));
     final b = _parts(_core(current));

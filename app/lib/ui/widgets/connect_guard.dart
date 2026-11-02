@@ -18,9 +18,11 @@ import 'app_toast.dart';
 Future<void> connectWithConflictCheck(
   BuildContext context, AppState state, VoidCallback go) async {
   final busy = state.status.isConnected ||
-      state.status.state == VpnConnectionState.connecting;
+      state.status.state == VpnConnectionState.connecting ||
+      state.status.state == VpnConnectionState.disconnecting;
   if (busy) {
-    go(); // это нажатие «Отключить»
+    _cancelCheck = true;
+    go(); // это нажатие «Отключить» / «Отменить» / «Стоп»
     return;
   }
   // ⚠️ Двойное нажатие. Пока идёт проверка помех (и пока статус «подключаюсь»
@@ -29,6 +31,7 @@ Future<void> connectWithConflictCheck(
   // 25.10.2026, I). Второе нажатие в это окно глотается.
   if (_checkInFlight) return;
   _checkInFlight = true;
+  _cancelCheck = false;
   var started = false;
   try {
     await _checkThenConnect(context, () {
@@ -42,10 +45,11 @@ Future<void> connectWithConflictCheck(
 }
 
 bool _checkInFlight = false;
+bool _cancelCheck = false;
 
 /// Сколько после запуска подключения глотаются повторные нажатия.
 @visibleForTesting
-Duration doubleTapWindow = const Duration(milliseconds: 800);
+Duration doubleTapWindow = const Duration(milliseconds: 120);
 
 Future<void> _checkThenConnect(BuildContext context, VoidCallback go) async {
   final conflict = await InterferenceScanner.activeForeignTunnel();
@@ -94,7 +98,8 @@ Future<void> _checkThenConnect(BuildContext context, VoidCallback go) async {
   // Процесс убит, но АДАПТЕР исчезает не мгновенно: система снимает маршруты
   // с задержкой. Подключаться, пока он жив, — значит наступить ровно на ту
   // проблему, от которой только что избавились.
-  final gone = await InterferenceScanner.waitTunnelGone();
+  final gone = await InterferenceScanner.waitTunnelGone(abort: () => _cancelCheck);
+  if (_cancelCheck) return;
   if (!context.mounted) return;
   AppToast.show(context, l.toastAppClosed(app),
       kind: gone ? ToastKind.success : ToastKind.info);

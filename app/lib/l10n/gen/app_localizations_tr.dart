@@ -4364,4 +4364,113 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get subBarRestore => 'Geri yükle';
+
+  @override
+  String get connectButtonCancel => 'İptal';
+
+  @override
+  String get connectButtonStop => 'Durdur';
+
+  @override
+  String get connectStepCheckConflicts => 'Çakışma kontrolü…';
+
+  @override
+  String get connectStepCheckPorts => 'Port kontrolü…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'Arama odası…';
+
+  @override
+  String get connectStepCore => 'Çekirdek başlıyor…';
+
+  @override
+  String get connectStepTun => 'TUN başlıyor…';
+
+  @override
+  String get connectStepTraffic => 'Trafik kontrolü…';
+
+  @override
+  String get connectStepStopping => 'Durduruluyor…';
+
+  @override
+  String get connectStepForceKill => 'Zorla durdur…';
+
+  @override
+  String get splitSiteAlreadyExists => 'Site zaten ekli, atlandı';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return '\"$query\" ile eşleşen site yok - eklemek için \"Ekle\" düğmesine basın';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'Yeni site eklendiğinde VPN\'i her zaman yeniden başlat';
+
+  @override
+  String get splitVirtualGroupBadge => 'alt alan adları';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'Bağlantılar: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'Açık bağlantılar';
+
+  @override
+  String get liveConnsSubtitle => 'Gerçek zamanlı güncellenir';
+
+  @override
+  String get liveConnsSectionVpn => 'VPN üzerinden';
+
+  @override
+  String get liveConnsSectionBlocked => 'Engellenenler';
+
+  @override
+  String get liveConnsSectionDirect => 'Doğrudan';
+
+  @override
+  String get liveConnsEmpty => 'Şu anda etkin bağlantı yok';
+
+  @override
+  String get liveConnsUnavailable =>
+      'TUN olmadan sistem proxy modunda bağlantı listesi kullanılamaz';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'Rotalar güncellendi';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return '\"$domain\" kurallara eklendi ancak etkin tünel hâlâ önceki listeyi kullanıyor. VPN şimdi yeniden başlatılsın mı?';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return '\"$domain\" eklendi. Yeni kuralın hemen uygulanması için VPN şimdi yeniden başlatılsın mı?';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'VPN\'i yeniden başlat';
+
+  @override
+  String get updatesTrafficWarningTitle => 'Abonelik trafiği kullanımı';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'Güncelleme sunucularına doğrudan erişim yok veya tüm trafik VPN üzerinden geçiyor. Güncelleme kontrolü ve indirme abonelik kotanızı kullanır. Devam edilsin mi?';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'Güncelleme indirmesi ($sizeMb MB) etkin VPN üzerinden yapılacak ve abonelik kotanızı kullanacak. Devam edilsin mi?';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'Bu uyarıyı bir daha gösterme';
+
+  @override
+  String get updatesContinue => 'Devam et';
 }
