@@ -1596,18 +1596,42 @@ List<SettingsRow> _aboutRows(
     AppLocalizations l, AppSettings settings, SettingsController controller) {
   return [
     SettingsRow(
-      search: l.aboutVersion,
-      build: (_) => _ValueTile(
-        title: l.aboutVersion,
-        // ⚠️ Канал — из [AppInfo.channel] (свойство СБОРКИ, задано при
-        // компиляции), а не из PackageInfo: версия exe/apk знает номер, но
-        // не знает, что это бета-сборка — этот признак манифестом не решить,
-        // см. комментарий у `AppInfo.channel`.
-        load: () async {
-          final v = 'v${(await PackageInfo.fromPlatform()).version}';
-          return AppInfo.isBeta ? l.aboutVersionBeta(v) : v;
-        },
-      ),
+      search: '${l.aboutVersion} ${AppInfo.fullVersion} +${AppInfo.buildNumber} '
+          '${AppInfo.gitCommit} патч patch сборка build',
+      build: (context) {
+        final fallbackVersion = AppInfo.isBeta
+            ? l.aboutVersionBeta(AppInfo.formatAboutVersion())
+            : AppInfo.formatAboutVersion();
+        return _ValueTile(
+          tileKey: const Key('aboutVersionTile'),
+          title: l.aboutVersion,
+          initialValue: fallbackVersion,
+          // ⚠️ Канал — из [AppInfo.channel] (свойство СБОРКИ, задано при
+          // компиляции), а не из PackageInfo: версия exe/apk знает номер, но
+          // не знает, что это бета-сборка — этот признак манифестом не решить,
+          // см. комментарий у `AppInfo.channel`. Номер сборки `+N` нормализуется
+          // через `AppInfo.formatAboutVersion` (на Android `--split-per-abi`
+          // системный buildNumber равен `2000+N` / `4000+N`).
+          load: () async {
+            String? runtimeVer;
+            String? runtimeBuild;
+            try {
+              final info = await PackageInfo.fromPlatform();
+              runtimeVer = info.version;
+              runtimeBuild = info.buildNumber;
+            } catch (_) {
+              return fallbackVersion;
+            }
+            final v = AppInfo.formatAboutVersion(
+              runtimeVersion: runtimeVer,
+              runtimeBuildNumber: runtimeBuild,
+            );
+            return AppInfo.isBeta ? l.aboutVersionBeta(v) : v;
+          },
+          onTapValue: (loadedVersion) =>
+              _showVersionPatchesDialog(context, loadedVersion),
+        );
+      },
     ),
     SettingsRow(
       search: l.aboutXrayCore,
@@ -1825,10 +1849,19 @@ List<SettingsRow> _aboutRows(
 /// и с появлением поиска экран перестраивается на каждую нажатую букву: futures
 /// из `build` означали бы запуск процесса на каждый символ запроса.
 class _ValueTile extends StatefulWidget {
-  const _ValueTile({required this.title, required this.load});
+  const _ValueTile({
+    required this.title,
+    required this.load,
+    this.initialValue,
+    this.tileKey,
+    this.onTapValue,
+  });
 
   final String title;
   final Future<String> Function() load;
+  final String? initialValue;
+  final Key? tileKey;
+  final void Function(String value)? onTapValue;
 
   @override
   State<_ValueTile> createState() => _ValueTileState();
@@ -1841,13 +1874,86 @@ class _ValueTileState extends State<_ValueTile> {
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
       future: _future,
-      builder: (context, snap) => ListTile(
-        dense: true,
-        title: Text(widget.title),
-        trailing: Text(snap.data ?? '…', textDirection: TextDirection.ltr),
-      ),
+      initialData: widget.initialValue,
+      builder: (context, snap) {
+        final value = snap.data ?? widget.initialValue;
+        return ListTile(
+          key: widget.tileKey,
+          dense: true,
+          title: Text(widget.title),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(value ?? '…', textDirection: TextDirection.ltr),
+              if (widget.onTapValue != null) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.info_outline, size: 16),
+              ],
+            ],
+          ),
+          onTap: widget.onTapValue == null
+              ? null
+              : () => widget.onTapValue!(
+                    value ?? AppInfo.formatAboutVersion(),
+                  ),
+        );
+      },
     );
   }
+}
+
+Future<void> _showVersionPatchesDialog(
+  BuildContext context,
+  String renderedVersion,
+) async {
+  final l = AppLocalizations.of(context);
+  final isRu = l.localeName.toLowerCase().startsWith('ru');
+  final patches = AppInfo.patchEntriesForLocale(l.localeName);
+  final channelLabel =
+      AppInfo.isBeta ? l.updatesChannelBeta : l.updatesChannelStable;
+  final lines = <String>[
+    '${l.aboutVersion}: $renderedVersion',
+    '${isRu ? "Номер сборки" : "Build"}: +${AppInfo.buildNumber}',
+    '${isRu ? "Канал" : "Channel"}: $channelLabel',
+    if (AppInfo.gitCommit.isNotEmpty)
+      'Git: ${AppInfo.gitCommit}'
+          '${AppInfo.gitBranch.isNotEmpty ? " (${AppInfo.gitBranch})" : ""}',
+    '',
+    isRu ? 'Внесённые патчи контроля версий:' : 'Included version-control patches:',
+    for (final p in patches) '• $p',
+  ];
+  final reportText = lines.join('\n');
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('aboutVersionPatchesDialog'),
+      title: Text(l.aboutVersion),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520, maxHeight: 420),
+        child: SingleChildScrollView(
+          child: SelText(reportText),
+        ),
+      ),
+      actions: [
+        TextButton.icon(
+          key: const Key('aboutVersionCopyButton'),
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: reportText));
+            if (ctx.mounted) {
+              AppToast.show(ctx, l.commonCopied);
+            }
+          },
+          icon: const Icon(Icons.copy, size: 18),
+          label: Text(l.srvTileCopy),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(l.commonClose),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Идентификатор устройства: отдельной строкой, потому что его копируют.

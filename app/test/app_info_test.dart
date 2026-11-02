@@ -11,18 +11,59 @@ import 'package:silentgate/core/app_info.dart';
 /// который Flutter берёт из того же `pubspec`.
 void main() {
   group('AppInfo', () {
-    test('версия совпадает с pubspec.yaml', () {
+    test('версия и номер сборки (+N) совпадают с pubspec.yaml', () {
       final pubspec = File('pubspec.yaml').readAsStringSync();
-      final m = RegExp(r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)', multiLine: true)
-          .firstMatch(pubspec);
+      final m = RegExp(
+        r'^version:\s*([0-9]+\.[0-9]+\.[0-9]+)\+([0-9]+)',
+        multiLine: true,
+      ).firstMatch(pubspec);
 
-      expect(m, isNotNull, reason: 'в pubspec.yaml не найдена строка version:');
+      expect(m, isNotNull,
+          reason: 'в pubspec.yaml не найдена строка version: X.Y.Z+N');
       expect(
         AppInfo.version,
         m!.group(1),
         reason: 'AppInfo.version разошёлся с pubspec.yaml — при бампе версии '
             'правятся ОБА места (плюс CHANGELOG и README)',
       );
+      expect(
+        AppInfo.buildNumber,
+        int.parse(m.group(2)!),
+        reason: 'AppInfo.buildNumber разошёлся с +N в pubspec.yaml',
+      );
+      expect(AppInfo.fullVersion, '${AppInfo.version}+${AppInfo.buildNumber}');
+    });
+
+    test('formatAboutVersion сохраняет +N, пре-релиз, Git SHA и нормализует split-ABI Android', () {
+      expect(
+        AppInfo.formatAboutVersion(
+          runtimeVersion: '1.18.0',
+          runtimeBuildNumber: '91',
+          isAndroid: false,
+        ),
+        'v1.18.0+91',
+      );
+      // Android --split-per-abi прибавляет 2000 (arm64) или 4000 (x86_64).
+      expect(
+        AppInfo.formatAboutVersion(
+          runtimeVersion: '1.18.0',
+          runtimeBuildNumber: '2091',
+          isAndroid: true,
+        ),
+        'v1.18.0+91',
+      );
+      expect(
+        AppInfo.formatAboutVersion(
+          runtimeVersion: '1.18.0',
+          runtimeBuildNumber: '4091',
+          preReleaseOverride: 'beta.1',
+          gitCommitOverride: 'a9101d0',
+          isAndroid: true,
+        ),
+        'v1.18.0-beta.1+91 (a9101d0)',
+      );
+      expect(AppInfo.patchEntriesForLocale('ru'), isNotEmpty);
+      expect(AppInfo.patchEntriesForLocale('en'), isNotEmpty);
     });
 
     test('User-Agent имеет формат «Имя/версия (платформа)»', () {

@@ -40,7 +40,7 @@ class AndroidSupportReporter implements SupportReporter {
     b.writeln();
 
     b.writeln('[Версии]');
-    b.writeln('SilentGate: ${AppInfo.version}');
+    b.writeln('SilentGate: ${AppInfo.displayVersion}');
     b.writeln('User-Agent: ${AppInfo.userAgent}');
     b.writeln('Ядро: sing-box (libbox), встроено в приложение');
     b.writeln();

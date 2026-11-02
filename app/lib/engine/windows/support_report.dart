@@ -43,7 +43,7 @@ class SupportReport {
 
     // ── Версии и окружение ────────────────────────────────────────────────
     b.writeln('[Версии]');
-    b.writeln('SilentGate: ${AppInfo.version}');
+    b.writeln('SilentGate: ${AppInfo.displayVersion}');
     b.writeln('User-Agent: ${AppInfo.userAgent}');
     b.writeln('Xray: ${await _safe(XrayVersion.get)}');
     b.writeln('sing-box: ${await _singboxVersion()}');

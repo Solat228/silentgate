@@ -30,7 +30,7 @@ class TrayWindow with WindowListener, TrayListener {
   /// «О программе», в том числе когда окно свёрнуто в трей и видно только
   /// значок. Имя и версию берём из [AppInfo], а не литералом: бренд может
   /// смениться, и тогда правка не должна расползаться по интерфейсу.
-  static String get nameWithVersion => '${AppInfo.name} ${AppInfo.version}';
+  static String get nameWithVersion => '${AppInfo.name} ${AppInfo.fullVersion}';
 
   /// Параметры окна.
   ///

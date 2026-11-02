@@ -93,7 +93,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 ),
               ListTile(
                 leading: const Icon(Icons.system_update_alt),
-                title: Text(l.updatesCurrentVersion(AppInfo.version)),
+                title: Text(l.updatesCurrentVersion(AppInfo.displayVersion)),
                 subtitle: Wrap(
                   spacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -190,7 +190,7 @@ class _UpdateScreenState extends State<UpdateScreen> {
             children: [
               ListTile(
                 leading: const Icon(Icons.system_update_alt),
-                title: Text(l.updatesCurrentVersion(AppInfo.version)),
+                title: Text(l.updatesCurrentVersion(AppInfo.displayVersion)),
               ),
               _Note(
                   icon: Icons.shop,

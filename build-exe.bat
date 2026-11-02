@@ -64,7 +64,11 @@ if not defined VER (
 )
 
 echo ‘¡®àª  release...
-call "%FLUTTER%" build windows --release %CHANNEL_DEFINE% %STORE_DEFINE% %NOTUN_DEFINE%
+set "GIT_SHA_DEFINE="
+for /f "delims=" %%g in ('git -C "%PROJECT%" rev-parse --short HEAD 2^>nul') do set "GIT_SHA_DEFINE=--dart-define=SILENTGATE_GIT_SHA=%%g"
+set "GIT_BRANCH_DEFINE="
+for /f "delims=" %%b in ('git -C "%PROJECT%" rev-parse --abbrev-ref HEAD 2^>nul') do set "GIT_BRANCH_DEFINE=--dart-define=SILENTGATE_GIT_BRANCH=%%b"
+call "%FLUTTER%" build windows --release %CHANNEL_DEFINE% %STORE_DEFINE% %NOTUN_DEFINE% %GIT_SHA_DEFINE% %GIT_BRANCH_DEFINE%
 if errorlevel 1 (
   echo.
   echo === ‘ŽŠ€ … “„€‹€‘œ ===
@@ -192,6 +196,7 @@ if not exist "%PORTZIP%" (
   pause
   exit /b 1
 )
+copy /Y "%PORTZIP%" "%JUNCTION%\app\build\windows\x64\runner\SilentGate-Portable-%PUBVER%.zip" >nul
 rmdir /s /q "%PORTSTAGE%"
 
 :sg_done

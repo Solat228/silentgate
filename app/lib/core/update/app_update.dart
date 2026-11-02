@@ -906,12 +906,21 @@ class AppUpdate {
     if (n.endsWith(h)) return true;
     final v = version.toLowerCase();
     if (v.isEmpty) return false;
-    if (n.replaceAll('-$v', '').endsWith(h)) return true;
-    // Бета: тег `1.14.1-beta.1`, а Inno называет установщик по версии exe —
-    // `SilentGateSetup-1.14.1.exe`. Без второго прохода Windows-бета не
-    // находила бы свой установщик и откатывалась на «открыть страницу».
     final core = _core(v);
-    return core != v && n.replaceAll('-$core', '').endsWith(h);
+    for (final token in <String>{v, core}) {
+      if (token.isEmpty) continue;
+      final stripped = n.replaceAll('-$token', '');
+      if (stripped.endsWith(h)) return true;
+      // Допускаем номер сборки (`+91`, `.91`, `-b91`) в имени установщика даже
+      // при коротком теге релиза (и наоборот); `-msstore.exe` и `.bak` при этом
+      // не смешиваются с обычным `Setup.exe`.
+      final withoutBuild = stripped.replaceFirst(
+        RegExp(r'(\+\d+|\.\d+|-b\d+)(?=(-msstore)?\.exe$)'),
+        '',
+      );
+      if (withoutBuild.endsWith(h)) return true;
+    }
+    return false;
   }
 
   static Future<UpdateHttpResponse> _fetch(Uri url) async {
@@ -962,38 +971,61 @@ class AppUpdate {
     }
     final candPre = _pre(candidate);
     final curPre = _pre(current);
-    if (candPre == null) return curPre != null;
-    if (curPre == null) return false;
-    final pa = _parts(candPre);
-    final pb = _parts(curPre);
-    if (pa.isEmpty || pb.isEmpty) return false;
-    for (var i = 0; i < pa.length || i < pb.length; i++) {
-      final x = i < pa.length ? pa[i] : 0;
-      final y = i < pb.length ? pb[i] : 0;
-      if (x != y) return x > y;
+    if (candPre == null && curPre != null) return true;
+    if (candPre != null && curPre == null) return false;
+    if (candPre != null && curPre != null) {
+      final pa = _parts(candPre);
+      final pb = _parts(curPre);
+      if (pa.isNotEmpty && pb.isNotEmpty) {
+        for (var i = 0; i < pa.length || i < pb.length; i++) {
+          final x = i < pa.length ? pa[i] : 0;
+          final y = i < pb.length ? pb[i] : 0;
+          if (x != y) return x > y;
+        }
+      }
     }
+    final cb = _build(candidate) ?? (a.length >= 4 ? a[3] : null);
+    final ib = _build(current) ?? (b.length >= 4 ? b[3] : null);
+    if (cb != null && ib != null && cb != ib) return cb > ib;
     return false;
   }
 
   /// Версия ЭТОЙ сборки для сравнения: у бета-сборки — с суффиксом, чтобы
-  /// стабильная того же номера считалась новее (см. [isNewer]).
-  static String get installedVersion =>
-      AppInfo.isBeta ? '${AppInfo.version}-beta' : AppInfo.version;
+  /// стабильная того же номера считалась новее (см. [isNewer]), и с `+buildNumber`,
+  /// чтобы патч-сборка `+92` поверх `+91` распознавалась как более новая.
+  static String get installedVersion {
+    if (!AppInfo.isBeta) return AppInfo.fullVersion;
+    final pre = AppInfo.preRelease.isEmpty ? 'beta' : AppInfo.preRelease;
+    return '${AppInfo.version}-$pre+${AppInfo.buildNumber}';
+  }
 
-  /// Числовая часть без `v` и без суффикса после первого `-`.
+  /// Числовая часть без `v`, без суффикса после `-` и без номера сборки `+N`.
   static String _core(String v) {
-    final t = v.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    var t = v.trim().replaceFirst(RegExp(r'^[vV]'), '');
+    final plus = t.indexOf('+');
+    if (plus >= 0) t = t.substring(0, plus);
     final dash = t.indexOf('-');
     return dash < 0 ? t : t.substring(0, dash);
   }
 
-  /// Суффикс пре-релиза (`beta.2`) либо `null` у стабильной.
+  /// Суффикс пре-релиза (`beta.2`) без `+N` либо `null` у стабильной.
   static String? _pre(String v) {
-    final t = v.trim();
+    var t = v.trim();
+    final plus = t.indexOf('+');
+    if (plus >= 0) t = t.substring(0, plus);
     final dash = t.indexOf('-');
     if (dash < 0) return null;
     final s = t.substring(dash + 1);
     return s.isEmpty ? null : s;
+  }
+
+  /// Номер сборки после `+` (`1.18.0+91` → `91`) либо `null`, если не указан.
+  static int? _build(String v) {
+    final t = v.trim();
+    final plus = t.indexOf('+');
+    if (plus < 0) return null;
+    final digits = RegExp(r'^\d+').firstMatch(t.substring(plus + 1))?.group(0);
+    return digits == null ? null : int.tryParse(digits);
   }
 
   static List<int> _parts(String v) => v
