@@ -141,6 +141,20 @@ class LiveConnectionsSnapshot {
         split: split,
       );
 
+      // Штатный сброс HTTP/3 (QUIC, UDP:443) ради возврата браузера на TCP
+      // (`SingboxConfigBuilder._quicBlockDomains`) — техническая деталь
+      // сниффинга, а не блокировка сайта пользователем.
+      if (route == LiveRouteKind.blocked &&
+          network == 'udp' &&
+          dstPort == 443 &&
+          split != null &&
+          host.isNotEmpty) {
+        final siteRule = mostSpecificSiteRule(split.sites, host, port: dstPort);
+        if (siteRule != null && siteRule.action != AppAction.block) {
+          continue;
+        }
+      }
+
       final entry = LiveConnectionEntry(
         id: (item['id'] ?? '').toString(),
         host: host,
@@ -262,6 +276,31 @@ SiteRule? mostSpecificSiteRule(
   return best;
 }
 
+/// Отпечаток доменных правил маршрутизации, запечённых в конфиг туннеля.
+///
+/// Используется для сверки того, менял ли пользователь правила раздельного
+/// туннелирования ПОСЛЕ подъёма текущего туннеля.
+String splitRoutingSignature(
+  SplitTunnelConfig split, {
+  required bool noRealIp,
+}) {
+  final buf = StringBuffer('${split.mode.name}|$noRealIp');
+  for (final s in split.sites) {
+    buf.write(
+      '|s:${s.domain.toLowerCase()}:${s.port ?? ''}:${s.action.name}:'
+      '${s.allowRealIp}:${s.serverKey ?? ''}',
+    );
+  }
+  for (final a in split.apps) {
+    if (!a.enabled) continue;
+    buf.write(
+      '|a:${a.matchKey}:${a.action.name}:'
+      '${a.allowRealIp}:${a.overrideSites}:${a.serverKey ?? ''}',
+    );
+  }
+  return buf.toString();
+}
+
 /// Проверяет, есть ли среди открытых соединений домен, чей фактический маршрут
 /// расходится с актуальным списком сайтов [split] (например, сайт добавили при
 /// поднятом туннеле, а открытое соединение всё ещё идёт напрямую мимо VPN).
@@ -276,7 +315,8 @@ String? detectRoutingMismatch(
 
   final overrideApps = <String>{
     for (final a in split.apps)
-      if (a.enabled && a.overrideSites) a.name.toLowerCase(),
+      if (a.enabled && (a.overrideSites || a.action == AppAction.block))
+        a.name.toLowerCase(),
   };
 
   final all = <LiveConnectionEntry>[
@@ -302,6 +342,18 @@ String? detectRoutingMismatch(
           ? LiveRouteKind.vpn
           : LiveRouteKind.direct,
     };
+
+    // Служебные отказы по обходным протоколам (QUIC UDP:443, DoT/DoQ :853,
+    // выключенный IPv6) намеренно переводят клиент на основной стек и не
+    // означают устаревший список маршрутов.
+    if (conn.route == LiveRouteKind.blocked &&
+        expected != LiveRouteKind.blocked) {
+      if ((conn.network == 'udp' && conn.destinationPort == 443) ||
+          conn.destinationPort == 853 ||
+          conn.destinationIp.contains(':')) {
+        continue;
+      }
+    }
 
     if (conn.route != expected) {
       return rule.domain;
@@ -370,11 +422,18 @@ bool _isInternalLoopback({
   required String process,
 }) {
   final procLower = process.toLowerCase();
+  // Собственные процессы приложения и ядер уводятся в `direct` защитой от
+  // петли (`SingboxConfigBuilder` эшелон 2): загрузка фавиконок, проверки
+  // канала и транспорт обхода белых списков — служебный трафик, а не утечка.
   if (procLower == 'xray.exe' ||
       procLower == 'xray' ||
       procLower == 'sing-box.exe' ||
       procLower == 'sing-box' ||
-      procLower == 'silentgate-tun.exe') {
+      procLower == 'silentgate.exe' ||
+      procLower == 'silentgate' ||
+      procLower == 'silentgate-tun.exe' ||
+      procLower == 'whitelist-bypass.exe' ||
+      procLower == 'whitelist-bypass') {
     return true;
   }
   if (host.isEmpty && (dstIp == '127.0.0.1' || dstIp == '::1')) {

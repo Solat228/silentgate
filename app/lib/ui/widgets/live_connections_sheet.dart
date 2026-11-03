@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/net/live_connections.dart';
-import '../../core/settings/split_tunnel.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
@@ -71,14 +70,6 @@ class _LiveConnectionsBadgeState extends State<LiveConnectionsBadge> {
     }
   }
 
-  String _rulesSignature(SplitTunnelConfig split, bool noRealIp) {
-    final buf = StringBuffer('${split.mode.name}|$noRealIp');
-    for (final s in split.sites) {
-      buf.write('|${s.domain.toLowerCase()}:${s.port ?? ''}:${s.action.name}:${s.allowRealIp}');
-    }
-    return buf.toString();
-  }
-
   Future<void> _pollOnce() async {
     if (!mounted || _polling) return;
     final state = context.read<AppState>();
@@ -124,6 +115,16 @@ class _LiveConnectionsBadgeState extends State<LiveConnectionsBadge> {
   ) {
     if (!mounted || _dialogOpen || !state.status.isConnected) return;
     final settings = settingsCtrl.settings;
+    final sig = splitRoutingSignature(
+      settings.splitTunnel,
+      noRealIp: settings.noRealIp,
+    );
+    // Диалог «Маршруты обновились» уместен ТОЛЬКО если правила менялись после
+    // подъёма текущего туннеля. Пока отпечаток совпадает с тем, с которым
+    // поднят активный туннель, «прежнего списка» не существует.
+    final activeSig = state.connectedSplitSignature;
+    if (activeSig != null && activeSig == sig) return;
+
     final mismatchDomain = detectRoutingMismatch(
       snap,
       settings.splitTunnel,
@@ -131,7 +132,6 @@ class _LiveConnectionsBadgeState extends State<LiveConnectionsBadge> {
     );
     if (mismatchDomain == null) return;
 
-    final sig = _rulesSignature(settings.splitTunnel, settings.noRealIp);
     final promptKey = '${mismatchDomain.toLowerCase()}@$sig';
     if (_promptedMismatches.contains(promptKey)) return;
 

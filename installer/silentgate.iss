@@ -186,6 +186,9 @@ Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Excludes: "*.bak"; Flags: recursesu
 ; неподписанную DLL в каталоге программы (ревью 29.10.2026, L3).
 [InstallDelete]
 Type: files; Name: "{app}\dartjni.dll"
+; portable.txt от старых Release-сборок (до 1.18.0) в папке установленной копии
+; переключает её в портативный режим (sg-data\ вместо %APPDATA%\SilentGate).
+Type: files; Name: "{app}\portable.txt"
 
 #ifdef NoTun
 ; Сборка без драйвера для Microsoft Store (/DNoTun, заявка MS3): wintun.dll и

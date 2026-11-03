@@ -22,6 +22,7 @@ import '../core/models/vpn_status.dart';
 import '../core/models/engine_notice.dart';
 import '../core/models/ui_message.dart';
 import '../core/net/network_error_hint.dart';
+import '../core/net/live_connections.dart' show splitRoutingSignature;
 import '../core/net/api_ports.dart';
 import '../core/net/api_server.dart';
 import '../core/parser/share_link_parser.dart';
@@ -144,6 +145,7 @@ class AppState extends ChangeNotifier {
         }
       } else {
         _networkWatcher.stop();
+        _connectedSplitSignature = null;
       }
       notifyListeners();
     });
@@ -651,6 +653,7 @@ class AppState extends ChangeNotifier {
     // Сессии больше нет — и «поднятого сервера» тоже. Оставить ключ значило бы
     // разрешить проверку через живое ядро, которого уже не существует.
     _connectedServerKey = null;
+    _connectedSplitSignature = null;
   }
 
   /// Ключ сервера, С КОТОРЫМ РЕАЛЬНО ПОДНЯТА СЕССИЯ ЯДРА.
@@ -671,6 +674,13 @@ class AppState extends ChangeNotifier {
   String? get connectedServerKey =>
       _status.isConnected ? _connectedServerKey : null;
   String? _connectedServerKey;
+
+  /// Отпечаток правил раздельного туннелирования, с которыми поднят активный
+  /// туннель ([splitRoutingSignature]). `null`, если сессии нет или туннель
+  /// подхвачен извне без прохождения через [toggleConnection]/[connectAuto].
+  String? get connectedSplitSignature =>
+      _status.isConnected ? _connectedSplitSignature : null;
+  String? _connectedSplitSignature;
 
   /// Локальный http-прокси порт активного ядра (для живой проверки сервисов).
   int get httpProxyPort => _engine.httpProxyPort;
@@ -2906,7 +2916,7 @@ class AppState extends ChangeNotifier {
 
   /// Переподключиться: выключить и снова включить с текущими настройками.
   Future<void> reconnect(AppSettings settings) =>
-      _reconnectWith(() => toggleConnection(settings), settings);
+      _reconnectWith(() => _connectSelected(settings), settings);
 
   /// Переподключиться в режиме «Авто (лучший сервер)» — тот же путь, что
   /// [reconnect], но с автовыбором вместо текущего выбранного сервера.
@@ -2917,7 +2927,7 @@ class AppState extends ChangeNotifier {
   /// Нужен команде локального API `connect(auto: true)`, отправленной, пока
   /// канал уже поднят (раунд ревью 1, находка 3).
   Future<void> reconnectAuto(AppSettings settings) =>
-      _reconnectWith(() => connectAuto(settings), settings);
+      _reconnectWith(() => _connectAutoNow(settings), settings);
 
   /// Текущий перезапуск; следующий ждёт его конца.
   Future<void>? _reconnectRun;
@@ -2983,6 +2993,10 @@ class AppState extends ChangeNotifier {
     } else {
       await disconnect();
     }
+    // `statusStream` у движка асинхронный broadcast: даём событию `disconnected`
+    // дойти до `_statusSub` ДО старта новой сессии, чтобы `_status` и
+    // `_networkWatcher` увидели штатную смену состояния без гонки.
+    await Future<void>.delayed(Duration.zero);
     await connectFn();
     // ⚠️ ПОДКЛЮЧЕНИЕ МОГЛО НЕ НАЧАТЬСЯ ВОВСЕ — а захват мы удержали.
     //
@@ -2991,8 +3005,10 @@ class AppState extends ChangeNotifier {
     // ЖИВЫМ туннелем, у машины пропадает интернет целиком, а кнопка «Отключить»
     // ничего не делает: `disconnect()` ниже гейтится тем же статусом. Лечится
     // здесь, где ещё известно, что захват удерживали.
-    if (soft && !_status.isConnected &&
-        _status.state != VpnConnectionState.connecting) {
+    final liveStatus = _engine.status;
+    if (soft &&
+        !liveStatus.isConnected &&
+        liveStatus.state != VpnConnectionState.connecting) {
       AppLog.w('Подключение после смены не началось - снимаю удержанный захват, '
           'иначе туннель остался бы жить без единого ядра');
       await _engine.disconnect();
@@ -3030,50 +3046,63 @@ class AppState extends ChangeNotifier {
       markUserDisconnect();
       await _engine.disconnect();
     } else {
-      AppLog.i('Подключение по команде пользователя');
-      final server = selectedServer;
-      if (server == null) {
-        _fail(AppErrorCode.pickServerFirst);
-        return;
-      }
-      // Повторная проверка: `selectServer` уже не даёт выбрать такой сервер,
-      // но выбор мог прийти в обход (`silentgate://connect`, восстановление
-      // сессии) — двух разборов одной проверки не заводим, страхуемся тут же.
-      if (server.isUnsupported) {
-        _fail(AppErrorCode.serverUnsupported);
-        return;
-      }
-      // Точка отсчёта таймера — ЗДЕСЬ, на нажатии, а не на подъёме туннеля:
-      // иначе переподключение снова начнёт обнулять счётчик.
-      // ⚠️ Но СТРОГО ПОСЛЕ проверки сервера: нажатие без выбранного сервера
-      // (свежая установка, удалили все серверы) заводило часы там, где
-      // подключения не будет вовсе, а снять их было нечем.
-      markUserConnect();
-      _warnAboutDeadAppRules(settings);
-      final ov = _overrides[server.key];
-      final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
-          ? server.copyWith(rawJsonOverride: ov.rawJson)
-          : server;
-      // ⚠️ Список ВСЕХ серверов подписки отдаём движку ВСЕГДА, в том числе при
-      // ручном выборе. Это не «запасные» (на них никто не переключится) — это
-      // адреса, которые обязаны идти мимо туннеля. Без них правило обхода
-      // содержало бы только выбранный сервер, менялось бы при каждой смене, и
-      // туннель пересоздавался бы там, где мог остаться живым.
-      _engine.fallbackServers = const []; // ручной выбор не подменяем
-      _engine.bypassCandidates = _servers;
-      // Запоминаем, ЧТО ИМЕННО поднимаем: выбор в списке после этого может
-      // уехать на другой сервер, а сессия останется этой.
-      _connectedServerKey = srv.key;
-      await _engine.connect(
-        srv,
-        options: ConnectionOptions(
-          variant: ov?.variant ?? _selectedVariant,
-          settings: settings,
-          exitServers: _exitServers(settings),
-          apiOnlyExitKeys: _apiOnlyExitKeys(settings),
-        ),
-      );
+      await _connectSelected(settings);
     }
+  }
+
+  /// Безусловный подъём выбранного сервера (без логики кнопки-переключателя).
+  ///
+  /// Вынесен отдельно от [toggleConnection], чтобы [reconnect] никогда не
+  /// попадал в ветки `disconnecting -> forceDisconnect` или `isConnected ->
+  /// disconnect` из-за асинхронной доставки статуса по broadcast-потоку.
+  Future<void> _connectSelected(AppSettings settings) async {
+    AppLog.i('Подключение по команде пользователя');
+    final server = selectedServer;
+    if (server == null) {
+      _fail(AppErrorCode.pickServerFirst);
+      return;
+    }
+    // Повторная проверка: `selectServer` уже не даёт выбрать такой сервер,
+    // но выбор мог прийти в обход (`silentgate://connect`, восстановление
+    // сессии) — двух разборов одной проверки не заводим, страхуемся тут же.
+    if (server.isUnsupported) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
+    // Точка отсчёта таймера — ЗДЕСЬ, на нажатии, а не на подъёме туннеля:
+    // иначе переподключение снова начнёт обнулять счётчик.
+    // ⚠️ Но СТРОГО ПОСЛЕ проверки сервера: нажатие без выбранного сервера
+    // (свежая установка, удалили все серверы) заводило часы там, где
+    // подключения не будет вовсе, а снять их было нечем.
+    markUserConnect();
+    _warnAboutDeadAppRules(settings);
+    final ov = _overrides[server.key];
+    final srv = (ov?.rawJson != null && ov!.rawJson!.isNotEmpty)
+        ? server.copyWith(rawJsonOverride: ov.rawJson)
+        : server;
+    // ⚠️ Список ВСЕХ серверов подписки отдаём движку ВСЕГДА, в том числе при
+    // ручном выборе. Это не «запасные» (на них никто не переключится) — это
+    // адреса, которые обязаны идти мимо туннеля. Без них правило обхода
+    // содержало бы только выбранный сервер, менялось бы при каждой смене, и
+    // туннель пересоздавался бы там, где мог остаться живым.
+    _engine.fallbackServers = const []; // ручной выбор не подменяем
+    _engine.bypassCandidates = _servers;
+    // Запоминаем, ЧТО ИМЕННО поднимаем: выбор в списке после этого может
+    // уехать на другой сервер, а сессия останется этой.
+    _connectedServerKey = srv.key;
+    _connectedSplitSignature = splitRoutingSignature(
+      settings.splitTunnel,
+      noRealIp: settings.noRealIp,
+    );
+    await _engine.connect(
+      srv,
+      options: ConnectionOptions(
+        variant: ov?.variant ?? _selectedVariant,
+        settings: settings,
+        exitServers: _exitServers(settings),
+        apiOnlyExitKeys: _apiOnlyExitKeys(settings),
+      ),
+    );
   }
 
   /// Явное отключение (для трея/выхода). No-op только при полностью отключённом
@@ -3249,11 +3278,20 @@ class AppState extends ChangeNotifier {
 
   /// Автовыбор лучшего сервера (balancer + burstObservatory по всем серверам).
   Future<void> connectAuto(AppSettings settings) async {
+    if (_status.state == VpnConnectionState.disconnecting) {
+      markUserDisconnect();
+      await _engine.forceDisconnect();
+      return;
+    }
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
       markUserDisconnect();
       await _engine.disconnect();
       return;
     }
+    await _connectAutoNow(settings);
+  }
+
+  Future<void> _connectAutoNow(AppSettings settings) async {
     if (_servers.isEmpty) {
       _fail(AppErrorCode.importSubscriptionFirst);
       return;
@@ -3268,6 +3306,10 @@ class AppState extends ChangeNotifier {
     _warnAboutDeadAppRules(settings);
     _engine.fallbackServers = _fallbackCandidates();
     _engine.bypassCandidates = _servers;
+    _connectedSplitSignature = splitRoutingSignature(
+      settings.splitTunnel,
+      noRealIp: settings.noRealIp,
+    );
     // Неподдерживаемый сервер не идёт в балансировщик «Авто»: `SingboxOutboundFactory`
     // строит из него outbound БЕЗ части маски, которую ждёт сервер — тихая
     // подмена того самого бага, который эта же правка закрывает у ручного выбора.

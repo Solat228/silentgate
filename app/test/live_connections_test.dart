@@ -206,6 +206,122 @@ void main() {
 
       expect(detectRoutingMismatch(snap, split, noRealIp: false), isNull);
     });
+
+    test('filters silentgate.exe and whitelist-bypass.exe loop-prevention direct connections (SiteFavicon regression)', () {
+      const split = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        sites: [
+          SiteRule('fbsbx.com', action: AppAction.tunnel),
+        ],
+      );
+      final raw = {
+        'connections': [
+          {
+            'id': 'favicon-1',
+            'chains': ['direct'],
+            'rule': 'process_name=silentgate.exe',
+            'metadata': {
+              'network': 'tcp',
+              'host': 'fbsbx.com',
+              'destinationIP': '157.240.241.35',
+              'destinationPort': 443,
+              'processPath': r'C:\Users\User\AppData\Local\Programs\SilentGate\silentgate.exe',
+            },
+          },
+          {
+            'id': 'wb-1',
+            'chains': ['direct'],
+            'rule': 'process_name=whitelist-bypass.exe',
+            'metadata': {
+              'network': 'udp',
+              'host': 'vk.com',
+              'destinationIP': '87.240.137.158',
+              'destinationPort': 443,
+              'process': 'whitelist-bypass.exe',
+            },
+          },
+        ],
+      };
+
+      final snap = LiveConnectionsSnapshot.fromClashJson(raw, split: split);
+      expect(snap.totalCount, 0);
+      expect(detectRoutingMismatch(snap, split, noRealIp: false), isNull);
+    });
+
+    test('ignores technical QUIC UDP:443 reject on tunneled sites and blocked apps without overrideSites', () {
+      const split = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        apps: [
+          AppRule(r'C:\App\telemetry.exe', action: AppAction.block, overrideSites: false),
+        ],
+        sites: [
+          SiteRule('fbsbx.com', action: AppAction.tunnel),
+        ],
+      );
+      final raw = {
+        'connections': [
+          {
+            'id': 'quic-downgrade',
+            'chains': <String>[],
+            'rule': 'network=udp port=443 action=reject',
+            'metadata': {
+              'network': 'udp',
+              'host': 'fbsbx.com',
+              'destinationIP': '157.240.241.35',
+              'destinationPort': 443,
+              'process': 'chrome.exe',
+            },
+          },
+          {
+            'id': 'blocked-app',
+            'chains': <String>[],
+            'rule': 'process_name=telemetry.exe action=reject',
+            'metadata': {
+              'network': 'tcp',
+              'host': 'fbsbx.com',
+              'destinationIP': '157.240.241.35',
+              'destinationPort': 443,
+              'process': 'telemetry.exe',
+            },
+          },
+        ],
+      };
+
+      final snap = LiveConnectionsSnapshot.fromClashJson(raw, split: split);
+      // QUIC UDP:443 downgrade is dropped from snapshot; telemetry.exe remains in blocked
+      // because its app rule really is AppAction.block, but does NOT trigger site mismatch!
+      expect(snap.blocked, hasLength(1));
+      expect(snap.blocked.single.process, 'telemetry.exe');
+      expect(detectRoutingMismatch(snap, split, noRealIp: false), isNull);
+    });
+
+    test('splitRoutingSignature changes on site, app, or noRealIp edits', () {
+      const base = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        sites: [SiteRule('fbsbx.com', action: AppAction.tunnel)],
+      );
+      final sig0 = splitRoutingSignature(base, noRealIp: false);
+      expect(splitRoutingSignature(base, noRealIp: false), sig0);
+      expect(splitRoutingSignature(base, noRealIp: true), isNot(sig0));
+      expect(
+        splitRoutingSignature(
+          base.copyWith(
+            sites: [...base.sites, const SiteRule('google.dev', action: AppAction.tunnel)],
+          ),
+          noRealIp: false,
+        ),
+        isNot(sig0),
+      );
+      expect(
+        splitRoutingSignature(
+          base.copyWith(
+            apps: [const AppRule(r'C:\App\chrome.exe', byName: true, action: AppAction.direct)],
+          ),
+          noRealIp: false,
+        ),
+        isNot(sig0),
+      );
+    });
   });
 }
 
