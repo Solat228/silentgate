@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "Direkter Zugriff auf Update-Server ist nicht möglich oder der gesamte Verkehr läuft über VPN. Prüfung und Download verbrauchen Ihr Abo-Volumen. Fortfahren?",
   "updatesTrafficWarningDownloadBody": "Der Download des Updates ({sizeMb} MB) läuft über das aktive VPN und verbraucht Ihr Abo-Volumen. Fortfahren?",
   "updatesTrafficDontShowAgain": "Diese Warnung nicht mehr anzeigen",
-  "updatesContinue": "Fortfahren"
+  "updatesContinue": "Fortfahren",
+  "settingsConnectChecksNotSplitNote": "Betrifft nur die Prüfsymbole unter der Verbinden-Schaltfläche. Um einzelne Dienste über oder am VPN vorbei zu leiten, richten Sie Split-Tunneling ein.",
+  "settingsOpenSplitTunnel": "Split-Tunneling einrichten",
+  "splitQuickServicesTitle": "Schnellauswahl für Dienste",
+  "splitQuickServicesSub": "Fügt Haupt- und Mediendomains des Dienstes mit der Aktion des aktuellen Modus hinzu",
+  "splitServiceAppHint": "Domains für {service} hinzugefügt. Für Anrufe und die App fügen Sie {service} auch oben unter \"Anwendungen\" hinzu"
 }

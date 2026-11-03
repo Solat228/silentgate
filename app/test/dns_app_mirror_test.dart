@@ -33,7 +33,12 @@ void main() {
 
   /// Наши собственные бинарники: правило петли живёт ТОЛЬКО в маршрутах и
   /// зеркала в DNS не имеет — их запросы и так уходят напрямую.
-  const infra = {'xray.exe', 'sing-box.exe', 'silentgate.exe'};
+  const infra = {
+    'xray.exe',
+    'sing-box.exe',
+    'silentgate.exe',
+    'whitelist-bypass.exe',
+  };
 
   /// Все значения матчеров процессов в секции — как множество пар (поле, значение).
   Set<String> processMatchers(List<Map<String, dynamic>> rules) {

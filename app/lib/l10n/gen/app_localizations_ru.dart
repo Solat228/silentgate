@@ -4472,4 +4472,23 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Продолжить';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Влияет только на значки проверки под кнопкой подключения. Чтобы пускать отдельные сервисы через VPN или мимо него, настройте раздельное туннелирование.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Настроить раздельное туннелирование';
+
+  @override
+  String get splitQuickServicesTitle => 'Быстрый выбор сервисов';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Добавляет основные и медиа-домены сервиса с действием текущего режима';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'Домены $service добавлены. Для звонков и работы программы добавьте $service также в список «Приложения» выше';
+  }
 }

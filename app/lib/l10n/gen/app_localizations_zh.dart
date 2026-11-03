@@ -4279,4 +4279,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updatesContinue => '继续';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      '仅影响连接按钮下方的检测图标。如需指定哪些服务走 VPN 或直连，请配置分流规则。';
+
+  @override
+  String get settingsOpenSplitTunnel => '配置分流规则';
+
+  @override
+  String get splitQuickServicesTitle => '常用服务快捷选择';
+
+  @override
+  String get splitQuickServicesSub => '按当前模式的默认动作一键添加该服务的主域名和媒体域名';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return '已添加 $service 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 $service';
+  }
 }

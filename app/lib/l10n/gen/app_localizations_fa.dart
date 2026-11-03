@@ -4452,4 +4452,23 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get updatesContinue => 'ادامه';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'فقط روی نمادهای بررسی زیر دکمه اتصال اثر می‌گذارد. برای مسیردهی سرویس‌های خاص از طریق VPN یا خارج از آن، تونل تقسیم‌شده را تنظیم کنید.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'تنظیم تونل تقسیم‌شده';
+
+  @override
+  String get splitQuickServicesTitle => 'انتخاب سریع سرویس‌ها';
+
+  @override
+  String get splitQuickServicesSub =>
+      'دامنه‌های اصلی و رسانه‌ای سرویس را با عملکرد حالت فعلی اضافه می‌کند';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'دامنه‌های $service اضافه شدند. برای تماس‌ها و برنامه، $service را در بخش «برنامه‌ها» در بالا نیز اضافه کنید';
+  }
 }

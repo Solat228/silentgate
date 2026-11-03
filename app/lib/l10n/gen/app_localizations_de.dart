@@ -4513,4 +4513,23 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Fortfahren';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Betrifft nur die Prüfsymbole unter der Verbinden-Schaltfläche. Um einzelne Dienste über oder am VPN vorbei zu leiten, richten Sie Split-Tunneling ein.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Split-Tunneling einrichten';
+
+  @override
+  String get splitQuickServicesTitle => 'Schnellauswahl für Dienste';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Fügt Haupt- und Mediendomains des Dienstes mit der Aktion des aktuellen Modus hinzu';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'Domains für $service hinzugefügt. Für Anrufe und die App fügen Sie $service auch oben unter \"Anwendungen\" hinzu';
+  }
 }

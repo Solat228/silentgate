@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../core/platform/app_log.dart';
+import '../../core/platform/app_paths.dart';
 import '../../core/platform/core_cleanup.dart';
 import '../../core/platform/rotating_log.dart';
 
@@ -29,6 +30,13 @@ class XrayProcess {
   /// Путь файла лога рядом с остальными: `%APPDATA%\SilentGate\xray.log`.
   static String logPathFor(Directory supportDir) =>
       '${supportDir.path}${Platform.pathSeparator}xray.log';
+
+  /// Хвост лога прокси-ядра Xray (для отчёта поддержки и экрана логов) через
+  /// ротацию `xray.prev.log` → `xray.log`.
+  static Future<String> tailLog({int lines = 200}) async =>
+      RotatingLog.tailAcrossRotation(
+          logPathFor(await AppPaths.supportDir()),
+          lines: lines);
 
   /// Последние строки вывода ядра — чтобы показать РЕАЛЬНУЮ причину падения,
   /// а не «Ядро завершилось при запуске».
@@ -61,7 +69,8 @@ class XrayProcess {
         // Файл РЕЖЕТСЯ, а не растёт бесконечно: singbox.log у владельца дорос
         // до 27 МБ и стал бесполезен — отчёт поддержки его уже не вмещает.
         // Порог тот же (2 МБ), но теперь он действует и ВНУТРИ сессии.
-        final log = RotatingLog(logPath, maxBytes: 2 * 1024 * 1024);
+        final log = RotatingLog(logPath,
+            maxBytes: RotatingLog.coreLogMaxBytes, keepPrevious: true);
         await log.open();
         _log = log;
         await log.write(

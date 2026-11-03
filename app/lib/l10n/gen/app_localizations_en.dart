@@ -4467,4 +4467,23 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Continue';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Affects only the check badges under the Connect button. To route specific services through or around VPN, configure split tunneling.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Configure split tunneling';
+
+  @override
+  String get splitQuickServicesTitle => 'Quick service presets';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Adds main and media domains of a service with the current mode\'s action';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'Domains for $service added. For calls and the desktop or mobile app, also add $service under \"Applications\" above';
+  }
 }

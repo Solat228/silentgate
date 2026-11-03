@@ -1003,7 +1003,9 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
 
-      if (session.server.isWhitelistBypass) {
+      final needsWhitelistRelay =
+          session.servers.length == 1 && session.server.usesWhitelistRelay;
+      if (needsWhitelistRelay) {
         final bypass = WhitelistBypassProcess();
         _whitelistBypass = bypass;
         setStatus(
@@ -1015,9 +1017,13 @@ class AndroidEngine extends VpnEngineBase {
             .invokeMethod<String>('nativeLibraryDir');
         AppLog.i('Каталог нативных библиотек: $nativeDir');
         final libPath = nativeDir != null ? '$nativeDir/librelay.so' : null;
+        final relayPort =
+            session.server.isWhitelistBypass && session.server.port > 0
+                ? session.server.port
+                : 10855;
         await bypass.start(
           server: session.server,
-          socksPort: session.server.port > 0 ? session.server.port : 10855,
+          socksPort: relayPort,
           executablePath: libPath,
           abort: aborted,
         );

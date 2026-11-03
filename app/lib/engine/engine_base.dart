@@ -2234,7 +2234,9 @@ abstract class VpnEngineBase implements VpnEngine {
     // Одно ядро на сессию: смешать hysteria2 и VLESS в одном балансировщике
     // нельзя. Xray-серверы идут в его balancer, иначе — urltest в sing-box.
     final xrayOnes =
-        servers.where((s) => s.core == ProxyCore.xray).toList(growable: false);
+        servers
+            .where((s) => s.core == ProxyCore.xray && !s.usesWhitelistRelay)
+            .toList(growable: false);
     if (xrayOnes.isNotEmpty) {
       return EngineSession(_authedBuilder.buildBalancerJson(xrayOnes), options,
           xrayOnes, ProxyCore.xray);
@@ -2380,7 +2382,7 @@ abstract class VpnEngineBase implements VpnEngine {
       Map<String, List<String>> resolvedHosts, AppSettings s) async {
     final ips = resolvedHosts.values.expand((e) => e).toSet();
     for (final s in [..._fallbacks, ..._bypassCandidates, ...?_session?.servers]) {
-      if (s.isWhitelistBypass) {
+      if (s.usesWhitelistRelay) {
         ips.addAll(WhitelistBypassEndpoint.cidrsForServer(s));
       }
     }

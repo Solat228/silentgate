@@ -428,7 +428,14 @@ class WindowsEngine extends VpnEngineBase {
     final singboxCore = session.core == ProxyCore.singbox;
     final location = XrayPaths.locate();
     final singboxExe = singboxCore ? SingboxProcess.locate() : null;
-    if (session.server.isWhitelistBypass && WhitelistBypassProcess.locateExecutable() == null) {
+    final needsWhitelistRelay =
+        session.servers.length == 1 && session.server.usesWhitelistRelay;
+    final whitelistRelayPort =
+        session.server.isWhitelistBypass && session.server.port > 0
+            ? session.server.port
+            : 10855;
+    if (needsWhitelistRelay &&
+        WhitelistBypassProcess.locateExecutable() == null) {
       await cleanup();
       setStatus(
         VpnConnectionState.error,
@@ -485,8 +492,11 @@ class WindowsEngine extends VpnEngineBase {
         : const <String>[];
     // Порты выходов живого туннеля — его, проверять их нельзя (см.
     // [tunnelHoldsItsPorts]).
-    final corePorts = corePortsFor(options.settings, ports,
-        tunnelStaysUp: tunnelHoldsItsPorts);
+    final corePorts = [
+      ...corePortsFor(options.settings, ports,
+          tunnelStaysUp: tunnelHoldsItsPorts),
+      if (needsWhitelistRelay) whitelistRelayPort,
+    ];
     var conflict = await PortCheck.findConflict(corePorts);
     // ⚠️ ЖДЁМ И ТОГДА, КОГДА ВЛАДЕЛЬЦА ОПОЗНАТЬ НЕ УДАЛОСЬ.
     //
@@ -537,7 +547,7 @@ class WindowsEngine extends VpnEngineBase {
     // сессии (см. [_stopOwnProcesses]).
     final mine = <Object?>[];
     try {
-      if (session.server.isWhitelistBypass) {
+      if (needsWhitelistRelay) {
         final bypass = WhitelistBypassProcess();
         _whitelistBypass = bypass;
         mine.add(bypass);
@@ -548,7 +558,7 @@ class WindowsEngine extends VpnEngineBase {
         );
         await bypass.start(
           server: session.server,
-          socksPort: session.server.port > 0 ? session.server.port : 10855,
+          socksPort: whitelistRelayPort,
           abort: aborted,
         );
         if (aborted()) {
@@ -1101,6 +1111,13 @@ class WindowsEngine extends VpnEngineBase {
     // растущий накопитель базы — на этом держится и совпадение route-правила,
     // и, ниже, стабильность `route_exclude_address` самого интерфейса.
     final bypassIps = await _bypassForReuse(sessionHosts, options.settings);
+    // IPv6 проверяем ДО выбора системного DNS: на домашней сети роутер часто
+    // раздаёт локальный ULA-адрес (`fd00::/8`), который отвечает до старта TUN,
+    // но при отсутствии внешнего IPv6 (или при выключенном IPv6 в TUN) после
+    // подъёма адаптера становится недоступен и превращает запас DNS в таймаут.
+    final ipv6Available = await _ipv6Reality();
+    final allowIpv6Dns = options.settings.tunIpv6 && ipv6Available;
+    final directDns = await _systemDnsServer(allowIpv6: allowIpv6Dns);
     final tunOptions = TunOptions.fromSettings(
       options.settings,
       // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
@@ -1130,7 +1147,7 @@ class WindowsEngine extends VpnEngineBase {
       // резолвилось бы через VPN. Прежний туннель (тот, что держит kill
       // switch) при этом ещё стоит — потому у ответа и есть память о прошлом
       // рабочем адресе, см. `_systemDnsServer`.
-      directDnsUpstream: await _systemDnsServer(),
+      directDnsUpstream: directDns,
       // ⚠️ ЗАПАС ДЛЯ ПРЯМОГО РЕЗОЛВА (BACKLOG #34). Поднимается НЕЗАВИСИМО от
       // галочки «весь DNS через туннель» и от режима захвата: прямой резолв
       // существует в любой конфигурации, значит и запас ему нужен всегда.
@@ -1141,8 +1158,9 @@ class WindowsEngine extends VpnEngineBase {
       // Запасной резолвер под общий DNS — только когда пользователь
       // просил вести DNS через туннель. Без этой галочки прямой трафик и
       // так резолвится локально, и лишнее звено не нужно.
-      fallbackDnsPort: await _startFallbackDns(options.settings, gen, aborted),
-      ipv6Available: await _ipv6Reality(),
+      fallbackDnsPort: await _startFallbackDns(options.settings, gen, aborted,
+          directDns: directDns, allowIpv6: allowIpv6Dns),
+      ipv6Available: ipv6Available,
       // API туннельного экземпляра — ТОЛЬКО для сторожа зависания.
       //
       // ⚠️ Порт новый, поэтому сверен с обоими ядрами: Xray держит
@@ -1627,6 +1645,8 @@ class WindowsEngine extends VpnEngineBase {
 
     if (keepCapture) return;
 
+    await _stopDirectFallbackDns();
+
     if (_tunActive) {
       await _tunRouter.stop();
       _tunActive = false;
@@ -1655,6 +1675,7 @@ class WindowsEngine extends VpnEngineBase {
     // проба резолвера пройдёт честно. Память о прошлом ответе тут только вредна
     // — см. [_lastDirectDns].
     _lastDirectDns = null;
+    _secondaryDirectDns = null;
     _statsTimer?.cancel();
     _statsTimer = null;
     _tunWatchdog?.cancel();
@@ -1696,6 +1717,7 @@ class WindowsEngine extends VpnEngineBase {
     _polling = false;
     _tunFailStreak = 0;
     _lastDirectDns = null;
+    _secondaryDirectDns = null;
     _statsTimer?.cancel();
     _statsTimer = null;
     _tunWatchdog?.cancel();
@@ -2039,7 +2061,12 @@ class WindowsEngine extends VpnEngineBase {
   /// (`dns-proxy`), то есть вернётся поведение до этой правки. Диагностика не
   /// имеет права мешать подключению.
   Future<int> _startFallbackDns(
-      AppSettings s, int gen, bool Function() aborted) async {
+    AppSettings s,
+    int gen,
+    bool Function() aborted, {
+    String? directDns,
+    bool allowIpv6 = true,
+  }) async {
     // ⚠️ ГЕЙТ ДО ПЕРВОГО ДЕЙСТВИЯ, А НЕ ПОСЛЕ. Ниже стоит `_stopFallbackDns()`,
     // и он снимает форвардер ИЗ ПОЛЯ — а там уже может стоять форвардер живой
     // сессии (см. [_fallbackDnsOwnerGen]). Устаревший запуск обязан уйти,
@@ -2060,7 +2087,7 @@ class WindowsEngine extends VpnEngineBase {
           'к провайдеру');
       return 0;
     }
-    final local = await _systemDnsServer();
+    final local = directDns ?? await _systemDnsServer(allowIpv6: allowIpv6);
     if (local == null || local.isEmpty) {
       AppLog.w('Запасной DNS не поднят: локальный резолвер не определён');
       return 0;
@@ -2126,6 +2153,7 @@ class WindowsEngine extends VpnEngineBase {
     // killSwitch/noRealIp» — и я её всё равно потерял при реализации. Нашлось
     // случайно, при сжатии памяти. Здесь она в коде, а не в заметке.
     if (s.killSwitch || s.noRealIp) {
+      if (!aborted()) await _stopDirectFallbackDns();
       AppLog.i('Прямой запас DNS не поднимаю: включён '
           '${s.killSwitch ? "kill switch" : "режим без реального IP"} - прямой резолв в обход туннеля противоречил бы ему');
       return 0;
@@ -2136,15 +2164,56 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.i('Прямой запас DNS не поднимаю: запуск устарел');
       return 0;
     }
-    await _stopDirectFallbackDns();
     final local = _lastDirectDns;
     final second = _secondaryDirectDns;
-    if (local == null || local.isEmpty) return 0;
+    if (local == null || local.isEmpty) {
+      await _stopDirectFallbackDns();
+      return 0;
+    }
     if (second == null || second.isEmpty || second == local) {
+      await _stopDirectFallbackDns();
       // Молчать нельзя: отсутствие запаса неотличимо от его исправной работы.
       AppLog.i('Прямой запас DNS не поднят: второго рабочего резолвера нет');
       return 0;
     }
+    // ⚠️ СТРОГАЯ МАРШРУТИЗАЦИЯ (`strict_route: true`) РЕЖЕТ ЛОКАЛЬНЫЙ DNS ИЗ
+    // НАШЕГО ПРОЦЕССА (репорт реального клиента 03.11.2026).
+    //
+    // В тестовой VM апстримами были публичные `1.1.1.1`/`8.8.8.8`: пакеты из
+    // `silentgate.exe` заходили внутрь `silentgate-tun`, где сам `sing-box`
+    // выпускал их наружу по правилу `process_name: silentgate.exe -> direct`.
+    // На домашнем ПК резолвер — это LAN-адрес роутера (`192.168.x.1` или ULA
+    // `fd00::/8`): маршрут `/24` физического адаптера специфичнее маршрута TUN,
+    // пакеты идут мимо `silentgate-tun` прямо в сетевую карту и дропаются
+    // WFP-фильтрами `strict_route` самого `sing-box` (исключение в `sing-tun`
+    // есть только для сокетов `sing-box.exe`, но не `silentgate.exe`). Итог:
+    // 100 % запросов к `dns-local` висят по 10–20 с в `context deadline
+    // exceeded`, тогда как без форвардера (`directFallbackDnsPort = 0`) сам
+    // `sing-box.exe` опрашивает `192.168.x.1` напрямую без единого таймаута.
+    if (s.captureMode == CaptureMode.tun &&
+        s.tunStrictRoute &&
+        (!directFallbackSafeWithStrictRoute(local) ||
+            !directFallbackSafeWithStrictRoute(second))) {
+      await _stopDirectFallbackDns();
+      AppLog.i('Прямой запас DNS не поднимаю: при строгой маршрутизации '
+          'локальный резолвер сети доступен напрямую только из ядра TUN');
+      return 0;
+    }
+    // ⚠️ ПЕРЕИСПОЛЬЗУЕМ ЖИВОЙ ФОРВАРДЕР НА СМЕНЕ СЕРВЕРА.
+    //
+    // Пересоздание на каждом реконнекте выдавало новый случайный порт (`0`),
+    // из-за чего `wantConfig` расходился с `_liveTunConfig` ровно в
+    // `config.dns.servers[1].server_port` и бесшовное переключение КАЖДЫЙ РАЗ
+    // сносило и поднимало Wintun заново.
+    final live = _directFallbackDns;
+    if (live != null &&
+        live.isRunning &&
+        live.localDns == local &&
+        live.secondaryDns == second) {
+      _directFallbackOwnerGen = gen;
+      return live.port;
+    }
+    await _stopDirectFallbackDns();
     final srv = DnsFallbackServer.direct(localDns: local, secondaryDns: second);
     if (!srv.usefulAsDirectFallback) return 0;
     try {
@@ -2159,6 +2228,44 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.w('Прямой запас DNS не поднялся: $e');
       return 0;
     }
+  }
+
+  /// Пройдёт ли UDP-пакет из `silentgate.exe` к [ip] при включённом
+  /// `strict_route: true` на адаптере TUN.
+  ///
+  /// Публичные адреса заходят в `silentgate-tun` по маршруту по умолчанию и
+  /// выпускаются наружу самим `sing-box.exe` (`process_name -> direct`).
+  /// Приватные/локальные подсети (`10/8`, `172.16/12`, `192.168/16`, CGNAT
+  /// `100.64/10`, link-local, ULA `fc00::/7`) идут мимо TUN по connected-маршруту
+  /// физического адаптера или `route_exclude_address` и блокируются WFP-фильтром
+  /// `strict_route` у любого процесса, кроме самого `sing-box.exe`.
+  @visibleForTesting
+  static bool directFallbackSafeWithStrictRoute(String ip) {
+    final addr = InternetAddress.tryParse(ip.trim());
+    if (addr == null) return false;
+    if (addr.isLoopback || addr.isLinkLocal || addr.isMulticast) return false;
+    final raw = addr.rawAddress;
+    if (addr.type == InternetAddressType.IPv4 && raw.length == 4) {
+      final b0 = raw[0];
+      final b1 = raw[1];
+      if (b0 == 0 || b0 == 10 || b0 == 127 || b0 >= 224) return false;
+      if (b0 == 100 && (b1 & 0xC0) == 64) return false; // 100.64.0.0/10
+      if (b0 == 169 && b1 == 254) return false; // 169.254.0.0/16
+      if (b0 == 172 && b1 >= 16 && b1 <= 31) return false; // 172.16.0.0/12
+      if (b0 == 192 && b1 == 168) return false; // 192.168.0.0/16
+      return true;
+    }
+    if (addr.type == InternetAddressType.IPv6 && raw.length == 16) {
+      if (raw.every((b) => b == 0)) return false; // ::
+      final b0 = raw[0];
+      final b1 = raw[1];
+      if ((b0 & 0xFE) == 0xFC) return false; // fc00::/7 (ULA)
+      if (b0 == 0xFE && (b1 & 0xC0) == 0x80) return false; // fe80::/10
+      if (b0 == 0xFE && (b1 & 0xC0) == 0xC0) return false; // fec0::/10
+      if (b0 == 0xFF) return false;
+      return true;
+    }
+    return false;
   }
 
   DnsFallbackServer? _directFallbackDns;
@@ -2245,12 +2352,15 @@ class WindowsEngine extends VpnEngineBase {
   @override
   Future<void> onNetworkChanged() async {
     _lastDirectDns = null;
+    _secondaryDirectDns = null;
     await super.onNetworkChanged();
   }
 
   /// Только для теста: чем сейчас движок помнит резолвер «Прямо».
   @visibleForTesting
   String? get lastDirectDns => _lastDirectDns;
+  @visibleForTesting
+  String? get secondaryDirectDns => _secondaryDirectDns;
 
   /// Чем в тесте подменяется определение резолвера для «Прямо».
   ///
@@ -2273,18 +2383,32 @@ class WindowsEngine extends VpnEngineBase {
   Future<bool> Function()? tunAliveForTest;
 
   @visibleForTesting
-  Future<String?> systemDnsServerForTest() => _systemDnsServer();
+  Future<String?> systemDnsServerForTest({bool allowIpv6 = true}) =>
+      _systemDnsServer(allowIpv6: allowIpv6);
 
-  Future<String?> _systemDnsServer() async {
+  Future<String?> _systemDnsServer({bool allowIpv6 = true}) async {
     try {
+      if (!allowIpv6) {
+        if (_lastDirectDns?.contains(':') ?? false) _lastDirectDns = null;
+        if (_secondaryDirectDns?.contains(':') ?? false) {
+          _secondaryDirectDns = null;
+        }
+      }
       // ⚠️ БЕЗ PowerShell. Прежний `Get-DnsClientServerAddress` — командлет того
       // же семейства CIM, что и изгнанный отсюда `Get-NetAdapter`: на машине
       // владельца он упирался в пятисекундный таймаут, и домены «Прямо»
       // переставали резолвиться молча. Живой тест в VM это подтвердил.
       final list = (adapterDnsForTest?.call() ?? AdapterDnsWindows.servers())
-          // Адреса самого туннеля и заглушки резолвером быть не могут.
+          // Адреса самого туннеля, заглушки Windows (`fec0:0:0:ffff::1..3`),
+          // link-local (`fe80::/10`) и IPv6 при выключенном/мёртвом IPv6
+          // резолвером быть не могут.
           .where((e) => !e.startsWith('172.19.0.'))
           .where((e) => !e.startsWith('fdfe:dcba:9876'))
+          .where((e) {
+            final lower = e.toLowerCase();
+            return !lower.startsWith('fec0:') && !lower.startsWith('fe80:');
+          })
+          .where((e) => allowIpv6 || !e.contains(':'))
           .where((e) => e != '0.0.0.0' && e != '127.0.0.1' && e != '::1')
           .toList();
 

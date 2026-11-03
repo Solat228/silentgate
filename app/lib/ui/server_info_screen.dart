@@ -70,7 +70,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       return await action(
           state.httpProxyPort, ProxyProbe.user, ProxyProbe.password);
     }
-    if (widget.server.isWhitelistBypass) {
+    if (widget.server.usesWhitelistRelay) {
       if (mounted) setState(() => _error = l.srvInfoNeedsConnection);
       return null;
     }

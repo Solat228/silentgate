@@ -4525,4 +4525,23 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Continuer';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Affecte uniquement les icônes de vérification sous le bouton Connecter. Pour acheminer certains services via ou hors du VPN, configurez le split tunneling.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Configurer le split tunneling';
+
+  @override
+  String get splitQuickServicesTitle => 'Sélection rapide de services';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Ajoute les domaines principaux et médias du service avec l\'action du mode actuel';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'Domaines $service ajoutés. Pour les appels et l\'application, ajoutez aussi $service dans « Applications » ci-dessus';
+  }
 }

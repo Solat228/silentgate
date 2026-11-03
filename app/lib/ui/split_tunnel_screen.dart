@@ -14,6 +14,7 @@ import 'package:provider/provider.dart';
 
 import '../core/settings/app_settings.dart';
 import '../core/singbox/exit_outbounds.dart';
+import '../core/settings/split_service_presets.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/settings/split_tunnel_counts.dart';
 import '../core/settings/split_tunnel_text.dart';
@@ -485,6 +486,7 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                     child: _AddSiteField(controller: controller),
                   ),
                   _siteTools(context, controller, state, l),
+                  _quickServiceChips(context, controller, state, l),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: SelText(
@@ -755,6 +757,88 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   /// экспорт, который человек потом кому-то перешлёт, унёс бы адрес сервера
   /// наружу — ровно та утечка, что разбиралась в 1.4.3. Безымянный сервер
   /// просто не называется: правило уедет в общий туннель, и это видно.
+  Widget _quickServiceChips(BuildContext context, SettingsController controller,
+      AppState state, AppLocalizations l) {
+    final st = controller.settings.splitTunnel;
+    final defaultAction = st.defaultAction;
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l.splitQuickServicesTitle, style: theme.textTheme.titleSmall),
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 6),
+            child: Text(
+              l.splitQuickServicesSub,
+              style:
+                  theme.textTheme.bodySmall?.copyWith(color: theme.hintColor),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: SplitServicePresets.catalog.map((preset) {
+              final svc = preset.service;
+              final active = SplitServicePresets.isPresetActive(
+                  st.sites, svc, defaultAction);
+              return FilterChip(
+                key: Key('splitPreset-${svc.name}'),
+                avatar:
+                    SiteFavicon(domain: svc.domain, size: 18, builtIn: true),
+                label: Text(svc.label),
+                selected: active,
+                onSelected: (_) {
+                  final action = controller.settings.splitTunnel.defaultAction;
+                  final toggled = SplitServicePresets.togglePreset(
+                    controller.settings.splitTunnel.sites,
+                    svc,
+                    action: action,
+                  );
+                  controller.update((s) {
+                    final groupKey = splitGroupKey('sites', action);
+                    final nextCollapsed = toggled.added
+                        ? s.splitCollapsed
+                            .where((k) => k != groupKey)
+                            .toList()
+                        : s.splitCollapsed;
+                    return s.copyWith(
+                      splitSitesCollapsed:
+                          toggled.added ? false : s.splitSitesCollapsed,
+                      splitCollapsed: nextCollapsed,
+                      splitTunnel:
+                          s.splitTunnel.copyWith(sites: toggled.sites),
+                    );
+                  });
+                  if (toggled.added &&
+                      preset.needsAppRuleHint &&
+                      context.mounted) {
+                    AppToast.show(context, l.splitServiceAppHint(svc.label));
+                  }
+                  if (state.status.isConnected &&
+                      splitRulesEditableIn(controller.settings.captureMode)) {
+                    if (controller.settings.alwaysReloadVpnOnNewSite) {
+                      unawaited(state.reconnect(controller.settings));
+                    } else {
+                      unawaited(showVpnReloadPromptDialog(
+                        context,
+                        domain: svc.domain,
+                        settingsController: controller,
+                        appState: state,
+                        isLiveMismatch: false,
+                      ));
+                    }
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
   static String? _exitName(AppState state, String key) {
     for (final s in state.servers) {
       if (s.key != key) continue;

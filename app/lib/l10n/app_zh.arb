@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "当前无法直连更新服务器或已开启全局 VPN 模式。检查并下载更新将消耗您的订阅流量，是否继续？",
   "updatesTrafficWarningDownloadBody": "下载更新 ({sizeMb} MB) 将通过当前 VPN 进行并消耗您的订阅流量，是否继续？",
   "updatesTrafficDontShowAgain": "不再显示此提示",
-  "updatesContinue": "继续"
+  "updatesContinue": "继续",
+  "settingsConnectChecksNotSplitNote": "仅影响连接按钮下方的检测图标。如需指定哪些服务走 VPN 或直连，请配置分流规则。",
+  "settingsOpenSplitTunnel": "配置分流规则",
+  "splitQuickServicesTitle": "常用服务快捷选择",
+  "splitQuickServicesSub": "按当前模式的默认动作一键添加该服务的主域名和媒体域名",
+  "splitServiceAppHint": "已添加 {service} 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 {service}"
 }

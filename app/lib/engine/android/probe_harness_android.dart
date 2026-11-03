@@ -97,7 +97,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
   /// Ноль (конфиг не разобрался) — тоже один: построитель тогда уходит в
   /// штатную ветку и собирает обычный конфиг по полям сервера.
   static int candidateCount(HarnessEntry e) {
-    if (e.server.isWhitelistBypass) return 0;
+    if (e.server.usesWhitelistRelay) return 0;
     final s = e.server;
     final raw = (s.rawJsonOverride ?? '').isNotEmpty
         ? s.rawJsonOverride!
@@ -140,7 +140,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
       // рабочий сервер мёртвым. Такие кандидаты просто не меряются: их
       // состояние честно остаётся «не проверен», а по живому каналу
       // проверяется активный (см. ProbeController).
-      if (e.server.protocol == 'hysteria2' || e.server.isWhitelistBypass) {
+      if (e.server.protocol == 'hysteria2' || e.server.usesWhitelistRelay) {
         next++;
         continue;
       }

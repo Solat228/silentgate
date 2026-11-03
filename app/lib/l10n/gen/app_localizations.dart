@@ -7583,6 +7583,36 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Продолжить'**
   String get updatesContinue;
+
+  /// No description provided for @settingsConnectChecksNotSplitNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Влияет только на значки проверки под кнопкой подключения. Чтобы пускать отдельные сервисы через VPN или мимо него, настройте раздельное туннелирование.'**
+  String get settingsConnectChecksNotSplitNote;
+
+  /// No description provided for @settingsOpenSplitTunnel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настроить раздельное туннелирование'**
+  String get settingsOpenSplitTunnel;
+
+  /// No description provided for @splitQuickServicesTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Быстрый выбор сервисов'**
+  String get splitQuickServicesTitle;
+
+  /// No description provided for @splitQuickServicesSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Добавляет основные и медиа-домены сервиса с действием текущего режима'**
+  String get splitQuickServicesSub;
+
+  /// No description provided for @splitServiceAppHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Домены {service} добавлены. Для звонков и работы программы добавьте {service} также в список «Приложения» выше'**
+  String splitServiceAppHint(String service);
 }
 
 class _AppLocalizationsDelegate

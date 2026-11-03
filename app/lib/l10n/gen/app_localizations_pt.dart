@@ -4511,4 +4511,23 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Continuar';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Afeta apenas os ícones de verificação sob o botão Conectar. Para direcionar serviços específicos pela VPN ou fora dela, configure o túnel dividido.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Configurar túnel dividido';
+
+  @override
+  String get splitQuickServicesTitle => 'Seleção rápida de serviços';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Adiciona os domínios principais e de mídia do serviço com a ação do modo atual';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'Domínios de $service adicionados. Para chamadas e o aplicativo, adicione também $service em \"Aplicativos\" acima';
+  }
 }

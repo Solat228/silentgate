@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "O acesso direto aos servidores de atualização está indisponível ou todo o tráfego passa pela VPN. Verificar e baixar usará tráfego da assinatura. Continuar?",
   "updatesTrafficWarningDownloadBody": "O download da atualização ({sizeMb} MB) passará pela VPN ativa e consumirá tráfego da assinatura. Continuar?",
   "updatesTrafficDontShowAgain": "Não mostrar este aviso novamente",
-  "updatesContinue": "Continuar"
+  "updatesContinue": "Continuar",
+  "settingsConnectChecksNotSplitNote": "Afeta apenas os ícones de verificação sob o botão Conectar. Para direcionar serviços específicos pela VPN ou fora dela, configure o túnel dividido.",
+  "settingsOpenSplitTunnel": "Configurar túnel dividido",
+  "splitQuickServicesTitle": "Seleção rápida de serviços",
+  "splitQuickServicesSub": "Adiciona os domínios principais e de mídia do serviço com a ação do modo atual",
+  "splitServiceAppHint": "Domínios de {service} adicionados. Para chamadas e o aplicativo, adicione também {service} em \"Aplicativos\" acima"
 }

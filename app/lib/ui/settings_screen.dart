@@ -1121,7 +1121,9 @@ List<SettingsRow> _connectCheckRows(
     if (settings.connectChecksEnabled)
       SettingsRow(
         search: '${l.settingsConnectCheckServices} '
-            '${l.settingsConnectCheckServicesSub}',
+            '${l.settingsConnectCheckServicesSub} '
+            '${l.settingsConnectChecksNotSplitNote} '
+            '${l.settingsOpenSplitTunnel}',
         build: (context) => Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Column(
@@ -1177,6 +1179,38 @@ List<SettingsRow> _connectCheckRows(
                   );
                 }).toList(),
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 16, color: Theme.of(context).hintColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.settingsConnectChecksNotSplitNote,
+                        key: const Key('connectChecksNotSplitNote'),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (AppStoreInfo.tunAvailable)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: TextButton.icon(
+                    key: const Key('connectChecksOpenSplitTunnel'),
+                    icon: const Icon(Icons.call_split, size: 18),
+                    label: Text(l.settingsOpenSplitTunnel),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const SplitTunnelScreen()),
+                    ),
+                  ),
+                ),
               // Пустой набор при включённой галочке — законное состояние
               // (флаг и набор независимы), но молча оно выглядит как поломка:
               // «проверка включена, а чипов нет». Говорим прямо.

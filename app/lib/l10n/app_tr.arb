@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "Güncelleme sunucularına doğrudan erişim yok veya tüm trafik VPN üzerinden geçiyor. Güncelleme kontrolü ve indirme abonelik kotanızı kullanır. Devam edilsin mi?",
   "updatesTrafficWarningDownloadBody": "Güncelleme indirmesi ({sizeMb} MB) etkin VPN üzerinden yapılacak ve abonelik kotanızı kullanacak. Devam edilsin mi?",
   "updatesTrafficDontShowAgain": "Bu uyarıyı bir daha gösterme",
-  "updatesContinue": "Devam et"
+  "updatesContinue": "Devam et",
+  "settingsConnectChecksNotSplitNote": "Yalnızca Bağlan düğmesinin altındaki kontrol simgelerini etkiler. Belirli servisleri VPN üzerinden veya dışından yönlendirmek için bölünmüş tünellemeyi ayarlayın.",
+  "settingsOpenSplitTunnel": "Bölünmüş tünellemeyi ayarla",
+  "splitQuickServicesTitle": "Hızlı servis seçimi",
+  "splitQuickServicesSub": "Servisin ana ve medya alan adlarını geçerli modun eylemiyle ekler",
+  "splitServiceAppHint": "{service} alan adları eklendi. Aramalar ve uygulama için {service} uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin"
 }

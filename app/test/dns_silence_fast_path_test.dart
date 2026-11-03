@@ -111,7 +111,7 @@ void main() {
 
     test('⚠️ адреса опрашиваются разом, а не по 2 с подряд', () async {
       engine.adapterDnsForTest =
-          () => ['192.0.2.1', '192.0.2.2', 'fec0:0:0:ffff::1', 'fec0:0:0:ffff::2'];
+          () => ['192.0.2.1', '192.0.2.2', '2001:db8::1', '2001:db8::2'];
       var inFlight = 0;
       var peak = 0;
       engine.dnsReachableForTest = (ip) async {

@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "L'accès direct aux serveurs de mise à jour est indisponible ou tout le trafic passe par le VPN. La vérification et le téléchargement utiliseront le trafic de votre abonnement. Continuer ?",
   "updatesTrafficWarningDownloadBody": "Le téléchargement de la mise à jour ({sizeMb} Mo) passera par le VPN actif et utilisera votre abonnement. Continuer ?",
   "updatesTrafficDontShowAgain": "Ne plus afficher cet avertissement",
-  "updatesContinue": "Continuer"
+  "updatesContinue": "Continuer",
+  "settingsConnectChecksNotSplitNote": "Affecte uniquement les icônes de vérification sous le bouton Connecter. Pour acheminer certains services via ou hors du VPN, configurez le split tunneling.",
+  "settingsOpenSplitTunnel": "Configurer le split tunneling",
+  "splitQuickServicesTitle": "Sélection rapide de services",
+  "splitQuickServicesSub": "Ajoute les domaines principaux et médias du service avec l'action du mode actuel",
+  "splitServiceAppHint": "Domaines {service} ajoutés. Pour les appels et l'application, ajoutez aussi {service} dans « Applications » ci-dessus"
 }

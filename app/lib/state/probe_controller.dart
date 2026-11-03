@@ -479,7 +479,7 @@ class ProbeController extends ChangeNotifier {
   /// ⚠️ Спрашиваем САМ ХАРНЕСС (`supportsProxyRequests`), а не `Platform.isX`:
   /// платформенная развилка уже описана в одном месте (`probe_factory`), и
   /// вторая её копия здесь разъехалась бы с первой на первой же платформе.
-  bool canMeasureSpeed(VpnServer s) => s.isWhitelistBypass
+  bool canMeasureSpeed(VpnServer s) => s.usesWhitelistRelay
       ? _liveTargetIn([s]) != null
       : (_harnessCanMeasure || _liveTargetIn([s]) != null);
 
@@ -883,10 +883,10 @@ class ProbeController extends ChangeNotifier {
               notifyListeners();
               return;
             }
-            final targetHost = s.isWhitelistBypass
+            final targetHost = s.usesWhitelistRelay
                 ? (WhitelistBypassEndpoint.domainsForServer(s).firstOrNull ?? s.address)
                 : s.address;
-            final targetPort = s.isWhitelistBypass ? 443 : s.port;
+            final targetPort = s.usesWhitelistRelay ? 443 : s.port;
             final r = await TcpPing.measure(targetHost, targetPort, timeout: timeout);
             if (r.outcome == PingOutcome.ok) {
               final isLive = s.key == activeServerKey?.call();
@@ -903,7 +903,7 @@ class ProbeController extends ChangeNotifier {
                 latencyThroughTunnel: captured,
                 measuredAt: DateTime.now(),
               );
-              if (s.isWhitelistBypass && !isLive) {
+              if (s.usesWhitelistRelay && !isLive) {
                 _results[s.key] = PingResult(
                   outcome: PingOutcome.ok,
                   latencyMs: r.latencyMs,

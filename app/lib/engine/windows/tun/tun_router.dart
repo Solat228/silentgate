@@ -79,7 +79,9 @@ abstract interface class TunHandoverCapable {
 class TunStartException implements Exception {
   final String message;
   final String details;
-  TunStartException(this.message, {this.details = ''});
+  final bool adapterOpenTimeout;
+  TunStartException(this.message,
+      {this.details = '', this.adapterOpenTimeout = false});
   @override
   String toString() => details.isEmpty ? message : '$message\n\n$details';
 }

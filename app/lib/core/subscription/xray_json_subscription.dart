@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../models/vpn_server.dart';
 import '../platform/app_log.dart';
 import '../util/key_migration.dart';
+import '../whitelist_bypass/whitelist_bypass_helper.dart';
 
 /// Разбор подписки в формате **XRAY_JSON** — том, что Remnawave отдаёт Happ/v2rayNG.
 ///
@@ -334,6 +335,7 @@ class XrayJsonSubscription {
     }
 
     String? host, path, headerType, authority, xhttpMode, xPadding;
+    late final bsMeta = WhitelistBypassSpec.tryParseTransportPath(path);
     switch (network) {
       case 'ws':
         final ws = (stream['wsSettings'] as Map?)?.cast<String, dynamic>();
@@ -394,6 +396,14 @@ class XrayJsonSubscription {
       authority: authority,
       xhttpMode: xhttpMode,
       xPadding: xPadding,
+      whitelistPlatform: bsMeta?.platform,
+      whitelistRoom: bsMeta?.room,
+      whitelistMode: bsMeta?.mode,
+      whitelistReliable: bsMeta?.reliable ?? false,
+      whitelistDualTrack: bsMeta?.dualTrack ?? false,
+      whitelistVp8Fps: bsMeta?.vp8Fps,
+      whitelistVp8Batch: bsMeta?.vp8Batch,
+      whitelistBlinkToken: bsMeta?.blinkToken,
       rawLink: '', // подставим стабильный ключ ниже
       rawOutboundJson: jsonEncode(out),
     );

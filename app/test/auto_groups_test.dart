@@ -222,6 +222,45 @@ void main() {
       expect(b.ownerOf.containsKey(6), isFalse);
     });
 
+    test('⚠️ в «🏳️ Авто Белые списки» НЕ попадает вообще ни одна локация', () {
+      // Баг с живого скриншота 1.17.2: «🏳️ Авто Белые списки» содержал 24
+      // (RU)-локации из Нидерландов и Финляндии (не покрывая страновые профили
+      // целиком), обходил `_isUmbrella` и забирал их себе в раскрывающийся
+      // список из 24 серверов.
+      const nl = '\u{1F1F3}\u{1F1F1}';
+      const fi = '\u{1F1EB}\u{1F1EE}';
+      final s = [
+        profile('🏳️ Авто Белые списки', [
+          ob('nl-1'),
+          ob('nl-ru'),
+          ob('fi-ru'),
+        ]),
+        profile('$nl 🚀Нидерланды', [ob('nl-1'), ob('nl-2'), ob('nl-3'), ob('nl-4')]),
+        srv('$nl 🚀Нидерланды 1. GRPC', ob('nl-1')),
+        srv('$nl 🚀Нидерланды 2.5 GRPC (RU)', ob('nl-ru')),
+        srv('$fi 🚀Финляндия 1.5 GRPC (RU)', ob('fi-ru')),
+        srv('Без флага (RU)', ob('nl-ru')),
+      ];
+      final b = AutoGroups.compute(s);
+      expect(b.members.containsKey(0), isFalse,
+          reason: 'в Авто Белые списки вообще ничего не должно попадать');
+      expect(b.ownerOf[2], 1,
+          reason: 'Нидерланды 1 остаются под своим страновым профилем');
+      expect(b.ownerOf.containsKey(3), isFalse,
+          reason: 'локация, не входящая в страновой профиль, остаётся обычной строкой страны');
+      expect(b.ownerOf.containsKey(4), isFalse);
+      expect(b.ownerOf.containsKey(5), isFalse);
+    });
+
+    test('тематический профиль без флага страны не забирает чужие страны', () {
+      const nl = '\u{1F1F3}\u{1F1F1}';
+      final s = [
+        profile('Авто Стриминг', [ob('nl-only')]),
+        srv('$nl 🚀Нидерланды 2.8 xhttp (RU)', ob('nl-only')),
+      ];
+      expect(AutoGroups.compute(s).isEmpty, isTrue);
+    });
+
     test('маленький вложенный профиль не отнимает группу у страны', () {
       final s = [
         profile('$pl Польша', [ob('p1'), ob('p2'), ob('p3')]),

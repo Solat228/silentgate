@@ -78,7 +78,20 @@ class VpnServer {
   final String? whitelistCreatorHost;
 
   /// Является ли сервер точкой обхода белых списков.
+  final bool whitelistReliable;
+  final bool whitelistDualTrack;
+  final int? whitelistVp8Fps;
+  final int? whitelistVp8Batch;
+  final String? whitelistBlinkToken;
+
   bool get isWhitelistBypass => protocol == 'whitelist_bypass';
+
+  /// Требует ли сервер запуска локального WebRTC-релея (`whitelist-bypass`).
+  /// Истинно как для автономных `whitelist://`, так и для нод Remnawave (`/sgbs?...`).
+  bool get usesWhitelistRelay =>
+      isWhitelistBypass ||
+      ((whitelistPlatform ?? '').isNotEmpty &&
+          (whitelistRoom ?? '').isNotEmpty);
 
   final String rawLink;
 
@@ -158,6 +171,11 @@ class VpnServer {
     this.whitelistRoom,
     this.whitelistMode,
     this.whitelistCreatorHost,
+    this.whitelistReliable = false,
+    this.whitelistDualTrack = false,
+    this.whitelistVp8Fps,
+    this.whitelistVp8Batch,
+    this.whitelistBlinkToken,
     required this.rawLink,
     this.rawJsonOverride,
     this.rawOutboundJson,
@@ -241,7 +259,10 @@ class VpnServer {
   String get protocolLabel {
     switch (protocol) {
       case 'vless':
-        return 'VLESS${security == 'reality' ? ' · Reality' : ''}';
+        final bsSuffix = usesWhitelistRelay
+            ? ' · БС (${(whitelistPlatform ?? 'RELAY').toUpperCase()})'
+            : '';
+        return 'VLESS${security == 'reality' ? ' · Reality' : ''}$bsSuffix';
       case 'vmess':
         return 'VMess';
       case 'trojan':
@@ -284,6 +305,9 @@ class VpnServer {
     }
     if (flow != null && flow!.contains('vision')) tags.add('VISION');
     if ((obfs ?? '').isNotEmpty) tags.add('OBFS');
+    if (usesWhitelistRelay) {
+      tags.add('БС · ${(whitelistPlatform ?? 'RELAY').toUpperCase()}');
+    }
     if ((hopPorts ?? '').isNotEmpty) tags.add(VpnServerTags.portHopping);
     return tags;
   }
@@ -319,6 +343,11 @@ class VpnServer {
     String? whitelistRoom,
     String? whitelistMode,
     String? whitelistCreatorHost,
+    bool? whitelistReliable,
+    bool? whitelistDualTrack,
+    int? whitelistVp8Fps,
+    int? whitelistVp8Batch,
+    String? whitelistBlinkToken,
     String? rawLink,
     String? rawJsonOverride,
     String? rawOutboundJson,
@@ -361,6 +390,11 @@ class VpnServer {
       whitelistRoom: whitelistRoom ?? this.whitelistRoom,
       whitelistMode: whitelistMode ?? this.whitelistMode,
       whitelistCreatorHost: whitelistCreatorHost ?? this.whitelistCreatorHost,
+      whitelistReliable: whitelistReliable ?? this.whitelistReliable,
+      whitelistDualTrack: whitelistDualTrack ?? this.whitelistDualTrack,
+      whitelistVp8Fps: whitelistVp8Fps ?? this.whitelistVp8Fps,
+      whitelistVp8Batch: whitelistVp8Batch ?? this.whitelistVp8Batch,
+      whitelistBlinkToken: whitelistBlinkToken ?? this.whitelistBlinkToken,
       rawLink: rawLink ?? this.rawLink,
       rawJsonOverride: rawJsonOverride ?? this.rawJsonOverride,
       rawOutboundJson:
@@ -399,6 +433,13 @@ class VpnServer {
       }
       if (whitelistCreatorHost != null && whitelistCreatorHost!.isNotEmpty) {
         q['host'] = whitelistCreatorHost!;
+      }
+      if (whitelistReliable) q['reliable'] = '1';
+      if (whitelistDualTrack) q['dual'] = '1';
+      if ((whitelistVp8Fps ?? 0) > 0) q['fps'] = '$whitelistVp8Fps';
+      if ((whitelistVp8Batch ?? 0) > 0) q['batch'] = '$whitelistVp8Batch';
+      if (whitelistBlinkToken != null && whitelistBlinkToken!.isNotEmpty) {
+        q['bt'] = whitelistBlinkToken!;
       }
       final query = q.entries
           .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')

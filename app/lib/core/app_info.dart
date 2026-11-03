@@ -12,7 +12,7 @@ class AppInfo {
   /// на Android при `--split-per-abi` системный `versionCode` сдвинут на ABI
   /// (`2000 + N` для arm64, `4000 + N` для x86_64), поэтому честный номер `+N`
   /// для «О программе» и сравнения сборок хранится здесь.
-  static const buildNumber = 92;
+  static const buildNumber = 93;
 
   /// Необязательный суффикс пре-релиза/патча (`beta.1`, `rc.1`, `hotfix.2`),
   /// передаваемый при сборке (`--dart-define=SILENTGATE_PRERELEASE=...`).
@@ -32,9 +32,10 @@ class AppInfo {
   static const gitPatchLog =
       String.fromEnvironment('SILENTGATE_GIT_PATCHES', defaultValue: '');
 
-  /// Сводка патчей, вошедших в текущую сборку `1.18.0+92` (показывается по нажатию
+  /// Сводка патчей, вошедших в текущую сборку `1.18.0+93` (показывается по нажатию
   /// на строку версии в «О программе» вместе с ревизией Git).
   static const List<String> builtInPatchesRu = [
+    '+93 · Исправлены локальный DNS при строгой маршрутизации TUN, таймаут адаптера Wintun (15 с), автогруппировка «Авто Белые списки», бесшовное переиспользование форвардера DNS и лог xray.log в отчёте; добавлен быстрый выбор сервисов в раздельном туннелировании',
     '+92 · Исправлены перезапуск туннеля («Перезагрузить VPN»), ложные уведомления «Маршруты обновились» и очистка portable.txt в установщике',
     '+91 · Отображение полного номера сборки (+N), суффиксов и ревизии Git в «О программе», окне и обновлениях',
     '+90 · Монитор открытых соединений в реальном времени (VPN / Блокируются / Прямые) и детектор расхождения маршрутов',
@@ -46,6 +47,7 @@ class AppInfo {
   ];
 
   static const List<String> builtInPatchesEn = [
+    '+93 · Fix LAN DNS under strict_route TUN, Wintun open timeout (15s), "Auto Whitelists" grouping, seamless direct-DNS port reuse, and xray.log in support reports; add quick service presets in split tunneling',
     '+92 · Fix seamless tunnel reload ("Reload VPN"), false "Routes updated" prompts, and stale portable.txt cleanup in installer',
     '+91 · Full build number (+N), pre-release suffixes, and Git revision in About, window title, and Updates',
     '+90 · Real-time open connections monitor (VPN / Blocked / Direct) and live route mismatch detector',

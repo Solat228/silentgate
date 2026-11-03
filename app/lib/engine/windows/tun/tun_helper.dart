@@ -817,7 +817,7 @@ class TunHelper {
     final out = <String>[Platform.resolvedExecutable];
     final loc = XrayPaths.locateTrusted();
     if (loc != null) {
-      for (final n in const ['sing-box.exe', 'xray.exe']) {
+      for (final n in const ['sing-box.exe', 'xray.exe', 'whitelist-bypass.exe']) {
         final f = File('${loc.assetDir}${Platform.pathSeparator}$n');
         if (f.existsSync()) out.add(f.path);
       }

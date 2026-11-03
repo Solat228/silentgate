@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "الوصول المباشر إلى خوادم التحديث غير متاح أو يتم توجيه كل حركة المرور عبر VPN. سيؤدي التحقق والتنزيل إلى استهلاك رصيد اشتراكك. المتابعة؟",
   "updatesTrafficWarningDownloadBody": "سيتم تنزيل التحديث ({sizeMb} ميغابايت) عبر VPN النشط وسيستهلك من رصيد اشتراكك. المتابعة؟",
   "updatesTrafficDontShowAgain": "عدم إظهار هذا التحذير مرة أخرى",
-  "updatesContinue": "متابعة"
+  "updatesContinue": "متابعة",
+  "settingsConnectChecksNotSplitNote": "يؤثر فقط على رموز الفحص أسفل زر الاتصال. لتوجيه خدمات محددة عبر VPN أو خارجها، اضبط الانقسام النفقي.",
+  "settingsOpenSplitTunnel": "ضبط الانقسام النفقي",
+  "splitQuickServicesTitle": "اختيار سريع للخدمات",
+  "splitQuickServicesSub": "يضيف النطاقات الرئيسية ونطاقات الوسائط للخدمة بإجراء الوضع الحالي",
+  "splitServiceAppHint": "تمت إضافة نطاقات {service}. للمكالمات وعمل التطبيق، أضف {service} أيضاً إلى قائمة \"التطبيقات\" أعلاه"
 }

@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/platform/app_log.dart';
+import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/engine/windows/support_report.dart';
+import 'package:silentgate/engine/windows/xray_process.dart';
 
 /// ЛОГИ ЯДЕР В ОТЧЁТЕ ПОДДЕРЖКИ — ВТОРАЯ ДВЕРЬ ДЛЯ ТЕХ ЖЕ АДРЕСОВ.
 ///
@@ -124,6 +128,42 @@ void main() {
     test('обычные строки не портятся', () {
       const plain = 'router: match[3] outbound=direct, network=tcp, port=443';
       expect(SensitiveAddresses.mask(plain), plain);
+    });
+  });
+
+  group('xray.log в отчёте поддержки Windows', () {
+    late Directory tmp;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_xray_report_');
+      AppPaths.overrideRoot(tmp);
+    });
+
+    tearDown(() {
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('XrayProcess.tailLog склеивает xray.prev.log и xray.log', () async {
+      final dir = await AppPaths.supportDir();
+      final cur = File(XrayProcess.logPathFor(dir));
+      final prev = File('${dir.path}${Platform.pathSeparator}xray.prev.log');
+      await prev.writeAsString('prev-line-1\nprev-line-2\n');
+      await cur.writeAsString('cur-line-1\ncur-line-2\n');
+
+      final tail = await XrayProcess.tailLog(lines: 10);
+      expect(tail, contains('prev-line-1'));
+      expect(tail, contains('cur-line-2'));
+    });
+
+    test('SupportReport включает секцию xray.log и пропускает её через маску ядра',
+        () {
+      final src = File('lib/engine/windows/support_report.dart').readAsStringSync();
+      expect(src, contains('XrayProcess.tailLog('));
+      expect(src, contains('[xray.log - прокси-ядро Xray, последние строки]'));
+      expect(src, contains('_core(xr)'));
     });
   });
 }

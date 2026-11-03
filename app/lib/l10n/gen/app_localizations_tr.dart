@@ -4473,4 +4473,23 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updatesContinue => 'Devam et';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Yalnızca Bağlan düğmesinin altındaki kontrol simgelerini etkiler. Belirli servisleri VPN üzerinden veya dışından yönlendirmek için bölünmüş tünellemeyi ayarlayın.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Bölünmüş tünellemeyi ayarla';
+
+  @override
+  String get splitQuickServicesTitle => 'Hızlı servis seçimi';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Servisin ana ve medya alan adlarını geçerli modun eylemiyle ekler';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return '$service alan adları eklendi. Aramalar ve uygulama için $service uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin';
+  }
 }

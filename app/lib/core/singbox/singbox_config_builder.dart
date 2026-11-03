@@ -754,7 +754,12 @@ class SingboxConfigBuilder {
       // process_name со значением 'xray.exe' не совпал бы ни с чем.
       if (!o.platformTun)
         _route({
-          'process_name': ['xray.exe', 'sing-box.exe', 'silentgate.exe'],
+          'process_name': [
+            'xray.exe',
+            'sing-box.exe',
+            'silentgate.exe',
+            'whitelist-bypass.exe',
+          ],
         }, 'direct'),
       // ⚠️ Перехват DNS нужен ВСЕГДА, включая режим «системный».
       //

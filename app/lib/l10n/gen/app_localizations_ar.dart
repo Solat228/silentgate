@@ -4454,4 +4454,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updatesContinue => 'متابعة';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'يؤثر فقط على رموز الفحص أسفل زر الاتصال. لتوجيه خدمات محددة عبر VPN أو خارجها، اضبط الانقسام النفقي.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'ضبط الانقسام النفقي';
+
+  @override
+  String get splitQuickServicesTitle => 'اختيار سريع للخدمات';
+
+  @override
+  String get splitQuickServicesSub =>
+      'يضيف النطاقات الرئيسية ونطاقات الوسائط للخدمة بإجراء الوضع الحالي';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'تمت إضافة نطاقات $service. للمكالمات وعمل التطبيق، أضف $service أيضاً إلى قائمة \"التطبيقات\" أعلاه';
+  }
 }

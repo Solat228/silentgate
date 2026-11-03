@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/vpn_server.dart';
+import '../whitelist_bypass/whitelist_bypass_helper.dart';
 import 'outbound_variant.dart';
 import 'xray_keys.dart';
 
@@ -8,7 +9,8 @@ import 'xray_keys.dart';
 /// проброс-харнесса и вариаций автонастройки.
 ///
 /// Возвращает список: сам proxy-outbound (с тегом [tag]) плюс вспомогательные
-/// (например, freedom-outbound `frag-<tag>` при включённой фрагментации).
+/// (например, freedom-outbound `frag-<tag>` при включённой фрагментации или
+/// socks-outbound `wb-relay-<tag>` для нод БС поверх WebRTC).
 class XrayOutboundFactory {
   static List<Map<String, dynamic>> build(
     VpnServer server, {
@@ -24,10 +26,15 @@ class XrayOutboundFactory {
     final result = <Map<String, dynamic>>[];
     final stream = _streamSettings(server, variant);
 
-    // Фрагментация: proxy-outbound дозванивается через freedom-outbound с fragment.
-    if (variant.fragment) {
+    // Ноды БС: внешний TCP-сокет VLESS/Trojan уходит в локальный SOCKS5 WebRTC-релея.
+    // Фрагментация ClientHello здесь не нужна (снаружи на проводе оператора — WebRTC UDP).
+    if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
+      _attachWhitelistRelay(stream, result, tag);
+    } else if (variant.fragment) {
+      // Фрагментация: proxy-outbound дозванивается через freedom-outbound с fragment.
       final fragTag = 'frag-$tag';
-      final sockopt = (stream['sockopt'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final sockopt =
+          (stream['sockopt'] as Map<String, dynamic>?) ?? <String, dynamic>{};
       sockopt['dialerProxy'] = fragTag;
       stream['sockopt'] = sockopt;
       result.add({
@@ -42,6 +49,44 @@ class XrayOutboundFactory {
 
     result.insert(0, _protocolOutbound(server, tag, stream));
     return result;
+  }
+
+  /// Очищает путь WS/XHTTP/HTTP от служебных query-параметров БС (`/sgbs?p=...` -> `/sgbs`)
+  /// и привязывает `sockopt.dialerProxy` к локальному SOCKS5-порту `whitelist-bypass`.
+  static void _attachWhitelistRelay(
+    Map<String, dynamic> stream,
+    List<Map<String, dynamic>> result,
+    String tag, {
+    int relaySocksPort = 10855,
+  }) {
+    for (final key in const ['wsSettings', 'xhttpSettings', 'httpSettings']) {
+      if (stream[key] is Map) {
+        final m = Map<String, dynamic>.from(stream[key] as Map);
+        if (m['path'] is String) {
+          m['path'] = WhitelistBypassSpec.cleanTransportPath(m['path'] as String);
+        }
+        stream[key] = m;
+      }
+    }
+
+    final relayTag = 'wb-relay-$tag';
+    final sockopt = stream['sockopt'] is Map
+        ? Map<String, dynamic>.from(stream['sockopt'] as Map)
+        : <String, dynamic>{};
+    sockopt['dialerProxy'] = relayTag;
+    stream['sockopt'] = sockopt;
+    result.add({
+      'tag': relayTag,
+      'protocol': 'socks',
+      'settings': {
+        'servers': [
+          {
+            'address': '127.0.0.1',
+            'port': relaySocksPort,
+          },
+        ],
+      },
+    });
   }
 
   /// Outbound из [VpnServer.rawOutboundJson] (как прислала панель): перетегируем под
@@ -79,7 +124,9 @@ class XrayOutboundFactory {
       }
 
       final result = <Map<String, dynamic>>[];
-      if (variant.fragment) {
+      if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
+        _attachWhitelistRelay(stream, result, tag);
+      } else if (variant.fragment) {
         final fragTag = 'frag-$tag';
         final sockopt = stream['sockopt'] is Map
             ? Map<String, dynamic>.from(stream['sockopt'] as Map)
@@ -186,7 +233,8 @@ class XrayOutboundFactory {
     }
   }
 
-  static Map<String, dynamic> _streamSettings(VpnServer s, OutboundVariant variant) {
+  static Map<String, dynamic> _streamSettings(
+      VpnServer s, OutboundVariant variant) {
     final fp = variant.fingerprint ?? s.fingerprint;
     final stream = <String, dynamic>{
       'network': s.network,

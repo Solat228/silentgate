@@ -1063,7 +1063,7 @@ class AppState extends ChangeNotifier {
     for (final s in _servers) {
       final a = s.address.trim();
       if (a.isNotEmpty) domains.add(a);
-      if (s.isWhitelistBypass) {
+      if (s.usesWhitelistRelay) {
         domains.addAll(WhitelistBypassEndpoint.domainsForServer(s));
       }
     }

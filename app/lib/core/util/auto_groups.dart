@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/vpn_server.dart';
+import 'country_flag.dart';
 
 /// Какие серверы подписки входят в какой профиль «Авто» панели.
 ///
@@ -90,16 +91,32 @@ abstract final class AutoGroups {
     if (sigOf.isEmpty) return AutoBinding.empty;
 
     // Состав каждого профиля: видимые серверы и число outbound'ов.
+    //
+    // ⚠️ Группой может стать ТОЛЬКО страновой профиль «Авто», и притянуть он
+    // имеет право только серверы ТОЙ ЖЕ страны. Тематические профили без флага
+    // страны («🏳️ Авто Белые списки», «Авто YouTube») нередко содержат узкое
+    // подмножество узлов разных стран (например, 24 `(RU)`-локации из NL и FI),
+    // которое не покрывает целиком ни один страновой профиль — прежний
+    // `_isUmbrella` их не отсекал, и чужие страны проваливались внутрь «Авто
+    // Белые списки».
+    final serverCountry = <int, List<String>>{
+      for (final i in sigOf.keys) i: FlagUtil.isoCodesFromName(servers[i].remark),
+    };
     final found = <int, Set<int>>{};
     final size = <int, int>{};
     for (var p = 0; p < servers.length; p++) {
       final s = servers[p];
       if (!s.isPanelProfile) continue;
+      if (isNonGroupProfileName(s.displayName)) continue;
+      final pCountry = FlagUtil.isoCodesFromName(s.remark);
+      if (pCountry.length > 1) continue;
       final sigs = profileSignatures(s.rawPanelConfig ?? '');
       if (sigs.isEmpty) continue;
       final m = {
         for (final e in sigOf.entries)
-          if (sigs.contains(e.value)) e.key
+          if (sigs.contains(e.value) &&
+              _sameCountryScope(pCountry, serverCountry[e.key]!))
+            e.key
       };
       if (m.isEmpty) continue;
       found[p] = m;
@@ -140,6 +157,27 @@ abstract final class AutoGroups {
       r'(?<![а-яёa-z])(мост|bridge)(?![а-яёa-z])|->|→|=>',
       caseSensitive: false,
       unicode: true);
+
+  /// Профили белых списков никогда не собирают под себя локации в списке:
+  /// даже если внутри лежат обычные серверы подписки, строка «Авто Белые
+  /// списки» должна оставаться самостоятельным пунктом без вложенной папки.
+  static bool isNonGroupProfileName(String name) =>
+      _nonGroupProfile.hasMatch(name);
+
+  static final RegExp _nonGroupProfile = RegExp(
+      r'бел(ые|ых|ый)\s*спис|whitelist',
+      caseSensitive: false,
+      unicode: true);
+
+  /// Совместимы ли страна профиля и страна сервера: сервер с флагом страны
+  /// может лечь только под профиль с ТЕМ ЖЕ единственным флагом страны
+  /// (белый флаг `🏳️` кодом страны не является и даёт пустой список).
+  static bool _sameCountryScope(List<String> profileIso, List<String> serverIso) {
+    if (serverIso.isEmpty && profileIso.isEmpty) return true;
+    return profileIso.length == 1 &&
+        serverIso.length == 1 &&
+        profileIso.first == serverIso.first;
+  }
 
   /// Зонтик — профиль, строго содержащий серверы ДВУХ непересекающихся
   /// профилей («Авто YouTube» содержит и Польшу, и Германию).

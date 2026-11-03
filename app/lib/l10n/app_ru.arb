@@ -2471,5 +2471,17 @@
     }
   },
   "updatesTrafficDontShowAgain": "Больше не показывать это предупреждение",
-  "updatesContinue": "Продолжить"
+  "updatesContinue": "Продолжить",
+  "settingsConnectChecksNotSplitNote": "Влияет только на значки проверки под кнопкой подключения. Чтобы пускать отдельные сервисы через VPN или мимо него, настройте раздельное туннелирование.",
+  "settingsOpenSplitTunnel": "Настроить раздельное туннелирование",
+  "splitQuickServicesTitle": "Быстрый выбор сервисов",
+  "splitQuickServicesSub": "Добавляет основные и медиа-домены сервиса с действием текущего режима",
+  "splitServiceAppHint": "Домены {service} добавлены. Для звонков и работы программы добавьте {service} также в список «Приложения» выше",
+  "@splitServiceAppHint": {
+    "placeholders": {
+      "service": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -46,6 +46,10 @@ String? exitServerRejection(VpnServer s) {
     return 'панельный профиль «Авто» вторым туннелем не поднимается: '
         '${s.displayName}';
   }
+  if (s.usesWhitelistRelay) {
+    return 'обход БС требует собственного WebRTC-звонка и вторым туннелем не поднимается: '
+        '${s.displayName}';
+  }
   if (!SingboxOutboundFactory.supports(s)) {
     return 'протокол не поднимается вторым туннелем: ${s.displayName}';
   }

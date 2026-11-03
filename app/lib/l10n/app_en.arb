@@ -1806,5 +1806,10 @@
   "updatesTrafficWarningCheckBody": "Direct access to update servers is unavailable or all traffic is routed through VPN. Checking and downloading updates will use your subscription traffic. Continue?",
   "updatesTrafficWarningDownloadBody": "Downloading the update ({sizeMb} MB) will go through the active VPN and use your subscription traffic. Continue?",
   "updatesTrafficDontShowAgain": "Do not show this warning again",
-  "updatesContinue": "Continue"
+  "updatesContinue": "Continue",
+  "settingsConnectChecksNotSplitNote": "Affects only the check badges under the Connect button. To route specific services through or around VPN, configure split tunneling.",
+  "settingsOpenSplitTunnel": "Configure split tunneling",
+  "splitQuickServicesTitle": "Quick service presets",
+  "splitQuickServicesSub": "Adds main and media domains of a service with the current mode's action",
+  "splitServiceAppHint": "Domains for {service} added. For calls and the desktop or mobile app, also add {service} under \"Applications\" above"
 }

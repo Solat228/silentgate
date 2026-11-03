@@ -1637,5 +1637,10 @@
   "updatesTrafficWarningCheckBody": "دسترسی مستقیم به سرورهای به‌روزرسانی برقرار نیست یا تمام ترافیک از VPN عبور می‌کند. بررسی و دانلود به‌روزرسانی از حجم اشتراک شما کم می‌کند. ادامه می‌دهید؟",
   "updatesTrafficWarningDownloadBody": "دانلود به‌روزرسانی ({sizeMb} مگابایت) از طریق VPN فعال انجام می‌شود و از ترافیک اشتراک شما مصرف می‌کند. ادامه می‌دهید؟",
   "updatesTrafficDontShowAgain": "دیگر این هشدار نمایش داده نشود",
-  "updatesContinue": "ادامه"
+  "updatesContinue": "ادامه",
+  "settingsConnectChecksNotSplitNote": "فقط روی نمادهای بررسی زیر دکمه اتصال اثر می‌گذارد. برای مسیردهی سرویس‌های خاص از طریق VPN یا خارج از آن، تونل تقسیم‌شده را تنظیم کنید.",
+  "settingsOpenSplitTunnel": "تنظیم تونل تقسیم‌شده",
+  "splitQuickServicesTitle": "انتخاب سریع سرویس‌ها",
+  "splitQuickServicesSub": "دامنه‌های اصلی و رسانه‌ای سرویس را با عملکرد حالت فعلی اضافه می‌کند",
+  "splitServiceAppHint": "دامنه‌های {service} اضافه شدند. برای تماس‌ها و برنامه، {service} را در بخش «برنامه‌ها» در بالا نیز اضافه کنید"
 }

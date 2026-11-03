@@ -98,6 +98,7 @@ class SingboxRouterWindows
     );
 
     TunStartException? last;
+    final timedOutStacks = <String?>{};
     for (var i = 0; i < combos.length; i++) {
       // Пользователь отключился, пока шёл перебор — прекращаем, НЕ поднимаем ещё
       // одну комбинацию (иначе туннель встанет уже после «Отключить»).
@@ -106,6 +107,15 @@ class SingboxRouterWindows
         return;
       }
       final c = combos[i];
+      // Если сам драйвер Wintun на этом стеке не успел создать интерфейс за
+      // отведённый потолок (`open interface take too much time to finish!`),
+      // смена MTU (`1500 → 1400 → 1280`) время создания адаптера Windows никак
+      // не ускорит — пропускаем дубликаты стека, экономя по 30 с на стек.
+      if (timedOutStacks.contains(c.stack)) {
+        AppLog.i('TUN автоподбор: пропускаю ${c.label} - стек '
+            '${c.stack ?? "auto"} уже не успел открыть интерфейс');
+        continue;
+      }
       final attempt = options.copyWith(stack: c.stack, mtu: c.mtu);
       onProgress?.call('Подбираю параметры TUN: ${c.label} '
           '(${i + 1} из ${combos.length})');
@@ -130,6 +140,7 @@ class SingboxRouterWindows
         rethrow;
       } on TunStartException catch (e) {
         last = e;
+        if (isAdapterOpenTimeout(e)) timedOutStacks.add(c.stack);
         AppLog.w('TUN автоподбор: ${c.label} не подошло');
       }
     }
@@ -413,15 +424,33 @@ class SingboxRouterWindows
   /// `WindowsEngine`) отмена и так проверяется сразу после вызова, и там же
   /// поднятое снимается. Бросать здесь ошибку значило бы показать человеку
   /// «не удалось подключиться» на действие, которое он сам и совершил.
+  /// Потолок ожидания появления адаптера Wintun после старта помощника.
+  ///
+  /// ⚠️ НЕ ОПУСКАТЬ ДО 5 С (репорт реального клиента 03.11.2026). У `sing-tun`
+  /// собственный порог предупреждения — 10 с (`WARN inbound/tun[tun-in]: open
+  /// interface take too much time to finish!`), и на живых Windows 10 с
+  /// антивирусом/NDIS-фильтрами создание адаптера `wintun.dll` занимает 10–13 с.
+  /// С потолком 5 с мы убивали живой процесс посреди создания интерфейса на
+  /// КАЖДОЙ попытке, а отмена пользователем и так проверяется каждые 250 мс.
+  static const waitUpTimeout = Duration(seconds: 15);
+
+  /// Признак того, что попытка упала именно на долгом открытии самого
+  /// интерфейса Wintun (где перебор MTU того же стека ничего не изменит).
+  @visibleForTesting
+  static bool isAdapterOpenTimeout(TunStartException e) =>
+      e.details.contains('open interface take too much time to finish') ||
+      (e.adapterOpenTimeout &&
+          !e.details.contains('FATAL'));
+
   Future<void> _waitUp({bool Function()? abort}) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    final deadline = DateTime.now().add(waitUpTimeout);
     while (DateTime.now().isBefore(deadline)) {
       if (abort?.call() ?? false) {
         AppLog.i('Ожидание TUN-адаптера прервано: отключение пользователем');
         return;
       }
       if (await _adapterUp()) return;
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(milliseconds: 250));
     }
     final log = await TunHelper.tailLog();
     _started = false;
@@ -434,7 +463,8 @@ class SingboxRouterWindows
             'отключите другой VPN и попробуйте снова.\n\n'
         : '';
     throw TunStartException(
-      'TUN-адаптер не поднялся за 5 секунд - sing-box не запустился.',
+      'TUN-адаптер не поднялся за ${waitUpTimeout.inSeconds} секунд - sing-box не запустился.',
+      adapterOpenTimeout: true,
       details: hint +
           (log.isEmpty
               ? 'Лог sing-box пуст. Проверьте, что рядом с xray.exe лежат '

@@ -14,6 +14,7 @@ import '../../core/settings/app_settings.dart';
 import 'singbox_process.dart';
 import 'tun/tun_helper.dart';
 import 'xray_paths.dart';
+import 'xray_process.dart';
 import 'xray_version.dart';
 
 export '../../core/platform/support_context.dart';
@@ -131,6 +132,20 @@ class SupportReport {
     // «TUN/hysteria2 не поднимались» была неверной: прокси-ядро hysteria2 в
     // этот файл не пишет вовсе, поэтому его отказ по отчёту не диагностировался.
     final dirForLogs = await AppPaths.supportDir();
+    // ⚠️ ЛОГ XRAY НЕ ПОПАДАЛ В ОТЧЁТ ВОВСЕ (репорт клиента 03.11.2026: на диске
+    // лежал `xray.log: 458 KB, строк 3858`, а в теле отчёта — только sing-box).
+    // При этом для большинства серверов подписки (VLESS/Reality/xhttp/gRPC и
+    // панельные профили) прокси-ядром работает именно Xray, и без его хвоста
+    // причина обрыва транспорта оставалась за кадром.
+    b.writeln('==================================================');
+    b.writeln('[xray.log - прокси-ядро Xray, последние строки]'
+        '${await _mtime(XrayProcess.logPathFor(dirForLogs))}');
+    b.writeln('==================================================');
+    final xr = await _safe(() => XrayProcess.tailLog(lines: 200));
+    b.writeln(xr.isEmpty
+        ? '(пусто - ядро Xray в этой сессии не поднималось)'
+        : _core(xr));
+    b.writeln();
     b.writeln('==================================================');
     b.writeln('[singbox.log - TUN-ядро, последние строки]'
         '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
