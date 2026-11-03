@@ -42,6 +42,7 @@ import '../core/subscription/subscription_logo.dart';
 import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
 import '../core/util/server_rekey.dart';
 import '../core/xray/balancer_pick.dart';
+import '../core/xray/override_normalizer.dart' show extractFullConfigHosts;
 import '../core/subscription/subscription_service.dart';
 import '../core/subscription/subscription_updater.dart';
 import '../core/subscription/xray_json_subscription.dart';
@@ -1063,6 +1064,10 @@ class AppState extends ChangeNotifier {
     for (final s in _servers) {
       final a = s.address.trim();
       if (a.isNotEmpty) domains.add(a);
+      final full = s.effectiveFullConfig;
+      if (full.isNotEmpty) {
+        domains.addAll(extractFullConfigHosts(full));
+      }
       if (s.usesWhitelistRelay) {
         domains.addAll(WhitelistBypassEndpoint.domainsForServer(s));
       }
@@ -1092,6 +1097,12 @@ class AppState extends ChangeNotifier {
   void _rememberServerAddresses(Iterable<VpnServer> servers) {
     for (final s in servers) {
       SensitiveAddresses.remember(s.address, name: s.remark);
+      final full = s.effectiveFullConfig;
+      if (full.isNotEmpty) {
+        for (final h in extractFullConfigHosts(full)) {
+          SensitiveAddresses.remember(h, name: s.remark);
+        }
+      }
     }
   }
 

@@ -15,6 +15,7 @@ import '../../core/net/api_ports.dart';
 import '../../core/platform/port_check.dart';
 import '../../core/models/traffic_stats.dart';
 import '../../core/xray/balancer_pick.dart';
+import '../../core/xray/override_normalizer.dart' show extractFullConfigHosts;
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/models/engine_notice.dart';
@@ -208,6 +209,8 @@ class WindowsEngine extends VpnEngineBase {
   XrayTrafficSnapshot _lastSnapshot = XrayTrafficSnapshot.zero;
   DateTime _lastSampleTime = DateTime.now();
 
+  final bool _recoverSystemProxy;
+
   /// [tunRouter] и [recoverSystemProxy] существуют РАДИ ТЕСТА и в приложении
   /// не задаются. Про второй отдельно: маркер «прокси ставили мы» лежит в
   /// системном `%TEMP%`, а не в каталоге данных приложения, поэтому изоляция
@@ -219,6 +222,7 @@ class WindowsEngine extends VpnEngineBase {
     bool recoverSystemProxy = true,
     Future<void> Function(AppSettings settings)? tunTaskSetup,
   })  : _tunRouter = tunRouter ?? SingboxRouterWindows(),
+        _recoverSystemProxy = recoverSystemProxy,
         _tunTaskSetup = tunTaskSetup ?? TunTaskAutoSetup.ensure {
     // Восстановление после аварийного выхода прошлого запуска.
     if (recoverSystemProxy) SystemProxy.recoverIfDirty();
@@ -709,6 +713,12 @@ class WindowsEngine extends VpnEngineBase {
           AppLog.i('Смешанный режим: туннель + системный прокси на '
               '127.0.0.1:${ports.http}');
         }
+      } else if (_recoverSystemProxy) {
+        // Страховка от залипшего системного прокси на наш же порт (напр. после
+        // переключения «Системный прокси → TUN» или аварийного перезапуска):
+        // иначе браузер продолжает слать всё в `127.0.0.1:10809` мимо правил TUN.
+        await SystemProxy.releaseIfOurs(ours: '127.0.0.1:${ports.http}');
+        _proxySet = false;
       }
 
       // #4 — пользователь мог нажать «Отключить», пока поднимались ядро и
@@ -1101,11 +1111,19 @@ class WindowsEngine extends VpnEngineBase {
     // Повторный резолв здесь был бы не просто лишним обращением к DNS:
     // round-robin мог бы отдать ДРУГОЙ набор A-записей, и «серверы сессии»
     // разошлись бы с адресами, по которым только что собраны outbound'ы.
-    final sessionHosts = <String, List<String>>{
-      for (final v in servers)
-        if (exitHosts.containsKey(v.address.trim()))
-          v.address.trim(): exitHosts[v.address.trim()]!,
-    };
+    final sessionHosts = <String, List<String>>{};
+    for (final v in servers) {
+      final addr = v.address.trim();
+      if (addr.isNotEmpty && exitHosts.containsKey(addr)) {
+        sessionHosts[addr] = exitHosts[addr]!;
+      }
+      final full = v.effectiveFullConfig;
+      if (full.isNotEmpty) {
+        for (final h in extractFullConfigHosts(full)) {
+          if (exitHosts.containsKey(h)) sessionHosts[h] = exitHosts[h]!;
+        }
+      }
+    }
     // ⚠️ ОДИН список на оба потребителя. При живом туннеле `_bypassForReuse`
     // возвращает список, С КОТОРЫМ туннель поднят (`_liveBypassIps`), а не
     // растущий накопитель базы — на этом держится и совпадение route-правила,
@@ -1120,6 +1138,8 @@ class WindowsEngine extends VpnEngineBase {
     final directDns = await _systemDnsServer(allowIpv6: allowIpv6Dns);
     final tunOptions = TunOptions.fromSettings(
       options.settings,
+      blockTunnelQuic:
+          servers.isEmpty || servers.any((s) => s.core == ProxyCore.xray),
       // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
       // запасные серверы — тогда конфиг перестаёт зависеть от того, кто из них
       // выбран, и переход на запасной не требует пересоздавать туннель (см.

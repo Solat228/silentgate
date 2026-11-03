@@ -40,6 +40,12 @@ abstract final class SplitServicePresets {
       'youtu.be',
       'ggpht.com',
       'youtubei.googleapis.com',
+      'yt3.googleusercontent.com',
+      'jnn-pa.googleapis.com',
+      'youtubeembeddedplayer.googleapis.com',
+      'youtube-nocookie.com',
+      'youtubekids.com',
+      'withyoutube.com',
     ]),
     SplitServicePreset(ProbeService.chatgpt, [
       'chatgpt.com',

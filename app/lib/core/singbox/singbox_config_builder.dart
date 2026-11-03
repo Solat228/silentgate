@@ -190,6 +190,15 @@ class TunOptions {
   /// Отказывать в QUIC (UDP:443), возвращая браузеры на TLS поверх TCP.
   final bool blockQuic;
 
+  /// Отказывать в QUIC (UDP:443) для трафика, уходящего в SOCKS5-мост Xray.
+  ///
+  /// Включается движком, когда прокси-ядро — Xray: серверные ноды обычно режут
+  /// `UDP:443` в `blackhole`, а у `SOCKS5 UDP ASSOCIATE` нет канала обратной
+  /// ошибки, поэтому Chrome ждёт таймаута QUIC на превью и видео YouTube вместо
+  /// мгновенного отката на TCP. Нативный QUIC (Hysteria2 на sing-box) и прямой
+  /// трафик неотмеченных приложений в `onlySelected` не затрагиваются.
+  final bool blockTunnelQuic;
+
   /// Отказывать в DNS поверх HTTPS/TLS/QUIC, возвращая резолв под наш перехват.
   final bool blockEncryptedDns;
 
@@ -257,6 +266,7 @@ class TunOptions {
     this.clashApiPort = 0,
     this.clashApiSecret = '',
     this.blockQuic = false,
+    this.blockTunnelQuic = false,
     this.blockEncryptedDns = false,
   });
 
@@ -274,11 +284,13 @@ class TunOptions {
     int clashApiPort = 0,
     String clashApiSecret = '',
     bool ipv6Available = true,
+    bool blockTunnelQuic = false,
   }) {
     return TunOptions(
       clashApiPort: clashApiPort,
       clashApiSecret: clashApiSecret,
       blockQuic: s.blockQuic,
+      blockTunnelQuic: blockTunnelQuic,
       blockEncryptedDns: s.blockEncryptedDns,
       platformTun: android,
       directDnsUpstream: directDnsUpstream,
@@ -361,6 +373,7 @@ class TunOptions {
           clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
+        blockTunnelQuic: blockTunnelQuic,
         blockEncryptedDns: blockEncryptedDns,
         blackhole: true,
       );
@@ -404,6 +417,7 @@ class TunOptions {
         clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
+        blockTunnelQuic: blockTunnelQuic,
         blockEncryptedDns: blockEncryptedDns,
       );
 }
@@ -804,30 +818,14 @@ class SingboxConfigBuilder {
     }
     if (o.blockQuic || _needQuicBlock(split)) {
       // Доменные правила («Прямо», «Туннель», «Блок») применяются к ИМЕНИ, а имя
-      // берётся из сниффинга. Браузер, ушедший на HTTP/3, имени не оставляет —
-      // правило по домену молча не срабатывает, и пользователь видит, что
-      // настройка «не работает». Отказ по UDP:443 возвращает браузер на TLS
-      // поверх TCP, где имя видно; сайты от этого не ломаются — HTTP/3 для них
-      // не обязателен, это оптимизация.
-      //
-      // ⚠️ Тумблер `blockQuic` — ЯВНОЕ желание пользователя, он глобальный.
-      // Автоматический же запрет (от правил по сайтам) ограничен ИМЕННО теми
-      // доменами, ради которых он включился: глобальный вариант рубил HTTP/3
-      // всей машине, и это выглядело как «интернет пропал», а не как «правило
-      // заработало».
-      if (o.blockQuic) {
-        rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
-      } else {
-        final domains = _quicBlockDomains(split);
-        if (domains.isNotEmpty) {
-          rules.add({
-            'domain_suffix': domains,
-            'network': 'udp',
-            'port': [443],
-            'action': 'reject',
-          });
-        }
-      }
+      // берётся из сниффинга. Современные браузеры шлют постквантовый
+      // `X25519MLKEM768` в QUIC Initial несколькими UDP-пакетами, и сниффер
+      // sing-box не вынимает из них SNI — поэтому `domain_suffix` на `UDP:443`
+      // молча не совпадает, а соединение уходит по базовому маршруту (в
+      // `onlySelected` — напрямую в ТСПУ, где `googlevideo.com` и `ytimg.com`
+      // зависают). Безусловный отказ по `UDP:443` мгновенно переводит браузер на
+      // TLS поверх TCP, где SNI виден и доменные правила срабатывают всегда.
+      rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
     }
     if (o.blockEncryptedDns) {
       // DNS поверх HTTPS/TLS/QUIC уходит мимо перехвата UDP:53. Тогда DNS-зеркало
@@ -895,9 +893,19 @@ class SingboxConfigBuilder {
     //
     final finalOutbound =
         split.mode == SplitMode.onlySelected ? 'direct' : 'proxy';
-    _addAppRules(rules, split);
+    final tunnelQuicReject =
+        o.blockTunnelQuic && !o.blockQuic && !_needQuicBlock(split);
+    _addAppRules(rules, split, rejectProxyQuic: tunnelQuicReject);
     // Режим «Всё через VPN»: сюда попадают ТОЛЬКО правила выбора выхода.
     _addExitOnlyRules(rules, split);
+    // Защита от тихой чёрной дыры QUIC поверх `SOCKS5 UDP ASSOCIATE` → Xray:
+    // ставится строго НИЖЕ всех правил `direct` (LAN, excludeCidr, приложения
+    // «Прямо» в `exceptSelected`) и нативных мульти-выходов, чтобы прямой
+    // трафик сохранял HTTP/3, а трафик, идущий в `final: proxy`, сразу
+    // откатывался на TCP без многосекундного ожидания таймаута QUIC.
+    if (tunnelQuicReject && finalOutbound == 'proxy') {
+      rules.add({'network': 'udp', 'port': [443], 'action': 'reject'});
+    }
 
     final cfg = <String, dynamic>{
       'log': {
@@ -1460,16 +1468,10 @@ class SingboxConfigBuilder {
   /// судьбу соединения: «Туннель» и «Блок». Правилу «Прямо» сниффинг не нужен
   /// вовсе — оно совпадает с базой в большинстве режимов.
   bool _needQuicBlock(SplitTunnelConfig split) =>
-      _userRulesActive(split) &&
-      split.sites.any((s) =>
-          s.action == AppAction.tunnel || s.action == AppAction.block);
-
-  /// Домены, ради которых QUIC и глушится: только они, а не вся машина.
-  List<String> _quicBlockDomains(SplitTunnelConfig split) => split.sites
-      .where((s) => s.action == AppAction.tunnel || s.action == AppAction.block)
-      .map((s) => s.domain)
-      .toSet()
-      .toList();
+      (_userRulesActive(split) &&
+          split.sites.any((s) =>
+              s.action == AppAction.tunnel || s.action == AppAction.block)) ||
+      (_exitRulesOnly(split)?.sites.isNotEmpty ?? false);
 
   // Гейт вынесен в `api_exit_guard.dart` (`userRulesActive`) — им же пользуется
   // ExitRouterConfigBuilder (задача 3b), и предикат обязан быть ОДНИМ на оба
@@ -1605,7 +1607,8 @@ class SingboxConfigBuilder {
     return split.copyWith(sites: sites, apps: apps);
   }
 
-  void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
+  void _addAppRules(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
+      {bool rejectProxyQuic = false}) {
     if (!_userRulesActive(split)) return;
     // «Прямо» при включённом noRealIp расходится надвое: правила с поднятой
     // галочкой «разрешить реальный IP» идут действительно напрямую (пользователь
@@ -1627,10 +1630,12 @@ class SingboxConfigBuilder {
         allowRealIp: true, overrideSites: true);
     if (options.noRealIp) {
       _addActionRule(rules, split, AppAction.direct, 'proxy',
-          allowRealIp: false, overrideSites: true);
+          allowRealIp: false,
+          overrideSites: true,
+          rejectProxyQuic: rejectProxyQuic);
     }
     _addActionRule(rules, split, AppAction.tunnel, 'proxy',
-        overrideSites: true);
+        overrideSites: true, rejectProxyQuic: rejectProxyQuic);
 
     _addSiteRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
     if (options.noRealIp) {
@@ -1640,9 +1645,11 @@ class SingboxConfigBuilder {
 
     _addActionRule(rules, split, AppAction.direct, 'direct', allowRealIp: true);
     if (options.noRealIp) {
-      _addActionRule(rules, split, AppAction.direct, 'proxy', allowRealIp: false);
+      _addActionRule(rules, split, AppAction.direct, 'proxy',
+          allowRealIp: false, rejectProxyQuic: rejectProxyQuic);
     }
-    _addActionRule(rules, split, AppAction.tunnel, 'proxy');
+    _addActionRule(rules, split, AppAction.tunnel, 'proxy',
+        rejectProxyQuic: rejectProxyQuic);
   }
 
   /// DNS-правила для ПРИЛОЖЕНИЙ — зеркало `_addActionRule` в маршрутах.
@@ -1771,7 +1778,10 @@ class SingboxConfigBuilder {
   /// [inbound] — см. комментарий у [_addSiteRule].
   void _addActionRule(List<Map<String, dynamic>> rules, SplitTunnelConfig split,
       AppAction action, String? outbound,
-      {bool? allowRealIp, bool? overrideSites = false, List<String>? inbound}) {
+      {bool? allowRealIp,
+      bool? overrideSites = false,
+      List<String>? inbound,
+      bool rejectProxyQuic = false}) {
     // Выключенные правила не применяются (галочка снята).
     var apps = split.apps.where((a) => a.enabled && a.action == action);
     if (allowRealIp != null && options.noRealIp) {
@@ -1796,6 +1806,7 @@ class SingboxConfigBuilder {
     for (final group
         in _byOutbound(apps, (a) => _exitTagFor(a.serverKey, action) ?? outbound)) {
       final target = group.key;
+      final rejectQuic = rejectProxyQuic && target == 'proxy';
       if (options.platformTun) {
         final pkgs = group.value
             .map((a) => a.path.trim())
@@ -1803,6 +1814,14 @@ class SingboxConfigBuilder {
             .toSet()
             .toList();
         if (pkgs.isNotEmpty) {
+          if (rejectQuic) {
+            rules.add(_action({
+              'package_name': pkgs,
+              'network': 'udp',
+              'port': [443],
+              if (inbound != null) 'inbound': inbound,
+            }, null));
+          }
           rules.add(_action({
             'package_name': pkgs,
             if (inbound != null) 'inbound': inbound,
@@ -1814,6 +1833,14 @@ class SingboxConfigBuilder {
       final byName = group.value.where((a) => a.byName).map((a) => a.name).toList();
       final byPath = group.value.where((a) => !a.byName).map((a) => a.path).toList();
       if (byName.isNotEmpty) {
+        if (rejectQuic) {
+          rules.add(_action({
+            'process_name': byName,
+            'network': 'udp',
+            'port': [443],
+            if (inbound != null) 'inbound': inbound,
+          }, null));
+        }
         rules.add(_action({
           'process_name': byName,
           if (inbound != null) 'inbound': inbound,
@@ -1823,10 +1850,19 @@ class SingboxConfigBuilder {
         // process_path сравнивается ядром побайтово (регистр, короткие пути
         // Windows) — правило могло молча не срабатывать. process_path_regex
         // с (?i) — надёжно.
+        final regexes = [
+          for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
+        ];
+        if (rejectQuic) {
+          rules.add(_action({
+            'process_path_regex': regexes,
+            'network': 'udp',
+            'port': [443],
+            if (inbound != null) 'inbound': inbound,
+          }, null));
+        }
         rules.add(_action({
-          'process_path_regex': [
-            for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
-          ],
+          'process_path_regex': regexes,
           if (inbound != null) 'inbound': inbound,
         }, target));
       }

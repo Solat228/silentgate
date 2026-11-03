@@ -156,4 +156,19 @@ void main() {
     expect(refused.ipv6, isFalse);
     expect(refused.ipv6Upstream, isTrue);
   });
+
+  test('copyWith сохраняет blockTunnelQuic при выключенном blockQuic', () {
+    const xrayTun = TunOptions(
+      stack: 'system',
+      mtu: 1500,
+      blockQuic: false,
+      blockTunnelQuic: true,
+    );
+    const allSplit = SplitTunnelConfig(mode: SplitMode.all);
+    Map<String, dynamic> buildAll(TunOptions o) =>
+        SingboxConfigBuilder(options: o).buildMap(allSplit);
+
+    expect(buildAll(xrayTun.copyWith()), buildAll(xrayTun));
+    expect(xrayTun.asBlackhole().blockTunnelQuic, isTrue);
+  });
 }

@@ -360,6 +360,19 @@ class AppSettings {
   bool killSwitchTurnedOn(AppSettings after) =>
       !killSwitchActive && after.killSwitchActive;
 
+  /// Сменился способ захвата трафика (или смешанный режим WinINET поверх TUN).
+  ///
+  /// Переключение между «Системным прокси», «TUN» и «Только прокси» на живом
+  /// соединении обязано переподключать сразу: иначе в реестре остаётся
+  /// `127.0.0.1:10809` от прошлого режима (весь браузерный трафик продолжает
+  /// идти в прокси мимо раздельного туннелирования TUN) либо продолжает жить
+  /// старый адаптер `silentgate-tun`.
+  bool captureChanged(AppSettings after) =>
+      captureMode != after.captureMode ||
+      (captureMode == CaptureMode.tun &&
+          after.captureMode == CaptureMode.tun &&
+          alsoSetSystemProxy != after.alsoSetSystemProxy);
+
   final TunProvider tunProvider;
   final TunStack tunStack;
   final int tunMtu;

@@ -1825,9 +1825,18 @@ abstract class VpnEngineBase implements VpnEngine {
     // Уникальные имена во входном порядке: конфиг ядра собирается из этой
     // карты, и «дышащий» порядок ломал бы сверку живого туннеля с будущим.
     final hosts = <String>[];
-    for (final s in servers) {
-      final host = s.address.trim();
+    void addHost(String raw) {
+      final host = raw.trim();
       if (host.isNotEmpty && !hosts.contains(host)) hosts.add(host);
+    }
+    for (final s in servers) {
+      addHost(s.address);
+      final full = s.effectiveFullConfig;
+      if (full.isNotEmpty) {
+        for (final h in extractFullConfigHosts(full)) {
+          addHost(h);
+        }
+      }
     }
     final out = <String, List<String>>{};
     final toLookup = <String>[];

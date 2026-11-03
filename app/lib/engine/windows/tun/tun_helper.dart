@@ -11,6 +11,7 @@ import '../wfp_rules.dart' show baseName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
 import 'tun_reload.dart';
+import 'tun_helper_state.dart';
 import 'kill_switch_plan_file.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
@@ -215,6 +216,10 @@ class TunHelper {
     // На это время машина закрыта, и это не побочный ущерб, а поведение kill
     // switch на подключении (школа Mullvad): свои бинари, адреса серверов,
     // loopback и DHCP разрешены, остальное — нет.
+    final dataDir = _dataDir(configPath);
+    var currentLaunchId = TunHelperState.readLaunchId(dataDir);
+    var exitReason = TunHelperExitReason.stopped;
+
     final base = _engageBase(log, alive, configPath);
     KillSwitchHold? hold = base.hold;
     if (hold == null && _mustHaveKillSwitch(configPath)) {
@@ -224,13 +229,18 @@ class TunHelper {
       // своими руками.
       await log.write('НЕ ЗАПУСКАЮ ЯДРО: kill switch включён, но блокировка не '
           'поднялась. Туннель без неё обещал бы защиту, которой нет.');
+      TunHelperState.write(
+        dataDir,
+        launchId: currentLaunchId,
+        phase: TunHelperPhase.exited,
+        reason: TunHelperExitReason.killSwitchEngageFailed,
+      );
       alive?.dispose();
       await log.close();
       return;
     }
 
     _delete(stopFile);
-    final dataDir = _dataDir(configPath);
     // Просьба о перезапуске, оставшаяся от ПРОШЛОГО помощника, этому не
     // адресована: исполнив её, он перезапустил бы только что поднятое ядро.
     TunReload.cancel(dataDir);
@@ -270,11 +280,25 @@ class TunHelper {
         return null;
       }
       final gen = ++coreGen;
+      final launchForGen = currentLaunchId;
       procExited = false;
+      TunHelperState.write(
+        dataDir,
+        launchId: launchForGen,
+        phase: TunHelperPhase.running,
+      );
       pipe(p.stdout);
       pipe(p.stderr);
       unawaited(p.exitCode.then((code) {
-        if (gen == coreGen) procExited = true;
+        if (gen == coreGen) {
+          procExited = true;
+          TunHelperState.write(
+            dataDir,
+            launchId: launchForGen,
+            phase: TunHelperPhase.coreDied,
+            reason: TunHelperExitReason.coreExited,
+          );
+        }
         unawaited(log.write('--- sing-box завершился, код $code'));
       }));
       return p;
@@ -283,6 +307,12 @@ class TunHelper {
     final first = await startCore();
     if (first == null) {
       hold?.release();
+      TunHelperState.write(
+        dataDir,
+        launchId: currentLaunchId,
+        phase: TunHelperPhase.exited,
+        reason: TunHelperExitReason.spawnFailed,
+      );
       alive?.dispose();
       await log.close();
       return;
@@ -308,7 +338,18 @@ class TunHelper {
     // попавший под выбранное имя, остаётся в наборе до конца сеанса: программу
     // закрыли и открыли снова — фильтр всё это время стоял, окна без защиты не
     // возникло. Пути, исчезнувшие с диска, выбрасывает обычная очистка.
+    //
+    // ⚠️ НАПОЛНЯЕМ СРАЗУ НА СТАРТЕ, НЕ ЖДЯ ПЕРВОГО `_watchEveryTicks` (2 с).
+    // На быстрых машинах (SSD) `sing-box` поднимает `silentgate-tun` за ~0,8–1,2 с
+    // — раньше первого прореженного тика наблюдения. С пустым `matched` в режиме
+    // `onlySelected` с правилом «по имени» `_freshPlan(..., matched.values)`
+    // собирал пустой план, `hold.reengage` отвергал его, и помощник убивал
+    // только что поднятый туннель (репорт клиента 04.11.2026).
     final matched = <String, RunningProcess>{};
+    seedFromAppliedPlan(matched, watched, base.applied);
+    if (watched.isNotEmpty) {
+      syncWatchedMatches(matched, watched, _matchingProcesses(watched));
+    }
 
     // Последний УСПЕШНО применённый состав правил на программы и последняя
     // названная причина отказа: без неё одна и та же неудача писалась бы в
@@ -325,7 +366,16 @@ class TunHelper {
       if (h == null) return 'блокировка не поднята - передавать нечего';
       await log.write('--- просьба перезапустить ядро без снятия блокировки');
       final oldLuid = tunnelLuid ?? TunLuid.forAlias();
-      final next = _freshPlan(configPath, oldLuid, _runningProcesses());
+      final nextWatched = _watchedNames(configPath);
+      final candidateMatched = Map<String, RunningProcess>.of(matched);
+      syncWatchedMatches(
+        candidateMatched,
+        nextWatched,
+        nextWatched.isEmpty
+            ? const <RunningProcess>[]
+            : _matchingProcesses(nextWatched),
+      );
+      final next = _freshPlan(configPath, oldLuid, candidateMatched.values);
       if (next == null) return 'новый план блокировки не просит';
       final cleaned = _cleanMissing(next).plan;
       if (cleaned.isEmpty) return 'новый план блокировки пуст';
@@ -336,6 +386,8 @@ class TunHelper {
       if (!h.reengage(cleaned, log: (m) => unawaited(log.write('--- $m')))) {
         return 'WFP не принял новый состав - прежний набор держится';
       }
+      watched = nextWatched;
+      syncWatchedMatches(matched, watched, candidateMatched.values);
       applied = _appSnapshot(cleaned);
       await log.write('--- останавливаю прежнее ядро, блокировка ДЕРЖИТСЯ');
       coreGen++; // смерть прежнего процесса — уже не смерть ядра сеанса
@@ -359,15 +411,28 @@ class TunHelper {
       }
       await log.write('--- запуск sing-box без снятия блокировки '
           '${DateTime.now().toIso8601String()}');
+      currentLaunchId = TunHelperState.readLaunchId(dataDir);
       final p = await startCore();
+      // ⚠️ НЕ ОЧИЩАЕМ `matched`, А ДОПОЛНЯЕМ ЖИВЫМИ ПРОЦЕССАМИ. Очистка здесь
+      // сбрасывала все пути выбранных по имени программ, и быстрое появление
+      // нового `tunnelLuid` (раньше 2 с) снова получало пустой план и убивало
+      // туннель на горячем обновлении правил.
+      if (watched.isNotEmpty) {
+        syncWatchedMatches(matched, watched, _matchingProcesses(watched));
+      }
       luidApplied = false;
       tunnelLuid = null;
       coreDeathLogged = false;
-      watched = _watchedNames(configPath);
-      matched.clear();
+      watchTick = 0;
       lastUpdateFailure = null;
       if (p == null) {
         procExited = true; // блокировка держится, ядра нет — как при смерти
+        TunHelperState.write(
+          dataDir,
+          launchId: currentLaunchId,
+          phase: TunHelperPhase.coreDied,
+          reason: TunHelperExitReason.spawnFailed,
+        );
         return 'новое ядро не запустилось';
       }
       proc = p;
@@ -377,6 +442,7 @@ class TunHelper {
     while (true) {
       if (stopFile.existsSync()) {
         await log.write('--- получен stop-файл, останавливаю sing-box');
+        coreGen++;
         proc.kill();
         break;
       }
@@ -384,6 +450,7 @@ class TunHelper {
       // от команды «стоп»: отдельная ветка означала бы второй путь выхода.
       if (alive != null && !alive.appAlive) {
         await log.write('--- интерфейс завершился, останавливаю sing-box');
+        coreGen++;
         proc.kill();
         break;
       }
@@ -446,8 +513,10 @@ class TunHelper {
             // ⚠️ ОТКАЗ, А НЕ «ОСТАВИМ БАЗОВЫЙ». Базовый набор без правила
             // туннеля душит ровно тот трафик, ради которого VPN и включали:
             // человек увидит «Подключено» и мёртвый интернет.
+            exitReason = TunHelperExitReason.killSwitchTunnelFailed;
             await log.write('--- kill switch: не удалось разрешить туннель - '
                 'останавливаю, чтобы не оставить «подключено» без связи');
+            coreGen++;
             proc.kill();
             break;
           }
@@ -542,7 +611,29 @@ class TunHelper {
     try {
       proc.kill(ProcessSignal.sigkill);
     } catch (_) {}
+    // Дожидаемся ухода дочернего `sing-box.exe` и адаптера `silentgate-tun` ДО
+    // удаления stop-файла: исчезновение `tun_stop` служит сигналом для
+    // `waitStopConsumed`, что прошлый туннель полностью освободил драйвер Wintun
+    // (блокировка WFP уже снята выше, поэтому интернет у пользователя не ждёт).
+    try {
+      await proc.exitCode.timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    final goneDeadline = DateTime.now().add(const Duration(seconds: 2));
+    while (DateTime.now().isBefore(goneDeadline) &&
+        TunLuid.forAlias() != null) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
     _delete(stopFile);
+    if (procExited && exitReason == TunHelperExitReason.stopped) {
+      exitReason = TunHelperExitReason.coreExited;
+    }
+    TunHelperState.write(
+      dataDir,
+      launchId: currentLaunchId,
+      phase: TunHelperPhase.exited,
+      reason: exitReason,
+    );
+    await log.write('--- помощник TUN завершён');
     await log.close();
   }
 
@@ -611,6 +702,59 @@ class TunHelper {
       return ProcessListWindows.enumerate();
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// Дешёвый снимок только под выбранные имена — без открытия дескрипторов у
+  /// посторонних процессов.
+  static List<RunningProcess> _matchingProcesses(Set<String> watched) {
+    if (watched.isEmpty) return const [];
+    try {
+      return ProcessListWindows.matching(watched);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Перенести в [matched] пути, которые уже вошли в базовый план [appliedPlan]
+  /// под выбранные имена [watched]: даже если процесс завершился за миллисекунды
+  /// между `_engageBase` и входом в цикл, его путь остаётся в наборе.
+  @visibleForTesting
+  static void seedFromAppliedPlan(
+    Map<String, RunningProcess> matched,
+    Set<String> watched,
+    KillSwitchPlan? appliedPlan,
+  ) {
+    if (watched.isEmpty || appliedPlan == null) return;
+    for (final path in [
+      ...appliedPlan.blockedAppPaths,
+      ...appliedPlan.allowedAppPaths,
+    ]) {
+      final name = baseName(path);
+      if (watched.contains(name.toLowerCase())) {
+        matched[path.toLowerCase()] = RunningProcess(0, name, path);
+      }
+    }
+  }
+
+  /// Обновить накопитель [matched] под актуальный набор имён [watched]:
+  /// вычистить имена, которые больше не выбраны, и добавить живые совпадения.
+  @visibleForTesting
+  static void syncWatchedMatches(
+    Map<String, RunningProcess> matched,
+    Set<String> watched,
+    Iterable<RunningProcess> liveProcesses,
+  ) {
+    if (watched.isEmpty) {
+      matched.clear();
+      return;
+    }
+    matched.removeWhere(
+        (_, p) => !watched.contains(baseName(p.name).toLowerCase()));
+    for (final p in liveProcesses) {
+      if (watched.contains(baseName(p.name).toLowerCase())) {
+        matched[p.path.toLowerCase()] = p;
+      }
     }
   }
 
@@ -886,7 +1030,7 @@ class TunHelper {
   /// («при переборе адресов VPN не даёт себя выключить»). Отмена здесь — не
   /// оптимизация, а право человека прекратить то, что он начал.
   static Future<bool> waitStopConsumed(String stopPath,
-      {Duration timeout = const Duration(milliseconds: 1500),
+      {Duration timeout = const Duration(seconds: 5),
       bool Function()? abort}) async {
     if (stopPath.isEmpty) return true;
     final f = File(stopPath);

@@ -80,8 +80,11 @@ class TunStartException implements Exception {
   final String message;
   final String details;
   final bool adapterOpenTimeout;
+  final bool nonTunParameterFailure;
   TunStartException(this.message,
-      {this.details = '', this.adapterOpenTimeout = false});
+      {this.details = '',
+      this.adapterOpenTimeout = false,
+      this.nonTunParameterFailure = false});
   @override
   String toString() => details.isEmpty ? message : '$message\n\n$details';
 }

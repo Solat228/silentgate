@@ -165,25 +165,36 @@ OverrideNormalized normalizeOverridePorts(
       if (proto == 'socks' && !hasSocks) {
         raw['port'] = socksPort;
         raw['listen'] = '127.0.0.1';
+        final st = Map<String, dynamic>.from(
+            (raw['settings'] as Map?) ?? const <String, dynamic>{});
+        st['udp'] ??= true;
         if (socksUser.isNotEmpty) {
-          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
           st['auth'] = 'password';
           st['accounts'] = [
             {'user': socksUser, 'pass': socksPassword},
           ];
-          raw['settings'] = st;
         }
+        raw['settings'] = st;
+        raw['sniffing'] ??= {
+          'enabled': true,
+          'destOverride': ['http', 'tls', 'quic'],
+        };
         hasSocks = true;
       } else if (proto == 'http' && !hasHttp) {
         raw['port'] = httpPort;
         raw['listen'] = '127.0.0.1';
         if (socksUser.isNotEmpty) {
-          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
+          final st = Map<String, dynamic>.from(
+              (raw['settings'] as Map?) ?? const <String, dynamic>{});
           st['accounts'] = [
             {'user': socksUser, 'pass': socksPassword},
           ];
           raw['settings'] = st;
         }
+        raw['sniffing'] ??= {
+          'enabled': true,
+          'destOverride': ['http', 'tls', 'quic'],
+        };
         hasHttp = true;
       } else {
         // ⚠️ ОСТАЛЬНЫЕ INBOUND'Ы — ТОЛЬКО НА ПЕТЛЕ. Раньше их пропускали как
@@ -191,13 +202,21 @@ OverrideNormalized normalizeOverridePorts(
         // локальной сети (аудит 25.10.2026, F). На Android — ещё и с тем же
         // паролем: петля там общая для всех приложений.
         raw['listen'] = '127.0.0.1';
-        if (socksUser.isNotEmpty && (proto == 'socks' || proto == 'http')) {
-          final st = (raw['settings'] as Map?) ?? <String, dynamic>{};
-          if (proto == 'socks') st['auth'] = 'password';
-          st['accounts'] = [
-            {'user': socksUser, 'pass': socksPassword},
-          ];
-          raw['settings'] = st;
+        if (proto == 'socks' || proto == 'http') {
+          final st = Map<String, dynamic>.from(
+              (raw['settings'] as Map?) ?? const <String, dynamic>{});
+          if (proto == 'socks') st['udp'] ??= true;
+          if (socksUser.isNotEmpty) {
+            if (proto == 'socks') st['auth'] = 'password';
+            st['accounts'] = [
+              {'user': socksUser, 'pass': socksPassword},
+            ];
+          }
+          if (st.isNotEmpty) raw['settings'] = st;
+          raw['sniffing'] ??= {
+            'enabled': true,
+            'destOverride': ['http', 'tls', 'quic'],
+          };
         }
       }
     }
@@ -304,5 +323,60 @@ OverrideNormalized normalizeOverridePorts(
     );
   } catch (_) {
     return OverrideNormalized(rawJson, hasSocks: false, hasHttp: false);
+  }
+}
+
+/// Адреса внешних серверов из `outbounds` полного Xray-конфига панели/override.
+///
+/// Профили «Авто …» несут в `VpnServer.address` адрес лишь первого узла, тогда
+/// как внутри `outbounds` их может быть сотня. Без полного перечня адреса
+/// остальных узлов не попадают в исключения маршрутов TUN и в белый список WFP
+/// при включённом Kill Switch (когда бесшовность выключена или узел не входит
+/// в плоский список серверов подписки).
+List<String> extractFullConfigHosts(String rawJson) {
+  final trimmed = rawJson.trim();
+  if (trimmed.isEmpty) return const [];
+  try {
+    final decoded = jsonDecode(canonicalXrayJson(trimmed));
+    if (decoded is! Map) return const [];
+    final outbounds = decoded['outbounds'];
+    if (outbounds is! List) return const [];
+    final out = <String>[];
+    void addHost(Object? raw) {
+      if (raw is! String) return;
+      final h = raw.trim();
+      if (h.isEmpty ||
+          h == '127.0.0.1' ||
+          h == '::1' ||
+          h.toLowerCase() == 'localhost') {
+        return;
+      }
+      if (!out.contains(h)) out.add(h);
+    }
+
+    const skipProtocols = {'freedom', 'blackhole', 'dns', 'loopback'};
+    for (final ob in outbounds) {
+      if (ob is! Map) continue;
+      final proto = '${ob['protocol'] ?? ''}'.toLowerCase();
+      if (skipProtocols.contains(proto)) continue;
+      final settings = ob['settings'];
+      if (settings is! Map) continue;
+      addHost(settings['address']);
+      final vnext = settings['vnext'];
+      if (vnext is List) {
+        for (final v in vnext) {
+          if (v is Map) addHost(v['address']);
+        }
+      }
+      final servers = settings['servers'];
+      if (servers is List) {
+        for (final s in servers) {
+          if (s is Map) addHost(s['address']);
+        }
+      }
+    }
+    return out;
+  } catch (_) {
+    return const [];
   }
 }

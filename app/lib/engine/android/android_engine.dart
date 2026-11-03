@@ -890,6 +890,7 @@ class AndroidEngine extends VpnEngineBase {
       // (hysteria2), outbound встраивается прямо в конфиг туннеля.
       final liveOptions = TunOptions.fromSettings(
           session.options.settings,
+          blockTunnelQuic: viaXray,
           serverIps: serverIps,
           // ⚠️ `tunnelExcludeServerIps` на Android НАМЕРЕННО не заполняется
           // (пусто = прежний конфиг байт в байт). Здесь это поле стало бы

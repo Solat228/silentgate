@@ -2757,46 +2757,48 @@ List<SettingsRow> _appearanceRows(
 /// иначе Windows будет спрашивать права при КАЖДОМ подключении.
 Future<void> _enableTun(BuildContext context, SettingsController controller) async {
   final l = AppLocalizations.of(context);
-  controller.update((s) => s.copyWith(captureMode: CaptureMode.tun));
-  // Пакет MSIX ставит задачу сам при первом подключении (`TunTaskAutoSetup`),
-  // спрашивать заранее незачем.
-  if (PackageIdentity.isPackaged && !controller.settings.tunTaskDeclined) {
-    return;
+  // Спрашиваем про задачу планировщика ДО смены режима: при живом соединении
+  // `captureChanged` запускает переподключение в TUN, и иначе UAC планировщика
+  // столкнулся бы с UAC помощника туннеля.
+  var taskDone = false;
+  if (!(PackageIdentity.isPackaged && !controller.settings.tunTaskDeclined) &&
+      !await platform.privileges.isConfigured() &&
+      context.mounted) {
+    final setup = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.tunUacTitle),
+        content: Text(l.tunUacBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.tunUacLater),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.tunUacSetup),
+          ),
+        ],
+      ),
+    );
+    if (setup == true) {
+      final result = await platform.privileges.configure();
+      taskDone = result == PrivilegeSetupResult.done;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(switch (result) {
+            PrivilegeSetupResult.done => l.tunUacDone,
+            PrivilegeSetupResult.denied => l.tunUacFail,
+            PrivilegeSetupResult.failed => l.tunTaskSchedulerFailed,
+          }),
+        ));
+      }
+    }
   }
-  if (await platform.privileges.isConfigured()) return;
-  if (!context.mounted) return;
-
-  final setup = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l.tunUacTitle),
-      content: Text(l.tunUacBody),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(l.tunUacLater),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(l.tunUacSetup),
-        ),
-      ],
-    ),
-  );
-  if (setup != true) return;
-
-  final result = await platform.privileges.configure();
-  if (result == PrivilegeSetupResult.done) {
-    controller.update((s) => s.copyWith(tunTaskDeclined: false));
-  }
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(switch (result) {
-      PrivilegeSetupResult.done => l.tunUacDone,
-      PrivilegeSetupResult.denied => l.tunUacFail,
-      PrivilegeSetupResult.failed => l.tunTaskSchedulerFailed,
-    }),
-  ));
+  controller.update((s) => s.copyWith(
+        captureMode: CaptureMode.tun,
+        tunTaskDeclined: taskDone ? false : s.tunTaskDeclined,
+      ));
 }
 
 // ── Захват трафика ───────────────────────────────────────────────────────────

@@ -1073,8 +1073,11 @@ class _HomeScreenState extends State<HomeScreen> {
           // На экране — общая фраза, в журнале — имена изменённых настроек:
           // без них перезапуск туннеля неотличим от обрыва связи.
           fields: before.reconnectReasons(after));
-      // Включённая защита обязана действовать сразу — см. killSwitchTurnedOn.
-      if (before.killSwitchTurnedOn(after) && state.status.isConnected) {
+      // Включённая защита и смена способа захвата обязаны действовать сразу:
+      // иначе переключение «Системный прокси → TUN» на живом соединении
+      // оставляет в реестре `127.0.0.1:10809` мимо раздельного туннелирования.
+      if ((before.killSwitchTurnedOn(after) || before.captureChanged(after)) &&
+          state.status.isConnected) {
         unawaited(state.reconnect(after));
       }
     };
