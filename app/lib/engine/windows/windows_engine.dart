@@ -551,6 +551,11 @@ class WindowsEngine extends VpnEngineBase {
     // сессии (см. [_stopOwnProcesses]).
     final mine = <Object?>[];
     try {
+      final prevBypass = _whitelistBypass;
+      _whitelistBypass = null;
+      if (prevBypass != null) {
+        await prevBypass.stop();
+      }
       if (needsWhitelistRelay) {
         final bypass = WhitelistBypassProcess();
         _whitelistBypass = bypass;
@@ -564,6 +569,17 @@ class WindowsEngine extends VpnEngineBase {
           server: session.server,
           socksPort: whitelistRelayPort,
           abort: aborted,
+          onInteractiveUrl: (kind, url) {
+            if (aborted()) return;
+            final msg = kind == 'captcha'
+                ? 'Пройдите капчу VK в открывшемся браузере ($url)...'
+                : 'Подтвердите вход в открывшемся браузере ($url)...';
+            setStatus(
+              VpnConnectionState.connecting,
+              step: ConnectStep.relay,
+              message: msg,
+            );
+          },
         );
         if (aborted()) {
           await _stopOwnProcesses(mine);

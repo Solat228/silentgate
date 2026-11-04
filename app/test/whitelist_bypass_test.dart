@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
+import 'package:silentgate/core/platform/app_launcher.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/exit_outbounds.dart';
@@ -340,10 +341,50 @@ void main() {
       }
     });
 
-    test('Домены прямого доступа включают ok.ru для VK анонимного входа', () {
-      expect(WhitelistBypassEndpoint.domainsFor('vk'), contains('ok.ru'));
-      expect(WhitelistBypassEndpoint.cidrsFor('vk'), contains('155.212.192.0/20'));
+    test('Домены и подсети прямого доступа включают ok.ru, id.vk.ru и VK Cloud TURN', () {
+      expect(
+        WhitelistBypassEndpoint.domainsFor('vk'),
+        containsAll(<String>['ok.ru', 'id.vk.ru', 'login.vk.ru', 'calls.okcdn.ru']),
+      );
+      expect(
+        WhitelistBypassEndpoint.cidrsFor('vk'),
+        containsAll(<String>['90.156.0.0/16', '155.212.192.0/20']),
+      );
       expect(WhitelistBypassEndpoint.cidrsFor('telemost'), contains('5.255.211.0/24'));
     });
+
+    test('openInteractiveUrl делегирует открытие капчи VK / входа Blink в штатный AppLauncher', () async {
+      final opened = <String>[];
+      setAppLauncherForTests(_FakeAppLauncher(opened));
+      addTearDown(() => setAppLauncherForTests(null));
+
+      await WhitelistBypassProcess.openInteractiveUrl('http://127.0.0.1:41234/');
+      await WhitelistBypassProcess.openInteractiveUrl('https://blink.im/auth?code=123&state=abc');
+      await WhitelistBypassProcess.openInteractiveUrl('file:///etc/passwd');
+      await WhitelistBypassProcess.openInteractiveUrl('');
+
+      expect(
+        opened,
+        equals(<String>[
+          'http://127.0.0.1:41234/',
+          'https://blink.im/auth?code=123&state=abc',
+        ]),
+      );
+    });
   });
+}
+
+class _FakeAppLauncher implements AppLauncher {
+  _FakeAppLauncher(this.opened);
+  final List<String> opened;
+
+  @override
+  Future<void> open(String url) async {
+    opened.add(url);
+  }
+
+  @override
+  Future<void> openTelegram(String url) async {
+    opened.add('tg:$url');
+  }
 }

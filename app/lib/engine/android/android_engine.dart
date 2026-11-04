@@ -1004,6 +1004,11 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
 
+      final prevBypass = _whitelistBypass;
+      _whitelistBypass = null;
+      if (prevBypass != null) {
+        await prevBypass.stop();
+      }
       final needsWhitelistRelay =
           session.servers.length == 1 && session.server.usesWhitelistRelay;
       if (needsWhitelistRelay) {
@@ -1027,6 +1032,17 @@ class AndroidEngine extends VpnEngineBase {
           socksPort: relayPort,
           executablePath: libPath,
           abort: aborted,
+          onInteractiveUrl: (kind, url) {
+            if (aborted()) return;
+            final msg = kind == 'captcha'
+                ? 'Пройдите капчу VK в открывшемся браузере ($url)...'
+                : 'Подтвердите вход в открывшемся браузере ($url)...';
+            setStatus(
+              VpnConnectionState.connecting,
+              step: ConnectStep.relay,
+              message: msg,
+            );
+          },
         );
         if (aborted()) {
           await bypass.stop();

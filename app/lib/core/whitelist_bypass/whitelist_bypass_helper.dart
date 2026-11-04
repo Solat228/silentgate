@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 import '../models/vpn_server.dart';
+import '../platform/app_launcher.dart';
 import '../platform/app_log.dart';
 import '../platform/app_paths.dart';
 import '../platform/core_cleanup.dart';
@@ -238,12 +241,15 @@ abstract final class WhitelistBypassEndpoint {
       case 'vk':
         return const [
           'vk.ru',
+          'id.vk.ru',
+          'login.vk.ru',
           'vk.com',
           'vk.me',
           'vk-portal.net',
           'userapi.com',
           'ok.ru',
           'mycdn.me',
+          'calls.okcdn.ru',
         ];
       case 'dion':
         return const ['dion.vc'];
@@ -266,11 +272,17 @@ abstract final class WhitelistBypassEndpoint {
     switch (platform.toLowerCase()) {
       case 'vk':
         return const [
+          '90.156.0.0/16',
           '155.212.192.0/20',
           '95.142.192.0/20',
           '95.213.192.0/19',
           '87.240.128.0/18',
           '93.186.224.0/20',
+          '79.137.192.0/18',
+          '5.61.16.0/21',
+          '5.61.232.0/21',
+          '217.20.144.0/20',
+          '185.32.248.0/22',
         ];
       case 'telemost':
         return const [
@@ -467,8 +479,9 @@ class WhitelistBypassProcess {
     required VpnServer server,
     int socksPort = 10855,
     String? executablePath,
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 45),
     bool Function()? abort,
+    void Function(String kind, String url)? onInteractiveUrl,
   }) async {
     if (_process != null) {
       await stop();
@@ -525,7 +538,7 @@ class WhitelistBypassProcess {
         .transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
-          (line) => _handleOutputLine(line, proc, server),
+          (line) => _handleOutputLine(line, proc, server, onInteractiveUrl),
           onError: (e) {
             AppLog.w('Ошибка stdout релея: $e');
           },
@@ -595,7 +608,12 @@ class WhitelistBypassProcess {
     }
   }
 
-  void _handleOutputLine(String line, Process proc, VpnServer server) {
+  void _handleOutputLine(
+    String line,
+    Process proc,
+    VpnServer server,
+    void Function(String kind, String url)? onInteractiveUrl,
+  ) {
     _recordTail(line);
     AppLog.d('[whitelist-bypass stdout] $line');
 
@@ -609,12 +627,14 @@ class WhitelistBypassProcess {
       AppLog.i('VK запросил прохождение капчи, открываю браузер: $url');
       // Продлеваем ожидание до 5 минут, пока пользователь проходит капчу.
       _deadline = DateTime.now().add(const Duration(minutes: 5));
-      _openInteractiveUrl(url);
+      onInteractiveUrl?.call('captcha', url);
+      unawaited(openInteractiveUrl(url));
     } else if (line.startsWith('STATUS:LOGIN_LINK:')) {
       final url = line.substring('STATUS:LOGIN_LINK:'.length).trim();
       AppLog.i('Blink запросил подтверждение входа, открываю ссылку: $url');
       _deadline = DateTime.now().add(const Duration(minutes: 5));
-      _openInteractiveUrl(url);
+      onInteractiveUrl?.call('login', url);
+      unawaited(openInteractiveUrl(url));
     } else if (line == 'STATUS:TUNNEL_CONNECTED') {
       AppLog.i('Туннель обхода белых списков успешно установлен!');
       if (_connectCompleter != null && !_connectCompleter!.isCompleted) {
@@ -637,21 +657,18 @@ class WhitelistBypassProcess {
     proc.stdin.write(cmd);
   }
 
-  void _openInteractiveUrl(String url) {
-    if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+  /// Открывает интерактивную ссылку подтверждения (капча VK / вход Blink)
+  /// через штатный платформенный [UrlOpener] (`ACTION_VIEW` на Android,
+  /// `rundll32 url.dll,FileProtocolHandler` на Windows с валидацией URI).
+  @visibleForTesting
+  static Future<void> openInteractiveUrl(String url) async {
+    final trimmed = url.trim();
+    if (trimmed.isEmpty ||
+        (!trimmed.startsWith('http://') && !trimmed.startsWith('https://'))) {
       return;
     }
     try {
-      if (Platform.isWindows) {
-        Process.start('cmd', ['/c', 'start', '', url],
-            mode: ProcessStartMode.detached);
-      } else if (Platform.isAndroid) {
-        Process.start(
-          'am',
-          ['start', '-a', 'android.intent.action.VIEW', '-d', url],
-          mode: ProcessStartMode.detached,
-        );
-      }
+      await UrlOpener.open(trimmed);
     } catch (e) {
       AppLog.w('Не удалось автоматически открыть браузер для БС: $e');
     }
