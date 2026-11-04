@@ -35,10 +35,24 @@ import 'widgets/rule_counts_text.dart';
 import 'widgets/rule_import_dialog.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/drag_select_region.dart';
 import 'widgets/extended_clipboard.dart';
 import 'widgets/vpn_reload_prompt_dialog.dart';
 import '../core/i18n/enum_labels.dart';
 import '../l10n/gen/app_localizations.dart';
+
+enum _SplitRuleMenuAction {
+  toggleSelect,
+  selectSubdomains,
+  configure,
+  routeTunnel,
+  routeViaServer,
+  routeDirect,
+  routeBlock,
+  toggleEnabled,
+  copyValue,
+  deleteRule,
+}
 
 /// Можно ли редактировать правила при таком способе захвата.
 ///
@@ -170,6 +184,17 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   String? _highlightFamilyDomain;
   Timer? _highlightTimer;
   final Map<String, GlobalKey> _siteRowKeys = <String, GlobalKey>{};
+  final ScrollController _listScrollCtrl = ScrollController();
+  final DragSelectController<String> _dragCtrl = DragSelectController<String>();
+  bool _explicitSelectMode = false;
+  final Set<String> _selectedRuleIds = <String>{};
+
+  bool get _selectionMode =>
+      _explicitSelectMode || _selectedRuleIds.isNotEmpty;
+
+  static String _appSelId(AppRule r) => 'app:${r.matchKey}';
+  static String _siteSelId(SiteRule s) =>
+      'site:${s.domain.toLowerCase()}|${s.port ?? ''}';
 
   GlobalKey _keyForSiteNode(String nodeKey) =>
       _siteRowKeys.putIfAbsent(nodeKey, GlobalKey.new);
@@ -177,7 +202,630 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
   @override
   void dispose() {
     _highlightTimer?.cancel();
+    _dragCtrl.dispose();
+    _listScrollCtrl.dispose();
     super.dispose();
+  }
+
+  void _clearSelection() {
+    if (!_selectionMode) return;
+    setState(() {
+      _selectedRuleIds.clear();
+      _explicitSelectMode = false;
+    });
+  }
+
+  void _toggleRuleSelection(String id) {
+    setState(() {
+      if (!_selectedRuleIds.remove(id)) {
+        _selectedRuleIds.add(id);
+      }
+    });
+  }
+
+  void _toggleSelectAllVisible(List<String> visibleIds) {
+    if (visibleIds.isEmpty) return;
+    setState(() {
+      final allSelected = visibleIds.every(_selectedRuleIds.contains);
+      if (allSelected) {
+        _selectedRuleIds.removeAll(visibleIds);
+      } else {
+        _selectedRuleIds.addAll(visibleIds);
+      }
+    });
+  }
+
+  Set<String> _validSelectedIds(SplitTunnelConfig st) {
+    if (_selectedRuleIds.isEmpty) return const <String>{};
+    final valid = <String>{
+      for (final a in st.apps) _appSelId(a),
+      for (final s in st.sites) _siteSelId(s),
+    };
+    return _selectedRuleIds.intersection(valid);
+  }
+
+  List<String> _computeVisibleRuleIds(
+    SettingsController controller,
+    SplitTunnelConfig st,
+    bool editable,
+  ) {
+    if (!editable || st.mode == SplitMode.all) return const [];
+    final out = <String>[];
+    if (!controller.settings.splitAppsCollapsed) {
+      for (final g in groupRulesByAction(st.apps, (r) => r.action)) {
+        if (controller.settings.splitCollapsed
+            .contains(splitGroupKey('apps', g.action))) {
+          continue;
+        }
+        for (final r in g.rules) {
+          out.add(_appSelId(r));
+        }
+      }
+    }
+    if (!controller.settings.splitSitesCollapsed) {
+      final filtered = filterSiteRules(st.sites, _siteQuery);
+      final collapsedSet = _siteQuery.trim().isNotEmpty
+          ? const <String>{}
+          : controller.settings.splitCollapsed.toSet();
+      for (final g in groupRulesByAction(filtered, (x) => x.action)) {
+        if (_siteQuery.trim().isEmpty &&
+            controller.settings.splitCollapsed
+                .contains(splitGroupKey('sites', g.action))) {
+          continue;
+        }
+        final rows = siteTreeRows(
+          [
+            for (final x in filtered)
+              if (x.action == g.action) x,
+          ],
+          collapsed: collapsedSet,
+        );
+        for (final row in rows) {
+          if (!row.isVirtualGroup) {
+            out.add(_siteSelId(row.site));
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  void _promptReloadAfterBatchIfConnected(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    String? primarySubject,
+  ) {
+    if (!state.status.isConnected ||
+        !splitRulesEditableIn(controller.settings.captureMode)) {
+      return;
+    }
+    if (controller.settings.alwaysReloadVpnOnNewSite) {
+      unawaited(state.reconnect(controller.settings));
+    } else if (primarySubject != null && primarySubject.isNotEmpty) {
+      unawaited(
+        showVpnReloadPromptDialog(
+          context,
+          domain: primarySubject,
+          settingsController: controller,
+          appState: state,
+          isLiveMismatch: false,
+        ),
+      );
+    }
+  }
+
+  Future<void> _applyBatchRoute(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    Set<String> targetIds, {
+    required AppAction action,
+    bool pickServer = false,
+  }) async {
+    if (targetIds.isEmpty) return;
+    final l = AppLocalizations.of(context);
+    String? serverKey;
+    if (pickServer) {
+      final choice = await showDialog<RuleServerChoice>(
+        context: context,
+        builder: (_) => RuleServerPickerDialog(
+          servers: state.servers,
+          currentServer: state.selectedServer,
+          serverKey: null,
+        ),
+      );
+      if (choice == null || !context.mounted) return;
+      serverKey = choice.key;
+    }
+
+    final effectiveServer = action == AppAction.tunnel ? serverKey : null;
+    var touched = 0;
+    var touchedApps = false;
+    var touchedSites = false;
+    String? subject;
+
+    controller.update((cur) {
+      final st = cur.splitTunnel;
+      final nextApps = <AppRule>[
+        for (final a in st.apps)
+          if (targetIds.contains(_appSelId(a)))
+            (() {
+              touched++;
+              touchedApps = true;
+              subject ??= a.name;
+              return a.copyWith(
+                action: action,
+                serverKey: effectiveServer,
+                clearServer: effectiveServer == null,
+              );
+            })()
+          else
+            a,
+      ];
+      final nextSites = <SiteRule>[
+        for (final x in st.sites)
+          if (targetIds.contains(_siteSelId(x)))
+            (() {
+              touched++;
+              touchedSites = true;
+              subject ??= x.domain;
+              return x.copyWith(
+                action: action,
+                serverKey: effectiveServer,
+                clearServer: effectiveServer == null,
+              );
+            })()
+          else
+            x,
+      ];
+      final uncollapseKeys = <String>{
+        if (touchedApps) splitGroupKey('apps', action),
+        if (touchedSites) splitGroupKey('sites', action),
+      };
+      return cur.copyWith(
+        splitCollapsed: cur.splitCollapsed
+            .where((k) => !uncollapseKeys.contains(k))
+            .toList(),
+        splitTunnel: st.copyWith(apps: nextApps, sites: nextSites),
+      );
+    });
+
+    _clearSelection();
+    if (!context.mounted || touched == 0) return;
+    AppToast.show(context, l.splitBatchUpdatedToast(touched));
+    _promptReloadAfterBatchIfConnected(context, controller, state, subject);
+  }
+
+  void _toggleBatchAppsEnabled(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    Set<String> targetIds,
+  ) {
+    final st = controller.settings.splitTunnel;
+    final selectedApps =
+        st.apps.where((a) => targetIds.contains(_appSelId(a))).toList();
+    if (selectedApps.isEmpty) return;
+    final l = AppLocalizations.of(context);
+    final enableNext = selectedApps.every((a) => !a.enabled);
+    String? subject;
+    controller.update((cur) {
+      final nextApps = <AppRule>[
+        for (final a in cur.splitTunnel.apps)
+          if (targetIds.contains(_appSelId(a)))
+            (() {
+              subject ??= a.name;
+              return a.copyWith(enabled: enableNext);
+            })()
+          else
+            a,
+      ];
+      return cur.copyWith(
+        splitTunnel: cur.splitTunnel.copyWith(apps: nextApps),
+      );
+    });
+    _clearSelection();
+    AppToast.show(context, l.splitBatchUpdatedToast(selectedApps.length));
+    _promptReloadAfterBatchIfConnected(context, controller, state, subject);
+  }
+
+  void _deleteBatchRules(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    Set<String> targetIds,
+  ) {
+    if (targetIds.isEmpty) return;
+    final l = AppLocalizations.of(context);
+    var removed = 0;
+    String? subject;
+    final removedNodeKeys = <String>{};
+
+    controller.update((cur) {
+      final st = cur.splitTunnel;
+      final nextApps = <AppRule>[];
+      for (final a in st.apps) {
+        if (targetIds.contains(_appSelId(a))) {
+          removed++;
+          subject ??= a.name;
+        } else {
+          nextApps.add(a);
+        }
+      }
+      final nextSites = <SiteRule>[];
+      for (final x in st.sites) {
+        if (targetIds.contains(_siteSelId(x))) {
+          removed++;
+          subject ??= x.domain;
+          removedNodeKeys.add(siteNodeKey(x));
+        } else {
+          nextSites.add(x);
+        }
+      }
+      return cur.copyWith(
+        splitCollapsed: cur.splitCollapsed
+            .where((k) => !removedNodeKeys.contains(k))
+            .toList(),
+        splitTunnel: st.copyWith(apps: nextApps, sites: nextSites),
+      );
+    });
+
+    _clearSelection();
+    if (removed == 0) return;
+    AppToast.show(context, l.splitBatchRemovedToast(removed));
+    _promptReloadAfterBatchIfConnected(context, controller, state, subject);
+  }
+
+  Future<void> _openRuleContextMenu(
+    BuildContext context,
+    Offset globalPos,
+    SettingsController controller,
+    AppState state, {
+    AppRule? appRule,
+    SiteRule? siteRule,
+    bool isVirtualGroup = false,
+  }) async {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox?;
+    if (overlay == null) return;
+
+    final st = controller.settings.splitTunnel;
+    final activeSelected = _validSelectedIds(st);
+
+    if (isVirtualGroup && siteRule != null) {
+      final familyIds = <String>{
+        for (final x in st.sites)
+          if (x.action == siteRule.action &&
+              isSameDomainFamily(x.domain, siteRule.domain))
+            _siteSelId(x),
+      };
+      if (familyIds.isEmpty) return;
+      final chosen = await showMenu<_SplitRuleMenuAction>(
+        context: context,
+        position: RelativeRect.fromRect(
+          globalPos & const Size(1, 1),
+          Offset.zero & overlay.size,
+        ),
+        items: [
+          PopupMenuItem(
+            value: _SplitRuleMenuAction.selectSubdomains,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.checklist_rtl_rounded, size: 18),
+              title: Text(l.splitMenuSelectSubdomains(siteRule.domain)),
+            ),
+          ),
+        ],
+      );
+      if (chosen == _SplitRuleMenuAction.selectSubdomains && mounted) {
+        setState(() => _selectedRuleIds.addAll(familyIds));
+      }
+      return;
+    }
+
+    final itemId = appRule != null
+        ? _appSelId(appRule)
+        : (siteRule != null ? _siteSelId(siteRule) : '');
+    if (itemId.isEmpty) return;
+
+    final isItemSelected = activeSelected.contains(itemId);
+    final targetIds = (isItemSelected && activeSelected.length > 1)
+        ? activeSelected
+        : <String>{itemId};
+    final hasAnyAppInTarget =
+        st.apps.any((a) => targetIds.contains(_appSelId(a)));
+    final allTargetAppsDisabled = hasAnyAppInTarget &&
+        st.apps
+            .where((a) => targetIds.contains(_appSelId(a)))
+            .every((a) => !a.enabled);
+
+    final chosen = await showMenu<_SplitRuleMenuAction>(
+      context: context,
+      position: RelativeRect.fromRect(
+        globalPos & const Size(1, 1),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.toggleSelect,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              isItemSelected ? Icons.check_box_outline_blank : Icons.check_box,
+              size: 18,
+            ),
+            title: Text(
+              isItemSelected ? l.liveConnsMenuDeselect : l.liveConnsMenuSelect,
+            ),
+          ),
+        ),
+        if (targetIds.length == 1)
+          PopupMenuItem(
+            value: _SplitRuleMenuAction.configure,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.tune, size: 18),
+              title: Text(l.splitMenuConfigure),
+            ),
+          ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.routeTunnel,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.vpn_lock, size: 18, color: scheme.primary),
+            title: Text(appActionLabel(l, AppAction.tunnel)),
+          ),
+        ),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.routeViaServer,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.public, size: 18, color: scheme.primary),
+            title: Text(l.splitBatchViaServer),
+          ),
+        ),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.routeDirect,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(
+              Icons.arrow_outward,
+              size: 18,
+              color: Colors.blueGrey,
+            ),
+            title: Text(appActionLabel(l, AppAction.direct)),
+          ),
+        ),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.routeBlock,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.block, size: 18, color: scheme.error),
+            title: Text(appActionLabel(l, AppAction.block)),
+          ),
+        ),
+        if (hasAnyAppInTarget)
+          PopupMenuItem(
+            value: _SplitRuleMenuAction.toggleEnabled,
+            child: ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                allTargetAppsDisabled
+                    ? Icons.toggle_on_outlined
+                    : Icons.toggle_off_outlined,
+                size: 18,
+              ),
+              title: Text(
+                allTargetAppsDisabled ? l.splitBatchEnable : l.splitBatchDisable,
+              ),
+            ),
+          ),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.copyValue,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.copy, size: 18),
+            title: Text(appRule != null ? l.splitCopyPath : l.splitCopyDomain),
+          ),
+        ),
+        PopupMenuItem(
+          value: _SplitRuleMenuAction.deleteRule,
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.delete_outline, size: 18, color: scheme.error),
+            title: Text(
+              l.splitRemove,
+              style: TextStyle(color: scheme.error),
+            ),
+          ),
+        ),
+      ],
+    );
+
+    if (chosen == null || !context.mounted) return;
+    switch (chosen) {
+      case _SplitRuleMenuAction.toggleSelect:
+        _toggleRuleSelection(itemId);
+      case _SplitRuleMenuAction.selectSubdomains:
+        break;
+      case _SplitRuleMenuAction.configure:
+        if (appRule != null) {
+          await _appDialog(context, controller, appRule);
+        } else if (siteRule != null) {
+          await _siteDialog(context, controller, siteRule);
+        }
+      case _SplitRuleMenuAction.routeTunnel:
+        await _applyBatchRoute(
+          context,
+          controller,
+          state,
+          targetIds,
+          action: AppAction.tunnel,
+        );
+      case _SplitRuleMenuAction.routeViaServer:
+        await _applyBatchRoute(
+          context,
+          controller,
+          state,
+          targetIds,
+          action: AppAction.tunnel,
+          pickServer: true,
+        );
+      case _SplitRuleMenuAction.routeDirect:
+        await _applyBatchRoute(
+          context,
+          controller,
+          state,
+          targetIds,
+          action: AppAction.direct,
+        );
+      case _SplitRuleMenuAction.routeBlock:
+        await _applyBatchRoute(
+          context,
+          controller,
+          state,
+          targetIds,
+          action: AppAction.block,
+        );
+      case _SplitRuleMenuAction.toggleEnabled:
+        _toggleBatchAppsEnabled(context, controller, state, targetIds);
+      case _SplitRuleMenuAction.copyValue:
+        final text = appRule != null ? appRule.path : (siteRule?.label ?? '');
+        await Clipboard.setData(ClipboardData(text: text));
+        if (context.mounted) AppToast.copied(context);
+      case _SplitRuleMenuAction.deleteRule:
+        _deleteBatchRules(context, controller, state, targetIds);
+    }
+  }
+
+  Widget _buildBatchActionBar(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    AppLocalizations l,
+    Set<String> activeSelectedIds,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final st = controller.settings.splitTunnel;
+    final selectedApps =
+        st.apps.where((a) => activeSelectedIds.contains(_appSelId(a))).toList();
+    final hasApps = selectedApps.isNotEmpty;
+    final enableNext = hasApps && selectedApps.every((a) => !a.enabled);
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        key: const Key('splitBatchActionBar'),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          border: Border(
+            top: BorderSide(color: scheme.outlineVariant),
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            FilledButton.tonalIcon(
+              key: const Key('splitBatchTunnel'),
+              onPressed: () => _applyBatchRoute(
+                context,
+                controller,
+                state,
+                activeSelectedIds,
+                action: AppAction.tunnel,
+              ),
+              icon: const Icon(Icons.vpn_lock, size: 17),
+              label: Text(appActionLabel(l, AppAction.tunnel)),
+            ),
+            FilledButton.tonalIcon(
+              key: const Key('splitBatchViaServer'),
+              onPressed: () => _applyBatchRoute(
+                context,
+                controller,
+                state,
+                activeSelectedIds,
+                action: AppAction.tunnel,
+                pickServer: true,
+              ),
+              icon: const Icon(Icons.public, size: 17),
+              label: Text(l.splitBatchViaServer),
+            ),
+            OutlinedButton.icon(
+              key: const Key('splitBatchDirect'),
+              onPressed: () => _applyBatchRoute(
+                context,
+                controller,
+                state,
+                activeSelectedIds,
+                action: AppAction.direct,
+              ),
+              icon: const Icon(Icons.arrow_outward, size: 17),
+              label: Text(appActionLabel(l, AppAction.direct)),
+            ),
+            OutlinedButton.icon(
+              key: const Key('splitBatchBlock'),
+              style: OutlinedButton.styleFrom(foregroundColor: scheme.error),
+              onPressed: () => _applyBatchRoute(
+                context,
+                controller,
+                state,
+                activeSelectedIds,
+                action: AppAction.block,
+              ),
+              icon: const Icon(Icons.block, size: 17),
+              label: Text(appActionLabel(l, AppAction.block)),
+            ),
+            if (hasApps)
+              OutlinedButton.icon(
+                key: const Key('splitBatchToggleEnabled'),
+                onPressed: () => _toggleBatchAppsEnabled(
+                  context,
+                  controller,
+                  state,
+                  activeSelectedIds,
+                ),
+                icon: Icon(
+                  enableNext
+                      ? Icons.toggle_on_outlined
+                      : Icons.toggle_off_outlined,
+                  size: 18,
+                ),
+                label: Text(
+                  enableNext ? l.splitBatchEnable : l.splitBatchDisable,
+                ),
+              ),
+            IconButton(
+              key: const Key('splitBatchDelete'),
+              tooltip: l.splitRemove,
+              icon: Icon(Icons.delete_outline, color: scheme.error),
+              onPressed: () => _deleteBatchRules(
+                context,
+                controller,
+                state,
+                activeSelectedIds,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _onSiteQueryChanged(String query) {
@@ -267,11 +915,69 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     // см. [splitRulesEditableIn], там же почему.
     final editable = splitRulesEditableIn(mode);
     final l = AppLocalizations.of(context);
+    final visibleRuleIds = _computeVisibleRuleIds(controller, st, editable);
+    _dragCtrl.orderedIds = visibleRuleIds;
+    final activeSelectedIds = _validSelectedIds(st);
+    final inSelectMode =
+        editable && st.mode != SplitMode.all && (_explicitSelectMode || activeSelectedIds.isNotEmpty);
 
-    final scaffold = Scaffold(
-      appBar: AppBar(title: Text(l.splitTitle)),
-      body: ListView(
-        children: [
+    final scaffold = PopScope(
+      canPop: !inSelectMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && inSelectMode) _clearSelection();
+      },
+      child: CallbackShortcuts(
+        bindings: <ShortcutActivator, VoidCallback>{
+          if (inSelectMode)
+            const SingleActivator(LogicalKeyboardKey.escape): _clearSelection,
+        },
+        child: Scaffold(
+          appBar: inSelectMode
+              ? AppBar(
+                  leading: IconButton(
+                    key: const Key('splitCancelSelectionBtn'),
+                    tooltip: l.splitBatchCancel,
+                    icon: const Icon(Icons.close),
+                    onPressed: _clearSelection,
+                  ),
+                  title: Text(l.splitSelectedCount(activeSelectedIds.length)),
+                  actions: [
+                    IconButton(
+                      key: const Key('splitSelectAllBtn'),
+                      tooltip: l.splitSelectAllVisible,
+                      icon: const Icon(Icons.select_all_rounded),
+                      onPressed: visibleRuleIds.isEmpty
+                          ? null
+                          : () => _toggleSelectAllVisible(visibleRuleIds),
+                    ),
+                  ],
+                )
+              : AppBar(title: Text(l.splitTitle)),
+          bottomNavigationBar: (inSelectMode && activeSelectedIds.isNotEmpty)
+              ? _buildBatchActionBar(
+                  context,
+                  controller,
+                  state,
+                  l,
+                  activeSelectedIds,
+                )
+              : null,
+          body: DragSelectRegion<String>(
+            controller: _dragCtrl,
+            scrollController: _listScrollCtrl,
+            enabled: editable && st.mode != SplitMode.all,
+            isSelectionMode: inSelectMode,
+            selectedIds: activeSelectedIds,
+            onSelectionChanged: (next, {required enteredSelectionMode}) {
+              setState(() {
+                _selectedRuleIds
+                  ..clear()
+                  ..addAll(next);
+              });
+            },
+            child: ListView(
+              controller: _listScrollCtrl,
+              children: [
           if (!tunActive)
             Container(
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -394,18 +1100,51 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                       list: 'apps', action: g.action, count: g.rules.length),
                   if (!controller.settings.splitCollapsed
                       .contains(splitGroupKey('apps', g.action)))
-                  ...g.rules.map((rule) => Opacity(
-                        opacity: rule.enabled ? 1 : 0.45,
-                        child: ListTile(
-                          key: ValueKey('app:${rule.path}'),
-                          leading: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Checkbox(
-                              value: rule.enabled,
-                              onChanged: (v) => _updateApp(controller, rule,
-                                  enabled: v ?? true),
-                            ),
-                            AppIcon(path: rule.path), // #1 — реальная иконка exe
-                          ]),
+                  ...g.rules.map((rule) {
+                    final selId = _appSelId(rule);
+                    final isRuleSelected = activeSelectedIds.contains(selId);
+                    return DragSelectItem<String>(
+                      key: ValueKey('dragApp:${rule.matchKey}'),
+                      id: selId,
+                      controller: _dragCtrl,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onSecondaryTapUp: (d) => _openRuleContextMenu(
+                          context,
+                          d.globalPosition,
+                          controller,
+                          state,
+                          appRule: rule,
+                        ),
+                        onLongPressStart: (d) => _openRuleContextMenu(
+                          context,
+                          d.globalPosition,
+                          controller,
+                          state,
+                          appRule: rule,
+                        ),
+                        child: Opacity(
+                          opacity: rule.enabled ? 1 : 0.45,
+                          child: ListTile(
+                            key: ValueKey('app:${rule.path}'),
+                            selected: inSelectMode && isRuleSelected,
+                            selectedTileColor: Theme.of(context)
+                                .colorScheme
+                                .primary
+                                .withValues(alpha: 0.11),
+                            leading:
+                                Row(mainAxisSize: MainAxisSize.min, children: [
+                              Checkbox(
+                                value:
+                                    inSelectMode ? isRuleSelected : rule.enabled,
+                                onChanged: inSelectMode
+                                    ? (_) => _toggleRuleSelection(selId)
+                                    : (v) => _updateApp(controller, rule,
+                                        enabled: v ?? true),
+                              ),
+                              AppIcon(
+                                  path: rule.path), // #1 — реальная иконка exe
+                            ]),
                           dense: context.sg.isCompact,
                           // Человеческое имя приложения, а не ключ правила. На
                           // Windows ключ и есть имя файла, на Android — имя
@@ -466,9 +1205,19 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                                 onPressed: () => _removeApp(controller, rule),
                               ),
                           ]),
-                          onTap: () => _appDialog(context, controller, rule),
+                            onTap: () {
+                              if (_dragCtrl.consumeTapSuppression()) return;
+                              if (inSelectMode) {
+                                _toggleRuleSelection(selId);
+                              } else {
+                                _appDialog(context, controller, rule);
+                              }
+                            },
+                          ),
                         ),
-                      )),
+                      ),
+                    );
+                  }),
                   ]),
                   const Divider(),
                   _listHeader(
@@ -601,6 +1350,9 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
             ),
           ),
         ],
+            ),
+          ),
+        ),
       ),
     );
 
@@ -725,6 +1477,22 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
               label: Text(l.splitImport),
               onPressed: () => _importApps(context, controller, state),
             ),
+            if (controller.settings.splitTunnel.apps.isNotEmpty)
+              TextButton.icon(
+                key: const Key('splitSelectAppsBtn'),
+                icon: Icon(_selectionMode
+                    ? Icons.deselect_rounded
+                    : Icons.checklist_rtl_rounded),
+                label: Text(
+                    _selectionMode ? l.splitBatchCancel : l.splitSelectRules),
+                onPressed: () {
+                  if (_selectionMode) {
+                    _clearSelection();
+                  } else {
+                    setState(() => _explicitSelectMode = true);
+                  }
+                },
+              ),
           ],
         ),
       );
@@ -747,6 +1515,22 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
               label: Text(l.splitImport),
               onPressed: () => _importSites(context, controller, state),
             ),
+            if (controller.settings.splitTunnel.sites.isNotEmpty)
+              TextButton.icon(
+                key: const Key('splitSelectSitesBtn'),
+                icon: Icon(_selectionMode
+                    ? Icons.deselect_rounded
+                    : Icons.checklist_rtl_rounded),
+                label: Text(
+                    _selectionMode ? l.splitBatchCancel : l.splitSelectRules),
+                onPressed: () {
+                  if (_selectionMode) {
+                    _clearSelection();
+                  } else {
+                    setState(() => _explicitSelectMode = true);
+                  }
+                },
+              ),
           ],
         ),
       );
@@ -1152,6 +1936,14 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
     void toggleNode() => controller.update((s) => s.copyWith(
         splitCollapsed: toggleCollapsedKey(s.splitCollapsed, nodeKey)));
 
+    final st = controller.settings.splitTunnel;
+    final activeSelected = _validSelectedIds(st);
+    final inSelectMode = splitRulesEditableIn(controller.settings.captureMode) &&
+        st.mode != SplitMode.all &&
+        (_explicitSelectMode || activeSelected.isNotEmpty);
+    final selId = _siteSelId(site);
+    final isRuleSelected = !row.isVirtualGroup && activeSelected.contains(selId);
+
     Widget tile;
     if (row.isVirtualGroup) {
       tile = ListTile(
@@ -1208,11 +2000,46 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
         ]),
         onTap: toggleNode,
       );
+      tile = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onSecondaryTapUp: (d) => _openRuleContextMenu(
+          context,
+          d.globalPosition,
+          controller,
+          state,
+          siteRule: site,
+          isVirtualGroup: true,
+        ),
+        onLongPressStart: (d) => _openRuleContextMenu(
+          context,
+          d.globalPosition,
+          controller,
+          state,
+          siteRule: site,
+          isVirtualGroup: true,
+        ),
+        child: tile,
+      );
     } else {
       tile = ListTile(
         key: ValueKey('site:${site.domain}|${site.port ?? ''}'),
+        selected: inSelectMode && isRuleSelected,
+        selectedTileColor: scheme.primary.withValues(alpha: 0.11),
         contentPadding: EdgeInsetsDirectional.only(start: indent, end: 16),
         leading: Row(mainAxisSize: MainAxisSize.min, children: [
+          if (inSelectMode) ...[
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                value: isRuleSelected,
+                onChanged: (_) => _toggleRuleSelection(selId),
+              ),
+            ),
+            const SizedBox(width: 6),
+          ],
           if (depth > 0)
             Icon(Icons.subdirectory_arrow_right,
                 size: 18, color: Theme.of(context).disabledColor),
@@ -1271,11 +2098,36 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
             onPressed: () => _removeSite(controller, site),
           ),
         ]),
-        onTap: () => _siteDialog(context, controller, site),
+        onTap: () {
+          if (_dragCtrl.consumeTapSuppression()) return;
+          if (inSelectMode) {
+            _toggleRuleSelection(selId);
+          } else {
+            _siteDialog(context, controller, site);
+          }
+        },
+      );
+      tile = GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onSecondaryTapUp: (d) => _openRuleContextMenu(
+          context,
+          d.globalPosition,
+          controller,
+          state,
+          siteRule: site,
+        ),
+        onLongPressStart: (d) => _openRuleContextMenu(
+          context,
+          d.globalPosition,
+          controller,
+          state,
+          siteRule: site,
+        ),
+        child: tile,
       );
     }
 
-    return AnimatedContainer(
+    final wrapped = AnimatedContainer(
       key: _keyForSiteNode(nodeKey),
       duration: const Duration(milliseconds: 220),
       margin: highlighted
@@ -1294,6 +2146,13 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
             )
           : null,
       child: tile,
+    );
+    if (row.isVirtualGroup) return wrapped;
+    return DragSelectItem<String>(
+      key: ValueKey('dragSite:$selId'),
+      id: selId,
+      controller: _dragCtrl,
+      child: wrapped,
     );
   }
 
@@ -2079,11 +2938,20 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
                       itemCount: found.length,
                       itemBuilder: (_, i) {
                         final s = all[found[i]];
+                        final supported = canBeExitServer(s);
                         return ServerTile(
                           server: s,
-                          selected: s.key == widget.serverKey,
-                          onTap: () => Navigator.of(context)
-                              .pop(RuleServerChoice(s.key)),
+                          selected: supported && s.key == widget.serverKey,
+                          // Непригодные серверы («Авто», обходы БС, Xray-only)
+                          // заблокированы от выбора: тап не закрывает пикер
+                          // ложным успехом, а объясняет причину диалогом ошибки.
+                          onTap: supported
+                              ? () => Navigator.of(context)
+                                  .pop(RuleServerChoice(s.key))
+                              : () => showUnsupportedExitServerDialog(
+                                    context,
+                                    s,
+                                  ),
                           // Меню строки уводит с диалога (информация,
                           // автонастройка) и умеет удалять сервер — в пикере
                           // это чужие действия.
@@ -2092,9 +2960,8 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
                           // общего с построителем конфига и `/v1/exits`:
                           // разойдись мы с ним — интерфейс пообещал бы то,
                           // чего конфиг не сделает.
-                          unavailableNote: canBeExitServer(s)
-                              ? null
-                              : l.exitServerUnsupportedInfo,
+                          unavailableNote:
+                              supported ? null : l.exitServerBlockedNote,
                         );
                       },
                     ),
@@ -2110,6 +2977,39 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
       ],
     );
   }
+}
+
+/// Показывает блокирующее сообщение об ошибке при попытке выбрать сервер,
+/// который сейчас нельзя поднять отдельным выходом (`!canBeExitServer`).
+Future<void> showUnsupportedExitServerDialog(
+  BuildContext context,
+  VpnServer server,
+) {
+  final l = AppLocalizations.of(context);
+  final scheme = Theme.of(context).colorScheme;
+  return showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      key: const Key('unsupportedExitServerDialog'),
+      title: Row(
+        children: [
+          Icon(Icons.error_outline, color: scheme.error),
+          const SizedBox(width: 10),
+          Expanded(child: Text(l.exitServerBlockedTitle)),
+        ],
+      ),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: SelText(l.exitServerBlockedBody(server.displayName)),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: Text(l.splitClose),
+        ),
+      ],
+    ),
+  );
 }
 
 class _ActionChip extends StatelessWidget {

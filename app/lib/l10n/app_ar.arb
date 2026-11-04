@@ -1642,5 +1642,177 @@
   "settingsOpenSplitTunnel": "ضبط الانقسام النفقي",
   "splitQuickServicesTitle": "اختيار سريع للخدمات",
   "splitQuickServicesSub": "يضيف النطاقات الرئيسية ونطاقات الوسائط للخدمة بإجراء الوضع الحالي",
-  "splitServiceAppHint": "تمت إضافة نطاقات {service}. للمكالمات وعمل التطبيق، أضف {service} أيضاً إلى قائمة \"التطبيقات\" أعلاه"
+  "splitServiceAppHint": "تمت إضافة نطاقات {service}. للمكالمات وعمل التطبيق، أضف {service} أيضاً إلى قائمة \"التطبيقات\" أعلاه",
+  "liveConnsPause": "إيقاف مؤقت",
+  "liveConnsResume": "استئناف التحديث",
+  "liveConnsPausedSubtitle": "متوقف مؤقتاً · القائمة مجمدة",
+  "liveConnsFrozenSelectingSubtitle": "القائمة مجمدة أثناء التحديد",
+  "liveConnsSelectMode": "وضع التحديد",
+  "liveConnsSelectedCount": "المحدد: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "تحديد الكل",
+  "liveConnsClearSelection": "مسح التحديد",
+  "liveConnsMenuSelect": "تحديد",
+  "liveConnsMenuDeselect": "إلغاء التحديد",
+  "liveConnsMenuSelectProcess": "تحديد الكل لـ \"{process}\" ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "تحديد الكل لـ \"{domain}\" ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "عبر خادم...",
+  "liveConnsMenuCloseConn": "إغلاق الاتصال",
+  "liveConnsMenuCloseSelected": "إغلاق المحدد ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "الاتصالات المغلقة: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "تعذر إغلاق الاتصال",
+  "liveConnsMenuFilterProcess": "تصفية حسب العملية \"{process}\"",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "تصفية حسب النطاق \"{domain}\"",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "نسخ النطاق",
+  "liveConnsMenuCopyIpPort": "نسخ IP:المنفذ",
+  "liveConnsMenuCopyProcess": "نسخ اسم العملية",
+  "liveConnsMenuCopyExePath": "نسخ مسار الملف التنفيذي",
+  "liveConnsMenuShowInExplorer": "إظهار الملف في المستكشف",
+  "liveConnsCopySelectedTargets": "نسخ الأهداف المحددة",
+  "liveConnsModeAuto": "تلقائي",
+  "liveConnsModeSites": "المواقع",
+  "liveConnsModeApps": "التطبيقات",
+  "liveConnsModeBoth": "كلاهما",
+  "liveConnsPlanEmpty": "لا توجد نطاقات أو تطبيقات مطابقة لهذا الوضع",
+  "liveConnsPlanSummarySites": "المواقع: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "التطبيقات: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "تم تخطي عناوين IP المباشرة للمتصفح ({processes}) - اختر \"التطبيقات\" لتوجيه المتصفح بالكامل",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "القواعد المطبقة: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "تحديد",
+  "splitSelectedCount": "القواعد المحددة: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "تحديد كل المرئي",
+  "splitBatchCancel": "إلغاء",
+  "splitBatchViaServer": "عبر خادم...",
+  "splitBatchEnable": "تفعيل",
+  "splitBatchDisable": "تعطيل",
+  "splitMenuConfigure": "إعداد...",
+  "splitMenuSelectSubdomains": "تحديد عائلة \"{domain}\"",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "القواعد المحدثة: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "القواعد المحذوفة: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "لا يمكن اختياره كمخرج منفصل",
+  "exitServerBlockedNote": "غير متاح كمخرج منفصل: ملفات التلقائي والمرحلات وبروتوكولات Xray تعمل فقط كخادم رئيسي.",
+  "exitServerBlockedBody": "لا يمكن حالياً تعيين الخادم \"{name}\" كمخرج منفصل للقاعدة.\n\nتتطلب ملفات \"التلقائي\" والمرحلات وبروتوكولات Xray الخاصة (مثل XHTTP) مسار Xray كاملاً، بينما يدير sing-box المخارج الفرعية مباشرة.\n\nيرجى اختيار خادم فردي قياسي لهذه القاعدة أو تعيين \"{name}\" كخادم رئيسي في الشاشة الرئيسية.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

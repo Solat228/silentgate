@@ -4491,4 +4491,183 @@ class AppLocalizationsRu extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return 'Домены $service добавлены. Для звонков и работы программы добавьте $service также в список «Приложения» выше';
   }
+
+  @override
+  String get liveConnsPause => 'Пауза';
+
+  @override
+  String get liveConnsResume => 'Продолжить обновление';
+
+  @override
+  String get liveConnsPausedSubtitle => 'На паузе · список заморожен';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle =>
+      'Список заморожен на время выбора';
+
+  @override
+  String get liveConnsSelectMode => 'Режим выбора';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'Выбрано: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'Выбрать все';
+
+  @override
+  String get liveConnsClearSelection => 'Сбросить выбор';
+
+  @override
+  String get liveConnsMenuSelect => 'Выбрать';
+
+  @override
+  String get liveConnsMenuDeselect => 'Снять отметку';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'Выбрать все для «$process» ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'Выбрать все для «$domain» ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'Через сервер...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'Разорвать соединение';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'Разорвать выбранные ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'Закрыто соединений: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'Не удалось закрыть соединение';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'Фильтр по процессу «$process»';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'Фильтр по домену «$domain»';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'Скопировать домен';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'Скопировать IP:порт';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'Скопировать имя процесса';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'Скопировать путь к exe';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'Показать файл в Проводнике';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'Скопировать выбранные цели';
+
+  @override
+  String get liveConnsModeAuto => 'Авто';
+
+  @override
+  String get liveConnsModeSites => 'По сайтам';
+
+  @override
+  String get liveConnsModeApps => 'По процессам';
+
+  @override
+  String get liveConnsModeBoth => 'Оба';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'Нет подходящих доменов или программ для этого режима';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'Сайтов: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'Программ: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'Голые IP браузера ($processes) пропущены - выберите «По процессам», если нужно всё приложение';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'Правила применены: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'Выбрать';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'Выбрано правил: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'Выбрать все видимые';
+
+  @override
+  String get splitBatchCancel => 'Отмена';
+
+  @override
+  String get splitBatchViaServer => 'Через сервер...';
+
+  @override
+  String get splitBatchEnable => 'Включить';
+
+  @override
+  String get splitBatchDisable => 'Выключить';
+
+  @override
+  String get splitMenuConfigure => 'Настроить...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'Выбрать семейство «$domain»';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'Обновлено правил: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'Удалено правил: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'Нельзя выбрать отдельным выходом';
+
+  @override
+  String get exitServerBlockedNote =>
+      'Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'Сервер «$name» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «$name» основным сервером на главном экране.';
+  }
 }

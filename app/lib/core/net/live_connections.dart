@@ -20,6 +20,7 @@ class LiveConnectionEntry {
   final int destinationPort;
   final String network;
   final String process;
+  final String processPath;
   final List<String> chains;
   final String rule;
   final int uploadBytes;
@@ -34,6 +35,7 @@ class LiveConnectionEntry {
     required this.destinationPort,
     required this.network,
     required this.process,
+    this.processPath = '',
     required this.chains,
     required this.rule,
     required this.uploadBytes,
@@ -48,6 +50,15 @@ class LiveConnectionEntry {
     if (target.isEmpty) return id;
     return destinationPort > 0 ? '$target:$destinationPort' : target;
   }
+
+  /// Есть ли полный путь к исполняемому файлу на диске (Windows/десктоп).
+  bool get hasExecutablePath =>
+      processPath.contains(r'\') ||
+      (processPath.contains('/') && !processPath.startsWith('package:'));
+
+  /// Ключ программы для создания [AppRule] (`C:\...\app.exe`, `app.exe` или имя пакета Android).
+  String get appRuleKey =>
+      processPath.trim().isNotEmpty ? processPath.trim() : process.trim();
 }
 
 /// Секция списка открытых соединений.
@@ -76,6 +87,19 @@ class LiveConnectionsSnapshot {
   static const empty = LiveConnectionsSnapshot();
 
   int get totalCount => vpn.length + blocked.length + direct.length;
+
+  /// Все соединения снимка в порядке секций ([vpn], [blocked], [direct]).
+  List<LiveConnectionEntry> get allEntries => [...vpn, ...blocked, ...direct];
+
+  /// Копия снимка без соединений из [closedIds] (удобно при замороженном списке).
+  LiveConnectionsSnapshot withoutIds(Set<String> closedIds) {
+    if (closedIds.isEmpty) return this;
+    return LiveConnectionsSnapshot(
+      vpn: vpn.where((e) => !closedIds.contains(e.id)).toList(),
+      blocked: blocked.where((e) => !closedIds.contains(e.id)).toList(),
+      direct: direct.where((e) => !closedIds.contains(e.id)).toList(),
+    );
+  }
 
   /// Секции строго в порядке требования:
   /// 1. Через VPN
@@ -113,9 +137,15 @@ class LiveConnectionsSnapshot {
       final dstIp = (meta['destinationIP'] ?? '').toString().trim();
       final dstPort = _parseInt(meta['destinationPort']);
       final network = (meta['network'] ?? 'tcp').toString().trim().toLowerCase();
-      final rawProc =
-          (meta['process'] ?? meta['processPath'] ?? '').toString().trim();
+      final rawProcPath = (meta['processPath'] ?? '').toString().trim();
+      final rawProcName = (meta['process'] ?? '').toString().trim();
+      final rawProc = rawProcName.isNotEmpty ? rawProcName : rawProcPath;
       final process = _basename(rawProc);
+      final processPath = rawProcPath.isNotEmpty
+          ? rawProcPath
+          : ((rawProcName.contains('\\') || rawProcName.contains('/'))
+              ? rawProcName
+              : '');
 
       // Отсекаем собственные служебные петли локального прокси/ядра.
       if (_isInternalLoopback(host: host, dstIp: dstIp, process: process)) {
@@ -162,6 +192,7 @@ class LiveConnectionsSnapshot {
         destinationPort: dstPort,
         network: network,
         process: process,
+        processPath: processPath,
         chains: chains,
         rule: rule,
         uploadBytes: _parseInt(item['upload']),
@@ -393,6 +424,58 @@ class LiveConnectionsClient {
     } finally {
       client.close(force: true);
     }
+  }
+
+  /// Принудительно закрывает одно соединение по [id] (`DELETE /connections/{id}`).
+  Future<bool> closeConnection(
+    LiveCoreApi api,
+    String id, {
+    Duration timeout = const Duration(milliseconds: 1200),
+  }) async {
+    final trimmed = id.trim();
+    if (api.port <= 0 || trimmed.isEmpty) return false;
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(milliseconds: 800)
+      ..findProxy = (_) => 'DIRECT';
+    try {
+      final uri = Uri.parse(
+        'http://127.0.0.1:${api.port}/connections/${Uri.encodeComponent(trimmed)}',
+      );
+      final req = await client.deleteUrl(uri).timeout(timeout);
+      if (api.secret.isNotEmpty) {
+        req.headers
+            .set(HttpHeaders.authorizationHeader, 'Bearer ${api.secret}');
+      }
+      final resp = await req.close().timeout(timeout);
+      await resp.drain<void>().timeout(timeout);
+      return resp.statusCode >= 200 && resp.statusCode < 300;
+    } catch (_) {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Принудительно закрывает набор соединений и возвращает число закрытых сокетов.
+  Future<int> closeConnections(
+    LiveCoreApi api,
+    Iterable<String> ids, {
+    Duration timeout = const Duration(milliseconds: 1200),
+  }) async {
+    final unique = ids.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+    if (api.port <= 0 || unique.isEmpty) return 0;
+    var closed = 0;
+    const chunkSize = 8;
+    for (var i = 0; i < unique.length; i += chunkSize) {
+      final end = (i + chunkSize < unique.length) ? i + chunkSize : unique.length;
+      final results = await Future.wait(
+        [for (final id in unique.sublist(i, end)) closeConnection(api, id, timeout: timeout)],
+      );
+      for (final ok in results) {
+        if (ok) closed++;
+      }
+    }
+    return closed;
   }
 }
 

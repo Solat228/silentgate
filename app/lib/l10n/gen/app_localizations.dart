@@ -7613,6 +7613,294 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Домены {service} добавлены. Для звонков и работы программы добавьте {service} также в список «Приложения» выше'**
   String splitServiceAppHint(String service);
+
+  /// No description provided for @liveConnsPause.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пауза'**
+  String get liveConnsPause;
+
+  /// No description provided for @liveConnsResume.
+  ///
+  /// In ru, this message translates to:
+  /// **'Продолжить обновление'**
+  String get liveConnsResume;
+
+  /// No description provided for @liveConnsPausedSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'На паузе · список заморожен'**
+  String get liveConnsPausedSubtitle;
+
+  /// No description provided for @liveConnsFrozenSelectingSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Список заморожен на время выбора'**
+  String get liveConnsFrozenSelectingSubtitle;
+
+  /// No description provided for @liveConnsSelectMode.
+  ///
+  /// In ru, this message translates to:
+  /// **'Режим выбора'**
+  String get liveConnsSelectMode;
+
+  /// No description provided for @liveConnsSelectedCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрано: {count}'**
+  String liveConnsSelectedCount(int count);
+
+  /// No description provided for @liveConnsSelectAll.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать все'**
+  String get liveConnsSelectAll;
+
+  /// No description provided for @liveConnsClearSelection.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить выбор'**
+  String get liveConnsClearSelection;
+
+  /// No description provided for @liveConnsMenuSelect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать'**
+  String get liveConnsMenuSelect;
+
+  /// No description provided for @liveConnsMenuDeselect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Снять отметку'**
+  String get liveConnsMenuDeselect;
+
+  /// No description provided for @liveConnsMenuSelectProcess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать все для «{process}» ({count})'**
+  String liveConnsMenuSelectProcess(String process, int count);
+
+  /// No description provided for @liveConnsMenuSelectDomain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать все для «{domain}» ({count})'**
+  String liveConnsMenuSelectDomain(String domain, int count);
+
+  /// No description provided for @liveConnsMenuRouteViaServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через сервер...'**
+  String get liveConnsMenuRouteViaServer;
+
+  /// No description provided for @liveConnsMenuCloseConn.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разорвать соединение'**
+  String get liveConnsMenuCloseConn;
+
+  /// No description provided for @liveConnsMenuCloseSelected.
+  ///
+  /// In ru, this message translates to:
+  /// **'Разорвать выбранные ({count})'**
+  String liveConnsMenuCloseSelected(int count);
+
+  /// No description provided for @liveConnsClosedToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Закрыто соединений: {count}'**
+  String liveConnsClosedToast(int count);
+
+  /// No description provided for @liveConnsCloseFailedToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось закрыть соединение'**
+  String get liveConnsCloseFailedToast;
+
+  /// No description provided for @liveConnsMenuFilterProcess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фильтр по процессу «{process}»'**
+  String liveConnsMenuFilterProcess(String process);
+
+  /// No description provided for @liveConnsMenuFilterDomain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фильтр по домену «{domain}»'**
+  String liveConnsMenuFilterDomain(String domain);
+
+  /// No description provided for @liveConnsMenuCopyDomain.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать домен'**
+  String get liveConnsMenuCopyDomain;
+
+  /// No description provided for @liveConnsMenuCopyIpPort.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать IP:порт'**
+  String get liveConnsMenuCopyIpPort;
+
+  /// No description provided for @liveConnsMenuCopyProcess.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать имя процесса'**
+  String get liveConnsMenuCopyProcess;
+
+  /// No description provided for @liveConnsMenuCopyExePath.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать путь к exe'**
+  String get liveConnsMenuCopyExePath;
+
+  /// No description provided for @liveConnsMenuShowInExplorer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Показать файл в Проводнике'**
+  String get liveConnsMenuShowInExplorer;
+
+  /// No description provided for @liveConnsCopySelectedTargets.
+  ///
+  /// In ru, this message translates to:
+  /// **'Скопировать выбранные цели'**
+  String get liveConnsCopySelectedTargets;
+
+  /// No description provided for @liveConnsModeAuto.
+  ///
+  /// In ru, this message translates to:
+  /// **'Авто'**
+  String get liveConnsModeAuto;
+
+  /// No description provided for @liveConnsModeSites.
+  ///
+  /// In ru, this message translates to:
+  /// **'По сайтам'**
+  String get liveConnsModeSites;
+
+  /// No description provided for @liveConnsModeApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'По процессам'**
+  String get liveConnsModeApps;
+
+  /// No description provided for @liveConnsModeBoth.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оба'**
+  String get liveConnsModeBoth;
+
+  /// No description provided for @liveConnsPlanEmpty.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нет подходящих доменов или программ для этого режима'**
+  String get liveConnsPlanEmpty;
+
+  /// No description provided for @liveConnsPlanSummarySites.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сайтов: {count} ({preview})'**
+  String liveConnsPlanSummarySites(int count, String preview);
+
+  /// No description provided for @liveConnsPlanSummaryApps.
+  ///
+  /// In ru, this message translates to:
+  /// **'Программ: {count} ({preview})'**
+  String liveConnsPlanSummaryApps(int count, String preview);
+
+  /// No description provided for @liveConnsPlanSkippedSharedIp.
+  ///
+  /// In ru, this message translates to:
+  /// **'Голые IP браузера ({processes}) пропущены - выберите «По процессам», если нужно всё приложение'**
+  String liveConnsPlanSkippedSharedIp(String processes);
+
+  /// No description provided for @liveConnsRulesAppliedToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Правила применены: {count}'**
+  String liveConnsRulesAppliedToast(int count);
+
+  /// No description provided for @splitSelectRules.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать'**
+  String get splitSelectRules;
+
+  /// No description provided for @splitSelectedCount.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрано правил: {count}'**
+  String splitSelectedCount(int count);
+
+  /// No description provided for @splitSelectAllVisible.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать все видимые'**
+  String get splitSelectAllVisible;
+
+  /// No description provided for @splitBatchCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get splitBatchCancel;
+
+  /// No description provided for @splitBatchViaServer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Через сервер...'**
+  String get splitBatchViaServer;
+
+  /// No description provided for @splitBatchEnable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Включить'**
+  String get splitBatchEnable;
+
+  /// No description provided for @splitBatchDisable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выключить'**
+  String get splitBatchDisable;
+
+  /// No description provided for @splitMenuConfigure.
+  ///
+  /// In ru, this message translates to:
+  /// **'Настроить...'**
+  String get splitMenuConfigure;
+
+  /// No description provided for @splitMenuSelectSubdomains.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбрать семейство «{domain}»'**
+  String splitMenuSelectSubdomains(String domain);
+
+  /// No description provided for @splitBatchUpdatedToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обновлено правил: {count}'**
+  String splitBatchUpdatedToast(int count);
+
+  /// No description provided for @splitBatchRemovedToast.
+  ///
+  /// In ru, this message translates to:
+  /// **'Удалено правил: {count}'**
+  String splitBatchRemovedToast(int count);
+
+  /// No description provided for @exitServerBlockedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Нельзя выбрать отдельным выходом'**
+  String get exitServerBlockedTitle;
+
+  /// No description provided for @exitServerBlockedNote.
+  ///
+  /// In ru, this message translates to:
+  /// **'Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.'**
+  String get exitServerBlockedNote;
+
+  /// No description provided for @exitServerBlockedBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «{name}» основным сервером на главном экране.'**
+  String exitServerBlockedBody(String name);
 }
 
 class _AppLocalizationsDelegate

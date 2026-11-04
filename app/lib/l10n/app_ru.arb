@@ -2483,5 +2483,177 @@
         "type": "String"
       }
     }
+  },
+  "liveConnsPause": "Пауза",
+  "liveConnsResume": "Продолжить обновление",
+  "liveConnsPausedSubtitle": "На паузе · список заморожен",
+  "liveConnsFrozenSelectingSubtitle": "Список заморожен на время выбора",
+  "liveConnsSelectMode": "Режим выбора",
+  "liveConnsSelectedCount": "Выбрано: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "Выбрать все",
+  "liveConnsClearSelection": "Сбросить выбор",
+  "liveConnsMenuSelect": "Выбрать",
+  "liveConnsMenuDeselect": "Снять отметку",
+  "liveConnsMenuSelectProcess": "Выбрать все для «{process}» ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "Выбрать все для «{domain}» ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "Через сервер...",
+  "liveConnsMenuCloseConn": "Разорвать соединение",
+  "liveConnsMenuCloseSelected": "Разорвать выбранные ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "Закрыто соединений: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "Не удалось закрыть соединение",
+  "liveConnsMenuFilterProcess": "Фильтр по процессу «{process}»",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "Фильтр по домену «{domain}»",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "Скопировать домен",
+  "liveConnsMenuCopyIpPort": "Скопировать IP:порт",
+  "liveConnsMenuCopyProcess": "Скопировать имя процесса",
+  "liveConnsMenuCopyExePath": "Скопировать путь к exe",
+  "liveConnsMenuShowInExplorer": "Показать файл в Проводнике",
+  "liveConnsCopySelectedTargets": "Скопировать выбранные цели",
+  "liveConnsModeAuto": "Авто",
+  "liveConnsModeSites": "По сайтам",
+  "liveConnsModeApps": "По процессам",
+  "liveConnsModeBoth": "Оба",
+  "liveConnsPlanEmpty": "Нет подходящих доменов или программ для этого режима",
+  "liveConnsPlanSummarySites": "Сайтов: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "Программ: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "Голые IP браузера ({processes}) пропущены - выберите «По процессам», если нужно всё приложение",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "Правила применены: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "Выбрать",
+  "splitSelectedCount": "Выбрано правил: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "Выбрать все видимые",
+  "splitBatchCancel": "Отмена",
+  "splitBatchViaServer": "Через сервер...",
+  "splitBatchEnable": "Включить",
+  "splitBatchDisable": "Выключить",
+  "splitMenuConfigure": "Настроить...",
+  "splitMenuSelectSubdomains": "Выбрать семейство «{domain}»",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "Обновлено правил: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "Удалено правил: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "Нельзя выбрать отдельным выходом",
+  "exitServerBlockedNote": "Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.",
+  "exitServerBlockedBody": "Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «{name}» основным сервером на главном экране.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
   }
 }

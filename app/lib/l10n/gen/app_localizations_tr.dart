@@ -4492,4 +4492,183 @@ class AppLocalizationsTr extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return '$service alan adları eklendi. Aramalar ve uygulama için $service uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin';
   }
+
+  @override
+  String get liveConnsPause => 'Duraklat';
+
+  @override
+  String get liveConnsResume => 'Güncellemeyi sürdür';
+
+  @override
+  String get liveConnsPausedSubtitle => 'Duraklatıldı · liste donduruldu';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle =>
+      'Seçim sırasında liste donduruldu';
+
+  @override
+  String get liveConnsSelectMode => 'Seçim modu';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'Seçilen: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'Tümünü seç';
+
+  @override
+  String get liveConnsClearSelection => 'Seçimi temizle';
+
+  @override
+  String get liveConnsMenuSelect => 'Seç';
+
+  @override
+  String get liveConnsMenuDeselect => 'Seçimi kaldır';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return '\"$process\" için tümünü seç ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return '\"$domain\" için tümünü seç ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'Sunucu üzerinden...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'Bağlantıyı kes';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'Seçilenleri kes ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'Kapatılan bağlantı: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'Bağlantı kapatılamadı';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return '\"$process\" işlemine göre filtrele';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return '\"$domain\" alan adına göre filtrele';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'Alan adını kopyala';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'IP:port kopyala';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'İşlem adını kopyala';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'Dosya yolunu kopyala';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'Gezgin\'de göster';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'Seçili hedefleri kopyala';
+
+  @override
+  String get liveConnsModeAuto => 'Otomatik';
+
+  @override
+  String get liveConnsModeSites => 'Siteler';
+
+  @override
+  String get liveConnsModeApps => 'Uygulamalar';
+
+  @override
+  String get liveConnsModeBoth => 'Her ikisi';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'Bu mod için uygun alan adı veya uygulama yok';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'Siteler: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'Uygulamalar: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'Tarayıcı ham IP adresleri ($processes) atlandı - tüm uygulama için \"Uygulamalar\" modunu seçin';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'Uygulanan kurallar: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'Seç';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'Seçilen kural: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'Görünürleri seç';
+
+  @override
+  String get splitBatchCancel => 'İptal';
+
+  @override
+  String get splitBatchViaServer => 'Sunucu üzerinden...';
+
+  @override
+  String get splitBatchEnable => 'Etkinleştir';
+
+  @override
+  String get splitBatchDisable => 'Devre dışı bırak';
+
+  @override
+  String get splitMenuConfigure => 'Yapılandır...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return '\"$domain\" ailesini seç';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'Güncellenen kural: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'Silinen kural: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'Ayrı çıkış olarak seçilemez';
+
+  @override
+  String get exitServerBlockedNote =>
+      'Ayrı çıkış olarak kullanılamaz: Otomatik profiller, röleler ve yalnızca Xray protokolleri sadece ana sunucu olarak çalışır.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return '\"$name\" sunucusu şu anda bir kural için ayrı çıkış olarak atanamaz.\n\n\"Otomatik\" profiller, çok adımlı röleler ve Xray\'e özgü protokoller (XHTTP gibi) Xray hattı gerektirirken, ikincil çıkışlar doğrudan sing-box tarafından yönetilir.\n\nBu kural için standart bir tekil sunucu seçin veya \"$name\" sunucusunu ana ekranda ana sunucu yapın.';
+  }
 }

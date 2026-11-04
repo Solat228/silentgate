@@ -4297,4 +4297,181 @@ class AppLocalizationsZh extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return '已添加 $service 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 $service';
   }
+
+  @override
+  String get liveConnsPause => '暂停';
+
+  @override
+  String get liveConnsResume => '恢复实时更新';
+
+  @override
+  String get liveConnsPausedSubtitle => '已暂停 · 列表已冻结';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => '选择期间列表已冻结';
+
+  @override
+  String get liveConnsSelectMode => '选择模式';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return '已选择: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => '全选';
+
+  @override
+  String get liveConnsClearSelection => '取消选择';
+
+  @override
+  String get liveConnsMenuSelect => '选择';
+
+  @override
+  String get liveConnsMenuDeselect => '取消勾选';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return '全选进程 \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return '全选域名 \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => '通过服务器...';
+
+  @override
+  String get liveConnsMenuCloseConn => '断开连接';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return '断开所选 ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return '已关闭连接: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => '无法关闭连接';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return '按进程 \"$process\" 筛选';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return '按域名 \"$domain\" 筛选';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => '复制域名';
+
+  @override
+  String get liveConnsMenuCopyIpPort => '复制 IP:端口';
+
+  @override
+  String get liveConnsMenuCopyProcess => '复制进程名';
+
+  @override
+  String get liveConnsMenuCopyExePath => '复制可执行文件路径';
+
+  @override
+  String get liveConnsMenuShowInExplorer => '在资源管理器中显示';
+
+  @override
+  String get liveConnsCopySelectedTargets => '复制所选目标';
+
+  @override
+  String get liveConnsModeAuto => '自动';
+
+  @override
+  String get liveConnsModeSites => '按网站';
+
+  @override
+  String get liveConnsModeApps => '按应用';
+
+  @override
+  String get liveConnsModeBoth => '两者';
+
+  @override
+  String get liveConnsPlanEmpty => '当前模式下没有匹配的域名或应用';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return '网站: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return '应用: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return '已跳过浏览器纯 IP ($processes) - 如需整个应用请切换到\"按应用\"';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return '已应用规则: $count';
+  }
+
+  @override
+  String get splitSelectRules => '选择';
+
+  @override
+  String splitSelectedCount(int count) {
+    return '已选规则: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => '全选可见项';
+
+  @override
+  String get splitBatchCancel => '取消';
+
+  @override
+  String get splitBatchViaServer => '通过服务器...';
+
+  @override
+  String get splitBatchEnable => '启用';
+
+  @override
+  String get splitBatchDisable => '禁用';
+
+  @override
+  String get splitMenuConfigure => '设置...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return '选择 \"$domain\" 域名组';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return '已更新规则: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return '已删除规则: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => '无法设为独立出口';
+
+  @override
+  String get exitServerBlockedNote =>
+      '不可作为独立出口: 自动配置、白名单中继及仅限 Xray 的协议仅可作为主服务器使用。';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return '当前无法将服务器 \"$name\" 设为规则的独立出口。\n\n面板\"自动\"配置、多跳中继以及仅限 Xray 的协议 (如 XHTTP) 需要完整的 Xray 管道, 而规则的独立出口由 sing-box 直接拨号。\n\n请为此规则选择标准单节点服务器, 或在主页将 \"$name\" 设为主服务器。';
+  }
 }

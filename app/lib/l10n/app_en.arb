@@ -1811,5 +1811,177 @@
   "settingsOpenSplitTunnel": "Configure split tunneling",
   "splitQuickServicesTitle": "Quick service presets",
   "splitQuickServicesSub": "Adds main and media domains of a service with the current mode's action",
-  "splitServiceAppHint": "Domains for {service} added. For calls and the desktop or mobile app, also add {service} under \"Applications\" above"
+  "splitServiceAppHint": "Domains for {service} added. For calls and the desktop or mobile app, also add {service} under \"Applications\" above",
+  "liveConnsPause": "Pause",
+  "liveConnsResume": "Resume live updates",
+  "liveConnsPausedSubtitle": "Paused · list frozen",
+  "liveConnsFrozenSelectingSubtitle": "List frozen while selecting",
+  "liveConnsSelectMode": "Selection mode",
+  "liveConnsSelectedCount": "Selected: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "Select all",
+  "liveConnsClearSelection": "Clear selection",
+  "liveConnsMenuSelect": "Select",
+  "liveConnsMenuDeselect": "Deselect",
+  "liveConnsMenuSelectProcess": "Select all for \"{process}\" ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "Select all for \"{domain}\" ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "Via server...",
+  "liveConnsMenuCloseConn": "Close connection",
+  "liveConnsMenuCloseSelected": "Close selected ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "Closed connections: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "Could not close connection",
+  "liveConnsMenuFilterProcess": "Filter by process \"{process}\"",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "Filter by domain \"{domain}\"",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "Copy domain",
+  "liveConnsMenuCopyIpPort": "Copy IP:port",
+  "liveConnsMenuCopyProcess": "Copy process name",
+  "liveConnsMenuCopyExePath": "Copy executable path",
+  "liveConnsMenuShowInExplorer": "Show file in Explorer",
+  "liveConnsCopySelectedTargets": "Copy selected targets",
+  "liveConnsModeAuto": "Auto",
+  "liveConnsModeSites": "Sites",
+  "liveConnsModeApps": "Apps",
+  "liveConnsModeBoth": "Both",
+  "liveConnsPlanEmpty": "No matching domains or apps for this mode",
+  "liveConnsPlanSummarySites": "Sites: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "Apps: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "Browser bare IPs ({processes}) skipped - switch to \"Apps\" if you want the whole app",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "Rules applied: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "Select",
+  "splitSelectedCount": "Selected rules: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "Select all visible",
+  "splitBatchCancel": "Cancel",
+  "splitBatchViaServer": "Via server...",
+  "splitBatchEnable": "Enable",
+  "splitBatchDisable": "Disable",
+  "splitMenuConfigure": "Configure...",
+  "splitMenuSelectSubdomains": "Select \"{domain}\" family",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "Updated rules: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "Removed rules: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "Cannot select as separate exit",
+  "exitServerBlockedNote": "Unavailable as a separate exit: Auto profiles, whitelist relays, and Xray-only protocols work only as the main server.",
+  "exitServerBlockedBody": "Server \"{name}\" cannot currently be assigned as a separate exit for a rule.\n\nPanel \"Auto\" profiles, multi-hop relays, and Xray-only protocols (such as XHTTP) require a full Xray pipeline, whereas secondary per-rule exits are dialed directly by sing-box.\n\nPlease pick a standard single-node server (VLESS, Trojan, Shadowsocks, Hysteria2) for this rule, or select \"{name}\" as your main server on the home screen.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

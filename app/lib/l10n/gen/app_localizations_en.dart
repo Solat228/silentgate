@@ -4486,4 +4486,181 @@ class AppLocalizationsEn extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return 'Domains for $service added. For calls and the desktop or mobile app, also add $service under \"Applications\" above';
   }
+
+  @override
+  String get liveConnsPause => 'Pause';
+
+  @override
+  String get liveConnsResume => 'Resume live updates';
+
+  @override
+  String get liveConnsPausedSubtitle => 'Paused · list frozen';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => 'List frozen while selecting';
+
+  @override
+  String get liveConnsSelectMode => 'Selection mode';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'Selected: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'Select all';
+
+  @override
+  String get liveConnsClearSelection => 'Clear selection';
+
+  @override
+  String get liveConnsMenuSelect => 'Select';
+
+  @override
+  String get liveConnsMenuDeselect => 'Deselect';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'Select all for \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'Select all for \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'Via server...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'Close connection';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'Close selected ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'Closed connections: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'Could not close connection';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'Filter by process \"$process\"';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'Filter by domain \"$domain\"';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'Copy domain';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'Copy IP:port';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'Copy process name';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'Copy executable path';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'Show file in Explorer';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'Copy selected targets';
+
+  @override
+  String get liveConnsModeAuto => 'Auto';
+
+  @override
+  String get liveConnsModeSites => 'Sites';
+
+  @override
+  String get liveConnsModeApps => 'Apps';
+
+  @override
+  String get liveConnsModeBoth => 'Both';
+
+  @override
+  String get liveConnsPlanEmpty => 'No matching domains or apps for this mode';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'Sites: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'Apps: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'Browser bare IPs ($processes) skipped - switch to \"Apps\" if you want the whole app';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'Rules applied: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'Select';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'Selected rules: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'Select all visible';
+
+  @override
+  String get splitBatchCancel => 'Cancel';
+
+  @override
+  String get splitBatchViaServer => 'Via server...';
+
+  @override
+  String get splitBatchEnable => 'Enable';
+
+  @override
+  String get splitBatchDisable => 'Disable';
+
+  @override
+  String get splitMenuConfigure => 'Configure...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'Select \"$domain\" family';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'Updated rules: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'Removed rules: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'Cannot select as separate exit';
+
+  @override
+  String get exitServerBlockedNote =>
+      'Unavailable as a separate exit: Auto profiles, whitelist relays, and Xray-only protocols work only as the main server.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'Server \"$name\" cannot currently be assigned as a separate exit for a rule.\n\nPanel \"Auto\" profiles, multi-hop relays, and Xray-only protocols (such as XHTTP) require a full Xray pipeline, whereas secondary per-rule exits are dialed directly by sing-box.\n\nPlease pick a standard single-node server (VLESS, Trojan, Shadowsocks, Hysteria2) for this rule, or select \"$name\" as your main server on the home screen.';
+  }
 }

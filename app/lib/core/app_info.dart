@@ -5,14 +5,14 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.18.1';
+  static const version = '1.18.2';
 
   /// Номер сборки/патча после `+` в `pubspec.yaml` (`version: X.Y.Z+N`).
   /// Держится синхронно с `pubspec.yaml` и проверяется `test/app_info_test.dart`:
   /// на Android при `--split-per-abi` системный `versionCode` сдвинут на ABI
   /// (`2000 + N` для arm64, `4000 + N` для x86_64), поэтому честный номер `+N`
   /// для «О программе» и сравнения сборок хранится здесь.
-  static const buildNumber = 94;
+  static const buildNumber = 95;
 
   /// Необязательный суффикс пре-релиза/патча (`beta.1`, `rc.1`, `hotfix.2`),
   /// передаваемый при сборке (`--dart-define=SILENTGATE_PRERELEASE=...`).
@@ -32,9 +32,10 @@ class AppInfo {
   static const gitPatchLog =
       String.fromEnvironment('SILENTGATE_GIT_PATCHES', defaultValue: '');
 
-  /// Сводка патчей, вошедших в текущую сборку `1.18.1+94` (показывается по нажатию
+  /// Сводка патчей, вошедших в текущую сборку `1.18.2+95` (показывается по нажатию
   /// на строку версии в «О программе» вместе с ревизией Git).
   static const List<String> builtInPatchesRu = [
+    '+95 · Пауза, мультивыбор протяжкой мыши (как в Telegram), ПКМ-меню и пакетные правила маршрутизации в «Открытых соединениях» и «Раздельном туннелировании»; строгая блокировка неподдерживаемых выходных узлов («Авто», XHTTP, БС) в «Через сервер»',
     '+94 · Исправлены запуск TUN с Kill Switch на быстрых SSD при правилах приложений по имени, зависание видео и превью YouTube в TUN (откат постквантового QUIC на TCP и нормализация панельных профилей Авто), автопереподключение и очистка системного прокси при переключении в TUN',
     '+93 · Исправлены локальный DNS при строгой маршрутизации TUN, таймаут адаптера Wintun (15 с), автогруппировка «Авто Белые списки», бесшовное переиспользование форвардера DNS и лог xray.log в отчёте; добавлен быстрый выбор сервисов в раздельном туннелировании',
     '+92 · Исправлены перезапуск туннеля («Перезагрузить VPN»), ложные уведомления «Маршруты обновились» и очистка portable.txt в установщике',
@@ -48,6 +49,7 @@ class AppInfo {
   ];
 
   static const List<String> builtInPatchesEn = [
+    '+95 · Pause freeze, Telegram-style mouse drag multi-select, right-click menu, and batch routing actions in Open Connections and Split Tunneling; strict blocking dialog for unsupported secondary exit nodes ("Auto", XHTTP, BS) in "Via server"',
     '+94 · Fix TUN + Kill Switch startup race on fast SSDs with by-name app rules, YouTube video/thumbnail stalls in TUN (post-quantum QUIC fallback to TCP and Auto panel profile normalization), and immediate reconnect + WinINET proxy cleanup on capture mode switch',
     '+93 · Fix LAN DNS under strict_route TUN, Wintun open timeout (15s), "Auto Whitelists" grouping, seamless direct-DNS port reuse, and xray.log in support reports; add quick service presets in split tunneling',
     '+92 · Fix seamless tunnel reload ("Reload VPN"), false "Routes updated" prompts, and stale portable.txt cleanup in installer',

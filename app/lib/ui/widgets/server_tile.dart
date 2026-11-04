@@ -239,7 +239,10 @@ class ServerTile extends StatelessWidget {
           // нет вовсе, а долгое нажатие занято контекстным меню.
           if (effectiveNote != null)
             InfoTooltip(effectiveNote,
-                title: server.displayName, compact: true),
+                title: server.displayName,
+                icon: unavailableNote != null ? Icons.error_outline : Icons.info_outline,
+                color: scheme.error,
+                compact: true),
         ]),
         // Имя чужой подписки — текстом, а не только подсказкой к значку: на
         // тач-экране подсказка вызывается долгим нажатием, а оно уже занято

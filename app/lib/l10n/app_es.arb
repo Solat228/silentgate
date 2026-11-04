@@ -1696,5 +1696,177 @@
   "settingsOpenSplitTunnel": "Configurar túnel dividido",
   "splitQuickServicesTitle": "Selección rápida de servicios",
   "splitQuickServicesSub": "Añade los dominios principales y multimedia del servicio con la acción del modo actual",
-  "splitServiceAppHint": "Dominios de {service} añadidos. Para llamadas y la aplicación, añade también {service} en \"Aplicaciones\" arriba"
+  "splitServiceAppHint": "Dominios de {service} añadidos. Para llamadas y la aplicación, añade también {service} en \"Aplicaciones\" arriba",
+  "liveConnsPause": "Pausar",
+  "liveConnsResume": "Reanudar actualización",
+  "liveConnsPausedSubtitle": "En pausa · lista congelada",
+  "liveConnsFrozenSelectingSubtitle": "Lista congelada durante la selección",
+  "liveConnsSelectMode": "Modo de selección",
+  "liveConnsSelectedCount": "Seleccionados: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "Seleccionar todo",
+  "liveConnsClearSelection": "Limpiar selección",
+  "liveConnsMenuSelect": "Seleccionar",
+  "liveConnsMenuDeselect": "Deseleccionar",
+  "liveConnsMenuSelectProcess": "Seleccionar todo de \"{process}\" ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "Seleccionar todo de \"{domain}\" ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "Vía servidor...",
+  "liveConnsMenuCloseConn": "Cerrar conexión",
+  "liveConnsMenuCloseSelected": "Cerrar seleccionadas ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "Conexiones cerradas: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "No se pudo cerrar la conexión",
+  "liveConnsMenuFilterProcess": "Filtrar por proceso \"{process}\"",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "Filtrar por dominio \"{domain}\"",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "Copiar dominio",
+  "liveConnsMenuCopyIpPort": "Copiar IP:puerto",
+  "liveConnsMenuCopyProcess": "Copiar nombre del proceso",
+  "liveConnsMenuCopyExePath": "Copiar ruta del ejecutable",
+  "liveConnsMenuShowInExplorer": "Mostrar archivo en el Explorador",
+  "liveConnsCopySelectedTargets": "Copiar destinos seleccionados",
+  "liveConnsModeAuto": "Auto",
+  "liveConnsModeSites": "Sitios",
+  "liveConnsModeApps": "Apps",
+  "liveConnsModeBoth": "Ambos",
+  "liveConnsPlanEmpty": "No hay dominios ni aplicaciones válidos para este modo",
+  "liveConnsPlanSummarySites": "Sitios: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "Apps: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "IPs directas del navegador ({processes}) omitidas - cambie a \"Apps\" si desea toda la aplicación",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "Reglas aplicadas: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "Seleccionar",
+  "splitSelectedCount": "Reglas seleccionadas: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "Seleccionar visibles",
+  "splitBatchCancel": "Cancelar",
+  "splitBatchViaServer": "Vía servidor...",
+  "splitBatchEnable": "Activar",
+  "splitBatchDisable": "Desactivar",
+  "splitMenuConfigure": "Configurar...",
+  "splitMenuSelectSubdomains": "Seleccionar familia \"{domain}\"",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "Reglas actualizadas: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "Reglas eliminadas: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "No disponible como salida separada",
+  "exitServerBlockedNote": "No disponible como salida separada: los perfiles Auto, relés y protocolos exclusivos de Xray funcionan solo como servidor principal.",
+  "exitServerBlockedBody": "El servidor \"{name}\" no se puede asignar actualmente como salida separada para una regla.\n\nLos perfiles \"Auto\", los relés y protocolos exclusivos de Xray (como XHTTP) requieren una canalización Xray completa, mientras que sing-box gestiona directamente las salidas secundarias.\n\nElija un servidor individual estándar para esta regla o use \"{name}\" como servidor principal.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

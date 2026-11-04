@@ -1642,5 +1642,177 @@
   "settingsOpenSplitTunnel": "配置分流规则",
   "splitQuickServicesTitle": "常用服务快捷选择",
   "splitQuickServicesSub": "按当前模式的默认动作一键添加该服务的主域名和媒体域名",
-  "splitServiceAppHint": "已添加 {service} 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 {service}"
+  "splitServiceAppHint": "已添加 {service} 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 {service}",
+  "liveConnsPause": "暂停",
+  "liveConnsResume": "恢复实时更新",
+  "liveConnsPausedSubtitle": "已暂停 · 列表已冻结",
+  "liveConnsFrozenSelectingSubtitle": "选择期间列表已冻结",
+  "liveConnsSelectMode": "选择模式",
+  "liveConnsSelectedCount": "已选择: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "全选",
+  "liveConnsClearSelection": "取消选择",
+  "liveConnsMenuSelect": "选择",
+  "liveConnsMenuDeselect": "取消勾选",
+  "liveConnsMenuSelectProcess": "全选进程 \"{process}\" ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "全选域名 \"{domain}\" ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "通过服务器...",
+  "liveConnsMenuCloseConn": "断开连接",
+  "liveConnsMenuCloseSelected": "断开所选 ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "已关闭连接: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "无法关闭连接",
+  "liveConnsMenuFilterProcess": "按进程 \"{process}\" 筛选",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "按域名 \"{domain}\" 筛选",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "复制域名",
+  "liveConnsMenuCopyIpPort": "复制 IP:端口",
+  "liveConnsMenuCopyProcess": "复制进程名",
+  "liveConnsMenuCopyExePath": "复制可执行文件路径",
+  "liveConnsMenuShowInExplorer": "在资源管理器中显示",
+  "liveConnsCopySelectedTargets": "复制所选目标",
+  "liveConnsModeAuto": "自动",
+  "liveConnsModeSites": "按网站",
+  "liveConnsModeApps": "按应用",
+  "liveConnsModeBoth": "两者",
+  "liveConnsPlanEmpty": "当前模式下没有匹配的域名或应用",
+  "liveConnsPlanSummarySites": "网站: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "应用: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "已跳过浏览器纯 IP ({processes}) - 如需整个应用请切换到\"按应用\"",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "已应用规则: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "选择",
+  "splitSelectedCount": "已选规则: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "全选可见项",
+  "splitBatchCancel": "取消",
+  "splitBatchViaServer": "通过服务器...",
+  "splitBatchEnable": "启用",
+  "splitBatchDisable": "禁用",
+  "splitMenuConfigure": "设置...",
+  "splitMenuSelectSubdomains": "选择 \"{domain}\" 域名组",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "已更新规则: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "已删除规则: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "无法设为独立出口",
+  "exitServerBlockedNote": "不可作为独立出口: 自动配置、白名单中继及仅限 Xray 的协议仅可作为主服务器使用。",
+  "exitServerBlockedBody": "当前无法将服务器 \"{name}\" 设为规则的独立出口。\n\n面板\"自动\"配置、多跳中继以及仅限 Xray 的协议 (如 XHTTP) 需要完整的 Xray 管道, 而规则的独立出口由 sing-box 直接拨号。\n\n请为此规则选择标准单节点服务器, 或在主页将 \"{name}\" 设为主服务器。",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

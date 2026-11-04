@@ -1642,5 +1642,177 @@
   "settingsOpenSplitTunnel": "تنظیم تونل تقسیم‌شده",
   "splitQuickServicesTitle": "انتخاب سریع سرویس‌ها",
   "splitQuickServicesSub": "دامنه‌های اصلی و رسانه‌ای سرویس را با عملکرد حالت فعلی اضافه می‌کند",
-  "splitServiceAppHint": "دامنه‌های {service} اضافه شدند. برای تماس‌ها و برنامه، {service} را در بخش «برنامه‌ها» در بالا نیز اضافه کنید"
+  "splitServiceAppHint": "دامنه‌های {service} اضافه شدند. برای تماس‌ها و برنامه، {service} را در بخش «برنامه‌ها» در بالا نیز اضافه کنید",
+  "liveConnsPause": "توقف موقت",
+  "liveConnsResume": "ادامه بروزرسانی زنده",
+  "liveConnsPausedSubtitle": "متوقف شده · فهرست ثابت شد",
+  "liveConnsFrozenSelectingSubtitle": "فهرست هنگام انتخاب ثابت شد",
+  "liveConnsSelectMode": "حالت انتخاب",
+  "liveConnsSelectedCount": "انتخاب شده: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "انتخاب همه",
+  "liveConnsClearSelection": "لغو انتخاب",
+  "liveConnsMenuSelect": "انتخاب",
+  "liveConnsMenuDeselect": "لغو تیک",
+  "liveConnsMenuSelectProcess": "انتخاب همه برای \"{process}\" ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "انتخاب همه برای \"{domain}\" ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "از طریق سرور...",
+  "liveConnsMenuCloseConn": "بستن اتصال",
+  "liveConnsMenuCloseSelected": "بستن انتخاب شده ها ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "اتصالات بسته شده: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "بستن اتصال انجام نشد",
+  "liveConnsMenuFilterProcess": "فیلتر بر اساس پردازش \"{process}\"",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "فیلتر بر اساس دامنه \"{domain}\"",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "کپی دامنه",
+  "liveConnsMenuCopyIpPort": "کپی IP:پورت",
+  "liveConnsMenuCopyProcess": "کپی نام پردازش",
+  "liveConnsMenuCopyExePath": "کپی مسیر فایل اجرایی",
+  "liveConnsMenuShowInExplorer": "نمایش فایل در Explorer",
+  "liveConnsCopySelectedTargets": "کپی اهداف انتخاب شده",
+  "liveConnsModeAuto": "خودکار",
+  "liveConnsModeSites": "سایت ها",
+  "liveConnsModeApps": "برنامه ها",
+  "liveConnsModeBoth": "هر دو",
+  "liveConnsPlanEmpty": "دامنه یا برنامه مناسبی برای این حالت یافت نشد",
+  "liveConnsPlanSummarySites": "سایت ها: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "برنامه ها: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "آدرس های IP مستقیم مرورگر ({processes}) رد شد - برای کل برنامه حالت \"برنامه ها\" را انتخاب کنید",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "قوانین اعمال شده: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "انتخاب",
+  "splitSelectedCount": "قوانین انتخاب شده: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "انتخاب همه موارد قابل مشاهده",
+  "splitBatchCancel": "انصراف",
+  "splitBatchViaServer": "از طریق سرور...",
+  "splitBatchEnable": "فعال کردن",
+  "splitBatchDisable": "غیرفعال کردن",
+  "splitMenuConfigure": "تنظیم...",
+  "splitMenuSelectSubdomains": "انتخاب خانواده \"{domain}\"",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "قوانین بروزرسانی شده: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "قوانین حذف شده: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "امکان انتخاب به عنوان خروجی جداگانه نیست",
+  "exitServerBlockedNote": "به عنوان خروجی جداگانه در دسترس نیست: پروفایل های خودکار، رله ها و پروتکل های مخصوص Xray فقط به عنوان سرور اصلی کار می کنند.",
+  "exitServerBlockedBody": "سرور \"{name}\" در حال حاضر نمی تواند به عنوان خروجی جداگانه برای یک قانون تنظیم شود.\n\nپروفایل های \"خودکار\"، رله های چندمرحله ای و پروتکل های اختصاصی Xray (مانند XHTTP) به خط لوله کامل Xray نیاز دارند، در حالی که خروجی های فرعی مستقیماً توسط sing-box برقرار می شوند.\n\nلطفاً یک سرور تکی استاندارد برای این قانون انتخاب کنید یا \"{name}\" را در صفحه اصلی به عنوان سرور اصلی قرار دهید.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }

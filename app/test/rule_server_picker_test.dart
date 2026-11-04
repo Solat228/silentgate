@@ -362,6 +362,33 @@ void main() {
           .toSet();
       expect(keys, {nl.key});
     });
+
+    testWidgets(
+        'тап по непригодному серверу («Авто») заблокирован и показывает диалог ошибки',
+        (tester) async {
+      final got = await openPicker(tester);
+      final autoTile = find.byWidgetPredicate(
+          (w) => w is ServerTile && w.server.key == auto.key);
+      await tester.tap(autoTile);
+      await tester.pumpAndSettle();
+
+      // Выбор НЕ состоялся, пикер остался открыт, поверх показано окно ошибки.
+      expect(got, isEmpty);
+      expect(find.byType(RuleServerPickerDialog), findsOneWidget);
+      expect(find.byKey(const Key('unsupportedExitServerDialog')), findsOneWidget);
+      expect(find.textContaining('Авто (YouTube)'), findsWidgets);
+
+      // Закрываем окно ошибки — пикер остаётся доступен для выбора нормального узла.
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(const Key('unsupportedExitServerDialog')),
+          matching: find.byType(FilledButton),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unsupportedExitServerDialog')), findsNothing);
+      expect(find.byType(RuleServerPickerDialog), findsOneWidget);
+    });
   });
 
   group('Поле «Через сервер»', () {

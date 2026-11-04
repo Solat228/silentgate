@@ -4471,4 +4471,183 @@ class AppLocalizationsFa extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return 'دامنه‌های $service اضافه شدند. برای تماس‌ها و برنامه، $service را در بخش «برنامه‌ها» در بالا نیز اضافه کنید';
   }
+
+  @override
+  String get liveConnsPause => 'توقف موقت';
+
+  @override
+  String get liveConnsResume => 'ادامه بروزرسانی زنده';
+
+  @override
+  String get liveConnsPausedSubtitle => 'متوقف شده · فهرست ثابت شد';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => 'فهرست هنگام انتخاب ثابت شد';
+
+  @override
+  String get liveConnsSelectMode => 'حالت انتخاب';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'انتخاب شده: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'انتخاب همه';
+
+  @override
+  String get liveConnsClearSelection => 'لغو انتخاب';
+
+  @override
+  String get liveConnsMenuSelect => 'انتخاب';
+
+  @override
+  String get liveConnsMenuDeselect => 'لغو تیک';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'انتخاب همه برای \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'انتخاب همه برای \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'از طریق سرور...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'بستن اتصال';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'بستن انتخاب شده ها ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'اتصالات بسته شده: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'بستن اتصال انجام نشد';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'فیلتر بر اساس پردازش \"$process\"';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'فیلتر بر اساس دامنه \"$domain\"';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'کپی دامنه';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'کپی IP:پورت';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'کپی نام پردازش';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'کپی مسیر فایل اجرایی';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'نمایش فایل در Explorer';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'کپی اهداف انتخاب شده';
+
+  @override
+  String get liveConnsModeAuto => 'خودکار';
+
+  @override
+  String get liveConnsModeSites => 'سایت ها';
+
+  @override
+  String get liveConnsModeApps => 'برنامه ها';
+
+  @override
+  String get liveConnsModeBoth => 'هر دو';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'دامنه یا برنامه مناسبی برای این حالت یافت نشد';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'سایت ها: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'برنامه ها: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'آدرس های IP مستقیم مرورگر ($processes) رد شد - برای کل برنامه حالت \"برنامه ها\" را انتخاب کنید';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'قوانین اعمال شده: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'انتخاب';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'قوانین انتخاب شده: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'انتخاب همه موارد قابل مشاهده';
+
+  @override
+  String get splitBatchCancel => 'انصراف';
+
+  @override
+  String get splitBatchViaServer => 'از طریق سرور...';
+
+  @override
+  String get splitBatchEnable => 'فعال کردن';
+
+  @override
+  String get splitBatchDisable => 'غیرفعال کردن';
+
+  @override
+  String get splitMenuConfigure => 'تنظیم...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'انتخاب خانواده \"$domain\"';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'قوانین بروزرسانی شده: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'قوانین حذف شده: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle =>
+      'امکان انتخاب به عنوان خروجی جداگانه نیست';
+
+  @override
+  String get exitServerBlockedNote =>
+      'به عنوان خروجی جداگانه در دسترس نیست: پروفایل های خودکار، رله ها و پروتکل های مخصوص Xray فقط به عنوان سرور اصلی کار می کنند.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'سرور \"$name\" در حال حاضر نمی تواند به عنوان خروجی جداگانه برای یک قانون تنظیم شود.\n\nپروفایل های \"خودکار\"، رله های چندمرحله ای و پروتکل های اختصاصی Xray (مانند XHTTP) به خط لوله کامل Xray نیاز دارند، در حالی که خروجی های فرعی مستقیماً توسط sing-box برقرار می شوند.\n\nلطفاً یک سرور تکی استاندارد برای این قانون انتخاب کنید یا \"$name\" را در صفحه اصلی به عنوان سرور اصلی قرار دهید.';
+  }
 }

@@ -4530,4 +4530,183 @@ class AppLocalizationsPt extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return 'Domínios de $service adicionados. Para chamadas e o aplicativo, adicione também $service em \"Aplicativos\" acima';
   }
+
+  @override
+  String get liveConnsPause => 'Pausar';
+
+  @override
+  String get liveConnsResume => 'Retomar atualização';
+
+  @override
+  String get liveConnsPausedSubtitle => 'Em pausa · lista congelada';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle =>
+      'Lista congelada durante a seleção';
+
+  @override
+  String get liveConnsSelectMode => 'Modo de seleção';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'Selecionados: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'Selecionar tudo';
+
+  @override
+  String get liveConnsClearSelection => 'Limpar seleção';
+
+  @override
+  String get liveConnsMenuSelect => 'Selecionar';
+
+  @override
+  String get liveConnsMenuDeselect => 'Desmarcar';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'Selecionar tudo de \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'Selecionar tudo de \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'Via servidor...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'Encerrar conexão';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'Encerrar selecionadas ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'Conexões encerradas: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'Não foi possível encerrar a conexão';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'Filtrar por processo \"$process\"';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'Filtrar por domínio \"$domain\"';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'Copiar domínio';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'Copiar IP:porta';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'Copiar nome do processo';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'Copiar caminho do executável';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'Mostrar no Explorador';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'Copiar alvos selecionados';
+
+  @override
+  String get liveConnsModeAuto => 'Auto';
+
+  @override
+  String get liveConnsModeSites => 'Sites';
+
+  @override
+  String get liveConnsModeApps => 'Apps';
+
+  @override
+  String get liveConnsModeBoth => 'Ambos';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'Nenhum domínio ou aplicativo correspondente para este modo';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'Sites: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'Apps: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'IPs diretos do navegador ($processes) ignorados - mude para \"Apps\" se quiser o aplicativo inteiro';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'Regras aplicadas: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'Selecionar';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'Regras selecionadas: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'Selecionar visíveis';
+
+  @override
+  String get splitBatchCancel => 'Cancelar';
+
+  @override
+  String get splitBatchViaServer => 'Via servidor...';
+
+  @override
+  String get splitBatchEnable => 'Ativar';
+
+  @override
+  String get splitBatchDisable => 'Desativar';
+
+  @override
+  String get splitMenuConfigure => 'Configurar...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'Selecionar família \"$domain\"';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'Regras atualizadas: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'Regras removidas: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'Indisponível como saída separada';
+
+  @override
+  String get exitServerBlockedNote =>
+      'Indisponível como saída separada: perfis Auto, relés e protocolos exclusivos do Xray funcionam apenas como servidor principal.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'O servidor \"$name\" não pode ser definido como saída separada para uma regra.\n\nPerfis \"Auto\", relés e protocolos exclusivos do Xray (como XHTTP) exigem o pipeline do Xray, enquanto as saídas secundárias são conectadas diretamente pelo sing-box.\n\nEscolha um servidor individual padrão para esta regra ou selecione \"$name\" como servidor principal.';
+  }
 }

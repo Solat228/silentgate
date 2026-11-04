@@ -4473,4 +4473,182 @@ class AppLocalizationsAr extends AppLocalizations {
   String splitServiceAppHint(String service) {
     return 'تمت إضافة نطاقات $service. للمكالمات وعمل التطبيق، أضف $service أيضاً إلى قائمة \"التطبيقات\" أعلاه';
   }
+
+  @override
+  String get liveConnsPause => 'إيقاف مؤقت';
+
+  @override
+  String get liveConnsResume => 'استئناف التحديث';
+
+  @override
+  String get liveConnsPausedSubtitle => 'متوقف مؤقتاً · القائمة مجمدة';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => 'القائمة مجمدة أثناء التحديد';
+
+  @override
+  String get liveConnsSelectMode => 'وضع التحديد';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'المحدد: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'تحديد الكل';
+
+  @override
+  String get liveConnsClearSelection => 'مسح التحديد';
+
+  @override
+  String get liveConnsMenuSelect => 'تحديد';
+
+  @override
+  String get liveConnsMenuDeselect => 'إلغاء التحديد';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'تحديد الكل لـ \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'تحديد الكل لـ \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'عبر خادم...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'إغلاق الاتصال';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'إغلاق المحدد ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'الاتصالات المغلقة: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'تعذر إغلاق الاتصال';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'تصفية حسب العملية \"$process\"';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'تصفية حسب النطاق \"$domain\"';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'نسخ النطاق';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'نسخ IP:المنفذ';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'نسخ اسم العملية';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'نسخ مسار الملف التنفيذي';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'إظهار الملف في المستكشف';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'نسخ الأهداف المحددة';
+
+  @override
+  String get liveConnsModeAuto => 'تلقائي';
+
+  @override
+  String get liveConnsModeSites => 'المواقع';
+
+  @override
+  String get liveConnsModeApps => 'التطبيقات';
+
+  @override
+  String get liveConnsModeBoth => 'كلاهما';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'لا توجد نطاقات أو تطبيقات مطابقة لهذا الوضع';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'المواقع: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'التطبيقات: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'تم تخطي عناوين IP المباشرة للمتصفح ($processes) - اختر \"التطبيقات\" لتوجيه المتصفح بالكامل';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'القواعد المطبقة: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'تحديد';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'القواعد المحددة: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'تحديد كل المرئي';
+
+  @override
+  String get splitBatchCancel => 'إلغاء';
+
+  @override
+  String get splitBatchViaServer => 'عبر خادم...';
+
+  @override
+  String get splitBatchEnable => 'تفعيل';
+
+  @override
+  String get splitBatchDisable => 'تعطيل';
+
+  @override
+  String get splitMenuConfigure => 'إعداد...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'تحديد عائلة \"$domain\"';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'القواعد المحدثة: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'القواعد المحذوفة: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'لا يمكن اختياره كمخرج منفصل';
+
+  @override
+  String get exitServerBlockedNote =>
+      'غير متاح كمخرج منفصل: ملفات التلقائي والمرحلات وبروتوكولات Xray تعمل فقط كخادم رئيسي.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'لا يمكن حالياً تعيين الخادم \"$name\" كمخرج منفصل للقاعدة.\n\nتتطلب ملفات \"التلقائي\" والمرحلات وبروتوكولات Xray الخاصة (مثل XHTTP) مسار Xray كاملاً، بينما يدير sing-box المخارج الفرعية مباشرة.\n\nيرجى اختيار خادم فردي قياسي لهذه القاعدة أو تعيين \"$name\" كخادم رئيسي في الشاشة الرئيسية.';
+  }
 }

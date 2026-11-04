@@ -1642,5 +1642,177 @@
   "settingsOpenSplitTunnel": "Bölünmüş tünellemeyi ayarla",
   "splitQuickServicesTitle": "Hızlı servis seçimi",
   "splitQuickServicesSub": "Servisin ana ve medya alan adlarını geçerli modun eylemiyle ekler",
-  "splitServiceAppHint": "{service} alan adları eklendi. Aramalar ve uygulama için {service} uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin"
+  "splitServiceAppHint": "{service} alan adları eklendi. Aramalar ve uygulama için {service} uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin",
+  "liveConnsPause": "Duraklat",
+  "liveConnsResume": "Güncellemeyi sürdür",
+  "liveConnsPausedSubtitle": "Duraklatıldı · liste donduruldu",
+  "liveConnsFrozenSelectingSubtitle": "Seçim sırasında liste donduruldu",
+  "liveConnsSelectMode": "Seçim modu",
+  "liveConnsSelectedCount": "Seçilen: {count}",
+  "@liveConnsSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsSelectAll": "Tümünü seç",
+  "liveConnsClearSelection": "Seçimi temizle",
+  "liveConnsMenuSelect": "Seç",
+  "liveConnsMenuDeselect": "Seçimi kaldır",
+  "liveConnsMenuSelectProcess": "\"{process}\" için tümünü seç ({count})",
+  "@liveConnsMenuSelectProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuSelectDomain": "\"{domain}\" için tümünü seç ({count})",
+  "@liveConnsMenuSelectDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsMenuRouteViaServer": "Sunucu üzerinden...",
+  "liveConnsMenuCloseConn": "Bağlantıyı kes",
+  "liveConnsMenuCloseSelected": "Seçilenleri kes ({count})",
+  "@liveConnsMenuCloseSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsClosedToast": "Kapatılan bağlantı: {count}",
+  "@liveConnsClosedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "liveConnsCloseFailedToast": "Bağlantı kapatılamadı",
+  "liveConnsMenuFilterProcess": "\"{process}\" işlemine göre filtrele",
+  "@liveConnsMenuFilterProcess": {
+    "placeholders": {
+      "process": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuFilterDomain": "\"{domain}\" alan adına göre filtrele",
+  "@liveConnsMenuFilterDomain": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsMenuCopyDomain": "Alan adını kopyala",
+  "liveConnsMenuCopyIpPort": "IP:port kopyala",
+  "liveConnsMenuCopyProcess": "İşlem adını kopyala",
+  "liveConnsMenuCopyExePath": "Dosya yolunu kopyala",
+  "liveConnsMenuShowInExplorer": "Gezgin'de göster",
+  "liveConnsCopySelectedTargets": "Seçili hedefleri kopyala",
+  "liveConnsModeAuto": "Otomatik",
+  "liveConnsModeSites": "Siteler",
+  "liveConnsModeApps": "Uygulamalar",
+  "liveConnsModeBoth": "Her ikisi",
+  "liveConnsPlanEmpty": "Bu mod için uygun alan adı veya uygulama yok",
+  "liveConnsPlanSummarySites": "Siteler: {count} ({preview})",
+  "@liveConnsPlanSummarySites": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSummaryApps": "Uygulamalar: {count} ({preview})",
+  "@liveConnsPlanSummaryApps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "preview": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsPlanSkippedSharedIp": "Tarayıcı ham IP adresleri ({processes}) atlandı - tüm uygulama için \"Uygulamalar\" modunu seçin",
+  "@liveConnsPlanSkippedSharedIp": {
+    "placeholders": {
+      "processes": {
+        "type": "String"
+      }
+    }
+  },
+  "liveConnsRulesAppliedToast": "Uygulanan kurallar: {count}",
+  "@liveConnsRulesAppliedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectRules": "Seç",
+  "splitSelectedCount": "Seçilen kural: {count}",
+  "@splitSelectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitSelectAllVisible": "Görünürleri seç",
+  "splitBatchCancel": "İptal",
+  "splitBatchViaServer": "Sunucu üzerinden...",
+  "splitBatchEnable": "Etkinleştir",
+  "splitBatchDisable": "Devre dışı bırak",
+  "splitMenuConfigure": "Yapılandır...",
+  "splitMenuSelectSubdomains": "\"{domain}\" ailesini seç",
+  "@splitMenuSelectSubdomains": {
+    "placeholders": {
+      "domain": {
+        "type": "String"
+      }
+    }
+  },
+  "splitBatchUpdatedToast": "Güncellenen kural: {count}",
+  "@splitBatchUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "splitBatchRemovedToast": "Silinen kural: {count}",
+  "@splitBatchRemovedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "exitServerBlockedTitle": "Ayrı çıkış olarak seçilemez",
+  "exitServerBlockedNote": "Ayrı çıkış olarak kullanılamaz: Otomatik profiller, röleler ve yalnızca Xray protokolleri sadece ana sunucu olarak çalışır.",
+  "exitServerBlockedBody": "\"{name}\" sunucusu şu anda bir kural için ayrı çıkış olarak atanamaz.\n\n\"Otomatik\" profiller, çok adımlı röleler ve Xray'e özgü protokoller (XHTTP gibi) Xray hattı gerektirirken, ikincil çıkışlar doğrudan sing-box tarafından yönetilir.\n\nBu kural için standart bir tekil sunucu seçin veya \"{name}\" sunucusunu ana ekranda ana sunucu yapın.",
+  "@exitServerBlockedBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  }
 }
