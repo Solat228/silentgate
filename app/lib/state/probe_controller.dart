@@ -23,6 +23,7 @@ import '../core/xray/harness_config_builder.dart'
     show HarnessConfigBuilder, HarnessRealism;
 import '../core/xray/outbound_variant.dart';
 import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
+import '../core/whitelist_bypass/whitelist_relay_probe.dart';
 import '../data/results_store.dart';
 import '../engine/probe_factory.dart';
 import 'service_check_controller.dart' show ServiceCheckActivity;
@@ -35,6 +36,14 @@ typedef SpeedDownload = Future<SpeedResult> Function({
   int? proxyPort,
   String proxyUser,
   String proxyPassword,
+});
+
+/// Подъём временного WebRTC-релея для холодной проверки сервера БС.
+typedef WhitelistProbeStarter = Future<WhitelistRelayProbeHandle> Function(
+  VpnServer server, {
+  required OutboundVariant variant,
+  required HarnessRealism realism,
+  required CancelToken cancel,
 });
 
 /// Пинг серверов. Модель проверки — как просил пользователь:
@@ -62,6 +71,7 @@ typedef SpeedDownload = Future<SpeedResult> Function({
 /// ничего, плашка горела зелёным всё время фазы 2. Не возвращать аванс.
 class ProbeController extends ChangeNotifier {
   final ProbeHarness Function() _harnessFactory;
+  final WhitelistProbeStarter? _whitelistProbeStarter;
 
   final Map<String, PingResult> _results = {};
   bool _running = false;
@@ -104,11 +114,13 @@ class ProbeController extends ChangeNotifier {
 
   ProbeController({
     ProbeHarness Function()? harnessFactory,
+    WhitelistProbeStarter? whitelistProbeStarter,
     this.liveProxyPort,
     this.activeServerKey,
     this.captureActive,
     this.liveCoreDelay,
-  }) : _harnessFactory = harnessFactory ?? createProbeHarness {
+  })  : _harnessFactory = harnessFactory ?? createProbeHarness,
+        _whitelistProbeStarter = whitelistProbeStarter {
     // Гейт пинга (`PingGate.of`) читает [serviceChecksRunning] при перерисовке,
     // а перерисовку по этому контроллеру больше никто не вызовет: конец
     // проверки сервисов обязан будить слушателей сам (см.
@@ -479,9 +491,42 @@ class ProbeController extends ChangeNotifier {
   /// ⚠️ Спрашиваем САМ ХАРНЕСС (`supportsProxyRequests`), а не `Platform.isX`:
   /// платформенная развилка уже описана в одном месте (`probe_factory`), и
   /// вторая её копия здесь разъехалась бы с первой на первой же платформе.
-  bool canMeasureSpeed(VpnServer s) => s.usesWhitelistRelay
-      ? _liveTargetIn([s]) != null
-      : (_harnessCanMeasure || _liveTargetIn([s]) != null);
+  bool canMeasureSpeed(VpnServer s) {
+    if (_liveTargetIn([s]) != null) return true;
+    if (s.usesWhitelistRelay) {
+      if (_whitelistProbeStarter != null) return true;
+      if (s.isWhitelistBypass) {
+        return WhitelistBypassProcess.canLocateOrAndroid;
+      }
+      return _harnessCanMeasure &&
+          WhitelistBypassProcess.locateExecutable() != null;
+    }
+    return _harnessCanMeasure;
+  }
+
+  Future<WhitelistRelayProbeHandle> _startWhitelistProbe(
+    VpnServer server, {
+    required OutboundVariant variant,
+    required HarnessRealism realism,
+    required CancelToken cancel,
+  }) {
+    final custom = _whitelistProbeStarter;
+    if (custom != null) {
+      return custom(
+        server,
+        variant: variant,
+        realism: realism,
+        cancel: cancel,
+      );
+    }
+    return WhitelistRelayProbe.start(
+      server,
+      variant: variant,
+      realism: realism,
+      harnessFactory: _harnessFactory,
+      abort: () => cancel.isCancelled,
+    );
+  }
 
   /// Кэш ответа харнесса: план прогона спрашивают на каждое нажатие, а создание
   /// харнесса на Android генерирует пароль через `Random.secure`.
@@ -665,9 +710,16 @@ class ProbeController extends ChangeNotifier {
 
         HarnessHandle? handle;
         try {
-          handle = await _harnessFactory().start([
-            HarnessEntry(key: s.key, server: s, variant: _variantOf(s)),
-          ]);
+          handle = s.usesWhitelistRelay
+              ? await _startWhitelistProbe(
+                  s,
+                  variant: _variantOf(s),
+                  realism: HarnessRealism.none,
+                  cancel: cancel,
+                )
+              : await _harnessFactory().start([
+                  HarnessEntry(key: s.key, server: s, variant: _variantOf(s)),
+                ]);
           if (cancel.isCancelled) break;
           final port = handle.proxyPortFor(0);
           if (port > 0) {
@@ -766,7 +818,8 @@ class ProbeController extends ChangeNotifier {
   /// конфиги (профиль «Авто …» — это балансировщик; json:// — адрес может быть
   /// `config:0`). Такие НЕ пингуем по TCP: адрес одного узла ничего не значит,
   /// а по нему сервер ошибочно попадал в «мёртвые». Только через прокси.
-  static bool _proxyLatency(VpnServer s) => _isHy2(s) || _hasFullConfig(s);
+  static bool _proxyLatency(VpnServer s) =>
+      _isHy2(s) || _hasFullConfig(s) || s.usesWhitelistRelay;
 
   /// Метод верификации: HEAD, если пользователь выбрал его в настройках; иначе GET.
   static bool _verifyHead(AppSettings s) =>
@@ -883,11 +936,7 @@ class ProbeController extends ChangeNotifier {
               notifyListeners();
               return;
             }
-            final targetHost = s.usesWhitelistRelay
-                ? (WhitelistBypassEndpoint.domainsForServer(s).firstOrNull ?? s.address)
-                : s.address;
-            final targetPort = s.usesWhitelistRelay ? 443 : s.port;
-            final r = await TcpPing.measure(targetHost, targetPort, timeout: timeout);
+            final r = await TcpPing.measure(s.address, s.port, timeout: timeout);
             if (r.outcome == PingOutcome.ok) {
               final isLive = s.key == activeServerKey?.call();
               final willVerify = (twoPhase && proxyProbeSupported) || isLive;
@@ -903,20 +952,8 @@ class ProbeController extends ChangeNotifier {
                 latencyThroughTunnel: captured,
                 measuredAt: DateTime.now(),
               );
-              if (s.usesWhitelistRelay && !isLive) {
-                _results[s.key] = PingResult(
-                  outcome: PingOutcome.ok,
-                  latencyMs: r.latencyMs,
-                  verification: PingVerification.notRun,
-                  latencyMethod: PingMethod.tcp,
-                  latencyThroughTunnel: captured,
-                  measuredAt: DateTime.now(),
-                );
-                _done.add(s.key);
-              } else {
-                survivors.add(s);
-                if (!twoPhase && !isLive) _done.add(s.key);
-              }
+              survivors.add(s);
+              if (!twoPhase && !isLive) _done.add(s.key);
             } else {
               _results[s.key] = PingResult(
                 outcome: PingOutcome.failed,
@@ -985,6 +1022,12 @@ class ProbeController extends ChangeNotifier {
       // нечем — второй экземпляр ядра рядом с живым туннелем не поднять.
       // Оставляем результат одной фазы вместо падения всего пинга: раньше
       // здесь вылетал UnsupportedError и обнулял проверку всех серверов.
+      final bsVerify = <VpnServer>[
+        for (final s in verify)
+          if (s.usesWhitelistRelay) s,
+      ];
+      verify.removeWhere((s) => s.usesWhitelistRelay);
+
       if (verify.isNotEmpty && !proxyProbeSupported) {
         for (final s in verify) {
           if (cancel.isCancelled) break;
@@ -1021,6 +1064,17 @@ class ProbeController extends ChangeNotifier {
           await _verifyOne(s, settings, cancel,
               head: head, forceProxy: proxySingle);
         }
+      }
+
+      for (final s in bsVerify) {
+        if (cancel.isCancelled) break;
+        await _verifyWhitelistOne(
+          s,
+          settings,
+          cancel,
+          head: head,
+          forceProxy: proxySingle,
+        );
       }
 
       final ok = _goodCount(servers);
@@ -1358,6 +1412,110 @@ class ProbeController extends ChangeNotifier {
           forceProxy: forceProxy,
           proxyUser: handle.proxyUser,
           proxyPassword: handle.proxyPassword);
+    } finally {
+      await handle?.stop();
+    }
+  }
+
+  /// Реальная проверка сервера обхода БС через подключение к звонку и запрос ВНУТРИ него.
+  Future<void> _verifyWhitelistOne(
+    VpnServer server,
+    AppSettings settings,
+    CancelToken cancel, {
+    required bool head,
+    required bool forceProxy,
+  }) async {
+    WhitelistRelayProbeHandle? handle;
+    try {
+      handle = await _startWhitelistProbe(
+        server,
+        variant: _variantOf(server),
+        realism: _realismFor(settings),
+        cancel: cancel,
+      );
+      if (cancel.isCancelled) return;
+      if (handle.relayFailed) {
+        _results[server.key] = PingResult(
+          outcome: PingOutcome.failed,
+          verification: PingVerification.failed,
+          reachableViaProxy: false,
+          latencyMethod: head ? PingMethod.proxyHead : PingMethod.proxyGet,
+          measuredAt: DateTime.now(),
+        );
+        _done.add(server.key);
+        notifyListeners();
+        return;
+      }
+      final rawPort = handle.proxyPortFor(0);
+      final port = rawPort <= 0 ? null : rawPort;
+      final ready = port == null ? await handle.delayMs(0) : null;
+      if (cancel.isCancelled) return;
+      if (port == null && ready != null) {
+        _recordSelfMeasured(server, ready);
+        return;
+      }
+      final coldSettings = settings.pingTimeoutMs < 8000
+          ? settings.copyWith(pingTimeoutMs: 8000)
+          : settings;
+      await _applyVerify(
+        server,
+        port,
+        coldSettings,
+        head: head,
+        forceProxy: forceProxy,
+        proxyUser: handle.proxyUser,
+        proxyPassword: handle.proxyPassword,
+      );
+      // На холодном старте релея со спящим кодеком (--idle-vp8) первый пакет
+      // KCP может прийти ровно в момент пробуждения creator-воркера. Делаем
+      // один повтор внутри уже открытого звонка перед признанием пробы неудачной.
+      if (!cancel.isCancelled &&
+          port != null &&
+          !(_results[server.key]?.isWorking ?? false)) {
+        await Future<void>.delayed(const Duration(milliseconds: 600));
+        if (!cancel.isCancelled) {
+          await _applyVerify(
+            server,
+            port,
+            coldSettings,
+            head: head,
+            forceProxy: forceProxy,
+            proxyUser: handle.proxyUser,
+            proxyPassword: handle.proxyPassword,
+          );
+        }
+      }
+      // Первый запрос через только что поднятый WebRTC/KCP канал несёт накладные
+      // расходы холодного открытия потока. Если канал живой, снимаем контрольный
+      // замер по уже прогретому звонку, чтобы показать стационарный RTT.
+      if (!cancel.isCancelled &&
+          port != null &&
+          (_results[server.key]?.isWorking ?? false)) {
+        final warm = await ProxyProbe.check(
+          port,
+          settings.testUrl,
+          head: head,
+          timeout: Duration(milliseconds: settings.pingTimeoutMs),
+          proxyUser: handle.proxyUser,
+          proxyPassword: handle.proxyPassword,
+        );
+        if (warm.ok && warm.rttMs != null) {
+          final firstMs = _results[server.key]?.latencyMs;
+          final bestMs = (firstMs != null && firstMs < warm.rttMs!)
+              ? firstMs
+              : warm.rttMs!;
+          _results[server.key] = PingResult(
+            outcome: PingOutcome.ok,
+            latencyMs: bestMs,
+            proxyRttMs: bestMs,
+            verification: PingVerification.passed,
+            reachableViaProxy: true,
+            latencyMethod: head ? PingMethod.proxyHead : PingMethod.proxyGet,
+            measuredAt: DateTime.now(),
+          );
+          notifyListeners();
+        }
+      }
     } finally {
       await handle?.stop();
     }

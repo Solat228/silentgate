@@ -51,8 +51,11 @@ abstract final class SettingsBundle {
     'localProxyUser',
     'localProxyPassword',
     'apiToken',
+    'apiProxyCustomUser',
+    'apiProxyCustomPassword',
     'deviceInfoConsent',
     'deviceInfoNoticeShown',
+    'sendDevReportCopy',
     'launchAtLogin',
   };
 
@@ -66,7 +69,10 @@ abstract final class SettingsBundle {
     'localProxyUser',
     'localProxyPassword',
     'apiToken',
+    'apiProxyCustomUser',
+    'apiProxyCustomPassword',
     'deviceInfoNoticeShown',
+    'sendDevReportCopy',
     'launchAtLogin',
   };
 
@@ -88,6 +94,18 @@ abstract final class SettingsBundle {
     'tunWatchdogSeconds',
     'alsoSetSystemProxy',
     'apiEnabled',
+    'apiControlPort',
+    'apiAutoPortEnabled',
+    'apiAutoPort',
+    'apiAutoPoolScope',
+    'apiAutoIncludeAutoProfiles',
+    'apiDirectPort',
+    'apiAssignedPorts',
+    'apiKeepAliveWhenDisconnected',
+    'apiProxyAuthMode',
+    'apiDnsViaExit',
+    'apiUrltestUrl',
+    'apiUrltestIntervalSec',
     'apiExitServerKeys',
     'applyRulesInProxyOnly',
     'compactNotification',
@@ -96,11 +114,13 @@ abstract final class SettingsBundle {
     'connectOnAutostart',
     'geoAutoDownloadWifi',
     'seamlessKeepTun',
+    'dpiBypassDiscordUdpWinws',
+    'rootStealthMode',
   };
 
   /// Ключи настроек, которые ссылаются на серверы подписки. Без подписок
   /// ссылаться им не на что.
-  static const serverRefKeys = {'apiExitServerKeys'};
+  static const serverRefKeys = {'apiExitServerKeys', 'apiAssignedPorts'};
 
   /// Собрать пакет из содержимого файлов данных.
   ///

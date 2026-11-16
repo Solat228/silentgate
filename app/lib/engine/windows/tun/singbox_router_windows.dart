@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../../../core/net/api_ports.dart';
 import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/interference_scanner.dart';
@@ -27,7 +28,11 @@ import 'tun_scheduled_task.dart';
 /// После старта ОБЯЗАТЕЛЬНО проверяем, что туннель реально поднялся: раньше сбой
 /// sing-box был невидим и приложение показывало «Подключено» без туннеля.
 class SingboxRouterWindows
-    implements TunRouter, StaleScheduledTaskReporter, TunHandoverCapable {
+    implements
+        TunRouter,
+        StaleScheduledTaskReporter,
+        TunHandoverCapable,
+        ApiExitOptionsConfigurable {
   bool _started = false;
   String _stopPath = '';
   String _currentLaunchId = '';
@@ -65,6 +70,12 @@ class SingboxRouterWindows
   /// `SingboxConfigBuilder.apiOnlyExitKeys`).
   List<String> _apiOnlyExitKeys = const [];
   String _apiToken = '';
+  ApiExitRouterOptions _apiOptions = const ApiExitRouterOptions();
+
+  @override
+  void configureApiExitOptions(ApiExitRouterOptions options) {
+    _apiOptions = options;
+  }
 
   @override
   Future<void> start(SplitTunnelConfig split,
@@ -275,6 +286,7 @@ class SingboxRouterWindows
       List<String> apiOnlyExitKeys = const [],
       String apiToken = ''}) async {
     if (!_started) return false;
+    _lastStaleScheduledTask = false;
     final live = _liveOptions;
     // При автоподборе берём комбинацию, на которой туннель уже работает:
     // перебор требует пересоздания помощника, а именно его мы и избегаем.
@@ -375,6 +387,7 @@ class SingboxRouterWindows
         apiExitServerKeys: _apiExitServerKeys,
         apiOnlyExitKeys: _apiOnlyExitKeys,
         apiToken: _apiToken,
+        apiOptions: _apiOptions,
       ).buildJson(split);
 
   /// Сохраняет параметры сессии в поля. Общий узел для [start] и
@@ -409,15 +422,18 @@ class SingboxRouterWindows
     List<String> apiExitServerKeys = const [],
     List<String> apiOnlyExitKeys = const [],
     String apiToken = '',
-  }) =>
-      _prime(
-        exitOutbounds: exitOutbounds,
-        xraySocksUser: xraySocksUser,
-        xraySocksPassword: xraySocksPassword,
-        apiExitServerKeys: apiExitServerKeys,
-        apiOnlyExitKeys: apiOnlyExitKeys,
-        apiToken: apiToken,
-      );
+    ApiExitRouterOptions apiOptions = const ApiExitRouterOptions(),
+  }) {
+    _apiOptions = apiOptions;
+    _prime(
+      exitOutbounds: exitOutbounds,
+      xraySocksUser: xraySocksUser,
+      xraySocksPassword: xraySocksPassword,
+      apiExitServerKeys: apiExitServerKeys,
+      apiOnlyExitKeys: apiOnlyExitKeys,
+      apiToken: apiToken,
+    );
+  }
 
   /// Ждём появления TUN-адаптера. Не появился — отдаём реальную причину из лога.
   /// ⚠️ [abort] ПРОВЕРЯЕТСЯ ВНУТРИ ЦИКЛА, А НЕ ТОЛЬКО СНАРУЖИ.
@@ -581,5 +597,6 @@ class SingboxRouterWindows
     _started = false;
     _liveOptions = null;
     _currentLaunchId = '';
+    _lastStaleScheduledTask = false;
   }
 }

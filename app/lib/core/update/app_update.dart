@@ -248,7 +248,10 @@ class AppUpdate {
           platformAssetHint(tunAvailable: AppStoreInfo.tunAvailable);
     }
     final abi = await ApkInstallerAndroid().deviceAbi();
-    final hint = platformAssetHint(androidAbi: abi);
+    final hint = platformAssetHint(
+      androidAbi: abi,
+      stealth: AppStoreInfo.isStealth,
+    );
     if (abi != null) _hintCache = hint;
     return hint;
   }
@@ -903,6 +906,12 @@ class AppUpdate {
     final n = name.toLowerCase();
     final h = hint.toLowerCase();
     if (h.isEmpty) return false;
+    // Сборки `SilentGate-ROOT-Stealth-*` (пакет `lol.silentgate.stealth`) и
+    // обычные `SilentGate-*` (`lol.silentgate`) несовместимы по applicationId
+    // и никогда не должны подхватывать APK друг друга.
+    if (n.contains('root-stealth') != h.contains('root-stealth')) {
+      return false;
+    }
     if (n.endsWith(h)) return true;
     final v = version.toLowerCase();
     if (v.isEmpty) return false;

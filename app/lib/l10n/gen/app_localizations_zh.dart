@@ -3241,7 +3241,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => '网站';
+  String get subBarOpenSite => '订阅页面';
+
+  @override
+  String get subBarTelegram => 'Telegram / 机器人';
 
   @override
   String get subBarOpenSiteHint => '在浏览器中打开订阅页面';
@@ -4474,4 +4477,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return '当前无法将服务器 \"$name\" 设为规则的独立出口。\n\n面板\"自动\"配置、多跳中继以及仅限 Xray 的协议 (如 XHTTP) 需要完整的 Xray 管道, 而规则的独立出口由 sing-box 直接拨号。\n\n请为此规则选择标准单节点服务器, 或在主页将 \"$name\" 设为主服务器。';
   }
+
+  @override
+  String get supportChipCantConnect => '无法连接';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / 网站无法打开';
+
+  @override
+  String get supportChipSlowSpeed => '速度慢';
+
+  @override
+  String get supportChipDrops => '连接中断';
+
+  @override
+  String get supportChipsHint => '快速选择（可选，无需填写详情）：';
+
+  @override
+  String get supportDescribeOptionalLabel => '问题描述（可选）';
+
+  @override
+  String get supportNoTextProvided => '无文字描述（仅技术报告）';
+
+  @override
+  String get supportCategoriesHeader => '分类';
+
+  @override
+  String get supportSendDevCopyTitle => '向开发者发送匿名副本';
+
+  @override
+  String get supportSendDevCopySub => '不含订阅令牌、个人 IP 和原始 HWID - 帮助更快修复问题';
+
+  @override
+  String get supportPreviewDevCopy => '发送内容？';
+
+  @override
+  String get supportPreviewDialogTitle => '发送给开发者的匿名副本';
+
+  @override
+  String get supportSendDevOnlyButton => '仅发送给开发者';
+
+  @override
+  String supportDevCopySent(String code) {
+    return '副本已发送给开发者 ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return '上传服务器失败 ($code) - 本地文件已就绪';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return '匿名报告已发送至开发者服务器。报告代码：$code';
+  }
+
+  @override
+  String get supportAttachDiagButton => '诊断报告';
+
+  @override
+  String get supportSendToChatAndDev => '附加到聊天';
 }

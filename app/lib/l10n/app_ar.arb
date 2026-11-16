@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN متوقف",
   "serviceChecksNow": "الآن",
   "serviceChecksExitServer": "عبر خادم آخر: قاعدة النفق المقسّم «{rule}» توجّه هذا النطاق عبر «{server}».",
-  "subBarOpenSite": "الموقع",
+  "subBarOpenSite": "صفحة الاشتراك",
+  "subBarTelegram": "تيليجرام / البوت",
   "subBarOpenSiteHint": "فتح صفحة الاشتراك في المتصفح",
   "subSwitcherRefreshingOne": "جارٍ تحديث «{name}»…",
   "subSwitcherRefreshedOne": "تم تحديث «{name}»",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "لا يتصل",
+  "supportChipSiteOrYoutube": "يوتيوب / الموقع لا يفتح",
+  "supportChipSlowSpeed": "سرعة منخفضة",
+  "supportChipDrops": "انقطاع الاتصال",
+  "supportChipsHint": "اختيار سريع (اختياري دون كتابة تفاصيل):",
+  "supportDescribeOptionalLabel": "وصف المشكلة (اختياري)",
+  "supportNoTextProvided": "بدون وصف نصي (تقرير تقني فقط)",
+  "supportCategoriesHeader": "الفئة",
+  "supportSendDevCopyTitle": "إرسال نسخة مجهولة الهوية للمطور",
+  "supportSendDevCopySub": "بدون رمز الاشتراك أو عناوين IP الشخصية أو HWID الخام - يسرع إصلاح الأعطال",
+  "supportPreviewDevCopy": "ماذا يُرسل؟",
+  "supportPreviewDialogTitle": "نسخة مجهولة الهوية للمطور",
+  "supportSendDevOnlyButton": "للمطور فقط",
+  "supportDevCopySent": "تم إرسال النسخة للمطور ({code})",
+  "supportDevCopyFailed": "تعذر الإرسال للخادم ({code}) - الملف المحلي جاهز",
+  "supportDevOnlyDoneText": "تم إرسال التقرير المجهول لخادم المطور. الرمز: {code}",
+  "supportAttachDiagButton": "تقرير التشخيص",
+  "supportSendToChatAndDev": "إرفاق بالمحادثة"
 }

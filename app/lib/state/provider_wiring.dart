@@ -97,7 +97,9 @@ class ApiSettingsLink {
     _lastApplied = s;
     final state = context.read<AppState>();
     final probe = context.read<ProbeController>();
-    unawaited(state.applyApiSettings(s, probe, settings));
+    unawaited(
+      state.applyApiSettings(s, probe, settings, port: s.apiControlPort),
+    );
   }
 }
 

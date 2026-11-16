@@ -264,12 +264,21 @@ String? androidAssetHintForAbi(String? abi) {
 /// [tunAvailable] передаёт вызывающий (`AppStoreInfo.tunAvailable`): файл
 /// адресов не импортирует ничего, кроме `dart:*`. [android] — только для
 /// тестов (по умолчанию — текущая платформа).
-String platformAssetHint(
-    {String? androidAbi, bool? android, bool tunAvailable = true}) {
+String platformAssetHint({
+  String? androidAbi,
+  bool? android,
+  bool tunAvailable = true,
+  bool stealth = false,
+}) {
   if (!(android ?? Platform.isAndroid)) {
     return tunAvailable ? 'Setup.exe' : 'Setup-msstore.exe';
   }
   final abi = (androidAbi ?? '').trim();
+  if (stealth) {
+    if (abi.isEmpty) return 'ROOT-Stealth-arm64-v8a.apk';
+    final suffix = androidAssetHintForAbi(abi) ?? '-${abi.toLowerCase()}.apk';
+    return 'ROOT-Stealth$suffix';
+  }
   if (abi.isEmpty) return 'arm64-v8a.apk';
   return androidAssetHintForAbi(abi) ?? '-${abi.toLowerCase()}.apk';
 }

@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/app_info.dart';
 import '../core/app_store.dart';
+import '../core/geo/sha256.dart';
 // Только ради GeoAction: «что сейчас с гео-базами» знает контроллер, и второго
 // мнения об этом в приложении быть не должно.
 import '../core/geo/geo_bases_controller.dart';
@@ -13,6 +14,7 @@ import '../core/models/subscription_info.dart';
 import '../core/models/subscription_profile.dart';
 import '../core/models/subscription_sync.dart';
 import '../core/models/traffic_stats.dart';
+import '../core/util/server_groups.dart';
 import '../core/util/server_search.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/reorder.dart';
@@ -147,6 +149,9 @@ class AppState extends ChangeNotifier {
       } else {
         _networkWatcher.stop();
         _connectedSplitSignature = null;
+        if (_lastApiSettings != null) {
+          unawaited(syncStandaloneApiPorts(_lastApiSettings));
+        }
       }
       notifyListeners();
     });
@@ -457,13 +462,24 @@ class AppState extends ChangeNotifier {
   SubscriptionSyncResult? _lastSync;
   bool _refreshing = false;
 
+  String? _selectedGroupCountry;
+  String? get selectedGroupCountry => _selectedGroupCountry;
+
   String? get subscriptionUrl => _subscriptionUrl;
   List<VpnServer> get servers => List.unmodifiable(_servers);
-  int get selectedIndex => _selectedIndex;
-  VpnServer? get selectedServer =>
-      (_selectedIndex >= 0 && _selectedIndex < _servers.length)
-          ? _servers[_selectedIndex]
-          : null;
+  int get selectedIndex => _selectedGroupCountry != null ? -1 : _selectedIndex;
+  VpnServer? get selectedServer {
+    if (_selectedGroupCountry != null) {
+      final groupSrv = ServerGroups.resolveVirtualGroupKey(
+        ServerGroups.virtualGroupKey(_selectedGroupCountry!),
+        _servers,
+      );
+      if (groupSrv != null) return groupSrv;
+    }
+    return (_selectedIndex >= 0 && _selectedIndex < _servers.length)
+        ? _servers[_selectedIndex]
+        : null;
+  }
   OutboundVariant get selectedVariant => _selectedVariant;
   SubscriptionInfo get info => _info;
 
@@ -860,6 +876,7 @@ class AppState extends ChangeNotifier {
       }
     }
     _rebuild();
+    _selectedGroupCountry = data['selectedGroupCountry'] as String?;
     _selectedIndex = (data['selectedIndex'] as int?) ?? (_servers.isNotEmpty ? 0 : -1);
     if (_selectedIndex >= _servers.length) {
       _selectedIndex = _servers.isNotEmpty ? 0 : -1;
@@ -907,12 +924,7 @@ class AppState extends ChangeNotifier {
     if (_selectedIndex < 0) {
       _engine.fallbackServers = _fallbackCandidates();
       _engine.bypassCandidates = _servers;
-      await _engine.armAdoptedSession(
-          _servers,
-          ConnectionOptions(
-              settings: s,
-              exitServers: _exitServers(s),
-              apiOnlyExitKeys: _apiOnlyExitKeys(s)));
+      await _engine.armAdoptedSession(_servers, _buildConnectionOptions(s));
       return;
     }
     final server = _servers[_selectedIndex];
@@ -921,12 +933,10 @@ class AppState extends ChangeNotifier {
         ? server.copyWith(rawJsonOverride: ov.rawJson)
         : server;
     _connectedServerKey = srv.key;
-    await _engine.armAdoptedSession([srv],
-        ConnectionOptions(
-            variant: ov?.variant ?? _selectedVariant,
-            settings: s,
-            exitServers: _exitServers(s),
-            apiOnlyExitKeys: _apiOnlyExitKeys(s)));
+    await _engine.armAdoptedSession(
+      [srv],
+      _buildConnectionOptions(s, variant: ov?.variant ?? _selectedVariant),
+    );
   }
 
   /// Выбрать сервер по имени из подписки. false — не нашли.
@@ -968,6 +978,40 @@ class AppState extends ChangeNotifier {
   }
 
   LocalApiServer? _api;
+  AppSettings? _lastApiSettings;
+
+  /// Запущен ли сейчас автономный маршрутизатор портов API при выключенном VPN.
+  bool get standaloneApiPortsRunning =>
+      _engine is StandaloneApiPortsEngine &&
+      (_engine as StandaloneApiPortsEngine).standaloneApiPortsRunning;
+
+  /// Синхронизировать автономный фоновый маршрутизатор портов API (если VPN выключен).
+  Future<void> syncStandaloneApiPorts([AppSettings? settings]) async {
+    if (!Platform.isWindows) return;
+    final rawEngine = _engine;
+    if (rawEngine is! StandaloneApiPortsEngine) return;
+    final engine = rawEngine as StandaloneApiPortsEngine;
+    final s = settings ?? _lastApiSettings;
+    if (s == null) return;
+    if (!ApiPorts.exitPortsActive(s) || !s.apiKeepAliveWhenDisconnected) {
+      await engine.stopStandaloneApiPorts();
+      return;
+    }
+    final allCatalog = allSubscriptionServers();
+    final serverKeys = ApiPorts.effectiveServerKeys(s, allCatalog);
+    final autoPoolKeys = ApiPorts.autoPoolServerKeys(
+      s,
+      activeServers: _servers,
+      allServers: allCatalog,
+    );
+    final exitServers = _exitServers(s, catalog: allCatalog);
+    await engine.syncStandaloneApiPorts(
+      settings: s,
+      exitServers: exitServers,
+      serverKeys: serverKeys,
+      autoPoolKeys: autoPoolKeys,
+    );
+  }
 
   /// Поколение вызовов [applyApiSettings] — тот же приём, что у сессий
   /// движка (`EngineBase._generation`/`newGeneration`/`isStale`).
@@ -1011,6 +1055,7 @@ class AppState extends ChangeNotifier {
   Future<void> applyApiSettings(AppSettings s, ProbeController probe,
       SettingsController settings,
       {int port = ApiPorts.control}) async {
+    _lastApiSettings = s;
     final gen = ++_apiGeneration;
     await _api?.stop();
     // Пока мы ждали остановки прошлого сервера, могла прилететь ещё одна
@@ -1019,6 +1064,7 @@ class AppState extends ChangeNotifier {
     if (gen != _apiGeneration) return;
     _api = null;
     if (!Platform.isWindows || !s.apiEnabled) {
+      unawaited(syncStandaloneApiPorts(s));
       // Выключили API — прежняя ошибка больше не про что: показывать её у
       // выключенного тумблера значило бы держать на экране мусор.
       if (_apiPortConflict != null) {
@@ -1041,6 +1087,7 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (started) _api = srv;
+    unawaited(syncStandaloneApiPorts(s));
     // Кто держит порт — спрашиваем ТОЛЬКО при отказе и ТОЛЬКО когда токен
     // задан: `PortCheck.holderName` запускает netstat и tasklist (до 5 с
     // каждый), а при пустом токене `start()` возвращает false, ещё не
@@ -1061,7 +1108,11 @@ class AppState extends ChangeNotifier {
 
   void _publishServerDomains() {
     final domains = <String>{};
-    for (final s in _servers) {
+    final serverPool = (_lastApiSettings != null &&
+            ApiPorts.exitPortsActive(_lastApiSettings!))
+        ? allSubscriptionServers()
+        : _servers;
+    for (final s in serverPool) {
       final a = s.address.trim();
       if (a.isNotEmpty) domains.add(a);
       final full = s.effectiveFullConfig;
@@ -1075,10 +1126,17 @@ class AppState extends ChangeNotifier {
     // Хост подписки: её автообновление тоже не должно ходить через туннель,
     // иначе обновиться нельзя ровно тогда, когда серверы перестали работать.
     for (final p in _profiles) {
+      if (!p.isHttpUrl) continue;
       final h = Uri.tryParse(p.url)?.host ?? '';
       if (h.isNotEmpty) domains.add(h);
     }
     _engine.knownServerDomains = domains.toList();
+    if (_lastApiSettings != null &&
+        _lastApiSettings!.apiKeepAliveWhenDisconnected &&
+        !_status.isConnected &&
+        _status.state != VpnConnectionState.connecting) {
+      unawaited(syncStandaloneApiPorts(_lastApiSettings));
+    }
   }
 
   /// Адреса своих серверов — в барьер журнала.
@@ -1198,6 +1256,7 @@ class AppState extends ChangeNotifier {
       'subscriptionUrl': _subscriptionUrl,
       'servers': _subServers.map((s) => s.rawLink).toList(),
       'selectedIndex': _selectedIndex,
+      'selectedGroupCountry': _selectedGroupCountry,
       'selectedVariant': _selectedVariant.toJson(),
       'logoPath': _logoPath,
       'info': _info.toJson(), // #5 - карточка подписки полная сразу после запуска
@@ -1601,6 +1660,44 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Бесшовная замена ссылки подписки при перевыпуске ключа (сбросе подписки),
+  /// инициированном этим клиентом или оператором поддержки по его тикету.
+  Future<bool> migrateSubscriptionUrl(String oldUrl, String newUrl) async {
+    final trimmedOld = oldUrl.trim();
+    final trimmedNew = newUrl.trim();
+    if (trimmedOld.isEmpty || trimmedNew.isEmpty || trimmedOld == trimmedNew) {
+      return false;
+    }
+    final idx = _profiles.indexWhere((p) => p.url.trim() == trimmedOld);
+    if (idx < 0 && (_subscriptionUrl ?? '').trim() != trimmedOld) {
+      return false;
+    }
+    final newId = SubscriptionProfile.idFor(trimmedNew);
+    if (idx >= 0) {
+      final cur = _profiles[idx];
+      final wasActive = cur.id == _activeId;
+      _profiles[idx] = SubscriptionProfile(
+        id: newId,
+        url: trimmedNew,
+        info: cur.info,
+        logoPath: cur.logoPath,
+        serverLinks: cur.serverLinks,
+        addedAt: cur.addedAt,
+      );
+      if (wasActive) {
+        _activeId = newId;
+        _subscriptionUrl = trimmedNew;
+      }
+    } else {
+      _subscriptionUrl = trimmedNew;
+    }
+    await _saveSubscriptions();
+    await _persist();
+    notifyListeners();
+    AppLog.i('Ссылка подписки бесшовно обновлена на перевыпущенный ключ');
+    return refreshSubscription(id: newId);
+  }
+
   // ── Пинг всех подписок и счётчик у каждой (1.4.2, задача 7) ───────────────
 
   /// Серверы ОДНОЙ подписки — восстановленные из её ссылок ровно так же, как
@@ -1660,6 +1757,60 @@ class AppState extends ChangeNotifier {
     // наравне с остальными («Скорость «…»», «Автонастройка: …»).
     _rememberServerAddresses(out);
     return out;
+  }
+
+  /// Профиль активной подписки (или `null`, если подписок нет).
+  SubscriptionProfile? get activeSubscription {
+    final id = _activeId;
+    if (id == null) return null;
+    for (final p in _profiles) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
+  /// Серверы всех подписок, сгруппированные по подпискам (для экрана API и
+  /// `GET /v1/servers?scope=all`). Никакие сырые URL наружу не отдаются —
+  /// у каждой группы есть объект [SubscriptionProfile] (или `null` для ручных).
+  List<({SubscriptionProfile? profile, bool active, List<VpnServer> servers})>
+      allSubscriptionsGrouped() {
+    if (_profiles.isEmpty) {
+      if (_servers.isEmpty) return const [];
+      return [
+        (profile: null, active: true, servers: List.unmodifiable(_servers)),
+      ];
+    }
+    final activeProf = activeSubscription;
+    final coveredKeys = <String>{};
+    final groups = <({
+      SubscriptionProfile? profile,
+      bool active,
+      List<VpnServer> servers,
+    })>[];
+    for (final p in _profiles) {
+      final isActive = activeProf != null && p.id == activeProf.id;
+      final list = serversOfSubscription(p.id);
+      for (final s in list) {
+        coveredKeys.add(s.key);
+      }
+      groups.add((
+        profile: p,
+        active: isActive,
+        servers: list,
+      ));
+    }
+    final extra = [
+      for (final s in _servers)
+        if (!coveredKeys.contains(s.key)) s,
+    ];
+    if (extra.isNotEmpty) {
+      groups.add((
+        profile: null,
+        active: false,
+        servers: List.unmodifiable(extra),
+      ));
+    }
+    return groups;
   }
 
   /// Есть ли закреплённые серверы (спрашиваем при удалении подписки, #5).
@@ -1974,7 +2125,8 @@ class AppState extends ChangeNotifier {
   /// Запустить/остановить автообновление в зависимости от настроек и наличия подписки.
   Future<void> _maybeStartUpdater() async {
     final s = await SettingsStorage().load();
-    if (s.autoUpdateEnabled && _subscriptionUrl != null) {
+    if (s.autoUpdateEnabled &&
+        SubscriptionProfile.isHttpUrlString(_subscriptionUrl)) {
       // Интервал: по умолчанию наше значение (приоритет ВЫШЕ подписки). Галочка
       // «брать из подписки» → интервал панели (наш — фолбэк, если панель молчит).
       final hours = resolveAutoUpdateIntervalHours(
@@ -2105,16 +2257,221 @@ class AppState extends ChangeNotifier {
   }
 
   // ── Импорт подписки ─────────────────────────────────────────────────────────
-  /// Принимает URL подписки, deep link silentgate://import-sub?url=… или одиночную share-ссылку.
+  /// Импорт одного или нескольких локальных файлов подписки (например, при
+  /// копировании `Silentgate.txt` в Проводнике и нажатии `Ctrl+V`).
+  ///
+  /// Каждый файл становится отдельной локальной подпиской (`file://…`) со всеми
+  /// своими локациями по отдельности, не засоряя закреплённые серверы и не
+  /// затирая существующие подписки.
+  Future<bool> importFiles(List<String> paths) async {
+    _error = null;
+    var anyOk = false;
+    for (final rawPath in paths) {
+      final clean = rawPath.trim();
+      if (clean.isEmpty) continue;
+      await importSource(clean);
+      if (_error == null) anyOk = true;
+    }
+    return anyOk;
+  }
+
+  static String? _tryResolveLocalFilePath(String raw) {
+    var s = raw.trim();
+    if (s.length >= 2 &&
+        ((s.startsWith('"') && s.endsWith('"')) ||
+            (s.startsWith("'") && s.endsWith("'")))) {
+      s = s.substring(1, s.length - 1).trim();
+    }
+    if (s.isEmpty || s.contains('\n') || s.contains('\r')) return null;
+    if (s.toLowerCase().startsWith('file://')) {
+      try {
+        return Uri.parse(s).toFilePath();
+      } catch (_) {
+        return null;
+      }
+    }
+    final isWinDrive = RegExp(r'^[a-zA-Z]:[\\/]').hasMatch(s);
+    final isUnc = s.startsWith(r'\\');
+    final isUnixAbs = s.startsWith('/') && !s.startsWith('//');
+    if (isWinDrive || isUnc || isUnixAbs) return s;
+    return null;
+  }
+
+  static String _decodeFileBytes(List<int> bytes) {
+    if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+      final units = <int>[];
+      for (var i = 2; i + 1 < bytes.length; i += 2) {
+        units.add(bytes[i] | (bytes[i + 1] << 8));
+      }
+      return String.fromCharCodes(units);
+    }
+    if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
+      final units = <int>[];
+      for (var i = 2; i + 1 < bytes.length; i += 2) {
+        units.add((bytes[i] << 8) | bytes[i + 1]);
+      }
+      return String.fromCharCodes(units);
+    }
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xEF &&
+        bytes[1] == 0xBB &&
+        bytes[2] == 0xBF) {
+      return utf8.decode(bytes.sublist(3), allowMalformed: true);
+    }
+    return utf8.decode(bytes, allowMalformed: true);
+  }
+
+  static SubscriptionResult? _parseLocalSubscriptionBody(
+    String rawBody, {
+    required String fallbackTitle,
+  }) {
+    final decoded = ShareLinkParser.decodeSubscriptionText(rawBody);
+    final trimmed = decoded.trim();
+    if (trimmed.isEmpty) return null;
+    var servers = <VpnServer>[];
+    if (XrayJsonSubscription.looksLikeJson(trimmed)) {
+      servers = XrayJsonSubscription.parse(trimmed);
+    }
+    if (servers.isEmpty) {
+      servers = ShareLinkParser.parseSubscriptionBody(decoded);
+    }
+    if (servers.isEmpty) return null;
+    final info =
+        SubscriptionInfo.fromBodyComments(decoded, fallbackTitle: fallbackTitle);
+    return SubscriptionResult(servers, info);
+  }
+
+  Future<SubscriptionResult> _readLocalSubscriptionFile(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw SubscriptionException('Файл не найден: $filePath');
+    }
+    final bytes = await file.readAsBytes();
+    final text = _decodeFileBytes(bytes);
+    final stem = SubscriptionProfile.fileStemOf(file.path);
+    final parsed = _parseLocalSubscriptionBody(
+      text,
+      fallbackTitle: stem.isEmpty ? 'Импорт' : stem,
+    );
+    if (parsed == null || parsed.servers.isEmpty) {
+      throw SubscriptionException('В файле не найдено ни одного сервера',
+          ui: const UiSubNoServers());
+    }
+    return parsed;
+  }
+
+  /// Принимает URL подписки, локальный файл, многострочный список ссылок / base64,
+  /// deep link silentgate://import-sub?url=… или одиночную share-ссылку.
   Future<void> importSource(String input) async {
     _error = null;
     final trimmed = input.trim();
     if (trimmed.isEmpty) return;
 
-    // #8 — вставленный JSON-конфиг: кастом-сервер, НЕ трактуем как URL (иначе зависание).
+    // 1. Локальный файл по пути (`C:\...\Silentgate.txt`, `"C:\..."`, `file://...`).
+    final localFilePath = _tryResolveLocalFilePath(trimmed);
+    if (localFilePath != null) {
+      final file = File(localFilePath);
+      // Если файл — одиночный ручной конфиг `{...}` без списка локаций, проверим:
+      // `_readLocalSubscriptionFile` разберёт и XRAY_JSON, и список ссылок `vless://`/`hy2://`.
+      final fileUrl = Uri.file(file.absolute.path).toString();
+      final incomingId = SubscriptionProfile.idFor(fileUrl);
+      if (incomingId != _activeId) {
+        _logoPath = _cachedLogoFor(incomingId);
+      }
+      final startedActive = _activeId;
+      _loading = true;
+      notifyListeners();
+      try {
+        final result = await _readLocalSubscriptionFile(file.path);
+        await _applyImportedSubscriptionResult(
+          fileUrl,
+          result,
+          startedActive: startedActive,
+          fetchLogo: false,
+        );
+      } catch (e) {
+        final hint = networkErrorHint(e.toString());
+        _setErrorMessage(
+            hint?.text ?? e.toString(),
+            hint != null
+                ? UiNetworkHint(hint.kind)
+                : e is SubscriptionException
+                    ? e.ui
+                    : null);
+        _errorCode = null;
+      } finally {
+        _loading = false;
+        notifyListeners();
+      }
+      return;
+    }
+
+    // #8 — вставленный одиночный JSON-конфиг `{...}`: кастом-сервер.
     if (trimmed.startsWith('{')) {
       await _importJsonConfig(trimmed);
       return;
+    }
+
+    // Массив JSON-конфигов `[...]` (формат XRAY_JSON) — импорт всех локаций в подписку.
+    if (trimmed.startsWith('[')) {
+      final parsed = _parseLocalSubscriptionBody(
+        trimmed,
+        fallbackTitle: 'Импорт JSON',
+      );
+      if (parsed == null) {
+        _fail(AppErrorCode.invalidJson);
+        return;
+      }
+      final hash = Sha256.ofBytes(utf8.encode(trimmed)).substring(0, 16);
+      final localUrl = 'local://import/$hash';
+      final titled = SubscriptionResult(
+        parsed.servers,
+        parsed.info.title == 'Импорт JSON'
+            ? SubscriptionInfo(title: 'Импорт (${parsed.servers.length})')
+            : parsed.info,
+      );
+      await _applyLocalDirectImport(localUrl, titled);
+      return;
+    }
+
+    // Многострочный список ссылок (`vless://`, `hy2://`, ...) или тело с `#profile-title:`
+    // ИЛИ целиком скопированное base64-тело подписки — все локации импортируются ОТДЕЛЬНО
+    // в собственную локальную подписку.
+    final looksMultiLine = trimmed.contains('\n') || trimmed.contains('\r');
+    final looksBase64Body = !trimmed.contains('://') &&
+        ShareLinkParser.decodeSubscriptionText(trimmed) != trimmed;
+    if (looksMultiLine || looksBase64Body) {
+      final parsed = _parseLocalSubscriptionBody(
+        trimmed,
+        fallbackTitle: '',
+      );
+      if (parsed != null &&
+          (parsed.servers.length >= 2 ||
+              looksBase64Body ||
+              (parsed.info.title?.isNotEmpty ?? false))) {
+        final keysSig = parsed.servers.map((s) => s.key).join('\n');
+        final hash = Sha256.ofBytes(utf8.encode(keysSig)).substring(0, 16);
+        final localUrl = 'local://import/$hash';
+        final finalInfo = (parsed.info.title ?? '').trim().isNotEmpty
+            ? parsed.info
+            : SubscriptionInfo(
+                title: 'Импорт (${parsed.servers.length})',
+                uploadBytes: parsed.info.uploadBytes,
+                downloadBytes: parsed.info.downloadBytes,
+                totalBytes: parsed.info.totalBytes,
+                expiresAt: parsed.info.expiresAt,
+                updateIntervalHours: parsed.info.updateIntervalHours,
+                announce: parsed.info.announce,
+                announceUrl: parsed.info.announceUrl,
+                supportUrl: parsed.info.supportUrl,
+                logoUrl: parsed.info.logoUrl,
+              );
+        await _applyLocalDirectImport(
+          localUrl,
+          SubscriptionResult(parsed.servers, finalInfo),
+        );
+        return;
+      }
     }
 
     // Одиночная share-ссылка — без сети.
@@ -2148,134 +2505,21 @@ class AppState extends ChangeNotifier {
       _logoPath = _cachedLogoFor(incomingId);
     }
     // ⚠️ КАКАЯ ПОДПИСКА БЫЛА АКТИВНА, КОГДА МЫ ПОШЛИ В СЕТЬ.
-    //
-    // `SubscriptionService.fetch` идёт без своего таймаута — ждать можно
-    // десятки секунд, и всё это время переключатель подписок остаётся
-    // нажимаемым (блокируется только кнопка «Обновить»). Пользователь уходит
-    // на другую подписку, экран честно показывает её серверы и карточку — а
-    // потом возвращается ответ ПРЕЖНЕЙ и молча подменяет всё: список серверов,
-    // карточку, активную подписку, логотип, сводку изменений. И это ещё
-    // персистится, то есть переживает перезапуск.
-    //
-    // Признак устаревания — смена активной подписки за время ожидания, а НЕ
-    // «пришло не то, что сейчас активно»: импорт ВТОРОЙ подписки обязан
-    // сделать её активной, и запретить это было бы новой поломкой.
     final startedActive = _activeId;
     _loading = true;
     notifyListeners();
     try {
-      final result =
-          await _subscription.fetch(
+      final result = await _subscription.fetch(
         url,
         deviceHeaders: await _deviceHeaders(),
       );
-      final absorbed = await _absorbPanelConfigs(result.servers);
-      final withOutbound = absorbed.withOutbound;
-      final withFullConfig = absorbed.withFullConfig;
-
-      if (_activeId != startedActive) {
-        // Пользователь ушёл на другую подписку. Данные не выбрасываем — кладём
-        // в её профиль на диск, чтобы при возврате они уже были свежими.
-        await _updateProfileQuietly(url, result.info, result.servers);
-        AppLog.i('Ответ подписки пришёл после переключения на другую - '
-            'записан в её профиль, экран не трогаем '
-            '(${result.servers.length} серверов)');
-        return;
-      }
-
-      // #1.1 — что изменилось по сравнению с прошлым составом подписки.
-      // Копия, а не сама ссылка на список: ниже идут четыре await, и за это
-      // время состав может измениться из другого места (например, удалением
-      // сервера пользователем).
-      //
-      // ⚠️ СРАВНИВАЕМ С ПРОШЛЫМ СОСТАВОМ ЭТОЙ ЖЕ ПОДПИСКИ, А НЕ С ЭКРАНОМ.
-      // `_subServers` — серверы ОТКРЫТОЙ подписки. Импорт второй подписки
-      // сравнивал её с первой и рапортовал «все серверы удалены, добавлены
-      // новые» (жалоба владельца с телефона 26.10.2026), а заодно гонял
-      // перенос ключей и значки «обновлён» по чужому списку. Подписки
-      // независимы: у неоткрытой прошлый состав лежит в её профиле, у
-      // совсем новой его нет — тогда изменений нет, есть только итог.
-      final List<VpnServer> before;
-      if (incomingId == startedActive) {
-        before = List<VpnServer>.of(_subServers);
-      } else {
-        final stored = _profiles.where((p) => p.id == incomingId);
-        before = stored.isEmpty
-            ? result.servers
-            : stored.first.serverLinks
-                .map(_serverFromStoredLink)
-                .whereType<VpnServer>()
-                .toList();
-      }
-
-      // Состав считается ПО ТОЖДЕСТВУ СЕРВЕРА (протокол+адрес+порт+имя), а не
-      // по ключу. Ключ — это полная ссылка, и он законно меняется, когда панель
-      // поправила отпечаток, sni или путь: по ключу баннер писал «+1 · −1» у
-      // сервера «Москва 1. GRPC», который никуда не девался.
-      final sync = SubscriptionSyncResult.diff(
-        before: before,
-        after: result.servers,
-        withPanelConfig: withOutbound,
-        panelProfiles: withFullConfig,
+      await _applyImportedSubscriptionResult(
+        url,
+        result,
+        startedActive: startedActive,
+        fetchLogo: true,
       );
-      // ⚠️ ДО ПЕРЕСБОРКИ СПИСКА: закреплённая СТАРАЯ запись иначе встала бы
-      // наверх рядом с новой, а выбор уехал бы на первый сервер.
-      final rekey = sync.rekey;
-      if (rekey.isNotEmpty) await _applyRekey(rekey, result.servers);
-
-      _subServers = result.servers;
-      // Панель увела редиректом — дальше ходим по новому адресу, иначе после
-      // выключения старого домена обновления молча прекратятся.
-      final effectiveUrl = result.movedTo ?? url;
-      _rebuild(); // сам переназначает выбор по ключу сервера
-      _info = result.info;
-      _subscriptionUrl = effectiveUrl;
-      // Выбор и вариацию НЕ сбрасываем: при автообновлении подписки это молча
-      // перекидывало пользователя на первый сервер (и теряло fragment/fingerprint).
-      // Сбрасываем только если выбранный сервер из подписки пропал.
-      if (_selectedIndex < 0 && _servers.isNotEmpty) _selectedIndex = 0;
-      await _persist();
-      // Мульти-подписки: запоминаем/обновляем профиль и делаем его активным.
-      await _upsertProfile(effectiveUrl);
-      await _maybeStartUpdater();
-      // Аватарку тянем ЗДЕСЬ (импорт/обновление), не в фоне и не на старте.
-      await _refreshLogo(url);
-
-      _lastSync = sync;
-      AppLog.i('Подписка обновлена: ${_lastSync!.summary} '
-          '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
-      // Сервер на месте, а ключ другой — расходятся форматы записи ссылки.
-      // Молча это стоило пользователю 273 сохранённых результатов пинга из 374,
-      // и заметили только через полгода. Пишем ИМЕНА полей — без значений:
-      // в ссылке лежат uuid и пароли, а журнал уезжает в отчёт поддержки.
-      for (final line in _lastSync!.keyChangeReport) {
-        AppLog.w(line);
-      }
-      // Значок «обновлён» на карточке — из ТОГО ЖЕ дифа, второй источник
-      // правды не заводим. Карта ЗАМЕНЯЕТСЯ целиком (а не дополняется): значок
-      // держит «что изменилось В ПОСЛЕДНЕМ обновлении», а не историю — иначе
-      // он показывал бы правку недельной давности как только что случившуюся.
-      _updatedFields = {
-        for (final c in _lastSync!.keyChanges) c.newKey: c.fields,
-      };
-      // ⚠️ AWAIT, А НЕ `unawaited`. Это и есть гарантия «переживает
-      // перезапуск» — той же ценой, что и `_savePinned()` рядом: запись
-      // держит открытым обновление подписки на десятки миллисекунд, но без
-      // неё приложение, закрытое сразу после синхронизации, теряло бы значок.
-      await _updatedStore.save(_updatedFields);
     } catch (e) {
-      // ⚠️ УЗНАННУЮ ОШИБКУ ОБЪЯСНЯЕМ, А НЕ ПЕРЕСКАЗЫВАЕМ ИСХОДНИКОМ.
-      //
-      // Живой клиент 05.09.2026 получил на экран при импорте подписки:
-      // «HandshakeException … CERTIFICATE_VERIFY_FAILED: certificate is not
-      // yet valid (../../../flutter/third_party/boringssl/src/ssl/
-      // handshake.cc:298)». Человеку тут нечего делать: ни слова о том, что
-      // случилось и как чинить, зато есть путь внутрь BoringSSL. А починка
-      // целиком на его стороне — у него отстают часы.
-      //
-      // ⚠️ Незнакомую ошибку НЕ подменяем: общий текст на всё подряд опаснее
-      // его отсутствия, человек поверит совету и пойдёт чинить не то.
-      // Исходный текст хотя бы правдив, и его можно прислать в поддержку.
       final hint = networkErrorHint(e.toString());
       _setErrorMessage(
           hint?.text ?? e.toString(),
@@ -2289,6 +2533,100 @@ class AppState extends ChangeNotifier {
       _loading = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _applyLocalDirectImport(
+    String localUrl,
+    SubscriptionResult result,
+  ) async {
+    final incomingId = SubscriptionProfile.idFor(localUrl);
+    if (incomingId != _activeId) {
+      _logoPath = _cachedLogoFor(incomingId);
+    }
+    final startedActive = _activeId;
+    _loading = true;
+    notifyListeners();
+    try {
+      await _applyImportedSubscriptionResult(
+        localUrl,
+        result,
+        startedActive: startedActive,
+        fetchLogo: false,
+      );
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _applyImportedSubscriptionResult(
+    String url,
+    SubscriptionResult result, {
+    required String? startedActive,
+    required bool fetchLogo,
+  }) async {
+    final incomingId = SubscriptionProfile.idFor(url);
+    final absorbed = await _absorbPanelConfigs(result.servers);
+    final withOutbound = absorbed.withOutbound;
+    final withFullConfig = absorbed.withFullConfig;
+
+    if (_activeId != startedActive) {
+      // Пользователь ушёл на другую подписку. Данные не выбрасываем — кладём
+      // в её профиль на диск, чтобы при возврате они уже были свежими.
+      await _updateProfileQuietly(url, result.info, result.servers);
+      AppLog.i('Ответ подписки пришёл после переключения на другую - '
+          'записан в её профиль, экран не трогаем '
+          '(${result.servers.length} серверов)');
+      return;
+    }
+
+    final List<VpnServer> before;
+    if (incomingId == startedActive) {
+      before = List<VpnServer>.of(_subServers);
+    } else {
+      final stored = _profiles.where((p) => p.id == incomingId);
+      before = stored.isEmpty
+          ? result.servers
+          : stored.first.serverLinks
+              .map(_serverFromStoredLink)
+              .whereType<VpnServer>()
+              .toList();
+    }
+
+    final sync = SubscriptionSyncResult.diff(
+      before: before,
+      after: result.servers,
+      withPanelConfig: withOutbound,
+      panelProfiles: withFullConfig,
+    );
+    final rekey = sync.rekey;
+    if (rekey.isNotEmpty) await _applyRekey(rekey, result.servers);
+
+    _subServers = result.servers;
+    final effectiveUrl = result.movedTo ?? url;
+    _rebuild();
+    _info = result.info;
+    _subscriptionUrl = effectiveUrl;
+    if (_selectedIndex < 0 && _servers.isNotEmpty) _selectedIndex = 0;
+    await _persist();
+    await _upsertProfile(effectiveUrl);
+    await _maybeStartUpdater();
+    if (fetchLogo && SubscriptionProfile.isHttpUrlString(url)) {
+      await _refreshLogo(url);
+    } else if (!SubscriptionProfile.isHttpUrlString(url)) {
+      await _setLogo(null);
+    }
+
+    _lastSync = sync;
+    AppLog.i('Подписка обновлена: ${_lastSync!.summary} '
+        '(конфиг панели: $withOutbound, профилей «Авто»: $withFullConfig)');
+    for (final line in _lastSync!.keyChangeReport) {
+      AppLog.w(line);
+    }
+    _updatedFields = {
+      for (final c in _lastSync!.keyChanges) c.newKey: c.fields,
+    };
+    await _updatedStore.save(_updatedFields);
   }
 
   /// Восстановление сервера из сохранённой ссылки.
@@ -2383,6 +2721,7 @@ class AppState extends ChangeNotifier {
   /// Тянет логотип подписки. Вызывается ТОЛЬКО при импорте/обновлении подписки
   /// (не в фоне и не на старте). Неудача не ломает подписку.
   Future<void> _refreshLogo(String url) async {
+    if (!SubscriptionProfile.isHttpUrlString(url)) return;
     // За какую подписку тянем логотип. Если во время сетевого ожидания
     // пользователь ПЕРЕКЛЮЧИТ подписку — не записываем результат в чужой профиль.
     final startedId = _activeId ?? SubscriptionProfile.idFor(url);
@@ -2629,7 +2968,7 @@ class AppState extends ChangeNotifier {
 
   void _maybeRefreshOnStart() {
     if (_underTest && !debugAllowRefreshOnStart) return;
-    if (_subscriptionUrl == null) return;
+    if (!SubscriptionProfile.isHttpUrlString(_subscriptionUrl)) return;
     unawaited(() async {
       try {
         // Настройки читаем ЗДЕСЬ, а не снаружи: AppState своей копии не держит
@@ -2691,7 +3030,9 @@ class AppState extends ChangeNotifier {
       return false;
     }
     final url = _subscriptionUrl;
-    if (url == null) return false;
+    if (url == null || !SubscriptionProfile.isRefreshableUrlString(url)) {
+      return false;
+    }
     // Второе обновление поверх идущего пишет в те же поля: автообновление по
     // таймеру легко наложится на нажатую руками кнопку. Кнопка на время работы
     // гаснет, а таймер о ней не знает — гейт нужен здесь.
@@ -2726,7 +3067,7 @@ class AppState extends ChangeNotifier {
   /// Данные едут туда же, куда их кладёт [importSource], опоздавший к
   /// переключению подписки: в профиль на диске ([_updateProfileQuietly]).
   Future<bool> _refreshQuietly(SubscriptionProfile p) async {
-    if (p.url.isEmpty) return false;
+    if (!p.isRefreshable) return false;
     // Тот же гейт, что у активной: два ответа подряд пишут в один профиль.
     if (_quietRefreshing.contains(p.id)) {
       AppLog.i('Обновление подписки «${p.safeTitle}» уже идёт - пропущено');
@@ -2738,8 +3079,15 @@ class AppState extends ChangeNotifier {
     // уезжает в отчёт поддержки.
     AppLog.i('Обновление подписки «${p.safeTitle}» (не активной)…');
     try {
-      final result =
-          await _subscription.fetch(p.url, deviceHeaders: await _deviceHeaders());
+      final SubscriptionResult result;
+      if (p.isFileUrl) {
+        final localPath = _tryResolveLocalFilePath(p.url);
+        if (localPath == null) return false;
+        result = await _readLocalSubscriptionFile(localPath);
+      } else {
+        result = await _subscription.fetch(p.url,
+            deviceHeaders: await _deviceHeaders());
+      }
       final absorbed = await _absorbPanelConfigs(result.servers);
       // ⚠️ ИЩЕМ ПРОФИЛЬ ПО ЕГО СОБСТВЕННОМУ АДРЕСУ, а не по тому, куда увёл
       // редирект: id профиля посчитан из первого, и по второму `_updateProfileQuietly`
@@ -2810,11 +3158,32 @@ class AppState extends ChangeNotifier {
       return;
     }
     final wasKey = selectedServer?.key;
+    _selectedGroupCountry = null;
     _selectedIndex = index;
     _selectedVariant = OutboundVariant.none; // ручной выбор — обычная вариация
     // #13 — при активном VPN смена сервера НЕ применяется на лету: предлагаем
     // переподключиться, вместо того чтобы молча оставить старый туннель.
     if (_status.isConnected && wasKey != _servers[index].key) {
+      _setPendingRestart(
+          'Выбран другой сервер - переподключитесь, чтобы применить',
+          message: const UiRestartServerChanged());
+    }
+    _persist();
+    notifyListeners();
+  }
+
+  /// Выбрать заголовок сворачиваемой группы страны (или папки «🌉 Мосты»)
+  /// как виртуальный автосервер по всем узлам этой группы.
+  void selectServerGroup(ServerGroupHeader group) {
+    final srv = ServerGroups.virtualServerFor(group, _servers);
+    if (srv == null || srv.isUnsupported) {
+      _fail(AppErrorCode.serverUnsupported);
+      return;
+    }
+    final wasKey = selectedServer?.key;
+    _selectedGroupCountry = group.country;
+    _selectedVariant = OutboundVariant.none;
+    if (_status.isConnected && wasKey != srv.key) {
       _setPendingRestart(
           'Выбран другой сервер - переподключитесь, чтобы применить',
           message: const UiRestartServerChanged());
@@ -3000,6 +3369,14 @@ class AppState extends ChangeNotifier {
     final soft =
         settings.keepCaptureOnSwitch && _engine.canKeepCaptureFor(settings);
     if (soft) {
+      // Make-Before-Break (Вариант 1): прогреваем DNS нового сервера и выходов,
+      // пока старое прокси-ядро и туннель ещё работают, чтобы между гашением
+      // старого ядра и стартом нового не было сетевых DNS-запросов.
+      final nextServers = <VpnServer>[
+        if (selectedServer != null) selectedServer!,
+        ..._exitServers(settings).values,
+      ];
+      await _engine.prewarmSwitchHosts(nextServers);
       await _engine.disconnectKeepingCapture();
     } else {
       await disconnect();
@@ -3052,6 +3429,14 @@ class AppState extends ChangeNotifier {
       return;
     }
     if (_status.isConnected || _status.state == VpnConnectionState.connecting) {
+      if (_status.isConnected &&
+          settings.seamlessServerSwitch &&
+          selectedServer != null &&
+          _connectedServerKey != null &&
+          selectedServer!.key != _connectedServerKey) {
+        await reconnect(settings);
+        return;
+      }
       // Строку «Отключение по команде пользователя» пишет движок: здесь она
       // дублировала его запись, и одно нажатие выглядело в журнале как два.
       markUserDisconnect();
@@ -3107,11 +3492,9 @@ class AppState extends ChangeNotifier {
     );
     await _engine.connect(
       srv,
-      options: ConnectionOptions(
+      options: _buildConnectionOptions(
+        settings,
         variant: ov?.variant ?? _selectedVariant,
-        settings: settings,
-        exitServers: _exitServers(settings),
-        apiOnlyExitKeys: _apiOnlyExitKeys(settings),
       ),
     );
   }
@@ -3159,18 +3542,49 @@ class AppState extends ChangeNotifier {
   ///
   /// Ключи выбираются чистой функцией [exitServerKeysFor] — на неё есть тест;
   /// здесь остаётся только разрешение ключей в живые серверы по каталогу.
-  Map<String, VpnServer> _exitServers(AppSettings settings) {
-    if (_servers.isEmpty) return const {};
-    final wanted =
-        exitServerKeysFor(settings: settings, selectedKey: selectedServer?.key);
+  ConnectionOptions _buildConnectionOptions(
+    AppSettings settings, {
+    OutboundVariant variant = OutboundVariant.none,
+  }) {
+    final allCatalog = allSubscriptionServers();
+    return ConnectionOptions(
+      variant: variant,
+      settings: settings,
+      exitServers: _exitServers(settings, catalog: allCatalog),
+      apiOnlyExitKeys: _apiOnlyExitKeys(settings, catalog: allCatalog),
+      effectiveApiExitServerKeys: ApiPorts.exitPortsActive(settings)
+          ? ApiPorts.effectiveServerKeys(settings, allCatalog)
+          : const [],
+      apiAutoPoolKeys: ApiPorts.exitPortsActive(settings)
+          ? ApiPorts.autoPoolServerKeys(
+              settings,
+              activeServers: _servers,
+              allServers: allCatalog,
+            )
+          : const [],
+    );
+  }
+
+  Map<String, VpnServer> _exitServers(
+    AppSettings settings, {
+    List<VpnServer>? catalog,
+  }) {
+    final allCatalog = catalog ?? allSubscriptionServers();
+    if (allCatalog.isEmpty) return const {};
+    final wanted = exitServerKeysFor(
+      settings: settings,
+      selectedKey: selectedServer?.key,
+      catalog: allCatalog,
+      activeServers: _servers,
+    );
     if (wanted.isEmpty) return const {};
     final byKey = <String, VpnServer>{
-      for (final s in _servers)
+      for (final s in allCatalog)
         if (s.key.isNotEmpty) s.key: s,
     };
     final out = <String, VpnServer>{};
     for (final k in wanted) {
-      final srv = byKey[k];
+      final srv = byKey[k] ?? ServerGroups.resolveVirtualGroupKey(k, allCatalog);
       if (srv == null) continue;
       // Правка из JSON-редактора применяется и здесь — иначе сервер вёл бы
       // себя не так, как тот же сервер, выбранный вручную.
@@ -3185,8 +3599,16 @@ class AppState extends ChangeNotifier {
   /// Ключи выходов, собранных ТОЛЬКО ради порта API, — для этой же сессии.
   /// Правилам раздельного туннелирования они не адресаты, см.
   /// [apiOnlyExitKeysFor].
-  Set<String> _apiOnlyExitKeys(AppSettings settings) => apiOnlyExitKeysFor(
-      settings: settings, selectedKey: selectedServer?.key);
+  Set<String> _apiOnlyExitKeys(
+    AppSettings settings, {
+    List<VpnServer>? catalog,
+  }) =>
+      apiOnlyExitKeysFor(
+        settings: settings,
+        selectedKey: selectedServer?.key,
+        catalog: catalog ?? allSubscriptionServers(),
+        activeServers: _servers,
+      );
 
   /// Ключи серверов, которым нужен ОТДЕЛЬНЫЙ outbound (тег `exit-…`).
   ///
@@ -3222,10 +3644,16 @@ class AppState extends ChangeNotifier {
   static Set<String> exitServerKeysFor({
     required AppSettings settings,
     required String? selectedKey,
+    Iterable<VpnServer> catalog = const [],
+    Iterable<VpnServer> activeServers = const [],
   }) =>
       {
         ...ruleExitServerKeysFor(settings: settings, selectedKey: selectedKey),
-        ...apiExitServerKeysFor(settings),
+        ...apiExitServerKeysFor(
+          settings,
+          catalog: catalog,
+          activeServers: activeServers,
+        ),
       };
 
   /// Серверы, на которые ссылаются ПРАВИЛА раздельного туннелирования.
@@ -3248,13 +3676,21 @@ class AppState extends ChangeNotifier {
     return wanted;
   }
 
-  /// Серверы, которым выдан отдельный ПОРТ API. Активный сервер входит наравне
-  /// с остальными — см. описание [exitServerKeysFor].
-  static Set<String> apiExitServerKeysFor(AppSettings settings) {
+  /// Серверы, которым выдан отдельный ПОРТ API (и пул «Умный Автовыбор»).
+  /// Активный сервер входит наравне с остальными — см. описание [exitServerKeysFor].
+  static Set<String> apiExitServerKeysFor(
+    AppSettings settings, {
+    Iterable<VpnServer> catalog = const [],
+    Iterable<VpnServer> activeServers = const [],
+  }) {
     if (!ApiPorts.exitPortsActive(settings)) return const {};
     return {
-      for (final key in settings.apiExitServerKeys)
-        if (key.isNotEmpty) key,
+      ...ApiPorts.effectiveServerKeys(settings, catalog),
+      ...ApiPorts.autoPoolServerKeys(
+        settings,
+        activeServers: activeServers,
+        allServers: catalog,
+      ),
     };
   }
 
@@ -3271,8 +3707,14 @@ class AppState extends ChangeNotifier {
   static Set<String> apiOnlyExitKeysFor({
     required AppSettings settings,
     required String? selectedKey,
+    Iterable<VpnServer> catalog = const [],
+    Iterable<VpnServer> activeServers = const [],
   }) =>
-      apiExitServerKeysFor(settings).difference(
+      apiExitServerKeysFor(
+        settings,
+        catalog: catalog,
+        activeServers: activeServers,
+      ).difference(
           ruleExitServerKeysFor(settings: settings, selectedKey: selectedKey));
 
   /// Кандидаты на подмену в режиме «Авто»: сначала профили «Авто …» от панели
@@ -3327,10 +3769,7 @@ class AppState extends ChangeNotifier {
     final balancerServers = _servers.where((s) => !s.isUnsupported).toList();
     await _engine.connectBalancer(
       balancerServers,
-      options: ConnectionOptions(
-          settings: settings,
-          exitServers: _exitServers(settings),
-          apiOnlyExitKeys: _apiOnlyExitKeys(settings)),
+      options: _buildConnectionOptions(settings),
     );
   }
 

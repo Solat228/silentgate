@@ -19,6 +19,8 @@ const apiSecretMarkers = <String>[
   'apiToken',
   'localProxyPassword',
   'localProxyUser',
+  'apiProxyCustomPassword',
+  'apiProxyCustomUser',
   'subscriptionUrl',
   'rawJsonOverride',
   'rawPanelConfig',
@@ -44,6 +46,10 @@ const apiServerKeySchemes = <String>[
 /// запусками. Обратно из id ключ не восстановить.
 String apiServerId(String key) =>
     'srv-${Sha256.ofBytes(utf8.encode(key)).substring(0, 16)}';
+
+/// Непрозрачный устойчивый id подписки для API вместо её секретного URL.
+String apiSubscriptionId(String url) =>
+    'sub-${Sha256.ofBytes(utf8.encode(url)).substring(0, 16)}';
 
 /// Бросает [StateError], если в сериализованном ответе встретилось запрещённое.
 void assertNoSecrets(String json) {

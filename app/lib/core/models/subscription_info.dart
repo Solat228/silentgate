@@ -81,6 +81,16 @@ class SubscriptionInfo {
     return (u / t).clamp(0.0, 1.0);
   }
 
+  /// Ссылка на Telegram-канал / бота из заголовков подписки
+  /// (`support-url` / `announce-url` / `profile-web-page-url`).
+  String? get telegramUrl {
+    final sup = supportUrl?.trim() ?? '';
+    if (sup.isNotEmpty) return sup;
+    final ann = announceUrl?.trim() ?? '';
+    if (ann.isNotEmpty) return ann;
+    return null;
+  }
+
   /// Сериализация для локального сохранения (#5): карточка подписки должна быть
   /// полной сразу после запуска, не дожидаясь ручного «Обновить».
   Map<String, dynamic> toJson() => {
@@ -111,6 +121,43 @@ class SubscriptionInfo {
         supportUrl: j['supportUrl'] as String?,
         logoUrl: j['logoUrl'] as String?,
       );
+
+  /// Извлекает метаданные подписки из комментариев `#key: value` в начале
+  /// текстового файла подписки (формат Happ / v2rayNG / Remnawave) с запасным
+  /// названием [fallbackTitle].
+  factory SubscriptionInfo.fromBodyComments(String text,
+      {String? fallbackTitle}) {
+    final pseudoHeaders = <String, String>{};
+    for (final rawLine in text.split(RegExp(r'\r?\n'))) {
+      final line = rawLine.trim();
+      if (line.isEmpty) continue;
+      if (!line.startsWith('#') && !line.startsWith('//')) break;
+      final content =
+          line.startsWith('//') ? line.substring(2).trim() : line.substring(1).trim();
+      final idx = content.indexOf(':');
+      if (idx <= 0) continue;
+      final k = content.substring(0, idx).trim().toLowerCase();
+      final v = content.substring(idx + 1).trim();
+      if (k.isNotEmpty && v.isNotEmpty) {
+        pseudoHeaders[k] = v;
+      }
+    }
+    final parsed = SubscriptionInfo.fromHeaders(pseudoHeaders);
+    final effectiveTitle =
+        (parsed.title?.trim().isNotEmpty == true) ? parsed.title!.trim() : fallbackTitle;
+    return SubscriptionInfo(
+      title: effectiveTitle,
+      uploadBytes: parsed.uploadBytes,
+      downloadBytes: parsed.downloadBytes,
+      totalBytes: parsed.totalBytes,
+      expiresAt: parsed.expiresAt,
+      updateIntervalHours: parsed.updateIntervalHours,
+      announce: parsed.announce,
+      announceUrl: parsed.announceUrl,
+      supportUrl: parsed.supportUrl,
+      logoUrl: parsed.logoUrl,
+    );
+  }
 
   factory SubscriptionInfo.fromHeaders(Map<String, String> headers) {
     // http нормализует ключи в нижний регистр.
@@ -164,7 +211,7 @@ class SubscriptionInfo {
       expiresAt: expire,
       updateIntervalHours: int.tryParse(h('profile-update-interval') ?? ''),
       announce: announce,
-      announceUrl: h('announce-url'),
+      announceUrl: h('announce-url') ?? h('profile-web-page-url'),
       supportUrl: h('support-url'),
       logoUrl: h('x-logo-url') ?? h('profile-logo-url') ?? h('logo-url'),
     );

@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN désactivé",
   "serviceChecksNow": "Maintenant",
   "serviceChecksExitServer": "Via un autre serveur : la règle de tunnel partagé « {rule} » fait passer ce domaine par « {server} ».",
-  "subBarOpenSite": "Site web",
+  "subBarOpenSite": "Page d'abonnement",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Ouvrir la page d'abonnement dans le navigateur",
   "subSwitcherRefreshingOne": "Actualisation de « {name} »…",
   "subSwitcherRefreshedOne": "« {name} » mis à jour",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "Connexion impossible",
+  "supportChipSiteOrYoutube": "YouTube / site inaccessible",
+  "supportChipSlowSpeed": "Vitesse faible",
+  "supportChipDrops": "Coupures de connexion",
+  "supportChipsHint": "Choix rapide (facultatif, sans détails écrits) :",
+  "supportDescribeOptionalLabel": "Description du problème (facultatif)",
+  "supportNoTextProvided": "Sans description écrite (rapport technique)",
+  "supportCategoriesHeader": "Catégorie",
+  "supportSendDevCopyTitle": "Envoyer une copie anonymisée au développeur",
+  "supportSendDevCopySub": "Sans jeton d'abonnement, IP personnelles ni HWID brut - accélère les correctifs",
+  "supportPreviewDevCopy": "Contenu envoyé ?",
+  "supportPreviewDialogTitle": "Copie anonymisée pour le développeur",
+  "supportSendDevOnlyButton": "Développeur seul",
+  "supportDevCopySent": "Copie envoyée au développeur ({code})",
+  "supportDevCopyFailed": "Échec d'envoi au serveur ({code}) - fichier local prêt",
+  "supportDevOnlyDoneText": "Rapport anonymisé envoyé au serveur développeur. Code : {code}",
+  "supportAttachDiagButton": "Rapport diagnostic",
+  "supportSendToChatAndDev": "Joindre au chat"
 }

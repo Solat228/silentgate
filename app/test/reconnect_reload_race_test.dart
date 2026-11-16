@@ -231,6 +231,36 @@ void main() {
       expect(engine.balancerCalls, 2);
       expect(state.status.isConnected, isTrue);
     });
+
+    test('toggleConnection при выбранном ДРУГОМ сервере делает мягкий reconnect без сноса TUN', () async {
+      const secondLink =
+          'vless://00000000-0000-0000-0000-000000000002@198.51.100.20:443?security=tls&type=tcp#TestNode2';
+      await state.importSource(secondLink);
+      const cfg = AppSettings(
+        captureMode: CaptureMode.tun,
+        seamlessServerSwitch: true,
+      );
+
+      state.selectServer(0);
+      await state.toggleConnection(cfg);
+      await pumpEventQueue();
+      expect(state.status.isConnected, isTrue);
+      expect(engine.connectCalls, 1);
+      final firstKey = state.connectedServerKey;
+
+      // Выбираем другой сервер в списке и нажимаем главную кнопку:
+      state.selectServer(1);
+      expect(state.selectedServer!.key, isNot(firstKey));
+      await state.toggleConnection(cfg);
+      await pumpEventQueue();
+
+      expect(engine.softDisconnectCalls, 1,
+          reason: 'главная кнопка при выбранном другом сервере переключает его без сноса wintun');
+      expect(engine.disconnectCalls, 0);
+      expect(engine.connectCalls, 2);
+      expect(state.status.isConnected, isTrue);
+      expect(state.connectedServerKey, state.selectedServer!.key);
+    });
   });
 
   testWidgets('LiveConnectionsBadge не показывает «Маршруты обновились», если правила не менялись после Connect, но показывает после добавления сайта', (tester) async {

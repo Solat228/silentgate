@@ -211,9 +211,18 @@ void main() {
               (x['port'] as List?)?.contains(443) == true &&
               x['action'] == 'reject')
           .toList();
-      expect(rejects, hasLength(1));
-      expect((rejects.single['process_name'] as List), ['chrome.exe'],
+      expect(rejects, hasLength(2),
+          reason: 'правило по имени дублируется process_name + process_path_regex для .old/подпапок');
+      expect((rejects.first['process_name'] as List), ['chrome.exe'],
           reason: 'неотмеченные приложения идут в final: direct и сохраняют HTTP/3');
+      expect(rejects.last['process_path_regex'], isA<List>(),
+          reason: 'второе правило обязано быть ограничено путями выбранного приложения');
+      expect(
+        rejects.every(
+            (x) => x.containsKey('process_name') || x.containsKey('process_path_regex')),
+        isTrue,
+        reason: 'безусловный запрет UDP:443 отрезал бы HTTP/3 у неотмеченных приложений',
+      );
     });
   });
 

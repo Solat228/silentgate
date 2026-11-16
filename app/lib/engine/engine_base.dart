@@ -864,8 +864,12 @@ abstract class VpnEngineBase implements VpnEngine {
     final ok = await h.probeNow();
     if (stale()) return;
     if (ok) {
-      AppLog.i('Канал при этом отвечает - прямой путь закрыт чем-то своим, '
-          'соединение не трогаю');
+      final silenced = _lossWatch?.noteFalseAlarm() ?? false;
+      AppLog.i(silenced
+          ? 'Канал при этом отвечает - частую прямую проверку отключаю до '
+              'конца сессии (провайдер режет прямые пробы)'
+          : 'Канал при этом отвечает - прямой путь закрыт чем-то своим, '
+              'соединение не трогаю');
       return;
     }
     _enterOffline(aborted, h);
@@ -1152,7 +1156,10 @@ abstract class VpnEngineBase implements VpnEngine {
       proxyUser: auth.user,
       proxyPassword: auth.password,
     );
-    for (var round = 0; round < 2; round++) {
+    final usesWhitelistRelay =
+        session?.servers.any((s) => s.usesWhitelistRelay) ?? false;
+    final maxRounds = usesWhitelistRelay ? 4 : 2;
+    for (var round = 0; round < maxRounds; round++) {
       if (aborted()) return false;
       if (round > 0) {
         await _raceAbort(
@@ -1531,7 +1538,7 @@ abstract class VpnEngineBase implements VpnEngine {
       if (InternetAddress.tryParse(host) != null) continue;
       out.add(host);
     }
-    _knownDomains = out.toList();
+    _knownDomains = out.toList()..sort();
   }
 
   List<String> get knownServerDomains => _knownDomains;
@@ -1755,6 +1762,17 @@ abstract class VpnEngineBase implements VpnEngine {
   /// подстановка IP и защищает.
   final Map<String, List<String>> _resolveCache = {};
 
+  /// До какого момента кэш адресов считается только что прогретым при
+  /// бесшовном переключении сервера (Make-Before-Break, Вариант 1).
+  DateTime? _prewarmedUntil;
+
+  @override
+  Future<void> prewarmSwitchHosts(List<VpnServer> servers) async {
+    if (servers.isEmpty) return;
+    await resolveServerHosts(servers);
+    _prewarmedUntil = DateTime.now().add(const Duration(seconds: 10));
+  }
+
   /// ⚠️ КЭШ АДРЕСОВ ОБЯЗАН ПЕРЕЖИВАТЬ ПЕРЕЗАПУСК ПРОЦЕССА.
   ///
   /// Сценарий, ради которого это делается, — системный always-on VPN с
@@ -1840,12 +1858,18 @@ abstract class VpnEngineBase implements VpnEngine {
     }
     final out = <String, List<String>>{};
     final toLookup = <String>[];
+    final prewarmedActive =
+        _prewarmedUntil != null && DateTime.now().isBefore(_prewarmedUntil!);
     for (final host in hosts) {
       // Готовый адрес спрашивать не у кого — и при поднятой блокировке это
       // единственное, что вообще отвечает мгновенно.
       final parsed = InternetAddress.tryParse(host);
       if (parsed != null) {
         out[host] = [parsed.address];
+      } else if (prewarmedActive && _resolveCache.containsKey(host)) {
+        // Make-Before-Break: хост уже прогрет перед disconnectKeepingCapture(),
+        // поэтому во время смены прокси-ядра не тратим время на повторный DNS.
+        out[host] = _resolveCache[host]!;
       } else {
         toLookup.add(host);
       }

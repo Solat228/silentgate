@@ -20,14 +20,36 @@ import '../xray/outbound_variant.dart' show kDefaultTlsFingerprint;
 /// Xray-конфиги с `balancers`/`burstObservatory`, и разобрать их он не в
 /// состоянии.
 class SingboxOutboundFactory {
-  /// Умеем ли мы построить outbound для этого сервера.
-  static bool supports(VpnServer s) => const {
-        'hysteria2',
-        'vless',
-        'trojan',
-        'shadowsocks',
-        'whitelist_bypass',
-      }.contains(s.protocol);
+  static const _unsupportedTransports = {
+    'xhttp',
+    'splithttp',
+    'kcp',
+    'mkcp',
+    'quic',
+  };
+
+  /// Умеем ли мы построить outbound для этого сервера напрямую в sing-box.
+  ///
+  /// Транспорты Xray (`xhttp`/`splithttp`/`kcp`) sing-box не поддерживает —
+  /// раньше они молча проваливались в пустой `_transportBlock`, превращая узел
+  /// в сломанный plain-TCP. Теперь `supports` честно возвращает `false`, а
+  /// `ExitOutbounds` поднимает их через локальный SOCKS5-мост Xray.
+  static bool supports(VpnServer s) {
+    if (!const {
+      'hysteria2',
+      'vless',
+      'trojan',
+      'shadowsocks',
+      'whitelist_bypass',
+    }.contains(s.protocol)) {
+      return false;
+    }
+    if (s.protocol == 'hysteria2' || s.protocol == 'whitelist_bypass') {
+      return true;
+    }
+    final net = s.network.trim().toLowerCase();
+    return !_unsupportedTransports.contains(net);
+  }
 
   /// [resolvedIp] — адрес сервера, отрезолвленный ЗАРАНЕЕ (до подъёма TUN).
   ///

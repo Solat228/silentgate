@@ -1173,7 +1173,7 @@
   "blockNoticeSub": "When an app or browser reaches a site from the “Block” list, a notification with its name appears at the bottom. Tap it to open this screen.",
   "siteInsecureScheme": "The address is set as http:// - the connection is not encrypted and your ISP sees all of it. Remove “http://” so the browser uses https.",
   "exitServerGone": "The server for this rule is gone from the subscription - its traffic uses the main tunnel",
-  "exitServerUnsupported": "{name}\n\nThis server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.",
+  "exitServerUnsupported": "{name}\n\nThis server cannot run as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server. Traffic for this rule uses the main tunnel.",
   "@exitServerUnsupported": {
     "placeholders": {
       "name": {
@@ -1401,13 +1401,14 @@
   "serviceChecksAfterOff": "VPN is off",
   "serviceChecksNow": "Now",
   "serviceChecksExitServer": "Through another server: the split tunneling rule “{rule}” routes this domain through “{server}”.",
-  "subBarOpenSite": "Website",
+  "subBarOpenSite": "Subscription page",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Open the subscription page in your browser",
   "subSwitcherRefreshingOne": "Refreshing \"{name}\"…",
   "subSwitcherRefreshedOne": "\"{name}\" updated",
   "subSwitcherRefreshFailedOne": "Could not update \"{name}\"",
   "subBarDeleteConfirmNamed": "Delete the \"{name}\" subscription?",
-  "exitServerUnsupportedInfo": "This server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.",
+  "exitServerUnsupportedInfo": "This server cannot run as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server. Traffic for this rule uses the main tunnel.",
   "pingBusyServiceChecks": "Ping unavailable: service check in progress",
   "serviceChecksChannelNotReady": "Tunnel is not ready yet - checks did not run",
   "serviceChecksRetryCheck": "Retry check",
@@ -1975,13 +1976,31 @@
     }
   },
   "exitServerBlockedTitle": "Cannot select as separate exit",
-  "exitServerBlockedNote": "Unavailable as a separate exit: Auto profiles, whitelist relays, and Xray-only protocols work only as the main server.",
-  "exitServerBlockedBody": "Server \"{name}\" cannot currently be assigned as a separate exit for a rule.\n\nPanel \"Auto\" profiles, multi-hop relays, and Xray-only protocols (such as XHTTP) require a full Xray pipeline, whereas secondary per-rule exits are dialed directly by sing-box.\n\nPlease pick a standard single-node server (VLESS, Trojan, Shadowsocks, Hysteria2) for this rule, or select \"{name}\" as your main server on the home screen.",
+  "exitServerBlockedNote": "Unavailable as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server.",
+  "exitServerBlockedBody": "Server \"{name}\" cannot currently be assigned as a separate exit for a rule.\n\nMulti-hop WebRTC whitelist relays, legacy VMess links, and empty profiles without proxy nodes cannot run as a parallel secondary exit.\n\nPlease pick a supported server or \"Auto\" profile for this rule, or select \"{name}\" as your main server on the home screen.",
   "@exitServerBlockedBody": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "Can't connect",
+  "supportChipSiteOrYoutube": "YouTube / site won't open",
+  "supportChipSlowSpeed": "Slow speed",
+  "supportChipDrops": "Connection drops",
+  "supportChipsHint": "Quick category (optional, no need to type details):",
+  "supportDescribeOptionalLabel": "Problem description (optional)",
+  "supportNoTextProvided": "No text description (technical report)",
+  "supportCategoriesHeader": "Category",
+  "supportSendDevCopyTitle": "Send anonymized copy to developer",
+  "supportSendDevCopySub": "No subscription token, personal IPs, or raw HWID - helps fix issues faster",
+  "supportPreviewDevCopy": "What is sent?",
+  "supportPreviewDialogTitle": "Anonymized copy for developer",
+  "supportSendDevOnlyButton": "Developer only",
+  "supportDevCopySent": "Copy sent to developer ({code})",
+  "supportDevCopyFailed": "Could not upload to server ({code}) - local file is ready",
+  "supportDevOnlyDoneText": "Anonymized report sent to the developer server. Report code: {code}",
+  "supportAttachDiagButton": "Diagnostic report",
+  "supportSendToChatAndDev": "Attach to chat"
 }

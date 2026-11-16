@@ -11,6 +11,7 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 | **Xray-core** (`xray.exe`) | см. «О программе» | MPL-2.0 | отдельный процесс, прокси-ядро; в сборке для Microsoft Store — библиотекой внутри своей программы `engine/xraycore` (GPL-3.0), версия — в `engine/xraycore/go.mod` | https://github.com/XTLS/Xray-core |
 | **sing-box** (`sing-box.exe`) | 1.13.14 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
 | **Wintun** (`wintun.dll`) | — | лицензия Wintun (см. `LICENSE-wintun.txt`) | TUN-адаптер для Windows | https://www.wintun.net/ |
+| **Microsoft.Web.WebView2 SDK** (`WebView2LoaderStatic.lib`) | 1.0.2903.40 | BSD-style (см. `app/windows/runner/third_party/webview2/LICENSE.txt`) | статический загрузчик системного Edge WebView2 для встроенного окна капчи БС на Windows | https://aka.ms/webview |
 | **geoip.dat / geosite.dat** | — | CC-BY-SA-4.0 (данные) | списки для маршрутизации | https://github.com/v2fly/domain-list-community |
 
 Только в Android-сборке:

@@ -69,6 +69,8 @@ class _FakeEngine implements VpnEngine {
       throw StateError('VPN в диагностике не поднимается');
   @override
   Future<void> disconnect() async {}
+  @override
+  Future<void> prewarmSwitchHosts(List<VpnServer> servers) async {}
 
   @override
   Future<void> disconnectKeepingCapture() async {}

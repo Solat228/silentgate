@@ -3396,7 +3396,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Website';
+  String get subBarOpenSite => 'Abonnementseite';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint => 'Abonnementseite im Browser öffnen';
@@ -4712,4 +4715,68 @@ class AppLocalizationsDe extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return 'Der Server \"$name\" kann derzeit nicht als separater Ausgang für eine Regel gewählt werden.\n\nPanel-Profile \"Auto\", mehrstufige Relays und Xray-spezifische Protokolle (wie XHTTP) benötigen eine eigene Xray-Pipeline, während sekundäre Ausgänge direkt von sing-box aufgebaut werden.\n\nWählen Sie für diese Regel einen normalen Einzelserver oder nutzen Sie \"$name\" als Hauptserver.';
   }
+
+  @override
+  String get supportChipCantConnect => 'Verbindet nicht';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / Website lädt nicht';
+
+  @override
+  String get supportChipSlowSpeed => 'Niedrige Geschwindigkeit';
+
+  @override
+  String get supportChipDrops => 'Verbindung bricht ab';
+
+  @override
+  String get supportChipsHint =>
+      'Schnellauswahl (optional, keine Beschreibung nötig):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'Problembeschreibung (optional)';
+
+  @override
+  String get supportNoTextProvided =>
+      'Ohne Textbeschreibung (technischer Bericht)';
+
+  @override
+  String get supportCategoriesHeader => 'Kategorie';
+
+  @override
+  String get supportSendDevCopyTitle =>
+      'Anonymisierte Kopie an Entwickler senden';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Ohne Abo-Token, persönliche IPs oder rohe HWID - hilft Fehler schneller zu beheben';
+
+  @override
+  String get supportPreviewDevCopy => 'Was wird gesendet?';
+
+  @override
+  String get supportPreviewDialogTitle => 'Anonymisierte Kopie für Entwickler';
+
+  @override
+  String get supportSendDevOnlyButton => 'Nur an Entwickler';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Kopie an Entwickler gesendet ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Server-Upload fehlgeschlagen ($code) - lokale Datei bereit';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Anonymisierter Bericht an den Entwickler-Server gesendet. Code: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Diagnosebericht';
+
+  @override
+  String get supportSendToChatAndDev => 'Im Chat anhängen';
 }

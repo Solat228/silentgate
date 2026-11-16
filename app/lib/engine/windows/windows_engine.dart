@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
@@ -25,6 +26,7 @@ import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/singbox/exit_router_config_builder.dart';
 import '../../core/xray/xray_config_builder.dart' show XrayPorts;
+import '../../core/xray/xray_exit_bridge.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
 import 'singbox_process.dart';
@@ -37,6 +39,11 @@ import 'tun/kill_switch_plan_file.dart';
 import 'tun/singbox_router_windows.dart';
 import 'tun/tun_router.dart';
 import '../../core/whitelist_bypass/whitelist_bypass_helper.dart';
+import '../../core/dpi/dpi_bypass_lists.dart';
+import '../../core/dpi/dpi_bypass_proxy.dart';
+import '../../core/dpi/dpi_proxy_config_injector.dart';
+import '../../core/dpi/dpi_strategy.dart';
+import 'zapret_winws_runner.dart';
 import 'tun/tun_task_auto_setup.dart';
 import 'xray_paths.dart';
 import 'xray_process.dart';
@@ -47,7 +54,7 @@ import 'xray_stats.dart';
 ///
 /// Платформо-независимая половина — сессия, поколения, автовосстановление,
 /// выбор конфига и ядра — живёт в [VpnEngineBase].
-class WindowsEngine extends VpnEngineBase {
+class WindowsEngine extends VpnEngineBase implements StandaloneApiPortsEngine {
   XrayProcess? _process;
 
   /// Локальный DNS-форвардер с запасным резолвером (см. _startFallbackDns).
@@ -70,7 +77,18 @@ class WindowsEngine extends VpnEngineBase {
   /// (`_tunRouter`) физически не запускается (он живёт только при
   /// `captureMode == CaptureMode.tun`).
   SingboxProcess? _exitRouter;
+
+  /// Вспомогательный Xray-мост выходов («Авто (YouTube)» / `XHTTP`), который
+  /// поднимается ТОЛЬКО когда основной сервер сессии — `Hysteria2` (`_singbox`).
+  /// При основном сервере на Xray мосты встраиваются прямо в основной `_process`.
+  XrayProcess? _auxXray;
+  SingboxProcess? _standaloneExitRouter;
+  XrayProcess? _standaloneAuxXray;
+  String? _standaloneSignature;
   WhitelistBypassProcess? _whitelistBypass;
+  LocalDpiBypassProxy? _dpiDirectProxy;
+  LocalDpiBypassProxy? _dpiFallbackProxy;
+  final ZapretWinwsRunner _zapretWinws = ZapretWinwsRunner();
   Timer? _statsTimer;
 
   /// Сторож зависшего TUN-ядра. См. [AppSettings.tunWatchdogSeconds].
@@ -157,6 +175,8 @@ class WindowsEngine extends VpnEngineBase {
   /// Решение: пока туннель жив, строим конфиг с ЕГО списком, а не с заново
   /// пересобранным. Условие безопасности проверяется явно — см. [_bypassForReuse].
   List<String>? _liveBypassIps;
+  List<String>? _liveServerDomains;
+  bool? _liveBlockTunnelQuic;
 
   /// Секрет Clash API, С КОТОРЫМ ПОДНЯТ живой туннель.
   ///
@@ -277,7 +297,6 @@ class WindowsEngine extends VpnEngineBase {
   /// смене сервера поле возвращается к секрету живого туннеля (см. `raiseTun`),
   /// и снимок, сделанный раньше, стучался бы с чужим паролем.
   @override
-  @override
   LiveCoreApi? get captureCoreApi => _tunActive
       ? LiveCoreApi(port: _tunApiPort, secret: singboxApiSecret)
       : null;
@@ -385,19 +404,32 @@ class WindowsEngine extends VpnEngineBase {
   ///
   /// ⚠️ Порты прокси-ядра (socks/http/api) проверяются ВСЕГДА: их держит ядро,
   /// которое как раз гасится и поднимается заново, и вот там конфликт реален.
-  static List<int> corePortsFor(AppSettings s, XrayPorts ports,
-      {bool tunnelStaysUp = false}) {
+  static List<int> corePortsFor(
+    AppSettings s,
+    XrayPorts ports, {
+    bool tunnelStaysUp = false,
+    Iterable<VpnServer> catalog = const [],
+  }) {
     final active = ApiPorts.exitPortsActive(s) && !tunnelStaysUp;
-    final keys = active ? s.apiExitServerKeys : const <String>[];
+    final keys =
+        active ? ApiPorts.effectiveServerKeys(s, catalog) : const <String>[];
+    final portMap = active
+        ? ApiPorts.resolvePortMap(
+            keys,
+            assignedPorts: s.apiAssignedPorts,
+            controlPort: s.apiControlPort,
+            autoPort: s.apiAutoPort,
+            directPort: s.apiDirectPort,
+          )
+        : const <String, int>{};
+    final serverPorts = portMap.values.toList()..sort();
     return [
       ports.socks,
       ports.http,
       ports.api,
-      for (final k in ApiPorts.withinRange(keys)) ApiPorts.forServer(keys, k)!,
-      // Порт «Прямо» поднимается по тому же гейту, что и порты серверов, и НЕ
-      // зависит от их числа — см. `buildApiDirectInbound`/`buildApiExitInbounds`
-      // (`core/net/api_ports.dart`) и `_startExitRouter`.
-      if (active) ApiPorts.direct,
+      ...serverPorts,
+      if (active && s.apiAutoPortEnabled) s.apiAutoPort,
+      if (active) s.apiDirectPort,
     ];
   }
 
@@ -417,6 +449,11 @@ class WindowsEngine extends VpnEngineBase {
     final gen = newGeneration();
     bool aborted() => isStale(gen);
 
+    // Если при выключенном VPN работал автономный маршрутизатор API-портов —
+    // освобождаем его порты ДО проверки конфликтов новой сессии.
+    await stopStandaloneApiPorts();
+    if (aborted()) return;
+
     // message: null затирал бы уже выставленное базой «Пробую другой сервер: …»
     // — она ставит его прямо перед этим вызовом, и подпись жила меньше секунды.
     setStatus(
@@ -430,6 +467,14 @@ class WindowsEngine extends VpnEngineBase {
     );
 
     final singboxCore = session.core == ProxyCore.singbox;
+    final exitsActive = options.captureMode == CaptureMode.tun ||
+        _apiExitsActive(options.settings);
+    final bridgePorts = exitsActive
+        ? assignXrayExitBridgePorts(
+            options.exitServers,
+            basePort: _xrayExitBridgeBasePort,
+          )
+        : const <String, int>{};
     final location = XrayPaths.locate();
     final singboxExe = singboxCore ? SingboxProcess.locate() : null;
     final needsWhitelistRelay =
@@ -461,7 +506,7 @@ class WindowsEngine extends VpnEngineBase {
       );
       return;
     }
-    if (!singboxCore && location == null) {
+    if ((!singboxCore || bridgePorts.isNotEmpty) && location == null) {
       await cleanup();
       setStatus(
         VpnConnectionState.error,
@@ -492,14 +537,22 @@ class WindowsEngine extends VpnEngineBase {
     // проверять порты, которых не возникнет, — значит рисковать ложным отказом
     // подключения на чужом порту.
     final apiKeys = _apiExitsActive(options.settings)
-        ? options.settings.apiExitServerKeys
+        ? (options.effectiveApiExitServerKeys ??
+            ApiPorts.effectiveServerKeys(
+              options.settings,
+              [...servers, ...options.exitServers.values],
+            ))
         : const <String>[];
     // Порты выходов живого туннеля — его, проверять их нельзя (см.
     // [tunnelHoldsItsPorts]).
     final corePorts = [
-      ...corePortsFor(options.settings, ports,
-          tunnelStaysUp: tunnelHoldsItsPorts),
+      ...corePortsFor(
+        options.settings.copyWith(apiExitServerKeys: apiKeys),
+        ports,
+        tunnelStaysUp: tunnelHoldsItsPorts,
+      ),
       if (needsWhitelistRelay) whitelistRelayPort,
+      ...bridgePorts.values,
     ];
     var conflict = await PortCheck.findConflict(corePorts);
     // ⚠️ ЖДЁМ И ТОГДА, КОГДА ВЛАДЕЛЬЦА ОПОЗНАТЬ НЕ УДАЛОСЬ.
@@ -572,7 +625,7 @@ class WindowsEngine extends VpnEngineBase {
           onInteractiveUrl: (kind, url) {
             if (aborted()) return;
             final msg = kind == 'captcha'
-                ? 'Пройдите капчу VK в открывшемся браузере ($url)...'
+                ? 'Подтверждение подключения ВК (автопроверка)...'
                 : 'Подтвердите вход в открывшемся браузере ($url)...';
             setStatus(
               VpnConnectionState.connecting,
@@ -589,8 +642,49 @@ class WindowsEngine extends VpnEngineBase {
 
       setStatus(VpnConnectionState.connecting,
           step: ConnectStep.core, message: status.message);
+      var effectiveConfigJson = configJson;
+      Map<String, String> bridgeResolvedIps = const {};
+      if (bridgePorts.isNotEmpty) {
+        final preExitHosts = await resolveServerHosts([
+          ...servers,
+          ...options.exitServers.values,
+        ]);
+        if (aborted()) {
+          await _stopOwnProcesses(mine);
+          return;
+        }
+        bridgeResolvedIps = VpnEngineBase.pickOneIpPerHost(preExitHosts);
+        if (!singboxCore) {
+          effectiveConfigJson = injectXrayExitBridges(
+            configJson,
+            exitServers: options.exitServers,
+            bridgePorts: bridgePorts,
+            resolvedIps: bridgeResolvedIps,
+            socksUser: localInboundUser,
+            socksPassword: localInboundPassword,
+            variant: options.variant,
+          );
+        }
+      }
+      if (options.captureMode == CaptureMode.systemProxy) {
+        await _ensureDpiProxies(options);
+        if (aborted()) {
+          await _stopOwnProcesses(mine);
+          return;
+        }
+        final effectiveSplit =
+            DpiBypassLists.applyGlobalDpiRules(options.split, options.settings);
+        effectiveConfigJson = DpiProxyConfigInjector.inject(
+          effectiveConfigJson,
+          singboxCore: singboxCore,
+          effectiveSplit: effectiveSplit,
+          httpPort: ports.http,
+          directPort: _dpiDirectProxy?.port,
+          fallbackPort: _dpiFallbackProxy?.port,
+        );
+      }
       final configPath =
-          await _writeConfigJson(configJson, singbox: singboxCore);
+          await _writeConfigJson(effectiveConfigJson, singbox: singboxCore);
 
       // Одно из двух ядер: Xray или (для hysteria2) sing-box.
       String Function() tailOf;
@@ -608,6 +702,28 @@ class WindowsEngine extends VpnEngineBase {
         );
         _singbox = process;
         mine.add(process);
+        if (bridgePorts.isNotEmpty) {
+          final auxJson = injectXrayExitBridges(
+            null,
+            exitServers: options.exitServers,
+            bridgePorts: bridgePorts,
+            resolvedIps: bridgeResolvedIps,
+            socksUser: localInboundUser,
+            socksPassword: localInboundPassword,
+            variant: options.variant,
+          );
+          final auxPath =
+              await _writeConfigJson(auxJson, name: 'xray_exits.json');
+          final auxProc = XrayProcess();
+          await auxProc.start(
+            executable: location!.executable,
+            configPath: auxPath,
+            assetDir: location.assetDir,
+            logPath: XrayProcess.logPathFor(await AppPaths.supportDir()),
+          );
+          _auxXray = auxProc;
+          mine.add(auxProc);
+        }
         tailOf = () => process.tail;
         alive = () => process.isRunning;
         exited = process.exitCode;
@@ -640,8 +756,13 @@ class WindowsEngine extends VpnEngineBase {
         }
       });
 
-      // Небольшая пауза на инициализацию ядра.
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Ожидаем готовность прокси-ядра: при бесшовном переключении с живым TUN
+      // проверяем открытие SOCKS-порта каждые 50 мс, чтобы переключение ядра
+      // занимало ~60–100 мс вместо фиксированных 500 мс (Вариант 1).
+      await _waitCoreReady(
+        alive: alive,
+        fastPoll: _tunActive && options.settings.seamlessServerSwitch,
+      );
       if (!alive()) {
         // Показываем реальную причину из вывода ядра, а не голое «завершилось».
         final tail = tailOf().trim();
@@ -671,14 +792,26 @@ class WindowsEngine extends VpnEngineBase {
         }
       }
 
-      // Маршрутизатор выходов «Только прокси» (задача 3b): второе ядро
-      // (`_tunRouter`) в этом режиме не поднимается вовсе (см. блок выше,
-      // условие `captureMode == CaptureMode.tun`), а значит порты серверов
-      // из ApiPorts физически негде слушать. Здесь — третий, отдельный
-      // sing-box, БЕЗ tun-инбаунда и без прав администратора.
-      if (options.captureMode == CaptureMode.proxyOnly &&
+      // Маршрутизатор выходов в режимах без туннеля (`proxyOnly` и
+      // `systemProxy`): туннельный `_tunRouter` в этих режимах не поднимается,
+      // поэтому локальные порты серверов, «Умный Автовыбор» и «Прямо»
+      // обслуживает отдельный sing-box без tun-инбаунда и без прав администратора.
+      if (options.captureMode != CaptureMode.tun &&
           _apiExitsActive(options.settings)) {
-        mine.add(await _startExitRouter(options, aborted));
+        mine.add(await _startExitRouter(
+          options,
+          aborted,
+          effectiveApiKeys: apiKeys,
+        ));
+      }
+      if (options.captureMode != CaptureMode.tun) {
+        final nonTunServerIps = <String>{
+          for (final s in servers)
+            if (InternetAddress.tryParse(s.address.trim()) != null)
+              s.address.trim(),
+          ...bridgeResolvedIps.values,
+        }.toList();
+        await _syncZapretWinws(options.settings, nonTunServerIps);
       }
 
       // ⚠️ СИСТЕМНЫЙ ПРОКСИ СТАВИТСЯ И ВМЕСТО ТУННЕЛЯ, И ВМЕСТЕ С НИМ.
@@ -749,7 +882,7 @@ class WindowsEngine extends VpnEngineBase {
       _lastSampleTime = DateTime.now();
       _startStatsPolling(singboxCore ? null : location!.executable,
           singbox: singboxCore,
-          xrayConfig: singboxCore ? null : _decodeConfig(configJson));
+          xrayConfig: singboxCore ? null : _decodeConfig(effectiveConfigJson));
 
       // ⚠️ ПОСЛЕ ВОССТАНОВЛЕНИЯ «ПОДКЛЮЧЕНО» — ТОЛЬКО ПО ЖИВОЙ ПРОБЕ. Ядро
       // стартует и при мёртвом сервере; без этой строки человек получал
@@ -1073,6 +1206,44 @@ class WindowsEngine extends VpnEngineBase {
     return fresh;
   }
 
+  List<String> _domainsForReuse(
+      List<VpnServer> sessionServers, AppSettings s) {
+    final fresh = knownServerDomains;
+    final live = _liveServerDomains;
+    if (!_tunActive || !s.seamlessServerSwitch || live == null) return fresh;
+
+    final needed = <String>{};
+    for (final v in sessionServers) {
+      final addr = v.address.trim().toLowerCase();
+      if (addr.isNotEmpty && InternetAddress.tryParse(addr) == null) {
+        needed.add(addr);
+      }
+      final full = v.effectiveFullConfig;
+      if (full.isNotEmpty) {
+        for (final h in extractFullConfigHosts(full)) {
+          final host = h.trim().toLowerCase();
+          if (host.isNotEmpty && InternetAddress.tryParse(host) == null) {
+            needed.add(host);
+          }
+        }
+      }
+      if (v.usesWhitelistRelay) {
+        for (final d in WhitelistBypassEndpoint.domainsForServer(v)) {
+          final host = d.trim().toLowerCase();
+          if (host.isNotEmpty && InternetAddress.tryParse(host) == null) {
+            needed.add(host);
+          }
+        }
+      }
+    }
+    if (live.toSet().containsAll(needed)) {
+      return live;
+    }
+    AppLog.i('Домены нового сервера не покрыты правилом живого туннеля - '
+        'туннель придётся пересоздать');
+    return fresh;
+  }
+
   @visibleForTesting
   Future<bool> raiseTun({
     required ConnectionOptions options,
@@ -1092,9 +1263,16 @@ class WindowsEngine extends VpnEngineBase {
       ...servers,
       ...options.exitServers.values,
     ]);
+    final bridgePorts = assignXrayExitBridgePorts(
+      options.exitServers,
+      basePort: _xrayExitBridgeBasePort,
+    );
     final exitsBuilt = ExitOutbounds.build(
       servers: options.exitServers,
       resolvedIps: VpnEngineBase.pickOneIpPerHost(exitHosts),
+      xrayBridgePorts: bridgePorts,
+      xrayBridgeUser: localInboundUser,
+      xrayBridgePassword: localInboundPassword,
     // ⚠️ ЗАПАСНОЙ ПУТЬ ВЫХОДА: умер выход — трафик правила уходит в общий
     // туннель, а не в никуда. До этого отказ выхода означал, что правило
     // просто перестаёт работать, и человек видел не «выход умер», а
@@ -1114,6 +1292,17 @@ class WindowsEngine extends VpnEngineBase {
       AppLog.i('Мульти-VPN: дополнительных серверов '
           '${exitsBuilt.outbounds.length}');
     }
+    await _ensureDpiProxies(options);
+    final effectiveSplit =
+        DpiBypassLists.applyGlobalDpiRules(options.split, options.settings);
+    final dpiOutbounds = LocalDpiBypassProxy.buildExitOutbounds(
+      directPort: _dpiDirectProxy?.port,
+      fallbackPort: _dpiFallbackProxy?.port,
+    );
+    final allExitOutbounds = <Map<String, dynamic>>[
+      ...exitsBuilt.outbounds,
+      ...dpiOutbounds,
+    ];
     // ⚠️ ПЕРЕИСПОЛЬЗУЕМ ТУННЕЛЬ — ЗНАЧИТ ЖИВЁМ С ЕГО СЕКРЕТОМ.
     // Возвращаем поле к значению живого туннеля ДО сборки конфига: иначе и
     // сверка не совпадёт, и сторож пойдёт стучаться с чужим паролем.
@@ -1128,7 +1317,7 @@ class WindowsEngine extends VpnEngineBase {
     // round-robin мог бы отдать ДРУГОЙ набор A-записей, и «серверы сессии»
     // разошлись бы с адресами, по которым только что собраны outbound'ы.
     final sessionHosts = <String, List<String>>{};
-    for (final v in servers) {
+    for (final v in [...servers, ...options.exitServers.values]) {
       final addr = v.address.trim();
       if (addr.isNotEmpty && exitHosts.containsKey(addr)) {
         sessionHosts[addr] = exitHosts[addr]!;
@@ -1152,10 +1341,19 @@ class WindowsEngine extends VpnEngineBase {
     final ipv6Available = await _ipv6Reality();
     final allowIpv6Dns = options.settings.tunIpv6 && ipv6Available;
     final directDns = await _systemDnsServer(allowIpv6: allowIpv6Dns);
+    final whitelistStandalone =
+        servers.isNotEmpty && servers.every((s) => s.isWhitelistBypass);
+    final wantBlockTunnelQuic = (_tunActive &&
+            options.settings.seamlessServerSwitch &&
+            _liveBlockTunnelQuic != null)
+        ? _liveBlockTunnelQuic!
+        : (servers.isEmpty ||
+            servers
+                .any((s) => s.core == ProxyCore.xray || s.usesWhitelistRelay));
     final tunOptions = TunOptions.fromSettings(
       options.settings,
-      blockTunnelQuic:
-          servers.isEmpty || servers.any((s) => s.core == ProxyCore.xray),
+      blockTunnelQuic: wantBlockTunnelQuic,
+      tunnelIpv4Only: whitelistStandalone,
       // ⚠️ НЕ ТОЛЬКО СЕРВЕР СЕССИИ. При включённой бесшовности сюда идут и
       // запасные серверы — тогда конфиг перестаёт зависеть от того, кто из них
       // выбран, и переход на запасной не требует пересоздавать туннель (см.
@@ -1176,8 +1374,12 @@ class WindowsEngine extends VpnEngineBase {
       // изменился и туннель пересоздаётся.
       tunnelExcludeServerIps: tunnelExcludeIpsFor(
           options.settings.tunnelExcludeScope, bypassIps, sessionHosts),
-      // Имена ВСЕЙ инфраструктуры — резолвим только напрямую.
-      serverDomains: knownServerDomains,
+      // Имена ВСЕЙ инфраструктуры — резолвим только напрямую (заморожены
+      // на время жизни туннеля, если покрывают домены активной сессии).
+      serverDomains: _domainsForReuse(
+        [...servers, ...options.exitServers.values],
+        options.settings,
+      ),
       // Резолвер для «Прямо». Спрашивается ДО подъёма НОВОГО туннеля: после
       // него системный резолвер указывает на сам туннель, и «Прямо»
       // резолвилось бы через VPN. Прежний туннель (тот, что держит kill
@@ -1236,14 +1438,21 @@ class WindowsEngine extends VpnEngineBase {
     // сверяем ИСХОДНЫЕ опции — тем же способом на обеих сторонах сравнения. Раз
     // они не изменились, живой туннель работает на подобранной комбинации, а
     // подбирать заново нечего.
+    final apiOptions = _apiExitsActive(options.settings)
+        ? ApiExitRouterOptions.fromSettings(
+            options.settings,
+            autoPoolKeys: options.apiAutoPoolKeys,
+          )
+        : const ApiExitRouterOptions();
     final wantConfig = _tunConfigPreview(
-      split: options.split,
+      split: effectiveSplit,
       options: tunOptions,
-      exitOutbounds: exitsBuilt.outbounds,
+      exitOutbounds: allExitOutbounds,
       apiKeys: apiKeys,
       apiOnlyKeys: options.apiOnlyExitKeys.toList(),
       apiToken:
           _apiExitsActive(options.settings) ? options.settings.apiToken : '',
+      apiOptions: apiOptions,
     );
     final live = _liveTunConfig;
     final wantPlan =
@@ -1298,6 +1507,7 @@ class WindowsEngine extends VpnEngineBase {
             settings: options.settings,
             apiPort: _tunApiPort,
             secret: singboxApiSecret);
+        await _syncZapretWinws(options.settings, tunOptions.serverIps);
         return true;
       }
       AppLog.w('Туннель с тем же конфигом не отвечает по своему API - '
@@ -1322,11 +1532,15 @@ class WindowsEngine extends VpnEngineBase {
         : null;
     if (router != null && _handoverPossible(options.settings)) {
       _tunOwnerGen = gen;
+      if (_tunRouter is ApiExitOptionsConfigurable) {
+        (_tunRouter as ApiExitOptionsConfigurable)
+            .configureApiExitOptions(apiOptions);
+      }
       // План — ДО просьбы: помощник прочтёт его, как только её увидит.
       await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
       handedOver = await router.handover(
-        options.split,
-        exitOutbounds: exitsBuilt.outbounds,
+        effectiveSplit,
+        exitOutbounds: allExitOutbounds,
         xraySocksPort: ports.socks,
         xraySocksUser: localInboundUser,
         xraySocksPassword: localInboundPassword,
@@ -1350,6 +1564,8 @@ class WindowsEngine extends VpnEngineBase {
       _liveTunConfig = null;
       _liveKillSwitchPlan = null;
       _liveBypassIps = null;
+      _liveServerDomains = null;
+      _liveBlockTunnelQuic = null;
       _liveTunApiSecret = null;
       await Future.delayed(const Duration(milliseconds: 600));
     }
@@ -1364,13 +1580,17 @@ class WindowsEngine extends VpnEngineBase {
     // Пишем ВСЕГДА, в том числе `enabled: false`: помощник обязан отличать
     // «блокировать не просили» от «файл потерян от прошлой сессии».
     if (!handedOver) {
+      if (_tunRouter is ApiExitOptionsConfigurable) {
+        (_tunRouter as ApiExitOptionsConfigurable)
+            .configureApiExitOptions(apiOptions);
+      }
       // Пакет MSIX: задача Планировщика ставится до запуска помощника — тогда
       // он сам стартует уже через неё, а не через второе окно UAC.
       await _tunTaskSetup(options.settings);
       await _writeKillSwitchPlan(options.settings, tunOptions.serverIps);
       await _tunRouter.start(
-        options.split,
-        exitOutbounds: exitsBuilt.outbounds,
+        effectiveSplit,
+        exitOutbounds: allExitOutbounds,
         xraySocksPort: ports.socks,
         xraySocksUser: localInboundUser,
         xraySocksPassword: localInboundPassword,
@@ -1404,6 +1624,8 @@ class WindowsEngine extends VpnEngineBase {
     _liveTunConfig = wantConfig;
     _liveKillSwitchPlan = wantPlan;
     _liveBypassIps = tunOptions.serverIps;
+    _liveServerDomains = tunOptions.serverDomains;
+    _liveBlockTunnelQuic = tunOptions.blockTunnelQuic;
     _liveTunApiSecret = singboxApiSecret;
     _tunFailStreak = 0;
     // Подбор стека/MTU идёт до двух минут — за это время пользователь мог
@@ -1433,7 +1655,115 @@ class WindowsEngine extends VpnEngineBase {
         settings: options.settings,
         apiPort: _tunApiPort,
         secret: singboxApiSecret);
+    await _syncZapretWinws(options.settings, tunOptions.serverIps);
     return true;
+  }
+
+  /// Быстрое ожидание старта прокси-ядра (Вариант 1 бесшовного переключения).
+  Future<void> _waitCoreReady({
+    required bool Function() alive,
+    required bool fastPoll,
+  }) async {
+    if (!fastPoll) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      return;
+    }
+    const step = Duration(milliseconds: 50);
+    var elapsed = 0;
+    while (elapsed < 500) {
+      await Future.delayed(step);
+      elapsed += 50;
+      if (!alive()) return;
+      try {
+        final s = await Socket.connect(
+          InternetAddress.loopbackIPv4,
+          ports.socks,
+          timeout: const Duration(milliseconds: 35),
+        );
+        s.destroy();
+        return;
+      } catch (_) {}
+    }
+  }
+
+  /// Поднять или обновить встроенные локальные SOCKS5-прокси обхода DPI
+  /// (`dpi://zapret-direct` и `dpi://zapret-fallback`).
+  Future<void> _ensureDpiProxies(ConnectionOptions options) async {
+    final s = options.settings;
+    final modes = DpiBypassLists.requiredModes(options.split, s);
+    final strategy = DpiDesyncConfig.fromSettings(s);
+    final fallbackTimeout = Duration(milliseconds: s.dpiFallbackTimeoutMs);
+    final thresholdBytes = s.dpiTspuThresholdKb * 1024;
+    if (modes.needsDirect) {
+      _dpiDirectProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: false,
+        strategy: strategy,
+        fallbackTimeout: fallbackTimeout,
+        tspuThresholdBytes: thresholdBytes,
+        bindToPhysicalNic: true,
+        registerInRuntime: true,
+      );
+      _dpiDirectProxy!.updateConfig(
+        strategy: strategy,
+        fallbackTimeout: fallbackTimeout,
+        tspuThresholdBytes: thresholdBytes,
+      );
+      await _dpiDirectProxy!.start();
+    } else if (_dpiDirectProxy != null) {
+      await _dpiDirectProxy!.stop();
+      _dpiDirectProxy = null;
+    }
+
+    if (modes.needsFallback) {
+      _dpiFallbackProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: true,
+        vpnSocksPort: ports.socks,
+        vpnSocksUsername: localInboundUser,
+        vpnSocksPassword: localInboundPassword,
+        strategy: strategy,
+        fallbackTimeout: fallbackTimeout,
+        tspuThresholdBytes: thresholdBytes,
+        bindToPhysicalNic: true,
+        registerInRuntime: true,
+      );
+      _dpiFallbackProxy!.updateConfig(
+        strategy: strategy,
+        fallbackTimeout: fallbackTimeout,
+        tspuThresholdBytes: thresholdBytes,
+      );
+      _dpiFallbackProxy!.updateVpnSocks(
+        port: ports.socks,
+        username: localInboundUser,
+        password: localInboundPassword,
+      );
+      await _dpiFallbackProxy!.start();
+    } else if (_dpiFallbackProxy != null) {
+      await _dpiFallbackProxy!.stop();
+      _dpiFallbackProxy = null;
+    }
+  }
+
+  Future<void> _stopDpiServices() async {
+    final d = _dpiDirectProxy;
+    final f = _dpiFallbackProxy;
+    _dpiDirectProxy = null;
+    _dpiFallbackProxy = null;
+    await Future.wait([
+      if (d != null) d.stop(),
+      if (f != null) f.stop(),
+      _zapretWinws.stop(),
+    ]);
+  }
+
+  Future<void> _syncZapretWinws(
+    AppSettings settings,
+    List<String> vpnServerIps,
+  ) async {
+    if (settings.dpiBypassDiscordUdpWinws) {
+      await _zapretWinws.start(vpnServerIps: vpnServerIps);
+    } else if (_zapretWinws.isRunning) {
+      await _zapretWinws.stop();
+    }
   }
 
   /// Поднят ли сейчас туннель (для теста: устаревший запуск не имеет права
@@ -1457,6 +1787,7 @@ class WindowsEngine extends VpnEngineBase {
     required List<String> apiKeys,
     required List<String> apiOnlyKeys,
     required String apiToken,
+    ApiExitRouterOptions apiOptions = const ApiExitRouterOptions(),
   }) =>
       SingboxConfigBuilder(
         xraySocksPort: ports.socks,
@@ -1467,6 +1798,7 @@ class WindowsEngine extends VpnEngineBase {
         apiExitServerKeys: apiKeys,
         apiOnlyExitKeys: apiOnlyKeys,
         apiToken: apiToken,
+        apiOptions: apiOptions,
       ).buildJson(split);
 
   /// Свернуть УСТАРЕВШИЙ запуск: погасить то, что подняли МЫ, и не трогать
@@ -1506,6 +1838,8 @@ class WindowsEngine extends VpnEngineBase {
     _liveTunConfig = null;
     _liveKillSwitchPlan = null;
     _liveBypassIps = null;
+    _liveServerDomains = null;
+    _liveBlockTunnelQuic = null;
     _liveTunApiSecret = null;
   }
 
@@ -1529,6 +1863,7 @@ class WindowsEngine extends VpnEngineBase {
       if (identical(_process, p)) _process = null;
       if (identical(_singbox, p)) _singbox = null;
       if (identical(_exitRouter, p)) _exitRouter = null;
+      if (identical(_auxXray, p)) _auxXray = null;
       if (identical(_whitelistBypass, p)) _whitelistBypass = null;
       if (p is XrayProcess) {
         tasks.add(p.stop().whenComplete(p.dispose));
@@ -1557,7 +1892,10 @@ class WindowsEngine extends VpnEngineBase {
   /// «моё», чтобы при отмене погасить именно его, а не то, что успела положить
   /// в поле новая сессия.
   Future<SingboxProcess?> _startExitRouter(
-      ConnectionOptions options, bool Function() aborted) async {
+    ConnectionOptions options,
+    bool Function() aborted, {
+    List<String>? effectiveApiKeys,
+  }) async {
     final routerExe = SingboxProcess.locate();
     if (routerExe == null) {
       AppLog.w('sing-box.exe не найден - порты API для серверов не поднимутся');
@@ -1585,6 +1923,12 @@ class WindowsEngine extends VpnEngineBase {
       final exitsBuilt = ExitOutbounds.build(
         servers: options.exitServers,
         resolvedIps: VpnEngineBase.pickOneIpPerHost(exitHosts),
+        xrayBridgePorts: assignXrayExitBridgePorts(
+          options.exitServers,
+          basePort: _xrayExitBridgeBasePort,
+        ),
+        xrayBridgeUser: localInboundUser,
+        xrayBridgePassword: localInboundPassword,
       );
       for (final e in exitsBuilt.skipped.entries) {
         AppLog.i('Сервер API-порта не поднят: ${e.value}');
@@ -1598,14 +1942,30 @@ class WindowsEngine extends VpnEngineBase {
       // не выбрав НИ ОДНОГО сервера под отдельный порт.
       if (aborted()) return null;
 
+      final s = options.settings;
+      final serverKeys =
+          effectiveApiKeys ?? options.effectiveApiExitServerKeys ?? s.apiExitServerKeys;
       final builder = ExitRouterConfigBuilder(
-        serverKeys: options.settings.apiExitServerKeys,
-        token: options.settings.apiToken,
+        serverKeys: serverKeys,
+        token: s.apiToken,
         exitOutbounds: exitsBuilt.outbounds,
         // Галочка задачи 3b: правила раздельного туннелирования на этих
         // портах — только если пользователь явно включил её.
-        applyRules: options.settings.applyRulesInProxyOnly,
+        applyRules: s.applyRulesInProxyOnly,
         split: options.split,
+        assignedPorts: s.apiAssignedPorts,
+        controlPort: s.apiControlPort,
+        autoPortEnabled: s.apiAutoPortEnabled,
+        autoPort: s.apiAutoPort,
+        autoPoolKeys: options.apiAutoPoolKeys,
+        urltestUrl: s.apiUrltestUrl,
+        urltestIntervalSec: s.apiUrltestIntervalSec,
+        directPort: s.apiDirectPort,
+        authMode: s.apiProxyAuthMode,
+        customUser: s.apiProxyCustomUser,
+        customPassword: s.apiProxyCustomPassword,
+        enableDnsViaExit: s.apiDnsViaExit,
+        dnsServer: _dnsUpstreamFor(s),
       );
       setStatus(VpnConnectionState.connecting,
           step: ConnectStep.core, message: status.message);
@@ -1682,6 +2042,7 @@ class WindowsEngine extends VpnEngineBase {
     if (keepCapture) return;
 
     await _stopDirectFallbackDns();
+    await _stopDpiServices();
 
     if (_tunActive) {
       await _tunRouter.stop();
@@ -1689,8 +2050,8 @@ class WindowsEngine extends VpnEngineBase {
       _liveTunConfig = null;
       _liveKillSwitchPlan = null;
       _liveBypassIps = null;
-      _liveTunApiSecret = null;
-      _liveBypassIps = null;
+      _liveServerDomains = null;
+      _liveBlockTunnelQuic = null;
       _liveTunApiSecret = null;
     }
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
@@ -1735,6 +2096,8 @@ class WindowsEngine extends VpnEngineBase {
     _liveTunConfig = null;
     _liveKillSwitchPlan = null;
     _liveBypassIps = null;
+    _liveServerDomains = null;
+    _liveBlockTunnelQuic = null;
     _liveTunApiSecret = null;
     // Не сбрасываем чужой прокси (например, корпоративный): чистим только свой.
     final hadProxy = _proxySet;
@@ -1742,6 +2105,7 @@ class WindowsEngine extends VpnEngineBase {
     await Future.wait([
       _stopFallbackDns(),
       _stopDirectFallbackDns(),
+      _stopDpiServices(),
       if (hadTun) _tunRouter.stop(),
       if (hadProxy) SystemProxy.clear(),
       _stopCoreProcesses(),
@@ -1772,6 +2136,16 @@ class WindowsEngine extends VpnEngineBase {
     _exitRouter?.forceKill();
     _exitRouter?.dispose();
     _exitRouter = null;
+    _auxXray?.forceKill();
+    _auxXray?.dispose();
+    _auxXray = null;
+    _standaloneExitRouter?.forceKill();
+    _standaloneExitRouter?.dispose();
+    _standaloneExitRouter = null;
+    _standaloneAuxXray?.forceKill();
+    _standaloneAuxXray?.dispose();
+    _standaloneAuxXray = null;
+    _standaloneSignature = null;
     _whitelistBypass?.forceKill();
     _whitelistBypass = null;
     CoreCleanup.killChildren();
@@ -1781,6 +2155,8 @@ class WindowsEngine extends VpnEngineBase {
     _liveTunConfig = null;
     _liveKillSwitchPlan = null;
     _liveBypassIps = null;
+    _liveServerDomains = null;
+    _liveBlockTunnelQuic = null;
     _liveTunApiSecret = null;
     final hadProxy = _proxySet;
     _proxySet = false;
@@ -1789,6 +2165,7 @@ class WindowsEngine extends VpnEngineBase {
       await Future.wait([
         _stopFallbackDns(),
         _stopDirectFallbackDns(),
+        _stopDpiServices(),
         if (hadTun) _tunRouter.stop(),
         if (hadProxy) SystemProxy.clear(),
       ]).timeout(const Duration(milliseconds: 700));
@@ -1805,21 +2182,28 @@ class WindowsEngine extends VpnEngineBase {
     final proc = _process;
     final sb = _singbox;
     final er = _exitRouter;
+    final ax = _auxXray;
     final wb = _whitelistBypass;
     _process = null;
     _singbox = null;
     _exitRouter = null;
+    _auxXray = null;
     _whitelistBypass = null;
     await Future.wait([
       if (proc != null) proc.stop().whenComplete(proc.dispose),
       if (sb != null) sb.stop().whenComplete(sb.dispose),
       if (er != null) er.stop().whenComplete(er.dispose),
+      if (ax != null) ax.stop().whenComplete(ax.dispose),
       if (wb != null) wb.stop(),
     ]);
   }
 
   /// Порт Clash API туннельного sing-box. Только петля, только для сторожа.
   static int get _tunApiPort => 10813 + AppEnv.portOffset;
+
+  /// Базовый порт локальных SOCKS5-мостов Xray для выходов «Авто» и `XHTTP`.
+  static int get _xrayExitBridgeBasePort =>
+      kXrayExitBridgeBasePort + AppEnv.portOffset;
 
   /// Сторож ЗАВИСШЕГО туннельного ядра.
   ///
@@ -2527,5 +2911,237 @@ class WindowsEngine extends VpnEngineBase {
     final file = File('${dir.path}${Platform.pathSeparator}$fileName');
     await file.writeAsString(json);
     return file.path;
+  }
+
+  Future<void> _standaloneSyncChain = Future.value();
+
+  @override
+  bool get standaloneApiPortsRunning =>
+      _standaloneExitRouter != null && _standaloneExitRouter!.isRunning;
+
+  @override
+  Future<void> stopStandaloneApiPorts() async {
+    final er = _standaloneExitRouter;
+    final ax = _standaloneAuxXray;
+    _standaloneExitRouter = null;
+    _standaloneAuxXray = null;
+    _standaloneSignature = null;
+    await Future.wait([
+      if (er != null) er.stop().whenComplete(er.dispose),
+      if (ax != null) ax.stop().whenComplete(ax.dispose),
+    ]);
+  }
+
+  @override
+  Future<void> syncStandaloneApiPorts({
+    required AppSettings settings,
+    required Map<String, VpnServer> exitServers,
+    required List<String> serverKeys,
+    required List<String> autoPoolKeys,
+  }) {
+    final next = _standaloneSyncChain.then((_) => _doSyncStandaloneApiPorts(
+          settings: settings,
+          exitServers: exitServers,
+          serverKeys: serverKeys,
+          autoPoolKeys: autoPoolKeys,
+        ));
+    _standaloneSyncChain = next.catchError((_) {});
+    return next;
+  }
+
+  Future<void> _doSyncStandaloneApiPorts({
+    required AppSettings settings,
+    required Map<String, VpnServer> exitServers,
+    required List<String> serverKeys,
+    required List<String> autoPoolKeys,
+  }) async {
+    final vpnIdle = (status.state == VpnConnectionState.disconnected ||
+            status.state == VpnConnectionState.error) &&
+        !_tunActive &&
+        _process == null &&
+        _singbox == null &&
+        _exitRouter == null;
+    final wantStandalone = vpnIdle &&
+        ApiPorts.exitPortsActive(settings) &&
+        settings.apiKeepAliveWhenDisconnected;
+    if (!wantStandalone) {
+      if (_standaloneExitRouter != null || _standaloneAuxXray != null) {
+        await stopStandaloneApiPorts();
+      }
+      return;
+    }
+
+    final sortedExitEntries = exitServers.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    final sig = jsonEncode({
+      'serverKeys': serverKeys,
+      'autoPoolKeys': autoPoolKeys,
+      'token': settings.apiToken,
+      'assigned': settings.apiAssignedPorts,
+      'controlPort': settings.apiControlPort,
+      'autoOn': settings.apiAutoPortEnabled,
+      'autoPort': settings.apiAutoPort,
+      'directPort': settings.apiDirectPort,
+      'authMode': settings.apiProxyAuthMode.name,
+      'customUser': settings.apiProxyCustomUser,
+      'customPass': settings.apiProxyCustomPassword,
+      'dnsViaExit': settings.apiDnsViaExit,
+      'urltestUrl': settings.apiUrltestUrl,
+      'urltestSec': settings.apiUrltestIntervalSec,
+      'applyRules': settings.applyRulesInProxyOnly,
+      'dnsMode': settings.dnsMode.name,
+      'dnsCustom': settings.dnsCustomServer,
+      'exits': [
+        for (final e in sortedExitEntries)
+          '${e.key}:${e.value.rawLink}:${e.value.effectiveFullConfig.hashCode}',
+      ],
+    });
+
+    if (_standaloneExitRouter != null &&
+        _standaloneExitRouter!.isRunning &&
+        (_standaloneAuxXray == null || _standaloneAuxXray!.isRunning) &&
+        _standaloneSignature == sig) {
+      return;
+    }
+
+    await stopStandaloneApiPorts();
+
+    final routerExe = SingboxProcess.locate();
+    if (routerExe == null) {
+      AppLog.w('Автономные порты API: sing-box.exe не найден');
+      return;
+    }
+
+    final bridgePorts = assignXrayExitBridgePorts(
+      exitServers,
+      basePort: _xrayExitBridgeBasePort,
+    );
+    final xrayLoc = XrayPaths.locate();
+    if (bridgePorts.isNotEmpty && xrayLoc == null) {
+      AppLog.w('Автономные порты API: xray.exe не найден для мостов Авто/XHTTP');
+    }
+
+    final portMap = ApiPorts.resolvePortMap(
+      serverKeys,
+      assignedPorts: settings.apiAssignedPorts,
+      controlPort: settings.apiControlPort,
+      autoPort: settings.apiAutoPort,
+      directPort: settings.apiDirectPort,
+    );
+    final portsToCheck = <int>[
+      ...portMap.values,
+      if (settings.apiAutoPortEnabled) settings.apiAutoPort,
+      settings.apiDirectPort,
+      if (xrayLoc != null) ...bridgePorts.values,
+    ];
+    var conflict = await PortCheck.findConflict(portsToCheck);
+    if (conflict != null) {
+      await PortCheck.waitFree(portsToCheck);
+      conflict = await PortCheck.findConflict(portsToCheck);
+    }
+    if (conflict != null) {
+      AppLog.w(
+        'Автономные порты API не подняты — конфликт порта ${conflict.port}',
+      );
+      return;
+    }
+
+    try {
+      final exitHosts = await resolveServerHosts(exitServers.values.toList());
+      final resolvedIps = VpnEngineBase.pickOneIpPerHost(exitHosts);
+      final bridgeUser = 'sg-bridge';
+      final rng = Random.secure();
+      final bridgePass = List.generate(
+        16,
+        (_) => rng.nextInt(256).toRadixString(16).padLeft(2, '0'),
+      ).join();
+
+      XrayProcess? auxProc;
+      if (bridgePorts.isNotEmpty && xrayLoc != null) {
+        final auxJson = injectXrayExitBridges(
+          null,
+          exitServers: exitServers,
+          bridgePorts: bridgePorts,
+          resolvedIps: resolvedIps,
+          socksUser: bridgeUser,
+          socksPassword: bridgePass,
+        );
+        final auxPath = await _writeConfigJson(
+          auxJson,
+          name: 'xray_standalone_exits.json',
+        );
+        auxProc = XrayProcess();
+        await auxProc.start(
+          executable: xrayLoc.executable,
+          configPath: auxPath,
+          assetDir: xrayLoc.assetDir,
+          logPath: XrayProcess.logPathFor(await AppPaths.supportDir()),
+        );
+      }
+
+      final exitsBuilt = ExitOutbounds.build(
+        servers: exitServers,
+        resolvedIps: resolvedIps,
+        xrayBridgePorts: xrayLoc != null ? bridgePorts : const {},
+        xrayBridgeUser: bridgeUser,
+        xrayBridgePassword: bridgePass,
+      );
+      final builder = ExitRouterConfigBuilder(
+        serverKeys: serverKeys,
+        token: settings.apiToken,
+        exitOutbounds: exitsBuilt.outbounds,
+        applyRules: settings.applyRulesInProxyOnly,
+        split: settings.splitTunnel,
+        assignedPorts: settings.apiAssignedPorts,
+        controlPort: settings.apiControlPort,
+        autoPortEnabled: settings.apiAutoPortEnabled,
+        autoPort: settings.apiAutoPort,
+        autoPoolKeys: autoPoolKeys,
+        urltestUrl: settings.apiUrltestUrl,
+        urltestIntervalSec: settings.apiUrltestIntervalSec,
+        directPort: settings.apiDirectPort,
+        authMode: settings.apiProxyAuthMode,
+        customUser: settings.apiProxyCustomUser,
+        customPassword: settings.apiProxyCustomPassword,
+        enableDnsViaExit: settings.apiDnsViaExit,
+        dnsServer: _dnsUpstreamFor(settings),
+      );
+      final configPath = await _writeConfigJson(
+        builder.buildJson(),
+        name: 'exit_router_standalone.json',
+      );
+      final proc = SingboxProcess();
+      await proc.start(
+        executable: routerExe,
+        configPath: configPath,
+        logPath: SingboxProcess.logPathFor(
+          await AppPaths.supportDir(),
+          name: 'singbox_standalone_exit_router.log',
+        ),
+      );
+      await Future.delayed(const Duration(milliseconds: 250));
+      if (!proc.isRunning) {
+        AppLog.w('Автономный маршрутизатор API не поднялся:\n${proc.tail}');
+        await proc.stop().whenComplete(proc.dispose);
+        if (auxProc != null) await auxProc.stop().whenComplete(auxProc.dispose);
+        return;
+      }
+      _standaloneAuxXray = auxProc;
+      _standaloneExitRouter = proc;
+      _standaloneSignature = sig;
+      AppLog.i(
+        'Автономные порты API запущены без VPN '
+        '(серверных выходов: ${exitsBuilt.outbounds.length})',
+      );
+    } catch (e) {
+      AppLog.w('Не удалось запустить автономные порты API: $e');
+      await stopStandaloneApiPorts();
+    }
+  }
+
+  @override
+  Future<void> dispose() async {
+    await stopStandaloneApiPorts();
+    await super.dispose();
   }
 }

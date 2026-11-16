@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN خاموش است",
   "serviceChecksNow": "اکنون",
   "serviceChecksExitServer": "از طریق سرور دیگر: قانون تونل‌زنی تقسیم‌شده «{rule}» این دامنه را از «{server}» عبور می‌دهد.",
-  "subBarOpenSite": "وب‌سایت",
+  "subBarOpenSite": "صفحهٔ اشتراک",
+  "subBarTelegram": "تلگرام / ربات",
   "subBarOpenSiteHint": "باز کردن صفحهٔ اشتراک در مرورگر",
   "subSwitcherRefreshingOne": "در حال به‌روزرسانی «{name}»…",
   "subSwitcherRefreshedOne": "«{name}» به‌روزرسانی شد",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "متصل نمی‌شود",
+  "supportChipSiteOrYoutube": "یوتیوب / سایت باز نمی‌شود",
+  "supportChipSlowSpeed": "سرعت پایین",
+  "supportChipDrops": "قطعی اتصال",
+  "supportChipsHint": "انتخاب سریع (اختیاری، بدون نیاز به توضیح):",
+  "supportDescribeOptionalLabel": "توضیح مشکل (اختیاری)",
+  "supportNoTextProvided": "بدون توضیح متنی (گزارش فنی)",
+  "supportCategoriesHeader": "دسته‌بندی",
+  "supportSendDevCopyTitle": "ارسال نسخه ناشناس برای توسعه‌دهنده",
+  "supportSendDevCopySub": "بدون توکن اشتراک، IP شخصی و HWID خام - به رفع سریع‌تر خطا کمک می‌کند",
+  "supportPreviewDevCopy": "چه چیزی ارسال می‌شود؟",
+  "supportPreviewDialogTitle": "نسخه ناشناس برای توسعه‌دهنده",
+  "supportSendDevOnlyButton": "فقط برای توسعه‌دهنده",
+  "supportDevCopySent": "نسخه برای توسعه‌دهنده ارسال شد ({code})",
+  "supportDevCopyFailed": "ارسال به سرور ناموفق بود ({code}) - فایل محلی آماده است",
+  "supportDevOnlyDoneText": "گزارش ناشناس به سرور توسعه‌دهنده ارسال شد. کد گزارش: {code}",
+  "supportAttachDiagButton": "گزارش عیب‌یابی",
+  "supportSendToChatAndDev": "پیوست به گفتگو"
 }

@@ -11,10 +11,10 @@ import 'direct_internet.dart';
 /// секунд». Частить сквозной пробой нельзя: каждая проба через туннель — это
 /// новое соединение с сервером и TLS-рукопожатие, десятки мегабайт в сутки.
 ///
-/// Прямой запрос к `1.1.1.1` стоит сотни байт и в туннель не заходит. Он
-/// идёт раз в 5 секунд, и два промаха подряд — повод проверить канал сразу,
-/// не дожидаясь очередной пробы. Решает по-прежнему сторож канала: эта
-/// проверка только будит его.
+/// Прямой запрос стоит сотни байт и в туннель не заходит. Он идёт раз в 5
+/// секунд, и два промаха подряд — повод проверить канал сразу, не дожидаясь
+/// очередной пробы. Решает по-прежнему сторож канала: эта проверка только
+/// будит его.
 ///
 /// ## Почему только после первого успеха
 ///
@@ -32,7 +32,9 @@ class NetworkLossWatch {
     Future<bool> Function()? check,
     this.every = const Duration(seconds: 5),
     this.missesToAct = 2,
-  }) : check = check ?? _defaultCheck;
+    this.maxFalseAlarms = 2,
+    this.cooldownAfterFalseAlarm = const Duration(seconds: 60),
+  }) : check = check ?? _StickyDirectTargets().check;
 
   /// Есть ли интернет напрямую. Дешёвая проверка: только адреса без имени и
   /// короткий таймаут.
@@ -43,25 +45,54 @@ class NetworkLossWatch {
   /// сети, и будить сторожа на каждом незачем.
   final int missesToAct;
 
-  static Future<bool> _defaultCheck() => DirectInternetProbe(
-        timeout: const Duration(seconds: 3),
-        targets: const [
-          'http://1.1.1.1/generate_204',
-          'http://1.0.0.1/generate_204',
-        ],
-      ).check();
+  /// Сколько ложных тревог (прямая проба упала, а туннель жив) допускается за
+  /// сессию до отключения частой прямой проверки: у части провайдеров РФ ТСПУ
+  /// выборочно режет 70–80 % пакетов к публичным IP, вызывая сотни ложных
+  /// пробуждений `TunnelHealth`.
+  final int maxFalseAlarms;
+
+  /// Пауза после первой ложной тревоги перед тем, как снова верить прямой пробе.
+  final Duration cooldownAfterFalseAlarm;
+
+  /// Прямые IPv4-мишени без DNS: сначала российские узлы Яндекса (отвечают за
+  /// < 50 мс и не дропаются ТСПУ), затем глобальные Cloudflare.
+  static const List<String> defaultTargets = [
+    'http://77.88.55.242/',
+    'http://5.255.255.77/',
+    'http://1.1.1.1/generate_204',
+    'http://1.0.0.1/generate_204',
+  ];
 
   Timer? _timer;
   bool _busy = false;
   bool _seenUp = false;
   bool _fired = false;
   int _misses = 0;
+  int _falseAlarms = 0;
+  DateTime? _cooldownUntil;
   Object? _owner;
 
   bool get isRunning => _timer != null;
 
   /// Был ли хоть один успех с запуска. Для тестов и журнала.
   bool get seenUp => _seenUp;
+
+  /// Сколько раз за сессию прямая проба ошиблась при живом туннеле.
+  int get falseAlarms => _falseAlarms;
+
+  /// Сообщить, что сигнал потери прямого интернета оказался ложным (сам туннель
+  /// исправно пропустил контрольную пробу). Возвращает `true`, если частая
+  /// проверка отключена до конца текущей сессии.
+  bool noteFalseAlarm() {
+    _falseAlarms++;
+    _misses = 0;
+    if (_falseAlarms >= maxFalseAlarms) {
+      stop();
+      return true;
+    }
+    _cooldownUntil = DateTime.now().add(cooldownAfterFalseAlarm);
+    return false;
+  }
 
   /// Запустить. [onLoss] зовётся один раз на эпизод: следующий сигнал
   /// возможен только после того, как интернет снова ответит.
@@ -70,10 +101,14 @@ class NetworkLossWatch {
     _seenUp = false;
     _fired = false;
     _misses = 0;
+    _falseAlarms = 0;
+    _cooldownUntil = null;
     final owner = Object();
     _owner = owner;
     _timer = Timer.periodic(every, (_) async {
       if (_busy || !identical(_owner, owner)) return;
+      final until = _cooldownUntil;
+      if (until != null && DateTime.now().isBefore(until)) return;
       _busy = true;
       try {
         final ok = await check();
@@ -100,5 +135,32 @@ class NetworkLossWatch {
     _timer?.cancel();
     _timer = null;
     _owner = null;
+  }
+}
+
+class _StickyDirectTargets {
+  String? _preferred;
+
+  Future<bool> check() async {
+    final p = _preferred;
+    if (p != null) {
+      final ok = await DirectInternetProbe(
+        timeout: const Duration(seconds: 2),
+        targets: [p],
+      ).check();
+      if (ok) return true;
+    }
+    for (final t in NetworkLossWatch.defaultTargets) {
+      if (t == p) continue;
+      final ok = await DirectInternetProbe(
+        timeout: const Duration(seconds: 2),
+        targets: [t],
+      ).check();
+      if (ok) {
+        _preferred = t;
+        return true;
+      }
+    }
+    return false;
   }
 }

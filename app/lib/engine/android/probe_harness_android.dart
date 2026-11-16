@@ -97,7 +97,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
   /// Ноль (конфиг не разобрался) — тоже один: построитель тогда уходит в
   /// штатную ветку и собирает обычный конфиг по полям сервера.
   static int candidateCount(HarnessEntry e) {
-    if (e.server.usesWhitelistRelay) return 0;
+    if (e.server.usesWhitelistRelay && e.whitelistRelayPort == null) return 0;
     final s = e.server;
     final raw = (s.rawJsonOverride ?? '').isNotEmpty
         ? s.rawJsonOverride!

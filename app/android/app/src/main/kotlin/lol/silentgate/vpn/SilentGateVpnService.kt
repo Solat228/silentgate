@@ -374,6 +374,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     private var tunFingerprint: String? = null
     private var interfaceListener: InterfaceUpdateListener? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val networkMonitorLock = Any()
+    private val underlyingNetworks = LinkedHashSet<Network>()
+    private var lastDefaultInterfaceSpec: String? = null
 
     private val connectivity: ConnectivityManager
         get() = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -1327,8 +1330,21 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     override fun getInterfaces(): NetworkInterfaceIterator {
-        val active = connectivity.activeNetwork
-        val activeCaps = active?.let { connectivity.getNetworkCapabilities(it) }
+        val capsByIface = HashMap<String, NetworkCapabilities>()
+        runCatching {
+            for (net in connectivity.allNetworks) {
+                val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) continue
+                val ifName = connectivity.getLinkProperties(net)?.interfaceName
+                if (!ifName.isNullOrBlank()) {
+                    capsByIface[ifName] = caps
+                }
+            }
+        }
+        val fallbackCaps = runCatching {
+            connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
+                ?.takeIf { it.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) }
+        }.getOrNull()
         // На Android 11+ перечисление интерфейсов ограничено и может вернуть
         // null; необработанный NPE здесь уходит через JNI в Go и роняет процесс.
         val ifaces = runCatching { JavaNetworkInterface.getNetworkInterfaces() }
@@ -1371,47 +1387,176 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     if (iface.supportsMulticast()) f = f or OsConstants.IFF_MULTICAST
                     f
                 }.getOrDefault(OsConstants.IFF_UP or OsConstants.IFF_RUNNING)
+                val ifCaps = capsByIface[iface.name] ?: fallbackCaps
                 type = when {
-                    activeCaps == null -> Libbox.InterfaceTypeOther
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Libbox.InterfaceTypeCellular
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Libbox.InterfaceTypeEthernet
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Libbox.InterfaceTypeCellular
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Libbox.InterfaceTypeEthernet
+                    iface.name.startsWith("wlan", ignoreCase = true) -> Libbox.InterfaceTypeWIFI
+                    iface.name.startsWith("rmnet", ignoreCase = true) ||
+                        iface.name.startsWith("ccmni", ignoreCase = true) ||
+                        iface.name.startsWith("pdp", ignoreCase = true) -> Libbox.InterfaceTypeCellular
+                    iface.name.startsWith("eth", ignoreCase = true) -> Libbox.InterfaceTypeEthernet
                     else -> Libbox.InterfaceTypeOther
                 }
-                metered = activeCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)?.not() ?: false
+                metered = ifCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)?.not() ?: false
                 dnsServer = StringArray(emptyList())
             }
         }
         return InterfaceArray(list)
     }
 
+    private data class UnderlyingCandidate(
+        val name: String,
+        val index: Int,
+        val isExpensive: Boolean,
+        val isConstrained: Boolean,
+        val score: Int,
+    )
+
+    private fun scoreUnderlyingNetwork(network: Network): UnderlyingCandidate? {
+        val caps = runCatching { connectivity.getNetworkCapabilities(network) }.getOrNull() ?: return null
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) return null
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return null
+        val link = runCatching { connectivity.getLinkProperties(network) }.getOrNull() ?: return null
+        val name = link.interfaceName?.takeIf {
+            it.isNotBlank() && !it.startsWith("tun", ignoreCase = true)
+        } ?: return null
+        val index = runCatching { JavaNetworkInterface.getByName(name)?.index ?: -1 }.getOrDefault(-1)
+        if (index < 0) return null
+
+        var score = when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> 400
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> 300
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_USB) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> 200
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> 100
+            else -> 50
+        }
+        if (runCatching { link.routes.any { it.isDefaultRoute } }.getOrDefault(false)) {
+            score += 40
+        }
+        if (Build.VERSION.SDK_INT >= 28 &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOREGROUND)
+        ) {
+            score += 25
+        }
+        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            score += 20
+        }
+        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+            score += 15
+        }
+        if (Build.VERSION.SDK_INT >= 28 &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+        ) {
+            score += 10
+        }
+        val isExpensive = !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        val isConstrained = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        return UnderlyingCandidate(
+            name = name,
+            index = index,
+            isExpensive = isExpensive,
+            isConstrained = isConstrained,
+            score = score,
+        )
+    }
+
+    private fun refreshBestDefaultInterface(listener: InterfaceUpdateListener) {
+        synchronized(networkMonitorLock) {
+            if (underlyingNetworks.isEmpty()) {
+                runCatching {
+                    for (net in connectivity.allNetworks) {
+                        val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+                            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        ) {
+                            underlyingNetworks.add(net)
+                        }
+                    }
+                }
+            }
+            var best: UnderlyingCandidate? = null
+            val stale = ArrayList<Network>()
+            for (net in underlyingNetworks) {
+                val cand = scoreUnderlyingNetwork(net)
+                if (cand == null) {
+                    stale.add(net)
+                    continue
+                }
+                if (best == null || cand.score > best.score) {
+                    best = cand
+                }
+            }
+            if (stale.isNotEmpty()) {
+                underlyingNetworks.removeAll(stale.toSet())
+            }
+            if (best == null) {
+                val spec = "|0|false|false"
+                if (lastDefaultInterfaceSpec != spec) {
+                    lastDefaultInterfaceSpec = spec
+                    listener.updateDefaultInterface("", -1, false, false)
+                }
+                return
+            }
+            val spec = "${best.name}|${best.index}|${best.isExpensive}|${best.isConstrained}"
+            if (lastDefaultInterfaceSpec != spec) {
+                lastDefaultInterfaceSpec = spec
+                Log.i(logTag, "Default interface -> ${best.name} (ifIndex=${best.index}, score=${best.score})")
+                listener.updateDefaultInterface(
+                    best.name,
+                    best.index,
+                    best.isExpensive,
+                    best.isConstrained,
+                )
+            }
+        }
+    }
+
     override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
         interfaceListener = listener
+        synchronized(networkMonitorLock) {
+            underlyingNetworks.clear()
+            lastDefaultInterfaceSpec = null
+            runCatching {
+                for (net in connectivity.allNetworks) {
+                    val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    ) {
+                        underlyingNetworks.add(net)
+                    }
+                }
+            }
+        }
         // NOT_VPN обязателен: без него подъём СВОЕГО туннеля прилетает как
         // «сменилась сеть» и запускает вечный цикл переподключений — грабли,
         // которые на Windows чинили трижды.
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         val cb = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = update(network)
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = update(network)
-            override fun onLost(network: Network) {
-                listener.updateDefaultInterface("", -1, false, false)
+            override fun onAvailable(network: Network) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
             }
 
-            private fun update(network: Network) {
-                val caps = connectivity.getNetworkCapabilities(network) ?: return
-                val link = connectivity.getLinkProperties(network) ?: return
-                val name = link.interfaceName ?: return
-                val index = runCatching { JavaNetworkInterface.getByName(name)?.index ?: -1 }.getOrDefault(-1)
-                listener.updateDefaultInterface(
-                    name,
-                    index,
-                    !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                        !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET),
-                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED).not(),
-                )
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
+            }
+
+            override fun onLinkPropertiesChanged(network: Network, linkProperties: android.net.LinkProperties) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
+            }
+
+            override fun onLost(network: Network) {
+                synchronized(networkMonitorLock) { underlyingNetworks.remove(network) }
+                refreshBestDefaultInterface(listener)
             }
         }
         networkCallback = cb
@@ -1427,6 +1572,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 .onSuccess { lifecycleRegistered = true }
         }
         connectivity.registerNetworkCallback(request, cb)
+        refreshBestDefaultInterface(listener)
     }
 
     override fun closeDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
@@ -1435,6 +1581,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
         networkCallback = null
         interfaceListener = null
+        synchronized(networkMonitorLock) {
+            underlyingNetworks.clear()
+            lastDefaultInterfaceSpec = null
+        }
     }
 
     override fun underNetworkExtension(): Boolean = false

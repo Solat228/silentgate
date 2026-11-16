@@ -65,8 +65,8 @@ void main() {
         '?type=tcp&security=none#NL',
   );
 
-  // Панельный профиль «Авто»: sing-box вторым выходом его не поднимет —
-  // `canBeExitServer` отвечает `false`.
+  // Панельный профиль «Авто (YouTube)»: с 1.18.5+98 поднимается вторым выходом
+  // через изолированный локальный SOCKS5-мост Xray (`canBeExitServer == true`).
   const auto = VpnServer(
     protocol: 'vless',
     remark: '🎬 Авто (YouTube)',
@@ -75,6 +75,22 @@ void main() {
     id: '00000000-0000-0000-0000-000000000003',
     rawLink: 'panel://Авто?sub=aa',
     rawPanelConfig: '{"outbounds":[{"protocol":"vless","tag":"proxy"}]}',
+  );
+
+  // Комната БС по WebRTC-звонку: `usesWhitelistRelay == true`, вторым выходом
+  // пока не поднимается — `canBeExitServer` отвечает `false`.
+  const bsRoom = VpnServer(
+    protocol: 'vless',
+    remark: '🛡️ БС ВК (звонок)',
+    address: 'bs.example',
+    port: 443,
+    id: '00000000-0000-0000-0000-000000000005',
+    network: 'ws',
+    path: '/sgbs?p=vk&r=https%3A%2F%2Fvk.ru%2Fcall%2Fjoin%2Fabc',
+    whitelistPlatform: 'vk',
+    whitelistRoom: 'https://vk.ru/call/join/abc',
+    rawLink: 'vless://00000000-0000-0000-0000-000000000005@bs.example:443'
+        '?type=ws&path=%2Fsgbs%3Fp%3Dvk%26r%3Dhttps%253A%252F%252Fvk.ru%252Fcall%252Fjoin%252Fabc#BS',
   );
 
   // Заглушка истёкшей подписки: `0.0.0.0:1` с текстом вместо имени.
@@ -155,11 +171,11 @@ void main() {
         tester,
         // Ширину задаём коробкой: плашка меряет доступное место
         // (LayoutBuilder) и в тесной строке показывает один флаг.
-        const SizedBox(
+        SizedBox(
           width: 300,
           child: ServerBadge(
-            servers: [auto],
-            serverKey: 'panel://Авто?sub=aa',
+            servers: const [bsRoom],
+            serverKey: bsRoom.key,
             action: AppAction.tunnel,
           ),
         ),
@@ -174,7 +190,7 @@ void main() {
       // `richMessage` (InlineSpan), сверяем его текст.
       final badgeTip = tips.firstWhere((t) =>
           (t.richMessage?.toPlainText() ?? t.message) ==
-          '🎬 Авто (YouTube)');
+          '🛡️ БС ВК (звонок)');
       final badgeTipText = badgeTip.richMessage?.toPlainText() ?? badgeTip.message!;
       expect(badgeTipText.length, lessThan(60),
           reason: 'в подсказке плашки не должно быть абзаца');
@@ -266,7 +282,7 @@ void main() {
     /// Открывает поле и сам пикер, возвращает то, что поле отдало наружу.
     Future<List<String?>> openPicker(
       WidgetTester tester, {
-      List<VpnServer> servers = const [de, nl, auto, notice],
+      List<VpnServer> servers = const [de, nl, auto, bsRoom, notice],
       String? serverKey,
       VpnServer? current,
     }) async {
@@ -308,14 +324,16 @@ void main() {
           reason: 'выход из «0.0.0.0:1» ведёт в никуда');
     });
 
-    testWidgets('непригодный сервер помечен, пригодный — нет', (tester) async {
+    testWidgets('непригодный сервер помечен, а «Авто (YouTube)» и обычные — доступны', (tester) async {
       await openPicker(tester);
       final tiles = {
         for (final t in tester.widgetList<ServerTile>(find.byType(ServerTile)))
           t.server.key: t
       };
-      expect(tiles[auto.key]!.unavailableNote, isNotNull,
-          reason: 'панельный профиль «Авто» вторым выходом не поднимается');
+      expect(tiles[bsRoom.key]!.unavailableNote, isNotNull,
+          reason: 'комната БС по звонку вторым выходом не поднимается');
+      expect(tiles[auto.key]!.unavailableNote, isNull,
+          reason: 'панельный профиль «Авто (YouTube)» доступен через Xray-мост');
       expect(tiles[de.key]!.unavailableNote, isNull);
       // Меню строки в пикере отключено у всех: оно уводит с диалога и умеет
       // удалять сервер.
@@ -364,21 +382,21 @@ void main() {
     });
 
     testWidgets(
-        'тап по непригодному серверу («Авто») заблокирован и показывает диалог ошибки',
+        'тап по профилю «Авто (YouTube)» выбирает его для правила, а тап по комнате БС показывает диалог ошибки',
         (tester) async {
       final got = await openPicker(tester);
-      final autoTile = find.byWidgetPredicate(
-          (w) => w is ServerTile && w.server.key == auto.key);
-      await tester.tap(autoTile);
+      final bsTile = find.byWidgetPredicate(
+          (w) => w is ServerTile && w.server.key == bsRoom.key);
+      await tester.tap(bsTile);
       await tester.pumpAndSettle();
 
-      // Выбор НЕ состоялся, пикер остался открыт, поверх показано окно ошибки.
+      // Выбор БС НЕ состоялся, пикер остался открыт, поверх показано окно ошибки.
       expect(got, isEmpty);
       expect(find.byType(RuleServerPickerDialog), findsOneWidget);
       expect(find.byKey(const Key('unsupportedExitServerDialog')), findsOneWidget);
-      expect(find.textContaining('Авто (YouTube)'), findsWidgets);
+      expect(find.textContaining('БС ВК'), findsWidgets);
 
-      // Закрываем окно ошибки — пикер остаётся доступен для выбора нормального узла.
+      // Закрываем окно ошибки — и тут же выбираем «🎬 Авто (YouTube)».
       await tester.tap(
         find.descendant(
           of: find.byKey(const Key('unsupportedExitServerDialog')),
@@ -388,6 +406,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('unsupportedExitServerDialog')), findsNothing);
       expect(find.byType(RuleServerPickerDialog), findsOneWidget);
+
+      final autoTile = find.byWidgetPredicate(
+          (w) => w is ServerTile && w.server.key == auto.key);
+      await tester.tap(autoTile);
+      await tester.pumpAndSettle();
+      expect(got, [auto.key]);
+      expect(find.byType(RuleServerPickerDialog), findsNothing);
     });
   });
 

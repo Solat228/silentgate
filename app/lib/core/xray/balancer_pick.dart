@@ -120,12 +120,17 @@ abstract final class BalancerPick {
     return null;
   }
 
+  /// Балансировщики ОСНОВНОЙ сессии (вторичные мосты `exit-*` игнорируются,
+  /// чтобы подпись главного экрана не показывала узел вторичного правила).
   static List<Map> _balancers(Map<String, dynamic> cfg) {
     final routing = cfg['routing'];
     if (routing is! Map || routing['balancers'] is! List) return const [];
     return [
       for (final b in routing['balancers'] as List)
-        if (b is Map && b['tag'] is String && (b['tag'] as String).isNotEmpty)
+        if (b is Map &&
+            b['tag'] is String &&
+            (b['tag'] as String).isNotEmpty &&
+            !(b['tag'] as String).startsWith('exit-'))
           b,
     ];
   }

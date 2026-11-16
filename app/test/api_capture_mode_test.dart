@@ -12,17 +12,11 @@ import 'package:silentgate/engine/windows/windows_engine.dart';
 
 /// Порты API и СПОСОБ ЗАХВАТА.
 ///
-/// ⚠️ ПОЧЕМУ ЭТОТ ФАЙЛ ПОЯВИЛСЯ ТОЛЬКО НА ФИНАЛЬНОМ РЕВЬЮ. На
-/// `WindowsEngine.startSession` не было ни одного теста — там живой процесс
-/// ядра, реальные сокеты и права администратора. Из-за этого дефект дожил до
-/// конца: `PortCheck` проверял порты 10820…10859 и 10819 по гейту «API включён
-/// и токен непуст», БЕЗ учёта режима захвата, — а в режиме системного прокси
-/// (умолчание на Windows!) этих инбаундов не создаётся вовсе. Сторонняя
-/// программа на любом из этих портов давала «Конфликт портов» и ПОЛНЫЙ отказ
-/// подключения на ровном месте.
-///
-/// Список портов — чистая функция настроек, поэтому проверяется без единого
-/// сокета (`WindowsEngine.corePortsFor`).
+/// С версии 1.18.7 порты выходов API поднимаются во ВСЕХ режимах захвата
+/// (`tun`, `systemProxy`, `proxyOnly`): в `systemProxy` поднимается изолированный
+/// маршрутизатор выходов `ExitRouter` на `127.0.0.1`, не затрагивающий WinINET.
+/// `PortCheck` (`WindowsEngine.corePortsFor`) обязан проверять ровно те порты,
+/// которые реально откроются сессией.
 void main() {
   const ports = XrayPorts();
   const keys = ['vless://a', 'vless://b', 'vless://c'];
@@ -35,86 +29,74 @@ void main() {
       );
 
   group('Гейт «порты выходов существуют»', () {
-    test('системный прокси — портов выходов НЕТ', () {
-      expect(ApiPorts.exitPortsExistIn(CaptureMode.systemProxy), isFalse);
-      expect(ApiPorts.exitPortsActive(withMode(CaptureMode.systemProxy)),
-          isFalse);
+    test('во всех трёх режимах захвата (системный прокси, TUN, Только прокси) порты есть', () {
+      for (final m in CaptureMode.values) {
+        expect(ApiPorts.exitPortsExistIn(m), isTrue, reason: 'режим $m');
+        expect(ApiPorts.exitPortsActive(withMode(m)), isTrue, reason: 'режим $m');
+      }
     });
 
-    test('TUN и «Только прокси» — есть', () {
-      expect(ApiPorts.exitPortsExistIn(CaptureMode.tun), isTrue);
-      expect(ApiPorts.exitPortsExistIn(CaptureMode.proxyOnly), isTrue);
-      expect(ApiPorts.exitPortsActive(withMode(CaptureMode.tun)), isTrue);
-      expect(ApiPorts.exitPortsActive(withMode(CaptureMode.proxyOnly)), isTrue);
-    });
-
-    test('режим не отменяет прежних условий: тумблер и токен', () {
-      // Гейт обязан быть СТРОЖЕ прежнего, а не другим.
-      expect(
-          ApiPorts.exitPortsActive(
-              withMode(CaptureMode.tun).copyWith(apiEnabled: false)),
-          isFalse);
-      expect(
-          ApiPorts.exitPortsActive(
-              withMode(CaptureMode.tun).copyWith(apiToken: '')),
-          isFalse);
+    test('режим не отменяет условий безопасности: тумблер и токен управляющего API', () {
+      for (final m in CaptureMode.values) {
+        expect(
+            ApiPorts.exitPortsActive(withMode(m).copyWith(apiEnabled: false)),
+            isFalse);
+        expect(
+            ApiPorts.exitPortsActive(withMode(m).copyWith(apiToken: '')),
+            isFalse);
+      }
     });
   });
 
   group('Состав corePorts', () {
-    test('порты ядра сессии проверяются ВСЕГДА, при любом режиме', () {
+    test('порты ядра сессии и порты API проверяются во всех режимах захвата', () {
       for (final m in CaptureMode.values) {
         final got = WindowsEngine.corePortsFor(withMode(m), ports);
-        expect(got, containsAll([ports.socks, ports.http, ports.api]),
+        expect(
+            got,
+            containsAll([
+              ports.socks,
+              ports.http,
+              ports.api,
+              10820,
+              10821,
+              10822,
+              ApiPorts.auto,
+              ApiPorts.direct,
+            ]),
             reason: 'режим $m');
+        expect(got.length, 3 + keys.length + 2, reason: 'режим $m');
       }
     });
 
-    test('⚠️ системный прокси: портов API в проверке НЕТ ни одного', () {
-      final got =
-          WindowsEngine.corePortsFor(withMode(CaptureMode.systemProxy), ports);
-      expect(got, [ports.socks, ports.http, ports.api]);
-      // Именно этот порт в сценарии находки держала сторонняя программа.
-      expect(got, isNot(contains(10821)));
-      // И порт «Прямо» тоже: он живёт в тех же двух конфигах.
-      expect(got, isNot(contains(ApiPorts.direct)));
-    });
-
-    test('TUN: порты серверов и «Прямо» проверяются', () {
-      final got = WindowsEngine.corePortsFor(withMode(CaptureMode.tun), ports);
-      expect(got, containsAll([10820, 10821, 10822, ApiPorts.direct]));
-      expect(got.length, 3 + keys.length + 1);
-    });
-
-    test('«Только прокси»: то же самое', () {
-      final got =
-          WindowsEngine.corePortsFor(withMode(CaptureMode.proxyOnly), ports);
-      expect(got, containsAll([10820, 10821, 10822, ApiPorts.direct]));
-    });
-
-    test('⚠️ порт «Прямо» проверяется и БЕЗ выбранных серверов', () {
-      // Отложенная мелочь прошлого раунда: он не зависит от
-      // `apiExitServerKeys` — единственное условие — открытый гейт. Пропусти мы
-      // его в проверке, занятый 10819 всплыл бы только падением ядра.
+    test('⚠️ порт «Прямо» и порт «Умный Автовыбор» проверяются и БЕЗ выбранных серверов', () {
       final got = WindowsEngine.corePortsFor(
           withMode(CaptureMode.proxyOnly).copyWith(apiExitServerKeys: const []),
+          ports);
+      expect(
+          got, [ports.socks, ports.http, ports.api, ApiPorts.auto, ApiPorts.direct]);
+    });
+
+    test('отключённый порт Автовыбора убирает 10818 из проверки', () {
+      final got = WindowsEngine.corePortsFor(
+          withMode(CaptureMode.proxyOnly).copyWith(
+            apiExitServerKeys: const [],
+            apiAutoPortEnabled: false,
+          ),
           ports);
       expect(got, [ports.socks, ports.http, ports.api, ApiPorts.direct]);
     });
 
     test('выключенный API не добавляет ничего', () {
-      final got = WindowsEngine.corePortsFor(
-          withMode(CaptureMode.tun).copyWith(apiEnabled: false), ports);
-      expect(got, [ports.socks, ports.http, ports.api]);
+      for (final m in CaptureMode.values) {
+        final got = WindowsEngine.corePortsFor(
+            withMode(m).copyWith(apiEnabled: false), ports);
+        expect(got, [ports.socks, ports.http, ports.api], reason: 'режим $m');
+      }
     });
 
     test('⚠️ активный сервер даёт ВТОРОЙ outbound к тому же узлу — конфиг '
         'выгружается для проверки настоящим ядром', () {
-      // Находка 5 меняет ВХОД построителя, а не сам построитель: сервер,
-      // выбранный на главном, теперь приходит и как `proxy`, и как выход
-      // `exit-…`. Конфиг с двумя outbound-ами на один узел ядро обязано
-      // принять — проверяется командой
-      // `engine/windows/bin/sing-box.exe check -c build/api-configs/…`.
       const key = 'vless://11111111-2222-3333-4444-555555555555@127.0.0.1:443#DE';
       final json = SingboxConfigBuilder(
         options: const TunOptions(serverIps: ['203.0.113.10']),
@@ -145,15 +127,18 @@ void main() {
       expect(ins.any((i) => i['tag'] == apiDirectInboundTag), isTrue);
     });
 
-    test('сверх сорока серверов лишних портов не появляется', () {
+    test('сверх 250 серверов лишних портов не появляется и служебные не задеты', () {
       final many = [
-        for (var i = 0; i < 45; i++) 'vless://${i.toString().padLeft(3, '0')}'
+        for (var i = 0; i < ApiPorts.maxServers + 10; i++)
+          'vless://${i.toString().padLeft(3, '0')}'
       ];
       final got = WindowsEngine.corePortsFor(
           withMode(CaptureMode.tun).copyWith(apiExitServerKeys: many), ports);
-      // 3 порта ядра + 40 серверных + «Прямо».
-      expect(got.length, 3 + ApiPorts.maxServers + 1);
-      expect(got, isNot(contains(10860)));
+      // 3 порта ядра + 250 серверных + Автовыбор (10818) + Прямо (10819).
+      expect(got.length, 3 + ApiPorts.maxServers + 2);
+      expect(got, isNot(contains(10855)));
+      expect(got, isNot(contains(10870)));
+      expect(got, isNot(contains(11401)));
     });
   });
 }

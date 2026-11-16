@@ -1286,7 +1286,8 @@
   "serviceChecksAfterOff": "VPN desactivada",
   "serviceChecksNow": "Ahora",
   "serviceChecksExitServer": "Por otro servidor: la regla de túnel dividido «{rule}» envía este dominio por «{server}».",
-  "subBarOpenSite": "Sitio web",
+  "subBarOpenSite": "Página de suscripción",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Abrir la página de suscripción en el navegador",
   "subSwitcherRefreshingOne": "Actualizando «{name}»…",
   "subSwitcherRefreshedOne": "«{name}» actualizada",
@@ -1868,5 +1869,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "No conecta",
+  "supportChipSiteOrYoutube": "YouTube / sitio no abre",
+  "supportChipSlowSpeed": "Velocidad baja",
+  "supportChipDrops": "Se corta la conexión",
+  "supportChipsHint": "Selección rápida (opcional, sin escribir detalles):",
+  "supportDescribeOptionalLabel": "Descripción del problema (opcional)",
+  "supportNoTextProvided": "Sin descripción escrita (informe técnico)",
+  "supportCategoriesHeader": "Categoría",
+  "supportSendDevCopyTitle": "Enviar copia anonimizada al desarrollador",
+  "supportSendDevCopySub": "Sin token de suscripción, IPs personales ni HWID real - ayuda a corregir fallos rápido",
+  "supportPreviewDevCopy": "¿Qué se envía?",
+  "supportPreviewDialogTitle": "Copia anonimizada para el desarrollador",
+  "supportSendDevOnlyButton": "Solo al desarrollador",
+  "supportDevCopySent": "Copia enviada al desarrollador ({code})",
+  "supportDevCopyFailed": "No se pudo subir al servidor ({code}) - archivo local listo",
+  "supportDevOnlyDoneText": "Informe anonimizado enviado al servidor del desarrollador. Código: {code}",
+  "supportAttachDiagButton": "Informe diagnóstico",
+  "supportSendToChatAndDev": "Adjuntar al chat"
 }

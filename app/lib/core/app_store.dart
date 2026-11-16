@@ -60,6 +60,13 @@ abstract final class AppStoreInfo {
 
   static bool get isPlay => current == AppStore.play;
 
+  /// Сборка `ROOT-Stealth` (`--flavor stealth`, пакет `lol.silentgate.stealth`).
+  static bool get isStealth => flavor.trim().toLowerCase() == 'stealth';
+
+  /// Имя пакета текущей сборки Android (`lol.silentgate` или `lol.silentgate.stealth`).
+  static String get runtimePackageName =>
+      isStealth ? '$packageName.stealth' : packageName;
+
   /// Сборка спрашивает согласие на данные устройства (Play и Microsoft
   /// Store). Сборка GitHub только сообщает о них — см. `DeviceInfoConsent`.
   static bool asksDataConsent(AppStore store) =>

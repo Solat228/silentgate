@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN desligada",
   "serviceChecksNow": "Agora",
   "serviceChecksExitServer": "Por outro servidor: a regra de túnel dividido “{rule}” envia este domínio por “{server}”.",
-  "subBarOpenSite": "Site",
+  "subBarOpenSite": "Página da assinatura",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Abrir a página da assinatura no navegador",
   "subSwitcherRefreshingOne": "Atualizando \"{name}\"…",
   "subSwitcherRefreshedOne": "\"{name}\" atualizada",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "Não conecta",
+  "supportChipSiteOrYoutube": "YouTube / site não abre",
+  "supportChipSlowSpeed": "Velocidade baixa",
+  "supportChipDrops": "Conexão cai",
+  "supportChipsHint": "Escolha rápida (opcional, sem digitar detalhes):",
+  "supportDescribeOptionalLabel": "Descrição do problema (opcional)",
+  "supportNoTextProvided": "Sem descrição em texto (relatório técnico)",
+  "supportCategoriesHeader": "Categoria",
+  "supportSendDevCopyTitle": "Enviar cópia anonimizada ao desenvolvedor",
+  "supportSendDevCopySub": "Sem token de assinatura, IPs pessoais ou HWID bruto - acelera correções",
+  "supportPreviewDevCopy": "O que vai?",
+  "supportPreviewDialogTitle": "Cópia anonimizada para o desenvolvedor",
+  "supportSendDevOnlyButton": "Só ao desenvolvedor",
+  "supportDevCopySent": "Cópia enviada ao desenvolvedor ({code})",
+  "supportDevCopyFailed": "Falha ao enviar ao servidor ({code}) - arquivo local pronto",
+  "supportDevOnlyDoneText": "Relatório anonimizado enviado ao servidor do desenvolvedor. Código: {code}",
+  "supportAttachDiagButton": "Relatório diagnóstico",
+  "supportSendToChatAndDev": "Anexar ao chat"
 }

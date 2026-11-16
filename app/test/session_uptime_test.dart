@@ -57,11 +57,11 @@ void main() {
 
     test('⚠️ блок времени стоит В САМОМ НИЗУ шторки', () {
       final src = read('lib/ui/server_info_screen.dart');
-      expect(src.contains('const _SessionUptimeBlock(),'), isTrue,
-          reason: 'блок пропал из списка детей экрана');
+      expect(src.contains('_SessionUptimeBlock(serverKey: s.key),'), isTrue,
+          reason: 'блок пропал из списка детей экрана или потерял привязку к серверу');
       // «В самый низ» — просьба владельца дословно. Блок обязан идти ПОСЛЕ
       // раздела параметров, иначе он окажется в середине экрана.
-      expect(src.indexOf('const _SessionUptimeBlock(),'),
+      expect(src.indexOf('_SessionUptimeBlock(serverKey: s.key),'),
           greaterThan(src.indexOf('srvInfoSectionParams')),
           reason: 'блок уехал выше раздела параметров');
     });

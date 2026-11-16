@@ -171,4 +171,63 @@ void main() {
     expect(buildAll(xrayTun.copyWith()), buildAll(xrayTun));
     expect(xrayTun.asBlackhole().blockTunnelQuic, isTrue);
   });
+
+  test('tunnelIpv4Only + blockTunnelQuic (whitelist:// на Android с IPv6) чинит YouTube без утечки ::/0', () {
+    final live = TunOptions.fromSettings(
+      const AppSettings(tunIpv6: true, dnsStrategy: DnsStrategy.preferIpv4),
+      android: true,
+      ipv6Available: true,
+      blockTunnelQuic: true,
+      tunnelIpv4Only: true,
+    );
+    expect(live.ipv6Upstream, isTrue,
+        reason: 'интерфейс обязан захватывать fdfe:dcba:9876::1/126, иначе IPv6 утечёт мимо VPN');
+    expect(live.ipv6, isFalse,
+        reason: 'внутри TUN IPv6 режется до попадания в RelayBridge');
+    expect(live.dnsStrategy, DnsStrategy.ipv4Only);
+
+    const ytSplit = SplitTunnelConfig(
+      mode: SplitMode.onlySelected,
+      apps: [AppRule('com.google.android.youtube', action: AppAction.tunnel)],
+    );
+    final cfg = SingboxConfigBuilder(options: live).buildMap(ytSplit);
+    expect(
+      SingboxConfigBuilder(options: live.copyWith()).buildMap(ytSplit),
+      cfg,
+    );
+    expect(
+      (SingboxConfigBuilder(options: live.asBlackhole()).buildMap(ytSplit)['inbounds'] as List),
+      (cfg['inbounds'] as List),
+      reason: 'интерфейс kill switch обязан совпасть поле в поле',
+    );
+
+    final rules = ((cfg['route'] as Map)['rules'] as List).cast<Map<String, dynamic>>();
+    expect(
+      rules.any((r) => r['ip_version'] == 6 && r['action'] == 'reject'),
+      isTrue,
+    );
+    expect(
+      rules.any((r) =>
+          r['network'] == 'udp' &&
+          (r['port'] as List?)?.contains(443) == true &&
+          (r['package_name'] as List?)?.contains('com.google.android.youtube') == true &&
+          r['action'] == 'reject'),
+      isTrue,
+      reason: 'QUIC YouTube обязан мгновенно отвергаться с откатом на TCP:443',
+    );
+
+    final dns = cfg['dns'] as Map<String, dynamic>;
+    expect(dns['strategy'], 'ipv4_only');
+    final dnsRules = (dns['rules'] as List).cast<Map<String, dynamic>>();
+    final httpsIdx = dnsRules.indexWhere((r) =>
+        (r['query_type'] as List?)?.contains('HTTPS') == true &&
+        r['action'] == 'predefined' &&
+        r['rcode'] == 'NOERROR');
+    final appDnsIdx = dnsRules.indexWhere((r) =>
+        (r['package_name'] as List?)?.contains('com.google.android.youtube') == true &&
+        r['server'] == 'dns-proxy');
+    expect(httpsIdx, isNonNegative);
+    expect(appDnsIdx, greaterThan(httpsIdx),
+        reason: 'гашение HTTPS/SVCB обязано стоять ВЫШЕ package_name → dns-proxy');
+  });
 }

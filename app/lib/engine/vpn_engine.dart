@@ -38,11 +38,20 @@ class ConnectionOptions {
   /// доходят до `SingboxConfigBuilder.apiOnlyExitKeys`, и правила их не видят.
   final Set<String> apiOnlyExitKeys;
 
+  /// Итоговый список ключей серверов с отдельным локальным портом API
+  /// (с учётом `apiAutoIncludeAutoProfiles`, разрешённый по каталогу всех подписок).
+  final List<String>? effectiveApiExitServerKeys;
+
+  /// Ключи серверов пула «Умный Автовыбор» (`10818`).
+  final List<String> apiAutoPoolKeys;
+
   const ConnectionOptions({
     this.variant = OutboundVariant.none,
     this.settings = AppSettings.defaults,
     this.exitServers = const {},
     this.apiOnlyExitKeys = const {},
+    this.effectiveApiExitServerKeys,
+    this.apiAutoPoolKeys = const [],
   });
 
   CaptureMode get captureMode => settings.captureMode;
@@ -149,6 +158,10 @@ abstract class VpnEngine {
   /// просто ведёт себя как раньше, а не ломается.
   Future<void> disconnectKeepingCapture() => disconnect();
 
+  /// Предварительно прогреть (отрезолвить) домены серверов ДО гашения старого
+  /// прокси-ядра при бесшовном переключении (Make-Before-Break, Вариант 1).
+  Future<void> prewarmSwitchHosts(List<VpnServer> servers) async {}
+
   /// Можно ли удержать текущий захват, если следующая сессия пойдёт с [next].
   /// ⚠️ «Нет» по умолчанию: платформа, не знающая про захват, обязана честно
   /// отключаться целиком, иначе смена способа захвата оставит живой туннель.
@@ -213,4 +226,21 @@ abstract class VpnEngine {
 
   /// Освободить ресурсы.
   Future<void> dispose();
+}
+
+/// Движок, поддерживающий автономный фоновый маршрутизатор локальных портов API
+/// при выключенном VPN (`AppSettings.apiKeepAliveWhenDisconnected`).
+///
+/// Отдельный интерфейс, чтобы не ломать существующие тестовые фейки `VpnEngine`.
+abstract interface class StandaloneApiPortsEngine {
+  Future<void> syncStandaloneApiPorts({
+    required AppSettings settings,
+    required Map<String, VpnServer> exitServers,
+    required List<String> serverKeys,
+    required List<String> autoPoolKeys,
+  });
+
+  Future<void> stopStandaloneApiPorts();
+
+  bool get standaloneApiPortsRunning;
 }

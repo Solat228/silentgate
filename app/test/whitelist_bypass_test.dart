@@ -6,6 +6,7 @@ import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/platform/app_launcher.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
+import 'package:silentgate/core/platform/captcha_webview.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/exit_outbounds.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
@@ -49,8 +50,13 @@ void main() {
       expect(s.whitelistPlatform, 'telemost');
       expect(s.whitelistRoom, 'https://telemost.yandex.ru/j/1234567890');
       expect(s.whitelistMode, 'video');
+      expect(s.whitelistReliable, isTrue);
       expect(s.remark, contains('Телемост'));
       expect(ShareLinkParser.tryParse(s.key)!.key, s.key);
+
+      final sNoRel = ShareLinkParser.tryParse(
+          'https://telemost.yandex.ru/j/1234567890?reliable=0')!;
+      expect(sNoRel.whitelistReliable, isFalse);
 
       final sShort = ShareLinkParser.tryParse(
           'whitelist://telemost?room=1234567890&mode=dc&dual=1#TM')!;
@@ -91,20 +97,28 @@ void main() {
       expect(sScheme.whitelistRoom, 'https://corp.bitrix24.ru/video/conf9');
     });
 
-    test('5. VK Звонки: приводит vk.com и короткие токены к https://vk.ru/call/join/...', () {
+    test('5. VK Звонки: приводит vk.com и короткие токены к https://vk.ru/call/join/... и ставит mode=auto', () {
       final s1 = ShareLinkParser.tryParse('https://vk.ru/call/join/call-token-123')!;
       expect(s1.whitelistPlatform, 'vk');
       expect(s1.whitelistRoom, 'https://vk.ru/call/join/call-token-123');
+      expect(s1.whitelistMode, 'auto');
+      expect(ShareLinkParser.tryParse(s1.key)!.key, s1.key);
 
       final s2 =
           ShareLinkParser.tryParse('https://vk.com/call/join/call-token-456#VK2')!;
       expect(s2.whitelistPlatform, 'vk');
       expect(s2.whitelistRoom, 'https://vk.ru/call/join/call-token-456');
+      expect(s2.whitelistMode, 'auto');
       expect(s2.remark, 'VK2');
 
       final s3 = ShareLinkParser.tryParse('vkcall://tok-789')!;
       expect(s3.whitelistRoom, 'https://vk.ru/call/join/tok-789');
+      expect(s3.whitelistMode, 'auto');
       expect(ShareLinkParser.tryParse(s3.key)!.key, s3.key);
+
+      final sVideo = ShareLinkParser.tryParse(
+          'whitelist://vk?room=https%3A%2F%2Fvk.ru%2Fcall%2Fjoin%2Ftok-v&mode=video')!;
+      expect(sVideo.whitelistMode, 'video');
     });
 
     test('6. Blink: сохраняет blink://<chatId>, invite URL и гостевой токен bt', () {
@@ -165,13 +179,24 @@ void main() {
       expect(bxJson['joinLink'], 'https://team.bitrix24.ru/video/standup');
       expect(bxJson['tunnelMode'], 'video');
 
-      // 5. VK -> AUTH + полный joinLink + reliable=true в video режиме
+      // 5. VK -> AUTH + auto стартует с dc (reliable=false), а при откате в video включает reliable=true
       final vk = ShareLinkParser.tryParse('vkcall://vk-tok-1')!;
-      final vkCmd = WhitelistBypassProcess.buildStdinCommand(vk);
-      expect(vkCmd, startsWith('AUTH:'));
-      final vkJson = jsonDecode(vkCmd.substring(5).trim()) as Map<String, dynamic>;
-      expect(vkJson['joinLink'], 'https://vk.ru/call/join/vk-tok-1');
-      expect(vkJson['reliable'], isTrue);
+      final vkDcCmd = WhitelistBypassProcess.buildStdinCommand(vk);
+      expect(vkDcCmd, startsWith('AUTH:'));
+      final vkDcJson =
+          jsonDecode(vkDcCmd.substring(5).trim()) as Map<String, dynamic>;
+      expect(vkDcJson['joinLink'], 'https://vk.ru/call/join/vk-tok-1');
+      expect(vkDcJson['tunnelMode'], 'dc');
+      expect(vkDcJson['reliable'], isFalse);
+
+      final vkVideoCmd = WhitelistBypassProcess.buildStdinCommand(
+        vk,
+        modeOverride: 'video',
+      );
+      final vkVideoJson =
+          jsonDecode(vkVideoCmd.substring(5).trim()) as Map<String, dynamic>;
+      expect(vkVideoJson['tunnelMode'], 'video');
+      expect(vkVideoJson['reliable'], isTrue);
 
       // 6. Blink -> JOIN + joinLink + cookiesPath
       final blink = ShareLinkParser.tryParse('blink://112233')!;
@@ -350,7 +375,15 @@ void main() {
         WhitelistBypassEndpoint.cidrsFor('vk'),
         containsAll(<String>['90.156.0.0/16', '155.212.192.0/20']),
       );
-      expect(WhitelistBypassEndpoint.cidrsFor('telemost'), contains('5.255.211.0/24'));
+      expect(
+        WhitelistBypassEndpoint.cidrsFor('telemost'),
+        containsAll(<String>[
+          '5.255.211.0/24',
+          '37.9.64.0/18',
+          '87.250.224.0/19',
+          '213.180.192.0/19',
+        ]),
+      );
     });
 
     test('openInteractiveUrl делегирует открытие капчи VK / входа Blink в штатный AppLauncher', () async {
@@ -371,7 +404,50 @@ void main() {
         ]),
       );
     });
+
+    test('openCaptchaUrl сначала открывает встроенный WebView, а при отказе откатывается на браузер', () async {
+      final browserOpened = <String>[];
+      final webviewOpened = <String>[];
+      setAppLauncherForTests(_FakeAppLauncher(browserOpened));
+      addTearDown(() {
+        setAppLauncherForTests(null);
+        setCaptchaWebViewForTests(null);
+      });
+
+      // 1) Встроенный WebView доступен -> браузер НЕ дёргается
+      setCaptchaWebViewForTests(
+        _FakeCaptchaWebView(webviewOpened, shouldOpen: true),
+      );
+      await WhitelistBypassProcess.openCaptchaUrl('http://127.0.0.1:45555/');
+      expect(webviewOpened, equals(<String>['http://127.0.0.1:45555/']));
+      expect(browserOpened, isEmpty);
+
+      // 2) Встроенный WebView недоступен (например, LTSC без WebView2) -> откат на браузер
+      webviewOpened.clear();
+      setCaptchaWebViewForTests(
+        _FakeCaptchaWebView(webviewOpened, shouldOpen: false),
+      );
+      await WhitelistBypassProcess.openCaptchaUrl('http://127.0.0.1:45556/');
+      expect(webviewOpened, isEmpty);
+      expect(browserOpened, equals(<String>['http://127.0.0.1:45556/']));
+    });
   });
+}
+
+class _FakeCaptchaWebView implements CaptchaWebViewLauncher {
+  _FakeCaptchaWebView(this.opened, {required this.shouldOpen});
+  final List<String> opened;
+  final bool shouldOpen;
+
+  @override
+  Future<bool> open(String url, {String? title, String mode = 'captcha'}) async {
+    if (!shouldOpen) return false;
+    opened.add(url);
+    return true;
+  }
+
+  @override
+  Future<void> close() async {}
 }
 
 class _FakeAppLauncher implements AppLauncher {

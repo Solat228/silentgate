@@ -26,7 +26,7 @@ const double kAutoGroupToggleWidth = 34;
 ///
 /// ⚠️ ПРИ ПОИСКЕ ГРУППЫ НЕ СТРОЯТСЯ. Человек ищет конкретный сервер, и найденный
 /// внутри свёрнутой группы оказался бы спрятан. Общая точка для правой панели
-/// главного экрана и экрана «Серверы» — два своих варианта разошлись бы.
+/// главного экрана, экрана «Серверы» и диалога «Через сервер».
 List<ServerListEntry> serverListEntries({
   required List<VpnServer> servers,
   required List<int> shown,
@@ -139,8 +139,12 @@ double? serverEntryTop(
 }
 
 /// Свернуть или развернуть группу [country] — состояние живёт в настройках и
-/// переживает перезапуск.
+/// переживает перезапуск. Папка «🌉 Мосты» по умолчанию свёрнута и хранит
+/// признак раскрытия в `expandedAutoGroups`.
 Future<void> toggleServerGroup(BuildContext context, String country) {
+  if (country == ServerGroups.bridgesCountryKey) {
+    return toggleAutoGroup(context, ServerGroups.bridgesGroupKey);
+  }
   return context.read<SettingsController>().update((s) {
     final set = s.collapsedCountries.toSet();
     if (!set.remove(country)) set.add(country);
@@ -148,60 +152,136 @@ Future<void> toggleServerGroup(BuildContext context, String country) {
   });
 }
 
-/// Заголовок группы серверов одной страны: флаг, подпись, число, шеврон.
+/// Заголовок сворачиваемой группы серверов одной страны (когда у страны нет
+/// собственного автосервера от панели) либо папки «🌉 Мосты».
+///
+/// Шёлк по шеврону или числу сворачивает/разворачивает группу, а нажатие по
+/// самой строке (флаг и название) выбирает группу целиком как виртуальный
+/// автосервер по всем её узлам.
 class ServerGroupHeaderTile extends StatelessWidget {
   final ServerGroupHeader group;
 
   /// Имя любого сервера группы — из него [FlagCell] берёт флаг.
   final String flagSource;
 
-  const ServerGroupHeaderTile(
-      {super.key, required this.group, required this.flagSource});
+  /// Переопределение действия при выборе заголовка (например, в пикере
+  /// «Через сервер» или на экране `ServersScreen`). По умолчанию выбирает
+  /// виртуальный автосервер группы в [AppState].
+  final VoidCallback? onSelect;
+
+  /// Переопределение признака «выбрана вся группа» (для пикера правил).
+  final bool? selectedOverride;
+
+  const ServerGroupHeaderTile({
+    super.key,
+    required this.group,
+    required this.flagSource,
+    this.onSelect,
+    this.selectedOverride,
+  });
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final selectedInside =
-        group.indices.contains(context.select<AppState, int>((s) => s.selectedIndex));
-    return Tooltip(
-      message: group.collapsed ? l.serverGroupExpand : l.serverGroupCollapse,
-      waitDuration: const Duration(milliseconds: 600),
-      child: InkWell(
-        onTap: () => toggleServerGroup(context, group.country),
-        child: SizedBox(
-          height: kServerGroupHeaderExtent,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(start: 12, end: 12),
-            child: Row(children: [
-              Icon(group.collapsed ? Icons.chevron_right : Icons.expand_more,
-                  size: 20),
-              const SizedBox(width: 6),
-              FlagCell(flagSource, width: 24, height: 17),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  group.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight:
-                          selectedInside ? FontWeight.w700 : FontWeight.w600),
+    final isBridges = group.country == ServerGroups.bridgesCountryKey;
+    final selectedGroup = selectedOverride ??
+        (context.select<AppState, String?>((s) => s.selectedGroupCountry) ==
+            group.country);
+    final selectedInside = selectedGroup ||
+        group.indices.contains(
+            context.select<AppState, int>((s) => s.selectedIndex));
+    final titleText = isBridges ? '🌉 ${group.label}' : group.label;
+
+    return ColoredBox(
+      color: selectedGroup
+          ? theme.colorScheme.primaryContainer.withValues(alpha: 0.28)
+          : Colors.transparent,
+      child: SizedBox(
+        height: kServerGroupHeaderExtent,
+        child: Row(children: [
+          Tooltip(
+            message:
+                group.collapsed ? l.serverGroupExpand : l.serverGroupCollapse,
+            waitDuration: const Duration(milliseconds: 600),
+            child: InkWell(
+              key: ValueKey('groupToggle:${group.country}'),
+              onTap: () => toggleServerGroup(context, group.country),
+              child: SizedBox(
+                width: kAutoGroupToggleWidth,
+                height: kServerGroupHeaderExtent,
+                child: Icon(
+                  group.collapsed ? Icons.chevron_right : Icons.expand_more,
+                  size: 20,
                 ),
               ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text('${group.count}',
-                    style: theme.textTheme.labelSmall),
-              ),
-            ]),
+            ),
           ),
-        ),
+          Expanded(
+            child: InkWell(
+              key: ValueKey('groupSelect:${group.country}'),
+              onTap: onSelect ??
+                  () => context.read<AppState>().selectServerGroup(group),
+              child: SizedBox(
+                height: kServerGroupHeaderExtent,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: Row(children: [
+                    FlagCell(
+                      isBridges ? '' : flagSource,
+                      auto: isBridges,
+                      width: 24,
+                      height: 17,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        titleText,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: selectedInside
+                              ? FontWeight.w700
+                              : FontWeight.w600,
+                          color: selectedGroup
+                              ? theme.colorScheme.primary
+                              : null,
+                        ),
+                      ),
+                    ),
+                    if (selectedGroup) ...[
+                      Icon(Icons.check,
+                          size: 16, color: theme.colorScheme.primary),
+                      const SizedBox(width: 6),
+                    ],
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          Tooltip(
+            message:
+                group.collapsed ? l.serverGroupExpand : l.serverGroupCollapse,
+            waitDuration: const Duration(milliseconds: 600),
+            child: InkWell(
+              onTap: () => toggleServerGroup(context, group.country),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(
+                    start: 4, end: 12, top: 8, bottom: 8),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child:
+                      Text('${group.count}', style: theme.textTheme.labelSmall),
+                ),
+              ),
+            ),
+          ),
+        ]),
       ),
     );
   }

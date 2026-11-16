@@ -22,6 +22,7 @@ import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/xray/override_normalizer.dart';
 import '../../core/xray/xray_config_builder.dart';
+import '../../core/xray/xray_exit_bridge.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/geo/geo_assets.dart';
@@ -31,6 +32,9 @@ import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
 import '../../core/whitelist_bypass/whitelist_bypass_helper.dart';
+import '../../core/dpi/dpi_bypass_lists.dart';
+import '../../core/dpi/dpi_bypass_proxy.dart';
+import '../../core/dpi/dpi_strategy.dart';
 import 'app_heartbeat.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
@@ -885,12 +889,20 @@ class AndroidEngine extends VpnEngineBase {
       // признак, по которому Kotlin поднимает libxray.
       final viaXray = cfg.core == ProxyCore.xray;
 
+      final usesWhitelistRelay =
+          session.servers.any((s) => s.usesWhitelistRelay);
+      final whitelistStandalone = session.servers.isNotEmpty &&
+          session.servers.every((s) => s.isWhitelistBypass);
+
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Только когда ядро — sing-box
-      // (hysteria2), outbound встраивается прямо в конфиг туннеля.
+      // (hysteria2 / whitelist_bypass), outbound встраивается прямо в конфиг
+      // туннеля; при этом `whitelist_bypass` тоже идёт в локальный SOCKS5-мост
+      // (`librelay.so`), который режет `AtypIPv6` и не тянет QUIC поверх VP8.
       final liveOptions = TunOptions.fromSettings(
           session.options.settings,
-          blockTunnelQuic: viaXray,
+          blockTunnelQuic: viaXray || usesWhitelistRelay,
+          tunnelIpv4Only: whitelistStandalone,
           serverIps: serverIps,
           // ⚠️ `tunnelExcludeServerIps` на Android НАМЕРЕННО не заполняется
           // (пусто = прежний конфиг байт в байт). Здесь это поле стало бы
@@ -937,6 +949,9 @@ class AndroidEngine extends VpnEngineBase {
       _liveOptions = liveOptions;
       _liveSplit = session.options.split;
 
+      final bridgePorts =
+          assignXrayExitBridgePorts(session.options.exitServers);
+
       // Именованные выходы мульти-VPN. Собираются ДО построителя, чтобы его
       // единственным источником правды о живых выходах остался список готовых
       // outbound-ов: правило со ссылкой на несобравшийся выход обязано упасть
@@ -944,6 +959,9 @@ class AndroidEngine extends VpnEngineBase {
       final exitsBuilt = ExitOutbounds.build(
         servers: session.options.exitServers,
         resolvedIps: resolvedIps,
+        xrayBridgePorts: bridgePorts,
+        xrayBridgeUser: localInboundUser,
+        xrayBridgePassword: localInboundPassword,
       // ⚠️ ЗАПАСНОЙ ПУТЬ ВЫХОДА: умер выход — трафик правила уходит в общий
       // туннель, а не в никуда. До этого отказ выхода означал, что правило
       // просто перестаёт работать, и человек видел не «выход умер», а
@@ -962,6 +980,20 @@ class AndroidEngine extends VpnEngineBase {
       if (exitsBuilt.outbounds.isNotEmpty) {
         AppLog.i('Мульти-VPN: дополнительных серверов ${exitsBuilt.outbounds.length}');
       }
+
+      await _ensureDpiProxies(session.options, viaXray: viaXray);
+      final effectiveSplit = DpiBypassLists.applyGlobalDpiRules(
+        session.options.split,
+        session.options.settings,
+      );
+      final dpiOutbounds = LocalDpiBypassProxy.buildExitOutbounds(
+        directPort: _dpiDirectProxy?.port,
+        fallbackPort: _dpiFallbackProxy?.port,
+      );
+      final allExitOutbounds = <Map<String, dynamic>>[
+        ...exitsBuilt.outbounds,
+        ...dpiOutbounds,
+      ];
 
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
@@ -986,7 +1018,7 @@ class AndroidEngine extends VpnEngineBase {
                 resolvedIp:
                     resolvedIps[session.servers.first.address.trim()],
               ),
-        exitOutbounds: exitsBuilt.outbounds,
+        exitOutbounds: allExitOutbounds,
         // ⚠️ ПАРИТЕТ С WINDOWS, А НЕ ЛИШНЯЯ СТРОКА. Портов API на Android
         // сегодня нет (`apiExitServerKeys`/`apiToken` сюда не передаются), но
         // состав выходов считает ОБЩИЙ `AppState.exitServerKeysFor`: включи
@@ -994,7 +1026,7 @@ class AndroidEngine extends VpnEngineBase {
         // тег, и правило «через него» ушло бы вторым соединением к тому же
         // узлу. Разводим источники на обеих платформах одинаково.
         apiOnlyExitKeys: session.options.apiOnlyExitKeys.toList(),
-      ).buildJson(session.options.split);
+      ).buildJson(effectiveSplit);
 
       // Подготовка была долгой — сверяемся с отменой ДО того, как тронем
       // нативный сервис. И убираем СВОЙ форвардер: он уже поднят (внутри сборки
@@ -1035,7 +1067,7 @@ class AndroidEngine extends VpnEngineBase {
           onInteractiveUrl: (kind, url) {
             if (aborted()) return;
             final msg = kind == 'captcha'
-                ? 'Пройдите капчу VK в открывшемся браузере ($url)...'
+                ? 'Подтверждение подключения ВК (автопроверка)...'
                 : 'Подтвердите вход в открывшемся браузере ($url)...';
             setStatus(
               VpnConnectionState.connecting,
@@ -1050,6 +1082,32 @@ class AndroidEngine extends VpnEngineBase {
         }
       }
 
+      String? rawXrayJson;
+      if (viaXray) {
+        final guarded = _guardXrayInbounds(cfg.json);
+        rawXrayJson = bridgePorts.isEmpty
+            ? guarded
+            : injectXrayExitBridges(
+                guarded,
+                exitServers: session.options.exitServers,
+                bridgePorts: bridgePorts,
+                resolvedIps: resolvedIps,
+                socksUser: localInboundUser,
+                socksPassword: localInboundPassword,
+                variant: session.options.variant,
+              );
+      } else if (bridgePorts.isNotEmpty) {
+        rawXrayJson = injectXrayExitBridges(
+          null,
+          exitServers: session.options.exitServers,
+          bridgePorts: bridgePorts,
+          resolvedIps: resolvedIps,
+          socksUser: localInboundUser,
+          socksPassword: localInboundPassword,
+          variant: session.options.variant,
+        );
+      }
+
       setStatus(VpnConnectionState.connecting,
           step: ConnectStep.tun, message: status.message);
       _starting = true;
@@ -1057,8 +1115,8 @@ class AndroidEngine extends VpnEngineBase {
           'start',
           startArgs(
             tunJson: tunJson,
-            xrayJson: viaXray
-                ? await _guardGeodata(_guardXrayInbounds(cfg.json))
+            xrayJson: rawXrayJson != null
+                ? await _guardGeodata(rawXrayJson)
                 : null,
             readsXrayStats: readsXrayStats,
           ));
@@ -1546,8 +1604,82 @@ class AndroidEngine extends VpnEngineBase {
     _liveSplit = null;
     await Future.wait([
       if (wb != null) wb.stop(),
+      _stopDpiProxies(),
       _stopFallbackDns(),
       _stopService(),
+    ]);
+  }
+
+  LocalDpiBypassProxy? _dpiDirectProxy;
+  LocalDpiBypassProxy? _dpiFallbackProxy;
+
+  Future<void> _ensureDpiProxies(
+    ConnectionOptions options, {
+    required bool viaXray,
+  }) async {
+    final s = options.settings;
+    final modes = DpiBypassLists.requiredModes(options.split, s);
+    final cfg = DpiDesyncConfig.fromSettings(s);
+    final fbTimeout = Duration(milliseconds: s.dpiFallbackTimeoutMs.clamp(400, 8000));
+    final tspuBytes = s.dpiTspuThresholdKb.clamp(8, 128) * 1024;
+
+    if (modes.needsDirect) {
+      _dpiDirectProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: false,
+        strategy: cfg,
+        tspuThresholdBytes: tspuBytes,
+        registerInRuntime: true,
+      );
+      _dpiDirectProxy!.updateConfig(
+        strategy: cfg,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+      );
+      await _dpiDirectProxy!.start();
+    } else if (_dpiDirectProxy != null) {
+      await _dpiDirectProxy!.stop();
+      _dpiDirectProxy = null;
+    }
+
+    if (modes.needsFallback) {
+      final fbPort = probeInboundPort > 0 ? probeInboundPort : (viaXray ? ports.socks : null);
+      final fbUser = probeInboundPort > 0 ? ProxyProbe.user : localInboundUser;
+      final fbPass = probeInboundPort > 0 ? ProxyProbe.password : localInboundPassword;
+      _dpiFallbackProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: true,
+        vpnSocksPort: fbPort,
+        vpnSocksUsername: fbUser,
+        vpnSocksPassword: fbPass,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+        strategy: cfg,
+        registerInRuntime: true,
+      );
+      _dpiFallbackProxy!.updateConfig(
+        strategy: cfg,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+      );
+      _dpiFallbackProxy!.updateVpnSocks(
+        port: fbPort,
+        username: fbUser,
+        password: fbPass,
+      );
+      await _dpiFallbackProxy!.start();
+    } else if (_dpiFallbackProxy != null) {
+      await _dpiFallbackProxy!.stop();
+      _dpiFallbackProxy = null;
+    }
+  }
+
+  Future<void> _stopDpiProxies() async {
+    final d = _dpiDirectProxy;
+    final f = _dpiFallbackProxy;
+    _dpiDirectProxy = null;
+    _dpiFallbackProxy = null;
+    await Future.wait([
+      if (d != null) d.stop(),
+      if (f != null) f.stop(),
     ]);
   }
 
@@ -1562,6 +1694,7 @@ class AndroidEngine extends VpnEngineBase {
     _liveSplit = null;
     try {
       await Future.wait([
+        _stopDpiProxies(),
         _stopFallbackDns(),
         _stopService(),
       ]).timeout(const Duration(milliseconds: 700));

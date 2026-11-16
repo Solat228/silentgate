@@ -5,14 +5,14 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.18.3';
+  static const version = '1.18.8';
 
   /// Номер сборки/патча после `+` в `pubspec.yaml` (`version: X.Y.Z+N`).
   /// Держится синхронно с `pubspec.yaml` и проверяется `test/app_info_test.dart`:
   /// на Android при `--split-per-abi` системный `versionCode` сдвинут на ABI
   /// (`2000 + N` для arm64, `4000 + N` для x86_64), поэтому честный номер `+N`
   /// для «О программе» и сравнения сборок хранится здесь.
-  static const buildNumber = 96;
+  static const buildNumber = 103;
 
   /// Необязательный суффикс пре-релиза/патча (`beta.1`, `rc.1`, `hotfix.2`),
   /// передаваемый при сборке (`--dart-define=SILENTGATE_PRERELEASE=...`).
@@ -32,9 +32,16 @@ class AppInfo {
   static const gitPatchLog =
       String.fromEnvironment('SILENTGATE_GIT_PATCHES', defaultValue: '');
 
-  /// Сводка патчей, вошедших в текущую сборку `1.18.3+96` (показывается по нажатию
+  /// Сводка патчей, вошедших в текущую сборку `1.18.7+102` (показывается по нажатию
   /// на строку версии в «О программе» вместе с ревизией Git).
   static const List<String> builtInPatchesRu = [
+    '+103 · Быстрые отчёты поддержки в 1 клик без обязательного описания, чипы категорий, отправка обезличенной копии разработчику с предпросмотром и кнопкой во встроенном чате поддержки; работа YouTube на узлах обхода БС (IPv4-only + отказ QUIC и DNS HTTPS/SVCB); строго клиентская сборка релея БС',
+    '+102 · Вставка файлов (.txt/.json) и мульти-ссылок через Ctrl+V в отдельную локальную подписку; рабочая прослойка обхода блокировок (Zapret / DPI) мимо Wintun с проверкой и автоподбором стратегий; прокачанный API автоматизации (порт Умного Авто 10818, до 250 закреплённых портов во всех режимах захвата и при выключенном VPN, все профили Авто с дедупликацией Xray, режимы пароля, управление подписками); фикс гонки Wi-Fi/Cellular на Android 15/16 и ложных обрывов ТСПУ',
+    '+101 · Сортировка и вложение серверов по флагу в страновые Авто-серверы, выбор папок стран и «🌉 Мосты» как виртуальных Авто-серверов (включая «Через сервер»), исправление падения chromehttp2 в whitelist-bypass и пересоздания TUN по domain_suffix',
+    '+100 · Сохранение позиции и состояния ярлыка SilentGate на Рабочем столе Windows при обновлении и переустановке (без пересоздания .lnk поверх существующего)',
+    '+99 · Реальный пинг в мс и замер скорости серверов БС через сам WebRTC-звонок, определение настоящего выходного IP ноды БС вместо домена площадки и 127.0.0.1:10855, кнопка закрытия (×) на всех уведомлениях и плашках прогресса',
+    '+98 · Выбор профилей «🎬 Авто (YouTube)» / «Авто» и узлов XHTTP отдельным выходом правил («Через сервер») через изолированный мульти-мост Xray -> sing-box; исправлен клик по капче в WebView2 на русской локали Windows',
+    '+97 · Единый авто-режим ссылок ВК (DataChannel с проверкой потока > 64 КБ и бесшовным откатом на Video + KCP), исправление 64 КБ буфера SCTP и многопакетного QUIC UDP в релее БС, встроенное окно капчи ВК (WebView2 / Android WebView) с фоновым автокликом чекбокса и кэшированием токена, версия в шапке Android',
     '+96 · Исправлены падение Go 1.27 HTTP/2 в релее белых списков (librelay.so и whitelist-bypass.exe), открытие капчи VK / входа Blink через штатный браузер на Android и Windows, подсети TURN VK Cloud (90.156.0.0/16) и остановка предыдущего релея при смене сервера',
     '+95 · Пауза, мультивыбор протяжкой мыши (как в Telegram), ПКМ-меню и пакетные правила маршрутизации в «Открытых соединениях» и «Раздельном туннелировании»; строгая блокировка неподдерживаемых выходных узлов («Авто», XHTTP, БС) в «Через сервер»',
     '+94 · Исправлены запуск TUN с Kill Switch на быстрых SSD при правилах приложений по имени, зависание видео и превью YouTube в TUN (откат постквантового QUIC на TCP и нормализация панельных профилей Авто), автопереподключение и очистка системного прокси при переключении в TUN',
@@ -50,6 +57,13 @@ class AppInfo {
   ];
 
   static const List<String> builtInPatchesEn = [
+    '+103 · 1-click support reports without mandatory text description, quick category chips, optional anonymized developer copy with preview and in-app support chat report button; fix YouTube over Whitelist-Bypass tunnels (IPv4-only + QUIC and DNS HTTPS/SVCB suppression); strictly client-only relay binaries',
+    '+102 · Clipboard file (CF_HDROP) & multi-link Ctrl+V import into dedicated local subscriptions; rewritten Zapret / DPI bypass bound to physical NIC with live verifier and auto-tuner; upgraded Automation API (Smart Auto port 10818, up to 250 sticky ports across all capture modes and when disconnected, Auto profiles with Xray outbound deduplication, proxy auth modes, subscription endpoints); Android 15/16 Wi-Fi/Cellular default interface fix and TSPU false-reconnect guard',
+    '+101 · Flag-based nesting into Country Auto-servers, selectable Country and "🌉 Bridges" folders as virtual Auto-servers (including "Via server"), fix chromehttp2 nil-panic in whitelist-bypass and TUN recreation on domain_suffix update',
+    '+100 · Preserve Desktop shortcut position and state during Windows updates and reinstalls without deleting/recreating existing .lnk',
+    '+99 · Real call-through RTT ping (ms) and speed test for Whitelist-Bypass servers, real exit IP detection instead of platform domain and 127.0.0.1:10855, close button (×) on every toast and progress notification',
+    '+98 · Support "🎬 Auto (YouTube)" / panel Auto profiles and XHTTP nodes as secondary per-rule exits ("Via server") over isolated Xray -> sing-box SOCKS5 bridges; fix WebView2 captcha click on comma-decimal Windows locales',
+    '+97 · Single-link VK auto-mode (DataChannel with > 64 KB stream verification and seamless fallback to Video + KCP), SCTP 64 KB frame chunking and multi-packet QUIC UDP in whitelist-bypass, embedded in-app VK captcha WebView (WebView2 / Android WebView) with background auto-checkbox click and persistent token cache, version in Android header',
     '+96 · Fix Go 1.27 HTTP/2 crash in whitelist-bypass relay (librelay.so and whitelist-bypass.exe), native browser launch for VK captcha / Blink login on Android and Windows, VK Cloud TURN CIDRs (90.156.0.0/16), and clean relay teardown on server switch',
     '+95 · Pause freeze, Telegram-style mouse drag multi-select, right-click menu, and batch routing actions in Open Connections and Split Tunneling; strict blocking dialog for unsupported secondary exit nodes ("Auto", XHTTP, BS) in "Via server"',
     '+94 · Fix TUN + Kill Switch startup race on fast SSDs with by-name app rules, YouTube video/thumbnail stalls in TUN (post-quantum QUIC fallback to TCP and Auto panel profile normalization), and immediate reconnect + WinINET proxy cleanup on capture mode switch',

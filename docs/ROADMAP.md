@@ -31,10 +31,11 @@
 | **M6** | Вход через Telegram и брендинг | Все | 🟡 схемы и брендинг есть, авторизации нет |
 | **M7** | Android | Android | ✅ выпущен с 1.5.0, паритет не догнан |
 | **M8** | iOS | iOS | 🔒 упирается не в объём работ |
-| **M9** | macOS / Linux | Desktop | ⚪ |
+| **M9** | macOS / Linux | Desktop / CLI / Gateway | ⚪ код в репо не начат; ТЗ и прототип Ubuntu 24.04 — [silentgate_linux_gateway_spec.md](silentgate_linux_gateway_spec.md) |
 | **M10** | Коммерция и поставка | Все | 🟡 обновления и подписи есть, оплаты и отправки отчётов нет |
-| **M11** | Ноды обхода белых списков (БС) с авторотацией комнат | Все / VPS | 🟢 MVP клиента готов, автоноды в разработке |
-| **M12** | Полноценные выходы «Авто» / XHTTP / БС в правилах («Через сервер») | Windows / Android | ⚪ запланировано (сейчас выбор явно заблокирован) |
+| **M11** | Ноды обхода белых списков (БС) с авторотацией комнат | Все / VPS | 🟢 MVP клиента готов, автоноды и пинг/скорость через звонок в очереди |
+| **M12** | Полноценные выходы «Авто» / XHTTP / БС в правилах («Через сервер») | Windows / Android | 🟡 «Авто» и XHTTP готовы в 1.18.5+98; релей БС вторым выходом — в очереди |
+| **M13** | Переход на закрытую лицензию (отвязка libbox.aar в отдельный процесс на Android) | Все | ⚪ запланировано |
 
 ---
 
@@ -224,7 +225,7 @@ exe из папки сборки: не стало этой папки — тун
 
 ## M9 — macOS / Linux ⚪
 
-Не начато: каталогов `app/macos/` и `app/linux/` нет.
+Не начато в коде приложения: каталогов `app/macos/` и `app/linux/` пока нет, но готовая спецификация для `LinuxEngine` (`app/lib/engine/linux/`), Headless CLI (`silentgate-cli`) и изолированного L3-шлюза (`--gateway-iface` с `nftables` fail-closed kill-switch, Policy Routing `table 200`, `resolvectl revert sg-tun0`, `rp_filter=0`, DNS DNAT и MSS clamping), проверенная живьём на Ubuntu 24.04 LTS, зафиксирована в [silentgate_linux_gateway_spec.md](silentgate_linux_gateway_spec.md) и разложена по пунктам в [BACKLOG.md](BACKLOG.md).
 
 ⚠️ **`LINUX.md` до сих пор предполагает переиспользование `engine/desktop`, которого не
 существует** («переиспользует… desktop-логику движка», «общий `DesktopEngine` с Windows/macOS» —

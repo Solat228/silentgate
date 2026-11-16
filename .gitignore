@@ -127,3 +127,10 @@ installer/Output/
 *.p12
 *.pem
 *.key
+
+# Локальные стенды, временные скрипты и внутренние спеки инфраструктуры
+live_preview/
+scratch/
+*.obj
+update_installed_after_call.bat
+docs/silentgate_linux_gateway_spec.md

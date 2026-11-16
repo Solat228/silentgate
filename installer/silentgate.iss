@@ -210,7 +210,12 @@ Root: HKCU; Subkey: "Software\Classes\silentgate\shell\open\command"; ValueType:
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+; ⚠️ Ярлык на Рабочем столе создаётся через Inno ТОЛЬКО когда файла ещё нет
+; (`Check: ShouldCreateDesktopIcon`). Штатный обработчик секции Icons всегда
+; вызывает `DeleteFile` перед созданием `.lnk`: Windows Explorer воспринимает
+; это как удаление и создание нового файла и сбрасывает координаты значка на
+; сетке Рабочего стола в левый верхний угол при каждом обновлении/переустановке.
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon; Check: ShouldCreateDesktopIcon
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -484,6 +489,74 @@ end;
 
 var
   GClosedByUs: Boolean;
+  GWasAlreadyInstalled: Boolean;
+  GTasksPageSynced: Boolean;
+
+function DesktopShortcutPath: String;
+begin
+  Result := ExpandConstant('{autodesktop}\{#MyAppName}.lnk');
+end;
+
+{ Если ярлык на Рабочем столе уже есть — НЕ пересоздаём его через Inno (иначе
+  `DeleteFile` сбросит позицию иконки на экране). Если каталог установки app
+  не менялся — не трогаем `.lnk` вообще; если изменился — обновляем цель
+  на месте через `WScript.Shell` без удаления файла. Если при тихом обновлении
+  поверх установленной копии ярлыка нет (пользователь сам убрал/перенёс его в
+  папку) — не навязываем новый ярлык. }
+function ShouldCreateDesktopIcon: Boolean;
+var
+  lnkPath, targetExe, targetDir, curTarget, curDir: String;
+  shell, sc: Variant;
+begin
+  lnkPath := DesktopShortcutPath;
+  if FileExists(lnkPath) then
+  begin
+    Result := False;
+    targetExe := ExpandConstant('{app}\{#MyAppExe}');
+    targetDir := ExpandConstant('{app}');
+    try
+      shell := CreateOleObject('WScript.Shell');
+      sc := shell.CreateShortcut(lnkPath);
+      curTarget := String(sc.TargetPath);
+      curDir := String(sc.WorkingDirectory);
+      if (CompareText(curTarget, targetExe) <> 0) or
+         (CompareText(RemoveBackslashUnlessRoot(curDir), RemoveBackslashUnlessRoot(targetDir)) <> 0) then
+      begin
+        sc.TargetPath := targetExe;
+        sc.WorkingDirectory := targetDir;
+        sc.Save;
+        Log('Ярлык Рабочего стола обновлён на месте (без сброса позиции): ' + lnkPath);
+      end
+      else
+        Log('Ярлык Рабочего стола уже актуален — не трогаем позицию: ' + lnkPath);
+    except
+      Log('Проверка WScript.Shell пропущена — существующий ярлык оставлен на месте: ' + lnkPath);
+    end;
+    Exit;
+  end;
+
+  if GWasAlreadyInstalled and WizardSilent then
+  begin
+    Log('Тихое обновление: ярлыка на Рабочем столе не было — новый не создаём');
+    Result := False;
+    Exit;
+  end;
+
+  Result := True;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpSelectTasks) and (not GTasksPageSynced) then
+  begin
+    GTasksPageSynced := True;
+    if GWasAlreadyInstalled and (not FileExists(DesktopShortcutPath)) then
+    begin
+      WizardSelectTasks('!desktopicon');
+      Log('Переустановка: ярлык на Рабочем столе отсутствует — галочка desktopicon снята по умолчанию');
+    end;
+  end;
+end;
 
 { Путь к установленному exe — из той же ветки реестра, что и версия. }
 function InstalledLocation: String;
@@ -657,6 +730,9 @@ end;
 
 function InitializeSetup(): Boolean;
 begin
+  { Запоминаем до копирования файлов, была ли программа уже установлена: от
+    этого зависит бережное обращение с ярлыком Рабочего стола. }
+  GWasAlreadyInstalled := InstalledVersion <> '';
   { Порядок обязателен: сперва согласие на саму установку, потом — закрытие
     работающего приложения. Наоборот означало бы гасить чужой VPN ради
     установки, от которой человек в следующем окне откажется. }

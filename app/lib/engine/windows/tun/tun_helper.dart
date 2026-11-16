@@ -7,7 +7,8 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
 import '../process_list_windows.dart';
-import '../wfp_rules.dart' show baseName;
+import '../wfp_rules.dart'
+    show baseName, matchesSelectedAppName, normalizeVersionedExeName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
 import 'tun_reload.dart';
@@ -258,6 +259,7 @@ class TunHelper {
     // имеет права выдать себя за смерть нового.
     var coreGen = 0;
     var procExited = false;
+    final sessionDirectUdpCidrs = <String>{};
     Future<Process?> startCore() async {
       final Process p;
       try {
@@ -266,8 +268,14 @@ class TunHelper {
         // по `log.output` или `cache_file` записало бы файл куда угодно.
         // Читаем один раз и отдаём из памяти: подменить файл между проверкой
         // и чтением ядром уже нельзя (аудит 25.10.2026, D2).
-        final config = sanitizeElevatedConfig(
+        final sanitized = sanitizeElevatedConfig(
             await File(configPath).readAsString());
+        final config = injectActiveDirectUdpExcludes(
+          sanitized,
+          KillSwitchWfp.activeIpv4UdpEndpoints(),
+          sessionCidrs: sessionDirectUdpCidrs,
+          log: (m) => unawaited(log.write('--- $m')),
+        );
         p = await Process.start(
           singbox,
           ['run', '-c', 'stdin'],
@@ -686,10 +694,19 @@ class TunHelper {
     final plan = KillSwitchPlanFile.read(_dataDir(configPath),
         expectToken: _readAliveName(configPath));
     if (plan == null) return const {};
-    return {
+    final out = <String>{
       for (final n in [...plan.blockedAppNames, ...plan.allowedAppNames])
-        baseName(n).toLowerCase(),
+        normalizeVersionedExeName(n),
     };
+    for (final p in [...plan.blockedAppPaths, ...plan.allowedAppPaths]) {
+      final norm = normalizeVersionedExeName(p);
+      if (norm == 'antigravity.exe' ||
+          norm == 'agy.exe' ||
+          baseName(p).toLowerCase() != norm) {
+        out.add(norm);
+      }
+    }
+    return out;
   }
 
   /// Живые процессы для материализации имён.
@@ -726,12 +743,13 @@ class TunHelper {
     KillSwitchPlan? appliedPlan,
   ) {
     if (watched.isEmpty || appliedPlan == null) return;
+    final normalizedWatched = watched.map(normalizeVersionedExeName).toSet();
     for (final path in [
       ...appliedPlan.blockedAppPaths,
       ...appliedPlan.allowedAppPaths,
     ]) {
       final name = baseName(path);
-      if (watched.contains(name.toLowerCase())) {
+      if (matchesSelectedAppName(normalizedWatched, name, processPath: path)) {
         matched[path.toLowerCase()] = RunningProcess(0, name, path);
       }
     }
@@ -749,10 +767,13 @@ class TunHelper {
       matched.clear();
       return;
     }
-    matched.removeWhere(
-        (_, p) => !watched.contains(baseName(p.name).toLowerCase()));
+    final normalizedWatched = watched.map(normalizeVersionedExeName).toSet();
+    matched.removeWhere((_, p) => !matchesSelectedAppName(
+        normalizedWatched, p.name,
+        processPath: p.path));
     for (final p in liveProcesses) {
-      if (watched.contains(baseName(p.name).toLowerCase())) {
+      if (matchesSelectedAppName(normalizedWatched, p.name,
+          processPath: p.path)) {
         matched[p.path.toLowerCase()] = p;
       }
     }
@@ -949,6 +970,256 @@ class TunHelper {
       for (var i = 0; i < node.length; i++) {
         _requireLowercaseKeys(node[i], '$path[$i]');
       }
+    }
+  }
+
+  /// Порты служебного и веб-трафика по UDP, которые НИКОГДА не выводятся из
+  /// туннеля как «прямой игровой/голосовой поток»:
+  ///  * 53, 853, 5353, 5355 — DNS / DoQ / mDNS / LLMNR;
+  ///  * 443 — HTTP/3 (QUIC), иначе открытая вкладка в браузере вывела бы IP
+  ///    CDN мимо доменных правил;
+  ///  * 67, 68, 123, 137, 138, 500, 1900, 3478, 4500 — DHCP, NTP, NetBIOS,
+  ///    IKE, SSDP, STUN.
+  static const _excludedUdpPorts = <int>{
+    53, 67, 68, 123, 137, 138, 443, 500, 853, 1900, 3478, 4500, 5353, 5355, //
+  };
+
+  /// Системные и собственные исполняемые файлы, чьи фоновые UDP-сокеты не
+  /// должны порождать маршрутных исключений.
+  static const _ignoredSystemExes = <String>{
+    'system',
+    'svchost.exe',
+    'services.exe',
+    'lsass.exe',
+    'wininit.exe',
+    'smss.exe',
+    'csrss.exe',
+    'dashost.exe',
+    'sihost.exe',
+    'taskhostw.exe',
+    'explorer.exe',
+    'searchhost.exe',
+    'msedgewebview2.exe',
+    'silentgate.exe',
+    'sing-box.exe',
+    'xray.exe',
+    'whitelist-bypass.exe',
+  };
+
+  /// Публичные DNS-резолверы, которые не должны попадать в `route_exclude_address`.
+  static const _wellKnownDnsIps = <String>{
+    '1.1.1.1',
+    '1.0.0.1',
+    '8.8.8.8',
+    '8.8.4.4',
+    '9.9.9.9',
+    '149.112.112.112',
+    '208.67.222.222',
+    '208.67.220.220',
+  };
+
+  static final RegExp _driveOrDevicePrefixRe = RegExp(
+    r'^(?:[a-z]:|\\device\\harddiskvolume\d+)\\',
+    caseSensitive: false,
+  );
+  static final RegExp _singboxAnchoredDriveRegexRe = RegExp(
+    r'^\(\?i\)\^[a-zA-Z]:\\\\',
+  );
+
+  /// Дополнить `route_exclude_address` в конфиге `sing-box` одиночными `/32`
+  /// для уже активных прямых UDP-потоков (например, идущего матча в Dota 2 /
+  /// CS2 или голосового канала), чтобы подъём `silentgate-tun` не перехватывал
+  /// уже открытый на физическом адаптере сокет и не менял его локальный IP и
+  /// порт.
+  ///
+  /// Никаких заранее зашитых списков подсетей здесь нет: исключаются только те
+  /// публичные адреса, с которыми ПРЯМО СЕЙЧАС обменивается по UDP процесс,
+  /// идущий по правилам конфига в `direct`.
+  @visibleForTesting
+  static String injectActiveDirectUdpExcludes(
+    String sanitizedConfigJson,
+    Iterable<ActiveUdpEndpoint> endpoints, {
+    Set<String>? sessionCidrs,
+    void Function(String)? log,
+  }) {
+    final Map<String, dynamic> cfg;
+    try {
+      cfg = jsonDecode(sanitizedConfigJson) as Map<String, dynamic>;
+    } catch (_) {
+      return sanitizedConfigJson;
+    }
+    final inbounds = cfg['inbounds'];
+    if (inbounds is! List) return sanitizedConfigJson;
+    Map<String, dynamic>? tunInbound;
+    for (final item in inbounds) {
+      if (item is Map<String, dynamic> && item['type'] == 'tun') {
+        tunInbound = item;
+        break;
+      }
+    }
+    if (tunInbound == null) return sanitizedConfigJson;
+    // В режиме «в туннель только эти подсети» маршрут по умолчанию не ставится
+    // вовсе, и `route_exclude_address` там не используется.
+    final routeAddr = tunInbound['route_address'];
+    if (routeAddr is List && routeAddr.isNotEmpty) return sanitizedConfigJson;
+
+    final route = cfg['route'];
+    final finalOutbound =
+        route is Map ? '${route['final'] ?? 'direct'}' : 'direct';
+    final routeRules =
+        (route is Map && route['rules'] is List) ? route['rules'] as List : const [];
+
+    final newlyDiscovered = <String, String>{};
+    for (final ep in endpoints) {
+      if (ep.remotePort <= 0 || _excludedUdpPorts.contains(ep.remotePort)) {
+        continue;
+      }
+      if (!_isPublicUnicastIpv4(ep.remoteIp)) continue;
+      if (_wellKnownDnsIps.contains(ep.remoteIp)) continue;
+      final pathLower = ep.appIdPath.trim().toLowerCase();
+      if (pathLower.isEmpty) continue;
+      if (pathLower.contains(r'\windows\system32\') ||
+          pathLower.contains(r'\windows\syswow64\')) {
+        continue;
+      }
+      final exe = baseName(pathLower);
+      if (exe.isEmpty || _ignoredSystemExes.contains(exe)) continue;
+      if (!_isDirectProcessInConfig(pathLower, exe, routeRules, finalOutbound)) {
+        continue;
+      }
+      final cidr = '${ep.remoteIp}/32';
+      newlyDiscovered.putIfAbsent(cidr, () => exe);
+      sessionCidrs?.add(cidr);
+    }
+
+    final allDynamic = <String>{
+      ...?sessionCidrs,
+      ...newlyDiscovered.keys,
+    };
+    if (allDynamic.isEmpty) return sanitizedConfigJson;
+
+    final existingRaw = tunInbound['route_exclude_address'];
+    final existing = <String>[
+      if (existingRaw is List)
+        for (final e in existingRaw) '$e',
+    ];
+    final existingSet = existing.toSet();
+    final added = <String>[];
+    for (final cidr in allDynamic) {
+      if (existingSet.add(cidr)) {
+        existing.add(cidr);
+        final owner = newlyDiscovered[cidr];
+        added.add(owner != null ? '$cidr ($owner)' : cidr);
+      }
+    }
+    if (added.isEmpty) return sanitizedConfigJson;
+
+    tunInbound['route_exclude_address'] = existing;
+    log?.call('сохраняю активные прямые UDP-потоки мимо туннеля: '
+        '${added.join(', ')}');
+    return jsonEncode(cfg);
+  }
+
+  static bool _isPublicUnicastIpv4(String ip) {
+    final addr = InternetAddress.tryParse(ip);
+    if (addr == null || addr.type != InternetAddressType.IPv4) return false;
+    final b = addr.rawAddress;
+    if (b.length != 4) return false;
+    final b0 = b[0];
+    final b1 = b[1];
+    final b2 = b[2];
+    if (b0 == 0 || b0 == 10 || b0 == 127 || b0 >= 224) return false;
+    if (b0 == 100 && (b1 & 0xC0) == 64) return false; // 100.64.0.0/10
+    if (b0 == 169 && b1 == 254) return false; // 169.254.0.0/16
+    if (b0 == 172 && b1 >= 16 && b1 <= 31) return false; // 172.16.0.0/12
+    if (b0 == 192 && b1 == 0 && (b2 == 0 || b2 == 2)) return false;
+    if (b0 == 192 && b1 == 168) return false; // 192.168.0.0/16
+    if (b0 == 198 && (b1 == 18 || b1 == 19)) return false; // 198.18.0.0/15
+    if (b0 == 198 && b1 == 51 && b2 == 100) return false; // 198.51.100.0/24
+    if (b0 == 203 && b1 == 0 && b2 == 113) return false; // 203.0.113.0/24
+    return true;
+  }
+
+  static bool _isDirectProcessInConfig(
+    String appIdPathLower,
+    String exeLower,
+    List<dynamic> routeRules,
+    String finalOutbound,
+  ) {
+    final strippedTarget =
+        appIdPathLower.replaceFirst(_driveOrDevicePrefixRe, '');
+    for (final rawRule in routeRules) {
+      if (rawRule is! Map) continue;
+      // Правила, привязанные к порту (например, запрет QUIC на UDP:443),
+      // домену, протоколу или конкретному inbound, не определяют базовый
+      // маршрут всего процесса.
+      if (rawRule.containsKey('port') ||
+          rawRule.containsKey('domain_suffix') ||
+          rawRule.containsKey('domain') ||
+          rawRule.containsKey('ip_cidr') ||
+          rawRule.containsKey('protocol') ||
+          rawRule.containsKey('inbound')) {
+        continue;
+      }
+      final hasProcessName = rawRule['process_name'] is List;
+      final hasProcessPath = rawRule['process_path'] is List;
+      final hasProcessRegex = rawRule['process_path_regex'] is List;
+      if (!hasProcessName && !hasProcessPath && !hasProcessRegex) continue;
+
+      var matched = false;
+      if (hasProcessName) {
+        final names = <String>{
+          for (final n in rawRule['process_name'] as List)
+            normalizeVersionedExeName('$n'),
+        };
+        if (matchesSelectedAppName(names, exeLower,
+            processPath: appIdPathLower)) {
+          matched = true;
+        }
+      }
+      if (!matched && hasProcessPath) {
+        for (final p in rawRule['process_path'] as List) {
+          final strippedRule = '$p'
+              .trim()
+              .toLowerCase()
+              .replaceFirst(_driveOrDevicePrefixRe, '');
+          if (strippedRule.isNotEmpty && strippedRule == strippedTarget) {
+            matched = true;
+            break;
+          }
+        }
+      }
+      if (!matched && hasProcessRegex) {
+        for (final pat in rawRule['process_path_regex'] as List) {
+          if (_matchesSingboxPathRegex('$pat', appIdPathLower)) {
+            matched = true;
+            break;
+          }
+        }
+      }
+      if (matched) {
+        if (rawRule['action'] == 'reject') return false;
+        return rawRule['outbound'] == 'direct';
+      }
+    }
+    return finalOutbound == 'direct';
+  }
+
+  static bool _matchesSingboxPathRegex(String rawPattern, String targetPath) {
+    var pat = rawPattern.trim();
+    if (pat.isEmpty) return false;
+    if (_singboxAnchoredDriveRegexRe.hasMatch(pat)) {
+      pat = pat.replaceFirst(
+        _singboxAnchoredDriveRegexRe,
+        r'^(?:[a-z]:|\\device\\harddiskvolume\d+)\\',
+      );
+    } else if (pat.startsWith('(?i)')) {
+      pat = pat.substring(4);
+    }
+    try {
+      return RegExp(pat, caseSensitive: false).hasMatch(targetPath);
+    } catch (_) {
+      return false;
     }
   }
 

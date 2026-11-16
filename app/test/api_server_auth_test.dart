@@ -15,20 +15,34 @@ class _StubHandlers implements ApiHandlers {
   @override
   Future<Map<String, dynamic>> status({bool verify = false}) async => {'state': 'disconnected'};
   @override
-  Future<List<Map<String, dynamic>>> servers() async => const [];
+  Future<List<Map<String, dynamic>>> servers({bool allSubscriptions = false}) async => const [];
   @override
-  Future<List<Map<String, dynamic>>> exits() async => const [];
+  Future<List<Map<String, dynamic>>> exits({bool verify = false}) async => const [];
   @override
   Future<Map<String, dynamic>> traffic() async => const {};
   @override
   Future<Map<String, dynamic>> subscription() async => const {};
+  @override
+  Future<List<Map<String, dynamic>>> subscriptions() async => const [];
+  @override
+  Future<ApiResult> selectSubscription({String? id, String? title}) async =>
+      const ApiResult.ok();
+  @override
+  Future<ApiResult> refreshSubscription({String? id, bool all = false}) async =>
+      const ApiResult.ok();
+  @override
+  Future<ApiResult> configureExits(Map<String, dynamic> body) async =>
+      const ApiResult.ok();
+  @override
+  Future<Map<String, dynamic>> testExit({int? port, String? serverKey}) async =>
+      const {'ok': true};
   @override
   Future<ApiResult> connect({String? serverKey, String? name, bool auto = false}) async =>
       const ApiResult.ok();
   @override
   Future<ApiResult> disconnect() async => const ApiResult.ok();
   @override
-  Future<ApiResult> ping() async => const ApiResult.ok();
+  Future<ApiResult> ping({bool allSubscriptions = false}) async => const ApiResult.ok();
 }
 
 /// Обработчик, который (по ошибке) кладёт запрещённое поле в ответ —
@@ -44,14 +58,28 @@ class _DirtyHandlers implements ApiHandlers {
   Future<Map<String, dynamic>> status({bool verify = false}) async =>
       {'state': 'connected', 'apiToken': 'sekrit-do-not-leak'};
   @override
-  Future<List<Map<String, dynamic>>> servers() async => const [];
+  Future<List<Map<String, dynamic>>> servers({bool allSubscriptions = false}) async => const [];
   @override
-  Future<List<Map<String, dynamic>>> exits() async => const [];
+  Future<List<Map<String, dynamic>>> exits({bool verify = false}) async => const [];
   @override
   Future<Map<String, dynamic>> traffic() async => const {};
   @override
   Future<Map<String, dynamic>> subscription() async =>
       {'subscriptionUrl': 'https://panel.example/sub/leaked-token'};
+  @override
+  Future<List<Map<String, dynamic>>> subscriptions() async => const [];
+  @override
+  Future<ApiResult> selectSubscription({String? id, String? title}) async =>
+      const ApiResult.ok();
+  @override
+  Future<ApiResult> refreshSubscription({String? id, bool all = false}) async =>
+      const ApiResult.ok();
+  @override
+  Future<ApiResult> configureExits(Map<String, dynamic> body) async =>
+      const ApiResult.ok();
+  @override
+  Future<Map<String, dynamic>> testExit({int? port, String? serverKey}) async =>
+      const {'ok': true};
   @override
   Future<ApiResult> connect({String? serverKey, String? name, bool auto = false}) async =>
       const ApiResult.ok();
@@ -61,7 +89,7 @@ class _DirtyHandlers implements ApiHandlers {
       // только `_ok`, иначе достаточно вернуть его в message, а не в поле.
       const ApiResult.fail('internal', 'сбой, localProxyPassword=hunter2');
   @override
-  Future<ApiResult> ping() async => const ApiResult.ok();
+  Future<ApiResult> ping({bool allSubscriptions = false}) async => const ApiResult.ok();
 }
 
 /// Ответ, который бросает при закрытии, — имитирует клиента, оборвавшего

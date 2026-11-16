@@ -614,5 +614,23 @@ void main() {
     // описано в шапке скрипта.
     expect(text, contains('/DNoTun'));
   });
+
+  group('Ярлык Рабочего стола не сбрасывает позицию при переустановке', () {
+    test('⚠️ существующий ярлык защищён Check: ShouldCreateDesktopIcon', () {
+      // Штатный [Icons] в Inno вызывает DeleteFile перед созданием .lnk, из-за
+      // чего Explorer теряет координаты иконки на Рабочем столе и кидает её в
+      // левый верхний угол при каждом обновлении/переустановке.
+      expect(
+        text,
+        contains(
+          r'Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; '
+          'Tasks: desktopicon; Check: ShouldCreateDesktopIcon',
+        ),
+      );
+      expect(text, contains('function ShouldCreateDesktopIcon: Boolean;'));
+      expect(text, contains('GWasAlreadyInstalled := InstalledVersion <> \'\';'));
+      expect(text, contains("WizardSelectTasks('!desktopicon')"));
+    });
+  });
 }
 

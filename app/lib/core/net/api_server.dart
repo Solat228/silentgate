@@ -54,13 +54,22 @@ abstract interface class ApiHandlers {
   /// [verify] — измерить НАСТОЯЩИЙ выход запросом наружу (флаг `?verify=1`).
   /// Стоит времени и трафика, поэтому по умолчанию выключено.
   Future<Map<String, dynamic>> status({bool verify = false});
-  Future<List<Map<String, dynamic>>> servers();
-  Future<List<Map<String, dynamic>>> exits();
+  Future<List<Map<String, dynamic>>> servers({bool allSubscriptions = false});
+  Future<List<Map<String, dynamic>>> exits({bool verify = false});
   Future<Map<String, dynamic>> traffic();
   Future<Map<String, dynamic>> subscription();
-  Future<ApiResult> connect({String? serverKey, String? name, bool auto = false});
+  Future<List<Map<String, dynamic>>> subscriptions();
+  Future<ApiResult> selectSubscription({String? id, String? title});
+  Future<ApiResult> refreshSubscription({String? id, bool all = false});
+  Future<ApiResult> configureExits(Map<String, dynamic> body);
+  Future<Map<String, dynamic>> testExit({int? port, String? serverKey});
+  Future<ApiResult> connect({
+    String? serverKey,
+    String? name,
+    bool auto = false,
+  });
   Future<ApiResult> disconnect();
-  Future<ApiResult> ping();
+  Future<ApiResult> ping({bool allSubscriptions = false});
 }
 
 /// Локальный HTTP-API для автоматизации.
@@ -158,16 +167,30 @@ class LocalApiServer {
           // ⚠️ Только `?verify=1` — ровно та строка, что задокументирована.
           // Принимать «true»/«yes»/пустое значило бы иметь четыре написания
           // одного флага и расхождение между документом и кодом.
-          return _ok(res, await handlers.status(
-              verify: req.uri.queryParameters['verify'] == '1'));
+          return _ok(
+            res,
+            await handlers.status(
+              verify: req.uri.queryParameters['verify'] == '1',
+            ),
+          );
         case '/v1/servers':
-          return _ok(res, {'servers': await handlers.servers()});
+          return _ok(res, {
+            'servers': await handlers.servers(
+              allSubscriptions: req.uri.queryParameters['scope'] == 'all',
+            ),
+          });
         case '/v1/exits':
-          return _ok(res, {'exits': await handlers.exits()});
+          return _ok(res, {
+            'exits': await handlers.exits(
+              verify: req.uri.queryParameters['verify'] == '1',
+            ),
+          });
         case '/v1/traffic':
           return _ok(res, await handlers.traffic());
         case '/v1/subscription':
           return _ok(res, await handlers.subscription());
+        case '/v1/subscriptions':
+          return _ok(res, {'subscriptions': await handlers.subscriptions()});
       }
     }
     if (req.method == 'POST') {
@@ -180,16 +203,52 @@ class LocalApiServer {
       switch (path) {
         case '/v1/connect':
           return _result(
-              res,
-              await handlers.connect(
-                serverKey: body['server'] as String?,
-                name: body['name'] as String?,
-                auto: body['auto'] == true,
-              ));
+            res,
+            await handlers.connect(
+              serverKey: body['server'] as String?,
+              name: body['name'] as String?,
+              auto: body['auto'] == true,
+            ),
+          );
         case '/v1/disconnect':
           return _result(res, await handlers.disconnect());
         case '/v1/ping':
-          return _result(res, await handlers.ping());
+          return _result(
+            res,
+            await handlers.ping(
+              allSubscriptions: body['scope'] == 'all' || body['all'] == true,
+            ),
+          );
+        case '/v1/subscriptions/select':
+          return _result(
+            res,
+            await handlers.selectSubscription(
+              id: body['id'] as String?,
+              title: body['title'] as String?,
+            ),
+          );
+        case '/v1/subscriptions/refresh':
+          return _result(
+            res,
+            await handlers.refreshSubscription(
+              id: body['id'] as String?,
+              all: body['all'] == true,
+            ),
+          );
+        case '/v1/exits/configure':
+          return _result(res, await handlers.configureExits(body));
+        case '/v1/exits/test':
+          final rawPort = body['port'];
+          final int? portVal = rawPort is int
+              ? rawPort
+              : (rawPort is String ? int.tryParse(rawPort) : null);
+          return _ok(
+            res,
+            await handlers.testExit(
+              port: portVal,
+              serverKey: body['server'] as String?,
+            ),
+          );
       }
     }
     await _fail(res, HttpStatus.notFound, 'not_found', 'Нет такого пути');

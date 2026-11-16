@@ -1,6 +1,8 @@
 # Linux — план и фичи (этап M9)
 
-Переиспользует общий Flutter-код и desktop-логику движка (как Windows/macOS).
+> **Актуальная спецификация (09.11.2026):** перед началом работ по Linux обязательно читать **[../silentgate_linux_gateway_spec.md](../silentgate_linux_gateway_spec.md)** и соответствующий раздел в [../BACKLOG.md](../BACKLOG.md). Вместо описанного ниже старого наброска (`hev-socks5-tunnel` и несуществующего `DesktopEngine`) на Ubuntu 24.04 LTS уже проверена штатная архитектура `LinuxEngine` (`Xray-core + sing-box` `sg-tun0`), Headless CLI и режим изолированного L3-шлюза (`--gateway-iface`, `nftables` fail-closed kill-switch, `resolvectl revert sg-tun0`, `rp_filter=0`, DNS DNAT и MSS clamping).
+
+Переиспользует общий Flutter-код и базовый контракт `engine/engine_base.dart` + `core/xray/` + `core/singbox/`.
 
 ---
 

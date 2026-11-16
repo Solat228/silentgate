@@ -3397,7 +3397,10 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Site';
+  String get subBarOpenSite => 'Página da assinatura';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint => 'Abrir a página da assinatura no navegador';
@@ -4709,4 +4712,69 @@ class AppLocalizationsPt extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return 'O servidor \"$name\" não pode ser definido como saída separada para uma regra.\n\nPerfis \"Auto\", relés e protocolos exclusivos do Xray (como XHTTP) exigem o pipeline do Xray, enquanto as saídas secundárias são conectadas diretamente pelo sing-box.\n\nEscolha um servidor individual padrão para esta regra ou selecione \"$name\" como servidor principal.';
   }
+
+  @override
+  String get supportChipCantConnect => 'Não conecta';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / site não abre';
+
+  @override
+  String get supportChipSlowSpeed => 'Velocidade baixa';
+
+  @override
+  String get supportChipDrops => 'Conexão cai';
+
+  @override
+  String get supportChipsHint =>
+      'Escolha rápida (opcional, sem digitar detalhes):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'Descrição do problema (opcional)';
+
+  @override
+  String get supportNoTextProvided =>
+      'Sem descrição em texto (relatório técnico)';
+
+  @override
+  String get supportCategoriesHeader => 'Categoria';
+
+  @override
+  String get supportSendDevCopyTitle =>
+      'Enviar cópia anonimizada ao desenvolvedor';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Sem token de assinatura, IPs pessoais ou HWID bruto - acelera correções';
+
+  @override
+  String get supportPreviewDevCopy => 'O que vai?';
+
+  @override
+  String get supportPreviewDialogTitle =>
+      'Cópia anonimizada para o desenvolvedor';
+
+  @override
+  String get supportSendDevOnlyButton => 'Só ao desenvolvedor';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Cópia enviada ao desenvolvedor ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Falha ao enviar ao servidor ($code) - arquivo local pronto';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Relatório anonimizado enviado ao servidor do desenvolvedor. Código: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Relatório diagnóstico';
+
+  @override
+  String get supportSendToChatAndDev => 'Anexar ao chat';
 }

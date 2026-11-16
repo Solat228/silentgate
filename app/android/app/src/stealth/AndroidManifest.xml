@@ -1,0 +1,26 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Сборка ROOT-Stealth (flavor stealth, пакет lol.silentgate.stealth). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <queries>
+        <package android:name="com.android.vending"/>
+    </queries>
+
+    <application>
+        <!-- В сборке ROOT-Stealth компонент VpnService по умолчанию ВЫКЛЮЧЕН
+             (android:enabled="false"), чтобы вызовы
+             PackageManager.queryIntentServices(Intent("android.net.VpnService"), 0)
+             из Ozon / Wildberries / MAX / банковских антифрод-SDK возвращали
+             пустой список и не выдавали установленный VPN-клиент.
+             При запуске подключения RootStealthController включает его
+             динамически через PackageManager.setComponentEnabledSetting
+             (сохраняя работоспособность и без root-прав), а при отключении
+             снова выключает. -->
+        <service
+            android:name=".vpn.SilentGateVpnService"
+            android:enabled="false"
+            tools:replace="android:enabled"/>
+    </application>
+</manifest>

@@ -214,6 +214,11 @@ class _ProgressToasts {
   /// уведомления на Android.
   static final Map<String, bool> _collapsed = <String, bool>{};
 
+  /// Карточки, вручную закрытые крестиком посреди активного прогона: следующие
+  /// такты прогресса того же прогона не должны тут же возвращать их обратно.
+  static final Set<String> _suppressedWhileRunning = <String>{};
+  static final Map<String, double> _suppressedLastValue = <String, double>{};
+
   static bool collapsed(String id) => _collapsed[id] ?? false;
 
   static void setCollapsed(String id, bool value) {
@@ -221,6 +226,20 @@ class _ProgressToasts {
     // Список тот же по содержимому, поэтому подсовываем НОВЫЙ экземпляр:
     // ValueNotifier сравнивает по идентичности и иначе промолчит.
     _items.value = [..._items.value];
+  }
+
+  static void markSuppressedIfRunning(
+    String id, {
+    required bool running,
+    double? value,
+  }) {
+    if (running) {
+      _suppressedWhileRunning.add(id);
+      if (value != null) _suppressedLastValue[id] = value;
+    } else {
+      _suppressedWhileRunning.remove(id);
+      _suppressedLastValue.remove(id);
+    }
   }
 
   static void update(
@@ -235,6 +254,20 @@ class _ProgressToasts {
     String? tapTooltip,
     bool pinned = false,
   }) {
+    if (finished) {
+      _suppressedWhileRunning.remove(id);
+      _suppressedLastValue.remove(id);
+    } else if (_suppressedWhileRunning.contains(id)) {
+      final prevVal = _suppressedLastValue[id];
+      if (value != null && prevVal != null && value + 1e-6 < prevVal) {
+        _suppressedWhileRunning.remove(id);
+        _suppressedLastValue.remove(id);
+      } else {
+        if (value != null) _suppressedLastValue[id] = value;
+        return;
+      }
+    }
+
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
     if (_host == null) {
@@ -272,6 +305,12 @@ class _ProgressToasts {
   }
 
   static void remove(String id) {
+    _suppressedWhileRunning.remove(id);
+    _suppressedLastValue.remove(id);
+    removeCard(id);
+  }
+
+  static void removeCard(String id) {
     // Нечего снимать — выходим молча. Иначе вызов «на всякий случай» (а
     // `dismissProgress` зовётся из перерисовки экрана) каждый кадр подсовывал
     // бы новый список и заставлял пересобирать живые карточки соседей.
@@ -293,6 +332,8 @@ class _ProgressToasts {
     _host = null;
     _items.value = [];
     _collapsed.clear();
+    _suppressedWhileRunning.clear();
+    _suppressedLastValue.clear();
   }
 }
 
@@ -361,6 +402,7 @@ class _ProgressCardState extends State<_ProgressCard>
   /// Обратный отсчёт после завершения. Запускается один раз — повторные
   /// обновления с тем же `finished: true` его не перезапускают.
   AnimationController? _countdown;
+  bool _closing = false;
 
   @override
   void initState() {
@@ -428,6 +470,29 @@ class _ProgressCardState extends State<_ProgressCard>
   void _toggleCollapsed() {
     final id = widget.data.id;
     _ProgressToasts.setCollapsed(id, !_ProgressToasts.collapsed(id));
+  }
+
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    _countdown?.stop();
+    final data = widget.data;
+    final wasFinished = data.finished;
+    _ProgressToasts.markSuppressedIfRunning(
+      data.id,
+      running: !wasFinished,
+      value: data.value,
+    );
+    if (mounted) {
+      await _appear.reverse();
+    }
+    if (!wasFinished && data.finished) {
+      // За 180 мс закрытия прогресса пришёл финальный итог — показываем его.
+      _closing = false;
+      if (mounted) _appear.forward();
+      return;
+    }
+    _ProgressToasts.removeCard(data.id);
   }
 
   @override
@@ -499,6 +564,14 @@ class _ProgressCardState extends State<_ProgressCard>
                               : Icons.unfold_less),
                           onPressed: _toggleCollapsed,
                         ),
+                      IconButton(
+                        key: ValueKey('progressToastClose_${data.id}'),
+                        tooltip: l.toastHide,
+                        iconSize: 16,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close),
+                        onPressed: _close,
+                      ),
                     ]),
                   ),
                 ),

@@ -3,63 +3,36 @@ import 'package:provider/provider.dart';
 
 import '../../core/i18n/text_direction.dart';
 import '../../core/models/subscription_info.dart';
+import '../../core/models/subscription_profile.dart';
 import '../../core/models/subscription_sync.dart';
 import '../../core/util/country_flag.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/settings_controller.dart';
+import '../../state/support_chat_controller.dart';
 import 'flag_cell.dart';
 import 'flag_text.dart';
 import 'subscription_avatar.dart';
 import 'subscription_switcher.dart';
+import 'telegram_icon.dart';
 import '../../core/i18n/enum_labels.dart';
 
-/// Карточка подписки сверху: название, трафик (использовано/всего), срок, поддержка.
-/// Меню (кнопка ⋮ и ПКМ): обновить, копировать URL, поддержка, удалить.
-///
-/// ⚠️ ДВА ВИДА — ПОЛНЫЙ И КОМПАКТНЫЙ, и это не украшение. Разбор вёрстки
-/// 10.09.2026: на минимальном окне 980×800 (клиент 964×761) карточка с
-/// объявлением от панели съедала до 200 px, и при длинном тексте низ главного
-/// экрана прятался за край. На низком окне ([isCompactFor]) остаются
-/// аватарка, имя, шкала и одна строка «N ГБ из M · срок»; ссылки
-/// «Поддержка / Сайт» уезжают под «⋮». Замер — `test/subscription_bar_compact_test.dart`.
-///
-/// ⚠️ ОБЪЯВЛЕНИЕ ОТ СЕРВИСА КОМПАКТНОСТЬ НЕ ПРЯЧЕТ. В 1.13.1 оно тоже уезжало
-/// под «⋮» с меткой «непрочитанное» — и 17.09.2026 владелец открыл телефон:
-/// «ты съел объявление от панели». На телефоне окно ниже порога ВСЕГДА, то
-/// есть компактный вид там — не исключение, а правило, и слово панели человек
-/// не видел вовсе; метка на «⋮» этого не спасала — её никто не трогает.
-/// Решение владельца: объявление видно по умолчанию на любой высоте (блок
-/// ограничен по высоте и крутится внутри), спрятать его можно настройкой
-/// [AppSettings.hidePanelAnnounce], заголовок — «Объявления от сервиса <имя>».
+/// Карточка подписки сверху: название, трафик (использовано/всего), срок,
+/// кнопки «Телеграм / Бот» и «Поддержка».
+/// Меню (кнопка ⋮ и ПКМ): обновить, копировать URL, телеграм / бот,
+/// страница подписки (в браузере), поддержка (встроенный мини-браузер), удалить.
 class SubscriptionBar extends StatelessWidget {
   /// Принудительный вид: `true` — компактный, `false` — полный, `null` —
-  /// по высоте окна ([isCompactFor]). Явное значение нужно стражам вёрстки
-  /// (замер «до/после» на одном и том же окне) и тому, кто знает про место
-  /// больше карточки — например панели, которая уже посчитала свою высоту.
+  /// по высоте окна ([isCompactFor]).
   final bool? compact;
 
   const SubscriptionBar({super.key, this.compact});
 
   /// Ниже этой высоты окна (за вычетом клавиатуры) карточка сворачивается.
-  ///
-  /// ⚠️ ЧИСЛО НЕ ПРИДУМАНО. Минимальное окно Windows — 980×800, клиентская
-  /// область 964×761: там низ экрана прячется, и это ОБЯЗАНО быть «низко».
-  /// Компактная карточка выигрывает на этом окне ~130 px на реальном шрифте
-  /// (в тесте, где шрифт Ahem шире, — 170: полная 306, компактная 136).
-  /// Окну на столько же выше полная карточка мешает не больше, чем компактная
-  /// минимальному: 761 + 130 ≈ 890, округлено до 900. `context.sg.isShort`
-  /// (< 600) для этого не годится: он про телефон с клавиатурой, не про окно 800.
   static const double compactBelowHeight = 900;
 
   /// Заголовок блока объявления: «Объявления от сервиса <имя>», а без имени —
-  /// просто «Объявления от сервиса». Имя — то же, что у подписи «Написать в
-  /// поддержку (<имя>)» в настройках: `info.title` подписки.
-  ///
-  /// ⚠️ Механизма «прочитано» (набор открытых текстов + метка на «⋮») больше
-  /// нет — ему нечего значить: объявление либо на виду всегда, либо спрятано
-  /// настройкой навсегда, а метка «внутри непрочитанное» на кнопке, которую
-  /// не нажимают, и была причиной, по которой объявление «съедалось».
+  /// просто «Объявления от сервиса».
   static String announceTitle(AppLocalizations l, String? serviceName) {
     final name = (serviceName ?? '').trim();
     return name.isEmpty
@@ -87,9 +60,6 @@ class SubscriptionBar extends StatelessWidget {
       return const SizedBox.shrink();
     }
     final isCompact = compact ?? isCompactFor(context);
-    // ⚠️ ГЕЙТ ОБЪЯВЛЕНИЯ — НАСТРОЙКА, А НЕ ВЫСОТА ОКНА. Контроллер спрашиваем
-    // как необязательный: карточка живёт и в стражах, где его нет, — тогда
-    // действует умолчание «показывать».
     final hideAnnounce =
         context.watch<SettingsController?>()?.settings.hidePanelAnnounce ??
             false;
@@ -99,12 +69,23 @@ class SubscriptionBar extends StatelessWidget {
 
     final frac = info.usedFraction;
     final hasBar = info.usedBytes != null && !info.unlimitedTraffic;
+    final hasTelegram = SubscriptionActions.telegramUrlFor(
+          info: info,
+          subscriptionUrl: state.subscriptionUrl,
+        ) !=
+        null;
+
     return GestureDetector(
       onSecondaryTapDown: (d) => _menu(context, d.globalPosition),
       child: Card(
         margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 10, 6, 10),
+          padding: EdgeInsets.fromLTRB(
+            14,
+            (isCompact && announce != null) ? 8 : 10,
+            6,
+            (isCompact && announce != null) ? 8 : 10,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -112,8 +93,6 @@ class SubscriptionBar extends StatelessWidget {
                 SubscriptionAvatar(
                     path: state.logoPath, label: info.title, size: 22),
                 const SizedBox(width: 8),
-                // Имя/переключатель занимает всё свободное место — длинное название
-                // больше не срезается кнопкой «Обновить» и треугольником.
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
@@ -121,14 +100,11 @@ class SubscriptionBar extends StatelessWidget {
                         ? SubscriptionSwitcher(
                             title: info.title ?? l.subBarSubscription)
                         : FlagText(info.title ?? l.subBarSubscription,
-                            // Название подписки — провайдерское: направление по
-                            // содержимому (латиница не зеркалится, арабский — RTL).
                             textDirection: autoTextDirection(info.title),
                             style: Theme.of(context).textTheme.titleSmall,
                             overflow: TextOverflow.ellipsis),
                   ),
                 ),
-                // «Обновить» — компактной иконкой у самого края, рядом с ⋮.
                 IconButton(
                   tooltip: state.refreshing
                       ? l.subBarRefreshing
@@ -141,16 +117,14 @@ class SubscriptionBar extends StatelessWidget {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(Icons.refresh, size: 18),
-                  onPressed: state.subscriptionUrl == null || state.refreshing
+                  onPressed: !SubscriptionProfile.isRefreshableUrlString(
+                              state.subscriptionUrl) ||
+                          state.refreshing
                       ? null
                       : () => context.read<AppState>().refreshSubscription(),
                 ),
                 _MenuButton(offset: (pos) => _menu(context, pos)),
               ]),
-              // Шкала рисуется ТОЛЬКО когда есть реальный лимит. При безлимите
-              // доля неизвестна, а LinearProgressIndicator с value == null
-              // крутит бесконечную полосу — она выглядит как вечно идущее
-              // обновление подписки. Показываем просто израсходованное.
               if (hasBar) ...[
                 const SizedBox(height: 8),
                 ClipRRect(
@@ -158,125 +132,168 @@ class SubscriptionBar extends StatelessWidget {
                   child: LinearProgressIndicator(value: frac, minHeight: 6),
                 ),
               ],
-              // Компактно: «N ГБ из M · Действует до: дата» ОДНОЙ строкой —
-              // вторая строка стоила бы ~20 px, ради которых всё и затевалось.
-              // Полный вид: трафик своей строкой, срок — своей, отступы
-              // прежние (регресс на высоком окне стережёт тест).
-              if (isCompact) ...[
+              if (isCompact && announce == null) ...[
                 const SizedBox(height: 4),
-                _ExpiryLine(info: info, leading: _usageText(l, info)),
-              ] else ...[
-                if (_usageText(l, info) case final usage?) ...[
-                  SizedBox(height: hasBar ? 4 : 8),
-                  Text(usage, style: Theme.of(context).textTheme.bodySmall),
-                ],
-                const SizedBox(height: 4),
-                _ExpiryLine(info: info),
-              ],
-              // Объявление сервиса (announce) — как в Happ. Панель может
-              // прислать очень длинный текст, поэтому ограничиваем высоту и даём
-              // прокрутку внутри — иначе карточка растянулась бы на весь экран.
-              //
-              // ⚠️ НЕ ЗАВИСИТ ОТ `isCompact` — и это не забывчивость (см.
-              // шапку класса): компактность на телефоне — постоянное
-              // состояние, и гейт по высоте прятал бы объявление там навсегда.
-              // Единственный гейт — настройка, она уже учтена в `announce`.
-              if (announce != null)
                 Padding(
-                  padding: const EdgeInsets.only(top: 8, right: 8),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(maxHeight: 120),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Заголовок с именем сервиса — вне прокрутки, чтобы
-                        // не уезжал вместе с текстом.
-                        FlagText(announceTitle(l, info.title),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        // `Flexible`, а не `Expanded`: при коротком тексте
-                        // блок берёт по содержимому, при длинном — остаток
-                        // до maxHeight и крутится.
-                        Flexible(
-                          child: SingleChildScrollView(
-                            // Флаг-эмодзи от панели картинкой: Windows их
-                            // не рисует, вместо 🇸🇬 выходят буквы «SG».
-                            child: SelectableText.rich(
-                                TextSpan(
-                                    children: buildFlagSpans(announce,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall)),
-                                // Объявление сервиса — направление по
-                                // содержимому.
-                                textDirection: autoTextDirection(announce),
-                                style: Theme.of(context).textTheme.bodySmall),
+                  padding: const EdgeInsets.only(right: 8),
+                  child: LayoutBuilder(
+                    builder: (context, box) => ListenableBuilder(
+                      listenable: SupportChatController.instance,
+                      builder: (context, _) {
+                        final unread =
+                            SupportChatController.instance.unreadCount;
+                        final children = <Widget>[
+                          _ExpiryLine(info: info, leading: _usageText(l, info)),
+                          if (hasTelegram)
+                            _SubBarActionButton(
+                              key: const Key('subBarTelegramButton'),
+                              compact: true,
+                              ultraDense: true,
+                              leading: TelegramIcon(
+                                size: 12,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              label: l.subBarTelegram,
+                              onTap: () => SubscriptionActions.run(
+                                  context, SubscriptionActions.telegram),
+                            ),
+                          _SubBarActionButton(
+                            key: const Key('subBarSupportButton'),
+                            compact: true,
+                            ultraDense: true,
+                            leading: Icon(
+                              Icons.support_agent,
+                              size: 12,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            label: l.subBarSupport,
+                            badgeCount: unread,
+                            onTap: () => SubscriptionActions.run(
+                                context, SubscriptionActions.support),
                           ),
-                        ),
-                      ],
+                        ];
+                        if (box.maxWidth >= 460) {
+                          return SizedBox(
+                            height: 16,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  for (var i = 0; i < children.length; i++) ...[
+                                    if (i > 0) const SizedBox(width: 8),
+                                    children[i],
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+                        return Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: children,
+                        );
+                      },
                     ),
                   ),
                 ),
-              // Кнопки-ссылки в компактном виде — пунктами меню «⋮» (они там
-              // и так есть: `SubscriptionActions.menuItems`).
-              if (!isCompact)
-                Align(
-                  alignment: Alignment.centerLeft,
-                  // ⚠️ `Wrap`, А НЕ `Row`. Кнопок стало две, а подписи у нас на
-                  // десяти языках и различаются в разы по длине: в узком окне
-                  // `Row` дал бы «RenderFlex overflowed» (жёлто-чёрная полоса в
-                  // отладке, обрезанная подпись в релизе). `Wrap` переносит
-                  // вторую кнопку на следующую строку.
-                  child: Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    children: [
-                      TextButton.icon(
-                        style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(horizontal: 6)),
-                        icon: const Icon(Icons.support_agent, size: 16),
-                        label: Text(l.subBarSupport),
-                        // Кнопка «Поддержка» ВЕЗДЕ ведёт в настройки → раздел
-                        // поддержки, где объяснено, что будет сделано, и дана
-                        // ссылка из конфига.
-                        onPressed: () =>
-                            SubscriptionActions.openSupport(context),
+              ] else ...[
+                if (isCompact) ...[
+                  const SizedBox(height: 4),
+                  _ExpiryLine(info: info, leading: _usageText(l, info)),
+                ] else ...[
+                  if (_usageText(l, info) case final usage?) ...[
+                    SizedBox(height: hasBar ? 4 : 8),
+                    Text(usage, style: Theme.of(context).textTheme.bodySmall),
+                  ],
+                  const SizedBox(height: 4),
+                  _ExpiryLine(info: info),
+                ],
+                if (announce != null)
+                  Padding(
+                    padding: EdgeInsets.only(top: isCompact ? 6 : 8, right: 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(8),
+                      constraints:
+                          BoxConstraints(maxHeight: isCompact ? 104 : 120),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      // ⚠️ КНОПКИ НЕТ, ЕСЛИ НЕТ ССЫЛКИ. Сервер, добавленный
-                      // руками (share-ссылка или свой JSON), подписки за собой не
-                      // имеет — открывать нечего, а кнопка, ведущая в никуда,
-                      // хуже отсутствующей.
-                      if ((state.subscriptionUrl ?? '').isNotEmpty)
-                        Tooltip(
-                          // ⚠️ В ПОДСКАЗКЕ АДРЕСА НЕТ: в нём токен доступа, а
-                          // карточку отправляют скриншотом в поддержку. Кнопка
-                          // просто открывает ту самую страницу, по которой
-                          // подписка и импортирована.
-                          message: l.subBarOpenSiteHint,
-                          child: TextButton.icon(
-                            style: TextButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 6)),
-                            icon: const Icon(Icons.public, size: 16),
-                            label: Text(l.subBarOpenSite),
-                            onPressed: () => SubscriptionActions.run(
-                                context, SubscriptionActions.site),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FlagText(announceTitle(l, info.title),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(fontWeight: FontWeight.w600)),
+                          const SizedBox(height: 4),
+                          Flexible(
+                            child: SingleChildScrollView(
+                              child: SelectableText.rich(
+                                  TextSpan(
+                                      children: buildFlagSpans(announce,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall)),
+                                  textDirection: autoTextDirection(announce),
+                                  style: Theme.of(context).textTheme.bodySmall),
+                            ),
                           ),
-                        ),
-                    ],
+                        ],
+                      ),
+                    ),
+                  ),
+                Padding(
+                  padding: EdgeInsets.only(top: isCompact ? 5 : 10, right: 8),
+                  child: ListenableBuilder(
+                    listenable: SupportChatController.instance,
+                    builder: (context, _) {
+                      final unread = SupportChatController.instance.unreadCount;
+                      return Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          if (hasTelegram)
+                            _SubBarActionButton(
+                              key: const Key('subBarTelegramButton'),
+                              compact: isCompact,
+                              leading: TelegramIcon(
+                                size: isCompact ? 13 : 15,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              label: l.subBarTelegram,
+                              onTap: () => SubscriptionActions.run(
+                                  context, SubscriptionActions.telegram),
+                            ),
+                          _SubBarActionButton(
+                            key: const Key('subBarSupportButton'),
+                            compact: isCompact,
+                            leading: Icon(
+                              Icons.support_agent,
+                              size: isCompact ? 13 : 16,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            label: l.subBarSupport,
+                            badgeCount: unread,
+                            onTap: () => SubscriptionActions.run(
+                                context, SubscriptionActions.support),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -287,21 +304,6 @@ class SubscriptionBar extends StatelessWidget {
   static String _date(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year}';
 
-  /// Меню карточки (кнопка ⋮ и ПКМ по карточке) — про АКТИВНУЮ подписку.
-  ///
-  /// ⚠️ Пункты и их исполнение общие с ПКМ-меню строки переключателя
-  /// ([SubscriptionActions]): одинаковые на вид действия обязаны и работать
-  /// одинаково. `profile` здесь не передаётся — это и означает «активная».
-  ///
-  /// ⚠️ «Добавить подписку» ЗДЕСЬ НЕТ — убрано по просьбе владельца как лишний
-  /// пункт. Добавление никуда не делось: кнопка «Импорт» стоит в шапке главного
-  /// экрана (`home_screen`, `l.homeImport`) и видна всегда, а на пустом
-  /// состоянии экран импорта открывается сам. Меню карточки — про ЭТУ подписку,
-  /// и заведение новой в нём чужое.
-  ///
-  /// ⚠️ Пункта «Объявление» здесь НЕТ (был в 1.13.1 для компактного вида):
-  /// объявление теперь в карточке на любой высоте, а при настройке «скрыть»
-  /// его не должно быть и в меню — человек попросил не видеть.
   Future<void> _menu(BuildContext context, Offset pos) async {
     final l = AppLocalizations.of(context);
     final state = context.read<AppState>();
@@ -309,15 +311,19 @@ class SubscriptionBar extends StatelessWidget {
     final action = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: SubscriptionActions.menuItems(l,
-          hasUrl: (state.subscriptionUrl ?? '').isNotEmpty),
+      items: SubscriptionActions.menuItems(
+        l,
+        hasUrl: (state.subscriptionUrl ?? '').isNotEmpty,
+        url: state.subscriptionUrl,
+        hasTelegram: SubscriptionActions.telegramUrlFor(
+                info: state.info, subscriptionUrl: state.subscriptionUrl) !=
+            null,
+      ),
     );
     if (action == null || !context.mounted) return;
     await SubscriptionActions.run(context, action);
   }
 
-  /// Строка трафика: «N из M» при лимите, «Израсходовано N · без ограничений»
-  /// при безлимите, `null` — данных о трафике нет вовсе.
   static String? _usageText(AppLocalizations l, SubscriptionInfo info) {
     if (info.usedBytes == null) return null;
     if (!info.unlimitedTraffic) {
@@ -326,6 +332,86 @@ class SubscriptionBar extends StatelessWidget {
     }
     return '${l.subBarUsedOnly(_gb(info.usedBytes, l.subBarGbUnit))}'
         ' · ${l.subBarUnlimitedTraffic}';
+  }
+}
+
+class _SubBarActionButton extends StatelessWidget {
+  final Widget leading;
+  final String label;
+  final VoidCallback onTap;
+  final bool compact;
+  final bool ultraDense;
+  final int badgeCount;
+
+  const _SubBarActionButton({
+    super.key,
+    required this.leading,
+    required this.label,
+    required this.onTap,
+    this.compact = false,
+    this.ultraDense = false,
+    this.badgeCount = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final style = (compact
+            ? Theme.of(context).textTheme.labelSmall
+            : Theme.of(context).textTheme.labelMedium)
+        ?.copyWith(
+      color: scheme.onSecondaryContainer,
+      fontWeight: FontWeight.w600,
+      height: ultraDense ? 1.0 : 1.15,
+    );
+    return Material(
+      color: scheme.secondaryContainer.withValues(alpha: 0.85),
+      borderRadius: BorderRadius.circular(ultraDense ? 6 : 8),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(ultraDense ? 6 : 8),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: ultraDense ? 7 : (compact ? 9 : 12),
+            vertical: ultraDense ? 0.5 : (compact ? 2.5 : 8),
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(ultraDense ? 6 : 8),
+            border: Border.all(
+              color: scheme.primary.withValues(alpha: 0.32),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              leading,
+              const SizedBox(width: 6),
+              Text(label, style: style),
+              if (badgeCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  key: const Key('subBarSupportUnreadBadge'),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: scheme.error,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    badgeCount > 99 ? '99+' : '$badgeCount',
+                    style: TextStyle(
+                      color: scheme.onError,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -383,8 +469,6 @@ class _SyncSummaryState extends State<_SyncSummary> {
               style: TextStyle(fontSize: 14, color: color)),
         ),
         if (r.hasChanges)
-          // Список показываем ПОВЕРХ интерфейса: раскрытие внутри карточки
-          // раздвигало её и сдвигало кнопку Connect вниз.
           Builder(builder: (ctx) {
             return TextButton(
               style: TextButton.styleFrom(
@@ -403,7 +487,6 @@ class _SyncSummaryState extends State<_SyncSummary> {
     );
   }
 
-  /// Всплывающий список изменений — как контекстное меню, поверх содержимого.
   Future<void> _showChanges(BuildContext ctx, SubscriptionSyncResult r) async {
     final l = AppLocalizations.of(ctx);
     final box = ctx.findRenderObject() as RenderBox?;
@@ -451,9 +534,6 @@ class _SyncSummaryState extends State<_SyncSummary> {
                 fontSize: 13, color: color, fontWeight: FontWeight.bold)),
       );
 
-  /// Строка с флагом страны — имя сервера без ТЕХ флаг-эмодзи, что уже в
-  /// [FlagCell] рядом (третий и далее остаются картинкой через [FlagText]:
-  /// Windows голые эмодзи-флаги не рендерит).
   Widget _line(BuildContext ctx, String name, String sign, Color color) =>
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
@@ -473,14 +553,8 @@ class _SyncSummaryState extends State<_SyncSummary> {
       );
 }
 
-/// Строка срока действия. Цветом выделяется ТОЛЬКО значение «действует до»
-/// (не весь блок и не просто текст — плашкой): жёлтым, если истекает в течение
-/// суток, красным — если уже истекла. Пока времени много — без выделения.
 class _ExpiryLine extends StatelessWidget {
   final SubscriptionInfo info;
-
-  /// Текст ПЕРЕД сроком в той же строке (компактный вид: трафик · срок).
-  /// `null` — строка начинается со срока, как в полном виде.
   final String? leading;
 
   const _ExpiryLine({required this.info, this.leading});
@@ -527,7 +601,6 @@ class _ExpiryLine extends StatelessWidget {
       children: [
         ...lead,
         Text(expired ? l.subBarExpired : l.subBarValidUntil, style: small),
-        // Выделяем ТОЛЬКО дату — отдельной плашкой.
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: bg == null

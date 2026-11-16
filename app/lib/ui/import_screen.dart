@@ -1,8 +1,9 @@
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../core/net/network_error_hint.dart';
+import '../core/platform/clipboard_files_windows.dart';
 import '../core/platform/qr_scanner_android.dart';
 import '../core/platform/time_sync_windows.dart';
 import '../state/app_state.dart';
@@ -51,9 +52,7 @@ class _ImportScreenState extends State<ImportScreen> {
     super.dispose();
   }
 
-  Future<void> _import() async {
-    final state = context.read<AppState>();
-    await state.importSource(_controller.text);
+  void _finishAfterSuccess(AppState state) {
     if (!mounted) return;
     if (state.error == null && state.hasServers) {
       final l = AppLocalizations.of(context);
@@ -67,6 +66,30 @@ class _ImportScreenState extends State<ImportScreen> {
       final nav = Navigator.of(context);
       if (nav.canPop()) nav.pop();
     }
+  }
+
+  Future<void> _import() async {
+    final state = context.read<AppState>();
+    await state.importSource(_controller.text);
+    _finishAfterSuccess(state);
+  }
+
+  Future<void> _importFiles(List<String> files) async {
+    if (files.isEmpty) return;
+    final state = context.read<AppState>();
+    _controller.text = files.join('\n');
+    await state.importFiles(files);
+    _finishAfterSuccess(state);
+  }
+
+  Future<void> _pickFileImport() async {
+    const group = XTypeGroup(
+      label: 'Subscriptions & Configs',
+      extensions: <String>['txt', 'sub', 'json', 'conf', 'log'],
+    );
+    final picked = await openFiles(acceptedTypeGroups: const <XTypeGroup>[group]);
+    if (picked.isEmpty || !mounted) return;
+    await _importFiles(picked.map((f) => f.path).toList());
   }
 
   /// Камера. Пока разрешения нет — сначала объясняем, зачем она: системный
@@ -116,8 +139,13 @@ class _ImportScreenState extends State<ImportScreen> {
   }
 
   Future<void> _pasteImport() async {
-    final data = await Clipboard.getData(Clipboard.kTextPlain);
-    final text = data?.text?.trim() ?? '';
+    final payload = await ClipboardFilesWindows.readPayload();
+    if (!mounted) return;
+    if (payload.files.isNotEmpty) {
+      await _importFiles(payload.files);
+      return;
+    }
+    final text = payload.text?.trim() ?? '';
     if (text.isEmpty) return;
     _controller.text = text;
     await _import();
@@ -127,139 +155,160 @@ class _ImportScreenState extends State<ImportScreen> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final l = AppLocalizations.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.initialSetup
-            ? l.importScrWelcome
-            : l.importScrTitle),
-        automaticallyImplyLeading: !widget.initialSetup,
-      ),
-      // ⚠️ Прокрутка обязательна: это экран ПЕРВОГО ЗАПУСКА с полем URL.
-      // Без неё он переполняется при открытой клавиатуре, а с текстом ошибки
-      // (ограничен 220 dp) — вообще всегда.
-      body: SingleChildScrollView(
-        child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // #2 — логотип провайдера, если подписка уже импортирована.
-                if (state.logoPath != null) ...[
-                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    SubscriptionAvatar(path: state.logoPath, label: state.info.title, size: 40),
-                    const SizedBox(width: 10),
-                    Flexible(
-                      child: FlagText(state.info.title ?? l.importScrSubscriptionFallback,
-                          // Название подписки — направление по содержимому.
-                          textDirection: autoTextDirection(state.info.title),
-                          style: Theme.of(context).textTheme.titleMedium,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                  ]),
+    final isRu = Localizations.localeOf(context).languageCode == 'ru';
+    return Actions(
+      actions: <Type, Action<Intent>>{
+        PasteTextIntent: CallbackAction<PasteTextIntent>(
+          onInvoke: (intent) {
+            final files = ClipboardFilesWindows.readFiles();
+            if (files.isNotEmpty) {
+              _importFiles(files);
+              return null;
+            }
+            // Если в буфере обычный текст — отдаём управление штатному PasteTextIntent поля.
+            final primary = FocusManager.instance.primaryFocus?.context;
+            if (primary != null) {
+              final editable = primary is StatefulElement &&
+                      primary.state is EditableTextState
+                  ? primary.state as EditableTextState
+                  : primary.findAncestorStateOfType<EditableTextState>();
+              editable?.pasteText(intent.cause);
+            }
+            return null;
+          },
+        ),
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.initialSetup
+              ? l.importScrWelcome
+              : l.importScrTitle),
+          automaticallyImplyLeading: !widget.initialSetup,
+        ),
+        // ⚠️ Прокрутка обязательна: это экран ПЕРВОГО ЗАПУСКА с полем URL.
+        // Без неё он переполняется при открытой клавиатуре, а с текстом ошибки
+        // (ограничен 220 dp) — вообще всегда.
+        body: SingleChildScrollView(
+          child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // #2 — логотип провайдера, если подписка уже импортирована.
+                  if (state.logoPath != null) ...[
+                    Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      SubscriptionAvatar(path: state.logoPath, label: state.info.title, size: 40),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: FlagText(state.info.title ?? l.importScrSubscriptionFallback,
+                            // Название подписки — направление по содержимому.
+                            textDirection: autoTextDirection(state.info.title),
+                            style: Theme.of(context).textTheme.titleMedium,
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                    ]),
+                    const SizedBox(height: 16),
+                  ],
+                  Text(l.importScrHint),
                   const SizedBox(height: 16),
-                ],
-                Text(l.importScrHint),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _controller,
-                  autofocus: !QrScannerAndroid.isSupported,
-                  contentInsertionConfiguration:
-                      buildExtendedContentInsertion(_controller),
-                  minLines: 2,
-                  maxLines: 5,
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    hintText: 'https://sub.silentgate.lol/sub/…',
+                  TextField(
+                    controller: _controller,
+                    autofocus: !QrScannerAndroid.isSupported,
+                    contentInsertionConfiguration:
+                        buildExtendedContentInsertion(_controller),
+                    minLines: 2,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'https://sub.silentgate.lol/sub/…',
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                // #1.2 — «из буфера» ВЫШЕ ручного подтверждения: обычно ссылка уже
-                // скопирована, и вставлять её в поле руками не нужно.
-                FilledButton.icon(
-                  onPressed: state.loading ? null : _pasteImport,
-                  icon: state.loading
-                      ? const SizedBox(
-                          width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Icon(Icons.content_paste),
-                  label: Text(state.loading
-                      ? l.importScrLoading
-                      : l.importScrPasteImport),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: state.loading ? null : _import,
-                  icon: const Icon(Icons.download),
-                  label: Text(l.importScrImportField),
-                ),
-                // QR — равноправный путь ввода: страница подписки Remnawave
-                // штатно показывает ссылку QR-кодом.
-                if (QrScannerAndroid.isSupported) ...[
+                  const SizedBox(height: 12),
+                  // #1.2 — «из буфера» ВЫШЕ ручного подтверждения: обычно ссылка уже
+                  // скопирована, и вставлять её в поле руками не нужно.
+                  FilledButton.icon(
+                    onPressed: state.loading ? null : _pasteImport,
+                    icon: state.loading
+                        ? const SizedBox(
+                            width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.content_paste),
+                    label: Text(state.loading
+                        ? l.importScrLoading
+                        : l.importScrPasteImport),
+                  ),
                   const SizedBox(height: 8),
-                  Row(children: [
-                    if (_hasCamera) ...[
+                  OutlinedButton.icon(
+                    onPressed: state.loading ? null : _import,
+                    icon: const Icon(Icons.download),
+                    label: Text(l.importScrImportField),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: state.loading ? null : _pickFileImport,
+                    icon: const Icon(Icons.description_outlined),
+                    label: Text(
+                        isRu ? 'Импорт из файла (.txt / .json)…' : 'Import from file (.txt / .json)…'),
+                  ),
+                  // QR — равноправный путь ввода: страница подписки Remnawave
+                  // штатно показывает ссылку QR-кодом.
+                  if (QrScannerAndroid.isSupported) ...[
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      if (_hasCamera) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: state.loading ? null : _scanCamera,
+                            icon: const Icon(Icons.qr_code_scanner),
+                            label: Text(l.importScrScanQr),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Expanded(
                         child: OutlinedButton.icon(
-                          onPressed: state.loading ? null : _scanCamera,
-                          icon: const Icon(Icons.qr_code_scanner),
-                          label: Text(l.importScrScanQr),
+                          onPressed: state.loading
+                              ? null
+                              : () => _qrImport(_qr.scanImage),
+                          icon: const Icon(Icons.image_outlined),
+                          label: Text(l.importScrQrFromImage),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                    ]),
+                  ],
+                  if (state.error != null) ...[
+                    const SizedBox(height: 16),
+                    // #7 — длинная ошибка не выталкивает кнопки: ограничиваем и скроллим.
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 220),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          // Узнанная ошибка — на языке интерфейса (MS1 S13);
+                          // сырой текст исключения — как есть.
+                          state.errorMessage != null
+                              ? uiMessageL10n(
+                                  AppLocalizations.of(context), state.errorMessage!)
+                              : state.error!,
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        ),
+                      ),
+                    ),
+                    // ⚠️ КНОПКА ПОЯВЛЯЕТСЯ ТОЛЬКО У ОШИБКИ ПРО ЧАСЫ.
+                    if (TimeSyncWindows.isSupported &&
+                        _clockProblem(state.error!, state.errorMessage)) ...[
+                      const SizedBox(height: 12),
+                      _TimeSyncButton(),
                     ],
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: state.loading
-                            ? null
-                            : () => _qrImport(_qr.scanImage),
-                        icon: const Icon(Icons.image_outlined),
-                        label: Text(l.importScrQrFromImage),
-                      ),
-                    ),
-                  ]),
-                ],
-                if (state.error != null) ...[
-                  const SizedBox(height: 16),
-                  // #7 — длинная ошибка не выталкивает кнопки: ограничиваем и скроллим.
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 220),
-                    child: SingleChildScrollView(
-                      child: Text(
-                        // Узнанная ошибка — на языке интерфейса (MS1 S13);
-                        // сырой текст исключения — как есть.
-                        state.errorMessage != null
-                            ? uiMessageL10n(
-                                AppLocalizations.of(context), state.errorMessage!)
-                            : state.error!,
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
-                      ),
-                    ),
-                  ),
-                  // ⚠️ КНОПКА ПОЯВЛЯЕТСЯ ТОЛЬКО У ОШИБКИ ПРО ЧАСЫ.
-                  //
-                  // Живой клиент 05.09.2026 не смог импортировать подписку:
-                  // сертификат сервера считался ещё не начавшим действовать,
-                  // потому что часы его компьютера отставали. Решение
-                  // владельца — не отправлять человека в настройки Windows, а
-                  // предложить кнопку и сделать это за него.
-                  //
-                  // Показываем её ровно там, где она к месту: при других
-                  // ошибках синхронизация не поможет, а кнопка «почини время»
-                  // рядом с «нет интернета» только собьёт с толку.
-                  if (TimeSyncWindows.isSupported &&
-                      _clockProblem(state.error!, state.errorMessage)) ...[
-                    const SizedBox(height: 12),
-                    _TimeSyncButton(),
                   ],
                 ],
-              ],
+              ),
             ),
           ),
-        ),
-      )),
+        )),
+      ),
     );
   }
 }
@@ -326,14 +375,6 @@ class _TimeSyncButtonState extends State<_TimeSyncButton> {
                   if (!mounted) return;
                   setState(() {
                     _busy = false;
-                    // ⚠️ Отказ от UAC — законный ответ пользователя, а не
-                    // сбой: говорим об этом спокойно и без слова «ошибка».
-                    // ⚠️ При отказе даём НЕ приговор, а второй путь: человек
-                    // уже знает, что виноваты часы, и оставить его без
-                    // способа их поправить хуже, чем не иметь кнопки вовсе.
-                    // Русские тексты [TimeSyncWindows.okText] и
-                    // [TimeSyncWindows.manualHint] — для журнала; на экран
-                    // идёт перевод.
                     final l = AppLocalizations.of(context);
                     _result = ok ? l.importSyncTimeOk : l.importSyncTimeManual;
                   });

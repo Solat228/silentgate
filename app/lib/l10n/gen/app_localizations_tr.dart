@@ -3369,7 +3369,10 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Web sitesi';
+  String get subBarOpenSite => 'Abonelik sayfası';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint => 'Abonelik sayfasını tarayıcıda aç';
@@ -4671,4 +4674,66 @@ class AppLocalizationsTr extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return '\"$name\" sunucusu şu anda bir kural için ayrı çıkış olarak atanamaz.\n\n\"Otomatik\" profiller, çok adımlı röleler ve Xray\'e özgü protokoller (XHTTP gibi) Xray hattı gerektirirken, ikincil çıkışlar doğrudan sing-box tarafından yönetilir.\n\nBu kural için standart bir tekil sunucu seçin veya \"$name\" sunucusunu ana ekranda ana sunucu yapın.';
   }
+
+  @override
+  String get supportChipCantConnect => 'Bağlanmıyor';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / site açılmıyor';
+
+  @override
+  String get supportChipSlowSpeed => 'Düşük hız';
+
+  @override
+  String get supportChipDrops => 'Bağlantı kopuyor';
+
+  @override
+  String get supportChipsHint =>
+      'Hızlı seçim (isteğe bağlı, açıklama yazmadan):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'Sorun açıklaması (isteğe bağlı)';
+
+  @override
+  String get supportNoTextProvided => 'Metin açıklaması yok (teknik rapor)';
+
+  @override
+  String get supportCategoriesHeader => 'Kategori';
+
+  @override
+  String get supportSendDevCopyTitle => 'Geliştiriciye anonim kopya gönder';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Abonelik anahtarı, kişisel IP ve ham HWID olmadan - hataları hızla çözmeye yardımcı olur';
+
+  @override
+  String get supportPreviewDevCopy => 'Ne gönderilir?';
+
+  @override
+  String get supportPreviewDialogTitle => 'Geliştirici için anonim kopya';
+
+  @override
+  String get supportSendDevOnlyButton => 'Yalnızca geliştiriciye';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Kopya geliştiriciye gönderildi ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Sunucuya gönderilemedi ($code) - yerel dosya hazır';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Anonim rapor geliştirici sunucusuna gönderildi. Rapor kodu: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Tanı raporu';
+
+  @override
+  String get supportSendToChatAndDev => 'Sohbete ekle';
 }

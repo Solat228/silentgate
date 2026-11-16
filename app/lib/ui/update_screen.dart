@@ -17,6 +17,7 @@ import 'settings_screen.dart' show kSettingsContentMaxWidth;
 import 'widgets/download_progress_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/update_dialog.dart';
+import 'widgets/whats_new_badge.dart';
 
 /// Источник списка «Прежних версий» — подменяется тестом.
 typedef ReleaseHistoryLoader = Future<List<AppRelease>> Function();
@@ -92,8 +93,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
                   child: _OverrideBanner(),
                 ),
               ListTile(
+                key: const Key('updatesCurrentVersionTile'),
                 leading: const Icon(Icons.system_update_alt),
                 title: Text(l.updatesCurrentVersion(AppInfo.displayVersion)),
+                trailing: const Icon(Icons.info_outline, size: 18),
+                onTap: () => unawaited(showWhatsNewDialog(context)),
                 subtitle: Wrap(
                   spacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -143,6 +147,17 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 onChanged: (v) => unawaited(
                     settingsCtrl.update((x) => x.copyWith(appUpdateCheck: v))),
                 title: Text(l.updatesAutoCheck),
+              ),
+              SwitchListTile(
+                key: const Key('updatesShowWhatsNewSwitch'),
+                value: s.showWhatsNewOnUpdate,
+                onChanged: (v) => unawaited(settingsCtrl
+                    .update((x) => x.copyWith(showWhatsNewOnUpdate: v))),
+                title: Text(
+                  l.localeName.toLowerCase().startsWith('ru')
+                      ? 'Показывать «Что нового» после обновления'
+                      : 'Show "What\'s new" after updates',
+                ),
               ),
               SwitchListTile(
                 key: const Key('updatesBetaSwitch'),

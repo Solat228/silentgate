@@ -41,10 +41,46 @@ class SubscriptionProfile {
     this.addedAt,
   });
 
+  static bool isHttpUrlString(String? raw) {
+    final u = (raw ?? '').trim().toLowerCase();
+    return u.startsWith('https://') || u.startsWith('http://');
+  }
+
+  static bool isFileUrlString(String? raw) =>
+      (raw ?? '').trim().toLowerCase().startsWith('file://');
+
+  static bool isLocalUrlString(String? raw) =>
+      (raw ?? '').trim().toLowerCase().startsWith('local://');
+
+  static bool isRefreshableUrlString(String? raw) =>
+      isHttpUrlString(raw) || isFileUrlString(raw);
+
+  bool get isHttpUrl => isHttpUrlString(url);
+  bool get isFileUrl => isFileUrlString(url);
+  bool get isLocalUrl => isLocalUrlString(url);
+  bool get isLocal => isFileUrl || isLocalUrl;
+  bool get isRefreshable => isRefreshableUrlString(url);
+
+  /// Имя файла без расширения из пути или `file://`-ссылки.
+  static String fileStemOf(String pathOrUri) {
+    var p = pathOrUri.trim();
+    if (p.toLowerCase().startsWith('file://')) {
+      try {
+        p = Uri.parse(p).toFilePath();
+      } catch (_) {}
+    }
+    final name = p.split(RegExp(r'[\\/]')).where((s) => s.isNotEmpty).lastOrNull ??
+        'Импорт';
+    final dot = name.lastIndexOf('.');
+    return (dot > 0 ? name.substring(0, dot) : name).trim();
+  }
+
   /// Имя для UI: название от панели, иначе — узнаваемый кусок ссылки.
   String get title {
     final t = info.title?.trim() ?? '';
     if (t.isNotEmpty) return t;
+    if (isFileUrl) return fileStemOf(url);
+    if (isLocalUrl) return 'Локальный импорт (${serverLinks.length})';
     final u = Uri.tryParse(url);
     if (u == null) return url;
     final last = u.pathSegments.isEmpty ? '' : u.pathSegments.last;
@@ -61,6 +97,8 @@ class SubscriptionProfile {
   String get safeTitle {
     final t = info.title?.trim() ?? '';
     if (t.isNotEmpty) return t;
+    if (isFileUrl) return fileStemOf(url);
+    if (isLocalUrl) return 'Локальный импорт';
     final u = Uri.tryParse(url);
     final host = u?.host ?? '';
     return host.isEmpty ? '-' : host;

@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN kapalı",
   "serviceChecksNow": "Şu an",
   "serviceChecksExitServer": "Başka sunucu üzerinden: bölünmüş tünel kuralı “{rule}” bu alan adını “{server}” üzerinden yönlendiriyor.",
-  "subBarOpenSite": "Web sitesi",
+  "subBarOpenSite": "Abonelik sayfası",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Abonelik sayfasını tarayıcıda aç",
   "subSwitcherRefreshingOne": "\"{name}\" yenileniyor…",
   "subSwitcherRefreshedOne": "\"{name}\" güncellendi",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "Bağlanmıyor",
+  "supportChipSiteOrYoutube": "YouTube / site açılmıyor",
+  "supportChipSlowSpeed": "Düşük hız",
+  "supportChipDrops": "Bağlantı kopuyor",
+  "supportChipsHint": "Hızlı seçim (isteğe bağlı, açıklama yazmadan):",
+  "supportDescribeOptionalLabel": "Sorun açıklaması (isteğe bağlı)",
+  "supportNoTextProvided": "Metin açıklaması yok (teknik rapor)",
+  "supportCategoriesHeader": "Kategori",
+  "supportSendDevCopyTitle": "Geliştiriciye anonim kopya gönder",
+  "supportSendDevCopySub": "Abonelik anahtarı, kişisel IP ve ham HWID olmadan - hataları hızla çözmeye yardımcı olur",
+  "supportPreviewDevCopy": "Ne gönderilir?",
+  "supportPreviewDialogTitle": "Geliştirici için anonim kopya",
+  "supportSendDevOnlyButton": "Yalnızca geliştiriciye",
+  "supportDevCopySent": "Kopya geliştiriciye gönderildi ({code})",
+  "supportDevCopyFailed": "Sunucuya gönderilemedi ({code}) - yerel dosya hazır",
+  "supportDevOnlyDoneText": "Anonim rapor geliştirici sunucusuna gönderildi. Rapor kodu: {code}",
+  "supportAttachDiagButton": "Tanı raporu",
+  "supportSendToChatAndDev": "Sohbete ekle"
 }

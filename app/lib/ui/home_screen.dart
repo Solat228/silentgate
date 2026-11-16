@@ -17,7 +17,7 @@ import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/net/speed_test.dart';
 import '../core/platform/interference_scanner.dart';
-import '../core/app_info.dart';
+import '../core/platform/clipboard_files_windows.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/notification_access.dart';
 import '../core/platform/platform_services.dart';
@@ -61,9 +61,11 @@ import 'widgets/server_tile.dart';
 import 'widgets/tun_task_result_text.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/update_presenter.dart';
+import 'widgets/whats_new_badge.dart';
 import 'widgets/data_consent_dialog.dart';
 import '../core/privacy/device_info_consent.dart';
 import 'widgets/subscription_bar.dart';
+import 'widgets/support_chat_overlay.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/ping_gate.dart';
 import 'server_info_screen.dart';
@@ -201,6 +203,11 @@ class CopyServerKeyIntent extends Intent {
   const CopyServerKeyIntent();
 }
 
+/// Намерение «вставить подписку / серверы / файл из буфера обмена» (Ctrl+V / Shift+Insert).
+class PasteImportIntent extends Intent {
+  const PasteImportIntent();
+}
+
 /// Ctrl+C копирует ключ сервера, ВЫБРАННОГО В СПИСКЕ (на macOS — Cmd+C).
 ///
 /// ⚠️ ЭТО ПЕРВЫЙ ОБРАБОТЧИК КЛАВИШ В ПРИЛОЖЕНИИ, поэтому здесь подробно про
@@ -261,10 +268,15 @@ class CopyServerKeyShortcut extends StatefulWidget {
 
 class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
   late final _CopyServerKeyAction _action = _CopyServerKeyAction(this);
+  late final _PasteImportAction _pasteAction = _PasteImportAction(this);
 
   /// Есть что копировать и не мешаем ли мы полю ввода.
   bool get canCopy =>
       !CopyServerKeyShortcut.focusInsideTextInput() && _target != null;
+
+  bool get canPaste =>
+      !CopyServerKeyShortcut.focusInsideTextInput() &&
+      !context.read<AppState>().loading;
 
   VpnServer? get _target => context.read<AppState>().selectedServer;
 
@@ -283,6 +295,34 @@ class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
     if (mounted) AppToast.copied(context);
   }
 
+  Future<void> pasteFromClipboard() async {
+    final state = context.read<AppState>();
+    if (state.loading) return;
+    final payload = await ClipboardFilesWindows.readPayload();
+    if (!mounted) return;
+    if (payload.files.isNotEmpty) {
+      final ok = await state.importFiles(payload.files);
+      if (!mounted) return;
+      final l = AppLocalizations.of(context);
+      if (ok && state.error == null) {
+        AppToast.show(context, l.importScrDone, kind: ToastKind.success);
+      } else if (state.error != null) {
+        AppToast.show(context, state.error!, kind: ToastKind.error);
+      }
+      return;
+    }
+    final text = payload.text?.trim() ?? '';
+    if (text.isEmpty) return;
+    await state.importSource(text);
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    if (state.error == null && state.hasServers) {
+      AppToast.show(context, l.importScrDone, kind: ToastKind.success);
+    } else if (state.error != null) {
+      AppToast.show(context, state.error!, kind: ToastKind.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!CopyServerKeyShortcut.hasKeyboard) return widget.child;
@@ -290,15 +330,29 @@ class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
       shortcuts: <ShortcutActivator, Intent>{
         // На macOS копирование — Cmd+C; Ctrl+C там означает другое, и вешать
         // его значило бы спорить с системной привычкой.
-        if (Platform.isMacOS)
+        if (Platform.isMacOS) ...{
           const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
-              const CopyServerKeyIntent()
-        else
+              const CopyServerKeyIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+              const PasteImportIntent(),
+        } else ...{
           const SingleActivator(LogicalKeyboardKey.keyC, control: true):
               const CopyServerKeyIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+              const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV,
+              control: true, meta: true): const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.insert, shift: true):
+              const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.insert,
+              shift: true, meta: true): const PasteImportIntent(),
+        },
       },
       child: Actions(
-        actions: <Type, Action<Intent>>{CopyServerKeyIntent: _action},
+        actions: <Type, Action<Intent>>{
+          CopyServerKeyIntent: _action,
+          PasteImportIntent: _pasteAction,
+        },
         child: Focus(autofocus: true, child: widget.child), // см. (2)
       ),
     );
@@ -318,6 +372,18 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
 
   @override
   Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
+}
+
+class _PasteImportAction extends Action<PasteImportIntent> {
+  _PasteImportAction(this._host);
+
+  final _CopyServerKeyShortcutState _host;
+
+  @override
+  bool get isActionEnabled => _host.canPaste;
+
+  @override
+  Object? invoke(PasteImportIntent intent) => _host.pasteFromClipboard();
 }
 
 /// Сколько высоты отдать блоку «проверки + кнопка», чтобы под ним уместилось
@@ -1130,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // правки не должны расползаться по интерфейсу.
         // ⚠️ Версии здесь НЕТ намеренно (решение владельца): она стоит в
         // заголовке окна и в подсказке значка в трее — см. `TrayWindow`.
-        title: const Text(AppInfo.name),
+        title: const HeaderVersionBadge(),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.add, size: 20),
@@ -1151,10 +1217,15 @@ class _HomeScreenState extends State<HomeScreen> {
       // Компоновка выбирается по ШИРИНЕ, а не по платформе: узкое окно на
       // Windows получает ту же одноколоночную раскладку, что и телефон, и это
       // правильно — две панели по 380 px там просто не помещаются.
-      body: HomeBody(
-        status: status,
-        settings: settings,
-        onOpen: (w) => _open(context, w),
+      body: Stack(
+        children: [
+          HomeBody(
+            status: status,
+            settings: settings,
+            onOpen: (w) => _open(context, w),
+          ),
+          const SupportChatOverlay(),
+        ],
       ),
     ));
   }

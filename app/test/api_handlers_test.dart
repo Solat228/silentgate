@@ -366,7 +366,7 @@ void main() {
       /// не серел, `/v1/exits` публиковал порт, а `ExitOutbounds.build` собирал
       /// выход из ОДНОГО узла профиля — без балансировщика и `burstObservatory`.
       /// Скрипт думал, что ходит «через Авто», а ходил через случайный узел.
-      test('⚠️ панельный профиль «Авто» (protocol vless) порта НЕ получает',
+      test('живой панельный профиль «Авто» (protocol vless) получает порт через Xray-мост',
           () async {
         final env = await _Env.create(panelConfigs: {
           _serverB: '{"outbounds":[{"protocol":"vless","tag":"proxy"}],'
@@ -375,10 +375,8 @@ void main() {
         addTearDown(env.dispose);
         final ok = await env.addServer(_serverA);
         final panel = await env.addServer(_serverB);
-        expect(panel.isPanelProfile, isTrue,
-            reason: 'без живого rawPanelConfig тест проверял бы обычный сервер');
-        expect(panel.protocol, 'vless',
-            reason: 'ровно этим профиль и проходил мимо прежнего предиката');
+        expect(panel.isPanelProfile, isTrue);
+        expect(panel.protocol, 'vless');
 
         await env.settings.update((s) => s.copyWith(
             apiEnabled: true,
@@ -386,14 +384,36 @@ void main() {
             apiExitServerKeys: [ok.key, panel.key]));
 
         final exits = await env.handlers.exits();
-        expect(exits.any((e) => e['serverKey'] == apiServerId(panel.key)), isFalse,
-            reason: 'инбаунда под него не создастся — публиковать порт значило '
-                'бы назвать скрипту адрес, на который ядро не сядет');
-        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
-        // Номер порта уцелевшего сервера считается по ПОЛНОМУ списку ключей —
-        // исключение профиля не должно сдвигать чужие порты.
+        expect(exits.any((e) => e['serverKey'] == apiServerId(panel.key)), isTrue,
+            reason: 'валидный профиль «Авто» поднимается через локальный Xray-мост');
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(panel.key))['port'],
+            ApiPorts.forServer([ok.key, panel.key], panel.key));
         expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
             ApiPorts.forServer([ok.key, panel.key], ok.key));
+        expect(exits.last['name'], 'Прямо');
+      });
+
+      test('⚠️ пустой панельный профиль без прокси-узлов порта НЕ получает и не сдвигает чужие',
+          () async {
+        final env = await _Env.create(panelConfigs: {
+          _serverB: '{"outbounds":[{"protocol":"freedom","tag":"direct"}]}',
+        });
+        addTearDown(env.dispose);
+        final ok = await env.addServer(_serverA);
+        final brokenPanel = await env.addServer(_serverB);
+        expect(brokenPanel.isPanelProfile, isTrue);
+
+        await env.settings.update((s) => s.copyWith(
+            apiEnabled: true,
+            apiToken: 'secret',
+            apiExitServerKeys: [ok.key, brokenPanel.key]));
+
+        final exits = await env.handlers.exits();
+        expect(exits.any((e) => e['serverKey'] == apiServerId(brokenPanel.key)), isFalse,
+            reason: 'без рабочих прокси-узлов мост под профиль не создастся');
+        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
+            ApiPorts.forServer([ok.key, brokenPanel.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
     });

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../dpi/dpi_bypass_lists.dart';
 import '../net/api_ports.dart';
 import '../settings/app_settings.dart';
 import '../settings/split_tunnel.dart';
@@ -190,14 +191,31 @@ class TunOptions {
   /// Отказывать в QUIC (UDP:443), возвращая браузеры на TLS поверх TCP.
   final bool blockQuic;
 
-  /// Отказывать в QUIC (UDP:443) для трафика, уходящего в SOCKS5-мост Xray.
+  /// Отказывать в QUIC (UDP:443) для трафика, уходящего в SOCKS5-мост Xray/БС.
   ///
-  /// Включается движком, когда прокси-ядро — Xray: серверные ноды обычно режут
-  /// `UDP:443` в `blackhole`, а у `SOCKS5 UDP ASSOCIATE` нет канала обратной
-  /// ошибки, поэтому Chrome ждёт таймаута QUIC на превью и видео YouTube вместо
-  /// мгновенного отката на TCP. Нативный QUIC (Hysteria2 на sing-box) и прямой
-  /// трафик неотмеченных приложений в `onlySelected` не затрагиваются.
+  /// Включается движком, когда прокси-ядро — Xray или релей обхода БС: ноды
+  /// режут `UDP:443` в `blackhole` (а `whitelist-bypass` молча сбрасывает UDP
+  /// IPv6 и дробит крупные дейтаграммы по кадрам VP8), при этом у
+  /// `SOCKS5 UDP ASSOCIATE` нет канала обратной ошибки, поэтому YouTube/Cronet
+  /// и Chrome ждут таймаута QUIC вместо мгновенного отката на TCP. Нативный
+  /// QUIC (Hysteria2 на sing-box) и прямой трафик неотмеченных приложений в
+  /// `onlySelected` не затрагиваются.
   final bool blockTunnelQuic;
+
+  /// Туннельный выход умеет проксировать ТОЛЬКО IPv4/домен (одиночный
+  /// `whitelist://`, чей `RelayBridge` отвергает `AtypIPv6` на TCP и молча
+  /// отбрасывает его на UDP).
+  ///
+  /// При `true`:
+  ///  * `ipv6Upstream` остаётся прежним (`ipv6Available`), чтобы интерфейс
+  ///    продолжал захватывать `::/0` без утечки мимо VPN и совпадал с
+  ///    заглушкой kill switch;
+  ///  * `ipv6` выключается → внутри туннеля встаёт `ip_version: 6 → reject`;
+  ///  * DNS переводится в `ipv4_only` и мгновенно гасит `HTTPS`/`SVCB`
+  ///    пустым `NOERROR` (`NODATA`), чтобы YouTube/Cronet не получал
+  ///    `ipv6hint`/`alpn="h3"` и не плодил лишние TCP-сессии к `1.1.1.1:53`
+  ///    внутри видеозвонка.
+  final bool tunnelIpv4Only;
 
   /// Отказывать в DNS поверх HTTPS/TLS/QUIC, возвращая резолв под наш перехват.
   final bool blockEncryptedDns;
@@ -230,6 +248,10 @@ class TunOptions {
   /// Пусто → прежнее поведение (`local`).
   final String? directDnsUpstream;
 
+  /// Резолвить ли домены, маршрутизируемые через встроенный Zapret / обход DPI,
+  /// через зашифрованный канал VPN (`dns-proxy`), чтобы провайдер не подменял A-записи.
+  final bool dpiDnsViaVpn;
+
   const TunOptions({
     this.stack,
     this.mtu = 1500,
@@ -256,6 +278,7 @@ class TunOptions {
     this.platformTun = false,
     this.selfPackage = 'lol.silentgate',
     this.directDnsUpstream,
+    this.dpiDnsViaVpn = true,
     this.logOutput,
     this.blackhole = false,
     // ⚠️ УМОЛЧАНИЕ ОБЯЗАНО СОВПАДАТЬ С `AppSettings.tunnelDnsForAll` (false).
@@ -267,6 +290,7 @@ class TunOptions {
     this.clashApiSecret = '',
     this.blockQuic = false,
     this.blockTunnelQuic = false,
+    this.tunnelIpv4Only = false,
     this.blockEncryptedDns = false,
   });
 
@@ -285,15 +309,18 @@ class TunOptions {
     String clashApiSecret = '',
     bool ipv6Available = true,
     bool blockTunnelQuic = false,
+    bool tunnelIpv4Only = false,
   }) {
     return TunOptions(
       clashApiPort: clashApiPort,
       clashApiSecret: clashApiSecret,
       blockQuic: s.blockQuic,
       blockTunnelQuic: blockTunnelQuic,
+      tunnelIpv4Only: tunnelIpv4Only,
       blockEncryptedDns: s.blockEncryptedDns,
       platformTun: android,
       directDnsUpstream: directDnsUpstream,
+      dpiDnsViaVpn: s.dpiDnsViaVpn,
       logOutput: logOutput,
       stack: s.tunStack.singboxValue,
       mtu: s.tunMtu,
@@ -306,7 +333,7 @@ class TunOptions {
       // нет»: страницы открываются через секунды или не открываются вовсе.
       // Проверено живьём в VM без IPv6 — настоящий браузер получал
       // ERR_CONNECTION_RESET, а с выключенным IPv6 грузил страницу.
-      ipv6: s.tunIpv6 && ipv6Available,
+      ipv6: s.tunIpv6 && ipv6Available && !tunnelIpv4Only,
       ipv6Upstream: ipv6Available,
       endpointIndependentNat: s.tunEndpointIndependentNat,
       bypassLan: s.tunBypassLan,
@@ -316,7 +343,7 @@ class TunOptions {
       dnsServer: s.dnsMode == DnsMode.custom ? s.dnsCustomServer : '1.1.1.1',
       blockNotice: s.blockNoticeEnabled,
       dnsHijack: s.dnsHijack,
-      dnsStrategy: s.dnsStrategy,
+      dnsStrategy: tunnelIpv4Only ? DnsStrategy.ipv4Only : s.dnsStrategy,
       logLevel: s.effectiveSingboxLogLevel.name,
       serverIps: serverIps,
       tunnelExcludeServerIps: tunnelExcludeServerIps,
@@ -369,11 +396,13 @@ class TunOptions {
         platformTun: platformTun,
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
+        dpiDnsViaVpn: dpiDnsViaVpn,
         logOutput: logOutput,
           clashApiPort: clashApiPort,
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
         blockTunnelQuic: blockTunnelQuic,
+        tunnelIpv4Only: tunnelIpv4Only,
         blockEncryptedDns: blockEncryptedDns,
         blackhole: true,
       );
@@ -411,6 +440,7 @@ class TunOptions {
         platformTun: platformTun,
         selfPackage: selfPackage,
         directDnsUpstream: directDnsUpstream,
+        dpiDnsViaVpn: dpiDnsViaVpn,
         logOutput: logOutput,
         blackhole: blackhole,
         tunnelDnsForAll: tunnelDnsForAll,
@@ -418,6 +448,7 @@ class TunOptions {
         clashApiSecret: clashApiSecret,
         blockQuic: blockQuic,
         blockTunnelQuic: blockTunnelQuic,
+        tunnelIpv4Only: tunnelIpv4Only,
         blockEncryptedDns: blockEncryptedDns,
       );
 }
@@ -571,6 +602,10 @@ class SingboxConfigBuilder {
   /// Токен API — он же пароль этих инбаундов. Пусто — инбаунды не создаются.
   final String apiToken;
 
+  /// Расширенные параметры портов API (липкие порты, «Умный Автовыбор» `10818`,
+  /// режим авторизации прокси-портов, изоляция DNS по порту).
+  final ApiExitRouterOptions apiOptions;
+
   const SingboxConfigBuilder({
     this.xraySocksPort = 10808,
     this.xraySocksUser = '',
@@ -585,7 +620,13 @@ class SingboxConfigBuilder {
     this.apiExitServerKeys = const [],
     this.apiOnlyExitKeys = const [],
     this.apiToken = '',
+    this.apiOptions = const ApiExitRouterOptions(),
   });
+
+  static final Set<String> _dpiExitTags = {
+    exitTagFor(kDpiBypassDirectKey),
+    exitTagFor(kDpiBypassFallbackKey),
+  };
 
   // ── Правила, идущие через ОТДЕЛЬНЫЙ сервер ────────────────────────────────
 
@@ -600,6 +641,14 @@ class SingboxConfigBuilder {
         for (final o in exitOutbounds)
           if (o['tag'] is String) o['tag'] as String,
       };
+
+  /// Живые выходы, через которые безопасно пускать TCP DNS (`dns-$tag`).
+  ///
+  /// ⚠️ Исключает локальные SOCKS5-прокси встроенного Zapret (`dpi://zapret-*`):
+  /// они ведут напрямую в физический интерфейс провайдера РФ, где `1.1.1.1:53`
+  /// заблокирован ТСПУ, а сам `LocalDpiBypassProxy` ожидает TLS ClientHello.
+  Set<String> get _dnsDetourExitTags =>
+      _liveExitTags.difference(_dpiExitTags);
 
   /// Теги, которыми разрешено пользоваться ПРАВИЛАМ раздельного
   /// туннелирования: живые минус собранные только ради порта API.
@@ -617,6 +666,21 @@ class SingboxConfigBuilder {
         for (final k in apiOnlyExitKeys) exitTagFor(k),
       });
 
+  List<String> get _liveAutoCandidateTags => [
+        for (final k in apiOptions.autoPoolKeys)
+          if (_liveExitTags.contains(exitTagFor(k))) exitTagFor(k),
+      ];
+
+  Map<String, dynamic>? get _apiAutoOutbound {
+    if (!apiOptions.autoPortEnabled || apiToken.isEmpty) return null;
+    final candidates = _liveAutoCandidateTags;
+    return buildApiAutoOutbound(
+      candidateTags: candidates.isNotEmpty ? candidates : const ['proxy'],
+      url: apiOptions.urltestUrl,
+      intervalSec: apiOptions.urltestIntervalSec,
+    );
+  }
+
   /// Инбаунды отдельных портов: по одному на сервер из [apiExitServerKeys].
   ///
   /// ⚠️ ТОЛЬКО ЖИВЫЕ. Сервер, чей outbound не собрался, порта не получает —
@@ -632,18 +696,43 @@ class SingboxConfigBuilder {
         serverKeys: apiExitServerKeys,
         token: apiToken,
         liveExitTags: _liveExitTags,
+        assignedPorts: apiOptions.assignedPorts,
+        controlPort: apiOptions.controlPort,
+        autoPort: apiOptions.autoPort,
+        directPort: apiOptions.directPort,
+        authMode: apiOptions.authMode,
+        customUser: apiOptions.customUser,
+        customPassword: apiOptions.customPassword,
       );
 
   /// Правила «этот порт — в этот сервер». Сборка — в [buildApiExitRules].
   List<Map<String, dynamic>> get _apiExitRules =>
       buildApiExitRules(_apiExitInbounds);
 
+  List<Map<String, dynamic>> get _apiAutoInbound => buildApiAutoInbound(
+        token: apiToken,
+        hasAutoOutbound: _apiAutoOutbound != null,
+        enabled: apiOptions.autoPortEnabled,
+        port: apiOptions.autoPort,
+        authMode: apiOptions.authMode,
+        customUser: apiOptions.customUser,
+        customPassword: apiOptions.customPassword,
+      );
+
+  List<Map<String, dynamic>> get _apiAutoRule =>
+      buildApiAutoRule(_apiAutoInbound);
+
   /// Инбаунд порта «Прямо» — тот же гейт (пустой токен), но НЕ зависит от
   /// [apiExitServerKeys]/[exitOutbounds]: ведёт во встроенный `direct`,
   /// который есть в конфиге безусловно. Сборка — в [buildApiDirectInbound]
   /// (`core/net/api_ports.dart`), общая с [ExitRouterConfigBuilder].
-  List<Map<String, dynamic>> get _apiDirectInbound =>
-      buildApiDirectInbound(token: apiToken);
+  List<Map<String, dynamic>> get _apiDirectInbound => buildApiDirectInbound(
+        token: apiToken,
+        port: apiOptions.directPort,
+        authMode: apiOptions.authMode,
+        customUser: apiOptions.customUser,
+        customPassword: apiOptions.customPassword,
+      );
 
   /// Правило «порт «Прямо» → outbound `direct`». Сборка — в [buildApiDirectRule].
   List<Map<String, dynamic>> get _apiDirectRule =>
@@ -669,11 +758,12 @@ class SingboxConfigBuilder {
   void _addApiExitBlockGuard(
       List<Map<String, dynamic>> rules, SplitTunnelConfig split) {
     if (!_userRulesActive(split)) return;
-    // Порт «Прямо» — ТОТ ЖЕ служебный вход, что и порты серверов: его тег
-    // идёт в один общий список, и блок режет трафик независимо от того, в
-    // какой из портов API он пришёл.
+    // Порт «Прямо» и «Умный Автовыбор» — ТЕ ЖЕ служебные входы, что и порты
+    // серверов: их теги идут в один общий список, и блок режет трафик
+    // независимо от того, в какой из портов API он пришёл.
     final tags = [
       for (final i in _apiExitInbounds) '${i['tag']}',
+      for (final i in _apiAutoInbound) '${i['tag']}',
       for (final i in _apiDirectInbound) '${i['tag']}',
     ];
     if (tags.isEmpty) return;
@@ -713,9 +803,14 @@ class SingboxConfigBuilder {
     if (outbound == null) return null;
     if (outbound == 'direct') return 'dns-local';
     if (outbound == 'proxy') return 'dns-proxy';
+    if (_dpiExitTags.contains(outbound)) {
+      return (options.dpiDnsViaVpn && options.dnsMode != DnsMode.system)
+          ? 'dns-proxy'
+          : 'dns-local';
+    }
     // Тег выхода → его же резолвер. Соответствие держится на общем префиксе,
     // заданном в exit_tags.dart, и проверяется тестом.
-    if (_liveExitTags.contains(outbound)) return 'dns-$outbound';
+    if (_dnsDetourExitTags.contains(outbound)) return 'dns-$outbound';
     // Неизвестный тег — резолвим через туннель. Локальный резолвер тут был бы
     // худшим из вариантов: это утечка, а не деградация.
     return 'dns-proxy';
@@ -864,6 +959,7 @@ class SingboxConfigBuilder {
     // приложения эти inbound-ы уже не увидят.
     _addApiExitBlockGuard(rules, split);
     rules.addAll(_apiExitRules);
+    rules.addAll(_apiAutoRule);
     rules.addAll(_apiDirectRule);
 
     // #3 — явный БЛОК ставим ВЫШЕ bypassLan/excludeCidr: блокировка домена должна
@@ -951,6 +1047,7 @@ class SingboxConfigBuilder {
               ],
           },
         ..._apiExitInbounds,
+        ..._apiAutoInbound,
         ..._apiDirectInbound,
       ],
       'outbounds': [
@@ -982,6 +1079,7 @@ class SingboxConfigBuilder {
         // Именованные выходы мульти-VPN. Приходят готовыми и с тегами — здесь
         // только раскладываются рядом с `proxy`.
         ...exitOutbounds,
+        if (_apiAutoOutbound case final autoOb?) autoOb,
         {'type': 'direct', 'tag': 'direct'},
       ],
       'route': {
@@ -1101,13 +1199,21 @@ class SingboxConfigBuilder {
       // `detour` принимает СТРОКУ, а не массив: массив ядро отвергает целиком
       // (`cannot unmarshal array into Go value of type string`) — проверено
       // sing-box 1.11.15.
-      for (final tag in _liveExitTags)
+      for (final tag in _dnsDetourExitTags)
         {
           'type': 'tcp',
           'tag': 'dns-$tag',
           ..._dnsEndpoint(proxyDns),
           if (_needsResolver(proxyDns)) 'domain_resolver': 'dns-local',
           'detour': tag,
+        },
+      if (apiOptions.dnsViaExit && _apiAutoOutbound != null)
+        {
+          'type': 'tcp',
+          'tag': 'dns-api-auto',
+          ..._dnsEndpoint(proxyDns),
+          if (_needsResolver(proxyDns)) 'domain_resolver': 'dns-local',
+          'detour': apiAutoOutboundTag,
         },
     ];
 
@@ -1128,6 +1234,24 @@ class SingboxConfigBuilder {
           'domain_suffix': o.serverDomains,
           'server': 'dns-local',
         },
+      if (apiOptions.dnsViaExit && apiToken.isNotEmpty) ...[
+        for (final i in _apiExitInbounds)
+          if (_dnsDetourExitTags.contains(apiExitOutboundOf('${i['tag']}')))
+            {
+              'inbound': [i['tag']],
+              'server': 'dns-${apiExitOutboundOf('${i['tag']}')}',
+            },
+        for (final i in _apiAutoInbound)
+          {
+            'inbound': [i['tag']],
+            'server': 'dns-api-auto',
+          },
+        for (final i in _apiDirectInbound)
+          {
+            'inbound': [i['tag']],
+            'server': 'dns-local',
+          },
+      ],
       // Блок — выше остальных: заблокированный домен не должен даже резолвиться.
       //
       // ⚠️ ИСКЛЮЧЕНИЕ: когда включена страница-заглушка, домен обязан
@@ -1141,6 +1265,16 @@ class SingboxConfigBuilder {
       ..._dnsSitePriorityRules(split),
       if (!o.blockNotice) ..._dnsSiteRules(split, AppAction.block, null),
       ..._dnsSiteRules(split, AppAction.direct, 'dns-local', allowRealIp: true),
+      if (o.tunnelIpv4Only)
+        // `whitelist-bypass` проксирует только IPv4/домен (`AtypIPv6` режется).
+        // `strategy: ipv4_only` глушит `AAAA`, но `HTTPS`/`SVCB` (Type 65/64)
+        // без этого правила проходят к `1.1.1.1:53` и отдают YouTube/Cronet
+        // `alpn="h3"` и `ipv6hint`, уводя клиент в холостые попытки QUIC/IPv6.
+        {
+          'query_type': ['HTTPS', 'SVCB'],
+          'action': 'predefined',
+          'rcode': 'NOERROR',
+        },
       ..._dnsSiteRules(split, AppAction.tunnel, 'dns-proxy'),
       if (o.noRealIp)
         // Возвращённые под защиту — резолвим через туннель, иначе прямой
@@ -1713,12 +1847,14 @@ class SingboxConfigBuilder {
           .where((p) => p.isNotEmpty)
           .toSet()
           .toList();
+      final regexes = <String>{
+        for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$',
+        ..._companionPathRegexes(group.value),
+      }.toList();
       if (byName.isNotEmpty) out.add(withAction({'process_name': byName}, srv));
-      if (byPath.isNotEmpty) {
+      if (regexes.isNotEmpty) {
         out.add(withAction({
-          'process_path_regex': [
-            for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
-          ],
+          'process_path_regex': regexes,
         }, srv));
       }
     }
@@ -1832,6 +1968,10 @@ class SingboxConfigBuilder {
 
       final byName = group.value.where((a) => a.byName).map((a) => a.name).toList();
       final byPath = group.value.where((a) => !a.byName).map((a) => a.path).toList();
+      final regexes = <String>{
+        for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$',
+        ..._companionPathRegexes(group.value),
+      }.toList();
       if (byName.isNotEmpty) {
         if (rejectQuic) {
           rules.add(_action({
@@ -1846,13 +1986,10 @@ class SingboxConfigBuilder {
           if (inbound != null) 'inbound': inbound,
         }, target));
       }
-      if (byPath.isNotEmpty) {
+      if (regexes.isNotEmpty) {
         // process_path сравнивается ядром побайтово (регистр, короткие пути
         // Windows) — правило могло молча не срабатывать. process_path_regex
         // с (?i) — надёжно.
-        final regexes = [
-          for (final p in byPath) '(?i)^${escapeForSingboxRegex(p)}\$'
-        ];
         if (rejectQuic) {
           rules.add(_action({
             'process_path_regex': regexes,
@@ -1867,6 +2004,133 @@ class SingboxConfigBuilder {
         }, target));
       }
     }
+  }
+
+  static final RegExp _oldVersionedExeRe =
+      RegExp(r'^(.+\.exe)\.old\.[0-9a-z_-]+$', caseSensitive: false);
+
+  /// Общие системные/рантайм-имена, которые не должны порождать широкую маску
+  /// каталога `[\\/]\.?<stem>[\\/]`.
+  static const Set<String> _genericAppDirStems = <String>{
+    'app',
+    'audiodg',
+    'bin',
+    'cli',
+    'client',
+    'cmd',
+    'conhost',
+    'csrss',
+    'ctfmon',
+    'dllhost',
+    'dwm',
+    'explorer',
+    'fontdrvhost',
+    'game',
+    'helper',
+    'host',
+    'java',
+    'javaw',
+    'launcher',
+    'lsass',
+    'main',
+    'msedge',
+    'msedgewebview2',
+    'msiexec',
+    'node',
+    'notepad',
+    'powershell',
+    'pwsh',
+    'python',
+    'pythonw',
+    'regedit',
+    'run',
+    'rundll32',
+    'runtimebroker',
+    'searchhost',
+    'server',
+    'service',
+    'services',
+    'setup',
+    'shell',
+    'sihost',
+    'smss',
+    'spoolsv',
+    'start',
+    'svchost',
+    'system',
+    'taskhostw',
+    'test',
+    'uninstall',
+    'update',
+    'updater',
+    'user',
+    'wininit',
+    'winlogon',
+    'wmiprvse',
+    'worker',
+    'wscript',
+  };
+
+  /// Универсальные `process_path_regex` для правил по имени процесса:
+  ///  * самообновляющиеся бинари `<имя>.exe.old.<хэш>` для любой программы;
+  ///  * дочерние/вспомогательные `.exe` внутри каталога приложения
+  ///    `\<stem>\` или `\.<stem>\` (языковые серверы, CLI-помощники, воркеры);
+  ///  * если у правила `byName` известен полный путь установки в выделенной
+  ///    папке программы (`Program Files\<App>`, `AppData\Local\Programs\<App>`),
+  ///    все `.exe` внутри этой папки установки.
+  static List<String> _companionPathRegexes(Iterable<AppRule> apps) {
+    final out = <String>{};
+    for (final a in apps) {
+      final token = (a.byName ? a.name : a.path).trim();
+      if (token.isEmpty) continue;
+      final slash = token.lastIndexOf(RegExp(r'[\\/]'));
+      final base =
+          (slash < 0 ? token : token.substring(slash + 1)).toLowerCase();
+      final m = _oldVersionedExeRe.firstMatch(base);
+      final normExe = m != null ? m.group(1)! : base;
+
+      if (a.byName || m != null) {
+        final escapedExe = escapeForSingboxRegex(normExe);
+        out.add('(?i)[\\\\/]$escapedExe(\\.old\\.[0-9a-z_-]+)?\$');
+      }
+
+      if (a.byName && normExe.endsWith('.exe')) {
+        final stem = normExe.substring(0, normExe.length - 4).trim();
+        if (stem.length >= 3 && !_genericAppDirStems.contains(stem)) {
+          final escapedStem = escapeForSingboxRegex(stem);
+          out.add(
+              '(?i)[\\\\/]\\.?$escapedStem[\\\\/].*\\.exe(\\.old\\.[0-9a-z_-]+)?\$');
+        }
+        final installDir = _dedicatedInstallDir(a.path);
+        if (installDir != null) {
+          final escapedDir = escapeForSingboxRegex(installDir);
+          out.add('(?i)^$escapedDir[\\\\/].*\\.exe(\\.old\\.[0-9a-z_-]+)?\$');
+        }
+      }
+    }
+    return out.toList();
+  }
+
+  /// Выделяет корневую папку установки приложения из полного пути `a.path`,
+  /// если это выделенный каталог программы (например `...\Programs\<App>\...`
+  /// или `C:\Program Files\<App>\...`), а не общая системная/пользовательская
+  /// папка (`Windows`, `System32`, `Downloads`, `Desktop`, `Temp`).
+  static String? _dedicatedInstallDir(String rawPath) {
+    final p = rawPath.trim();
+    if (!p.contains('\\') && !p.contains('/')) return null;
+    final norm = p.replaceAll('/', '\\');
+    final patterns = <RegExp>[
+      RegExp(r'^([a-zA-Z]:\\.*\\AppData\\Local\\Programs\\[^\\]+)\\',
+          caseSensitive: false),
+      RegExp(
+          r'^([a-zA-Z]:\\Program Files(?: \(x86\))?\\(?!(?:Common Files|WindowsApps)\\)[^\\]+)\\',
+          caseSensitive: false),
+    ];
+    for (final re in patterns) {
+      final match = re.firstMatch(norm);
+      if (match != null) return match.group(1);
+    }
+    return null;
   }
 
   /// Правило маршрутизации в синтаксисе sing-box 1.11+ (`outbound` в правиле — deprecated).

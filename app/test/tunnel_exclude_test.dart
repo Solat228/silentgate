@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +8,10 @@ import 'package:silentgate/core/settings/app_settings.dart';
 import 'package:silentgate/core/settings/split_tunnel.dart';
 import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/engine/engine_base.dart';
+import 'package:silentgate/engine/windows/kill_switch_wfp.dart';
+import 'package:silentgate/engine/windows/process_list_windows.dart';
+import 'package:silentgate/engine/windows/tun/tun_helper.dart';
+import 'package:silentgate/engine/windows/wfp_rules.dart';
 import 'package:silentgate/engine/windows/windows_engine.dart';
 
 /// Вывод адресов серверов из туннеля НА УРОВНЕ ОС (`route_exclude_address`).
@@ -238,6 +243,161 @@ void main() {
       final inbound = tunInbound(buildLive(o));
       expect(inbound['route_exclude_address'], ['203.0.113.10/32'],
           reason: 'serverDomains живут в DNS-правилах, а не в интерфейсе');
+    });
+  });
+
+  group('Универсальные правила по имени процесса и дочерние/версионные бинари', () {
+    test(
+        'правила byName для любой программы порождают regex на каталог <stem>/.<stem> и версионные .exe.old.<хэш>',
+        () {
+      const splitCfg = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        apps: [
+          AppRule(
+            r'C:\Users\User\AppData\Local\Programs\antigravity\Antigravity.exe',
+            byName: true,
+            action: AppAction.tunnel,
+          ),
+          AppRule(
+            r'C:\Users\User\.gemini\bin\agy.exe.old.16d5df81',
+            byName: true,
+            action: AppAction.tunnel,
+          ),
+          AppRule(
+            r'C:\Users\User\AppData\Local\Programs\cursor\Cursor.exe',
+            byName: true,
+            action: AppAction.tunnel,
+          ),
+        ],
+      );
+      final cfg = SingboxConfigBuilder(options: const TunOptions())
+          .buildMap(splitCfg);
+      final routeRules =
+          ((cfg['route'] as Map)['rules'] as List).cast<Map<String, dynamic>>();
+      final regexRule = routeRules.firstWhere(
+        (r) =>
+            r['outbound'] == 'proxy' && r['process_path_regex'] is List,
+      );
+      final regexes =
+          (regexRule['process_path_regex'] as List).cast<String>();
+      expect(
+        regexes,
+        contains(r'(?i)[\\/]\.?antigravity[\\/].*\.exe(\.old\.[0-9a-z_-]+)?$'),
+      );
+      expect(
+        regexes,
+        contains(r'(?i)[\\/]\.?cursor[\\/].*\.exe(\.old\.[0-9a-z_-]+)?$'),
+      );
+      expect(
+          regexes, contains(r'(?i)[\\/]agy\.exe(\.old\.[0-9a-z_-]+)?$'));
+    });
+
+    test(
+        'KillSwitchPlan материализует language_server.exe и свежий agy.exe.old.<хэш>',
+        () {
+      const plan = KillSwitchPlan(
+        allowServerIps: {},
+        allowOwnBinaries: true,
+        allowLoopback: true,
+        allowLan: true,
+        blockedAppPaths: [],
+        blockedAppNames: ['Antigravity.exe', 'agy.exe.old.16d5df81'],
+        blockAll: false,
+      );
+      final materialized = plan.withMaterializedAppPaths(const [
+        RunningProcess(
+          101,
+          'language_server.exe',
+          r'C:\Users\User\AppData\Local\Programs\antigravity\resources\bin\language_server.exe',
+        ),
+        RunningProcess(
+          102,
+          'agy.exe.old.b01ba04f',
+          r'C:\Users\User\.gemini\bin\agy.exe.old.b01ba04f',
+        ),
+      ]);
+      expect(
+        materialized.blockedAppPaths,
+        containsAll([
+          r'C:\Users\User\AppData\Local\Programs\antigravity\resources\bin\language_server.exe',
+          r'C:\Users\User\.gemini\bin\agy.exe.old.b01ba04f',
+        ]),
+      );
+    });
+  });
+
+  group('Динамическое сохранение активных прямых UDP-потоков на старте TUN', () {
+    test(
+        'в режиме onlySelected активные UDP-потоки dota2.exe добавляются в route_exclude_address, а туннельные и QUIC игнорируются',
+        () {
+      const splitCfg = SplitTunnelConfig(
+        mode: SplitMode.onlySelected,
+        apps: [
+          AppRule(
+            r'C:\Telegram Desktop\Telegram.exe',
+            byName: false,
+            action: AppAction.tunnel,
+          ),
+          AppRule(
+            r'C:\Users\User\AppData\Local\Programs\antigravity\Antigravity.exe',
+            byName: true,
+            action: AppAction.tunnel,
+          ),
+        ],
+      );
+      final rawJson = SingboxConfigBuilder(options: const TunOptions())
+          .buildJson(splitCfg);
+      final sanitized = TunHelper.sanitizeElevatedConfig(rawJson);
+
+      final updatedJson = TunHelper.injectActiveDirectUdpExcludes(
+        sanitized,
+        const [
+          // Активный матч Dota 2 (основной и резервный релеи Valve SDR) -> должны быть исключены
+          ActiveUdpEndpoint(
+            remoteIp: '155.133.252.53',
+            remotePort: 27033,
+            localPort: 50673,
+            appIdPath:
+                r'\device\harddiskvolume3\program files (x86)\steam\steamapps\common\dota 2 beta\game\bin\win64\dota2.exe',
+          ),
+          ActiveUdpEndpoint(
+            remoteIp: '162.254.198.103',
+            remotePort: 27036,
+            localPort: 50691,
+            appIdPath:
+                r'\device\harddiskvolume3\program files (x86)\steam\steamapps\common\dota 2 beta\game\bin\win64\dota2.exe',
+          ),
+          // Туннельное приложение Telegram -> НЕ должно быть исключено
+          ActiveUdpEndpoint(
+            remoteIp: '149.154.167.91',
+            remotePort: 1400,
+            localPort: 55000,
+            appIdPath: r'\device\harddiskvolume1\telegram desktop\telegram.exe',
+          ),
+          // QUIC (UDP:443) от прямого браузера -> НЕ должен быть исключён
+          ActiveUdpEndpoint(
+            remoteIp: '104.16.132.229',
+            remotePort: 443,
+            localPort: 55111,
+            appIdPath:
+                r'\device\harddiskvolume1\program files\mozilla firefox\firefox.exe',
+          ),
+          // Системный процесс svchost -> НЕ должен быть исключён
+          ActiveUdpEndpoint(
+            remoteIp: '20.190.159.4',
+            remotePort: 3544,
+            localPort: 55222,
+            appIdPath: r'\device\harddiskvolume1\windows\system32\svchost.exe',
+          ),
+        ],
+      );
+
+      final updated = jsonDecode(updatedJson) as Map<String, dynamic>;
+      final inbound = tunInbound(updated);
+      expect(
+        inbound['route_exclude_address'],
+        ['155.133.252.53/32', '162.254.198.103/32'],
+      );
     });
   });
 }

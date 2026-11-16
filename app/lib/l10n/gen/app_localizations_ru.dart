@@ -2892,7 +2892,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String exitServerUnsupported(String name) {
-    return '$name\n\nЭтот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.';
+    return '$name\n\nЭтот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.';
   }
 
   @override
@@ -3369,7 +3369,10 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Сайт';
+  String get subBarOpenSite => 'Страница подписки';
+
+  @override
+  String get subBarTelegram => 'Телеграм / Бот';
 
   @override
   String get subBarOpenSiteHint => 'Открыть страницу подписки в браузере';
@@ -3396,7 +3399,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get exitServerUnsupportedInfo =>
-      'Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.';
+      'Этот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.';
 
   @override
   String get pingBusyServiceChecks => 'Пинг недоступен: идёт проверка сервисов';
@@ -4664,10 +4667,74 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get exitServerBlockedNote =>
-      'Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.';
+      'Недоступен для отдельного выбора: обходы БС по звонку, VMess и пустые профили работают только как основной сервер.';
 
   @override
   String exitServerBlockedBody(String name) {
-    return 'Сервер «$name» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «$name» основным сервером на главном экране.';
+    return 'Сервер «$name» сейчас нельзя назначить отдельным выходом для правила.\n\nМногошаговые обходы БС (WebRTC-звонки), устаревшие протоколы (VMess) и пустые шаблоны без узлов не поднимаются вторым параллельным выходом.\n\nВыберите для этого правила рабочий сервер или профиль «Авто» либо включите «$name» основным сервером на главном экране.';
   }
+
+  @override
+  String get supportChipCantConnect => 'Не подключается';
+
+  @override
+  String get supportChipSiteOrYoutube => 'Не открывается YouTube / сайт';
+
+  @override
+  String get supportChipSlowSpeed => 'Низкая скорость';
+
+  @override
+  String get supportChipDrops => 'Обрывается связь';
+
+  @override
+  String get supportChipsHint => 'Быстрый выбор (можно не писать подробности):';
+
+  @override
+  String get supportDescribeOptionalLabel =>
+      'Описание проблемы (необязательно)';
+
+  @override
+  String get supportNoTextProvided =>
+      'Без текстового описания (технический отчёт)';
+
+  @override
+  String get supportCategoriesHeader => 'Категория';
+
+  @override
+  String get supportSendDevCopyTitle =>
+      'Отправить обезличенную копию разработчику';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Без токена подписки, личных IP и сырого HWID - помогает быстрее чинить сбои';
+
+  @override
+  String get supportPreviewDevCopy => 'Что уйдёт?';
+
+  @override
+  String get supportPreviewDialogTitle => 'Обезличенная копия для разработчика';
+
+  @override
+  String get supportSendDevOnlyButton => 'Только разработчику';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Копия отправлена разработчику ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Не удалось отправить на сервер ($code) - локальный файл готов';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Обезличенный отчёт отправлен на сервер разработчика. Код отчёта: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Отчёт диагностики';
+
+  @override
+  String get supportSendToChatAndDev => 'Прикрепить в чат';
 }

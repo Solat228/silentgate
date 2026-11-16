@@ -3356,7 +3356,10 @@ class AppLocalizationsFa extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'وب‌سایت';
+  String get subBarOpenSite => 'صفحهٔ اشتراک';
+
+  @override
+  String get subBarTelegram => 'تلگرام / ربات';
 
   @override
   String get subBarOpenSiteHint => 'باز کردن صفحهٔ اشتراک در مرورگر';
@@ -4650,4 +4653,65 @@ class AppLocalizationsFa extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return 'سرور \"$name\" در حال حاضر نمی تواند به عنوان خروجی جداگانه برای یک قانون تنظیم شود.\n\nپروفایل های \"خودکار\"، رله های چندمرحله ای و پروتکل های اختصاصی Xray (مانند XHTTP) به خط لوله کامل Xray نیاز دارند، در حالی که خروجی های فرعی مستقیماً توسط sing-box برقرار می شوند.\n\nلطفاً یک سرور تکی استاندارد برای این قانون انتخاب کنید یا \"$name\" را در صفحه اصلی به عنوان سرور اصلی قرار دهید.';
   }
+
+  @override
+  String get supportChipCantConnect => 'متصل نمی‌شود';
+
+  @override
+  String get supportChipSiteOrYoutube => 'یوتیوب / سایت باز نمی‌شود';
+
+  @override
+  String get supportChipSlowSpeed => 'سرعت پایین';
+
+  @override
+  String get supportChipDrops => 'قطعی اتصال';
+
+  @override
+  String get supportChipsHint => 'انتخاب سریع (اختیاری، بدون نیاز به توضیح):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'توضیح مشکل (اختیاری)';
+
+  @override
+  String get supportNoTextProvided => 'بدون توضیح متنی (گزارش فنی)';
+
+  @override
+  String get supportCategoriesHeader => 'دسته‌بندی';
+
+  @override
+  String get supportSendDevCopyTitle => 'ارسال نسخه ناشناس برای توسعه‌دهنده';
+
+  @override
+  String get supportSendDevCopySub =>
+      'بدون توکن اشتراک، IP شخصی و HWID خام - به رفع سریع‌تر خطا کمک می‌کند';
+
+  @override
+  String get supportPreviewDevCopy => 'چه چیزی ارسال می‌شود؟';
+
+  @override
+  String get supportPreviewDialogTitle => 'نسخه ناشناس برای توسعه‌دهنده';
+
+  @override
+  String get supportSendDevOnlyButton => 'فقط برای توسعه‌دهنده';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'نسخه برای توسعه‌دهنده ارسال شد ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'ارسال به سرور ناموفق بود ($code) - فایل محلی آماده است';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'گزارش ناشناس به سرور توسعه‌دهنده ارسال شد. کد گزارش: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'گزارش عیب‌یابی';
+
+  @override
+  String get supportSendToChatAndDev => 'پیوست به گفتگو';
 }

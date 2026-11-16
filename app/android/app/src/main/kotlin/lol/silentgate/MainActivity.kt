@@ -14,11 +14,13 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.FlutterEngineCache
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import lol.silentgate.platform.CaptchaWebView
 import lol.silentgate.platform.PlatformChannels
 import lol.silentgate.platform.QrScanner
 import lol.silentgate.platform.TextFilePicker
 import lol.silentgate.vpn.AlertNotice
 import lol.silentgate.vpn.NativePrefs
+import lol.silentgate.vpn.RootStealthController
 import lol.silentgate.vpn.SilentGateVpnService
 
 /**
@@ -133,6 +135,12 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        CaptchaWebView.attach(this)
+
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CaptchaWebView.CHANNEL)
+            .setMethodCallHandler { call, result ->
+                CaptchaWebView.handle(call, result)
+            }
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, QrScanner.CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -213,7 +221,20 @@ class MainActivity : FlutterActivity() {
                                 // восстановление связи.
                                 .putExtra(SilentGateVpnService.EXTRA_BY_USER, false)
                         )
+                        RootStealthController.afterVpnStop(applicationContext)
                         result.success(null)
+                    }
+
+                    "stealthStatus" -> {
+                        Thread {
+                            val hasRoot = RootStealthController.checkRootAvailable()
+                            MainThreadResult(result).success(
+                                mapOf(
+                                    "isStealthFlavor" to RootStealthController.isStealthFlavor,
+                                    "rootAvailable" to hasRoot,
+                                )
+                            )
+                        }.start()
                     }
 
                     "isRunning" -> result.success(SilentGateVpnService.running)
@@ -461,6 +482,7 @@ class MainActivity : FlutterActivity() {
         xrayConfig: String?,
         result: MethodChannel.Result,
     ) {
+        RootStealthController.beforeVpnStart(applicationContext)
         val consent = VpnService.prepare(this)
         if (consent != null) {
             // Dart живёт дольше Activity и может попросить подключение, когда
@@ -520,12 +542,18 @@ class MainActivity : FlutterActivity() {
      */
     override fun onResume() {
         super.onResume()
+        CaptchaWebView.attach(this)
         val waiting = pendingResult ?: return
         if (VpnService.prepare(this) == null) return // согласие есть, ждём результат
         pendingConfig = null
         pendingXrayConfig = null
         pendingResult = null
         waiting.error("consent_denied", "Пользователь не разрешил VPN", null)
+    }
+
+    override fun onDestroy() {
+        CaptchaWebView.detach(this)
+        super.onDestroy()
     }
 
     @Deprecated("совместимость с FlutterActivity")

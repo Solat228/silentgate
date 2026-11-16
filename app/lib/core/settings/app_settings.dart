@@ -238,6 +238,60 @@ int resolveAutoUpdateIntervalHours({
 
 // Раздельное туннелирование вынесено в split_tunnel.dart.
 
+/// Стратегия десинхронизации DPI (встроенный Zapret / GoodbyeDPI).
+enum DpiStrategyPreset {
+  /// Автоматически рекомендованная комбинация (TLS record split по SNI + TCP OOB).
+  auto,
+
+  /// Дробление TLS record по границе SNI + TCP Urgent (`MSG_OOB`) байт внутри SNI.
+  tlsrecSniOob,
+
+  /// Чистый TCP split по началу + середине SNI с `MSG_OOB` байтом (без правки TLS record).
+  tcpOobSni,
+
+  /// Дробление TLS record по началу и середине SNI + раздельная отправка TCP-сегментов.
+  tlsrecSniSplit,
+
+  /// Многократный TCP `multisplit` (`pos=1`, `pos=2`, начало SNI, середина SNI).
+  tcpMultisplitSni,
+
+  /// Микро-нарезка первых байт + середина SNI + смешанный регистр `Host:` для HTTP.
+  tcpMicroSplitHostCase,
+
+  /// Классическое тройное дробление TLS record (`2` байта + середина SNI).
+  tlsrecSplit2Sni,
+
+  /// Ручные параметры ([AppSettings.dpiUseOob], [AppSettings.dpiTlsRecordSplit] и др.).
+  custom,
+}
+
+/// Какие серверы входят в пул балансировки порта «Умный Автовыбор» (`10818`).
+enum ApiAutoPoolScope {
+  /// Все рабочие серверы из всех добавленных подписок.
+  allSubscriptions,
+
+  /// Только серверы активной подписки.
+  activeSubscription,
+
+  /// Только серверы, явно отмеченные галочкой на экране API.
+  checkedOnly,
+}
+
+/// Режим авторизации на локальных прокси-портах API (`10818`, `10819`, `10820+`).
+///
+/// Управляющий HTTP-порт (`10870`) ВСЕГДА защищён заголовком `Bearer <apiToken>`
+/// независимо от этой настройки.
+enum ApiProxyAuthMode {
+  /// Логин `sg` и пароль = `apiToken` (по умолчанию).
+  apiToken,
+
+  /// Без пароля на `127.0.0.1` (для браузеров и программ без поддержки proxy-auth).
+  none,
+
+  /// Свой логин и пароль ([AppSettings.apiProxyCustomUser] / [AppSettings.apiProxyCustomPassword]).
+  custom,
+}
+
 extension ProbeServiceLabel on ProbeService {
   /// Отображаемое имя — бренд, не переводится.
   String get label {
@@ -957,6 +1011,70 @@ class AppSettings {
   /// проверке и скачивании обновлений приложения через VPN.
   final bool skipUpdateVpnTrafficWarning;
 
+  /// Показывать ли окно «Что нового» автоматически при первом запуске после
+  /// установки новой версии или сборки.
+  final bool showWhatsNewOnUpdate;
+
+  /// Полная версия (`AppInfo.fullVersion`), для которой пользователь уже
+  /// открыл/прочитал окно «Что нового» (гасит мигающий колокольчик в шапке).
+  final String? lastSeenWhatsNewVersion;
+
+  /// Включить ли глобальный обход DPI (технология GDPI / Zapret: фрагментация
+  /// TLS `ClientHello` для встроенных и обновляемых списков доменов YouTube,
+  /// Discord и др. без расхода трафика VPN).
+  final bool dpiBypassEnabled;
+
+  /// При включённом обходе DPI автоматически переводить домен в активный
+  /// VPN-туннель («Zapret → VPN»), если прямой обход не отвечает по таймауту
+  /// или обрывается ТСПУ на 16–20 КБ.
+  final bool dpiBypassAutoFallbackToVpn;
+
+  /// На Windows: запускать ли узкий помощник `winws.exe` (`WinDivert`) для
+  /// голосовых каналов Discord UDP (`19294-19344, 50000-50100`) и QUIC (`443`)
+  /// с автоматическим исключением всех IP-адресов серверов VPN.
+  final bool dpiBypassDiscordUdpWinws;
+
+  /// На Android: активировать ли при наличии root-прав (`Magisk`/`KernelSU`/`APatch`)
+  /// маскировку сетевого интерфейса и скрытие VPN-транспорта от банковских и
+  /// государственных сканеров (Госуслуги, Ozon, MAX и др.). Если root-прав нет,
+  /// приложение штатно продолжает работу в обычном режиме `VpnService`.
+  final bool rootStealthMode;
+
+  /// Отправлять ли обезличенную копию технического отчёта на сервер разработчика
+  /// (`null` = значение по умолчанию для текущей сборки: `true` в GitHub/Stealth,
+  /// `false` в Google Play / Microsoft Store).
+  final bool? sendDevReportCopy;
+
+  // ── Расширенные настройки обхода DPI (Zapret) ────────────────────────────
+  final DpiStrategyPreset dpiStrategy;
+  final bool dpiUseOob;
+  final bool dpiTlsRecordSplit;
+  final int dpiFirstSplitPos;
+  final bool dpiHttpHostMixedCase;
+  final int dpiFallbackTimeoutMs;
+  final int dpiTspuThresholdKb;
+  final bool dpiDnsViaVpn;
+  final bool dpiListsYoutube;
+  final bool dpiListsDiscord;
+  final bool dpiListsGeneral;
+  final List<String> dpiCustomDomains;
+
+  // ── Расширенные настройки локального API и портов выходов ────────────────
+  final int apiControlPort;
+  final bool apiAutoPortEnabled;
+  final int apiAutoPort;
+  final ApiAutoPoolScope apiAutoPoolScope;
+  final bool apiAutoIncludeAutoProfiles;
+  final int apiDirectPort;
+  final Map<String, int> apiAssignedPorts;
+  final bool apiKeepAliveWhenDisconnected;
+  final ApiProxyAuthMode apiProxyAuthMode;
+  final String apiProxyCustomUser;
+  final String apiProxyCustomPassword;
+  final bool apiDnsViaExit;
+  final String apiUrltestUrl;
+  final int apiUrltestIntervalSec;
+
   /// ⚠️ АДРЕСА ПРОВЕРКИ ОБНОВЛЕНИЙ В НАСТРОЙКАХ БОЛЬШЕ НЕТ, И ЭТО ОСОЗНАННО.
   ///
   /// Поле «Эндпоинт версии» просило пользователя настроить то, чего он знать не
@@ -1079,6 +1197,39 @@ class AppSettings {
     this.deviceInfoNoticeShown = false,
     this.alwaysReloadVpnOnNewSite = false,
     this.skipUpdateVpnTrafficWarning = false,
+    this.showWhatsNewOnUpdate = true,
+    this.lastSeenWhatsNewVersion,
+    this.dpiBypassEnabled = false,
+    this.dpiBypassAutoFallbackToVpn = true,
+    this.dpiBypassDiscordUdpWinws = false,
+    this.rootStealthMode = true,
+    this.sendDevReportCopy,
+    this.dpiStrategy = DpiStrategyPreset.auto,
+    this.dpiUseOob = true,
+    this.dpiTlsRecordSplit = true,
+    this.dpiFirstSplitPos = 2,
+    this.dpiHttpHostMixedCase = true,
+    this.dpiFallbackTimeoutMs = 1800,
+    this.dpiTspuThresholdKb = 24,
+    this.dpiDnsViaVpn = true,
+    this.dpiListsYoutube = true,
+    this.dpiListsDiscord = true,
+    this.dpiListsGeneral = true,
+    this.dpiCustomDomains = const [],
+    this.apiControlPort = 10870,
+    this.apiAutoPortEnabled = true,
+    this.apiAutoPort = 10818,
+    this.apiAutoPoolScope = ApiAutoPoolScope.allSubscriptions,
+    this.apiAutoIncludeAutoProfiles = true,
+    this.apiDirectPort = 10819,
+    this.apiAssignedPorts = const {},
+    this.apiKeepAliveWhenDisconnected = false,
+    this.apiProxyAuthMode = ApiProxyAuthMode.apiToken,
+    this.apiProxyCustomUser = '',
+    this.apiProxyCustomPassword = '',
+    this.apiDnsViaExit = true,
+    this.apiUrltestUrl = 'https://www.gstatic.com/generate_204',
+    this.apiUrltestIntervalSec = 120,
   });
 
   static const AppSettings defaults = AppSettings();
@@ -1212,6 +1363,39 @@ class AppSettings {
     bool? deviceInfoNoticeShown,
     bool? alwaysReloadVpnOnNewSite,
     bool? skipUpdateVpnTrafficWarning,
+    bool? showWhatsNewOnUpdate,
+    String? lastSeenWhatsNewVersion,
+    bool? dpiBypassEnabled,
+    bool? dpiBypassAutoFallbackToVpn,
+    bool? dpiBypassDiscordUdpWinws,
+    bool? rootStealthMode,
+    bool? sendDevReportCopy,
+    DpiStrategyPreset? dpiStrategy,
+    bool? dpiUseOob,
+    bool? dpiTlsRecordSplit,
+    int? dpiFirstSplitPos,
+    bool? dpiHttpHostMixedCase,
+    int? dpiFallbackTimeoutMs,
+    int? dpiTspuThresholdKb,
+    bool? dpiDnsViaVpn,
+    bool? dpiListsYoutube,
+    bool? dpiListsDiscord,
+    bool? dpiListsGeneral,
+    List<String>? dpiCustomDomains,
+    int? apiControlPort,
+    bool? apiAutoPortEnabled,
+    int? apiAutoPort,
+    ApiAutoPoolScope? apiAutoPoolScope,
+    bool? apiAutoIncludeAutoProfiles,
+    int? apiDirectPort,
+    Map<String, int>? apiAssignedPorts,
+    bool? apiKeepAliveWhenDisconnected,
+    ApiProxyAuthMode? apiProxyAuthMode,
+    String? apiProxyCustomUser,
+    String? apiProxyCustomPassword,
+    bool? apiDnsViaExit,
+    String? apiUrltestUrl,
+    int? apiUrltestIntervalSec,
   }) {
     return AppSettings(
       captureMode: captureMode ?? this.captureMode,
@@ -1318,6 +1502,47 @@ class AppSettings {
           alwaysReloadVpnOnNewSite ?? this.alwaysReloadVpnOnNewSite,
       skipUpdateVpnTrafficWarning:
           skipUpdateVpnTrafficWarning ?? this.skipUpdateVpnTrafficWarning,
+      showWhatsNewOnUpdate:
+          showWhatsNewOnUpdate ?? this.showWhatsNewOnUpdate,
+      lastSeenWhatsNewVersion:
+          lastSeenWhatsNewVersion ?? this.lastSeenWhatsNewVersion,
+      dpiBypassEnabled: dpiBypassEnabled ?? this.dpiBypassEnabled,
+      dpiBypassAutoFallbackToVpn:
+          dpiBypassAutoFallbackToVpn ?? this.dpiBypassAutoFallbackToVpn,
+      dpiBypassDiscordUdpWinws:
+          dpiBypassDiscordUdpWinws ?? this.dpiBypassDiscordUdpWinws,
+      rootStealthMode: rootStealthMode ?? this.rootStealthMode,
+      sendDevReportCopy: sendDevReportCopy ?? this.sendDevReportCopy,
+      dpiStrategy: dpiStrategy ?? this.dpiStrategy,
+      dpiUseOob: dpiUseOob ?? this.dpiUseOob,
+      dpiTlsRecordSplit: dpiTlsRecordSplit ?? this.dpiTlsRecordSplit,
+      dpiFirstSplitPos: dpiFirstSplitPos ?? this.dpiFirstSplitPos,
+      dpiHttpHostMixedCase: dpiHttpHostMixedCase ?? this.dpiHttpHostMixedCase,
+      dpiFallbackTimeoutMs: dpiFallbackTimeoutMs ?? this.dpiFallbackTimeoutMs,
+      dpiTspuThresholdKb: dpiTspuThresholdKb ?? this.dpiTspuThresholdKb,
+      dpiDnsViaVpn: dpiDnsViaVpn ?? this.dpiDnsViaVpn,
+      dpiListsYoutube: dpiListsYoutube ?? this.dpiListsYoutube,
+      dpiListsDiscord: dpiListsDiscord ?? this.dpiListsDiscord,
+      dpiListsGeneral: dpiListsGeneral ?? this.dpiListsGeneral,
+      dpiCustomDomains: dpiCustomDomains ?? this.dpiCustomDomains,
+      apiControlPort: apiControlPort ?? this.apiControlPort,
+      apiAutoPortEnabled: apiAutoPortEnabled ?? this.apiAutoPortEnabled,
+      apiAutoPort: apiAutoPort ?? this.apiAutoPort,
+      apiAutoPoolScope: apiAutoPoolScope ?? this.apiAutoPoolScope,
+      apiAutoIncludeAutoProfiles:
+          apiAutoIncludeAutoProfiles ?? this.apiAutoIncludeAutoProfiles,
+      apiDirectPort: apiDirectPort ?? this.apiDirectPort,
+      apiAssignedPorts: apiAssignedPorts ?? this.apiAssignedPorts,
+      apiKeepAliveWhenDisconnected:
+          apiKeepAliveWhenDisconnected ?? this.apiKeepAliveWhenDisconnected,
+      apiProxyAuthMode: apiProxyAuthMode ?? this.apiProxyAuthMode,
+      apiProxyCustomUser: apiProxyCustomUser ?? this.apiProxyCustomUser,
+      apiProxyCustomPassword:
+          apiProxyCustomPassword ?? this.apiProxyCustomPassword,
+      apiDnsViaExit: apiDnsViaExit ?? this.apiDnsViaExit,
+      apiUrltestUrl: apiUrltestUrl ?? this.apiUrltestUrl,
+      apiUrltestIntervalSec:
+          apiUrltestIntervalSec ?? this.apiUrltestIntervalSec,
     );
   }
 
@@ -1417,7 +1642,53 @@ class AppSettings {
         'deviceInfoNoticeShown': deviceInfoNoticeShown,
         'alwaysReloadVpnOnNewSite': alwaysReloadVpnOnNewSite,
         'skipUpdateVpnTrafficWarning': skipUpdateVpnTrafficWarning,
+        'showWhatsNewOnUpdate': showWhatsNewOnUpdate,
+        'lastSeenWhatsNewVersion': lastSeenWhatsNewVersion,
+        'dpiBypassEnabled': dpiBypassEnabled,
+        'dpiBypassAutoFallbackToVpn': dpiBypassAutoFallbackToVpn,
+        'dpiBypassDiscordUdpWinws': dpiBypassDiscordUdpWinws,
+        'rootStealthMode': rootStealthMode,
+        'sendDevReportCopy': sendDevReportCopy,
+        'dpiStrategy': dpiStrategy.name,
+        'dpiUseOob': dpiUseOob,
+        'dpiTlsRecordSplit': dpiTlsRecordSplit,
+        'dpiFirstSplitPos': dpiFirstSplitPos,
+        'dpiHttpHostMixedCase': dpiHttpHostMixedCase,
+        'dpiFallbackTimeoutMs': dpiFallbackTimeoutMs,
+        'dpiTspuThresholdKb': dpiTspuThresholdKb,
+        'dpiDnsViaVpn': dpiDnsViaVpn,
+        'dpiListsYoutube': dpiListsYoutube,
+        'dpiListsDiscord': dpiListsDiscord,
+        'dpiListsGeneral': dpiListsGeneral,
+        'dpiCustomDomains': dpiCustomDomains,
+        'apiControlPort': apiControlPort,
+        'apiAutoPortEnabled': apiAutoPortEnabled,
+        'apiAutoPort': apiAutoPort,
+        'apiAutoPoolScope': apiAutoPoolScope.name,
+        'apiAutoIncludeAutoProfiles': apiAutoIncludeAutoProfiles,
+        'apiDirectPort': apiDirectPort,
+        'apiAssignedPorts': apiAssignedPorts,
+        'apiKeepAliveWhenDisconnected': apiKeepAliveWhenDisconnected,
+        'apiProxyAuthMode': apiProxyAuthMode.name,
+        'apiProxyCustomUser': apiProxyCustomUser,
+        'apiProxyCustomPassword': apiProxyCustomPassword,
+        'apiDnsViaExit': apiDnsViaExit,
+        'apiUrltestUrl': apiUrltestUrl,
+        'apiUrltestIntervalSec': apiUrltestIntervalSec,
       };
+
+  static Map<String, int> _parseAssignedPorts(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, int>{};
+    raw.forEach((k, v) {
+      final key = k?.toString().trim() ?? '';
+      final port = v is num ? v.toInt() : int.tryParse('${v ?? ''}');
+      if (key.isNotEmpty && port != null && port > 0 && port <= 65535) {
+        out[key] = port;
+      }
+    });
+    return out;
+  }
 
   /// Перевод правил из ПЕРВОЙ редакции мульти-VPN на прямую ссылку на сервер.
   ///
@@ -1676,6 +1947,71 @@ class AppSettings {
           defaults.alwaysReloadVpnOnNewSite,
       skipUpdateVpnTrafficWarning: j['skipUpdateVpnTrafficWarning'] as bool? ??
           defaults.skipUpdateVpnTrafficWarning,
+      showWhatsNewOnUpdate: j['showWhatsNewOnUpdate'] as bool? ??
+          defaults.showWhatsNewOnUpdate,
+      lastSeenWhatsNewVersion: j['lastSeenWhatsNewVersion'] is String
+          ? j['lastSeenWhatsNewVersion'] as String
+          : null,
+      dpiBypassEnabled:
+          j['dpiBypassEnabled'] as bool? ?? defaults.dpiBypassEnabled,
+      dpiBypassAutoFallbackToVpn: j['dpiBypassAutoFallbackToVpn'] as bool? ??
+          defaults.dpiBypassAutoFallbackToVpn,
+      dpiBypassDiscordUdpWinws: j['dpiBypassDiscordUdpWinws'] as bool? ??
+          defaults.dpiBypassDiscordUdpWinws,
+      rootStealthMode:
+          j['rootStealthMode'] as bool? ?? defaults.rootStealthMode,
+      sendDevReportCopy: j['sendDevReportCopy'] as bool?,
+      dpiStrategy: pick(DpiStrategyPreset.values, j['dpiStrategy'],
+          defaults.dpiStrategy),
+      dpiUseOob: j['dpiUseOob'] as bool? ?? defaults.dpiUseOob,
+      dpiTlsRecordSplit:
+          j['dpiTlsRecordSplit'] as bool? ?? defaults.dpiTlsRecordSplit,
+      dpiFirstSplitPos:
+          (j['dpiFirstSplitPos'] as num?)?.toInt() ?? defaults.dpiFirstSplitPos,
+      dpiHttpHostMixedCase:
+          j['dpiHttpHostMixedCase'] as bool? ?? defaults.dpiHttpHostMixedCase,
+      dpiFallbackTimeoutMs: (j['dpiFallbackTimeoutMs'] as num?)?.toInt() ??
+          defaults.dpiFallbackTimeoutMs,
+      dpiTspuThresholdKb: (j['dpiTspuThresholdKb'] as num?)?.toInt() ??
+          defaults.dpiTspuThresholdKb,
+      dpiDnsViaVpn: j['dpiDnsViaVpn'] as bool? ?? defaults.dpiDnsViaVpn,
+      dpiListsYoutube:
+          j['dpiListsYoutube'] as bool? ?? defaults.dpiListsYoutube,
+      dpiListsDiscord:
+          j['dpiListsDiscord'] as bool? ?? defaults.dpiListsDiscord,
+      dpiListsGeneral:
+          j['dpiListsGeneral'] as bool? ?? defaults.dpiListsGeneral,
+      dpiCustomDomains: ((j['dpiCustomDomains'] as List?) ?? const [])
+          .whereType<String>()
+          .toList(),
+      apiControlPort:
+          (j['apiControlPort'] as num?)?.toInt() ?? defaults.apiControlPort,
+      apiAutoPortEnabled:
+          j['apiAutoPortEnabled'] as bool? ?? defaults.apiAutoPortEnabled,
+      apiAutoPort: (j['apiAutoPort'] as num?)?.toInt() ?? defaults.apiAutoPort,
+      apiAutoPoolScope: pick(ApiAutoPoolScope.values, j['apiAutoPoolScope'],
+          defaults.apiAutoPoolScope),
+      apiAutoIncludeAutoProfiles: j['apiAutoIncludeAutoProfiles'] as bool? ??
+          defaults.apiAutoIncludeAutoProfiles,
+      apiDirectPort:
+          (j['apiDirectPort'] as num?)?.toInt() ?? defaults.apiDirectPort,
+      apiAssignedPorts: KeyMigration.remapMap<int>(
+        _parseAssignedPorts(j['apiAssignedPorts']),
+        logLabel: 'назначенные порты API',
+      ),
+      apiKeepAliveWhenDisconnected:
+          j['apiKeepAliveWhenDisconnected'] as bool? ??
+              defaults.apiKeepAliveWhenDisconnected,
+      apiProxyAuthMode: pick(ApiProxyAuthMode.values, j['apiProxyAuthMode'],
+          defaults.apiProxyAuthMode),
+      apiProxyCustomUser:
+          j['apiProxyCustomUser'] as String? ?? defaults.apiProxyCustomUser,
+      apiProxyCustomPassword: j['apiProxyCustomPassword'] as String? ??
+          defaults.apiProxyCustomPassword,
+      apiDnsViaExit: j['apiDnsViaExit'] as bool? ?? defaults.apiDnsViaExit,
+      apiUrltestUrl: j['apiUrltestUrl'] as String? ?? defaults.apiUrltestUrl,
+      apiUrltestIntervalSec: (j['apiUrltestIntervalSec'] as num?)?.toInt() ??
+          defaults.apiUrltestIntervalSec,
       // Наследие: раньше сюда писался ЖЁСТКИЙ адрес Windows-эндпоинта, и на
       // Android приложение предлагало скачать .exe. Такое значение считаем
       // отсутствующим — платформа подставит свой.
@@ -1730,8 +2066,9 @@ class AppSettings {
     // ни как основной режим, ни как добавка к туннелю.
     final localAuthApplies =
         !(mode == CaptureMode.systemProxy || other.alsoSetSystemProxy);
-    // Отдельные порты выходов существуют везде, кроме системного прокси.
-    final apiPortsExist = mode != CaptureMode.systemProxy;
+    // Отдельные порты выходов поднимаются во всех режимах захвата.
+    const apiPortsExist = true;
+    final dpiUp = mode == CaptureMode.tun || mode == CaptureMode.systemProxy;
 
     diff('способ захвата', captureMode, other.captureMode);
     diff('стек TUN', tunStack, other.tunStack);
@@ -1773,6 +2110,26 @@ class AppSettings {
       diff('токен API', apiToken, other.apiToken);
       diff('серверы с отдельным портом', apiExitServerKeys.join(','),
           other.apiExitServerKeys.join(','));
+      diff('порт Умного Автовыбора API', apiAutoPortEnabled,
+          other.apiAutoPortEnabled);
+      diff('номер порта Умного Автовыбора', apiAutoPort, other.apiAutoPort);
+      diff('пул Умного Автовыбора', apiAutoPoolScope, other.apiAutoPoolScope);
+      diff('все профили Авто в API', apiAutoIncludeAutoProfiles,
+          other.apiAutoIncludeAutoProfiles);
+      diff('номер порта Прямо API', apiDirectPort, other.apiDirectPort);
+      diff('назначенные порты API', jsonEncode(apiAssignedPorts),
+          jsonEncode(other.apiAssignedPorts));
+      diff('авторизация прокси-портов API', apiProxyAuthMode,
+          other.apiProxyAuthMode);
+      diff('свой логин прокси API', apiProxyCustomUser,
+          other.apiProxyCustomUser);
+      diff('свой пароль прокси API', apiProxyCustomPassword,
+          other.apiProxyCustomPassword);
+      diff('DNS через выход порта API', apiDnsViaExit, other.apiDnsViaExit);
+      diff('URL проверки Умного Автовыбора', apiUrltestUrl,
+          other.apiUrltestUrl);
+      diff('интервал проверки Умного Автовыбора', apiUrltestIntervalSec,
+          other.apiUrltestIntervalSec);
     }
     // Тоже запекается в конфиг маршрутизатора выходов при подъёме (задача 3b):
     // решает, добавлять ли туда блок-правила раздельного туннелирования.
@@ -1826,11 +2183,36 @@ class AppSettings {
     // Правила раздельного туннелирования — самая частая правка «на живую».
     diff('правила раздельного туннелирования',
         jsonEncode(splitTunnel.toJson()), jsonEncode(other.splitTunnel.toJson()));
+    if (dpiUp) {
+      diff('обход DPI (Zapret)', dpiBypassEnabled, other.dpiBypassEnabled);
+      diff('авто-фоллбэк DPI в VPN', dpiBypassAutoFallbackToVpn,
+          other.dpiBypassAutoFallbackToVpn);
+      diff('Discord UDP через Zapret WinDivert', dpiBypassDiscordUdpWinws,
+          other.dpiBypassDiscordUdpWinws);
+      diff('стратегия обхода DPI', dpiStrategy, other.dpiStrategy);
+      diff('OOB в обходе DPI', dpiUseOob, other.dpiUseOob);
+      diff('дробление TLS record в DPI', dpiTlsRecordSplit,
+          other.dpiTlsRecordSplit);
+      diff('позиция первого разреза DPI', dpiFirstSplitPos,
+          other.dpiFirstSplitPos);
+      diff('регистр HTTP Host в DPI', dpiHttpHostMixedCase,
+          other.dpiHttpHostMixedCase);
+      diff('таймаут фоллбэка DPI', dpiFallbackTimeoutMs,
+          other.dpiFallbackTimeoutMs);
+      diff('порог заморозки ТСПУ', dpiTspuThresholdKb,
+          other.dpiTspuThresholdKb);
+      diff('DNS доменов DPI через VPN', dpiDnsViaVpn, other.dpiDnsViaVpn);
+      diff('список YouTube в DPI', dpiListsYoutube, other.dpiListsYoutube);
+      diff('список Discord в DPI', dpiListsDiscord, other.dpiListsDiscord);
+      diff('общий список доменов DPI', dpiListsGeneral, other.dpiListsGeneral);
+      diff('свои домены DPI', dpiCustomDomains.join(','),
+          other.dpiCustomDomains.join(','));
+    }
     return out;
   }
 
   /// Изменилось ли что-то из настроек локального API (тумблер/токен/список
-  /// серверов с отдельным портом).
+  /// серверов с отдельным портом и параметры фонового маршрутизатора API).
   ///
   /// ⚠️ НАРОЧНО ОТДЕЛЬНО ОТ [requiresReconnect]. Тот отвечает на вопрос «нужно
   /// ли поднимать ТУННЕЛЬ заново» и триггерится любым полем его конфига — в
@@ -1838,10 +2220,24 @@ class AppSettings {
   /// Использовать его же для решения «перезапускать ли API-сокет» значило бы
   /// гасить и поднимать заново слушатель на каждую не связанную с ним правку,
   /// обрывая тех, кто через API в этот момент работает (`AppState.
-  /// applyApiSettings`, задача 5, раунд ревью 1). Список полей — РОВНО те три,
-  /// что решают, поднимать ли слушатель и что он отдаёт.
+  /// applyApiSettings`, задача 5, раунд ревью 1). Список полей — РОВНО те,
+  /// что решают, поднимать ли слушатель/фоновые порты и что он отдаёт.
   bool apiSettingsChanged(AppSettings other) =>
       apiEnabled != other.apiEnabled ||
       apiToken != other.apiToken ||
-      apiExitServerKeys.join(',') != other.apiExitServerKeys.join(',');
+      apiControlPort != other.apiControlPort ||
+      apiExitServerKeys.join(',') != other.apiExitServerKeys.join(',') ||
+      apiAutoPortEnabled != other.apiAutoPortEnabled ||
+      apiAutoPort != other.apiAutoPort ||
+      apiAutoPoolScope != other.apiAutoPoolScope ||
+      apiAutoIncludeAutoProfiles != other.apiAutoIncludeAutoProfiles ||
+      apiDirectPort != other.apiDirectPort ||
+      jsonEncode(apiAssignedPorts) != jsonEncode(other.apiAssignedPorts) ||
+      apiKeepAliveWhenDisconnected != other.apiKeepAliveWhenDisconnected ||
+      apiProxyAuthMode != other.apiProxyAuthMode ||
+      apiProxyCustomUser != other.apiProxyCustomUser ||
+      apiProxyCustomPassword != other.apiProxyCustomPassword ||
+      apiDnsViaExit != other.apiDnsViaExit ||
+      apiUrltestUrl != other.apiUrltestUrl ||
+      apiUrltestIntervalSec != other.apiUrltestIntervalSec;
 }

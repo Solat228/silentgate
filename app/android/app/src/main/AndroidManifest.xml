@@ -38,6 +38,7 @@
         android:allowBackup="true"
         android:extractNativeLibs="true"
         tools:replace="android:extractNativeLibs"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules">
         <!--

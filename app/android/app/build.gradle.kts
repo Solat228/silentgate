@@ -109,6 +109,19 @@ android {
             isDefault = true
             signingConfig = signingConfigs.findByName("release")
         }
+        create("stealth") {
+            dimension = "store"
+            // Отдельный пакет ROOT-Stealth (lol.silentgate.stealth):
+            //  - не совпадает по имени пакета со стандартными списками VPN-клиентов;
+            //  - в src/stealth/AndroidManifest.xml держит SilentGateVpnService
+            //    выключенным по умолчанию (скрыт от queryIntentServices);
+            //  - при наличии su закрывает локальные порты 127.0.0.1:10808..10999
+            //    от чужих UID через iptables -m owner, а без root работает
+            //    штатно через авто-включение компонента сервиса.
+            applicationIdSuffix = ".stealth"
+            versionNameSuffix = "-ROOT-Stealth"
+            signingConfig = signingConfigs.findByName("release")
+        }
         create("play") {
             dimension = "store"
             // Код версии AAB = код arm64-APK с GitHub (Flutter для --split-per-abi
@@ -163,7 +176,7 @@ android {
 // Релиз github без ключа выпуска вышел бы НЕПОДПИСАННЫМ (signingConfig сборки
 // = null). Проверяем до упаковки, чтобы файл не появился вовсе.
 tasks.configureEach {
-    val githubRelease = name.contains("GithubRelease") &&
+    val githubRelease = (name.contains("GithubRelease") || name.contains("StealthRelease")) &&
         (name.startsWith("package") || name.startsWith("assemble") ||
             name.startsWith("bundle") || name.startsWith("sign"))
     if (githubRelease) {

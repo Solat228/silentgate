@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN 已关闭",
   "serviceChecksNow": "当前",
   "serviceChecksExitServer": "经其他服务器：分流规则“{rule}”让该域名经“{server}”访问。",
-  "subBarOpenSite": "网站",
+  "subBarOpenSite": "订阅页面",
+  "subBarTelegram": "Telegram / 机器人",
   "subBarOpenSiteHint": "在浏览器中打开订阅页面",
   "subSwitcherRefreshingOne": "正在更新「{name}」…",
   "subSwitcherRefreshedOne": "「{name}」已更新",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "无法连接",
+  "supportChipSiteOrYoutube": "YouTube / 网站无法打开",
+  "supportChipSlowSpeed": "速度慢",
+  "supportChipDrops": "连接中断",
+  "supportChipsHint": "快速选择（可选，无需填写详情）：",
+  "supportDescribeOptionalLabel": "问题描述（可选）",
+  "supportNoTextProvided": "无文字描述（仅技术报告）",
+  "supportCategoriesHeader": "分类",
+  "supportSendDevCopyTitle": "向开发者发送匿名副本",
+  "supportSendDevCopySub": "不含订阅令牌、个人 IP 和原始 HWID - 帮助更快修复问题",
+  "supportPreviewDevCopy": "发送内容？",
+  "supportPreviewDialogTitle": "发送给开发者的匿名副本",
+  "supportSendDevOnlyButton": "仅发送给开发者",
+  "supportDevCopySent": "副本已发送给开发者 ({code})",
+  "supportDevCopyFailed": "上传服务器失败 ({code}) - 本地文件已就绪",
+  "supportDevOnlyDoneText": "匿名报告已发送至开发者服务器。报告代码：{code}",
+  "supportAttachDiagButton": "诊断报告",
+  "supportSendToChatAndDev": "附加到聊天"
 }

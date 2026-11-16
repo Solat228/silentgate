@@ -106,11 +106,15 @@ class HarnessEntry {
   /// Единственное, что доезжает от него до построителя, — список кандидатов.
   final HarnessRealism realism;
 
+  /// Временный локальный SOCKS5-порт `whitelist-bypass` для пробы нод БС (`/sgbs`).
+  final int? whitelistRelayPort;
+
   const HarnessEntry({
     required this.key,
     required this.server,
     this.variant = OutboundVariant.none,
     this.realism = HarnessRealism.none,
+    this.whitelistRelayPort,
   });
 }
 
@@ -238,7 +242,12 @@ class HarnessConfigBuilder {
         'settings': _httpSettings,
       });
       outbounds.addAll(
-        XrayOutboundFactory.build(e.server, tag: outTag, variant: e.variant),
+        XrayOutboundFactory.build(
+          e.server,
+          tag: outTag,
+          variant: e.variant,
+          whitelistRelayPort: e.whitelistRelayPort,
+        ),
       );
       rules.add({
         'type': 'field',

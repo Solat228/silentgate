@@ -91,6 +91,7 @@ class SingboxProxyConfigBuilder {
       });
     }
     outbounds.add({'type': 'direct', 'tag': 'direct'});
+    final whitelistOnly = servers.every((s) => s.isWhitelistBypass);
 
     return {
       'log': {'level': 'warn', 'timestamp': true},
@@ -102,6 +103,10 @@ class SingboxProxyConfigBuilder {
       'route': {
         'rules': [
           {'action': 'sniff'},
+          if (whitelistOnly) ...[
+            {'ip_version': 6, 'action': 'reject'},
+            {'network': 'udp', 'port': [443], 'action': 'reject'},
+          ],
         ],
         'final': 'proxy',
         'auto_detect_interface': true,

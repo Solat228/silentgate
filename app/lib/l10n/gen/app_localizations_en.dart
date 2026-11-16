@@ -2890,7 +2890,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String exitServerUnsupported(String name) {
-    return '$name\n\nThis server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.';
+    return '$name\n\nThis server cannot run as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server. Traffic for this rule uses the main tunnel.';
   }
 
   @override
@@ -3364,7 +3364,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Website';
+  String get subBarOpenSite => 'Subscription page';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint => 'Open the subscription page in your browser';
@@ -3391,7 +3394,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exitServerUnsupportedInfo =>
-      'This server cannot run as a separate exit: panel “Auto” profiles and some protocols are handled by Xray only, while exits are routed by sing-box. Traffic for this rule uses the main tunnel.';
+      'This server cannot run as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server. Traffic for this rule uses the main tunnel.';
 
   @override
   String get pingBusyServiceChecks =>
@@ -4657,10 +4660,72 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exitServerBlockedNote =>
-      'Unavailable as a separate exit: Auto profiles, whitelist relays, and Xray-only protocols work only as the main server.';
+      'Unavailable as a separate exit: WebRTC whitelist relays, VMess, and empty profiles work only as the main server.';
 
   @override
   String exitServerBlockedBody(String name) {
-    return 'Server \"$name\" cannot currently be assigned as a separate exit for a rule.\n\nPanel \"Auto\" profiles, multi-hop relays, and Xray-only protocols (such as XHTTP) require a full Xray pipeline, whereas secondary per-rule exits are dialed directly by sing-box.\n\nPlease pick a standard single-node server (VLESS, Trojan, Shadowsocks, Hysteria2) for this rule, or select \"$name\" as your main server on the home screen.';
+    return 'Server \"$name\" cannot currently be assigned as a separate exit for a rule.\n\nMulti-hop WebRTC whitelist relays, legacy VMess links, and empty profiles without proxy nodes cannot run as a parallel secondary exit.\n\nPlease pick a supported server or \"Auto\" profile for this rule, or select \"$name\" as your main server on the home screen.';
   }
+
+  @override
+  String get supportChipCantConnect => 'Can\'t connect';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / site won\'t open';
+
+  @override
+  String get supportChipSlowSpeed => 'Slow speed';
+
+  @override
+  String get supportChipDrops => 'Connection drops';
+
+  @override
+  String get supportChipsHint =>
+      'Quick category (optional, no need to type details):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'Problem description (optional)';
+
+  @override
+  String get supportNoTextProvided => 'No text description (technical report)';
+
+  @override
+  String get supportCategoriesHeader => 'Category';
+
+  @override
+  String get supportSendDevCopyTitle => 'Send anonymized copy to developer';
+
+  @override
+  String get supportSendDevCopySub =>
+      'No subscription token, personal IPs, or raw HWID - helps fix issues faster';
+
+  @override
+  String get supportPreviewDevCopy => 'What is sent?';
+
+  @override
+  String get supportPreviewDialogTitle => 'Anonymized copy for developer';
+
+  @override
+  String get supportSendDevOnlyButton => 'Developer only';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Copy sent to developer ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Could not upload to server ($code) - local file is ready';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Anonymized report sent to the developer server. Report code: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Diagnostic report';
+
+  @override
+  String get supportSendToChatAndDev => 'Attach to chat';
 }

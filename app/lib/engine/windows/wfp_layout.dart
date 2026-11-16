@@ -88,6 +88,21 @@ class WfpActionOffsets {
   static const int filterType = 4;
 }
 
+/// Смещения внутри `FWPS_ALE_ENDPOINT_PROPERTIES0` (sizeof = 104, align = 8).
+class WfpAleEndpointOffsets {
+  static const int size = 104;
+  static const int endpointId = 0;
+  static const int ipVersion = 8;
+  static const int localV4Address = 12;
+  static const int remoteV4Address = 28;
+  static const int ipProtocol = 44;
+  static const int localPort = 46;
+  static const int remotePort = 48;
+  static const int appIdSize = 88;
+  static const int appIdData = 96;
+  static const int ipVersionV4 = 0;
+}
+
 /// Числовые константы WFP.
 class WfpConst {
   /// ⚠️ Единственный допустимый флаг сессии. Совпадает по значению с

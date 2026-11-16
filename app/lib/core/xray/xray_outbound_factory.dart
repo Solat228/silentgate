@@ -16,11 +16,17 @@ class XrayOutboundFactory {
     VpnServer server, {
     String tag = 'proxy',
     OutboundVariant variant = OutboundVariant.none,
+    int? whitelistRelayPort,
   }) {
     // Панель (Remnawave, формат XRAY_JSON) отдаёт готовый outbound — берём его как есть.
     // Пересборка из share-ссылки теряет детали streamSettings, из-за чего автовыбор
     // (burstObservatory) пинговал нерабочие outbound'ы.
-    final authoritative = _fromPanel(server, tag, variant);
+    final authoritative = _fromPanel(
+      server,
+      tag,
+      variant,
+      whitelistRelayPort: whitelistRelayPort,
+    );
     if (authoritative != null) return authoritative;
 
     final result = <Map<String, dynamic>>[];
@@ -29,7 +35,12 @@ class XrayOutboundFactory {
     // Ноды БС: внешний TCP-сокет VLESS/Trojan уходит в локальный SOCKS5 WebRTC-релея.
     // Фрагментация ClientHello здесь не нужна (снаружи на проводе оператора — WebRTC UDP).
     if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
-      _attachWhitelistRelay(stream, result, tag);
+      _attachWhitelistRelay(
+        stream,
+        result,
+        tag,
+        relaySocksPort: whitelistRelayPort ?? 10855,
+      );
     } else if (variant.fragment) {
       // Фрагментация: proxy-outbound дозванивается через freedom-outbound с fragment.
       final fragTag = 'frag-$tag';
@@ -93,7 +104,11 @@ class XrayOutboundFactory {
   /// нужный tag и, если запрошена вариация, накладываем fingerprint/fragment поверх.
   /// null — если авторитетного JSON нет или он не разобрался.
   static List<Map<String, dynamic>>? _fromPanel(
-      VpnServer server, String tag, OutboundVariant variant) {
+    VpnServer server,
+    String tag,
+    OutboundVariant variant, {
+    int? whitelistRelayPort,
+  }) {
     final raw = server.rawOutboundJson;
     if (raw == null || raw.isEmpty) return null;
     try {
@@ -125,7 +140,12 @@ class XrayOutboundFactory {
 
       final result = <Map<String, dynamic>>[];
       if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
-        _attachWhitelistRelay(stream, result, tag);
+        _attachWhitelistRelay(
+          stream,
+          result,
+          tag,
+          relaySocksPort: whitelistRelayPort ?? 10855,
+        );
       } else if (variant.fragment) {
         final fragTag = 'frag-$tag';
         final sockopt = stream['sockopt'] is Map

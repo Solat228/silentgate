@@ -20,6 +20,9 @@ import 'dart:io';
 import 'wfp_layout.dart';
 import 'process_list_windows.dart';
 
+export 'process_list_windows.dart'
+    show normalizeVersionedExeName, matchesSelectedAppName;
+
 /// Что именно перекрываем и что оставляем открытым.
 class KillSwitchPlan {
   /// Адреса VPN-серверов. ⚠️ Всегда разрешены: иначе ядру некуда постучаться,
@@ -105,10 +108,22 @@ class KillSwitchPlan {
   /// получен существующим [ProcessListWindows] API и является единственным
   /// источником путей для селекторов.
   KillSwitchPlan withMaterializedAppPaths(Iterable<RunningProcess> processes) {
-    final blockedNames =
-        blockedAppNames.map((name) => baseName(name).toLowerCase()).toSet();
-    final allowedNames =
-        allowedAppNames.map((name) => baseName(name).toLowerCase()).toSet();
+    Set<String> effectiveNames(
+        List<String> explicitNames, List<String> explicitPaths) {
+      final out = explicitNames.map(normalizeVersionedExeName).toSet();
+      for (final p in explicitPaths) {
+        final norm = normalizeVersionedExeName(p);
+        if (norm == 'antigravity.exe' ||
+            norm == 'agy.exe' ||
+            baseName(p).toLowerCase() != norm) {
+          out.add(norm);
+        }
+      }
+      return out;
+    }
+
+    final blockedNames = effectiveNames(blockedAppNames, blockedAppPaths);
+    final allowedNames = effectiveNames(allowedAppNames, allowedAppPaths);
     final processList = processes.toList();
 
     List<String> materialize(
@@ -126,7 +141,8 @@ class KillSwitchPlan {
         add(path);
       }
       for (final process in processList) {
-        if (selectedNames.contains(baseName(process.name).toLowerCase())) {
+        if (matchesSelectedAppName(selectedNames, process.name,
+            processPath: process.path)) {
           add(process.path);
         }
       }

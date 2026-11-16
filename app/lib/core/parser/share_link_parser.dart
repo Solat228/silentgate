@@ -51,7 +51,8 @@ class ShareLinkParser {
   static VpnServer? tryParseRaw(String link) => _tryParseRaw(link);
 
   static VpnServer? _tryParseRaw(String link) {
-    final l = link.trim();
+    var l = link.trim();
+    if (l.startsWith('\uFEFF')) l = l.substring(1).trim();
     try {
       if (l.startsWith('vless://')) return _parseVless(l);
       // Панельный vmess приходит ИДЕНТИФИКАТОРОМ, а не base64-телом: у него нет
@@ -158,7 +159,7 @@ class ShareLinkParser {
 
   /// Разбор целого тела подписки (много строк) в список серверов.
   static List<VpnServer> parseSubscriptionBody(String body) {
-    final text = _maybeBase64Body(body);
+    final text = decodeSubscriptionText(body);
     final servers = <VpnServer>[];
     for (final line in text.split(RegExp(r'\r?\n'))) {
       final s = tryParse(line);
@@ -167,12 +168,23 @@ class ShareLinkParser {
     return servers;
   }
 
+  /// Разворачивает тело подписки из возможного base64 и снимает UTF-8 BOM.
+  static String decodeSubscriptionText(String body) => _maybeBase64Body(body);
+
   /// Если тело не содержит "://", пробуем как base64 всей подписки.
   static String _maybeBase64Body(String body) {
-    if (body.contains('://')) return body;
-    final decoded = B64.tryDecodeToString(body);
-    if (decoded != null && decoded.contains('://')) return decoded;
-    return body;
+    var clean = body.startsWith('\uFEFF') ? body.substring(1) : body;
+    if (clean.contains('://')) return clean;
+    final decoded = B64.tryDecodeToString(clean.trim());
+    if (decoded != null) {
+      final dClean = decoded.startsWith('\uFEFF') ? decoded.substring(1) : decoded;
+      if (dClean.contains('://') ||
+          dClean.trimLeft().startsWith('{') ||
+          dClean.trimLeft().startsWith('[')) {
+        return dClean;
+      }
+    }
+    return clean;
   }
 
   // ── vless ────────────────────────────────────────────────────────────────
@@ -455,7 +467,7 @@ class ShareLinkParser {
         whitelistRoom: room,
         whitelistMode: mode,
         whitelistCreatorHost: creatorHost,
-        whitelistReliable: _bool(q['reliable'] ?? q['rel']),
+        whitelistReliable: _whitelistReliable(platform, q),
         whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
             _bool(q['dual'] ?? q['dt']),
         whitelistVp8Fps: _posInt(q['fps']),
@@ -488,7 +500,7 @@ class ShareLinkParser {
       whitelistRoom: room,
       whitelistMode: mode,
       whitelistCreatorHost: _nz(q['host'] ?? q['creator']),
-      whitelistReliable: _bool(q['reliable'] ?? q['rel']),
+      whitelistReliable: _whitelistReliable(platform, q),
       whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
           _bool(q['dual'] ?? q['dt']),
       whitelistVp8Fps: _posInt(q['fps']),
@@ -496,6 +508,16 @@ class ShareLinkParser {
       whitelistBlinkToken: platform == 'blink' ? _nz(q['bt']) : null,
       rawLink: link,
     );
+  }
+
+  static bool _whitelistReliable(String platform, Map<String, String> q) {
+    final explicit = q['reliable'] ?? q['rel'];
+    if (explicit != null && explicit.trim().isNotEmpty) {
+      return _bool(explicit);
+    }
+    // Яндекс Телемост работает исключительно поверх видеопотока VP8 через SFU,
+    // поэтому без явного запрета (?reliable=0) включаем KCP по умолчанию.
+    return platform == 'telemost';
   }
 
   static String _defaultWhitelistRemark(String platform) {
@@ -562,7 +584,7 @@ class ShareLinkParser {
       whitelistRoom: room,
       whitelistMode: mode,
       whitelistCreatorHost: _nz(q['host'] ?? q['creator']),
-      whitelistReliable: _bool(q['reliable'] ?? q['rel']),
+      whitelistReliable: _whitelistReliable(platform, q),
       whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
           _bool(q['dual'] ?? q['dt']),
       whitelistVp8Fps: _posInt(q['fps']),

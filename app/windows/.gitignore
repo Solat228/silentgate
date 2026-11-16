@@ -15,3 +15,6 @@ x86/
 *.[Cc]ache
 # but keep track of directories ending in .cache
 !*.[Cc]ache/
+
+!runner/third_party/webview2/x64/
+!runner/third_party/webview2/x64/**

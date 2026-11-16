@@ -5073,7 +5073,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitServerUnsupported.
   ///
   /// In ru, this message translates to:
-  /// **'{name}\n\nЭтот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.'**
+  /// **'{name}\n\nЭтот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.'**
   String exitServerUnsupported(String name);
 
   /// No description provided for @noticeRulesAction.
@@ -5793,8 +5793,14 @@ abstract class AppLocalizations {
   /// No description provided for @subBarOpenSite.
   ///
   /// In ru, this message translates to:
-  /// **'Сайт'**
+  /// **'Страница подписки'**
   String get subBarOpenSite;
+
+  /// No description provided for @subBarTelegram.
+  ///
+  /// In ru, this message translates to:
+  /// **'Телеграм / Бот'**
+  String get subBarTelegram;
 
   /// No description provided for @subBarOpenSiteHint.
   ///
@@ -5829,7 +5835,7 @@ abstract class AppLocalizations {
   /// No description provided for @exitServerUnsupportedInfo.
   ///
   /// In ru, this message translates to:
-  /// **'Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.'**
+  /// **'Этот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.'**
   String get exitServerUnsupportedInfo;
 
   /// No description provided for @pingBusyServiceChecks.
@@ -7893,14 +7899,122 @@ abstract class AppLocalizations {
   /// No description provided for @exitServerBlockedNote.
   ///
   /// In ru, this message translates to:
-  /// **'Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.'**
+  /// **'Недоступен для отдельного выбора: обходы БС по звонку, VMess и пустые профили работают только как основной сервер.'**
   String get exitServerBlockedNote;
 
   /// No description provided for @exitServerBlockedBody.
   ///
   /// In ru, this message translates to:
-  /// **'Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «{name}» основным сервером на главном экране.'**
+  /// **'Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nМногошаговые обходы БС (WebRTC-звонки), устаревшие протоколы (VMess) и пустые шаблоны без узлов не поднимаются вторым параллельным выходом.\n\nВыберите для этого правила рабочий сервер или профиль «Авто» либо включите «{name}» основным сервером на главном экране.'**
   String exitServerBlockedBody(String name);
+
+  /// No description provided for @supportChipCantConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не подключается'**
+  String get supportChipCantConnect;
+
+  /// No description provided for @supportChipSiteOrYoutube.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не открывается YouTube / сайт'**
+  String get supportChipSiteOrYoutube;
+
+  /// No description provided for @supportChipSlowSpeed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Низкая скорость'**
+  String get supportChipSlowSpeed;
+
+  /// No description provided for @supportChipDrops.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обрывается связь'**
+  String get supportChipDrops;
+
+  /// No description provided for @supportChipsHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Быстрый выбор (можно не писать подробности):'**
+  String get supportChipsHint;
+
+  /// No description provided for @supportDescribeOptionalLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Описание проблемы (необязательно)'**
+  String get supportDescribeOptionalLabel;
+
+  /// No description provided for @supportNoTextProvided.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без текстового описания (технический отчёт)'**
+  String get supportNoTextProvided;
+
+  /// No description provided for @supportCategoriesHeader.
+  ///
+  /// In ru, this message translates to:
+  /// **'Категория'**
+  String get supportCategoriesHeader;
+
+  /// No description provided for @supportSendDevCopyTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отправить обезличенную копию разработчику'**
+  String get supportSendDevCopyTitle;
+
+  /// No description provided for @supportSendDevCopySub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Без токена подписки, личных IP и сырого HWID - помогает быстрее чинить сбои'**
+  String get supportSendDevCopySub;
+
+  /// No description provided for @supportPreviewDevCopy.
+  ///
+  /// In ru, this message translates to:
+  /// **'Что уйдёт?'**
+  String get supportPreviewDevCopy;
+
+  /// No description provided for @supportPreviewDialogTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обезличенная копия для разработчика'**
+  String get supportPreviewDialogTitle;
+
+  /// No description provided for @supportSendDevOnlyButton.
+  ///
+  /// In ru, this message translates to:
+  /// **'Только разработчику'**
+  String get supportSendDevOnlyButton;
+
+  /// No description provided for @supportDevCopySent.
+  ///
+  /// In ru, this message translates to:
+  /// **'Копия отправлена разработчику ({code})'**
+  String supportDevCopySent(String code);
+
+  /// No description provided for @supportDevCopyFailed.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось отправить на сервер ({code}) - локальный файл готов'**
+  String supportDevCopyFailed(String code);
+
+  /// No description provided for @supportDevOnlyDoneText.
+  ///
+  /// In ru, this message translates to:
+  /// **'Обезличенный отчёт отправлен на сервер разработчика. Код отчёта: {code}'**
+  String supportDevOnlyDoneText(String code);
+
+  /// No description provided for @supportAttachDiagButton.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт диагностики'**
+  String get supportAttachDiagButton;
+
+  /// No description provided for @supportSendToChatAndDev.
+  ///
+  /// In ru, this message translates to:
+  /// **'Прикрепить в чат'**
+  String get supportSendToChatAndDev;
 }
 
 class _AppLocalizationsDelegate

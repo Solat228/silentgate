@@ -38,6 +38,8 @@ void main() {
       '&sid=ab&fp=chrome&type=tcp#Exit')!;
   final hy2 = ShareLinkParser.tryParse('hysteria2://pwd@hy.example.com:8443'
       '?sni=hy.example.com&obfs=salamander&obfs-password=x#Hy2')!;
+  final wl = ShareLinkParser.tryParse(
+      'whitelist://telemost?room=https://telemost.yandex.ru/j/14646539365912&reliable=1&host=203.0.113.230#Yandex%20Telemost%20IT1')!;
   final exitKey = vless.rawLink;
   final exitOut = {
     ...SingboxOutboundFactory.build(vless),
@@ -94,6 +96,24 @@ void main() {
       user: 'u',
       password: 'p',
     ).buildJson([hy2]),
+    'прокси-whitelist-bypass': const SingboxProxyConfigBuilder(
+      apiSecret: 's',
+      user: 'u',
+      password: 'p',
+    ).buildJson([wl]),
+    'tun-whitelist-bypass': SingboxConfigBuilder(
+      proxyOutbound: SingboxOutboundFactory.build(wl),
+      options: TunOptions.fromSettings(
+        const AppSettings(),
+        android: true,
+        ipv6Available: true,
+        blockTunnelQuic: true,
+        tunnelIpv4Only: true,
+      ),
+    ).buildJson(const SplitTunnelConfig(
+      mode: SplitMode.onlySelected,
+      apps: [AppRule('com.google.android.youtube', action: AppAction.tunnel)],
+    )),
     'харнесс-пинга': const SingboxHarnessConfigBuilder()
         .withAuth('u', 'p')
         .buildJson([HarnessEntry(key: 'a', server: hy2)]),

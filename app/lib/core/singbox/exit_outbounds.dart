@@ -1,4 +1,5 @@
 import '../models/vpn_server.dart';
+import '../xray/xray_exit_bridge.dart';
 import 'exit_tags.dart';
 import 'singbox_outbound_factory.dart';
 
@@ -13,13 +14,10 @@ import 'singbox_outbound_factory.dart';
 /// инбаунда под него не возникнет, и скрипт получит отказ соединения на адрес,
 /// который ему только что назвали.
 ///
-/// ⚠️ РАНЬШЕ ЗДЕСЬ СПРАШИВАЛИ ОДИН `SingboxOutboundFactory.supports`, И ЭТО
-/// ПРОПУСКАЛО ПАНЕЛЬНЫЕ ПРОФИЛИ «АВТО». У такого профиля `protocol` берётся с
-/// ПЕРВОГО outbound'а конфига и обычно равен `vless`, то есть `supports`
-/// отвечал `true`. Выход собирался — но из ОДНОГО произвольного узла профиля,
-/// без балансировщика и `burstObservatory`. Скрипт думал, что ходит «через
-/// Авто», а ходил через случайный узел; документация и интерфейс при этом
-/// утверждали обратное («показан серым»).
+/// Панельные профили «Авто …» (`balancers` + `burstObservatory`) и транспорты
+/// Xray (`xhttp`/`splithttp`) поднимаются через локальный SOCKS5-мост Xray ->
+/// `sing-box` ([needsXrayExitBridge]). Пустой или повреждённый профиль «Авто»
+/// без единого прокси-узла при этом честно отвергается.
 ///
 /// Текст причины уходит в журнал (`ExitOutbounds.skipped`) и не переводится —
 /// это диагностика, а не строка интерфейса.
@@ -39,16 +37,16 @@ String? exitServerRejection(VpnServer s) {
     return 'сервер не поддерживается клиентом (${s.unsupportedReason}): '
         '${s.displayName}';
   }
-  // Панельный профиль «Авто …» — готовый конфиг Xray целиком (`balancers` +
-  // `burstObservatory`), а выходы разводит sing-box. Разобрать его он не может,
-  // и молча взять из него один узел хуже, чем честно отказать.
-  if (s.isPanelProfile) {
-    return 'панельный профиль «Авто» вторым туннелем не поднимается: '
-        '${s.displayName}';
-  }
   if (s.usesWhitelistRelay) {
     return 'обход БС требует собственного WebRTC-звонка и вторым туннелем не поднимается: '
         '${s.displayName}';
+  }
+  if ((s.isPanelProfile || (s.rawJsonOverride ?? '').trim().isNotEmpty) &&
+      s.core == ProxyCore.xray) {
+    return fullConfigExitRejection(s);
+  }
+  if (needsXrayExitBridge(s)) {
+    return null;
   }
   if (!SingboxOutboundFactory.supports(s)) {
     return 'протокол не поднимается вторым туннелем: ${s.displayName}';
@@ -98,44 +96,27 @@ class ExitOutbounds {
   /// спрашивается через туннель, которого ещё нет.
   /// [fallbackTag] — куда уводить трафик правила, если его выход умер.
   /// Пусто — запасного пути нет, как было раньше.
-  ///
-  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ. Исходная просьба владельца 07.08.2026 кончалась
-  /// словами «а также сайт A как fallback», и именно этот кусок так и не был
-  /// сделан: на каждый ключ строился ровно один outbound, поэтому отказ выхода
-  /// означал, что правило просто перестаёт работать. Человек видит при этом не
-  /// «выход умер», а «сайт не открывается» — беду, причину которой назвать
-  /// нельзя.
-  ///
-  /// ⚠️ ПОЧЕМУ `selector`, А НЕ `urltest`. Ядро умеет обе группы (проверено
-  /// живьём: 64 узла плюс обе группы приняты), но `urltest` пробует КАЖДОГО
-  /// участника раз в три минуты. На телефоне это несогласованные пробуждения
-  /// радио — ровно та цена, из-за которой в 1.2.0 и решили «выход это один
-  /// сервер». `selector` не пробует никого: он помнит выбор и переключается по
-  /// команде. Команду даёт сторож выходов, который и так стучится в Clash API.
-  ///
-  /// ⚠️ ТЕГ ГРУППЫ — ТОТ ЖЕ `exitTagFor(key)`, что был у одиночного outbound-а.
-  /// Правила маршрутизации, DNS-зеркала и порты API ссылаются на него по
-  /// имени; смена имени тут означала бы висячие ссылки во всех трёх местах, а
-  /// висячий тег ядро принимает молча (урок #21).
+  /// [xrayBridgePorts] — локальные порты SOCKS5-мостов Xray для профилей
+  /// «Авто» и транспортов `XHTTP`. Если не переданы явно, вычисляются
+  /// детерминированно через [assignXrayExitBridgePorts].
   static ExitOutbounds build({
     required Map<String, VpnServer> servers,
     Map<String, String> resolvedIps = const {},
     String fallbackTag = '',
+    Map<String, int>? xrayBridgePorts,
+    String xrayBridgeUser = '',
+    String xrayBridgePassword = '',
   }) {
     final out = <Map<String, dynamic>>[];
     final skipped = <String, String>{};
+    final bridgePorts =
+        xrayBridgePorts ?? assignXrayExitBridgePorts(servers);
 
     // Порядок детерминирован: иначе конфиг «дышит» между сборками, и сравнение
     // готового конфига в тестах перестаёт работать.
     final keys = servers.keys.toList()..sort();
     for (final key in keys) {
       final server = servers[key]!;
-      // ⚠️ ЗДЕСЬ ЖИВЁТ ГРАНИЦА ВОЗМОЖНОГО, и вопрос задаётся ОДНОМУ ответчику
-      // ([exitServerRejection]) — тому же, которого спрашивают интерфейс и
-      // `GET /v1/exits`. Дополнительный сервер поднимает sing-box, а он не
-      // умеет ни панельных профилей «Авто» (это готовый конфиг Xray целиком),
-      // ни протоколов, которых нет у фабрики. Такой сервер нельзя молча
-      // подменить соседним — пользователь выбрал именно его.
       final rejection = exitServerRejection(server);
       if (rejection != null) {
         skipped[key] = rejection;
@@ -143,24 +124,30 @@ class ExitOutbounds {
       }
       try {
         final tag = exitTagFor(key);
-        if (fallbackTag.isEmpty) {
-          out.add(SingboxOutboundFactory.build(
+        final bridgePort = bridgePorts[key];
+        Map<String, dynamic> buildLeaf(String leafTag) {
+          if (bridgePort != null && needsXrayExitBridge(server)) {
+            return buildSingboxBridgeSocksOutbound(
+              tag: leafTag,
+              port: bridgePort,
+              user: xrayBridgeUser,
+              password: xrayBridgePassword,
+            );
+          }
+          return SingboxOutboundFactory.build(
             server,
-            tag: tag,
-            // Адрес подставляем заранее по той же причине, что и основному
-            // серверу: домен, отданный ядру как есть, резолвится уже из-под
-            // туннеля и замыкается сам на себя.
+            tag: leafTag,
             resolvedIp: resolvedIps[server.address],
-          ));
+          );
+        }
+
+        if (fallbackTag.isEmpty) {
+          out.add(buildLeaf(tag));
         } else {
           // Сам сервер уезжает под ВНУТРЕННИЙ тег, а имя выхода забирает
           // группа: так ссылки правил, DNS и портов API остаются целыми.
           final nodeTag = exitNodeTagFor(tag);
-          out.add(SingboxOutboundFactory.build(
-            server,
-            tag: nodeTag,
-            resolvedIp: resolvedIps[server.address],
-          ));
+          out.add(buildLeaf(nodeTag));
           out.add({
             'type': 'selector',
             'tag': tag,

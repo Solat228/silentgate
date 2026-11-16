@@ -126,6 +126,41 @@ void main() {
         isFalse,
       );
     });
+
+    test('пресет «Анти-сканер РФ» (приложения) добавляет Ozon, Госуслуги, MAX, банки и АЗС ГПН с overrideSites и allowRealIp',
+        () {
+      const initial = [
+        AppRule('org.telegram.messenger', action: AppAction.tunnel),
+      ];
+      expect(SplitServicePresets.isRuAntiScannerAppsActive(initial), isFalse);
+
+      final on = SplitServicePresets.toggleRuAntiScannerApps(initial);
+      expect(on.added, isTrue);
+      expect(SplitServicePresets.isRuAntiScannerAppsActive(on.apps), isTrue);
+
+      for (final pkg in [
+        'ru.ozon.app.android',
+        'com.wildberries.ru',
+        'ru.rostel',
+        'ru.oneme.app',
+        'com.idamob.tinkoff.android',
+        'ru.sberbankmobile',
+        'com.gazpromneft.azs',
+      ]) {
+        final r = on.apps.firstWhere((a) => a.path == pkg);
+        expect(r.action, AppAction.direct);
+        expect(r.allowRealIp, isTrue);
+        expect(r.overrideSites, isTrue);
+        expect(r.enabled, isTrue);
+      }
+      // Стороннее приложение не тронуто.
+      expect(on.apps.any((a) => a.path == 'org.telegram.messenger'), isTrue);
+
+      final off = SplitServicePresets.toggleRuAntiScannerApps(on.apps);
+      expect(off.added, isFalse);
+      expect(SplitServicePresets.isRuAntiScannerAppsActive(off.apps), isFalse);
+      expect(off.apps, initial);
+    });
   });
 
   group('Пояснение в разделе проверок сервисов и запрет длинного тире в ARB', () {

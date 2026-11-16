@@ -12,6 +12,7 @@ import 'layout/adaptive.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/dpi/dpi_bypass_lists.dart';
 import '../core/settings/app_settings.dart';
 import '../core/singbox/exit_outbounds.dart';
 import '../core/settings/split_service_presets.dart';
@@ -21,10 +22,12 @@ import '../core/settings/split_tunnel_text.dart';
 import '../core/settings/split_rule_layout.dart';
 import '../core/platform/platform_services.dart';
 import '../state/settings_controller.dart';
+import '../core/util/server_groups.dart';
 import '../core/util/server_search.dart';
 import 'widgets/app_icon.dart';
 import 'widgets/dead_path_badge.dart';
 import 'widgets/flag_text.dart';
+import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
 import 'widgets/server_tile.dart';
 import 'widgets/app_label.dart';
@@ -1084,6 +1087,13 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                         splitAppsCollapsed: !s.splitAppsCollapsed)),
                   ),
                   _appTools(context, controller, state, l),
+                  _quickAppChips(
+                    context,
+                    controller,
+                    state,
+                    l,
+                    isDesktop: platform.appCatalog.supportsManualPick,
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: SelText(
@@ -1617,6 +1627,199 @@ class _SplitTunnelScreenState extends State<SplitTunnelScreen> {
                 },
               );
             }).toList(),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              FilterChip(
+                key: const Key('splitPreset-aiSites'),
+                avatar: const Icon(Icons.auto_awesome, size: 16),
+                label: Text(
+                  Localizations.localeOf(context).languageCode == 'ru'
+                      ? '🤖 Все нейросети (ChatGPT, Claude, Gemini, Antigravity, Cursor, DeepSeek, Grok)'
+                      : '🤖 All AI (ChatGPT, Claude, Gemini, Antigravity, Cursor, DeepSeek, Grok)',
+                ),
+                selected: SplitServicePresets.isAiSitesPresetActive(
+                  st.sites,
+                  action: defaultAction,
+                ),
+                onSelected: (_) {
+                  final action = controller.settings.splitTunnel.defaultAction;
+                  final toggled = SplitServicePresets.toggleAiSitesPreset(
+                    controller.settings.splitTunnel.sites,
+                    action: action,
+                  );
+                  controller.update((s) {
+                    final groupKey = splitGroupKey('sites', action);
+                    final nextCollapsed = toggled.added
+                        ? s.splitCollapsed.where((k) => k != groupKey).toList()
+                        : s.splitCollapsed;
+                    return s.copyWith(
+                      splitSitesCollapsed:
+                          toggled.added ? false : s.splitSitesCollapsed,
+                      splitCollapsed: nextCollapsed,
+                      splitTunnel:
+                          s.splitTunnel.copyWith(sites: toggled.sites),
+                    );
+                  });
+                  if (state.status.isConnected &&
+                      splitRulesEditableIn(controller.settings.captureMode)) {
+                    unawaited(state.reconnect(controller.settings));
+                  }
+                },
+              ),
+              FilterChip(
+                key: const Key('splitPreset-dpiBypassFallback'),
+                avatar: const Icon(Icons.bolt, size: 16),
+                label: const Text('⚡ Zapret → VPN (YouTube + Discord)'),
+                selected: SplitServicePresets.isDpiBypassPresetActive(
+                  st.sites,
+                  serverKey: kDpiBypassFallbackKey,
+                ),
+                onSelected: (_) {
+                  final toggled = SplitServicePresets.toggleDpiBypassPreset(
+                    controller.settings.splitTunnel.sites,
+                    serverKey: kDpiBypassFallbackKey,
+                  );
+                  controller.update((s) => s.copyWith(
+                        splitSitesCollapsed:
+                            toggled.added ? false : s.splitSitesCollapsed,
+                        splitTunnel:
+                            s.splitTunnel.copyWith(sites: toggled.sites),
+                      ));
+                  if (state.status.isConnected &&
+                      splitRulesEditableIn(controller.settings.captureMode)) {
+                    unawaited(state.reconnect(controller.settings));
+                  }
+                },
+              ),
+              FilterChip(
+                key: const Key('splitPreset-dpiBypassDirect'),
+                avatar: const Icon(Icons.bolt_outlined, size: 16),
+                label: const Text('⚡ Только Zapret (YouTube + Discord)'),
+                selected: SplitServicePresets.isDpiBypassPresetActive(
+                  st.sites,
+                  serverKey: kDpiBypassDirectKey,
+                ),
+                onSelected: (_) {
+                  final toggled = SplitServicePresets.toggleDpiBypassPreset(
+                    controller.settings.splitTunnel.sites,
+                    serverKey: kDpiBypassDirectKey,
+                  );
+                  controller.update((s) => s.copyWith(
+                        splitSitesCollapsed:
+                            toggled.added ? false : s.splitSitesCollapsed,
+                        splitTunnel:
+                            s.splitTunnel.copyWith(sites: toggled.sites),
+                      ));
+                  if (state.status.isConnected &&
+                      splitRulesEditableIn(controller.settings.captureMode)) {
+                    unawaited(state.reconnect(controller.settings));
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickAppChips(
+    BuildContext context,
+    SettingsController controller,
+    AppState state,
+    AppLocalizations l, {
+    required bool isDesktop,
+  }) {
+    final st = controller.settings.splitTunnel;
+    final isRu = Localizations.localeOf(context).languageCode == 'ru';
+    if (isDesktop) {
+      final defaultAction = st.defaultAction;
+      final active = SplitServicePresets.isAiAppsPresetActive(
+        st.apps,
+        action: defaultAction,
+      );
+      final label = isRu
+          ? '🤖 Нейросети и AI-IDE (Antigravity, Cursor, Windsurf, Claude, ChatGPT)'
+          : '🤖 AI Desktop & IDEs (Antigravity, Cursor, Windsurf, Claude, ChatGPT)';
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            FilterChip(
+              key: const Key('splitPreset-aiApps'),
+              avatar: const Icon(Icons.auto_awesome, size: 16),
+              label: Text(label),
+              selected: active,
+              onSelected: (_) {
+                final action = controller.settings.splitTunnel.defaultAction;
+                final toggled = SplitServicePresets.toggleAiAppsPreset(
+                  controller.settings.splitTunnel.apps,
+                  action: action,
+                );
+                controller.update((s) {
+                  final groupKey = splitGroupKey('apps', action);
+                  final nextCollapsed = toggled.added
+                      ? s.splitCollapsed.where((k) => k != groupKey).toList()
+                      : s.splitCollapsed;
+                  return s.copyWith(
+                    splitAppsCollapsed:
+                        toggled.added ? false : s.splitAppsCollapsed,
+                    splitCollapsed: nextCollapsed,
+                    splitTunnel: s.splitTunnel.copyWith(apps: toggled.apps),
+                  );
+                });
+                if (state.status.isConnected &&
+                    splitRulesEditableIn(controller.settings.captureMode)) {
+                  unawaited(state.reconnect(controller.settings));
+                }
+              },
+            ),
+          ],
+        ),
+      );
+    }
+
+    final active = SplitServicePresets.isRuAntiScannerAppsActive(st.apps);
+    final label = isRu
+        ? '🛡️ Анти-сканер РФ (Ozon, Госуслуги, MAX, Банки, АЗС ГПН)'
+        : '🛡️ RU Anti-Scanner Bypass (Ozon, Gosuslugi, MAX, Banks)';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          FilterChip(
+            key: const Key('splitPreset-ruAntiScannerApps'),
+            label: Text(label),
+            selected: active,
+            onSelected: (_) {
+              final toggled = SplitServicePresets.toggleRuAntiScannerApps(
+                controller.settings.splitTunnel.apps,
+              );
+              controller.update((s) {
+                final groupKey = splitGroupKey('apps', AppAction.direct);
+                final nextCollapsed = toggled.added
+                    ? s.splitCollapsed.where((k) => k != groupKey).toList()
+                    : s.splitCollapsed;
+                return s.copyWith(
+                  splitAppsCollapsed:
+                      toggled.added ? false : s.splitAppsCollapsed,
+                  splitCollapsed: nextCollapsed,
+                  splitTunnel: s.splitTunnel.copyWith(apps: toggled.apps),
+                );
+              });
+              if (state.status.isConnected &&
+                  splitRulesEditableIn(controller.settings.captureMode)) {
+                unawaited(state.reconnect(controller.settings));
+              }
+            },
           ),
         ],
       ),
@@ -2621,13 +2824,34 @@ class ServerBadge extends StatelessWidget {
     }
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
-    VpnServer? server;
-    for (final s in servers) {
-      if (s.key == serverKey) {
-        server = s;
-        break;
-      }
+    if (isDpiBypassServerKey(serverKey)) {
+      final isFallback = serverKey == kDpiBypassFallbackKey;
+      final label = isFallback ? '⚡ Zapret → VPN' : '⚡ Zapret';
+      final tip = isFallback
+          ? 'Сначала прямой обход DPI (TLS-фрагментация без расхода VPN); '
+            'при блокировке или зависании на 16–20 КБ — автоматический переход в VPN'
+          : 'Прямой обход DPI (TLS-фрагментация с домашнего IP без VPN)';
+      return Tooltip(
+        message: tip,
+        child: Container(
+          margin: const EdgeInsetsDirectional.only(end: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: scheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context)
+                .textTheme
+                .labelSmall
+                ?.copyWith(color: scheme.onSecondaryContainer),
+          ),
+        ),
+      );
     }
+    final VpnServer? server =
+        ServerGroups.findOrResolveServer(servers, serverKey);
     // Сервер исчез из подписки, пока правило лежало. Показываем это явно:
     // трафик пойдёт основным туннелем, а молчащая строка выглядела бы
     // настроенной — человек искал бы поломку не там.
@@ -2787,21 +3011,31 @@ class RuleServerField extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    VpnServer? picked;
-    for (final s in servers) {
-      if (s.key == serverKey) {
-        picked = s;
-        break;
-      }
-    }
+    final isDpi = isDpiBypassServerKey(serverKey);
+    final VpnServer? picked =
+        isDpi ? null : ServerGroups.findOrResolveServer(servers, serverKey);
     // ⚠️ Сервер мог пропасть из подписки, пока правило лежало. Прежний
     // `DropdownButtonFormField` в этом случае молча показывал «Как основной» —
     // то есть врал: правило по-прежнему ссылается на исчезнувший сервер.
     // Говорим прямо, той же строкой, что и плашка в списке правил.
-    final gone = serverKey != null && picked == null;
+    final gone = serverKey != null && !isDpi && picked == null;
 
     final Widget inner;
-    if (picked != null) {
+    if (isDpi) {
+      final isFallback = serverKey == kDpiBypassFallbackKey;
+      inner = ListTile(
+        dense: true,
+        leading: const Icon(Icons.bolt),
+        title: Text(
+          isFallback
+              ? '⚡ Обход DPI: Zapret → VPN (при блоке — в туннель)'
+              : '⚡ Обход DPI: только Zapret (напрямую без VPN)',
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        onTap: () => _open(context),
+      );
+    } else if (picked != null) {
       inner = ServerTile(
         server: picked,
         selected: false,
@@ -2891,12 +3125,25 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
+    final state = context.watch<AppState>();
+    final settings = context.watch<SettingsController>().settings;
     final all = widget.servers.where((s) => !s.isNotice).toList();
     // Поиск — общий с главным экраном (`ServerSearch`): у владельца в подписке
     // больше сотни серверов, и без поиска список пришлось бы листать.
     // ⚠️ Он отдаёт ИСХОДНЫЕ индексы, поэтому берём сервер по ним, а не по
     // порядку в отфильтрованном списке.
     final found = ServerSearch.matchIndices(all, _q);
+    final selectedIdx = widget.serverKey == null
+        ? -1
+        : all.indexWhere((s) => s.key == widget.serverKey);
+    final entries = serverListEntries(
+      servers: all,
+      shown: found,
+      searching: _q.isNotEmpty,
+      settings: settings,
+      selected: selectedIdx,
+      isPinned: state.isPinned,
+    );
 
     return AlertDialog(
       title: Text(l.ruleServer),
@@ -2930,16 +3177,71 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
               onTap: () =>
                   Navigator.of(context).pop(const RuleServerChoice(null)),
             ),
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.bolt),
+              selected: widget.serverKey == kDpiBypassFallbackKey,
+              title: const Text('⚡ Обход DPI: Zapret → VPN'),
+              subtitle: const Text(
+                'Сначала напрямую без трафика VPN; при блоке ТСПУ — авто-переход в VPN',
+                maxLines: 2,
+              ),
+              trailing: widget.serverKey == kDpiBypassFallbackKey
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () => Navigator.of(context)
+                  .pop(const RuleServerChoice(kDpiBypassFallbackKey)),
+            ),
+            ListTile(
+              dense: true,
+              leading: const Icon(Icons.bolt_outlined),
+              selected: widget.serverKey == kDpiBypassDirectKey,
+              title: const Text('⚡ Обход DPI: только Zapret (без VPN)'),
+              subtitle: const Text(
+                'Прямая фрагментация TLS ClientHello с домашнего IP',
+                maxLines: 1,
+              ),
+              trailing: widget.serverKey == kDpiBypassDirectKey
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () => Navigator.of(context)
+                  .pop(const RuleServerChoice(kDpiBypassDirectKey)),
+            ),
             const Divider(height: 1),
             Expanded(
               child: found.isEmpty
                   ? Center(child: Text(l.splitNothingFound))
                   : ListView.builder(
-                      itemCount: found.length,
+                      itemCount: entries.length,
                       itemBuilder: (_, i) {
-                        final s = all[found[i]];
+                        final entry = entries[i];
+                        if (entry is ServerGroupHeader) {
+                          final groupKey =
+                              ServerGroups.virtualGroupKey(entry.country);
+                          final virtualSrv =
+                              ServerGroups.virtualServerFor(entry, all);
+                          final supported = virtualSrv != null &&
+                              canBeExitServer(virtualSrv);
+                          return ServerGroupHeaderTile(
+                            group: entry,
+                            flagSource: all[entry.indices.first].remark,
+                            selectedOverride:
+                                supported && widget.serverKey == groupKey,
+                            onSelect: supported
+                                ? () => Navigator.of(context)
+                                    .pop(RuleServerChoice(groupKey))
+                                : (virtualSrv != null
+                                    ? () => showUnsupportedExitServerDialog(
+                                          context,
+                                          virtualSrv,
+                                        )
+                                    : () {}),
+                          );
+                        }
+                        final row = entry as ServerRowEntry;
+                        final s = all[row.index];
                         final supported = canBeExitServer(s);
-                        return ServerTile(
+                        final tile = ServerTile(
                           server: s,
                           selected: supported && s.key == widget.serverKey,
                           // Непригодные серверы («Авто», обходы БС, Xray-only)
@@ -2963,6 +3265,7 @@ class _RuleServerPickerDialogState extends State<RuleServerPickerDialog> {
                           unavailableNote:
                               supported ? null : l.exitServerBlockedNote,
                         );
+                        return serverListRow(row, tile);
                       },
                     ),
             ),

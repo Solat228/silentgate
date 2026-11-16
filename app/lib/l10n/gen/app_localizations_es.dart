@@ -3398,7 +3398,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'Sitio web';
+  String get subBarOpenSite => 'Página de suscripción';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint =>
@@ -4714,4 +4717,70 @@ class AppLocalizationsEs extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return 'El servidor \"$name\" no se puede asignar actualmente como salida separada para una regla.\n\nLos perfiles \"Auto\", los relés y protocolos exclusivos de Xray (como XHTTP) requieren una canalización Xray completa, mientras que sing-box gestiona directamente las salidas secundarias.\n\nElija un servidor individual estándar para esta regla o use \"$name\" como servidor principal.';
   }
+
+  @override
+  String get supportChipCantConnect => 'No conecta';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / sitio no abre';
+
+  @override
+  String get supportChipSlowSpeed => 'Velocidad baja';
+
+  @override
+  String get supportChipDrops => 'Se corta la conexión';
+
+  @override
+  String get supportChipsHint =>
+      'Selección rápida (opcional, sin escribir detalles):';
+
+  @override
+  String get supportDescribeOptionalLabel =>
+      'Descripción del problema (opcional)';
+
+  @override
+  String get supportNoTextProvided =>
+      'Sin descripción escrita (informe técnico)';
+
+  @override
+  String get supportCategoriesHeader => 'Categoría';
+
+  @override
+  String get supportSendDevCopyTitle =>
+      'Enviar copia anonimizada al desarrollador';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Sin token de suscripción, IPs personales ni HWID real - ayuda a corregir fallos rápido';
+
+  @override
+  String get supportPreviewDevCopy => '¿Qué se envía?';
+
+  @override
+  String get supportPreviewDialogTitle =>
+      'Copia anonimizada para el desarrollador';
+
+  @override
+  String get supportSendDevOnlyButton => 'Solo al desarrollador';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Copia enviada al desarrollador ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'No se pudo subir al servidor ($code) - archivo local listo';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Informe anonimizado enviado al servidor del desarrollador. Código: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Informe diagnóstico';
+
+  @override
+  String get supportSendToChatAndDev => 'Adjuntar al chat';
 }

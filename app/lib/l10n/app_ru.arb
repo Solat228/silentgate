@@ -1451,7 +1451,7 @@
   "blockNoticeSub": "Когда приложение или браузер стучится на сайт из списка «Блок», внизу появится уведомление с его именем. Нажмите - откроется этот экран.",
   "siteInsecureScheme": "Адрес задан как http:// - соединение не шифруется, и провайдер видит его целиком. Уберите «http://», чтобы браузер шёл по https.",
   "exitServerGone": "Сервер этого правила пропал из подписки - трафик идёт основным туннелем",
-  "exitServerUnsupported": "{name}\n\nЭтот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.",
+  "exitServerUnsupported": "{name}\n\nЭтот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.",
   "@exitServerUnsupported": {
     "placeholders": {
       "name": {
@@ -1768,13 +1768,14 @@
       }
     }
   },
-  "subBarOpenSite": "Сайт",
+  "subBarOpenSite": "Страница подписки",
+  "subBarTelegram": "Телеграм / Бот",
   "subBarOpenSiteHint": "Открыть страницу подписки в браузере",
   "subSwitcherRefreshingOne": "Обновляю «{name}»…",
   "subSwitcherRefreshedOne": "«{name}» обновлена",
   "subSwitcherRefreshFailedOne": "Не удалось обновить «{name}»",
   "subBarDeleteConfirmNamed": "Удалить подписку «{name}»?",
-  "exitServerUnsupportedInfo": "Этот сервер нельзя поднять отдельным выходом: панельные профили «Авто» и часть протоколов умеет только Xray, а выходы разводит sing-box. Трафик правила идёт основным туннелем.",
+  "exitServerUnsupportedInfo": "Этот сервер нельзя поднять отдельным выходом: обходы БС по звонку, VMess и пустые профили работают только основным сервером. Трафик правила идёт основным туннелем.",
   "pingBusyServiceChecks": "Пинг недоступен: идёт проверка сервисов",
   "serviceChecksChannelNotReady": "Канал ещё не готов - проверка не запускалась",
   "serviceChecksRetryCheck": "Повторить проверку",
@@ -2647,11 +2648,50 @@
     }
   },
   "exitServerBlockedTitle": "Нельзя выбрать отдельным выходом",
-  "exitServerBlockedNote": "Недоступен для отдельного выбора: профили «Авто», обходы БС и часть протоколов работают только как основной сервер.",
-  "exitServerBlockedBody": "Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nПанельные профили «Авто», многошаговые обходы и протоколы только для Xray (например XHTTP) требуют отдельного конвейера Xray, а вторичные выходы правил поднимает напрямую ядро sing-box.\n\nВыберите для этого правила обычный одиночный сервер (VLESS, Trojan, Shadowsocks, Hysteria2) либо включите «{name}» основным сервером на главном экране.",
+  "exitServerBlockedNote": "Недоступен для отдельного выбора: обходы БС по звонку, VMess и пустые профили работают только как основной сервер.",
+  "exitServerBlockedBody": "Сервер «{name}» сейчас нельзя назначить отдельным выходом для правила.\n\nМногошаговые обходы БС (WebRTC-звонки), устаревшие протоколы (VMess) и пустые шаблоны без узлов не поднимаются вторым параллельным выходом.\n\nВыберите для этого правила рабочий сервер или профиль «Авто» либо включите «{name}» основным сервером на главном экране.",
   "@exitServerBlockedBody": {
     "placeholders": {
       "name": {
+        "type": "String"
+      }
+    }
+  },
+  "supportChipCantConnect": "Не подключается",
+  "supportChipSiteOrYoutube": "Не открывается YouTube / сайт",
+  "supportChipSlowSpeed": "Низкая скорость",
+  "supportChipDrops": "Обрывается связь",
+  "supportChipsHint": "Быстрый выбор (можно не писать подробности):",
+  "supportDescribeOptionalLabel": "Описание проблемы (необязательно)",
+  "supportNoTextProvided": "Без текстового описания (технический отчёт)",
+  "supportCategoriesHeader": "Категория",
+  "supportSendDevCopyTitle": "Отправить обезличенную копию разработчику",
+  "supportSendDevCopySub": "Без токена подписки, личных IP и сырого HWID - помогает быстрее чинить сбои",
+  "supportPreviewDevCopy": "Что уйдёт?",
+  "supportPreviewDialogTitle": "Обезличенная копия для разработчика",
+  "supportSendDevOnlyButton": "Только разработчику",
+  "supportDevCopySent": "Копия отправлена разработчику ({code})",
+  "supportDevCopyFailed": "Не удалось отправить на сервер ({code}) - локальный файл готов",
+  "supportDevOnlyDoneText": "Обезличенный отчёт отправлен на сервер разработчика. Код отчёта: {code}",
+  "supportAttachDiagButton": "Отчёт диагностики",
+  "supportSendToChatAndDev": "Прикрепить в чат",
+  "@supportDevCopySent": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "@supportDevCopyFailed": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      }
+    }
+  },
+  "@supportDevOnlyDoneText": {
+    "placeholders": {
+      "code": {
         "type": "String"
       }
     }

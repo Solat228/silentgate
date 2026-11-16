@@ -3358,7 +3358,10 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get subBarOpenSite => 'الموقع';
+  String get subBarOpenSite => 'صفحة الاشتراك';
+
+  @override
+  String get subBarTelegram => 'تيليجرام / البوت';
 
   @override
   String get subBarOpenSiteHint => 'فتح صفحة الاشتراك في المتصفح';
@@ -4651,4 +4654,65 @@ class AppLocalizationsAr extends AppLocalizations {
   String exitServerBlockedBody(String name) {
     return 'لا يمكن حالياً تعيين الخادم \"$name\" كمخرج منفصل للقاعدة.\n\nتتطلب ملفات \"التلقائي\" والمرحلات وبروتوكولات Xray الخاصة (مثل XHTTP) مسار Xray كاملاً، بينما يدير sing-box المخارج الفرعية مباشرة.\n\nيرجى اختيار خادم فردي قياسي لهذه القاعدة أو تعيين \"$name\" كخادم رئيسي في الشاشة الرئيسية.';
   }
+
+  @override
+  String get supportChipCantConnect => 'لا يتصل';
+
+  @override
+  String get supportChipSiteOrYoutube => 'يوتيوب / الموقع لا يفتح';
+
+  @override
+  String get supportChipSlowSpeed => 'سرعة منخفضة';
+
+  @override
+  String get supportChipDrops => 'انقطاع الاتصال';
+
+  @override
+  String get supportChipsHint => 'اختيار سريع (اختياري دون كتابة تفاصيل):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'وصف المشكلة (اختياري)';
+
+  @override
+  String get supportNoTextProvided => 'بدون وصف نصي (تقرير تقني فقط)';
+
+  @override
+  String get supportCategoriesHeader => 'الفئة';
+
+  @override
+  String get supportSendDevCopyTitle => 'إرسال نسخة مجهولة الهوية للمطور';
+
+  @override
+  String get supportSendDevCopySub =>
+      'بدون رمز الاشتراك أو عناوين IP الشخصية أو HWID الخام - يسرع إصلاح الأعطال';
+
+  @override
+  String get supportPreviewDevCopy => 'ماذا يُرسل؟';
+
+  @override
+  String get supportPreviewDialogTitle => 'نسخة مجهولة الهوية للمطور';
+
+  @override
+  String get supportSendDevOnlyButton => 'للمطور فقط';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'تم إرسال النسخة للمطور ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'تعذر الإرسال للخادم ($code) - الملف المحلي جاهز';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'تم إرسال التقرير المجهول لخادم المطور. الرمز: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'تقرير التشخيص';
+
+  @override
+  String get supportSendToChatAndDev => 'إرفاق بالمحادثة';
 }

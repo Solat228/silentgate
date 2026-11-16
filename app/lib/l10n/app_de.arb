@@ -1232,7 +1232,8 @@
   "serviceChecksAfterOff": "VPN ist aus",
   "serviceChecksNow": "Jetzt",
   "serviceChecksExitServer": "Über einen anderen Server: Die Split-Tunneling-Regel „{rule}“ leitet diese Domain über „{server}“.",
-  "subBarOpenSite": "Website",
+  "subBarOpenSite": "Abonnementseite",
+  "subBarTelegram": "Telegram / Bot",
   "subBarOpenSiteHint": "Abonnementseite im Browser öffnen",
   "subSwitcherRefreshingOne": "„{name}“ wird aktualisiert…",
   "subSwitcherRefreshedOne": "„{name}“ aktualisiert",
@@ -1814,5 +1815,23 @@
         "type": "String"
       }
     }
-  }
+  },
+  "supportChipCantConnect": "Verbindet nicht",
+  "supportChipSiteOrYoutube": "YouTube / Website lädt nicht",
+  "supportChipSlowSpeed": "Niedrige Geschwindigkeit",
+  "supportChipDrops": "Verbindung bricht ab",
+  "supportChipsHint": "Schnellauswahl (optional, keine Beschreibung nötig):",
+  "supportDescribeOptionalLabel": "Problembeschreibung (optional)",
+  "supportNoTextProvided": "Ohne Textbeschreibung (technischer Bericht)",
+  "supportCategoriesHeader": "Kategorie",
+  "supportSendDevCopyTitle": "Anonymisierte Kopie an Entwickler senden",
+  "supportSendDevCopySub": "Ohne Abo-Token, persönliche IPs oder rohe HWID - hilft Fehler schneller zu beheben",
+  "supportPreviewDevCopy": "Was wird gesendet?",
+  "supportPreviewDialogTitle": "Anonymisierte Kopie für Entwickler",
+  "supportSendDevOnlyButton": "Nur an Entwickler",
+  "supportDevCopySent": "Kopie an Entwickler gesendet ({code})",
+  "supportDevCopyFailed": "Server-Upload fehlgeschlagen ({code}) - lokale Datei bereit",
+  "supportDevOnlyDoneText": "Anonymisierter Bericht an den Entwickler-Server gesendet. Code: {code}",
+  "supportAttachDiagButton": "Diagnosebericht",
+  "supportSendToChatAndDev": "Im Chat anhängen"
 }

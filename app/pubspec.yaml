@@ -1,7 +1,7 @@
 name: silentgate
 description: "SilentGate VPN client"
 publish_to: 'none'
-version: 1.18.3+96
+version: 1.18.8+103
 
 environment:
   sdk: ^3.4.0
@@ -65,6 +65,7 @@ flutter:
     - path: assets/geo/
       flavors:
         - github
+        - stealth
         - play
     # ⚠️ Обязательное раскрытие, а не украшение. На Android ядра встроены В
     # приложение (libcores.so внутри APK), а sing-box — GPL-3.0: текст лицензии

@@ -8,10 +8,13 @@ import 'package:provider/provider.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/models/vpn_server.dart';
 import '../core/net/ip_info.dart';
+import '../core/net/socks5_http_bridge.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/net/speed_test.dart';
 import '../core/whitelist_bypass/whitelist_bypass_helper.dart';
+import '../core/whitelist_bypass/whitelist_relay_probe.dart';
 import '../core/probe/probe_harness.dart';
+import '../core/xray/outbound_variant.dart';
 import '../core/util/country_flag.dart';
 import '../core/util/uptime_format.dart';
 import '../core/i18n/enum_labels.dart';
@@ -33,7 +36,20 @@ import 'widgets/server_autoconfig_card.dart';
 /// Системный прокси и TUN не трогаются, поэтому проверка не требует включать VPN.
 class ServerInfoScreen extends StatefulWidget {
   final VpnServer server;
-  const ServerInfoScreen({super.key, required this.server});
+
+  /// Подмена запуска пробы для модульных тестов без выхода в сеть.
+  final Future<HarnessHandle> Function(VpnServer server)? probeStarter;
+
+  /// Подмена запроса геоданных через прокси для модульных тестов.
+  final Future<IpInfo?> Function(int port, String user, String password)?
+      ipViaProxyLookup;
+
+  const ServerInfoScreen({
+    super.key,
+    required this.server,
+    this.probeStarter,
+    this.ipViaProxyLookup,
+  });
 
   @override
   State<ServerInfoScreen> createState() => _ServerInfoScreenState();
@@ -44,14 +60,23 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   SpeedResult? _speedDirect;
   SpeedResult? _speedServer;
 
-  bool _loadingIp = false;
+  bool _loadingIp = true;
   bool _testingSpeed = false;
+  bool _disposed = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadIps();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _loadIps();
+    });
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   /// Поднять харнесс для этого сервера и выполнить [action] с его портом.
@@ -62,32 +87,52 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   /// там же, где выбирается порт, а не угадываются снаружи.
   Future<T?> _withHarness<T>(
       Future<T> Function(int port, String user, String password) action) async {
-    final l = AppLocalizations.of(context);
-    final state = context.read<AppState>();
-    final isLive =
-        state.status.isConnected && state.connectedServerKey == widget.server.key;
+    final state = context.read<AppState?>();
+    final isLive = state != null &&
+        state.status.isConnected &&
+        state.connectedServerKey == widget.server.key;
     if (isLive && state.httpProxyPort > 0) {
       return await action(
           state.httpProxyPort, ProxyProbe.user, ProxyProbe.password);
     }
-    if (widget.server.usesWhitelistRelay) {
-      if (mounted) setState(() => _error = l.srvInfoNeedsConnection);
-      return null;
-    }
     HarnessHandle? handle;
     try {
-      final variant = context.read<AppState>().variantFor(widget.server);
-      handle = await createProbeHarness().start([
-        HarnessEntry(key: widget.server.key, server: widget.server, variant: variant),
-      ]);
+      final variant = state?.variantFor(widget.server) ?? OutboundVariant.none;
+      final customStarter = widget.probeStarter;
+      if (customStarter != null) {
+        handle = await customStarter(widget.server);
+      } else if (widget.server.usesWhitelistRelay) {
+        final bsHandle = await WhitelistRelayProbe.start(
+          widget.server,
+          variant: variant,
+          harnessFactory: createProbeHarness,
+          abort: () => _disposed,
+        );
+        if (bsHandle.relayFailed) {
+          if (mounted) {
+            final l = AppLocalizations.of(context);
+            setState(
+                () => _error = l.srvInfoProbeFailed('не удалось войти в звонок'));
+          }
+          return null;
+        }
+        handle = bsHandle;
+      } else {
+        handle = await createProbeHarness().start([
+          HarnessEntry(
+              key: widget.server.key, server: widget.server, variant: variant),
+        ]);
+      }
+      if (_disposed) return null;
       var port = handle.proxyPortFor(0);
       var user = handle.proxyUser;
       var password = handle.proxyPassword;
 
       if (port <= 0) {
-        final live = state.status.isConnected ? state.httpProxyPort : 0;
+        final live = isLive ? state.httpProxyPort : 0;
         if (live <= 0) {
           if (mounted) {
+            final l = AppLocalizations.of(context);
             setState(() => _error = l.srvInfoNeedsConnection);
           }
           return null;
@@ -98,34 +143,65 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
       }
       return await action(port, user, password);
     } catch (e) {
-      if (mounted) setState(() => _error = l.srvInfoProbeFailed('$e'));
+      if (mounted) {
+        final l = AppLocalizations.of(context);
+        setState(() => _error = l.srvInfoProbeFailed('$e'));
+      }
       return null;
     } finally {
       await handle?.stop();
     }
   }
 
-  /// Локация сервера определяется по ЕГО адресу (резолв + гео по этому IP).
-  /// Мы намеренно не выходим ни через сервер, ни напрямую: туннель для справки
-  /// поднимать незачем, а лишний прямой запрос раскрывал бы ваш реальный адрес.
-  /// Прямой замер остаётся только в тесте скорости — там он нужен для сравнения.
-  Future<void> _loadIps() async {
-    final l = AppLocalizations.of(context);
+  /// Локация обычного сервера определяется по ЕГО адресу (резолв + гео по этому IP).
+  /// Для серверов обхода БС (`whitelist://` и `/sgbs`) сигнальный домен (`vk.ru`,
+  /// `telemost.yandex.ru`) принадлежит площадке звонка, а не выходной ноде —
+  /// поэтому реальный выходной IP определяется через живой канал или вход в звонок.
+  Future<void> _loadIps({bool forceRefresh = false}) async {
+    if (!mounted) return;
     setState(() {
       _loadingIp = true;
       _error = null;
     });
-    final hostToLookup = widget.server.isWhitelistBypass
-        ? (widget.server.whitelistCreatorHost?.isNotEmpty == true
-            ? widget.server.whitelistCreatorHost!
-            : (WhitelistBypassEndpoint.domainsForServer(widget.server).firstOrNull ?? widget.server.address))
-        : widget.server.address;
-    final info = await IpInfoService.lookupHost(hostToLookup);
+
+    IpInfo? info;
+    if (widget.server.usesWhitelistRelay) {
+      final creatorHost = (widget.server.whitelistCreatorHost ?? '').trim();
+      if (creatorHost.isNotEmpty) {
+        info = await IpInfoService.lookupHost(creatorHost);
+      } else {
+        if (!forceRefresh) {
+          final cached = WhitelistExitIpCache.get(widget.server);
+          if (cached != null) {
+            if (!mounted) return;
+            setState(() {
+              _viaServer = cached;
+              _loadingIp = false;
+            });
+            return;
+          }
+        }
+        final lookupFn = widget.ipViaProxyLookup ??
+            (int port, String user, String password) => IpInfoService.lookup(
+                  proxyPort: port,
+                  proxyUser: user,
+                  proxyPassword: password,
+                );
+        info = await _withHarness<IpInfo?>(lookupFn);
+        if (info != null) {
+          WhitelistExitIpCache.put(widget.server, info);
+        }
+      }
+    } else {
+      info = await IpInfoService.lookupHost(widget.server.address);
+    }
+
     if (!mounted) return;
+    final l = AppLocalizations.of(context);
     setState(() {
       _viaServer = info;
       _loadingIp = false;
-      if (info == null) _error = l.srvInfoServerAddressFailed;
+      if (info == null && _error == null) _error = l.srvInfoServerAddressFailed;
     });
   }
 
@@ -222,7 +298,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
             child: TextButton.icon(
               icon: const Icon(Icons.refresh, size: 18),
               label: Text(l.srvInfoCheckAgain),
-              onPressed: _loadingIp ? null : _loadIps,
+              onPressed: _loadingIp ? null : () => _loadIps(forceRefresh: true),
             ),
           ),
 
@@ -260,7 +336,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
 
           const SizedBox(height: 16),
           _section(context, l.srvInfoSectionParams),
-          _kv(context, l.srvInfoParamAddress, '${s.address}:${s.port}'),
+          _kv(context, l.srvInfoParamAddress, _displayServerAddress(s)),
           _kv(context, l.srvInfoParamProtocol, s.protocolLabel),
           _kv(context, l.srvInfoParamTransport, s.network),
           if ((s.sni ?? '').isNotEmpty) _kv(context, 'SNI', s.sni!),
@@ -274,7 +350,7 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
           // строки под ним — это обещание данных, которых нет: при
           // выключенном VPN отсчёта не существует, и «Текущее подключение» с
           // пустотой под ним читалось бы как поломка, а не как «выключено».
-          const _SessionUptimeBlock(),
+          _SessionUptimeBlock(serverKey: s.key),
         ],
       ),
     );
@@ -355,6 +431,22 @@ class _ServerInfoScreenState extends State<ServerInfoScreen> {
   /// результат замера) наезжали друг на друга — владелец описал это как
   /// «текст плывёт». Теперь на узком экране подпись встаёт НАД значением, а на
   /// широком остаётся сбоку: и там и там читается, а вёрстка не ломается.
+  String _displayServerAddress(VpnServer s) {
+    if (!s.isWhitelistBypass) {
+      return '${s.address}:${s.port}';
+    }
+    final resolvedIp = (_viaServer?.ip ?? '').trim();
+    if (resolvedIp.isNotEmpty) return resolvedIp;
+    final creatorHost = (s.whitelistCreatorHost ?? '').trim();
+    if (creatorHost.isNotEmpty) return creatorHost;
+    final room = WhitelistBypassSpec.normalizeRoom(
+      s.whitelistPlatform ?? 'vk',
+      s.whitelistRoom ?? '',
+    );
+    if (room.isNotEmpty) return room;
+    return s.protocolLabel;
+  }
+
   Widget _kv(BuildContext context, String k, String v) =>
       _kvRow(context, k, v);
 
@@ -406,7 +498,8 @@ Widget _kvRow(BuildContext context, String k, String v) => Padding(
 /// замеры скорости и карточки адресов, перерисовывать их каждую секунду
 /// незачем, а замер скорости идёт минутами.
 class _SessionUptimeBlock extends StatefulWidget {
-  const _SessionUptimeBlock();
+  final String? serverKey;
+  const _SessionUptimeBlock({this.serverKey});
 
   @override
   State<_SessionUptimeBlock> createState() => _SessionUptimeBlockState();
@@ -432,10 +525,15 @@ class _SessionUptimeBlockState extends State<_SessionUptimeBlock> {
   @override
   Widget build(BuildContext context) {
     // Необязательное чтение: стражи вёрстки поднимают экран без провайдеров.
-    final d = context.watch<AppState?>()?.connectedFor;
-    // VPN выключен — отсчёта не существует, блока нет целиком (см. коммент
-    // на месте вставки: заголовок без значения читается как поломка).
+    final state = context.watch<AppState?>();
+    final d = state?.connectedFor;
     if (d == null) return const SizedBox.shrink();
+    final activeKey = state?.connectedServerKey;
+    if (widget.serverKey != null &&
+        activeKey != null &&
+        activeKey != widget.serverKey) {
+      return const SizedBox.shrink();
+    }
     final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
