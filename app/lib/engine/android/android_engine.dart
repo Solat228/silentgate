@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/app_store.dart';
 import '../../core/models/engine_notice.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
@@ -1111,15 +1112,16 @@ class AndroidEngine extends VpnEngineBase {
       setStatus(VpnConnectionState.connecting,
           step: ConnectStep.tun, message: status.message);
       _starting = true;
-      await _channel.invokeMethod<void>(
-          'start',
-          startArgs(
-            tunJson: tunJson,
-            xrayJson: rawXrayJson != null
-                ? await _guardGeodata(rawXrayJson)
-                : null,
-            readsXrayStats: readsXrayStats,
-          ));
+      final baseStartArgs = startArgs(
+        tunJson: tunJson,
+        xrayJson: rawXrayJson != null ? await _guardGeodata(rawXrayJson) : null,
+        readsXrayStats: readsXrayStats,
+      );
+      if (AppStoreInfo.isStealth) {
+        baseStartArgs['root_stealth'] = session.options.settings.rootStealthMode;
+        baseStartArgs['bypass_lan'] = session.options.settings.tunBypassLan;
+      }
+      await _channel.invokeMethod<void>('start', baseStartArgs);
       _starting = false;
 
       // Пользователь мог отключиться, пока шло согласие на VPN.
@@ -1459,7 +1461,14 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
       try {
-        await _channel.invokeMethod<void>('start', startArgs(tunJson: stub));
+        final stubArgs = startArgs(tunJson: stub);
+        if (AppStoreInfo.isStealth) {
+          stubArgs['root_stealth'] =
+              session?.options.settings.rootStealthMode ?? true;
+          stubArgs['bypass_lan'] =
+              session?.options.settings.tunBypassLan ?? true;
+        }
+        await _channel.invokeMethod<void>('start', stubArgs);
         if (asKillSwitch) {
           AppLog.i('Kill switch: туннель удержан, трафик блокируется');
           // Сказать об этом в шторке. Приложение в этот момент чаще всего

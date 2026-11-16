@@ -1,7 +1,7 @@
 name: silentgate
 description: "SilentGate VPN client"
 publish_to: 'none'
-version: 1.18.8+103
+version: 1.18.9+104
 
 environment:
   sdk: ^3.4.0

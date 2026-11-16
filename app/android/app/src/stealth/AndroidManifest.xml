@@ -3,24 +3,32 @@
 
     <!-- Сборка ROOT-Stealth (flavor stealth, пакет lol.silentgate.stealth). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
 
     <queries>
         <package android:name="com.android.vending"/>
     </queries>
 
     <application>
-        <!-- В сборке ROOT-Stealth компонент VpnService по умолчанию ВЫКЛЮЧЕН
-             (android:enabled="false"), чтобы вызовы
-             PackageManager.queryIntentServices(Intent("android.net.VpnService"), 0)
-             из Ozon / Wildberries / MAX / банковских антифрод-SDK возвращали
-             пустой список и не выдавали установленный VPN-клиент.
-             При запуске подключения RootStealthController включает его
-             динамически через PackageManager.setComponentEnabledSetting
-             (сохраняя работоспособность и без root-прав), а при отключении
-             снова выключает. -->
+        <!-- Компонент VpnService в ROOT-Stealth по умолчанию выключен
+             (android:enabled="false"), чтобы PackageManager.queryIntentServices
+             по android.net.VpnService возвращал пустой список. При наличии su
+             прозрачный перехват работает вообще без включения VpnService через
+             отдельный сервис SilentGateStealthService (без tun0 и TRANSPORT_VPN).
+             Без root-прав SilentGateVpnService включается динамически только на
+             время активной сессии. -->
         <service
             android:name=".vpn.SilentGateVpnService"
             android:enabled="false"
             tools:replace="android:enabled"/>
+
+        <service
+            android:name=".vpn.SilentGateStealthService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="transparent_root_proxy"/>
+        </service>
     </application>
 </manifest>

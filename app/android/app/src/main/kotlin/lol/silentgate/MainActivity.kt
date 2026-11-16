@@ -203,24 +203,40 @@ class MainActivity : FlutterActivity() {
                             // «Авто»: их поднимает Xray, а туннель заворачивает
                             // трафик в его локальный SOCKS.
                             startWithConsent(
-                                config, call.argument<String>("xray_config"), result)
+                                config,
+                                call.argument<String>("xray_config"),
+                                call.argument<Boolean>("root_stealth") ?: true,
+                                call.argument<Boolean>("bypass_lan") ?: true,
+                                result,
+                            )
                         }
                     }
 
                     "stop" -> {
-                        applicationContext.startService(
-                            Intent(applicationContext, SilentGateVpnService::class.java)
-                                .setAction(SilentGateVpnService.ACTION_STOP)
-                                // ⚠️ ЯВНО `false`, И ЭТО НЕ ФОРМАЛЬНОСТЬ.
-                                // Этим путём идут ОБЕ остановки: и нажатие
-                                // «Отключить» в приложении, и наше собственное
-                                // гашение ядра при переподключении. Различает
-                                // их Dart-сторона (`_userStopped`), а не сервис,
-                                // — и пометив здесь `true`, мы заставляли бы
-                                // приложение отменять собственное
-                                // восстановление связи.
-                                .putExtra(SilentGateVpnService.EXTRA_BY_USER, false)
-                        )
+                        runCatching {
+                            applicationContext.startService(
+                                Intent(applicationContext, SilentGateVpnService::class.java)
+                                    .setAction(SilentGateVpnService.ACTION_STOP)
+                                    // ⚠️ ЯВНО `false`, И ЭТО НЕ ФОРМАЛЬНОСТЬ.
+                                    // Этим путём идут ОБЕ остановки: и нажатие
+                                    // «Отключить» в приложении, и наше собственное
+                                    // гашение ядра при переподключении. Различает
+                                    // их Dart-сторона (`_userStopped`), а не сервис,
+                                    // — и пометив здесь `true`, мы заставляли бы
+                                    // приложение отменять собственное
+                                    // восстановление связи.
+                                    .putExtra(SilentGateVpnService.EXTRA_BY_USER, false)
+                            )
+                        }
+                        if (RootStealthController.isStealthFlavor) {
+                            runCatching {
+                                applicationContext.startService(
+                                    Intent(applicationContext, lol.silentgate.vpn.SilentGateStealthService::class.java)
+                                        .setAction(SilentGateVpnService.ACTION_STOP)
+                                        .putExtra(SilentGateVpnService.EXTRA_BY_USER, false)
+                                )
+                            }
+                        }
                         RootStealthController.afterVpnStop(applicationContext)
                         result.success(null)
                     }
@@ -480,15 +496,39 @@ class MainActivity : FlutterActivity() {
     private fun startWithConsent(
         config: String,
         xrayConfig: String?,
+        rootStealthEnabled: Boolean,
+        bypassLan: Boolean,
+        result: MethodChannel.Result,
+    ) {
+        // В сборке ROOT-Stealth проверяем root в фоне: если su доступен и режим
+        // включён в настройках, поднимаем SilentGateStealthService вообще без
+        // VpnService.prepare() и без интерфейса tun0.
+        if (RootStealthController.isStealthFlavor && rootStealthEnabled) {
+            Thread {
+                val useRoot = RootStealthController.canUseRootRedirect(true)
+                runOnUiThread {
+                    if (useRoot) {
+                        RootStealthController.setVpnComponentEnabled(applicationContext, false)
+                        launchStealthRootService(config, xrayConfig, bypassLan)
+                        result.success(null)
+                    } else {
+                        startClassicVpnWithConsent(config, xrayConfig, result)
+                    }
+                }
+            }.start()
+            return
+        }
+        startClassicVpnWithConsent(config, xrayConfig, result)
+    }
+
+    private fun startClassicVpnWithConsent(
+        config: String,
+        xrayConfig: String?,
         result: MethodChannel.Result,
     ) {
         RootStealthController.beforeVpnStart(applicationContext)
         val consent = VpnService.prepare(this)
         if (consent != null) {
-            // Dart живёт дольше Activity и может попросить подключение, когда
-            // её уже сняли (автопереподключение при закрытом интерфейсе). Окно
-            // согласия с мёртвой Activity не показать, а промолчать — значит
-            // оставить «Подключение…» навсегда.
             if (isFinishing || isDestroyed) {
                 result.error("consent_denied", "Нет окна для согласия на VPN", null)
                 return
@@ -501,6 +541,25 @@ class MainActivity : FlutterActivity() {
         }
         launchService(config, xrayConfig)
         result.success(null)
+    }
+
+    private fun launchStealthRootService(
+        config: String,
+        xrayConfig: String?,
+        bypassLan: Boolean,
+    ) {
+        val app = applicationContext
+        val intent = Intent(app, lol.silentgate.vpn.SilentGateStealthService::class.java)
+            .setAction(SilentGateVpnService.ACTION_START)
+            .putExtra(SilentGateVpnService.EXTRA_CONFIG, config)
+            .putExtra(SilentGateVpnService.EXTRA_XRAY_CONFIG, xrayConfig)
+            .putExtra(SilentGateVpnService.EXTRA_ROOT_REDIRECT, true)
+            .putExtra(SilentGateVpnService.EXTRA_BYPASS_LAN, bypassLan)
+        if (Build.VERSION.SDK_INT >= 26) {
+            app.startForegroundService(intent)
+        } else {
+            app.startService(intent)
+        }
     }
 
     private fun launchService(config: String, xrayConfig: String?) {

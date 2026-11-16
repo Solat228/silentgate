@@ -67,7 +67,7 @@ import java.net.NetworkInterface as JavaNetworkInterface
  *
  * Подробности и рецепт сборки ядер — `tools/build-android-cores.md`.
  */
-class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandler {
+open class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandler {
     private val logTag = "SilentGateVpn"
 
 
@@ -104,6 +104,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         /// локальный SOCKS, а sing-box делает туннель и заворачивает трафик
         /// туда. Ровно как на Windows.
         const val EXTRA_XRAY_CONFIG = "xray_config"
+        const val EXTRA_ROOT_REDIRECT = "root_redirect"
+        const val EXTRA_BYPASS_LAN = "bypass_lan"
 
         /// ⚠️ Имя хранилища и ключ языка переехали в [NativePrefs] — их читает
         /// не только сервис. Здесь их больше нет намеренно: копия константы
@@ -456,8 +458,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     // в том случае, когда постоянная VPN включена, а сессии
                     // ещё нет, то есть после первой же перезагрузки телефона.
                     runCatching {
-                        startForeground(
-                            NOTIFICATION_ID,
+                        startForegroundCompat(
                             buildNotification(
                                 strings().getString(R.string.vpn_always_on_no_session)),
                         )
@@ -482,13 +483,17 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // «Трафик заблокирован».
                 if (!running || commandServer == null) {
                     runCatching {
-                        startForeground(
-                            NOTIFICATION_ID,
+                        startForegroundCompat(
                             buildNotification(strings().getString(R.string.vpn_connecting)),
                         )
                     }
                 }
                 cancelRequested = false
+                val wantRootRedirect = (this is SilentGateStealthService) ||
+                    (intent?.getBooleanExtra(EXTRA_ROOT_REDIRECT, false) == true)
+                val bypassLan = intent?.getBooleanExtra(EXTRA_BYPASS_LAN, true) ?: true
+                rootRedirectActive = wantRootRedirect
+                rootBypassLan = bypassLan
                 val xray = intent?.getStringExtra(EXTRA_XRAY_CONFIG) ?: xrayRestored
                 work.execute {
                     // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
@@ -744,6 +749,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // и если Xray там ещё не слушает, первые соединения отвалятся.
             if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
 
+            val effectiveConfig = if (rootRedirectActive) {
+                val plan = RootStealthController.convertTunConfigToRedirect(configJson, rootBypassLan)
+                if (!RootStealthController.applyRootTransparentRules(this, plan)) {
+                    throw IllegalStateException("Не удалось применить правила прозрачного Root-перехвата (iptables)")
+                }
+                plan.configJson
+            } else {
+                configJson
+            }
+
             val server = CommandServer(this, this)
             server.start()
             // ⚠️ Вторым аргументом НЕЛЬЗЯ передавать null: Go-сторона
@@ -755,7 +770,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // Сами списки пакетов оставляем пустыми: единственный источник
             // правды — конфиг (include_package/exclude_package в TUN-инбаунде),
             // и дублировать их здесь значило бы иметь два несогласованных места.
-            startOrReloadWithRetry(server, configJson)
+            startOrReloadWithRetry(server, effectiveConfig)
             commandServer = server
 
             running = true
@@ -854,7 +869,14 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         try {
             stopXray()
             if (!xrayConfigJson.isNullOrBlank()) startXray(xrayConfigJson)
-            commandServer?.let { startOrReloadWithRetry(it, configJson) }
+            val effectiveReloadConfig = if (rootRedirectActive) {
+                val plan = RootStealthController.convertTunConfigToRedirect(configJson, rootBypassLan)
+                RootStealthController.applyRootTransparentRules(this, plan)
+                plan.configJson
+            } else {
+                configJson
+            }
+            commandServer?.let { startOrReloadWithRetry(it, effectiveReloadConfig) }
             running = true
             lastError = null
             // Новая сессия — признак прошлой остановки сбрасываем, иначе
@@ -892,7 +914,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // protect() для сокетов ядра: без него трафик Xray к VPN-серверу
         // вернётся в собственный туннель — петля и мёртвая сеть.
         LibXray.registerDialerController(object : DialerController {
-            override fun protectFd(fd: Long): Boolean = protect(fd.toInt())
+            override fun protectFd(fd: Long): Boolean =
+                if (rootRedirectActive) true else protect(fd.toInt())
         })
         val request = JSONObject()
             .put("apiVersion", 1)
@@ -983,6 +1006,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
         commandServer = null
         stopXray()
+        if (rootRedirectActive) {
+            runCatching { RootStealthController.clearRootTransparentRules() }
+            rootRedirectActive = false
+        }
 
         networkCallback?.let {
             try {
@@ -1285,11 +1312,29 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     /** `protect(fd)` — анти-петля для сокетов ядра. */
-    override fun autoDetectInterfaceControl(fd: Int) {
-        protect(fd)
+    @Volatile
+    protected var rootRedirectActive: Boolean = false
+
+    @Volatile
+    protected var rootBypassLan: Boolean = true
+
+    protected fun startForegroundCompat(notification: Notification) {
+        if (Build.VERSION.SDK_INT >= 34 && this is SilentGateStealthService) {
+            startForeground(
+                NOTIFICATION_ID,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
     }
 
-    override fun usePlatformAutoDetectInterfaceControl(): Boolean = true
+    override fun autoDetectInterfaceControl(fd: Int) {
+        if (!rootRedirectActive) protect(fd)
+    }
+
+    override fun usePlatformAutoDetectInterfaceControl(): Boolean = !rootRedirectActive
 
     /// До Android 10 `/proc/net` читается, с Android 10 — закрыт.
     ///
@@ -1705,7 +1750,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         )
         val stop = PendingIntent.getService(
             this, 1,
-            Intent(this, SilentGateVpnService::class.java)
+            Intent(this, this::class.java)
                 .setAction(ACTION_STOP)
                 // Настоящее нажатие человека — единственный случай, когда
                 // автовосстановление отменять НАДО.
@@ -1719,7 +1764,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // тот же PendingIntent, и кнопка сворачивания отключала бы VPN.
         val toggle = PendingIntent.getService(
             this, 2,
-            Intent(this, SilentGateVpnService::class.java).setAction(ACTION_TOGGLE_COMPACT),
+            Intent(this, this::class.java).setAction(ACTION_TOGGLE_COMPACT),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return Notification.Builder(this, CHANNEL_ID)
@@ -1862,3 +1907,11 @@ private inline fun lol.silentgate.cores.libbox.RoutePrefixIterator.forEach(actio
 private inline fun StringIterator.forEach(action: (String) -> Unit) {
     while (hasNext()) action(next())
 }
+
+/**
+ * Независимый от `android.net.VpnService` сервис для прозрачного Root-перехвата
+ * (`ROOT-Stealth`): позволяет держать `SilentGateVpnService` полностью выключенным
+ * (`android:enabled="false"`) даже во время активного соединения, не создавая
+ * интерфейс `tun0` и не выставляя `NetworkCapabilities.TRANSPORT_VPN`.
+ */
+class SilentGateStealthService : SilentGateVpnService()

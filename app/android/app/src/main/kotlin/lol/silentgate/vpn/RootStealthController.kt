@@ -6,33 +6,44 @@ import android.content.pm.PackageManager
 import android.os.Process
 import android.util.Log
 import lol.silentgate.BuildConfig
+import org.json.JSONArray
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
 /**
- * Контроллер режима `ROOT-Stealth` (сборка `--flavor stealth`).
+ * Контроллер режима `ROOT-Stealth` (сборка `--flavor stealth`, пакет `lol.silentgate.stealth`).
  *
- * Решает три задачи антидетекта на Android:
- *  1. **Скрытие из `queryIntentServices("android.net.VpnService")`:**
- *     В манифесте `src/stealth/AndroidManifest.xml` компонент [SilentGateVpnService]
- *     по умолчанию выключен (`android:enabled="false"`), поэтому сканеры Ozon,
- *     Wildberries, MAX и банков при опросе `PackageManager.queryIntentServices`
- *     с флагами по умолчанию (`0`) не видят установленный VPN-сервис.
- *     Перед запуском туннеля без root (или в режиме совместимости) компонент
- *     включается динамически через [setVpnComponentEnabled], а после остановки
- *     снова выключается.
- *  2. **Блокировка сканирования локальных портов (`127.0.0.1:10808..10999`):**
- *     При наличии `su` выставляет правило `iptables` / `ip6tables` с модулем
- *     `-m owner ! --uid-owner <uid> -j REJECT --reject-with tcp-reset` на `lo`,
- *     чтобы любое стороннее приложение при прощупывании портов SOCKS5/HTTP/API
- *     получало мгновенный `TCP RST` (как от закрытого порта), тогда как сам
- *     процесс SilentGate общается со своими ядрами штатно.
- *  3. **Безопасный откат без root:**
- *     Если `su` недоступен или пользователь отказал в правах суперпользователя,
- *     приложение продолжает работать через штатный движок без падений.
+ * Закрывает все 5 векторов детекта VPN российскими приложениями (Госуслуги, Ozon,
+ * Wildberries, MAX, банки, АЗС):
+ *  1. **Полноценный прозрачный перехват через `su` без `VpnService` (`Root Redirect`):**
+ *     Заменяет `tun`-инбаунд `sing-box` на локальный `redirect` (`127.0.0.1:10851`) +
+ *     `direct` DNS (`127.0.0.1:10853`) и поднимает сервис [SilentGateStealthService]
+ *     без вызова `VpnService.prepare` / `establish()`. В системе нет интерфейса `tun0`,
+ *     нет флага `NetworkCapabilities.TRANSPORT_VPN`, нет иконки ключа в статус-баре,
+ *     а `SilentGateVpnService` остаётся `android:enabled="false"` даже во время работы.
+ *  2. **Поприложенная маршрутизация по UID в `iptables` / `ip6tables`:**
+ *     Правила `onlySelected` и `allExcept` применяются прямо на уровне ядра Linux
+ *     через `-m owner --uid-owner <uid>` (исключённые банки/Госуслуги/маркетплейсы
+ *     идут напрямую через физический `wlan0`/`rmnet` без касания прокси).
+ *  3. **Блокировка сканирования локальных портов (`127.0.0.1:10808..10999`):**
+ *     Чужие UID получают мгновенный `TCP RST`, как от закрытого порта.
+ *  4. **Безопасный автоматический откат без root:**
+ *     Если `su` недоступен или пользователь отказал в доступе суперпользователя,
+ *     клиент автоматически переключается на классический `SilentGateVpnService`
+ *     с динамическим скрытием компонента после остановки.
  */
 object RootStealthController {
     private const val TAG = "SilentGateStealth"
     private const val LOCAL_PORT_RANGE = "10808:10999"
+    const val REDIRECT_PORT = 10851
+    const val DNS_REDIRECT_PORT = 10853
+
+    data class RedirectSessionPlan(
+        val configJson: String,
+        val includePackages: List<String>,
+        val excludePackages: List<String>,
+        val bypassLan: Boolean,
+    )
 
     val isStealthFlavor: Boolean
         get() = BuildConfig.FLAVOR == "stealth"
@@ -41,14 +52,16 @@ object RootStealthController {
     var rootAvailableCached: Boolean? = null
         private set
 
-    /** Проверить наличие рабочего `su` (не блокируя UI-поток надолго). */
-    fun checkRootAvailable(): Boolean {
-        rootAvailableCached?.let { return it }
+    /** Проверить наличие рабочего `su`. */
+    fun checkRootAvailable(forceRefresh: Boolean = false): Boolean {
+        if (!forceRefresh) {
+            rootAvailableCached?.let { return it }
+        }
         val ok = runCatching {
             val proc = ProcessBuilder("su", "-c", "id -u")
                 .redirectErrorStream(true)
                 .start()
-            val finished = proc.waitFor(2500, TimeUnit.MILLISECONDS)
+            val finished = proc.waitFor(3500, TimeUnit.MILLISECONDS)
             if (!finished) {
                 proc.destroyForcibly()
                 false
@@ -61,9 +74,13 @@ object RootStealthController {
         return ok
     }
 
-    /**
-     * Динамически включить или скрыть [SilentGateVpnService] в `PackageManager`.
-     */
+    /** Доступен ли полноценный Root-режим без `VpnService` и `tun0`. */
+    fun canUseRootRedirect(rootStealthEnabled: Boolean): Boolean {
+        if (!isStealthFlavor || !rootStealthEnabled) return false
+        return checkRootAvailable()
+    }
+
+    /** Динамически включить или скрыть [SilentGateVpnService] в `PackageManager`. */
     fun setVpnComponentEnabled(context: Context, enabled: Boolean) {
         if (!isStealthFlavor) return
         runCatching {
@@ -87,10 +104,271 @@ object RootStealthController {
     }
 
     /**
-     * Вызывается перед `VpnService.prepare` и стартом сервиса: включает
-     * компонент `SilentGateVpnService` (чтобы отработал штатный запуск даже без root)
-     * и в фоне ставит root-защиту локальных портов `127.0.0.1:10808..10999`, если
-     * `su` доступен.
+     * Преобразовать TUN-конфиг `sing-box` в без-TUN конфиг `redirect` + `direct` DNS
+     * с сохранением всех правил маршрутизации, выходов Xray/Hysteria2/Whitelist и Clash API.
+     */
+    fun convertTunConfigToRedirect(
+        rawConfigJson: String,
+        bypassLanDefault: Boolean = true,
+    ): RedirectSessionPlan {
+        val root = JSONObject(rawConfigJson)
+        val includePkgs = mutableListOf<String>()
+        val excludePkgs = mutableListOf<String>()
+
+        val oldInbounds = root.optJSONArray("inbounds") ?: JSONArray()
+        val newInbounds = JSONArray()
+        var replacedTun = false
+
+        for (i in 0 until oldInbounds.length()) {
+            val item = oldInbounds.optJSONObject(i) ?: continue
+            if (item.optString("type") == "tun") {
+                item.optJSONArray("include_package")?.let { arr ->
+                    for (j in 0 until arr.length()) {
+                        val p = arr.optString(j).trim()
+                        if (p.isNotEmpty()) includePkgs.add(p)
+                    }
+                }
+                item.optJSONArray("exclude_package")?.let { arr ->
+                    for (j in 0 until arr.length()) {
+                        val p = arr.optString(j).trim()
+                        if (p.isNotEmpty()) excludePkgs.add(p)
+                    }
+                }
+                val tag = item.optString("tag").ifEmpty { "tun-in" }
+                newInbounds.put(
+                    JSONObject()
+                        .put("type", "redirect")
+                        .put("tag", tag)
+                        .put("listen", "127.0.0.1")
+                        .put("listen_port", REDIRECT_PORT)
+                )
+                newInbounds.put(
+                    JSONObject()
+                        .put("type", "direct")
+                        .put("tag", "dns-redir-udp")
+                        .put("listen", "127.0.0.1")
+                        .put("listen_port", DNS_REDIRECT_PORT)
+                        .put("network", "udp")
+                )
+                newInbounds.put(
+                    JSONObject()
+                        .put("type", "direct")
+                        .put("tag", "dns-redir-tcp")
+                        .put("listen", "127.0.0.1")
+                        .put("listen_port", DNS_REDIRECT_PORT)
+                        .put("network", "tcp")
+                )
+                replacedTun = true
+            } else {
+                newInbounds.put(item)
+            }
+        }
+
+        if (!replacedTun) {
+            newInbounds.put(
+                JSONObject()
+                    .put("type", "redirect")
+                    .put("tag", "tun-in")
+                    .put("listen", "127.0.0.1")
+                    .put("listen_port", REDIRECT_PORT)
+            )
+            newInbounds.put(
+                JSONObject()
+                    .put("type", "direct")
+                    .put("tag", "dns-redir-udp")
+                    .put("listen", "127.0.0.1")
+                    .put("listen_port", DNS_REDIRECT_PORT)
+                    .put("network", "udp")
+            )
+            newInbounds.put(
+                JSONObject()
+                    .put("type", "direct")
+                    .put("tag", "dns-redir-tcp")
+                    .put("listen", "127.0.0.1")
+                    .put("listen_port", DNS_REDIRECT_PORT)
+                    .put("network", "tcp")
+            )
+        }
+        root.put("inbounds", newInbounds)
+
+        val route = root.optJSONObject("route") ?: JSONObject().also { root.put("route", it) }
+        // Сокеты нашего процесса исключены из перехвата по UID в iptables,
+        // поэтому auto_detect_interface через VpnService.protect() не нужен.
+        route.put("auto_detect_interface", false)
+
+        val oldRules = route.optJSONArray("rules") ?: JSONArray()
+        val newRules = JSONArray()
+        var dnsHijackInserted = false
+        val dnsHijackRule = JSONObject()
+            .put("inbound", JSONArray().put("dns-redir-udp").put("dns-redir-tcp"))
+            .put("action", "hijack-dns")
+
+        for (i in 0 until oldRules.length()) {
+            val r = oldRules.optJSONObject(i) ?: continue
+            newRules.put(r)
+            if (!dnsHijackInserted && r.optString("action") == "sniff") {
+                newRules.put(dnsHijackRule)
+                dnsHijackInserted = true
+            }
+        }
+        if (!dnsHijackInserted) {
+            val prepended = JSONArray()
+            prepended.put(dnsHijackRule)
+            for (i in 0 until newRules.length()) {
+                prepended.put(newRules.get(i))
+            }
+            route.put("rules", prepended)
+        } else {
+            route.put("rules", newRules)
+        }
+
+        return RedirectSessionPlan(
+            configJson = root.toString(),
+            includePackages = includePkgs,
+            excludePackages = excludePkgs,
+            bypassLan = bypassLanDefault,
+        )
+    }
+
+    private fun resolvePackageUids(context: Context, packages: Collection<String>): Set<Int> {
+        val pm = context.packageManager
+        val myPkg = context.packageName
+        val out = LinkedHashSet<Int>()
+        for (pkg in packages) {
+            if (pkg.isBlank() || pkg == myPkg) continue
+            runCatching {
+                @Suppress("DEPRECATION")
+                val info = pm.getApplicationInfo(pkg, 0)
+                if (info.uid > 0) out.add(info.uid)
+            }
+        }
+        return out
+    }
+
+    /**
+     * Атомарно применить правила прозрачного перехвата `iptables`/`ip6tables` для Root-режима.
+     */
+    fun applyRootTransparentRules(context: Context, plan: RedirectSessionPlan): Boolean {
+        val myUid = Process.myUid()
+        val includeUids = resolvePackageUids(context, plan.includePackages)
+        val excludeUids = resolvePackageUids(context, plan.excludePackages)
+
+        val sb = StringBuilder()
+        sb.appendLine("set -e")
+        // 1. Сначала гарантированно убираем хвосты прошлых сессий.
+        sb.appendLine(cleanupScriptBody(myUid))
+
+        // 2. Цепочка NAT OUTPUT -> SG_STEALTH_NAT -> SG_STEALTH_DO
+        sb.appendLine("iptables -t nat -N SG_STEALTH_DO 2>/dev/null || iptables -t nat -F SG_STEALTH_DO")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p udp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p tcp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 127.0.0.0/8 -j RETURN")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 169.254.0.0/16 -j RETURN")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 224.0.0.0/4 -j RETURN")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 255.255.255.255/32 -j RETURN")
+        if (plan.bypassLan) {
+            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 10.0.0.0/8 -j RETURN")
+            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 172.16.0.0/12 -j RETURN")
+            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 192.168.0.0/16 -j RETURN")
+        }
+        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p tcp -j REDIRECT --to-ports $REDIRECT_PORT")
+
+        sb.appendLine("iptables -t nat -N SG_STEALTH_NAT 2>/dev/null || iptables -t nat -F SG_STEALTH_NAT")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner 0 -j RETURN")
+        // Системный резолвер netd (UID 1051 = dns / AID_DNS) тоже заворачиваем на порт 53,
+        // если не включён строгий список только выбранных приложений.
+        if (plan.includePackages.isNotEmpty()) {
+            for (uid in includeUids) {
+                sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j SG_STEALTH_DO")
+            }
+            sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -j RETURN")
+        } else {
+            for (uid in excludeUids) {
+                sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j RETURN")
+            }
+            sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -j SG_STEALTH_DO")
+        }
+        sb.appendLine("iptables -t nat -I OUTPUT 1 -j SG_STEALTH_NAT")
+
+        // 3. Цепочка FILTER OUTPUT (защита локальных портов + отказ QUIC UDP:443 и DoT :853).
+        sb.appendLine("iptables -t filter -N SG_STEALTH_FLT_DO 2>/dev/null || iptables -t filter -F SG_STEALTH_FLT_DO")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p udp --dport 443 -j REJECT")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p udp --dport 853 -j REJECT")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p tcp --dport 853 -j REJECT --reject-with tcp-reset")
+
+        sb.appendLine("iptables -t filter -N SG_STEALTH_FLT 2>/dev/null || iptables -t filter -F SG_STEALTH_FLT")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner 0 -j RETURN")
+        if (plan.includePackages.isNotEmpty()) {
+            for (uid in includeUids) {
+                sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j SG_STEALTH_FLT_DO")
+            }
+        } else {
+            for (uid in excludeUids) {
+                sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j RETURN")
+            }
+            sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -j SG_STEALTH_FLT_DO")
+        }
+        sb.appendLine("iptables -t filter -I OUTPUT 1 -j SG_STEALTH_FLT")
+
+        // 4. IPv6: защита портов lo и блокировка утечки IPv6 для туннелируемых UID.
+        sb.appendLine("ip6tables -t filter -N SG_STEALTH6_DO 2>/dev/null || ip6tables -t filter -F SG_STEALTH6_DO")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -o lo -j RETURN")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -d fe80::/10 -j RETURN")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -j REJECT")
+
+        sb.appendLine("ip6tables -t filter -N SG_STEALTH6_FLT 2>/dev/null || ip6tables -t filter -F SG_STEALTH6_FLT")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner 0 -j RETURN")
+        if (plan.includePackages.isNotEmpty()) {
+            for (uid in includeUids) {
+                sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j SG_STEALTH6_DO")
+            }
+        } else {
+            for (uid in excludeUids) {
+                sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j RETURN")
+            }
+            sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -j SG_STEALTH6_DO")
+        }
+        sb.appendLine("ip6tables -t filter -I OUTPUT 1 -j SG_STEALTH6_FLT")
+
+        return execRootScript(sb.toString(), timeoutMs = 5000)
+    }
+
+    /** Полная очистка всех цепочек `SG_STEALTH*` и снятие блокировки loopback. */
+    fun clearRootTransparentRules() {
+        if (rootAvailableCached != true) return
+        val myUid = Process.myUid()
+        execRootScript(cleanupScriptBody(myUid), timeoutMs = 4000)
+    }
+
+    private fun cleanupScriptBody(myUid: Int): String = """
+        iptables -t nat -D OUTPUT -j SG_STEALTH_NAT 2>/dev/null || true
+        iptables -t nat -F SG_STEALTH_NAT 2>/dev/null || true
+        iptables -t nat -X SG_STEALTH_NAT 2>/dev/null || true
+        iptables -t nat -F SG_STEALTH_DO 2>/dev/null || true
+        iptables -t nat -X SG_STEALTH_DO 2>/dev/null || true
+        iptables -t filter -D OUTPUT -j SG_STEALTH_FLT 2>/dev/null || true
+        iptables -t filter -F SG_STEALTH_FLT 2>/dev/null || true
+        iptables -t filter -X SG_STEALTH_FLT 2>/dev/null || true
+        iptables -t filter -F SG_STEALTH_FLT_DO 2>/dev/null || true
+        iptables -t filter -X SG_STEALTH_FLT_DO 2>/dev/null || true
+        ip6tables -t filter -D OUTPUT -j SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -t filter -F SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -t filter -X SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -t filter -F SG_STEALTH6_DO 2>/dev/null || true
+        ip6tables -t filter -X SG_STEALTH6_DO 2>/dev/null || true
+        for bin in iptables ip6tables; do
+          ${'$'}bin -D OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset 2>/dev/null || true
+        done
+    """.trimIndent()
+
+    /**
+     * Вызывается перед стартом классического `VpnService` (когда Root Redirect не используется):
+     * включает компонент `SilentGateVpnService` и при наличии root закрывает порты `lo`.
      */
     fun beforeVpnStart(context: Context) {
         if (isStealthFlavor) {
@@ -104,26 +382,18 @@ object RootStealthController {
         }.start()
     }
 
-    /**
-     * Вызывается при остановке VPN: снимает правило `iptables` на `lo` и в сборке
-     * `stealth` снова прячет компонент `SilentGateVpnService` от `queryIntentServices`.
-     */
+    /** Вызывается при остановке VPN: чистит правила `iptables` и прячет `SilentGateVpnService`. */
     fun afterVpnStop(context: Context) {
         if (isStealthFlavor) {
             setVpnComponentEnabled(context, false)
         }
-        val uid = Process.myUid()
         Thread {
             if (rootAvailableCached == true) {
-                applyLoopbackPortLockdown(uid, enable = false)
+                clearRootTransparentRules()
             }
         }.start()
     }
 
-    /**
-     * Закрыть локальные порты SilentGate (`10808:10999`) на интерфейсе `lo` от
-     * всех чужих UID (`! --uid-owner <uid>`), возвращая `TCP RST`.
-     */
     private fun applyLoopbackPortLockdown(uid: Int, enable: Boolean) {
         val cmd = if (enable) {
             """
@@ -133,21 +403,30 @@ object RootStealthController {
             done
             """.trimIndent()
         } else {
-            """
-            for bin in iptables ip6tables; do
-              ${'$'}bin -D OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $uid -j REJECT --reject-with tcp-reset 2>/dev/null || true
-            done
-            """.trimIndent()
+            cleanupScriptBody(uid)
         }
-        runCatching {
-            val proc = ProcessBuilder("su", "-c", cmd)
+        execRootScript(cmd, timeoutMs = 3000)
+    }
+
+    private fun execRootScript(script: String, timeoutMs: Long): Boolean {
+        return runCatching {
+            val proc = ProcessBuilder("su", "-c", script)
                 .redirectErrorStream(true)
                 .start()
-            if (!proc.waitFor(3000, TimeUnit.MILLISECONDS)) {
+            if (!proc.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {
                 proc.destroyForcibly()
+                Log.w(TAG, "Root script timed out after ${timeoutMs}ms")
+                false
+            } else {
+                val ok = proc.exitValue() == 0
+                if (!ok) {
+                    val out = runCatching { proc.inputStream.bufferedReader().readText() }.getOrDefault("")
+                    Log.w(TAG, "Root script exited ${proc.exitValue()}: $out")
+                }
+                ok
             }
         }.onFailure {
-            Log.w(TAG, "applyLoopbackPortLockdown(enable=$enable) failed: $it")
-        }
+            Log.w(TAG, "execRootScript failed: $it")
+        }.getOrDefault(false)
     }
 }

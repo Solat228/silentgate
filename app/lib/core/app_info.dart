@@ -5,14 +5,14 @@ import 'dart:io';
 /// стережёт тест `test/app_info_test.dart`.
 class AppInfo {
   static const name = 'SilentGate';
-  static const version = '1.18.8';
+  static const version = '1.18.9';
 
   /// Номер сборки/патча после `+` в `pubspec.yaml` (`version: X.Y.Z+N`).
   /// Держится синхронно с `pubspec.yaml` и проверяется `test/app_info_test.dart`:
   /// на Android при `--split-per-abi` системный `versionCode` сдвинут на ABI
   /// (`2000 + N` для arm64, `4000 + N` для x86_64), поэтому честный номер `+N`
   /// для «О программе» и сравнения сборок хранится здесь.
-  static const buildNumber = 103;
+  static const buildNumber = 104;
 
   /// Необязательный суффикс пре-релиза/патча (`beta.1`, `rc.1`, `hotfix.2`),
   /// передаваемый при сборке (`--dart-define=SILENTGATE_PRERELEASE=...`).
@@ -35,6 +35,7 @@ class AppInfo {
   /// Сводка патчей, вошедших в текущую сборку `1.18.7+102` (показывается по нажатию
   /// на строку версии в «О программе» вместе с ревизией Git).
   static const List<String> builtInPatchesRu = [
+    '+104 · Android ROOT-Stealth (бета): полноценный прозрачный перехват трафика через root (iptables REDIRECT + sing-box redirect/direct DNS без VpnService, без tun0 и без флага TRANSPORT_VPN) с поприложенной фильтрацией по UID и авто-откатом без root',
     '+103 · Быстрые отчёты поддержки в 1 клик без обязательного описания, чипы категорий, отправка обезличенной копии разработчику с предпросмотром и кнопкой во встроенном чате поддержки; работа YouTube на узлах обхода БС (IPv4-only + отказ QUIC и DNS HTTPS/SVCB); строго клиентская сборка релея БС',
     '+102 · Вставка файлов (.txt/.json) и мульти-ссылок через Ctrl+V в отдельную локальную подписку; рабочая прослойка обхода блокировок (Zapret / DPI) мимо Wintun с проверкой и автоподбором стратегий; прокачанный API автоматизации (порт Умного Авто 10818, до 250 закреплённых портов во всех режимах захвата и при выключенном VPN, все профили Авто с дедупликацией Xray, режимы пароля, управление подписками); фикс гонки Wi-Fi/Cellular на Android 15/16 и ложных обрывов ТСПУ',
     '+101 · Сортировка и вложение серверов по флагу в страновые Авто-серверы, выбор папок стран и «🌉 Мосты» как виртуальных Авто-серверов (включая «Через сервер»), исправление падения chromehttp2 в whitelist-bypass и пересоздания TUN по domain_suffix',
@@ -57,6 +58,7 @@ class AppInfo {
   ];
 
   static const List<String> builtInPatchesEn = [
+    '+104 · Android ROOT-Stealth (beta): full transparent root traffic redirection (iptables REDIRECT + sing-box redirect/direct DNS without VpnService, tun0, or TRANSPORT_VPN) with per-UID app routing and automatic non-root fallback',
     '+103 · 1-click support reports without mandatory text description, quick category chips, optional anonymized developer copy with preview and in-app support chat report button; fix YouTube over Whitelist-Bypass tunnels (IPv4-only + QUIC and DNS HTTPS/SVCB suppression); strictly client-only relay binaries',
     '+102 · Clipboard file (CF_HDROP) & multi-link Ctrl+V import into dedicated local subscriptions; rewritten Zapret / DPI bypass bound to physical NIC with live verifier and auto-tuner; upgraded Automation API (Smart Auto port 10818, up to 250 sticky ports across all capture modes and when disconnected, Auto profiles with Xray outbound deduplication, proxy auth modes, subscription endpoints); Android 15/16 Wi-Fi/Cellular default interface fix and TSPU false-reconnect guard',
     '+101 · Flag-based nesting into Country Auto-servers, selectable Country and "🌉 Bridges" folders as virtual Auto-servers (including "Via server"), fix chromehttp2 nil-panic in whitelist-bypass and TUN recreation on domain_suffix update',
