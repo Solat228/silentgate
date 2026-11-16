@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/app_info.dart';
 import '../core/platform/app_paths.dart';
+import '../core/support/dev_report_service.dart';
 
 /// Режим отображения встроенного окна поддержки внутри приложения.
 enum SupportWindowMode {
@@ -302,9 +303,11 @@ class SupportChatController extends ChangeNotifier {
   String _replyToText = '';
   int _seenMsgId = 0;
   String _initiatorToken = '';
+  List<String> _sentReportFingerprints = <String>[];
   List<SupportTicketItem> _tickets = <SupportTicketItem>[];
 
   bool _loading = false;
+  bool _fetchInFlight = false;
   bool _sending = false;
   String? _errorText;
   int? _banUntilUnix;
@@ -329,7 +332,68 @@ class SupportChatController extends ChangeNotifier {
   String get replyToText => _replyToText;
   int get seenMsgId => _seenMsgId;
   String get initiatorToken => _initiatorToken;
+  List<String> get sentReportFingerprints =>
+      List.unmodifiable(_sentReportFingerprints);
   List<SupportTicketItem> get tickets => List.unmodifiable(_tickets);
+
+  static bool _looksLikeLogOrReportPath(String path) {
+    final lower = path.trim().toLowerCase();
+    return lower.endsWith('.txt') || lower.endsWith('.log');
+  }
+
+  /// Детерминированный отпечаток текстового файла отчёта/лога (или `null`,
+  /// если это картинка/видео/архив или файл недоступен).
+  static String? fingerprintForLogOrReportFile(String filePath) {
+    final trimmed = filePath.trim();
+    if (trimmed.isEmpty || !_looksLikeLogOrReportPath(trimmed)) return null;
+    try {
+      final f = File(trimmed);
+      if (!f.existsSync()) return null;
+      final len = f.lengthSync();
+      if (len <= 0 || len > 10 * 1024 * 1024) return null;
+      final raw = utf8.decode(f.readAsBytesSync(), allowMalformed: true);
+      if (raw.trim().isEmpty) return null;
+      return DevReportService.computeReportContentFingerprint(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Совпадает ли содержимое отчёта «1 в 1» с уже отправленным ранее в этот
+  /// чат поддержки (или с уже прикреплённым в черновике файлом).
+  bool isDuplicateReportContent(String rawReportText, {String? ignorePath}) {
+    if (rawReportText.trim().isEmpty) return false;
+    final fp = DevReportService.computeReportContentFingerprint(rawReportText);
+    if (_sentReportFingerprints.contains(fp)) return true;
+    for (final existing in _pendingFilePaths) {
+      if (ignorePath != null && existing == ignorePath) continue;
+      if (fingerprintForLogOrReportFile(existing) == fp) return true;
+    }
+    return false;
+  }
+
+  /// Совпадает ли файл отчёта/лога «1 в 1» с уже отправленным в чат поддержки
+  /// (или с другим уже прикреплённым в черновике файлом).
+  bool isDuplicateReportFile(String filePath) {
+    final fp = fingerprintForLogOrReportFile(filePath);
+    if (fp == null) return false;
+    if (_sentReportFingerprints.contains(fp)) return true;
+    for (final existing in _pendingFilePaths) {
+      if (existing == filePath) continue;
+      if (fingerprintForLogOrReportFile(existing) == fp) return true;
+    }
+    return false;
+  }
+
+  void _recordSentReportFingerprint(String fp) {
+    if (fp.isEmpty) return;
+    _sentReportFingerprints.remove(fp);
+    _sentReportFingerprints.add(fp);
+    if (_sentReportFingerprints.length > 25) {
+      _sentReportFingerprints.removeRange(
+          0, _sentReportFingerprints.length - 25);
+    }
+  }
 
   bool get loading => _loading;
   bool get sending => _sending;
@@ -488,6 +552,8 @@ class SupportChatController extends ChangeNotifier {
   Future<void> fetchTickets({bool silent = true}) async {
     final tgt = _target;
     if (tgt == null) return;
+    if (silent && _fetchInFlight) return;
+    _fetchInFlight = true;
     if (!silent) {
       _loading = true;
       _notify();
@@ -513,6 +579,7 @@ class SupportChatController extends ChangeNotifier {
             'Нет связи с сервером поддержки. Черновик сохранён локально.';
       }
     } finally {
+      _fetchInFlight = false;
       client.close(force: true);
       if (!silent) {
         _loading = false;
@@ -611,6 +678,12 @@ class SupportChatController extends ChangeNotifier {
       } catch (_) {}
 
       if (resp.statusCode >= 200 && resp.statusCode < 300) {
+        for (final f in validFiles) {
+          final fp = fingerprintForLogOrReportFile(f.path);
+          if (fp != null) {
+            _recordSentReportFingerprint(fp);
+          }
+        }
         _draftText = '';
         _pendingFilePaths.clear();
         _replyToId = null;
@@ -652,6 +725,7 @@ class SupportChatController extends ChangeNotifier {
         'client_app': AppInfo.name,
         'client_version': AppInfo.fullVersion,
         'client_os': Platform.operatingSystem,
+        if (_initiatorToken.isNotEmpty) 'initiator_token': _initiatorToken,
       })));
       final resp = await req.close().timeout(const Duration(seconds: 12));
       final body = await utf8.decodeStream(resp);
@@ -689,6 +763,7 @@ class SupportChatController extends ChangeNotifier {
         'client_app': AppInfo.name,
         'client_version': AppInfo.fullVersion,
         'client_os': Platform.operatingSystem,
+        if (_initiatorToken.isNotEmpty) 'initiator_token': _initiatorToken,
       })));
       final resp = await req.close().timeout(const Duration(seconds: 12));
       final body = await utf8.decodeStream(resp);
@@ -740,12 +815,16 @@ class SupportChatController extends ChangeNotifier {
       return;
     }
 
+    final hadOpenTicket = openTicket != null;
     final rawTickets = decoded['tickets'];
     if (rawTickets is List) {
       _tickets = rawTickets
           .whereType<Map>()
           .map((m) => SupportTicketItem.fromJson(m.cast<String, dynamic>()))
           .toList();
+    }
+    if ((openTicket != null) != hadOpenTicket) {
+      _restartPolling();
     }
     final ban = decoded['ban'];
     if (ban is Map && ban['until'] is num) {
@@ -811,6 +890,7 @@ class SupportChatController extends ChangeNotifier {
         'client_app': AppInfo.name,
         'client_version': AppInfo.fullVersion,
         'client_os': Platform.operatingSystem,
+        if (_initiatorToken.isNotEmpty) 'initiator_token': _initiatorToken,
       })));
       final resp = await req.close().timeout(const Duration(seconds: 6));
       await resp.drain<void>();
@@ -845,9 +925,13 @@ class SupportChatController extends ChangeNotifier {
         Platform.environment.containsKey('FLUTTER_TEST')) {
       return;
     }
+    // При открытом окне опрашиваем каждые 3 с для доставки ответов оператора
+    // практически в реальном времени; в свёрнутом при активном тикете — раз в 10 с.
     final period = _windowMode == SupportWindowMode.expanded
-        ? const Duration(seconds: 12)
-        : const Duration(seconds: 35);
+        ? const Duration(seconds: 3)
+        : (openTicket != null
+            ? const Duration(seconds: 10)
+            : const Duration(seconds: 30));
     _pollTimer = Timer.periodic(period, (_) {
       unawaited(fetchTickets(silent: true));
     });
@@ -903,6 +987,12 @@ class SupportChatController extends ChangeNotifier {
           ? (loaded['seenMsgId'] as num).toInt()
           : 0;
       _initiatorToken = '${loaded['initiatorToken'] ?? ''}';
+      _sentReportFingerprints = (loaded['sentReportFingerprints'] is List)
+          ? (loaded['sentReportFingerprints'] as List)
+              .map((e) => '$e')
+              .where((s) => s.isNotEmpty)
+              .toList()
+          : <String>[];
       final modeStr = '${loaded['windowMode'] ?? 'hidden'}';
       if (modeStr == 'expanded') {
         _windowMode = SupportWindowMode.expanded;
@@ -924,6 +1014,7 @@ class SupportChatController extends ChangeNotifier {
       _replyToText = '';
       _seenMsgId = 0;
       _initiatorToken = '';
+      _sentReportFingerprints = <String>[];
       _tickets = <SupportTicketItem>[];
       _windowMode = SupportWindowMode.hidden;
     }
@@ -947,6 +1038,8 @@ class SupportChatController extends ChangeNotifier {
       if (_replyToText.isNotEmpty) 'replyToText': _replyToText,
       'seenMsgId': _seenMsgId,
       'initiatorToken': _initiatorToken,
+      if (_sentReportFingerprints.isNotEmpty)
+        'sentReportFingerprints': List<String>.from(_sentReportFingerprints),
       'windowMode': _windowMode.name,
       'tickets': _tickets.map((t) => t.toJson()).toList(),
     };
@@ -1012,6 +1105,8 @@ class SupportChatController extends ChangeNotifier {
     _replyToText = '';
     _seenMsgId = 0;
     _initiatorToken = '';
+    _sentReportFingerprints = <String>[];
+    _fetchInFlight = false;
     _tickets = <SupportTicketItem>[];
     _loading = false;
     _sending = false;

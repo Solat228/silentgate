@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'dart:async';
+
 import '../../core/models/vpn_server.dart';
+import '../../core/probe/ping_result.dart';
 import '../../core/settings/app_settings.dart';
 import '../../core/util/auto_groups.dart';
 import '../../core/util/server_groups.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
+import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
 import 'flag_cell.dart';
+import 'ping_chip.dart';
 
 /// Высота заголовка группы. Фиксированная: прокрутка к выбранному серверу
 /// считает смещение по строкам ([serverEntryTop]), и плавающая высота
@@ -259,6 +264,8 @@ class ServerGroupHeaderTile extends StatelessWidget {
               ),
             ),
           ),
+          if (onSelect == null)
+            _GroupPingSlot(group: group),
           Tooltip(
             message:
                 group.collapsed ? l.serverGroupExpand : l.serverGroupCollapse,
@@ -282,6 +289,82 @@ class ServerGroupHeaderTile extends StatelessWidget {
             ),
           ),
         ]),
+      ),
+    );
+  }
+}
+
+/// Плашка лучшего пинга по узлам группы (папки страны или «🌉 Мосты»):
+/// по нажатию запускает пинг всех серверов этой группы.
+class _GroupPingSlot extends StatelessWidget {
+  final ServerGroupHeader group;
+
+  const _GroupPingSlot({required this.group});
+
+  static PingResult _aggregateGroupPing(
+    List<VpnServer> members,
+    ProbeController probe,
+  ) {
+    if (members.isEmpty) return PingResult.untested;
+    PingResult? bestVerified;
+    PingResult? bestReachable;
+    PingResult? firstFailed;
+    var anyTesting = false;
+    for (final s in members) {
+      if (s.isNotice || s.isUnsupported) continue;
+      final r = probe.resultFor(s);
+      if (r.outcome == PingOutcome.testing ||
+          r.verification == PingVerification.pending) {
+        anyTesting = true;
+        continue;
+      }
+      if (r.isWorking) {
+        if (bestVerified == null ||
+            (r.latencyMs ?? 1 << 30) < (bestVerified.latencyMs ?? 1 << 30)) {
+          bestVerified = r;
+        }
+      } else if (r.isReachableUnverified) {
+        if (bestReachable == null ||
+            (r.latencyMs ?? 1 << 30) < (bestReachable.latencyMs ?? 1 << 30)) {
+          bestReachable = r;
+        }
+      } else if (r.outcome == PingOutcome.failed ||
+          r.outcome == PingOutcome.timeout ||
+          r.verification == PingVerification.failed) {
+        firstFailed ??= r;
+      }
+    }
+    if (anyTesting) return PingResult.testing;
+    return bestVerified ??
+        bestReachable ??
+        firstFailed ??
+        PingResult.untested;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final probe = context.watch<ProbeController?>();
+    final state = context.watch<AppState?>();
+    final settingsCtrl = context.watch<SettingsController?>();
+    if (probe == null || state == null) return const SizedBox.shrink();
+
+    final all = state.servers;
+    final members = <VpnServer>[
+      for (final idx in group.indices)
+        if (idx >= 0 && idx < all.length && !all[idx].isUnsupported) all[idx],
+    ];
+    if (members.isEmpty) return const SizedBox.shrink();
+
+    final agg = _aggregateGroupPing(members, probe);
+    return InkWell(
+      key: ValueKey('groupPing:${group.country}'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: probe.running || settingsCtrl == null
+          ? null
+          : () => unawaited(probe.pingAll(members, settingsCtrl.settings)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+        child: PingChip(result: agg),
       ),
     );
   }

@@ -35,7 +35,7 @@ class AppInfo {
   /// Сводка патчей, вошедших в текущую сборку `1.18.7+102` (показывается по нажатию
   /// на строку версии в «О программе» вместе с ревизией Git).
   static const List<String> builtInPatchesRu = [
-    '+103 · Быстрые отчёты поддержки в 1 клик без обязательного описания, чипы категорий, отправка обезличенной копии разработчику с предпросмотром и кнопкой во встроенном чате поддержки; работа YouTube на узлах обхода БС (IPv4-only + отказ QUIC и DNS HTTPS/SVCB); строго клиентская сборка релея БС',
+    '+103 · Быстрые отчёты поддержки в 1 клик, чипы категорий, обезличенная копия разработчику с предпросмотром, проверка дублей логов 1-в-1, подтверждение и рамка «Вопрос решён» и real-time опрос во встроенном чате поддержки; пинг нод Телемост /sgbs и папки «🌉 Мосты»; работа YouTube через БС',
     '+102 · Вставка файлов (.txt/.json) и мульти-ссылок через Ctrl+V в отдельную локальную подписку; рабочая прослойка обхода блокировок (Zapret / DPI) мимо Wintun с проверкой и автоподбором стратегий; прокачанный API автоматизации (порт Умного Авто 10818, до 250 закреплённых портов во всех режимах захвата и при выключенном VPN, все профили Авто с дедупликацией Xray, режимы пароля, управление подписками); фикс гонки Wi-Fi/Cellular на Android 15/16 и ложных обрывов ТСПУ',
     '+101 · Сортировка и вложение серверов по флагу в страновые Авто-серверы, выбор папок стран и «🌉 Мосты» как виртуальных Авто-серверов (включая «Через сервер»), исправление падения chromehttp2 в whitelist-bypass и пересоздания TUN по domain_suffix',
     '+100 · Сохранение позиции и состояния ярлыка SilentGate на Рабочем столе Windows при обновлении и переустановке (без пересоздания .lnk поверх существующего)',
@@ -57,7 +57,7 @@ class AppInfo {
   ];
 
   static const List<String> builtInPatchesEn = [
-    '+103 · 1-click support reports without mandatory text description, quick category chips, optional anonymized developer copy with preview and in-app support chat report button; fix YouTube over Whitelist-Bypass tunnels (IPv4-only + QUIC and DNS HTTPS/SVCB suppression); strictly client-only relay binaries',
+    '+103 · 1-click support reports, category chips, anonymized developer copy with preview, 1-to-1 duplicate log check, bordered close-ticket confirmation and real-time polling in support chat; Telemost /sgbs and "🌉 Bridges" ping; YouTube over Whitelist-Bypass fix',
     '+102 · Clipboard file (CF_HDROP) & multi-link Ctrl+V import into dedicated local subscriptions; rewritten Zapret / DPI bypass bound to physical NIC with live verifier and auto-tuner; upgraded Automation API (Smart Auto port 10818, up to 250 sticky ports across all capture modes and when disconnected, Auto profiles with Xray outbound deduplication, proxy auth modes, subscription endpoints); Android 15/16 Wi-Fi/Cellular default interface fix and TSPU false-reconnect guard',
     '+101 · Flag-based nesting into Country Auto-servers, selectable Country and "🌉 Bridges" folders as virtual Auto-servers (including "Via server"), fix chromehttp2 nil-panic in whitelist-bypass and TUN recreation on domain_suffix update',
     '+100 · Preserve Desktop shortcut position and state during Windows updates and reinstalls without deleting/recreating existing .lnk',

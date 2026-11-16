@@ -63,6 +63,7 @@ class LocalHttpToSocksBridge {
   final int socksPort;
   final String user;
   final String password;
+  final bool preferIpv4;
   final String _expectedBasicToken;
   final Set<Socket> _activeSockets = <Socket>{};
   bool _stopped = false;
@@ -72,6 +73,7 @@ class LocalHttpToSocksBridge {
     required this.socksPort,
     required this.user,
     required this.password,
+    this.preferIpv4 = false,
   })  : _server = server,
         _expectedBasicToken = base64Encode(utf8.encode('$user:$password')) {
     _server.listen(
@@ -92,6 +94,7 @@ class LocalHttpToSocksBridge {
     required int socksPort,
     String user = 'sgprobe',
     String? password,
+    bool preferIpv4 = false,
   }) async {
     final srv = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
     return LocalHttpToSocksBridge._(
@@ -99,6 +102,7 @@ class LocalHttpToSocksBridge {
       socksPort: socksPort,
       user: user,
       password: password ?? _randomHex(32),
+      preferIpv4: preferIpv4,
     );
   }
 
@@ -228,10 +232,26 @@ class LocalHttpToSocksBridge {
       socks.setOption(SocketOption.tcpNoDelay, true);
       socksChan = _SocketChannel(socks);
 
+      var dialHost = targetHost;
+      if (preferIpv4 && InternetAddress.tryParse(targetHost) == null) {
+        try {
+          final addrs = await InternetAddress.lookup(
+            targetHost,
+            type: InternetAddressType.IPv4,
+          ).timeout(const Duration(milliseconds: 1800));
+          for (final a in addrs) {
+            if (a.type == InternetAddressType.IPv4 && !a.isLoopback) {
+              dialHost = a.address;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
       final connected = await _performSocks5Connect(
         socks,
         socksChan,
-        targetHost,
+        dialHost,
         targetPort,
       ).timeout(const Duration(seconds: 20));
 

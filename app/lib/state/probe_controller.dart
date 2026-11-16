@@ -1454,35 +1454,31 @@ class ProbeController extends ChangeNotifier {
         _recordSelfMeasured(server, ready);
         return;
       }
-      final coldSettings = settings.pingTimeoutMs < 8000
-          ? settings.copyWith(pingTimeoutMs: 8000)
-          : settings;
-      await _applyVerify(
-        server,
-        port,
-        coldSettings,
-        head: head,
-        forceProxy: forceProxy,
-        proxyUser: handle.proxyUser,
-        proxyPassword: handle.proxyPassword,
-      );
-      // На холодном старте релея со спящим кодеком (--idle-vp8) первый пакет
-      // KCP может прийти ровно в момент пробуждения creator-воркера. Делаем
-      // один повтор внутри уже открытого звонка перед признанием пробы неудачной.
-      if (!cancel.isCancelled &&
-          port != null &&
-          !(_results[server.key]?.isWorking ?? false)) {
-        await Future<void>.delayed(const Duration(milliseconds: 600));
-        if (!cancel.isCancelled) {
-          await _applyVerify(
-            server,
-            port,
-            coldSettings,
-            head: head,
-            forceProxy: forceProxy,
-            proxyUser: handle.proxyUser,
-            proxyPassword: handle.proxyPassword,
-          );
+      // На холодном старте видео-релея (особенно Яндекс Телемост и VK Video с
+      // --idle-vp8) подписка видеодорожки на SFU активируется через 0.3-1.5 с
+      // после ICE-соединения, поэтому первый KCP SYN нередко теряется. Вместо
+      // одного долгого 8-секундного ожидания делаем до 3 коротких попыток по
+      // 3.5 с внутри уже открытого звонка.
+      final wakeTimeoutMs =
+          settings.pingTimeoutMs > 3800 ? settings.pingTimeoutMs : 3800;
+      final wakeSettings = settings.copyWith(pingTimeoutMs: wakeTimeoutMs);
+      for (var attempt = 0; attempt < 3; attempt++) {
+        if (cancel.isCancelled) break;
+        if (attempt > 0) {
+          await Future<void>.delayed(const Duration(milliseconds: 500));
+          if (cancel.isCancelled) break;
+        }
+        await _applyVerify(
+          server,
+          port,
+          wakeSettings,
+          head: head,
+          forceProxy: forceProxy,
+          proxyUser: handle.proxyUser,
+          proxyPassword: handle.proxyPassword,
+        );
+        if (port == null || (_results[server.key]?.isWorking ?? false)) {
+          break;
         }
       }
       // Первый запрос через только что поднятый WebRTC/KCP канал несёт накладные

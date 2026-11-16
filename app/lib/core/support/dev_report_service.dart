@@ -92,6 +92,27 @@ abstract final class DevReportService {
         .substring(0, 16);
   }
 
+  static final RegExp _ephemeralReportCodeRe =
+      RegExp(r'\(SG-[0-9A-Z]{6}\)');
+  static final RegExp _ephemeralReportInventoryRe =
+      RegExp(r'^Отчёты поддержки:.*$', multiLine: true);
+
+  /// Детерминированный SHA-256 отпечаток содержимого отчёта для проверки
+  /// совпадения «1 в 1» с предыдущим отправленным в чат поддержки.
+  ///
+  /// Игнорирует только случайный код `(SG-XXXXXX)` в заголовке и счётчик числа
+  /// сохранённых файлов отчёта на диске, учитывая 100 % описания, категорий,
+  /// настроек, статуса подключения и всех строк логов (`app.log`, `xray.log`,
+  /// `singbox.log`).
+  static String computeReportContentFingerprint(String rawReportText) {
+    final normalized = rawReportText
+        .replaceAll('\r\n', '\n')
+        .replaceAll(_ephemeralReportCodeRe, '(SG-CODE)')
+        .replaceAll(_ephemeralReportInventoryRe, 'Отчёты поддержки: *')
+        .trim();
+    return Sha256.ofBytes(utf8.encode(normalized));
+  }
+
   static String? _cleanHwid(String? rawHwid) {
     final v = (rawHwid ?? '').trim().toLowerCase();
     if (v.isEmpty || v == '…' || v.startsWith('н/д') || v == 'unknown') {
