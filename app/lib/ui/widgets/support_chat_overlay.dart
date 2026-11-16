@@ -34,6 +34,7 @@ class _SupportChatOverlayState extends State<SupportChatOverlay> {
   late final TextEditingController _questionCtrl;
   final ScrollController _scrollCtrl = ScrollController();
   String? _lastBoundUrl;
+  int _lastLatestMsgId = 0;
 
   SupportChatController get _ctrl =>
       widget.controller ?? SupportChatController.instance;
@@ -66,10 +67,34 @@ class _SupportChatOverlayState extends State<SupportChatOverlay> {
     super.dispose();
   }
 
+  int _computeLatestMsgId() {
+    var best = 0;
+    for (final t in _ctrl.tickets) {
+      for (final m in t.messages) {
+        if (m.id > best) best = m.id;
+      }
+    }
+    return best;
+  }
+
   void _onControllerChanged() {
     if (!mounted) return;
     _syncTextControllersFromState();
+    final latest = _computeLatestMsgId();
+    final shouldScroll =
+        _ctrl.isExpanded && latest > _lastLatestMsgId && _lastLatestMsgId > 0;
+    _lastLatestMsgId = latest;
     setState(() {});
+    if (shouldScroll) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_scrollCtrl.hasClients) return;
+        _scrollCtrl.animateTo(
+          _scrollCtrl.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOut,
+        );
+      });
+    }
   }
 
   void _syncTextControllersFromState() {
@@ -108,17 +133,111 @@ class _SupportChatOverlayState extends State<SupportChatOverlay> {
         ],
       );
       final files = await openFiles(acceptedTypeGroups: const <XTypeGroup>[group]);
-      if (files.isEmpty) return;
-      _ctrl.addPendingFiles(files.map((f) => f.path));
+      if (files.isEmpty || !mounted) return;
+      final accepted = <String>[];
+      for (final f in files) {
+        if (_ctrl.isDuplicateReportFile(f.path)) {
+          final attachAnyway = await _confirmDuplicateReportDialog(context);
+          if (!mounted) return;
+          if (!attachAnyway) continue;
+        }
+        accepted.add(f.path);
+      }
+      if (accepted.isNotEmpty) {
+        _ctrl.addPendingFiles(accepted);
+      }
     } catch (_) {}
   }
 
   Future<void> _attachDiagnosticReport() async {
     final res = await showSupportReportForChatDialog(context);
     if (res == null || !mounted) return;
+    if (_ctrl.isDuplicateReportFile(res.filePath)) {
+      final attachAnyway = await _confirmDuplicateReportDialog(context);
+      if (!mounted || !attachAnyway) return;
+    }
     _ctrl.addPendingFiles(<String>[res.filePath]);
     if (_ctrl.draftText.trim().isEmpty && res.summaryLine.trim().isNotEmpty) {
       _ctrl.updateDraftText(res.summaryLine);
+    }
+  }
+
+  Future<bool> _confirmDuplicateReportDialog(BuildContext context) async {
+    final decision = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('supportDuplicateReportDialog'),
+        backgroundColor: const Color(0xFF151C2E),
+        title: const Text(
+          'Отчёт совпадает 1 в 1 с предыдущим',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: const Text(
+          'В этом отчёте всё то же самое 1 в 1, что и в предыдущем отправленном '
+          'в чат поддержки: новых записей в журнале и изменений состояния нет.\n\n'
+          'Приложить его повторно?',
+          style: TextStyle(color: Colors.white70, fontSize: 13.5, height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('supportSkipDuplicateReportButton'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Не прикладывать'),
+          ),
+          FilledButton(
+            key: const Key('supportAttachDuplicateAnywayButton'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Приложить всё равно'),
+          ),
+        ],
+      ),
+    );
+    return decision == true;
+  }
+
+  Future<void> _confirmAndCloseTicket(
+    BuildContext context,
+    SupportTicketItem ticket,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        key: const Key('supportConfirmCloseDialog'),
+        backgroundColor: const Color(0xFF151C2E),
+        title: const Text(
+          'Закрыть обращение?',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        content: Text(
+          ticket.no.isNotEmpty
+              ? 'Вы точно уверены, что хотите закрыть тикет #W${ticket.no}?'
+              : 'Вы точно уверены, что хотите закрыть тикет?',
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 13.5,
+            height: 1.4,
+          ),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('supportCancelCloseTicketButton'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            key: const Key('supportConfirmCloseTicketButton'),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF1F7A58),
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Да, закрыть тикет'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      unawaited(_ctrl.closeTicket(ticket.id));
     }
   }
 
@@ -367,19 +486,37 @@ class _SupportChatOverlayState extends State<SupportChatOverlay> {
           ],
           const Spacer(),
           if (openTicket != null)
-            TextButton(
-              key: const Key('supportCloseTicketButton'),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                foregroundColor: Colors.white70,
-              ),
-              onPressed: () => unawaited(_ctrl.closeTicket(openTicket.id)),
-              child: const Text(
-                'Вопрос решён',
-                style: TextStyle(fontSize: 11.5),
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: OutlinedButton.icon(
+                key: const Key('supportCloseTicketButton'),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  backgroundColor: const Color(0xFF142823),
+                  foregroundColor: const Color(0xFF7BE8B9),
+                  side: const BorderSide(color: Color(0xFF3E8E6E), width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () =>
+                    unawaited(_confirmAndCloseTicket(context, openTicket)),
+                icon: const Icon(
+                  Icons.check_circle_outline,
+                  size: 14,
+                  color: Color(0xFF7BE8B9),
+                ),
+                label: const Text(
+                  'Вопрос решён',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
           IconButton(
@@ -459,7 +596,7 @@ class _SupportChatOverlayState extends State<SupportChatOverlay> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Опишите вопрос или проблему — оператор ответит прямо здесь.',
+              'Опишите вопрос или проблему - оператор ответит прямо здесь.',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,

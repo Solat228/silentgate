@@ -48,30 +48,58 @@ object RootStealthController {
     val isStealthFlavor: Boolean
         get() = BuildConfig.FLAVOR == "stealth"
 
+    private val SU_CANDIDATES = listOf(
+        "su",
+        "/system/bin/su",
+        "/system/xbin/su",
+        "/sbin/su",
+        "/debug_ramdisk/su",
+        "/data/adb/ksu/bin/su",
+        "/data/adb/ap/bin/su",
+    )
+
+    @Volatile
+    private var resolvedSuBin: String = "su"
+
     @Volatile
     var rootAvailableCached: Boolean? = null
         private set
 
-    /** Проверить наличие рабочего `su`. */
+    /**
+     * Проверить наличие рабочего `su` (с окном до 15 с на интерактивный диалог
+     * выдачи прав в Magisk / KernelSU / APatch при первом обращении).
+     * Отрицательный результат навсегда не кэшируется, чтобы включение root в
+     * менеджере подхватывалось при следующем нажатии Connect без перезапуска.
+     */
     fun checkRootAvailable(forceRefresh: Boolean = false): Boolean {
-        if (!forceRefresh) {
-            rootAvailableCached?.let { return it }
+        if (!forceRefresh && rootAvailableCached == true) {
+            return true
         }
-        val ok = runCatching {
-            val proc = ProcessBuilder("su", "-c", "id -u")
-                .redirectErrorStream(true)
-                .start()
-            val finished = proc.waitFor(3500, TimeUnit.MILLISECONDS)
-            if (!finished) {
-                proc.destroyForcibly()
-                false
-            } else {
-                val out = proc.inputStream.bufferedReader().readText().trim()
-                proc.exitValue() == 0 && out.lines().any { it.trim() == "0" }
+        for (candidate in SU_CANDIDATES) {
+            if (candidate.startsWith("/") && !java.io.File(candidate).exists()) {
+                continue
             }
-        }.getOrDefault(false)
-        rootAvailableCached = ok
-        return ok
+            val ok = runCatching {
+                val proc = ProcessBuilder(candidate, "-c", "id -u")
+                    .redirectErrorStream(true)
+                    .start()
+                val finished = proc.waitFor(15_000, TimeUnit.MILLISECONDS)
+                if (!finished) {
+                    proc.destroyForcibly()
+                    false
+                } else {
+                    val out = proc.inputStream.bufferedReader().readText().trim()
+                    proc.exitValue() == 0 && out.lines().any { it.trim() == "0" }
+                }
+            }.getOrDefault(false)
+            if (ok) {
+                resolvedSuBin = candidate
+                rootAvailableCached = true
+                return true
+            }
+        }
+        rootAvailableCached = false
+        return false
     }
 
     /** Доступен ли полноценный Root-режим без `VpnService` и `tun0`. */
@@ -259,81 +287,81 @@ object RootStealthController {
         sb.appendLine(cleanupScriptBody(myUid))
 
         // 2. Цепочка NAT OUTPUT -> SG_STEALTH_NAT -> SG_STEALTH_DO
-        sb.appendLine("iptables -t nat -N SG_STEALTH_DO 2>/dev/null || iptables -t nat -F SG_STEALTH_DO")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p udp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p tcp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 127.0.0.0/8 -j RETURN")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 169.254.0.0/16 -j RETURN")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 224.0.0.0/4 -j RETURN")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 255.255.255.255/32 -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -N SG_STEALTH_DO 2>/dev/null || iptables -w 2 -t nat -F SG_STEALTH_DO")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -p udp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -p tcp --dport 53 -j REDIRECT --to-ports $DNS_REDIRECT_PORT")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 127.0.0.0/8 -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 169.254.0.0/16 -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 224.0.0.0/4 -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 255.255.255.255/32 -j RETURN")
         if (plan.bypassLan) {
-            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 10.0.0.0/8 -j RETURN")
-            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 172.16.0.0/12 -j RETURN")
-            sb.appendLine("iptables -t nat -A SG_STEALTH_DO -d 192.168.0.0/16 -j RETURN")
+            sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 10.0.0.0/8 -j RETURN")
+            sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 172.16.0.0/12 -j RETURN")
+            sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -d 192.168.0.0/16 -j RETURN")
         }
-        sb.appendLine("iptables -t nat -A SG_STEALTH_DO -p tcp -j REDIRECT --to-ports $REDIRECT_PORT")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_DO -p tcp -j REDIRECT --to-ports $REDIRECT_PORT")
 
-        sb.appendLine("iptables -t nat -N SG_STEALTH_NAT 2>/dev/null || iptables -t nat -F SG_STEALTH_NAT")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $myUid -j RETURN")
-        sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner 0 -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -N SG_STEALTH_NAT 2>/dev/null || iptables -w 2 -t nat -F SG_STEALTH_NAT")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -m owner --uid-owner 0 -j RETURN")
         // Системный резолвер netd (UID 1051 = dns / AID_DNS) тоже заворачиваем на порт 53,
         // если не включён строгий список только выбранных приложений.
         if (plan.includePackages.isNotEmpty()) {
             for (uid in includeUids) {
-                sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j SG_STEALTH_DO")
+                sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j SG_STEALTH_DO")
             }
-            sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -j RETURN")
+            sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -j RETURN")
         } else {
             for (uid in excludeUids) {
-                sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j RETURN")
+                sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -m owner --uid-owner $uid -j RETURN")
             }
-            sb.appendLine("iptables -t nat -A SG_STEALTH_NAT -j SG_STEALTH_DO")
+            sb.appendLine("iptables -w 2 -t nat -A SG_STEALTH_NAT -j SG_STEALTH_DO")
         }
-        sb.appendLine("iptables -t nat -I OUTPUT 1 -j SG_STEALTH_NAT")
+        sb.appendLine("iptables -w 2 -t nat -I OUTPUT 1 -j SG_STEALTH_NAT")
 
         // 3. Цепочка FILTER OUTPUT (защита локальных портов + отказ QUIC UDP:443 и DoT :853).
-        sb.appendLine("iptables -t filter -N SG_STEALTH_FLT_DO 2>/dev/null || iptables -t filter -F SG_STEALTH_FLT_DO")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p udp --dport 443 -j REJECT")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p udp --dport 853 -j REJECT")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT_DO -p tcp --dport 853 -j REJECT --reject-with tcp-reset")
+        sb.appendLine("iptables -w 2 -t filter -N SG_STEALTH_FLT_DO 2>/dev/null || iptables -w 2 -t filter -F SG_STEALTH_FLT_DO")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT_DO -p udp --dport 443 -j REJECT")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT_DO -p udp --dport 853 -j REJECT")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT_DO -p tcp --dport 853 -j REJECT --reject-with tcp-reset")
 
-        sb.appendLine("iptables -t filter -N SG_STEALTH_FLT 2>/dev/null || iptables -t filter -F SG_STEALTH_FLT")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $myUid -j RETURN")
-        sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner 0 -j RETURN")
+        sb.appendLine("iptables -w 2 -t filter -N SG_STEALTH_FLT 2>/dev/null || iptables -w 2 -t filter -F SG_STEALTH_FLT")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -m owner --uid-owner 0 -j RETURN")
         if (plan.includePackages.isNotEmpty()) {
             for (uid in includeUids) {
-                sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j SG_STEALTH_FLT_DO")
+                sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j SG_STEALTH_FLT_DO")
             }
         } else {
             for (uid in excludeUids) {
-                sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j RETURN")
+                sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -m owner --uid-owner $uid -j RETURN")
             }
-            sb.appendLine("iptables -t filter -A SG_STEALTH_FLT -j SG_STEALTH_FLT_DO")
+            sb.appendLine("iptables -w 2 -t filter -A SG_STEALTH_FLT -j SG_STEALTH_FLT_DO")
         }
-        sb.appendLine("iptables -t filter -I OUTPUT 1 -j SG_STEALTH_FLT")
+        sb.appendLine("iptables -w 2 -t filter -I OUTPUT 1 -j SG_STEALTH_FLT")
 
         // 4. IPv6: защита портов lo и блокировка утечки IPv6 для туннелируемых UID.
-        sb.appendLine("ip6tables -t filter -N SG_STEALTH6_DO 2>/dev/null || ip6tables -t filter -F SG_STEALTH6_DO")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -o lo -j RETURN")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -d fe80::/10 -j RETURN")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_DO -j REJECT")
+        sb.appendLine("ip6tables -w 2 -t filter -N SG_STEALTH6_DO 2>/dev/null || ip6tables -w 2 -t filter -F SG_STEALTH6_DO")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_DO -o lo -j RETURN")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_DO -d fe80::/10 -j RETURN")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_DO -j REJECT")
 
-        sb.appendLine("ip6tables -t filter -N SG_STEALTH6_FLT 2>/dev/null || ip6tables -t filter -F SG_STEALTH6_FLT")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $myUid -j RETURN")
-        sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner 0 -j RETURN")
+        sb.appendLine("ip6tables -w 2 -t filter -N SG_STEALTH6_FLT 2>/dev/null || ip6tables -w 2 -t filter -F SG_STEALTH6_FLT")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $myUid -j RETURN")
+        sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -m owner --uid-owner 0 -j RETURN")
         if (plan.includePackages.isNotEmpty()) {
             for (uid in includeUids) {
-                sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j SG_STEALTH6_DO")
+                sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j SG_STEALTH6_DO")
             }
         } else {
             for (uid in excludeUids) {
-                sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j RETURN")
+                sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -m owner --uid-owner $uid -j RETURN")
             }
-            sb.appendLine("ip6tables -t filter -A SG_STEALTH6_FLT -j SG_STEALTH6_DO")
+            sb.appendLine("ip6tables -w 2 -t filter -A SG_STEALTH6_FLT -j SG_STEALTH6_DO")
         }
-        sb.appendLine("ip6tables -t filter -I OUTPUT 1 -j SG_STEALTH6_FLT")
+        sb.appendLine("ip6tables -w 2 -t filter -I OUTPUT 1 -j SG_STEALTH6_FLT")
 
         return execRootScript(sb.toString(), timeoutMs = 5000)
     }
@@ -346,23 +374,23 @@ object RootStealthController {
     }
 
     private fun cleanupScriptBody(myUid: Int): String = """
-        iptables -t nat -D OUTPUT -j SG_STEALTH_NAT 2>/dev/null || true
-        iptables -t nat -F SG_STEALTH_NAT 2>/dev/null || true
-        iptables -t nat -X SG_STEALTH_NAT 2>/dev/null || true
-        iptables -t nat -F SG_STEALTH_DO 2>/dev/null || true
-        iptables -t nat -X SG_STEALTH_DO 2>/dev/null || true
-        iptables -t filter -D OUTPUT -j SG_STEALTH_FLT 2>/dev/null || true
-        iptables -t filter -F SG_STEALTH_FLT 2>/dev/null || true
-        iptables -t filter -X SG_STEALTH_FLT 2>/dev/null || true
-        iptables -t filter -F SG_STEALTH_FLT_DO 2>/dev/null || true
-        iptables -t filter -X SG_STEALTH_FLT_DO 2>/dev/null || true
-        ip6tables -t filter -D OUTPUT -j SG_STEALTH6_FLT 2>/dev/null || true
-        ip6tables -t filter -F SG_STEALTH6_FLT 2>/dev/null || true
-        ip6tables -t filter -X SG_STEALTH6_FLT 2>/dev/null || true
-        ip6tables -t filter -F SG_STEALTH6_DO 2>/dev/null || true
-        ip6tables -t filter -X SG_STEALTH6_DO 2>/dev/null || true
+        iptables -w 2 -t nat -D OUTPUT -j SG_STEALTH_NAT 2>/dev/null || true
+        iptables -w 2 -t nat -F SG_STEALTH_NAT 2>/dev/null || true
+        iptables -w 2 -t nat -X SG_STEALTH_NAT 2>/dev/null || true
+        iptables -w 2 -t nat -F SG_STEALTH_DO 2>/dev/null || true
+        iptables -w 2 -t nat -X SG_STEALTH_DO 2>/dev/null || true
+        iptables -w 2 -t filter -D OUTPUT -j SG_STEALTH_FLT 2>/dev/null || true
+        iptables -w 2 -t filter -F SG_STEALTH_FLT 2>/dev/null || true
+        iptables -w 2 -t filter -X SG_STEALTH_FLT 2>/dev/null || true
+        iptables -w 2 -t filter -F SG_STEALTH_FLT_DO 2>/dev/null || true
+        iptables -w 2 -t filter -X SG_STEALTH_FLT_DO 2>/dev/null || true
+        ip6tables -w 2 -t filter -D OUTPUT -j SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -w 2 -t filter -F SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -w 2 -t filter -X SG_STEALTH6_FLT 2>/dev/null || true
+        ip6tables -w 2 -t filter -F SG_STEALTH6_DO 2>/dev/null || true
+        ip6tables -w 2 -t filter -X SG_STEALTH6_DO 2>/dev/null || true
         for bin in iptables ip6tables; do
-          ${'$'}bin -D OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset 2>/dev/null || true
+          ${'$'}bin -w 2 -D OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $myUid -j REJECT --reject-with tcp-reset 2>/dev/null || true
         done
     """.trimIndent()
 
@@ -382,9 +410,14 @@ object RootStealthController {
         }.start()
     }
 
-    /** Вызывается при остановке VPN: чистит правила `iptables` и прячет `SilentGateVpnService`. */
+    /**
+     * Вызывается при остановке VPN: чистит правила `iptables`, а при наличии
+     * root держит `SilentGateVpnService` скрытым (`disabled`). На устройствах
+     * без root компонент остаётся включённым, чтобы Android VpnManager не
+     * сбрасывал выданное пользователем системное согласие при каждом реконнекте.
+     */
     fun afterVpnStop(context: Context) {
-        if (isStealthFlavor) {
+        if (isStealthFlavor && rootAvailableCached == true) {
             setVpnComponentEnabled(context, false)
         }
         Thread {
@@ -398,8 +431,8 @@ object RootStealthController {
         val cmd = if (enable) {
             """
             for bin in iptables ip6tables; do
-              ${'$'}bin -C OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $uid -j REJECT --reject-with tcp-reset 2>/dev/null || \
-              ${'$'}bin -I OUTPUT 1 -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $uid -j REJECT --reject-with tcp-reset 2>/dev/null
+              ${'$'}bin -w 2 -C OUTPUT -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $uid -j REJECT --reject-with tcp-reset 2>/dev/null || \
+              ${'$'}bin -w 2 -I OUTPUT 1 -o lo -p tcp --dport $LOCAL_PORT_RANGE -m owner ! --uid-owner $uid -j REJECT --reject-with tcp-reset 2>/dev/null
             done
             """.trimIndent()
         } else {
@@ -410,7 +443,7 @@ object RootStealthController {
 
     private fun execRootScript(script: String, timeoutMs: Long): Boolean {
         return runCatching {
-            val proc = ProcessBuilder("su", "-c", script)
+            val proc = ProcessBuilder(resolvedSuBin, "-c", script)
                 .redirectErrorStream(true)
                 .start()
             if (!proc.waitFor(timeoutMs, TimeUnit.MILLISECONDS)) {

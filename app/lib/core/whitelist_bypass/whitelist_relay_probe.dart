@@ -177,7 +177,10 @@ abstract final class WhitelistRelayProbe {
     // в самом процессе приложения (работает одинаково на Windows и Android).
     if (server.isWhitelistBypass) {
       try {
-        final bridge = await LocalHttpToSocksBridge.start(socksPort: socksPort);
+        final bridge = await LocalHttpToSocksBridge.start(
+          socksPort: socksPort,
+          preferIpv4: true,
+        );
         return WhitelistRelayProbeHandle._(
           httpPort: bridge.port,
           user: bridge.user,

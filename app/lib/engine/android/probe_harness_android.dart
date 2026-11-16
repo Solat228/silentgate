@@ -97,7 +97,8 @@ class ProbeHarnessAndroid implements ProbeHarness {
   /// Ноль (конфиг не разобрался) — тоже один: построитель тогда уходит в
   /// штатную ветку и собирает обычный конфиг по полям сервера.
   static int candidateCount(HarnessEntry e) {
-    if (e.server.usesWhitelistRelay && e.whitelistRelayPort == null) return 0;
+    if (e.whitelistRelayPort != null) return 1;
+    if (e.server.usesWhitelistRelay) return 0;
     final s = e.server;
     final raw = (s.rawJsonOverride ?? '').isNotEmpty
         ? s.rawJsonOverride!
@@ -140,7 +141,9 @@ class ProbeHarnessAndroid implements ProbeHarness {
       // рабочий сервер мёртвым. Такие кандидаты просто не меряются: их
       // состояние честно остаётся «не проверен», а по живому каналу
       // проверяется активный (см. ProbeController).
-      if (e.server.protocol == 'hysteria2' || e.server.usesWhitelistRelay) {
+      final isRelay = e.whitelistRelayPort != null;
+      if (e.server.protocol == 'hysteria2' ||
+          (e.server.usesWhitelistRelay && !isRelay)) {
         next++;
         continue;
       }
@@ -161,7 +164,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
         // Путь запоминаем ДО записи: файл может быть создан и оборван на
         // середине — такой обрывок тоже надо убрать, а `delete` отсутствующего
         // файла проглатывается в [_deleteConfigs].
-        own.add(_Candidate(f.path, port));
+        own.add(_Candidate(f.path, port, isRelay: isRelay));
         await f.writeAsString(json);
       }
     }
@@ -200,7 +203,8 @@ class ProbeHarnessAndroid implements ProbeHarness {
 class _Candidate {
   final String path;
   final int port;
-  const _Candidate(this.path, this.port);
+  final bool isRelay;
+  const _Candidate(this.path, this.port, {this.isRelay = false});
 }
 
 /// Убрать временные конфиги харнесса. ОДНА уборка на оба пути: конец прогона
@@ -308,19 +312,11 @@ class _AndroidHandle implements HarnessHandle {
     return best;
   }
 
-  Future<int?> _pingOne(_Candidate c, int timeoutSec) async {
+  Future<int?> _invokeNativePing(_Candidate c, int timeoutSec) async {
     try {
       final v = await ProbeHarnessAndroid._channel.invokeMethod<int>('ping', {
         'configPath': c.path,
         'timeout': timeoutSec,
-        // ⚠️ Адрес инбаунда ОБЯЗАТЕЛЕН. Харнесс поднимает HTTP-прокси СВОЙ НА
-        // КАЖДЫЙ КОНФИГ (см. [_proxyUrl]), а нативная сторона без этого поля
-        // берёт `socks5://127.0.0.1:0` — и порт несуществующий, и протокол не
-        // тот. Считать порт одним нельзя: из этого предположения и вырос
-        // дефект с плавающими «n/a» — замер уходил в инбаунд чужого кандидата.
-        // Замер молча возвращал пустоту, а весь список серверов помечался
-        // «отвечает по TCP, но не проксирует» — включая сервер, через который
-        // пользователь в этот момент работал.
         'proxy': _proxyUrl(c.port),
       });
       return (v == null || v <= 0) ? null : v;
@@ -328,6 +324,26 @@ class _AndroidHandle implements HarnessHandle {
       AppLog.w('Замер через libXray не удался: $e');
       return null;
     }
+  }
+
+  Future<int?> _pingOne(_Candidate c, int timeoutSec) async {
+    if (!c.isRelay) {
+      return _invokeNativePing(c, timeoutSec);
+    }
+    // Для нод обхода БС (/sgbs поверх Телемоста / ВК / DION) первый пакет KCP
+    // может прийти в момент пробуждения видеокодека (--idle-vp8). Даём до 10 с,
+    // при промахе повторяем через 600 мс, а при успехе берём контрольный замер
+    // по уже прогретому звонку (как на Windows в _verifyWhitelistOne).
+    final coldTimeout = timeoutSec < 10 ? 10 : timeoutSec;
+    var first = await _invokeNativePing(c, coldTimeout);
+    if (first == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 600));
+      first = await _invokeNativePing(c, coldTimeout);
+    }
+    if (first == null) return null;
+    final warm = await _invokeNativePing(c, timeoutSec < 5 ? 5 : timeoutSec);
+    if (warm != null && warm < first) return warm;
+    return first;
   }
 
   @override

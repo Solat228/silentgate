@@ -213,7 +213,10 @@ class HarnessConfigBuilder {
     // #8.2 — сервер с полным JSON-override: поднимаем его собственный конфиг
     // (со всеми outbounds/balancers/burstObservatory), но заменяем inbounds на
     // единственный http-inbound харнесса и роутим его на цель исходного конфига.
-    if (entries.length == 1) {
+    // Если задан whitelistRelayPort (проверка ноды БС /sgbs поверх временного
+    // WebRTC-звонка), rawPanelConfig брать нельзя: в нём зашит постоянный порт
+    // 10855 или прямой адрес сервера, а не временный SOCKS5 открытого звонка.
+    if (entries.length == 1 && entries.first.whitelistRelayPort == null) {
       // Полный конфиг: правка пользователя либо профиль-автовыбор от панели.
       final s = entries.first.server;
       final raw = (s.rawJsonOverride ?? '').isNotEmpty
