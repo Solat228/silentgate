@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Каким ядром поднимается сервер. Xray не умеет hysteria2 (QUIC-протокол),
 /// поэтому такие серверы обслуживает sing-box — он уже есть в комплекте ради TUN.
 /// На Windows sing-box запускается отдельным процессом (сложившаяся архитектура);
@@ -61,6 +63,35 @@ class VpnServer {
   /// Порт-хоппинг (`mport=1000-2000,3000`): сервер слушает диапазон, клиент
   /// перескакивает между портами, чтобы не попасть под лимит по одному порту.
   final String? hopPorts;
+
+  // ── Whitelist Bypass (Обход белых списков) ──────────────────────────────────
+  /// Платформа видеозвонков/WebRTC: 'wbstream', 'telemost', 'vk', 'dion', 'bitrix', 'blink'.
+  final String? whitelistPlatform;
+
+  /// Идентификатор комнаты звонка или полная ссылка на звонок.
+  final String? whitelistRoom;
+
+  /// Режим туннеля через медиапоток ('video' или 'dc' - data channel).
+  final String? whitelistMode;
+
+  /// Внешний адрес/IP хоста создателя звонка (VPS-ноды) для отображения и гео-справки.
+  final String? whitelistCreatorHost;
+
+  /// Является ли сервер точкой обхода белых списков.
+  final bool whitelistReliable;
+  final bool whitelistDualTrack;
+  final int? whitelistVp8Fps;
+  final int? whitelistVp8Batch;
+  final String? whitelistBlinkToken;
+
+  bool get isWhitelistBypass => protocol == 'whitelist_bypass';
+
+  /// Требует ли сервер запуска локального WebRTC-релея (`whitelist-bypass`).
+  /// Истинно как для автономных `whitelist://`, так и для нод Remnawave (`/sgbs?...`).
+  bool get usesWhitelistRelay =>
+      isWhitelistBypass ||
+      ((whitelistPlatform ?? '').isNotEmpty &&
+          (whitelistRoom ?? '').isNotEmpty);
 
   final String rawLink;
 
@@ -136,6 +167,15 @@ class VpnServer {
     this.obfsPassword,
     this.allowInsecure = false,
     this.hopPorts,
+    this.whitelistPlatform,
+    this.whitelistRoom,
+    this.whitelistMode,
+    this.whitelistCreatorHost,
+    this.whitelistReliable = false,
+    this.whitelistDualTrack = false,
+    this.whitelistVp8Fps,
+    this.whitelistVp8Batch,
+    this.whitelistBlinkToken,
     required this.rawLink,
     this.rawJsonOverride,
     this.rawOutboundJson,
@@ -162,6 +202,7 @@ class VpnServer {
     // ПЕРВОГО узла внутри балансировщика, а состав балансировщика панель
     // перетасовывает — узлов там десятки.
     if (isPanelProfile) return 'panel|${remark.trim()}';
+    if (isWhitelistBypass) return '$protocol|${whitelistPlatform ?? ''}|${remark.trim()}';
     // ⚠️ АДРЕСА И ПОРТА ЗДЕСЬ НЕТ — ТРЕБОВАНИЕ ВЛАДЕЛЬЦА 02.09.2026: «обновление
     // сервера, а не полная замена, если название совпадает, а различаются только
     // некоторые параметры».
@@ -207,7 +248,9 @@ class VpnServer {
   }
 
   ProxyCore get core =>
-      protocol == 'hysteria2' && !isPanelProfile ? ProxyCore.singbox : ProxyCore.xray;
+      (protocol == 'hysteria2' || protocol == 'whitelist_bypass') && !isPanelProfile
+          ? ProxyCore.singbox
+          : ProxyCore.xray;
 
   /// Короткое имя для UI (если remark пуст — адрес:порт).
   String get displayName =>
@@ -216,7 +259,10 @@ class VpnServer {
   String get protocolLabel {
     switch (protocol) {
       case 'vless':
-        return 'VLESS${security == 'reality' ? ' · Reality' : ''}';
+        final bsSuffix = usesWhitelistRelay
+            ? ' · БС (${(whitelistPlatform ?? 'RELAY').toUpperCase()})'
+            : '';
+        return 'VLESS${security == 'reality' ? ' · Reality' : ''}$bsSuffix';
       case 'vmess':
         return 'VMess';
       case 'trojan':
@@ -225,6 +271,9 @@ class VpnServer {
         return 'Shadowsocks';
       case 'hysteria2':
         return 'Hysteria2${(obfs ?? '').isNotEmpty ? ' · обфускация' : ''}';
+      case 'whitelist_bypass':
+        final plat = whitelistPlatform?.toUpperCase() ?? 'БС';
+        return 'Обход БС ($plat)';
       default:
         return protocol;
     }
@@ -236,6 +285,13 @@ class VpnServer {
   /// возвращаются маркерами из [VpnServerTags] — UI прогоняет список через
   /// `configTagLabels` (`core/i18n/enum_labels.dart`).
   List<String> get configTags {
+    if (isWhitelistBypass) {
+      return [
+        'БЕЛЫЙ СПИСОК',
+        (whitelistPlatform ?? 'RELAY').toUpperCase(),
+        (whitelistMode ?? 'VIDEO').toUpperCase(),
+      ];
+    }
     // Профиль «Авто …» — готовый автовыбор панели: показываем это вместо
     // параметров одного из десятков серверов внутри.
     if (isPanelProfile) {
@@ -249,6 +305,9 @@ class VpnServer {
     }
     if (flow != null && flow!.contains('vision')) tags.add('VISION');
     if ((obfs ?? '').isNotEmpty) tags.add('OBFS');
+    if (usesWhitelistRelay) {
+      tags.add('БС · ${(whitelistPlatform ?? 'RELAY').toUpperCase()}');
+    }
     if ((hopPorts ?? '').isNotEmpty) tags.add(VpnServerTags.portHopping);
     return tags;
   }
@@ -280,6 +339,15 @@ class VpnServer {
     String? obfsPassword,
     bool? allowInsecure,
     String? hopPorts,
+    String? whitelistPlatform,
+    String? whitelistRoom,
+    String? whitelistMode,
+    String? whitelistCreatorHost,
+    bool? whitelistReliable,
+    bool? whitelistDualTrack,
+    int? whitelistVp8Fps,
+    int? whitelistVp8Batch,
+    String? whitelistBlinkToken,
     String? rawLink,
     String? rawJsonOverride,
     String? rawOutboundJson,
@@ -318,6 +386,15 @@ class VpnServer {
       obfsPassword: obfsPassword ?? this.obfsPassword,
       allowInsecure: allowInsecure ?? this.allowInsecure,
       hopPorts: hopPorts ?? this.hopPorts,
+      whitelistPlatform: whitelistPlatform ?? this.whitelistPlatform,
+      whitelistRoom: whitelistRoom ?? this.whitelistRoom,
+      whitelistMode: whitelistMode ?? this.whitelistMode,
+      whitelistCreatorHost: whitelistCreatorHost ?? this.whitelistCreatorHost,
+      whitelistReliable: whitelistReliable ?? this.whitelistReliable,
+      whitelistDualTrack: whitelistDualTrack ?? this.whitelistDualTrack,
+      whitelistVp8Fps: whitelistVp8Fps ?? this.whitelistVp8Fps,
+      whitelistVp8Batch: whitelistVp8Batch ?? this.whitelistVp8Batch,
+      whitelistBlinkToken: whitelistBlinkToken ?? this.whitelistBlinkToken,
       rawLink: rawLink ?? this.rawLink,
       rawJsonOverride: rawJsonOverride ?? this.rawJsonOverride,
       rawOutboundJson:
@@ -345,6 +422,31 @@ class VpnServer {
   /// возвращают исходную ссылку, а без неё — идентификатор
   /// (см. [identifierProtocols]).
   String buildShareLink() {
+    if (protocol == 'whitelist_bypass') {
+      final plat = whitelistPlatform ?? 'wbstream';
+      final q = <String, String>{};
+      if (whitelistRoom != null && whitelistRoom!.isNotEmpty) {
+        q['room'] = whitelistRoom!;
+      }
+      if (whitelistMode != null && whitelistMode!.isNotEmpty) {
+        q['mode'] = whitelistMode!;
+      }
+      if (whitelistCreatorHost != null && whitelistCreatorHost!.isNotEmpty) {
+        q['host'] = whitelistCreatorHost!;
+      }
+      if (whitelistReliable) q['reliable'] = '1';
+      if (whitelistDualTrack) q['dual'] = '1';
+      if ((whitelistVp8Fps ?? 0) > 0) q['fps'] = '$whitelistVp8Fps';
+      if ((whitelistVp8Batch ?? 0) > 0) q['batch'] = '$whitelistVp8Batch';
+      if (whitelistBlinkToken != null && whitelistBlinkToken!.isNotEmpty) {
+        q['bt'] = whitelistBlinkToken!;
+      }
+      final query = q.entries
+          .map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}')
+          .join('&');
+      final frag = remark.isNotEmpty ? '#${Uri.encodeComponent(remark)}' : '';
+      return 'whitelist://$plat${query.isEmpty ? '' : '?$query'}$frag';
+    }
     if (protocol == 'hysteria2') {
       final q = <String, String>{};
       void add(String k, String? v) {
@@ -435,6 +537,53 @@ class VpnServer {
       return '$protocol://${_hostPart()}:$port$frag';
     }
     return rawLink;
+  }
+
+  /// Ссылка после РУЧНОЙ ПРАВКИ полей.
+  ///
+  /// ⚠️ [buildShareLink] для vmess и ss нарочно отдаёт прежнюю ссылку: она —
+  /// ключ сервера. Но после правки на диск (`pinned.json`) уходит только
+  /// ссылка, и правка vmess/ss пропадала при перезапуске, а у узла из
+  /// панельного XRAY_JSON (ссылки нет вовсе) вместе с конфигом панели
+  /// исчезали и учётные данные (аудит 25.10.2026, I). Здесь ссылка
+  /// собирается заново из полей — тем же форматом, что читает
+  /// `ShareLinkParser`.
+  String buildEditedLink() {
+    if (protocol == 'whitelist_bypass') {
+      return buildShareLink();
+    }
+    if (protocol == 'vmess') {
+      final m = <String, String>{
+        'v': '2',
+        'ps': remark,
+        'add': address,
+        'port': '$port',
+        'id': id,
+        'aid': '$alterId',
+        'scy': encryption ?? 'auto',
+        'net': network,
+        'tls': security == 'tls' ? 'tls' : '',
+      };
+      void add(String k, String? v) {
+        if (v != null && v.isNotEmpty) m[k] = v;
+      }
+
+      add('type', headerType);
+      add('host', host);
+      add('path', path);
+      add('sni', sni);
+      add('alpn', alpn);
+      add('fp', fingerprint);
+      return 'vmess://${base64.encode(utf8.encode(jsonEncode(m)))}';
+    }
+    if (protocol == 'shadowsocks') {
+      final user = base64Url
+          .encode(utf8.encode('${encryption ?? ''}:$id'))
+          .replaceAll('=', '');
+      final frag = remark.isNotEmpty ? '#${Uri.encodeComponent(remark)}' : '';
+      return 'ss://$user@${_hostPart()}:$port$frag';
+    }
+    return buildShareLink();
   }
 
   /// Адрес для ссылки. IPv6 обязан быть в квадратных скобках: `Uri.host` их

@@ -93,4 +93,21 @@ void main() {
       }
     });
   });
+
+  group('Ключи подписи не едут в публичный репозиторий', () {
+    // ⚠️ Репозиторий публичный. Ключ выпуска, ключ загрузки в Google Play и
+    // ключ подписи обновлений лежат локально; файл с паролями, попавший в
+    // git, уже не вычистить переписыванием истории — форки и клоны остались.
+    final gitignore = File('../.gitignore').readAsLinesSync().map((l) => l.trim());
+
+    for (final path in const [
+      'app/android/key.properties',
+      'app/android/upload.properties',
+      'signing/',
+    ]) {
+      test('$path в .gitignore', () {
+        expect(gitignore, contains(path));
+      });
+    }
+  });
 }

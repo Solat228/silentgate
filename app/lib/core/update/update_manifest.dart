@@ -160,23 +160,41 @@ bool sameRelease(String target, String current) {
   }
   final pa = _versionNumbers(_versionPre(target));
   final pb = _versionNumbers(_versionPre(current));
-  if (pa.isEmpty || pb.isEmpty) return true;
-  for (var i = 0; i < pa.length || i < pb.length; i++) {
-    if ((i < pa.length ? pa[i] : 0) != (i < pb.length ? pb[i] : 0)) return false;
+  if (pa.isNotEmpty && pb.isNotEmpty) {
+    for (var i = 0; i < pa.length || i < pb.length; i++) {
+      if ((i < pa.length ? pa[i] : 0) != (i < pb.length ? pb[i] : 0)) {
+        return false;
+      }
+    }
   }
+  final tb = _versionBuild(target) ?? (a.length >= 4 ? a[3] : null);
+  final cb = _versionBuild(current) ?? (b.length >= 4 ? b[3] : null);
+  if (tb != null && cb != null) return tb == cb;
   return true;
 }
 
 String _versionCore(String v) {
-  final t = normalizeVersion(v);
+  var t = normalizeVersion(v);
+  final plus = t.indexOf('+');
+  if (plus >= 0) t = t.substring(0, plus);
   final dash = t.indexOf('-');
   return dash < 0 ? t : t.substring(0, dash);
 }
 
 String _versionPre(String v) {
-  final t = normalizeVersion(v);
+  var t = normalizeVersion(v);
+  final plus = t.indexOf('+');
+  if (plus >= 0) t = t.substring(0, plus);
   final dash = t.indexOf('-');
   return dash < 0 ? '' : t.substring(dash + 1);
+}
+
+int? _versionBuild(String v) {
+  final t = normalizeVersion(v);
+  final plus = t.indexOf('+');
+  if (plus < 0) return null;
+  final digits = RegExp(r'^\d+').firstMatch(t.substring(plus + 1))?.group(0);
+  return digits == null ? null : int.tryParse(digits);
 }
 
 List<int> _versionNumbers(String v) => v

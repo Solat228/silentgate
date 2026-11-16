@@ -132,7 +132,7 @@ String speedSizeLabel(AppLocalizations l, SpeedTestSize s) =>
 
 /// Подпись результата замера скорости с локализованными единицами.
 String speedResultLabel(AppLocalizations l, SpeedResult? r) {
-  if (r == null || !r.ok) return '—';
+  if (r == null || !r.ok) return '-';
   final mbs = r.bytesPerSecond / 1000000;
   if (mbs >= 1) return l.speedMbPerSec(mbs.toStringAsFixed(1));
   return l.speedKbPerSec((r.bytesPerSecond / 1000).toStringAsFixed(0));

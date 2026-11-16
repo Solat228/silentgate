@@ -159,4 +159,115 @@ void main() {
           reason: 'панель выбирает формат по UA — потеряв его, получим base64');
     });
   });
+
+  group('Данные устройства уходят только по https', () {
+    const dev = {'X-HWID': 'test-hwid', 'X-Device-Model': 'Test'};
+
+    test('https — заголовки на месте', () async {
+      final seen = <Map<String, String>>[];
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen.add(req.headers);
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('https://example.org/sub', deviceHeaders: dev);
+      expect(seen.single['X-HWID'], 'test-hwid');
+    });
+
+    test('http — ни идентификатора, ни модели', () async {
+      final seen = <Map<String, String>>[];
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen.add(req.headers);
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('http://example.org/sub', deviceHeaders: dev);
+      expect(seen.single.containsKey('X-HWID'), isFalse);
+      expect(seen.single.containsKey('X-Device-Model'), isFalse);
+      // Свой UA остаётся: по нему панель выбирает формат.
+      expect(seen.single['User-Agent'], startsWith('SilentGate/'));
+    });
+
+    test('⚠️ редирект https → http не уносит данные устройства', () async {
+      final seen = <String, Map<String, String>>{};
+      final svc = SubscriptionService(client: MockClient((req) async {
+        seen[req.url.scheme] = req.headers;
+        if (req.url.scheme == 'https') {
+          return http.Response('', 302,
+              headers: {'location': 'http://example.org/sub'});
+        }
+        return http.Response(link, 200);
+      }));
+      await svc.fetch('https://example.org/sub', deviceHeaders: dev);
+      expect(seen['https']!['X-HWID'], 'test-hwid');
+      expect(seen['http']!.containsKey('X-HWID'), isFalse);
+    });
+  });
+  group('Переезд запоминается только в пределах домена (аудит F)', () {
+    MockClient redirectOnce(String from, String to, int code) =>
+        MockClient((req) async {
+          if (req.url.toString() == from) {
+            return http.Response('', code, headers: {'location': to});
+          }
+          return http.Response(link, 200);
+        });
+
+    test('301 на чужой домен — идём, но адрес не запоминаем', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://sub.example.org/x', 'https://evil.example.net/x', 301));
+      final r = await svc.fetch('https://sub.example.org/x');
+      expect(r.movedTo, isNull);
+      expect(r.servers, isNotEmpty);
+    });
+
+    test('301 https → http не запоминается', () async {
+      final svc = SubscriptionService(client: redirectOnce(
+          'https://sub.example.org/x', 'http://sub.example.org/x', 301));
+      final r = await svc.fetch('https://sub.example.org/x');
+      expect(r.movedTo, isNull);
+    });
+
+    test('правило домена', () {
+      bool ok(String a, String b) => SubscriptionService
+          .acceptablePermanentMove(Uri.parse(a), Uri.parse(b));
+      expect(ok('https://a.example.org/x', 'https://b.example.org/y'), isTrue);
+      expect(ok('http://a.example.org/x', 'https://a.example.org/x'), isTrue);
+      expect(ok('https://a.example.org/x', 'https://example.net/x'), isFalse);
+      expect(ok('https://a.example.co.uk/x', 'https://b.other.co.uk/x'),
+          isFalse, reason: 'co.uk — общий суффикс, владельцы разные');
+      expect(ok('https://203.0.113.1/x', 'https://203.0.113.2/x'), isFalse);
+      expect(ok('https://a.example.org/x', 'ftp://a.example.org/x'), isFalse);
+    });
+
+    // Ревью 29.10.2026, L8: общий хостинг раздаёт поддомены разным людям.
+    test('общий хостинг — суффикс, соседи чужие', () {
+      bool ok(String a, String b) => SubscriptionService
+          .acceptablePermanentMove(Uri.parse(a), Uri.parse(b));
+      expect(ok('https://mine.duckdns.org/s', 'https://evil.duckdns.org/s'),
+          isFalse);
+      expect(ok('https://me.github.io/s', 'https://you.github.io/s'), isFalse);
+      expect(ok('https://a.workers.dev/s', 'https://b.workers.dev/s'), isFalse);
+      expect(
+          ok('https://a.up.railway.app/s', 'https://b.up.railway.app/s'),
+          isFalse);
+      expect(
+          ok('https://x.mine.duckdns.org/s', 'https://y.mine.duckdns.org/s'),
+          isTrue, reason: 'внутри своего поддомена — тот же владелец');
+      expect(ok('https://sub.example.lol/s', 'https://s.example.lol/s'),
+          isTrue);
+    });
+  });
+
+  test('⚠️ тело больше предела — исключение, а не память до отказа',
+      () async {
+    final big = List<int>.filled(1024 * 1024, 0x41);
+    final client = MockClient.streaming((req, _) async =>
+        http.StreamedResponse(
+            Stream.fromIterable(List.generate(
+                SubscriptionService.maxBodyBytes ~/ big.length + 2,
+                (_) => big)),
+            200));
+    final svc = SubscriptionService(client: client);
+    await expectLater(svc.fetch('https://sub.example.org/x'),
+        throwsA(isA<SubscriptionException>().having(
+            (e) => e.message, 'message', contains('слишком большой'))));
+  });
 }

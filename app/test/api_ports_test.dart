@@ -6,13 +6,14 @@ import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 
 /// Раскладка портов локального API.
 ///
-/// ⚠️ Порядок обязан быть детерминированным: скрипт хардкодит номер порта, и
-/// «дышащая» между запусками раскладка увела бы запрос в другую страну — молча
-/// и без единой ошибки.
+/// ⚠️ Порядок обязан быть детерминированным и закрепляемым (`sticky`): скрипт
+/// или профиль браузера привязывается к номеру порта, и «дышащая» между запусками
+/// раскладка увела бы запрос в другую страну — молча и без единой ошибки.
 void main() {
   group('Раскладка', () {
-    test('управляющий порт и порт «Прямо» фиксированы', () {
+    test('управляющий порт, порт Автовыбора и порт «Прямо» фиксированы по умолчанию', () {
       expect(ApiPorts.control, 10870);
+      expect(ApiPorts.auto, 10818);
       expect(ApiPorts.direct, 10819);
     });
 
@@ -29,12 +30,21 @@ void main() {
       expect(ApiPorts.forServer(['vless://a'], 'vless://zzz'), isNull);
     });
 
-    test('сверх диапазона порта нет', () {
-      // 40 портов — 10820..10859. Сорок первый обязан вернуть null, а не 10860:
-      // молча заехать в чужой диапазон хуже, чем честно отказать.
-      final keys = [for (var i = 0; i < 41; i++) 'vless://${i.toString().padLeft(3, '0')}'];
-      expect(ApiPorts.forServer(keys, keys[39]), 10859);
-      expect(ApiPorts.forServer(keys, keys[40]), isNull);
+    test('сверх диапазона (250 серверов) порта нет и системные порты пропускаются', () {
+      // 250 портов: 10820..10854, пропуск 10855 (релей БС), 10856..10869,
+      // пропуск 10870 (control) и 10910..11199 (мосты Xray), затем 11200..11400.
+      final keys = [
+        for (var i = 0; i < ApiPorts.maxServers + 1; i++)
+          'vless://${i.toString().padLeft(3, '0')}',
+      ];
+      expect(ApiPorts.forServer(keys, keys[34]), 10854);
+      expect(ApiPorts.forServer(keys, keys[35]), 10856,
+          reason: 'порт 10855 занят релеем белых списков');
+      expect(ApiPorts.forServer(keys, keys[48]), 10869);
+      expect(ApiPorts.forServer(keys, keys[49]), 11200,
+          reason: '10870 и диапазон Xray-мостов 10910..11199 пропускаются');
+      expect(ApiPorts.forServer(keys, keys[ApiPorts.maxServers - 1]), 11400);
+      expect(ApiPorts.forServer(keys, keys[ApiPorts.maxServers]), isNull);
     });
 
     test('пустой список никому ничего не даёт', () {
@@ -46,7 +56,7 @@ void main() {
     // Раунд исправлений 1, находка 3: PortCheck и сборка конфига обязаны
     // решать «есть тут порты или нет» ОДИНАКОВО — иначе PortCheck проверяет
     // порты, которых конфиг не создаст, и стороннее приложение на любом из
-    // 10820–10859 даёт ложный отказ подключения.
+    // портов даёт ложный отказ подключения.
     test('выключен тумблер — гейт закрыт даже с токеном', () {
       expect(ApiPorts.exitsActive(enabled: false, token: 'secret'), isFalse);
     });

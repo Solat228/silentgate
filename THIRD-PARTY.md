@@ -8,15 +8,17 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 
 | Компонент | Версия | Лицензия | Как используется | Исходный код |
 |---|---|---|---|---|
-| **Xray-core** (`xray.exe`) | см. «О программе» | MPL-2.0 | отдельный процесс, прокси-ядро | https://github.com/XTLS/Xray-core |
+| **Xray-core** (`xray.exe`) | см. «О программе» | MPL-2.0 | отдельный процесс, прокси-ядро; в сборке для Microsoft Store — библиотекой внутри своей программы `engine/xraycore` (GPL-3.0), версия — в `engine/xraycore/go.mod` | https://github.com/XTLS/Xray-core |
 | **sing-box** (`sing-box.exe`) | 1.13.14 | **GPL-3.0-or-later** | отдельный процесс: TUN-туннель и прокси-ядро для Hysteria2 | https://github.com/SagerNet/sing-box/tree/v1.11.15 |
 | **Wintun** (`wintun.dll`) | — | лицензия Wintun (см. `LICENSE-wintun.txt`) | TUN-адаптер для Windows | https://www.wintun.net/ |
+| **Microsoft.Web.WebView2 SDK** (`WebView2LoaderStatic.lib`) | 1.0.2903.40 | BSD-style (см. `app/windows/runner/third_party/webview2/LICENSE.txt`) | статический загрузчик системного Edge WebView2 для встроенного окна капчи БС на Windows | https://aka.ms/webview |
 | **geoip.dat / geosite.dat** | — | CC-BY-SA-4.0 (данные) | списки для маршрутизации | https://github.com/v2fly/domain-list-community |
 
 Только в Android-сборке:
 
 | Компонент | Версия | Лицензия | Как используется | Исходный код |
 |---|---|---|---|---|
+| **Встроенный набор гео-баз** (`assets/geo/geoip.dat`, `geosite.dat`) | вырезка из релиза Loyalsoldier на дату сборки | GPL-3.0 (сборка Loyalsoldier); данные — v2fly/domain-list-community (MIT), GeoLite2 (CC-BY-SA-4.0) | категории `geoip:private/ru/telegram` и `geosite:category-ru`, `category-gov-ru`, `yandex`, `vk`, `ok`, `telegram`, `youtube`, `category-ads-all` до закачки полных баз; вырезает `app/tool/build_geo_mini.dart` | https://github.com/Loyalsoldier/v2ray-rules-dat |
 | **ZXing** (`com.google.zxing:core`) | 3.5.3 | Apache-2.0 | распознавание QR-кода подписки с картинки | https://github.com/zxing/zxing |
 | **zxing-android-embedded** | 4.3.0 | Apache-2.0 | экран сканирования QR камерой | https://github.com/journeyapps/zxing-android-embedded |
 
@@ -29,7 +31,9 @@ SilentGate распространяется под **GPL-3.0** (файл `LICENS
 
 * **MPL-2.0** (Xray-core) совместима с GPL-3.0 — MPL 2.0 §1.12/§3.3 прямо допускает
   распространение под «Secondary License», которой названа GPL. При этом сохраняем
-  Exhibit A и указание источника.
+  Exhibit A и указание источника. Своя программа `engine/xraycore` подключает файлы
+  Xray-core без изменений (Go-модуль), поэтому MPL §3.3 соблюдается как есть: исходники
+  Xray-core той же версии доступны в его репозитории.
 * **GPL-3.0** (sing-box) — та же лицензия, что у приложения. **Линковать можно.**
   На Windows sing-box исторически запускается отдельным процессом — это сложившаяся
   архитектура, а не лицензионное требование.

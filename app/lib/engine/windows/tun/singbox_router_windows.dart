@@ -2,9 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
+import '../../../core/net/api_ports.dart';
 import '../../../core/platform/app_log.dart';
 import '../../../core/platform/app_paths.dart';
 import '../../../core/platform/interference_scanner.dart';
+import '../../../core/platform/package_identity_windows.dart';
 import '../../../core/settings/split_tunnel.dart';
 import '../../../core/singbox/singbox_config_builder.dart';
 import '../../../core/singbox/tun_autotune.dart';
@@ -13,6 +15,7 @@ import '../elevation.dart';
 import 'app_alive_mutex.dart';
 import 'helper_log_notices.dart';
 import 'tun_helper.dart';
+import 'tun_helper_state.dart';
 import 'tun_reload.dart';
 import 'tun_router.dart';
 import 'tun_scheduled_task.dart';
@@ -25,9 +28,14 @@ import 'tun_scheduled_task.dart';
 /// После старта ОБЯЗАТЕЛЬНО проверяем, что туннель реально поднялся: раньше сбой
 /// sing-box был невидим и приложение показывало «Подключено» без туннеля.
 class SingboxRouterWindows
-    implements TunRouter, StaleScheduledTaskReporter, TunHandoverCapable {
+    implements
+        TunRouter,
+        StaleScheduledTaskReporter,
+        TunHandoverCapable,
+        ApiExitOptionsConfigurable {
   bool _started = false;
   String _stopPath = '';
+  String _currentLaunchId = '';
 
   /// Параметры, на которых поднялся живой туннель (после автоподбора — с
   /// подобранными стеком и MTU). Нужны [handover]: перебирать комбинации на
@@ -62,6 +70,12 @@ class SingboxRouterWindows
   /// `SingboxConfigBuilder.apiOnlyExitKeys`).
   List<String> _apiOnlyExitKeys = const [];
   String _apiToken = '';
+  ApiExitRouterOptions _apiOptions = const ApiExitRouterOptions();
+
+  @override
+  void configureApiExitOptions(ApiExitRouterOptions options) {
+    _apiOptions = options;
+  }
 
   @override
   Future<void> start(SplitTunnelConfig split,
@@ -97,6 +111,7 @@ class SingboxRouterWindows
     );
 
     TunStartException? last;
+    final timedOutStacks = <String?>{};
     for (var i = 0; i < combos.length; i++) {
       // Пользователь отключился, пока шёл перебор — прекращаем, НЕ поднимаем ещё
       // одну комбинацию (иначе туннель встанет уже после «Отключить»).
@@ -105,6 +120,15 @@ class SingboxRouterWindows
         return;
       }
       final c = combos[i];
+      // Если сам драйвер Wintun на этом стеке не успел создать интерфейс за
+      // отведённый потолок (`open interface take too much time to finish!`),
+      // смена MTU (`1500 → 1400 → 1280`) время создания адаптера Windows никак
+      // не ускорит — пропускаем дубликаты стека, экономя по 30 с на стек.
+      if (timedOutStacks.contains(c.stack)) {
+        AppLog.i('TUN автоподбор: пропускаю ${c.label} - стек '
+            '${c.stack ?? "auto"} уже не успел открыть интерфейс');
+        continue;
+      }
       final attempt = options.copyWith(stack: c.stack, mtu: c.mtu);
       onProgress?.call('Подбираю параметры TUN: ${c.label} '
           '(${i + 1} из ${combos.length})');
@@ -113,7 +137,7 @@ class SingboxRouterWindows
         await _startOnce(split, xraySocksPort, attempt, abort: abort);
         // Успели подняться, но пользователь уже отключился — снимаем сразу.
         if (abort?.call() ?? false) {
-          AppLog.i('TUN поднялся после отмены — снимаю');
+          AppLog.i('TUN поднялся после отмены - снимаю');
           await stop();
           return;
         }
@@ -128,7 +152,13 @@ class SingboxRouterWindows
         // единого признака жизни.
         rethrow;
       } on TunStartException catch (e) {
+        if (isNonTunParameterFailure(e)) {
+          AppLog.w(
+              'TUN автоподбор остановлен: причина сбоя не зависит от стека и MTU');
+          rethrow;
+        }
         last = e;
+        if (isAdapterOpenTimeout(e)) timedOutStacks.add(c.stack);
         AppLog.w('TUN автоподбор: ${c.label} не подошло');
       }
     }
@@ -174,7 +204,7 @@ class SingboxRouterWindows
       // Никто не забрал за пять секунд: прошлого хелпера, скорее всего, и не
       // было (права не дали, задача не запустилась). Файл убираем сами — иначе
       // он убьёт СЛЕДУЮЩИЙ хелпер сразу после старта.
-      AppLog.w('stop-файл TUN никто не забрал за 5 с — убираю сам. '
+      AppLog.w('stop-файл TUN никто не забрал за 5 с - убираю сам. '
           'Если прошлый помощник всё же жив, он останется работать.');
       TunHelper.clearStopAt(_stopPath);
     }
@@ -207,14 +237,15 @@ class SingboxRouterWindows
     // снятием поднятого. Между ожиданием stop-файла (до 5 с) и этим местом
     // человек вполне мог нажать «Отключить».
     if (abort?.call() ?? false) {
-      AppLog.i('TUN: отключение пользователем — помощник не запускается');
+      AppLog.i('TUN: отключение пользователем - помощник не запускается');
       return;
     }
+    _currentLaunchId = TunHelperState.prepareLaunch(dir);
     final taskExists = await TunScheduledTask.exists();
     final taskCurrent = taskExists && await TunScheduledTask.isCurrent();
     _lastStaleScheduledTask = taskExists && !taskCurrent;
     if (_lastStaleScheduledTask) {
-      AppLog.w('Задача Планировщика «${TunScheduledTask.taskName}» устарела — '
+      AppLog.w('Задача Планировщика «${TunScheduledTask.taskName}» устарела - '
           'она запускает другой файл или другие пути. Поднимаю туннель обычным '
           'путём (спросит права). Пересоздать: настройки → «TUN и '
           'маршрутизация» → запуск без UAC.');
@@ -223,14 +254,16 @@ class SingboxRouterWindows
     if (!viaTask) {
       // Fallback: разовый UAC-запуск хелпера. Если приложение уже возвышено,
       // окна UAC не будет вовсе — хелпер стартует напрямую (см. Elevation).
+      // Пакет Store: через псевдоним — exe в WindowsApps запускается только
+      // в контексте пакета, и только так помощник видит те же файлы данных.
       final ok = await Elevation.runElevatedAsync(
-        Platform.resolvedExecutable,
+        PackageIdentity.launchPath(),
         '--tun "$cfgPath" "$_stopPath"',
       );
       if (!ok) {
         throw TunElevationDenied(
           'Не удалось получить права администратора для TUN (UAC отклонён).\n'
-          'Чтобы больше не спрашивало — настройте запуск без UAC в разделе «TUN и маршрутизация».',
+          'Чтобы больше не спрашивало - настройте запуск без UAC в разделе «TUN и маршрутизация».',
         );
       }
     }
@@ -253,6 +286,7 @@ class SingboxRouterWindows
       List<String> apiOnlyExitKeys = const [],
       String apiToken = ''}) async {
     if (!_started) return false;
+    _lastStaleScheduledTask = false;
     final live = _liveOptions;
     // При автоподборе берём комбинацию, на которой туннель уже работает:
     // перебор требует пересоздания помощника, а именно его мы и избегаем.
@@ -275,6 +309,7 @@ class SingboxRouterWindows
           .writeAsString(configJsonFor(split, xraySocksPort, attempt));
       await File(TunHelper.aliveFilePathFor(dir))
           .writeAsString(AppAliveMutex.acquire());
+      _currentLaunchId = TunHelperState.prepareLaunch(dir);
       token = TunReload.request(dir);
     } catch (e) {
       AppLog.w('TUN: просьбу о перезапуске без снятия блокировки не '
@@ -288,12 +323,12 @@ class SingboxRouterWindows
     if (answer == null) {
       TunReload.cancel(dir);
       AppLog.w('TUN: помощник не ответил на просьбу о перезапуске без снятия '
-          'блокировки — пересоздаю обычным путём');
+          'блокировки - пересоздаю обычным путём');
       return false;
     }
     if (!answer.started) {
       AppLog.w('TUN: помощник отказался перезапускать ядро без снятия '
-          'блокировки (${answer.reason}) — пересоздаю обычным путём');
+          'блокировки (${answer.reason}) - пересоздаю обычным путём');
       return false;
     }
     try {
@@ -352,6 +387,7 @@ class SingboxRouterWindows
         apiExitServerKeys: _apiExitServerKeys,
         apiOnlyExitKeys: _apiOnlyExitKeys,
         apiToken: _apiToken,
+        apiOptions: _apiOptions,
       ).buildJson(split);
 
   /// Сохраняет параметры сессии в поля. Общий узел для [start] и
@@ -386,15 +422,18 @@ class SingboxRouterWindows
     List<String> apiExitServerKeys = const [],
     List<String> apiOnlyExitKeys = const [],
     String apiToken = '',
-  }) =>
-      _prime(
-        exitOutbounds: exitOutbounds,
-        xraySocksUser: xraySocksUser,
-        xraySocksPassword: xraySocksPassword,
-        apiExitServerKeys: apiExitServerKeys,
-        apiOnlyExitKeys: apiOnlyExitKeys,
-        apiToken: apiToken,
-      );
+    ApiExitRouterOptions apiOptions = const ApiExitRouterOptions(),
+  }) {
+    _apiOptions = apiOptions;
+    _prime(
+      exitOutbounds: exitOutbounds,
+      xraySocksUser: xraySocksUser,
+      xraySocksPassword: xraySocksPassword,
+      apiExitServerKeys: apiExitServerKeys,
+      apiOnlyExitKeys: apiOnlyExitKeys,
+      apiToken: apiToken,
+    );
+  }
 
   /// Ждём появления TUN-адаптера. Не появился — отдаём реальную причину из лога.
   /// ⚠️ [abort] ПРОВЕРЯЕТСЯ ВНУТРИ ЦИКЛА, А НЕ ТОЛЬКО СНАРУЖИ.
@@ -410,28 +449,87 @@ class SingboxRouterWindows
   /// `WindowsEngine`) отмена и так проверяется сразу после вызова, и там же
   /// поднятое снимается. Бросать здесь ошибку значило бы показать человеку
   /// «не удалось подключиться» на действие, которое он сам и совершил.
+  /// Потолок ожидания появления адаптера Wintun после старта помощника.
+  ///
+  /// ⚠️ НЕ ОПУСКАТЬ ДО 5 С (репорт реального клиента 03.11.2026). У `sing-tun`
+  /// собственный порог предупреждения — 10 с (`WARN inbound/tun[tun-in]: open
+  /// interface take too much time to finish!`), и на живых Windows 10 с
+  /// антивирусом/NDIS-фильтрами создание адаптера `wintun.dll` занимает 10–13 с.
+  /// С потолком 5 с мы убивали живой процесс посреди создания интерфейса на
+  /// КАЖДОЙ попытке, а отмена пользователем и так проверяется каждые 250 мс.
+  static const waitUpTimeout = Duration(seconds: 15);
+
+  /// Признак того, что попытка упала именно на долгом открытии самого
+  /// интерфейса Wintun (где перебор MTU того же стека ничего не изменит).
+  @visibleForTesting
+  static bool isAdapterOpenTimeout(TunStartException e) =>
+      e.details.contains('open interface take too much time to finish') ||
+      (e.adapterOpenTimeout &&
+          !e.nonTunParameterFailure &&
+          !e.details.contains('FATAL'));
+
+  /// Признак отказа, не связанного со стеком (`system`/`gvisor`/`mixed`) и MTU:
+  /// сбой фильтрации WFP, занятый локальный порт или отсутствие исполняемого
+  /// файла ядра. Продолжать 9-шаговый автоподбор на такой ошибке нельзя.
+  @visibleForTesting
+  static bool isNonTunParameterFailure(TunStartException e) =>
+      e.nonTunParameterFailure ||
+      e.details.contains('Only one usage of each socket address') ||
+      e.details.contains('An attempt was made to access a socket');
+
   Future<void> _waitUp({bool Function()? abort}) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 12));
+    final dir = await AppPaths.supportDir();
+    final deadline = DateTime.now().add(waitUpTimeout);
+    TunHelperStateSnapshot? earlyStop;
     while (DateTime.now().isBefore(deadline)) {
       if (abort?.call() ?? false) {
         AppLog.i('Ожидание TUN-адаптера прервано: отключение пользователем');
         return;
       }
       if (await _adapterUp()) return;
-      await Future.delayed(const Duration(milliseconds: 500));
+      final state = TunHelperState.read(dir, _currentLaunchId);
+      if (state != null && state.failed) {
+        earlyStop = state;
+        break;
+      }
+      await Future.delayed(const Duration(milliseconds: 250));
+    }
+    if (earlyStop != null && !earlyStop.helperExited) {
+      // Если ядро упало при отсутствии поднятой блокировки (`hold == null`),
+      // помощник сам завершится на ближайшем 400-мс тике и переведёт состояние
+      // в `exited` — дождёмся этого, чтобы не класть сиротский `tun_stop`.
+      final settleUntil =
+          DateTime.now().add(const Duration(milliseconds: 650));
+      while (DateTime.now().isBefore(settleUntil)) {
+        if (abort?.call() ?? false) return;
+        final next = TunHelperState.read(dir, _currentLaunchId);
+        if (next != null) {
+          earlyStop = next;
+          if (next.helperExited) break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
     }
     final log = await TunHelper.tailLog();
     _started = false;
-    TunHelper.requestStopAt(_stopPath); // не оставляем полуживой процесс
+    if (!(earlyStop?.helperExited ?? false)) {
+      TunHelper.requestStopAt(_stopPath); // не оставляем полуживой процесс
+    }
 
     final conflict = await _conflictingTunnels();
     final hint = conflict.isNotEmpty
         ? 'Обнаружен другой активный VPN-туннель: ${conflict.join(', ')}.\n'
-            'Два TUN-адаптера одновременно борются за маршрут по умолчанию — '
+            'Два TUN-адаптера одновременно борются за маршрут по умолчанию - '
             'отключите другой VPN и попробуйте снова.\n\n'
         : '';
+    final nonTunFailure = earlyStop?.reason.isNonTunParameterFailure ?? false;
+    final headline = earlyStop != null
+        ? 'TUN-адаптер не поднялся - sing-box завершился при запуске.'
+        : 'TUN-адаптер не поднялся за ${waitUpTimeout.inSeconds} секунд - sing-box не запустился.';
     throw TunStartException(
-      'TUN-адаптер не поднялся за 12 секунд — sing-box не запустился.',
+      headline,
+      adapterOpenTimeout: earlyStop == null,
+      nonTunParameterFailure: nonTunFailure,
       details: hint +
           (log.isEmpty
               ? 'Лог sing-box пуст. Проверьте, что рядом с xray.exe лежат '
@@ -461,7 +559,8 @@ class SingboxRouterWindows
   /// то есть давал бы ложный успех. Имя адаптера ASCII — локаль не мешает.
   Future<bool> _adapterUp() async {
     try {
-      final r = await Process.run('netsh', ['interface', 'show', 'interface']);
+      final r = await Process.run('netsh', ['interface', 'show', 'interface'])
+          .timeout(const Duration(milliseconds: 1500));
       if ('${r.stdout}'.toLowerCase().contains('silentgate-tun')) return true;
     } catch (_) {
       // netsh недоступен (SRP, урезанный PATH) — ищем НАШ адрес туннеля.
@@ -489,10 +588,15 @@ class SingboxRouterWindows
   @override
   Future<void> stop() async {
     if (!_started) return;
-    TunHelper.requestStopAt(_stopPath.isNotEmpty
-        ? _stopPath
-        : TunHelper.stopFilePathFor(await AppPaths.supportDir()));
+    final dir = await AppPaths.supportDir();
+    final state = TunHelperState.read(dir, _currentLaunchId);
+    if (!(state?.helperExited ?? false)) {
+      TunHelper.requestStopAt(
+          _stopPath.isNotEmpty ? _stopPath : TunHelper.stopFilePathFor(dir));
+    }
     _started = false;
     _liveOptions = null;
+    _currentLaunchId = '';
+    _lastStaleScheduledTask = false;
   }
 }

@@ -115,7 +115,7 @@ abstract final class SecretFiles {
         if (!await keep.exists()) await file.copy(keep.path);
       } catch (_) {}
       AppLog.w('Файл данных не расшифрован (${e.message}): '
-          '${file.uri.pathSegments.last}; копия — ${keep.uri.pathSegments.last}');
+          '${file.uri.pathSegments.last}; копия - ${keep.uri.pathSegments.last}');
       throw SecretDecodeException(file.path);
     }
   }

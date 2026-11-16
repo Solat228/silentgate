@@ -140,10 +140,18 @@ abstract final class ServerRekey {
       final m = mapped(k)!;
       if (seen.add(m)) apiKeys.add(m);
     }
+    final assignedPorts = Map<String, int>.of(s.apiAssignedPorts);
+    rekey.forEach((oldKey, newKey) {
+      if (!assignedPorts.containsKey(oldKey)) return;
+      changed = true;
+      final port = assignedPorts.remove(oldKey)!;
+      assignedPorts.putIfAbsent(newKey, () => port);
+    });
     if (!changed) return s;
     return s.copyWith(
       splitTunnel: split.copyWith(apps: apps, sites: sites),
       apiExitServerKeys: apiKeys,
+      apiAssignedPorts: assignedPorts,
     );
   }
 }

@@ -13,6 +13,7 @@ import 'package:silentgate/core/singbox/singbox_config_builder.dart';
 import 'package:silentgate/core/singbox/singbox_outbound_factory.dart';
 import 'package:silentgate/core/xray/xray_config_builder.dart';
 import 'package:silentgate/engine/android/android_engine.dart';
+import 'package:silentgate/engine/engine_base.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
 
 /// Конфиг, который Android-движок отдаёт ядру.
@@ -813,6 +814,23 @@ void main() {
       await engine.releaseOwnFallbackDns(2);
       expect(engine.fallbackDns, isNull);
       expect(fresh.isRunning, isFalse);
+    });
+
+    test('⚠️ под kill switch форвардер не поднимается: провайдер не видит имён',
+        () async {
+      for (final s in [
+        settings.copyWith(killSwitch: true),
+        settings.copyWith(killSwitch: true, noRealIp: true),
+      ]) {
+        expect(
+            await engine.startFallbackDns(s,
+                viaXray: true, gen: 1, aborted: () => false),
+            0,
+            reason: 'запас спрашивает резолвер провайдера — это утечка DNS '
+                'мимо обещанной блокировки');
+        expect(engine.fallbackDns, isNull);
+      }
+      expect(VpnEngineBase.providerDnsFallbackAllowed(settings), isTrue);
     });
 
     test('гейт: устаревший запуск не гасит живого и не поднимает своего',

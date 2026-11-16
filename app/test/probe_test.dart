@@ -1430,7 +1430,7 @@ void _serverInfoTests() {
 
     const bad = SpeedResult.failed('нет связи');
     expect(bad.ok, isFalse);
-    expect(bad.label, '—');
+    expect(bad.label, '-');
   });
 
   test('размер пробы переживает сохранение настроек', () {
@@ -1449,7 +1449,7 @@ void _serverInfoTests() {
     expect(onlyCountry.location, 'Germany');
 
     const nothing = IpInfo(ip: '1.2.3.4');
-    expect(nothing.location, '—');
+    expect(nothing.location, '-');
   });
 
   test('IpInfo round-trip', () {
@@ -1734,6 +1734,15 @@ void _subscriptionsAndUpdateTests() {
     test('первый СИЛЬНЫЙ символ решает (ведущие цифры/эмодзи пропускаются)', () {
       expect(autoTextDirection('01 · Server'), TextDirection.ltr);
       expect(autoTextDirection('🔒 السلام'), TextDirection.rtl);
+    });
+    test('⚠️ селектор эмодзи U+FE0F не делает латиницу RTL (аудит I)', () {
+      expect(autoTextDirection('❤️ Premium'), TextDirection.ltr);
+      expect(autoTextDirection('﻿Server'), TextDirection.ltr);
+    });
+    test('⚠️ скобки и знаки не решают направление (аудит I)', () {
+      expect(autoTextDirection('[1] _ السلام'), TextDirection.rtl);
+      expect(autoTextDirection('© فارسی'), TextDirection.rtl);
+      expect(autoTextDirection('中国 Server'), TextDirection.ltr);
     });
     test('пусто/null → null (наследует локаль)', () {
       expect(autoTextDirection(''), isNull);

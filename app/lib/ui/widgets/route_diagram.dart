@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 
 import '../../core/settings/split_tunnel.dart';
@@ -39,7 +40,7 @@ class RouteDiagram extends StatelessWidget {
                 ?.copyWith(color: scheme.primary)),
         const SizedBox(height: 10),
         _row(context, [
-          _node(context, '💻', l.routeYourPc),
+          _deviceNode(context, l),
           _arrow(context),
           _node(context, '🔒', l.routeVpn),
           _arrow(context),
@@ -102,7 +103,7 @@ class RouteDiagram extends StatelessWidget {
     final sites = _sites(AppAction.tunnel);
     final hasMarked = apps.isNotEmpty || sites.isNotEmpty;
     return [
-      _node(context, '💻', l.routeYourPc),
+      _deviceNode(context, l),
       _arrow(context),
       if (hasMarked || !_baseViaVpn)
         _entriesNode(context, apps, sites),
@@ -287,4 +288,11 @@ class RouteDiagram extends StatelessWidget {
         child: Icon(Icons.arrow_forward,
             size: 16, color: Theme.of(context).colorScheme.outline),
       );
+
+  /// Узел «это устройство»: на телефоне — «Ваш телефон», а не «Ваш ПК»
+  /// (MS1 S13: схема на Android подписывала телефон компьютером).
+  Widget _deviceNode(BuildContext context, AppLocalizations l) =>
+      defaultTargetPlatform == TargetPlatform.android
+          ? _node(context, '📱', l.routeYourPhone)
+          : _node(context, '💻', l.routeYourPc);
 }

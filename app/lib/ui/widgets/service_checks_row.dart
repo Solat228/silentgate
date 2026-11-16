@@ -9,6 +9,7 @@ import '../../core/platform/app_log.dart';
 import '../../core/probe/auto_config_engine.dart';
 import '../../core/probe/service_check.dart';
 import '../../core/settings/app_settings.dart';
+import '../../core/singbox/exit_outbounds.dart';
 import '../../core/settings/split_tunnel.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/service_check_controller.dart';
@@ -273,12 +274,49 @@ abstract final class ServiceChecks {
   /// деле идёт через VPN.
   static SiteRule? bypassRuleFor(SplitTunnelConfig split, ProbeService s) {
     if (split.mode == SplitMode.all) return null;
+    final best = _mostSpecific(split, s, (_) => true);
+    if (best == null || best.action == AppAction.tunnel) return null;
+    return best;
+  }
+
+  /// Правило «Туннель» с выбранным сервером (выход), по которому сервис идёт
+  /// через ДРУГОЙ сервер, либо `null`.
+  ///
+  /// ⚠️ В РЕЖИМЕ «ВСЁ ЧЕРЕЗ VPN» ВЫХОДЫ ДЕЙСТВУЮТ, а прочие правила нет
+  /// (`SingboxConfigBuilder._addExitOnlyRules`): там выбирается самое
+  /// конкретное среди правил с выходом. В остальных режимах выход показан,
+  /// только если самое конкретное правило вообще — это он: «google.com →
+  /// Германия» + «gemini.google.com → Прямо» уводит Gemini мимо VPN, а не в
+  /// Германию.
+  ///
+  /// Жив ли сервер выхода, здесь не проверяется — это знает ячейка
+  /// (сервер мог пропасть из подписки, и трафик идёт основным туннелем).
+  static SiteRule? exitRuleFor(SplitTunnelConfig split, ProbeService s) {
+    if (split.mode == SplitMode.all) {
+      return _mostSpecific(split, s, _isExit);
+    }
+    final best = _mostSpecific(split, s, (_) => true);
+    return best != null && _isExit(best) ? best : null;
+  }
+
+  /// Правило, которое ячейка отмечает значком: мимо VPN, блок или выход.
+  static SiteRule? markRuleFor(SplitTunnelConfig split, ProbeService s) =>
+      bypassRuleFor(split, s) ?? exitRuleFor(split, s);
+
+  static bool _isExit(SiteRule r) =>
+      r.action == AppAction.tunnel && r.serverKey != null;
+
+  /// Самое конкретное (длиннейший домен) правило сайта, покрывающее пробу
+  /// сервиса, среди тех, что пропускает [use].
+  static SiteRule? _mostSpecific(SplitTunnelConfig split, ProbeService s,
+      bool Function(SiteRule) use) {
     final targets = domainsOf(s);
     if (targets.isEmpty) return null;
     final port = probePortOf(s);
     SiteRule? best;
     var bestLen = -1;
     for (final r in split.sites) {
+      if (!use(r)) continue;
       if (r.port != null && r.port != port) continue;
       final d = normalizeDomain(r.domain);
       if (d.isEmpty) continue;
@@ -292,7 +330,6 @@ abstract final class ServiceChecks {
         bestLen = d.length;
       }
     }
-    if (best == null || best.action == AppAction.tunnel) return null;
     return best;
   }
 }
@@ -374,17 +411,16 @@ class ServiceChecksRows extends StatelessWidget {
               runSpacing: 2,
               children: [
                 for (final s in row.services)
-                  _ServicePair(
+                  _ServiceCell(
                     // Ключ по имени сервиса — см. `ServiceChecksColumn`.
                     key: ValueKey('svc:${s.name}'),
                     service: s,
                     before: ctrl.baselineFor(s),
                     after: ctrl.resultFor(s),
                     live: live,
-                    alignEnd: false,
-                    bypass: split == null
+                    rule: split == null
                         ? null
-                        : ServiceChecks.bypassRuleFor(split, s),
+                        : ServiceChecks.markRuleFor(split, s),
                     onTap: () => ctrl.check(s, httpPort),
                   ),
               ],
@@ -863,14 +899,14 @@ class ServiceChecksSides extends StatelessWidget {
   }
 
   /// Размеры одной ячейки в режиме «сетка» — списаны с того, что реально
-  /// рисует `_SideColumn` (зона 32 под кольцо 28, просвет `Wrap` 6).
-  static const double _denseIcon = 32;
-  static const double _denseGap = 6;
+  /// рисует `_SideColumn`: ячейка 40 (рамка 30 и поле 5 под значки по углам),
+  /// просвет `Wrap` 4.
+  static const double _denseIcon = 40;
+  static const double _denseGap = 4;
 
   /// Высота ОДНОГО блока-группы при масштабе 1.0 — то, что реально рисует
-  /// `_SideColumn`: подпись 22 + 2 + линия 1, зазор 4, на сервис — бокс
-  /// кольца плюс 8 px отступов (`_ServicePair`: 2 снаружи, 2 внутри, с двух
-  /// сторон).
+  /// `_SideColumn`: подпись 22 + 2 + линия 1, зазор 4, на сервис — ячейка
+  /// [cellWidth] (квадратная, поле под значки по углам уже внутри).
   ///
   /// ⚠️ ОДНА ФОРМУЛА НА ВСЁ. До 09.09.2026 их было ДВЕ (`sideHeightOf` и
   /// `_naturalSize`), и они уже расходились с вёрсткой и друг с другом
@@ -883,7 +919,7 @@ class ServiceChecksSides extends StatelessWidget {
           2 +
           1 +
           4 +
-          r.services.length * (_StatusRing.boxSizeFor(_pairIconSize) + 8);
+          r.services.length * cellWidth;
 
   /// Высота одной стороны при масштабе 1.0: сумма РЯДОВ (в ряду — самый
   /// высокий блок) и просвет [_blockGap] ТОЛЬКО МЕЖДУ рядами.
@@ -995,8 +1031,8 @@ class _SideColumn extends StatelessWidget {
   final bool showGlyph;
 
   /// Левая сторона прижимает неполный ряд к кнопке (к правому краю), правая
-  /// — наоборот. Порядок «до → после» внутри пары при этом ОДИНАКОВЫЙ с обеих
-  /// сторон — см. предысторию в [_ServicePair].
+  /// — наоборот. Половины рамки внутри ячейки при этом одинаковые с обеих
+  /// сторон — см. [_ServiceCell].
   final bool alignEnd;
 
   @override
@@ -1008,8 +1044,8 @@ class _SideColumn extends StatelessWidget {
     // Настройки — необязательно, см. `ServiceChecksRows`.
     final split = context.watch<SettingsController?>()?.settings.splitTunnel;
 
-    SiteRule? bypassOf(ProbeService s) =>
-        split == null ? null : ServiceChecks.bypassRuleFor(split, s);
+    SiteRule? markOf(ProbeService s) =>
+        split == null ? null : ServiceChecks.markRuleFor(split, s);
 
     if (dense) {
       return Column(
@@ -1029,17 +1065,16 @@ class _SideColumn extends StatelessWidget {
                 runSpacing: ServiceChecksSides._denseGap,
                 children: [
                   for (final s in rows[i].services)
-                    _ServicePair(
+                    _ServiceCell(
                       key: ValueKey('svc:${s.name}'),
                       service: s,
                       before: ctrl.baselineFor(s),
                       after: ctrl.resultFor(s),
                       live: live,
-                      alignEnd: false,
                       dense: true,
                       showGlyph: showGlyph,
                       groupLabel: rows[i].group.label(l),
-                      bypass: bypassOf(s),
+                      rule: markOf(s),
                       onTap: () => ctrl.check(s, httpPort),
                     ),
                 ],
@@ -1077,27 +1112,20 @@ class _SideColumn extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               for (final s in row.services)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  // По центру блока: подпись бывает шире ячейки (см.
-                  // `_labelGrowMax`), и без этого значки прижимались бы к
-                  // левому краю под центрованной подписью.
-                  child: Center(
-                    child: _ServicePair(
-                      key: ValueKey('svc:${s.name}'),
-                      service: s,
-                      before: ctrl.baselineFor(s),
-                      after: ctrl.resultFor(s),
-                      live: live,
-                      // ⚠️ ВСЕГДА false, В ОБЕИХ СТОРОНАХ. Порядок
-                      // «до → после» обязан совпадать слева и справа:
-                      // зеркальный порядок меняет местами «до» и «после»,
-                      // и стрелка начинает показывать в обратную сторону.
-                      alignEnd: false,
-                      showGlyph: showGlyph,
-                      bypass: bypassOf(s),
-                      onTap: () => ctrl.check(s, httpPort),
-                    ),
+                // По центру блока: подпись бывает шире ячейки (см.
+                // `_labelGrowMax`), и без этого значки прижимались бы к
+                // левому краю под центрованной подписью. Просвета между
+                // ячейками нет: поле вокруг рамки уже есть в самой ячейке.
+                Center(
+                  child: _ServiceCell(
+                    key: ValueKey('svc:${s.name}'),
+                    service: s,
+                    before: ctrl.baselineFor(s),
+                    after: ctrl.resultFor(s),
+                    live: live,
+                    showGlyph: showGlyph,
+                    rule: markOf(s),
+                    onTap: () => ctrl.check(s, httpPort),
                   ),
                 ),
             ],
@@ -1643,250 +1671,223 @@ class _MenuCheckRow extends StatelessWidget {
   }
 }
 
-/// Размер значка сервиса в паре «до → после» (масштаб 1.0). Бокс кольца
-/// вокруг него — [_StatusRing.boxSizeFor] = 34.
-const double _pairIconSize = 26;
-
-/// Место под стрелку перехода между значками пары.
+/// Размеры ячейки сервиса: значок, рамка, просвет до значка, разрез рамки и
+/// значки по углам.
 ///
-/// ⚠️ ФИКСИРОВАННОЕ, А НЕ ПО ТЕКСТУ. Стрелка нарисована символом «→», и
-/// ширина символа зависит от шрифта; ячейка же — константа. Растянись стрелка
-/// шире отведённого, второй значок вылез бы за ячейку ровно на живом канале,
-/// где на пару и смотрят. Внутри — `FittedBox`, который символ ужмёт, но не
-/// даст ему занять больше.
-const double _arrowWidth = 10;
-
-/// Постоянная ширина ячейки сервиса на масштабе 1.0: два бокса кольца по 34
-/// и стрелка [_arrowWidth] между ними — 78.
-///
-/// Резерв держится ВСЕГДА, даже когда VPN выключен: без него подключение
-/// расширяло бы каждую ячейку, блоки разъезжались и масштаб пересчитывался —
-/// экран дёргался на ровном месте. Пока второго значка нет, первый стоит по
-/// центру ячейки.
-const double cellWidth = 2 * (_pairIconSize + 2 * (_StatusRing.ringWidth +
-        _StatusRing.gapWidth)) +
-    _arrowWidth;
-
-/// ЗНАЧОК СЕРВИСА В КОЛЬЦЕ СОСТОЯНИЯ — единственный источник для обоих видов:
-/// пары «до → после» (`sides`, ряды) и плотной сетки (`grid`).
-///
-/// ⚠️ ДВОЙНОЙ КОНТУР, И ВОТ ПОЧЕМУ. Жалоба владельца (08.09.2026): «обводка
-/// сливается с брендом» у зелёного Spotify и красного YouTube. Механика
-/// найдена разведкой: прослойки между значком и кольцом не было ВООБЩЕ.
-/// `DecoratedBox` не отступает под рамку (в отличие от `Container`), и кольцо
-/// 2 px рисовалось ПОВЕРХ крайнего пикселя значка — зелёное на зелёном.
-/// Теперь между ними прослойка [gapWidth] цвета ФОНА окна
-/// (`scaffoldBackgroundColor`, а не `surface`: контраст нужен с тем, что
-/// нарисовано вокруг значка, а вокруг него — фон). Кольцо видно на любом
-/// бренде, потому что касается не бренда, а фона.
-///
-/// ⚠️ ДО 09.09.2026 ЛОГИКА ЦВЕТА ЖИЛА В ДВУХ КОПИЯХ (`iconBox` в паре и
-/// `_buildDense` в сетке), и они уже разошлись на индикаторе «идёт проверка».
-/// Здесь одна; страж на единый источник — `service_status_ring_test`
-/// проверяет прослойку и глиф в ОБЕИХ раскладках.
-///
-/// Раскладка (снаружи внутрь): кольцо [ringWidth] цвета состояния →
-/// прослойка [gapWidth] цвета фона → значок [iconSize]. Бокс =
-/// `iconSize + 2·(ringWidth + gapWidth)`. Прямоугольник прослойки равен
-/// прямоугольнику кольца, сжатому ровно на [ringWidth], — это и проверяется
-/// геометрией.
-class _StatusRing extends StatelessWidget {
-  const _StatusRing({
-    required this.domain,
-    required this.outcome,
-    required this.iconSize,
-    required this.circle,
-    required this.showGlyph,
-    this.badge,
+/// ⚠️ ЧИСЛА ИЗ МАКЕТА, УТВЕРЖДЁННОГО ВЛАДЕЛЬЦЕМ 28.10.2026 (вариант 4): значок
+/// 28, рамка 4, просвет 3, разрез 6, значки 16; в плотной сетке 20/3/2/5/12.
+/// Ячейка — бокс рамки плюс поле [pad] с каждой стороны: значки по углам
+/// выступают за бокс на треть своего размера, и поле не даёт им лечь на
+/// соседнюю ячейку.
+class _CellMetrics {
+  const _CellMetrics({
+    required this.icon,
+    required this.stroke,
+    required this.inner,
+    required this.split,
+    required this.badge,
+    required this.pad,
   });
 
-  final String domain;
-  final ServiceCheckOutcome outcome;
-  final double iconSize;
+  final double icon, stroke, inner, split, badge;
 
-  /// `true` — круг (плотная сетка), `false` — скруглённый квадрат (пара).
-  final bool circle;
+  /// Поле вокруг бокса, не меньше выступа значков ([overhang]).
+  final double pad;
 
-  /// Рисовать ли глиф состояния в правом нижнем углу — см.
-  /// [ServiceChecksSides.glyphMinScale].
-  final bool showGlyph;
+  double get box => icon + 2 * (stroke + inner);
+  double get overhang => badge * 0.35;
+  double get slot => box + 2 * pad;
+  double get radius => box * 0.3;
 
-  /// Правило обхода — бейдж слева сверху. `null` — бейджа нет.
-  final SiteRule? badge;
-
-  static const double ringWidth = 2;
-  static const double gapWidth = 2;
-
-  /// Кружок глифа состояния и знак внутри него.
-  static const double glyphSize = 12;
-  static const double glyphIconSize = 8;
-
-  /// Насколько глиф и бейдж выступают за бокс. Не больше отступа ячейки
-  /// (2 + 2 = 4), иначе соседние ячейки наезжали бы друг на друга.
-  static const double _overhang = 3;
-
-  static double boxSizeFor(double iconSize) =>
-      iconSize + 2 * (ringWidth + gapWidth);
-
-  /// Цвет состояния — им красится кольцо и глиф.
-  static Color statusColor(BuildContext context, ServiceCheckOutcome o) =>
-      switch (o.state) {
-        ServiceCheckState.ok => Colors.green,
-        ServiceCheckState.geoBlocked => Colors.orange,
-        ServiceCheckState.fail => const Color(0xFFCC7777),
-        _ => Theme.of(context).disabledColor,
-      };
-
-  /// Знак в углу: ✓ / ! / ✕. У «идёт проверка» и «не проверено» знака нет —
-  /// там нечего утверждать.
-  ///
-  /// ⚠️ НЕ `Icons.block` для отказа: он занят бейджем правила «Блок», и
-  /// `service_chips_test` требует его отсутствия там, где правила нет.
-  static IconData? glyphFor(ServiceCheckOutcome o) => switch (o.state) {
-        ServiceCheckState.ok => Icons.check,
-        ServiceCheckState.geoBlocked => Icons.priority_high,
-        ServiceCheckState.fail => Icons.close,
-        _ => null,
-      };
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = statusColor(context, outcome);
-    final gapColor = theme.scaffoldBackgroundColor;
-    final box = boxSizeFor(iconSize);
-    final busy = outcome.state == ServiceCheckState.checking;
-    // Радиус кольца ~0.3 бокса (у 34 — 10); у прослойки — на толщину кольца
-    // меньше, чтобы скругления шли параллельно.
-    final outerRadius = circle ? null : BorderRadius.circular(box * 0.3);
-    final innerRadius =
-        circle ? null : BorderRadius.circular(box * 0.3 - ringWidth);
-    final iconRadius = circle
-        ? null
-        : BorderRadius.circular(box * 0.3 - ringWidth - gapWidth);
-
-    final ring = DecoratedBox(
-      decoration: BoxDecoration(
-        shape: circle ? BoxShape.circle : BoxShape.rectangle,
-        borderRadius: outerRadius,
-        border: Border.all(color: color, width: ringWidth),
-      ),
-      // ⚠️ Отступ под кольцо — ЯВНЫЙ `Padding`: `DecoratedBox` сам под
-      // рамку не отступает, и без него прослойка легла бы под кольцо.
-      child: Padding(
-        padding: const EdgeInsets.all(ringWidth),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            shape: circle ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: innerRadius,
-            color: gapColor,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(gapWidth),
-            child: SizedBox(
-              width: iconSize,
-              height: iconSize,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  SiteFavicon(domain: domain, size: iconSize, builtIn: true),
-                  // ⚠️ «ИДЁТ ПРОВЕРКА» ОБЯЗАНО БЫТЬ ВИДНО. Найдено ревью
-                  // 05.09.2026: при переходе с кружков на обводку индикатор
-                  // потерялся — `checking` красился тем же цветом, что и
-                  // «не проверено». Обратной связи на нажатие не оставалось:
-                  // человек тапал, ничего не менялось секунд шестнадцать, и
-                  // кнопка выглядела неработающей.
-                  if (busy)
-                    DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: gapColor.withValues(alpha: 0.72),
-                        shape: circle ? BoxShape.circle : BoxShape.rectangle,
-                        borderRadius: iconRadius,
-                      ),
-                      child: Center(
-                        child: SizedBox(
-                          width: iconSize * 0.55,
-                          height: iconSize * 0.55,
-                          child: CircularProgressIndicator(
-                            strokeWidth: iconSize * 0.09,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
-    final glyph = showGlyph ? glyphFor(outcome) : null;
-    final rule = badge;
-    if (glyph == null && rule == null) return ring;
-
-    // Накладки — поверх, а не рядом: рядом они отняли бы ширину, а ширина
-    // здесь единственное, что ограничивает размер значков. Бейдж обхода —
-    // слева сверху, глиф состояния — справа снизу; углы разные, столкнуться
-    // они не могут.
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        ring,
-        if (rule != null)
-          Positioned(
-            left: -_overhang,
-            top: -_overhang,
-            child: DecoratedBox(
-              decoration: BoxDecoration(color: gapColor, shape: BoxShape.circle),
-              child: Icon(
-                rule.action == AppAction.block
-                    ? Icons.block
-                    : Icons.lock_open_rounded,
-                size: glyphSize,
-                color: rule.action == AppAction.block
-                    ? const Color(0xFFCC7777)
-                    : Colors.orange,
-              ),
-            ),
-          ),
-        if (glyph != null)
-          Positioned(
-            right: -_overhang,
-            bottom: -_overhang,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                // Рамка цвета прослойки отделяет кружок от кольца того же
-                // цвета — иначе он сливался бы с ним в кляксу.
-                border: Border.all(color: gapColor, width: 1),
-              ),
-              child: SizedBox(
-                width: glyphSize,
-                height: glyphSize,
-                child: Icon(glyph, size: glyphIconSize, color: Colors.white),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
+  static const normal =
+      _CellMetrics(icon: 28, stroke: 4, inner: 3, split: 6, badge: 16, pad: 6);
+  static const dense =
+      _CellMetrics(icon: 20, stroke: 3, inner: 2, split: 5, badge: 12, pad: 5);
 }
 
-/// Пара «до / после» для одного сервиса.
-class _ServicePair extends StatelessWidget {
-  const _ServicePair({
-    // Ключ по имени сервиса ставят оба места вызова — см. комментарии там:
-    // без него Flutter сопоставляет пары позиционно и путает их состояние.
+/// Сторона ячейки сервиса на масштабе 1.0: бокс 28 + 2·(4 + 3) = 42 и поле 6
+/// с каждой стороны — 54. Совпадает с `_CellMetrics.normal.slot` (страж —
+/// `service_status_ring_test`); константой, а не геттером, потому что от неё
+/// считается вёрстка сторон и её читают тесты.
+///
+/// Ширина постоянная: замер «через VPN» живёт в правой половине той же рамки,
+/// поэтому подключение ячейку не расширяет и экран не дёргается.
+const double cellWidth = 54;
+
+/// Что правило раздельного туннелирования делает с сервисом — от этого
+/// зависят форма рамки и значки по углам.
+enum _RuleMark { none, direct, block, exit }
+
+/// Красный отказа и запрета. Ярче прежнего `0xFFCC7777`: владелец просил
+/// «красный поярче» на макете 27.10.2026.
+const _failRed = Color(0xFFE35D5D);
+
+/// Синий замка «через другой сервер».
+const _exitBlue = Color(0xFF5B9BF0);
+
+/// Рамка ячейки: две половины (без VPN / через VPN) либо цельный круг —
+/// сервис идёт мимо VPN, и замер «через VPN» не имеет смысла.
+///
+/// ⚠️ ПОЛОВИНЫ НЕ СОПРИКАСАЮТСЯ: сверху и снизу разрез [split] цвета фона.
+/// Слитая рамка двух цветов читалась как одна «пёстрая», а не как два замера.
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.left,
+    required this.right,
+    required this.stroke,
+    required this.split,
+    required this.radius,
+    required this.circle,
+  });
+
+  final Color left, right;
+  final double stroke, split, radius;
+  final bool circle;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke;
+    if (circle) {
+      canvas.drawCircle(size.center(Offset.zero), size.width / 2 - stroke / 2,
+          paint..color = left);
+      return;
+    }
+    final rr = RRect.fromRectAndRadius(
+        (Offset.zero & size).deflate(stroke / 2), Radius.circular(radius));
+    final half = size.width / 2;
+    for (final (rect, color) in [
+      (Rect.fromLTRB(0, 0, half - split / 2, size.height), left),
+      (Rect.fromLTRB(half + split / 2, 0, size.width, size.height), right),
+    ]) {
+      canvas.save();
+      canvas.clipRect(rect);
+      canvas.drawRRect(rr, paint..color = color);
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _RingPainter o) =>
+      o.left != left ||
+      o.right != right ||
+      o.stroke != stroke ||
+      o.split != split ||
+      o.radius != radius ||
+      o.circle != circle;
+}
+
+/// Замок, нарисованный своим путём, а не глифом Material.
+///
+/// ⚠️ У глифа `lock_open` дужка отходит от корпуса на 1 px и в размере 12–16
+/// выглядит закрытой. Здесь у открытого замка дужка поднята и сдвинута ВПРАВО
+/// за край корпуса (просьба владельца). Вся геометрия — по пиксельной сетке:
+/// дробные координаты размывали ногу дужки на два пикселя, и она выглядела
+/// наклонённой («дужка кривая» — замечание владельца, 27.10.2026).
+class _LockPainter extends CustomPainter {
+  _LockPainter({required this.open, required this.color, required this.bg});
+
+  final bool open;
+  final Color color, bg;
+
+  @override
+  void paint(Canvas canvas, Size sz) {
+    final s = sz.width;
+    final w = math.max(1.5, (.14 * s).roundToDouble());
+    final half = w.round().isOdd ? .5 : 0.0;
+    double x(double v) => (v * s).roundToDouble() + half;
+    double y(double v) => (v * s).roundToDouble();
+    final body = RRect.fromRectAndRadius(
+        Rect.fromLTRB(y(.08), y(.46), y(.74), y(.96)),
+        Radius.circular(.12 * s));
+    final double l, r, top;
+    if (open) {
+      l = x(.52);
+      r = x(.88);
+      top = y(.28);
+    } else {
+      l = x(.24);
+      r = x(.58);
+      top = y(.34);
+    }
+    final rad = (r - l) / 2;
+    final shackle = Path()
+      ..moveTo(l, y(.5))
+      ..lineTo(l, top)
+      ..arcTo(Rect.fromLTRB(l, top - rad, r, top + rad), math.pi, math.pi,
+          false)
+      ..lineTo(r, open ? y(.40) : y(.5));
+    // Сперва контур цвета фона (тот же путь толще), потом сам замок: так
+    // он читается поверх рамки любого цвета.
+    for (final (c, extra) in [(bg, 2.0), (color, 0.0)]) {
+      canvas.drawPath(
+          shackle,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = w + extra
+            ..color = c);
+      canvas.drawRRect(body.inflate(extra / 2), Paint()..color = c);
+    }
+    // Скважина — цветом фона.
+    canvas.drawCircle(
+        Offset(body.center.dx, .69 * s), .07 * s, Paint()..color = bg);
+  }
+
+  @override
+  bool shouldRepaint(covariant _LockPainter o) =>
+      o.open != open || o.color != color || o.bg != bg;
+}
+
+/// Значок Material с контуром цвета фона в 1 px — иначе он сливается с
+/// рамкой того же цвета.
+Widget _outlinedIcon(IconData icon, double size, Color color, Color bg) => Icon(
+      icon,
+      size: size,
+      color: color,
+      shadows: [
+        for (final o in const [
+          Offset(1, 0), Offset(-1, 0), Offset(0, 1), Offset(0, -1), //
+          Offset(1, 1), Offset(-1, -1), Offset(1, -1), Offset(-1, 1),
+        ])
+          Shadow(color: bg, offset: o),
+      ],
+    );
+
+/// ЗНАЧОК СЕРВИСА В РАЗРЕЗАННОЙ РАМКЕ — одна ячейка вместо пары «до → после».
+///
+/// ⚠️ ДИЗАЙН УТВЕРЖДЁН ВЛАДЕЛЬЦЕМ 27–28.10.2026 по макету (вариант 4):
+/// - левая половина рамки — замер БЕЗ VPN, правая — ЧЕРЕЗ VPN; половины не
+///   касаются;
+/// - слева сверху открытый замок, справа сверху закрытый: какая половина что
+///   значит, видно без легенды;
+/// - справа снизу кружок со знаком ✓ / ! / ✕ — как сейчас (через VPN при
+///   живом канале, иначе без VPN);
+/// - правило «Прямо»: рамка круглая и одноцветная (замер «через VPN» идёт тем
+///   же прямым путём), слева сверху развилка, справа значка нет;
+/// - правило «Блок»: справа сверху красный запрет;
+/// - правило через другой сервер: справа сверху синий замок со стрелкой;
+/// - у каждого элемента своя подсказка.
+///
+/// Прежняя пара с двумя значками и стрелкой занимала 78 px в ширину и делила
+/// одно сравнение на два значка; рамка несёт оба замера на одном значке.
+///
+/// ⚠️ ПОРЯДОК ПОЛОВИН ЗАКРЕПЛЁН (`Directionality.ltr`), В ФАРСИ ТОЖЕ. Подсказка
+/// «i» на десяти языках говорит «левая половина — без VPN»; зеркальная рамка в
+/// RTL сделала бы эту фразу ложью — ровно то, что ревью 05.09.2026 нашло у
+/// прежней пары.
+class _ServiceCell extends StatelessWidget {
+  const _ServiceCell({
+    // Ключ по имени сервиса ставят все места вызова: без него Flutter
+    // сопоставляет ячейки позиционно и путает их состояние.
     super.key,
     required this.service,
     required this.before,
     required this.after,
     required this.live,
-    required this.alignEnd,
     required this.onTap,
-    this.bypass,
+    this.rule,
     this.dense = false,
     this.showGlyph = true,
     this.groupLabel,
@@ -1896,210 +1897,275 @@ class _ServicePair extends StatelessWidget {
   final ServiceCheckOutcome before;
   final ServiceCheckOutcome after;
   final bool live;
-  final bool alignEnd;
   final VoidCallback onTap;
 
-  /// Правило раздельного туннелирования, уводящее сервис мимо VPN (или
-  /// запрещающее его). `null` — сервис идёт как весь остальной трафик.
-  final SiteRule? bypass;
+  /// Правило из [ServiceChecks.markRuleFor]: «Прямо», «Блок» или туннель через
+  /// другой сервер. `null` — сервис идёт как весь остальной трафик.
+  final SiteRule? rule;
 
-  /// `true` — плотная сетка (`ServiceChecksLayout.grid`): одно кольцо поверх
-  /// иконки вместо пары «до → после», подпись группы уходит целиком в
-  /// `Tooltip`.
+  /// Плотная сетка (`ServiceChecksLayout.grid`): ячейка меньше, подпись группы
+  /// уходит в подсказку значка.
   final bool dense;
 
-  /// Глиф состояния в углу кольца — см. [ServiceChecksSides.glyphMinScale].
-  /// В рядах ([ServiceChecksRows]) масштаб всегда 1.0, и он рисуется всегда.
+  /// Знак состояния справа снизу — см. [ServiceChecksSides.glyphMinScale].
   final bool showGlyph;
 
-  /// Название группы для подсказки — заполняется только в [dense]. В обычном
-  /// виде группу уже называет подпись над сервисом.
+  /// Название группы для подсказки — только в [dense].
   final String? groupLabel;
+
+  /// Цвет состояния — им красятся половины рамки и кружок знака.
+  static Color statusColor(BuildContext context, ServiceCheckOutcome o) =>
+      switch (o.state) {
+        ServiceCheckState.ok => Colors.green,
+        ServiceCheckState.geoBlocked => Colors.orange,
+        ServiceCheckState.fail => _failRed,
+        _ => Theme.of(context).disabledColor,
+      };
+
+  /// Знак справа снизу: ✓ / ! / ✕. У «идёт проверка» и «не проверено» знака
+  /// нет — там нечего утверждать.
+  ///
+  /// ⚠️ НЕ `Icons.block` для отказа: запрет — значок правила «Блок».
+  static IconData? glyphFor(ServiceCheckOutcome o) => switch (o.state) {
+        ServiceCheckState.ok => Icons.check,
+        ServiceCheckState.geoBlocked => Icons.priority_high,
+        ServiceCheckState.fail => Icons.close,
+        _ => null,
+      };
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
-    if (dense) return _buildDense(context, l);
+    final t = Theme.of(context);
+    final bg = t.scaffoldBackgroundColor;
+    final m = dense ? _CellMetrics.dense : _CellMetrics.normal;
+    final rule = this.rule;
 
-    // ⚠️ СОСТОЯНИЕ — КОЛЬЦОМ ЗНАЧКА, А НЕ КРУЖКОМ РЯДОМ. Решение владельца
-    // 04.09.2026 по разбору десяти раскладок в масштабе: кружок рядом стоил
-    // дороже всего именно на ЖИВОМ канале — к нему добавлялась пара «до →
-    // после», и ячейка росла с 43 до 71 px, то есть раскладка мельчала ровно
-    // тогда, когда на неё и смотрят. Кольцо живёт НА значке.
-    //
-    // ⚠️ ДВА ЗНАЧКА ОДНОГО РАЗМЕРА, И СТРЕЛКА УКАЗЫВАЕТ НА ВТОРОЙ. Слева
-    // сервис БЕЗ VPN, справа — ЧЕРЕЗ VPN, у каждого своё кольцо. Первый
-    // сперва делали меньше, чтобы выгадать ширину, но так «до» читается как
-    // сноска, а не как равноправный замер (решение владельца 05.09.2026:
-    // «нужно знать, что было до включения»).
-    final live0 = live && before.state != ServiceCheckState.idle;
-    final arrow = live0
-        ? SizedBox(
-            width: _arrowWidth,
-            child: Center(
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                // ⚠️ СТРЕЛКА НЕ СЛУШАЕТ СИСТЕМНОЕ УКРУПНЕНИЕ ТЕКСТА. Найдено
-                // ревью 05.09.2026: ячейка фиксирована, а стрелка нарисована
-                // ТЕКСТОМ и росла вместе с системным масштабом — при 1.3
-                // второй значок вылезал за отведённое место. Это графический
-                // разделитель, а не текст для чтения.
-                child: MediaQuery.withNoTextScaling(
-                  child: Text('→',
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                            fontWeight: FontWeight.w700,
-                          )),
-                ),
-              ),
-            ),
-          )
+    // Имя сервера выхода. ⚠️ `select`, а не `watch`: состояние приложения
+    // уведомляет на каждый тик счётчиков трафика, а здесь нужна одна строка.
+    // Сервер исчез из подписки или не годится в выход — трафик правила идёт
+    // основным туннелем (`ExitOutbounds.build`), и синий замок соврал бы.
+    final exitKey = rule != null &&
+            rule.action == AppAction.tunnel &&
+            rule.serverKey != null
+        ? rule.serverKey
         : null;
+    final exitServer = exitKey == null
+        ? null
+        : context.select<AppState?, String?>((s) {
+            if (s == null) return null;
+            for (final v in s.servers) {
+              if (v.key == exitKey) {
+                return canBeExitServer(v) ? v.displayName : null;
+              }
+            }
+            return null;
+          });
 
-    final rule = bypass;
-    Widget iconBox(ServiceCheckOutcome o, {bool badge = false}) => _StatusRing(
-          domain: service.domain,
-          outcome: o,
-          iconSize: _pairIconSize,
-          circle: false,
-          showGlyph: showGlyph,
-          badge: badge ? rule : null,
-        );
+    final mark = switch (rule?.action) {
+      AppAction.direct => _RuleMark.direct,
+      AppAction.block => _RuleMark.block,
+      AppAction.tunnel when exitServer != null => _RuleMark.exit,
+      _ => _RuleMark.none,
+    };
+    final direct = mark == _RuleMark.direct;
+    final now = live ? after : before;
+    final left = direct ? now : before;
+    final glyph = showGlyph ? glyphFor(now) : null;
+    final ink = t.colorScheme.onSurface;
+    final o = m.overhang;
 
-    final items = <Widget>[
-      if (live0) ...[
-        iconBox(before),
-        arrow!,
-      ],
-      iconBox(live ? after : before, badge: true),
-    ];
-    return Tooltip(
-      message: _tip(l, rule),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          // ⚠️ Строка ужимается, а не обрезается: на узком телефоне правая
-          // колонка не влезала и уезжала за край — кружок «через VPN»
-          // оказывался за экраном, то есть пропадала ровно та половина
-          // сравнения, ради которой всё и сделано.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: alignEnd
-                ? AlignmentDirectional.centerEnd
-                : AlignmentDirectional.centerStart,
-            child: SizedBox(
-              width: cellWidth,
-              // ⚠️ ПАРА ВСЕГДА СЛЕВА НАПРАВО, ДАЖЕ В АРАБСКОМ И ФАРСИ.
-              //
-              // Найдено ревью 05.09.2026. `Row` без явного направления берёт
-              // его у локали, поэтому в RTL дети зеркалились: значок «до»
-              // уезжал ВПРАВО, «после» — влево. При этом символ «→» не входит
-              // в таблицу зеркалящихся (U+2192 не имеет пары в BidiMirroring),
-              // и глиф продолжал смотреть вправо — то есть от «после» к «до».
-              // Подсказка «i» объясняет пару словами «слева/справа» на десяти
-              // языках; здесь порядок — часть СМЫСЛА, а не оформления,
-              // поэтому он закреплён кодом.
-              child: Directionality(
-                textDirection: TextDirection.ltr,
-                child: Row(
-                  // Значок по центру, пока стрелки нет; со стрелкой — от
-                  // начала, чтобы она встала в отведённое ей место.
-                  mainAxisAlignment: arrow == null
-                      ? MainAxisAlignment.center
-                      : MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  // ⚠️ ПОРЯДОК ОДИНАКОВЫЙ В ОБЕИХ СТОРОНАХ, ЗЕРКАЛЕНИЯ НЕТ.
-                  // Левая сторона раньше разворачивала строку, чтобы кружки
-                  // смотрели на кнопку; выходило, что бренд-иконки у левой
-                  // половины сервисов стоят справа, у правой — слева, и глазу
-                  // не за что зацепиться. Требование владельца 18.08.2026 —
-                  // «помести картинки сервисов у левой панели налево».
-                  children: items,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+    String word(ServiceCheckOutcome x) => switch (x.state) {
+          ServiceCheckState.ok => l.serviceStatusOk,
+          ServiceCheckState.geoBlocked => l.serviceStatusGeo,
+          ServiceCheckState.fail => l.serviceStatusFail,
+          ServiceCheckState.checking => l.serviceStatusChecking,
+          ServiceCheckState.idle => l.serviceStatusTap,
+        };
+    final beforeTip = before.state == ServiceCheckState.idle
+        ? l.serviceChecksNoBaseline
+        : '${l.serviceChecksBefore}: ${word(before)}';
+    final afterTip = '${l.serviceChecksAfter}: '
+        '${live ? word(after) : l.serviceChecksAfterOff}';
+    final ruleTip = rule == null
+        ? null
+        : switch (mark) {
+            _RuleMark.direct => l.serviceChecksBypassDirect(rule.label),
+            _RuleMark.block => l.serviceChecksBypassBlock(rule.label),
+            _RuleMark.exit =>
+              l.serviceChecksExitServer(rule.label, exitServer!),
+            _RuleMark.none => null,
+          };
 
-  /// Текст подсказки — общий для обычного вида и [dense]: набор фактов один и
-  /// тот же, различается только то, КАК они нарисованы на экране.
-  String _tip(AppLocalizations l, SiteRule? rule) {
-    // В сетке подписи группы над сервисом нет вовсе (см. [dense]) — имя
-    // группы называет только подсказка, иначе оно терялось бы бесследно.
+    // Подсказка значка: имя (с группой в сетке, где подписи над ним нет) и
+    // что будет по нажатию. У YouTube — оговорка про замедление: зелёная рамка
+    // рядом с не грузящимся видео выглядит враньём.
     final head =
         groupLabel == null ? service.label : '$groupLabel · ${service.label}';
-    final tip = StringBuffer('$head\n')
-      ..write(before.state == ServiceCheckState.idle
-          ? l.serviceChecksNoBaseline
-          : '${l.serviceChecksBefore}: ${_word(l, before)}');
-    if (live) {
-      tip.write('\n${l.serviceChecksAfter}: ${_word(l, after)}');
-    }
-    // У YouTube отдельная оговорка: провайдер его чаще не блокирует, а
-    // замедляет, и лёгкая проба этого не видит. Молчать нельзя — зелёный чип
-    // рядом с не грузящимся видео выглядит как враньё.
+    final iconTip = StringBuffer('$head\n${l.serviceStatusTap}');
     if (service == ProbeService.youtube) {
-      tip.write('\n\n${l.serviceYoutubeThrottleNote}');
+      iconTip.write('\n\n${l.serviceYoutubeThrottleNote}');
     }
-    // Пометка объясняет ПРИЧИНУ и НАЗЫВАЕТ ПРАВИЛО. Без имени правила человек
-    // видит замок и не знает, где его снять: правил у него десятки, а
-    // совпадение может прийти от родительского домена, которого в списке
-    // сервисов нет вовсе.
-    if (rule != null) {
-      tip.write('\n\n');
-      tip.write(rule.action == AppAction.block
-          ? l.serviceChecksBypassBlock(rule.label)
-          : l.serviceChecksBypassDirect(rule.label));
-    }
-    return tip.toString();
-  }
 
-  /// Плотный вид для `ServiceChecksLayout.grid`: одно кольцо поверх иконки
-  /// вместо пары «до → после» — при 14 сервисах в узкой сетке места на целую
-  /// пару нет, а какое-то состояние показать надо. Показываем «после» при
-  /// живом VPN, иначе «до» — ровно то состояние, что интереснее человеку
-  /// прямо сейчас.
-  ///
-  /// Кольцо — тот же [_StatusRing], что и в паре: значок 20, бокс 28, в зоне
-  /// 32 (`ServiceChecksSides._denseIcon`), кругом.
-  Widget _buildDense(BuildContext context, AppLocalizations l) {
-    final rule = bypass;
-    final outcome = live ? after : before;
-    return Tooltip(
-      message: _tip(l, rule),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: ServiceChecksSides._denseIcon,
-          height: ServiceChecksSides._denseIcon,
-          child: Center(
-            child: _StatusRing(
-              domain: service.domain,
-              outcome: outcome,
-              iconSize: 20,
-              circle: true,
-              showGlyph: showGlyph,
-              badge: rule,
+    // Невидимая зона под подсказкой половины рамки: `ColoredBox` принимает
+    // наведение и долгое нажатие, пустой `SizedBox` — нет.
+    Widget zone(String tip) => Tooltip(
+        message: tip,
+        child: const ColoredBox(color: Colors.transparent));
+
+    final iconInset = m.stroke + m.inner;
+    Widget icon = SiteFavicon(domain: service.domain, size: m.icon, builtIn: true);
+    icon = direct
+        ? ClipOval(child: icon)
+        : ClipRRect(
+            borderRadius: BorderRadius.circular(m.radius - iconInset),
+            child: icon);
+
+    final Widget? rightBadge = switch (mark) {
+      _RuleMark.none => Tooltip(
+          message: afterTip,
+          child: _lock(false, m.badge, ink, bg),
+        ),
+      _RuleMark.exit => Tooltip(
+          message: ruleTip!,
+          child: Stack(clipBehavior: Clip.none, children: [
+            _lock(false, m.badge, _exitBlue, bg),
+            Positioned(
+              right: -m.badge * .5,
+              bottom: -m.badge * .15,
+              child: _outlinedIcon(
+                  Icons.arrow_forward_rounded, m.badge * .62, _exitBlue, bg),
+            ),
+          ]),
+        ),
+      _RuleMark.block => Tooltip(
+          message: ruleTip!,
+          child: _outlinedIcon(Icons.block_rounded, m.badge, _failRed, bg),
+        ),
+      _RuleMark.direct => null,
+    };
+
+    final cell = SizedBox(
+      width: m.box,
+      height: m.box,
+      child: Stack(clipBehavior: Clip.none, children: [
+        Positioned.fill(
+          child: CustomPaint(
+            key: const ValueKey('serviceRing'),
+            painter: _RingPainter(
+              left: statusColor(context, left),
+              right: live
+                  ? statusColor(context, after)
+                  : t.disabledColor,
+              stroke: m.stroke,
+              split: m.split,
+              radius: m.radius,
+              circle: direct,
             ),
           ),
+        ),
+        // Подсказки половин рамки — под значком: наведение на сам значок
+        // отдаёт его подсказку, на рамку — подсказку половины.
+        Positioned.fill(
+          child: direct
+              ? zone('${l.serviceChecksBefore}: ${word(now)}')
+              : Row(children: [
+                  Expanded(child: zone(beforeTip)),
+                  Expanded(child: zone(afterTip)),
+                ]),
+        ),
+        Positioned.fill(
+          child: Padding(
+            padding: EdgeInsets.all(iconInset),
+            child: Tooltip(message: iconTip.toString(), child: icon),
+          ),
+        ),
+        // ⚠️ «ИДЁТ ПРОВЕРКА» ОБЯЗАНО БЫТЬ ВИДНО: иначе после нажатия ничего
+        // не меняется секунд шестнадцать, и значок выглядит неработающим
+        // (найдено ревью 05.09.2026).
+        if (now.state == ServiceCheckState.checking)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Padding(
+                padding: EdgeInsets.all(iconInset),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: bg.withValues(alpha: 0.72),
+                    shape: direct ? BoxShape.circle : BoxShape.rectangle,
+                    borderRadius: direct
+                        ? null
+                        : BorderRadius.circular(m.radius - iconInset),
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: m.icon * .55,
+                      height: m.icon * .55,
+                      child: CircularProgressIndicator(
+                          strokeWidth: m.icon * .09),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        Positioned(
+          left: -o,
+          top: -o,
+          child: direct
+              ? Tooltip(
+                  message: ruleTip!,
+                  child: _outlinedIcon(
+                      Icons.alt_route_rounded, m.badge, Colors.orange, bg),
+                )
+              : Tooltip(
+                  message: beforeTip,
+                  child: _lock(true, m.badge, ink, bg),
+                ),
+        ),
+        if (rightBadge != null) Positioned(right: -o, top: -o, child: rightBadge),
+        if (glyph != null)
+          Positioned(
+            right: -o - 1,
+            bottom: -o - 1,
+            child: Tooltip(
+              message: '${l.serviceChecksNow}: ${word(now)}',
+              child: Container(
+                width: m.badge * .9,
+                height: m.badge * .9,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: statusColor(context, now),
+                  shape: BoxShape.circle,
+                  // Рамка цвета фона отделяет кружок от рамки того же цвета.
+                  border: Border.all(color: bg, width: 1),
+                ),
+                child: Icon(glyph, size: m.badge * .62, color: Colors.white),
+              ),
+            ),
+          ),
+      ]),
+    );
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: m.slot,
+        height: m.slot,
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(child: cell),
         ),
       ),
     );
   }
 
-  String _word(AppLocalizations l, ServiceCheckOutcome o) => switch (o.state) {
-        ServiceCheckState.ok => l.serviceStatusOk,
-        ServiceCheckState.geoBlocked => l.serviceStatusGeo,
-        ServiceCheckState.fail => l.serviceStatusFail,
-        ServiceCheckState.checking => l.serviceStatusChecking,
-        ServiceCheckState.idle => l.serviceStatusTap,
-      };
+  static Widget _lock(bool open, double size, Color color, Color bg) =>
+      CustomPaint(
+        key: ValueKey(open ? 'lockOpen' : 'lockClosed'),
+        size: Size.square(size),
+        painter: _LockPainter(open: open, color: color, bg: bg),
+      );
 }
 
 /// Печатает НАСТОЯЩИЕ размеры, по одному разу на изменение.

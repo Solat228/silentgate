@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/platform/app_log.dart';
+import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/engine/windows/support_report.dart';
+import 'package:silentgate/engine/windows/xray_process.dart';
 
 /// ЛОГИ ЯДЕР В ОТЧЁТЕ ПОДДЕРЖКИ — ВТОРАЯ ДВЕРЬ ДЛЯ ТЕХ ЖЕ АДРЕСОВ.
 ///
@@ -74,6 +78,92 @@ void main() {
       final out = SupportReport.maskCoreLog('+0700 2026-08-11 02:09:08 INFO старт');
       expect(out, isNot(startsWith('+0700')));
       expect(out, contains('INFO'));
+    });
+  });
+
+  group('Пароли в логе ядра', () {
+    // Строка из настоящего отчёта владельца (13.10.2026): sing-box при отказе
+    // в доступе к локальному порту печатает присланные креды целиком. Это
+    // пароль живого инбаунда проб — с ним любой процесс телефона получает
+    // туннель. Отчёт уходит в чат постороннему человеку.
+    const secret = '0123456789abcdef0123456789abcdef';
+    const leaking = 'ERROR inbound/mixed[probe-in]: process connection from '
+        '127.0.0.1:46218: http: authentication failed, username=sg, '
+        'password=$secret';
+
+    test('⚠️ пароль из отказа в доступе не уходит в отчёт', () {
+      final out = SupportReport.maskCoreLog(leaking);
+      expect(out, isNot(contains(secret)));
+      expect(out, contains('password=***'));
+      expect(out, contains('authentication failed'),
+          reason: 'сам факт отказа поддержке нужен');
+      expect(out, contains('127.0.0.1:46218'));
+    });
+
+    test('⚠️ маска работает и при пустом реестре адресов', () {
+      // Реестр пуст до импорта подписки — и раньше `mask` выходил сразу,
+      // ничего не трогая. Пароль от реестра не зависит.
+      SensitiveAddresses.forgetAllForTest();
+      expect(SupportReport.maskCoreLog(leaking), isNot(contains(secret)));
+      expect(SensitiveAddresses.mask(leaking), isNot(contains(secret)));
+    });
+
+    test('наш журнал — та же граница', () {
+      SensitiveAddresses.forgetAllForTest();
+      expect(scrubSecrets(leaking), isNot(contains(secret)));
+    });
+
+    test('другие формы секрета', () {
+      for (final line in [
+        'clash api: secret=$secret',
+        'auth token=$secret;',
+        'Authorization: Bearer $secret',
+        'passwd=$secret&x=1',
+      ]) {
+        expect(SensitiveAddresses.mask(line), isNot(contains(secret)),
+            reason: line);
+      }
+    });
+
+    test('обычные строки не портятся', () {
+      const plain = 'router: match[3] outbound=direct, network=tcp, port=443';
+      expect(SensitiveAddresses.mask(plain), plain);
+    });
+  });
+
+  group('xray.log в отчёте поддержки Windows', () {
+    late Directory tmp;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('sg_xray_report_');
+      AppPaths.overrideRoot(tmp);
+    });
+
+    tearDown(() {
+      AppPaths.resetForTests();
+      try {
+        tmp.deleteSync(recursive: true);
+      } catch (_) {}
+    });
+
+    test('XrayProcess.tailLog склеивает xray.prev.log и xray.log', () async {
+      final dir = await AppPaths.supportDir();
+      final cur = File(XrayProcess.logPathFor(dir));
+      final prev = File('${dir.path}${Platform.pathSeparator}xray.prev.log');
+      await prev.writeAsString('prev-line-1\nprev-line-2\n');
+      await cur.writeAsString('cur-line-1\ncur-line-2\n');
+
+      final tail = await XrayProcess.tailLog(lines: 10);
+      expect(tail, contains('prev-line-1'));
+      expect(tail, contains('cur-line-2'));
+    });
+
+    test('SupportReport включает секцию xray.log и пропускает её через маску ядра',
+        () {
+      final src = File('lib/engine/windows/support_report.dart').readAsStringSync();
+      expect(src, contains('XrayProcess.tailLog('));
+      expect(src, contains('[xray.log - прокси-ядро Xray, последние строки]'));
+      expect(src, contains('_core(xr)'));
     });
   });
 }

@@ -2,9 +2,11 @@ import 'dart:io' show InternetAddress, InternetAddressType, Platform;
 
 import 'package:flutter/material.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
 import '../core/platform/platform_services.dart';
@@ -42,6 +44,13 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
     setState(() => _busy = true);
     final result = await platform.privileges.configure();
     if (!mounted) return;
+    if (result == PrivilegeSetupResult.done) {
+      // Задачу снова выбрали — пакет MSIX может ставить её сам, если её
+      // снимет что-то кроме человека (см. `TunTaskAutoSetup`).
+      context
+          .read<SettingsController>()
+          .update((s) => s.copyWith(tunTaskDeclined: false));
+    }
     setState(() => _busy = false);
     await _refreshTask();
     if (!mounted) return;
@@ -55,12 +64,21 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
     setState(() => _busy = true);
     await platform.privileges.remove();
     if (!mounted) return;
+    // Выбор человека — окно UAC на каждое подключение. В пакете MSIX без
+    // этого флага задача поставилась бы снова при следующем подключении.
+    context
+        .read<SettingsController>()
+        .update((s) => s.copyWith(tunTaskDeclined: true));
     setState(() => _busy = false);
     await _refreshTask();
   }
 
   Future<void> _showLog() async {
-    final log = await platform.tunLog.tail(lines: 200);
+    // ⚠️ Окно журнала шлют в поддержку скриншотом и копией: адреса серверов
+    // в нём (каждая строка `dial tcp`) маскируются так же, как в отчёте
+    // поддержки (аудит 25.10.2026, I).
+    final log =
+        SensitiveAddresses.mask(await platform.tunLog.tail(lines: 200));
     if (!mounted) return;
     final l = AppLocalizations.of(context);
     await showDialog<void>(
@@ -179,6 +197,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               width: 90,
               child: TextFormField(
                 initialValue: '${s.tunMtu}',
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 textAlign: TextAlign.end,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(isDense: true),
@@ -257,6 +277,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               width: 84,
               child: TextFormField(
                 initialValue: '${s.tunWatchdogSeconds}',
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.center,
                 decoration: const InputDecoration(
@@ -287,6 +309,8 @@ class _TunSettingsScreenState extends State<TunSettingsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextFormField(
                 initialValue: s.dnsCustomServer,
+                contentInsertionConfiguration:
+                    buildFocusedExtendedContentInsertion(),
                 decoration: InputDecoration(
                   labelText: l.tunDnsServer,
                   border: const OutlineInputBorder(),
@@ -594,6 +618,8 @@ class _CidrEditorState extends State<_CidrEditor> {
             Expanded(
               child: TextField(
                 controller: _input,
+                contentInsertionConfiguration:
+                    buildExtendedContentInsertion(_input),
                 decoration: InputDecoration(
                   hintText: widget.hint,
                   errorText: _error,

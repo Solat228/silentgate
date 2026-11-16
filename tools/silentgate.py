@@ -1,19 +1,22 @@
-"""Минимальная обёртка над локальным API SilentGate.
+"""Обёртка над локальным API SilentGate (1.18.7+).
 
 Требует только `requests` (``pip install requests``). Токен и порт берутся из
-настроек приложения: Настройки -> API для автоматизации (там же кнопка
-«Скопировать пример для Python» — отдаёт уже заполненный фрагмент с реальным
-токеном).
+настроек приложения: Настройки -> API для автоматизации.
 
-Подробности протокола, коды ответов и раздел «Безопасность» — в docs/API.md.
-
-⚠️ Порты выходов (см. exits()) ОБЯЗАНЫ читаться из /v1/exits на каждый вызов
-proxies_for(), а не запоминаться числом заранее: раскладка портов
-пересчитывается при каждом изменении списка «серверов с отдельным портом» в
-настройках, и захардкоженный номер рано или поздно уведёт трафик не туда.
+Поддерживает:
+- Фиксированный порт «Умный Автовыбор» (`10818`, `proxies_for("auto")` / `auto_proxies()`);
+- Фиксированный порт «Прямо» (`10819`, `proxies_for(None)` / `direct_proxies()`);
+- Липкие (`sticky`) и ручные порты отдельных серверов до 250 узлов (включая все
+  профили «Авто» из всех подписок с дедупликацией общих нод);
+- Работу во всех режимах захвата (`tun`, `systemProxy`, `proxyOnly`) и в
+  автономном фоновом режиме при выключенном VPN;
+- Управление подписками (`subscriptions()`, `select_subscription()`, `refresh_subscription()`),
+  настройку выходов (`configure_exits()`) и живую проверку портов (`test_exit()`).
 """
 from __future__ import annotations
 
+import time
+import urllib.parse
 import requests
 
 
@@ -29,25 +32,25 @@ class SilentGateError(RuntimeError):
 class SilentGate:
     """Клиент локального API SilentGate (только Windows, только 127.0.0.1)."""
 
-    def __init__(self, token: str, host: str = "127.0.0.1", port: int = 10870):
+    def __init__(
+        self,
+        token: str,
+        host: str = "127.0.0.1",
+        port: int = 10870,
+        proxy_user: str | None = None,
+        proxy_password: str | None = None,
+    ):
         if not token:
-            # Пустой токен на стороне приложения означает «канал не поднят
-            # вовсе» — здесь та же логика: нет смысла открывать сессию requests
-            # ради гарантированных 401.
             raise ValueError("нужен токен: Настройки -> API для автоматизации")
         self._base = f"http://{host}:{port}/v1"
         self._headers = {"Authorization": f"Bearer {token}"}
         self._token = token
         self._host = host
+        self._proxy_user = proxy_user
+        self._proxy_password = proxy_password
         self._session = requests.Session()
 
     def _raise_for_error(self, resp: requests.Response) -> None:
-        """Читает {"error": {"code", "message"}} и превращает в SilentGateError.
-
-        Обычный ``raise_for_status()`` отдал бы только код и текст HTTP —
-        здесь же в теле уже лежит человекочитаемая причина (401/403/404/409),
-        и молча её терять не стоит.
-        """
         try:
             body = resp.json()
             err = body.get("error") if isinstance(body, dict) else None
@@ -57,15 +60,15 @@ class SilentGate:
             raise SilentGateError(err.get("code", "unknown"), err.get("message", ""))
         resp.raise_for_status()
 
-    def _get(self, path: str) -> dict:
-        r = self._session.get(self._base + path, headers=self._headers, timeout=5)
+    def _get(self, path: str, timeout: float = 15.0) -> dict:
+        r = self._session.get(self._base + path, headers=self._headers, timeout=timeout)
         if r.status_code != 200:
             self._raise_for_error(r)
         return r.json()
 
-    def _post(self, path: str, body: dict | None = None) -> dict:
+    def _post(self, path: str, body: dict | None = None, timeout: float = 30.0) -> dict:
         r = self._session.post(
-            self._base + path, headers=self._headers, json=body or {}, timeout=30
+            self._base + path, headers=self._headers, json=body or {}, timeout=timeout
         )
         if r.status_code != 200:
             self._raise_for_error(r)
@@ -73,117 +76,54 @@ class SilentGate:
 
     # ── Чтение состояния ────────────────────────────────────────────────────
 
-    def status(self) -> dict:
-        """state/server/captureMode/connectedSeconds/pinging. См. docs/API.md §5.
+    def status(self, verify: bool = False) -> dict:
+        """Состояние клиента; при verify=True добавляет поле egress."""
+        q = "?verify=1" if verify else ""
+        return self._get(f"/status{q}", timeout=20.0 if verify else 5.0)
 
-        ``pinging`` — идёт ли сейчас прогон пинга (его запускает ping(), см.
-        wait_ping()).
+    def servers(self, all_subscriptions: bool = False) -> list[dict]:
+        """Список серверов активной подписки или всех подписок (all_subscriptions=True)."""
+        q = "?scope=all" if all_subscriptions else ""
+        return self._get(f"/servers{q}")["servers"]
 
-        ⚠️ ``server`` — это ВЫБРАННЫЙ в списке сервер, а не тот, через который
-        реально идёт трафик: connect(auto=True) выбор в списке не меняет, и
-        поле продолжает показывать прежний сервер. Какой узел взял
-        балансировщик «Авто», API не сообщает вовсе.
-        """
-        return self._get("/status")
-
-    def servers(self) -> list[dict]:
-        """Список серверов главного экрана: key/name/country/protocol/pingMs/working.
-
-        ⚠️ Это НЕ строго «активная подписка»: закреплённые серверы в приложении
-        общие и переживают её переключение, поэтому в ответе законно окажутся
-        узлы другой подписки — отличить их в JSON нечем.
-
-        ⚠️ ``working`` — всегда True/False, None он не бывает: до первого замера
-        там False, то есть «не проверяли» и «проверили, не прошёл» отсюда
-        неразличимы. None бывает только у ``pingMs`` (и у мёртвого сервера
-        тоже). Хотите знать, что замер БЫЛ, — запустите ping() и дождитесь
-        wait_ping().
-        """
-        return self._get("/servers")["servers"]
-
-    def exits(self) -> list[dict]:
-        """Серверы с отдельным портом + запись "Прямо" (serverKey=None, порт 10819).
-
-        ⚠️ Пустой список — не обязательно "ничего не выбрано": так же выглядит
-        выключенный тумблер API или пустой токен (тогда нет и записи "Прямо").
-        А присутствие записи — это раскладка портов из настроек, а не
-        подтверждение, что порт прямо сейчас слушает: порт выхода отвечает,
-        только когда VPN подключён и способ захвата — TUN либо «Только прокси»
-        (docs/API.md §3, §5).
-
-        ⚠️ Отмеченный сервер может в списке отсутствовать: он либо за пределами
-        первых 40 (порта физически нет), либо отдельным выходом не поднимается
-        вовсе (панельные «Авто» и часть протоколов). Обе причины — молчаливое
-        отсутствие записи, а не запись с port=None.
-        """
-        return self._get("/exits")["exits"]
+    def exits(self, verify: bool = False) -> list[dict]:
+        """Активные прокси-порты: Умный Автовыбор (serverKey='auto'), серверы и Прямо (serverKey=None)."""
+        q = "?verify=1" if verify else ""
+        return self._get(f"/exits{q}", timeout=60.0 if verify else 5.0)["exits"]
 
     def traffic(self) -> dict:
-        """uplinkBytes/downlinkBytes за ВСЁ ВРЕМЯ РАБОТЫ ПРИЛОЖЕНИЯ.
-
-        ⚠️ Раньше здесь было написано «текущей сессии, обнуляются новым
-        connect» — приложение так себя никогда не вело. Обнуляются счётчики
-        ЯДРА (на каждом новом его процессе), а клиент копит разницу поверх
-        накопленного: переподключение, смена сервера, обрыв и disconnect сумму
-        НЕ сбрасывают, её обнуляет только перезапуск самого приложения.
-
-        Нужен расход за свой отрезок — снимайте значение до и после и вычитайте
-        сами. Общий трафик по подписке — это subscription(), другое число.
-        """
+        """uplinkBytes/downlinkBytes за время работы приложения."""
         return self._get("/traffic")
 
     def subscription(self) -> dict:
-        """title/usedBytes/totalBytes/unlimited/expiresAt. URL подписки не отдаётся никогда."""
+        """Сводка по активной подписке (title/usedBytes/totalBytes/unlimited/expiresAt)."""
         return self._get("/subscription")
+
+    def subscriptions(self) -> list[dict]:
+        """Список всех подписок с непрозрачными id (без секретных URL)."""
+        return self._get("/subscriptions")["subscriptions"]
 
     # ── Управление ──────────────────────────────────────────────────────────
 
     def connect(self, server_key: str | None = None, auto: bool = False) -> dict:
-        """Подключиться к серверу по ключу либо включить режим «Авто».
-
-        ⚠️ На уже живом канале это СМЕНА сервера, а не отключение — команда
-        безопасна вызывать повторно, VPN не гаснет.
-
-        ⚠️ Одно из двух, а не оба сразу: тело уходит с обоими полями, а сервер
-        проверяет их по порядку auto -> server -> name и молча берёт первое.
-        connect(server_key=..., auto=True) подключит «Авто», ключ проигнорирует
-        и ошибки не вернёт.
-        """
+        """Подключиться к серверу по id/ключу (поддерживает и серверы других подписок) или включить Авто."""
         return self._post("/connect", {"server": server_key, "auto": auto})
 
     def connect_by_name(self, name: str) -> dict:
-        """Подключиться по отображаемому имени — только для ручных проб.
-
-        Панель меняет имена серверов когда угодно; для скриптов используйте
-        connect(server_key=...) с ключом из servers().
-        """
+        """Подключиться по отображаемому имени."""
         return self._post("/connect", {"name": name})
 
     def disconnect(self) -> dict:
-        """Отключить VPN. Идемпотентно — на уже выключенном тоже {"ok": True}."""
+        """Отключить VPN."""
         return self._post("/disconnect")
 
-    def ping(self) -> dict:
-        """Запустить пинг всех серверов подписки; результат — потом через servers().
-
-        Возвращается СРАЗУ, прогона не ждёт: на подписке в сотню серверов он
-        идёт минутами, и ждать его внутри HTTP-запроса значило бы упереться в
-        timeout=30 этого клиента. Ждать завершения — wait_ping().
-
-        Повторный вызов на идущем прогоне безопасен: второй прогон не
-        запускается и первому не мешает.
-        """
-        return self._post("/ping")
+    def ping(self, all_subscriptions: bool = False) -> dict:
+        """Запустить фоновый пинг серверов (активной подписки или всех подписок)."""
+        body = {"scope": "all"} if all_subscriptions else {}
+        return self._post("/ping", body)
 
     def wait_ping(self, timeout: float = 300.0, step: float = 1.0) -> bool:
-        """Дождаться конца прогона пинга. True — дождались, False — вышло время.
-
-        Опрашивает status()["pinging"]. Первый опрос делается сразу: прогон уже
-        мог закончиться (одна-две записи в подписке), и спать секунду впустую
-        незачем.
-        """
-        import time
-
+        """Дождаться конца прогона пинга."""
         deadline = time.monotonic() + timeout
         while True:
             if not self.status().get("pinging"):
@@ -192,25 +132,96 @@ class SilentGate:
                 return False
             time.sleep(step)
 
-    # ── Хелпер для requests ─────────────────────────────────────────────────
+    def select_subscription(self, sub_id: str | None = None, title: str | None = None) -> dict:
+        """Переключить активную подписку по id из subscriptions() или по названию."""
+        return self._post("/subscriptions/select", {"id": sub_id, "title": title})
 
-    def proxies_for(self, server_key: str | None) -> dict:
+    def refresh_subscription(self, sub_id: str | None = None, all_subs: bool = False) -> dict:
+        """Запустить обновление активной, указанной или всех сетевых подписок."""
+        return self._post("/subscriptions/refresh", {"id": sub_id, "all": all_subs})
+
+    def configure_exits(
+        self,
+        *,
+        enable_all_auto: bool | None = None,
+        enable_all: bool | None = None,
+        clear: bool | None = None,
+        auto_port_enabled: bool | None = None,
+        auto_include_auto_profiles: bool | None = None,
+        keep_alive_when_disconnected: bool | None = None,
+        dns_via_exit: bool | None = None,
+        auth_mode: str | None = None,
+        assign_port: tuple[str, int] | None = None,
+    ) -> dict:
+        """Настроить порты выходов и режимы API на лету."""
+        body: dict = {}
+        if enable_all_auto is not None:
+            body["enableAllAuto"] = enable_all_auto
+        if enable_all is not None:
+            body["enableAll"] = enable_all
+        if clear is not None:
+            body["clear"] = clear
+        if auto_port_enabled is not None:
+            body["autoPortEnabled"] = auto_port_enabled
+        if auto_include_auto_profiles is not None:
+            body["autoIncludeAutoProfiles"] = auto_include_auto_profiles
+        if keep_alive_when_disconnected is not None:
+            body["keepAliveWhenDisconnected"] = keep_alive_when_disconnected
+        if dns_via_exit is not None:
+            body["dnsViaExit"] = dns_via_exit
+        if auth_mode is not None:
+            body["authMode"] = auth_mode
+        if assign_port is not None:
+            body["assignPort"] = {"server": assign_port[0], "port": assign_port[1]}
+        return self._post("/exits/configure", body)
+
+    def test_exit(self, port: int | None = None, server_key: str | None = None) -> dict:
+        """Проверить задержку и реальный внешний IP/страну локального порта."""
+        return self._post("/exits/test", {"port": port, "server": server_key})
+
+    # ── Хелперы для requests ────────────────────────────────────────────────
+
+    def _format_proxy_url(self, entry: dict, socks: bool = False) -> str:
+        scheme = "socks5h" if socks else "http"
+        mode = entry.get("authMode", "token")
+        if mode == "none" or entry.get("authRequired") is False:
+            auth = ""
+        elif mode == "custom":
+            if not self._proxy_user:
+                raise ValueError(
+                    "Порт использует режим 'custom' — передайте proxy_user и proxy_password в SilentGate(...)"
+                )
+            u = urllib.parse.quote(self._proxy_user, safe="")
+            p = urllib.parse.quote(self._proxy_password or "", safe="")
+            auth = f"{u}:{p}@"
+        else:
+            p = urllib.parse.quote(self._token, safe="")
+            auth = f"sg:{p}@"
+        return f"{scheme}://{auth}{self._host}:{entry['port']}"
+
+    def proxies_for(self, server_key: str | None = "auto", socks: bool = False) -> dict:
         """Прокси-словарь для requests.get(..., proxies=...).
 
-        server_key=None — порт «Прямо» (мимо VPN, реальный IP): удобно, чтобы
-        сравнить «через VPN» / «без VPN» одним и тем же кодом, не выключая
-        туннель.
+        - ``server_key="auto"`` — балансируемый порт «Умный Автовыбор» (10818);
+        - ``server_key=None`` — порт «Прямо» мимо VPN (10819);
+        - ``server_key="srv-..."`` — выделенный липкий порт конкретного сервера.
         """
         for e in self.exits():
-            if e["serverKey"] == server_key:
-                url = f"http://sg:{self._token}@{self._host}:{e['port']}"
+            if e.get("serverKey") == server_key:
+                url = self._format_proxy_url(e, socks=socks)
                 return {"http": url, "https": url}
         raise KeyError(
-            f"нет порта для сервера {server_key!r} — включите его в настройках "
-            "(API для автоматизации -> серверы с отдельным портом). Если он там "
-            "уже отмечен, значит отдельным выходом он не поднимается: панельные "
-            "профили «Авто» и часть протоколов умеет только Xray, а порты "
-            "выходов разводит sing-box (в настройках такой сервер показан серым)")
+            f"нет активного порта для {server_key!r} — проверьте GET /v1/exits "
+            "или вызовите configure_exits(enable_all_auto=True)"
+        )
+
+    def auto_proxies(self, socks: bool = False) -> dict:
+        """Прокси-словарь для фиксированного порта «Умный Автовыбор» (10818)."""
+        return self.proxies_for("auto", socks=socks)
+
+    def direct_proxies(self, socks: bool = False) -> dict:
+        """Прокси-словарь для фиксированного порта «Прямо» мимо VPN (10819)."""
+        return self.proxies_for(None, socks=socks)
 
 
 if __name__ == "__main__":
@@ -219,4 +230,4 @@ if __name__ == "__main__":
     sg = SilentGate(token=os.environ.get("SILENTGATE_TOKEN", "ВСТАВЬТЕ_ТОКЕН"))
     print(sg.status())
     for exit_ in sg.exits():
-        print(exit_["name"], "->", exit_["port"])
+        print(f"{exit_['name']} ({exit_.get('kind')}) -> 127.0.0.1:{exit_['port']}")

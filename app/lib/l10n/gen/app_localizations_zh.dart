@@ -211,7 +211,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get captureTunHint =>
-      '选择 TUN 模式后才会显示 TUN、DNS 和分应用代理设置——在系统代理模式下它们不生效。';
+      '选择 TUN 模式后才会显示 TUN、DNS 和分应用代理设置 - 在系统代理模式下它们不生效。';
 
   @override
   String get captureProxyOnly => '仅代理';
@@ -228,14 +228,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String apiEnableSub(int port) {
-    return '在 127.0.0.1:$port 上提供 HTTP —— 通过脚本控制客户端';
+    return '在 127.0.0.1:$port 上提供 HTTP - 通过脚本控制客户端';
   }
 
   @override
   String get apiTokenTitle => '令牌';
 
   @override
-  String get apiTokenUnset => '未设置 —— API 不会启动';
+  String get apiTokenUnset => '未设置 - API 不会启动';
 
   @override
   String get apiTokenRegenerate => '重新生成令牌';
@@ -248,14 +248,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get apiExitsTitle => '拥有独立端口的服务器';
 
   @override
-  String get apiExitsSub => '每个服务器获得自己的本地端口 —— 发往该端口的请求都经过这台服务器';
+  String get apiExitsSub => '每个服务器获得自己的本地端口 - 发往该端口的请求都经过这台服务器';
 
   @override
   String get apiCopyPythonExample => '复制 Python 示例';
 
   @override
   String apiPortsHint(int control, int direct, int first) {
-    return '控制 —— 端口 $control。「直连」—— 端口 $direct。服务器 —— 从 $first 起。';
+    return '控制 - 端口 $control。「直连」 - 端口 $direct。服务器 - 从 $first 起。';
   }
 
   @override
@@ -267,7 +267,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String apiCaptureModeWarning(int control) {
-    return '⚠️ 当前捕获方式为“系统代理”——该模式下不会开启出口端口，连接这些端口会被拒绝。控制端口 $control 在任何捕获方式下都可用。需要出口端口请选择“TUN（全局隧道）”或“仅代理”。';
+    return '⚠️ 当前捕获方式为“系统代理” - 该模式下不会开启出口端口，连接这些端口会被拒绝。控制端口 $control 在任何捕获方式下都可用。需要出口端口请选择“TUN（全局隧道）”或“仅代理”。';
   }
 
   @override
@@ -312,7 +312,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunUacDone => '完成：TUN 启动将不再弹出 UAC 提示';
 
   @override
-  String get tunUacFail => '无法创建任务——连接时将请求 UAC';
+  String get tunUacFail => '无法创建任务 - 连接时将请求 UAC';
 
   @override
   String get autoReconnectTitle => '自动重连';
@@ -327,13 +327,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get alwaysOnTitle => '系统级防泄漏';
 
   @override
-  String get alwaysOnSub => '始终开启的 VPN 与「阻止不使用 VPN 的连接」——应用关闭时依然生效';
+  String get alwaysOnSub => '始终开启的 VPN 与「阻止不使用 VPN 的连接」 - 应用关闭时依然生效';
 
   @override
   String get killSwitchSubTun => '重连期间不让流量绕过 VPN';
 
   @override
-  String get killSwitchSubProxy => '在“系统代理”模式下仅保护支持代理的应用。完全保护——只有 TUN';
+  String get killSwitchSubProxy => '在“系统代理”模式下仅保护支持代理的应用。完全保护 - 只有 TUN';
 
   @override
   String get killSwitchSubOff => '需要先启用自动重连';
@@ -381,7 +381,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get networkFullResetConfirmBody =>
-      '除了轻度清理之外，还将执行以下操作。\n\n1) 将在所有适配器上释放并重新申请 DHCP 租约——包括 Hyper-V 和 VirtualBox 虚拟交换机：您的虚拟机网络可能会中断。\n\n2) 重置 winsock 和 IP 协议栈会将网络设置恢复为出厂状态：静态地址、路由和第三方网络插件将被清除，需要重新配置。\n\n3) 需要重启，在此之前网络可能比现在运行得更差。\n\n需要管理员权限（UAC）。';
+      '除了轻度清理之外，还将执行以下操作。\n\n1) 将在所有适配器上释放并重新申请 DHCP 租约 - 包括 Hyper-V 和 VirtualBox 虚拟交换机：您的虚拟机网络可能会中断。\n\n2) 重置 winsock 和 IP 协议栈会将网络设置恢复为出厂状态：静态地址、路由和第三方网络插件将被清除，需要重新配置。\n\n3) 需要重启，在此之前网络可能比现在运行得更差。\n\n需要管理员权限（UAC）。';
 
   @override
   String get networkFullResetConfirmOk => '重置网络';
@@ -417,7 +417,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get panelOwnerBody =>
-      '普通用户无需此项——可以跳过。\n\n为了让应用以正确的 JSON 格式（XRAY_JSON）接收您的订阅，请将以下代码块添加到 Remnawave 面板的 Response Rules 中——它会匹配我们的 User-Agent：';
+      '普通用户无需此项 - 可以跳过。\n\n为了让应用以正确的 JSON 格式（XRAY_JSON）接收您的订阅，请将以下代码块添加到 Remnawave 面板的 Response Rules 中 - 它会匹配我们的 User-Agent：';
 
   @override
   String get panelOwnerCopy => '复制代码块';
@@ -441,15 +441,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutThirdPartySub =>
-      'Xray-core（MPL-2.0）、sing-box（GPL-3.0）、Wintun——作为独立进程运行';
+      'Xray-core（MPL-2.0）、sing-box（GPL-3.0）、Wintun - 作为独立进程运行';
 
   @override
   String get aboutThirdPartySubEmbedded =>
-      'Xray-core (MPL-2.0)、sing-box (GPL-3.0)、libXray (MIT) — 已内置于应用中';
+      'Xray-core (MPL-2.0)、sing-box (GPL-3.0)、libXray (MIT) - 已内置于应用中';
 
   @override
   String get thirdPartyBodyEmbedded =>
-      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box — GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts — buttons below.';
+      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box - GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray - MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts - buttons below.';
 
   @override
   String get logsTitle => '日志';
@@ -493,11 +493,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get thirdPartyBody =>
-      'SilentGate 随附第三方可执行文件。它们作为独立进程运行，并未嵌入应用中。\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  TUN 隧道及 Hysteria2 的代理核心\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — Wintun 许可\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — 路由数据，CC-BY-SA-4.0\n\n完整的许可文本位于应用旁边的“licenses”文件夹中。';
+      'SilentGate 随附第三方可执行文件。它们作为独立进程运行，并未嵌入应用中。\n\n• Xray-core (xray.exe) - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) - GPL-3.0-or-later\n  TUN 隧道及 Hysteria2 的代理核心\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) - Wintun 许可\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat - 路由数据，CC-BY-SA-4.0\n\n完整的许可文本位于应用旁边的“licenses”文件夹中。';
 
   @override
   String get supportSectionNote =>
-      '点击“联系支持”——将打开一个窗口，您可以自行生成日志文件（版本、系统、设置、app.log + singbox.log 尾部；不含密码或订阅令牌，URL 已隐藏）。之后会出现将其发送到 Telegram 支持的按钮。';
+      '点击“联系支持” - 将打开一个窗口，您可以自行生成日志文件（版本、系统、设置、app.log + singbox.log 尾部；不含密码或订阅令牌，URL 已隐藏）。之后会出现将其发送到 Telegram 支持的按钮。';
 
   @override
   String get supportButtonTitle => '联系支持';
@@ -509,7 +509,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get supportDialogTitle => '支持';
 
   @override
-  String get supportDialogTitleDone => '日志已就绪——发送给谁';
+  String get supportDialogTitleDone => '日志已就绪 - 发送给谁';
 
   @override
   String get supportWhatWillHappen => '将会发生什么：';
@@ -520,7 +520,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get supportBullet2 =>
-      '• 点击后，会先打开包含该文件的文件夹，然后打开文件本身。请在顶部描述问题并保存——之后会出现将其发送到支持的按钮。';
+      '• 点击后，会先打开包含该文件的文件夹，然后打开文件本身。请在顶部描述问题并保存 - 之后会出现将其发送到支持的按钮。';
 
   @override
   String supportError(String error) {
@@ -529,7 +529,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get supportDoneText =>
-      '报告已生成并打开（先文件夹，后文件）。请在顶部描述问题，保存文件并发送给支持——应用会帮助打开 Telegram。';
+      '报告已生成并打开（先文件夹，后文件）。请在顶部描述问题，保存文件并发送给支持 - 应用会帮助打开 Telegram。';
 
   @override
   String get supportWhoTo => '发送给谁：';
@@ -561,7 +561,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pingTwoPhaseTitle => '验证是否可用（经由隧道）';
 
   @override
-  String get pingTwoPhaseSubOn => 'TCP 之后——通过服务器发起请求：过滤掉无法工作的（Reality 等）';
+  String get pingTwoPhaseSubOn => 'TCP 之后 - 通过服务器发起请求：过滤掉无法工作的（Reality 等）';
 
   @override
   String get pingTwoPhaseSubOff => '仅使用下方选定的单一方法';
@@ -586,7 +586,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoAppUpdateBeta =>
-      '开启后应用会查看 GitHub 完整的发布列表，包括预发布版本，而不只是最新的正式版。主自动更新渠道不受影响——未打开此开关的用户不会收到测试版。';
+      '开启后应用会查看 GitHub 完整的发布列表，包括预发布版本，而不只是最新的正式版。主自动更新渠道不受影响 - 未打开此开关的用户不会收到测试版。';
 
   @override
   String get appUpdateBetaBadge => '测试版';
@@ -597,7 +597,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appUpdatePreviousVersionsEmpty =>
-      '列表为空——GitHub Releases 无法访问，或没有发布记录。';
+      '列表为空 - GitHub Releases 无法访问，或没有发布记录。';
 
   @override
   String get appUpdateOpenRelease => '打开发布页面';
@@ -650,7 +650,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get autoPinnedTop => ' — 已置顶到列表';
+  String get autoPinnedTop => ' - 已置顶到列表';
 
   @override
   String get autoSearchContinues => ' （搜索继续中…）';
@@ -665,7 +665,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoTryFragment => '尝试绕过（fragment）';
 
   @override
-  String get autoNoSubscriptionPasteKey => '没有订阅。粘贴单个密钥——我们将为您找出可用设置：';
+  String get autoNoSubscriptionPasteKey => '没有订阅。粘贴单个密钥 - 我们将为您找出可用设置：';
 
   @override
   String get autoTuneByKey => '按密钥配置';
@@ -698,7 +698,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoStopSearch => '停止搜索';
 
   @override
-  String get autoDoneRefreshPing => '完成——刷新已找到项的延迟';
+  String get autoDoneRefreshPing => '完成 - 刷新已找到项的延迟';
 
   @override
   String autoFoundPinnedRefreshing(Object count) {
@@ -734,13 +734,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonGotIt => '知道了';
 
   @override
-  String get enumSplitAll => '全部——经由 VPN';
+  String get enumSplitAll => '全部 - 经由 VPN';
 
   @override
-  String get enumSplitOnly => '仅所选——经由 VPN';
+  String get enumSplitOnly => '仅所选 - 经由 VPN';
 
   @override
-  String get enumSplitExcept => '所选——绕过 VPN';
+  String get enumSplitExcept => '所选 - 绕过 VPN';
 
   @override
   String get enumActionTunnel => '隧道';
@@ -769,7 +769,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String homeAutoConfigProgress(int current, int total, String name) {
-    return '自动配置：$total 中的 $current — $name';
+    return '自动配置：$total 中的 $current - $name';
   }
 
   @override
@@ -960,7 +960,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String subSwitcherCountChecking(int total) {
-    return '该订阅共有 $total 个服务器。检测正在进行中——可用数量将在检测结束后显示。';
+    return '该订阅共有 $total 个服务器。检测正在进行中 - 可用数量将在检测结束后显示。';
   }
 
   @override
@@ -986,11 +986,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoTunStack =>
-      'TUN 网络栈（sing-box）。\n\n“auto”——自动选择：如果隧道未能建立，应用会自行依次尝试 system → gvisor → mixed，然后降低 MTU（1400、1280）。成功的组合会被记住，下次优先尝试。选择过程会显示在状态和日志中。\n\n显式选择将禁用自动选择：system——操作系统栈，速度最快，但对杀毒软件更敏感；gvisor——用户态，较慢，兼容性最强；mixed——TCP 走 system，UDP 走 gvisor。';
+      'TUN 网络栈（sing-box）。\n\n“auto” - 自动选择：如果隧道未能建立，应用会自行依次尝试 system → gvisor → mixed，然后降低 MTU（1400、1280）。成功的组合会被记住，下次优先尝试。选择过程会显示在状态和日志中。\n\n显式选择将禁用自动选择：system - 操作系统栈，速度最快，但对杀毒软件更敏感；gvisor - 用户态，较慢，兼容性最强；mixed - TCP 走 system，UDP 走 gvisor。';
 
   @override
   String get infoTunMtu =>
-      'TUN 适配器中的最大数据包大小。默认 1500；如果出现掉线，请降低（1400、1280）——数值过小会降低速度。\n\n使用“auto”栈时，这只是起始值：如果隧道未能建立，应用会自行尝试更小的 MTU。';
+      'TUN 适配器中的最大数据包大小。默认 1500；如果出现掉线，请降低（1400、1280） - 数值过小会降低速度。\n\n使用“auto”栈时，这只是起始值：如果隧道未能建立，应用会自行尝试更小的 MTU。';
 
   @override
   String get infoTunStrictRoute =>
@@ -1002,7 +1002,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoTunEndpointIndependentNat =>
-      'UDP 的 NAT 模式。游戏、语音聊天和 WebRTC 需要它——否则连接可能无法建立。仅为节省内存才禁用。';
+      'UDP 的 NAT 模式。游戏、语音聊天和 WebRTC 需要它 - 否则连接可能无法建立。仅为节省内存才禁用。';
 
   @override
   String get infoTunBypassLan =>
@@ -1014,27 +1014,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoTunPrivilege =>
-      'TUN 需要管理员权限。我们会一次性在 Windows 任务计划程序中创建一个最高权限的任务——之后每次连接时隧道启动将不再弹出 UAC 提示。该任务属于您，可通过下方按钮删除，或在卸载程序时删除。';
+      'TUN 需要管理员权限。我们会一次性在 Windows 任务计划程序中创建一个最高权限的任务 - 之后每次连接时隧道启动将不再弹出 UAC 提示。该任务属于您，可通过下方按钮删除，或在卸载程序时删除。';
 
   @override
   String get infoSpeedTest =>
-      '测速时下载的数据量（右键点击服务器 →“服务器信息”→“测量速度”）。\n\n20 MB——主要模式：在高速链路（100+ Mbps）上，过短的探测来不及加速，会低估结果。\n5 MB——省流量模式：流量消耗明显更少，便于批量测试多个服务器。\n\n测量仅手动进行，会消耗您订阅的流量。速度会测量两次：直连和经由所选服务器，以便您准确看到 VPN 上损失了多少。';
+      '测速时下载的数据量（右键点击服务器 →“服务器信息”→“测量速度”）。\n\n20 MB - 主要模式：在高速链路（100+ Mbps）上，过短的探测来不及加速，会低估结果。\n5 MB - 省流量模式：流量消耗明显更少，便于批量测试多个服务器。\n\n测量仅手动进行，会消耗您订阅的流量。速度会测量两次：直连和经由所选服务器，以便您准确看到 VPN 上损失了多少。';
 
   @override
   String get infoAutoReconnect =>
-      '如果内核崩溃、服务器掉线或网络发生变化（Wi-Fi ↔ 网线、从睡眠中唤醒、新的 IP），应用会自行重新建立连接。重试间隔逐渐拉长：0.8 秒 → 3 秒 → 8 秒 → 20 秒，之后保持在 20 秒。共八次重试，之后应用放弃并显示错误。用按钮断开连接始终会取消恢复。\n\n⚠️ 开启断网保护时，重试永不耗尽。只要重试还在继续，流量就保持被拦截；停止重试就意味着放它绕过 VPN 出去——因此应用会每 20 秒继续尝试，直到你自己关闭 VPN，并且最多每 15 分钟提醒一次失败。一小时后恢复的服务器会被自动接上。\n\n在「自动（最佳服务器）」模式下，应用不会把最后一次重试浪费在已经失效的服务器上：在第八次中的第七次时就切换到下一个候选，并在那里重新开始计数。\n\n网络变化依据其他网卡的真实地址判定：本机隧道和服务地址（link-local）不计入，只有连续两次轮询都保持的变化才被接受，且连接后的头 15 秒忽略该信号。没有这些防护，隧道建立本身就会被算作「网络变化」，从而引发无休止的重连。';
+      '如果内核崩溃、服务器掉线或网络发生变化（Wi-Fi ↔ 网线、从睡眠中唤醒、新的 IP），应用会自行重新建立连接。重试间隔逐渐拉长：0.8 秒 → 3 秒 → 8 秒 → 20 秒，之后保持在 20 秒。共八次重试，之后应用放弃并显示错误。用按钮断开连接始终会取消恢复。\n\n⚠️ 开启断网保护时，重试永不耗尽。只要重试还在继续，流量就保持被拦截；停止重试就意味着放它绕过 VPN 出去 - 因此应用会每 20 秒继续尝试，直到你自己关闭 VPN，并且最多每 15 分钟提醒一次失败。一小时后恢复的服务器会被自动接上。\n\n在「自动（最佳服务器）」模式下，应用不会把最后一次重试浪费在已经失效的服务器上：在第八次中的第七次时就切换到下一个候选，并在那里重新开始计数。\n\n网络变化依据其他网卡的真实地址判定：本机隧道和服务地址（link-local）不计入，只有连续两次轮询都保持的变化才被接受，且连接后的头 15 秒忽略该信号。没有这些防护，隧道建立本身就会被算作「网络变化」，从而引发无休止的重连。';
 
   @override
   String get infoKillSwitch =>
-      '在连接恢复期间，不让流量绕过 VPN 泄漏出去。重试之间不会释放捕获：在 TUN 模式下适配器保持启用，在“系统代理”模式下代理保持配置——应用得到的是连接错误，而不是未加密地访问互联网。\n\n关于限制，如实说明：在“系统代理”模式下，这只保护尊重系统代理的程序（浏览器和大多数应用）。忽略代理的程序以及 UDP 会直连——完全的密封性只有 TUN 模式才能提供。需要启用自动重连。';
+      '在连接恢复期间，不让流量绕过 VPN 泄漏出去。重试之间不会释放捕获：在 TUN 模式下适配器保持启用，在“系统代理”模式下代理保持配置 - 应用得到的是连接错误，而不是未加密地访问互联网。\n\n关于限制，如实说明：在“系统代理”模式下，这只保护尊重系统代理的程序（浏览器和大多数应用）。忽略代理的程序以及 UDP 会直连 - 完全的密封性只有 TUN 模式才能提供。需要启用自动重连。';
 
   @override
   String get infoUserAgent =>
-      '应用如何向面板标识自己（User-Agent 头）。它始终发送“SilentGate/版本 (Windows)”。\n\n Remnawave 面板依据此名称选择订阅格式。需要 XRAY_JSON——它提供现成的服务器配置；而从 base64 链接列表中，部分设置只能近似还原，自动选择（burstObservatory）的效果会更差。\n\n在面板中配置：Templates → Response Rules → 一条条件为 user-agent CONTAINS SilentGate、响应类型为 XRAY_JSON 的规则（将其放在 Fallback Base64 规则之上）。\n\n覆盖字段仅作为临时变通方法——如果面板尚不识别该应用，您可以伪装成它已识别的客户端。';
+      '应用如何向面板标识自己（User-Agent 头）。它始终发送“SilentGate/版本 (Windows)”。\n\n Remnawave 面板依据此名称选择订阅格式。需要 XRAY_JSON - 它提供现成的服务器配置；而从 base64 链接列表中，部分设置只能近似还原，自动选择（burstObservatory）的效果会更差。\n\n在面板中配置：Templates → Response Rules → 一条条件为 user-agent CONTAINS SilentGate、响应类型为 XRAY_JSON 的规则（将其放在 Fallback Base64 规则之上）。\n\n覆盖字段仅作为临时变通方法 - 如果面板尚不识别该应用，您可以伪装成它已识别的客户端。';
 
   @override
   String get infoDnsMode =>
-      '在 TUN 模式下由谁解析域名。“经由 VPN”（推荐）——查询经 TCP 进入隧道，运营商看不到您打开哪些网站。“系统”——与 Windows 一致：可能发生 DNS 泄漏，而如果服务器不放行 UDP，可能会完全断网。“自定义”——您指定的服务器，经由隧道。';
+      '在 TUN 模式下由谁解析域名。“经由 VPN”（推荐） - 查询经 TCP 进入隧道，运营商看不到您打开哪些网站。“系统” - 与 Windows 一致：可能发生 DNS 泄漏，而如果服务器不放行 UDP，可能会完全断网。“自定义” - 您指定的服务器，经由隧道。';
 
   @override
   String get infoDnsCustomServer =>
@@ -1046,23 +1046,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoDnsStrategy =>
-      '请求哪些地址：prefer_ipv4（推荐）——优先 IPv4，ipv4_only——仅 IPv4（修复 IPv6 异常导致的问题），prefer_ipv6/ipv6_only——用于 IPv6 网络。';
+      '请求哪些地址：prefer_ipv4（推荐） - 优先 IPv4，ipv4_only - 仅 IPv4（修复 IPv6 异常导致的问题），prefer_ipv6/ipv6_only - 用于 IPv6 网络。';
 
   @override
   String get infoSingboxLogLevel =>
-      'sing-box 日志的详细程度（%APPDATA%\\SilentGate\\singbox.log）。warn——常规模式。info/debug——当隧道无法工作时：日志会显示确切原因。debug 会明显增大文件体积。';
+      'sing-box 日志的详细程度（%APPDATA%\\SilentGate\\singbox.log）。warn - 常规模式。info/debug - 当隧道无法工作时：日志会显示确切原因。debug 会明显增大文件体积。';
 
   @override
   String get tunLogLevelDebugCost =>
-      '在 debug 级别，内核每秒写入数百行：日志只覆盖几分钟而非数小时，并且会增长数兆字节。对更早发生的断线毫无用处——请查看应用日志。';
+      '在 debug 级别，内核每秒写入数百行：日志只覆盖几分钟而非数小时，并且会增长数兆字节。对更早发生的断线毫无用处 - 请查看应用日志。';
 
   @override
   String get infoSplitMode =>
-      '基准——一切未手动设定动作的流量归往何处，以及为新条目分配何种动作。“全部——经由 VPN”：默认所有流量进入隧道。“仅所选——经由 VPN”：默认直连，仅标记为“隧道”的进入隧道。“所选——绕过 VPN”：相反，全部进入隧道，而标记为“直连”的走直连。';
+      '基准 - 一切未手动设定动作的流量归往何处，以及为新条目分配何种动作。“全部 - 经由 VPN”：默认所有流量进入隧道。“仅所选 - 经由 VPN”：默认直连，仅标记为“隧道”的进入隧道。“所选 - 绕过 VPN”：相反，全部进入隧道，而标记为“直连”的走直连。';
 
   @override
   String get infoSplitApps =>
-      '点击某个应用——将打开一个窗口，可在其中选择动作（隧道——经由 VPN，直连——绕过 VPN，阻止——无网络）和匹配方式：按 exe 名称（可靠）或按完整路径。可从运行中的应用选取或指定 .exe。';
+      '点击某个应用 - 将打开一个窗口，可在其中选择动作（隧道 - 经由 VPN，直连 - 绕过 VPN，阻止 - 无网络）和匹配方式：按 exe 名称（可靠）或按完整路径。可从运行中的应用选取或指定 .exe。';
 
   @override
   String get infoSplitDomains =>
@@ -1077,7 +1077,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '通过隧道向测试 URL 发起 GET 请求。检查服务器是否确实放行流量并返回 204。最诚实的可用性测试；略慢。';
 
   @override
-  String get infoProxyHead => '与 GET 类似，但只请求头部——更快、流量更少。部分服务器/CDN 可能不支持 HEAD。';
+  String get infoProxyHead => '与 GET 类似，但只请求头部 - 更快、流量更少。部分服务器/CDN 可能不支持 HEAD。';
 
   @override
   String get infoTcp =>
@@ -1089,11 +1089,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoTestUrl =>
-      '通过代理检查可用性所用的 URL。默认 https://www.gstatic.com/generate_204——它返回空的 204 响应，方便又快速。';
+      '通过代理检查可用性所用的 URL。默认 https://www.gstatic.com/generate_204 - 它返回空的 204 响应，方便又快速。';
 
   @override
   String get infoAutoConfig =>
-      '遍历服务器和绕过变体（fragment、fingerprint），并汇集出所选服务可用的那些。它不会在第一个就停止——由您从找到的项中选择。检查通过代理进行，其间不启用 VPN。';
+      '遍历服务器和绕过变体（fragment、fingerprint），并汇集出所选服务可用的那些。它不会在第一个就停止 - 由您从找到的项中选择。检查通过代理进行，其间不启用 VPN。';
 
   @override
   String get infoAutoConfigServices =>
@@ -1101,7 +1101,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoAutoPinFound =>
-      '找到的可用组合（服务器 + 绕过变体）会立即置顶到公共服务器列表，以便无需返回此处即可使用。如果您不希望自动配置改变列表顺序，请关闭它——结果仍会显示在本界面上。';
+      '找到的可用组合（服务器 + 绕过变体）会立即置顶到公共服务器列表，以便无需返回此处即可使用。如果您不希望自动配置改变列表顺序，请关闭它 - 结果仍会显示在本界面上。';
 
   @override
   String get infoTryFragment =>
@@ -1109,7 +1109,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoAutoStrategy =>
-      '“第一个可用”——遍历全部并连接到找到的任意一个（由您选择）。“预算内最佳”——在时限内搜索并选出最快的。';
+      '“第一个可用” - 遍历全部并连接到找到的任意一个（由您选择）。“预算内最佳” - 在时限内搜索并选出最快的。';
 
   @override
   String get infoScheme =>
@@ -1124,7 +1124,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoNetworkSoftRecover =>
-      'VPN 故障后的安全清理：DNS 缓存、ARP 缓存、系统代理和 WinHTTP 代理。不会删除任何内容，也不需要重启——应从此项开始。需要管理员权限。';
+      'VPN 故障后的安全清理：DNS 缓存、ARP 缓存、系统代理和 WinHTTP 代理。不会删除任何内容，也不需要重启 - 应从此项开始。需要管理员权限。';
 
   @override
   String get infoNetworkFullReset =>
@@ -1140,7 +1140,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pingInfoProxyHead =>
-      '与 GET 类似，但只请求头部——流量更少、更快。检查隧道的可用性；部分服务器/CDN 可能不支持 HEAD。';
+      '与 GET 类似，但只请求头部 - 流量更少、更快。检查隧道的可用性；部分服务器/CDN 可能不支持 HEAD。';
 
   @override
   String get pingInfoTcp =>
@@ -1160,7 +1160,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pingInfoTunStack =>
-      'TUN 网络栈（sing-box）。auto——交由核心决定（当前为 mixed）。system——操作系统栈：速度最快，但对权限/杀毒软件更敏感。gvisor——用户态栈：较慢，但兼容性最强。mixed——TCP 走 system，UDP 走 gvisor（折中）。如果 TUN 无法连接或频繁断线——试试 gvisor。';
+      'TUN 网络栈（sing-box）。auto - 交由核心决定（当前为 mixed）。system - 操作系统栈：速度最快，但对权限/杀毒软件更敏感。gvisor - 用户态栈：较慢，但兼容性最强。mixed - TCP 走 system，UDP 走 gvisor（折中）。如果 TUN 无法连接或频繁断线 - 试试 gvisor。';
 
   @override
   String get pingInfoAutoConfig =>
@@ -1191,7 +1191,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get logsEmpty => '暂时为空。';
 
   @override
-  String get logsTunEmpty => '为空——本系统上 TUN 尚未启动过。';
+  String get logsTunEmpty => '为空 - 本系统上 TUN 尚未启动过。';
 
   @override
   String get importScrDone => '已导入';
@@ -1251,7 +1251,24 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return '连接已断开，隧道未能建立 - 流量正在绕过 VPN。$seconds 秒后重新连接（第 $attempt 次尝试）…';
+  }
+
+  @override
   String get statusTrafficNotFlowing => '隧道已建立，但没有流量通过';
+
+  @override
+  String get statusNoInternet => '没有网络。网络恢复后 VPN 会自动重新连接';
+
+  @override
+  String get noticeNoInternet => '没有网络';
+
+  @override
+  String get noticeNoInternetDetail => '网络恢复后 VPN 会自动重新连接';
+
+  @override
+  String get noticeInternetRestored => '连接已恢复';
 
   @override
   String get statusVpnConsentDenied => 'Android 未允许启动 VPN。请再次点击“连接”并确认系统请求。';
@@ -1310,7 +1327,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String serversFound(int found, int total) {
-    return '服务器——已找到 $total 中的 $found';
+    return '服务器 - 已找到 $total 中的 $found';
   }
 
   @override
@@ -1352,7 +1369,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get srvInfoSectionExit => '出口位置';
 
   @override
-  String get srvInfoExitHint => '根据服务器地址确定——为此不会建立隧道。';
+  String get srvInfoExitHint => '根据服务器地址确定 - 为此不会建立隧道。';
 
   @override
   String get srvInfoAddressLocation => '服务器地址与位置';
@@ -1474,7 +1491,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String jsonPanelProfileApplied(Object summary) {
-    return '面板的自动选择配置：$summary — 完整应用';
+    return '面板的自动选择配置：$summary - 完整应用';
   }
 
   @override
@@ -1482,7 +1499,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get jsonBuiltFromShareLink =>
-      '根据分享链接构建——面板未发送 JSON。请刷新订阅；若无效，请检查面板中的 Response Rules 规则。';
+      '根据分享链接构建 - 面板未发送 JSON。请刷新订阅；若无效，请检查面板中的 Response Rules 规则。';
 
   @override
   String get jsonInvalidJson => 'JSON 无效';
@@ -1607,13 +1624,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pingNa => 'n/a';
 
   @override
-  String get pingNaTooltip => '无 TCP 响应——服务器不可用（已失效）';
+  String get pingNaTooltip => '无 TCP 响应 - 服务器不可用（已失效）';
 
   @override
   String get pingTimeout => '超时';
 
   @override
-  String get pingTimeoutTooltip => 'TCP 探测未在超时内完成——服务器不可用';
+  String get pingTimeoutTooltip => 'TCP 探测未在超时内完成 - 服务器不可用';
 
   @override
   String pingMs(Object ms) {
@@ -1624,7 +1641,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pingNoProxy => '无代理';
 
   @override
-  String get pingNoProxyTooltip => 'TCP 有响应（已显示延迟），但隧道检查（GET/HEAD）失败——流量未通过';
+  String get pingNoProxyTooltip => 'TCP 有响应（已显示延迟），但隧道检查（GET/HEAD）失败 - 流量未通过';
 
   @override
   String get pingOk => 'ok';
@@ -1639,10 +1656,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pingCoreTooltip =>
-      '由 VPN 内核自身通过隧道测量：到测试地址的完整请求耗时（并非到服务器的 TCP 延迟）。服务器可用——请求已通过。';
+      '由 VPN 内核自身通过隧道测量：到测试地址的完整请求耗时（并非到服务器的 TCP 延迟）。服务器可用 - 请求已通过。';
 
   @override
-  String get pingCoreFailedTooltip => 'VPN 内核无法通过该服务器打开测试地址——隧道内没有流量通过';
+  String get pingCoreFailedTooltip => 'VPN 内核无法通过该服务器打开测试地址 - 隧道内没有流量通过';
 
   @override
   String get pingViaTunnelNote =>
@@ -1659,7 +1676,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitTunOnlyBanner =>
-      '仅在 TUN 模式下工作。在“系统代理”模式下，应用自行决定是否使用代理——无法强制。';
+      '仅在 TUN 模式下工作。在“系统代理”模式下，应用自行决定是否使用代理 - 无法强制。';
 
   @override
   String get splitProxyOnlyBanner =>
@@ -1684,7 +1701,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitByPath => '按路径';
 
   @override
-  String get splitRuleDisabled => '已禁用——规则不生效';
+  String get splitRuleDisabled => '已禁用 - 规则不生效';
 
   @override
   String get splitRemove => '移除';
@@ -1843,11 +1860,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunTaskFailed => '无法创建任务（UAC 被拒绝或被策略阻止）';
 
   @override
-  String get tunTaskSchedulerFailed => '任务计划程序拒绝了该任务——原因见日志（设置 → 日志）';
+  String get tunTaskSchedulerFailed => '任务计划程序拒绝了该任务 - 原因见日志（设置 → 日志）';
 
   @override
   String get tunAutoFixNoticeText =>
-      'Silent TUN startup is broken — every connection will ask for administrator rights';
+      'Silent TUN startup is broken - every connection will ask for administrator rights';
 
   @override
   String get tunAutoFixAction => 'Fix';
@@ -1856,7 +1873,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunLogTitle => 'TUN 日志 (sing-box)';
 
   @override
-  String get tunLogEmpty => '日志为空——隧道尚未启动。';
+  String get tunLogEmpty => '日志为空 - 隧道尚未启动。';
 
   @override
   String get tunCopy => '复制';
@@ -1940,7 +1957,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get tunDnsCustom => '自定义服务器';
 
   @override
-  String get tunDnsVpnHint => '请求经 TCP 进入隧道——无泄漏';
+  String get tunDnsVpnHint => '请求经 TCP 进入隧道 - 无泄漏';
 
   @override
   String get tunDnsSystemHint => '与 Windows 一致：可能发生 DNS 泄漏';
@@ -1990,7 +2007,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '导入时应用可识别：订阅 URL（http/https），以及单个服务器 vless:// / vmess:// / trojan:// / ss:// / hysteria2://（hy2://）。';
 
   @override
-  String get reportTitle => 'SilentGate — 支持报告';
+  String get reportTitle => 'SilentGate - 支持报告';
 
   @override
   String get reportDescribeHere => '>>> 请在此描述问题（填写并保存文件）： <<<';
@@ -2027,7 +2044,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get pingLegendInfo =>
-      'Ping 徽章颜色：绿/黄/橙 — 服务器可用（TCP + 通过隧道验证）。灰色 — TCP 有响应但不代理流量（典型 Reality 端口）。红色“n/a” — 无响应，已排除。Ping 始终直接测量（在 VPN 之外）。';
+      'Ping 徽章颜色：绿/黄/橙 - 服务器可用（TCP + 通过隧道验证）。灰色 - TCP 有响应但不代理流量（典型 Reality 端口）。红色“n/a” - 无响应，已排除。Ping 始终直接测量（在 VPN 之外）。';
 
   @override
   String get pingUntestedHint => '尚未测试。在移动端，Hysteria2 和“自动”配置仅在已连接时测量。';
@@ -2051,7 +2068,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      '每个服务两个图标\n• 左边：不使用 VPN 时的该服务\n• 右边：使用 VPN 时的同一服务\n• 中间的箭头：变化\n\n何时进行检测\n• 不使用 VPN：应用启动时自动进行\n• 使用 VPN：连接成功后立即进行\n\n图标外圈颜色\n• 绿色：可访问\n• 橙色：所在地区被屏蔽\n• 红色：无法访问\n• 灰色：尚未检测\n\n角标颜色含义相同\n• ✓ 可访问\n• ! 地区屏蔽\n• ✕ 无法访问\n\n可以点按的内容\n• 图标：重新检测该服务\n• 旁边的设置按钮：更改服务组合';
+      '图标外框分为两半\n• 左半边：不使用 VPN 时的该服务\n• 右半边：使用 VPN 时的同一服务\n• 右下角圆点：当前状态（✓ / ! / ✕）\n\n何时进行检测\n• 不使用 VPN：应用启动时自动进行\n• 使用 VPN：连接成功后立即进行\n\n外框两半和圆点的颜色\n• 绿色：可访问\n• 橙色：所在地区被屏蔽\n• 红色：无法访问\n• 灰色：尚未检测\n\n角上的标记\n• 打开的锁和关闭的锁：哪一半不使用 VPN，哪一半使用 VPN\n• 左侧分叉和圆形外框：“直连”规则，该服务不经过 VPN\n• 带箭头的蓝色锁或红色禁止标志：规则让它经其他服务器访问或将其屏蔽\n\n可以点按的内容\n• 图标：重新检测该服务\n• 旁边的设置按钮：更改服务组合';
 
   @override
   String get serviceStatusOk => '可用';
@@ -2087,7 +2104,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get hy2NoteBody =>
-      'Hysteria2 服务器仅以 XRAY_JSON 格式返回——SilentGate 正是请求该格式，sing-box 会自动启动它们。若列表中未出现 Hysteria2：（面板 Remnawave 所有者）请启用 hysteria 入站并将其分配给订阅。注意：2.8.0 之前的 Remnawave 仅在 XRAY_JSON 中提供 Hysteria2——base64/CLASH/SINGBOX 中没有，因此上面的 Response Rules → XRAY_JSON 规则是必需的。';
+      'Hysteria2 服务器仅以 XRAY_JSON 格式返回 - SilentGate 正是请求该格式，sing-box 会自动启动它们。若列表中未出现 Hysteria2：（面板 Remnawave 所有者）请启用 hysteria 入站并将其分配给订阅。注意：2.8.0 之前的 Remnawave 仅在 XRAY_JSON 中提供 Hysteria2 - base64/CLASH/SINGBOX 中没有，因此上面的 Response Rules → XRAY_JSON 规则是必需的。';
 
   @override
   String get enumStatusDisconnected => '已断开';
@@ -2169,7 +2186,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get supportCopyReport => '复制报告';
 
   @override
-  String get supportReportCopied => '报告已复制 — 请粘贴到支持聊天中';
+  String get supportReportCopied => '报告已复制 - 请粘贴到支持聊天中';
 
   @override
   String subBarUsedOnly(String used) {
@@ -2186,10 +2203,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get supportDescribeHint => '您做了什么、期望什么、发生了什么以及何时开始';
 
   @override
-  String get supportDescribeRequired => '请描述问题 — 没有描述的报告没有用';
+  String get supportDescribeRequired => '请描述问题 - 没有描述的报告没有用';
 
   @override
-  String get supportNoScreenshots => '请勿在此粘贴截图 — 请在 Telegram 聊天中单独发送。';
+  String get supportNoScreenshots => '请勿在此粘贴截图 - 请在 Telegram 聊天中单独发送。';
 
   @override
   String get supportDescriptionSection => '用户描述';
@@ -2201,7 +2218,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get splitAllowRealIpOn => '已勾选：这是例外，流量将以你的真实地址外发';
 
   @override
-  String get splitAllowRealIpOff => '未勾选：该规则走 VPN —— 保护优先于所有规则';
+  String get splitAllowRealIpOff => '未勾选：该规则走 VPN - 保护优先于所有规则';
 
   @override
   String get splitRealIpExposed => '真实 IP';
@@ -2231,11 +2248,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get infoDnsForAll => '仅在“仅选定应用”模式下生效。⚠️ 重新连接后才会应用。';
 
   @override
-  String get homeSettingsNeedReconnect => '设置已更改 — 重新连接后生效';
+  String get homeSettingsNeedReconnect => '设置已更改 - 重新连接后生效';
 
   @override
   String blockPageWindowTitle(String app) {
-    return '已拦截 — $app';
+    return '已拦截 - $app';
   }
 
   @override
@@ -2279,7 +2296,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String toastAppCloseFailed(String app) {
-    return '无法关闭 $app — 请手动关闭';
+    return '无法关闭 $app - 请手动关闭';
   }
 
   @override
@@ -2301,7 +2318,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoAutoUseSpeed =>
-      '在按服务和延迟筛选之后，对最优的三个候选做下载实测，真正更快的排在最前。速度与你自己的带宽相比：已经能跑满你带宽的服务器不再比拼兆比特，改由延迟决定——超出带宽的速度你本来也用不上。⚠️ 会消耗订阅流量：测你自己的带宽 5 MB，每个候选再 5 MB，一轮约 20 MB。';
+      '在按服务和延迟筛选之后，对最优的三个候选做下载实测，真正更快的排在最前。速度与你自己的带宽相比：已经能跑满你带宽的服务器不再比拼兆比特，改由延迟决定 - 超出带宽的速度你本来也用不上。⚠️ 会消耗订阅流量：测你自己的带宽 5 MB，每个候选再 5 MB，一轮约 20 MB。';
 
   @override
   String get autoSpeedOwn => '正在测量你自己的带宽…';
@@ -2400,29 +2417,29 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoTunRouteOnlyCidrs =>
-      '在 Windows 上，这是让一部分流量真正独立于 VPN 客户端的唯一办法。\n\n通常隧道会接管默认路由，本机的全部流量都会进入隧道：“直连”标记是在核心内部才处理的——核心先收下数据包，再以自己的名义把它发出去。这类流量的寿命完全取决于核心，核心卡死，它也跟着卡死。\n\n只要列表不为空，隧道就拿不到默认路由：它只接管列出的子网，其余流量由系统经普通适配器发出——客户端根本看不到这部分流量。\n\n代价：这里的划分按地址进行，而应用规则和网站规则按名称匹配。若某个网站的地址不在列表中，核心便看不到它，任何规则都对它无效。留空即为隧道的常规工作方式。';
+      '在 Windows 上，这是让一部分流量真正独立于 VPN 客户端的唯一办法。\n\n通常隧道会接管默认路由，本机的全部流量都会进入隧道：“直连”标记是在核心内部才处理的 - 核心先收下数据包，再以自己的名义把它发出去。这类流量的寿命完全取决于核心，核心卡死，它也跟着卡死。\n\n只要列表不为空，隧道就拿不到默认路由：它只接管列出的子网，其余流量由系统经普通适配器发出 - 客户端根本看不到这部分流量。\n\n代价：这里的划分按地址进行，而应用规则和网站规则按名称匹配。若某个网站的地址不在列表中，核心便看不到它，任何规则都对它无效。留空即为隧道的常规工作方式。';
 
   @override
   String get tunRouteOnlyWarning =>
-      '隧道只接管列出的子网。应用规则和网站规则仅在这些子网内生效：没有进入隧道的流量不会送到核心面前——这样的网站既无法阻止，也无法改变其去向。';
+      '隧道只接管列出的子网。应用规则和网站规则仅在这些子网内生效：没有进入隧道的流量不会送到核心面前 - 这样的网站既无法阻止，也无法改变其去向。';
 
   @override
   String get tunAlsoSystemProxy => '系统代理与隧道并用';
 
   @override
   String get infoTunAlsoSystemProxy =>
-      '混合模式：隧道和系统代理同时工作。\n\n尊重系统代理的应用（浏览器、Telegram）会走捷径直接连到本地端口，绕过隧道的用户态栈，并把域名而不是裸地址交给核心——对它们而言，网站规则会更准确，也不再依赖对 TLS 的解析。\n\n但它们并不会因此独立于客户端：走的仍是同一个进程。';
+      '混合模式：隧道和系统代理同时工作。\n\n尊重系统代理的应用（浏览器、Telegram）会走捷径直接连到本地端口，绕过隧道的用户态栈，并把域名而不是裸地址交给核心 - 对它们而言，网站规则会更准确，也不再依赖对 TLS 的解析。\n\n但它们并不会因此独立于客户端：走的仍是同一个进程。';
 
   @override
   String get tunMixedModeWarning =>
-      '经系统代理进来的连接没有归属进程——在核心看来这是一个本地连接。因此对这些程序来说，应用规则不会生效。网站规则照常工作，而且比平时更准确。';
+      '经系统代理进来的连接没有归属进程 - 在核心看来这是一个本地连接。因此对这些程序来说，应用规则不会生效。网站规则照常工作，而且比平时更准确。';
 
   @override
   String get tunWatchdog => '核心卡死看门狗';
 
   @override
   String get infoTunWatchdog =>
-      '允许隧道核心保持无响应的秒数，超过后即视为卡死并关闭隧道。\n\n如果核心崩溃，Windows 会自行善后——适配器、路由和防火墙规则都会被撤下，网络随之恢复。但如果核心只是卡死，则什么都不会被撤下：适配器仍在，并吞掉本机的全部流量，连标记为“直连”的也不例外。在用户看来这就是“完全断网”，而且不会自行恢复。\n\n看门狗只在核心第一次成功应答之后才启用：否则，凡是服务端口没能启动的场合，它都会直接掐断连接。0 表示不监控。最小 10 秒。';
+      '允许隧道核心保持无响应的秒数，超过后即视为卡死并关闭隧道。\n\n如果核心崩溃，Windows 会自行善后 - 适配器、路由和防火墙规则都会被撤下，网络随之恢复。但如果核心只是卡死，则什么都不会被撤下：适配器仍在，并吞掉本机的全部流量，连标记为“直连”的也不例外。在用户看来这就是“完全断网”，而且不会自行恢复。\n\n看门狗只在核心第一次成功应答之后才启用：否则，凡是服务端口没能启动的场合，它都会直接掐断连接。0 表示不监控。最小 10 秒。';
 
   @override
   String get tunWatchdogOff => '已关闭：不会检测隧道卡死';
@@ -2434,7 +2451,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get tunDnsForAllWarning =>
-      '本机的全部域名解析都将经过隧道。一旦隧道卡住，即使是直连、根本不需要 VPN 的应用也无法解析域名——在用户看来就是彻底断网。';
+      '本机的全部域名解析都将经过隧道。一旦隧道卡住，即使是直连、根本不需要 VPN 的应用也无法解析域名 - 在用户看来就是彻底断网。';
 
   @override
   String get tunCidrInvalid => '需要带前缀的地址，例如 10.8.0.0/24';
@@ -2446,7 +2463,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoSubShort => '用于订阅规则的国家和类别列表';
 
   @override
-  String get geoMissing => '尚未下载——按国家和类别的规则不会生效';
+  String get geoMissing => '尚未下载 - 按国家和类别的规则不会生效';
 
   @override
   String geoPresent(String size, String date) {
@@ -2480,7 +2497,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoFileMissing => '文件缺失';
 
   @override
-  String get geoFileCorrupt => '文件已损坏——核心无法读取';
+  String get geoFileCorrupt => '文件已损坏 - 核心无法读取';
 
   @override
   String geoFolder(String path) {
@@ -2501,7 +2518,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String geoBackupLine(String files, String size, String date) {
-    return '已有备份：$files — $size，保存于 $date';
+    return '已有备份：$files - $size，保存于 $date';
   }
 
   @override
@@ -2519,11 +2536,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get geoErrorCategories =>
-      '新文件里没有订阅所引用的类别。替换已取消，旧文件原样留在原处——路由没有受到影响。具体缺少哪些类别，见下方一行。';
+      '新文件里没有订阅所引用的类别。替换已取消，旧文件原样留在原处 - 路由没有受到影响。具体缺少哪些类别，见下方一行。';
 
   @override
   String get geoNoWrite =>
-      '该文件夹不可写入——无法下载到这里。通常是因为安装在了 Program Files：请以管理员身份运行应用。';
+      '该文件夹不可写入 - 无法下载到这里。通常是因为安装在了 Program Files：请以管理员身份运行应用。';
 
   @override
   String get geoCheck => '检查更新';
@@ -2587,7 +2604,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoErrorWrite => '无法写入文件：没有该文件夹的权限，或磁盘空间不足。';
 
   @override
-  String get geoErrorCorrupt => '下载的文件未通过校验——传输过程中损坏了。请重试。';
+  String get geoErrorCorrupt => '下载的文件未通过校验 - 传输过程中损坏了。请重试。';
 
   @override
   String get geoErrorOther => '没有成功。详情见下方。';
@@ -2599,15 +2616,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoGeoAssets =>
-      'geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单（例如“俄罗斯网站”“政务服务”“VKontakte”）。订阅面板下发的路由规则正是依靠它们工作。\n\n它们没有打包进应用：两个加起来约 30 MB，而且并非人人都需要——普通服务器完全用不到。\n\n文件缺失期间，这类规则会从配置中移除，原本被它们放行直连的流量改走 VPN。这样是安全的，只是更慢，而且本地站点可能因为来自国外的地址而拒绝访问。你自己设定的网站和应用规则照常生效——它们不依赖这些文件。';
+      'geoip.dat 和 geosite.dat 是按国家整理的地址清单和按类别整理的域名清单（例如“俄罗斯网站”“政务服务”“VKontakte”）。订阅面板下发的路由规则正是依靠它们工作。\n\n它们没有打包进应用：两个加起来约 30 MB，而且并非人人都需要 - 普通服务器完全用不到。\n\n文件缺失期间，这类规则会从配置中移除，原本被它们放行直连的流量改走 VPN。这样是安全的，只是更慢，而且本地站点可能因为来自国外的地址而拒绝访问。你自己设定的网站和应用规则照常生效 - 它们不依赖这些文件。';
 
   @override
   String get supportBullet2Android =>
-      '• 点击后，报告会汇集为一个文件，并打开系统的“分享”窗口——选择 Telegram，它会作为一个附件发送。请在上方的输入框中描述问题：没有描述就无从分析。';
+      '• 点击后，报告会汇集为一个文件，并打开系统的“分享”窗口 - 选择 Telegram，它会作为一个附件发送。请在上方的输入框中描述问题：没有描述就无从分析。';
 
   @override
   String get supportDoneTextAndroid =>
-      '报告已汇集为一个文件。请在系统窗口中选择发送目标——发送到 Telegram 时它会作为附件，而不是文本。';
+      '报告已汇集为一个文件。请在系统窗口中选择发送目标 - 发送到 Telegram 时它会作为附件，而不是文本。';
 
   @override
   String get exitsHeader => '出口';
@@ -2644,7 +2661,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exitsDelete => '删除出口';
 
   @override
-  String get exitsNoServers => '没有服务器 — 请先导入订阅';
+  String get exitsNoServers => '没有服务器 - 请先导入订阅';
 
   @override
   String get exitsSearch => '搜索服务器';
@@ -2658,7 +2675,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get infoExits =>
-      '出口是“隧道”规则的目的地。\n\n默认一个出口只含一台服务器，后台开销为零：普通协议不保持长连接。只有在需要防止节点故障时才用多服务器自动选择组，它会带来周期性探测，在手机上就是唤醒射频。\n\n出口只对“隧道”动作有意义。“经德国直连”是自相矛盾的：直连规则绕过所有出口。\n\n站点与其子域可以分配到不同出口——应用会把更具体的规则排在上面，否则父域会吞掉子域。\n\n重要：在 Windows 的系统代理模式下出口完全不起作用——该模式不构建路由规则，需要隧道模式。';
+      '出口是“隧道”规则的目的地。\n\n默认一个出口只含一台服务器，后台开销为零：普通协议不保持长连接。只有在需要防止节点故障时才用多服务器自动选择组，它会带来周期性探测，在手机上就是唤醒射频。\n\n出口只对“隧道”动作有意义。“经德国直连”是自相矛盾的：直连规则绕过所有出口。\n\n站点与其子域可以分配到不同出口 - 应用会把更具体的规则排在上面，否则父域会吞掉子域。\n\n重要：在 Windows 的系统代理模式下出口完全不起作用 - 该模式不构建路由规则，需要隧道模式。';
 
   @override
   String get ruleServer => '通过服务器';
@@ -2688,14 +2705,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get notifCompactSub =>
-      '关闭时——显示订阅、服务器和速度，并带操作按钮。开启时——标题里是应用和订阅，下方是服务器，不显示速度，也没有按钮。';
+      '关闭时 - 显示订阅、服务器和速度，并带操作按钮。开启时 - 标题里是应用和订阅，下方是服务器，不显示速度，也没有按钮。';
 
   @override
   String get localProxyAuthTitle => '本地代理密码';
 
   @override
   String get localProxyAuthInfo =>
-      '核心的本地端口（127.0.0.1）就是一个通往你 VPN 的完整代理。没有密码时，本机上任何程序都能连上它，并拿走你的整条隧道：出口 IP、订阅流量额度，还能绕开你自己设的分应用代理规则——包括那些被你标记为“阻止”的应用。在 Android 上这一点尤其重要：本地端口对任何已安装的应用都是可见的。\n\n只有当你确实要用不支持认证的程序连这个代理时，才关掉它。';
+      '核心的本地端口（127.0.0.1）就是一个通往你 VPN 的完整代理。没有密码时，本机上任何程序都能连上它，并拿走你的整条隧道：出口 IP、订阅流量额度，还能绕开你自己设的分应用代理规则 - 包括那些被你标记为“阻止”的应用。在 Android 上这一点尤其重要：本地端口对任何已安装的应用都是可见的。\n\n只有当你确实要用不支持认证的程序连这个代理时，才关掉它。';
 
   @override
   String get localProxyAuthOff => '已关闭：本机任何程序都能使用这个本地代理';
@@ -2705,7 +2722,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '在系统代理模式下不生效：Windows 无法把密码传给本地代理。仅在 TUN 模式下有效。';
 
   @override
-  String get localProxyAuthRandom => '每次连接都使用新的随机密码——不保存在设置中';
+  String get localProxyAuthRandom => '每次连接都使用新的随机密码 - 不保存在设置中';
 
   @override
   String get localProxyAuthCustom => '自定义用户名和密码（保存在设置文件中）';
@@ -2714,7 +2731,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get localProxyCredsTitle => '自定义用户名和密码';
 
   @override
-  String get localProxyCredsUnset => '未设置——使用随机密码';
+  String get localProxyCredsUnset => '未设置 - 使用随机密码';
 
   @override
   String localProxyCredsUser(String user) {
@@ -2775,10 +2792,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get siteInsecureScheme =>
-      '地址写成了 http://——连接不加密，运营商能看到全部内容。去掉“http://”，浏览器就会走 https。';
+      '地址写成了 http:// - 连接不加密，运营商能看到全部内容。去掉“http://”，浏览器就会走 https。';
 
   @override
-  String get exitServerGone => '该规则的服务器已从订阅中消失——流量改走主隧道';
+  String get exitServerGone => '该规则的服务器已从订阅中消失 - 流量改走主隧道';
 
   @override
   String exitServerUnsupported(String name) {
@@ -2792,7 +2809,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoVerdictMissingTitle => '地理数据库尚未下载';
 
   @override
-  String get geoVerdictMissingSub => '订阅中按国家和类别的规则当前已停用——这部分流量走 VPN，而不是直连。';
+  String get geoVerdictMissingSub => '订阅中按国家和类别的规则当前已停用 - 这部分流量走 VPN，而不是直连。';
 
   @override
   String get geoVerdictUnusableTitle => '核心未能打开地理数据库';
@@ -2801,10 +2818,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get geoVerdictUnusableSub => '文件都在，但核心没有读取它们。重新下载数据库通常可以解决。';
 
   @override
-  String get geoOfferMissingSub => '缺少它们，订阅中按国家和类别的规则就无法工作——这部分流量会走 VPN，而不是直连。';
+  String get geoOfferMissingSub =>
+      '缺少它们，订阅中按国家和类别的规则就无法工作 - 这部分流量会走 VPN，而不是直连。';
 
   @override
   String get geoOfferDismiss => '不再提示';
+
+  @override
+  String get geoOfferBundledTitle => '内置地理数据库';
+
+  @override
+  String get geoOfferBundledSub =>
+      '俄罗斯和广告规则已生效。其他国家需要完整数据库（约 30 MB） - 方便时下载；连接 Wi-Fi 时会自动下载。';
+
+  @override
+  String geoFileBundled(String size) {
+    return '内置集合，$size';
+  }
+
+  @override
+  String get geoBundledNote => '正在使用内置集合：俄罗斯和广告规则已生效。其他国家和类别需要完整数据库。';
+
+  @override
+  String get geoAutoWifi => '通过 Wi-Fi 下载完整数据库';
+
+  @override
+  String get geoAutoWifiSub => '自动下载，无需询问。使用移动数据时仅在您点击按钮后下载。';
 
   @override
   String get pingPendingTooltip => '到服务器的 TCP 延迟。通道检查仍在进行，服务器是否真正可用尚不清楚。';
@@ -2846,7 +2885,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get autoWarnProbesDirect =>
-      '这不影响检查本身：无论怎样设置，探测都绕过 VPN。但在 TUN 模式下探测会经过内核进程——若内核卡死，所有结果都会是假阴性。';
+      '这不影响检查本身：无论怎样设置，探测都绕过 VPN。但在 TUN 模式下探测会经过内核进程 - 若内核卡死，所有结果都会是假阴性。';
 
   @override
   String get autoWarnTurnOff => '关闭';
@@ -2865,7 +2904,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String logsFileLine(String name, String size, int lines) {
-    return '$name — $size，$lines 行';
+    return '$name - $size，$lines 行';
   }
 
   @override
@@ -2890,7 +2929,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get logsRetentionInfo =>
-      '日志和支持报告超过所选期限后会被删除，检查在应用启动时进行。选择“永不”会把全部内容留在磁盘上——那就请自己留意占用：报告会完整包含日志，并随之增大。';
+      '日志和支持报告超过所选期限后会被删除，检查在应用启动时进行。选择“永不”会把全部内容留在磁盘上 - 那就请自己留意占用：报告会完整包含日志，并随之增大。';
 
   @override
   String get logsCleanNow => '立即删除旧文件';
@@ -2914,22 +2953,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String logsClearOptionApp(String size) {
-    return 'App log — $size';
+    return 'App log - $size';
   }
 
   @override
   String logsClearOptionTun(String size) {
-    return 'TUN core log — $size';
+    return 'TUN core log - $size';
   }
 
   @override
   String logsClearOptionProxy(String size) {
-    return 'Proxy core log — $size';
+    return 'Proxy core log - $size';
   }
 
   @override
   String logsClearOptionReports(String size) {
-    return 'Old support reports — $size';
+    return 'Old support reports - $size';
   }
 
   @override
@@ -2977,7 +3016,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String speedConfirmBody(int count, String size, String total) {
-    return '将检查 $count 个服务器，每个下载 $size 的样本——约占用订阅流量 $total。';
+    return '将检查 $count 个服务器，每个下载 $size 的样本 - 约占用订阅流量 $total。';
   }
 
   @override
@@ -2992,10 +3031,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get speedNoTargets => '没有可测的：只对通过通道检查的服务器测速。请先测试列表。';
 
   @override
-  String get speedNotVerified => '该服务器未通过通道检查——不经它测速';
+  String get speedNotVerified => '该服务器未通过通道检查 - 不经它测速';
 
   @override
-  String get speedWaitsForPing => '正在测速前的延迟测试 — 测速将随后立即开始';
+  String get speedWaitsForPing => '正在测速前的延迟测试 - 测速将随后立即开始';
 
   @override
   String speedProgress(int done, int total) {
@@ -3009,7 +3048,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateOnStartSub => '每次都拉取最新服务器列表，而不只按计时器';
 
   @override
-  String get apiSectionSub => '127.0.0.1 上的 HTTP——从脚本控制客户端';
+  String get apiSectionSub => '127.0.0.1 上的 HTTP - 从脚本控制客户端';
 
   @override
   String get momentJustNow => '刚刚';
@@ -3044,7 +3083,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get serviceChecksMenuTooltip => '检测哪些服务';
 
   @override
-  String get srvInfoAutoNever => '自动配置尚未检测过该服务器——运行一次即可看到哪些服务能通过它使用。';
+  String get srvInfoAutoNever => '自动配置尚未检测过该服务器 - 运行一次即可看到哪些服务能通过它使用。';
 
   @override
   String get srvInfoAutoHint => '上次自动配置运行时的数据。此处不会重新测量。';
@@ -3057,7 +3096,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String srvInfoAutoGeoNote(Object services) {
-    return '$services：可以通过该服务器访问，但在它的出口国家/地区不可用。服务器本身正常，只是这些服务用不了——需要换到其他国家的出口。';
+    return '$services：可以通过该服务器访问，但在它的出口国家/地区不可用。服务器本身正常，只是这些服务用不了 - 需要换到其他国家的出口。';
   }
 
   @override
@@ -3077,7 +3116,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsSpeedTopNSub =>
-      '外加一次本地线路的测量——没有它就无从比较：60 Mbit/s 在 60 兆线路上很好，在 300 兆线路上很差。';
+      '外加一次本地线路的测量 - 没有它就无从比较：60 Mbit/s 在 60 兆线路上很好，在 300 兆线路上很差。';
 
   @override
   String settingsSpeedTrafficNote(Object mb) {
@@ -3119,7 +3158,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '这组服务刻意与自动调优分开：自动调优是在找一台可用服务器，可以慢慢试；而这些标签回答的是“现在能不能用”。';
 
   @override
-  String get settingsConnectChecksEmpty => '未选择任何服务——将无可检测。';
+  String get settingsConnectChecksEmpty => '未选择任何服务 - 将无可检测。';
 
   @override
   String get settingsSectionSeamless => '无缝切换';
@@ -3161,37 +3200,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String get autoSpeedTrafficGo => '开始';
 
   @override
-  String get splitDeadPath => '该路径下的文件已不存在——规则永远不会匹配';
+  String get splitDeadPath => '该路径下的文件已不存在 - 规则永远不会匹配';
 
   @override
   String get splitDeadPathFix => '点按改为按文件名匹配';
 
   @override
   String splitDeadPathNoticeText(String app) {
-    return 'The path to “$app” is outdated — the rule won’t apply this time';
+    return 'The path to “$app” is outdated - the rule won’t apply this time';
   }
 
   @override
   String get splitDeadPathNoticeAction => 'Fix';
 
   @override
-  String get splitVersionedPath => '路径中含有版本号——程序更新后该规则将不再匹配';
+  String get splitVersionedPath => '路径中含有版本号 - 程序更新后该规则将不再匹配';
 
   @override
   String get srvTileCopyKey => '复制密钥';
 
   @override
   String serviceChecksBypassDirect(Object rule) {
-    return '不走 VPN：分应用代理规则「$rule」让该域名直连——该服务将使用你的真实地址。';
+    return '不走 VPN：分应用代理规则「$rule」让该域名直连 - 该服务将使用你的真实地址。';
   }
 
   @override
   String serviceChecksBypassBlock(Object rule) {
-    return '已拦截：分应用代理规则「$rule」禁止该域名——无论是否开启 VPN，该服务都无法打开。';
+    return '已拦截：分应用代理规则「$rule」禁止该域名 - 无论是否开启 VPN，该服务都无法打开。';
   }
 
   @override
-  String get subBarOpenSite => '网站';
+  String get serviceChecksAfterOff => 'VPN 已关闭';
+
+  @override
+  String get serviceChecksNow => '当前';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return '经其他服务器：分流规则“$rule”让该域名经“$server”访问。';
+  }
+
+  @override
+  String get subBarOpenSite => '订阅页面';
+
+  @override
+  String get subBarTelegram => 'Telegram / 机器人';
 
   @override
   String get subBarOpenSiteHint => '在浏览器中打开订阅页面';
@@ -3224,7 +3277,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pingBusyServiceChecks => '无法测速：正在检查服务';
 
   @override
-  String get serviceChecksChannelNotReady => '隧道尚未就绪 — 未执行检查';
+  String get serviceChecksChannelNotReady => '隧道尚未就绪 - 未执行检查';
 
   @override
   String get serviceChecksRetryCheck => '重新检查';
@@ -3245,7 +3298,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get serviceGroupOther => '其他';
 
   @override
-  String get apiTokenHidden => '已隐藏 — 点击“显示”';
+  String get apiTokenHidden => '已隐藏 - 点击“显示”';
 
   @override
   String get apiTokenShow => '显示令牌';
@@ -3264,16 +3317,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String apiCheatSheetPortDirect(Object port) {
-    return '$port — “直连”：绕过 VPN，真实 IP';
+    return '$port - “直连”：绕过 VPN，真实 IP';
   }
 
   @override
   String apiCheatSheetPortServer(int port, String name) {
-    return '$port — $name';
+    return '$port - $name';
   }
 
   @override
-  String get apiCheatSheetNoExitServers => '未勾选任何服务器 — 不会有服务器端口';
+  String get apiCheatSheetNoExitServers => '未勾选任何服务器 - 不会有服务器端口';
 
   @override
   String apiCheatSheetPortsSystemProxy(Object control) {
@@ -3281,7 +3334,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get apiCheatSheetTokenOff => '令牌为空 — 通道不会启动，没有端口在监听';
+  String get apiCheatSheetTokenOff => '令牌为空 - 通道不会启动，没有端口在监听';
 
   @override
   String get apiCheatSheetPortsWhenConnected => '只有在连接建立时，出口端口才会监听。';
@@ -3322,7 +3375,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get noRealIpOnlySelectedNote =>
-      '在「仅所选」模式下，未勾选的一切仍以你的真实 IP 出网——此设置对它无效。';
+      '在「仅所选」模式下，未勾选的一切仍以你的真实 IP 出网 - 此设置对它无效。';
 
   @override
   String get infoNoRealIp =>
@@ -3340,7 +3393,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitOnlySelectedWarnBody =>
-      '只有设置为「隧道」动作的条目才会走隧道。其余流量——包括你并不知道的程序——都会以真实地址直接出网。若需隐藏整台设备，请选择「全部走 VPN」。';
+      '只有设置为「隧道」动作的条目才会走隧道。其余流量 - 包括你并不知道的程序 - 都会以真实地址直接出网。若需隐藏整台设备，请选择「全部走 VPN」。';
 
   @override
   String get splitOnlySelectedNoRealIp =>
@@ -3348,7 +3401,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitKillSwitchIsPerApp =>
-      '断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称——在这段时间里网站规则不会生效。';
+      '断网开关按程序拦截流量，而不是按域名：内核恢复期间没有谁来解析站点名称 - 在这段时间里网站规则不会生效。';
 
   @override
   String get updateNotesEmpty => '未收到更新说明。';
@@ -3539,6 +3592,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatesSettingsTileSubtitle => '检查、下载并安装新版本';
 
   @override
+  String get updatesSettingsTilePlay => '新版本通过 Google Play 推送';
+
+  @override
   String get updatesPreviousVersions => '早期版本';
 
   @override
@@ -3559,22 +3615,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatesOpenPage => '打开下载页面';
 
   @override
-  String get updatesLinkNotify => '已选择“仅通知”模式——请从下载页面获取新版本';
+  String get updatesLinkNotify => '已选择“仅通知”模式 - 请从下载页面获取新版本';
 
   @override
-  String get updatesLinkNoSelfUpdate => '此版本没有适用于您系统的已签名安装程序——请从下载页面获取';
+  String get updatesLinkNoSelfUpdate => '此版本没有适用于您系统的已签名安装程序 - 请从下载页面获取';
 
   @override
-  String get updatesLinkIsolated => '这是隔离的测试副本——不会改动已安装的应用。请手动更新';
+  String get updatesLinkIsolated => '这是隔离的测试副本 - 不会改动已安装的应用。请手动更新';
 
   @override
-  String get updatesLinkLocation => '应用不是从安装目录运行的——请手动下载新版本，或启动已安装的副本';
+  String get updatesLinkLocation => '应用不是从安装目录运行的 - 请手动下载新版本，或启动已安装的副本';
 
   @override
-  String get updatesLinkElevated => '应用正以管理员身份运行——这样更新不安全。请以普通方式启动';
+  String get updatesLinkElevated => '应用正以管理员身份运行 - 这样更新不安全。请以普通方式启动';
 
   @override
-  String get updatesLinkUnsupported => '在此平台上应用无法自行更新——请手动下载新版本';
+  String get updatesLinkUnsupported => '在此平台上应用无法自行更新 - 请手动下载新版本';
 
   @override
   String get updatesErrCheck => '更新服务器没有响应';
@@ -3589,7 +3645,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatesErrManifest => '无法获取已签名的版本清单';
 
   @override
-  String get updatesErrSignature => '签名不匹配——文件可能已被篡改';
+  String get updatesErrSignature => '签名不匹配 - 文件可能已被篡改';
 
   @override
   String get updatesErrManifestRejected => '版本清单与此版本或系统不匹配';
@@ -3614,11 +3670,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatesInstallNow => '立即安装';
 
   @override
-  String get updatesWaitingVpn => '已准备好安装——将在 VPN 断开后开始';
+  String get updatesWaitingVpn => '已准备好安装 - 将在 VPN 断开后开始';
 
   @override
   String updatesSkippedNote(String version) {
-    return '已跳过版本 $version——有下一个版本时会通知您';
+    return '已跳过版本 $version - 有下一个版本时会通知您';
   }
 
   @override
@@ -3696,7 +3752,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get splitExportEmpty => '列表为空——没有可导出的内容';
+  String get splitExportEmpty => '列表为空 - 没有可导出的内容';
 
   @override
   String get splitCountEmpty => '空';
@@ -3748,4 +3804,737 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => '隐藏子域名';
+
+  @override
+  String get consentTitle => 'SilentGate 会发送哪些数据';
+
+  @override
+  String get consentIntro =>
+      'SilentGate 是一款 VPN 客户端：它通过你自己添加的订阅链接连接到你的 VPN 服务商的服务器。流量经过加密隧道传输。SilentGate 不收集、不存储、也不出售你的流量，应用本身没有任何分析统计。';
+
+  @override
+  String get consentDeviceTitle => '提供给服务商的设备数据';
+
+  @override
+  String get consentDeviceBody =>
+      '加载或更新订阅时，应用可能会向订阅服务器发送设备标识（Android ID）、手机型号和 Android 版本。服务商用它们统计你的设备数量（套餐中的设备上限）。这些数据只发送到你的订阅地址，SilentGate 开发者永远不会收到。';
+
+  @override
+  String get consentDeclineNote =>
+      '如果拒绝，这些数据不会被发送。部分服务商没有这些数据就不提供订阅，届时订阅将无法加载。你可以在 设置 → 关于 →「数据与隐私」中更改选择。';
+
+  @override
+  String get consentPolicy => '隐私政策';
+
+  @override
+  String get consentAccept => '允许';
+
+  @override
+  String get consentDecline => '不发送';
+
+  @override
+  String get privacyTileTitle => '数据与隐私';
+
+  @override
+  String get privacyTileOn => '设备数据会发送给订阅服务商';
+
+  @override
+  String get privacyTileOff => '不发送设备数据';
+
+  @override
+  String get consentDeviceBodyWindows =>
+      '加载或更新订阅时，应用可能会向订阅服务器发送电脑标识符（HWID）、Windows 版本和电脑型号。服务商用它们统计您的设备数（套餐的设备上限）。这些数据只发往您的订阅地址，且只通过安全连接发送 - SilentGate 开发者永远不会收到。';
+
+  @override
+  String get consentNoticeNote =>
+      '服务商需要这些数据来统计您套餐中的设备。可在 设置 → 关于 → “数据与隐私” 中再次打开此消息。';
+
+  @override
+  String get consentNoticeOk => '知道了';
+
+  @override
+  String get sectionBackup => '备份';
+
+  @override
+  String get backupExportTitle => '导出设置';
+
+  @override
+  String get backupExportSub => '将设置和订阅保存到文件，用于其他电脑或手机';
+
+  @override
+  String get backupExportWithSubs => '包含订阅和服务器';
+
+  @override
+  String get backupExportSubsWarning => '文件将包含订阅地址 - 它们是 VPN 访问密钥。请勿将文件发送给他人。';
+
+  @override
+  String get backupExportNoSubsNote => '仅设置和规则 - 不含订阅和服务器。';
+
+  @override
+  String get backupExportDeviceNote => '本地端口密码、API 令牌和设备数据同意不会包含在内。';
+
+  @override
+  String get backupExportAction => '导出';
+
+  @override
+  String backupExportDone(String path) {
+    return '设置已保存：$path';
+  }
+
+  @override
+  String get backupExportFailed => '无法保存设置文件';
+
+  @override
+  String get backupImportTitle => '导入设置';
+
+  @override
+  String get backupImportSub => '从导出文件加载设置。应用将重新启动';
+
+  @override
+  String get backupImportDisconnectFirst => '请先断开 VPN：导入后应用会重新启动';
+
+  @override
+  String get backupImportBadFile => '这不是 SilentGate 设置文件，或文件已损坏';
+
+  @override
+  String get backupImportConfirmTitle => '导入设置？';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return '文件：$platform，版本 $version，$date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return '文件中的订阅：$count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => '替换订阅和服务器';
+
+  @override
+  String get backupImportBody => '当前设置将被替换。本地端口密码、API 令牌和设备数据同意保留本设备的值。';
+
+  @override
+  String get backupImportOtherPlatform => '文件来自其他平台：分流隧道的应用列表以及仅本平台有的设置保持不变。';
+
+  @override
+  String get backupImportAction => '导入并重启';
+
+  @override
+  String get backupImportRestartManually => '设置已就绪。请重启应用以应用设置';
+
+  @override
+  String get backupImportApplied => '设置已导入';
+
+  @override
+  String get backupRestoredFromGoogle => '已从 Google 备份恢复设置';
+
+  @override
+  String get backupGoogleSubsTitle => '在 Google 备份中保留订阅';
+
+  @override
+  String get backupGoogleSubsSub => '设置始终会备份。订阅是 VPN 访问密钥：设置了屏幕锁时，备份会在手机上加密';
+
+  @override
+  String get privacyPolicyTile => '隐私政策';
+
+  @override
+  String get updatesViaPlay => '在 Google Play 中更新';
+
+  @override
+  String get updatesViaGithub => '从 GitHub 下载';
+
+  @override
+  String get updatesPlayManaged =>
+      '此副本安装自 Google Play，只能通过它更新：新版本会自动出现在 Google Play 中，或通过应用页面上的「更新」按钮获取。';
+
+  @override
+  String get updatesOpenPlay => '在 Google Play 中打开';
+
+  @override
+  String get statusNetworkChanged => '网络已变化';
+
+  @override
+  String get statusRecoveryError => '恢复出错';
+
+  @override
+  String get statusGeoUnavailable => '内核无法使用地理数据库';
+
+  @override
+  String get statusNetworkBackChannelDead => '网络已恢复，但隧道没有响应';
+
+  @override
+  String get noticeReconnecting => '连接中断，正在恢复';
+
+  @override
+  String get noticeRecovered => '连接已恢复';
+
+  @override
+  String get noticeStillDown => '连接仍未恢复';
+
+  @override
+  String get noticeRecoverFailed => '无法恢复连接';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return '尝试次数：$count。原因：$reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return '尝试次数：$count';
+  }
+
+  @override
+  String get noticeBlocked => '网站已被你的规则屏蔽';
+
+  @override
+  String get noticeBlockedAction => '规则';
+
+  @override
+  String noticeExitDown(String name) {
+    return '出口“$name”无响应';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      '经此服务器转发的流量暂时改走主隧道，也就是从另一个国家出去。服务器恢复响应后会自动切回。';
+
+  @override
+  String get noticeExitDownStopped => '经此服务器转发的流量目前不通。主隧道和其他出口正常工作。';
+
+  @override
+  String get noticeSystemProxyFailed => '系统代理未能开启 - 流量绕过 VPN，使用你的真实地址';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      '最常见的原因是注册表禁止写入（域策略或配置文件损坏）。详情见应用日志。替代办法：使用“TUN”捕获模式。';
+
+  @override
+  String get noticeGeoMissing => '未下载地理数据库 - 面板的按国家规则已停用';
+
+  @override
+  String get noticeGeoUnusable => '内核无法打开地理数据库 - 面板的按国家规则已停用';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping 完成：$total 个中有 $ok 个可用（$seconds 秒）';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping 完成：$total 个中有 $ok 个可达（$seconds 秒）';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping 已取消：$total 个中有 $ok 个可用';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping 已取消：$total 个中有 $ok 个可达';
+  }
+
+  @override
+  String get pingFailed => 'Ping 因错误中断';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return '已测速：$total 个中 $ok 个（$seconds 秒）';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return '测速已取消：$total 个中已测 $ok 个';
+  }
+
+  @override
+  String get speedNeedsLive => '此处无法测量该服务器的速度：测速需通过当前连接进行。请先连接该服务器再重试';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return '自动配置完成：找到 $count 个';
+  }
+
+  @override
+  String get autoConfigDoneNone => '自动配置：未找到可用服务器';
+
+  @override
+  String get autoConfigUnsupportedShort => '此平台不支持自动配置';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      '此平台不支持自动配置：这里无法通过服务器检查各项服务。请改用 Ping。';
+
+  @override
+  String get autoConfigBadKey =>
+      '无法识别该密钥（需要 vless:// / vmess:// / trojan:// / ss:// / hysteria2://）';
+
+  @override
+  String get autoConfigNoneFound => '未找到可用服务器';
+
+  @override
+  String autoConfigError(String detail) {
+    return '错误：$detail';
+  }
+
+  @override
+  String get restartServerChanged => '已选择其他服务器 - 重新连接后生效';
+
+  @override
+  String get restartSubscriptionSwitched => '已切换订阅 - 重新连接后生效';
+
+  @override
+  String errorServerNotFound(String name) {
+    return '未找到服务器“$name”';
+  }
+
+  @override
+  String get hintClockBehind =>
+      '本设备的日期和时间不正确 - 时间偏慢，因此服务器证书看起来尚未生效。请检查时钟并开启时间同步，然后重新导入。';
+
+  @override
+  String get hintCertExpired =>
+      '服务器证书已过期。请先检查本设备的日期和时间 - 如果偏快，也会出现同样的错误。如果时间正确，说明服务方的证书已过期：请联系客服。';
+
+  @override
+  String get hintHostnameMismatch =>
+      '证书是为其他名称签发的。请检查订阅地址 - 可能有拼写错误，或者有中间方在拦截连接。';
+
+  @override
+  String get hintNoNetwork =>
+      '无法连接订阅服务器。请检查网络；如果网络正常，该地址可能被封锁 - 请尝试开启 VPN 后重新导入。';
+
+  @override
+  String get importSyncTime => '同步时间';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return '已达到设备数量上限（$limit）。请在账户中移除多余的设备后重试。';
+  }
+
+  @override
+  String get subDeviceLimitAny => '已达到设备数量上限。请在账户中移除多余的设备后重试。';
+
+  @override
+  String get subHwidRequired => '面板要求提供设备标识，但应用没有发送。请更新应用。';
+
+  @override
+  String subHttpCode(int code) {
+    return '服务器返回代码 $code';
+  }
+
+  @override
+  String get subNoServers => '订阅中未找到任何服务器';
+
+  @override
+  String get subTooManyRedirects => '订阅重定向次数过多';
+
+  @override
+  String get trayNoteBlocked => '连接已断开，流量已拦截';
+
+  @override
+  String get trayNoteOffline => '无网络，正在等待网络';
+
+  @override
+  String get routeYourPhone => '你的手机';
+
+  @override
+  String get importSyncTimeOk => '时间已同步。请重新导入。';
+
+  @override
+  String get importSyncTimeManual =>
+      '无法自动同步 - 这需要管理员权限。\n\n手动修复：Windows 设置 → 时间和语言 → 日期和时间。打开“自动设置时间”，然后点击“立即同步”。如果开关已经打开，请先关闭再重新打开。';
+
+  @override
+  String get updatesMsStoreManaged =>
+      '此副本安装自 Microsoft Store，只能通过它更新：Store 会自行安装新版本，或在“下载”中点击“获取更新”按钮。';
+
+  @override
+  String get updatesOpenMsStore => '打开 Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore => '新版本通过 Microsoft Store 推送';
+
+  @override
+  String get backupDocumentsSubsTitle => '在“文档”中的副本里保留订阅';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      '卸载 Microsoft Store 应用时，Windows 会删除其数据，因此设置始终会复制到“文档\\SilentGate”。重新安装后，应用会自动恢复它们。副本使用您的 Windows 帐户密钥加密';
+
+  @override
+  String get backupRestoredFromDocuments => '已从“文档”中的副本恢复设置';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return '订阅“$name”已删除';
+  }
+
+  @override
+  String get subBarRestore => '恢复';
+
+  @override
+  String get connectButtonCancel => '取消';
+
+  @override
+  String get connectButtonStop => '停止';
+
+  @override
+  String get connectStepCheckConflicts => '检查冲突…';
+
+  @override
+  String get connectStepCheckPorts => '检查端口…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => '通话房间…';
+
+  @override
+  String get connectStepCore => '启动核心…';
+
+  @override
+  String get connectStepTun => '启动 TUN…';
+
+  @override
+  String get connectStepTraffic => '检查流量…';
+
+  @override
+  String get connectStepStopping => '正在停止…';
+
+  @override
+  String get connectStepForceKill => '强制停止…';
+
+  @override
+  String get splitSiteAlreadyExists => '该网站已存在，已跳过';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return '没有与“$query”相似的网站 - 点击“添加”将其加入';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite => '添加新网站时始终重新加载 VPN';
+
+  @override
+  String get splitVirtualGroupBadge => '子域名';
+
+  @override
+  String liveConnsBadge(int count) {
+    return '连接: $count';
+  }
+
+  @override
+  String get liveConnsTitle => '当前活动连接';
+
+  @override
+  String get liveConnsSubtitle => '实时刷新';
+
+  @override
+  String get liveConnsSectionVpn => '通过 VPN';
+
+  @override
+  String get liveConnsSectionBlocked => '已拦截';
+
+  @override
+  String get liveConnsSectionDirect => '直连';
+
+  @override
+  String get liveConnsEmpty => '当前没有活动连接';
+
+  @override
+  String get liveConnsUnavailable => '无 TUN 的系统代理模式下无法查看连接列表';
+
+  @override
+  String get liveConnsRouteMismatchTitle => '路由规则已更新';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return '网站“$domain”已加入规则，但当前隧道仍在使用旧列表。是否立即重新加载 VPN？';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return '网站“$domain”已添加。是否立即重新加载 VPN 使新规则生效？';
+  }
+
+  @override
+  String get liveConnsReloadNow => '重新加载 VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => '将消耗订阅流量';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      '当前无法直连更新服务器或已开启全局 VPN 模式。检查并下载更新将消耗您的订阅流量，是否继续？';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return '下载更新 ($sizeMb MB) 将通过当前 VPN 进行并消耗您的订阅流量，是否继续？';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => '不再显示此提示';
+
+  @override
+  String get updatesContinue => '继续';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      '仅影响连接按钮下方的检测图标。如需指定哪些服务走 VPN 或直连，请配置分流规则。';
+
+  @override
+  String get settingsOpenSplitTunnel => '配置分流规则';
+
+  @override
+  String get splitQuickServicesTitle => '常用服务快捷选择';
+
+  @override
+  String get splitQuickServicesSub => '按当前模式的默认动作一键添加该服务的主域名和媒体域名';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return '已添加 $service 域名。如需语音通话和客户端完整生效，请同时在上方“应用程序”中添加 $service';
+  }
+
+  @override
+  String get liveConnsPause => '暂停';
+
+  @override
+  String get liveConnsResume => '恢复实时更新';
+
+  @override
+  String get liveConnsPausedSubtitle => '已暂停 · 列表已冻结';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => '选择期间列表已冻结';
+
+  @override
+  String get liveConnsSelectMode => '选择模式';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return '已选择: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => '全选';
+
+  @override
+  String get liveConnsClearSelection => '取消选择';
+
+  @override
+  String get liveConnsMenuSelect => '选择';
+
+  @override
+  String get liveConnsMenuDeselect => '取消勾选';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return '全选进程 \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return '全选域名 \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => '通过服务器...';
+
+  @override
+  String get liveConnsMenuCloseConn => '断开连接';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return '断开所选 ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return '已关闭连接: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => '无法关闭连接';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return '按进程 \"$process\" 筛选';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return '按域名 \"$domain\" 筛选';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => '复制域名';
+
+  @override
+  String get liveConnsMenuCopyIpPort => '复制 IP:端口';
+
+  @override
+  String get liveConnsMenuCopyProcess => '复制进程名';
+
+  @override
+  String get liveConnsMenuCopyExePath => '复制可执行文件路径';
+
+  @override
+  String get liveConnsMenuShowInExplorer => '在资源管理器中显示';
+
+  @override
+  String get liveConnsCopySelectedTargets => '复制所选目标';
+
+  @override
+  String get liveConnsModeAuto => '自动';
+
+  @override
+  String get liveConnsModeSites => '按网站';
+
+  @override
+  String get liveConnsModeApps => '按应用';
+
+  @override
+  String get liveConnsModeBoth => '两者';
+
+  @override
+  String get liveConnsPlanEmpty => '当前模式下没有匹配的域名或应用';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return '网站: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return '应用: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return '已跳过浏览器纯 IP ($processes) - 如需整个应用请切换到\"按应用\"';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return '已应用规则: $count';
+  }
+
+  @override
+  String get splitSelectRules => '选择';
+
+  @override
+  String splitSelectedCount(int count) {
+    return '已选规则: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => '全选可见项';
+
+  @override
+  String get splitBatchCancel => '取消';
+
+  @override
+  String get splitBatchViaServer => '通过服务器...';
+
+  @override
+  String get splitBatchEnable => '启用';
+
+  @override
+  String get splitBatchDisable => '禁用';
+
+  @override
+  String get splitMenuConfigure => '设置...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return '选择 \"$domain\" 域名组';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return '已更新规则: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return '已删除规则: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => '无法设为独立出口';
+
+  @override
+  String get exitServerBlockedNote =>
+      '不可作为独立出口: 自动配置、白名单中继及仅限 Xray 的协议仅可作为主服务器使用。';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return '当前无法将服务器 \"$name\" 设为规则的独立出口。\n\n面板\"自动\"配置、多跳中继以及仅限 Xray 的协议 (如 XHTTP) 需要完整的 Xray 管道, 而规则的独立出口由 sing-box 直接拨号。\n\n请为此规则选择标准单节点服务器, 或在主页将 \"$name\" 设为主服务器。';
+  }
+
+  @override
+  String get supportChipCantConnect => '无法连接';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / 网站无法打开';
+
+  @override
+  String get supportChipSlowSpeed => '速度慢';
+
+  @override
+  String get supportChipDrops => '连接中断';
+
+  @override
+  String get supportChipsHint => '快速选择（可选，无需填写详情）：';
+
+  @override
+  String get supportDescribeOptionalLabel => '问题描述（可选）';
+
+  @override
+  String get supportNoTextProvided => '无文字描述（仅技术报告）';
+
+  @override
+  String get supportCategoriesHeader => '分类';
+
+  @override
+  String get supportSendDevCopyTitle => '向开发者发送匿名副本';
+
+  @override
+  String get supportSendDevCopySub => '不含订阅令牌、个人 IP 和原始 HWID - 帮助更快修复问题';
+
+  @override
+  String get supportPreviewDevCopy => '发送内容？';
+
+  @override
+  String get supportPreviewDialogTitle => '发送给开发者的匿名副本';
+
+  @override
+  String get supportSendDevOnlyButton => '仅发送给开发者';
+
+  @override
+  String supportDevCopySent(String code) {
+    return '副本已发送给开发者 ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return '上传服务器失败 ($code) - 本地文件已就绪';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return '匿名报告已发送至开发者服务器。报告代码：$code';
+  }
+
+  @override
+  String get supportAttachDiagButton => '诊断报告';
+
+  @override
+  String get supportSendToChatAndDev => '附加到聊天';
 }

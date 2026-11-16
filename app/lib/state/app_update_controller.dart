@@ -7,6 +7,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 
 import '../core/app_info.dart';
+import '../core/app_store.dart';
+import '../core/geo/sha256.dart';
+import '../core/settings/split_tunnel.dart' show SplitMode;
 import '../core/net/file_download.dart';
 import '../core/platform/app_log.dart';
 import '../core/settings/app_settings.dart';
@@ -245,6 +248,14 @@ typedef UpdateChecker = Future<UpdateCheckResult> Function(
 typedef UpdateMirrorLookup = Future<AppRelease?> Function(
     {required bool beta, required String version});
 
+typedef ProxyUpdateChecker = Future<UpdateCheckResult> Function(
+    {required bool beta, required UpdateProxy proxy});
+
+typedef ProxyUpdateMirrorLookup = Future<AppRelease?> Function(
+    {required bool beta,
+    required String version,
+    required UpdateProxy proxy});
+
 /// Как из ответа сервера получить [UpdateOffer].
 typedef OfferBuilder = UpdateOffer Function(AppRelease release);
 
@@ -319,7 +330,7 @@ class UnsupportedUpdateInstaller extends StagedUpdateInstaller {
 /// поколению.
 class _DownloadRun {
   final int gen;
-  final http.Client client;
+  http.Client client;
   final Completer<void> done = Completer<void>();
   bool cancelled = false;
 
@@ -370,6 +381,14 @@ class AppUpdateController extends ChangeNotifier {
   final String _currentVersion;
   final Duration _purgeRetryDelay;
   final DateTime Function() _clock;
+  final AppStore _store;
+  final bool _msStorePackage;
+  final Future<bool> Function()? _playStoreAvailable;
+  final Future<bool> Function()? _openPlayStore;
+  final UpdateProxy? Function()? _vpnProxyOf;
+  final ProxyUpdateChecker _proxyChecker;
+  final ProxyUpdateMirrorLookup _proxyMirror;
+  final Duration? _installStuckTimeout;
 
   /// Все зависимости внедряемы — умолчания боевые.
   ///
@@ -387,6 +406,12 @@ class AppUpdateController extends ChangeNotifier {
   /// `updates/` (см. [startup]); [clock] — часы для срока [ConsentMarker].
   /// [mirror] — откуда взять файлы того же выпуска, когда основной источник
   /// их не отдал (см. [_mirrorUrls]).
+  /// [store] — какая это сборка ([AppStore]); [playStoreAvailable] — есть ли
+  /// на устройстве Google Play и открыта ли там наша страница (`null` — нет:
+  /// Windows); [openPlayStore] — открыть страницу приложения в Play (в
+  /// пакете MSIX — «Загрузки и обновления» Microsoft Store).
+  /// [msStorePackage] — копия запущена из пакета MSIX: её обновляет только
+  /// Microsoft Store.
   ///
   /// ⚠️ ПОЧЕМУ НЕ ХВАТАЕТ ФЛАГА НА КОНСТРУКТОРЕ. На Android подмена лежит
   /// файлом (`update_api.txt`) и читается асинхронно
@@ -414,7 +439,14 @@ class AppUpdateController extends ChangeNotifier {
     String? currentVersion,
     Duration purgeRetryDelay = const Duration(seconds: 30),
     DateTime Function()? clock,
-  })  : _settings = settings,
+    AppStore store = AppStore.github,
+    bool msStorePackage = false,
+    Future<bool> Function()? playStoreAvailable,
+    Future<bool> Function()? openPlayStore,
+    UpdateProxy? Function()? vpnProxyOf,
+    ProxyUpdateChecker? proxyChecker,
+    ProxyUpdateMirrorLookup? proxyMirror,
+    Duration? installStuckTimeout,  })  : _settings = settings,
         _updateSettings = updateSettings,
         _installer = installer,
         _checker = checker ?? _defaultChecker,
@@ -431,12 +463,30 @@ class AppUpdateController extends ChangeNotifier {
         _loadOverride = loadOverride,
         _currentVersion = currentVersion ?? AppUpdate.installedVersion,
         _purgeRetryDelay = purgeRetryDelay,
-        _clock = clock ?? DateTime.now {
+        _clock = clock ?? DateTime.now,
+        _store = store,
+        _msStorePackage = msStorePackage,
+        _playStoreAvailable = playStoreAvailable,
+        _openPlayStore = openPlayStore,
+        _vpnProxyOf = vpnProxyOf,
+        _proxyChecker = proxyChecker ?? _defaultProxyChecker,
+        _proxyMirror = proxyMirror ?? _defaultProxyMirror,
+        _installStuckTimeout = installStuckTimeout {
     _vpnChanges?.addListener(_onVpnChanged);
   }
 
   static Future<UpdateCheckResult> _defaultChecker({required bool beta}) =>
       AppUpdate.check(beta: beta);
+
+  static Future<UpdateCheckResult> _defaultProxyChecker(
+          {required bool beta, required UpdateProxy proxy}) =>
+      AppUpdate.check(beta: beta, proxy: proxy);
+
+  static Future<AppRelease?> _defaultProxyMirror(
+          {required bool beta,
+          required String version,
+          required UpdateProxy proxy}) =>
+      AppUpdate.mirrorRelease(beta: beta, version: version, proxy: proxy);
 
   static bool _neverActive() => false;
 
@@ -471,6 +521,10 @@ class AppUpdateController extends ChangeNotifier {
   bool _launched = false;
   bool _disposed = false;
 
+  /// Google Play есть и страница открыта: предложение обновиться идёт через
+  /// него первым ([offerViaPlay]). Узнаётся в [startup].
+  bool _playAvailable = false;
+
   /// Скачанный и проверенный установщик (с версией и хэшем из манифеста).
   File? _verified;
   String? _verifiedVersion;
@@ -481,6 +535,8 @@ class AppUpdateController extends ChangeNotifier {
 
   /// Повторная чистка `updates/` после успешного обновления ([startup]).
   Timer? _purgeRetry;
+  Timer? _installWatchdog;
+  bool _restoredFromStaging = false;
 
   /// Версия, чей журнал неудавшейся установки нельзя стирать (см. [startup]).
   /// Спрашивает КАЖДАЯ чистка, а не только первая.
@@ -540,9 +596,47 @@ class AppUpdateController extends ChangeNotifier {
   /// Установщик уже запускали в этой сессии.
   bool get launched => _launched;
 
+  bool get restoredFromStaging => _restoredFromStaging;
+
   String get currentVersion => _currentVersion;
 
   bool get started => _started;
+
+  /// Сборка из Google Play: обновляет её ТОЛЬКО Play. Проверки обновлений,
+  /// закачки и установки в ней нет вовсе — интерфейс показывает кнопку
+  /// «Открыть в Google Play» вместо всего экрана обновлений.
+  ///
+  /// Пакет MSIX (Microsoft Store) — так же: пакет обновляет Store, а
+  /// установщик Inno поверх пакета поставил бы ВТОРУЮ копию приложения рядом.
+  bool get storeManaged => _store == AppStore.play || _msStorePackage;
+
+  /// Копия из пакета MSIX — её обновляет Microsoft Store.
+  bool get msStoreManaged => _msStorePackage;
+
+  /// Сборка GitHub: текущее предложение лучше взять через Google Play — он
+  /// установлен, страница открыта, а версия стабильная (бет в Play нет) и
+  /// найдена проверкой, а не выбрана руками из «Прежних версий». Тогда
+  /// главная кнопка — Play, а закачка APK остаётся запасной.
+  bool get offerViaPlay {
+    final o = _offer;
+    return !storeManaged &&
+        _playAvailable &&
+        o != null &&
+        !o.isBeta &&
+        !_explicitRelease;
+  }
+
+  /// Открыть страницу приложения в Google Play. `false` — не открылась.
+  Future<bool> openPlayStore() async {
+    final open = _openPlayStore;
+    if (open == null) return false;
+    try {
+      return await open();
+    } catch (e) {
+      AppLog.w('Обновление: Google Play не открылся: ${scrubUrls('$e')}');
+      return false;
+    }
+  }
 
   /// VPN сейчас активен — тем же выражением, что решает отложить установку.
   /// Интерфейсу нужно ДО нажатия: предупредить, что установка разорвёт VPN,
@@ -562,6 +656,13 @@ class AppUpdateController extends ChangeNotifier {
   /// останавливают (потолок — [_hookTimeout]).
   Future<void> Function(UpdateOffer offer)? beforeUnattendedInstall;
 
+  /// Ask user before spending VPN subscription traffic for update check/download.
+  Future<bool> Function({required bool isDownload, int? sizeBytes})?
+      confirmVpnTraffic;
+
+  Future<void> setSkipTrafficWarning(bool skip) =>
+      _updateSettings((s) => s.copyWith(skipUpdateVpnTrafficWarning: skip));
+
   static const _hookTimeout = Duration(seconds: 5);
 
   /// Идёт проверка, закачка или запуск установки.
@@ -575,6 +676,7 @@ class AppUpdateController extends ChangeNotifier {
     _disposed = true;
     _vpnChanges?.removeListener(_onVpnChanged);
     _purgeRetry?.cancel();
+    _installWatchdog?.cancel();
     _run?.client.close();
     super.dispose();
   }
@@ -584,8 +686,48 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   void _setPhase(UpdatePhase p) {
+    if (p != UpdatePhase.installing) {
+      _installWatchdog?.cancel();
+      _installWatchdog = null;
+    }
     _phase = p;
     _notify();
+  }
+
+  /// Recover from a cancelled/stuck external installer back to ready/available.
+  void recoverFromInstalling() {
+    if (_disposed || _phase != UpdatePhase.installing || _installing) return;
+    _installWatchdog?.cancel();
+    _installWatchdog = null;
+    final offer = _offer;
+    final file = _verified;
+    final sha = _expectedSha;
+    if (offer != null && file != null && sha != null && file.existsSync()) {
+      _writeStagedMarker(file.parent, offer, sha, file.lengthSync());
+      _setPhase(UpdatePhase.ready);
+      return;
+    }
+    _setPhase(offer != null ? UpdatePhase.available : UpdatePhase.idle);
+  }
+
+  bool get _forcesVpnTraffic {
+    if (!_isVpnActive()) return false;
+    final s = _settings();
+    return s.splitTunnel.mode == SplitMode.all || s.noRealIp;
+  }
+
+  Future<bool> _ensureTrafficConsent({
+    required bool isDownload,
+    int? sizeBytes,
+  }) async {
+    if (_settings().skipUpdateVpnTrafficWarning) return true;
+    final ask = confirmVpnTraffic;
+    if (ask == null) return true;
+    try {
+      return await ask(isDownload: isDownload, sizeBytes: sizeBytes);
+    } catch (_) {
+      return false;
+    }
   }
 
   void _fail(UpdateErrorKind kind,
@@ -594,13 +736,13 @@ class AppUpdateController extends ChangeNotifier {
     _download = null;
     _error = UpdateError(kind,
         rejection: rejection, detail: detail == null ? null : scrubUrls(detail));
-    AppLog.w('Обновление: отказ — $_error');
+    AppLog.w('Обновление: отказ - $_error');
     _setPhase(UpdatePhase.failed);
   }
 
   void _linkOnly(LinkOnlyReason reason) {
     _linkOnlyReason = reason;
-    AppLog.i('Обновление: только ссылка — ${reason.name}');
+    AppLog.i('Обновление: только ссылка - ${reason.name}');
     _setPhase(UpdatePhase.linkOnly);
   }
 
@@ -619,6 +761,24 @@ class AppUpdateController extends ChangeNotifier {
   Future<void> startup() async {
     if (_started || _disposed) return;
     _started = true;
+    // ⚠️ Сборку из Play обновляет только Play (правило «Device and Network
+    // Abuse»): ни проверки, ни закачки — даже ссылки на GitHub не ищем.
+    if (storeManaged) {
+      AppLog.i(_msStorePackage
+          ? 'Обновление: пакет Microsoft Store - обновляет Store'
+          : 'Обновление: сборка Google Play - обновляет Play');
+      _notify();
+      return;
+    }
+    final playAvailable = _playStoreAvailable;
+    if (playAvailable != null) {
+      try {
+        _playAvailable = await playAvailable();
+      } catch (_) {
+        _playAvailable = false;
+      }
+      if (_disposed) return;
+    }
     // Подмена источника (Android: файл в каталоге данных) — ДО всего
     // остального: от неё зависят и плашка, и допустимость `http://`.
     final load = _loadOverride;
@@ -645,63 +805,120 @@ class AppUpdateController extends ChangeNotifier {
       // Журнал неудачной установки нужен кнопке «Показать журнал» — его
       // версию не трогаем; всё остальное в каталоге закачек — мусор.
       final outcome = _lastOutcome;
+      if (outcome?.outcome == PendingOutcome.updated) {
+        await _deleteStagedMarker();
+      } else {
+        await _restoreStagedUpdate();
+      }
       _keepLogVersion =
           outcome != null && outcome.outcome == PendingOutcome.failed
               ? outcome.pending.version
               : null;
-      await _installer.purgeStaging(keepVersion: _keepLogVersion);
+      await _installer.purgeStaging(
+          keepVersion: _keepLogVersion ?? _verifiedVersion);
     } catch (e) {
-      AppLog.w('Обновление: каталог закачек не вычищен: ${scrubUrls('$e')}');
+      AppLog.w('Update staging cleanup failed: ${scrubUrls('$e')}');
     }
-    // ⚠️ ПОСЛЕ ОБНОВЛЕНИЯ ЧИСТКА ПОВТОРЯЕТСЯ. Новую версию запускает сам
-    // установщик (Inno, `ShouldRelaunch`) и ещё несколько секунд держит свой
-    // exe открытым: первая чистка его не удаляет, и 90 МБ установщика лежали
-    // в `updates/` до следующего запуска (живой прогон в VM 24.09.2026).
     if (_lastOutcome?.outcome == PendingOutcome.updated) {
       _purgeRetry = Timer(_purgeRetryDelay, _retryPurge);
     }
     _notify();
     if (_disposed) return;
     if (!_settings().appUpdateCheck) {
-      AppLog.i('Обновление: автопроверка при запуске выключена');
+      if (_phase == UpdatePhase.ready &&
+          _settings().appUpdateMode == AppUpdateMode.auto &&
+          !offerViaPlay) {
+        await _install(unattended: true);
+      }
       return;
-    }
-    await _check(manual: false);
+    }    await _check(manual: false);
   }
 
   /// «Проверить сейчас»: показывает и пропущенную версию, и причину отказа.
   Future<void> checkNow() => _check(manual: true);
 
   Future<void> _check({required bool manual}) async {
-    if (_disposed) return;
-    // Закачка или установка идут — проверка сверху перепутала бы состояние.
+    if (_disposed || storeManaged) return;
     if (_installing || (_run != null && !_run!.cancelled)) return;
+    _installWatchdog?.cancel();
+    _installWatchdog = null;
+    final hadStagedReady =
+        _verified != null && _verifiedVersion != null && _offer != null;
     _lastCheckManual = manual;
     _error = null;
     _postponed = false;
+    final forcedVpn = _forcesVpnTraffic;
+    if (forcedVpn) {
+      final ok = await _ensureTrafficConsent(isDownload: false);
+      if (_disposed) return;
+      if (!ok) {
+        _setPhase(hadStagedReady ? UpdatePhase.ready : UpdatePhase.idle);
+        return;
+      }
+    }
     _setPhase(UpdatePhase.checking);
     final beta = _settings().betaChannel;
     UpdateCheckResult result;
     try {
       result = await _checker(beta: beta);
     } catch (e) {
-      // `AppUpdate.check` сам не бросает; это на случай чужой реализации.
-      AppLog.w('Обновление: проверка упала: ${scrubUrls('$e')}');
+      AppLog.w('Update check threw: ${scrubUrls('$e')}');
       result = const UpdateCheckResult.failed(
-          'Не удалось связаться с сервером обновлений');
+          'Unable to reach update server');
     }
     if (_disposed) return;
+    if (result.isFailed && !forcedVpn && _isVpnActive()) {
+      final proxy = _vpnProxyOf?.call();
+      if (proxy != null) {
+        final ok = await _ensureTrafficConsent(isDownload: false);
+        if (_disposed) return;
+        if (ok) {
+          try {
+            result = await _proxyChecker(beta: beta, proxy: proxy);
+          } catch (e) {
+            AppLog.w('Proxy update check failed: ${scrubUrls('$e')}');
+          }
+          if (_disposed) return;
+        }
+      }
+    }
     await _applyCheck(result, manual: manual);
   }
 
   Future<void> _applyCheck(UpdateCheckResult result,
       {required bool manual}) async {
-    final release = result.release;
+    switch (result.state) {
+      case UpdateCheckState.failed:
+        if (_verified != null && _verifiedVersion != null && _offer != null) {
+          AppLog.i('Update check failed, keeping staged ready ${_offer!.version}');
+          _setPhase(UpdatePhase.ready);
+          if (!manual &&
+              _restoredFromStaging &&
+              _settings().appUpdateMode == AppUpdateMode.auto &&
+              !offerViaPlay) {
+            await _install(unattended: true);
+          }
+          return;
+        }
+        _error = UpdateError(UpdateErrorKind.checkFailed,
+            detail: result.failure == null ? null : scrubUrls(result.failure!));
+        AppLog.i('Update check failed - ${scrubUrls(result.failure ?? '')}');
+        _setPhase(UpdatePhase.failed);
+        return;
+      case UpdateCheckState.upToDate:
+        await _dropVerified(purge: _verified != null);
+        _offer = null;
+        _linkOnlyReason = null;
+        _setPhase(UpdatePhase.upToDate);
+        return;
+      case UpdateCheckState.available:
+        break;
+    }    final release = result.release;
     switch (result.state) {
       case UpdateCheckState.failed:
         _error = UpdateError(UpdateErrorKind.checkFailed,
             detail: result.failure == null ? null : scrubUrls(result.failure!));
-        AppLog.i('Обновление: проверка не удалась — '
+        AppLog.i('Обновление: проверка не удалась - '
             '${scrubUrls(result.failure ?? '')}');
         _setPhase(UpdatePhase.failed);
         return;
@@ -741,7 +958,7 @@ class AppUpdateController extends ChangeNotifier {
     if (skipped != null && skipped.isNotEmpty) {
       if (_sameVersion(skipped, offer.version)) {
         if (!manual) {
-          AppLog.i('Обновление: версия ${offer.version} пропущена — молчу');
+          AppLog.i('Обновление: версия ${offer.version} пропущена - молчу');
           _setPhase(UpdatePhase.idle);
           return;
         }
@@ -772,6 +989,13 @@ class AppUpdateController extends ChangeNotifier {
   }
 
   Future<void> _applyMode() async {
+    // Сначала Play: молча качать APK мимо Play, когда тот установлен, значит
+    // обойти выбор, который сборка обещает. Режим «авто» здесь спрашивает.
+    if (offerViaPlay && _settings().appUpdateMode == AppUpdateMode.auto) {
+      AppLog.i('Обновление: есть Google Play - предлагаю его, не качаю сам');
+      _setPhase(UpdatePhase.available);
+      return;
+    }
     switch (_settings().appUpdateMode) {
       case AppUpdateMode.ask:
         _setPhase(UpdatePhase.available);
@@ -794,13 +1018,15 @@ class AppUpdateController extends ChangeNotifier {
   /// «Прежние версии»: предложить конкретный релиз (например, для отката).
   /// Дальше — [download] и [install] с `allowDowngrade: true`.
   void offerRelease(AppRelease release) {
-    if (_disposed || busy) return;
+    if (_disposed || busy || storeManaged) return;
     _offer = _offerOf(release);
     _explicitRelease = true;
     _intent = null;
     _verified = null;
     _verifiedVersion = null;
     _expectedSha = null;
+    _restoredFromStaging = false;
+    unawaited(_deleteStagedMarker());
     _error = null;
     _linkOnlyReason = null;
     _awaitingVpnOff = false;
@@ -818,7 +1044,7 @@ class AppUpdateController extends ChangeNotifier {
   /// процесса ([ConsentMarker]).
   Future<void> downloadAndInstall(
       {bool forceQuit = false, bool allowDowngrade = false}) async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     _intent = (forceQuit: forceQuit, allowDowngrade: allowDowngrade);
     if (_phase != UpdatePhase.ready || _verified == null) await download();
     if (_phase == UpdatePhase.ready) {
@@ -848,7 +1074,7 @@ class AppUpdateController extends ChangeNotifier {
   /// [UpdatePhase.ready], [UpdatePhase.linkOnly] (ставить самим нельзя) или
   /// [UpdatePhase.failed]. Согласие человека уже получено вызывающим.
   Future<void> download() async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     final offer = _offer;
     if (offer == null || _installing) return;
     final prev = _run;
@@ -909,7 +1135,7 @@ class AppUpdateController extends ChangeNotifier {
     }
     if (!_live(run)) return;
     if (!allowed) {
-      AppLog.w('Обновление: нет разрешения на установку — прошу его до '
+      AppLog.w('Обновление: нет разрешения на установку - прошу его до '
           'закачки ${offer.version}');
       final intent = _intent;
       await _writeConsent(ConsentMarker(
@@ -923,23 +1149,28 @@ class AppUpdateController extends ChangeNotifier {
       return;
     }
 
+    final forcedVpn = _forcesVpnTraffic;
+    if (forcedVpn) {
+      final ok = await _ensureTrafficConsent(
+        isDownload: true,
+        sizeBytes: offer.assetSize,
+      );
+      if (!_live(run)) return;
+      if (!ok) {
+        _setPhase(UpdatePhase.available);
+        return;
+      }
+    }
+
     var attempt = await _attemptDownload(run, offer, assetName, urls);
     var failure = attempt.transportFailure;
     if (failure == null) return;
     if (!_live(run)) return;
 
-    // ⚠️ ВТОРАЯ ПОПЫТКА — ТОЛЬКО ПРИ ОТКАЗЕ ТРАНСПОРТА. Проверка версии
-    // проходит через GitHub, а его ФАЙЛЫ могут не отдаться минутой позже:
-    // подмену сертификата у провайдера включают с перебоями (у владельца
-    // 3 проверки из 4 ушли на запасной источник). Байт-в-байт копия лежит на
-    // нашем сайте — берём файлы оттуда, а не объявляем отказ.
     final mirror = await _mirrorUrls(offer, assetName, urls);
-    // Пока спрашивали сайт, закачку могли отменить — фазу уже выставила
-    // отмена, и отказ первой попытки её не перебивает.
     if (!_live(run)) return;
     if (mirror != null) {
-      AppLog.w('Обновление: GitHub не отдал файлы — беру их с запасного '
-          'источника (${offer.version})');
+      AppLog.w('Primary update download failed, retrying mirror (${offer.version})');
       _progress = null;
       _download = null;
       attempt = await _attemptDownload(run, offer, assetName, mirror);
@@ -947,13 +1178,43 @@ class AppUpdateController extends ChangeNotifier {
       if (failure == null) return;
       if (!_live(run)) return;
     }
+
+    if (!forcedVpn && _isVpnActive()) {
+      final proxy = _vpnProxyOf?.call();
+      if (proxy != null) {
+        final ok = await _ensureTrafficConsent(
+          isDownload: true,
+          sizeBytes: offer.assetSize,
+        );
+        if (!_live(run)) return;
+        if (ok) {
+          run.client.close();
+          run.client = _newClient(proxy: proxy);
+          _progress = null;
+          _download = null;
+          attempt = await _attemptDownload(run, offer, assetName, urls);
+          failure = attempt.transportFailure;
+          if (failure == null) return;
+          if (!_live(run)) return;
+
+          final proxyMirrorUrls =
+              await _mirrorUrls(offer, assetName, urls, proxy: proxy);
+          if (!_live(run)) return;
+          if (proxyMirrorUrls != null) {
+            _progress = null;
+            _download = null;
+            attempt =
+                await _attemptDownload(run, offer, assetName, proxyMirrorUrls);
+            failure = attempt.transportFailure;
+            if (failure == null) return;
+            if (!_live(run)) return;
+          }
+        }
+      }
+    }
+
     _fail(failure, detail: attempt.detail);
   }
-
-  /// Одна попытка взять выпуск с ОДНОГО источника: манифест с подписью →
-  /// проверка → установщик. Фазу и отказы ПО СОДЕРЖИМОМУ объявляет сама;
-  /// отказ транспорта только называет — решает по нему вызывающий, потому что
-  /// повторить с другого источника можно именно его.
   Future<_Attempt> _attemptDownload(_DownloadRun run, UpdateOffer offer,
       String assetName, _UpdateUrls urls) async {
     _setPhase(UpdatePhase.verifying);
@@ -976,7 +1237,7 @@ class AppUpdateController extends ChangeNotifier {
 
     if (!UpdateSignature.verify(manifestBytes, signature,
         publicKeyBase64: _publicKey)) {
-      AppLog.e('Обновление: подпись манифеста ${offer.version} НЕ прошла — '
+      AppLog.e('Обновление: подпись манифеста ${offer.version} НЕ прошла - '
           'установщик качать не буду');
       _fail(UpdateErrorKind.badSignature);
       return _attemptDone;
@@ -1003,7 +1264,7 @@ class AppUpdateController extends ChangeNotifier {
     final asset = manifest.assetNamed(assetName)!;
     if (offer.assetSize != null && offer.assetSize != asset.size) {
       AppLog.w('Обновление: размер актива в релизе (${offer.assetSize}) '
-          'не равен манифесту (${asset.size}) — верю манифесту');
+          'не равен манифесту (${asset.size}) - верю манифесту');
     }
 
     final Directory dir;
@@ -1064,6 +1325,8 @@ class AppUpdateController extends ChangeNotifier {
     _verified = target;
     _verifiedVersion = offer.version;
     _expectedSha = asset.sha256;
+    _restoredFromStaging = false;
+    _writeStagedMarker(dir, offer, asset.sha256, asset.size);
     _progress = null;
     _download = null;
     AppLog.i('Обновление: установщик ${offer.version} скачан и проверен '
@@ -1081,23 +1344,24 @@ class AppUpdateController extends ChangeNotifier {
   /// согласился. Совпали адреса — предложение и так пришло с сайта, второй
   /// заход был бы повтором того же запроса.
   Future<_UpdateUrls?> _mirrorUrls(
-      UpdateOffer offer, String assetName, _UpdateUrls failed) async {
+    UpdateOffer offer,
+    String assetName,
+    _UpdateUrls failed, {
+    UpdateProxy? proxy,
+  }) async {
     final AppRelease? release;
     try {
-      // Канал беты: галочка человека либо сам выпуск — у запасного источника
-      // стабильные и пре-релизные выпуски лежат по разным адресам.
-      release = await _mirror(
-          beta: _settings().betaChannel || offer.isBeta,
-          version: offer.version);
+      final beta = _settings().betaChannel || offer.isBeta;
+      release = proxy == null
+          ? await _mirror(beta: beta, version: offer.version)
+          : await _proxyMirror(
+              beta: beta, version: offer.version, proxy: proxy);
     } catch (e) {
-      AppLog.w('Обновление: запасной источник файлов не ответил: '
-          '${scrubUrls('$e')}');
+      AppLog.w('Mirror lookup failed: ${scrubUrls('$e')}');
       return null;
     }
     if (release == null) return null;
     if (release.assetName != assetName) {
-      AppLog.w('Обновление: у запасного источника другой файл выпуска '
-          '${offer.version} — беру это за другой релиз и не повторяю');
       return null;
     }
     final urls =
@@ -1105,8 +1369,6 @@ class AppUpdateController extends ChangeNotifier {
     if (urls == null || urls.sameAs(failed)) return null;
     return urls;
   }
-
-  /// Три адреса выпуска, прошедшие [_schemeAllowed]; иначе `null`.
   _UpdateUrls? _urlsOf(String? manifest, String? signature, String? asset) {
     final m = Uri.tryParse(manifest ?? '');
     final s = Uri.tryParse(signature ?? '');
@@ -1155,14 +1417,17 @@ class AppUpdateController extends ChangeNotifier {
   /// [downloadToFile] по умолчанию, — см. там, почему), с нашим UA. Свой,
   /// а не умолчание [downloadToFile], ради одного: [cancel] закрывает его и
   /// рвёт соединение немедленно, а не на следующем куске.
-  static http.Client _newClient() {
+  static http.Client _newClient({UpdateProxy? proxy}) {
     final io = HttpClient()
       ..connectionTimeout = const Duration(seconds: 20)
       ..userAgent = AppInfo.userAgent;
-    io.findProxy = (_) => 'DIRECT';
+    if (proxy != null) {
+      proxy.configure(io);
+    } else {
+      io.findProxy = (_) => 'DIRECT';
+    }
     return IOClient(io);
   }
-
   static LinkOnlyReason _reasonFor(InstallCapability cap) =>
       linkOnlyReasonFor(cap);
 
@@ -1223,7 +1488,7 @@ class AppUpdateController extends ChangeNotifier {
     bool allowDowngrade = false,
     bool unattended = false,
   }) async {
-    if (_disposed) return;
+    if (_disposed || storeManaged) return;
     final offer = _offer;
     final file = _verified;
     final sha = _expectedSha;
@@ -1232,7 +1497,7 @@ class AppUpdateController extends ChangeNotifier {
     _awaitingVpnOff = false;
 
     if (!allowDowngrade && !AppUpdate.isNewer(offer.version, _currentVersion)) {
-      AppLog.e('Обновление: ${offer.version} не новее $_currentVersion — '
+      AppLog.e('Обновление: ${offer.version} не новее $_currentVersion - '
           'установка отклонена (защита от отката)');
       _fail(UpdateErrorKind.notNewer);
       return;
@@ -1266,6 +1531,13 @@ class AppUpdateController extends ChangeNotifier {
         allowDowngrade: allowDowngrade,
       );
       _launched = true;
+      _restoredFromStaging = false;
+      await _deleteStagedMarker();
+      final timeout = _installStuckTimeout;
+      if (timeout != null && !_disposed) {
+        _installWatchdog?.cancel();
+        _installWatchdog = Timer(timeout, recoverFromInstalling);
+      }
     } on NeedsInstallPermission {
       // Разрешение отозвали между проверкой у закачки и запуском. Метку пишем
       // и здесь: выдача разрешения убивает процесс, а установщик уже скачан —
@@ -1296,7 +1568,7 @@ class AppUpdateController extends ChangeNotifier {
     if (_disposed || !_awaitingVpnOff) return;
     if (_phase != UpdatePhase.ready || _isVpnActive()) return;
     _awaitingVpnOff = false;
-    AppLog.i('Обновление: VPN отключён — ставлю ${_offer?.version}');
+    AppLog.i('Обновление: VPN отключён - ставлю ${_offer?.version}');
     // ⚠️ С ТЕМ ЖЕ СОГЛАСИЕМ, что дал человек, — как и [resumeAfterPermission].
     // Без этого отложенный ОСОЗНАННЫЙ откат («Прежние версии» при живом VPN)
     // упирался в [UpdateErrorKind.notNewer]: согласие теряли ровно на том
@@ -1341,6 +1613,10 @@ class AppUpdateController extends ChangeNotifier {
     _verified = null;
     _verifiedVersion = null;
     _expectedSha = null;
+    _restoredFromStaging = false;
+    if (purge) {
+      await _deleteStagedMarker();
+    }
     if (!purge) return;
     try {
       // ⚠️ `keepVersion` — не формальность: журнал неудавшейся установки
@@ -1371,6 +1647,85 @@ class AppUpdateController extends ChangeNotifier {
       AppLog.w('Обновление: повторная чистка каталога закачек не удалась: '
           '${scrubUrls('$e')}');
     }));
+  }
+
+  void _writeStagedMarker(
+    Directory dir,
+    UpdateOffer offer,
+    String sha256,
+    int size,
+  ) {
+    try {
+      dir.createSync(recursive: true);
+      final f = File(
+          '${dir.path}${Platform.pathSeparator}${StagedUpdateMarker.fileName}');
+      final marker = StagedUpdateMarker(
+        offer: offer,
+        expectedSha256: sha256,
+        expectedSize: size,
+      );
+      f.writeAsStringSync(jsonEncode(marker.toJson()));
+    } catch (e) {
+      AppLog.w('Обновление: метка скачанного файла не записана: ${scrubUrls('$e')}');
+    }
+  }
+
+  Future<void> _deleteStagedMarker() async {
+    try {
+      final dir = await _installer.stagingDir();
+      _deleteQuiet(File(
+          '${dir.path}${Platform.pathSeparator}${StagedUpdateMarker.fileName}'));
+    } catch (_) {}
+  }
+
+  Future<void> _restoreStagedUpdate() async {
+    try {
+      final dir = await _installer.stagingDir();
+      final markerFile = File(
+          '${dir.path}${Platform.pathSeparator}${StagedUpdateMarker.fileName}');
+      if (!markerFile.existsSync()) return;
+      final marker = StagedUpdateMarker.tryParse(await markerFile.readAsString());
+      if (marker == null) {
+        _deleteQuiet(markerFile);
+        return;
+      }
+      final offer = marker.offer;
+      final skipped = _settings().appUpdateSkippedVersion;
+      final isSkipped =
+          skipped != null && skipped.isNotEmpty && _sameVersion(skipped, offer.version);
+      if (!AppUpdate.isNewer(offer.version, _currentVersion) ||
+          (offer.isBeta && !_settings().betaChannel) ||
+          isSkipped ||
+          _settings().appUpdateMode == AppUpdateMode.notifyOnly) {
+        _deleteQuiet(markerFile);
+        return;
+      }
+      if (await _installer.capability() != InstallCapability.ready) {
+        _deleteQuiet(markerFile);
+        return;
+      }
+      final file = File(
+          '${dir.path}${Platform.pathSeparator}${offer.assetName!}');
+      if (!file.existsSync() || await file.length() != marker.expectedSize) {
+        _deleteQuiet(markerFile);
+        return;
+      }
+      final actualSha = await Sha256.ofFile(file);
+      if (actualSha.toLowerCase() != marker.expectedSha256.toLowerCase()) {
+        _deleteQuiet(markerFile);
+        _deleteQuiet(file);
+        return;
+      }
+      _offer = offer;
+      _verified = file;
+      _verifiedVersion = offer.version;
+      _expectedSha = marker.expectedSha256;
+      _restoredFromStaging = true;
+      AppLog.i('Restored verified staged update ${offer.version}');
+      _setPhase(UpdatePhase.ready);
+    } catch (e) {
+      AppLog.w('Staged update restore failed: ${scrubUrls('$e')}');
+    }
   }
 
   Future<File> _consentFile() async {
@@ -1415,6 +1770,77 @@ class AppUpdateController extends ChangeNotifier {
 /// нажал «Обновить», выдал разрешение, вернулся — и видел то же окно заново.
 /// Метка в каталоге закачек говорит следующему старту: эту версию уже решили
 /// ставить. Живёт [ttl] — вернувшийся через сутки человек мог и передумать.
+class StagedUpdateMarker {
+  static const fileName = StagedUpdateInstaller.stagedMetadataFileName;
+
+  final UpdateOffer offer;
+  final String expectedSha256;
+  final int expectedSize;
+
+  const StagedUpdateMarker({
+    required this.offer,
+    required this.expectedSha256,
+    required this.expectedSize,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'version': offer.version,
+        if (offer.notes != null) 'notes': offer.notes,
+        if (offer.pageUrl != null) 'pageUrl': offer.pageUrl,
+        'isBeta': offer.isBeta,
+        if (offer.publishedAt != null)
+          'publishedAt': offer.publishedAt!.toUtc().toIso8601String(),
+        if (offer.assetName != null) 'assetName': offer.assetName,
+        if (offer.assetSize != null) 'assetSize': offer.assetSize,
+        if (offer.assetUrl != null) 'assetUrl': offer.assetUrl,
+        if (offer.manifestUrl != null) 'manifestUrl': offer.manifestUrl,
+        if (offer.signatureUrl != null) 'signatureUrl': offer.signatureUrl,
+        'expectedSha256': expectedSha256,
+        'expectedSize': expectedSize,
+      };
+
+  static StagedUpdateMarker? tryParse(String raw) {
+    try {
+      final m = jsonDecode(raw);
+      if (m is! Map) return null;
+      final version = '${m['version'] ?? ''}'.trim();
+      final assetName = '${m['assetName'] ?? ''}'.trim();
+      final sha = '${m['expectedSha256'] ?? ''}'.trim();
+      final size = m['expectedSize'];
+      if (version.isEmpty ||
+          assetName.isEmpty ||
+          !isSafeAssetName(assetName) ||
+          sha.length != 64 ||
+          size is! int ||
+          size <= 0) {
+        return null;
+      }
+      final pubRaw = m['publishedAt'];
+      return StagedUpdateMarker(
+        offer: UpdateOffer(
+          version: version,
+          notes: m['notes'] is String ? m['notes'] as String : null,
+          pageUrl: m['pageUrl'] is String ? m['pageUrl'] as String : null,
+          isBeta: m['isBeta'] == true,
+          publishedAt:
+              pubRaw is String ? DateTime.tryParse(pubRaw)?.toUtc() : null,
+          assetName: assetName,
+          assetSize: m['assetSize'] is int ? m['assetSize'] as int : size,
+          assetUrl: m['assetUrl'] is String ? m['assetUrl'] as String : null,
+          manifestUrl:
+              m['manifestUrl'] is String ? m['manifestUrl'] as String : null,
+          signatureUrl:
+              m['signatureUrl'] is String ? m['signatureUrl'] as String : null,
+        ),
+        expectedSha256: sha,
+        expectedSize: size,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
 class ConsentMarker {
   static const fileName = 'consent.json';
   static const ttl = Duration(hours: 1);

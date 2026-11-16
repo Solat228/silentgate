@@ -20,6 +20,21 @@ enum VpnPhase {
   tunAutotune,
 }
 
+/// Этап подключения или отключения — для компактной подписи прямо внутри
+/// кнопки Connect без разбора русских строк.
+enum ConnectStep {
+  none,
+  checkConflicts,
+  checkPorts,
+  dns,
+  relay,
+  core,
+  tun,
+  traffic,
+  stopping,
+  forceKill,
+}
+
 /// Текущее состояние туннеля + опциональное сообщение (например, текст ошибки).
 class VpnStatus {
   final VpnConnectionState state;
@@ -32,6 +47,7 @@ class VpnStatus {
   /// (см. [StatusText]).
   final StatusText? text;
   final VpnPhase phase;
+  final ConnectStep step;
 
   /// ⚠️ KILL SWITCH СЕЙЧАС ДЕРЖИТ ТРАФИК: соединения падают, а не текут мимо VPN.
   ///
@@ -42,18 +58,29 @@ class VpnStatus {
   /// то, от чего защита и оберегала.
   final bool blocking;
 
+  /// ⚠️ НЕТ ИНТЕРНЕТА ВООБЩЕ: не отвечает ни туннель, ни прямая сеть.
+  ///
+  /// Туннель при этом не трогаем — переподключать нечего, пока нет сети.
+  /// Признак красит трей и показывает плашку так же, как [blocking]: человек
+  /// должен видеть, что пропал интернет, а не VPN (владелец 13.10.2026).
+  final bool offline;
+
   const VpnStatus(this.state,
       {this.message,
       this.text,
       this.phase = VpnPhase.normal,
-      this.blocking = false});
+      this.step = ConnectStep.none,
+      this.blocking = false,
+      this.offline = false});
 
   const VpnStatus.disconnected()
       : state = VpnConnectionState.disconnected,
         message = null,
         text = null,
         phase = VpnPhase.normal,
-        blocking = false;
+        step = ConnectStep.none,
+        blocking = false,
+        offline = false;
 
   bool get isConnected => state == VpnConnectionState.connected;
   bool get isBusy =>

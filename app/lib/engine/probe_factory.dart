@@ -46,7 +46,7 @@ ProbeHarness createProbeHarness() {
   // панельные профили «Авто» не пингуались вообще.
   if (Platform.isAndroid) return ProbeHarnessAndroid();
   throw UnsupportedError(
-      'Проброс-харнесс на ${Platform.operatingSystem} не поддерживается — '
+      'Проброс-харнесс на ${Platform.operatingSystem} не поддерживается - '
       'проверяйте proxyProbeSupported перед вызовом');
 }
 

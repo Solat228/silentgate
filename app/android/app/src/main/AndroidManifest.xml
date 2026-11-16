@@ -13,16 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- Самообновление: скачанный APK отдаётся СИСТЕМНОМУ установщику
-         (ACTION_VIEW + application/vnd.android.package-archive). Без этого
-         разрешения на Android 8+ такой интент молча не сработает: система
-         покажет «установка из неизвестных источников запрещена» или не
-         покажет ничего вовсе. Само разрешение — не «тихая установка»: её без
-         root на Android нет, лист согласия человек видит всегда. Разрешение
-         на уровне пользователя выдаётся один раз через
-         ACTION_MANAGE_UNKNOWN_APP_SOURCES (канал launcher →
-         openInstallPermission). -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- Разрешение на установку APK (самообновление) живёт ТОЛЬКО в сборке
+         github: src/github/AndroidManifest.xml. В сборке для Google Play его
+         быть не должно — правило Play запрещает обновляться мимо Play. -->
     <!-- Удержание процессора на время пинга и замера скорости
          (lib/core/platform/wake_guard.dart). Без него при погасшем экране
          система усыпляет процессор посреди прогона, пробы истекают, и живые
@@ -42,9 +35,12 @@
         android:name=".SilentGateApplication"
         android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
-        android:allowBackup="false"
+        android:allowBackup="true"
+        android:extractNativeLibs="true"
+        tools:replace="android:extractNativeLibs"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="false">
+        android:fullBackupContent="@xml/backup_rules">
         <!--
           Отдача отчёта поддержки НАРУЖУ. Приватный каталог приложения другим
           программам недоступен, поэтому просто «показать путь» на Android не
@@ -131,6 +127,17 @@
         <!-- Сканер QR из zxing-android-embedded. У библиотеки ориентация
              sensorLandscape — телефон для QR держат вертикально, поэтому
              переопределяем на любую по датчику. -->
+        <!-- Перезапуск после импорта настроек. ОТДЕЛЬНЫЙ процесс обязателен:
+             Activity в главном процессе умерла бы вместе с ним (см.
+             platform/RestartActivity.kt). -->
+        <activity
+            android:name=".platform.RestartActivity"
+            android:process=":restart"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"/>
+
         <activity
             android:name="com.journeyapps.barcodescanner.CaptureActivity"
             android:screenOrientation="fullSensor"

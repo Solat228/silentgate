@@ -96,7 +96,7 @@ class KillSwitchWfp {
     }
     return KillSwitchProbe(
       canFilter: false,
-      detail: 'права не получены — ${tried.join('; ')}',
+      detail: 'права не получены - ${tried.join('; ')}',
     );
   }
 
@@ -118,7 +118,7 @@ class KillSwitchWfp {
     }
     final rules = buildWfpRules(plan);
     if (rules.isEmpty) {
-      say('kill switch: блокировать нечего — систему не трогаем');
+      say('kill switch: блокировать нечего - систему не трогаем');
       return null;
     }
 
@@ -176,7 +176,7 @@ class KillSwitchWfp {
           if (code != 0) {
             // ⚠️ ЛИБО ВЕСЬ ПЛАН, ЛИБО НИЧЕГО: половина правил — это дыра,
             // выдающая себя за защиту.
-            say('kill switch: правило «${rule.name}» отвергнуто, код $code — '
+            say('kill switch: правило «${rule.name}» отвергнуто, код $code - '
                 'откатываю всё');
             return null;
           }
@@ -194,7 +194,7 @@ class KillSwitchWfp {
       engine = nullptr; // держатель забрал владение
       return hold;
     } catch (e) {
-      say('kill switch: исключение при подъёме — $e');
+      say('kill switch: исключение при подъёме - $e');
       return null;
     } finally {
       // ⚠️ ОТКАТ ДО ЗАКРЫТИЯ ДВИЖКА. Незакрытая транзакция при закрытии
@@ -437,6 +437,140 @@ class KillSwitchWfp {
   static final _freeMemory = _fwp.lookupFunction<
       Void Function(Pointer<Pointer<Void>>),
       void Function(Pointer<Pointer<Void>>)>('FwpmFreeMemory0');
+
+  static final _aleEnumCreate = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Void>, Pointer<Void>, Pointer<Pointer<Void>>),
+      int Function(Pointer<Void>, Pointer<Void>,
+          Pointer<Pointer<Void>>)>('FwpsAleEndpointCreateEnumHandle0');
+
+  static final _aleEnum = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Void>, Pointer<Void>, Uint32,
+          Pointer<Pointer<Pointer<Uint8>>>, Pointer<Uint32>),
+      int Function(Pointer<Void>, Pointer<Void>, int,
+          Pointer<Pointer<Pointer<Uint8>>>,
+          Pointer<Uint32>)>('FwpsAleEndpointEnum0');
+
+  static final _aleEnumDestroy = _fwp.lookupFunction<
+      Uint32 Function(Pointer<Void>, Pointer<Void>),
+      int Function(Pointer<Void>,
+          Pointer<Void>)>('FwpsAleEndpointDestroyEnumHandle0');
+
+  /// Снимок живых IPv4 UDP-потоков системы из таблицы ALE.
+  ///
+  /// Нужен на подъёме TUN: если непривилегированное прямое приложение
+  /// (например, онлайн-игра в активном матче) уже ведёт обмен по UDP через
+  /// физический адаптер, перехват этого адреса в `silentgate-tun` меняет
+  /// локальный адрес и порт сокета, из-за чего игровой релей разрывает сессию.
+  /// Снимок позволяет точечно оставить уже открытые прямые UDP-потоки на
+  /// физическом интерфейсе без каких-либо заранее зашитых таблиц подсетей.
+  static List<ActiveUdpEndpoint> activeIpv4UdpEndpoints() {
+    if (!Platform.isWindows) return const [];
+    final probeResult = probe();
+    if (!probeResult.canFilter || probeResult.authnService == null) {
+      return const [];
+    }
+    final arena = Arena();
+    Pointer<Void> engine = nullptr;
+    Pointer<Void> enumHandle = nullptr;
+    Pointer<Pointer<Pointer<Uint8>>> entriesOut = nullptr;
+    try {
+      final handleOut = arena<Pointer<Void>>();
+      final session = _zeroed(arena, WfpSessionOffsets.size);
+      _W(session, WfpSessionOffsets.size)
+          .u32(WfpSessionOffsets.flags, WfpConst.sessionFlagDynamic);
+      var rc = _engineOpen(
+          nullptr, probeResult.authnService!, nullptr, session, handleOut);
+      if (rc != 0) return const [];
+      engine = handleOut.value;
+
+      final enumOut = arena<Pointer<Void>>();
+      rc = _aleEnumCreate(engine, nullptr, enumOut);
+      if (rc != 0) return const [];
+      enumHandle = enumOut.value;
+
+      entriesOut = arena<Pointer<Pointer<Uint8>>>();
+      final countOut = arena<Uint32>();
+      rc = _aleEnum(engine, enumHandle, 4096, entriesOut, countOut);
+      if (rc != 0 || entriesOut.value == nullptr) return const [];
+
+      final count = countOut.value;
+      final entries = entriesOut.value;
+      final out = <ActiveUdpEndpoint>[];
+      for (var i = 0; i < count; i++) {
+        final prop = entries[i];
+        if (prop == nullptr) continue;
+        final bd = ByteData.sublistView(
+            prop.asTypedList(WfpAleEndpointOffsets.size));
+        final ipVer =
+            bd.getUint32(WfpAleEndpointOffsets.ipVersion, Endian.little);
+        final proto = bd.getUint8(WfpAleEndpointOffsets.ipProtocol);
+        if (ipVer != WfpAleEndpointOffsets.ipVersionV4 ||
+            proto != IpProto.udp) {
+          continue;
+        }
+        final remoteAddr =
+            bd.getUint32(WfpAleEndpointOffsets.remoteV4Address, Endian.little);
+        if (remoteAddr == 0) continue;
+        final remotePort =
+            bd.getUint16(WfpAleEndpointOffsets.remotePort, Endian.little);
+        final localPort =
+            bd.getUint16(WfpAleEndpointOffsets.localPort, Endian.little);
+        final appIdSize =
+            bd.getUint32(WfpAleEndpointOffsets.appIdSize, Endian.little);
+        final appIdPtr =
+            bd.getUint64(WfpAleEndpointOffsets.appIdData, Endian.little);
+        if (appIdSize < 2 || appIdPtr == 0) continue;
+        final appIdPath =
+            Pointer<Utf16>.fromAddress(appIdPtr).toDartString();
+        if (appIdPath.isEmpty) continue;
+        final remoteIp = '${(remoteAddr >> 24) & 0xFF}.'
+            '${(remoteAddr >> 16) & 0xFF}.'
+            '${(remoteAddr >> 8) & 0xFF}.'
+            '${remoteAddr & 0xFF}';
+        out.add(ActiveUdpEndpoint(
+          remoteIp: remoteIp,
+          remotePort: remotePort,
+          localPort: localPort,
+          appIdPath: appIdPath,
+        ));
+      }
+      return out;
+    } catch (_) {
+      return const [];
+    } finally {
+      if (entriesOut != nullptr && entriesOut.value != nullptr) {
+        try {
+          _freeMemory(entriesOut.cast());
+        } catch (_) {}
+      }
+      if (enumHandle != nullptr && engine != nullptr) {
+        try {
+          _aleEnumDestroy(engine, enumHandle);
+        } catch (_) {}
+      }
+      if (engine != nullptr) {
+        try {
+          _engineClose(engine);
+        } catch (_) {}
+      }
+      arena.releaseAll();
+    }
+  }
+}
+
+/// Один активный IPv4 UDP-поток из таблицы WFP ALE.
+class ActiveUdpEndpoint {
+  final String remoteIp;
+  final int remotePort;
+  final int localPort;
+  final String appIdPath;
+
+  const ActiveUdpEndpoint({
+    required this.remoteIp,
+    required this.remotePort,
+    required this.localPort,
+    required this.appIdPath,
+  });
 }
 
 /// Держатель поднятой блокировки.
@@ -475,7 +609,7 @@ class KillSwitchHold {
   bool reengage(KillSwitchPlan plan, {void Function(String)? log}) {
     void say(String s) => log?.call(s);
     if (_released || _engine == nullptr) {
-      say('kill switch: замена набора невозможна — блокировка уже снята');
+      say('kill switch: замена набора невозможна - блокировка уже снята');
       return false;
     }
     final rules = buildWfpRules(plan);
@@ -506,7 +640,7 @@ class KillSwitchHold {
               KillSwitchWfp._addFilter(arena, _engine, rule, layer, blobs, ids);
           if (code != 0) {
             say('kill switch: при замене отвергнуто «${rule.name}», код $code '
-                '— откатываю, остаётся прежний набор');
+                '- откатываю, остаётся прежний набор');
             return false;
           }
         }
@@ -522,7 +656,7 @@ class KillSwitchHold {
       say('kill switch обновлён: правил ${rules.length}, фильтров ${ids.length}');
       return true;
     } catch (e) {
-      say('kill switch: исключение при замене набора — $e');
+      say('kill switch: исключение при замене набора - $e');
       return false;
     } finally {
       if (!committed) {

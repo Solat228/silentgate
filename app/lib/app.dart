@@ -7,6 +7,7 @@ import 'core/settings/app_settings.dart';
 import 'l10n/gen/app_localizations.dart';
 import 'state/settings_controller.dart';
 import 'ui/home_screen.dart';
+import 'ui/widgets/extended_clipboard.dart';
 import 'ui/widgets/vpn_active_badge.dart' show NavDepthObserver;
 
 /// Затравка фирменной палитры — одна на светлую и тёмную тему.
@@ -60,6 +61,7 @@ class SilentGateApp extends StatelessWidget {
       title: 'SilentGate',
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
+      shortcuts: buildExtendedPasteShortcuts(),
       // Локализация: пустой languageCode — следовать ЯЗЫКУ СИСТЕМЫ (locale: null),
       // иначе форсируем выбранный язык.
       locale: settings.languageCode.isEmpty

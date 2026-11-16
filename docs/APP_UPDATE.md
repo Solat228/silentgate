@@ -152,11 +152,15 @@ build-exe.bat
 лестнице — фаза `failed` с названной причиной (`UpdateErrorKind`, для манифеста — ещё и
 `ManifestRejection`), закачки нет.
 
-1. **Проверка.** GitHub (`/releases/latest`, либо СПИСОК `/releases` при бета-галочке), при
-   любом отказе — сайт (`/api/app-version[-beta]`). Из ответа берутся: версия; актив под
-   платформу (сравнение по хвосту имени с вырезанной версией: Windows —
-   `SilentGateSetup-<версия>.exe`, Android — `…-arm64-v8a.apk`); манифест и подпись по
-   **точным** именам `SilentGate-<версия>.manifest.json` / `.manifest.sig`; размер актива.
+1. **Проверка.** GitHub (`/releases/latest`, либо СПИСОК `/releases` при бета-галочке); при
+   отказе API — сам github.com: лента `releases.atom` (стабильный канал — только версии без
+   суффикса, выбор по номеру), манифест и подпись по `releases/download/<тег>/<имя>`, подпись
+   проверяется сразу, имя и размер актива — из манифеста; при отказе и его — сайт
+   (`/api/app-version[-beta]`). Из ответа берутся: версия; актив под платформу (сравнение по
+   хвосту имени с вырезанной версией: Windows — `SilentGateSetup-<версия>.exe`, Android —
+   `…-arm64-v8a.apk`); манифест и подпись по **точным** именам
+   `update-SilentGate-<версия>.manifest.json` / `.manifest.sig` (запасные — прежние, без
+   `update-`, ими подписаны 1.14.0–1.15.1); размер актива.
    Не хватает хоть одного из пяти (адрес актива, имя, размер > 0, манифест, подпись) или
    адрес не проходит по схеме — `canSelfUpdate = false`, дальше только ссылка.
 2. **Можно ли ставить самим** — `UpdateInstaller.capability()` (см. «Когда самообновление
@@ -344,6 +348,8 @@ SilentGateSetup-<версия>.exe /SILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCE
 Сервер стенда отдаёт те же пути, что GitHub: `/repos/Solat228/silentgate/releases/latest`
 (и `/releases` для бета-канала и «Прежних версий») с `browser_download_url`, указывающими на
 файлы на том же сервере, плюс сами файлы — актив, `.manifest.json`, `.manifest.sig`.
+Путь «без API» на стенде: `/Solat228/silentgate/releases.atom` и
+`/Solat228/silentgate/releases/download/<тег>/<имя>` на той же базе.
 Запасной источник под override тоже уходит на стенд: `/api/app-version` и
 `/api/app-version-beta` на той же базе (с 1.15.0; раньше отказ GitHub на стенде уводил
 проверку на боевой сайт). Так проверяется и зеркало файлов: стенд отдаёт `404` на

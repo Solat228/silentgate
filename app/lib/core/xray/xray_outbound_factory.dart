@@ -1,32 +1,51 @@
 import 'dart:convert';
 
 import '../models/vpn_server.dart';
+import '../whitelist_bypass/whitelist_bypass_helper.dart';
 import 'outbound_variant.dart';
+import 'xray_keys.dart';
 
 /// Строит outbound(ы) Xray из [VpnServer]. Общая фабрика для основного конфига,
 /// проброс-харнесса и вариаций автонастройки.
 ///
 /// Возвращает список: сам proxy-outbound (с тегом [tag]) плюс вспомогательные
-/// (например, freedom-outbound `frag-<tag>` при включённой фрагментации).
+/// (например, freedom-outbound `frag-<tag>` при включённой фрагментации или
+/// socks-outbound `wb-relay-<tag>` для нод БС поверх WebRTC).
 class XrayOutboundFactory {
   static List<Map<String, dynamic>> build(
     VpnServer server, {
     String tag = 'proxy',
     OutboundVariant variant = OutboundVariant.none,
+    int? whitelistRelayPort,
   }) {
     // Панель (Remnawave, формат XRAY_JSON) отдаёт готовый outbound — берём его как есть.
     // Пересборка из share-ссылки теряет детали streamSettings, из-за чего автовыбор
     // (burstObservatory) пинговал нерабочие outbound'ы.
-    final authoritative = _fromPanel(server, tag, variant);
+    final authoritative = _fromPanel(
+      server,
+      tag,
+      variant,
+      whitelistRelayPort: whitelistRelayPort,
+    );
     if (authoritative != null) return authoritative;
 
     final result = <Map<String, dynamic>>[];
     final stream = _streamSettings(server, variant);
 
-    // Фрагментация: proxy-outbound дозванивается через freedom-outbound с fragment.
-    if (variant.fragment) {
+    // Ноды БС: внешний TCP-сокет VLESS/Trojan уходит в локальный SOCKS5 WebRTC-релея.
+    // Фрагментация ClientHello здесь не нужна (снаружи на проводе оператора — WebRTC UDP).
+    if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
+      _attachWhitelistRelay(
+        stream,
+        result,
+        tag,
+        relaySocksPort: whitelistRelayPort ?? 10855,
+      );
+    } else if (variant.fragment) {
+      // Фрагментация: proxy-outbound дозванивается через freedom-outbound с fragment.
       final fragTag = 'frag-$tag';
-      final sockopt = (stream['sockopt'] as Map<String, dynamic>?) ?? <String, dynamic>{};
+      final sockopt =
+          (stream['sockopt'] as Map<String, dynamic>?) ?? <String, dynamic>{};
       sockopt['dialerProxy'] = fragTag;
       stream['sockopt'] = sockopt;
       result.add({
@@ -43,18 +62,65 @@ class XrayOutboundFactory {
     return result;
   }
 
+  /// Очищает путь WS/XHTTP/HTTP от служебных query-параметров БС (`/sgbs?p=...` -> `/sgbs`)
+  /// и привязывает `sockopt.dialerProxy` к локальному SOCKS5-порту `whitelist-bypass`.
+  static void _attachWhitelistRelay(
+    Map<String, dynamic> stream,
+    List<Map<String, dynamic>> result,
+    String tag, {
+    int relaySocksPort = 10855,
+  }) {
+    for (final key in const ['wsSettings', 'xhttpSettings', 'httpSettings']) {
+      if (stream[key] is Map) {
+        final m = Map<String, dynamic>.from(stream[key] as Map);
+        if (m['path'] is String) {
+          m['path'] = WhitelistBypassSpec.cleanTransportPath(m['path'] as String);
+        }
+        stream[key] = m;
+      }
+    }
+
+    final relayTag = 'wb-relay-$tag';
+    final sockopt = stream['sockopt'] is Map
+        ? Map<String, dynamic>.from(stream['sockopt'] as Map)
+        : <String, dynamic>{};
+    sockopt['dialerProxy'] = relayTag;
+    stream['sockopt'] = sockopt;
+    result.add({
+      'tag': relayTag,
+      'protocol': 'socks',
+      'settings': {
+        'servers': [
+          {
+            'address': '127.0.0.1',
+            'port': relaySocksPort,
+          },
+        ],
+      },
+    });
+  }
+
   /// Outbound из [VpnServer.rawOutboundJson] (как прислала панель): перетегируем под
   /// нужный tag и, если запрошена вариация, накладываем fingerprint/fragment поверх.
   /// null — если авторитетного JSON нет или он не разобрался.
   static List<Map<String, dynamic>>? _fromPanel(
-      VpnServer server, String tag, OutboundVariant variant) {
+    VpnServer server,
+    String tag,
+    OutboundVariant variant, {
+    int? whitelistRelayPort,
+  }) {
     final raw = server.rawOutboundJson;
     if (raw == null || raw.isEmpty) return null;
     try {
-      final decoded = jsonDecode(raw);
+      // Канонические ключи — как у полного конфига (ревью 29.10.2026, H3):
+      // иначе `"Tag"` или `"StreamSettings"` прошли бы мимо правок ниже.
+      final decoded = canonicalXrayValue(jsonDecode(raw));
       if (decoded is! Map) return null;
       final out = Map<String, dynamic>.from(decoded);
       out['tag'] = tag;
+      // Обычный сервер панели минует нормализатор полного конфига — путь
+      // журнала TLS-ключей снимаем здесь же (L15).
+      stripMasterKeyLog(out);
 
       final stream = out['streamSettings'] is Map
           ? Map<String, dynamic>.from(out['streamSettings'] as Map)
@@ -73,7 +139,14 @@ class XrayOutboundFactory {
       }
 
       final result = <Map<String, dynamic>>[];
-      if (variant.fragment) {
+      if (server.usesWhitelistRelay && !server.isWhitelistBypass) {
+        _attachWhitelistRelay(
+          stream,
+          result,
+          tag,
+          relaySocksPort: whitelistRelayPort ?? 10855,
+        );
+      } else if (variant.fragment) {
         final fragTag = 'frag-$tag';
         final sockopt = stream['sockopt'] is Map
             ? Map<String, dynamic>.from(stream['sockopt'] as Map)
@@ -180,7 +253,8 @@ class XrayOutboundFactory {
     }
   }
 
-  static Map<String, dynamic> _streamSettings(VpnServer s, OutboundVariant variant) {
+  static Map<String, dynamic> _streamSettings(
+      VpnServer s, OutboundVariant variant) {
     final fp = variant.fingerprint ?? s.fingerprint;
     final stream = <String, dynamic>{
       'network': s.network,

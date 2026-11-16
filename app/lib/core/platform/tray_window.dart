@@ -30,7 +30,7 @@ class TrayWindow with WindowListener, TrayListener {
   /// «О программе», в том числе когда окно свёрнуто в трей и видно только
   /// значок. Имя и версию берём из [AppInfo], а не литералом: бренд может
   /// смениться, и тогда правка не должна расползаться по интерфейсу.
-  static String get nameWithVersion => '${AppInfo.name} ${AppInfo.version}';
+  static String get nameWithVersion => '${AppInfo.name} ${AppInfo.fullVersion}';
 
   /// Параметры окна.
   ///
@@ -114,7 +114,8 @@ class TrayWindow with WindowListener, TrayListener {
 
   Future<void> _applyTrayIcon() async {
     final name =
-        trayIconFor(connected: _trayConnected ?? false, blocked: _blocked);
+        trayIconFor(
+            connected: _trayConnected ?? false, blocked: _blocked || _offline);
     if (_trayIconFile == name) return; // см. _trayConnected
     final path = _trayIconPath(name);
     // ⚠️ ПРОВЕРЯЕМ ФАЙЛ САМИ. Плагин отвечает успехом, даже когда Windows не
@@ -123,7 +124,7 @@ class TrayWindow with WindowListener, TrayListener {
     // ошибки, без исключения и без строчки в журнале. Молчащий трей потом
     // ищут часами, а причина всё это время лежит в имени файла.
     if (!File(path).existsSync()) {
-      AppLog.e('Значок трея не найден: $path — трей останется пустым');
+      AppLog.e('Значок трея не найден: $path - трей останется пустым');
       return;
     }
     try {
@@ -217,7 +218,7 @@ class TrayWindow with WindowListener, TrayListener {
       } catch (e) {
         // Отказ отключения не имеет права оставить приложение висеть: файл
         // exe держит именно процесс, и установщик ждёт его смерти.
-        AppLog.w('Выход: отключение не удалось ($e) — гасим всё равно');
+        AppLog.w('Выход: отключение не удалось ($e) - гасим всё равно');
       }
     }
     await instance._destroy();
@@ -285,7 +286,7 @@ class TrayWindow with WindowListener, TrayListener {
       if (vpnActive) {
         // #1.2 — всегда спрашивать при активном VPN
         final choice = await _askCloseWithVpn(ctx);
-        if (choice != 'quit') return; // 'stay' / null — остаёмся
+        if (choice != 'quit') return; // 'stay' / null - остаёмся
       }
       // disconnect сам no-op, если отключены; страхует и от гонки disconnecting.
       await state.disconnect();
@@ -429,6 +430,18 @@ class TrayWindow with WindowListener, TrayListener {
     await instance._pushTooltip();
   }
 
+  /// Пропал интернет целиком — и через туннель, и напрямую.
+  ///
+  /// Значок тот же красный, что у блокировки: для человека это одно и то же —
+  /// «сейчас интернета нет». Различается подсказка: здесь виноват не сервер,
+  /// и выключать VPN бесполезно. Владелец 13.10.2026: при выдернутом кабеле
+  /// трей оставался фиолетовым.
+  static Future<void> setOffline(bool offline) async {
+    instance._offline = offline;
+    await instance._applyTrayIcon();
+    await instance._pushTooltip();
+  }
+
   // ── Подсказка трея: РОВНО ДВЕ СТРОКИ ────────────────────────────────────────
 
   /// ⚠️ WINDOWS МОЛЧА РЕЖЕТ ПОДСКАЗКУ НА 127 СИМВОЛАХ.
@@ -467,10 +480,10 @@ class TrayWindow with WindowListener, TrayListener {
     final note = blocked?.trim() ?? '';
     // Блокировка трафика важнее сервера и скорости: пока kill switch держит
     // канал, объяснять надо именно это.
-    if (note.isNotEmpty) return _clip('$name — $note', tooltipLimit);
+    if (note.isNotEmpty) return _clip('$name - $note', tooltipLimit);
 
     final srv = server?.trim() ?? '';
-    final first = srv.isEmpty ? name : '$name — $srv';
+    final first = srv.isEmpty ? name : '$name - $srv';
     final second = speed?.trim() ?? '';
     if (second.isEmpty) return _clip(first, tooltipLimit);
     // -1 — перевод строки. Он тоже занимает место в szTip.
@@ -521,6 +534,7 @@ class TrayWindow with WindowListener, TrayListener {
 
   /// Kill switch держит трафик — подсказка говорит об этом вместо сервера.
   bool _blocked = false;
+  bool _offline = false;
 
   /// Состояние по последнему вызову [setConnected].
   bool _connected = false;
@@ -558,6 +572,11 @@ class TrayWindow with WindowListener, TrayListener {
   }
 
   String _currentTooltip() {
+    // Пропавшая сеть важнее удержания: она объясняет, почему удерживать
+    // приходится, и что VPN тут ни при чём.
+    if (_offline) {
+      return composeTooltip(blocked: _offlineNote());
+    }
     if (_blocked) {
       return composeTooltip(blocked: _blockedNote());
     }
@@ -577,9 +596,22 @@ class TrayWindow with WindowListener, TrayListener {
     }
   }
 
-  /// Текст про удержанный трафик.
-  ///
-  /// Остаётся русским литералом, как и был: своего ключа в ARB у него нет, а
-  /// заводить его ради одной строки значит оставить восемь языков без перевода.
-  String _blockedNote() => 'соединение потеряно, трафик заблокирован';
+  /// Текст про удержанный трафик — на языке интерфейса; без дерева виджетов
+  /// (ранний старт, тесты) — русский.
+  String _blockedNote() {
+    final ctx = _ctx;
+    final l = ctx == null
+        ? null
+        : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
+    return l?.trayNoteBlocked ?? 'соединение потеряно, трафик заблокирован';
+  }
+
+  /// Текст про пропавшую сеть — как [_blockedNote].
+  String _offlineNote() {
+    final ctx = _ctx;
+    final l = ctx == null
+        ? null
+        : Localizations.of<AppLocalizations>(ctx, AppLocalizations);
+    return l?.trayNoteOffline ?? 'нет интернета, жду сеть';
+  }
 }

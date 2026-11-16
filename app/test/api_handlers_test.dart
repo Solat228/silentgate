@@ -46,6 +46,9 @@ class _FakeEngine extends VpnEngine {
   int balancerCalls = 0;
   int disconnectCalls = 0;
 
+  /// Пауза в connect/disconnect — чтобы вызовы могли идти внахлёст.
+  Duration delay = Duration.zero;
+
   @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
 
@@ -73,6 +76,7 @@ class _FakeEngine extends VpnEngine {
   Future<void> connect(VpnServer server,
       {ConnectionOptions options = const ConnectionOptions()}) async {
     connectCalls++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     lastConnectedKey = server.key;
     _emit(const VpnStatus(VpnConnectionState.connected));
   }
@@ -88,6 +92,7 @@ class _FakeEngine extends VpnEngine {
   @override
   Future<void> disconnect() async {
     disconnectCalls++;
+    if (delay > Duration.zero) await Future<void>.delayed(delay);
     lastConnectedKey = null;
     _emit(const VpnStatus.disconnected());
   }
@@ -194,6 +199,17 @@ void main() {
       expect(() => assertNoSecrets(dirty), throwsA(isA<StateError>()));
     });
 
+    test('проверка ответа ловит ключ сервера в любом поле', () {
+      final dirty = jsonEncode({
+        'name': 'x',
+        'note': 'vless://uuid@203.0.113.10:443#x',
+      });
+      expect(() => assertNoSecrets(dirty), throwsA(isA<StateError>()));
+      expect(apiServerId('vless://a'), apiServerId('vless://a'));
+      expect(apiServerId('vless://a'), isNot(apiServerId('vless://b')));
+      expect(apiServerId('vless://a'), startsWith('srv-'));
+    });
+
     test('чистый ответ проходит', () {
       final clean = jsonEncode({'state': 'connected', 'server': 'Германия'});
       expect(() => assertNoSecrets(clean), returnsNormally);
@@ -246,12 +262,14 @@ void main() {
       final exits = await env.handlers.exits();
 
       expect(servers, hasLength(1));
-      expect(servers.single['key'], a.key);
+      expect(servers.single['key'], apiServerId(a.key));
+      expect(jsonEncode(servers), isNot(contains('vless://')),
+          reason: 'ключ с кредами в ответ API не уходит (аудит F)');
       expect(servers.single['name'], 'Германия');
       // «Прямо» — всегда последней записью, даже без единого сервера-выхода.
       expect(exits.last['name'], 'Прямо');
       expect(exits.last['port'], ApiPorts.direct);
-      expect(exits.any((e) => e['serverKey'] == a.key), isTrue);
+      expect(exits.any((e) => e['serverKey'] == apiServerId(a.key)), isTrue);
     });
 
     group('exits() и гейт «канал реально поднят»', () {
@@ -299,7 +317,7 @@ void main() {
 
         final exits = await env.handlers.exits();
 
-        expect(exits.any((e) => e['serverKey'] == a.key), isFalse,
+        expect(exits.any((e) => e['serverKey'] == apiServerId(a.key)), isFalse,
             reason: 'ключ вне диапазона — порта для него нет физически');
         expect(exits.any((e) => e['port'] == null), isFalse,
             reason: 'запись без порта собрала бы у клиента битый URL '
@@ -328,13 +346,13 @@ void main() {
             apiExitServerKeys: [ok.key, bad.key]));
 
         final exits = await env.handlers.exits();
-        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
-        expect(exits.any((e) => e['serverKey'] == bad.key), isFalse);
+        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
+        expect(exits.any((e) => e['serverKey'] == apiServerId(bad.key)), isFalse);
         // ⚠️ Номера портов от исключения НЕ съезжают: индекс считается по
         // полному списку ключей настройки, а не по отфильтрованному ответу.
         // Иначе снятие одной галочки увело бы чужой запрос в другую страну.
         expect(
-            exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+            exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
             ApiPorts.forServer([ok.key, bad.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
@@ -348,7 +366,7 @@ void main() {
       /// не серел, `/v1/exits` публиковал порт, а `ExitOutbounds.build` собирал
       /// выход из ОДНОГО узла профиля — без балансировщика и `burstObservatory`.
       /// Скрипт думал, что ходит «через Авто», а ходил через случайный узел.
-      test('⚠️ панельный профиль «Авто» (protocol vless) порта НЕ получает',
+      test('живой панельный профиль «Авто» (protocol vless) получает порт через Xray-мост',
           () async {
         final env = await _Env.create(panelConfigs: {
           _serverB: '{"outbounds":[{"protocol":"vless","tag":"proxy"}],'
@@ -357,10 +375,8 @@ void main() {
         addTearDown(env.dispose);
         final ok = await env.addServer(_serverA);
         final panel = await env.addServer(_serverB);
-        expect(panel.isPanelProfile, isTrue,
-            reason: 'без живого rawPanelConfig тест проверял бы обычный сервер');
-        expect(panel.protocol, 'vless',
-            reason: 'ровно этим профиль и проходил мимо прежнего предиката');
+        expect(panel.isPanelProfile, isTrue);
+        expect(panel.protocol, 'vless');
 
         await env.settings.update((s) => s.copyWith(
             apiEnabled: true,
@@ -368,14 +384,36 @@ void main() {
             apiExitServerKeys: [ok.key, panel.key]));
 
         final exits = await env.handlers.exits();
-        expect(exits.any((e) => e['serverKey'] == panel.key), isFalse,
-            reason: 'инбаунда под него не создастся — публиковать порт значило '
-                'бы назвать скрипту адрес, на который ядро не сядет');
-        expect(exits.any((e) => e['serverKey'] == ok.key), isTrue);
-        // Номер порта уцелевшего сервера считается по ПОЛНОМУ списку ключей —
-        // исключение профиля не должно сдвигать чужие порты.
-        expect(exits.firstWhere((e) => e['serverKey'] == ok.key)['port'],
+        expect(exits.any((e) => e['serverKey'] == apiServerId(panel.key)), isTrue,
+            reason: 'валидный профиль «Авто» поднимается через локальный Xray-мост');
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(panel.key))['port'],
+            ApiPorts.forServer([ok.key, panel.key], panel.key));
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
             ApiPorts.forServer([ok.key, panel.key], ok.key));
+        expect(exits.last['name'], 'Прямо');
+      });
+
+      test('⚠️ пустой панельный профиль без прокси-узлов порта НЕ получает и не сдвигает чужие',
+          () async {
+        final env = await _Env.create(panelConfigs: {
+          _serverB: '{"outbounds":[{"protocol":"freedom","tag":"direct"}]}',
+        });
+        addTearDown(env.dispose);
+        final ok = await env.addServer(_serverA);
+        final brokenPanel = await env.addServer(_serverB);
+        expect(brokenPanel.isPanelProfile, isTrue);
+
+        await env.settings.update((s) => s.copyWith(
+            apiEnabled: true,
+            apiToken: 'secret',
+            apiExitServerKeys: [ok.key, brokenPanel.key]));
+
+        final exits = await env.handlers.exits();
+        expect(exits.any((e) => e['serverKey'] == apiServerId(brokenPanel.key)), isFalse,
+            reason: 'без рабочих прокси-узлов мост под профиль не создастся');
+        expect(exits.any((e) => e['serverKey'] == apiServerId(ok.key)), isTrue);
+        expect(exits.firstWhere((e) => e['serverKey'] == apiServerId(ok.key))['port'],
+            ApiPorts.forServer([ok.key, brokenPanel.key], ok.key));
         expect(exits.last['name'], 'Прямо');
       });
     });
@@ -387,7 +425,7 @@ void main() {
       addTearDown(env.dispose);
       final a = await env.addServer(_serverA);
 
-      final r = await env.handlers.connect(serverKey: a.key);
+      final r = await env.handlers.connect(serverKey: apiServerId(a.key));
       await pumpEventQueue();
 
       expect(r.isOk, isTrue);
@@ -910,5 +948,24 @@ void main() {
       expect(eg['error'], isNotNull,
           reason: 'причина обязана быть названа, а не подразумеваться');
     });
+  });
+  test('⚠️ два перезапуска внахлёст не выключают VPN (аудит G)', () async {
+    final env = await _Env.create();
+    addTearDown(env.dispose);
+    final a = await env.addServer(_serverA);
+    env.state.selectServer(env.state.servers.indexWhere((s) => s.key == a.key));
+    await env.state.toggleConnection(env.settings.settings);
+    await pumpEventQueue(); // статус движка доходит до AppState потоком
+    expect(env.state.status.isConnected, isTrue, reason: 'предпосылка');
+
+    env.engine.delay = const Duration(milliseconds: 5);
+    // Плашка «Переподключить» и команда API в один такт.
+    await Future.wait([
+      env.state.reconnect(env.settings.settings),
+      env.state.reconnect(env.settings.settings),
+    ]);
+
+    expect(env.engine.status.isConnected, isTrue,
+        reason: 'второй перезапуск попал на поднятый канал и выключил его');
   });
 }

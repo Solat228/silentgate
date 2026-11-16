@@ -50,6 +50,13 @@
 ; вышло 16.08.2026: на выходе получился `SilentGateSetup-1.4.3.49.exe`, хотя
 ; собирали 1.5.1 — версию установщик берёт из exe, поэтому подлог был виден
 ; только в имени файла.
+; Суффикс имени установщика: сборке для Microsoft Store - /DSetupSuffix=-msstore,
+; чтобы её файл не путался с установщиком GitHub той же версии.
+; Сборке без драйвера (build-exe.bat с SILENTGATE_NO_TUN) - ещё и /DNoTun.
+#ifndef SetupSuffix
+  #define SetupSuffix ""
+#endif
+
 #ifndef ReleaseDir
   #define ReleaseDir "..\app\build\windows\x64\runner\Release"
 #endif
@@ -93,11 +100,26 @@ UninstallDisplayName={#MyAppName}
 ; — с лишним дефисом, — и файл на сервере пришлось бы переименовывать руками
 ; при каждом выпуске. Ровно так и рождаются «скачал по кнопке, а там 404».
 ; Меняешь имя тут — меняй и в документе, и на сервере.
-OutputBaseFilename=SilentGateSetup-{#ShortVersion}
+OutputBaseFilename=SilentGateSetup-{#ShortVersion}{#SetupSuffix}
 OutputDir=Output
 VersionInfoVersion={#MyAppVersion}
 VersionInfoCompany={#MyAppPublisher}
-VersionInfoDescription={#MyAppName} — установка
+VersionInfoDescription={#MyAppName} - установка
+VersionInfoProductName={#MyAppName}
+#ifdef SignUninstallerDir
+; Подпись деинсталлятора для Microsoft Store (/DSignUninstallerDir=<каталог>,
+; заявка MS6). Store требует подписи у каждого PE поставки, а unins000.exe
+; Inno собирает сам, внутри компиляции. Подпись SignPath — внешняя служба с
+; ручным одобрением, синхронной командой SignTool её не вызвать, поэтому два
+; прохода (устройство — Compiler.SetupCompiler.pas, SignSetupMemoryFile):
+;   1) без подписанного файла компиляция кладёт в каталог неподписанный
+;      uninst-<версия>-<хэш>.e32 и падает с «нужна подпись»;
+;   2) .e32 подписывается снаружи и кладётся обратно под тем же именем —
+;      повторная компиляция берёт его, сверив содержимое без подписи.
+; Хэш в имени — от содержимого, так что чужой или устаревший файл не подхватится.
+SignedUninstaller=yes
+SignedUninstallerDir={#SignUninstallerDir}
+#endif
 Compression=lzma2
 SolidCompression=yes
 ; Per-user установка без прав администратора; TUN запросит UAC уже в рантайме.
@@ -158,6 +180,27 @@ Name: "ar"; MessagesFile: "compiler:Languages\Arabic.isl"
 ; они уезжали в установщик и портативный архив (+30 МБ). Страж — installer_test.
 Source: "{#ReleaseDir}\*"; DestDir: "{app}"; Excludes: "*.bak"; Flags: recursesubdirs createallsubdirs ignoreversion
 
+; dartjni.dll (пакет jni) Windows-сборке не нужен и с 2569690 в поставку не едет
+; (CMake стирает его из Release). Inno не удаляет файлы, которых нет в новой
+; версии: без этой строки обновление поверх 1.17.1 и старше оставляло бы старую
+; неподписанную DLL в каталоге программы (ревью 29.10.2026, L3).
+[InstallDelete]
+Type: files; Name: "{app}\dartjni.dll"
+; portable.txt от старых Release-сборок (до 1.18.0) в папке установленной копии
+; переключает её в портативный режим (sg-data\ вместо %APPDATA%\SilentGate).
+Type: files; Name: "{app}\portable.txt"
+
+#ifdef NoTun
+; Сборка без драйвера для Microsoft Store (/DNoTun, заявка MS3): wintun.dll и
+; sing-box.exe в ней нет. Inno не удаляет файлы, которых нет в новой версии, и
+; установка поверх обычной копии оставила бы драйвер на месте.
+[InstallDelete]
+Type: files; Name: "{app}\sing-box.exe"
+Type: files; Name: "{app}\wintun.dll"
+Type: files; Name: "{app}\licenses\LICENSE-wintun.txt"
+Type: files; Name: "{app}\licenses\LICENSE-singbox.txt"
+#endif
+
 [Registry]
 ; URL-схема silentgate:// (per-user, без админа)
 Root: HKCU; Subkey: "Software\Classes\silentgate"; ValueType: string; ValueName: ""; ValueData: "URL:SilentGate Protocol"; Flags: uninsdeletekey
@@ -167,7 +210,12 @@ Root: HKCU; Subkey: "Software\Classes\silentgate\shell\open\command"; ValueType:
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon
+; ⚠️ Ярлык на Рабочем столе создаётся через Inno ТОЛЬКО когда файла ещё нет
+; (`Check: ShouldCreateDesktopIcon`). Штатный обработчик секции Icons всегда
+; вызывает `DeleteFile` перед созданием `.lnk`: Windows Explorer воспринимает
+; это как удаление и создание нового файла и сбрасывает координаты значка на
+; сетке Рабочего стола в левый верхний угол при каждом обновлении/переустановке.
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; Tasks: desktopicon; Check: ShouldCreateDesktopIcon
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
@@ -181,15 +229,22 @@ Filename: "{app}\{#MyAppExe}"; Description: "{cm:LaunchProgram,{#MyAppName}}"; F
 Filename: "{app}\{#MyAppExe}"; Flags: nowait; Check: ShouldRelaunch
 
 [UninstallRun]
-; Перед удалением: снять системный прокси, убить ядро/sing-box, удалить данные, снять схему.
-Filename: "{app}\{#MyAppExe}"; Parameters: "--cleanup"; Flags: runhidden; RunOnceId: "SilentGateCleanup"
+; Перед удалением: снять системный прокси, убить ядро/sing-box, снять схему,
+; стереть журналы, кэши и закачки. Настройки и подписки остаются — их судьбу
+; решает вопрос «Сохранить настройки?» (CurUninstallStepChanged в [Code]).
+; ⚠️ Параметры [UninstallRun] Inno раскрывает при УСТАНОВКЕ, а не при удалении,
+; поэтому ответ человека сюда не передать: приложение всегда оставляет нужное
+; для переустановки, а стирает каталог целиком уже [Code], если ответ «нет».
+Filename: "{app}\{#MyAppExe}"; Parameters: "--cleanup --keep-data"; Flags: runhidden; RunOnceId: "SilentGateCleanup"
 
-[UninstallDelete]
-Type: filesandordirs; Name: "{userappdata}\SilentGate"
+; ⚠️ [UninstallDelete] для {userappdata}\SilentGate БОЛЬШЕ НЕТ: Check у этой
+; секции тоже вычисляется при установке. Каталог данных стирает [Code]
+; (CurUninstallStepChanged, шаг usPostUninstall), если человек не попросил
+; сохранить настройки. Тихое удаление стирает всё, кроме случая /KEEPDATA.
 
 [Messages]
-ru.WelcomeLabel2=Будет установлен {#MyAppName} {#ShortVersion} — VPN-клиент.%n%nРекомендуется закрыть все другие приложения перед продолжением.
-en.WelcomeLabel2={#MyAppName} {#ShortVersion} — VPN client — will be installed.%n%nIt is recommended that you close all other applications before continuing.
+ru.WelcomeLabel2=Будет установлен {#MyAppName} {#ShortVersion} - VPN-клиент.%n%nРекомендуется закрыть все другие приложения перед продолжением.
+en.WelcomeLabel2={#MyAppName} {#ShortVersion} - VPN client - will be installed.%n%nIt is recommended that you close all other applications before continuing.
 
 [CustomMessages]
 ; ⚠️ ПЕРЕВОД ОБЯЗАН БЫТЬ У КАЖДОГО ЯЗЫКА ИЗ [Languages].
@@ -285,14 +340,27 @@ pt.QuitBtnCancel=Cancelar
 tr.QuitBtnCancel=İptal
 ar.QuitBtnCancel=إلغاء
 
-ru.QuitBusySilent=Отказ: SilentGate подключён к VPN. Рвать живое соединение молча нельзя — запустите установщик без /SILENT либо укажите /FORCEQUIT.
-en.QuitBusySilent=Aborted: SilentGate is connected to a VPN. A live connection must not be dropped silently — run the installer without /SILENT or pass /FORCEQUIT.
+ru.QuitBusySilent=Отказ: SilentGate подключён к VPN. Рвать живое соединение молча нельзя - запустите установщик без /SILENT либо укажите /FORCEQUIT.
+en.QuitBusySilent=Aborted: SilentGate is connected to a VPN. A live connection must not be dropped silently - run the installer without /SILENT or pass /FORCEQUIT.
 es.QuitBusySilent=Cancelado: SilentGate está conectado a una VPN. Una conexión activa no puede cortarse en silencio: ejecute el instalador sin /SILENT o use /FORCEQUIT.
-fr.QuitBusySilent=Abandon : SilentGate est connecté à un VPN. Une connexion active ne peut pas être coupée en silence — lancez le programme d'installation sans /SILENT ou ajoutez /FORCEQUIT.
+fr.QuitBusySilent=Abandon : SilentGate est connecté à un VPN. Une connexion active ne peut pas être coupée en silence - lancez le programme d'installation sans /SILENT ou ajoutez /FORCEQUIT.
 de.QuitBusySilent=Abgebrochen: SilentGate ist mit einem VPN verbunden. Eine aktive Verbindung darf nicht stillschweigend getrennt werden – starten Sie das Setup ohne /SILENT oder mit /FORCEQUIT.
-pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio — execute o instalador sem /SILENT ou use /FORCEQUIT.
-tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez — kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
-ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت — شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
+pt.QuitBusySilent=Cancelado: o SilentGate está ligado a uma VPN. Uma ligação ativa não pode ser terminada em silêncio - execute o instalador sem /SILENT ou use /FORCEQUIT.
+tr.QuitBusySilent=İptal edildi: SilentGate bir VPN'e bağlı. Etkin bir bağlantı sessizce kesilemez - kurulumu /SILENT olmadan çalıştırın veya /FORCEQUIT ekleyin.
+ar.QuitBusySilent=تم الإلغاء: ‏SilentGate متصل بشبكة VPN. لا يجوز قطع اتصال نشط بصمت - شغِّل المثبِّت بدون ‎/SILENT‎ أو أضف ‎/FORCEQUIT‎.
+
+; ── Удаление: сохранить настройки? ─────────────────────────────────────────
+; По умолчанию — «Нет»: в каталоге лежат подписки, то есть ключи доступа к
+; VPN, и оставлять их на машине можно только с согласия человека.
+
+ru.KeepDataQuestion=Сохранить настройки и подписки SilentGate на этом компьютере?%n%nОни пригодятся, если вы установите программу снова. Если ответить «Нет», все данные программы будут удалены.
+en.KeepDataQuestion=Keep SilentGate settings and subscriptions on this computer?%n%nThey will be used if you install the program again. If you answer No, all program data will be deleted.
+es.KeepDataQuestion=¿Conservar los ajustes y las suscripciones de SilentGate en este equipo?%n%nSe usarán si vuelve a instalar el programa. Si responde No, se eliminarán todos los datos del programa.
+fr.KeepDataQuestion=Conserver les paramètres et abonnements de SilentGate sur cet ordinateur ?%n%nIls seront réutilisés si vous réinstallez le programme. Si vous répondez Non, toutes les données du programme seront supprimées.
+de.KeepDataQuestion=SilentGate-Einstellungen und Abonnements auf diesem Computer behalten?%n%nSie werden bei einer erneuten Installation verwendet. Bei „Nein“ werden alle Programmdaten gelöscht.
+pt.KeepDataQuestion=Manter as definições e subscrições do SilentGate neste computador?%n%nSerão usadas se voltar a instalar o programa. Se responder Não, todos os dados do programa serão eliminados.
+tr.KeepDataQuestion=SilentGate ayarları ve abonelikleri bu bilgisayarda saklansın mı?%n%nProgramı yeniden kurarsanız kullanılırlar. Hayır derseniz programın tüm verileri silinir.
+ar.KeepDataQuestion=هل تريد الاحتفاظ بإعدادات SilentGate واشتراكاته على هذا الحاسوب؟%n%nستُستخدم إذا ثبَّتَّ البرنامج مرة أخرى. إذا أجبت «لا» فستُحذف كل بيانات البرنامج.
 
 [Code]
 { ⚠️ ЧТО ЗДЕСЬ ЛЕЧИТСЯ. Inno сам НЕ СРАВНИВАЕТ версии: он ставит поверх что
@@ -421,6 +489,74 @@ end;
 
 var
   GClosedByUs: Boolean;
+  GWasAlreadyInstalled: Boolean;
+  GTasksPageSynced: Boolean;
+
+function DesktopShortcutPath: String;
+begin
+  Result := ExpandConstant('{autodesktop}\{#MyAppName}.lnk');
+end;
+
+{ Если ярлык на Рабочем столе уже есть — НЕ пересоздаём его через Inno (иначе
+  `DeleteFile` сбросит позицию иконки на экране). Если каталог установки app
+  не менялся — не трогаем `.lnk` вообще; если изменился — обновляем цель
+  на месте через `WScript.Shell` без удаления файла. Если при тихом обновлении
+  поверх установленной копии ярлыка нет (пользователь сам убрал/перенёс его в
+  папку) — не навязываем новый ярлык. }
+function ShouldCreateDesktopIcon: Boolean;
+var
+  lnkPath, targetExe, targetDir, curTarget, curDir: String;
+  shell, sc: Variant;
+begin
+  lnkPath := DesktopShortcutPath;
+  if FileExists(lnkPath) then
+  begin
+    Result := False;
+    targetExe := ExpandConstant('{app}\{#MyAppExe}');
+    targetDir := ExpandConstant('{app}');
+    try
+      shell := CreateOleObject('WScript.Shell');
+      sc := shell.CreateShortcut(lnkPath);
+      curTarget := String(sc.TargetPath);
+      curDir := String(sc.WorkingDirectory);
+      if (CompareText(curTarget, targetExe) <> 0) or
+         (CompareText(RemoveBackslashUnlessRoot(curDir), RemoveBackslashUnlessRoot(targetDir)) <> 0) then
+      begin
+        sc.TargetPath := targetExe;
+        sc.WorkingDirectory := targetDir;
+        sc.Save;
+        Log('Ярлык Рабочего стола обновлён на месте (без сброса позиции): ' + lnkPath);
+      end
+      else
+        Log('Ярлык Рабочего стола уже актуален — не трогаем позицию: ' + lnkPath);
+    except
+      Log('Проверка WScript.Shell пропущена — существующий ярлык оставлен на месте: ' + lnkPath);
+    end;
+    Exit;
+  end;
+
+  if GWasAlreadyInstalled and WizardSilent then
+  begin
+    Log('Тихое обновление: ярлыка на Рабочем столе не было — новый не создаём');
+    Result := False;
+    Exit;
+  end;
+
+  Result := True;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpSelectTasks) and (not GTasksPageSynced) then
+  begin
+    GTasksPageSynced := True;
+    if GWasAlreadyInstalled and (not FileExists(DesktopShortcutPath)) then
+    begin
+      WizardSelectTasks('!desktopicon');
+      Log('Переустановка: ярлык на Рабочем столе отсутствует — галочка desktopicon снята по умолчанию');
+    end;
+  end;
+end;
 
 { Путь к установленному exe — из той же ветки реестра, что и версия. }
 function InstalledLocation: String;
@@ -594,10 +730,116 @@ end;
 
 function InitializeSetup(): Boolean;
 begin
+  { Запоминаем до копирования файлов, была ли программа уже установлена: от
+    этого зависит бережное обращение с ярлыком Рабочего стола. }
+  GWasAlreadyInstalled := InstalledVersion <> '';
   { Порядок обязателен: сперва согласие на саму установку, потом — закрытие
     работающего приложения. Наоборот означало бы гасить чужой VPN ради
     установки, от которой человек в следующем окне откажется. }
   Result := ConfirmVersionChange;
   if not Result then Exit;
   Result := EnsureAppClosed;
+end;
+
+
+{ ── Удаление: сохранить настройки? ──────────────────────────────────────────
+  Вопрос задаётся ПОСЛЕ подтверждения удаления (шаг usUninstall), а не в
+  InitializeUninstall: иначе он всплывал бы раньше окна «Удалить SilentGate?»,
+  и человек, передумавший удалять, отвечал бы на вопрос зря.
+  Тихое удаление (/SILENT, /VERYSILENT) вопросов не задаёт: данные стираются,
+  как и до 1.17.0, кроме случая /KEEPDATA. }
+var
+  GKeepData: Boolean;
+
+function KeepDataRequested: Boolean;
+var
+  i: Integer;
+begin
+  Result := False;
+  for i := 1 to ParamCount do
+    if CompareText(ParamStr(i), '/KEEPDATA') = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+{ ⚠️ ЖУРНАЛ УДАЛЕНИЯ INNO ДОПИСЫВАЕТСЯ ПРИ КАЖДОМ ОБНОВЛЕНИИ, старые записи
+  в нём остаются. У копии, обновлённой с 1.16.0 и раньше, там лежат её
+  удаление каталога данных (секция UninstallDelete) и `--cleanup` без `--keep-data`, и
+  исполняются они ПОСЛЕ этого шага при любом ответе. Живьём в VM (20.10.2026)
+  ответ «Да» стирал всё. Поэтому сохраняемое уезжает в сторону до записей
+  журнала и возвращается на шаге usPostUninstall, когда они уже отработали. }
+const
+  KeepDirSuffix = '.uninstall-keep';
+var
+  GKeptParked: Boolean;
+
+procedure ParkKeptData;
+var
+  dataDir, keepDir: String;
+  rc: Integer;
+begin
+  dataDir := ExpandConstant('{userappdata}\SilentGate');
+  keepDir := dataDir + KeepDirSuffix;
+  if not DirExists(dataDir) then Exit;
+  { Оставить в каталоге только нужное переустановке. Список знает само
+    приложение (AppCleanup.keptOnUninstall) — Pascal его не дублирует. }
+  if not Exec(ExpandConstant('{app}\{#MyAppExe}'), '--cleanup --keep-data', '',
+      SW_HIDE, ewWaitUntilTerminated, rc) then
+    Log('Удаление: --cleanup --keep-data не запустился, код ' + IntToStr(rc));
+  { Остаток прошлого оборванного удаления: его данные устарели — актуальны
+    те, что сейчас в dataDir. }
+  if DirExists(keepDir) then DelTree(keepDir, True, True, True);
+  GKeptParked := RenameFile(dataDir, keepDir);
+  if not GKeptParked then
+    Log('Удаление: каталог данных не отодвинуть — старые записи журнала могут его стереть');
+end;
+
+procedure RestoreKeptData;
+var
+  dataDir, keepDir: String;
+begin
+  if not GKeptParked then Exit;
+  dataDir := ExpandConstant('{userappdata}\SilentGate');
+  keepDir := dataDir + KeepDirSuffix;
+  { Записи журнала (`--cleanup`) могли завести каталог заново ради своего
+    журнала — в нём нет ничего, что стоило бы хранить. }
+  if DirExists(dataDir) then DelTree(dataDir, True, True, True);
+  if RenameFile(keepDir, dataDir) then
+    Log('Удаление: настройки и подписки сохранены')
+  else
+    Log('Удаление: сохранённые данные остались в ' + keepDir);
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+var
+  dataDir: String;
+begin
+  if CurUninstallStep = usUninstall then
+  begin
+    if UninstallSilent then
+      GKeepData := KeepDataRequested
+    else
+      GKeepData := MsgBox(CustomMessage('KeepDataQuestion'), mbConfirmation,
+        MB_YESNO or MB_DEFBUTTON2) = IDYES;
+    if GKeepData then
+    begin
+      Log('Удаление: настройки и подписки сохраняются');
+      ParkKeptData;
+    end
+    else
+      Log('Удаление: данные программы будут стёрты');
+  end
+  else if CurUninstallStep = usPostUninstall then
+  begin
+    if GKeepData then
+    begin
+      RestoreKeptData;
+      Exit;
+    end;
+    dataDir := ExpandConstant('{userappdata}\SilentGate');
+    if DirExists(dataDir) and not DelTree(dataDir, True, True, True) then
+      Log('Удаление: каталог данных стёрт не полностью: ' + dataDir);
+  end;
 end;

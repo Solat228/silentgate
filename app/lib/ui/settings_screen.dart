@@ -10,7 +10,9 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import 'api_screen.dart';
+import 'dpi_bypass_screen.dart';
 import '../core/app_info.dart';
+import '../core/app_store.dart';
 import '../core/util/auto_groups.dart';
 import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
@@ -20,11 +22,13 @@ import '../core/platform/interference_scanner.dart';
 import '../core/platform/network_recovery.dart';
 import '../core/platform/app_launcher.dart';
 import '../core/platform/autostart_windows.dart';
+import '../core/platform/package_identity_windows.dart';
 import '../core/platform/vpn_lockdown.dart';
 import '../core/net/speed_test.dart';
-import '../core/models/vpn_server.dart';
+import '../core/dpi/dpi_bypass_lists.dart';
 import '../core/settings/app_settings.dart';
 import '../core/settings/split_tunnel.dart';
+import '../data/settings_backup.dart';
 import '../core/subscription/subscription_service.dart';
 import '../core/platform/platform_services.dart';
 import '../state/app_state.dart';
@@ -36,34 +40,31 @@ import 'tun_settings_screen.dart';
 import 'update_screen.dart';
 import 'url_schemes_screen.dart';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
+import 'widgets/data_consent_dialog.dart';
 import 'log_level_labels.dart';
-import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/sel_text.dart';
 import 'widgets/language_button.dart';
 import 'widgets/selection_outline.dart';
 import 'widgets/service_checks_row.dart';
+import 'widgets/settings_backup_actions.dart';
 import 'widgets/site_favicon.dart';
 import 'widgets/speed_traffic_note.dart';
-import 'widgets/subscription_avatar.dart';
+import 'widgets/support_report_dialog.dart';
+import 'widgets/whats_new_badge.dart';
+
+export 'widgets/support_report_dialog.dart'
+    show SupportRecipients, SupportReportDialog, showSupportReportDialog;
 
 /// Глобальный ключ раздела «Поддержка» — чтобы «перекинуть» сюда по кнопке
 /// «Поддержка» из любого места (карточка подписки и т.п.) и прокрутить.
 final GlobalKey supportSectionKey = GlobalKey();
 
-/// Якорь строки гео-баз: на неё ведёт плашка с главного экрана.
-final GlobalKey geoAssetsKey = GlobalKey();
-
 class SettingsScreen extends StatefulWidget {
   /// Открыть настройки и сразу прокрутить к разделу «Поддержка».
   final bool scrollToSupport;
-
-  /// Открыть настройки и подвести к строке гео-баз. Нужно плашке с главного
-  /// экрана: сказать «скачайте в настройках» и бросить искать самому — то же
-  /// самое, что промолчать.
-  final bool scrollToGeo;
-  const SettingsScreen(
-      {super.key, this.scrollToSupport = false, this.scrollToGeo = false});
+  const SettingsScreen({super.key, this.scrollToSupport = false});
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -106,22 +107,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (mounted) await _support(context);
       });
     }
-    if (widget.scrollToGeo) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        // Строка гео-баз живёт в разделе «Захват трафика»: свёрнутым он её не
-        // строит, и `ensureVisible` не находил бы ничего.
-        await _ensureExpanded(SettingsSectionIds.capture);
-        if (!mounted) return;
-        await WidgetsBinding.instance.endOfFrame;
-        final ctx = geoAssetsKey.currentContext;
-        if (ctx != null && ctx.mounted) {
-          Scrollable.ensureVisible(ctx,
-              duration: const Duration(milliseconds: 350),
-              curve: Curves.easeOut,
-              alignment: 0.3);
-        }
-      });
-    }
   }
 
   @override
@@ -151,6 +136,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: TextField(
               controller: _search,
+              contentInsertionConfiguration: buildExtendedContentInsertion(
+                _search,
+                onInserted: (v) => setState(() => _query = v),
+              ),
               onChanged: (v) => setState(() => _query = v),
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
@@ -215,7 +204,11 @@ abstract final class SettingsSectionIds {
   static const autotune = 'autotune';
   static const identity = 'identity';
   static const network = 'network';
+  static const dpi = 'dpi';
   static const api = 'api';
+
+  /// Резервная копия: экспорт и импорт файлом, копия Google на Android.
+  static const backup = 'backup';
   static const about = 'about';
 }
 
@@ -640,6 +633,33 @@ List<SettingsSectionData> buildSettingsSections(
     // Windows — на Android слушатель не поднимается (см.
     // `AppState.applyApiSettings`), и видимый раздел, который ничего
     // не делает, был бы обманом.
+    if (AppStoreInfo.tunAvailable)
+      SettingsSectionData(
+        id: SettingsSectionIds.dpi,
+        title: 'Zapret / Обход DPI',
+        icon: Icons.bolt,
+        ownHeader: true,
+        rows: [
+          SettingsRow(
+            search:
+                'Zapret Обход DPI ByeDPI GoodByeDPI автоподбор проверка стратегии YouTube Discord MSG_OOB ClientHello',
+            build: (_) => ListTile(
+              key: const Key('openDpiBypassScreenTile'),
+              leading: const Icon(Icons.bolt),
+              title: const Text('Zapret / Обход DPI'),
+              subtitle: Text(
+                s.dpiBypassEnabled
+                    ? 'Включён · проверка работы, автоподбор стратегии и списки доменов'
+                    : 'Живая проверка работы, автоподбор стратегии под провайдера и списки доменов',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DpiBypassScreen()),
+              ),
+            ),
+          ),
+        ],
+      ),
     if (Platform.isWindows)
       SettingsSectionData(
         id: SettingsSectionIds.api,
@@ -665,6 +685,12 @@ List<SettingsSectionData> buildSettingsSections(
           ),
         ],
       ),
+    SettingsSectionData(
+      id: SettingsSectionIds.backup,
+      title: l.sectionBackup,
+      icon: Icons.settings_backup_restore,
+      rows: _backupRows(l, s, controller),
+    ),
     // «URL-схемы» переехали в раздел «Представление панели» (как приложение
     // общается с панелью), «Логи» — к «Поддержке» (внутри «О программе»).
     SettingsSectionData(
@@ -673,6 +699,56 @@ List<SettingsSectionData> buildSettingsSections(
       icon: Icons.info_outline,
       rows: _aboutRows(l, s, controller),
     ),
+  ];
+}
+
+// ── Резервная копия ──────────────────────────────────────────────────────────
+List<SettingsRow> _backupRows(
+    AppLocalizations l, AppSettings settings, SettingsController controller) {
+  return [
+    SettingsRow(
+      search: '${l.backupExportTitle} ${l.backupExportSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.upload_file),
+        title: Text(l.backupExportTitle),
+        subtitle: Text(l.backupExportSub),
+        onTap: () => exportSettings(context),
+      ),
+    ),
+    SettingsRow(
+      search: '${l.backupImportTitle} ${l.backupImportSub}',
+      build: (context) => ListTile(
+        leading: const Icon(Icons.download_for_offline_outlined),
+        title: Text(l.backupImportTitle),
+        subtitle: Text(l.backupImportSub),
+        onTap: () => importSettings(context),
+      ),
+    ),
+    // Копия Google есть только на Android (`res/xml/backup_rules.xml`). На
+    // Windows её роль играют экспорт файлом и галочка деинсталлятора, а у
+    // пакета Store — копия в «Документах» (тот же выключатель подписок).
+    if (Platform.isAndroid)
+      SettingsRow(
+        search: '${l.backupGoogleSubsTitle} ${l.backupGoogleSubsSub}',
+        build: (context) => SwitchListTile(
+          value: settings.backupSubscriptionsToGoogle,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(backupSubscriptionsToGoogle: v)),
+          title: Text(l.backupGoogleSubsTitle),
+          subtitle: Text(l.backupGoogleSubsSub),
+        ),
+      )
+    else if (SettingsBackup.usesDocumentsCopy)
+      SettingsRow(
+        search: '${l.backupDocumentsSubsTitle} ${l.backupDocumentsSubsSub}',
+        build: (context) => SwitchListTile(
+          value: settings.backupSubscriptionsToGoogle,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(backupSubscriptionsToGoogle: v)),
+          title: Text(l.backupDocumentsSubsTitle),
+          subtitle: Text(l.backupDocumentsSubsSub),
+        ),
+      ),
   ];
 }
 
@@ -783,7 +859,9 @@ List<SettingsRow> _reliabilityRows(
     // время восстановления ядра нет. Условие спрашиваем у общей чистой функции
     // (`splitHonestyWarnings`), чтобы экран настроек и экран правил не
     // разъехались в том, что считают правдой.
-    if (splitHonestyWarnings(settings).contains(SplitHonesty.killSwitchIsPerApp))
+    if (AppStoreInfo.tunAvailable &&
+        splitHonestyWarnings(settings)
+            .contains(SplitHonesty.killSwitchIsPerApp))
       SettingsRow(
         search: '${l.killSwitchTitle} ${l.splitKillSwitchIsPerApp}',
         build: (context) => Padding(
@@ -802,8 +880,10 @@ List<SettingsRow> _reliabilityRows(
     // Два независимых ответа на один вопрос — это всегда расхождение, вопрос
     // только когда; тот же урок в проекте уже записан про разрешение и
     // исполнение url-схем.
-    if (splitHonestyWarnings(settings)
-        .contains(SplitHonesty.killSwitchWeakInSystemProxy))
+    // В сборке без драйвера TUN нет — предлагать его некуда.
+    if (AppStoreInfo.tunAvailable &&
+        splitHonestyWarnings(settings)
+            .contains(SplitHonesty.killSwitchWeakInSystemProxy))
       SettingsRow(
         search: '${l.killSwitchTitle} ${l.killSwitchOfferTun}',
         build: (context) => ListTile(
@@ -966,6 +1046,97 @@ List<SettingsRow> _reliabilityRows(
         subtitle: Text(l.settingsMyRulesOverridePanelSub),
       ),
     ),
+    if (AppStoreInfo.tunAvailable)
+      SettingsRow(
+        search: 'Обход DPI GDPI Zapret фрагментация ClientHello YouTube Discord без VPN',
+        build: (ctx) => Column(
+          children: [
+            SwitchListTile(
+              key: const Key('dpiBypassEnabled'),
+              value: settings.dpiBypassEnabled,
+              onChanged: (v) =>
+                  controller.update((s) => s.copyWith(dpiBypassEnabled: v)),
+              title: const Text('⚡ Встроенный обход DPI (GDPI / Zapret)'),
+              subtitle: const Text(
+                'Десинхронизация TLS ClientHello / MSG_OOB для YouTube и Discord с домашнего IP без расхода трафика VPN',
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.tune),
+              title: const Text('Меню Zapret: проверка работы и автоподбор стратегии'),
+              subtitle: const Text(
+                'Живой тест потока > 32 КБ, автоперебор профилей и свои домены',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(ctx).push(
+                MaterialPageRoute(builder: (_) => const DpiBypassScreen()),
+              ),
+            ),
+          ],
+        ),
+      ),
+    if (AppStoreInfo.tunAvailable && settings.dpiBypassEnabled)
+      SettingsRow(
+        search: 'Zapret VPN авто-переход фоллбэк 16КБ ТСПУ Cloudflare',
+        build: (_) => SwitchListTile(
+          key: const Key('dpiBypassAutoFallbackToVpn'),
+          value: settings.dpiBypassAutoFallbackToVpn,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(dpiBypassAutoFallbackToVpn: v)),
+          title: const Text('Совместный режим «Zapret → VPN»'),
+          subtitle: const Text(
+            'Сначала пробует прямой обход DPI; при сбросе соединения или блокировке ТСПУ на 16–20 КБ автоматически пускает домен через VPN',
+          ),
+        ),
+      ),
+    if (Platform.isWindows && AppStoreInfo.tunAvailable)
+      SettingsRow(
+        search: 'Discord UDP Voice QUIC Zapret winws WinDivert голосовые каналы',
+        build: (_) => SwitchListTile(
+          key: const Key('dpiBypassDiscordUdpWinws'),
+          value: settings.dpiBypassDiscordUdpWinws,
+          onChanged: (v) => controller
+              .update((s) => s.copyWith(dpiBypassDiscordUdpWinws: v)),
+          title: const Text('Discord UDP Voice и QUIC через Zapret (WinDivert)'),
+          subtitle: const Text(
+            'Узкий фильтр UDP 443, 19294–19344, 50000–50100 с автоматическим исключением всех IP серверов VPN',
+          ),
+        ),
+      ),
+    if (AppStoreInfo.tunAvailable && settings.dpiBypassEnabled)
+      SettingsRow(
+        search: 'Обновить базы доменов Zapret Flowseal list-general list-google',
+        build: (context) => ListTile(
+          key: const Key('refreshDpiListsTile'),
+          leading: const Icon(Icons.sync),
+          title: const Text('Обновить публичные списки доменов Zapret'),
+          subtitle: const Text('Flowseal/zapret-discord-youtube (list-google, list-general)'),
+          onTap: () async {
+            final count = await DpiBypassLists.refreshPublicLists();
+            if (!context.mounted) return;
+            AppToast.show(
+              context,
+              count > 0
+                  ? 'Списки обхода DPI обновлены ($count доменов)'
+                  : 'Не удалось загрузить внешние списки - используется встроенная база',
+            );
+          },
+        ),
+      ),
+    if (Platform.isAndroid && AppStoreInfo.isStealth)
+      SettingsRow(
+        search: 'ROOT-Stealth маскировка от сканеров VPN Госуслуги Ozon MAX банки Magisk KernelSU',
+        build: (_) => SwitchListTile(
+          key: const Key('rootStealthMode'),
+          value: settings.rootStealthMode,
+          onChanged: (v) =>
+              controller.update((s) => s.copyWith(rootStealthMode: v)),
+          title: const Text('🛡️ Маскировка от сканеров VPN (ROOT-Stealth)'),
+          subtitle: const Text(
+            'При наличии root (Magisk / KernelSU) скрывает сетевой интерфейс и транспорт VPN от Ozon, Госуслуг, MAX и банков. Без root продолжает штатно работать через раздельный туннель',
+          ),
+        ),
+      ),
   ];
 }
 
@@ -1021,6 +1192,8 @@ List<SettingsRow> _seamlessRows(
         subtitle: Text(l.settingsSeamlessNetworkSub),
       ),
     ),
+    // Адаптера в сборке без драйвера нет — удерживать нечего.
+    if (AppStoreInfo.tunAvailable)
     SettingsRow(
       search:
           '${l.settingsSeamlessKeepTunTitle} ${l.settingsSeamlessKeepTunSub}',
@@ -1071,7 +1244,9 @@ List<SettingsRow> _connectCheckRows(
     if (settings.connectChecksEnabled)
       SettingsRow(
         search: '${l.settingsConnectCheckServices} '
-            '${l.settingsConnectCheckServicesSub}',
+            '${l.settingsConnectCheckServicesSub} '
+            '${l.settingsConnectChecksNotSplitNote} '
+            '${l.settingsOpenSplitTunnel}',
         build: (context) => Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
           child: Column(
@@ -1127,6 +1302,38 @@ List<SettingsRow> _connectCheckRows(
                   );
                 }).toList(),
               ),
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline,
+                        size: 16, color: Theme.of(context).hintColor),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l.settingsConnectChecksNotSplitNote,
+                        key: const Key('connectChecksNotSplitNote'),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).hintColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (AppStoreInfo.tunAvailable)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: TextButton.icon(
+                    key: const Key('connectChecksOpenSplitTunnel'),
+                    icon: const Icon(Icons.call_split, size: 18),
+                    label: Text(l.settingsOpenSplitTunnel),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                          builder: (_) => const SplitTunnelScreen()),
+                    ),
+                  ),
+                ),
               // Пустой набор при включённой галочке — законное состояние
               // (флаг и набор независимы), но молча оно выглядит как поломка:
               // «проверка включена, а чипов нет». Говорим прямо.
@@ -1463,7 +1670,8 @@ Future<void> scanInterferenceDialog(BuildContext context) async {
                           trailing: i.closable
                               ? TextButton(
                                   onPressed: () async {
-                                    await InterferenceScanner.kill(i.pid!);
+                                    await InterferenceScanner.kill(i.pid!,
+                                        expectedPath: i.appPath);
                                     if (ctx.mounted) Navigator.pop(ctx);
                                   },
                                   child: Text(l.errorCloseApp(i.appName!)),
@@ -1545,18 +1753,42 @@ List<SettingsRow> _aboutRows(
     AppLocalizations l, AppSettings settings, SettingsController controller) {
   return [
     SettingsRow(
-      search: l.aboutVersion,
-      build: (_) => _ValueTile(
-        title: l.aboutVersion,
-        // ⚠️ Канал — из [AppInfo.channel] (свойство СБОРКИ, задано при
-        // компиляции), а не из PackageInfo: версия exe/apk знает номер, но
-        // не знает, что это бета-сборка — этот признак манифестом не решить,
-        // см. комментарий у `AppInfo.channel`.
-        load: () async {
-          final v = 'v${(await PackageInfo.fromPlatform()).version}';
-          return AppInfo.isBeta ? l.aboutVersionBeta(v) : v;
-        },
-      ),
+      search: '${l.aboutVersion} ${AppInfo.fullVersion} +${AppInfo.buildNumber} '
+          '${AppInfo.gitCommit} патч patch сборка build',
+      build: (context) {
+        final fallbackVersion = AppInfo.isBeta
+            ? l.aboutVersionBeta(AppInfo.formatAboutVersion())
+            : AppInfo.formatAboutVersion();
+        return _ValueTile(
+          tileKey: const Key('aboutVersionTile'),
+          title: l.aboutVersion,
+          initialValue: fallbackVersion,
+          // ⚠️ Канал — из [AppInfo.channel] (свойство СБОРКИ, задано при
+          // компиляции), а не из PackageInfo: версия exe/apk знает номер, но
+          // не знает, что это бета-сборка — этот признак манифестом не решить,
+          // см. комментарий у `AppInfo.channel`. Номер сборки `+N` нормализуется
+          // через `AppInfo.formatAboutVersion` (на Android `--split-per-abi`
+          // системный buildNumber равен `2000+N` / `4000+N`).
+          load: () async {
+            String? runtimeVer;
+            String? runtimeBuild;
+            try {
+              final info = await PackageInfo.fromPlatform();
+              runtimeVer = info.version;
+              runtimeBuild = info.buildNumber;
+            } catch (_) {
+              return fallbackVersion;
+            }
+            final v = AppInfo.formatAboutVersion(
+              runtimeVersion: runtimeVer,
+              runtimeBuildNumber: runtimeBuild,
+            );
+            return AppInfo.isBeta ? l.aboutVersionBeta(v) : v;
+          },
+          onTapValue: (loadedVersion) =>
+              _showVersionPatchesDialog(context, loadedVersion),
+        );
+      },
     ),
     SettingsRow(
       search: l.aboutXrayCore,
@@ -1572,21 +1804,88 @@ List<SettingsRow> _aboutRows(
     // Обновление приложения — своим экраном: режим, бета-канал, откат и
     // ход закачки не помещаются в одну строку «О программе».
     SettingsRow(
-      search: '${l.updatesSettingsTile} ${l.updatesSettingsTileSubtitle} '
+      search: '${l.updatesSettingsTile} ${updatesTileSubtitle(l)} '
           '${l.updatesBeta} ${l.updatesPreviousVersions} ${l.updatesModeTitle}',
       build: (context) => ListTile(
         key: const Key('updatesSettingsTile'),
         leading: const Icon(Icons.system_update),
         title: Text(l.updatesSettingsTile),
-        subtitle: Text(l.updatesSettingsTileSubtitle),
+        subtitle: Text(updatesTileSubtitle(l)),
         trailing: const Icon(Icons.chevron_right),
         onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const UpdateScreen())),
       ),
     ),
     SettingsRow(
+      search: 'что нового whats new изменения патч история после обновления',
+      build: (context) {
+        final isRu = l.localeName.toLowerCase().startsWith('ru');
+        return SwitchListTile(
+          key: const Key('settingsShowWhatsNewOnUpdateSwitch'),
+          secondary: const Icon(Icons.notifications_active_outlined),
+          title: Text(
+            isRu
+                ? 'Показывать «Что нового» после обновления'
+                : 'Show "What\'s new" after updates',
+          ),
+          subtitle: Text(
+            isRu
+                ? 'Открывать список изменений при первом запуске новой версии и подсвечивать колокольчик у версии в шапке'
+                : 'Open changelog on first launch of a new version and highlight the version bell in the header',
+          ),
+          value: settings.showWhatsNewOnUpdate,
+          onChanged: (v) =>
+              controller.update((s) => s.copyWith(showWhatsNewOnUpdate: v)),
+        );
+      },
+    ),
+    SettingsRow(
       search: l.aboutHwid,
       build: (_) => const _HwidTile(),
+    ),
+    // Сборки магазинов: согласие отзывается и даётся здесь — путь к этой
+    // строке назван в самом окне. Отзыв — сразу; включение — через то же
+    // окно раскрытия: человек должен видеть, на что соглашается.
+    if (AppStoreInfo.asksDataConsent(AppStoreInfo.current))
+      SettingsRow(
+        search: '${l.privacyTileTitle} ${l.consentDeviceTitle}',
+        build: (context) => SwitchListTile(
+          key: const Key('privacyConsentTile'),
+          secondary: const Icon(Icons.privacy_tip_outlined),
+          title: Text(l.privacyTileTitle),
+          subtitle: Text(settings.deviceInfoConsent == true
+              ? l.privacyTileOn
+              : l.privacyTileOff),
+          value: settings.deviceInfoConsent == true,
+          onChanged: (on) async {
+            final ok = on ? await showDataConsentDialog(context) : false;
+            if (ok == null) return;
+            await controller.update((s) => s.copyWith(deviceInfoConsent: ok));
+          },
+        ),
+      )
+    else
+      // Сборка GitHub: согласия нет, но раскрытие можно перечитать.
+      SettingsRow(
+        search: '${l.privacyTileTitle} ${l.consentDeviceTitle}',
+        build: (context) => ListTile(
+          key: const Key('privacyNoticeTile'),
+          leading: const Icon(Icons.privacy_tip_outlined),
+          title: Text(l.privacyTileTitle),
+          subtitle: Text(l.privacyTileOn),
+          trailing: const Icon(Icons.chevron_right, size: 18),
+          onTap: () => showDataConsentDialog(context, noticeOnly: true),
+        ),
+      ),
+    SettingsRow(
+      search: l.privacyPolicyTile,
+      build: (context) => ListTile(
+        key: const Key('privacyPolicyTile'),
+        leading: const Icon(Icons.policy_outlined),
+        title: Text(l.privacyPolicyTile),
+        trailing: const Icon(Icons.open_in_new, size: 18),
+        onTap: () => unawaited(UrlOpener.open(AppStoreInfo.privacyPolicyUrl)),
+      ),
     ),
     // Обязательное раскрытие: вместе с приложением поставляются
     // xray.exe (MPL-2.0), sing-box.exe (GPL-3.0) и wintun.dll —
@@ -1730,10 +2029,19 @@ List<SettingsRow> _aboutRows(
 /// и с появлением поиска экран перестраивается на каждую нажатую букву: futures
 /// из `build` означали бы запуск процесса на каждый символ запроса.
 class _ValueTile extends StatefulWidget {
-  const _ValueTile({required this.title, required this.load});
+  const _ValueTile({
+    required this.title,
+    required this.load,
+    this.initialValue,
+    this.tileKey,
+    this.onTapValue,
+  });
 
   final String title;
   final Future<String> Function() load;
+  final String? initialValue;
+  final Key? tileKey;
+  final void Function(String value)? onTapValue;
 
   @override
   State<_ValueTile> createState() => _ValueTileState();
@@ -1746,14 +2054,39 @@ class _ValueTileState extends State<_ValueTile> {
   Widget build(BuildContext context) {
     return FutureBuilder<String>(
       future: _future,
-      builder: (context, snap) => ListTile(
-        dense: true,
-        title: Text(widget.title),
-        trailing: Text(snap.data ?? '…', textDirection: TextDirection.ltr),
-      ),
+      initialData: widget.initialValue,
+      builder: (context, snap) {
+        final value = snap.data ?? widget.initialValue;
+        return ListTile(
+          key: widget.tileKey,
+          dense: true,
+          title: Text(widget.title),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(value ?? '…', textDirection: TextDirection.ltr),
+              if (widget.onTapValue != null) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.info_outline, size: 16),
+              ],
+            ],
+          ),
+          onTap: widget.onTapValue == null
+              ? null
+              : () => widget.onTapValue!(
+                    value ?? AppInfo.formatAboutVersion(),
+                  ),
+        );
+      },
     );
   }
 }
+
+Future<void> _showVersionPatchesDialog(
+  BuildContext context,
+  String renderedVersion,
+) =>
+    showWhatsNewDialog(context, renderedVersion: renderedVersion);
 
 /// Идентификатор устройства: отдельной строкой, потому что его копируют.
 class _HwidTile extends StatefulWidget {
@@ -1781,10 +2114,15 @@ class _HwidTileState extends State<_HwidTile> {
           trailing: IconButton(
             tooltip: l.commonCopy,
             icon: const Icon(Icons.copy, size: 18),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: hwid));
-              AppToast.copied(context);
-            },
+            // ⚠️ Пока идентификатор не прочитан, на экране «…» — и кнопка
+            // копировала именно его, с тостом «Скопировано» (аудит
+            // 25.10.2026, I). До готовности кнопка погашена.
+            onPressed: snap.hasData
+                ? () {
+                    Clipboard.setData(ClipboardData(text: hwid));
+                    AppToast.copied(context);
+                  }
+                : null,
           ),
         );
       },
@@ -1792,324 +2130,11 @@ class _HwidTileState extends State<_HwidTile> {
   }
 }
 
-const _supportChat = 'https://t.me/silentgate_vpn_help';
-
 /// Поддержка. НИЧЕГО не генерируем и не открываем сразу — открываем диалог, где
-/// пользователь СНАЧАЛА жмёт «Сгенерировать лог», и ТОЛЬКО ПОСЛЕ этого видит,
-/// куда отправить. Так юзер не пугается, что у него «сама пооткрывалась хрень».
+/// пользователь СНАЧАЛА жмёт «Сгенерировать лог» (или «Только разработчику»), и
+/// ТОЛЬКО ПОСЛЕ этого видит, куда отправить.
 Future<void> _support(BuildContext context) async {
-  await showDialog<void>(
-    context: context,
-    builder: (_) => const _SupportDialog(),
-  );
-}
-
-/// Диалог поддержки со строгой последовательностью:
-/// 1) объяснение + кнопка «Сгенерировать лог для поддержки»;
-/// 2) по нажатию — сборка отчёта и показ (СНАЧАЛА папка, ПОТОМ сам файл);
-/// 3) только теперь — меню «кому отправить» (с именем сервиса в скобках).
-class _SupportDialog extends StatefulWidget {
-  const _SupportDialog();
-
-  @override
-  State<_SupportDialog> createState() => _SupportDialogState();
-}
-
-class _SupportDialogState extends State<_SupportDialog> {
-  bool _busy = false;
-  String? _path; // путь к готовому отчёту (null, пока не сгенерирован)
-  String? _error;
-
-  /// Описание проблемы словами пользователя.
-  ///
-  /// На Windows его вписывают прямо в открывшийся txt — там файл виден в
-  /// Проводнике. На Android открывать нечего: отчёт уезжает в буфер обмена
-  /// целиком, поэтому описание собираем ДО генерации, иначе в поддержку
-  /// приходит один голый лог без единого слова о проблеме.
-  final _description = TextEditingController();
-  bool _descriptionMissing = false;
-
-  @override
-  void dispose() {
-    _description.dispose();
-    super.dispose();
-  }
-
-  Future<void> _generate() async {
-    final l = AppLocalizations.of(context);
-    // Пустое описание пропускаем только там, где его можно вписать в сам файл.
-    final described = _description.text.trim().isNotEmpty;
-    if (!described && _descriptionRequired) {
-      setState(() => _descriptionMissing = true);
-      return;
-    }
-    final state = context.read<AppState>();
-    final settings = context.read<SettingsController>().settings;
-    final server = state.selectedServer;
-    // Локализованная шапка отчёта (только её и переводим — техчасть ниже как есть).
-    final header = (StringBuffer()
-          ..writeln('==================================================')
-          ..writeln('  ${l.reportTitle}')
-          ..writeln('==================================================')
-          ..writeln()
-          // Описание, введённое в приложении, идёт первым — читающему
-          // обращение не нужно искать его среди сотен строк лога. Если поля не
-          // было (десктоп), остаётся прежняя болванка для заполнения в файле.
-          ..writeln(described ? '[${l.supportDescriptionSection}]' : l.reportDescribeHere)
-          ..writeln()
-          ..writeln(described
-              ? _description.text.trim()
-              : '  ${l.reportWhatDid}\n'
-                  '  ${l.reportWhatExpected}\n'
-                  '  ${l.reportWhatHappened}\n'
-                  '  ${l.reportWhenStarted}')
-          ..writeln()
-          ..writeln(l.supportNoScreenshots)
-          ..writeln()
-          ..writeln('--------------------------------------------------')
-          ..writeln(l.reportTechNoticeLine1)
-          ..writeln(l.reportTechNoticeLine2)
-          ..writeln('--------------------------------------------------'))
-        .toString();
-    final ctx = SupportContext(
-      statusLine: state.status.label,
-      subscriptionUrl: state.subscriptionUrl,
-      serverCount: state.servers.length,
-      activeServer: server == null ? '(нет)' : server.displayName,
-      activeCore: server == null
-          ? '—'
-          : (server.core == ProxyCore.singbox ? 'sing-box' : 'Xray'),
-      header: header,
-    );
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    try {
-      final path = await platform.support.generate(settings: settings, ctx: ctx);
-      // Строгий порядок: сперва открыть папку, затем сам txt-файл (см. reveal).
-      await platform.support.reveal(path);
-      if (!mounted) return;
-      setState(() {
-        _path = path;
-        _busy = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _busy = false;
-        _error = '$e';
-      });
-    }
-  }
-
-  /// Поле описания ОБЯЗАТЕЛЬНО там, где готовый отчёт нельзя дописать руками:
-  /// он уходит файлом через «Поделиться» как есть.
-  bool get _descriptionRequired => Platform.isAndroid;
-
-  /// А ПОКАЗЫВАЕМ его везде.
-  ///
-  /// ⚠️ На Windows поля не было вовсе: считалось, что человек допишет описание
-  /// прямо в открытом txt. На деле файл открывается уже после генерации, и
-  /// владелец присылал отчёты с нетронутой болванкой «Что делали: / Что
-  /// ожидали:». Спрашивать надо ТАМ, ГДЕ ЧЕЛОВЕК ЕЩЁ В КОНТЕКСТЕ, — то есть в
-  /// диалоге, до генерации. Обязательным на десктопе не делаем: дописать файл
-  /// руками там всё ещё можно, и запрет мешал бы быстрой отправке лога.
-  bool get _descriptionShown => true;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final state = context.watch<AppState>();
-    // Имя сервиса VPN (владельца подписки) — для подписи «кому отправить».
-    final serviceName = (state.info.title ?? '').trim();
-    final vpnSupport = (state.info.supportUrl ?? '').trim();
-    final done = _path != null;
-
-    return AlertDialog(
-      // ⚠️ Без этого диалог с полем ввода рвётся при клавиатуре: Dialog
-      // ужимается, а Column внутри — нет. Именно так ломался отчёт поддержки.
-      scrollable: true,
-      title: Text(done ? l.supportDialogTitleDone : l.supportDialogTitle),
-      content: SizedBox(
-        width: 540,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!done) ...[
-              Text(l.supportWhatWillHappen,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              Text(l.supportBullet1),
-              const SizedBox(height: 4),
-              // На Android отчёт уходит файлом через системное «Поделиться»,
-              // на Windows открывается папка и сам файл. Инструкция, зовущая
-              // искать папку на телефоне, отправляет человека в никуда.
-              Text(Platform.isAndroid ? l.supportBullet2Android : l.supportBullet2),
-              // Поле описания — там, где готовый отчёт нельзя дописать руками
-              // (Android: он копируется в буфер целиком и уходит как есть).
-              // Без него в поддержку приезжает голый лог без слова о проблеме.
-              if (_descriptionShown) ...[
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _description,
-                  minLines: 3,
-                  maxLines: 6,
-                  textCapitalization: TextCapitalization.sentences,
-                  onChanged: (_) {
-                    if (_descriptionMissing) {
-                      setState(() => _descriptionMissing = false);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: l.supportDescribeLabel,
-                    hintText: l.supportDescribeHint,
-                    errorText:
-                        _descriptionMissing ? l.supportDescribeRequired : null,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Скриншоты в текстовый отчёт не вставить — говорим об этом
-                // сразу, а не после того, как пользователь попробует.
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Icon(Icons.info_outline,
-                      size: 16, color: Theme.of(context).colorScheme.primary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(l.supportNoScreenshots,
-                        style: Theme.of(context).textTheme.bodySmall),
-                  ),
-                ]),
-              ],
-              if (_error != null) ...[
-                const SizedBox(height: 10),
-                Text(l.supportError(_error!),
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 12)),
-              ],
-            ] else ...[
-              Text(Platform.isAndroid ? l.supportDoneTextAndroid : l.supportDoneText),
-              const SizedBox(height: 8),
-              SelectableText(_path!.split(RegExp(r'[\\/]')).last,
-                  textDirection: TextDirection.ltr,
-                  style: const TextStyle(fontFamily: 'monospace', fontSize: 12)),
-              const SizedBox(height: 14),
-              Text(l.supportWhoTo,
-                  style: const TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              SupportRecipients(
-                serviceName: serviceName,
-                supportUrl: vpnSupport,
-                logoPath: state.logoPath,
-              ),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        if (done)
-          // На Windows отчёт «показывается» — открывается папка с выделенным
-          // файлом. На Android показывать нечего: приватный каталог приложения
-          // недоступен файловым менеджерам, поэтому текст отчёта копируется в
-          // буфер обмена и сразу вставляется в чат поддержки.
-          TextButton.icon(
-            icon: Icon(
-                Platform.isAndroid ? Icons.copy_all : Icons.folder_open,
-                size: 18),
-            onPressed: () async {
-              await platform.support.reveal(_path!);
-              if (Platform.isAndroid && context.mounted) {
-                AppToast.copied(context, message: l.supportReportCopied);
-              }
-            },
-            label: Text(
-                Platform.isAndroid ? l.supportCopyReport : l.supportShowOnPc),
-          ),
-        if (done)
-          TextButton.icon(
-            icon: const Icon(Icons.copy, size: 18),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: _path!));
-              AppToast.copied(context, message: l.commonPathCopied);
-            },
-            label: Text(l.supportCopyPath),
-          ),
-        if (!done)
-          FilledButton.icon(
-            icon: _busy
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(Icons.description_outlined, size: 18),
-            onPressed: _busy ? null : _generate,
-            label: Text(_busy ? l.supportGenerating : l.supportGenerateButton),
-          ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(done ? l.commonDone : l.commonCancel),
-        ),
-      ],
-    );
-  }
-}
-
-/// «Кому отправить» — два РАЗНЫХ адресата.
-///
-/// ⚠️ ЗАЧЕМ ЗДЕСЬ АВАТАРКА ПОДПИСКИ. У обеих кнопок стояли безликие значки, и
-/// первая («написать в Silentgate VPN») ничем не отличалась от второй, кроме
-/// слова в скобках. Логотип подписки уже скачан и закэширован — это самый
-/// быстрый способ узнать «свой» сервис, и человек не отправит лог не туда.
-///
-/// ⚠️ И РОВНО У ОДНОЙ КНОПКИ. У разработчика клиента аватарки подписки быть не
-/// должно: это другой адресат, и чужой логотип рядом с ним прямо врал бы.
-/// Стережёт тест.
-///
-/// Вынесено отдельным ПУБЛИЧНЫМ виджетом ради проверяемости: сами кнопки живут
-/// в диалоге, который показывает их только после генерации отчёта (а она пишет
-/// файлы и лезет в платформу), — из теста туда не добраться.
-class SupportRecipients extends StatelessWidget {
-  const SupportRecipients({
-    super.key,
-    required this.serviceName,
-    required this.supportUrl,
-    required this.logoPath,
-  });
-
-  /// Название сервиса из подписки (может быть пустым — тогда общая подпись).
-  final String serviceName;
-
-  /// Ссылка на поддержку сервиса. Пусто — кнопки нет вовсе: отправлять некуда.
-  final String supportUrl;
-
-  /// Путь к кэшированному логотипу подписки; null — [SubscriptionAvatar]
-  /// нарисует букву на градиенте, то есть кнопка всё равно останется своей.
-  final String? logoPath;
-
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    return Wrap(spacing: 8, runSpacing: 6, children: [
-      if (supportUrl.isNotEmpty)
-        FilledButton.tonalIcon(
-          icon: SubscriptionAvatar(
-              path: logoPath, label: serviceName, size: 18),
-          // В скобках — НАЗВАНИЕ СЕРВИСА, а не «владельцу».
-          label: FlagText(serviceName.isNotEmpty
-              ? l.supportContactNamed(serviceName)
-              : l.supportContact),
-          onPressed: () => UrlOpener.openTelegram(supportUrl),
-        ),
-      OutlinedButton.icon(
-        icon: const Icon(Icons.developer_mode, size: 18),
-        label: Text(l.supportContactNamed(l.supportDevServiceName)),
-        onPressed: () => UrlOpener.openTelegram(_supportChat),
-      ),
-    ]);
-  }
+  await showSupportReportDialog(context);
 }
 
 /// Раздел «Поддержка». Никакой ПРЯМОЙ ссылки здесь нет: единственная кнопка
@@ -2473,6 +2498,8 @@ List<SettingsRow> _appearanceRows(
                   width: 90,
                   child: TextFormField(
                     initialValue: '${settings.autoUpdateIntervalHours}',
+                    contentInsertionConfiguration:
+                        buildFocusedExtendedContentInsertion(),
                     enabled: !settings.autoUpdatePreferSubscription,
                     keyboardType: TextInputType.number,
                     textAlign: TextAlign.center,
@@ -2507,46 +2534,61 @@ List<SettingsRow> _appearanceRows(
 /// иначе Windows будет спрашивать права при КАЖДОМ подключении.
 Future<void> _enableTun(BuildContext context, SettingsController controller) async {
   final l = AppLocalizations.of(context);
-  controller.update((s) => s.copyWith(captureMode: CaptureMode.tun));
-  if (await platform.privileges.isConfigured()) return;
-  if (!context.mounted) return;
-
-  final setup = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      title: Text(l.tunUacTitle),
-      content: Text(l.tunUacBody),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: Text(l.tunUacLater),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.pop(ctx, true),
-          child: Text(l.tunUacSetup),
-        ),
-      ],
-    ),
-  );
-  if (setup != true) return;
-
-  final result = await platform.privileges.configure();
-  if (!context.mounted) return;
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-    content: Text(switch (result) {
-      PrivilegeSetupResult.done => l.tunUacDone,
-      PrivilegeSetupResult.denied => l.tunUacFail,
-      PrivilegeSetupResult.failed => l.tunTaskSchedulerFailed,
-    }),
-  ));
+  // Спрашиваем про задачу планировщика ДО смены режима: при живом соединении
+  // `captureChanged` запускает переподключение в TUN, и иначе UAC планировщика
+  // столкнулся бы с UAC помощника туннеля.
+  var taskDone = false;
+  if (!(PackageIdentity.isPackaged && !controller.settings.tunTaskDeclined) &&
+      !await platform.privileges.isConfigured() &&
+      context.mounted) {
+    final setup = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.tunUacTitle),
+        content: Text(l.tunUacBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(l.tunUacLater),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.tunUacSetup),
+          ),
+        ],
+      ),
+    );
+    if (setup == true) {
+      final result = await platform.privileges.configure();
+      taskDone = result == PrivilegeSetupResult.done;
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(switch (result) {
+            PrivilegeSetupResult.done => l.tunUacDone,
+            PrivilegeSetupResult.denied => l.tunUacFail,
+            PrivilegeSetupResult.failed => l.tunTaskSchedulerFailed,
+          }),
+        ));
+      }
+    }
+  }
+  controller.update((s) => s.copyWith(
+        captureMode: CaptureMode.tun,
+        tunTaskDeclined: taskDone ? false : s.tunTaskDeclined,
+      ));
 }
 
 // ── Захват трафика ───────────────────────────────────────────────────────────
 List<SettingsRow> _captureRows(
     AppLocalizations l, AppSettings settings, SettingsController controller) {
+  // Сборка без драйвера (Microsoft Store, MS3): режим один — системный прокси.
+  // Выбирать нечего, а TUN, «Только прокси» и раздельное туннелирование без
+  // sing-box и wintun не работают — поэтому их строк нет совсем.
+  final tun = AppStoreInfo.tunAvailable;
   return [
     // Выбор режима — ОДНА строка поиска на все варианты: по отдельности они
     // бессмысленны (переключатель с одним вариантом не переключает).
+    if (tun)
     SettingsRow(
       search: '${l.captureSystemProxy} ${l.captureSystemProxySub} '
           '${l.captureTun} ${l.captureTunSub} '
@@ -2637,13 +2679,11 @@ List<SettingsRow> _captureRows(
     // ⚠️ ПО РЕЖИМУ ЗАХВАТА: гео-базы разбирает Xray по конфигу ПАНЕЛИ, а он
     // одинаков и в системном прокси, и в TUN, и в «Только прокси». Под веткой
     // TUN строка не строилась вовсе в режиме системного прокси — то есть в
-    // умолчании Windows, — и переход «плашка на главном → настройки»
-    // (`scrollToGeo` → `geoAssetsKey`) молча приводил в никуда: у ключа не
-    // было контекста.
+    // умолчании Windows. Плашка на главном ведёт уже не сюда, а сразу на
+    // экран гео-баз (`GeoOfferBanner`).
     SettingsRow(
       search: '${l.geoTitle} geoip.dat geosite.dat ${l.geoWhy}',
       build: (context) => ListTile(
-        key: geoAssetsKey,
         dense: true,
         leading: const Icon(Icons.public),
         title: Text(l.geoTitle),
@@ -2657,7 +2697,8 @@ List<SettingsRow> _captureRows(
     // #14 — всё, что относится к TUN, показываем ТОЛЬКО когда он выбран:
     // в режиме системного прокси эти настройки ни на что не влияют.
     // На Android туннель — единственный режим, поэтому показываем всегда.
-    if (Platform.isAndroid || settings.captureMode == CaptureMode.tun) ...[
+    if (tun &&
+        (Platform.isAndroid || settings.captureMode == CaptureMode.tun)) ...[
       // Все параметры TUN/DNS/прав — на отдельном экране (их стало много).
       SettingsRow(
         search: '${l.tunRoutingTitle} ${l.dnsShortVpn}',
@@ -2696,7 +2737,7 @@ List<SettingsRow> _captureRows(
             ),
           ),
       ),
-    ] else ...[
+    ] else if (tun) ...[
       SettingsRow(
         search: l.captureTunHint,
         build: (_) => Padding(
@@ -2925,6 +2966,7 @@ List<SettingsRow> _pingRows(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
         child: TextFormField(
           initialValue: settings.testUrl,
+          contentInsertionConfiguration: buildFocusedExtendedContentInsertion(),
           decoration: InputDecoration(
             labelText: l.testUrlLabel,
             border: const OutlineInputBorder(),
@@ -3023,6 +3065,7 @@ Future<void> _editLocalProxyCreds(BuildContext context,
           const SizedBox(height: 12),
           TextField(
             controller: user,
+            contentInsertionConfiguration: buildExtendedContentInsertion(user),
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
@@ -3031,6 +3074,7 @@ Future<void> _editLocalProxyCreds(BuildContext context,
           ),
           TextField(
             controller: pass,
+            contentInsertionConfiguration: buildExtendedContentInsertion(pass),
             obscureText: obscure,
             autocorrect: false,
             enableSuggestions: false,
@@ -3206,3 +3250,15 @@ class SettingsRailTile extends StatelessWidget {
     );
   }
 }
+
+/// Подпись плитки «Обновления». Сборка Google Play не качает и не ставит
+/// себя сама (правило Play «Device and Network Abuse»), и обещание «скачать
+/// и установить» в ней было бы неправдой.
+@visibleForTesting
+String updatesTileSubtitle(AppLocalizations l,
+        {AppStore? store, bool? msStorePackage}) =>
+    (msStorePackage ?? (Platform.isWindows && PackageIdentity.isPackaged))
+        ? l.updatesSettingsTileMsStore
+        : (store ?? AppStoreInfo.current) == AppStore.play
+            ? l.updatesSettingsTilePlay
+            : l.updatesSettingsTileSubtitle;

@@ -108,7 +108,7 @@ void main() {
       // находил маркер в другом методе, и срез охватывал не то. Поймано первым
       // же прогоном — ровно та ошибка, из-за которой тест мог бы «проверять»
       // чужой код и оставаться зелёным.
-      final mStart = src.indexOf('Future<void> deleteSubscription');
+      final mStart = src.indexOf('Future<DeletedSubscription?> deleteSubscription');
       final mEnd = src.indexOf('Future<void> _dropPinnedFor', mStart);
       expect(mStart, greaterThan(0));
       expect(mEnd, greaterThan(mStart));

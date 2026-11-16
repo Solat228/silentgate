@@ -17,6 +17,17 @@ if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(keystorePropertiesFile.inputStream())
 }
 
+// Ключ ЗАГРУЗКИ в Google Play (android/upload.properties, тоже вне git).
+// Play требует, чтобы ключ загрузки отличался от ключа подписи приложения:
+// AAB подписывается им, а пользователю APK переподписывает сам Play — нашим
+// же ключом выпуска, копию которого ему отдали через PEPK. Поэтому сборки из
+// Play и с GitHub подписаны одинаково и обновляют друг друга.
+val uploadProperties = Properties()
+val uploadPropertiesFile = rootProject.file("upload.properties")
+if (uploadPropertiesFile.exists()) {
+    uploadProperties.load(uploadPropertiesFile.inputStream())
+}
+
 android {
     namespace = "lol.silentgate"
     compileSdk = flutter.compileSdkVersion
@@ -37,6 +48,12 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
 
+    }
+
+    buildFeatures {
+        // BuildConfig.FLAVOR — Kotlin-сторона узнаёт, для какого магазина
+        // собрана копия (см. PlatformChannels: установка APK только в github).
+        buildConfig = true
     }
 
     // ⚠️ СПИСОК ABI ЗАДАЁТСЯ НЕ ЗДЕСЬ, А ФЛАГОМ СБОРКИ:
@@ -64,6 +81,69 @@ android {
                 storePassword = keystoreProperties["storePassword"] as String
             }
         }
+        if (uploadPropertiesFile.exists()) {
+            create("upload") {
+                keyAlias = uploadProperties["keyAlias"] as String
+                keyPassword = uploadProperties["keyPassword"] as String
+                storeFile = uploadProperties["storeFile"]?.let { file(it) }
+                storePassword = uploadProperties["storePassword"] as String
+            }
+        }
+    }
+
+    // ⚠️ ДВЕ СБОРКИ ОДНОГО ПРИЛОЖЕНИЯ: пакет, подпись и данные общие.
+    //
+    //  github — APK с сайта и GitHub, умеет обновляться сама (подписанный
+    //           манифест, REQUEST_INSTALL_PACKAGES — src/github/AndroidManifest).
+    //  play   — AAB для Google Play. Правило Play «Device and Network Abuse»:
+    //           приложение из Play не обновляет себя ничем, кроме Play, и
+    //           разрешение на установку пакетов ради самообновления не выдают.
+    //           Поэтому в этой сборке нет ни разрешения, ни закачки.
+    //
+    // Dart узнаёт сборку по константе FLUTTER_APP_FLAVOR (её задаёт
+    // `flutter build … --flavor <имя>`), см. core/app_store.dart.
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") {
+            dimension = "store"
+            isDefault = true
+            signingConfig = signingConfigs.findByName("release")
+        }
+        create("stealth") {
+            dimension = "store"
+            // Отдельный пакет ROOT-Stealth (lol.silentgate.stealth):
+            //  - не совпадает по имени пакета со стандартными списками VPN-клиентов;
+            //  - в src/stealth/AndroidManifest.xml держит SilentGateVpnService
+            //    выключенным по умолчанию (скрыт от queryIntentServices);
+            //  - при наличии su закрывает локальные порты 127.0.0.1:10808..10999
+            //    от чужих UID через iptables -m owner, а без root работает
+            //    штатно через авто-включение компонента сервиса.
+            applicationIdSuffix = ".stealth"
+            versionNameSuffix = "-ROOT-Stealth"
+            signingConfig = signingConfigs.findByName("release")
+        }
+        create("play") {
+            dimension = "store"
+            // Код версии AAB = код arm64-APK с GitHub (Flutter для --split-per-abi
+            // даёт arm64 = 2000 + N). Голый N из pubspec оказался бы МЕНЬШЕ
+            // кода уже установленного с GitHub APK, и Play не смог бы обновить
+            // его никогда — Android не ставит пакет с меньшим кодом поверх.
+            versionCode = 2000 + flutter.versionCode
+            // Ключ ЗАГРУЗКИ: Play проверяет им, что AAB от нас, и переподписывает
+            // APK для людей ключом выпуска (копия у Play через PEPK).
+            signingConfig = signingConfigs.findByName("upload")
+        }
+    }
+
+    // Ядро (cores.aar) есть только под arm64-v8a и x86_64. Плагин jni приносит
+    // ещё armeabi-v7a, и по ней Play раздавал бы приложение 32-битным
+    // телефонам, где туннель не поднимется никогда. `ndk.abiFilters` у
+    // флейвора не помогает: Flutter добавляет все ABI в defaultConfig, и
+    // фильтры складываются. Сборки GitHub это не меняет: --split-per-abi с
+    // --target-platform armeabi-v7a не собирает вовсе.
+    packaging {
+        jniLibs { excludes += "lib/armeabi-v7a/**" }
+        jniLibs.useLegacyPackaging = true
     }
 
     buildTypes {
@@ -80,7 +160,27 @@ android {
             // Сборка теперь падает с внятным текстом. Это осознанная смена
             // поведения: команды, которые раньше «проходили», начнут ругаться —
             // и это лучше, чем узнать о подмене подписи после раздачи.
-            // Отладочные сборки (`flutter run`, `--debug`) не затронуты.
+            //
+            // ⚠️ Проверка — в задаче github-релиза (ниже), а не здесь. Блок
+            // `release {}` исполняется при КОНФИГУРАЦИИ любой задачи, и на
+            // чистой машине без ключа падали даже `flutter run` / `--debug`,
+            // а сборка для Play требовала чужой ей ключ выпуска (аудит
+            // 25.10.2026, J).
+            //
+            // Подпись задаёт СБОРКА (productFlavors выше), а не тип: подпись
+            // типа перекрыла бы сборку. github — ключ выпуска, play — загрузки.
+        }
+    }
+}
+
+// Релиз github без ключа выпуска вышел бы НЕПОДПИСАННЫМ (signingConfig сборки
+// = null). Проверяем до упаковки, чтобы файл не появился вовсе.
+tasks.configureEach {
+    val githubRelease = (name.contains("GithubRelease") || name.contains("StealthRelease")) &&
+        (name.startsWith("package") || name.startsWith("assemble") ||
+            name.startsWith("bundle") || name.startsWith("sign"))
+    if (githubRelease) {
+        doFirst {
             if (!keystorePropertiesFile.exists()) {
                 throw GradleException(
                     "Нет android/key.properties — релизный APK подписывать нечем.\n" +
@@ -90,7 +190,22 @@ android {
                     "обновить настоящим релизом."
                 )
             }
-            signingConfig = signingConfigs.getByName("release")
+        }
+    }
+}
+
+// AAB для Play без ключа загрузки вышел бы неподписанным — Play его не примет.
+// Проверка в задаче, а не при конфигурации: иначе без upload.properties
+// падала бы и обычная сборка github.
+tasks.configureEach {
+    if (name == "bundlePlayRelease" || name == "assemblePlayRelease") {
+        doFirst {
+            if (!uploadPropertiesFile.exists()) {
+                throw GradleException(
+                    "Нет android/upload.properties — сборку для Google Play подписывать нечем.\n" +
+                    "Ключ загрузки: signing/silentgate-upload.jks."
+                )
+            }
         }
     }
 }

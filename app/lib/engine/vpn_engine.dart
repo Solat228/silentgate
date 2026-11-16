@@ -38,11 +38,20 @@ class ConnectionOptions {
   /// доходят до `SingboxConfigBuilder.apiOnlyExitKeys`, и правила их не видят.
   final Set<String> apiOnlyExitKeys;
 
+  /// Итоговый список ключей серверов с отдельным локальным портом API
+  /// (с учётом `apiAutoIncludeAutoProfiles`, разрешённый по каталогу всех подписок).
+  final List<String>? effectiveApiExitServerKeys;
+
+  /// Ключи серверов пула «Умный Автовыбор» (`10818`).
+  final List<String> apiAutoPoolKeys;
+
   const ConnectionOptions({
     this.variant = OutboundVariant.none,
     this.settings = AppSettings.defaults,
     this.exitServers = const {},
     this.apiOnlyExitKeys = const {},
+    this.effectiveApiExitServerKeys,
+    this.apiAutoPoolKeys = const [],
   });
 
   CaptureMode get captureMode => settings.captureMode;
@@ -119,6 +128,12 @@ abstract class VpnEngine {
   /// путь до сервера. Переопределяет только Windows с поднятым TUN.
   LiveCoreApi? get captureCoreApi => null;
 
+  /// Clash API активного ядра для отображения открытых соединений в реальном
+  /// времени (`GET /connections`). В отличие от [captureCoreApi], доступен и
+  /// на Android (где свой пакет исключён из TUN и пинг не искажается, но список
+  /// открытых соединений в ядре sing-box есть).
+  LiveCoreApi? get connectionsCoreApi => captureCoreApi;
+
   /// Подключиться к выбранному серверу с опциями (вариация обхода, режим захвата, split).
   Future<void> connect(VpnServer server,
       {ConnectionOptions options = const ConnectionOptions()});
@@ -131,12 +146,21 @@ abstract class VpnEngine {
   /// Отключиться и вернуть систему в исходное состояние.
   Future<void> disconnect();
 
+  /// Мгновенное принудительное отключение (повторное нажатие на кнопку во время
+  /// «Отключение…»): без мягкого ожидания гасит дочерние процессы и сразу
+  /// переводит состояние в [VpnConnectionState.disconnected].
+  Future<void> forceDisconnect() => disconnect();
+
   /// Отключение ПОД СМЕНУ СЕРВЕРА: погасить ядро, но не снимать захват трафика,
   /// чтобы у машины не мигал маршрут по умолчанию (BACKLOG #30).
   ///
   /// Тело по умолчанию — обычное отключение: платформа, которая так не умеет,
   /// просто ведёт себя как раньше, а не ломается.
   Future<void> disconnectKeepingCapture() => disconnect();
+
+  /// Предварительно прогреть (отрезолвить) домены серверов ДО гашения старого
+  /// прокси-ядра при бесшовном переключении (Make-Before-Break, Вариант 1).
+  Future<void> prewarmSwitchHosts(List<VpnServer> servers) async {}
 
   /// Можно ли удержать текущий захват, если следующая сессия пойдёт с [next].
   /// ⚠️ «Нет» по умолчанию: платформа, не знающая про захват, обязана честно
@@ -202,4 +226,21 @@ abstract class VpnEngine {
 
   /// Освободить ресурсы.
   Future<void> dispose();
+}
+
+/// Движок, поддерживающий автономный фоновый маршрутизатор локальных портов API
+/// при выключенном VPN (`AppSettings.apiKeepAliveWhenDisconnected`).
+///
+/// Отдельный интерфейс, чтобы не ломать существующие тестовые фейки `VpnEngine`.
+abstract interface class StandaloneApiPortsEngine {
+  Future<void> syncStandaloneApiPorts({
+    required AppSettings settings,
+    required Map<String, VpnServer> exitServers,
+    required List<String> serverKeys,
+    required List<String> autoPoolKeys,
+  });
+
+  Future<void> stopStandaloneApiPorts();
+
+  bool get standaloneApiPortsRunning;
 }

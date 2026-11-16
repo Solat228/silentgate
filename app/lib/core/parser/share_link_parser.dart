@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/vpn_server.dart';
 import '../util/b64.dart';
+import '../whitelist_bypass/whitelist_bypass_helper.dart';
 
 /// Парсер share-ссылок в [VpnServer].
 ///
@@ -50,7 +51,8 @@ class ShareLinkParser {
   static VpnServer? tryParseRaw(String link) => _tryParseRaw(link);
 
   static VpnServer? _tryParseRaw(String link) {
-    final l = link.trim();
+    var l = link.trim();
+    if (l.startsWith('\uFEFF')) l = l.substring(1).trim();
     try {
       if (l.startsWith('vless://')) return _parseVless(l);
       // Панельный vmess приходит ИДЕНТИФИКАТОРОМ, а не base64-телом: у него нет
@@ -69,6 +71,18 @@ class ShareLinkParser {
       if (l.startsWith('hysteria2://') || l.startsWith('hy2://')) {
         return _parseHysteria2(l);
       }
+      if (l.startsWith('whitelist://') ||
+          l.startsWith('wbstream://') ||
+          l.startsWith('telemost://') ||
+          l.startsWith('vkcall://') ||
+          l.startsWith('dion://') ||
+          l.startsWith('bitrix://') ||
+          l.startsWith('blink://')) {
+        return _parseWhitelistBypass(l);
+      }
+      if (_isWhitelistCallUrl(l)) {
+        return _parseWhitelistCallUrl(l);
+      }
       return _parseNodeId(l);
     } catch (_) {
       return null;
@@ -78,7 +92,7 @@ class ShareLinkParser {
   /// Опознавательный идентификатор панельного узла:
   /// `<протокол>://<хост>:<порт>#<имя>`.
   ///
-  /// ⚠️ ЗАЧЕМ ЭТО ВООБЩЕ ЧИТАЕТСЯ. Панель владельца отдаёт XRAY_JSON, поэтому
+  /// ⚠️ ЗАЧЕМ ЭТО ВООЩЕ ЧИТАЕТСЯ. Панель владельца отдаёт XRAY_JSON, поэтому
   /// серверы рождаются без share-ссылки (`rawLink: ''`), и ключ им достраивает
   /// запасная ветка [VpnServer.buildShareLink]. Для протоколов, которые сборка
   /// не пересобирает ([VpnServer.identifierProtocols]), она пишет
@@ -145,7 +159,7 @@ class ShareLinkParser {
 
   /// Разбор целого тела подписки (много строк) в список серверов.
   static List<VpnServer> parseSubscriptionBody(String body) {
-    final text = _maybeBase64Body(body);
+    final text = decodeSubscriptionText(body);
     final servers = <VpnServer>[];
     for (final line in text.split(RegExp(r'\r?\n'))) {
       final s = tryParse(line);
@@ -154,12 +168,23 @@ class ShareLinkParser {
     return servers;
   }
 
+  /// Разворачивает тело подписки из возможного base64 и снимает UTF-8 BOM.
+  static String decodeSubscriptionText(String body) => _maybeBase64Body(body);
+
   /// Если тело не содержит "://", пробуем как base64 всей подписки.
   static String _maybeBase64Body(String body) {
-    if (body.contains('://')) return body;
-    final decoded = B64.tryDecodeToString(body);
-    if (decoded != null && decoded.contains('://')) return decoded;
-    return body;
+    var clean = body.startsWith('\uFEFF') ? body.substring(1) : body;
+    if (clean.contains('://')) return clean;
+    final decoded = B64.tryDecodeToString(clean.trim());
+    if (decoded != null) {
+      final dClean = decoded.startsWith('\uFEFF') ? decoded.substring(1) : decoded;
+      if (dClean.contains('://') ||
+          dClean.trimLeft().startsWith('{') ||
+          dClean.trimLeft().startsWith('[')) {
+        return dClean;
+      }
+    }
+    return clean;
   }
 
   // ── vless ────────────────────────────────────────────────────────────────
@@ -167,6 +192,8 @@ class ShareLinkParser {
     final uri = Uri.parse(link);
     final q = uri.queryParameters;
     final security = q['security'] ?? 'none';
+    final path = _nz(q['path'] ?? q['serviceName']);
+    final bsMeta = WhitelistBypassSpec.tryParseTransportPath(path);
     return VpnServer(
       protocol: 'vless',
       remark: _remark(uri),
@@ -179,7 +206,7 @@ class ShareLinkParser {
       security: security,
       sni: _nz(q['sni']),
       host: _nz(q['host']),
-      path: _nz(q['path'] ?? q['serviceName']),
+      path: path,
       fingerprint: _nz(q['fp']),
       publicKey: _nz(q['pbk']),
       shortId: _nz(q['sid']),
@@ -189,6 +216,14 @@ class ShareLinkParser {
       authority: _nz(q['authority']),
       xhttpMode: _nz(q['mode']),
       xPadding: _extractPadding(q['extra']),
+      whitelistPlatform: bsMeta?.platform,
+      whitelistRoom: bsMeta?.room,
+      whitelistMode: bsMeta?.mode,
+      whitelistReliable: bsMeta?.reliable ?? false,
+      whitelistDualTrack: bsMeta?.dualTrack ?? false,
+      whitelistVp8Fps: bsMeta?.vp8Fps,
+      whitelistVp8Batch: bsMeta?.vp8Batch,
+      whitelistBlinkToken: bsMeta?.blinkToken,
       rawLink: link,
     );
   }
@@ -204,6 +239,8 @@ class ShareLinkParser {
   static VpnServer _parseTrojan(String link) {
     final uri = Uri.parse(link);
     final q = uri.queryParameters;
+    final path = _nz(q['path'] ?? q['serviceName']);
+    final bsMeta = WhitelistBypassSpec.tryParseTransportPath(path);
     return VpnServer(
       protocol: 'trojan',
       remark: _remark(uri),
@@ -215,7 +252,7 @@ class ShareLinkParser {
       security: q['security'] ?? 'tls',
       sni: _nz(q['sni']),
       host: _nz(q['host']),
-      path: _nz(q['path'] ?? q['serviceName']),
+      path: path,
       fingerprint: _nz(q['fp']),
       publicKey: _nz(q['pbk']),
       shortId: _nz(q['sid']),
@@ -232,6 +269,14 @@ class ShareLinkParser {
       authority: _nz(q['authority']),
       xhttpMode: _nz(q['mode']),
       xPadding: _extractPadding(q['extra']),
+      whitelistPlatform: bsMeta?.platform,
+      whitelistRoom: bsMeta?.room,
+      whitelistMode: bsMeta?.mode,
+      whitelistReliable: bsMeta?.reliable ?? false,
+      whitelistDualTrack: bsMeta?.dualTrack ?? false,
+      whitelistVp8Fps: bsMeta?.vp8Fps,
+      whitelistVp8Batch: bsMeta?.vp8Batch,
+      whitelistBlinkToken: bsMeta?.blinkToken,
       rawLink: link,
     );
   }
@@ -275,6 +320,12 @@ class ShareLinkParser {
     return s == '1' || s == 'true';
   }
 
+  static int? _posInt(String? v) {
+    if (v == null || v.isEmpty) return null;
+    final n = int.tryParse(v.trim());
+    return (n != null && n > 0) ? n : null;
+  }
+
   // ── vmess (base64 JSON) ───────────────────────────────────────────────────
   static VpnServer _parseVmess(String link) {
     final payload = link.substring('vmess://'.length);
@@ -283,6 +334,8 @@ class ShareLinkParser {
 
     String s(String k) => (m[k] ?? '').toString();
     final tls = s('tls');
+    final path = _nz(s('path'));
+    final bsMeta = WhitelistBypassSpec.tryParseTransportPath(path);
     return VpnServer(
       protocol: 'vmess',
       remark: s('ps'),
@@ -295,17 +348,36 @@ class ShareLinkParser {
       security: tls == 'tls' ? 'tls' : 'none',
       sni: _nz(s('sni')),
       host: _nz(s('host')),
-      path: _nz(s('path')),
+      path: path,
       alpn: _nz(s('alpn')),
+      // Отпечаток uTLS. Сборка (`buildEditedLink`) его пишет — без чтения
+      // здесь правка отпечатка у vmess пропадала после перезапуска (ревью
+      // 29.10.2026, L16). Ключ vmess — исходная ссылка, он от поля не зависит.
+      fingerprint: _nz(s('fp')),
       headerType: _nz(s('type')),
+      whitelistPlatform: bsMeta?.platform,
+      whitelistRoom: bsMeta?.room,
+      whitelistMode: bsMeta?.mode,
+      whitelistReliable: bsMeta?.reliable ?? false,
+      whitelistDualTrack: bsMeta?.dualTrack ?? false,
+      whitelistVp8Fps: bsMeta?.vp8Fps,
+      whitelistVp8Batch: bsMeta?.vp8Batch,
+      whitelistBlinkToken: bsMeta?.blinkToken,
       rawLink: link,
     );
   }
 
   // ── shadowsocks ───────────────────────────────────────────────────────────
   // Форматы:
-  //  ss://base64(method:password)@host:port#tag
-  //  ss://base64(method:password@host:port)#tag
+  //  ss://base64(method:password)@host:port#tag          (SIP002)
+  //  ss://method:password@host:port#tag                  (SIP002, без base64 —
+  //                                                       так пишут 2022-шифры)
+  //  ss://base64(method:password@host:port)#tag          (старый)
+  // Адрес IPv6 — в квадратных скобках: `[2001:db8::1]:8388`.
+  //
+  // ⚠️ Плагин (`?plugin=obfs-local;…`) клиент не поднимает. Раньше параметр
+  // молча отбрасывался, и сервер выглядел рабочим, а соединение не шло
+  // (аудит 25.10.2026, H) — теперь он помечается неподдерживаемым.
   static VpnServer _parseShadowsocks(String link) {
     var rest = link.substring('ss://'.length);
     String remark = '';
@@ -314,34 +386,41 @@ class ShareLinkParser {
       remark = Uri.decodeComponent(rest.substring(hashIdx + 1));
       rest = rest.substring(0, hashIdx);
     }
-    // Отбросить query, если есть (?plugin=…)
+    String? plugin;
     final qIdx = rest.indexOf('?');
-    if (qIdx >= 0) rest = rest.substring(0, qIdx);
+    if (qIdx >= 0) {
+      final query = Uri.splitQueryString(rest.substring(qIdx + 1));
+      plugin = _nz(query['plugin']);
+      rest = rest.substring(0, qIdx);
+    }
+    if (rest.endsWith('/')) rest = rest.substring(0, rest.length - 1);
 
-    String method, password, host;
-    int port;
+    String creds, hostPart;
     if (rest.contains('@')) {
       final at = rest.lastIndexOf('@');
-      final creds = B64.decodeToString(rest.substring(0, at));
-      final hostPart = rest.substring(at + 1);
-      final ci = creds.indexOf(':');
-      method = creds.substring(0, ci);
-      password = creds.substring(ci + 1);
-      final hi = hostPart.lastIndexOf(':');
-      host = hostPart.substring(0, hi);
-      port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
+      final user = rest.substring(0, at);
+      hostPart = rest.substring(at + 1);
+      final plain = Uri.decodeComponent(user);
+      creds = plain.contains(':') ? plain : B64.decodeToString(user);
     } else {
       final decoded = B64.decodeToString(rest);
       final at = decoded.lastIndexOf('@');
-      final creds = decoded.substring(0, at);
-      final hostPart = decoded.substring(at + 1);
-      final ci = creds.indexOf(':');
-      method = creds.substring(0, ci);
-      password = creds.substring(ci + 1);
-      final hi = hostPart.lastIndexOf(':');
-      host = hostPart.substring(0, hi);
-      port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
+      if (at < 0) throw const FormatException('ss: нет адреса сервера');
+      creds = decoded.substring(0, at);
+      hostPart = decoded.substring(at + 1);
     }
+    final ci = creds.indexOf(':');
+    if (ci <= 0) throw const FormatException('ss: нет метода шифрования');
+    final method = creds.substring(0, ci);
+    final password = creds.substring(ci + 1);
+
+    final hi = hostPart.lastIndexOf(':');
+    if (hi <= 0) throw const FormatException('ss: нет порта');
+    var host = hostPart.substring(0, hi);
+    if (host.startsWith('[') && host.endsWith(']')) {
+      host = host.substring(1, host.length - 1);
+    }
+    final port = int.tryParse(hostPart.substring(hi + 1)) ?? 0;
 
     return VpnServer(
       protocol: 'shadowsocks',
@@ -353,6 +432,7 @@ class ShareLinkParser {
       network: 'tcp',
       security: 'none',
       rawLink: link,
+      unsupportedReason: plugin == null ? null : 'ss_plugin',
     );
   }
 
@@ -361,4 +441,156 @@ class ShareLinkParser {
 
   /// null для пустых строк — чтобы не тянуть "" в конфиг.
   static String? _nz(String? v) => (v == null || v.isEmpty) ? null : v;
+
+  // ── Whitelist Bypass (все 6 способов) ─────────────────────────────────────
+  static VpnServer _parseWhitelistBypass(String link) {
+    final uri = Uri.parse(link);
+    final q = uri.queryParameters;
+
+    if (link.startsWith('whitelist://')) {
+      final platform =
+          (uri.host.isNotEmpty ? uri.host : 'wbstream').toLowerCase();
+      final rawRoom = q['room'] ?? uri.path.replaceAll(RegExp(r'^/'), '');
+      final room = WhitelistBypassSpec.normalizeRoom(platform, rawRoom);
+      final mode = WhitelistBypassSpec.normalizeMode(platform, q['mode']);
+      final creatorHost = _nz(q['host'] ?? q['creator']);
+      final remark = _remark(uri);
+      return VpnServer(
+        protocol: 'whitelist_bypass',
+        remark: remark.isNotEmpty
+            ? remark
+            : _defaultWhitelistRemark(platform),
+        address: '127.0.0.1',
+        port: 10855,
+        id: '',
+        whitelistPlatform: platform,
+        whitelistRoom: room,
+        whitelistMode: mode,
+        whitelistCreatorHost: creatorHost,
+        whitelistReliable: _whitelistReliable(platform, q),
+        whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
+            _bool(q['dual'] ?? q['dt']),
+        whitelistVp8Fps: _posInt(q['fps']),
+        whitelistVp8Batch: _posInt(q['batch']),
+        whitelistBlinkToken: platform == 'blink' ? _nz(q['bt']) : null,
+        rawLink: link,
+      );
+    }
+
+    // Короткие схемы создателей: wbstream://, telemost://, vkcall://, dion://, bitrix://, blink://
+    var platform = 'wbstream';
+    if (link.startsWith('telemost://')) platform = 'telemost';
+    if (link.startsWith('vkcall://')) platform = 'vk';
+    if (link.startsWith('dion://')) platform = 'dion';
+    if (link.startsWith('bitrix://')) platform = 'bitrix';
+    if (link.startsWith('blink://')) platform = 'blink';
+
+    final hashIdx = link.indexOf('#');
+    final linkNoFrag = hashIdx >= 0 ? link.substring(0, hashIdx) : link;
+    final room = WhitelistBypassSpec.normalizeRoom(platform, linkNoFrag);
+    final mode = WhitelistBypassSpec.normalizeMode(platform, q['mode']);
+    final remark = _remark(uri);
+    return VpnServer(
+      protocol: 'whitelist_bypass',
+      remark: remark.isNotEmpty ? remark : _defaultWhitelistRemark(platform),
+      address: '127.0.0.1',
+      port: 10855,
+      id: '',
+      whitelistPlatform: platform,
+      whitelistRoom: room,
+      whitelistMode: mode,
+      whitelistCreatorHost: _nz(q['host'] ?? q['creator']),
+      whitelistReliable: _whitelistReliable(platform, q),
+      whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
+          _bool(q['dual'] ?? q['dt']),
+      whitelistVp8Fps: _posInt(q['fps']),
+      whitelistVp8Batch: _posInt(q['batch']),
+      whitelistBlinkToken: platform == 'blink' ? _nz(q['bt']) : null,
+      rawLink: link,
+    );
+  }
+
+  static bool _whitelistReliable(String platform, Map<String, String> q) {
+    final explicit = q['reliable'] ?? q['rel'];
+    if (explicit != null && explicit.trim().isNotEmpty) {
+      return _bool(explicit);
+    }
+    // Яндекс Телемост работает исключительно поверх видеопотока VP8 через SFU,
+    // поэтому без явного запрета (?reliable=0) включаем KCP по умолчанию.
+    return platform == 'telemost';
+  }
+
+  static String _defaultWhitelistRemark(String platform) {
+    switch (platform) {
+      case 'wbstream':
+        return 'WB Stream';
+      case 'telemost':
+        return 'Яндекс Телемост';
+      case 'vk':
+        return 'VK Звонки';
+      case 'dion':
+        return 'Dion';
+      case 'bitrix':
+        return 'Битрикс24';
+      case 'blink':
+        return 'Blink';
+      default:
+        return 'Обход БС (${platform.toUpperCase()})';
+    }
+  }
+
+  static bool _isWhitelistCallUrl(String l) {
+    return l.contains('stream.wb.ru/room/') ||
+        l.contains('telemost.yandex.ru/j/') ||
+        l.contains('vk.ru/call/join/') ||
+        l.contains('vk.com/call/join/') ||
+        l.contains('dion.vc/') ||
+        l.contains('.bitrix24.') ||
+        l.contains('blink.im/');
+  }
+
+  static VpnServer _parseWhitelistCallUrl(String rawUrl) {
+    final uri = Uri.parse(rawUrl);
+    final q = uri.queryParameters;
+    String platform = 'wbstream';
+
+    final host = uri.host.toLowerCase();
+    if (host.contains('wb.ru')) {
+      platform = 'wbstream';
+    } else if (host.contains('telemost.yandex.ru')) {
+      platform = 'telemost';
+    } else if (host.contains('vk.ru') || host.contains('vk.com')) {
+      platform = 'vk';
+    } else if (host.contains('dion.vc')) {
+      platform = 'dion';
+    } else if (host.contains('bitrix24.')) {
+      platform = 'bitrix';
+    } else if (host.contains('blink.im')) {
+      platform = 'blink';
+    }
+
+    final hashIdx = rawUrl.indexOf('#');
+    final rawNoFrag = hashIdx >= 0 ? rawUrl.substring(0, hashIdx) : rawUrl;
+    final room = WhitelistBypassSpec.normalizeRoom(platform, rawNoFrag);
+    final mode = WhitelistBypassSpec.normalizeMode(platform, q['mode']);
+    final remark = _remark(uri);
+    return VpnServer(
+      protocol: 'whitelist_bypass',
+      remark: remark.isNotEmpty ? remark : _defaultWhitelistRemark(platform),
+      address: '127.0.0.1',
+      port: 10855,
+      id: '',
+      whitelistPlatform: platform,
+      whitelistRoom: room,
+      whitelistMode: mode,
+      whitelistCreatorHost: _nz(q['host'] ?? q['creator']),
+      whitelistReliable: _whitelistReliable(platform, q),
+      whitelistDualTrack: WhitelistBypassSpec.supportsDualTrack(platform) &&
+          _bool(q['dual'] ?? q['dt']),
+      whitelistVp8Fps: _posInt(q['fps']),
+      whitelistVp8Batch: _posInt(q['batch']),
+      whitelistBlinkToken: platform == 'blink' ? _nz(q['bt']) : null,
+      rawLink: rawUrl,
+    );
+  }
 }

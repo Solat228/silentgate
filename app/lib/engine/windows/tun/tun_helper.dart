@@ -7,10 +7,12 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import '../../../core/platform/app_paths.dart';
 import '../kill_switch_wfp.dart';
 import '../process_list_windows.dart';
-import '../wfp_rules.dart' show baseName;
+import '../wfp_rules.dart'
+    show baseName, matchesSelectedAppName, normalizeVersionedExeName;
 import 'app_alive_mutex.dart';
 import 'tun_luid.dart';
 import 'tun_reload.dart';
+import 'tun_helper_state.dart';
 import 'kill_switch_plan_file.dart';
 import '../../../core/platform/rotating_log.dart';
 import '../xray_paths.dart';
@@ -133,7 +135,7 @@ class TunHelper {
   /// Вызывается из main при `--tun`. Блокируется до остановки.
   static Future<void> run(String configPath, {String stopPath = ''}) async {
     final stopFile = stopPath.isNotEmpty ? File(stopPath) : _defaultStopFile();
-    final loc = XrayPaths.locate();
+    final loc = XrayPaths.locateTrusted();
     final singbox = loc != null
         ? '${loc.assetDir}${Platform.pathSeparator}sing-box.exe'
         : 'sing-box.exe';
@@ -202,7 +204,7 @@ class TunHelper {
     final alive = AppAliveMutex.watch(aliveName);
     await log.write(alive != null
         ? '--- слежу за интерфейсом: $aliveName'
-        : '--- имени интерфейса нет — работаю без слежения '
+        : '--- имени интерфейса нет - работаю без слежения '
             '(kill switch в этом режиме поднимать нельзя)');
 
     // ⚠️ БАЗОВЫЙ НАБОР ПОДНИМАЕТСЯ ДО ЗАПУСКА ЯДРА.
@@ -215,6 +217,10 @@ class TunHelper {
     // На это время машина закрыта, и это не побочный ущерб, а поведение kill
     // switch на подключении (школа Mullvad): свои бинари, адреса серверов,
     // loopback и DHCP разрешены, остальное — нет.
+    final dataDir = _dataDir(configPath);
+    var currentLaunchId = TunHelperState.readLaunchId(dataDir);
+    var exitReason = TunHelperExitReason.stopped;
+
     final base = _engageBase(log, alive, configPath);
     KillSwitchHold? hold = base.hold;
     if (hold == null && _mustHaveKillSwitch(configPath)) {
@@ -224,13 +230,18 @@ class TunHelper {
       // своими руками.
       await log.write('НЕ ЗАПУСКАЮ ЯДРО: kill switch включён, но блокировка не '
           'поднялась. Туннель без неё обещал бы защиту, которой нет.');
+      TunHelperState.write(
+        dataDir,
+        launchId: currentLaunchId,
+        phase: TunHelperPhase.exited,
+        reason: TunHelperExitReason.killSwitchEngageFailed,
+      );
       alive?.dispose();
       await log.close();
       return;
     }
 
     _delete(stopFile);
-    final dataDir = _dataDir(configPath);
     // Просьба о перезапуске, оставшаяся от ПРОШЛОГО помощника, этому не
     // адресована: исполнив её, он перезапустил бы только что поднятое ядро.
     TunReload.cancel(dataDir);
@@ -248,24 +259,54 @@ class TunHelper {
     // имеет права выдать себя за смерть нового.
     var coreGen = 0;
     var procExited = false;
+    final sessionDirectUdpCidrs = <String>{};
     Future<Process?> startCore() async {
       final Process p;
       try {
+        // ⚠️ КОНФИГ ЧЕРЕЗ stdin, ОЧИЩЕННЫЙ. Файл лежит в `%APPDATA%`, писать
+        // туда может любой процесс пользователя; ядро с правами администратора
+        // по `log.output` или `cache_file` записало бы файл куда угодно.
+        // Читаем один раз и отдаём из памяти: подменить файл между проверкой
+        // и чтением ядром уже нельзя (аудит 25.10.2026, D2).
+        final sanitized = sanitizeElevatedConfig(
+            await File(configPath).readAsString());
+        final config = injectActiveDirectUdpExcludes(
+          sanitized,
+          KillSwitchWfp.activeIpv4UdpEndpoints(),
+          sessionCidrs: sessionDirectUdpCidrs,
+          log: (m) => unawaited(log.write('--- $m')),
+        );
         p = await Process.start(
           singbox,
-          ['run', '-c', configPath],
+          ['run', '-c', 'stdin'],
           workingDirectory: loc?.assetDir,
         );
+        p.stdin.write(config);
+        await p.stdin.close();
       } catch (e) {
         await log.write('НЕ УДАЛОСЬ ЗАПУСТИТЬ sing-box: $e');
         return null;
       }
       final gen = ++coreGen;
+      final launchForGen = currentLaunchId;
       procExited = false;
+      TunHelperState.write(
+        dataDir,
+        launchId: launchForGen,
+        phase: TunHelperPhase.running,
+      );
       pipe(p.stdout);
       pipe(p.stderr);
       unawaited(p.exitCode.then((code) {
-        if (gen == coreGen) procExited = true;
+        if (gen == coreGen) {
+          procExited = true;
+          TunHelperState.write(
+            dataDir,
+            launchId: launchForGen,
+            phase: TunHelperPhase.coreDied,
+            reason: TunHelperExitReason.coreExited,
+          );
+        }
         unawaited(log.write('--- sing-box завершился, код $code'));
       }));
       return p;
@@ -274,6 +315,12 @@ class TunHelper {
     final first = await startCore();
     if (first == null) {
       hold?.release();
+      TunHelperState.write(
+        dataDir,
+        launchId: currentLaunchId,
+        phase: TunHelperPhase.exited,
+        reason: TunHelperExitReason.spawnFailed,
+      );
       alive?.dispose();
       await log.close();
       return;
@@ -299,7 +346,18 @@ class TunHelper {
     // попавший под выбранное имя, остаётся в наборе до конца сеанса: программу
     // закрыли и открыли снова — фильтр всё это время стоял, окна без защиты не
     // возникло. Пути, исчезнувшие с диска, выбрасывает обычная очистка.
+    //
+    // ⚠️ НАПОЛНЯЕМ СРАЗУ НА СТАРТЕ, НЕ ЖДЯ ПЕРВОГО `_watchEveryTicks` (2 с).
+    // На быстрых машинах (SSD) `sing-box` поднимает `silentgate-tun` за ~0,8–1,2 с
+    // — раньше первого прореженного тика наблюдения. С пустым `matched` в режиме
+    // `onlySelected` с правилом «по имени» `_freshPlan(..., matched.values)`
+    // собирал пустой план, `hold.reengage` отвергал его, и помощник убивал
+    // только что поднятый туннель (репорт клиента 04.11.2026).
     final matched = <String, RunningProcess>{};
+    seedFromAppliedPlan(matched, watched, base.applied);
+    if (watched.isNotEmpty) {
+      syncWatchedMatches(matched, watched, _matchingProcesses(watched));
+    }
 
     // Последний УСПЕШНО применённый состав правил на программы и последняя
     // названная причина отказа: без неё одна и та же неудача писалась бы в
@@ -313,10 +371,19 @@ class TunHelper {
     // ломает: интерфейс уходит обычным путём, через stop-файл.
     Future<String?> reloadCore() async {
       final h = hold;
-      if (h == null) return 'блокировка не поднята — передавать нечего';
+      if (h == null) return 'блокировка не поднята - передавать нечего';
       await log.write('--- просьба перезапустить ядро без снятия блокировки');
       final oldLuid = tunnelLuid ?? TunLuid.forAlias();
-      final next = _freshPlan(configPath, oldLuid, _runningProcesses());
+      final nextWatched = _watchedNames(configPath);
+      final candidateMatched = Map<String, RunningProcess>.of(matched);
+      syncWatchedMatches(
+        candidateMatched,
+        nextWatched,
+        nextWatched.isEmpty
+            ? const <RunningProcess>[]
+            : _matchingProcesses(nextWatched),
+      );
+      final next = _freshPlan(configPath, oldLuid, candidateMatched.values);
       if (next == null) return 'новый план блокировки не просит';
       final cleaned = _cleanMissing(next).plan;
       if (cleaned.isEmpty) return 'новый план блокировки пуст';
@@ -325,8 +392,10 @@ class TunHelper {
       // туннель, ничего не сломано. Правило старого туннеля (oldLuid) в новом
       // составе оставлено, чтобы до остановки ядра его трафик не душился.
       if (!h.reengage(cleaned, log: (m) => unawaited(log.write('--- $m')))) {
-        return 'WFP не принял новый состав — прежний набор держится';
+        return 'WFP не принял новый состав - прежний набор держится';
       }
+      watched = nextWatched;
+      syncWatchedMatches(matched, watched, candidateMatched.values);
       applied = _appSnapshot(cleaned);
       await log.write('--- останавливаю прежнее ядро, блокировка ДЕРЖИТСЯ');
       coreGen++; // смерть прежнего процесса — уже не смерть ядра сеанса
@@ -350,15 +419,28 @@ class TunHelper {
       }
       await log.write('--- запуск sing-box без снятия блокировки '
           '${DateTime.now().toIso8601String()}');
+      currentLaunchId = TunHelperState.readLaunchId(dataDir);
       final p = await startCore();
+      // ⚠️ НЕ ОЧИЩАЕМ `matched`, А ДОПОЛНЯЕМ ЖИВЫМИ ПРОЦЕССАМИ. Очистка здесь
+      // сбрасывала все пути выбранных по имени программ, и быстрое появление
+      // нового `tunnelLuid` (раньше 2 с) снова получало пустой план и убивало
+      // туннель на горячем обновлении правил.
+      if (watched.isNotEmpty) {
+        syncWatchedMatches(matched, watched, _matchingProcesses(watched));
+      }
       luidApplied = false;
       tunnelLuid = null;
       coreDeathLogged = false;
-      watched = _watchedNames(configPath);
-      matched.clear();
+      watchTick = 0;
       lastUpdateFailure = null;
       if (p == null) {
         procExited = true; // блокировка держится, ядра нет — как при смерти
+        TunHelperState.write(
+          dataDir,
+          launchId: currentLaunchId,
+          phase: TunHelperPhase.coreDied,
+          reason: TunHelperExitReason.spawnFailed,
+        );
         return 'новое ядро не запустилось';
       }
       proc = p;
@@ -368,6 +450,7 @@ class TunHelper {
     while (true) {
       if (stopFile.existsSync()) {
         await log.write('--- получен stop-файл, останавливаю sing-box');
+        coreGen++;
         proc.kill();
         break;
       }
@@ -375,6 +458,7 @@ class TunHelper {
       // от команды «стоп»: отдельная ветка означала бы второй путь выхода.
       if (alive != null && !alive.appAlive) {
         await log.write('--- интерфейс завершился, останавливаю sing-box');
+        coreGen++;
         proc.kill();
         break;
       }
@@ -437,8 +521,10 @@ class TunHelper {
             // ⚠️ ОТКАЗ, А НЕ «ОСТАВИМ БАЗОВЫЙ». Базовый набор без правила
             // туннеля душит ровно тот трафик, ради которого VPN и включали:
             // человек увидит «Подключено» и мёртвый интернет.
-            await log.write('--- kill switch: не удалось разрешить туннель — '
+            exitReason = TunHelperExitReason.killSwitchTunnelFailed;
+            await log.write('--- kill switch: не удалось разрешить туннель - '
                 'останавливаю, чтобы не оставить «подключено» без связи');
+            coreGen++;
             proc.kill();
             break;
           }
@@ -480,7 +566,7 @@ class TunHelper {
               await log.write('--- $m');
             }
             await log.write('--- kill switch: состав обновлён под выбранные '
-                'имена, правил на программы — ${wanted.length}');
+                'имена, правил на программы - ${wanted.length}');
           } else {
             // ⚠️ СТАРЫЙ НАБОР ОСТАЁТСЯ РАБОТАТЬ. Замена идёт одной транзакцией:
             // не вышло — действует прежний набор, а не дыра. Повторим на
@@ -493,7 +579,7 @@ class TunHelper {
                 await log.write('--- $m');
               }
               await log.write('--- kill switch: обновить состав не удалось, '
-                  'прежняя защита ДЕРЖИТСЯ — повторю на следующем проходе');
+                  'прежняя защита ДЕРЖИТСЯ - повторю на следующем проходе');
             }
           }
         }
@@ -533,7 +619,29 @@ class TunHelper {
     try {
       proc.kill(ProcessSignal.sigkill);
     } catch (_) {}
+    // Дожидаемся ухода дочернего `sing-box.exe` и адаптера `silentgate-tun` ДО
+    // удаления stop-файла: исчезновение `tun_stop` служит сигналом для
+    // `waitStopConsumed`, что прошлый туннель полностью освободил драйвер Wintun
+    // (блокировка WFP уже снята выше, поэтому интернет у пользователя не ждёт).
+    try {
+      await proc.exitCode.timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    final goneDeadline = DateTime.now().add(const Duration(seconds: 2));
+    while (DateTime.now().isBefore(goneDeadline) &&
+        TunLuid.forAlias() != null) {
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
     _delete(stopFile);
+    if (procExited && exitReason == TunHelperExitReason.stopped) {
+      exitReason = TunHelperExitReason.coreExited;
+    }
+    TunHelperState.write(
+      dataDir,
+      launchId: currentLaunchId,
+      phase: TunHelperPhase.exited,
+      reason: exitReason,
+    );
+    await log.write('--- помощник TUN завершён');
     await log.close();
   }
 
@@ -586,10 +694,19 @@ class TunHelper {
     final plan = KillSwitchPlanFile.read(_dataDir(configPath),
         expectToken: _readAliveName(configPath));
     if (plan == null) return const {};
-    return {
+    final out = <String>{
       for (final n in [...plan.blockedAppNames, ...plan.allowedAppNames])
-        baseName(n).toLowerCase(),
+        normalizeVersionedExeName(n),
     };
+    for (final p in [...plan.blockedAppPaths, ...plan.allowedAppPaths]) {
+      final norm = normalizeVersionedExeName(p);
+      if (norm == 'antigravity.exe' ||
+          norm == 'agy.exe' ||
+          baseName(p).toLowerCase() != norm) {
+        out.add(norm);
+      }
+    }
+    return out;
   }
 
   /// Живые процессы для материализации имён.
@@ -602,6 +719,63 @@ class TunHelper {
       return ProcessListWindows.enumerate();
     } catch (_) {
       return const [];
+    }
+  }
+
+  /// Дешёвый снимок только под выбранные имена — без открытия дескрипторов у
+  /// посторонних процессов.
+  static List<RunningProcess> _matchingProcesses(Set<String> watched) {
+    if (watched.isEmpty) return const [];
+    try {
+      return ProcessListWindows.matching(watched);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Перенести в [matched] пути, которые уже вошли в базовый план [appliedPlan]
+  /// под выбранные имена [watched]: даже если процесс завершился за миллисекунды
+  /// между `_engageBase` и входом в цикл, его путь остаётся в наборе.
+  @visibleForTesting
+  static void seedFromAppliedPlan(
+    Map<String, RunningProcess> matched,
+    Set<String> watched,
+    KillSwitchPlan? appliedPlan,
+  ) {
+    if (watched.isEmpty || appliedPlan == null) return;
+    final normalizedWatched = watched.map(normalizeVersionedExeName).toSet();
+    for (final path in [
+      ...appliedPlan.blockedAppPaths,
+      ...appliedPlan.allowedAppPaths,
+    ]) {
+      final name = baseName(path);
+      if (matchesSelectedAppName(normalizedWatched, name, processPath: path)) {
+        matched[path.toLowerCase()] = RunningProcess(0, name, path);
+      }
+    }
+  }
+
+  /// Обновить накопитель [matched] под актуальный набор имён [watched]:
+  /// вычистить имена, которые больше не выбраны, и добавить живые совпадения.
+  @visibleForTesting
+  static void syncWatchedMatches(
+    Map<String, RunningProcess> matched,
+    Set<String> watched,
+    Iterable<RunningProcess> liveProcesses,
+  ) {
+    if (watched.isEmpty) {
+      matched.clear();
+      return;
+    }
+    final normalizedWatched = watched.map(normalizeVersionedExeName).toSet();
+    matched.removeWhere((_, p) => !matchesSelectedAppName(
+        normalizedWatched, p.name,
+        processPath: p.path));
+    for (final p in liveProcesses) {
+      if (matchesSelectedAppName(normalizedWatched, p.name,
+          processPath: p.path)) {
+        matched[p.path.toLowerCase()] = p;
+      }
     }
   }
 
@@ -673,7 +847,7 @@ class TunHelper {
       final cleaned = _cleanMissing(plan);
       for (final p in cleaned.skipped) {
         unawaited(log.write('--- kill switch: правило на «${baseName(p)}» '
-            'пропущено — файла нет на диске ($p). Обычно это значит, что '
+            'пропущено - файла нет на диске ($p). Обычно это значит, что '
             'программа обновилась и сменила папку; поправьте правило в '
             'раздельном туннелировании или сопоставляйте её по имени файла'));
       }
@@ -703,6 +877,352 @@ class TunHelper {
     }
   }
 
+  /// Разделы верхнего уровня, которые строит наш построитель TUN.
+  static const _allowedTopLevel = {
+    'log', 'dns', 'inbounds', 'outbounds', 'route', 'experimental', //
+  };
+
+  /// Типы inbound, которые строит наш построитель TUN.
+  static const _allowedInboundTypes = {'tun', 'mixed', 'socks', 'http'};
+
+  /// Типы outbound, которые строят наши построители (TUN и выходы).
+  static const _allowedOutboundTypes = {
+    'direct', 'block', 'dns', 'socks', 'http', 'selector', 'urltest', //
+    'vless', 'vmess', 'trojan', 'shadowsocks', 'hysteria2',
+  };
+
+  /// Проверить конфиг ядра помощника и убрать поля, по которым ядро ПИШЕТ файлы.
+  ///
+  /// Ядро помощника работает с правами администратора, а конфиг пишет
+  /// приложение без прав. `log.output`, `experimental.cache_file` и
+  /// загрузка `external_ui` дали бы запись в любой путь системы. Наш
+  /// построитель этих полей на Windows не ставит — вывод ядра помощник
+  /// собирает сам из stdout.
+  ///
+  /// ⚠️ БЕЛЫЙ СПИСОК, А НЕ ЧЁРНЫЙ (ревью 29.10.2026, H1/H2). Чёрный список
+  /// не знал outbound `tor`: его `executable_path` запускает любой exe от
+  /// администратора. А декодер sing-box сравнивает ключи БЕЗ учёта регистра:
+  /// `{"Log":{"output":…}}` проходил мимо удаления `log.output`. Поэтому:
+  /// - ключи только в нижнем регистре (у sing-box других нет), кроме
+  ///   содержимого `headers` — там имена HTTP-заголовков (`Host`);
+  /// - разделы верхнего уровня, типы inbound и outbound — только те, что
+  ///   строим мы сами; inbound с `tls` не строим вовсе (там ACME пишет файлы).
+  /// Отказ — исключение, ядро не запускается: конфиг пишет только наше
+  /// приложение, и чужое в нём означает подмену.
+  @visibleForTesting
+  static String sanitizeElevatedConfig(String raw) {
+    final cfg = jsonDecode(raw) as Map<String, dynamic>;
+    _requireLowercaseKeys(cfg, r'$');
+    for (final k in cfg.keys) {
+      if (!_allowedTopLevel.contains(k)) {
+        throw FormatException('конфиг помощника: раздел «$k» не наш');
+      }
+    }
+    for (final (field, allowed) in [
+      ('inbounds', _allowedInboundTypes),
+      ('outbounds', _allowedOutboundTypes),
+    ]) {
+      final list = cfg[field];
+      if (list == null) continue;
+      if (list is! List) {
+        throw FormatException('конфиг помощника: «$field» не список');
+      }
+      for (final e in list) {
+        final type = e is Map ? e['type'] : null;
+        if (type is! String || !allowed.contains(type)) {
+          throw FormatException('конфиг помощника: $field типа «$type» не наш');
+        }
+        if (field == 'inbounds' && (e as Map).containsKey('tls')) {
+          throw const FormatException('конфиг помощника: inbound с tls не наш');
+        }
+      }
+    }
+    final log = cfg['log'];
+    if (log is Map) log.remove('output');
+    final exp = cfg['experimental'];
+    if (exp is Map) {
+      exp.remove('cache_file');
+      final clash = exp['clash_api'];
+      if (clash is Map) {
+        clash.remove('external_ui');
+        clash.remove('external_ui_download_url');
+        clash.remove('external_ui_download_detour');
+      }
+    }
+    return jsonEncode(cfg);
+  }
+
+  /// Все ключи — в нижнем регистре; иначе исключение с путём до ключа.
+  static void _requireLowercaseKeys(Object? node, String path) {
+    if (node is Map) {
+      for (final e in node.entries) {
+        final k = '${e.key}';
+        if (k != k.toLowerCase()) {
+          throw FormatException('конфиг помощника: ключ «$path.$k» не в '
+              'нижнем регистре');
+        }
+        // Имена HTTP-заголовков пишутся как угодно (`Host`), и ядро их не
+        // сопоставляет с полями — проверять там нечего.
+        if (k == 'headers') continue;
+        _requireLowercaseKeys(e.value, '$path.$k');
+      }
+    } else if (node is List) {
+      for (var i = 0; i < node.length; i++) {
+        _requireLowercaseKeys(node[i], '$path[$i]');
+      }
+    }
+  }
+
+  /// Порты служебного и веб-трафика по UDP, которые НИКОГДА не выводятся из
+  /// туннеля как «прямой игровой/голосовой поток»:
+  ///  * 53, 853, 5353, 5355 — DNS / DoQ / mDNS / LLMNR;
+  ///  * 443 — HTTP/3 (QUIC), иначе открытая вкладка в браузере вывела бы IP
+  ///    CDN мимо доменных правил;
+  ///  * 67, 68, 123, 137, 138, 500, 1900, 3478, 4500 — DHCP, NTP, NetBIOS,
+  ///    IKE, SSDP, STUN.
+  static const _excludedUdpPorts = <int>{
+    53, 67, 68, 123, 137, 138, 443, 500, 853, 1900, 3478, 4500, 5353, 5355, //
+  };
+
+  /// Системные и собственные исполняемые файлы, чьи фоновые UDP-сокеты не
+  /// должны порождать маршрутных исключений.
+  static const _ignoredSystemExes = <String>{
+    'system',
+    'svchost.exe',
+    'services.exe',
+    'lsass.exe',
+    'wininit.exe',
+    'smss.exe',
+    'csrss.exe',
+    'dashost.exe',
+    'sihost.exe',
+    'taskhostw.exe',
+    'explorer.exe',
+    'searchhost.exe',
+    'msedgewebview2.exe',
+    'silentgate.exe',
+    'sing-box.exe',
+    'xray.exe',
+    'whitelist-bypass.exe',
+  };
+
+  /// Публичные DNS-резолверы, которые не должны попадать в `route_exclude_address`.
+  static const _wellKnownDnsIps = <String>{
+    '1.1.1.1',
+    '1.0.0.1',
+    '8.8.8.8',
+    '8.8.4.4',
+    '9.9.9.9',
+    '149.112.112.112',
+    '208.67.222.222',
+    '208.67.220.220',
+  };
+
+  static final RegExp _driveOrDevicePrefixRe = RegExp(
+    r'^(?:[a-z]:|\\device\\harddiskvolume\d+)\\',
+    caseSensitive: false,
+  );
+  static final RegExp _singboxAnchoredDriveRegexRe = RegExp(
+    r'^\(\?i\)\^[a-zA-Z]:\\\\',
+  );
+
+  /// Дополнить `route_exclude_address` в конфиге `sing-box` одиночными `/32`
+  /// для уже активных прямых UDP-потоков (например, идущего матча в Dota 2 /
+  /// CS2 или голосового канала), чтобы подъём `silentgate-tun` не перехватывал
+  /// уже открытый на физическом адаптере сокет и не менял его локальный IP и
+  /// порт.
+  ///
+  /// Никаких заранее зашитых списков подсетей здесь нет: исключаются только те
+  /// публичные адреса, с которыми ПРЯМО СЕЙЧАС обменивается по UDP процесс,
+  /// идущий по правилам конфига в `direct`.
+  @visibleForTesting
+  static String injectActiveDirectUdpExcludes(
+    String sanitizedConfigJson,
+    Iterable<ActiveUdpEndpoint> endpoints, {
+    Set<String>? sessionCidrs,
+    void Function(String)? log,
+  }) {
+    final Map<String, dynamic> cfg;
+    try {
+      cfg = jsonDecode(sanitizedConfigJson) as Map<String, dynamic>;
+    } catch (_) {
+      return sanitizedConfigJson;
+    }
+    final inbounds = cfg['inbounds'];
+    if (inbounds is! List) return sanitizedConfigJson;
+    Map<String, dynamic>? tunInbound;
+    for (final item in inbounds) {
+      if (item is Map<String, dynamic> && item['type'] == 'tun') {
+        tunInbound = item;
+        break;
+      }
+    }
+    if (tunInbound == null) return sanitizedConfigJson;
+    // В режиме «в туннель только эти подсети» маршрут по умолчанию не ставится
+    // вовсе, и `route_exclude_address` там не используется.
+    final routeAddr = tunInbound['route_address'];
+    if (routeAddr is List && routeAddr.isNotEmpty) return sanitizedConfigJson;
+
+    final route = cfg['route'];
+    final finalOutbound =
+        route is Map ? '${route['final'] ?? 'direct'}' : 'direct';
+    final routeRules =
+        (route is Map && route['rules'] is List) ? route['rules'] as List : const [];
+
+    final newlyDiscovered = <String, String>{};
+    for (final ep in endpoints) {
+      if (ep.remotePort <= 0 || _excludedUdpPorts.contains(ep.remotePort)) {
+        continue;
+      }
+      if (!_isPublicUnicastIpv4(ep.remoteIp)) continue;
+      if (_wellKnownDnsIps.contains(ep.remoteIp)) continue;
+      final pathLower = ep.appIdPath.trim().toLowerCase();
+      if (pathLower.isEmpty) continue;
+      if (pathLower.contains(r'\windows\system32\') ||
+          pathLower.contains(r'\windows\syswow64\')) {
+        continue;
+      }
+      final exe = baseName(pathLower);
+      if (exe.isEmpty || _ignoredSystemExes.contains(exe)) continue;
+      if (!_isDirectProcessInConfig(pathLower, exe, routeRules, finalOutbound)) {
+        continue;
+      }
+      final cidr = '${ep.remoteIp}/32';
+      newlyDiscovered.putIfAbsent(cidr, () => exe);
+      sessionCidrs?.add(cidr);
+    }
+
+    final allDynamic = <String>{
+      ...?sessionCidrs,
+      ...newlyDiscovered.keys,
+    };
+    if (allDynamic.isEmpty) return sanitizedConfigJson;
+
+    final existingRaw = tunInbound['route_exclude_address'];
+    final existing = <String>[
+      if (existingRaw is List)
+        for (final e in existingRaw) '$e',
+    ];
+    final existingSet = existing.toSet();
+    final added = <String>[];
+    for (final cidr in allDynamic) {
+      if (existingSet.add(cidr)) {
+        existing.add(cidr);
+        final owner = newlyDiscovered[cidr];
+        added.add(owner != null ? '$cidr ($owner)' : cidr);
+      }
+    }
+    if (added.isEmpty) return sanitizedConfigJson;
+
+    tunInbound['route_exclude_address'] = existing;
+    log?.call('сохраняю активные прямые UDP-потоки мимо туннеля: '
+        '${added.join(', ')}');
+    return jsonEncode(cfg);
+  }
+
+  static bool _isPublicUnicastIpv4(String ip) {
+    final addr = InternetAddress.tryParse(ip);
+    if (addr == null || addr.type != InternetAddressType.IPv4) return false;
+    final b = addr.rawAddress;
+    if (b.length != 4) return false;
+    final b0 = b[0];
+    final b1 = b[1];
+    final b2 = b[2];
+    if (b0 == 0 || b0 == 10 || b0 == 127 || b0 >= 224) return false;
+    if (b0 == 100 && (b1 & 0xC0) == 64) return false; // 100.64.0.0/10
+    if (b0 == 169 && b1 == 254) return false; // 169.254.0.0/16
+    if (b0 == 172 && b1 >= 16 && b1 <= 31) return false; // 172.16.0.0/12
+    if (b0 == 192 && b1 == 0 && (b2 == 0 || b2 == 2)) return false;
+    if (b0 == 192 && b1 == 168) return false; // 192.168.0.0/16
+    if (b0 == 198 && (b1 == 18 || b1 == 19)) return false; // 198.18.0.0/15
+    if (b0 == 198 && b1 == 51 && b2 == 100) return false; // 198.51.100.0/24
+    if (b0 == 203 && b1 == 0 && b2 == 113) return false; // 203.0.113.0/24
+    return true;
+  }
+
+  static bool _isDirectProcessInConfig(
+    String appIdPathLower,
+    String exeLower,
+    List<dynamic> routeRules,
+    String finalOutbound,
+  ) {
+    final strippedTarget =
+        appIdPathLower.replaceFirst(_driveOrDevicePrefixRe, '');
+    for (final rawRule in routeRules) {
+      if (rawRule is! Map) continue;
+      // Правила, привязанные к порту (например, запрет QUIC на UDP:443),
+      // домену, протоколу или конкретному inbound, не определяют базовый
+      // маршрут всего процесса.
+      if (rawRule.containsKey('port') ||
+          rawRule.containsKey('domain_suffix') ||
+          rawRule.containsKey('domain') ||
+          rawRule.containsKey('ip_cidr') ||
+          rawRule.containsKey('protocol') ||
+          rawRule.containsKey('inbound')) {
+        continue;
+      }
+      final hasProcessName = rawRule['process_name'] is List;
+      final hasProcessPath = rawRule['process_path'] is List;
+      final hasProcessRegex = rawRule['process_path_regex'] is List;
+      if (!hasProcessName && !hasProcessPath && !hasProcessRegex) continue;
+
+      var matched = false;
+      if (hasProcessName) {
+        final names = <String>{
+          for (final n in rawRule['process_name'] as List)
+            normalizeVersionedExeName('$n'),
+        };
+        if (matchesSelectedAppName(names, exeLower,
+            processPath: appIdPathLower)) {
+          matched = true;
+        }
+      }
+      if (!matched && hasProcessPath) {
+        for (final p in rawRule['process_path'] as List) {
+          final strippedRule = '$p'
+              .trim()
+              .toLowerCase()
+              .replaceFirst(_driveOrDevicePrefixRe, '');
+          if (strippedRule.isNotEmpty && strippedRule == strippedTarget) {
+            matched = true;
+            break;
+          }
+        }
+      }
+      if (!matched && hasProcessRegex) {
+        for (final pat in rawRule['process_path_regex'] as List) {
+          if (_matchesSingboxPathRegex('$pat', appIdPathLower)) {
+            matched = true;
+            break;
+          }
+        }
+      }
+      if (matched) {
+        if (rawRule['action'] == 'reject') return false;
+        return rawRule['outbound'] == 'direct';
+      }
+    }
+    return finalOutbound == 'direct';
+  }
+
+  static bool _matchesSingboxPathRegex(String rawPattern, String targetPath) {
+    var pat = rawPattern.trim();
+    if (pat.isEmpty) return false;
+    if (_singboxAnchoredDriveRegexRe.hasMatch(pat)) {
+      pat = pat.replaceFirst(
+        _singboxAnchoredDriveRegexRe,
+        r'^(?:[a-z]:|\\device\\harddiskvolume\d+)\\',
+      );
+    } else if (pat.startsWith('(?i)')) {
+      pat = pat.substring(4);
+    }
+    try {
+      return RegExp(pat, caseSensitive: false).hasMatch(targetPath);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Свои бинари — те, что обязаны ходить в сеть при поднятой блокировке.
   ///
   /// ⚠️ СПРАШИВАЕМ У СЕБЯ, А НЕ У ИНТЕРФЕЙСА. Помощник и есть `silentgate.exe`,
@@ -710,9 +1230,9 @@ class TunHelper {
   /// источник правды о том, что помощник знает точнее всех.
   static List<String> _ownBinaries() {
     final out = <String>[Platform.resolvedExecutable];
-    final loc = XrayPaths.locate();
+    final loc = XrayPaths.locateTrusted();
     if (loc != null) {
-      for (final n in const ['sing-box.exe', 'xray.exe']) {
+      for (final n in const ['sing-box.exe', 'xray.exe', 'whitelist-bypass.exe']) {
         final f = File('${loc.assetDir}${Platform.pathSeparator}$n');
         if (f.existsSync()) out.add(f.path);
       }

@@ -113,7 +113,8 @@ void main() {
       // отказа значит наполовину прописать прокси и не сказать об этом.
       arm(code: 5);
       await SystemProxy.set('127.0.0.1:10809');
-      expect(calls.length, 1);
+      // Чтения прежних настроек (`reg query`) — не правки; считаем `add`.
+      expect(calls.where((c) => c[1] == 'add').length, 1);
     });
 
     test('исключение при запуске reg.exe тоже попадает в журнал', () async {

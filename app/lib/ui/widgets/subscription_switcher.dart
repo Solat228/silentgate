@@ -5,19 +5,23 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n/text_direction.dart';
+import '../../core/models/subscription_info.dart';
 import '../../core/models/subscription_profile.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/platform/app_launcher.dart';
+import '../../core/platform/captcha_webview.dart';
 import '../../core/probe/ping_result.dart';
 import '../../l10n/gen/app_localizations.dart';
 import '../../state/app_state.dart';
 import '../../state/probe_controller.dart';
 import '../../state/settings_controller.dart';
+import '../../state/support_chat_controller.dart';
 import '../settings_screen.dart';
 import 'app_toast.dart';
 import 'flag_text.dart';
 import 'ping_gate.dart';
 import 'subscription_avatar.dart';
+import 'telegram_icon.dart';
 
 /// Действия над ОДНОЙ подпиской: обновить, копировать ссылку, открыть её
 /// страницу, поддержка, удалить.
@@ -36,7 +40,53 @@ import 'subscription_avatar.dart';
 abstract final class SubscriptionActions {
   static const String refresh = 'refresh';
   static const String copy = 'copy';
+  static const String telegram = 'telegram';
   static const String site = 'site';
+  static const String defaultTelegramBotUrl = 'https://t.me/silentgate_vpn_bot';
+
+  /// Ссылка для кнопки «Телеграм / Бот»: сначала из заголовков подписки
+  /// (`support-url` / `announce-url` / `profile-web-page-url`), иначе штатный
+  /// бот при наличии ссылки подписки.
+  static String? telegramUrlFor({
+    required SubscriptionInfo info,
+    required String? subscriptionUrl,
+  }) {
+    final fromHeaders = info.telegramUrl;
+    if (fromHeaders != null && fromHeaders.isNotEmpty) {
+      return fromHeaders;
+    }
+    if (SubscriptionProfile.isHttpUrlString(subscriptionUrl)) {
+      return defaultTelegramBotUrl;
+    }
+    return null;
+  }
+
+  /// Преобразует ссылку подписки в чистую веб-страницу витрины (`s.silentgate.lol/<id>`)
+  /// без диплинк-редиректов `/silentgate/<id>` и `/sub/<id>`.
+  static String subscriptionPageUrl(String rawUrl) {
+    final target = SupportEndpointTarget.parse(rawUrl);
+    if (target != null) {
+      return target.pageUrl;
+    }
+    return rawUrl.trim();
+  }
+
+  /// Преобразует ссылку подписки в веб-страницу с открытым окном поддержки
+  /// (`#support-modal`). Сырые ссылки Remnawave (`sub.silentgate.lol/sub/<id>`,
+  /// `my.silentgate.lol/sub/<id>`) и редиректы `/silentgate/<id>` переводит на
+  /// веб-витрину `s.silentgate.lol/<id>`.
+  static String supportWebUrl(String rawUrl) {
+    final target = SupportEndpointTarget.parse(rawUrl);
+    if (target != null) {
+      return '${target.pageUrl}#support-modal';
+    }
+    final trimmed = rawUrl.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || (!uri.isScheme('http') && !uri.isScheme('https'))) {
+      return trimmed;
+    }
+    return uri.replace(fragment: 'support-modal').toString();
+  }
   static const String support = 'support';
   static const String delete = 'delete';
 
@@ -48,14 +98,34 @@ abstract final class SubscriptionActions {
   /// выходил при пустом адресе (сервер добавлен ссылкой или своим JSON —
   /// подписки за ним нет).
   static List<PopupMenuEntry<String>> menuItems(AppLocalizations l,
-          {required bool hasUrl}) =>
-      [
-        if (hasUrl) item(refresh, Icons.refresh, l.subBarRefresh),
-        if (hasUrl) item(copy, Icons.copy, l.subBarCopyLink),
-        if (hasUrl) item(site, Icons.public, l.subBarOpenSite),
-        item(support, Icons.support_agent, l.subBarSupport),
-        item(delete, Icons.delete_outline, l.subBarDeleteSubscription),
-      ];
+      {required bool hasUrl, String? url, bool hasTelegram = false}) {
+    final canRefresh = url != null
+        ? SubscriptionProfile.isRefreshableUrlString(url)
+        : hasUrl;
+    final canCopy = url != null
+        ? (SubscriptionProfile.isHttpUrlString(url) ||
+            SubscriptionProfile.isFileUrlString(url))
+        : hasUrl;
+    final canOpenSite = url != null
+        ? SubscriptionProfile.isHttpUrlString(url)
+        : hasUrl;
+    return [
+      if (canRefresh) item(refresh, Icons.refresh, l.subBarRefresh),
+      if (canCopy) item(copy, Icons.copy, l.subBarCopyLink),
+      if (canOpenSite || hasTelegram)
+        PopupMenuItem<String>(
+          value: telegram,
+          child: Row(children: [
+            const TelegramIcon(size: 18),
+            const SizedBox(width: 12),
+            Flexible(child: Text(l.subBarTelegram)),
+          ]),
+        ),
+      if (canOpenSite) item(site, Icons.public, l.subBarOpenSite),
+      item(support, Icons.support_agent, l.subBarSupport),
+      item(delete, Icons.delete_outline, l.subBarDeleteSubscription),
+    ];
+  }
 
   static PopupMenuItem<String> item(String v, IconData icon, String text) =>
       PopupMenuItem(
@@ -90,6 +160,7 @@ abstract final class SubscriptionActions {
     // `state.subscriptionUrl` — адрес АКТИВНОЙ, и на чужой строке меню он
     // скопировал бы и открыл чужую страницу, ничем не выдав подмену.
     final url = id == null ? state.subscriptionUrl : state.subscriptionUrlOf(id);
+    final info = profile?.info ?? state.info;
     switch (action) {
       case refresh:
         if ((url ?? '').isEmpty) return;
@@ -125,12 +196,35 @@ abstract final class SubscriptionActions {
         if ((url ?? '').isEmpty) return;
         // ⚠️ ОТКРЫВАЕТ И МОЛЧИТ. В адресе подписки лежит токен доступа: ни в
         // подсказке кнопки, ни в сообщении, ни в журнале (он уезжает в отчёт
-        // поддержки) его быть не должно. Ссылка открывается КАК ЕСТЬ — это
-        // собственная страница подписки пользователя.
-        await UrlOpener.open(url!);
+        // поддержки) его быть не должно. Ссылка открывается в браузере (с
+        // очисткой редиректа `/silentgate/`, чтобы браузер не пытался снова
+        // запустить приложение).
+        await UrlOpener.open(subscriptionPageUrl(url!));
+        return;
+      case telegram:
+        final tgUrl = telegramUrlFor(info: info, subscriptionUrl: url);
+        if (tgUrl == null || tgUrl.isEmpty) return;
+        await UrlOpener.openTelegram(tgUrl);
         return;
       case support:
-        openSupport(context);
+        if ((url ?? '').isNotEmpty) {
+          final target = SupportEndpointTarget.parse(url);
+          if (target != null) {
+            SupportChatController.instance.onMigrateSubscriptionUrl =
+                state.migrateSubscriptionUrl;
+            await SupportChatController.instance.bindSubscriptionUrl(url);
+            await SupportChatController.instance.open();
+            return;
+          }
+          final opened = await CaptchaWebViewBridge.openSupport(
+            supportWebUrl(url!),
+            title: l.subBarSupport,
+          );
+          if (opened) return;
+        }
+        if (context.mounted) {
+          openSupport(context);
+        }
         return;
       case delete:
         await confirmDelete(context, profile: profile);
@@ -187,12 +281,20 @@ abstract final class SubscriptionActions {
         ),
       ),
     );
-    if (ok != true) return;
-    await state.deleteSubscription(removePinned: alsoPinned, id: id);
-    if (context.mounted) {
-      AppToast.show(context, l.subBarSubscriptionDeleted,
-          kind: ToastKind.success);
-    }
+    if (ok != true || !context.mounted) return;
+    // Оверлей — ДО удаления: удаление последней подписки уводит главный экран
+    // на импорт, и контекст этого виджета к моменту уведомления уже мёртв.
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final deleted =
+        await state.deleteSubscription(removePinned: alsoPinned, id: id);
+    if (deleted == null) return;
+    // Имя — ТОЛЬКО `safeTitle`: запасное `title` содержит токен подписки.
+    AppToast.undo(
+      overlay,
+      l.subBarSubscriptionDeletedNamed(deleted.profile.safeTitle),
+      actionLabel: l.subBarRestore,
+      onAction: () => state.restoreSubscription(deleted),
+    );
   }
 }
 
@@ -501,7 +603,12 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
     final action = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(pos.dx, pos.dy, pos.dx, pos.dy),
-      items: SubscriptionActions.menuItems(l, hasUrl: p.url.isNotEmpty),
+      items: SubscriptionActions.menuItems(l,
+          hasUrl: p.url.isNotEmpty,
+          url: p.url,
+          hasTelegram: SubscriptionActions.telegramUrlFor(
+                  info: p.info, subscriptionUrl: p.url) !=
+              null),
     );
     if (action == null || !context.mounted) return;
     // Закрываем сам переключатель: дальше действие показывает свои диалоги и
@@ -600,7 +707,7 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                       Opacity(
                         opacity: expired ? 0.45 : 1,
                         child: SubscriptionAvatar(
-                            path: p.logoPath, label: p.title, size: 24),
+                            path: p.logoPath, label: p.safeTitle, size: 24),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -608,9 +715,12 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            FlagText(p.title,
+                            // ⚠️ `safeTitle`, не `title`: запасное имя в
+                            // `title` несёт токен подписки, а открытое меню
+                            // шлют в поддержку скриншотом (аудит 25.10.2026, I).
+                            FlagText(p.safeTitle,
                                 // Доминирует название подписки — направление по нему.
-                                textDirection: autoTextDirection(p.title),
+                                textDirection: autoTextDirection(p.safeTitle),
                                 overflow: TextOverflow.ellipsis,
                                 style: expired
                                     ? TextStyle(
@@ -685,7 +795,9 @@ class _SwitcherBodyState extends State<_SwitcherBody> {
                 ? l.subBarRefreshing
                 : l.subBarRefreshSubscription,
             busy: widget.state.refreshing,
-            onTap: widget.state.subscriptionUrl == null || widget.state.refreshing
+            onTap: !SubscriptionProfile.isRefreshableUrlString(
+                        widget.state.subscriptionUrl) ||
+                    widget.state.refreshing
                 ? null
                 : () {
                     Navigator.of(context).pop();

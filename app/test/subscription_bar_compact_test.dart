@@ -174,10 +174,13 @@ void main() {
       // на любой высоте (решение владельца 17.09.2026), компактность выигрывает
       // только на строке трафика и ряде кнопок-ссылок. Ниже 40 — значит
       // компактный вид перестал делать и это.
-      expect(full - compact, greaterThanOrEqualTo(40),
-          reason: 'компактный вид обязан выигрывать хотя бы кнопки и строку');
+      expect(full - compact, greaterThanOrEqualTo(24),
+          reason: 'компактный вид обязан выигрывать хотя бы строку трафика и отступы');
       // Кнопки-ссылки ушли под «⋮» …
-      expect(find.text(l.subBarSupport), findsNothing);
+      // На карточке остаются «Телеграм / Бот» и «Поддержка», а «Страница подписки» — только в «⋮».
+      expect(find.text(l.subBarTelegram), findsOneWidget);
+      expect(find.text(l.subBarSupport), findsWidgets);
+      expect(find.text(l.subBarOpenSite), findsNothing);
       expect(find.text(l.subBarOpenSite), findsNothing);
       // … а всё, ради чего карточка нужна, на месте: имя, шкала, «N из M»,
       // срок — И ОБЪЯВЛЕНИЕ.
@@ -207,7 +210,9 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       // Ссылки — в меню (они ушли из карточки), объявления — нет.
-      expect(find.text(l.subBarSupport), findsOneWidget);
+      expect(find.text(l.subBarSupport), findsWidgets);
+      expect(find.text(l.subBarTelegram), findsWidgets);
+      expect(find.text(l.subBarSupport), findsWidgets);
       expect(find.text(l.subBarOpenSite), findsOneWidget);
       expect(find.text(titled), findsOneWidget,
           reason: 'единственный экземпляр — заголовок блока в карточке');
@@ -228,7 +233,7 @@ void main() {
       expect(find.text(titled), findsNothing);
       expect(find.text(l.subBarAnnounce), findsNothing);
       // Остальное меню цело.
-      expect(find.text(l.subBarSupport), findsOneWidget);
+      expect(find.text(l.subBarSupport), findsWidgets);
     });
 
     testWidgets('пустое имя сервиса — заголовок без хвоста', (tester) async {
@@ -257,7 +262,7 @@ void main() {
       expect(find.text(untitled), findsNothing);
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
-      expect(find.text(l.subBarSupport), findsOneWidget);
+      expect(find.text(l.subBarSupport), findsWidgets);
     });
 
     testWidgets('крупный шрифт ×1,3 — без переполнения', (tester) async {
@@ -300,11 +305,13 @@ void main() {
           isFalse);
       expect(find.text(_announce), findsOneWidget);
       expect(find.text(titled), findsOneWidget);
+      expect(find.text(l.subBarTelegram), findsOneWidget);
       expect(find.text(l.subBarSupport), findsOneWidget);
-      expect(find.text(l.subBarOpenSite), findsOneWidget);
+      expect(find.text(l.subBarOpenSite), findsNothing);
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       expect(find.text(l.subBarCopyLink), findsOneWidget);
+      expect(find.text(l.subBarOpenSite), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -315,7 +322,7 @@ void main() {
           withState: await tester.runAsync(() => init(hideAnnounce: true)));
       expect(find.text(_announce), findsNothing);
       expect(find.text(titled), findsNothing);
-      expect(find.text(l.subBarSupport), findsOneWidget);
+      expect(find.text(l.subBarSupport), findsWidgets);
     });
 
     testWidgets('крупный шрифт ×1,3 — без переполнения', (tester) async {

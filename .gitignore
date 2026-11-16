@@ -6,6 +6,10 @@ engine/**/bin/*
 *.dll
 geoip.dat
 geosite.dat
+# Встроенный набор гео-баз для Android — исходник сборки, коммитится
+# (tool/build_geo_mini.dart). Полные базы по-прежнему не коммитим.
+!app/assets/geo/geoip.dat
+!app/assets/geo/geosite.dat
 
 # ── Flutter / Dart ───────────────────────────────────────────────────
 app/.dart_tool/
@@ -63,6 +67,10 @@ docs/VM_ACCESS.md
 docs/superpowers/
 docs/HANDOFF_1.0.1.md
 docs/HANDOFF_1.11.0.md
+# Журнал главной сессии и сессии-публикатора и её инструкции (пути к ключам).
+docs/HANDOFF_PUBLISH.md
+docs/HANDOFF_PUBLISH_HISTORY.md
+publish/
 docs/PLAN_1_4_1.md
 docs/PLAN_1_4_2.md
 .claude/
@@ -73,6 +81,8 @@ docs/PLAN_1_4_2.md
 # Android
 app/android/local.properties
 app/android/key.properties
+# Ключ загрузки в Google Play (пароль открытым текстом).
+app/android/upload.properties
 app/android/.gradle/
 app/android/build/
 app/android/hs_err_pid*.log
@@ -80,6 +90,7 @@ app/android/*.iml
 release-android/
 engine/android/*.aar
 app/android/app/libs/
+app/android/app/src/main/jniLibs/
 
 # Артефакты сборки и ключ подписи — в репозиторий не едут.
 release-windows-test/
@@ -109,3 +120,17 @@ build-out/
 skills-lock.json
 # Готовые установщики и подписанные манифесты релизов — артефакты сборки, не исходники.
 installer/Output/
+
+# Ключи и сертификаты — где бы ни лежали (аудит 25.10.2026, J). `signing/`
+# закрыт выше, но pfx для signtool и pem кладут куда придётся.
+*.pfx
+*.p12
+*.pem
+*.key
+
+# Локальные стенды, временные скрипты и внутренние спеки инфраструктуры
+live_preview/
+scratch/
+*.obj
+update_installed_after_call.bat
+docs/silentgate_linux_gateway_spec.md

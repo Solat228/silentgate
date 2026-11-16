@@ -14,6 +14,7 @@ import '../../core/settings/app_settings.dart';
 import 'singbox_process.dart';
 import 'tun/tun_helper.dart';
 import 'xray_paths.dart';
+import 'xray_process.dart';
 import 'xray_version.dart';
 
 export '../../core/platform/support_context.dart';
@@ -43,7 +44,7 @@ class SupportReport {
 
     // ── Версии и окружение ────────────────────────────────────────────────
     b.writeln('[Версии]');
-    b.writeln('SilentGate: ${AppInfo.version}');
+    b.writeln('SilentGate: ${AppInfo.displayVersion}');
     b.writeln('User-Agent: ${AppInfo.userAgent}');
     b.writeln('Xray: ${await _safe(XrayVersion.get)}');
     b.writeln('sing-box: ${await _singboxVersion()}');
@@ -105,7 +106,7 @@ class SupportReport {
     b.writeln('[Логи на диске]');
     b.writeln('Срок хранения: ${settings.logRetention.name}');
     if (!await AppLog.ownsFile()) {
-      b.writeln('⚠ app.log ведёт ДРУГОЙ экземпляр приложения — '
+      b.writeln('⚠ app.log ведёт ДРУГОЙ экземпляр приложения - '
           'запущены две копии, обе пишут в один файл');
     }
     try {
@@ -131,20 +132,34 @@ class SupportReport {
     // «TUN/hysteria2 не поднимались» была неверной: прокси-ядро hysteria2 в
     // этот файл не пишет вовсе, поэтому его отказ по отчёту не диагностировался.
     final dirForLogs = await AppPaths.supportDir();
+    // ⚠️ ЛОГ XRAY НЕ ПОПАДАЛ В ОТЧЁТ ВОВСЕ (репорт клиента 03.11.2026: на диске
+    // лежал `xray.log: 458 KB, строк 3858`, а в теле отчёта — только sing-box).
+    // При этом для большинства серверов подписки (VLESS/Reality/xhttp/gRPC и
+    // панельные профили) прокси-ядром работает именно Xray, и без его хвоста
+    // причина обрыва транспорта оставалась за кадром.
     b.writeln('==================================================');
-    b.writeln('[singbox.log — TUN-ядро, последние строки]'
+    b.writeln('[xray.log - прокси-ядро Xray, последние строки]'
+        '${await _mtime(XrayProcess.logPathFor(dirForLogs))}');
+    b.writeln('==================================================');
+    final xr = await _safe(() => XrayProcess.tailLog(lines: 200));
+    b.writeln(xr.isEmpty
+        ? '(пусто - ядро Xray в этой сессии не поднималось)'
+        : _core(xr));
+    b.writeln();
+    b.writeln('==================================================');
+    b.writeln('[singbox.log - TUN-ядро, последние строки]'
         '${await _mtime(TunHelper.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sb = await _safe(() => TunHelper.tailLog(lines: 200));
-    b.writeln(sb.isEmpty ? '(пусто — TUN в этой сессии не поднимался)' : _core(sb));
+    b.writeln(sb.isEmpty ? '(пусто - TUN в этой сессии не поднимался)' : _core(sb));
     b.writeln();
     b.writeln('==================================================');
-    b.writeln('[singbox_proxy.log — прокси-ядро (hysteria2), последние строки]'
+    b.writeln('[singbox_proxy.log - прокси-ядро (hysteria2), последние строки]'
         '${await _mtime(SingboxProcess.logPathFor(dirForLogs))}');
     b.writeln('==================================================');
     final sbp = await _safe(() => SingboxProcess.tailLog(lines: 200));
     b.writeln(sbp.isEmpty
-        ? '(пусто — прокси-ядро sing-box в этой сессии не поднималось)'
+        ? '(пусто - прокси-ядро sing-box в этой сессии не поднималось)'
         : _core(sbp));
     b.writeln();
     // Третий лог: маршрутизатор выходов режима «Только прокси» (задача 3b) —
@@ -154,14 +169,14 @@ class SupportReport {
     // маршрутизатора не разобрать вовсе.
     const exitRouterLogName = 'singbox_exit_router.log';
     b.writeln('==================================================');
-    b.writeln('[singbox_exit_router.log — маршрутизатор выходов '
+    b.writeln('[singbox_exit_router.log - маршрутизатор выходов '
         '«Только прокси», последние строки]'
         '${await _mtime(SingboxProcess.logPathFor(dirForLogs, name: exitRouterLogName))}');
     b.writeln('==================================================');
     final sbr = await _safe(
         () => SingboxProcess.tailLog(lines: 200, name: exitRouterLogName));
     b.writeln(sbr.isEmpty
-        ? '(пусто — маршрутизатор выходов в этой сессии не поднимался)'
+        ? '(пусто - маршрутизатор выходов в этой сессии не поднимался)'
         : _core(sbr));
     b.writeln();
 
@@ -206,9 +221,11 @@ class SupportReport {
       await Process.run('explorer', ['/select,', path]);
     } catch (_) {}
     await Future<void>.delayed(const Duration(milliseconds: 900));
-    // 2) Сам файл лога.
+    // 2) Сам файл лога — через Проводник, а не `cmd /c start`: путь лежит в
+    // профиле пользователя, и `&` в имени учётной записи `cmd` исполнил бы
+    // как разделитель команд.
     try {
-      await Process.run('cmd', ['/c', 'start', '', path], runInShell: true);
+      await Process.run('explorer', [path]);
     } catch (_) {}
   }
 

@@ -154,7 +154,11 @@ void main() {
       // Эндпоинт /api/app-version ссылается на SilentGateSetup-<версия>.exe
       // (docs/APP_UPDATE_SERVER.md §3). Лишний дефис здесь = 404 по кнопке
       // «Скачать» у каждого пользователя.
-      expect(setting('OutputBaseFilename'), 'SilentGateSetup-{#ShortVersion}');
+      expect(setting('OutputBaseFilename'),
+          'SilentGateSetup-{#ShortVersion}{#SetupSuffix}');
+      // Суффикс есть только у сборки Store (/DSetupSuffix=-msstore); по
+      // умолчанию он пуст, и имя для сервера обновлений прежнее.
+      expect(text, contains('#ifndef SetupSuffix\r\n  #define SetupSuffix ""'));
     });
 
     test('в имени файла три числа, без номера сборки', () {
@@ -191,8 +195,55 @@ void main() {
     });
 
     test('данные пользователя удаляются при удалении программы', () {
-      expect(text, contains(r'Type: filesandordirs; Name: "{userappdata}\SilentGate"'));
-      expect(text, contains('--cleanup'));
+      expect(text, contains('--cleanup --keep-data'));
+      // Каталог стирает [Code], если человек не попросил сохранить настройки.
+      expect(text, contains(r"ExpandConstant('{userappdata}\SilentGate')"));
+      expect(text, contains('DelTree(dataDir, True, True, True)'));
+    });
+
+    test('⚠️ вопрос «сохранить настройки» — по умолчанию «Нет»', () {
+      // В каталоге лежат подписки — ключи доступа к VPN. Оставить их на
+      // машине можно только с согласия человека: кнопка по умолчанию «Нет»,
+      // тихое удаление стирает всё, кроме явного /KEEPDATA.
+      expect(text, contains('MB_YESNO or MB_DEFBUTTON2'));
+      expect(text, contains("CompareText(ParamStr(i), '/KEEPDATA')"));
+      expect(text, contains('GKeepData := KeepDataRequested'));
+    });
+
+    test('⚠️ каталог данных не стирается секцией [UninstallDelete]', () {
+      // Check у этой секции вычисляется при УСТАНОВКЕ, ответ человека при
+      // удалении она не учла бы — и стёрла бы сохранённые настройки.
+      expect(text, isNot(contains(r'Type: filesandordirs; Name: "{userappdata}\SilentGate"')));
+    });
+
+    test('⚠️ сохранённые данные переживают записи журнала прежних версий', () {
+      // Inno ДОПИСЫВАЕТ журнал удаления при обновлении: у обновлённой с 1.16.0
+      // копии в нём остаются её [UninstallDelete] каталога данных и
+      // `--cleanup` без `--keep-data`. Живьём в VM (20.10.2026) ответ «Да»
+      // стирал всё. Лечение — каталог уезжает в сторону ДО записей журнала
+      // (шаг usUninstall) и возвращается на шаге usPostUninstall.
+      final step = text.substring(text.indexOf('procedure CurUninstallStepChanged'));
+      final uninstall = step.indexOf('usUninstall then');
+      final post = step.indexOf('usPostUninstall then');
+      final park = step.indexOf('ParkKeptData');
+      final restore = step.indexOf('RestoreKeptData');
+      expect(park, greaterThan(uninstall));
+      expect(park, lessThan(post));
+      expect(restore, greaterThan(post));
+      final parkFn = text.substring(text.indexOf('procedure ParkKeptData'));
+      // Прежде чем отодвинуть — оставить в каталоге только нужное
+      // переустановке: само приложение знает список, Pascal его не дублирует.
+      expect(parkFn.indexOf("'--cleanup --keep-data'"),
+          lessThan(parkFn.indexOf('RenameFile(dataDir, keepDir)')));
+      expect(text, contains('RenameFile(keepDir, dataDir)'));
+    });
+
+    test('флаг --keep-data совпадает с тем, что разбирает приложение', () {
+      final main = File('lib/main.dart').readAsStringSync();
+      final cleanup =
+          File('lib/core/platform/app_cleanup.dart').readAsStringSync();
+      expect(cleanup, contains("keepDataArg = '--keep-data'"));
+      expect(main, contains('args.contains(AppCleanup.keepDataArg)'));
     });
   });
 
@@ -396,7 +447,10 @@ void main() {
       final issKeys = RegExp(r"CompareText\(ParamStr\(i\), '(/[A-Z]+)'\)")
           .allMatches(text)
           .map((m) => m.group(1)!)
-          .toSet();
+          .toSet()
+        // `/KEEPDATA` — ключ ДЕИНСТАЛЛЯТОРА (сохранить настройки при тихом
+        // удалении); приложение его не передаёт, установщику он не нужен.
+        ..remove('/KEEPDATA');
       expect(issKeys, {SetupArgs.forceQuit, SetupArgs.forceDowngrade},
           reason: 'набор самодельных ключей [Code] разошёлся с SetupArgs');
     });
@@ -506,4 +560,77 @@ void main() {
           reason: 'портативный архив снова понесёт резервные копии гео-баз');
     });
   });
+
+  group('Схема silentgate:// — и в установщике, и на старте', () {
+    // MS1 (решение владельца 19.10.2026): установщик регистрирует схему сам,
+    // чтобы ссылки работали сразу после установки, до первого запуска;
+    // регистрация на старте остаётся — она чинит запись после переноса папки
+    // и в портативной копии.
+    test('установщик пишет все четыре значения и удаляет их при удалении', () {
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate"; '
+          r'ValueType: string; ValueName: ""; ValueData: "URL:SilentGate Protocol"; '
+          'Flags: uninsdeletekey'));
+      expect(text, contains(r'ValueName: "URL Protocol"'));
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate\DefaultIcon"'));
+      expect(text, contains(r'Subkey: "Software\Classes\silentgate\shell\open\command"; '
+          r'ValueType: string; ValueName: ""; ValueData: """{app}\{#MyAppExe}"" ""%1"""'));
+    });
+
+    test('регистрация на старте приложения не убрана', () {
+      final main = File('lib/main.dart').readAsStringSync();
+      expect(main, contains('UrlSchemeWindows.register()'));
+    });
+  });
+
+  // Ревью 29.10.2026, L3: dartjni.dll больше не в поставке, а Inno не
+  // удаляет файлы прежней версии. Удаление — В ЛЮБОЙ сборке, не только Store.
+  test('обновление удаляет оставшийся dartjni.dll и устаревший portable.txt', () {
+    for (final line in [
+      r'Type: files; Name: "{app}\dartjni.dll"',
+      r'Type: files; Name: "{app}\portable.txt"',
+    ]) {
+      final at = text.indexOf(line);
+      expect(at, greaterThan(0), reason: line);
+      final before = text.substring(0, at);
+      expect(before.lastIndexOf('[InstallDelete]'),
+          greaterThan(before.lastIndexOf('#endif')));
+      expect(
+        before.lastIndexOf('#ifdef'),
+        lessThan(before.lastIndexOf('#endif')),
+        reason: '$line внутри #ifdef — обычная сборка её не получит',
+      );
+    }
+  });
+
+  // Заявка MS3 (27.10.2026): установщик для Microsoft Store без драйвера.
+  test('сборка без драйвера удаляет wintun и sing-box прежней копии', () {
+    final i = text.indexOf('#ifdef NoTun');
+    expect(i, greaterThanOrEqualTo(0));
+    final block = text.substring(i, text.indexOf('#endif', i));
+    expect(block, contains('[InstallDelete]'));
+    expect(block, contains(r'Name: "{app}\sing-box.exe"'));
+    expect(block, contains(r'Name: "{app}\wintun.dll"'));
+    // Батник собирает Release без них, а ISCC вызывается с /DNoTun —
+    // описано в шапке скрипта.
+    expect(text, contains('/DNoTun'));
+  });
+
+  group('Ярлык Рабочего стола не сбрасывает позицию при переустановке', () {
+    test('⚠️ существующий ярлык защищён Check: ShouldCreateDesktopIcon', () {
+      // Штатный [Icons] в Inno вызывает DeleteFile перед созданием .lnk, из-за
+      // чего Explorer теряет координаты иконки на Рабочем столе и кидает её в
+      // левый верхний угол при каждом обновлении/переустановке.
+      expect(
+        text,
+        contains(
+          r'Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExe}"; '
+          'Tasks: desktopicon; Check: ShouldCreateDesktopIcon',
+        ),
+      );
+      expect(text, contains('function ShouldCreateDesktopIcon: Boolean;'));
+      expect(text, contains('GWasAlreadyInstalled := InstalledVersion <> \'\';'));
+      expect(text, contains("WizardSelectTasks('!desktopicon')"));
+    });
+  });
 }
+

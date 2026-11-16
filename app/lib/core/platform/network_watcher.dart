@@ -134,7 +134,7 @@ class NetworkWatcher {
         now0.difference(prev) > interval * 4) {
       final gap = now0.difference(prev);
       AppLog.w('Похоже, устройство выходило из сна (пауза '
-          '${gap.inSeconds} с) — считаем это сменой сети и переприменяем '
+          '${gap.inSeconds} с) - считаем это сменой сети и переприменяем '
           'маршруты с DNS');
       _lastSignature = null; // заставит обработать как смену
       _pendingSignature = null;
@@ -142,6 +142,9 @@ class NetworkWatcher {
       return;
     }
     final now = await signature();
+    // За время чтения интерфейсов мы могли сами начать подключение (`suspend`)
+    // — такт устарел (аудит 25.10.2026, H).
+    if (_suspended || DateTime.now().isBefore(_quietUntil)) return;
     // Не смогли прочитать список интерфейсов (разовый сбой) — НЕ считаем это
     // сменой сети: иначе пустой отпечаток отличается от прошлого и после дебаунса
     // выстреливает ложное «сеть изменилась».

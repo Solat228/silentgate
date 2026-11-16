@@ -20,13 +20,36 @@ import '../xray/outbound_variant.dart' show kDefaultTlsFingerprint;
 /// Xray-конфиги с `balancers`/`burstObservatory`, и разобрать их он не в
 /// состоянии.
 class SingboxOutboundFactory {
-  /// Умеем ли мы построить outbound для этого сервера.
-  static bool supports(VpnServer s) => const {
-        'hysteria2',
-        'vless',
-        'trojan',
-        'shadowsocks',
-      }.contains(s.protocol);
+  static const _unsupportedTransports = {
+    'xhttp',
+    'splithttp',
+    'kcp',
+    'mkcp',
+    'quic',
+  };
+
+  /// Умеем ли мы построить outbound для этого сервера напрямую в sing-box.
+  ///
+  /// Транспорты Xray (`xhttp`/`splithttp`/`kcp`) sing-box не поддерживает —
+  /// раньше они молча проваливались в пустой `_transportBlock`, превращая узел
+  /// в сломанный plain-TCP. Теперь `supports` честно возвращает `false`, а
+  /// `ExitOutbounds` поднимает их через локальный SOCKS5-мост Xray.
+  static bool supports(VpnServer s) {
+    if (!const {
+      'hysteria2',
+      'vless',
+      'trojan',
+      'shadowsocks',
+      'whitelist_bypass',
+    }.contains(s.protocol)) {
+      return false;
+    }
+    if (s.protocol == 'hysteria2' || s.protocol == 'whitelist_bypass') {
+      return true;
+    }
+    final net = s.network.trim().toLowerCase();
+    return !_unsupportedTransports.contains(net);
+  }
 
   /// [resolvedIp] — адрес сервера, отрезолвленный ЗАРАНЕЕ (до подъёма TUN).
   ///
@@ -48,6 +71,8 @@ class SingboxOutboundFactory {
         return _trojan(s, tag, resolvedIp);
       case 'shadowsocks':
         return _shadowsocks(s, tag, resolvedIp);
+      case 'whitelist_bypass':
+        return _whitelistBypass(s, tag);
       case 'hysteria2':
         break;
       default:
@@ -106,6 +131,16 @@ class SingboxOutboundFactory {
     return null;
   }
 
+  // ── Whitelist Bypass SOCKS Outbound ───────────────────────────────────────
+
+  static Map<String, dynamic> _whitelistBypass(VpnServer s, String tag) => {
+        'type': 'socks',
+        'tag': tag,
+        'server': s.address.isNotEmpty ? s.address : '127.0.0.1',
+        'server_port': s.port > 0 ? s.port : 10855,
+        'version': '5',
+      };
+
   // ── VLESS / Trojan / Shadowsocks ────────────────────────────────────────────
 
   static Map<String, dynamic> _vless(
@@ -117,8 +152,11 @@ class SingboxOutboundFactory {
         'server_port': s.port,
         'uuid': s.id,
         if ((s.flow ?? '').isNotEmpty) 'flow': s.flow,
-        if ((s.encryption ?? '').isNotEmpty && s.encryption != 'none')
-          'packet_encoding': s.encryption,
+        // ⚠️ `encryption` ССЫЛКИ — НЕ `packet_encoding` sing-box. Первое — шифр
+        // VLESS (`none` или новый mlkem у Xray), второе — упаковка UDP
+        // (`xudp`/`packetaddr`). Подстановка давала неизвестное значение, и
+        // ядро отвергало ВЕСЬ конфиг из-за одного сервера (аудит, E).
+        // Шифра VLESS sing-box не умеет вовсе.
         ..._tlsBlock(s, resolvedIp),
         ..._transportBlock(s, resolvedIp),
       };

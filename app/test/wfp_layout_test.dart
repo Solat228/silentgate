@@ -90,6 +90,20 @@ void main() {
       expect(WfpConst.v6AddrAndMaskSize, 17);
       expect(WfpConst.v4AddrAndMaskSize, 8);
     });
+
+    test('FWPS_ALE_ENDPOINT_PROPERTIES0 — 104 байта', () {
+      expect(WfpAleEndpointOffsets.size, 104);
+      expect(WfpAleEndpointOffsets.endpointId, 0);
+      expect(WfpAleEndpointOffsets.ipVersion, 8);
+      expect(WfpAleEndpointOffsets.localV4Address, 12);
+      expect(WfpAleEndpointOffsets.remoteV4Address, 28);
+      expect(WfpAleEndpointOffsets.ipProtocol, 44);
+      expect(WfpAleEndpointOffsets.localPort, 46);
+      expect(WfpAleEndpointOffsets.remotePort, 48);
+      expect(WfpAleEndpointOffsets.appIdSize, 88);
+      expect(WfpAleEndpointOffsets.appIdData, 96);
+      expect(WfpAleEndpointOffsets.ipVersionV4, 0);
+    });
   });
 
   group('⚠️ Числа, которые легко перепутать', () {

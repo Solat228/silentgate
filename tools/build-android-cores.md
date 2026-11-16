@@ -4,7 +4,7 @@
 как и `xray.exe`/`sing-box.exe` на Windows. Этот файл — воспроизводимый рецепт;
 всё, что здесь записано, выяснено практикой, а не взято из документации.
 
-Требуется: Go 1.26+, Android SDK, NDK 27+, JDK 17.
+Требуется: Go 1.26+ (sing-box 1.14 требует не ниже 1.25.5), Android SDK, NDK 27+, JDK 17.
 
 ## Ключевая развилка: два РАЗНЫХ gomobile
 
@@ -41,12 +41,12 @@ GOBIN=C:/dev/android/gobin-upstream go install golang.org/x/mobile/cmd/gobind@la
 
 ```bash
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH     # форк SagerNet
-cd sing-box                                    # git checkout v1.13.14
+cd sing-box                                    # git checkout v1.14.3
 gomobile bind \
   -target=android/arm64 -androidapi 24 \
   -javapkg=io.nekohasekai -libname=box \
   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0" \
-  -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14" \
+  -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.14.3" \
   -trimpath -o libbox.aar ./experimental/libbox
 ```
 
@@ -99,7 +99,7 @@ cat > bind_dep.go <<'EOF'
 package cores
 import _ "github.com/sagernet/gomobile/bind"
 EOF
-go mod edit -require=github.com/sagernet/sing-box@v1.13.14
+go mod edit -require=github.com/sagernet/sing-box@v1.14.3
 go mod edit -require=github.com/sagernet/gomobile@v0.1.12
 go mod edit -require=github.com/xtls/libxray@v0.0.0
 go mod edit -replace=github.com/xtls/libxray=<путь к клону libXray>
@@ -107,7 +107,7 @@ go mod edit -replace=github.com/sagernet/sing-box=<путь к клону sing-b
 go mod tidy      # тянет и tailscale-зависимости; сеть должна быть терпеливой
 
 export PATH=$GOPATH/bin:$GOROOT/bin:$PATH      # форк SagerNet
-gomobile bind -target=android/arm64,android/amd64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.13.14 '-extldflags=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384'"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
+gomobile bind -target=android/arm64,android/amd64 -androidapi 24   -javapkg=lol.silentgate.cores -libname=cores   -tags "with_gvisor,with_quic,with_utls,with_clash_api,badlinkname,tfogo_checklinkname0"   -ldflags "-s -w -checklinkname=0 -X github.com/sagernet/sing-box/constant.Version=1.14.3 '-extldflags=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384'"   -trimpath -o cores.aar   github.com/sagernet/sing-box/experimental/libbox github.com/xtls/libxray
 ```
 
 `android/amd64` — ядро для эмулятора (`TEST-ONLY-emulator-…-x86_64.apk`).
@@ -123,7 +123,7 @@ NDK r27 по умолчанию даёт 4 КБ (16 КБ по умолчанию
 10.10.2026). Упаковку в APK по 16 КБ AGP делает сам. Страж —
 `app/test/android_16k_alignment_test.dart`: читает ELF внутри AAR.
 
-Результат — `cores.aar` ~18 МБ (против 13+12 по отдельности: рантайм общий).
+Результат — `cores.aar` ~46 МБ на две ABI (`libcores.so` для arm64 — 67 МБ без сжатия; рантайм Go общий).
 Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate.cores.libXray`,
 нативная библиотека одна — `libcores.so`.
 
@@ -133,37 +133,40 @@ Java-пакеты внутри: `lol.silentgate.cores.libbox` и `lol.silentgate
 unzip -p cores.aar classes.jar > /tmp/c.jar && unzip -l /tmp/c.jar | grep -c "go/Seq.class"   # ровно 1
 ```
 
-## ⚠️ ОБЯЗАТЕЛЬНЫЙ ПАТЧ sing-tun (иначе VPN не снимается после «Отключить»)
+## ⚠️ Патч libbox: без SSH-оболочки Tailscale (иначе ядро на 20 МБ толще)
 
-`sing-box v1.13.14` тянет `sing-tun v0.8.11`, где `LinkEndpointFilter.Attach(nil)`
-заворачивает `nil` в обёртку. Для gvisor-эндпоинта это выглядит как ЖИВОЙ
-диспетчер: горутина-читатель tun не останавливается, сидит в `ppoll` на
-tun-дескрипторе и держит файл открытым — а системе для снятия VPN-сети нужно,
-чтобы закрылся ПОСЛЕДНИЙ дескриптор. Снаружи: приложение показывает
-«Отключено», а ключ VPN в статус-баре и `tun0` живут, пока в мёртвый туннель
-случайно не прилетит чей-то пакет (на эмуляторе — от 30 с до бесконечности).
-Найдено 19.09.2026 kprobe-трассировкой `fput`/`tun_chr_close` в госте.
-В апстриме sing-tun уже исправлено (`if dispatcher == nil`), в 0.8.11 — нет.
-
-Патч лежит в `engine/android/sing-tun-0.8.11-attach-nil.patch`. Порядок:
+В 1.14 файл `experimental/libbox/native_shell_session.go` собирается на Android
+без всяких тегов и тянет `protocol/tailscale/tailssh`, а за ним `tsnet` — 208
+пакетов Tailscale. Тег `with_tailscale` при этом не нужен: импорт безусловный.
+`libcores.so` для arm64 вырастал с 58 до 78 МБ. Нам оболочка не нужна вовсе:
+`usePlatformShell()` отвечает `false`. Патч прячет файл за тегом
+`with_platform_shell`, которого мы не ставим, и включает заглушку. С ним
+`libcores.so` весит 67 МБ.
 
 ```bash
-cp -r $GOPATH/pkg/mod/github.com/sagernet/sing-tun@v0.8.11 C:/dev/android/src/sing-tun
-chmod -R u+w C:/dev/android/src/sing-tun
-cd C:/dev/android/src/sing-tun && patch -p1 < <репозиторий>/engine/android/sing-tun-0.8.11-attach-nil.patch
-cd ../cores && go mod edit -replace=github.com/sagernet/sing-tun=C:/dev/android/src/sing-tun
+cd C:/dev/android/src/sing-box && git checkout v1.14.3
+git apply <репозиторий>/engine/android/libbox-1.14.3-no-platform-shell.patch
 ```
 
-Проверка после сборки — живьём на эмуляторе: подключиться → «Отключить» →
+Проверка: `go list -deps` для `experimental/libbox` с нашими тегами и
+`GOOS=android` не должен показать ни одного пакета `tailscale`.
+
+### Снятый патч sing-tun (до 1.15.2)
+
+`sing-box 1.13.14` тянул `sing-tun v0.8.11`, где `LinkEndpointFilter.Attach(nil)`
+заворачивал `nil` в обёртку, и туннель не снимался после «Отключить» (найдено
+19.09.2026 kprobe-трассировкой). В `sing-box 1.14.3` стоит sing-tun
+`v0.9.7-…`, где это исправлено (`if dispatcher == nil`), поэтому replace на
+локальный sing-tun снят. Проверка живьём та же: подключиться → «Отключить» →
 `adb shell ip -o link show tun0` обязан ответить «does not exist» в течение
-~10 с. Как обновится sing-box с sing-tun ≥ 0.8.12 — снять replace, патч удалить.
+~10 с.
 
 ## Куда класть
 
 `engine/android/cores.aar` (репозиторный слот, gitignored) и
 `app/android/app/libs/cores.aar` (откуда его берёт Gradle).
 
-## Выясненное API (версии 1.13.14 / libXray HEAD)
+## Выясненное API (версии 1.14.3 / libXray HEAD)
 
 **libbox** — в 1.13 НЕТ `BoxService`/`newService` из старых примеров. Актуальный
 порядок:
@@ -175,8 +178,13 @@ cd ../cores && go mod edit -replace=github.com/sagernet/sing-tun=C:/dev/android/
    sing-box-конфиг;
 5. `server.closeService()` / `server.close()`.
 
-`PlatformInterface` (его реализует наш `VpnService`) обязан дать 16 методов;
-для нас ключевые:
+`PlatformInterface` (его реализует наш `VpnService`) в 1.14 требует 27 методов.
+`systemCertificates()` убран. Добавлены методы для Tailscale, SSH-оболочки,
+моста и таблицы соседей (`usePlatformShell`, `openShellSession`, `createBridge`,
+`startNeighborMonitor` и другие). Нам они не нужны: отвечаем `false` или
+«не поддерживается», как и официальный клиент SFA без root.
+`CommandServerHandler` получил `triggerNativeCrash()` и `connectSSHAgent()`
+(отвечаем `-1`). Для нас ключевые:
 
 | Метод | Зачем |
 |---|---|
@@ -190,6 +198,10 @@ cd ../cores && go mod edit -replace=github.com/sagernet/sing-tun=C:/dev/android/
 `getInet6Address()`, `getMTU()`, `getAutoRoute()`, `getStrictRoute()`,
 `getInet4RouteAddress()`, `getInet4RouteExcludeAddress()`, `getIncludePackage()`,
 `getExcludePackage()`, `getDNSServerAddress()`.
+
+⚠️ В 1.14 `getDNSServerAddress()` отдаёт `StringIterator` (было `StringBox`), и
+появился `getDNSMode()`. При режиме `Libbox.DNSModeDisabled` DNS системе не
+назначаем: ядро его не перехватывает, и запросы ушли бы в никуда.
 
 **libXray** — единый вход `Invoke(requestJSON): String` с методами
 `runXrayFromJson`, `stopXray`, `ping`, `testXray`, `xrayVersion`,

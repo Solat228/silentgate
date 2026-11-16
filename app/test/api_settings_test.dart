@@ -17,16 +17,28 @@ void main() {
   });
 
   group('Переживают диск', () {
-    test('все три поля возвращаются как есть', () {
+    test('все поля API (включая расширенные 1.18.7) возвращаются как есть', () {
       const s = AppSettings(
         apiEnabled: true,
         apiToken: 'abc123',
         apiExitServerKeys: ['vless://a', 'vless://b'],
+        apiAssignedPorts: {'vless://a': 10825},
+        apiAutoIncludeAutoProfiles: true,
+        apiKeepAliveWhenDisconnected: true,
+        apiProxyAuthMode: ApiProxyAuthMode.custom,
+        apiProxyCustomUser: 'bot',
+        apiProxyCustomPassword: 'pw',
       );
       final back = AppSettings.fromJson(s.toJson());
       expect(back.apiEnabled, isTrue);
       expect(back.apiToken, 'abc123');
       expect(back.apiExitServerKeys, ['vless://a', 'vless://b']);
+      expect(back.apiAssignedPorts, {'vless://a': 10825});
+      expect(back.apiAutoIncludeAutoProfiles, isTrue);
+      expect(back.apiKeepAliveWhenDisconnected, isTrue);
+      expect(back.apiProxyAuthMode, ApiProxyAuthMode.custom);
+      expect(back.apiProxyCustomUser, 'bot');
+      expect(back.apiProxyCustomPassword, 'pw');
     });
 
     test('старый файл без полей читается умолчаниями', () {
@@ -34,6 +46,8 @@ void main() {
       expect(back.apiEnabled, isFalse);
       expect(back.apiToken, isEmpty);
       expect(back.apiExitServerKeys, isEmpty);
+      expect(back.apiAutoPortEnabled, isTrue);
+      expect(back.apiProxyAuthMode, ApiProxyAuthMode.apiToken);
     });
   });
 
@@ -49,42 +63,25 @@ void main() {
   });
 
   group('Требуют переподключения', () {
-    // ⚠️ ТОЛЬКО ТАМ, ГДЕ ПОРТЫ ВЫХОДОВ ВООБЩЕ ПОДНИМАЮТСЯ. Инбаунды отдельных
-    // портов собираются в режимах туннеля и «только прокси»; в системном
-    // прокси их не строит никто (`ApiPorts.exitPortsExistIn`).
-    const tun = AppSettings(captureMode: CaptureMode.tun);
-
-    test('все три поля названы в reconnectReasons', () {
-      // Поля запекаются в конфиг ядра при подъёме. Без строки здесь правка
-      // не применялась бы до ручного переподключения, а плашка «переподключитесь»
-      // не появлялась бы — пользователь считал бы настройку сломанной.
-      expect(tun.reconnectReasons(tun.copyWith(apiEnabled: true)),
-          contains('API для автоматизации'));
-      expect(tun.reconnectReasons(tun.copyWith(apiToken: 'x')),
-          contains('токен API'));
-      expect(tun.reconnectReasons(tun.copyWith(apiExitServerKeys: ['k'])),
-          contains('серверы с отдельным портом'));
-    });
-
-    test('в режиме «Только прокси» — тоже', () {
-      const p = AppSettings(captureMode: CaptureMode.proxyOnly);
-      expect(p.reconnectReasons(p.copyWith(apiEnabled: true)),
-          contains('API для автоматизации'));
-    });
-
-    test('⚠️ в режиме системного прокси переподключаться НЕ за чем', () {
-      // Приложение само пишет на экране API, что в этом режиме отдельные порты
-      // не поднимутся. Рвать из-за них живой туннель — значит наказывать за
-      // правку, которая заведомо ни на что не влияет, и создавать у человека
-      // ложную уверенность «переподключился — значит применилось».
-      const sp = AppSettings(captureMode: CaptureMode.systemProxy);
-      expect(sp.reconnectReasons(sp.copyWith(apiEnabled: true)), isEmpty);
-      expect(sp.reconnectReasons(sp.copyWith(apiToken: 'x')), isEmpty);
-      expect(sp.reconnectReasons(sp.copyWith(apiExitServerKeys: ['k'])), isEmpty);
+    // С версии 1.18.7 порты выходов поднимаются во ВСЕХ режимах захвата
+    // (`tun`, `proxyOnly`, `systemProxy` через параллельный `ExitRouter`),
+    // поэтому правка настроек портов API требует перезапуска сессии во всех трёх.
+    test('все поля портов API названы в reconnectReasons во всех режимах захвата', () {
+      for (final mode in CaptureMode.values) {
+        final cfg = AppSettings(captureMode: mode);
+        expect(cfg.reconnectReasons(cfg.copyWith(apiEnabled: true)),
+            contains('API для автоматизации'),
+            reason: 'режим $mode');
+        expect(cfg.reconnectReasons(cfg.copyWith(apiToken: 'x')),
+            contains('токен API'),
+            reason: 'режим $mode');
+        expect(cfg.reconnectReasons(cfg.copyWith(apiExitServerKeys: ['k'])),
+            contains('серверы с отдельным портом'),
+            reason: 'режим $mode');
+      }
     });
 
     test('смена самого способа захвата переподключение требует', () {
-      // Страж от перегиба: гейт не должен проглотить главную причину.
       const sp = AppSettings(captureMode: CaptureMode.systemProxy);
       expect(sp.reconnectReasons(sp.copyWith(captureMode: CaptureMode.tun)),
           contains('способ захвата'));

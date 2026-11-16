@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../core/platform/package_identity_windows.dart';
 import '../core/platform/url_scheme_windows.dart';
 import '../core/app_info.dart';
 import '../l10n/gen/app_localizations.dart';
@@ -74,7 +75,13 @@ class _UrlSchemesScreenState extends State<UrlSchemesScreen> {
           // ещё не сделано — тумблер вставал в «вкл», не меняя ничего.
           //
           // Сами схемы ниже по экрану остаются: они рабочие и на Android.
-          if (!Platform.isAndroid && !Platform.isIOS) ...[
+          //
+          // В пакете MSIX (Microsoft Store) схему объявляет манифест пакета:
+          // запись в реестр пережила бы удаление и вела бы в пустоту, а
+          // выключить объявленную в манифесте схему нечем.
+          if (!Platform.isAndroid &&
+              !Platform.isIOS &&
+              !PackageIdentity.isPackaged) ...[
           // silentgate:// — включена всегда; выключение только с предупреждением.
           SwitchListTile(
             value: _registered ?? true,

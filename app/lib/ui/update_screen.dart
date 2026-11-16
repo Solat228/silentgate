@@ -17,6 +17,7 @@ import 'settings_screen.dart' show kSettingsContentMaxWidth;
 import 'widgets/download_progress_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/update_dialog.dart';
+import 'widgets/whats_new_badge.dart';
 
 /// Источник списка «Прежних версий» — подменяется тестом.
 typedef ReleaseHistoryLoader = Future<List<AppRelease>> Function();
@@ -73,6 +74,8 @@ class _UpdateScreenState extends State<UpdateScreen> {
     final s = settingsCtrl.settings;
     final theme = Theme.of(context);
 
+    if (c.storeManaged) return _storeManaged(context, c);
+
     return Scaffold(
       appBar: AppBar(title: Text(l.updatesTitle)),
       body: Align(
@@ -90,8 +93,11 @@ class _UpdateScreenState extends State<UpdateScreen> {
                   child: _OverrideBanner(),
                 ),
               ListTile(
+                key: const Key('updatesCurrentVersionTile'),
                 leading: const Icon(Icons.system_update_alt),
-                title: Text(l.updatesCurrentVersion(AppInfo.version)),
+                title: Text(l.updatesCurrentVersion(AppInfo.displayVersion)),
+                trailing: const Icon(Icons.info_outline, size: 18),
+                onTap: () => unawaited(showWhatsNewDialog(context)),
                 subtitle: Wrap(
                   spacing: 6,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -143,6 +149,17 @@ class _UpdateScreenState extends State<UpdateScreen> {
                 title: Text(l.updatesAutoCheck),
               ),
               SwitchListTile(
+                key: const Key('updatesShowWhatsNewSwitch'),
+                value: s.showWhatsNewOnUpdate,
+                onChanged: (v) => unawaited(settingsCtrl
+                    .update((x) => x.copyWith(showWhatsNewOnUpdate: v))),
+                title: Text(
+                  l.localeName.toLowerCase().startsWith('ru')
+                      ? 'Показывать «Что нового» после обновления'
+                      : 'Show "What\'s new" after updates',
+                ),
+              ),
+              SwitchListTile(
                 key: const Key('updatesBetaSwitch'),
                 value: s.betaChannel,
                 onChanged: (v) => unawaited(
@@ -165,6 +182,50 @@ class _UpdateScreenState extends State<UpdateScreen> {
               _Note(icon: Icons.verified_user_outlined, text: l.updatesSignatureNote),
               if (Platform.isAndroid)
                 _Note(icon: Icons.info_outline, text: l.updatesAndroidNoSilent),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Сборка из Google Play: обновляет её только Play (правило Play «Device
+  /// and Network Abuse»). Ни режимов, ни бета-канала, ни отката — всё это
+  /// здесь было бы контролами-обманками.
+  Widget _storeManaged(BuildContext context, AppUpdateController c) {
+    final l = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(title: Text(l.updatesTitle)),
+      body: Align(
+        alignment: AlignmentDirectional.topStart,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: kSettingsContentMaxWidth),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            children: [
+              ListTile(
+                leading: const Icon(Icons.system_update_alt),
+                title: Text(l.updatesCurrentVersion(AppInfo.displayVersion)),
+              ),
+              _Note(
+                  icon: Icons.shop,
+                  text: c.msStoreManaged
+                      ? l.updatesMsStoreManaged
+                      : l.updatesPlayManaged),
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 8),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: FilledButton.icon(
+                    key: const Key('updatesOpenPlayButton'),
+                    onPressed: () => unawaited(c.openPlayStore()),
+                    icon: const Icon(Icons.open_in_new, size: 18),
+                    label: Text(c.msStoreManaged
+                        ? l.updatesOpenMsStore
+                        : l.updatesOpenPlay),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -376,6 +437,19 @@ class _StatusCard extends StatelessWidget {
       }
     }
 
+    // Сборка GitHub при установленном Google Play: Play — первой кнопкой,
+    // закачка и страница релиза остаются запасными.
+    final viaPlay = c.offerViaPlay &&
+        (c.phase == UpdatePhase.available || c.phase == UpdatePhase.linkOnly);
+    if (viaPlay) {
+      actions.add(FilledButton.icon(
+        key: const Key('updatesPlayButton'),
+        onPressed: () => unawaited(c.openPlayStore()),
+        icon: const Icon(Icons.shop, size: 18),
+        label: Text(l.updatesViaPlay),
+      ));
+    }
+
     Widget openPage() => OutlinedButton.icon(
           key: const Key('updatesOpenPageButton'),
           onPressed: () => unawaited(openUpdatePage(offer)),
@@ -399,12 +473,19 @@ class _StatusCard extends StatelessWidget {
           detail = linkOnlyReasonText(l, earlyReason);
           actions.add(openPage());
         } else if (capability != null) {
-          actions.add(FilledButton.icon(
-            key: const Key('updatesDownloadButton'),
-            onPressed: () => unawaited(c.download()),
-            icon: const Icon(Icons.download, size: 18),
-            label: Text(l.updatesDownload),
-          ));
+          actions.add(viaPlay
+              ? OutlinedButton.icon(
+                  key: const Key('updatesDownloadButton'),
+                  onPressed: () => unawaited(c.download()),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: Text(l.updatesViaGithub),
+                )
+              : FilledButton.icon(
+                  key: const Key('updatesDownloadButton'),
+                  onPressed: () => unawaited(c.download()),
+                  icon: const Icon(Icons.download, size: 18),
+                  label: Text(l.updatesDownload),
+                ));
         }
       case UpdatePhase.downloading:
         final p = c.progress;
@@ -438,6 +519,13 @@ class _StatusCard extends StatelessWidget {
         status = l.updatesStatusInstalling;
         showProgress = true;
         if (Platform.isAndroid) detail = l.updatesAndroidNoSilent;
+        if (!c.busy) {
+          actions.add(OutlinedButton(
+            key: const Key('updatesCancelInstallButton'),
+            onPressed: c.recoverFromInstalling,
+            child: Text(l.commonCancel),
+          ));
+        }
       case UpdatePhase.failed:
         final e = c.error;
         status = l.updatesStatusFailed(
@@ -507,7 +595,7 @@ class _StatusCard extends StatelessWidget {
             Wrap(spacing: 8, runSpacing: 8, children: [
               FilledButton.tonal(
                 key: const Key('updatesCheckButton'),
-                onPressed: c.busy || c.phase == UpdatePhase.installing
+                onPressed: c.busy
                     ? null
                     : () => unawaited(c.checkNow()),
                 child: Text(l.updatesCheckNow),

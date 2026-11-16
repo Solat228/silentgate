@@ -17,6 +17,7 @@ import 'package:flutter/services.dart';
 
 import '../../core/settings/split_tunnel_text.dart';
 import '../../l10n/gen/app_localizations.dart';
+import 'extended_clipboard.dart';
 import 'sel_text.dart';
 
 /// Что выбрал человек. `rules` — уже готовый список, который можно класть в
@@ -157,6 +158,8 @@ class _RuleImportDialogState<T> extends State<RuleImportDialog<T>> {
               constraints: const BoxConstraints(maxHeight: 220),
               child: TextField(
                 controller: _text,
+                contentInsertionConfiguration:
+                    buildExtendedContentInsertion(_text),
                 autofocus: true,
                 maxLines: null,
                 expands: false,
@@ -249,7 +252,7 @@ class _RuleImportDialogState<T> extends State<RuleImportDialog<T>> {
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 2),
               child: SelText(
-                '${widget.label(c.incoming)} — '
+                '${widget.label(c.incoming)} - '
                 '${l.splitImportConflictLine(widget.describe(c.current), widget.describe(c.incoming))}',
                 style: theme.textTheme.bodySmall,
               ),

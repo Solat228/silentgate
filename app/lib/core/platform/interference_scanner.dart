@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../../engine/windows/elevation.dart';
 import '../../engine/windows/process_list_windows.dart';
+import 'app_log.dart';
 
 class Interference {
   final String kind; // 'adapter' | 'process' | 'proxy'
@@ -63,9 +64,11 @@ class InterferenceScanner {
   static Future<List<Interference>> _scanProxy() async {
     try {
       final key = r'HKCU\Software\Microsoft\Windows\CurrentVersion\Internet Settings';
-      final en = await Process.run('reg', ['query', key, '/v', 'ProxyEnable']);
+      final en = await Process.run('reg', ['query', key, '/v', 'ProxyEnable'])
+          .timeout(const Duration(milliseconds: 1500));
       if (!'${en.stdout}'.contains('0x1')) return [];
-      final sv = await Process.run('reg', ['query', key, '/v', 'ProxyServer']);
+      final sv = await Process.run('reg', ['query', key, '/v', 'ProxyServer'])
+          .timeout(const Duration(milliseconds: 1500));
       final out = '${sv.stdout}';
       // Наш прокси — 127.0.0.1:10809; любой другой активный прокси считаем помехой.
       if (out.contains('127.0.0.1:10809')) return [];
@@ -210,9 +213,11 @@ class InterferenceScanner {
   /// так и не исчез, — тогда честнее сказать «закрыл, но подожди», чем молча
   /// подключаться в заведомо плохой момент.
   static Future<bool> waitTunnelGone(
-      {Duration timeout = const Duration(seconds: 6)}) async {
+      {Duration timeout = const Duration(seconds: 3),
+      bool Function()? abort}) async {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
+      if (abort?.call() ?? false) return false;
       if ((await _foreignTunnelAdapters()).isEmpty) return true;
       await Future<void>.delayed(const Duration(milliseconds: 400));
     }
@@ -301,7 +306,12 @@ class InterferenceScanner {
     final self = Platform.resolvedExecutable.toLowerCase();
     final path = p.path.toLowerCase();
     if (path == self) return true;
-    const mine = {'silentgate.exe', 'sing-box.exe', 'xray.exe'};
+    const mine = {
+      'silentgate.exe',
+      'sing-box.exe',
+      'xray.exe',
+      'whitelist-bypass.exe',
+    };
     if (!mine.contains(p.name.toLowerCase())) return false;
     // Ядро с таким же именем может принадлежать ЧУЖОМУ клиенту (sing-box и Xray
     // используют многие), поэтому «своим» считаем только то, что лежит в нашей
@@ -349,16 +359,49 @@ class InterferenceScanner {
   /// их не берёт («Отказано в доступе») — молча ничего не происходило. Поэтому:
   /// сначала пробуем без прав, а если процесс жив — повторяем через UAC.
   /// Возвращает true, если процесс действительно исчез.
-  static Future<bool> kill(int pid) async {
+  static Future<bool> kill(int pid, {String? expectedPath}) async {
+    // ⚠️ Между сканированием и нажатием проходят секунды и минуты. Помеха
+    // могла закрыться сама, а её номер — достаться другому процессу; убивать
+    // его с правами администратора нельзя (аудит 25.10.2026, H).
+    if (expectedPath != null) {
+      final List<RunningProcess> now;
+      try {
+        now = ProcessListWindows.enumerate();
+      } catch (_) {
+        return false;
+      }
+      switch (pidStillMatches(pid, expectedPath, now)) {
+        case false:
+          AppLog.w('Помеху не закрываю: номер процесса $pid уже у другой '
+              'программы');
+          return false;
+        case null:
+          // Пути процессов под администратором `enumerate` не видит (zapret
+          // запущен именно так) — сверяем хотя бы имя файла.
+          final image = await _imageName(pid);
+          if (image == null) return true; // помеха закрылась сама
+          if (image.toLowerCase() !=
+              _baseName(expectedPath).toLowerCase()) {
+            AppLog.w('Помеху не закрываю: номер процесса $pid уже у '
+                'другой программы');
+            return false;
+          }
+        case true:
+          break;
+      }
+    }
+    final image = expectedPath == null ? null : _baseName(expectedPath);
     try {
-      await Process.run('taskkill', ['/F', '/PID', '$pid', '/T']);
+      await Process.run('taskkill', killArgs(pid, image: image))
+          .timeout(const Duration(milliseconds: 1500));
     } catch (_) {}
     if (!await _alive(pid)) return true;
 
     // ⚠️ Только асинхронная элевация. Синхронный вызов через FFI умеет не
     // возвращаться вовсе (см. Elevation) — и тогда кнопка «закрыть приложение»
     // намертво вешала бы весь интерфейс.
-    await Elevation.runElevatedAsync('taskkill.exe', '/F /PID $pid /T');
+    await Elevation.runElevatedAsync(
+        'taskkill.exe', elevatedKillParams(pid, image: image));
     // Элевейтнутый процесс завершается асинхронно — ждём результата.
     for (var i = 0; i < 10; i++) {
       await Future.delayed(const Duration(milliseconds: 300));
@@ -367,9 +410,66 @@ class InterferenceScanner {
     return false;
   }
 
+  /// Аргументы `taskkill` для помехи [pid].
+  ///
+  /// ⚠️ ИМЯ ОБРАЗА — В САМОЙ КОМАНДЕ, А НЕ ТОЛЬКО В СВЕРКЕ ДО НЕЁ (ревью
+  /// 29.10.2026, L13). Сверка номера процесса идёт ДО окна UAC, а человек
+  /// смотрит на это окно сколько угодно: помеха успевает закрыться, номер
+  /// достаётся другой программе, и `taskkill` с правами администратора
+  /// убивал бы её. Фильтр `IMAGENAME` проверяет имя в момент убийства.
+  static List<String> killArgs(int pid, {String? image}) => [
+        '/F',
+        '/PID',
+        '$pid',
+        '/T',
+        if (image != null && _safeImage(image)) ...['/FI', 'IMAGENAME eq $image'],
+      ];
+
+  /// Те же аргументы одной строкой — для запуска через UAC.
+  static String elevatedKillParams(int pid, {String? image}) => [
+        for (final a in killArgs(pid, image: image))
+          a.contains(' ') ? '"$a"' : a,
+      ].join(' ');
+
+  /// Имя образа без кавычек и служебных символов фильтра — иначе оно
+  /// разорвало бы строку параметров UAC.
+  static bool _safeImage(String image) =>
+      image.isNotEmpty && !RegExp(r'["*?<>|]').hasMatch(image);
+
+  /// Тот ли процесс под номером [pid]: `true` — тот же путь, `false` —
+  /// номер у другой программы, `null` — процесса нет.
+  static bool? pidStillMatches(
+      int pid, String expectedPath, Iterable<RunningProcess> running) {
+    for (final p in running) {
+      if (p.pid != pid) continue;
+      return p.path.toLowerCase() == expectedPath.toLowerCase();
+    }
+    return null;
+  }
+
+  static String _baseName(String path) =>
+      path.split(RegExp(r'[\\/]')).last;
+
+  /// Имя exe процесса по `tasklist` (видит и процессы администратора).
+  static Future<String?> _imageName(int pid) async {
+    try {
+
+
+      final r = await Process.run(
+              'tasklist', ['/FI', 'PID eq $pid', '/NH', '/FO', 'CSV'])
+          .timeout(const Duration(milliseconds: 1500));
+      final row = '${r.stdout}'.trim();
+      if (!row.startsWith('"')) return null;
+      return row.split('","').first.replaceAll('"', '');
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<bool> _alive(int pid) async {
     try {
-      final r = await Process.run('tasklist', ['/FI', 'PID eq $pid', '/NH']);
+      final r = await Process.run('tasklist', ['/FI', 'PID eq $pid', '/NH'])
+          .timeout(const Duration(milliseconds: 1500));
       return '${r.stdout}'.contains('$pid');
     } catch (_) {
       return false;

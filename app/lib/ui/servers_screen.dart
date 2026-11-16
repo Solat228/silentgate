@@ -43,28 +43,10 @@ class _ServersScreenState extends State<ServersScreen> {
       selected: state.selectedIndex,
       isPinned: state.isPinned,
     );
-    // ⚠️ ГЕЙТ ОБЩИЙ С ОСТАЛЬНЫМИ ТОЧКАМИ ВХОДА, А НЕ «ИДЁТ ЛИ ПИНГ».
-    // Здесь стояло одно условие `probe.running`, а прогон пинга не начинается
-    // ещё и во время замера скорости — тот держит те же локальные порты.
-    // Замер сотни серверов идёт десятки минут, и всё это время кнопка
-    // выглядела живой: нажатие не делало ничего и ничего не объясняло.
     final gate = PingGate.of(probe, hasTargets: shown.isNotEmpty);
-    // «Пинговать нечего» на этом экране бывает двух разных сортов, и путать их
-    // нельзя: пустой список — это «импортируйте подписку», а вот при активном
-    // поиске серверы есть, просто под запрос не подошёл ни один.
-    //
-    // ⚠️ РАЗВИЛКА — ПО НАЛИЧИЮ СЕРВЕРОВ, ТА ЖЕ, ЧТО У ТЕЛА ЭКРАНА (см. ниже:
-    // `servers.isEmpty` → «список пуст», иначе `shown.isEmpty` → «ничего не
-    // найдено»). Здесь стоял `_query.isEmpty`, и это расходилось с телом в
-    // живом случае: строка поиска набрана, а обновление подписки очистило
-    // список — экран говорил «импортируйте подписку», подсказка кнопки в тот
-    // же момент «ничего не найдено». Два ответа на один вопрос.
     final nothingToPing =
         servers.isEmpty ? l.serversEmpty : l.serversNothingFound;
 
-    // Ctrl+C копирует ключ выбранного сервера. Виджет общий с главным экраном:
-    // копирование по клавише обязано вести себя одинаково на обоих списках, а
-    // две копии обработчика разошлись бы на первой же правке.
     return CopyServerKeyShortcut(
         child: Scaffold(
       appBar: AppBar(
@@ -80,18 +62,14 @@ class _ServersScreenState extends State<ServersScreen> {
                 : state.refreshSubscription,
           ),
           IconButton(
-            // Подсказка называет ПРИЧИНУ, по которой кнопка погашена: нажатий
-            // выключенная кнопка не принимает, и наведение — единственный
-            // оставшийся способ узнать, почему. Что подсказка при этом
-            // действительно всплывает (её рисует `Tooltip` поверх кнопки, а не
-            // сама кнопка), проверено наведением мыши в `ping_gate_test`, а не
-            // принято на веру.
             tooltip: gate.label(
                 l, _query.isEmpty ? l.serversPingAll : l.serversPingFound,
                 noTargets: nothingToPing),
             icon: probe.running
                 ? const SizedBox(
-                    width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.network_check),
             onPressed: gate.allowed
                 ? () => probe.pingAll(
@@ -111,10 +89,6 @@ class _ServersScreenState extends State<ServersScreen> {
                     onChanged: (v) => setState(() => _query = v),
                   ),
                 ),
-                // ⚠️ ТО ЖЕ МЕСТО, ЧТО И В ПРАВОЙ ПАНЕЛИ ШИРОКОГО ОКНА: над
-                // списком, под поиском. Это НЕ вторая копия кнопки — человек
-                // никогда не видит оба места сразу: на узком окне списка на
-                // главном экране нет вовсе, он живёт только здесь.
                 const Padding(
                   padding: EdgeInsets.fromLTRB(12, 0, 12, 8),
                   child: AutoPickServerButton(wide: true),
@@ -129,9 +103,14 @@ class _ServersScreenState extends State<ServersScreen> {
                             final entry = entries[i];
                             if (entry is ServerGroupHeader) {
                               return ServerGroupHeaderTile(
-                                  group: entry,
-                                  flagSource:
-                                      servers[entry.indices.first].remark);
+                                group: entry,
+                                flagSource:
+                                    servers[entry.indices.first].remark,
+                                onSelect: () {
+                                  state.selectServerGroup(entry);
+                                  Navigator.of(context).pop();
+                                },
+                              );
                             }
                             final row = entry as ServerRowEntry;
                             final idx = row.index;

@@ -53,11 +53,11 @@ extension SplitModeLabel on SplitMode {
   String get label {
     switch (this) {
       case SplitMode.all:
-        return 'Все — через VPN';
+        return 'Все - через VPN';
       case SplitMode.onlySelected:
-        return 'Только отмеченные — через VPN';
+        return 'Только отмеченные - через VPN';
       case SplitMode.exceptSelected:
-        return 'Отмеченные — мимо VPN';
+        return 'Отмеченные - мимо VPN';
     }
   }
 }
@@ -259,7 +259,7 @@ String normalizeDomain(String input) {
   var d = input.trim().toLowerCase();
   d = d.replaceFirst(RegExp(r'^[a-z][a-z0-9+.\-]*://'), ''); // схема
   d = d.split('/').first.split('?').first.split('#').first; // путь/параметры
-  d = d.split(':').first; // порт — отдельно (extractPort)
+  d = d.split(':').first; // порт - отдельно (extractPort)
   if (d.startsWith('www.')) d = d.substring(4);
   return d;
 }

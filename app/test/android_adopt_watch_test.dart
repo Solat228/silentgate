@@ -50,6 +50,20 @@ void main() {
           reason: 'вооружение обязано стоять ПОСЛЕ проверки кредов');
     });
 
+    test('⚠️ креды проб восстановлены ДО статуса «Подключено»', () {
+      // На смену статуса интерфейс сразу шлёт пробу через инбаунд проб
+      // (готовность канала перед проверкой сервисов). Живой прогон 13.10.2026:
+      // статус ставился раньше, чем читался пароль, и ядро писало
+      // «authentication failed, no Proxy-Authorization header» в секунду
+      // подхвата.
+      final body = adoptBody();
+      final creds = body.indexOf('_restoreProbeSecret()');
+      final connected = body.indexOf('setStatus(VpnConnectionState.connected)');
+      expect(connected, greaterThan(0), reason: 'подхват не ставит статус');
+      expect(creds, lessThan(connected),
+          reason: 'проба по смене статуса ушла бы без пароля');
+    });
+
     test('⚠️ нет кредов — молчать нельзя, причина называется', () {
       // Молчаливое невооружение неотличимо от исправной работы: человек считает
       // себя под присмотром, а его нет.

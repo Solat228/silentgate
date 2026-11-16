@@ -1,4 +1,4 @@
-# Установка Flutter SDK на Windows (для новой машины разработчика).
+﻿# Установка Flutter SDK на Windows (для новой машины разработчика).
 # Использование:  powershell -ExecutionPolicy Bypass -File tools/bootstrap-windows.ps1
 #
 # Клонирует flutter/flutter (stable) в %USERPROFILE%\flutter, добавляет в PATH пользователя,

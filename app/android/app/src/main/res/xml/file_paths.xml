@@ -13,8 +13,13 @@
   закачек и кэши картинок, и им наружу незачем. Токенов там нет по построению
   (в updates/ пишет только закачка обновления), а `files/SilentGate`
   по-прежнему закрыт.
+
+  Третий корень — файл экспорта настроек (`files/SilentGate/export/`, P11).
+  Человек сам нажал «Экспорт» и сам выбирает, кому отдать файл; в каталоге
+  лежит только последний экспорт — прежний удаляется при новом.
 -->
 <paths>
     <files-path name="support" path="SilentGate/support/"/>
     <cache-path name="updates" path="updates/"/>
+    <files-path name="export" path="SilentGate/export/"/>
 </paths>

@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.plugin.common.MethodChannel
+import lol.silentgate.BuildConfig
 import lol.silentgate.cores.libbox.Libbox
 import lol.silentgate.cores.libXray.LibXray
 import lol.silentgate.cores.libXray.LibXrayInvokeRequest
@@ -252,6 +253,7 @@ object PlatformChannels {
             // было писать» было НЕЧЕМ: владелец прислал отчёт с сорока двумя
             // минутами тишины, и ответить по нему нельзя ни да, ни нет.
             "alive" -> result.success(true)
+            "nativeLibraryDir" -> result.success(context.applicationInfo.nativeLibraryDir)
 
             // DNS ФИЗИЧЕСКОЙ сети — для доменов с правилом «Прямо».
             //
@@ -295,6 +297,9 @@ object PlatformChannels {
             "abi" -> result.success(
                 runCatching { Build.SUPPORTED_ABIS.firstOrNull() }.getOrNull()
             )
+            // Есть ли безлимитная сеть (Wi-Fi, Ethernet) — можно ли качать
+            // полные гео-базы, не спрашивая. null — не удалось узнать.
+            "unmeteredNetwork" -> result.success(unmeteredNetwork(context))
             else -> handleDeviceRest(context, method, result)
         }
     }
@@ -387,6 +392,23 @@ object PlatformChannels {
             .firstOrNull { it.hostAddress?.isNotEmpty() == true }
             ?.hostAddress
             ?.substringBefore('%')
+    }.getOrNull()
+
+    /**
+     * Есть ли среди физических сетей безлимитная с выходом в интернет.
+     *
+     * ⚠️ НЕ `isActiveNetworkMetered`: при поднятом туннеле активная сеть — сам
+     * VPN, а он с Android 10 по умолчанию считается тарифицируемым, даже когда
+     * под ним Wi-Fi. Поэтому смотрим сети в обход VPN, как `directDns`.
+     */
+    private fun unmeteredNetwork(context: Context): Boolean? = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        cm.allNetworks.any { net ->
+            val caps = cm.getNetworkCapabilities(net) ?: return@any false
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        }
     }.getOrNull()
 
     /**
@@ -486,6 +508,41 @@ object PlatformChannels {
         path: String? = null,
     ) {
         when (method) {
+            // Установлен ли Google Play. Сборка github при новой версии
+            // сначала предлагает обновиться через Play, и только потом —
+            // скачать APK с GitHub (решение владельца 14.10.2026).
+            "playStoreInstalled" -> {
+                result.success(playStoreInstalled(context))
+                return
+            }
+            // Страница приложения в Google Play: сначала само приложение
+            // Play, без него — та же страница в браузере.
+            "openPlayStore" -> {
+                result.success(openPlayStore(context))
+                return
+            }
+            // Перезапуск после импорта настроек (P11). Импорт кладёт файлы
+            // рядом, а раскладывает их Dart на следующем старте — ДО того,
+            // как хранилища прочли диск. Подменять файлы под живым
+            // приложением нельзя: каждое хранилище перезаписало бы свой
+            // файл из памяти. VPN к этому моменту обязан быть выключен —
+            // проверяет Dart.
+            "restartApp" -> {
+                result.success(restartApp(context))
+                return
+            }
+        }
+        // ⚠️ Сборка play НЕ СТАВИТ APK НИКОГДА. Правило Play «Device and
+        // Network Abuse»: приложение из Play обновляется только через Play.
+        // Разрешения REQUEST_INSTALL_PACKAGES в этой сборке нет (оно в
+        // src/github/AndroidManifest.xml), а отказ здесь — вторая стена на
+        // случай, если Dart всё же позовёт установку: отвечаем «нельзя», и
+        // экран обновлений уводит человека в Play.
+        if (BuildConfig.FLAVOR == "play" && method in SELF_UPDATE_METHODS) {
+            result.success(false)
+            return
+        }
+        when (method) {
             // Можно ли нам вообще звать системный установщик. Ниже API 26
             // разрешение «неизвестные источники» общесистемное и до нас не
             // касается — отвечаем `true`, а откажет уже сам установщик своим
@@ -540,6 +597,21 @@ object PlatformChannels {
             }
             else -> result.notImplemented()
         }
+    }
+
+    /**
+     * Перезапустить приложение: открыть [RestartActivity] в отдельном процессе
+     * и выйти. Она дождётся смерти этого процесса и откроет приложение заново
+     * (почему не проще — см. её описание).
+     *
+     * Выход — с задержкой: сначала канал должен отдать ответ Dart, а
+     * Activity перезапуска — встать в очередь запуска.
+     */
+    private fun restartApp(context: Context): Boolean {
+        if (!RestartActivity.start(context)) return false
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(
+            { Runtime.getRuntime().exit(0) }, 300)
+        return true
     }
 
     /**
@@ -599,6 +671,42 @@ object PlatformChannels {
      * (`UpdateInstallerAndroid.stagingDir` = `getTemporaryDirectory()/updates`).
      */
     private const val UPDATES_DIR = "updates"
+
+    /** Методы самообновления: в сборке play все отвечают `false`. */
+    private val SELF_UPDATE_METHODS =
+        setOf("canInstallPackages", "openInstallPermission", "installApk")
+
+    /** Пакет приложения Google Play. */
+    private const val PLAY_STORE_PACKAGE = "com.android.vending"
+
+    /**
+     * Установлен ли Google Play и включён ли он.
+     *
+     * ⚠️ С Android 11 чужой пакет виден только через `<queries>` в манифесте
+     * (он объявлен в src/github/AndroidManifest.xml). Без объявления ответ
+     * был бы «нет» на каждом телефоне, и кнопка Play не появилась бы никогда.
+     */
+    private fun playStoreInstalled(context: Context): Boolean = runCatching {
+        val info = context.packageManager.getApplicationInfo(PLAY_STORE_PACKAGE, 0)
+        info.enabled
+    }.getOrDefault(false)
+
+    /**
+     * Открыть страницу приложения в Google Play. Сначала `market://` прямо в
+     * приложении Play (`setPackage`: иначе ссылку может перехватить чужой
+     * магазин), потом та же страница по https в браузере.
+     */
+    private fun openPlayStore(context: Context): Boolean {
+        val id = context.packageName
+        val inApp = runCatching {
+            context.startActivity(
+                viewIntent("market://details?id=$id").setPackage(PLAY_STORE_PACKAGE)
+            )
+            true
+        }.getOrDefault(false)
+        if (inApp) return true
+        return startView(context, "https://play.google.com/store/apps/details?id=$id")
+    }
 
     /** Может ли приложение звать установщик (API 26+: разрешение пользователя). */
     private fun canInstallPackages(context: Context): Boolean =

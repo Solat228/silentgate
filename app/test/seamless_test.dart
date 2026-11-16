@@ -88,6 +88,11 @@ class _FakeHealth extends TunnelHealth {
 }
 
 class _FakeEngine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   /// Подменяет ответ платформы «туннель сейчас поднят» — своего TUN у фейка нет.
   bool liveCaptureKeptForTest = false;
 
@@ -430,6 +435,36 @@ void main() {
           reason: 'ЗДЕСЬ ТУННЕЛЬ ПЕРЕСОЗДАВАЛСЯ: список адресов вырос, конфиг '
               'перестал совпадать, и маршрут по умолчанию мигал на каждой '
               'смене сервера');
+      expect(router.starts, 1);
+    });
+
+    test('⚠️ СМЕНА VLESS ↔ HYSTERIA2: blockTunnelQuic заморожен, туннель не пересоздаётся',
+        () async {
+      final hy2 = VpnServer(
+        protocol: 'hysteria2',
+        remark: 'hy2',
+        address: '198.51.100.7',
+        port: 443,
+        id: 'pass',
+        rawLink: 'hysteria2://pass@198.51.100.7:443#hy2',
+      );
+      final s = _settings();
+      engine.bypassCandidates = [_a, hy2];
+      expect(await raise(s, 1), isTrue);
+      log.clear();
+
+      // Переключаемся с VLESS (Xray) на Hysteria2 (sing-box): оба IP уже в
+      // правиле обхода, и blockTunnelQuic не должен сбрасывать живой туннель.
+      final ok = await engine.raiseTun(
+        options: ConnectionOptions(settings: s),
+        servers: [hy2],
+        apiKeys: const [],
+        aborted: () => false,
+        gen: 2,
+      );
+      expect(ok, isTrue);
+      expect(log, isEmpty,
+          reason: 'переключение между VLESS и Hysteria2 не должно сносить wintun');
       expect(router.starts, 1);
     });
 

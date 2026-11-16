@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/models/vpn_status.dart';
 import '../core/models/vpn_server.dart';
 import '../core/probe/auto_config_engine.dart';
 import '../core/settings/app_settings.dart';
@@ -15,11 +16,13 @@ import '../state/app_state.dart';
 import '../state/auto_config_controller.dart';
 import '../state/probe_controller.dart';
 import '../state/settings_controller.dart';
+import 'widgets/extended_clipboard.dart';
 import 'widgets/flag_cell.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/info_tooltip.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/site_favicon.dart';
+import 'widgets/ui_message_l10n.dart';
 
 class AutoConfigScreen extends StatelessWidget {
   const AutoConfigScreen({super.key});
@@ -70,7 +73,7 @@ class AutoConfigScreen extends StatelessWidget {
           // потрачено на решение, которое ничего не значило.
           if (!autoConfigSupported)
             MaterialBanner(
-              content: Text(AutoConfigController.unsupportedMessage),
+              content: Text(AppLocalizations.of(context).autoConfigUnsupportedLong),
               leading: const Icon(Icons.info_outline),
               actions: const [SizedBox.shrink()],
             ),
@@ -102,7 +105,11 @@ class AutoConfigScreen extends StatelessWidget {
                 if (ctrl.error != null && ctrl.found.isEmpty && !ctrl.running)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Text(ctrl.error!,
+                    child: Text(
+                        ctrl.errorMessage != null
+                            ? uiMessageL10n(
+                                AppLocalizations.of(context), ctrl.errorMessage!)
+                            : ctrl.error!,
                         style: TextStyle(color: Theme.of(context).colorScheme.error)),
                   ),
                 if (ctrl.found.isNotEmpty) ...[
@@ -402,6 +409,8 @@ class _KeyInputState extends State<_KeyInput> {
         const SizedBox(height: 8),
         TextField(
           controller: _controller,
+          contentInsertionConfiguration:
+              buildExtendedContentInsertion(_controller),
           minLines: 1,
           maxLines: 3,
           decoration: const InputDecoration(
@@ -611,12 +620,23 @@ class _FoundCard extends StatelessWidget {
           IconButton(
             tooltip: l.autoConnect,
             icon: const Icon(Icons.power_settings_new, size: 20),
-            onPressed: () {
+            onPressed: () async {
               final state = context.read<AppState>();
-              state.applyAutoConfigResult(result.server, result.variant);
-              state.toggleConnection(
-                  context.read<SettingsController>().settings);
-              Navigator.of(context).pop();
+              final settings = context.read<SettingsController>().settings;
+              final nav = Navigator.of(context);
+              // ⚠️ ЖДЁМ ПРИМЕНЕНИЯ. Выбор и вариация ставятся после записи
+              // пина на диск, а подключение читает выбор сразу: без `await`
+              // туннель поднимался через прежний сервер, а в списке был
+              // выбран найденный (ревью 29.10.2026, H5).
+              await state.applyAutoConfigResult(result.server, result.variant);
+              // ⚠️ `toggleConnection` — переключатель: на живом канале
+              // «Подключить» ОТКЛЮЧАЛ VPN (аудит 25.10.2026, I).
+              final live = state.status.isConnected ||
+                  state.status.state == VpnConnectionState.connecting;
+              live
+                  ? state.reconnect(settings)
+                  : state.toggleConnection(settings);
+              if (nav.mounted) nav.pop();
             },
           ),
         ]),

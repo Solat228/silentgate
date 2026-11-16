@@ -12,8 +12,10 @@ import 'core/platform/app_env.dart';
 import 'core/platform/autostart_windows.dart';
 import 'core/platform/app_instance_mutex.dart';
 import 'core/platform/log_archive.dart';
+import 'core/platform/package_identity_windows.dart';
 import 'core/platform/app_log.dart';
 import 'core/platform/app_paths.dart';
+import 'core/platform/app_restart.dart';
 import 'core/platform/platform_services.dart';
 import 'core/platform/core_cleanup.dart';
 import 'core/platform/incoming_links.dart';
@@ -25,6 +27,7 @@ import 'core/platform/url_scheme_windows.dart';
 import 'core/models/traffic_stats.dart';
 import 'core/settings/app_settings.dart';
 import 'core/url_scheme.dart';
+import 'data/settings_backup.dart';
 import 'data/settings_storage.dart';
 import 'engine/android/platform_services_android.dart';
 import 'engine/windows/platform_services_windows.dart';
@@ -36,6 +39,7 @@ import 'state/probe_controller.dart';
 import 'state/provider_wiring.dart';
 import 'state/service_check_controller.dart';
 import 'state/settings_controller.dart';
+import 'ui/widgets/ui_message_l10n.dart';
 
 /// Поставить ловушки необработанных ошибок.
 ///
@@ -125,7 +129,9 @@ Future<void> main(List<String> args) async {
 
     // Single-instance: если приложение уже запущено — переслать ему ссылку и выйти.
     // На Android это даёт сама система (launchMode=singleTask + onNewIntent).
-    final server = await SingleInstance.tryBecomePrimary();
+    // После импорта настроек старая копия запускает новую и только потом
+    // выходит — новая ждёт её (см. `AppRestart`).
+    final server = await AppRestart.tryBecomePrimary(args);
     if (server == null) {
       // ⚠️ ПУСТАЯ ССЫЛКА — ЭТО ТОЖЕ СОБЫТИЕ, И РАНЬШЕ ОНО ТЕРЯЛОСЬ.
       //
@@ -165,13 +171,24 @@ Future<void> main(List<String> args) async {
         isVpnActive: () => TrayWindow.vpnActive,
         onQuit: TrayWindow.quitNow);
 
+    // Импорт настроек раскладывается ДО того, как хоть что-то прочло диск,
+    // и только первичной копией: вторая, пересылающая ссылку, сюда не дошла.
+    await SettingsBackup.applyPending();
+    // Пакет MSIX: свежая установка после удаления — данные Windows стёрла
+    // вместе с пакетом, а копия в «Документах» осталась.
+    if (PackageIdentity.isPackaged) await SettingsBackup.restoreSnapshotIfFresh();
+
     // Ядра прошлого запуска, пережившие аварийное завершение, — в утиль.
     // Ждать незачем, поэтому фоном; убиваются только наши (по полному пути).
     final ourBin = XrayPaths.locate()?.assetDir;
     if (ourBin != null) unawaited(CoreCleanup.sweepOrphans(ourBin));
     // Изолированная копия не перехватывает silentgate:// у установленной версии.
     // На Android схемы объявляются в манифесте, регистрировать нечего.
-    if (!AppEnv.skipSchemeRegistration) await UrlSchemeWindows.register();
+    // Пакет MSIX: схему объявляет его манифест. Запись в HKCU пережила бы
+    // удаление пакета и вела бы в пустоту (проверено в VM 21.10.2026).
+    if (!AppEnv.skipSchemeRegistration && !PackageIdentity.isPackaged) {
+      await UrlSchemeWindows.register();
+    }
     // Окно и трей — десктопные понятия; на Android их роль играет
     // foreground-сервис с постоянной нотификацией.
     await TrayWindow.instance.init(startHidden: autostart);
@@ -180,6 +197,13 @@ Future<void> main(List<String> args) async {
     unawaited(SettingsStorage()
         .load()
         .then((s) => AutostartWindows.sync(s.launchAtLogin)));
+  }
+
+  if (Platform.isAndroid) {
+    // Импорт настроек, затем — новая установка, которую система подняла из
+    // резервной копии Google (снимок есть, настроек и подписок нет).
+    await SettingsBackup.applyPending();
+    await SettingsBackup.restoreSnapshotIfFresh();
   }
 
   // Android приносит ссылки интентом в Activity, а не через единственный
@@ -198,6 +222,7 @@ Future<void> main(List<String> args) async {
               AppState(
               initialUrl: incomingUrl.isEmpty ? null : incomingUrl,
               autostart: autostart)
+            ..systemNoticeText = systemNoticeL10n
             ..init(),
         ),
         ChangeNotifierProvider(create: (_) => SettingsController()..init()),
@@ -341,7 +366,8 @@ Future<bool> _runWindowsCliMode(List<String> args) async {
 
   // Режим очистки при удалении (вызывается деинсталлятором Inno Setup).
   if (args.contains('--cleanup')) {
-    await AppCleanup.runHeadless();
+    await AppCleanup.runHeadless(
+        keepData: args.contains(AppCleanup.keepDataArg));
     exit(0);
   }
 

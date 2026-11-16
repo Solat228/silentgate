@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'app_env.dart';
 import 'app_log.dart';
+import 'package_identity_windows.dart';
 
 /// Запуск вместе с Windows: значение в `HKCU\…\CurrentVersion\Run`.
 ///
@@ -51,7 +52,9 @@ abstract final class AutostartWindows {
   static Future<void> sync(bool enabled) async {
     if (!applicable) return;
     try {
-      final want = commandFor(Platform.resolvedExecutable);
+      // В пакете MSIX — постоянный псевдоним: путь самого exe меняется с
+      // каждым обновлением из Store.
+      final want = commandFor(PackageIdentity.launchPath());
       final have = await _current();
       if (enabled) {
         if (have == want) return;

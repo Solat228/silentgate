@@ -20,13 +20,17 @@ import 'package:silentgate/core/xray/harness_config_builder.dart';
 /// устаревшем поле не предупреждает, а ОТВЕРГАЕТ конфиг целиком
 /// (`FATAL … set environment variable ENABLE_DEPRECATED_…`) — так случилось со
 /// старым форматом DNS-серверов, который 1.11 и наш libbox на Android
-/// принимали молча. А то, что в 1.13 только предупреждение, в 1.14 станет
-/// ошибкой. Поэтому любое `deprecated` в выводе — уже провал.
+/// принимали молча. А то, что в одной версии только предупреждение, в
+/// следующей станет ошибкой (`independent_cache` в 1.14 предупреждает, в 1.16
+/// будет удалён). Поэтому любое `deprecated` в выводе — уже провал.
 ///
 /// Проверяются ВСЕ построители, а не один: каждый из них — отдельный путь к
 /// ядру, и прежде дыры находились именно в «втором» пути.
 void main() {
-  final exe = File('../engine/windows/bin/sing-box.exe');
+  // `SG_SINGBOX_EXE` — прогнать те же конфиги на другой сборке ядра (разведка
+  // новой версии перед переходом), не подменяя штатную.
+  final exe = File(Platform.environment['SG_SINGBOX_EXE'] ??
+      '../engine/windows/bin/sing-box.exe');
 
   final vless = ShareLinkParser.tryParse(
       'vless://11111111-2222-3333-4444-555555555555@exit.example.com:443'
@@ -34,6 +38,8 @@ void main() {
       '&sid=ab&fp=chrome&type=tcp#Exit')!;
   final hy2 = ShareLinkParser.tryParse('hysteria2://pwd@hy.example.com:8443'
       '?sni=hy.example.com&obfs=salamander&obfs-password=x#Hy2')!;
+  final wl = ShareLinkParser.tryParse(
+      'whitelist://telemost?room=https://telemost.yandex.ru/j/14646539365912&reliable=1&host=203.0.113.230#Yandex%20Telemost%20IT1')!;
   final exitKey = vless.rawLink;
   final exitOut = {
     ...SingboxOutboundFactory.build(vless),
@@ -90,6 +96,24 @@ void main() {
       user: 'u',
       password: 'p',
     ).buildJson([hy2]),
+    'прокси-whitelist-bypass': const SingboxProxyConfigBuilder(
+      apiSecret: 's',
+      user: 'u',
+      password: 'p',
+    ).buildJson([wl]),
+    'tun-whitelist-bypass': SingboxConfigBuilder(
+      proxyOutbound: SingboxOutboundFactory.build(wl),
+      options: TunOptions.fromSettings(
+        const AppSettings(),
+        android: true,
+        ipv6Available: true,
+        blockTunnelQuic: true,
+        tunnelIpv4Only: true,
+      ),
+    ).buildJson(const SplitTunnelConfig(
+      mode: SplitMode.onlySelected,
+      apps: [AppRule('com.google.android.youtube', action: AppAction.tunnel)],
+    )),
     'харнесс-пинга': const SingboxHarnessConfigBuilder()
         .withAuth('u', 'p')
         .buildJson([HarnessEntry(key: 'a', server: hy2)]),
@@ -120,14 +144,14 @@ void main() {
     });
   }
 
-  test('ядро в поставке — 1.13.x (та же ветка, что libbox на Android)', () async {
+  test('ядро в поставке — 1.14.x (та же ветка, что libbox на Android)', () async {
     if (!exe.existsSync()) {
       markTestSkipped('нет ${exe.path}');
       return;
     }
     final r = await Process.run(exe.path, ['version']);
-    expect('${r.stdout}', contains('sing-box version 1.13.'));
+    expect('${r.stdout}', contains('sing-box version 1.14.'));
     final fetch = File('../tools/fetch-singbox.ps1').readAsStringSync();
-    expect(fetch, contains(r"$ver = '1.13."));
+    expect(fetch, contains(r"$ver = '1.14."));
   });
 }

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../models/vpn_server.dart';
+import 'country_flag.dart';
 
 /// Какие серверы подписки входят в какой профиль «Авто» панели.
 ///
@@ -17,36 +18,25 @@ class AutoBinding {
   bool get isEmpty => members.isEmpty;
 }
 
-/// Привязка серверов к страновым профилям «Авто» по их ВНУТРЕННЕМУ списку.
+/// Привязка серверов к страновым профилям «Авто» по флагу страны (и составным
+/// подпрофилям по outbound'у).
 ///
-/// Решение владельца 10.10.2026. Панель отдаёт профиль «🇵🇱 🚀Польша» с
-/// раздельным туннелированием и балансировщиком, а в нём — outbound'ы тех же
-/// серверов, что лежат в подписке отдельными строками («Польша 1.x»,
-/// «Польша 2.x»). Такие серверы показываются ПОД своим профилем, а не там, где
-/// их поставил провайдер.
-///
-/// ⚠️ СРАВНЕНИЕ ПО САМОМУ OUTBOUND'У, А НЕ ПО ИМЕНИ ИЛИ ФЛАГУ. Требование
-/// владельца: «чтобы ничего не перепутать». У одного узла панель держит
-/// несколько входов с тем же адресом, портом и uuid, и они различаются только
-/// sni, отпечатком или транспортом. Сравнение по адресу и логину склеивало бы
-/// их: на подписке владельца так набиралось 36 «совпадений» на 13 узлов
-/// профиля. Сравнение целого outbound'а без `tag` дало ровно 12 из 13, и
-/// тринадцатым оказался hysteria2 (его сравниваем отдельно, см.
-/// [outboundSignature]).
-///
-/// Правила:
-///  * сервер идёт к САМОМУ УЗКОМУ профилю, где он есть (меньше всего
-///    outbound'ов), при равенстве — к стоящему выше;
-///  * профиль, который целиком содержит серверы других профилей («Авто
-///    YouTube», «Белые списки» — там все 81 узел), группой не становится:
-///    иначе в нём оказались бы остатки, не попавшие в страны, вроде мостов;
-///  * серверов, которые в группу не попали, это не касается: они
-///    группируются по странам, как раньше (`ServerGroups`).
-///
-/// Функция чистая, но разбор конфигов профилей тяжёлый (у владельца 25
-/// профилей до 38 КБ), а зовут её на каждой перерисовке списка. Поэтому
-/// последний результат кэшируется по ТОЖДЕСТВУ объектов серверов: `AppState`
-/// пересоздаёт их только при пересборке списка.
+/// Правила (обновлено по решению владельца 10.11.2026):
+///  * НЕподписанные страновые автосерверы («🇳🇱 🚀Нидерланды», «🇵🇱 🚀Польша»,
+///    «🇷🇺🏳️ Москва», «🇩🇪 🚀Германия» и т.д.) собирают под себя ВСЕ обычные
+///    серверы своего флага страны;
+///  * если у одной страны есть дополнительный узкий подпрофиль (например,
+///    «🇵🇱 Польша игровой» на 1 узел), узел с совпадающим outbound'ом идёт
+///    в самый узкий профиль, а все остальные серверы этого флага — в основной
+///    страновой автосервер;
+///  * тематические профили без флага страны («🎬 Авто (YouTube)», «🏳️ Авто
+///    Белые списки», «✈️ Авто Telegram») стоят сверху и локации в себя не
+///    собирают;
+///  * нижние именные авто-профили вида «🇳🇱🏳️ Авто The Netherlands»
+///    ([isBottomNamedAutoProfile]) в группировку не входят и остаются внизу
+///    списка в порядке панели;
+///  * мосты ([isBridgeName]) в страновые профили не входят и собираются
+///    отдельно в папку «🌉 Мосты» внизу списка.
 abstract final class AutoGroups {
   static List<VpnServer>? _lastServers;
   static Set<int>? _lastSkip;
@@ -78,44 +68,79 @@ abstract final class AutoGroups {
   /// То же без кэша — для тестов.
   static AutoBinding compute(List<VpnServer> servers,
       {Set<int> skip = const {}}) {
-    // Подпись каждого обычного сервера.
+    final plainIndices = <int>[];
     final sigOf = <int, String>{};
+    final serverCountry = <int, List<String>>{};
     for (var i = 0; i < servers.length; i++) {
       final s = servers[i];
       if (s.isPanelProfile || s.isNotice || skip.contains(i)) continue;
+      if (isBridgeName(s.displayName)) continue;
+      plainIndices.add(i);
+      serverCountry[i] = FlagUtil.isoCodesFromName(s.remark);
       final sig = serverSignature(s);
       if (sig != null) sigOf[i] = sig;
     }
-    if (sigOf.isEmpty) return AutoBinding.empty;
+    if (plainIndices.isEmpty) return AutoBinding.empty;
 
-    // Состав каждого профиля: видимые серверы и число outbound'ов.
-    final found = <int, Set<int>>{};
+    final exactFound = <int, Set<int>>{};
+    final flagFound = <int, Set<int>>{};
     final size = <int, int>{};
     for (var p = 0; p < servers.length; p++) {
+      if (skip.contains(p)) continue;
       final s = servers[p];
-      if (!s.isPanelProfile) continue;
+      if (!s.isPanelProfile || s.isNotice) continue;
+      if (isNonGroupProfileName(s.displayName)) continue;
+      if (isBridgeName(s.displayName)) continue;
+      if (isBottomNamedAutoProfile(s.remark)) continue;
+      final pCountry = FlagUtil.isoCodesFromName(s.remark);
+      if (pCountry.length > 1) continue;
       final sigs = profileSignatures(s.rawPanelConfig ?? '');
       if (sigs.isEmpty) continue;
-      final m = {
-        for (final e in sigOf.entries)
-          if (sigs.contains(e.value)) e.key
+
+      final exact = {
+        for (final i in plainIndices)
+          if (sigOf[i] != null &&
+              sigs.contains(sigOf[i]!) &&
+              _sameCountryScope(pCountry, serverCountry[i]!))
+            i
       };
-      if (m.isEmpty) continue;
-      found[p] = m;
+      final byFlag = pCountry.length == 1
+          ? {
+              for (final i in plainIndices)
+                if (_sameCountryScope(pCountry, serverCountry[i]!)) i
+            }
+          : exact;
+
+      if (byFlag.isEmpty && exact.isEmpty) continue;
+      if (exact.isNotEmpty) exactFound[p] = exact;
+      if (byFlag.isNotEmpty) flagFound[p] = byFlag;
       size[p] = sigs.length;
     }
+    if (flagFound.isEmpty) return AutoBinding.empty;
 
     final heads = [
-      for (final p in found.keys)
-        if (!_isUmbrella(p, found)) p
+      for (final p in flagFound.keys)
+        if (!_isUmbrella(p, exactFound.isNotEmpty ? exactFound : flagFound)) p
     ]..sort();
 
     final ownerOf = <int, int>{};
-    for (final i in sigOf.keys) {
+    for (final i in plainIndices) {
       int? best;
+      // 1. Точное совпадение по outbound — чтобы узкий подпрофиль той же страны
+      //    («Польша игровой») забрал свои узлы у общего профиля страны.
       for (final p in heads) {
-        if (!found[p]!.contains(i)) continue;
+        final exact = exactFound[p];
+        if (exact == null || !exact.contains(i)) continue;
         if (best == null || size[p]! < size[best]!) best = p;
+      }
+      // 2. Все остальные серверы этого флага страны идут в основной страновой
+      //    автосервер того же флага (первый/широкий профиль этой страны).
+      if (best == null) {
+        for (final p in heads) {
+          final byFlag = flagFound[p];
+          if (byFlag == null || !byFlag.contains(i)) continue;
+          if (best == null || size[p]! > size[best]!) best = p;
+        }
       }
       if (best != null) ownerOf[i] = best;
     }
@@ -126,17 +151,76 @@ abstract final class AutoGroups {
     return AutoBinding(members: members, ownerOf: ownerOf);
   }
 
+  /// Мост: вход в одной стране, выход в другой («Мск 2 -> Германия 2 (мост)»).
+  static bool isBridgeName(String name) => _bridge.hasMatch(name);
+
+  static final RegExp _bridge = RegExp(
+      r'(?<![а-яёa-z])(мост|bridge)(?![а-яёa-z])|->|→|=>',
+      caseSensitive: false,
+      unicode: true);
+
+  /// Профили белых списков никогда не собирают под себя локации в списке.
+  static bool isNonGroupProfileName(String name) =>
+      _nonGroupProfile.hasMatch(name);
+
+  static final RegExp _nonGroupProfile = RegExp(
+      r'бел(ые|ых|ый)\s*спис|whitelist',
+      caseSensitive: false,
+      unicode: true);
+
+  /// Нижние именные авто-профили вида «🇳🇱🏳️ Авто The Netherlands»,
+  /// «🇨🇦🏳️ Авто Canada» (содержат и флаг страны, и слово «Авто»/«Auto»).
+  ///
+  /// В отличие от неподписанных страновых автосерверов («🇳🇱 🚀Нидерланды»,
+  /// «🇵🇱 🚀Польша», «🇷🇺🏳️ Москва»), они стоят внизу списка в порядке панели
+  /// и не собирают в себя страновые локации.
+  static bool isBottomNamedAutoProfile(String name) =>
+      FlagUtil.isoCodesFromName(name).isNotEmpty && _autoWord.hasMatch(name);
+
+  static final RegExp _autoWord = RegExp(
+      r'(?<![а-яёa-z])(авто|auto)(?![а-яёa-z])',
+      caseSensitive: false,
+      unicode: true);
+
+  /// Глобальный/сервисный профиль «Авто» без флага страны («🎬 Авто (YouTube)»,
+  /// «🏳️ Авто Белые списки», «✈️ Авто Telegram» и т.д.).
+  static bool isGlobalAutoProfile(VpnServer s) =>
+      s.isPanelProfile &&
+      !s.isNotice &&
+      !isBridgeName(s.displayName) &&
+      FlagUtil.isoCodesFromName(s.remark).isEmpty;
+
+  /// Неподписанный страновой автосервер («🇳🇱 🚀Нидерланды», «🇵🇱 🚀Польша»,
+  /// «🇷🇺🏳️ Москва», «🇫🇮 🚀Финляндия» и т.д.), который должен стоять в верхнем
+  /// блоке автосерверов и собирать под себя все локации своего флага.
+  static bool isCountryAutoProfile(VpnServer s) =>
+      s.isPanelProfile &&
+      !s.isNotice &&
+      !isNonGroupProfileName(s.displayName) &&
+      !isBridgeName(s.displayName) &&
+      !isBottomNamedAutoProfile(s.remark) &&
+      FlagUtil.isoCodesFromName(s.remark).length == 1 &&
+      profileSignatures(s.rawPanelConfig ?? '').isNotEmpty;
+
+  /// Совместимы ли страна профиля и страна сервера: сервер с флагом страны
+  /// может лечь только под профиль с ТЕМ ЖЕ единственным флагом страны
+  /// (белый флаг `🏳️` кодом страны не является и даёт пустой список).
+  static bool _sameCountryScope(List<String> profileIso, List<String> serverIso) {
+    if (serverIso.isEmpty && profileIso.isEmpty) return true;
+    return profileIso.length == 1 &&
+        serverIso.length == 1 &&
+        profileIso.first == serverIso.first;
+  }
+
   /// Зонтик — профиль, строго содержащий серверы ДВУХ непересекающихся
   /// профилей («Авто YouTube» содержит и Польшу, и Германию).
-  ///
-  /// ⚠️ ИМЕННО ДВУХ. Если бы хватало одного вложенного, маленький профиль
-  /// вроде «Польша игровой» из одного узла лишал бы группы всю «Польшу»:
-  /// её остальные серверы рассыпались бы обратно по списку.
   static bool _isUmbrella(int p, Map<int, Set<int>> found) {
-    final mine = found[p]!;
+    final mine = found[p];
+    if (mine == null || mine.isEmpty) return false;
     final inner = [
       for (final q in found.entries)
         if (q.key != p &&
+            q.value.isNotEmpty &&
             q.value.length < mine.length &&
             mine.containsAll(q.value))
           q.value
@@ -150,11 +234,6 @@ abstract final class AutoGroups {
   }
 
   /// Подпись обычного сервера или `null`, если сравнивать не с чем.
-  ///
-  /// Серверу из ссылок (без outbound'а панели) подпись даётся только для
-  /// hysteria2: её панель в XRAY_JSON отдельной строкой не присылает, а в
-  /// профиле она есть. Остальным ссылкам совпадать не с чем — у таких
-  /// подписок нет и профилей.
   static String? serverSignature(VpnServer s) {
     final raw = s.rawOutboundJson ?? '';
     if (raw.trim().isNotEmpty) {
@@ -173,8 +252,7 @@ abstract final class AutoGroups {
   }
 
   /// Подписи прокси-outbound'ов профиля. Служебные (`freedom`, `blackhole`,
-  /// `dns`, `loopback`) не считаются: они есть в каждом профиле и ни с каким
-  /// сервером не совпадают.
+  /// `dns`, `loopback`) не считаются.
   static Set<String> profileSignatures(String rawConfig) {
     if (rawConfig.trim().isEmpty) return const {};
     final Object? cfg;
@@ -194,8 +272,7 @@ abstract final class AutoGroups {
   static const _service = {'freedom', 'blackhole', 'dns', 'loopback'};
 
   /// Подпись outbound'а Xray: весь объект без `tag` с отсортированными
-  /// ключами. У hysteria — адрес, порт и пароль: так её узнаёт и сервер из
-  /// ссылки `hysteria2://`, у которого outbound'а нет.
+  /// ключами. У hysteria — адрес, порт и пароль.
   static String? outboundSignature(Map o) {
     final proto = o['protocol'];
     if (proto == 'hysteria' || proto == 'hysteria2') {
@@ -214,8 +291,7 @@ abstract final class AutoGroups {
   static String _hySig(String address, int port, String auth) =>
       'hy|${address.trim().toLowerCase()}|$port|$auth';
 
-  /// JSON с ключами по алфавиту на всех уровнях: порядок ключей в двух
-  /// копиях одного outbound'а не обязан совпадать.
+  /// JSON с ключами по алфавиту на всех уровнях.
   static String canonicalJson(Object? v) {
     if (v is Map) {
       final entries = v.entries.toList()

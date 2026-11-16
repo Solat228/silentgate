@@ -61,7 +61,7 @@ abstract final class WakeGuard {
     unawaited(channel.invokeMethod<bool>(method).then((ok) {
       if (ok != true) AppLog.w('Удержание процессора ($reason): $method → $ok');
     }, onError: (Object e) {
-      AppLog.w('Удержание процессора ($reason): $method не удался — $e');
+      AppLog.w('Удержание процессора ($reason): $method не удался - $e');
     }));
   }
 }

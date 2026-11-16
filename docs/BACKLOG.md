@@ -5,6 +5,136 @@
 
 ## Запрошено, ждёт очереди
 
+### Универсальные правила по имени процесса (`byName`), лёгкие пресеты для основных нейросетей, кнопки внизу карточки подписки и встроенный чат поддержки (11.11.2026)
+
+1. ~~**Универсальное сопоставление процессов по имени (`byName`), каталогу приложения и дереву дочерних процессов без хардкода отдельных программ:**~~ — **СДЕЛАНО (`process_list_windows.dart`, `singbox_config_builder.dart`, `tunnel_exclude_test.dart`).**
+   - [x] Любое правило «по имени» (`byName: true`, например `Antigravity.exe`, `agy.exe`, `Cursor.exe`, `Claude.exe`, любая другая программа) автоматически покрывает:
+     - самоперезаписываемые при автообновлении бинари `<name>.exe.old.<хэш>`;
+     - все дочерние и вспомогательные `.exe` внутри каталога приложения `[\\/]\.?<stem>[\\/].*\.exe` (например, `\.antigravity\...\language_server.exe`, `\cursor\...\*.exe`) и выделенной папки установки (`_dedicatedInstallDir`);
+     - живое дерево дочерних процессов (`th32ParentProcessID`) через снимок `CreateToolhelp32Snapshot` в `ProcessListWindows.matching`.
+2. **Лёгкие пресеты для основных нейросетей в Раздельном туннелировании:**
+   - [x] **Чип «🤖 Все нейросети (ИИ)» (`Key('splitPreset-aiSites')`) в «Быстрых пресетах сервисов» (`split_service_presets.dart`, `split_tunnel_screen.dart`):** в один клик добавляет/снимает домены `ChatGPT / OpenAI`, `Claude / Anthropic`, `Gemini / Google AI Studio / Cloud Code / Antigravity` (`cloudaicompanion.googleapis.com`, `daily-cloudcode-pa.googleapis.com`, `antigravity-unleash.goog`), `Cursor`, `Windsurf / Codeium`, `GitHub Copilot`, `DeepSeek`, `Grok / xAI`, `Perplexity`.
+   - [x] **Чип «🤖 Десктоп-нейросети» (`Key('splitPreset-aiApps')`) на Windows в блоке «Приложения»:** в один клик добавляет по имени процесса (`byName: true`) `Antigravity.exe`, `agy.exe`, `Cursor.exe`, `Windsurf.exe`, `Claude.exe`, `ChatGPT.exe`, `codex.exe`.
+   - [ ] При появлении новых популярных десктопных AI-клиентов пополнять список `SplitServicePresets.aiDesktopExeNames` и `SplitServicePresets.aiNetworkDomains`.
+3. ~~**Кнопки «Телеграм / Бот» и «Поддержка» в самом низу карточки подписки + векторный значок Telegram + внутреннее всплывающее окно поддержки:**~~ — **СДЕЛАНО (`subscription_bar.dart`, `subscription_switcher.dart`, `telegram_icon.dart`, `support_chat_controller.dart`, `support_chat_overlay.dart`, `home_screen.dart`).**
+   - [x] Кнопки **«Телеграм / Бот»** (`Key('subBarTelegramButton')`) и **«Поддержка»** (`Key('subBarSupportButton')`) перенесены в самый низ карточки `SubscriptionBar` **под блок объявления (`announce`)** как в компактном, так и в полном виде, оформлены заметной подложкой-кнопкой и настоящим векторным значком Telegram (`TelegramIcon`).
+   - [x] Вместо внешнего WebView (который на ссылках `/silentgate/<id>` вызывал редирект `silentgate://` и ломал верстку) сделано **внутреннее всплывающее окно поддержки (`SupportChatOverlay`) внутри главного окна приложения** напрямую поверх JSON API `/<short_uuid>/support`:
+     - клик мимо окна поддержки **сворачивает** его (`SupportWindowMode.minimized`) в плавающий значок поддержки (`Key('supportFloatingBadgeButton')`) со счётчиком непрочитанных ответов от оператора (`Key('supportUnreadBadgeText')` + бейдж `Key('subBarSupportUnreadBadge')` на кнопке в карточке);
+     - каждое нажатие клавиши в полях «Ваше имя» и «Ваш вопрос», прикреплённые файлы и история тикетов атомарно сохраняются на диск (`support_chat_state.json` с `flush: true`), поэтому закрытие окна, перезапуск приложения или отключение питания ничего не теряют;
+     - во всех запросах передаются `X-SilentGate-App`, `X-SilentGate-OS`, `X-SilentGate-Initiator` и поля `client_app`/`client_version`/`client_os`/`initiator_token` + поддержана бесшовная ротация ссылки подписки (`AppState.migrateSubscriptionUrl`).
+
+### Кликабельная версия с колокольчиком «Что нового», встроенный Zapret/GDPI, Android `ROOT-Stealth` и бесшовный виртуальный роутер на ПК (10.11.2026)
+
+1. ~~**Кликабельный бейдж версии в шапке главного экрана + колокольчик + авто-показ «Что нового» после обновления (Android и Windows):**~~ — **СДЕЛАНО (`whats_new_badge.dart`, `app_settings.dart`, `home_screen.dart`, `settings_screen.dart`, `update_screen.dart`).**
+   - [x] Версия в `AppBar.title` главного экрана кликабельна на обеих платформах (`Key('headerVersionBadgeButton')`).
+   - [x] При установке любой новой версии или сборки (`AppInfo.fullVersion != lastSeenWhatsNewVersion`, включая `+N` билды) рядом с версией загорается колокольчик (`Key('headerVersionBellIcon')`), бейдж мягко пульсирует, а при первом запуске (если `showWhatsNewOnUpdate == true`) автоматически открывается окно «Что нового» с выделением текущего патча, галочкой «Больше не показывать автоматически после обновления» (`Key('whatsNewAutoShowCheckbox')`) и дублирующим тумблером в «Настройках» (`Key('settingsShowWhatsNewOnUpdateSwitch')`) и «Обновлениях» (`Key('updatesShowWhatsNewSwitch')`).
+
+2. **Встроенная технология обхода DPI (`GDPI` / `Zapret`) внутри `SilentGate` (все 4 режима утверждены владельцем):**
+   - [ ] **Режим 1 — Действие правила «Обход DPI (Zapret)» в Раздельном туннелировании:** для выбранных сервисов (`YouTube`, `Discord` и др.) или доменов трафик идёт напрямую с домашнего IP через локальную фрагментацию/десинхронизацию (`sing-box` `tls_fragment` / `tls_record_fragment`, `Xray` `fragment` / `finalmask`) без расхода трафика VPN-ноды.
+   - [ ] **Режим 2 — Совместный режим на ОДНИ И ТЕ ЖЕ сайты («Сначала Zapret → авто-фоллбэк в VPN»):** попытка открыть сервис локальным DPI-обходом с домашнего IP; если ТСПУ блокирует IP-подсеть или замораживает поток на пороге 16–20 КБ Cloudflare (`TCP 16KB freeze`), автоматическое переключение этого домена/сервиса в активный VPN-туннель без участия пользователя.
+   - [ ] **Режим 3 — Глобальный автономный режим «Только Обход DPI (без VPN)» на главном экране:** работа приложения как полноценной замены GoodbyeDPI / Zapret с автоподтяжкой публичных баз (`list-general.txt`, `list-google.txt`, `ipset-all.txt`, `itdoginfo/allow-domains`, `antifilter`) и автоподбором рабочей стратегии под провайдера (`ALT4 badseq+1000`, `multisplit seqovl`, `fake+disorder`, `tls_fragment`).
+   - [ ] **Режим 4 — Узкий ядерный модуль `winws.exe` (`WinDivert`) на Windows для UDP-голоса Discord и QUIC:** перехват только UDP-портов голоса Discord (`19294-19344`, `50000-50100`) и `UDP 443` с обязательным автоматическим формированием `--ipset-exclude` из всех IP-адресов VPN-серверов подписки (чтобы `WinDivert` никогда не ломал TLS/REALITY рукопожатия самого VPN, из-за чего у владельца не работал внешний батник `I:\ZapretYouTubeDiscord`).
+
+3. **Android `ROOT-Stealth` (отдельный пакет `lol.silentgate.stealth`) и защита от российских сканеров VPN (Ozon, Госуслуги, MAX, Банки, АЗС ГПН):**
+   - [x] **Пресет «🛡️ Анти-сканер РФ (Ozon, Госуслуги, MAX, Банки, АЗС ГПН)» в Раздельном туннелировании (`split_service_presets.dart`, `split_tunnel_screen.dart`):** в один клик добавляет пакеты (`ru.ozon.app.android`, `com.wildberries.ru`, `ru.rostel`, `ru.oneme.app`, банки, `com.gazpromneft.azs` и др.) с `action: AppAction.direct`, `allowRealIp: true`, `overrideSites: true` (гарантированное исключение на уровне ОС через `VpnService.Builder.addDisallowedApplication` даже при наличии доменных правил).
+   - [x] **Отдельная сборка `ROOT-Stealth` (`--flavor stealth`, `build-apk-stealth.bat`, `src/stealth/AndroidManifest.xml`, `RootStealthController.kt`):**
+     - Имя пакета `lol.silentgate.stealth` и APK `SilentGate-ROOT-Stealth-...apk`.
+     - Компонент `SilentGateVpnService` по умолчанию выключен (`android:enabled="false"`), поэтому `PackageManager.queryIntentServices(Intent("android.net.VpnService"), 0)` возвращает пустой список.
+     - При наличии `su` локальные порты `127.0.0.1:10808..10999` закрываются от сканирования чужими UID правилом `iptables -I OUTPUT 1 -o lo -p tcp --dport 10808:10999 -m owner ! --uid-owner <uid> -j REJECT --reject-with tcp-reset`.
+     - При отсутствии root компонент `SilentGateVpnService` автоматически включается перед стартом туннеля и снова прячется после остановки.
+   - [ ] **Полноценный Root-движок (`TPROXY` / `nftables` / `iptables` по UID через `su` без вызова `VpnService`):** прозрачный заворот трафика в `sing-box` `tproxy`/`redirect` inbound без создания `tun0` и без флага `TRANSPORT_VPN` в системе.
+
+4. **Бесшовное подключение и переключение VPN на ПК по принципу роутера OpenWrt (утверждён Вариант 1):**
+   - [ ] **Вариант 1 — «Вечный виртуальный роутер» поверх подписанного `wintun.dll` + `sockopt.interface` + Make-Before-Break:**
+     - Интерфейс `silentgate-tun` (`172.19.0.1/30`) поднимается один раз при старте сессии и **не гасится** при смене сервера или сбое ноды.
+     - Выходные соединения `Xray`/`sing-box` привязываются напрямую к физическому адаптеру (`sockopt.interface` / `default_interface`), избавляя от пересборки `route_exclude_address` при переключении узлов.
+     - **Make-Before-Break переключение за ~1 мс:** при выборе нового сервера второй инстанс `Xray`/`sing-box` стартует параллельно на резервном локальном порту, проходит фоновую проверку `HTTP 204`, и только после готовности трафик переключается через Clash API (`PUT /proxies/...`) без единого потерянного пакета и без моргания сетевого адаптера Windows.
+
+### Портирование на Linux (`LinuxEngine` / `silentgate-cli` / режим шлюза) и аудит типа выходных IP (09.11.2026)
+
+Полное ТЗ и проверенные на стенде Ubuntu 24.04 LTS решения лежат в **[docs/silentgate_linux_gateway_spec.md](silentgate_linux_gateway_spec.md)**:
+
+- [ ] **`LinuxEngine` (`app/lib/engine/linux/`) и Headless CLI (`silentgate-cli`):**
+  - Полная симметрия с `WindowsEngine` поверх существующих `XrayConfigBuilder` и `SingboxConfigBuilder` без переписывания `app/lib/core/`:
+    - `vless://` (TCP Vision + REALITY, gRPC, XHTTP, WS/TLS): `xray` (`127.0.0.1:10808`, `udp: true`) + `sing-box` (`sg-tun0`, `198.18.0.1/30`, `mtu: 1400`, `stack: "system"`).
+    - `hysteria2://`: только `sing-box` (`sg-tun0` → `hysteria2` напрямую).
+  - Конфиги ядер класть в tmpfs `/run/silentgate/` с правами `0600` (или передавать через `stdin`).
+- [ ] **Режим изолированного L3-шлюза (`--gateway-iface virbr0 | docker0 | eth1`):**
+  - Прозрачный заворот трафика гостевых ВМ (KVM/libvirt), контейнеров или LAN-подсети в `sg-tun0` через Policy Routing (`ip rule add pref 100 iif <iface> lookup 200`) без смены default route самого Linux-хоста (чтобы не ронять входящий SSH на VPS).
+  - Эталонная таблица `nftables` (`table inet silentgate_gw`): перехват гостевого DNS до хостового `dnsmasq` (`prerouting_dns` DNAT `:53`), жёсткий fail-closed Kill-Switch с приоритетом `-150` раньше цепочек libvirt/docker (`forward_guard` с блокировкой IPv6 и любого трафика мимо `sg-tun0`), автоподрезка TCP MSS (`tcp option maxseg size set rt mtu`) и `masquerade` в `sg-tun0`.
+  - Встроенный 2-секундный E2E-самотест канала (`--verify-egress`) через эфемерный `ip netns` + `veth` в мост без запуска полноценной ВМ.
+- [ ] **Обязательный обход трёх граблей Ubuntu 22.04/24.04 при реализации `LinuxEngine`:**
+  1. **Петля `systemd-resolved`:** сразу после подъёма `sg-tun0` в режиме шлюза вызывать `resolvectl revert sg-tun0` (иначе `sing-box` даже при `auto_route: false` вешает по D-Bus глобальный `DNS Domain: ~.` на `198.18.0.2`, загоняя резолв домена ноды `xray` в мёртвую петлю).
+  2. **Асимметричный дроп `rp_filter`:** при Policy Routing выставлять `rp_filter=0` на `all`, `default`, `<bridge_iface>` и `sg-tun0` (при `net.ipv4.ip_forward=1`), чтобы ядро не дропало ответы из `sg-tun0`.
+  3. **Утечка DNS в `169.254.169.254` и зависание TLS из-за MTU `1500 -> 1400`:** закрывать правилами `prerouting_dns` (мимо локального `192.168.122.1` `dnsmasq`) и MSS clamping на `SYN`.
+- [ ] **UI / Core («Информация о сервере»): реальный выходной IP и плашка «Чистый ISP IP» vs «Датацентр» (`silentgate_linux_gateway_spec.md` §6):**
+  - У части нод подписки входной IP отличается от выходного (`Ingress != Egress`, например `198.51.100.63` → `198.51.100.132` на NL 1.x), а часть серверов стоит в облаках (`hosting=true` / `proxy=true`) против чистых ISP/LIR-адресов (`hosting=false, proxy=false`).
+  - После сквозной проверки канала запрашивать через локальный SOCKS-порт метаданные реального выходного IP (`ip`, `asn`, `hosting`, `proxy`), кэшировать по ключу ноды и показывать в карточке сервера честный Egress IP и бейдж `Чистый ISP IP` / `Датацентр`.
+
+### Карточка сервера БС, реальный пинг/замер скорости через звонок, крестик на всех уведомлениях и переход на закрытую лицензию (06.11.2026)
+
+1. ~~**Сервер БС (`VK Звонки`): реальный выходной IP вместо `93.186.225.194 (LLC VK)` и `127.0.0.1:10855`**~~ — **СДЕЛАНО в `1.18.6+99` (`server_info_screen.dart`, `ip_info.dart`, `socks5_http_bridge.dart`).**
+   - [x] Выходной IP и локация определяются через сам канал релея (`IpInfoService.lookup` с авторизацией Basic) и кэшируются по комнате звонка (`WhitelistExitIpCache`); технический адрес `127.0.0.1:10855` скрыт, а таймер «Текущее подключение» привязан к `connectedServerKey`.
+
+2. ~~**Крестик закрытия (`×`) на ЛЮБОМ всплывающем уведомлении**~~ — **СДЕЛАНО в `1.18.6+99` (`app_toast.dart`).**
+   - [x] Кнопка `Icons.close` добавлена во все карточки `_ProgressCard` (во время выполнения с подавлением оставшихся тиков прогона и после `finished: true`).
+
+3. ~~**Реальный пинг (в `мс` вместо `ok`) и измерение скорости для серверов БС ЧЕРЕЗ сам звонок**~~ — **СДЕЛАНО в `1.18.6+99` (`whitelist_relay_probe.dart`, `probe_controller.dart`, `server_info_screen.dart`).**
+   - [x] Живые и холодные серверы БС (`whitelist://` и `/sgbs`) входят в WebRTC-звонок через `WhitelistRelayProbe` + авторизованный `LocalHttpToSocksBridge`, измеряют честный HTTP RTT в `мс` (`PingVerification.passed`) и поддерживают замер скорости «Измерить скорость» на Windows и Android.
+
+4. **Юридическая и техническая подготовка к переходу с `GPL-3.0` на закрытую (проприетарную) лицензию (`LICENSE`, `THIRD-PARTY.md`, `app/android`).**
+   - [ ] **Android (`libbox.aar` → внешний бинарник `libsingbox.so`):** вынести `sing-box` (`GPL-3.0-or-later`) из JNI-библиотеки `libbox.aar` внутри процесса APK в отдельный исполняемый файл `libsingbox.so`, запускаемый через `ProcessBuilder` (по аналогии с `librelay.so` и `sing-box.exe` на Windows), с передачей TUN fd через локальный Unix-сокет (`sendmsg` / `SCM_RIGHTS`). Это переводит взаимодействие с `sing-box` на Android в разряд чистого межпроцессного взаимодействия (`GPL-3.0 §5 Aggregate`) без линковки в единый процесс.
+   - [ ] **Гео-базы (`geoip.dat` / `geosite.dat`):** собирать урезанные гео-базы напрямую из `v2fly/domain-list-community` (**MIT**) и `GeoLite2` (**CC-BY-SA-4.0**), убрав зависимость от GPL-релиза `Loyalsoldier`.
+   - [ ] **Смена лицензии собственного кода:** после отвязки `libbox.aar` заменить корневой `LICENSE` на проприетарную лицензию (EULA), оставив в `licenses/` тексты `GPL-3.0` и ссылки на исходники только для отдельно поставляемых бинарников ядер (`sing-box`).
+
+### Инфраструктура БС — собственные чистые аккаунты ВК / Яндекса и защита купленных авторегов (05.11.2026)
+
+- [ ] **Напоминание владельцу:** зарегистрировать **собственные чистые аккаунты ВК и Яндекса (Телемост)** на свои физические/eSIM-номера вместо купленных авторегов (чтобы полностью исключить риск восстановления аккаунта продавцом по исходному номеру).
+- [ ] **Регламент для текущих купленных аккаунтов (`SilentGateBSNode/tools/vk_account_guard.py`):**
+  - Входить только через антидетект-стек (`Camoufox` / `Patchright` в окне с постоянным профилем и недатацентровым IP — на парке подходят:
+    - `sub195` (`192.0.2.59` — 🇷🇺 Россия, Москва, `JSC Mastertel` / `DTL LLC`, `hosting=false, proxy=false`) — под российские аккаунты ВК/Яндекса (`+7` РФ), с выводом трафика релея через `--upstream-socks` на зарубежную ноду;
+    - `nl` (`198.51.100.63` ingress / `198.51.100.132` egress — 🇳🇱 Нидерланды, Амстердам, `AS218731`, оба IP `hosting=false, proxy=false`) — под нидерландские/ЕС аккаунты (`+31` NL) либо самореги, зарегистрированные сразу с IP `nl`),
+    никогда не использовать `HeadlessChrome`.
+  - Выдержать `>= 48 ч` отлёжки на закреплённом IP перед созданием **закрытой частной группы (`is_closed=2`, «Частная группа»)** под групповой звонок сообщества (снижает риск жалоб/фрода по сравнению со звонком с личной страницы).
+  - Выдержать `>= 5–7 суток` прогрева и проверить отсутствие чужих сессий (`vk_account_guard.py check`), после чего сменить пароль, сбросить старые сессии продавца и перепривязать номер телефона.
+
+### Инфраструктура БС — открытие звонка ТОЛЬКО при наличии активных клиентов (Схема А / Схема Б, 05.11.2026)
+
+Чтобы creator-нода не держала открытый видеозвонок 24/7 впустую (снижая расход ресурсов и риск антифрода платформ при многочасовых пустых конференциях):
+
+- [ ] **Схема А (рекомендуемая для продакшена с Remnawave — ленивый пул комнат по запросу подписки / шлюза БС):**
+  - Менеджер ноды БС (`SilentGateBSNode`) держит звонки **закрытыми** (`idle`, 0 трафика и 0 открытых WebRTC-сессий), пока к пулу никто не обращается.
+  - Как только клиент запрашивает подписку/конфиг через белый домен или стучится в легковесный координатор, менеджер за `1,5–2,5 с` поднимает `headless-*-creator` (или берёт уже прогретую комнату из шардированного пула аккаунтов, распределяя юзеров по разным аккаунтам), отдаёт актуальную ссылку комнаты в `/sgbs?p=...&r=...` и держит звонок живым, пока `active_peers > 0`.
+  - После ухода последнего клиента (`active_peers == 0` в течение `idle_ttl = 10–15 мин`) процесс `creator` штатно завершает звонок и засыпает до следующего клиента.
+- [ ] **Схема Б (автономная для постоянной ссылки без перевыдачи подписки — спящий creator на постоянной комнате сообщества / Телемоста / WB):**
+  - Используется постоянная ссылка звонка (например, закреплённый звонок закрытой группы ВК или постоянная комната `WB Stream` / `Телемост`), где ссылка `joinLink` не меняется.
+  - В режиме сна `creator` **не держит WebRTC/RTP-поток**, а раз в `5–10 с` легковесным HTTP/WS-запросом проверяет число участников/ожидающих в комнате (`waiting_room` / список пиров сигнализации).
+  - Как только появляется входящий `joiner`, `creator` мгновенно входит в комнату с медиа-мостом, обслуживает сессию и снова выходит из WebRTC через `10 мин` после отключения последнего клиента.
+
+### ~~Android — показывать версию в верхнем заголовке `AppBar` (05.11.2026)~~ — СДЕЛАНО в 1.18.4+97
+
+На Android/iOS в `AppBar.title` главного экрана (`app/lib/ui/home_screen.dart`) выводится `SilentGate 1.18.4+97` с компактным стилем версии и `TextOverflow.ellipsis`, а на Windows сохранён `AppInfo.name` (где полная версия уже стоит в заголовке системного окна и подсказке трея).
+
+### Поддержка релеев БС (`usesWhitelistRelay`) в качестве отдельных выходов правил («Через сервер», 04.11.2026)
+
+- [x] **СДЕЛАНО в `1.18.5+98`:** локальный мульти-мост `Xray -> sing-box` (`app/lib/core/xray/xray_exit_bridge.dart`, порты `127.0.0.1:10910+` с изоляцией `in-exit-<hash>` и префиксом `exit-<hash>-` для узлов, балансировщиков `leastPing`, `fallbackTag` и `burstObservatory`, а также вспомогательный процесс `_auxXray` при основном `Hysteria2` и в `proxyOnly`). Профили «🎬 Авто (YouTube)» / «Авто» и узлы `XHTTP` полноценно работают в «Через сервер» и в портах `/v1/exits`.
+- [ ] **Остаток по релеям БС (`usesWhitelistRelay`):** поднимать отдельный локальный экземпляр `WhitelistRelayProcess` на выделенный порт при назначении ноды БС вторичным выходом правила.
+
+### Android — экран «Информация о сервере» (`server_info_screen.dart`, скриншот 03.11.2026)
+
+По скриншоту владельца на Android (при поднятом VPN) в карточке сервера обнаружены сразу четыре связанные проблемы:
+
+1. **Сплющивание подписей «Через сервер» и «Без VPN» в вертикальный столбик по одной букве и наезд текста ошибки (`app/lib/ui/server_info_screen.dart:330-349`, `_speedRow`).**
+   - В `Row(children: [Expanded(child: Text(title)), Text(error)])` правый `Text` с ошибкой замера не обёрнут ни в `Flexible`/`Expanded`, ни в адаптивную колонку (в отличие от `_kvRow` строками ниже, `379-395`). Когда вместо короткого `10.9 МБ/с` приходит длинная строка исключения (`HandshakeException: Connection terminated during handshake` / `SocketException: Failed host lookup: 'speed.cloudflare.com'`), правый `Text` забирает всю ширину экрана с выходом за правый край, а левому `Expanded` остаётся ширина одного символа (`Ч/е/р/е/з с/е/р/в/е/р` и `Б/е/з V/P/N`) поверх красного текста.
+   - **Как чинить:** перевести `_speedRow` на адаптивную раскладку (при ошибке или на узком экране `< 420 dp` — подпись над значением либо `Expanded` + перенос строк без вылета за экран) и добавить виджет-тест на длинный `SpeedResult.failed(...)` при ширине телефона `360 dp`.
+2. **Сырые английские исключения Dart вместо понятной локализованной причины (`app/lib/core/net/speed_test.dart:95,108,116-118`).**
+   - `catch (e)` кладёт в `SpeedResult.failed('$e')` сырой текст `HandshakeException` / `SocketException` без перевода и сокращения (а остальные ошибки зашиты русскими литералами мимо `AppLocalizations`). Нужно нормализовать коды ошибок (сбой DNS / обрыв TLS-рукопожатия / таймаут / HTTP-код) с локализацией и оставлять технические детали для журнала/подсказки.
+3. **Замер скорости на Android: блокировка `speed.cloudflare.com` и тихая подмена проверяемого сервера в `_withHarness` (`app/lib/ui/server_info_screen.dart:87-98`, `speed_test.dart:59`).**
+   - Напрямую («Без VPN») в сетях РФ `speed.cloudflare.com` часто режется ТСПУ/провайдером на DNS или TLS ECH (`Failed host lookup` / `Connection terminated during handshake`), а через часть выходных узлов Cloudflare также рвёт рукопожатие — стоит предусмотреть резервный эндпоинт замера скорости при отказе Cloudflare.
+   - Кроме того, в `_withHarness` (`server_info_screen.dart:87-98`) на Android, где `ProbeHarnessAndroid` не отдаёт внешний HTTP-порт (`port <= 0`), при открытии карточки **неактивного** сервера код молча подставляет `state.httpProxyPort` **текущего подключённого** сервера и выдаёт его скорость за скорость просматриваемого кандидата.
+4. **Блок «Автонастройка» на Android обещает недоступное действие (`app/lib/ui/server_info_screen.dart:234`, `app/lib/engine/probe_factory.dart:37`).**
+   - `ServerAutoConfigCard` рисуется безусловно и пишет: *«Автонастройка этот сервер ещё не проверяла - запустите её, чтобы увидеть, какие сервисы через него работают»*, хотя на Android `autoConfigSupported == false` и экрана запуска автонастройки пока нет (гейтить по `autoConfigSupported || result != null`, пока не реализован харнесс автонастройки на Android).
+
 ### ~~Kill switch: окно без блокировки при пересоздании туннеля (найдено 10.10.2026)~~ — СДЕЛАНО в 1.15.1
 
 Закрыто передачей ядра живому помощнику (`engine/windows/tun/tun_reload.dart`, коммит

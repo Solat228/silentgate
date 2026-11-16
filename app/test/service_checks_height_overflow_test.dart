@@ -103,8 +103,10 @@ void main() {
           create: (_) => ServiceCheckController(),
           child: const Scaffold(
             body: SingleChildScrollView(
+              // Ячейка в разрезанной рамке (29.10.2026) уже прежней пары:
+              // 300 px бокам теперь хватает (масштаб ~0,7), предел — ~268.
               child: SizedBox(
-                width: 300,
+                width: 240,
                 child: ServiceChecksSides(
                   services: ServiceChecks.catalog,
                   httpPort: 0,
@@ -118,7 +120,7 @@ void main() {
       await t.pump();
       expect(t.takeException(), isNull);
       expect(find.byType(ServiceChecksRows), findsOneWidget,
-          reason: 'при ширине 300 боков не построить читаемыми');
+          reason: 'при ширине 240 боков не построить читаемыми');
     });
   });
 

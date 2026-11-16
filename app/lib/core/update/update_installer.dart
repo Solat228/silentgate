@@ -220,6 +220,8 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
   /// Имя подкаталога закачек внутри корня данных.
   static const stagingDirName = 'updates';
 
+  static const stagedMetadataFileName = 'staged.json';
+
   @override
   Future<bool> canInstallNow() async => true;
 
@@ -263,7 +265,7 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
     // показать ту же карточку ещё раз.
     _deleteQuietly(f);
     if (pending == null) {
-      AppLog.w('Обновление: pending.json не разобрался — удалён');
+      AppLog.w('Обновление: pending.json не разобрался - удалён');
       return null;
     }
 
@@ -276,7 +278,7 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
     }
 
     if (pending.isStale(clock())) {
-      AppLog.w('Обновление: запись об установке ${pending.version} старше суток — '
+      AppLog.w('Обновление: запись об установке ${pending.version} старше суток - '
           'итог не разбираю');
       return PendingResult(outcome: PendingOutcome.stale, pending: pending);
     }
@@ -310,6 +312,11 @@ abstract class StagedUpdateInstaller implements UpdateInstaller {
       // `pending.json` — забота reconcileAfterStart: чистка, вызванная до
       // разбора, не имеет права стереть итог установки.
       if (name == PendingInstall.fileName) continue;
+      if (keepVersion != null &&
+          keepVersion.isNotEmpty &&
+          name == stagedMetadataFileName) {
+        continue;
+      }
       if (keepVersion != null &&
           keepVersion.isNotEmpty &&
           nameBelongsToVersion(name, keepVersion)) {

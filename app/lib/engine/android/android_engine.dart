@@ -13,6 +13,7 @@ import '../../core/models/engine_notice.dart';
 import '../../core/models/vpn_server.dart';
 import '../../core/models/vpn_status.dart';
 import '../../core/platform/app_log.dart';
+import '../../core/platform/vpn_lockdown.dart';
 import '../../core/probe/proxy_probe.dart';
 import '../../core/platform/ipv6_support.dart';
 import '../../core/platform/app_paths.dart';
@@ -21,13 +22,19 @@ import '../../core/settings/split_tunnel.dart';
 import '../../core/singbox/singbox_config_builder.dart';
 import '../../core/xray/override_normalizer.dart';
 import '../../core/xray/xray_config_builder.dart';
+import '../../core/xray/xray_exit_bridge.dart';
 import '../../core/singbox/singbox_outbound_factory.dart';
 import '../../core/singbox/exit_outbounds.dart';
 import '../../core/geo/geo_assets.dart';
+import '../../core/geo/geo_bases.dart';
 import '../../core/xray/geodata_fallback.dart';
 import '../../core/net/dns_fallback_server.dart';
 import '../engine_base.dart';
 import '../vpn_engine.dart';
+import '../../core/whitelist_bypass/whitelist_bypass_helper.dart';
+import '../../core/dpi/dpi_bypass_lists.dart';
+import '../../core/dpi/dpi_bypass_proxy.dart';
+import '../../core/dpi/dpi_strategy.dart';
 import 'app_heartbeat.dart';
 
 /// Движок Android: туннель поднимает `libbox` (sing-box) внутри
@@ -88,6 +95,11 @@ class AndroidEngine extends VpnEngineBase {
   /// приложению — детекторы VPN ищут именно этот порт.
   @override
   bool get readsXrayStats => false;
+
+  @override
+  LiveCoreApi? get connectionsCoreApi => status.isConnected
+      ? LiveCoreApi(port: clashApiPort, secret: _apiSecret)
+      : null;
 
   /// Отметка «приложение живо» + замер отзывчивости главного потока Android.
   ///
@@ -423,12 +435,32 @@ class AndroidEngine extends VpnEngineBase {
   ({String user, String password}) get healthProbeAuth =>
       (user: ProxyProbe.user, password: ProxyProbe.password);
 
+  /// Прямой интернет на Android спрашиваем, только когда ответ «нет» правдив.
+  ///
+  /// Сам пакет исключён из `VpnService`, поэтому прямой запрос идёт в
+  /// обычную сеть. Но блокировка без VPN (lockdown) режет и исключённые
+  /// приложения: там проба не прошла бы никогда, и движок считал бы, что
+  /// интернета нет, — и перестал бы переподключаться к упавшему серверу.
+  /// Узнать режим нельзя (старый Android, ошибка канала) — тоже «не знаю».
+  @override
+  Future<bool?> directInternetAvailable() async {
+    final st = await VpnLockdown.query();
+    if (!st.supported || st.lockdown) {
+      AppLog.i('Проверка прямого интернета пропущена: '
+          '${st.supported ? 'включена блокировка без VPN' : 'режим блокировки не узнать'}'
+          ' - веду себя как раньше');
+      return null;
+    }
+    return super.directInternetAvailable();
+  }
+
   static const _channel = MethodChannel('lol.silentgate/vpn');
   static const _events = EventChannel('lol.silentgate/vpn_events');
 
   /// Идёт ли сейчас наш собственный подъём: нужно, чтобы не принять
   /// подтверждение «сервис запущен» за неожиданное падение.
   bool _starting = false;
+  WhitelistBypassProcess? _whitelistBypass;
 
   /// Опции и правила ЖИВОГО конфига — чтобы заглушка kill switch совпала с ним
   /// поле в поле. Разойдутся хоть в одном (MTU, списки пакетов) — `VpnService`
@@ -478,7 +510,7 @@ class AndroidEngine extends VpnEngineBase {
       return await ch.invokeMethod<T>(method).timeout(channelTimeout);
     } on TimeoutException {
       AppLog.w('Главный поток Android не ответил на «$what» за '
-          '${channelTimeout.inSeconds} с — считаю ответ неизвестным. Обычно это '
+          '${channelTimeout.inSeconds} с - считаю ответ неизвестным. Обычно это '
           'значит, что он занят: интерфейс в этот момент застыл.');
       return null;
     }
@@ -510,9 +542,16 @@ class AndroidEngine extends VpnEngineBase {
       // Пароль Clash API — от ТОГО запуска: свежесгенерированный туннель не
       // знает, и счётчики навсегда остались бы нулями (401 на каждый такт).
       if (!await _restoreApiSecret()) {
-        AppLog.w('Пароль Clash API прошлой сессии не найден — '
+        AppLog.w('Пароль Clash API прошлой сессии не найден - '
             'счётчики трафика будут пустыми до переподключения');
       }
+      // ⚠️ ПАРОЛЬ ПРОБ — ДО «ПОДКЛЮЧЕНО». На смену статуса интерфейс сразу
+      // шлёт первую пробу через инбаунд проб (готовность канала перед
+      // проверкой сервисов). Пока пароль не восстановлен, она уходит без
+      // кред: живой прогон 13.10.2026 поймал в журнале ядра
+      // «authentication failed, no Proxy-Authorization header» ровно в
+      // секунду подхвата.
+      final probeAuthRestored = await _restoreProbeSecret();
       markConnected();
       setStatus(VpnConnectionState.connected);
       _startStatsPolling();
@@ -528,7 +567,7 @@ class AndroidEngine extends VpnEngineBase {
       // ИСПРАВНЫЙ туннель мёртвым — сторож стал бы источником обрывов, а не
       // защитой от них. Поэтому «не нашли пароль» = не вооружаемся, и причина
       // называется вслух: молчание тут неотличимо от исправной работы.
-      if (await _restoreProbeSecret()) {
+      if (probeAuthRestored) {
         // ⚠️ ПОКОЛЕНИЕ БЕРЁМ ЗДЕСЬ И СВЕРЯЕМСЯ С НИМ. Сторож обязан замолчать,
         // когда человек отключится или переподключится: без этого он остался бы
         // сторожем ЧУЖОЙ сессии и глушил бы новую (тот же разбор, что в
@@ -537,7 +576,7 @@ class AndroidEngine extends VpnEngineBase {
         startHealthWatch(() => isStale(gen));
       } else {
         AppLog.w('Сторож канала НЕ вооружён после подхвата: пароль проб '
-            'прошлой сессии не найден. Обрыв этого туннеля замечен не будет — '
+            'прошлой сессии не найден. Обрыв этого туннеля замечен не будет - '
             'переподключитесь, чтобы вернуть присмотр.');
       }
     } catch (e) {
@@ -655,15 +694,37 @@ class AndroidEngine extends VpnEngineBase {
     // сломанном случае выглядит правильным. Настоящий ответ даёт только
     // сравнение «что было на входе» и «что ушло ядру».
     final need = needsGeodata(json);
-    final have = await GeoAssets.available();
     if (!need) {
       AppLog.i('Xray-конфиг: ссылок на гео-базы нет');
       return json;
     }
+    var have = await GeoAssets.available();
+    if (!have) {
+      // Чистая установка или человек удалил базы: кладём встроенный набор, и
+      // правила панели по России и рекламе работают сразу, без закачки.
+      await GeoBases.seedBundled();
+      have = await GeoAssets.available();
+    }
     if (!_geodataUnusable && have) {
+      // ⚠️ ЧИСТИМ ССЫЛКИ НА КАТЕГОРИИ, КОТОРЫХ В ФАЙЛАХ НЕТ. Со встроенным
+      // набором это обычное дело (`geoip:de` в него не входит), а Xray на
+      // такую ссылку отвергает конфиг ЦЕЛИКОМ — VPN не поднялся бы вовсе.
+      // Файлы не разобрались — отдаём как есть, как и раньше: решать «что
+      // вычистить» по догадке нельзя.
+      final cats = await GeoBases.scanCategories();
+      if (cats != null) {
+        final r = stripGeodata(json,
+            keep: (kind, name) => cats[kind]?.has(name) ?? false);
+        if (r.report.changed) {
+          AppLog.i('Xray-конфиг: в гео-базах на диске нет части категорий - '
+              '${r.report.describe()}. Этот трафик пойдёт через VPN; полные '
+              'базы скачиваются в настройках.');
+        }
+        json = r.json;
+      }
       json = await _withAssetEnv(json);
-      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы скачаны — '
-          'отдаю как есть');
+      AppLog.i('Xray-конфиг: ссылки на гео-базы есть, базы на месте - '
+          'отдаю ядру');
       return json;
     }
     final r = stripGeodata(json);
@@ -671,7 +732,7 @@ class AndroidEngine extends VpnEngineBase {
       // Мы вычистили что могли, а ссылки остались — значит есть место, о
       // котором мы не знаем. Ядро сейчас откажет, и лучше сказать об этом
       // заранее, чем оставить «страховка есть, но не сработала».
-      AppLog.e('В конфиге остались ссылки на гео-базы после чистки — '
+      AppLog.e('В конфиге остались ссылки на гео-базы после чистки - '
           'ядро, скорее всего, откажет. Это дефект: сообщите разработчику.');
     }
     AppLog.i('Xray-конфиг после чистки: ссылки остались='
@@ -683,17 +744,17 @@ class AndroidEngine extends VpnEngineBase {
       // скачаны» в обоих — то есть врал ровно тому, у кого базы уже лежат на
       // диске, и советовал ему скачать их ещё раз.
       if (have) {
-        AppLog.w('Гео-базы на диске есть, но ядро их не открыло — правила по '
+        AppLog.w('Гео-базы на диске есть, но ядро их не открыло - правила по '
             'ним отброшены: ${r.report.describe()}. Этот трафик пойдёт через '
             'VPN, а не напрямую. Помогает перекачивание баз в настройках.');
         emitNotice(EngineNoticeKind.geoAssetsUnusable,
-            'Ядро не открыло гео-базы — правила панели по странам отключены');
+            'Ядро не открыло гео-базы - правила панели по странам отключены');
       } else {
-        AppLog.w('Гео-базы не скачаны — правила по ним отброшены: '
+        AppLog.w('Гео-базы не скачаны - правила по ним отброшены: '
             '${r.report.describe()}. Этот трафик пойдёт через VPN, а не '
             'напрямую. Скачать базы можно в настройках.');
         emitNotice(EngineNoticeKind.geoAssetsMissing,
-            'Гео-базы не скачаны — правила панели по странам отключены');
+            'Гео-базы не скачаны - правила панели по странам отключены');
       }
     }
     return r.json;
@@ -723,7 +784,8 @@ class AndroidEngine extends VpnEngineBase {
     // Новая попытка — снова слушаем события остановки.
     _handlingStop = false;
 
-    setStatus(VpnConnectionState.connecting);
+    setStatus(VpnConnectionState.connecting,
+        step: ConnectStep.dns, message: status.message);
     // Пароль — на КАЖДУЮ сессию, и он же кладётся на диск: следующий запуск
     // интерфейса подхватит этот туннель и должен уметь его опросить.
     await _rotateApiSecret();
@@ -827,11 +889,20 @@ class AndroidEngine extends VpnEngineBase {
       // признак, по которому Kotlin поднимает libxray.
       final viaXray = cfg.core == ProxyCore.xray;
 
+      final usesWhitelistRelay =
+          session.servers.any((s) => s.usesWhitelistRelay);
+      final whitelistStandalone = session.servers.isNotEmpty &&
+          session.servers.every((s) => s.isWhitelistBypass);
+
       // Когда сервер поднимает Xray, туннель заворачивает трафик в его
       // локальный SOCKS — как на Windows. Только когда ядро — sing-box
-      // (hysteria2), outbound встраивается прямо в конфиг туннеля.
+      // (hysteria2 / whitelist_bypass), outbound встраивается прямо в конфиг
+      // туннеля; при этом `whitelist_bypass` тоже идёт в локальный SOCKS5-мост
+      // (`librelay.so`), который режет `AtypIPv6` и не тянет QUIC поверх VP8.
       final liveOptions = TunOptions.fromSettings(
           session.options.settings,
+          blockTunnelQuic: viaXray || usesWhitelistRelay,
+          tunnelIpv4Only: whitelistStandalone,
           serverIps: serverIps,
           // ⚠️ `tunnelExcludeServerIps` на Android НАМЕРЕННО не заполняется
           // (пусто = прежний конфиг байт в байт). Здесь это поле стало бы
@@ -878,6 +949,9 @@ class AndroidEngine extends VpnEngineBase {
       _liveOptions = liveOptions;
       _liveSplit = session.options.split;
 
+      final bridgePorts =
+          assignXrayExitBridgePorts(session.options.exitServers);
+
       // Именованные выходы мульти-VPN. Собираются ДО построителя, чтобы его
       // единственным источником правды о живых выходах остался список готовых
       // outbound-ов: правило со ссылкой на несобравшийся выход обязано упасть
@@ -885,6 +959,9 @@ class AndroidEngine extends VpnEngineBase {
       final exitsBuilt = ExitOutbounds.build(
         servers: session.options.exitServers,
         resolvedIps: resolvedIps,
+        xrayBridgePorts: bridgePorts,
+        xrayBridgeUser: localInboundUser,
+        xrayBridgePassword: localInboundPassword,
       // ⚠️ ЗАПАСНОЙ ПУТЬ ВЫХОДА: умер выход — трафик правила уходит в общий
       // туннель, а не в никуда. До этого отказ выхода означал, что правило
       // просто перестаёт работать, и человек видел не «выход умер», а
@@ -897,12 +974,26 @@ class AndroidEngine extends VpnEngineBase {
       fallbackTag: 'proxy',
       );
       for (final e in exitsBuilt.skipped.entries) {
-        AppLog.i('Выход «${e.key}» не поднят: ${e.value} — '
+        AppLog.i('Выход «${e.key}» не поднят: ${e.value} - '
             'его правила пойдут общим туннелем');
       }
       if (exitsBuilt.outbounds.isNotEmpty) {
         AppLog.i('Мульти-VPN: дополнительных серверов ${exitsBuilt.outbounds.length}');
       }
+
+      await _ensureDpiProxies(session.options, viaXray: viaXray);
+      final effectiveSplit = DpiBypassLists.applyGlobalDpiRules(
+        session.options.split,
+        session.options.settings,
+      );
+      final dpiOutbounds = LocalDpiBypassProxy.buildExitOutbounds(
+        directPort: _dpiDirectProxy?.port,
+        fallbackPort: _dpiFallbackProxy?.port,
+      );
+      final allExitOutbounds = <Map<String, dynamic>>[
+        ...exitsBuilt.outbounds,
+        ...dpiOutbounds,
+      ];
 
       final tunJson = SingboxConfigBuilder(
         xraySocksPort: ports.socks,
@@ -927,7 +1018,7 @@ class AndroidEngine extends VpnEngineBase {
                 resolvedIp:
                     resolvedIps[session.servers.first.address.trim()],
               ),
-        exitOutbounds: exitsBuilt.outbounds,
+        exitOutbounds: allExitOutbounds,
         // ⚠️ ПАРИТЕТ С WINDOWS, А НЕ ЛИШНЯЯ СТРОКА. Портов API на Android
         // сегодня нет (`apiExitServerKeys`/`apiToken` сюда не передаются), но
         // состав выходов считает ОБЩИЙ `AppState.exitServerKeysFor`: включи
@@ -935,7 +1026,7 @@ class AndroidEngine extends VpnEngineBase {
         // тег, и правило «через него» ушло бы вторым соединением к тому же
         // узлу. Разводим источники на обеих платформах одинаково.
         apiOnlyExitKeys: session.options.apiOnlyExitKeys.toList(),
-      ).buildJson(session.options.split);
+      ).buildJson(effectiveSplit);
 
       // Подготовка была долгой — сверяемся с отменой ДО того, как тронем
       // нативный сервис. И убираем СВОЙ форвардер: он уже поднят (внутри сборки
@@ -945,13 +1036,87 @@ class AndroidEngine extends VpnEngineBase {
         return;
       }
 
+      final prevBypass = _whitelistBypass;
+      _whitelistBypass = null;
+      if (prevBypass != null) {
+        await prevBypass.stop();
+      }
+      final needsWhitelistRelay =
+          session.servers.length == 1 && session.server.usesWhitelistRelay;
+      if (needsWhitelistRelay) {
+        final bypass = WhitelistBypassProcess();
+        _whitelistBypass = bypass;
+        setStatus(
+          VpnConnectionState.connecting,
+          step: ConnectStep.relay,
+          message: 'Подключение к комнате (${session.server.whitelistPlatform ?? "БС"})...',
+        );
+        final nativeDir = await const MethodChannel('lol.silentgate/device')
+            .invokeMethod<String>('nativeLibraryDir');
+        AppLog.i('Каталог нативных библиотек: $nativeDir');
+        final libPath = nativeDir != null ? '$nativeDir/librelay.so' : null;
+        final relayPort =
+            session.server.isWhitelistBypass && session.server.port > 0
+                ? session.server.port
+                : 10855;
+        await bypass.start(
+          server: session.server,
+          socksPort: relayPort,
+          executablePath: libPath,
+          abort: aborted,
+          onInteractiveUrl: (kind, url) {
+            if (aborted()) return;
+            final msg = kind == 'captcha'
+                ? 'Подтверждение подключения ВК (автопроверка)...'
+                : 'Подтвердите вход в открывшемся браузере ($url)...';
+            setStatus(
+              VpnConnectionState.connecting,
+              step: ConnectStep.relay,
+              message: msg,
+            );
+          },
+        );
+        if (aborted()) {
+          await bypass.stop();
+          return;
+        }
+      }
+
+      String? rawXrayJson;
+      if (viaXray) {
+        final guarded = _guardXrayInbounds(cfg.json);
+        rawXrayJson = bridgePorts.isEmpty
+            ? guarded
+            : injectXrayExitBridges(
+                guarded,
+                exitServers: session.options.exitServers,
+                bridgePorts: bridgePorts,
+                resolvedIps: resolvedIps,
+                socksUser: localInboundUser,
+                socksPassword: localInboundPassword,
+                variant: session.options.variant,
+              );
+      } else if (bridgePorts.isNotEmpty) {
+        rawXrayJson = injectXrayExitBridges(
+          null,
+          exitServers: session.options.exitServers,
+          bridgePorts: bridgePorts,
+          resolvedIps: resolvedIps,
+          socksUser: localInboundUser,
+          socksPassword: localInboundPassword,
+          variant: session.options.variant,
+        );
+      }
+
+      setStatus(VpnConnectionState.connecting,
+          step: ConnectStep.tun, message: status.message);
       _starting = true;
       await _channel.invokeMethod<void>(
           'start',
           startArgs(
             tunJson: tunJson,
-            xrayJson: viaXray
-                ? await _guardGeodata(_guardXrayInbounds(cfg.json))
+            xrayJson: rawXrayJson != null
+                ? await _guardGeodata(rawXrayJson)
                 : null,
             readsXrayStats: readsXrayStats,
           ));
@@ -988,6 +1153,10 @@ class AndroidEngine extends VpnEngineBase {
       // Windows: ядро встаёт и при мёртвом сервере. Неудачу метод сам отдаёт
       // автовосстановлению с удержанием захвата — общий `catch` ниже звал бы
       // `cleanup()` и снимал VpnService, то есть открывал трафик.
+      if (!await confirmInitialChannel(() => aborted())) {
+        if (aborted()) await releaseOwnFallbackDns(gen);
+        return;
+      }
       if (!await confirmRecoveredChannel(() => aborted())) {
         if (aborted()) await releaseOwnFallbackDns(gen);
         return;
@@ -1034,21 +1203,27 @@ class AndroidEngine extends VpnEngineBase {
         // активность, диалог закрыла оболочка, приложение свернули поверх него
         // (BACKLOG #28). В этих случаях фраза про «пользователь не разрешил»
         // прямо вводит в заблуждение.
-        AppLog.w('Android не выдал согласие на VPN — туннель не поднимался');
+        AppLog.w('Android не выдал согласие на VPN - туннель не поднимался');
         setStatus(VpnConnectionState.error,
             message: 'Android не разрешил поднять VPN. Нажмите «Подключиться» '
                 'ещё раз и подтвердите запрос системы.',
             text: const StatusVpnConsentDenied());
         return;
       }
-      if (await scheduleRetry('не удалось подключиться: ${e.message}')) return;
+      if (await scheduleRetry('не удалось подключиться: ${e.message}',
+          why: StatusConnectFailed('${e.message}'))) {
+        return;
+      }
       setStatus(VpnConnectionState.error, message: e.message);
     } catch (e) {
       _starting = false;
       final wasAborted = aborted();
       await cleanup();
       if (wasAborted) return;
-      if (await scheduleRetry('не удалось подключиться: $e')) return;
+      if (await scheduleRetry('не удалось подключиться: $e',
+          why: StatusConnectFailed('$e'))) {
+        return;
+      }
       setStatus(VpnConnectionState.error, message: '$e');
     }
   }
@@ -1096,7 +1271,7 @@ class AndroidEngine extends VpnEngineBase {
   /// объявить отказ там, где туннель встал бы через секунду.
   Future<bool> _waitTunnelUp(
     bool Function() aborted, {
-    Duration timeout = const Duration(seconds: 25),
+    Duration timeout = const Duration(seconds: 12),
     Duration step = const Duration(milliseconds: 200),
   }) async {
     final deadline = DateTime.now().add(timeout);
@@ -1216,7 +1391,10 @@ class AndroidEngine extends VpnEngineBase {
           'Повторяю без правил по странам и категориям: маршрутизация панели '
           'будет неполной, зато туннель поднимется.');
       await teardownCore();
-      if (await scheduleRetry('ядру недоступны гео-базы')) return;
+      if (await scheduleRetry('ядру недоступны гео-базы',
+          why: const StatusGeoUnavailable())) {
+        return;
+      }
     }
 
     // Причина известна — показываем её вместо безымянного «ядро остановилось».
@@ -1237,6 +1415,8 @@ class AndroidEngine extends VpnEngineBase {
 
   @override
   Future<void> teardownCore({bool keepCapture = false}) async {
+    await _whitelistBypass?.stop();
+    _whitelistBypass = null;
     // Ядро уходит — счётчики уходят вместе с ним. Иначе таймер продолжал бы
     // раз в секунду стучаться в мёртвый порт, а на экране висели бы цифры
     // прошлой сессии, выдавая себя за текущие.
@@ -1273,7 +1453,7 @@ class AndroidEngine extends VpnEngineBase {
         // Заглушку не из чего собрать: ни живых опций, ни сессии. Собранная
         // «из чего попало» она не удержала бы туннель, а ПОДМЕНИЛА его чужим
         // интерфейсом — с другими списками пакетов и другим MTU.
-        AppLog.w('Удержать туннель нечем — параметры живого туннеля '
+        AppLog.w('Удержать туннель нечем - параметры живого туннеля '
             'неизвестны. Гашу, чтобы не подменять интерфейс наугад.');
         await _stopService();
         return;
@@ -1297,7 +1477,7 @@ class AndroidEngine extends VpnEngineBase {
           // (дескриптором владеет libbox). Разница с kill switch в том, что
           // попытки здесь КОНЧАЮТСЯ, и после них `cleanup()` снимет туннель.
           AppLog.i('Туннель удержан между попытками, чтобы не пересоздавать '
-              'интерфейс; блокировка при этом НЕ включается — попытки конечны');
+              'интерфейс; блокировка при этом НЕ включается - попытки конечны');
         }
         return;
       } catch (e) {
@@ -1335,7 +1515,7 @@ class AndroidEngine extends VpnEngineBase {
     if (reconstructed && !_warnedStubFromSettings) {
       _warnedStubFromSettings = true;
       AppLog.w('Kill switch: опций живого туннеля нет (его поднял прошлый '
-          'запуск интерфейса) — собираю заглушку из настроек сессии. Совпадёт '
+          'запуск интерфейса) - собираю заглушку из настроек сессии. Совпадёт '
           'с живым туннелем, пока настройки не менялись после его подъёма.');
     }
     return SingboxConfigBuilder(
@@ -1415,22 +1595,117 @@ class AndroidEngine extends VpnEngineBase {
   /// месте.
   @override
   Future<void> platformCleanup() async {
+    final wb = _whitelistBypass;
+    _whitelistBypass = null;
     _stopStatsPolling();
     stopHealthWatch();
     stopExitHealth();
-    await _stopFallbackDns();
-    // Туннеля, который мы знали, больше нет — и «знаю его параметры» обязано
-    // перестать быть правдой вместе с ним. Иначе следующая заглушка kill
-    // switch собралась бы по ПРОШЛОМУ подключению: пользователь успел сменить
-    // сервер и настройки, а мы держали бы интерфейс от предыдущего.
     _liveOptions = null;
     _liveSplit = null;
-    await _stopService();
+    await Future.wait([
+      if (wb != null) wb.stop(),
+      _stopDpiProxies(),
+      _stopFallbackDns(),
+      _stopService(),
+    ]);
+  }
+
+  LocalDpiBypassProxy? _dpiDirectProxy;
+  LocalDpiBypassProxy? _dpiFallbackProxy;
+
+  Future<void> _ensureDpiProxies(
+    ConnectionOptions options, {
+    required bool viaXray,
+  }) async {
+    final s = options.settings;
+    final modes = DpiBypassLists.requiredModes(options.split, s);
+    final cfg = DpiDesyncConfig.fromSettings(s);
+    final fbTimeout = Duration(milliseconds: s.dpiFallbackTimeoutMs.clamp(400, 8000));
+    final tspuBytes = s.dpiTspuThresholdKb.clamp(8, 128) * 1024;
+
+    if (modes.needsDirect) {
+      _dpiDirectProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: false,
+        strategy: cfg,
+        tspuThresholdBytes: tspuBytes,
+        registerInRuntime: true,
+      );
+      _dpiDirectProxy!.updateConfig(
+        strategy: cfg,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+      );
+      await _dpiDirectProxy!.start();
+    } else if (_dpiDirectProxy != null) {
+      await _dpiDirectProxy!.stop();
+      _dpiDirectProxy = null;
+    }
+
+    if (modes.needsFallback) {
+      final fbPort = probeInboundPort > 0 ? probeInboundPort : (viaXray ? ports.socks : null);
+      final fbUser = probeInboundPort > 0 ? ProxyProbe.user : localInboundUser;
+      final fbPass = probeInboundPort > 0 ? ProxyProbe.password : localInboundPassword;
+      _dpiFallbackProxy ??= LocalDpiBypassProxy(
+        allowVpnFallback: true,
+        vpnSocksPort: fbPort,
+        vpnSocksUsername: fbUser,
+        vpnSocksPassword: fbPass,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+        strategy: cfg,
+        registerInRuntime: true,
+      );
+      _dpiFallbackProxy!.updateConfig(
+        strategy: cfg,
+        fallbackTimeout: fbTimeout,
+        tspuThresholdBytes: tspuBytes,
+      );
+      _dpiFallbackProxy!.updateVpnSocks(
+        port: fbPort,
+        username: fbUser,
+        password: fbPass,
+      );
+      await _dpiFallbackProxy!.start();
+    } else if (_dpiFallbackProxy != null) {
+      await _dpiFallbackProxy!.stop();
+      _dpiFallbackProxy = null;
+    }
+  }
+
+  Future<void> _stopDpiProxies() async {
+    final d = _dpiDirectProxy;
+    final f = _dpiFallbackProxy;
+    _dpiDirectProxy = null;
+    _dpiFallbackProxy = null;
+    await Future.wait([
+      if (d != null) d.stop(),
+      if (f != null) f.stop(),
+    ]);
+  }
+
+  @override
+  Future<void> forceKillCleanup() async {
+    _whitelistBypass?.forceKill();
+    _whitelistBypass = null;
+    _stopStatsPolling();
+    stopHealthWatch();
+    stopExitHealth();
+    _liveOptions = null;
+    _liveSplit = null;
+    try {
+      await Future.wait([
+        _stopDpiProxies(),
+        _stopFallbackDns(),
+        _stopService(),
+      ]).timeout(const Duration(milliseconds: 700));
+    } catch (_) {}
   }
 
   Future<void> _stopService() async {
     try {
-      await _channel.invokeMethod<void>('stop');
+      await _channel
+          .invokeMethod<void>('stop')
+          .timeout(const Duration(milliseconds: 1500));
     } catch (e) {
       AppLog.w('Не удалось остановить VPN-сервис: $e');
     }
@@ -1473,7 +1748,7 @@ class AndroidEngine extends VpnEngineBase {
   static Future<bool> _ipv6Reality() async {
     final has = await Ipv6Support.hasGlobalIpv6();
     if (!has) {
-      AppLog.i('IPv6 наружу не найден — в туннеле он выключен, иначе '
+      AppLog.i('IPv6 наружу не найден - в туннеле он выключен, иначе '
           'двустековые сайты упирались бы в «unreachable network»');
     }
     return has;
@@ -1508,6 +1783,11 @@ class AndroidEngine extends VpnEngineBase {
     }
     await _stopFallbackDns();
     if (!s.tunnelDnsForAll) return 0;
+    if (!VpnEngineBase.providerDnsFallbackAllowed(s)) {
+      AppLog.i('Запасной DNS не поднимаю: kill switch не выпускает имена '
+          'к провайдеру');
+      return 0;
+    }
     // ⚠️ ГЕЙТ ПО ФАКТУ ЗАПУСКА XRAY, А НЕ ПО НАЛИЧИЮ ПАРОЛЯ. Раньше здесь
     // стояло `localInboundUser.isEmpty`, и это два РАЗНЫХ предиката, которые
     // разошлись в обе стороны сразу:
@@ -1536,7 +1816,7 @@ class AndroidEngine extends VpnEngineBase {
     final ip = InternetAddress.tryParse(upstream);
     if (ip == null || ip.type != InternetAddressType.IPv4) {
       AppLog.w('Запасной DNS не поднят: резолвер «$upstream» не литеральный '
-          'IPv4-адрес. DNS работает как раньше — целиком через туннель.');
+          'IPv4-адрес. DNS работает как раньше - целиком через туннель.');
       return 0;
     }
     try {

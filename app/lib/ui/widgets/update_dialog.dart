@@ -134,7 +134,10 @@ class UpdateDialog extends StatelessWidget {
       },
       child: Text(l.updatesLater),
     );
-    final primary = canInstall
+    // Сборка GitHub при установленном Google Play: главная кнопка — Play,
+    // закачка APK с GitHub остаётся второй (решение владельца 14.10.2026).
+    final viaPlay = controller.offerViaPlay;
+    final install = canInstall
         ? FilledButton(
             key: const Key('updateDialogInstall'),
             onPressed: () {
@@ -154,6 +157,26 @@ class UpdateDialog extends StatelessWidget {
             },
             child: Text(l.updatesOpenPage),
           );
+    final primary = viaPlay
+        ? FilledButton.icon(
+            key: const Key('updateDialogPlay'),
+            onPressed: () {
+              Navigator.of(context).pop();
+              unawaited(controller.openPlayStore());
+            },
+            icon: const Icon(Icons.shop, size: 18),
+            label: Text(l.updatesViaPlay),
+          )
+        : install;
+    // Запасной путь — та же кнопка, что без Play, но второстепенная и с
+    // подписью, откуда она качает.
+    final Widget? secondary = viaPlay
+        ? OutlinedButton(
+            key: const Key('updateDialogGithub'),
+            onPressed: install.onPressed,
+            child: Text(canInstall ? l.updatesViaGithub : l.updatesOpenPage),
+          )
+        : null;
 
     // ⚠️ КНОПКИ НА ТЕЛЕФОНЕ — ДВА РЯДА, А НЕ ТРИ СТРОКИ. Три кнопки в один ряд
     // на телефоне не влезают, и `AlertDialog` ставит их столбиком по правому
@@ -208,6 +231,10 @@ class UpdateDialog extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   primary,
+                  if (secondary != null) ...[
+                    const SizedBox(height: 4),
+                    secondary,
+                  ],
                   const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -222,6 +249,7 @@ class UpdateDialog extends StatelessWidget {
           : [
               skip,
               later,
+              if (secondary != null) secondary,
               // ⚠️ ГЛАВНАЯ КНОПКА ПОСЛЕДНЯЯ — ближайшая к большому пальцу.
               primary,
             ],
@@ -371,6 +399,65 @@ Future<void> showInstallLog(BuildContext context, PendingResult result) {
 // ── Тексты ───────────────────────────────────────────────────────────────────
 
 /// Размер в мегабайтах с одним знаком — для «{mb} МБ».
+Future<bool> showUpdateTrafficWarningDialog(
+  BuildContext context,
+  AppUpdateController controller, {
+  required bool isDownload,
+  int? sizeBytes,
+}) async {
+  var dontShowAgain = false;
+  final result = await showDialog<bool>(
+    context: context,
+    builder: (ctx) {
+      final l = AppLocalizations.of(ctx);
+      final body = isDownload
+          ? l.updatesTrafficWarningDownloadBody(
+              formatMegabytes(sizeBytes != null && sizeBytes > 0 ? sizeBytes : 0))
+          : l.updatesTrafficWarningCheckBody;
+      return StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(l.updatesTrafficWarningTitle),
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(body),
+                const SizedBox(height: 8),
+                CheckboxListTile(
+                  key: const Key('updateTrafficDontShowAgain'),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  value: dontShowAgain,
+                  onChanged: (v) => setState(() => dontShowAgain = v ?? false),
+                  title: Text(l.updatesTrafficDontShowAgain),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('updateTrafficCancel'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l.commonCancel),
+            ),
+            FilledButton(
+              key: const Key('updateTrafficContinue'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l.updatesContinue),
+            ),
+          ],
+        ),
+      );
+    },
+  );
+  if (result == true && dontShowAgain) {
+    await controller.setSkipTrafficWarning(true);
+  }
+  return result == true;
+}
+
 String formatMegabytes(int bytes) =>
     (bytes / (1024 * 1024)).toStringAsFixed(1);
 

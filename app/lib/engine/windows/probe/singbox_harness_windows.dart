@@ -46,7 +46,7 @@ class SingboxHarnessWindows implements ProbeHarness {
   Future<HarnessHandle> start(List<HarnessEntry> entries) async {
     final exe = SingboxProcess.locate();
     if (exe == null) {
-      throw StateError('Не найден sing-box.exe — без него Hysteria2 не проверить');
+      throw StateError('Не найден sing-box.exe - без него Hysteria2 не проверить');
     }
 
     final dir = await AppPaths.supportDir();

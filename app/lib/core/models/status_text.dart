@@ -21,6 +21,20 @@ final class StatusReconnectBlocked extends StatusText {
   const StatusReconnectBlocked({required this.seconds, required this.attempt});
 }
 
+/// Kill switch включён, но захват потерян (туннель не поднялся): трафик идёт
+/// мимо VPN, впереди очередная попытка.
+final class StatusReconnectUnprotected extends StatusText {
+  final int seconds;
+  final int attempt;
+  const StatusReconnectUnprotected(
+      {required this.seconds, required this.attempt});
+}
+
+/// Нет интернета ни через туннель, ни напрямую — ждём сеть.
+final class StatusNoInternet extends StatusText {
+  const StatusNoInternet();
+}
+
 /// Туннель поднят, сторож канала трижды не дождался ответа.
 final class StatusTrafficNotFlowing extends StatusText {
   const StatusTrafficNotFlowing();
@@ -54,6 +68,29 @@ final class StatusPortConflict extends StatusText {
 /// Туннельное ядро перестало отвечать, туннель снят сторожем.
 final class StatusTunCoreHung extends StatusText {
   const StatusTunCoreHung();
+}
+
+/// Сменилось сетевое окружение — повод переподнять туннель.
+///
+/// Эта и три следующие — причины обрыва для заметки «Связь оборвалась»
+/// ([EngineNotice.reason]); в строку статуса они не попадают.
+final class StatusNetworkChanged extends StatusText {
+  const StatusNetworkChanged();
+}
+
+/// Сама попытка восстановления упала исключением.
+final class StatusRecoveryError extends StatusText {
+  const StatusRecoveryError();
+}
+
+/// Ядру недоступны гео-базы (Android).
+final class StatusGeoUnavailable extends StatusText {
+  const StatusGeoUnavailable();
+}
+
+/// Сеть вернулась, а канал на проверку не ответил.
+final class StatusNetworkBackChannelDead extends StatusText {
+  const StatusNetworkBackChannelDead();
 }
 
 /// Подключение не удалось; [detail] — сырой текст исключения (не переводится).

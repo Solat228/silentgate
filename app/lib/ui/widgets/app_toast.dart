@@ -44,6 +44,42 @@ class AppToast {
     );
   }
 
+  /// Уведомление с отменой («Подписка удалена — Восстановить»).
+  ///
+  /// В отличие от [show] с `actionLabel`:
+  ///  * кнопка стоит В НАЧАЛЕ строки, на противоположной стороне от крестика
+  ///    — промахнуться и закрыть вместо «Восстановить» нельзя;
+  ///  * уведомление гаснет само ВСЕГДА, через [duration] (10 с — просьба
+  ///    владельца), а не висит до нажатия: отмена нужна сразу или никогда.
+  ///
+  /// Принимает [OverlayState], а не `BuildContext`: показывают его ПОСЛЕ
+  /// действия, которое вполне могло снести виджет-источник (удаление последней
+  /// подписки уводит главный экран на импорт), и контекст к тому моменту мёртв.
+  /// Оверлей берут заранее, пока контекст жив.
+  static void undo(
+    OverlayState? overlay,
+    String message, {
+    required String actionLabel,
+    required VoidCallback onAction,
+    ToastKind kind = ToastKind.success,
+    Duration duration = const Duration(seconds: 10),
+  }) {
+    if (overlay == null || !overlay.mounted) return;
+    _MessageToasts.addTo(
+      overlay,
+      _MsgData(
+        id: ++_seq,
+        message: message,
+        kind: kind,
+        duration: duration,
+        actionLabel: actionLabel,
+        onAction: onAction,
+        details: const [],
+        undo: true,
+      ),
+    );
+  }
+
   /// Снять все сообщения-уведомления немедленно.
   static void dismiss() => _MessageToasts.clear();
 
@@ -178,6 +214,11 @@ class _ProgressToasts {
   /// уведомления на Android.
   static final Map<String, bool> _collapsed = <String, bool>{};
 
+  /// Карточки, вручную закрытые крестиком посреди активного прогона: следующие
+  /// такты прогресса того же прогона не должны тут же возвращать их обратно.
+  static final Set<String> _suppressedWhileRunning = <String>{};
+  static final Map<String, double> _suppressedLastValue = <String, double>{};
+
   static bool collapsed(String id) => _collapsed[id] ?? false;
 
   static void setCollapsed(String id, bool value) {
@@ -185,6 +226,20 @@ class _ProgressToasts {
     // Список тот же по содержимому, поэтому подсовываем НОВЫЙ экземпляр:
     // ValueNotifier сравнивает по идентичности и иначе промолчит.
     _items.value = [..._items.value];
+  }
+
+  static void markSuppressedIfRunning(
+    String id, {
+    required bool running,
+    double? value,
+  }) {
+    if (running) {
+      _suppressedWhileRunning.add(id);
+      if (value != null) _suppressedLastValue[id] = value;
+    } else {
+      _suppressedWhileRunning.remove(id);
+      _suppressedLastValue.remove(id);
+    }
   }
 
   static void update(
@@ -199,6 +254,20 @@ class _ProgressToasts {
     String? tapTooltip,
     bool pinned = false,
   }) {
+    if (finished) {
+      _suppressedWhileRunning.remove(id);
+      _suppressedLastValue.remove(id);
+    } else if (_suppressedWhileRunning.contains(id)) {
+      final prevVal = _suppressedLastValue[id];
+      if (value != null && prevVal != null && value + 1e-6 < prevVal) {
+        _suppressedWhileRunning.remove(id);
+        _suppressedLastValue.remove(id);
+      } else {
+        if (value != null) _suppressedLastValue[id] = value;
+        return;
+      }
+    }
+
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
     if (_host == null) {
@@ -236,6 +305,12 @@ class _ProgressToasts {
   }
 
   static void remove(String id) {
+    _suppressedWhileRunning.remove(id);
+    _suppressedLastValue.remove(id);
+    removeCard(id);
+  }
+
+  static void removeCard(String id) {
     // Нечего снимать — выходим молча. Иначе вызов «на всякий случай» (а
     // `dismissProgress` зовётся из перерисовки экрана) каждый кадр подсовывал
     // бы новый список и заставлял пересобирать живые карточки соседей.
@@ -257,6 +332,8 @@ class _ProgressToasts {
     _host = null;
     _items.value = [];
     _collapsed.clear();
+    _suppressedWhileRunning.clear();
+    _suppressedLastValue.clear();
   }
 }
 
@@ -325,6 +402,7 @@ class _ProgressCardState extends State<_ProgressCard>
   /// Обратный отсчёт после завершения. Запускается один раз — повторные
   /// обновления с тем же `finished: true` его не перезапускают.
   AnimationController? _countdown;
+  bool _closing = false;
 
   @override
   void initState() {
@@ -392,6 +470,29 @@ class _ProgressCardState extends State<_ProgressCard>
   void _toggleCollapsed() {
     final id = widget.data.id;
     _ProgressToasts.setCollapsed(id, !_ProgressToasts.collapsed(id));
+  }
+
+  Future<void> _close() async {
+    if (_closing) return;
+    _closing = true;
+    _countdown?.stop();
+    final data = widget.data;
+    final wasFinished = data.finished;
+    _ProgressToasts.markSuppressedIfRunning(
+      data.id,
+      running: !wasFinished,
+      value: data.value,
+    );
+    if (mounted) {
+      await _appear.reverse();
+    }
+    if (!wasFinished && data.finished) {
+      // За 180 мс закрытия прогресса пришёл финальный итог — показываем его.
+      _closing = false;
+      if (mounted) _appear.forward();
+      return;
+    }
+    _ProgressToasts.removeCard(data.id);
   }
 
   @override
@@ -463,6 +564,14 @@ class _ProgressCardState extends State<_ProgressCard>
                               : Icons.unfold_less),
                           onPressed: _toggleCollapsed,
                         ),
+                      IconButton(
+                        key: ValueKey('progressToastClose_${data.id}'),
+                        tooltip: l.toastHide,
+                        iconSize: 16,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close),
+                        onPressed: _close,
+                      ),
                     ]),
                   ),
                 ),
@@ -511,6 +620,9 @@ class _MsgData {
   final String? actionLabel;
   final VoidCallback? onAction;
   final List<ToastDetail> details;
+
+  /// Отмена (см. [AppToast.undo]): кнопка слева, таймер идёт и при кнопке.
+  final bool undo;
   const _MsgData({
     required this.id,
     required this.message,
@@ -519,7 +631,12 @@ class _MsgData {
     required this.details,
     this.actionLabel,
     this.onAction,
+    this.undo = false,
   });
+
+  /// Гаснет ли само. С обычной кнопкой — нет: пользователь должен успеть
+  /// нажать; у отмены — да, всегда.
+  bool get timed => actionLabel == null || undo;
 }
 
 /// Реестр сообщений-уведомлений: один оверлей на всё окно, внутри — колонка
@@ -533,6 +650,10 @@ class _MessageToasts {
   static void add(BuildContext context, _MsgData d) {
     final overlay = Overlay.maybeOf(context);
     if (overlay == null) return;
+    addTo(overlay, d);
+  }
+
+  static void addTo(OverlayState overlay, _MsgData d) {
     if (_host == null) {
       _host = OverlayEntry(builder: (_) => const _MessageStack());
       overlay.insert(_host!);
@@ -623,7 +744,8 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     // С кнопкой действия не гасим: пользователь должен успеть нажать.
-    if (widget.data.actionLabel == null) {
+    // Кроме отмены — та гаснет всегда (см. [AppToast.undo]).
+    if (widget.data.timed) {
       _life.forward();
       _life.addStatusListener((s) {
         if (s == AnimationStatus.completed && mounted) _hide();
@@ -648,7 +770,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
     // Раскрыли — останавливаем таймер, свернули — досчитываем.
     if (_expanded) {
       _life.stop();
-    } else if (widget.data.actionLabel == null) {
+    } else if (widget.data.timed) {
       _life.forward();
     }
   }
@@ -708,6 +830,15 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
                         child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          // Отмена — В НАЧАЛЕ строки, подальше от крестика.
+                          if (widget.data.undo &&
+                              widget.data.actionLabel != null) ...[
+                            TextButton(
+                              onPressed: _act,
+                              child: Text(widget.data.actionLabel!),
+                            ),
+                            const SizedBox(width: 4),
+                          ],
                           Icon(icon, size: 18, color: color),
                           const SizedBox(width: 10),
                           Flexible(
@@ -721,7 +852,8 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                                     : Icons.expand_less,
                                 size: 18,
                                 color: color),
-                          if (widget.data.actionLabel != null) ...[
+                          if (!widget.data.undo &&
+                              widget.data.actionLabel != null) ...[
                             const SizedBox(width: 8),
                             TextButton(
                               onPressed: _act,
@@ -775,7 +907,7 @@ class _ToastCardState extends State<_ToastCard> with TickerProviderStateMixin {
                         ),
                       ),
                     // Бегущая строка: сколько уведомление ещё провисит.
-                    if (widget.data.actionLabel == null)
+                    if (widget.data.timed)
                       AnimatedBuilder(
                         animation: _life,
                         builder: (_, __) => LinearProgressIndicator(

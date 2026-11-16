@@ -217,7 +217,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get captureTunHint =>
-      'TUN, DNS ve ayrık tünelleme ayarları yalnızca TUN modu seçildiğinde görünür — sistem proxy modunda etkisizdir.';
+      'TUN, DNS ve ayrık tünelleme ayarları yalnızca TUN modu seçildiğinde görünür - sistem proxy modunda etkisizdir.';
 
   @override
   String get captureProxyOnly => 'Yalnızca proxy';
@@ -234,14 +234,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String apiEnableSub(int port) {
-    return '127.0.0.1:$port üzerinde HTTP — istemciyi betiklerden yönetin';
+    return '127.0.0.1:$port üzerinde HTTP - istemciyi betiklerden yönetin';
   }
 
   @override
   String get apiTokenTitle => 'Belirteç';
 
   @override
-  String get apiTokenUnset => 'Ayarlanmadı — API başlamaz';
+  String get apiTokenUnset => 'Ayarlanmadı - API başlamaz';
 
   @override
   String get apiTokenRegenerate => 'Belirteci yenile';
@@ -255,14 +255,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get apiExitsSub =>
-      'Her birine kendi yerel bağlantı noktası verilir — o noktaya gelen istek o sunucu üzerinden gider';
+      'Her birine kendi yerel bağlantı noktası verilir - o noktaya gelen istek o sunucu üzerinden gider';
 
   @override
   String get apiCopyPythonExample => 'Python örneğini kopyala';
 
   @override
   String apiPortsHint(int control, int direct, int first) {
-    return 'Kontrol — bağlantı noktası $control. «Doğrudan» — bağlantı noktası $direct. Sunucular — $first itibarıyla.';
+    return 'Kontrol - bağlantı noktası $control. «Doğrudan» - bağlantı noktası $direct. Sunucular - $first itibarıyla.';
   }
 
   @override
@@ -274,7 +274,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String apiCaptureModeWarning(int control) {
-    return '⚠️ Yakalama «Sistem proxy\'si» olarak seçili — bu modda çıkış portları açılmaz ve onlara yapılan bağlantılar reddedilir. Kontrol portu $control her yakalama modunda çalışır. Çıkış portları gerekiyorsa «TUN (tam tünel)» ya da «Yalnızca proxy» seçin.';
+    return '⚠️ Yakalama «Sistem proxy\'si» olarak seçili - bu modda çıkış portları açılmaz ve onlara yapılan bağlantılar reddedilir. Kontrol portu $control her yakalama modunda çalışır. Çıkış portları gerekiyorsa «TUN (tam tünel)» ya da «Yalnızca proxy» seçin.';
   }
 
   @override
@@ -320,7 +320,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get tunUacDone => 'Bitti: TUN, UAC istemi olmadan başlayacak';
 
   @override
-  String get tunUacFail => 'Görev oluşturulamadı — bağlanırken UAC istenecek';
+  String get tunUacFail => 'Görev oluşturulamadı - bağlanırken UAC istenecek';
 
   @override
   String get autoReconnectTitle => 'Otomatik yeniden bağlan';
@@ -337,7 +337,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get alwaysOnSub =>
-      'Her zaman açık VPN ve «VPN olmadan bağlantıları engelle» — uygulama kapalıyken de çalışır';
+      'Her zaman açık VPN ve «VPN olmadan bağlantıları engelle» - uygulama kapalıyken de çalışır';
 
   @override
   String get killSwitchSubTun =>
@@ -345,7 +345,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get killSwitchSubProxy =>
-      '«Sistem proxy\'si» modunda yalnızca proxy\'yi tanıyan uygulamaları korur. Tam koruma — yalnızca TUN';
+      '«Sistem proxy\'si» modunda yalnızca proxy\'yi tanıyan uygulamaları korur. Tam koruma - yalnızca TUN';
 
   @override
   String get killSwitchSubOff =>
@@ -398,7 +398,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get networkFullResetConfirmBody =>
-      'Yumuşak temizliğe ek olarak şunlar yapılacak.\n\n1) TÜM bağdaştırıcılarda — Hyper-V ve VirtualBox sanal anahtarları dahil — DHCP kirası bırakılıp yeniden istenecek: sanal makinelerinizin ağı kopabilir.\n\n2) Winsock ve IP yığınının sıfırlanması ağ ayarlarını fabrika değerlerine döndürür: statik adresler, yollar ve üçüncü taraf ağ eklentileri silinecek ve yeniden ayarlanması gerekecek.\n\n3) Yeniden başlatma gerekecek, buna kadar ağ şu anki halinden daha kötü çalışabilir.\n\nYönetici hakları (UAC) gerekecek.';
+      'Yumuşak temizliğe ek olarak şunlar yapılacak.\n\n1) TÜM bağdaştırıcılarda - Hyper-V ve VirtualBox sanal anahtarları dahil - DHCP kirası bırakılıp yeniden istenecek: sanal makinelerinizin ağı kopabilir.\n\n2) Winsock ve IP yığınının sıfırlanması ağ ayarlarını fabrika değerlerine döndürür: statik adresler, yollar ve üçüncü taraf ağ eklentileri silinecek ve yeniden ayarlanması gerekecek.\n\n3) Yeniden başlatma gerekecek, buna kadar ağ şu anki halinden daha kötü çalışabilir.\n\nYönetici hakları (UAC) gerekecek.';
 
   @override
   String get networkFullResetConfirmOk => 'Ağı sıfırla';
@@ -435,7 +435,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get panelOwnerBody =>
-      'Sıradan kullanıcıların buna ihtiyacı yok — atlayabilirsiniz.\n\nUygulamanın aboneliğinizi doğru JSON biçiminde (XRAY_JSON) alması için, bu bloğu Remnawave panelinizin Response Rules bölümüne ekleyin — User-Agent\'ımızla eşleşir:';
+      'Sıradan kullanıcıların buna ihtiyacı yok - atlayabilirsiniz.\n\nUygulamanın aboneliğinizi doğru JSON biçiminde (XRAY_JSON) alması için, bu bloğu Remnawave panelinizin Response Rules bölümüne ekleyin - User-Agent\'ımızla eşleşir:';
 
   @override
   String get panelOwnerCopy => 'Bloğu kopyala';
@@ -459,15 +459,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get aboutThirdPartySub =>
-      'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun — ayrı süreçler olarak çalışır';
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), Wintun - ayrı süreçler olarak çalışır';
 
   @override
   String get aboutThirdPartySubEmbedded =>
-      'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) — uygulamaya gömülü';
+      'Xray-core (MPL-2.0), sing-box (GPL-3.0), libXray (MIT) - uygulamaya gömülü';
 
   @override
   String get thirdPartyBodyEmbedded =>
-      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box — GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts — buttons below.';
+      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box - GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray - MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts - buttons below.';
 
   @override
   String get logsTitle => 'Günlükler';
@@ -515,11 +515,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get thirdPartyBody =>
-      'SilentGate, üçüncü taraf yürütülebilir dosyalarla birlikte gelir. Bunlar AYRI süreçler olarak çalışır ve uygulamaya gömülü değildir.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  Hysteria2 için TUN tüneli ve proxy çekirdeği\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — Wintun lisansı\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — yönlendirme verileri, CC-BY-SA-4.0\n\nTam lisans metinleri uygulamanın yanındaki «licenses» klasöründedir.';
+      'SilentGate, üçüncü taraf yürütülebilir dosyalarla birlikte gelir. Bunlar AYRI süreçler olarak çalışır ve uygulamaya gömülü değildir.\n\n• Xray-core (xray.exe) - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) - GPL-3.0-or-later\n  Hysteria2 için TUN tüneli ve proxy çekirdeği\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) - Wintun lisansı\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat - yönlendirme verileri, CC-BY-SA-4.0\n\nTam lisans metinleri uygulamanın yanındaki «licenses» klasöründedir.';
 
   @override
   String get supportSectionNote =>
-      '«Desteğe başvur»a dokunun — kendi başınıza bir günlük dosyası oluşturduğunuz bir pencere açılır (sürümler, işletim sistemi, ayarlar, app.log + singbox.log kuyruğu; parola veya abonelik jetonu yok, URL gizli). Ardından bunu Telegram desteğine gönderme düğmesi görünür.';
+      '«Desteğe başvur»a dokunun - kendi başınıza bir günlük dosyası oluşturduğunuz bir pencere açılır (sürümler, işletim sistemi, ayarlar, app.log + singbox.log kuyruğu; parola veya abonelik jetonu yok, URL gizli). Ardından bunu Telegram desteğine gönderme düğmesi görünür.';
 
   @override
   String get supportButtonTitle => 'Desteğe başvur';
@@ -531,7 +531,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get supportDialogTitle => 'Destek';
 
   @override
-  String get supportDialogTitleDone => 'Günlük hazır — nereye gönderilecek';
+  String get supportDialogTitleDone => 'Günlük hazır - nereye gönderilecek';
 
   @override
   String get supportWhatWillHappen => 'Ne olacak:';
@@ -542,7 +542,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get supportBullet2 =>
-      '• Dokunduktan sonra ÖNCE dosyanın bulunduğu klasör, ardından dosyanın kendisi açılır. Sorunu en üste yazın, kaydedin — ve destek gönderme düğmesi görünür.';
+      '• Dokunduktan sonra ÖNCE dosyanın bulunduğu klasör, ardından dosyanın kendisi açılır. Sorunu en üste yazın, kaydedin - ve destek gönderme düğmesi görünür.';
 
   @override
   String supportError(String error) {
@@ -551,7 +551,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get supportDoneText =>
-      'Rapor oluşturuldu ve açıldı (önce klasör, sonra dosya). Sorunu en üste yazın, dosyayı kaydedin ve desteğe gönderin — uygulama Telegram\'ı açmaya yardımcı olacaktır.';
+      'Rapor oluşturuldu ve açıldı (önce klasör, sonra dosya). Sorunu en üste yazın, dosyayı kaydedin ve desteğe gönderin - uygulama Telegram\'ı açmaya yardımcı olacaktır.';
 
   @override
   String get supportWhoTo => 'Nereye gönderilecek:';
@@ -584,7 +584,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingTwoPhaseSubOn =>
-      'TCP\'den sonra — sunucu üzerinden bir istek: çalışmayanları eler (Reality vb.)';
+      'TCP\'den sonra - sunucu üzerinden bir istek: çalışmayanları eler (Reality vb.)';
 
   @override
   String get pingTwoPhaseSubOff =>
@@ -610,7 +610,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoAppUpdateBeta =>
-      'Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez — bu anahtarı açmayanlara beta gelmez.';
+      'Uygulama artık yalnızca son kararlı sürümü değil, ön sürümler dahil GitHub sürüm listesinin tamamına bakacak. Ana otomatik güncelleme kanalı bundan etkilenmez - bu anahtarı açmayanlara beta gelmez.';
 
   @override
   String get appUpdateBetaBadge => 'BETA';
@@ -621,7 +621,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get appUpdatePreviousVersionsEmpty =>
-      'Liste boş — GitHub Releases\'e ulaşılamıyor ya da hiç sürüm yok.';
+      'Liste boş - GitHub Releases\'e ulaşılamıyor ya da hiç sürüm yok.';
 
   @override
   String get appUpdateOpenRelease => 'Sürüm sayfasını aç';
@@ -678,7 +678,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get autoPinnedTop => ' — listenin en üstüne sabitlendi';
+  String get autoPinnedTop => ' - listenin en üstüne sabitlendi';
 
   @override
   String get autoSearchContinues => ' (arama devam ediyor…)';
@@ -695,7 +695,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoNoSubscriptionPasteKey =>
-      'Abonelik yok. Tek bir anahtar yapıştırın — çalışan ayarları bulalım:';
+      'Abonelik yok. Tek bir anahtar yapıştırın - çalışan ayarları bulalım:';
 
   @override
   String get autoTuneByKey => 'Anahtara göre ayarla';
@@ -728,7 +728,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get autoStopSearch => 'Aramayı durdur';
 
   @override
-  String get autoDoneRefreshPing => 'Bitti — bulunanların pingini yenile';
+  String get autoDoneRefreshPing => 'Bitti - bulunanların pingini yenile';
 
   @override
   String autoFoundPinnedRefreshing(Object count) {
@@ -764,13 +764,13 @@ class AppLocalizationsTr extends AppLocalizations {
   String get commonGotIt => 'Anladım';
 
   @override
-  String get enumSplitAll => 'Tümü — VPN üzerinden';
+  String get enumSplitAll => 'Tümü - VPN üzerinden';
 
   @override
-  String get enumSplitOnly => 'Yalnızca seçilenler — VPN üzerinden';
+  String get enumSplitOnly => 'Yalnızca seçilenler - VPN üzerinden';
 
   @override
-  String get enumSplitExcept => 'Seçilenler — VPN dışında';
+  String get enumSplitExcept => 'Seçilenler - VPN dışında';
 
   @override
   String get enumActionTunnel => 'Tünel';
@@ -799,7 +799,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String homeAutoConfigProgress(int current, int total, String name) {
-    return 'Otomatik yapılandırma: $total sunucudan $current tanesi — $name';
+    return 'Otomatik yapılandırma: $total sunucudan $current tanesi - $name';
   }
 
   @override
@@ -985,7 +985,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String subSwitcherCountTotal(int total) {
-    return 'Abonelikteki sunucu: $total. Kanal henüz denetlenmedi — «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.';
+    return 'Abonelikteki sunucu: $total. Kanal henüz denetlenmedi - «Tüm aboneliklerin sunucularını sına» komutunu çalıştırın.';
   }
 
   @override
@@ -995,7 +995,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String subSwitcherCountChecking(int total) {
-    return 'Abonelikteki sunucu sayısı: $total. Denetim şu anda sürüyor — çalışan sunucu sayısı, tarama bittiğinde görünecek.';
+    return 'Abonelikteki sunucu sayısı: $total. Denetim şu anda sürüyor - çalışan sunucu sayısı, tarama bittiğinde görünecek.';
   }
 
   @override
@@ -1021,11 +1021,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoTunStack =>
-      'TUN ağ yığını (sing-box).\n\n«auto» — OTOMATİK SEÇİM: tünel kurulamazsa uygulama kendisi system → gvisor → mixed sırasını dener, ardından MTU\'yu düşürür (1400, 1280). Çalışan kombinasyon hatırlanır ve bir sonraki sefer ilk olarak denenir. Seçim ilerlemesi durumda ve günlükte gösterilir.\n\nAçık bir seçim otomatik seçimi devre dışı bırakır: system — işletim sistemi yığını, en hızlı ama antivirüslerle daha zorlu; gvisor — kullanıcı alanı, daha yavaş, maksimum uyumlu; mixed — TCP system üzerinden, UDP gvisor üzerinden.';
+      'TUN ağ yığını (sing-box).\n\n«auto» - OTOMATİK SEÇİM: tünel kurulamazsa uygulama kendisi system → gvisor → mixed sırasını dener, ardından MTU\'yu düşürür (1400, 1280). Çalışan kombinasyon hatırlanır ve bir sonraki sefer ilk olarak denenir. Seçim ilerlemesi durumda ve günlükte gösterilir.\n\nAçık bir seçim otomatik seçimi devre dışı bırakır: system - işletim sistemi yığını, en hızlı ama antivirüslerle daha zorlu; gvisor - kullanıcı alanı, daha yavaş, maksimum uyumlu; mixed - TCP system üzerinden, UDP gvisor üzerinden.';
 
   @override
   String get infoTunMtu =>
-      'TUN bağdaştırıcısındaki maksimum paket boyutu. Varsayılan 1500\'dür; bağlantı kopmaları yaşarsanız düşürün (1400, 1280) — çok küçük bir değer hızı azaltır.\n\n«auto» yığınında bu yalnızca başlangıç değeridir: tünel kurulamazsa uygulama daha küçük MTU\'ları kendisi deneyecektir.';
+      'TUN bağdaştırıcısındaki maksimum paket boyutu. Varsayılan 1500\'dür; bağlantı kopmaları yaşarsanız düşürün (1400, 1280) - çok küçük bir değer hızı azaltır.\n\n«auto» yığınında bu yalnızca başlangıç değeridir: tünel kurulamazsa uygulama daha küçük MTU\'ları kendisi deneyecektir.';
 
   @override
   String get infoTunStrictRoute =>
@@ -1037,7 +1037,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoTunEndpointIndependentNat =>
-      'UDP için NAT modu. Oyunlar, sesli sohbetler ve WebRTC için gereklidir — olmadan bağlantılar kurulamayabilir. Yalnızca bellek tasarrufu için devre dışı bırakın.';
+      'UDP için NAT modu. Oyunlar, sesli sohbetler ve WebRTC için gereklidir - olmadan bağlantılar kurulamayabilir. Yalnızca bellek tasarrufu için devre dışı bırakın.';
 
   @override
   String get infoTunBypassLan =>
@@ -1049,27 +1049,27 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoTunPrivilege =>
-      'TUN yönetici hakları gerektirir. Bir kez, en yüksek ayrıcalıklarla Windows Görev Zamanlayıcı\'da bir görev oluştururuz — bundan sonra tünel her bağlantıda UAC istemi OLMADAN başlar. Görev size aittir ve aşağıdaki düğmeyle veya program kaldırıldığında silinir.';
+      'TUN yönetici hakları gerektirir. Bir kez, en yüksek ayrıcalıklarla Windows Görev Zamanlayıcı\'da bir görev oluştururuz - bundan sonra tünel her bağlantıda UAC istemi OLMADAN başlar. Görev size aittir ve aşağıdaki düğmeyle veya program kaldırıldığında silinir.';
 
   @override
   String get infoSpeedTest =>
-      'Hız ölçülürken indirilen veri miktarı (bir sunucuya sağ tık → «Sunucu bilgisi» → «Hızı ölç»).\n\n20 MB — ana mod: hızlı bağlantılarda (100+ Mbps) kısa bir ölçüm hızlanmaya vakit bulamaz ve sonucu olduğundan düşük gösterir.\n5 MB — ekonomik mod: trafik açısından belirgin şekilde daha ucuz, birçok sunucuyu taramak için kullanışlı.\n\nÖlçüm YALNIZCA el ile çalışır ve aboneliğinizin trafiğini tüketir. Hız iki kez ölçülür: doğrudan ve seçili sunucu üzerinden, böylece VPN\'de tam olarak ne kadar kaybedildiğini görebilirsiniz.';
+      'Hız ölçülürken indirilen veri miktarı (bir sunucuya sağ tık → «Sunucu bilgisi» → «Hızı ölç»).\n\n20 MB - ana mod: hızlı bağlantılarda (100+ Mbps) kısa bir ölçüm hızlanmaya vakit bulamaz ve sonucu olduğundan düşük gösterir.\n5 MB - ekonomik mod: trafik açısından belirgin şekilde daha ucuz, birçok sunucuyu taramak için kullanışlı.\n\nÖlçüm YALNIZCA el ile çalışır ve aboneliğinizin trafiğini tüketir. Hız iki kez ölçülür: doğrudan ve seçili sunucu üzerinden, böylece VPN\'de tam olarak ne kadar kaybedildiğini görebilirsiniz.';
 
   @override
   String get infoAutoReconnect =>
-      'Çekirdek çöktüyse, sunucu düştüyse veya ağ değiştiyse (Wi-Fi ↔ kablo, uykudan çıkma, yeni IP), uygulama bağlantıyı kendi başına yeniden kurar. Denemeler arasındaki bekleme süresi artar: 0,8 sn → 3 sn → 8 sn → 20 sn ve sonrasında 20 sn\'de kalır. Sekiz deneme yapılır, ardından uygulama pes eder ve bir hata gösterir. Düğmeyle bağlantıyı kesmek kurtarmayı her zaman iptal eder.\n\n⚠️ Kill switch açıkken denemeler BİTMEZ. Denemeler sürerken trafik engelli kalır ve onları durdurmak trafiği VPN\'in dışına salıvermek olurdu — bu yüzden uygulama, VPN\'i siz kapatana kadar 20 saniyede bir denemeyi sürdürür ve başarısızlığı en fazla 15 dakikada bir hatırlatır. Bir saat sonra geri gelen sunucu kendiliğinden yeniden yakalanır.\n\n«Otomatik (en iyi sunucu)» kipinde uygulama son denemeyi ölü bir sunucuya harcamaz: daha sekizde yedincide bir sonraki adaya geçer ve sayım orada baştan başlar.\n\nAğ değişikliği, diğer bağdaştırıcıların gerçek adreslerinden saptanır: kendi tünelimiz ve hizmet adresleri (link-local) sayılmaz, bir değişiklik ancak üst üste iki yoklamada sürdüyse kabul edilir ve bağlantıdan sonraki ilk 15 saniye boyunca sinyal yok sayılır. Bu emniyetler olmadan tünelin kurulması kendisi «ağ değişikliği» sayılır ve sonsuz yeniden bağlanmaya yol açardı.';
+      'Çekirdek çöktüyse, sunucu düştüyse veya ağ değiştiyse (Wi-Fi ↔ kablo, uykudan çıkma, yeni IP), uygulama bağlantıyı kendi başına yeniden kurar. Denemeler arasındaki bekleme süresi artar: 0,8 sn → 3 sn → 8 sn → 20 sn ve sonrasında 20 sn\'de kalır. Sekiz deneme yapılır, ardından uygulama pes eder ve bir hata gösterir. Düğmeyle bağlantıyı kesmek kurtarmayı her zaman iptal eder.\n\n⚠️ Kill switch açıkken denemeler BİTMEZ. Denemeler sürerken trafik engelli kalır ve onları durdurmak trafiği VPN\'in dışına salıvermek olurdu - bu yüzden uygulama, VPN\'i siz kapatana kadar 20 saniyede bir denemeyi sürdürür ve başarısızlığı en fazla 15 dakikada bir hatırlatır. Bir saat sonra geri gelen sunucu kendiliğinden yeniden yakalanır.\n\n«Otomatik (en iyi sunucu)» kipinde uygulama son denemeyi ölü bir sunucuya harcamaz: daha sekizde yedincide bir sonraki adaya geçer ve sayım orada baştan başlar.\n\nAğ değişikliği, diğer bağdaştırıcıların gerçek adreslerinden saptanır: kendi tünelimiz ve hizmet adresleri (link-local) sayılmaz, bir değişiklik ancak üst üste iki yoklamada sürdüyse kabul edilir ve bağlantıdan sonraki ilk 15 saniye boyunca sinyal yok sayılır. Bu emniyetler olmadan tünelin kurulması kendisi «ağ değişikliği» sayılır ve sonsuz yeniden bağlanmaya yol açardı.';
 
   @override
   String get infoKillSwitch =>
-      'Bağlantı geri getirilirken trafiğin VPN etrafından çıkmasına izin verme. Yakalama denemeler arasında BIRAKILMAZ: TUN modunda bağdaştırıcı açık kalır, «Sistem proxy\'si» modunda proxy yapılandırılmış kalır — uygulamalar internete şifrelenmemiş erişim yerine bir bağlantı hatası alır.\n\nSınırlar hakkında dürüstçe: «Sistem proxy\'si» modunda bu yalnızca sistem proxy\'sine saygı duyan programları (tarayıcılar ve çoğu uygulama) korur. Proxy\'yi yok sayan programlar ve UDP doğrudan çıkar — tam sızdırmazlık yalnızca TUN moduyla sağlanır. Otomatik yeniden bağlanmanın etkin olmasını gerektirir.';
+      'Bağlantı geri getirilirken trafiğin VPN etrafından çıkmasına izin verme. Yakalama denemeler arasında BIRAKILMAZ: TUN modunda bağdaştırıcı açık kalır, «Sistem proxy\'si» modunda proxy yapılandırılmış kalır - uygulamalar internete şifrelenmemiş erişim yerine bir bağlantı hatası alır.\n\nSınırlar hakkında dürüstçe: «Sistem proxy\'si» modunda bu yalnızca sistem proxy\'sine saygı duyan programları (tarayıcılar ve çoğu uygulama) korur. Proxy\'yi yok sayan programlar ve UDP doğrudan çıkar - tam sızdırmazlık yalnızca TUN moduyla sağlanır. Otomatik yeniden bağlanmanın etkin olmasını gerektirir.';
 
   @override
   String get infoUserAgent =>
-      'Uygulamanın panele kendini nasıl tanıttığı (User-Agent başlığı). Her zaman «SilentGate/sürüm (Windows)» gönderir.\n\nBu ada göre Remnawave paneli abonelik BİÇİMİNİ seçer. XRAY_JSON gereklidir — hazır sunucu yapılandırmaları sunar; bağlantıların base64 listesinden bazı ayarlar yaklaşık olarak geri getirilir ve otomatik seçim (burstObservatory) daha kötü çalışır.\n\nPanelde yapılandırılır: Templates → Response Rules → koşulu user-agent CONTAINS SilentGate ve yanıt türü XRAY_JSON olan bir kural (Fallback Base64 kuralının üstüne yerleştirin).\n\nGeçersiz kılma alanı yalnızca geçici bir geçici çözüm olarak gereklidir — panel uygulamayı henüz tanımıyorsa, tanıdığı bir istemci olarak kimlik verebilirsiniz.';
+      'Uygulamanın panele kendini nasıl tanıttığı (User-Agent başlığı). Her zaman «SilentGate/sürüm (Windows)» gönderir.\n\nBu ada göre Remnawave paneli abonelik BİÇİMİNİ seçer. XRAY_JSON gereklidir - hazır sunucu yapılandırmaları sunar; bağlantıların base64 listesinden bazı ayarlar yaklaşık olarak geri getirilir ve otomatik seçim (burstObservatory) daha kötü çalışır.\n\nPanelde yapılandırılır: Templates → Response Rules → koşulu user-agent CONTAINS SilentGate ve yanıt türü XRAY_JSON olan bir kural (Fallback Base64 kuralının üstüne yerleştirin).\n\nGeçersiz kılma alanı yalnızca geçici bir geçici çözüm olarak gereklidir - panel uygulamayı henüz tanımıyorsa, tanıdığı bir istemci olarak kimlik verebilirsiniz.';
 
   @override
   String get infoDnsMode =>
-      'TUN modunda alan adlarını kimin çözdüğü. «VPN üzerinden» (önerilir) — sorgular TCP üzerinden tünele girer ve internet sağlayıcınız hangi siteleri açtığınızı görmez. «Sistem» — Windows\'taki gibi: DNS sızıntısı olasıdır ve sunucu UDP\'yi geçirmezse internet tamamen kesilebilir. «Özel» — belirttiğiniz sunucu, tünel üzerinden.';
+      'TUN modunda alan adlarını kimin çözdüğü. «VPN üzerinden» (önerilir) - sorgular TCP üzerinden tünele girer ve internet sağlayıcınız hangi siteleri açtığınızı görmez. «Sistem» - Windows\'taki gibi: DNS sızıntısı olasıdır ve sunucu UDP\'yi geçirmezse internet tamamen kesilebilir. «Özel» - belirttiğiniz sunucu, tünel üzerinden.';
 
   @override
   String get infoDnsCustomServer =>
@@ -1081,23 +1081,23 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoDnsStrategy =>
-      'Hangi adreslerin isteneceği: prefer_ipv4 (önerilir) — önce IPv4, ipv4_only — yalnızca IPv4 (bozuk IPv6 sorunlarını giderir), prefer_ipv6/ipv6_only — IPv6 ağları için.';
+      'Hangi adreslerin isteneceği: prefer_ipv4 (önerilir) - önce IPv4, ipv4_only - yalnızca IPv4 (bozuk IPv6 sorunlarını giderir), prefer_ipv6/ipv6_only - IPv6 ağları için.';
 
   @override
   String get infoSingboxLogLevel =>
-      'sing-box günlüğünün ayrıntı düzeyi (%APPDATA%\\SilentGate\\singbox.log). warn — normal mod. info/debug — tünel çalışmıyorsa: günlük tam nedeni gösterir. debug dosya boyutunu belirgin şekilde artırır.';
+      'sing-box günlüğünün ayrıntı düzeyi (%APPDATA%\\SilentGate\\singbox.log). warn - normal mod. info/debug - tünel çalışmıyorsa: günlük tam nedeni gösterir. debug dosya boyutunu belirgin şekilde artırır.';
 
   @override
   String get tunLogLevelDebugCost =>
-      'debug düzeyinde çekirdek saniyede yüzlerce satır yazar: günlük saatleri değil dakikaları kapsar ve megabaytlarca büyür. Daha önce olmuş bir kopma için işe yaramaz — uygulama günlüğüne bakın.';
+      'debug düzeyinde çekirdek saniyede yüzlerce satır yazar: günlük saatleri değil dakikaları kapsar ve megabaytlarca büyür. Daha önce olmuş bir kopma için işe yaramaz - uygulama günlüğüne bakın.';
 
   @override
   String get infoSplitMode =>
-      'Temel — el ile ayarlanmış eylemi olmayan her şeyin nereye gideceği ve yeni girdilere hangi eylemin atanacağı. «Tümü — VPN üzerinden»: varsayılan olarak tüm trafik tünele. «Yalnızca seçilenler — VPN üzerinden»: varsayılan olarak doğrudan, tünele yalnızca «Tünel» olarak işaretlenenler. «Seçilenler — VPN etrafından»: tam tersi, her şey tünele ve «Doğrudan» olarak işaretlenenler doğrudan gider.';
+      'Temel - el ile ayarlanmış eylemi olmayan her şeyin nereye gideceği ve yeni girdilere hangi eylemin atanacağı. «Tümü - VPN üzerinden»: varsayılan olarak tüm trafik tünele. «Yalnızca seçilenler - VPN üzerinden»: varsayılan olarak doğrudan, tünele yalnızca «Tünel» olarak işaretlenenler. «Seçilenler - VPN etrafından»: tam tersi, her şey tünele ve «Doğrudan» olarak işaretlenenler doğrudan gider.';
 
   @override
   String get infoSplitApps =>
-      'Bir uygulamaya tıklayın — eylemi (Tünel — VPN üzerinden, Doğrudan — VPN etrafından, Engelle — ağ yok) ve eşleştirme yöntemini seçtiğiniz bir pencere açılır: exe adına göre (güvenilir) veya tam yola göre. Çalışan uygulamalardan seçebilir veya bir .exe belirtebilirsiniz.';
+      'Bir uygulamaya tıklayın - eylemi (Tünel - VPN üzerinden, Doğrudan - VPN etrafından, Engelle - ağ yok) ve eşleştirme yöntemini seçtiğiniz bir pencere açılır: exe adına göre (güvenilir) veya tam yola göre. Çalışan uygulamalardan seçebilir veya bir .exe belirtebilirsiniz.';
 
   @override
   String get infoSplitDomains =>
@@ -1113,7 +1113,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoProxyHead =>
-      'GET gibi, ancak yalnızca başlıklar — daha hızlı ve daha az trafik. Bazı sunucular/CDN\'ler HEAD\'i desteklemeyebilir.';
+      'GET gibi, ancak yalnızca başlıklar - daha hızlı ve daha az trafik. Bazı sunucular/CDN\'ler HEAD\'i desteklemeyebilir.';
 
   @override
   String get infoTcp =>
@@ -1125,11 +1125,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoTestUrl =>
-      'Proxy üzerinden işlevselliği kontrol etmek için URL. Varsayılan olarak https://www.gstatic.com/generate_204 — boş bir 204 yanıtı döndürür, bu da kullanışlı ve hızlıdır.';
+      'Proxy üzerinden işlevselliği kontrol etmek için URL. Varsayılan olarak https://www.gstatic.com/generate_204 - boş bir 204 yanıtı döndürür, bu da kullanışlı ve hızlıdır.';
 
   @override
   String get infoAutoConfig =>
-      'Sunucuları ve atlatma varyantlarını (fragment, fingerprint) tarar ve seçili hizmetlerin çalıştığı sunucuların bir listesini oluşturur. İlkinde durmaz — bulunanlar arasından siz seçersiniz. Kontrol proxy üzerinden yapılır; bu sırada VPN etkinleştirilmez.';
+      'Sunucuları ve atlatma varyantlarını (fragment, fingerprint) tarar ve seçili hizmetlerin çalıştığı sunucuların bir listesini oluşturur. İlkinde durmaz - bulunanlar arasından siz seçersiniz. Kontrol proxy üzerinden yapılır; bu sırada VPN etkinleştirilmez.';
 
   @override
   String get infoAutoConfigServices =>
@@ -1137,7 +1137,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoAutoPinFound =>
-      'Bulunan çalışan kombinasyonlar (sunucu + atlatma varyantı) hemen ortak sunucu listesinin en üstüne sabitlenir, böylece buraya geri dönmeden kullanabilirsiniz. Otomatik yapılandırmanın listenizin sırasını değiştirmesini istemiyorsanız kapatın — sonuçlar yine bu ekranda görünür.';
+      'Bulunan çalışan kombinasyonlar (sunucu + atlatma varyantı) hemen ortak sunucu listesinin en üstüne sabitlenir, böylece buraya geri dönmeden kullanabilirsiniz. Otomatik yapılandırmanın listenizin sırasını değiştirmesini istemiyorsanız kapatın - sonuçlar yine bu ekranda görünür.';
 
   @override
   String get infoTryFragment =>
@@ -1145,7 +1145,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoAutoStrategy =>
-      '«İlk çalışan» — her şeyi tara ve bulunan herhangi birine bağlan (siz seçersiniz). «Bütçe dâhilinde en iyi» — bir zaman sınırı içinde ara ve en hızlısını seç.';
+      '«İlk çalışan» - her şeyi tara ve bulunan herhangi birine bağlan (siz seçersiniz). «Bütçe dâhilinde en iyi» - bir zaman sınırı içinde ara ve en hızlısını seç.';
 
   @override
   String get infoScheme =>
@@ -1161,7 +1161,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoNetworkSoftRecover =>
-      'VPN arızasından sonra güvenli bir temizlik: DNS önbelleği, ARP önbelleği, sistem proxy\'si ve WinHTTP proxy\'si. Hiçbir şeyi silmez ve yeniden başlatma gerektirmez — buradan başlamak gerekir. Yönetici hakları gerektirir.';
+      'VPN arızasından sonra güvenli bir temizlik: DNS önbelleği, ARP önbelleği, sistem proxy\'si ve WinHTTP proxy\'si. Hiçbir şeyi silmez ve yeniden başlatma gerektirmez - buradan başlamak gerekir. Yönetici hakları gerektirir.';
 
   @override
   String get infoNetworkFullReset =>
@@ -1177,7 +1177,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingInfoProxyHead =>
-      'GET gibi, ancak yalnızca başlıkları ister — daha az trafik ve daha hızlı. Tünelin işlevselliğini kontrol eder; bazı sunucular/CDN\'ler HEAD\'i desteklemeyebilir.';
+      'GET gibi, ancak yalnızca başlıkları ister - daha az trafik ve daha hızlı. Tünelin işlevselliğini kontrol eder; bazı sunucular/CDN\'ler HEAD\'i desteklemeyebilir.';
 
   @override
   String get pingInfoTcp =>
@@ -1197,7 +1197,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingInfoTunStack =>
-      'TUN ağ yığını (sing-box). auto — çekirdeğin takdirine bırakın (şu anda mixed). system — işletim sistemi yığını: maksimum hız, ama haklar/antivirüslerle daha zorlu. gvisor — kullanıcı alanı yığını: daha yavaş, ama en uyumlu. mixed — TCP system üzerinden, UDP gvisor üzerinden (bir denge). TUN bağlanmıyor veya bağlantıları düşürüyorsa — gvisor\'u deneyin.';
+      'TUN ağ yığını (sing-box). auto - çekirdeğin takdirine bırakın (şu anda mixed). system - işletim sistemi yığını: maksimum hız, ama haklar/antivirüslerle daha zorlu. gvisor - kullanıcı alanı yığını: daha yavaş, ama en uyumlu. mixed - TCP system üzerinden, UDP gvisor üzerinden (bir denge). TUN bağlanmıyor veya bağlantıları düşürüyorsa - gvisor\'u deneyin.';
 
   @override
   String get pingInfoAutoConfig =>
@@ -1228,7 +1228,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get logsEmpty => 'Şimdilik boş.';
 
   @override
-  String get logsTunEmpty => 'Boş — TUN bu sistemde henüz başlatılmadı.';
+  String get logsTunEmpty => 'Boş - TUN bu sistemde henüz başlatılmadı.';
 
   @override
   String get importScrDone => 'İçe aktarıldı';
@@ -1290,8 +1290,27 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'Bağlantı koptu, tünel kurulamadı - trafik VPN dışından gidiyor. $seconds sn sonra yeniden bağlanılıyor ($attempt. deneme)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'Tünel kuruldu ama içinden trafik geçmiyor';
+
+  @override
+  String get statusNoInternet =>
+      'İnternet yok. Ağ geri geldiğinde VPN kendiliğinden bağlanacak';
+
+  @override
+  String get noticeNoInternet => 'İnternet yok';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'Ağ geri geldiğinde VPN kendiliğinden bağlanacak';
+
+  @override
+  String get noticeInternetRestored => 'Bağlantı geri geldi';
 
   @override
   String get statusVpnConsentDenied =>
@@ -1351,7 +1370,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String serversFound(int found, int total) {
-    return 'Sunucular — $total sunucudan $found tanesi bulundu';
+    return 'Sunucular - $total sunucudan $found tanesi bulundu';
   }
 
   @override
@@ -1394,7 +1413,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get srvInfoExitHint =>
-      'Sunucu adresinden belirlenir — bunun için tünel başlatılmaz.';
+      'Sunucu adresinden belirlenir - bunun için tünel başlatılmaz.';
 
   @override
   String get srvInfoAddressLocation => 'Sunucu adresi ve konumu';
@@ -1518,7 +1537,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String jsonPanelProfileApplied(Object summary) {
-    return 'Panelden otomatik seçim profili: $summary — tamamen uygulandı';
+    return 'Panelden otomatik seçim profili: $summary - tamamen uygulandı';
   }
 
   @override
@@ -1526,7 +1545,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get jsonBuiltFromShareLink =>
-      'Paylaşım bağlantısından oluşturuldu — panel JSON göndermedi. Aboneliği güncelleyin; bu yardımcı olmazsa paneldeki Response Rules kuralını kontrol edin.';
+      'Paylaşım bağlantısından oluşturuldu - panel JSON göndermedi. Aboneliği güncelleyin; bu yardımcı olmazsa paneldeki Response Rules kuralını kontrol edin.';
 
   @override
   String get jsonInvalidJson => 'Geçersiz JSON';
@@ -1652,14 +1671,14 @@ class AppLocalizationsTr extends AppLocalizations {
   String get pingNa => 'yok';
 
   @override
-  String get pingNaTooltip => 'TCP yanıtı yok — sunucu erişilemez (ölü)';
+  String get pingNaTooltip => 'TCP yanıtı yok - sunucu erişilemez (ölü)';
 
   @override
   String get pingTimeout => 'zaman aşımı';
 
   @override
   String get pingTimeoutTooltip =>
-      'TCP ölçümü zaman aşımı içinde tamamlanmadı — sunucu erişilemez';
+      'TCP ölçümü zaman aşımı içinde tamamlanmadı - sunucu erişilemez';
 
   @override
   String pingMs(Object ms) {
@@ -1671,7 +1690,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingNoProxyTooltip =>
-      'TCP üzerinden yanıt veriyor (gecikme gösteriliyor), ancak tünel kontrolü (GET/HEAD) başarısız oldu — trafik geçmiyor';
+      'TCP üzerinden yanıt veriyor (gecikme gösteriliyor), ancak tünel kontrolü (GET/HEAD) başarısız oldu - trafik geçmiyor';
 
   @override
   String get pingOk => 'tamam';
@@ -1687,11 +1706,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingCoreTooltip =>
-      'VPN çekirdeğinin kendisi tünel üzerinden ölçtü: test adresine yapılan isteğin toplam süresi (sunucuya TCP gecikmesi değil). Sunucu çalışıyor — istek geçti.';
+      'VPN çekirdeğinin kendisi tünel üzerinden ölçtü: test adresine yapılan isteğin toplam süresi (sunucuya TCP gecikmesi değil). Sunucu çalışıyor - istek geçti.';
 
   @override
   String get pingCoreFailedTooltip =>
-      'VPN çekirdeği test adresini bu sunucu üzerinden açamadı — tünelden trafik geçmiyor';
+      'VPN çekirdeği test adresini bu sunucu üzerinden açamadı - tünelden trafik geçmiyor';
 
   @override
   String get pingViaTunnelNote =>
@@ -1708,7 +1727,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitTunOnlyBanner =>
-      'Yalnızca TUN modunda çalışır. «Sistem proxy\'si» modunda uygulamalar proxy\'yi kullanıp kullanmayacaklarına kendileri karar verir — zorlanamazlar.';
+      'Yalnızca TUN modunda çalışır. «Sistem proxy\'si» modunda uygulamalar proxy\'yi kullanıp kullanmayacaklarına kendileri karar verir - zorlanamazlar.';
 
   @override
   String get splitProxyOnlyBanner =>
@@ -1734,7 +1753,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get splitByPath => 'Yola göre';
 
   @override
-  String get splitRuleDisabled => 'Devre dışı — kural uygulanmıyor';
+  String get splitRuleDisabled => 'Devre dışı - kural uygulanmıyor';
 
   @override
   String get splitRemove => 'Kaldır';
@@ -1898,11 +1917,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tunTaskSchedulerFailed =>
-      'Görev Zamanlayıcı görevi kabul etmedi — nedeni günlükte (Ayarlar → Günlükler)';
+      'Görev Zamanlayıcı görevi kabul etmedi - nedeni günlükte (Ayarlar → Günlükler)';
 
   @override
   String get tunAutoFixNoticeText =>
-      'Silent TUN startup is broken — every connection will ask for administrator rights';
+      'Silent TUN startup is broken - every connection will ask for administrator rights';
 
   @override
   String get tunAutoFixAction => 'Fix';
@@ -1911,7 +1930,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get tunLogTitle => 'TUN günlüğü (sing-box)';
 
   @override
-  String get tunLogEmpty => 'Günlük boş — tünel henüz başlatılmadı.';
+  String get tunLogEmpty => 'Günlük boş - tünel henüz başlatılmadı.';
 
   @override
   String get tunCopy => 'Kopyala';
@@ -1997,7 +2016,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tunDnsVpnHint =>
-      'İstekler TCP üzerinden tünele girer — sızıntı yok';
+      'İstekler TCP üzerinden tünele girer - sızıntı yok';
 
   @override
   String get tunDnsSystemHint => 'Windows\'taki gibi: DNS sızıntısı olası';
@@ -2047,7 +2066,7 @@ class AppLocalizationsTr extends AppLocalizations {
       'İçe aktarırken uygulama şunları anlar: bir abonelik URL\'si (http/https) ve tek sunucular vless:// / vmess:// / trojan:// / ss:// / hysteria2:// (hy2://).';
 
   @override
-  String get reportTitle => 'SilentGate — destek raporu';
+  String get reportTitle => 'SilentGate - destek raporu';
 
   @override
   String get reportDescribeHere =>
@@ -2087,7 +2106,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get pingLegendInfo =>
-      'Ping etiketi rengi: yeşil/sarı/turuncu — sunucu çalışıyor (TCP + tünelden kontrol). Gri — TCP\'ye yanıt veriyor ama trafiği proxylemiyor (tipik Reality portu). Kırmızı «n/a» — yanıt yok, hariç. Ping her zaman DOĞRUDAN ölçülür (VPN dışında).';
+      'Ping etiketi rengi: yeşil/sarı/turuncu - sunucu çalışıyor (TCP + tünelden kontrol). Gri - TCP\'ye yanıt veriyor ama trafiği proxylemiyor (tipik Reality portu). Kırmızı «n/a» - yanıt yok, hariç. Ping her zaman DOĞRUDAN ölçülür (VPN dışında).';
 
   @override
   String get pingUntestedHint =>
@@ -2113,7 +2132,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'Her serviste iki simge\n• solda: VPN\'siz servis\n• sağda: aynı servisin VPN üzerinden hâli\n• aralarındaki ok: geçiş\n\nÖlçüm ne zaman alınır\n• VPN\'siz: uygulama açılırken kendiliğinden\n• VPN üzerinden: bağlanır bağlanmaz\n\nSimgenin etrafındaki halka rengi\n• yeşil: açılıyor\n• turuncu: ülke engeli\n• kırmızı: erişilemiyor\n• gri: henüz sınanmadı\n\nKöşedeki işaret aynı rengi tekrarlar\n• ✓ açılıyor\n• ! ülke engeli\n• ✕ erişilemiyor\n\nNeye dokunulabilir\n• simgeye: servisi yeniden sına\n• yandaki ayarlar düğmesine: servis kümesini değiştir';
+      'Simgenin çerçevesi ikiye bölünmüştür\n• sol yarı: VPN\'siz servis\n• sağ yarı: aynı servisin VPN üzerinden hâli\n• sağ alttaki daire: şu anki durum (✓ / ! / ✕)\n\nÖlçüm ne zaman alınır\n• VPN\'siz: uygulama açılırken kendiliğinden\n• VPN üzerinden: bağlanır bağlanmaz\n\nÇerçeve yarılarının ve dairenin rengi\n• yeşil: açılıyor\n• turuncu: ülke engeli\n• kırmızı: erişilemiyor\n• gri: henüz sınanmadı\n\nKöşelerdeki işaretler\n• açık ve kapalı kilit: hangi yarı VPN\'siz, hangisi VPN üzerinden\n• solda çatal ve yuvarlak çerçeve: “Doğrudan” kuralı, servis VPN dışından gider\n• oklu mavi kilit veya kırmızı yasak işareti: bir kural onu başka sunucudan geçirir ya da engeller\n\nNeye dokunulabilir\n• simgeye: servisi yeniden sına\n• yandaki ayarlar düğmesine: servis kümesini değiştir';
 
   @override
   String get serviceStatusOk => 'Çalışıyor';
@@ -2149,7 +2168,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get hy2NoteBody =>
-      'Hysteria2 sunucuları yalnızca XRAY_JSON biçiminde gelir — SilentGate tam da bunu ister ve sing-box onları otomatik olarak çalıştırır. Hysteria2 listede görünmüyorsa: (Remnawave panel sahibi için) hysteria inbound\'larını etkinleştirin ve aboneliğe atayın. Not: 2.8.0 öncesi Remnawave, Hysteria2\'yi YALNIZCA XRAY_JSON\'da verir — base64/CLASH/SINGBOX\'ta yoktur, bu yüzden yukarıdaki Response Rules → XRAY_JSON kuralı zorunludur.';
+      'Hysteria2 sunucuları yalnızca XRAY_JSON biçiminde gelir - SilentGate tam da bunu ister ve sing-box onları otomatik olarak çalıştırır. Hysteria2 listede görünmüyorsa: (Remnawave panel sahibi için) hysteria inbound\'larını etkinleştirin ve aboneliğe atayın. Not: 2.8.0 öncesi Remnawave, Hysteria2\'yi YALNIZCA XRAY_JSON\'da verir - base64/CLASH/SINGBOX\'ta yoktur, bu yüzden yukarıdaki Response Rules → XRAY_JSON kuralı zorunludur.';
 
   @override
   String get enumStatusDisconnected => 'Bağlantı kesildi';
@@ -2234,7 +2253,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get supportReportCopied =>
-      'Rapor kopyalandı — destek sohbetine yapıştırın';
+      'Rapor kopyalandı - destek sohbetine yapıştırın';
 
   @override
   String subBarUsedOnly(String used) {
@@ -2253,11 +2272,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get supportDescribeRequired =>
-      'Sorunu açıklayın — açıklama olmadan rapor işe yaramaz';
+      'Sorunu açıklayın - açıklama olmadan rapor işe yaramaz';
 
   @override
   String get supportNoScreenshots =>
-      'Ekran görüntülerini buraya yapıştırmayın — Telegram sohbetinde ayrı mesaj olarak gönderin.';
+      'Ekran görüntülerini buraya yapıştırmayın - Telegram sohbetinde ayrı mesaj olarak gönderin.';
 
   @override
   String get supportDescriptionSection => 'KULLANICI AÇIKLAMASI';
@@ -2271,7 +2290,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitAllowRealIpOff =>
-      'Kapalı: kural VPN üzerinden gider — koruma tüm kuralların üstündedir';
+      'Kapalı: kural VPN üzerinden gider - koruma tüm kuralların üstündedir';
 
   @override
   String get splitRealIpExposed => 'gerçek IP';
@@ -2304,11 +2323,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get homeSettingsNeedReconnect =>
-      'Ayar değişti — uygulamak için yeniden bağlanın';
+      'Ayar değişti - uygulamak için yeniden bağlanın';
 
   @override
   String blockPageWindowTitle(String app) {
-    return 'Engellendi — $app';
+    return 'Engellendi - $app';
   }
 
   @override
@@ -2354,7 +2373,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String toastAppCloseFailed(String app) {
-    return '$app kapatılamadı — elle kapatın';
+    return '$app kapatılamadı - elle kapatın';
   }
 
   @override
@@ -2481,29 +2500,29 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoTunRouteOnlyCidrs =>
-      'Windows\'ta trafiğinizin bir bölümünü VPN istemcisinden gerçekten bağımsız kılmanın tek yolu.\n\nNormalde tünel varsayılan rotayı üstlenir ve makinenin TÜM trafiği içine girer: «Doğrudan» işareti çekirdeğin içinde ele alınır — paketi çekirdek alır ve dışarıya kendi adına gönderir. Bu trafik tam olarak çekirdek yaşadığı sürece yaşar ve çekirdekle birlikte takılıp kalır.\n\nListe boş değilse varsayılan rota tünele verilmez: tünel yalnızca listelenen alt ağları üstlenir, geri kalan her şeyi sistem sıradan bağdaştırıcı üzerinden gönderir — istemci bu trafiği hiç görmez.\n\nBedeli: bölme adrese göre yapılır, uygulama ve site kuralları ise ada göre eşleşir. Adresi listeye girmeyen bir siteyi çekirdek hiçbir kuralla göremez. Tünelin her zamanki gibi çalışması için boş bırakın.';
+      'Windows\'ta trafiğinizin bir bölümünü VPN istemcisinden gerçekten bağımsız kılmanın tek yolu.\n\nNormalde tünel varsayılan rotayı üstlenir ve makinenin TÜM trafiği içine girer: «Doğrudan» işareti çekirdeğin içinde ele alınır - paketi çekirdek alır ve dışarıya kendi adına gönderir. Bu trafik tam olarak çekirdek yaşadığı sürece yaşar ve çekirdekle birlikte takılıp kalır.\n\nListe boş değilse varsayılan rota tünele verilmez: tünel yalnızca listelenen alt ağları üstlenir, geri kalan her şeyi sistem sıradan bağdaştırıcı üzerinden gönderir - istemci bu trafiği hiç görmez.\n\nBedeli: bölme adrese göre yapılır, uygulama ve site kuralları ise ada göre eşleşir. Adresi listeye girmeyen bir siteyi çekirdek hiçbir kuralla göremez. Tünelin her zamanki gibi çalışması için boş bırakın.';
 
   @override
   String get tunRouteOnlyWarning =>
-      'Tünel yalnızca listelenen alt ağları üstlenir. Uygulama ve site kuralları YALNIZCA bunların içinde geçerlidir: tünele girmeyen trafik çekirdeğe hiç gösterilmez — böyle bir siteyi engellemek ya da başka yöne çevirmek mümkün değildir.';
+      'Tünel yalnızca listelenen alt ağları üstlenir. Uygulama ve site kuralları YALNIZCA bunların içinde geçerlidir: tünele girmeyen trafik çekirdeğe hiç gösterilmez - böyle bir siteyi engellemek ya da başka yöne çevirmek mümkün değildir.';
 
   @override
   String get tunAlsoSystemProxy => 'Tünelle birlikte sistem proxy\'si';
 
   @override
   String get infoTunAlsoSystemProxy =>
-      'Karma mod: tünel ve sistem proxy\'si aynı anda çalışır.\n\nSistem proxy\'sini dikkate alan uygulamalar (tarayıcılar, Telegram) kısa yoldan doğrudan yerel bağlantı noktasına gider, tünelin kullanıcı alanı yığınını atlar ve çekirdeğe çıplak adres yerine alan adını verir — bu uygulamalar için site kuralları daha kesin çalışır ve TLS çözümlemesine bağlı olmaktan çıkar.\n\nAncak bu, onları istemciden bağımsız YAPMAZ: yine aynı süreç üzerinden geçerler.';
+      'Karma mod: tünel ve sistem proxy\'si aynı anda çalışır.\n\nSistem proxy\'sini dikkate alan uygulamalar (tarayıcılar, Telegram) kısa yoldan doğrudan yerel bağlantı noktasına gider, tünelin kullanıcı alanı yığınını atlar ve çekirdeğe çıplak adres yerine alan adını verir - bu uygulamalar için site kuralları daha kesin çalışır ve TLS çözümlemesine bağlı olmaktan çıkar.\n\nAncak bu, onları istemciden bağımsız YAPMAZ: yine aynı süreç üzerinden geçerler.';
 
   @override
   String get tunMixedModeWarning =>
-      'Sistem proxy\'si üzerinden gelen bir bağlantının sahibi süreç yoktur — çekirdek için bu, yerel bir bağlantıdır. Bu yüzden böyle programlarda UYGULAMA kuralları çalışmaz. Site kuralları çalışır, hatta her zamankinden daha kesin.';
+      'Sistem proxy\'si üzerinden gelen bir bağlantının sahibi süreç yoktur - çekirdek için bu, yerel bir bağlantıdır. Bu yüzden böyle programlarda UYGULAMA kuralları çalışmaz. Site kuralları çalışır, hatta her zamankinden daha kesin.';
 
   @override
   String get tunWatchdog => 'Takılan çekirdek bekçisi';
 
   @override
   String get infoTunWatchdog =>
-      'Tünel çekirdeğinin, takılmış sayılıp tünelin kaldırılmasına kadar kaç saniye yanıtsız kalabileceği.\n\nÇekirdek çökerse Windows arkasını kendisi toplar — bağdaştırıcı, rotalar ve güvenlik duvarı kuralları kaldırılır, ağ geri gelir. Çekirdek takılırsa hiçbir şey kaldırılmaz: bağdaştırıcı yerinde kalır ve «Doğrudan» işaretliler dâhil makinenin tüm trafiğini yutar. Dışarıdan bu «internet tamamen gitti» gibi görünür ve kendiliğinden düzelmez.\n\nBekçi ancak çekirdekten ilk başarılı yanıt geldikten sonra devreye girer: aksi hâlde hizmet bağlantı noktasının açılamadığı durumlarda bağlantıyı öldürürdü. 0 — izleme yok. En az 10 saniye.';
+      'Tünel çekirdeğinin, takılmış sayılıp tünelin kaldırılmasına kadar kaç saniye yanıtsız kalabileceği.\n\nÇekirdek çökerse Windows arkasını kendisi toplar - bağdaştırıcı, rotalar ve güvenlik duvarı kuralları kaldırılır, ağ geri gelir. Çekirdek takılırsa hiçbir şey kaldırılmaz: bağdaştırıcı yerinde kalır ve «Doğrudan» işaretliler dâhil makinenin tüm trafiğini yutar. Dışarıdan bu «internet tamamen gitti» gibi görünür ve kendiliğinden düzelmez.\n\nBekçi ancak çekirdekten ilk başarılı yanıt geldikten sonra devreye girer: aksi hâlde hizmet bağlantı noktasının açılamadığı durumlarda bağlantıyı öldürürdü. 0 - izleme yok. En az 10 saniye.';
 
   @override
   String get tunWatchdogOff => 'Kapalı: tünelin takılması izlenmeyecek';
@@ -2515,7 +2534,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get tunDnsForAllWarning =>
-      'TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN\'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur — dışarıdan bu, internetin tamamen kesilmesi gibi görünür.';
+      'TÜM makinenin ad çözümlemesi tünelden geçecek. Tünel takılırsa, doğrudan çıkan ve VPN\'e ihtiyaç duymayan uygulamalarda bile adlar çözülemez olur - dışarıdan bu, internetin tamamen kesilmesi gibi görünür.';
 
   @override
   String get tunCidrInvalid => 'Ön ekli bir adres gerekir, örn. 10.8.0.0/24';
@@ -2529,7 +2548,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoMissing =>
-      'İndirilmedi — ülke ve kategori kuralları çalışmıyor';
+      'İndirilmedi - ülke ve kategori kuralları çalışmıyor';
 
   @override
   String geoPresent(String size, String date) {
@@ -2563,7 +2582,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get geoFileMissing => 'dosya yok';
 
   @override
-  String get geoFileCorrupt => 'dosya bozuk — çekirdek onu okuyamaz';
+  String get geoFileCorrupt => 'dosya bozuk - çekirdek onu okuyamaz';
 
   @override
   String geoFolder(String path) {
@@ -2584,7 +2603,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String geoBackupLine(String files, String size, String date) {
-    return 'Yedek kopya var: $files — $size, $date tarihli';
+    return 'Yedek kopya var: $files - $size, $date tarihli';
   }
 
   @override
@@ -2602,11 +2621,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoErrorCategories =>
-      'Aboneliğinizin kullandığı kategoriler yeni dosyada yok. Değiştirme iptal edildi, önceki dosyalar yerinde kaldı — yönlendirme etkilenmedi. Tam olarak hangi kategorilerin eksik olduğu aşağıdaki satırda görünüyor.';
+      'Aboneliğinizin kullandığı kategoriler yeni dosyada yok. Değiştirme iptal edildi, önceki dosyalar yerinde kaldı - yönlendirme etkilenmedi. Tam olarak hangi kategorilerin eksik olduğu aşağıdaki satırda görünüyor.';
 
   @override
   String get geoNoWrite =>
-      'Bu klasöre yazılamıyor — buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.';
+      'Bu klasöre yazılamıyor - buraya indirme yapılamaz. Bu genellikle Program Files içine kurulumda olur: uygulamayı yönetici olarak çalıştırın.';
 
   @override
   String get geoCheck => 'Güncellemeyi kontrol et';
@@ -2627,7 +2646,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String geoUpdateAvailable(String files, String size) {
-    return 'Güncelleme mevcut: $files — $size';
+    return 'Güncelleme mevcut: $files - $size';
   }
 
   @override
@@ -2667,7 +2686,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoErrorServer =>
-      'Güncelleme sunucusu isteği geri çevirdi. Büyük olasılıkla geçicidir — daha sonra tekrar deneyin.';
+      'Güncelleme sunucusu isteği geri çevirdi. Büyük olasılıkla geçicidir - daha sonra tekrar deneyin.';
 
   @override
   String get geoErrorWrite =>
@@ -2675,7 +2694,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoErrorCorrupt =>
-      'İndirilen dosya doğrulamayı geçemedi — indirme bozulmuş. Tekrar deneyin.';
+      'İndirilen dosya doğrulamayı geçemedi - indirme bozulmuş. Tekrar deneyin.';
 
   @override
   String get geoErrorOther => 'Olmadı. Ayrıntılar aşağıda.';
@@ -2687,15 +2706,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoGeoAssets =>
-      'geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir (örneğin «Rus siteleri», «devlet hizmetleri», «VKontakte»). Abonelik panelinizin tanımladığı yönlendirme kuralları bunlara dayanır.\n\nUygulamaya gömülü değildir: ikisi birlikte yaklaşık 30 MB tutar ve herkese gerekmez — sıradan bir sunucu bunları hiç kullanmaz.\n\nDosyalar yokken bu tür kurallar yapılandırmadan çıkarılır ve daha önce doğrudan gönderdikleri trafik VPN üzerinden gider. Bu güvenlidir ama daha yavaştır; ayrıca yerel siteler yabancı bir adresten gelen erişimi reddedebilir. Sizin belirlediğiniz site ve uygulama kuralları her durumda çalışır — bu dosyalara bağlı değildir.';
+      'geoip.dat ve geosite.dat dosyaları, ülkelere göre adres ve kategorilere göre alan adı listeleridir (örneğin «Rus siteleri», «devlet hizmetleri», «VKontakte»). Abonelik panelinizin tanımladığı yönlendirme kuralları bunlara dayanır.\n\nUygulamaya gömülü değildir: ikisi birlikte yaklaşık 30 MB tutar ve herkese gerekmez - sıradan bir sunucu bunları hiç kullanmaz.\n\nDosyalar yokken bu tür kurallar yapılandırmadan çıkarılır ve daha önce doğrudan gönderdikleri trafik VPN üzerinden gider. Bu güvenlidir ama daha yavaştır; ayrıca yerel siteler yabancı bir adresten gelen erişimi reddedebilir. Sizin belirlediğiniz site ve uygulama kuralları her durumda çalışır - bu dosyalara bağlı değildir.';
 
   @override
   String get supportBullet2Android =>
-      '• Dokunduktan sonra rapor tek bir dosyada toplanır ve sistemin «Paylaş» penceresi açılır — Telegram\'ı seçin, rapor tek bir ek olarak gider. Sorunu yukarıdaki alana yazın: açıklama olmadan incelenecek bir şey olmaz.';
+      '• Dokunduktan sonra rapor tek bir dosyada toplanır ve sistemin «Paylaş» penceresi açılır - Telegram\'ı seçin, rapor tek bir ek olarak gider. Sorunu yukarıdaki alana yazın: açıklama olmadan incelenecek bir şey olmaz.';
 
   @override
   String get supportDoneTextAndroid =>
-      'Rapor tek bir dosyada toplandı. Sistem penceresinden nereye göndereceğinizi seçin — Telegram\'a metin olarak değil, ek olarak gider.';
+      'Rapor tek bir dosyada toplandı. Sistem penceresinden nereye göndereceğinizi seçin - Telegram\'a metin olarak değil, ek olarak gider.';
 
   @override
   String get exitsHeader => 'Çıkışlar';
@@ -2733,7 +2752,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get exitsDelete => 'Çıkışı sil';
 
   @override
-  String get exitsNoServers => 'Sunucu yok — önce bir abonelik içe aktarın';
+  String get exitsNoServers => 'Sunucu yok - önce bir abonelik içe aktarın';
 
   @override
   String get exitsSearch => 'Sunucu ara';
@@ -2747,7 +2766,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get infoExits =>
-      'Çıkış, «Tünel» kuralının hedefidir.\n\nVarsayılan olarak bir çıkış TEK bir sunucudur ve arka planda hiçbir maliyeti yoktur: sıradan protokoller kalıcı bağlantı tutmaz. Otomatik seçimli çok sunuculu grup yalnızca düğüm arızasına karşı güvence önemliyse gerekir — düzenli ölçümler ekler, telefonda bunlar radyo uyandırmalarıdır.\n\nÇıkış YALNIZCA «Tünel» eyleminde anlamlıdır. «Almanya üzerinden doğrudan» bir çelişkidir: doğrudan kural tüm çıkışları atlar.\n\nBir site ile alt alan adı FARKLI çıkışlara gidebilir — uygulama daha özel kuralı yukarı alır, aksi hâlde üst alan adı alt alanı yutardı.\n\nÖNEMLİ: Windows’ta sistem proxy’siyle çıkışlar hiç çalışmaz — o kipte yönlendirme kuralları oluşturulmaz. Tünel kipi gerekir.';
+      'Çıkış, «Tünel» kuralının hedefidir.\n\nVarsayılan olarak bir çıkış TEK bir sunucudur ve arka planda hiçbir maliyeti yoktur: sıradan protokoller kalıcı bağlantı tutmaz. Otomatik seçimli çok sunuculu grup yalnızca düğüm arızasına karşı güvence önemliyse gerekir - düzenli ölçümler ekler, telefonda bunlar radyo uyandırmalarıdır.\n\nÇıkış YALNIZCA «Tünel» eyleminde anlamlıdır. «Almanya üzerinden doğrudan» bir çelişkidir: doğrudan kural tüm çıkışları atlar.\n\nBir site ile alt alan adı FARKLI çıkışlara gidebilir - uygulama daha özel kuralı yukarı alır, aksi hâlde üst alan adı alt alanı yutardı.\n\nÖNEMLİ: Windows’ta sistem proxy’siyle çıkışlar hiç çalışmaz - o kipte yönlendirme kuralları oluşturulmaz. Tünel kipi gerekir.';
 
   @override
   String get ruleServer => 'Sunucu üzerinden';
@@ -2777,14 +2796,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get notifCompactSub =>
-      'Kapalı — abonelik, sunucu ve hız, düğmelerle birlikte. Açık — başlıkta uygulama ve abonelik, altında sunucu; hız ve düğme yok.';
+      'Kapalı - abonelik, sunucu ve hız, düğmelerle birlikte. Açık - başlıkta uygulama ve abonelik, altında sunucu; hız ve düğme yok.';
 
   @override
   String get localProxyAuthTitle => 'Yerel proxy parolası';
 
   @override
   String get localProxyAuthInfo =>
-      'Çekirdeğin yerel bağlantı noktası (127.0.0.1) VPN\'inize açılan tam bir proxy\'dir. Parola olmadan aynı cihazdaki her program ona bağlanır ve tünelinizi olduğu gibi kullanır: çıkış IP\'niz, abonelik kotanız ve kendi ayrık tünelleme kurallarınızın atlanması — «Engelle» dediğiniz uygulamalar dâhil. Android\'de bu özellikle önemlidir: orada yerel bağlantı noktalarını yüklü her uygulama görür.\n\nYalnızca bu proxy\'ye bilerek kimlik doğrulamayı desteklemeyen bir şeyle bağlanıyorsanız kapatın.';
+      'Çekirdeğin yerel bağlantı noktası (127.0.0.1) VPN\'inize açılan tam bir proxy\'dir. Parola olmadan aynı cihazdaki her program ona bağlanır ve tünelinizi olduğu gibi kullanır: çıkış IP\'niz, abonelik kotanız ve kendi ayrık tünelleme kurallarınızın atlanması - «Engelle» dediğiniz uygulamalar dâhil. Android\'de bu özellikle önemlidir: orada yerel bağlantı noktalarını yüklü her uygulama görür.\n\nYalnızca bu proxy\'ye bilerek kimlik doğrulamayı desteklemeyen bir şeyle bağlanıyorsanız kapatın.';
 
   @override
   String get localProxyAuthOff =>
@@ -2796,7 +2815,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'Her bağlantıda yeni rastgele parola — ayarlarda saklanmaz';
+      'Her bağlantıda yeni rastgele parola - ayarlarda saklanmaz';
 
   @override
   String get localProxyAuthCustom =>
@@ -2807,7 +2826,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get localProxyCredsUnset =>
-      'Belirtilmedi — rastgele parola kullanılıyor';
+      'Belirtilmedi - rastgele parola kullanılıyor';
 
   @override
   String localProxyCredsUser(String user) {
@@ -2828,7 +2847,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get localProxyFieldPassword => 'Parola';
 
   @override
-  String get localProxyFieldHint => 'boş — rastgele';
+  String get localProxyFieldHint => 'boş - rastgele';
 
   @override
   String get lockdownOnTitle => 'Sistem düzeyinde koruma açık';
@@ -2868,15 +2887,15 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get blockNoticeSub =>
-      'Bir uygulama ya da tarayıcı «Engelle» listesindeki bir siteye ulaşmaya çalıştığında, altta site adıyla bir bildirim çıkar. Dokunun — bu ekran açılır.';
+      'Bir uygulama ya da tarayıcı «Engelle» listesindeki bir siteye ulaşmaya çalıştığında, altta site adıyla bir bildirim çıkar. Dokunun - bu ekran açılır.';
 
   @override
   String get siteInsecureScheme =>
-      'Adres http:// olarak yazılmış — bağlantı şifrelenmez ve sağlayıcı her şeyi görür. Tarayıcının https kullanması için «http://» kısmını silin.';
+      'Adres http:// olarak yazılmış - bağlantı şifrelenmez ve sağlayıcı her şeyi görür. Tarayıcının https kullanması için «http://» kısmını silin.';
 
   @override
   String get exitServerGone =>
-      'Bu kuralın sunucusu abonelikten kayboldu — trafik ana tünelden gidiyor';
+      'Bu kuralın sunucusu abonelikten kayboldu - trafik ana tünelden gidiyor';
 
   @override
   String exitServerUnsupported(String name) {
@@ -2891,7 +2910,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoVerdictMissingSub =>
-      'Aboneliğin ülke ve kategori kuralları şu anda devre dışı — bu trafik doğrudan değil, VPN üzerinden gidiyor.';
+      'Aboneliğin ülke ve kategori kuralları şu anda devre dışı - bu trafik doğrudan değil, VPN üzerinden gidiyor.';
 
   @override
   String get geoVerdictUnusableTitle => 'Çekirdek geo verilerini açamadı';
@@ -2902,18 +2921,41 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get geoOfferMissingSub =>
-      'Onlar olmadan aboneliğin ülke ve kategori kuralları çalışmaz — bu trafik doğrudan değil, VPN üzerinden gidecek.';
+      'Onlar olmadan aboneliğin ülke ve kategori kuralları çalışmaz - bu trafik doğrudan değil, VPN üzerinden gidecek.';
 
   @override
   String get geoOfferDismiss => 'Bir daha önerme';
 
   @override
+  String get geoOfferBundledTitle => 'Yerleşik coğrafi veritabanları';
+
+  @override
+  String get geoOfferBundledSub =>
+      'Rusya ve reklam kuralları çalışıyor. Diğer ülkeler için tam veritabanları (yaklaşık 30 MB) gerekir - uygun olduğunda indirin; Wi-Fi\'de kendiliğinden inerler.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'yerleşik set, $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'Yerleşik set kullanılıyor: Rusya ve reklam kuralları çalışıyor. Diğer ülkeler ve kategoriler için tam veritabanları gerekir.';
+
+  @override
+  String get geoAutoWifi => 'Tam veritabanlarını Wi-Fi\'de indir';
+
+  @override
+  String get geoAutoWifiSub =>
+      'Otomatik, sormadan. Mobil veride yalnızca siz düğmeye bastığınızda.';
+
+  @override
   String get pingPendingTooltip =>
-      'Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor — sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.';
+      'Sunucuya TCP gecikmesi. Kanal denetimi hâlâ sürüyor - sunucunun gerçekten çalışıp çalışmadığı henüz bilinmiyor.';
 
   @override
   String get pingUnverifiedTooltip =>
-      'Sunucuya TCP gecikmesi. Tünel üzerinden denetim yapılmadı — yalnızca erişilebilirlik biliniyor.';
+      'Sunucuya TCP gecikmesi. Tünel üzerinden denetim yapılmadı - yalnızca erişilebilirlik biliniyor.';
 
   @override
   String pingMeasuredAt(String time) {
@@ -2940,11 +2982,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoWarnNoRealIp =>
-      '«Gerçek IP kullanılmasın» açık — «Doğrudan» kurallarınız VPN üzerinden gidiyor.';
+      '«Gerçek IP kullanılmasın» açık - «Doğrudan» kurallarınız VPN üzerinden gidiyor.';
 
   @override
   String get autoWarnAllVpn =>
-      '«Her şey VPN üzerinden» kipi seçili — kurallarınız şu anda geçerli değil.';
+      '«Her şey VPN üzerinden» kipi seçili - kurallarınız şu anda geçerli değil.';
 
   @override
   String get autoWarnPanelOverride =>
@@ -2952,7 +2994,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get autoWarnProbesDirect =>
-      'Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN\'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler — çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.';
+      'Bu, denetimin kendisini etkilemez: yoklamalar hangi ayarda olursa olsun VPN\'i atlar. Ancak TUN kipinde çekirdek süreci üzerinden geçerler - çekirdek takıldıysa tüm sonuçlar yanlış olumsuz olur.';
 
   @override
   String get autoWarnTurnOff => 'Kapat';
@@ -2971,7 +3013,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String logsFileLine(String name, String size, int lines) {
-    return '$name — $size, $lines satır';
+    return '$name - $size, $lines satır';
   }
 
   @override
@@ -2996,7 +3038,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get logsRetentionInfo =>
-      'Günlükler ve destek raporları, seçilen süreden eskidiklerinde silinir. Denetim uygulama açılırken yapılır. «Hiç» seçeneği her şeyi diskte bırakır — o zaman boyutu kendiniz izleyin: rapor günlükleri olduğu gibi içerir ve onlarla birlikte büyür.';
+      'Günlükler ve destek raporları, seçilen süreden eskidiklerinde silinir. Denetim uygulama açılırken yapılır. «Hiç» seçeneği her şeyi diskte bırakır - o zaman boyutu kendiniz izleyin: rapor günlükleri olduğu gibi içerir ve onlarla birlikte büyür.';
 
   @override
   String get logsCleanNow => 'Eskileri şimdi sil';
@@ -3020,22 +3062,22 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String logsClearOptionApp(String size) {
-    return 'App log — $size';
+    return 'App log - $size';
   }
 
   @override
   String logsClearOptionTun(String size) {
-    return 'TUN core log — $size';
+    return 'TUN core log - $size';
   }
 
   @override
   String logsClearOptionProxy(String size) {
-    return 'Proxy core log — $size';
+    return 'Proxy core log - $size';
   }
 
   @override
   String logsClearOptionReports(String size) {
-    return 'Old support reports — $size';
+    return 'Old support reports - $size';
   }
 
   @override
@@ -3069,7 +3111,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get speedStaleServerTooltip =>
-      'Sunucu şu anda yanıt vermiyor — gösterilen geçmiş bir hız ölçümüdür';
+      'Sunucu şu anda yanıt vermiyor - gösterilen geçmiş bir hız ölçümüdür';
 
   @override
   String get speedOlderThanPingTooltip => 'Hız ölçümü son denetimden daha eski';
@@ -3085,7 +3127,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String speedConfirmBody(int count, String size, String total) {
-    return '$count sunucu denetlenecek. Her biri $size boyutunda örnek indirir — aboneliğinizin trafiğinden yaklaşık $total.';
+    return '$count sunucu denetlenecek. Her biri $size boyutunda örnek indirir - aboneliğinizin trafiğinden yaklaşık $total.';
   }
 
   @override
@@ -3102,11 +3144,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get speedNotVerified =>
-      'Sunucu kanal denetimini geçemedi — üzerinden hız ölçmüyoruz';
+      'Sunucu kanal denetimini geçemedi - üzerinden hız ölçmüyoruz';
 
   @override
   String get speedWaitsForPing =>
-      'Ping sürüyor — hız ölçümü hemen ardından başlayacak';
+      'Ping sürüyor - hız ölçümü hemen ardından başlayacak';
 
   @override
   String speedProgress(int done, int total) {
@@ -3122,7 +3164,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get apiSectionSub =>
-      '127.0.0.1 üzerinde HTTP — istemciyi betiklerden yönetin';
+      '127.0.0.1 üzerinde HTTP - istemciyi betiklerden yönetin';
 
   @override
   String get momentJustNow => 'az önce';
@@ -3160,7 +3202,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get srvInfoAutoNever =>
-      'Otomatik ayar bu sunucuyu henüz denemedi — hangi servislerin bu sunucu üzerinden çalıştığını görmek için çalıştırın.';
+      'Otomatik ayar bu sunucuyu henüz denemedi - hangi servislerin bu sunucu üzerinden çalıştığını görmek için çalıştırın.';
 
   @override
   String get srvInfoAutoHint =>
@@ -3174,7 +3216,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String srvInfoAutoGeoNote(Object services) {
-    return '$services: bu sunucu üzerinden açılıyor ama çıkış ülkesinde kullanılamıyor. Sunucunun kendisi sağlam — yalnızca bu servisler çalışmaz, onlar için başka ülkede bir çıkış gerekir.';
+    return '$services: bu sunucu üzerinden açılıyor ama çıkış ülkesinde kullanılamıyor. Sunucunun kendisi sağlam - yalnızca bu servisler çalışmaz, onlar için başka ülkede bir çıkış gerekir.';
   }
 
   @override
@@ -3195,7 +3237,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsSpeedTopNSub =>
-      'Artı kendi hattınızın bir ölçümü — onsuz karşılaştıracak bir şey yok: 60 Mbit/sn, 60\'lık hatta mükemmel, 300\'lük hatta kötüdür.';
+      'Artı kendi hattınızın bir ölçümü - onsuz karşılaştıracak bir şey yok: 60 Mbit/sn, 60\'lık hatta mükemmel, 300\'lük hatta kötüdür.';
 
   @override
   String settingsSpeedTrafficNote(Object mb) {
@@ -3240,14 +3282,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsConnectChecksEmpty =>
-      'Hiçbir servis seçilmedi — kontrol edilecek bir şey olmayacak.';
+      'Hiçbir servis seçilmedi - kontrol edilecek bir şey olmayacak.';
 
   @override
   String get settingsSectionSeamless => 'Kesintisizlik';
 
   @override
   String get settingsSeamlessNote =>
-      'Bu seçeneklerin hiçbiri açık bağlantıları korumaz: başka sunucu, başka dış IP demektir ve karşı taraf farklı bir adres görür — görüşme ya da indirme her hâlükârda kopar. Mesele yalnızca makinenin ağının kesilip yanmaması.';
+      'Bu seçeneklerin hiçbiri açık bağlantıları korumaz: başka sunucu, başka dış IP demektir ve karşı taraf farklı bir adres görür - görüşme ya da indirme her hâlükârda kopar. Mesele yalnızca makinenin ağının kesilip yanmaması.';
 
   @override
   String get settingsSeamlessServerTitle =>
@@ -3277,7 +3319,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String autoSpeedTrafficBody(int servers, int mb) {
-    return 'En iyi $servers sunucunun ve kendi bağlantınızın hızı ölçülecek — aboneliğinizin yaklaşık $mb MB trafiği.\n\nÖlçümü ayarlardan kapatabilirsiniz.';
+    return 'En iyi $servers sunucunun ve kendi bağlantınızın hızı ölçülecek - aboneliğinizin yaklaşık $mb MB trafiği.\n\nÖlçümü ayarlardan kapatabilirsiniz.';
   }
 
   @override
@@ -3285,14 +3327,14 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitDeadPath =>
-      'Bu yoldaki dosya artık yok — kural hiç eşleşmiyor';
+      'Bu yoldaki dosya artık yok - kural hiç eşleşmiyor';
 
   @override
   String get splitDeadPathFix => 'Dosya adına göre eşleştirmek için dokunun';
 
   @override
   String splitDeadPathNoticeText(String app) {
-    return 'The path to “$app” is outdated — the rule won’t apply this time';
+    return 'The path to “$app” is outdated - the rule won’t apply this time';
   }
 
   @override
@@ -3300,23 +3342,37 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitVersionedPath =>
-      'Yolda sürüm numarası var — program güncellendikten sonra kural eşleşmeyi bırakır';
+      'Yolda sürüm numarası var - program güncellendikten sonra kural eşleşmeyi bırakır';
 
   @override
   String get srvTileCopyKey => 'Anahtarı kopyala';
 
   @override
   String serviceChecksBypassDirect(Object rule) {
-    return 'VPN dışında: bölünmüş tünel kuralı “$rule” bu alan adını doğrudan gönderiyor — servis gerçek adresinizle çalışacak.';
+    return 'VPN dışında: bölünmüş tünel kuralı “$rule” bu alan adını doğrudan gönderiyor - servis gerçek adresinizle çalışacak.';
   }
 
   @override
   String serviceChecksBypassBlock(Object rule) {
-    return 'Engelli: bölünmüş tünel kuralı “$rule” bu alan adını yasaklıyor — servis VPN ile de VPN’siz de açılmaz.';
+    return 'Engelli: bölünmüş tünel kuralı “$rule” bu alan adını yasaklıyor - servis VPN ile de VPN’siz de açılmaz.';
   }
 
   @override
-  String get subBarOpenSite => 'Web sitesi';
+  String get serviceChecksAfterOff => 'VPN kapalı';
+
+  @override
+  String get serviceChecksNow => 'Şu an';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'Başka sunucu üzerinden: bölünmüş tünel kuralı “$rule” bu alan adını “$server” üzerinden yönlendiriyor.';
+  }
+
+  @override
+  String get subBarOpenSite => 'Abonelik sayfası';
+
+  @override
+  String get subBarTelegram => 'Telegram / Bot';
 
   @override
   String get subBarOpenSiteHint => 'Abonelik sayfasını tarayıcıda aç';
@@ -3351,7 +3407,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get serviceChecksChannelNotReady =>
-      'Tünel henüz hazır değil — kontroller çalıştırılmadı';
+      'Tünel henüz hazır değil - kontroller çalıştırılmadı';
 
   @override
   String get serviceChecksRetryCheck => 'Kontrolü yinele';
@@ -3372,7 +3428,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get serviceGroupOther => 'Diğer';
 
   @override
-  String get apiTokenHidden => 'gizli — «göster»e basın';
+  String get apiTokenHidden => 'gizli - «göster»e basın';
 
   @override
   String get apiTokenShow => 'Belirteci göster';
@@ -3391,17 +3447,17 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String apiCheatSheetPortDirect(Object port) {
-    return '$port — «Doğrudan»: VPN dışı, gerçek IP';
+    return '$port - «Doğrudan»: VPN dışı, gerçek IP';
   }
 
   @override
   String apiCheatSheetPortServer(int port, String name) {
-    return '$port — $name';
+    return '$port - $name';
   }
 
   @override
   String get apiCheatSheetNoExitServers =>
-      'hiçbir sunucu işaretli değil — sunucu portu olmayacak';
+      'hiçbir sunucu işaretli değil - sunucu portu olmayacak';
 
   @override
   String apiCheatSheetPortsSystemProxy(Object control) {
@@ -3410,7 +3466,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get apiCheatSheetTokenOff =>
-      'belirteç boş — kanal açılmaz, hiçbir port dinlemez';
+      'belirteç boş - kanal açılmaz, hiçbir port dinlemez';
 
   @override
   String get apiCheatSheetPortsWhenConnected =>
@@ -3458,7 +3514,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get noRealIpOnlySelectedNote =>
-      '«Yalnızca işaretlenenler» modunda, işaretlenmemiş her şey yine gerçek IP’nizle çıkar — bu ayar bunu değiştirmez.';
+      '«Yalnızca işaretlenenler» modunda, işaretlenmemiş her şey yine gerçek IP’nizle çıkar - bu ayar bunu değiştirmez.';
 
   @override
   String get infoNoRealIp =>
@@ -3478,7 +3534,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitOnlySelectedWarnBody =>
-      'Tünele yalnızca «Tünel» eylemi verilmiş kayıtlar girer. Geri kalan trafik — varlığından haberdar olmadığınız programlar dâhil — gerçek adresinizle doğrudan çıkar. Tüm cihaz gizlenmeliyse «Tümü VPN üzerinden» seçeneğini kullanın.';
+      'Tünele yalnızca «Tünel» eylemi verilmiş kayıtlar girer. Geri kalan trafik - varlığından haberdar olmadığınız programlar dâhil - gerçek adresinizle doğrudan çıkar. Tüm cihaz gizlenmeliyse «Tümü VPN üzerinden» seçeneğini kullanın.';
 
   @override
   String get splitOnlySelectedNoRealIp =>
@@ -3486,7 +3542,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitKillSwitchIsPerApp =>
-      'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur — site kuralları o süre boyunca geçerli olmaz.';
+      'Kill switch trafiği alan adına göre değil, programa göre tutar: çekirdek toparlanırken site adlarını çözecek kimse yoktur - site kuralları o süre boyunca geçerli olmaz.';
 
   @override
   String get updateNotesEmpty => 'Sürüm notu gelmedi.';
@@ -3686,6 +3742,10 @@ class AppLocalizationsTr extends AppLocalizations {
       'Yeni sürümleri denetleme, indirme ve kurma';
 
   @override
+  String get updatesSettingsTilePlay =>
+      'Yeni sürümler Google Play üzerinden gelir';
+
+  @override
   String get updatesPreviousVersions => 'Önceki sürümler';
 
   @override
@@ -3709,27 +3769,27 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updatesLinkNotify =>
-      '“Yalnızca bildir” modu seçili — yeni sürümü indirme sayfasından indirin';
+      '“Yalnızca bildir” modu seçili - yeni sürümü indirme sayfasından indirin';
 
   @override
   String get updatesLinkNoSelfUpdate =>
-      'Bu sürümde sisteminiz için imzalı bir yükleyici yok — indirme sayfasından indirin';
+      'Bu sürümde sisteminiz için imzalı bir yükleyici yok - indirme sayfasından indirin';
 
   @override
   String get updatesLinkIsolated =>
-      'Bu yalıtılmış bir test kopyasıdır — kurulu uygulamaya dokunmaz. Elle güncelleyin';
+      'Bu yalıtılmış bir test kopyasıdır - kurulu uygulamaya dokunmaz. Elle güncelleyin';
 
   @override
   String get updatesLinkLocation =>
-      'Uygulama kurulum klasöründen çalışmıyor — yeni sürümü elle indirin veya kurulu kopyayı başlatın';
+      'Uygulama kurulum klasöründen çalışmıyor - yeni sürümü elle indirin veya kurulu kopyayı başlatın';
 
   @override
   String get updatesLinkElevated =>
-      'Uygulama yönetici olarak çalışıyor — bu şekilde güncellemek güvenli değil. Normal şekilde başlatın';
+      'Uygulama yönetici olarak çalışıyor - bu şekilde güncellemek güvenli değil. Normal şekilde başlatın';
 
   @override
   String get updatesLinkUnsupported =>
-      'Bu platformda uygulama kendini güncelleyemez — yeni sürümü elle indirin';
+      'Bu platformda uygulama kendini güncelleyemez - yeni sürümü elle indirin';
 
   @override
   String get updatesErrCheck => 'güncelleme sunucusu yanıt vermedi';
@@ -3745,7 +3805,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updatesErrSignature =>
-      'imza eşleşmiyor — dosya değiştirilmiş olabilir';
+      'imza eşleşmiyor - dosya değiştirilmiş olabilir';
 
   @override
   String get updatesErrManifestRejected =>
@@ -3773,11 +3833,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get updatesWaitingVpn =>
-      'Kuruluma hazır — VPN bağlantısı kesildikten sonra başlayacak';
+      'Kuruluma hazır - VPN bağlantısı kesildikten sonra başlayacak';
 
   @override
   String updatesSkippedNote(String version) {
-    return '$version sürümü atlandı — bir sonrakini bildireceğiz';
+    return '$version sürümü atlandı - bir sonrakini bildireceğiz';
   }
 
   @override
@@ -3856,7 +3916,7 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get splitExportEmpty => 'Liste boş — dışa aktarılacak bir şey yok';
+  String get splitExportEmpty => 'Liste boş - dışa aktarılacak bir şey yok';
 
   @override
   String get splitCountEmpty => 'Boş';
@@ -3908,4 +3968,772 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'Alt alan adlarını gizle';
+
+  @override
+  String get consentTitle => 'SilentGate hangi verileri gönderir';
+
+  @override
+  String get consentIntro =>
+      'SilentGate bir VPN istemcisidir: kendi eklediğiniz abonelik bağlantısıyla VPN sağlayıcınızın sunucularına bağlanır. Trafik şifreli bir tünelden geçer. SilentGate trafiğinizi toplamaz, saklamaz veya satmaz; uygulamanın kendi analitiği yoktur.';
+
+  @override
+  String get consentDeviceTitle => 'Sağlayıcınız için cihaz verileri';
+
+  @override
+  String get consentDeviceBody =>
+      'Abonelik yüklenirken veya güncellenirken uygulama abonelik sunucusuna cihaz kimliğini (Android ID), telefon modelini ve Android sürümünü gönderebilir. Sağlayıcınız bunlarla cihazlarınızı sayar (tarifenizdeki cihaz sınırı). Bu veriler yalnızca abonelik adresinize gider; SilentGate geliştiricisi bunları hiçbir zaman almaz.';
+
+  @override
+  String get consentDeclineNote =>
+      'Reddederseniz bu veriler gönderilmez. Bazı sağlayıcılar bunlar olmadan aboneliği vermez; o zaman abonelik yüklenemez. Seçiminizi Ayarlar → Hakkında → \"Veriler ve gizlilik\" bölümünden değiştirebilirsiniz.';
+
+  @override
+  String get consentPolicy => 'Gizlilik politikası';
+
+  @override
+  String get consentAccept => 'İzin ver';
+
+  @override
+  String get consentDecline => 'Gönderme';
+
+  @override
+  String get privacyTileTitle => 'Veriler ve gizlilik';
+
+  @override
+  String get privacyTileOn =>
+      'Cihaz verileri abonelik sağlayıcısına gönderilir';
+
+  @override
+  String get privacyTileOff => 'Cihaz verileri gönderilmez';
+
+  @override
+  String get consentDeviceBodyWindows =>
+      'Abonelik yüklenirken veya güncellenirken uygulama, abonelik sunucusuna bilgisayar kimliğini (HWID), Windows sürümünü ve bilgisayar modelini gönderebilir. Sağlayıcınız bunlarla cihazlarınızı sayar (tarifenizdeki cihaz sınırı). Bu veriler yalnızca abonelik adresinize ve yalnızca güvenli bağlantı üzerinden gider - SilentGate geliştiricisi bunları asla almaz.';
+
+  @override
+  String get consentNoticeNote =>
+      'Sağlayıcınız, tarifenizdeki cihazları saymak için bu verilere ihtiyaç duyar. Bu mesajı yeniden açabilirsiniz: Ayarlar → Hakkında → \"Veriler ve gizlilik\".';
+
+  @override
+  String get consentNoticeOk => 'Anladım';
+
+  @override
+  String get sectionBackup => 'Yedekleme';
+
+  @override
+  String get backupExportTitle => 'Ayarları dışa aktar';
+
+  @override
+  String get backupExportSub =>
+      'Ayarları ve abonelikleri bir dosyaya kaydet - başka bir bilgisayar veya telefon için';
+
+  @override
+  String get backupExportWithSubs => 'Abonelikleri ve sunucuları dahil et';
+
+  @override
+  String get backupExportSubsWarning =>
+      'Dosya abonelik adreslerini içerecek - bunlar VPN erişim anahtarlarıdır. Dosyayı kimseye göndermeyin.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'Yalnızca ayarlar ve kurallar - abonelik ve sunucu yok.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'Yerel bağlantı noktası parolası, API belirteci ve cihaz verisi onayı dahil edilmez.';
+
+  @override
+  String get backupExportAction => 'Dışa aktar';
+
+  @override
+  String backupExportDone(String path) {
+    return 'Ayarlar kaydedildi: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'Ayar dosyası kaydedilemedi';
+
+  @override
+  String get backupImportTitle => 'Ayarları içe aktar';
+
+  @override
+  String get backupImportSub =>
+      'Ayarları dışa aktarma dosyasından yükle. Uygulama yeniden başlayacak';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'Önce VPN bağlantısını kesin: içe aktarmadan sonra uygulama yeniden başlar';
+
+  @override
+  String get backupImportBadFile =>
+      'Bu bir SilentGate ayar dosyası değil veya bozuk';
+
+  @override
+  String get backupImportConfirmTitle => 'Ayarlar içe aktarılsın mı?';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'Dosya: $platform, sürüm $version, $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'Dosyadaki abonelikler: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'Abonelikleri ve sunucuları değiştir';
+
+  @override
+  String get backupImportBody =>
+      'Geçerli ayarlar değiştirilecek. Yerel bağlantı noktası parolası, API belirteci ve cihaz verisi onayı bu cihazınki olarak kalır.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'Dosya başka bir platformdan: bölünmüş tünel uygulama listesi ve yalnızca burada olan ayarlar değişmez.';
+
+  @override
+  String get backupImportAction => 'İçe aktar ve yeniden başlat';
+
+  @override
+  String get backupImportRestartManually =>
+      'Ayarlar hazır. Uygulamak için uygulamayı yeniden başlatın';
+
+  @override
+  String get backupImportApplied => 'Ayarlar içe aktarıldı';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'Ayarlar Google yedeğinden geri yüklendi';
+
+  @override
+  String get backupGoogleSubsTitle => 'Abonelikleri Google yedeğinde sakla';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'Ayarlar her zaman yedeklenir. Abonelikler VPN erişim anahtarlarıdır: ekran kilidi varsa yedek telefonda şifrelenir';
+
+  @override
+  String get privacyPolicyTile => 'Gizlilik politikası';
+
+  @override
+  String get updatesViaPlay => 'Google Play\'de güncelle';
+
+  @override
+  String get updatesViaGithub => 'GitHub\'dan indir';
+
+  @override
+  String get updatesPlayManaged =>
+      'Bu kopya Google Play\'den yüklendi ve yalnızca onun üzerinden güncellenir: yeni sürümler Google Play\'e otomatik olarak ya da uygulama sayfasındaki \"Güncelle\" düğmesiyle gelir.';
+
+  @override
+  String get updatesOpenPlay => 'Google Play\'de aç';
+
+  @override
+  String get statusNetworkChanged => 'ağ değişti';
+
+  @override
+  String get statusRecoveryError => 'kurtarma hatası';
+
+  @override
+  String get statusGeoUnavailable =>
+      'çekirdek coğrafi veritabanlarını kullanamıyor';
+
+  @override
+  String get statusNetworkBackChannelDead =>
+      'ağ geri geldi ama tünel yanıt vermedi';
+
+  @override
+  String get noticeReconnecting => 'Bağlantı koptu, yeniden kuruluyor';
+
+  @override
+  String get noticeRecovered => 'Bağlantı yeniden kuruldu';
+
+  @override
+  String get noticeStillDown => 'Bağlantı hâlâ kurulamadı';
+
+  @override
+  String get noticeRecoverFailed => 'Bağlantı yeniden kurulamadı';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'Deneme: $count. Neden: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'Deneme: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'Site kuralınız tarafından engellendi';
+
+  @override
+  String get noticeBlockedAction => 'Kurallar';
+
+  @override
+  String noticeExitDown(String name) {
+    return '“$name” çıkışı yanıt vermiyor';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'Bu sunucu üzerinden yönlendirilen trafik geçici olarak ana tünelden, yani başka bir ülkeden geçiyor. Sunucu yeniden yanıt verdiğinde geri döner.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'Bu sunucu üzerinden yönlendirilen trafik şu anda geçmiyor. Ana tünel ve diğer çıkışlar çalışıyor.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'Sistem proxy’si açılmadı - trafik VPN’i atlayarak gerçek adresinizle gidiyor';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'Çoğu zaman kayıt defterine yazma engellidir (etki alanı ilkesi veya bozuk profil). Ayrıntılar uygulama günlüğünde. Geçici çözüm: “TUN” yakalama modu.';
+
+  @override
+  String get noticeGeoMissing =>
+      'Coğrafi veritabanları indirilmedi - panelin ülke kuralları kapalı';
+
+  @override
+  String get noticeGeoUnusable =>
+      'Çekirdek coğrafi veritabanlarını açamadı - panelin ülke kuralları kapalı';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'Ping bitti: $total sunucudan $ok tanesi çalışıyor ($seconds sn)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'Ping bitti: $total sunucudan $ok tanesine erişilebiliyor ($seconds sn)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'Ping iptal edildi: $total sunucudan $ok tanesi çalışıyor';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'Ping iptal edildi: $total sunucudan $ok tanesine erişilebiliyor';
+  }
+
+  @override
+  String get pingFailed => 'Ping bir hata nedeniyle durdu';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'Hız ölçüldü: $total sunucudan $ok ($seconds sn)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'Hız testi iptal edildi: $total sunucudan $ok ölçüldü';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'Bu sunucunun hızı burada ölçülemez: test canlı bağlantı üzerinden yapılır. Ona bağlanın ve tekrar deneyin';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'Otomatik ayar bitti: $count bulundu';
+  }
+
+  @override
+  String get autoConfigDoneNone => 'Otomatik ayar: çalışan sunucu bulunamadı';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'Otomatik ayar bu platformda kullanılamıyor';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'Otomatik ayar bu platformda kullanılamıyor: burada hizmetleri bir sunucu üzerinden denetlemenin yolu yok. Ping kullanın.';
+
+  @override
+  String get autoConfigBadKey =>
+      'Anahtar tanınamadı (vless:// / vmess:// / trojan:// / ss:// / hysteria2:// bekleniyor)';
+
+  @override
+  String get autoConfigNoneFound => 'Çalışan sunucu bulunamadı';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'Hata: $detail';
+  }
+
+  @override
+  String get restartServerChanged =>
+      'Başka bir sunucu seçildi - uygulamak için yeniden bağlanın';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'Abonelik değiştirildi - uygulamak için yeniden bağlanın';
+
+  @override
+  String errorServerNotFound(String name) {
+    return '“$name” sunucusu bulunamadı';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'Cihazın tarihi ve saati yanlış - geride, bu yüzden sunucu sertifikası henüz geçerli değil görünüyor. Saati kontrol edin, zaman eşitlemeyi açın ve yeniden içe aktarın.';
+
+  @override
+  String get hintCertExpired =>
+      'Sunucu sertifikasının süresi doldu. Önce cihazın tarihini ve saatini kontrol edin - ileri ise aynı hata çıkar. Saat doğruysa sertifikanın süresi hizmet tarafında dolmuştur: desteğe yazın.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'Sertifika başka bir ad için verilmiş. Abonelik adresini kontrol edin - yazım hatası olabilir ya da araya giren biri bağlantıyı yakalıyor olabilir.';
+
+  @override
+  String get hintNoNetwork =>
+      'Abonelik sunucusuna ulaşılamadı. İnternetinizi kontrol edin; çalışıyorsa adres engellenmiş olabilir - bir VPN açıp yeniden içe aktarmayı deneyin.';
+
+  @override
+  String get importSyncTime => 'Saati eşitle';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'Cihaz sınırına ulaşıldı ($limit). Hesabınızdan fazla bir cihazı kaldırıp tekrar deneyin.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'Cihaz sınırına ulaşıldı. Hesabınızdan fazla bir cihazı kaldırıp tekrar deneyin.';
+
+  @override
+  String get subHwidRequired =>
+      'Panel bir cihaz kimliği istiyor ama uygulama göndermedi. Uygulamayı güncelleyin.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'Sunucu $code kodunu döndürdü';
+  }
+
+  @override
+  String get subNoServers => 'Abonelikte hiç sunucu bulunamadı';
+
+  @override
+  String get subTooManyRedirects => 'Abonelikte çok fazla yönlendirme var';
+
+  @override
+  String get trayNoteBlocked => 'bağlantı koptu, trafik engellendi';
+
+  @override
+  String get trayNoteOffline => 'internet yok, ağ bekleniyor';
+
+  @override
+  String get routeYourPhone => 'Telefonunuz';
+
+  @override
+  String get importSyncTimeOk => 'Saat eşitlendi. Yeniden içe aktarın.';
+
+  @override
+  String get importSyncTimeManual =>
+      'Otomatik eşitleme yapılamadı - bunun için yönetici hakları gerekiyor.\n\nElle düzeltmek için: Windows Ayarları → Zaman ve dil → Tarih ve saat. “Saati otomatik olarak ayarla”yı açın ve “Şimdi eşitle”ye tıklayın. Anahtar zaten açıksa kapatıp yeniden açın.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'Bu kopya Microsoft Store\'dan yüklendi ve yalnızca onun üzerinden güncellenir: Store yeni sürümleri kendisi ya da İndirilenler\'deki \"Güncellemeleri al\" düğmesiyle yükler.';
+
+  @override
+  String get updatesOpenMsStore => 'Microsoft Store\'u aç';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'Yeni sürümler Microsoft Store üzerinden gelir';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'Abonelikleri Belgeler\'deki kopyada sakla';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'Windows, Microsoft Store uygulamasının verilerini kaldırırken siler; bu yüzden ayarlar her zaman \"Belgeler\\SilentGate\" klasörüne kopyalanır. Yeniden yüklemeden sonra uygulama bunları kendisi geri yükler. Kopya Windows hesabınızın anahtarıyla şifrelenir';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'Ayarlar Belgeler\'deki kopyadan geri yüklendi';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return '“$name” aboneliği silindi';
+  }
+
+  @override
+  String get subBarRestore => 'Geri yükle';
+
+  @override
+  String get connectButtonCancel => 'İptal';
+
+  @override
+  String get connectButtonStop => 'Durdur';
+
+  @override
+  String get connectStepCheckConflicts => 'Çakışma kontrolü…';
+
+  @override
+  String get connectStepCheckPorts => 'Port kontrolü…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'Arama odası…';
+
+  @override
+  String get connectStepCore => 'Çekirdek başlıyor…';
+
+  @override
+  String get connectStepTun => 'TUN başlıyor…';
+
+  @override
+  String get connectStepTraffic => 'Trafik kontrolü…';
+
+  @override
+  String get connectStepStopping => 'Durduruluyor…';
+
+  @override
+  String get connectStepForceKill => 'Zorla durdur…';
+
+  @override
+  String get splitSiteAlreadyExists => 'Site zaten ekli, atlandı';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return '\"$query\" ile eşleşen site yok - eklemek için \"Ekle\" düğmesine basın';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'Yeni site eklendiğinde VPN\'i her zaman yeniden başlat';
+
+  @override
+  String get splitVirtualGroupBadge => 'alt alan adları';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'Bağlantılar: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'Açık bağlantılar';
+
+  @override
+  String get liveConnsSubtitle => 'Gerçek zamanlı güncellenir';
+
+  @override
+  String get liveConnsSectionVpn => 'VPN üzerinden';
+
+  @override
+  String get liveConnsSectionBlocked => 'Engellenenler';
+
+  @override
+  String get liveConnsSectionDirect => 'Doğrudan';
+
+  @override
+  String get liveConnsEmpty => 'Şu anda etkin bağlantı yok';
+
+  @override
+  String get liveConnsUnavailable =>
+      'TUN olmadan sistem proxy modunda bağlantı listesi kullanılamaz';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'Rotalar güncellendi';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return '\"$domain\" kurallara eklendi ancak etkin tünel hâlâ önceki listeyi kullanıyor. VPN şimdi yeniden başlatılsın mı?';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return '\"$domain\" eklendi. Yeni kuralın hemen uygulanması için VPN şimdi yeniden başlatılsın mı?';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'VPN\'i yeniden başlat';
+
+  @override
+  String get updatesTrafficWarningTitle => 'Abonelik trafiği kullanımı';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'Güncelleme sunucularına doğrudan erişim yok veya tüm trafik VPN üzerinden geçiyor. Güncelleme kontrolü ve indirme abonelik kotanızı kullanır. Devam edilsin mi?';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'Güncelleme indirmesi ($sizeMb MB) etkin VPN üzerinden yapılacak ve abonelik kotanızı kullanacak. Devam edilsin mi?';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'Bu uyarıyı bir daha gösterme';
+
+  @override
+  String get updatesContinue => 'Devam et';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'Yalnızca Bağlan düğmesinin altındaki kontrol simgelerini etkiler. Belirli servisleri VPN üzerinden veya dışından yönlendirmek için bölünmüş tünellemeyi ayarlayın.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'Bölünmüş tünellemeyi ayarla';
+
+  @override
+  String get splitQuickServicesTitle => 'Hızlı servis seçimi';
+
+  @override
+  String get splitQuickServicesSub =>
+      'Servisin ana ve medya alan adlarını geçerli modun eylemiyle ekler';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return '$service alan adları eklendi. Aramalar ve uygulama için $service uygulamasını yukarıdaki \"Uygulamalar\" listesine de ekleyin';
+  }
+
+  @override
+  String get liveConnsPause => 'Duraklat';
+
+  @override
+  String get liveConnsResume => 'Güncellemeyi sürdür';
+
+  @override
+  String get liveConnsPausedSubtitle => 'Duraklatıldı · liste donduruldu';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle =>
+      'Seçim sırasında liste donduruldu';
+
+  @override
+  String get liveConnsSelectMode => 'Seçim modu';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'Seçilen: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'Tümünü seç';
+
+  @override
+  String get liveConnsClearSelection => 'Seçimi temizle';
+
+  @override
+  String get liveConnsMenuSelect => 'Seç';
+
+  @override
+  String get liveConnsMenuDeselect => 'Seçimi kaldır';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return '\"$process\" için tümünü seç ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return '\"$domain\" için tümünü seç ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'Sunucu üzerinden...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'Bağlantıyı kes';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'Seçilenleri kes ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'Kapatılan bağlantı: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'Bağlantı kapatılamadı';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return '\"$process\" işlemine göre filtrele';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return '\"$domain\" alan adına göre filtrele';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'Alan adını kopyala';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'IP:port kopyala';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'İşlem adını kopyala';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'Dosya yolunu kopyala';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'Gezgin\'de göster';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'Seçili hedefleri kopyala';
+
+  @override
+  String get liveConnsModeAuto => 'Otomatik';
+
+  @override
+  String get liveConnsModeSites => 'Siteler';
+
+  @override
+  String get liveConnsModeApps => 'Uygulamalar';
+
+  @override
+  String get liveConnsModeBoth => 'Her ikisi';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'Bu mod için uygun alan adı veya uygulama yok';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'Siteler: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'Uygulamalar: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'Tarayıcı ham IP adresleri ($processes) atlandı - tüm uygulama için \"Uygulamalar\" modunu seçin';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'Uygulanan kurallar: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'Seç';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'Seçilen kural: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'Görünürleri seç';
+
+  @override
+  String get splitBatchCancel => 'İptal';
+
+  @override
+  String get splitBatchViaServer => 'Sunucu üzerinden...';
+
+  @override
+  String get splitBatchEnable => 'Etkinleştir';
+
+  @override
+  String get splitBatchDisable => 'Devre dışı bırak';
+
+  @override
+  String get splitMenuConfigure => 'Yapılandır...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return '\"$domain\" ailesini seç';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'Güncellenen kural: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'Silinen kural: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'Ayrı çıkış olarak seçilemez';
+
+  @override
+  String get exitServerBlockedNote =>
+      'Ayrı çıkış olarak kullanılamaz: Otomatik profiller, röleler ve yalnızca Xray protokolleri sadece ana sunucu olarak çalışır.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return '\"$name\" sunucusu şu anda bir kural için ayrı çıkış olarak atanamaz.\n\n\"Otomatik\" profiller, çok adımlı röleler ve Xray\'e özgü protokoller (XHTTP gibi) Xray hattı gerektirirken, ikincil çıkışlar doğrudan sing-box tarafından yönetilir.\n\nBu kural için standart bir tekil sunucu seçin veya \"$name\" sunucusunu ana ekranda ana sunucu yapın.';
+  }
+
+  @override
+  String get supportChipCantConnect => 'Bağlanmıyor';
+
+  @override
+  String get supportChipSiteOrYoutube => 'YouTube / site açılmıyor';
+
+  @override
+  String get supportChipSlowSpeed => 'Düşük hız';
+
+  @override
+  String get supportChipDrops => 'Bağlantı kopuyor';
+
+  @override
+  String get supportChipsHint =>
+      'Hızlı seçim (isteğe bağlı, açıklama yazmadan):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'Sorun açıklaması (isteğe bağlı)';
+
+  @override
+  String get supportNoTextProvided => 'Metin açıklaması yok (teknik rapor)';
+
+  @override
+  String get supportCategoriesHeader => 'Kategori';
+
+  @override
+  String get supportSendDevCopyTitle => 'Geliştiriciye anonim kopya gönder';
+
+  @override
+  String get supportSendDevCopySub =>
+      'Abonelik anahtarı, kişisel IP ve ham HWID olmadan - hataları hızla çözmeye yardımcı olur';
+
+  @override
+  String get supportPreviewDevCopy => 'Ne gönderilir?';
+
+  @override
+  String get supportPreviewDialogTitle => 'Geliştirici için anonim kopya';
+
+  @override
+  String get supportSendDevOnlyButton => 'Yalnızca geliştiriciye';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'Kopya geliştiriciye gönderildi ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'Sunucuya gönderilemedi ($code) - yerel dosya hazır';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'Anonim rapor geliştirici sunucusuna gönderildi. Rapor kodu: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'Tanı raporu';
+
+  @override
+  String get supportSendToChatAndDev => 'Sohbete ekle';
 }

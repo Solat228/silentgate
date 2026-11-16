@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:silentgate/core/models/engine_notice.dart';
+import 'package:silentgate/core/models/ui_message.dart';
 import 'package:silentgate/core/models/subscription_info.dart';
 import 'package:silentgate/core/models/subscription_profile.dart';
 import 'package:silentgate/core/models/traffic_stats.dart';
@@ -11,6 +15,8 @@ import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/parser/share_link_parser.dart';
 import 'package:silentgate/core/platform/app_paths.dart';
 import 'package:silentgate/core/platform/device_id.dart';
+import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/subscription/subscription_logo.dart';
 import 'package:silentgate/core/subscription/subscription_service.dart';
 import 'package:silentgate/engine/vpn_engine.dart';
 import 'package:silentgate/state/app_state.dart';
@@ -29,11 +35,15 @@ import 'package:silentgate/state/app_state.dart';
 /// боевой `%APPDATA%` тесты не трогают никогда (предохранитель в `AppPaths`).
 /// В сеть никто не ходит — панель подменена.
 class _FakeEngine extends VpnEngine {
+  // Подключение «поднимается» сразу: тестам удаления при живом туннеле нужен
+  // статус «Подключено», а сеть и ядро им ни к чему.
+  final _statusCtrl = StreamController<VpnStatus>.broadcast();
+
   @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
 
   @override
-  Stream<VpnStatus> get statusStream => const Stream.empty();
+  Stream<VpnStatus> get statusStream => _statusCtrl.stream;
 
   @override
   Stream<TrafficStats> get statsStream => const Stream.empty();
@@ -49,7 +59,9 @@ class _FakeEngine extends VpnEngine {
 
   @override
   Future<void> connect(VpnServer server,
-      {ConnectionOptions options = const ConnectionOptions()}) async {}
+      {ConnectionOptions options = const ConnectionOptions()}) async {
+    _statusCtrl.add(const VpnStatus(VpnConnectionState.connected));
+  }
 
   @override
   Future<void> connectBalancer(List<VpnServer> servers,
@@ -59,23 +71,30 @@ class _FakeEngine extends VpnEngine {
   Future<void> disconnect() async {}
 
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    await _statusCtrl.close();
+  }
 }
 
 /// Панель, которая запоминает, ЧЬЮ подписку у неё спросили, и отдаёт свой
 /// список серверов на каждый адрес.
 class _FakePanel extends SubscriptionService {
-  _FakePanel({this.answers = const {}, this.fail = false});
+  _FakePanel({this.answers = const {}, this.fail = false, this.gate});
 
   /// url → ссылки серверов, которые «прислала» панель.
   final Map<String, List<String>> answers;
   final bool fail;
   final List<String> urls = [];
 
+  /// Ответ задерживается, пока тест не откроет ворота: так в окно ожидания
+  /// помещается действие пользователя (удаление подписки).
+  final Completer<void>? gate;
+
   @override
   Future<SubscriptionResult> fetch(String url,
       {Map<String, String> deviceHeaders = const {}}) async {
     urls.add(url);
+    if (gate != null) await gate!.future;
     if (fail) throw SubscriptionException('панель недоступна');
     final links = answers[url] ?? const <String>[];
     return SubscriptionResult(
@@ -111,6 +130,8 @@ void main() {
       '?type=tcp&security=none#B';
   const linkFresh = 'vless://44444444-4444-4444-4444-444444444444@fresh.example'
       ':443?type=tcp&security=none#FRESH';
+  const linkA2 = 'vless://55555555-5555-5555-5555-555555555555@a2.example:443'
+      '?type=tcp&security=none#A2';
 
   Directory? tmp;
   AppState? live;
@@ -125,9 +146,20 @@ void main() {
   /// [withUrl] == false — состояние БЕЗ единой подписки, но с названием в
   /// карточке: так выглядит клиент, в который сервер добавили руками (ссылкой
   /// или своим JSON). Подписки за таким сервером нет, и открывать нечего.
+  /// Поднять `AppState` над уже засеянным каталогом (и при перезапуске).
+  AppState open({_FakePanel? panel}) => live = AppState(
+        engine: _FakeEngine(),
+        subscription: panel ?? _FakePanel(),
+        // Логотип ищется без сети: панель выдуманная.
+        logoFinder: () => SubscriptionLogo(
+            client: MockClient((_) async => http.Response('', 404))),
+      );
+
   AppState boot({
     bool withUrl = true,
     List<String> pinned = const [],
+    List<String> serversA = const [linkA],
+    int selectedIndex = 0,
     _FakePanel? panel,
   }) {
     tmp = Directory.systemTemp.createTempSync('sg_sub_actions_');
@@ -142,13 +174,13 @@ void main() {
     if (withUrl) {
       seed('silentgate_state.json', {
         'subscriptionUrl': urlA,
-        'servers': [linkA],
-        'selectedIndex': 0,
+        'servers': serversA,
+        'selectedIndex': selectedIndex,
       });
       seed('subscriptions.json', {
         'activeId': idA,
         'items': [
-          {'id': idA, 'url': urlA, 'servers': [linkA]},
+          {'id': idA, 'url': urlA, 'servers': serversA},
           {'id': idB, 'url': urlB, 'servers': [linkB]},
         ],
       });
@@ -160,10 +192,7 @@ void main() {
         'info': const SubscriptionInfo(title: 'Ручной сервер').toJson(),
       });
     }
-    return live = AppState(
-      engine: _FakeEngine(),
-      subscription: panel ?? _FakePanel(),
-    );
+    return open(panel: panel);
   }
 
   setUp(() => setDeviceIdProviderForTests(_FakeDeviceId()));
@@ -264,6 +293,220 @@ void main() {
     });
   });
 
+  group('Восстановление удалённой подписки (кнопка в уведомлении)', () {
+    test('неактивная: встаёт на своё место вместе с закреплениями', () async {
+      final state = boot(pinned: [linkA, linkB]);
+      await state.init();
+
+      final d = await state.deleteSubscription(id: idB, removePinned: true);
+      expect(d, isNotNull);
+      expect(d!.profile.id, idB);
+      expect(d.wasActive, isFalse);
+      expect(state.pinnedCount, 1);
+
+      await state.restoreSubscription(d);
+
+      expect(state.subscriptions.map((p) => p.id), [idA, idB],
+          reason: 'порядок подписок — данные: встаёт туда, где была');
+      expect(state.activeSubscriptionId, idA,
+          reason: 'удаляли не открытую — открытая не меняется');
+      expect(state.pinnedCount, 2, reason: 'снятое закрепление вернулось');
+      final saved = jsonDecode(File(path('subscriptions.json'))
+          .readAsStringSync()) as Map<String, dynamic>;
+      expect((saved['items'] as List).map((e) => e['id']),
+          containsAll([idA, idB]),
+          reason: 'восстановление обязано дойти до диска');
+    });
+
+    test('открытая: снова открыта, с тем же выбранным сервером', () async {
+      final state = boot();
+      await state.init();
+      final keyA = ShareLinkParser.tryParse(linkA)!.key;
+      expect(state.selectedServer?.key, keyA);
+
+      final d = await state.deleteSubscription();
+      expect(d!.wasActive, isTrue);
+      expect(state.activeSubscriptionId, idB);
+
+      await state.restoreSubscription(d);
+
+      expect(state.activeSubscriptionId, idA);
+      expect(state.subscriptions.map((p) => p.id), [idA, idB]);
+      expect(state.subscriptionUrl, urlA);
+      expect(state.selectedServer?.key, keyA);
+    });
+
+    test('последняя подписка: экран снова не пустой', () async {
+      final state = boot(pinned: [linkA]);
+      await state.init();
+      await state.deleteSubscription(id: idB);
+      final d = await state.deleteSubscription(removePinned: true);
+      expect(state.subscriptions, isEmpty);
+      expect(state.pinnedCount, 0);
+
+      await state.restoreSubscription(d!);
+
+      expect(state.activeSubscriptionId, idA);
+      expect(state.subscriptionUrl, urlA);
+      expect(state.pinnedCount, 1);
+      expect(state.servers.map((s) => s.key),
+          contains(ShareLinkParser.tryParse(linkA)!.key));
+    });
+
+    test('повторное нажатие не плодит копий', () async {
+      final state = boot();
+      await state.init();
+      final d = await state.deleteSubscription(id: idB);
+      await state.restoreSubscription(d!);
+      await state.restoreSubscription(d);
+      expect(state.subscriptions.map((p) => p.id), [idA, idB]);
+    });
+
+    test('удалять было нечего — снимка нет', () async {
+      final state = boot();
+      await state.init();
+      expect(await state.deleteSubscription(id: 'sub_нет'), isNull);
+    });
+  });
+
+  // Ревью 29.10.2026, L9–L11 и H6.
+  group('Восстановление и удаление: что дошло до диска и до экрана', () {
+    test('⚠️ L9: открытая подписка возвращается с выбором и на диске',
+        () async {
+      final state = boot(serversA: [linkA, linkA2], selectedIndex: 1);
+      await state.init();
+      final keyA2 = ShareLinkParser.tryParse(linkA2)!.key;
+      expect(state.selectedServer?.key, keyA2);
+
+      final d = await state.deleteSubscription();
+      await state.restoreSubscription(d!);
+      expect(state.selectedServer?.key, keyA2);
+
+      // Перезапуск: состояние читается с диска заново.
+      state.dispose();
+      final again = open();
+      await again.init();
+      expect(again.selectedServer?.key, keyA2,
+          reason: 'ЗДЕСЬ БЫЛА ПОТЕРЯ: выбор возвращали в память после записи '
+              'на диск, и после перезапуска выбран был первый сервер');
+    });
+
+    test('⚠️ L10: подписку переимпортировали — закрепления всё равно '
+        'возвращаются', () async {
+      final state = boot(
+          pinned: [linkA, linkB], panel: _FakePanel(answers: {urlB: [linkB]}));
+      await state.init();
+      final d = await state.deleteSubscription(id: idB, removePinned: true);
+      expect(state.pinnedCount, 1);
+
+      // Пока висело уведомление, ту же ссылку импортировали заново.
+      await state.importSource(urlB);
+      expect(state.subscriptions.map((p) => p.id), contains(idB));
+
+      await state.restoreSubscription(d!);
+      expect(state.pinnedCount, 2,
+          reason: 'ЗДЕСЬ БЫЛА ПОТЕРЯ: профиль уже был, и восстановление '
+              'выходило сразу, не вернув снятое закрепление');
+      expect(state.subscriptions.where((p) => p.id == idB).length, 1,
+          reason: 'профиль не задвоился');
+    });
+
+    test('⚠️ L11: удалили открытую при живом туннеле — плашка есть, '
+        'после восстановления снята', () async {
+      // Поднят НЕ первый сервер подписки: переключение на неё ставит первый,
+      // и только возврат выбора снимает расхождение.
+      final state = boot(serversA: [linkA, linkA2], selectedIndex: 1);
+      await state.init();
+      await state.toggleConnection(const AppSettings());
+      await Future<void>.delayed(Duration.zero);
+      expect(state.status.isConnected, isTrue);
+      expect(state.pendingRestartMessage, isNull);
+
+      final d = await state.deleteSubscription();
+      expect(state.selectedServer?.key, ShareLinkParser.tryParse(linkB)!.key);
+      expect(state.pendingRestartMessage, isA<UiRestartSubscriptionSwitched>(),
+          reason: 'туннель идёт через сервер удалённой подписки, а выбран '
+              'другой — без плашки об этом не узнать');
+
+      await state.restoreSubscription(d!);
+      expect(state.selectedServer?.key, ShareLinkParser.tryParse(linkA2)!.key);
+      expect(state.pendingRestartMessage, isNull,
+          reason: 'выбор снова совпал с поднятым сервером — плашка ложная');
+    });
+
+    test('H6: журнал называет подписку безопасным именем', () {
+      // Запасное имя подписки (`title` без названия) — хвост адреса, у
+      // Remnawave это токен. В журнал и отчёт поддержки — только `safeTitle`.
+      final src = File('lib/state/app_state.dart').readAsStringSync();
+      final calls = RegExp(r'AppLog\.[a-z]+\([^;]*?\);')
+          .allMatches(src)
+          .map((m) => m.group(0)!)
+          .toList();
+      expect(calls, isNotEmpty);
+      final leaks = [
+        for (final c in calls)
+          if (RegExp(r'\.title\b').hasMatch(c)) c,
+      ];
+      expect(leaks, isEmpty);
+    });
+  });
+
+  group('Сводка импорта считается по СВОЕЙ подписке', () {
+    // Жалоба владельца с телефона 26.10.2026: импорт второй подписки
+    // показывал «все серверы удалены и добавлены новые» — её сравнивали с
+    // открытой первой.
+    const urlC = 'https://panel.example/sub/token-c';
+
+    test('⚠️ новая подписка: ничего не «удалено»', () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlC: [linkFresh],
+      }));
+      await state.init();
+      expect(state.activeSubscriptionId, idA);
+
+      await state.importSource(urlC);
+
+      final sync = state.lastSync!;
+      expect(sync.removed, isEmpty,
+          reason: 'серверы первой подписки никуда не делись — она отдельная');
+      expect(sync.added, isEmpty,
+          reason: 'у новой подписки нет прошлого состава — есть только итог');
+      expect(sync.total, 1);
+      expect(state.subscriptions.map((p) => p.id),
+          containsAll([idA, idB, SubscriptionProfile.idFor(urlC)]));
+    });
+
+    test('⚠️ уже известная неоткрытая: разница с ЕЁ прошлым составом',
+        () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlB: [linkB, linkFresh],
+      }));
+      await state.init();
+      expect(state.activeSubscriptionId, idA);
+
+      await state.importSource(urlB);
+
+      final sync = state.lastSync!;
+      expect(sync.removed, isEmpty,
+          reason: 'сервер A принадлежит другой подписке — он не «удалён»');
+      expect(sync.added.length, 1, reason: 'добавился ровно FRESH');
+      expect(state.activeSubscriptionId, idB);
+    });
+
+    test('открытая: сравнение с тем, что на экране, как раньше', () async {
+      final state = boot(panel: _FakePanel(answers: {
+        urlA: [linkFresh],
+      }));
+      await state.init();
+
+      await state.importSource(urlA);
+
+      final sync = state.lastSync!;
+      expect(sync.removed.length, 1, reason: 'A ушёл из своей же подписки');
+      expect(sync.added.length, 1);
+    });
+  });
+
   group('Обновление указанной подписки', () {
     test('⚠️ ГЛАВНОЕ: спрашивают адрес НАЗВАННОЙ подписки', () async {
       final panel = _FakePanel(answers: {urlB: [linkFresh]});
@@ -333,6 +576,80 @@ void main() {
       expect(ok, isFalse);
       expect(panel.urls, isEmpty,
           reason: 'подменять активной нельзя: человек просил не эту');
+    });
+  });
+
+  group('Удаление во время обновления', () {
+    // Жалоба владельца 13.10.2026: удалил подписку, пока она обновлялась, —
+    // и сомневался, не вернётся ли она с ответом панели. Ответ приходит в
+    // профиль, которого уже нет; воскрешать его нельзя ни в одном из путей.
+
+    /// Подписка, которую удалили, не должна вернуться ни в память, ни на диск.
+    void expectGone(AppState state, String id) {
+      expect(state.subscriptions.map((p) => p.id), isNot(contains(id)),
+          reason: 'ответ панели воскресил удалённую подписку');
+      final onDisk = jsonDecode(File(path('subscriptions.json'))
+          .readAsStringSync()) as Map<String, dynamic>;
+      expect((onDisk['items'] as List).map((e) => (e as Map)['id']),
+          isNot(contains(id)),
+          reason: 'на диске удалённая подписка снова появилась');
+      expect(onDisk['activeId'], isNot(id));
+    }
+
+    test('⚠️ активная: удалена посреди обновления — не воскресает', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlA: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+
+      final refresh = state.refreshSubscription();
+      await Future<void>.delayed(Duration.zero);
+      expect(panel.urls, [urlA], reason: 'запрос к панели уже ушёл');
+
+      await state.deleteSubscription(id: idA);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idA);
+      expect(state.activeSubscriptionId, idB,
+          reason: 'активной остаётся та, на которую переключило удаление');
+      expect(state.servers.map((s) => s.key),
+          isNot(contains(ShareLinkParser.tryParse(linkFresh)!.key)),
+          reason: 'серверы удалённой подписки не лезут в открытый список');
+    });
+
+    test('⚠️ последняя подписка: удалена посреди обновления', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlA: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+      await state.deleteSubscription(id: idB);
+
+      final refresh = state.refreshSubscription();
+      await Future<void>.delayed(Duration.zero);
+      await state.deleteSubscription(id: idA);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idA);
+      expect(state.subscriptions, isEmpty);
+      expect(state.activeSubscriptionId, isNull);
+    });
+
+    test('соседняя: удалена посреди тихого обновления', () async {
+      final gate = Completer<void>();
+      final panel = _FakePanel(answers: {urlB: [linkFresh]}, gate: gate);
+      final state = boot(panel: panel);
+      await state.init();
+
+      final refresh = state.refreshSubscription(id: idB);
+      await Future<void>.delayed(Duration.zero);
+      await state.deleteSubscription(id: idB);
+      gate.complete();
+      await refresh;
+
+      expectGone(state, idB);
+      expect(state.activeSubscriptionId, idA);
     });
   });
 

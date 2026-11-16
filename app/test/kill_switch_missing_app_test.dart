@@ -197,7 +197,7 @@ void main() {
 
     test('каждый пропуск называется в журнале', () {
       expect(helper, contains('cleaned.skipped'));
-      expect(helper, contains('пропущено — файла нет на диске'));
+      expect(helper, contains('пропущено - файла нет на диске'));
     });
 
     test('⚠️ ГЕЙТ СПРАШИВАЕТ «ОБЯЗАНА ЛИ», А НЕ «ПРОСИЛИ ЛИ»', () {

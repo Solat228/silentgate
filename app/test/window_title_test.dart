@@ -52,9 +52,9 @@ void main() {
       expect(TrayWindow.windowOptions.title, contains(AppInfo.name));
     });
 
-    test('имя берётся из AppInfo, а не литералом', () {
+    test('имя берётся из AppInfo с номером сборки (+N), а не литералом', () {
       // Бренд может смениться — тогда правка должна быть ровно в одном месте.
-      expect(TrayWindow.nameWithVersion, '${AppInfo.name} ${AppInfo.version}');
+      expect(TrayWindow.nameWithVersion, '${AppInfo.name} ${AppInfo.fullVersion}');
     });
 
     test('подсказка трея тоже показывает версию', () {

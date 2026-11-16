@@ -159,6 +159,32 @@ String get kGithubReleasesApi =>
 String get kGithubReleasesListApi =>
     '$_apiBase/repos/$kGithubOwner/$kGithubRepo/releases';
 
+/// ВТОРОЙ ПУТЬ К ТЕМ ЖЕ РЕЛИЗАМ — САМ САЙТ GITHUB, БЕЗ API.
+///
+/// ⚠️ Заведён 13.10.2026 по живому случаю: у владельца `api.github.com`
+/// падает на TLS (подмена сертификата), а `github.com` открывается, и файлы
+/// по `releases/download/…` скачиваются. Запасной сайт при этом не отдавал
+/// манифест и подпись, и самообновление сводилось к ссылке. Здесь версия
+/// берётся из ленты релизов, а манифест, подпись и файлы — по прямым адресам
+/// загрузки. Целостность по-прежнему держит подпись манифеста.
+///
+/// Геттер: под тестовым override лента и файлы тоже уходят на стенд.
+String get kGithubWebBase => kUpdateApiOverride ?? 'https://github.com';
+
+/// Лента релизов (Atom). Включает пре-релизы, черновиков не показывает.
+String get kGithubReleasesFeed =>
+    '$kGithubWebBase/$kGithubOwner/$kGithubRepo/releases.atom';
+
+/// Прямой адрес файла [name] релиза [tag].
+String githubDownloadUrl(String tag, String name) =>
+    '$kGithubWebBase/$kGithubOwner/$kGithubRepo/releases/download/'
+    '${Uri.encodeComponent(tag)}/${Uri.encodeComponent(name)}';
+
+/// Страница релиза [tag] для человека.
+String githubTagPage(String tag) =>
+    'https://github.com/$kGithubOwner/$kGithubRepo/releases/tag/'
+    '${Uri.encodeComponent(tag)}';
+
 /// Страница релизов для человека — её открывает кнопка «Скачать».
 const kGithubReleasesPage =
     'https://github.com/$kGithubOwner/$kGithubRepo/releases/latest';
@@ -228,13 +254,32 @@ String? androidAssetHintForAbi(String? abi) {
 /// На Windows это установщик Inno Setup (`SilentGateSetup-<версия>.exe`;
 /// версия из имени перед сравнением вырезается, см. `AppUpdate`).
 ///
-/// [android] — только для тестов (по умолчанию — текущая платформа).
-String platformAssetHint({String? androidAbi, bool? android}) {
-  if (!(android ?? Platform.isAndroid)) return 'Setup.exe';
+/// Сборка без драйвера (Microsoft Store, MS3) обновляется своим
+/// установщиком `SilentGateSetup-<версия>-msstore.exe`. Обычный `Setup.exe`
+/// вернул бы в неё `wintun.dll` и `sing-box.exe` — ровно то, из-за чего Store
+/// отклонил сборку. Нет такого актива в релизе — приложение лишь даёт ссылку.
+/// Обычной сборке этот файл не подходит: `…-msstore.exe` не кончается на
+/// `Setup.exe`.
+///
+/// [tunAvailable] передаёт вызывающий (`AppStoreInfo.tunAvailable`): файл
+/// адресов не импортирует ничего, кроме `dart:*`. [android] — только для
+/// тестов (по умолчанию — текущая платформа).
+String platformAssetHint({
+  String? androidAbi,
+  bool? android,
+  bool tunAvailable = true,
+  bool stealth = false,
+}) {
+  if (!(android ?? Platform.isAndroid)) {
+    return tunAvailable ? 'Setup.exe' : 'Setup-msstore.exe';
+  }
   final abi = (androidAbi ?? '').trim();
+  if (stealth) {
+    if (abi.isEmpty) return 'ROOT-Stealth-arm64-v8a.apk';
+    final suffix = androidAssetHintForAbi(abi) ?? '-${abi.toLowerCase()}.apk';
+    return 'ROOT-Stealth$suffix';
+  }
   if (abi.isEmpty) return 'arm64-v8a.apk';
   return androidAssetHintForAbi(abi) ?? '-${abi.toLowerCase()}.apk';
 }
 
-/// Обёртка без ABI — для мест, где её не спрашивали.
-String get kPlatformAssetHint => platformAssetHint();

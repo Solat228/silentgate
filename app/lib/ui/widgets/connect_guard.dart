@@ -18,12 +18,40 @@ import 'app_toast.dart';
 Future<void> connectWithConflictCheck(
   BuildContext context, AppState state, VoidCallback go) async {
   final busy = state.status.isConnected ||
-      state.status.state == VpnConnectionState.connecting;
+      state.status.state == VpnConnectionState.connecting ||
+      state.status.state == VpnConnectionState.disconnecting;
   if (busy) {
-    go(); // это нажатие «Отключить»
+    _cancelCheck = true;
+    go(); // это нажатие «Отключить» / «Отменить» / «Стоп»
     return;
   }
+  // ⚠️ Двойное нажатие. Пока идёт проверка помех (и пока статус «подключаюсь»
+  // не дошёл до экрана), второе нажатие проходило ту же ветку и звало
+  // переключатель второй раз — тот видел «подключаюсь» и ОТКЛЮЧАЛ (аудит
+  // 25.10.2026, I). Второе нажатие в это окно глотается.
+  if (_checkInFlight) return;
+  _checkInFlight = true;
+  _cancelCheck = false;
+  var started = false;
+  try {
+    await _checkThenConnect(context, () {
+      started = true;
+      go();
+    });
+  } finally {
+    if (started) await Future<void>.delayed(doubleTapWindow);
+    _checkInFlight = false;
+  }
+}
 
+bool _checkInFlight = false;
+bool _cancelCheck = false;
+
+/// Сколько после запуска подключения глотаются повторные нажатия.
+@visibleForTesting
+Duration doubleTapWindow = const Duration(milliseconds: 120);
+
+Future<void> _checkThenConnect(BuildContext context, VoidCallback go) async {
   final conflict = await InterferenceScanner.activeForeignTunnel();
   if (!context.mounted) return;
   if (conflict == null) {
@@ -60,7 +88,8 @@ Future<void> connectWithConflictCheck(
     return;
   }
 
-  final ok = await InterferenceScanner.kill(conflict.pid!);
+  final ok = await InterferenceScanner.kill(conflict.pid!,
+      expectedPath: conflict.appPath);
   if (!context.mounted) return;
   if (!ok) {
     AppToast.show(context, l.toastAppCloseFailed(app), kind: ToastKind.error);
@@ -69,7 +98,8 @@ Future<void> connectWithConflictCheck(
   // Процесс убит, но АДАПТЕР исчезает не мгновенно: система снимает маршруты
   // с задержкой. Подключаться, пока он жив, — значит наступить ровно на ту
   // проблему, от которой только что избавились.
-  final gone = await InterferenceScanner.waitTunnelGone();
+  final gone = await InterferenceScanner.waitTunnelGone(abort: () => _cancelCheck);
+  if (_cancelCheck) return;
   if (!context.mounted) return;
   AppToast.show(context, l.toastAppClosed(app),
       kind: gone ? ToastKind.success : ToastKind.info);

@@ -18,6 +18,8 @@ import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.system.OsConstants
 import android.util.Log
+import lol.silentgate.cores.libbox.BridgeOptions
+import lol.silentgate.cores.libbox.BridgeSession
 import lol.silentgate.cores.libbox.CommandServer
 import lol.silentgate.cores.libbox.CommandServerHandler
 import lol.silentgate.cores.libbox.ConnectionOwner
@@ -25,11 +27,14 @@ import lol.silentgate.cores.libbox.InterfaceUpdateListener
 import lol.silentgate.cores.libbox.Libbox
 import lol.silentgate.cores.libbox.LocalDNSTransport
 import lol.silentgate.cores.libbox.NetworkInterface as LibboxNetworkInterface
+import lol.silentgate.cores.libbox.NeighborUpdateListener
 import lol.silentgate.cores.libbox.NetworkInterfaceIterator
 import lol.silentgate.cores.libbox.OverrideOptions
 import lol.silentgate.cores.libbox.PlatformInterface
+import lol.silentgate.cores.libbox.PlatformUser
 import lol.silentgate.cores.libbox.RoutePrefix
 import lol.silentgate.cores.libbox.SetupOptions
+import lol.silentgate.cores.libbox.ShellSession
 import lol.silentgate.cores.libbox.StringIterator
 import lol.silentgate.cores.libbox.SystemProxyStatus
 import lol.silentgate.cores.libbox.TunOptions
@@ -103,6 +108,40 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         /// ⚠️ Имя хранилища и ключ языка переехали в [NativePrefs] — их читает
         /// не только сервис. Здесь их больше нет намеренно: копия константы
         /// рядом с общей быстро начинает жить своей жизнью.
+
+        /** Имя источника в файле паник ядра: `CrashReport-tunnel.log`. */
+        private const val CRASH_SOURCE = "tunnel"
+
+        /**
+         * Новый `singbox.log` на каждый подъём туннеля, прежний — в `.old`.
+         *
+         * До sing-box 1.14 это делал `Libbox.redirectStderr`: он же направлял в
+         * файл паники Go. В 1.14 его убрали, и паники ядро пишет само, в
+         * `CrashReport-<источник>.log`, а при следующем `Libbox.setup` уносит
+         * файл в свой архив. Экран «Логи» и отчёт поддержки этот архив не
+         * читают, поэтому текст паники дописываем в лог ТОЙ сессии, которая
+         * упала, то есть в `.old`. Без этого причина падения ядра снова не
+         * дошла бы до пользователя.
+         */
+        internal fun rotateCoreLog(log: java.io.File, crash: java.io.File) {
+            if (log.length() > 0) {
+                val old = java.io.File(log.path + ".old")
+                old.delete()
+                log.renameTo(old)
+            }
+            if (crash.length() > 0) {
+                val maxBytes = 64 * 1024L
+                val text = java.io.RandomAccessFile(crash, "r").use { raf ->
+                    val from = (raf.length() - maxBytes).coerceAtLeast(0L)
+                    raf.seek(from)
+                    val buf = ByteArray((raf.length() - from).toInt())
+                    raf.readFully(buf)
+                    String(buf, Charsets.UTF_8)
+                }
+                java.io.File(log.path + ".old").appendText(
+                    "\n=== Ядро упало (паника Go), текст из ${crash.name} ===\n$text\n")
+            }
+        }
 
         private const val CHANNEL_ID = "silentgate_vpn"
 
@@ -309,6 +348,8 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
      * бы посреди `startOrReloadService`.
      */
     private val lifecycleLock = Any()
+    @Volatile
+    private var cancelRequested = false
 
     private var commandServer: CommandServer? = null
     private var coreLog: java.io.File? = null
@@ -333,6 +374,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     private var tunFingerprint: String? = null
     private var interfaceListener: InterfaceUpdateListener? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private val networkMonitorLock = Any()
+    private val underlyingNetworks = LinkedHashSet<Network>()
+    private var lastDefaultInterfaceSpec: String? = null
 
     private val connectivity: ConnectivityManager
         get() = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -362,6 +406,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 // сервера, правка настроек) выдавала себя за нажатие кнопки в
                 // шторке. Dart на такое честно отменял восстановление.
                 val byUser = intent?.getBooleanExtra(EXTRA_BY_USER, false) ?: false
+                cancelRequested = true
                 Log.i(logTag, "ACTION_STOP получен (byUser=$byUser)")
                 work.execute {
                     Log.i(logTag, "ACTION_STOP: выполняю остановку")
@@ -417,7 +462,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                                 strings().getString(R.string.vpn_always_on_no_session)),
                         )
                     }
-                    lastError = "Постоянная VPN: нет сохранённой сессии — подключитесь один раз вручную"
+                    lastError = "Постоянная VPN: нет сохранённой сессии - подключитесь один раз вручную"
                     notifyState()
                     // Снимаем уведомление вместе с сервисом: висящее «нет
                     // сессии» после ухода сервиса — мусор в шторке.
@@ -443,6 +488,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                         )
                     }
                 }
+                cancelRequested = false
                 val xray = intent?.getStringExtra(EXTRA_XRAY_CONFIG) ?: xrayRestored
                 work.execute {
                     // ⚠️ СБРОС ЗДЕСЬ, А НЕ ТОЛЬКО В УСПЕШНОЙ ВЕТКЕ startTunnel.
@@ -465,7 +511,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     // мы его на главном потоке, он обогнал бы уже поставленную в
                     // очередь остановку и снял бы её признак.
                     stoppedByUser = false
-                    startTunnel(config, xray)
+                    if (!cancelRequested) startTunnel(config, xray)
                 }
             }
         }
@@ -676,12 +722,18 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             coreLog = filesDir.resolve("SilentGate")
                 .also { it.mkdirs() }
                 .resolve("singbox.log")
-            runCatching { Libbox.redirectStderr(coreLog!!.absolutePath) }
+            val coreWorkDir = filesDir.resolve("sing-box").also { it.mkdirs() }
+            runCatching {
+                rotateCoreLog(coreLog!!, coreWorkDir.resolve("CrashReport-$CRASH_SOURCE.log"))
+            }
 
             Libbox.setup(SetupOptions().apply {
                 basePath = filesDir.absolutePath
-                workingPath = filesDir.resolve("sing-box").also { it.mkdirs() }.absolutePath
+                workingPath = coreWorkDir.absolutePath
                 tempPath = cacheDir.absolutePath
+                // Паники Go ядро пишет в `CrashReport-<источник>.log` рабочего
+                // каталога. Текст оттуда переносит [rotateCoreLog].
+                crashReportSource = CRASH_SOURCE
                 // На Android нужен обход особенности стека Go — иначе часть
                 // соединений не поднимается.
                 fixAndroidStack = true
@@ -791,7 +843,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 val text = generateSequence(e) { it.cause }
                     .mapNotNull { it.message }.joinToString(" | ")
                 val portBusy = text.contains("address already in use", ignoreCase = true)
-                if (!portBusy || attempt >= 4) throw e
+                if (cancelRequested || !portBusy || attempt >= 4) throw e
                 attempt++
                 Thread.sleep(250L * attempt)
             }
@@ -1070,9 +1122,16 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             options.inet4RouteExcludeAddress.forEach { exclude4.add(it.address() to it.prefix()) }
             options.inet6RouteExcludeAddress.forEach { exclude6.add(it.address() to it.prefix()) }
         }
-        // runCatching: у конфига без DNS-сервера свойство отдаёт null/бросает —
-        // это то же состояние «сервера нет», что и раньше ловил try/catch.
-        val dns = runCatching { options.dnsServerAddress?.value }.getOrNull()
+        // С sing-box 1.14 адресов DNS может быть несколько, и у TUN появился
+        // режим DNS. При `disabled` ядро DNS интерфейса не перехватывает, и
+        // назначать его системе нельзя: запросы ушли бы в никуда. Так делает и
+        // официальный клиент SFA. runCatching: без DNS-сервера свойство
+        // отдаёт null или бросает, это то же состояние «сервера нет».
+        val dnsMode = runCatching { options.dnsMode?.value }.getOrNull()
+        val dns = mutableListOf<String>()
+        if (dnsMode != Libbox.DNSModeDisabled) runCatching {
+            options.dnsServerAddress?.forEach { dns.add(it) }
+        }
         val includePkgs = mutableListOf<String>()
         options.includePackage.forEach { pkg ->
             // Свой пакет в allowed-список не пускаем: он увёл бы трафик самого
@@ -1109,7 +1168,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             // строим новый интерфейс.
             val liveFd = runCatching { live.fd }.getOrNull()
             if (liveFd != null) {
-                Log.i(logTag, "openTun: параметры прежние — переиспользую живой tun (fd=$liveFd)")
+                Log.i(logTag, "openTun: параметры прежние - переиспользую живой tun (fd=$liveFd)")
                 return liveFd
             }
         }
@@ -1155,11 +1214,13 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
             builder.excludeRoute(android.net.IpPrefix(java.net.InetAddress.getByName(addr), prefix))
         }
 
-        if (dns != null) try {
-            builder.addDnsServer(dns)
-        } catch (_: Throwable) {
-            // Без DNS-сервера приложения пойдут в системный резолвер мимо
-            // туннеля — ровно та утечка, которую чинили на Windows.
+        dns.forEach { server ->
+            try {
+                builder.addDnsServer(server)
+            } catch (_: Throwable) {
+                // Без DNS-сервера приложения пойдут в системный резолвер мимо
+                // туннеля — ровно та утечка, которую чинили на Windows.
+            }
         }
 
         // include и exclude НЕЛЬЗЯ смешивать: наличие хотя бы одного allowed
@@ -1181,7 +1242,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         // пользователь, и заметить подмену нечем.
         if (includeWanted && !perAppApplied) {
             throw IllegalStateException(
-                "Выбранные приложения не установлены — режим «только выбранные» применить не к чему"
+                "Выбранные приложения не установлены - режим «только выбранные» применить не к чему"
             )
         }
         if (!perAppApplied) {
@@ -1269,8 +1330,21 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     }
 
     override fun getInterfaces(): NetworkInterfaceIterator {
-        val active = connectivity.activeNetwork
-        val activeCaps = active?.let { connectivity.getNetworkCapabilities(it) }
+        val capsByIface = HashMap<String, NetworkCapabilities>()
+        runCatching {
+            for (net in connectivity.allNetworks) {
+                val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) continue
+                val ifName = connectivity.getLinkProperties(net)?.interfaceName
+                if (!ifName.isNullOrBlank()) {
+                    capsByIface[ifName] = caps
+                }
+            }
+        }
+        val fallbackCaps = runCatching {
+            connectivity.activeNetwork?.let { connectivity.getNetworkCapabilities(it) }
+                ?.takeIf { it.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) }
+        }.getOrNull()
         // На Android 11+ перечисление интерфейсов ограничено и может вернуть
         // null; необработанный NPE здесь уходит через JNI в Go и роняет процесс.
         val ifaces = runCatching { JavaNetworkInterface.getNetworkInterfaces() }
@@ -1313,47 +1387,176 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                     if (iface.supportsMulticast()) f = f or OsConstants.IFF_MULTICAST
                     f
                 }.getOrDefault(OsConstants.IFF_UP or OsConstants.IFF_RUNNING)
+                val ifCaps = capsByIface[iface.name] ?: fallbackCaps
                 type = when {
-                    activeCaps == null -> Libbox.InterfaceTypeOther
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Libbox.InterfaceTypeCellular
-                    activeCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Libbox.InterfaceTypeEthernet
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> Libbox.InterfaceTypeWIFI
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> Libbox.InterfaceTypeCellular
+                    ifCaps != null && ifCaps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> Libbox.InterfaceTypeEthernet
+                    iface.name.startsWith("wlan", ignoreCase = true) -> Libbox.InterfaceTypeWIFI
+                    iface.name.startsWith("rmnet", ignoreCase = true) ||
+                        iface.name.startsWith("ccmni", ignoreCase = true) ||
+                        iface.name.startsWith("pdp", ignoreCase = true) -> Libbox.InterfaceTypeCellular
+                    iface.name.startsWith("eth", ignoreCase = true) -> Libbox.InterfaceTypeEthernet
                     else -> Libbox.InterfaceTypeOther
                 }
-                metered = activeCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)?.not() ?: false
+                metered = ifCaps?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)?.not() ?: false
                 dnsServer = StringArray(emptyList())
             }
         }
         return InterfaceArray(list)
     }
 
+    private data class UnderlyingCandidate(
+        val name: String,
+        val index: Int,
+        val isExpensive: Boolean,
+        val isConstrained: Boolean,
+        val score: Int,
+    )
+
+    private fun scoreUnderlyingNetwork(network: Network): UnderlyingCandidate? {
+        val caps = runCatching { connectivity.getNetworkCapabilities(network) }.getOrNull() ?: return null
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)) return null
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return null
+        val link = runCatching { connectivity.getLinkProperties(network) }.getOrNull() ?: return null
+        val name = link.interfaceName?.takeIf {
+            it.isNotBlank() && !it.startsWith("tun", ignoreCase = true)
+        } ?: return null
+        val index = runCatching { JavaNetworkInterface.getByName(name)?.index ?: -1 }.getOrDefault(-1)
+        if (index < 0) return null
+
+        var score = when {
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> 400
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> 300
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_USB) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH) -> 200
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> 100
+            else -> 50
+        }
+        if (runCatching { link.routes.any { it.isDefaultRoute } }.getOrDefault(false)) {
+            score += 40
+        }
+        if (Build.VERSION.SDK_INT >= 28 &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_FOREGROUND)
+        ) {
+            score += 25
+        }
+        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)) {
+            score += 20
+        }
+        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+            score += 15
+        }
+        if (Build.VERSION.SDK_INT >= 28 &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+        ) {
+            score += 10
+        }
+        val isExpensive = !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+            !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        val isConstrained = !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+        return UnderlyingCandidate(
+            name = name,
+            index = index,
+            isExpensive = isExpensive,
+            isConstrained = isConstrained,
+            score = score,
+        )
+    }
+
+    private fun refreshBestDefaultInterface(listener: InterfaceUpdateListener) {
+        synchronized(networkMonitorLock) {
+            if (underlyingNetworks.isEmpty()) {
+                runCatching {
+                    for (net in connectivity.allNetworks) {
+                        val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                        if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+                            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        ) {
+                            underlyingNetworks.add(net)
+                        }
+                    }
+                }
+            }
+            var best: UnderlyingCandidate? = null
+            val stale = ArrayList<Network>()
+            for (net in underlyingNetworks) {
+                val cand = scoreUnderlyingNetwork(net)
+                if (cand == null) {
+                    stale.add(net)
+                    continue
+                }
+                if (best == null || cand.score > best.score) {
+                    best = cand
+                }
+            }
+            if (stale.isNotEmpty()) {
+                underlyingNetworks.removeAll(stale.toSet())
+            }
+            if (best == null) {
+                val spec = "|0|false|false"
+                if (lastDefaultInterfaceSpec != spec) {
+                    lastDefaultInterfaceSpec = spec
+                    listener.updateDefaultInterface("", -1, false, false)
+                }
+                return
+            }
+            val spec = "${best.name}|${best.index}|${best.isExpensive}|${best.isConstrained}"
+            if (lastDefaultInterfaceSpec != spec) {
+                lastDefaultInterfaceSpec = spec
+                Log.i(logTag, "Default interface -> ${best.name} (ifIndex=${best.index}, score=${best.score})")
+                listener.updateDefaultInterface(
+                    best.name,
+                    best.index,
+                    best.isExpensive,
+                    best.isConstrained,
+                )
+            }
+        }
+    }
+
     override fun startDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
         interfaceListener = listener
+        synchronized(networkMonitorLock) {
+            underlyingNetworks.clear()
+            lastDefaultInterfaceSpec = null
+            runCatching {
+                for (net in connectivity.allNetworks) {
+                    val caps = connectivity.getNetworkCapabilities(net) ?: continue
+                    if (caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) &&
+                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                    ) {
+                        underlyingNetworks.add(net)
+                    }
+                }
+            }
+        }
         // NOT_VPN обязателен: без него подъём СВОЕГО туннеля прилетает как
         // «сменилась сеть» и запускает вечный цикл переподключений — грабли,
         // которые на Windows чинили трижды.
         val request = NetworkRequest.Builder()
             .addCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN)
+            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
             .build()
         val cb = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) = update(network)
-            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) = update(network)
-            override fun onLost(network: Network) {
-                listener.updateDefaultInterface("", -1, false, false)
+            override fun onAvailable(network: Network) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
             }
 
-            private fun update(network: Network) {
-                val caps = connectivity.getNetworkCapabilities(network) ?: return
-                val link = connectivity.getLinkProperties(network) ?: return
-                val name = link.interfaceName ?: return
-                val index = runCatching { JavaNetworkInterface.getByName(name)?.index ?: -1 }.getOrDefault(-1)
-                listener.updateDefaultInterface(
-                    name,
-                    index,
-                    !caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
-                        !caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET),
-                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED).not(),
-                )
+            override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
+            }
+
+            override fun onLinkPropertiesChanged(network: Network, linkProperties: android.net.LinkProperties) {
+                synchronized(networkMonitorLock) { underlyingNetworks.add(network) }
+                refreshBestDefaultInterface(listener)
+            }
+
+            override fun onLost(network: Network) {
+                synchronized(networkMonitorLock) { underlyingNetworks.remove(network) }
+                refreshBestDefaultInterface(listener)
             }
         }
         networkCallback = cb
@@ -1369,6 +1572,7 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
                 .onSuccess { lifecycleRegistered = true }
         }
         connectivity.registerNetworkCallback(request, cb)
+        refreshBestDefaultInterface(listener)
     }
 
     override fun closeDefaultInterfaceMonitor(listener: InterfaceUpdateListener) {
@@ -1377,6 +1581,10 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
         }
         networkCallback = null
         interfaceListener = null
+        synchronized(networkMonitorLock) {
+            underlyingNetworks.clear()
+            lastDefaultInterfaceSpec = null
+        }
     }
 
     override fun underNetworkExtension(): Boolean = false
@@ -1385,9 +1593,37 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
     // Пустое состояние вместо null: значение уходит в Go через JNI, и null там
     // разыменовывается без проверки.
     override fun readWIFIState(): WIFIState = WIFIState("", "")
-    override fun systemCertificates(): StringIterator = StringArray(emptyList())
     override fun localDNSTransport(): LocalDNSTransport? = null
     override fun sendNotification(notification: lol.silentgate.cores.libbox.Notification) {}
+    override fun cancelNotification(identifier: String?, typeID: Int) {}
+
+    // ── Возможности sing-box 1.14, которых у нас нет ──────────────────────────
+    //
+    // SSH-оболочка, мост и таблица соседей нужны Tailscale и встроенному
+    // SSH-серверу ядра. Наши конфиги их не включают. «Не поддерживается»
+    // отвечаем явно: так ядро сообщит причину, а не упадёт на пустом значении.
+
+    override fun usePlatformShell(): Boolean = false
+    override fun checkPlatformShell() = throw UnsupportedOperationException("shell not supported")
+    override fun openShellSession(
+        user: PlatformUser?,
+        command: String?,
+        environ: StringIterator?,
+        term: String?,
+        rows: Int,
+        cols: Int,
+    ): ShellSession = throw UnsupportedOperationException("shell not supported")
+    override fun lookupUser(username: String?): PlatformUser =
+        throw UnsupportedOperationException("shell not supported")
+    override fun lookupSFTPServer(): String = throw UnsupportedOperationException("sftp not supported")
+    override fun readSystemSSHHostKey(): String = throw UnsupportedOperationException("ssh not supported")
+    override fun usePlatformBridge(): Boolean = false
+    override fun createBridge(options: BridgeOptions?): BridgeSession =
+        throw UnsupportedOperationException("bridge not supported")
+    override fun startNeighborMonitor(listener: NeighborUpdateListener?) {}
+    override fun closeNeighborMonitor(listener: NeighborUpdateListener?) {}
+    override fun registerMyInterface(name: String?) {}
+    override fun tailscaleHostname(): String = ""
 
     // ── CommandServerHandler ──────────────────────────────────────────────────
 
@@ -1404,6 +1640,9 @@ class SilentGateVpnService : VpnService(), PlatformInterface, CommandServerHandl
 
     override fun setSystemProxyEnabled(isEnabled: Boolean) {}
     override fun writeDebugMessage(message: String) {}
+    // Отладочные команды ядра 1.14: падение по запросу и SSH-агент нам не нужны.
+    override fun triggerNativeCrash() {}
+    override fun connectSSHAgent(): Int = -1
 
     // ── Нотификация ───────────────────────────────────────────────────────────
 

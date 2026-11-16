@@ -22,7 +22,7 @@ class IpInfo {
   /// «Кемерово, Россия» либо что есть.
   String get location {
     final parts = [city, region, country].where((p) => (p ?? '').isNotEmpty);
-    return parts.isEmpty ? '—' : parts.join(', ');
+    return parts.isEmpty ? '-' : parts.join(', ');
   }
 
   Map<String, dynamic> toJson() => {
@@ -59,12 +59,23 @@ class IpInfoService {
   static const _fallback = 'https://ipinfo.io/json';
 
   /// [proxyPort] — локальный http-прокси; null = смотрим свой обычный выход.
+  /// [proxyUser]/[proxyPassword] — креды локального прокси (инбаунды харнесса
+  /// и живого ядра закрыты паролем).
   static Future<IpInfo?> lookup({
     int? proxyPort,
+    String proxyUser = '',
+    String proxyPassword = '',
     Duration timeout = const Duration(seconds: 12),
+    List<String>? endpoints,
   }) async {
-    for (final url in const [_primary, _fallback]) {
-      final info = await _try(url, proxyPort, timeout);
+    for (final url in (endpoints ?? const [_primary, _fallback])) {
+      final info = await _try(
+        url,
+        proxyPort,
+        timeout,
+        proxyUser: proxyUser,
+        proxyPassword: proxyPassword,
+      );
       if (info != null) return info;
     }
     return null;
@@ -105,10 +116,24 @@ class IpInfoService {
     }
   }
 
-  static Future<IpInfo?> _try(String url, int? proxyPort, Duration timeout) async {
+  static Future<IpInfo?> _try(
+    String url,
+    int? proxyPort,
+    Duration timeout, {
+    String proxyUser = '',
+    String proxyPassword = '',
+  }) async {
     final client = HttpClient()..connectionTimeout = timeout;
-    if (proxyPort != null) {
+    if (proxyPort != null && proxyPort > 0) {
       client.findProxy = (_) => 'PROXY 127.0.0.1:$proxyPort';
+      if (proxyUser.isNotEmpty) {
+        client.addProxyCredentials(
+          '127.0.0.1',
+          proxyPort,
+          '',
+          HttpClientBasicCredentials(proxyUser, proxyPassword),
+        );
+      }
     }
     try {
       final req = await client.getUrl(Uri.parse(url)).timeout(timeout);

@@ -23,6 +23,10 @@ import 'package:silentgate/state/probe_controller.dart';
 
 class _FakeEngine implements VpnEngine {
   @override
+  LiveCoreApi? get connectionsCoreApi => null;
+  @override
+  Future<void> forceDisconnect() => disconnect();
+  @override
   set onCompactToggledInShade(void Function(bool compact)? handler) {}
   @override
   Stream<VpnStatus> get statusStream => const Stream.empty();
@@ -72,6 +76,8 @@ class _FakeEngine implements VpnEngine {
       throw StateError('VPN в диагностике не поднимается');
   @override
   Future<void> disconnect() async {}
+  @override
+  Future<void> prewarmSwitchHosts(List<VpnServer> servers) async {}
 
   @override
   Future<void> disconnectKeepingCapture() async {}

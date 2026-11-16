@@ -1,0 +1,22 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Сборка github (APK с GitHub и сайта). Сливается с main/AndroidManifest.xml.
+         В сборке play этих строк нет: приложение из Google Play обновляется
+         только через Play (правило Device and Network Abuse). -->
+
+    <!-- Самообновление: скачанный APK отдаётся СИСТЕМНОМУ установщику
+         (ACTION_VIEW + application/vnd.android.package-archive). Без этого
+         разрешения на Android 8+ такой интент молча не сработает: система
+         покажет «установка из неизвестных источников запрещена» или не
+         покажет ничего вовсе. Само разрешение — не «тихая установка»: её без
+         root на Android нет, лист согласия человек видит всегда. Разрешение
+         на уровне пользователя выдаётся один раз через
+         ACTION_MANAGE_UNKNOWN_APP_SOURCES (канал launcher →
+         openInstallPermission). -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
+    <queries>
+        <!-- «Есть ли на телефоне Google Play»: обновление сперва предлагается
+             через Play (та же подпись — Play ставит поверх), потом напрямую. -->
+        <package android:name="com.android.vending"/>
+    </queries>
+</manifest>

@@ -4,22 +4,21 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:silentgate/core/models/vpn_server.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
+import 'package:silentgate/core/singbox/exit_outbounds.dart';
 import 'package:silentgate/core/util/auto_groups.dart';
 import 'package:silentgate/core/util/server_groups.dart';
 import 'package:silentgate/ui/widgets/server_group_header.dart';
 
-/// Привязка серверов к страновым профилям «Авто» по их внутреннему списку.
-/// Решение владельца 10.10.2026: «🇵🇱 🚀Польша» от панели содержит Польшу 1.x и
-/// Польшу 2.x — они показываются под ним, а сравнение идёт по самим
-/// outbound'ам, «чтобы ничего не перепутать».
+/// Привязка серверов к страновым профилям «Авто» по флагу страны, раскладка
+/// верхних автосерверов, нижних `АВТО_ИМЯ_АВТО` и свёрнутой папки «🌉 Мосты».
 void main() {
   const pl = '\u{1F1F5}\u{1F1F1}';
   const de = '\u{1F1E9}\u{1F1EA}';
   const ru = '\u{1F1F7}\u{1F1FA}';
+  const fi = '\u{1F1EB}\u{1F1EE}';
+  const nl = '\u{1F1F3}\u{1F1F1}';
   const uuid = '11111111-2222-3333-4444-555555555555';
 
-  /// Outbound узла: адрес TEST-NET, различие — в sni (как у панели, где на
-  /// одном адресе и порту живут разные входы).
   Map<String, Object?> ob(String sni, {String tag = 'proxy', int port = 443}) => {
         'tag': tag,
         'protocol': 'vless',
@@ -110,7 +109,32 @@ void main() {
           })
       .join(' ');
 
-  group('сравнение по outbound', () {
+  group('мосты', () {
+    test('⚠️ мост не прячется под страновой шапкой, даже если он в профиле', () {
+      final s = [
+        profile('$de 🚀Германия', [ob('a.example'), ob('bridge.example')]),
+        srv('$de Германия 1.1', ob('a.example')),
+        srv('$ru -> $de Мск 2 -> Германия 2 (мост)', ob('bridge.example')),
+      ];
+      expect(AutoGroups.compute(s).ownerOf, {1: 0});
+    });
+
+    test('признаки моста: слово «мост» или стрелка в названии', () {
+      for (final name in [
+        'Мск 2 -> Германия 2',
+        'Москва → Польша',
+        'Германия (Мост)',
+        'RU bridge DE',
+      ]) {
+        expect(AutoGroups.isBridgeName(name), isTrue, reason: name);
+      }
+      for (final name in ['$de Германия 1.1', 'Мостовая-1 сервер', 'Польша - 2']) {
+        expect(AutoGroups.isBridgeName(name), isFalse, reason: name);
+      }
+    });
+  });
+
+  group('привязка по флагу и подписи outbound', () {
     test('совпадает целиком, тег не важен', () {
       final s = [
         profile('$pl Польша', [ob('a.example')]),
@@ -119,12 +143,17 @@ void main() {
       expect(AutoGroups.compute(s).ownerOf, {1: 0});
     });
 
-    test('⚠️ тот же адрес, порт и uuid, но другой sni — НЕ тот же сервер', () {
+    test('⚠️ сервер того же флага попадает в страновой автосервер даже при другом sni в панели', () {
+      // Решение владельца 10.11.2026: в неподписанный страновой автосервер
+      // («🇵🇱 🚀Польша») вкладываются ВСЕ серверы этого флага, даже если панель
+      // забыла добавить часть узлов в JSON профиля.
       final s = [
         profile('$pl Польша', [ob('a.example')]),
         srv('$pl Польша 1.2', ob('b.example')),
       ];
-      expect(AutoGroups.compute(s).ownerOf, isEmpty);
+      expect(AutoGroups.compute(s).ownerOf, {1: 0});
+      expect(AutoGroups.outboundSignature(ob('a.example')),
+          isNot(equals(AutoGroups.outboundSignature(ob('b.example')))));
     });
 
     test('порядок ключей в JSON значения не имеет', () {
@@ -133,13 +162,13 @@ void main() {
           AutoGroups.outboundSignature(ob('a.example')));
     });
 
-    test('hysteria2 из ссылки узнаётся по адресу, порту и паролю', () {
+    test('hysteria2 того же флага тоже входит в страновой автосервер', () {
       final s = [
         profile('$pl Польша', [ob('a.example'), hyOb('secret')]),
         hy('$pl Польша 1.6 Hysteria2', 'secret'),
-        hy('$pl Чужой hy2', 'other'),
+        hy('$pl Польша 2.6 Hysteria2', 'other'),
       ];
-      expect(AutoGroups.compute(s).ownerOf, {1: 0});
+      expect(AutoGroups.compute(s).ownerOf, {1: 0, 2: 0});
     });
 
     test('служебные outbound\'ы профиля не считаются', () {
@@ -187,9 +216,65 @@ void main() {
         1: [3, 4],
         2: [5],
       });
-      // Мост есть только в общем профиле — он остаётся сам по себе и дальше
-      // группируется по странам, как раньше.
       expect(b.ownerOf.containsKey(6), isFalse);
+    });
+
+    test('⚠️ в «🏳️ Авто Белые списки» НЕ попадает вообще ни одна локация, а все NL идут в Нидерланды', () {
+      final s = [
+        profile('🏳️ Авто Белые списки', [
+          ob('nl-1'),
+          ob('nl-ru'),
+          ob('fi-ru'),
+        ]),
+        profile('$nl 🚀Нидерланды', [ob('nl-1'), ob('nl-2'), ob('nl-3'), ob('nl-4')]),
+        srv('$nl 🚀Нидерланды 1. GRPC', ob('nl-1')),
+        srv('$nl 🚀Нидерланды 2.5 GRPC (RU)', ob('nl-ru')),
+        srv('$fi 🚀Финляндия 1.5 GRPC (RU)', ob('fi-ru')),
+        srv('Без флага (RU)', ob('nl-ru')),
+      ];
+      final b = AutoGroups.compute(s);
+      expect(b.members.containsKey(0), isFalse,
+          reason: 'в Авто Белые списки вообще ничего не должно попадать');
+      expect(b.ownerOf[2], 1);
+      expect(b.ownerOf[3], 1,
+          reason: 'все серверы флага NL вкладываются в страновой автосервер Нидерландов');
+      expect(b.ownerOf.containsKey(4), isFalse);
+      expect(b.ownerOf.containsKey(5), isFalse);
+    });
+
+    test('нижние АВТО_ИМЯ_АВТО («🇳🇱🏳️ Авто The Netherlands») НЕ вкладывают в себя серверы и стоят внизу', () {
+      final s = [
+        profile('🎬 Авто (YouTube)', [ob('nl-1')]), // 0 — глобальный авто
+        profile('$nl 🚀Нидерланды', [ob('nl-1')]), // 1 — страновой авто
+        srv('$nl 🚀Нидерланды 1', ob('nl-1')), // 2 — узел NL
+        srv('$nl 🚀Нидерланды 2', ob('nl-2')), // 3 — узел NL (не в JSON)
+        srv('$ru -> $nl Мск -> Нидерланды (мост)', ob('br-1')), // 4 — мост
+        profile('$fi 🚀Финляндия', [ob('fi-1')]), // 5 — страновой авто в середине
+        srv('$fi 🚀Финляндия 1', ob('fi-1')), // 6 — узел FI
+        profile('$nl🏳️ Авто The Netherlands', [ob('nl-1'), ob('nl-2')]), // 7 — нижний АВТО_ИМЯ_АВТО
+        profile('$de🏳️ Авто Germany', [ob('de-1')]), // 8 — нижний АВТО_ИМЯ_АВТО
+      ];
+      expect(AutoGroups.isBottomNamedAutoProfile(s[7].remark), isTrue);
+      expect(AutoGroups.isBottomNamedAutoProfile(s[8].remark), isTrue);
+      expect(AutoGroups.isBottomNamedAutoProfile(s[1].remark), isFalse);
+
+      final b = AutoGroups.compute(s);
+      expect(b.members, {
+        1: [2, 3],
+        5: [6],
+      });
+      // Порядок: 0 (глобальный), 1+2+3 (NL авто + его узлы), 5+6 (FI авто подтянут наверх + его узел),
+      // затем 7, 8 (нижние АВТО_ИМЯ_АВТО в порядке панели), и в самом конце 4 (мост).
+      final ord = ServerGroups.order(s, all(s), sortByCountry: false, auto: b);
+      expect(ord, [0, 1, 2, 3, 5, 6, 7, 8, 4]);
+    });
+
+    test('тематический профиль без флага страны не забирает чужие страны', () {
+      final s = [
+        profile('Авто Стриминг', [ob('nl-only')]),
+        srv('$nl 🚀Нидерланды 2.8 xhttp (RU)', ob('nl-only')),
+      ];
+      expect(AutoGroups.compute(s).isEmpty, isTrue);
     });
 
     test('маленький вложенный профиль не отнимает группу у страны', () {
@@ -201,7 +286,6 @@ void main() {
         srv('$pl Польша 3', ob('p3')),
       ];
       final b = AutoGroups.compute(s);
-      // Сервер идёт к самому узкому профилю, где он есть.
       expect(b.members, {
         0: [2, 3],
         1: [4],
@@ -228,8 +312,6 @@ void main() {
   });
 
   group('порядок и строки', () {
-    // Как у владельца: «Польша 2» провайдер поставил в самый верх, остальные
-    // польские — ниже, между ними мосты.
     List<VpnServer> owner() => [
           srv('$pl Польша 2', ob('p2')), // 0
           profile('$pl Польша', [ob('p1'), ob('p2'), ob('p3')]), // 1
@@ -239,18 +321,18 @@ void main() {
           srv('$pl Польша 3', ob('p3')), // 5
         ];
 
-    test('серверы встают за своим профилем в порядке провайдера', () {
+    test('серверы встают за своим профилем, а мосты уходят в самый низ', () {
       final s = owner();
       final b = AutoGroups.compute(s);
       expect(ServerGroups.order(s, all(s), sortByCountry: false, auto: b),
           [1, 0, 4, 5, 2, 3]);
     });
 
-    test('⚠️ группа «Авто» свёрнута по умолчанию', () {
+    test('⚠️ группа «Авто» и папка «Мосты» свёрнуты по умолчанию', () {
       final s = owner();
       final b = AutoGroups.compute(s);
       final ord = ServerGroups.order(s, all(s), sortByCountry: false, auto: b);
-      expect(shape(ServerGroups.build(s, ord, auto: b)), '<1×3> [RU-DE×2] >2 >3');
+      expect(shape(ServerGroups.build(s, ord, auto: b)), '<1×3> [BRIDGES×2]');
     });
 
     test('раскрытая показывает серверы; выбранный виден и в свёрнутой', () {
@@ -258,10 +340,39 @@ void main() {
       final b = AutoGroups.compute(s);
       final ord = ServerGroups.order(s, all(s), sortByCountry: false, auto: b);
       final key = ServerGroups.autoGroupKey(s[1]);
-      expect(shape(ServerGroups.build(s, ord, auto: b, expandedAuto: {key})),
-          '<1×3 open> ~0 ~4 ~5 [RU-DE×2] >2 >3');
+      expect(
+          shape(ServerGroups.build(s, ord,
+              auto: b, expandedAuto: {key, ServerGroups.bridgesGroupKey})),
+          '<1×3 open> ~0 ~4 ~5 [BRIDGES×2] >2 >3');
       expect(shape(ServerGroups.build(s, ord, auto: b, selected: 4)),
-          '<1×3> ~4 [RU-DE×2] >2 >3');
+          '<1×3> ~4 [BRIDGES×2]');
+      expect(shape(ServerGroups.build(s, ord, auto: b, selected: 2)),
+          '<1×3> [BRIDGES×2] >2');
+    });
+
+    test('виртуальный автосервер группы страны и папки «Мосты» пригоден для подключения и «Через сервер»', () {
+      final s = [
+        ...owner(),
+        srv('$de Германия 1', ob('d1')), // 6
+        srv('$de Германия 2', ob('d2')), // 7
+      ];
+      final b = AutoGroups.compute(s);
+      final ord = ServerGroups.order(s, all(s), sortByCountry: false, auto: b);
+      final entries = ServerGroups.build(s, ord, auto: b);
+      final headers = entries.whereType<ServerGroupHeader>().toList();
+      expect(headers.map((h) => h.country), ['DE', 'BRIDGES']);
+
+      final deVirtual = ServerGroups.resolveVirtualGroupKey('group://DE', s);
+      expect(deVirtual, isNotNull);
+      expect(deVirtual!.isPanelProfile, isTrue);
+      expect(canBeExitServer(deVirtual), isTrue);
+
+      final bridgesVirtual =
+          ServerGroups.resolveVirtualGroupKey('group://BRIDGES', s);
+      expect(bridgesVirtual, isNotNull);
+      expect(bridgesVirtual!.remark, '🌉 Мосты');
+      expect(bridgesVirtual.isPanelProfile, isTrue);
+      expect(canBeExitServer(bridgesVirtual), isTrue);
     });
 
     test('без профиля «Авто» всё как раньше', () {
@@ -275,9 +386,8 @@ void main() {
           '[PL×2] >0 >1');
     });
 
-    test('разнобой не считает собранные под «Авто»', () {
+    test('разнобой не считает собранные под «Авто» и мосты', () {
       final s = owner();
-      // Польша 2 сверху и Польша 1 ниже мостов — без привязки разнобой.
       expect(ServerGroups.isJumbled(s), isTrue);
       expect(ServerGroups.isJumbled(s, auto: AutoGroups.compute(s)), isFalse);
     });
@@ -297,8 +407,8 @@ void main() {
       final b = AutoGroups.compute(s);
       final e = ServerGroups.build(
           s, ServerGroups.order(s, all(s), sortByCountry: false, auto: b),
-          auto: b);
-      // <1> 60, [RU-DE] 41, затем строка 2.
+          auto: b, expandedAuto: {ServerGroups.bridgesGroupKey});
+      // <1> 60, [BRIDGES] 41, затем строка 2.
       expect(serverEntryTop(e, 1, rowExtent: 60), 0);
       expect(serverEntryTop(e, 2, rowExtent: 60), 60 + 41);
     });
@@ -315,7 +425,7 @@ void main() {
             isPinned: (_) => false,
           );
       expect(shape(entries(searching: true)), '0 1 2 3 4 5');
-      expect(shape(entries(searching: false)), '<1×3> [RU-DE×2] >2 >3');
+      expect(shape(entries(searching: false)), '<1×3> [BRIDGES×2]');
     });
   });
 
@@ -327,7 +437,7 @@ void main() {
       ];
       final a = AutoGroups.bind(s);
       expect(identical(AutoGroups.bind(List.of(s)), a), isTrue);
-      final changed = [s[0], srv('$pl Польша 1', ob('other'))];
+      final changed = [s[0], srv('$de Германия 1', ob('other'))];
       expect(AutoGroups.bind(changed).isEmpty, isTrue);
       expect(identical(AutoGroups.bind(s, skip: {1}), a), isFalse);
     });

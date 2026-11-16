@@ -23,15 +23,16 @@ void main() {
       );
 
   group('Порты API', () {
-    test('⚠️ активный сервер СВОЙ порт получает', () {
-      final keys = AppState.exitServerKeysFor(
-        settings: base(CaptureMode.tun)
-            .copyWith(apiExitServerKeys: const [germany, usa]),
-        selectedKey: germany,
-      );
-      expect(keys, containsAll(const [germany, usa]),
-          reason: 'сервер, выбранный на главном, обязан получить свой outbound '
-              '— иначе его порт из /v1/exits никуда не ведёт');
+    test('⚠️ активный сервер СВОЙ порт получает во всех режимах захвата', () {
+      for (final mode in CaptureMode.values) {
+        final keys = AppState.exitServerKeysFor(
+          settings: base(mode).copyWith(apiExitServerKeys: const [germany, usa]),
+          selectedKey: germany,
+        );
+        expect(keys, containsAll(const [germany, usa]),
+            reason: 'режим $mode: сервер, выбранный на главном, обязан получить '
+                'свой outbound — иначе его порт из /v1/exits никуда не ведёт');
+      }
     });
 
     test('переключение основного сервера ничего не ломает', () {
@@ -47,16 +48,14 @@ void main() {
       }
     });
 
-    test('гейт: выключенный API, пустой токен и системный прокси — ничего', () {
+    test('гейт: выключенный API и пустой токен — ничего', () {
       for (final s in [
         base(CaptureMode.tun)
             .copyWith(apiEnabled: false, apiExitServerKeys: const [germany]),
         base(CaptureMode.tun)
             .copyWith(apiToken: '', apiExitServerKeys: const [germany]),
-        // ⚠️ Системный прокси — умолчание на Windows: инбаундов там нет ни
-        // одного, значит и outbound-ы под них были бы мусором в конфиге.
         base(CaptureMode.systemProxy)
-            .copyWith(apiExitServerKeys: const [germany]),
+            .copyWith(apiEnabled: false, apiExitServerKeys: const [germany]),
       ]) {
         expect(
             AppState.exitServerKeysFor(settings: s, selectedKey: null), isEmpty,
@@ -202,15 +201,16 @@ void main() {
     });
 
     test('закрытый гейт портов не оставляет «api-only» ключей', () {
-      // Системный прокси: инбаундов нет вовсе, значит и прятать нечего.
       final settings = base(CaptureMode.systemProxy).copyWith(
-          splitTunnel: withSite(usa), apiExitServerKeys: const [germany, usa]);
+          apiEnabled: false,
+          splitTunnel: withSite(usa),
+          apiExitServerKeys: const [germany, usa]);
       expect(AppState.apiOnlyExitKeysFor(settings: settings, selectedKey: null),
           isEmpty);
       expect(
           AppState.exitServerKeysFor(settings: settings, selectedKey: null),
           const {usa},
-          reason: 'правила продолжают работать и там, где портов не бывает');
+          reason: 'правила продолжают работать и при выключенном API');
     });
   });
 }

@@ -1,10 +1,13 @@
 import 'dart:async';
 
+import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/net/api_ports.dart';
+import '../core/net/api_secrets.dart';
+import '../core/net/api_server.dart';
 import '../core/net/ip_info.dart';
 import '../core/platform/app_log.dart';
-import '../core/net/api_server.dart';
+import '../core/settings/app_settings.dart';
 import '../core/singbox/exit_outbounds.dart';
 import '../core/util/country_flag.dart';
 import 'app_state.dart';
@@ -34,49 +37,61 @@ class AppStateApiHandlers implements ApiHandlers {
   /// `server` стоял ВЫБРАННЫЙ в списке сервер. Клик по другой строке живой
   /// туннель не трогает (появляется лишь плашка «переподключитесь»), значит
   /// после клика выбран B, а трафик по-прежнему идёт через A — и статус
-  /// называл B. В `AppState.connectedServerKey` про это написано капслоком, и
-  /// проект на этом уже стоял: вердикт пробы записывался серверу, через
-  /// который не прошло ни байта.
+  /// называл B.
   String? get _connectedServerName {
     final key = state.connectedServerKey;
     if (key == null) return null;
-    for (final s in state.servers) {
+    for (final s in state.allSubscriptionServers()) {
       if (s.key == key) return s.displayName;
     }
     return null;
   }
 
-  /// Чем меряется настоящий выход. Подменяется в тестах; `null` — боевой путь.
-  ///
-  /// ⚠️ БЕЗ ПРОКСИ, И ЭТО СУТЬ ПРОВЕРКИ. Вопрос в том, заворачивает ли туннель
-  /// трафик САМОЙ МАШИНЫ. Запрос через порт ядра ответил бы на другой вопрос —
-  /// «работает ли выход» — и показывал бы VPN даже тогда, когда система идёт
-  /// мимо. Именно это расхождение владелец и поймал 02.09.2026.
+  /// Чем меряется настоящий выход машины (БЕЗ прокси). Подменяется в тестах; `null` — боевой путь.
   static Future<IpInfo?> Function()? egressLookup;
 
-  @override
-  Future<Map<String, dynamic>> status({bool verify = false}) async => {
-        'state': state.status.state.name,
-        'server': _connectedServerName,
-        // Выбор из статуса не пропадает — он уезжает в своё поле. Иначе скрипт
-        // потерял бы то, что читал раньше, и правка вышла бы ломающей.
-        'selectedServer': state.selectedServer?.displayName,
-        'captureMode': settings.settings.captureMode.name,
-        'connectedSeconds': state.connectedFor?.inSeconds,
-        // ⚠️ Единственный способ узнать, что `POST /v1/ping` доработал.
-        // Сам вызов не ждёт прогона (см. [ping]), а результаты забираются из
-        // `GET /v1/servers` — без этого поля скрипту оставалось бы гадать,
-        // сколько подождать перед чтением.
-        'pinging': probe.running,
-        // Поля нет вовсе, пока не попросили: выдумывать «проверку», которой не
-        // было, — то же молчание, из-за которого статусу и перестали верить.
-        if (verify) 'egress': await _egress(),
+  /// Чем меряется выход конкретного локального порта API. Подменяется в тестах; `null` — боевой путь.
+  static Future<IpInfo?> Function({
+    required int port,
+    required String user,
+    required String password,
+  })? portLookup;
+
+  static String _authModeLabel(ApiProxyAuthMode mode) => switch (mode) {
+        // ⚠️ Нельзя отдавать строку `apiToken`: она в чёрном списке секретов
+        // `apiSecretMarkers` как имя поля настроек!
+        ApiProxyAuthMode.apiToken => 'token',
+        ApiProxyAuthMode.none => 'none',
+        ApiProxyAuthMode.custom => 'custom',
       };
 
-  /// Настоящий выход: адрес и место, куда мы выходим ПРЯМО СЕЙЧАС.
-  ///
-  /// Не измерилось — говорим об этом прямо. Пустое поле читалось бы как
-  /// «проверили, всё хорошо».
+  static ({String user, String password}) _proxyCredsFor(AppSettings s) =>
+      switch (s.apiProxyAuthMode) {
+        ApiProxyAuthMode.apiToken => (user: 'sg', password: s.apiToken),
+        ApiProxyAuthMode.none => (user: '', password: ''),
+        ApiProxyAuthMode.custom => (
+            user: s.apiProxyCustomUser.trim(),
+            password: s.apiProxyCustomPassword,
+          ),
+      };
+
+  @override
+  Future<Map<String, dynamic>> status({bool verify = false}) async {
+    final st = settings.settings;
+    return {
+      'state': state.status.state.name,
+      'server': _connectedServerName,
+      'selectedServer': state.selectedServer?.displayName,
+      'captureMode': st.captureMode.name,
+      'connectedSeconds': state.connectedFor?.inSeconds,
+      'pinging': probe.running,
+      'standalonePortsActive': state.standaloneApiPortsRunning,
+      'autoPort': st.apiAutoPortEnabled ? st.apiAutoPort : null,
+      'directPort': st.apiDirectPort,
+      if (verify) 'egress': await _egress(),
+    };
+  }
+
   Future<Map<String, dynamic>> _egress() async {
     try {
       final info = await (egressLookup ?? IpInfoService.lookup)();
@@ -85,72 +100,196 @@ class AppStateApiHandlers implements ApiHandlers {
       }
       return {'ok': true, ...info.toJson()};
     } catch (e) {
-      return {'ok': false, 'error': '\$e'};
+      return {'ok': false, 'error': '$e'};
+    }
+  }
+
+  Future<Map<String, dynamic>> _probeLocalPort(int port, AppSettings st) async {
+    final creds = _proxyCredsFor(st);
+    final sw = Stopwatch()..start();
+    try {
+      final info = portLookup != null
+          ? await portLookup!(
+              port: port,
+              user: creds.user,
+              password: creds.password,
+            )
+          : await IpInfoService.lookup(
+              proxyPort: port,
+              proxyUser: creds.user,
+              proxyPassword: creds.password,
+              timeout: const Duration(seconds: 8),
+            );
+      sw.stop();
+      if (info == null) {
+        return {
+          'ok': false,
+          'port': port,
+          'latencyMs': sw.elapsedMilliseconds,
+          'error': 'порт не ответил или выход недоступен',
+        };
+      }
+      return {
+        'ok': true,
+        'port': port,
+        'latencyMs': sw.elapsedMilliseconds,
+        ...info.toJson(),
+      };
+    } catch (e) {
+      sw.stop();
+      return {
+        'ok': false,
+        'port': port,
+        'latencyMs': sw.elapsedMilliseconds,
+        'error': '$e',
+      };
     }
   }
 
   @override
-  Future<List<Map<String, dynamic>>> servers() async => [
+  Future<List<Map<String, dynamic>>> servers({
+    bool allSubscriptions = false,
+  }) async {
+    if (!allSubscriptions) {
+      return [
         for (final s in state.servers)
           {
-            'key': s.key,
+            'key': apiServerId(s.key),
             'name': s.displayName,
             'country': FlagUtil.isoFromName(s.remark),
             'protocol': s.protocol,
+            'isAutoProfile': s.isPanelProfile,
+            'canBeExit': canBeExitServer(s),
             'pingMs': probe.resultFor(s).latencyMs,
             'working': probe.resultFor(s).working,
           },
       ];
+    }
+
+    final seen = <String>{};
+    final out = <Map<String, dynamic>>[];
+    for (final g in state.allSubscriptionsGrouped()) {
+      final subId =
+          g.profile != null ? apiSubscriptionId(g.profile!.url) : 'local';
+      final subTitle = g.profile?.safeTitle ?? 'Локальные';
+      for (final s in g.servers) {
+        if (!seen.add(s.key)) continue;
+        out.add({
+          'key': apiServerId(s.key),
+          'name': s.displayName,
+          'country': FlagUtil.isoFromName(s.remark),
+          'protocol': s.protocol,
+          'isAutoProfile': s.isPanelProfile,
+          'canBeExit': canBeExitServer(s),
+          'subscriptionId': subId,
+          'subscription': subTitle,
+          'activeSubscription': g.active,
+          'pingMs': probe.resultFor(s).latencyMs,
+          'working': probe.resultFor(s).working,
+        });
+      }
+    }
+    return out;
+  }
 
   @override
-  Future<List<Map<String, dynamic>>> exits() async {
+  Future<List<Map<String, dynamic>>> exits({bool verify = false}) async {
     final st = settings.settings;
-    // ⚠️ ТОТ ЖЕ ГЕЙТ, ЧТО РЕШАЕТ, СОЗДАВАТЬ ЛИ ИНБАУНДЫ (`ApiPorts.exitsActive`,
-    // её же читают `buildApiExitInbounds`/`buildApiDirectInbound`). Список не
-    // рекламирует порт, которого нет физически: при выключенном API или
-    // пустом токене ни один из этих mixed-инбаундов не поднимется — ни
-    // серверный, ни «Прямо». В штатной работе сюда и не дойти (управляющий
-    // сервер сам не стартует без токена — см. `AppState.applyApiSettings`),
-    // но обработчик обязан быть верным сам по себе, а не полагаться на это.
-    if (!ApiPorts.exitsActive(enabled: st.apiEnabled, token: st.apiToken)) {
+    if (!ApiPorts.exitPortsActive(st)) {
       return const [];
     }
-    final keys = st.apiExitServerKeys;
+
+    final groups = state.allSubscriptionsGrouped();
+    final subTitleByKey = <String, String>{};
+    for (final g in groups) {
+      final title = g.profile?.safeTitle;
+      if (title == null || title.isEmpty) continue;
+      for (final s in g.servers) {
+        subTitleByKey.putIfAbsent(s.key, () => title);
+      }
+    }
+
+    final allCatalog = state.allSubscriptionServers();
+    final effectiveKeys = ApiPorts.effectiveServerKeys(st, allCatalog);
+    final portMap = ApiPorts.resolvePortMap(
+      effectiveKeys,
+      assignedPorts: st.apiAssignedPorts,
+      controlPort: st.apiControlPort,
+      autoPort: st.apiAutoPort,
+      directPort: st.apiDirectPort,
+    );
+    final autoPoolKeys = ApiPorts.autoPoolServerKeys(
+      st,
+      activeServers: state.servers,
+      allServers: allCatalog,
+    );
+    final authMode = _authModeLabel(st.apiProxyAuthMode);
+    final creds = _proxyCredsFor(st);
+    final authRequired = creds.user.isNotEmpty;
+    final listening =
+        state.status.isConnected || state.standaloneApiPortsRunning;
+
     final out = <Map<String, dynamic>>[];
-    for (final s in state.servers) {
-      if (!keys.contains(s.key)) continue;
-      // ⚠️ СЕРВЕР, ИЗ КОТОРОГО ВЫХОД НЕ СОБИРАЕТСЯ, ПОРТА НЕ ПОЛУЧИТ.
-      // Тот же предикат, что решает это физически (`canBeExitServer` —
-      // единственный ответчик, его же зовут `ExitOutbounds.build` и оба
-      // экрана): панельные профили «Авто» — готовые конфиги Xray целиком, а
-      // порты выходов разводит sing-box; сюда же попадают заглушки истёкшей
-      // подписки (`0.0.0.0:1`) и протоколы, которых нет у фабрики. Инбаунд для
-      // такого сервера не создаётся (построитель проверяет живые теги), и
-      // публиковать его порт значило бы назвать скрипту адрес, на который
-      // ядро заведомо не сядет. Интерфейс предупреждает об этом ещё на
-      // чекбоксе (`settings_screen._ApiSection`) — здесь просто не врём.
-      //
-      // ⚠️ РАНЬШЕ СПРАШИВАЛИ ОДИН `SingboxOutboundFactory.supports`, и
-      // панельный профиль его проходил: `protocol` у него берётся с первого
-      // outbound'а конфига и равен `vless`. Порт публиковался, выход
-      // собирался из ОДНОГО узла профиля — скрипт думал, что ходит «через
-      // Авто», а ходил через случайный узел без балансировщика.
-      if (!canBeExitServer(s)) continue;
-      // Ключ мог оказаться за пределами топ-40 (`ApiPorts.maxServers`) —
-      // тогда порта физически нет, и `port: null` дал бы вызывающему битый
-      // адрес `http://sg:токен@127.0.0.1:None` (см. `tools/silentgate.py`,
-      // `proxies_for`). Запись без порта не отдаём вовсе: молчаливое
-      // исключение честнее заведомо нерабочего адреса.
-      final port = ApiPorts.forServer(keys, s.key);
-      if (port == null) continue;
+
+    if (st.apiAutoPortEnabled && autoPoolKeys.isNotEmpty) {
       out.add({
-        'serverKey': s.key,
-        'name': s.displayName,
-        'country': FlagUtil.isoFromName(s.remark),
-        'port': port,
+        'serverKey': 'auto',
+        'kind': 'auto',
+        'name': 'Умный Автовыбор',
+        'port': st.apiAutoPort,
+        'poolSize': autoPoolKeys.length,
+        'authMode': authMode,
+        'authRequired': authRequired,
+        'listening': listening,
       });
     }
-    out.add({'serverKey': null, 'name': 'Прямо', 'port': ApiPorts.direct});
+
+    for (final s in allCatalog) {
+      if (!effectiveKeys.contains(s.key)) continue;
+      if (!canBeExitServer(s)) continue;
+      final port = portMap[s.key];
+      if (port == null) continue;
+      out.add({
+        'serverKey': apiServerId(s.key),
+        'kind': 'server',
+        'name': s.displayName,
+        'country': FlagUtil.isoFromName(s.remark),
+        if (subTitleByKey.containsKey(s.key))
+          'subscription': subTitleByKey[s.key],
+        'isAutoProfile': s.isPanelProfile,
+        'pingMs': probe.resultFor(s).latencyMs,
+        'working': probe.resultFor(s).working,
+        'port': port,
+        'authMode': authMode,
+        'authRequired': authRequired,
+        'listening': listening,
+      });
+    }
+
+    out.add({
+      'serverKey': null,
+      'kind': 'direct',
+      'name': 'Прямо',
+      'port': st.apiDirectPort,
+      'authMode': authMode,
+      'authRequired': authRequired,
+      'listening': listening,
+    });
+
+    if (verify) {
+      const batchSize = 6;
+      for (var i = 0; i < out.length; i += batchSize) {
+        final end = (i + batchSize < out.length) ? i + batchSize : out.length;
+        final slice = out.sublist(i, end);
+        final results = await Future.wait(
+          slice.map((entry) => _probeLocalPort(entry['port'] as int, st)),
+        );
+        for (var j = 0; j < slice.length; j++) {
+          slice[j]['egress'] = results[j];
+        }
+      }
+    }
+
     return out;
   }
 
@@ -161,32 +300,390 @@ class AppStateApiHandlers implements ApiHandlers {
       };
 
   @override
-  Future<Map<String, dynamic>> subscription() async => {
-        'title': state.info.title,
-        'usedBytes': state.info.usedBytes,
-        'totalBytes': state.info.totalBytes,
-        'unlimited': state.info.unlimitedTraffic,
-        'expiresAt': state.info.expiresAt?.toIso8601String(),
-      };
+  Future<Map<String, dynamic>> subscription() async {
+    final activeProf = state.activeSubscription;
+    final safeTitle = activeProf != null
+        ? activeProf.safeTitle
+        : (state.info.title ?? '');
+    return {
+      'title': safeTitle,
+      'usedBytes': state.info.usedBytes,
+      'totalBytes': state.info.totalBytes,
+      'unlimited': state.info.unlimitedTraffic,
+      'expiresAt': state.info.expiresAt?.toIso8601String(),
+    };
+  }
 
-  /// Канал живой (поднят или в процессе подъёма) — то состояние, в котором
-  /// `toggleConnection`/`connectAuto` вместо «подключить» ОТКЛЮЧАЮТ (это
-  /// переключатели одной кнопки на главном экране, которая нажимается только
-  /// при «не подключено»).
+  @override
+  Future<List<Map<String, dynamic>>> subscriptions() async {
+    final activeId = state.activeSubscription?.id;
+    return [
+      for (final p in state.subscriptions)
+        {
+          'id': apiSubscriptionId(p.url),
+          'title': p.safeTitle,
+          'active': p.id == activeId,
+          'isLocal': p.isLocal,
+          'serverCount': p.serverLinks.length,
+          'usedBytes': p.info.usedBytes,
+          'totalBytes': p.info.totalBytes,
+          'unlimited': p.info.unlimitedTraffic,
+          'expiresAt': p.info.expiresAt?.toIso8601String(),
+        },
+    ];
+  }
+
+  @override
+  Future<ApiResult> selectSubscription({String? id, String? title}) async {
+    final subs = state.subscriptions;
+    if (subs.isEmpty) {
+      return const ApiResult.fail(
+        'subscription_not_found',
+        'Нет добавленных подписок',
+      );
+    }
+    if ((id ?? '').trim().isNotEmpty) {
+      final wantId = id!.trim();
+      final match = subs
+          .where((p) => apiSubscriptionId(p.url) == wantId)
+          .firstOrNull;
+      if (match == null) {
+        return const ApiResult.fail(
+          'subscription_not_found',
+          'Подписка не найдена',
+        );
+      }
+      await state.switchSubscription(match.id);
+      return const ApiResult.ok();
+    }
+    if ((title ?? '').trim().isNotEmpty) {
+      final wantTitle = title!.trim().toLowerCase();
+      final matches = subs
+          .where((p) => p.safeTitle.trim().toLowerCase() == wantTitle)
+          .toList();
+      if (matches.isEmpty) {
+        return const ApiResult.fail(
+          'subscription_not_found',
+          'Подписка с таким названием не найдена',
+        );
+      }
+      if (matches.length > 1) {
+        return const ApiResult.fail(
+          'ambiguous_title',
+          'Под это название подходит несколько подписок — используйте id',
+        );
+      }
+      await state.switchSubscription(matches.single.id);
+      return const ApiResult.ok();
+    }
+    return const ApiResult.fail(
+      'subscription_required',
+      'Укажите id или title подписки',
+    );
+  }
+
+  @override
+  Future<ApiResult> refreshSubscription({String? id, bool all = false}) async {
+    if (all) {
+      for (final p in state.subscriptions) {
+        if (!p.isHttpUrl) continue;
+        unawaited(state.refreshSubscription(id: p.id).catchError((e) {
+          AppLog.w('Обновление подписки по API не завершилось: $e');
+          return false;
+        }));
+      }
+      return const ApiResult.ok();
+    }
+    if ((id ?? '').trim().isNotEmpty) {
+      final wantId = id!.trim();
+      final match = state.subscriptions
+          .where((p) => apiSubscriptionId(p.url) == wantId)
+          .firstOrNull;
+      if (match == null) {
+        return const ApiResult.fail(
+          'subscription_not_found',
+          'Подписка не найдена',
+        );
+      }
+      if (!match.isHttpUrl) {
+        return const ApiResult.fail(
+          'local_subscription',
+          'Локальная подписка не обновляется по сети',
+        );
+      }
+      unawaited(state.refreshSubscription(id: match.id).catchError((e) {
+        AppLog.w('Обновление подписки по API не завершилось: $e');
+        return false;
+      }));
+      return const ApiResult.ok();
+    }
+    unawaited(state.refreshSubscription().catchError((e) {
+      AppLog.w('Обновление активной подписки по API не завершилось: $e');
+      return false;
+    }));
+    return const ApiResult.ok();
+  }
+
+  @override
+  Future<ApiResult> configureExits(Map<String, dynamic> body) async {
+    final allCatalog = state.allSubscriptionServers();
+    VpnServer? findByApiId(String target) {
+      for (final s in allCatalog) {
+        if (apiServerId(s.key) == target || s.key == target) return s;
+      }
+      return null;
+    }
+
+    final customPorts = <String, int?>{};
+    final assignObj = body['assignPort'];
+    if (assignObj != null) {
+      if (assignObj is! Map) {
+        return const ApiResult.fail(
+          'invalid_assign_port',
+          'assignPort должен быть объектом {"server": "...", "port": 10825}',
+        );
+      }
+      final srvId = '${assignObj['server'] ?? assignObj['id'] ?? ''}'.trim();
+      final srv = findByApiId(srvId);
+      if (srv == null) {
+        return const ApiResult.fail('server_not_found', 'Сервер не найден');
+      }
+      final rawP = assignObj['port'];
+      if (rawP == null) {
+        customPorts[srv.key] = null;
+      } else {
+        final pNum = rawP is int ? rawP : int.tryParse('$rawP');
+        final cur = settings.settings;
+        if (pNum == null ||
+            ApiPorts.isReservedSystemPort(
+              pNum,
+              controlPort: cur.apiControlPort,
+              autoPort: cur.apiAutoPort,
+              directPort: cur.apiDirectPort,
+            )) {
+          return const ApiResult.fail(
+            'invalid_port',
+            'Порт недопустим или зарезервирован под внутренние нужды SilentGate',
+          );
+        }
+        customPorts[srv.key] = pNum;
+      }
+    }
+    final assignMapObj = body['assignPorts'];
+    if (assignMapObj != null) {
+      if (assignMapObj is! Map) {
+        return const ApiResult.fail(
+          'invalid_assign_port',
+          'assignPorts должен быть объектом {"srv-...": 10825}',
+        );
+      }
+      final cur = settings.settings;
+      for (final entry in assignMapObj.entries) {
+        final srv = findByApiId('${entry.key}'.trim());
+        if (srv == null) {
+          return const ApiResult.fail('server_not_found', 'Сервер не найден');
+        }
+        if (entry.value == null) {
+          customPorts[srv.key] = null;
+        } else {
+          final pNum =
+              entry.value is int ? entry.value as int : int.tryParse('${entry.value}');
+          if (pNum == null ||
+              ApiPorts.isReservedSystemPort(
+                pNum,
+                controlPort: cur.apiControlPort,
+                autoPort: cur.apiAutoPort,
+                directPort: cur.apiDirectPort,
+              )) {
+            return const ApiResult.fail(
+              'invalid_port',
+              'Порт недопустим или зарезервирован под внутренние нужды SilentGate',
+            );
+          }
+          customPorts[srv.key] = pNum;
+        }
+      }
+    }
+
+    ApiProxyAuthMode? nextAuthMode;
+    if (body['authMode'] is String) {
+      nextAuthMode = switch ((body['authMode'] as String).trim()) {
+        'token' || 'default' || 'bearer' => ApiProxyAuthMode.apiToken,
+        'none' => ApiProxyAuthMode.none,
+        'custom' => ApiProxyAuthMode.custom,
+        _ => null,
+      };
+      if (nextAuthMode == null) {
+        return const ApiResult.fail(
+          'invalid_auth_mode',
+          'authMode должен быть token, none или custom',
+        );
+      }
+    }
+
+    ApiAutoPoolScope? nextScope;
+    final rawScope = body['autoPoolScope'] ?? body['autoPool'];
+    if (rawScope is String) {
+      nextScope = switch (rawScope.trim()) {
+        'allSubscriptions' || 'all' => ApiAutoPoolScope.allSubscriptions,
+        'activeSubscription' || 'active' => ApiAutoPoolScope.activeSubscription,
+        'checkedOnly' || 'checked' || 'selectedExits' => ApiAutoPoolScope.checkedOnly,
+        _ => null,
+      };
+      if (nextScope == null) {
+        return const ApiResult.fail(
+          'invalid_scope',
+          'autoPoolScope должен быть allSubscriptions, activeSubscription или checkedOnly',
+        );
+      }
+    }
+
+    final modeStr = body['mode'] is String ? (body['mode'] as String).trim() : null;
+
+    await settings.update((s) {
+      var keys = List<String>.from(s.apiExitServerKeys);
+      var assigned = Map<String, int>.from(s.apiAssignedPorts);
+
+      if (body['clear'] == true || modeStr == 'clear') {
+        keys = <String>[];
+        if (body['resetSticky'] == true) {
+          assigned = <String, int>{};
+        }
+      }
+      if (body['enableAllAuto'] == true || modeStr == 'all_auto') {
+        final set = keys.toSet();
+        for (final srv in allCatalog) {
+          if (srv.isPanelProfile && canBeExitServer(srv)) {
+            set.add(srv.key);
+          }
+        }
+        keys = set.toList();
+      }
+      if (body['enableAll'] == true || modeStr == 'all_servers') {
+        final set = keys.toSet();
+        for (final srv in allCatalog) {
+          if (set.length >= ApiPorts.maxServers) break;
+          if (canBeExitServer(srv)) {
+            set.add(srv.key);
+          }
+        }
+        keys = set.toList();
+      }
+      if (body['servers'] is List) {
+        final nextKeys = <String>[];
+        for (final item in body['servers'] as List) {
+          final srv = findByApiId('$item'.trim());
+          if (srv != null && !nextKeys.contains(srv.key)) {
+            nextKeys.add(srv.key);
+          }
+        }
+        keys = nextKeys;
+      }
+      if (body['addServers'] is List) {
+        for (final item in body['addServers'] as List) {
+          final srv = findByApiId('$item'.trim());
+          if (srv != null && !keys.contains(srv.key)) {
+            keys.add(srv.key);
+          }
+        }
+      }
+      if (body['removeServers'] is List) {
+        for (final item in body['removeServers'] as List) {
+          final srv = findByApiId('$item'.trim());
+          if (srv != null) {
+            keys.remove(srv.key);
+          }
+        }
+      }
+      for (final entry in customPorts.entries) {
+        if (entry.value == null) {
+          assigned.remove(entry.key);
+        } else {
+          if (!keys.contains(entry.key)) {
+            keys.add(entry.key);
+          }
+          assigned.removeWhere((_, v) => v == entry.value);
+          assigned[entry.key] = entry.value!;
+        }
+      }
+
+      assigned = ApiPorts.assignStickyPorts(
+        keys,
+        assigned,
+        controlPort: s.apiControlPort,
+        autoPort: s.apiAutoPort,
+        directPort: s.apiDirectPort,
+      );
+
+      return s.copyWith(
+        apiExitServerKeys: keys,
+        apiAssignedPorts: assigned,
+        apiAutoPortEnabled: body['autoPortEnabled'] is bool
+            ? body['autoPortEnabled'] as bool
+            : s.apiAutoPortEnabled,
+        apiAutoIncludeAutoProfiles: body['autoIncludeAutoProfiles'] is bool
+            ? body['autoIncludeAutoProfiles'] as bool
+            : s.apiAutoIncludeAutoProfiles,
+        apiKeepAliveWhenDisconnected: body['keepAliveWhenDisconnected'] is bool
+            ? body['keepAliveWhenDisconnected'] as bool
+            : s.apiKeepAliveWhenDisconnected,
+        apiDnsViaExit: body['dnsViaExit'] is bool
+            ? body['dnsViaExit'] as bool
+            : s.apiDnsViaExit,
+        apiAutoPoolScope: nextScope ?? s.apiAutoPoolScope,
+        apiProxyAuthMode: nextAuthMode ?? s.apiProxyAuthMode,
+      );
+    });
+    return const ApiResult.ok();
+  }
+
+  @override
+  Future<Map<String, dynamic>> testExit({int? port, String? serverKey}) async {
+    final st = settings.settings;
+    if (!ApiPorts.exitPortsActive(st)) {
+      return {
+        'ok': false,
+        'error': 'API выключен или не задан токен',
+      };
+    }
+    var targetPort = port;
+    if (targetPort == null && (serverKey ?? '').trim().isNotEmpty) {
+      final want = serverKey!.trim();
+      if (want == 'auto') {
+        targetPort = st.apiAutoPort;
+      } else if (want == 'direct') {
+        targetPort = st.apiDirectPort;
+      } else {
+        final allCatalog = state.allSubscriptionServers();
+        final effectiveKeys = ApiPorts.effectiveServerKeys(st, allCatalog);
+        final portMap = ApiPorts.resolvePortMap(
+          effectiveKeys,
+          assignedPorts: st.apiAssignedPorts,
+          controlPort: st.apiControlPort,
+          autoPort: st.apiAutoPort,
+          directPort: st.apiDirectPort,
+        );
+        for (final srv in allCatalog) {
+          if (apiServerId(srv.key) == want || srv.key == want) {
+            targetPort = portMap[srv.key];
+            break;
+          }
+        }
+      }
+    }
+    if (targetPort == null || targetPort <= 0) {
+      return {
+        'ok': false,
+        'error': 'порт не найден — укажите port или server с активным портом',
+      };
+    }
+    return _probeLocalPort(targetPort, st);
+  }
+
   bool get _live =>
       state.status.isConnected ||
       state.status.state == VpnConnectionState.connecting;
 
-  /// Выбрать сервер и подключиться — СМЕНОЙ сервера, если канал уже живой, а
-  /// не отключением.
-  ///
-  /// ⚠️ РАУНД РЕВЬЮ 1, НАХОДКА 3. Раньше здесь стоял голый
-  /// `state.toggleConnection(...)`: на живом соединении он уходил в ветку
-  /// ОТКЛЮЧЕНИЯ (это переключатель), и команда API «подключись к серверу X»
-  /// молча выключала VPN и отвечала `{"ok": true}`. `state.reconnect(...)` —
-  /// тот же путь, что использует подсказка «переподключитесь» в
-  /// `home_screen.dart` (#13): disconnect + connect с сохранением отсчёта
-  /// таймера сессии, а не голое выключение.
   Future<void> _connectTo(int index) async {
     state.selectServer(index);
     if (_live) {
@@ -197,12 +694,12 @@ class AppStateApiHandlers implements ApiHandlers {
   }
 
   @override
-  Future<ApiResult> connect(
-      {String? serverKey, String? name, bool auto = false}) async {
+  Future<ApiResult> connect({
+    String? serverKey,
+    String? name,
+    bool auto = false,
+  }) async {
     if (auto) {
-      // Тот же класс бага, что и у `_connectTo`: `connectAuto` — тоже
-      // переключатель, и на живом канале сам отключает VPN вместо смены
-      // режима на «Авто».
       if (_live) {
         await state.reconnectAuto(settings.settings);
       } else {
@@ -210,11 +707,26 @@ class AppStateApiHandlers implements ApiHandlers {
       }
       return const ApiResult.ok();
     }
-    // ⚠️ КЛЮЧ, А НЕ ИМЯ. Ключ (share-ссылка) стабилен и переживает
-    // переименование на панели; имя панель меняет когда угодно, и скрипт,
-    // написанный по имени, тихо сломался бы.
     if ((serverKey ?? '').isNotEmpty) {
-      final i = state.servers.indexWhere((s) => s.key == serverKey);
+      var i = state.servers.indexWhere(
+        (s) => apiServerId(s.key) == serverKey || s.key == serverKey,
+      );
+      if (i < 0) {
+        // Поиск в других подписках: если нашли — переключаемся на эту подписку!
+        for (final p in state.subscriptions) {
+          final subServers = state.serversOfSubscription(p.id);
+          final hit = subServers.any(
+            (s) => apiServerId(s.key) == serverKey || s.key == serverKey,
+          );
+          if (hit) {
+            await state.switchSubscription(p.id);
+            i = state.servers.indexWhere(
+              (s) => apiServerId(s.key) == serverKey || s.key == serverKey,
+            );
+            break;
+          }
+        }
+      }
       if (i < 0) {
         return const ApiResult.fail('server_not_found', 'Сервер не найден');
       }
@@ -229,16 +741,19 @@ class AppStateApiHandlers implements ApiHandlers {
       if (matches.isEmpty) {
         return const ApiResult.fail('server_not_found', 'Сервер не найден');
       }
-      // ⚠️ Молча выбрать первый значило бы подключить не туда.
       if (matches.length > 1) {
         return const ApiResult.fail(
-            'ambiguous_name', 'Под это имя подходит несколько серверов');
+          'ambiguous_name',
+          'Под это имя подходит несколько серверов',
+        );
       }
       await _connectTo(matches.first);
       return const ApiResult.ok();
     }
     return const ApiResult.fail(
-        'server_required', 'Укажите server, name или auto');
+      'server_required',
+      'Укажите server, name или auto',
+    );
   }
 
   @override
@@ -248,22 +763,10 @@ class AppStateApiHandlers implements ApiHandlers {
   }
 
   @override
-  Future<ApiResult> ping() async {
-    // ⚠️ НЕ ЖДЁМ ПРОГОНА. Раньше здесь стоял `await`, и ответ уходил только
-    // после ОБЕИХ фаз пинга по всем серверам подписки: на сотне серверов это
-    // минуты, а обёртка `tools/silentgate.py` ходит с `timeout=30` —
-    // гарантированное падение по таймауту на вызове, который документирован
-    // как мгновенный. Кнопка пинга в интерфейсе тоже ничего не ждёт.
-    //
-    // Повторный вызов на идущем прогоне безопасен: `ProbeController._pingBatch`
-    // выходит сразу (`if (_running …) return`), поэтому второй `POST /v1/ping`
-    // не запускает второй прогон и не мешает первому.
-    //
-    // Готовность спрашивается через `pinging` в `GET /v1/status`, результаты —
-    // через `GET /v1/servers`.
-    unawaited(probe.pingAll(state.servers, settings.settings).catchError((e) {
-      // Ошибку глотать нельзя: без `await` она стала бы необработанной, и
-      // причина провала пинга не попала бы никуда вообще.
+  Future<ApiResult> ping({bool allSubscriptions = false}) async {
+    final targets =
+        allSubscriptions ? state.allSubscriptionServers() : state.servers;
+    unawaited(probe.pingAll(targets, settings.settings).catchError((e) {
       AppLog.w('Пинг по команде API не завершился: $e');
     }));
     return const ApiResult.ok();

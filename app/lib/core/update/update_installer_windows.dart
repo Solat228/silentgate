@@ -340,7 +340,7 @@ class WindowsUpdateInstaller extends StagedUpdateInstaller {
       throw UpdateInstallException('установщик не прочитан: $e');
     }
     if (actual.toLowerCase() != expectedSha256.trim().toLowerCase()) {
-      AppLog.e('Обновление: хэш установщика изменился после проверки — запуск отменён');
+      AppLog.e('Обновление: хэш установщика изменился после проверки - запуск отменён');
       throw const UpdateInstallException('хэш установщика не совпал с проверенным');
     }
 

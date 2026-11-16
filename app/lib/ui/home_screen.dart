@@ -9,13 +9,15 @@ import 'package:flutter/services.dart'
 import 'layout/adaptive.dart';
 import 'package:provider/provider.dart';
 
+import '../core/geo/geo_bases.dart';
 import '../core/geo/geo_bases_controller.dart';
+import '../core/platform/network_cost.dart';
 import '../core/models/traffic_stats.dart';
 import '../core/models/vpn_server.dart';
 import '../core/models/vpn_status.dart';
 import '../core/net/speed_test.dart';
 import '../core/platform/interference_scanner.dart';
-import '../core/app_info.dart';
+import '../core/platform/clipboard_files_windows.dart';
 import '../core/platform/app_log.dart';
 import '../core/platform/notification_access.dart';
 import '../core/platform/platform_services.dart';
@@ -30,8 +32,11 @@ import '../core/util/server_groups.dart';
 import '../core/i18n/enum_labels.dart';
 import '../core/i18n/text_direction.dart';
 import '../l10n/gen/app_localizations.dart';
+import 'widgets/ui_message_l10n.dart';
 import 'widgets/status_text_l10n.dart';
 import 'widgets/info_tooltip.dart';
+import '../data/settings_backup.dart';
+import '../state/backup_snapshot_keeper.dart';
 import '../state/app_state.dart';
 import '../core/models/engine_notice.dart';
 import 'split_tunnel_screen.dart';
@@ -43,10 +48,12 @@ import '../state/settings_controller.dart';
 import 'auto_config_screen.dart';
 import 'import_screen.dart';
 import 'settings_screen.dart';
+import 'geo_bases_screen.dart';
 import 'widgets/app_toast.dart';
 import 'widgets/auto_pick_button.dart';
 import 'widgets/connect_guard.dart';
 import 'widgets/flag_cell.dart';
+import 'widgets/live_connections_sheet.dart';
 import 'widgets/flag_text.dart';
 import 'widgets/server_group_header.dart';
 import 'widgets/server_search_field.dart';
@@ -54,7 +61,11 @@ import 'widgets/server_tile.dart';
 import 'widgets/tun_task_result_text.dart';
 import 'widgets/service_checks_row.dart';
 import 'widgets/update_presenter.dart';
+import 'widgets/whats_new_badge.dart';
+import 'widgets/data_consent_dialog.dart';
+import '../core/privacy/device_info_consent.dart';
 import 'widgets/subscription_bar.dart';
+import 'widgets/support_chat_overlay.dart';
 import 'widgets/ping_chip.dart';
 import 'widgets/ping_gate.dart';
 import 'server_info_screen.dart';
@@ -192,6 +203,11 @@ class CopyServerKeyIntent extends Intent {
   const CopyServerKeyIntent();
 }
 
+/// Намерение «вставить подписку / серверы / файл из буфера обмена» (Ctrl+V / Shift+Insert).
+class PasteImportIntent extends Intent {
+  const PasteImportIntent();
+}
+
 /// Ctrl+C копирует ключ сервера, ВЫБРАННОГО В СПИСКЕ (на macOS — Cmd+C).
 ///
 /// ⚠️ ЭТО ПЕРВЫЙ ОБРАБОТЧИК КЛАВИШ В ПРИЛОЖЕНИИ, поэтому здесь подробно про
@@ -252,10 +268,15 @@ class CopyServerKeyShortcut extends StatefulWidget {
 
 class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
   late final _CopyServerKeyAction _action = _CopyServerKeyAction(this);
+  late final _PasteImportAction _pasteAction = _PasteImportAction(this);
 
   /// Есть что копировать и не мешаем ли мы полю ввода.
   bool get canCopy =>
       !CopyServerKeyShortcut.focusInsideTextInput() && _target != null;
+
+  bool get canPaste =>
+      !CopyServerKeyShortcut.focusInsideTextInput() &&
+      !context.read<AppState>().loading;
 
   VpnServer? get _target => context.read<AppState>().selectedServer;
 
@@ -274,6 +295,34 @@ class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
     if (mounted) AppToast.copied(context);
   }
 
+  Future<void> pasteFromClipboard() async {
+    final state = context.read<AppState>();
+    if (state.loading) return;
+    final payload = await ClipboardFilesWindows.readPayload();
+    if (!mounted) return;
+    if (payload.files.isNotEmpty) {
+      final ok = await state.importFiles(payload.files);
+      if (!mounted) return;
+      final l = AppLocalizations.of(context);
+      if (ok && state.error == null) {
+        AppToast.show(context, l.importScrDone, kind: ToastKind.success);
+      } else if (state.error != null) {
+        AppToast.show(context, state.error!, kind: ToastKind.error);
+      }
+      return;
+    }
+    final text = payload.text?.trim() ?? '';
+    if (text.isEmpty) return;
+    await state.importSource(text);
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    if (state.error == null && state.hasServers) {
+      AppToast.show(context, l.importScrDone, kind: ToastKind.success);
+    } else if (state.error != null) {
+      AppToast.show(context, state.error!, kind: ToastKind.error);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (!CopyServerKeyShortcut.hasKeyboard) return widget.child;
@@ -281,15 +330,29 @@ class _CopyServerKeyShortcutState extends State<CopyServerKeyShortcut> {
       shortcuts: <ShortcutActivator, Intent>{
         // На macOS копирование — Cmd+C; Ctrl+C там означает другое, и вешать
         // его значило бы спорить с системной привычкой.
-        if (Platform.isMacOS)
+        if (Platform.isMacOS) ...{
           const SingleActivator(LogicalKeyboardKey.keyC, meta: true):
-              const CopyServerKeyIntent()
-        else
+              const CopyServerKeyIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV, meta: true):
+              const PasteImportIntent(),
+        } else ...{
           const SingleActivator(LogicalKeyboardKey.keyC, control: true):
               const CopyServerKeyIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV, control: true):
+              const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.keyV,
+              control: true, meta: true): const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.insert, shift: true):
+              const PasteImportIntent(),
+          const SingleActivator(LogicalKeyboardKey.insert,
+              shift: true, meta: true): const PasteImportIntent(),
+        },
       },
       child: Actions(
-        actions: <Type, Action<Intent>>{CopyServerKeyIntent: _action},
+        actions: <Type, Action<Intent>>{
+          CopyServerKeyIntent: _action,
+          PasteImportIntent: _pasteAction,
+        },
         child: Focus(autofocus: true, child: widget.child), // см. (2)
       ),
     );
@@ -309,6 +372,18 @@ class _CopyServerKeyAction extends Action<CopyServerKeyIntent> {
 
   @override
   Object? invoke(CopyServerKeyIntent intent) => _host.copySelected();
+}
+
+class _PasteImportAction extends Action<PasteImportIntent> {
+  _PasteImportAction(this._host);
+
+  final _CopyServerKeyShortcutState _host;
+
+  @override
+  bool get isActionEnabled => _host.canPaste;
+
+  @override
+  Object? invoke(PasteImportIntent intent) => _host.pasteFromClipboard();
 }
 
 /// Сколько высоты отдать блоку «проверки + кнопка», чтобы под ним уместилось
@@ -519,8 +594,28 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    if (SettingsBackup.keepsSnapshot) {
+      _backup = BackupSnapshotKeeper.attach(context.read<SettingsController>(),
+          periodic: Platform.isWindows);
+    }
     // #5 — проверка активных помех на старте (один раз).
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Сборки магазинов: раскрытие данных и согласие — первым окном, до
+      // остальных (см. `DeviceInfoConsent`). До ответа данные устройства и
+      // так не уходят, поэтому ждать ответа здесь безопасно. Сборка GitHub
+      // показывает то же раскрытие один раз, без выбора.
+      final settingsCtrl = context.read<SettingsController>();
+      await askDataConsentIfNeeded(context, settingsCtrl,
+          needsAsking: () =>
+              DeviceInfoConsent.needsAsking(settingsCtrl.settings),
+          needsNotice: () =>
+              DeviceInfoConsent.needsNotice(settingsCtrl.settings));
+      if (!mounted) return;
+      // ⚠️ ПОСЛЕ окна раскрытия, а не до: восстановление из копии Google —
+      // это всегда свежая установка, а согласие в копию не входит, так что
+      // окно раскрытия там есть всегда. Тост до него прятался под окном и
+      // гас, пока человек читал (найдено живьём в эмуляторе).
+      unawaited(_sayRestored());
       // Замер «до» — на старте приложения, пока VPN выключен. Это половина
       // сравнения у кнопки: без него видно только «сейчас работает», но не
       // видно, VPN ли это сделал. Второй замер снимется сам при подъёме
@@ -559,9 +654,39 @@ class _HomeScreenState extends State<HomeScreen> {
   /// Уведомления самообновления (окно, ход закачки, итог установки).
   AppUpdatePresenter? _updates;
 
+  /// Android: снимок для резервной копии Google (P11).
+  BackupSnapshotKeeper? _backup;
+
+  /// Настройки на этом старте пришли из файла импорта или из резервной
+  /// копии Google — сказать один раз: иначе человек не поймёт, откуда у
+  /// только что установленного приложения его подписки.
+  Future<void> _sayRestored() async {
+    final src = SettingsBackup.restoredOnStart;
+    if (src == null || !mounted) return;
+    SettingsBackup.restoredOnStart = null;
+    // ⚠️ Текст берётся ПОСЛЕ того, как настройки прочитаны и кадр с их языком
+    // нарисован. Импорт как раз и меняет язык, а на первых кадрах интерфейс
+    // ещё на языке системы — тост выходил по-английски поверх русского
+    // интерфейса (найдено живьём в эмуляторе).
+    await context.read<SettingsController>().whenLoaded;
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
+    final l = AppLocalizations.of(context);
+    AppToast.show(
+        context,
+        switch (src) {
+          RestoreSource.googleBackup => l.backupRestoredFromGoogle,
+          RestoreSource.documentsBackup => l.backupRestoredFromDocuments,
+          RestoreSource.importFile => l.backupImportApplied,
+        },
+        kind: ToastKind.success,
+        duration: const Duration(seconds: 10));
+  }
+
   @override
   void dispose() {
     _updates?.detach();
+    _backup?.detach();
     super.dispose();
   }
 
@@ -597,7 +722,8 @@ class _HomeScreenState extends State<HomeScreen> {
       duration: const Duration(seconds: 20),
       actionLabel: l.errorCloseApp(app),
       onAction: () async {
-        final ok = await InterferenceScanner.kill(conflict.pid!);
+        final ok = await InterferenceScanner.kill(conflict.pid!,
+            expectedPath: conflict.appPath);
         if (!context.mounted) return;
         AppToast.show(
           context,
@@ -648,7 +774,12 @@ class _HomeScreenState extends State<HomeScreen> {
       // Распознанные ошибки переводятся по коду; динамические (текст
       // исключения от сети или ядра) показываются как есть.
       final code = state.errorCode;
-      final err = code != null ? appErrorText(l, code) : state.error;
+      final typed = state.errorMessage;
+      final err = code != null
+          ? appErrorText(l, code)
+          : typed != null
+              ? uiMessageL10n(l, typed)
+              : state.error;
       if (err != null && err != _shownError) {
         _shownError = err;
         state.clearError();
@@ -682,9 +813,10 @@ class _HomeScreenState extends State<HomeScreen> {
       final restart = state.pendingRestart;
       if (restart != null && restart != _shownRestart) {
         _shownRestart = restart;
+        final typedRestart = state.pendingRestartMessage;
         AppToast.show(
           context,
-          restart,
+          typedRestart != null ? uiMessageL10n(l, typedRestart) : restart,
           kind: ToastKind.warning,
           actionLabel: l.homeReconnect,
           onAction: () => state.reconnect(settings),
@@ -762,16 +894,39 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         return;
       }
+      // Пропажа и возврат сети — тоже новые виды, переводятся по `kind`.
+      if (notice.kind == EngineNoticeKind.noInternet) {
+        AppToast.show(
+          context,
+          '${l.noticeNoInternet} · ${l.noticeNoInternetDetail}',
+          kind: ToastKind.error,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+        );
+        return;
+      }
+      if (notice.kind == EngineNoticeKind.internetRestored) {
+        AppToast.show(
+          context,
+          l.noticeInternetRestored,
+          kind: ToastKind.info,
+          duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
+        );
+        return;
+      }
 
+      // Текст — на языке интерфейса по `kind` и полям заметки (MS1 S13);
+      // `notice.text` русский и остаётся журналу.
+      final shown = engineNoticeL10n(l, notice);
+      final shownDetail = (shown.detail ?? '').trim();
       AppToast.show(
         context,
-        detail.isEmpty ? notice.text : '${notice.text} · $detail',
+        shownDetail.isEmpty ? shown.title : '${shown.title} · $shownDetail',
         kind: notice.isProblem ? ToastKind.error : ToastKind.info,
         duration: engineNoticeDuration(notice.kind, isProblem: notice.isProblem),
         // У блокировки — путь к правилу: сообщение без «а где это менять»
         // заставляет искать настройку самому.
         actionLabel: notice.kind == EngineNoticeKind.blocked
-            ? 'Правила'
+            ? l.noticeBlockedAction
             : null,
         onAction: notice.kind == EngineNoticeKind.blocked
             ? () => Navigator.of(context).push(MaterialPageRoute(
@@ -795,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // любой отказ, включая те, где UAC не спрашивался вовсе.
     AppLog.i(switch (result) {
       PrivilegeSetupResult.done =>
-        'Задача Планировщика пересоздана — дальше подключения пойдут без UAC',
+        'Задача Планировщика пересоздана - дальше подключения пойдут без UAC',
       PrivilegeSetupResult.denied =>
         'Пересоздать задачу Планировщика не удалось: права не получены',
       PrivilegeSetupResult.failed =>
@@ -845,7 +1000,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownPingDone = probe.finishedAt;
         AppToast.progress(context,
             id: 'ping',
-            message: probe.lastSummary!,
+            message: probe.lastSummaryMessage != null
+                ? uiMessageL10n(l, probe.lastSummaryMessage!)
+                : probe.lastSummary!,
             finished: true,
             kind: ToastKind.success);
       }
@@ -875,7 +1032,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownSpeedDone = probe.speedFinishedAt;
         AppToast.progress(context,
             id: 'speed',
-            message: probe.speedSummary!,
+            message: probe.speedSummaryMessage != null
+                ? uiMessageL10n(l, probe.speedSummaryMessage!)
+                : probe.speedSummary!,
             finished: true,
             kind: ToastKind.success);
       }
@@ -906,7 +1065,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _shownAutoDone = auto.finishedAt;
         AppToast.progress(context,
             id: 'autoconfig',
-            message: auto.lastSummary!,
+            message: auto.lastSummaryMessage != null
+                ? uiMessageL10n(l, auto.lastSummaryMessage!)
+                : auto.lastSummary!,
             finished: true,
             pinned: true,
             onTap: () => _openAutoConfig(context),
@@ -978,8 +1139,11 @@ class _HomeScreenState extends State<HomeScreen> {
           // На экране — общая фраза, в журнале — имена изменённых настроек:
           // без них перезапуск туннеля неотличим от обрыва связи.
           fields: before.reconnectReasons(after));
-      // Включённая защита обязана действовать сразу — см. killSwitchTurnedOn.
-      if (before.killSwitchTurnedOn(after) && state.status.isConnected) {
+      // Включённая защита и смена способа захвата обязаны действовать сразу:
+      // иначе переключение «Системный прокси → TUN» на живом соединении
+      // оставляет в реестре `127.0.0.1:10809` мимо раздельного туннелирования.
+      if ((before.killSwitchTurnedOn(after) || before.captureChanged(after)) &&
+          state.status.isConnected) {
         unawaited(state.reconnect(after));
       }
     };
@@ -1032,7 +1196,7 @@ class _HomeScreenState extends State<HomeScreen> {
         // правки не должны расползаться по интерфейсу.
         // ⚠️ Версии здесь НЕТ намеренно (решение владельца): она стоит в
         // заголовке окна и в подсказке значка в трее — см. `TrayWindow`.
-        title: const Text(AppInfo.name),
+        title: const HeaderVersionBadge(),
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.add, size: 20),
@@ -1053,10 +1217,15 @@ class _HomeScreenState extends State<HomeScreen> {
       // Компоновка выбирается по ШИРИНЕ, а не по платформе: узкое окно на
       // Windows получает ту же одноколоночную раскладку, что и телефон, и это
       // правильно — две панели по 380 px там просто не помещаются.
-      body: HomeBody(
-        status: status,
-        settings: settings,
-        onOpen: (w) => _open(context, w),
+      body: Stack(
+        children: [
+          HomeBody(
+            status: status,
+            settings: settings,
+            onOpen: (w) => _open(context, w),
+          ),
+          const SupportChatOverlay(),
+        ],
       ),
     ));
   }
@@ -1171,7 +1340,10 @@ class ConnectPane extends StatelessWidget {
         const NotificationsOffBanner(),
         if (compact) _SelectedServerBar(onOpen: onOpen),
         Expanded(
-          child: Padding(
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Padding(
             // На телефоне 24 dp с каждой стороны — это 13 % ширины экрана,
             // которых не хватает содержимому. На десктопе остаётся 24.
             padding: EdgeInsets.all(context.sg.pagePadding),
@@ -1199,7 +1371,13 @@ class ConnectPane extends StatelessWidget {
                 // Текст — на языке интерфейса: движок кладёт код, а не
                 // русскую строку (см. [StatusText]).
                 final line = statusLine(l, status);
-                final blockingText = status.blocking ? line ?? '' : null;
+                // Нет сети — та же красная плашка, но со своим текстом и
+                // значком: защита тут ни при чём, и выключать VPN бесполезно.
+                // Текст — по признаку, а не по коду статуса: платформа может
+                // прислать «Подключено» без кода, а признак движок несёт сам.
+                final blockingText = status.offline
+                    ? l.statusNoInternet
+                    : (status.blocking ? line ?? '' : null);
                 final errorText =
                     status.state == VpnConnectionState.error ? line : null;
                 return Column(
@@ -1299,7 +1477,11 @@ class ConnectPane extends StatelessWidget {
                     // сюда третью, не тронув расчёт, — панель переполнится ровно
                     // на её высоту, и именно в аварии, когда читать важнее всего.
                     if (blockingText != null)
-                      KillSwitchNotice(message: blockingText),
+                      KillSwitchNotice(
+                          message: blockingText,
+                          icon: status.offline
+                              ? Icons.wifi_off
+                              : Icons.shield_outlined),
                     if (errorText != null) ConnectErrorLine(message: errorText),
                     const SizedBox(height: 20),
                     // ⚠️ `Wrap`, А НЕ `Row`: на узком окне с крупным системным
@@ -1354,6 +1536,14 @@ class ConnectPane extends StatelessWidget {
                 );
               }),
             ),
+              ),
+              if (status.isConnected)
+                PositionedDirectional(
+                  start: compact ? 8 : 12,
+                  bottom: compact ? 8 : 12,
+                  child: const LiveConnectionsBadge(),
+                ),
+            ],
           ),
         ),
       ],
@@ -1374,9 +1564,14 @@ class ConnectPane extends StatelessWidget {
 /// переполнялась на всех окнах. Числа ниже — единственный их источник, и по ним
 /// же считает [blockingNoticeHeight]; страж сверяет расчёт с настоящей высотой.
 class KillSwitchNotice extends StatelessWidget {
-  const KillSwitchNotice({super.key, required this.message});
+  const KillSwitchNotice(
+      {super.key, required this.message, this.icon = Icons.shield_outlined});
 
   final String message;
+
+  /// Щит — защита держит трафик; без сети — перечёркнутый Wi-Fi. Размер один
+  /// ([iconSize]), поэтому расчёт высоты от значка не зависит.
+  final IconData icon;
 
   /// Отступ от блока проверок сверху.
   static const double marginTop = 12;
@@ -1404,8 +1599,7 @@ class KillSwitchNotice extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(children: [
-        Icon(Icons.shield_outlined,
-            size: iconSize, color: scheme.onErrorContainer),
+        Icon(icon, size: iconSize, color: scheme.onErrorContainer),
         const SizedBox(width: gap),
         Expanded(
           child: FlagText(
@@ -2491,7 +2685,7 @@ class ConnectButton extends StatelessWidget {
     final scale = d / _baseline;
 
     return GestureDetector(
-      onTap: busy ? null : onTap,
+      onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         width: d,
@@ -2505,7 +2699,55 @@ class ConnectButton extends StatelessWidget {
         ),
         child: Center(
           child: busy
-              ? const CircularProgressIndicator()
+              ? SizedBox(
+                  width: d * 0.72,
+                  height: d * 0.68,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: SizedBox(
+                      width: d * 0.72,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 30 * scale,
+                            height: 30 * scale,
+                            child: CircularProgressIndicator(
+                              strokeWidth: (3.0 * scale).clamp(2.0, 3.5),
+                            ),
+                          ),
+                          SizedBox(height: 6 * scale),
+                          Text(
+                            status.state == VpnConnectionState.disconnecting
+                                ? l.connectButtonStop
+                                : l.connectButtonCancel,
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            softWrap: true,
+                            style: TextStyle(
+                              fontSize: 13 * scale,
+                              fontWeight: FontWeight.w600,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          if (connectStepLabel(l, status.step) != null) ...[
+                            SizedBox(height: 2 * scale),
+                            Text(
+                              connectStepLabel(l, status.step)!,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              softWrap: true,
+                              style: TextStyle(
+                                fontSize: 11 * scale,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                )
               : Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -2718,7 +2960,8 @@ class GeoOfferBanner extends StatefulWidget {
   State<GeoOfferBanner> createState() => _GeoOfferBannerState();
 }
 
-class _GeoOfferBannerState extends State<GeoOfferBanner> {
+class _GeoOfferBannerState extends State<GeoOfferBanner>
+    with WidgetsBindingObserver {
   /// Состояние файлов на диске. Экземпляр свой, но правда — общая: контроллер
   /// её не хранит, а перечитывает с диска, поэтому «второго мнения» тут не
   /// заводится. Сети он не касается, пока не позвали `check`/`download`.
@@ -2728,15 +2971,73 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
   /// зовётся из `build`, и без отметки он звался бы на каждой перерисовке.
   bool _asked = false;
 
+  /// Безлимитная ли сеть по последнему вопросу ([NetworkCost.unmetered]).
+  /// `null` — не знаем (не Android, канал не ответил, ещё не спрашивали).
+  bool? _unmetered;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _geo.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    // Человек вернулся в приложение — мог прийти домой на Wi-Fi. Без этого
+    // полные базы качались бы только при холодном старте.
+    if (s == AppLifecycleState.resumed && _asked && mounted) {
+      unawaited(_refreshAndPrefetch());
+    }
+  }
+
+  /// Автозакачка включена в настройках — и настройки уже прочитаны с диска.
+  ///
+  /// ⚠️ ДО ЧТЕНИЯ НАСТРОЕК — «НЕТ». Умолчание тумблера «вкл», и решать по нему
+  /// значило бы качать 30 МБ тому, кто тумблер выключил, просто потому что
+  /// диск ответил на долю секунды позже.
+  bool get _autoEnabled {
+    final c = context.read<SettingsController?>();
+    return c != null && c.loaded && c.settings.geoAutoDownloadWifi;
+  }
+
+  /// Перечитать диск и сеть; на Wi-Fi — скачать полные базы самим.
+  Future<void> _refreshAndPrefetch() async {
+    // ⚠️ НАБОР КЛАДЁТСЯ СРАЗУ, А НЕ ПРИ ПЕРВОМ ПОДКЛЮЧЕНИИ. Иначе на чистой
+    // установке человек видел бы сперва «Гео-базы не скачаны», а после
+    // подключения — другую плашку про встроенный набор (найдено живым
+    // прогоном в эмуляторе 14.10.2026). Рабочие файлы набор не трогает.
+    if (Platform.isAndroid && context.read<AppState>().geoRulesInUse) {
+      await GeoBases.seedBundled();
+    }
+    await _geo.refresh();
+    final unmetered = await NetworkCost.unmetered();
+    if (!mounted) return;
+    setState(() => _unmetered = unmetered);
+    final state = context.read<AppState>();
+    if (shouldPrefetchGeo(
+      enabled: _autoEnabled,
+      unmetered: unmetered == true,
+      rulesInUse: state.geoRulesInUse,
+      status: _geo.status,
+    )) {
+      await _geo.prefetch();
+    }
+  }
+
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => const SettingsScreen(scrollToGeo: true)));
+    // ⚠️ Прямо на экран гео-баз, а не в настройки с прокруткой к строке.
+    // С тех пор как базы переехали в подменю, «Скачать» приводило на общий
+    // экран настроек, и кнопку закачки человек искал сам (найдено владельцем
+    // на чистой установке 14.10.2026).
+    await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => const GeoBasesScreen()));
     // Вернулись из настроек — базы могли появиться. Перечитываем диск сами: у
     // раздела настроек свой экземпляр контроллера, ждать от него уведомления
     // нельзя.
@@ -2753,9 +3054,12 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
     if (!state.geoRulesInUse && state.geoVerdict == null) {
       return const SizedBox.shrink();
     }
+    // Тумблер автозакачки читается и здесь — чтобы плашка ответила на его
+    // правку сразу, а не на следующем возврате в приложение.
+    context.watch<SettingsController?>();
     if (!_asked) {
       _asked = true;
-      unawaited(_geo.refresh());
+      unawaited(_refreshAndPrefetch());
     }
     return ListenableBuilder(
       listenable: _geo,
@@ -2769,38 +3073,56 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
       rulesInUse: state.geoRulesInUse,
       verdict: state.geoVerdict,
       dismissed: state.geoOfferDismissedFor,
+      bundled: _geo.status?.bundled ?? false,
+      // На Wi-Fi с включённой автозакачкой предлагать нечего: базы уже едут.
+      // Идёт закачка — тоже молчим, иначе плашка звала бы делать то, что
+      // делается прямо сейчас.
+      autoDownloads: _geo.busy || (_unmetered == true && _autoEnabled),
+      bundledOfferSpent: state.geoBundledOfferSpent,
     );
     if (reason == null) return const SizedBox.shrink();
+    if (reason == EngineNoticeKind.geoAssetsBundled) {
+      // Показали — запоминаем: следующий запуск разовое предложение уже не
+      // повторит. После кадра: запись меняет состояние, а это сборка.
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => state.markGeoBundledOfferShown());
+    }
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     // Два РАЗНЫХ случая: файлов нет — предлагаем скачать; файлы есть, а ядро их
     // не открыло — предлагать «скачайте» бессмысленно, там нужно перекачать.
     final missing = reason == EngineNoticeKind.geoAssetsMissing;
+    final bundled = reason == EngineNoticeKind.geoAssetsBundled;
     // ⚠️ И ДВЕ РАЗНЫЕ ПОДПИСИ У ОДНОГО ПОВОДА. Ядро уже жаловалось — говорим о
     // том, что происходит («правила сейчас отключены»); предлагаем заранее —
     // о том, что будет. Прошедшее время в предложении, сделанном до первого
     // подключения, читалось бы как рассказ о поломке, которой не было.
-    final sub = missing
-        ? (state.geoVerdict == EngineNoticeKind.geoAssetsMissing
-            ? l.geoVerdictMissingSub
-            : l.geoOfferMissingSub)
-        : l.geoVerdictUnusableSub;
+    final sub = bundled
+        ? l.geoOfferBundledSub
+        : missing
+            ? (state.geoVerdict == EngineNoticeKind.geoAssetsMissing
+                ? l.geoVerdictMissingSub
+                : l.geoOfferMissingSub)
+            : l.geoVerdictUnusableSub;
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 4),
       color: scheme.tertiaryContainer,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
         child: Row(children: [
-          Icon(Icons.public_off, size: 20, color: scheme.onTertiaryContainer),
+          Icon(bundled ? Icons.public : Icons.public_off,
+              size: 20, color: scheme.onTertiaryContainer),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                    missing
-                        ? l.geoVerdictMissingTitle
-                        : l.geoVerdictUnusableTitle,
+                    bundled
+                        ? l.geoOfferBundledTitle
+                        : missing
+                            ? l.geoVerdictMissingTitle
+                            : l.geoVerdictUnusableTitle,
                     style: Theme.of(context)
                         .textTheme
                         .titleSmall
@@ -2815,12 +3137,12 @@ class _GeoOfferBannerState extends State<GeoOfferBanner> {
           ),
           TextButton(
             key: const ValueKey('geoOfferAct'),
-            // Ведём в настройки, а не качаем отсюда. Закачка требует согласия с
-            // размером, полоски хода, разбора ошибки и отдельного случая «нет
-            // прав на запись в каталог ядра» — всё это уже есть в разделе
-            // настроек, и вторая копия того же разошлась бы с первой.
+            // Ведём на экран гео-баз, а не качаем отсюда. Закачка требует
+            // согласия с размером, полоски хода, разбора ошибки и отдельного
+            // случая «нет прав на запись в каталог ядра» — всё это уже есть на
+            // том экране, и вторая копия того же разошлась бы с первой.
             onPressed: _openSettings,
-            child: Text(missing ? l.geoDownload : l.geoUpdate),
+            child: Text(missing || bundled ? l.geoDownload : l.geoUpdate),
           ),
           IconButton(
             key: const ValueKey('geoOfferDismiss'),

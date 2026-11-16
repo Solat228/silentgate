@@ -1,3 +1,4 @@
+import '../../../core/net/api_ports.dart';
 import '../../../core/settings/split_tunnel.dart';
 import '../../../core/singbox/singbox_config_builder.dart';
 
@@ -53,6 +54,12 @@ abstract interface class StaleScheduledTaskReporter {
   bool get lastStartHitStaleScheduledTask;
 }
 
+/// Роутер, принимающий расширенные настройки локальных прокси-портов API
+/// (`ApiExitRouterOptions`), не ломая существующие тестовые фейки `TunRouter`.
+abstract interface class ApiExitOptionsConfigurable {
+  void configureApiExitOptions(ApiExitRouterOptions options);
+}
+
 /// Роутер, умеющий пересоздать туннель, НЕ СНИМАЯ блокировку kill switch:
 /// живой помощник перезапускает ядро сам, держа свои фильтры WFP.
 ///
@@ -79,7 +86,12 @@ abstract interface class TunHandoverCapable {
 class TunStartException implements Exception {
   final String message;
   final String details;
-  TunStartException(this.message, {this.details = ''});
+  final bool adapterOpenTimeout;
+  final bool nonTunParameterFailure;
+  TunStartException(this.message,
+      {this.details = '',
+      this.adapterOpenTimeout = false,
+      this.nonTunParameterFailure = false});
   @override
   String toString() => details.isEmpty ? message : '$message\n\n$details';
 }

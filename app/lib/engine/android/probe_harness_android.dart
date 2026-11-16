@@ -97,6 +97,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
   /// Ноль (конфиг не разобрался) — тоже один: построитель тогда уходит в
   /// штатную ветку и собирает обычный конфиг по полям сервера.
   static int candidateCount(HarnessEntry e) {
+    if (e.server.usesWhitelistRelay && e.whitelistRelayPort == null) return 0;
     final s = e.server;
     final raw = (s.rawJsonOverride ?? '').isNotEmpty
         ? s.rawJsonOverride!
@@ -139,7 +140,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
       // рабочий сервер мёртвым. Такие кандидаты просто не меряются: их
       // состояние честно остаётся «не проверен», а по живому каналу
       // проверяется активный (см. ProbeController).
-      if (e.server.protocol == 'hysteria2') {
+      if (e.server.protocol == 'hysteria2' || e.server.usesWhitelistRelay) {
         next++;
         continue;
       }
@@ -189,7 +190,7 @@ class ProbeHarnessAndroid implements ProbeHarness {
       // Вычистили что знали, ссылки остались — ядро замера, скорее всего,
       // откажет. Молчать нельзя: снаружи это неотличимо от мёртвого сервера.
       AppLog.w('Конфиг замера «${e.server.remark}»: после чистки остались '
-          'ссылки на гео-базы — замер может не подняться');
+          'ссылки на гео-базы - замер может не подняться');
     }
     return r.json;
   }

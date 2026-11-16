@@ -140,7 +140,43 @@ void main() {
       }''';
       final out = jsonDecode(ensureXrayStats(cfg, apiPort: 10085)) as Map;
       final services = ((out['api'] as Map)['services'] as List);
-      expect(services, containsAll(['HandlerService', 'StatsService']));
+      expect(services, contains('StatsService'));
+      // Аудит 25.10.2026 (F): HandlerService чужого конфига снимается — через
+      // него любой процесс на петле дописал бы ядру свой inbound/outbound.
+      expect(services, isNot(contains('HandlerService')));
+      final api = ((out['inbounds'] as List).cast<Map>())
+          .firstWhere((i) => i['tag'] == 'api');
+      expect(api['listen'], '127.0.0.1');
+    });
+
+    test('лишние inbound панели — только на петле, пути журналов сняты', () {
+      const cfg = '''{
+        "log":{"loglevel":"warning","access":"C:/x/startup.bat","error":"C:/x/e"},
+        "inbounds":[
+          {"tag":"socks","protocol":"socks","port":1080,"listen":"0.0.0.0"},
+          {"tag":"socks2","protocol":"socks","port":1081,"listen":"0.0.0.0"},
+          {"tag":"fwd","protocol":"dokodemo-door","port":5353,"listen":"0.0.0.0"}
+        ],
+        "outbounds":[{"protocol":"vless","tag":"proxy"}]
+      }''';
+      final win = jsonDecode(
+          normalizeOverridePorts(cfg, socksPort: 10808, httpPort: 10809).json)
+          as Map;
+      for (final i in (win['inbounds'] as List).cast<Map>()) {
+        expect(i['listen'], '127.0.0.1', reason: '${i['tag']}');
+      }
+      expect(win['log'], {'loglevel': 'warning'});
+
+      final android = jsonDecode(normalizeOverridePorts(cfg,
+              socksPort: 10808,
+              httpPort: 10809,
+              socksUser: 'u',
+              socksPassword: 'p')
+          .json) as Map;
+      final extra = ((android['inbounds'] as List).cast<Map>())
+          .firstWhere((i) => i['tag'] == 'socks2');
+      expect((extra['settings'] as Map)['auth'], 'password',
+          reason: 'на Android петля общая для всех приложений');
     });
 
     test('идемпотентность: повтор не дублирует inbound/rule', () {

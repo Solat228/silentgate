@@ -4,11 +4,16 @@ import 'dart:io';
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../core/app_store.dart';
 import '../core/geo/geo_bases_controller.dart';
 import '../core/models/vpn_status.dart';
 import '../core/platform/apk_installer_android.dart';
+import '../core/platform/app_launcher.dart';
+import '../core/platform/package_identity_windows.dart';
+import '../core/platform/play_store_android.dart';
 import '../core/settings/app_settings.dart';
-import '../core/update/app_update.dart' show AppUpdate;
+import '../core/probe/proxy_probe.dart';
+import '../core/update/app_update.dart' show AppUpdate, UpdateProxy;
 import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
 import '../core/update/update_installer.dart';
 import '../core/update/update_installer_android.dart';
@@ -92,7 +97,9 @@ class ApiSettingsLink {
     _lastApplied = s;
     final state = context.read<AppState>();
     final probe = context.read<ProbeController>();
-    unawaited(state.applyApiSettings(s, probe, settings));
+    unawaited(
+      state.applyApiSettings(s, probe, settings, port: s.apiControlPort),
+    );
   }
 }
 
@@ -257,6 +264,7 @@ ChangeNotifierProvider<AppUpdateController> appUpdateProvider({
 AppUpdateController _buildAppUpdateController(
     BuildContext context, SettingsController settings) {
   final state = context.read<AppState>();
+  final msix = Platform.isWindows && PackageIdentity.isPackaged;
   return AppUpdateController(
     settings: () => settings.settings,
     updateSettings: settings.update,
@@ -265,12 +273,39 @@ AppUpdateController _buildAppUpdateController(
         state.status.isConnected ||
         state.status.state == VpnConnectionState.connecting,
     vpnChanges: state,
+    vpnProxyOf: () {
+      if (!state.status.isConnected) return null;
+      final port = state.httpProxyPort;
+      if (port <= 0) return null;
+      return UpdateProxy(
+        port: port,
+        user: ProxyProbe.user,
+        password: ProxyProbe.password,
+      );
+    },
+    installStuckTimeout: const Duration(seconds: 20),
     openInstallPermission:
         Platform.isAndroid ? ApkInstallerAndroid().openInstallPermission : null,
     // Живым вопросом, а не флагом: на Android подмена читается из файла
     // асинхронно, уже после постройки контроллера (см. `overriddenOf`).
     overriddenOf: () => kUpdateApiOverridden,
     loadOverride: AppUpdate.loadApiOverride,
+    store: AppStoreInfo.current,
+    msStorePackage: msix,
+    // Play первым — только на Android и только когда страница в Play открыта
+    // всем (`AppStoreInfo.playListingLive`): иначе кнопка вела бы на «не
+    // найдено».
+    playStoreAvailable: Platform.isAndroid && AppStoreInfo.playListingLive
+        ? PlayStoreAndroid().installed
+        : null,
+    openPlayStore: Platform.isAndroid
+        ? PlayStoreAndroid().open
+        : msix
+            ? () async {
+                await UrlOpener.open(AppStoreInfo.msStoreUpdatesUri);
+                return true;
+              }
+            : null,
   );
 }
 

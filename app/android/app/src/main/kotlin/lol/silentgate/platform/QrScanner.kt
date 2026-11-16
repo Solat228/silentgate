@@ -57,9 +57,21 @@ class QrScanner(private val activity: Activity) {
          * 64 МБ в памяти процесса, где работает VPN.
          */
         private const val MAX_PIXELS = 4_000_000
+
+        /**
+         * Вызов Dart, ждущий ответа сканера.
+         *
+         * ⚠️ В COMPANION, А НЕ В ЭКЗЕМПЛЯРЕ. Пока открыт сканер, система вправе
+         * снять нашу Activity, и ответ сканера получит уже НОВАЯ — со своим
+         * [QrScanner]. Будь ожидание полем экземпляра, новый сканер его бы не
+         * знал, а Dart ждал бы вечно: камера распознавала код, импорта не было
+         * (телефон владельца, 13.10.2026). Движок живёт дольше Activity
+         * (`MainActivity.provideFlutterEngine`), поэтому ответ по-прежнему есть
+         * кому принять.
+         */
+        private var pending: MethodChannel.Result? = null
     }
 
-    private var pending: MethodChannel.Result? = null
     private val main = Handler(Looper.getMainLooper())
 
     fun handle(method: String, prompt: String?, result: MethodChannel.Result) {

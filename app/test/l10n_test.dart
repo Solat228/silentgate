@@ -66,6 +66,22 @@ void main() {
     });
   }
 
+  // Решение владельца 29.10.2026: длинное тире делает текст похожим на
+  // сгенерированный. В интерфейсе только дефис или другая фраза.
+  test('ни в одной локали нет длинного тире (—, U+2014)', () {
+    for (final code in ['ru', ...locales]) {
+      final path = 'lib/l10n/app_$code.arb';
+      final map = jsonDecode(File(path).readAsStringSync())
+          as Map<String, dynamic>;
+      final bad = [
+        for (final e in map.entries)
+          if (!e.key.startsWith('@') && (e.value as String).contains('—'))
+            e.key,
+      ];
+      expect(bad, isEmpty, reason: 'Длинное тире в $path: ${bad.join(", ")}');
+    }
+  });
+
   test('плейсхолдеры совпадают во всех локалях (нет потерянных {…})', () {
     final re = RegExp(r'\{(\w+)\}');
     Map<String, Set<String>> placeholders(String path) {

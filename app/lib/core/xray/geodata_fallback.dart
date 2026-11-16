@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../geo/geo_usage.dart';
 import 'private_networks.dart';
 
 /// Что пришлось сделать с конфигом из-за отсутствующих гео-баз.
@@ -83,7 +84,27 @@ class GeodataFallbackResult {
 /// файлах. Их условия выбрасываются, и трафик, который они уводили напрямую,
 /// пойдёт по общему правилу — то есть через VPN. Это медленнее, но безопасно:
 /// обратный выбор означал бы пускать мимо туннеля то, о чём мы ничего не знаем.
-GeodataFallbackResult stripGeodata(String json) {
+///
+/// [keep] — ссылки, которые чистить НЕ надо: на диске лежит файл, и
+/// категория в нём есть. Так работает встроенный набор гео-баз: правила по его
+/// категориям остаются, а ссылки на остальные (например `geoip:de`) уходят —
+/// с той же защитой от опустевших правил. Без [keep] чистится всё, как раньше.
+/// Внешние файлы (`geosite:ext:…`) не принадлежат нашим базам и не
+/// оставляются никогда.
+GeodataFallbackResult stripGeodata(
+  String json, {
+  bool Function(GeoRefKind kind, String name)? keep,
+}) {
+  // Оставить ли эту ссылку как есть. `geosite:!cn@ads` → категория `cn`.
+  bool keepRef(String ref) {
+    if (keep == null) return false;
+    final m = _geoRef.firstMatch(ref);
+    if (m == null) return false;
+    final name = m.group(2)!.toLowerCase();
+    if (name == 'ext') return false;
+    return keep(m.group(1) == 'ip' ? GeoRefKind.ip : GeoRefKind.site, name);
+  }
+
   // ⚠️ Разбор в try. Функция стоит НА ПУТИ ПОДКЛЮЧЕНИЯ, и исключение отсюда
   // выглядело бы как ошибка нашей обработки, хотя виноват входной конфиг.
   // Пусть битый конфиг отвергнет ядро — оно скажет об этом внятнее нас.
@@ -121,7 +142,9 @@ GeodataFallbackResult stripGeodata(String json) {
       final out = <dynamic>[];
       for (final e in (rule['ip'] as List)) {
         final s = '$e';
-        if (s == 'geoip:private') {
+        if (keepRef(s)) {
+          out.add(e);
+        } else if (s == 'geoip:private') {
           out.addAll(kPrivateNetworks);
           replaced++;
         } else if (s.startsWith('geoip:') || s.startsWith('geosite:')) {
@@ -137,7 +160,9 @@ GeodataFallbackResult stripGeodata(String json) {
       final out = <dynamic>[];
       for (final e in (rule['domain'] as List)) {
         final s = '$e';
-        if (s.startsWith('geosite:') || s.startsWith('geoip:')) {
+        if (keepRef(s)) {
+          out.add(e);
+        } else if (s.startsWith('geosite:') || s.startsWith('geoip:')) {
           categories.add(s);
           dropped++;
         } else {
@@ -183,7 +208,9 @@ GeodataFallbackResult stripGeodata(String json) {
         final out = <dynamic>[];
         for (final e in domains) {
           final s = '$e';
-          if (s.startsWith('geosite:') || s.startsWith('geoip:')) {
+          if (keepRef(s)) {
+            out.add(e);
+          } else if (s.startsWith('geosite:') || s.startsWith('geoip:')) {
             categories.add(s);
             dropped++;
           } else {
@@ -207,13 +234,21 @@ GeodataFallbackResult stripGeodata(String json) {
     categories: categories.toList()..sort(),
     // Перепроверяем СВОЙ ЖЕ результат: дешевле одной строки кода, а ловит
     // ровно тот случай, когда мы чего-то не знаем о формате конфига.
-    residual: needsGeodata(encoded),
+    // С [keep] оставленные ссылки — законный результат, остатком считаются
+    // только те, что оставлять было нельзя.
+    residual: keep == null
+        ? needsGeodata(encoded)
+        : _geoRef.allMatches(encoded).any((m) => !keepRef(m.group(0)!)),
   );
   if (!report.changed && !report.residual) {
     return GeodataFallbackResult(json, report);
   }
   return GeodataFallbackResult(encoded, report);
 }
+
+/// Ссылка на категорию: `geoip:ru`, `geosite:!cn`, `geosite:category-ru@ads`.
+/// Та же форма, что в [GeoUsage]: имя — до `@`, отрицание не входит.
+final _geoRef = RegExp(r'geo(site|ip):!?([A-Za-z0-9_.\-]+)');
 
 /// Есть ли в конфиге ссылки на гео-базы (быстрая проверка без разбора JSON).
 ///

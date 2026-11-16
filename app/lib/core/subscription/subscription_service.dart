@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'dart:typed_data';
+import '../models/ui_message.dart';
 import 'package:http/io_client.dart';
 import 'package:http/http.dart' as http;
 
@@ -86,19 +88,23 @@ class SubscriptionService {
       final hw = resp.headers;
       if (hw['x-hwid-max-devices-reached']?.toLowerCase() == 'true') {
         final limit = hw['x-hwid-limit'];
-        throw SubscriptionException(limit != null && limit.isNotEmpty
-            ? 'Достигнут лимит устройств ($limit). Отключите лишнее устройство '
-                'в личном кабинете и повторите.'
-            : 'Достигнут лимит устройств. Отключите лишнее устройство в личном '
-                'кабинете и повторите.');
+        throw SubscriptionException(
+            limit != null && limit.isNotEmpty
+                ? 'Достигнут лимит устройств ($limit). Отключите лишнее '
+                    'устройство в личном кабинете и повторите.'
+                : 'Достигнут лимит устройств. Отключите лишнее устройство в '
+                    'личном кабинете и повторите.',
+            ui: UiSubDeviceLimit(limit));
       }
       if (hw['x-hwid-not-supported']?.toLowerCase() == 'true') {
         throw SubscriptionException(
             'Панель требует идентификатор устройства, а приложение его не '
-            'прислало. Обновите приложение.');
+            'прислало. Обновите приложение.',
+            ui: const UiSubHwidRequired());
       }
       throw SubscriptionException(
         'Сервер вернул код ${resp.statusCode}',
+        ui: UiSubHttpCode(resp.statusCode),
       );
     }
 
@@ -120,7 +126,8 @@ class SubscriptionService {
       servers = ShareLinkParser.parseSubscriptionBody(body);
     }
     if (servers.isEmpty) {
-      throw SubscriptionException('В подписке не найдено ни одного сервера');
+      throw SubscriptionException('В подписке не найдено ни одного сервера',
+          ui: const UiSubNoServers());
     }
     final info = SubscriptionInfo.fromHeaders(resp.headers);
     final ct = resp.headers['content-type'] ?? '?';
@@ -129,14 +136,16 @@ class SubscriptionService {
     AppLog.i('Подписка: UA=$ua, Content-Type=$ct, ${resp.bodyBytes.length} Б, '
         'серверов=${servers.length}, с конфигом панели=$panel, профилей «Авто»=$profiles');
     if (panel == 0) {
-      AppLog.w('Панель прислала НЕ XRAY_JSON — конфиги пересобираются из ссылок. '
+      AppLog.w('Панель прислала НЕ XRAY_JSON - конфиги пересобираются из ссылок. '
           'Проверьте правило Response Rules (user-agent CONTAINS SilentGate → XRAY_JSON).');
     }
     // Постоянный переезд (301/308) — новый адрес; временный (302/307) сюда не
     // попадает (см. [_fetchFollowing] и [movedTo]).
     final moved = (permanentMove != null && permanentMove != url) ? permanentMove : null;
     if (moved != null) {
-      AppLog.w('Подписка переехала (постоянно, 301/308): $url → $moved (адрес обновлён)');
+      // ⚠️ В журнал — только узел: в адресе подписки лежит токен.
+      AppLog.w('Подписка переехала (постоянно, 301/308): '
+          '${Uri.parse(url).host} → ${Uri.parse(moved).host} (адрес обновлён)');
     }
     return SubscriptionResult(servers, info, movedTo: moved);
   }
@@ -169,8 +178,12 @@ class SubscriptionService {
         ..followRedirects = false;
       request.headers['User-Agent'] = ua;
       request.headers['Accept'] = '*/*';
-      request.headers.addAll(deviceHeaders);
-      final resp = await http.Response.fromStream(await _client.send(request));
+      // ⚠️ ДАННЫЕ УСТРОЙСТВА — ТОЛЬКО ПО HTTPS (MS1, решение 19.10.2026).
+      // По открытому `http://` идентификатор устройства и модель видит любой
+      // узел по дороге. Проверка на КАЖДОМ шаге: редирект с https на http
+      // тоже не должен их унести.
+      if (current.scheme == 'https') request.headers.addAll(deviceHeaders);
+      final resp = await _readLimited(await _client.send(request));
       final code = resp.statusCode;
       final isRedirect =
           code == 301 || code == 302 || code == 303 || code == 307 || code == 308;
@@ -179,12 +192,15 @@ class SubscriptionService {
         return (resp, permanentMove);
       }
       if (hop >= 5) {
-        throw SubscriptionException('Слишком много редиректов подписки');
+        throw SubscriptionException('Слишком много редиректов подписки',
+            ui: const UiSubTooManyRedirects());
       }
       final next = current.resolve(location);
       // Постоянный редирект в непрерывной цепочке двигает запоминаемый адрес;
       // временный — обрывает цепочку, дальше адрес не запоминаем.
-      if ((code == 301 || code == 308) && chainStillPermanent) {
+      if ((code == 301 || code == 308) &&
+          chainStillPermanent &&
+          acceptablePermanentMove(start, next)) {
         permanentMove = next.toString();
       } else {
         chainStillPermanent = false;
@@ -193,12 +209,106 @@ class SubscriptionService {
     }
   }
 
+  /// Предел тела ответа. Самая большая подписка владельца — сотня профилей по
+  /// ~40 КБ, то есть ~4 МБ; 32 МиБ — с запасом. Без предела сервер (или узел
+  /// по дороге при `http://`) мог бы отдавать тело бесконечно, и приложение
+  /// падало бы по памяти на каждом автообновлении (аудит, F).
+  static const maxBodyBytes = 32 * 1024 * 1024;
+
+  static Future<http.Response> _readLimited(http.StreamedResponse r) async {
+    final declared = r.contentLength;
+    if (declared != null && declared > maxBodyBytes) {
+      throw SubscriptionException('Ответ подписки слишком большой',
+          ui: UiSubHttpCode(r.statusCode));
+    }
+    final buf = BytesBuilder(copy: false);
+    await for (final chunk in r.stream) {
+      buf.add(chunk);
+      if (buf.length > maxBodyBytes) {
+        throw SubscriptionException('Ответ подписки слишком большой',
+            ui: UiSubHttpCode(r.statusCode));
+      }
+    }
+    return http.Response.bytes(buf.takeBytes(), r.statusCode,
+        request: r.request,
+        headers: r.headers,
+        isRedirect: r.isRedirect,
+        persistentConnection: r.persistentConnection,
+        reasonPhrase: r.reasonPhrase);
+  }
+
+  /// Можно ли ЗАПОМНИТЬ постоянный переезд подписки с [from] на [to].
+  ///
+  /// ⚠️ Запомненный адрес остаётся навсегда: один 301 от узла по дороге или
+  /// со взломанного зеркала — и подписка до конца жизни приложения берёт
+  /// серверы у чужого. Поэтому идём куда угодно, но запоминаем только
+  /// переезд в пределах того же домена второго уровня и без понижения
+  /// https → http (аудит 25.10.2026, F).
+  static bool acceptablePermanentMove(Uri from, Uri to) {
+    if (from.scheme == 'https' && to.scheme != 'https') return false;
+    if (to.scheme != 'https' && to.scheme != 'http') return false;
+    final a = from.host.toLowerCase(), b = to.host.toLowerCase();
+    if (a == b) return true;
+    if (InternetAddress.tryParse(a) != null ||
+        InternetAddress.tryParse(b) != null) {
+      return false;
+    }
+    // `co.uk`, `com.ru` и подобные — общие суффиксы: там владелец домена
+    // начинается с третьей метки с конца.
+    const shared = {'co', 'com', 'net', 'org', 'gov', 'edu', 'ac'};
+    String base(String h) {
+      final parts = h.split('.');
+      var keep = 2;
+      if (parts.length >= 3 &&
+          parts.last.length == 2 &&
+          shared.contains(parts[parts.length - 2])) {
+        keep = 3;
+      }
+      // ⚠️ ОБЩИЙ ХОСТИНГ — ТОЖЕ СУФФИКС (ревью 29.10.2026, L8). На
+      // `duckdns.org` или `github.io` у каждого клиента свой поддомен, и
+      // «тот же домен второго уровня» означал любого соседа по сервису.
+      // Самый длинный подходящий: `up.railway.app` точнее `railway.app`.
+      for (final suffix in multiTenantSuffixes) {
+        if (h == suffix || h.endsWith('.$suffix')) {
+          final k = suffix.split('.').length + 1;
+          if (k > keep) keep = k;
+        }
+      }
+      return parts.length <= keep
+          ? h
+          : parts.sublist(parts.length - keep).join('.');
+    }
+    return base(a) == base(b);
+  }
+
+  /// Домены, где поддомены раздаются разным владельцам (выдержка из Public
+  /// Suffix List: динамический DNS, бесплатный хостинг, туннели).
+  ///
+  /// Полный список — тысячи строк и свой разборщик; здесь — то, на чём
+  /// реально держат панели и зеркала подписок. Ошибка «не узнали суффикс»
+  /// стоит лишь того, что переезд не запомнится, а «узнали лишнее» — нет.
+  static const multiTenantSuffixes = [
+    'duckdns.org', 'ddns.net', 'no-ip.org', 'no-ip.com', 'hopto.org',
+    'zapto.org', 'sytes.net', 'dynu.net', 'freemyip.com', 'dynv6.net',
+    'afraid.org', 'mooo.com', 'github.io', 'gitlab.io', 'workers.dev',
+    'pages.dev', 'trycloudflare.com', 'herokuapp.com', 'netlify.app',
+    'vercel.app', 'onrender.com', 'fly.dev', 'web.app', 'firebaseapp.com',
+    'appspot.com', 'azurewebsites.net', 'cloudfront.net', 'ngrok.io',
+    'ngrok-free.app', 'ngrok.app', 'glitch.me', 'replit.app', 'deno.dev',
+    'surge.sh', 'loca.lt', 'serveo.net', 'repl.co', 'koyeb.app',
+    'railway.app', 'up.railway.app', 'vercel.dev', 'blogspot.com',
+  ];
+
   void close() => _client.close();
 }
 
 class SubscriptionException implements Exception {
+  /// Русский текст — для журнала и отчёта поддержки.
   final String message;
-  SubscriptionException(this.message);
+
+  /// То же кодом — для перевода на экране (MS1 S13).
+  final UiMessage? ui;
+  SubscriptionException(this.message, {this.ui});
   @override
   String toString() => message;
 }

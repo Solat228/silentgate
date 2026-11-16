@@ -81,6 +81,16 @@ install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}
 install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
+# SilentGate: dartjni.dll (пакет jni) нужен только Android-реализации
+# path_provider_android, но Flutter собирает FFI-плагин для всех платформ.
+# На Windows его никто не загружает, а в Store-сборке это лишний
+# неподписываемый PE (заявка MS6). Не кладём в поставку и стираем копию,
+# оставшуюся в Release от прежних сборок.
+list(REMOVE_ITEM PLUGIN_BUNDLED_LIBRARIES "$<TARGET_FILE:jni>")
+install(CODE "
+  file(REMOVE \"${INSTALL_BUNDLE_LIB_DIR}/dartjni.dll\")
+  " COMPONENT Runtime)
+
 if(PLUGIN_BUNDLED_LIBRARIES)
   install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"

@@ -78,7 +78,7 @@ void main() {
 
   test('⚠️ ручной путь ПОКАЗЫВАЕТСЯ, а не просто объявлен', () {
     final src = File('lib/ui/import_screen.dart').readAsStringSync();
-    expect(src, contains('TimeSyncWindows.manualHint'),
+    expect(src, contains('l.importSyncTimeManual'),
         reason: 'при отказе в правах человек упрётся в тупик');
   });
 }

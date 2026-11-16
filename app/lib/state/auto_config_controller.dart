@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../core/models/ui_message.dart';
 import '../core/models/vpn_server.dart';
 import '../core/parser/share_link_parser.dart';
 import '../core/probe/auto_config_engine.dart';
@@ -50,6 +51,10 @@ class AutoConfigController extends ChangeNotifier {
   bool get running => _running;
   String? get error => _error;
 
+  /// Ошибка кодом — для перевода на экране ([error] — русская, для журнала).
+  UiMessage? _errorMessage;
+  UiMessage? get errorMessage => _errorMessage;
+
   /// Итог последнего прогона и момент завершения — для уведомления слева снизу,
   /// которое висит ещё несколько секунд после конца работы.
   String? _lastSummary;
@@ -66,6 +71,8 @@ class AutoConfigController extends ChangeNotifier {
   bool get unsupported => _unsupported;
   DateTime? _finishedAt;
   String? get lastSummary => _lastSummary;
+  UiMessage? _lastSummaryMessage;
+  UiMessage? get lastSummaryMessage => _lastSummaryMessage;
   DateTime? get finishedAt => _finishedAt;
 
   // ── Выбор серверов для подбора ─────────────────────────────────────────────
@@ -200,6 +207,7 @@ class AutoConfigController extends ChangeNotifier {
     if (server == null) {
       _error = 'Не удалось распознать ключ '
           '(нужен vless:// / vmess:// / trojan:// / ss:// / hysteria2://)';
+      _errorMessage = const UiAutoConfigBadKey();
       notifyListeners();
       return;
     }
@@ -221,9 +229,11 @@ class AutoConfigController extends ChangeNotifier {
     if (servers.isEmpty) return;
     _running = true;
     _error = null;
+    _errorMessage = null;
     _progress = null;
     _active.clear();
     _lastSummary = null;
+    _lastSummaryMessage = null;
     _unsupported = false;
     _startedAt = DateTime.now();
     _phase = AutoConfigPhase.probing;
@@ -332,7 +342,10 @@ class AutoConfigController extends ChangeNotifier {
           ..clear()
           ..addAll(ranked);
       }
-      if (runFound.isEmpty) _error = 'Рабочих серверов не найдено';
+      if (runFound.isEmpty) {
+        _error = 'Рабочих серверов не найдено';
+        _errorMessage = const UiAutoConfigNoneFound();
+      }
     } on CancelledException {
       // частичные результаты остаются в _found
     } on AutoConfigUnsupported {
@@ -341,9 +354,11 @@ class AutoConfigController extends ChangeNotifier {
       // задержку и порта не даёт. Раньше это выглядело как «найдено 0» на
       // рабочей подписке — то есть как поломка серверов.
       _error = unsupportedMessage;
+      _errorMessage = const UiAutoConfigUnsupported(long: true);
       _unsupported = true;
     } catch (e) {
       _error = 'Ошибка: $e';
+      _errorMessage = UiAutoConfigError('$e');
     } finally {
       _running = false;
       _progress = null;
@@ -359,6 +374,9 @@ class AutoConfigController extends ChangeNotifier {
           : runFound.isEmpty
               ? 'Автонастройка: рабочих серверов не найдено'
               : 'Автонастройка завершена: найдено ${runFound.length}';
+      _lastSummaryMessage = _unsupported
+          ? const UiAutoConfigUnsupported()
+          : UiAutoConfigDone(runFound.length);
       _finishedAt = DateTime.now();
       await _persist();
       notifyListeners();
@@ -370,6 +388,7 @@ class AutoConfigController extends ChangeNotifier {
   Future<void> clear() async {
     _found.clear();
     _error = null;
+    _errorMessage = null;
     await ResultsStore.autoConfig.save(const []);
     notifyListeners();
   }

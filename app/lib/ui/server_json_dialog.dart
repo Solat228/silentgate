@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'widgets/app_toast.dart';
+import 'widgets/extended_clipboard.dart';
 
 import 'package:flutter/material.dart';
 
@@ -150,6 +151,12 @@ class _ServerJsonDialogState extends State<ServerJsonDialog> {
             Expanded(
               child: TextField(
                 controller: _controller,
+                contentInsertionConfiguration: buildExtendedContentInsertion(
+                  _controller,
+                  onInserted: (_) {
+                    if (_error != null) setState(() => _error = null);
+                  },
+                ),
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,

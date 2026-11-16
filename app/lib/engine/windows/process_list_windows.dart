@@ -56,6 +56,167 @@ class RunningProcess {
   const RunningProcess(this.pid, this.name, this.path);
 }
 
+final RegExp _versionedOldExeRe =
+    RegExp(r'^(.+\.exe)\.old\.[0-9a-z_-]+$', caseSensitive: false);
+
+/// Общие системные/рантайм-имена, которые не должны превращаться в широкую
+/// маску каталога `\<stem>\` (чтобы `python.exe` или `cmd.exe` не захватывали
+/// чужие программы).
+const Set<String> _genericExeStems = <String>{
+  'app',
+  'audiodg',
+  'bin',
+  'cli',
+  'client',
+  'cmd',
+  'conhost',
+  'csrss',
+  'ctfmon',
+  'dllhost',
+  'dwm',
+  'explorer',
+  'fontdrvhost',
+  'game',
+  'helper',
+  'host',
+  'java',
+  'javaw',
+  'launcher',
+  'lsass',
+  'main',
+  'msedge',
+  'msedgewebview2',
+  'msiexec',
+  'node',
+  'notepad',
+  'powershell',
+  'pwsh',
+  'python',
+  'pythonw',
+  'regedit',
+  'run',
+  'rundll32',
+  'runtimebroker',
+  'searchhost',
+  'server',
+  'service',
+  'services',
+  'setup',
+  'shell',
+  'sihost',
+  'smss',
+  'spoolsv',
+  'start',
+  'svchost',
+  'system',
+  'taskhostw',
+  'test',
+  'uninstall',
+  'update',
+  'updater',
+  'user',
+  'wininit',
+  'winlogon',
+  'wmiprvse',
+  'worker',
+  'wscript',
+};
+
+/// Системные процессы Windows, для которых при поиске каталогов приложений
+/// не нужно открывать дескриптор `QueryFullProcessImageName`.
+const Set<String> _systemSkipExeNames = <String>{
+  'system',
+  'registry',
+  'smss.exe',
+  'csrss.exe',
+  'wininit.exe',
+  'services.exe',
+  'lsass.exe',
+  'svchost.exe',
+  'fontdrvhost.exe',
+  'winlogon.exe',
+  'dwm.exe',
+  'spoolsv.exe',
+  'wmiprvse.exe',
+  'sihost.exe',
+  'taskhostw.exe',
+  'runtimebroker.exe',
+  'ApplicationFrameHost.exe',
+  'dllhost.exe',
+  'conhost.exe',
+  'audiodg.exe',
+  'ctfmon.exe',
+  'explorer.exe',
+};
+
+String _baseName(String path) {
+  final i = path.lastIndexOf(RegExp(r'[\\/]'));
+  return i < 0 ? path : path.substring(i + 1);
+}
+
+/// Привести имя исполняемого файла к базовому `.exe` в нижнем регистре,
+/// схлопывая версионные суффиксы самообновления вида `agy.exe.old.b01ba04f` →
+/// `agy.exe`.
+String normalizeVersionedExeName(String rawNameOrPath) {
+  final lower = _baseName(rawNameOrPath.trim()).toLowerCase();
+  final m = _versionedOldExeRe.firstMatch(lower);
+  return m != null ? m.group(1)! : lower;
+}
+
+/// Выделить значимое имя каталога приложения из имени его `.exe`
+/// (например, `antigravity.exe` → `antigravity`, `cursor.exe` → `cursor`).
+/// Для слишком коротких или общих системных имён возвращает `null`.
+String? exeStemForAppDir(String rawExeName) {
+  final norm = normalizeVersionedExeName(rawExeName);
+  if (!norm.endsWith('.exe')) return null;
+  final stem = norm.substring(0, norm.length - 4).trim();
+  if (stem.length < 3 || _genericExeStems.contains(stem)) return null;
+  return stem;
+}
+
+/// Проверить, лежит ли [processPath] внутри каталога приложения `\<stem>\`
+/// или `\.<stem>\` для хотя бы одного из выбранных имён [selectedNames].
+bool _matchesAppDirFromNames(Set<String> selectedNames, String processPath) {
+  final lowerPath = processPath.toLowerCase();
+  for (final sel in selectedNames) {
+    final stem = exeStemForAppDir(sel);
+    if (stem == null) continue;
+    final re = RegExp(
+      r'[\\/]\.?' + RegExp.escape(stem) + r'[\\/]',
+      caseSensitive: false,
+    );
+    if (re.hasMatch(lowerPath)) return true;
+  }
+  return false;
+}
+
+/// Проверить, подпадает ли процесс [processName] (и при наличии [processPath])
+/// под набор выбранных имён [selectedNames] (пропущенных через
+/// [normalizeVersionedExeName]).
+///
+/// Универсально учитывает:
+///  * прямое совпадение имени `.exe`;
+///  * версионные самообновляющиеся бинари `<имя>.exe.old.<хэш>`;
+///  * вспомогательные и дочерние `.exe`, лежащие в каталоге выбранной
+///    программы `\<stem>\` или `\.<stem>\` (например, языковые серверы,
+///    CLI-помощники и воркеры внутри папки приложения).
+bool matchesSelectedAppName(
+  Set<String> selectedNames,
+  String processName, {
+  String? processPath,
+}) {
+  if (selectedNames.isEmpty) return false;
+  final norm = normalizeVersionedExeName(processName);
+  if (norm.isEmpty) return false;
+  if (selectedNames.contains(norm)) return true;
+  if (processPath != null &&
+      processPath.isNotEmpty &&
+      _matchesAppDirFromNames(selectedNames, processPath)) {
+    return true;
+  }
+  return false;
+}
+
 /// Перечень запущенных процессов с полными путями exe (для выбора приложений в split-tunnel).
 /// Пути элевейтнутых процессов могут быть недоступны без прав — они пропускаются.
 class ProcessListWindows {
@@ -83,6 +244,9 @@ class ProcessListWindows {
   static List<RunningProcess> matching(Set<String> lowerNames) {
     final result = <RunningProcess>[];
     if (lowerNames.isEmpty) return result;
+    final normalizedNames = lowerNames.map(normalizeVersionedExeName).toSet();
+    final hasDirStems =
+        normalizedNames.any((n) => exeStemForAppDir(n) != null);
 
     final snap = _createSnapshot(_th32SnapProcess, 0);
     if (snap == _invalidHandle || snap == 0) return result;
@@ -90,17 +254,67 @@ class ProcessListWindows {
       ..ref.dwSize = sizeOf<_ProcessEntry32>();
     try {
       if (_process32First(snap, entry) == 0) return result;
-      final seen = <String>{};
+      final rows = <({int pid, int ppid, String name})>[];
       do {
         final name = _wideName(entry.ref.szExeFile);
-        if (name.isEmpty || !lowerNames.contains(name.toLowerCase())) continue;
-        final pid = entry.ref.th32ProcessID;
-        final path = _pathOf(pid);
-        // Путь недоступен (процесс выше по правам или уже завершился) — пропускаем:
-        // правило WFP всё равно строится только из полного пути.
-        if (path == null || !seen.add(path.toLowerCase())) continue;
-        result.add(RunningProcess(pid, name, path));
+        if (name.isEmpty) continue;
+        rows.add((
+          pid: entry.ref.th32ProcessID,
+          ppid: entry.ref.th32ParentProcessID,
+          name: name,
+        ));
       } while (_process32Next(snap, entry) != 0);
+
+      // 1) Прямые совпадения по имени (включая `<имя>.exe.old.<хэш>`).
+      final matchedPids = <int>{};
+      for (final r in rows) {
+        if (r.pid <= 4) continue;
+        if (normalizedNames.contains(normalizeVersionedExeName(r.name))) {
+          matchedPids.add(r.pid);
+        }
+      }
+
+      // 2) Дочерние процессы, порождённые найденными приложениями (по цепочке
+      //    `th32ParentProcessID`).
+      if (matchedPids.isNotEmpty) {
+        var added = true;
+        while (added) {
+          added = false;
+          for (final r in rows) {
+            if (r.pid <= 4 || matchedPids.contains(r.pid)) continue;
+            if (r.ppid > 4 &&
+                matchedPids.contains(r.ppid) &&
+                !_systemSkipExeNames.contains(r.name.toLowerCase())) {
+              matchedPids.add(r.pid);
+              added = true;
+            }
+          }
+        }
+      }
+
+      // 3) Сборка полных путей для прямых, дочерних и лежащих в каталоге
+      //    приложения `\<stem>\` / `\.<stem>\` процессов.
+      final seen = <String>{};
+      for (final r in rows) {
+        final isPidMatch = matchedPids.contains(r.pid);
+        if (!isPidMatch) {
+          if (!hasDirStems ||
+              r.pid <= 4 ||
+              _systemSkipExeNames.contains(r.name.toLowerCase())) {
+            continue;
+          }
+        }
+        final path = _pathOf(r.pid);
+        if (path == null) continue;
+        if (!isPidMatch &&
+            !matchesSelectedAppName(normalizedNames, r.name,
+                processPath: path)) {
+          continue;
+        }
+        if (seen.add(path.toLowerCase())) {
+          result.add(RunningProcess(r.pid, r.name, path));
+        }
+      }
     } finally {
       free(entry);
       CloseHandle(snap);

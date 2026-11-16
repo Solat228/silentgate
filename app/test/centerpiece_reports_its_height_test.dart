@@ -240,7 +240,7 @@ void main() {
             of: find.byKey(const ValueKey('svc:telegram')),
             matching: find.byType(SiteFavicon))
         .first);
-    expect(icon.width, closeTo(26 * 1.6, 0.5),
+    expect(icon.width, closeTo(28 * 1.6, 0.5), // значок ячейки 28 при k = 1,6
         reason: 'значок ${icon.width.toStringAsFixed(1)} px при свободном '
             'месте — рост снова зажат');
     // И кнопка при этом не растёт: её размер задаёт панель.

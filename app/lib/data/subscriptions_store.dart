@@ -214,7 +214,7 @@ class SubscriptionsStore {
             outcome: SubscriptionsLoadOutcome.missing);
       }
       if (type != FileSystemEntityType.file) {
-        AppLog.e('По пути $_fileName лежит не файл ($type) — сохранение '
+        AppLog.e('По пути $_fileName лежит не файл ($type) - сохранение '
             'подписок запрещено');
         _sealed = true;
         return const SubscriptionsSnapshot([], null,
@@ -265,7 +265,7 @@ class SubscriptionsStore {
     // журнал уже всё сказал, и дублировать строку на каждое сохранение незачем.
     if (!_sealed) {
       _sealed = true;
-      AppLog.e('Нечитаемый $_fileName не удалось отодвинуть — сохранение '
+      AppLog.e('Нечитаемый $_fileName не удалось отодвинуть - сохранение '
           'подписок запрещено, чтобы не затереть непрочитанные данные');
     }
     return false;

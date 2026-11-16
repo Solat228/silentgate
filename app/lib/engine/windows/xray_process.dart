@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../core/platform/app_log.dart';
+import '../../core/platform/app_paths.dart';
 import '../../core/platform/core_cleanup.dart';
 import '../../core/platform/rotating_log.dart';
 
@@ -29,6 +30,13 @@ class XrayProcess {
   /// Путь файла лога рядом с остальными: `%APPDATA%\SilentGate\xray.log`.
   static String logPathFor(Directory supportDir) =>
       '${supportDir.path}${Platform.pathSeparator}xray.log';
+
+  /// Хвост лога прокси-ядра Xray (для отчёта поддержки и экрана логов) через
+  /// ротацию `xray.prev.log` → `xray.log`.
+  static Future<String> tailLog({int lines = 200}) async =>
+      RotatingLog.tailAcrossRotation(
+          logPathFor(await AppPaths.supportDir()),
+          lines: lines);
 
   /// Последние строки вывода ядра — чтобы показать РЕАЛЬНУЮ причину падения,
   /// а не «Ядро завершилось при запуске».
@@ -61,7 +69,8 @@ class XrayProcess {
         // Файл РЕЖЕТСЯ, а не растёт бесконечно: singbox.log у владельца дорос
         // до 27 МБ и стал бесполезен — отчёт поддержки его уже не вмещает.
         // Порог тот же (2 МБ), но теперь он действует и ВНУТРИ сессии.
-        final log = RotatingLog(logPath, maxBytes: 2 * 1024 * 1024);
+        final log = RotatingLog(logPath,
+            maxBytes: RotatingLog.coreLogMaxBytes, keepPrevious: true);
         await log.open();
         _log = log;
         await log.write(
@@ -129,8 +138,12 @@ class XrayProcess {
     proc.kill();
     // Дать процессу закрыться; если завис — не блокируемся навечно.
     await proc.exitCode.timeout(
-      const Duration(seconds: 3),
+      const Duration(milliseconds: 800),
       onTimeout: () {
+        if (Platform.isWindows) {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        }
         proc.kill(ProcessSignal.sigkill);
         return -1;
       },
@@ -141,6 +154,26 @@ class XrayProcess {
     AppLog.i('Ядро Xray остановлено');
     await log?.write('--- Xray остановлен ${DateTime.now().toIso8601String()}');
     await log?.close();
+  }
+
+  void forceKill() {
+    final proc = _process;
+    _process = null;
+    if (proc != null) {
+      CoreCleanup.unregister(proc);
+      if (Platform.isWindows) {
+        try {
+          Process.start('taskkill', ['/F', '/T', '/PID', '${proc.pid}'],
+              mode: ProcessStartMode.detached);
+        } catch (_) {}
+      }
+      try {
+        proc.kill(ProcessSignal.sigkill);
+      } catch (_) {}
+    }
+    final log = _log;
+    _log = null;
+    unawaited(log?.close() ?? Future<void>.value());
   }
 
   void dispose() {

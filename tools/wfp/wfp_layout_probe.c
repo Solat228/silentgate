@@ -1,10 +1,13 @@
 /* Снимок ПРАВДЫ из настоящего Windows SDK: раскладка структур WFP и значения GUID.
    Нужен затем, что раскладку x64 нельзя выводить по памяти: ошибка на 4 байта
    сдвигает флаги, и сессия из динамической становится статической. */
+#define NTDDI_VERSION 0x0A000000
+#define _WIN32_WINNT 0x0A00
 #include <initguid.h>
 #include <winsock2.h>
 #include <windows.h>
 #include <fwpmu.h>
+#include <fwpsu.h>
 #include <stdio.h>
 #include <stddef.h>
 
@@ -68,6 +71,16 @@ int main(void) {
   OFF(FWPM_FILTER0, providerContextKey);
   OFF(FWPM_FILTER0, reserved);    OFF(FWPM_FILTER0, filterId);
   OFF(FWPM_FILTER0, effectiveWeight);
+
+  SZ(FWPS_ALE_ENDPOINT_PROPERTIES0);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, endpointId);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, ipVersion);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, localV4Address);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, remoteV4Address);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, ipProtocol);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, localPort);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, remotePort);
+  OFF(FWPS_ALE_ENDPOINT_PROPERTIES0, appId);
 
   printf("\n=== СЛОИ ===\n");
   G(FWPM_LAYER_ALE_AUTH_CONNECT_V4);

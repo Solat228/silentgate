@@ -17,6 +17,42 @@ import 'package:silentgate/core/platform/app_cleanup.dart';
 ///  2. страж по исходникам: гашения по имени образа не должно быть НИГДЕ в
 ///     `lib/` — ни здесь, ни в скопированном отсюда коде следующей платформы.
 void main() {
+  group('AppCleanup.pruneForReinstall (удаление с сохранением настроек)', () {
+    late Directory dir;
+    setUp(() => dir = Directory.systemTemp.createTempSync('sg_prune_'));
+    tearDown(() => dir.deleteSync(recursive: true));
+
+    test('остаются настройки, подписки, правки и состояние; прочее стёрто', () {
+      const kept = [
+        'silentgate_settings.json',
+        'subscriptions.json',
+        'pinned_servers.json',
+        'server_overrides.json',
+        'panel_outbounds.json',
+        'silentgate_state.json',
+        'sub_logo_abc.png',
+      ];
+      const gone = ['app.log', 'app.log.1', 'singbox.log', 'restore_pending.json'];
+      for (final n in [...kept, ...gone]) {
+        File('${dir.path}/$n').writeAsStringSync('x');
+      }
+      for (final d in ['support', 'updates', 'site_icons', 'backup']) {
+        Directory('${dir.path}/$d').createSync();
+        File('${dir.path}/$d/f.txt').writeAsStringSync('x');
+      }
+      AppCleanup.pruneForReinstall(dir);
+      final left = dir
+          .listSync()
+          .map((e) => e.uri.pathSegments.where((s) => s.isNotEmpty).last)
+          .toSet();
+      expect(left, kept.toSet());
+    });
+
+    test('каталога нет — не падает', () {
+      AppCleanup.pruneForReinstall(Directory('${dir.path}/nope'));
+    });
+  });
+
   group('AppCleanup.ownCoreDir', () {
     test('папка ядер завершается разделителем — иначе совпадёт соседняя', () {
       final dir = AppCleanup.ownCoreDir(assetDir: r'C:\Program Files\SilentGate');

@@ -20,6 +20,11 @@ import 'package:silentgate/engine/vpn_engine.dart';
 /// grace-период на смену сети, переход на запасной сервер через тот же
 /// `configFor` (иначе профиль панели теряет свой balancer).
 class _FakeEngine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   int startCalls = 0;
   int teardownCalls = 0;
   int cleanupCalls = 0;

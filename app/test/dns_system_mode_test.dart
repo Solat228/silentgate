@@ -73,7 +73,7 @@ void main() {
     await f.writeAsString(
         const JsonEncoder.withIndent('  ').convert(build(DnsMode.system)));
     for (final exe in [
-      r'C:\dev\android\out\sing-box-1.13.14.exe',
+      r'C:\dev\android\out\sing-box-1.14.3.exe',
       '../engine/windows/bin/sing-box.exe',
     ]) {
       if (!File(exe).existsSync()) continue;

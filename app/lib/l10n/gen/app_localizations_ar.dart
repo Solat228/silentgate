@@ -216,7 +216,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get captureTunHint =>
-      'تظهر إعدادات TUN وDNS وتقسيم النفق عند اختيار وضع TUN — أما في وضع بروكسي النظام فلا أثر لها.';
+      'تظهر إعدادات TUN وDNS وتقسيم النفق عند اختيار وضع TUN - أما في وضع بروكسي النظام فلا أثر لها.';
 
   @override
   String get captureProxyOnly => 'بروكسي فقط';
@@ -233,14 +233,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String apiEnableSub(int port) {
-    return 'HTTP على 127.0.0.1:$port — التحكم بالعميل من نصوص برمجية';
+    return 'HTTP على 127.0.0.1:$port - التحكم بالعميل من نصوص برمجية';
   }
 
   @override
   String get apiTokenTitle => 'الرمز المميز';
 
   @override
-  String get apiTokenUnset => 'غير مضبوط — لن تعمل الواجهة البرمجية';
+  String get apiTokenUnset => 'غير مضبوط - لن تعمل الواجهة البرمجية';
 
   @override
   String get apiTokenRegenerate => 'تجديد الرمز';
@@ -254,14 +254,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get apiExitsSub =>
-      'يحصل كل خادم على منفذ محلي خاص به — يمر الطلب الموجَّه إليه عبر هذا الخادم';
+      'يحصل كل خادم على منفذ محلي خاص به - يمر الطلب الموجَّه إليه عبر هذا الخادم';
 
   @override
   String get apiCopyPythonExample => 'نسخ مثال بايثون';
 
   @override
   String apiPortsHint(int control, int direct, int first) {
-    return 'التحكم — المنفذ $control. «مباشر» — المنفذ $direct. الخوادم — بدءًا من $first.';
+    return 'التحكم - المنفذ $control. «مباشر» - المنفذ $direct. الخوادم - بدءًا من $first.';
   }
 
   @override
@@ -273,7 +273,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String apiCaptureModeWarning(int control) {
-    return '⚠️ الالتقاط المحدَّد هو «بروكسي النظام» — لا تُفتح منافذ المخارج في هذا الوضع ويُرفض الاتصال بها. منفذ التحكم $control يعمل مع أي وضع التقاط. إذا كنت بحاجة إلى منافذ المخارج فاختر «TUN (نفق كامل)» أو «بروكسي فقط».';
+    return '⚠️ الالتقاط المحدَّد هو «بروكسي النظام» - لا تُفتح منافذ المخارج في هذا الوضع ويُرفض الاتصال بها. منفذ التحكم $control يعمل مع أي وضع التقاط. إذا كنت بحاجة إلى منافذ المخارج فاختر «TUN (نفق كامل)» أو «بروكسي فقط».';
   }
 
   @override
@@ -319,7 +319,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tunUacDone => 'تم: سيبدأ TUN دون طلب UAC';
 
   @override
-  String get tunUacFail => 'تعذّر إنشاء المهمة — سيُطلب UAC عند الاتصال';
+  String get tunUacFail => 'تعذّر إنشاء المهمة - سيُطلب UAC عند الاتصال';
 
   @override
   String get autoReconnectTitle => 'إعادة الاتصال التلقائية';
@@ -336,7 +336,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get alwaysOnSub =>
-      'VPN دائم التشغيل مع «حظر الاتصالات بدون VPN» — يعمل حتى عند إغلاق التطبيق';
+      'VPN دائم التشغيل مع «حظر الاتصالات بدون VPN» - يعمل حتى عند إغلاق التطبيق';
 
   @override
   String get killSwitchSubTun =>
@@ -344,7 +344,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get killSwitchSubProxy =>
-      'في وضع «بروكسي النظام» يحمي التطبيقات الداعمة للبروكسي فقط. بالكامل — عبر TUN فقط';
+      'في وضع «بروكسي النظام» يحمي التطبيقات الداعمة للبروكسي فقط. بالكامل - عبر TUN فقط';
 
   @override
   String get killSwitchSubOff => 'يتطلب تفعيل إعادة الاتصال التلقائية';
@@ -396,7 +396,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get networkFullResetConfirmBody =>
-      'بالإضافة إلى التنظيف السلس، سيتم تنفيذ ما يلي.\n\n1) سيتم تحرير وإعادة طلب إيجار DHCP على جميع المهايئات — بما في ذلك مفاتيح Hyper-V وVirtualBox الافتراضية: قد تتعطل شبكة أجهزتك الافتراضية.\n\n2) إعادة تعيين winsock وحزمة IP تعيد إعدادات الشبكة إلى قيم المصنع: سيتم محو العناوين الثابتة والمسارات وإضافات الشبكة من جهات خارجية، وستحتاج إلى إعدادها من جديد.\n\n3) ستحتاج إلى إعادة التشغيل، وحتى ذلك الحين قد تعمل الشبكة بشكل أسوأ مما هي عليه الآن.\n\nستحتاج إلى صلاحيات المسؤول (UAC).';
+      'بالإضافة إلى التنظيف السلس، سيتم تنفيذ ما يلي.\n\n1) سيتم تحرير وإعادة طلب إيجار DHCP على جميع المهايئات - بما في ذلك مفاتيح Hyper-V وVirtualBox الافتراضية: قد تتعطل شبكة أجهزتك الافتراضية.\n\n2) إعادة تعيين winsock وحزمة IP تعيد إعدادات الشبكة إلى قيم المصنع: سيتم محو العناوين الثابتة والمسارات وإضافات الشبكة من جهات خارجية، وستحتاج إلى إعدادها من جديد.\n\n3) ستحتاج إلى إعادة التشغيل، وحتى ذلك الحين قد تعمل الشبكة بشكل أسوأ مما هي عليه الآن.\n\nستحتاج إلى صلاحيات المسؤول (UAC).';
 
   @override
   String get networkFullResetConfirmOk => 'إعادة تعيين الشبكة';
@@ -433,7 +433,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get panelOwnerBody =>
-      'لا يحتاج المستخدمون العاديون إلى هذا — يمكنك تخطّيه.\n\nلكي يستقبل التطبيق اشتراكك بتنسيق JSON الصحيح (XRAY_JSON)، أضِف هذا المقطع إلى Response Rules في لوحة Remnawave الخاصة بك — فهو يطابق User-Agent الخاص بنا:';
+      'لا يحتاج المستخدمون العاديون إلى هذا - يمكنك تخطّيه.\n\nلكي يستقبل التطبيق اشتراكك بتنسيق JSON الصحيح (XRAY_JSON)، أضِف هذا المقطع إلى Response Rules في لوحة Remnawave الخاصة بك - فهو يطابق User-Agent الخاص بنا:';
 
   @override
   String get panelOwnerCopy => 'نسخ المقطع';
@@ -457,15 +457,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aboutThirdPartySub =>
-      'Xray-core (MPL-2.0)، sing-box (GPL-3.0)، Wintun — تعمل كعمليات منفصلة';
+      'Xray-core (MPL-2.0)، sing-box (GPL-3.0)، Wintun - تعمل كعمليات منفصلة';
 
   @override
   String get aboutThirdPartySubEmbedded =>
-      'Xray-core (MPL-2.0)‏، sing-box (GPL-3.0)‏، libXray (MIT) — مضمّنة في التطبيق';
+      'Xray-core (MPL-2.0)‏، sing-box (GPL-3.0)‏، libXray (MIT) - مضمّنة في التطبيق';
 
   @override
   String get thirdPartyBodyEmbedded =>
-      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box — GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray — MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts — buttons below.';
+      'On Android the cores are BUILT INTO the app (a native library inside the APK).\n\n• sing-box - GPL-3.0. The library is linked into the app, so derivatives must stay under GPL-3.0.\n  https://github.com/SagerNet/sing-box\n\n• Xray-core - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• libXray - MIT\n  https://github.com/XTLS/libXray\n\nClient source code: https://github.com/Solat228/silentgate\nFull license texts - buttons below.';
 
   @override
   String get logsTitle => 'السجلات';
@@ -511,11 +511,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get thirdPartyBody =>
-      'يُشحن SilentGate مع ملفات تنفيذية من أطراف ثالثة. تعمل كعمليات منفصلة ولا تُدمج داخل التطبيق.\n\n• Xray-core (xray.exe) — MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) — GPL-3.0-or-later\n  نفق TUN ونواة البروكسي لـ Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) — ترخيص Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat — بيانات التوجيه، CC-BY-SA-4.0\n\nنصوص التراخيص الكاملة موجودة في مجلد «licenses» بجوار التطبيق.';
+      'يُشحن SilentGate مع ملفات تنفيذية من أطراف ثالثة. تعمل كعمليات منفصلة ولا تُدمج داخل التطبيق.\n\n• Xray-core (xray.exe) - MPL-2.0\n  https://github.com/XTLS/Xray-core\n\n• sing-box (sing-box.exe) - GPL-3.0-or-later\n  نفق TUN ونواة البروكسي لـ Hysteria2\n  https://github.com/SagerNet/sing-box\n\n• Wintun (wintun.dll) - ترخيص Wintun\n  https://www.wintun.net/\n\n• geoip.dat / geosite.dat - بيانات التوجيه، CC-BY-SA-4.0\n\nنصوص التراخيص الكاملة موجودة في مجلد «licenses» بجوار التطبيق.';
 
   @override
   String get supportSectionNote =>
-      'انقر «التواصل مع الدعم» — تُفتح نافذة تُنشئ فيها ملف سجل بنفسك (الإصدارات، نظام التشغيل، الإعدادات، app.log + نهاية singbox.log؛ بدون كلمات مرور أو رمز اشتراك، وURL مخفي). بعد ذلك يظهر زر لإرساله إلى دعم Telegram.';
+      'انقر «التواصل مع الدعم» - تُفتح نافذة تُنشئ فيها ملف سجل بنفسك (الإصدارات، نظام التشغيل، الإعدادات، app.log + نهاية singbox.log؛ بدون كلمات مرور أو رمز اشتراك، وURL مخفي). بعد ذلك يظهر زر لإرساله إلى دعم Telegram.';
 
   @override
   String get supportButtonTitle => 'التواصل مع الدعم';
@@ -527,7 +527,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get supportDialogTitle => 'الدعم';
 
   @override
-  String get supportDialogTitleDone => 'السجل جاهز — إلى أين تُرسله';
+  String get supportDialogTitleDone => 'السجل جاهز - إلى أين تُرسله';
 
   @override
   String get supportWhatWillHappen => 'ما الذي سيحدث:';
@@ -538,7 +538,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get supportBullet2 =>
-      '• بعد النقر، يُفتح أولاً المجلد الذي يحتوي على الملف، ثم الملف نفسه. صِف المشكلة في الأعلى، احفظه — ويظهر زر لإرساله إلى الدعم.';
+      '• بعد النقر، يُفتح أولاً المجلد الذي يحتوي على الملف، ثم الملف نفسه. صِف المشكلة في الأعلى، احفظه - ويظهر زر لإرساله إلى الدعم.';
 
   @override
   String supportError(String error) {
@@ -547,7 +547,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get supportDoneText =>
-      'تم بناء التقرير وفتحه (المجلد، ثم الملف). صِف المشكلة في الأعلى، واحفظ الملف وأرسله إلى الدعم — سيساعدك التطبيق على فتح Telegram.';
+      'تم بناء التقرير وفتحه (المجلد، ثم الملف). صِف المشكلة في الأعلى، واحفظ الملف وأرسله إلى الدعم - سيساعدك التطبيق على فتح Telegram.';
 
   @override
   String get supportWhoTo => 'إلى أين تُرسله:';
@@ -580,7 +580,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingTwoPhaseSubOn =>
-      'بعد TCP — طلب عبر الخادم: يستبعد غير العاملة (Reality وغيرها)';
+      'بعد TCP - طلب عبر الخادم: يستبعد غير العاملة (Reality وغيرها)';
 
   @override
   String get pingTwoPhaseSubOff =>
@@ -606,7 +606,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoAppUpdateBeta =>
-      'سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر — لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.';
+      'سيبدأ التطبيق بالاطلاع على قائمة إصدارات GitHub كاملة، بما فيها الإصدارات التجريبية المسبقة، وليس فقط آخر إصدار مستقر. القناة الرئيسية للتحديث التلقائي لا تتغيّر - لن تصل النسخة التجريبية لمن لم يفعّل هذا الخيار.';
 
   @override
   String get appUpdateBetaBadge => 'تجريبي';
@@ -617,7 +617,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get appUpdatePreviousVersionsEmpty =>
-      'القائمة فارغة — GitHub Releases غير متاح أو لا توجد إصدارات.';
+      'القائمة فارغة - GitHub Releases غير متاح أو لا توجد إصدارات.';
 
   @override
   String get appUpdateOpenRelease => 'فتح صفحة الإصدار';
@@ -671,7 +671,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get autoPinnedTop => ' — مُثبَّتة في أعلى القائمة';
+  String get autoPinnedTop => ' - مُثبَّتة في أعلى القائمة';
 
   @override
   String get autoSearchContinues => ' (يستمر البحث…)';
@@ -687,7 +687,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get autoNoSubscriptionPasteKey =>
-      'لا يوجد اشتراك. الصِق مفتاحاً واحداً — سنعثر على الإعدادات العاملة:';
+      'لا يوجد اشتراك. الصِق مفتاحاً واحداً - سنعثر على الإعدادات العاملة:';
 
   @override
   String get autoTuneByKey => 'التهيئة بالمفتاح';
@@ -720,7 +720,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get autoStopSearch => 'إيقاف البحث';
 
   @override
-  String get autoDoneRefreshPing => 'تم — حدّث Ping المُكتشَفة';
+  String get autoDoneRefreshPing => 'تم - حدّث Ping المُكتشَفة';
 
   @override
   String autoFoundPinnedRefreshing(Object count) {
@@ -756,13 +756,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonGotIt => 'فهمت';
 
   @override
-  String get enumSplitAll => 'الكل — عبر VPN';
+  String get enumSplitAll => 'الكل - عبر VPN';
 
   @override
-  String get enumSplitOnly => 'المحدَّدة فقط — عبر VPN';
+  String get enumSplitOnly => 'المحدَّدة فقط - عبر VPN';
 
   @override
-  String get enumSplitExcept => 'المحدَّدة — خارج VPN';
+  String get enumSplitExcept => 'المحدَّدة - خارج VPN';
 
   @override
   String get enumActionTunnel => 'نفق';
@@ -791,7 +791,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String homeAutoConfigProgress(int current, int total, String name) {
-    return 'التهيئة التلقائية: $current من $total — $name';
+    return 'التهيئة التلقائية: $current من $total - $name';
   }
 
   @override
@@ -984,7 +984,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String subSwitcherCountChecking(int total) {
-    return 'عدد الخوادم في الاشتراك: $total. الفحص جارٍ الآن — سيظهر عدد الخوادم العاملة عند انتهائه.';
+    return 'عدد الخوادم في الاشتراك: $total. الفحص جارٍ الآن - سيظهر عدد الخوادم العاملة عند انتهائه.';
   }
 
   @override
@@ -1010,11 +1010,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoTunStack =>
-      'حزمة شبكة TUN (sing-box).\n\n«auto» — الاختيار التلقائي: إذا فشل النفق في العمل، يتنقّل التطبيق نفسه عبر system → gvisor → mixed، ثم يخفض MTU (1400، 1280). يُحفظ التركيب الذي نجح ويُجرَّب أولاً في المرة التالية. يظهر تقدّم الاختيار في الحالة وفي السجل.\n\nالاختيار الصريح يعطّل الاختيار التلقائي: system — حزمة نظام التشغيل، الأسرع، لكنها أكثر حساسية مع برامج مكافحة الفيروسات؛ gvisor — في مساحة المستخدم، أبطأ، بأقصى توافق؛ mixed — TCP عبر system، UDP عبر gvisor.';
+      'حزمة شبكة TUN (sing-box).\n\n«auto» - الاختيار التلقائي: إذا فشل النفق في العمل، يتنقّل التطبيق نفسه عبر system → gvisor → mixed، ثم يخفض MTU (1400، 1280). يُحفظ التركيب الذي نجح ويُجرَّب أولاً في المرة التالية. يظهر تقدّم الاختيار في الحالة وفي السجل.\n\nالاختيار الصريح يعطّل الاختيار التلقائي: system - حزمة نظام التشغيل، الأسرع، لكنها أكثر حساسية مع برامج مكافحة الفيروسات؛ gvisor - في مساحة المستخدم، أبطأ، بأقصى توافق؛ mixed - TCP عبر system، UDP عبر gvisor.';
 
   @override
   String get infoTunMtu =>
-      'الحد الأقصى لحجم الحزمة في محوّل TUN. الافتراضي 1500؛ اخفضه (1400، 1280) إذا واجهت انقطاعات — القيمة الصغيرة جداً تقلّل السرعة.\n\nمع حزمة «auto» هذه مجرد قيمة بداية: إذا فشل النفق في العمل، فسيجرّب التطبيق نفسه قيم MTU أصغر.';
+      'الحد الأقصى لحجم الحزمة في محوّل TUN. الافتراضي 1500؛ اخفضه (1400، 1280) إذا واجهت انقطاعات - القيمة الصغيرة جداً تقلّل السرعة.\n\nمع حزمة «auto» هذه مجرد قيمة بداية: إذا فشل النفق في العمل، فسيجرّب التطبيق نفسه قيم MTU أصغر.';
 
   @override
   String get infoTunStrictRoute =>
@@ -1026,7 +1026,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoTunEndpointIndependentNat =>
-      'وضع NAT لـ UDP. لازم للألعاب والدردشات الصوتية وWebRTC — دونه قد تفشل الاتصالات في التأسيس. عطّله فقط لتوفير الذاكرة.';
+      'وضع NAT لـ UDP. لازم للألعاب والدردشات الصوتية وWebRTC - دونه قد تفشل الاتصالات في التأسيس. عطّله فقط لتوفير الذاكرة.';
 
   @override
   String get infoTunBypassLan =>
@@ -1038,27 +1038,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoTunPrivilege =>
-      'يتطلب TUN صلاحيات المسؤول. مرة واحدة، نُنشئ مهمة في Windows Task Scheduler بأعلى الصلاحيات — بعدها يبدأ النفق دون طلب UAC في كل اتصال. المهمة ملكك وتُزال بالزر أدناه أو عند إلغاء تثبيت البرنامج.';
+      'يتطلب TUN صلاحيات المسؤول. مرة واحدة، نُنشئ مهمة في Windows Task Scheduler بأعلى الصلاحيات - بعدها يبدأ النفق دون طلب UAC في كل اتصال. المهمة ملكك وتُزال بالزر أدناه أو عند إلغاء تثبيت البرنامج.';
 
   @override
   String get infoSpeedTest =>
-      'كمية البيانات المُنزَّلة عند قياس السرعة (انقر بزر الفأرة الأيمن على خادم ← «معلومات الخادم» ← «قياس السرعة»).\n\n20 MB — الوضع الرئيسي: على الوصلات السريعة (100+ ميغابت/ث) لا يجد المسبار القصير وقتاً كافياً لبلوغ الذروة فيقلّل تقدير النتيجة.\n5 MB — الوضع الاقتصادي: أرخص بوضوح على حركة المرور، ومفيد للمرور عبر عدة خوادم.\n\nيُجرى القياس يدوياً فقط ويستهلك حركة مرور اشتراكك. تُقاس السرعة مرتين: مباشرة وعبر الخادم المحدَّد، لترى بالضبط كم يُفقد على VPN.';
+      'كمية البيانات المُنزَّلة عند قياس السرعة (انقر بزر الفأرة الأيمن على خادم ← «معلومات الخادم» ← «قياس السرعة»).\n\n20 MB - الوضع الرئيسي: على الوصلات السريعة (100+ ميغابت/ث) لا يجد المسبار القصير وقتاً كافياً لبلوغ الذروة فيقلّل تقدير النتيجة.\n5 MB - الوضع الاقتصادي: أرخص بوضوح على حركة المرور، ومفيد للمرور عبر عدة خوادم.\n\nيُجرى القياس يدوياً فقط ويستهلك حركة مرور اشتراكك. تُقاس السرعة مرتين: مباشرة وعبر الخادم المحدَّد، لترى بالضبط كم يُفقد على VPN.';
 
   @override
   String get infoAutoReconnect =>
-      'إذا انهارت النواة أو سقط الخادم أو تغيّرت الشبكة (واي-فاي ↔ كابل، الخروج من السكون، عنوان IP جديد)، يعيد التطبيق الاتصال من تلقاء نفسه. تتزايد فترات الانتظار بين المحاولات: 0.8 ث ← 3 ث ← 8 ث ← 20 ث، ثم تبقى عند 20 ث. عدد المحاولات ثماني، وبعدها يستسلم التطبيق ويعرض خطأً. أما قطع الاتصال بالزر فيلغي الاستعادة دائمًا.\n\n⚠️ عند تفعيل مفتاح الإيقاف، المحاولات لا تنفد أبدًا. ما دامت مستمرة تبقى حركة البيانات محجوبة، وإيقافها يعني إطلاقها خارج الشبكة الافتراضية — لذلك يواصل التطبيق المحاولة كل 20 ثانية حتى تُطفئ الشبكة الافتراضية بنفسك، ويذكّرك بالإخفاق مرة كل 15 دقيقة على الأكثر. والخادم الذي يعود بعد ساعة يُلتقط تلقائيًا.\n\nفي وضع «تلقائي (أفضل خادم)» لا يهدر التطبيق المحاولة الأخيرة على خادم ميت: فمنذ السابعة من أصل ثماني ينتقل إلى المرشح التالي، ويبدأ العدّ هناك من جديد.\n\nيُكتشف تغيّر الشبكة من العناوين الحقيقية للمحوّلات الأخرى: نفقنا الخاص وعناوين الخدمة (link-local) لا تُحتسب، ولا يُقبل التغيير إلا إذا استمر في استطلاعين متتاليين، وتُتجاهل الإشارة في أول 15 ثانية بعد الاتصال. بدون هذه الاحتياطات كان رفع النفق نفسه يُحتسب «تغيّر شبكة» ويسبب إعادة اتصال لا تنتهي.';
+      'إذا انهارت النواة أو سقط الخادم أو تغيّرت الشبكة (واي-فاي ↔ كابل، الخروج من السكون، عنوان IP جديد)، يعيد التطبيق الاتصال من تلقاء نفسه. تتزايد فترات الانتظار بين المحاولات: 0.8 ث ← 3 ث ← 8 ث ← 20 ث، ثم تبقى عند 20 ث. عدد المحاولات ثماني، وبعدها يستسلم التطبيق ويعرض خطأً. أما قطع الاتصال بالزر فيلغي الاستعادة دائمًا.\n\n⚠️ عند تفعيل مفتاح الإيقاف، المحاولات لا تنفد أبدًا. ما دامت مستمرة تبقى حركة البيانات محجوبة، وإيقافها يعني إطلاقها خارج الشبكة الافتراضية - لذلك يواصل التطبيق المحاولة كل 20 ثانية حتى تُطفئ الشبكة الافتراضية بنفسك، ويذكّرك بالإخفاق مرة كل 15 دقيقة على الأكثر. والخادم الذي يعود بعد ساعة يُلتقط تلقائيًا.\n\nفي وضع «تلقائي (أفضل خادم)» لا يهدر التطبيق المحاولة الأخيرة على خادم ميت: فمنذ السابعة من أصل ثماني ينتقل إلى المرشح التالي، ويبدأ العدّ هناك من جديد.\n\nيُكتشف تغيّر الشبكة من العناوين الحقيقية للمحوّلات الأخرى: نفقنا الخاص وعناوين الخدمة (link-local) لا تُحتسب، ولا يُقبل التغيير إلا إذا استمر في استطلاعين متتاليين، وتُتجاهل الإشارة في أول 15 ثانية بعد الاتصال. بدون هذه الاحتياطات كان رفع النفق نفسه يُحتسب «تغيّر شبكة» ويسبب إعادة اتصال لا تنتهي.';
 
   @override
   String get infoKillSwitch =>
-      'لا تسمح لحركة المرور بالخروج حول VPN أثناء استعادة الاتصال. لا يُحرَّر الالتقاط بين المحاولات: في وضع TUN يبقى المحوّل قائماً، وفي وضع «بروكسي النظام» يبقى البروكسي مُهيَّأً — فتحصل التطبيقات على خطأ اتصال بدلاً من وصول غير مُشفَّر إلى الإنترنت.\n\nبصراحة عن الحدود: في وضع «بروكسي النظام» يحمي هذا البرامج التي تحترم بروكسي النظام فقط (المتصفحات ومعظم التطبيقات). أما البرامج التي تتجاهل البروكسي، وUDP، فستذهب مباشرة — والإحكام الكامل لا يوفّره إلا وضع TUN. يتطلب تفعيل إعادة الاتصال التلقائية.';
+      'لا تسمح لحركة المرور بالخروج حول VPN أثناء استعادة الاتصال. لا يُحرَّر الالتقاط بين المحاولات: في وضع TUN يبقى المحوّل قائماً، وفي وضع «بروكسي النظام» يبقى البروكسي مُهيَّأً - فتحصل التطبيقات على خطأ اتصال بدلاً من وصول غير مُشفَّر إلى الإنترنت.\n\nبصراحة عن الحدود: في وضع «بروكسي النظام» يحمي هذا البرامج التي تحترم بروكسي النظام فقط (المتصفحات ومعظم التطبيقات). أما البرامج التي تتجاهل البروكسي، وUDP، فستذهب مباشرة - والإحكام الكامل لا يوفّره إلا وضع TUN. يتطلب تفعيل إعادة الاتصال التلقائية.';
 
   @override
   String get infoUserAgent =>
-      'كيف يعرّف التطبيق نفسه للوحة (ترويسة User-Agent). يرسل دائماً «SilentGate/version (Windows)».\n\nبهذا الاسم تختار لوحة Remnawave تنسيق الاشتراك. XRAY_JSON مطلوب — فهو يسلّم تكوينات خوادم جاهزة؛ أما من قائمة روابط base64 فتُستعاد بعض الإعدادات تقريبياً، ويعمل الاختيار التلقائي (burstObservatory) بشكل أسوأ.\n\nيُهيَّأ في اللوحة: Templates ← Response Rules ← قاعدة بشرط user-agent CONTAINS SilentGate ونوع الاستجابة XRAY_JSON (ضعها فوق قاعدة Fallback Base64).\n\nحقل التجاوز لازم فقط كحل مؤقت — إذا كانت اللوحة لا تعرف التطبيق بعد، يمكنك التعريف كعميل تعرفه.';
+      'كيف يعرّف التطبيق نفسه للوحة (ترويسة User-Agent). يرسل دائماً «SilentGate/version (Windows)».\n\nبهذا الاسم تختار لوحة Remnawave تنسيق الاشتراك. XRAY_JSON مطلوب - فهو يسلّم تكوينات خوادم جاهزة؛ أما من قائمة روابط base64 فتُستعاد بعض الإعدادات تقريبياً، ويعمل الاختيار التلقائي (burstObservatory) بشكل أسوأ.\n\nيُهيَّأ في اللوحة: Templates ← Response Rules ← قاعدة بشرط user-agent CONTAINS SilentGate ونوع الاستجابة XRAY_JSON (ضعها فوق قاعدة Fallback Base64).\n\nحقل التجاوز لازم فقط كحل مؤقت - إذا كانت اللوحة لا تعرف التطبيق بعد، يمكنك التعريف كعميل تعرفه.';
 
   @override
   String get infoDnsMode =>
-      'من يحلّ النطاقات في وضع TUN. «عبر VPN» (مُوصى به) — تذهب الاستعلامات إلى النفق عبر TCP، ولا يرى مزوّد خدمتك المواقع التي تفتحها. «النظام» — كما في Windows: تسرّب DNS ممكن، وإذا لم يمرّر الخادم UDP فقد ينقطع الإنترنت كلياً. «مخصّص» — الخادم الذي تحدّده، عبر النفق.';
+      'من يحلّ النطاقات في وضع TUN. «عبر VPN» (مُوصى به) - تذهب الاستعلامات إلى النفق عبر TCP، ولا يرى مزوّد خدمتك المواقع التي تفتحها. «النظام» - كما في Windows: تسرّب DNS ممكن، وإذا لم يمرّر الخادم UDP فقد ينقطع الإنترنت كلياً. «مخصّص» - الخادم الذي تحدّده، عبر النفق.';
 
   @override
   String get infoDnsCustomServer =>
@@ -1070,23 +1070,23 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoDnsStrategy =>
-      'أي العناوين يُطلَب: prefer_ipv4 (مُوصى به) — IPv4 أولاً، ipv4_only — IPv4 فقط (يصلح مشكلات IPv6 المعطّل)، prefer_ipv6/ipv6_only — لشبكات IPv6.';
+      'أي العناوين يُطلَب: prefer_ipv4 (مُوصى به) - IPv4 أولاً، ipv4_only - IPv4 فقط (يصلح مشكلات IPv6 المعطّل)، prefer_ipv6/ipv6_only - لشبكات IPv6.';
 
   @override
   String get infoSingboxLogLevel =>
-      'مستوى تفصيل سجل sing-box (%APPDATA%\\SilentGate\\singbox.log). warn — الوضع العادي. info/debug — إذا لم يعمل النفق: سيُظهر السجل السبب الدقيق. يزيد debug حجم الملف بوضوح.';
+      'مستوى تفصيل سجل sing-box (%APPDATA%\\SilentGate\\singbox.log). warn - الوضع العادي. info/debug - إذا لم يعمل النفق: سيُظهر السجل السبب الدقيق. يزيد debug حجم الملف بوضوح.';
 
   @override
   String get tunLogLevelDebugCost =>
-      'في مستوى debug تكتب النواة مئات الأسطر في الثانية: يغطي السجل دقائق لا ساعات وينمو بالميغابايت. لا يفيد في انقطاع حدث سابقًا — راجع سجل التطبيق.';
+      'في مستوى debug تكتب النواة مئات الأسطر في الثانية: يغطي السجل دقائق لا ساعات وينمو بالميغابايت. لا يفيد في انقطاع حدث سابقًا - راجع سجل التطبيق.';
 
   @override
   String get infoSplitMode =>
-      'الأساس — إلى أين يذهب كل ما ليس له إجراء مضبوط يدوياً، وأي إجراء يُسنَد للإدخالات الجديدة. «الكل — عبر VPN»: افتراضياً كل حركة المرور إلى النفق. «المحدَّدة فقط — عبر VPN»: افتراضياً مباشرة، وإلى النفق فقط تلك المُعلَّمة بـ «نفق». «المحدَّدة — حول VPN»: العكس، كل شيء إلى النفق، وتذهب المُعلَّمة بـ «مباشر» مباشرة.';
+      'الأساس - إلى أين يذهب كل ما ليس له إجراء مضبوط يدوياً، وأي إجراء يُسنَد للإدخالات الجديدة. «الكل - عبر VPN»: افتراضياً كل حركة المرور إلى النفق. «المحدَّدة فقط - عبر VPN»: افتراضياً مباشرة، وإلى النفق فقط تلك المُعلَّمة بـ «نفق». «المحدَّدة - حول VPN»: العكس، كل شيء إلى النفق، وتذهب المُعلَّمة بـ «مباشر» مباشرة.';
 
   @override
   String get infoSplitApps =>
-      'انقر على تطبيق — تُفتح نافذة تختار فيها الإجراء (نفق — عبر VPN، مباشر — حول VPN، حظر — بلا شبكة) وطريقة المطابقة: باسم exe (موثوق) أو بالمسار الكامل. يمكنك الاختيار من التطبيقات العاملة أو تحديد ملف ‎.exe.';
+      'انقر على تطبيق - تُفتح نافذة تختار فيها الإجراء (نفق - عبر VPN، مباشر - حول VPN، حظر - بلا شبكة) وطريقة المطابقة: باسم exe (موثوق) أو بالمسار الكامل. يمكنك الاختيار من التطبيقات العاملة أو تحديد ملف ‎.exe.';
 
   @override
   String get infoSplitDomains =>
@@ -1102,7 +1102,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoProxyHead =>
-      'مثل GET، لكن الترويسات فقط — أسرع وحركة مرور أقل. قد لا تدعم بعض الخوادم/شبكات CDN طريقة HEAD.';
+      'مثل GET، لكن الترويسات فقط - أسرع وحركة مرور أقل. قد لا تدعم بعض الخوادم/شبكات CDN طريقة HEAD.';
 
   @override
   String get infoTcp =>
@@ -1114,11 +1114,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoTestUrl =>
-      'URL للتحقق من الأداء عبر البروكسي. افتراضياً https://www.gstatic.com/generate_204 — يعيد استجابة 204 فارغة، وهو أمر مريح وسريع.';
+      'URL للتحقق من الأداء عبر البروكسي. افتراضياً https://www.gstatic.com/generate_204 - يعيد استجابة 204 فارغة، وهو أمر مريح وسريع.';
 
   @override
   String get infoAutoConfig =>
-      'يمرّ عبر الخوادم ومتغيّرات التجاوز (fragment، fingerprint) ويبني قائمة بتلك التي تعمل فيها الخدمات المختارة. لا يتوقف عند أول واحد — بل تختار من بين المُكتشَفة. يتم الفحص عبر البروكسي؛ ولا يُفعَّل VPN خلال هذا الوقت.';
+      'يمرّ عبر الخوادم ومتغيّرات التجاوز (fragment، fingerprint) ويبني قائمة بتلك التي تعمل فيها الخدمات المختارة. لا يتوقف عند أول واحد - بل تختار من بين المُكتشَفة. يتم الفحص عبر البروكسي؛ ولا يُفعَّل VPN خلال هذا الوقت.';
 
   @override
   String get infoAutoConfigServices =>
@@ -1126,7 +1126,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoAutoPinFound =>
-      'تُثبَّت التركيبات العاملة المُكتشَفة (خادم + متغيّر تجاوز) فوراً في أعلى قائمة الخوادم العامة، كي تستخدمها دون العودة إلى هنا. أوقفه إذا لم ترد أن تغيّر التهيئة التلقائية ترتيب قائمتك — فستظل النتائج مرئية على هذه الشاشة.';
+      'تُثبَّت التركيبات العاملة المُكتشَفة (خادم + متغيّر تجاوز) فوراً في أعلى قائمة الخوادم العامة، كي تستخدمها دون العودة إلى هنا. أوقفه إذا لم ترد أن تغيّر التهيئة التلقائية ترتيب قائمتك - فستظل النتائج مرئية على هذه الشاشة.';
 
   @override
   String get infoTryFragment =>
@@ -1134,7 +1134,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoAutoStrategy =>
-      '«أول عامل» — مرّ عبر كل شيء واتصل بأي واحد مُكتشَف (أنت تختار). «الأفضل ضمن الميزانية» — ابحث ضمن حد زمني واختر الأسرع.';
+      '«أول عامل» - مرّ عبر كل شيء واتصل بأي واحد مُكتشَف (أنت تختار). «الأفضل ضمن الميزانية» - ابحث ضمن حد زمني واختر الأسرع.';
 
   @override
   String get infoScheme =>
@@ -1150,7 +1150,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoNetworkSoftRecover =>
-      'تنظيف آمن بعد فشل VPN: ذاكرة التخزين المؤقت لـ DNS، وذاكرة ARP، وبروكسي النظام، وبروكسي WinHTTP. لا يمحو شيئًا ولا يتطلب إعادة التشغيل — ابدأ به. يتطلب صلاحيات المسؤول.';
+      'تنظيف آمن بعد فشل VPN: ذاكرة التخزين المؤقت لـ DNS، وذاكرة ARP، وبروكسي النظام، وبروكسي WinHTTP. لا يمحو شيئًا ولا يتطلب إعادة التشغيل - ابدأ به. يتطلب صلاحيات المسؤول.';
 
   @override
   String get infoNetworkFullReset =>
@@ -1166,7 +1166,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingInfoProxyHead =>
-      'مثل GET، لكنه يطلب الترويسات فقط — حركة مرور أقل وأسرع. يتحقق من أداء النفق؛ قد لا تدعم بعض الخوادم/شبكات CDN طريقة HEAD.';
+      'مثل GET، لكنه يطلب الترويسات فقط - حركة مرور أقل وأسرع. يتحقق من أداء النفق؛ قد لا تدعم بعض الخوادم/شبكات CDN طريقة HEAD.';
 
   @override
   String get pingInfoTcp =>
@@ -1186,7 +1186,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingInfoTunStack =>
-      'حزمة شبكة TUN (sing-box). auto — اتركها لتقدير النواة (حالياً mixed). system — حزمة نظام التشغيل: أقصى سرعة، لكنها أكثر حساسية مع الصلاحيات/برامج مكافحة الفيروسات. gvisor — حزمة في مساحة المستخدم: أبطأ، لكنها الأكثر توافقاً. mixed — TCP عبر system، UDP عبر gvisor (توازن). إذا لم يتصل TUN أو أسقط الاتصالات — جرّب gvisor.';
+      'حزمة شبكة TUN (sing-box). auto - اتركها لتقدير النواة (حالياً mixed). system - حزمة نظام التشغيل: أقصى سرعة، لكنها أكثر حساسية مع الصلاحيات/برامج مكافحة الفيروسات. gvisor - حزمة في مساحة المستخدم: أبطأ، لكنها الأكثر توافقاً. mixed - TCP عبر system، UDP عبر gvisor (توازن). إذا لم يتصل TUN أو أسقط الاتصالات - جرّب gvisor.';
 
   @override
   String get pingInfoAutoConfig =>
@@ -1217,7 +1217,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get logsEmpty => 'فارغ حتى الآن.';
 
   @override
-  String get logsTunEmpty => 'فارغ — لم يُبدأ TUN على هذا النظام بعد.';
+  String get logsTunEmpty => 'فارغ - لم يُبدأ TUN على هذا النظام بعد.';
 
   @override
   String get importScrDone => 'تم الاستيراد';
@@ -1279,8 +1279,27 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String statusReconnectUnprotected(int seconds, int attempt) {
+    return 'انقطع الاتصال ولم يُنشأ النفق - الحركة تمر خارج VPN. إعادة الاتصال خلال $seconds ث (المحاولة $attempt)…';
+  }
+
+  @override
   String get statusTrafficNotFlowing =>
       'النفق متصل، لكن لا تمر عبره أي حركة مرور';
+
+  @override
+  String get statusNoInternet =>
+      'لا يوجد اتصال بالإنترنت. سيعيد VPN الاتصال تلقائيًا عند عودة الشبكة';
+
+  @override
+  String get noticeNoInternet => 'لا يوجد اتصال بالإنترنت';
+
+  @override
+  String get noticeNoInternetDetail =>
+      'سيعيد VPN الاتصال تلقائيًا عند عودة الشبكة';
+
+  @override
+  String get noticeInternetRestored => 'تمت استعادة الاتصال';
 
   @override
   String get statusVpnConsentDenied =>
@@ -1340,7 +1359,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String serversFound(int found, int total) {
-    return 'الخوادم — عُثر على $found من $total';
+    return 'الخوادم - عُثر على $found من $total';
   }
 
   @override
@@ -1382,7 +1401,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get srvInfoSectionExit => 'من أين تخرج';
 
   @override
-  String get srvInfoExitHint => 'يُحدَّد من عنوان الخادم — ولا يُبدأ نفق لهذا.';
+  String get srvInfoExitHint => 'يُحدَّد من عنوان الخادم - ولا يُبدأ نفق لهذا.';
 
   @override
   String get srvInfoAddressLocation => 'عنوان الخادم وموقعه';
@@ -1505,7 +1524,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String jsonPanelProfileApplied(Object summary) {
-    return 'ملف الاختيار التلقائي من اللوحة: $summary — مُطبَّق بالكامل';
+    return 'ملف الاختيار التلقائي من اللوحة: $summary - مُطبَّق بالكامل';
   }
 
   @override
@@ -1513,7 +1532,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get jsonBuiltFromShareLink =>
-      'مبني من رابط المشاركة — لم ترسل اللوحة JSON. حدّث الاشتراك؛ وإذا لم يساعد ذلك، فتحقق من قاعدة Response Rules في اللوحة.';
+      'مبني من رابط المشاركة - لم ترسل اللوحة JSON. حدّث الاشتراك؛ وإذا لم يساعد ذلك، فتحقق من قاعدة Response Rules في اللوحة.';
 
   @override
   String get jsonInvalidJson => 'JSON غير صالح';
@@ -1639,14 +1658,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get pingNa => 'غير متاح';
 
   @override
-  String get pingNaTooltip => 'لا استجابة TCP — الخادم غير متاح (ميت)';
+  String get pingNaTooltip => 'لا استجابة TCP - الخادم غير متاح (ميت)';
 
   @override
   String get pingTimeout => 'انتهت المهلة';
 
   @override
   String get pingTimeoutTooltip =>
-      'لم يكتمل مسبار TCP خلال المهلة — الخادم غير متاح';
+      'لم يكتمل مسبار TCP خلال المهلة - الخادم غير متاح';
 
   @override
   String pingMs(Object ms) {
@@ -1658,7 +1677,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingNoProxyTooltip =>
-      'يستجيب عبر TCP (زمن الاستجابة معروض)، لكن فحص النفق (GET/HEAD) فشل — حركة المرور لا تمرّ';
+      'يستجيب عبر TCP (زمن الاستجابة معروض)، لكن فحص النفق (GET/HEAD) فشل - حركة المرور لا تمرّ';
 
   @override
   String get pingOk => 'سليم';
@@ -1674,11 +1693,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingCoreTooltip =>
-      'قياس نفّذته نواة VPN نفسها عبر النفق: الوقت الكامل للطلب إلى عنوان الاختبار (وليس زمن TCP إلى الخادم). الخادم يعمل — الطلب نجح.';
+      'قياس نفّذته نواة VPN نفسها عبر النفق: الوقت الكامل للطلب إلى عنوان الاختبار (وليس زمن TCP إلى الخادم). الخادم يعمل - الطلب نجح.';
 
   @override
   String get pingCoreFailedTooltip =>
-      'لم تتمكن نواة VPN من فتح عنوان الاختبار عبر هذا الخادم — لا تمر حركة البيانات عبر النفق';
+      'لم تتمكن نواة VPN من فتح عنوان الاختبار عبر هذا الخادم - لا تمر حركة البيانات عبر النفق';
 
   @override
   String get pingViaTunnelNote =>
@@ -1695,7 +1714,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitTunOnlyBanner =>
-      'يعمل في وضع TUN فقط. في وضع «بروكسي النظام»، تقرّر التطبيقات بنفسها ما إذا كانت ستستخدم البروكسي — ولا يمكن إجبارها.';
+      'يعمل في وضع TUN فقط. في وضع «بروكسي النظام»، تقرّر التطبيقات بنفسها ما إذا كانت ستستخدم البروكسي - ولا يمكن إجبارها.';
 
   @override
   String get splitProxyOnlyBanner =>
@@ -1721,7 +1740,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get splitByPath => 'بالمسار';
 
   @override
-  String get splitRuleDisabled => 'معطّل — القاعدة غير مُطبَّقة';
+  String get splitRuleDisabled => 'معطّل - القاعدة غير مُطبَّقة';
 
   @override
   String get splitRemove => 'إزالة';
@@ -1882,11 +1901,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tunTaskSchedulerFailed =>
-      'رفض برنامج جدولة المهام المهمة — السبب في السجل (الإعدادات ← السجلات)';
+      'رفض برنامج جدولة المهام المهمة - السبب في السجل (الإعدادات ← السجلات)';
 
   @override
   String get tunAutoFixNoticeText =>
-      'Silent TUN startup is broken — every connection will ask for administrator rights';
+      'Silent TUN startup is broken - every connection will ask for administrator rights';
 
   @override
   String get tunAutoFixAction => 'Fix';
@@ -1895,7 +1914,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tunLogTitle => 'سجل TUN (sing-box)';
 
   @override
-  String get tunLogEmpty => 'السجل فارغ — لم يبدأ النفق بعد.';
+  String get tunLogEmpty => 'السجل فارغ - لم يبدأ النفق بعد.';
 
   @override
   String get tunCopy => 'نسخ';
@@ -1980,7 +1999,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get tunDnsCustom => 'خادم مخصّص';
 
   @override
-  String get tunDnsVpnHint => 'تذهب الطلبات إلى النفق عبر TCP — بلا تسرّبات';
+  String get tunDnsVpnHint => 'تذهب الطلبات إلى النفق عبر TCP - بلا تسرّبات';
 
   @override
   String get tunDnsSystemHint => 'كما في Windows: تسرّب DNS ممكن';
@@ -2030,7 +2049,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'عند الاستيراد يفهم التطبيق: URL اشتراك (http/https)، وخوادم مفردة vless:// / vmess:// / trojan:// / ss:// / hysteria2:// (hy2://).';
 
   @override
-  String get reportTitle => 'SilentGate — تقرير الدعم';
+  String get reportTitle => 'SilentGate - تقرير الدعم';
 
   @override
   String get reportDescribeHere =>
@@ -2070,7 +2089,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pingLegendInfo =>
-      'لون شارة ping: أخضر/أصفر/برتقالي — الخادم يعمل (TCP + فحص عبر النفق). رمادي — يستجيب عبر TCP لكنه لا يمرر حركة المرور (منفذ Reality نموذجي). أحمر «n/a» — لا استجابة، مُستبعَد. يُقاس ping دائمًا مباشرةً (خارج VPN).';
+      'لون شارة ping: أخضر/أصفر/برتقالي - الخادم يعمل (TCP + فحص عبر النفق). رمادي - يستجيب عبر TCP لكنه لا يمرر حركة المرور (منفذ Reality نموذجي). أحمر «n/a» - لا استجابة، مُستبعَد. يُقاس ping دائمًا مباشرةً (خارج VPN).';
 
   @override
   String get pingUntestedHint =>
@@ -2096,7 +2115,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksInfo =>
-      'لكل خدمة أيقونتان\n• اليسار: الخدمة بدون VPN\n• اليمين: نفس الخدمة عبر VPN\n• السهم بينهما: التغيّر\n\nمتى يُؤخذ القياس\n• بدون VPN: تلقائيًا عند تشغيل التطبيق\n• عبر VPN: فور الاتصال\n\nلون الحلقة حول الأيقونة\n• أخضر: تُفتح\n• برتقالي: حجب حسب الدولة\n• أحمر: غير متاحة\n• رمادي: لم تُفحص بعد\n\nالعلامة في الزاوية تكرر اللون\n• ✓ تُفتح\n• ! حجب حسب الدولة\n• ✕ غير متاحة\n\nما يمكن الضغط عليه\n• الأيقونة: إعادة فحص الخدمة\n• زر الإعدادات المجاور: تغيير مجموعة الخدمات';
+      'الإطار حول الأيقونة مقسوم إلى نصفين\n• النصف الأيسر: الخدمة بدون VPN\n• النصف الأيمن: نفس الخدمة عبر VPN\n• الدائرة أسفل اليمين: الحالة الآن (✓ / ! / ✕)\n\nمتى يُؤخذ القياس\n• بدون VPN: تلقائيًا عند تشغيل التطبيق\n• عبر VPN: فور الاتصال\n\nلون نصفي الإطار والدائرة\n• أخضر: تُفتح\n• برتقالي: حجب حسب الدولة\n• أحمر: غير متاحة\n• رمادي: لم تُفحص بعد\n\nالعلامات في الزوايا\n• قفل مفتوح وقفل مغلق: أي نصف بدون VPN وأيهما عبر VPN\n• تفرّع على اليسار وإطار دائري: قاعدة «مباشر»، الخدمة تمر خارج VPN\n• قفل أزرق بسهم أو علامة منع حمراء: قاعدة توجّهها عبر خادم آخر أو تحجبها\n\nما يمكن الضغط عليه\n• الأيقونة: إعادة فحص الخدمة\n• زر الإعدادات المجاور: تغيير مجموعة الخدمات';
 
   @override
   String get serviceStatusOk => 'تعمل';
@@ -2132,7 +2151,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get hy2NoteBody =>
-      'تصل خوادم Hysteria2 بصيغة XRAY_JSON فقط — يطلب SilentGate هذه الصيغة تحديدًا، و sing-box يشغّلها تلقائيًا. إذا لم يظهر Hysteria2 في القائمة: (لمالك لوحة Remnawave) فعّل مداخل hysteria وعيّنها للاشتراك. ملاحظة: قبل 2.8.0 يقدّم Remnawave خدمة Hysteria2 في XRAY_JSON فقط — وهي غير موجودة في base64/CLASH/SINGBOX، لذا قاعدة Response Rules → XRAY_JSON أعلاه إلزامية.';
+      'تصل خوادم Hysteria2 بصيغة XRAY_JSON فقط - يطلب SilentGate هذه الصيغة تحديدًا، و sing-box يشغّلها تلقائيًا. إذا لم يظهر Hysteria2 في القائمة: (لمالك لوحة Remnawave) فعّل مداخل hysteria وعيّنها للاشتراك. ملاحظة: قبل 2.8.0 يقدّم Remnawave خدمة Hysteria2 في XRAY_JSON فقط - وهي غير موجودة في base64/CLASH/SINGBOX، لذا قاعدة Response Rules → XRAY_JSON أعلاه إلزامية.';
 
   @override
   String get enumStatusDisconnected => 'غير متصل';
@@ -2219,7 +2238,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get supportCopyReport => 'نسخ التقرير';
 
   @override
-  String get supportReportCopied => 'تم نسخ التقرير — الصقه في محادثة الدعم';
+  String get supportReportCopied => 'تم نسخ التقرير - الصقه في محادثة الدعم';
 
   @override
   String subBarUsedOnly(String used) {
@@ -2238,11 +2257,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get supportDescribeRequired =>
-      'صِف المشكلة — التقرير بدون وصف عديم الفائدة';
+      'صِف المشكلة - التقرير بدون وصف عديم الفائدة';
 
   @override
   String get supportNoScreenshots =>
-      'لا تلصق لقطات الشاشة هنا — أرسلها في رسالة منفصلة في محادثة تيليجرام.';
+      'لا تلصق لقطات الشاشة هنا - أرسلها في رسالة منفصلة في محادثة تيليجرام.';
 
   @override
   String get supportDescriptionSection => 'وصف المستخدم';
@@ -2256,7 +2275,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitAllowRealIpOff =>
-      'مُطفأ: تمر القاعدة عبر VPN — الحماية فوق كل القواعد';
+      'مُطفأ: تمر القاعدة عبر VPN - الحماية فوق كل القواعد';
 
   @override
   String get splitRealIpExposed => 'IP حقيقي';
@@ -2288,11 +2307,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'يعمل فقط في وضع «المحددة فقط». ⚠️ يُطبَّق بعد إعادة الاتصال.';
 
   @override
-  String get homeSettingsNeedReconnect => 'تغيّر الإعداد — أعد الاتصال للتطبيق';
+  String get homeSettingsNeedReconnect => 'تغيّر الإعداد - أعد الاتصال للتطبيق';
 
   @override
   String blockPageWindowTitle(String app) {
-    return 'محظور — $app';
+    return 'محظور - $app';
   }
 
   @override
@@ -2338,7 +2357,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String toastAppCloseFailed(String app) {
-    return 'تعذّر إغلاق $app — أغلقه يدويًا';
+    return 'تعذّر إغلاق $app - أغلقه يدويًا';
   }
 
   @override
@@ -2464,29 +2483,29 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoTunRouteOnlyCidrs =>
-      'الطريقة الوحيدة على Windows لجعل جزء من حركة المرور مستقلاً فعلياً عن عميل VPN.\n\nعادةً يستحوذ النفق على المسار الافتراضي، فتدخل إليه كل حركة مرور الجهاز: تُعالَج علامة «مباشر» داخل النواة نفسها، فهي تستقبل الحزمة ثم تُخرجها إلى الشبكة باسمها هي. تعيش هذه الحركة بقدر ما تعيش النواة، وتتعلّق معها إذا تعلّقت.\n\nإذا لم تكن القائمة فارغة، فلن يحصل النفق على المسار الافتراضي: يأخذ الشبكات الفرعية المذكورة فقط، ويرسل النظام كل ما عداها عبر المحوّل العادي — ولا يرى التطبيق هذه الحركة إطلاقاً.\n\nالثمن: التقسيم هنا يجري بالعنوان، بينما تعمل قواعد التطبيقات والمواقع بالاسم. الموقع الذي لا يقع عنوانه ضمن القائمة لن تراه النواة بأي قاعدة. اتركه فارغاً ليعمل النفق كالمعتاد.';
+      'الطريقة الوحيدة على Windows لجعل جزء من حركة المرور مستقلاً فعلياً عن عميل VPN.\n\nعادةً يستحوذ النفق على المسار الافتراضي، فتدخل إليه كل حركة مرور الجهاز: تُعالَج علامة «مباشر» داخل النواة نفسها، فهي تستقبل الحزمة ثم تُخرجها إلى الشبكة باسمها هي. تعيش هذه الحركة بقدر ما تعيش النواة، وتتعلّق معها إذا تعلّقت.\n\nإذا لم تكن القائمة فارغة، فلن يحصل النفق على المسار الافتراضي: يأخذ الشبكات الفرعية المذكورة فقط، ويرسل النظام كل ما عداها عبر المحوّل العادي - ولا يرى التطبيق هذه الحركة إطلاقاً.\n\nالثمن: التقسيم هنا يجري بالعنوان، بينما تعمل قواعد التطبيقات والمواقع بالاسم. الموقع الذي لا يقع عنوانه ضمن القائمة لن تراه النواة بأي قاعدة. اتركه فارغاً ليعمل النفق كالمعتاد.';
 
   @override
   String get tunRouteOnlyWarning =>
-      'يأخذ النفق الشبكات الفرعية المذكورة فقط. وقواعد التطبيقات والمواقع تسري داخلها فقط: ما لم يدخل النفق لا يصل إلى النواة أصلاً — فلا يمكن حظر مثل هذا الموقع ولا تحويله.';
+      'يأخذ النفق الشبكات الفرعية المذكورة فقط. وقواعد التطبيقات والمواقع تسري داخلها فقط: ما لم يدخل النفق لا يصل إلى النواة أصلاً - فلا يمكن حظر مثل هذا الموقع ولا تحويله.';
 
   @override
   String get tunAlsoSystemProxy => 'بروكسي النظام مع النفق';
 
   @override
   String get infoTunAlsoSystemProxy =>
-      'وضع مختلط: يعمل النفق وبروكسي النظام معاً في وقت واحد.\n\nالتطبيقات التي تحترم بروكسي النظام (المتصفحات، Telegram) تسلك الطريق القصير مباشرةً إلى المنفذ المحلي، متجاوزةً حزمة النفق في مساحة المستخدم، وتُعطي النواة اسم النطاق بدل العنوان المجرّد — فتصبح قواعد المواقع لها أدقّ ولا تعود تعتمد على تحليل TLS.\n\nلكنها لا تصبح بذلك مستقلة عن التطبيق: فهي تمرّ عبر العملية نفسها.';
+      'وضع مختلط: يعمل النفق وبروكسي النظام معاً في وقت واحد.\n\nالتطبيقات التي تحترم بروكسي النظام (المتصفحات، Telegram) تسلك الطريق القصير مباشرةً إلى المنفذ المحلي، متجاوزةً حزمة النفق في مساحة المستخدم، وتُعطي النواة اسم النطاق بدل العنوان المجرّد - فتصبح قواعد المواقع لها أدقّ ولا تعود تعتمد على تحليل TLS.\n\nلكنها لا تصبح بذلك مستقلة عن التطبيق: فهي تمرّ عبر العملية نفسها.';
 
   @override
   String get tunMixedModeWarning =>
-      'الاتصال القادم عبر بروكسي النظام بلا عملية مالكة — فهو بالنسبة إلى النواة اتصال محلي. لذلك لا تعمل قواعد التطبيقات مع هذه البرامج. أما قواعد المواقع فتعمل، وبدقة أعلى من المعتاد.';
+      'الاتصال القادم عبر بروكسي النظام بلا عملية مالكة - فهو بالنسبة إلى النواة اتصال محلي. لذلك لا تعمل قواعد التطبيقات مع هذه البرامج. أما قواعد المواقع فتعمل، وبدقة أعلى من المعتاد.';
 
   @override
   String get tunWatchdog => 'مراقب تعلّق النواة';
 
   @override
   String get infoTunWatchdog =>
-      'كم ثانية يُسمح لنواة النفق بألا تستجيب قبل اعتبارها متعلّقة وإسقاط النفق.\n\nإذا تعطّلت النواة، ينظّف Windows بعدها بنفسه — يُزال المحوّل والمسارات وقواعد جدار الحماية، وتعود الشبكة. أما إذا تعلّقت النواة فلا يُزال شيء: يبقى المحوّل قائماً ويبتلع كل حركة مرور الجهاز، بما فيها المُعلَّمة بـ «مباشر». من الخارج يبدو الأمر وكأن «الإنترنت اختفى تماماً»، وهو لا يزول من تلقاء نفسه.\n\nلا يتسلّح المراقب إلا بعد أول استجابة ناجحة من النواة: وإلا لقطع الاتصال في كل حالة يتعذّر فيها فتح منفذ الخدمة. 0 — بلا مراقبة. الحد الأدنى 10 ثوانٍ.';
+      'كم ثانية يُسمح لنواة النفق بألا تستجيب قبل اعتبارها متعلّقة وإسقاط النفق.\n\nإذا تعطّلت النواة، ينظّف Windows بعدها بنفسه - يُزال المحوّل والمسارات وقواعد جدار الحماية، وتعود الشبكة. أما إذا تعلّقت النواة فلا يُزال شيء: يبقى المحوّل قائماً ويبتلع كل حركة مرور الجهاز، بما فيها المُعلَّمة بـ «مباشر». من الخارج يبدو الأمر وكأن «الإنترنت اختفى تماماً»، وهو لا يزول من تلقاء نفسه.\n\nلا يتسلّح المراقب إلا بعد أول استجابة ناجحة من النواة: وإلا لقطع الاتصال في كل حالة يتعذّر فيها فتح منفذ الخدمة. 0 - بلا مراقبة. الحد الأدنى 10 ثوانٍ.';
 
   @override
   String get tunWatchdogOff => 'مُطفأ: لن يُكتشف تعلّق النفق';
@@ -2498,7 +2517,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get tunDnsForAllWarning =>
-      'سيمرّ تحليل الأسماء للجهاز بأكمله عبر النفق. وإذا تعطّل النفق، تتوقف الأسماء عن التحليل حتى للتطبيقات التي تمرّ مباشرةً ولا تحتاج إلى VPN — ويبدو الأمر من الخارج فقداناً كاملاً للإنترنت.';
+      'سيمرّ تحليل الأسماء للجهاز بأكمله عبر النفق. وإذا تعطّل النفق، تتوقف الأسماء عن التحليل حتى للتطبيقات التي تمرّ مباشرةً ولا تحتاج إلى VPN - ويبدو الأمر من الخارج فقداناً كاملاً للإنترنت.';
 
   @override
   String get tunCidrInvalid => 'يلزم عنوان مع بادئة، مثل 10.8.0.0/24';
@@ -2510,7 +2529,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get geoSubShort => 'قوائم البلدان والفئات لقواعد الاشتراك';
 
   @override
-  String get geoMissing => 'غير مُنزَّلة — قواعد البلدان والفئات لا تعمل';
+  String get geoMissing => 'غير مُنزَّلة - قواعد البلدان والفئات لا تعمل';
 
   @override
   String geoPresent(String size, String date) {
@@ -2544,7 +2563,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get geoFileMissing => 'الملف غير موجود';
 
   @override
-  String get geoFileCorrupt => 'الملف تالف — لن تقرأه النواة';
+  String get geoFileCorrupt => 'الملف تالف - لن تقرأه النواة';
 
   @override
   String geoFolder(String path) {
@@ -2565,7 +2584,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String geoBackupLine(String files, String size, String date) {
-    return 'تتوفر نسخة احتياطية: $files — $size، بتاريخ $date';
+    return 'تتوفر نسخة احتياطية: $files - $size، بتاريخ $date';
   }
 
   @override
@@ -2583,11 +2602,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get geoErrorCategories =>
-      'الملف الجديد يخلو من فئات يشير إليها اشتراكك. أُلغي الاستبدال وبقيت الملفات السابقة في مكانها — فلم يتأثر التوجيه. والفئات الناقصة مذكورة في السطر أدناه.';
+      'الملف الجديد يخلو من فئات يشير إليها اشتراكك. أُلغي الاستبدال وبقيت الملفات السابقة في مكانها - فلم يتأثر التوجيه. والفئات الناقصة مذكورة في السطر أدناه.';
 
   @override
   String get geoNoWrite =>
-      'لا يمكن الكتابة في هذا المجلد — لن ينجح التنزيل إليه. يحدث هذا عادةً عند التثبيت في Program Files: شغّل التطبيق بصلاحيات المسؤول.';
+      'لا يمكن الكتابة في هذا المجلد - لن ينجح التنزيل إليه. يحدث هذا عادةً عند التثبيت في Program Files: شغّل التطبيق بصلاحيات المسؤول.';
 
   @override
   String get geoCheck => 'التحقق من التحديث';
@@ -2608,7 +2627,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String geoUpdateAvailable(String files, String size) {
-    return 'يوجد تحديث: $files — $size';
+    return 'يوجد تحديث: $files - $size';
   }
 
   @override
@@ -2648,7 +2667,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get geoErrorServer =>
-      'ردّ خادم التحديث بالرفض. الأرجح أن هذا مؤقت — حاول لاحقاً.';
+      'ردّ خادم التحديث بالرفض. الأرجح أن هذا مؤقت - حاول لاحقاً.';
 
   @override
   String get geoErrorWrite =>
@@ -2656,7 +2675,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get geoErrorCorrupt =>
-      'الملف المُنزَّل لم يجتَز الفحص — تلف أثناء التنزيل. حاول مرة أخرى.';
+      'الملف المُنزَّل لم يجتَز الفحص - تلف أثناء التنزيل. حاول مرة أخرى.';
 
   @override
   String get geoErrorOther => 'لم ينجح الأمر. التفاصيل أدناه.';
@@ -2668,15 +2687,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoGeoAssets =>
-      'ملفّا geoip.dat وgeosite.dat قائمتان: عناوين مُصنَّفة حسب البلد ونطاقات مُصنَّفة حسب الفئة (مثلاً «المواقع الروسية»، «الخدمات الحكومية»، «VK»). وعليهما تعتمد قواعد التوجيه التي تحدّدها لوحة الاشتراك.\n\nوهما غير مُضمَّنين في التطبيق: يبلغ حجمهما معاً نحو 30 MB، ولا يحتاجهما الجميع — فالخادم العادي لا يستخدمهما إطلاقاً.\n\nوما دام الملفّان غير موجودين، تُحذَف هذه القواعد من التكوين، وحركة المرور التي كانت توجّهها مباشرةً تمرّ الآن عبر VPN. هذا آمن لكنه أبطأ، وقد ترفض المواقع المحلية الوصول بسبب العنوان الأجنبي. أمّا قواعدك الخاصة بمواقع وتطبيقات محدَّدة فتعمل في كل الأحوال — فهي لا تعتمد على هذين الملفّين.';
+      'ملفّا geoip.dat وgeosite.dat قائمتان: عناوين مُصنَّفة حسب البلد ونطاقات مُصنَّفة حسب الفئة (مثلاً «المواقع الروسية»، «الخدمات الحكومية»، «VK»). وعليهما تعتمد قواعد التوجيه التي تحدّدها لوحة الاشتراك.\n\nوهما غير مُضمَّنين في التطبيق: يبلغ حجمهما معاً نحو 30 MB، ولا يحتاجهما الجميع - فالخادم العادي لا يستخدمهما إطلاقاً.\n\nوما دام الملفّان غير موجودين، تُحذَف هذه القواعد من التكوين، وحركة المرور التي كانت توجّهها مباشرةً تمرّ الآن عبر VPN. هذا آمن لكنه أبطأ، وقد ترفض المواقع المحلية الوصول بسبب العنوان الأجنبي. أمّا قواعدك الخاصة بمواقع وتطبيقات محدَّدة فتعمل في كل الأحوال - فهي لا تعتمد على هذين الملفّين.';
 
   @override
   String get supportBullet2Android =>
-      '• بعد النقر، يُجمع التقرير في ملف واحد وتُفتح نافذة النظام «مشاركة» — اختر Telegram وسيُرسَل كمرفق واحد. صِف المشكلة في الحقل أعلاه: بدون وصف لا يوجد ما يمكن تحليله.';
+      '• بعد النقر، يُجمع التقرير في ملف واحد وتُفتح نافذة النظام «مشاركة» - اختر Telegram وسيُرسَل كمرفق واحد. صِف المشكلة في الحقل أعلاه: بدون وصف لا يوجد ما يمكن تحليله.';
 
   @override
   String get supportDoneTextAndroid =>
-      'تم جمع التقرير في ملف واحد. اختر من نافذة النظام إلى أين ترسله — في Telegram يُرسَل كمرفق، وليس كنص.';
+      'تم جمع التقرير في ملف واحد. اختر من نافذة النظام إلى أين ترسله - في Telegram يُرسَل كمرفق، وليس كنص.';
 
   @override
   String get exitsHeader => 'المخارج';
@@ -2714,7 +2733,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get exitsDelete => 'حذف المخرج';
 
   @override
-  String get exitsNoServers => 'لا توجد خوادم — استورد اشتراكًا أولًا';
+  String get exitsNoServers => 'لا توجد خوادم - استورد اشتراكًا أولًا';
 
   @override
   String get exitsSearch => 'البحث عن خادم';
@@ -2728,7 +2747,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get infoExits =>
-      'المخرج هو وجهة قاعدة «النفق».\n\nافتراضيًا يتكوّن المخرج من خادم واحد ولا يكلّف شيئًا في الخلفية: البروتوكولات المعتادة لا تُبقي اتصالًا دائمًا. مجموعة من عدة خوادم مع الاختيار التلقائي تلزم فقط حين يهمّ التأمين ضد سقوط العقدة، وهي تضيف اختبارات دورية، وفي الهاتف تعني إيقاظ الراديو.\n\nللمخرج معنى فقط مع إجراء «النفق». «مباشر عبر ألمانيا» تناقض: القاعدة المباشرة تتجاوز كل المخارج.\n\nيمكن إرسال موقع ونطاقه الفرعي إلى مخرجين مختلفين — يرفع التطبيق القاعدة الأكثر تحديدًا للأعلى، وإلا ابتلع النطاق الأب النطاق الفرعي.\n\nمهم: مع وكيل النظام في ويندوز لا تعمل المخارج إطلاقًا — لا تُبنى في هذا الوضع قواعد توجيه. يلزم وضع النفق.';
+      'المخرج هو وجهة قاعدة «النفق».\n\nافتراضيًا يتكوّن المخرج من خادم واحد ولا يكلّف شيئًا في الخلفية: البروتوكولات المعتادة لا تُبقي اتصالًا دائمًا. مجموعة من عدة خوادم مع الاختيار التلقائي تلزم فقط حين يهمّ التأمين ضد سقوط العقدة، وهي تضيف اختبارات دورية، وفي الهاتف تعني إيقاظ الراديو.\n\nللمخرج معنى فقط مع إجراء «النفق». «مباشر عبر ألمانيا» تناقض: القاعدة المباشرة تتجاوز كل المخارج.\n\nيمكن إرسال موقع ونطاقه الفرعي إلى مخرجين مختلفين - يرفع التطبيق القاعدة الأكثر تحديدًا للأعلى، وإلا ابتلع النطاق الأب النطاق الفرعي.\n\nمهم: مع وكيل النظام في ويندوز لا تعمل المخارج إطلاقًا - لا تُبنى في هذا الوضع قواعد توجيه. يلزم وضع النفق.';
 
   @override
   String get ruleServer => 'عبر الخادم';
@@ -2765,7 +2784,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get localProxyAuthInfo =>
-      'المنفذ المحلي للنواة (127.0.0.1) بروكسي كامل إلى VPN الخاص بك. وبدون كلمة مرور يتصل به أي برنامج على الجهاز نفسه فيحصل على نفقك بالكامل: عنوان IP الخارجي، وحصة اشتراكك، وتجاوز قواعد تقسيم النفق التي وضعتها أنت — بما في ذلك التطبيقات التي منحتها «حظر». وهذا مهم بوجه خاص على Android: فالمنافذ المحلية هناك يراها أي تطبيق مثبَّت.\n\nلا تُطفئها إلا إذا كنت تقصد الدخول إلى هذا البروكسي ببرنامج لا يدعم المصادقة.';
+      'المنفذ المحلي للنواة (127.0.0.1) بروكسي كامل إلى VPN الخاص بك. وبدون كلمة مرور يتصل به أي برنامج على الجهاز نفسه فيحصل على نفقك بالكامل: عنوان IP الخارجي، وحصة اشتراكك، وتجاوز قواعد تقسيم النفق التي وضعتها أنت - بما في ذلك التطبيقات التي منحتها «حظر». وهذا مهم بوجه خاص على Android: فالمنافذ المحلية هناك يراها أي تطبيق مثبَّت.\n\nلا تُطفئها إلا إذا كنت تقصد الدخول إلى هذا البروكسي ببرنامج لا يدعم المصادقة.';
 
   @override
   String get localProxyAuthOff =>
@@ -2777,7 +2796,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get localProxyAuthRandom =>
-      'كلمة مرور عشوائية جديدة عند كل اتصال — لا تُحفظ في الإعدادات';
+      'كلمة مرور عشوائية جديدة عند كل اتصال - لا تُحفظ في الإعدادات';
 
   @override
   String get localProxyAuthCustom =>
@@ -2787,7 +2806,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get localProxyCredsTitle => 'اسم مستخدم وكلمة مرور خاصان بك';
 
   @override
-  String get localProxyCredsUnset => 'غير محدَّدين — تُستخدم كلمة مرور عشوائية';
+  String get localProxyCredsUnset => 'غير محدَّدين - تُستخدم كلمة مرور عشوائية';
 
   @override
   String localProxyCredsUser(String user) {
@@ -2808,7 +2827,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get localProxyFieldPassword => 'كلمة المرور';
 
   @override
-  String get localProxyFieldHint => 'فارغ — عشوائية';
+  String get localProxyFieldHint => 'فارغ - عشوائية';
 
   @override
   String get lockdownOnTitle => 'حماية النظام مُفعَّلة';
@@ -2851,11 +2870,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get siteInsecureScheme =>
-      'العنوان مكتوب بصيغة http:// — الاتصال غير مشفَّر ومزوّد الخدمة يراه بالكامل. احذف «http://» ليذهب المتصفح عبر https.';
+      'العنوان مكتوب بصيغة http:// - الاتصال غير مشفَّر ومزوّد الخدمة يراه بالكامل. احذف «http://» ليذهب المتصفح عبر https.';
 
   @override
   String get exitServerGone =>
-      'اختفى خادم هذه القاعدة من الاشتراك — تمر حركة المرور عبر النفق الرئيسي';
+      'اختفى خادم هذه القاعدة من الاشتراك - تمر حركة المرور عبر النفق الرئيسي';
 
   @override
   String exitServerUnsupported(String name) {
@@ -2870,7 +2889,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get geoVerdictMissingSub =>
-      'قواعد الاشتراك حسب البلدان والفئات معطّلة الآن — تمر هذه الحركة عبر VPN لا مباشرةً.';
+      'قواعد الاشتراك حسب البلدان والفئات معطّلة الآن - تمر هذه الحركة عبر VPN لا مباشرةً.';
 
   @override
   String get geoVerdictUnusableTitle =>
@@ -2882,10 +2901,33 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get geoOfferMissingSub =>
-      'بدونها لن تعمل قواعد الاشتراك حسب البلدان والفئات — ستمرّ هذه الحركة عبر VPN لا مباشرةً.';
+      'بدونها لن تعمل قواعد الاشتراك حسب البلدان والفئات - ستمرّ هذه الحركة عبر VPN لا مباشرةً.';
 
   @override
   String get geoOfferDismiss => 'عدم الاقتراح مرة أخرى';
+
+  @override
+  String get geoOfferBundledTitle => 'قواعد البيانات الجغرافية المدمجة';
+
+  @override
+  String get geoOfferBundledSub =>
+      'قواعد روسيا والإعلانات تعمل. القواعد الكاملة (نحو 30 ميغابايت) لازمة لبقية الدول - نزّلها متى ناسبك؛ وعلى Wi-Fi تُنزَّل تلقائيًا.';
+
+  @override
+  String geoFileBundled(String size) {
+    return 'المجموعة المدمجة، $size';
+  }
+
+  @override
+  String get geoBundledNote =>
+      'المجموعة المدمجة قيد الاستخدام: قواعد روسيا والإعلانات تعمل. القواعد الكاملة لازمة لبقية الدول والفئات.';
+
+  @override
+  String get geoAutoWifi => 'تنزيل القواعد الكاملة عبر Wi-Fi';
+
+  @override
+  String get geoAutoWifiSub =>
+      'تلقائيًا ودون سؤال. على بيانات الجوال - فقط عند ضغطك الزر.';
 
   @override
   String get pingPendingTooltip =>
@@ -2952,7 +2994,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String logsFileLine(String name, String size, int lines) {
-    return '$name — $size، $lines سطر';
+    return '$name - $size، $lines سطر';
   }
 
   @override
@@ -3001,22 +3043,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String logsClearOptionApp(String size) {
-    return 'App log — $size';
+    return 'App log - $size';
   }
 
   @override
   String logsClearOptionTun(String size) {
-    return 'TUN core log — $size';
+    return 'TUN core log - $size';
   }
 
   @override
   String logsClearOptionProxy(String size) {
-    return 'Proxy core log — $size';
+    return 'Proxy core log - $size';
   }
 
   @override
   String logsClearOptionReports(String size) {
-    return 'Old support reports — $size';
+    return 'Old support reports - $size';
   }
 
   @override
@@ -3050,7 +3092,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get speedStaleServerTooltip =>
-      'الخادم لا يستجيب الآن — المعروض قياس سرعة سابق';
+      'الخادم لا يستجيب الآن - المعروض قياس سرعة سابق';
 
   @override
   String get speedOlderThanPingTooltip => 'قياس السرعة أقدم من آخر فحص';
@@ -3087,7 +3129,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get speedWaitsForPing =>
-      'جارٍ اختبار البينغ — سيبدأ قياس السرعة بعده مباشرة';
+      'جارٍ اختبار البينغ - سيبدأ قياس السرعة بعده مباشرة';
 
   @override
   String speedProgress(int done, int total) {
@@ -3103,7 +3145,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get apiSectionSub =>
-      '‏HTTP على 127.0.0.1 — تحكّم في التطبيق من البرامج النصية';
+      '‏HTTP على 127.0.0.1 - تحكّم في التطبيق من البرامج النصية';
 
   @override
   String get momentJustNow => 'الآن';
@@ -3149,7 +3191,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get srvInfoAutoNever =>
-      'لم يفحص الضبط التلقائي هذا الخادم بعد — شغّله لمعرفة الخدمات التي تعمل من خلاله.';
+      'لم يفحص الضبط التلقائي هذا الخادم بعد - شغّله لمعرفة الخدمات التي تعمل من خلاله.';
 
   @override
   String get srvInfoAutoHint =>
@@ -3163,7 +3205,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String srvInfoAutoGeoNote(Object services) {
-    return '$services: يمكن الوصول إليه عبر هذا الخادم لكنه غير متاح في بلد الخروج. الخادم نفسه سليم — هذه الخدمات وحدها لا تعمل، وتحتاج إلى خادم في بلد آخر.';
+    return '$services: يمكن الوصول إليه عبر هذا الخادم لكنه غير متاح في بلد الخروج. الخادم نفسه سليم - هذه الخدمات وحدها لا تعمل، وتحتاج إلى خادم في بلد آخر.';
   }
 
   @override
@@ -3184,7 +3226,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settingsSpeedTopNSub =>
-      'إضافة إلى قياس واحد لخطك أنت — بدونه لا يوجد ما يُقارن به: 60 ميغابت/ث ممتازة على خط 60 وسيئة على خط 300.';
+      'إضافة إلى قياس واحد لخطك أنت - بدونه لا يوجد ما يُقارن به: 60 ميغابت/ث ممتازة على خط 60 وسيئة على خط 300.';
 
   @override
   String settingsSpeedTrafficNote(Object mb) {
@@ -3229,14 +3271,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settingsConnectChecksEmpty =>
-      'لم تُحدَّد أي خدمة — لن يكون هناك ما يُفحص.';
+      'لم تُحدَّد أي خدمة - لن يكون هناك ما يُفحص.';
 
   @override
   String get settingsSectionSeamless => 'الانسيابية';
 
   @override
   String get settingsSeamlessNote =>
-      'لا يحافظ أي من هذه الخيارات على الاتصالات المفتوحة: خادم آخر يعني عنوان IP خارجيًا آخر، والطرف البعيد يرى عنوانًا مختلفًا — فالمكالمة أو التنزيل ينقطع في الحالتين. الأمر يقتصر على ألّا تومض شبكة الجهاز.';
+      'لا يحافظ أي من هذه الخيارات على الاتصالات المفتوحة: خادم آخر يعني عنوان IP خارجيًا آخر، والطرف البعيد يرى عنوانًا مختلفًا - فالمكالمة أو التنزيل ينقطع في الحالتين. الأمر يقتصر على ألّا تومض شبكة الجهاز.';
 
   @override
   String get settingsSeamlessServerTitle =>
@@ -3259,14 +3301,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get settingsSeamlessKeepTunSub =>
-      'لا يُعبث بالمسار الافتراضي أثناء التعافي. ⚠️ هذا ليس مفتاح إيقاف (kill switch): لا تُحجب الحركة خارج الشبكة الافتراضية — يُبقى على المحوّل نفسه فقط.';
+      'لا يُعبث بالمسار الافتراضي أثناء التعافي. ⚠️ هذا ليس مفتاح إيقاف (kill switch): لا تُحجب الحركة خارج الشبكة الافتراضية - يُبقى على المحوّل نفسه فقط.';
 
   @override
   String get autoSpeedTrafficTitle => 'سيستهلك اختبار السرعة بيانات';
 
   @override
   String autoSpeedTrafficBody(int servers, int mb) {
-    return 'ستُقاس سرعة أفضل $servers خوادم وسرعة اتصالك — نحو $mb ميجابايت من بيانات اشتراكك.\n\nيمكنك إيقاف الاختبار من الإعدادات.';
+    return 'ستُقاس سرعة أفضل $servers خوادم وسرعة اتصالك - نحو $mb ميجابايت من بيانات اشتراكك.\n\nيمكنك إيقاف الاختبار من الإعدادات.';
   }
 
   @override
@@ -3274,14 +3316,14 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitDeadPath =>
-      'لم يعد الملف موجودًا في هذا المسار — القاعدة لا تنطبق أبدًا';
+      'لم يعد الملف موجودًا في هذا المسار - القاعدة لا تنطبق أبدًا';
 
   @override
   String get splitDeadPathFix => 'اضغط للمطابقة حسب اسم الملف';
 
   @override
   String splitDeadPathNoticeText(String app) {
-    return 'The path to “$app” is outdated — the rule won’t apply this time';
+    return 'The path to “$app” is outdated - the rule won’t apply this time';
   }
 
   @override
@@ -3289,23 +3331,37 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitVersionedPath =>
-      'المسار يحتوي على رقم إصدار — ستتوقف القاعدة عن المطابقة بعد تحديث البرنامج';
+      'المسار يحتوي على رقم إصدار - ستتوقف القاعدة عن المطابقة بعد تحديث البرنامج';
 
   @override
   String get srvTileCopyKey => 'نسخ المفتاح';
 
   @override
   String serviceChecksBypassDirect(Object rule) {
-    return 'خارج الشبكة الافتراضية: قاعدة النفق المُقسَّم «$rule» ترسل هذا النطاق مباشرةً — ستستخدم الخدمة عنوانك الحقيقي.';
+    return 'خارج الشبكة الافتراضية: قاعدة النفق المُقسَّم «$rule» ترسل هذا النطاق مباشرةً - ستستخدم الخدمة عنوانك الحقيقي.';
   }
 
   @override
   String serviceChecksBypassBlock(Object rule) {
-    return 'محظور: قاعدة النفق المُقسَّم «$rule» تمنع هذا النطاق — لن تُفتح الخدمة سواء عبر الشبكة الافتراضية أو بدونها.';
+    return 'محظور: قاعدة النفق المُقسَّم «$rule» تمنع هذا النطاق - لن تُفتح الخدمة سواء عبر الشبكة الافتراضية أو بدونها.';
   }
 
   @override
-  String get subBarOpenSite => 'الموقع';
+  String get serviceChecksAfterOff => 'VPN متوقف';
+
+  @override
+  String get serviceChecksNow => 'الآن';
+
+  @override
+  String serviceChecksExitServer(String rule, String server) {
+    return 'عبر خادم آخر: قاعدة النفق المقسّم «$rule» توجّه هذا النطاق عبر «$server».';
+  }
+
+  @override
+  String get subBarOpenSite => 'صفحة الاشتراك';
+
+  @override
+  String get subBarTelegram => 'تيليجرام / البوت';
 
   @override
   String get subBarOpenSiteHint => 'فتح صفحة الاشتراك في المتصفح';
@@ -3340,7 +3396,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get serviceChecksChannelNotReady =>
-      'النفق ليس جاهزًا بعد — لم يجرِ تشغيل الفحوصات';
+      'النفق ليس جاهزًا بعد - لم يجرِ تشغيل الفحوصات';
 
   @override
   String get serviceChecksRetryCheck => 'إعادة الفحص';
@@ -3361,7 +3417,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get serviceGroupOther => 'أخرى';
 
   @override
-  String get apiTokenHidden => 'مخفي — اضغط «إظهار»';
+  String get apiTokenHidden => 'مخفي - اضغط «إظهار»';
 
   @override
   String get apiTokenShow => 'إظهار الرمز';
@@ -3381,17 +3437,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String apiCheatSheetPortDirect(Object port) {
-    return '$port — «مباشر»: خارج VPN، عنوان IP الحقيقي';
+    return '$port - «مباشر»: خارج VPN، عنوان IP الحقيقي';
   }
 
   @override
   String apiCheatSheetPortServer(int port, String name) {
-    return '$port — $name';
+    return '$port - $name';
   }
 
   @override
   String get apiCheatSheetNoExitServers =>
-      'لم يتم تحديد أي خادم — لن تكون هناك منافذ للخوادم';
+      'لم يتم تحديد أي خادم - لن تكون هناك منافذ للخوادم';
 
   @override
   String apiCheatSheetPortsSystemProxy(Object control) {
@@ -3400,7 +3456,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get apiCheatSheetTokenOff =>
-      'الرمز فارغ — لا تبدأ القناة ولا يستمع أي منفذ';
+      'الرمز فارغ - لا تبدأ القناة ولا يستمع أي منفذ';
 
   @override
   String get apiCheatSheetPortsWhenConnected =>
@@ -3446,7 +3502,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noRealIpOnlySelectedNote =>
-      'في وضع «المحدَّد فقط»، كل ما لم تحدِّده يخرج بعنوان IP الحقيقي الخاص بك — وهذا الإعداد لا يغيّر ذلك.';
+      'في وضع «المحدَّد فقط»، كل ما لم تحدِّده يخرج بعنوان IP الحقيقي الخاص بك - وهذا الإعداد لا يغيّر ذلك.';
 
   @override
   String get infoNoRealIp =>
@@ -3466,7 +3522,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitOnlySelectedWarnBody =>
-      'لا يدخل النفق إلا ما عُيِّن له إجراء «النفق». أمّا بقية حركة المرور — بما فيها برامج لا تعلم بوجودها — فتخرج مباشرة بعنوانك الحقيقي. إذا وجب إخفاء الجهاز كله فاختر «كل شيء عبر VPN».';
+      'لا يدخل النفق إلا ما عُيِّن له إجراء «النفق». أمّا بقية حركة المرور - بما فيها برامج لا تعلم بوجودها - فتخرج مباشرة بعنوانك الحقيقي. إذا وجب إخفاء الجهاز كله فاختر «كل شيء عبر VPN».';
 
   @override
   String get splitOnlySelectedNoRealIp =>
@@ -3670,6 +3726,9 @@ class AppLocalizationsAr extends AppLocalizations {
       'التحقق من الإصدارات الجديدة وتنزيلها وتثبيتها';
 
   @override
+  String get updatesSettingsTilePlay => 'تصل الإصدارات الجديدة عبر Google Play';
+
+  @override
   String get updatesPreviousVersions => 'الإصدارات السابقة';
 
   @override
@@ -3693,27 +3752,27 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updatesLinkNotify =>
-      'وضع «الإشعار فقط» مُفعَّل — نزّل الإصدار الجديد من صفحة التنزيل';
+      'وضع «الإشعار فقط» مُفعَّل - نزّل الإصدار الجديد من صفحة التنزيل';
 
   @override
   String get updatesLinkNoSelfUpdate =>
-      'لا يتضمن هذا الإصدار مثبّتًا موقّعًا لنظامك — نزّله من صفحة التنزيل';
+      'لا يتضمن هذا الإصدار مثبّتًا موقّعًا لنظامك - نزّله من صفحة التنزيل';
 
   @override
   String get updatesLinkIsolated =>
-      'هذه نسخة اختبار معزولة — لا تمسّ التطبيق المثبّت. حدّثه يدويًا';
+      'هذه نسخة اختبار معزولة - لا تمسّ التطبيق المثبّت. حدّثه يدويًا';
 
   @override
   String get updatesLinkLocation =>
-      'التطبيق لا يعمل من مجلد التثبيت — نزّل الإصدار الجديد يدويًا أو شغّل النسخة المثبّتة';
+      'التطبيق لا يعمل من مجلد التثبيت - نزّل الإصدار الجديد يدويًا أو شغّل النسخة المثبّتة';
 
   @override
   String get updatesLinkElevated =>
-      'التطبيق يعمل بصلاحيات المسؤول — التحديث بهذه الطريقة غير آمن. شغّله بالطريقة العادية';
+      'التطبيق يعمل بصلاحيات المسؤول - التحديث بهذه الطريقة غير آمن. شغّله بالطريقة العادية';
 
   @override
   String get updatesLinkUnsupported =>
-      'لا يستطيع التطبيق تحديث نفسه على هذه المنصة — نزّل الإصدار الجديد يدويًا';
+      'لا يستطيع التطبيق تحديث نفسه على هذه المنصة - نزّل الإصدار الجديد يدويًا';
 
   @override
   String get updatesErrCheck => 'لم يستجب خادم التحديثات';
@@ -3728,7 +3787,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updatesErrManifest => 'تعذّر الحصول على بيان الإصدار الموقّع';
 
   @override
-  String get updatesErrSignature => 'التوقيع غير مطابق — ربما جرى العبث بالملف';
+  String get updatesErrSignature => 'التوقيع غير مطابق - ربما جرى العبث بالملف';
 
   @override
   String get updatesErrManifestRejected =>
@@ -3755,11 +3814,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get updatesInstallNow => 'التثبيت الآن';
 
   @override
-  String get updatesWaitingVpn => 'جاهز للتثبيت — سيبدأ بعد قطع اتصال VPN';
+  String get updatesWaitingVpn => 'جاهز للتثبيت - سيبدأ بعد قطع اتصال VPN';
 
   @override
   String updatesSkippedNote(String version) {
-    return 'تم تخطي الإصدار $version — سنُعلمك بالإصدار التالي';
+    return 'تم تخطي الإصدار $version - سنُعلمك بالإصدار التالي';
   }
 
   @override
@@ -3838,7 +3897,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get splitExportEmpty => 'القائمة فارغة — لا شيء للتصدير';
+  String get splitExportEmpty => 'القائمة فارغة - لا شيء للتصدير';
 
   @override
   String get splitCountEmpty => 'فارغة';
@@ -3890,4 +3949,770 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get splitCollapseSubdomains => 'إخفاء النطاقات الفرعية';
+
+  @override
+  String get consentTitle => 'ما البيانات التي يرسلها SilentGate';
+
+  @override
+  String get consentIntro =>
+      'SilentGate عميل VPN: يتصل بخوادم مزوّد VPN الخاص بك عبر رابط الاشتراك الذي أضفته بنفسك. تمر حركة المرور عبر نفق مشفّر. لا يجمع SilentGate حركة مرورك ولا يخزّنها ولا يبيعها، وليس للتطبيق تحليلات خاصة به.';
+
+  @override
+  String get consentDeviceTitle => 'بيانات الجهاز لمزوّدك';
+
+  @override
+  String get consentDeviceBody =>
+      'عند تحميل الاشتراك أو تحديثه قد يرسل التطبيق إلى خادم الاشتراك معرّف الجهاز (Android ID) وطراز الهاتف وإصدار Android. يستخدمها مزوّدك لعدّ أجهزتك (حدّ الأجهزة في خطتك). تذهب هذه البيانات إلى عنوان اشتراكك فقط، ولا يتلقاها مطوّر SilentGate أبداً.';
+
+  @override
+  String get consentDeclineNote =>
+      'إذا رفضت فلن تُرسل هذه البيانات. بعض المزوّدين لا يمنحون الاشتراك بدونها، وعندها لن يمكن تحميله. يمكنك تغيير اختيارك من الإعدادات ← حول ← «البيانات والخصوصية».';
+
+  @override
+  String get consentPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get consentAccept => 'السماح';
+
+  @override
+  String get consentDecline => 'عدم الإرسال';
+
+  @override
+  String get privacyTileTitle => 'البيانات والخصوصية';
+
+  @override
+  String get privacyTileOn => 'تُرسل بيانات الجهاز إلى مزوّد الاشتراك';
+
+  @override
+  String get privacyTileOff => 'لا تُرسل بيانات الجهاز';
+
+  @override
+  String get consentDeviceBodyWindows =>
+      'عند تحميل الاشتراك أو تحديثه، قد يرسل التطبيق إلى خادم الاشتراك معرّف الحاسوب (HWID) وإصدار Windows وطراز الحاسوب. يستخدمها مزوّدك لعدّ أجهزتك (حدّ الأجهزة في خطتك). تذهب هذه البيانات إلى عنوان اشتراكك فقط وعبر اتصال آمن فقط - ولا يتلقاها مطوّر SilentGate أبداً.';
+
+  @override
+  String get consentNoticeNote =>
+      'يحتاج مزوّدك هذه البيانات لعدّ الأجهزة في خطتك. يمكنك فتح هذه الرسالة مجدداً من الإعدادات ← حول ← «البيانات والخصوصية».';
+
+  @override
+  String get consentNoticeOk => 'فهمت';
+
+  @override
+  String get sectionBackup => 'النسخ الاحتياطي';
+
+  @override
+  String get backupExportTitle => 'تصدير الإعدادات';
+
+  @override
+  String get backupExportSub =>
+      'حفظ الإعدادات والاشتراكات في ملف - لحاسوب أو هاتف آخر';
+
+  @override
+  String get backupExportWithSubs => 'تضمين الاشتراكات والخوادم';
+
+  @override
+  String get backupExportSubsWarning =>
+      'سيحتوي الملف على عناوين الاشتراكات - وهي مفاتيح الوصول إلى VPN. لا ترسل الملف لأي أحد.';
+
+  @override
+  String get backupExportNoSubsNote =>
+      'الإعدادات والقواعد فقط - دون اشتراكات أو خوادم.';
+
+  @override
+  String get backupExportDeviceNote =>
+      'لا تُضمَّن كلمة مرور المنافذ المحلية ورمز API والموافقة على بيانات الجهاز.';
+
+  @override
+  String get backupExportAction => 'تصدير';
+
+  @override
+  String backupExportDone(String path) {
+    return 'تم حفظ الإعدادات: $path';
+  }
+
+  @override
+  String get backupExportFailed => 'تعذّر حفظ ملف الإعدادات';
+
+  @override
+  String get backupImportTitle => 'استيراد الإعدادات';
+
+  @override
+  String get backupImportSub =>
+      'تحميل الإعدادات من ملف تصدير. سيُعاد تشغيل التطبيق';
+
+  @override
+  String get backupImportDisconnectFirst =>
+      'افصل VPN أولاً: يُعاد تشغيل التطبيق بعد الاستيراد';
+
+  @override
+  String get backupImportBadFile =>
+      'هذا ليس ملف إعدادات SilentGate، أو أنه تالف';
+
+  @override
+  String get backupImportConfirmTitle => 'استيراد الإعدادات؟';
+
+  @override
+  String backupImportFrom(String platform, String version, String date) {
+    return 'الملف: $platform، الإصدار $version، $date';
+  }
+
+  @override
+  String backupImportSubsCount(int count) {
+    return 'الاشتراكات في الملف: $count';
+  }
+
+  @override
+  String get backupImportReplaceSubs => 'استبدال الاشتراكات والخوادم';
+
+  @override
+  String get backupImportBody =>
+      'ستُستبدل الإعدادات الحالية. تبقى كلمة مرور المنافذ المحلية ورمز API والموافقة على بيانات الجهاز الخاصة بهذا الجهاز.';
+
+  @override
+  String get backupImportOtherPlatform =>
+      'الملف من منصة أخرى: تبقى قائمة تطبيقات النفق المنقسم والإعدادات الخاصة بهذه المنصة كما هي.';
+
+  @override
+  String get backupImportAction => 'استيراد وإعادة التشغيل';
+
+  @override
+  String get backupImportRestartManually =>
+      'الإعدادات جاهزة. أعد تشغيل التطبيق لتطبيقها';
+
+  @override
+  String get backupImportApplied => 'تم استيراد الإعدادات';
+
+  @override
+  String get backupRestoredFromGoogle =>
+      'تمت استعادة الإعدادات من نسخة Google الاحتياطية';
+
+  @override
+  String get backupGoogleSubsTitle =>
+      'الاحتفاظ بالاشتراكات في نسخة Google الاحتياطية';
+
+  @override
+  String get backupGoogleSubsSub =>
+      'تُنسخ الإعدادات دائماً. الاشتراكات مفاتيح وصول إلى VPN: تُشفَّر النسخة على الهاتف عند تفعيل قفل الشاشة';
+
+  @override
+  String get privacyPolicyTile => 'سياسة الخصوصية';
+
+  @override
+  String get updatesViaPlay => 'التحديث عبر Google Play';
+
+  @override
+  String get updatesViaGithub => 'التنزيل من GitHub';
+
+  @override
+  String get updatesPlayManaged =>
+      'ثُبّتت هذه النسخة من Google Play ولا تُحدَّث إلا عبره: تصل الإصدارات الجديدة إلى Google Play تلقائياً أو بزر «تحديث» في صفحة التطبيق.';
+
+  @override
+  String get updatesOpenPlay => 'الفتح في Google Play';
+
+  @override
+  String get statusNetworkChanged => 'تغيّرت الشبكة';
+
+  @override
+  String get statusRecoveryError => 'خطأ في الاستعادة';
+
+  @override
+  String get statusGeoUnavailable =>
+      'لا تستطيع النواة استخدام قواعد البيانات الجغرافية';
+
+  @override
+  String get statusNetworkBackChannelDead => 'عادت الشبكة لكن النفق لم يستجب';
+
+  @override
+  String get noticeReconnecting => 'انقطع الاتصال، جارٍ الاستعادة';
+
+  @override
+  String get noticeRecovered => 'تمت استعادة الاتصال';
+
+  @override
+  String get noticeStillDown => 'لم تتم استعادة الاتصال بعد';
+
+  @override
+  String get noticeRecoverFailed => 'تعذّرت استعادة الاتصال';
+
+  @override
+  String noticeAttempts(int count, String reason) {
+    return 'المحاولات: $count. السبب: $reason';
+  }
+
+  @override
+  String noticeAttemptsOnly(int count) {
+    return 'المحاولات: $count';
+  }
+
+  @override
+  String get noticeBlocked => 'الموقع محظور بقاعدتك';
+
+  @override
+  String get noticeBlockedAction => 'القواعد';
+
+  @override
+  String noticeExitDown(String name) {
+    return 'المخرج «$name» لا يستجيب';
+  }
+
+  @override
+  String get noticeExitDownSwitched =>
+      'حركة المرور الموجّهة عبر هذا الخادم تمر مؤقتًا عبر النفق الرئيسي، أي من بلد آخر. ستعود فور استجابة الخادم مجددًا.';
+
+  @override
+  String get noticeExitDownStopped =>
+      'حركة المرور الموجّهة عبر هذا الخادم لا تمر الآن. النفق الرئيسي والمخارج الأخرى تعمل.';
+
+  @override
+  String get noticeSystemProxyFailed =>
+      'لم يُفعَّل وكيل النظام - حركة المرور تتجاوز VPN بعنوانك الحقيقي';
+
+  @override
+  String get noticeSystemProxyFailedDetail =>
+      'في الغالب تكون الكتابة في السجل ممنوعة (سياسة المجال أو ملف تعريف تالف). التفاصيل في سجل التطبيق. الحل البديل: وضع الالتقاط «TUN».';
+
+  @override
+  String get noticeGeoMissing =>
+      'لم يتم تنزيل قواعد البيانات الجغرافية - قواعد اللوحة حسب البلد معطّلة';
+
+  @override
+  String get noticeGeoUnusable =>
+      'لم تتمكن النواة من فتح قواعد البيانات الجغرافية - قواعد اللوحة حسب البلد معطّلة';
+
+  @override
+  String pingDoneWorking(int ok, int total, int seconds) {
+    return 'انتهى الفحص: $ok من $total تعمل ($seconds ث)';
+  }
+
+  @override
+  String pingDoneReachable(int ok, int total, int seconds) {
+    return 'انتهى الفحص: $ok من $total يمكن الوصول إليها ($seconds ث)';
+  }
+
+  @override
+  String pingCancelledWorking(int ok, int total) {
+    return 'أُلغي الفحص: $ok من $total تعمل';
+  }
+
+  @override
+  String pingCancelledReachable(int ok, int total) {
+    return 'أُلغي الفحص: $ok من $total يمكن الوصول إليها';
+  }
+
+  @override
+  String get pingFailed => 'توقف الفحص بسبب خطأ';
+
+  @override
+  String speedDone(int ok, int total, int seconds) {
+    return 'تم قياس السرعة: $ok من $total ($seconds ث)';
+  }
+
+  @override
+  String speedCancelled(int ok, int total) {
+    return 'أُلغي قياس السرعة: تم قياس $ok من $total';
+  }
+
+  @override
+  String get speedNeedsLive =>
+      'لا يمكن قياس سرعة هذا الخادم هنا: يتم القياس عبر الاتصال النشط. اتصل به وأعد المحاولة';
+
+  @override
+  String autoConfigDoneFound(int count) {
+    return 'انتهى الإعداد التلقائي: تم العثور على $count';
+  }
+
+  @override
+  String get autoConfigDoneNone =>
+      'الإعداد التلقائي: لم يتم العثور على خوادم تعمل';
+
+  @override
+  String get autoConfigUnsupportedShort =>
+      'الإعداد التلقائي غير متاح على هذه المنصة';
+
+  @override
+  String get autoConfigUnsupportedLong =>
+      'الإعداد التلقائي غير متاح على هذه المنصة: لا توجد طريقة هنا لفحص الخدمات عبر خادم. استخدم الفحص (ping).';
+
+  @override
+  String get autoConfigBadKey =>
+      'تعذّر التعرّف على المفتاح (المتوقع vless:// / vmess:// / trojan:// / ss:// / hysteria2://)';
+
+  @override
+  String get autoConfigNoneFound => 'لم يتم العثور على خوادم تعمل';
+
+  @override
+  String autoConfigError(String detail) {
+    return 'خطأ: $detail';
+  }
+
+  @override
+  String get restartServerChanged => 'تم اختيار خادم آخر - أعد الاتصال للتطبيق';
+
+  @override
+  String get restartSubscriptionSwitched =>
+      'تم تبديل الاشتراك - أعد الاتصال للتطبيق';
+
+  @override
+  String errorServerNotFound(String name) {
+    return 'لم يتم العثور على الخادم «$name»';
+  }
+
+  @override
+  String get hintClockBehind =>
+      'تاريخ الجهاز ووقته غير صحيحين - إنهما متأخران، لذلك تبدو شهادة الخادم غير سارية بعد. تحقق من الساعة وفعّل مزامنة الوقت، ثم أعد الاستيراد.';
+
+  @override
+  String get hintCertExpired =>
+      'انتهت صلاحية شهادة الخادم. تحقق أولًا من تاريخ الجهاز ووقته - إن كانا متقدمين فسيظهر الخطأ نفسه. إن كان الوقت صحيحًا فقد انتهت الشهادة لدى الخدمة: تواصل مع الدعم.';
+
+  @override
+  String get hintHostnameMismatch =>
+      'الشهادة صادرة لاسم آخر. تحقق من عنوان الاشتراك - قد يكون فيه خطأ مطبعي، أو أن وسيطًا يعترض الاتصال.';
+
+  @override
+  String get hintNoNetwork =>
+      'تعذّر الوصول إلى خادم الاشتراك. تحقق من الإنترنت؛ إن كان يعمل فقد يكون العنوان محظورًا - جرّب تشغيل VPN ثم أعد الاستيراد.';
+
+  @override
+  String get importSyncTime => 'مزامنة الوقت';
+
+  @override
+  String subDeviceLimit(String limit) {
+    return 'تم بلوغ حد الأجهزة ($limit). أزل جهازًا زائدًا من حسابك وأعد المحاولة.';
+  }
+
+  @override
+  String get subDeviceLimitAny =>
+      'تم بلوغ حد الأجهزة. أزل جهازًا زائدًا من حسابك وأعد المحاولة.';
+
+  @override
+  String get subHwidRequired =>
+      'تتطلب اللوحة معرّف الجهاز، لكن التطبيق لم يرسله. حدّث التطبيق.';
+
+  @override
+  String subHttpCode(int code) {
+    return 'أعاد الخادم الرمز $code';
+  }
+
+  @override
+  String get subNoServers => 'لم يتم العثور على أي خادم في الاشتراك';
+
+  @override
+  String get subTooManyRedirects =>
+      'عدد كبير جدًا من عمليات إعادة توجيه الاشتراك';
+
+  @override
+  String get trayNoteBlocked => 'انقطع الاتصال، حركة المرور محظورة';
+
+  @override
+  String get trayNoteOffline => 'لا يوجد إنترنت، بانتظار الشبكة';
+
+  @override
+  String get routeYourPhone => 'هاتفك';
+
+  @override
+  String get importSyncTimeOk => 'تمت مزامنة الوقت. أعد الاستيراد.';
+
+  @override
+  String get importSyncTimeManual =>
+      'تعذّرت المزامنة تلقائيًا - يتطلب ذلك صلاحيات المسؤول.\n\nللإصلاح يدويًا: إعدادات Windows ← الوقت واللغة ← التاريخ والوقت. فعّل «تعيين الوقت تلقائيًا» واضغط «المزامنة الآن». إن كان المفتاح مفعّلًا بالفعل فأوقفه ثم فعّله مجددًا.';
+
+  @override
+  String get updatesMsStoreManaged =>
+      'ثُبّتت هذه النسخة من Microsoft Store ولا تُحدَّث إلا عبره: يثبّت المتجر الإصدارات الجديدة بنفسه أو بزر «الحصول على التحديثات» في قسم التنزيلات.';
+
+  @override
+  String get updatesOpenMsStore => 'فتح Microsoft Store';
+
+  @override
+  String get updatesSettingsTileMsStore =>
+      'تصل الإصدارات الجديدة عبر Microsoft Store';
+
+  @override
+  String get backupDocumentsSubsTitle =>
+      'الاحتفاظ بالاشتراكات في النسخة داخل «المستندات»';
+
+  @override
+  String get backupDocumentsSubsSub =>
+      'يحذف Windows بيانات تطبيق Microsoft Store عند إزالته، لذلك تُنسخ الإعدادات دائماً إلى «المستندات\\SilentGate». بعد إعادة التثبيت يستعيدها التطبيق بنفسه. النسخة مشفّرة بمفتاح حساب Windows الخاص بك';
+
+  @override
+  String get backupRestoredFromDocuments =>
+      'استُعيدت الإعدادات من النسخة في «المستندات»';
+
+  @override
+  String subBarSubscriptionDeletedNamed(String name) {
+    return 'تم حذف الاشتراك «$name»';
+  }
+
+  @override
+  String get subBarRestore => 'استعادة';
+
+  @override
+  String get connectButtonCancel => 'إلغاء';
+
+  @override
+  String get connectButtonStop => 'إيقاف';
+
+  @override
+  String get connectStepCheckConflicts => 'فحص التعارضات…';
+
+  @override
+  String get connectStepCheckPorts => 'فحص المنافذ…';
+
+  @override
+  String get connectStepDns => 'DNS…';
+
+  @override
+  String get connectStepRelay => 'غرفة المكالمة…';
+
+  @override
+  String get connectStepCore => 'تشغيل النواة…';
+
+  @override
+  String get connectStepTun => 'تشغيل TUN…';
+
+  @override
+  String get connectStepTraffic => 'فحص الاتصال…';
+
+  @override
+  String get connectStepStopping => 'جارٍ الإيقاف…';
+
+  @override
+  String get connectStepForceKill => 'إيقاف فوري…';
+
+  @override
+  String get splitSiteAlreadyExists => 'الموقع مضاف بالفعل، تم التخطي';
+
+  @override
+  String splitSiteSearchEmpty(String query) {
+    return 'لا توجد مواقع مطابقة لـ \"$query\" - اضغط \"إضافة\" لإدراجه';
+  }
+
+  @override
+  String get splitAlwaysReloadOnNewSite =>
+      'إعادة تشغيل VPN دائماً عند إضافة موقع جديد';
+
+  @override
+  String get splitVirtualGroupBadge => 'نطاقات فرعية';
+
+  @override
+  String liveConnsBadge(int count) {
+    return 'الاتصالات: $count';
+  }
+
+  @override
+  String get liveConnsTitle => 'الاتصالات المفتوحة';
+
+  @override
+  String get liveConnsSubtitle => 'يتحدث في الوقت الفعلي';
+
+  @override
+  String get liveConnsSectionVpn => 'عبر VPN';
+
+  @override
+  String get liveConnsSectionBlocked => 'محظورة';
+
+  @override
+  String get liveConnsSectionDirect => 'مباشرة';
+
+  @override
+  String get liveConnsEmpty => 'لا توجد اتصالات نشطة حالياً';
+
+  @override
+  String get liveConnsUnavailable =>
+      'قائمة الاتصالات غير متاحة في وضع وكيل النظام بدون TUN';
+
+  @override
+  String get liveConnsRouteMismatchTitle => 'تم تحديث المسارات';
+
+  @override
+  String liveConnsRouteMismatchBody(String domain) {
+    return 'تمت إضافة \"$domain\" إلى القواعد، لكن النفق النشط لا يزال يستخدم القائمة السابقة. هل تريد إعادة تشغيل VPN الآن؟';
+  }
+
+  @override
+  String liveConnsNewSiteReloadBody(String domain) {
+    return 'تمت إضافة \"$domain\". هل تريد إعادة تشغيل VPN الآن لتطبيق القاعدة فوراً؟';
+  }
+
+  @override
+  String get liveConnsReloadNow => 'إعادة تشغيل VPN';
+
+  @override
+  String get updatesTrafficWarningTitle => 'استهلاك بيانات الاشتراك';
+
+  @override
+  String get updatesTrafficWarningCheckBody =>
+      'الوصول المباشر إلى خوادم التحديث غير متاح أو يتم توجيه كل حركة المرور عبر VPN. سيؤدي التحقق والتنزيل إلى استهلاك رصيد اشتراكك. المتابعة؟';
+
+  @override
+  String updatesTrafficWarningDownloadBody(String sizeMb) {
+    return 'سيتم تنزيل التحديث ($sizeMb ميغابايت) عبر VPN النشط وسيستهلك من رصيد اشتراكك. المتابعة؟';
+  }
+
+  @override
+  String get updatesTrafficDontShowAgain => 'عدم إظهار هذا التحذير مرة أخرى';
+
+  @override
+  String get updatesContinue => 'متابعة';
+
+  @override
+  String get settingsConnectChecksNotSplitNote =>
+      'يؤثر فقط على رموز الفحص أسفل زر الاتصال. لتوجيه خدمات محددة عبر VPN أو خارجها، اضبط الانقسام النفقي.';
+
+  @override
+  String get settingsOpenSplitTunnel => 'ضبط الانقسام النفقي';
+
+  @override
+  String get splitQuickServicesTitle => 'اختيار سريع للخدمات';
+
+  @override
+  String get splitQuickServicesSub =>
+      'يضيف النطاقات الرئيسية ونطاقات الوسائط للخدمة بإجراء الوضع الحالي';
+
+  @override
+  String splitServiceAppHint(String service) {
+    return 'تمت إضافة نطاقات $service. للمكالمات وعمل التطبيق، أضف $service أيضاً إلى قائمة \"التطبيقات\" أعلاه';
+  }
+
+  @override
+  String get liveConnsPause => 'إيقاف مؤقت';
+
+  @override
+  String get liveConnsResume => 'استئناف التحديث';
+
+  @override
+  String get liveConnsPausedSubtitle => 'متوقف مؤقتاً · القائمة مجمدة';
+
+  @override
+  String get liveConnsFrozenSelectingSubtitle => 'القائمة مجمدة أثناء التحديد';
+
+  @override
+  String get liveConnsSelectMode => 'وضع التحديد';
+
+  @override
+  String liveConnsSelectedCount(int count) {
+    return 'المحدد: $count';
+  }
+
+  @override
+  String get liveConnsSelectAll => 'تحديد الكل';
+
+  @override
+  String get liveConnsClearSelection => 'مسح التحديد';
+
+  @override
+  String get liveConnsMenuSelect => 'تحديد';
+
+  @override
+  String get liveConnsMenuDeselect => 'إلغاء التحديد';
+
+  @override
+  String liveConnsMenuSelectProcess(String process, int count) {
+    return 'تحديد الكل لـ \"$process\" ($count)';
+  }
+
+  @override
+  String liveConnsMenuSelectDomain(String domain, int count) {
+    return 'تحديد الكل لـ \"$domain\" ($count)';
+  }
+
+  @override
+  String get liveConnsMenuRouteViaServer => 'عبر خادم...';
+
+  @override
+  String get liveConnsMenuCloseConn => 'إغلاق الاتصال';
+
+  @override
+  String liveConnsMenuCloseSelected(int count) {
+    return 'إغلاق المحدد ($count)';
+  }
+
+  @override
+  String liveConnsClosedToast(int count) {
+    return 'الاتصالات المغلقة: $count';
+  }
+
+  @override
+  String get liveConnsCloseFailedToast => 'تعذر إغلاق الاتصال';
+
+  @override
+  String liveConnsMenuFilterProcess(String process) {
+    return 'تصفية حسب العملية \"$process\"';
+  }
+
+  @override
+  String liveConnsMenuFilterDomain(String domain) {
+    return 'تصفية حسب النطاق \"$domain\"';
+  }
+
+  @override
+  String get liveConnsMenuCopyDomain => 'نسخ النطاق';
+
+  @override
+  String get liveConnsMenuCopyIpPort => 'نسخ IP:المنفذ';
+
+  @override
+  String get liveConnsMenuCopyProcess => 'نسخ اسم العملية';
+
+  @override
+  String get liveConnsMenuCopyExePath => 'نسخ مسار الملف التنفيذي';
+
+  @override
+  String get liveConnsMenuShowInExplorer => 'إظهار الملف في المستكشف';
+
+  @override
+  String get liveConnsCopySelectedTargets => 'نسخ الأهداف المحددة';
+
+  @override
+  String get liveConnsModeAuto => 'تلقائي';
+
+  @override
+  String get liveConnsModeSites => 'المواقع';
+
+  @override
+  String get liveConnsModeApps => 'التطبيقات';
+
+  @override
+  String get liveConnsModeBoth => 'كلاهما';
+
+  @override
+  String get liveConnsPlanEmpty =>
+      'لا توجد نطاقات أو تطبيقات مطابقة لهذا الوضع';
+
+  @override
+  String liveConnsPlanSummarySites(int count, String preview) {
+    return 'المواقع: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSummaryApps(int count, String preview) {
+    return 'التطبيقات: $count ($preview)';
+  }
+
+  @override
+  String liveConnsPlanSkippedSharedIp(String processes) {
+    return 'تم تخطي عناوين IP المباشرة للمتصفح ($processes) - اختر \"التطبيقات\" لتوجيه المتصفح بالكامل';
+  }
+
+  @override
+  String liveConnsRulesAppliedToast(int count) {
+    return 'القواعد المطبقة: $count';
+  }
+
+  @override
+  String get splitSelectRules => 'تحديد';
+
+  @override
+  String splitSelectedCount(int count) {
+    return 'القواعد المحددة: $count';
+  }
+
+  @override
+  String get splitSelectAllVisible => 'تحديد كل المرئي';
+
+  @override
+  String get splitBatchCancel => 'إلغاء';
+
+  @override
+  String get splitBatchViaServer => 'عبر خادم...';
+
+  @override
+  String get splitBatchEnable => 'تفعيل';
+
+  @override
+  String get splitBatchDisable => 'تعطيل';
+
+  @override
+  String get splitMenuConfigure => 'إعداد...';
+
+  @override
+  String splitMenuSelectSubdomains(String domain) {
+    return 'تحديد عائلة \"$domain\"';
+  }
+
+  @override
+  String splitBatchUpdatedToast(int count) {
+    return 'القواعد المحدثة: $count';
+  }
+
+  @override
+  String splitBatchRemovedToast(int count) {
+    return 'القواعد المحذوفة: $count';
+  }
+
+  @override
+  String get exitServerBlockedTitle => 'لا يمكن اختياره كمخرج منفصل';
+
+  @override
+  String get exitServerBlockedNote =>
+      'غير متاح كمخرج منفصل: ملفات التلقائي والمرحلات وبروتوكولات Xray تعمل فقط كخادم رئيسي.';
+
+  @override
+  String exitServerBlockedBody(String name) {
+    return 'لا يمكن حالياً تعيين الخادم \"$name\" كمخرج منفصل للقاعدة.\n\nتتطلب ملفات \"التلقائي\" والمرحلات وبروتوكولات Xray الخاصة (مثل XHTTP) مسار Xray كاملاً، بينما يدير sing-box المخارج الفرعية مباشرة.\n\nيرجى اختيار خادم فردي قياسي لهذه القاعدة أو تعيين \"$name\" كخادم رئيسي في الشاشة الرئيسية.';
+  }
+
+  @override
+  String get supportChipCantConnect => 'لا يتصل';
+
+  @override
+  String get supportChipSiteOrYoutube => 'يوتيوب / الموقع لا يفتح';
+
+  @override
+  String get supportChipSlowSpeed => 'سرعة منخفضة';
+
+  @override
+  String get supportChipDrops => 'انقطاع الاتصال';
+
+  @override
+  String get supportChipsHint => 'اختيار سريع (اختياري دون كتابة تفاصيل):';
+
+  @override
+  String get supportDescribeOptionalLabel => 'وصف المشكلة (اختياري)';
+
+  @override
+  String get supportNoTextProvided => 'بدون وصف نصي (تقرير تقني فقط)';
+
+  @override
+  String get supportCategoriesHeader => 'الفئة';
+
+  @override
+  String get supportSendDevCopyTitle => 'إرسال نسخة مجهولة الهوية للمطور';
+
+  @override
+  String get supportSendDevCopySub =>
+      'بدون رمز الاشتراك أو عناوين IP الشخصية أو HWID الخام - يسرع إصلاح الأعطال';
+
+  @override
+  String get supportPreviewDevCopy => 'ماذا يُرسل؟';
+
+  @override
+  String get supportPreviewDialogTitle => 'نسخة مجهولة الهوية للمطور';
+
+  @override
+  String get supportSendDevOnlyButton => 'للمطور فقط';
+
+  @override
+  String supportDevCopySent(String code) {
+    return 'تم إرسال النسخة للمطور ($code)';
+  }
+
+  @override
+  String supportDevCopyFailed(String code) {
+    return 'تعذر الإرسال للخادم ($code) - الملف المحلي جاهز';
+  }
+
+  @override
+  String supportDevOnlyDoneText(String code) {
+    return 'تم إرسال التقرير المجهول لخادم المطور. الرمز: $code';
+  }
+
+  @override
+  String get supportAttachDiagButton => 'تقرير التشخيص';
+
+  @override
+  String get supportSendToChatAndDev => 'إرفاق بالمحادثة';
 }

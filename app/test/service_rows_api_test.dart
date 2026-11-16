@@ -30,9 +30,8 @@ import 'package:silentgate/ui/widgets/service_checks_row.dart';
 ///  2. Абзац в 230 символов висел голой подсказкой над строкой списка серверов
 ///     и накрывал соседей (тот же дефект, что владелец прислал скриншотом по
 ///     раздельному туннелированию).
-///  3. Экран API называл номера портов, ничего не говоря о том, что в режиме
-///     системного прокси (умолчание на Windows) их не существует вовсе, — и
-///     светил токеном, который является паролем ко всему каналу.
+///  3. Экран API называет реальные номера портов и скрывает токен, пока его
+///     явно не попросят показать.
 class _FakeEngine extends VpnEngine {
   final _statusCtrl = StreamController<VpnStatus>.broadcast();
 
@@ -277,7 +276,7 @@ void main() {
     /// Большой холст: `ListView` строит только видимое, и на 800×600 памятка
     /// осталась бы непостроенной — проверки краснели бы по ложной причине.
     void bigSurface(WidgetTester t) {
-      t.view.physicalSize = const Size(1200, 3000);
+      t.view.physicalSize = const Size(1200, 4500);
       t.view.devicePixelRatio = 1;
       addTearDown(t.view.reset);
     }
@@ -293,46 +292,42 @@ void main() {
           reason: 'адрес берётся из `ApiPorts`, а не пишется в тексте руками');
       expect(find.text(l.apiCheatSheetPortDirect(ApiPorts.direct)),
           findsOneWidget);
-      // Порт отмеченного сервера считается тем же способом, что и физически
-      // (`ApiPorts.forServer`), — иначе памятка называла бы номер, на котором
-      // никто не слушает.
       expect(
           find.text(l.apiCheatSheetPortServer(
               ApiPorts.firstServer, state.servers.first.displayName)),
           findsOneWidget);
-      // Эндпоинты — строкой на каждый, ровно те, что разбирает
-      // `LocalApiServer._route`.
+      // Эндпоинты — строкой на каждый, включая новые 1.18.7.
       for (final path in const [
         'GET /v1/status',
         'GET /v1/servers',
         'GET /v1/exits',
         'GET /v1/traffic',
         'GET /v1/subscription',
+        'GET /v1/subscriptions',
         'POST /v1/connect',
         'POST /v1/disconnect',
         'POST /v1/ping',
+        'POST /v1/subscriptions/select',
+        'POST /v1/subscriptions/refresh',
+        'POST /v1/exits/configure',
+        'POST /v1/exits/test',
       ]) {
         expect(find.text(path), findsOneWidget, reason: path);
       }
     });
 
-    testWidgets('системный прокси: памятка говорит, что портов НЕТ',
+    testWidgets('системный прокси: памятка показывает те же живые порты выходов',
         (t) async {
       await t.runAsync(() => boot(mode: CaptureMode.systemProxy));
       bigSurface(t);
       await t.pumpWidget(app());
       await t.pumpAndSettle();
 
-      expect(find.text(l.apiCheatSheetPortsSystemProxy(ApiPorts.control)),
-          findsOneWidget);
-      // ⚠️ Главное: номеров портов выходов в этом режиме на экране быть не
-      // должно вовсе. Названный порт, которого не существует, — это ровно тот
-      // дефект, что уже случался в 1.4.0 с портом «Прямо».
-      expect(find.text(l.apiCheatSheetPortDirect(ApiPorts.direct)), findsNothing);
+      expect(find.text(l.apiCheatSheetPortDirect(ApiPorts.direct)), findsOneWidget);
       expect(
           find.text(l.apiCheatSheetPortServer(
               ApiPorts.firstServer, state.servers.first.displayName)),
-          findsNothing);
+          findsOneWidget);
     });
 
     testWidgets('пустой токен: памятка говорит, что канал не поднимается',

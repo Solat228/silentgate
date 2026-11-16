@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:silentgate/core/models/status_text.dart';
 import 'package:silentgate/core/models/vpn_status.dart';
 import 'package:silentgate/core/probe/tunnel_health.dart';
 import 'package:silentgate/core/settings/app_settings.dart';
@@ -156,6 +157,11 @@ class _Scripted extends TunnelHealth {
 }
 
 class _Engine extends VpnEngineBase {
+  // Прямой интернет есть: здесь проверяется прежнее поведение (обрыв →
+  // переподключение), а не ожидание сети, и в сеть тест ходить не должен.
+  @override
+  Future<bool?> directInternetAvailable() async => true;
+
   _Scripted Function()? nextProbe;
   _Scripted? lastProbe;
   int probesMade = 0;
@@ -196,9 +202,9 @@ class _Engine extends VpnEngineBase {
       confirmRecoveredChannel(aborted ?? () => false);
 
   @override
-  Future<bool> scheduleRetry(String reason) {
+  Future<bool> scheduleRetry(String reason, {StatusText? why}) {
     retries.add(reason);
-    return super.scheduleRetry(reason);
+    return super.scheduleRetry(reason, why: why);
   }
 
   @override
