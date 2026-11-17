@@ -406,6 +406,93 @@ class ProbeController extends ChangeNotifier {
     return _pingBatch([server], settings);
   }
 
+  /// Окно свежести для автоматического пинга и замера скорости при ручном
+  /// подключении: если сервер уже проверялся менее минуты назад, повторно
+  /// сеть и трафик подписки не дергаем.
+  static const connectProbeCooldown = Duration(minutes: 1);
+
+  /// Фоновая перепроверка пинга и скорости ТОЛЬКО подключённого сервера сразу
+  /// после ручного подъёма туннеля (не задерживает `connect()` и не блокируется
+  /// флагом `serviceChecksRunning`, так как идёт через уже живой канал без
+  /// поднятия временного харнесса).
+  Future<void> autoProbeConnectedServer(
+    VpnServer server,
+    AppSettings settings, {
+    DateTime? now,
+  }) async {
+    if (server.isUnsupported) return;
+    final live = _liveTargetIn([server]);
+    if (live == null) return;
+
+    final checkAt = now ?? DateTime.now();
+    final prevPing = _results[server.key];
+    final pingFresh = prevPing != null &&
+        prevPing.isWorking &&
+        !prevPing.latencyThroughTunnel &&
+        prevPing.measuredAt != null &&
+        checkAt.difference(prevPing.measuredAt!) < connectProbeCooldown;
+
+    if (!pingFresh && !_running) {
+      final head = _verifyHead(settings);
+      final proxySingle = !settings.pingTwoPhase &&
+          (settings.pingPrimary == PingMethod.proxyGet ||
+              settings.pingPrimary == PingMethod.proxyHead);
+      final core = liveCoreDelay?.call();
+      if (core != null) {
+        await _applyCoreDelay(
+          server,
+          core,
+          live.port,
+          settings,
+          head: head,
+          forceProxy: proxySingle,
+        );
+      } else {
+        final captured = captureActive?.call() ?? false;
+        if (!_proxyLatency(server) && !captured) {
+          final tcp = await TcpPing.measure(
+            server.address,
+            server.port,
+            timeout: Duration(milliseconds: settings.pingTimeoutMs),
+          );
+          if (tcp.outcome == PingOutcome.ok) {
+            _results[server.key] = PingResult(
+              outcome: PingOutcome.ok,
+              latencyMs: tcp.latencyMs,
+              verification: PingVerification.pending,
+              latencyMethod: PingMethod.tcp,
+              measuredAt: DateTime.now(),
+            );
+            notifyListeners();
+          }
+        }
+        await _applyVerify(
+          server,
+          live.port,
+          settings,
+          head: head,
+          forceProxy: proxySingle || _proxyLatency(server),
+        );
+      }
+      await _persist();
+      notifyListeners();
+    }
+
+    if (!settings.connectAutoSpeedTest) return;
+    if (_liveTargetIn([server]) == null) return;
+
+    final speedAt = now ?? DateTime.now();
+    final prevSpeed = _speeds[server.key];
+    final speedFresh = prevSpeed != null &&
+        !prevSpeed.fromAutoConfig &&
+        prevSpeed.measuredAt != null &&
+        speedAt.difference(prevSpeed.measuredAt!) < connectProbeCooldown;
+    if (speedFresh) return;
+    if (!resultFor(server).speedMeasurable) return;
+
+    await measureSpeedOne(server, settings);
+  }
+
   void cancel() => _cancel?.cancel();
 
   // ── Скорость сервера ───────────────────────────────────────────────────────

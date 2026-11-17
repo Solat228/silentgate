@@ -4779,4 +4779,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'Im Chat anhängen';
+
+  @override
+  String get speedAutoOnConnectTitle => 'Geschwindigkeit beim Verbinden messen';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'Hintergrundmessung des gewählten Servers nach manuellem Verbinden (höchstens einmal pro Minute)';
 }

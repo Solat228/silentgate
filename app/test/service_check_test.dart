@@ -73,12 +73,43 @@ void main() {
           reason: 'иначе бот-проверка на доступном регионе выдаст себя за гео');
     });
 
-    test('⚠️ у Gemini гео-пробы нет — и это честно', () {
-      // Замер 19.08.2026: страница одинакова всюду, 200 и 805 КБ без признака
-      // страны. Пустая проба честнее сломанной — см. `geoGated`.
-      expect(AutoConfigCatalog.geoEndpointFor(ProbeService.gemini), isNull);
-      expect(ProbeService.gemini.geoGated, isFalse,
-          reason: 'иначе чип обещал бы проверку, которой нет');
+    test('Gemini и Claude: цепочка региональных оракулов ловит закрытые страны и GL=RU', () {
+      final gemGeo = AutoConfigCatalog.geoEndpointFor(ProbeService.gemini);
+      expect(gemGeo, isNotNull);
+      expect(ProbeService.gemini.geoGated, isTrue);
+      expect(
+        gemGeo!.blocked(
+          400,
+          '{"error":{"status":"FAILED_PRECONDITION","message":"User location is not supported for the API use."}}',
+        ),
+        isTrue,
+      );
+      expect(
+        gemGeo.blocked(
+          400,
+          '{"error":{"status":"INVALID_ARGUMENT","message":"API key not valid."}}',
+        ),
+        isFalse,
+      );
+
+      final gemChain = AutoConfigCatalog.geoChainFor(ProbeService.gemini);
+      final ccmProbe =
+          gemChain.firstWhere((g) => g.url.contains('google.com/ccm/geo'));
+      expect(
+        ccmProbe.blocked(200, '{"0":"RU","1":"RU-MOW","2":false,"3":"google.ru"}'),
+        isTrue,
+      );
+      expect(
+        ccmProbe.blocked(200, '{"0":"FI","1":"FI-02","2":false,"3":"google.fi"}'),
+        isFalse,
+      );
+
+      final claudeChain = AutoConfigCatalog.geoChainFor(ProbeService.claude);
+      expect(claudeChain.any((g) => g.url.contains('google.com/ccm/geo')), isTrue);
+      expect(claudeChain.any((g) => g.url.contains('claude.ai/cdn-cgi/trace')), isTrue);
+
+      expect(ServiceChecks.domainsOf(ProbeService.gemini), isNot(contains('www.google.com')));
+      expect(ServiceChecks.domainsOf(ProbeService.claude), isNot(contains('www.google.com')));
     });
   });
 

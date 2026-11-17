@@ -4714,4 +4714,11 @@ class AppLocalizationsFa extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'پیوست به گفتگو';
+
+  @override
+  String get speedAutoOnConnectTitle => 'اندازه‌گیری سرعت هنگام اتصال';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'سنجش سرعت سرور انتخاب‌شده در پس‌زمینه پس از اتصال دستی (حداکثر یک بار در دقیقه)';
 }

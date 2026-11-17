@@ -4715,4 +4715,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'إرفاق بالمحادثة';
+
+  @override
+  String get speedAutoOnConnectTitle => 'قياس السرعة عند الاتصال';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'قياس سرعة الخادم المحدد في الخلفية بعد الاتصال اليدوي (بحد أقصى مرة واحدة في الدقيقة)';
 }

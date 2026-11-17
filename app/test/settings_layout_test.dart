@@ -220,8 +220,8 @@ void main() {
 
       Iterable<SettingsRailTile> tiles() => tester
           .widgetList<SettingsRailTile>(find.byType(SettingsRailTile));
-      expect(tiles().where((t) => t.selected), isEmpty,
-          reason: 'до выбора подсвечивать нечего');
+      expect(tiles().where((t) => t.selected).map((t) => t.section.id), ['s0'],
+          reason: 'при открытии активен верхний видимый раздел');
 
       await tester.tap(find.descendant(
           of: find.byKey(const ValueKey('settings-rail')),
@@ -231,6 +231,42 @@ void main() {
       final selected = tiles().where((t) => t.selected).toList();
       expect(selected, hasLength(1));
       expect(selected.single.section.id, 's3');
+    });
+
+    testWidgets('ручной скролл плавно меняет активную вкладку в меню без выбора других вкладок',
+        (tester) async {
+      setWindow(tester, 1400);
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      await tester.pumpWidget(host(SettingsBody(
+        sections: many(),
+        collapsed: const {},
+        onToggleSection: (_) {},
+        scrollController: scroll,
+      )));
+      await tester.pump();
+
+      String? activeRailId() {
+        final sel = tester
+            .widgetList<SettingsRailTile>(find.byType(SettingsRailTile))
+            .where((t) => t.selected)
+            .toList();
+        return sel.isEmpty ? null : sel.single.section.id;
+      }
+
+      expect(activeRailId(), 's0');
+
+      // Прокручиваем в середину без единого клика по боковому меню
+      scroll.jumpTo(scroll.position.maxScrollExtent * 0.5);
+      await tester.pumpAndSettle();
+      final midId = activeRailId();
+      expect(midId, isNotNull);
+      expect(midId, isNot('s0'));
+
+      // Докручиваем в самый низ — активна последняя вкладка s8
+      scroll.jumpTo(scroll.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(activeRailId(), 's8');
     });
 
     testWidgets('⚠️ ПРОКЛИКАНЫ ВСЕ разделы: каждый доезжает и помечается',

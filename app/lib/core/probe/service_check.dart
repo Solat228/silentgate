@@ -87,6 +87,31 @@ class ServiceChecker {
     return ProxyProbe.tcpConnect(httpPort, host, port);
   }
 
+  /// Проверить всю цепочку региональных ограничений для сервиса [s].
+  /// Возвращает `true`, если хотя бы один оракул подтвердил гео-блокировку.
+  static Future<bool> isGeoBlocked(
+    int httpPort,
+    ProbeService s, {
+    Duration timeout = const Duration(seconds: 8),
+    String? proxyUser,
+    String? proxyPassword,
+  }) async {
+    final chain = AutoConfigCatalog.geoChainFor(s);
+    for (final geo in chain) {
+      // validator == geo.blocked: ok==true ⇒ сервис заблокирован в регионе.
+      final g = await ProxyProbe.check(
+        httpPort,
+        geo.url,
+        validator: geo.blocked,
+        timeout: timeout,
+        proxyUser: proxyUser,
+        proxyPassword: proxyPassword,
+      );
+      if (g.ok) return true;
+    }
+    return false;
+  }
+
   static Future<ServiceCheckOutcome> check(int httpPort, ProbeService s) async {
     final ep = AutoConfigCatalog.endpointFor(s);
     if (ep == null) return const ServiceCheckOutcome(ServiceCheckState.fail);
@@ -96,18 +121,8 @@ class ServiceChecker {
       return ServiceCheckOutcome(ServiceCheckState.fail, latencyMs: r.rttMs);
     }
 
-    final geo = AutoConfigCatalog.geoEndpointFor(s);
-    if (geo != null) {
-      // validator == geo.blocked: ok==true ⇒ сервис заблокирован в регионе.
-      final g = await ProxyProbe.check(
-        httpPort,
-        geo.url,
-        validator: geo.blocked,
-        timeout: const Duration(seconds: 8),
-      );
-      if (g.ok) {
-        return ServiceCheckOutcome(ServiceCheckState.geoBlocked, latencyMs: r.rttMs);
-      }
+    if (await isGeoBlocked(httpPort, s)) {
+      return ServiceCheckOutcome(ServiceCheckState.geoBlocked, latencyMs: r.rttMs);
     }
     return ServiceCheckOutcome(ServiceCheckState.ok, latencyMs: r.rttMs);
   }

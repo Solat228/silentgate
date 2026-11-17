@@ -1833,5 +1833,7 @@
   "supportDevCopyFailed": "تعذر الإرسال للخادم ({code}) - الملف المحلي جاهز",
   "supportDevOnlyDoneText": "تم إرسال التقرير المجهول لخادم المطور. الرمز: {code}",
   "supportAttachDiagButton": "تقرير التشخيص",
-  "supportSendToChatAndDev": "إرفاق بالمحادثة"
+  "supportSendToChatAndDev": "إرفاق بالمحادثة",
+  "speedAutoOnConnectTitle": "قياس السرعة عند الاتصال",
+  "speedAutoOnConnectSub": "قياس سرعة الخادم المحدد في الخلفية بعد الاتصال اليدوي (بحد أقصى مرة واحدة في الدقيقة)"
 }

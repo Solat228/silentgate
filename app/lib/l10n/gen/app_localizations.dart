@@ -8015,6 +8015,18 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'Прикрепить в чат'**
   String get supportSendToChatAndDev;
+
+  /// No description provided for @speedAutoOnConnectTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Измерять скорость при подключении'**
+  String get speedAutoOnConnectTitle;
+
+  /// No description provided for @speedAutoOnConnectSub.
+  ///
+  /// In ru, this message translates to:
+  /// **'Фоновый замер выбранного сервера после ручного подключения (не чаще раза в минуту)'**
+  String get speedAutoOnConnectSub;
 }
 
 class _AppLocalizationsDelegate

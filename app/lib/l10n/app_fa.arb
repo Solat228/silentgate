@@ -1833,5 +1833,7 @@
   "supportDevCopyFailed": "ارسال به سرور ناموفق بود ({code}) - فایل محلی آماده است",
   "supportDevOnlyDoneText": "گزارش ناشناس به سرور توسعه‌دهنده ارسال شد. کد گزارش: {code}",
   "supportAttachDiagButton": "گزارش عیب‌یابی",
-  "supportSendToChatAndDev": "پیوست به گفتگو"
+  "supportSendToChatAndDev": "پیوست به گفتگو",
+  "speedAutoOnConnectTitle": "اندازه‌گیری سرعت هنگام اتصال",
+  "speedAutoOnConnectSub": "سنجش سرعت سرور انتخاب‌شده در پس‌زمینه پس از اتصال دستی (حداکثر یک بار در دقیقه)"
 }

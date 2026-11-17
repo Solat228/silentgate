@@ -4737,4 +4737,11 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'Прикрепить в чат';
+
+  @override
+  String get speedAutoOnConnectTitle => 'Измерять скорость при подключении';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'Фоновый замер выбранного сервера после ручного подключения (не чаще раза в минуту)';
 }
