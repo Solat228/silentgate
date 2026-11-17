@@ -4728,4 +4728,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'Attach to chat';
+
+  @override
+  String get speedAutoOnConnectTitle => 'Measure speed on connect';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'Background speed check for the selected server after manual connect (at most once per minute)';
 }

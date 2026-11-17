@@ -166,7 +166,55 @@ class AutoConfigCatalog {
     ),
   };
 
+  /// Регионы, где веб-версии Gemini / Claude / ChatGPT закрыты гео-ограничением.
+  @visibleForTesting
+  static const aiBlockedCountries = <String>{
+    'RU',
+    'BY',
+    'CN',
+    'HK',
+    'MO',
+    'IR',
+    'KP',
+    'CU',
+    'SY',
+  };
+
+  static final _googleCcmCountryRe = RegExp(r'"0"\s*:\s*"([A-Za-z]{2})"');
+  static final _googleSwCountryRe = RegExp(
+    r'"yt\.sw\.adr"[^\n]{0,120}\[\[\["[a-zA-Z-]+","([A-Za-z]{2})"',
+  );
+  static final _cfTraceCountryRe =
+      RegExp(r'(?:^|\n)loc=([A-Za-z]{2})(?:\r|\n|$)');
+
+  /// Извлечь двухбуквенный код страны из `https://www.google.com/ccm/geo`
+  /// (`{"0":"RU","1":"RU-MOW",...}`).
+  @visibleForTesting
+  static String? extractGoogleCcmCountry(String body) =>
+      _googleCcmCountryRe.firstMatch(body)?.group(1)?.toUpperCase();
+
+  /// Извлечь двухбуквенный код страны из `sw.js_data` (`[["yt.sw.adr",...]]`).
+  @visibleForTesting
+  static String? extractGoogleSwCountry(String body) =>
+      _googleSwCountryRe.firstMatch(body)?.group(1)?.toUpperCase();
+
+  /// Извлечь двухбуквенный код страны из `cdn-cgi/trace` (`loc=FI`).
+  @visibleForTesting
+  static String? extractCloudflareTraceCountry(String body) =>
+      _cfTraceCountryRe.firstMatch(body)?.group(1)?.toUpperCase();
+
+  @visibleForTesting
+  static bool isBlockedAiRegion(String? countryCode) =>
+      countryCode != null &&
+      aiBlockedCountries.contains(countryCode.trim().toUpperCase());
+
   /// Гео-пробы ИИ-сервисов (недоступность в стране выхода — отдельный сигнал).
+  ///
+  /// Основная мишень каждого сервиса лежит на его собственном API-домене, чтобы
+  /// `ServiceChecks.domainsOf` сопоставлял правила раздельного туннелирования
+  /// строго со своим сервисом. Полная цепочка региональных проверок (включая
+  /// `google.com/ccm/geo` для `GL=RU`-подсетей и `cdn-cgi/trace`) отдаётся через
+  /// [geoChainFor].
   static const _geo = <ProbeService, GeoEndpoint>{
     // Классический публичный сигнал OpenAI: 403 + `unsupported_country`.
     ProbeService.chatgpt: GeoEndpoint(
@@ -174,41 +222,50 @@ class AutoConfigCatalog {
       'https://api.openai.com/compliance/cookie_requirements',
       _openAiBlocked,
     ),
-    // ⚠️ CLAUDE ПРОВЕРЯЕТСЯ ЧЕРЕЗ API, А НЕ ЧЕРЕЗ САЙТ — И ЭТО ИЗМЕРЕНО.
-    //
-    // Прежняя проба била в `https://claude.ai/` и искала в теле слова вроде
-    // «not available in your». Она не могла сработать НИКОГДА: сайт отвечает
-    // из-под Cloudflare бот-проверкой — 403 с заголовком `Cf-Mitigated:
-    // challenge` и страницей без единого слова о стране (замерено 19.08.2026,
-    // 5357 байт, ни одного маркера). Владелец видел Claude зелёным там, где он
-    // недоступен, — то есть проверка показывала обратное правде.
-    //
-    // Голый 403 сам по себе гео-блоком считать нельзя (это записано ниже, у
-    // валидаторов, и остаётся верным). Но у API Anthropic ответ машинный и
-    // однозначный: гео-проверка идёт ДО авторизации, поэтому из закрытой страны
-    // приходит `403 {"type":"forbidden","message":"Request not allowed"}` без
-    // всякой бот-проверки, а из открытой — `401`, требующий `x-api-key`.
-    // Различаются не коды вообще, а именно эта пара.
-    //
-    // ⚠️ ЧЕСТНО О ПРЕДЕЛАХ ЗАМЕРА: подтверждена только ЗАКРЫТАЯ сторона (запрос
-    // из РФ). Открытую сторону проверить было нечем — включать VPN на машине
-    // владельца нельзя (правило №1), а без него другой страны не получить.
+    // У API Anthropic гео-проверка идёт до авторизации: из закрытой страны по
+    // базе Cloudflare приходит 403 `{"error":{"type":"forbidden","message":"Request not allowed"}}`.
     ProbeService.claude: GeoEndpoint(
       ProbeService.claude,
       'https://api.anthropic.com/v1/messages',
       _anthropicBlocked,
     ),
-    // ⚠️ У GEMINI ГЕО-ПРОБЫ НЕТ, И ЭТО НЕ ЗАБЫВЧИВОСТЬ.
-    //
-    // `gemini.google.com` отдаёт ОДНУ И ТУ ЖЕ страницу всюду: 200 и 805 КБ, ни
-    // слова о стране (замерено 19.08.2026 из РФ, где сервис недоступен). То же
-    // у `/faq`; `bard.google.com` — редирект. Недоступность Google показывает
-    // уже после входа в аккаунт, то есть лёгкой пробой её не увидеть.
-    //
-    // Прежняя запись искала в этой странице текст и не находила его никогда —
-    // получался зелёный чип на недоступном сервисе. Пустая проба честнее
-    // сломанной: теперь чип говорит «открывается», не притворяясь, что
-    // проверил страну (см. `geoGated` и подпись у чипа).
+    // Google Generative Language API + региональный оракул Google GFE в цепочке ниже.
+    ProbeService.gemini: GeoEndpoint(
+      ProbeService.gemini,
+      'https://generativelanguage.googleapis.com/v1beta/models?key=AIzaSyA00000000000000000000000000000000',
+      _geminiApiBlocked,
+    ),
+  };
+
+  /// Дополнительные региональные пробы для обнаружения `GL=RU` подсетей и
+  /// закрытых регионов на стороне Google GFE (`ccm/geo`) и Cloudflare (`trace`).
+  static const _extraGeo = <ProbeService, List<GeoEndpoint>>{
+    ProbeService.chatgpt: [
+      GeoEndpoint(
+        ProbeService.chatgpt,
+        'https://chatgpt.com/cdn-cgi/trace',
+        _cloudflareTraceBlocked,
+      ),
+    ],
+    ProbeService.claude: [
+      GeoEndpoint(
+        ProbeService.claude,
+        'https://claude.ai/cdn-cgi/trace',
+        _cloudflareTraceBlocked,
+      ),
+      GeoEndpoint(
+        ProbeService.claude,
+        'https://www.google.com/ccm/geo',
+        _googleGeoBlocked,
+      ),
+    ],
+    ProbeService.gemini: [
+      GeoEndpoint(
+        ProbeService.gemini,
+        'https://www.google.com/ccm/geo',
+        _googleGeoBlocked,
+      ),
+    ],
   };
 
   static List<ProbeEndpoint> endpointsFor(Set<ProbeService> services) =>
@@ -217,8 +274,19 @@ class AutoConfigCatalog {
   /// Проба сервиса по одному значению (для живой проверки у кнопки).
   static ProbeEndpoint? endpointFor(ProbeService s) => _all[s];
 
-  /// Гео-проба сервиса (или null, если сервис не гео-ограничен).
+  /// Основная гео-проба сервиса (или null, если сервис не гео-ограничен).
   static GeoEndpoint? geoEndpointFor(ProbeService s) => _geo[s];
+
+  /// Полная цепочка региональных проверок сервиса (основная + оракулы региона).
+  static List<GeoEndpoint> geoChainFor(ProbeService s) {
+    final primary = _geo[s];
+    final extra = _extraGeo[s];
+    if (primary == null && (extra == null || extra.isEmpty)) return const [];
+    return [
+      if (primary != null) primary,
+      if (extra != null) ...extra,
+    ];
+  }
 
   /// Живой ли видео-CDN YouTube.
   ///
@@ -262,8 +330,12 @@ class AutoConfigCatalog {
   // rate-limit на доступном регионе (иначе — ложная «страна заблокирована»).
   // Надёжный сигнал OpenAI — маркер `unsupported_country` в теле; для Claude/
   // Gemini — 451 (юридический гео-блок) либо текст «недоступно в вашем регионе».
-  static bool _openAiBlocked(int code, String body) =>
-      body.toLowerCase().contains('unsupported_country');
+  static bool _openAiBlocked(int code, String body) {
+    if (code == 451) return true;
+    final b = body.toLowerCase();
+    return b.contains('unsupported_country');
+  }
+
   /// Гео-отказ API Anthropic: 403 с машинным телом, БЕЗ бот-проверки.
   ///
   /// Тело обязательно: `403` прилетает и от Cloudflare при бот-проверке, и это
@@ -271,9 +343,39 @@ class AutoConfigCatalog {
   /// `"type": "forbidden"` + `Request not allowed` приходит именно от самого
   /// API и означает «этот регион не обслуживается».
   static bool _anthropicBlocked(int code, String body) {
-    if (code != 403) return false;
+    if (code == 451) return true;
     final b = body.toLowerCase();
+    if (b.contains('app unavailable') ||
+        b.contains('only available in certain regions')) {
+      return true;
+    }
+    if (code != 403) return false;
     return b.contains('"forbidden"') && b.contains('request not allowed');
+  }
+
+  /// Гео-отказ Google Generative Language / Gemini API (`User location is not supported`).
+  static bool _geminiApiBlocked(int code, String body) {
+    if (code == 451) return true;
+    final b = body.toLowerCase();
+    return b.contains('location is not supported') ||
+        b.contains('unsupported_country') ||
+        b.contains('not available in your country') ||
+        b.contains("isn't currently supported in your country");
+  }
+
+  /// Регион Google GFE (`ccm/geo` / `sw.js_data`) входит в закрытый список ИИ.
+  static bool _googleGeoBlocked(int code, String body) {
+    if (code == 451) return true;
+    if (code != 200) return false;
+    final cc = extractGoogleCcmCountry(body) ?? extractGoogleSwCountry(body);
+    return isBlockedAiRegion(cc);
+  }
+
+  /// Регион Cloudflare (`cdn-cgi/trace` -> `loc=XX`) входит в закрытый список ИИ.
+  static bool _cloudflareTraceBlocked(int code, String body) {
+    if (code == 451) return true;
+    if (code != 200) return false;
+    return isBlockedAiRegion(extractCloudflareTraceCountry(body));
   }
 
 }
@@ -754,19 +856,14 @@ class AutoConfigEngine {
           // ядру, где креды опубликованы статикой `ProxyProbe`, а харнесс —
           // отдельное ядро со своим паролем.
           if (r.ok) {
-            final geo = AutoConfigCatalog.geoEndpointFor(ep.service);
-            if (geo != null) {
-              final g = await ProxyProbe.check(
-                port,
-                geo.url,
-                validator: geo.blocked,
-                timeout: Duration(milliseconds: settings.pingTimeoutMs),
-                proxyUser: handle.proxyUser,
-                proxyPassword: handle.proxyPassword,
-              );
-              // validator == geo.blocked: ok==true ⇒ сервис закрыт в регионе.
-              if (g.ok) geoBlocked.add(ep.service);
-            }
+            final blocked = await ServiceChecker.isGeoBlocked(
+              port,
+              ep.service,
+              timeout: Duration(milliseconds: settings.pingTimeoutMs),
+              proxyUser: handle.proxyUser,
+              proxyPassword: handle.proxyPassword,
+            );
+            if (blocked) geoBlocked.add(ep.service);
           }
           onService?.call(ep.service, r.ok);
         }

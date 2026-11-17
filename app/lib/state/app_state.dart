@@ -590,7 +590,19 @@ class AppState extends ChangeNotifier {
   ///
   /// ⚠️ Это момент НАЖАТИЯ, а не момент подъёма туннеля. Обрывы и
   /// переподключения его не двигают — см. [markUserConnect].
+  /// Момент включения VPN пользователем; обрывы его не трогают.
   DateTime? _connectedAt;
+
+  /// Монотонный счётчик ручных подключений и смен сервера (кнопка Connect,
+  /// выбор другого узла, URL-схема, локальный API). Автореконнекты сторожа,
+  /// смена Wi-Fi/LTE, подхват живого туннеля Android и перезапуск того же
+  /// сервера ради применения настроек этот счётчик НЕ увеличивают.
+  int _manualConnectSeq = 0;
+  VpnServer? _manualConnectServer;
+  bool _suppressNextManualProbe = false;
+
+  int get manualConnectSeq => _manualConnectSeq;
+  VpnServer? get manualConnectServer => _manualConnectServer;
 
   /// Сколько прошло с включения VPN. null — выключен.
   ///
@@ -3345,6 +3357,9 @@ class AppState extends ChangeNotifier {
     // собственная правка пользователя выглядят одинаково.
     AppLog.i('Перезапуск туннеля по команде пользователя'
         '${_pendingRestartDetail.isEmpty ? '' : ' (изменено: $_pendingRestartDetail)'}');
+    final isSettingsOnlyRestart = _pendingRestartDetail.isNotEmpty &&
+        _connectedServerKey != null &&
+        _connectedServerKey == selectedServer?.key;
     _setPendingRestart(null);
     _pendingRestartDetail = '';
     notifyListeners();
@@ -3385,7 +3400,12 @@ class AppState extends ChangeNotifier {
     // дойти до `_statusSub` ДО старта новой сессии, чтобы `_status` и
     // `_networkWatcher` увидели штатную смену состояния без гонки.
     await Future<void>.delayed(Duration.zero);
-    await connectFn();
+    _suppressNextManualProbe = isSettingsOnlyRestart;
+    try {
+      await connectFn();
+    } finally {
+      _suppressNextManualProbe = false;
+    }
     // ⚠️ ПОДКЛЮЧЕНИЕ МОГЛО НЕ НАЧАТЬСЯ ВОВСЕ — а захват мы удержали.
     //
     // `connectFn` выходит рано, если подключаться не к чему (список серверов
@@ -3486,6 +3506,10 @@ class AppState extends ChangeNotifier {
     // Запоминаем, ЧТО ИМЕННО поднимаем: выбор в списке после этого может
     // уехать на другой сервер, а сессия останется этой.
     _connectedServerKey = srv.key;
+    if (!_suppressNextManualProbe) {
+      _manualConnectSeq++;
+      _manualConnectServer = srv;
+    }
     _connectedSplitSignature = splitRoutingSignature(
       settings.splitTunnel,
       noRealIp: settings.noRealIp,

@@ -4537,4 +4537,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => '附加到聊天';
+
+  @override
+  String get speedAutoOnConnectTitle => '连接时自动测速';
+
+  @override
+  String get speedAutoOnConnectSub => '手动连接后在后台测量所选服务器速度（同一节点每分钟最多一次）';
 }

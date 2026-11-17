@@ -343,12 +343,22 @@ class _SettingsBodyState extends State<SettingsBody> {
   /// Якоря разделов для бокового меню. Ключи стабильны по идентификатору
   /// раздела: пересоздавать их на каждый кадр значило бы терять позицию.
   final _anchors = <String, GlobalKey>{};
+  final _viewportKey = GlobalKey();
+  ScrollController? _ownScroll;
+
+  ScrollController get _effectiveScroll =>
+      widget.scrollController ?? (_ownScroll ??= ScrollController());
 
   GlobalKey _anchor(String id) => _anchors.putIfAbsent(id, () => GlobalKey());
 
-  /// Раздел, выбранный в боковом меню. Помечается в самом меню и держится до
-  /// следующего выбора — это ответ на вопрос «где я сейчас».
+  /// Раздел, выбранный в боковом меню или отслеживаемый при ручной прокрутке.
+  /// Помечается в самом меню и плавно обновляется по мере скролла страницы.
   String? _activeId;
+
+  /// Идёт программная прокрутка по клику в боковом меню: на это время ручной
+  /// скролл-спай приглушается, чтобы рамка вкладки не пробегала промежуточные
+  /// пункты по пути к цели.
+  bool _jumping = false;
 
   /// Раздел, вокруг КОТОРОГО СЕЙЧАС ГОРИТ РАМКА, — это другое: она отвечает на
   /// вопрос «куда меня перенесло» и гаснет через [kSettingsHighlightHold].
@@ -361,32 +371,80 @@ class _SettingsBodyState extends State<SettingsBody> {
   Timer? _highlightTimer;
 
   @override
+  void didUpdateWidget(covariant SettingsBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scrollController != null && _ownScroll != null) {
+      _ownScroll!.dispose();
+      _ownScroll = null;
+    }
+  }
+
+  @override
   void dispose() {
     // Без отмены таймер доживает до `setState` на снятом виджете (в тестах это
     // ещё и «A Timer is still pending» на выходе).
     _highlightTimer?.cancel();
+    _ownScroll?.dispose();
     super.dispose();
+  }
+
+  void _syncActiveFromScroll(List<SettingsSectionData> visible) {
+    if (_jumping || visible.isEmpty || !mounted) return;
+    final ctrl = _effectiveScroll;
+    String nextId = visible.first.id;
+    if (ctrl.hasClients) {
+      final pos = ctrl.position;
+      if (pos.maxScrollExtent > 0 && pos.pixels >= pos.maxScrollExtent - 16) {
+        nextId = visible.last.id;
+      } else {
+        final vpBox =
+            _viewportKey.currentContext?.findRenderObject() as RenderBox?;
+        if (vpBox != null && vpBox.hasSize) {
+          final thresholdY = vpBox.localToGlobal(Offset.zero).dy + 72.0;
+          for (final s in visible) {
+            final box =
+                _anchor(s.id).currentContext?.findRenderObject() as RenderBox?;
+            if (box == null || !box.hasSize) continue;
+            final top = box.localToGlobal(Offset.zero).dy;
+            if (top <= thresholdY) {
+              nextId = s.id;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+    }
+    final current = _activeId ?? visible.first.id;
+    if (nextId != current || _activeId == null) {
+      setState(() => _activeId = nextId);
+    }
   }
 
   Future<void> _jumpTo(SettingsSectionData s) async {
     _highlightTimer?.cancel();
+    _jumping = true;
     setState(() {
       _activeId = s.id;
       _highlightId = s.id;
     });
-    // Свёрнутый раздел разворачиваем: иначе меню приводит к пустому месту.
-    if (widget.collapsed.contains(s.id)) widget.onToggleSection(s.id);
-    // Ждём кадр: раздел мог только что развернуться, и его высота ещё не
-    // посчитана — прицел по старой раскладке промахнулся бы.
-    await WidgetsBinding.instance.endOfFrame;
-    if (mounted) {
-      final ctx = _anchor(s.id).currentContext;
-      if (ctx != null && ctx.mounted) {
-        await Scrollable.ensureVisible(ctx,
-            duration: const Duration(milliseconds: 280),
-            curve: Curves.easeOutCubic,
-            alignment: 0.0);
+    try {
+      // Свёрнутый раздел разворачиваем: иначе меню приводит к пустому месту.
+      if (widget.collapsed.contains(s.id)) widget.onToggleSection(s.id);
+      // Ждём кадр: раздел мог только что развернуться, и его высота ещё не
+      // посчитана — прицел по старой раскладке промахнулся бы.
+      await WidgetsBinding.instance.endOfFrame;
+      if (mounted) {
+        final ctx = _anchor(s.id).currentContext;
+        if (ctx != null && ctx.mounted) {
+          await Scrollable.ensureVisible(ctx,
+              duration: const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              alignment: 0.0);
+        }
       }
+    } finally {
+      _jumping = false;
     }
     // ⚠️ Отсчёт заводится ПОСЛЕ прокрутки и на ЛЮБОМ пути — в том числе когда
     // цели не нашлось. Ранний `return` посреди метода оставил бы рамку гореть
@@ -424,9 +482,17 @@ class _SettingsBodyState extends State<SettingsBody> {
         // не создаются (ленивость осталась там, где она что-то экономит), так
         // что цена — незаметна, а прокрутка становится ровной и попадает
         // с первого раза.
-        : SingleChildScrollView(
-            controller: widget.scrollController,
-            padding: const EdgeInsets.symmetric(vertical: 8),
+        : NotificationListener<ScrollNotification>(
+            key: _viewportKey,
+            onNotification: (n) {
+              if (n.depth == 0 && n is ScrollUpdateNotification) {
+                _syncActiveFromScroll(visible);
+              }
+              return false;
+            },
+            child: SingleChildScrollView(
+              controller: _effectiveScroll,
+              padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -478,7 +544,12 @@ class _SettingsBodyState extends State<SettingsBody> {
                 ],
               ],
             ),
+          ),
           );
+
+    final effectiveActiveId = visible.any((s) => s.id == _activeId)
+        ? _activeId
+        : (visible.isNotEmpty ? visible.first.id : null);
 
     final centered = Center(
       child: ConstrainedBox(
@@ -501,7 +572,7 @@ class _SettingsBodyState extends State<SettingsBody> {
                 for (final s in visible)
                   SettingsRailTile(
                     section: s,
-                    selected: s.id == _activeId,
+                    selected: s.id == effectiveActiveId,
                     onTap: () => _jumpTo(s),
                   ),
               ],
@@ -562,17 +633,17 @@ List<SettingsSectionData> buildSettingsSections(
   final l = AppLocalizations.of(context);
   return [
     SettingsSectionData(
+      id: SettingsSectionIds.capture,
+      title: l.sectionCapture,
+      icon: Icons.alt_route,
+      rows: _captureRows(l, s, controller),
+    ),
+    SettingsSectionData(
       id: SettingsSectionIds.appearance,
       title: l.sectionAppearance,
       icon: Icons.palette_outlined,
       rows: _appearanceRows(l, s, controller,
           serversJumbled: _serversJumbled(context)),
-    ),
-    SettingsSectionData(
-      id: SettingsSectionIds.capture,
-      title: l.sectionCapture,
-      icon: Icons.alt_route,
-      rows: _captureRows(l, s, controller),
     ),
     SettingsSectionData(
       id: SettingsSectionIds.reliability,
@@ -2934,9 +3005,10 @@ List<SettingsRow> _pingRows(
         ],
       ),
     ),
-    // #11 — объём пробы теста скорости (ПКМ по серверу → «Информация о сервере»).
+    // #11 — объём пробы теста скорости + авто-замер скорости при подключении.
     SettingsRow(
-      search: '${l.speedTestProbe} ${l.speedTestFull} ${l.speedTestLight}',
+      search: '${l.speedTestProbe} ${l.speedTestFull} ${l.speedTestLight} '
+          '${l.speedAutoOnConnectTitle} ${l.speedAutoOnConnectSub}',
       build: (context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2956,6 +3028,14 @@ List<SettingsRow> _pingRows(
             },
             onChanged: (v) =>
                 controller.update((s) => s.copyWith(speedTestSize: v)),
+          ),
+          SwitchListTile(
+            key: const Key('connectAutoSpeedTestSwitch'),
+            value: settings.connectAutoSpeedTest,
+            title: Text(l.speedAutoOnConnectTitle),
+            subtitle: Text(l.speedAutoOnConnectSub),
+            onChanged: (v) =>
+                controller.update((s) => s.copyWith(connectAutoSpeedTest: v)),
           ),
         ],
       ),

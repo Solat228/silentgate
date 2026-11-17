@@ -4777,4 +4777,11 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'Anexar ao chat';
+
+  @override
+  String get speedAutoOnConnectTitle => 'Medir velocidade ao conectar';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'Medição em segundo plano do servidor escolhido após conexão manual (no máximo uma vez por minuto)';
 }

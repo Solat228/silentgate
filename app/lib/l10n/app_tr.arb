@@ -1833,5 +1833,7 @@
   "supportDevCopyFailed": "Sunucuya gönderilemedi ({code}) - yerel dosya hazır",
   "supportDevOnlyDoneText": "Anonim rapor geliştirici sunucusuna gönderildi. Rapor kodu: {code}",
   "supportAttachDiagButton": "Tanı raporu",
-  "supportSendToChatAndDev": "Sohbete ekle"
+  "supportSendToChatAndDev": "Sohbete ekle",
+  "speedAutoOnConnectTitle": "Bağlanırken hızı ölç",
+  "speedAutoOnConnectSub": "Elle bağlandıktan sonra seçilen sunucu için arka planda hız ölçümü (dakikada en fazla bir kez)"
 }

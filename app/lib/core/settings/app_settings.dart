@@ -366,16 +366,10 @@ extension ProbeServiceLabel on ProbeService {
 
   /// Сервис с гео-ограничением (ИИ): у него отдельно проверяется, не заблокирован
   /// ли он в стране выхода VPN (открывается, но «недоступно в вашем регионе»).
-  /// Есть ли у сервиса ОТДЕЛЬНАЯ проверка доступности в стране выхода.
-  ///
-  /// ⚠️ GEMINI СЮДА НЕ ВХОДИТ, И ЭТО ИЗМЕРЕНО, А НЕ ЗАБЫТО. `gemini.google.com`
-  /// отдаёт одну и ту же страницу всюду — 200 и 805 КБ без единого слова о
-  /// стране (замер 19.08.2026 из РФ, где сервис недоступен). Недоступность
-  /// Google показывает уже после входа в аккаунт, лёгкой пробой её не увидеть.
-  /// Числиться «гео-проверяемым» и не проверять ничего — хуже, чем честно не
-  /// числиться: зелёный чип читался бы как «доступен в вашей стране».
   bool get geoGated =>
-      this == ProbeService.chatgpt || this == ProbeService.claude;
+      this == ProbeService.chatgpt ||
+      this == ProbeService.claude ||
+      this == ProbeService.gemini;
 }
 
 /// Настройки приложения. Иммутабельны; меняются через [copyWith].
@@ -742,6 +736,10 @@ class AppSettings {
 
   /// Объём пробы теста скорости: трафик расходуется из подписки.
   final SpeedTestSize speedTestSize;
+
+  /// Автоматически измерять скорость выбранного сервера в фоне после ручного
+  /// подключения или смены сервера (не чаще раза в минуту для того же узла).
+  final bool connectAutoSpeedTest;
 
   // ── Пинг ──────────────────────────────────────────────────────────────────
   /// Двухфазный пинг: если основной метод не ответил — пробуем запасной через прокси.
@@ -1138,6 +1136,7 @@ class AppSettings {
     // Точность на быстрых каналах при этом занижается — кому нужна точная
     // цифра, переключит на 20 МБ вручную.
     this.speedTestSize = SpeedTestSize.light,
+    this.connectAutoSpeedTest = true,
     this.pingTwoPhase = true,
     this.pingPrimary = PingMethod.tcp,
     this.pingFallback = PingMethod.proxyGet,
@@ -1311,6 +1310,7 @@ class AppSettings {
     bool? killSwitch,
     bool? noRealIp,
     SpeedTestSize? speedTestSize,
+    bool? connectAutoSpeedTest,
     bool? pingTwoPhase,
     PingMethod? pingPrimary,
     PingMethod? pingFallback,
@@ -1443,6 +1443,7 @@ class AppSettings {
       killSwitch: killSwitch ?? this.killSwitch,
       noRealIp: noRealIp ?? this.noRealIp,
       speedTestSize: speedTestSize ?? this.speedTestSize,
+      connectAutoSpeedTest: connectAutoSpeedTest ?? this.connectAutoSpeedTest,
       pingTwoPhase: pingTwoPhase ?? this.pingTwoPhase,
       pingPrimary: pingPrimary ?? this.pingPrimary,
       pingFallback: pingFallback ?? this.pingFallback,
@@ -1590,6 +1591,7 @@ class AppSettings {
         'killSwitch': killSwitch,
         'noRealIp': noRealIp,
         'speedTestSize': speedTestSize.name,
+        'connectAutoSpeedTest': connectAutoSpeedTest,
         'pingTwoPhase': pingTwoPhase,
         'pingPrimary': pingPrimary.name,
         'pingFallback': pingFallback.name,
@@ -1849,6 +1851,8 @@ class AppSettings {
       // прокси — только если он молчит), поэтому переносим значения по смыслу.
       speedTestSize:
           pick(SpeedTestSize.values, j['speedTestSize'], SpeedTestSize.full),
+      connectAutoSpeedTest:
+          j['connectAutoSpeedTest'] as bool? ?? defaults.connectAutoSpeedTest,
       pingTwoPhase: j['pingTwoPhase'] as bool? ??
           j['verifyViaProxyFirst'] as bool? ??
           defaults.pingTwoPhase,

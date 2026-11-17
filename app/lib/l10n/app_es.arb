@@ -1887,5 +1887,7 @@
   "supportDevCopyFailed": "No se pudo subir al servidor ({code}) - archivo local listo",
   "supportDevOnlyDoneText": "Informe anonimizado enviado al servidor del desarrollador. Código: {code}",
   "supportAttachDiagButton": "Informe diagnóstico",
-  "supportSendToChatAndDev": "Adjuntar al chat"
+  "supportSendToChatAndDev": "Adjuntar al chat",
+  "speedAutoOnConnectTitle": "Medir velocidad al conectar",
+  "speedAutoOnConnectSub": "Medición en segundo plano del servidor elegido tras conectar manualmente (máximo una vez por minuto)"
 }

@@ -2002,5 +2002,7 @@
   "supportDevCopyFailed": "Could not upload to server ({code}) - local file is ready",
   "supportDevOnlyDoneText": "Anonymized report sent to the developer server. Report code: {code}",
   "supportAttachDiagButton": "Diagnostic report",
-  "supportSendToChatAndDev": "Attach to chat"
+  "supportSendToChatAndDev": "Attach to chat",
+  "speedAutoOnConnectTitle": "Measure speed on connect",
+  "speedAutoOnConnectSub": "Background speed check for the selected server after manual connect (at most once per minute)"
 }

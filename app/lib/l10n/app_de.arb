@@ -1833,5 +1833,7 @@
   "supportDevCopyFailed": "Server-Upload fehlgeschlagen ({code}) - lokale Datei bereit",
   "supportDevOnlyDoneText": "Anonymisierter Bericht an den Entwickler-Server gesendet. Code: {code}",
   "supportAttachDiagButton": "Diagnosebericht",
-  "supportSendToChatAndDev": "Im Chat anhängen"
+  "supportSendToChatAndDev": "Im Chat anhängen",
+  "speedAutoOnConnectTitle": "Geschwindigkeit beim Verbinden messen",
+  "speedAutoOnConnectSub": "Hintergrundmessung des gewählten Servers nach manuellem Verbinden (höchstens einmal pro Minute)"
 }

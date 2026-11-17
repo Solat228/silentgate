@@ -1833,5 +1833,7 @@
   "supportDevCopyFailed": "Échec d'envoi au serveur ({code}) - fichier local prêt",
   "supportDevOnlyDoneText": "Rapport anonymisé envoyé au serveur développeur. Code : {code}",
   "supportAttachDiagButton": "Rapport diagnostic",
-  "supportSendToChatAndDev": "Joindre au chat"
+  "supportSendToChatAndDev": "Joindre au chat",
+  "speedAutoOnConnectTitle": "Mesurer le débit à la connexion",
+  "speedAutoOnConnectSub": "Mesure en arrière-plan du serveur choisi après une connexion manuelle (au plus une fois par minute)"
 }

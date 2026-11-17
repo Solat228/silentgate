@@ -12,6 +12,7 @@ import '../core/platform/app_launcher.dart';
 import '../core/platform/package_identity_windows.dart';
 import '../core/platform/play_store_android.dart';
 import '../core/settings/app_settings.dart';
+import '../core/probe/clash_delay.dart';
 import '../core/probe/proxy_probe.dart';
 import '../core/update/app_update.dart' show AppUpdate, UpdateProxy;
 import '../core/update/app_update_defaults.dart' show kUpdateApiOverridden;
@@ -206,6 +207,79 @@ ProxyProvider3<AppState, SettingsController, ProbeController, ServerRekeyLink>
           lazy: false,
           update: (_, state, settings, probe, __) =>
               ServerRekeyLink(state, settings, probe),
+        );
+
+/// Связка «ручное подключение завершилось → фоновый пинг и замер скорости».
+///
+/// Работает в фоне (`unawaited`), не задерживая переход туннеля в «Подключено»
+/// ни на миллисекунду. Реагирует строго на `AppState.manualConnectSeq`, поэтому
+/// автореконнекты сторожа, смена Wi-Fi/LTE и подхват живого туннеля на Android
+/// трафик подписки не расходуют.
+class ConnectAutoProbeLink {
+  AppState? _state;
+  SettingsController? _settings;
+  ProbeController? _probe;
+  int _handledSeq = 0;
+
+  void attach(
+    AppState state,
+    SettingsController settings,
+    ProbeController probe,
+  ) {
+    if (!identical(_state, state)) {
+      _state?.removeListener(_onStateChanged);
+      _state = state;
+      state.addListener(_onStateChanged);
+    }
+    _settings = settings;
+    _probe = probe;
+
+    probe.liveProxyPort ??=
+        () => state.status.isConnected ? state.httpProxyPort : 0;
+    probe.activeServerKey ??= () => state.connectedServerKey;
+    probe.captureActive ??= () => state.captureCoreApi != null;
+    probe.liveCoreDelay ??= () {
+      final api = state.captureCoreApi;
+      if (api == null || !state.status.isConnected) return null;
+      return ClashDelayProbe(
+          port: api.port, secret: api.secret, tag: api.proxyTag);
+    };
+
+    _onStateChanged();
+  }
+
+  void _onStateChanged() {
+    final state = _state;
+    final settings = _settings;
+    final probe = _probe;
+    if (state == null || settings == null || probe == null) return;
+
+    final seq = state.manualConnectSeq;
+    if (seq == 0 || seq == _handledSeq) return;
+    if (!state.status.isConnected || state.httpProxyPort <= 0) return;
+
+    final server = state.manualConnectServer;
+    if (server == null || state.connectedServerKey != server.key) return;
+
+    _handledSeq = seq;
+    unawaited(probe.autoProbeConnectedServer(server, settings.settings));
+  }
+
+  void dispose() {
+    _state?.removeListener(_onStateChanged);
+    _state = null;
+  }
+}
+
+ProxyProvider3<AppState, SettingsController, ProbeController,
+        ConnectAutoProbeLink>
+    connectAutoProbeLinkProvider() => ProxyProvider3<AppState,
+            SettingsController, ProbeController, ConnectAutoProbeLink>(
+          lazy: false,
+          update: (_, state, settings, probe, previous) =>
+              (previous ?? ConnectAutoProbeLink())
+                ..attach(state, settings, probe),
+          dispose: (_, link) => link.dispose(),
         );
 
 /// Установщик обновлений под платформу. Прочие платформы получают заглушку

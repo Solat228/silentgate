@@ -4736,4 +4736,11 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get supportSendToChatAndDev => 'Sohbete ekle';
+
+  @override
+  String get speedAutoOnConnectTitle => 'Bağlanırken hızı ölç';
+
+  @override
+  String get speedAutoOnConnectSub =>
+      'Elle bağlandıktan sonra seçilen sunucu için arka planda hız ölçümü (dakikada en fazla bir kez)';
 }
